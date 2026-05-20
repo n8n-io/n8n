@@ -19,6 +19,8 @@ import type { AgentExecutionThread } from './entities/agent-execution-thread.ent
 import type { TimelineEvent } from './execution-recorder';
 import { AgentEvaluationCaseRepository } from './repositories/agent-evaluation-case.repository';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
+import { AgentRepository } from './repositories/agent.repository';
+import { getAgentCurrentVersionId } from './utils/agent-version.utils';
 
 const DEFAULT_RUNS_LIMIT = 20;
 const MAX_RUNS_LIMIT = 100;
@@ -199,6 +201,7 @@ export class AgentDebugService {
 	constructor(
 		private readonly agentExecutionRepository: AgentExecutionRepository,
 		private readonly agentEvaluationCaseRepository: AgentEvaluationCaseRepository,
+		private readonly agentRepository: AgentRepository,
 	) {}
 
 	async listRuns(
@@ -207,12 +210,16 @@ export class AgentDebugService {
 		limit = DEFAULT_RUNS_LIMIT,
 		cursor?: string,
 	): Promise<AgentDebugRunsResponse> {
+		const agentVersionId = await this.getCurrentAgentVersionId(projectId, agentId);
+		if (!agentVersionId) return { runs: [], nextCursor: null };
+
 		const pageSize = Math.min(Math.max(limit, 1), MAX_RUNS_LIMIT);
 		const executions = await this.findRuns(projectId, agentId, pageSize + 1, cursor);
 		const hasMore = executions.length > pageSize;
 		if (hasMore) executions.pop();
 		const reviewsByExecutionId = await this.findReviewsByExecutionIds(
 			executions.map((execution) => execution.id),
+			agentVersionId,
 		);
 
 		return {
@@ -231,11 +238,14 @@ export class AgentDebugService {
 		const execution = await this.findRun(projectId, agentId, executionId);
 
 		if (!execution) return null;
+		const agentVersionId = await this.getCurrentAgentVersionId(projectId, agentId);
+		if (!agentVersionId) return null;
 
-		const review = await this.agentEvaluationCaseRepository.findByExecutionId(
+		const review = await this.agentEvaluationCaseRepository.findByExecutionIdAndVersion(
 			projectId,
 			agentId,
 			executionId,
+			agentVersionId,
 		);
 
 		return {
@@ -252,10 +262,21 @@ export class AgentDebugService {
 		limit = DEFAULT_REVIEW_CASES_LIMIT,
 		cursor?: string,
 	): Promise<AgentReviewCasesResponse> {
+		const agentVersionId = await this.getCurrentAgentVersionId(projectId, agentId);
+		if (!agentVersionId) {
+			return { cases: [], summary: { total: 0, approved: 0, rejected: 0 }, nextCursor: null };
+		}
+
 		const pageSize = Math.min(Math.max(limit, 1), MAX_REVIEW_CASES_LIMIT);
 		const [reviews, summary] = await Promise.all([
-			this.agentEvaluationCaseRepository.findByAgent(projectId, agentId, pageSize + 1, cursor),
-			this.agentEvaluationCaseRepository.countByStatus(projectId, agentId),
+			this.agentEvaluationCaseRepository.findByAgent(
+				projectId,
+				agentId,
+				agentVersionId,
+				pageSize + 1,
+				cursor,
+			),
+			this.agentEvaluationCaseRepository.countByStatus(projectId, agentId, agentVersionId),
 		]);
 		const hasMore = reviews.length > pageSize;
 		if (hasMore) reviews.pop();
@@ -276,6 +297,8 @@ export class AgentDebugService {
 	): Promise<AgentReviewCase | null> {
 		const execution = await this.findRun(projectId, agentId, executionId);
 		if (!execution) return null;
+		const agentVersionId = await this.getCurrentAgentVersionId(projectId, agentId);
+		if (!agentVersionId) return null;
 
 		const existing = await this.agentEvaluationCaseRepository.findByExecutionId(
 			projectId,
@@ -287,12 +310,14 @@ export class AgentDebugService {
 			this.agentEvaluationCaseRepository.create({
 				projectId,
 				agentId,
+				agentVersionId,
 				executionId,
 				input: execution.userMessage,
 				createdById: userId,
 			});
 
 		review.status = payload.status;
+		review.agentVersionId = agentVersionId;
 		review.rejectionReason =
 			payload.status === 'rejected'
 				? (payload.rejectionReason ?? DEFAULT_AGENT_REVIEW_REJECTION_REASON)
@@ -310,8 +335,15 @@ export class AgentDebugService {
 	async deleteRunReview(projectId: string, agentId: string, executionId: string): Promise<boolean> {
 		const execution = await this.findRun(projectId, agentId, executionId);
 		if (!execution) return false;
+		const agentVersionId = await this.getCurrentAgentVersionId(projectId, agentId);
+		if (!agentVersionId) return false;
 
-		await this.agentEvaluationCaseRepository.deleteByExecutionId(projectId, agentId, executionId);
+		await this.agentEvaluationCaseRepository.deleteByExecutionId(
+			projectId,
+			agentId,
+			executionId,
+			agentVersionId,
+		);
 		return true;
 	}
 
@@ -406,9 +438,22 @@ export class AgentDebugService {
 
 	private async findReviewsByExecutionIds(
 		executionIds: string[],
+		agentVersionId: string,
 	): Promise<Map<string, AgentEvaluationCase>> {
-		const reviews = await this.agentEvaluationCaseRepository.findByExecutionIds(executionIds);
+		const reviews = await this.agentEvaluationCaseRepository.findByExecutionIds(
+			executionIds,
+			agentVersionId,
+		);
 		return new Map(reviews.map((review) => [review.executionId, review]));
+	}
+
+	private async getCurrentAgentVersionId(
+		projectId: string,
+		agentId: string,
+	): Promise<string | null> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) return null;
+		return getAgentCurrentVersionId(agent);
 	}
 
 	private toRunDto(
@@ -445,6 +490,7 @@ export class AgentDebugService {
 			id: review.id,
 			projectId: review.projectId,
 			agentId: review.agentId,
+			agentVersionId: review.agentVersionId,
 			executionId: review.executionId,
 			status: review.status,
 			rejectionReason: review.rejectionReason,

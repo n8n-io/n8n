@@ -46,6 +46,7 @@ export interface AgentReviewCase {
 	id: string;
 	projectId: string;
 	agentId: string;
+	agentVersionId: string;
 	executionId: string;
 	status: AgentReviewStatus;
 	rejectionReason: AgentReviewRejectionReason | null;

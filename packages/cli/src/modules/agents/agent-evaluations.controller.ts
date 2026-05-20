@@ -1,4 +1,7 @@
-import type { AgentEvaluationSuiteRunRequest } from '@n8n/api-types';
+import type {
+	AgentEvaluationSuiteRunRequest,
+	AgentEvaluationSuiteSetupRequest,
+} from '@n8n/api-types';
 import { Body, Get, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { AuthenticatedRequest } from '@n8n/db';
 
@@ -10,14 +13,33 @@ export class AgentEvaluationsController {
 
 	@Get('/dataset')
 	@ProjectScope('agent:read')
-	async getDataset(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
-		return await this.agentEvaluationsService.getDataset(req.params.projectId, req.params.agentId);
+	async getDataset(
+		req: AuthenticatedRequest<
+			{ projectId: string; agentId: string },
+			{},
+			{},
+			{ agentVersionId?: string }
+		>,
+	) {
+		return await this.agentEvaluationsService.getDataset(
+			req.params.projectId,
+			req.params.agentId,
+			req.query.agentVersionId,
+		);
 	}
 
 	@Post('/suite')
 	@ProjectScope('agent:read')
-	async setupSuite(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
-		return await this.agentEvaluationsService.setupSuite(req.params.projectId, req.params.agentId);
+	async setupSuite(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: unknown,
+		@Body payload?: AgentEvaluationSuiteSetupRequest,
+	) {
+		return await this.agentEvaluationsService.setupSuite(
+			req.params.projectId,
+			req.params.agentId,
+			payload?.agentVersionId,
+		);
 	}
 
 	@Post('/suite/run')

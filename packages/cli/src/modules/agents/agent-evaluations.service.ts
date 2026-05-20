@@ -9,6 +9,7 @@ import type {
 	AgentEvaluationSuiteRunRequest,
 	AgentEvaluationSuiteRunResponse,
 	AgentEvaluationSuiteSetupResponse,
+	AgentEvaluationVersionSummary,
 	AgentReviewCase,
 	AgentReviewSummary,
 } from '@n8n/api-types';
@@ -22,6 +23,8 @@ import type { AgentExecution } from './entities/agent-execution.entity';
 import type { TimelineEvent } from './execution-recorder';
 import { AgentEvaluationCaseRepository } from './repositories/agent-evaluation-case.repository';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
+import { AgentRepository } from './repositories/agent.repository';
+import { getAgentCurrentVersionId } from './utils/agent-version.utils';
 
 const DATASET_PREVIEW_LIMIT = 10;
 const SUITE_CASE_LIMIT = 100;
@@ -29,42 +32,91 @@ const FIRST_RUN_CASE_LIMIT = AGENT_EVALUATION_MIN_REVIEWED_CASES;
 const SIMILARITY_PASS_THRESHOLD = 0.65;
 const REJECTED_PATTERN_THRESHOLD = 0.8;
 
+interface AgentEvaluationVersionContext {
+	currentAgentVersionId: string;
+	selectedAgentVersionId: string;
+	selectedVersionCanRun: boolean;
+	versions: AgentEvaluationVersionSummary[];
+}
+
 @Service()
 export class AgentEvaluationsService {
 	constructor(
 		private readonly agentEvaluationCaseRepository: AgentEvaluationCaseRepository,
 		private readonly agentExecutionRepository: AgentExecutionRepository,
 		private readonly agentsService: AgentsService,
+		private readonly agentRepository: AgentRepository,
 	) {}
 
-	async getDataset(projectId: string, agentId: string): Promise<AgentEvaluationDatasetResponse> {
+	async getDataset(
+		projectId: string,
+		agentId: string,
+		agentVersionId?: string,
+	): Promise<AgentEvaluationDatasetResponse> {
+		const versionContext = await this.resolveVersionContext(projectId, agentId, agentVersionId);
+		if (!versionContext) return this.emptyDatasetResponse();
+
 		const [summary, cases] = await Promise.all([
-			this.agentEvaluationCaseRepository.countByStatus(projectId, agentId),
-			this.agentEvaluationCaseRepository.findByAgent(projectId, agentId, DATASET_PREVIEW_LIMIT),
+			this.agentEvaluationCaseRepository.countByStatus(
+				projectId,
+				agentId,
+				versionContext.selectedAgentVersionId,
+			),
+			this.agentEvaluationCaseRepository.findByAgent(
+				projectId,
+				agentId,
+				versionContext.selectedAgentVersionId,
+				DATASET_PREVIEW_LIMIT,
+			),
 		]);
 
 		return {
+			currentAgentVersionId: versionContext.currentAgentVersionId,
+			versions: versionContext.versions,
 			cases: cases.map((evaluationCase) => this.toReviewDto(evaluationCase)),
 			summary,
 			nextCursor: null,
-			readiness: this.toReadiness(summary),
+			readiness: this.toReadiness(summary, versionContext),
 		};
 	}
 
-	async setupSuite(projectId: string, agentId: string): Promise<AgentEvaluationSuiteSetupResponse> {
+	async setupSuite(
+		projectId: string,
+		agentId: string,
+		agentVersionId?: string,
+	): Promise<AgentEvaluationSuiteSetupResponse> {
+		const versionContext = await this.resolveVersionContext(projectId, agentId, agentVersionId);
+		if (!versionContext) return this.emptySuiteSetupResponse();
+
 		const [summary, cases] = await Promise.all([
-			this.agentEvaluationCaseRepository.countByStatus(projectId, agentId),
-			this.agentEvaluationCaseRepository.findByAgent(projectId, agentId, SUITE_CASE_LIMIT),
+			this.agentEvaluationCaseRepository.countByStatus(
+				projectId,
+				agentId,
+				versionContext.selectedAgentVersionId,
+			),
+			this.agentEvaluationCaseRepository.findByAgent(
+				projectId,
+				agentId,
+				versionContext.selectedAgentVersionId,
+				SUITE_CASE_LIMIT,
+			),
 		]);
-		const readiness = this.toReadiness(summary);
+		const readiness = this.toReadiness(summary, versionContext);
 
 		if (!readiness.isReady) {
-			return { readiness, suite: null };
+			return {
+				currentAgentVersionId: versionContext.currentAgentVersionId,
+				versions: versionContext.versions,
+				readiness,
+				suite: null,
+			};
 		}
 
 		return {
+			currentAgentVersionId: versionContext.currentAgentVersionId,
+			versions: versionContext.versions,
 			readiness,
-			suite: this.toSuiteDraft(agentId, summary, cases),
+			suite: this.toSuiteDraft(agentId, versionContext.selectedAgentVersionId, summary, cases),
 		};
 	}
 
@@ -74,14 +126,35 @@ export class AgentEvaluationsService {
 		userId: string,
 		options: AgentEvaluationSuiteRunRequest = {},
 	): Promise<AgentEvaluationSuiteRunResponse> {
-		const [summary, cases] = await Promise.all([
-			this.agentEvaluationCaseRepository.countByStatus(projectId, agentId),
-			this.agentEvaluationCaseRepository.findByAgent(projectId, agentId, FIRST_RUN_CASE_LIMIT),
-		]);
-		const readiness = this.toReadiness(summary);
+		const versionContext = await this.resolveVersionContext(
+			projectId,
+			agentId,
+			options.agentVersionId,
+		);
+		if (!versionContext) return this.emptySuiteRunResponse();
 
-		if (!readiness.isReady) {
-			return { readiness, run: null };
+		const [summary, cases] = await Promise.all([
+			this.agentEvaluationCaseRepository.countByStatus(
+				projectId,
+				agentId,
+				versionContext.selectedAgentVersionId,
+			),
+			this.agentEvaluationCaseRepository.findByAgent(
+				projectId,
+				agentId,
+				versionContext.selectedAgentVersionId,
+				FIRST_RUN_CASE_LIMIT,
+			),
+		]);
+		const readiness = this.toReadiness(summary, versionContext);
+
+		if (!readiness.isReady || !readiness.agentVersionCanRun) {
+			return {
+				currentAgentVersionId: versionContext.currentAgentVersionId,
+				versions: versionContext.versions,
+				readiness,
+				run: null,
+			};
 		}
 
 		const startedAt = new Date();
@@ -104,6 +177,7 @@ export class AgentEvaluationsService {
 			try {
 				const executionResult = await this.agentsService.executeEvaluationCase({
 					agentId,
+					agentVersionId: versionContext.selectedAgentVersionId,
 					projectId,
 					userId,
 					message: evaluationCase.input,
@@ -165,10 +239,13 @@ export class AgentEvaluationsService {
 
 		const completedAt = new Date();
 		return {
+			currentAgentVersionId: versionContext.currentAgentVersionId,
+			versions: versionContext.versions,
 			readiness,
 			run: {
 				id: randomUUID(),
-				suiteId: this.toSuiteId(agentId),
+				suiteId: this.toSuiteId(agentId, versionContext.selectedAgentVersionId),
+				agentVersionId: versionContext.selectedAgentVersionId,
 				startedAt: startedAt.toISOString(),
 				completedAt: completedAt.toISOString(),
 				summary: this.toRunSummary(results),
@@ -178,28 +255,139 @@ export class AgentEvaluationsService {
 		};
 	}
 
-	private toReadiness(summary: AgentReviewSummary): AgentEvaluationDatasetReadiness {
+	private emptySummary(): AgentReviewSummary {
+		return { total: 0, approved: 0, rejected: 0 };
+	}
+
+	private emptyReadiness(): AgentEvaluationDatasetReadiness {
+		return {
+			isReady: false,
+			agentVersionId: '',
+			agentVersionCanRun: false,
+			minimumReviewedCases: AGENT_EVALUATION_MIN_REVIEWED_CASES,
+			reviewedCases: 0,
+			remainingCases: AGENT_EVALUATION_MIN_REVIEWED_CASES,
+		};
+	}
+
+	private emptyDatasetResponse(): AgentEvaluationDatasetResponse {
+		return {
+			currentAgentVersionId: '',
+			versions: [],
+			cases: [],
+			summary: this.emptySummary(),
+			nextCursor: null,
+			readiness: this.emptyReadiness(),
+		};
+	}
+
+	private emptySuiteSetupResponse(): AgentEvaluationSuiteSetupResponse {
+		return {
+			currentAgentVersionId: '',
+			versions: [],
+			readiness: this.emptyReadiness(),
+			suite: null,
+		};
+	}
+
+	private emptySuiteRunResponse(): AgentEvaluationSuiteRunResponse {
+		return {
+			currentAgentVersionId: '',
+			versions: [],
+			readiness: this.emptyReadiness(),
+			run: null,
+		};
+	}
+
+	private async resolveVersionContext(
+		projectId: string,
+		agentId: string,
+		requestedAgentVersionId?: string,
+	): Promise<AgentEvaluationVersionContext | null> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) return null;
+
+		const currentAgentVersionId = getAgentCurrentVersionId(agent);
+		const publishedAgentVersionId = agent.publishedVersion?.publishedFromVersionId ?? null;
+		const summaries = await this.agentEvaluationCaseRepository.summarizeVersions(
+			projectId,
+			agentId,
+		);
+		const versionsById = new Map<string, AgentEvaluationVersionSummary>();
+
+		for (const summary of summaries) {
+			versionsById.set(summary.agentVersionId, {
+				...summary,
+				isCurrent: summary.agentVersionId === currentAgentVersionId,
+				isPublished: summary.agentVersionId === publishedAgentVersionId,
+				canRun:
+					summary.agentVersionId === currentAgentVersionId ||
+					summary.agentVersionId === publishedAgentVersionId,
+			});
+		}
+
+		for (const agentVersionId of [currentAgentVersionId, publishedAgentVersionId]) {
+			if (!agentVersionId || versionsById.has(agentVersionId)) continue;
+			versionsById.set(agentVersionId, {
+				agentVersionId,
+				isCurrent: agentVersionId === currentAgentVersionId,
+				isPublished: agentVersionId === publishedAgentVersionId,
+				canRun: true,
+				updatedAt: null,
+				...this.emptySummary(),
+			});
+		}
+
+		const selectedAgentVersionId =
+			requestedAgentVersionId && versionsById.has(requestedAgentVersionId)
+				? requestedAgentVersionId
+				: currentAgentVersionId;
+		const selectedVersion = versionsById.get(selectedAgentVersionId);
+
+		return {
+			currentAgentVersionId,
+			selectedAgentVersionId,
+			selectedVersionCanRun: selectedVersion?.canRun ?? false,
+			versions: [...versionsById.values()].sort((left, right) => {
+				if (left.isCurrent !== right.isCurrent) return left.isCurrent ? -1 : 1;
+				if (left.isPublished !== right.isPublished) return left.isPublished ? -1 : 1;
+				return (right.updatedAt ?? '').localeCompare(left.updatedAt ?? '');
+			}),
+		};
+	}
+
+	private toReadiness(
+		summary: AgentReviewSummary,
+		versionContext: Pick<
+			AgentEvaluationVersionContext,
+			'selectedAgentVersionId' | 'selectedVersionCanRun'
+		>,
+	): AgentEvaluationDatasetReadiness {
 		const remainingCases = Math.max(AGENT_EVALUATION_MIN_REVIEWED_CASES - summary.total, 0);
 
 		return {
 			isReady: remainingCases === 0,
+			agentVersionId: versionContext.selectedAgentVersionId,
+			agentVersionCanRun: versionContext.selectedVersionCanRun,
 			minimumReviewedCases: AGENT_EVALUATION_MIN_REVIEWED_CASES,
 			reviewedCases: summary.total,
 			remainingCases,
 		};
 	}
 
-	private toSuiteId(agentId: string): string {
-		return `agent-${agentId}-reviewed-cases-v0`;
+	private toSuiteId(agentId: string, agentVersionId: string): string {
+		return `agent-${agentId}-${agentVersionId}-reviewed-cases-v0`;
 	}
 
 	private toSuiteDraft(
 		agentId: string,
+		agentVersionId: string,
 		summary: AgentReviewSummary,
 		cases: AgentEvaluationCase[],
 	): AgentEvaluationSuiteDraft {
 		return {
-			id: this.toSuiteId(agentId),
+			id: this.toSuiteId(agentId, agentVersionId),
+			agentVersionId,
 			name: 'Reviewed cases suite',
 			description: 'Draft evaluation suite generated from reviewed agent runs.',
 			caseCount: cases.length,
@@ -402,6 +590,7 @@ export class AgentEvaluationsService {
 			id: evaluationCase.id,
 			projectId: evaluationCase.projectId,
 			agentId: evaluationCase.agentId,
+			agentVersionId: evaluationCase.agentVersionId,
 			executionId: evaluationCase.executionId,
 			status: evaluationCase.status,
 			rejectionReason: evaluationCase.rejectionReason,

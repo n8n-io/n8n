@@ -7,6 +7,7 @@ import { AgentExecution } from './agent-execution.entity';
 
 @Entity({ name: 'agent_evaluation_case' })
 @Index(['agentId', 'status', 'updatedAt'])
+@Index(['agentId', 'agentVersionId', 'status', 'updatedAt'])
 @Index(['executionId'], { unique: true })
 export class AgentEvaluationCase extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 255 })
@@ -14,6 +15,9 @@ export class AgentEvaluationCase extends WithTimestampsAndStringId {
 
 	@Column({ type: 'varchar', length: 36 })
 	agentId: string;
+
+	@Column({ type: 'varchar', length: 255 })
+	agentVersionId: string;
 
 	@ManyToOne('Agent', { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'agentId' })

@@ -66,6 +66,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { getAgentCurrentVersionId } from './utils/agent-version.utils';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 import { AgentExecutionService } from './agent-execution.service';
@@ -186,6 +187,7 @@ export interface AgentEvaluationToolMock {
 
 export interface ExecuteEvaluationCaseConfig {
 	agentId: string;
+	agentVersionId?: string;
 	projectId: string;
 	userId: string;
 	message: string;
@@ -991,21 +993,46 @@ export class AgentsService {
 	async executeEvaluationCase(
 		config: ExecuteEvaluationCaseConfig,
 	): Promise<AgentEvaluationExecutionResult> {
-		const { agentId, projectId, message, toolMocks } = config;
+		const { agentId, agentVersionId, projectId, message, toolMocks } = config;
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
-		if (!agentEntity.schema) throw new UserError('Agent has no JSON config.');
 
-		const evaluationConfig = this.toEvaluationRunConfig(agentEntity.schema);
+		const currentAgentVersionId = getAgentCurrentVersionId(agentEntity);
+		const publishedAgentVersionId = agentEntity.publishedVersion?.publishedFromVersionId ?? null;
+		const shouldUsePublishedVersion =
+			agentVersionId !== undefined &&
+			agentVersionId !== currentAgentVersionId &&
+			agentVersionId === publishedAgentVersionId;
+		if (
+			agentVersionId !== undefined &&
+			agentVersionId !== currentAgentVersionId &&
+			!shouldUsePublishedVersion
+		) {
+			throw new UserError('Agent version is no longer available to run.');
+		}
+
+		const sourceSchema = shouldUsePublishedVersion
+			? agentEntity.publishedVersion?.schema
+			: agentEntity.schema;
+		if (!sourceSchema) throw new UserError('Agent has no JSON config.');
+
+		const sourceTools = shouldUsePublishedVersion
+			? (agentEntity.publishedVersion?.tools ?? {})
+			: (agentEntity.tools ?? {});
+		const sourceSkills = shouldUsePublishedVersion
+			? (agentEntity.publishedVersion?.skills ?? {})
+			: (agentEntity.skills ?? {});
+
+		const evaluationConfig = this.toEvaluationRunConfig(sourceSchema);
 		const providerToolsDisabled =
-			agentEntity.schema.providerTools !== undefined &&
-			Object.keys(agentEntity.schema.providerTools).length > 0;
+			sourceSchema.providerTools !== undefined &&
+			Object.keys(sourceSchema.providerTools).length > 0;
 		const warnings = providerToolsDisabled
 			? ['Provider tools are disabled in v0 evaluation runs.']
 			: [];
 
 		const toolDescriptors: Record<string, ToolDescriptor> = {};
-		for (const [toolId, toolEntry] of Object.entries(agentEntity.tools ?? {})) {
+		for (const [toolId, toolEntry] of Object.entries(sourceTools)) {
 			toolDescriptors[toolId] = toolEntry.descriptor;
 		}
 
@@ -1041,7 +1068,7 @@ export class AgentsService {
 				resolvedTools.push(resolved);
 				return resolved;
 			},
-			skills: agentEntity.skills ?? {},
+			skills: sourceSkills,
 			memoryFactory: this.getMemoryFactory(),
 		});
 

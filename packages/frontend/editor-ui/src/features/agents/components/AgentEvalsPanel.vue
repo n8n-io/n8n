@@ -5,12 +5,22 @@ import type {
 	AgentEvaluationMetricSuggestion,
 	AgentEvaluationSuiteDraft,
 	AgentEvaluationSuiteRun,
+	AgentEvaluationVersionSummary,
 } from '@n8n/api-types';
 import { AGENT_EVALUATION_MIN_REVIEWED_CASES } from '@n8n/api-types';
-import { N8nBadge, N8nButton, N8nCard, N8nCheckbox, N8nIcon, N8nText } from '@n8n/design-system';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nCard,
+	N8nCheckbox,
+	N8nIcon,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, useCssModule, watch } from 'vue';
 
 import { useToast } from '@/app/composables/useToast';
 
@@ -39,14 +49,19 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const rootStore = useRootStore();
 const toast = useToast();
+const style = useCssModule();
 
 const dataset = ref<AgentEvaluationDatasetResponse | null>(null);
 const suite = ref<AgentEvaluationSuiteDraft | null>(null);
 const run = ref<AgentEvaluationSuiteRun | null>(null);
+const completedRuns = ref<AgentEvaluationSuiteRun[]>([]);
 const loading = ref(false);
 const settingUpSuite = ref(false);
 const runningSuite = ref(false);
 const enabledMetricIds = ref<string[]>([]);
+const selectedAgentVersionId = ref<string | null>(null);
+const compareBaseRunId = ref<string | null>(null);
+const compareCandidateRunId = ref<string | null>(null);
 
 const RUN_PROGRESS_STEPS = ['preparing', 'running', 'scoring', 'finalizing'] as const;
 type RunProgressStep = (typeof RUN_PROGRESS_STEPS)[number];
@@ -56,7 +71,14 @@ const runProgressTimers: number[] = [];
 
 const evals = computed(() => props.schema?.evaluations ?? []);
 const readiness = computed(() => dataset.value?.readiness ?? null);
+const versions = computed(() => dataset.value?.versions ?? []);
+const selectedVersion = computed(
+	() =>
+		versions.value.find((version) => version.agentVersionId === selectedAgentVersionId.value) ??
+		null,
+);
 const isReady = computed(() => readiness.value?.isReady === true);
+const selectedVersionCanRun = computed(() => readiness.value?.agentVersionCanRun !== false);
 const reviewedCases = computed(() => readiness.value?.reviewedCases ?? 0);
 const minimumReviewedCases = computed(
 	() => readiness.value?.minimumReviewedCases ?? AGENT_EVALUATION_MIN_REVIEWED_CASES,
@@ -65,7 +87,68 @@ const remainingCases = computed(
 	() => readiness.value?.remainingCases ?? minimumReviewedCases.value,
 );
 const enabledMetricCount = computed(() => enabledMetricIds.value.length);
-const canRunSuite = computed(() => enabledMetricCount.value > 0 && !runningSuite.value);
+const canRunSuite = computed(
+	() => enabledMetricCount.value > 0 && selectedVersionCanRun.value && !runningSuite.value,
+);
+const compareBaseRun = computed(
+	() =>
+		completedRuns.value.find((completedRun) => completedRun.id === compareBaseRunId.value) ?? null,
+);
+const compareCandidateRun = computed(
+	() =>
+		completedRuns.value.find((completedRun) => completedRun.id === compareCandidateRunId.value) ??
+		null,
+);
+const hasSelectedCompareRuns = computed(
+	() => compareBaseRun.value !== null && compareCandidateRun.value !== null,
+);
+const comparedRunsUseSameVersion = computed(
+	() =>
+		hasSelectedCompareRuns.value &&
+		compareBaseRun.value?.agentVersionId === compareCandidateRun.value?.agentVersionId,
+);
+const canCompareRuns = computed(
+	() => hasSelectedCompareRuns.value && !comparedRunsUseSameVersion.value,
+);
+const comparisonStats = computed(() => {
+	const baseRun = compareBaseRun.value;
+	const candidateRun = compareCandidateRun.value;
+	if (!baseRun || !candidateRun || comparedRunsUseSameVersion.value) return [];
+
+	return [
+		{
+			id: 'averageScore',
+			label: i18n.baseText('agents.builder.evaluations.compare.averageScore'),
+			base: formatScore(baseRun.summary.averageScore),
+			candidate: formatScore(candidateRun.summary.averageScore),
+			delta: candidateRun.summary.averageScore - baseRun.summary.averageScore,
+			formatDelta: (delta: number) => formatScoreDelta(delta),
+			lowerIsBetter: false,
+		},
+		{
+			id: 'passed',
+			label: i18n.baseText('agents.builder.evaluations.run.summary.passed'),
+			base: String(baseRun.summary.passedCases),
+			candidate: String(candidateRun.summary.passedCases),
+			delta: candidateRun.summary.passedCases - baseRun.summary.passedCases,
+			formatDelta: (delta: number) => formatSignedInteger(delta),
+			lowerIsBetter: false,
+		},
+		{
+			id: 'failed',
+			label: i18n.baseText('agents.builder.evaluations.run.summary.failed'),
+			base: String(baseRun.summary.failedCases + baseRun.summary.errorCases),
+			candidate: String(candidateRun.summary.failedCases + candidateRun.summary.errorCases),
+			delta:
+				candidateRun.summary.failedCases +
+				candidateRun.summary.errorCases -
+				baseRun.summary.failedCases -
+				baseRun.summary.errorCases,
+			formatDelta: (delta: number) => formatSignedInteger(delta),
+			lowerIsBetter: true,
+		},
+	];
+});
 const runProgressStepIndex = computed(() =>
 	runProgressStep.value ? RUN_PROGRESS_STEPS.indexOf(runProgressStep.value) : -1,
 );
@@ -123,7 +206,7 @@ const readinessDescription = computed(() => {
 	});
 });
 
-async function loadDataset() {
+async function loadDataset(agentVersionId = selectedAgentVersionId.value ?? undefined) {
 	if (!props.projectId || !props.agentId) return;
 
 	suite.value = null;
@@ -134,7 +217,15 @@ async function loadDataset() {
 			rootStore.restApiContext,
 			props.projectId,
 			props.agentId,
+			agentVersionId,
 		);
+		const selectedVersionExists = dataset.value.versions.some(
+			(version) => version.agentVersionId === selectedAgentVersionId.value,
+		);
+		if (!selectedAgentVersionId.value || !selectedVersionExists) {
+			selectedAgentVersionId.value =
+				dataset.value.readiness.agentVersionId || dataset.value.currentAgentVersionId;
+		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('agents.builder.evaluations.dataset.loadError'));
 	} finally {
@@ -152,9 +243,15 @@ async function setupSuite() {
 			rootStore.restApiContext,
 			props.projectId,
 			props.agentId,
+			{ agentVersionId: selectedAgentVersionId.value ?? undefined },
 		);
 		if (dataset.value) {
-			dataset.value = { ...dataset.value, readiness: response.readiness };
+			dataset.value = {
+				...dataset.value,
+				currentAgentVersionId: response.currentAgentVersionId,
+				versions: response.versions,
+				readiness: response.readiness,
+			};
 		}
 		suite.value = response.suite;
 		resetMetricSelection(response.suite);
@@ -189,16 +286,27 @@ async function runFirstEvaluation() {
 			rootStore.restApiContext,
 			props.projectId,
 			props.agentId,
-			{ enabledMetricIds: enabledMetricIds.value },
+			{
+				agentVersionId: selectedAgentVersionId.value ?? undefined,
+				enabledMetricIds: enabledMetricIds.value,
+			},
 		);
 		runProgressStep.value = 'finalizing';
 		if (dataset.value) {
-			dataset.value = { ...dataset.value, readiness: response.readiness };
+			dataset.value = {
+				...dataset.value,
+				currentAgentVersionId: response.currentAgentVersionId,
+				versions: response.versions,
+				readiness: response.readiness,
+			};
 		}
 		run.value = response.run;
+		if (response.run) rememberRun(response.run);
 		if (!response.run) {
 			toast.showMessage({
-				title: i18n.baseText('agents.builder.evaluations.run.notReady'),
+				title: response.readiness.agentVersionCanRun
+					? i18n.baseText('agents.builder.evaluations.run.notReady')
+					: i18n.baseText('agents.builder.evaluations.run.versionUnavailable'),
 				type: 'warning',
 			});
 		}
@@ -212,6 +320,24 @@ async function runFirstEvaluation() {
 
 function formatScore(score: number) {
 	return `${Math.round(score * 100)}%`;
+}
+
+function formatScoreDelta(delta: number) {
+	const percentage = Math.round(delta * 100);
+	return `${percentage > 0 ? '+' : ''}${percentage}%`;
+}
+
+function formatSignedInteger(value: number) {
+	return `${value > 0 ? '+' : ''}${value}`;
+}
+
+function formatRunDate(date: string) {
+	return new Date(date).toLocaleString(undefined, {
+		month: 'short',
+		day: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit',
+	});
 }
 
 function getCaseStatusLabel(result: AgentEvaluationRunCaseResult): string {
@@ -252,6 +378,76 @@ function getProgressStepLabel(step: RunProgressStep) {
 	return i18n.baseText(`agents.builder.evaluations.run.progress.${step}`);
 }
 
+function shortVersion(agentVersionId: string) {
+	return agentVersionId.slice(0, 8);
+}
+
+function getVersionLabel(agentVersionId: string) {
+	const version = versions.value.find((item) => item.agentVersionId === agentVersionId);
+	if (version?.isCurrent && version.isPublished) {
+		return i18n.baseText('agents.builder.evaluations.version.currentPublished');
+	}
+	if (version?.isCurrent) return i18n.baseText('agents.builder.evaluations.version.current');
+	if (version?.isPublished) return i18n.baseText('agents.builder.evaluations.version.published');
+
+	return i18n.baseText('agents.builder.evaluations.version.versionLabel', {
+		interpolate: { version: shortVersion(agentVersionId) },
+	});
+}
+
+function getVersionOptionLabel(version: AgentEvaluationVersionSummary) {
+	return i18n.baseText('agents.builder.evaluations.version.option', {
+		interpolate: {
+			version: getVersionLabel(version.agentVersionId),
+			count: String(version.total),
+		},
+	});
+}
+
+function getRunLabel(completedRun: AgentEvaluationSuiteRun) {
+	return i18n.baseText('agents.builder.evaluations.compare.runOption', {
+		interpolate: {
+			version: getVersionLabel(completedRun.agentVersionId),
+			date: formatRunDate(completedRun.completedAt),
+		},
+	});
+}
+
+function setAgentVersion(agentVersionId: string) {
+	selectedAgentVersionId.value = agentVersionId;
+	void loadDataset(agentVersionId);
+}
+
+function setCompareBaseRun(runId: string) {
+	compareBaseRunId.value = runId;
+}
+
+function setCompareCandidateRun(runId: string) {
+	compareCandidateRunId.value = runId;
+}
+
+function rememberRun(completedRun: AgentEvaluationSuiteRun) {
+	completedRuns.value = [
+		completedRun,
+		...completedRuns.value.filter((existingRun) => existingRun.id !== completedRun.id),
+	].slice(0, 8);
+
+	if (!compareBaseRunId.value) {
+		compareBaseRunId.value = completedRun.id;
+		return;
+	}
+
+	if (compareBaseRunId.value !== completedRun.id) {
+		compareCandidateRunId.value = completedRun.id;
+	}
+}
+
+function getComparisonDeltaClass(stat: { delta: number; lowerIsBetter: boolean }) {
+	if (stat.delta === 0) return style.statusBadgeMuted;
+	const isImprovement = stat.lowerIsBetter ? stat.delta < 0 : stat.delta > 0;
+	return isImprovement ? style.statusBadgeOk : style.statusBadgeBad;
+}
+
 function startRunProgress() {
 	clearRunProgress();
 	runProgressStep.value = 'preparing';
@@ -278,7 +474,13 @@ function clearRunProgress() {
 
 watch(
 	() => [props.projectId, props.agentId],
-	() => void loadDataset(),
+	() => {
+		selectedAgentVersionId.value = null;
+		completedRuns.value = [];
+		compareBaseRunId.value = null;
+		compareCandidateRunId.value = null;
+		void loadDataset(undefined);
+	},
 	{ immediate: true },
 );
 
@@ -298,6 +500,34 @@ onBeforeUnmount(clearRunProgress);
 					<N8nText :bold="true">{{ readinessTitle }}</N8nText>
 					<N8nText size="small" color="text-light">{{ readinessDescription }}</N8nText>
 				</div>
+			</div>
+
+			<div v-if="versions.length > 0" :class="$style.versionSelector">
+				<label :class="$style.versionField">
+					<N8nText size="small" :bold="true">
+						{{ i18n.baseText('agents.builder.evaluations.version.label') }}
+					</N8nText>
+					<N8nSelect
+						:model-value="selectedAgentVersionId"
+						size="small"
+						data-testid="agent-evaluations-version-select"
+						@update:model-value="setAgentVersion"
+					>
+						<N8nOption
+							v-for="version in versions"
+							:key="version.agentVersionId"
+							:value="version.agentVersionId"
+							:label="getVersionOptionLabel(version)"
+						/>
+					</N8nSelect>
+				</label>
+				<N8nText
+					v-if="selectedVersion && !selectedVersion.canRun"
+					size="small"
+					:class="$style.noMetrics"
+				>
+					{{ i18n.baseText('agents.builder.evaluations.version.notRunnable') }}
+				</N8nText>
 			</div>
 
 			<div :class="$style.datasetStats">
@@ -478,7 +708,10 @@ onBeforeUnmount(clearRunProgress);
 				</div>
 
 				<div :class="$style.suiteActions">
-					<N8nText v-if="enabledMetricCount === 0" size="small" :class="$style.noMetrics">
+					<N8nText v-if="!selectedVersionCanRun" size="small" :class="$style.noMetrics">
+						{{ i18n.baseText('agents.builder.evaluations.run.versionUnavailable') }}
+					</N8nText>
+					<N8nText v-else-if="enabledMetricCount === 0" size="small" :class="$style.noMetrics">
 						{{ i18n.baseText('agents.builder.evaluations.run.noMetrics') }}
 					</N8nText>
 					<N8nButton
@@ -500,6 +733,13 @@ onBeforeUnmount(clearRunProgress);
 						</N8nText>
 						<N8nText size="small" color="text-light">
 							{{ i18n.baseText('agents.builder.evaluations.run.description') }}
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{
+								i18n.baseText('agents.builder.evaluations.run.version', {
+									interpolate: { version: getVersionLabel(run.agentVersionId) },
+								})
+							}}
 						</N8nText>
 					</div>
 					<N8nText size="small" color="text-light">
@@ -585,6 +825,84 @@ onBeforeUnmount(clearRunProgress);
 				</div>
 			</N8nCard>
 
+			<N8nCard
+				v-if="completedRuns.length >= 2"
+				:class="$style.compareCard"
+				data-testid="agent-evaluations-compare-runs"
+			>
+				<div :class="$style.suiteHeader">
+					<div :class="$style.readinessCopy">
+						<N8nText :bold="true">
+							{{ i18n.baseText('agents.builder.evaluations.compare.title') }}
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('agents.builder.evaluations.compare.description') }}
+						</N8nText>
+					</div>
+				</div>
+
+				<div :class="$style.compareControls">
+					<label :class="$style.versionField">
+						<N8nText size="small" :bold="true">
+							{{ i18n.baseText('agents.builder.evaluations.compare.baseRun') }}
+						</N8nText>
+						<N8nSelect
+							:model-value="compareBaseRunId"
+							size="small"
+							data-testid="agent-evaluations-compare-base"
+							@update:model-value="setCompareBaseRun"
+						>
+							<N8nOption
+								v-for="completedRun in completedRuns"
+								:key="completedRun.id"
+								:value="completedRun.id"
+								:label="getRunLabel(completedRun)"
+							/>
+						</N8nSelect>
+					</label>
+
+					<label :class="$style.versionField">
+						<N8nText size="small" :bold="true">
+							{{ i18n.baseText('agents.builder.evaluations.compare.candidateRun') }}
+						</N8nText>
+						<N8nSelect
+							:model-value="compareCandidateRunId"
+							size="small"
+							data-testid="agent-evaluations-compare-candidate"
+							@update:model-value="setCompareCandidateRun"
+						>
+							<N8nOption
+								v-for="completedRun in completedRuns"
+								:key="completedRun.id"
+								:value="completedRun.id"
+								:label="getRunLabel(completedRun)"
+							/>
+						</N8nSelect>
+					</label>
+				</div>
+
+				<N8nText v-if="comparedRunsUseSameVersion" size="small" :class="$style.noMetrics">
+					{{ i18n.baseText('agents.builder.evaluations.compare.sameVersion') }}
+				</N8nText>
+
+				<div v-if="canCompareRuns" :class="$style.comparisonStats">
+					<div v-for="stat in comparisonStats" :key="stat.id" :class="$style.comparisonStat">
+						<N8nText size="small" color="text-light">{{ stat.label }}</N8nText>
+						<div :class="$style.comparisonValues">
+							<N8nText :bold="true">{{ stat.base }}</N8nText>
+							<N8nIcon icon="arrow-right" :size="14" />
+							<N8nText :bold="true">{{ stat.candidate }}</N8nText>
+						</div>
+						<span
+							:class="[$style.statusBadge, getComparisonDeltaClass(stat)]"
+							data-testid="agent-evaluations-compare-delta"
+						>
+							{{ stat.formatDelta(stat.delta) }}
+						</span>
+					</div>
+				</div>
+			</N8nCard>
+
 			<div v-if="!suite" :class="$style.dashedCard">
 				<N8nText :bold="true">
 					{{ i18n.baseText('agents.builder.evaluations.setup.title') }}
@@ -632,7 +950,8 @@ onBeforeUnmount(clearRunProgress);
 	gap: var(--spacing--sm);
 }
 
-.runCard {
+.runCard,
+.compareCard {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
@@ -659,6 +978,20 @@ onBeforeUnmount(clearRunProgress);
 	flex-direction: column;
 	gap: var(--spacing--4xs);
 	min-width: 0;
+}
+
+.versionSelector {
+	display: flex;
+	align-items: flex-end;
+	gap: var(--spacing--sm);
+	flex-wrap: wrap;
+}
+
+.versionField {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	min-width: 14rem;
 }
 
 .datasetStats {
@@ -774,6 +1107,33 @@ onBeforeUnmount(clearRunProgress);
 	border: var(--border);
 	border-radius: var(--border-radius-base);
 	background-color: var(--callout--color--background--warning);
+}
+
+.compareControls {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--spacing--sm);
+}
+
+.comparisonStats {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: var(--spacing--sm);
+}
+
+.comparisonStat {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--border-radius-base);
+}
+
+.comparisonValues {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .runProgress {
@@ -923,7 +1283,9 @@ onBeforeUnmount(clearRunProgress);
 
 @media (max-width: 900px) {
 	.datasetStats,
-	.runSetup {
+	.runSetup,
+	.compareControls,
+	.comparisonStats {
 		grid-template-columns: 1fr;
 	}
 

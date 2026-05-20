@@ -1,15 +1,27 @@
-import type { AgentReviewCasesResponse } from './debug';
+import type { AgentReviewCasesResponse, AgentReviewSummary } from './debug';
 
 export const AGENT_EVALUATION_MIN_REVIEWED_CASES = 5;
 
 export interface AgentEvaluationDatasetReadiness {
 	isReady: boolean;
+	agentVersionId: string;
+	agentVersionCanRun: boolean;
 	minimumReviewedCases: number;
 	reviewedCases: number;
 	remainingCases: number;
 }
 
+export interface AgentEvaluationVersionSummary extends AgentReviewSummary {
+	agentVersionId: string;
+	isCurrent: boolean;
+	isPublished: boolean;
+	canRun: boolean;
+	updatedAt: string | null;
+}
+
 export interface AgentEvaluationDatasetResponse extends AgentReviewCasesResponse {
+	currentAgentVersionId: string;
+	versions: AgentEvaluationVersionSummary[];
 	readiness: AgentEvaluationDatasetReadiness;
 }
 
@@ -25,6 +37,7 @@ export interface AgentEvaluationMetricSuggestion {
 
 export interface AgentEvaluationSuiteDraft {
 	id: string;
+	agentVersionId: string;
 	name: string;
 	description: string;
 	caseCount: number;
@@ -36,6 +49,8 @@ export interface AgentEvaluationSuiteDraft {
 }
 
 export interface AgentEvaluationSuiteSetupResponse {
+	currentAgentVersionId: string;
+	versions: AgentEvaluationVersionSummary[];
 	readiness: AgentEvaluationDatasetReadiness;
 	suite: AgentEvaluationSuiteDraft | null;
 }
@@ -78,6 +93,7 @@ export interface AgentEvaluationRunSummary {
 export interface AgentEvaluationSuiteRun {
 	id: string;
 	suiteId: string;
+	agentVersionId: string;
 	startedAt: string;
 	completedAt: string;
 	summary: AgentEvaluationRunSummary;
@@ -86,10 +102,17 @@ export interface AgentEvaluationSuiteRun {
 }
 
 export interface AgentEvaluationSuiteRunRequest {
+	agentVersionId?: string;
 	enabledMetricIds?: string[];
 }
 
 export interface AgentEvaluationSuiteRunResponse {
+	currentAgentVersionId: string;
+	versions: AgentEvaluationVersionSummary[];
 	readiness: AgentEvaluationDatasetReadiness;
 	run: AgentEvaluationSuiteRun | null;
+}
+
+export interface AgentEvaluationSuiteSetupRequest {
+	agentVersionId?: string;
 }

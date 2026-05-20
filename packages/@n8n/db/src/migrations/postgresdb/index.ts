@@ -186,6 +186,7 @@ import { CreateInstanceAiCheckpointTable1784000000007 } from '../common/17840000
 import { ResetInstanceAiNativePersistence1784000000008 } from '../common/1784000000008-ResetInstanceAiNativePersistence';
 import { CreateAgentEvaluationCaseTable1784000000009 } from '../common/1784000000009-CreateAgentEvaluationCaseTable';
 import { AddRejectionReasonToAgentEvaluationCase1784000000010 } from '../common/1784000000010-AddRejectionReasonToAgentEvaluationCase';
+import { AddAgentVersionIdToAgentEvaluationCase1784000000011 } from '../common/1784000000011-AddAgentVersionIdToAgentEvaluationCase';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -377,4 +378,5 @@ export const postgresMigrations: Migration[] = [
 	ResetInstanceAiNativePersistence1784000000008,
 	CreateAgentEvaluationCaseTable1784000000009,
 	AddRejectionReasonToAgentEvaluationCase1784000000010,
+	AddAgentVersionIdToAgentEvaluationCase1784000000011,
 ];

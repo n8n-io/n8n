@@ -10,6 +10,7 @@ import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentEvaluationCaseRepository } from '../repositories/agent-evaluation-case.repository';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+import type { AgentRepository } from '../repositories/agent.repository';
 
 type SignalInput = Parameters<typeof computeAgentDebugSignals>[0];
 
@@ -108,12 +109,23 @@ describe('AgentDebugService', () => {
 	const now = new Date('2026-05-18T12:00:00.000Z');
 	let agentExecutionRepository: jest.Mocked<AgentExecutionRepository>;
 	let agentEvaluationCaseRepository: jest.Mocked<AgentEvaluationCaseRepository>;
+	let agentRepository: jest.Mocked<AgentRepository>;
 	let service: AgentDebugService;
 
 	beforeEach(() => {
 		agentExecutionRepository = mock<AgentExecutionRepository>();
 		agentEvaluationCaseRepository = mock<AgentEvaluationCaseRepository>();
-		service = new AgentDebugService(agentExecutionRepository, agentEvaluationCaseRepository);
+		agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: 'agent-1',
+			versionId: 'version-1',
+			updatedAt: now,
+		} as never);
+		service = new AgentDebugService(
+			agentExecutionRepository,
+			agentEvaluationCaseRepository,
+			agentRepository,
+		);
 	});
 
 	function executionFixture(): AgentExecution & { thread: AgentExecutionThread } {
@@ -175,6 +187,7 @@ describe('AgentDebugService', () => {
 			id: 'review-1',
 			projectId: 'project-1',
 			agentId: 'agent-1',
+			agentVersionId: 'version-1',
 			executionId: 'execution-1',
 			status: 'approved',
 			rejectionReason: null,
@@ -213,6 +226,7 @@ describe('AgentDebugService', () => {
 		expect(agentEvaluationCaseRepository.findByAgent).toHaveBeenCalledWith(
 			'project-1',
 			'agent-1',
+			'version-1',
 			2,
 			undefined,
 		);
@@ -277,6 +291,7 @@ describe('AgentDebugService', () => {
 			expect.objectContaining({
 				projectId: 'project-1',
 				agentId: 'agent-1',
+				agentVersionId: 'version-1',
 				executionId: 'execution-1',
 				status: 'approved',
 				rejectionReason: null,
@@ -310,6 +325,7 @@ describe('AgentDebugService', () => {
 			id: 'review-1',
 			projectId: 'project-1',
 			agentId: 'agent-1',
+			agentVersionId: 'version-1',
 			executionId: 'execution-1',
 			status: 'approved',
 			rejectionReason: null,

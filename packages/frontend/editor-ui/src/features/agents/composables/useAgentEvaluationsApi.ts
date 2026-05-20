@@ -4,6 +4,7 @@ import type {
 	AgentEvaluationDatasetResponse,
 	AgentEvaluationSuiteRunRequest,
 	AgentEvaluationSuiteRunResponse,
+	AgentEvaluationSuiteSetupRequest,
 	AgentEvaluationSuiteSetupResponse,
 } from '@n8n/api-types';
 
@@ -11,11 +12,13 @@ export const getAgentEvaluationDataset = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
+	agentVersionId?: string,
 ): Promise<AgentEvaluationDatasetResponse> => {
+	const query = agentVersionId ? `?agentVersionId=${encodeURIComponent(agentVersionId)}` : '';
 	return await makeRestApiRequest<AgentEvaluationDatasetResponse>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/evaluations/dataset`,
+		`/projects/${projectId}/agents/v2/${agentId}/evaluations/dataset${query}`,
 	);
 };
 
@@ -23,11 +26,13 @@ export const setupAgentEvaluationSuite = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
+	payload?: AgentEvaluationSuiteSetupRequest,
 ): Promise<AgentEvaluationSuiteSetupResponse> => {
 	return await makeRestApiRequest<AgentEvaluationSuiteSetupResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/evaluations/suite`,
+		payload,
 	);
 };
 
