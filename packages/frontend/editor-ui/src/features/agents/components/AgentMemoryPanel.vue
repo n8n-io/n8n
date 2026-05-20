@@ -105,10 +105,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 </script>
 
 <template>
-	<div
-		:class="[$style.container, props.disabled && $style.disabled]"
-		:inert="props.disabled || undefined"
-	>
+	<div :class="[$style.container, props.disabled && $style.disabled]">
 		<div :class="$style.titleGroup">
 			<div :class="$style.header">
 				<N8nText tag="h3" :bold="true">{{ i18n.baseText('agents.builder.memory.title') }}</N8nText>
@@ -192,9 +189,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 	gap: var(--spacing--xs);
 }
 
-/* Scoped overlay — title group stays interactive so the heading and toggle can render. */
-.container.disabled > :not(.titleGroup) {
-	pointer-events: none;
+.container.disabled {
 	opacity: 0.6;
 }
 
