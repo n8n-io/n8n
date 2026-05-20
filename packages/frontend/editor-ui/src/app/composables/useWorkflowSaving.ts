@@ -397,11 +397,20 @@ export function useWorkflowSaving({
 			}
 
 			if (resetNodeIds) {
+				const nodeIdMap = new Map<string, string>();
 				workflowDataRequest.nodes = workflowDataRequest.nodes!.map((node) => {
+					const oldId = node.id;
 					nodeHelpers.assignNodeId(node);
-
+					if (oldId) nodeIdMap.set(oldId, node.id);
 					return node;
 				});
+
+				if (workflowDataRequest.nodeGroups?.length) {
+					workflowDataRequest.nodeGroups = workflowDataRequest.nodeGroups.map((group) => ({
+						...group,
+						nodeIds: group.nodeIds.map((id) => nodeIdMap.get(id) ?? id),
+					}));
+				}
 			}
 
 			if (resetWebhookUrls) {

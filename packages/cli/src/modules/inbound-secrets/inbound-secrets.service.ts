@@ -1,10 +1,21 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { INodeExecutionData, jsonParse } from 'n8n-workflow';
+import { INodeExecutionData, ISecureArtifactsV1, jsonParse } from 'n8n-workflow';
 
 import { InboundSecretsConfig } from './inbound-secrets.config';
-import { SensitiveFieldRules, sensitiveFieldRulesSchema } from './inbound-secrets.schemas';
+import {
+	SensitiveFieldRules,
+	sensitiveFieldRulesSchema,
+	ValueLookupPath,
+} from './inbound-secrets.schemas';
 import { extractAndClear } from './path-traversal';
+
+type ArtifactItem = ISecureArtifactsV1['artifacts'][string];
+
+export type StripResult = {
+	triggerItems: INodeExecutionData[];
+	artifactsByAlias: Record<string, ArtifactItem>;
+};
 
 @Service()
 export class InboundSecretsService {
@@ -35,18 +46,45 @@ export class InboundSecretsService {
 		this.sensitiveFieldRules = parsedRules.data;
 	}
 
-	strip(items: INodeExecutionData[], triggerNodeType: string): INodeExecutionData[] {
-		const wildcardPaths = this.sensitiveFieldRules['*'] ?? [];
-		const typePaths = this.sensitiveFieldRules[triggerNodeType] ?? [];
-		const paths = [...wildcardPaths, ...typePaths];
+	private extractFromItem(
+		rule: ValueLookupPath,
+		item: INodeExecutionData,
+	): ArtifactItem | undefined {
+		const extracted = extractAndClear(item.json, rule.path);
+		if (extracted === undefined) return undefined;
+		return toJsonValue(extracted);
+	}
 
-		if (paths.length === 0) return items;
+	strip(items: INodeExecutionData[], triggerNodeType: string): StripResult {
+		const artifactsByAlias: Record<string, ArtifactItem> = {};
 
-		for (const item of items) {
-			for (const path of paths) {
-				extractAndClear(item.json, path);
+		for (const [alias, rule] of Object.entries(this.sensitiveFieldRules)) {
+			if (rule.nodeType !== '*' && rule.nodeType !== triggerNodeType) {
+				// This rule does not apply to this trigger
+				continue;
 			}
+
+			const values = items
+				.map((item) => this.extractFromItem(rule, item))
+				.filter((value): value is ArtifactItem => value !== undefined);
+
+			if (values.length === 0) continue;
+
+			artifactsByAlias[alias] = values;
 		}
-		return items;
+
+		return { triggerItems: items, artifactsByAlias };
+	}
+}
+
+// Round-trip scrubs Date/non-serialisable leaves so the value conforms to JsonValueSchema.
+function toJsonValue(value: unknown): ArtifactItem | undefined {
+	if (value === undefined) return undefined;
+	try {
+		const serialised = JSON.stringify(value);
+		if (serialised === undefined) return undefined;
+		return JSON.parse(serialised) as ArtifactItem;
+	} catch {
+		return undefined;
 	}
 }

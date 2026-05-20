@@ -24,10 +24,21 @@ export class InboundSecretContextHook implements IContextEstablishmentHook {
 	}
 
 	async execute(options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
-		const items = options.triggerItems ?? [];
-		const clearedItems = this.inboundSecretsService.strip(items, options.triggerNode.type);
+		const { triggerItems, artifactsByAlias } = this.inboundSecretsService.strip(
+			options.triggerItems ?? [],
+			options.triggerNode.type,
+		);
+
+		if (Object.keys(artifactsByAlias).length === 0) return { triggerItems };
+
 		return {
-			triggerItems: clearedItems,
+			triggerItems,
+			contextUpdate: {
+				secureArtifacts: {
+					version: 1,
+					artifacts: artifactsByAlias,
+				},
+			},
 		};
 	}
 }

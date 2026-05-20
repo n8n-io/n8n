@@ -122,9 +122,7 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 					<InstanceAiInput
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
-						:research-mode="store.researchMode"
 						@submit="handleSubmit"
-						@toggle-research-mode="store.toggleResearchMode()"
 					/>
 				</div>
 			</div>
@@ -141,10 +139,8 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 					<InstanceAiInput
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
-						:research-mode="store.researchMode"
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
-						@toggle-research-mode="store.toggleResearchMode()"
 					/>
 				</div>
 			</div>

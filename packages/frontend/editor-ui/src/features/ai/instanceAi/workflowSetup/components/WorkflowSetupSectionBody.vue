@@ -7,9 +7,12 @@ import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
-import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
-import { Workflow, type IConnections, type INodeProperties } from 'n8n-workflow';
+import { ExpressionLocalResolveContextSymbol, WorkflowDocumentStoreKey } from '@/app/constants';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import type { INodeProperties } from 'n8n-workflow';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
@@ -23,7 +26,6 @@ const ctx = useWorkflowSetupContext();
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
-const environmentsStore = useEnvironmentsStore();
 
 const credentialType = computed(() => props.section.credentialType);
 
@@ -97,30 +99,31 @@ const displayNode = computed<INodeUi>(() => {
 	} as INodeUi;
 });
 
-const expressionContext = computed<ExpressionLocalResolveContext | undefined>(() => {
-	const node = displayNode.value;
-	const connections: IConnections = {};
-	const workflow = new Workflow({
-		id: 'instance-ai-workflow-setup',
-		name: 'Instance AI workflow setup',
-		nodes: [node],
-		connections,
-		active: false,
-		nodeTypes: nodeTypesStore.getAllNodeTypes(),
-	});
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(
+		createWorkflowDocumentId(
+			ctx.workflowId.value ?? 'instance-ai-workflow-setup',
+			props.section.id,
+		),
+	),
+);
 
-	return {
-		localResolve: true,
-		envVars: environmentsStore.variablesAsObject,
-		workflow,
-		execution: null,
-		nodeName: node.name,
-		additionalKeys: {},
-		connections,
-	};
-});
+watch(
+	displayNode,
+	(node) => {
+		workflowDocumentStore.value.setNodes([node]);
+	},
+	{ immediate: true, deep: true },
+);
+
+const expressionContext = computed<ExpressionLocalResolveContext | undefined>(() => ({
+	localResolve: true,
+	nodeName: displayNode.value.name,
+	additionalKeys: {},
+}));
 
 provide(ExpressionLocalResolveContextSymbol, expressionContext);
+provide(WorkflowDocumentStoreKey, workflowDocumentStore);
 
 function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 	if (!credentialType.value) return;
