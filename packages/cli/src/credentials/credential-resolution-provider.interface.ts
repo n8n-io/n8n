@@ -43,7 +43,7 @@ export interface ICredentialResolutionProvider {
 	/**
 	 * Returns the seeded system resolver id used to store private credentials
 	 * on the running user's behalf (e.g. OAuth2 callback for `isResolvable`
-	 * credentials). Returns null when the system resolver has not been seeded.
+	 * credentials). Returns null when the provider is unavailable.
 	 */
-	getSystemResolverId(): Promise<string | null>;
+	getSystemResolverId(): string | null;
 }

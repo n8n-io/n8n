@@ -13,7 +13,15 @@ import { sublimeSearch } from '@n8n/utils';
 import type { BuilderHintInputs, INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import type { CodeBuilderNodeSearchResult, SubnodeRequirement } from '../types';
+import { toLeanNodeType, type LeanNodeTypeDescription } from './lean-node-type';
+import type { CodeBuilderNodeSearchResult, SubnodeRequirement } from './types';
+
+/** Detect already-lean inputs by their marker field so we can skip re-conversion. */
+function isLeanNodeType(
+	node: INodeTypeDescription | LeanNodeTypeDescription,
+): node is LeanNodeTypeDescription {
+	return 'discriminatorsByVersion' in node;
+}
 
 /** Type guard for NodeConnectionType */
 function isNodeConnectionType(value: string): value is NodeConnectionType {
@@ -78,8 +86,8 @@ function extractSubnodeRequirements(inputs?: BuilderHintInputs): SubnodeRequirem
 	}));
 }
 
-function dedupeNodes(nodes: INodeTypeDescription[]): INodeTypeDescription[] {
-	const dedupeCache: Record<string, INodeTypeDescription> = {};
+function dedupeNodes(nodes: LeanNodeTypeDescription[]): LeanNodeTypeDescription[] {
+	const dedupeCache: Record<string, LeanNodeTypeDescription> = {};
 	nodes.forEach((node) => {
 		const cachedNodeType = dedupeCache[node.name];
 		if (!cachedNodeType) {
@@ -100,12 +108,18 @@ function dedupeNodes(nodes: INodeTypeDescription[]): INodeTypeDescription[] {
 
 /**
  * Pure business logic for searching nodes
- * Separated from tool infrastructure for better testability
+ * Separated from tool infrastructure for better testability.
+ *
+ * Accepts either full `INodeTypeDescription[]` or already-converted
+ * `LeanNodeTypeDescription[]` — production callers pass lean to avoid the
+ * conversion cost, tests typically pass full descriptions and the engine
+ * converts on the way in.
  */
 export class CodeBuilderNodeSearchEngine {
-	private readonly nodeTypes: INodeTypeDescription[];
-	constructor(nodeTypes: INodeTypeDescription[]) {
-		this.nodeTypes = dedupeNodes(nodeTypes);
+	private readonly nodeTypes: LeanNodeTypeDescription[];
+	constructor(nodeTypes: Array<INodeTypeDescription | LeanNodeTypeDescription>) {
+		const lean = nodeTypes.map((n) => (isLeanNodeType(n) ? n : toLeanNodeType(n)));
+		this.nodeTypes = dedupeNodes(lean);
 	}
 
 	/**
@@ -125,7 +139,11 @@ export class CodeBuilderNodeSearchEngine {
 			: this.nodeTypes;
 
 		// Use sublimeSearch for fuzzy matching
-		const searchResults = sublimeSearch<INodeTypeDescription>(query, nodeTypes, NODE_SEARCH_KEYS);
+		const searchResults = sublimeSearch<LeanNodeTypeDescription>(
+			query,
+			nodeTypes,
+			NODE_SEARCH_KEYS,
+		);
 
 		const queryLower = query.toLowerCase().trim();
 		const fuzzyResultNames = new Set(searchResults.map((r) => r.item.name));
@@ -155,7 +173,7 @@ export class CodeBuilderNodeSearchEngine {
 				({
 					item,
 					score,
-				}: { item: INodeTypeDescription; score: number }): CodeBuilderNodeSearchResult => {
+				}: { item: LeanNodeTypeDescription; score: number }): CodeBuilderNodeSearchResult => {
 					const subnodeRequirements = extractSubnodeRequirements(item.builderHint?.inputs);
 					return {
 						name: item.name,
@@ -193,7 +211,7 @@ export class CodeBuilderNodeSearchEngine {
 				const connectionScore = this.getConnectionScore(nodeType, connectionType);
 				return connectionScore > 0 ? { nodeType, connectionScore } : null;
 			})
-			.filter((result): result is { nodeType: INodeTypeDescription; connectionScore: number } =>
+			.filter((result): result is { nodeType: LeanNodeTypeDescription; connectionScore: number } =>
 				Boolean(result),
 			);
 
@@ -227,7 +245,7 @@ export class CodeBuilderNodeSearchEngine {
 		// Combine connection score with name score
 		return nameFilteredResults
 			.slice(0, limit)
-			.map(({ item, score: nameScore }: { item: INodeTypeDescription; score: number }) => {
+			.map(({ item, score: nameScore }: { item: LeanNodeTypeDescription; score: number }) => {
 				const connectionResult = nodesWithConnectionType.find(
 					(result) => result.nodeType.name === item.name,
 				);
@@ -357,7 +375,7 @@ export class CodeBuilderNodeSearchEngine {
 	 * @param nodeId - The node ID to look up
 	 * @returns The node type description or undefined
 	 */
-	getNodeType(nodeId: string): INodeTypeDescription | undefined {
+	getNodeType(nodeId: string): LeanNodeTypeDescription | undefined {
 		return this.nodeTypes.find((n) => n.name === nodeId);
 	}
 
@@ -368,7 +386,7 @@ export class CodeBuilderNodeSearchEngine {
 	 * @returns Score indicating match quality
 	 */
 	private getConnectionScore(
-		nodeType: INodeTypeDescription,
+		nodeType: LeanNodeTypeDescription,
 		connectionType: NodeConnectionType,
 	): number {
 		const outputs = nodeType.outputs;

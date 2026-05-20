@@ -210,15 +210,15 @@ describe('DynamicCredentialsProxy', () => {
 	});
 
 	describe('getSystemResolverId', () => {
-		it('returns null when no resolver provider is set', async () => {
-			await expect(proxy.getSystemResolverId()).resolves.toBeNull();
+		it('returns null when no resolver provider is set', () => {
+			expect(proxy.getSystemResolverId()).toBeNull();
 		});
 
-		it('delegates to the resolver provider when set', async () => {
-			mockResolverProvider.getSystemResolverId.mockResolvedValue('system-n8n');
+		it('delegates to the resolver provider when set', () => {
+			mockResolverProvider.getSystemResolverId.mockReturnValue('system-n8n');
 			proxy.setResolverProvider(mockResolverProvider);
 
-			await expect(proxy.getSystemResolverId()).resolves.toBe('system-n8n');
+			expect(proxy.getSystemResolverId()).toBe('system-n8n');
 			expect(mockResolverProvider.getSystemResolverId).toHaveBeenCalled();
 		});
 	});

@@ -1094,41 +1094,8 @@ describe('DynamicCredentialService', () => {
 	});
 
 	describe('getSystemResolverId', () => {
-		it('returns the seeded system resolver id when present', async () => {
-			mockResolverRepository.findOneBy.mockResolvedValue(
-				createMockResolverEntity({ id: 'system-n8n' }),
-			);
-
-			await expect(service.getSystemResolverId()).resolves.toBe('system-n8n');
-			expect(mockResolverRepository.findOneBy).toHaveBeenCalledWith({ id: 'system-n8n' });
-		});
-
-		it('returns null when no system resolver is seeded', async () => {
-			mockResolverRepository.findOneBy.mockResolvedValue(null);
-
-			await expect(service.getSystemResolverId()).resolves.toBeNull();
-		});
-
-		it('caches the lookup result across calls', async () => {
-			mockResolverRepository.findOneBy.mockResolvedValue(
-				createMockResolverEntity({ id: 'system-n8n' }),
-			);
-
-			await service.getSystemResolverId();
-			await service.getSystemResolverId();
-			await service.getSystemResolverId();
-
-			expect(mockResolverRepository.findOneBy).toHaveBeenCalledTimes(1);
-		});
-
-		it('does not cache null results so a late-seeded row becomes visible', async () => {
-			mockResolverRepository.findOneBy.mockResolvedValueOnce(null);
-			mockResolverRepository.findOneBy.mockResolvedValueOnce(
-				createMockResolverEntity({ id: 'system-n8n' }),
-			);
-
-			await expect(service.getSystemResolverId()).resolves.toBeNull();
-			await expect(service.getSystemResolverId()).resolves.toBe('system-n8n');
+		it('returns the seeded system resolver id constant', () => {
+			expect(service.getSystemResolverId()).toBe('system-n8n');
 		});
 	});
 });

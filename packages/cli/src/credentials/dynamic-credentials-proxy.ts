@@ -43,11 +43,11 @@ export class DynamicCredentialsProxy
 	 * Returns null when the system resolver has not been seeded or the dynamic
 	 * credentials provider is not registered.
 	 */
-	async getSystemResolverId(): Promise<string | null> {
+	getSystemResolverId(): string | null {
 		if (!this.resolvingProvider) {
 			return null;
 		}
-		return await this.resolvingProvider.getSystemResolverId();
+		return this.resolvingProvider.getSystemResolverId();
 	}
 
 	async resolveIfNeeded(

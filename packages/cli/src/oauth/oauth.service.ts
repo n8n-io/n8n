@@ -53,6 +53,7 @@ import {
 } from './types';
 import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 
 export function shouldSkipAuthOnOAuthCallback() {
 	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'false';
@@ -76,6 +77,7 @@ export class OauthService {
 		private readonly cipher: Cipher,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 		private readonly authService: AuthService,
+		private readonly oauthJweServiceProxy: OAuthJweServiceProxy,
 	) {}
 
 	private validateOAuthUrlOrThrow(url: string): void {
@@ -123,7 +125,7 @@ export class OauthService {
 		req: OAuthRequest.OAuth1Credential.Auth | OAuthRequest.OAuth2Credential.Auth,
 	): Promise<CreateCsrfStateData> {
 		if (credential.isResolvable) {
-			const resolverId = await this.dynamicCredentialsProxy.getSystemResolverId();
+			const resolverId = this.dynamicCredentialsProxy.getSystemResolverId();
 			if (resolverId !== null) {
 				const cookieToken = this.authService.getCookieToken(req as Request);
 				if (cookieToken) {
@@ -570,6 +572,9 @@ export class OauthService {
 				client_name: 'n8n',
 				client_uri: 'https://n8n.io/',
 				scope,
+				...(oauthCredentials.jweEnabled === true
+					? await this.oauthJweServiceProxy.getDcrJweFields(oauthCredentials.inlineJwks === true)
+					: {}),
 			};
 
 			await this.externalHooks.run('oauth2.dynamicClientRegistration', [registerPayload]);

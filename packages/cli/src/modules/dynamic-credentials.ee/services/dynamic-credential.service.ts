@@ -36,14 +36,6 @@ import { AuthenticatedRequest } from '@n8n/db';
  */
 @Service()
 export class DynamicCredentialService implements ICredentialResolutionProvider {
-	/**
-	 * Cached system resolver id. Populated on the first successful lookup and
-	 * reused thereafter — the seeder writes an idempotent row whose id never
-	 * changes. Stays null until the seeder has actually run (e.g. on a follower
-	 * that started before the leader seeded), so a missing row isn't memoised.
-	 */
-	private cachedSystemResolverId: string | null = null;
-
 	constructor(
 		private readonly dynamicCredentialConfig: DynamicCredentialsConfig,
 		private readonly resolverRegistry: DynamicCredentialResolverRegistry,
@@ -152,16 +144,8 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		}
 	}
 
-	/**
-	 * Returns the seeded system resolver id used to store per-user OAuth tokens
-	 * during interactive connect flows. Caches the lookup since the row's id
-	 * never changes once seeded.
-	 */
-	async getSystemResolverId(): Promise<string | null> {
-		if (this.cachedSystemResolverId) return this.cachedSystemResolverId;
-		const seeded = await this.resolverRepository.findOneBy({ id: SYSTEM_RESOLVER_ID });
-		this.cachedSystemResolverId = seeded?.id ?? null;
-		return this.cachedSystemResolverId;
+	getSystemResolverId(): string {
+		return SYSTEM_RESOLVER_ID;
 	}
 
 	/**
