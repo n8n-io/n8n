@@ -34,7 +34,7 @@ export class OAuth2CredentialController {
 		const credential = await this.oauthService.getCredentialForUpdate(req);
 
 		const privateResolverId = credential.isResolvable
-			? await this.dynamicCredentialsProxy.getPrivateCredentialResolverId(credential)
+			? await this.dynamicCredentialsProxy.getSystemResolverId()
 			: null;
 
 		let csrfData: CreateCsrfStateData;

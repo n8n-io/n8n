@@ -1,6 +1,4 @@
 import type { Logger } from '@n8n/backend-common';
-import type { CredentialsEntity } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type {
 	ICredentialContext,
 	ICredentialDataDecryptedObject,
@@ -35,7 +33,7 @@ describe('DynamicCredentialsProxy', () => {
 
 		mockResolverProvider = {
 			resolveIfNeeded: jest.fn(),
-			getPrivateCredentialResolverId: jest.fn(),
+			getSystemResolverId: jest.fn(),
 		};
 
 		mockStorageProvider = {
@@ -211,19 +209,17 @@ describe('DynamicCredentialsProxy', () => {
 		});
 	});
 
-	describe('getPrivateCredentialResolverId', () => {
+	describe('getSystemResolverId', () => {
 		it('returns null when no resolver provider is set', async () => {
-			const credential = mock<CredentialsEntity>({ id: 'cred-1', isResolvable: true });
-			await expect(proxy.getPrivateCredentialResolverId(credential)).resolves.toBeNull();
+			await expect(proxy.getSystemResolverId()).resolves.toBeNull();
 		});
 
 		it('delegates to the resolver provider when set', async () => {
-			const credential = mock<CredentialsEntity>({ id: 'cred-1', isResolvable: true });
-			mockResolverProvider.getPrivateCredentialResolverId.mockResolvedValue('system-n8n');
+			mockResolverProvider.getSystemResolverId.mockResolvedValue('system-n8n');
 			proxy.setResolverProvider(mockResolverProvider);
 
-			await expect(proxy.getPrivateCredentialResolverId(credential)).resolves.toBe('system-n8n');
-			expect(mockResolverProvider.getPrivateCredentialResolverId).toHaveBeenCalledWith(credential);
+			await expect(proxy.getSystemResolverId()).resolves.toBe('system-n8n');
+			expect(mockResolverProvider.getSystemResolverId).toHaveBeenCalled();
 		});
 	});
 });

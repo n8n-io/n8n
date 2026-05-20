@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import type { CredentialsEntity } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import type {
@@ -39,15 +38,16 @@ export class DynamicCredentialsProxy
 	}
 
 	/**
-	 * Returns the system resolver id to use when storing a private credential
+	 * Returns the seeded system resolver id used to store private credentials
 	 * on the user's behalf (e.g. OAuth2 callback for `isResolvable` credentials).
-	 * Returns null when no private credential resolver is configured.
+	 * Returns null when the system resolver has not been seeded or the dynamic
+	 * credentials provider is not registered.
 	 */
-	async getPrivateCredentialResolverId(credential: CredentialsEntity): Promise<string | null> {
+	async getSystemResolverId(): Promise<string | null> {
 		if (!this.resolvingProvider) {
 			return null;
 		}
-		return await this.resolvingProvider.getPrivateCredentialResolverId(credential);
+		return await this.resolvingProvider.getSystemResolverId();
 	}
 
 	async resolveIfNeeded(

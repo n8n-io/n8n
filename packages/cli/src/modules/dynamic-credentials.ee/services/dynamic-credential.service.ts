@@ -28,7 +28,7 @@ import { CredentialResolutionError } from '../errors/credential-resolution.error
 import { CredentialResolverNotConfiguredError } from '../errors/credential-resolver-not-configured.error';
 import { CredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error';
 import { MissingExecutionContextError } from '../errors/missing-execution-context.error';
-import { AuthenticatedRequest, CredentialsEntity } from '@n8n/db';
+import { AuthenticatedRequest } from '@n8n/db';
 
 /**
  * Service for resolving credentials dynamically via configured resolvers.
@@ -36,6 +36,14 @@ import { AuthenticatedRequest, CredentialsEntity } from '@n8n/db';
  */
 @Service()
 export class DynamicCredentialService implements ICredentialResolutionProvider {
+	/**
+	 * Cached system resolver id. Populated on the first successful lookup and
+	 * reused thereafter — the seeder writes an idempotent row whose id never
+	 * changes. Stays null until the seeder has actually run (e.g. on a follower
+	 * that started before the leader seeded), so a missing row isn't memoised.
+	 */
+	private cachedSystemResolverId: string | null = null;
+
 	constructor(
 		private readonly dynamicCredentialConfig: DynamicCredentialsConfig,
 		private readonly resolverRegistry: DynamicCredentialResolverRegistry,
@@ -145,13 +153,15 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	}
 
 	/**
-	 * Resolves the private credential resolver id used to store per-user OAuth
-	 * tokens during interactive connect flows. Returns the seeded system resolver
-	 * id when present, otherwise null.
+	 * Returns the seeded system resolver id used to store per-user OAuth tokens
+	 * during interactive connect flows. Caches the lookup since the row's id
+	 * never changes once seeded.
 	 */
-	async getPrivateCredentialResolverId(_credential: CredentialsEntity): Promise<string | null> {
+	async getSystemResolverId(): Promise<string | null> {
+		if (this.cachedSystemResolverId) return this.cachedSystemResolverId;
 		const seeded = await this.resolverRepository.findOneBy({ id: SYSTEM_RESOLVER_ID });
-		return seeded?.id ?? null;
+		this.cachedSystemResolverId = seeded?.id ?? null;
+		return this.cachedSystemResolverId;
 	}
 
 	/**

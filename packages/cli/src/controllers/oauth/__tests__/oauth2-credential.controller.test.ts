@@ -78,14 +78,14 @@ describe('OAuth2CredentialController', () => {
 				origin: 'static-credential',
 				userId: '123',
 			});
-			expect(dynamicCredentialsProxy.getPrivateCredentialResolverId).not.toHaveBeenCalled();
+			expect(dynamicCredentialsProxy.getSystemResolverId).not.toHaveBeenCalled();
 		});
 
 		it('falls back to static-credential origin when credential is resolvable but no resolver id is configured', async () => {
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', isResolvable: true });
 			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
 			oauthService.generateAOauth2AuthUri.mockResolvedValue('https://example.domain/oauth2/auth');
-			dynamicCredentialsProxy.getPrivateCredentialResolverId.mockResolvedValueOnce(null);
+			dynamicCredentialsProxy.getSystemResolverId.mockResolvedValueOnce(null);
 
 			const req = mock<OAuthRequest.OAuth2Credential.Auth>({
 				user: mock<User>({ id: '123' }),
@@ -94,9 +94,7 @@ describe('OAuth2CredentialController', () => {
 
 			await controller.getAuthUri(req);
 
-			expect(dynamicCredentialsProxy.getPrivateCredentialResolverId).toHaveBeenCalledWith(
-				mockResolvedCredential,
-			);
+			expect(dynamicCredentialsProxy.getSystemResolverId).toHaveBeenCalled();
 			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(mockResolvedCredential, {
 				cid: '1',
 				origin: 'static-credential',
@@ -108,9 +106,7 @@ describe('OAuth2CredentialController', () => {
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', isResolvable: true });
 			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
 			oauthService.generateAOauth2AuthUri.mockResolvedValue('https://example.domain/oauth2/auth');
-			dynamicCredentialsProxy.getPrivateCredentialResolverId.mockResolvedValueOnce(
-				'private-resolver-id',
-			);
+			dynamicCredentialsProxy.getSystemResolverId.mockResolvedValueOnce('private-resolver-id');
 			authService.getCookieToken.mockReturnValueOnce('user-jwt-token');
 
 			const req = mock<OAuthRequest.OAuth2Credential.Auth>({
