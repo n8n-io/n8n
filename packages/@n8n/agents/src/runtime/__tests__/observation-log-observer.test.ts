@@ -28,12 +28,14 @@ function message(
 
 describe('observation-log observer defaults', () => {
 	it('keeps default policy and threshold configuration in the SDK', () => {
-		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS).toBe(2000);
+		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS).toBe(500);
 		expect(DEFAULT_OBSERVATION_LOG_TAIL_LIMIT).toBe(20);
 		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT).toContain('Output the new observations only');
-		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT).toContain('🔴 CRITICAL');
 		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT).toContain(
-			'GOOD:\n* 🟡 (14:30) User is purchasing Claude Code subscriptions for their team.',
+			'CRITICAL. Things the agent must not forget',
+		);
+		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT).toContain(
+			'GOOD:\n* IMPORTANT (14:30) User is purchasing Claude Code subscriptions for their team.',
 		);
 	});
 
@@ -47,11 +49,11 @@ describe('observation-log observer defaults', () => {
 			transcriptTokenCount: 42,
 			observationLogTail: [],
 			renderedObservationLogTail:
-				'## Memory\n\n* 🔴 (14:28) User is rebuilding observational memory.',
+				'## Memory\n\n* CRITICAL (14:28) User is rebuilding observational memory.',
 		});
 
 		expect(prompt).toContain('Current timestamp: 2026-05-12T14:30:00.000Z');
-		expect(prompt).toContain('* 🔴 (14:28) User is rebuilding observational memory.');
+		expect(prompt).toContain('* CRITICAL (14:28) User is rebuilding observational memory.');
 		expect(prompt).toContain('Remember daily-report-prod.');
 		expect(prompt).toContain('Unobserved transcript tokens: 42');
 	});
@@ -61,10 +63,10 @@ describe('parseObservationLogMarkdown', () => {
 	it('parses marker bullets and attaches marked sub-bullets to the previous parent', () => {
 		const parsed = parseObservationLogMarkdown(
 			[
-				'* 🔴 (14:30) User chose the observation log model.',
-				'  * ✅ (14:31) Plan 4 was completed.',
+				'* CRITICAL (14:30) User chose the observation log model.',
+				'  * COMPLETION (14:31) Plan 4 was completed.',
 				'not a bullet',
-				'* 🟢 (14:32) Small context detail.',
+				'* INFO (14:32) Small context detail.',
 			].join('\n'),
 		);
 
@@ -199,7 +201,7 @@ describe('runObservationLogObserver', () => {
 			messages: [message('m1', 'user', 'short turn', new Date(2026, 4, 12, 14, 30))],
 		});
 
-		const observe = jest.fn().mockResolvedValue('* 🔴 (14:30) User said something durable.');
+		const observe = jest.fn().mockResolvedValue('* CRITICAL (14:30) User said something durable.');
 
 		const result = await runObservationLogObserver({
 			memory: store,
@@ -236,8 +238,8 @@ describe('runObservationLogObserver', () => {
 			observe: async () =>
 				await Promise.resolve(
 					[
-						'* 🔴 (14:31) User needs the current request remembered.',
-						'  * ✅ (14:31) Observer pipeline parsed the child row.',
+						'* CRITICAL (14:31) User needs the current request remembered.',
+						'  * COMPLETION (14:31) Observer pipeline parsed the child row.',
 					].join('\n'),
 				),
 		});

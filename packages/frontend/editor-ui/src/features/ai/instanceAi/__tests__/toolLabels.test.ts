@@ -8,6 +8,7 @@ vi.mock('@n8n/i18n', () => ({
 			const translations: Record<string, string> = {
 				'instanceAi.tools.nodes': 'Search nodes',
 				'instanceAi.tools.executions': 'Run workflow',
+				'instanceAi.tools.workspace_execute_command': 'Running command',
 				'instanceAi.stepTimeline.showData': 'Show data',
 				'instanceAi.stepTimeline.hideData': 'Hide data',
 				'instanceAi.stepTimeline.showBrief': 'Show brief',
@@ -75,6 +76,8 @@ describe('getToolIcon', () => {
 
 	test('returns folder for workspace tools', () => {
 		expect(getToolIcon('workspace')).toBe('folder');
+		expect(getToolIcon('workspace_execute_command')).toBe('folder');
+		expect(getToolIcon('workspace_read_file')).toBe('folder');
 	});
 
 	test('returns settings as default', () => {
@@ -86,6 +89,7 @@ describe('useToolLabel', () => {
 	test('getToolLabel returns translated label when found', () => {
 		const { getToolLabel } = useToolLabel();
 		expect(getToolLabel('nodes')).toBe('Search nodes');
+		expect(getToolLabel('workspace_execute_command')).toBe('Running command');
 	});
 
 	test('getToolLabel falls back to raw tool name when not found', () => {

@@ -43,11 +43,23 @@ function createLivenessService() {
 		getPendingConfirmation: jest.fn(
 			(_requestId: string): { threadId: string } | undefined => undefined,
 		),
+		hasPendingConfirmationForThread: jest.fn((_threadId: string) => false),
 		rejectPendingConfirmation: jest.fn((_requestId: string) => true),
 	};
 	const backgroundTasks = {
 		timeoutTimedOutTasks: jest.fn(
-			async (_policy: InstanceAiLivenessPolicy, _now?: number) =>
+			async (
+				_policy: InstanceAiLivenessPolicy,
+				_now?: number,
+				_options?: {
+					shouldSkipTask?: (task: {
+						threadId: string;
+						taskId: string;
+						role: string;
+						timeoutReason?: InstanceAiLivenessTimeoutReason;
+					}) => boolean;
+				},
+			) =>
 				[] as Array<{
 					threadId: string;
 					taskId: string;
@@ -150,7 +162,21 @@ describe('InstanceAiLivenessService', () => {
 			INSTANCE_AI_RUN_TIMEOUT_REASON,
 		);
 		expect(runState.rejectPendingConfirmation).toHaveBeenCalledWith('request-1');
-		expect(backgroundTasks.timeoutTimedOutTasks).toHaveBeenCalledWith(policy, 123_456);
+		expect(backgroundTasks.timeoutTimedOutTasks).toHaveBeenCalledWith(
+			policy,
+			123_456,
+			expect.objectContaining({ shouldSkipTask: expect.any(Function) }),
+		);
+		const timeoutOptions = backgroundTasks.timeoutTimedOutTasks.mock.calls[0]?.[2];
+		runState.hasPendingConfirmationForThread.mockReturnValueOnce(true);
+		expect(
+			timeoutOptions?.shouldSkipTask?.({
+				threadId: 'thread-bg',
+				taskId: 'task-1',
+				role: 'workflow-builder',
+			}),
+		).toBe(true);
+		expect(runState.hasPendingConfirmationForThread).toHaveBeenCalledWith('thread-bg');
 		expect(eventBus.publish).toHaveBeenCalledWith(
 			'thread-active',
 			expect.objectContaining({ responseId: 'run-timeout:run-active' }),
