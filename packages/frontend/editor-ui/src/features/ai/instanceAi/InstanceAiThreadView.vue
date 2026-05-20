@@ -49,7 +49,7 @@ import CreditWarningBanner from '@/features/ai/assistant/components/Agent/Credit
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
-import { buildFixWithAiPrompt, useFixWithAiOffer } from './useFixWithAiOffer';
+import { buildFixWithAiPrompt } from './fixWithAi';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import { TabsRoot } from 'reka-ui';
 
@@ -79,40 +79,26 @@ const builderAgents = computed(() => collectActiveBuilderAgents(thread.messages)
 // otherwise leave an empty wrapper in the list — filter them out.
 const displayedMessages = computed(() => thread.messages.filter(messageHasVisibleContent));
 
-// --- Execution tracking via push events ---
+// --- Execution tracking via push events (drives canvas relay) ---
 const executionTracking = useExecutionPushEvents();
-const fixWithAiOffer = useFixWithAiOffer();
+
+// --- Fix-with-AI offer (failure data sent by the iframe via postMessage) ---
+const failedRun = ref<WorkflowFailuresReport | null>(null);
+const dismissedExecutionId = ref<string | null>(null);
 
 const isChatInProgress = computed(
 	() => thread.isStreaming || thread.isSendingMessage || thread.isAwaitingConfirmation,
 );
 
-function findReadyFixWithAiOffer(workflowId?: string | null) {
-	const offers = fixWithAiOffer.offersByWorkflow.value;
-
-	if (workflowId) {
-		const preferred = offers.get(workflowId);
-		if (
-			preferred &&
-			preferred.errors.length > 0 &&
-			!fixWithAiOffer.isDismissed(preferred.executionId)
-		) {
-			return preferred;
-		}
-	}
-
-	for (const offer of offers.values()) {
-		if (offer.errors.length === 0) continue;
-		if (fixWithAiOffer.isDismissed(offer.executionId)) continue;
-		return offer;
-	}
-
-	return null;
-}
-
 const activeFixWithAiOffer = computed(() => {
+	const run = failedRun.value;
+	if (!run) return null;
+	if (run.executionId === dismissedExecutionId.value) return null;
 	if (isChatInProgress.value) return null;
-	return findReadyFixWithAiOffer(preview.activeWorkflowId.value);
+	return {
+		...run,
+		workflowName: thread.producedArtifacts.get(run.workflowId)?.name,
+	};
 });
 
 // --- Header title ---
@@ -491,7 +477,6 @@ onUnmounted(() => {
 	contentResizeObserver?.disconnect();
 	resizeObserver?.disconnect();
 	executionTracking.cleanup();
-	fixWithAiOffer.cleanup();
 });
 
 // --- Workflow preview ref for iframe relay ---
@@ -521,7 +506,7 @@ function handleFixWithAiFromOffer() {
 	const offer = activeFixWithAiOffer.value;
 	if (!offer) return;
 
-	fixWithAiOffer.dismiss(offer.executionId);
+	dismissedExecutionId.value = offer.executionId;
 	userScrolledUp.value = false;
 	void thread.sendMessage(
 		buildFixWithAiPrompt({ workflowName: offer.workflowName, errors: offer.errors }),
@@ -533,11 +518,11 @@ function handleFixWithAiFromOffer() {
 function dismissFixWithAiOffer() {
 	const offer = activeFixWithAiOffer.value;
 	if (!offer) return;
-	fixWithAiOffer.dismiss(offer.executionId);
+	dismissedExecutionId.value = offer.executionId;
 }
 
 function handleWorkflowFailures(report: WorkflowFailuresReport) {
-	fixWithAiOffer.registerOffer(report);
+	failedRun.value = report;
 }
 </script>
 
