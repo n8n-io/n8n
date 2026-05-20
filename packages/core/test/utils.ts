@@ -1,6 +1,6 @@
 import type { Constructable } from '@n8n/di';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { Duplex } from 'stream';
 import type { DeepPartial } from 'ts-essentials';
 

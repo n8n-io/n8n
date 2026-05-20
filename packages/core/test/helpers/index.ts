@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'fs';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	IDataObject,
 	IDeferredPromise,

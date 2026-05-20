@@ -1,4 +1,5 @@
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import type { CronContext, Workflow } from 'n8n-workflow';
 
 import { mockInstance } from '@test/utils';
@@ -9,7 +10,7 @@ import { getSchedulingFunctions } from '../scheduling-helper-functions';
 describe('getSchedulingFunctions', () => {
 	const workflow = mock<Workflow>({ id: 'test-workflow', timezone: 'Europe/Berlin' });
 	const cronExpression = '* * * * * 0';
-	const onTick = jest.fn();
+	const onTick = vi.fn();
 	const scheduledTaskManager = mockInstance(ScheduledTaskManager);
 	const schedulingFunctions = getSchedulingFunctions(
 		workflow.id,
@@ -36,15 +37,13 @@ describe('getSchedulingFunctions', () => {
 		});
 
 		it('should forward the scheduledT Date to the user-provided onTick', () => {
-			const userOnTick = jest.fn();
+			const userOnTick = vi.fn();
 			schedulingFunctions.registerCron({ expression: cronExpression }, userOnTick);
 
 			// Capture the onTick that getSchedulingFunctions passed down to
 			// scheduledTaskManager.registerCron, then invoke it with a Date to
 			// confirm the Date flows through unchanged.
-			const forwardedOnTick = (scheduledTaskManager.registerCron as jest.Mock).mock.calls.at(
-				-1,
-			)![1];
+			const forwardedOnTick = (scheduledTaskManager.registerCron as Mock).mock.calls.at(-1)![1];
 			const scheduledT = new Date('2024-01-01T00:01:00.000Z');
 			forwardedOnTick(scheduledT);
 

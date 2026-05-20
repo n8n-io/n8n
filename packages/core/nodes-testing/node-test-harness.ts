@@ -1,7 +1,7 @@
 import { Memoized } from '@n8n/decorators';
 import callsites from 'callsites';
 import glob from 'fast-glob';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import isEmpty from 'lodash/isEmpty';
 import type {
 	ICredentialDataDecryptedObject,

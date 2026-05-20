@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	IDataObject,
 	IWorkflowExecuteAdditionalData,
@@ -13,10 +13,10 @@ import { ApplicationError, NodeConnectionTypes, createRunExecutionData } from 'n
 
 import { NodeTypes } from '@test/helpers';
 
-jest.mock('node:fs', () => ({
-	...jest.requireActual('node:fs'),
-	existsSync: jest.fn().mockReturnValue(false),
-	renameSync: jest.fn(),
+vi.mock('node:fs', async (importActual) => ({
+	...(await importActual<typeof import('node:fs')>()),
+	existsSync: vi.fn().mockReturnValue(false),
+	renameSync: vi.fn(),
 }));
 
 import { DirectedGraph } from '../partial-execution-utils';
@@ -31,7 +31,7 @@ import {
 } from './mock-node-types';
 
 describe('processRunExecutionData', () => {
-	const runHook = jest.fn().mockResolvedValue(undefined);
+	const runHook = vi.fn().mockResolvedValue(undefined);
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		hooks: { runHook },
 		restartExecutionId: undefined,
@@ -41,7 +41,7 @@ describe('processRunExecutionData', () => {
 	const executionMode: WorkflowExecuteMode = 'trigger';
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		runHook.mockResolvedValue(undefined);
 	});
 
@@ -173,7 +173,7 @@ describe('processRunExecutionData', () => {
 
 		// ASSERT
 		expect(
-			runHook.mock.calls.map((hook: [string, unknown[]]) => ({
+			(runHook.mock.calls as Array<[string, unknown[]]>).map((hook) => ({
 				name: hook[0],
 				node: typeof hook[1][0] === 'string' ? hook[1][0] : undefined,
 			})),

@@ -1,6 +1,6 @@
 import { HttpRequestConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { INode, IWorkflowExecuteAdditionalData, Workflow } from 'n8n-workflow';
 import nock from 'nock';
 

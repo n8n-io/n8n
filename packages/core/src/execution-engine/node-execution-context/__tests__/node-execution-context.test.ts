@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	INode,
 	INodeType,
@@ -49,7 +49,7 @@ describe('NodeExecutionContext', () => {
 	let testContext: TestContext;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		testContext = new TestContext(workflow, node, additionalData, mode);
 		nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 	});
@@ -218,14 +218,14 @@ describe('NodeExecutionContext', () => {
 
 			let capturedExecutionContext: unknown;
 			const mockCredentialsHelper = {
-				getDecrypted: jest
+				getDecrypted: vi
 					.fn()
 					.mockImplementation(async (additionalData: IWorkflowExecuteAdditionalData) => {
 						// Capture the executionContext value at the moment getDecrypted is called
 						capturedExecutionContext = additionalData.executionContext;
 						return { token: 'test-token' };
 					}),
-				getCredentialsProperties: jest.fn(),
+				getCredentialsProperties: vi.fn(),
 			};
 
 			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>({
@@ -261,12 +261,12 @@ describe('NodeExecutionContext', () => {
 			const testNode = mock<INode>({ type: 'n8n-nodes-base.graphql' });
 			testNode.credentials = { httpHeaderAuth: { id: 'cred1', name: 'Header' } };
 
-			const getCredentialsProperties = jest
+			const getCredentialsProperties = vi
 				.fn()
 				.mockReturnValue([{ displayName: 'JSON', name: 'json', type: 'json', default: '' }]);
 			const evalAdditionalData = mock<IWorkflowExecuteAdditionalData>({
 				credentialsHelper: mock({ getCredentialsProperties }),
-				evalLlmMockHandler: jest.fn(),
+				evalLlmMockHandler: vi.fn(),
 				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
 				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 			});
@@ -458,7 +458,7 @@ describe('NodeExecutionContext', () => {
 
 	describe('getSignedResumeUrl', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			testContext = new TestContext(
 				workflow,
 				mock<INode>({

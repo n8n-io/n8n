@@ -1,5 +1,5 @@
 import { ApplicationError } from '@n8n/errors';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
@@ -76,7 +76,7 @@ describe('HookContext', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 		expression.getParameterValue.mockImplementation((value) => value);
 		expression.getSimpleParameterValue.mockImplementation((_, value) => value);

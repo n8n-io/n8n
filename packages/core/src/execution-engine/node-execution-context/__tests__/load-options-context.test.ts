@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
@@ -50,7 +50,7 @@ describe('LoadOptionsContext', () => {
 	const loadOptionsContext = new LoadOptionsContext(workflow, node, additionalData, path);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getCredentials', () => {

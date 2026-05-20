@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
@@ -53,7 +53,7 @@ describe('PollContext', () => {
 	const pollContext = new PollContext(workflow, node, additionalData, mode, activation);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getActivationMode', () => {

@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { SsrfProtectionConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import type {
 	INode,
 	IWorkflowExecuteAdditionalData,
@@ -39,18 +40,18 @@ function createConfig(overrides: Partial<SsrfProtectionConfig> = {}): SsrfProtec
 
 function createMockDnsResolver(
 	entries: Record<string, LookupAddress[]> = {},
-): jest.Mocked<DnsResolverLike> {
+): Mocked<DnsResolverLike> {
 	return {
-		lookup: jest.fn(async (hostname) => entries[hostname] ?? []),
+		lookup: vi.fn(async (hostname) => entries[hostname] ?? []),
 	};
 }
 
 function createSsrfBridge(
 	configOverrides: Partial<SsrfProtectionConfig> = {},
 	dnsResolver = createMockDnsResolver(),
-): { ssrfBridge: SsrfBridge; dnsResolver: jest.Mocked<DnsResolverLike> } {
+): { ssrfBridge: SsrfBridge; dnsResolver: Mocked<DnsResolverLike> } {
 	const scopedLogger = mock<Logger>();
-	const logger = mock<Logger>({ scoped: jest.fn().mockReturnValue(scopedLogger) });
+	const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 	const config = createConfig(configOverrides);
 
 	const ssrfBridge = new SsrfProtectionService(config, dnsResolver, logger);
@@ -73,7 +74,7 @@ function createRequestHelpers(ssrfBridge?: SsrfBridge) {
 describe('SSRF end-to-end integration', () => {
 	afterEach(() => {
 		nock.cleanAll();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	test('blocks request to a private IP', async () => {

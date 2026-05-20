@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IRunData } from 'n8n-workflow';
 
 import { getNextExecutionIndex } from '../run-data-utils';

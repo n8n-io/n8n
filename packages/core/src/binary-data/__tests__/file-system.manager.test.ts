@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -11,8 +11,8 @@ import { toFileId, toStream } from '@test/utils';
 
 import type { BinaryData } from '../types';
 
-jest.mock('fs');
-jest.mock('fs/promises');
+vi.mock('fs');
+vi.mock('fs/promises');
 
 const storagePath = tmpdir();
 const errorReporter = mock<ErrorReporter>();
@@ -35,7 +35,7 @@ const mockBuffer = Buffer.from('Test data');
 const mockStream = toStream(mockBuffer);
 
 afterAll(() => {
-	jest.restoreAllMocks();
+	vi.restoreAllMocks();
 });
 
 describe('store()', () => {
@@ -62,8 +62,8 @@ describe('getPath()', () => {
 
 describe('getAsBuffer()', () => {
 	it('should return a buffer', async () => {
-		fsp.readFile = jest.fn().mockResolvedValue(mockBuffer);
-		fsp.access = jest.fn().mockImplementation(async () => {});
+		fsp.readFile = vi.fn().mockResolvedValue(mockBuffer);
+		fsp.access = vi.fn().mockImplementation(async () => {});
 
 		const result = await fsManager.getAsBuffer(fileId);
 
@@ -74,8 +74,8 @@ describe('getAsBuffer()', () => {
 
 describe('getAsStream()', () => {
 	it('should return a stream', async () => {
-		fs.createReadStream = jest.fn().mockReturnValue(mockStream);
-		fsp.access = jest.fn().mockImplementation(async () => {});
+		fs.createReadStream = vi.fn().mockReturnValue(mockStream);
+		fsp.access = vi.fn().mockImplementation(async () => {});
 
 		const stream = await fsManager.getAsStream(fileId);
 
@@ -91,7 +91,7 @@ describe('getMetadata()', () => {
 		const mimeType = 'text/plain';
 		const fileName = 'file.txt';
 
-		fsp.readFile = jest.fn().mockResolvedValue(
+		fsp.readFile = vi.fn().mockResolvedValue(
 			JSON.stringify({
 				fileSize: 1,
 				mimeType,
@@ -107,11 +107,11 @@ describe('getMetadata()', () => {
 
 describe('copyByFileId()', () => {
 	it('should copy by file ID and return the file ID', async () => {
-		fsp.copyFile = jest.fn().mockResolvedValue(undefined);
-		fsp.writeFile = jest.fn().mockResolvedValue(undefined);
+		fsp.copyFile = vi.fn().mockResolvedValue(undefined);
+		fsp.writeFile = vi.fn().mockResolvedValue(undefined);
 
 		// @ts-expect-error - private method
-		jest.spyOn(fsManager, 'toFileId').mockReturnValue(otherFileId);
+		vi.spyOn(fsManager, 'toFileId').mockReturnValue(otherFileId);
 
 		const targetFileId = await fsManager.copyByFileId(
 			{ type: 'execution', workflowId, executionId },
@@ -134,15 +134,15 @@ describe('copyByFilePath()', () => {
 		const metadata = { mimeType: 'text/plain' };
 
 		// @ts-expect-error - private method
-		jest.spyOn(fsManager, 'toFileId').mockReturnValue(otherFileId);
+		vi.spyOn(fsManager, 'toFileId').mockReturnValue(otherFileId);
 
 		// @ts-expect-error - private method
-		jest.spyOn(fsManager, 'getSize').mockReturnValue(mockBuffer.length);
+		vi.spyOn(fsManager, 'getSize').mockReturnValue(mockBuffer.length);
 
 		const targetPath = toFullFilePath(otherFileId);
 
-		fsp.cp = jest.fn().mockResolvedValue(undefined);
-		fsp.writeFile = jest.fn().mockResolvedValue(undefined);
+		fsp.cp = vi.fn().mockResolvedValue(undefined);
+		fsp.writeFile = vi.fn().mockResolvedValue(undefined);
 
 		const result = await fsManager.copyByFilePath(
 			{ type: 'execution', workflowId, executionId },
@@ -172,7 +172,7 @@ describe('deleteMany()', () => {
 			{ type: 'execution', workflowId: otherWorkflowId, executionId: otherExecutionId },
 		];
 
-		fsp.rm = jest.fn().mockResolvedValue(undefined);
+		fsp.rm = vi.fn().mockResolvedValue(undefined);
 
 		const promise = fsManager.deleteMany(ids);
 
@@ -196,7 +196,7 @@ describe('deleteMany()', () => {
 			{ type: 'execution', workflowId: 'does-not-exist', executionId: 'does-not-exist' },
 		];
 
-		fsp.rm = jest.fn().mockResolvedValue(undefined);
+		fsp.rm = vi.fn().mockResolvedValue(undefined);
 
 		const promise = fsManager.deleteMany(ids);
 
@@ -208,8 +208,8 @@ describe('deleteMany()', () => {
 
 describe('rename()', () => {
 	it('should rename a file', async () => {
-		fsp.rename = jest.fn().mockResolvedValue(undefined);
-		fsp.rm = jest.fn().mockResolvedValue(undefined);
+		fsp.rename = vi.fn().mockResolvedValue(undefined);
+		fsp.rm = vi.fn().mockResolvedValue(undefined);
 
 		const promise = fsManager.rename(fileId, otherFileId);
 

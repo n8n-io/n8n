@@ -1,4 +1,5 @@
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import type {
 	INode,
 	ITriggerResponse,
@@ -28,11 +29,11 @@ describe('ActiveWorkflows', () => {
 	const activation: WorkflowActivateMode = 'init';
 	const tracing = new Tracing();
 
-	const getTriggerFunctions = jest.fn() as IGetExecuteTriggerFunctions;
+	const getTriggerFunctions = vi.fn() as IGetExecuteTriggerFunctions;
 	const triggerResponse = mock<ITriggerResponse>();
 
 	const pollFunctions = mock<PollContext>();
-	const getPollFunctions = jest.fn<PollContext, unknown[]>();
+	const getPollFunctions = vi.fn<(...args: unknown[]) => PollContext>();
 
 	LoggerProxy.init(mock());
 	const scheduledTaskManager = mock<ScheduledTaskManager>();
@@ -42,8 +43,8 @@ describe('ActiveWorkflows', () => {
 	const pollNode = mock<INode>();
 
 	let activeWorkflows: ActiveWorkflows;
-	let acquireIsolate: jest.Mock;
-	let releaseIsolate: jest.Mock;
+	let acquireIsolate: Mock;
+	let releaseIsolate: Mock;
 
 	// The cron callback registered for scheduled polls is `() => void executeTrigger()` —
 	// fire-and-forget. A single `await callback()` returns immediately, so we yield to
@@ -51,9 +52,9 @@ describe('ActiveWorkflows', () => {
 	const flushPromises = async () => await new Promise<void>((resolve) => setImmediate(resolve));
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		acquireIsolate = jest.fn().mockResolvedValue(undefined);
-		releaseIsolate = jest.fn().mockResolvedValue(undefined);
+		vi.clearAllMocks();
+		acquireIsolate = vi.fn().mockResolvedValue(undefined);
+		releaseIsolate = vi.fn().mockResolvedValue(undefined);
 		// @ts-expect-error -- assign minimal expression stub for isolate-acquisition tests
 		workflow.expression = { acquireIsolate, releaseIsolate };
 		activeWorkflows = new ActiveWorkflows(
@@ -359,7 +360,7 @@ describe('ActiveWorkflows', () => {
 
 		it('should handle TriggerCloseError when closing trigger', async () => {
 			const triggerCloseError = new TriggerCloseError(triggerNode, { level: 'warning' });
-			(triggerResponse.closeFunction as jest.Mock).mockRejectedValueOnce(triggerCloseError);
+			(triggerResponse.closeFunction as Mock).mockRejectedValueOnce(triggerCloseError);
 
 			const result = await setupForRemoval();
 
@@ -373,7 +374,7 @@ describe('ActiveWorkflows', () => {
 
 		it('should throw WorkflowDeactivationError when closeFunction throws regular error', async () => {
 			const error = new Error('Close function failed');
-			(triggerResponse.closeFunction as jest.Mock).mockRejectedValueOnce(error);
+			(triggerResponse.closeFunction as Mock).mockRejectedValueOnce(error);
 
 			await addWorkflow({ triggerNodes: [triggerNode] });
 

@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	IconFile,
 	ICredentialType,
@@ -10,15 +10,15 @@ import { deepCopy } from 'n8n-workflow';
 import fs from 'node:fs';
 import fsPromises from 'node:fs/promises';
 
-jest.mock('node:fs');
-jest.mock('node:fs/promises');
+vi.mock('node:fs');
+vi.mock('node:fs/promises');
 const mockFs = mock<typeof fs>();
 const mockFsPromises = mock<typeof fsPromises>();
 fs.realpathSync = mockFs.realpathSync;
 fs.readFileSync = mockFs.readFileSync;
 fsPromises.readFile = mockFsPromises.readFile;
 
-jest.mock('fast-glob', () => async (pattern: string) => {
+vi.mock('fast-glob', () => async (pattern: string) => {
 	return pattern.endsWith('.node.js')
 		? ['dist/Node1/Node1.node.js', 'dist/Node2/Node2.node.js']
 		: ['dist/Credential1.js'];
@@ -71,11 +71,11 @@ describe('DirectoryLoader', () => {
 		mockCredential1 = createCredential('credential1');
 		mockNode1 = createNode('node1', 'credential1');
 		mockNode2 = createNode('node2');
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	//@ts-expect-error overwrite a readonly property
-	classLoader.loadClassInIsolation = jest.fn((_: string, className: string) => {
+	classLoader.loadClassInIsolation = vi.fn((_: string, className: string) => {
 		if (className === 'Node1') return mockNode1;
 		if (className === 'Node2') return mockNode2;
 		if (className === 'Credential1') return mockCredential1;
@@ -624,7 +624,7 @@ describe('DirectoryLoader', () => {
 				dark: 'file:dark.svg',
 			};
 
-			jest.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(credWithIcon);
+			vi.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(credWithIcon);
 
 			loader.loadCredentialFromFile(filePath);
 
@@ -640,9 +640,9 @@ describe('DirectoryLoader', () => {
 			const filePath = 'dist/Credential1.js';
 
 			const credWithAuth = createCredential('credWithAuth');
-			credWithAuth.authenticate = jest.fn();
+			credWithAuth.authenticate = vi.fn();
 
-			jest.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(credWithAuth);
+			vi.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(credWithAuth);
 
 			loader.loadCredentialFromFile(filePath);
 
@@ -657,7 +657,7 @@ describe('DirectoryLoader', () => {
 			const extendingCred = createCredential('extendingCred');
 			extendingCred.extends = ['baseCredential'];
 
-			jest.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(extendingCred);
+			vi.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(extendingCred);
 
 			// Set up nodesByCredential before loading
 			loader.nodesByCredential.extendingCred = ['node1', 'node2'];
@@ -676,7 +676,7 @@ describe('DirectoryLoader', () => {
 			const loader = new CustomDirectoryLoader(directory);
 			const filePath = 'dist/InvalidCred.js';
 
-			jest.spyOn(classLoader, 'loadClassInIsolation').mockImplementationOnce(() => {
+			vi.spyOn(classLoader, 'loadClassInIsolation').mockImplementationOnce(() => {
 				throw new TypeError('Class not found');
 			});
 
@@ -787,7 +787,7 @@ describe('DirectoryLoader', () => {
 				dark: 'file:dark.svg',
 			};
 
-			jest.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(nodeWithIcon);
+			vi.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(nodeWithIcon);
 
 			loader.loadNodeFromFile(filePath);
 
@@ -808,7 +808,7 @@ describe('DirectoryLoader', () => {
 				dark: 'file:dark.svg',
 			};
 
-			jest.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(nodeWithIcon);
+			vi.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(nodeWithIcon);
 
 			expect(() => loader.loadNodeFromFile(filePath)).toThrow(
 				'Icon path "../evil" is not contained within',
@@ -845,7 +845,7 @@ describe('DirectoryLoader', () => {
 				},
 			});
 
-			jest.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(versionedNode);
+			vi.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(versionedNode);
 
 			loader.loadNodeFromFile(filePath);
 
@@ -862,7 +862,7 @@ describe('DirectoryLoader', () => {
 			const filePath = 'dist/Node1/Node1.node.js';
 
 			const nodeWithCreds = createNode('testNode', 'testCred');
-			jest.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(nodeWithCreds);
+			vi.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(nodeWithCreds);
 
 			loader.loadNodeFromFile(filePath);
 
@@ -875,7 +875,7 @@ describe('DirectoryLoader', () => {
 			const loader = new CustomDirectoryLoader(directory);
 			const filePath = 'dist/InvalidNode/InvalidNode.node.js';
 
-			jest.spyOn(classLoader, 'loadClassInIsolation').mockImplementationOnce(() => {
+			vi.spyOn(classLoader, 'loadClassInIsolation').mockImplementationOnce(() => {
 				throw new TypeError('Class not found');
 			});
 
@@ -950,7 +950,7 @@ describe('DirectoryLoader', () => {
 			[
 				'node with execute method',
 				{
-					execute: jest.fn(),
+					execute: vi.fn(),
 					description: {
 						properties: [],
 					},
@@ -959,7 +959,7 @@ describe('DirectoryLoader', () => {
 			[
 				'node with trigger method',
 				{
-					trigger: jest.fn(),
+					trigger: vi.fn(),
 					description: {
 						properties: [],
 					},
@@ -968,7 +968,7 @@ describe('DirectoryLoader', () => {
 			[
 				'node with webhook method',
 				{
-					webhook: jest.fn(),
+					webhook: vi.fn(),
 					description: {
 						properties: [],
 					},

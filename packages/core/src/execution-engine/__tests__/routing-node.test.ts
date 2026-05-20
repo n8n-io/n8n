@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import get from 'lodash/get';
 import type {
 	DeclarativeRestApiSettings,
@@ -2251,9 +2251,7 @@ describe('RoutingNode', () => {
 					itemIndex,
 				);
 
-				jest
-					.spyOn(executionContexts, 'ExecuteSingleContext')
-					.mockReturnValue(executeSingleFunctions);
+				vi.spyOn(executionContexts, 'ExecuteSingleContext').mockReturnValue(executeSingleFunctions);
 
 				const numberOfItems = testData.input.specialTestOptions?.numberOfItems ?? 1;
 				if (!inputData.main[0] || inputData.main[0].length !== numberOfItems) {
@@ -2264,7 +2262,7 @@ describe('RoutingNode', () => {
 				}
 
 				const workflowPackage = await import('n8n-workflow');
-				const spy = jest.spyOn(workflowPackage, 'sleep').mockReturnValue(
+				const spy = vi.spyOn(workflowPackage, 'sleep').mockReturnValue(
 					new Promise((resolve) => {
 						resolve();
 					}),
@@ -2426,7 +2424,7 @@ describe('RoutingNode', () => {
 						node,
 						itemIndex + iteration,
 					);
-					jest.spyOn(executionContexts, 'ExecuteSingleContext').mockReturnValue(context);
+					vi.spyOn(executionContexts, 'ExecuteSingleContext').mockReturnValue(context);
 					currentItemIndex = context.getItemIndex();
 				}
 
@@ -2510,7 +2508,7 @@ describe('RoutingNode', () => {
 			// @ts-expect-error overwriting a method
 			executeSingleFunctions.getNodeParameter = (parameterName: string) =>
 				originalGetNodeParameter(parameterName) ?? {};
-			jest.spyOn(executionContexts, 'ExecuteSingleContext').mockReturnValue(executeSingleFunctions);
+			vi.spyOn(executionContexts, 'ExecuteSingleContext').mockReturnValue(executeSingleFunctions);
 
 			const mockCredentials = mock<ICredentialsDecrypted>({
 				id: 'cred-1',

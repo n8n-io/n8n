@@ -1,5 +1,5 @@
 import { ApplicationError } from '@n8n/errors';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	Workflow,
 	INode,
@@ -28,14 +28,14 @@ describe('TriggersAndPollers', () => {
 	const triggersAndPollers = new TriggersAndPollers();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 	});
 
 	describe('runTrigger()', () => {
 		const triggerFunctions = mock<ITriggerFunctions>();
-		const getTriggerFunctions = jest.fn().mockReturnValue(triggerFunctions);
-		const triggerFn = jest.fn();
+		const getTriggerFunctions = vi.fn().mockReturnValue(triggerFunctions);
+		const triggerFn = vi.fn();
 		const mockEmitData: INodeExecutionData[][] = [[{ json: { data: 'test' } }]];
 
 		const runTriggerHelper = async (mode: 'manual' | 'trigger' = 'trigger') =>
@@ -86,7 +86,7 @@ describe('TriggersAndPollers', () => {
 			});
 
 			it('should handle response promise', async () => {
-				const responsePromise = { resolve: jest.fn(), reject: jest.fn() };
+				const responsePromise = { resolve: vi.fn(), reject: vi.fn() };
 				await runTriggerHelper('manual');
 
 				getMockTriggerFunctions()?.emit?.(mockEmitData, responsePromise);
@@ -96,8 +96,8 @@ describe('TriggersAndPollers', () => {
 			});
 
 			it('should handle both response and done promises', async () => {
-				const responsePromise = { resolve: jest.fn(), reject: jest.fn() };
-				const donePromise = { resolve: jest.fn(), reject: jest.fn() };
+				const responsePromise = { resolve: vi.fn(), reject: vi.fn() };
+				const donePromise = { resolve: vi.fn(), reject: vi.fn() };
 				const mockRunData = mock<IRun>({ data: { resultData: { runData: {} } } });
 
 				await runTriggerHelper('manual');
@@ -114,7 +114,7 @@ describe('TriggersAndPollers', () => {
 
 	describe('runPoll()', () => {
 		const pollFunctions = mock<IPollFunctions>();
-		const pollFn = jest.fn();
+		const pollFn = vi.fn();
 
 		const runPollHelper = async () =>
 			await triggersAndPollers.runPoll(workflow, node, pollFunctions);

@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IConnections, INode, INodeType, INodeTypes, IPinData, IRunData } from 'n8n-workflow';
 import { NodeConnectionTypes, Workflow } from 'n8n-workflow';
 

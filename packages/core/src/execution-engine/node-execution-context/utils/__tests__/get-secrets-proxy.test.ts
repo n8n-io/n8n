@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { ExpressionError } from 'n8n-workflow';
 import type { IDataObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
@@ -13,7 +13,7 @@ describe('getSecretsProxy', () => {
 	});
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('get()', () => {

@@ -1,12 +1,12 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IAllExecuteFunctions, INode, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
-const mockGetToken = jest.fn();
-const mockSign = jest.fn();
-const mockCreateToken = jest.fn();
-const MockClientOAuth2 = jest.fn();
+const mockGetToken = vi.fn();
+const mockSign = vi.fn();
+const mockCreateToken = vi.fn();
+const MockClientOAuth2 = vi.fn();
 
-jest.mock('@n8n/client-oauth2', () => ({
+vi.mock('@n8n/client-oauth2', () => ({
 	ClientOAuth2: MockClientOAuth2,
 }));
 
@@ -27,7 +27,7 @@ describe('createOAuth2Client - scope handling', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		mockNode.name = 'test-node';
 		mockNode.credentials = { testOAuth2: { id: 'cred-id', name: 'cred-name' } };
 

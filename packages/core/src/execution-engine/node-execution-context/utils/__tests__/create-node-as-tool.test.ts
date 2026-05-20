@@ -1,11 +1,12 @@
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import type { INodeType, ISupplyDataFunctions, INode } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { createNodeAsTool } from '../create-node-as-tool';
 
-jest.mock('@langchain/core/tools', () => ({
-	DynamicStructuredTool: jest.fn().mockImplementation((config) => ({
+vi.mock('@langchain/core/tools', () => ({
+	DynamicStructuredTool: vi.fn().mockImplementation((config) => ({
 		name: config.name,
 		description: config.description,
 		schema: config.schema,
@@ -15,12 +16,12 @@ jest.mock('@langchain/core/tools', () => ({
 
 describe('createNodeAsTool', () => {
 	const context = mock<ISupplyDataFunctions>({
-		getNodeParameter: jest.fn(),
-		addInputData: jest.fn(),
-		addOutputData: jest.fn(),
-		getNode: jest.fn(),
+		getNodeParameter: vi.fn(),
+		addInputData: vi.fn(),
+		addOutputData: vi.fn(),
+		getNode: vi.fn(),
 	});
-	const handleToolInvocation = jest.fn();
+	const handleToolInvocation = vi.fn();
 	const nodeType = mock<INodeType>({
 		description: {
 			name: 'TestNode',
@@ -35,10 +36,10 @@ describe('createNodeAsTool', () => {
 	const options = { node, nodeType, handleToolInvocation };
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		(context.addInputData as jest.Mock).mockReturnValue({ index: 0 });
-		(context.getNode as jest.Mock).mockReturnValue(node);
-		(nodeType.execute as jest.Mock).mockResolvedValue([[{ json: { result: 'test' } }]]);
+		vi.clearAllMocks();
+		(context.addInputData as Mock).mockReturnValue({ index: 0 });
+		(context.getNode as Mock).mockReturnValue(node);
+		(nodeType.execute as Mock).mockResolvedValue([[{ json: { result: 'test' } }]]);
 
 		node.parameters = {
 			param1: "={{$fromAI('param1', 'Test parameter', 'string') }}",
@@ -217,7 +218,7 @@ describe('createNodeAsTool', () => {
 
 	describe('Error Handling and Edge Cases', () => {
 		it('should handle error during node execution', async () => {
-			nodeType.execute = jest.fn().mockRejectedValue(new Error('Execution failed'));
+			nodeType.execute = vi.fn().mockRejectedValue(new Error('Execution failed'));
 			const tool = createNodeAsTool(options).response;
 			handleToolInvocation.mockReturnValue('Error during node execution: some random issue.');
 

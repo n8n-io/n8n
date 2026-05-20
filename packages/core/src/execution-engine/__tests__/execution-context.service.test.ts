@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { IContextEstablishmentHook } from '@n8n/decorators';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import type {
 	IExecuteData,
 	IExecutionContext,
@@ -17,15 +18,21 @@ import type { ExecutionContextHookRegistry } from '../execution-context-hook-reg
 import { ExecutionContextService } from '../execution-context.service';
 
 // Mock the helper functions from n8n-workflow
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	toCredentialContext: jest.fn((data: string) => JSON.parse(data)),
-	toSecureArtifacts: jest.fn((data: string) => JSON.parse(data)),
-	toExecutionContextEstablishmentHookParameter: jest.fn(),
+const mocks = vi.hoisted(() => ({
+	toCredentialContext: vi.fn((data: string) => JSON.parse(data)),
+	toSecureArtifacts: vi.fn((data: string) => JSON.parse(data)),
+	toExecutionContextEstablishmentHookParameter: vi.fn(),
+}));
+
+vi.mock('n8n-workflow', async () => ({
+	...(await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')),
+	toCredentialContext: mocks.toCredentialContext,
+	toSecureArtifacts: mocks.toSecureArtifacts,
+	toExecutionContextEstablishmentHookParameter: mocks.toExecutionContextEstablishmentHookParameter,
 }));
 
 const { toCredentialContext, toSecureArtifacts, toExecutionContextEstablishmentHookParameter } =
-	jest.requireMock('n8n-workflow');
+	mocks;
 
 const sampleArtifacts: ISecureArtifacts = {
 	version: 1,
@@ -49,30 +56,30 @@ const sampleArtifacts: ISecureArtifacts = {
 
 describe('ExecutionContextService', () => {
 	let service: ExecutionContextService;
-	let mockLogger: jest.Mocked<Logger>;
-	let mockRegistry: jest.Mocked<ExecutionContextHookRegistry>;
-	let mockCipher: jest.Mocked<Cipher>;
+	let mockLogger: Mocked<Logger>;
+	let mockRegistry: Mocked<ExecutionContextHookRegistry>;
+	let mockCipher: Mocked<Cipher>;
 	let mockWorkflow: Workflow;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockLogger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-		} as unknown as jest.Mocked<Logger>;
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+		} as unknown as Mocked<Logger>;
 
 		mockRegistry = {
-			getHookByName: jest.fn(),
-			getGlobalHooks: jest.fn().mockReturnValue([]),
-		} as unknown as jest.Mocked<ExecutionContextHookRegistry>;
+			getHookByName: vi.fn(),
+			getGlobalHooks: vi.fn().mockReturnValue([]),
+		} as unknown as Mocked<ExecutionContextHookRegistry>;
 
 		mockCipher = {
-			decryptV2: jest.fn(),
-			encryptV2: jest.fn(),
-		} as unknown as jest.Mocked<Cipher>;
+			decryptV2: vi.fn(),
+			encryptV2: vi.fn(),
+		} as unknown as Mocked<Cipher>;
 
 		mockWorkflow = mock<Workflow>();
 
@@ -306,7 +313,9 @@ describe('ExecutionContextService', () => {
 			mockCipher.decryptV2.mockImplementation(async (data: string) => data);
 
 			// Use the real toSecureArtifacts so the round-trip exercises actual schema parsing.
-			const realToSecureArtifacts = jest.requireActual('n8n-workflow').toSecureArtifacts;
+			const realToSecureArtifacts = (
+				await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')
+			).toSecureArtifacts;
 			toSecureArtifacts.mockImplementation(realToSecureArtifacts);
 
 			const plaintext: PlaintextExecutionContext = {
@@ -449,7 +458,7 @@ describe('ExecutionContextService', () => {
 
 		it('should handle node with contextEstablishmentHooks but undefined hooks array', async () => {
 			// Temporarily use real parsing function
-			const realModule = jest.requireActual('n8n-workflow');
+			const realModule = await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow');
 			toExecutionContextEstablishmentHookParameter.mockImplementationOnce(
 				realModule.toExecutionContextEstablishmentHookParameter,
 			);
@@ -476,7 +485,7 @@ describe('ExecutionContextService', () => {
 			};
 
 			// Mock workflow.getNode to return null (service handles this gracefully)
-			mockWorkflow.getNode = jest.fn().mockReturnValue(null);
+			mockWorkflow.getNode = vi.fn().mockReturnValue(null);
 
 			const result = await service.augmentExecutionContextWithHooks(
 				mockWorkflow,

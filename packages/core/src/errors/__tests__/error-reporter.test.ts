@@ -2,27 +2,28 @@ import type { Logger } from '@n8n/backend-common';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { ErrorEvent } from '@sentry/core';
 import { AxiosError } from 'axios';
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import { ApplicationError, BaseError } from 'n8n-workflow';
 
 import { ErrorReporter } from '../error-reporter';
 
-jest.mock('@sentry/node', () => ({
-	init: jest.fn(),
-	setTag: jest.fn(),
-	captureException: jest.fn(),
+vi.mock('@sentry/node', () => ({
+	init: vi.fn(),
+	setTag: vi.fn(),
+	captureException: vi.fn(),
 	Integrations: {},
 }));
 
-const eventLoopBlockIntegrationMock = jest.fn((opts: unknown) => ({
+const eventLoopBlockIntegrationMock = vi.fn((opts: unknown) => ({
 	name: 'EventLoopBlock',
 	opts,
 }));
-jest.mock('@sentry/node-native', () => ({
+vi.mock('@sentry/node-native', () => ({
 	eventLoopBlockIntegration: (opts: unknown) => eventLoopBlockIntegrationMock(opts),
 }));
 
-jest.spyOn(process, 'on');
+vi.spyOn(process, 'on');
 
 describe('ErrorReporter', () => {
 	const errorReporter = new ErrorReporter(mock(), mock());
@@ -111,7 +112,7 @@ describe('ErrorReporter', () => {
 		});
 
 		describe('beforeSendFilter', () => {
-			const newErrorReportedWithBeforeSendFilter = (beforeSendFilter: jest.Mock) => {
+			const newErrorReportedWithBeforeSendFilter = (beforeSendFilter: Mock) => {
 				const errorReporter = new ErrorReporter(mock(), mock());
 				// @ts-expect-error - beforeSendFilter is private
 				errorReporter.beforeSendFilter = beforeSendFilter;
@@ -119,7 +120,7 @@ describe('ErrorReporter', () => {
 			};
 
 			it('should filter out based on the beforeSendFilter', async () => {
-				const beforeSendFilter = jest.fn().mockReturnValue(true);
+				const beforeSendFilter = vi.fn().mockReturnValue(true);
 				const errorReporter = newErrorReportedWithBeforeSendFilter(beforeSendFilter);
 				const hint = { originalException: new Error() };
 
@@ -130,7 +131,7 @@ describe('ErrorReporter', () => {
 			});
 
 			it('should not filter out when beforeSendFilter returns false', async () => {
-				const beforeSendFilter = jest.fn().mockReturnValue(false);
+				const beforeSendFilter = vi.fn().mockReturnValue(false);
 				const errorReporter = newErrorReportedWithBeforeSendFilter(beforeSendFilter);
 				const hint = { originalException: new Error() };
 

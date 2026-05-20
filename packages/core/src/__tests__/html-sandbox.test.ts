@@ -1,6 +1,6 @@
 import type { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	isWebhookHtmlSandboxingDisabled,
@@ -12,10 +12,10 @@ const securityConfig = mock<SecurityConfig>();
 
 describe('isWebhookHtmlSandboxingDisabled', () => {
 	beforeAll(() => {
-		jest.spyOn(Container, 'get').mockReturnValue(securityConfig);
+		vi.spyOn(Container, 'get').mockReturnValue(securityConfig);
 	});
 	afterAll(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	it('should return false when sandboxing is enabled', () => {
@@ -31,10 +31,10 @@ describe('isWebhookHtmlSandboxingDisabled', () => {
 
 describe('isFormHtmlSandboxingDisabled', () => {
 	beforeAll(() => {
-		jest.spyOn(Container, 'get').mockReturnValue(securityConfig);
+		vi.spyOn(Container, 'get').mockReturnValue(securityConfig);
 	});
 	afterAll(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	it('should return false when sandboxing is enabled', () => {

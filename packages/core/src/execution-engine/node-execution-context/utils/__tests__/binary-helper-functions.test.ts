@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { mkdtempSync, readFileSync } from 'fs';
 import { IncomingMessage } from 'http';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	IBinaryData,
 	INode,
@@ -52,7 +52,7 @@ describe('test binary data helper methods', () => {
 	let binaryDataService: BinaryDataService;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		binaryDataService = new BinaryDataService(binaryDataConfig, errorReporter, logger);
 		Container.set(BinaryDataService, binaryDataService);
 	});
@@ -1258,7 +1258,7 @@ describe('copyBinaryFile', () => {
 	const binaryDataService = mock<BinaryDataService>();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		Container.set(BinaryDataService, binaryDataService);
 		binaryDataService.copyBinaryFile.mockResolvedValueOnce(binaryData);
 	});
@@ -1316,7 +1316,7 @@ describe('prepareBinaryData', () => {
 	const binaryDataService = mock<BinaryDataService>();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		Container.set(BinaryDataService, binaryDataService);
 
 		binaryDataService.store.mockImplementation(async (_l, _b, binaryData) => binaryData);

@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { sign, JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { IBinaryData } from 'n8n-workflow';
 
@@ -9,7 +9,7 @@ import type { BinaryDataConfig } from '../binary-data.config';
 import { BinaryDataService } from '../binary-data.service';
 
 const now = new Date('2025-01-01T01:23:45.678Z');
-jest.useFakeTimers({ now });
+vi.useFakeTimers({ now });
 
 describe('BinaryDataService', () => {
 	const signingSecret = 'test-signing-secret';
@@ -21,7 +21,7 @@ describe('BinaryDataService', () => {
 
 	let service: BinaryDataService;
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		config.signingSecret = signingSecret;
 		service = new BinaryDataService(config, errorReporter, logger);

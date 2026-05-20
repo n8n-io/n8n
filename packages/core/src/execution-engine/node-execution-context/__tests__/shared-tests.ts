@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { captor, mock, type MockProxy } from 'jest-mock-extended';
+import { captor, mock, type MockProxy } from 'vitest-mock-extended';
 import type {
 	IRunExecutionData,
 	ContextType,
@@ -117,7 +117,7 @@ export const describeCommonTests = (
 	});
 
 	describe('onExecutionCancellation', () => {
-		const handler = jest.fn();
+		const handler = vi.fn();
 		context.onExecutionCancellation(handler);
 
 		const fnCaptor = captor<() => void>();
@@ -158,7 +158,7 @@ export const describeCommonTests = (
 		it('should return the context object', () => {
 			const contextType: ContextType = 'node';
 			const expectedContext = mock<IContextObject>();
-			const getContextSpy = jest.spyOn(NodeHelpers, 'getContext');
+			const getContextSpy = vi.spyOn(NodeHelpers, 'getContext');
 			getContextSpy.mockReturnValue(expectedContext);
 
 			expect(context.getContext(contextType)).toEqual(expectedContext);
@@ -231,7 +231,7 @@ export const describeCommonTests = (
 		it('should evaluate the expression correctly', () => {
 			const expression = '$json.test';
 			const expectedResult = 'data';
-			const resolveSimpleParameterValueSpy = jest.spyOn(
+			const resolveSimpleParameterValueSpy = vi.spyOn(
 				workflow.expression,
 				'resolveSimpleParameterValue',
 			);

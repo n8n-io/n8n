@@ -2,9 +2,9 @@ import vm from 'vm';
 
 import { loadClassInIsolation } from '../load-class-in-isolation';
 
-jest.mock('@n8n/backend-common', () => {
+vi.mock('@n8n/backend-common', async (importActual) => {
 	return {
-		...jest.requireActual('@n8n/backend-common'),
+		...(await importActual<typeof import('@n8n/backend-common')>()),
 		inTest: false,
 	};
 });
@@ -19,16 +19,16 @@ describe('loadClassInIsolation', () => {
 		}
 	}
 
-	jest.spyOn(vm, 'createContext').mockReturnValue({});
+	vi.spyOn(vm, 'createContext').mockReturnValue({});
 
-	const runInContext = jest.fn().mockImplementation(() => new TestClass());
-	const scriptSpy = jest.spyOn(vm, 'Script').mockImplementation(function (this: vm.Script) {
+	const runInContext = vi.fn().mockImplementation(() => new TestClass());
+	const scriptSpy = vi.spyOn(vm, 'Script').mockImplementation(function (this: vm.Script) {
 		this.runInContext = runInContext;
 		return this;
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should create script with correct require statement', () => {

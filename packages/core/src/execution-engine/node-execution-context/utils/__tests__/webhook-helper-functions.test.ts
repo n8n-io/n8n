@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	WebhookType,
 	Workflow,
@@ -19,7 +19,7 @@ describe('Webhook Helper Functions', () => {
 	const nodeType = mock<INodeType>();
 	const node = mock<INode>({ name: 'test-node' });
 
-	beforeEach(() => jest.resetAllMocks());
+	beforeEach(() => vi.resetAllMocks());
 
 	describe('getWebhookDescription', () => {
 		const tests: Array<{

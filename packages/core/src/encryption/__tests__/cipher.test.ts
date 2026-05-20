@@ -191,7 +191,7 @@ describe('Cipher', () => {
 		};
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 			encryptionKeyProxy.setProvider(undefined);
 		});
 
