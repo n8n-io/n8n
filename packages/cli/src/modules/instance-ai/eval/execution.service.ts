@@ -114,23 +114,21 @@ export class EvalExecutionService {
 			throw error;
 		}
 
-		// Resolve the PostHog kill-switch only after the guard has cleared.
-		// `unpinNodes` is only safe when the credential rewrite + wire server
-		// are running; if the flag is off, vendor SDKs would execute against
-		// real credentials. For the empty case, today's pinned path runs and
-		// no flag check is needed.
-		const interceptionEnabled =
-			unpinNodes.length > 0 ? await this.isInterceptionEnabled(user) : false;
-
-		// Safety gate: refuse opt-in requests when the kill-switch is off.
-		// Without interception the request would leak vendor traffic to the
-		// real provider.
-		if (unpinNodes.length > 0 && !interceptionEnabled) {
-			return this.errorResult(
-				executionId,
-				'`unpinNodes` is reserved — vendor SDK interception is currently disabled. ' +
-					'Submit the request without `unpinNodes` to use the existing pinned path.',
-			);
+		// Resolve the PostHog kill-switch and apply the safety gate only when
+		// the caller opted in. For empty `unpinNodes`, today's pinned path
+		// runs unchanged — no flag check, no gate. When opt-in is requested,
+		// flag-off refuses the request so vendor SDKs can't execute against
+		// real credentials.
+		let interceptionEnabled = false;
+		if (unpinNodes.length > 0) {
+			interceptionEnabled = await this.isInterceptionEnabled(user);
+			if (!interceptionEnabled) {
+				return this.errorResult(
+					executionId,
+					'`unpinNodes` is reserved — vendor SDK interception is currently disabled. ' +
+						'Submit the request without `unpinNodes` to use the existing pinned path.',
+				);
+			}
 		}
 
 		const unpinSet = unpinNodes.length > 0 ? new Set(unpinNodes) : undefined;
