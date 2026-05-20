@@ -405,28 +405,32 @@ describe('ExecutionRepository', () => {
 
 			const updateSpy = jest.spyOn(executionRepository, 'updateExistingExecution');
 
-			const result = await executionRepository.stopDuringRun(mockExecution as IExecutionResponse);
+			try {
+				const result = await executionRepository.stopDuringRun(mockExecution as IExecutionResponse);
 
-			// Verify updateExistingExecution was called with the execution
-			expect(updateSpy).toHaveBeenCalledWith(
-				'123',
-				expect.objectContaining({
-					status: 'canceled',
-					stoppedAt: expect.any(Date),
-					waitTill: null,
-					data: expect.objectContaining({
-						resultData: expect.objectContaining({
-							error: expect.objectContaining({
-								message: 'The execution was cancelled manually',
+				// Verify updateExistingExecution was called with the execution
+				expect(updateSpy).toHaveBeenCalledWith(
+					'123',
+					expect.objectContaining({
+						status: 'canceled',
+						stoppedAt: expect.any(Date),
+						waitTill: null,
+						data: expect.objectContaining({
+							resultData: expect.objectContaining({
+								error: expect.objectContaining({
+									message: 'The execution was cancelled manually',
+								}),
 							}),
 						}),
 					}),
-				}),
-			);
+				);
 
-			// Verify the execution was marked as canceled
-			expect(result.status).toBe('canceled');
-			expect(result.data.resultData.error?.message).toBe('The execution was cancelled manually');
+				// Verify the execution was marked as canceled
+				expect(result.status).toBe('canceled');
+				expect(result.data.resultData.error?.message).toBe('The execution was cancelled manually');
+			} finally {
+				updateSpy.mockRestore();
+			}
 		});
 	});
 
