@@ -570,7 +570,7 @@ const onDragEnd = (el: HTMLElement) => {
 							:search="search"
 							:draggable="mappingEnabled"
 							:collapsed="closedNodes.has(item.id)"
-							:highlight="ndvStore.value.highlightDraggables"
+							:highlight="ndvStore.highlightDraggables"
 							@click="toggleNode(item.id)"
 						>
 						</VirtualSchemaItem>
@@ -627,8 +627,8 @@ const onDragEnd = (el: HTMLElement) => {
 								>
 									<template #link>
 										<NodeExecuteButton
-											v-if="ndvStore.value.activeNodeName"
-											:node-name="ndvStore.value.activeNodeName"
+											v-if="ndvStore.activeNodeName"
+											:node-name="ndvStore.activeNodeName"
 											:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
 											telemetry-source="inputs"
 											size="small"

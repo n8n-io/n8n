@@ -49,7 +49,7 @@ const clipboard = useClipboard();
 
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
-const { activeNode } = ndvStore;
+const activeNode = computed(() => ndvStore.value.activeNode);
 const pinnedData = usePinnedData(activeNode);
 const { showToast } = useToast();
 const telemetry = useTelemetry();

@@ -151,7 +151,7 @@ function stopLoading() {
 
 async function onSubmit() {
 	const { restApiContext } = useRootStore();
-	const { activeNode } = ndvStore;
+	const activeNode = ndvStore.value.activeNode;
 	const { showMessage } = useToast();
 	const { alert } = useMessage();
 	if (!activeNode) return;
