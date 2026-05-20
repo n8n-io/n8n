@@ -64,7 +64,6 @@ runs:
           echo "::error::setup-node did not activate Node ${EXPECTED_NODE_VERSION} (got ${ACTUAL_NODE_VERSION})"
           exit 1
         fi
-        echo "Node ${ACTUAL_NODE_VERSION} active as expected."
 
     # To avoid setup-node cache failure.
     # see: https://github.com/actions/setup-node/issues/1137
