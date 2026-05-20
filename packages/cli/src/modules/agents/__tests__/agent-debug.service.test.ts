@@ -132,6 +132,7 @@ describe('AgentDebugService', () => {
 		return {
 			id: 'execution-1',
 			threadId: 'thread-1',
+			agentVersionId: 'version-1',
 			thread: {
 				id: 'thread-1',
 				agentId: 'agent-1',
@@ -188,9 +189,11 @@ describe('AgentDebugService', () => {
 			projectId: 'project-1',
 			agentId: 'agent-1',
 			agentVersionId: 'version-1',
+			conversationId: 'thread-1',
 			executionId: 'execution-1',
 			status: 'approved',
 			rejectionReason: null,
+			toolCallCorrection: null,
 			input: 'Question',
 			expectedOutput: 'Expected answer',
 			actualOutput: 'Actual answer',
@@ -226,7 +229,6 @@ describe('AgentDebugService', () => {
 		expect(agentEvaluationCaseRepository.findByAgent).toHaveBeenCalledWith(
 			'project-1',
 			'agent-1',
-			'version-1',
 			2,
 			undefined,
 		);
@@ -251,9 +253,12 @@ describe('AgentDebugService', () => {
 			id: 'review-1',
 			projectId: 'project-1',
 			agentId: 'agent-1',
+			agentVersionId: 'version-1',
+			conversationId: 'thread-1',
 			executionId: 'execution-1',
 			status: 'approved',
 			rejectionReason: null,
+			toolCallCorrection: null,
 			input: execution.userMessage,
 			expectedOutput: '',
 			actualOutput: '',
@@ -292,9 +297,11 @@ describe('AgentDebugService', () => {
 				projectId: 'project-1',
 				agentId: 'agent-1',
 				agentVersionId: 'version-1',
+				conversationId: 'thread-1',
 				executionId: 'execution-1',
 				status: 'approved',
 				rejectionReason: null,
+				toolCallCorrection: null,
 				input: execution.userMessage,
 				expectedOutput: 'Expected summary',
 				actualOutput: execution.assistantResponse,
@@ -326,9 +333,11 @@ describe('AgentDebugService', () => {
 			projectId: 'project-1',
 			agentId: 'agent-1',
 			agentVersionId: 'version-1',
+			conversationId: 'thread-1',
 			executionId: 'execution-1',
 			status: 'approved',
 			rejectionReason: null,
+			toolCallCorrection: null,
 			input: execution.userMessage,
 			expectedOutput: '',
 			actualOutput: '',
@@ -352,20 +361,35 @@ describe('AgentDebugService', () => {
 			'project-1',
 			'agent-1',
 			'execution-1',
-			{ status: 'rejected', rejectionReason: 'wrong_tool' },
+			{
+				status: 'rejected',
+				rejectionReason: 'wrong_tool_calling',
+				toolCallCorrection: {
+					removeToolCalls: [{ id: 'tool-1', name: 'search' }],
+					addToolNames: ['lookup'],
+				},
+			},
 			'user-1',
 		);
 
 		expect(agentEvaluationCaseRepository.save).toHaveBeenCalledWith(
 			expect.objectContaining({
 				status: 'rejected',
-				rejectionReason: 'wrong_tool',
+				rejectionReason: 'wrong_tool_calling',
+				toolCallCorrection: {
+					removeToolCalls: [{ id: 'tool-1', name: 'search' }],
+					addToolNames: ['lookup'],
+				},
 			}),
 		);
 		expect(review).toEqual(
 			expect.objectContaining({
 				status: 'rejected',
-				rejectionReason: 'wrong_tool',
+				rejectionReason: 'wrong_tool_calling',
+				toolCallCorrection: {
+					removeToolCalls: [{ id: 'tool-1', name: 'search' }],
+					addToolNames: ['lookup'],
+				},
 			}),
 		);
 	});

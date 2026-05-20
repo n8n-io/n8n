@@ -14,9 +14,11 @@ export const listAgentDebugRuns = async (
 	agentId: string,
 	limit: number,
 	cursor?: string,
+	agentVersionId?: string,
 ): Promise<AgentDebugRunsResponse> => {
 	const params = new URLSearchParams({ limit: String(limit) });
 	if (cursor) params.set('cursor', cursor);
+	if (agentVersionId) params.set('agentVersionId', agentVersionId);
 
 	return await makeRestApiRequest<AgentDebugRunsResponse>(
 		context,

@@ -18,7 +18,11 @@ import { AGENT_EVALUATION_MIN_REVIEWED_CASES } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
 
-import { AgentsService, type AgentEvaluationToolMock } from './agents.service';
+import {
+	AgentsService,
+	type AgentEvaluationConversationMessage,
+	type AgentEvaluationToolMock,
+} from './agents.service';
 import type { AgentEvaluationCase } from './entities/agent-evaluation-case.entity';
 import type { AgentEvaluationRun } from './entities/agent-evaluation-run.entity';
 import type { AgentExecution } from './entities/agent-execution.entity';
@@ -34,13 +38,19 @@ const RECENT_RUNS_LIMIT = 20;
 const SUITE_CASE_LIMIT = 100;
 const FIRST_RUN_CASE_LIMIT = AGENT_EVALUATION_MIN_REVIEWED_CASES;
 const SIMILARITY_PASS_THRESHOLD = 0.65;
-const REJECTED_PATTERN_THRESHOLD = 0.8;
+const ANSWER_CORRECTNESS_METRIC_ID = 'answer-correctness';
+const CALLED_TOOLS_METRIC_ID = 'called-tools-unordered';
 
 interface AgentEvaluationVersionContext {
 	currentAgentVersionId: string;
 	selectedAgentVersionId: string;
 	selectedVersionCanRun: boolean;
 	versions: AgentEvaluationVersionSummary[];
+}
+
+interface ExpectedToolCall {
+	id: string;
+	name: string;
 }
 
 @Service()
@@ -58,21 +68,17 @@ export class AgentEvaluationsService {
 		agentId: string,
 		agentVersionId?: string,
 	): Promise<AgentEvaluationDatasetResponse> {
-		const versionContext = await this.resolveVersionContext(projectId, agentId, agentVersionId);
+		const summary = await this.agentEvaluationCaseRepository.countByStatus(projectId, agentId);
+		const versionContext = await this.resolveVersionContext(
+			projectId,
+			agentId,
+			summary,
+			agentVersionId,
+		);
 		if (!versionContext) return this.emptyDatasetResponse();
 
-		const [summary, cases, recentRuns] = await Promise.all([
-			this.agentEvaluationCaseRepository.countByStatus(
-				projectId,
-				agentId,
-				versionContext.selectedAgentVersionId,
-			),
-			this.agentEvaluationCaseRepository.findByAgent(
-				projectId,
-				agentId,
-				versionContext.selectedAgentVersionId,
-				DATASET_PREVIEW_LIMIT,
-			),
+		const [cases, recentRuns] = await Promise.all([
+			this.agentEvaluationCaseRepository.findByAgent(projectId, agentId, DATASET_PREVIEW_LIMIT),
 			this.agentEvaluationRunRepository.findRecentByAgent(projectId, agentId, RECENT_RUNS_LIMIT),
 		]);
 
@@ -90,24 +96,17 @@ export class AgentEvaluationsService {
 	async setupSuite(
 		projectId: string,
 		agentId: string,
-		agentVersionId?: string,
+		_agentVersionId?: string,
 	): Promise<AgentEvaluationSuiteSetupResponse> {
-		const versionContext = await this.resolveVersionContext(projectId, agentId, agentVersionId);
+		const summary = await this.agentEvaluationCaseRepository.countByStatus(projectId, agentId);
+		const versionContext = await this.resolveVersionContext(projectId, agentId, summary);
 		if (!versionContext) return this.emptySuiteSetupResponse();
 
-		const [summary, cases] = await Promise.all([
-			this.agentEvaluationCaseRepository.countByStatus(
-				projectId,
-				agentId,
-				versionContext.selectedAgentVersionId,
-			),
-			this.agentEvaluationCaseRepository.findByAgent(
-				projectId,
-				agentId,
-				versionContext.selectedAgentVersionId,
-				SUITE_CASE_LIMIT,
-			),
-		]);
+		const cases = await this.agentEvaluationCaseRepository.findByAgent(
+			projectId,
+			agentId,
+			SUITE_CASE_LIMIT,
+		);
 		const readiness = this.toReadiness(summary, versionContext);
 
 		if (!readiness.isReady) {
@@ -133,26 +132,15 @@ export class AgentEvaluationsService {
 		userId: string,
 		options: AgentEvaluationSuiteRunRequest = {},
 	): Promise<AgentEvaluationSuiteRunResponse> {
-		const versionContext = await this.resolveVersionContext(
-			projectId,
-			agentId,
-			options.agentVersionId,
-		);
+		const summary = await this.agentEvaluationCaseRepository.countByStatus(projectId, agentId);
+		const versionContext = await this.resolveVersionContext(projectId, agentId, summary);
 		if (!versionContext) return this.emptySuiteRunResponse();
 
-		const [summary, cases] = await Promise.all([
-			this.agentEvaluationCaseRepository.countByStatus(
-				projectId,
-				agentId,
-				versionContext.selectedAgentVersionId,
-			),
-			this.agentEvaluationCaseRepository.findByAgent(
-				projectId,
-				agentId,
-				versionContext.selectedAgentVersionId,
-				FIRST_RUN_CASE_LIMIT,
-			),
-		]);
+		const cases = await this.agentEvaluationCaseRepository.findByAgent(
+			projectId,
+			agentId,
+			FIRST_RUN_CASE_LIMIT,
+		);
 		const readiness = this.toReadiness(summary, versionContext);
 
 		if (!readiness.isReady || !readiness.agentVersionCanRun) {
@@ -172,7 +160,7 @@ export class AgentEvaluationsService {
 			cases.map((evaluationCase) => evaluationCase.executionId),
 		);
 		const results: AgentEvaluationRunCaseResult[] = [];
-		const metrics = this.selectMetrics(summary, options.enabledMetricIds);
+		const metrics = this.selectMetrics(options.enabledMetricIds);
 
 		for (const evaluationCase of cases) {
 			const execution = executionsById.get(evaluationCase.executionId) ?? null;
@@ -181,6 +169,11 @@ export class AgentEvaluationsService {
 			}
 
 			const toolMocks = execution ? this.toToolMocks(execution) : [];
+			const conversationHistory = execution
+				? this.toConversationHistory(
+						await this.findConversationHistoryBefore(projectId, agentId, execution),
+					)
+				: [];
 			try {
 				const executionResult = await this.agentsService.executeEvaluationCase({
 					agentId,
@@ -188,6 +181,7 @@ export class AgentEvaluationsService {
 					projectId,
 					userId,
 					message: evaluationCase.input,
+					conversationHistory,
 					toolMocks,
 				});
 				for (const warning of executionResult.warnings) warnings.add(warning);
@@ -195,8 +189,19 @@ export class AgentEvaluationsService {
 					warnings.add('Some tool calls did not have recorded outputs.');
 				}
 
+				const expectedToolNames = execution
+					? this.toExpectedToolNames(execution, evaluationCase)
+					: [];
+				const actualToolNames = executionResult.toolCalls.map((toolCall) => toolCall.name);
 				const metricResults = metrics.map((metric) =>
-					this.scoreMetric(metric, evaluationCase, executionResult.output, executionResult.error),
+					this.scoreMetric(
+						metric,
+						evaluationCase,
+						executionResult.output,
+						executionResult.error,
+						expectedToolNames,
+						actualToolNames,
+					),
 				);
 				const status =
 					executionResult.error !== null
@@ -247,7 +252,7 @@ export class AgentEvaluationsService {
 		const completedAt = new Date();
 		const run: AgentEvaluationSuiteRun = {
 			id: randomUUID(),
-			suiteId: this.toSuiteId(agentId, versionContext.selectedAgentVersionId),
+			suiteId: this.toSuiteId(agentId),
 			agentVersionId: versionContext.selectedAgentVersionId,
 			startedAt: startedAt.toISOString(),
 			completedAt: completedAt.toISOString(),
@@ -313,6 +318,7 @@ export class AgentEvaluationsService {
 	private async resolveVersionContext(
 		projectId: string,
 		agentId: string,
+		summary: AgentReviewSummary,
 		requestedAgentVersionId?: string,
 	): Promise<AgentEvaluationVersionContext | null> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
@@ -326,14 +332,13 @@ export class AgentEvaluationsService {
 		);
 		const versionsById = new Map<string, AgentEvaluationVersionSummary>();
 
-		for (const summary of summaries) {
-			versionsById.set(summary.agentVersionId, {
-				...summary,
-				isCurrent: summary.agentVersionId === currentAgentVersionId,
-				isPublished: summary.agentVersionId === publishedAgentVersionId,
-				canRun:
-					summary.agentVersionId === currentAgentVersionId ||
-					summary.agentVersionId === publishedAgentVersionId,
+		for (const versionSummary of summaries) {
+			versionsById.set(versionSummary.agentVersionId, {
+				agentVersionId: versionSummary.agentVersionId,
+				...this.withSharedDatasetSummary(versionSummary.updatedAt, summary),
+				isCurrent: versionSummary.agentVersionId === currentAgentVersionId,
+				isPublished: versionSummary.agentVersionId === publishedAgentVersionId,
+				canRun: versionSummary.agentVersionId === currentAgentVersionId,
 			});
 		}
 
@@ -343,9 +348,8 @@ export class AgentEvaluationsService {
 				agentVersionId,
 				isCurrent: agentVersionId === currentAgentVersionId,
 				isPublished: agentVersionId === publishedAgentVersionId,
-				canRun: true,
-				updatedAt: null,
-				...this.emptySummary(),
+				canRun: agentVersionId === currentAgentVersionId,
+				...this.withSharedDatasetSummary(null, summary),
 			});
 		}
 
@@ -364,6 +368,16 @@ export class AgentEvaluationsService {
 				if (left.isPublished !== right.isPublished) return left.isPublished ? -1 : 1;
 				return (right.updatedAt ?? '').localeCompare(left.updatedAt ?? '');
 			}),
+		};
+	}
+
+	private withSharedDatasetSummary(
+		updatedAt: string | null,
+		summary: AgentReviewSummary,
+	): AgentReviewSummary & { updatedAt: string | null } {
+		return {
+			...summary,
+			updatedAt,
 		};
 	}
 
@@ -386,8 +400,8 @@ export class AgentEvaluationsService {
 		};
 	}
 
-	private toSuiteId(agentId: string, agentVersionId: string): string {
-		return `agent-${agentId}-${agentVersionId}-reviewed-cases-v0`;
+	private toSuiteId(agentId: string): string {
+		return `agent-${agentId}-reviewed-cases-v0`;
 	}
 
 	private toSuiteDraft(
@@ -397,7 +411,7 @@ export class AgentEvaluationsService {
 		cases: AgentEvaluationCase[],
 	): AgentEvaluationSuiteDraft {
 		return {
-			id: this.toSuiteId(agentId, agentVersionId),
+			id: this.toSuiteId(agentId),
 			agentVersionId,
 			name: 'Reviewed cases suite',
 			description: 'Draft evaluation suite generated from reviewed agent runs.',
@@ -406,45 +420,33 @@ export class AgentEvaluationsService {
 			rejectedCases: summary.rejected,
 			toolMocking: 'Recorded tool outputs from reviewed runs when available',
 			memoryMocking: 'Empty memory for the first evaluation run',
-			metrics: this.suggestMetrics(summary),
+			metrics: this.suggestMetrics(),
 		};
 	}
 
-	private suggestMetrics(summary: AgentReviewSummary): AgentEvaluationMetricSuggestion[] {
+	private suggestMetrics(): AgentEvaluationMetricSuggestion[] {
 		return [
 			{
-				id: 'expected-output-similarity',
-				name: 'Expected output similarity',
+				id: ANSWER_CORRECTNESS_METRIC_ID,
+				name: 'Answer correctness',
 				type: 'judge',
-				description: 'Compare the new agent response with the expected output saved during review.',
+				description: 'Checks the agent response against the expected answer saved during review.',
 				enabled: true,
 			},
 			{
-				id: 'task-completion',
-				name: 'Task completion',
-				type: 'judge',
-				description: 'Check whether the response satisfies the reviewed user input.',
-				enabled: true,
-			},
-			{
-				id: 'rejected-pattern-check',
-				name: 'Rejected pattern check',
+				id: CALLED_TOOLS_METRIC_ID,
+				name: 'Called tools',
 				type: 'check',
-				description: 'Flag responses that repeat behavior captured in rejected reviewed cases.',
-				enabled: summary.rejected > 0,
+				description: 'Checks the unordered list of called tools against the reviewed expectation.',
+				enabled: true,
 			},
 		];
 	}
 
 	private selectMetrics(
-		summary: AgentReviewSummary,
-		enabledMetricIds: string[] | undefined,
+		_enabledMetricIds: string[] | undefined,
 	): AgentEvaluationMetricSuggestion[] {
-		const metrics = this.suggestMetrics(summary);
-		if (enabledMetricIds === undefined) return metrics.filter((metric) => metric.enabled);
-
-		const enabledIds = new Set(enabledMetricIds);
-		return metrics.filter((metric) => enabledIds.has(metric.id));
+		return this.suggestMetrics();
 	}
 
 	private async findExecutionsById(
@@ -463,6 +465,40 @@ export class AgentEvaluationsService {
 			.getMany();
 
 		return new Map(executions.map((execution) => [execution.id, execution]));
+	}
+
+	private async findConversationHistoryBefore(
+		projectId: string,
+		agentId: string,
+		execution: AgentExecution,
+	): Promise<AgentExecution[]> {
+		return await this.agentExecutionRepository
+			.createQueryBuilder('execution')
+			.innerJoin('execution.thread', 'thread')
+			.where('execution.threadId = :threadId', { threadId: execution.threadId })
+			.andWhere('execution.createdAt < :createdAt', { createdAt: execution.createdAt })
+			.andWhere('thread.projectId = :projectId', { projectId })
+			.andWhere('thread.agentId = :agentId', { agentId })
+			.orderBy('execution.createdAt', 'ASC')
+			.getMany();
+	}
+
+	private toConversationHistory(
+		executions: AgentExecution[],
+	): AgentEvaluationConversationMessage[] {
+		return executions.flatMap((execution) => {
+			const messages: AgentEvaluationConversationMessage[] = [];
+			if (execution.userMessage?.trim()) {
+				messages.push({ role: 'user', text: execution.userMessage });
+			}
+			const assistantText =
+				execution.assistantResponse?.trim() ||
+				(execution.error?.trim() ? `Error: ${execution.error}` : '');
+			if (assistantText) {
+				messages.push({ role: 'assistant', text: assistantText });
+			}
+			return messages;
+		});
 	}
 
 	private toToolMocks(execution: AgentExecution): AgentEvaluationToolMock[] {
@@ -503,46 +539,65 @@ export class AgentEvaluationsService {
 		return event.type === 'tool-call';
 	}
 
+	private toExpectedToolNames(
+		execution: AgentExecution,
+		evaluationCase: AgentEvaluationCase,
+	): string[] {
+		const expectedCalls = this.toExpectedToolCalls(execution);
+		if (
+			evaluationCase.status !== 'rejected' ||
+			evaluationCase.rejectionReason !== 'wrong_tool_calling' ||
+			!evaluationCase.toolCallCorrection
+		) {
+			return expectedCalls.map((toolCall) => toolCall.name);
+		}
+
+		const correctedCalls = [...expectedCalls];
+		for (const toolCallToRemove of evaluationCase.toolCallCorrection.removeToolCalls) {
+			const indexById = correctedCalls.findIndex((toolCall) => toolCall.id === toolCallToRemove.id);
+			if (indexById !== -1) {
+				correctedCalls.splice(indexById, 1);
+				continue;
+			}
+
+			const indexByName = correctedCalls.findIndex(
+				(toolCall) => toolCall.name === toolCallToRemove.name,
+			);
+			if (indexByName !== -1) correctedCalls.splice(indexByName, 1);
+		}
+
+		return [
+			...correctedCalls.map((toolCall) => toolCall.name),
+			...evaluationCase.toolCallCorrection.addToolNames,
+		];
+	}
+
+	private toExpectedToolCalls(execution: AgentExecution): ExpectedToolCall[] {
+		const timelineToolCalls = (execution.timeline ?? [])
+			.filter((event) => this.isToolCallEvent(event))
+			.map((event, index) => ({
+				id: event.toolCallId ?? `${execution.id}:tool:${index}`,
+				name: event.name,
+			}));
+
+		if (timelineToolCalls.length > 0) return timelineToolCalls;
+
+		return (execution.toolCalls ?? []).map((toolCall, index) => ({
+			id: `${execution.id}:tool:${index}`,
+			name: toolCall.name,
+		}));
+	}
+
 	private scoreMetric(
 		metric: AgentEvaluationMetricSuggestion,
 		evaluationCase: AgentEvaluationCase,
 		output: string,
 		error: string | null,
+		expectedToolNames: string[],
+		actualToolNames: string[],
 	): AgentEvaluationRunMetricResult {
-		if (metric.id === 'task-completion') {
-			const pass = error === null && output.trim().length > 0;
-			return {
-				id: metric.id,
-				name: metric.name,
-				score: pass ? 1 : 0,
-				pass,
-				reason: pass
-					? 'The agent returned a response.'
-					: 'The agent did not return a usable response.',
-			};
-		}
-
-		if (metric.id === 'rejected-pattern-check') {
-			if (evaluationCase.status !== 'rejected') {
-				return {
-					id: metric.id,
-					name: metric.name,
-					score: 1,
-					pass: true,
-					reason: 'The reviewed case was approved.',
-				};
-			}
-			const similarity = this.scoreTextSimilarity(output, evaluationCase.actualOutput);
-			const pass = similarity < REJECTED_PATTERN_THRESHOLD;
-			return {
-				id: metric.id,
-				name: metric.name,
-				score: 1 - similarity,
-				pass,
-				reason: pass
-					? 'The response does not closely match the rejected output.'
-					: 'The response is too similar to the rejected output.',
-			};
+		if (metric.id === CALLED_TOOLS_METRIC_ID) {
+			return this.scoreCalledToolsMetric(metric, expectedToolNames, actualToolNames, error);
 		}
 
 		const score = this.scoreTextSimilarity(output, evaluationCase.expectedOutput);
@@ -553,9 +608,66 @@ export class AgentEvaluationsService {
 			score,
 			pass,
 			reason: pass
-				? 'The response is similar to the expected output.'
-				: 'The response differs from the expected output.',
+				? 'The answer matches the expected answer.'
+				: 'The answer differs from the expected answer.',
 		};
+	}
+
+	private scoreCalledToolsMetric(
+		metric: AgentEvaluationMetricSuggestion,
+		expectedToolNames: string[],
+		actualToolNames: string[],
+		error: string | null,
+	): AgentEvaluationRunMetricResult {
+		const expected = this.toSortedToolNames(expectedToolNames);
+		const actual = this.toSortedToolNames(actualToolNames);
+		const pass = error === null && this.sameStringList(expected, actual);
+		const score = error === null ? this.scoreToolListOverlap(expected, actual) : 0;
+
+		return {
+			id: metric.id,
+			name: metric.name,
+			score,
+			pass,
+			reason: pass
+				? 'The called tools match the reviewed expectation.'
+				: `Expected tools: ${this.formatToolList(expected)}. Called tools: ${this.formatToolList(actual)}.`,
+		};
+	}
+
+	private toSortedToolNames(toolNames: string[]): string[] {
+		return toolNames
+			.map((toolName) => toolName.trim())
+			.filter(Boolean)
+			.sort();
+	}
+
+	private sameStringList(left: string[], right: string[]): boolean {
+		return left.length === right.length && left.every((value, index) => value === right[index]);
+	}
+
+	private scoreToolListOverlap(expected: string[], actual: string[]): number {
+		if (expected.length === 0 && actual.length === 0) return 1;
+		if (expected.length === 0 || actual.length === 0) return 0;
+
+		const actualCounts = new Map<string, number>();
+		for (const toolName of actual) {
+			actualCounts.set(toolName, (actualCounts.get(toolName) ?? 0) + 1);
+		}
+
+		let overlap = 0;
+		for (const toolName of expected) {
+			const count = actualCounts.get(toolName) ?? 0;
+			if (count === 0) continue;
+			overlap += 1;
+			actualCounts.set(toolName, count - 1);
+		}
+
+		return overlap / Math.max(expected.length, actual.length);
+	}
+
+	private formatToolList(toolNames: string[]): string {
+		return toolNames.length > 0 ? toolNames.join(', ') : 'none';
 	}
 
 	private scoreTextSimilarity(left: string, right: string): number {
@@ -615,9 +727,11 @@ export class AgentEvaluationsService {
 			projectId: evaluationCase.projectId,
 			agentId: evaluationCase.agentId,
 			agentVersionId: evaluationCase.agentVersionId,
+			conversationId: evaluationCase.conversationId,
 			executionId: evaluationCase.executionId,
 			status: evaluationCase.status,
 			rejectionReason: evaluationCase.rejectionReason,
+			toolCallCorrection: evaluationCase.toolCallCorrection,
 			input: evaluationCase.input,
 			expectedOutput: evaluationCase.expectedOutput,
 			actualOutput: evaluationCase.actualOutput,

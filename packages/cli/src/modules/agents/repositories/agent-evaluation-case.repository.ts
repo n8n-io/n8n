@@ -10,13 +10,10 @@ export class AgentEvaluationCaseRepository extends Repository<AgentEvaluationCas
 		super(AgentEvaluationCase, dataSource.manager);
 	}
 
-	async findByExecutionIds(
-		executionIds: string[],
-		agentVersionId: string,
-	): Promise<AgentEvaluationCase[]> {
+	async findByExecutionIds(executionIds: string[]): Promise<AgentEvaluationCase[]> {
 		if (executionIds.length === 0) return [];
 
-		return await this.find({ where: { executionId: In(executionIds), agentVersionId } });
+		return await this.find({ where: { executionId: In(executionIds) } });
 	}
 
 	async findByExecutionId(
@@ -39,19 +36,14 @@ export class AgentEvaluationCaseRepository extends Repository<AgentEvaluationCas
 	async findByAgent(
 		projectId: string,
 		agentId: string,
-		agentVersionId: string,
 		limit: number,
 		cursor?: string,
 	): Promise<AgentEvaluationCase[]> {
 		const query = this.createQueryBuilder('review')
-			.where(
-				'review.projectId = :projectId AND review.agentId = :agentId AND review.agentVersionId = :agentVersionId',
-				{
-					projectId,
-					agentId,
-					agentVersionId,
-				},
-			)
+			.where('review.projectId = :projectId AND review.agentId = :agentId', {
+				projectId,
+				agentId,
+			})
 			.orderBy('review.updatedAt', 'DESC')
 			.take(limit);
 
@@ -62,15 +54,11 @@ export class AgentEvaluationCaseRepository extends Repository<AgentEvaluationCas
 		return await query.getMany();
 	}
 
-	async countByStatus(
-		projectId: string,
-		agentId: string,
-		agentVersionId: string,
-	): Promise<AgentReviewSummary> {
+	async countByStatus(projectId: string, agentId: string): Promise<AgentReviewSummary> {
 		const [total, approved, rejected] = await Promise.all([
-			this.countBy({ projectId, agentId, agentVersionId }),
-			this.countBy({ projectId, agentId, agentVersionId, status: 'approved' }),
-			this.countBy({ projectId, agentId, agentVersionId, status: 'rejected' }),
+			this.countBy({ projectId, agentId }),
+			this.countBy({ projectId, agentId, status: 'approved' }),
+			this.countBy({ projectId, agentId, status: 'rejected' }),
 		]);
 
 		return { total, approved, rejected };
@@ -121,8 +109,7 @@ export class AgentEvaluationCaseRepository extends Repository<AgentEvaluationCas
 		projectId: string,
 		agentId: string,
 		executionId: string,
-		agentVersionId: string,
 	): Promise<void> {
-		await this.delete({ projectId, agentId, executionId, agentVersionId });
+		await this.delete({ projectId, agentId, executionId });
 	}
 }

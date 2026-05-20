@@ -2,6 +2,7 @@ import type {
 	AgentDebugInsightsResponse,
 	AgentDebugRun,
 	AgentDebugRunDetail,
+	AgentDebugRunVersionSummary,
 	AgentReviewCase,
 	UpsertAgentReviewCaseDto,
 } from '@n8n/api-types';
@@ -21,6 +22,7 @@ const ITEMS_PER_PAGE = 20;
 
 export const useAgentDebugStore = defineStore('agentDebug', () => {
 	const runs = ref<AgentDebugRun[]>([]);
+	const runVersions = ref<AgentDebugRunVersionSummary[]>([]);
 	const selectedRun = shallowRef<AgentDebugRunDetail | null>(null);
 	const insights = shallowRef<AgentDebugInsightsResponse | null>(null);
 	const nextCursor = ref<string | null>(null);
@@ -30,12 +32,12 @@ export const useAgentDebugStore = defineStore('agentDebug', () => {
 	let latestListKey: string | null = null;
 	let latestDetailKey: string | null = null;
 
-	function keyFor(projectId: string, agentId: string) {
-		return `${projectId}:${agentId}`;
+	function keyFor(projectId: string, agentId: string, agentVersionId?: string) {
+		return `${projectId}:${agentId}:${agentVersionId ?? 'all'}`;
 	}
 
-	async function fetchRuns(projectId: string, agentId: string) {
-		const key = keyFor(projectId, agentId);
+	async function fetchRuns(projectId: string, agentId: string, agentVersionId?: string) {
+		const key = keyFor(projectId, agentId, agentVersionId);
 		latestListKey = key;
 		loading.value = true;
 		try {
@@ -45,19 +47,22 @@ export const useAgentDebugStore = defineStore('agentDebug', () => {
 				projectId,
 				agentId,
 				ITEMS_PER_PAGE,
+				undefined,
+				agentVersionId,
 			);
 			if (latestListKey !== key) return;
 			runs.value = page.runs;
+			runVersions.value = page.versions;
 			nextCursor.value = page.nextCursor;
 		} finally {
 			if (latestListKey === key) loading.value = false;
 		}
 	}
 
-	async function loadMore(projectId: string, agentId: string) {
+	async function loadMore(projectId: string, agentId: string, agentVersionId?: string) {
 		if (!nextCursor.value || loading.value) return;
 
-		const key = keyFor(projectId, agentId);
+		const key = keyFor(projectId, agentId, agentVersionId);
 		if (latestListKey !== null && latestListKey !== key) return;
 		loading.value = true;
 		try {
@@ -68,10 +73,12 @@ export const useAgentDebugStore = defineStore('agentDebug', () => {
 				agentId,
 				ITEMS_PER_PAGE,
 				nextCursor.value,
+				agentVersionId,
 			);
 			if (latestListKey !== key) return;
 			const seen = new Set(runs.value.map((run) => run.id));
 			runs.value.push(...page.runs.filter((run) => !seen.has(run.id)));
+			runVersions.value = page.versions;
 			nextCursor.value = page.nextCursor;
 		} finally {
 			if (latestListKey === key) loading.value = false;
@@ -141,6 +148,7 @@ export const useAgentDebugStore = defineStore('agentDebug', () => {
 
 	function reset() {
 		runs.value = [];
+		runVersions.value = [];
 		selectedRun.value = null;
 		insights.value = null;
 		nextCursor.value = null;
@@ -152,6 +160,7 @@ export const useAgentDebugStore = defineStore('agentDebug', () => {
 
 	return {
 		runs,
+		runVersions,
 		selectedRun,
 		insights,
 		nextCursor,

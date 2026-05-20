@@ -181,6 +181,7 @@ import { CreateAgentEvaluationCaseTable1784000000009 } from '../common/178400000
 import { AddRejectionReasonToAgentEvaluationCase1784000000010 } from '../common/1784000000010-AddRejectionReasonToAgentEvaluationCase';
 import { AddAgentVersionIdToAgentEvaluationCase1784000000011 } from '../common/1784000000011-AddAgentVersionIdToAgentEvaluationCase';
 import { CreateAgentEvaluationRunTable1784000000012 } from '../common/1784000000012-CreateAgentEvaluationRunTable';
+import { UpdateAgentEvaluationReviewData1784000000013 } from '../common/1784000000013-UpdateAgentEvaluationReviewData';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -367,6 +368,7 @@ const sqliteMigrations: Migration[] = [
 	AddRejectionReasonToAgentEvaluationCase1784000000010,
 	AddAgentVersionIdToAgentEvaluationCase1784000000011,
 	CreateAgentEvaluationRunTable1784000000012,
+	UpdateAgentEvaluationReviewData1784000000013,
 ];
 
 export { sqliteMigrations };

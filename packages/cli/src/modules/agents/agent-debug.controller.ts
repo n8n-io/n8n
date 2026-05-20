@@ -17,7 +17,7 @@ export class AgentDebugController {
 			{ projectId: string; agentId: string },
 			{},
 			{},
-			{ cursor?: string; limit?: string }
+			{ cursor?: string; limit?: string; agentVersionId?: string }
 		>,
 	) {
 		const limit = Number(req.query.limit) || undefined;
@@ -26,6 +26,7 @@ export class AgentDebugController {
 			req.params.agentId,
 			limit,
 			req.query.cursor,
+			req.query.agentVersionId,
 		);
 	}
 

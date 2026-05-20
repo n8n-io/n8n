@@ -26,30 +26,41 @@ export const agentReviewStatusSchema = z.enum(['approved', 'rejected']);
 export type AgentReviewStatus = z.infer<typeof agentReviewStatusSchema>;
 
 export const AGENT_REVIEW_REJECTION_REASONS = [
-	'incorrect_answer',
-	'incomplete_answer',
-	'wrong_tool',
-	'missing_tool',
-	'hallucination',
-	'bad_format',
-	'unsafe_behavior',
+	'wrong_answer',
+	'wrong_tool_calling',
 	'other',
 ] as const;
 
-export const DEFAULT_AGENT_REVIEW_REJECTION_REASON = 'incorrect_answer';
+export const DEFAULT_AGENT_REVIEW_REJECTION_REASON = 'wrong_answer';
 
 export const agentReviewRejectionReasonSchema = z.enum(AGENT_REVIEW_REJECTION_REASONS);
 
 export type AgentReviewRejectionReason = z.infer<typeof agentReviewRejectionReasonSchema>;
+
+export const agentReviewToolCallCorrectionSchema = z.object({
+	removeToolCalls: z
+		.array(
+			z.object({
+				id: z.string().min(1),
+				name: z.string().min(1),
+			}),
+		)
+		.default([]),
+	addToolNames: z.array(z.string().min(1)).default([]),
+});
+
+export type AgentReviewToolCallCorrection = z.infer<typeof agentReviewToolCallCorrectionSchema>;
 
 export interface AgentReviewCase {
 	id: string;
 	projectId: string;
 	agentId: string;
 	agentVersionId: string;
+	conversationId: string;
 	executionId: string;
 	status: AgentReviewStatus;
 	rejectionReason: AgentReviewRejectionReason | null;
+	toolCallCorrection: AgentReviewToolCallCorrection | null;
 	input: string;
 	expectedOutput: string;
 	actualOutput: string;
@@ -75,6 +86,7 @@ export interface AgentReviewCasesResponse {
 export class UpsertAgentReviewCaseDto extends Z.class({
 	status: agentReviewStatusSchema,
 	rejectionReason: agentReviewRejectionReasonSchema.optional(),
+	toolCallCorrection: agentReviewToolCallCorrectionSchema.optional(),
 	expectedOutput: z.string().optional(),
 	notes: z.string().max(2000).optional(),
 }) {}
@@ -84,6 +96,7 @@ export interface AgentDebugRun {
 	threadId: string;
 	sessionNumber: number;
 	sessionTitle: string | null;
+	agentVersionId: string;
 	status: 'success' | 'error';
 	createdAt: string;
 	startedAt: string | null;
@@ -103,6 +116,12 @@ export interface AgentDebugRun {
 	review: AgentReviewCase | null;
 }
 
+export interface AgentDebugRunVersionSummary {
+	agentVersionId: string;
+	total: number;
+	latestRunAt: string | null;
+}
+
 export type AgentDebugTimelineEvent = Record<string, unknown> & { type: string };
 
 export interface AgentDebugToolCall {
@@ -119,6 +138,7 @@ export interface AgentDebugRunDetail extends AgentDebugRun {
 
 export interface AgentDebugRunsResponse {
 	runs: AgentDebugRun[];
+	versions: AgentDebugRunVersionSummary[];
 	nextCursor: string | null;
 }
 

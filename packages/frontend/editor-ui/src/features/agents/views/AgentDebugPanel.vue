@@ -10,7 +10,9 @@ import {
 	N8nBadge,
 	N8nButton,
 	N8nIcon,
+	N8nOption,
 	N8nRadioButtons,
+	N8nSelect,
 	N8nTableBase,
 	N8nText,
 } from '@n8n/design-system';
@@ -47,6 +49,10 @@ type DebugRunFilter =
 	| 'slow_run';
 
 const selectedFilter = ref<DebugRunFilter>('all');
+const ALL_AGENT_VERSIONS = 'all';
+const selectedAgentVersionId = ref(ALL_AGENT_VERSIONS);
+
+const conversationRuns = computed(() => debugStore.runs);
 
 function runHasSignal(run: AgentDebugRun, type: AgentDebugSignal['type']): boolean {
 	return run.signals.some((signal) => signal.type === type);
@@ -80,14 +86,25 @@ const filterOptions = computed<Array<{ label: string; value: DebugRunFilter }>>(
 	{ label: filterLabel('slow_run'), value: 'slow_run' },
 ]);
 
-const conversationRuns = computed(() => {
-	const seenThreadIds = new Set<string>();
-	return debugStore.runs.filter((run) => {
-		if (seenThreadIds.has(run.threadId)) return false;
-		seenThreadIds.add(run.threadId);
-		return true;
-	});
-});
+const versionOptions = computed(() => [
+	{
+		value: ALL_AGENT_VERSIONS,
+		label: i18n.baseText('agentDebug.version.all'),
+	},
+	...debugStore.runVersions.map((version) => ({
+		value: version.agentVersionId,
+		label: i18n.baseText('agentDebug.version.option', {
+			interpolate: {
+				version: formatVersion(version.agentVersionId),
+				count: String(version.total),
+			},
+		}),
+	})),
+]);
+
+const selectedRunVersion = computed(() =>
+	selectedAgentVersionId.value === ALL_AGENT_VERSIONS ? undefined : selectedAgentVersionId.value,
+);
 
 const filteredRuns = computed(() =>
 	conversationRuns.value.filter((run) => runMatchesFilter(run, selectedFilter.value)),
@@ -110,6 +127,10 @@ function formatCost(cost: number | null): string {
 
 function formatNumber(value: number): string {
 	return value.toLocaleString();
+}
+
+function formatVersion(agentVersionId: string): string {
+	return agentVersionId.slice(0, 8);
 }
 
 function sessionLabel(run: AgentDebugRun): string {
@@ -174,7 +195,7 @@ async function loadData() {
 	if (!projectId.value || !agentId.value) return;
 	try {
 		await Promise.all([
-			debugStore.fetchRuns(projectId.value, agentId.value),
+			debugStore.fetchRuns(projectId.value, agentId.value, selectedRunVersion.value),
 			debugStore.fetchInsights(projectId.value, agentId.value),
 		]);
 	} catch (error) {
@@ -184,13 +205,20 @@ async function loadData() {
 
 async function loadMore() {
 	try {
-		await debugStore.loadMore(projectId.value, agentId.value);
+		await debugStore.loadMore(projectId.value, agentId.value, selectedRunVersion.value);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('agentDebug.showError.load'));
 	}
 }
 
+function setAgentVersion(agentVersionId: string) {
+	selectedAgentVersionId.value = agentVersionId;
+	debugStore.reset();
+	void loadData();
+}
+
 watch([projectId, agentId], () => {
+	selectedAgentVersionId.value = ALL_AGENT_VERSIONS;
 	debugStore.reset();
 	void loadData();
 });
@@ -248,11 +276,30 @@ onBeforeUnmount(() => {
 						:options="filterOptions"
 						data-testid="agent-debug-run-filter"
 					/>
+					<label :class="$style.versionFilter">
+						<N8nText size="small" bold>
+							{{ i18n.baseText('agentDebug.version.label') }}
+						</N8nText>
+						<N8nSelect
+							:model-value="selectedAgentVersionId"
+							size="small"
+							data-testid="agent-debug-version-filter"
+							@update:model-value="setAgentVersion"
+						>
+							<N8nOption
+								v-for="version in versionOptions"
+								:key="version.value"
+								:value="version.value"
+								:label="version.label"
+							/>
+						</N8nSelect>
+					</label>
 				</div>
 				<N8nTableBase>
 					<thead>
 						<tr>
 							<th>{{ i18n.baseText('agentDebug.table.run') }}</th>
+							<th>{{ i18n.baseText('agentDebug.table.agentVersion') }}</th>
 							<th>{{ i18n.baseText('agentDebug.table.created') }}</th>
 							<th>{{ i18n.baseText('agentDebug.table.duration') }}</th>
 							<th>{{ i18n.baseText('agentDebug.table.cost') }}</th>
@@ -277,6 +324,7 @@ onBeforeUnmount(() => {
 									<span>{{ truncate(sessionLabel(run), 32) }}</span>
 								</div>
 							</td>
+							<td>{{ formatVersion(run.agentVersionId) }}</td>
 							<td>{{ formatDate(run.createdAt) }}</td>
 							<td>{{ formatDuration(run.duration) }}</td>
 							<td>{{ formatCost(run.cost) }}</td>
@@ -310,18 +358,18 @@ onBeforeUnmount(() => {
 						</tr>
 						<template v-if="debugStore.loading && !debugStore.runs.length">
 							<tr v-for="item in 5" :key="item">
-								<td v-for="col in 6" :key="col">
+								<td v-for="col in 7" :key="col">
 									<ElSkeletonItem />
 								</td>
 							</tr>
 						</template>
 						<tr v-if="!debugStore.runs.length && !debugStore.loading">
-							<td colspan="6" :class="$style.empty">
+							<td colspan="7" :class="$style.empty">
 								{{ i18n.baseText('agentDebug.empty') }}
 							</td>
 						</tr>
 						<tr v-else-if="!filteredRuns.length && !debugStore.loading">
-							<td colspan="6" :class="$style.empty">
+							<td colspan="7" :class="$style.empty">
 								{{ i18n.baseText('agentDebug.emptyFilter') }}
 							</td>
 						</tr>
@@ -404,11 +452,23 @@ onBeforeUnmount(() => {
 }
 
 .filters {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
 	padding: var(--spacing--sm);
 	overflow-x: auto;
 	border-bottom: var(--border);
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
+}
+
+.versionFilter {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex: 0 0 auto;
+	min-width: 220px;
 }
 
 .loadMore {
@@ -426,6 +486,15 @@ onBeforeUnmount(() => {
 @media (max-width: 1200px) {
 	.summaryGrid {
 		grid-template-columns: 1fr;
+	}
+
+	.filters {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.versionFilter {
+		width: 100%;
 	}
 }
 </style>

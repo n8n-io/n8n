@@ -1,5 +1,6 @@
 import type {
 	Agent as RuntimeAgent,
+	AgentMessage,
 	AgentExecutionCounter,
 	BuiltAgent,
 	BuiltTool,
@@ -165,6 +166,7 @@ interface StreamChatResponseConfig {
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
 	agentId: string;
+	agentVersionId: string;
 	message: string;
 	memory: AgentMemoryScope;
 	projectId: string;
@@ -185,12 +187,18 @@ export interface AgentEvaluationToolMock {
 	outputs: unknown[];
 }
 
+export interface AgentEvaluationConversationMessage {
+	role: 'user' | 'assistant';
+	text: string;
+}
+
 export interface ExecuteEvaluationCaseConfig {
 	agentId: string;
 	agentVersionId?: string;
 	projectId: string;
 	userId: string;
 	message: string;
+	conversationHistory?: AgentEvaluationConversationMessage[];
 	toolMocks: AgentEvaluationToolMock[];
 }
 
@@ -219,7 +227,13 @@ export class AgentsService {
 	 */
 	private readonly runtimes = new TtlMap<
 		string,
-		{ agent: RuntimeAgent; agentId: string; toolRegistry: ToolRegistry; projectId: string }
+		{
+			agent: RuntimeAgent;
+			agentId: string;
+			agentVersionId: string;
+			toolRegistry: ToolRegistry;
+			projectId: string;
+		}
 	>(30 * Time.minutes.toMilliseconds);
 
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
@@ -651,6 +665,7 @@ export class AgentsService {
 	private async getRuntime(params: GetRuntimeParams): Promise<{
 		agent: RuntimeAgent;
 		agentId: string;
+		agentVersionId: string;
 		toolRegistry: ToolRegistry;
 		projectId: string;
 	}> {
@@ -666,6 +681,7 @@ export class AgentsService {
 
 		let n8nUserId = params.n8nUserId;
 		let agentData: Agent = agentEntity;
+		let agentVersionId = getAgentCurrentVersionId(agentEntity);
 
 		if (usePublishedVersion) {
 			const publishedSchema = agentEntity.publishedVersion?.schema;
@@ -681,6 +697,9 @@ export class AgentsService {
 
 			// Resolve n8n user from publishedById when not provided by the caller.
 			n8nUserId ??= agentEntity.publishedVersion?.publishedById ?? undefined;
+			agentVersionId =
+				agentEntity.publishedVersion?.publishedFromVersionId ??
+				getAgentCurrentVersionId(agentEntity);
 		}
 
 		if (!n8nUserId) {
@@ -695,7 +714,13 @@ export class AgentsService {
 			integrationType,
 		);
 
-		this.runtimes.set(cacheKey, { agent: agentInstance, agentId, toolRegistry, projectId });
+		this.runtimes.set(cacheKey, {
+			agent: agentInstance,
+			agentId,
+			agentVersionId,
+			toolRegistry,
+			projectId,
+		});
 		const runtime = this.runtimes.get(cacheKey);
 		if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
 		return runtime;
@@ -876,6 +901,7 @@ export class AgentsService {
 			.recordMessage({
 				threadId,
 				agentId,
+				agentVersionId: runtime.agentVersionId,
 				agentName: agentInstance.name,
 				projectId,
 				userMessage: '',
@@ -967,6 +993,7 @@ export class AgentsService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
+			agentVersionId: runtime.agentVersionId,
 			message,
 			memory,
 			projectId: runtime.projectId,
@@ -993,7 +1020,14 @@ export class AgentsService {
 	async executeEvaluationCase(
 		config: ExecuteEvaluationCaseConfig,
 	): Promise<AgentEvaluationExecutionResult> {
-		const { agentId, agentVersionId, projectId, message, toolMocks } = config;
+		const {
+			agentId,
+			agentVersionId,
+			projectId,
+			message,
+			conversationHistory = [],
+			toolMocks,
+		} = config;
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
 
@@ -1073,7 +1107,8 @@ export class AgentsService {
 		});
 
 		const recorder = new ExecutionRecorder(buildToolRegistry(resolvedTools));
-		const resultStream = await agentInstance.stream(message, {
+		const input = this.toEvaluationInput(message, conversationHistory);
+		const resultStream = await agentInstance.stream(input, {
 			executionCounter: this.createAgentExecutionCounter(agentId),
 		});
 
@@ -1097,6 +1132,25 @@ export class AgentsService {
 			toolCalls: record.toolCalls,
 			missingToolMocks: [...missingToolMocks],
 			warnings,
+		};
+	}
+
+	private toEvaluationInput(
+		message: string,
+		conversationHistory: AgentEvaluationConversationMessage[],
+	): string | AgentMessage[] {
+		if (conversationHistory.length === 0) return message;
+
+		return [
+			...conversationHistory.map((historyMessage) => this.toAgentTextMessage(historyMessage)),
+			this.toAgentTextMessage({ role: 'user', text: message }),
+		];
+	}
+
+	private toAgentTextMessage(message: AgentEvaluationConversationMessage): AgentMessage {
+		return {
+			role: message.role,
+			content: [{ type: 'text', text: message.text }],
 		};
 	}
 
@@ -1183,6 +1237,7 @@ export class AgentsService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
+			agentVersionId: runtime.agentVersionId,
 			message,
 			memory,
 			projectId: runtime.projectId,
@@ -1215,6 +1270,7 @@ export class AgentsService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
+			agentVersionId: runtime.agentVersionId,
 			message,
 			memory,
 			projectId: runtime.projectId,
@@ -1230,7 +1286,16 @@ export class AgentsService {
 	 * deliberately distinct from the n8n user ID used for RBAC.
 	 */
 	private async *streamChatResponse(config: StreamChatResponseConfig): AsyncGenerator<StreamChunk> {
-		const { agentInstance, toolRegistry, agentId, message, memory, projectId, source } = config;
+		const {
+			agentInstance,
+			toolRegistry,
+			agentId,
+			agentVersionId,
+			message,
+			memory,
+			projectId,
+			source,
+		} = config;
 		const { threadId, resourceId } = memory;
 
 		const recorder = new ExecutionRecorder(toolRegistry);
@@ -1266,6 +1331,7 @@ export class AgentsService {
 			.recordMessage({
 				threadId,
 				agentId,
+				agentVersionId,
 				agentName: agentInstance.name,
 				projectId,
 				userMessage: message,
@@ -1402,6 +1468,7 @@ export class AgentsService {
 			.recordMessage({
 				threadId,
 				agentId,
+				agentVersionId: agentEntity.publishedVersion.publishedFromVersionId,
 				agentName: agentInstance.name,
 				projectId,
 				userMessage: message,

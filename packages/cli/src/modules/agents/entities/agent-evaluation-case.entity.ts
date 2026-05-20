@@ -1,5 +1,9 @@
-import type { AgentReviewRejectionReason, AgentReviewStatus } from '@n8n/api-types';
-import { WithTimestampsAndStringId } from '@n8n/db';
+import type {
+	AgentReviewRejectionReason,
+	AgentReviewStatus,
+	AgentReviewToolCallCorrection,
+} from '@n8n/api-types';
+import { JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
 import type { Agent } from './agent.entity';
@@ -19,6 +23,9 @@ export class AgentEvaluationCase extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 255 })
 	agentVersionId: string;
 
+	@Column({ type: 'varchar', length: 36 })
+	conversationId: string;
+
 	@ManyToOne('Agent', { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'agentId' })
 	agent: Agent;
@@ -35,6 +42,9 @@ export class AgentEvaluationCase extends WithTimestampsAndStringId {
 
 	@Column({ type: 'varchar', length: 32, nullable: true })
 	rejectionReason: AgentReviewRejectionReason | null;
+
+	@JsonColumn({ nullable: true })
+	toolCallCorrection: AgentReviewToolCallCorrection | null;
 
 	@Column({ type: 'text' })
 	input: string;

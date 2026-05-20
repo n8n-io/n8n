@@ -41,12 +41,10 @@ import { useAgentDebugStore } from '../agentDebug.store';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import SessionDetailPanel from '../components/SessionDetailPanel.vue';
 import SessionTimelineTable from '../components/SessionTimelineTable.vue';
-import type { AgentExecution, AgentExecutionThread } from '../composables/useAgentThreadsApi';
-import { useAgentConfig } from '../composables/useAgentConfig';
+import type { AgentExecution } from '../composables/useAgentThreadsApi';
 import { AGENT_BUILDER_VIEW, AGENT_DEBUG_RUN_DETAIL_VIEW, DEBUG_SECTION_KEY } from '../constants';
 import type { TimelineItem } from '../session-timeline.types';
 import { flattenExecutionsToTimelineItems } from '../session-timeline.utils';
-import type { AgentJsonToolConfig } from '../types';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -55,7 +53,6 @@ const toast = useToast();
 const projectsStore = useProjectsStore();
 const debugStore = useAgentDebugStore();
 const sessionsStore = useAgentSessionsStore();
-const { config: agentConfig, fetchConfig } = useAgentConfig();
 
 const projectId = computed(() => String(route.params.projectId ?? ''));
 const agentId = computed(() => String(route.params.agentId ?? ''));
@@ -65,7 +62,6 @@ const selectedTimelineIndex = ref<number | null>(null);
 const visibleTimelineKinds = ref(new Set<string>());
 const expandedMessageIds = ref(new Set<string>());
 const traceExpanded = ref(false);
-const thread = ref<AgentExecutionThread | null>(null);
 const executions = ref<AgentExecution[]>([]);
 const loadingThread = ref(false);
 const expectedOutput = ref('');
@@ -73,8 +69,8 @@ const reviewNotes = ref('');
 const selectedRejectionReason = ref<AgentReviewRejectionReason>(
 	DEFAULT_AGENT_REVIEW_REJECTION_REASON,
 );
-const selectedWrongToolNames = ref(new Set<string>());
-const selectedMissingToolNames = ref(new Set<string>());
+const selectedRemoveToolCallIds = ref(new Set<string>());
+const addedToolName = ref('');
 const rejectDialogOpen = ref(false);
 const savingReviewAction = ref<AgentReviewStatus | 'clear' | null>(null);
 let loadRunDetailRequestId = 0;
@@ -82,33 +78,21 @@ let loadRunDetailRequestId = 0;
 const selectedRun = computed(() => debugStore.selectedRun);
 
 const availableRuns = computed<AgentDebugRun[]>(() => {
-	const seenThreadIds = new Set<string>();
-	const runs = debugStore.runs.filter((run) => {
-		if (seenThreadIds.has(run.threadId)) return false;
-		seenThreadIds.add(run.threadId);
-		return true;
-	});
+	const runs = [...debugStore.runs];
 	const detail = selectedRun.value;
 	if (detail && !runs.some((run) => run.id === detail.id)) runs.unshift(detail);
 	return runs;
 });
 
 const conversationStatus = computed<'success' | 'error'>(() =>
-	executions.value.some((execution) => execution.status === 'error') ? 'error' : 'success',
+	selectedRun.value?.status === 'error' ? 'error' : 'success',
 );
 
-const conversationDuration = computed(() =>
-	thread.value ? thread.value.totalDuration : (selectedRun.value?.duration ?? 0),
-);
+const conversationDuration = computed(() => selectedRun.value?.duration ?? 0);
 
-const conversationTokens = computed(() => {
-	if (thread.value) {
-		return thread.value.totalPromptTokens + thread.value.totalCompletionTokens;
-	}
-	return selectedRun.value?.totalTokens ?? 0;
-});
+const conversationTokens = computed(() => selectedRun.value?.totalTokens ?? 0);
 
-const conversationCost = computed(() => thread.value?.totalCost ?? selectedRun.value?.cost ?? null);
+const conversationCost = computed(() => selectedRun.value?.cost ?? null);
 
 const runOptions = computed<
 	Array<DropdownMenuItemProps<string, { date: string; active: boolean }>>
@@ -204,6 +188,7 @@ interface ConversationMessage {
 
 interface ConversationTool {
 	id: string;
+	callId: string;
 	name: string;
 	input: unknown;
 	output: unknown;
@@ -213,67 +198,40 @@ interface ConversationTool {
 
 type ConversationEntry = ConversationMessage | (ConversationTool & { kind: 'tool' });
 
-const conversationEntries = computed<ConversationEntry[]>(() =>
-	conversationExecutions.value.flatMap((execution) => {
-		const entries: ConversationEntry[] = [];
-		if (execution.userMessage.trim()) {
-			entries.push({
-				id: `${execution.id}:user`,
-				kind: 'user',
-				text: execution.userMessage,
-			});
-		}
-
-		entries.push(...extractToolEntries(execution));
-
-		if (execution.assistantResponse.trim()) {
-			entries.push({
-				id: `${execution.id}:agent`,
-				kind: 'agent',
-				text: execution.assistantResponse,
-			});
-		}
-
-		return entries;
-	}),
+const reviewEntries = computed<ConversationEntry[]>(() =>
+	selectedRun.value ? entriesForExecution(toTimelineExecution(selectedRun.value)) : [],
 );
 
-const usedToolNames = computed(() => {
-	const names = new Set<string>();
-	for (const entry of conversationEntries.value) {
-		if (entry.kind === 'tool') names.add(entry.name);
+const usedToolCalls = computed(() => {
+	const toolEntries = reviewEntries.value.filter((entry) => entry.kind === 'tool');
+	const totals = new Map<string, number>();
+	for (const entry of toolEntries) {
+		totals.set(entry.name, (totals.get(entry.name) ?? 0) + 1);
 	}
-	return Array.from(names).sort((a, b) => a.localeCompare(b));
+	const seen = new Map<string, number>();
+
+	return toolEntries.map((entry) => {
+		const nextIndex = (seen.get(entry.name) ?? 0) + 1;
+		seen.set(entry.name, nextIndex);
+
+		return {
+			id: entry.callId,
+			name: entry.name,
+			label: (totals.get(entry.name) ?? 0) > 1 ? `${entry.name} #${nextIndex}` : entry.name,
+		};
+	});
 });
 
-const configuredToolNames = computed(() =>
-	(agentConfig.value?.tools ?? [])
-		.map((tool) => toolLabel(tool))
-		.filter((name) => name.trim().length > 0)
-		.sort((a, b) => a.localeCompare(b)),
-);
-
-const unusedToolNames = computed(() =>
-	configuredToolNames.value.filter((toolName) => !usedToolNames.value.includes(toolName)),
-);
-
 const rejectionRequiresCorrectOutput = computed(
-	() =>
-		selectedRejectionReason.value === 'incorrect_answer' ||
-		selectedRejectionReason.value === 'incomplete_answer',
+	() => selectedRejectionReason.value === 'wrong_answer',
 );
 
-const rejectionRequiresWrongTools = computed(() => selectedRejectionReason.value === 'wrong_tool');
-
-const rejectionRequiresMissingTools = computed(
-	() => selectedRejectionReason.value === 'missing_tool',
+const rejectionRequiresToolCalling = computed(
+	() => selectedRejectionReason.value === 'wrong_tool_calling',
 );
 
 const rejectionRequiresNotes = computed(
-	() =>
-		!rejectionRequiresCorrectOutput.value &&
-		!rejectionRequiresWrongTools.value &&
-		!rejectionRequiresMissingTools.value,
+	() => !rejectionRequiresCorrectOutput.value && !rejectionRequiresToolCalling.value,
 );
 
 function toTimelineExecution(run: AgentDebugRunDetail | AgentExecution): AgentExecution {
@@ -281,6 +239,7 @@ function toTimelineExecution(run: AgentDebugRunDetail | AgentExecution): AgentEx
 		id: run.id,
 		threadId: run.threadId,
 		agentId: agentId.value,
+		agentVersionId: run.agentVersionId,
 		status: run.status,
 		createdAt: run.createdAt,
 		startedAt: run.startedAt,
@@ -308,11 +267,36 @@ function toTimelineExecution(run: AgentDebugRunDetail | AgentExecution): AgentEx
 	};
 }
 
+function entriesForExecution(execution: AgentExecution): ConversationEntry[] {
+	const entries: ConversationEntry[] = [];
+	if (execution.userMessage.trim()) {
+		entries.push({
+			id: `${execution.id}:user`,
+			kind: 'user',
+			text: execution.userMessage,
+		});
+	}
+
+	entries.push(...extractToolEntries(execution));
+
+	if (execution.assistantResponse.trim()) {
+		entries.push({
+			id: `${execution.id}:agent`,
+			kind: 'agent',
+			text: execution.assistantResponse,
+		});
+	}
+
+	return entries;
+}
+
 function extractToolEntries(execution: AgentExecution): ConversationEntry[] {
 	const timelineTools = (execution.timeline ?? [])
 		.filter((event) => event.type === 'tool-call')
 		.map((event, index) => ({
 			id: `${execution.id}:tool:${index}`,
+			callId:
+				stringValue(event.toolCallId) ?? stringValue(event.id) ?? `${execution.id}:tool:${index}`,
 			kind: 'tool' as const,
 			name:
 				stringValue(event.toolName) ??
@@ -328,6 +312,7 @@ function extractToolEntries(execution: AgentExecution): ConversationEntry[] {
 
 	return (execution.toolCalls ?? []).map((toolCall, index) => ({
 		id: `${execution.id}:tool:${index}`,
+		callId: `${execution.id}:tool:${index}`,
 		kind: 'tool' as const,
 		name: toolCall.toolName,
 		input: toolCall.input,
@@ -339,12 +324,6 @@ function extractToolEntries(execution: AgentExecution): ConversationEntry[] {
 
 function stringValue(value: unknown): string | null {
 	return typeof value === 'string' && value.trim() ? value : null;
-}
-
-function toolLabel(tool: AgentJsonToolConfig): string {
-	if (tool.type === 'custom') return tool.id;
-	if (tool.type === 'workflow') return tool.name?.trim() || tool.workflow;
-	return tool.name;
 }
 
 function formatJson(value: unknown): string {
@@ -390,6 +369,10 @@ function formatDuration(ms: number): string {
 function formatCost(cost: number | null): string {
 	if (!cost) return '-';
 	return `$${cost.toFixed(4)}`;
+}
+
+function formatVersion(agentVersionId: string): string {
+	return agentVersionId.slice(0, 8);
 }
 
 function sessionLabel(run: Pick<AgentDebugRun, 'sessionTitle' | 'sessionNumber'>): string {
@@ -490,34 +473,37 @@ function openRejectDialog() {
 		run.review?.rejectionReason ?? DEFAULT_AGENT_REVIEW_REJECTION_REASON;
 	expectedOutput.value = run.review?.expectedOutput ?? run.assistantResponse;
 	reviewNotes.value = run.review?.notes ?? '';
-	selectedWrongToolNames.value = new Set();
-	selectedMissingToolNames.value = new Set();
+	selectedRemoveToolCallIds.value = new Set(
+		run.review?.toolCallCorrection?.removeToolCalls.map((toolCall) => toolCall.id) ?? [],
+	);
+	addedToolName.value = run.review?.toolCallCorrection?.addToolNames[0] ?? '';
 	rejectDialogOpen.value = true;
 }
 
-function toggleToolSelection(target: 'wrong' | 'missing', toolName: string, checked: boolean) {
-	const source = target === 'wrong' ? selectedWrongToolNames : selectedMissingToolNames;
-	const next = new Set(source.value);
+function toggleRemoveToolSelection(toolCallId: string, checked: boolean) {
+	const next = new Set(selectedRemoveToolCallIds.value);
 	if (checked) {
-		next.add(toolName);
+		next.add(toolCallId);
 	} else {
-		next.delete(toolName);
+		next.delete(toolCallId);
 	}
-	source.value = next;
+	selectedRemoveToolCallIds.value = next;
 }
 
 function rejectionNotes(): string | undefined {
-	if (rejectionRequiresWrongTools.value) {
-		const tools = Array.from(selectedWrongToolNames.value);
-		return tools.length ? `Wrong tools: ${tools.join(', ')}` : undefined;
-	}
-
-	if (rejectionRequiresMissingTools.value) {
-		const tools = Array.from(selectedMissingToolNames.value);
-		return tools.length ? `Missing tools: ${tools.join(', ')}` : undefined;
-	}
-
 	return reviewNotes.value.trim() || undefined;
+}
+
+function toolCallCorrection() {
+	if (!rejectionRequiresToolCalling.value) return undefined;
+
+	const addedTool = addedToolName.value.trim();
+	return {
+		removeToolCalls: usedToolCalls.value
+			.filter((toolCall) => selectedRemoveToolCallIds.value.has(toolCall.id))
+			.map((toolCall) => ({ id: toolCall.id, name: toolCall.name })),
+		addToolNames: addedTool ? [addedTool] : [],
+	};
 }
 
 async function confirmRejection() {
@@ -530,6 +516,7 @@ async function confirmRejection() {
 			status: 'rejected',
 			rejectionReason: selectedRejectionReason.value,
 			notes: rejectionNotes(),
+			toolCallCorrection: toolCallCorrection(),
 		};
 
 		if (rejectionRequiresCorrectOutput.value) {
@@ -554,15 +541,11 @@ async function loadRunDetail() {
 	const requestId = ++loadRunDetailRequestId;
 
 	debugStore.clearSelectedRun();
-	thread.value = null;
 	executions.value = [];
 	selectedTimelineIndex.value = null;
 	traceExpanded.value = false;
 	expandedMessageIds.value = new Set();
 	void debugStore.fetchRuns(projectId.value, agentId.value).catch((error) => {
-		toast.showError(error, i18n.baseText('agentDebug.showError.load'));
-	});
-	void fetchConfig(projectId.value, agentId.value).catch((error) => {
 		toast.showError(error, i18n.baseText('agentDebug.showError.load'));
 	});
 
@@ -579,7 +562,6 @@ async function loadRunDetail() {
 			agentId.value,
 		);
 		if (requestId !== loadRunDetailRequestId) return;
-		thread.value = result.thread;
 		executions.value = result.executions;
 	} catch (error) {
 		if (requestId !== loadRunDetailRequestId) return;
@@ -596,6 +578,10 @@ watch(selectedRun, (run) => {
 	reviewNotes.value = run?.review?.notes ?? '';
 	selectedRejectionReason.value =
 		run?.review?.rejectionReason ?? DEFAULT_AGENT_REVIEW_REJECTION_REASON;
+	selectedRemoveToolCallIds.value = new Set(
+		run?.review?.toolCallCorrection?.removeToolCalls.map((toolCall) => toolCall.id) ?? [],
+	);
+	addedToolName.value = run?.review?.toolCallCorrection?.addToolNames[0] ?? '';
 });
 
 onBeforeUnmount(() => {
@@ -670,6 +656,12 @@ onBeforeUnmount(() => {
 						</div>
 						<div>
 							<N8nText size="small" color="text-light">{{
+								i18n.baseText('agentDebug.agentVersion')
+							}}</N8nText>
+							<N8nText bold>{{ formatVersion(selectedRun.agentVersionId) }}</N8nText>
+						</div>
+						<div>
+							<N8nText size="small" color="text-light">{{
 								i18n.baseText('agentDebug.duration')
 							}}</N8nText>
 							<N8nText bold>{{ formatDuration(conversationDuration) }}</N8nText>
@@ -711,12 +703,9 @@ onBeforeUnmount(() => {
 					<div :class="$style.sectionHeader">
 						<N8nText bold>{{ i18n.baseText('agentDebug.conversation.title') }}</N8nText>
 					</div>
-					<div v-if="loadingThread" :class="$style.detailLoading">
-						<ElSkeletonItem v-for="item in 4" :key="item" />
-					</div>
-					<div v-else :class="$style.conversationList">
+					<div :class="$style.conversationList">
 						<div
-							v-for="entry in conversationEntries"
+							v-for="entry in reviewEntries"
 							:key="entry.id"
 							:class="[$style.conversationEntry, $style[`conversationEntry_${entry.kind}`]]"
 						>
@@ -782,7 +771,7 @@ onBeforeUnmount(() => {
 				</section>
 
 				<section :class="$style.reviewPanel" data-testid="agent-debug-review-form">
-					<div>
+					<div :class="$style.reviewCopy">
 						<N8nText bold>{{ i18n.baseText('agentDebug.review.title') }}</N8nText>
 						<N8nText size="small" color="text-light">
 							{{ i18n.baseText('agentDebug.review.description') }}
@@ -822,7 +811,10 @@ onBeforeUnmount(() => {
 						@click="traceExpanded = !traceExpanded"
 					/>
 					<div v-if="traceExpanded" :class="$style.timelinePanels">
-						<div :class="$style.tablePanel">
+						<div v-if="loadingThread" :class="$style.detailLoading">
+							<ElSkeletonItem v-for="item in 4" :key="item" />
+						</div>
+						<div v-else :class="$style.tablePanel">
 							<SessionTimelineTable
 								:items="timelineItems"
 								:selected-index="selectedTimelineIndex"
@@ -888,44 +880,34 @@ onBeforeUnmount(() => {
 					/>
 				</label>
 
-				<div v-else-if="rejectionRequiresWrongTools" :class="$style.reviewField">
+				<div v-else-if="rejectionRequiresToolCalling" :class="$style.reviewField">
 					<N8nText size="small" bold>
-						{{ i18n.baseText('agentDebug.review.rejectDialog.wrongTools') }}
+						{{ i18n.baseText('agentDebug.review.rejectDialog.removeTools') }}
 					</N8nText>
-					<div v-if="usedToolNames.length" :class="$style.toolChecklist">
-						<label v-for="toolName in usedToolNames" :key="toolName" :class="$style.toolChoice">
+					<div v-if="usedToolCalls.length" :class="$style.toolChecklist">
+						<label v-for="toolCall in usedToolCalls" :key="toolCall.id" :class="$style.toolChoice">
 							<N8nCheckbox
-								:model-value="selectedWrongToolNames.has(toolName)"
+								:model-value="selectedRemoveToolCallIds.has(toolCall.id)"
 								@update:model-value="
-									(checked: boolean) => toggleToolSelection('wrong', toolName, checked)
+									(checked: boolean) => toggleRemoveToolSelection(toolCall.id, checked)
 								"
 							/>
-							<span>{{ toolName }}</span>
+							<span>{{ toolCall.label }}</span>
 						</label>
 					</div>
 					<N8nText v-else size="small" color="text-light">
 						{{ i18n.baseText('agentDebug.review.rejectDialog.noTools') }}
 					</N8nText>
-				</div>
-
-				<div v-else-if="rejectionRequiresMissingTools" :class="$style.reviewField">
-					<N8nText size="small" bold>
-						{{ i18n.baseText('agentDebug.review.rejectDialog.missingTools') }}
-					</N8nText>
-					<div v-if="unusedToolNames.length" :class="$style.toolChecklist">
-						<label v-for="toolName in unusedToolNames" :key="toolName" :class="$style.toolChoice">
-							<N8nCheckbox
-								:model-value="selectedMissingToolNames.has(toolName)"
-								@update:model-value="
-									(checked: boolean) => toggleToolSelection('missing', toolName, checked)
-								"
-							/>
-							<span>{{ toolName }}</span>
-						</label>
-					</div>
-					<N8nText v-else size="small" color="text-light">
-						{{ i18n.baseText('agentDebug.review.rejectDialog.noTools') }}
-					</N8nText>
+					<label :class="$style.reviewField">
+						<N8nText size="small" bold>
+							{{ i18n.baseText('agentDebug.review.rejectDialog.addTool') }}
+						</N8nText>
+						<N8nInput
+							v-model="addedToolName"
+							:placeholder="i18n.baseText('agentDebug.review.rejectDialog.addToolPlaceholder')"
+							data-testid="agent-debug-added-tool"
+						/>
+					</label>
 				</div>
 
 				<label v-else-if="rejectionRequiresNotes" :class="$style.reviewField">
@@ -979,8 +961,8 @@ onBeforeUnmount(() => {
 .view {
 	display: flex;
 	flex-direction: column;
-	height: 100%;
-	overflow: hidden;
+	min-height: 100%;
+	overflow: visible;
 }
 
 .topBar {
@@ -1056,13 +1038,13 @@ onBeforeUnmount(() => {
 }
 
 .content {
-	flex: 1;
+	flex: 0 0 auto;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	min-height: 0;
+	min-height: auto;
 	padding: var(--spacing--md);
-	overflow-y: auto;
+	overflow: visible;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
 	background-color: light-dark(
@@ -1090,7 +1072,7 @@ onBeforeUnmount(() => {
 
 .statusGrid {
 	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
+	grid-template-columns: repeat(5, minmax(0, 1fr));
 	gap: var(--spacing--sm);
 }
 
@@ -1158,6 +1140,7 @@ onBeforeUnmount(() => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	align-self: start;
 	width: var(--height--xl);
 	height: var(--height--xl);
 	border-radius: var(--border-radius-base);
@@ -1240,6 +1223,12 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: var(--spacing--md);
+}
+
+.reviewCopy {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 
 .reviewField {
