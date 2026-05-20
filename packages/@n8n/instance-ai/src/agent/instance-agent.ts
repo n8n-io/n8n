@@ -29,6 +29,7 @@ const ALWAYS_LOADED_TOOLS = new Set([
 	'build-workflow-with-agent',
 	'verify-built-workflow',
 	'research',
+	'evals',
 	'web-search',
 	'fetch-url',
 ]);
