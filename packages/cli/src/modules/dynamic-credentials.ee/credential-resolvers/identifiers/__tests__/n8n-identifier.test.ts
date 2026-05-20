@@ -173,5 +173,79 @@ describe('N8NIdentifier', () => {
 				await expect(identifier.resolve(context, {})).rejects.toThrow('Database connection failed');
 			});
 		});
+
+		describe('chat-hub branch with explicit source', () => {
+			it('should call authenticateUserBasedOnToken when source is chat-hub-injected', async () => {
+				mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockUser);
+
+				const context = {
+					identity: 'cookie-jwt',
+					version: 1 as const,
+					metadata: {
+						source: 'chat-hub-injected' as const,
+						method: 'POST',
+						endpoint: '/chat',
+						browserId: 'browser-abc',
+					},
+				};
+
+				const result = await identifier.resolve(context, {});
+
+				expect(result).toBe('user-123');
+				expect(mockAuthService.authenticateUserBasedOnToken).toHaveBeenCalledWith(
+					'cookie-jwt',
+					'POST',
+					'/chat',
+					'browser-abc',
+				);
+				expect(mockAuthService.authenticateUserByCookie).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('manual-execution branch', () => {
+			it('should resolve user via authenticateUserByCookie and skip the request-bound path', async () => {
+				mockAuthService.authenticateUserByCookie.mockResolvedValue(mockUser);
+
+				const context = {
+					identity: 'n8n-auth-cookie-jwt',
+					version: 1 as const,
+					metadata: { source: 'manual-execution' as const },
+				};
+
+				const result = await identifier.resolve(context, {});
+
+				expect(result).toBe('user-123');
+				expect(mockAuthService.authenticateUserByCookie).toHaveBeenCalledWith(
+					'n8n-auth-cookie-jwt',
+				);
+				expect(mockAuthService.authenticateUserBasedOnToken).not.toHaveBeenCalled();
+			});
+
+			it('should propagate AuthError from authenticateUserByCookie', async () => {
+				mockAuthService.authenticateUserByCookie.mockRejectedValue(new AuthError('Unauthorized'));
+
+				const context = {
+					identity: 'expired-cookie',
+					version: 1 as const,
+					metadata: { source: 'manual-execution' as const },
+				};
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow('Unauthorized');
+			});
+
+			it('should propagate generic errors from authenticateUserByCookie', async () => {
+				mockAuthService.authenticateUserByCookie.mockRejectedValue(
+					new Error('Database connection failed'),
+				);
+
+				const context = {
+					identity: 'cookie-jwt',
+					version: 1 as const,
+					metadata: { source: 'manual-execution' as const },
+				};
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow('Database connection failed');
+			});
+		});
 	});
 });

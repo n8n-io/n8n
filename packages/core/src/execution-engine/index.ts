@@ -79,6 +79,8 @@ declare module 'n8n-workflow' {
 		 * Contains workflow-level configuration including credential resolver ID.
 		 */
 		workflowSettings?: IWorkflowSettings;
+		/** n8n auth JWT of the user who triggered this manual execution. */
+		n8nAuthCookie?: string;
 	}
 }
 

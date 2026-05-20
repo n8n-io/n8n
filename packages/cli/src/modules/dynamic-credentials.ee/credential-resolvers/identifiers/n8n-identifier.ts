@@ -5,17 +5,30 @@ import { AuthService } from '@/auth/auth.service';
 import { z } from 'zod';
 import { CredentialResolverError } from '@n8n/decorators';
 
-const ChatHubExtractorMetadataSchema = z.object({
+const ManualExecutionMetadataSchema = z.object({
+	source: z.literal('manual-execution'),
+});
+
+const ChatHubMetadataSchema = z.object({
+	source: z.enum(['chat-hub-injected', 'cookie-source']).optional(),
 	method: z.string(),
 	endpoint: z.string(),
 	browserId: z.string().optional(),
 });
+
+const N8NIdentifierMetadataSchema = z.union([ManualExecutionMetadataSchema, ChatHubMetadataSchema]);
 
 /**
  * N8N JWT token identifier.
  * Validates n8n authentication tokens and resolves them to user IDs.
  * Used by the N8N credential resolver to authenticate users via n8n's
  * built-in JWT authentication and store credentials per user.
+ *
+ * Supports two metadata sources:
+ * - `manual-execution`: editor-triggered run; identity is the n8n auth cookie (JWT).
+ *   Validated cryptographically without request-bound checks (browserId / endpoint).
+ * - `chat-hub-injected` (or no source): chat-hub / webhook run; identity is the
+ *   n8n auth cookie captured from the HTTP request, validated with full request context.
  */
 @Service()
 export class N8NIdentifier implements ITokenIdentifier {
@@ -26,13 +39,21 @@ export class N8NIdentifier implements ITokenIdentifier {
 	}
 
 	async resolve(context: ICredentialContext, _: Record<string, unknown>): Promise<string> {
-		const metadataResult = ChatHubExtractorMetadataSchema.safeParse(context.metadata);
+		const metadataResult = N8NIdentifierMetadataSchema.safeParse(context.metadata);
 		if (!metadataResult.success) {
 			throw new CredentialResolverError(
 				`Invalid context metadata: ${metadataResult.error.message}`,
 			);
 		}
 
+		if (metadataResult.data.source === 'manual-execution') {
+			// No HTTP request context at credential-resolution time; skip browserId/endpoint checks.
+			const user = await this.authService.authenticateUserByCookie(context.identity);
+			return user.id;
+		}
+
+		// Chat-hub / webhook run: validate the JWT together with the request-bound metadata
+		// (browserId, endpoint, method) captured from the originating HTTP request.
 		const user = await this.authService.authenticateUserBasedOnToken(
 			context.identity,
 			metadataResult.data.method,

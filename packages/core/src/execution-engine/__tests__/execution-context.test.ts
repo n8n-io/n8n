@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import {
 	createEmptyRunExecutionData,
@@ -12,6 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import { establishExecutionContext } from '../execution-context';
+import { ExecutionContextService } from '../execution-context.service';
 
 describe('establishExecutionContext', () => {
 	const mockWorkflow = mock<Workflow>({ id: 'test-workflow-id' });
@@ -1204,6 +1206,130 @@ describe('establishExecutionContext', () => {
 				version: 1,
 				policy: 'all',
 			});
+		});
+	});
+
+	describe('manual execution credential context', () => {
+		let mockExecutionContextService: jest.Mocked<ExecutionContextService>;
+
+		const buildRunDataWithManualTrigger = () =>
+			createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: mock<INode>({ name: 'Manual', type: 'n8n-nodes-base.manualTrigger' }),
+							data: { main: [[{ json: {} }]] },
+							source: null,
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			});
+
+		beforeEach(() => {
+			mockExecutionContextService = mock<ExecutionContextService>();
+			mockExecutionContextService.buildManualExecutionCredentials.mockResolvedValue(
+				'encrypted-credential-blob',
+			);
+			// The end of establishExecutionContext calls augmentExecutionContextWithHooks for any
+			// start item that isn't gated by an early return. Stub it to a no-op pass-through so the
+			// tests below only assert the manual-injection branch.
+			mockExecutionContextService.augmentExecutionContextWithHooks.mockImplementation(
+				async (_workflow, _startItem, context) => ({
+					context,
+					triggerItems: null,
+				}),
+			);
+			Container.set(ExecutionContextService, mockExecutionContextService);
+		});
+
+		afterEach(() => {
+			Container.reset();
+		});
+
+		it('should encrypt the n8nAuthCookie into credentials for manual runs', async () => {
+			const runExecutionData = buildRunDataWithManualTrigger();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				n8nAuthCookie: 'cookie-jwt',
+			});
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'manual');
+
+			expect(mockExecutionContextService.buildManualExecutionCredentials).toHaveBeenCalledWith(
+				'cookie-jwt',
+			);
+			expect(runExecutionData.executionData!.runtimeData!.credentials).toBe(
+				'encrypted-credential-blob',
+			);
+		});
+
+		it('should NOT inject credentials when n8nAuthCookie is missing', async () => {
+			const runExecutionData = buildRunDataWithManualTrigger();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				n8nAuthCookie: undefined,
+			});
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'manual');
+
+			expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
+			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
+		});
+
+		it('should NOT inject credentials when additionalData is undefined', async () => {
+			const runExecutionData = buildRunDataWithManualTrigger();
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, undefined, 'manual');
+
+			expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
+			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
+		});
+
+		it('should NOT inject credentials for webhook mode even when cookie is present', async () => {
+			const runExecutionData = buildRunDataWithManualTrigger();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				n8nAuthCookie: 'cookie-jwt',
+			});
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'webhook');
+
+			expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
+			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
+		});
+
+		it('should NOT inject credentials for trigger mode even when cookie is present', async () => {
+			const runExecutionData = buildRunDataWithManualTrigger();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				n8nAuthCookie: 'cookie-jwt',
+			});
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'trigger');
+
+			expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
+			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
+		});
+
+		it('should not overwrite existing runtimeData when it is already established', async () => {
+			const runExecutionData = buildRunDataWithManualTrigger();
+			const existingContext: IExecutionContext = {
+				version: 1,
+				establishedAt: 12345,
+				source: 'manual',
+				credentials: 'pre-existing-credentials',
+			};
+			runExecutionData.executionData!.runtimeData = existingContext;
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				n8nAuthCookie: 'cookie-jwt',
+			});
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'manual');
+
+			expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
+			expect(runExecutionData.executionData!.runtimeData).toEqual(existingContext);
 		});
 	});
 });

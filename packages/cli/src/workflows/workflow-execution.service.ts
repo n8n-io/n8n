@@ -108,6 +108,7 @@ export class WorkflowExecutionService {
 		payload: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
+		n8nAuthCookie?: string,
 	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
 		// Check whether this workflow is active.
 		const workflowIsActive = await this.workflowRepository.isActive(workflowData.id);
@@ -218,6 +219,7 @@ export class WorkflowExecutionService {
 			const project = await this.ownershipService.getWorkflowProjectCached(workflowData.id);
 			data.projectId = project.id;
 			data.projectName = project.name;
+			data.n8nAuthCookie = n8nAuthCookie;
 
 			const offloadingManualExecutionsInQueueMode =
 				this.globalConfig.executions.mode === 'queue' &&

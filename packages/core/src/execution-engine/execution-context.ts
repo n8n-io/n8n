@@ -135,6 +135,14 @@ export const establishExecutionContext = async (
 		},
 	};
 
+	// Manual runs have no live request at credential-resolution time; encrypt the JWT now.
+	const n8nAuthCookie = additionalData?.n8nAuthCookie;
+	if (mode === 'manual' && n8nAuthCookie) {
+		const executionContextService = Container.get(ExecutionContextService);
+		executionData.runtimeData.credentials =
+			await executionContextService.buildManualExecutionCredentials(n8nAuthCookie);
+	}
+
 	if (runExecutionData.parentExecution) {
 		// Create a new context by inheriting everything from the parent execution context,
 		// except for the establishedAt timestamp which we set to now and the source which we set to the current mode.
