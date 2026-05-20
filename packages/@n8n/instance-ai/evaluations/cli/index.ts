@@ -52,14 +52,13 @@ import {
 	type BuildResult,
 } from '../harness/runner';
 import { syncDataset, type DatasetExampleInputs } from '../langsmith/dataset-sync';
-import { fetchThreadTraces } from '../langsmith/trace-fetch';
 import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { writeWorkflowReport } from '../report/workflow-report';
 import type {
 	MultiRunEvaluation,
 	ExecutionScenarioResult,
 	ExecutionScenario,
-	TraceNode,
+	TranscriptTurn,
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
@@ -213,7 +212,6 @@ async function main(): Promise<void> {
 		let experimentName: string | undefined;
 		let outcome: ComparisonOutcome | undefined;
 		let slugByTestCase: Map<WorkflowTestCase, string> | undefined;
-		let tracePromises: Map<string, Promise<TraceNode[]>> | undefined;
 
 		if (hasLangSmith) {
 			logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
@@ -222,7 +220,6 @@ async function main(): Promise<void> {
 			experimentName = langsmithRun.experimentName;
 			outcome = langsmithRun.outcome;
 			slugByTestCase = langsmithRun.slugByTestCase;
-			tracePromises = langsmithRun.tracePromises;
 		} else {
 			logger.info('No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)');
 			evaluation = await runDirectLoop({ args, lanes, logger, prebuiltManifest });
@@ -242,7 +239,6 @@ async function main(): Promise<void> {
 		console.log(`Results:    ${jsonPath}`);
 		console.log(`PR comment: ${prCommentPath}`);
 		const reportResults = flattenRunsForReport(evaluation);
-		await attachConversationTraces(reportResults, logger, tracePromises);
 		const htmlPath = writeWorkflowReport(reportResults);
 		console.log(`Report:     ${htmlPath}`);
 		console.log(
@@ -258,69 +254,6 @@ async function main(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Conversation trace ingestion (LangSmith → HTML report)
-// ---------------------------------------------------------------------------
-
-/**
- * Attach LangSmith conversation traces to each result. Prefers per-build
- * promises kicked off as builds completed; falls back to a fresh pull for
- * any threadId that wasn't pre-pulled (e.g. runDirectLoop path).
- */
-async function attachConversationTraces(
-	results: WorkflowTestCaseResult[],
-	logger: EvalLogger,
-	tracePromises?: Map<string, Promise<TraceNode[]>>,
-): Promise<void> {
-	if (!process.env.LANGSMITH_API_KEY) {
-		logger.verbose('Skipping conversation-trace ingestion (LANGSMITH_API_KEY not set)');
-		return;
-	}
-
-	const projectName = process.env.LANGSMITH_PROJECT ?? 'instance-ai';
-
-	const targets = results.filter((r): r is WorkflowTestCaseResult & { threadId: string } =>
-		Boolean(r.threadId),
-	);
-	if (targets.length === 0) return;
-
-	const fallbackClient = tracePromises ? undefined : new Client();
-	const started = Date.now();
-
-	let failures = 0;
-	let empties = 0;
-	await Promise.all(
-		targets.map(async (result) => {
-			const inflight = tracePromises?.get(result.threadId);
-			const promise = inflight ?? fetchThreadTraces(fallbackClient!, projectName, result.threadId);
-			try {
-				const trace = await promise;
-				result.conversationTrace = trace;
-				if (trace.length === 0) {
-					empties++;
-					logger.warn(
-						`Trace fetch returned 0 runs for ${result.threadId} (build completed but LangSmith has nothing yet — ingestion lag or trace name mismatch)`,
-					);
-				}
-			} catch (error: unknown) {
-				failures++;
-				const msg = error instanceof Error ? error.message : String(error);
-				logger.warn(`Trace fetch failed for ${result.threadId}: ${msg}`);
-			}
-		}),
-	);
-
-	const elapsedMs = Date.now() - started;
-	if (failures > 0 || empties > 0) {
-		const succeeded = targets.length - failures - empties;
-		logger.warn(
-			`Trace ingestion: ${String(succeeded)}/${String(targets.length)} succeeded in ${String(elapsedMs)}ms (${String(failures)} failed, ${String(empties)} empty)`,
-		);
-	} else {
-		logger.verbose(`Trace ingestion completed in ${String(elapsedMs)}ms`);
-	}
-}
-
-// ---------------------------------------------------------------------------
 // LangSmith mode: evaluate() with dataset sync, tracing, experiments
 // ---------------------------------------------------------------------------
 
@@ -329,18 +262,16 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	experimentName: string;
 	outcome: ComparisonOutcome;
 	slugByTestCase: Map<WorkflowTestCase, string>;
-	tracePromises: Map<string, Promise<TraceNode[]>>;
 }> {
 	const { args, lanes, logger, prebuiltManifest } = config;
 
 	const lsClient = new Client();
-
-	// Per-build trace pulls, keyed by threadId. Kicked off as each build completes
-	// so fetches spread over the run rather than bursting at the end.
-	const tracePromises = new Map<string, Promise<TraceNode[]>>();
-	const langsmithProjectName = process.env.LANGSMITH_PROJECT ?? 'instance-ai';
 	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter, args.exclude);
 	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
+
+	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —
+	// the LangSmith target() output schema doesn't carry the full transcript.
+	const transcriptByThreadId = new Map<string, TranscriptTurn[]>();
 
 	// LangSmith dataset rows carry only per-scenario fields. The conversation
 	// for the build is sourced locally, keyed by fileSlug.
@@ -457,7 +388,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const build = await fetchPrebuiltBuild(lane.runner.client, prebuiltId, logger);
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
-				kickOffTracePull(build);
+				stashTranscript(build);
 				return { build, lane, buildDurationMs };
 			}
 			// Orchestrator path: allocator spreads distinct fileSlugs across lanes;
@@ -473,7 +404,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				});
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
-				kickOffTracePull(build);
+				stashTranscript(build);
 				return { build, lane, buildDurationMs };
 			} finally {
 				allocator.release(lane, fileSlug);
@@ -483,12 +414,10 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		return await promise;
 	}
 
-	function kickOffTracePull(build: BuildResult): void {
-		if (!build.threadId || tracePromises.has(build.threadId)) return;
-		tracePromises.set(
-			build.threadId,
-			fetchThreadTraces(lsClient, langsmithProjectName, build.threadId),
-		);
+	function stashTranscript(build: BuildResult): void {
+		if (build.threadId && build.transcript) {
+			transcriptByThreadId.set(build.threadId, build.transcript);
+		}
 	}
 
 	const target = async (inputs: TargetInputs): Promise<TargetOutput> => {
@@ -655,6 +584,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			experimentResults.results,
 			testCasesWithFiles,
 			args.iterations,
+			transcriptByThreadId,
 		);
 		const evaluation = aggregateResults(allRunResults, args.iterations);
 
@@ -691,7 +621,6 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			experimentName: experimentResults.experimentName,
 			outcome,
 			slugByTestCase,
-			tracePromises,
 		};
 	} finally {
 		if (!args.keepWorkflows) {
@@ -855,6 +784,7 @@ function reshapeLangSmithRuns(
 	rows: Array<{ run: Run }>,
 	testCasesWithFiles: WorkflowTestCaseWithFile[],
 	numIterations: number,
+	transcriptByThreadId: Map<string, TranscriptTurn[]>,
 ): WorkflowTestCaseResult[][] {
 	// Index runs by (iteration, testCaseFile, scenarioName) using the `_iteration`
 	// we injected in expandExamplesForIterations. Falls back to 0 for single-run.
@@ -903,6 +833,7 @@ function reshapeLangSmithRuns(
 				});
 			}
 
+			const transcript = threadId ? transcriptByThreadId.get(threadId) : undefined;
 			runResults.push({
 				testCase,
 				workflowBuildSuccess,
@@ -910,6 +841,7 @@ function reshapeLangSmithRuns(
 				executionScenarioResults,
 				buildError,
 				threadId,
+				transcript,
 			});
 		}
 		allRunResults.push(runResults);

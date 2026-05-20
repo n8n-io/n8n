@@ -211,29 +211,57 @@ export interface WorkflowTestCaseResult {
 	workflowJson?: WorkflowResponse;
 	conversationMetrics?: ConversationMetrics;
 	threadId?: string;
-	conversationTrace?: TraceNode[];
+	transcript?: TranscriptTurn[];
 }
 
 // ---------------------------------------------------------------------------
-// Conversation trace (pulled from LangSmith after the eval run)
+// Conversation transcript (synthesized from the SSE event stream)
 // ---------------------------------------------------------------------------
 
-/** Normalized LangSmith Run record, nested into a tree by parentRunId. */
-export interface TraceNode {
+export interface TranscriptTurn {
+	userMessage?: string;
+	agentText: string;
+	toolInteractions: ToolInteraction[];
+}
+
+export type ToolInteraction =
+	| { kind: 'plan'; tasks: PlanTask[] }
+	| { kind: 'ask-user'; questions: AskUserQuestion[]; answers?: AskUserAnswer[] }
+	| {
+			kind: 'setup-wizard';
+			completedNodes: SetupWizardCompletedNode[];
+			skippedNodes: SetupWizardSkippedNode[];
+			reason?: string;
+	  }
+	| { kind: 'confirmation'; toolName: string; resumeReason: string; approved?: boolean }
+	| { kind: 'tool-call'; toolName: string };
+
+export interface PlanTask {
+	title?: string;
+	description?: string;
+}
+
+export interface AskUserQuestion {
 	id: string;
-	traceId: string;
-	parentRunId: string | null;
-	name: string;
-	runType: string;
-	startTime: number;
-	endTime: number | null;
-	durationMs: number | null;
-	error: string | null;
-	inputs: unknown;
-	outputs: unknown;
-	metadata: Record<string, unknown>;
-	tokenUsage: { input?: number; output?: number; total?: number } | null;
-	children: TraceNode[];
+	question: string;
+	options?: string[];
+}
+
+export interface AskUserAnswer {
+	questionId: string;
+	selectedOptions: string[];
+	customText?: string;
+	skipped?: boolean;
+}
+
+export interface SetupWizardCompletedNode {
+	nodeName: string;
+	parametersSet?: string[];
+}
+
+export interface SetupWizardSkippedNode {
+	nodeName: string;
+	credentialType?: string;
 }
 
 // ---------------------------------------------------------------------------

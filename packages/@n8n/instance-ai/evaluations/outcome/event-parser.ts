@@ -406,7 +406,7 @@ export function buildConversationMetrics(events: CapturedEvent[]): ConversationM
 
 /** Split events into turns. Each turn begins at a `run-start` event; events
  *  before the first `run-start` form a leading pseudo-turn (unusual but handled). */
-function splitEventsIntoTurns(events: CapturedEvent[]): CapturedEvent[][] {
+export function splitEventsIntoTurns(events: CapturedEvent[]): CapturedEvent[][] {
 	const turns: CapturedEvent[][] = [];
 	let current: CapturedEvent[] = [];
 	for (const event of events) {

@@ -6,7 +6,7 @@
 // LLM-mocked HTTP, checklist verification, and result aggregation.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type { InstanceAiConfirmRequest, InstanceAiEvalExecutionResult } from '@n8n/api-types';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -22,6 +22,7 @@ import { fetchPrebuiltBuild } from './prebuilt-workflows';
 import { verifyChecklist } from '../checklist/verifier';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import { buildConversationMetrics, extractOutcomeFromEvents } from '../outcome/event-parser';
+import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
 import type {
 	ChecklistItem,
@@ -30,6 +31,7 @@ import type {
 	ConversationTurn,
 	ExecutionScenarioResult,
 	ExecutionScenario,
+	TranscriptTurn,
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
@@ -100,6 +102,9 @@ export async function runWorkflowTestCase(
 	if (build.threadId) {
 		result.threadId = build.threadId;
 	}
+	if (build.transcript) {
+		result.transcript = build.transcript;
+	}
 
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;
@@ -163,6 +168,8 @@ interface MultiTurnDriverConfig {
 	startTime: number;
 	timeoutMs: number;
 	logger: EvalLogger;
+	proxyResponses?: Map<string, InstanceAiConfirmRequest>;
+	followUpMessagesOut?: string[];
 }
 
 async function driveMultiTurnConversation(
@@ -180,7 +187,11 @@ async function driveMultiTurnConversation(
 
 	const nextMessageDecider = async () => {
 		proxy.ingestEvents(config.events);
-		return await proxy.decideFollowUp();
+		const decision = await proxy.decideFollowUp();
+		if (decision.kind === 'followUp') {
+			config.followUpMessagesOut?.push(decision.message);
+		}
+		return decision;
 	};
 
 	await config.client.sendMessage(config.threadId, openingMessage);
@@ -195,6 +206,7 @@ async function driveMultiTurnConversation(
 		logger: config.logger,
 		confirmationStrategy,
 		nextMessageDecider,
+		proxyResponses: config.proxyResponses,
 	});
 
 	return { ...proxy.getDecisionStats() };
@@ -218,6 +230,8 @@ export interface BuildResult {
 	threadId?: string;
 	/** Counts of UserProxyLlm decisions by category (multi-turn builds only). */
 	proxyDecisionStats?: ProxyDecisionStats;
+	/** Chat-style transcript built from the SSE event stream + proxy responses. */
+	transcript?: TranscriptTurn[];
 }
 
 export interface BuildWorkflowConfig {
@@ -261,6 +275,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	const abortController = new AbortController();
 	const events: CapturedEvent[] = [];
 	const approvedRequests = new Set<string>();
+	const proxyResponses = new Map<string, InstanceAiConfirmRequest>();
+	const followUpMessages: string[] = [];
 
 	try {
 		const buildStart = Date.now();
@@ -287,6 +303,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				startTime,
 				timeoutMs,
 				logger,
+				proxyResponses,
+				followUpMessagesOut: followUpMessages,
 			});
 		} else {
 			await client.sendMessage(threadId, openingMessage);
@@ -298,6 +316,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				startTime,
 				timeoutMs,
 				logger,
+				proxyResponses,
 			});
 		}
 
@@ -305,6 +324,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		await ssePromise.catch(() => {});
 
 		const conversationMetrics = buildConversationMetrics(events);
+		const transcript = buildTranscriptFromEvents({
+			events,
+			openingMessage,
+			followUpMessages,
+			proxyResponses,
+		});
 
 		let threadMessages;
 		try {
@@ -373,6 +398,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				conversationMetrics,
 				threadId,
 				proxyDecisionStats,
+				transcript,
 			};
 		}
 
@@ -391,6 +417,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			conversationMetrics,
 			threadId,
 			proxyDecisionStats,
+			transcript,
 		};
 	} catch (error: unknown) {
 		abortController.abort();

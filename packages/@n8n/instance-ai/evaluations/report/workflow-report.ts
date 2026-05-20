@@ -10,15 +10,14 @@
 import fs from 'fs';
 import path from 'path';
 
-import { isAskUserNode, isResumeNode, tryRenderToolDetail } from './tool-renderers';
 import type {
 	ConversationMetrics,
 	ExecutionScenarioResult,
-	TraceNode,
+	ToolInteraction,
+	TranscriptTurn,
 	TurnCounter,
 	WorkflowTestCaseResult,
 } from '../types';
-import { isRecord } from '../utils/safe-extract';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -252,281 +251,138 @@ function renderTurnRow(turn: TurnCounter): string {
 }
 
 // ---------------------------------------------------------------------------
-// Conversation transcript — chat-style view extracted from trace data
+// Conversation transcript — chat-style view built from the captured event stream
 // ---------------------------------------------------------------------------
 
-function renderConversationTranscript(trace: TraceNode[] | undefined): string {
-	if (!trace || trace.length === 0) return '';
-	const turns = trace.filter((node) => node.name === 'message_turn');
-	if (turns.length === 0) return '';
-
-	const turnsHtml = turns.map((turn, i) => renderTranscriptTurn(turn, i + 1)).join('');
-
+function renderConversationTranscript(transcript: TranscriptTurn[] | undefined): string {
+	if (!transcript || transcript.length === 0) return '';
+	const turnsHtml = transcript.map((turn, i) => renderTranscriptTurn(turn, i + 1)).join('');
 	return `<details class="section" open><summary>Conversation transcript</summary>
 		<div class="transcript">${turnsHtml}</div>
 	</details>`;
 }
 
-function plannedFollowUpType(message: string): string | null {
-	if (!message.startsWith('<planned-task-follow-up')) return null;
-	const match = message.match(/type="([^"]+)"/);
-	return match ? match[1] : 'unknown';
-}
-
-function renderTranscriptTurn(turn: TraceNode, turnNum: number): string {
-	const userMessage = pickString(turn.inputs, 'message');
-	const assistantResponse = pickString(turn.outputs, 'response');
-	const reasoning = collectReasoning(turn);
-	const toolsUsed = collectToolNames(turn);
-	const keyToolDetails = collectKeyToolDetails(turn);
-	const followUpType = plannedFollowUpType(userMessage);
-
-	const headerLabel = followUpType
-		? `Turn ${String(turnNum)} — internal ${followUpType}`
-		: `Turn ${String(turnNum)}`;
-	const userIcon = followUpType ? '📋' : '👤';
-	const userClass = followUpType
-		? 'transcript-line transcript-internal'
-		: 'transcript-line transcript-user';
-
-	const parts: string[] = [`<div class="transcript-turn-header">${headerLabel}</div>`];
-	if (userMessage) {
-		// For internal follow-ups, the message body is a long JSON marker —
-		// collapse it behind a details so the transcript stays readable but
-		// the full payload is one click away.
-		if (followUpType) {
-			parts.push(
-				`<details class="${userClass}"><summary><span class="transcript-icon">${userIcon}</span><span class="transcript-text">orchestrator self-message (${escapeHtml(followUpType)})</span></summary><pre class="json-block"><code>${escapeHtml(userMessage)}</code></pre></details>`,
-			);
-		} else {
-			parts.push(
-				`<div class="${userClass}"><span class="transcript-icon">${userIcon}</span><span class="transcript-text">${escapeHtml(userMessage)}</span></div>`,
-			);
-		}
-	}
-	if (assistantResponse) {
+function renderTranscriptTurn(turn: TranscriptTurn, turnNum: number): string {
+	const parts: string[] = [`<div class="transcript-turn-header">Turn ${String(turnNum)}</div>`];
+	if (turn.userMessage) {
 		parts.push(
-			`<div class="transcript-line transcript-assistant"><span class="transcript-icon">🤖</span><span class="transcript-text">${escapeHtml(assistantResponse)}</span></div>`,
+			`<div class="transcript-line transcript-user"><span class="transcript-icon">👤</span><span class="transcript-text">${escapeHtml(turn.userMessage)}</span></div>`,
 		);
 	}
-	if (reasoning) {
+	if (turn.agentText) {
 		parts.push(
-			`<details class="transcript-aside"><summary>💭 reasoning</summary><div class="transcript-reasoning">${escapeHtml(reasoning)}</div></details>`,
+			`<div class="transcript-line transcript-assistant"><span class="transcript-icon">🤖</span><span class="transcript-text">${escapeHtml(turn.agentText)}</span></div>`,
 		);
 	}
-	for (const detail of keyToolDetails) {
-		parts.push(detail);
+
+	const toolNames: string[] = [];
+	for (const interaction of turn.toolInteractions) {
+		const block = renderInteraction(interaction);
+		if (block) parts.push(block);
+		if (interaction.kind === 'tool-call') toolNames.push(interaction.toolName);
 	}
-	if (toolsUsed.length > 0) {
+
+	if (toolNames.length > 0) {
 		parts.push(
-			`<div class="transcript-tools">🔧 ${toolsUsed.map((t) => escapeHtml(t)).join(', ')}</div>`,
+			`<div class="transcript-tools">🔧 ${toolNames.map((t) => escapeHtml(t)).join(', ')}</div>`,
 		);
 	}
 	return `<div class="transcript-turn">${parts.join('')}</div>`;
 }
 
-/**
- * Surface the inputs of the tools that drive the multi-turn conversation —
- * plan items, ask-user questions, confirmation resumes — so a reader can see
- * what the agent did inside a turn without drilling into the raw trace.
- */
-function collectKeyToolDetails(turn: TraceNode): string[] {
-	// Walk descendants once; collapse each ask-user suspend+resume pair into
-	// the resume (which carries answers). We link the pair by the question-id
-	// signature because suspends and resumes don't share a metadata key.
-	const askUserNodes: TraceNode[] = [];
-	const otherDetails: string[] = [];
-	const ctx = { escapeHtml };
-
-	walkDescendants(turn, (node) => {
-		if (node.runType !== 'tool') return;
-		if (isAskUserNode(node)) {
-			askUserNodes.push(node);
-			return;
+function renderInteraction(interaction: ToolInteraction): string | null {
+	switch (interaction.kind) {
+		case 'plan': {
+			if (interaction.tasks.length === 0) return null;
+			const lines = interaction.tasks
+				.map((t, i) => {
+					const title = t.title ?? `Task ${String(i + 1)}`;
+					const desc = t.description ? `: ${escapeHtml(t.description)}` : '';
+					return `<li><strong>${escapeHtml(title)}</strong>${desc}</li>`;
+				})
+				.join('');
+			const word = interaction.tasks.length === 1 ? 'task' : 'tasks';
+			return `<details class="transcript-aside" open><summary>📋 plan (${String(interaction.tasks.length)} ${word})</summary><ul class="transcript-plan">${lines}</ul></details>`;
 		}
-		const block = tryRenderToolDetail(node, ctx);
-		if (block) otherDetails.push(block);
-	});
-
-	const askUserBlocks: string[] = [];
-	const askUserBySignature = new Map<string, TraceNode>();
-	for (const node of askUserNodes) {
-		const sig = askUserSignature(node);
-		if (!sig) {
-			askUserBlocks.push(tryRenderToolDetail(node, ctx) ?? '');
-			continue;
-		}
-		const existing = askUserBySignature.get(sig);
-		if (!existing || (isResumeNode(node) && !isResumeNode(existing))) {
-			askUserBySignature.set(sig, node);
-		}
-	}
-	for (const node of askUserBySignature.values()) {
-		const block = tryRenderToolDetail(node, ctx);
-		if (block) askUserBlocks.push(block);
-	}
-
-	return [...askUserBlocks.filter(Boolean), ...otherDetails];
-}
-
-function askUserSignature(node: TraceNode): string | null {
-	if (!isRecord(node.inputs)) return null;
-	const input = 'input' in node.inputs ? node.inputs.input : node.inputs;
-	if (!isRecord(input) || !Array.isArray(input.questions)) return null;
-	const ids = input.questions
-		.filter(isRecord)
-		.map((q) => (typeof q.id === 'string' ? q.id : JSON.stringify(q.question ?? '')));
-	return ids.length > 0 ? ids.join('|') : null;
-}
-
-function pickString(value: unknown, key: string): string {
-	if (!isRecord(value)) return '';
-	const v = value[key];
-	return typeof v === 'string' ? v : '';
-}
-
-function collectReasoning(turn: TraceNode): string {
-	const parts: string[] = [];
-	walkDescendants(turn, (node) => {
-		if (node.runType !== 'llm' || !isRecord(node.outputs)) return;
-		const messages = node.outputs.messages;
-		if (!Array.isArray(messages)) return;
-		for (const msg of messages) {
-			if (!isRecord(msg) || !Array.isArray(msg.content)) continue;
-			for (const item of msg.content) {
-				if (isRecord(item) && item.type === 'thinking' && typeof item.text === 'string') {
-					parts.push(item.text.trim());
-				}
+		case 'ask-user': {
+			if (interaction.questions.length === 0) return null;
+			const answerByQId = new Map<string, string>();
+			for (const a of interaction.answers ?? []) {
+				const selected = a.selectedOptions.join(', ');
+				const text = [selected, a.customText].filter(Boolean).join(' — ');
+				if (text) answerByQId.set(a.questionId, text);
 			}
+			const lines = interaction.questions
+				.map((q) => {
+					const opts =
+						q.options && q.options.length > 0
+							? ` <em>(${q.options.map((o) => escapeHtml(o)).join(' / ')})</em>`
+							: '';
+					const answer = answerByQId.get(q.id);
+					const answerHtml = answer
+						? `<div class="transcript-answer">👤 ${escapeHtml(answer)}</div>`
+						: '';
+					return `<li>${escapeHtml(q.question)}${opts}${answerHtml}</li>`;
+				})
+				.join('');
+			const summary =
+				answerByQId.size > 0
+					? '❓ ask-user (with answers)'
+					: `❓ ask-user (${String(interaction.questions.length)} question${interaction.questions.length === 1 ? '' : 's'})`;
+			return `<details class="transcript-aside" open><summary>${summary}</summary><ul class="transcript-questions">${lines}</ul></details>`;
 		}
-	});
-	return parts.join('\n\n');
-}
+		case 'setup-wizard': {
+			const skipped = interaction.skippedNodes;
+			const needCreds = skipped.filter((s) => Boolean(s.credentialType)).length;
+			const needParams = skipped.length - needCreds;
+			const breakdown: string[] = [];
+			if (needCreds > 0) breakdown.push(`${String(needCreds)} need credentials`);
+			if (needParams > 0) breakdown.push(`${String(needParams)} need parameters`);
+			const headerParts: string[] = [];
+			if (interaction.completedNodes.length > 0) {
+				headerParts.push(`${String(interaction.completedNodes.length)} configured`);
+			}
+			if (skipped.length > 0) {
+				headerParts.push(
+					`${String(skipped.length)} skipped${breakdown.length > 0 ? ` (${breakdown.join(', ')})` : ''}`,
+				);
+			}
+			const header = headerParts.length > 0 ? headerParts.join(', ') : 'nothing to apply';
 
-function collectToolNames(turn: TraceNode): string[] {
-	const tools = new Set<string>();
-	walkDescendants(turn, (node) => {
-		if (node.runType === 'tool') tools.add(node.name);
-	});
-	return [...tools].sort();
-}
-
-function walkDescendants(node: TraceNode, visit: (n: TraceNode) => void): void {
-	for (const child of node.children) {
-		visit(child);
-		walkDescendants(child, visit);
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Conversation trace (full LangSmith run tree — for drill-in)
-// ---------------------------------------------------------------------------
-
-const TRACE_TYPE_META: Record<string, { icon: string; cssClass: string }> = {
-	chain: { icon: '⛓', cssClass: 'trace-type-chain' },
-	llm: { icon: '🧠', cssClass: 'trace-type-llm' },
-	tool: { icon: '🔧', cssClass: 'trace-type-tool' },
-	agent: { icon: '👥', cssClass: 'trace-type-agent' },
-	retriever: { icon: '🔍', cssClass: 'trace-type-retriever' },
-	prompt: { icon: '📝', cssClass: 'trace-type-prompt' },
-	parser: { icon: '🔄', cssClass: 'trace-type-parser' },
-	embedding: { icon: '🧬', cssClass: 'trace-type-embedding' },
-};
-
-function renderConversationTrace(
-	trace: TraceNode[] | undefined,
-	threadId: string | undefined,
-): string {
-	if (!trace || trace.length === 0) {
-		if (!threadId) return '';
-		return `<details class="section"><summary>Conversation trace</summary>
-			<div class="muted">No trace data pulled from LangSmith (thread <code>${escapeHtml(threadId)}</code>). The eval still recorded per-turn counters above.</div>
-		</details>`;
-	}
-
-	const totalRuns = countNodes(trace);
-	const totalMs = trace.reduce((sum, root) => sum + (root.durationMs ?? 0), 0);
-
-	const summary = [
-		`<strong>${String(totalRuns)}</strong> run${totalRuns === 1 ? '' : 's'}`,
-		`across <strong>${String(trace.length)}</strong> root${trace.length === 1 ? '' : 's'}`,
-		`<strong>${(totalMs / 1000).toFixed(1)}s</strong> total`,
-	].join(' · ');
-
-	const treeHtml = trace.map((node) => renderTraceNode(node, 0)).join('');
-
-	return `<details class="section"><summary>Conversation trace</summary>
-		<div class="trace-summary">${summary}</div>
-		<div class="trace-tree">${treeHtml}</div>
-	</details>`;
-}
-
-function countNodes(nodes: TraceNode[]): number {
-	let n = 0;
-	for (const node of nodes) {
-		n += 1 + countNodes(node.children);
-	}
-	return n;
-}
-
-function renderTraceNode(node: TraceNode, depth: number): string {
-	const meta = TRACE_TYPE_META[node.runType] ?? {
-		icon: '·',
-		cssClass: 'trace-type-other',
-	};
-	const lat = node.durationMs !== null ? `${String(Math.round(node.durationMs))}ms` : '—';
-	const tokens = node.tokenUsage
-		? `${String(node.tokenUsage.total ?? (node.tokenUsage.input ?? 0) + (node.tokenUsage.output ?? 0))} tok`
-		: '';
-	const errorBadge = node.error ? '<span class="trace-error-badge">error</span>' : '';
-
-	const bodyParts: string[] = [];
-
-	if (node.error) {
-		bodyParts.push(`<div class="trace-error-box">${escapeHtml(node.error)}</div>`);
-	}
-
-	if (node.inputs !== null && node.inputs !== undefined) {
-		bodyParts.push(
-			`<details class="trace-io"><summary>Input</summary><pre class="json-block"><code>${escapeHtml(stableStringify(node.inputs))}</code></pre></details>`,
-		);
-	}
-
-	if (node.outputs !== null && node.outputs !== undefined) {
-		bodyParts.push(
-			`<details class="trace-io"><summary>Output</summary><pre class="json-block"><code>${escapeHtml(stableStringify(node.outputs))}</code></pre></details>`,
-		);
-	}
-
-	if (Object.keys(node.metadata).length > 0) {
-		bodyParts.push(
-			`<details class="trace-io"><summary>Metadata</summary><pre class="json-block"><code>${escapeHtml(stableStringify(node.metadata))}</code></pre></details>`,
-		);
-	}
-
-	if (node.children.length > 0) {
-		bodyParts.push(
-			`<div class="trace-children">${node.children.map((c) => renderTraceNode(c, depth + 1)).join('')}</div>`,
-		);
-	}
-
-	return `<details class="trace-node ${meta.cssClass}">
-		<summary>
-			<span class="trace-icon">${meta.icon}</span>
-			<span class="trace-type">${escapeHtml(node.runType)}</span>
-			<span class="trace-name">${escapeHtml(node.name)}</span>
-			<span class="trace-meta">${lat}${tokens ? ' · ' + tokens : ''}${node.children.length > 0 ? ' · ' + String(node.children.length) + ' child' + (node.children.length === 1 ? '' : 'ren') : ''}</span>
-			${errorBadge}
-		</summary>
-		<div class="trace-body">${bodyParts.join('')}</div>
-	</details>`;
-}
-
-function stableStringify(value: unknown): string {
-	try {
-		return JSON.stringify(value, null, 2);
-	} catch {
-		return String(value);
+			const sections: string[] = [];
+			if (interaction.completedNodes.length > 0) {
+				const items = interaction.completedNodes
+					.map((c) => {
+						const params = c.parametersSet ? c.parametersSet.join(', ') : '';
+						return `<li>${escapeHtml(c.nodeName)}${params ? ` — params: ${escapeHtml(params)}` : ''}</li>`;
+					})
+					.join('');
+				sections.push(
+					`<div class="transcript-section-label">configured (${String(interaction.completedNodes.length)})</div><ul class="transcript-plan">${items}</ul>`,
+				);
+			}
+			if (skipped.length > 0) {
+				const items = skipped
+					.map(
+						(s) =>
+							`<li>${escapeHtml(s.nodeName)}${s.credentialType ? ` — needs <code>${escapeHtml(s.credentialType)}</code> credential` : ' — needs parameters'}</li>`,
+					)
+					.join('');
+				sections.push(
+					`<div class="transcript-section-label">skipped (${String(skipped.length)})</div><ul class="transcript-plan">${items}</ul>`,
+				);
+			}
+			return `<details class="transcript-aside" open><summary>🛠 setup wizard — ${escapeHtml(header)}</summary>${sections.join('')}</details>`;
+		}
+		case 'confirmation': {
+			const decisionTag =
+				typeof interaction.approved === 'boolean'
+					? ` <em>(${interaction.approved ? 'approved' : 'rejected'})</em>`
+					: '';
+			return `<div class="transcript-resume">↪ resume <code>${escapeHtml(interaction.toolName)}</code>: ${escapeHtml(interaction.resumeReason)}${decisionTag}</div>`;
+		}
+		case 'tool-call':
+			return null; // surfaced in the aggregate tool-names line at the bottom
 	}
 }
 
@@ -623,8 +479,7 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 		<div class="test-case-detail">
 			<details class="section"><summary>Prompt</summary><div class="prompt-text">${escapeHtml(prompt)}</div></details>
 			${renderConversationMetrics(result.conversationMetrics)}
-			${renderConversationTranscript(result.conversationTrace)}
-			${renderConversationTrace(result.conversationTrace, result.threadId)}
+			${renderConversationTranscript(result.transcript)}
 			${renderWorkflowSummary(result)}
 			${scenariosHtml}
 		</div>
@@ -824,33 +679,6 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.transcript-resume code { background: var(--bg-tertiary); padding: 0 4px; border-radius: 2px; }
 	.transcript-section-label { font-size: 11px; color: var(--text-muted); margin: 6px 0 2px 18px; text-transform: uppercase; letter-spacing: 0.04em; }
 	.transcript-empty { font-size: 12px; color: var(--text-muted); font-style: italic; margin: 4px 0 4px 18px; }
-
-	/* Conversation trace — scoped to .trace-tree to avoid colliding with the
-	 * execution-trace .trace-node styling above. */
-	.trace-summary { color: var(--text-muted); font-size: 12px; padding: 4px 0 8px; }
-	.trace-tree .trace-node { border: none; border-left: 2px solid var(--border-light); padding: 0 0 0 8px; margin: 2px 0; }
-	.trace-tree .trace-node > summary { cursor: pointer; padding: 3px 4px; font-size: 12px; display: flex; gap: 8px; align-items: center; }
-	.trace-tree .trace-node > summary:hover { background: var(--bg-tertiary); }
-	.trace-tree .trace-node[open] > summary { background: var(--bg-tertiary); }
-	.trace-tree .trace-icon { width: 18px; text-align: center; }
-	.trace-tree .trace-type { font-family: monospace; font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--bg-tertiary); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-	.trace-tree .trace-name { color: var(--text-primary); font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.trace-tree .trace-meta { color: var(--text-muted); font-size: 11px; font-family: monospace; white-space: nowrap; }
-	.trace-tree .trace-error-badge { color: var(--color-fail); background: var(--color-fail-bg); padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
-	.trace-tree .trace-body { margin-left: 16px; padding: 4px 0; }
-	.trace-tree .trace-io { margin: 4px 0; }
-	.trace-tree .trace-io > summary { cursor: pointer; color: var(--color-info); font-size: 11px; padding: 2px 0; }
-	.trace-tree .trace-error-box { color: var(--color-fail); font-size: 12px; padding: 6px 10px; background: var(--color-fail-bg); border-radius: 4px; margin: 4px 0; border-left: 3px solid var(--color-fail); white-space: pre-wrap; }
-	.trace-tree .trace-children { margin-top: 4px; }
-	.trace-tree .trace-type-chain { border-left-color: var(--color-info); }
-	.trace-tree .trace-type-llm { border-left-color: var(--color-purple); }
-	.trace-tree .trace-type-tool { border-left-color: var(--color-pass); }
-	.trace-tree .trace-type-agent { border-left-color: var(--color-warn); }
-	.trace-tree .trace-type-retriever { border-left-color: var(--text-muted); }
-	.trace-tree .trace-type-prompt { border-left-color: var(--text-muted); }
-	.trace-tree .trace-type-parser { border-left-color: var(--text-muted); }
-	.trace-tree .trace-type-embedding { border-left-color: var(--text-muted); }
-	.trace-tree .trace-type-other { border-left-color: var(--border); }
 </style>
 </head>
 <body>

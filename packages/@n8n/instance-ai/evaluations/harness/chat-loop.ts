@@ -80,6 +80,8 @@ export interface WaitConfig {
 	confirmationStrategy?: ConfirmationStrategy;
 	/** Per-conversation retry count by requestId. Auto-allocated when omitted. */
 	confirmationRetries?: Map<string, number>;
+	/** Caller-supplied sink for proxy confirmation payloads, keyed by requestId. */
+	proxyResponses?: Map<string, InstanceAiConfirmRequest>;
 }
 
 export async function waitForAllActivity(config: WaitConfig): Promise<void> {
@@ -253,6 +255,7 @@ export async function processConfirmationRequests(config: WaitConfig): Promise<v
 			const payload = await strategy(event);
 			await config.client.confirmAction(requestId, payload);
 			config.approvedRequests.add(requestId);
+			config.proxyResponses?.set(requestId, payload);
 			retries.delete(requestId);
 		} catch (error: unknown) {
 			retries.set(requestId, retryCount + 1);

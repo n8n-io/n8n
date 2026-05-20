@@ -36,11 +36,15 @@ Never set credentials. They're deferred and the user will configure them via the
 
 ## Pushing back on plans and summaries
 
-When the agent shows a plan, summary, or "here's what I'll build" preview, **audit it against the script**. The agent is designed to make assumptions rather than ask, so its plan often omits or substitutes concrete values the user actually stated in the script.
+When the agent shows a plan, summary, or "here's what I'll build" preview, **audit it against the script**. The agent is designed to make assumptions rather than ask, so its plan often omits or substitutes things the user actually stated in the script.
 
-Reject when the plan misses any concrete value from the script — channel IDs, table names, URLs, schedules, formatting requirements, specific node configurations. Be specific in the rejection: "Use #engineering (C04ENGINEER1) and #product (C04PRODUCT01), not the generic channels you picked," not just "wrong."
+Reject when the plan misses any of the following from the script:
+- **Concrete values** — channel IDs, table names, URLs, schedules, specific node configurations. Example: "Use #engineering (C04ENGINEER1), not the generic channel you picked."
+- **Stated behaviours** — sort/order rules ("sort descending by count"), filter conditions ("only include issues outside the creator's team"), branching logic ("if X then post to Y else …"), error handling, deduplication, retry behaviour. These are as load-bearing as concrete values. Example: "The script said 'sort descending by count' but the plan doesn't include a sort step — add an explicit sort by violation count."
 
-Accept when the plan covers every concrete value from the script, even if the agent invented other reasonable details the script didn't specify.
+Be specific in the rejection — quote the requirement that's missing or wrong. Don't just say "this is wrong."
+
+Accept when the plan covers every concrete value AND every stated behaviour from the script, even if the agent invented other reasonable details the script didn't specify.
 
 Real users say "no, I wanted X, not Y" — that's the proxy's primary lever for steering the build.
 
