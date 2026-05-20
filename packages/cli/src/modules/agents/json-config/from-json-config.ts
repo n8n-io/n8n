@@ -6,8 +6,9 @@ import type {
 	ModelConfig,
 	ToolDescriptor,
 	JSONObject,
+	Agent as RuntimeAgent,
 } from '@n8n/agents';
-import { Agent, Memory, Tool, wrapToolForApproval } from '@n8n/agents';
+import { Tool, wrapToolForApproval } from '@n8n/agents/tool';
 import { z } from 'zod';
 import type {
 	AgentSkill,
@@ -55,7 +56,8 @@ export async function buildFromJson(
 	config: AgentJsonConfig,
 	toolDescriptors: Record<string, ToolDescriptor>,
 	options: BuildFromJsonOptions,
-): Promise<Agent> {
+): Promise<RuntimeAgent> {
+	const { Agent } = await import('@n8n/agents');
 	const agent = new Agent(config.name);
 
 	const resolvedModelConfig = await resolveModelConfig(config, options.credentialProvider);
@@ -255,6 +257,7 @@ async function applyMemoryFromConfig(
 	memoryConfig: AgentJsonMemoryConfig,
 	memoryFactory: MemoryFactory,
 ) {
+	const { Memory } = await import('@n8n/agents');
 	const memory = new Memory();
 
 	const builtMemory = memoryFactory(memoryConfig);

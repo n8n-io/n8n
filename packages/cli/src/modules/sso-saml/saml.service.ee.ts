@@ -362,6 +362,7 @@ export class SamlService {
 	): Promise<{
 		authenticatedUser: User | undefined;
 		attributes: SamlUserAttributes;
+		rawAttributes: Record<string, unknown>;
 		onboardingRequired: boolean;
 	}> {
 		const { mapped: attributes, raw: rawAttributes } = await this.getAttributesFromLoginResponse(
@@ -392,6 +393,7 @@ export class SamlService {
 					return {
 						authenticatedUser: user,
 						attributes,
+						rawAttributes,
 						onboardingRequired: false,
 					};
 				} else {
@@ -402,6 +404,7 @@ export class SamlService {
 					return {
 						authenticatedUser: updatedUser,
 						attributes,
+						rawAttributes,
 						onboardingRequired,
 					};
 				}
@@ -413,6 +416,7 @@ export class SamlService {
 					return {
 						authenticatedUser: newUser,
 						attributes,
+						rawAttributes,
 						onboardingRequired: !newUser.firstName || !newUser.lastName,
 					};
 				}
@@ -422,6 +426,7 @@ export class SamlService {
 		return {
 			authenticatedUser: undefined,
 			attributes,
+			rawAttributes,
 			onboardingRequired: false,
 		};
 	}

@@ -11,8 +11,8 @@ import {
 	type NodeConnectionType,
 } from 'n8n-workflow';
 
-import { createNodeType } from '../../../../test/test-utils';
-import { CodeBuilderNodeSearchEngine, SCORE_WEIGHTS } from '../code-builder-node-search-engine';
+import { CodeBuilderNodeSearchEngine, SCORE_WEIGHTS } from '../search-engine';
+import { createNodeType } from './helpers';
 
 describe('CodeBuilderNodeSearchEngine', () => {
 	let searchEngine: CodeBuilderNodeSearchEngine;
