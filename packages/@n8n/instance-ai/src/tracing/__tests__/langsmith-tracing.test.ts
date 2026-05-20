@@ -956,6 +956,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(orchestratorSpan?.attributes['gen_ai.completion']).toBe(
 			JSON.stringify({ result: 'done' }),
 		);
+		expect(agentsMock.getProvider().forceFlush).not.toHaveBeenCalled();
 	});
 
 	it('shuts down product telemetry once when the root run finishes', async () => {
@@ -973,6 +974,7 @@ describe('createInstanceAiTraceContext', () => {
 		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
 		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done again' } });
 
+		expect(provider.forceFlush).toHaveBeenCalledTimes(1);
 		expect(provider.shutdown).toHaveBeenCalledTimes(1);
 	});
 
@@ -1434,6 +1436,7 @@ describe('createInstanceAiTraceContext', () => {
 				tool_call_id: 'toolu-ask',
 			}),
 		);
+		expect(agentsMock.getProvider().forceFlush).toHaveBeenCalledTimes(1);
 		expect(spanNames.some((name) => name.startsWith('instance-ai.tool.'))).toBe(false);
 	});
 
@@ -1668,6 +1671,7 @@ describe('createInstanceAiTraceContext', () => {
 		const spanNames = agentsMock.getSpans().map((span) => span.name);
 		expect(spanNames).toContain('hitl: resume');
 		expect(spanNames).not.toContain('hitl: suspend');
+		expect(agentsMock.getProvider().forceFlush).toHaveBeenCalledTimes(1);
 		expect(spanNames.some((name) => name.startsWith('instance-ai.tool.'))).toBe(false);
 	});
 
@@ -1792,7 +1796,7 @@ describe('createInstanceAiTraceContext', () => {
 		).resolves.toBeUndefined();
 	});
 
-	it('does not mask callback errors when trace finalization fails', async () => {
+	it('does not mask callback errors from ad-hoc spans', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-finalize-failure',
 			messageId: 'message-finalize-failure',
@@ -1804,7 +1808,6 @@ describe('createInstanceAiTraceContext', () => {
 
 		expect(tracing).toBeDefined();
 		await startForegroundActor(tracing!);
-		agentsMock.getProvider().forceFlush.mockRejectedValueOnce(new Error('flush failed'));
 
 		await expect(
 			tracing!.withActiveSpan(

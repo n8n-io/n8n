@@ -320,7 +320,7 @@ function startProductSpan(
 async function finishProductSpan(
 	runtime: ProductOtelTraceRuntime,
 	run: InstanceAiTraceRun,
-	options?: InstanceAiTraceRunFinishOptions,
+	options?: ProductSpanFinishOptions,
 ): Promise<void> {
 	const span = runtime.spans.get(run.id);
 	if (!span) return;
@@ -364,13 +364,15 @@ async function finishProductSpan(
 		runtime.contexts.delete(run.id);
 	}
 
-	await Telemetry.forceFlush(runtime.telemetry);
+	if (options?.forceFlush === true) {
+		await Telemetry.forceFlush(runtime.telemetry);
+	}
 }
 
 async function finishProductSpanBestEffort(
 	runtime: ProductOtelTraceRuntime,
 	run: InstanceAiTraceRun,
-	options?: InstanceAiTraceRunFinishOptions,
+	options?: ProductSpanFinishOptions,
 ): Promise<void> {
 	try {
 		await finishProductSpan(runtime, run, options);
@@ -639,6 +641,7 @@ interface CurrentTraceSpanOptions<T = unknown> {
 
 type NativeToolContext = ToolContext | InterruptibleToolContext;
 type TraceableNativeTool = BuiltTool & { handler: NonNullable<BuiltTool['handler']> };
+type ProductSpanFinishOptions = InstanceAiTraceRunFinishOptions & { forceFlush?: boolean };
 
 function readBooleanEnvFlag(value: string | undefined): boolean | undefined {
 	const normalized = value?.toLowerCase();
@@ -929,6 +932,7 @@ async function startAndFinishProductChildSpan(
 		inputs?: unknown;
 		outputs?: unknown;
 		error?: string;
+		forceFlush?: boolean;
 	},
 ): Promise<void> {
 	const activeParentContext = getActiveOtelContextWithSpan(currentTrace.currentRun.otelTraceId);
@@ -954,6 +958,7 @@ async function startAndFinishProductChildSpan(
 		metadata: {
 			final_status: options.error ? 'error' : 'completed',
 		},
+		forceFlush: options.forceFlush,
 	});
 }
 
@@ -983,6 +988,7 @@ async function traceProductSuspendableToolExecute(
 							}),
 							inputs: suspendPayload,
 							outputs: suspendPayload,
+							forceFlush: true,
 						});
 						return await originalSuspend(suspendPayload);
 					},
@@ -1003,6 +1009,7 @@ async function traceProductSuspendableToolExecute(
 			outputs: {
 				status: 'resumed',
 			},
+			forceFlush: true,
 		});
 	}
 
@@ -1067,11 +1074,17 @@ function createTraceContext(
 		run: InstanceAiTraceRun,
 		finishOptions?: InstanceAiTraceRunFinishOptions,
 	): Promise<void> => {
+		const isRootRun = !run.parentRunId;
 		await withProxyHeadersBestEffort(
 			proxyConfig,
-			async () => await finishProductSpanBestEffort(otelRuntime, run, finishOptions),
+			async () =>
+				await finishProductSpanBestEffort(
+					otelRuntime,
+					run,
+					isRootRun ? { ...finishOptions, forceFlush: true } : finishOptions,
+				),
 		);
-		if (!run.parentRunId) {
+		if (isRootRun) {
 			await withProxyHeadersBestEffort(
 				proxyConfig,
 				async () => await shutdownProductOtelRuntime(otelRuntime, run.traceId),
@@ -1084,15 +1097,17 @@ function createTraceContext(
 		error: unknown,
 		metadata?: Record<string, unknown>,
 	): Promise<void> => {
+		const isRootRun = !run.parentRunId;
 		await withProxyHeadersBestEffort(
 			proxyConfig,
 			async () =>
 				await finishProductSpanBestEffort(otelRuntime, run, {
 					error: normalizeErrorMessage(error),
 					metadata,
+					forceFlush: isRootRun,
 				}),
 		);
-		if (!run.parentRunId) {
+		if (isRootRun) {
 			await withProxyHeadersBestEffort(
 				proxyConfig,
 				async () => await shutdownProductOtelRuntime(otelRuntime, run.traceId),
