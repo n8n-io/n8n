@@ -561,7 +561,7 @@ describe('WorkflowCard', () => {
 
 		const mcpToggle = getByTestId('workflow-card-mcp-toggle');
 		expect(mcpToggle).toBeVisible();
-		expect(mcpToggle).toHaveAttribute('aria-pressed', 'false');
+		expect(mcpToggle).toHaveAttribute('aria-checked', 'false');
 	});
 
 	it('should mark MCP toggle as pressed when workflow is available in MCP', () => {
@@ -580,7 +580,7 @@ describe('WorkflowCard', () => {
 		});
 
 		const mcpToggle = getByTestId('workflow-card-mcp-toggle');
-		expect(mcpToggle).toHaveAttribute('aria-pressed', 'true');
+		expect(mcpToggle).toHaveAttribute('aria-checked', 'true');
 	});
 
 	it('should toggle MCP access when the MCP button is clicked', async () => {
@@ -657,7 +657,7 @@ describe('WorkflowCard', () => {
 
 		const mcpToggle = getByTestId('workflow-card-mcp-toggle');
 		expect(mcpToggle).toBeVisible();
-		expect(mcpToggle).toHaveAttribute('aria-pressed', 'false');
+		expect(mcpToggle).toHaveAttribute('aria-checked', 'false');
 
 		await userEvent.click(mcpToggle);
 

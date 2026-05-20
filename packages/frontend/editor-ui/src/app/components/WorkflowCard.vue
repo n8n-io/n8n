@@ -40,7 +40,7 @@ import {
 	N8nBreadcrumbs,
 	N8nCard,
 	N8nIcon,
-	N8nIconButton,
+	N8nSwitch2,
 	N8nTags,
 	N8nText,
 	N8nTooltip,
@@ -443,7 +443,7 @@ async function toggleMCPAccess(enabled: boolean) {
 	}
 }
 
-async function onMcpToggleClick() {
+async function onMcpToggleClick(nextValue: boolean) {
 	if (!props.isMcpEnabled) {
 		const message = locale.baseText('workflows.item.connectMcp.toast.message');
 		const cta = locale.baseText('workflows.item.connectMcp.toast.cta');
@@ -460,7 +460,7 @@ async function onMcpToggleClick() {
 		});
 		return;
 	}
-	await toggleMCPAccess(!isAvailableInMCP.value);
+	await toggleMCPAccess(nextValue);
 }
 
 async function deleteWorkflow() {
@@ -733,20 +733,22 @@ const tags = computed(
 					}}</N8nText>
 				</div>
 				<N8nTooltip v-if="showMcpToggle" placement="top" :content="mcpTooltipContent">
-					<N8nIconButton
-						icon="mcp"
-						variant="ghost"
-						size="small"
-						:class="{
-							[$style.mcpToggle]: true,
-							[$style.mcpToggleActive]: isAvailableInMCP,
-						}"
-						:disabled="!canToggleMcp"
-						:aria-pressed="isAvailableInMCP"
-						:aria-label="mcpTooltipContent"
-						data-test-id="workflow-card-mcp-toggle"
-						@click.stop="onMcpToggleClick"
-					/>
+					<span :class="$style.mcpToggle">
+						<N8nIcon
+							:class="[$style.mcpIcon, { [$style.mcpIconActive]: isAvailableInMCP }]"
+							icon="mcp"
+							size="medium"
+						/>
+						<N8nSwitch2
+							:model-value="isAvailableInMCP"
+							:disabled="!canToggleMcp"
+							size="small"
+							:aria-label="mcpTooltipContent"
+							data-test-id="workflow-card-mcp-toggle"
+							@update:model-value="onMcpToggleClick"
+							@click.stop
+						/>
+					</span>
 				</N8nTooltip>
 				<N8nActionToggle
 					:actions="actions"
@@ -834,10 +836,16 @@ const tags = computed(
 }
 
 .mcpToggle {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.mcpIcon {
 	color: var(--color--text--tint-1);
 }
 
-.mcpToggleActive {
+.mcpIconActive {
 	color: var(--color--primary);
 }
 
