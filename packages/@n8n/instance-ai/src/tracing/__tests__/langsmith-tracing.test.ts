@@ -351,7 +351,6 @@ describe('createInstanceAiTraceContext', () => {
 	const originalLangChainTracingV2 = process.env.LANGCHAIN_TRACING_V2;
 	const originalTraceInternal = process.env.N8N_INSTANCE_AI_TRACE_INTERNAL;
 	const originalDiagnosticsEnabled = process.env.N8N_DIAGNOSTICS_ENABLED;
-	const originalInstanceTracingEnabled = process.env.N8N_INSTANCE_AI_TRACING_ENABLED;
 
 	beforeEach(() => {
 		langsmithMock.reset();
@@ -361,7 +360,6 @@ describe('createInstanceAiTraceContext', () => {
 		delete process.env.LANGCHAIN_TRACING_V2;
 		delete process.env.N8N_INSTANCE_AI_TRACE_INTERNAL;
 		delete process.env.N8N_DIAGNOSTICS_ENABLED;
-		delete process.env.N8N_INSTANCE_AI_TRACING_ENABLED;
 	});
 
 	afterAll(() => {
@@ -385,11 +383,6 @@ describe('createInstanceAiTraceContext', () => {
 			delete process.env.N8N_DIAGNOSTICS_ENABLED;
 		} else {
 			process.env.N8N_DIAGNOSTICS_ENABLED = originalDiagnosticsEnabled;
-		}
-		if (originalInstanceTracingEnabled === undefined) {
-			delete process.env.N8N_INSTANCE_AI_TRACING_ENABLED;
-		} else {
-			process.env.N8N_INSTANCE_AI_TRACING_ENABLED = originalInstanceTracingEnabled;
 		}
 	});
 
@@ -1870,26 +1863,6 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing).toBeUndefined();
 	});
 
-	it('allows the Instance AI tracing flag to explicitly override diagnostics opt-out', async () => {
-		process.env.N8N_DIAGNOSTICS_ENABLED = 'false';
-		process.env.N8N_INSTANCE_AI_TRACING_ENABLED = 'true';
-
-		const tracing = await createInstanceAiTraceContext({
-			threadId: 'thread-instance-ai-tracing-enabled',
-			messageId: 'message-instance-ai-tracing-enabled',
-			runId: 'run-instance-ai-tracing-enabled',
-			userId: 'user-instance-ai-tracing-enabled',
-			input: { message: 'proxy test' },
-			proxyConfig: {
-				apiUrl: 'https://proxy.example.com/langsmith',
-				// eslint-disable-next-line @typescript-eslint/require-await
-				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
-			},
-		});
-
-		expect(tracing).toBeDefined();
-	});
-
 	it('creates OTel product spans when proxyConfig is provided', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-client',
@@ -2042,7 +2015,6 @@ describe('submitLangsmithUserFeedback', () => {
 	const originalLangSmithTracing = process.env.LANGSMITH_TRACING;
 	const originalLangChainTracingV2 = process.env.LANGCHAIN_TRACING_V2;
 	const originalDiagnosticsEnabled = process.env.N8N_DIAGNOSTICS_ENABLED;
-	const originalInstanceTracingEnabled = process.env.N8N_INSTANCE_AI_TRACING_ENABLED;
 
 	beforeEach(() => {
 		langsmithMock.reset();
@@ -2051,7 +2023,6 @@ describe('submitLangsmithUserFeedback', () => {
 		delete process.env.LANGSMITH_TRACING;
 		delete process.env.LANGCHAIN_TRACING_V2;
 		delete process.env.N8N_DIAGNOSTICS_ENABLED;
-		delete process.env.N8N_INSTANCE_AI_TRACING_ENABLED;
 	});
 
 	afterAll(() => {
@@ -2070,11 +2041,6 @@ describe('submitLangsmithUserFeedback', () => {
 			delete process.env.N8N_DIAGNOSTICS_ENABLED;
 		} else {
 			process.env.N8N_DIAGNOSTICS_ENABLED = originalDiagnosticsEnabled;
-		}
-		if (originalInstanceTracingEnabled === undefined) {
-			delete process.env.N8N_INSTANCE_AI_TRACING_ENABLED;
-		} else {
-			process.env.N8N_INSTANCE_AI_TRACING_ENABLED = originalInstanceTracingEnabled;
 		}
 	});
 

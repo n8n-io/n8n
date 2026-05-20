@@ -648,11 +648,6 @@ function readBooleanEnvFlag(value: string | undefined): boolean | undefined {
 }
 
 function isLangSmithTracingEnabled(proxyAvailable = false): boolean {
-	const instanceTracingFlag = readBooleanEnvFlag(process.env.N8N_INSTANCE_AI_TRACING_ENABLED);
-	if (instanceTracingFlag !== undefined) {
-		return instanceTracingFlag;
-	}
-
 	if (readBooleanEnvFlag(process.env.N8N_DIAGNOSTICS_ENABLED) === false) {
 		return false;
 	}
