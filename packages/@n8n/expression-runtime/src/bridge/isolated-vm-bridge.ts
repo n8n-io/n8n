@@ -1,7 +1,7 @@
 import type ivm from 'isolated-vm';
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
-import type { RuntimeBridge, BridgeConfig, ExecuteOptions } from '../types';
+import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import { bridgeMessageSchema, type BridgeMessage } from './bridge-messages';
@@ -285,7 +285,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
-	private createGetValueAtPathRef(data: Record<string, unknown>): ivm.Reference {
+	private createGetValueAtPathRef(data: WorkflowData): ivm.Reference {
 		return new (getIvm().Reference)((path: string[]) => {
 			try {
 				// Navigate to value
@@ -357,7 +357,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
-	private createGetArrayElementRef(data: Record<string, unknown>): ivm.Reference {
+	private createGetArrayElementRef(data: WorkflowData): ivm.Reference {
 		return new (getIvm().Reference)((path: string[], index: number) => {
 			try {
 				// Navigate to array
@@ -422,7 +422,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
-	private createCallFunctionAtPathRef(data: Record<string, unknown>): ivm.Reference {
+	private createCallFunctionAtPathRef(data: WorkflowData): ivm.Reference {
 		return new (getIvm().Reference)((path: string[], ...args: unknown[]) => {
 			try {
 				// Navigate to function, tracking parent to preserve `this` context
@@ -477,7 +477,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @param data - Current workflow data
 	 * @private
 	 */
-	private createCallHostRef(data: Record<string, unknown>): ivm.Reference {
+	private createCallHostRef(data: WorkflowData): ivm.Reference {
 		return new (getIvm().Reference)((rawMsg: unknown) => {
 			try {
 				const msg = bridgeMessageSchema.parse(rawMsg);
@@ -505,96 +505,40 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	}
 
 	/**
-	 * Handler for `getNodeFirst` — fetches the first item of a named node's
-	 * most recent execution data.
+	 * Handlers for the `$('Foo').{first,last,all}` typed RPCs.
 	 *
-	 * Note: this still invokes `data.$` host-side. Eliminating `data.$` as a
-	 * host-callable entirely would require reaching the `WorkflowDataProxy`
-	 * internals (e.g. `getNodeExecutionOrPinnedData`) rather than the public
-	 * `$()` API. That's a follow-up; the security win here is "the isolate
-	 * can only invoke `.first` via this validated RPC, not any other method,
-	 * regardless of what `data.$` returns."
+	 * Each handler reads a fixed literal property name off the host-side node
+	 * proxy — the isolate cannot influence which property is dereferenced.
+	 * Eliminating `data.$` as a host-callable entirely would require reaching
+	 * the `WorkflowDataProxy` internals (e.g. `getNodeExecutionOrPinnedData`)
+	 * rather than the public `$()` API; that's a follow-up.
+	 *
+	 * `data.$` is a host-wired function (`WorkflowDataProxy`'s `$`). If it
+	 * ever isn't, optional chaining short-circuits to `undefined` — the same
+	 * observable result the runtime's `E()` handler produces from any thrown
+	 * error here.
 	 *
 	 * @private
 	 */
 	private handleGetNodeFirst(
 		msg: Extract<BridgeMessage, { type: 'getNodeFirst' }>,
-		data: Record<string, unknown>,
+		data: WorkflowData,
 	): unknown {
-		const dollarFn = data.$;
-		if (typeof dollarFn !== 'function') {
-			throw new Error('getNodeFirst: $ is not available in expression context');
-		}
-
-		const nodeProxy = (dollarFn as (n: string) => unknown)(msg.nodeName);
-		if (!nodeProxy || typeof nodeProxy !== 'object') {
-			return undefined;
-		}
-
-		const firstFn = (nodeProxy as Record<string, unknown>).first;
-		if (typeof firstFn !== 'function') {
-			return undefined;
-		}
-
-		return (firstFn as (...a: unknown[]) => unknown).call(nodeProxy, msg.branchIndex, msg.runIndex);
+		return data.$?.(msg.nodeName)?.first?.(msg.branchIndex, msg.runIndex);
 	}
 
-	/**
-	 * Handler for `getNodeLast` — fetches the last item of a named node's
-	 * most recent execution data. Reads the literal property `"last"`; the
-	 * isolate cannot influence which property is dereferenced.
-	 *
-	 * @private
-	 */
 	private handleGetNodeLast(
 		msg: Extract<BridgeMessage, { type: 'getNodeLast' }>,
-		data: Record<string, unknown>,
+		data: WorkflowData,
 	): unknown {
-		const dollarFn = data.$;
-		if (typeof dollarFn !== 'function') {
-			throw new Error('getNodeLast: $ is not available in expression context');
-		}
-
-		const nodeProxy = (dollarFn as (n: string) => unknown)(msg.nodeName);
-		if (!nodeProxy || typeof nodeProxy !== 'object') {
-			return undefined;
-		}
-
-		const lastFn = (nodeProxy as Record<string, unknown>).last;
-		if (typeof lastFn !== 'function') {
-			return undefined;
-		}
-
-		return (lastFn as (...a: unknown[]) => unknown).call(nodeProxy, msg.branchIndex, msg.runIndex);
+		return data.$?.(msg.nodeName)?.last?.(msg.branchIndex, msg.runIndex);
 	}
 
-	/**
-	 * Handler for `getNodeAll` — fetches every item of a named node's most
-	 * recent execution data as an array. Reads the literal property `"all"`;
-	 * the isolate cannot influence which property is dereferenced.
-	 *
-	 * @private
-	 */
 	private handleGetNodeAll(
 		msg: Extract<BridgeMessage, { type: 'getNodeAll' }>,
-		data: Record<string, unknown>,
+		data: WorkflowData,
 	): unknown {
-		const dollarFn = data.$;
-		if (typeof dollarFn !== 'function') {
-			throw new Error('getNodeAll: $ is not available in expression context');
-		}
-
-		const nodeProxy = (dollarFn as (n: string) => unknown)(msg.nodeName);
-		if (!nodeProxy || typeof nodeProxy !== 'object') {
-			return undefined;
-		}
-
-		const allFn = (nodeProxy as Record<string, unknown>).all;
-		if (typeof allFn !== 'function') {
-			return undefined;
-		}
-
-		return (allFn as (...a: unknown[]) => unknown).call(nodeProxy, msg.branchIndex, msg.runIndex);
+		return data.$?.(msg.nodeName)?.all?.(msg.branchIndex, msg.runIndex);
 	}
 
 	/**
@@ -616,7 +560,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @returns Result of the expression
 	 * @throws {Error} If bridge not initialized or execution fails
 	 */
-	execute(code: string, data: Record<string, unknown>, options?: ExecuteOptions): unknown {
+	execute(code: string, data: WorkflowData, options?: ExecuteOptions): unknown {
 		if (!this.initialized || !this.context) {
 			throw new Error('Bridge not initialized. Call initialize() first.');
 		}
