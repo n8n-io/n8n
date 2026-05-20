@@ -1,6 +1,6 @@
 {
   "name": "@n8n/computer-use",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Local AI gateway for n8n AI Assistant — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
   "publishConfig": {
     "bin": {
@@ -45,6 +45,7 @@
     "@napi-rs/image": "^1.12.0",
     "@vscode/ripgrep": "^1.17.1",
     "eventsource": "^3.0.6",
+    "fast-glob": "catalog:",
     "node-screenshots": "^0.2.8",
     "picocolors": "catalog:",
     "yargs-parser": "21.1.1",

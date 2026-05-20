@@ -3,14 +3,13 @@ import type {
 	FileContent,
 	FileEntry,
 	FileStat,
-	FilesystemInfo,
 	ListOptions,
 	ProviderStatus,
 	ReadOptions,
 	RemoveOptions,
 	WorkspaceFilesystem,
 	WriteOptions,
-} from '@mastra/core/workspace';
+} from '@n8n/agents';
 
 export interface FilesystemMutationBlocker {
 	guidance: string;
@@ -56,32 +55,12 @@ class GuardedFilesystem implements WorkspaceFilesystem {
 		this.filesystem.status = status;
 	}
 
-	get error() {
-		return this.filesystem.error;
-	}
-
-	set error(error: string | undefined) {
-		this.filesystem.error = error;
-	}
-
 	get readOnly() {
 		return this.filesystem.readOnly;
 	}
 
 	get basePath() {
 		return this.filesystem.basePath;
-	}
-
-	get icon() {
-		return this.filesystem.icon;
-	}
-
-	get displayName() {
-		return this.filesystem.displayName;
-	}
-
-	get description() {
-		return this.filesystem.description;
 	}
 
 	setMutationGuard(guard: FilesystemMutationGuard | undefined): void {
@@ -96,30 +75,8 @@ class GuardedFilesystem implements WorkspaceFilesystem {
 		await this.filesystem.destroy?.();
 	}
 
-	async isReady(): Promise<boolean> {
-		return (await this.filesystem.isReady?.()) ?? true;
-	}
-
-	async getInfo(): Promise<FilesystemInfo> {
-		const info = await this.filesystem.getInfo?.();
-		if (info) return info;
-
-		const fallback: FilesystemInfo = {
-			id: this.id,
-			name: this.name,
-			provider: this.provider,
-			status: this.status,
-		};
-		if (this.error !== undefined) fallback.error = this.error;
-		if (this.readOnly !== undefined) fallback.readOnly = this.readOnly;
-		if (this.icon !== undefined) fallback.icon = this.icon;
-		return fallback;
-	}
-
-	getInstructions(
-		options?: Parameters<NonNullable<WorkspaceFilesystem['getInstructions']>>[0],
-	): string {
-		return this.filesystem.getInstructions?.(options) ?? '';
+	getInstructions(): string {
+		return this.filesystem.getInstructions?.() ?? '';
 	}
 
 	async readFile(path: string, options?: ReadOptions): Promise<string | Buffer> {
@@ -163,10 +120,6 @@ class GuardedFilesystem implements WorkspaceFilesystem {
 
 	async readdir(path: string, options?: ListOptions): Promise<FileEntry[]> {
 		return await this.filesystem.readdir(path, options);
-	}
-
-	resolveAbsolutePath(path: string): string | undefined {
-		return this.filesystem.resolveAbsolutePath?.(path);
 	}
 
 	async exists(path: string): Promise<boolean> {

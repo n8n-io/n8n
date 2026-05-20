@@ -18,6 +18,7 @@ import {
 import {
 	buildMcpToolName,
 	createCallTool,
+	getErrorDescriptionFromToolCall,
 	getSelectedTools,
 	mcpToolToDynamicTool,
 } from '../McpClientTool/utils';
@@ -231,6 +232,12 @@ export async function executeMcpTool(
 						signal: ctx.getExecutionCancelSignal(),
 					},
 				);
+
+				if (node.typeVersion >= 1.3 && result.isError) {
+					const errorMessage =
+						getErrorDescriptionFromToolCall(result) ?? `Tool "${tool.name}" returned an error`;
+					throw new NodeOperationError(node, errorMessage, { itemIndex });
+				}
 
 				returnData.push({
 					json: {

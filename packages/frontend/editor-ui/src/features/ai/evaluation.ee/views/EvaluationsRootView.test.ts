@@ -18,6 +18,10 @@ import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
 
+const { showError } = vi.hoisted(() => ({
+	showError: vi.fn(),
+}));
+
 vi.mock('vue-router', () => ({
 	useRoute: () => ({
 		query: {},
@@ -38,7 +42,7 @@ vi.mock('@/app/composables/useTelemetry', () => {
 
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
-		showError: vi.fn(),
+		showError,
 		showMessage: vi.fn(),
 	}),
 }));
@@ -92,6 +96,8 @@ describe('EvaluationsRootView', () => {
 		createTestingPinia();
 		vi.clearAllMocks();
 
+		mockedStore(useWorkflowsStore).isWorkflowSaved = { [mockWorkflow.id]: true };
+
 		vi.spyOn(NodeHelpers, 'getNodeParameters').mockReturnValue({
 			assignments: {
 				assignments: [
@@ -123,6 +129,24 @@ describe('EvaluationsRootView', () => {
 		// Verify that evaluation-specific data is loaded
 		expect(usageStore.getLicenseInfo).toHaveBeenCalled();
 		expect(evaluationStore.fetchTestRuns).toHaveBeenCalledWith(mockWorkflow.id);
+	});
+
+	it('should not fetch test runs for an unsaved workflow', async () => {
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		const usageStore = mockedStore(useUsageStore);
+		const evaluationStore = mockedStore(useEvaluationStore);
+
+		workflowsStore.isWorkflowSaved = {};
+		usageStore.getLicenseInfo.mockResolvedValue(undefined);
+		evaluationStore.fetchTestRuns.mockRejectedValue(new Error('Workflow not found'));
+
+		renderComponent({ props: { workflowId: mockWorkflow.id } });
+
+		await flushPromises();
+
+		expect(usageStore.getLicenseInfo).toHaveBeenCalled();
+		expect(evaluationStore.fetchTestRuns).not.toHaveBeenCalled();
+		expect(showError).not.toHaveBeenCalled();
 	});
 
 	it('should load test data', async () => {

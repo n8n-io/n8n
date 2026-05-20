@@ -104,6 +104,9 @@ vi.mock('../composables/useAgentBuilderTelemetry', () => ({
 		flushConfigEdits: vi.fn(),
 		trackToolsAdded: vi.fn(),
 		trackSkillsAdded: vi.fn(),
+		trackOpenedToolFromList: vi.fn(),
+		trackOpenedSkillFromList: vi.fn(),
+		trackOpenedAddSkillModal: vi.fn(),
 	}),
 }));
 
