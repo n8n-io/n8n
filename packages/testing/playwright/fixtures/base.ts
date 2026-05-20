@@ -7,7 +7,6 @@ import { createN8NStack } from 'n8n-containers/stack';
 
 import { CAPABILITIES, type Capability } from './capabilities';
 import { consoleErrorFixtures } from './console-error-monitor';
-import { coverageWriterFixtures } from './coverage';
 import { N8N_AUTH_COOKIE } from '../config/constants';
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { observabilityFixtures, type ObservabilityTestFixtures } from '../fixtures/observability';
@@ -62,7 +61,6 @@ export const test = base.extend<
 	...currentsFixtures.baseFixtures,
 	...currentsFixtures.coverageFixtures,
 	...currentsFixtures.actionFixtures,
-	...coverageWriterFixtures,
 	...observabilityFixtures,
 	...consoleErrorFixtures,
 	...quarantineFixtures,

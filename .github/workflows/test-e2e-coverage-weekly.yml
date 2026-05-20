@@ -20,12 +20,7 @@ jobs:
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       test-mode: docker-artifact
-      # TEMP DIAGNOSTIC: passing a single spec path (no spaces — survives the
-      # reusable workflow's word-splitting `$TEST_COMMAND` invocation) narrows
-      # the suite to one test so we can iterate on the local coverage writer
-      # fixture without waiting on the full ~25 min/shard run. Revert before
-      # merging.
-      test-command: pnpm --filter=n8n-playwright test:container:coverage tests/e2e/auth/signin.spec.ts
+      test-command: pnpm --filter=n8n-playwright test:container:coverage
       workers: '1'
       runner: blacksmith-4vcpu-ubuntu-2204
       timeout-minutes: 45
