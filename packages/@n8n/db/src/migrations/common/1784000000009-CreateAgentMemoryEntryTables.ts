@@ -103,11 +103,17 @@ export class CreateAgentMemoryEntryTables1784000000009 implements ReversibleMigr
 		).withTimestamps;
 	}
 
-	async down({ schemaBuilder: { dropTable }, queryRunner, tablePrefix }: MigrationContext) {
+	async down({
+		schemaBuilder: { dropTable },
+		queryRunner,
+		tablePrefix,
+		escape,
+		runQuery,
+	}: MigrationContext) {
 		await dropTable('agents_memory_entry_cursors');
 		await dropTable('agents_memory_entry_sources');
 		await dropTable('agents_memory_entries');
-		await this.restoreObservationLockTaskKindCheck(queryRunner, tablePrefix);
+		await this.restoreObservationLockTaskKindCheck(queryRunner, tablePrefix, escape, runQuery);
 	}
 
 	private async dropObservationLockTaskKindCheck(
@@ -131,6 +137,8 @@ export class CreateAgentMemoryEntryTables1784000000009 implements ReversibleMigr
 	private async restoreObservationLockTaskKindCheck(
 		queryRunner: MigrationContext['queryRunner'],
 		tablePrefix: string,
+		escape: MigrationContext['escape'],
+		runQuery: MigrationContext['runQuery'],
 	) {
 		const fullTableName = `${tablePrefix}${OBSERVATION_LOCKS_TABLE}`;
 		const table = await queryRunner.getTable(fullTableName);
@@ -145,6 +153,9 @@ export class CreateAgentMemoryEntryTables1784000000009 implements ReversibleMigr
 		const escapedValues = LEGACY_OBSERVATION_LOCK_TASK_KINDS.map(
 			(value) => `'${value.replace(/'/g, "''")}'`,
 		).join(', ');
+		await runQuery(
+			`DELETE FROM ${escape.tableName(OBSERVATION_LOCKS_TABLE)} WHERE ${escape.columnName(OBSERVATION_LOCK_TASK_KIND_COLUMN)} NOT IN (${escapedValues})`,
+		);
 		await queryRunner.createCheckConstraint(
 			fullTableName,
 			new TableCheck({
