@@ -84,6 +84,23 @@ describe('UpdateWorkflowDto', () => {
 			expect(result.success).toBe(true);
 			expect(result.data?.tags).toEqual(['tag1', 'tag2']);
 		});
+
+		test('should preserve workflow custom telemetry tag settings', () => {
+			const settings = {
+				customTelemetryTags: {
+					tag: [
+						{ key: 'env', value: 'production' },
+						{ key: 'workflow_name', value: '={{ $workflow.name }}' },
+					],
+				},
+				customTelemetryTagsApplyToNodeSpans: true,
+			};
+
+			const result = UpdateWorkflowDto.safeParse({ settings });
+
+			expect(result.success).toBe(true);
+			expect(result.data?.settings).toEqual(settings);
+		});
 	});
 
 	describe('Invalid requests', () => {
