@@ -44,7 +44,7 @@ describe('metric-catalog', () => {
 			expect(proposeDefaultMetricIds(workflow, 'Agent')).toEqual(['correctness']);
 		});
 
-		it('returns ["correctness", "tool_use"] when an ai_tool connection feeds the agent', () => {
+		it('returns ["correctness"] when an ai_tool connection feeds the agent', () => {
 			const workflow = wf(
 				[
 					{
@@ -69,7 +69,7 @@ describe('metric-catalog', () => {
 				},
 			);
 
-			expect(proposeDefaultMetricIds(workflow, 'Agent')).toEqual(['correctness', 'tool_use']);
+			expect(proposeDefaultMetricIds(workflow, 'Agent')).toEqual(['correctness']);
 		});
 	});
 });

@@ -90,7 +90,7 @@ describe('describeMetricForWorkflow', () => {
 });
 
 describe('recommendedMetricId', () => {
-	it('returns tool_use when the agent has tools', () => {
+	it('returns correctness even when the agent has tools', () => {
 		const workflow = wf(
 			[
 				baseAgent,
@@ -105,7 +105,7 @@ describe('recommendedMetricId', () => {
 			],
 			{ Calculator: { ai_tool: [[{ node: 'Chef Agent', type: 'ai_tool', index: 0 }]] } },
 		);
-		expect(recommendedMetricId(workflow, 'Chef Agent')).toBe('tool_use');
+		expect(recommendedMetricId(workflow, 'Chef Agent')).toBe('correctness');
 	});
 
 	it('returns correctness when the agent has a retriever but no supported retriever metric', () => {

@@ -77,16 +77,15 @@ export function describeMetricForWorkflow(
 }
 
 /**
- * Returns the ID of the metric most workflow-specific for `agentNodeName`:
- * - If the agent has tools → `tool_use`.
- * - Else → `correctness`.
+ * Returns the default metric recommendation for `agentNodeName`.
+ * Correctness is the broadest useful first suggestion; tool-use remains
+ * available in the metric picker when users explicitly want it.
  *
  * Used to mark a single option with " (recommended)" in the selection widget.
  */
 export function recommendedMetricId(
-	workflow: WorkflowJSON,
-	agentNodeName: string,
+	_workflow: WorkflowJSON,
+	_agentNodeName: string,
 ): RecommendedMetricId {
-	if (getAgentToolNames(workflow, agentNodeName).length > 0) return 'tool_use';
 	return 'correctness';
 }

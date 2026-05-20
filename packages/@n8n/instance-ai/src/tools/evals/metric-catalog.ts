@@ -1,7 +1,5 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { isRecord } from './column-ref-utils';
-
 export const DEFAULT_EXPECTED_OUTPUT_COLUMN = 'expected_output';
 export const EXPECTED_TOOLS_COLUMN = 'expected_tools';
 export const DEFAULT_ACTUAL_OUTPUT_COLUMN = 'actual_output';
@@ -86,24 +84,9 @@ export function getMetricDatasetColumns(metrics: MetricCatalogEntry[]): string[]
 	return [...columns];
 }
 
-function agentHasTools(workflow: WorkflowJSON, agentNodeName: string): boolean {
-	const connections = workflow.connections ?? {};
-	for (const sourceConnections of Object.values(connections)) {
-		if (!isRecord(sourceConnections)) continue;
-		const aiTool = sourceConnections.ai_tool;
-		if (!Array.isArray(aiTool)) continue;
-		for (const slot of aiTool) {
-			if (!Array.isArray(slot)) continue;
-			for (const conn of slot) {
-				if (isRecord(conn) && conn.node === agentNodeName) return true;
-			}
-		}
-	}
-	return false;
-}
-
-export function proposeDefaultMetricIds(workflow: WorkflowJSON, agentNodeName: string): MetricId[] {
-	const ids: MetricId[] = ['correctness'];
-	if (agentHasTools(workflow, agentNodeName)) ids.push('tool_use');
-	return ids;
+export function proposeDefaultMetricIds(
+	_workflow: WorkflowJSON,
+	_agentNodeName: string,
+): MetricId[] {
+	return ['correctness'];
 }

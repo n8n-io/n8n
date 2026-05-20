@@ -123,6 +123,7 @@ export async function populateEvalDataTable(
 			rowCount: GENERATE_ROW_COUNT,
 			targetAgentNodeName: target.targetAgentNodeName,
 			...(historyRows.length > 0 ? { realExamples: historyRows } : {}),
+			...(context.logger ? { logger: context.logger } : {}),
 		});
 		source = 'synthetic';
 	}

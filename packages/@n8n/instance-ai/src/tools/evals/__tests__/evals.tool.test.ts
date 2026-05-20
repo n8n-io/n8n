@@ -55,7 +55,7 @@ function aiWfWithUnsafeDirectRefs(): WorkflowJSON {
 	} as unknown as WorkflowJSON;
 }
 
-/** AI workflow whose agent has an ai_tool connection (triggers tool_use default metric). */
+/** AI workflow whose agent has an ai_tool connection. */
 function aiWfWithTools(): WorkflowJSON {
 	return {
 		name: 'AI Flow With Tools',
@@ -444,7 +444,6 @@ describe('evals tool — recommend-metric action', () => {
 	beforeEach(() => jest.clearAllMocks());
 
 	it('returns { approved: true, metricId } when user approves the recommendation', async () => {
-		// Agent has ai_tool connection → recommended is 'tool_use'
 		const ctx = makeCtx(aiWfWithTools());
 		const tool = createEvalsTool(ctx);
 
@@ -452,7 +451,7 @@ describe('evals tool — recommend-metric action', () => {
 			agent: { resumeData: { approved: true } },
 		} as never)) as Record<string, unknown>;
 
-		expect(result).toEqual({ approved: true, metricId: 'tool_use' });
+		expect(result).toEqual({ approved: true, metricId: 'correctness' });
 	});
 
 	it('returns { approved: false } when user denies, so the orchestrator can fall back to select-metrics', async () => {
@@ -581,7 +580,6 @@ describe('evals tool — select-metrics action', () => {
 	beforeEach(() => jest.clearAllMocks());
 
 	it('returns the workflow-default metric ids when user approves with default selections', async () => {
-		// Agent has ai_tool connection → defaults are ['correctness', 'tool_use']
 		const ctx = makeCtx(aiWfWithTools());
 		const tool = createEvalsTool(ctx);
 
@@ -618,20 +616,20 @@ describe('evals tool — select-metrics action', () => {
 		if (!payload) {
 			throw new Error('Expected metric selection payload');
 		}
-		const recommendedToolUseOption = payload.questions[0]?.options?.find((option) =>
-			option.startsWith('Tool use (recommended) — '),
+		const recommendedCorrectnessOption = payload.questions[0]?.options?.find((option) =>
+			option.startsWith('Correctness (recommended) — '),
 		);
-		if (!recommendedToolUseOption) {
-			throw new Error('Expected recommended tool-use option');
+		if (!recommendedCorrectnessOption) {
+			throw new Error('Expected recommended correctness option');
 		}
 
-		const answers = [{ questionId: 'q1', selectedOptions: [recommendedToolUseOption] }];
+		const answers = [{ questionId: 'q1', selectedOptions: [recommendedCorrectnessOption] }];
 		const result = (await tool.handler!({ action: 'select-metrics', workflowId: 'w1' }, {
 			agent: { resumeData: { approved: true, answers } },
 		} as never)) as Record<string, unknown>;
 
 		expect(result).toEqual({
-			chosenMetricIds: ['tool_use'],
+			chosenMetricIds: ['correctness'],
 			answers,
 		});
 	});
@@ -737,7 +735,7 @@ describe('evals tool — select-metrics action', () => {
 					expect.objectContaining({
 						options: expect.arrayContaining([
 							expect.stringMatching(/^Correctness.*Chef Agent/) as unknown,
-							expect.stringMatching(/Tool use.*recommended.*Calculator/) as unknown,
+							expect.stringMatching(/Tool use.*Calculator/) as unknown,
 						]) as unknown,
 					}),
 				],
