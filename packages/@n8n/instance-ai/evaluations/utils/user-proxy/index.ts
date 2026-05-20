@@ -181,7 +181,12 @@ export class UserProxyLlm {
 	}
 
 	async decideFollowUp(): Promise<NextMessageDecision> {
-		if (this.messagesSent >= this.messageBudget) return { kind: 'done' };
+		if (this.messagesSent >= this.messageBudget) {
+			this.logger?.warn(
+				`[user-proxy] message budget exhausted (${String(this.messagesSent)}/${String(this.messageBudget)}); ending conversation`,
+			);
+			return { kind: 'done' };
+		}
 
 		const prompt = buildFollowUpPrompt(this.promptContext());
 		const decision = await this.agent.decide(prompt);

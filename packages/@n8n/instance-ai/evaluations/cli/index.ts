@@ -276,7 +276,7 @@ async function attachConversationTraces(
 		return;
 	}
 
-	const projectName = 'instance-ai';
+	const projectName = process.env.LANGSMITH_PROJECT ?? 'instance-ai';
 
 	const targets = results.filter((r): r is WorkflowTestCaseResult & { threadId: string } =>
 		Boolean(r.threadId),
@@ -287,12 +287,20 @@ async function attachConversationTraces(
 	const started = Date.now();
 
 	let failures = 0;
+	let empties = 0;
 	await Promise.all(
 		targets.map(async (result) => {
 			const inflight = tracePromises?.get(result.threadId);
 			const promise = inflight ?? fetchThreadTraces(fallbackClient!, projectName, result.threadId);
 			try {
-				result.conversationTrace = await promise;
+				const trace = await promise;
+				result.conversationTrace = trace;
+				if (trace.length === 0) {
+					empties++;
+					logger.warn(
+						`Trace fetch returned 0 runs for ${result.threadId} (build completed but LangSmith has nothing yet — ingestion lag or trace name mismatch)`,
+					);
+				}
 			} catch (error: unknown) {
 				failures++;
 				const msg = error instanceof Error ? error.message : String(error);
@@ -302,9 +310,10 @@ async function attachConversationTraces(
 	);
 
 	const elapsedMs = Date.now() - started;
-	if (failures > 0) {
+	if (failures > 0 || empties > 0) {
+		const succeeded = targets.length - failures - empties;
 		logger.warn(
-			`Trace ingestion: ${String(targets.length - failures)}/${String(targets.length)} succeeded in ${String(elapsedMs)}ms (${String(failures)} failed)`,
+			`Trace ingestion: ${String(succeeded)}/${String(targets.length)} succeeded in ${String(elapsedMs)}ms (${String(failures)} failed, ${String(empties)} empty)`,
 		);
 	} else {
 		logger.verbose(`Trace ingestion completed in ${String(elapsedMs)}ms`);
@@ -329,7 +338,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	// Per-build trace pulls, keyed by threadId. Kicked off as each build completes
 	// so fetches spread over the run rather than bursting at the end.
 	const tracePromises = new Map<string, Promise<TraceNode[]>>();
-	const langsmithProjectName = 'instance-ai';
+	const langsmithProjectName = process.env.LANGSMITH_PROJECT ?? 'instance-ai';
 	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter, args.exclude);
 	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
 
