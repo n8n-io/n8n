@@ -194,14 +194,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	/** Add a tool to the agent's capabilities. Accepts a built tool or a Tool builder (which will be built automatically). Can also accept an array of tools. */
 	tool(t: ToolParameter | ToolParameter[]): this {
-		if (Array.isArray(t)) {
-			for (const tool of t) {
-				this.tool(tool);
-			}
-			return this;
+		const tools = Array.isArray(t) ? t : [t];
+		const builtTools = tools.map((tool) => ('build' in tool ? tool.build() : tool));
+		for (const built of builtTools) {
+			this.assertToolNameAvailable(built.name);
 		}
-		const built = 'build' in t ? t.build() : t;
-		this.tools.push(built);
+		this.tools.push(...builtTools);
 		return this;
 	}
 
@@ -748,6 +746,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 
 		// Detect collisions between direct, deferred, and MCP tools.
+		const staticCollisions = findDuplicateToolNames(finalStaticTools);
+		if (staticCollisions.length > 0) {
+			throw new Error(
+				`Static tool name collision — the following tool names resolve to duplicates: ${staticCollisions.join(', ')}`,
+			);
+		}
+
 		const staticNames = new Set(finalStaticTools.map((t) => t.name));
 		const reservedDeferredToolNames = new Set([
 			SEARCH_TOOLS_TOOL_NAME,
@@ -839,4 +844,22 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		return this.runtime;
 	}
+
+	private assertToolNameAvailable(toolName: string): void {
+		if (!this.hasRuntimeSkillTool || !RUNTIME_SKILL_TOOL_NAMES.has(toolName)) return;
+
+		throw new Error(`Tool name "${toolName}" is reserved for runtime skills`);
+	}
+}
+
+function findDuplicateToolNames(tools: BuiltTool[]): string[] {
+	const seen = new Set<string>();
+	const duplicates = new Set<string>();
+	for (const tool of tools) {
+		if (seen.has(tool.name)) {
+			duplicates.add(tool.name);
+		}
+		seen.add(tool.name);
+	}
+	return [...duplicates].sort();
 }

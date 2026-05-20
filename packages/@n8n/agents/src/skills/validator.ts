@@ -31,6 +31,7 @@ export function validateRuntimeSkill(skill: RuntimeSkill): RuntimeSkillValidatio
 	requiredString(skill.id, 'id', errors);
 	requiredString(skill.name, 'name', errors);
 	requiredString(skill.description, 'description', errors);
+	requiredString(skill.instructions, 'instructions', errors);
 
 	if (errors.length > 0) return { ok: false, errors };
 

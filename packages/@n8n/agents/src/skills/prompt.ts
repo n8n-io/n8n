@@ -13,12 +13,12 @@ export function renderSkillCatalogPrompt(
 	const catalog = registry.skills
 		.map((skill) =>
 			[
-				`- name: ${skill.name}`,
-				`  description: ${skill.description}`,
-				`  id: ${skill.id}`,
-				...(skill.category ? [`  category: ${skill.category}`] : []),
+				`- name: ${promptString(skill.name)}`,
+				`  description: ${promptString(skill.description)}`,
+				`  id: ${promptString(skill.id)}`,
+				...(skill.category ? [`  category: ${promptString(skill.category)}`] : []),
 				...(skill.recommendedTools?.length
-					? [`  recommendedTools: ${skill.recommendedTools.join(', ')}`]
+					? [`  recommendedTools: ${promptStringArray(skill.recommendedTools)}`]
 					: []),
 			].join('\n'),
 		)
@@ -51,4 +51,12 @@ export function appendSkillCatalogToInstructions(
 
 	const baseInstructions = instructions.trimEnd();
 	return baseInstructions ? `${catalog}\n\n${baseInstructions}` : catalog;
+}
+
+function promptString(value: string): string {
+	return JSON.stringify(value);
+}
+
+function promptStringArray(value: string[]): string {
+	return JSON.stringify(value);
 }

@@ -14,6 +14,14 @@ import {
 
 const MAX_OUTPUT_BYTES = 64 * 1024;
 const TRUNCATION_FOOTER = '\n\n[... output truncated to 64 KB ...]';
+const LINKED_FILE_GROUPS: Array<keyof RuntimeSkillLinkedFiles> = [
+	'references',
+	'templates',
+	'scripts',
+	'assets',
+	'examples',
+	'other',
+];
 
 export const RUNTIME_SKILL_TOOL_NAMES = new Set([SKILLS_LIST_TOOL_NAME, SKILL_VIEW_TOOL_NAME]);
 
@@ -98,6 +106,7 @@ const skillViewInputSchema = z.object({
 	name: z.string().describe('Skill name from skills_list.'),
 	filePath: z
 		.string()
+		.min(1)
 		.optional()
 		.describe('Optional linked file path relative to the skill directory.'),
 });
@@ -163,7 +172,18 @@ export function createSkillViewTool(source: RuntimeSkillSource): BuiltTool {
 				};
 			}
 
-			if (filePath) {
+			if (filePath !== undefined) {
+				const linkedFile = findRegisteredLinkedFile(skillEntry.linkedFiles, filePath);
+				if (!linkedFile) {
+					return {
+						success: false,
+						name,
+						filePath,
+						error: `File is not registered for skill ${name}: ${filePath}`,
+						linkedFiles: skillEntry.linkedFiles,
+					};
+				}
+
 				if (!source.loadFile) {
 					return {
 						success: false,
@@ -174,7 +194,7 @@ export function createSkillViewTool(source: RuntimeSkillSource): BuiltTool {
 					};
 				}
 
-				const file = await source.loadFile(skillEntry.id, filePath);
+				const file = await source.loadFile(skillEntry.id, linkedFile.path);
 				if (!file) {
 					return {
 						success: false,
@@ -188,14 +208,16 @@ export function createSkillViewTool(source: RuntimeSkillSource): BuiltTool {
 				return {
 					success: true,
 					name,
-					path: skillEntry.directory ? `${skillEntry.directory}/${file.filePath}` : file.filePath,
+					path: skillEntry.directory
+						? `${skillEntry.directory}/${linkedFile.path}`
+						: linkedFile.path,
 					skillDir: skillEntry.directory,
 					hash: skillEntry.hash,
 					category: skillEntry.category,
-					filePath: file.filePath,
+					filePath: linkedFile.path,
 					content: cap(file.content),
-					bytes: file.bytes,
-					sha256: file.sha256,
+					bytes: file.bytes ?? linkedFile.bytes,
+					sha256: file.sha256 ?? linkedFile.sha256,
 				};
 			}
 
@@ -249,14 +271,29 @@ function categoriesFor(registry: RuntimeSkillRegistry): string[] {
 
 function activationEnvelope(skill: RuntimeSkillRegistryEntry): string {
 	return [
-		`[Skill: ${skill.name}]`,
-		...(skill.category ? [`[Skill category: ${skill.category}]`] : []),
-		...(skill.directory ? [`[Skill directory: ${skill.directory}]`] : []),
+		`[Skill: ${envelopeValue(skill.name)}]`,
+		...(skill.category ? [`[Skill category: ${envelopeValue(skill.category)}]`] : []),
+		...(skill.directory ? [`[Skill directory: ${envelopeValue(skill.directory)}]`] : []),
 		...((skill.path ?? skill.sourcePath)
-			? [`[Skill path: ${skill.path ?? skill.sourcePath}]`]
+			? [`[Skill path: ${envelopeValue(skill.path ?? skill.sourcePath ?? '')}]`]
 			: []),
-		`[Skill hash: ${skill.hash}]`,
+		`[Skill hash: ${envelopeValue(skill.hash)}]`,
 	].join('\n');
+}
+
+function findRegisteredLinkedFile(
+	linkedFiles: RuntimeSkillLinkedFiles,
+	filePath: string,
+): RuntimeSkillLinkedFile | undefined {
+	for (const group of LINKED_FILE_GROUPS) {
+		const linkedFile = linkedFiles[group].find((file) => file.path === filePath);
+		if (linkedFile) return linkedFile;
+	}
+	return undefined;
+}
+
+function envelopeValue(value: string): string {
+	return JSON.stringify(value);
 }
 
 function cap(content: string): string {

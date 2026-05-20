@@ -251,6 +251,33 @@ describe('buildFromJson()', () => {
 		).rejects.toThrow('Skill "missing_skill" not found in stored skill bodies');
 	});
 
+	it('rejects custom tools that reuse runtime skill tool names', async () => {
+		const descriptor = makeToolDescriptor({ name: 'skill_view' });
+		const config = makeConfig({
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
+			tools: [{ type: 'custom', id: 'reserved_tool' }],
+		});
+
+		await expect(
+			buildFromJson(
+				config,
+				{ reserved_tool: descriptor },
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					skills: {
+						summarize_notes: {
+							name: 'Summarize notes',
+							description: 'Use for meeting notes and transcripts',
+							instructions: 'Extract decisions and action items.',
+						},
+					},
+				},
+			),
+		).rejects.toThrow('Tool name "skill_view" is reserved for runtime skills');
+	});
+
 	it('throws when custom tool id is not found in descriptors', async () => {
 		const config = makeConfig({ tools: [{ type: 'custom', id: 'missing_tool' }] });
 

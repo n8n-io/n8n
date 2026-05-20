@@ -65,7 +65,6 @@ export async function buildFromJson(
 
 	const configuredSkills = getConfiguredSkills(config.skills ?? [], options.skills ?? {});
 	agent.instructions(config.instructions);
-	agent.skills(configuredSkills);
 
 	// Tools
 	if (config.tools) {
@@ -76,6 +75,8 @@ export async function buildFromJson(
 			}
 		}
 	}
+	agent.skills(configuredSkills);
+
 	// Provider tools
 	if (config.providerTools) {
 		for (const [name, args] of Object.entries(config.providerTools)) {
