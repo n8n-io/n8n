@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
 	computeIdleRanges,
+	flattenExecutionsToTimelineItems,
 	itemFilterKey,
 	sessionBounds,
 	kindColorToken,
@@ -129,7 +130,6 @@ describe('formatDuration', () => {
 	});
 });
 
-import { flattenExecutionsToTimelineItems } from '../session-timeline.utils';
 import type {
 	AgentExecution,
 	AgentExecutionTimelineEvent,
@@ -140,6 +140,7 @@ function exec(overrides: Partial<AgentExecution> = {}): AgentExecution {
 		id: 'e-1',
 		threadId: 't-1',
 		agentId: 'a-1',
+		agentVersionId: 'version-1',
 		status: 'success',
 		createdAt: '2026-04-24T10:00:00Z',
 		startedAt: '2026-04-24T10:00:00Z',
