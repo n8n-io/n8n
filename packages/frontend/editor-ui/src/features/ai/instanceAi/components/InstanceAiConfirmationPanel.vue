@@ -576,9 +576,7 @@ function shouldRenderApprovalAsSpeech(item: PendingConfirmationItem): boolean {
 										size="large"
 										data-test-id="instance-ai-panel-confirm-speech"
 									>
-										<InstanceAiMarkdown
-											:content="chunk.item.toolCall.confirmation.message ?? ''"
-										/>
+										<InstanceAiMarkdown :content="chunk.item.toolCall.confirmation.message ?? ''" />
 									</N8nText>
 									<ConfirmationPreview v-else>{{
 										buildApprovalSubtitle(chunk.item)
