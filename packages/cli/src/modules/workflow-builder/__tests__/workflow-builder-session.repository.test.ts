@@ -69,6 +69,17 @@ describe('WorkflowBuilderSessionRepository', () => {
 		it('should throw error for empty thread ID', async () => {
 			await expect(repository.getSession('')).rejects.toThrow('Invalid thread ID format: ');
 		});
+
+		it('should parse code-builder thread ID with -code suffix', async () => {
+			entityManager.findOne.mockResolvedValueOnce(null);
+
+			const codeBuilderThreadId = 'workflow-wf123-user-user456-code';
+			await repository.getSession(codeBuilderThreadId);
+
+			expect(entityManager.findOne).toHaveBeenCalledWith(WorkflowBuilderSession, {
+				where: { workflowId: 'wf123', userId: 'user456' },
+			});
+		});
 	});
 
 	describe('getSession', () => {

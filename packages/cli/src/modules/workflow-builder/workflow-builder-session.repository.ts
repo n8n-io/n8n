@@ -76,8 +76,8 @@ export class WorkflowBuilderSessionRepository
 	}
 
 	private parseThreadId(threadId: string): { workflowId: string; userId: string } {
-		// Format: "workflow-{workflowId}-user-{userId}"
-		const match = threadId.match(/^workflow-(.+)-user-(.+)$/);
+		// Format: "workflow-{workflowId}-user-{userId}[-code]"
+		const match = threadId.match(/^workflow-(.+)-user-(.+?)(-code)?$/);
 		if (!match) {
 			throw new Error(`Invalid thread ID format: ${threadId}`);
 		}
