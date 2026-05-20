@@ -124,15 +124,14 @@ describe('buildFromJson()', () => {
 		setCursor: jest.fn(),
 		acquireObservationLogTaskLock: jest.fn(),
 		releaseObservationLogTaskLock: jest.fn(),
-		saveEpisodicMemoryEntries: jest.fn(),
-		saveEpisodicMemoryEntrySources: jest.fn(),
-		saveEpisodicMemoryEntryWithSources: jest.fn(),
-		searchEpisodicMemoryEntries: jest.fn(),
-		supersedeEpisodicMemoryEntries: jest.fn(),
-		getEpisodicMemoryCursor: jest.fn(),
-		setEpisodicMemoryCursor: jest.fn(),
-		getEpisodicMemoryEntrySources: jest.fn(),
-		applyEpisodicMemoryReflection: jest.fn(),
+		episodic: {
+			saveEntryWithSources: jest.fn(),
+			searchEntries: jest.fn(),
+			getEntrySources: jest.fn(),
+			applyReflection: jest.fn(),
+			getCursor: jest.fn(),
+			setCursor: jest.fn(),
+		},
 		describe: jest
 			.fn()
 			.mockReturnValue({ name: 'n8n', constructorName: 'N8nMemory', connectionParams: null }),
