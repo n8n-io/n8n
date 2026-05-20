@@ -129,10 +129,29 @@ export function inferType(filePath) {
 
 // ── Fetch ──────────────────────────────────────────────────────────────────────
 
-/** Fetch with exponential backoff retry — handles 429 rate limits and transient 5xx. */
-async function fetchJson(url, retries = 3) {
+/**
+ * Fetch with exponential backoff retry — handles 429 rate limits, transient
+ * 5xx, and network-level failures (socket reset, DNS hiccup, connection
+ * close) that Node's fetch throws as `TypeError: fetch failed`. Without the
+ * network-error branch, a single transient blip mid-pagination aborts the
+ * entire coverage gap analysis.
+ */
+async function fetchJson(url, retries = 5) {
 	for (let attempt = 0; attempt <= retries; attempt++) {
-		const res = await fetch(url, { headers });
+		let res;
+		try {
+			res = await fetch(url, { headers });
+		} catch (error) {
+			if (attempt < retries) {
+				const delay = Math.pow(2, attempt) * 1000 + Math.random() * 500;
+				process.stderr.write(
+					`  [network] ${String(error)} — retrying in ${Math.round(delay / 1000)}s...\n`,
+				);
+				await new Promise((r) => setTimeout(r, delay));
+				continue;
+			}
+			throw new Error(`Network failure after ${retries + 1} attempts  ${url}\n${String(error)}`);
+		}
 
 		if (res.ok) return res.json();
 
