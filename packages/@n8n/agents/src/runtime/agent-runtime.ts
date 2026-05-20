@@ -19,6 +19,7 @@ import type {
 	GenerateResult,
 	GoogleThinkingConfig,
 	ObservationalMemoryConfig,
+	ObservationLogMemoryConfig,
 	OpenAIThinkingConfig,
 	PendingToolCall,
 	RunOptions,
@@ -33,14 +34,21 @@ import type {
 	XaiThinkingConfig,
 } from '../types';
 import { BackgroundTaskTracker } from './background-task-tracker';
+import { DeferredToolManager } from './deferred-tool-manager';
 import { AgentEventBus } from './event-bus';
 import { toJsonValue } from './json-value';
+import { createFilteredLogger } from './logger';
 import { saveMessagesToThread } from './memory-store';
 import { AgentMessageList, type SerializedMessageList } from './message-list';
 import { fromAiFinishReason, fromAiMessages } from './messages';
 import { createEmbeddingModel, createModel } from './model-factory';
-import { hasObservationStore } from './observation-store';
-import { runObservationalCycle, type RunObservationalCycleOpts } from './observational-cycle';
+import {
+	runObservationLogObserver,
+	type ObservationLogObserverMemory,
+} from './observation-log-observer';
+import { runObservationLogReflector } from './observation-log-reflector';
+import { renderObservationLog } from './observation-log-renderer';
+import { hasObservationLogStore, hasObservationLogTaskLockStore } from './observation-log-store';
 import { generateRunId, RunStateManager } from './run-state';
 import {
 	accumulateUsage,
@@ -49,6 +57,7 @@ import {
 	makeErrorStream,
 	normalizeInput,
 } from './runtime-helpers';
+import { ScopedMemoryTaskRunner } from './scoped-memory-task-runner';
 import { convertChunk } from './stream';
 import { stripOrphanedToolMessages } from './strip-orphaned-tool-messages';
 import { generateThreadTitle } from './title-generation';
@@ -70,6 +79,8 @@ import type {
 	ToolResultEntry,
 } from '../types/sdk/agent';
 import type { AgentDbMessage, AgentMessage, ContentToolCall, Message } from '../types/sdk/message';
+import { createObservationLogThreadScopeId } from '../types/sdk/observation-log';
+import type { ObservationLogScope } from '../types/sdk/observation-log';
 import type { JSONObject, JSONValue } from '../types/utils/json';
 import { parseWithSchema } from '../utils/parse';
 import { isZodSchema } from '../utils/zod';
@@ -163,16 +174,15 @@ export interface AgentRuntimeConfig {
 	instructions: string;
 	instructionProviderOptions?: ProviderOptions;
 	tools?: BuiltTool[];
+	deferredTools?: BuiltTool[];
+	toolSearch?: {
+		topK?: number;
+	};
 	providerTools?: BuiltProviderTool[];
 	memory?: BuiltMemory;
 	lastMessages?: number;
-	workingMemory?: {
-		template: string;
-		structured: boolean;
-		schema?: z.ZodObject<z.ZodRawShape>;
-		scope?: 'resource' | 'thread';
-		instruction?: string;
-	};
+	observationLog?: ObservationLogMemoryConfig;
+	observationalMemory?: ObservationalMemoryConfig;
 	semanticRecall?: SemanticRecallConfig;
 	structuredOutput?: z.ZodType;
 	checkpointStorage?: 'memory' | CheckpointStore;
@@ -181,11 +191,11 @@ export interface AgentRuntimeConfig {
 	/** Number of tool calls to execute concurrently. Default `1` (sequential). */
 	toolCallConcurrency?: number;
 	titleGeneration?: TitleGenerationConfig;
-	observationalMemory?: ObservationalMemoryConfig;
 	telemetry?: BuiltTelemetry;
 }
 
 const MAX_LOOP_ITERATIONS = 20;
+const logger = createFilteredLogger();
 
 const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	messages: [],
@@ -193,6 +203,24 @@ const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	inputIds: [],
 	responseIds: [],
 };
+
+function hasFunctionProperty<K extends PropertyKey>(
+	value: object,
+	property: K,
+): value is Record<K, (...args: never[]) => unknown> {
+	return property in value && typeof Reflect.get(value, property) === 'function';
+}
+
+function hasObservationLogObserverMemory(
+	memory: BuiltMemory,
+): memory is ObservationLogObserverMemory {
+	return (
+		hasObservationLogStore(memory) &&
+		hasFunctionProperty(memory, 'getMessagesForScope') &&
+		hasFunctionProperty(memory, 'getCursor') &&
+		hasFunctionProperty(memory, 'setCursor')
+	);
+}
 
 /** Pending tool calls from a suspended run, passed into the loop to execute before the first LLM call. */
 interface PendingResume {
@@ -313,12 +341,17 @@ export class AgentRuntime {
 
 	private backgroundTasks = new BackgroundTaskTracker();
 
-	private observationTimers = new Map<string, ReturnType<typeof setTimeout>>();
+	private memoryTasks: ScopedMemoryTaskRunner | undefined;
+
+	private deferredToolManager: DeferredToolManager | undefined;
 
 	/** Resolved telemetry for the current run (own config or inherited from parent). */
 
 	constructor(config: AgentRuntimeConfig) {
 		this.config = config;
+		if (config.deferredTools && config.deferredTools.length > 0) {
+			this.deferredToolManager = new DeferredToolManager(config.deferredTools, config.toolSearch);
+		}
 		this.runState = new RunStateManager(config.checkpointStorage);
 		this.eventBus = config.eventBus ?? new AgentEventBus();
 		this.currentState = {
@@ -334,29 +367,7 @@ export class AgentRuntime {
 	 * observer cycles) to settle. Safe to call multiple times.
 	 */
 	async dispose(): Promise<void> {
-		for (const timer of this.observationTimers.values()) {
-			clearTimeout(timer);
-		}
-		this.observationTimers.clear();
 		await this.backgroundTasks.flush();
-	}
-
-	/**
-	 * Schedule an observational-memory cycle to run via the background-task
-	 * tracker. Returns immediately; callers do not await. Errors inside the
-	 * cycle are caught by `runObservationalCycle` and emitted via
-	 * `AgentEvent.Error` with `source: 'observer' | 'compactor'`.
-	 *
-	 * Used by `Agent.reflectInBackground(...)` so consumers (e.g. the cli's
-	 * post-stream trigger) can fire-and-forget without blocking the response.
-	 */
-	scheduleBackgroundCycle(opts: RunObservationalCycleOpts): void {
-		this.backgroundTasks.track(
-			runObservationalCycle(opts).then(
-				() => undefined,
-				() => undefined,
-			),
-		);
 	}
 
 	/** Return the latest state snapshot. */
@@ -447,7 +458,10 @@ export class AgentRuntime {
 		const toolCall = state.pendingToolCalls[options.toolCallId];
 		if (!toolCall) throw new Error(`No tool call found for toolCallId: ${options.toolCallId}`);
 
-		const tool = this.config.tools?.find((t) => t.name === toolCall.toolName);
+		const list = AgentMessageList.deserialize(state.messageList);
+		this.hydrateDeferredToolsFromList(list);
+
+		const tool = this.getCurrentTools().find((t) => t.name === toolCall.toolName);
 		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		let resumeData: unknown = data;
@@ -460,8 +474,6 @@ export class AgentRuntime {
 		}
 
 		try {
-			const list = AgentMessageList.deserialize(state.messageList);
-
 			// Merge persisted execution options with fresh caller options
 			const { runId: _rid, toolCallId: _tcid, ...callerExecOptions } = options;
 			const persisted = state.executionOptions ?? {};
@@ -487,8 +499,7 @@ export class AgentRuntime {
 
 			await this.ensureModelCost();
 
-			// Attach working memory to the deserialized list — forLlm() needs it.
-			await this.setListWorkingMemoryConfig(list, state.persistence);
+			await this.setListObservationLogMemory(list, state.persistence);
 
 			if (method === 'generate') {
 				const rawResult = await this.withTelemetryRootSpan(
@@ -555,6 +566,7 @@ export class AgentRuntime {
 		if (this.config.memory && options?.persistence?.threadId) {
 			const memMessages = await this.config.memory.getMessages(options.persistence.threadId, {
 				limit: this.config.lastMessages ?? 10,
+				resourceId: options.persistence.resourceId,
 			});
 			if (memMessages.length > 0) {
 				list.addHistory(stripOrphanedToolMessages(memMessages));
@@ -571,8 +583,7 @@ export class AgentRuntime {
 			);
 		}
 
-		// Attach working memory to the list — forLlm() appends it to the system prompt.
-		await this.setListWorkingMemoryConfig(list, options?.persistence);
+		await this.setListObservationLogMemory(list, options?.persistence);
 
 		list.addInput(input);
 		return list;
@@ -698,9 +709,6 @@ export class AgentRuntime {
 		options?: RunOptions & ExecutionOptions,
 	): Promise<AgentMessageList> {
 		this.eventBus.resetAbort(options?.abortSignal);
-		if (options?.persistence?.threadId) {
-			this.cancelIdleObservation(options.persistence.threadId);
-		}
 		this.updateState({
 			status: 'running',
 			persistence: options?.persistence,
@@ -913,15 +921,7 @@ export class AgentRuntime {
 	/** Core generate loop using generateText (non-streaming). */
 	private async runGenerateLoop(ctx: LoopContext): Promise<GenerateResult> {
 		const { list, options, runId, pendingResume } = ctx;
-		const {
-			model,
-			toolMap,
-			aiTools,
-			providerOptions,
-			hasTools,
-			outputSpec,
-			effectiveInstructions,
-		} = this.buildLoopContext({ ...options, persistence: options?.persistence });
+		this.hydrateDeferredToolsFromList(list);
 
 		let totalUsage: TokenUsage | undefined;
 		let lastFinishReason: FinishReason = 'stop';
@@ -931,8 +931,13 @@ export class AgentRuntime {
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
 		const runTelemetry = this.resolveTelemetry(options);
-		const toolCtx: ToolBatchContext = {
-			toolMap,
+		const staticLoopContext = this.buildStaticLoopContext({
+			...options,
+			persistence: options?.persistence,
+		});
+		const pendingLoopContext = this.buildToolLoopContext(staticLoopContext.aiProviderTools);
+		const pendingToolCtx: ToolBatchContext = {
+			toolMap: pendingLoopContext.toolMap,
 			list,
 			runId,
 			telemetry: runTelemetry,
@@ -940,7 +945,10 @@ export class AgentRuntime {
 		};
 
 		if (pendingResume) {
-			const batch = await this.iteratePendingToolCallsConcurrent({ ...toolCtx, pendingResume });
+			const batch = await this.iteratePendingToolCallsConcurrent({
+				...pendingToolCtx,
+				pendingResume,
+			});
 
 			for (const r of batch.results) {
 				toolCallSummary.push(r.toolEntry);
@@ -981,15 +989,19 @@ export class AgentRuntime {
 
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
 
+			const { toolMap, aiTools, hasTools, effectiveInstructions } = this.buildToolLoopContext(
+				staticLoopContext.aiProviderTools,
+			);
+
 			const result = await generateText({
-				model,
+				model: staticLoopContext.model,
 				messages: list.forLlm(effectiveInstructions, this.config.instructionProviderOptions),
 				abortSignal: this.eventBus.signal,
 				...(hasTools ? { tools: aiTools } : {}),
-				...(providerOptions
-					? { providerOptions: providerOptions as Record<string, JSONObject> }
+				...(staticLoopContext.providerOptions
+					? { providerOptions: staticLoopContext.providerOptions as Record<string, JSONObject> }
 					: {}),
-				...(outputSpec ? { output: outputSpec } : {}),
+				...(staticLoopContext.outputSpec ? { output: staticLoopContext.outputSpec } : {}),
 				...this.buildTelemetryOptions(options),
 			});
 
@@ -1004,7 +1016,7 @@ export class AgentRuntime {
 			list.addResponse(newMessages);
 
 			if (aiFinishReason !== 'tool-calls') {
-				if (outputSpec) {
+				if (staticLoopContext.outputSpec) {
 					structuredOutput = result.output;
 				}
 				this.emitTurnEnd(newMessages, extractSettledToolCalls(newMessages));
@@ -1012,7 +1024,11 @@ export class AgentRuntime {
 			}
 
 			const batch = await this.iterateToolCallsConcurrent({
-				...toolCtx,
+				toolMap,
+				list,
+				runId,
+				telemetry: runTelemetry,
+				executionCounter: options?.executionCounter,
 				toolCalls: result.toolCalls,
 			});
 
@@ -1141,15 +1157,7 @@ export class AgentRuntime {
 		ctx: LoopContext & { writer: WritableStreamDefaultWriter<StreamChunk> },
 	): Promise<void> {
 		const { list, options, runId, pendingResume, writer } = ctx;
-		const {
-			model,
-			toolMap,
-			aiTools,
-			providerOptions,
-			hasTools,
-			outputSpec,
-			effectiveInstructions,
-		} = this.buildLoopContext({ ...options, persistence: options?.persistence });
+		this.hydrateDeferredToolsFromList(list);
 
 		const writeChunk = async (chunk: StreamChunk): Promise<void> => {
 			await writer.write(chunk);
@@ -1177,8 +1185,13 @@ export class AgentRuntime {
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
 		const runTelemetry = this.resolveTelemetry(options);
-		const toolCtx: ToolBatchContext = {
-			toolMap,
+		const staticLoopContext = this.buildStaticLoopContext({
+			...options,
+			persistence: options?.persistence,
+		});
+		const pendingLoopContext = this.buildToolLoopContext(staticLoopContext.aiProviderTools);
+		const pendingToolCtx: ToolBatchContext = {
+			toolMap: pendingLoopContext.toolMap,
 			list,
 			runId,
 			telemetry: runTelemetry,
@@ -1187,7 +1200,7 @@ export class AgentRuntime {
 		if (pendingResume) {
 			try {
 				const batch = await this.iteratePendingToolCallsConcurrent({
-					...toolCtx,
+					...pendingToolCtx,
 					pendingResume,
 				});
 
@@ -1248,16 +1261,19 @@ export class AgentRuntime {
 			if (await handleAbort()) return;
 
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
+			const { toolMap, aiTools, hasTools, effectiveInstructions } = this.buildToolLoopContext(
+				staticLoopContext.aiProviderTools,
+			);
 			const messages = list.forLlm(effectiveInstructions, this.config.instructionProviderOptions);
 			const result = streamText({
-				model,
+				model: staticLoopContext.model,
 				messages,
 				abortSignal: this.eventBus.signal,
 				...(hasTools ? { tools: aiTools } : {}),
-				...(providerOptions
-					? { providerOptions: providerOptions as Record<string, JSONObject> }
+				...(staticLoopContext.providerOptions
+					? { providerOptions: staticLoopContext.providerOptions as Record<string, JSONObject> }
 					: {}),
-				...(outputSpec ? { output: outputSpec } : {}),
+				...(staticLoopContext.outputSpec ? { output: staticLoopContext.outputSpec } : {}),
 				...this.buildTelemetryOptions(options),
 			});
 
@@ -1301,7 +1317,7 @@ export class AgentRuntime {
 			list.addResponse(newMessages);
 
 			if (aiFinishReason !== 'tool-calls') {
-				if (outputSpec) {
+				if (staticLoopContext.outputSpec) {
 					structuredOutput = await result.output;
 				}
 				this.emitTurnEnd(newMessages, extractSettledToolCalls(newMessages));
@@ -1311,7 +1327,14 @@ export class AgentRuntime {
 			const toolCalls = await result.toolCalls;
 
 			try {
-				const batch = await this.iterateToolCallsConcurrent({ ...toolCtx, toolCalls });
+				const batch = await this.iterateToolCallsConcurrent({
+					toolMap,
+					list,
+					runId,
+					telemetry: runTelemetry,
+					executionCounter: options?.executionCounter,
+					toolCalls,
+				});
 
 				if (await handleAbort()) return;
 
@@ -1438,7 +1461,84 @@ export class AgentRuntime {
 			);
 		}
 
-		await this.dispatchObservationalMemory(options.persistence);
+		this.scheduleObservationLogJobs(options.persistence);
+	}
+
+	private scheduleObservationLogJobs(persistence: AgentPersistenceOptions): void {
+		const { memory, observationalMemory } = this.config;
+		if (!memory || !observationalMemory || !hasObservationLogStore(memory)) return;
+
+		const scope = this.getObservationLogScope(persistence);
+		const runner = this.getMemoryTaskRunner(memory, observationalMemory);
+		const observe = observationalMemory.observe;
+		const observerThresholdTokens = observationalMemory.observerThresholdTokens;
+
+		if (
+			observe &&
+			observerThresholdTokens !== undefined &&
+			hasObservationLogObserverMemory(memory)
+		) {
+			runner.schedule(
+				{ ...scope, taskKind: 'observer' },
+				async () =>
+					await runObservationLogObserver({
+						memory,
+						...scope,
+						observerThresholdTokens,
+						observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
+						observe,
+						messageSource: {
+							threadId: persistence.threadId,
+							resourceId: persistence.resourceId,
+						},
+					}),
+			);
+		}
+
+		const reflect = observationalMemory.reflect;
+		const reflectorThresholdTokens = observationalMemory.reflectorThresholdTokens;
+		if (reflect && reflectorThresholdTokens !== undefined) {
+			runner.schedule(
+				{ ...scope, taskKind: 'reflector' },
+				async () =>
+					await runObservationLogReflector({
+						memory,
+						...scope,
+						reflectorThresholdTokens,
+						reflect,
+					}),
+			);
+		}
+	}
+
+	private getMemoryTaskRunner(
+		memory: BuiltMemory,
+		observationalMemory: ObservationalMemoryConfig,
+	): ScopedMemoryTaskRunner {
+		this.memoryTasks ??= new ScopedMemoryTaskRunner({
+			tracker: this.backgroundTasks,
+			lockStore: hasObservationLogTaskLockStore(memory) ? memory : undefined,
+			lockTtlMs: observationalMemory.lockTtlMs,
+			onEvent: (event) => {
+				if (event.type !== 'failed') return;
+				const source = event.task.taskKind;
+				const message = `Observation log ${source} task failed`;
+				logger.warn(message, {
+					error: event.error,
+					scopeKind: event.task.scopeKind,
+					scopeId: event.task.scopeId,
+				});
+				this.eventBus.emit({ type: AgentEvent.Error, message, error: event.error, source });
+			},
+		});
+		return this.memoryTasks;
+	}
+
+	private getObservationLogScope(persistence: AgentPersistenceOptions): ObservationLogScope {
+		return {
+			scopeKind: 'thread',
+			scopeId: createObservationLogThreadScopeId(persistence.threadId, persistence.resourceId),
+		};
 	}
 
 	private async saveEmbeddingsForMessages(
@@ -1985,26 +2085,53 @@ export class AgentRuntime {
 		};
 	}
 
-	/** Build common LLM call dependencies shared by both the generate and stream loops. */
-	private buildLoopContext(
+	/** Build run-stable LLM call dependencies shared by all iterations. */
+	private buildStaticLoopContext(
 		execOptions?: ExecutionOptions & { persistence?: AgentPersistenceOptions },
 	) {
-		const allUserTools = this.config.tools ?? [];
-		const aiTools = toAiSdkTools(allUserTools);
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
-		const allTools = { ...aiTools, ...aiProviderTools };
 		const model = createModel(this.config.model);
 		return {
 			model,
-			toolMap: buildToolMap(allUserTools),
-			aiTools: allTools,
+			aiProviderTools,
 			providerOptions: this.buildCallProviderOptions(execOptions?.providerOptions),
-			hasTools: Object.keys(allTools).length > 0,
 			outputSpec: this.config.structuredOutput
 				? Output.object({ schema: this.config.structuredOutput })
 				: undefined,
-			effectiveInstructions: this.composeEffectiveInstructions(allUserTools),
 		};
+	}
+
+	/** Build the current local tool view; deferred loads can change this between iterations. */
+	private buildToolLoopContext(aiProviderTools: ReturnType<typeof toAiSdkProviderTools>) {
+		const allUserTools = this.getCurrentTools();
+		const aiTools = toAiSdkTools(allUserTools);
+		const allTools = { ...aiTools, ...aiProviderTools };
+		const aiToolCount = Object.keys(allTools).length;
+		const toolMap = buildToolMap(allUserTools);
+		const effectiveInstructions = this.composeEffectiveInstructions(allUserTools);
+
+		return {
+			toolMap,
+			aiTools: allTools,
+			hasTools: aiToolCount > 0,
+			effectiveInstructions,
+		};
+	}
+
+	private getCurrentTools(): BuiltTool[] {
+		const baseTools = this.config.tools ?? [];
+		if (!this.deferredToolManager?.hasTools) return baseTools;
+
+		return [
+			...baseTools,
+			...this.deferredToolManager.getControllerTools(),
+			...this.deferredToolManager.getLoadedTools(),
+		];
+	}
+
+	private hydrateDeferredToolsFromList(list: AgentMessageList): void {
+		if (!this.deferredToolManager?.hasTools) return;
+		this.deferredToolManager.hydrateLoadedToolsFromMessages(list.serialize().messages);
 	}
 
 	/**
@@ -2111,101 +2238,21 @@ export class AgentRuntime {
 		return { ...usage, cost: computeCost(usage, this.modelCost) };
 	}
 
-	private async setListWorkingMemoryConfig(
+	private async setListObservationLogMemory(
 		list: AgentMessageList,
 		options: AgentPersistenceOptions | undefined,
 	) {
-		const wmParams = this.resolveWorkingMemoryParams(options);
-		if (!wmParams || !this.config.memory?.getWorkingMemory) return;
-		const wmState = await this.config.memory.getWorkingMemory(wmParams.memoryParams);
-
-		list.workingMemory = {
-			template: wmParams.template,
-			structured: wmParams.structured,
-			state: wmState,
-			...(wmParams.instruction !== undefined && { instruction: wmParams.instruction }),
-		};
-	}
-
-	private async dispatchObservationalMemory(persistence: AgentPersistenceOptions): Promise<void> {
-		const cycle = this.buildObservationCycleOpts(persistence);
-		if (!cycle) return;
-		const trigger = cycle.trigger ?? { type: 'per-turn' };
-		if (trigger.type === 'idle-timer') {
-			this.scheduleIdleObservation(persistence.threadId, cycle, trigger.idleMs);
-			return;
-		}
-
-		const promise = runObservationalCycle(cycle).then(
-			() => undefined,
-			() => undefined,
-		);
-		if (this.config.observationalMemory?.sync) {
-			await promise;
-		} else {
-			this.backgroundTasks.track(promise);
-		}
-	}
-
-	private scheduleIdleObservation(
-		threadId: string,
-		cycle: RunObservationalCycleOpts,
-		idleMs: number,
-	): void {
-		this.cancelIdleObservation(threadId);
-		const timer = setTimeout(() => {
-			this.observationTimers.delete(threadId);
-			this.backgroundTasks.track(
-				runObservationalCycle(cycle).then(
-					() => undefined,
-					() => undefined,
-				),
-			);
-		}, idleMs);
-		this.observationTimers.set(threadId, timer);
-	}
-
-	private cancelIdleObservation(threadId: string): void {
-		const existing = this.observationTimers.get(threadId);
-		if (!existing) return;
-		clearTimeout(existing);
-		this.observationTimers.delete(threadId);
-	}
-
-	private buildObservationCycleOpts(
-		persistence: AgentPersistenceOptions | undefined,
-	): RunObservationalCycleOpts | null {
-		const obsConfig = this.config.observationalMemory;
 		const memory = this.config.memory;
-		const workingMemory = this.config.workingMemory;
-		if (!obsConfig || !memory || !workingMemory || !persistence) return null;
-		if (!hasObservationStore(memory)) return null;
-		if (!memory.saveWorkingMemory) return null;
-		return {
-			memory,
-			threadId: persistence.threadId,
-			resourceId: persistence.resourceId,
-			model: this.config.model,
-			workingMemory: {
-				template: workingMemory.template,
-				structured: workingMemory.structured,
-				...(workingMemory.schema !== undefined && { schema: workingMemory.schema }),
-			},
-			...(obsConfig.observe !== undefined && { observe: obsConfig.observe }),
-			...(obsConfig.compact !== undefined && { compact: obsConfig.compact }),
-			...(obsConfig.trigger !== undefined && { trigger: obsConfig.trigger }),
-			...(obsConfig.compactionThreshold !== undefined && {
-				compactionThreshold: obsConfig.compactionThreshold,
-			}),
-			...(obsConfig.gapThresholdMs !== undefined && { gapThresholdMs: obsConfig.gapThresholdMs }),
-			...(obsConfig.observerPrompt !== undefined && { observerPrompt: obsConfig.observerPrompt }),
-			...(obsConfig.compactorPrompt !== undefined && {
-				compactorPrompt: obsConfig.compactorPrompt,
-			}),
-			...(obsConfig.lockTtlMs !== undefined && { lockTtlMs: obsConfig.lockTtlMs }),
-			...(this.config.telemetry !== undefined && { telemetry: this.config.telemetry }),
-			eventBus: this.eventBus,
-		};
+		if (!memory || !options?.threadId || !hasObservationLogStore(memory)) return;
+		const scope = this.getObservationLogScope(options);
+		const observations = await memory.getActiveObservationLog({
+			...scope,
+			order: 'asc',
+		});
+		list.observationLogMemory =
+			renderObservationLog(observations, {
+				renderTokenBudget: this.config.observationLog?.renderTokenBudget,
+			}) ?? undefined;
 	}
 
 	/**
@@ -2216,34 +2263,5 @@ export class AgentRuntime {
 	 */
 	getConfiguredTelemetry(): BuiltTelemetry | undefined {
 		return this.config.telemetry;
-	}
-
-	private resolveWorkingMemoryParams(options: AgentPersistenceOptions | undefined) {
-		if (!options) return null;
-		if (!this.config.workingMemory) return null;
-		const scope = this.config.workingMemory?.scope ?? 'resource';
-		if (scope === 'resource' && !options.resourceId) {
-			throw new Error(
-				'Working memory scope is "resource" but no resourceId was provided. ' +
-					'Pass a resourceId in RunOptions or change the scope to "thread".',
-			);
-		}
-		if (!options) return null;
-		const memoryParams = { ...options, scope };
-		const persistFn =
-			this.config.workingMemory && this.config.memory?.saveWorkingMemory && options
-				? async (content: string) => {
-						await this.config.memory!.saveWorkingMemory!(memoryParams, content);
-					}
-				: undefined;
-		if (!persistFn) return null;
-		return {
-			persistFn,
-			memoryParams,
-			template: this.config.workingMemory.template,
-			structured: this.config.workingMemory.structured,
-			schema: this.config.workingMemory.schema,
-			instruction: this.config.workingMemory.instruction,
-		};
 	}
 }

@@ -71,6 +71,13 @@ import { useDynamicCredentials } from '@/features/resolvers/composables/useDynam
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import type { CredentialModeOption } from './CredentialModeSelector.vue';
 
+const MANAGED_CREDENTIAL_HIDDEN_PROPERTIES = new Set([
+	'scope',
+	'customScopes',
+	'enabledScopes',
+	'customScopesNotice',
+]);
+
 type Props = {
 	modalName: string;
 	activeId?: string;
@@ -279,6 +286,10 @@ const managedOAuthAvailable = computed(() => {
 		false
 	);
 });
+
+const isManagedOAuthMode = computed(
+	() => isOAuthType.value && managedOAuthAvailable.value && !useCustomOAuth.value,
+);
 
 const isOAuthConnected = computed(() => isOAuthType.value && !!credentialData.value.oauthTokenData);
 const credentialProperties = computed(() => {
@@ -569,6 +580,13 @@ async function beforeClose() {
 
 function displayCredentialParameter(parameter: INodeProperties): boolean {
 	if (parameter.type === 'hidden') {
+		return false;
+	}
+
+	if (
+		MANAGED_CREDENTIAL_HIDDEN_PROPERTIES.has(parameter.name) &&
+		(isEditingManagedCredential.value || isManagedOAuthMode.value)
+	) {
 		return false;
 	}
 
@@ -1508,6 +1526,7 @@ const { width } = useElementSize(credNameRef);
 						@retest="retestCredential"
 						@scroll-to-top="scrollToTop"
 						@auth-type-changed="onAuthTypeChanged"
+						@claimed="closeDialog"
 						@update:is-resolvable="onResolvableChange"
 					/>
 				</div>

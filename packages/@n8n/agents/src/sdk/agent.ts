@@ -3,17 +3,12 @@ import { z } from 'zod';
 
 import type { Eval } from './eval';
 import type { McpClient } from './mcp-client';
-import { Memory } from './memory';
+import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './memory';
 import { Telemetry } from './telemetry';
 import { Tool, wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
+import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
 import { AgentEventBus } from '../runtime/event-bus';
-import { hasObservationStore } from '../runtime/observation-store';
-import {
-	runObservationalCycle,
-	type RunObservationalCycleOpts,
-	type RunObservationalCycleResult,
-} from '../runtime/observational-cycle';
 import { createAgentToolResult } from '../runtime/tool-adapter';
 import type {
 	AgentEventHandler,
@@ -25,8 +20,6 @@ import type {
 	BuiltProviderTool,
 	BuiltTool,
 	BuiltTelemetry,
-	CompactFn,
-	ObserveFn,
 	CheckpointStore,
 	ExecutionOptions,
 	GenerateResult,
@@ -41,7 +34,7 @@ import type {
 	ThinkingConfigFor,
 	ResumeOptions,
 } from '../types';
-import { AgentEvent } from '../types/runtime/event';
+import type { AgentEvent } from '../types/runtime/event';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
 import type { Workspace } from '../workspace/workspace';
@@ -49,6 +42,12 @@ import type { Workspace } from '../workspace/workspace';
 const DEFAULT_LAST_MESSAGES = 10;
 
 type ToolParameter = BuiltTool | { build(): BuiltTool };
+
+interface DeferredToolOptions {
+	search?: {
+		topK?: number;
+	};
+}
 
 /**
  * Lightweight read-only view of an agent's configured state.
@@ -61,11 +60,11 @@ export interface AgentSnapshot {
 	model: { provider: string | null; name: string | null };
 	/** Instruction text passed to `.instructions()`, or null if not set. */
 	instructions: string | null;
-	/** Minimal description of each registered tool. */
+	/** Minimal description of each directly registered tool. */
 	tools: ReadonlyArray<{ name: string; description: string | undefined }>;
 	/** True when `.memory()` has been configured. */
 	hasMemory: boolean;
-	/** True when observational memory has been configured on the memory builder. */
+	/** True when observation-log memory has been configured on the memory builder. */
 	hasObservationalMemory: boolean;
 	/** The thinking config if set, otherwise null. */
 	thinking: ThinkingConfig | null;
@@ -99,6 +98,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private instructionsText?: string;
 
 	private tools: BuiltTool[] = [];
+
+	private deferredTools: BuiltTool[] = [];
+
+	private deferredToolSearchTopK: number | undefined;
 
 	private providerTools: BuiltProviderTool[] = [];
 
@@ -191,6 +194,19 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
+	/** Add tools that are searchable through `search_tools` and activated on demand with `load_tool`. */
+	deferredTool(t: ToolParameter | ToolParameter[], options?: DeferredToolOptions): this {
+		const tools = Array.isArray(t) ? t : [t];
+		for (const tool of tools) {
+			const built = 'build' in tool ? tool.build() : tool;
+			this.deferredTools.push(built);
+		}
+		if (options?.search?.topK !== undefined) {
+			this.deferredToolSearchTopK = options.search.topK;
+		}
+		return this;
+	}
+
 	/** Add a provider-defined tool (e.g. Anthropic web search, OpenAI code interpreter). */
 	providerTool(builtProviderTool: BuiltProviderTool): this {
 		this.providerTools.push(builtProviderTool);
@@ -208,8 +224,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			// Memory builder — call build()
 			this.memoryConfig = m.build();
 		} else if ('memory' in m && 'lastMessages' in m) {
-			// MemoryConfig — use directly
-			this.memoryConfig = m;
+			// MemoryConfig — validate the same invariants as the builder path
+			this.memoryConfig = normalizeMemoryConfig(m);
 		} else if (
 			typeof m === 'object' &&
 			m !== null &&
@@ -547,100 +563,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		if (this.runtime) await this.runtime.dispose();
 	}
 
-	/** Run one observational cycle for a thread synchronously. */
-	async reflect(opts: {
-		threadId: string;
-		resourceId: string;
-		observe?: ObserveFn;
-		compact?: CompactFn;
-	}): Promise<{ status: 'no-config' } | RunObservationalCycleResult> {
-		const cycle = await this.buildCycleOpts(opts);
-		if (cycle === null) return { status: 'no-config' };
-		return await runObservationalCycle(cycle);
-	}
-
-	/**
-	 * Schedule an observational-memory cycle on the background-task tracker
-	 * and return immediately. Used by consumers (e.g. the cli's post-stream
-	 * trigger) that want the observer + compactor to run without blocking
-	 * the response. Errors inside the cycle are surfaced via
-	 * `AgentEvent.Error` (source: 'observer' | 'compactor').
-	 *
-	 * No-ops when observational memory isn't configured or no observer is
-	 * available — same `'no-config'` short-circuit as `reflect()`.
-	 */
-	reflectInBackground(opts: {
-		threadId: string;
-		resourceId: string;
-		observe?: ObserveFn;
-		compact?: CompactFn;
-	}): void {
-		void (async () => {
-			const cycle = await this.buildCycleOpts(opts);
-			if (cycle === null) return;
-			const runtime = await this.ensureBuilt();
-			runtime.scheduleBackgroundCycle(cycle);
-		})().catch((error: unknown) => {
-			const message = error instanceof Error ? error.message : String(error);
-			this.eventBus.emit({ type: AgentEvent.Error, message, error });
-		});
-	}
-
-	/**
-	 * Build {@link RunObservationalCycleOpts} from the agent's configured
-	 * observational memory + per-call observer/compactor overrides.
-	 */
-	private async buildCycleOpts(opts: {
-		threadId: string;
-		resourceId: string;
-		observe?: ObserveFn;
-		compact?: CompactFn;
-	}): Promise<RunObservationalCycleOpts | null> {
-		const obsConfig = this.memoryConfig?.observationalMemory;
-		const memory = this.memoryConfig?.memory;
-		const workingMemory = this.memoryConfig?.workingMemory;
-		if (
-			!obsConfig ||
-			!memory ||
-			!workingMemory ||
-			!this.modelConfig ||
-			!hasObservationStore(memory)
-		) {
-			return null;
-		}
-		const runtime = await this.ensureBuilt();
-		const telemetry = runtime.getConfiguredTelemetry();
-		return {
-			memory,
-			threadId: opts.threadId,
-			resourceId: opts.resourceId,
-			model: this.modelConfig,
-			workingMemory: {
-				template: workingMemory.template,
-				structured: workingMemory.structured,
-				...(workingMemory.schema !== undefined && { schema: workingMemory.schema }),
-			},
-			...((opts.observe ?? obsConfig.observe)
-				? { observe: opts.observe ?? obsConfig.observe }
-				: {}),
-			...((opts.compact ?? obsConfig.compact)
-				? { compact: opts.compact ?? obsConfig.compact }
-				: {}),
-			...(obsConfig.trigger !== undefined && { trigger: obsConfig.trigger }),
-			...(obsConfig.compactionThreshold !== undefined && {
-				compactionThreshold: obsConfig.compactionThreshold,
-			}),
-			...(obsConfig.gapThresholdMs !== undefined && { gapThresholdMs: obsConfig.gapThresholdMs }),
-			...(obsConfig.observerPrompt !== undefined && { observerPrompt: obsConfig.observerPrompt }),
-			...(obsConfig.compactorPrompt !== undefined && {
-				compactorPrompt: obsConfig.compactorPrompt,
-			}),
-			...(obsConfig.lockTtlMs !== undefined && { lockTtlMs: obsConfig.lockTtlMs }),
-			...(telemetry !== undefined && { telemetry }),
-			eventBus: this.eventBus,
-		};
-	}
-
 	/** Generate a response (non-streaming). Lazy-builds on first call. */
 	async generate(
 		input: AgentMessage[] | string,
@@ -737,6 +659,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 
 		const finalTools = [...this.tools];
+		const configuredDeferredTools = [...this.deferredTools];
 
 		if (this.workspaceInstance) {
 			const wsTools = this.workspaceInstance.getTools();
@@ -744,15 +667,21 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 
 		let finalStaticTools = finalTools;
+		let finalDeferredTools = configuredDeferredTools;
 		if (this.requireToolApprovalValue) {
 			finalStaticTools = finalTools.map((t) =>
+				t.suspendSchema ? t : wrapToolForApproval(t, { requireApproval: true }),
+			);
+			finalDeferredTools = configuredDeferredTools.map((t) =>
 				t.suspendSchema ? t : wrapToolForApproval(t, { requireApproval: true }),
 			);
 		}
 
 		// Validate checkpoint requirement from static tools and known MCP approval config
 		// before attempting any network connections (allows fast failure).
-		const staticNeedsCheckpoint = finalStaticTools.some((t) => t.suspendSchema);
+		const staticNeedsCheckpoint =
+			finalStaticTools.some((t) => t.suspendSchema) ||
+			finalDeferredTools.some((t) => t.suspendSchema);
 		const mcpNeedsCheckpoint =
 			(this.requireToolApprovalValue && this.mcpClients.length > 0) ||
 			this.mcpClients.some((c) => c.declaresApproval());
@@ -776,9 +705,30 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			);
 		}
 
-		// Detect collisions between MCP tools and static tools.
+		// Detect collisions between direct, deferred, and MCP tools.
 		const staticNames = new Set(finalStaticTools.map((t) => t.name));
-		const collisions = mcpTools.filter((t) => staticNames.has(t.name)).map((t) => t.name);
+		const reservedDeferredToolNames = new Set([SEARCH_TOOLS_TOOL_NAME, LOAD_TOOL_TOOL_NAME]);
+		const deferredNames = new Set<string>();
+		const deferredCollisions: string[] = [];
+		for (const tool of finalDeferredTools) {
+			if (
+				staticNames.has(tool.name) ||
+				reservedDeferredToolNames.has(tool.name) ||
+				deferredNames.has(tool.name)
+			) {
+				deferredCollisions.push(tool.name);
+			}
+			deferredNames.add(tool.name);
+		}
+		if (deferredCollisions.length > 0) {
+			throw new Error(
+				`Deferred tool name collision — the following tool names resolve to duplicates or reserved tools: ${deferredCollisions.join(', ')}`,
+			);
+		}
+
+		const collisions = mcpTools
+			.filter((t) => staticNames.has(t.name) || deferredNames.has(t.name))
+			.map((t) => t.name);
 		if (collisions.length > 0) {
 			throw new Error(
 				`MCP tool name collision — the following tool names resolve to duplicates: ${collisions.join(', ')}`,
@@ -789,7 +739,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		// Validate checkpoint again after discovering actual MCP tools
 		// (catches the case where MCP tools have suspendSchema after listing).
-		const allNeedCheckpoint = allTools.some((t) => t.suspendSchema);
+		const allNeedCheckpoint =
+			allTools.some((t) => t.suspendSchema) || finalDeferredTools.some((t) => t.suspendSchema);
 		if (allNeedCheckpoint && !this.checkpointStore) {
 			throw new Error(
 				`Agent "${this.name}" has tools requiring approval or suspend/resume but no checkpoint storage. ` +
@@ -799,6 +750,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 
 		const modelConfig: ModelConfig = this.modelConfig;
+		const memoryConfig = this.memoryConfig
+			? resolveMemoryConfigDefaults(this.memoryConfig, { defaultModel: modelConfig })
+			: undefined;
 
 		let instructions = this.instructionsText;
 		if (this.workspaceInstance) {
@@ -813,19 +767,24 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			model: modelConfig,
 			instructions,
 			tools: allTools.length > 0 ? allTools : undefined,
+			deferredTools: finalDeferredTools.length > 0 ? finalDeferredTools : undefined,
+			toolSearch:
+				finalDeferredTools.length > 0 && this.deferredToolSearchTopK !== undefined
+					? { topK: this.deferredToolSearchTopK }
+					: undefined,
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
-			memory: this.memoryConfig?.memory,
-			lastMessages: this.memoryConfig?.lastMessages,
-			workingMemory: this.memoryConfig?.workingMemory,
-			semanticRecall: this.memoryConfig?.semanticRecall,
+			memory: memoryConfig?.memory,
+			lastMessages: memoryConfig?.lastMessages,
+			observationLog: memoryConfig?.observationLog,
+			observationalMemory: memoryConfig?.observationalMemory,
+			semanticRecall: memoryConfig?.semanticRecall,
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
 			thinking: this.thinkingConfig,
 			eventBus: this.eventBus,
 			toolCallConcurrency: this.concurrencyValue,
-			titleGeneration: this.memoryConfig?.titleGeneration,
-			observationalMemory: this.memoryConfig?.observationalMemory,
+			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
 		});
 

@@ -13,6 +13,7 @@ import Canvas from './Canvas.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCanvasNodeGroupsStore } from '../stores/canvasNodeGroups.store';
+import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 
 defineOptions({
 	inheritAttrs: false,
@@ -44,6 +45,9 @@ const $style = useCssModule();
 const workflowsStore = useWorkflowsStore();
 const canvasNodeGroupsStore = useCanvasNodeGroupsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const renderData = computed(() =>
+	useWorkflowDocumentRenderData(workflowDocumentStore.value.documentId),
+);
 
 watch(
 	() => workflowsStore.workflowId,
@@ -69,6 +73,7 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 	nodes,
 	connections,
 	workflowObject,
+	renderData,
 });
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
@@ -163,6 +168,7 @@ defineExpose({
 				ref="canvas"
 				:nodes="executing ? mappedNodesThrottled : mappedNodes"
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
+				:render-data="renderData"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				:can-execute="canExecute"

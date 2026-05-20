@@ -1,5 +1,5 @@
-import { OBSERVATION_SCHEMA_VERSION, type NewObservation } from '@n8n/agents';
-import { Equal, In, LessThan, LessThanOrEqual, Like, MoreThan } from '@n8n/typeorm';
+import type { NewObservationLogEntry } from '@n8n/agents';
+import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
 import type { AgentMessageEntity } from '../../entities/agent-message.entity';
@@ -15,6 +15,8 @@ import type { AgentResourceRepository } from '../../repositories/agent-resource.
 import type { AgentThreadRepository } from '../../repositories/agent-thread.repository';
 import { N8nMemory } from '../n8n-memory';
 
+const estimateObservationTokens = (text: string) => Math.ceil(text.length / 4);
+
 describe('N8nMemory', () => {
 	let memory: N8nMemory;
 	let messageRepository: jest.Mocked<AgentMessageRepository>;
@@ -25,6 +27,11 @@ describe('N8nMemory', () => {
 	let observationLockRepository: jest.Mocked<AgentObservationLockRepository>;
 	let runInTransaction: jest.Mock;
 	let transactionDelete: jest.Mock;
+	let observationRunInTransaction: jest.Mock;
+	let transactionObservationCreate: jest.Mock;
+	let transactionObservationFind: jest.Mock;
+	let transactionObservationSave: jest.Mock;
+	let transactionObservationUpdate: jest.Mock;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -43,6 +50,32 @@ describe('N8nMemory', () => {
 		);
 		Object.defineProperty(threadRepository, 'manager', {
 			value: { transaction: runInTransaction },
+		});
+
+		transactionObservationCreate = jest.fn((input) => ({ ...input }) as AgentObservationEntity);
+		transactionObservationFind = jest.fn().mockResolvedValue([]);
+		transactionObservationSave = jest.fn(async (input: AgentObservationEntity[]) =>
+			input.map((entity, index) => ({
+				...entity,
+				id: `merged-${index + 1}`,
+				createdAt: entity.createdAt ?? new Date('2026-05-12T10:00:00Z'),
+				updatedAt: entity.updatedAt ?? new Date('2026-05-12T10:00:00Z'),
+			})),
+		);
+		transactionObservationUpdate = jest.fn().mockResolvedValue({ affected: 1, raw: {} });
+		observationRunInTransaction = jest.fn(
+			async (callback: (trx: { getRepository: jest.Mock }) => Promise<unknown>) =>
+				await callback({
+					getRepository: jest.fn().mockReturnValue({
+						create: transactionObservationCreate,
+						find: transactionObservationFind,
+						save: transactionObservationSave,
+						update: transactionObservationUpdate,
+					}),
+				}),
+		);
+		Object.defineProperty(observationRepository, 'manager', {
+			value: { transaction: observationRunInTransaction },
 		});
 
 		memory = new N8nMemory(
@@ -168,6 +201,23 @@ describe('N8nMemory', () => {
 		});
 	});
 
+	describe('getMessages — persisted JSON hydration', () => {
+		it('returns createdAt as a Date when the content JSON stores it as an ISO string', async () => {
+			const createdAt = new Date('2026-01-01T00:00:02.000Z');
+			const entity = makeMessageEntity('m2', createdAt, 'middle');
+			entity.content = {
+				...entity.content,
+				createdAt: createdAt.toISOString(),
+			};
+			messageRepository.find.mockResolvedValue([entity]);
+
+			const [result] = await memory.getMessages('thread-1');
+
+			expect(result.createdAt).toBeInstanceOf(Date);
+			expect(result.createdAt.toISOString()).toBe(createdAt.toISOString());
+		});
+	});
+
 	describe('getMessagesForScope', () => {
 		it('queries thread-scoped messages by thread id', async () => {
 			const createdAt = new Date('2026-01-01T00:00:02.000Z');
@@ -184,19 +234,37 @@ describe('N8nMemory', () => {
 			expect(result.map((m) => m.id)).toEqual(['m2']);
 		});
 
+		it('filters thread-scoped messages by resourceId when provided', async () => {
+			messageRepository.find.mockResolvedValue([]);
+
+			await memory.getMessagesForScope('thread', 'thread-1', { resourceId: 'user-2' });
+
+			expect(messageRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: [{ threadId: 'thread-1', resourceId: 'user-2' }],
+				}),
+			);
+		});
+
 		it('applies the cursor keyset for thread scopes', async () => {
 			const sinceCreatedAt = new Date('2026-01-01T00:00:01.000Z');
 			messageRepository.find.mockResolvedValue([]);
 
 			await memory.getMessagesForScope('thread', 'thread-1', {
+				resourceId: 'user-2',
 				since: { sinceCreatedAt, sinceMessageId: 'm1' },
 			});
 
 			expect(messageRepository.find).toHaveBeenCalledWith(
 				expect.objectContaining({
 					where: [
-						{ threadId: 'thread-1', createdAt: MoreThan(sinceCreatedAt) },
-						{ threadId: 'thread-1', createdAt: Equal(sinceCreatedAt), id: MoreThan('m1') },
+						{ threadId: 'thread-1', resourceId: 'user-2', createdAt: MoreThan(sinceCreatedAt) },
+						{
+							threadId: 'thread-1',
+							resourceId: 'user-2',
+							createdAt: Equal(sinceCreatedAt),
+							id: MoreThan('m1'),
+						},
 					],
 				}),
 			);
@@ -207,6 +275,21 @@ describe('N8nMemory', () => {
 				/not supported/,
 			);
 			expect(messageRepository.find).not.toHaveBeenCalled();
+		});
+
+		it('returns createdAt as a Date when the content JSON stores it as an ISO string', async () => {
+			const createdAt = new Date('2026-01-01T00:00:02.000Z');
+			const entity = makeMessageEntity('m2', createdAt, 'middle');
+			entity.content = {
+				...entity.content,
+				createdAt: createdAt.toISOString(),
+			};
+			messageRepository.find.mockResolvedValue([entity]);
+
+			const [result] = await memory.getMessagesForScope('thread', 'thread-1');
+
+			expect(result.createdAt).toBeInstanceOf(Date);
+			expect(result.createdAt.toISOString()).toBe(createdAt.toISOString());
 		});
 	});
 
@@ -294,12 +377,31 @@ describe('N8nMemory', () => {
 		it('deletes thread-scoped observation state and the thread row in one transaction', async () => {
 			await memory.deleteThread('thread-1');
 
-			const scope = { scopeKind: 'thread' as const, scopeId: 'thread-1' };
+			const legacyScope = { scopeKind: 'thread' as const, scopeId: 'thread-1' };
+			const resourceScope = {
+				scopeKind: 'thread' as const,
+				scopeId: Like('thread:thread-1:resource:%'),
+			};
 			expect(runInTransaction).toHaveBeenCalledWith(expect.any(Function));
-			expect(transactionDelete).toHaveBeenNthCalledWith(1, AgentObservationEntity, scope);
-			expect(transactionDelete).toHaveBeenNthCalledWith(2, AgentObservationCursorEntity, scope);
-			expect(transactionDelete).toHaveBeenNthCalledWith(3, AgentObservationLockEntity, scope);
-			expect(transactionDelete).toHaveBeenNthCalledWith(4, AgentThreadEntity, { id: 'thread-1' });
+			expect(transactionDelete).toHaveBeenNthCalledWith(1, AgentObservationEntity, legacyScope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(
+				2,
+				AgentObservationCursorEntity,
+				legacyScope,
+			);
+			expect(transactionDelete).toHaveBeenNthCalledWith(3, AgentObservationLockEntity, legacyScope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(4, AgentObservationEntity, resourceScope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(
+				5,
+				AgentObservationCursorEntity,
+				resourceScope,
+			);
+			expect(transactionDelete).toHaveBeenNthCalledWith(
+				6,
+				AgentObservationLockEntity,
+				resourceScope,
+			);
+			expect(transactionDelete).toHaveBeenNthCalledWith(7, AgentThreadEntity, { id: 'thread-1' });
 			expect(observationRepository.delete).not.toHaveBeenCalled();
 			expect(observationCursorRepository.delete).not.toHaveBeenCalled();
 			expect(observationLockRepository.delete).not.toHaveBeenCalled();
@@ -309,12 +411,31 @@ describe('N8nMemory', () => {
 		it('deletes thread-scoped observation state by thread id prefix in one transaction', async () => {
 			await memory.deleteThreadsByPrefix('test-agent-1');
 
-			const scope = { scopeKind: 'thread' as const, scopeId: Like('test-agent-1%') };
+			const legacyScope = { scopeKind: 'thread' as const, scopeId: Like('test-agent-1%') };
+			const resourceScope = {
+				scopeKind: 'thread' as const,
+				scopeId: Like('thread:test-agent-1:resource:%'),
+			};
 			expect(runInTransaction).toHaveBeenCalledWith(expect.any(Function));
-			expect(transactionDelete).toHaveBeenNthCalledWith(1, AgentObservationEntity, scope);
-			expect(transactionDelete).toHaveBeenNthCalledWith(2, AgentObservationCursorEntity, scope);
-			expect(transactionDelete).toHaveBeenNthCalledWith(3, AgentObservationLockEntity, scope);
-			expect(transactionDelete).toHaveBeenNthCalledWith(4, AgentThreadEntity, {
+			expect(transactionDelete).toHaveBeenNthCalledWith(1, AgentObservationEntity, legacyScope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(
+				2,
+				AgentObservationCursorEntity,
+				legacyScope,
+			);
+			expect(transactionDelete).toHaveBeenNthCalledWith(3, AgentObservationLockEntity, legacyScope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(4, AgentObservationEntity, resourceScope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(
+				5,
+				AgentObservationCursorEntity,
+				resourceScope,
+			);
+			expect(transactionDelete).toHaveBeenNthCalledWith(
+				6,
+				AgentObservationLockEntity,
+				resourceScope,
+			);
+			expect(transactionDelete).toHaveBeenNthCalledWith(7, AgentThreadEntity, {
 				id: Like('test-agent-1%'),
 			});
 			expect(observationRepository.delete).not.toHaveBeenCalled();
@@ -324,111 +445,41 @@ describe('N8nMemory', () => {
 		});
 	});
 
-	describe('working memory — thread scope', () => {
-		it('stores thread-scoped working memory on thread metadata', async () => {
-			const existing = {
-				id: 'thread-1',
-				resourceId: 'user-1',
-				title: null,
-				metadata: JSON.stringify({ other: true }),
-			} as unknown as AgentThreadEntity;
-			threadRepository.findOneBy.mockResolvedValue(existing);
-			threadRepository.save.mockImplementation(async (entity) => entity as AgentThreadEntity);
+	// ── Observation log ──────────────────────────────────────────────────
 
-			await memory.saveWorkingMemory(
-				{ threadId: 'thread-1', resourceId: 'user-1', scope: 'thread' },
-				'# Thread memory',
-			);
-
-			expect(threadRepository.save).toHaveBeenCalledWith(
-				expect.objectContaining({
-					metadata: JSON.stringify({ other: true, workingMemory: '# Thread memory' }),
-				}),
-			);
-			expect(resourceRepository.save).not.toHaveBeenCalled();
-		});
-
-		it('creates the thread row when working memory is saved before messages', async () => {
-			threadRepository.findOneBy.mockResolvedValue(null);
-			threadRepository.create.mockImplementation((entity) => entity as AgentThreadEntity);
-			threadRepository.save.mockImplementation(async (entity) => entity as AgentThreadEntity);
-			resourceRepository.existsBy.mockResolvedValue(true);
-
-			await memory.saveWorkingMemory(
-				{ threadId: 'thread-1', resourceId: 'user-1', scope: 'thread' },
-				'# Thread memory',
-			);
-
-			expect(resourceRepository.existsBy).toHaveBeenCalledWith({ id: 'user-1' });
-			expect(threadRepository.create).toHaveBeenCalledWith({
-				id: 'thread-1',
-				resourceId: 'user-1',
-				title: null,
-				metadata: JSON.stringify({ workingMemory: '# Thread memory' }),
-			});
-			expect(threadRepository.save).toHaveBeenCalledWith(
-				expect.objectContaining({
-					id: 'thread-1',
-					resourceId: 'user-1',
-					metadata: JSON.stringify({ workingMemory: '# Thread memory' }),
-				}),
-			);
-		});
-
-		it('isolates thread-scoped working memory by user-scoped test-chat thread id', async () => {
-			const threads = new Map<string, AgentThreadEntity>([
-				[
-					'test-agent-1:user-1',
-					{
-						id: 'test-agent-1:user-1',
-						metadata: JSON.stringify({ workingMemory: 'alice notes' }),
-					} as unknown as AgentThreadEntity,
-				],
-				[
-					'test-agent-1:user-2',
-					{
-						id: 'test-agent-1:user-2',
-						metadata: JSON.stringify({ workingMemory: 'bob notes' }),
-					} as unknown as AgentThreadEntity,
-				],
-			]);
-			threadRepository.findOneBy.mockImplementation(
-				async ({ id }: { id: string }) => threads.get(id) ?? null,
-			);
-
-			await expect(
-				memory.getWorkingMemory({
-					threadId: 'test-agent-1:user-1',
-					resourceId: 'user-1',
-					scope: 'thread',
-				}),
-			).resolves.toBe('alice notes');
-			await expect(
-				memory.getWorkingMemory({
-					threadId: 'test-agent-1:user-2',
-					resourceId: 'user-2',
-					scope: 'thread',
-				}),
-			).resolves.toBe('bob notes');
-		});
-	});
-
-	// ── Observational memory ─────────────────────────────────────────────
-
-	function makeNewObs(overrides: Partial<NewObservation> = {}): NewObservation {
+	function makeNewObservationLogEntry(
+		overrides: Partial<NewObservationLogEntry> = {},
+	): NewObservationLogEntry {
 		return {
 			scopeKind: 'resource',
 			scopeId: 't-1',
-			kind: 'observation',
-			payload: { text: 'hello' },
-			durationMs: null,
-			schemaVersion: OBSERVATION_SCHEMA_VERSION,
+			marker: 'important',
+			text: 'hello',
 			createdAt: new Date('2026-05-05T00:00:00Z'),
 			...overrides,
 		};
 	}
 
-	describe('appendObservations', () => {
+	function makeObservationEntity(
+		overrides: Partial<AgentObservationEntity> = {},
+	): AgentObservationEntity {
+		return {
+			id: 'obs-1',
+			scopeKind: 'thread',
+			scopeId: 't-1',
+			marker: 'important',
+			text: 'Observation',
+			parentId: null,
+			tokenCount: 1,
+			status: 'active',
+			supersededBy: null,
+			createdAt: new Date('2026-05-05T00:00:00Z'),
+			updatedAt: new Date('2026-05-05T00:00:00Z'),
+			...overrides,
+		} as AgentObservationEntity;
+	}
+
+	describe('appendObservationLogEntries', () => {
 		beforeEach(() => {
 			observationRepository.create.mockImplementation(
 				(input) => ({ ...input }) as AgentObservationEntity,
@@ -436,42 +487,56 @@ describe('N8nMemory', () => {
 		});
 
 		it('returns [] for an empty input without touching the repo', async () => {
-			const result = await memory.appendObservations([]);
+			const result = await memory.appendObservationLogEntries([]);
 			expect(result).toEqual([]);
-			expect(observationRepository.findOne).not.toHaveBeenCalled();
+			expect(observationRepository.create).not.toHaveBeenCalled();
 			expect(observationRepository.save).not.toHaveBeenCalled();
 		});
 
-		it('persists rows without allocating a sequence number', async () => {
+		it('persists active marker rows with a default token count', async () => {
 			(observationRepository.save as unknown as jest.Mock).mockImplementation(
 				async (input: AgentObservationEntity | AgentObservationEntity[]) =>
 					(Array.isArray(input) ? input : [input]).map((e, i) => ({
 						...e,
 						id: `obs-${i + 1}`,
+						createdAt: e.createdAt ?? new Date('2026-05-05T00:00:00Z'),
+						updatedAt: e.updatedAt ?? new Date('2026-05-05T00:00:00Z'),
 					})),
 			);
 
-			const result = await memory.appendObservations([makeNewObs(), makeNewObs()]);
+			const result = await memory.appendObservationLogEntries([
+				makeNewObservationLogEntry(),
+				makeNewObservationLogEntry({ marker: 'critical', text: 'remember this' }),
+			]);
 
-			expect(observationRepository.findOne).not.toHaveBeenCalled();
+			expect(observationRepository.create).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({
+					marker: 'important',
+					text: 'hello',
+					parentId: null,
+					tokenCount: estimateObservationTokens('hello'),
+					status: 'active',
+					supersededBy: null,
+				}),
+			);
 			expect(result.map((r) => r.id)).toEqual(['obs-1', 'obs-2']);
 		});
 	});
 
-	describe('getObservations', () => {
+	describe('getObservationLog', () => {
 		beforeEach(() => {
 			observationRepository.find.mockResolvedValue([]);
 		});
 
 		it('passes filters through to find()', async () => {
-			const sinceCreatedAt = new Date('2026-05-05T00:00:00Z');
-			await memory.getObservations({
+			await memory.getObservationLog({
 				scopeKind: 'resource',
 				scopeId: 't-1',
-				since: { sinceCreatedAt, sinceObservationId: 'obs-anchor' },
-				kindIs: 'summary',
-				schemaVersionAtMost: 1,
+				status: 'active',
+				parentId: null,
 				limit: 10,
+				order: 'desc',
 			});
 
 			expect(observationRepository.find).toHaveBeenCalledWith({
@@ -479,64 +544,162 @@ describe('N8nMemory', () => {
 					{
 						scopeKind: 'resource',
 						scopeId: 't-1',
-						kind: 'summary',
-						schemaVersion: LessThanOrEqual(1),
-						createdAt: MoreThan(sinceCreatedAt),
-					},
-					{
-						scopeKind: 'resource',
-						scopeId: 't-1',
-						kind: 'summary',
-						schemaVersion: LessThanOrEqual(1),
-						createdAt: Equal(sinceCreatedAt),
-						id: MoreThan('obs-anchor'),
+						status: 'active',
+						parentId: IsNull(),
 					},
 				],
-				order: { createdAt: 'ASC', id: 'ASC' },
+				order: { createdAt: 'DESC', id: 'DESC' },
 				take: 10,
 			});
 		});
 
-		it('omits absent filters', async () => {
-			await memory.getObservations({ scopeKind: 'resource', scopeId: 't-1' });
+		it('active read filters out non-active rows', async () => {
+			await memory.getActiveObservationLog({ scopeKind: 'resource', scopeId: 't-1' });
 
 			expect(observationRepository.find).toHaveBeenCalledWith({
-				where: [{ scopeKind: 'resource', scopeId: 't-1' }],
+				where: [{ scopeKind: 'resource', scopeId: 't-1', status: 'active' }],
 				order: { createdAt: 'ASC', id: 'ASC' },
 			});
 		});
 
-		it('coerces bigint columns back to numbers on read', async () => {
+		it('maps persisted rows to observation log entries', async () => {
 			observationRepository.find.mockResolvedValue([
 				{
 					id: 'obs-1',
 					scopeKind: 'resource',
 					scopeId: 't-1',
-					kind: 'observation',
-					payload: { text: 'hi' },
-					durationMs: '1000' as unknown as number | null,
-					schemaVersion: '1' as unknown as number,
+					marker: 'important',
+					text: 'hi',
+					parentId: null,
+					tokenCount: '7' as unknown as number,
+					status: 'active',
+					supersededBy: null,
 					createdAt: new Date('2026-05-05T00:00:00Z'),
 					updatedAt: new Date('2026-05-05T00:00:00Z'),
 				} as AgentObservationEntity,
 			]);
 
-			const [row] = await memory.getObservations({ scopeKind: 'resource', scopeId: 't-1' });
-			expect(row.durationMs).toBe(1000);
-			expect(row.schemaVersion).toBe(1);
+			const [row] = await memory.getObservationLog({ scopeKind: 'resource', scopeId: 't-1' });
+			expect(row).toMatchObject({
+				id: 'obs-1',
+				marker: 'important',
+				text: 'hi',
+				tokenCount: 7,
+				status: 'active',
+			});
 		});
 	});
 
-	describe('deleteObservations', () => {
-		it('issues a single delete with the given ids', async () => {
-			await memory.deleteObservations(['a', 'b']);
+	describe('observation log status updates', () => {
+		it('marks rows as dropped instead of deleting them', async () => {
+			await memory.dropObservationLogEntries(['a', 'b']);
 
-			expect(observationRepository.delete).toHaveBeenCalledWith({ id: In(['a', 'b']) });
+			expect(observationRepository.update).toHaveBeenCalledWith(
+				{ id: In(['a', 'b']) },
+				{ status: 'dropped', supersededBy: null },
+			);
 		});
 
-		it('no-ops on empty input', async () => {
-			await memory.deleteObservations([]);
-			expect(observationRepository.delete).not.toHaveBeenCalled();
+		it('marks rows as superseded by a replacement row', async () => {
+			await memory.supersedeObservationLogEntries(['a', 'b'], 'replacement');
+
+			expect(observationRepository.update).toHaveBeenCalledWith(
+				{ id: In(['a', 'b']) },
+				{ status: 'superseded', supersededBy: 'replacement' },
+			);
+		});
+
+		it('no-ops on empty update inputs', async () => {
+			await memory.dropObservationLogEntries([]);
+			await memory.supersedeObservationLogEntries([], 'replacement');
+			expect(observationRepository.update).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('applyObservationLogReflection', () => {
+		it('inserts merged replacements and updates old rows in one transaction', async () => {
+			transactionObservationFind.mockResolvedValue([
+				makeObservationEntity({ id: 'drop-1', marker: 'info', text: 'Drop me' }),
+				makeObservationEntity({ id: 'old-1', text: 'Old one' }),
+				makeObservationEntity({ id: 'old-2', text: 'Old two' }),
+			]);
+
+			const result = await memory.applyObservationLogReflection(
+				{ scopeKind: 'thread', scopeId: 't-1' },
+				{
+					drop: ['drop-1'],
+					merge: [
+						{
+							supersedes: ['old-1', 'old-2'],
+							marker: 'important',
+							text: 'Merged observation',
+						},
+					],
+				},
+			);
+
+			expect(observationRunInTransaction).toHaveBeenCalledWith(expect.any(Function));
+			expect(transactionObservationFind).toHaveBeenCalledWith({
+				where: { scopeKind: 'thread', scopeId: 't-1', status: 'active' },
+				order: { createdAt: 'ASC', id: 'ASC' },
+			});
+			expect(transactionObservationCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					scopeKind: 'thread',
+					scopeId: 't-1',
+					marker: 'important',
+					text: 'Merged observation',
+					parentId: null,
+					tokenCount: estimateObservationTokens('Merged observation'),
+					status: 'active',
+					supersededBy: null,
+				}),
+			);
+			expect(transactionObservationUpdate).toHaveBeenNthCalledWith(
+				1,
+				{ scopeKind: 'thread', scopeId: 't-1', id: In(['drop-1']) },
+				{ status: 'dropped', supersededBy: null },
+			);
+			expect(transactionObservationUpdate).toHaveBeenNthCalledWith(
+				2,
+				{ scopeKind: 'thread', scopeId: 't-1', id: In(['old-1', 'old-2']) },
+				{ status: 'superseded', supersededBy: 'merged-1' },
+			);
+			expect(result).toMatchObject({
+				droppedIds: ['drop-1'],
+				supersededIds: ['old-1', 'old-2'],
+				inserted: [{ id: 'merged-1', status: 'active' }],
+			});
+		});
+
+		it('expands parent merges to active children inside the transaction', async () => {
+			transactionObservationFind.mockResolvedValue([
+				makeObservationEntity({ id: 'parent', text: 'Open case' }),
+				makeObservationEntity({
+					id: 'child',
+					marker: 'completion',
+					text: 'Case closed',
+					parentId: 'parent',
+				}),
+			]);
+
+			const result = await memory.applyObservationLogReflection(
+				{ scopeKind: 'thread', scopeId: 't-1' },
+				{
+					drop: ['child'],
+					merge: [{ supersedes: ['parent'], marker: 'important', text: 'Case resolved' }],
+				},
+			);
+
+			expect(transactionObservationUpdate).toHaveBeenCalledTimes(1);
+			expect(transactionObservationUpdate).toHaveBeenCalledWith(
+				{ scopeKind: 'thread', scopeId: 't-1', id: In(['parent', 'child']) },
+				{ status: 'superseded', supersededBy: 'merged-1' },
+			);
+			expect(result).toMatchObject({
+				droppedIds: [],
+				supersededIds: ['parent', 'child'],
+			});
 		});
 	});
 
@@ -634,12 +797,13 @@ describe('N8nMemory', () => {
 				claimed: {
 					scopeKind: 'thread',
 					scopeId: 't-1',
+					taskKind: 'observer',
 					holderId: 'A',
 					heldUntil: new Date(Date.now() + 60_000),
 				} as AgentObservationLockEntity,
 			});
 
-			const handle = await memory.acquireObservationLock('thread', 't-1', {
+			const handle = await memory.acquireObservationLogTaskLock('thread', 't-1', 'observer', {
 				ttlMs: 60_000,
 				holderId: 'A',
 			});
@@ -653,7 +817,7 @@ describe('N8nMemory', () => {
 		it('attempts a conditional write before reading the lock row', async () => {
 			mockLockWrite({ updateAffected: 1 });
 
-			const handle = await memory.acquireObservationLock('thread', 't-1', {
+			const handle = await memory.acquireObservationLogTaskLock('thread', 't-1', 'observer', {
 				ttlMs: 60_000,
 				holderId: 'A',
 			});
@@ -662,10 +826,24 @@ describe('N8nMemory', () => {
 			expect(observationLockRepository.findOneBy).not.toHaveBeenCalled();
 		});
 
+		it('stores the task kind for scoped observation-log task locks', async () => {
+			const { updateQueryBuilder } = mockLockWrite({ updateAffected: 1 });
+
+			const handle = await memory.acquireObservationLogTaskLock('thread', 't-1', 'reflector', {
+				ttlMs: 60_000,
+				holderId: 'A',
+			});
+
+			expect(handle).toMatchObject({ taskKind: 'reflector', holderId: 'A' });
+			expect(updateQueryBuilder.set).toHaveBeenCalledWith(
+				expect.objectContaining({ taskKind: 'reflector', holderId: 'A' }),
+			);
+		});
+
 		it('refuses a different holder while the lock is live', async () => {
 			mockLockWrite({ updateAffected: 0 });
 
-			const handle = await memory.acquireObservationLock('thread', 't-1', {
+			const handle = await memory.acquireObservationLogTaskLock('thread', 't-1', 'observer', {
 				ttlMs: 60_000,
 				holderId: 'B',
 			});
@@ -676,7 +854,7 @@ describe('N8nMemory', () => {
 		it('reclaims the lock for a new holder once the prior one has expired', async () => {
 			const { updateQueryBuilder } = mockLockWrite({ updateAffected: 1 });
 
-			const handle = await memory.acquireObservationLock('thread', 't-1', {
+			const handle = await memory.acquireObservationLogTaskLock('thread', 't-1', 'observer', {
 				ttlMs: 60_000,
 				holderId: 'B',
 			});
@@ -685,13 +863,16 @@ describe('N8nMemory', () => {
 			expect(updateQueryBuilder.andWhere).toHaveBeenCalledWith(
 				'("holderId" = :holderId OR "heldUntil" <= :now)',
 			);
+			expect(updateQueryBuilder.set).toHaveBeenCalledWith(
+				expect.objectContaining({ taskKind: 'observer', holderId: 'B' }),
+			);
 			expect(observationLockRepository.save).not.toHaveBeenCalled();
 		});
 
 		it('lets the same holder refresh the TTL while still held', async () => {
 			mockLockWrite({ updateAffected: 1 });
 
-			const handle = await memory.acquireObservationLock('thread', 't-1', {
+			const handle = await memory.acquireObservationLogTaskLock('thread', 't-1', 'observer', {
 				ttlMs: 60_000,
 				holderId: 'A',
 			});
@@ -700,15 +881,33 @@ describe('N8nMemory', () => {
 		});
 
 		it('release deletes only the matching holder', async () => {
-			await memory.releaseObservationLock({
+			await memory.releaseObservationLogTaskLock({
 				scopeKind: 'resource',
 				scopeId: 't-1',
+				taskKind: 'observer',
 				holderId: 'A',
 				heldUntil: new Date(),
 			});
 			expect(observationLockRepository.delete).toHaveBeenCalledWith({
 				scopeKind: 'resource',
 				scopeId: 't-1',
+				taskKind: 'observer',
+				holderId: 'A',
+			});
+		});
+
+		it('releases observation-log task locks by scope and holder', async () => {
+			await memory.releaseObservationLogTaskLock({
+				scopeKind: 'resource',
+				scopeId: 't-1',
+				taskKind: 'reflector',
+				holderId: 'A',
+				heldUntil: new Date(),
+			});
+			expect(observationLockRepository.delete).toHaveBeenCalledWith({
+				scopeKind: 'resource',
+				scopeId: 't-1',
+				taskKind: 'reflector',
 				holderId: 'A',
 			});
 		});

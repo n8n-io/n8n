@@ -1,7 +1,7 @@
 import {
 	validateNodeSelectionForExtraction,
 	validateNodeSelectionForGrouping,
-} from '../src/common';
+} from '../src/node-grouping-validation';
 import {
 	NodeConnectionTypes,
 	type IConnections,
@@ -82,7 +82,22 @@ describe('node grouping validation', () => {
 		}
 	});
 
-	it('returns too-few-nodes for a single-node selection', () => {
+	it('returns valid for a single-node extraction selection', () => {
+		const graph = makeLinearGraph();
+
+		const result = validateNodeSelectionForExtraction({
+			nodes: [graph.nodes[0]],
+			connectionsBySourceNode: graph.connections,
+			getNodeType: (node) => makeNodeType({ name: node.type }),
+		});
+
+		expect(result.valid).toBe(true);
+		if (result.valid) {
+			expect(result.subGraph.map((node) => node.name)).toEqual(['A']);
+		}
+	});
+
+	it('returns too-few-nodes for a single-node grouping selection', () => {
 		const graph = makeLinearGraph();
 
 		const result = validateGrouping({

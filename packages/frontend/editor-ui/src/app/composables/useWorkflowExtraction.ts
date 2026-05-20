@@ -361,8 +361,6 @@ export function useWorkflowExtraction() {
 
 		if (!result.valid) {
 			switch (result.reason) {
-				case 'too-few-nodes':
-					break;
 				case 'trigger-selected':
 					showError(
 						i18n.baseText('workflowExtraction.error.triggerSelected', {
@@ -527,7 +525,7 @@ export function useWorkflowExtraction() {
 	 * @param nodeIds the ids to be extracted from the current workflow into a sub-workflow
 	 */
 	function extractWorkflow(nodeIds: string[]) {
-		if (nodeIds.length < 2) return;
+		if (nodeIds.length === 0) return;
 
 		const success = tryExtractNodesIntoSubworkflow(nodeIds);
 		trackStartExtractWorkflow(nodeIds.length, success);

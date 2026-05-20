@@ -352,11 +352,16 @@ export class OauthService {
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
 		// Skip the cleanup when the credential exposes scope as user-editable (directly or via
 		// inheritance) so that manually entered scopes survive reconnects.
+		// For managed credentials we always strip the scope so that the pre-registered default
+		// scope on n8n's OAuth app is used, regardless of credential type.
+		const userCanEditScope =
+			GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type) ||
+			this.hasEditableScopeProperty(credential.type);
+
 		if (
 			decryptedDataOriginal?.scope &&
 			credential.type.includes('OAuth2') &&
-			!GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type) &&
-			!this.hasEditableScopeProperty(credential.type)
+			(credential.isManaged || !userCanEditScope)
 		) {
 			delete decryptedDataOriginal.scope;
 		}

@@ -44,8 +44,11 @@ src/
     tool-adapter.ts     # Tool execution, branded suspend detection
     stream.ts           # Streaming helpers
     model-factory.ts    # Model instantiation
-    memory-store.ts     # Conversation / working-memory persistence hooks
-    working-memory.ts   # In-run working memory
+    memory-store.ts     # In-memory conversation and observation-log storage
+    observation-log-observer.ts
+    observation-log-reflector.ts
+    observation-log-renderer.ts
+    scoped-memory-task-runner.ts
     message-list.ts     # Message list + serialization for agent loop
     messages.ts         # Message normalization
     mcp-connection.ts   # MCP connection lifecycle
@@ -56,9 +59,8 @@ src/
     title-generation.ts
     strip-orphaned-tool-messages.ts
     logger.ts
-  storage/              # Optional persisted memory backends (exported)
-    sqlite-memory.ts
-    postgres-memory.ts
+  storage/              # Shared memory backend base class (exported)
+    base-memory.ts
   workspace/            # Workspace, sandbox, filesystem, built-in tools (exported)
   integrations/         # Optional integrations (exported where applicable)
     langsmith.ts        # LangSmith telemetry adapter (peer `langsmith`)
