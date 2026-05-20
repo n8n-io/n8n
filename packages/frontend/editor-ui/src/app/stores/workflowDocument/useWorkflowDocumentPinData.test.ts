@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { computed, effectScope } from 'vue';
+import { effectScope, watchEffect } from 'vue';
 import type { INodeExecutionData, IPinData } from 'n8n-workflow';
 import {
 	useWorkflowDocumentPinData,
@@ -306,18 +306,18 @@ describe('useWorkflowDocumentPinData', () => {
 			let evaluations = 0;
 
 			scope.run(() => {
-				const nodeA = computed(() => {
-					evaluations += 1;
-					return pinnedDataByNodeName.A;
-				});
-				// Prime the computed
-				void nodeA.value;
+				watchEffect(
+					() => {
+						evaluations += 1;
+						void pinnedDataByNodeName.A;
+					},
+					{ flush: 'sync' },
+				);
 			});
 
 			expect(evaluations).toBe(1);
 
 			pinNodeData('B', [{ json: { value: 1 } }]);
-			// Force a re-read; without per-key reactivity this would re-evaluate
 			expect(evaluations).toBe(1);
 
 			pinNodeData('A', [{ json: { value: 1 } }]);
