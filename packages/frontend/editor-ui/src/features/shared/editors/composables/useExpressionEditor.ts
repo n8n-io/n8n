@@ -257,6 +257,8 @@ export const useExpressionEditor = ({
 				? EditorSelection.cursor(resolveInitialCursorPosition(docContent, initialCursorPosition))
 				: undefined;
 
+		let hasReceivedFocus = false;
+
 		const state = EditorState.create({
 			doc: docContent,
 			selection: initialSelection,
@@ -271,9 +273,15 @@ export const useExpressionEditor = ({
 				readOnlyExtensions.value.of([EditorState.readOnly.of(toValue(isReadOnly))]),
 				telemetryExtensions.value.of([]),
 				EditorView.updateListener.of(onEditorUpdate),
-				EditorView.focusChangeEffect.of((_, newHasFocus) => {
+				EditorView.focusChangeEffect.of((currentState, newHasFocus) => {
 					hasFocus.value = newHasFocus;
-					selection.value = state.selection.ranges[0];
+					selection.value = currentState.selection.ranges[0];
+					if (newHasFocus && !hasReceivedFocus && initialSelection) {
+						hasReceivedFocus = true;
+						requestAnimationFrame(() => {
+							editor.value?.dispatch({ selection: initialSelection });
+						});
+					}
 					if (!newHasFocus) {
 						autocompleteStatus.value = null;
 						void debouncedUpdateSegments();
