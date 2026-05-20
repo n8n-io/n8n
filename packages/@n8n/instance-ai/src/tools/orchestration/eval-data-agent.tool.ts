@@ -147,25 +147,16 @@ export function createEvalDataAgentTool(context: OrchestrationContext) {
 				rowsToInsert = historyRows;
 				source = 'history';
 			} else {
-				// Generate inputs only. Expected-output columns stay empty so the
-				// user fills in the correct answers — generating both inputs and
-				// expected outputs with the same model only measures the model's
-				// self-consistency, not whether the workflow is doing the right
-				// thing.
-				//
-				// Few-shot seed: when ANY history rows exist (just not enough to
-				// hit the threshold), pass them to the generator as flavour
-				// reference. The generator's prompt is explicit that they are
-				// not seeds to paraphrase — the LLM uses them to pick up the
-				// real domain, tone and shape of inputs and then produces new
-				// ones in the same setting. Without this, generation runs blind
-				// on the agent's static system prompt only, which for generic
-				// prompts ("you are a helpful assistant") produces equally
-				// generic inputs even when real traffic is highly domain-specific.
+				// This will only generate the input part: expected output columns
+				// will stay empty so that the user has to supply the ground truth.
+				// If the threshold for using history rows has not been reached, however
+				// many rows exist get passed as `realExamples` — a domain reference,
+				// not seeds to paraphrase.
 				rowsToInsert = await generateSampleRows({
 					workflow,
 					columns: target.inputColumns,
 					rowCount: GENERATE_ROW_COUNT,
+					targetAgentNodeName: target.targetAgentNodeName,
 					...(historyRows.length > 0 ? { realExamples: historyRows } : {}),
 				});
 				source = 'synthetic';
