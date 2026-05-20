@@ -883,7 +883,6 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		this.applyParentFolderFilter(qb, filter);
 		this.applyNodeTypesFilter(qb, filter);
 		this.applyAvailableInMCPFilter(qb, filter);
-		this.applyWebhookIdFilter(qb, filter);
 	}
 
 	private applyAvailableInMCPFilter(
@@ -1080,20 +1079,6 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		}
 	}
 
-	private applyWebhookIdFilter(
-		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
-	): void {
-		if (typeof filter?.webhookId === 'string' && filter.webhookId !== '') {
-			qb.innerJoin(
-				WebhookEntity,
-				'filter_webhook',
-				'workflow.id = filter_webhook.workflowId AND filter_webhook.webhookPath = :webhookId',
-				{ webhookId: filter.webhookId },
-			);
-		}
-	}
-
 	private applyNodeTypesFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		filter: ListQuery.Options['filter'],
@@ -1281,17 +1266,6 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.select('DISTINCT workflow.id, workflow.name')
 			.innerJoin(WebhookEntity, 'webhook_entity', 'workflow.id = webhook_entity.workflowId')
 			.execute() as Promise<Array<{ id: string; name: string }>>);
-	}
-
-	async findWorkflowByWebhookId(webhookId: string) {
-		return await this.createQueryBuilder('workflow')
-			.innerJoin(
-				WebhookEntity,
-				'webhook_entity',
-				'workflow.id = webhook_entity.workflowId AND webhook_entity.webhookPath = :webhookId',
-				{ webhookId },
-			)
-			.getOne();
 	}
 
 	async updateActiveState(workflowId: string, newState: boolean) {

@@ -4037,8 +4037,6 @@
 	"workflows.filters.status.active": "Published",
 	"workflows.filters.status.deactivated": "Unpublished",
 	"workflows.filters.showArchived": "Show archived workflows",
-	"workflows.filters.webhookId": "Webhook URL/ID",
-	"workflows.filters.webhookId.placeholder": "Filter by webhook ID",
 	"workflows.filters.ownedBy": "Owned by",
 	"workflows.filters.sharedWith": "Shared with",
 	"workflows.filters.apply": "Apply filters",

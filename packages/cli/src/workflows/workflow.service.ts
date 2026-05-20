@@ -156,7 +156,7 @@ export class WorkflowService {
 		const includeFoldersInResults = includeFolders && !options?.filter?.webhookId;
 
 		// Use the new subquery-based repository methods
-		if (includeFoldersInResults) {
+		if (includeFolders) {
 			[workflowsAndFolders, count] =
 				await this.workflowRepository.getWorkflowsAndFoldersWithCountWithSharingSubquery(
 					user,

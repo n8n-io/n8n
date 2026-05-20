@@ -35,11 +35,6 @@ export class WorkflowFilter extends BaseFilter {
 	@Expose()
 	parentFolderId?: string;
 
-	@IsString()
-	@IsOptional()
-	@Expose()
-	webhookId?: string;
-
 	@IsBoolean()
 	@IsOptional()
 	@Expose()
