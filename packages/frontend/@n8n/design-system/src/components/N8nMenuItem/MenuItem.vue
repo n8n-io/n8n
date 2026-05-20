@@ -49,7 +49,7 @@ const handleClick = () => {
 	emit('click');
 };
 
-const icon = computed<IconName | undefined>(() => {
+const icon = computed<IconName | (string & {}) | undefined>(() => {
 	if (typeof props.item.icon === 'object' && props.item.icon?.type === 'icon') {
 		return props.item.icon.value;
 	}

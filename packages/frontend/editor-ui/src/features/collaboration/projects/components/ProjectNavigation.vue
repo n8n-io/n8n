@@ -92,7 +92,7 @@ const shared = computed<IMenuItem>(() => ({
 const getProjectMenuItem = (project: ProjectListItem): IMenuItem => ({
 	id: project.id,
 	label: project.name ?? '',
-	icon: (project.icon as IMenuItem['icon']) ?? DEFAULT_PROJECT_ICON,
+	icon: (project.icon ?? DEFAULT_PROJECT_ICON) as IMenuItem['icon'],
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,

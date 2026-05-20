@@ -10,7 +10,8 @@ export type IMenuItem = {
 	label: string;
 	icon?:
 		| IconName
-		| { type: 'icon'; value: IconName; color?: IconColor }
+		| (string & {})
+		| { type: 'icon'; value: IconName | (string & {}); color?: IconColor }
 		| { type: 'emoji'; value: string; color?: IconColor };
 	secondaryIcon?: {
 		name: IconName;
