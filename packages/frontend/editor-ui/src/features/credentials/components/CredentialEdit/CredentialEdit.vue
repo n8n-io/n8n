@@ -18,6 +18,7 @@ import CredentialIcon from '../CredentialIcon.vue';
 
 import CredentialConfig from './CredentialConfig.vue';
 import CredentialInfo from './CredentialInfo.vue';
+import CredentialMetadata from './CredentialMetadata.vue';
 import CredentialSharing from './CredentialSharing.ee.vue';
 import Modal from '@/app/components/Modal.vue';
 import SaveButton from '@/app/components/SaveButton.vue';
@@ -132,6 +133,7 @@ const isResolvable = ref(false);
 const useCustomOAuth = ref(false);
 const pendingAuthType = ref<string | null>(null);
 const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>({});
+const credentialMetadata = ref<Record<string, unknown> | null>(null);
 
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
@@ -404,7 +406,7 @@ const showHeaderSaveButton = computed(
 	() =>
 		showSaveButton.value &&
 		!!credentialType.value &&
-		(activeTab.value === 'connection' || activeTab.value === 'sharing'),
+		(activeTab.value === 'connection' || activeTab.value === 'sharing' || activeTab.value === 'details'),
 );
 
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
@@ -682,6 +684,10 @@ async function loadCurrentCredential(id = props.activeId ?? '') {
 			'isResolvable' in currentCredentials && typeof currentCredentials.isResolvable === 'boolean'
 				? currentCredentials.isResolvable
 				: false;
+		credentialMetadata.value =
+			'metadata' in currentCredentials && currentCredentials.metadata != null
+				? (currentCredentials.metadata as Record<string, unknown>)
+				: null;
 	} catch (error) {
 		toast.showError(
 			error,
@@ -748,6 +754,11 @@ function restoreOrReset(): void {
 
 function onResolvableChange(value: boolean) {
 	isResolvable.value = value;
+	hasUnsavedChanges.value = true;
+}
+
+function onMetadataChange(value: Record<string, unknown> | null) {
+	credentialMetadata.value = value;
 	hasUnsavedChanges.value = true;
 }
 
@@ -892,6 +903,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		data: data as unknown as ICredentialDataDecryptedObject,
 		isGlobal: isSharedGlobally.value,
 		isResolvable: isResolvable.value,
+		metadata: credentialMetadata.value,
 	};
 
 	if (
@@ -1544,6 +1556,11 @@ const { width } = useElementSize(credNameRef);
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
 					<CredentialInfo :current-credential="currentCredential" />
+					<CredentialMetadata
+						:model-value="credentialMetadata"
+						:readonly="!credentialPermissions.update && !credentialPermissions.create"
+						@update:model-value="onMetadataChange"
+					/>
 				</div>
 			</div>
 		</template>

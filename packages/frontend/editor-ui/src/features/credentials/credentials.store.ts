@@ -361,6 +361,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			uiContext,
 			isGlobal: data.isGlobal,
 			isResolvable: data.isResolvable,
+			...(data.metadata != null ? { metadata: data.metadata } : {}),
 		});
 
 		if (data?.homeProject && !credential.homeProject) {
