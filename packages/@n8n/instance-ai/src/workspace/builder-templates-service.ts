@@ -8,6 +8,18 @@
  *   - `index.txt`        — pipe-delimited catalog used for grep-style lookup
  *   - `<slug>.ts`        — one pre-rendered SDK file per publishable template
  *
+ * Versioning:
+ *   - The companion repo emits one archive per supported SDK minor and
+ *     uploads it to `/v<major>.<minor>/templates.tar.gz`. The newest minor
+ *     is mirrored to `/latest/templates.tar.gz`.
+ *   - The instance derives its CDN path from the bundled `@n8n/workflow-sdk`
+ *     version and prefers that exact path. On 404 (no archive published for
+ *     this minor yet) the service falls back to `/latest/`. Other transport
+ *     failures keep the existing cached bundle and do not trigger fallback.
+ *   - The current channel (`exact` or `latest`) is persisted on disk so warm
+ *     restarts pick the same URL on refresh and the cached ETag is only
+ *     echoed back to its originating path.
+ *
  * Behaviour:
  *   - First call: read disk cache if present; otherwise do a blocking fetch
  *     with a hard timeout. On any fetch error, return an empty bundle.
@@ -26,8 +38,9 @@
  *     against transport corruption and accidental CDN inconsistency — not
  *     against tampering, since the sidecar shares the archive's trust root.
  *
- * The HTTP ETag doubles as the bundle version — surfaced via telemetry so we
- * can correlate template-set revisions with usage events.
+ * The HTTP ETag is exposed via `getVersion()` prefixed with the channel
+ * (`v0.15:<etag>` or `latest:<etag>`) so telemetry can track template-set
+ * revisions and fallback rate.
  *
  * Never throws.
  */
