@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { shallowRef } from 'vue';
+import { shallowRef, type ShallowRef } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useWorkflowImport } from './useWorkflowImport';
+import { injectStrict } from '@/app/utils/injectStrict';
+import { NDVStoreKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { VIEWS } from '@/app/constants';
 
@@ -22,6 +24,10 @@ vi.mock('@/app/composables/useCanvasOperations', () => ({
 	})),
 }));
 
+vi.mock('@/app/utils/injectStrict', () => ({
+	injectStrict: vi.fn(),
+}));
+
 const mockRoute = vi.hoisted(() => ({ name: 'workflow' as string }));
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = (await importOriginal()) as object;
@@ -34,6 +40,17 @@ vi.mock('vue-router', async (importOriginal) => {
 vi.mock('@/app/utils/nodeViewUtils', () => ({
 	getNodesWithNormalizedPosition: vi.fn((nodes) => nodes),
 }));
+
+function setupInjectedStores() {
+	const storeRef = shallowRef(null) as ShallowRef<unknown>;
+	const ndvStoreRef = shallowRef(null) as ShallowRef<unknown>;
+	vi.mocked(injectStrict).mockImplementation((key) => {
+		if (key === WorkflowDocumentStoreKey) return storeRef;
+		if (key === NDVStoreKey) return ndvStoreRef;
+		throw new Error(`Unexpected injection key: ${String(key.description)}`);
+	});
+	return { storeRef, ndvStoreRef };
+}
 
 describe('useWorkflowImport', () => {
 	beforeEach(() => {
@@ -51,9 +68,8 @@ describe('useWorkflowImport', () => {
 		}) as WorkflowDataUpdate;
 
 	it('should throw if workflow has no nodes', async () => {
-		const storeRef = shallowRef(null);
-		const ndvStoreRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
+		setupInjectedStores();
+		const { importWorkflowExact } = useWorkflowImport();
 
 		await expect(
 			importWorkflowExact({ workflow: { connections: {} } as WorkflowDataUpdate }),
@@ -61,9 +77,8 @@ describe('useWorkflowImport', () => {
 	});
 
 	it('should throw if workflow has no connections', async () => {
-		const storeRef = shallowRef(null);
-		const ndvStoreRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
+		setupInjectedStores();
+		const { importWorkflowExact } = useWorkflowImport();
 
 		await expect(
 			importWorkflowExact({ workflow: { nodes: [] } as unknown as WorkflowDataUpdate }),
@@ -71,9 +86,8 @@ describe('useWorkflowImport', () => {
 	});
 
 	it('should reset workspace, initialize, and fit view', async () => {
-		const storeRef = shallowRef(null);
-		const ndvStoreRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
+		setupInjectedStores();
+		const { importWorkflowExact } = useWorkflowImport();
 
 		await importWorkflowExact({ workflow: createWorkflowData() });
 
@@ -90,9 +104,8 @@ describe('useWorkflowImport', () => {
 			return { workflowDocumentStore: { id: 'mock-store', setConnections: vi.fn() } };
 		});
 
-		const storeRef = shallowRef(null);
-		const ndvStoreRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
+		setupInjectedStores();
+		const { importWorkflowExact } = useWorkflowImport();
 
 		await importWorkflowExact({ workflow: createWorkflowData() });
 
@@ -103,9 +116,8 @@ describe('useWorkflowImport', () => {
 		const mockStore = { id: 'new-store', setConnections: vi.fn() };
 		mockInitializeWorkspace.mockResolvedValue({ workflowDocumentStore: mockStore });
 
-		const storeRef = shallowRef(null);
-		const ndvStoreRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
+		const { storeRef } = setupInjectedStores();
+		const { importWorkflowExact } = useWorkflowImport();
 
 		await importWorkflowExact({ workflow: createWorkflowData() });
 
@@ -115,9 +127,8 @@ describe('useWorkflowImport', () => {
 	it('should use workflow id from data on non-demo routes', async () => {
 		mockRoute.name = VIEWS.WORKFLOW;
 
-		const storeRef = shallowRef(null);
-		const ndvStoreRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
+		setupInjectedStores();
+		const { importWorkflowExact } = useWorkflowImport();
 
 		await importWorkflowExact({ workflow: createWorkflowData({ id: 'my-workflow-id' }) });
 
@@ -129,9 +140,8 @@ describe('useWorkflowImport', () => {
 	it('should pass through workflow id as-is on demo routes', async () => {
 		mockRoute.name = VIEWS.DEMO;
 
-		const storeRef = shallowRef(null);
-		const ndvStoreRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
+		setupInjectedStores();
+		const { importWorkflowExact } = useWorkflowImport();
 
 		await importWorkflowExact({ workflow: createWorkflowData({ id: 'real-workflow-id' }) });
 

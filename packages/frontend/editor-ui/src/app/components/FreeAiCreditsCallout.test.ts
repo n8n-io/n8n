@@ -4,7 +4,8 @@ import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { shallowRef } from 'vue';
+import { useNDVStore, injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
@@ -35,6 +36,7 @@ vi.mock('@/features/settings/users/users.store', () => ({
 
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	useNDVStore: vi.fn(),
+	injectNDVStore: vi.fn(),
 }));
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
@@ -93,9 +95,11 @@ describe('FreeAiCreditsCallout', () => {
 			},
 		});
 
-		(useNDVStore as any).mockReturnValue({
-			activeNode: { type: '@n8n/n8n-nodes-langchain.openAi' },
-		});
+		(injectNDVStore as any).mockReturnValue(
+			shallowRef({
+				activeNode: { type: '@n8n/n8n-nodes-langchain.openAi' },
+			}),
+		);
 
 		(useProjectsStore as any).mockReturnValue({
 			currentProject: { id: 'test-project-id' },
@@ -233,9 +237,11 @@ describe('FreeAiCreditsCallout', () => {
 	});
 
 	it('should not be able to claim credits if active node it is not a valid node', async () => {
-		(useNDVStore as any).mockReturnValue({
-			activeNode: { type: '@n8n/n8n-nodes.jira' },
-		});
+		(injectNDVStore as any).mockReturnValue(
+			shallowRef({
+				activeNode: { type: '@n8n/n8n-nodes.jira' },
+			}),
+		);
 
 		renderComponent(FreeAiCreditsCallout);
 
@@ -244,9 +250,11 @@ describe('FreeAiCreditsCallout', () => {
 
 	describe('credentialTypeName prop (credentials page)', () => {
 		it('should not show claim callout when editing a non-openapi credential', async () => {
-			(useNDVStore as any).mockReturnValue({
-				activeNode: null,
-			});
+			(injectNDVStore as any).mockReturnValue(
+				shallowRef({
+					activeNode: null,
+				}),
+			);
 
 			renderComponent(FreeAiCreditsCallout, {
 				props: {
@@ -258,9 +266,11 @@ describe('FreeAiCreditsCallout', () => {
 		});
 
 		it('should show claim callout editing openapi credential with no active node', async () => {
-			(useNDVStore as any).mockReturnValue({
-				activeNode: null,
-			});
+			(injectNDVStore as any).mockReturnValue(
+				shallowRef({
+					activeNode: null,
+				}),
+			);
 
 			renderComponent(FreeAiCreditsCallout, {
 				props: {
@@ -272,9 +282,11 @@ describe('FreeAiCreditsCallout', () => {
 		});
 
 		it('should not show claim callout when credential type is undefined and no valid active node', async () => {
-			(useNDVStore as any).mockReturnValue({
-				activeNode: null,
-			});
+			(injectNDVStore as any).mockReturnValue(
+				shallowRef({
+					activeNode: null,
+				}),
+			);
 
 			renderComponent(FreeAiCreditsCallout, {
 				props: {

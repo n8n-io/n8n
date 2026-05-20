@@ -3,8 +3,13 @@ import { createComponentRenderer, type RenderOptions } from '@/__tests__/render'
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import * as workFlowHelpers from '@/app/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { NDVStoreKey } from '@/app/constants/injectionKeys';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
+import { shallowRef } from 'vue';
 import userEvent from '@testing-library/user-event';
 import { cleanup, waitFor, within } from '@testing-library/vue';
 import get from 'lodash/get';
@@ -21,12 +26,26 @@ const DEFAULT_OPTIONS: FilterOptionsValue = {
 	typeValidation: 'loose',
 	version: 2,
 };
+
+const pinia = createTestingPinia({
+	initialState: {
+		[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
+	},
+});
+setActivePinia(pinia);
+
+const workflowsStore = useWorkflowsStore();
+workflowsStore.setWorkflowId('test-workflow');
+const ndvStore = useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId));
+const ndvStoreRef = shallowRef(ndvStore);
+
 const DEFAULT_SETUP = {
-	pinia: createTestingPinia({
-		initialState: {
-			[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
+	pinia,
+	global: {
+		provide: {
+			[NDVStoreKey as symbol]: ndvStoreRef,
 		},
-	}),
+	},
 	props: {
 		path: 'parameters.conditions',
 		node: {
@@ -158,7 +177,6 @@ describe('FilterConditions.vue', () => {
 	});
 
 	it('renders parameter issues', async () => {
-		const ndvStore = useNDVStore();
 		vi.spyOn(ndvStore, 'activeNode', 'get').mockReturnValue({
 			...DEFAULT_SETUP.props.node,
 			issues: { parameters: { 'conditions.1': ['not a number sir'] } },

@@ -22,7 +22,7 @@ import { type INodeParameterResourceLocator } from 'n8n-workflow';
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
-import { nextTick, reactive } from 'vue';
+import { nextTick, reactive, shallowRef } from 'vue';
 
 function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
 	return {
@@ -75,7 +75,7 @@ beforeEach(() => {
 vi.mock('@/features/ndv/shared/ndv.store', () => {
 	return {
 		useNDVStore: vi.fn(() => mockNdvState),
-		injectNDVStore: vi.fn(() => mockNdvState),
+		injectNDVStore: vi.fn(() => shallowRef(mockNdvState)),
 	};
 });
 

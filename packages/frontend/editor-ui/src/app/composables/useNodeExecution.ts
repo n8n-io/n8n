@@ -13,7 +13,7 @@ import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
 
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
@@ -96,7 +96,7 @@ export function useNodeExecution(
 
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const ndvStore = useNDVStore();
+	const ndvStore = injectNDVStore();
 	const uiStore = useUIStore();
 	const workflowState = injectWorkflowState();
 
@@ -360,7 +360,7 @@ export function useNodeExecution(
 		// Chat nodes — open chat when: it's a chat trigger itself, or it's a child of
 		// a chat trigger that has no execution/pin data yet (needs chat input first).
 		if (isChatNode.value || (isChatChild.value && !chatTriggerHasInputData())) {
-			ndvStore.unsetActiveNodeName();
+			ndvStore.value.unsetActiveNodeName();
 			await runWorkflow({
 				destinationNode: { nodeName, mode: toValue(executionMode) },
 				source,
@@ -415,7 +415,7 @@ export function useNodeExecution(
 				node_type: nodeType.value ? nodeType.value.name : null,
 				workflow_id: workflowsStore.workflowId,
 				source: telemetrySource,
-				push_ref: ndvStore.pushRef,
+				push_ref: ndvStore.value.pushRef,
 			};
 
 			telemetry.track('User clicked execute node button', telemetryPayload);

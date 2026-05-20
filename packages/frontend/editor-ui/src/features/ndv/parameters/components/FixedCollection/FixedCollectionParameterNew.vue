@@ -25,7 +25,6 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
-import { storeToRefs } from 'pinia';
 import { computed, nextTick, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
 import ParameterInputList from '../ParameterInputList.vue';
 import FixedCollectionItemList from './FixedCollectionItemList.vue';
@@ -34,7 +33,7 @@ const locale = useI18n();
 const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const nodeHelpers = useNodeHelpers();
-const { activeNode } = storeToRefs(ndvStore);
+const activeNode = computed(() => ndvStore.value.activeNode);
 
 export type Props = {
 	nodeValues: INodeParameters;
@@ -415,7 +414,7 @@ const handleDelete = (optionName: string, index?: number) => {
 const trackFieldAdded = () => {
 	telemetry.track('User added workflow input field', {
 		workflow_id: workflowsStore.workflowId,
-		node_id: ndvStore.activeNode?.id,
+		node_id: ndvStore.value.activeNode?.id,
 	});
 };
 
@@ -423,7 +422,7 @@ const trackFieldTypeChange = (parameterData: IUpdateInformation) => {
 	telemetry.track('User changed workflow input field type', {
 		type: parameterData.value,
 		workflow_id: workflowsStore.workflowId,
-		node_id: ndvStore.activeNode?.id,
+		node_id: ndvStore.value.activeNode?.id,
 	});
 };
 

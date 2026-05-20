@@ -37,7 +37,7 @@ import get from 'lodash/get';
 
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -78,7 +78,7 @@ export async function resolveParameter<T = IDataObject>(
 	const ndvActiveNode =
 		'localResolve' in opts_ && opts_.localResolve
 			? workflowDocumentStore.getNodeByName(opts_.nodeName)
-			: useNDVStore().activeNode;
+			: injectNDVStore().activeNode;
 	const opts: ResolveParameterOptions =
 		'localResolve' in opts_ && opts_.localResolve
 			? {

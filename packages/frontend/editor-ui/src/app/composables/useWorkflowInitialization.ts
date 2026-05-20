@@ -1,4 +1,4 @@
-import { ref, computed, shallowRef } from 'vue';
+import { ref, computed } from 'vue';
 import { type RouteRecordNameGeneric, useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { safeParseWorkflowStructure, WorkflowStructureValidationError } from 'n8n-workflow';
@@ -31,7 +31,7 @@ import {
 	disposeWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useNDVStore, disposeNDVStore } from '@/features/ndv/shared/ndv.store';
-import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { NDVStoreKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { injectStrict } from '@/app/utils/injectStrict';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
@@ -58,7 +58,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const telemetry = useTelemetry();
 	const workflowId = useWorkflowId();
 	const currentWorkflowDocumentStore = injectStrict(WorkflowDocumentStoreKey);
-	const currentNDVStore = shallowRef<ReturnType<typeof useNDVStore> | null>(null);
+	const currentNDVStore = injectStrict(NDVStoreKey);
 
 	const DEMO_ROUTES: RouteRecordNameGeneric[] = [VIEWS.DEMO, VIEWS.DEMO_DIFF];
 
@@ -481,7 +481,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		initializedWorkflowId,
 		workflowId,
 		currentWorkflowDocumentStore,
-		currentNDVStore,
 		isNewWorkflowRoute,
 		isDemoRoute,
 		isTemplateRoute,

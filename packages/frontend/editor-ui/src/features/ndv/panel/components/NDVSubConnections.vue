@@ -256,7 +256,7 @@ function showNodeInputsIssues() {
 }
 
 watch(
-	[nodeData, ndvStore.activeNode],
+	[nodeData, ndvStore.value.activeNode],
 	debounce(
 		() =>
 			setTimeout(() => {

@@ -104,8 +104,8 @@ const emit = defineEmits<{
 const scroller = ref<RecycleScrollerInstance>();
 const closedNodesBeforeSearch = ref(new Set<string>());
 
-const canDraggableDrop = computed(() => ndvStore.canDraggableDrop);
-const draggableStickyPosition = computed(() => ndvStore.draggableStickyPos);
+const canDraggableDrop = computed(() => ndvStore.value.canDraggableDrop);
+const draggableStickyPosition = computed(() => ndvStore.value.draggableStickyPos);
 
 const onCalloutDismiss = async (calloutId: string) => {
 	await dismissCallout(calloutId);
@@ -369,7 +369,7 @@ const nodeAdditionalInfo = (node: INodeUi) => {
 		returnData.push(i18n.baseText('node.disabled'));
 	}
 
-	const connections = ndvStore.ndvNodeInputNumber[node.name];
+	const connections = ndvStore.value.ndvNodeInputNumber[node.name];
 	if (connections) {
 		if (connections.length === 1) {
 			returnData.push(`Input ${connections}`);
@@ -471,18 +471,18 @@ const unwatchItems = watch(items, (newItems) => {
 });
 
 const onDragStart = (el: HTMLElement, data?: string) => {
-	ndvStore.draggableStartDragging({
+	ndvStore.value.draggableStartDragging({
 		type: 'mapping',
 		data: data ?? '',
 		dimensions: el?.getBoundingClientRect() ?? null,
 	});
-	ndvStore.resetMappingTelemetry();
+	ndvStore.value.resetMappingTelemetry();
 };
 
 const onDragEnd = (el: HTMLElement) => {
-	ndvStore.draggableStopDragging();
+	ndvStore.value.draggableStopDragging();
 	setTimeout(() => {
-		const mappingTelemetry = ndvStore.mappingTelemetry;
+		const mappingTelemetry = ndvStore.value.mappingTelemetry;
 		const parentNode = nodesSchemas.value.find(({ node }) => node.name === el.dataset.nodeName);
 
 		const isPreview = parentNode?.preview ?? false;
@@ -570,7 +570,7 @@ const onDragEnd = (el: HTMLElement) => {
 							:search="search"
 							:draggable="mappingEnabled"
 							:collapsed="closedNodes.has(item.id)"
-							:highlight="ndvStore.highlightDraggables"
+							:highlight="ndvStore.value.highlightDraggables"
 							@click="toggleNode(item.id)"
 						>
 						</VirtualSchemaItem>
@@ -627,8 +627,8 @@ const onDragEnd = (el: HTMLElement) => {
 								>
 									<template #link>
 										<NodeExecuteButton
-											v-if="ndvStore.activeNodeName"
-											:node-name="ndvStore.activeNodeName"
+											v-if="ndvStore.value.activeNodeName"
+											:node-name="ndvStore.value.activeNodeName"
 											:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
 											telemetry-source="inputs"
 											size="small"

@@ -26,8 +26,10 @@ import {
 	createWorkflowDocumentId,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { computed, ref } from 'vue';
+import { computed, ref, type ShallowRef } from 'vue';
 import type { TelemetryNdvSource } from '@/app/types/telemetry';
+import { injectStrict } from '@/app/utils/injectStrict';
+import { NDVStoreKey } from '@/app/constants/injectionKeys';
 
 export type NDVStoreId = WorkflowDocumentId;
 
@@ -489,6 +491,12 @@ export function disposeNDVStore(store: NDVStore) {
 	}
 }
 
-export function injectNDVStore(): ReturnType<typeof useNDVStore> {
-	return useNDVStore();
+export function injectNDVStore(): ShallowRef<ReturnType<typeof useNDVStore>> {
+	const storeRef = injectStrict(NDVStoreKey);
+	return computed(() => {
+		if (!storeRef.value) {
+			throw new Error('NDV store has not been initialized');
+		}
+		return storeRef.value;
+	});
 }

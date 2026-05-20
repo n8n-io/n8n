@@ -35,7 +35,7 @@ const props = defineProps<Props>();
 const ndvStore = injectNDVStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
-const activeNode = computed(() => ndvStore.activeNode);
+const activeNode = computed(() => ndvStore.value.activeNode);
 
 const i18n = useI18n();
 
@@ -44,7 +44,7 @@ const prompt = ref(props.value);
 const parentNodes = ref<INodeUi[]>([]);
 const textareaRowsData = ref<TextareaRowData | null>(null);
 
-const hasExecutionData = computed(() => (ndvStore.ndvInputData || []).length > 0);
+const hasExecutionData = computed(() => (ndvStore.value.ndvInputData || []).length > 0);
 const hasInputField = computed(() => props.parameter.typeOptions?.buttonConfig?.hasInputField);
 const inputFieldMaxLength = computed(
 	() => props.parameter.typeOptions?.buttonConfig?.inputFieldMaxLength,

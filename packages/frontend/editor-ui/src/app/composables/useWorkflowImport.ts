@@ -1,21 +1,19 @@
-import { computed, type ShallowRef } from 'vue';
+import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { VIEWS } from '@/app/constants';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { getNodesWithNormalizedPosition } from '@/app/utils/nodeViewUtils';
-import {
-	type WorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { injectStrict } from '@/app/utils/injectStrict';
+import { NDVStoreKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
-export function useWorkflowImport(
-	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>,
-	currentNDVStore: ShallowRef<ReturnType<typeof useNDVStore> | null>,
-) {
+export function useWorkflowImport() {
+	const currentWorkflowDocumentStore = injectStrict(WorkflowDocumentStoreKey);
+	const currentNDVStore = injectStrict(NDVStoreKey);
 	const route = useRoute();
 	const { resetWorkspace, initializeWorkspace, fitView } = useCanvasOperations();
 

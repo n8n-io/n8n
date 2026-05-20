@@ -6,6 +6,7 @@ import type { CompletionResult } from '@codemirror/autocomplete';
 import { EditorSelection, EditorState } from '@codemirror/state';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
+import { shallowRef } from 'vue';
 
 let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
 let mockCompletionResult: Partial<CompletionResult>;
@@ -13,7 +14,7 @@ let mockCompletionResult: Partial<CompletionResult>;
 vi.mock('@/features/ndv/shared/ndv.store', () => {
 	return {
 		useNDVStore: vi.fn(() => mockNdvState),
-		injectNDVStore: vi.fn(() => mockNdvState),
+		injectNDVStore: vi.fn(() => shallowRef(mockNdvState)),
 	};
 });
 

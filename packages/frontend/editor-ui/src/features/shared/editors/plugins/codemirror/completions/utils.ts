@@ -17,9 +17,11 @@ import type { DocMetadata } from 'n8n-workflow';
 import { escapeMappingString } from '@/app/utils/mappingUtils';
 import type { TargetNodeParameterContext } from '@/Interface';
 import {
+	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 /**
  * Split user input into base (to resolve) and tail (to filter).
@@ -209,7 +211,7 @@ export async function resolveAutocompleteExpression(
 	workflowDocumentId: WorkflowDocumentId,
 	contextNodeName?: string,
 ) {
-	const ndvStore = useNDVStore();
+	const ndvStore = useNDVStore(workflowDocumentId);
 	const inputData =
 		contextNodeName === undefined && ndvStore.isInputParentOfActiveNode
 			? {
@@ -238,7 +240,7 @@ export const isInHttpNodePagination = (targetNodeParameterContext?: TargetNodePa
 		nodeType = targetNodeParameterContext.nodeName;
 		path = targetNodeParameterContext.parameterPath;
 	} else {
-		const ndvStore = useNDVStore();
+		const ndvStore = useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId));
 		nodeType = ndvStore.activeNode?.type;
 		path = ndvStore.focusedInputPath;
 	}
@@ -250,7 +252,7 @@ export const hasActiveNode = (
 	workflowDocumentId: WorkflowDocumentId,
 	targetNodeParameterContext?: TargetNodeParameterContext,
 ) => {
-	if (useNDVStore().activeNode?.name !== undefined) {
+	if (useNDVStore(workflowDocumentId).activeNode?.name !== undefined) {
 		return true;
 	}
 
@@ -274,7 +276,7 @@ export function autocompletableNodeNames(
 	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 	const activeNode =
 		targetNodeParameterContext === undefined
-			? useNDVStore().activeNode
+			? useNDVStore(workflowDocumentId).activeNode
 			: workflowDocumentStore.getNodeByName(targetNodeParameterContext.nodeName);
 
 	if (!activeNode) return [];

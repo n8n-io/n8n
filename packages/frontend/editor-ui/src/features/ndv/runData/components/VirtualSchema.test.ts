@@ -27,7 +27,7 @@ import { fireEvent } from '@testing-library/dom';
 import { userEvent } from '@testing-library/user-event';
 import { cleanup, waitFor } from '@testing-library/vue';
 import { computed, shallowRef } from 'vue';
-import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { NDVStoreKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import {
 	createResultOk,
 	NodeConnectionTypes,
@@ -171,7 +171,6 @@ async function setupStore() {
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
-	const ndvStore = useNDVStore();
 	settingsStore.setSettings(defaultSettings);
 
 	nodeTypesStore.setNodeTypes([
@@ -204,6 +203,7 @@ async function setupStore() {
 	workflowsStore.setWorkflowId(workflow.id);
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 	workflowDocumentStore.hydrate(workflow);
+	const ndvStore = useNDVStore(createWorkflowDocumentId(workflow.id));
 	ndvStore.setActiveNodeName('Test Node Name', 'other');
 
 	return pinia;
@@ -290,6 +290,7 @@ describe('VirtualSchema.vue', () => {
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 		workflowDocumentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
+		const ndvStore = useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId));
 
 		renderComponent = createComponentRenderer(VirtualSchema, {
 			global: {
@@ -304,6 +305,7 @@ describe('VirtualSchema.vue', () => {
 				},
 				provide: {
 					[WorkflowDocumentStoreKey as symbol]: shallowRef(workflowDocumentStore),
+					[NDVStoreKey as symbol]: shallowRef(ndvStore),
 				},
 				mocks: {
 					$locale: {
@@ -584,7 +586,8 @@ describe('VirtualSchema.vue', () => {
 	});
 
 	it('should show connections', async () => {
-		const ndvStore = useNDVStore();
+		const workflowsStore = useWorkflowsStore();
+		const ndvStore = useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId));
 		vi.spyOn(ndvStore, 'ndvNodeInputNumber', 'get').mockReturnValue({
 			[defaultNodes[0].name]: [0],
 			[defaultNodes[1].name]: [0, 1, 2],
@@ -602,7 +605,8 @@ describe('VirtualSchema.vue', () => {
 
 	describe('telemetry', () => {
 		function dragDropPill(pill: HTMLElement) {
-			const ndvStore = useNDVStore();
+			const workflowsStore = useWorkflowsStore();
+			const ndvStore = useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId));
 			const reset = vi.spyOn(ndvStore, 'resetMappingTelemetry');
 			fireEvent(
 				pill,

@@ -1,7 +1,7 @@
 import { escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { isAllowedInDotNotation } from '@/features/shared/editors/plugins/codemirror/completions/utils';
 import { useI18n } from '@n8n/i18n';
 import type { IRunData, IDataObject } from 'n8n-workflow';
@@ -9,7 +9,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 
 function useJsonFieldCompletions() {
 	const i18n = useI18n();
-	const ndvStore = useNDVStore();
+	const ndvStore = injectNDVStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 
@@ -174,7 +174,7 @@ function useJsonFieldCompletions() {
 
 	const getInputNodeName = (): string | null => {
 		try {
-			const activeNode = ndvStore.activeNode;
+			const activeNode = ndvStore.value.activeNode;
 			if (activeNode) {
 				const input = (workflowDocumentStore?.value?.connectionsByDestinationNode ?? {})[
 					activeNode.name

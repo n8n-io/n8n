@@ -1,7 +1,7 @@
-import { reactive, computed } from 'vue';
+import { reactive, computed, shallowRef } from 'vue';
 import { mock } from 'vitest-mock-extended';
 import { createPinia, setActivePinia } from 'pinia';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { NDVStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { waitFor, cleanup, fireEvent, within, screen } from '@testing-library/vue';
 
 import RunDataJsonActions from './RunDataJsonActions.vue';
@@ -56,10 +56,10 @@ async function createPiniaWithActiveNode() {
 
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const ndvStore = useNDVStore();
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.setWorkflowId(workflow.id);
+	const ndvStore = useNDVStore(createWorkflowDocumentId(workflow.id));
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 	workflowDocumentStore.addNode(node);
 	workflowDocumentStore.initPristineNodeMetadata(node.name);
@@ -128,6 +128,7 @@ async function createPiniaWithActiveNode() {
 	return {
 		pinia,
 		activeNode: ndvStore.activeNode,
+		ndvStoreRef: shallowRef(ndvStore),
 	};
 }
 
@@ -150,7 +151,7 @@ describe('RunDataJsonActions', () => {
 	});
 
 	it('should copy unselected JSON output from latest run on click', async () => {
-		const { pinia, activeNode } = await createPiniaWithActiveNode();
+		const { pinia, activeNode, ndvStoreRef } = await createPiniaWithActiveNode();
 		const renderComponent = createComponentRenderer(RunDataJsonActions, {
 			props: {
 				node: activeNode ?? undefined,
@@ -170,6 +171,7 @@ describe('RunDataJsonActions', () => {
 			global: {
 				provide: {
 					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+					[NDVStoreKey as symbol]: ndvStoreRef,
 				},
 				mocks: {
 					$route: {
@@ -204,7 +206,7 @@ describe('RunDataJsonActions', () => {
 	});
 
 	it('should copy unselected JSON output from selected previous run on click', async () => {
-		const { pinia, activeNode } = await createPiniaWithActiveNode();
+		const { pinia, activeNode, ndvStoreRef } = await createPiniaWithActiveNode();
 		const renderComponent = createComponentRenderer(RunDataJsonActions, {
 			props: {
 				node: activeNode ?? undefined,
@@ -224,6 +226,7 @@ describe('RunDataJsonActions', () => {
 			global: {
 				provide: {
 					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+					[NDVStoreKey as symbol]: ndvStoreRef,
 				},
 				mocks: {
 					$route: {
@@ -262,7 +265,7 @@ describe('RunDataJsonActions', () => {
 	});
 
 	it("should copy selected JSON value on 'Copy Selection' click", async () => {
-		const { pinia, activeNode } = await createPiniaWithActiveNode();
+		const { pinia, activeNode, ndvStoreRef } = await createPiniaWithActiveNode();
 		const renderComponent = createComponentRenderer(RunDataJsonActions, {
 			props: {
 				node: activeNode ?? undefined,
@@ -282,6 +285,7 @@ describe('RunDataJsonActions', () => {
 			global: {
 				provide: {
 					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+					[NDVStoreKey as symbol]: ndvStoreRef,
 				},
 				mocks: {
 					$route: {
@@ -307,7 +311,7 @@ describe('RunDataJsonActions', () => {
 	});
 
 	it("should copy selected JSON value's item path on 'Copy Item Path' click", async () => {
-		const { pinia, activeNode } = await createPiniaWithActiveNode();
+		const { pinia, activeNode, ndvStoreRef } = await createPiniaWithActiveNode();
 		const renderComponent = createComponentRenderer(RunDataJsonActions, {
 			props: {
 				node: activeNode ?? undefined,
@@ -327,6 +331,7 @@ describe('RunDataJsonActions', () => {
 			global: {
 				provide: {
 					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+					[NDVStoreKey as symbol]: ndvStoreRef,
 				},
 				mocks: {
 					$route: {
@@ -352,7 +357,7 @@ describe('RunDataJsonActions', () => {
 	});
 
 	it("should copy selected JSON value's parameter path on 'Copy Parameter Path' click", async () => {
-		const { pinia, activeNode } = await createPiniaWithActiveNode();
+		const { pinia, activeNode, ndvStoreRef } = await createPiniaWithActiveNode();
 		const renderComponent = createComponentRenderer(RunDataJsonActions, {
 			props: {
 				node: activeNode ?? undefined,
@@ -372,6 +377,7 @@ describe('RunDataJsonActions', () => {
 			global: {
 				provide: {
 					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+					[NDVStoreKey as symbol]: ndvStoreRef,
 				},
 				mocks: {
 					$route: {

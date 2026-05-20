@@ -89,7 +89,7 @@ async function onInstallClick() {
 // close the modal when the node gets installed
 watch(isNodeDefined, () => {
 	if (isNodeDefined.value) {
-		ndvStore.unsetActiveNodeName();
+		ndvStore.value.unsetActiveNodeName();
 	}
 });
 </script>

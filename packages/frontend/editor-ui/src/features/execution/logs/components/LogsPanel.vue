@@ -118,7 +118,7 @@ function handleResizeOverviewPanelEnd() {
 }
 
 function handleOpenNdv(treeNode: LogEntry) {
-	ndvStore.setActiveNodeName(treeNode.node.name, 'logs_view');
+	ndvStore.value.setActiveNodeName(treeNode.node.name, 'logs_view');
 
 	void nextTick(() => {
 		const source = treeNode.runData?.source[0];
@@ -126,7 +126,7 @@ function handleOpenNdv(treeNode: LogEntry) {
 
 		ndvEventBus.emit('updateInputNodeName', source?.previousNode);
 		ndvEventBus.emit('setInputBranchIndex', inputBranch);
-		ndvStore.setOutputRunIndex(treeNode.runIndex);
+		ndvStore.value.setOutputRunIndex(treeNode.runIndex);
 	});
 }
 

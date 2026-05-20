@@ -5,7 +5,10 @@ import { autocompletableNodeNames } from '@/features/shared/editors/plugins/code
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { forceParse } from '@/app/utils/forceParse';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { autocompletion } from '@codemirror/autocomplete';
@@ -32,8 +35,8 @@ export function useTypescript(
 	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext | undefined>,
 ) {
 	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema();
-	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
+	const ndvStore = useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId));
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const { debounce } = useDebounce();
 	const activeNodeName = toValue(targetNodeParameterContext)?.nodeName ?? ndvStore.activeNodeName;

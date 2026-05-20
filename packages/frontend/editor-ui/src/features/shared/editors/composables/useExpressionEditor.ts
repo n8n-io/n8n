@@ -21,7 +21,7 @@ import {
 	EXPRESSION_EDITOR_PARSER_TIMEOUT,
 	ExpressionLocalResolveContextSymbol,
 } from '@/app/constants';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
 import type { TargetItem, TargetNodeParameterContext } from '@/Interface';
 import {
@@ -79,7 +79,7 @@ export const useExpressionEditor = ({
 	disableSearchDialog?: MaybeRefOrGetter<boolean>;
 	onChange?: (viewUpdate: ViewUpdate) => void;
 }) => {
-	const ndvStore = useNDVStore();
+	const ndvStore = injectNDVStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowHelpers = useWorkflowHelpers();
@@ -363,7 +363,7 @@ export const useExpressionEditor = ({
 				});
 			} else if (
 				isCredentialsModalOpen() ||
-				(!ndvStore.activeNode && toValue(targetNodeParameterContext) === undefined)
+				(!ndvStore.value.activeNode && toValue(targetNodeParameterContext) === undefined)
 			) {
 				// e.g. credential modal
 				result.resolved = Expression.resolveWithoutWorkflow(resolvable, toValue(additionalData));
@@ -374,13 +374,13 @@ export const useExpressionEditor = ({
 				};
 				if (
 					toValue(targetNodeParameterContext) === undefined &&
-					ndvStore.isInputParentOfActiveNode
+					ndvStore.value.isInputParentOfActiveNode
 				) {
 					opts = {
 						targetItem: target ?? undefined,
-						inputNodeName: ndvStore.ndvInputNodeName,
-						inputRunIndex: ndvStore.ndvInputRunIndex,
-						inputBranchIndex: ndvStore.ndvInputBranchIndex,
+						inputNodeName: ndvStore.value.ndvInputNodeName,
+						inputRunIndex: ndvStore.value.ndvInputRunIndex,
+						inputBranchIndex: ndvStore.value.ndvInputBranchIndex,
 					};
 				}
 				result.resolved = await workflowHelpers.resolveExpression(
@@ -392,7 +392,7 @@ export const useExpressionEditor = ({
 		} catch (error) {
 			const hasRunData =
 				!!workflowsStore.workflowExecutionData?.data?.resultData?.runData[
-					ndvStore.activeNode?.name ?? ''
+					ndvStore.value.activeNode?.name ?? ''
 				];
 			result.resolved = `[${getExpressionErrorMessage(error, workflowDocumentStore.value.getPinDataSnapshot(), hasRunData)}]`;
 			result.error = true;
@@ -410,7 +410,7 @@ export const useExpressionEditor = ({
 		return result;
 	}
 
-	const targetItem = computed<TargetItem | null>(() => ndvStore.expressionTargetItem);
+	const targetItem = computed<TargetItem | null>(() => ndvStore.value.expressionTargetItem);
 
 	const resolvableSegments = computed<Resolvable[]>(() => {
 		return segments.value.filter((s): s is Resolvable => s.kind === 'resolvable');

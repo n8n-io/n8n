@@ -7,11 +7,11 @@ import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 
 import { N8nCallout } from '@n8n/design-system';
 const i18n = useI18n();
-const nvdStore = injectNDVStore();
+const ndvStore = injectNDVStore();
 const dataTableStore = useDataTableStore();
 
 const calloutType = computed(() => {
-	if (!DATA_TABLE_NODES.includes(nvdStore.activeNode?.type ?? '')) {
+	if (!DATA_TABLE_NODES.includes(ndvStore.value.activeNode?.type ?? '')) {
 		return null;
 	}
 

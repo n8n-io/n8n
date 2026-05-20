@@ -1,6 +1,11 @@
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { NDVStoreKey } from '@/app/constants/injectionKeys';
 import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
+import { shallowRef } from 'vue';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, within } from '@testing-library/vue';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
@@ -12,13 +17,26 @@ import type { AssignmentCollectionValue, AssignmentValue } from 'n8n-workflow';
 
 vi.mock('vue-router');
 
+const pinia = createTestingPinia({
+	initialState: {
+		[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
+	},
+	stubActions: false,
+});
+setActivePinia(pinia);
+
+const workflowsStore = useWorkflowsStore();
+workflowsStore.setWorkflowId('test-workflow');
+const ndvStore = useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId));
+const ndvStoreRef = shallowRef(ndvStore);
+
 const DEFAULT_SETUP: RenderOptions<typeof AssignmentCollection> = {
-	pinia: createTestingPinia({
-		initialState: {
-			[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
+	pinia,
+	global: {
+		provide: {
+			[NDVStoreKey as symbol]: ndvStoreRef,
 		},
-		stubActions: false,
-	}),
+	},
 	props: {
 		path: 'parameters.fields',
 		node: {
@@ -57,7 +75,7 @@ async function dropAssignment({
 	value: unknown;
 	dropArea: HTMLElement;
 }): Promise<void> {
-	useNDVStore().draggableStartDragging({
+	ndvStore.draggableStartDragging({
 		type: 'mapping',
 		data: `{{ $json.${key} }}`,
 		dimensions: null,

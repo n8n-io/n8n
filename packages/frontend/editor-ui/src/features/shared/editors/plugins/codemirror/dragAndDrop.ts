@@ -1,4 +1,6 @@
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { unwrapExpression } from '@/app/utils/expressions';
 import { syntaxTree } from '@codemirror/language';
 import { EditorSelection, StateEffect, StateField, type Extension } from '@codemirror/state';
@@ -41,7 +43,7 @@ const drawDropCursor = ViewPlugin.fromClass(
 
 		constructor(readonly view: EditorView) {
 			this.measureReq = { read: this.readPos.bind(this), write: this.drawCursor.bind(this) };
-			this.ndvStore = useNDVStore();
+			this.ndvStore = useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId));
 		}
 
 		update(update: ViewUpdate) {

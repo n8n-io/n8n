@@ -45,7 +45,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const { docsUrl } = useNodeDocsUrl({ nodeType: () => props.nodeType });
 
-const activeNode = computed(() => ndvStore.activeNode);
+const activeNode = computed(() => ndvStore.value.activeNode);
 
 const nodeTypeName = computed(() => props.nodeType?.name);
 const { installedPackage, isCommunityNode, isUpdateCheckAvailable } =

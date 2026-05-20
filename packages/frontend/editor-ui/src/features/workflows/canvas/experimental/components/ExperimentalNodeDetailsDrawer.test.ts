@@ -9,6 +9,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { NDVStoreKey } from '@/app/constants/injectionKeys';
 import { createTestingPinia } from '@pinia/testing';
 import ExperimentalNodeDetailsDrawer from './ExperimentalNodeDetailsDrawer.vue';
 import { nextTick, shallowRef } from 'vue';
@@ -22,13 +23,13 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 	};
 });
 
-const renderComponent = createComponentRenderer(ExperimentalNodeDetailsDrawer);
-
 describe('ExperimentalNodeDetailsDrawer', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let ndvStore: ReturnType<typeof useNDVStore>;
+	let ndvStoreRef: ReturnType<typeof shallowRef<ReturnType<typeof useNDVStore>>>;
+	let renderComponent: ReturnType<typeof createComponentRenderer>;
 
 	const mockNodes = [
 		createTestNode({
@@ -68,7 +69,15 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 				description: '',
 			},
 		]);
-		ndvStore = useNDVStore();
+		ndvStore = useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId));
+		ndvStoreRef = shallowRef(ndvStore);
+		renderComponent = createComponentRenderer(ExperimentalNodeDetailsDrawer, {
+			global: {
+				provide: {
+					[NDVStoreKey as symbol]: ndvStoreRef,
+				},
+			},
+		});
 	});
 
 	it('should show updated parameter after closing NDV', async () => {

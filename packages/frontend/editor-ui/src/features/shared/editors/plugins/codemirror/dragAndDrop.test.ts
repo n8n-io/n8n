@@ -1,4 +1,6 @@
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { createTestingPinia } from '@pinia/testing';
@@ -11,6 +13,8 @@ describe('CodeMirror drag and drop', () => {
 	beforeEach(() => {
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
+		const workflowsStore = useWorkflowsStore();
+		workflowsStore.setWorkflowId('test-workflow');
 	});
 
 	describe('mappingDropCursor', () => {
@@ -26,7 +30,8 @@ describe('CodeMirror drag and drop', () => {
 		};
 
 		it('should render a drop cursor when dragging', async () => {
-			useNDVStore().draggableStartDragging({
+			const workflowsStore = useWorkflowsStore();
+			useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)).draggableStartDragging({
 				type: 'mapping',
 				data: '{{ $json.bar }}',
 				dimensions: null,

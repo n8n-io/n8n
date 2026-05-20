@@ -36,7 +36,7 @@ const contentRef = useTemplateRef('content');
 const { APP_Z_INDEXES } = useStyles();
 
 onBeforeUnmount(() => {
-	ndvStore.expressionOutputItemIndex = 0;
+	ndvStore.value.expressionOutputItemIndex = 0;
 });
 
 defineExpose({

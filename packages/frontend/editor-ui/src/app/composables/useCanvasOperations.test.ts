@@ -21,6 +21,15 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { getNDVStoreId, useNDVStore } from '@/features/ndv/shared/ndv.store';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const actual = (await importOriginal()) as typeof import('@/features/ndv/shared/ndv.store');
+	const { shallowRef } = await import('vue');
+	return {
+		...actual,
+		injectNDVStore: vi.fn(() => shallowRef(actual.useNDVStore())),
+	};
+});
 import {
 	createTestNode,
 	createTestNodeProperties,

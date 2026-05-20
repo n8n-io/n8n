@@ -1,4 +1,4 @@
-import { nextTick } from 'vue';
+import { nextTick, shallowRef } from 'vue';
 import type { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 import type { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -54,7 +54,7 @@ beforeEach(() => {
 vi.mock('@/features/ndv/shared/ndv.store', () => {
 	return {
 		useNDVStore: vi.fn(() => mockNdvState),
-		injectNDVStore: vi.fn(() => mockNdvState),
+		injectNDVStore: vi.fn(() => shallowRef(mockNdvState)),
 	};
 });
 

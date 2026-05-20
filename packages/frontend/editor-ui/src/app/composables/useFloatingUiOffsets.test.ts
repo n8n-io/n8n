@@ -43,14 +43,16 @@ describe(useFloatingUiOffsets, () => {
 
 	describe('toastBottomOffset', () => {
 		it('should account for the height of log view only when NDV is closed', () => {
+			const workflowsStore = useWorkflowsStore();
+			const ndvStore = useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId));
 			useLogsStore().setHeight(3);
-			useNDVStore().setActiveNodeName('n0', 'other'); // set NDV to be opened
+			ndvStore.setActiveNodeName('n0', 'other'); // set NDV to be opened
 
 			const { toastBottomOffset } = useFloatingUiOffsets();
 
 			expect(toastBottomOffset.value).toBe('0px');
 
-			useNDVStore().unsetActiveNodeName(); // close NDV
+			ndvStore.unsetActiveNodeName(); // close NDV
 
 			expect(toastBottomOffset.value).toBe('3px');
 		});
@@ -80,7 +82,9 @@ describe(useFloatingUiOffsets, () => {
 
 				expect(toastBottomOffset.value).toBe('0px');
 
-				useNDVStore().setActiveNodeName('n0', 'other');
+				const workflowsStore = useWorkflowsStore();
+				const ndvStore = useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId));
+				ndvStore.setActiveNodeName('n0', 'other');
 
 				expect(toastBottomOffset.value).toBe('58px'); // 42px button + 16px NDV offset
 			},

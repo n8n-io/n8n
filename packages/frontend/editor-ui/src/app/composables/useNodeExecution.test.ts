@@ -103,9 +103,13 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn().mockReturnValue(mockNodeTypesStore),
 }));
 
-vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	useNDVStore: vi.fn().mockReturnValue(mockNdvStore),
-}));
+vi.mock('@/features/ndv/shared/ndv.store', async () => {
+	const { shallowRef } = await import('vue');
+	return {
+		useNDVStore: vi.fn().mockReturnValue(mockNdvStore),
+		injectNDVStore: vi.fn(() => shallowRef(mockNdvStore)),
+	};
+});
 
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: vi.fn().mockReturnValue({

@@ -16,6 +16,8 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 
 export type TelemetryIdentifyOptions = {
 	instanceId: string;
@@ -172,7 +174,9 @@ export class Telemetry {
 	trackAskAI(event: string, properties: IDataObject = {}) {
 		if (this.rudderStack) {
 			properties.session_id = useRootStore().pushRef;
-			properties.ndv_session_id = useNDVStore().pushRef;
+			properties.ndv_session_id = useNDVStore(
+				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+			).pushRef;
 
 			switch (event) {
 				case 'askAi.generationFinished':
@@ -186,7 +190,9 @@ export class Telemetry {
 	trackAiTransform(event: string, properties: IDataObject = {}) {
 		if (this.rudderStack) {
 			properties.session_id = useRootStore().pushRef;
-			properties.ndv_session_id = useNDVStore().pushRef;
+			properties.ndv_session_id = useNDVStore(
+				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+			).pushRef;
 
 			switch (event) {
 				case 'generationFinished':

@@ -62,12 +62,14 @@ const isSubmitEnabled = computed(() => {
 		hasExecutionData.value
 	);
 });
-const hasExecutionData = computed(() => (ndvStore.ndvInputDataWithPinnedData || []).length > 0);
+const hasExecutionData = computed(
+	() => (ndvStore.value.ndvInputDataWithPinnedData || []).length > 0,
+);
 const loadingString = computed(() =>
 	i18n.baseText(`codeNodeEditor.askAi.loadingPhrase${loadingPhraseIndex.value}` as BaseTextKey),
 );
 const isEachItemMode = computed(() => {
-	const mode = ndvStore.activeNode?.parameters.mode as CodeExecutionMode;
+	const mode = ndvStore.value.activeNode?.parameters.mode as CodeExecutionMode;
 
 	return mode === 'runOnceForEachItem';
 });
@@ -90,7 +92,7 @@ function getErrorMessageByStatusCode(statusCode: number, message: string | undef
 }
 
 function getParentNodes() {
-	const activeNode = ndvStore.activeNode;
+	const activeNode = ndvStore.value.activeNode;
 	const { workflowId } = useWorkflowsStore();
 
 	if (!activeNode || !workflowId) return [];
@@ -177,7 +179,7 @@ async function onSubmit() {
 		context: {
 			schema: schemas.parentNodesSchemas,
 			inputSchema: schemas.inputSchema,
-			ndvPushRef: ndvStore.pushRef,
+			ndvPushRef: ndvStore.value.pushRef,
 			pushRef: rootStore.pushRef,
 		},
 		forNode: 'code',
@@ -241,7 +243,7 @@ function triggerLoadingChange() {
 }
 
 function getSessionStoragePrompt() {
-	const codeNodeName = (ndvStore.activeNode?.name as string) ?? '';
+	const codeNodeName = (ndvStore.value.activeNode?.name as string) ?? '';
 	const hashedCode = snakeCase(codeNodeName);
 
 	return useSessionStorage(`ask_ai_prompt__${hashedCode}`, '');
