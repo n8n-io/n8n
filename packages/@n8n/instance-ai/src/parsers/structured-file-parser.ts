@@ -1,3 +1,5 @@
+import type { parse as csvParse } from 'csv-parse/sync';
+
 /**
  * Structured file parser for CSV, TSV, and JSON attachments.
  *
@@ -11,7 +13,16 @@
  * - Dangerous keys (__proto__, constructor, prototype) are rejected
  */
 
-import { parse as csvParse } from 'csv-parse/sync';
+type CsvParseFn = typeof csvParse;
+let csvParseFnCached: CsvParseFn | undefined;
+function getCsvParse(): CsvParseFn {
+	if (!csvParseFnCached) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+		const mod = require('csv-parse/sync') as { parse: CsvParseFn };
+		csvParseFnCached = mod.parse;
+	}
+	return csvParseFnCached;
+}
 
 // ── Limits ──────────────────────────────────────────────────────────────────
 
@@ -265,7 +276,7 @@ function parseCsvTsv(
 		throw new Error('Delimiter must be a single character');
 	}
 
-	const records = csvParse(content, {
+	const records = getCsvParse()(content, {
 		delimiter,
 		columns: false,
 		skip_empty_lines: true,
