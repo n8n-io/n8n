@@ -295,7 +295,7 @@ export class BuilderSandboxFactory {
 	}
 
 	private async createN8nSandbox(
-		_builderId: string,
+		builderId: string,
 		context: InstanceAiContext,
 	): Promise<BuilderWorkspace> {
 		const config = this.assertIsN8nSandbox();
@@ -347,6 +347,13 @@ export class BuilderSandboxFactory {
 		} catch (error) {
 			// If any step after sandbox creation throws (workspace init, catalog
 			// write, SDK link), destroy the remote sandbox so it isn't orphaned.
+			this.errorReporter?.error(error, {
+				tags: {
+					component: 'builder-sandbox-factory',
+					provider: 'n8n-sandbox',
+				},
+				extra: { builderId },
+			});
 			await destroySandbox();
 			throw error;
 		}
