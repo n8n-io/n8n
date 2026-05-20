@@ -48,6 +48,10 @@ export interface AgentConfigSnapshot {
 	versionId: string | null;
 }
 
+interface BuilderToolOptions {
+	nonInteractive?: boolean;
+}
+
 function rejectIfEmptyInstructions(
 	config: AgentJsonConfig,
 ): { errors: ConfigValidationError[] } | null {
@@ -115,9 +119,10 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		user: User,
+		options: BuilderToolOptions = {},
 	): BuilderTools {
 		return {
-			json: this.getJsonTools(agentId, projectId, credentialProvider, user),
+			json: this.getJsonTools(agentId, projectId, credentialProvider, user, options),
 			shared: this.getSharedTools(agentId, projectId, credentialProvider),
 		};
 	}
@@ -127,6 +132,7 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		user: User,
+		options: BuilderToolOptions,
 	): BuiltTool[] {
 		const readConfigTool = new Tool(BUILDER_TOOLS.READ_CONFIG)
 			.description(
@@ -346,9 +352,12 @@ export class AgentsBuilderToolsService {
 			patchConfigTool,
 			listIntegrationTypesTool,
 			buildResolveLlmTool({ credentialProvider, modelLookup }),
-			buildAskCredentialTool({ credentialProvider }),
+			buildAskCredentialTool({
+				credentialProvider,
+				autoSkipWhenAmbiguous: options.nonInteractive === true,
+			}),
 			buildAskLlmTool(),
-			buildAskQuestionTool(),
+			buildAskQuestionTool({ autoPickFirst: options.nonInteractive === true }),
 		];
 	}
 

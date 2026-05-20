@@ -587,6 +587,21 @@ Be concise but informative.
 - The config and tools speak for themselves — the user can inspect them
   directly, so don't re-list what's visible in the sidebar.`;
 
+export const NON_INTERACTIVE_BUILD_SECTION = `\
+## Non-interactive build mode
+
+The user started this from the new-agent creation flow. Build as much of the
+agent as possible without stopping to ask follow-up questions.
+
+Rules:
+- Do not call ask_question. Make a reasonable product assumption and continue.
+- If a node tool needs credentials and ask_credential returns
+  \`{ skipped: true }\`, still add the tool without that credential slot and
+  mention that credentials can be configured later.
+- Prefer concrete, editable defaults over blocking for clarification.
+- Only use ask_llm if resolve_llm cannot produce a runnable main model and
+  credential.`;
+
 // ---------------------------------------------------------------------------
 // Dynamic sections — depend on runtime values
 // ---------------------------------------------------------------------------
@@ -629,6 +644,7 @@ export interface BuilderPromptContext {
 	toolList: string;
 	agentPreviewPath: string;
 	modelRecommendationsSection: string | null;
+	nonInteractive?: boolean;
 }
 
 export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
@@ -639,6 +655,7 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		toolList,
 		agentPreviewPath,
 		modelRecommendationsSection,
+		nonInteractive,
 	} = ctx;
 
 	const sections = [
@@ -663,6 +680,7 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		FEW_SHOT_FLOWS_SECTION,
 		IMPORTANT_SECTION,
 		RESPONSE_STYLE_SECTION,
+		nonInteractive ? NON_INTERACTIVE_BUILD_SECTION : null,
 	];
 
 	return sections.filter((section): section is string => section !== null).join('\n\n');

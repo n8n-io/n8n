@@ -10,11 +10,10 @@ import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { createAgent } from '../composables/useAgentApi';
-import { AGENT_BUILDER_VIEW } from '../constants';
+import { AGENT_BUILDER_FULL_WIDTH_PARAM, AGENT_BUILDER_VIEW } from '../constants';
 import { useAgentBuilderStatus } from '../composables/useAgentBuilderStatus';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
-import AgentBuilderProgress from '../components/AgentBuilderProgress.vue';
 import AgentBuilderUnconfiguredEmptyState from '../components/AgentBuilderUnconfiguredEmptyState.vue';
 
 const router = useRouter();
@@ -58,10 +57,6 @@ onMounted(async () => {
 		}
 	}
 });
-// When set, we've created the agent and the progress overlay is streaming
-// the build. We only route into the builder once the stream reports `done`.
-const building = ref<{ agentId: string; message: string } | null>(null);
-
 interface SuggestionTemplate {
 	icon: string;
 	name: string;
@@ -226,9 +221,8 @@ async function submitDescription() {
 			source: 'description_prompt',
 		});
 		// Mirror the build-chat submission event: the description prompt IS the
-		// first build-mode message for this agent, just routed through the
-		// progress overlay instead of AgentChatPanel. Fingerprint reflects the
-		// fresh empty config (no instructions/tools/triggers/memory/model yet).
+		// first build-mode message for this agent. Fingerprint reflects the fresh
+		// empty config (no instructions/tools/triggers/memory/model yet).
 		try {
 			const fingerprint = await buildAgentConfigFingerprint(null, []);
 			agentTelemetry.trackSubmittedMessage({
@@ -240,22 +234,15 @@ async function submitDescription() {
 		} catch {
 			// Swallow — telemetry is best-effort and must not block the build.
 		}
-		// Hand off to the progress overlay; it streams `/build` and fires `done`
-		// once the agent is ready, at which point we route into the builder.
-		building.value = { agentId: agent.id, message };
+		void router.push({
+			name: AGENT_BUILDER_VIEW,
+			params: { projectId: projectId.value, agentId: agent.id },
+			query: { prompt: message, [AGENT_BUILDER_FULL_WIDTH_PARAM]: 'true' },
+		});
 	} catch (e) {
 		isCreating.value = false;
 		throw e;
 	}
-}
-
-function onBuildDone() {
-	const target = building.value;
-	if (!target) return;
-	void router.push({
-		name: AGENT_BUILDER_VIEW,
-		params: { projectId: projectId.value, agentId: target.agentId },
-	});
 }
 
 function selectSuggestion(suggestion: SuggestionTemplate) {
@@ -270,18 +257,8 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	<div :class="$style.page">
 		<AgentBuilderUnconfiguredEmptyState v-if="statusLoaded && !isBuilderConfigured" />
 		<template v-else-if="statusLoaded">
-			<Transition name="building-overlay">
-				<div v-if="building" :class="$style.buildingOverlay">
-					<AgentBuilderProgress
-						:project-id="projectId"
-						:agent-id="building.agentId"
-						:initial-message="building.message"
-						@done="onBuildDone"
-					/>
-				</div>
-			</Transition>
 			<Transition name="new-agent-content">
-				<div v-if="!building" :class="$style.content">
+				<div :class="$style.content">
 					<div :class="$style.topBar">
 						<N8nButton
 							:label="i18n.baseText('agents.new.startBlank')"
@@ -358,43 +335,11 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	width: 100%;
 }
 
-.buildingOverlay {
-	position: absolute;
-	inset: 0;
-	z-index: 10;
-	display: flex;
-	background: var(--color--background--light-3);
-	backdrop-filter: blur(4px);
-	pointer-events: all;
-}
-
 .content {
 	flex: 1;
 	display: flex;
 	flex-direction: column;
 	min-height: 0;
-}
-
-:global(.building-overlay-enter-active) {
-	transition: opacity calc(var(--duration--base) * 1.5) var(--easing--ease-out)
-		calc(var(--duration--base) / 3);
-}
-
-:global(.building-overlay-enter-from) {
-	opacity: 0;
-}
-
-:global(.new-agent-content-leave-active) {
-	transition:
-		opacity var(--duration--base) var(--easing--ease-out),
-		filter var(--duration--base) var(--easing--ease-out),
-		transform var(--duration--base) var(--easing--ease-out);
-}
-
-:global(.new-agent-content-leave-to) {
-	opacity: 0;
-	filter: blur(3px);
-	transform: translateY(calc(-1 * var(--spacing--xs)));
 }
 
 .topBar {
@@ -554,11 +499,6 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	.suggestions,
 	.suggestionCard {
 		animation: none;
-	}
-
-	:global(.building-overlay-enter-active),
-	:global(.new-agent-content-leave-active) {
-		transition: none;
 	}
 }
 </style>

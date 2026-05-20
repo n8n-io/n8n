@@ -10,6 +10,7 @@ import {
 
 export interface AskCredentialToolDeps {
 	credentialProvider: CredentialProvider;
+	autoSkipWhenAmbiguous?: boolean;
 }
 
 export function buildAskCredentialTool(deps: AskCredentialToolDeps): BuiltTool {
@@ -41,6 +42,9 @@ export function buildAskCredentialTool(deps: AskCredentialToolDeps): BuiltTool {
 					const matching = all.filter((c) => c.type === input.credentialType);
 					if (matching.length === 1) {
 						return { credentialId: matching[0].id, credentialName: matching[0].name };
+					}
+					if (deps.autoSkipWhenAmbiguous) {
+						return { skipped: true };
 					}
 					return await ctx.suspend(input);
 				},

@@ -39,6 +39,7 @@ import {
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
+	AGENT_BUILDER_FULL_WIDTH_PARAM,
 } from '../constants';
 import { agentsEventBus } from '../agents.eventBus';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
@@ -126,6 +127,13 @@ const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const isChatFullWidth = ref(false);
+const shouldCollapseFullWidthAfterLoad = ref(false);
+
+function hasFullConfig(c: AgentJsonConfig | null): boolean {
+	return Boolean(
+		c?.name?.trim() && c.model?.trim() && c.credential?.trim() && c.instructions?.trim(),
+	);
+}
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
 
@@ -444,6 +452,15 @@ async function onConfigUpdated() {
 	if (connected) connectedTriggers.value = connected;
 	builderTelemetry.trackToolsAdded();
 	builderTelemetry.trackSkillsAdded();
+	if (shouldCollapseFullWidthAfterLoad.value && hasFullConfig(config.value)) {
+		shouldCollapseFullWidthAfterLoad.value = false;
+		isChatFullWidth.value = false;
+	}
+}
+
+function setChatFullWidth(fullWidth: boolean) {
+	shouldCollapseFullWidthAfterLoad.value = false;
+	isChatFullWidth.value = fullWidth;
 }
 
 const headerActions = computed(() =>
@@ -511,6 +528,11 @@ async function onHeaderAction(action: string) {
 
 async function initialize() {
 	initialized.value = false;
+	const openFullWidthFromNewAgent = route.query[AGENT_BUILDER_FULL_WIDTH_PARAM] === 'true';
+	if (openFullWidthFromNewAgent) {
+		isChatFullWidth.value = true;
+		shouldCollapseFullWidthAfterLoad.value = true;
+	}
 	// Flush any pending/in-flight save for the previous agent before we tear
 	// down its state — without this, an autosave scheduled by edits in the
 	// previous agent could land after we've already swapped to the new one.
@@ -571,6 +593,15 @@ async function initialize() {
 	}
 
 	initialized.value = true;
+
+	if (openFullWidthFromNewAgent) {
+		const { [AGENT_BUILDER_FULL_WIDTH_PARAM]: _fullWidthChat, ...query } = route.query;
+		void router.replace({ query });
+		if (hasFullConfig(config.value)) {
+			shouldCollapseFullWidthAfterLoad.value = false;
+			isChatFullWidth.value = false;
+		}
+	}
 }
 
 watch(agentId, initialize, { immediate: true });
@@ -900,7 +931,7 @@ function onSwitchAgent(nextAgentId: string) {
 					@update:streaming="onBuildChatStreamingChange"
 					@update:tools="onQuickActionAddTool"
 					@update:connected-triggers="onConnectedTriggersUpdate"
-					@update:full-width="isChatFullWidth = $event"
+					@update:full-width="setChatFullWidth"
 					@trigger-added="onTriggerAdded"
 					@agent-published="onPublished"
 				/>
@@ -957,6 +988,7 @@ function onSwitchAgent(nextAgentId: string) {
 
 .chatResizer {
 	flex-shrink: 0;
+	transition: width var(--duration--slow) var(--easing--ease-out);
 
 	:global([data-test-id='resize-handle']) {
 		width: var(--spacing--xs) !important;

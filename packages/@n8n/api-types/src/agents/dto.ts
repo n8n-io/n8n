@@ -43,6 +43,7 @@ export class UpdateAgentSkillDto extends Z.class({
 export class AgentChatMessageDto extends Z.class({
 	message: z.string().min(1),
 	sessionId: z.string().min(1).optional(),
+	nonInteractive: z.boolean().optional(),
 }) {}
 
 export class AgentBuildResumeDto extends Z.class({

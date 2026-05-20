@@ -51,3 +51,5 @@ export type ToolCallState = (typeof TOOL_CALL_STATE)[keyof typeof TOOL_CALL_STAT
 
 /** Query-string key the builder uses to deep-link into a chat session. */
 export const CONTINUE_SESSION_ID_PARAM = 'continueSessionId';
+/** One-time query-string key used to open the builder chat full-width after the new-agent flow. */
+export const AGENT_BUILDER_FULL_WIDTH_PARAM = 'fullWidthChat';

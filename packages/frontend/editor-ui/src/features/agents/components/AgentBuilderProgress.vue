@@ -5,6 +5,8 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { AgentSseEvent } from '@n8n/api-types';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import { getAgentConfig } from '../composables/useAgentApi';
+import type { AgentJsonConfig } from '../types';
 
 const props = defineProps<{
 	projectId: string;
@@ -38,9 +40,34 @@ function pushLine(line: string) {
 interface StreamState {
 	textBuffer: string;
 	doneSeen: boolean;
+	configCheckInFlight: boolean;
 }
 
-function handleEvent(event: AgentSseEvent, state: StreamState): void {
+function hasFullConfig(config: AgentJsonConfig | null): boolean {
+	return Boolean(
+		config?.name?.trim() &&
+			config.model?.trim() &&
+			config.credential?.trim() &&
+			config.instructions?.trim(),
+	);
+}
+
+async function markDoneIfConfigExists(state: StreamState) {
+	if (state.doneSeen || state.configCheckInFlight) return;
+	state.configCheckInFlight = true;
+	try {
+		const config = await getAgentConfig(rootStore.restApiContext, props.projectId, props.agentId);
+		if (hasFullConfig(config)) {
+			state.doneSeen = true;
+		}
+	} catch {
+		// Keep streaming if the just-written config is not readable yet.
+	} finally {
+		state.configCheckInFlight = false;
+	}
+}
+
+async function handleEvent(event: AgentSseEvent, state: StreamState): Promise<void> {
 	switch (event.type) {
 		case 'text-delta': {
 			state.textBuffer += event.delta;
@@ -66,6 +93,9 @@ function handleEvent(event: AgentSseEvent, state: StreamState): void {
 		case 'config-updated':
 		case 'tool-updated':
 			emit('configUpdated');
+			if (event.type === 'config-updated') {
+				await markDoneIfConfigExists(state);
+			}
 			break;
 		case 'error':
 			hasError.value = true;
@@ -86,14 +116,14 @@ async function streamBuild(message: string) {
 	const { baseUrl } = rootStore.restApiContext;
 	const browserId = localStorage.getItem('n8n-browserId') ?? '';
 	const url = `${baseUrl}/projects/${props.projectId}/agents/v2/${props.agentId}/build`;
-	const state: StreamState = { textBuffer: '', doneSeen: false };
+	const state: StreamState = { textBuffer: '', doneSeen: false, configCheckInFlight: false };
 
 	try {
 		const response = await fetch(url, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json', 'browser-id': browserId },
 			credentials: 'include',
-			body: JSON.stringify({ message }),
+			body: JSON.stringify({ message, nonInteractive: true }),
 		});
 
 		if (!response.ok || !response.body) {
@@ -122,7 +152,7 @@ async function streamBuild(message: string) {
 				} catch {
 					continue;
 				}
-				handleEvent(event, state);
+				await handleEvent(event, state);
 				if (state.doneSeen) break readerLoop;
 			}
 		}

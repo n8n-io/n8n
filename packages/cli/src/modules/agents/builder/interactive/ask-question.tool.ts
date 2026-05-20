@@ -8,7 +8,11 @@ import {
 	type AskQuestionResume,
 } from '@n8n/api-types';
 
-export function buildAskQuestionTool(): BuiltTool {
+export interface AskQuestionToolDeps {
+	autoPickFirst?: boolean;
+}
+
+export function buildAskQuestionTool(deps: AskQuestionToolDeps = {}): BuiltTool {
 	return new Tool(ASK_QUESTION_TOOL_NAME)
 		.description(
 			'Show a multiple-choice card in the chat UI and suspend until the user picks an ' +
@@ -28,7 +32,7 @@ export function buildAskQuestionTool(): BuiltTool {
 				if (ctx.resumeData !== undefined) return ctx.resumeData;
 				// Single-option questions have no actual choice — auto-pick so the
 				// LLM doesn't render a card the user can only confirm.
-				if (input.options.length === 1) {
+				if (deps.autoPickFirst || input.options.length === 1) {
 					return { values: [input.options[0].value] };
 				}
 				return await ctx.suspend(input);

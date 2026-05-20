@@ -590,7 +590,7 @@ export class AgentsController {
 		@Body payload: AgentChatMessageDto,
 	) {
 		const { projectId } = req.params;
-		const { message } = payload;
+		const { message, nonInteractive } = payload;
 
 		// Validate the agent exists before opening the SSE stream so a malformed
 		// id surfaces as a typed 404 instead of a generic 500 from the builder
@@ -614,6 +614,7 @@ export class AgentsController {
 					message,
 					credentialProvider,
 					req.user,
+					{ nonInteractive: nonInteractive === true },
 				),
 				send,
 				makeBuilderToolEvents(send),

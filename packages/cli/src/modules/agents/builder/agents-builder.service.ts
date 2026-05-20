@@ -31,6 +31,10 @@ function builderThreadId(agentId: string): string {
 	return `${AGENT_THREAD_PREFIX.BUILDER}${agentId}`;
 }
 
+interface BuildAgentOptions {
+	nonInteractive?: boolean;
+}
+
 @Service()
 export class AgentsBuilderService {
 	constructor(
@@ -73,8 +77,15 @@ export class AgentsBuilderService {
 		message: string,
 		credentialProvider: CredentialProvider,
 		user: User,
+		options: BuildAgentOptions = {},
 	): AsyncGenerator<StreamChunk> {
-		const builder = await this.createBuilderAgent(agentId, projectId, credentialProvider, user);
+		const builder = await this.createBuilderAgent(
+			agentId,
+			projectId,
+			credentialProvider,
+			user,
+			options,
+		);
 
 		this.logger.debug('Starting builder agent stream', { agentId, projectId });
 
@@ -143,6 +154,7 @@ export class AgentsBuilderService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		user: User,
+		options: BuildAgentOptions = {},
 	): Promise<Agent> {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) {
@@ -170,6 +182,7 @@ export class AgentsBuilderService {
 			toolList,
 			agentPreviewPath: buildAgentPreviewPath(projectId, agentId),
 			modelRecommendationsSection,
+			nonInteractive: options.nonInteractive === true,
 		});
 
 		const tools = this.agentsBuilderToolsService.getTools(
@@ -177,6 +190,7 @@ export class AgentsBuilderService {
 			projectId,
 			credentialProvider,
 			user,
+			{ nonInteractive: options.nonInteractive === true },
 		);
 
 		const builderMemory = new Memory().storage(this.n8nMemory).lastMessages(40);
