@@ -14,13 +14,6 @@ const largeLucideIconSet = vi.hoisted(() =>
 	),
 );
 
-const sharedLoaderMock = vi.hoisted(() => ({
-	loadLucideIconBody: vi.fn(async () => null),
-	loadLucideIconBodies: vi.fn(async (names: string[]) =>
-		Object.fromEntries(names.map((name) => [name, `<path data-icon="${name}" />`])),
-	),
-}));
-
 vi.mock('./lucideIconData', () => ({
 	lucideIcons: largeLucideIconSet,
 	lucideCategories: ['design'],
@@ -36,12 +29,14 @@ vi.mock('./emojiData', () => ({
 	],
 }));
 
-vi.mock('../N8nIcon/lucideIconLoader', () => sharedLoaderMock);
 vi.mock('is-emoji-supported', () => ({
 	isEmojiSupported: () => true,
 }));
 
 import IconPicker from '.';
+import { IconBodyLoaderKey } from '../../composables/useIconBodyLoader';
+
+const iconBodyLoader = vi.fn(async (name: string) => `<path data-icon="${name}" />`);
 
 const router = createRouter({
 	history: createWebHistory(),
@@ -56,8 +51,7 @@ const router = createRouter({
 
 describe('IconPicker virtualization', () => {
 	beforeEach(() => {
-		sharedLoaderMock.loadLucideIconBody.mockClear();
-		sharedLoaderMock.loadLucideIconBodies.mockClear();
+		iconBodyLoader.mockClear();
 	});
 
 	it('loads only visible icon bodies in browse mode', async () => {
@@ -67,6 +61,7 @@ describe('IconPicker virtualization', () => {
 				buttonTooltip: 'Select an icon',
 			},
 			global: {
+				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				stubs: ['N8nButton', 'N8nIcon'],
 			},
@@ -85,7 +80,8 @@ describe('IconPicker virtualization', () => {
 				35,
 			);
 		});
-		expect(sharedLoaderMock.loadLucideIconBodies).toHaveBeenCalled();
+
+		expect(iconBodyLoader).toHaveBeenCalled();
 	});
 
 	it('keeps broad search results virtualized', async () => {
@@ -95,6 +91,7 @@ describe('IconPicker virtualization', () => {
 				buttonTooltip: 'Select an icon',
 			},
 			global: {
+				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				stubs: ['N8nButton', 'N8nIcon'],
 			},

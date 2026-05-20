@@ -20,5 +20,5 @@
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["**/*.ts", "**/*.vue", "../design-system/vite/**/*.d.ts"]
+	"include": ["**/*.ts", "**/*.vue"]
 }

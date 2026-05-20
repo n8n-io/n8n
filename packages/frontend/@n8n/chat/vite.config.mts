@@ -5,7 +5,6 @@ import vue from '@vitejs/plugin-vue';
 import icons from 'unplugin-icons/vite';
 import dts from 'vite-plugin-dts';
 import { vitestConfig } from '@n8n/vitest-config/frontend';
-import { viteLucideBodiesPlugin } from '../design-system/vite/viteLucideBodiesPlugin';
 import pkg from './package.json';
 
 const includeVue = process.env.INCLUDE_VUE === 'true';
@@ -19,7 +18,6 @@ export default mergeConfig(
 	defineConfig({
 		plugins: [
 			vue(),
-			viteLucideBodiesPlugin(),
 			icons({
 				compiler: 'vue3',
 				autoInstall: true,

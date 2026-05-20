@@ -3,13 +3,13 @@ import vue from '@vitejs/plugin-vue';
 import icons from 'unplugin-icons/vite';
 import svgLoader from 'vite-svg-loader';
 import path from 'path';
-import { viteLucideBodiesPlugin } from '../design-system/vite/viteLucideBodiesPlugin';
+import { lucideIconsPlugin } from '../design-system/src/icons/lucide/vite';
 
 // https://vite.dev/config/
 export default defineConfig({
 	plugins: [
 		vue(),
-		viteLucideBodiesPlugin(),
+		lucideIconsPlugin(),
 		icons({
 			compiler: 'vue3',
 			autoInstall: true,

@@ -4,7 +4,7 @@ import { defineConfig, mergeConfig } from 'vite';
 import icons from 'unplugin-icons/vite';
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import svgLoader from 'vite-svg-loader';
-import { viteLucideBodiesPlugin } from './vite/viteLucideBodiesPlugin';
+import { lucideIconsPlugin } from './src/icons/lucide/vite';
 
 const packagesDir = resolve(__dirname, '..', '..', '..');
 
@@ -12,7 +12,7 @@ export default mergeConfig(
 	defineConfig({
 		plugins: [
 			vue(),
-			viteLucideBodiesPlugin(),
+			lucideIconsPlugin(),
 			svgLoader({
 				svgoConfig: {
 					plugins: [

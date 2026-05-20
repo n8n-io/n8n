@@ -3,9 +3,9 @@ import { computed, ref, shallowRef, useCssModule, watch } from 'vue';
 
 import { deprecatedIconSet, updatedIconSet } from './icons';
 import type { IconName, NodeIconName } from './icons';
-import { loadLucideIconBody } from './lucideIconLoader';
 import type { nodeIconSet as NodeIconSetType } from './node-icons';
 import { vSvgContent } from './svgContentDirective';
+import { useInjectIconBodyLoader } from '../../composables/useIconBodyLoader';
 import type { IconSize, IconColor } from '../../types/icon';
 
 interface IconProps {
@@ -111,6 +111,8 @@ watch(
 	{ immediate: true },
 );
 
+const loadIconBody = useInjectIconBodyLoader();
+
 const fallbackBody = ref<string | null>(null);
 let fallbackRequestId = 0;
 
@@ -124,7 +126,7 @@ watch(
 		}
 
 		try {
-			const body = await loadLucideIconBody(iconName);
+			const body = await loadIconBody(iconName);
 			if (requestId === fallbackRequestId) {
 				fallbackBody.value = body;
 			}
@@ -156,6 +158,7 @@ watch(
 		viewBox="0 0 24 24"
 		:class="[...classes, $style.fallbackIcon]"
 		:height="size.height"
+		v-svg-content="fallbackBody"
 		:width="size.width"
 		fill="none"
 		stroke="currentColor"
@@ -166,7 +169,6 @@ watch(
 		role="img"
 		:data-icon="props.icon"
 		:style="styles"
-		v-svg-content="fallbackBody"
 	/>
 </template>
 

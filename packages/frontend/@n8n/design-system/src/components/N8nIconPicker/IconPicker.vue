@@ -6,10 +6,10 @@ import { isEmojiSupported } from 'is-emoji-supported';
 import { ref, computed, watch, nextTick } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import { useInjectIconBodyLoader } from '../../composables/useIconBodyLoader';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
-import { loadLucideIconBodies } from '../N8nIcon/lucideIconLoader';
 import N8nIconButton from '../N8nIconButton';
 import N8nInput from '../N8nInput';
 import N8nRecycleScroller from '../N8nRecycleScroller';
@@ -62,6 +62,12 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const model = defineModel<IconOrEmoji>({ default: { type: 'icon', value: 'smile' } });
+
+const loadIconBody = useInjectIconBodyLoader();
+
+async function loadIconBodies(names: string[]): Promise<void> {
+	await Promise.all(names.map(loadIconBody));
+}
 
 // --- Lazy-loaded data ---
 const lucideData = ref<Record<string, LucideIconMeta> | null>(null);
@@ -169,7 +175,7 @@ function getPrefetchIconNames(rows: IconPickerVirtualRow[]): string[] {
 async function prefetchVisibleIconBodies(rows = iconRows.value) {
 	const iconNames = getPrefetchIconNames(rows);
 	if (iconNames.length === 0) return;
-	await loadLucideIconBodies(iconNames);
+	await loadIconBodies(iconNames);
 }
 
 async function prefetchPickerData() {
@@ -229,7 +235,7 @@ watch(
 			.flatMap((row) => row.iconNames);
 
 		if (iconNames.length > 0) {
-			await loadLucideIconBodies(iconNames);
+			await loadIconBodies(iconNames);
 		}
 	},
 );
@@ -383,8 +389,8 @@ function humanizeIconName(name: string): string {
 			<!-- Icons tab -->
 			<div v-else-if="selectedTab === 'icons' && dataLoaded" :class="$style.content">
 				<N8nRecycleScroller
-					ref="iconScrollerRef"
 					v-if="iconRows.length > 0"
+					ref="iconScrollerRef"
 					:items="iconRows"
 					item-key="id"
 					:item-size="VIRTUAL_ROW_SIZE"
@@ -474,16 +480,6 @@ function humanizeIconName(name: string): string {
 		width: var(--spacing--md);
 		height: var(--spacing--md);
 		stroke-width: 1.5;
-	}
-
-	.xlarge & {
-		width: 24px;
-		height: 24px;
-	}
-
-	.xxlarge & {
-		width: 32px;
-		height: 32px;
 	}
 
 	.xlarge & {
