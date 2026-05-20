@@ -132,8 +132,8 @@ An agent is invoking a tool. Sent before the tool executes.
   "agentId": "agent-001",
   "payload": {
     "toolCallId": "tc_abc123",
-    "toolName": "list-workflows",
-    "args": {"limit": 10}
+    "toolName": "workflows",
+    "args": {"action": "list", "limit": 10}
   }
 }
 ```
@@ -187,7 +187,7 @@ The orchestrator has created a new sub-agent via the `delegate` tool.
   "payload": {
     "parentId": "agent-001",
     "role": "workflow builder",
-    "tools": ["create-workflow", "update-workflow", "list-nodes", "get-node-description"]
+    "tools": ["build-workflow", "workflows", "nodes", "credentials"]
   }
 }
 ```
@@ -227,8 +227,8 @@ The tool's execution is paused until the user responds.
   "payload": {
     "requestId": "cr_xyz",
     "toolCallId": "tc_abc123",
-    "toolName": "delete-workflow",
-    "args": {"workflowId": "wf-123"},
+    "toolName": "workflows",
+    "args": {"action": "delete", "workflowId": "wf-123"},
     "severity": "warning",
     "message": "Archive workflow 'My Workflow'?"
   }
@@ -329,7 +329,7 @@ When a run errors:
 ```
 ← run-start       {runId: "r1", agentId: "a1", payload: {messageId: "m1"}}
 ← reasoning-delta {runId: "r1", agentId: "a1", payload: {text: "Let me look up..."}}
-← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "list-workflows"}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "workflows", args: {action: "list"}}}
 ← tool-result     {runId: "r1", agentId: "a1", payload: {result: [...]}}
 ← text-delta      {runId: "r1", agentId: "a1", payload: {text: "You have 3 workflows:\n"}}
 ← run-finish      {runId: "r1", agentId: "a1", payload: {status: "completed"}}
@@ -343,21 +343,21 @@ When a run errors:
 ← tool-result     {runId: "r1", agentId: "a1", payload: {result: {goal: "Weather to Slack"}}}
 ← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "delegate", toolCallId: "tc2"}}
 ← agent-spawned   {runId: "r1", agentId: "a2", payload: {parentId: "a1", role: "workflow builder"}}
-← tool-call       {runId: "r1", agentId: "a2", payload: {toolName: "create-workflow"}}
-← tool-result     {runId: "r1", agentId: "a2", payload: {result: {id: "wf-123"}}}
+← tool-call       {runId: "r1", agentId: "a2", payload: {toolName: "build-workflow"}}
+← tool-result     {runId: "r1", agentId: "a2", payload: {result: {workflowId: "wf-123"}}}
 ← agent-completed {runId: "r1", agentId: "a2", payload: {result: "Created wf-123"}}
 ← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc2", result: "Created wf-123"}}
-← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "run-workflow"}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "executions", args: {action: "run"}}}
 ← tool-result     {runId: "r1", agentId: "a1", payload: {result: {executionId: "exec-456"}}}
-← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "get-execution"}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "executions", args: {action: "get"}}}
 ← tool-result     {runId: "r1", agentId: "a1", payload: {result: {status: "error"}}}
 ← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "delegate", toolCallId: "tc5"}}
 ← agent-spawned   {runId: "r1", agentId: "a3", payload: {parentId: "a1", role: "execution debugger"}}
-← tool-call       {runId: "r1", agentId: "a3", payload: {toolName: "get-execution"}}
+← tool-call       {runId: "r1", agentId: "a3", payload: {toolName: "executions", args: {action: "get"}}}
 ← reasoning-delta {runId: "r1", agentId: "a3", payload: {text: "The HTTP node returned 401..."}}
 ← agent-completed {runId: "r1", agentId: "a3", payload: {result: "Missing API key header"}}
 ← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc5", result: "Missing API key"}}
-← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "plan", args: {action: "update"}}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "plan", args: {guidance: "Add a fix task for the failed execution"}}}
 ← ...loop continues...
 ← text-delta      {runId: "r1", agentId: "a1", payload: {text: "Done! I created a workflow..."}}
 ← run-finish      {runId: "r1", agentId: "a1", payload: {status: "completed"}}
@@ -434,19 +434,19 @@ The frontend renders events as a collapsible tree grouped by `agentId`:
 ```
 🤖 Orchestrator
 ├── 💭 "Let me check what credentials are available..."
-├── 🔧 list-credentials → [slack-bot, weather-api]
+├── 🔧 credentials(action="list") → [slack-bot, weather-api]
 ├── 📋 plan: build → execute → inspect
 │
 ├── 🤖 Sub-Agent A (workflow builder)
-│   ├── 🔧 list-nodes → [scheduleTrigger, httpRequest, slack]
-│   ├── 🔧 create-workflow → wf-123
+│   ├── 🔧 nodes(action="list") → [scheduleTrigger, httpRequest, slack]
+│   ├── 🔧 build-workflow → wf-123
 │   └── ✅ "Created wf-123 with 3 nodes"
 │
-├── 🔧 run-workflow wf-123
-├── 🔧 get-execution → error (401)
+├── 🔧 executions(action="run") wf-123
+├── 🔧 executions(action="get") → error (401)
 │
 ├── 🤖 Sub-Agent B (execution debugger)
-│   ├── 🔧 get-execution → {error details}
+│   ├── 🔧 executions(action="get") → {error details}
 │   ├── 💭 "HTTP node returned 401..."
 │   └── ✅ "Missing API key in query params"
 │

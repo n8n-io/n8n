@@ -20,7 +20,7 @@ End-to-end tests for the Instance AI feature, using recorded LLM responses repla
 
 ## Architecture Overview
 
-Instance AI tests exercise a multi-agent LLM system that builds and executes n8n workflows. Each test sends a chat message, the LLM orchestrates tool calls (build-workflow, run-workflow, etc.), and the test asserts on the resulting UI state.
+Instance AI tests exercise a multi-agent LLM system that builds and executes n8n workflows. Each test sends a chat message, the LLM orchestrates tool calls (`build-workflow`, `executions(action="run")`, etc.), and the test asserts on the resulting UI state.
 
 The challenge: LLM API calls are expensive, non-deterministic, and unavailable in CI. The solution is a record/replay architecture with two layers:
 
@@ -79,11 +79,11 @@ Consider a test that builds and runs a workflow:
 ```
 Recording session:
   build-workflow → { workflowId: "5" }
-  run-workflow({ workflowId: "5" }) → { executionId: "exec-100" }
+  executions({ action: "run", workflowId: "5" }) → { executionId: "exec-100" }
 
 Replay session:
   build-workflow → { workflowId: "12" }     ← different auto-increment ID
-  run-workflow({ workflowId: "5" }) → ERROR  ← LLM still says "5" (from recorded response)
+  executions({ action: "run", workflowId: "5" }) → ERROR  ← LLM still says "5" (from recorded response)
 ```
 
 The LLM response is pre-recorded and contains the old `workflowId: "5"`. But in the replay session, `build-workflow` created workflow `"12"`. When the LLM tells the agent to run workflow `"5"`, it doesn't exist.
@@ -96,8 +96,8 @@ The `IdRemapper` maintains a bidirectional mapping of old IDs to new IDs, learne
 1. build-workflow executes → output: { workflowId: "12" }
 2. IdRemapper compares recorded output { workflowId: "5" } with real output { workflowId: "12" }
 3. Learns mapping: "5" → "12"
-4. Next tool call: run-workflow({ workflowId: "5" })
-5. IdRemapper translates input: run-workflow({ workflowId: "12" })
+4. Next tool call: executions({ action: "run", workflowId: "5" })
+5. IdRemapper translates input: executions({ action: "run", workflowId: "12" })
 6. Tool executes successfully with the real ID
 ```
 
@@ -119,13 +119,13 @@ Tools are categorized by whether they can execute in CI:
 
 Tools that only need the n8n database and engine. They execute for real, and the `IdRemapper` translates IDs in both directions.
 
-| Tool | Why Real Execution |
-|------|-------------------|
+| Tool/action | Why Real Execution |
+|-------------|-------------------|
 | `build-workflow` | Creates real workflow in DB for preview |
-| `run-workflow` | Creates real execution for status display |
-| `setup-workflow` | Configures workflow nodes |
-| `search-nodes` | Queries node catalog (local) |
-| `get-execution` | Reads execution results |
+| `executions(action="run")` | Creates real execution for status display |
+| `workflows(action="setup")` | Configures workflow nodes |
+| `nodes(action="search")` | Queries node catalog (local) |
+| `executions(action="get")` | Reads execution results |
 | Credential tools | Creates real credentials |
 | Data table tools | Creates real data tables |
 | `ask-user` | May contain IDs in response |
@@ -147,11 +147,11 @@ async execute(input, context) {
 
 Tools that need internet access or external services. They skip real execution entirely and return the recorded output (with ID remapping applied).
 
-| Tool | Why Pure Replay |
-|------|----------------|
-| `web-search` | No internet in CI |
-| `fetch-url` | No internet in CI |
-| `test-credential` | Needs external service |
+| Tool/action | Why Pure Replay |
+|-------------|----------------|
+| `research(action="web-search")` | No internet in CI |
+| `research(action="fetch-url")` | No internet in CI |
+| `credentials(action="test")` | Needs external service |
 
 The wrapping flow:
 
@@ -166,11 +166,11 @@ async execute(input, context) {
 
 Some tools pass through without wrapping:
 
-| Tool | Why |
-|------|-----|
+| Tool/action | Why |
+|-------------|-----|
 | `plan` | Pure text orchestration, no IDs |
 | `delegate` | Must spawn real sub-agent (which gets its own wrapping) |
-| `update-tasks` | Orchestration bookkeeping |
+| `task-control(action="update-checklist")` | Orchestration bookkeeping |
 
 ## Trace Format
 
@@ -178,10 +178,10 @@ Each test's tool calls are recorded in `trace.jsonl` (newline-delimited JSON):
 
 ```jsonl
 {"kind":"header","version":1,"testName":"should-approve-workflow-execution","recordedAt":"2026-04-09T12:00:00Z"}
-{"stepId":1,"kind":"tool-call","agentRole":"orchestrator","toolName":"search-nodes","input":{...},"output":{...}}
+{"stepId":1,"kind":"tool-call","agentRole":"orchestrator","toolName":"nodes","input":{"action":"search",...},"output":{...}}
 {"stepId":2,"kind":"tool-call","agentRole":"workflow-builder","toolName":"build-workflow","input":{...},"output":{"workflowId":"5"}}
-{"stepId":3,"kind":"tool-suspend","agentRole":"orchestrator","toolName":"run-workflow","input":{"workflowId":"5"},"output":{"denied":true},"suspendPayload":{...}}
-{"stepId":4,"kind":"tool-resume","agentRole":"orchestrator","toolName":"run-workflow","input":{"workflowId":"5"},"output":{"executionId":"exec-100"}}
+{"stepId":3,"kind":"tool-suspend","agentRole":"orchestrator","toolName":"executions","input":{"action":"run","workflowId":"5"},"output":{},"suspendPayload":{...}}
+{"stepId":4,"kind":"tool-resume","agentRole":"orchestrator","toolName":"executions","input":{"action":"run","workflowId":"5"},"output":{"executionId":"exec-100"}}
 ```
 
 ### Event Types
@@ -196,7 +196,7 @@ Each test's tool calls are recorded in `trace.jsonl` (newline-delimited JSON):
 The `TraceIndex` groups events by `agentRole` with independent cursors per role. This handles interleaved orchestrator and sub-agent calls:
 
 ```
-orchestrator: [search-nodes, run-workflow-suspend, run-workflow-resume]
+orchestrator: [nodes(search), executions(run)-suspend, executions(run)-resume]
                 ^cursor=0
 workflow-builder: [build-workflow]
                    ^cursor=0
@@ -407,7 +407,10 @@ LLM responses are frozen — the replay serves the exact same bytes regardless o
 
 3. **Verify replay** by running without the key.
 
-4. **Classify any new tools**: If the test exercises tools that need external services, add them to `PURE_REPLAY_TOOLS` in `trace-replay.ts`.
+4. **Classify any new tools/actions**: If the test exercises external services,
+   update the replay classification in `trace-replay.ts`. For consolidated
+   tools, use action-aware handling rather than pure-replaying every action on
+   the tool.
 
 5. **Use identity-based assertions** for thread lookups — `getThreadByTitle()` instead of positional selectors like `.last()`. Tests run in parallel and share containers; positional selectors break when other tests create threads.
 

@@ -136,9 +136,9 @@ graph TD
     O[Orchestrator Agent] -->|delegate| S1[Sub-Agent: role A]
     O -->|build-workflow-with-agent| S2[Builder Agent]
     O -->|plan| S3[Planned Tasks]
-    O -->|direct| T1[list-workflows]
-    O -->|direct| T2[run-workflow]
-    O -->|direct| T3[get-execution]
+    O -->|direct| T1[workflows action=list]
+    O -->|direct| T2[executions action=run]
+    O -->|direct| T3[executions action=get]
     O -->|direct| T4[plan]
 
     S3 -->|kind: build-workflow| S4[Builder Agent]
@@ -146,9 +146,9 @@ graph TD
     S3 -->|kind: research| S6[Research Agent]
     S3 -->|kind: delegate| S7[Custom Sub-Agent]
 
-    S1 -->|tools| T5[get-execution]
-    S1 -->|tools| T6[get-workflow]
-    S2 -->|tools| T7[search-nodes]
+    S1 -->|tools| T5[executions action=get]
+    S1 -->|tools| T6[workflows action=get]
+    S2 -->|tools| T7[nodes action=search]
     S2 -->|tools| T8[build-workflow]
 
     style O fill:#f9f,stroke:#333
@@ -162,8 +162,8 @@ graph TD
 ```
 
 **Orchestrator** handles directly:
-- Read-only queries (list-workflows, get-execution, list-credentials)
-- Execution triggers (run-workflow)
+- Read-only queries (`workflows(action="list")`, `executions(action="get")`, `credentials(action="list")`)
+- Execution triggers (`executions(action="run")`)
 - Planning (plan tool — always direct)
 - Verification and credential application (verify-built-workflow, apply-workflow-credentials)
 
@@ -344,9 +344,9 @@ task has a `kind` that determines its executor:
 
 | Kind | Executor | Tools |
 |------|----------|-------|
-| `build-workflow` | Builder agent | search-nodes, build-workflow, get-node-type-definition, etc. |
-| `manage-data-tables` | Data table agent | All `*-data-table*` tools |
-| `research` | Research agent | web-search, fetch-url |
+| `build-workflow` | Builder agent | `nodes(action="search")`, `nodes(action="type-definition")`, `build-workflow`, etc. |
+| `manage-data-tables` | Data table agent | `data-tables` actions |
+| `research` | Research agent | `research(action="web-search")`, `research(action="fetch-url")` |
 | `delegate` | Custom sub-agent | Orchestrator-specified subset |
 
 Tasks run detached as background agents. Dependencies are respected — a task
@@ -374,8 +374,8 @@ a terminal state to prevent infinite loops.
 
 To keep the orchestrator's context lean, tools are stratified into two tiers:
 
-- **Core tools** (always-loaded): `plan`, `delegate`, `ask-user`, `web-search`,
-  `fetch-url` — these are directly available to the LLM
+- **Core tools** (always-loaded): `plan`, `delegate`, `ask-user`, and
+  `research` — these are directly available to the LLM
 - **Deferred tools** (behind ToolSearchProcessor): all other domain tools —
   discovered on-demand via `search_tools` and activated via `load_tool`
 
@@ -394,7 +394,7 @@ descriptions are:
 1. **Schema-sanitized** for Anthropic compatibility (ZodNull → optional,
    discriminated unions → flattened objects, array types → recursive element fix)
 2. **Name-checked** against reserved domain tool names (prevents malicious
-   shadowing of tools like `run-workflow`)
+   shadowing of tools like `executions`)
 3. **Separated** from domain tools in the orchestrator's tool set
 4. **Cached** by config hash inside the manager — the underlying `MCPClient`
    instances are tracked so `mcpManager.disconnect()` (called during service
@@ -425,7 +425,7 @@ step) and is included as a `<conversation-summary>` block in subsequent requests
 ## Domain Access Gating
 
 The `DomainAccessTracker` manages per-domain approval for external URL access.
-When the agent calls `fetch-url`, the domain is checked against the tracker.
+When the agent calls `research(action="fetch-url")`, the domain is checked against the tracker.
 Unapproved domains trigger a HITL confirmation with `domainAccess` payload,
 allowing the user to approve or deny access to specific hosts.
 

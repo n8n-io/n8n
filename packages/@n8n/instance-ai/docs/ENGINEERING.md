@@ -112,7 +112,8 @@ it('should stream tool-call event when agent uses a tool', async () => {
   const events = await collectEvents(agent.stream('list my workflows'));
   const toolCall = events.find(e => e.type === 'tool-call');
   expect(toolCall).toBeDefined();
-  expect(toolCall!.payload.toolName).toBe('list-workflows');
+  expect(toolCall!.payload.toolName).toBe('workflows');
+  expect(toolCall!.payload.args).toMatchObject({ action: 'list' });
 });
 ```
 
@@ -221,18 +222,22 @@ tests or traces.
   in tools
 
 ```typescript
-export function createListWorkflowsTool(context: InstanceAiContext) {
-  return new Tool('list-workflows')
-    .description('List workflows accessible to the current user.')
-    .input(
-      z.object({
-        query: z.string().optional().describe('Filter workflows by name'),
-        limit: z.number().int().min(1).max(100).default(50).describe('Max results'),
-      }),
-    )
+const inputSchema = z.object({
+  action: z.literal('list').describe('List workflows accessible to the current user'),
+  query: z.string().optional().describe('Filter workflows by name'),
+  limit: z.number().int().min(1).max(100).default(50).describe('Max results'),
+});
+
+export function createWorkflowsTool(context: InstanceAiContext) {
+  return new Tool('workflows')
+    .description('Manage workflows.')
+    .input(inputSchema)
     .output(z.object({ workflows: z.array(workflowSummarySchema) }))
-    .handler(async ({ query, limit }) => {
-      const workflows = await context.workflowService.list({ query, limit });
+    .handler(async (input: z.infer<typeof inputSchema>) => {
+      const workflows = await context.workflowService.list({
+        query: input.query,
+        limit: input.limit,
+      });
       return { workflows };
     })
     .build();

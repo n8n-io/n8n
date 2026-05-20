@@ -13,13 +13,34 @@ them. Some are conditional on context availability.
 
 ### `plan`
 
-Persist a dependency-aware task plan for detached multi-step execution. Use only
-when the work requires 2+ tasks with dependencies. The plan is shown to the user
-for approval before execution starts.
+Ask the inline planner agent to draft a dependency-aware task plan. Use only
+when the work requires 2+ tasks with dependencies. The planner reads the recent
+conversation, can receive optional steering guidance, and presents the resulting
+plan to the user for approval before execution starts.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `guidance` | string | no | Optional steering note for the planner |
+
+**Returns**: `{ result: string }`
+
+**Behavior**:
+- Spawns an inline planner agent with the last 5 conversation messages
+- The planner uses internal `add-plan-item`, `remove-plan-item`, and
+  `submit-plan` tools to produce the plan
+- On approval: calls `schedulePlannedTasks()` to start detached execution
+- On denial: returns feedback for the planner to revise the plan
+
+### `create-tasks`
+
+Persist a dependency-aware task plan directly. This is available for replanning
+and advanced bypass flows; the normal initial planning path should use `plan`.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `tasks` | array | yes | Dependency-aware execution plan (see schema below) |
+| `skipPlannerDiscovery` | boolean | no | Bypass the planner-discovery guard for advanced flows |
+| `reason` | string | no | Brief reason for bypassing planner discovery |
 
 **Task schema**:
 
@@ -45,8 +66,8 @@ for approval before execution starts.
 
 **Task kinds** map to preconfigured sub-agents:
 - `build-workflow` → workflow builder agent (sandbox or tool mode)
-- `manage-data-tables` → data table agent (all `*-data-table*` tools)
-- `research` → research agent (web-search + fetch-url)
+- `manage-data-tables` → data table agent (`data-tables` actions)
+- `research` → research agent (`research` actions: `web-search`, `fetch-url`)
 - `delegate` → custom sub-agent with orchestrator-specified tool subset
 - `checkpoint` → orchestrator-run verification step for workflow tasks
 
@@ -121,14 +142,15 @@ the builder runs detached from the orchestrator.
   to `~/workspace/src/workflow.ts`, runs `tsc` for validation, and calls `submit-workflow`.
   Gets workspace filesystem tools and `workspace_execute_command` from the workspace.
 - **Tool mode** (fallback): agent uses string-based `build-workflow` tool with
-  `get-node-type-definition`, `get-workflow-as-code`, `search-nodes`.
+  `nodes(action="type-definition")`, `workflows(action="get-as-code")`, and
+  `nodes(action="search")`.
 
 Both modes: max 60 steps, publishes events to the event bus, non-blocking.
 
 **Sandbox-only tools** (not in `createAllTools`, only available to the builder):
 - `submit-workflow` — reads TypeScript from sandbox, parses/validates, resolves credentials, saves
 - `materialize-node-type` — fetches `.d.ts` definitions and writes to sandbox for `tsc`
-- `write-sandbox-file` — writes files to sandbox workspace (path-traversal protected)
+- `write-file` — writes files to sandbox workspace (path-traversal protected)
 
 ### `verify-built-workflow` *(conditional)*
 
@@ -195,11 +217,15 @@ are configured.
 
 ---
 
-## Workflow Tools (9–13)
+## Workflow Tools
 
-Core count is 9; up to 4 more are conditionally registered based on license.
+Workflow management operations are actions on the consolidated `workflows`
+native tool. Each call includes the `action` shown in the heading; field tables
+omit that required discriminator. `build-workflow` remains a separate builder
+tool. Core `workflows` count is 9 actions; up to 4 more are conditionally
+registered based on license.
 
-### `list-workflows`
+### `workflows(action="list")`
 
 List workflows accessible to the current user.
 
@@ -213,7 +239,7 @@ List workflows accessible to the current user.
 
 `activeVersionId` is `null` when the workflow is unpublished.
 
-### `get-workflow`
+### `workflows(action="get")`
 
 Get full workflow definition including nodes, connections, and settings.
 
@@ -225,7 +251,7 @@ Get full workflow definition including nodes, connections, and settings.
 
 `activeVersionId` is `null` when the workflow is unpublished.
 
-### `get-workflow-as-code`
+### `workflows(action="get-as-code")`
 
 Get a workflow as TypeScript SDK code. Used by the builder agent to load an
 existing workflow for modification.
@@ -252,10 +278,10 @@ code.
 **Behavior**: Validates TypeScript SDK code via `parseAndValidate()`, generates
 workflow JSON, applies layout engine positioning, resolves credentials.
 
-### `delete-workflow`
+### `workflows(action="delete")`
 
 Archive a workflow (soft delete, deactivates if needed). This is reversible
-with `unarchive-workflow`.
+with `workflows(action="unarchive")`.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -263,7 +289,7 @@ with `unarchive-workflow`.
 
 **Returns**: `{ success: boolean }`
 
-### `unarchive-workflow`
+### `workflows(action="unarchive")`
 
 Restore an archived workflow without publishing it.
 
@@ -273,7 +299,7 @@ Restore an archived workflow without publishing it.
 
 **Returns**: `{ success: boolean }`
 
-### `setup-workflow`
+### `workflows(action="setup")`
 
 Open the UI for per-node credential and parameter setup. Uses a suspend/resume
 state machine where each node triggers a HITL confirmation for the user to
@@ -282,10 +308,11 @@ configure it interactively.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow to set up |
+| `projectId` | string | no | Project ID to scope credential creation to |
 
 **Returns**: `{ completedNodes, skippedNodes, failedNodes }`
 
-### `publish-workflow`
+### `workflows(action="publish")`
 
 Publish a workflow version to production. Makes it active — it will run on triggers.
 
@@ -293,10 +320,12 @@ Publish a workflow version to production. Makes it active — it will run on tri
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow ID |
 | `versionId` | string | no | Specific version (omit for latest draft) |
+| `name` | string | no | Version name when named versions are available |
+| `description` | string | no | Version description when named versions are available |
 
 **Returns**: `{ success: boolean, activeVersionId?: string }`
 
-### `unpublish-workflow`
+### `workflows(action="unpublish")`
 
 Stop a workflow from running in production. The draft is preserved.
 
@@ -306,7 +335,7 @@ Stop a workflow from running in production. The draft is preserved.
 
 **Returns**: `{ success: boolean }`
 
-### `list-workflow-versions` *(conditional — requires license)*
+### `workflows(action="list-versions")` *(conditional — requires license)*
 
 List version history for a workflow (metadata only).
 
@@ -318,7 +347,7 @@ List version history for a workflow (metadata only).
 
 **Returns**: `{ versions: [{ versionId, name, description, authors, createdAt, autosaved, isActive, isCurrentDraft }] }`
 
-### `get-workflow-version` *(conditional — requires license)*
+### `workflows(action="get-version")` *(conditional — requires license)*
 
 Get full details of a specific workflow version including nodes and connections.
 
@@ -329,7 +358,7 @@ Get full details of a specific workflow version including nodes and connections.
 
 **Returns**: `{ versionId, name, description, authors, nodes, connections, ... }`
 
-### `restore-workflow-version` *(conditional — requires license)*
+### `workflows(action="restore-version")` *(conditional — requires license)*
 
 Restore a workflow to a previous version (overwrites current draft). HITL
 approval required.
@@ -341,7 +370,7 @@ approval required.
 
 **Returns**: `{ success: boolean }`
 
-### `update-workflow-version` *(conditional — requires `feat:namedVersions` license)*
+### `workflows(action="update-version")` *(conditional — requires `feat:namedVersions` license)*
 
 Update a version's name or description.
 
@@ -356,9 +385,13 @@ Update a version's name or description.
 
 ---
 
-## Execution Tools (6)
+## Execution Tool: `executions`
 
-### `list-executions`
+Execution operations are actions on one consolidated native tool. Each call
+includes the `action` shown in the heading; field tables omit that required
+discriminator.
+
+### `executions(action="list")`
 
 List recent workflow executions.
 
@@ -370,7 +403,7 @@ List recent workflow executions.
 
 **Returns**: `{ executions: [{ id, workflowId, workflowName, status, startedAt, finishedAt, mode }] }`
 
-### `run-workflow`
+### `executions(action="run")`
 
 Execute a workflow, wait for completion (with timeout), and return the result.
 Default timeout: 5 minutes; max: 10 minutes. On timeout, execution is cancelled.
@@ -390,7 +423,7 @@ Default timeout: 5 minutes; max: 10 minutes. On timeout, execution is cancelled.
 - **Schedule trigger**: current datetime information
 - **Unknown trigger**: `{ json: inputData }` (generic fallback)
 
-### `get-execution`
+### `executions(action="get")`
 
 Get execution status without blocking.
 
@@ -400,7 +433,7 @@ Get execution status without blocking.
 
 **Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt? }`
 
-### `debug-execution`
+### `executions(action="debug")`
 
 Analyze a failed execution with structured diagnostics.
 
@@ -410,7 +443,7 @@ Analyze a failed execution with structured diagnostics.
 
 **Returns**: `{ executionId, status, failedNode?: { name, type, error, inputData? }, nodeTrace: [{ name, type, status }] }`
 
-### `get-node-output`
+### `executions(action="get-node-output")`
 
 Get the output data of a specific node from an execution.
 
@@ -421,7 +454,7 @@ Get the output data of a specific node from an execution.
 
 **Returns**: `{ nodeName, data?, error? }`
 
-### `stop-execution`
+### `executions(action="stop")`
 
 Cancel a running execution.
 
@@ -433,23 +466,30 @@ Cancel a running execution.
 
 ---
 
-## Credential Tools (6)
+## Credential Tool: `credentials`
 
 > **Security note**: The agent never handles raw credential secrets. Credential
 > creation and secret configuration is done through the n8n frontend UI (via
-> `setup-credentials`) or browser automation (`browser-credential-setup`).
+> `credentials(action="setup")`) or browser automation (`browser-credential-setup`).
 
-### `list-credentials`
+Credential operations are actions on one consolidated native tool. Each call
+includes the `action` shown in the heading; field tables omit that required
+discriminator.
+
+### `credentials(action="list")`
 
 List credentials accessible to the current user. Never exposes secrets.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `type` | string | no | Filter by credential type (e.g., `notionApi`) |
+| `name` | string | no | Filter by credential name substring |
+| `limit` | number | no | Max results (1–200, default 50) |
+| `offset` | number | no | Number of credentials to skip |
 
-**Returns**: `{ credentials: [{ id, name, type, createdAt, updatedAt }] }`
+**Returns**: `{ credentials: [{ id, name, type, createdAt, updatedAt }], total, hasMore }`
 
-### `get-credential`
+### `credentials(action="get")`
 
 Get credential metadata. Never returns decrypted secrets.
 
@@ -459,7 +499,7 @@ Get credential metadata. Never returns decrypted secrets.
 
 **Returns**: `{ id, name, type, createdAt, updatedAt, nodesWithAccess? }`
 
-### `delete-credential`
+### `credentials(action="delete")`
 
 Permanently delete a credential. **Irreversible** — HITL confirmation required.
 
@@ -469,7 +509,7 @@ Permanently delete a credential. **Irreversible** — HITL confirmation required
 
 **Returns**: `{ success: boolean }`
 
-### `search-credential-types`
+### `credentials(action="search-types")`
 
 Search available credential types by name or description.
 
@@ -479,22 +519,24 @@ Search available credential types by name or description.
 
 **Returns**: `{ credentialTypes: [{ name, displayName, description }] }`
 
-### `setup-credentials`
+### `credentials(action="setup")`
 
 Open the credential picker UI for the user to configure credentials securely.
 The LLM never sees secrets — the user interacts with the n8n frontend directly.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `credentialType` | string | yes | Credential type to set up |
+| `credentials` | array | yes | Credentials to create or select: `{ credentialType, reason?, suggestedName? }[]` |
+| `projectId` | string | no | Project ID to scope credential creation to |
+| `credentialFlow` | object | no | Flow stage metadata for finalization cards |
 
 **Returns**: `{ credentialId, credentialType, needsBrowserSetup? }`
 
 **HITL**: Suspends execution and renders the credential setup UI. When
 `needsBrowserSetup=true`, the orchestrator should invoke `browser-credential-setup`
-followed by another `setup-credentials` call to finalize.
+followed by another `credentials(action="setup")` call to finalize.
 
-### `test-credential`
+### `credentials(action="test")`
 
 Test whether a credential is valid and can connect to its service.
 
@@ -506,9 +548,13 @@ Test whether a credential is valid and can connect to its service.
 
 ---
 
-## Node Discovery Tools (6)
+## Node Discovery Tool: `nodes`
 
-### `list-nodes`
+Node discovery operations are actions on one consolidated native tool. Each call
+includes the `action` shown in the heading; field tables omit that required
+discriminator.
+
+### `nodes(action="list")`
 
 List available node types in the n8n instance.
 
@@ -518,7 +564,7 @@ List available node types in the n8n instance.
 
 **Returns**: `{ nodes: [{ name, displayName, description, group, version }] }`
 
-### `get-node-description`
+### `nodes(action="describe")`
 
 Get detailed node description including properties, credentials, inputs, and outputs.
 
@@ -528,35 +574,41 @@ Get detailed node description including properties, credentials, inputs, and out
 
 **Returns**: `{ name, displayName, description, properties, credentials, inputs, outputs }`
 
-### `get-node-type-definition`
+### `nodes(action="type-definition")`
 
-Get the full JSON schema for a node type, including all parameter options and
+Get TypeScript type definitions for node types, including parameter options and
 discriminators. Critical for understanding complex node configuration.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `nodeType` | string | yes | Node type |
+| `nodeTypes` | array | yes | Node types or node-type request objects (1–5) |
 
 **Returns**: Full node type definition with all parameters.
 
-### `search-nodes`
+### `nodes(action="search")`
 
 Search nodes ranked by relevance with `@builderHint` annotations. Includes
 subnode requirements and discriminator values.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `query` | string | yes | Short search query (service names, not descriptions) |
+| `query` | string | no | Short search query (service names, not descriptions) |
+| `connectionType` | string | no | Filter by AI sub-node connection type |
+| `limit` | number | no | Max results (default 10) |
 
 **Returns**: `{ nodes: SearchableNodeDescription[] }`
 
-### `get-suggested-nodes`
+### `nodes(action="suggested")`
 
 Get curated node suggestions for common use cases.
 
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `categories` | string[] | yes | Workflow technique categories to retrieve (1–3) |
+
 **Returns**: Categorized node suggestions with descriptions.
 
-### `explore-node-resources`
+### `nodes(action="explore-resources")`
 
 Explore a node's dynamic resources (listSearch / loadOptions). Used to discover
 discriminator values like spreadsheet IDs, calendar names, etc.
@@ -564,53 +616,59 @@ discriminator values like spreadsheet IDs, calendar names, etc.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `nodeType` | string | yes | Node type |
-| `resource` | string | yes | Resource to explore |
-| `credentialId` | string | no | Credential to use for authenticated resources |
+| `version` | number | yes | Node version |
+| `methodName` | string | yes | Exact `@searchListMethod` or `@loadOptionsMethod` name from type definitions |
+| `methodType` | `"listSearch" \| "loadOptions"` | yes | Dynamic resource method type |
+| `credentialType` | string | yes | Credential type key |
+| `credentialId` | string | yes | Credential ID from `credentials(action="list")` |
+| `filter` | string | no | Search/filter text |
+| `paginationToken` | string | no | Token from a previous page |
+| `currentNodeParameters` | object | no | Current node parameters for dependent lookups |
 
 **Returns**: Dynamic resource list from the node's loadOptions/listSearch.
 
 ---
 
-## Data Table Tools (11)
+## Data Table Tool: `data-tables`
 
 Full CRUD suite for n8n data tables. System columns (`id`, `createdAt`,
-`updatedAt`) are reserved and auto-managed.
+`updatedAt`) are reserved and auto-managed. Each call includes an `action`.
 
 ### Table operations
 
-| Tool | Description |
-|------|-------------|
-| `list-data-tables` | List all data tables |
-| `create-data-table` | Create a new data table with columns |
-| `delete-data-table` | Delete a data table (HITL confirmation) |
-| `get-data-table-schema` | Get table schema including all columns |
+| Action | Description |
+|--------|-------------|
+| `list` | List all data tables |
+| `create` | Create a new data table with columns |
+| `delete` | Delete a data table (HITL confirmation) |
+| `schema` | Get table schema including all columns |
+| `query` | Query rows with optional filters |
 
 ### Column operations
 
-| Tool | Description |
-|------|-------------|
-| `add-data-table-column` | Add a column to a table |
-| `delete-data-table-column` | Remove a column from a table |
-| `rename-data-table-column` | Rename a column |
+| Action | Description |
+|--------|-------------|
+| `add-column` | Add a column to a table |
+| `delete-column` | Remove a column from a table |
+| `rename-column` | Rename a column |
 
 ### Row operations
 
-| Tool | Description |
-|------|-------------|
-| `query-data-table-rows` | Query rows with optional filters |
-| `insert-data-table-rows` | Insert one or more rows |
-| `update-data-table-rows` | Update rows matching criteria |
-| `delete-data-table-rows` | Delete rows matching criteria (HITL confirmation) |
+| Action | Description |
+|--------|-------------|
+| `insert-rows` | Insert one or more rows |
+| `update-rows` | Update rows matching criteria |
+| `delete-rows` | Delete rows matching criteria (HITL confirmation) |
 
 ---
 
-## Workspace Tools (up to 8, conditional)
+## Workspace Tool: `workspace` (up to 8 actions, conditional)
 
 Only registered when `workspaceService` is present. Folder tools additionally
 require `workspaceService.listFolders`.
 
-| Tool | Description |
-|------|-------------|
+| Action | Description |
+|--------|-------------|
 | `list-projects` | List projects accessible to the user |
 | `tag-workflow` | Apply tags to a workflow |
 | `list-tags` | List available tags |
@@ -622,9 +680,11 @@ require `workspaceService.listFolders`.
 
 ---
 
-## Web Research Tools (2)
+## Web Research Tool: `research`
 
-### `web-search` *(conditional — requires search provider)*
+Web research operations are actions on one consolidated native tool.
+
+### `research(action="web-search")` *(conditional — requires search provider)*
 
 Search the web and return ranked results. Provider priority: Brave > SearXNG > disabled.
 
@@ -638,7 +698,7 @@ Search the web and return ranked results. Provider priority: Brave > SearXNG > d
 
 Results cached for 15 minutes (LRU, 100 entries).
 
-### `fetch-url`
+### `research(action="fetch-url")`
 
 Fetch a web page and extract content as markdown. Local pipeline (Readability +
 Turndown). SSRF protection and result caching.
@@ -663,12 +723,10 @@ See `docs/filesystem-access.md`.
 
 ---
 
-## Template Tools (2)
+## Template Tool: `templates`
 
-| Tool | Description |
-|------|-------------|
-| `search-template-structures` | Search workflow templates by structure pattern |
-| `search-template-parameters` | Search templates by parameter values |
+Only available to the planner. Use `templates(action="best-practices")` with
+`technique: "list"` to discover techniques, then request a specific technique.
 
 ---
 
@@ -677,7 +735,7 @@ See `docs/filesystem-access.md`.
 | Tool | Description |
 |------|-------------|
 | `ask-user` | Suspend and request user input (single/multi-select or text) |
-| `get-best-practices` | Get workflow building best practices for common patterns |
+| `templates(action="best-practices")` | Get workflow building best practices for common patterns (planner only) |
 
 ---
 
@@ -699,7 +757,7 @@ everything; sub-agents receive only what they need.
 | Filesystem tools | ✅ (conditional) | ✅ (via delegate) | ❌ |
 | Web research tools | ✅ | ✅ (via delegate) | ✅ (research agent) |
 | Template / best practices | ✅ | ✅ (via delegate) | ✅ (builder) |
-| Sandbox tools (`submit-workflow`, `materialize-node-type`, `write-sandbox-file`) | ❌ | ❌ | ✅ (builder only) |
+| Sandbox tools (`submit-workflow`, `materialize-node-type`, `write-file`) | ❌ | ❌ | ✅ (builder only) |
 | MCP tools | ✅ | ✅ (via delegate by exact name) | ❌ |
 | Browser MCP tools | ❌ | ✅ (exact-name delegate; prefer `browser-credential-setup`) | ✅ (browser-credential-setup only) |
 
