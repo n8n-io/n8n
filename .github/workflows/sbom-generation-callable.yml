@@ -48,8 +48,12 @@ jobs:
         with:
           build-command: 'pnpm build:deploy'
 
+      - name: Install isolated SBOM tooling
+        run: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+
       - name: Generate CycloneDX SBOM from shipped artifact
-        run: pnpm generate:sbom
+        working-directory: ./.github/scripts
+        run: pnpm generate-sbom
 
       - name: Attest SBOM for release
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
