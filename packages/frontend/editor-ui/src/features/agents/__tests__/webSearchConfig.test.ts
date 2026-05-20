@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	DEFAULT_WEB_SEARCH_CREDENTIAL_TYPE,
+	getWebSearchCredentialType,
 	isAgentWebSearchCredentialType,
 	setWebSearchCredential,
 	setWebSearchEnabled,
@@ -58,8 +60,23 @@ describe('webSearchConfig', () => {
 		});
 	});
 
-	it('only exposes Brave Search credentials in the agent UI', () => {
+	it('recognizes supported fallback search credential types', () => {
 		expect(isAgentWebSearchCredentialType('braveSearchApi')).toBe(true);
-		expect(isAgentWebSearchCredentialType('searXngApi')).toBe(false);
+		expect(isAgentWebSearchCredentialType('searXngApi')).toBe(true);
+		expect(isAgentWebSearchCredentialType('openAiApi')).toBe(false);
+	});
+
+	it('defaults the fallback search service to Brave Search', () => {
+		expect(getWebSearchCredentialType(undefined)).toBe(DEFAULT_WEB_SEARCH_CREDENTIAL_TYPE);
+	});
+
+	it('uses the saved fallback credential type as the selected service', () => {
+		expect(
+			getWebSearchCredentialType({
+				enabled: true,
+				mode: 'auto',
+				credential: { id: 'cred-1', name: 'SearXNG', type: 'searXngApi' },
+			}),
+		).toBe('searXngApi');
 	});
 });

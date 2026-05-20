@@ -41,10 +41,12 @@ import {
 import { parseProvider } from '../utils/model-string';
 import {
 	DEFAULT_WEB_SEARCH_MODE,
+	getWebSearchCredentialType,
 	isAgentWebSearchCredentialType,
 	setWebSearchCredential,
 	setWebSearchEnabled,
 	setWebSearchMode,
+	type AgentWebSearchCredentialType,
 	type WebSearchMode,
 } from '../utils/webSearchConfig';
 import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
@@ -90,6 +92,9 @@ const webSearchMode = computed<WebSearchMode>(
 const showWebSearchCredentialSelect = computed(
 	() => webSearchEnabled.value && webSearchMode.value !== 'provider',
 );
+const webSearchCredentialType = ref<AgentWebSearchCredentialType>(
+	getWebSearchCredentialType(webSearch.value),
+);
 
 const WEB_SEARCH_MODE_OPTIONS: Array<{ value: WebSearchMode; labelKey: BaseTextKey }> = [
 	{ value: 'auto', labelKey: 'agents.builder.advanced.webSearch.mode.auto' },
@@ -97,22 +102,49 @@ const WEB_SEARCH_MODE_OPTIONS: Array<{ value: WebSearchMode; labelKey: BaseTextK
 	{ value: 'n8n', labelKey: 'agents.builder.advanced.webSearch.mode.n8n' },
 ];
 
+const WEB_SEARCH_CREDENTIAL_TYPE_OPTIONS: Array<{
+	value: AgentWebSearchCredentialType;
+	labelKey: BaseTextKey;
+}> = [
+	{ value: 'braveSearchApi', labelKey: 'agents.builder.advanced.webSearch.service.brave' },
+	{ value: 'searXngApi', labelKey: 'agents.builder.advanced.webSearch.service.searXng' },
+];
+
 function toWebSearchCredential(
 	credential: ICredentialsResponse,
 ): AgentJsonWebSearchCredential | null {
 	if (!isAgentWebSearchCredentialType(credential.type)) return null;
+	if (credential.type !== webSearchCredentialType.value) return null;
 	return { id: credential.id, name: credential.name, type: credential.type };
 }
 
 const webSearchCredentialOptions = computed<AgentCredentialOption[]>(() =>
 	credentialsStore.allCredentials
-		.filter((credential) => isAgentWebSearchCredentialType(credential.type))
+		.filter((credential) => credential.type === webSearchCredentialType.value)
 		.map((credential) => ({
 			id: credential.id,
 			name: credential.name,
 			typeDisplayName: credentialsStore.getCredentialTypeByName(credential.type)?.displayName,
 			homeProject: credential.homeProject,
 		})),
+);
+
+const webSearchCredentialId = computed(() =>
+	webSearch.value?.credential?.type === webSearchCredentialType.value
+		? webSearch.value.credential.id
+		: undefined,
+);
+
+const webSearchCredentialPlaceholderKey = computed<BaseTextKey>(() =>
+	webSearchCredentialType.value === 'braveSearchApi'
+		? 'agents.builder.advanced.webSearch.credential.placeholder.brave'
+		: 'agents.builder.advanced.webSearch.credential.placeholder.searXng',
+);
+
+const webSearchCredentialCreateKey = computed<BaseTextKey>(() =>
+	webSearchCredentialType.value === 'braveSearchApi'
+		? 'agents.builder.advanced.webSearch.credential.create.brave'
+		: 'agents.builder.advanced.webSearch.credential.create.searXng',
 );
 
 const projectForPermissions = computed(() => {
@@ -137,6 +169,15 @@ watch(
 		toolCallConcurrency.value = cfg.config?.toolCallConcurrency ?? 1;
 	},
 	{ deep: true },
+);
+
+watch(
+	() => props.config?.webSearch?.credential?.type,
+	(type) => {
+		webSearchCredentialType.value =
+			type && isAgentWebSearchCredentialType(type) ? type : getWebSearchCredentialType(undefined);
+	},
+	{ immediate: true },
 );
 
 function emitThinking() {
@@ -198,6 +239,10 @@ function onWebSearchModeChange(value: WebSearchMode) {
 	emitWebSearch(setWebSearchMode(webSearch.value, value));
 }
 
+function onWebSearchCredentialTypeChange(value: AgentWebSearchCredentialType) {
+	webSearchCredentialType.value = value;
+}
+
 function onWebSearchCredentialChange(credentialId: string) {
 	const credential = credentialsStore.allCredentials.find((item) => item.id === credentialId);
 	const webSearchCredential = credential ? toWebSearchCredential(credential) : null;
@@ -207,7 +252,7 @@ function onWebSearchCredentialChange(credentialId: string) {
 
 function onCreateWebSearchCredential() {
 	uiStore.openNewCredential(
-		'braveSearchApi',
+		webSearchCredentialType.value,
 		false,
 		false,
 		props.projectId,
@@ -258,6 +303,7 @@ const thinkingDisabledReason = computed(() =>
 				>
 					<N8nSwitch2
 						:model-value="thinkingEnabled"
+						:class="$style.switchControl"
 						:disabled="!capabilities.thinking || props.disabled"
 						data-testid="agent-thinking-toggle"
 						@update:model-value="(v) => onThinkingToggle(Boolean(v))"
@@ -329,6 +375,7 @@ const thinkingDisabledReason = computed(() =>
 					</div>
 					<N8nSwitch2
 						:model-value="webSearchEnabled"
+						:class="$style.switchControl"
 						:disabled="props.disabled"
 						data-testid="agent-web-search-toggle"
 						@update:model-value="(v) => onWebSearchToggle(Boolean(v))"
@@ -360,6 +407,32 @@ const thinkingDisabledReason = computed(() =>
 					<div v-if="showWebSearchCredentialSelect" :class="$style.row">
 						<div :class="$style.rowLabel">
 							<N8nText size="small" :bold="true">{{
+								i18n.baseText('agents.builder.advanced.webSearch.service.label')
+							}}</N8nText>
+							<N8nText size="xsmall" color="text-light">
+								{{ i18n.baseText('agents.builder.advanced.webSearch.service.hint') }}
+							</N8nText>
+						</div>
+						<N8nSelect
+							:model-value="webSearchCredentialType"
+							size="small"
+							:disabled="props.disabled"
+							:class="$style.shortInput"
+							data-testid="agent-web-search-service-select"
+							@update:model-value="onWebSearchCredentialTypeChange"
+						>
+							<N8nOption
+								v-for="opt in WEB_SEARCH_CREDENTIAL_TYPE_OPTIONS"
+								:key="opt.value"
+								:value="opt.value"
+								:label="i18n.baseText(opt.labelKey)"
+							/>
+						</N8nSelect>
+					</div>
+
+					<div v-if="showWebSearchCredentialSelect" :class="$style.row">
+						<div :class="$style.rowLabel">
+							<N8nText size="small" :bold="true">{{
 								i18n.baseText('agents.builder.advanced.webSearch.credential.label')
 							}}</N8nText>
 							<N8nText size="xsmall" color="text-light">
@@ -367,13 +440,11 @@ const thinkingDisabledReason = computed(() =>
 							</N8nText>
 						</div>
 						<AgentCredentialSelect
-							:model-value="webSearch?.credential?.id"
+							:model-value="webSearchCredentialId"
 							:class="$style.credentialSelect"
 							:credentials="webSearchCredentialOptions"
-							:placeholder="
-								i18n.baseText('agents.builder.advanced.webSearch.credential.placeholder')
-							"
-							:create-label="i18n.baseText('agents.builder.advanced.webSearch.credential.create')"
+							:placeholder="i18n.baseText(webSearchCredentialPlaceholderKey)"
+							:create-label="i18n.baseText(webSearchCredentialCreateKey)"
 							data-test-id="agent-web-search-credential-select"
 							:credential-permissions="credentialPermissions"
 							:disabled="props.disabled"
@@ -458,5 +529,13 @@ const thinkingDisabledReason = computed(() =>
 .credentialSelect {
 	width: 18rem;
 	flex-shrink: 0;
+}
+
+.switchControl.switchControl {
+	cursor: pointer;
+}
+
+.switchControl.switchControl[data-disabled] {
+	cursor: not-allowed;
 }
 </style>
