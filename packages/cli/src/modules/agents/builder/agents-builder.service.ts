@@ -1,10 +1,11 @@
 import type {
+	Agent as RuntimeAgent,
 	CredentialProvider,
 	SerializableAgentState,
 	StreamChunk,
 	StreamResult,
-	Agent as RuntimeAgent,
 } from '@n8n/agents';
+import type { AgentJsonConfig } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -13,19 +14,18 @@ import { jsonParse, UserError } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeCatalogService } from '@/node-catalog';
 
-import { AgentsService } from '../agents.service';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
-import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentJsonConfig } from '@n8n/api-types';
-import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
+import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
 import { buildBuilderPrompt } from './agents-builder-prompts';
+import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
 import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
 import { AGENT_THREAD_PREFIX } from './builder-tool-names';
-import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
+import { AgentsService } from '../agents.service';
+import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import { N8nMemory } from '../integrations/n8n-memory';
+import { composeJsonConfig } from '../json-config/agent-config-composition';
+import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
-import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
 
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
@@ -54,7 +54,8 @@ export class AgentsBuilderService {
 	 */
 	async getBuilderMessages(agentId: string) {
 		const threadId = builderThreadId(agentId);
-		return await this.n8nMemory.getMessages(threadId);
+		const memory = this.n8nMemory.getImplementation(agentId);
+		return await memory.getMessages(threadId);
 	}
 
 	/**
@@ -63,7 +64,8 @@ export class AgentsBuilderService {
 	async clearBuilderMessages(agentId: string) {
 		const threadId = builderThreadId(agentId);
 		await this.n8nMemory.deleteMessagesByThread(threadId);
-		await this.n8nMemory.deleteThread(threadId);
+		const memory = this.n8nMemory.getImplementation(agentId);
+		await memory.deleteThread(threadId);
 	}
 	// ---------------------------------------------------------------------------
 	// Public — streaming
@@ -192,7 +194,9 @@ export class AgentsBuilderService {
 
 		const { Agent, Memory } = await import('@n8n/agents');
 
-		const builderMemory = new Memory().storage(this.n8nMemory).lastMessages(40);
+		const builderMemory = new Memory()
+			.storage(this.n8nMemory.getImplementation(agentId))
+			.lastMessages(40);
 
 		// Be careful with provider specific options, since user can change model to openai, grok, etc.
 		const builder = new Agent('agent-builder')

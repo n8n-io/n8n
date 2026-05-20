@@ -1,4 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { BuiltMemory, BuiltObservationLogStore } from '@n8n/agents';
 import { mock } from 'jest-mock-extended';
 
 import { AgentExecutionService } from '../agent-execution.service';
@@ -32,6 +33,7 @@ describe('AgentExecutionService', () => {
 	let agentExecutionRepository: jest.Mocked<AgentExecutionRepository>;
 	let agentExecutionThreadRepository: jest.Mocked<AgentExecutionThreadRepository>;
 	let n8nMemory: jest.Mocked<N8nMemory>;
+	let memoryImplementation: jest.Mocked<BuiltMemory & BuiltObservationLogStore>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -39,6 +41,8 @@ describe('AgentExecutionService', () => {
 		agentExecutionRepository = mock<AgentExecutionRepository>();
 		agentExecutionThreadRepository = mock<AgentExecutionThreadRepository>();
 		n8nMemory = mock<N8nMemory>();
+		memoryImplementation = mock<BuiltMemory & BuiltObservationLogStore>();
+		n8nMemory.getImplementation.mockReturnValue(memoryImplementation);
 
 		service = new AgentExecutionService(
 			mockLogger(),
@@ -76,13 +80,15 @@ describe('AgentExecutionService', () => {
 		it('cleans SDK memory before deleting the execution thread', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue({
 				id: 'thread-1',
+				agentId: 'agent-1',
 				projectId: 'project-1',
 			} as AgentExecutionThread);
 
 			const result = await service.deleteThread('project-1', 'thread-1');
 
 			expect(result).toBe(true);
-			expect(n8nMemory.deleteThread).toHaveBeenCalledWith('thread-1');
+			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-1');
+			expect(memoryImplementation.deleteThread).toHaveBeenCalledWith('thread-1');
 			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
 		});
 
@@ -92,7 +98,7 @@ describe('AgentExecutionService', () => {
 			const result = await service.deleteThread('project-1', 'thread-1');
 
 			expect(result).toBe(false);
-			expect(n8nMemory.deleteThread).not.toHaveBeenCalled();
+			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
 			expect(agentExecutionThreadRepository.delete).not.toHaveBeenCalled();
 		});
 	});

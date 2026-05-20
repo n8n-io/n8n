@@ -47,8 +47,44 @@ interface ObservationLogTaskLockHandle {
 }
 
 @Service()
-export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
+export class N8nMemory {
 	constructor(
+		private readonly threadRepository: AgentThreadRepository,
+		private readonly messageRepository: AgentMessageRepository,
+		private readonly resourceRepository: AgentResourceRepository,
+		private readonly observationRepository: AgentObservationRepository,
+		private readonly observationCursorRepository: AgentObservationCursorRepository,
+		private readonly observationLockRepository: AgentObservationLockRepository,
+	) {}
+
+	getImplementation(agentId: string): BuiltMemory & BuiltObservationLogStore {
+		return this.createImplementation(agentId);
+	}
+
+	async deleteThreadsByPrefix(threadIdPrefix: string): Promise<void> {
+		await this.createImplementation('n8n').deleteThreadsByPrefix(threadIdPrefix);
+	}
+
+	async deleteMessagesByThread(threadId: string, resourceId?: string): Promise<void> {
+		await this.createImplementation('n8n').deleteMessagesByThread(threadId, resourceId);
+	}
+
+	private createImplementation(agentId: string): N8nMemoryImpl {
+		return new N8nMemoryImpl(
+			agentId,
+			this.threadRepository,
+			this.messageRepository,
+			this.resourceRepository,
+			this.observationRepository,
+			this.observationCursorRepository,
+			this.observationLockRepository,
+		);
+	}
+}
+
+export class N8nMemoryImpl implements BuiltMemory, BuiltObservationLogStore {
+	constructor(
+		private readonly agentId: string,
 		private readonly threadRepository: AgentThreadRepository,
 		private readonly messageRepository: AgentMessageRepository,
 		private readonly resourceRepository: AgentResourceRepository,
@@ -272,7 +308,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 			threadId: scopeId,
 			...(opts?.resourceId !== undefined && { resourceId: opts.resourceId }),
 		};
-		const where: FindOptionsWhere<AgentMessageEntity>[] = opts?.since
+		const where: Array<FindOptionsWhere<AgentMessageEntity>> = opts?.since
 			? [
 					{ ...baseWhere, createdAt: MoreThan(opts.since.sinceCreatedAt) },
 					{

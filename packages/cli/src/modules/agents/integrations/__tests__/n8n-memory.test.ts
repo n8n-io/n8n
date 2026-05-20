@@ -13,12 +13,12 @@ import type { AgentObservationLockRepository } from '../../repositories/agent-ob
 import type { AgentObservationRepository } from '../../repositories/agent-observation.repository';
 import type { AgentResourceRepository } from '../../repositories/agent-resource.repository';
 import type { AgentThreadRepository } from '../../repositories/agent-thread.repository';
-import { N8nMemory } from '../n8n-memory';
+import { N8nMemory, type N8nMemoryImpl } from '../n8n-memory';
 
 const estimateObservationTokens = (text: string) => Math.ceil(text.length / 4);
 
 describe('N8nMemory', () => {
-	let memory: N8nMemory;
+	let memory: N8nMemoryImpl;
 	let messageRepository: jest.Mocked<AgentMessageRepository>;
 	let threadRepository: jest.Mocked<AgentThreadRepository>;
 	let resourceRepository: jest.Mocked<AgentResourceRepository>;
@@ -78,7 +78,7 @@ describe('N8nMemory', () => {
 			value: { transaction: observationRunInTransaction },
 		});
 
-		memory = new N8nMemory(
+		const n8nMemory = new N8nMemory(
 			threadRepository,
 			messageRepository,
 			resourceRepository,
@@ -86,6 +86,7 @@ describe('N8nMemory', () => {
 			observationCursorRepository,
 			observationLockRepository,
 		);
+		memory = n8nMemory.getImplementation('agent-1') as N8nMemoryImpl;
 	});
 
 	function makeMessageEntity(id: string, createdAt: Date, text: string): AgentMessageEntity {

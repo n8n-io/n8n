@@ -6,6 +6,7 @@ import {
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
+import type { BuiltMemory, BuiltObservationLogStore } from '@n8n/agents';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 
@@ -76,6 +77,7 @@ describe('AgentsService', () => {
 	let agentRepository: jest.Mocked<AgentRepository>;
 	let agentPublishedVersionRepository: jest.Mocked<AgentPublishedVersionRepository>;
 	let n8nMemory: jest.Mocked<N8nMemory>;
+	let memoryImplementation: jest.Mocked<BuiltMemory & BuiltObservationLogStore>;
 	let n8nCheckpointStorage: jest.Mocked<N8NCheckpointStorage>;
 	let agentExecutionService: jest.Mocked<AgentExecutionService>;
 	let scheduleService: jest.Mocked<AgentScheduleService>;
@@ -90,6 +92,8 @@ describe('AgentsService', () => {
 		agentRepository = mock<AgentRepository>();
 		agentPublishedVersionRepository = mock<AgentPublishedVersionRepository>();
 		n8nMemory = mock<N8nMemory>();
+		memoryImplementation = mock<BuiltMemory & BuiltObservationLogStore>();
+		n8nMemory.getImplementation.mockReturnValue(memoryImplementation);
 		n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 		agentExecutionService = mock<AgentExecutionService>();
 		agentExecutionService.recordMessage.mockResolvedValue('exec-id');
@@ -986,7 +990,7 @@ describe('AgentsService', () => {
 				projectId,
 				agentId,
 			);
-			expect(n8nMemory.getMessages).not.toHaveBeenCalled();
+			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
 			expect(result).toEqual([
 				{
 					id: 'execution-1:user',
@@ -1022,18 +1026,19 @@ describe('AgentsService', () => {
 		});
 
 		it('scopes the memory lookup to the caller via resourceId', async () => {
-			n8nMemory.getMessages.mockResolvedValue([]);
+			memoryImplementation.getMessages.mockResolvedValue([]);
 
 			await service.getTestChatMessages(agentId, userId);
 
-			expect(n8nMemory.getMessages).toHaveBeenCalledWith(chatThreadId(agentId, userId), {
+			expect(n8nMemory.getImplementation).toHaveBeenCalledWith(agentId);
+			expect(memoryImplementation.getMessages).toHaveBeenCalledWith(chatThreadId(agentId, userId), {
 				resourceId: userId,
 			});
 		});
 
 		it('returns whatever memory returns for this user', async () => {
 			const persisted = [{ id: 'm1' }, { id: 'm2' }];
-			n8nMemory.getMessages.mockResolvedValue(persisted as never);
+			memoryImplementation.getMessages.mockResolvedValue(persisted as never);
 
 			const result = await service.getTestChatMessages(agentId, userId);
 
@@ -1049,7 +1054,7 @@ describe('AgentsService', () => {
 				chatThreadId(agentId, userId),
 				userId,
 			);
-			expect(n8nMemory.deleteThread).not.toHaveBeenCalled();
+			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1061,7 +1066,8 @@ describe('AgentsService', () => {
 			expect(n8nMemory.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId));
 			// Second arg must be absent — undefined means "all users".
 			expect(n8nMemory.deleteMessagesByThread.mock.calls[0]).toHaveLength(1);
-			expect(n8nMemory.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
+			expect(n8nMemory.getImplementation).toHaveBeenCalledWith(agentId);
+			expect(memoryImplementation.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
 		});
 	});
 
@@ -1297,7 +1303,7 @@ describe('AgentsService', () => {
 			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 			expect(n8nMemory.deleteThreadsByPrefix).toHaveBeenCalledWith(chatThreadId(agentId));
 			expect(n8nMemory.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId));
-			expect(n8nMemory.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
+			expect(memoryImplementation.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
 		});
 
 		it('stops the local schedule when deleting the agent', async () => {
