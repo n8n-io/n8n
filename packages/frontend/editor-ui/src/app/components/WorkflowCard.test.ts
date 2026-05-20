@@ -19,6 +19,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -105,6 +107,7 @@ describe('WorkflowCard', () => {
 	let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 	let usersStore: MockedStore<typeof useUsersStore>;
 	let mcpStore: MockedStore<typeof useMCPStore>;
+	let uiStore: MockedStore<typeof useUIStore>;
 	let message: ReturnType<typeof useMessage>;
 	let toast: ReturnType<typeof useToast>;
 
@@ -116,6 +119,7 @@ describe('WorkflowCard', () => {
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 		usersStore = mockedStore(useUsersStore);
 		mcpStore = mockedStore(useMCPStore);
+		uiStore = mockedStore(useUIStore);
 		message = useMessage();
 		toast = useToast();
 
@@ -640,7 +644,7 @@ describe('WorkflowCard', () => {
 		expect(within(actions).queryByTestId('action-removeMCPAccess')).not.toBeInTheDocument();
 	});
 
-	it('should show MCP toggle as deselected and open a connect-MCP toast when module is disabled', async () => {
+	it('should open the MCP onboarding modal when the switch is clicked while the instance module is off', async () => {
 		const data = createWorkflow({
 			scopes: ['workflow:update'],
 			settings: {
@@ -662,29 +666,65 @@ describe('WorkflowCard', () => {
 		await userEvent.click(mcpToggle);
 
 		expect(mcpStore.toggleWorkflowMcpAccess).not.toHaveBeenCalled();
-		expect(toast.showToast).toHaveBeenCalledWith(
-			expect.objectContaining({
-				title: "MCP isn't configured on this instance",
-				type: 'info',
-				message: expect.stringContaining('workflow-card-mcp-toast-cta'),
-				onClick: expect.any(Function),
-			}),
-		);
+		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+			name: SURFACE_MCP_ONBOARDING_MODAL_KEY,
+			data: { surface: 'workflow_card' },
+		});
+	});
 
-		const showToastMock = vi.mocked(toast.showToast);
-		const onClick = showToastMock.mock.calls[0][0].onClick;
-		const anchor = document.createElement('a');
-		const anchorEvent = new MouseEvent('click', { bubbles: true });
-		Object.defineProperty(anchorEvent, 'target', { value: anchor });
-		await onClick?.(anchorEvent);
-		expect(router.push).toHaveBeenCalledWith({ name: 'McpSettings' });
+	it('should enable workflow MCP access if the user turns on the instance module inside the modal', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: false,
+			},
+		});
 
-		vi.mocked(router.push).mockClear();
-		const nonAnchor = document.createElement('div');
-		const nonAnchorEvent = new MouseEvent('click', { bubbles: true });
-		Object.defineProperty(nonAnchorEvent, 'target', { value: nonAnchor });
-		await onClick?.(nonAnchorEvent);
-		expect(router.push).not.toHaveBeenCalled();
+		mcpStore.mcpAccessEnabled = false;
+		mcpStore.toggleWorkflowMcpAccess.mockResolvedValue({
+			updatedCount: 1,
+			skippedCount: 0,
+			failedCount: 0,
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: false,
+			},
+		});
+
+		await userEvent.click(getByTestId('workflow-card-mcp-toggle'));
+
+		mcpStore.mcpAccessEnabled = true;
+		await waitFor(() => {
+			expect(mcpStore.toggleWorkflowMcpAccess).toHaveBeenCalledWith(data.id, true);
+		});
+	});
+
+	it('should leave workflow MCP off if the instance module stays disabled after opening the modal', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: false,
+			},
+		});
+
+		mcpStore.mcpAccessEnabled = false;
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: false,
+			},
+		});
+
+		await userEvent.click(getByTestId('workflow-card-mcp-toggle'));
+		await waitFor(() => {
+			expect(uiStore.openModalWithData).toHaveBeenCalled();
+		});
+
+		expect(mcpStore.toggleWorkflowMcpAccess).not.toHaveBeenCalled();
 	});
 
 	it('should show MCP toggle as disabled when user cannot update but workflow is available', () => {

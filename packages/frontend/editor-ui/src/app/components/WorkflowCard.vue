@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
 	DUPLICATE_MODAL_KEY,
 	MODAL_CONFIRM,
@@ -47,7 +47,7 @@ import {
 } from '@n8n/design-system';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
-import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
@@ -444,23 +444,34 @@ async function toggleMCPAccess(enabled: boolean) {
 }
 
 async function onMcpToggleClick(nextValue: boolean) {
-	if (!props.isMcpEnabled) {
-		const message = locale.baseText('workflows.item.connectMcp.toast.message');
-		const cta = locale.baseText('workflows.item.connectMcp.toast.cta');
-		toast.showToast({
-			title: locale.baseText('workflows.item.connectMcp.toast.title'),
-			message: `${message}<br/><a href="#" data-test-id="workflow-card-mcp-toast-cta">${cta}</a>`,
-			type: 'info',
-			onClick: async (event) => {
-				if (event?.target instanceof HTMLAnchorElement) {
-					event.preventDefault();
-					await router.push({ name: MCP_SETTINGS_VIEW });
-				}
-			},
-		});
+	if (props.isMcpEnabled) {
+		await toggleMCPAccess(nextValue);
 		return;
 	}
-	await toggleMCPAccess(nextValue);
+
+	const stopEnableWatch = watch(
+		() => mcpStore.mcpAccessEnabled,
+		(enabled) => {
+			if (!enabled) return;
+			stopEnableWatch();
+			stopCloseWatch();
+			void toggleMCPAccess(true);
+		},
+	);
+	const stopCloseWatch = watch(
+		() => uiStore.modalsById[SURFACE_MCP_ONBOARDING_MODAL_KEY]?.open,
+		(isOpen, wasOpen) => {
+			if (wasOpen && !isOpen) {
+				stopEnableWatch();
+				stopCloseWatch();
+			}
+		},
+	);
+
+	uiStore.openModalWithData({
+		name: SURFACE_MCP_ONBOARDING_MODAL_KEY,
+		data: { surface: 'workflow_card' },
+	});
 }
 
 async function deleteWorkflow() {
@@ -734,11 +745,7 @@ const tags = computed(
 				</div>
 				<N8nTooltip v-if="showMcpToggle" placement="top" :content="mcpTooltipContent">
 					<span :class="$style.mcpToggle">
-						<N8nIcon
-							:class="[$style.mcpIcon, { [$style.mcpIconActive]: isAvailableInMCP }]"
-							icon="mcp"
-							size="medium"
-						/>
+						<N8nIcon :class="$style.mcpIcon" icon="mcp" size="medium" />
 						<N8nSwitch2
 							:model-value="isAvailableInMCP"
 							:disabled="!canToggleMcp"
@@ -842,11 +849,7 @@ const tags = computed(
 }
 
 .mcpIcon {
-	color: var(--color--text--tint-1);
-}
-
-.mcpIconActive {
-	color: var(--color--primary);
+	color: var(--color--text);
 }
 
 .dynamicBadgeText {

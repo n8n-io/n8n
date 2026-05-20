@@ -19,7 +19,7 @@ import MCPOnboardingClientSetup from './MCPOnboardingClientSetup.vue';
 import MCPOnboardingCopyBlock from './MCPOnboardingCopyBlock.vue';
 import type { MCPOnboardingClient, MCPOnboardingClientOption } from './types';
 
-type MCPOnboardingSurface = 'tile' | 'first_open_modal';
+type MCPOnboardingSurface = 'tile' | 'first_open_modal' | 'workflow_card';
 type MCPOnboardingPromptClient = Exclude<MCPOnboardingClient, 'chatgpt'>;
 type MCPOnboardingCopiedParameter = 'agent-prompt' | 'server-url' | 'chatgpt-app-name';
 type MCPOnboardingSetupType = 'prompt' | 'chatgpt_custom_app';
