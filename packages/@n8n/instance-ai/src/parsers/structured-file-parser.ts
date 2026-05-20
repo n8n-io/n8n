@@ -67,7 +67,7 @@ export type CellValue = string | number | boolean | null;
 
 export interface ParseFileInput {
 	attachmentIndex?: number;
-	format?: ParseableFormat;
+	format?: SupportedFormat;
 	hasHeader?: boolean;
 	delimiter?: string;
 	startRow?: number;
@@ -78,7 +78,7 @@ export interface ParseFileOutput {
 	attachmentIndex: number;
 	fileName: string;
 	mimeType: string;
-	format: TabularFormat;
+	format: SupportedFormat;
 	columns: ColumnMeta[];
 	rows: Array<Record<string, CellValue>>;
 	totalRows: number;
@@ -86,6 +86,9 @@ export interface ParseFileOutput {
 	truncated: boolean;
 	nextStartRow?: number;
 	warnings?: string[];
+	content?: string;
+	title?: string;
+	pages?: number;
 }
 
 export interface AttachmentInfo {

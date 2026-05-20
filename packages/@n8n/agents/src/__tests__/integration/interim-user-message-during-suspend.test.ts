@@ -24,7 +24,7 @@
 import { afterEach, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { describeIf, createSqliteMemory, getModel } from './helpers';
+import { describeIf, createInMemoryAgentMemory, getModel } from './helpers';
 import { Agent, filterLlmMessages, Memory, Tool } from '../../index';
 import type { AgentDbMessage } from '../../index';
 import type { ContentToolCall, Message } from '../../types/sdk/message';
@@ -66,7 +66,7 @@ describe('interim user message during tool suspension', () => {
 
 	for (const method of ['generate', 'stream'] as const) {
 		it(`[${method}] interim message does not break provider message ordering`, async () => {
-			const { memory, cleanup } = createSqliteMemory();
+			const { memory, cleanup } = createInMemoryAgentMemory();
 			cleanups.push(cleanup);
 
 			const threadId = `thread-interim-${method}`;
@@ -162,7 +162,7 @@ describe('interim user message during tool suspension', () => {
 	}
 
 	it('preserves chronological ordering of messages in memory after resume', async () => {
-		const { memory, cleanup } = createSqliteMemory();
+		const { memory, cleanup } = createInMemoryAgentMemory();
 		cleanups.push(cleanup);
 
 		const threadId = 'thread-interim-ordering';

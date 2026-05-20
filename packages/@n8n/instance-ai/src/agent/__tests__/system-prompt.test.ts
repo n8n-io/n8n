@@ -150,6 +150,23 @@ describe('getSystemPrompt', () => {
 			expect(prompt).not.toContain('outcome.verificationPinData');
 		});
 
+		it('grounds workflow setup in the inline assistant card', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('inline setup card in the AI Assistant panel');
+			expect(prompt).toContain(
+				'Do not tell the user to open the editor, use the canvas, or click a Setup button',
+			);
+			expect(prompt).not.toMatch(/setup wizard/i);
+		});
+
+		it('makes post-build credential setup the default path', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('Do not ask whether to build now and set up credentials later');
+			expect(prompt).toContain('building first and routing setup after verification');
+		});
+
 		it('reads workflowId/workItemId from the outcome field, not result', () => {
 			const prompt = getSystemPrompt({});
 

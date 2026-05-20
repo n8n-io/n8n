@@ -26,6 +26,7 @@ jobs:
       timeout-minutes: 45
       pre-generated-matrix: '[{"shard":1,"images":""},{"shard":2,"images":""},{"shard":3,"images":""},{"shard":4,"images":""}]'
       artifact-prefix: coverage
+      build-variant: coverage
     secrets: inherit
 
   aggregate:

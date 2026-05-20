@@ -1,6 +1,6 @@
 import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { computed, inject, readonly, ref } from 'vue';
+import { computed, inject, readonly, ref, type ComputedRef } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import type { ExecutionSummary } from 'n8n-workflow';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -13,6 +13,8 @@ import {
 } from './executionData.store';
 import { CHANGE_ACTION } from './workflowDocument/types';
 import type { ChangeAction, ChangeEvent } from './workflowDocument/types';
+
+const EMPTY_EXECUTION_ISSUES_BY_NODE_NAME = new Map<string, ComputedRef<string[]>>();
 
 export type WorkflowExecutionStateId = string;
 
@@ -168,6 +170,26 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 			if (!runData.hasOwnProperty(nodeName)) return null;
 			return runData[nodeName];
 		}
+
+		/**
+		 * Per-node-name execution issues map for the active or displayed
+		 * execution. Mirrors the fallback chain in `activeExecution`
+		 * (active id → displayed id → empty). Map identity changes when the
+		 * active/displayed execution swaps; per-name `ComputedRef` entries
+		 * inside each Map are owned by the per-execution data store and gate
+		 * downstream propagation via `isEqual`.
+		 */
+		const activeExecutionIssuesByNodeName = computed(() => {
+			if (typeof activeExecutionId.value === 'string') {
+				return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
+					.executionIssuesByNodeName;
+			}
+			if (typeof displayedExecutionId.value === 'string') {
+				return useExecutionDataStore(createExecutionDataId(displayedExecutionId.value))
+					.executionIssuesByNodeName;
+			}
+			return EMPTY_EXECUTION_ISSUES_BY_NODE_NAME;
+		});
 
 		const lastSuccessfulExecution = computed(() => {
 			const lid = lastSuccessfulExecutionId.value;
@@ -474,6 +496,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 			getAllLoadedFinishedExecutions,
 			getPastChatMessages,
 			getActiveExecutionRunDataByNodeName,
+			activeExecutionIssuesByNodeName,
 			resolveExecutionTriggerNodeName,
 			// Write API
 			trackExecutionId,

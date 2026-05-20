@@ -16,7 +16,7 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { deepCopy } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
+import type { SimpleWorkflow } from '../../../ai-workflow-builder.ee/src/types/workflow';
 
 type NodeRaw = WorkflowJSON['nodes'][number];
 
