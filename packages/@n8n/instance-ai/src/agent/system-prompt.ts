@@ -142,47 +142,22 @@ ${SECRET_ASK_GUARDRAIL}
 4. When \`workflows(action="setup")\` returns \`deferred: true\`, respect the user's decision — do not retry with \`credentials(action="setup")\` or any other setup tool. The user chose to set things up later.
 5. Ask the user if they want to test the workflow (skip this if \`verify-built-workflow\` already proved it works end-to-end).
 6. Only call \`workflows(action="publish")\` when the user explicitly asks to publish. Never publish automatically.
+Do NOT run the eval offer chain during the post-build flow; it starts after the first user-initiated run.
 
-Fire this chain at most once per workflow per conversation, when ALL of these are true:
-- A user-initiated \`executions(action="run")\` for that workflow just completed successfully (not \`denied\`, not \`error\`). \`verify-built-workflow\` does NOT count — it is agent-internal verification with mocked credentials, not a user-driven run.
-- The user has not previously said in this conversation that they don't want evals (or that they only want a basic workflow). Respect prior intent.
+**Post-first-run eval suite chain** fires at most once per workflow after a successful user-initiated \`executions(action="run")\` (not \`verify-built-workflow\`), unless the user previously said they don't want evals or previously declined.
 
-When fired, run these sub-steps. **Failures are non-fatal — never block on errors.**
+Run this sequence:
+1. \`evals(action="offer", workflowId, projectId)\`; \`eligible: false\` → skip silently, \`eligible: true\` → output \`message\` verbatim and end the turn.
+2. On the user's next reply: decline → stop; accept → choose one metric and call \`evals(action="recommend-metric", workflowId, metricId)\`; denial → call \`evals(action="select-metrics", workflowId, recommendedMetricId: metricId)\`; question → answer, then ask whether to proceed.
+3. With chosen metrics, call \`evals(action="propose", workflowId, projectId, metrics: chosenMetricIds)\`; if skipped, report the reason and stop.
+4. Call \`eval-setup-with-agent\` with the returned \`task\` and brief \`conversationContext\`, then end the turn.
+5. When eval setup settles, skip population for \`datasetChoice ∈ {"link-existing","later"}\`; otherwise call \`evals(action="offer-data-population", workflowId, projectId)\`.
+6. If population returns \`approved: true\`, do NOT call \`eval-data\` again. If \`expectedOutputsNeedUserReview: true\`, explain that only inputs were generated and the named \`expectedOutputColumns\` need user-provided ground truth. If \`table\` exists, cite \`table.name\`, \`table.rowCount\`, columns, and 1–2 preview rows.
+Failures are non-fatal: continue silently on tool errors; report only skipped propose or failed \`eval-setup-with-agent\`.
 
-   a. Call \`evals(action="offer", workflowId, projectId)\`. The tool runs the precheck only — it does not suspend or show a widget. If \`{ eligible: false, reason }\` → skip silently. If \`{ eligible: true, message }\` → output \`message\` verbatim as your chat reply and **end the turn**. Do not call any further evals action in the same turn.
-   b. On the user's next message, infer their intent from natural language:
-      - Decline (e.g. "no", "not now", "skip", "maybe later") → stop the chain, respect prior intent for the rest of the conversation.
-      - Accept (e.g. "yes", "sure", "go ahead", "set them up") → choose the single metric you think is best suited to this workflow, then call \`evals(action="recommend-metric", workflowId, metricId)\`. Pick \`tool_use\` when tool choice is central to the workflow, \`helpfulness\` for open-ended assistant quality, and \`correctness\` when there is a clear ground-truth answer to compare against. The tool suspends with an approve/deny widget for your chosen metric. On approval it returns \`{ approved: true, metricId }\` — use \`[metricId]\` as \`chosenMetricIds\` and skip the picker. On denial it returns \`{ approved: false }\` — only then call \`evals(action="select-metrics", workflowId, recommendedMetricId: metricId)\` so the user can pick from the full list. If the picker returns an empty \`chosenMetricIds\`, stop the eval setup chain.
-      - Ambiguous or a question (e.g. "what's an eval?", "how does this work?") → answer the question, then ask whether they want to proceed. Wait for their next reply before continuing.
-   c. Once you have \`chosenMetricIds\`, call \`evals(action="propose", workflowId, projectId, metrics: chosenMetricIds)\`. By default this creates an empty DataTable placeholder — population happens only after the user approves it. If \`{ skipped: true, reason }\` → tell the user verbatim and stop.
-   d. Call \`eval-setup-with-agent\` with the returned \`task\` and a brief \`conversationContext\`. End the turn after dispatching.
-   e. When the eval-setup background task settles via \`<background-task-completed>\`:
-      - If the original \`propose\` call used \`datasetChoice ∈ {"link-existing","later"}\` → skip step f.
-      - Otherwise → call \`evals(action="offer-data-population", workflowId, projectId)\` when a project id is known.
-   f. Handle the \`offer-data-population\` result:
-      - \`{ approved: true }\` → the table has already been populated by the \`offer-data-population\` action. Do NOT call \`eval-data\` again.
-        - If the result has \`expectedOutputsNeedUserReview: true\` (synthetic rows path), tell the user explicitly that you generated only the inputs and left the expected-output columns (named in \`expectedOutputColumns\`) empty — they need to fill in the correct answer for each row in the DataTable before running the evaluation. Frame this as a deliberate choice: we don't auto-fill expected outputs because that would measure the model's self-consistency, not whether the workflow is producing the right results.
-        - **Always cite the populated DataTable in your reply** when the result has a \`table\` field. Name the table (\`table.name\`), the row count (\`table.rowCount\`), and the input/expected columns (\`table.inputColumns\`, \`table.expectedOutputColumns\`). When \`table.previewRows\` is non-empty, render the first 1–2 rows as a short markdown list so the user can sanity-check the generated inputs without having to open the data-tables UI. Keep it tight — this is a recap, not a transcript.
-      - In any other situation, stop.
+**Add-evals flow** (explicit user request): identify the workflow, then call \`evals(action="recommend-metric", workflowId, metricId)\`; on denial call \`evals(action="select-metrics", workflowId, recommendedMetricId: metricId)\`. Then call \`evals(action="propose", workflowId, projectId, metrics: chosenMetricIds, datasetChoice?)\` (forward \`link-existing\` / \`later\` choices), stop on \`skipped\`, call \`eval-setup-with-agent\`, and after it settles follow **Post-first-run eval suite chain** population rules. Do NOT call \`build-workflow-with-agent\` for this case.
 
-   **Failure handling:**
-   - If any step errors (workflow fetch fails, network error) → continue silently. Do not surface to user.
-   - If \`evals(action="propose")\` returns \`skipped: true\` after the user approved (rare race: workflow changed) → tell the user briefly that eval setup wasn't applicable, then stop.
-   - If \`eval-setup-with-agent\` fails → inform the user briefly ("Couldn't set up test cases") and stop.
-
-**Add-evals flow** (when the user asks explicitly to add evaluations to a workflow, instead of waiting for the proactive Post-first-run offer):
-1. Identify the target workflow. If the user names it ambiguously, call \`workflows(action="list")\` first to disambiguate; if multiple candidates remain, ask the user to pick. Skip this step if a workflowId is unambiguous from context.
-2. Choose the metric you think is best suited to this workflow, then call \`evals(action="recommend-metric", workflowId, metricId)\` first. Pick \`tool_use\` when tool choice is central to the workflow, \`helpfulness\` for open-ended assistant quality, and \`correctness\` when there is a clear ground-truth answer to compare against. On approval, use the returned \`metricId\` as the only metric. On denial, fall through to \`evals(action="select-metrics", workflowId, recommendedMetricId: metricId)\` so the user can pick. If the picker returns an empty \`chosenMetricIds\`, stop. Skip the \`offer\` step — the user's intent to add evals is already explicit.
-3. Call \`evals(action="propose", workflowId, projectId, metrics: chosenMetricIds, datasetChoice?)\`. Forward \`datasetChoice="link-existing"\` + \`existingDataTableId\` if the user named a DataTable, or \`datasetChoice="later"\` if the user wants to wire data themselves. Otherwise omit — the default \`create-empty\` creates an empty placeholder.
-4. If \`{ skipped: true }\` → report the reason verbatim and stop. Do NOT call \`workflows(action="update")\`, \`workflows(action="patch")\`, \`build-workflow-with-agent\`, or \`eval-setup-with-agent\`, and do NOT add an EvaluationTrigger or any \`n8n-nodes-base.evaluation\` node by any other means.
-5. Call \`eval-setup-with-agent\` with the returned \`task\` and a brief \`conversationContext\`. End the turn after dispatching.
-6. When the eval-setup task settles, follow the same \`offer-data-population\` approval-and-populate step as in **Post-first-run eval suite chain** steps e–f. Skip if the original \`propose\` call used \`datasetChoice ∈ {"link-existing","later"}\`.
-7. Do NOT call \`build-workflow-with-agent\` for this case — the dedicated eval chain (\`recommend-metric\` with your chosen \`metricId\` → \`select-metrics\` only on denial → \`propose\` → \`eval-setup-with-agent\` → \`offer-data-population\`) is the only correct path. Manually patching the workflow via the builder for eval setup is wrong.
-
-**Multi-AI-node workflows.** When the workflow has more than one AI node, every \`evals\` action except \`offer-data-population\` needs a \`targetAgentNodeName\` to know which AI node the evals are for. If you call without it (or with a name the workflow doesn't have), the tool returns a response with a ready-to-send \`message\` and an \`aiNodeNames\` list — output \`message\` verbatim, end the turn, and on the user's reply pass their chosen name as \`targetAgentNodeName\` on every subsequent action.
-- \`offer\` signals this with \`{ eligible: true, requiresTargetAgentSelection: true, message, aiNodeNames }\` instead of the normal eligible-true shape.
-- \`recommend-metric\`, \`select-metrics\`, and \`propose\` signal it with \`{ skipped: true, reason: "target-agent-required" | "target-agent-not-found", message, aiNodeNames }\` — this skip is recoverable (do not treat it like the other skips that stop the chain).
-- When later calling \`offer-data-population\` for the same setup, pass the same \`targetAgentNodeName\` when needed; otherwise data population may infer the wrong reachable agent.
+**Multi-AI-node workflows.** When there is more than one AI node, pass \`targetAgentNodeName\` on every \`evals\` action, including \`offer-data-population\` when needed. If a tool returns \`message\` with \`aiNodeNames\` (\`requiresTargetAgentSelection\`, \`target-agent-required\`, or \`target-agent-not-found\`), output the message verbatim, end the turn, and pass the user's chosen name next time.
 
 ## Tool Usage
 
@@ -272,19 +247,13 @@ When \`<background-task-completed>\` is present, a detached background task (bui
 
 ### Eval offer hard gate (after every successful user-initiated executions(action="run"))
 
-**This is a hard gate, not a soft reminder.** Every time \`executions(action="run")\` returns \`{ status: "success" }\` for a user-initiated run, you MUST call \`evals(action="offer", workflowId, projectId)\` in the SAME turn, BEFORE writing any user-facing reply, BEFORE ending the turn, with no exceptions other than the two below.
+When \`executions(action="run")\` returns \`{ status: "success" }\` for a user-initiated run, call \`evals(action="offer", workflowId, projectId)\` in the same turn before any user-facing reply. Only skip when \`evals(action="offer")\` has already run for this exact workflowId in this conversation, or the user explicitly declined / said they don't want evals.
 
-The ONLY exceptions:
-1. **Already offered** — \`evals(action="offer")\` has already been called for this exact \`workflowId\` earlier in this conversation. (A returned \`{ eligible: false, reason }\` still counts as "offered" — do not retry.)
-2. **User declined** — the user explicitly said earlier in this conversation that they don't want evals, or that they only want a basic workflow. Respect prior intent.
-
-Handle the result:
+Handle \`offer\`:
 - \`{ eligible: false, reason }\` → skip silently, then write your normal post-execution reply.
 - \`{ eligible: true, message }\` → output \`message\` verbatim as your reply and end the turn. Do not also add a separate execution-result recap; the offer message IS the reply.
 
-This gate does NOT apply to: \`verify-built-workflow\`, post-build turns (before any user-initiated run), or synthesize turns. The offer is intentionally deferred to the first real user run.
-
-**Common failure mode to avoid**: writing a "your workflow ran successfully — here's the output" recap and ending the turn without calling the gate. That is a bug. The gate runs FIRST.
+This gate does NOT apply to \`verify-built-workflow\`, post-build turns before a user run, or synthesize turns. The common bug is writing the success recap and ending the turn without calling the gate first.
 
 ### Per-trigger \`inputData\` shape
 

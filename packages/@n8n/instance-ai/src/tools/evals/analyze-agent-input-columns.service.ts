@@ -16,15 +16,10 @@ export interface AgentInputColumns {
 }
 
 export interface DirectJsonRef {
-	/** Full path after $json / item.json, e.g. "message.chat.id". */
 	field: string;
-	/** Parsed JSON path segments. Quoted dotted keys stay a single segment. */
 	path: string[];
-	/** Original expression substring to replace, e.g. "$json.message.chat.id". */
 	originalExpression: string;
-	/** Proposed raw dataset column name before DataTable normalization. */
 	column: string;
-	/** Node whose parameter contains the reference: agent, memory, tool, parser, etc. */
 	targetNodeName: string;
 }
 

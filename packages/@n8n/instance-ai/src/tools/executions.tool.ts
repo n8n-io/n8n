@@ -185,16 +185,6 @@ async function handleRun(
 		timeout: input.timeout,
 	});
 
-	// Runtime nudge for the post-first-run eval offer gate. The system-prompt
-	// alone is unreliable — the orchestrator routinely drifts past the gate
-	// because, after a successful run, its next instinct is to write a
-	// completion recap. Surfacing the directive inside the tool result puts the
-	// requirement directly in the LLM's working set at decision time, where
-	// it's much harder to skip than a paragraph buried in the system-prompt.
-	//
-	// The offer tool itself is the source of truth on eligibility and
-	// "already-configured" gating, so we always emit the directive on success
-	// and let the offer call short-circuit when not applicable.
 	if (isLikelyUserInitiatedSuccess(result)) {
 		return {
 			...result,

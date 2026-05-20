@@ -153,17 +153,6 @@ function truncateExampleValue(value: string): string {
 		: value;
 }
 
-/**
- * Render a small block of recent real inputs (filtered to the requested
- * `columns`) as a reference for the LLM. Returns an empty string when no
- * usable examples exist — the caller injects this block only when
- * non-empty, so the generator keeps producing rows from agent context
- * alone when history is missing.
- *
- * The directive is explicit that these are flavour reference, not seed
- * data to copy: the generator must produce NEW inputs in the same domain
- * and tone, not paraphrase the examples.
- */
 function buildRealExamplesBlock(
 	examples: ReadonlyArray<Record<string, unknown>> | undefined,
 	columns: string[],
@@ -290,14 +279,6 @@ export interface GenerateSampleRowsInput {
 	columns: string[];
 	rowCount?: number;
 	targetAgentNodeName?: string;
-	/**
-	 * Recent real input rows extracted from the workflow's execution history.
-	 * When present (typically below the history threshold that would otherwise
-	 * have been used directly), they are passed to the LLM as a flavour
-	 * reference — rows are filtered to the requested `columns`, truncated, and
-	 * accompanied by an explicit "reference, not seed" directive so the
-	 * generator produces new in-domain inputs instead of paraphrasing them.
-	 */
 	realExamples?: ReadonlyArray<Record<string, unknown>>;
 	logger?: Pick<Logger, 'warn'>;
 }

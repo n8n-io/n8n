@@ -84,13 +84,6 @@ function formatProductionAdapter(
 		)
 		.join('\n');
 
-	// Rewrites grouped by target node.
-	//
-	// All targets use the same replacement form. The Set adapter and the
-	// EvaluationTrigger both feed the agent row shape into the agent; AI
-	// sub-components resolve `$json` against that parent input too. Referencing
-	// the agent by name from a sub-component is invalid because the agent is not
-	// a previous node when the sub-component parameters are evaluated.
 	const rewritesToApply: AdapterRewrite[] = [
 		...directRefsNeedingAdapter.map((r) => ({
 			targetNodeName: r.targetNodeName,

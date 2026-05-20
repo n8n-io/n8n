@@ -797,17 +797,6 @@ async function handlePublish(
 	}
 }
 
-/**
- * If the workflow has eval setup wired (EvaluationTrigger / Evaluation nodes),
- * return a directive nudging the agent to suggest running the evals after
- * publish. Mirrors the pattern used by `executions(action="run")`'s
- * evalOfferGate: it surfaces the reminder in the tool result, where the LLM
- * sees it at decision time rather than buried in the system-prompt.
- *
- * Returns `undefined` when the workflow has no eval setup or when the lookup
- * fails — the publish operation itself already succeeded; a missing reminder
- * is a UX nudge gap, not a correctness bug.
- */
 async function maybeBuildEvalRunReminder(
 	context: InstanceAiContext,
 	workflowId: string,

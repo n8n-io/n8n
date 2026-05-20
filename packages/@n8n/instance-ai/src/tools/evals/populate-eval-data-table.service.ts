@@ -44,10 +44,7 @@ async function ensureColumnsExist(
 	extraColumns: readonly string[],
 	options: { projectId?: string } | undefined,
 ): Promise<void> {
-	const referencedColumns = new Set<string>(extraColumns);
-	for (const row of rows) {
-		for (const key of Object.keys(row)) referencedColumns.add(key);
-	}
+	const referencedColumns = new Set([...extraColumns, ...rows.flatMap((row) => Object.keys(row))]);
 	if (referencedColumns.size === 0) return;
 
 	const schema = await dataTableService.getSchema(dataTableId, options);
@@ -65,13 +62,13 @@ function truncateForPreview(value: unknown): unknown {
 }
 
 function buildPreviewRows(rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
-	return rows.slice(0, PREVIEW_ROW_COUNT).map((row) => {
-		const truncated: Record<string, unknown> = {};
-		for (const [key, value] of Object.entries(row)) {
-			truncated[key] = truncateForPreview(value);
-		}
-		return truncated;
-	});
+	return rows
+		.slice(0, PREVIEW_ROW_COUNT)
+		.map((row) =>
+			Object.fromEntries(
+				Object.entries(row).map(([key, value]) => [key, truncateForPreview(value)]),
+			),
+		);
 }
 
 function withEmptyExpectedOutputColumns(
@@ -79,31 +76,20 @@ function withEmptyExpectedOutputColumns(
 	expectedOutputColumns: readonly string[],
 ): Array<Record<string, unknown>> {
 	if (expectedOutputColumns.length === 0) return rows;
-	return rows.map((row) => {
-		const rowWithExpectedOutputs = { ...row };
-		for (const column of expectedOutputColumns) {
-			rowWithExpectedOutputs[column] = '';
-		}
-		return rowWithExpectedOutputs;
-	});
+	return rows.map((row) => ({
+		...row,
+		...Object.fromEntries(expectedOutputColumns.map((column) => [column, ''])),
+	}));
 }
 
 export async function populateEvalDataTable(
 	context: InstanceAiContext,
 	input: PopulateEvalDataTableInput,
 ): Promise<PopulateEvalDataTableResult> {
-	const log = (level: 'info' | 'warn' | 'error', msg: string) => {
-		context.logger?.[level]?.(`[eval-data] ${msg}`);
-	};
-	const j = (v: unknown) => JSON.stringify(v);
-
-	log('info', `start workflowId=${input.workflowId} projectId=${j(input.projectId)}`);
-
 	const workflow = await context.workflowService.getAsWorkflowJSON(input.workflowId);
 	const reqs = analyzeEvalDataRequirements(workflow, input.targetAgentNodeName);
 	const target = resolveEvalDataTarget(reqs, input.targetAgentNodeName);
 	if (!target) {
-		log('warn', `skip:no-target reason=${j(reqs.reason)}`);
 		return {
 			status: 'skipped' as const,
 			reason:
@@ -113,13 +99,9 @@ export async function populateEvalDataTable(
 					: 'No eval target.'),
 		};
 	}
-	log(
-		'info',
-		`target dataTableId=${target.dataTableId} agent=${j(target.targetAgentNodeName)} inputColumns=${j(target.inputColumns)} expectedOutputColumns=${j(target.expectedOutputColumns)} pairs=${j(target.expectedToActualPairs)}`,
-	);
+
 	const targetAiNodeName = target.targetAgentNodeName ?? target.targetNodeName;
 	if (!targetAiNodeName) {
-		log('warn', 'skip:no-ai-target');
 		return {
 			status: 'skipped' as const,
 			reason: 'No AI target node reachable from EvaluationTrigger.',
@@ -133,7 +115,6 @@ export async function populateEvalDataTable(
 		inputColumns: target.inputColumns,
 		expectedToActualPairs: target.expectedToActualPairs,
 	});
-	log('info', `history-extracted count=${historyRows.length}`);
 
 	let rowsToInsert: Array<Record<string, unknown>>;
 	let source: 'history' | 'synthetic';
@@ -153,55 +134,33 @@ export async function populateEvalDataTable(
 		rowsToInsert = withEmptyExpectedOutputColumns(rowsToInsert, target.expectedOutputColumns);
 		source = 'synthetic';
 	}
-	log(
-		'info',
-		`rows-prepared source=${source} count=${rowsToInsert.length} firstRowKeys=${j(rowsToInsert[0] ? Object.keys(rowsToInsert[0]) : [])}`,
-	);
 
 	const dataTableOptions = input.projectId ? { projectId: input.projectId } : undefined;
 	const extraColumns = source === 'synthetic' ? target.expectedOutputColumns : [];
+	await ensureColumnsExist(
+		context.dataTableService,
+		target.dataTableId,
+		rowsToInsert,
+		extraColumns,
+		dataTableOptions,
+	);
+	const insertResult = await context.dataTableService.insertRows(
+		target.dataTableId,
+		rowsToInsert,
+		dataTableOptions,
+	);
 
-	try {
-		await ensureColumnsExist(
-			context.dataTableService,
-			target.dataTableId,
-			rowsToInsert,
-			extraColumns,
-			dataTableOptions,
-		);
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		log('error', `ensureColumnsExist-failed error=${j(message)}`);
-		throw error;
-	}
-
-	let insertResult: Awaited<ReturnType<typeof context.dataTableService.insertRows>>;
-	try {
-		insertResult = await context.dataTableService.insertRows(
-			target.dataTableId,
-			rowsToInsert,
-			dataTableOptions,
-		);
-		log('info', `insertRows-ok result=${j(insertResult)}`);
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		log('error', `insertRows-failed error=${j(message)}`);
-		throw error;
-	}
-
-	let previewRows: Array<Record<string, unknown>> = [];
+	let previewRows: Array<Record<string, unknown>>;
 	try {
 		const preview = await context.dataTableService.queryRows(target.dataTableId, {
 			limit: PREVIEW_ROW_COUNT,
 			...(insertResult.projectId ? { projectId: insertResult.projectId } : {}),
 		});
 		previewRows = buildPreviewRows(preview.data);
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		log('warn', `preview-query-failed error=${j(message)}`);
+	} catch {
+		previewRows = [];
 	}
 
-	log('info', `done source=${source} rowCount=${rowsToInsert.length}`);
 	const needsReview = source === 'synthetic' && target.expectedOutputColumns.length > 0;
 	const table = {
 		id: target.dataTableId,
