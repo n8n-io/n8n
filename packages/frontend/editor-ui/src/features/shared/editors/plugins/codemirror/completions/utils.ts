@@ -17,11 +17,9 @@ import type { DocMetadata } from 'n8n-workflow';
 import { escapeMappingString } from '@/app/utils/mappingUtils';
 import type { TargetNodeParameterContext } from '@/Interface';
 import {
-	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 /**
  * Split user input into base (to resolve) and tail (to filter).
@@ -233,14 +231,17 @@ export async function resolveAutocompleteExpression(
 
 export const isCredentialsModalOpen = () => useUIStore().modalsById[CREDENTIAL_EDIT_MODAL_KEY].open;
 
-export const isInHttpNodePagination = (targetNodeParameterContext?: TargetNodeParameterContext) => {
+export const isInHttpNodePagination = (
+	workflowDocumentId: WorkflowDocumentId,
+	targetNodeParameterContext?: TargetNodeParameterContext,
+) => {
 	let nodeType: string | undefined;
 	let path: string;
 	if (targetNodeParameterContext) {
 		nodeType = targetNodeParameterContext.nodeName;
 		path = targetNodeParameterContext.parameterPath;
 	} else {
-		const ndvStore = useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId));
+		const ndvStore = useNDVStore(workflowDocumentId);
 		nodeType = ndvStore.activeNode?.type;
 		path = ndvStore.focusedInputPath;
 	}

@@ -61,7 +61,10 @@ export async function dollarOptions(context: CompletionContext): Promise<Complet
 	const SKIP = new Set();
 	let recommendedCompletions: Completion[] = [];
 
-	if (isInHttpNodePagination()) {
+	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
+	const workflowDocumentId = context.state.facet(WORKFLOW_DOCUMENT_FACET);
+
+	if (isInHttpNodePagination(workflowDocumentId, targetNodeParameterContext)) {
 		recommendedCompletions = [
 			{
 				label: '$pageCount',
@@ -120,9 +123,6 @@ export async function dollarOptions(context: CompletionContext): Promise<Complet
 				]
 			: [];
 	}
-
-	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
-	const workflowDocumentId = context.state.facet(WORKFLOW_DOCUMENT_FACET);
 
 	if (!hasActiveNode(workflowDocumentId, targetNodeParameterContext)) {
 		return [];
