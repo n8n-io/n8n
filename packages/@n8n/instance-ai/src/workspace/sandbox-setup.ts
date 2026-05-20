@@ -349,14 +349,20 @@ export async function writeCuratedExamples(
 
 	// Extract and clean up in one command so a partial state isn't left
 	// behind if `tar` exits non-zero. `rm -f` is always run; the exec's
-	// status is `tar`'s exit code.
+	// status is `tar`'s exit code. `2>&1` folds tar's stderr into stdout so
+	// the failure cause is still visible if the sandbox runtime drops stderr.
 	const extract = await runInSandbox(
 		workspace,
-		`tar -xzf '${escapeSingleQuotes(archivePath)}' -C '${escapeSingleQuotes(examplesDir)}'; status=$?; rm -f '${escapeSingleQuotes(archivePath)}'; exit $status`,
+		`tar -xzf '${escapeSingleQuotes(archivePath)}' -C '${escapeSingleQuotes(examplesDir)}' 2>&1; status=$?; rm -f '${escapeSingleQuotes(archivePath)}'; exit $status`,
 	);
 	if (extract.exitCode !== 0) {
 		logger?.warn('[sandbox-setup] failed to extract curated examples', {
+			exitCode: extract.exitCode,
 			stderr: extract.stderr,
+			stdout: extract.stdout,
+			archivePath,
+			archiveBytes: bundle.archive.byteLength,
+			archiveVersion: bundle.version,
 		});
 		return;
 	}
