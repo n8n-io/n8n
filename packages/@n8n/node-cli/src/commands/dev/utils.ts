@@ -30,6 +30,7 @@ const CONFIG = {
 	KILL_TIMEOUT_MS: 1000,
 	PROCESS_KILL_DELAY_MS: 100,
 	EXIT_KILL_TIMEOUT_MS: 500,
+	GROUP_POLL_INTERVAL_MS: 50,
 };
 
 function calculatePanelHeight(numPanels: number, headerLines: number): number {
@@ -336,54 +337,59 @@ function printAllCommandOutputs(outputs: CommandOutput[], headerText?: string): 
 	);
 }
 
+function isProcessGroupAlive(pgid: number): boolean {
+	if (process.platform === 'win32') return false;
+	try {
+		process.kill(-pgid, 0);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+function sendKillSignal(proc: ChildProcess, pid: number, signal: 'SIGTERM' | 'SIGKILL'): void {
+	try {
+		if (process.platform === 'win32') {
+			execSync(`taskkill /PID ${pid} /T /F`, { timeout: CONFIG.KILL_TIMEOUT_MS });
+		} else {
+			process.kill(-pid, signal);
+		}
+	} catch {
+		try {
+			proc.kill(signal);
+		} catch {
+			// Process already gone
+		}
+	}
+}
+
 async function killProcess(proc: ChildProcess, graceful: boolean): Promise<void> {
-	if (!proc.pid || proc.exitCode !== null) return;
+	if (!proc.pid || proc.exitCode !== null || proc.signalCode !== null) return;
 
 	const pid = proc.pid;
+	const isWindows = process.platform === 'win32';
 
-	return await new Promise<void>((resolve) => {
-		let timeoutId: NodeJS.Timeout | null = null;
+	sendKillSignal(proc, pid, graceful ? 'SIGTERM' : 'SIGKILL');
 
-		if (graceful) {
-			timeoutId = setTimeout(() => {
-				try {
-					if (process.platform === 'win32') {
-						execSync(`taskkill /PID ${pid} /T /F`, { timeout: CONFIG.KILL_TIMEOUT_MS });
-					} else {
-						process.kill(-pid, 'SIGKILL');
-					}
-				} catch {
-					// Ignore errors during force kill
-				}
-				resolve();
-			}, CONFIG.GRACEFUL_SHUTDOWN_TIMEOUT);
-		}
+	if (!graceful) {
+		await sleep(CONFIG.PROCESS_KILL_DELAY_MS);
+		return;
+	}
 
-		proc.once('exit', () => {
-			if (timeoutId) clearTimeout(timeoutId);
-			resolve();
-		});
+	// Wait for the whole process group to drain rather than only the direct
+	// child. The shell/npx wrapper exits much faster than the n8n server it
+	// spawned, which needs time to release its listening port. Returning before
+	// the descendants finish would orphan the server with the port still bound.
+	const deadline = Date.now() + CONFIG.GRACEFUL_SHUTDOWN_TIMEOUT;
+	while (Date.now() < deadline) {
+		const childExited = proc.exitCode !== null || proc.signalCode !== null;
+		const groupDrained = isWindows || !isProcessGroupAlive(pid);
+		if (childExited && groupDrained) return;
+		await sleep(CONFIG.GROUP_POLL_INTERVAL_MS);
+	}
 
-		try {
-			if (process.platform === 'win32') {
-				execSync(`taskkill /PID ${pid} /T /F`, { timeout: CONFIG.KILL_TIMEOUT_MS });
-			} else {
-				process.kill(-pid, graceful ? 'SIGTERM' : 'SIGKILL');
-			}
-		} catch {
-			try {
-				proc.kill(graceful ? 'SIGTERM' : 'SIGKILL');
-			} catch {
-				if (timeoutId) clearTimeout(timeoutId);
-				resolve();
-			}
-		}
-
-		if (!graceful) {
-			if (timeoutId) clearTimeout(timeoutId);
-			setTimeout(resolve, CONFIG.PROCESS_KILL_DELAY_MS);
-		}
-	});
+	sendKillSignal(proc, pid, 'SIGKILL');
+	await sleep(CONFIG.PROCESS_KILL_DELAY_MS);
 }
 
 export function runCommands(config: CommandsConfig): void {
@@ -445,18 +451,20 @@ export function runCommands(config: CommandsConfig): void {
 	process.on('SIGTERM', handleSignal);
 
 	process.on('exit', () => {
-		if (!cleanupPerformed && childProcesses.length > 0) {
-			for (const proc of childProcesses) {
-				if (!proc.pid) continue;
-				try {
-					if (process.platform === 'win32') {
-						execSync(`taskkill /PID ${proc.pid} /T /F`, { timeout: CONFIG.EXIT_KILL_TIMEOUT_MS });
-					} else {
-						process.kill(-proc.pid, 'SIGKILL');
-					}
-				} catch {
-					// Ignore errors during exit cleanup
+		// Always fire a final SIGKILL at each spawned process group. If the
+		// graceful cleanup already drained the group this is a no-op; if it
+		// didn't (unexpected exit, race), this prevents the n8n server or
+		// other descendants from outliving the CLI and holding their port.
+		for (const proc of childProcesses) {
+			if (!proc.pid) continue;
+			try {
+				if (process.platform === 'win32') {
+					execSync(`taskkill /PID ${proc.pid} /T /F`, { timeout: CONFIG.EXIT_KILL_TIMEOUT_MS });
+				} else {
+					process.kill(-proc.pid, 'SIGKILL');
 				}
+			} catch {
+				// Ignore errors during exit cleanup
 			}
 		}
 	});
