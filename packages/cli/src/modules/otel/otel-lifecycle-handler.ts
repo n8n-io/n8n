@@ -32,12 +32,14 @@ export class OtelLifecycleHandler {
 			: // This will return "null" if there is no traceparent header in the trigger node. (e.g. webhook)
 				await this.traceContextService.get(ctx.executionId);
 
-		const project = await this.ownershipService.getWorkflowProjectCached(ctx.workflow.id);
+		const project = await this.ownershipService
+			.getWorkflowProjectCached(ctx.workflow.id)
+			.catch(() => undefined);
 
 		const spanContext = this.tracer.startWorkflow({
 			executionId: ctx.executionId,
 			tracingContext,
-			project: { id: project.id },
+			project: project ? { id: project.id } : undefined,
 			workflow: {
 				id: ctx.workflow.id,
 				name: ctx.workflow.name,
@@ -55,12 +57,14 @@ export class OtelLifecycleHandler {
 	async onWorkflowResume(ctx: WorkflowExecuteResumeContext): Promise<void> {
 		const previousWorkflowExecution = await this.traceContextService.get(ctx.executionId);
 
-		const project = await this.ownershipService.getWorkflowProjectCached(ctx.workflow.id);
+		const project = await this.ownershipService
+			.getWorkflowProjectCached(ctx.workflow.id)
+			.catch(() => undefined);
 
 		this.tracer.startWorkflow({
 			executionId: ctx.executionId,
 			linkTo: previousWorkflowExecution,
-			project: { id: project.id },
+			project: project ? { id: project.id } : undefined,
 			workflow: {
 				id: ctx.workflow.id,
 				name: ctx.workflow.name,

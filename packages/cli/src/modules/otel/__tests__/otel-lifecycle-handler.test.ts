@@ -72,6 +72,17 @@ describe('OtelLifecycleHandler', () => {
 			);
 		});
 
+		it('should start workflow span without project if project lookup fails', async () => {
+			traceContextService.get.mockResolvedValueOnce(undefined);
+			ownershipService.getWorkflowProjectCached.mockRejectedValueOnce(new Error('DB error'));
+
+			await expect(handler.onWorkflowStart(baseCtx)).resolves.not.toThrow();
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ project: undefined }),
+			);
+		});
+
 		it('should use own tracingContext when present (webhook case)', async () => {
 			const ownContext: TracingContext = {
 				traceparent: '00-aaaa651916cd43dd8448eb211c80319c-aaaa67aa0ba902b7-01',
@@ -172,6 +183,24 @@ describe('OtelLifecycleHandler', () => {
 			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('wf-1');
 			expect(tracer.startWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({ project: { id: 'resume-proj' } }),
+			);
+		});
+
+		it('should start workflow span without project if project lookup fails on resume', async () => {
+			ownershipService.getWorkflowProjectCached.mockRejectedValueOnce(new Error('DB error'));
+
+			await expect(
+				handler.onWorkflowResume({
+					type: 'workflowExecuteResume',
+					workflow: { id: 'wf-1', name: 'Test', versionId: 'v1', nodes: [], connections: {} },
+					workflowInstance: undefined as never,
+					executionData: undefined as never,
+					executionId: 'exec-resume',
+				} as never),
+			).resolves.not.toThrow();
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ project: undefined }),
 			);
 		});
 

@@ -3,6 +3,7 @@ import type { ExecutionStatus, WorkflowExecuteMode, INode } from 'n8n-workflow';
 import type { TracingContext } from './tracing-context';
 
 type ProjectContext = { id: string };
+type WorkflowContext = { id: string; name: string; versionId?: string; nodeCount: number };
 
 export type StartWorkflowParams = {
 	executionId: string;
@@ -13,7 +14,7 @@ export type StartWorkflowParams = {
 	 * workflow is resumed after a pause.
 	 */
 	linkTo?: TracingContext;
-	workflow: { id: string; name: string; versionId?: string; nodeCount: number };
+	workflow: WorkflowContext;
 	project?: ProjectContext;
 };
 
