@@ -484,9 +484,18 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				switch (msg.type) {
 					case 'getNodeFirst':
 						return this.handleGetNodeFirst(msg, data);
+					case 'getNodeLast':
+						return this.handleGetNodeLast(msg, data);
+					case 'getNodeAll':
+						return this.handleGetNodeAll(msg, data);
 					default: {
-						const exhaustive: never = msg.type;
-						throw new Error(`Unhandled bridge message type: ${String(exhaustive)}`);
+						// Unreachable at runtime — zod rejects unknown `type` values
+						// before the switch. The `never` assignment is the compile-time
+						// guard: a new schema added to `bridgeMessageSchema` without a
+						// matching case here becomes a type error.
+						const exhaustive: never = msg;
+						void exhaustive;
+						throw new Error('Unhandled bridge message');
 					}
 				}
 			} catch (err) {
@@ -528,6 +537,64 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		}
 
 		return (firstFn as (...a: unknown[]) => unknown).call(nodeProxy, msg.branchIndex, msg.runIndex);
+	}
+
+	/**
+	 * Handler for `getNodeLast` — fetches the last item of a named node's
+	 * most recent execution data. Reads the literal property `"last"`; the
+	 * isolate cannot influence which property is dereferenced.
+	 *
+	 * @private
+	 */
+	private handleGetNodeLast(
+		msg: Extract<BridgeMessage, { type: 'getNodeLast' }>,
+		data: Record<string, unknown>,
+	): unknown {
+		const dollarFn = data.$;
+		if (typeof dollarFn !== 'function') {
+			throw new Error('getNodeLast: $ is not available in expression context');
+		}
+
+		const nodeProxy = (dollarFn as (n: string) => unknown)(msg.nodeName);
+		if (!nodeProxy || typeof nodeProxy !== 'object') {
+			return undefined;
+		}
+
+		const lastFn = (nodeProxy as Record<string, unknown>).last;
+		if (typeof lastFn !== 'function') {
+			return undefined;
+		}
+
+		return (lastFn as (...a: unknown[]) => unknown).call(nodeProxy, msg.branchIndex, msg.runIndex);
+	}
+
+	/**
+	 * Handler for `getNodeAll` — fetches every item of a named node's most
+	 * recent execution data as an array. Reads the literal property `"all"`;
+	 * the isolate cannot influence which property is dereferenced.
+	 *
+	 * @private
+	 */
+	private handleGetNodeAll(
+		msg: Extract<BridgeMessage, { type: 'getNodeAll' }>,
+		data: Record<string, unknown>,
+	): unknown {
+		const dollarFn = data.$;
+		if (typeof dollarFn !== 'function') {
+			throw new Error('getNodeAll: $ is not available in expression context');
+		}
+
+		const nodeProxy = (dollarFn as (n: string) => unknown)(msg.nodeName);
+		if (!nodeProxy || typeof nodeProxy !== 'object') {
+			return undefined;
+		}
+
+		const allFn = (nodeProxy as Record<string, unknown>).all;
+		if (typeof allFn !== 'function') {
+			return undefined;
+		}
+
+		return (allFn as (...a: unknown[]) => unknown).call(nodeProxy, msg.branchIndex, msg.runIndex);
 	}
 
 	/**
