@@ -66,6 +66,8 @@ export interface AgentEvaluationRunMetricResult {
 
 export interface AgentEvaluationRunToolCall {
 	name: string;
+	input?: unknown;
+	output?: unknown;
 	mocked: boolean;
 	missingMock: boolean;
 }

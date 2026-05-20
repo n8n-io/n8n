@@ -477,7 +477,15 @@ describe('AgentEvaluationsService', () => {
 						caseId: review.id,
 						status: 'passed',
 						output: 'Expected answer',
-						toolCalls: [{ name: 'lookup', mocked: true, missingMock: false }],
+						toolCalls: [
+							{
+								name: 'lookup',
+								input: { query: 'Question' },
+								output: { answer: 42 },
+								mocked: true,
+								missingMock: false,
+							},
+						],
 					}),
 				],
 			}),

@@ -221,6 +221,8 @@ export class AgentEvaluationsService {
 					metrics: metricResults,
 					toolCalls: executionResult.toolCalls.map((toolCall) => ({
 						name: toolCall.name,
+						input: toolCall.input,
+						output: toolCall.output,
 						mocked: !executionResult.missingToolMocks.includes(toolCall.name),
 						missingMock: executionResult.missingToolMocks.includes(toolCall.name),
 					})),

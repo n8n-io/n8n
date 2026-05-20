@@ -10,6 +10,8 @@ import {
 	N8nBadge,
 	N8nButton,
 	N8nCard,
+	N8nDialog,
+	N8nDialogFooter,
 	N8nIcon,
 	N8nOption,
 	N8nRadioButtons,
@@ -64,9 +66,11 @@ const compareCandidateRunId = ref<string | null>(null);
 
 const RUN_PROGRESS_STEPS = ['preparing', 'running', 'scoring', 'finalizing'] as const;
 type RunProgressStep = (typeof RUN_PROGRESS_STEPS)[number];
+const PROVIDER_TOOLS_DISABLED_WARNING = 'Provider tools are disabled in v0 evaluation runs.';
 
 const runProgressStep = ref<RunProgressStep | null>(null);
 const runProgressTimers: number[] = [];
+const selectedRunCase = ref<AgentEvaluationRunCaseResult | null>(null);
 
 const evals = computed(() => props.schema?.evaluations ?? []);
 const readiness = computed(() => dataset.value?.readiness ?? null);
@@ -105,6 +109,11 @@ const displayedRun = computed(() => {
 	if (selectedEvaluationMode.value === 'run') return run.value;
 	return null;
 });
+const displayedRunWarnings = computed(
+	() =>
+		displayedRun.value?.warnings.filter((warning) => warning !== PROVIDER_TOOLS_DISABLED_WARNING) ??
+		[],
+);
 const compareBaseRun = computed(
 	() =>
 		completedRuns.value.find((completedRun) => completedRun.id === compareBaseRunId.value) ?? null,
@@ -413,6 +422,39 @@ function getCaseStatusLabel(result: AgentEvaluationRunCaseResult): string {
 	return i18n.baseText('agents.builder.evaluations.run.status.failed');
 }
 
+function getCaseStatusIcon(result: AgentEvaluationRunCaseResult) {
+	return result.status === 'passed' ? 'circle-check' : 'circle-x';
+}
+
+function getCaseStatusClass(result: AgentEvaluationRunCaseResult) {
+	return result.status === 'passed' ? style.caseStatusOk : style.caseStatusBad;
+}
+
+function openRunCase(result: AgentEvaluationRunCaseResult) {
+	selectedRunCase.value = result;
+}
+
+function setRunCaseDialogOpen(open: boolean) {
+	if (!open) selectedRunCase.value = null;
+}
+
+function formatDetailValue(value: unknown) {
+	if (typeof value === 'string') return value;
+	if (value === undefined) return '';
+
+	try {
+		return JSON.stringify(value, null, 2) ?? '';
+	} catch {
+		return String(value);
+	}
+}
+
+function getToolCallMockLabel(toolCall: AgentEvaluationRunCaseResult['toolCalls'][number]) {
+	return toolCall.missingMock
+		? i18n.baseText('agents.builder.evaluations.run.case.toolMissingMock')
+		: i18n.baseText('agents.builder.evaluations.run.case.toolMocked');
+}
+
 function getProgressStepLabel(step: RunProgressStep) {
 	return i18n.baseText(`agents.builder.evaluations.run.progress.${step}`);
 }
@@ -539,6 +581,10 @@ watch(
 	},
 	{ immediate: true },
 );
+
+watch(displayedRun, () => {
+	selectedRunCase.value = null;
+});
 
 onBeforeUnmount(clearRunProgress);
 </script>
@@ -842,9 +888,9 @@ onBeforeUnmount(clearRunProgress);
 					</div>
 				</div>
 
-				<div v-if="displayedRun.warnings.length > 0" :class="$style.warningList">
+				<div v-if="displayedRunWarnings.length > 0" :class="$style.warningList">
 					<N8nText
-						v-for="warning in displayedRun.warnings"
+						v-for="warning in displayedRunWarnings"
 						:key="warning"
 						size="small"
 						color="text-light"
@@ -858,39 +904,55 @@ onBeforeUnmount(clearRunProgress);
 						v-for="result in displayedRun.cases"
 						:key="result.caseId"
 						:class="$style.runCase"
+						role="button"
+						tabindex="0"
+						:aria-label="i18n.baseText('agents.builder.evaluations.run.case.openDetails')"
 						data-testid="agent-evaluations-run-case"
+						@click="openRunCase(result)"
+						@keydown.enter.prevent="openRunCase(result)"
+						@keydown.space.prevent="openRunCase(result)"
 					>
-						<div :class="$style.suiteHeader">
-							<div :class="$style.metricCopy">
-								<N8nText :bold="true" size="small">{{ result.input }}</N8nText>
-								<N8nText size="small" color="text-light">{{
-									result.output || result.error
-								}}</N8nText>
+						<div :class="$style.runCaseHeader">
+							<div :class="$style.runCaseMessages">
+								<div :class="$style.runCaseMessage">
+									<N8nText :bold="true" size="xsmall" :class="$style.runCaseLabel">
+										{{ i18n.baseText('agentDebug.userMessage') }}
+									</N8nText>
+									<N8nText :bold="true" size="small" :class="$style.clampedText">
+										{{ result.input }}
+									</N8nText>
+								</div>
+								<div :class="$style.runCaseMessage">
+									<N8nText :bold="true" size="xsmall" :class="$style.runCaseLabel">
+										{{ i18n.baseText('agentDebug.agentResponse') }}
+									</N8nText>
+									<N8nText size="small" color="text-light" :class="$style.clampedText">
+										{{ result.output || result.error }}
+									</N8nText>
+								</div>
 							</div>
 							<span
-								:class="[
-									$style.statusBadge,
-									result.status === 'passed' ? $style.statusBadgeOk : $style.statusBadgeBad,
-								]"
+								:class="[$style.caseStatus, getCaseStatusClass(result)]"
+								:title="getCaseStatusLabel(result)"
+								:aria-label="getCaseStatusLabel(result)"
 							>
-								{{ getCaseStatusLabel(result) }}
+								<N8nIcon :icon="getCaseStatusIcon(result)" :size="18" />
 							</span>
 						</div>
-						<div :class="$style.metricBadges">
+						<div :class="$style.caseMetrics">
 							<span
 								v-for="metric in result.metrics"
 								:key="metric.id"
-								:class="[
-									$style.statusBadge,
-									metric.pass ? $style.statusBadgeOk : $style.statusBadgeBad,
-								]"
+								:class="[$style.metricResult, metric.pass ? $style.statOk : $style.statBad]"
 							>
+								<N8nIcon :icon="metric.pass ? 'circle-check' : 'circle-x'" :size="14" />
 								{{ metric.name }} {{ formatScore(metric.score) }}
 							</span>
 							<span
 								v-if="result.missingToolMocks.length > 0"
-								:class="[$style.statusBadge, $style.statusBadgeBad]"
+								:class="[$style.metricResult, $style.statBad]"
 							>
+								<N8nIcon icon="circle-x" :size="14" />
 								{{ i18n.baseText('agents.builder.evaluations.run.missingMocks') }}
 							</span>
 						</div>
@@ -998,6 +1060,125 @@ onBeforeUnmount(clearRunProgress);
 				</div>
 			</div>
 		</template>
+
+		<N8nDialog
+			:open="selectedRunCase !== null"
+			size="large"
+			:header="i18n.baseText('agents.builder.evaluations.run.case.title')"
+			:description="i18n.baseText('agents.builder.evaluations.run.case.description')"
+			@update:open="setRunCaseDialogOpen"
+		>
+			<div v-if="selectedRunCase" :class="$style.caseDialogBody">
+				<section :class="$style.caseDialogSection">
+					<div :class="$style.caseDialogSectionTitle">
+						<N8nIcon icon="user" :size="16" />
+						<N8nText :bold="true" size="small">
+							{{ i18n.baseText('agentDebug.userMessage') }}
+						</N8nText>
+					</div>
+					<N8nText size="small" :class="$style.detailText">{{ selectedRunCase.input }}</N8nText>
+				</section>
+
+				<section :class="$style.caseDialogSection">
+					<div :class="$style.caseDialogSectionTitle">
+						<N8nIcon icon="bot" :size="16" />
+						<N8nText :bold="true" size="small">
+							{{ i18n.baseText('agentDebug.agentResponse') }}
+						</N8nText>
+					</div>
+					<N8nText size="small" :class="$style.detailText">{{
+						selectedRunCase.output || selectedRunCase.error
+					}}</N8nText>
+				</section>
+
+				<section v-if="selectedRunCase.expectedOutput" :class="$style.caseDialogSection">
+					<div :class="$style.caseDialogSectionTitle">
+						<N8nIcon icon="circle-check" :size="16" />
+						<N8nText :bold="true" size="small">
+							{{ i18n.baseText('agents.builder.evaluations.run.case.expectedAnswer') }}
+						</N8nText>
+					</div>
+					<N8nText size="small" :class="$style.detailText">{{
+						selectedRunCase.expectedOutput
+					}}</N8nText>
+				</section>
+
+				<section :class="$style.caseDialogSection">
+					<div :class="$style.caseDialogSectionTitle">
+						<N8nIcon icon="wrench" :size="16" />
+						<N8nText :bold="true" size="small">
+							{{ i18n.baseText('agents.builder.evaluations.run.case.toolCalls') }}
+						</N8nText>
+					</div>
+					<div v-if="selectedRunCase.toolCalls.length > 0" :class="$style.toolCallList">
+						<div
+							v-for="(toolCall, index) in selectedRunCase.toolCalls"
+							:key="`${toolCall.name}-${index}`"
+							:class="$style.toolCallItem"
+						>
+							<div :class="$style.toolCallHeader">
+								<N8nIcon
+									:icon="toolCall.missingMock ? 'circle-x' : 'circle-check'"
+									:size="14"
+									:class="toolCall.missingMock ? $style.statBad : $style.statOk"
+								/>
+								<N8nText :bold="true" size="small">{{ toolCall.name }}</N8nText>
+								<N8nText size="xsmall" color="text-light">
+									{{ getToolCallMockLabel(toolCall) }}
+								</N8nText>
+							</div>
+							<div
+								v-if="toolCall.input !== undefined || toolCall.output !== undefined"
+								:class="$style.toolCallDetails"
+							>
+								<div v-if="toolCall.input !== undefined" :class="$style.toolCallDetail">
+									<N8nText :bold="true" size="xsmall">
+										{{ i18n.baseText('agents.builder.evaluations.run.case.toolInput') }}
+									</N8nText>
+									<pre :class="$style.detailCode">{{ formatDetailValue(toolCall.input) }}</pre>
+								</div>
+								<div v-if="toolCall.output !== undefined" :class="$style.toolCallDetail">
+									<N8nText :bold="true" size="xsmall">
+										{{ i18n.baseText('agents.builder.evaluations.run.case.toolOutput') }}
+									</N8nText>
+									<pre :class="$style.detailCode">{{ formatDetailValue(toolCall.output) }}</pre>
+								</div>
+							</div>
+						</div>
+					</div>
+					<N8nText v-else size="small" color="text-light">
+						{{ i18n.baseText('agents.builder.evaluations.run.case.noToolCalls') }}
+					</N8nText>
+				</section>
+
+				<section :class="$style.caseDialogSection">
+					<div :class="$style.caseDialogSectionTitle">
+						<N8nIcon icon="list-checks" :size="16" />
+						<N8nText :bold="true" size="small">
+							{{ i18n.baseText('agents.builder.evaluations.run.case.metrics') }}
+						</N8nText>
+					</div>
+					<div :class="$style.caseMetrics">
+						<span
+							v-for="metric in selectedRunCase.metrics"
+							:key="metric.id"
+							:class="[$style.metricResult, metric.pass ? $style.statOk : $style.statBad]"
+						>
+							<N8nIcon :icon="metric.pass ? 'circle-check' : 'circle-x'" :size="14" />
+							{{ metric.name }} {{ formatScore(metric.score) }}
+						</span>
+					</div>
+				</section>
+			</div>
+
+			<N8nDialogFooter>
+				<N8nButton
+					variant="subtle"
+					:label="i18n.baseText('generic.close')"
+					@click="selectedRunCase = null"
+				/>
+			</N8nDialogFooter>
+		</N8nDialog>
 	</div>
 </template>
 
@@ -1294,10 +1475,172 @@ onBeforeUnmount(clearRunProgress);
 .runCase {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs);
 	border: var(--border);
 	border-radius: var(--border-radius-base);
+	background: var(--background--surface);
+	text-align: left;
+	cursor: pointer;
+	transition:
+		background-color var(--duration--snappy),
+		border-color var(--duration--snappy);
+
+	&:hover {
+		background-color: var(--background--hover);
+	}
+
+	&:focus-visible {
+		outline: var(--border-width) var(--border-style) var(--border-color--info);
+		outline-offset: var(--spacing--5xs);
+	}
+}
+
+.runCaseHeader {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+}
+
+.runCaseMessages {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: var(--spacing--sm);
+	min-width: 0;
+	flex: 1;
+}
+
+.runCaseMessage {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+
+.runCaseLabel {
+	color: var(--text-color--subtle);
+}
+
+.clampedText {
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	white-space: normal;
+	word-break: break-word;
+}
+
+.caseStatus {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	padding: var(--spacing--5xs);
+	border-radius: var(--radius--xl);
+}
+
+.caseStatusOk {
+	color: var(--text-color--info);
+}
+
+.caseStatusBad {
+	color: var(--text-color--danger);
+}
+
+.caseMetrics {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+}
+
+.metricResult {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	line-height: var(--line-height--sm);
+}
+
+.caseDialogBody {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	max-height: 70vh;
+	overflow-y: auto;
+	padding-right: var(--spacing--2xs);
+}
+
+.caseDialogSection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--border-radius-base);
+}
+
+.caseDialogSectionTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	color: var(--text-color--base);
+}
+
+.detailText {
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.toolCallList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.toolCallItem {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs);
+	border: var(--border);
+	border-radius: var(--border-radius-base);
+	background-color: var(--background--hover);
+}
+
+.toolCallHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex-wrap: wrap;
+}
+
+.toolCallDetails {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--spacing--2xs);
+}
+
+.toolCallDetail {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+
+.detailCode {
+	margin: 0;
+	padding: var(--spacing--2xs);
+	border-radius: var(--border-radius-base);
+	background-color: var(--background--surface);
+	color: var(--text-color--base);
+	font-family: var(--font-family--monospace);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--md);
+	white-space: pre-wrap;
+	word-break: break-word;
 }
 
 .evalCard {
@@ -1359,12 +1702,18 @@ onBeforeUnmount(clearRunProgress);
 
 	.suiteHeader,
 	.modeBar,
-	.metricRow {
+	.metricRow,
+	.runCaseHeader {
 		flex-direction: column;
 	}
 
 	.modeBar {
 		align-items: flex-start;
+	}
+
+	.runCaseMessages,
+	.toolCallDetails {
+		grid-template-columns: 1fr;
 	}
 
 	.metricBadges {
