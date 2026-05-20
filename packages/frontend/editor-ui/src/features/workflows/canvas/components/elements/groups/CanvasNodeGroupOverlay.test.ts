@@ -5,7 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import type { GraphNode } from '@vue-flow/core';
 
 import CanvasNodeGroupOverlay from './CanvasNodeGroupOverlay.vue';
-import type { CanvasNodeGroup } from '../../../stores/canvasNodeGroups.store';
+import type { IWorkflowGroup } from 'n8n-workflow';
 import {
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_TOP,
@@ -22,16 +22,16 @@ function makeMember(id: string, x: number, y: number): GraphNode {
 	} as unknown as GraphNode;
 }
 
-const baseGroup: CanvasNodeGroup = {
+const baseGroup: IWorkflowGroup = {
 	id: 'g1',
 	nodeIds: ['a', 'b'],
-	title: 'My group',
+	name: 'My group',
 };
 
 describe('CanvasNodeGroupOverlay', () => {
 	function render(
 		props: Partial<{
-			group: CanvasNodeGroup;
+			group: IWorkflowGroup;
 			memberNodes: GraphNode[];
 			readOnly: boolean;
 			autofocusTitle: boolean;
@@ -107,7 +107,7 @@ describe('CanvasNodeGroupOverlay', () => {
 		await fireEvent.update(input, 'Renamed');
 		await fireEvent.keyDown(input, { key: 'Enter' });
 
-		expect(wrapper.emitted()['update:title']).toEqual([['g1', 'Renamed']]);
+		expect(wrapper.emitted()['update:name']).toEqual([['g1', 'Renamed']]);
 	});
 
 	it('reverts on Escape', async () => {
@@ -117,7 +117,7 @@ describe('CanvasNodeGroupOverlay', () => {
 		await fireEvent.update(input, 'Discarded');
 		await fireEvent.keyDown(input, { key: 'Escape' });
 
-		expect(wrapper.emitted()['update:title']).toBeUndefined();
+		expect(wrapper.emitted()['update:name']).toBeUndefined();
 		expect(wrapper.getByTestId('canvas-node-group-title')).toHaveTextContent('My group');
 	});
 
@@ -127,7 +127,7 @@ describe('CanvasNodeGroupOverlay', () => {
 		const input = wrapper.getByTestId('inline-edit-input') as HTMLInputElement;
 		await fireEvent.keyDown(input, { key: 'Enter' });
 
-		expect(wrapper.emitted()['update:title']).toBeUndefined();
+		expect(wrapper.emitted()['update:name']).toBeUndefined();
 	});
 
 	it('focuses title editing when autofocus is requested', async () => {

@@ -69,7 +69,6 @@ import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
 import CanvasNodeGroupsLayer from './elements/groups/CanvasNodeGroupsLayer.vue';
-import { useCanvasNodeGroupsStore } from '../stores/canvasNodeGroups.store';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
@@ -184,7 +183,6 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
 const setupPanelStore = useSetupPanelStore();
-const canvasNodeGroupsStore = useCanvasNodeGroupsStore();
 const posthogStore = usePostHog();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
@@ -1103,14 +1101,6 @@ watch(
 
 watch([nodesSelectionActive, userSelectionRect], ([isActive, rect]) =>
 	emit('update:has-range-selection', isActive || (rect?.width ?? 0) > 0 || (rect?.height ?? 0) > 0),
-);
-
-watch(
-	() => props.nodes.length,
-	(length, prev) => {
-		if (length >= prev) return;
-		canvasNodeGroupsStore.pruneNodes(new Set(props.nodes.map((n) => n.id)));
-	},
 );
 
 watch([vueFlow.nodes, () => experimentalNdvStore.nodeNameToBeFocused], ([nodes, toFocusName]) => {

@@ -2,11 +2,9 @@
 import { computed, onBeforeUnmount } from 'vue';
 import { useVueFlow, type GraphNode } from '@vue-flow/core';
 import { useEventListener } from '@vueuse/core';
+import type { IWorkflowGroup } from 'n8n-workflow';
 
-import {
-	useCanvasNodeGroupsStore,
-	type CanvasNodeGroup,
-} from '../../../stores/canvasNodeGroups.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useVueFlowTransformPaneTeleport } from '../../../composables/useVueFlowTransformPaneTeleport';
 import { snapPositionToGrid } from '@/app/utils/nodeViewUtils';
 import CanvasNodeGroupOverlay from './CanvasNodeGroupOverlay.vue';
@@ -27,11 +25,11 @@ const emit = defineEmits<{
 	'move-members': [moves: Array<{ id: string; position: { x: number; y: number } }>];
 }>();
 
-const groupsStore = useCanvasNodeGroupsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const { findNode, updateNode, viewport } = useVueFlow();
 const { teleportTarget } = useVueFlowTransformPaneTeleport();
 
-function getMembers(group: CanvasNodeGroup): GraphNode[] {
+function getMembers(group: IWorkflowGroup): GraphNode[] {
 	const members: GraphNode[] = [];
 	for (const id of group.nodeIds) {
 		const node = findNode(id);
@@ -45,7 +43,7 @@ function onTitleFocused(id: string) {
 }
 
 const visibleGroups = computed(() =>
-	groupsStore.allGroups.map((group) => ({ group, members: getMembers(group) })),
+	workflowDocumentStore.value.allGroups.map((group) => ({ group, members: getMembers(group) })),
 );
 
 type DragState = {
@@ -104,7 +102,7 @@ onBeforeUnmount(cleanup);
 
 function onHeaderDragStart(groupId: string, event: MouseEvent) {
 	if (props.readOnly) return;
-	const group = groupsStore.allGroups.find((g) => g.id === groupId);
+	const group = workflowDocumentStore.value.allGroups.find((g) => g.id === groupId);
 	if (!group) return;
 	const members = getMembers(group);
 	if (members.length === 0) return;
@@ -133,9 +131,9 @@ function onHeaderDragStart(groupId: string, event: MouseEvent) {
 			:member-nodes="members"
 			:read-only="readOnly"
 			:autofocus-title="group.id === autofocusGroupId"
-			@update:title="groupsStore.updateTitle"
+			@update:name="workflowDocumentStore.updateName"
 			@title:focused="onTitleFocused"
-			@ungroup="groupsStore.deleteGroup"
+			@ungroup="workflowDocumentStore.deleteGroup"
 			@header:dragstart="onHeaderDragStart"
 		/>
 	</Teleport>

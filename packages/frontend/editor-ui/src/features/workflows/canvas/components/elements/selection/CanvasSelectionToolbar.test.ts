@@ -1,16 +1,29 @@
 import { renderComponent } from '@/__tests__/render';
 import { fireEvent } from '@testing-library/vue';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { setActivePinia } from 'pinia';
-import { createTestingPinia } from '@pinia/testing';
+import { createPinia, setActivePinia } from 'pinia';
+import { computed } from 'vue';
 import type { GraphNode } from '@vue-flow/core';
 
 import CanvasSelectionToolbar from './CanvasSelectionToolbar.vue';
-import { useCanvasNodeGroupsStore } from '../../../stores/canvasNodeGroups.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 const isSelectionGroupableMock = vi.fn();
 const isSelectionExtractableMock = vi.fn();
 const expandSelectionWithSubNodesMock = vi.fn((nodeIds: string[]) => nodeIds);
+
+let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
+
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/app/stores/workflowDocument.store')>();
+	return {
+		...actual,
+		injectWorkflowDocumentStore: () => computed(() => workflowDocumentStore),
+	};
+});
 
 vi.mock('@/app/composables/useSelectionValidation', () => ({
 	useSelectionValidation: () => ({
@@ -40,7 +53,8 @@ function makeNode(id: string, x = 0, y = 0): GraphNode {
 
 describe('CanvasSelectionToolbar', () => {
 	beforeEach(() => {
-		setActivePinia(createTestingPinia({ stubActions: false }));
+		setActivePinia(createPinia());
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-test'));
 		isSelectionGroupableMock.mockReturnValue({
 			valid: true,
 			subGraphData: { start: 'A', end: 'B' },
@@ -112,7 +126,7 @@ describe('CanvasSelectionToolbar', () => {
 	});
 
 	it('hides Group and shows Extract when the selection is fully inside an existing group', () => {
-		const store = useCanvasNodeGroupsStore();
+		const store = workflowDocumentStore;
 		store.createGroup(['a', 'b'], 'Group');
 		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('b')] });
 		expect(wrapper.queryByTestId('canvas-selection-toolbar-group')).toBeNull();
@@ -120,7 +134,7 @@ describe('CanvasSelectionToolbar', () => {
 	});
 
 	it('hides Group and shows Extract when a subset of a group is selected', () => {
-		const store = useCanvasNodeGroupsStore();
+		const store = workflowDocumentStore;
 		store.createGroup(['a', 'b', 'c'], 'Group');
 		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('b')] });
 		expect(wrapper.queryByTestId('canvas-selection-toolbar-group')).toBeNull();
@@ -128,7 +142,7 @@ describe('CanvasSelectionToolbar', () => {
 	});
 
 	it('hides Group and shows Extract when the selection mixes grouped and ungrouped nodes', () => {
-		const store = useCanvasNodeGroupsStore();
+		const store = workflowDocumentStore;
 		store.createGroup(['a', 'b'], 'Group');
 		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('c')] });
 		expect(wrapper.queryByTestId('canvas-selection-toolbar-group')).toBeNull();
@@ -136,7 +150,7 @@ describe('CanvasSelectionToolbar', () => {
 	});
 
 	it('hides Group and shows Extract when the selection spans nodes from different groups', () => {
-		const store = useCanvasNodeGroupsStore();
+		const store = workflowDocumentStore;
 		store.createGroup(['a', 'b'], 'Group A');
 		store.createGroup(['c', 'd'], 'Group B');
 		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('c')] });
@@ -153,13 +167,13 @@ describe('CanvasSelectionToolbar', () => {
 	});
 
 	it('creates a group when Group is clicked', async () => {
-		const store = useCanvasNodeGroupsStore();
+		const store = workflowDocumentStore;
 		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('b')] });
 		await fireEvent.click(wrapper.getByTestId('canvas-selection-toolbar-group'));
 
 		expect(store.allGroups).toHaveLength(1);
 		expect(store.allGroups[0].nodeIds).toEqual(['a', 'b']);
-		expect(store.allGroups[0].title).toBe('Group 1');
+		expect(store.allGroups[0].name).toBe('Group 1');
 		expect(wrapper.emitted()['group-created']).toEqual([[store.allGroups[0].id]]);
 	});
 
@@ -171,13 +185,13 @@ describe('CanvasSelectionToolbar', () => {
 	});
 
 	it('increments the default title for each new group', async () => {
-		const store = useCanvasNodeGroupsStore();
+		const store = workflowDocumentStore;
 		store.createGroup(['x', 'y'], 'Group 1');
 
 		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('b')] });
 		await fireEvent.click(wrapper.getByTestId('canvas-selection-toolbar-group'));
 
-		expect(store.allGroups[1].title).toBe('Group 2');
+		expect(store.allGroups[1].name).toBe('Group 2');
 	});
 
 	it('auto-includes sub-nodes when the selection has a node with sub-nodes', async () => {
@@ -187,7 +201,7 @@ describe('CanvasSelectionToolbar', () => {
 			'tool',
 		]);
 
-		const store = useCanvasNodeGroupsStore();
+		const store = workflowDocumentStore;
 		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('agent')] });
 		await fireEvent.click(wrapper.getByTestId('canvas-selection-toolbar-group'));
 
@@ -201,7 +215,7 @@ describe('CanvasSelectionToolbar', () => {
 			'memory',
 		]);
 
-		const store = useCanvasNodeGroupsStore();
+		const store = workflowDocumentStore;
 		store.createGroup(['other', 'memory'], 'Other');
 
 		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('agent')] });

@@ -42,7 +42,9 @@ const canExtractWorkflow = computed(
 	() => !props.readOnly && isSelectionExtractable(selectedNodeIds.value).valid,
 );
 
-const isToolbarVisible = computed(() => canGroup.value || canExtractWorkflow.value);
+const isToolbarVisible = computed(
+	() => (canGroup.value || canExtractWorkflow.value) && selectedNodeIds.value.length > 1,
+);
 
 const extractWorkflowLabel = computed(() =>
 	i18n.baseText('contextMenu.extract', { adjustToNumber: props.selectedNodes.length }),
