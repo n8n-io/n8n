@@ -94,27 +94,7 @@ export interface BuiltMemory {
 		topK: number;
 	}): Promise<Array<{ id: string; score: number }>>;
 	// --- Episodic memory (optional — runtime handles extraction and embeddings) ---
-	saveEpisodicMemoryEntries?(entries: NewEpisodicMemoryEntry[]): Promise<EpisodicMemoryEntry[]>;
-	saveEpisodicMemoryEntrySources?(
-		sources: NewEpisodicMemoryEntrySource[],
-	): Promise<EpisodicMemoryEntrySource[]>;
-	saveEpisodicMemoryEntryWithSources?(
-		entry: NewEpisodicMemoryEntry,
-		sources: NewEpisodicMemoryEntrySourceForEntry[],
-	): Promise<EpisodicMemoryEntry | null>;
-	searchEpisodicMemoryEntries?(
-		scope: EpisodicMemoryScope,
-		query: string,
-		opts?: EpisodicMemorySearchOptions,
-	): Promise<RetrievedEpisodicMemoryEntry[]>;
-	supersedeEpisodicMemoryEntries?(ids: string[], supersededBy: string): Promise<void>;
-	getEpisodicMemoryEntrySources?(entryIds: string[]): Promise<EpisodicMemoryEntrySource[]>;
-	applyEpisodicMemoryReflection?(
-		scope: EpisodicMemoryScope,
-		reflection: EpisodicMemoryReflectionApply,
-	): Promise<EpisodicMemoryReflectionResult>;
-	getEpisodicMemoryCursor?(scope: ObservationLogScope): Promise<EpisodicMemoryCursor | null>;
-	setEpisodicMemoryCursor?(cursor: NewEpisodicMemoryCursor): Promise<void>;
+	episodic?: EpisodicMemoryMethods;
 	// --- Lifecycle (optional) ---
 	/** Close the connection pool / release resources. No-op for in-memory backends. */
 	close?(): Promise<void>;
@@ -207,28 +187,27 @@ export interface EpisodicMemorySearchOptions {
 	includeStatuses?: EpisodicMemoryStatus[];
 }
 
-export interface BuiltEpisodicMemoryStore {
-	saveEpisodicMemoryEntries(entries: NewEpisodicMemoryEntry[]): Promise<EpisodicMemoryEntry[]>;
-	saveEpisodicMemoryEntrySources(
-		sources: NewEpisodicMemoryEntrySource[],
-	): Promise<EpisodicMemoryEntrySource[]>;
-	saveEpisodicMemoryEntryWithSources(
+export interface EpisodicMemoryMethods {
+	saveEntryWithSources(
 		entry: NewEpisodicMemoryEntry,
 		sources: NewEpisodicMemoryEntrySourceForEntry[],
 	): Promise<EpisodicMemoryEntry | null>;
-	searchEpisodicMemoryEntries(
+	searchEntries(
 		scope: EpisodicMemoryScope,
 		query: string,
 		opts?: EpisodicMemorySearchOptions,
 	): Promise<RetrievedEpisodicMemoryEntry[]>;
-	supersedeEpisodicMemoryEntries(ids: string[], supersededBy: string): Promise<void>;
-	getEpisodicMemoryEntrySources(entryIds: string[]): Promise<EpisodicMemoryEntrySource[]>;
-	applyEpisodicMemoryReflection(
+	getEntrySources(entryIds: string[]): Promise<EpisodicMemoryEntrySource[]>;
+	applyReflection(
 		scope: EpisodicMemoryScope,
 		reflection: EpisodicMemoryReflectionApply,
 	): Promise<EpisodicMemoryReflectionResult>;
-	getEpisodicMemoryCursor(scope: ObservationLogScope): Promise<EpisodicMemoryCursor | null>;
-	setEpisodicMemoryCursor(cursor: NewEpisodicMemoryCursor): Promise<void>;
+	getCursor(scope: ObservationLogScope): Promise<EpisodicMemoryCursor | null>;
+	setCursor(cursor: NewEpisodicMemoryCursor): Promise<void>;
+}
+
+export interface BuiltEpisodicMemoryStore {
+	episodic: EpisodicMemoryMethods;
 }
 
 export interface EpisodicMemoryExtractionCandidate {

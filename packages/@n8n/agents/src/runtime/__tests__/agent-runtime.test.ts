@@ -2657,14 +2657,14 @@ describe('AgentRuntime — observation log jobs', () => {
 		});
 		await runtime.dispose();
 
-		const entries = await memory.searchEpisodicMemoryEntries(
+		const entries = await memory.episodic.searchEntries(
 			{ namespace: 'resource-1', resourceId: 'resource-1' },
 			'Postgres storage',
 			{ queryEmbedding: [1, 0] },
 		);
 		expect(entries).toHaveLength(1);
 		expect(entries[0].content).toBe('User chose Postgres for memory storage.');
-		const cursor = await memory.getEpisodicMemoryCursor({
+		const cursor = await memory.episodic.getCursor({
 			scopeKind: 'thread',
 			scopeId: createObservationLogThreadScopeId('thread-1', 'resource-1'),
 		});
@@ -2675,22 +2675,36 @@ describe('AgentRuntime — observation log jobs', () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('Scoped response'));
 		const memory = new InMemoryMemory();
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
-		await memory.saveEpisodicMemoryEntries([
+		await memory.episodic.saveEntryWithSources(
 			{
 				namespace: 'resource-1',
 				resourceId: 'resource-1',
 				content: 'Earlier session: user chose Postgres for memory storage.',
 				embedding: [1, 0],
 			},
-		]);
-		await memory.saveEpisodicMemoryEntries([
+			[
+				{
+					observationId: 'obs-resource-1',
+					threadId: 'thread-resource-1',
+					evidenceText: 'user chose Postgres',
+				},
+			],
+		);
+		await memory.episodic.saveEntryWithSources(
 			{
 				namespace: 'resource-2',
 				resourceId: 'resource-2',
 				content: 'Earlier session: user chose SQLite for memory storage.',
 				embedding: [1, 0],
 			},
-		]);
+			[
+				{
+					observationId: 'obs-resource-2',
+					threadId: 'thread-resource-2',
+					evidenceText: 'user chose SQLite',
+				},
+			],
+		);
 
 		const runtime = new AgentRuntime({
 			name: 'observing-agent',

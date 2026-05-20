@@ -71,6 +71,7 @@ export type {
 	EpisodicMemoryExtraction,
 	EpisodicMemoryExtractionCandidate,
 	EpisodicMemoryExtractorInput,
+	EpisodicMemoryMethods,
 	EpisodicMemoryPrompts,
 	EpisodicMemoryReflectFn,
 	EpisodicMemoryReflection,

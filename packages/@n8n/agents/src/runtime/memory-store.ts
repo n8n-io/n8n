@@ -14,6 +14,7 @@ import type {
 	EpisodicMemoryCursor,
 	EpisodicMemoryEntry,
 	EpisodicMemoryEntrySource,
+	EpisodicMemoryMethods,
 	EpisodicMemoryReflectionApply,
 	EpisodicMemoryReflectionResult,
 	EpisodicMemoryScope,
@@ -106,6 +107,18 @@ export class InMemoryMemory
 	private episodicMemorySources: EpisodicMemoryEntrySource[] = [];
 
 	private episodicMemoryCursorsByScope = new Map<string, EpisodicMemoryCursor>();
+
+	readonly episodic: EpisodicMemoryMethods = {
+		saveEntryWithSources: async (entry, sources) =>
+			await this.saveEpisodicMemoryEntryWithSources(entry, sources),
+		searchEntries: async (scope, query, opts) =>
+			await this.searchEpisodicMemoryEntries(scope, query, opts),
+		getEntrySources: async (entryIds) => await this.getEpisodicMemoryEntrySources(entryIds),
+		applyReflection: async (scope, reflection) =>
+			await this.applyEpisodicMemoryReflection(scope, reflection),
+		getCursor: async (scope) => await this.getEpisodicMemoryCursor(scope),
+		setCursor: async (cursor) => await this.setEpisodicMemoryCursor(cursor),
+	};
 
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async getThread(threadId: string): Promise<Thread | null> {
@@ -461,7 +474,7 @@ export class InMemoryMemory
 	// ── Episodic memory ──────────────────────────────────────────────────
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	async saveEpisodicMemoryEntries(
+	private async saveEpisodicMemoryEntries(
 		entries: NewEpisodicMemoryEntry[],
 	): Promise<EpisodicMemoryEntry[]> {
 		const now = new Date();
@@ -503,7 +516,7 @@ export class InMemoryMemory
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	async saveEpisodicMemoryEntrySources(
+	private async saveEpisodicMemoryEntrySources(
 		sources: NewEpisodicMemoryEntrySource[],
 	): Promise<EpisodicMemoryEntrySource[]> {
 		const saved: EpisodicMemoryEntrySource[] = [];
@@ -532,7 +545,7 @@ export class InMemoryMemory
 		return saved;
 	}
 
-	async saveEpisodicMemoryEntryWithSources(
+	private async saveEpisodicMemoryEntryWithSources(
 		entry: NewEpisodicMemoryEntry,
 		sources: NewEpisodicMemoryEntrySourceForEntry[],
 	): Promise<EpisodicMemoryEntry | null> {
@@ -553,7 +566,7 @@ export class InMemoryMemory
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	async searchEpisodicMemoryEntries(
+	private async searchEpisodicMemoryEntries(
 		scope: EpisodicMemoryScope,
 		query: string,
 		opts?: EpisodicMemorySearchOptions,
@@ -567,7 +580,7 @@ export class InMemoryMemory
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	async supersedeEpisodicMemoryEntries(ids: string[], supersededBy: string): Promise<void> {
+	private async supersedeEpisodicMemoryEntries(ids: string[], supersededBy: string): Promise<void> {
 		const idSet = new Set(ids);
 		for (const entry of this.episodicMemory) {
 			if (!idSet.has(entry.id) || entry.id === supersededBy) continue;
@@ -577,7 +590,9 @@ export class InMemoryMemory
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	async getEpisodicMemoryEntrySources(entryIds: string[]): Promise<EpisodicMemoryEntrySource[]> {
+	private async getEpisodicMemoryEntrySources(
+		entryIds: string[],
+	): Promise<EpisodicMemoryEntrySource[]> {
 		const idSet = new Set(entryIds);
 		return this.episodicMemorySources
 			.filter((source) => idSet.has(source.memoryEntryId))
@@ -585,7 +600,7 @@ export class InMemoryMemory
 			.map(cloneEpisodicMemorySource);
 	}
 
-	async applyEpisodicMemoryReflection(
+	private async applyEpisodicMemoryReflection(
 		scope: EpisodicMemoryScope,
 		reflection: EpisodicMemoryReflectionApply,
 	): Promise<EpisodicMemoryReflectionResult> {
@@ -640,13 +655,15 @@ export class InMemoryMemory
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	async getEpisodicMemoryCursor(scope: ObservationLogScope): Promise<EpisodicMemoryCursor | null> {
+	private async getEpisodicMemoryCursor(
+		scope: ObservationLogScope,
+	): Promise<EpisodicMemoryCursor | null> {
 		const cursor = this.episodicMemoryCursorsByScope.get(scopeKey(scope.scopeKind, scope.scopeId));
 		return cursor ? cloneEpisodicMemoryCursor(cursor) : null;
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	async setEpisodicMemoryCursor(cursor: NewEpisodicMemoryCursor): Promise<void> {
+	private async setEpisodicMemoryCursor(cursor: NewEpisodicMemoryCursor): Promise<void> {
 		const now = new Date();
 		this.episodicMemoryCursorsByScope.set(scopeKey(cursor.scopeKind, cursor.scopeId), {
 			...cursor,

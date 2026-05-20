@@ -86,16 +86,15 @@ export function isEpisodicMemoryEnabled(
 export function hasEpisodicMemoryStore(
 	memory: BuiltMemory,
 ): memory is BuiltMemory & BuiltEpisodicMemoryStore {
+	const episodic = memory.episodic;
 	return (
-		typeof Reflect.get(memory, 'saveEpisodicMemoryEntries') === 'function' &&
-		typeof Reflect.get(memory, 'saveEpisodicMemoryEntrySources') === 'function' &&
-		typeof Reflect.get(memory, 'saveEpisodicMemoryEntryWithSources') === 'function' &&
-		typeof Reflect.get(memory, 'searchEpisodicMemoryEntries') === 'function' &&
-		typeof Reflect.get(memory, 'supersedeEpisodicMemoryEntries') === 'function' &&
-		typeof Reflect.get(memory, 'getEpisodicMemoryEntrySources') === 'function' &&
-		typeof Reflect.get(memory, 'applyEpisodicMemoryReflection') === 'function' &&
-		typeof Reflect.get(memory, 'getEpisodicMemoryCursor') === 'function' &&
-		typeof Reflect.get(memory, 'setEpisodicMemoryCursor') === 'function'
+		episodic !== undefined &&
+		typeof episodic.saveEntryWithSources === 'function' &&
+		typeof episodic.searchEntries === 'function' &&
+		typeof episodic.getEntrySources === 'function' &&
+		typeof episodic.applyReflection === 'function' &&
+		typeof episodic.getCursor === 'function' &&
+		typeof episodic.setCursor === 'function'
 	);
 }
 
@@ -131,7 +130,7 @@ export async function runEpisodicMemoryIndexer(
 		if (observations.length === 0) return { status: 'skipped', reason: 'no-observations' };
 
 		const renderedObservations = renderObservationLog(observations) ?? '';
-		const existingEntries = await opts.memory.searchEpisodicMemoryEntries(
+		const existingEntries = await opts.memory.episodic.searchEntries(
 			opts.scope,
 			observations.map((entry) => entry.text).join('\n'),
 			{ topK: Math.max(normalized.topK, 20) },
@@ -202,7 +201,7 @@ export function createRecallMemoryTool(opts: {
 				model: normalized.embedder,
 				value: query,
 			});
-			const entries = await opts.memory.searchEpisodicMemoryEntries(opts.scope, query, {
+			const entries = await opts.memory.episodic.searchEntries(opts.scope, query, {
 				topK: normalized.topK,
 				queryEmbedding,
 			});
@@ -329,7 +328,7 @@ async function getNewActiveObservations(
 			): Promise<ObservationLogEntry[]>;
 		};
 	const [cursor, active] = await Promise.all([
-		memory.getEpisodicMemoryCursor(scope),
+		memory.episodic.getCursor(scope),
 		observationMemory.getActiveObservationLog({ ...scope, order: 'asc' }),
 	]);
 	if (!cursor) return active;
@@ -352,7 +351,7 @@ async function saveCandidate(
 	embedding: number[],
 ): Promise<EpisodicMemoryEntry | null> {
 	const now = opts.now ?? new Date();
-	return await opts.memory.saveEpisodicMemoryEntryWithSources(
+	return await opts.memory.episodic.saveEntryWithSources(
 		{
 			...opts.scope,
 			content: candidate.content,
@@ -381,7 +380,7 @@ async function runEpisodicMemoryReflection(
 	const cluster = await buildReflectionCluster(opts, config, savedEntries, observations);
 	if (cluster.length === 0) return;
 
-	const sources = await opts.memory.getEpisodicMemoryEntrySources(cluster.map((entry) => entry.id));
+	const sources = await opts.memory.episodic.getEntrySources(cluster.map((entry) => entry.id));
 	const reflection = normalizeEpisodicMemoryReflection(
 		cluster,
 		await config.reflect({
@@ -404,7 +403,7 @@ async function runEpisodicMemoryReflection(
 					})
 				).embeddings
 			: [];
-	await opts.memory.applyEpisodicMemoryReflection(opts.scope, {
+	await opts.memory.episodic.applyReflection(opts.scope, {
 		drop: reflection.drop,
 		merge: reflection.merge.map((merge, index) => ({
 			supersedes: merge.supersedes,
@@ -431,7 +430,7 @@ async function buildReflectionCluster(
 		...savedEntries.map((entry) => entry.content),
 		...observations.map((entry) => entry.text),
 	].join('\n');
-	const related = await opts.memory.searchEpisodicMemoryEntries(opts.scope, query, {
+	const related = await opts.memory.episodic.searchEntries(opts.scope, query, {
 		topK: Math.max(config.topK, 20),
 	});
 	const relatedById = new Map(related.map((entry) => [entry.id, entry]));
@@ -470,7 +469,7 @@ async function advanceEpisodicCursor(
 ): Promise<void> {
 	const last = observations.at(-1);
 	if (!last) return;
-	await memory.setEpisodicMemoryCursor({
+	await memory.episodic.setCursor({
 		...scope,
 		lastIndexedObservationId: last.id,
 		lastIndexedObservationCreatedAt: last.createdAt,
