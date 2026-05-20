@@ -51,21 +51,25 @@ export function buildTranscriptFromEvents(opts: BuildTranscriptOptions): Transcr
 // ---------------------------------------------------------------------------
 // Per-turn assembly
 //
-// Routing rules — chosen so each logical interaction renders exactly once,
-// no post-hoc dedup required:
+// Routing is shape-driven, not tool-name-driven — each interaction is
+// identified by its payload signature so a tool rename or a new tool with
+// the same shape works without changes here. Each logical interaction
+// renders exactly once based on which event carries the richer payload:
 //
-//   ask-user         → rendered from `confirmation-request` (has the answers).
-//                      The `tool-call` is skipped — same questions, no answers.
-//   plan / generic   → rendered from `tool-call` (carries the args we surface).
-//   setup wizard     → rendered from `tool-result` (carries the outcome).
-//                      The `confirmation-request` suspend is skipped.
-//   other confirms   → rendered from `confirmation-request`.
+//   ask-user-shaped payload → rendered from `confirmation-request` (has
+//                             the proxy's answers). The matching tool-call
+//                             with the same shape is skipped.
+//   plan-shaped payload     → rendered from `tool-call` (carries the tasks).
+//   setup-wizard outcome    → rendered from `tool-result`. The matching
+//                             `confirmation-request` suspend is skipped.
+//   other confirmations     → rendered from `confirmation-request`.
+//
+// Assumption: when a `tool-call` is skipped because its richer twin is
+// expected, the twin must actually arrive in the same turn. If the SSE
+// stream loses one half of a pair, that interaction won't render at all.
+// In practice both halves always co-occur within a turn — the agent
+// runtime emits them together.
 // ---------------------------------------------------------------------------
-
-interface ToolStart {
-	toolName: string;
-	args: Record<string, unknown>;
-}
 
 function buildTurn(
 	events: CapturedEvent[],
@@ -73,7 +77,6 @@ function buildTurn(
 	proxyResponses: ProxyResponses | undefined,
 ): TranscriptTurn {
 	const textChunks: string[] = [];
-	const toolStarts = new Map<string, ToolStart>();
 	const toolInteractions: ToolInteraction[] = [];
 	const seenPlainTools = new Set<string>();
 
@@ -86,12 +89,12 @@ function buildTurn(
 		}
 
 		if (event.type === 'tool-call') {
-			handleToolCall(event, toolStarts, toolInteractions, seenPlainTools);
+			handleToolCall(event, toolInteractions, seenPlainTools);
 			continue;
 		}
 
 		if (event.type === 'tool-result') {
-			handleToolResult(event, toolStarts, toolInteractions);
+			handleToolResult(event, toolInteractions);
 			continue;
 		}
 
@@ -114,21 +117,19 @@ function buildTurn(
 
 function handleToolCall(
 	event: CapturedEvent,
-	toolStarts: Map<string, ToolStart>,
 	out: ToolInteraction[],
 	seenPlainTools: Set<string>,
 ): void {
 	const payload = getRecord(event.data, 'payload') ?? event.data;
 	const toolName = getString(payload, 'toolName') ?? '';
-	const toolCallId = getString(payload, 'toolCallId') ?? getString(event.data, 'toolCallId') ?? '';
 	const args = getRecord(payload, 'args') ?? {};
-	toolStarts.set(toolCallId || `${event.timestamp}-${toolName}`, { toolName, args });
 
-	if (toolName === 'ask-user') return; // handled via confirmation-request (has answers)
+	// Skip — the matching confirmation-request will render this with the proxy's answers.
+	if (hasAskUserShape(args)) return;
 
-	if (toolName === 'plan' || toolName === 'add-plan-item') {
-		const tasks = Array.isArray(args.tasks) ? extractPlanTasks(args.tasks) : [];
-		if (tasks.length > 0) out.push({ kind: 'plan', tasks });
+	const tasks = extractPlanTasksFromArgs(args);
+	if (tasks) {
+		out.push({ kind: 'plan', tasks });
 		return;
 	}
 
@@ -138,21 +139,12 @@ function handleToolCall(
 	}
 }
 
-function handleToolResult(
-	event: CapturedEvent,
-	toolStarts: Map<string, ToolStart>,
-	out: ToolInteraction[],
-): void {
+function handleToolResult(event: CapturedEvent, out: ToolInteraction[]): void {
 	const payload = getRecord(event.data, 'payload') ?? event.data;
-	const toolCallId = getString(payload, 'toolCallId') ?? getString(event.data, 'toolCallId') ?? '';
-	const start = toolStarts.get(toolCallId);
-	const toolName = getString(payload, 'toolName') ?? start?.toolName ?? '';
 	const result = payload.result;
-
-	if (toolName === 'workflows' && start?.args.action === 'setup' && isRecord(result)) {
-		const interaction = extractSetupWizardOutcome(result);
-		if (interaction) out.push(interaction);
-	}
+	if (!isRecord(result) || !hasSetupWizardOutcomeShape(result)) return;
+	const interaction = extractSetupWizardOutcome(result);
+	if (interaction) out.push(interaction);
 }
 
 function handleConfirmationRequest(
@@ -164,13 +156,13 @@ function handleConfirmationRequest(
 	const requestId = getString(payload, 'requestId');
 	const response = requestId ? proxyResponses?.get(requestId) : undefined;
 
-	if (payload.inputType === 'questions') {
+	if (hasAskUserShape(payload)) {
 		const interaction = extractAskUserWithAnswers(payload, response);
 		if (interaction) out.push(interaction);
 		return;
 	}
 
-	// Setup wizard suspend — outcome is rendered from tool-result instead.
+	// Skip — the matching tool-result will render the outcome breakdown.
 	if (Array.isArray(payload.setupRequests)) return;
 
 	const toolName =
@@ -181,6 +173,31 @@ function handleConfirmationRequest(
 		resumeReason: inferResumeReason(payload, response),
 		approved: inferApproval(response),
 	});
+}
+
+// ---------------------------------------------------------------------------
+// Payload-shape predicates
+// ---------------------------------------------------------------------------
+
+/** Args/payload with a `questions[]` carrying `id` + `question` strings. */
+function hasAskUserShape(value: Record<string, unknown>): boolean {
+	const questions = value.questions;
+	if (!Array.isArray(questions) || questions.length === 0) return false;
+	return questions.some(
+		(q) => isRecord(q) && (typeof q.id === 'string' || typeof q.question === 'string'),
+	);
+}
+
+/** Args with a `tasks[]` carrying `title` or `description` strings. */
+function extractPlanTasksFromArgs(args: Record<string, unknown>): PlanTask[] | null {
+	if (!Array.isArray(args.tasks)) return null;
+	const tasks = extractPlanTasks(args.tasks);
+	return tasks.length > 0 ? tasks : null;
+}
+
+/** Tool result with the setup-wizard outcome fields. */
+function hasSetupWizardOutcomeShape(result: Record<string, unknown>): boolean {
+	return Array.isArray(result.completedNodes) || Array.isArray(result.skippedNodes);
 }
 
 // ---------------------------------------------------------------------------
