@@ -55,18 +55,18 @@ describe('buildTranscriptFromEvents', () => {
 			});
 		});
 
-		it('matches by payload shape, not tool name', () => {
+		it('renders only the questions on the confirmation-request, not the tool-call', () => {
 			const turns = buildTranscriptFromEvents({
 				events: [
 					RUN_START,
-					// Tool renamed — still detected by `questions[]` shape.
-					evt('tool-call', { payload: { toolName: 'ask_user_v2', args: { questions } } }),
-					evt('confirmation-request', { payload: { requestId: 'r1', questions } }),
+					evt('tool-call', { payload: { toolName: 'ask-user', args: { questions } } }),
+					evt('confirmation-request', {
+						payload: { requestId: 'r1', questions, inputType: 'questions' },
+					}),
 				],
 			});
-			const interactions = turns[0].toolInteractions;
-			expect(interactions.some((i) => i.kind === 'tool-call')).toBe(false);
-			expect(interactions.some((i) => i.kind === 'ask-user')).toBe(true);
+			const askUserInteractions = turns[0].toolInteractions.filter((i) => i.kind === 'ask-user');
+			expect(askUserInteractions).toHaveLength(1);
 		});
 	});
 
@@ -89,7 +89,7 @@ describe('buildTranscriptFromEvents', () => {
 			});
 		});
 
-		it('detects plan shape regardless of tool name', () => {
+		it('treats `add-plan-item` as plan (alias in the dispatch table)', () => {
 			const turns = buildTranscriptFromEvents({
 				events: [
 					RUN_START,

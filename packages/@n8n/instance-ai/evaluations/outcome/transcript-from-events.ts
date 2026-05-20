@@ -49,27 +49,72 @@ export function buildTranscriptFromEvents(opts: BuildTranscriptOptions): Transcr
 }
 
 // ---------------------------------------------------------------------------
-// Per-turn assembly
+// Tool dispatch table
 //
-// Routing is shape-driven, not tool-name-driven — each interaction is
-// identified by its payload signature so a tool rename or a new tool with
-// the same shape works without changes here. Each logical interaction
-// renders exactly once based on which event carries the richer payload:
+// Each row claims one (event type, tool name) pair and produces a
+// ToolInteraction. The table is the single source of truth for "what
+// renders" — to support a new tool, add one row.
 //
-//   ask-user-shaped payload → rendered from `confirmation-request` (has
-//                             the proxy's answers). The matching tool-call
-//                             with the same shape is skipped.
-//   plan-shaped payload     → rendered from `tool-call` (carries the tasks).
-//   setup-wizard outcome    → rendered from `tool-result`. The matching
-//                             `confirmation-request` suspend is skipped.
-//   other confirmations     → rendered from `confirmation-request`.
+// Each logical interaction may fire two events (e.g. ask-user emits both a
+// `tool-call` and a `confirmation-request`). To render it exactly once we
+// only register the variant carrying the richer payload — the other variant
+// has no row and is silently ignored.
 //
-// Assumption: when a `tool-call` is skipped because its richer twin is
+// Assumption: when a tool-call has no row because its richer twin is
 // expected, the twin must actually arrive in the same turn. If the SSE
 // stream loses one half of a pair, that interaction won't render at all.
-// In practice both halves always co-occur within a turn — the agent
-// runtime emits them together.
+// In practice both halves always co-occur — the agent runtime emits them
+// together.
 // ---------------------------------------------------------------------------
+
+interface RendererContext {
+	args: Record<string, unknown>;
+	result: unknown;
+	payload: Record<string, unknown>;
+	response?: InstanceAiConfirmRequest;
+}
+
+interface ToolRenderer {
+	/** SSE event this renderer reads from. */
+	eventType: 'tool-call' | 'tool-result' | 'confirmation-request';
+	/**
+	 * Identifies the event this row claims. For tool-call/tool-result the agent
+	 * payload carries `toolName`; for confirmation-request the suspend payload
+	 * has no toolName, so we discriminate on a shape field (e.g. `inputType`).
+	 */
+	matches: (payload: Record<string, unknown>) => boolean;
+	build: (ctx: RendererContext) => ToolInteraction | null;
+}
+
+const TOOL_RENDERERS: ToolRenderer[] = [
+	// ask-user — rendered from the confirmation-request so we can pair questions
+	// with the proxy's answers. The tool-call twin has no row → skipped.
+	{
+		eventType: 'confirmation-request',
+		matches: (p) => p.inputType === 'questions',
+		build: renderAskUser,
+	},
+
+	// plan — `plan` tool, args carry the task list.
+	{
+		eventType: 'tool-call',
+		matches: (p) =>
+			getString(p, 'toolName') === 'plan' || getString(p, 'toolName') === 'add-plan-item',
+		build: renderPlan,
+	},
+
+	// setup wizard — rendered from the tool-result (carries completed/skipped
+	// breakdown). The confirmation-request suspend has no row → skipped.
+	{
+		eventType: 'tool-result',
+		matches: (p) => getString(p, 'toolName') === 'workflows',
+		build: renderSetupWizardOutcome,
+	},
+];
+
+/** Tool names whose tool-call event is intentionally skipped because their
+ *  richer twin is in the dispatch table on a different event type. */
+const TOOLS_RENDERED_ELSEWHERE = new Set(['ask-user']);
 
 function buildTurn(
 	events: CapturedEvent[],
@@ -88,20 +133,8 @@ function buildTurn(
 			continue;
 		}
 
-		if (event.type === 'tool-call') {
-			handleToolCall(event, toolInteractions, seenPlainTools);
-			continue;
-		}
-
-		if (event.type === 'tool-result') {
-			handleToolResult(event, toolInteractions);
-			continue;
-		}
-
-		if (event.type === 'confirmation-request') {
-			handleConfirmationRequest(event, proxyResponses, toolInteractions);
-			continue;
-		}
+		const interaction = dispatchEvent(event, proxyResponses, seenPlainTools);
+		if (interaction) toolInteractions.push(interaction);
 	}
 
 	return {
@@ -111,111 +144,82 @@ function buildTurn(
 	};
 }
 
-// ---------------------------------------------------------------------------
-// Event handlers
-// ---------------------------------------------------------------------------
-
-function handleToolCall(
-	event: CapturedEvent,
-	out: ToolInteraction[],
-	seenPlainTools: Set<string>,
-): void {
-	const payload = getRecord(event.data, 'payload') ?? event.data;
-	const toolName = getString(payload, 'toolName') ?? '';
-	const args = getRecord(payload, 'args') ?? {};
-
-	// Skip — the matching confirmation-request will render this with the proxy's answers.
-	if (hasAskUserShape(args)) return;
-
-	const tasks = extractPlanTasksFromArgs(args);
-	if (tasks) {
-		out.push({ kind: 'plan', tasks });
-		return;
-	}
-
-	if (toolName && !seenPlainTools.has(toolName)) {
-		seenPlainTools.add(toolName);
-		out.push({ kind: 'tool-call', toolName });
-	}
-}
-
-function handleToolResult(event: CapturedEvent, out: ToolInteraction[]): void {
-	const payload = getRecord(event.data, 'payload') ?? event.data;
-	const result = payload.result;
-	if (!isRecord(result) || !hasSetupWizardOutcomeShape(result)) return;
-	const interaction = extractSetupWizardOutcome(result);
-	if (interaction) out.push(interaction);
-}
-
-function handleConfirmationRequest(
+/**
+ * Match an event against the dispatch table. Falls back to:
+ *   - a generic plain `tool-call` entry (collapsed by tool name across the turn)
+ *   - a generic `confirmation` entry for any confirmation-request not in the table
+ *   - `null` for everything else (skipped)
+ */
+function dispatchEvent(
 	event: CapturedEvent,
 	proxyResponses: ProxyResponses | undefined,
-	out: ToolInteraction[],
-): void {
-	const payload = getRecord(event.data, 'payload') ?? {};
+	seenPlainTools: Set<string>,
+): ToolInteraction | null {
+	const payload = getRecord(event.data, 'payload') ?? event.data;
+	const toolName = getString(payload, 'toolName') ?? '';
 	const requestId = getString(payload, 'requestId');
 	const response = requestId ? proxyResponses?.get(requestId) : undefined;
 
-	if (hasAskUserShape(payload)) {
-		const interaction = extractAskUserWithAnswers(payload, response);
-		if (interaction) out.push(interaction);
-		return;
+	const renderer = TOOL_RENDERERS.find((r) => r.eventType === event.type && r.matches(payload));
+	if (renderer) {
+		return renderer.build({
+			args: getRecord(payload, 'args') ?? {},
+			result: payload.result,
+			payload,
+			response,
+		});
 	}
 
-	// Skip — the matching tool-result will render the outcome breakdown.
-	if (Array.isArray(payload.setupRequests)) return;
+	if (event.type === 'tool-call') {
+		if (TOOLS_RENDERED_ELSEWHERE.has(toolName)) return null;
+		if (!toolName || seenPlainTools.has(toolName)) return null;
+		seenPlainTools.add(toolName);
+		return { kind: 'tool-call', toolName };
+	}
 
-	const toolName =
-		getString(payload, 'toolName') ?? getString(payload, 'agentId') ?? 'confirmation';
-	out.push({
-		kind: 'confirmation',
-		toolName,
-		resumeReason: inferResumeReason(payload, response),
-		approved: inferApproval(response),
-	});
+	if (event.type === 'confirmation-request') {
+		// Setup wizard suspend — outcome will be rendered from its tool-result row.
+		if (Array.isArray(payload.setupRequests)) return null;
+		const fallbackToolName =
+			getString(payload, 'toolName') ?? getString(payload, 'agentId') ?? 'confirmation';
+		return {
+			kind: 'confirmation',
+			toolName: fallbackToolName,
+			resumeReason: inferResumeReason(payload, response),
+			approved: inferApproval(response),
+		};
+	}
+
+	return null;
 }
 
 // ---------------------------------------------------------------------------
-// Payload-shape predicates
+// Per-tool renderers (referenced by TOOL_RENDERERS above)
 // ---------------------------------------------------------------------------
 
-/** Args/payload with a `questions[]` carrying `id` + `question` strings. */
-function hasAskUserShape(value: Record<string, unknown>): boolean {
-	const questions = value.questions;
-	if (!Array.isArray(questions) || questions.length === 0) return false;
-	return questions.some(
-		(q) => isRecord(q) && (typeof q.id === 'string' || typeof q.question === 'string'),
-	);
+function renderAskUser(ctx: RendererContext): ToolInteraction | null {
+	const questions = Array.isArray(ctx.payload.questions)
+		? extractAskUserQuestions(ctx.payload.questions)
+		: [];
+	if (questions.length === 0) return null;
+	const answers =
+		ctx.response?.kind === 'questions' ? extractAskUserAnswers(ctx.response.answers) : undefined;
+	return { kind: 'ask-user', questions, answers };
 }
 
-/** Args with a `tasks[]` carrying `title` or `description` strings. */
-function extractPlanTasksFromArgs(args: Record<string, unknown>): PlanTask[] | null {
-	if (!Array.isArray(args.tasks)) return null;
-	const tasks = extractPlanTasks(args.tasks);
-	return tasks.length > 0 ? tasks : null;
+function renderPlan(ctx: RendererContext): ToolInteraction | null {
+	const tasks = Array.isArray(ctx.args.tasks) ? extractPlanTasks(ctx.args.tasks) : [];
+	if (tasks.length === 0) return null;
+	return { kind: 'plan', tasks };
 }
 
-/** Tool result with the setup-wizard outcome fields. */
-function hasSetupWizardOutcomeShape(result: Record<string, unknown>): boolean {
-	return Array.isArray(result.completedNodes) || Array.isArray(result.skippedNodes);
+function renderSetupWizardOutcome(ctx: RendererContext): ToolInteraction | null {
+	return isRecord(ctx.result) ? extractSetupWizardOutcome(ctx.result) : null;
 }
 
 // ---------------------------------------------------------------------------
 // Payload extractors
 // ---------------------------------------------------------------------------
-
-function extractAskUserWithAnswers(
-	payload: Record<string, unknown>,
-	response: InstanceAiConfirmRequest | undefined,
-): ToolInteraction | null {
-	const questions = Array.isArray(payload.questions)
-		? extractAskUserQuestions(payload.questions)
-		: [];
-	if (questions.length === 0) return null;
-	const answers =
-		response?.kind === 'questions' ? extractAskUserAnswers(response.answers) : undefined;
-	return { kind: 'ask-user', questions, answers };
-}
 
 function extractSetupWizardOutcome(result: Record<string, unknown>): ToolInteraction | null {
 	const completed = Array.isArray(result.completedNodes)
