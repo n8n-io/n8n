@@ -158,6 +158,28 @@ export { createModel } from './runtime/model-factory';
 export { createEmbeddingModel } from './runtime/model-factory';
 export { generateTitleFromMessage } from './runtime/title-generation';
 export {
+	activeLifecycleState,
+	droppedLifecycleState,
+	markLifecycleActive,
+	markLifecycleDropped,
+	markLifecycleSuperseded,
+	normalizeFlatReflectionActions,
+	supersededLifecycleState,
+	uniqueStrings,
+} from './runtime/memory-lifecycle';
+export {
+	RECALL_MEMORY_TOOL_NAME,
+	createRecallMemoryTool,
+	getEpisodicMemoryScope,
+	hashEpisodicMemoryContent,
+	hashEpisodicMemoryEvidence,
+	hasEpisodicMemoryStore,
+	isEpisodicMemoryEnabled,
+	rankEpisodicMemoryEntries,
+	runEpisodicMemoryIndexer,
+	withEpisodicMemoryDefaults,
+} from './runtime/episodic-memory';
+export {
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
 	DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
@@ -173,6 +195,7 @@ export type {
 	CreateEpisodicMemoryExtractFnOptions,
 	CreateEpisodicMemoryReflectFnOptions,
 } from './runtime/episodic-memory-defaults';
+export type { MemoryLifecycleState, MemoryLifecycleStatus } from './runtime/memory-lifecycle';
 export {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,

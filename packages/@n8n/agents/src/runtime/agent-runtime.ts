@@ -15,6 +15,7 @@ import type {
 	BuiltTelemetry,
 	BuiltTool,
 	CheckpointStore,
+	EpisodicMemoryConfig,
 	FinishReason,
 	GenerateResult,
 	GoogleThinkingConfig,
@@ -35,6 +36,14 @@ import type {
 } from '../types';
 import { BackgroundTaskTracker } from './background-task-tracker';
 import { DeferredToolManager } from './deferred-tool-manager';
+import {
+	createRecallMemoryTool,
+	getEpisodicMemoryScope,
+	hasEpisodicMemoryStore,
+	isEpisodicMemoryEnabled,
+	RECALL_MEMORY_TOOL_NAME,
+	runEpisodicMemoryIndexer,
+} from './episodic-memory';
 import { AgentEventBus } from './event-bus';
 import { toJsonValue } from './json-value';
 import { createFilteredLogger } from './logger';
@@ -80,7 +89,7 @@ import type {
 } from '../types/sdk/agent';
 import type { AgentDbMessage, AgentMessage, ContentToolCall, Message } from '../types/sdk/message';
 import { createObservationLogThreadScopeId } from '../types/sdk/observation-log';
-import type { ObservationLogScope } from '../types/sdk/observation-log';
+import type { ObservationLogScope, ObservationLogTaskKind } from '../types/sdk/observation-log';
 import type { JSONObject, JSONValue } from '../types/utils/json';
 import { parseWithSchema } from '../utils/parse';
 import { isZodSchema } from '../utils/zod';
@@ -183,6 +192,7 @@ export interface AgentRuntimeConfig {
 	lastMessages?: number;
 	observationLog?: ObservationLogMemoryConfig;
 	observationalMemory?: ObservationalMemoryConfig;
+	episodicMemory?: EpisodicMemoryConfig;
 	semanticRecall?: SemanticRecallConfig;
 	structuredOutput?: z.ZodType;
 	checkpointStorage?: 'memory' | CheckpointStore;
@@ -461,7 +471,7 @@ export class AgentRuntime {
 		const list = AgentMessageList.deserialize(state.messageList);
 		this.hydrateDeferredToolsFromList(list);
 
-		const tool = this.getCurrentTools().find((t) => t.name === toolCall.toolName);
+		const tool = this.getCurrentTools(state.persistence).find((t) => t.name === toolCall.toolName);
 		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		let resumeData: unknown = data;
@@ -935,7 +945,10 @@ export class AgentRuntime {
 			...options,
 			persistence: options?.persistence,
 		});
-		const pendingLoopContext = this.buildToolLoopContext(staticLoopContext.aiProviderTools);
+		const pendingLoopContext = this.buildToolLoopContext(
+			staticLoopContext.aiProviderTools,
+			options?.persistence,
+		);
 		const pendingToolCtx: ToolBatchContext = {
 			toolMap: pendingLoopContext.toolMap,
 			list,
@@ -991,6 +1004,7 @@ export class AgentRuntime {
 
 			const { toolMap, aiTools, hasTools, effectiveInstructions } = this.buildToolLoopContext(
 				staticLoopContext.aiProviderTools,
+				options?.persistence,
 			);
 
 			const result = await generateText({
@@ -1189,7 +1203,10 @@ export class AgentRuntime {
 			...options,
 			persistence: options?.persistence,
 		});
-		const pendingLoopContext = this.buildToolLoopContext(staticLoopContext.aiProviderTools);
+		const pendingLoopContext = this.buildToolLoopContext(
+			staticLoopContext.aiProviderTools,
+			options?.persistence,
+		);
 		const pendingToolCtx: ToolBatchContext = {
 			toolMap: pendingLoopContext.toolMap,
 			list,
@@ -1263,6 +1280,7 @@ export class AgentRuntime {
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
 			const { toolMap, aiTools, hasTools, effectiveInstructions } = this.buildToolLoopContext(
 				staticLoopContext.aiProviderTools,
+				options?.persistence,
 			);
 			const messages = list.forLlm(effectiveInstructions, this.config.instructionProviderOptions);
 			const result = streamText({
@@ -1462,6 +1480,7 @@ export class AgentRuntime {
 		}
 
 		this.scheduleObservationLogJobs(options.persistence);
+		this.scheduleEpisodicMemoryJob(options.persistence);
 	}
 
 	private scheduleObservationLogJobs(persistence: AgentPersistenceOptions): void {
@@ -1469,7 +1488,7 @@ export class AgentRuntime {
 		if (!memory || !observationalMemory || !hasObservationLogStore(memory)) return;
 
 		const scope = this.getObservationLogScope(persistence);
-		const runner = this.getMemoryTaskRunner(memory, observationalMemory);
+		const runner = this.getMemoryTaskRunner(memory, observationalMemory.lockTtlMs);
 		const observe = observationalMemory.observe;
 		const observerThresholdTokens = observationalMemory.observerThresholdTokens;
 
@@ -1478,8 +1497,10 @@ export class AgentRuntime {
 			observerThresholdTokens !== undefined &&
 			hasObservationLogObserverMemory(memory)
 		) {
-			runner.schedule(
-				{ ...scope, taskKind: 'observer' },
+			this.scheduleMemoryTask(
+				runner,
+				scope,
+				'observer',
 				async () =>
 					await runObservationLogObserver({
 						memory,
@@ -1498,8 +1519,10 @@ export class AgentRuntime {
 		const reflect = observationalMemory.reflect;
 		const reflectorThresholdTokens = observationalMemory.reflectorThresholdTokens;
 		if (reflect && reflectorThresholdTokens !== undefined) {
-			runner.schedule(
-				{ ...scope, taskKind: 'reflector' },
+			this.scheduleMemoryTask(
+				runner,
+				scope,
+				'reflector',
 				async () =>
 					await runObservationLogReflector({
 						memory,
@@ -1511,18 +1534,61 @@ export class AgentRuntime {
 		}
 	}
 
-	private getMemoryTaskRunner(
-		memory: BuiltMemory,
-		observationalMemory: ObservationalMemoryConfig,
-	): ScopedMemoryTaskRunner {
+	private scheduleEpisodicMemoryJob(persistence: AgentPersistenceOptions): void {
+		const { memory, episodicMemory } = this.config;
+		if (
+			!memory ||
+			!episodicMemory ||
+			!isEpisodicMemoryEnabled(episodicMemory) ||
+			!hasEpisodicMemoryStore(memory) ||
+			!hasObservationLogStore(memory) ||
+			!episodicMemory.extract
+		) {
+			return;
+		}
+		const scope = getEpisodicMemoryScope(persistence);
+		if (!scope) return;
+
+		const observationScope = this.getObservationLogScope(persistence);
+		const runner = this.getMemoryTaskRunner(memory, this.config.observationalMemory?.lockTtlMs);
+		this.scheduleMemoryTask(
+			runner,
+			observationScope,
+			'episodic-indexer',
+			async () =>
+				await runEpisodicMemoryIndexer({
+					memory,
+					config: episodicMemory,
+					scope,
+					observationScope,
+					threadId: persistence.threadId,
+					eventBus: this.eventBus,
+				}),
+		);
+	}
+
+	private scheduleMemoryTask<T>(
+		runner: ScopedMemoryTaskRunner,
+		scope: ObservationLogScope,
+		taskKind: ObservationLogTaskKind,
+		task: () => Promise<T>,
+	): void {
+		runner.schedule({ ...scope, taskKind }, task);
+	}
+
+	private getMemoryTaskRunner(memory: BuiltMemory, lockTtlMs?: number): ScopedMemoryTaskRunner {
 		this.memoryTasks ??= new ScopedMemoryTaskRunner({
 			tracker: this.backgroundTasks,
 			lockStore: hasObservationLogTaskLockStore(memory) ? memory : undefined,
-			lockTtlMs: observationalMemory.lockTtlMs,
+			lockTtlMs,
 			onEvent: (event) => {
 				if (event.type !== 'failed') return;
-				const source = event.task.taskKind;
-				const message = `Observation log ${source} task failed`;
+				const source =
+					event.task.taskKind === 'episodic-indexer' ? 'episodic-memory' : event.task.taskKind;
+				const message =
+					event.task.taskKind === 'episodic-indexer'
+						? 'Episodic memory indexing task failed'
+						: `Observation log ${source} task failed`;
 				logger.warn(message, {
 					error: event.error,
 					scopeKind: event.task.scopeKind,
@@ -2102,8 +2168,11 @@ export class AgentRuntime {
 	}
 
 	/** Build the current local tool view; deferred loads can change this between iterations. */
-	private buildToolLoopContext(aiProviderTools: ReturnType<typeof toAiSdkProviderTools>) {
-		const allUserTools = this.getCurrentTools();
+	private buildToolLoopContext(
+		aiProviderTools: ReturnType<typeof toAiSdkProviderTools>,
+		persistence?: AgentPersistenceOptions,
+	) {
+		const allUserTools = this.getCurrentTools(persistence);
 		const aiTools = toAiSdkTools(allUserTools);
 		const allTools = { ...aiTools, ...aiProviderTools };
 		const aiToolCount = Object.keys(allTools).length;
@@ -2118,15 +2187,43 @@ export class AgentRuntime {
 		};
 	}
 
-	private getCurrentTools(): BuiltTool[] {
+	private getCurrentTools(persistence?: AgentPersistenceOptions): BuiltTool[] {
 		const baseTools = this.config.tools ?? [];
-		if (!this.deferredToolManager?.hasTools) return baseTools;
-
-		return [
+		const tools = [
 			...baseTools,
-			...this.deferredToolManager.getControllerTools(),
-			...this.deferredToolManager.getLoadedTools(),
+			...(this.deferredToolManager?.hasTools
+				? [
+						...this.deferredToolManager.getControllerTools(),
+						...this.deferredToolManager.getLoadedTools(),
+					]
+				: []),
 		];
+
+		const recallTool = this.createRecallMemoryToolForRun(persistence, tools);
+		return recallTool ? [...tools, recallTool] : tools;
+	}
+
+	private createRecallMemoryToolForRun(
+		persistence: AgentPersistenceOptions | undefined,
+		existingTools: BuiltTool[],
+	): BuiltTool | undefined {
+		const { memory, episodicMemory } = this.config;
+		if (
+			!memory ||
+			!episodicMemory ||
+			!isEpisodicMemoryEnabled(episodicMemory) ||
+			!hasEpisodicMemoryStore(memory)
+		) {
+			return undefined;
+		}
+		const scope = getEpisodicMemoryScope(persistence);
+		if (!scope) return undefined;
+		if (existingTools.some((tool) => tool.name === RECALL_MEMORY_TOOL_NAME)) {
+			throw new Error(
+				`Tool name "${RECALL_MEMORY_TOOL_NAME}" is reserved while episodic memory is enabled.`,
+			);
+		}
+		return createRecallMemoryTool({ memory, config: episodicMemory, scope });
 	}
 
 	private hydrateDeferredToolsFromList(list: AgentMessageList): void {
