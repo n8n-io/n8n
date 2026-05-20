@@ -71,12 +71,6 @@ export type CanvasNodeDefaultRender = {
 		configurable: boolean;
 		configuration: boolean;
 		trigger: boolean;
-		inputs: {
-			labelSize: CanvasNodeDefaultRenderLabelSize;
-		};
-		outputs: {
-			labelSize: CanvasNodeDefaultRenderLabelSize;
-		};
 		tooltip?: string;
 		dirtiness?: CanvasNodeDirtinessType;
 		icon?: NodeIconSource;
@@ -111,14 +105,11 @@ export interface CanvasNodeData {
 	type: INodeUi['type'];
 	typeVersion: INodeUi['typeVersion'];
 	disabled: INodeUi['disabled'];
-	inputs: CanvasConnectionPort[];
-	outputs: CanvasConnectionPort[];
 	connections: {
 		[CanvasConnectionMode.Input]: INodeConnections;
 		[CanvasConnectionMode.Output]: INodeConnections;
 	};
 	issues: {
-		execution: string[];
 		validation: string[];
 		visible: boolean;
 	};

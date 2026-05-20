@@ -28,6 +28,9 @@ export type {
 	SerializableAgentState,
 	AgentRunState,
 	MemoryConfig,
+	ObservationLogMemoryConfig,
+	MemoryDescriptor,
+	ObservationCapableMemory,
 	TitleGenerationConfig,
 	Thread,
 	SemanticRecallConfig,
@@ -36,15 +39,41 @@ export type {
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,
+	AgentExecutionCounter,
 	PersistedExecutionOptions,
 	BuiltTelemetry,
 	AttributeValue,
+	ObservationCursor,
+	ObservationalMemoryConfig,
+	ScopeKind,
+	BuiltObservationLogStore,
+	BuiltObservationLogTaskLockStore,
+	NewObservationLogEntry,
+	ObservationLogEntry,
+	ObservationLogMarker,
+	ObservationLogMerge,
+	ObservationLogReadOptions,
+	ObservationLogReflection,
+	ObservationLogReflectionResult,
+	ObservationLogScope,
+	ObservationLogScopeKind,
+	ObservationLogStatus,
+	ObservationLogTaskKind,
+	ObservationLogTaskLockHandle,
+	TokenCounter,
 } from './types';
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
 export type { AgentEventData, AgentEventHandler } from './types';
+export {
+	createObservationLogThreadScopeId,
+	createObservationLogThreadScopePrefix,
+	estimateObservationTokens,
+	OBSERVATION_LOG_MARKERS,
+	OBSERVATION_LOG_STATUSES,
+} from './types';
 
-export { Tool } from './sdk/tool';
+export { Tool, wrapToolForApproval } from './sdk/tool';
 export { Memory } from './sdk/memory';
 export { Guardrail } from './sdk/guardrail';
 export { Eval } from './sdk/eval';
@@ -55,6 +84,7 @@ export { Telemetry } from './sdk/telemetry';
 export { LangSmithTelemetry } from './integrations/langsmith';
 export type { LangSmithTelemetryConfig } from './integrations/langsmith';
 export { Agent } from './sdk/agent';
+export type { AgentSnapshot } from './sdk/agent';
 export type {
 	AgentBuilder,
 	CredentialProvider,
@@ -73,7 +103,6 @@ export type {
 	ContentReasoning,
 	ContentText,
 	ContentToolCall,
-	ContentToolResult,
 	Message,
 	MessageContent,
 	MessageRole,
@@ -82,19 +111,10 @@ export type {
 	AgentDbMessage,
 } from './types/sdk/message';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
-export type {
-	AgentSchema,
-	ToolSchema,
-	MemorySchema,
-	EvalSchema,
-	ThinkingSchema,
-	ProviderToolSchema,
-	GuardrailSchema,
-	McpServerSchema,
-	TelemetrySchema,
-} from './types/sdk/schema';
-export { generateAgentCode } from './codegen/generate-agent-code';
-export { filterLlmMessages, isLlmMessage } from './sdk/message';
+export {
+	filterLlmMessages,
+	isLlmMessage,
+} from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
 export { providerCapabilities } from './sdk/provider-capabilities';
 export type { ProviderCapability } from './sdk/provider-capabilities';
@@ -105,17 +125,68 @@ export type {
 	ModelCost,
 	ModelLimits,
 } from './sdk/catalog';
-export { SqliteMemory } from './storage/sqlite-memory';
-export {
-	UPDATE_WORKING_MEMORY_TOOL_NAME,
-	WORKING_MEMORY_DEFAULT_INSTRUCTION,
-} from './runtime/working-memory';
-export type { SqliteMemoryConfig } from './storage/sqlite-memory';
-export { PostgresMemory } from './storage/postgres-memory';
-export type { PostgresMemoryConfig } from './storage/postgres-memory';
+export { BaseMemory } from './storage/base-memory';
+export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
 export { createModel } from './runtime/model-factory';
 export { generateTitleFromMessage } from './runtime/title-generation';
+export {
+	parseObservationLogMarkdown,
+	renderObserverTranscript,
+	runObservationLogObserver,
+} from './runtime/observation-log-observer';
+export {
+	normalizeObservationLogReflection,
+	parseObservationLogReflectionJson,
+	renderObservationLogForReflection,
+	runObservationLogReflector,
+} from './runtime/observation-log-reflector';
+export { ScopedMemoryTaskRunner } from './runtime/scoped-memory-task-runner';
+export {
+	buildObservationLogReflectorPrompt,
+	buildObservationLogObserverPrompt,
+	createObservationLogReflectFn,
+	createObservationLogObserveFn,
+	DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
+	DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
+	DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
+	DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
+	DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
+	DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
+	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
+} from './runtime/observation-log-defaults';
+export type {
+	CreateObservationLogObserveFnOptions,
+	CreateObservationLogReflectFnOptions,
+} from './runtime/observation-log-defaults';
+export type {
+	ObservationLogObserveFn,
+	ObservationLogObserverInput,
+	ObservationLogObserverMemory,
+	ParsedObservationLogEntry,
+	ParseObservationLogMarkdownResult,
+	RenderObserverTranscriptOptions,
+	RunObservationLogObserverOpts,
+	RunObservationLogObserverResult,
+} from './runtime/observation-log-observer';
+export type {
+	ObservationLogReflectFn,
+	ObservationLogReflectorInput,
+	ObservationLogReflectorMemory,
+	ObservationLogReflectorWarning,
+	RunObservationLogReflectorOpts,
+	RunObservationLogReflectorResult,
+} from './runtime/observation-log-reflector';
+export type {
+	ScopedMemoryTaskDescriptor,
+	ScopedMemoryTaskError,
+	ScopedMemoryTaskEvent,
+	ScopedMemoryTaskHandle,
+	ScopedMemoryTaskInfo,
+	ScopedMemoryTaskResult,
+	ScopedMemoryTaskRunnerOptions,
+	ScopedMemoryTaskStatus,
+} from './runtime/scoped-memory-task-runner';
 
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
@@ -151,3 +222,7 @@ export type {
 	SpawnProcessOptions,
 	ProcessInfo,
 } from './workspace';
+
+export type { JSONObject, JSONArray, JSONValue } from './types/utils/json';
+
+export { isZodSchema, zodToJsonSchema } from './utils/zod';

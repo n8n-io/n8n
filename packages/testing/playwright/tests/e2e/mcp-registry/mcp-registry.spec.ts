@@ -16,13 +16,14 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'AI' }],
 	},
 	() => {
-		test('exposes Notion MCP as a tool with hidden connection fields', async ({ n8n }) => {
+		test('exposes Notion MCP as a tool with hidden connection fields', async ({ n8n, api }) => {
+			await api.seedMcpRegistry();
 			await n8n.start.fromBlankCanvas();
 
 			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
 			await n8n.canvas.addSupplementalNodeToParent('Notion MCP', 'ai_tool', AGENT_NODE_NAME, {
 				exactMatch: true,
-				subcategory: 'MCP',
+				subcategory: 'MCP servers',
 				exactSubcategory: true,
 			});
 
@@ -30,7 +31,7 @@ test.describe(
 			await expect(n8n.ndv.getParameterInput('serverTransport')).toBeHidden();
 			await expect(n8n.ndv.getParameterInput('authentication')).toBeHidden();
 
-			await expect(n8n.ndv.getNodeCredentialsEmptyState()).toBeVisible();
+			await expect(n8n.ndv.getNodeCredentialsQuickConnectEmptyState()).toBeVisible();
 			await expect(n8n.ndv.getParameterInput('include')).toBeVisible();
 		});
 	},

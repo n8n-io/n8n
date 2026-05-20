@@ -1,12 +1,12 @@
-jest.mock('@mastra/mcp', () => ({
-	MCPClient: jest.fn().mockImplementation(() => ({
-		listTools: jest.fn().mockResolvedValue({}),
-		disconnect: jest.fn().mockResolvedValue(undefined),
+jest.mock('@n8n/agents', () => ({
+	McpClient: jest.fn().mockImplementation(() => ({
+		listTools: jest.fn().mockResolvedValue([]),
+		close: jest.fn().mockResolvedValue(undefined),
 	})),
 }));
 
 jest.mock('../../agent/sanitize-mcp-schemas', () => ({
-	sanitizeMcpToolSchemas: jest.fn((tools: Record<string, unknown>) => tools),
+	sanitizeMcpToolSchemas: jest.fn((tools: unknown) => tools),
 }));
 
 import { createResultError, createResultOk, UserError } from 'n8n-workflow';
@@ -14,9 +14,32 @@ import { createResultError, createResultOk, UserError } from 'n8n-workflow';
 import type { SsrfUrlValidator } from '../mcp-client-manager';
 import { McpClientManager } from '../mcp-client-manager';
 
-const { MCPClient: mockedMcpClient } =
+const { McpClient: mockedMcpClient } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	require('@mastra/mcp') as { MCPClient: jest.Mock };
+	require('@n8n/agents') as { McpClient: jest.Mock };
+const { sanitizeMcpToolSchemas: mockedSanitizeMcpToolSchemas } =
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	require('../../agent/sanitize-mcp-schemas') as {
+		sanitizeMcpToolSchemas: jest.Mock;
+	};
+
+interface LoggerMock {
+	warn: jest.Mock;
+}
+
+interface SanitizeOptions {
+	onError?: (error: {
+		message: string;
+		details: {
+			toolName?: string;
+			path: string;
+			depth: number;
+			maxDepth: number;
+			limitType?: string;
+			limit?: number;
+		};
+	}) => void;
+}
 
 function createValidatorMock(): jest.Mocked<SsrfUrlValidator> {
 	return {
@@ -83,6 +106,95 @@ describe('McpClientManager', () => {
 		});
 	});
 
+	describe('server and schema filtering', () => {
+		it('skips external MCP servers with unsafe names', async () => {
+			const logger: LoggerMock = { warn: jest.fn() };
+			const manager = new McpClientManager();
+
+			await manager.getRegularTools(
+				[
+					{ name: 'bad name', url: 'https://bad.example.com/mcp' },
+					{ name: 'safe_server', url: 'https://safe.example.com/mcp' },
+				],
+				logger as never,
+			);
+
+			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
+			const mcpClientCalls = mockedMcpClient.mock.calls as Array<[Array<{ name: string }>]>;
+			const [mcpClientConfig] = mcpClientCalls[0];
+			expect(mcpClientConfig).not.toEqual(
+				expect.arrayContaining([expect.objectContaining({ name: 'bad name' })]),
+			);
+			expect(mcpClientConfig).toEqual(
+				expect.arrayContaining([expect.objectContaining({ name: 'safe_server' })]),
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped MCP server with unsafe name',
+				expect.objectContaining({
+					serverName: 'bad name',
+					source: 'external MCP',
+				}),
+			);
+		});
+
+		it('skips browser MCP configs with unsafe names', async () => {
+			const logger: LoggerMock = { warn: jest.fn() };
+			const manager = new McpClientManager();
+
+			await expect(
+				manager.getBrowserTools(
+					{ name: 'bad name', url: 'https://browser.example.com/mcp' },
+					logger as never,
+				),
+			).resolves.toEqual(new Map());
+
+			expect(mockedMcpClient).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped MCP server with unsafe name',
+				expect.objectContaining({
+					serverName: 'bad name',
+					source: 'browser MCP',
+				}),
+			);
+		});
+
+		it('logs tools skipped during schema sanitization', async () => {
+			const logger: LoggerMock = { warn: jest.fn() };
+			mockedSanitizeMcpToolSchemas.mockImplementationOnce(
+				(_tools: unknown, options?: SanitizeOptions) => {
+					options?.onError?.({
+						message: 'MCP schema exceeds maximum depth of 32',
+						details: {
+							toolName: 'deep_tool',
+							path: '$.input',
+							depth: 33,
+							maxDepth: 32,
+							limitType: 'depth',
+							limit: 32,
+						},
+					});
+					return new Map();
+				},
+			);
+
+			const manager = new McpClientManager();
+			await manager.getRegularTools(
+				[{ name: 'safe_server', url: 'https://safe.example.com/mcp' }],
+				logger as never,
+			);
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped MCP tool with unsupported schema',
+				expect.objectContaining({
+					toolName: 'deep_tool',
+					source: 'external MCP',
+					path: '$.input',
+					limitType: 'depth',
+				}),
+			);
+		});
+	});
+
 	describe('SSRF policy (opt-in)', () => {
 		it('does not call validateUrl when no validator is supplied', async () => {
 			const manager = new McpClientManager();
@@ -146,7 +258,7 @@ describe('McpClientManager', () => {
 			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
 
 			const disconnectMocks = mockedMcpClient.mock.results.map(
-				(r) => (r.value as { disconnect: jest.Mock }).disconnect,
+				(r) => (r.value as { close: jest.Mock }).close,
 			);
 
 			await manager.disconnect();
@@ -204,7 +316,7 @@ describe('McpClientManager', () => {
 
 			mockedMcpClient.mockImplementationOnce(() => ({
 				listTools: jest.fn().mockRejectedValue(new Error('boom')),
-				disconnect: jest.fn().mockResolvedValue(undefined),
+				close: jest.fn().mockResolvedValue(undefined),
 			}));
 
 			await expect(manager.getRegularTools(configs)).rejects.toThrow('boom');
@@ -218,8 +330,8 @@ describe('McpClientManager', () => {
 		// Returns a deferred listTools promise we can resolve later, simulating a
 		// long-running tool listing that's still pending when disconnect() runs.
 		function deferListTools() {
-			let resolve: (value: Record<string, unknown>) => void = () => {};
-			const promise = new Promise<Record<string, unknown>>((r) => {
+			let resolve: (value: []) => void = () => {};
+			const promise = new Promise<[]>((r) => {
 				resolve = r;
 			});
 			return { promise, resolve };
@@ -232,7 +344,7 @@ describe('McpClientManager', () => {
 			const deferred = deferListTools();
 			mockedMcpClient.mockImplementationOnce(() => ({
 				listTools: jest.fn().mockReturnValue(deferred.promise),
-				disconnect: jest.fn().mockResolvedValue(undefined),
+				close: jest.fn().mockResolvedValue(undefined),
 			}));
 
 			const stranded = manager.getRegularTools(configs);
@@ -245,7 +357,7 @@ describe('McpClientManager', () => {
 			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
 
 			// Cleanup: let the stranded promise settle so the test doesn't hang.
-			deferred.resolve({});
+			deferred.resolve([]);
 			await stranded.catch(() => {});
 		});
 	});

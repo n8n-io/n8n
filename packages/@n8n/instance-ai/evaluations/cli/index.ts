@@ -38,6 +38,12 @@ import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { createLogger } from '../harness/logger';
 import type { EvalLogger } from '../harness/logger';
 import {
+	fetchPrebuiltBuild,
+	loadPrebuiltManifest,
+	pickPrebuiltWorkflowId,
+	type PrebuiltManifest,
+} from '../harness/prebuilt-workflows';
+import {
 	buildWorkflow,
 	executeScenario,
 	cleanupBuild,
@@ -134,11 +140,42 @@ interface RunConfig {
 	args: ReturnType<typeof parseCliArgs>;
 	lanes: Lane[];
 	logger: EvalLogger;
+	prebuiltManifest?: PrebuiltManifest;
 }
 
 async function main(): Promise<void> {
 	const args = parseCliArgs(process.argv.slice(2));
 	const logger = createLogger(args.verbose);
+
+	const prebuiltManifest = args.prebuiltWorkflows
+		? loadPrebuiltManifest(args.prebuiltWorkflows)
+		: undefined;
+	if (prebuiltManifest) {
+		// Multi-lane is for distributing the orchestrator build phase across
+		// n8n instances. Prebuilt workflows live on a single instance — fetching
+		// them from any other lane's URL would 404 — and prebuilt mode skips
+		// builds anyway, so multi-lane buys nothing. Refuse the combination
+		// rather than silently fetching from one lane and ignoring the rest.
+		if (args.baseUrls.length > 1) {
+			throw new Error(
+				'--prebuilt-workflows is incompatible with multiple --base-url values. Prebuilt workflows live on a single n8n instance; pass exactly one --base-url.',
+			);
+		}
+		const slugCount = Object.keys(prebuiltManifest).length;
+		logger.info(`Loaded prebuilt manifest: ${String(slugCount)} test case(s)`);
+
+		// Warn on slugs that don't match a local test-case file. Common cause
+		// is typos in the manifest — without this check, the typo silently
+		// falls through to an orchestrator build (or no run at all), and the
+		// user thinks the prebuilt path ran when it didn't.
+		const localSlugs = new Set(loadWorkflowTestCasesWithFiles().map((tc) => tc.fileSlug));
+		const orphanSlugs = Object.keys(prebuiltManifest).filter((slug) => !localSlugs.has(slug));
+		if (orphanSlugs.length > 0) {
+			logger.warn(
+				`Prebuilt manifest references ${String(orphanSlugs.length)} slug(s) with no matching local test case (will be ignored): ${orphanSlugs.join(', ')}`,
+			);
+		}
+	}
 
 	// One lane per base URL. The LangSmith path then uses a work-stealing
 	// allocator (lane-allocator.ts) to dispatch builds across lanes; the direct
@@ -176,14 +213,14 @@ async function main(): Promise<void> {
 
 		if (hasLangSmith) {
 			logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
-			const langsmithRun = await runWithLangSmith({ args, lanes, logger });
+			const langsmithRun = await runWithLangSmith({ args, lanes, logger, prebuiltManifest });
 			evaluation = langsmithRun.evaluation;
 			experimentName = langsmithRun.experimentName;
 			outcome = langsmithRun.outcome;
 			slugByTestCase = langsmithRun.slugByTestCase;
 		} else {
 			logger.info('No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)');
-			evaluation = await runDirectLoop({ args, lanes, logger });
+			evaluation = await runDirectLoop({ args, lanes, logger, prebuiltManifest });
 		}
 
 		const totalDuration = Date.now() - startTime;
@@ -223,11 +260,11 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	outcome: ComparisonOutcome;
 	slugByTestCase: Map<WorkflowTestCase, string>;
 }> {
-	const { args, lanes, logger } = config;
+	const { args, lanes, logger, prebuiltManifest } = config;
 
 	const lsClient = new Client();
-	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter);
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter);
+	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter, args.exclude);
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
 
 	// LaneState carries the allocator-managed counters (activeBuilds,
 	// inflightPrompts) plus the lane's traced LangSmith wrappers. `runner` is
@@ -307,11 +344,31 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	async function getOrBuild(
 		prompt: string,
 		iteration: number,
+		fileSlug: string,
 	): Promise<{ build: BuildResult; lane: LaneState; buildDurationMs: number }> {
-		const key = `${String(iteration)}:${prompt}`;
+		// Cache key on (iteration, fileSlug) — every scenario in a test-case file
+		// shares this build, and prebuilt + orchestrator-built paths use the same key.
+		const key = `${String(iteration)}:${fileSlug}`;
 		const existing = buildCache.get(key);
 		if (existing) return await existing;
 		const promise = (async () => {
+			const prebuiltId = pickPrebuiltWorkflowId(prebuiltManifest, fileSlug, iteration);
+			if (prebuiltId !== undefined) {
+				// Prebuilt path: no orchestrator concurrency to manage — just
+				// fetch the workflow. main() rejects multi-lane + prebuilt at
+				// startup, so laneStates always has exactly one entry here.
+				const lane = laneStates[0];
+				const start = Date.now();
+				const build = await fetchPrebuiltBuild(lane.runner.client, prebuiltId, logger);
+				const buildDurationMs = Date.now() - start;
+				buildDurations.set(key, buildDurationMs);
+				return { build, lane, buildDurationMs };
+			}
+			// Orchestrator path: allocator is keyed on prompt while the build
+			// cache is keyed on (iter, fileSlug). Granularity intentionally
+			// differs — the allocator wants to spread distinct prompts across
+			// lanes, while the cache dedupes scenarios within one file (which
+			// share both prompt and slug).
 			const lane = await allocator.acquire(prompt);
 			try {
 				const start = Date.now();
@@ -340,7 +397,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			build,
 			lane: builtOnLane,
 			buildDurationMs,
-		} = await getOrBuild(inputs.prompt, iteration);
+		} = await getOrBuild(inputs.prompt, iteration, inputs.testCaseFile);
 
 		if (!build.success || !build.workflowId) {
 			return {
@@ -449,7 +506,13 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	// JSON files are the source of truth; the dataset accumulates orphans (the
 	// sync is additive — see langsmith/dataset-sync.ts) and we don't want to
 	// run scenarios whose JSON file no longer exists.
-	const sourceExamples = filteredExamplesIterable(lsClient, datasetName, args.filter, logger);
+	const sourceExamples = filteredExamplesIterable(
+		lsClient,
+		datasetName,
+		args.filter,
+		args.exclude,
+		logger,
+	);
 	const evaluateData =
 		args.iterations > 1
 			? expandExamplesForIterations(sourceExamples, args.iterations)
@@ -465,6 +528,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			client: lsClient,
 			metadata: {
 				filter: args.filter ?? 'all',
+				exclude: args.exclude ?? null,
+				prebuilt: prebuiltManifest !== undefined,
 				concurrency: args.concurrency,
 				maxBuilds: MAX_CONCURRENT_BUILDS,
 				lanes: lanes.length,
@@ -558,10 +623,14 @@ function filteredExamplesIterable(
 	lsClient: Client,
 	datasetName: string,
 	filter: string | undefined,
+	exclude: string | undefined,
 	logger: EvalLogger,
 ): AsyncIterable<Example> {
-	const slugs = loadWorkflowTestCasesWithFiles(filter).map((tc) => tc.fileSlug);
-	const label = filter ? `Filter "${filter}"` : 'Local test cases';
+	const slugs = loadWorkflowTestCasesWithFiles(filter, exclude).map((tc) => tc.fileSlug);
+	const labelParts: string[] = [];
+	if (filter) labelParts.push(`filter "${filter}"`);
+	if (exclude) labelParts.push(`exclude "${exclude}"`);
+	const label = labelParts.length > 0 ? labelParts.join(' + ') : 'Local test cases';
 	if (slugs.length === 0) {
 		logger.info(`${label} matched no local test case files`);
 		return (async function* () {})();
@@ -740,9 +809,9 @@ function reshapeLangSmithRuns(
 // ---------------------------------------------------------------------------
 
 async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
-	const { args, lanes, logger } = config;
+	const { args, lanes, logger, prebuiltManifest } = config;
 
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter);
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
 	if (testCasesWithFiles.length === 0) {
 		console.log('No workflow test cases found in evaluations/data/workflows/');
 		return { totalRuns: 0, testCases: [] };
@@ -786,6 +855,7 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 								logger,
 								keepWorkflows: args.keepWorkflows,
 								laneTag,
+								prebuiltWorkflowId: pickPrebuiltWorkflowId(prebuiltManifest, tc.fileSlug, iter),
 							}),
 						MAX_CONCURRENT_BUILDS,
 					);

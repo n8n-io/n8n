@@ -48,7 +48,15 @@ describe('McpClientTool', () => {
 			});
 
 			const result = await getTools.call(
-				mock<ILoadOptionsFunctions>({ getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })) }),
+				mock<ILoadOptionsFunctions>({
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
+				}),
 			);
 
 			expect(result).toEqual([
@@ -63,16 +71,24 @@ describe('McpClientTool', () => {
 
 		it('should handle errors', async () => {
 			vi.spyOn(Client.prototype, 'connect').mockRejectedValue(new Error('Fail!'));
-
 			const node = mock<INode>({ typeVersion: 1 });
+			const mockLoadOptionsFunctions = mock<ILoadOptionsFunctions>({
+				getNode: vi.fn(() => node),
+				getNodeParameter: vi.fn((key: string) => {
+					const parameters: Record<string, unknown> = {
+						authentication: 'none',
+					};
+					return parameters[key] as never;
+				}),
+			});
 
-			await expect(
-				getTools.call(mock<ILoadOptionsFunctions>({ getNode: vi.fn(() => node) })),
-			).rejects.toBeInstanceOf(NodeOperationError);
+			await expect(getTools.call(mockLoadOptionsFunctions)).rejects.toBeInstanceOf(
+				NodeOperationError,
+			);
 
-			await expect(
-				getTools.call(mock<ILoadOptionsFunctions>({ getNode: vi.fn(() => node) })),
-			).rejects.toThrow('Could not connect to your MCP server');
+			await expect(getTools.call(mockLoadOptionsFunctions)).rejects.toThrow(
+				'Could not connect to your MCP server',
+			);
 		});
 
 		it('should close client after listing tools', async () => {
@@ -89,7 +105,15 @@ describe('McpClientTool', () => {
 			const closeSpy = vi.spyOn(Client.prototype, 'close').mockResolvedValue();
 
 			await getTools.call(
-				mock<ILoadOptionsFunctions>({ getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })) }),
+				mock<ILoadOptionsFunctions>({
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
+				}),
 			);
 
 			expect(closeSpy).toHaveBeenCalled();
@@ -122,6 +146,12 @@ describe('McpClientTool', () => {
 					getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
 					logger: { debug: vi.fn(), error: vi.fn() },
 					addInputData: vi.fn(() => ({ index: 0 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
 				}),
 				0,
 			);
@@ -165,6 +195,7 @@ describe('McpClientTool', () => {
 						const parameters: Record<string, any> = {
 							include: 'selected',
 							includeTools: ['MyTool2'],
+							authentication: 'none',
 						};
 						return parameters[key];
 					}),
@@ -211,6 +242,7 @@ describe('McpClientTool', () => {
 						const parameters: Record<string, any> = {
 							include: 'except',
 							excludeTools: ['MyTool2'],
+							authentication: 'none',
 						};
 						return parameters[key];
 					}),
@@ -356,6 +388,12 @@ describe('McpClientTool', () => {
 					),
 					logger: { debug: vi.fn(), error: vi.fn() },
 					addInputData: vi.fn(() => ({ index: 0 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
 				}),
 				0,
 			);
@@ -389,6 +427,12 @@ describe('McpClientTool', () => {
 					getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
 					logger: { debug: vi.fn(), error: vi.fn() },
 					addInputData: vi.fn(() => ({ index: 0 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
 				}),
 				0,
 			);
@@ -420,6 +464,12 @@ describe('McpClientTool', () => {
 					getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
 					logger: { debug: vi.fn(), error: vi.fn() },
 					addInputData: vi.fn(() => ({ index: 0 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
 				}),
 				0,
 			);
@@ -451,6 +501,12 @@ describe('McpClientTool', () => {
 					getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
 					logger: { debug: vi.fn(), error: vi.fn() },
 					addInputData: vi.fn(() => ({ index: 0 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
 				}),
 				0,
 			);
@@ -486,6 +542,12 @@ describe('McpClientTool', () => {
 				),
 				logger: { debug: vi.fn(), error: vi.fn() },
 				addInputData: vi.fn(() => ({ index: 0 })),
+				getNodeParameter: vi.fn((key: string) => {
+					const parameters: Record<string, unknown> = {
+						authentication: 'none',
+					};
+					return parameters[key] as never;
+				}),
 			});
 			const supplyDataResult = await new McpClientTool().supplyData.call(supplyDataFunctions, 0);
 
@@ -525,6 +587,12 @@ describe('McpClientTool', () => {
 					logger: { debug: vi.fn(), error: vi.fn() },
 					addInputData: vi.fn(() => ({ index: 0 })),
 					getExecutionCancelSignal: vi.fn(() => abortController.signal),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
 				}),
 				0,
 			);
@@ -592,6 +660,12 @@ describe('McpClientTool', () => {
 					logger: { debug: vi.fn(), error: vi.fn() },
 					addInputData: vi.fn(() => ({ index: 0 })),
 					getExecutionCancelSignal: vi.fn(() => abortController.signal),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
 				}),
 				0,
 			);
@@ -629,6 +703,12 @@ describe('McpClientTool', () => {
 				logger: { debug: vi.fn(), error: errorLogger },
 				addInputData: vi.fn(() => ({ index: 0 })),
 				getExecutionCancelSignal: vi.fn(() => abortController.signal),
+				getNodeParameter: vi.fn((key: string) => {
+					const parameters: Record<string, unknown> = {
+						authentication: 'none',
+					};
+					return parameters[key] as never;
+				}),
 			});
 			const supplyDataResult = await new McpClientTool().supplyData.call(supplyDataFunctions, 0);
 
@@ -658,6 +738,12 @@ describe('McpClientTool', () => {
 						logger: { debug: vi.fn(), error: vi.fn() },
 						addInputData: vi.fn(() => ({ index: 0 })),
 						addOutputData: vi.fn(),
+						getNodeParameter: vi.fn((key: string) => {
+							const parameters: Record<string, unknown> = {
+								authentication: 'none',
+							};
+							return parameters[key] as never;
+						}),
 					}),
 					0,
 				),
@@ -684,6 +770,12 @@ describe('McpClientTool', () => {
 					getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'McpClientTool' })),
 					logger: { debug: vi.fn(), error: vi.fn() },
 					addInputData: vi.fn(() => ({ index: 0 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
 				}),
 				0,
 			);
@@ -718,6 +810,7 @@ describe('McpClientTool', () => {
 					getNodeParameter: vi.fn((key, _index) => {
 						const parameters: Record<string, any> = {
 							'options.timeout': 200,
+							authentication: 'none',
 						};
 						return parameters[key];
 					}),
@@ -926,6 +1019,151 @@ describe('McpClientTool', () => {
 				},
 				expect.anything(),
 				expect.anything(),
+			);
+		});
+
+		it('should treat isError: true as success on version 1.2 (legacy behavior)', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				isError: true,
+				content: [{ type: 'text', text: 'simulated tool-level error' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool', name: 'MCP Client' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: jest.fn(() => mockNode),
+				getInputData: jest.fn(() => [
+					{
+						json: {
+							tool: buildMcpToolName('MCP Client', 'get_weather'),
+							location: 'Berlin',
+						},
+					},
+				]),
+				getNodeParameter: jest.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+
+			const result = await new McpClientTool().execute.call(mockExecuteFunctions);
+
+			expect(result).toEqual([
+				[
+					{
+						json: { response: [{ type: 'text', text: 'simulated tool-level error' }] },
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('should throw NodeOperationError when tool result has isError: true (version 1.3+)', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				isError: true,
+				content: [{ type: 'text', text: 'simulated tool-level error' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1.3, type: 'mcpClientTool', name: 'MCP Client' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: jest.fn(() => mockNode),
+				getInputData: jest.fn(() => [
+					{
+						json: {
+							tool: buildMcpToolName('MCP Client', 'get_weather'),
+							location: 'Berlin',
+						},
+					},
+				]),
+				getNodeParameter: jest.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+
+			await expect(new McpClientTool().execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'simulated tool-level error',
+			);
+		});
+
+		it('should throw generic error when isError: true with no text content (version 1.3+)', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				isError: true,
+				content: [{ type: 'image', data: 'abc', mimeType: 'image/png' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1.3, type: 'mcpClientTool', name: 'MCP Client' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: jest.fn(() => mockNode),
+				getInputData: jest.fn(() => [
+					{
+						json: {
+							tool: buildMcpToolName('MCP Client', 'get_weather'),
+							location: 'Berlin',
+						},
+					},
+				]),
+				getNodeParameter: jest.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+
+			await expect(new McpClientTool().execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Tool "get_weather" returned an error',
 			);
 		});
 
@@ -1353,6 +1591,12 @@ describe('McpClientTool', () => {
 				logger: { debug: vi.fn(), error: vi.fn() },
 				addInputData: vi.fn(() => ({ index: 0 })),
 				getExecutionCancelSignal: vi.fn(() => abortController.signal),
+				getNodeParameter: vi.fn((key: string) => {
+					const parameters: Record<string, unknown> = {
+						authentication: 'none',
+					};
+					return parameters[key] as never;
+				}),
 			});
 
 			const supplyDataResult = await new McpClientTool().supplyData.call(
@@ -1608,6 +1852,12 @@ describe('McpClientTool', () => {
 					),
 					logger: { debug: vi.fn(), error: vi.fn() },
 					addInputData: vi.fn(() => ({ index: 0 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
 				}),
 				0,
 			);
@@ -1641,6 +1891,12 @@ describe('McpClientTool', () => {
 					),
 					logger: { debug: vi.fn(), error: vi.fn() },
 					addInputData: vi.fn(() => ({ index: 0 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
 				}),
 				0,
 			);

@@ -421,7 +421,7 @@ describe('usePostMessageHandler', () => {
 
 			mockOpenExecution.mockImplementation(async () => {
 				// Simulate what openExecution does: sets workflowId on the store
-				workflowsStore.workflow.id = 'test-wf-id';
+				workflowsStore.workflowId = 'test-wf-id';
 				return {
 					workflowData: { id: 'test-wf-id', name: 'Test' },
 					mode: 'trigger',
@@ -740,6 +740,25 @@ describe('usePostMessageHandler', () => {
 					message: 'Invalid workflow object',
 					type: 'error',
 				});
+			});
+
+			cleanup();
+		});
+	});
+
+	describe('fitView command', () => {
+		it('should emit fitView on canvasEventBus when fitView message is received', async () => {
+			const { setup, cleanup } = usePostMessageHandler({
+				workflowState,
+				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
+			});
+			setup();
+
+			dispatchPostMessage({ command: 'fitView' });
+
+			await vi.waitFor(() => {
+				expect(mockCanvasEventBusEmit).toHaveBeenCalledWith('fitView');
 			});
 
 			cleanup();

@@ -1004,6 +1004,7 @@ export interface FunctionsBase {
 	getChatTrigger: () => INode | null;
 	isNodeFeatureEnabled(featureName: string): boolean;
 	getExecutionContext: () => IExecutionContext | undefined;
+	listAgents?(): Promise<Array<{ id: string; name: string }>>;
 
 	/** @deprecated */
 	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
@@ -1095,6 +1096,12 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				executionMode?: WorkflowExecuteMode;
 			},
 		): Promise<ExecuteWorkflowData>;
+		executeAgent(
+			agentInfo: ExecuteAgentInfo,
+			message: string,
+			executionId: string,
+			itemIndex: number,
+		): Promise<ExecuteAgentData>;
 		getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined>;
 		getInputConnectionData(
 			connectionType: AINodeConnectionType,
@@ -1373,6 +1380,9 @@ export interface INode {
 	executeOnce?: boolean;
 	onError?: OnError;
 	continueOnFail?: boolean;
+	customTelemetryTags?: {
+		tag?: Array<{ key: string; value: string }>;
+	};
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
 	webhookId?: string;
@@ -1646,6 +1656,7 @@ export interface INodePropertyTypeOptions {
 		layout?: 'inline'; // Render sub-parameters side-by-side in a row
 	};
 	password?: boolean; // Supported by: string
+	copyButton?: boolean; // Supported by: string — renders a readonly value with a click-to-copy affordance
 	redactJsonLeaves?: boolean; // Supported by: json (credential fields only) — redacts leaf values instead of the whole field
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
@@ -1773,6 +1784,11 @@ export interface INodeProperties {
 	builderHint?: IParameterBuilderHint;
 	disabledOptions?: IDisplayOptions;
 	displayOptions?: IDisplayOptions;
+	/**
+	 * Hides the property unless the named instance-level env feature flag is
+	 * truthy. The value is the flag suffix without the `N8N_ENV_FEAT_` prefix
+	 */
+	envFeatureFlag?: Uppercase<string>;
 	options?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>;
 	placeholder?: string;
 	isNodeSetting?: boolean;
@@ -1895,8 +1911,18 @@ export interface INodePropertyCollection {
 	builderHint?: IParameterBuilderHint;
 }
 
+/**
+ * One variation of `extraTypeDefContent`, optionally gated by `displayOptions`
+ * so per-mode / per-resource / per-operation examples land only in their
+ * corresponding narrowed type without cross-bleed.
+ */
+export interface IBuilderHintVariation {
+	content: string;
+	displayOptions?: IDisplayOptions;
+}
+
 export interface IParameterBuilderHint {
-	message: string;
+	propertyHint: string;
 	placeholderSupported?: boolean;
 }
 
@@ -1938,6 +1964,57 @@ export interface ExecuteWorkflowData {
 	executionId: string;
 	data: Array<INodeExecutionData[] | null>;
 	waitTill?: Date | null;
+}
+
+export interface ExecuteAgentInfo {
+	/** The agent ID to execute. */
+	agentId: string;
+	/**
+	 * Optional caller-supplied session id. When set, this becomes the agent
+	 * thread id, letting workflows continue the same conversation (and reuse
+	 * memory) across executions. When omitted, a per-call thread is derived
+	 * from the workflow execution id and item index.
+	 */
+	sessionId?: string;
+}
+
+export interface ExecuteAgentOptions {
+	node?: INode;
+	parentWorkflowId: string;
+	parentWorkflowSettings?: IWorkflowSettings;
+	executionMode?: WorkflowExecuteMode;
+}
+
+export interface ExecuteAgentData {
+	/** The agent's text response extracted from the last assistant message. */
+	response: string;
+	/** Parsed structured output if the agent has a structuredOutput schema. */
+	structuredOutput: unknown | null;
+	/** Token usage for the call. */
+	usage: {
+		promptTokens: number;
+		completionTokens: number;
+		totalTokens: number;
+	} | null;
+	/** Tool calls the agent made during execution. */
+	toolCalls: Array<{
+		toolName: string;
+		input: unknown;
+		result: unknown;
+	}>;
+	/** Why the agent stopped. */
+	finishReason: string;
+	/**
+	 * Identifiers of the agent session this call wrote to. Surfaced so the
+	 * caller (e.g. the MessageAnAgent node) can link from a workflow execution
+	 * back to the agent session detail view.
+	 */
+	session: {
+		agentId: string;
+		projectId: string;
+		/** The threadId persisted to the agent session. May be a caller-provided override. */
+		sessionId: string;
+	};
 }
 
 export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
@@ -2488,9 +2565,17 @@ export interface IBuilderHint {
 	/** Declarative output availability — which outputs the node exposes per parameter values */
 	outputs?: BuilderHintOutputs;
 	/** General hint message for LLM workflow builders */
-	message?: string;
+	searchHint?: string;
 	/** Related nodes that work together with this node */
 	relatedNodes?: IRelatedNode[];
+	/**
+	 * Multi-line content (typically code examples wrapped in `<patterns>...</patterns>`)
+	 * emitted into the generated workflow-sdk `.d.ts` but NOT surfaced in
+	 * `nodes(action="search")` results. Each variation may carry `displayOptions`
+	 * so per-mode / per-resource / per-operation examples land only in their
+	 * corresponding narrowed type.
+	 */
+	extraTypeDefContent?: IBuilderHintVariation[];
 }
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
@@ -2943,6 +3028,12 @@ export interface IWaitingForExecutionSource {
 
 export type WorkflowId = IWorkflowBase['id'];
 
+export interface IWorkflowGroup {
+	id: string;
+	name: string;
+	nodeIds: string[];
+}
+
 export interface IWorkflowBase {
 	id: string;
 	name: string;
@@ -2962,6 +3053,10 @@ export interface IWorkflowBase {
 	activeVersion?: IWorkflowHistory | null;
 	versionCounter?: number;
 	meta?: WorkflowFEMeta;
+	/** Optional here because IWorkflowBase is used in contexts where node groups
+	 * are irrelevant (executions, telemetry, tests). The DB column is NOT NULL
+	 * with default `[]` and `WorkflowEntity` has this as required. */
+	nodeGroups?: IWorkflowGroup[];
 }
 
 interface IWorkflowHistory {
@@ -2969,6 +3064,7 @@ interface IWorkflowHistory {
 	workflowId: string;
 	nodes: INode[];
 	connections: IConnections;
+	nodeGroups: IWorkflowGroup[];
 	authors: string;
 	name: string | null;
 	description: string | null;
@@ -3101,6 +3197,14 @@ export interface IWorkflowExecuteAdditionalData {
 		additionalData: IWorkflowExecuteAdditionalData,
 		options: ExecuteWorkflowOptions,
 	) => Promise<ExecuteWorkflowData>;
+	executeAgent?: (
+		agentId: string,
+		message: string,
+		executionId: string,
+		threadId: string,
+		additionalData: IWorkflowExecuteAdditionalData,
+	) => Promise<ExecuteAgentData>;
+	listAgents?: (userId: string) => Promise<Array<{ id: string; name: string }>>;
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
 	executionId?: string;
 	restartExecutionId?: string;

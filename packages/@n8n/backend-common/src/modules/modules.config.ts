@@ -3,6 +3,7 @@ import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
 import { UnknownModuleError } from './errors/unknown-module.error';
 
 export const MODULE_NAMES = [
+	'agents',
 	'insights',
 	'external-secrets',
 	'community-packages',
@@ -29,6 +30,7 @@ export const MODULE_NAMES = [
 	'instance-version-history',
 	'encryption-key-manager',
 	'oauth-jwe',
+	'inbound-secrets',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

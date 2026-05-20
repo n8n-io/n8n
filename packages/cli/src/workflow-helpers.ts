@@ -125,6 +125,46 @@ export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeT
 	}
 }
 
+/**
+ * Validates nodeGroups: unique group names, all referenced node IDs exist,
+ * and each node belongs to at most one group.
+ * Note for frontend: Must be called after `addNodeIds` since nodes created via the API
+ * may not have IDs until that step assigns them.
+ */
+export function validateWorkflowNodeGroups(workflow: Pick<IWorkflowBase, 'nodes' | 'nodeGroups'>) {
+	const { nodeGroups, nodes } = workflow;
+	if (!nodeGroups || nodeGroups.length === 0) return;
+
+	const nodeIds = new Set(nodes.map((n) => n.id).filter(Boolean));
+	const seenGroupNames = new Set<string>();
+	const nodeToGroup = new Map<string, string>();
+
+	for (const group of nodeGroups) {
+		// Unique group names
+		if (seenGroupNames.has(group.name)) {
+			throw new BadRequestError(`Duplicate node group name "${group.name}".`);
+		}
+		seenGroupNames.add(group.name);
+
+		for (const nodeId of group.nodeIds) {
+			// All referenced nodes must exist
+			if (!nodeIds.has(nodeId)) {
+				throw new BadRequestError(
+					`Group "${group.name}" references node ID "${nodeId}" that does not exist in the workflow.`,
+				);
+			}
+			// A node can only belong to one group
+			const existingGroup = nodeToGroup.get(nodeId);
+			if (existingGroup) {
+				throw new BadRequestError(
+					`Node "${nodeId}" belongs to multiple groups: "${existingGroup}" and "${group.name}".`,
+				);
+			}
+			nodeToGroup.set(nodeId, group.name);
+		}
+	}
+}
+
 export function validateWorkflowStructure(workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>) {
 	const result = safeParseWorkflowStructure(workflow);
 

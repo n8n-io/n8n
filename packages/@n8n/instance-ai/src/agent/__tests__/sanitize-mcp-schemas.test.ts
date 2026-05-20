@@ -1,28 +1,72 @@
-import type { ToolsInput } from '@mastra/core/agent';
+import type { BuiltTool } from '@n8n/agents';
 import { z } from 'zod';
 
-import { sanitizeMcpToolSchemas, sanitizeZodType } from '../sanitize-mcp-schemas';
+import { createToolRegistry } from '../../tool-registry';
+import type { InstanceAiToolRegistry } from '../../types';
+import {
+	McpSchemaSanitizationError,
+	sanitizeMcpToolSchemas,
+	sanitizeZodType,
+} from '../sanitize-mcp-schemas';
+
+type TestTools = InstanceAiToolRegistry;
 
 function makeTools(
 	schemas: Record<string, { input?: z.ZodTypeAny; output?: z.ZodTypeAny }>,
-): ToolsInput {
-	const tools: Record<string, { inputSchema?: z.ZodTypeAny; outputSchema?: z.ZodTypeAny }> = {};
+): TestTools {
+	const tools = createToolRegistry();
 	for (const [name, { input, output }] of Object.entries(schemas)) {
-		tools[name] = {
+		tools.set(name, {
+			name,
+			description: name,
 			...(input ? { inputSchema: input } : {}),
 			...(output ? { outputSchema: output } : {}),
-		};
+		});
 	}
-	return tools as ToolsInput;
+	return tools;
+}
+
+function getInputSchema<TSchema extends z.ZodTypeAny = z.ZodTypeAny>(
+	tools: TestTools,
+	name = 'myTool',
+): TSchema {
+	const schema = tools.get(name)?.inputSchema;
+	if (!(schema instanceof z.ZodType)) throw new Error(`Missing Zod input schema for ${name}`);
+	return schema as TSchema;
+}
+
+function getOutputSchema<TSchema extends z.ZodTypeAny = z.ZodTypeAny>(
+	tools: TestTools,
+	name = 'myTool',
+): TSchema {
+	const schema = tools.get(name)?.outputSchema;
+	if (!(schema instanceof z.ZodType)) throw new Error(`Missing Zod output schema for ${name}`);
+	return schema as TSchema;
 }
 
 describe('sanitizeMcpToolSchemas', () => {
+	function makeDeepObject(depth: number): z.ZodTypeAny {
+		let schema: z.ZodTypeAny = z.string();
+		for (let i = 0; i < depth; i++) {
+			schema = z.object({ child: schema });
+		}
+		return schema;
+	}
+
+	function makeWideObject(width: number): z.ZodTypeAny {
+		const shape: z.ZodRawShape = {};
+		for (let i = 0; i < width; i++) {
+			shape[`field${i}`] = z.string();
+		}
+		return z.object(shape);
+	}
+
 	it('should return empty tools input unchanged', () => {
-		const tools = {} as ToolsInput;
+		const tools = createToolRegistry();
 
 		const result = sanitizeMcpToolSchemas(tools);
 
-		expect(Object.keys(result)).toHaveLength(0);
+		expect(result.size).toBe(0);
 	});
 
 	it('should leave a tool with clean schema unchanged', () => {
@@ -34,8 +78,7 @@ describe('sanitizeMcpToolSchemas', () => {
 
 		const result = sanitizeMcpToolSchemas(tools);
 
-		const resultSchema = (result as Record<string, { inputSchema: z.ZodTypeAny }>).myTool
-			.inputSchema;
+		const resultSchema = getInputSchema(result);
 		// Schema should still accept valid input
 		expect(resultSchema.safeParse({ url: 'https://example.com', method: 'GET' }).success).toBe(
 			true,
@@ -51,8 +94,7 @@ describe('sanitizeMcpToolSchemas', () => {
 
 		const result = sanitizeMcpToolSchemas(tools);
 
-		const resultSchema = (result as Record<string, { inputSchema: z.ZodObject<z.ZodRawShape> }>)
-			.myTool.inputSchema;
+		const resultSchema = getInputSchema<z.ZodObject<z.ZodRawShape>>(result);
 
 		// Should accept string values
 		expect(resultSchema.safeParse({ name: 'hello' }).success).toBe(true);
@@ -70,8 +112,7 @@ describe('sanitizeMcpToolSchemas', () => {
 
 		const result = sanitizeMcpToolSchemas(tools);
 
-		const resultSchema = (result as Record<string, { inputSchema: z.ZodObject<z.ZodRawShape> }>)
-			.myTool.inputSchema;
+		const resultSchema = getInputSchema<z.ZodObject<z.ZodRawShape>>(result);
 
 		expect(resultSchema.safeParse({ title: 'test' }).success).toBe(true);
 		expect(resultSchema.safeParse({}).success).toBe(true);
@@ -90,8 +131,7 @@ describe('sanitizeMcpToolSchemas', () => {
 
 		const result = sanitizeMcpToolSchemas(tools);
 
-		const resultSchema = (result as Record<string, { inputSchema: z.ZodObject<z.ZodRawShape> }>)
-			.myTool.inputSchema;
+		const resultSchema = getInputSchema<z.ZodObject<z.ZodRawShape>>(result);
 
 		// Valid: all fields provided
 		expect(
@@ -113,8 +153,7 @@ describe('sanitizeMcpToolSchemas', () => {
 
 		const result = sanitizeMcpToolSchemas(tools);
 
-		const resultSchema = (result as Record<string, { outputSchema: z.ZodObject<z.ZodRawShape> }>)
-			.myTool.outputSchema;
+		const resultSchema = getOutputSchema<z.ZodObject<z.ZodRawShape>>(result);
 
 		expect(resultSchema.safeParse({ result: 'ok' }).success).toBe(true);
 		expect(resultSchema.safeParse({}).success).toBe(true);
@@ -126,8 +165,7 @@ describe('sanitizeMcpToolSchemas', () => {
 
 		const result = sanitizeMcpToolSchemas(tools);
 
-		const resultSchema = (result as Record<string, { inputSchema: z.ZodTypeAny }>).myTool
-			.inputSchema;
+		const resultSchema = getInputSchema(result);
 
 		// ZodNull → z.string().optional() (not object) → falls back to z.record(z.unknown())
 		expect(resultSchema instanceof z.ZodRecord).toBe(true);
@@ -142,8 +180,7 @@ describe('sanitizeMcpToolSchemas', () => {
 
 		const result = sanitizeMcpToolSchemas(tools);
 
-		const resultSchema = (result as Record<string, { inputSchema: z.ZodObject<z.ZodRawShape> }>)
-			.myTool.inputSchema;
+		const resultSchema = getInputSchema<z.ZodObject<z.ZodRawShape>>(result);
 
 		// Degenerate case: all-null union becomes z.string().optional()
 		expect(resultSchema.safeParse({}).success).toBe(true);
@@ -158,8 +195,7 @@ describe('sanitizeMcpToolSchemas', () => {
 
 		const result = sanitizeMcpToolSchemas(tools);
 
-		const resultSchema = (result as Record<string, { inputSchema: z.ZodObject<z.ZodRawShape> }>)
-			.myTool.inputSchema;
+		const resultSchema = getInputSchema<z.ZodObject<z.ZodRawShape>>(result);
 
 		// String and number should still be accepted
 		expect(resultSchema.safeParse({ value: 'text' }).success).toBe(true);
@@ -178,8 +214,7 @@ describe('sanitizeMcpToolSchemas', () => {
 
 		const result = sanitizeMcpToolSchemas(tools);
 
-		const resultSchema = (result as Record<string, { inputSchema: z.ZodObject<z.ZodRawShape> }>)
-			.myTool.inputSchema;
+		const resultSchema = getInputSchema<z.ZodObject<z.ZodRawShape>>(result);
 
 		// Array of optional strings should accept strings
 		expect(resultSchema.safeParse({ items: ['a', 'b'] }).success).toBe(true);
@@ -187,7 +222,7 @@ describe('sanitizeMcpToolSchemas', () => {
 		expect(resultSchema.safeParse({ items: [undefined] }).success).toBe(true);
 	});
 
-	it('should mutate tools in place and return the same reference', () => {
+	it('should return the same registry reference', () => {
 		const tools = makeTools({
 			tool1: { input: z.object({ a: z.nullable(z.string()) }) },
 		});
@@ -202,8 +237,7 @@ describe('sanitizeMcpToolSchemas', () => {
 			const tools = makeTools({ myTool: { input: z.object({ a: z.string() }) } });
 
 			const result = sanitizeMcpToolSchemas(tools);
-			const resultSchema = (result as Record<string, { inputSchema: z.ZodTypeAny }>).myTool
-				.inputSchema;
+			const resultSchema = getInputSchema(result);
 
 			expect(resultSchema instanceof z.ZodObject).toBe(true);
 			expect(resultSchema.safeParse({ a: 'hello' }).success).toBe(true);
@@ -213,8 +247,7 @@ describe('sanitizeMcpToolSchemas', () => {
 			const tools = makeTools({ myTool: { input: z.record(z.unknown()) } });
 
 			const result = sanitizeMcpToolSchemas(tools);
-			const resultSchema = (result as Record<string, { inputSchema: z.ZodTypeAny }>).myTool
-				.inputSchema;
+			const resultSchema = getInputSchema(result);
 
 			expect(resultSchema instanceof z.ZodRecord).toBe(true);
 			expect(resultSchema.safeParse({ key: 'value' }).success).toBe(true);
@@ -224,8 +257,7 @@ describe('sanitizeMcpToolSchemas', () => {
 			const tools = makeTools({ myTool: { input: z.union([z.string(), z.number()]) } });
 
 			const result = sanitizeMcpToolSchemas(tools);
-			const resultSchema = (result as Record<string, { inputSchema: z.ZodTypeAny }>).myTool
-				.inputSchema;
+			const resultSchema = getInputSchema(result);
 
 			// Non-object top-level → falls back to z.record(z.unknown())
 			expect(resultSchema instanceof z.ZodRecord).toBe(true);
@@ -236,8 +268,7 @@ describe('sanitizeMcpToolSchemas', () => {
 			const tools = makeTools({ myTool: { input: z.string() } });
 
 			const result = sanitizeMcpToolSchemas(tools);
-			const resultSchema = (result as Record<string, { inputSchema: z.ZodTypeAny }>).myTool
-				.inputSchema;
+			const resultSchema = getInputSchema(result);
 
 			expect(resultSchema instanceof z.ZodRecord).toBe(true);
 		});
@@ -246,8 +277,7 @@ describe('sanitizeMcpToolSchemas', () => {
 			const tools = makeTools({ myTool: { output: z.string() } });
 
 			const result = sanitizeMcpToolSchemas(tools);
-			const resultSchema = (result as Record<string, { outputSchema: z.ZodTypeAny }>).myTool
-				.outputSchema;
+			const resultSchema = getOutputSchema(result);
 
 			// outputSchema is NOT guarded — only inputSchema needs type: object
 			expect(resultSchema instanceof z.ZodRecord).toBe(false);
@@ -261,12 +291,201 @@ describe('sanitizeMcpToolSchemas', () => {
 			});
 
 			const result = sanitizeMcpToolSchemas(tools);
-			const resultSchema = (result as Record<string, { inputSchema: z.ZodObject<z.ZodRawShape> }>)
-				.myTool.inputSchema;
+			const resultSchema = getInputSchema<z.ZodObject<z.ZodRawShape>>(result);
 
 			expect(resultSchema.safeParse({ data: { key: 'value' } }).success).toBe(true);
 			expect(resultSchema.safeParse({ data: { key: undefined } }).success).toBe(true);
 			expect(resultSchema.safeParse({ data: { key: null } }).success).toBe(false);
+		});
+	});
+
+	describe('depth bounding', () => {
+		it('should throw a typed error when a schema exceeds the maximum depth', () => {
+			expect(() => sanitizeZodType(makeDeepObject(4), false, { maxDepth: 2 })).toThrow(
+				McpSchemaSanitizationError,
+			);
+		});
+
+		it('should remove only the offending MCP tool when one schema is too deep', () => {
+			const onError = jest.fn();
+			const tools = makeTools({
+				validTool: { input: z.object({ name: z.string() }) },
+				deepTool: { input: makeDeepObject(4) },
+			});
+
+			const result = sanitizeMcpToolSchemas(tools, { maxDepth: 2, onError });
+
+			expect([...result.keys()]).toEqual(['validTool']);
+			expect(onError).toHaveBeenCalledWith(expect.any(McpSchemaSanitizationError));
+			const onErrorCalls = onError.mock.calls as Array<[McpSchemaSanitizationError]>;
+			expect(onErrorCalls[0]?.[0].details.toolName).toBe('deepTool');
+			expect(onErrorCalls[0]?.[0].details.maxDepth).toBe(2);
+		});
+
+		it('should bound arrays, records, and unions', () => {
+			const tools = makeTools({
+				arrayTool: { input: z.array(makeDeepObject(3)) },
+				recordTool: { input: z.record(makeDeepObject(3)) },
+				unionTool: { input: z.union([makeDeepObject(3), z.null()]) },
+			});
+
+			const result = sanitizeMcpToolSchemas(tools, { maxDepth: 2 });
+
+			expect([...result.keys()]).toEqual([]);
+		});
+
+		it('should bound lazy schemas', () => {
+			const onError = jest.fn();
+			const tools = makeTools({
+				lazyTool: { input: z.object({ payload: z.lazy(() => makeWideObject(4)) }) },
+			});
+
+			const result = sanitizeMcpToolSchemas(tools, {
+				maxObjectProperties: 2,
+				onError,
+			});
+
+			expect([...result.keys()]).toEqual([]);
+			const onErrorCalls = onError.mock.calls as Array<[McpSchemaSanitizationError]>;
+			expect(onErrorCalls[0]?.[0].details.toolName).toBe('lazyTool');
+			expect(onErrorCalls[0]?.[0].details.limitType).toBe('objectProperties');
+		});
+
+		it('should remove tools containing unsupported tuple or intersection schemas', () => {
+			const onError = jest.fn();
+			const tools = makeTools({
+				tupleTool: { input: z.object({ pair: z.tuple([z.string(), z.null()]) }) },
+				intersectionTool: {
+					input: z.object({
+						payload: z.intersection(z.object({ name: z.string() }), z.object({ id: z.string() })),
+					}),
+				},
+			});
+
+			const result = sanitizeMcpToolSchemas(tools, { onError });
+
+			expect([...result.keys()]).toEqual([]);
+			const onErrorCalls = onError.mock.calls as Array<[McpSchemaSanitizationError]>;
+			expect(onErrorCalls.map(([error]) => error.details)).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						toolName: 'tupleTool',
+						limitType: 'unsupportedType',
+						zodType: 'ZodTuple',
+					}),
+					expect.objectContaining({
+						toolName: 'intersectionTool',
+						limitType: 'unsupportedType',
+						zodType: 'ZodIntersection',
+					}),
+				]),
+			);
+		});
+
+		it('should remove tools containing unsupported wrapper types', () => {
+			const onError = jest.fn();
+			const tools = makeTools({
+				mapTool: { input: z.object({ values: z.map(z.string(), z.string()) }) },
+			});
+
+			const result = sanitizeMcpToolSchemas(tools, { onError });
+
+			expect([...result.keys()]).toEqual([]);
+			const onErrorCalls = onError.mock.calls as Array<[McpSchemaSanitizationError]>;
+			expect(onErrorCalls[0]?.[0].details.toolName).toBe('mapTool');
+			expect(onErrorCalls[0]?.[0].details.limitType).toBe('unsupportedType');
+			expect(onErrorCalls[0]?.[0].details.zodType).toBe('ZodMap');
+		});
+
+		it('should remove a shallow MCP tool with too many object properties', () => {
+			const onError = jest.fn();
+			const tools = makeTools({
+				wideTool: { input: makeWideObject(4) },
+			});
+
+			const result = sanitizeMcpToolSchemas(tools, {
+				maxObjectProperties: 2,
+				onError,
+			});
+
+			expect([...result.keys()]).toEqual([]);
+			const onErrorCalls = onError.mock.calls as Array<[McpSchemaSanitizationError]>;
+			expect(onErrorCalls[0]?.[0].details.toolName).toBe('wideTool');
+			expect(onErrorCalls[0]?.[0].details.limitType).toBe('objectProperties');
+			expect(onErrorCalls[0]?.[0].details.limit).toBe(2);
+			expect(onErrorCalls[0]?.[0].details.count).toBe(4);
+		});
+
+		it('should remove a shallow MCP tool with too many union options', () => {
+			const onError = jest.fn();
+			const tools = makeTools({
+				unionTool: {
+					input: z.object({
+						value: z.union([z.literal('a'), z.literal('b'), z.literal('c')]),
+					}),
+				},
+			});
+
+			const result = sanitizeMcpToolSchemas(tools, {
+				maxUnionOptions: 2,
+				onError,
+			});
+
+			expect([...result.keys()]).toEqual([]);
+			const onErrorCalls = onError.mock.calls as Array<[McpSchemaSanitizationError]>;
+			expect(onErrorCalls[0]?.[0].details.toolName).toBe('unionTool');
+			expect(onErrorCalls[0]?.[0].details.limitType).toBe('unionOptions');
+			expect(onErrorCalls[0]?.[0].details.limit).toBe(2);
+			expect(onErrorCalls[0]?.[0].details.count).toBe(3);
+		});
+
+		it('should remove an MCP tool that exceeds the total schema node budget', () => {
+			const onError = jest.fn();
+			const tools = makeTools({
+				nodeBudgetTool: {
+					input: z.object({
+						first: z.string(),
+						second: z.string(),
+					}),
+				},
+			});
+
+			const result = sanitizeMcpToolSchemas(tools, {
+				maxNodes: 2,
+				onError,
+			});
+
+			expect([...result.keys()]).toEqual([]);
+			const onErrorCalls = onError.mock.calls as Array<[McpSchemaSanitizationError]>;
+			expect(onErrorCalls[0]?.[0].details.toolName).toBe('nodeBudgetTool');
+			expect(onErrorCalls[0]?.[0].details.limitType).toBe('nodes');
+			expect(onErrorCalls[0]?.[0].details.limit).toBe(2);
+		});
+
+		it('reports raw JSON output schema limit errors under the output schema path', () => {
+			const onError = jest.fn();
+			const outputTool: BuiltTool = {
+				name: 'outputTool',
+				description: 'outputTool',
+				inputSchema: { type: 'object' },
+				outputSchema: {
+					type: 'object',
+					properties: {
+						first: { type: 'string' },
+						second: { type: 'string' },
+					},
+				},
+			};
+			const tools = createToolRegistry([['outputTool', outputTool]]);
+
+			const result = sanitizeMcpToolSchemas(tools, {
+				maxObjectProperties: 1,
+				onError,
+			});
+
+			expect([...result.keys()]).toEqual([]);
+			const onErrorCalls = onError.mock.calls as Array<[McpSchemaSanitizationError]>;
+			expect(onErrorCalls[0]?.[0].details.path).toBe('$.outputSchema.properties');
 		});
 	});
 
