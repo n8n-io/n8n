@@ -29,14 +29,15 @@ const SafeURIError = createSafeErrorSubclass(URIError);
  *
  *   - `getValueAtPath`, `getArrayElement`: data-access primitives used by the
  *     lazy-proxy system. Hot path; one ivm.Reference each for minimum overhead.
- *   - `callFunctionAtPath`: legacy generic dispatch, removed in Phase B Step 4
- *     once every consumer has migrated to typed messages.
- *   - `sendMessage`: typed-RPC dispatcher. The in-isolate runtime constructs
+ *   - `callFunctionAtPath`: legacy generic dispatch; to be removed once
+ *     every consumer has migrated to typed messages.
+ *   - `callHost`: typed-RPC dispatcher. The in-isolate runtime constructs
  *     an envelope (e.g. `{ type: 'getNodeFirst', nodeName, ... }`) and the
  *     host-side dispatcher validates it with zod before routing to a handler.
  *     A single ivm.Reference covers every typed operation; new operations
  *     are new schemas in `bridge/bridge-messages.ts` + new cases in the
- *     dispatcher switch.
+ *     dispatcher switch. The name reflects what this is: a synchronous
+ *     host RPC, not a postMessage-style async send.
  */
 export interface BridgeCallbacks {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,7 +47,7 @@ export interface BridgeCallbacks {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	callFunctionAtPath: any;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	sendMessage: any;
+	callHost: any;
 }
 
 /**
@@ -132,7 +133,7 @@ export function buildContext(
 	//
 	// The returned object is a Proxy whose `get` trap intercepts properties
 	// that have a typed RPC (e.g. `.first` → `getNodeFirst`) and routes them
-	// through the `sendMessage` envelope. Everything else (properties like
+	// through the `callHost` envelope. Everything else (properties like
 	// `.params`, `.json`, and methods that don't yet have a typed RPC like
 	// `.last`, `.all`) is read from an underlying lazy proxy via explicit
 	// delegation.
@@ -145,14 +146,14 @@ export function buildContext(
 	// whole node's keys. Using `{}` as the target keeps those checks cheap;
 	// the lazy proxy lives in closure and is only consulted on demand.
 	//
-	// As Phase B Step 3 adds more typed RPCs, more cases land in this trap.
+	// As more typed RPCs are added, more cases land in this trap.
 	target.$ = function (nodeName: string) {
 		const lazyProxy = createDeepLazyProxy(['$', nodeName], undefined, callbacks);
 		return new Proxy({} as Record<string, unknown>, {
 			get(_emptyTarget, prop) {
 				if (prop === 'first') {
 					return (branchIndex?: number, runIndex?: number) => {
-						const result = callbacks.sendMessage.applySync(
+						const result = callbacks.callHost.applySync(
 							null,
 							[{ type: 'getNodeFirst', nodeName, branchIndex, runIndex }],
 							{ arguments: { copy: true }, result: { copy: true } },

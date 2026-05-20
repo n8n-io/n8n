@@ -1,6 +1,6 @@
 /**
  * Schemas for messages the in-isolate runtime sends to the host via the
- * `sendMessage` typed-RPC dispatcher.
+ * `callHost` typed-RPC dispatcher.
  *
  * The isolate is an untrusted source: anything that crosses the bridge must
  * be validated for shape and types at the boundary. We do that with zod
@@ -13,8 +13,8 @@
  * delegates to a handler that operates on the parsed (statically narrowed)
  * message.
  *
- * As Phase B Step 3 adds more typed RPCs, each one lands as a new schema
- * here plus a new `case` in the bridge's dispatcher switch.
+ * Each additional typed RPC lands as a new schema here plus a new `case`
+ * in the bridge's dispatcher switch.
  */
 
 import { z } from 'zod';

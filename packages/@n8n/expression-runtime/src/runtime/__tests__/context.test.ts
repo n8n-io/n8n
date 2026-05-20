@@ -25,7 +25,7 @@ describe('buildContext proxy', () => {
 			getValueAtPath,
 			getArrayElement: makeRef(() => undefined),
 			callFunctionAtPath: makeRef(() => undefined),
-			sendMessage: makeRef(() => undefined),
+			callHost: makeRef(() => undefined),
 		});
 
 		expect('$credentials' in ctx).toBe(true);
@@ -38,7 +38,7 @@ describe('buildContext proxy', () => {
 			getValueAtPath,
 			getArrayElement: makeRef(() => undefined),
 			callFunctionAtPath: makeRef(() => undefined),
-			sendMessage: makeRef(() => undefined),
+			callHost: makeRef(() => undefined),
 		});
 
 		expect('$doesNotExist' in ctx).toBe(false);
@@ -55,7 +55,7 @@ describe('buildContext proxy', () => {
 			getValueAtPath,
 			getArrayElement: makeRef(() => undefined),
 			callFunctionAtPath: makeRef(() => undefined),
-			sendMessage: makeRef(() => undefined),
+			callHost: makeRef(() => undefined),
 		});
 
 		void ('$missing' in ctx);

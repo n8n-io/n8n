@@ -460,7 +460,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * Create the single typed-RPC dispatcher.
 	 *
 	 * The isolate sends one envelope per typed RPC invocation:
-	 *   `sendMessage({ type: 'getNodeFirst', nodeName, branchIndex?, runIndex? })`
+	 *   `callHost({ type: 'getNodeFirst', nodeName, branchIndex?, runIndex? })`
 	 *
 	 * Inputs cross a trust boundary, so the dispatcher parses every envelope
 	 * with the host-side zod schema (`bridgeMessageSchema`) before any
@@ -477,7 +477,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @param data - Current workflow data
 	 * @private
 	 */
-	private createSendMessageRef(data: Record<string, unknown>): ivm.Reference {
+	private createCallHostRef(data: Record<string, unknown>): ivm.Reference {
 		return new (getIvm().Reference)((rawMsg: unknown) => {
 			try {
 				const msg = bridgeMessageSchema.parse(rawMsg);
@@ -535,7 +535,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 *
 	 * Flow:
 	 * 1. Create four ivm.Reference callbacks scoped to the current data:
-	 *    `getValueAtPath`, `getArrayElement`, `callFunctionAtPath`, `sendMessage`.
+	 *    `getValueAtPath`, `getArrayElement`, `callFunctionAtPath`, `callHost`.
 	 * 2. Use evalClosureSync to run the code in a closure where `$0`/`$1`/`$2`/`$3`
 	 *    are the callback references — no global mutable state.
 	 * 3. buildContext() inside the isolate creates a fresh evaluation context
@@ -557,7 +557,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		const getValueAtPath = this.createGetValueAtPathRef(data);
 		const getArrayElement = this.createGetArrayElementRef(data);
 		const callFunctionAtPath = this.createCallFunctionAtPathRef(data);
-		const sendMessage = this.createSendMessageRef(data);
+		const callHost = this.createCallHostRef(data);
 
 		try {
 			const timezone = options?.timezone ? JSON.stringify(options.timezone) : 'undefined';
@@ -568,7 +568,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			// closure-scoped callback references — no globals touched. The bundle
 			// is passed as a single object so adding typed RPCs doesn't churn the
 			// evalClosureSync signature; new operations land as new schemas in
-			// bridge-messages.ts and new cases in the sendMessage dispatcher.
+			// bridge-messages.ts and new cases in the callHost dispatcher.
 			// The outer try-catch serializes errors into a sentinel object and returns
 			// it as the result. Errors from host callbacks arrive as sentinels already
 			// (via serializeError), so we pass them through. This avoids a round-trip
@@ -578,7 +578,7 @@ var __ctx = buildContext({
   getValueAtPath: $0,
   getArrayElement: $1,
   callFunctionAtPath: $2,
-  sendMessage: $3,
+  callHost: $3,
 }, ${timezone});
 try {
   var __result = (function() {
@@ -603,7 +603,7 @@ try {
 
 			const result = this.context.evalClosureSync(
 				wrappedCode,
-				[getValueAtPath, getArrayElement, callFunctionAtPath, sendMessage],
+				[getValueAtPath, getArrayElement, callFunctionAtPath, callHost],
 				{ result: { copy: true }, timeout: this.config.timeout },
 			);
 
@@ -641,7 +641,7 @@ try {
 			getValueAtPath.release();
 			getArrayElement.release();
 			callFunctionAtPath.release();
-			sendMessage.release();
+			callHost.release();
 		}
 	}
 

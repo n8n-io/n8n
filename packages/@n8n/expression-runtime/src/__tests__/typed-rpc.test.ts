@@ -1,16 +1,15 @@
 /**
- * Regression suite for the typed-RPC routing pattern introduced in Phase B
- * Step 3 of the bridge surface reduction.
+ * Regression suite for the typed-RPC routing pattern.
  *
  * The pattern: `$('Foo').first()` is routed through the dedicated
  * `getNodeFirst` typed RPC rather than the generic `callFunctionAtPath`
  * channel. The in-isolate runtime exposes a synthetic proxy on
  * `target.$(...)` that intercepts `.first` and sends a typed envelope via
- * `sendMessage`; the bridge handler reads the literal string `"first"`
+ * `callHost`; the bridge handler reads the literal string `"first"`
  * from the host-side proxy. The property name is compile-time fixed and
  * cannot be influenced by expression input.
  *
- * Each typed RPC added in Step 3 should land with a test in this file
+ * Each typed RPC should land with a test in this file
  * confirming:
  *   1. The method routes via the typed RPC, returning the expected result.
  *   2. The typed RPC handler only invokes the specific host-side method
