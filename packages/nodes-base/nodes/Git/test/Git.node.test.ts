@@ -1,6 +1,6 @@
 import * as fsPromises from 'fs/promises';
 import { mock } from 'jest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, ResolvedFilePath } from 'n8n-workflow';
 import type { SimpleGit } from 'simple-git';
 import { Container } from '@n8n/di';
 import { SecurityConfig } from '@n8n/config';
@@ -31,8 +31,10 @@ const mockGit = {
 
 jest.mock('simple-git', () => ({
 	__esModule: true,
-	default: () => mockGit,
+	default: jest.fn(() => mockGit),
 }));
+
+const mockSimpleGit = jest.requireMock<{ default: jest.Mock }>('simple-git').default;
 
 // Mock filesystem operations
 jest.mock('fs/promises', () => ({
@@ -545,40 +547,68 @@ describe('Git Node', () => {
 			expect(mockGit.addConfig).toHaveBeenCalledWith('user.name', 'test user', false);
 		});
 
-		it('should handle clone operation and create directory when it does not exist', async () => {
+		it('should handle clone operation and create the parent directory', async () => {
+			const missingParentError = Object.assign(new Error('Directory does not exist'), {
+				code: 'ENOENT',
+			});
+
 			mockExecuteFunctions.getNodeParameter
 				.mockReturnValueOnce('clone')
-				.mockReturnValueOnce('/new-repo')
+				.mockReturnValueOnce('/git/new-repo')
 				.mockReturnValueOnce({})
 				.mockReturnValueOnce('https://github.com/test/repo.git');
 
-			// Simulate directory not existing - access() throws
-			mockFsPromises.access.mockRejectedValueOnce(new Error('Directory does not exist'));
+			mockExecuteFunctions.helpers.resolvePath = jest
+				.fn()
+				.mockRejectedValueOnce(missingParentError)
+				.mockResolvedValueOnce('/git' as ResolvedFilePath);
 			mockFsPromises.mkdir.mockResolvedValueOnce(undefined);
 
 			const result = await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockFsPromises.access).toHaveBeenCalledWith('/new-repo');
-			expect(mockFsPromises.mkdir).toHaveBeenCalledWith('/new-repo');
-			expect(mockGit.clone).toHaveBeenCalledWith('https://github.com/test/repo.git', '.');
+			expect(mockFsPromises.access).not.toHaveBeenCalled();
+			expect(mockExecuteFunctions.helpers.resolvePath).toHaveBeenCalledWith('/git/new-repo');
+			expect(mockExecuteFunctions.helpers.resolvePath).toHaveBeenCalledWith('/git');
+			expect(mockFsPromises.mkdir).toHaveBeenCalledWith('/git', { recursive: true });
+			expect(mockSimpleGit).toHaveBeenCalledWith(expect.objectContaining({ baseDir: '/git' }));
+			expect(mockGit.clone).toHaveBeenCalledWith(
+				'https://github.com/test/repo.git',
+				'/git/new-repo',
+			);
 			expect(result[0]).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 		});
 
-		it('should handle clone operation when directory already exists', async () => {
+		it('should not create the parent directory when clone path is blocked', async () => {
 			mockExecuteFunctions.getNodeParameter
 				.mockReturnValueOnce('clone')
-				.mockReturnValueOnce('/existing-repo')
+				.mockReturnValueOnce('/blocked/repo')
+				.mockReturnValueOnce({});
+			mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(() => true);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Access to the repository path is not allowed',
+			);
+
+			expect(mockFsPromises.mkdir).not.toHaveBeenCalled();
+			expect(mockGit.clone).not.toHaveBeenCalled();
+		});
+
+		it('should pass the resolved repository path as the clone destination', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/existing-repo')
 				.mockReturnValueOnce({})
 				.mockReturnValueOnce('https://github.com/test/repo.git');
 
-			// Simulate directory already exists - access() succeeds
-			mockFsPromises.access.mockResolvedValueOnce(undefined);
-
 			await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockFsPromises.access).toHaveBeenCalledWith('/existing-repo');
-			expect(mockFsPromises.mkdir).not.toHaveBeenCalled();
-			expect(mockGit.clone).toHaveBeenCalledWith('https://github.com/test/repo.git', '.');
+			expect(mockFsPromises.access).not.toHaveBeenCalled();
+			expect(mockFsPromises.mkdir).toHaveBeenCalledWith('/git', { recursive: true });
+			expect(mockSimpleGit).toHaveBeenCalledWith(expect.objectContaining({ baseDir: '/git' }));
+			expect(mockGit.clone).toHaveBeenCalledWith(
+				'https://github.com/test/repo.git',
+				'/git/existing-repo',
+			);
 		});
 
 		it('should handle fetch operation', async () => {
