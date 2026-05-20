@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { RouterLink, useRoute, type RouteLocationRaw } from 'vue-router';
 import type { AgentKnowledgeEntry, AgentKnowledgeSource } from '@n8n/api-types';
 import { N8nBadge, N8nButton, N8nCard, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
@@ -32,7 +32,9 @@ const toast = useToast();
 const knowledgeStore = useAgentKnowledgeStore();
 const selectedEntryId = ref<string | null>(null);
 const searchQuery = ref('');
-let refreshTimer: ReturnType<typeof setInterval> | null = null;
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+let refreshInFlight = false;
+let pollingKey: string | null = null;
 
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
@@ -97,19 +99,54 @@ function closeInspector() {
 }
 
 function stopPolling() {
-	if (!refreshTimer) return;
-	clearInterval(refreshTimer);
-	refreshTimer = null;
+	if (refreshTimer) {
+		clearTimeout(refreshTimer);
+		refreshTimer = null;
+	}
+	pollingKey = null;
+}
+
+async function refreshKnowledge(currentProjectId: string, currentAgentId: string) {
+	if (document.hidden || refreshInFlight) return;
+	refreshInFlight = true;
+	try {
+		await knowledgeStore
+			.fetchKnowledge(currentProjectId, currentAgentId, { silent: true })
+			.catch(() => undefined);
+	} finally {
+		refreshInFlight = false;
+	}
 }
 
 function startPolling(currentProjectId: string, currentAgentId: string) {
 	stopPolling();
-	refreshTimer = setInterval(() => {
-		void knowledgeStore
-			.fetchKnowledge(currentProjectId, currentAgentId, { silent: true })
-			.catch(() => undefined);
-	}, KNOWLEDGE_REFRESH_INTERVAL_MS);
+	const key = `${currentProjectId}:${currentAgentId}`;
+	pollingKey = key;
+
+	const scheduleNextPoll = () => {
+		if (pollingKey !== key) return;
+		refreshTimer = setTimeout(async () => {
+			refreshTimer = null;
+			await refreshKnowledge(currentProjectId, currentAgentId);
+			scheduleNextPoll();
+		}, KNOWLEDGE_REFRESH_INTERVAL_MS);
+	};
+
+	scheduleNextPoll();
 }
+
+function onVisibilityChange() {
+	if (document.hidden || !projectId.value || !agentId.value) return;
+	void refreshKnowledge(projectId.value, agentId.value);
+}
+
+onMounted(() => {
+	document.addEventListener('visibilitychange', onVisibilityChange);
+});
+
+onBeforeUnmount(() => {
+	document.removeEventListener('visibilitychange', onVisibilityChange);
+});
 
 function markerLabel(marker: AgentKnowledgeSource['observationMarker'] | 'unknown'): string {
 	if (!marker || marker === 'unknown')
