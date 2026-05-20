@@ -54,6 +54,38 @@ describe('Video Generate Operation', async () => {
 		vi.resetAllMocks();
 	});
 
+	describe('empty prompt validation', () => {
+		it('should throw error for empty prompt', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, unknown> = {
+					prompt: '',
+					seconds: 5,
+					options: {},
+				};
+				return params[paramName];
+			});
+
+			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should throw error for whitespace-only prompt', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, unknown> = {
+					prompt: '   ',
+					seconds: 5,
+					options: {},
+				};
+				return params[paramName];
+			});
+
+			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+	});
+
 	describe('successful execution', () => {
 		beforeEach(() => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {

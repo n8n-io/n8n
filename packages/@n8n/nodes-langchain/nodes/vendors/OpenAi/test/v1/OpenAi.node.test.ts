@@ -583,6 +583,78 @@ describe('OpenAi', () => {
 		});
 	});
 
+	describe('Empty Prompt Validation', () => {
+		it('image generate => should throw error for empty prompt', async () => {
+			await expect(
+				image.generate.execute.call(
+					createExecuteFunctionsMock({
+						model: 'dall-e-3',
+						prompt: '',
+						options: {},
+					}),
+					0,
+				),
+			).rejects.toThrow('A non-empty prompt is required.');
+		});
+
+		it('image generate => should throw error for whitespace-only prompt', async () => {
+			await expect(
+				image.generate.execute.call(
+					createExecuteFunctionsMock({
+						model: 'dall-e-3',
+						prompt: '   ',
+						options: {},
+					}),
+					0,
+				),
+			).rejects.toThrow('A non-empty prompt is required.');
+		});
+
+		it('image analyze => should throw error for empty text', async () => {
+			await expect(
+				image.analyze.execute.call(
+					createExecuteFunctionsMock({
+						text: '',
+						inputType: 'url',
+						imageUrls: 'https://example.com/image.jpg',
+						options: {},
+					}),
+					0,
+				),
+			).rejects.toThrow('A non-empty text input is required.');
+		});
+
+		it('text message => should throw error for empty messages', async () => {
+			await expect(
+				text.message.execute.call(
+					createExecuteFunctionsMock({
+						modelId: 'gpt-model',
+						messages: {
+							values: [{ role: 'user', content: '' }],
+						},
+						options: {},
+					}),
+					0,
+				),
+			).rejects.toThrow('A non-empty prompt is required.');
+		});
+
+		it('text message => should throw error for whitespace-only messages', async () => {
+			await expect(
+				text.message.execute.call(
+					createExecuteFunctionsMock({
+						modelId: 'gpt-model',
+						messages: {
+							values: [{ role: 'user', content: '   ' }],
+						},
+						options: {},
+					}),
+					0,
+				),
+			).rejects.toThrow('A non-empty prompt is required.');
+		});
+	});
+
 	describe('OpenAi, Text resource', () => {
 		it('classify => should call apiRequest with correct parameters', async () => {
 			apiRequestMock.mockResolvedValueOnce({ results: [{ flagged: true }] });

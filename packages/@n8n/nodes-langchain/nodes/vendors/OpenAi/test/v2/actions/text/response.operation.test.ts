@@ -707,38 +707,32 @@ describe('OpenAI Response Operation', () => {
 	});
 
 	describe('Edge Cases', () => {
-		it('should handle empty messages array', async () => {
-			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
-				if (param === 'responses.values') return [];
-				if (param === 'simplify') return false;
-				return 'default';
-			});
-
-			const mockResponse = {
-				id: 'resp_123',
-				status: 'completed',
-				output: [],
-			};
-
-			mockCreateRequest.mockResolvedValue({
-				model: 'gpt-4o',
-				input: [],
-			});
-			mockApiRequest.mockResolvedValue(mockResponse);
-			mockGetConnectedTools.mockResolvedValue([]);
-
-			const result = await execute.call(mockExecuteFunctions, 0);
-
-			expect(result).toEqual([
-				{
-					json: {
-						id: 'resp_123',
-						status: 'completed',
-						output: [],
-					},
-					pairedItem: { item: 0 },
+		it('should throw error for empty messages array', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _itemIndex: number, defaultValue?: unknown) => {
+					if (param === 'responses.values') return [];
+					if (param === 'simplify') return false;
+					return defaultValue as any;
 				},
-			]);
+			);
+
+			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should throw error for whitespace-only messages', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _itemIndex: number, defaultValue?: unknown) => {
+					if (param === 'responses.values') return [{ type: 'text', content: '   ' }];
+					if (param === 'simplify') return false;
+					return defaultValue as any;
+				},
+			);
+
+			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
 		});
 
 		it('should handle tools hidden for unsupported models', async () => {

@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
 import type { Content, MessagesResponse } from './interfaces';
 import { getBaseUrl, splitByComma } from './utils';
@@ -13,6 +13,11 @@ export async function baseAnalyze(
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const inputType = this.getNodeParameter('inputType', i, 'url') as string;
 	const text = this.getNodeParameter('text', i, '') as string;
+	if (!text.trim()) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty text input is required.', {
+			itemIndex: i,
+		});
+	}
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
 	const options = this.getNodeParameter('options', i, {});
 	const baseUrl = await getBaseUrl.call(this);

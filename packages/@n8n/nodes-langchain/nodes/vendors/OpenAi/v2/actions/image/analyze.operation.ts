@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import type { ResponseInputImage } from 'openai/resources/responses/responses';
 import type { ChatContent, ChatResponse, ChatResponseRequest } from '../../../helpers/interfaces';
@@ -134,6 +134,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const model = this.getNodeParameter('modelId', i, 'gpt-4o', { extractValue: true }) as string;
 
 	const text = this.getNodeParameter('text', i, '') as string;
+	if (!text.trim()) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty text input is required.', {
+			itemIndex: i,
+		});
+	}
 	const inputType = this.getNodeParameter('inputType', i) as string;
 	const options = this.getNodeParameter('options', i, {});
 

@@ -135,6 +135,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	const text = this.getNodeParameter('text', i, '') as string;
+	if (!text.trim()) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty text input is required.', {
+			itemIndex: i,
+		});
+	}
 	const inputType = this.getNodeParameter('inputType', i) as string;
 	const options = this.getNodeParameter('options', i, {});
 

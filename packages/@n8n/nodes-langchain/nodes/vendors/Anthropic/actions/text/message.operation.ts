@@ -317,6 +317,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
 	const options = this.getNodeParameter('options', i, {}) as MessageOptions;
 
+	if (
+		!addAttachments &&
+		!messages.some((m) => typeof m.content === 'string' && m.content.trim() !== '')
+	) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
+
 	const { tools, connectedTools } = await getTools.call(this, options);
 
 	if (addAttachments) {
