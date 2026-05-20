@@ -1,16 +1,23 @@
 <script lang="ts" setup>
-import type {
-	AgentDebugRun,
-	AgentDebugRunDetail,
-	AgentDebugSignal,
-	AgentReviewStatus,
+import {
+	AGENT_REVIEW_REJECTION_REASONS,
+	DEFAULT_AGENT_REVIEW_REJECTION_REASON,
+	type AgentDebugRun,
+	type AgentDebugRunDetail,
+	type AgentDebugSignal,
+	type AgentReviewCase,
+	type AgentReviewRejectionReason,
+	type AgentReviewStatus,
+	type UpsertAgentReviewCaseDto,
 } from '@n8n/api-types';
 import {
 	N8nBadge,
 	N8nButton,
 	N8nIcon,
 	N8nInput,
+	N8nOption,
 	N8nRadioButtons,
+	N8nSelect,
 	N8nTableBase,
 	N8nText,
 } from '@n8n/design-system';
@@ -42,6 +49,9 @@ const selectedTimelineIndex = ref<number | null>(null);
 const visibleTimelineKinds = ref(new Set<string>());
 const expectedOutput = ref('');
 const reviewNotes = ref('');
+const selectedRejectionReason = ref<AgentReviewRejectionReason>(
+	DEFAULT_AGENT_REVIEW_REJECTION_REASON,
+);
 const savingReviewAction = ref<AgentReviewStatus | 'clear' | null>(null);
 const viewMode = ref<'list' | 'detail'>('list');
 
@@ -89,6 +99,13 @@ const filterOptions = computed<Array<{ label: string; value: DebugRunFilter }>>(
 	{ label: filterLabel('tool_failure'), value: 'tool_failure' },
 	{ label: filterLabel('slow_run'), value: 'slow_run' },
 ]);
+
+const rejectionReasonOptions = computed(() =>
+	AGENT_REVIEW_REJECTION_REASONS.map((reason) => ({
+		label: rejectionReasonLabel(reason),
+		value: reason,
+	})),
+);
 
 const filteredRuns = computed(() =>
 	debugStore.runs.filter((run) => runMatchesFilter(run, selectedFilter.value)),
@@ -187,6 +204,18 @@ function reviewLabel(status: AgentReviewStatus): string {
 	return i18n.baseText(`agentDebug.review.status.${status}`);
 }
 
+function rejectionReasonLabel(reason: AgentReviewRejectionReason): string {
+	return i18n.baseText(`agentDebug.review.rejectionReason.${reason}`);
+}
+
+function reviewSummaryLabel(review: AgentReviewCase): string {
+	if (review.status !== 'rejected' || !review.rejectionReason) {
+		return reviewLabel(review.status);
+	}
+
+	return `${reviewLabel(review.status)}: ${rejectionReasonLabel(review.rejectionReason)}`;
+}
+
 function reviewBadgeTheme(status: AgentReviewStatus): 'default' | 'danger' {
 	return status === 'approved' ? 'default' : 'danger';
 }
@@ -205,17 +234,29 @@ function messageText(value: string): string {
 	return value.trim() || i18n.baseText('agentDebug.noMessageRecorded');
 }
 
+function setRejectionReason(value: string) {
+	const reason = AGENT_REVIEW_REJECTION_REASONS.find((candidate) => candidate === value);
+	if (reason) {
+		selectedRejectionReason.value = reason;
+	}
+}
+
 async function saveReview(status: AgentReviewStatus) {
 	const run = debugStore.selectedRun;
 	if (!run) return;
 
 	savingReviewAction.value = status;
 	try {
-		await debugStore.saveRunReview(projectId.value, agentId.value, run.id, {
+		const payload: UpsertAgentReviewCaseDto = {
 			status,
 			expectedOutput: expectedOutput.value,
 			notes: reviewNotes.value || undefined,
-		});
+		};
+		if (status === 'rejected') {
+			payload.rejectionReason = selectedRejectionReason.value;
+		}
+
+		await debugStore.saveRunReview(projectId.value, agentId.value, run.id, payload);
 		toast.showMessage({
 			title: i18n.baseText('agentDebug.review.showMessage.saved'),
 			type: 'success',
@@ -236,6 +277,7 @@ async function clearReview() {
 		await debugStore.clearRunReview(projectId.value, agentId.value, run.id);
 		expectedOutput.value = run.assistantResponse;
 		reviewNotes.value = '';
+		selectedRejectionReason.value = DEFAULT_AGENT_REVIEW_REJECTION_REASON;
 		toast.showMessage({
 			title: i18n.baseText('agentDebug.review.showMessage.cleared'),
 			type: 'success',
@@ -289,6 +331,8 @@ watch(
 	(run) => {
 		expectedOutput.value = run?.review?.expectedOutput ?? run?.assistantResponse ?? '';
 		reviewNotes.value = run?.review?.notes ?? '';
+		selectedRejectionReason.value =
+			run?.review?.rejectionReason ?? DEFAULT_AGENT_REVIEW_REJECTION_REASON;
 	},
 );
 
@@ -411,7 +455,7 @@ onBeforeUnmount(() => {
 									:style="reviewBadgeStyle(run.review.status)"
 									size="small"
 								>
-									{{ reviewLabel(run.review.status) }}
+									{{ reviewSummaryLabel(run.review) }}
 								</N8nBadge>
 								<span v-else>-</span>
 							</td>
@@ -479,7 +523,7 @@ onBeforeUnmount(() => {
 								:style="reviewBadgeStyle(debugStore.selectedRun.review.status)"
 								size="small"
 							>
-								{{ reviewLabel(debugStore.selectedRun.review.status) }}
+								{{ reviewSummaryLabel(debugStore.selectedRun.review) }}
 							</N8nBadge>
 						</div>
 					</div>
@@ -566,6 +610,25 @@ onBeforeUnmount(() => {
 									:placeholder="i18n.baseText('agentDebug.review.notesPlaceholder')"
 									data-testid="agent-debug-review-notes"
 								/>
+							</label>
+							<label :class="$style.reviewField">
+								<N8nText size="small" bold>
+									{{ i18n.baseText('agentDebug.review.rejectionReason') }}
+								</N8nText>
+								<N8nSelect
+									:model-value="selectedRejectionReason"
+									:disabled="savingReviewAction !== null"
+									size="small"
+									data-testid="agent-debug-rejection-reason"
+									@update:model-value="setRejectionReason"
+								>
+									<N8nOption
+										v-for="reason in rejectionReasonOptions"
+										:key="reason.value"
+										:value="reason.value"
+										:label="reason.label"
+									/>
+								</N8nSelect>
 							</label>
 						</div>
 						<div :class="$style.reviewActions">
