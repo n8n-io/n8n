@@ -3,10 +3,7 @@
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 
 import { createUserProxyAgent, type UserProxyAgent } from './agent';
-import {
-	getNextUnsentReferenceUserTurn,
-	tryDeterministicConfirmationResponse,
-} from './deterministic';
+import { tryDeterministicConfirmationResponse } from './deterministic';
 import { buildConfirmationPrompt, buildFollowUpPrompt } from './prompts';
 import { encodeConfirmationDecision, type Decision } from './tools';
 import { buildAutoApprovePayload } from '../../harness/chat-loop';
@@ -62,24 +59,31 @@ export interface UserProxyConfig {
 // ---------------------------------------------------------------------------
 
 export class UserProxyLlm {
-	private readonly conversation: ConversationTurn[];
+	/** The intended conversation — read-only, what the user wants overall. */
+	private readonly script: ConversationTurn[];
 	private readonly messageBudget: number;
 	private readonly agent: UserProxyAgent;
 	private readonly logger?: EvalLogger;
 
+	/** What's actually been sent and received this run, both sides. The
+	 *  opening turn is seeded here on construction because the harness sends
+	 *  it directly via `client.sendMessage` before the first SSE event. */
+	private readonly actualTranscript: ConversationTurn[];
+
 	private messagesSent = 0;
 	private ingestedEventCount = 0;
-	private rollingTranscript: ConversationTurn[];
 	private readonly seenRequestIds = new Set<string>();
 	private readonly decisionStats: ProxyDecisionStats = {};
 
 	constructor(config: UserProxyConfig) {
-		this.conversation = config.conversation;
+		this.script = config.conversation;
 		this.messageBudget = config.messageBudget ?? DEFAULT_MESSAGE_BUDGET;
 		this.logger = config.logger;
 		this.agent =
 			config.agent ?? createUserProxyAgent({ modelId: config.modelId, logger: config.logger });
-		this.rollingTranscript = [...config.conversation];
+		// Seed with the opener — the harness has already sent it.
+		const opener = this.script[0];
+		this.actualTranscript = opener ? [{ role: opener.role, text: opener.text }] : [];
 	}
 
 	getMessagesSent(): number {
@@ -96,17 +100,17 @@ export class UserProxyLlm {
 				const text = extractTextDelta(event);
 				if (text) pendingAssistantText += text;
 			} else if (event.type === 'run-finish' && pendingAssistantText.length > 0) {
-				this.rollingTranscript.push({ role: 'assistant', text: pendingAssistantText });
+				this.actualTranscript.push({ role: 'assistant', text: pendingAssistantText });
 				pendingAssistantText = '';
 			}
 		}
 
 		if (pendingAssistantText.length > 0) {
-			const last = this.rollingTranscript[this.rollingTranscript.length - 1];
+			const last = this.actualTranscript[this.actualTranscript.length - 1];
 			if (last?.role === 'assistant') {
 				last.text = last.text + pendingAssistantText;
 			} else {
-				this.rollingTranscript.push({ role: 'assistant', text: pendingAssistantText });
+				this.actualTranscript.push({ role: 'assistant', text: pendingAssistantText });
 			}
 		}
 	}
@@ -179,12 +183,6 @@ export class UserProxyLlm {
 	async decideFollowUp(): Promise<NextMessageDecision> {
 		if (this.messagesSent >= this.messageBudget) return { kind: 'done' };
 
-		const nextReferenceTurn = getNextUnsentReferenceUserTurn(this.conversation, this.messagesSent);
-		if (nextReferenceTurn) {
-			this.messagesSent++;
-			return { kind: 'followUp', message: nextReferenceTurn };
-		}
-
 		const prompt = buildFollowUpPrompt(this.promptContext());
 		const decision = await this.agent.decide(prompt);
 		if (!decision) return { kind: 'done' };
@@ -193,6 +191,7 @@ export class UserProxyLlm {
 			const message = decision.message.trim();
 			if (!message) return { kind: 'done' };
 			this.messagesSent++;
+			this.actualTranscript.push({ role: 'user', text: message });
 			return { kind: 'followUp', message };
 		}
 		return { kind: 'done' };
@@ -204,8 +203,8 @@ export class UserProxyLlm {
 
 	private promptContext() {
 		return {
-			conversation: this.conversation,
-			rollingTranscript: this.rollingTranscript,
+			script: this.script,
+			actualTranscript: this.actualTranscript,
 		};
 	}
 }

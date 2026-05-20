@@ -29,7 +29,10 @@ export function tryInfrastructureResponse(
 			? (resourceDecision.options as unknown[]).filter((o): o is string => typeof o === 'string')
 			: [];
 		const allowOption = options.find((o) => o.toLowerCase().includes('allow')) ?? options[0];
-		return { kind: 'resourceDecision', resourceDecision: allowOption ?? 'allowOnce' };
+		return {
+			kind: 'resourceDecision',
+			resourceDecision: isResourceDecision(allowOption) ? allowOption : 'allowOnce',
+		};
 	}
 
 	// Standalone credential request only — when setupRequests is also present,
@@ -44,4 +47,10 @@ export function tryInfrastructureResponse(
 
 export function getEventPayload(event: CapturedEvent): Record<string, unknown> {
 	return getNestedRecord(event.data, 'payload') ?? {};
+}
+
+function isResourceDecision(
+	value: string | undefined,
+): value is 'denyOnce' | 'allowOnce' | 'allowForSession' {
+	return value === 'denyOnce' || value === 'allowOnce' || value === 'allowForSession';
 }

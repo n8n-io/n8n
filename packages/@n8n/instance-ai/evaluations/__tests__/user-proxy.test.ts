@@ -453,8 +453,13 @@ describe('UserProxyLlm.decideFollowUp', () => {
 		expect(agent.callCount).toBe(0);
 	});
 
-	it('sends the next reference user turn verbatim without invoking the agent', async () => {
+	it('always invokes the agent to compose the next user turn', async () => {
+		// Previously the proxy short-circuited to "next script user turn
+		// verbatim". The new design always defers to the agent so the message
+		// can adapt to whatever the assistant just said while staying faithful
+		// to the script's intent.
 		const agent = new FakeAgent();
+		agent.enqueue({ action: 'send_follow_up_message', message: 'also log to sheets' });
 		const proxy = new UserProxyLlm({
 			conversation: [
 				{ role: 'user', text: 'build the workflow' },
@@ -468,17 +473,17 @@ describe('UserProxyLlm.decideFollowUp', () => {
 		const decision = await proxy.decideFollowUp();
 		expect(decision.kind).toBe('followUp');
 		if (decision.kind === 'followUp') {
-			expect(decision.message).toBe('now also log to sheets');
+			expect(decision.message).toBe('also log to sheets');
 		}
 		expect(proxy.getMessagesSent()).toBe(1);
-		expect(agent.callCount).toBe(0);
+		expect(agent.callCount).toBe(1);
 	});
 
-	it('falls back to the agent once the reference is exhausted', async () => {
+	it('invokes the agent on every follow-up — no verbatim shortcut for short scripts', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({ action: 'send_follow_up_message', message: 'one more thing' });
 		const proxy = new UserProxyLlm({
-			// Only one user turn — opening drains it.
+			// Only one user turn in the script.
 			conversation: [{ role: 'user', text: 'build it' }],
 			messageBudget: 5,
 			agent,

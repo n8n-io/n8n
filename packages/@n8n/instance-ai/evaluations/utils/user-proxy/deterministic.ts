@@ -2,19 +2,8 @@
 
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 
-import type { CapturedEvent, ConversationTurn } from '../../types';
+import type { CapturedEvent } from '../../types';
 import { getEventPayload, tryInfrastructureResponse } from '../confirmation-payload';
-
-/** Next unsent reference user turn, or undefined when the reference is exhausted. */
-export function getNextUnsentReferenceUserTurn(
-	conversation: ConversationTurn[],
-	messagesSent: number,
-): string | undefined {
-	const userTurns = conversation.filter((t) => t.role === 'user');
-	// +1 because the opening message drains the first user turn before any decideFollowUp call.
-	const idx = messagesSent + 1;
-	return userTurns[idx]?.text;
-}
 
 export function tryDeterministicConfirmationResponse(
 	event: CapturedEvent,
