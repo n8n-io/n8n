@@ -180,6 +180,7 @@ describe('LangGraph Checkpoint Message Persistence', () => {
 			}),
 			config,
 		);
+
 		let messages = await getCheckpointMessages(checkpointer, 'test-sequential-interrupts');
 		expect(messages.map((m) => m.content)).toEqual(
 			expect.arrayContaining(['request', 'q1-data', 'a1-data']),

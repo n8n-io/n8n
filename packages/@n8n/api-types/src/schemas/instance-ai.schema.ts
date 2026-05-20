@@ -1111,6 +1111,20 @@ export interface InstanceAiEvalMockedCredential {
 	credentialId?: string;
 }
 
+/**
+ * Records a credential field that was rewritten (e.g. routed to the eval wire
+ * server) during evaluation. Populated when the caller opts into the unpin
+ * path via `InstanceAiEvalExecutionRequest.unpinNodes`. Field added in the
+ * foundation PR; the rewrite path itself is wired up in a later PR and stays
+ * empty until then.
+ */
+export interface InstanceAiEvalRewrittenCredential {
+	nodeName: string;
+	credentialType: string;
+	credentialId?: string;
+	field: string;
+}
+
 export interface InstanceAiEvalExecutionResult {
 	executionId: string;
 	success: boolean;
@@ -1118,10 +1132,19 @@ export interface InstanceAiEvalExecutionResult {
 	errors: string[];
 	hints: InstanceAiEvalMockHints;
 	mockedCredentials: InstanceAiEvalMockedCredential[];
+	rewrittenCredentials?: InstanceAiEvalRewrittenCredential[];
 }
 
 export class InstanceAiEvalExecutionRequest extends Z.class({
 	scenarioHints: z.string().max(2000).optional(),
+	/**
+	 * AI root node names (Agent, Chain, etc.) whose sub-nodes should run their
+	 * real vendor SDK code instead of being pinned. The eval pipeline rewrites
+	 * matching credentials so vendor traffic lands on the eval wire server.
+	 * Refused if any sub-node uses a protocol-binary client (e.g. Postgres
+	 * memory) — those cannot be intercepted via HTTP.
+	 */
+	unpinNodes: z.array(z.string().min(1).max(200)).max(50).optional(),
 }) {}
 
 // ---------------------------------------------------------------------------
