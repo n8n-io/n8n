@@ -258,7 +258,7 @@ function openNewCredentialModal() {
 
 	if (req.nodeType) {
 		// Pass a synthetic node as contextNode + showAuthOptions=true so the modal
-		// renders the auth-type dropdown (e.g. "API Key / OAuth2" for Notion).
+		// renders the auth-type dropdown (e.g. "API Key / OAuth2").
 		uiStore.openNewCredential(
 			req.credentialType,
 			true,
@@ -267,6 +267,7 @@ function openNewCredentialModal() {
 			req.suggestedName,
 			req.nodeType,
 			syntheticNodeUi(req),
+			{ respectActiveCredentialType: true },
 		);
 		return;
 	}

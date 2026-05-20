@@ -652,6 +652,13 @@ export interface NewCredentialsModal extends ModalState {
 	nodeName?: string;
 	contextNode?: INodeUi;
 	hideAskAssistant?: boolean;
+	/**
+	 * When true, the modal opens with the explicitly requested credential type
+	 * (the `type` arg to `openNewCredential`) instead of auto-defaulting to the
+	 * node's recommended auth option. Set by callers that have already resolved
+	 * which credential type to use (e.g. Instance AI's credential setup flow).
+	 */
+	respectActiveCredentialType?: boolean;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';

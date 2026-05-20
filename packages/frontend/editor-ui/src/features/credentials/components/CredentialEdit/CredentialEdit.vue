@@ -150,6 +150,14 @@ const hideAskAssistant = computed<boolean>(() => {
 	return isCredentialModalState(modalState) && modalState.hideAskAssistant === true;
 });
 
+// When true, the caller explicitly chose `activeId` and the modal should not
+// override it with the node's "recommended" auth option. Used by Instance AI's
+// credential setup flow where the AI has already resolved the desired type.
+const respectActiveCredentialType = computed<boolean>(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) && modalState.respectActiveCredentialType === true;
+});
+
 const activeNodeType = computed(() => {
 	const activeNode = contextNode.value;
 
@@ -168,9 +176,10 @@ const selectedCredentialType = computed(() => {
 	if (selectedCredential.value !== '') {
 		return credentialsStore.getCredentialTypeByName(selectedCredential.value) ?? null;
 	} else if (requiredCredentials.value) {
-		// Honor an explicitly requested credential type when it matches a declared
-		// credential of the node — the caller has signalled their intent.
-		if (props.activeId) {
+		// When the caller explicitly locked the credential type (e.g. Instance AI's
+		// setup flow has already resolved which type to use), honor `activeId` over
+		// the node's recommended auth default.
+		if (respectActiveCredentialType.value && props.activeId) {
 			const nodeCredential = activeNodeType.value?.credentials?.find(
 				(c) => c.name === props.activeId,
 			);
@@ -178,11 +187,19 @@ const selectedCredentialType = computed(() => {
 				return nodeCredential;
 			}
 		}
-		// Otherwise fall back to the recommended auth option (managed OAuth sorts first)
-		// or the first declared credential.
+		// Use the recommended auth option (managed OAuth sorts first) or the first available
 		const nodeAuthOptions = getNodeAuthOptions(activeNodeType.value);
 		if (nodeAuthOptions.length > 0 && activeNodeType.value?.credentials) {
 			return getNodeCredentialForSelectedAuthType(activeNodeType.value, nodeAuthOptions[0].value);
+		}
+		// No auth options — fall back to the explicitly requested type or the first credential
+		if (props.activeId) {
+			const nodeCredential = activeNodeType.value?.credentials?.find(
+				(c) => c.name === props.activeId,
+			);
+			if (nodeCredential) {
+				return nodeCredential;
+			}
 		}
 		return activeNodeType.value?.credentials?.[0] ?? null;
 	}

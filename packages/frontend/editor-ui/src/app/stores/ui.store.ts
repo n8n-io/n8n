@@ -556,7 +556,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		suggestedName?: string,
 		nodeName?: string,
 		contextNode?: INodeUi,
-		options: { hideAskAssistant?: boolean } = {},
+		options: { hideAskAssistant?: boolean; respectActiveCredentialType?: boolean } = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
@@ -568,6 +568,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			nodeName,
 			contextNode,
 			hideAskAssistant: options.hideAskAssistant,
+			respectActiveCredentialType: options.respectActiveCredentialType,
 		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
