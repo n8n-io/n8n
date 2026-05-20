@@ -1,4 +1,92 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 import './source-map-filter';
+
+import type * as InstanceAgentMod from './agent/instance-agent';
+import type * as SubAgentFactoryMod from './agent/sub-agent-factory';
+import type * as CompactionMod from './compaction';
+import type * as McpClientManagerMod from './mcp/mcp-client-manager';
+import type * as TitleUtilsMod from './memory/title-utils';
+import type * as BuildWorkflowAgentPromptMod from './tools/orchestration/build-workflow-agent.prompt';
+import type * as BuildWorkflowAgentToolMod from './tools/orchestration/build-workflow-agent.tool';
+import type * as DataTableAgentToolMod from './tools/orchestration/data-table-agent.tool';
+import type * as DelegateToolMod from './tools/orchestration/delegate.tool';
+import type * as ResearchWithAgentToolMod from './tools/orchestration/research-with-agent.tool';
+import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
+import type * as EvalAgentsMod from './utils/eval-agents';
+import type * as BuilderSandboxFactoryMod from './workspace/builder-sandbox-factory';
+import type * as CreateWorkspaceMod from './workspace/create-workspace';
+
+type LazyFunction = (...args: never[]) => unknown;
+type LazyConstructor = abstract new (...args: never[]) => unknown;
+
+const lazyModule = <TModule>(loader: () => TModule): (() => TModule) => {
+	let cached: TModule | undefined;
+	return () => (cached ??= loader());
+};
+
+const lazyFunction = <TFunction extends LazyFunction>(load: () => TFunction): TFunction =>
+	((...args: Parameters<TFunction>): ReturnType<TFunction> => {
+		const fn = load() as (...fnArgs: Parameters<TFunction>) => ReturnType<TFunction>;
+		return fn(...args);
+	}) as TFunction;
+
+const lazyClass = <TConstructor extends LazyConstructor>(load: () => TConstructor): TConstructor =>
+	class LazyClass {
+		constructor(...args: ConstructorParameters<TConstructor>) {
+			const Real = load() as unknown as new (
+				...ctorArgs: ConstructorParameters<TConstructor>
+			) => LazyClass;
+			return new Real(...args);
+		}
+	} as unknown as TConstructor;
+
+const defineLazyExport = <TValue>(name: string, load: () => TValue): void => {
+	Object.defineProperty(module.exports, name, {
+		enumerable: true,
+		configurable: true,
+		get: load,
+	});
+};
+
+const loadCompaction = lazyModule(() => require('./compaction') as typeof CompactionMod);
+const loadLangsmithTracing = lazyModule(
+	() => require('./tracing/langsmith-tracing') as typeof LangsmithTracingMod,
+);
+const loadInstanceAgent = lazyModule(
+	() => require('./agent/instance-agent') as typeof InstanceAgentMod,
+);
+const loadSubAgentFactory = lazyModule(
+	() => require('./agent/sub-agent-factory') as typeof SubAgentFactoryMod,
+);
+const loadBuildWorkflowAgentPrompt = lazyModule(
+	() =>
+		require('./tools/orchestration/build-workflow-agent.prompt') as typeof BuildWorkflowAgentPromptMod,
+);
+const loadBuildWorkflowAgentTool = lazyModule(
+	() =>
+		require('./tools/orchestration/build-workflow-agent.tool') as typeof BuildWorkflowAgentToolMod,
+);
+const loadDataTableAgentTool = lazyModule(
+	() => require('./tools/orchestration/data-table-agent.tool') as typeof DataTableAgentToolMod,
+);
+const loadDelegateTool = lazyModule(
+	() => require('./tools/orchestration/delegate.tool') as typeof DelegateToolMod,
+);
+const loadResearchWithAgentTool = lazyModule(
+	() =>
+		require('./tools/orchestration/research-with-agent.tool') as typeof ResearchWithAgentToolMod,
+);
+const loadTitleUtils = lazyModule(() => require('./memory/title-utils') as typeof TitleUtilsMod);
+const loadMcpClientManager = lazyModule(
+	() => require('./mcp/mcp-client-manager') as typeof McpClientManagerMod,
+);
+const loadEvalAgents = lazyModule(() => require('./utils/eval-agents') as typeof EvalAgentsMod);
+const loadCreateWorkspace = lazyModule(
+	() => require('./workspace/create-workspace') as typeof CreateWorkspaceMod,
+);
+const loadBuilderSandboxFactory = lazyModule(
+	() => require('./workspace/builder-sandbox-factory') as typeof BuilderSandboxFactoryMod,
+);
 
 export { MAX_STEPS } from './constants/max-steps';
 export type {
@@ -12,95 +100,41 @@ export type {
 export { wrapUntrustedData } from './tools/web-research/sanitize-web-content';
 export type { Logger } from './logger';
 export type { CompactionInput } from './compaction';
-import type * as CompactionMod from './compaction';
-let _compactionMod: typeof CompactionMod | undefined;
-function loadCompaction(): typeof CompactionMod {
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	return (_compactionMod ??= require('./compaction'));
-}
-export const generateCompactionSummary: typeof CompactionMod.generateCompactionSummary = ((
-	...args: unknown[]
-) =>
-	(loadCompaction().generateCompactionSummary as Function)(
-		...args,
-	)) as typeof CompactionMod.generateCompactionSummary;
+export const generateCompactionSummary: typeof CompactionMod.generateCompactionSummary =
+	lazyFunction(() => loadCompaction().generateCompactionSummary);
 export { createDomainAccessTracker } from './domain-access';
 export type { DomainAccessTracker } from './domain-access';
 export type { SubmitLangsmithUserFeedbackOptions } from './tracing/langsmith-tracing';
 
-// ---- Lazy re-exports of langsmith-tracing entry points ----
-//
-// tracing/langsmith-tracing.ts is the largest file still loaded at boot
-// after iter #12/#13 (38.5 KB compiled). Its functions are only called on
-// trace context creation -- chat-time, never at idle. Same lazy-thunk
-// pattern as the orchestration tools in iter #13: type-only import + sync
-// require() inside thunks. The lazy `require()` inside the file (already
-// in place from iter #3) defers the `langsmith` package itself; this
-// outer thunk defers the source file too.
-import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
-
-let _langsmithTracingMod: typeof LangsmithTracingMod | undefined;
-function loadLangsmithTracing(): typeof LangsmithTracingMod {
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	return (_langsmithTracingMod ??= require('./tracing/langsmith-tracing'));
-}
-
 export const appendGeneratedWorkflowIdToRootMetadata: typeof LangsmithTracingMod.appendGeneratedWorkflowIdToRootMetadata =
-	((...args: unknown[]) =>
-		(loadLangsmithTracing().appendGeneratedWorkflowIdToRootMetadata as Function)(
-			...args,
-		)) as typeof LangsmithTracingMod.appendGeneratedWorkflowIdToRootMetadata;
+	lazyFunction(() => loadLangsmithTracing().appendGeneratedWorkflowIdToRootMetadata);
 
-export const appendRootRunMetadata: typeof LangsmithTracingMod.appendRootRunMetadata = ((
-	...args: unknown[]
-) =>
-	(loadLangsmithTracing().appendRootRunMetadata as Function)(
-		...args,
-	)) as typeof LangsmithTracingMod.appendRootRunMetadata;
+export const appendRootRunMetadata: typeof LangsmithTracingMod.appendRootRunMetadata = lazyFunction(
+	() => loadLangsmithTracing().appendRootRunMetadata,
+);
 
 export const createInstanceAiTraceContext: typeof LangsmithTracingMod.createInstanceAiTraceContext =
-	((...args: unknown[]) =>
-		(loadLangsmithTracing().createInstanceAiTraceContext as Function)(
-			...args,
-		)) as typeof LangsmithTracingMod.createInstanceAiTraceContext;
+	lazyFunction(() => loadLangsmithTracing().createInstanceAiTraceContext);
 
 export const createInternalOperationTraceContext: typeof LangsmithTracingMod.createInternalOperationTraceContext =
-	((...args: unknown[]) =>
-		(loadLangsmithTracing().createInternalOperationTraceContext as Function)(
-			...args,
-		)) as typeof LangsmithTracingMod.createInternalOperationTraceContext;
+	lazyFunction(() => loadLangsmithTracing().createInternalOperationTraceContext);
 
 export const createTraceReplayOnlyContext: typeof LangsmithTracingMod.createTraceReplayOnlyContext =
-	((...args: unknown[]) =>
-		(loadLangsmithTracing().createTraceReplayOnlyContext as Function)(
-			...args,
-		)) as typeof LangsmithTracingMod.createTraceReplayOnlyContext;
+	lazyFunction(() => loadLangsmithTracing().createTraceReplayOnlyContext);
 
 export const continueInstanceAiTraceContext: typeof LangsmithTracingMod.continueInstanceAiTraceContext =
-	((...args: unknown[]) =>
-		(loadLangsmithTracing().continueInstanceAiTraceContext as Function)(
-			...args,
-		)) as typeof LangsmithTracingMod.continueInstanceAiTraceContext;
+	lazyFunction(() => loadLangsmithTracing().continueInstanceAiTraceContext);
 
-export const releaseTraceClient: typeof LangsmithTracingMod.releaseTraceClient = ((
-	...args: unknown[]
-) =>
-	(loadLangsmithTracing().releaseTraceClient as Function)(
-		...args,
-	)) as typeof LangsmithTracingMod.releaseTraceClient;
+export const releaseTraceClient: typeof LangsmithTracingMod.releaseTraceClient = lazyFunction(
+	() => loadLangsmithTracing().releaseTraceClient,
+);
 
 export const submitLangsmithUserFeedback: typeof LangsmithTracingMod.submitLangsmithUserFeedback =
-	((...args: unknown[]) =>
-		(loadLangsmithTracing().submitLangsmithUserFeedback as Function)(
-			...args,
-		)) as typeof LangsmithTracingMod.submitLangsmithUserFeedback;
+	lazyFunction(() => loadLangsmithTracing().submitLangsmithUserFeedback);
 
-export const withCurrentTraceSpan: typeof LangsmithTracingMod.withCurrentTraceSpan = ((
-	...args: unknown[]
-) =>
-	(loadLangsmithTracing().withCurrentTraceSpan as Function)(
-		...args,
-	)) as typeof LangsmithTracingMod.withCurrentTraceSpan;
+export const withCurrentTraceSpan: typeof LangsmithTracingMod.withCurrentTraceSpan = lazyFunction(
+	() => loadLangsmithTracing().withCurrentTraceSpan,
+);
 export {
 	IdRemapper,
 	TraceIndex,
@@ -117,114 +151,32 @@ export type {
 } from './tracing/trace-replay';
 export type { SubAgentOptions } from './agent/sub-agent-factory';
 
-// ---- Lazy re-exports of the agent factories ----
-//
-// agent/instance-agent.ts and agent/sub-agent-factory.ts are the entry
-// points for actually running an agent (Mastra Agent instantiation,
-// system prompt loading -- agent/system-prompt.js is 24.9 KB and pulled
-// transitively here). All call sites are inside async chat handlers, so
-// deferring the require() is behaviour-preserving.
-import type * as InstanceAgentMod from './agent/instance-agent';
-import type * as SubAgentFactoryMod from './agent/sub-agent-factory';
+export const createInstanceAgent: typeof InstanceAgentMod.createInstanceAgent = lazyFunction(
+	() => loadInstanceAgent().createInstanceAgent,
+);
 
-let _instanceAgentMod: typeof InstanceAgentMod | undefined;
-let _subAgentFactoryMod: typeof SubAgentFactoryMod | undefined;
-
-function loadInstanceAgent(): typeof InstanceAgentMod {
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	return (_instanceAgentMod ??= require('./agent/instance-agent'));
-}
-function loadSubAgentFactory(): typeof SubAgentFactoryMod {
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	return (_subAgentFactoryMod ??= require('./agent/sub-agent-factory'));
-}
-
-export const createInstanceAgent: typeof InstanceAgentMod.createInstanceAgent = ((
-	...args: unknown[]
-) =>
-	(loadInstanceAgent().createInstanceAgent as Function)(
-		...args,
-	)) as typeof InstanceAgentMod.createInstanceAgent;
-
-export const createSubAgent: typeof SubAgentFactoryMod.createSubAgent = ((...args: unknown[]) =>
-	(loadSubAgentFactory().createSubAgent as Function)(
-		...args,
-	)) as typeof SubAgentFactoryMod.createSubAgent;
+export const createSubAgent: typeof SubAgentFactoryMod.createSubAgent = lazyFunction(
+	() => loadSubAgentFactory().createSubAgent,
+);
 export { createAllTools, createOrchestrationTools } from './tools';
 export {
 	createSubAgentResourceIdPrefix,
 	SUB_AGENT_RESOURCE_PREFIX,
 } from './tools/orchestration/agent-persistence';
-export { BUILDER_AGENT_PROMPT } from './tools/orchestration/build-workflow-agent.prompt';
 
-// ---- Lazy re-exports of the orchestration agent-task entry points ----
-//
-// Each `start*AgentTask` function lives in a sibling file that pulls in
-// heavy transitive deps (Mastra `Agent`, agent persistence, sub-agent
-// briefing, etc.) at module evaluation. Re-exporting them statically
-// forced those source files (collectively ~100–150 KB compiled) to be
-// parsed and held in V8's source cache at boot, even on idle instances
-// that will never run a chat. The heap-snapshot probe flagged compiled
-// source strings as the #1 V8 self-size delta vs base.
-//
-// We keep the public API identical (consumers still do
-// `import { startBuildWorkflowAgentTask } from '@n8n/instance-ai'`) by
-// exporting thunk functions that resolve the real implementation lazily
-// via require() on first call. After first call the underlying module is
-// in the require cache, so subsequent calls have zero overhead.
-import type * as BuildWorkflowAgentToolMod from './tools/orchestration/build-workflow-agent.tool';
-import type * as DataTableAgentToolMod from './tools/orchestration/data-table-agent.tool';
-import type * as DelegateToolMod from './tools/orchestration/delegate.tool';
-import type * as ResearchWithAgentToolMod from './tools/orchestration/research-with-agent.tool';
-
-let _buildWorkflowAgentToolMod: typeof BuildWorkflowAgentToolMod | undefined;
-let _dataTableAgentToolMod: typeof DataTableAgentToolMod | undefined;
-let _delegateToolMod: typeof DelegateToolMod | undefined;
-let _researchWithAgentToolMod: typeof ResearchWithAgentToolMod | undefined;
-
-function loadBuildWorkflowAgentTool(): typeof BuildWorkflowAgentToolMod {
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	return (_buildWorkflowAgentToolMod ??= require('./tools/orchestration/build-workflow-agent.tool'));
-}
-function loadDataTableAgentTool(): typeof DataTableAgentToolMod {
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	return (_dataTableAgentToolMod ??= require('./tools/orchestration/data-table-agent.tool'));
-}
-function loadDelegateTool(): typeof DelegateToolMod {
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	return (_delegateToolMod ??= require('./tools/orchestration/delegate.tool'));
-}
-function loadResearchWithAgentTool(): typeof ResearchWithAgentToolMod {
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	return (_researchWithAgentToolMod ??= require('./tools/orchestration/research-with-agent.tool'));
-}
+export declare const BUILDER_AGENT_PROMPT: typeof BuildWorkflowAgentPromptMod.BUILDER_AGENT_PROMPT;
 
 export const startBuildWorkflowAgentTask: typeof BuildWorkflowAgentToolMod.startBuildWorkflowAgentTask =
-	((...args: unknown[]) =>
-		(loadBuildWorkflowAgentTool().startBuildWorkflowAgentTask as Function)(
-			...args,
-		)) as typeof BuildWorkflowAgentToolMod.startBuildWorkflowAgentTask;
+	lazyFunction(() => loadBuildWorkflowAgentTool().startBuildWorkflowAgentTask);
 
-export const startDataTableAgentTask: typeof DataTableAgentToolMod.startDataTableAgentTask = ((
-	...args: unknown[]
-) =>
-	(loadDataTableAgentTool().startDataTableAgentTask as Function)(
-		...args,
-	)) as typeof DataTableAgentToolMod.startDataTableAgentTask;
+export const startDataTableAgentTask: typeof DataTableAgentToolMod.startDataTableAgentTask =
+	lazyFunction(() => loadDataTableAgentTool().startDataTableAgentTask);
 
-export const startDetachedDelegateTask: typeof DelegateToolMod.startDetachedDelegateTask = ((
-	...args: unknown[]
-) =>
-	(loadDelegateTool().startDetachedDelegateTask as Function)(
-		...args,
-	)) as typeof DelegateToolMod.startDetachedDelegateTask;
+export const startDetachedDelegateTask: typeof DelegateToolMod.startDetachedDelegateTask =
+	lazyFunction(() => loadDelegateTool().startDetachedDelegateTask);
 
-export const startResearchAgentTask: typeof ResearchWithAgentToolMod.startResearchAgentTask = ((
-	...args: unknown[]
-) =>
-	(loadResearchWithAgentTool().startResearchAgentTask as Function)(
-		...args,
-	)) as typeof ResearchWithAgentToolMod.startResearchAgentTask;
+export const startResearchAgentTask: typeof ResearchWithAgentToolMod.startResearchAgentTask =
+	lazyFunction(() => loadResearchWithAgentTool().startResearchAgentTask);
 export {
 	iterationEntrySchema,
 	formatPreviousAttempts,
@@ -245,110 +197,44 @@ export type {
 	TerminalOutcome,
 	WorkflowLoopWorkItemRecord,
 } from './storage';
-import type * as TitleUtilsMod from './memory/title-utils';
-let _titleUtilsMod: typeof TitleUtilsMod | undefined;
-function loadTitleUtils(): typeof TitleUtilsMod {
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	return (_titleUtilsMod ??= require('./memory/title-utils'));
-}
-export const truncateToTitle: typeof TitleUtilsMod.truncateToTitle = ((...args: unknown[]) =>
-	(loadTitleUtils().truncateToTitle as Function)(...args)) as typeof TitleUtilsMod.truncateToTitle;
-export const generateTitleForRun: typeof TitleUtilsMod.generateTitleForRun = ((
-	...args: unknown[]
-) =>
-	(loadTitleUtils().generateTitleForRun as Function)(
-		...args,
-	)) as typeof TitleUtilsMod.generateTitleForRun;
-// Lazy class shim for McpClientManager. mcp-client-manager.ts statically
-// imports `McpClient` from @n8n/agents -- the LAST direct path bringing
-// @n8n/agents into our boot graph. Pairing this with a lazy-getter for the
-// `mcpClientManager` field in `InstanceAiService` (which is the only
-// consumer that uses `new McpClientManager(...)`) keeps the underlying
-// file out of the boot graph entirely.
-import type * as McpClientManagerMod from './mcp/mcp-client-manager';
-let _mcpClientManagerMod: typeof McpClientManagerMod | undefined;
-function loadMcpClientManager(): typeof McpClientManagerMod {
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	return (_mcpClientManagerMod ??= require('./mcp/mcp-client-manager'));
-}
-export type McpClientManager = import('./mcp/mcp-client-manager').McpClientManager;
-export const McpClientManager: typeof McpClientManagerMod.McpClientManager =
-	class McpClientManagerLazyShim {
-		constructor(...args: unknown[]) {
-			const Real = loadMcpClientManager().McpClientManager as new (...a: unknown[]) => unknown;
-			return new Real(...args) as McpClientManagerLazyShim;
-		}
-	} as unknown as typeof McpClientManagerMod.McpClientManager;
+export const truncateToTitle: typeof TitleUtilsMod.truncateToTitle = lazyFunction(
+	() => loadTitleUtils().truncateToTitle,
+);
+export const generateTitleForRun: typeof TitleUtilsMod.generateTitleForRun = lazyFunction(
+	() => loadTitleUtils().generateTitleForRun,
+);
+export type McpClientManager = McpClientManagerMod.McpClientManager;
+export const McpClientManager: typeof McpClientManagerMod.McpClientManager = lazyClass(
+	() => loadMcpClientManager().McpClientManager,
+);
 export { mapAgentChunkToEvent } from './stream/map-chunk';
 export { isRecord, parseSuspension, asResumable } from './utils/stream-helpers';
-import type * as EvalAgentsMod from './utils/eval-agents';
-let _evalAgentsMod: typeof EvalAgentsMod | undefined;
-function loadEvalAgents(): typeof EvalAgentsMod {
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	return (_evalAgentsMod ??= require('./utils/eval-agents'));
-}
-export const createEvalAgent: typeof EvalAgentsMod.createEvalAgent = ((...args: unknown[]) =>
-	(loadEvalAgents().createEvalAgent as Function)(...args)) as typeof EvalAgentsMod.createEvalAgent;
-export const extractText: typeof EvalAgentsMod.extractText = ((...args: unknown[]) =>
-	(loadEvalAgents().extractText as Function)(...args)) as typeof EvalAgentsMod.extractText;
-export type Tool = import('./utils/eval-agents').Tool;
-export const Tool: typeof EvalAgentsMod.Tool = class ToolLazyShim {
-	constructor(...args: unknown[]) {
-		const Real = loadEvalAgents().Tool as new (...a: unknown[]) => unknown;
-		return new Real(...args) as ToolLazyShim;
-	}
-} as unknown as typeof EvalAgentsMod.Tool;
-export let SONNET_MODEL: typeof EvalAgentsMod.SONNET_MODEL = undefined as never;
-export let HAIKU_MODEL: typeof EvalAgentsMod.HAIKU_MODEL = undefined as never;
-Object.defineProperty(module.exports, 'SONNET_MODEL', {
-	enumerable: true,
-	configurable: true,
-	get(): typeof EvalAgentsMod.SONNET_MODEL {
-		return loadEvalAgents().SONNET_MODEL;
-	},
-});
-Object.defineProperty(module.exports, 'HAIKU_MODEL', {
-	enumerable: true,
-	configurable: true,
-	get(): typeof EvalAgentsMod.HAIKU_MODEL {
-		return loadEvalAgents().HAIKU_MODEL;
-	},
-});
+export const createEvalAgent: typeof EvalAgentsMod.createEvalAgent = lazyFunction(
+	() => loadEvalAgents().createEvalAgent,
+);
+export const extractText: typeof EvalAgentsMod.extractText = lazyFunction(
+	() => loadEvalAgents().extractText,
+);
+export type Tool = EvalAgentsMod.Tool;
+export const Tool: typeof EvalAgentsMod.Tool = lazyClass(() => loadEvalAgents().Tool);
+export declare const SONNET_MODEL: typeof EvalAgentsMod.SONNET_MODEL;
+export declare const HAIKU_MODEL: typeof EvalAgentsMod.HAIKU_MODEL;
+defineLazyExport('BUILDER_AGENT_PROMPT', () => loadBuildWorkflowAgentPrompt().BUILDER_AGENT_PROMPT);
+defineLazyExport('SONNET_MODEL', () => loadEvalAgents().SONNET_MODEL);
+defineLazyExport('HAIKU_MODEL', () => loadEvalAgents().HAIKU_MODEL);
 export type { SuspensionInfo, Resumable } from './utils/stream-helpers';
 export { buildAgentTreeFromEvents, findAgentNodeInTree } from './utils/agent-tree';
 export type { SandboxConfig } from './workspace/create-workspace';
 export type { BuilderWorkspace } from './workspace/builder-sandbox-factory';
-export type BuilderSandboxFactory =
-	import('./workspace/builder-sandbox-factory').BuilderSandboxFactory;
-import type * as CreateWorkspaceMod from './workspace/create-workspace';
-import type * as BuilderSandboxFactoryMod from './workspace/builder-sandbox-factory';
-let _createWorkspaceMod: typeof CreateWorkspaceMod | undefined;
-let _builderSandboxFactoryMod: typeof BuilderSandboxFactoryMod | undefined;
-function loadCreateWorkspace(): typeof CreateWorkspaceMod {
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	return (_createWorkspaceMod ??= require('./workspace/create-workspace'));
-}
-function loadBuilderSandboxFactory(): typeof BuilderSandboxFactoryMod {
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	return (_builderSandboxFactoryMod ??= require('./workspace/builder-sandbox-factory'));
-}
-export const createSandbox: typeof CreateWorkspaceMod.createSandbox = ((...args: unknown[]) =>
-	(loadCreateWorkspace().createSandbox as Function)(
-		...args,
-	)) as typeof CreateWorkspaceMod.createSandbox;
-export const createWorkspace: typeof CreateWorkspaceMod.createWorkspace = ((...args: unknown[]) =>
-	(loadCreateWorkspace().createWorkspace as Function)(
-		...args,
-	)) as typeof CreateWorkspaceMod.createWorkspace;
+export type BuilderSandboxFactory = BuilderSandboxFactoryMod.BuilderSandboxFactory;
+export const createSandbox: typeof CreateWorkspaceMod.createSandbox = lazyFunction(
+	() => loadCreateWorkspace().createSandbox,
+);
+export const createWorkspace: typeof CreateWorkspaceMod.createWorkspace = lazyFunction(
+	() => loadCreateWorkspace().createWorkspace,
+);
 export const BuilderSandboxFactory: typeof BuilderSandboxFactoryMod.BuilderSandboxFactory =
-	class BuilderSandboxFactoryLazyShim {
-		constructor(...args: unknown[]) {
-			const Real = loadBuilderSandboxFactory().BuilderSandboxFactory as new (
-				...a: unknown[]
-			) => unknown;
-			return new Real(...args) as BuilderSandboxFactoryLazyShim;
-		}
-	} as unknown as typeof BuilderSandboxFactoryMod.BuilderSandboxFactory;
+	lazyClass(() => loadBuilderSandboxFactory().BuilderSandboxFactory);
 export { SnapshotManager } from './workspace/snapshot-manager';
 export type { InstanceAiEventBus, StoredEvent } from './event-bus';
 export {

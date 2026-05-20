@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports */
 import type { BuiltTool } from '@n8n/agents';
 
 import { isParseableAttachment } from '../parsers/structured-file-parser';
@@ -5,112 +6,81 @@ import { createToolRegistry } from '../tool-registry';
 import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } from '../types';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from './tool-ids';
 
-/**
- * Lazy loaders for the tool factory modules.
- *
- * Each tool's source file (~5-60 KB compiled) used to be statically imported
- * at the top of this barrel, which forced V8 to parse + hold their bytecode
- * + closures in idle heap even though the factories only ever run at chat
- * time. Deferring the require() to each factory's first call cleans them
- * out of the idle picture without changing any caller's behaviour.
- */
 const lazyMod = <T>(loader: () => T): (() => T) => {
 	let cached: T | undefined;
 	return () => (cached ??= loader());
 };
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadParseFileTool = lazyMod(
 	() => require('./attachments/parse-file.tool') as typeof import('./attachments/parse-file.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadCredentialsTool = lazyMod(
 	() => require('./credentials.tool') as typeof import('./credentials.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadDataTablesTool = lazyMod(
 	() => require('./data-tables.tool') as typeof import('./data-tables.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadEvalsTool = lazyMod(
 	() => require('./evals/evals.tool') as typeof import('./evals/evals.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadExecutionsTool = lazyMod(
 	() => require('./executions.tool') as typeof import('./executions.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool'));
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadBrowserCredentialSetupTool = lazyMod(
 	() =>
 		require('./orchestration/browser-credential-setup.tool') as typeof import('./orchestration/browser-credential-setup.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadBuildWorkflowAgentTool = lazyMod(
 	() =>
 		require('./orchestration/build-workflow-agent.tool') as typeof import('./orchestration/build-workflow-agent.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadCompleteCheckpointTool = lazyMod(
 	() =>
 		require('./orchestration/complete-checkpoint.tool') as typeof import('./orchestration/complete-checkpoint.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadDelegateTool = lazyMod(
 	() => require('./orchestration/delegate.tool') as typeof import('./orchestration/delegate.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadEvalSetupAgentTool = lazyMod(
 	() =>
 		require('./orchestration/eval-setup-agent.tool') as typeof import('./orchestration/eval-setup-agent.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadPlanWithAgentTool = lazyMod(
 	() =>
 		require('./orchestration/plan-with-agent.tool') as typeof import('./orchestration/plan-with-agent.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadPlanTool = lazyMod(
 	() => require('./orchestration/plan.tool') as typeof import('./orchestration/plan.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadReportVerificationVerdictTool = lazyMod(
 	() =>
 		require('./orchestration/report-verification-verdict.tool') as typeof import('./orchestration/report-verification-verdict.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadVerifyBuiltWorkflowTool = lazyMod(
 	() =>
 		require('./orchestration/verify-built-workflow.tool') as typeof import('./orchestration/verify-built-workflow.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadResearchTool = lazyMod(
 	() => require('./research.tool') as typeof import('./research.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadAskUserTool = lazyMod(
 	() => require('./shared/ask-user.tool') as typeof import('./shared/ask-user.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadTaskControlTool = lazyMod(
 	() => require('./task-control.tool') as typeof import('./task-control.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadApplyWorkflowCredentialsTool = lazyMod(
 	() =>
 		require('./workflows/apply-workflow-credentials.tool') as typeof import('./workflows/apply-workflow-credentials.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadBuildWorkflowTool = lazyMod(
 	() =>
 		require('./workflows/build-workflow.tool') as typeof import('./workflows/build-workflow.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadWorkflowsTool = lazyMod(
 	() => require('./workflows.tool') as typeof import('./workflows.tool'),
 );
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const loadWorkspaceTool = lazyMod(
 	() => require('./workspace.tool') as typeof import('./workspace.tool'),
 );

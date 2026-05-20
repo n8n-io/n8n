@@ -18,8 +18,8 @@
  */
 
 import type { Daytona, DaytonaError as TDaytonaError, Image } from '@daytonaio/sdk';
-import { loadDaytona } from './lazy-daytona';
 
+import { loadDaytona } from './lazy-daytona';
 import type { ErrorReporter, Logger } from '../logger';
 import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS } from './sandbox-setup';
 

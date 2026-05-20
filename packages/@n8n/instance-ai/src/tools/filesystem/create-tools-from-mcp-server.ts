@@ -12,31 +12,21 @@ import {
 	type GatewayConfirmationRequiredPayload,
 	type McpToolCallResult,
 } from '@n8n/api-types';
-// The static `import { browserCreateCredentialSchema } ...` would evaluate
-// `@n8n/mcp-browser/dist/tools/credential`, which transitively pulls in
-// `analyze-html.ts` -> `jsdom` (2.78 MiB on disk, 464 files of DOM
-// emulation). Heap-snapshot probe showed jsdom is the single biggest
-// boot-graph entrant in the instance_ai condition that the base condition
-// never touches. The schema is only used on one branch (the
-// `browser_create_credential` tool), which only fires when a user is
-// actually wiring up the browser MCP. Deferring the require() to that
-// branch keeps idle n8n instances jsdom-free.
-import type { browserCreateCredentialSchema as TBrowserCreateCredentialSchema } from '@n8n/mcp-browser/dist/tools/credential';
-
-let _browserCredentialSchemaMod:
-	| typeof import('@n8n/mcp-browser/dist/tools/credential')
-	| undefined;
-function loadBrowserCredentialSchema(): typeof TBrowserCreateCredentialSchema {
-	if (!_browserCredentialSchemaMod) {
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		_browserCredentialSchemaMod = require('@n8n/mcp-browser/dist/tools/credential');
-	}
-	return _browserCredentialSchemaMod!.browserCreateCredentialSchema;
-}
+import type * as McpBrowserCredentialMod from '@n8n/mcp-browser/dist/tools/credential';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { convertJsonSchemaToZod } from 'zod-from-json-schema-v3';
 import type { JSONSchema } from 'zod-from-json-schema-v3';
+
+let _mcpBrowserCredentialMod: typeof McpBrowserCredentialMod | undefined;
+function loadMcpBrowserCredential(): typeof McpBrowserCredentialMod {
+	if (!_mcpBrowserCredentialMod) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		const mod = require('@n8n/mcp-browser/dist/tools/credential') as typeof McpBrowserCredentialMod;
+		_mcpBrowserCredentialMod = mod;
+	}
+	return _mcpBrowserCredentialMod;
+}
 
 import {
 	addSafeMcpTools,
@@ -285,7 +275,7 @@ export function createToolsFromLocalMcpServer(
 				// somewhere in mastra core the inputSchema is converted multiple times back and forth and
 				// gets transformed to jsonSchema with `additionalProperties=false`
 				// this does not happen when passing the schema directly
-				inputSchema = loadBrowserCredentialSchema();
+				inputSchema = loadMcpBrowserCredential().browserCreateCredentialSchema;
 			} else {
 				// Convert JSON Schema → Zod (v3) so the LLM sees the actual parameter shapes.
 				// McpTool.inputSchema properties are typed as Record<string, unknown> to

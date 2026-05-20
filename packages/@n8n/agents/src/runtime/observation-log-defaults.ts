@@ -1,5 +1,4 @@
 import { loadAi } from './lazy-ai';
-
 import { createModel } from './model-factory';
 import type {
 	ObservationLogObserveFn,

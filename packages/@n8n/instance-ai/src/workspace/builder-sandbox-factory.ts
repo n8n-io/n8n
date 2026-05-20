@@ -9,11 +9,11 @@
  */
 
 import type { Daytona } from '@daytonaio/sdk';
-import { loadDaytona } from './lazy-daytona';
 import { Workspace } from '@n8n/agents';
 import assert from 'node:assert/strict';
 import { join as posixJoin } from 'node:path/posix';
 
+import { loadDaytona } from './lazy-daytona';
 import type { ErrorReporter, Logger } from '../logger';
 import type { SandboxConfig } from './create-workspace';
 import { DaytonaFilesystem } from './daytona-filesystem';

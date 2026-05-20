@@ -9,26 +9,22 @@ import type {
 	SandboxState,
 	VolumeMount,
 } from '@daytonaio/sdk';
+import {
+	BaseSandbox,
+	type CommandResult,
+	type ExecuteCommandOptions,
+	type ProviderStatus,
+	type SandboxInfo,
+} from '@n8n/agents';
+import { randomUUID } from 'node:crypto';
+
 import { loadDaytona } from './lazy-daytona';
 
-/**
- * `SandboxState` is a string-literal const object in `@daytona/api-client`.
- * Inlining the literals avoids forcing `@daytonaio/sdk` to evaluate at
- * module load time (the static field below needs them at class definition).
- */
 const SANDBOX_STATE_STARTED = 'started';
 const SANDBOX_STATE_DESTROYED = 'destroyed';
 const SANDBOX_STATE_DESTROYING = 'destroying';
 const SANDBOX_STATE_ERROR = 'error';
 const SANDBOX_STATE_BUILD_FAILED = 'build_failed';
-import type {
-	CommandResult,
-	ExecuteCommandOptions,
-	ProviderStatus,
-	SandboxInfo,
-} from '@n8n/agents';
-import { BaseSandbox } from '@n8n/agents';
-import { randomUUID } from 'node:crypto';
 
 export interface DaytonaSandboxOptions {
 	id?: string;
@@ -69,9 +65,6 @@ function isAuthError(error: unknown): boolean {
 }
 
 export class DaytonaSandbox extends BaseSandbox {
-	// Inlining the string-literal values of `SandboxState` here keeps the SDK
-	// lazy. The values come from @daytona/api-client's sandbox-state.d.ts and
-	// are part of the API contract — stable across SDK versions.
 	private static readonly DEAD_STATES: ReadonlySet<SandboxState> = new Set([
 		SANDBOX_STATE_DESTROYED,
 		SANDBOX_STATE_DESTROYING,

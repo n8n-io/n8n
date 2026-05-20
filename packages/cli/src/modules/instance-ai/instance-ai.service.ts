@@ -380,15 +380,6 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 
 @Service()
 export class InstanceAiService {
-	// Lazy-initialized. The constructor stashes ssrf deps below so the
-	// `mcpClientManager` getter can construct on first access. Constructing
-	// it eagerly in the constructor would force `new McpClientManager()` ->
-	// require('./mcp/mcp-client-manager') -> require('@n8n/agents') at
-	// service-instance time, which is at boot (controller.registry.ts
-	// instantiates every controller at boot for route registration, and
-	// InstanceAiController has InstanceAiService as a ctor dep). Deferring
-	// to first access keeps @n8n/agents (78 files, ~310 KB on disk) out of
-	// the idle boot graph.
 	private _mcpClientManager?: McpClientManager;
 	private readonly _ssrfProtectionConfig: SsrfProtectionConfig;
 	private readonly _ssrfProtectionService: SsrfProtectionService;
@@ -527,7 +518,6 @@ export class InstanceAiService {
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
 		this.formBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.form}`;
 
-		// Stash ssrf deps so the lazy `mcpClientManager` getter can construct on demand.
 		this._ssrfProtectionConfig = ssrfProtectionConfig;
 		this._ssrfProtectionService = ssrfProtectionService;
 
@@ -536,8 +526,7 @@ export class InstanceAiService {
 		// calls on disconnected clients will fail — that's accepted: the
 		// alternative is leaking clients keyed by stale config until shutdown.
 		// We only listen for the MCP-changed flag so unrelated settings saves
-		// don't churn live MCP connections. Skip if the client was never
-		// constructed (no MCP-related work has happened on this instance).
+		// don't churn live MCP connections.
 		this.eventService.on('instance-ai-settings-updated', ({ mcpSettingsChanged }) => {
 			if (!mcpSettingsChanged) return;
 			if (!this._mcpClientManager) return;

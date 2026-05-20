@@ -1,8 +1,8 @@
 import type { Tool as AiSdkTool } from 'ai';
-import { loadAi } from './lazy-ai';
 import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
+import { loadAi } from './lazy-ai';
 import {
 	type BuiltProviderTool,
 	type BuiltTool,

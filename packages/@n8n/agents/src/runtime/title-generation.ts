@@ -1,6 +1,6 @@
 import type { LanguageModel } from 'ai';
-import { loadAi } from './lazy-ai';
 
+import { loadAi } from './lazy-ai';
 import type { BuiltMemory, BuiltTelemetry, TitleGenerationConfig } from '../types';
 import { createFilteredLogger } from './logger';
 import { createModel } from './model-factory';

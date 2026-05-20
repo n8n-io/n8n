@@ -6,21 +6,16 @@
  * which extracts them on first use. The committed `manifest.json` is the
  * source of truth and is NOT in the zip.
  */
-// `adm-zip` is only used inside `extractFromZip()` (called on first
-// `ensureExtracted()` after sandbox setup). Boot-time consumers of this
-// module (e.g. @n8n/instance-ai/src/workspace/sandbox-setup.ts) reach
-// `examples-zip` through `examples-loader`'s static imports but never
-// trigger extraction at idle. Deferring the require keeps adm-zip out of
-// the boot heap.
 import type TAdmZip from 'adm-zip';
 let _admZip: typeof TAdmZip | undefined;
 function loadAdmZip(): typeof TAdmZip {
 	if (!_admZip) {
 		// adm-zip's CJS export is the constructor itself.
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		_admZip = require('adm-zip') as typeof TAdmZip;
+		const mod = require('adm-zip') as typeof TAdmZip;
+		_admZip = mod;
 	}
-	return _admZip!;
+	return _admZip;
 }
 import * as fs from 'fs';
 import * as os from 'os';
