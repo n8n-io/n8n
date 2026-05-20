@@ -55,7 +55,7 @@ describe('episodic memory defaults', () => {
 		const createdAt = new Date('2026-05-12T14:30:00.000Z');
 		const entry = {
 			id: 'mem-1',
-			agentId: 'agent-1',
+			namespace: 'agent-1',
 			resourceId: 'user-1',
 			content: 'User planned SQLite for local-first memory storage.',
 			contentHash: 'hash-1',
@@ -72,7 +72,7 @@ describe('episodic memory defaults', () => {
 		};
 
 		const extractorPrompt = buildEpisodicMemoryExtractorPrompt({
-			scope: { agentId: 'agent-1', resourceId: 'user-1' },
+			scope: { namespace: 'agent-1', resourceId: 'user-1' },
 			observationScope: {
 				scopeKind: 'thread',
 				scopeId: 'thread:thread-1:resource:user-1',
@@ -96,7 +96,7 @@ describe('episodic memory defaults', () => {
 			existingEntries: [entry],
 		});
 		const reflectorPrompt = buildEpisodicMemoryReflectorPrompt({
-			scope: { agentId: 'agent-1', resourceId: 'user-1' },
+			scope: { namespace: 'agent-1', resourceId: 'user-1' },
 			now,
 			seedEntryIds: ['mem-1'],
 			entries: [entry],
@@ -112,7 +112,7 @@ describe('episodic memory defaults', () => {
 			],
 		});
 
-		expect(extractorPrompt).toContain('Scope: agent:agent-1:resource:user-1');
+		expect(extractorPrompt).toContain('Scope: namespace:agent-1:resource:user-1');
 		expect(extractorPrompt).toContain('[obs-1] CRITICAL 2026-05-12T14:30:00.000Z');
 		expect(extractorPrompt).toContain(
 			'[mem-1] User planned SQLite for local-first memory storage.',
@@ -137,7 +137,7 @@ describe('episodic memory defaults', () => {
 
 		await expect(
 			createEpisodicMemoryExtractFn(fakeModel)({
-				scope: { agentId: 'agent-1', resourceId: 'user-1' },
+				scope: { namespace: 'agent-1', resourceId: 'user-1' },
 				observationScope: {
 					scopeKind: 'thread',
 					scopeId: 'thread:thread-1:resource:user-1',
@@ -166,7 +166,7 @@ describe('episodic memory defaults', () => {
 
 		await expect(
 			createEpisodicMemoryReflectFn(fakeModel)({
-				scope: { agentId: 'agent-1', resourceId: 'user-1' },
+				scope: { namespace: 'agent-1', resourceId: 'user-1' },
 				now: new Date('2026-05-12T15:00:00.000Z'),
 				seedEntryIds: [],
 				entries: [],

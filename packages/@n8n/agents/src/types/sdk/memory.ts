@@ -137,13 +137,13 @@ export interface SemanticRecallConfig {
 export type EpisodicMemoryStatus = 'active' | 'superseded' | 'dropped';
 
 export interface EpisodicMemoryScope {
-	agentId: string;
+	namespace: string;
 	resourceId: string;
 }
 
 export interface EpisodicMemoryEntry {
 	id: string;
-	agentId: string;
+	namespace: string;
 	resourceId: string;
 	content: string;
 	contentHash: string;
