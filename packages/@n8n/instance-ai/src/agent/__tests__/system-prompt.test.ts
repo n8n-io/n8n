@@ -263,11 +263,14 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('**Post-first-run eval suite chain**');
 			expect(prompt).toMatch(/evals\(action="offer", workflowId, projectId\)/);
-			expect(prompt).toMatch(/evals\(action="recommend-metric", workflowId\)/);
-			expect(prompt).toMatch(/evals\(action="select-metrics", workflowId\)/);
+			expect(prompt).toMatch(/evals\(action="recommend-metric", workflowId, metricId\)/);
+			expect(prompt).toMatch(
+				/evals\(action="select-metrics", workflowId, recommendedMetricId: metricId\)/,
+			);
 			expect(prompt).toMatch(/evals\(action="propose"/);
 			expect(prompt).toMatch(/evals\(action="offer-data-population", workflowId, projectId\)/);
 			expect(prompt).toContain('eval-setup-with-agent');
+			expect(prompt).not.toContain("falls back to `['correctness']`");
 		});
 
 		it('treats every `eligible: false` reason as silent skip', () => {

@@ -13,6 +13,8 @@ export interface NamedRef {
 	nodeName: string;
 	/** Field or nested path after .item.json, e.g. "text" or "message.chat.id". */
 	field: string;
+	/** Parsed JSON path segments. Quoted dotted keys stay a single segment. */
+	path: string[];
 	/** Original expression substring, useful for the rewrite step (no $('… surrounding). E.g., "$('Voice or Text').item.json.text". */
 	originalExpression: string;
 	/** Proposed dataset column name. Equals `field` when unique; otherwise `<node_slug>_<field>` to disambiguate. */
@@ -101,6 +103,7 @@ export function detectAgentNamedRefs(workflow: WorkflowJSON, agentNodeName: stri
 			result.push({
 				nodeName: m.nodeName,
 				field: m.field,
+				path: m.path,
 				originalExpression: m.originalExpression,
 				column,
 				targetNodeName: target,

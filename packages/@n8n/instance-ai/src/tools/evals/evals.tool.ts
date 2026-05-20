@@ -8,24 +8,23 @@ import {
 	analyzeAgentEvalInputColumns,
 	detectAgentEvalInputRefs,
 } from './analyze-agent-input-columns.service';
-import {
-	describeMetricForWorkflow,
-	recommendedMetricId,
-} from './describe-metric-for-workflow.service';
+import { describeMetricForWorkflow } from './describe-metric-for-workflow.service';
 import { detectAgentNamedRefs, type NamedRef } from './detect-agent-named-refs.service';
 import { detectAiNodes, type DetectAiNodesResult } from './detect-ai-nodes';
 import {
 	createEmptyEvalDataTable,
 	formatEvalDataTableColumnNameMap,
 } from './ensure-eval-data-table.service';
-import { analyzeEvalDataRequirements } from './eval-data-requirements.service';
+import {
+	analyzeEvalDataRequirements,
+	resolveEvalDataTarget,
+} from './eval-data-requirements.service';
 import { formatEvalSetupTask } from './format-eval-setup-task';
 import {
 	METRIC_CATALOG,
 	METRIC_IDS,
 	getMetricsByIds,
 	getMetricDatasetColumns,
-	proposeDefaultMetricIds,
 	type MetricId,
 } from './metric-catalog';
 import { populateEvalDataTable } from './populate-eval-data-table.service';
@@ -33,6 +32,8 @@ import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../../types';
 
 // ── Action input schemas ───────────────────────────────────────────────────
+
+const metricIdSchema = z.enum(METRIC_IDS);
 
 const offerAction = z.object({
 	action: z
@@ -52,9 +53,12 @@ const recommendMetricAction = z.object({
 	action: z
 		.literal('recommend-metric')
 		.describe(
-			'Opinionated single-metric suggestion. Suspends with an approve/deny widget showing the workflow-specific recommended metric. On approval returns `{ approved: true, metricId }` — pass that single id to `propose` and skip `select-metrics`. On denial returns `{ approved: false }` — fall through to `select-metrics` so the user can pick from the full list.',
+			'Ask the user to approve the single metric chosen by the orchestration agent. The caller must inspect the workflow and pass `metricId`; this tool does not infer a default. On approval returns `{ approved: true, metricId }` — pass that single id to `propose` and skip `select-metrics`. On denial returns `{ approved: false }` — fall through to `select-metrics` so the user can pick from the full list.',
 		),
 	workflowId: z.string(),
+	metricId: metricIdSchema.describe(
+		'Metric chosen by the orchestration agent after inspecting the workflow.',
+	),
 	targetAgentNodeName: z
 		.string()
 		.optional()
@@ -68,6 +72,9 @@ const selectMetricsAction = z.object({
 			'Multi-select picker over all canned metrics — call this ONLY when `recommend-metric` returned `{ approved: false }`. Returns chosenMetricIds.',
 		),
 	workflowId: z.string(),
+	recommendedMetricId: metricIdSchema
+		.optional()
+		.describe('Optional metric chosen by the orchestration agent, used only to mark the option.'),
 	targetAgentNodeName: z
 		.string()
 		.optional()
@@ -251,7 +258,7 @@ function metricLabel(
 	workflow: WorkflowJSON,
 	agentName: string,
 	id: string,
-	recommended: string,
+	recommended: string | undefined,
 ): string {
 	const name = isMetricId(id) ? METRIC_CATALOG[id].name : id;
 	const description = describeMetricForWorkflow(workflow, agentName, id);
@@ -325,7 +332,7 @@ export function createEvalsTool(context: InstanceAiContext) {
 	return new Tool('evals')
 		.description(
 			"Eval suite orchestration. action='offer' → eligibility precheck after a fresh build; when eligible, returns a chat message you must output verbatim and then end the turn so the user can reply naturally. " +
-				"action='recommend-metric' → opinionated single-metric suggestion; suspends with approve/deny. Call FIRST when choosing metrics. " +
+				"action='recommend-metric' → approve/deny widget for the metricId chosen by the caller. Call FIRST when choosing metrics. " +
 				"action='select-metrics' → multi-select picker; call ONLY when `recommend-metric` was denied. " +
 				"action='propose' → build the task spec for the eval-setup sub-agent and create or link the DataTable. " +
 				"action='offer-data-population' → ask whether to populate the DataTable after setup.",
@@ -417,7 +424,7 @@ async function executeRecommendMetric(
 	if (!target.ok) return targetAgentSkippedResponse(target);
 
 	const agentName = target.agentName;
-	const metricId = recommendedMetricId(wf, agentName);
+	const metricId = input.metricId;
 
 	if (hasResumeData(ctx)) {
 		if (resumeData?.approved) {
@@ -459,20 +466,21 @@ async function executeSelectMetrics(
 
 	if (hasResumeData(ctx)) {
 		if (resumeData === undefined || !resumeData.approved || !resumeData.answers) {
-			return { chosenMetricIds: ['correctness'], answers: resumeData?.answers ?? [] };
+			return { chosenMetricIds: [], answers: resumeData?.answers ?? [] };
 		}
 		const selected = resumeData.answers[0]?.selectedOptions ?? [];
 		const ids = selected.map(labelToId).filter((x): x is string => x !== undefined);
 		return {
-			chosenMetricIds: ids.length > 0 ? ids : ['correctness'],
+			chosenMetricIds: ids,
 			answers: resumeData.answers,
 		};
 	}
 
-	const defaults = proposeDefaultMetricIds(wf, agentName);
-	const recommended = recommendedMetricId(wf, agentName);
+	const recommended = input.recommendedMetricId;
 	const allLabels = METRIC_IDS.map((id) => metricLabel(wf, agentName, id, recommended));
-	const defaultLabels = defaults.map((id) => METRIC_CATALOG[id].name);
+	const recommendationText = recommended
+		? ` Suggested metric: ${METRIC_CATALOG[recommended].name}.`
+		: '';
 
 	const questionId = nanoid();
 	if (suspend) {
@@ -484,14 +492,14 @@ async function executeSelectMetrics(
 			questions: [
 				{
 					id: questionId,
-					question: `Pick what you'd like to measure on each test case (defaults pre-selected: ${defaultLabels.join(', ')})`,
+					question: `Pick what you'd like to measure on each test case.${recommendationText}`,
 					type: 'multi' as const,
 					options: allLabels,
 				},
 			],
 		});
 	}
-	return { chosenMetricIds: defaults };
+	return { chosenMetricIds: [] };
 }
 
 // ── action: propose ────────────────────────────────────────────────────────
@@ -530,11 +538,9 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 	const inputColumns = [...new Set([...directColumns, ...namedRefColumns])];
 
 	// metrics may be undefined when sanitizeInputSchema flattens the discriminated union
-	let resolvedMetrics = getMetricsByIds(input.metrics ?? []);
+	const resolvedMetrics = getMetricsByIds(input.metrics ?? []);
 	if (resolvedMetrics.length === 0) {
-		resolvedMetrics = getMetricsByIds(['correctness']);
-	} else if (!resolvedMetrics.some((metric) => metric.id === 'correctness')) {
-		resolvedMetrics = [METRIC_CATALOG.correctness, ...resolvedMetrics];
+		return { skipped: true as const, reason: 'metrics-required' as const };
 	}
 	const outputColumns = getMetricDatasetColumns(resolvedMetrics);
 	const dataTableColumns = [...new Set([...inputColumns, ...outputColumns])];
@@ -642,13 +648,17 @@ async function executeOfferDataPopulation(
 ) {
 	const workflow = await context.workflowService.getAsWorkflowJSON(input.workflowId);
 	const requirements = analyzeEvalDataRequirements(workflow, input.targetAgentNodeName);
-	const target = requirements.targets[0];
+	const target = resolveEvalDataTarget(requirements, input.targetAgentNodeName);
 
 	if (!target) {
 		return {
 			approved: false as const,
 			skipped: true as const,
-			reason: requirements.reason ?? 'No test-case table is wired for this workflow.',
+			reason:
+				requirements.reason ??
+				(input.targetAgentNodeName
+					? `No test-case table is wired for AI node "${input.targetAgentNodeName}".`
+					: 'No test-case table is wired for this workflow.'),
 		};
 	}
 

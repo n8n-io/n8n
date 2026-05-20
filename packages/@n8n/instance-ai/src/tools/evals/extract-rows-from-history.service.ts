@@ -53,18 +53,19 @@ function toWorkflowMainConnections(connections: WorkflowJSON['connections']): IC
 
 			const slotConnections: IConnection[] = [];
 			for (const connection of slot) {
-				if (
-					isRecord(connection) &&
-					connection.type === NodeConnectionTypes.Main &&
-					typeof connection.node === 'string' &&
-					typeof connection.index === 'number'
-				) {
-					slotConnections.push({
-						node: connection.node,
-						type: NodeConnectionTypes.Main,
-						index: connection.index,
-					});
-				}
+				if (!isRecord(connection)) continue;
+				const node = connection.node;
+				const type = connection.type;
+				const index = connection.index;
+				if (typeof node !== 'string') continue;
+				if (type !== undefined && type !== NodeConnectionTypes.Main) continue;
+				if (index !== undefined && typeof index !== 'number') continue;
+
+				slotConnections.push({
+					node,
+					type: NodeConnectionTypes.Main,
+					index: typeof index === 'number' ? index : 0,
+				});
 			}
 			mainConnections.push(slotConnections);
 		}

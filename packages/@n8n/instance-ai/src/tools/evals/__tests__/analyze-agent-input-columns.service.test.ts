@@ -202,12 +202,14 @@ describe('analyzeAgentEvalInputColumns', () => {
 		expect(detectAgentEvalInputRefs(workflow, 'Agent')).toEqual([
 			{
 				field: 'message.text',
+				path: ['message', 'text'],
 				originalExpression: '$json.message.text',
 				column: 'message.text',
 				targetNodeName: 'Agent',
 			},
 			{
 				field: 'message.chat.id',
+				path: ['message', 'chat', 'id'],
 				originalExpression: '$json.message.chat.id',
 				column: 'message.chat.id',
 				targetNodeName: 'Memory',

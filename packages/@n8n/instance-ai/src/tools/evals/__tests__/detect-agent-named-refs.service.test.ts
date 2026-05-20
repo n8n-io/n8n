@@ -45,6 +45,7 @@ describe('detectAgentNamedRefs', () => {
 			{
 				nodeName: 'Voice or Text',
 				field: 'text',
+				path: ['text'],
 				originalExpression: "$('Voice or Text').item.json.text",
 				column: 'text',
 				targetNodeName: 'Agent',
@@ -68,6 +69,7 @@ describe('detectAgentNamedRefs', () => {
 			{
 				nodeName: 'Voice or Text',
 				field: 'text',
+				path: ['text'],
 				originalExpression: '$("Voice or Text").item.json.text',
 				column: 'text',
 				targetNodeName: 'Agent',
@@ -236,6 +238,7 @@ describe('sub-component scanning', () => {
 			{
 				nodeName: 'Sender ID',
 				field: 'id',
+				path: ['id'],
 				originalExpression: "$('Sender ID').item.json.id",
 				column: 'id',
 				targetNodeName: 'Postgres Memory',
@@ -276,6 +279,7 @@ describe('sub-component scanning', () => {
 			{
 				nodeName: 'Webhook',
 				field: 'endpoint',
+				path: ['endpoint'],
 				originalExpression: "$('Webhook').item.json.endpoint",
 				column: 'endpoint',
 				targetNodeName: 'HTTP Tool',

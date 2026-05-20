@@ -68,6 +68,14 @@ const buildWorkflow = (): WorkflowJSON =>
 		settings: {},
 	}) as unknown as WorkflowJSON;
 
+const buildWorkflowWithLegacyMainConnection = (): WorkflowJSON =>
+	({
+		...buildWorkflow(),
+		connections: {
+			Trigger: { main: [[{ node: 'Agent', type: 'main' }]] },
+		},
+	}) as unknown as WorkflowJSON;
+
 const buildWorkflowWithEvalAndProductionParents = (): WorkflowJSON =>
 	({
 		name: 't',
@@ -144,6 +152,31 @@ describe('extractRowsFromExecutionHistory', () => {
 
 		expect(result.rows).toEqual([{ user_query: 'hello' }, { user_query: 'world' }]);
 		expect(result.scannedExecutions).toBe(2);
+	});
+
+	it('extracts rows when legacy workflow connections omit the output index', async () => {
+		const ctx = buildContext({
+			list: jest
+				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
+				.mockResolvedValueOnce([executionSummary('e1')])
+				.mockResolvedValueOnce([]),
+			getNodeOutput: jest
+				.fn<
+					ReturnType<ExecutionService['getNodeOutput']>,
+					Parameters<ExecutionService['getNodeOutput']>
+				>()
+				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 'legacy' })),
+		});
+
+		const result = await extractRowsFromExecutionHistory(ctx, {
+			workflow: buildWorkflowWithLegacyMainConnection(),
+			workflowId: 'w1',
+			agentNodeName: 'Agent',
+			inputColumns: ['user_query'],
+			expectedToActualPairs: [],
+		});
+
+		expect(result.rows).toEqual([{ user_query: 'legacy' }]);
 	});
 
 	it('deduplicates exact-match rows from execution history', async () => {

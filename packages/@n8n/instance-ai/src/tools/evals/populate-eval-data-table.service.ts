@@ -1,4 +1,7 @@
-import { analyzeEvalDataRequirements } from './eval-data-requirements.service';
+import {
+	analyzeEvalDataRequirements,
+	resolveEvalDataTarget,
+} from './eval-data-requirements.service';
 import { extractRowsFromExecutionHistory } from './extract-rows-from-history.service';
 import { generateSampleRows } from './generate-sample-rows.service';
 import type { InstanceAiContext, InstanceAiDataTableService } from '../../types';
@@ -71,6 +74,20 @@ function buildPreviewRows(rows: Array<Record<string, unknown>>): Array<Record<st
 	});
 }
 
+function withEmptyExpectedOutputColumns(
+	rows: Array<Record<string, unknown>>,
+	expectedOutputColumns: readonly string[],
+): Array<Record<string, unknown>> {
+	if (expectedOutputColumns.length === 0) return rows;
+	return rows.map((row) => {
+		const rowWithExpectedOutputs = { ...row };
+		for (const column of expectedOutputColumns) {
+			rowWithExpectedOutputs[column] = '';
+		}
+		return rowWithExpectedOutputs;
+	});
+}
+
 export async function populateEvalDataTable(
 	context: InstanceAiContext,
 	input: PopulateEvalDataTableInput,
@@ -84,10 +101,17 @@ export async function populateEvalDataTable(
 
 	const workflow = await context.workflowService.getAsWorkflowJSON(input.workflowId);
 	const reqs = analyzeEvalDataRequirements(workflow, input.targetAgentNodeName);
-	const target = reqs.targets[0];
+	const target = resolveEvalDataTarget(reqs, input.targetAgentNodeName);
 	if (!target) {
 		log('warn', `skip:no-target reason=${j(reqs.reason)}`);
-		return { status: 'skipped' as const, reason: reqs.reason ?? 'No eval target.' };
+		return {
+			status: 'skipped' as const,
+			reason:
+				reqs.reason ??
+				(input.targetAgentNodeName
+					? `No eval target for AI node "${input.targetAgentNodeName}".`
+					: 'No eval target.'),
+		};
 	}
 	log(
 		'info',
@@ -125,6 +149,7 @@ export async function populateEvalDataTable(
 			...(historyRows.length > 0 ? { realExamples: historyRows } : {}),
 			...(context.logger ? { logger: context.logger } : {}),
 		});
+		rowsToInsert = withEmptyExpectedOutputColumns(rowsToInsert, target.expectedOutputColumns);
 		source = 'synthetic';
 	}
 	log(

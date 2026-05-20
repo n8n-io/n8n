@@ -80,14 +80,13 @@ function readQuotedString(
 	return undefined;
 }
 
-function readFieldAccessor(
-	text: string,
-	start: number,
-): { field: string; endIndex: number } | undefined {
+type FieldPathAccessor = { field: string; path: string[]; endIndex: number };
+
+function readFieldAccessor(text: string, start: number): FieldPathAccessor | undefined {
 	if (charAt(text, start) === '.') {
 		const identifier = readIdentifier(text, start + 1);
 		if (!identifier) return undefined;
-		return { field: identifier.value, endIndex: identifier.endIndex };
+		return { field: identifier.value, path: [identifier.value], endIndex: identifier.endIndex };
 	}
 
 	if (charAt(text, start) !== '[') return undefined;
@@ -96,26 +95,25 @@ function readFieldAccessor(
 	if (!quoted) return undefined;
 	const closeBracketIndex = skipWhitespace(text, quoted.endIndex);
 	if (charAt(text, closeBracketIndex) !== ']') return undefined;
-	return { field: quoted.value, endIndex: closeBracketIndex + 1 };
+	return { field: quoted.value, path: [quoted.value], endIndex: closeBracketIndex + 1 };
 }
 
-function readFieldPathAccessor(
-	text: string,
-	start: number,
-): { field: string; endIndex: number } | undefined {
+function readFieldPathAccessor(text: string, start: number): FieldPathAccessor | undefined {
 	const first = readFieldAccessor(text, start);
 	if (!first) return undefined;
 
 	const fields = [first.field];
+	const path = [...first.path];
 	let endIndex = first.endIndex;
 	while (true) {
 		const next = readFieldAccessor(text, endIndex);
 		if (!next) break;
 		fields.push(next.field);
+		path.push(...next.path);
 		endIndex = next.endIndex;
 	}
 
-	return { field: fields.join('.'), endIndex };
+	return { field: fields.join('.'), path, endIndex };
 }
 
 const ITEM_JSON_ACCESSOR_PATTERNS = [
@@ -125,10 +123,7 @@ const ITEM_JSON_ACCESSOR_PATTERNS = [
 	'.all().json',
 ] as const;
 
-function readItemJsonField(
-	text: string,
-	start: number,
-): { field: string; endIndex: number } | undefined {
+function readItemJsonField(text: string, start: number): FieldPathAccessor | undefined {
 	for (const accessor of ITEM_JSON_ACCESSOR_PATTERNS) {
 		if (!text.startsWith(accessor, start)) continue;
 		return readFieldPathAccessor(text, start + accessor.length);
@@ -147,27 +142,18 @@ function readItemJsonField(
 	return undefined;
 }
 
-function readDirectJsonField(
-	text: string,
-	start: number,
-): { field: string; endIndex: number } | undefined {
+function readDirectJsonField(text: string, start: number): FieldPathAccessor | undefined {
 	if (!text.startsWith('.json', start)) return undefined;
 	return readFieldPathAccessor(text, start + '.json'.length);
 }
 
-function readItemsJsonField(
-	text: string,
-	start: number,
-): { field: string; endIndex: number } | undefined {
+function readItemsJsonField(text: string, start: number): FieldPathAccessor | undefined {
 	const itemIndex = /^\[\d+\]/.exec(text.slice(start));
 	const jsonStart = start + (itemIndex?.[0].length ?? 0);
 	return readDirectJsonField(text, jsonStart);
 }
 
-function readNamedNodeJsonField(
-	text: string,
-	start: number,
-): { field: string; endIndex: number } | undefined {
+function readNamedNodeJsonField(text: string, start: number): FieldPathAccessor | undefined {
 	return readItemJsonField(text, start) ?? readDirectJsonField(text, start);
 }
 
@@ -175,31 +161,29 @@ export function jsonFieldAccessor(field: string): string {
 	return JS_IDENTIFIER.test(field) ? `.${field}` : `[${JSON.stringify(field)}]`;
 }
 
-export function jsonPathAccessor(path: string): string {
-	return path.split('.').map(jsonFieldAccessor).join('');
+export function jsonPathAccessor(path: readonly string[]): string {
+	return path.map(jsonFieldAccessor).join('');
 }
 
 export function currentJsonExpression(field: string): string {
 	return `$json${jsonFieldAccessor(field)}`;
 }
 
-export function currentJsonPathExpression(path: string): string {
+export function currentJsonPathExpression(path: readonly string[]): string {
 	return `$json${jsonPathAccessor(path)}`;
 }
 
-export function nodeItemJsonExpression(nodeName: string, field: string): string {
-	return `$(${JSON.stringify(nodeName)}).item.json${jsonPathAccessor(field)}`;
+export function nodeItemJsonExpression(nodeName: string, path: readonly string[]): string {
+	return `$(${JSON.stringify(nodeName)}).item.json${jsonPathAccessor(path)}`;
 }
 
 export interface DirectJsonRefMatch {
 	field: string;
+	path: string[];
 	originalExpression: string;
 }
 
-function readJsonRefAt(
-	text: string,
-	index: number,
-): { field: string; endIndex: number } | undefined {
+function readJsonRefAt(text: string, index: number): FieldPathAccessor | undefined {
 	if (text.startsWith('$json', index) && !isIdentifierPart(charAt(text, index + 5))) {
 		return readFieldPathAccessor(text, index + 5);
 	}
@@ -211,10 +195,7 @@ function readJsonRefAt(
 	return undefined;
 }
 
-function readBareItemJsonRefAt(
-	text: string,
-	index: number,
-): { field: string; endIndex: number } | undefined {
+function readBareItemJsonRefAt(text: string, index: number): FieldPathAccessor | undefined {
 	if (!text.startsWith('item.json', index)) return undefined;
 	const previous = charAt(text, index - 1);
 	if (previous && (isIdentifierPart(previous) || previous === '.')) return undefined;
@@ -229,6 +210,7 @@ export function extractJsonRefMatches(text: string): DirectJsonRefMatch[] {
 		if (!match) continue;
 		matches.push({
 			field: match.field,
+			path: match.path,
 			originalExpression: text.slice(index, match.endIndex),
 		});
 		index = match.endIndex - 1;
@@ -249,6 +231,7 @@ export function extractDirectJsonRefMatches(text: string): DirectJsonRefMatch[] 
 		if (!match) continue;
 		matches.push({
 			field: match.field,
+			path: match.path,
 			originalExpression: text.slice(index, match.endIndex),
 		});
 		index = match.endIndex - 1;
@@ -275,6 +258,7 @@ export function extractDirectJsonColumnRefs(text: string): string[] {
 export interface NamedRefMatch {
 	nodeName: string;
 	field: string;
+	path: string[];
 	originalExpression: string;
 }
 
@@ -289,6 +273,7 @@ function readDollarNodeRef(text: string, start: number): NamedRefMatch | undefin
 	return {
 		nodeName: nodeName.value,
 		field: field.field,
+		path: field.path,
 		originalExpression: text.slice(start, field.endIndex),
 	};
 }
@@ -305,6 +290,7 @@ function readItemsNodeRef(text: string, start: number): NamedRefMatch | undefine
 	return {
 		nodeName: nodeName.value,
 		field: field.field,
+		path: field.path,
 		originalExpression: text.slice(start, field.endIndex),
 	};
 }
@@ -320,6 +306,7 @@ function readNodeBracketRef(text: string, start: number): NamedRefMatch | undefi
 	return {
 		nodeName: nodeName.value,
 		field: field.field,
+		path: field.path,
 		originalExpression: text.slice(start, field.endIndex),
 	};
 }
@@ -332,6 +319,7 @@ function readNodeDotRef(text: string, start: number): NamedRefMatch | undefined 
 	return {
 		nodeName: nodeName.value,
 		field: field.field,
+		path: field.path,
 		originalExpression: text.slice(start, field.endIndex),
 	};
 }

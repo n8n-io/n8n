@@ -64,7 +64,7 @@ function formatProductionAdapter(
 		if (!assignmentsByColumn.has(column)) {
 			assignmentsByColumn.set(column, {
 				column,
-				valueExpression: currentJsonPathExpression(r.field),
+				valueExpression: currentJsonPathExpression(r.path),
 			});
 		}
 	}
@@ -73,7 +73,7 @@ function formatProductionAdapter(
 		if (!assignmentsByColumn.has(column)) {
 			assignmentsByColumn.set(column, {
 				column,
-				valueExpression: nodeItemJsonExpression(r.nodeName, r.field),
+				valueExpression: nodeItemJsonExpression(r.nodeName, r.path),
 			});
 		}
 	}

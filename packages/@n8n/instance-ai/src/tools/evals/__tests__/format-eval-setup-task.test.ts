@@ -35,6 +35,7 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 				{
 					nodeName: 'Voice or Text',
 					field: 'text',
+					path: ['text'],
 					originalExpression: "$('Voice or Text').item.json.text",
 					column: 'text',
 					targetNodeName: 'General Agent',
@@ -53,12 +54,14 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 			directRefs: [
 				{
 					field: 'message.text',
+					path: ['message', 'text'],
 					originalExpression: '$json.message.text',
 					column: 'message.text',
 					targetNodeName: 'General Agent',
 				},
 				{
 					field: 'message.chat.id',
+					path: ['message', 'chat', 'id'],
 					originalExpression: '$json.message.chat.id',
 					column: 'message.chat.id',
 					targetNodeName: 'Postgres Memory',
@@ -82,6 +85,7 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 			directRefs: [
 				{
 					field: 'user_query',
+					path: ['user_query'],
 					originalExpression: '$json.user_query',
 					column: 'user_query',
 					targetNodeName: 'General Agent',
@@ -101,6 +105,7 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 				{
 					nodeName: 'Voice or Text',
 					field: 'text',
+					path: ['text'],
 					originalExpression: "$('Voice or Text').item.json.text",
 					column: 'text',
 					targetNodeName: 'Agent',
@@ -108,6 +113,7 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 				{
 					nodeName: 'Sender ID',
 					field: 'id',
+					path: ['id'],
 					originalExpression: "$('Sender ID').item.json.id",
 					column: 'sender_id',
 					targetNodeName: 'Postgres Memory',
@@ -126,6 +132,7 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 				{
 					nodeName: 'Voice or Text',
 					field: 'text',
+					path: ['text'],
 					originalExpression: "$('Voice or Text').item.json.text",
 					column: 'text',
 					targetNodeName: 'Chef Agent',
@@ -146,6 +153,7 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 				{
 					nodeName: 'Sender ID',
 					field: 'id',
+					path: ['id'],
 					originalExpression: "$('Sender ID').item.json.id",
 					column: 'sender_id',
 					targetNodeName: 'Postgres Memory',
@@ -170,6 +178,7 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 				{
 					nodeName: sourceNodeName,
 					field: sourceField,
+					path: [sourceField],
 					originalExpression: '$("Voice \\"or\\" Text").item.json["message-id"]',
 					column,
 					targetNodeName: agentNodeName,
@@ -177,6 +186,7 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 				{
 					nodeName: 'Sender',
 					field: 'sender-id',
+					path: ['sender-id'],
 					originalExpression: '$("Sender").item.json["sender-id"]',
 					column: 'sender-id',
 					targetNodeName: 'Postgres Memory',
@@ -185,7 +195,7 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 		});
 
 		expect(task).toContain(
-			`value: ${JSON.stringify(`={{ ${nodeItemJsonExpression(sourceNodeName, sourceField)} }}`)}`,
+			`value: ${JSON.stringify(`={{ ${nodeItemJsonExpression(sourceNodeName, [sourceField])} }}`)}`,
 		);
 		expect(task).toContain(`with \`{{ ${currentJsonExpression('user_message')} }}\``);
 		expect(task).toContain(`with \`{{ ${currentJsonExpression('sender_id')} }}\``);
@@ -213,6 +223,7 @@ describe('formatEvalSetupTask — dataset and setOutputs instructions', () => {
 				{
 					nodeName: 'Webhook',
 					field: 'User Query',
+					path: ['User Query'],
 					originalExpression: '$("Webhook").item.json["User Query"]',
 					column: 'User Query',
 					targetNodeName: 'General Agent',
@@ -223,7 +234,7 @@ describe('formatEvalSetupTask — dataset and setOutputs instructions', () => {
 		expect(task).toContain('Create an empty DataTable named "Telegram AI Q&A Bot — eval samples"');
 		expect(task).toContain('Columns to create as strings:\n- user_query\n- expected_response');
 		expect(task).toContain(
-			`value: ${JSON.stringify(`={{ ${nodeItemJsonExpression('Webhook', 'User Query')} }}`)}`,
+			`value: ${JSON.stringify(`={{ ${nodeItemJsonExpression('Webhook', ['User Query'])} }}`)}`,
 		);
 		expect(task).toContain(
 			'Replace `$("Webhook").item.json["User Query"]` with `{{ $json.user_query }}`',

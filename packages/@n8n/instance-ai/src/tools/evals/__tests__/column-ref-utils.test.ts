@@ -64,10 +64,25 @@ describe('column-ref-utils', () => {
 					'{{ $json.message.text }} {{ $input.item.json.message.chat.id }}',
 				),
 			).toEqual([
-				{ field: 'message.text', originalExpression: '$json.message.text' },
+				{
+					field: 'message.text',
+					path: ['message', 'text'],
+					originalExpression: '$json.message.text',
+				},
 				{
 					field: 'message.chat.id',
+					path: ['message', 'chat', 'id'],
 					originalExpression: '$input.item.json.message.chat.id',
+				},
+			]);
+		});
+
+		it('preserves quoted dotted fields as single path segments', () => {
+			expect(extractDirectJsonRefMatches('{{ $json["message.text"] }}')).toEqual([
+				{
+					field: 'message.text',
+					path: ['message.text'],
+					originalExpression: '$json["message.text"]',
 				},
 			]);
 		});
@@ -96,21 +111,25 @@ describe('column-ref-utils', () => {
 				{
 					nodeName: 'Quoted "Node"',
 					field: 'field-key',
+					path: ['field-key'],
 					originalExpression: '$("Quoted \\"Node\\"").first().json["field-key"]',
 				},
 				{
 					nodeName: "Other's Node",
 					field: 'foo',
+					path: ['foo'],
 					originalExpression: "$items('Other\\'s Node')[0].json.foo",
 				},
 				{
 					nodeName: 'Source',
 					field: 'bar.nested',
+					path: ['bar', 'nested'],
 					originalExpression: '$node.Source.item.json.bar.nested',
 				},
 				{
 					nodeName: 'Legacy',
 					field: 'baz qux',
+					path: ['baz qux'],
 					originalExpression: '$node["Legacy"].json["baz qux"]',
 				},
 			]);
@@ -124,12 +143,19 @@ describe('column-ref-utils', () => {
 		});
 
 		it('formats nested source paths for production adapter assignments', () => {
-			expect(currentJsonPathExpression('message.chat.id')).toBe('$json.message.chat.id');
+			expect(currentJsonPathExpression(['message', 'chat', 'id'])).toBe('$json.message.chat.id');
+		});
+
+		it('keeps quoted dotted source fields intact when formatting path expressions', () => {
+			expect(currentJsonPathExpression(['message.text'])).toBe('$json["message.text"]');
 		});
 
 		it('escapes node names and field names for generated expressions', () => {
-			expect(nodeItemJsonExpression('Voice "or" Text', 'message.chat.id')).toBe(
+			expect(nodeItemJsonExpression('Voice "or" Text', ['message', 'chat', 'id'])).toBe(
 				'$("Voice \\"or\\" Text").item.json.message.chat.id',
+			);
+			expect(nodeItemJsonExpression('Source', ['message.text'])).toBe(
+				'$("Source").item.json["message.text"]',
 			);
 		});
 	});

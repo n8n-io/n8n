@@ -18,6 +18,8 @@ export interface AgentInputColumns {
 export interface DirectJsonRef {
 	/** Full path after $json / item.json, e.g. "message.chat.id". */
 	field: string;
+	/** Parsed JSON path segments. Quoted dotted keys stay a single segment. */
+	path: string[];
 	/** Original expression substring to replace, e.g. "$json.message.chat.id". */
 	originalExpression: string;
 	/** Proposed raw dataset column name before DataTable normalization. */
@@ -92,6 +94,7 @@ export function detectAgentEvalInputRefs(
 				if (dedup.has(key)) continue;
 				dedup.set(key, {
 					field: match.field,
+					path: match.path,
 					originalExpression: match.originalExpression,
 					column: match.field,
 					targetNodeName,

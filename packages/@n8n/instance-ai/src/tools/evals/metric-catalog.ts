@@ -1,5 +1,3 @@
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
-
 export const DEFAULT_EXPECTED_OUTPUT_COLUMN = 'expected_output';
 export const EXPECTED_TOOLS_COLUMN = 'expected_tools';
 export const DEFAULT_ACTUAL_OUTPUT_COLUMN = 'actual_output';
@@ -82,11 +80,4 @@ export function getMetricDatasetColumns(metrics: MetricCatalogEntry[]): string[]
 		}
 	}
 	return [...columns];
-}
-
-export function proposeDefaultMetricIds(
-	_workflow: WorkflowJSON,
-	_agentNodeName: string,
-): MetricId[] {
-	return ['correctness'];
 }

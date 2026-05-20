@@ -131,6 +131,54 @@ function evalConfiguredWf(): WorkflowJSON {
 	} as unknown as WorkflowJSON;
 }
 
+function evalConfiguredWfWithMultipleTargets(): WorkflowJSON {
+	return {
+		name: 'Multi Eval Flow',
+		nodes: [
+			{
+				id: 'a1',
+				name: 'First Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				position: [200, -100],
+				parameters: { text: '={{ $json.first_input }}' },
+			},
+			{
+				id: 'a2',
+				name: 'Second Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				position: [200, 100],
+				parameters: { text: '={{ $json.second_input }}' },
+			},
+			{
+				id: 'e1',
+				name: 'Eval Trigger A',
+				type: 'n8n-nodes-base.evaluationTrigger',
+				typeVersion: 1,
+				position: [0, -100],
+				parameters: { dataTableId: { mode: 'id', value: 'dt-first' } },
+			},
+			{
+				id: 'e2',
+				name: 'Eval Trigger B',
+				type: 'n8n-nodes-base.evaluationTrigger',
+				typeVersion: 1,
+				position: [0, 100],
+				parameters: { dataTableId: { mode: 'id', value: 'dt-second' } },
+			},
+		],
+		connections: {
+			'Eval Trigger A': {
+				main: [[{ node: 'First Agent', type: 'main', index: 0 }]],
+			},
+			'Eval Trigger B': {
+				main: [[{ node: 'Second Agent', type: 'main', index: 0 }]],
+			},
+		},
+	} as unknown as WorkflowJSON;
+}
+
 /** AI workflow where the agent reads from a named node ref: $('Voice or Text').item.json.text */
 function aiWfWithNamedRef(): WorkflowJSON {
 	return {
@@ -443,35 +491,40 @@ describe('evalsTool — action: offer (eligibility precheck + chat message)', ()
 describe('evals tool — recommend-metric action', () => {
 	beforeEach(() => jest.clearAllMocks());
 
-	it('returns { approved: true, metricId } when user approves the recommendation', async () => {
+	it('returns the agent-chosen metric id when user approves the recommendation', async () => {
 		const ctx = makeCtx(aiWfWithTools());
 		const tool = createEvalsTool(ctx);
 
-		const result = (await tool.handler!({ action: 'recommend-metric', workflowId: 'w1' }, {
-			agent: { resumeData: { approved: true } },
-		} as never)) as Record<string, unknown>;
+		const result = (await tool.handler!(
+			{ action: 'recommend-metric', workflowId: 'w1', metricId: 'tool_use' },
+			{
+				agent: { resumeData: { approved: true } },
+			} as never,
+		)) as Record<string, unknown>;
 
-		expect(result).toEqual({ approved: true, metricId: 'correctness' });
+		expect(result).toEqual({ approved: true, metricId: 'tool_use' });
 	});
 
 	it('returns { approved: false } when user denies, so the orchestrator can fall back to select-metrics', async () => {
 		const ctx = makeCtx(aiWfWithTools());
 		const tool = createEvalsTool(ctx);
 
-		const result = (await tool.handler!({ action: 'recommend-metric', workflowId: 'w1' }, {
-			agent: { resumeData: { approved: false } },
-		} as never)) as Record<string, unknown>;
+		const result = (await tool.handler!(
+			{ action: 'recommend-metric', workflowId: 'w1', metricId: 'helpfulness' },
+			{
+				agent: { resumeData: { approved: false } },
+			} as never,
+		)) as Record<string, unknown>;
 
 		expect(result).toEqual({ approved: false });
 	});
 
-	it('suspends with a confirmation widget naming the recommended metric on first call', async () => {
-		// Plain agent (no tools / retrievers) → recommended is 'correctness'
-		const ctx = makeCtx(aiWf());
+	it('suspends with a confirmation widget naming the agent-chosen metric on first call', async () => {
+		const ctx = makeCtx(aiWfWithTools());
 		const tool = createEvalsTool(ctx);
 		const suspend = jest.fn();
 
-		await tool.handler!({ action: 'recommend-metric', workflowId: 'w1' }, {
+		await tool.handler!({ action: 'recommend-metric', workflowId: 'w1', metricId: 'tool_use' }, {
 			agent: { suspend, resumeData: undefined },
 		} as never);
 
@@ -480,7 +533,12 @@ describe('evals tool — recommend-metric action', () => {
 			expect.objectContaining({
 				severity: 'info',
 				requestId: expect.any(String) as unknown,
-				message: expect.stringContaining('Correctness') as unknown,
+				message: expect.stringContaining('Tool use') as unknown,
+			}),
+		);
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: expect.stringContaining('SomeTool') as unknown,
 			}),
 		);
 		expect(suspend).toHaveBeenCalledWith(
@@ -493,7 +551,7 @@ describe('evals tool — recommend-metric action', () => {
 		const tool = createEvalsTool(ctx);
 		const suspend = jest.fn();
 
-		await tool.handler!({ action: 'recommend-metric', workflowId: 'w1' }, {
+		await tool.handler!({ action: 'recommend-metric', workflowId: 'w1', metricId: 'tool_use' }, {
 			agent: { suspend, resumeData: undefined },
 		} as never);
 
@@ -559,6 +617,40 @@ describe('evals tool — offer-data-population action', () => {
 		);
 	});
 
+	it('populates the table wired to the requested eval target after approval', async () => {
+		jest
+			.spyOn(sampleRowsService, 'generateSampleRows')
+			.mockResolvedValue([{ second_input: 'How late is the trail open?' }]);
+		const ctx = makeCtx(evalConfiguredWfWithMultipleTargets());
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.handler!(
+			{
+				action: 'offer-data-population',
+				workflowId: 'w1',
+				targetAgentNodeName: 'Second Agent',
+			},
+			{ agent: { resumeData: { approved: true } } } as never,
+		)) as Record<string, unknown>;
+
+		expect(result).toMatchObject({
+			approved: true,
+			workflowId: 'w1',
+			targetAgentNodeName: 'Second Agent',
+			status: 'generated',
+		});
+		expect(ctx.dataTableService.insertRows).toHaveBeenCalledWith(
+			'dt-second',
+			[{ second_input: 'How late is the trail open?' }],
+			undefined,
+		);
+		expect(ctx.dataTableService.insertRows).not.toHaveBeenCalledWith(
+			'dt-first',
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
 	it('skips when there is no wired test-case table to populate', async () => {
 		const ctx = makeCtx(aiWf());
 		const tool = createEvalsTool(ctx);
@@ -608,33 +700,36 @@ describe('evals tool — select-metrics action', () => {
 			.fn<Promise<void>, [SelectMetricsSuspendPayload]>()
 			.mockResolvedValue(undefined);
 
-		await tool.handler!({ action: 'select-metrics', workflowId: 'w1' }, {
-			agent: { suspend, resumeData: undefined },
-		} as never);
+		await tool.handler!(
+			{ action: 'select-metrics', workflowId: 'w1', recommendedMetricId: 'tool_use' },
+			{
+				agent: { suspend, resumeData: undefined },
+			} as never,
+		);
 
 		const payload = suspend.mock.calls[0]?.[0];
 		if (!payload) {
 			throw new Error('Expected metric selection payload');
 		}
-		const recommendedCorrectnessOption = payload.questions[0]?.options?.find((option) =>
-			option.startsWith('Correctness (recommended) — '),
+		const recommendedToolUseOption = payload.questions[0]?.options?.find((option) =>
+			option.startsWith('Tool use (recommended) — '),
 		);
-		if (!recommendedCorrectnessOption) {
-			throw new Error('Expected recommended correctness option');
+		if (!recommendedToolUseOption) {
+			throw new Error('Expected recommended tool-use option');
 		}
 
-		const answers = [{ questionId: 'q1', selectedOptions: [recommendedCorrectnessOption] }];
+		const answers = [{ questionId: 'q1', selectedOptions: [recommendedToolUseOption] }];
 		const result = (await tool.handler!({ action: 'select-metrics', workflowId: 'w1' }, {
 			agent: { resumeData: { approved: true, answers } },
 		} as never)) as Record<string, unknown>;
 
 		expect(result).toEqual({
-			chosenMetricIds: ['correctness'],
+			chosenMetricIds: ['tool_use'],
 			answers,
 		});
 	});
 
-	it('falls back to ["correctness"] when user dismisses the widget (resumeData.approved=false)', async () => {
+	it('returns no chosen metrics when user dismisses the widget', async () => {
 		const ctx = makeCtx(aiWf());
 		const tool = createEvalsTool(ctx);
 
@@ -642,10 +737,10 @@ describe('evals tool — select-metrics action', () => {
 			agent: { resumeData: { approved: false } },
 		} as never)) as Record<string, unknown>;
 
-		expect(result).toEqual({ chosenMetricIds: ['correctness'], answers: [] });
+		expect(result).toEqual({ chosenMetricIds: [], answers: [] });
 	});
 
-	it('falls back to ["correctness"] when user submits empty selection', async () => {
+	it('returns no chosen metrics when user submits an empty selection', async () => {
 		const ctx = makeCtx(aiWf());
 		const tool = createEvalsTool(ctx);
 
@@ -659,7 +754,7 @@ describe('evals tool — select-metrics action', () => {
 		} as never)) as Record<string, unknown>;
 
 		expect(result).toEqual({
-			chosenMetricIds: ['correctness'],
+			chosenMetricIds: [],
 			answers: [{ questionId: 'q1', selectedOptions: [] }],
 		});
 	});
@@ -725,9 +820,12 @@ describe('evals tool — select-metrics action', () => {
 		const ctx = makeCtx(workflow);
 		const tool = createEvalsTool(ctx);
 		const suspend = jest.fn();
-		await tool.handler!({ action: 'select-metrics', workflowId: 'w1' }, {
-			agent: { suspend, resumeData: undefined },
-		} as never);
+		await tool.handler!(
+			{ action: 'select-metrics', workflowId: 'w1', recommendedMetricId: 'tool_use' },
+			{
+				agent: { suspend, resumeData: undefined },
+			} as never,
+		);
 
 		expect(suspend).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -735,7 +833,7 @@ describe('evals tool — select-metrics action', () => {
 					expect.objectContaining({
 						options: expect.arrayContaining([
 							expect.stringMatching(/^Correctness.*Chef Agent/) as unknown,
-							expect.stringMatching(/Tool use.*Calculator/) as unknown,
+							expect.stringMatching(/^Tool use \(recommended\).*Calculator/) as unknown,
 						]) as unknown,
 					}),
 				],
@@ -897,17 +995,16 @@ describe('evals tool — propose action (changed)', () => {
 			'AI Flow With Tools — eval samples',
 			[
 				{ name: 'user_query', type: 'string' },
-				{ name: 'expected_output', type: 'string' },
 				{ name: 'expected_tools', type: 'string' },
 			],
 			undefined,
 		);
-		expect(result.task).toContain('Correctness');
+		expect(result.task).not.toContain('Correctness');
 		expect(result.task).toContain('expectedTools');
 		expect(result.task).toContain('intermediateSteps');
 	});
 
-	it('falls back to ["correctness"] when metrics is empty', async () => {
+	it('returns skipped when metrics is empty', async () => {
 		const ctx = makeCtx(aiWf());
 		const tool = createEvalsTool(ctx);
 
@@ -915,8 +1012,8 @@ describe('evals tool — propose action (changed)', () => {
 			agent: {},
 		} as never)) as Record<string, unknown>;
 
-		const task = result.task as string;
-		expect(task).toContain('Correctness');
+		expect(result).toEqual({ skipped: true, reason: 'metrics-required' });
+		expect(ctx.dataTableService.create).not.toHaveBeenCalled();
 	});
 
 	it('returns skipped when no AI nodes', async () => {

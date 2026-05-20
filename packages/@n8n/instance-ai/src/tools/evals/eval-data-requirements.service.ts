@@ -35,6 +35,14 @@ export interface EvalDataRequirements {
 	reason?: string;
 }
 
+export function resolveEvalDataTarget(
+	requirements: EvalDataRequirements,
+	targetAgentNodeName?: string,
+): EvalDataTarget | undefined {
+	if (targetAgentNodeName === undefined) return requirements.targets[0];
+	return requirements.targets.find((target) => target.targetAgentNodeName === targetAgentNodeName);
+}
+
 function readOperation(node: WorkflowNode): string | undefined {
 	const parameters = node.parameters;
 	if (!isRecord(parameters)) return undefined;
