@@ -71,7 +71,6 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableColumn:update',
 	'dataTableColumn:delete',
 	'insights:read',
-	'n8nPackage:export',
 ];
 
 export const ADMIN_API_KEY_SCOPES: ApiKeyScope[] = OWNER_API_KEY_SCOPES;
@@ -123,7 +122,6 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableColumn:update',
 	'dataTableColumn:delete',
 	'insights:read',
-	'n8nPackage:export',
 ];
 
 export const CHAT_USER_API_KEY_SCOPES: ApiKeyScope[] = [];
@@ -172,7 +170,6 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'dataTableColumn:update',
 	'dataTableColumn:delete',
 	'insights:read',
-	'n8nPackage:export',
 ];
 
 const MAP_ROLE_SCOPES: Record<GlobalRole, ApiKeyScope[]> = {
