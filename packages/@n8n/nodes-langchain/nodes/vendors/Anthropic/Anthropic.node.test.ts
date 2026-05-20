@@ -377,7 +377,7 @@ describe('Anthropic Node', () => {
 			});
 
 			await expect(image.analyze.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
-				'A non-empty text input is required.',
+				'A non-empty prompt is required.',
 			);
 		});
 	});

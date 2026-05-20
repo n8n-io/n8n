@@ -50,7 +50,7 @@ describe('Image Analyze Operation', () => {
 			});
 
 			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
-				'A non-empty text input is required.',
+				'A non-empty prompt is required.',
 			);
 		});
 
@@ -68,7 +68,7 @@ describe('Image Analyze Operation', () => {
 			});
 
 			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
-				'A non-empty text input is required.',
+				'A non-empty prompt is required.',
 			);
 		});
 	});
@@ -596,7 +596,7 @@ describe('Image Analyze Operation', () => {
 			);
 
 			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
-				'A non-empty text input is required.',
+				'A non-empty prompt is required.',
 			);
 		});
 

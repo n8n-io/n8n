@@ -14,7 +14,7 @@ export async function baseAnalyze(
 	const inputType = this.getNodeParameter('inputType', i, 'url') as string;
 	const text = this.getNodeParameter('text', i, '') as string;
 	if (!text.trim()) {
-		throw new NodeOperationError(this.getNode(), 'A non-empty text input is required.', {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
 			itemIndex: i,
 		});
 	}

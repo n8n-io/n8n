@@ -57,12 +57,12 @@ describe('Video Generate Operation', async () => {
 	describe('empty prompt validation', () => {
 		it('should throw error for empty prompt', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: Record<string, unknown> = {
+				const params = {
 					prompt: '',
 					seconds: 5,
 					options: {},
 				};
-				return params[paramName];
+				return params[paramName as keyof typeof params];
 			});
 
 			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
@@ -72,12 +72,12 @@ describe('Video Generate Operation', async () => {
 
 		it('should throw error for whitespace-only prompt', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: Record<string, unknown> = {
+				const params = {
 					prompt: '   ',
 					seconds: 5,
 					options: {},
 				};
-				return params[paramName];
+				return params[paramName as keyof typeof params];
 			});
 
 			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(

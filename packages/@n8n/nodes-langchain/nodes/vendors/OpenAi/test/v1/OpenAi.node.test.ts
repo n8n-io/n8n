@@ -621,7 +621,7 @@ describe('OpenAi', () => {
 					}),
 					0,
 				),
-			).rejects.toThrow('A non-empty text input is required.');
+			).rejects.toThrow('A non-empty prompt is required.');
 		});
 
 		it('text message => should throw error for empty messages', async () => {
