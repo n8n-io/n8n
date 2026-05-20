@@ -363,7 +363,7 @@ describe('eval-data tool', () => {
 					addColumn: jest.fn(),
 				},
 				executionService: {
-					list: jest.fn().mockResolvedValueOnce([]),
+					list: jest.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([]),
 					getNodeOutput: jest.fn(),
 				},
 				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },

@@ -18,7 +18,6 @@ import {
 	createEmptyEvalDataTable,
 	formatEvalDataTableColumnNameMap,
 } from './ensure-eval-data-table.service';
-import { analyzeEvalDataRequirements } from './eval-data-requirements.service';
 import { formatEvalSetupTask } from './format-eval-setup-task';
 import { generateToolRefPinData } from './generate-tool-ref-pin-data.service';
 import {

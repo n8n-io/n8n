@@ -286,10 +286,11 @@ describe('extractRowsFromExecutionHistory', () => {
 		expect(result.rows).toHaveLength(25);
 	});
 
-	it('lists only successful executions', async () => {
+	it('lists success and error statuses', async () => {
 		const list = jest
 			.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-			.mockResolvedValueOnce([executionSummary('e1')]);
+			.mockResolvedValueOnce([executionSummary('e1')])
+			.mockResolvedValueOnce([executionSummary('e2', 'error')]);
 		const ctx = buildContext({
 			list,
 			getNodeOutput: jest
@@ -297,7 +298,8 @@ describe('extractRowsFromExecutionHistory', () => {
 					ReturnType<ExecutionService['getNodeOutput']>,
 					Parameters<ExecutionService['getNodeOutput']>
 				>()
-				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 's' })),
+				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 's' }))
+				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 'e' })),
 		});
 
 		await extractRowsFromExecutionHistory(ctx, {
@@ -308,8 +310,8 @@ describe('extractRowsFromExecutionHistory', () => {
 			expectedToActualPairs: [],
 		});
 
-		expect(list).toHaveBeenCalledTimes(1);
-		expect(list).toHaveBeenCalledWith({ workflowId: 'w1', status: 'success', limit: 100 });
+		expect(list).toHaveBeenNthCalledWith(1, { workflowId: 'w1', status: 'success', limit: 100 });
+		expect(list).toHaveBeenNthCalledWith(2, { workflowId: 'w1', status: 'error', limit: 100 });
 	});
 
 	it('deduplicates exact-match projected rows and keeps distinct rows', async () => {
@@ -320,7 +322,8 @@ describe('extractRowsFromExecutionHistory', () => {
 					executionSummary('e1'),
 					executionSummary('e2'),
 					executionSummary('e3'),
-				]),
+				])
+				.mockResolvedValueOnce([]),
 			getNodeOutput: jest.fn<
 				ReturnType<ExecutionService['getNodeOutput']>,
 				Parameters<ExecutionService['getNodeOutput']>

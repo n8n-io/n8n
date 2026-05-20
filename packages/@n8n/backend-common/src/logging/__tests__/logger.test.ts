@@ -1,11 +1,15 @@
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	LoggerProxy: { init: jest.fn() },
-}));
+vi.mock('n8n-workflow', async () => {
+	const original = await vi.importActual('n8n-workflow');
+	return {
+		...original,
+		LoggerProxy: { init: vi.fn() },
+	};
+});
 
 import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
-import { mock, captor } from 'jest-mock-extended';
 import { LoggerProxy } from 'n8n-workflow';
+import assert from 'node:assert/strict';
+import { mock, captor } from 'vitest-mock-extended';
 import winston from 'winston';
 
 import { Logger } from '../logger';
@@ -17,7 +21,7 @@ const isLogContinuation = (value: unknown): value is () => void => typeof value 
 const captureConsoleOutput = () => {
 	const outputCalls: string[] = [];
 
-	jest.spyOn(winston.transports.Console.prototype, 'log').mockImplementation((info, next) => {
+	vi.spyOn(winston.transports.Console.prototype, 'log').mockImplementation((info, next) => {
 		const output = (info as { [key: symbol]: unknown })[MESSAGE_SYMBOL];
 
 		if (typeof output === 'string') {
@@ -44,7 +48,7 @@ const getLastConsoleOutput = (capture: ConsoleOutputCapture) => {
 	const output = getConsoleOutputCalls(capture).at(-1);
 
 	if (output === undefined) {
-		fail('expected logger to write console output');
+		assert.fail('expected logger to write console output');
 	}
 
 	return output;
@@ -52,7 +56,7 @@ const getLastConsoleOutput = (capture: ConsoleOutputCapture) => {
 
 describe('Logger', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('constructor', () => {
@@ -79,7 +83,7 @@ describe('Logger', () => {
 
 	describe('formats', () => {
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		test('log text, if `config.logging.format` is set to `text`', () => {
@@ -260,7 +264,7 @@ describe('Logger', () => {
 
 	describe('optional metadata fields', () => {
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		test('should include optional metadata fields in JSON output when defined', () => {
@@ -318,7 +322,7 @@ describe('Logger', () => {
 
 	describe('transports', () => {
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		test('if `console` selected, should set console transport', () => {
@@ -382,9 +386,11 @@ describe('Logger', () => {
 					},
 				});
 				const OriginalFile = winston.transports.File;
-				const FileSpy = jest.spyOn(winston.transports, 'File').mockImplementation((...args) => {
+				const FileSpy = vi.spyOn(winston.transports, 'File').mockImplementation(function (
+					...args: ConstructorParameters<typeof OriginalFile>
+				) {
 					return new OriginalFile(...args);
-				});
+				} as unknown as typeof OriginalFile);
 
 				// ACT
 				new Logger(globalConfig, mock<InstanceSettingsConfig>({ n8nFolder: '/tmp' }));
@@ -414,9 +420,11 @@ describe('Logger', () => {
 					},
 				});
 				const OriginalFile = winston.transports.File;
-				const FileSpy = jest.spyOn(winston.transports, 'File').mockImplementation((...args) => {
+				const FileSpy = vi.spyOn(winston.transports, 'File').mockImplementation(function (
+					...args: ConstructorParameters<typeof OriginalFile>
+				) {
 					return new OriginalFile(...args);
-				});
+				} as unknown as typeof OriginalFile);
 
 				// ACT
 				new Logger(globalConfig, mock<InstanceSettingsConfig>({ n8nFolder }));
@@ -534,7 +542,7 @@ describe('Logger', () => {
 		const ANSI_COLOR_PATTERN = /\x1b\[\d+m/g; // Pattern to match ANSI color escape codes
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 			delete process.env.NO_COLOR;
 		});
 
@@ -669,7 +677,7 @@ describe('Logger', () => {
 			const [infoOutput, debugOutput] = getConsoleOutputCalls(consoleOutput);
 
 			if (infoOutput === undefined || debugOutput === undefined) {
-				fail('expected both outputs to be strings');
+				assert.fail('expected both outputs to be strings');
 			}
 
 			expect(ANSI_COLOR_PATTERN.test(infoOutput)).toBe(false);

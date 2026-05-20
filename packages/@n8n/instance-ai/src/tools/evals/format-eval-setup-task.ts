@@ -124,6 +124,10 @@ function formatMetric(
 	const expectedOutputColumn = input.suggestedOutputColumns[0]
 		? columnNameFor(input.suggestedOutputColumns[0])
 		: 'expected_output';
+	const expectedToolsColumn =
+		input.suggestedOutputColumns
+			.map((column) => columnNameFor(column))
+			.find((column) => column === 'expected_tools') ?? 'expected_tools';
 	const inputColumn = input.suggestedInputColumns[0]
 		? columnNameFor(input.suggestedInputColumns[0])
 		: 'input';
@@ -137,7 +141,7 @@ function formatMetric(
   Configure Evaluation(setMetrics) with \`metric: 'helpfulness'\`, \`userQuery: ${evalTriggerJsonRef(inputColumn)}\`, \`actualAnswer: ={{ $json.output }}\`, and \`options.metricName: '${m.name}'\`. Connect an \`ai_languageModel\` input.${promptSuffix}`;
 		case 'tool_use':
 			return `- ${m.name} (${m.kind}${cannedSuffix}): ${m.description}
-  Configure Evaluation(setMetrics) with \`metric: 'toolsUsed'\` (not \`'tool_use'\`), \`expectedTools\` from the dataset or the user's selected expected tool list, \`intermediateSteps: ={{ $json.intermediateSteps }}\`, and \`options.metricName: '${m.name}'\`. Enable returning intermediate steps on the agent.`;
+  Configure Evaluation(setMetrics) with \`metric: 'toolsUsed'\` (not \`'tool_use'\`), \`expectedTools: ${evalTriggerJsonRef(expectedToolsColumn)}\`, \`intermediateSteps: ={{ $json.intermediateSteps }}\`, and \`options.metricName: '${m.name}'\`. Enable returning intermediate steps on the agent.`;
 		case 'relevance':
 			return `- ${m.name} (${m.kind}${cannedSuffix}): ${m.description}
   There is no native \`relevance\` metric option. Configure Evaluation(setMetrics) with \`metric: 'helpfulness'\`, \`userQuery: ${evalTriggerJsonRef(inputColumn)}\`, \`actualAnswer\` mapped to the retrieved context or response field being judged, \`options.metricName: '${m.name}'\`, and the relevance prompt below. Connect an \`ai_languageModel\` input.${promptSuffix}`;

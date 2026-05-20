@@ -256,7 +256,7 @@ describe('formatEvalSetupTask — metric setup instructions', () => {
 			enabledMetrics: [METRIC_CATALOG.helpfulness],
 		});
 
-		expect(task).toContain('metric: "helpfulness"');
+		expect(task).toContain("metric: 'helpfulness'");
 		expect(task).toContain('userQuery');
 		expect(task).toContain("{{ $('Eval Trigger').item.json.user_query }}");
 		expect(task).toContain('actualAnswer');
@@ -270,7 +270,7 @@ describe('formatEvalSetupTask — metric setup instructions', () => {
 			enabledMetrics: [METRIC_CATALOG.tool_use],
 		});
 
-		expect(task).toContain('metric: "toolsUsed"');
+		expect(task).toContain("metric: 'toolsUsed'");
 		expect(task).toContain('expectedTools');
 		expect(task).toContain("{{ $('Eval Trigger').item.json.expected_tools }}");
 		expect(task).toContain('intermediateSteps');
