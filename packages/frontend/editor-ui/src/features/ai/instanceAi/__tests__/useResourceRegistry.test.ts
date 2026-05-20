@@ -228,7 +228,8 @@ describe('useResourceRegistry', () => {
 								result: { table: { id: 'dt-1', name: 'Signups' } },
 							}),
 							makeToolCall({
-								toolName: 'insert-data-table-rows',
+								toolName: 'data-tables',
+								args: { action: 'insert-rows' },
 								result: {
 									insertedCount: 5,
 									dataTableId: 'dt-1',
@@ -409,9 +410,9 @@ describe('useResourceRegistry', () => {
 	});
 
 	describe('data table mutation artifact metadata', () => {
-		test.each(['insert-data-table-rows', 'update-data-table-rows', 'delete-data-table-rows'])(
+		test.each(['insert-rows', 'update-rows', 'delete-rows'])(
 			'registers data table from %s result with name and projectId',
-			async (toolName) => {
+			async (action) => {
 				const { messages, producedArtifacts } = setup();
 
 				messages.value = [
@@ -419,7 +420,8 @@ describe('useResourceRegistry', () => {
 						agentTree: makeAgentNode({
 							toolCalls: [
 								makeToolCall({
-									toolName,
+									toolName: 'data-tables',
+									args: { action },
 									result: {
 										dataTableId: 'dt-mut-1',
 										tableName: 'Orders',
@@ -450,7 +452,8 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'insert-data-table-rows',
+								toolName: 'data-tables',
+								args: { action: 'insert-rows' },
 								result: {
 									insertedCount: 1,
 									dataTableId: 'dt-no-name',

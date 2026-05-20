@@ -53,7 +53,7 @@ describe('mapAgentChunkToEvent', () => {
 						{
 							type: 'tool-call',
 							toolCallId: 'tc-1',
-							toolName: 'create-workflow',
+							toolName: 'build-workflow',
 							input: { name: 'Workflow' },
 						},
 					],
@@ -65,7 +65,7 @@ describe('mapAgentChunkToEvent', () => {
 			agentId,
 			payload: {
 				toolCallId: 'tc-1',
-				toolName: 'create-workflow',
+				toolName: 'build-workflow',
 				args: { name: 'Workflow' },
 			},
 		});
@@ -87,7 +87,7 @@ describe('mapAgentChunkToEvent', () => {
 						{
 							type: 'tool-result',
 							toolCallId: 'tc-1',
-							toolName: 'create-workflow',
+							toolName: 'build-workflow',
 							result: { workflowId: 'wf-1' },
 						},
 					],
@@ -114,7 +114,7 @@ describe('mapAgentChunkToEvent', () => {
 						{
 							type: 'tool-result',
 							toolCallId: 'tc-1',
-							toolName: 'create-workflow',
+							toolName: 'build-workflow',
 							result: 'Could not create workflow',
 							isError: true,
 						},

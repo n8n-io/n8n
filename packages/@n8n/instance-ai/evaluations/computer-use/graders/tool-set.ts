@@ -2,9 +2,10 @@
 // Tool name set for the computer-use MCP server.
 //
 // The agent sees these tool names verbatim — they're what shows up in the SSE
-// trace `toolName` field for tool-call/tool-result events. Native instance-ai
-// tools use hyphenated names (build-workflow, run-workflow); computer-use
-// tools use snake_case, which is what the daemon advertises over MCP.
+// trace `toolName` field for tool-call/tool-result events. Native Instance AI
+// tools use names like `build-workflow` and consolidated tools with action
+// arguments like `executions(action="run")`; computer-use tools use snake_case,
+// which is what the daemon advertises over MCP.
 // ---------------------------------------------------------------------------
 
 const FILESYSTEM_TOOLS = [

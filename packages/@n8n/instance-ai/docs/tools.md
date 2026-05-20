@@ -152,6 +152,21 @@ Both modes: max 60 steps, publishes events to the event bus, non-blocking.
 - `materialize-node-type` — fetches `.d.ts` definitions and writes to sandbox for `tsc`
 - `write-file` — writes files to sandbox workspace (path-traversal protected)
 
+### `complete-checkpoint`
+
+Report the outcome of a planned-task checkpoint. Only valid during a
+`<planned-task-follow-up type="checkpoint">` turn.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `taskId` | string | yes | Checkpoint task ID from the follow-up payload |
+| `status` | `"succeeded" \| "failed"` | yes | Verification outcome |
+| `result` | string | no | Short user-visible verification note |
+| `error` | string | no | Failure message when `status="failed"` |
+| `outcome` | object | no | Structured outcome payload, such as execution evidence |
+
+**Returns**: `{ result: string, ok: boolean }`
+
 ### `verify-built-workflow` *(conditional)*
 
 Run a built workflow with sidecar pin data for verification (never persisted).
@@ -684,7 +699,7 @@ require `workspaceService.listFolders`.
 
 Web research operations are actions on one consolidated native tool.
 
-### `research(action="web-search")` *(conditional — requires search provider)*
+### `research(action="web-search")`
 
 Search the web and return ranked results. Provider priority: Brave > SearXNG > disabled.
 
@@ -741,8 +756,8 @@ Only available to the planner. Use `templates(action="best-practices")` with
 
 ## Tool Distribution
 
-Not all tools are available to all agents. The orchestrator has access to
-everything; sub-agents receive only what they need.
+Not all tools are available to all agents. The orchestrator has the main
+orchestration/domain surface; sub-agents receive only what they need.
 
 | Tool Category | Orchestrator | Sub-Agents (delegate) | Background Agents |
 |---------------|:---:|:---:|:---:|
@@ -756,7 +771,7 @@ everything; sub-agents receive only what they need.
 | Workspace tools | ✅ | ✅ (via delegate) | ❌ |
 | Filesystem tools | ✅ (conditional) | ✅ (via delegate) | ❌ |
 | Web research tools | ✅ | ✅ (via delegate) | ✅ (research agent) |
-| Template / best practices | ✅ | ✅ (via delegate) | ✅ (builder) |
+| Planner-only tools (`templates`) | via `plan` | ❌ | ❌ |
 | Sandbox tools (`submit-workflow`, `materialize-node-type`, `write-file`) | ❌ | ❌ | ✅ (builder only) |
 | MCP tools | ✅ | ✅ (via delegate by exact name) | ❌ |
 | Browser MCP tools | ❌ | ✅ (exact-name delegate; prefer `browser-credential-setup`) | ✅ (browser-credential-setup only) |

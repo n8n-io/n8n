@@ -147,7 +147,8 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'create-data-table',
+					toolName: 'data-tables',
+					args: { action: 'create' },
 					result: {
 						table: { id: 'dt-2', name: 'Orders', projectId: 'proj-1' },
 					},
@@ -169,7 +170,8 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'insert-data-table-rows',
+					toolName: 'data-tables',
+					args: { action: 'insert-rows' },
 					result: { tableId: 'dt-3', tableName: 'Customers' },
 				}),
 			],
@@ -182,7 +184,8 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'update-data-table-rows',
+					toolName: 'data-tables',
+					args: { action: 'update-rows' },
 					result: { dataTableId: 'dt-4' },
 				}),
 			],

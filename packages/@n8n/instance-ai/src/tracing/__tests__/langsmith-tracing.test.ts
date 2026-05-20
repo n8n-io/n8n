@@ -5,7 +5,13 @@ import type * as AsyncHooks from 'node:async_hooks';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import { createToolRegistry } from '../../tool-registry';
-import { TraceWriter, type TraceToolCall, type TraceToolSuspend } from '../trace-replay';
+import {
+	IdRemapper,
+	TraceIndex,
+	TraceWriter,
+	type TraceToolCall,
+	type TraceToolSuspend,
+} from '../trace-replay';
 
 jest.mock('@n8n/agents', () => {
 	const actual = jest.requireActual<Record<string, unknown>>('@n8n/agents');
@@ -1537,6 +1543,56 @@ describe('createInstanceAiTraceContext', () => {
 			output: { denied: true },
 		});
 	});
+
+	it.each([
+		{
+			toolName: 'research',
+			input: { action: 'web-search', query: 'n8n docs' },
+			output: { query: 'n8n docs', results: [{ title: 'Recorded' }] },
+		},
+		{
+			toolName: 'research',
+			input: { action: 'fetch-url', url: 'https://docs.n8n.io' },
+			output: { url: 'https://docs.n8n.io', content: 'Recorded page' },
+		},
+		{
+			toolName: 'credentials',
+			input: { action: 'test', credentialId: 'cred-1' },
+			output: { success: true },
+		},
+	])(
+		'pure-replays consolidated external tool action $toolName',
+		async ({ toolName, input, output }) => {
+			const tracing = createTraceReplayOnlyContext();
+			tracing.replayMode = 'replay';
+			tracing.traceIndex = new TraceIndex([
+				{
+					kind: 'tool-call',
+					stepId: 1,
+					agentRole: 'orchestrator',
+					toolName,
+					input,
+					output,
+				},
+			]);
+			tracing.idRemapper = new IdRemapper();
+
+			const handler = jest.fn(async () => await Promise.resolve({ live: true }));
+			const tool: BuiltTool = { name: toolName, description: 'External action', handler };
+			const wrappedTools = tracing.wrapTools(createToolRegistry([[toolName, tool]]), {
+				agentRole: 'orchestrator',
+			});
+			const wrappedTool = wrappedTools.get(toolName);
+			if (!isExecutableTool(wrappedTool)) {
+				throw new Error(`Wrapped ${toolName} is not executable`);
+			}
+
+			const result = await executeTool(wrappedTool, input, {});
+
+			expect(result).toEqual(output);
+			expect(handler).not.toHaveBeenCalled();
+		},
+	);
 
 	it('does not wrap local tools for duplicate product-level LangSmith spans', async () => {
 		const tracing = await createInstanceAiTraceContext({

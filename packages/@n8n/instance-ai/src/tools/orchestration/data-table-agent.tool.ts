@@ -3,7 +3,7 @@
  *
  * Creates a focused sub-agent for data table management (CRUD on tables,
  * columns, and rows). Uses consumeStreamWithHitl for HITL on destructive
- * operations (delete-data-table, delete-data-table-rows).
+ * data-tables actions.
  */
 
 import { Agent, Tool } from '@n8n/agents';

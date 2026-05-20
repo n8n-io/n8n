@@ -94,7 +94,7 @@ const exploreResourcesAction = z.object({
 				'Pick the one matching the annotation you found in the type definition.',
 		),
 	credentialType: z.string().describe('Credential type key, e.g. "googleSheetsOAuth2Api"'),
-	credentialId: z.string().describe('Credential ID from list-credentials'),
+	credentialId: z.string().describe('Credential ID from credentials(action="list")'),
 	filter: z.string().optional().describe('Search/filter text to narrow results'),
 	paginationToken: z
 		.string()
@@ -334,7 +334,7 @@ export function createNodesTool(
 						'Pick the one matching the annotation you found in the type definition.',
 				),
 			credentialType: z.string().describe('Credential type key, e.g. "googleSheetsOAuth2Api"'),
-			credentialId: z.string().describe('Credential ID from list-credentials'),
+			credentialId: z.string().describe('Credential ID from credentials(action="list")'),
 			filter: z.string().optional().describe('Search/filter text to narrow results'),
 			paginationToken: z
 				.string()

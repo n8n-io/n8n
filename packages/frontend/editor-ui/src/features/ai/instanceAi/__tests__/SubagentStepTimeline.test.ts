@@ -19,8 +19,8 @@ const renderComponent = createThreadComponentRenderer(SubagentStepTimeline, {
 function makeToolCall(overrides: Partial<InstanceAiToolCallState> = {}): InstanceAiToolCallState {
 	return {
 		toolCallId: 'tc-1',
-		toolName: 'search-nodes',
-		args: {},
+		toolName: 'nodes',
+		args: { action: 'search' },
 		isLoading: false,
 		...overrides,
 	};
@@ -58,7 +58,7 @@ describe('SubagentStepTimeline', () => {
 	});
 
 	it('should render tool-call timeline entry via ToolCallStep stub', () => {
-		const tc = makeToolCall({ toolCallId: 'tc-42', toolName: 'search-nodes' });
+		const tc = makeToolCall({ toolCallId: 'tc-42' });
 		const { getByTestId } = renderComponent({
 			props: {
 				agentNode: makeAgentNode({
@@ -70,7 +70,7 @@ describe('SubagentStepTimeline', () => {
 
 		const step = getByTestId('tool-call-step');
 		expect(step).toBeInTheDocument();
-		expect(step.textContent).toContain('search-nodes');
+		expect(step.textContent).toContain('nodes');
 	});
 
 	it('should skip child timeline entries', () => {

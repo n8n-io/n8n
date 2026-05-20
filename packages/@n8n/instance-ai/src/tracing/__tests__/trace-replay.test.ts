@@ -221,38 +221,38 @@ describe('TraceIndex', () => {
 	it('should advance cursor per agent role', () => {
 		const events: TraceEvent[] = [
 			{ kind: 'header', version: 1, testName: 'test', recordedAt: '' },
-			makeToolCall(1, 'orchestrator', 'search-nodes'),
+			makeToolCall(1, 'orchestrator', 'nodes'),
 			makeToolCall(2, 'workflow-builder', 'build-workflow'),
-			makeToolCall(3, 'orchestrator', 'run-workflow'),
+			makeToolCall(3, 'orchestrator', 'executions'),
 		];
 
 		const index = new TraceIndex(events);
 
-		const e1 = index.next('orchestrator', 'search-nodes');
+		const e1 = index.next('orchestrator', 'nodes');
 		expect(e1.stepId).toBe(1);
 
 		const e2 = index.next('workflow-builder', 'build-workflow');
 		expect(e2.stepId).toBe(2);
 
-		const e3 = index.next('orchestrator', 'run-workflow');
+		const e3 = index.next('orchestrator', 'executions');
 		expect(e3.stepId).toBe(3);
 	});
 
 	it('should throw on tool name mismatch', () => {
-		const events: TraceEvent[] = [makeToolCall(1, 'orchestrator', 'search-nodes')];
+		const events: TraceEvent[] = [makeToolCall(1, 'orchestrator', 'nodes')];
 
 		const index = new TraceIndex(events);
 
 		expect(() => index.next('orchestrator', 'wrong-tool')).toThrow(
-			/Tool mismatch.*expected "wrong-tool".*trace has "search-nodes"/,
+			/Tool mismatch.*expected "wrong-tool".*trace has "nodes"/,
 		);
 	});
 
 	it('should throw when trace is exhausted', () => {
-		const events: TraceEvent[] = [makeToolCall(1, 'orchestrator', 'search-nodes')];
+		const events: TraceEvent[] = [makeToolCall(1, 'orchestrator', 'nodes')];
 
 		const index = new TraceIndex(events);
-		index.next('orchestrator', 'search-nodes');
+		index.next('orchestrator', 'nodes');
 
 		expect(() => index.next('orchestrator', 'another-tool')).toThrow(
 			/Trace exhausted for role "orchestrator"/,
@@ -260,11 +260,11 @@ describe('TraceIndex', () => {
 	});
 
 	it('should throw for unknown agent role', () => {
-		const events: TraceEvent[] = [makeToolCall(1, 'orchestrator', 'search-nodes')];
+		const events: TraceEvent[] = [makeToolCall(1, 'orchestrator', 'nodes')];
 
 		const index = new TraceIndex(events);
 
-		expect(() => index.next('unknown-role', 'search-nodes')).toThrow(
+		expect(() => index.next('unknown-role', 'nodes')).toThrow(
 			/Trace exhausted for role "unknown-role"/,
 		);
 	});
@@ -283,12 +283,12 @@ describe('TraceIndex', () => {
 	});
 
 	it('should return null from matching lookup when trace is exhausted or role is unknown', () => {
-		const events: TraceEvent[] = [makeToolCall(1, 'orchestrator', 'search-nodes')];
+		const events: TraceEvent[] = [makeToolCall(1, 'orchestrator', 'nodes')];
 
 		const index = new TraceIndex(events);
 
-		expect(index.nextMatching('unknown-role', 'search-nodes')).toBeNull();
-		expect(index.nextMatching('orchestrator', 'search-nodes')?.stepId).toBe(1);
+		expect(index.nextMatching('unknown-role', 'nodes')).toBeNull();
+		expect(index.nextMatching('orchestrator', 'nodes')?.stepId).toBe(1);
 		expect(index.nextMatching('orchestrator', 'another-tool')).toBeNull();
 	});
 
@@ -313,25 +313,25 @@ describe('TraceIndex', () => {
 	it('should handle suspend and resume events', () => {
 		const events: TraceEvent[] = [
 			makeToolCall(1, 'orchestrator', 'build-workflow'),
-			makeSuspend(2, 'orchestrator', 'run-workflow'),
-			makeResume(3, 'orchestrator', 'run-workflow'),
+			makeSuspend(2, 'orchestrator', 'executions'),
+			makeResume(3, 'orchestrator', 'executions'),
 		];
 
 		const index = new TraceIndex(events);
 
 		expect(index.next('orchestrator', 'build-workflow').kind).toBe('tool-call');
-		expect(index.next('orchestrator', 'run-workflow').kind).toBe('tool-suspend');
-		expect(index.next('orchestrator', 'run-workflow').kind).toBe('tool-resume');
+		expect(index.next('orchestrator', 'executions').kind).toBe('tool-suspend');
+		expect(index.next('orchestrator', 'executions').kind).toBe('tool-resume');
 	});
 
 	it('should filter out header events', () => {
 		const events: TraceEvent[] = [
 			{ kind: 'header', version: 1, testName: 'test', recordedAt: '' },
-			makeToolCall(1, 'orchestrator', 'search-nodes'),
+			makeToolCall(1, 'orchestrator', 'nodes'),
 		];
 
 		const index = new TraceIndex(events);
-		const event = index.next('orchestrator', 'search-nodes');
+		const event = index.next('orchestrator', 'nodes');
 		expect(event.stepId).toBe(1);
 	});
 });
@@ -353,7 +353,7 @@ describe('TraceWriter', () => {
 
 	it('should record tool-call events with incrementing stepIds', () => {
 		const writer = new TraceWriter('test');
-		writer.recordToolCall('orchestrator', 'search-nodes', { q: 'http' }, { results: [] });
+		writer.recordToolCall('orchestrator', 'nodes', { q: 'http' }, { results: [] });
 		writer.recordToolCall('builder', 'build-workflow', { nodes: [] }, { workflowId: '5' });
 
 		const events = writer.getEvents();
@@ -363,7 +363,7 @@ describe('TraceWriter', () => {
 		expect(call1.kind).toBe('tool-call');
 		expect(call1.stepId).toBe(1);
 		expect(call1.agentRole).toBe('orchestrator');
-		expect(call1.toolName).toBe('search-nodes');
+		expect(call1.toolName).toBe('nodes');
 		expect(call1.input).toEqual({ q: 'http' });
 		expect(call1.output).toEqual({ results: [] });
 
@@ -377,7 +377,7 @@ describe('TraceWriter', () => {
 		const writer = new TraceWriter('test');
 		writer.recordToolSuspend(
 			'orchestrator',
-			'run-workflow',
+			'executions',
 			{ workflowId: '5' },
 			{ denied: true },
 			{ reason: 'needs approval' },
@@ -394,7 +394,7 @@ describe('TraceWriter', () => {
 		const writer = new TraceWriter('test');
 		writer.recordToolResume(
 			'orchestrator',
-			'run-workflow',
+			'executions',
 			{ workflowId: '5' },
 			{ executionId: 'exec-1' },
 			{ approved: true },
@@ -419,7 +419,7 @@ describe('TraceWriter', () => {
 
 	it('should serialize events to JSONL format', () => {
 		const writer = new TraceWriter('test');
-		writer.recordToolCall('orch', 'search-nodes', { q: 'http' }, { results: [] });
+		writer.recordToolCall('orch', 'nodes', { q: 'http' }, { results: [] });
 
 		const jsonl = writer.toJsonl();
 		const lines = jsonl.trim().split('\n');
@@ -430,7 +430,7 @@ describe('TraceWriter', () => {
 
 		const call = jsonParse<{ kind: string; toolName: string }>(lines[1]);
 		expect(call.kind).toBe('tool-call');
-		expect(call.toolName).toBe('search-nodes');
+		expect(call.toolName).toBe('nodes');
 	});
 });
 
@@ -470,7 +470,7 @@ describe('parseTraceJsonl', () => {
 	it('should roundtrip with TraceWriter', () => {
 		const writer = new TraceWriter('roundtrip-test');
 		writer.recordToolCall('orch', 'build-workflow', { nodes: [] }, { workflowId: '5' });
-		writer.recordToolSuspend('orch', 'run-workflow', { workflowId: '5' }, {}, { ask: true });
+		writer.recordToolSuspend('orch', 'executions', { workflowId: '5' }, {}, { ask: true });
 
 		const parsed = parseTraceJsonl(writer.toJsonl());
 		expect(parsed).toHaveLength(3);

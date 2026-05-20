@@ -22,8 +22,8 @@ const renderComponent = createComponentRenderer(ToolCallStep, {
 function makeToolCall(overrides: Partial<InstanceAiToolCallState> = {}): InstanceAiToolCallState {
 	return {
 		toolCallId: 'tc-1',
-		toolName: 'search-nodes',
-		args: { query: 'slack' },
+		toolName: 'nodes',
+		args: { action: 'search', query: 'slack' },
 		isLoading: false,
 		...overrides,
 	};
@@ -40,7 +40,7 @@ describe('ToolCallStep', () => {
 
 	it('should display the tool label', () => {
 		const { getByTestId } = renderComponent({
-			props: { toolCall: makeToolCall({ toolName: 'search-nodes' }) },
+			props: { toolCall: makeToolCall() },
 		});
 
 		const button = getByTestId('timeline-step-button');

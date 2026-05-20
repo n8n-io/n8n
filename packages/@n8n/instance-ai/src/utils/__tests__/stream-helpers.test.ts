@@ -39,7 +39,7 @@ describe('parseSuspension', () => {
 			type: 'tool-call-suspended',
 			payload: {
 				toolCallId: 'tc-1',
-				toolName: 'setup-credentials',
+				toolName: 'credentials',
 				suspendPayload: {
 					requestId: 'req-1',
 				},
@@ -49,7 +49,7 @@ describe('parseSuspension', () => {
 		expect(parseSuspension(chunk)).toEqual({
 			toolCallId: 'tc-1',
 			requestId: 'req-1',
-			toolName: 'setup-credentials',
+			toolName: 'credentials',
 		});
 	});
 
@@ -57,7 +57,7 @@ describe('parseSuspension', () => {
 		const chunk = {
 			type: 'tool-call-suspended',
 			toolCallId: 'tc-1',
-			toolName: 'setup-credentials',
+			toolName: 'credentials',
 			suspendPayload: {
 				requestId: 'req-1',
 			},
@@ -66,7 +66,7 @@ describe('parseSuspension', () => {
 		expect(parseSuspension(chunk)).toEqual({
 			toolCallId: 'tc-1',
 			requestId: 'req-1',
-			toolName: 'setup-credentials',
+			toolName: 'credentials',
 		});
 	});
 

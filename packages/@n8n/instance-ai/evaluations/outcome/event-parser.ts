@@ -21,9 +21,6 @@ const WORKFLOW_TOOLS = new Set([
 	'build-workflow-with-agent',
 ]);
 
-const EXECUTION_TOOL = 'run-workflow';
-const DATA_TABLE_TOOL = 'create-data-table';
-
 // ---------------------------------------------------------------------------
 // Type guards for event payloads
 // ---------------------------------------------------------------------------
@@ -112,7 +109,7 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 				toolCalls.push(toolCall);
 
 				// Extract resource IDs from tool results
-				extractResourceIds(toolName, result, workflowIds, executionIds, dataTableIds);
+				extractResourceIds(toolName, args, result, workflowIds, executionIds, dataTableIds);
 				break;
 			}
 
@@ -327,6 +324,7 @@ export function buildMetrics(events: CapturedEvent[], startTime: number): Instan
 
 function extractResourceIds(
 	toolName: string,
+	args: Record<string, unknown>,
 	result: unknown,
 	workflowIds: string[],
 	executionIds: string[],
@@ -337,15 +335,23 @@ function extractResourceIds(
 		if (id) workflowIds.push(id);
 	}
 
-	if (toolName === EXECUTION_TOOL) {
+	if (toolName === 'executions' && args.action === 'run') {
 		const id = extractIdFromResult(result, 'executionId', 'id');
 		if (id) executionIds.push(id);
 	}
 
-	if (toolName === DATA_TABLE_TOOL) {
-		const id = extractIdFromResult(result, 'dataTableId', 'id');
+	if (toolName === 'data-tables' && args.action === 'create') {
+		const id = extractDataTableIdFromResult(result);
 		if (id) dataTableIds.push(id);
 	}
+}
+
+function extractDataTableIdFromResult(result: unknown): string | undefined {
+	const directId = extractIdFromResult(result, 'dataTableId', 'id');
+	if (directId) return directId;
+	if (!isRecord(result)) return undefined;
+	const table = getRecord(result, 'table');
+	return table ? extractIdFromRecord(table, ['id']) : undefined;
 }
 
 function extractIdFromResult(result: unknown, ...keys: string[]): string | undefined {

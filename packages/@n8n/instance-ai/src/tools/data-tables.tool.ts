@@ -321,7 +321,7 @@ async function handleCreate(
 		if (isNameConflictError(error)) {
 			return {
 				denied: true,
-				reason: `Table "${input.name}" already exists. Use list-data-tables to find it and get-data-table-schema to check its columns.`,
+				reason: `Table "${input.name}" already exists. Use data-tables(action="list") to find it and data-tables(action="schema") to check its columns.`,
 			};
 		}
 		throw error;

@@ -58,7 +58,7 @@ export function createMaterializeNodeTypeTool(
 		.description(
 			'Get TypeScript type definitions for nodes. Returns the full definition content ' +
 				'AND writes the files to the sandbox so tsc can reference them. ' +
-				'Use after search-nodes to get exact schemas before writing workflow code. ' +
+				'Use after nodes(action="search") to get exact schemas before writing workflow code. ' +
 				'No need to cat the files afterward — content is returned directly.',
 		)
 		.input(materializeNodeTypeInputSchema)

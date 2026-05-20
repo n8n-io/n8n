@@ -408,9 +408,9 @@ LLM responses are frozen — the replay serves the exact same bytes regardless o
 3. **Verify replay** by running without the key.
 
 4. **Classify any new tools/actions**: If the test exercises external services,
-   update the replay classification in `trace-replay.ts`. For consolidated
-   tools, use action-aware handling rather than pure-replaying every action on
-   the tool.
+   update `PURE_REPLAY_TOOLS` or `PURE_REPLAY_TOOL_ACTIONS` in `trace-replay.ts`.
+   For consolidated tools, classify only the external action rather than
+   pure-replaying every action on the tool.
 
 5. **Use identity-based assertions** for thread lookups — `getThreadByTitle()` instead of positional selectors like `.last()`. Tests run in parallel and share containers; positional selectors break when other tests create threads.
 

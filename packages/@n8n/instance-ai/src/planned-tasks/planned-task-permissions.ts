@@ -8,7 +8,7 @@ import type { InstanceAiContext, PlannedTaskKind } from '../types';
  * Plan approval acts as authorization for the task-family's non-destructive tools,
  * so the sub-agent can execute without a second confirmation prompt.
  *
- * Destructive actions (delete-data-table), open-ended actions (fetch-url, read-file),
+ * Destructive data-table actions, open-ended actions (research fetch-url, read-file),
  * and credential deletion are intentionally excluded — they always require explicit approval.
  */
 export const PLANNED_TASK_PERMISSION_OVERRIDES: Partial<

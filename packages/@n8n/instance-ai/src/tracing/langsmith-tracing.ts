@@ -48,7 +48,7 @@ import {
 	toTelemetryMetadata,
 } from './trace-payloads';
 import type { IdRemapper, TraceIndex, TraceWriter } from './trace-replay';
-import { PURE_REPLAY_TOOLS } from './trace-replay';
+import { PURE_REPLAY_TOOL_ACTIONS, PURE_REPLAY_TOOLS } from './trace-replay';
 import { isRecord } from '../utils/stream-helpers';
 
 export {
@@ -1199,6 +1199,12 @@ function replayWrapTool(
 	return {
 		...tool,
 		handler: async (input, context) => {
+			if (shouldPureReplayToolCall(tool.name, input)) {
+				return await Promise.resolve(
+					getPureReplayRecordedOutput(tool.name, traceIndex, idRemapper, agentRole),
+				);
+			}
+
 			const event = traceIndex.nextMatching(agentRole, tool.name);
 			const remappedInput: unknown = idRemapper.remapInput(input);
 			const realOutput = await tool.handler(remappedInput, context);
@@ -1208,6 +1214,26 @@ function replayWrapTool(
 			return realOutput;
 		},
 	};
+}
+
+function shouldPureReplayToolCall(toolName: string, input: unknown): boolean {
+	if (PURE_REPLAY_TOOLS.has(toolName)) return true;
+	if (!isRecord(input) || typeof input.action !== 'string') return false;
+
+	return PURE_REPLAY_TOOL_ACTIONS.get(toolName)?.has(input.action) ?? false;
+}
+
+function getPureReplayRecordedOutput(
+	toolName: string,
+	traceIndex: TraceIndex,
+	idRemapper: IdRemapper,
+	agentRole: string,
+): unknown {
+	const event = traceIndex.nextMatching(agentRole, toolName);
+	if (!event) {
+		throw new Error(`No recorded output for pure-replay tool "${toolName}" in role "${agentRole}"`);
+	}
+	return idRemapper.remapOutput(event.output);
 }
 
 /**
@@ -1223,13 +1249,9 @@ function pureReplayWrapTool(
 	return {
 		...tool,
 		handler: async (_input, _context) => {
-			const event = traceIndex.nextMatching(agentRole, tool.name);
-			if (!event) {
-				throw new Error(
-					`No recorded output for pure-replay tool "${tool.name}" in role "${agentRole}"`,
-				);
-			}
-			return await Promise.resolve(idRemapper.remapOutput(event.output));
+			return await Promise.resolve(
+				getPureReplayRecordedOutput(tool.name, traceIndex, idRemapper, agentRole),
+			);
 		},
 	};
 }

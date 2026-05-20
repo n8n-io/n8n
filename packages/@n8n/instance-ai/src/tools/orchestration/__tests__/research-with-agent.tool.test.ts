@@ -26,10 +26,10 @@ function createMockContext(overrides?: Partial<OrchestrationContext>): Orchestra
 	const domainTools = createToolRegistry([
 		['research', { name: 'research', description: 'research', handler: jest.fn() }],
 		[
-			'list-workflows',
+			'workflows',
 			{
-				name: 'list-workflows',
-				description: 'list-workflows',
+				name: 'workflows',
+				description: 'workflows',
 				handler: jest.fn(),
 			},
 		],
@@ -123,10 +123,7 @@ describe('research-with-agent tool', () => {
 		it('returns error when research tool is not available', async () => {
 			const context = createMockContext({
 				domainTools: createToolRegistry([
-					[
-						'list-workflows',
-						{ name: 'list-workflows', description: 'list-workflows', handler: jest.fn() },
-					],
+					['workflows', { name: 'workflows', description: 'workflows', handler: jest.fn() }],
 				]),
 			});
 			const tool = createResearchWithAgentTool(context);
