@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 import { EphemeralNodeExecutor, isAgentProviderNode } from '@/node-execution';
 import { NodeCatalogService } from '@/node-catalog';
+import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
 
 type NodeRequest =
 	| string
@@ -27,6 +28,15 @@ type NodeRequest =
 export const isExecutableNodeType = (nodeId: string): boolean => !isTriggerNodeType(nodeId);
 
 /**
+ * Nodes from the MCP registry package are synthesised at runtime from the
+ * curated catalog and are purpose-built for agent tool use, but their bare
+ * names don't follow the `*Tool` suffix convention `isToolType` checks for —
+ * they're admitted by package id instead.
+ */
+const isMcpRegistryNode = (nodeId: string): boolean =>
+	nodeId.startsWith(`${MCP_REGISTRY_PACKAGE_NAME}.`);
+
+/**
  * Node IDs the agent builder should surface when configuring node-backed
  * tools. For regular nodes marked `usableAsTool`, the loader creates a
  * mirrored `*Tool` node type; native tool nodes already follow this shape.
@@ -40,7 +50,9 @@ export const isExecutableNodeType = (nodeId: string): boolean => !isTriggerNodeT
  */
 export const isAgentToolNodeType = (nodeId: string): boolean =>
 	isExecutableNodeType(nodeId) &&
-	(isToolType(nodeId, { includeHitl: false }) || isAgentProviderNode(nodeId));
+	(isToolType(nodeId, { includeHitl: false }) ||
+		isAgentProviderNode(nodeId) ||
+		isMcpRegistryNode(nodeId));
 
 const searchNodesInputSchema = z.object({
 	queries: z.array(z.string()).min(1).describe('Search queries (e.g., ["gmail", "slack", "http"])'),
