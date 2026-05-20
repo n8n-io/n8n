@@ -59,7 +59,7 @@ async function callJson2(
 // format that execute() expects. Deprecated in Odoo 19; scheduled for removal
 // in Odoo 22 (fall 2028) and Odoo Online 21.1 (winter 2027).
 
-function bodyToRpcArgs(method: string, body: IDataObject): unknown[] {
+export function bodyToRpcArgs(method: string, body: IDataObject): unknown[] {
 	switch (method) {
 		case 'create':
 			// body.vals_list is [{...fields}]; legacy execute expects the vals dict directly
