@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
+import { blockedErrorProperties } from '../runtime/safe-globals';
 
 // Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
 // file is statically imported (e.g. for error classes). The native module is
@@ -592,7 +593,13 @@ try {
 		const error = new Error(data.message);
 		error.name = data.name || 'Error';
 		if (data.stack) error.stack = data.stack;
-		if (data.extra) Object.assign(error, data.extra);
+		if (data.extra) {
+			for (const [key, value] of Object.entries(data.extra)) {
+				if (!blockedErrorProperties.has(key) && typeof value !== 'function') {
+					(error as unknown as Record<string, unknown>)[key] = value;
+				}
+			}
+		}
 		return error;
 	}
 
