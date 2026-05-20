@@ -24,6 +24,21 @@ const SafeURIError = createSafeErrorSubclass(URIError);
 // ============================================================================
 
 /**
+ * The subset of `ivm.Reference` shape the in-isolate runtime relies on.
+ * Declared locally rather than importing from `isolated-vm` because this
+ * module is bundled into the isolate IIFE, where the native module is
+ * unavailable. The host wires real `ivm.Reference` instances which
+ * structurally satisfy this interface.
+ */
+interface BridgeCallback {
+	applySync(
+		thisArg: unknown,
+		args: unknown[],
+		options?: { arguments?: { copy?: boolean }; result?: { copy?: boolean } },
+	): unknown;
+}
+
+/**
  * Bridge callbacks the in-isolate runtime can invoke synchronously via
  * `ivm.Reference.applySync`.
  *
@@ -40,14 +55,10 @@ const SafeURIError = createSafeErrorSubclass(URIError);
  *     host RPC, not a postMessage-style async send.
  */
 export interface BridgeCallbacks {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	getValueAtPath: any;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	getArrayElement: any;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	callFunctionAtPath: any;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	callHost: any;
+	getValueAtPath: BridgeCallback;
+	getArrayElement: BridgeCallback;
+	callFunctionAtPath: BridgeCallback;
+	callHost: BridgeCallback;
 }
 
 /**
