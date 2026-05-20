@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -15,7 +16,13 @@ export class InsightsModule implements ModuleInterface {
 		await Container.get(InsightsService).init();
 
 		const { InsightsDemoService } = await import('./insights-demo.service');
-		await Container.get(InsightsDemoService).seed();
+		try {
+			await Container.get(InsightsDemoService).seed();
+		} catch (error) {
+			Container.get(Logger).scoped('insights').warn('Failed to seed Insights Analyst demo data', {
+				error,
+			});
+		}
 	}
 
 	async entities() {
