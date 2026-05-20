@@ -3,11 +3,14 @@ import axios from 'axios';
 import { Response } from 'express';
 import { ensureError, jsonStringify } from 'n8n-workflow';
 
+import { AuthService } from '@/auth/auth.service';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { OAuthRequest } from '@/requests';
 
 import {
 	OauthService,
 	skipAuthOnOAuthCallback,
+	type CreateCsrfStateData,
 	type OAuth1CredentialData,
 } from '@/oauth/oauth.service';
 import { Logger } from '@n8n/backend-common';
@@ -17,6 +20,8 @@ export class OAuth1CredentialController {
 	constructor(
 		private readonly oauthService: OauthService,
 		private readonly logger: Logger,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
+		private readonly authService: AuthService,
 	) {}
 
 	/** Get Authorization url */
@@ -24,11 +29,30 @@ export class OAuth1CredentialController {
 	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth): Promise<string> {
 		const credential = await this.oauthService.getCredentialForUpdate(req);
 
-		const uri = await this.oauthService.generateAOauth1AuthUri(credential, {
-			cid: credential.id,
-			origin: 'static-credential',
-			userId: skipAuthOnOAuthCallback ? undefined : req.user.id,
-		});
+		const privateResolverId = credential.isResolvable
+			? await this.dynamicCredentialsProxy.getSystemResolverId()
+			: null;
+
+		let csrfData: CreateCsrfStateData;
+		if (credential.isResolvable && privateResolverId !== null) {
+			const cookieToken = this.authService.getCookieToken(req);
+			csrfData = {
+				cid: credential.id,
+				origin: 'dynamic-credential',
+				userId: req.user.id,
+				credentialResolverId: privateResolverId,
+				authorizationHeader: `Bearer ${cookieToken ?? ''}`,
+				authMetadata: { source: 'manual-execution' },
+			};
+		} else {
+			csrfData = {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: skipAuthOnOAuthCallback ? undefined : req.user.id,
+			};
+		}
+
+		const uri = await this.oauthService.generateAOauth1AuthUri(credential, csrfData);
 
 		this.logger.debug('OAuth1 authorization successful for new credential', {
 			userId: req.user.id,
