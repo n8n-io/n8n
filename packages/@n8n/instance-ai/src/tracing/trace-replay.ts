@@ -398,5 +398,11 @@ export function parseTraceJsonl(jsonl: string): TraceEvent[] {
 	return events;
 }
 
-/** Set of tool IDs that should use Tier 2 (pure replay) instead of real execution. */
+/** Legacy standalone tool IDs that should use Tier 2 (pure replay) instead of real execution. */
 export const PURE_REPLAY_TOOLS = new Set(['web-search', 'fetch-url', 'test-credential']);
+
+/** Consolidated tool actions that should use Tier 2 pure replay. */
+export const PURE_REPLAY_TOOL_ACTIONS: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+	['research', new Set(['web-search', 'fetch-url'])],
+	['credentials', new Set(['test'])],
+]);

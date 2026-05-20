@@ -132,8 +132,8 @@ An agent is invoking a tool. Sent before the tool executes.
   "agentId": "agent-001",
   "payload": {
     "toolCallId": "tc_abc123",
-    "toolName": "list-workflows",
-    "args": {"limit": 10}
+    "toolName": "workflows",
+    "args": {"action": "list", "limit": 10}
   }
 }
 ```
@@ -187,7 +187,7 @@ The orchestrator has created a new sub-agent via the `delegate` tool.
   "payload": {
     "parentId": "agent-001",
     "role": "workflow builder",
-    "tools": ["create-workflow", "update-workflow", "list-nodes", "get-node-description"]
+    "tools": ["build-workflow", "workflows", "nodes", "credentials"]
   }
 }
 ```
@@ -227,8 +227,8 @@ The tool's execution is paused until the user responds.
   "payload": {
     "requestId": "cr_xyz",
     "toolCallId": "tc_abc123",
-    "toolName": "delete-workflow",
-    "args": {"workflowId": "wf-123"},
+    "toolName": "workflows",
+    "args": {"action": "delete", "workflowId": "wf-123"},
     "severity": "warning",
     "message": "Archive workflow 'My Workflow'?"
   }
@@ -329,7 +329,7 @@ When a run errors:
 ```
 ← run-start       {runId: "r1", agentId: "a1", payload: {messageId: "m1"}}
 ← reasoning-delta {runId: "r1", agentId: "a1", payload: {text: "Let me look up..."}}
-← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "list-workflows"}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "workflows", args: {action: "list"}}}
 ← tool-result     {runId: "r1", agentId: "a1", payload: {result: [...]}}
 ← text-delta      {runId: "r1", agentId: "a1", payload: {text: "You have 3 workflows:\n"}}
 ← run-finish      {runId: "r1", agentId: "a1", payload: {status: "completed"}}
@@ -343,21 +343,21 @@ When a run errors:
 ← tool-result     {runId: "r1", agentId: "a1", payload: {result: {goal: "Weather to Slack"}}}
 ← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "delegate", toolCallId: "tc2"}}
 ← agent-spawned   {runId: "r1", agentId: "a2", payload: {parentId: "a1", role: "workflow builder"}}
-← tool-call       {runId: "r1", agentId: "a2", payload: {toolName: "create-workflow"}}
-← tool-result     {runId: "r1", agentId: "a2", payload: {result: {id: "wf-123"}}}
+← tool-call       {runId: "r1", agentId: "a2", payload: {toolName: "build-workflow"}}
+← tool-result     {runId: "r1", agentId: "a2", payload: {result: {workflowId: "wf-123"}}}
 ← agent-completed {runId: "r1", agentId: "a2", payload: {result: "Created wf-123"}}
 ← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc2", result: "Created wf-123"}}
-← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "run-workflow"}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "executions", args: {action: "run"}}}
 ← tool-result     {runId: "r1", agentId: "a1", payload: {result: {executionId: "exec-456"}}}
-← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "get-execution"}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "executions", args: {action: "get"}}}
 ← tool-result     {runId: "r1", agentId: "a1", payload: {result: {status: "error"}}}
 ← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "delegate", toolCallId: "tc5"}}
 ← agent-spawned   {runId: "r1", agentId: "a3", payload: {parentId: "a1", role: "execution debugger"}}
-← tool-call       {runId: "r1", agentId: "a3", payload: {toolName: "get-execution"}}
+← tool-call       {runId: "r1", agentId: "a3", payload: {toolName: "executions", args: {action: "get"}}}
 ← reasoning-delta {runId: "r1", agentId: "a3", payload: {text: "The HTTP node returned 401..."}}
 ← agent-completed {runId: "r1", agentId: "a3", payload: {result: "Missing API key header"}}
 ← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc5", result: "Missing API key"}}
-← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "plan", args: {action: "update"}}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "plan", args: {guidance: "Add a fix task for the failed execution"}}}
 ← ...loop continues...
 ← text-delta      {runId: "r1", agentId: "a1", payload: {text: "Done! I created a workflow..."}}
 ← run-finish      {runId: "r1", agentId: "a1", payload: {status: "completed"}}
@@ -375,23 +375,24 @@ graph LR
         S2[Sub-Agent B] -->|publish| Bus
     end
 
-    Bus --> Store[Thread Storage]
+    Bus --> Store[Bounded Recent Event Buffer]
     Bus --> SSE[SSE Endpoint]
     SSE --> FE[Frontend]
 ```
 
 All events are published to a per-thread channel on the event bus. Events are
-simultaneously persisted to thread storage and delivered to connected SSE clients.
+kept in a bounded recent-event buffer for SSE replay and delivered to connected
+SSE clients. Durable page refresh/session restore uses native messages and run
+snapshots rather than raw persisted SSE events.
 
 ### Implementations
 
 | Deployment | Transport | Why |
 |---|---|---|
 | Single instance | In-process `EventEmitter` | Zero infrastructure |
-| Queue mode | Redis Pub/Sub | n8n already uses Redis |
 
-Event persistence uses thread storage regardless of transport — this provides
-replay capability for reconnection.
+Replay for reconnects comes from the event bus buffer. Long-lived historical
+restore comes from the message store plus `instance_ai_run_snapshots`.
 
 ### Reconnection & Replay (Canonical Rule)
 
@@ -405,11 +406,11 @@ Three scenarios:
 |---|---|---|
 | **Auto-reconnect** (connection drop) | `Last-Event-ID` header, set by the browser automatically | Replay events after cursor, then switch to live |
 | **Page reload** (same thread) | `?lastEventId=N` query parameter, from the frontend's per-thread stored cursor | Replay events after cursor, then switch to live |
-| **Thread switch** (or first open) | No cursor (neither header nor query param) | Replay full event history from the beginning |
+| **Thread switch** (or first open) | No cursor (neither header nor query param) | Replay available buffered event history from the beginning |
 
 The backend must accept the cursor from both `Last-Event-ID` header and
 `?lastEventId` query parameter. If neither is present, replay starts from
-event ID 0 (full history).
+event ID 0 for the available buffered history.
 
 IDs are monotonically increasing integers per thread. Replay does not
 require dedup.
@@ -433,19 +434,19 @@ The frontend renders events as a collapsible tree grouped by `agentId`:
 ```
 🤖 Orchestrator
 ├── 💭 "Let me check what credentials are available..."
-├── 🔧 list-credentials → [slack-bot, weather-api]
+├── 🔧 credentials(action="list") → [slack-bot, weather-api]
 ├── 📋 plan: build → execute → inspect
 │
 ├── 🤖 Sub-Agent A (workflow builder)
-│   ├── 🔧 list-nodes → [scheduleTrigger, httpRequest, slack]
-│   ├── 🔧 create-workflow → wf-123
+│   ├── 🔧 nodes(action="list") → [scheduleTrigger, httpRequest, slack]
+│   ├── 🔧 build-workflow → wf-123
 │   └── ✅ "Created wf-123 with 3 nodes"
 │
-├── 🔧 run-workflow wf-123
-├── 🔧 get-execution → error (401)
+├── 🔧 executions(action="run") wf-123
+├── 🔧 executions(action="get") → error (401)
 │
 ├── 🤖 Sub-Agent B (execution debugger)
-│   ├── 🔧 get-execution → {error details}
+│   ├── 🔧 executions(action="get") → {error details}
 │   ├── 💭 "HTTP node returned 401..."
 │   └── ✅ "Missing API key in query params"
 │
@@ -482,14 +483,15 @@ replaying all SSE events.
 
 ### How It Works
 
-1. **Mastra V2 messages** — Mastra persists tool invocations, reasoning, and
-   text in its V2 message format. The backend parses these into rich
-   `InstanceAiMessage[]` objects with tool calls and flat agent trees.
+1. **Native agent messages** — native memory persists tool invocations,
+   reasoning, and text as `AgentDbMessage` records. The backend parses these
+   into rich `InstanceAiMessage[]` objects with tool calls and flat agent trees.
 
 2. **Agent tree snapshots** — after each `run-finish`, the backend replays
    events through `buildAgentTreeFromEvents()` and stores the resulting tree
-   in thread metadata. This preserves the full sub-agent hierarchy (tool
-   calls, text, reasoning) that the V2 message format alone cannot capture.
+   in `instance_ai_run_snapshots`. This preserves the full sub-agent hierarchy
+   (tool calls, text, reasoning) that the V2 message format alone cannot
+   capture.
 
 3. **SSE cursor** — the messages response includes `nextEventId`. The frontend
    sets its SSE cursor to `nextEventId - 1` so the SSE connection only receives

@@ -98,14 +98,14 @@ describe('extractOutcomeFromEvents', () => {
 		expect(result.workflowIds).toContain('wf-456');
 	});
 
-	it('extracts execution IDs from run-workflow results', () => {
+	it('extracts execution IDs from executions run results', () => {
 		const events: CapturedEvent[] = [
 			{
 				timestamp: 1000,
 				type: 'tool-call',
 				data: {
 					type: 'tool-call',
-					payload: { toolCallId: 'tc-1', toolName: 'run-workflow', args: {} },
+					payload: { toolCallId: 'tc-1', toolName: 'executions', args: { action: 'run' } },
 				},
 			},
 			{
@@ -115,7 +115,7 @@ describe('extractOutcomeFromEvents', () => {
 					type: 'tool-result',
 					payload: {
 						toolCallId: 'tc-1',
-						toolName: 'run-workflow',
+						toolName: 'executions',
 						result: { executionId: 'exec-789' },
 					},
 				},
@@ -126,14 +126,14 @@ describe('extractOutcomeFromEvents', () => {
 		expect(result.executionIds).toContain('exec-789');
 	});
 
-	it('extracts data table IDs from create-data-table results', () => {
+	it('extracts data table IDs from data-tables create results', () => {
 		const events: CapturedEvent[] = [
 			{
 				timestamp: 1000,
 				type: 'tool-call',
 				data: {
 					type: 'tool-call',
-					payload: { toolCallId: 'tc-1', toolName: 'create-data-table', args: {} },
+					payload: { toolCallId: 'tc-1', toolName: 'data-tables', args: { action: 'create' } },
 				},
 			},
 			{
@@ -143,8 +143,8 @@ describe('extractOutcomeFromEvents', () => {
 					type: 'tool-result',
 					payload: {
 						toolCallId: 'tc-1',
-						toolName: 'create-data-table',
-						result: { dataTableId: 'dt-001' },
+						toolName: 'data-tables',
+						result: { table: { id: 'dt-001' } },
 					},
 				},
 			},

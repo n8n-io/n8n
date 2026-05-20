@@ -7,7 +7,7 @@ natural language interface to workflows, executions, credentials, and nodes — 
 the goal that most users never need to interact with workflows directly.
 
 The system follows the **deep agent architecture** — an orchestrator with explicit
-planning, dynamic sub-agent delegation, observational memory, and structured
+planning, dynamic sub-agent delegation, rolling context compaction, and structured
 prompts. The LLM controls the execution loop; the architecture provides the
 primitives.
 
@@ -51,7 +51,7 @@ graph TB
         OrcAgent -->|publishes| EventBus
         SubAgent1 -->|publishes| EventBus
         SubAgent2 -->|publishes| EventBus
-        EventBus --> ThreadStorage[Thread Event Storage]
+        EventBus --> EventBuffer[Bounded Recent Event Buffer]
     end
 
     subgraph Filesystem ["Filesystem Access"]
@@ -68,17 +68,17 @@ graph TB
     end
 
     subgraph Storage ["Storage"]
-        Memory --> PostgreSQL
-        Memory --> SQLite[LibSQL / SQLite]
-        ThreadStorage --> PostgreSQL
-        ThreadStorage --> SQLite
+        Memory --> AppDB[(n8n App DB)]
+        Checkpoints[Checkpoints] --> AppDB
+        RunSnapshots[Run Snapshots] --> AppDB
+        IterationLogs[Iteration Logs] --> AppDB
     end
 
     subgraph Sandbox ["Sandbox (Optional)"]
         Service -->|per-thread| WorkspaceManager[Workspace Manager]
         WorkspaceManager --> DaytonaSandbox[Daytona Container]
         WorkspaceManager --> LocalSandbox[Local Sandbox]
-        DaytonaSandbox --> SandboxFS[Filesystem + execute_command]
+        DaytonaSandbox --> SandboxFS[Filesystem + workspace_execute_command]
         LocalSandbox --> SandboxFS
     end
 
@@ -114,12 +114,14 @@ of a fixed taxonomy (Builder, Debugger, Evaluator), the orchestrator specifies:
 Sub-agents are stateless (ADR-011), get clean context windows, and publish events
 directly to the event bus (ADR-014). They cannot spawn their own sub-agents.
 
-### 3. Observational Memory
+### 3. Long-Context Compaction
 
-Mastra's observational memory compresses old messages into dense observations via
-background Observer and Reflector agents. Tool-heavy workloads (workflow
-definitions, execution results) get 5–40x compression. This prevents context
-degradation over 50+ step autonomous loops (see ADR-016).
+Instance AI uses operational compaction in two places. Orchestrator threads use
+`InstanceAiCompactionService` to summarize older conversation messages into a
+`<conversation-summary>` block when the effective context window is under
+pressure. Builder threads compact successful build history into a structured
+`<builder-memory-summary>` so follow-up fixes retain workflow state without
+keeping the full raw build transcript.
 
 ### 4. Structured System Prompt
 
@@ -134,9 +136,9 @@ graph TD
     O[Orchestrator Agent] -->|delegate| S1[Sub-Agent: role A]
     O -->|build-workflow-with-agent| S2[Builder Agent]
     O -->|plan| S3[Planned Tasks]
-    O -->|direct| T1[list-workflows]
-    O -->|direct| T2[run-workflow]
-    O -->|direct| T3[get-execution]
+    O -->|direct| T1[workflows action=list]
+    O -->|direct| T2[executions action=run]
+    O -->|direct| T3[executions action=get]
     O -->|direct| T4[plan]
 
     S3 -->|kind: build-workflow| S4[Builder Agent]
@@ -144,9 +146,9 @@ graph TD
     S3 -->|kind: research| S6[Research Agent]
     S3 -->|kind: delegate| S7[Custom Sub-Agent]
 
-    S1 -->|tools| T5[get-execution]
-    S1 -->|tools| T6[get-workflow]
-    S2 -->|tools| T7[search-nodes]
+    S1 -->|tools| T5[executions action=get]
+    S1 -->|tools| T6[workflows action=get]
+    S2 -->|tools| T7[nodes action=search]
     S2 -->|tools| T8[build-workflow]
 
     style O fill:#f9f,stroke:#333
@@ -160,8 +162,8 @@ graph TD
 ```
 
 **Orchestrator** handles directly:
-- Read-only queries (list-workflows, get-execution, list-credentials)
-- Execution triggers (run-workflow)
+- Read-only queries (`workflows(action="list")`, `executions(action="get")`, `credentials(action="list")`)
+- Execution triggers (`executions(action="run")`)
 - Planning (plan tool — always direct)
 - Verification and credential application (verify-built-workflow, apply-workflow-credentials)
 
@@ -186,19 +188,19 @@ The agent package — framework-agnostic business logic.
 
 - **Agent factory** (`agent/`) — creates orchestrator instances with tools, memory, MCP, and tool search
 - **Sub-agent factory** (`agent/`) — creates stateless sub-agents with mandatory protocol and tool subsets
-- **Orchestration tools** (`tools/orchestration/`) — `plan`, `delegate`, `build-workflow-with-agent`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`, `browser-credential-setup`
+- **Orchestration tools** (`tools/orchestration/`) — `plan`, `create-tasks`, `delegate`, `task-control`, `build-workflow-with-agent`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`, `complete-checkpoint`, `browser-credential-setup`
 - **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, web research, filesystem, templates, and best practices
 - **Runtime** (`runtime/`) — stream execution engine, resumable streams with HITL suspension, background task manager, run state registry
 - **Planned tasks** (`planned-tasks/`) — task graph coordination, dependency resolution, scheduled execution
 - **Workflow loop** (`workflow-loop/`) — deterministic build→verify→debug state machine for workflow builder agents
 - **Workflow builder** (`workflow-builder/`) — TypeScript SDK code parsing, validation, patching, and prompt sections
 - **Workspace** (`workspace/`) — sandbox provisioning (Daytona / local), filesystem abstraction, snapshot management
-- **Memory** (`memory/`) — title generation, memory configuration
+- **Memory** (`memory/`) — title utilities
 - **Compaction** (`compaction/`) — LLM-based message history summarization for long conversations
-- **Storage** (`storage/`) — iteration logs, task storage, planned task storage, workflow loop storage, agent tree snapshots
+- **Storage** (`storage/`) — thread/message helpers, iteration logs, task storage, planned task storage, workflow loop storage, agent tree snapshots
 - **MCP client** (`mcp/`) — manages connections to external MCP servers, schema sanitization for Anthropic compatibility
 - **Domain access** (`domain-access/`) — domain gating and access tracking for external URL approval
-- **Stream mapping** (`stream/`) — Mastra chunk → canonical event translation, HITL consumption
+- **Stream mapping** (`stream/`) — native agent `StreamChunk` → canonical event translation, HITL consumption
 - **Event bus interface** (`event-bus/`) — publishing agent events to the thread channel
 - **Tracing** (`tracing/`) — LangSmith integration for step-level observability
 - **System prompt** (`agent/`) — dynamic context-aware prompt based on instance configuration
@@ -217,11 +219,11 @@ The n8n integration layer.
 - **Adapter** — bridges n8n services to agent interfaces, enforces RBAC permissions
 - **Memory service** — thread lifecycle, message persistence, expiration
 - **Settings service** — admin settings (model, MCP, sandbox), user preferences
-- **Event bus** — in-process EventEmitter (single instance) or Redis Pub/Sub
-  (queue mode), with thread storage for event persistence and replay (max 500 events or 2 MB per thread)
+- **Event bus** — in-process EventEmitter with a bounded recent-event replay
+  buffer per thread (max 500 events or 2 MB per thread)
 - **Filesystem** — `LocalGateway` (remote daemon via SSE protocol).
   See `docs/filesystem-access.md`
-- **Entities** — TypeORM entities for thread, message, memory, snapshots, iteration logs
+- **Entities** — TypeORM entities for threads, messages, working-memory resources, checkpoints, snapshots, iteration logs
 - **Repositories** — data access layer (7 TypeORM repositories)
 
 ### `packages/@n8n/api-types` (Shared Types)
@@ -277,7 +279,7 @@ The event bus decouples agent execution from event delivery:
 - All events carry `runId` (correlates to triggering message) and `agentId`
 - SSE events use monotonically increasing per-thread `id` values for replay
 - SSE supports both `Last-Event-ID` header and `?lastEventId` query parameter
-- Events are persisted to thread storage regardless of transport
+- Recent events are kept in the in-process event bus buffer for replay
 - No need to pipe sub-agent streams through orchestrator tool execution
 - One active run per thread (additional `POST /chat` is rejected while active)
 - Cancellation via `POST /instance-ai/chat/:threadId/cancel` (idempotent)
@@ -293,21 +295,21 @@ Instance AI uses n8n's module system (`@BackendModule`). This means:
 
 ## Runtime & Streaming
 
-The agent runtime is built on Mastra's streaming primitives with added
+The agent runtime is built on native `@n8n/agents` streaming primitives with
 resumability, HITL suspension, and background task management.
 
 ### Stream Execution
 
 ```
 streamAgentRun() → agent.stream() → executeResumableStream()
-  ├─ for each chunk: mapMastraChunkToEvent() → eventBus.publish()
-  ├─ on suspension: wait for confirmation → agent.resumeStream() → loop
-  └─ return StreamRunResult {status, mastraRunId, text}
+  ├─ for each chunk: mapAgentChunkToEvent() → eventBus.publish()
+  ├─ on suspension: wait for confirmation → agent.resume('stream', ...) → loop
+  └─ return StreamRunResult {status, agentRunId, text}
 ```
 
-The `executeResumableStream()` loop consumes Mastra chunks, translates them to
-canonical `InstanceAiEvent` schema, publishes to the event bus, and handles HITL
-suspension/resume cycles. Two control modes:
+The `executeResumableStream()` loop consumes native agent chunks, translates
+them to the canonical `InstanceAiEvent` schema, publishes to the event bus, and
+handles HITL suspension/resume cycles. Two control modes:
 
 - **Manual** — returns suspension to caller (used by the orchestrator's main run)
 - **Auto** — waits for confirmation and resumes automatically (used by background sub-agents)
@@ -318,7 +320,7 @@ Long-running tasks (workflow builds, data table operations, research) run as
 background tasks with concurrency limits (default: 5 per thread). Features:
 
 - **Correction queueing** — users can steer running tasks mid-flight via
-  `correct-background-task`
+  `task-control` (`correct-task`)
 - **Cancellation** — three surfaces converge: stop button, "stop that" message,
   or `cancelRun` (global stop)
 - **Message enrichment** — running task context is injected into the orchestrator's
@@ -342,9 +344,9 @@ task has a `kind` that determines its executor:
 
 | Kind | Executor | Tools |
 |------|----------|-------|
-| `build-workflow` | Builder agent | search-nodes, build-workflow, get-node-type-definition, etc. |
-| `manage-data-tables` | Data table agent | All `*-data-table*` tools |
-| `research` | Research agent | web-search, fetch-url |
+| `build-workflow` | Builder agent | `nodes(action="search")`, `nodes(action="type-definition")`, `build-workflow`, etc. |
+| `manage-data-tables` | Data table agent | `data-tables` actions |
+| `research` | Research agent | `research(action="web-search")`, `research(action="fetch-url")` |
 | `delegate` | Custom sub-agent | Orchestrator-specified subset |
 
 Tasks run detached as background agents. Dependencies are respected — a task
@@ -372,8 +374,8 @@ a terminal state to prevent infinite loops.
 
 To keep the orchestrator's context lean, tools are stratified into two tiers:
 
-- **Core tools** (always-loaded): `plan`, `delegate`, `ask-user`, `web-search`,
-  `fetch-url` — these are directly available to the LLM
+- **Core tools** (always-loaded): `plan`, `delegate`, `ask-user`, and
+  `research` — these are directly available to the LLM
 - **Deferred tools** (behind ToolSearchProcessor): all other domain tools —
   discovered on-demand via `search_tools` and activated via `load_tool`
 
@@ -392,7 +394,7 @@ descriptions are:
 1. **Schema-sanitized** for Anthropic compatibility (ZodNull → optional,
    discriminated unions → flattened objects, array types → recursive element fix)
 2. **Name-checked** against reserved domain tool names (prevents malicious
-   shadowing of tools like `run-workflow`)
+   shadowing of tools like `executions`)
 3. **Separated** from domain tools in the orchestrator's tool set
 4. **Cached** by config hash inside the manager — the underlying `MCPClient`
    instances are tracked so `mcpManager.disconnect()` (called during service
@@ -423,7 +425,7 @@ step) and is included as a `<conversation-summary>` block in subsequent requests
 ## Domain Access Gating
 
 The `DomainAccessTracker` manages per-domain approval for external URL access.
-When the agent calls `fetch-url`, the domain is checked against the tracker.
+When the agent calls `research(action="fetch-url")`, the domain is checked against the tracker.
 Unapproved domains trigger a HITL confirmation with `domainAccess` payload,
 allowing the user to approve or deny access to specific hosts.
 
@@ -433,11 +435,13 @@ allowing the user to approve or deny access to specific hosts.
 - **Credential safety** — tool outputs never include decrypted secrets; credential setup uses the n8n frontend UI where secrets are handled securely
 - **HITL confirmation** — destructive operations (delete, publish, restore) require user approval via the suspension protocol
 - **Domain access gating** — external URL fetches require per-domain user approval
-- **Memory isolation** — messages, observations, plans, and event history are
-  thread-scoped. Cross-user isolation is enforced.
+- **Memory isolation** — messages, working-memory resources, plans,
+  checkpoints, and run snapshots are thread-scoped. Cross-user isolation is
+  enforced.
 - **Sub-agent containment** — sub-agents cannot spawn their own sub-agents,
-  can only use native domain tools from the registered pool (no MCP tools), and
-  have low `maxSteps`. A mandatory protocol prevents cascading delegation.
+  can only use explicitly selected tools from the validated domain/MCP
+  registries, and are bounded by `maxSteps`. A mandatory protocol prevents
+  cascading delegation.
 - **MCP tool isolation** — MCP tools are name-checked against reserved domain tool
   names to prevent malicious shadowing. Schema sanitization prevents schema-based attacks.
 - **Sandbox isolation** — when enabled, code execution runs in isolated Daytona
@@ -450,4 +454,6 @@ allowing the user to approve or deny access to specific hosts.
   See `docs/filesystem-access.md` for the full security model.
 - **Web research safety** — SSRF protection blocks private IPs, loopback, and non-HTTP(S) schemes.
   Post-redirect SSRF check prevents open-redirect attacks. Fetched content is treated as untrusted.
-- **Module gating** — disabled by default unless `N8N_INSTANCE_AI_MODEL` is set
+- **Module gating** — the backend module can be disabled with
+  `N8N_DISABLED_MODULES=instance-ai`; chat/run availability also requires the
+  admin enabled setting and a non-empty model

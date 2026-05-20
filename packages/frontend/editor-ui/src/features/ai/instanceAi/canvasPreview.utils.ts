@@ -3,7 +3,7 @@ import type { InstanceAiAgentNode } from '@n8n/api-types';
 export interface ExecutionResult {
 	executionId: string;
 	status: 'success' | 'error';
-	/** ISO timestamp from the run-workflow tool result. Used to detect stale executions. */
+	/** ISO timestamp from the executions(action="run") tool result. Used to detect stale executions. */
 	finishedAt?: string;
 }
 
@@ -51,11 +51,19 @@ export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | u
 	return undefined;
 }
 
-const WORKFLOW_SETUP_TOOLS = new Set(['setup-workflow', 'apply-workflow-credentials']);
+function isWorkflowSetupTool(tc: InstanceAiAgentNode['toolCalls'][number]): boolean {
+	const args = tc.args as Record<string, unknown> | undefined;
+	return (
+		(tc.toolName === 'workflows' && args?.action === 'setup') ||
+		tc.toolName === 'apply-workflow-credentials' ||
+		// Legacy standalone tool name retained for historical messages.
+		tc.toolName === 'setup-workflow'
+	);
+}
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the workflowId
- * (from args) and toolCallId from the latest successful setup-workflow /
+ * (from args) and toolCallId from the latest successful workflows(action="setup") /
  * apply-workflow-credentials tool result. These tools modify the workflow
  * (credentials, parameters) but don't return workflowId in the result.
  */
@@ -68,12 +76,7 @@ export function getLatestWorkflowSetupResult(
 	}
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
-		if (
-			WORKFLOW_SETUP_TOOLS.has(tc.toolName) &&
-			!tc.isLoading &&
-			tc.result &&
-			typeof tc.result === 'object'
-		) {
+		if (isWorkflowSetupTool(tc) && !tc.isLoading && tc.result && typeof tc.result === 'object') {
 			const result = tc.result as Record<string, unknown>;
 			const args = tc.args as Record<string, unknown> | undefined;
 			if (result.success === true && typeof args?.workflowId === 'string') {
@@ -91,13 +94,13 @@ export interface LatestExecution {
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the executionId
- * and workflowId from the latest completed run-workflow tool result.
+ * and workflowId from the latest completed executions(action="run") tool result.
  *
  * The workflowId preference order is:
  *   1. The sibling build-workflow tool's result.workflowId (always the real
  *      current-run ID, since build-workflow hits the live backend).
- *   2. The run-workflow tool call's args.workflowId (falls back for flows that
- *      run a pre-existing workflow without building it first).
+ *   2. The executions(action="run") tool call's args.workflowId (falls back for
+ *      flows that run a pre-existing workflow without building it first).
  *
  * This ordering matters for trace-replay: the cached LLM's args.workflowId
  * carries the ID from the original recording, but build-workflow's result
@@ -176,7 +179,7 @@ function extractDataTableId(
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the dataTableId
- * from the latest successful delete-data-table tool result.
+ * from the latest successful data-tables(action="delete") tool result.
  */
 export function getLatestDeletedDataTableId(node: InstanceAiAgentNode): string | undefined {
 	for (let i = node.children.length - 1; i >= 0; i--) {
@@ -229,7 +232,7 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 }
 
 /**
- * Walks an agent tree and collects the latest completed run-workflow result
+ * Walks an agent tree and collects the latest completed executions(action="run") result
  * per workflowId. Used to restore execution status from historical messages
  * after page refresh.
  */

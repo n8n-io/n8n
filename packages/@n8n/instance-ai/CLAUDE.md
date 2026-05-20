@@ -25,7 +25,7 @@ Read these docs before starting any implementation:
 - `docs/memory.md` — memory tiers, scoping model, sub-agent memory
 - `docs/filesystem-access.md` — filesystem architecture, gateway protocol, security model
 - `docs/sandboxing.md` — Daytona/local sandbox providers, workspace lifecycle, builder loop
-- `docs/configuration.md` — environment variables, minimal setup, storage, event bus
+- `docs/configuration.md` — env defaults, admin overrides, minimal setup, storage, event bus
 
 ## E2E Testing
 
@@ -67,5 +67,5 @@ See `docs/e2e-tests.md` for the full recording/replay architecture.
 - **SSE `/events/:threadId`** delivers all events — replay via `Last-Event-ID` header or `?lastEventId` query param
 - **Run lifecycle**: `run-start` (first) → events → `run-finish` (last, carries status)
 - **Planned tasks**: `plan` tool for multi-step work; tasks run detached as background agents
-- **Sub-agents**: stateless, native domain tools only, no MCP, no recursive delegation
-- **Memory**: observational memory = thread-scoped, working memory is disabled
+- **Sub-agents**: stateless, explicitly selected domain/safe MCP tools only, no recursive delegation
+- **Memory**: native thread messages plus rolling compaction; sub-agents are stateless

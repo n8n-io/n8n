@@ -144,8 +144,8 @@ describe('useResponseFeedback - rateableResponseId', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-1',
-							toolName: 'run-workflow',
-							args: {},
+							toolName: 'executions',
+							args: { action: 'run' },
 							isLoading: false,
 							confirmation: { requestId: 'req-1', severity: 'info', message: 'Approve?' },
 							confirmationStatus: 'pending',

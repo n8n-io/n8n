@@ -400,7 +400,7 @@ describe('instanceAi.reducer', () => {
 
 		test('confirmation-request passes through projectId when present', () => {
 			const state = stateWithRun('run-1', 'agent-root');
-			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'setup-credentials'));
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'credentials'));
 			handleEvent(state, {
 				type: 'confirmation-request',
 				runId: 'run-1',
@@ -408,8 +408,8 @@ describe('instanceAi.reducer', () => {
 				payload: {
 					requestId: 'req-2',
 					toolCallId: 'tc-1',
-					toolName: 'setup-credentials',
-					args: {},
+					toolName: 'credentials',
+					args: { action: 'setup' },
 					severity: 'info',
 					message: 'Select credentials',
 					projectId: 'proj-789',
@@ -718,7 +718,7 @@ describe('instanceAi.reducer', () => {
 				payload: { messageId: 'msg-1', messageGroupId: 'mg-1' },
 			} as Extract<InstanceAiEvent, { type: 'run-start' }>);
 			handleEvent(state, makeAgentSpawnedEvent('run-1', 'builder-1', 'agent-root'));
-			handleEvent(state, makeToolCallEvent('run-1', 'builder-1', 'tc-1', 'search-nodes'));
+			handleEvent(state, makeToolCallEvent('run-1', 'builder-1', 'tc-1', 'nodes'));
 			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'completed'));
 
 			// Follow-up merge

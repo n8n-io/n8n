@@ -92,6 +92,7 @@ const ARTIFACT_TOOLS = new Set([
 	'credentials',
 	'data-tables',
 	'data-table-agent',
+	// Legacy standalone data-table mutation names retained for historical threads.
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
@@ -182,7 +183,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		}
 	}
 
-	// Data table mutation results (insert/update/delete-data-table-rows):
+	// Data table mutation results (insert/update/delete rows):
 	// { dataTableId, projectId, tableName? } — produced. Preserves an
 	// existing name if the mutation result doesn't carry `tableName`.
 	if (typeof result.dataTableId === 'string' && typeof result.projectId === 'string') {

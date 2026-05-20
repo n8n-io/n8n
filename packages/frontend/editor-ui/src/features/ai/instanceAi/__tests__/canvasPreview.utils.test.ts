@@ -2,6 +2,7 @@ import { describe, test, expect } from 'vitest';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 import {
 	getLatestBuildResult,
+	getLatestWorkflowSetupResult,
 	getLatestExecutionId,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
@@ -39,7 +40,9 @@ describe('getLatestBuildResult', () => {
 
 	test('returns undefined for non-build tool calls', () => {
 		const node = makeAgentNode({
-			toolCalls: [makeToolCall({ toolName: 'search-nodes', result: { nodes: [] } })],
+			toolCalls: [
+				makeToolCall({ toolName: 'nodes', args: { action: 'search' }, result: { nodes: [] } }),
+			],
 		});
 		expect(getLatestBuildResult(node)).toBeUndefined();
 	});
@@ -185,6 +188,44 @@ describe('getLatestBuildResult', () => {
 	});
 });
 
+describe('getLatestWorkflowSetupResult', () => {
+	test('returns workflowId and toolCallId from workflows setup action', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-setup',
+					toolName: 'workflows',
+					args: { action: 'setup', workflowId: 'wf-1' },
+					result: { success: true },
+				}),
+			],
+		});
+
+		expect(getLatestWorkflowSetupResult(node)).toEqual({
+			workflowId: 'wf-1',
+			toolCallId: 'tc-setup',
+		});
+	});
+
+	test('keeps legacy setup-workflow support for historical messages', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-legacy-setup',
+					toolName: 'setup-workflow',
+					args: { workflowId: 'wf-legacy' },
+					result: { success: true },
+				}),
+			],
+		});
+
+		expect(getLatestWorkflowSetupResult(node)).toEqual({
+			workflowId: 'wf-legacy',
+			toolCallId: 'tc-legacy-setup',
+		});
+	});
+});
+
 describe('getLatestExecutionId', () => {
 	test('returns undefined for node with no tool calls', () => {
 		expect(getLatestExecutionId(makeAgentNode())).toBeUndefined();
@@ -202,7 +243,7 @@ describe('getLatestExecutionId', () => {
 		expect(getLatestExecutionId(node)).toBeUndefined();
 	});
 
-	test('returns undefined for loading run-workflow call', () => {
+	test('returns undefined for loading executions run action', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
@@ -215,7 +256,7 @@ describe('getLatestExecutionId', () => {
 		expect(getLatestExecutionId(node)).toBeUndefined();
 	});
 
-	test('returns executionId and workflowId from completed run-workflow call', () => {
+	test('returns executionId and workflowId from completed executions run action', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
@@ -276,8 +317,8 @@ describe('getLatestExecutionId', () => {
 		expect(getLatestExecutionId(parent)).toEqual({ executionId: 'exec-child', workflowId: 'wf-1' });
 	});
 
-	test('prefers build-workflow result.workflowId over run-workflow args.workflowId', () => {
-		// Trace replay case: the cached LLM's run-workflow args carry the
+	test('prefers build-workflow result.workflowId over executions run args.workflowId', () => {
+		// Trace replay case: the cached LLM's executions run args carry the
 		// recording's stale workflowId, but build-workflow's result always
 		// reflects the workflow actually created in this run.
 		const builder = makeAgentNode({
@@ -498,7 +539,7 @@ describe('getLatestDeletedDataTableId', () => {
 		expect(getLatestDeletedDataTableId(makeAgentNode())).toBeUndefined();
 	});
 
-	test('returns undefined for non-delete-data-table tool calls', () => {
+	test('returns undefined for non-delete data-tables actions', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
@@ -511,7 +552,7 @@ describe('getLatestDeletedDataTableId', () => {
 		expect(getLatestDeletedDataTableId(node)).toBeUndefined();
 	});
 
-	test('returns undefined for loading delete-data-table call', () => {
+	test('returns undefined for loading data-tables delete action', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
@@ -524,7 +565,7 @@ describe('getLatestDeletedDataTableId', () => {
 		expect(getLatestDeletedDataTableId(node)).toBeUndefined();
 	});
 
-	test('returns undefined when delete-data-table result has success: false', () => {
+	test('returns undefined when data-tables delete result has success: false', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
@@ -550,7 +591,7 @@ describe('getLatestDeletedDataTableId', () => {
 		expect(getLatestDeletedDataTableId(node)).toBeUndefined();
 	});
 
-	test('returns dataTableId from successful delete-data-table', () => {
+	test('returns dataTableId from successful data-tables delete action', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
@@ -604,7 +645,7 @@ describe('getExecutionResultsByWorkflow', () => {
 		expect(getExecutionResultsByWorkflow(makeAgentNode()).size).toBe(0);
 	});
 
-	test('extracts successful run-workflow result', () => {
+	test('extracts successful executions run result', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
@@ -618,7 +659,7 @@ describe('getExecutionResultsByWorkflow', () => {
 		expect(results.get('wf-1')).toEqual({ executionId: 'exec-1', status: 'success' });
 	});
 
-	test('extracts error run-workflow result', () => {
+	test('extracts error executions run result', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({

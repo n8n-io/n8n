@@ -40,20 +40,20 @@ describe('WorkSummaryAccumulator', () => {
 
 	it('tracks a successful tool call', () => {
 		const accumulator = new WorkSummaryAccumulator();
-		accumulator.observe(toolCallEvent('tc-1', 'list-workflows'));
+		accumulator.observe(toolCallEvent('tc-1', 'workflows'));
 		accumulator.observe(toolResultEvent('tc-1'));
 
 		const summary = accumulator.toSummary();
 		expect(summary.totalToolCalls).toBe(1);
 		expect(summary.totalToolErrors).toBe(0);
 		expect(summary.toolCalls).toEqual([
-			{ toolCallId: 'tc-1', toolName: 'list-workflows', succeeded: true },
+			{ toolCallId: 'tc-1', toolName: 'workflows', succeeded: true },
 		]);
 	});
 
 	it('tracks a failed tool call', () => {
 		const accumulator = new WorkSummaryAccumulator();
-		accumulator.observe(toolCallEvent('tc-1', 'get-workflow'));
+		accumulator.observe(toolCallEvent('tc-1', 'workflows'));
 		accumulator.observe(toolErrorEvent('tc-1', 'Not found'));
 
 		const summary = accumulator.toSummary();
@@ -61,7 +61,7 @@ describe('WorkSummaryAccumulator', () => {
 		expect(summary.totalToolErrors).toBe(1);
 		expect(summary.toolCalls[0]).toMatchObject({
 			toolCallId: 'tc-1',
-			toolName: 'get-workflow',
+			toolName: 'workflows',
 			succeeded: false,
 			errorSummary: 'Not found',
 		});
@@ -69,11 +69,11 @@ describe('WorkSummaryAccumulator', () => {
 
 	it('tracks multiple tool calls with mixed outcomes', () => {
 		const accumulator = new WorkSummaryAccumulator();
-		accumulator.observe(toolCallEvent('tc-1', 'list-workflows'));
+		accumulator.observe(toolCallEvent('tc-1', 'workflows'));
 		accumulator.observe(toolResultEvent('tc-1'));
 		accumulator.observe(toolCallEvent('tc-2', 'build-workflow'));
 		accumulator.observe(toolErrorEvent('tc-2', 'Compilation error'));
-		accumulator.observe(toolCallEvent('tc-3', 'list-credentials'));
+		accumulator.observe(toolCallEvent('tc-3', 'credentials'));
 		accumulator.observe(toolResultEvent('tc-3'));
 
 		const summary = accumulator.toSummary();
@@ -96,7 +96,7 @@ describe('WorkSummaryAccumulator', () => {
 
 	it('is idempotent — multiple toSummary calls return same data', () => {
 		const accumulator = new WorkSummaryAccumulator();
-		accumulator.observe(toolCallEvent('tc-1', 'list-workflows'));
+		accumulator.observe(toolCallEvent('tc-1', 'workflows'));
 		accumulator.observe(toolResultEvent('tc-1'));
 
 		const summary1 = accumulator.toSummary();

@@ -208,7 +208,7 @@ export function applyPatches(code: string, patches: Patch[]): PatchResult | Patc
 					'"' +
 					'\nTried: exact match, whitespace-normalized, trimmed-lines.' +
 					(context || '\nNo similar code found nearby.') +
-					'\nTip: use get-workflow-as-code to see the exact current code, then match it precisely.',
+					'\nTip: use workflows(action="get-as-code") to see the exact current code, then match it precisely.',
 			};
 		}
 
