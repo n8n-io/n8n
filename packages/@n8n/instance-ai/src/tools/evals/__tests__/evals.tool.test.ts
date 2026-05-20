@@ -404,6 +404,42 @@ describe('evals tool — select-metrics action', () => {
 		});
 	});
 
+	it('maps recommended option labels with descriptions back to metric ids', async () => {
+		type SelectMetricsSuspendPayload = {
+			questions: Array<{ options?: string[] }>;
+		};
+		const ctx = makeCtx(aiWfWithTools());
+		const tool = createEvalsTool(ctx);
+		const suspend = jest
+			.fn<Promise<void>, [SelectMetricsSuspendPayload]>()
+			.mockResolvedValue(undefined);
+
+		await tool.handler!({ action: 'select-metrics', workflowId: 'w1' }, {
+			agent: { suspend, resumeData: undefined },
+		} as never);
+
+		const payload = suspend.mock.calls[0]?.[0];
+		if (!payload) {
+			throw new Error('Expected metric selection payload');
+		}
+		const recommendedToolUseOption = payload.questions[0]?.options?.find((option) =>
+			option.startsWith('Tool use (recommended) — '),
+		);
+		if (!recommendedToolUseOption) {
+			throw new Error('Expected recommended tool-use option');
+		}
+
+		const answers = [{ questionId: 'q1', selectedOptions: [recommendedToolUseOption] }];
+		const result = (await tool.handler!({ action: 'select-metrics', workflowId: 'w1' }, {
+			agent: { resumeData: { approved: true, answers } },
+		} as never)) as Record<string, unknown>;
+
+		expect(result).toEqual({
+			chosenMetricIds: ['tool_use'],
+			answers,
+		});
+	});
+
 	it('falls back to ["correctness"] when user dismisses the widget (resumeData.approved=false)', async () => {
 		const ctx = makeCtx(aiWf());
 		const tool = createEvalsTool(ctx);

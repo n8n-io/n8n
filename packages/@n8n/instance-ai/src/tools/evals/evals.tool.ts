@@ -216,11 +216,11 @@ function isMetricId(id: string): id is MetricId {
 }
 
 function metricNameOnly(label: string): string {
-	// Strip " (recommended)" suffix if present.
-	const withoutTag = label.replace(/\s*\(recommended\)\s*$/i, '');
 	// Strip " — description" if present.
-	const dashIndex = withoutTag.indexOf(' — ');
-	return dashIndex >= 0 ? withoutTag.slice(0, dashIndex) : withoutTag;
+	const dashIndex = label.indexOf(' — ');
+	const name = dashIndex >= 0 ? label.slice(0, dashIndex) : label;
+	// Strip " (recommended)" suffix if present.
+	return name.replace(/\s*\(recommended\)\s*$/i, '');
 }
 
 function labelToId(label: string): string | undefined {
