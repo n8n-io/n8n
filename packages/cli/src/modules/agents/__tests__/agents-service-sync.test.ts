@@ -81,6 +81,7 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 			{ modules: [] } as unknown as AgentsConfig,
 			mock(),
 			mock<Telemetry>(),
+			mock(),
 			mock<ChatIntegrationService>(),
 		);
 	});

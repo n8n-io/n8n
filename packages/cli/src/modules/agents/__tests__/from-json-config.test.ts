@@ -1,10 +1,12 @@
 import type { AgentSnapshot, ToolDescriptor } from '@n8n/agents';
+import type { BuiltProviderTool, BuiltTool } from '@n8n/agents';
 import type { JSONSchema7 } from 'json-schema';
 
 import {
 	AgentJsonConfigSchema,
 	RunnableAgentJsonConfigSchema,
 	type AgentJsonConfig,
+	type AgentJsonWebSearchConfig,
 } from '@n8n/api-types';
 import { buildFromJson } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
@@ -105,6 +107,9 @@ describe('buildFromJson()', () => {
 		).memoryConfig;
 
 	const makeMockMemoryFactory = () => jest.fn();
+
+	const getProviderTools = (agent: unknown): BuiltProviderTool[] =>
+		(agent as { providerTools?: BuiltProviderTool[] }).providerTools ?? [];
 
 	const makeMockMemoryBackend = () => ({
 		getThread: jest.fn(),
@@ -665,6 +670,222 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.hasMemory).toBe(false);
 		expect(getMemoryConfig(agent)).toBeUndefined();
 	});
+
+	describe('webSearch', () => {
+		const buildAgent = async (
+			overrides: Partial<AgentJsonConfig>,
+			options: Partial<Parameters<typeof buildFromJson>[2]> = {},
+		) =>
+			await buildFromJson(
+				makeConfig(overrides),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					...options,
+				},
+			);
+
+		const fallbackTools: BuiltTool[] = [
+			{
+				name: 'web_search',
+				description: 'Search the web',
+				handler: async () => ({}),
+			},
+			{
+				name: 'web_open',
+				description: 'Open a web page',
+				handler: async () => ({}),
+			},
+		];
+
+		it('attaches Anthropic native web search in auto mode with domain policy', async () => {
+			const agent = await buildAgent({
+				webSearch: {
+					enabled: true,
+					allowedDomains: ['docs.n8n.io'],
+					blockedDomains: ['reddit.com'],
+				},
+			});
+
+			expect(getProviderTools(agent)).toEqual([
+				{
+					name: 'anthropic.web_search_20250305',
+					args: {
+						allowedDomains: ['docs.n8n.io'],
+						blockedDomains: ['reddit.com'],
+					},
+				},
+			]);
+			expect(agent.snapshot.tools).toEqual([]);
+		});
+
+		it('attaches OpenAI native web search when only allowed domains are configured', async () => {
+			const agent = await buildAgent({
+				model: 'openai/gpt-4o',
+				webSearch: {
+					enabled: true,
+					allowedDomains: ['docs.n8n.io'],
+				},
+			});
+
+			expect(getProviderTools(agent)).toEqual([
+				{
+					name: 'openai.web_search',
+					args: {
+						filters: {
+							allowedDomains: ['docs.n8n.io'],
+						},
+					},
+				},
+			]);
+		});
+
+		it('attaches xAI native web search with provider domain argument names', async () => {
+			const agent = await buildAgent({
+				model: 'xai/grok-4',
+				webSearch: {
+					enabled: true,
+					allowedDomains: ['docs.n8n.io'],
+					blockedDomains: ['reddit.com'],
+				},
+			});
+
+			expect(getProviderTools(agent)).toEqual([
+				{
+					name: 'xai.web_search',
+					args: {
+						allowedDomains: ['docs.n8n.io'],
+						excludedDomains: ['reddit.com'],
+					},
+				},
+			]);
+		});
+
+		it('uses n8n fallback in auto mode when OpenAI cannot enforce blocked domains', async () => {
+			const createWebSearchTools = jest
+				.fn<Promise<BuiltTool[]>, [AgentJsonWebSearchConfig]>()
+				.mockResolvedValue(fallbackTools);
+
+			const agent = await buildAgent(
+				{
+					model: 'openai/gpt-4o',
+					webSearch: {
+						enabled: true,
+						blockedDomains: ['reddit.com'],
+						credential: {
+							id: 'search-cred',
+							name: 'Brave',
+							type: 'braveSearchApi',
+						},
+					},
+				},
+				{ createWebSearchTools },
+			);
+
+			expect(createWebSearchTools).toHaveBeenCalledWith({
+				enabled: true,
+				blockedDomains: ['reddit.com'],
+				credential: {
+					id: 'search-cred',
+					name: 'Brave',
+					type: 'braveSearchApi',
+				},
+			});
+			expect(getProviderTools(agent)).toEqual([]);
+			expect(agent.snapshot.tools.map((tool) => tool.name)).toEqual(['web_search', 'web_open']);
+		});
+
+		it('uses n8n fallback in auto mode for Google instead of provider tools', async () => {
+			const createWebSearchTools = jest
+				.fn<Promise<BuiltTool[]>, [AgentJsonWebSearchConfig]>()
+				.mockResolvedValue(fallbackTools);
+
+			const agent = await buildAgent(
+				{
+					model: 'google/gemini-2.5-pro',
+					webSearch: {
+						enabled: true,
+						credential: {
+							id: 'search-cred',
+							name: 'SearXNG',
+							type: 'searXngApi',
+						},
+					},
+				},
+				{ createWebSearchTools },
+			);
+
+			expect(getProviderTools(agent)).toEqual([]);
+			expect(agent.snapshot.tools.map((tool) => tool.name)).toEqual(['web_search', 'web_open']);
+		});
+
+		it('fails provider mode when provider-native search cannot enforce the policy', async () => {
+			await expect(
+				buildAgent({
+					model: 'openai/gpt-4o',
+					webSearch: {
+						enabled: true,
+						mode: 'provider',
+						blockedDomains: ['reddit.com'],
+					},
+				}),
+			).rejects.toThrow('OpenAI web search does not support blockedDomains');
+		});
+
+		it('fails provider mode for unsupported providers', async () => {
+			await expect(
+				buildAgent({
+					model: 'mistral/mistral-large-latest',
+					webSearch: {
+						enabled: true,
+						mode: 'provider',
+					},
+				}),
+			).rejects.toThrow('does not support provider-hosted web search');
+		});
+
+		it('requires a credential when fallback web search is selected', async () => {
+			await expect(
+				buildAgent({
+					model: 'mistral/mistral-large-latest',
+					webSearch: {
+						enabled: true,
+					},
+				}),
+			).rejects.toThrow('webSearch.credential is required');
+		});
+
+		it('rejects manual web-search providerTools when webSearch is enabled', async () => {
+			await expect(
+				buildAgent({
+					webSearch: {
+						enabled: true,
+					},
+					providerTools: {
+						'anthropic.web_search': {},
+					},
+				}),
+			).rejects.toThrow('Do not configure web-search providerTools manually');
+		});
+
+		it('keeps non-search providerTools valid when webSearch is enabled', async () => {
+			const agent = await buildAgent({
+				webSearch: {
+					enabled: true,
+				},
+				providerTools: {
+					'openai.image_generation': {},
+				},
+			});
+
+			expect(getProviderTools(agent).map((tool) => tool.name)).toEqual([
+				'anthropic.web_search_20250305',
+				'openai.image_generation',
+			]);
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -984,5 +1205,63 @@ describe('AgentJsonConfigSchema', () => {
 			type: 'slack',
 			credentialId: 'cred-1',
 		});
+	});
+
+	it('parses webSearch config with an explicit fallback credential reference', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+			webSearch: {
+				enabled: true,
+				mode: 'n8n',
+				allowedDomains: ['docs.n8n.io'],
+				blockedDomains: ['reddit.com'],
+				credential: {
+					id: 'cred-search',
+					name: 'Brave Search',
+					type: 'braveSearchApi',
+				},
+			},
+		};
+
+		const parsed = AgentJsonConfigSchema.parse(config);
+		expect(parsed.webSearch).toEqual(config.webSearch);
+	});
+
+	it('rejects webSearch with malformed domains', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+			webSearch: {
+				enabled: true,
+				allowedDomains: ['https://docs.n8n.io/path'],
+			},
+		};
+
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
+
+	it('rejects unsupported webSearch credential types', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+			webSearch: {
+				enabled: true,
+				mode: 'n8n',
+				credential: {
+					id: 'cred-search',
+					name: 'Other',
+					type: 'httpHeaderAuth',
+				},
+			},
+		};
+
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 });

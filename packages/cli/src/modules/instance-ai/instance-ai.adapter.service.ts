@@ -8,9 +8,6 @@ import type {
 	InstanceAiCredentialService,
 	InstanceAiNodeService,
 	InstanceAiDataTableService,
-	InstanceAiWebResearchService,
-	FetchedPage,
-	WebSearchResponse,
 	DataTableSummary,
 	DataTableColumnInfo,
 	WorkflowSummary,
@@ -47,13 +44,7 @@ import {
 	resolveBuiltinNodeDefinitionDirs,
 	listNodeDiscriminators,
 } from './node-definition-resolver';
-import {
-	fetchAndExtract,
-	maybeSummarize,
-	braveSearch,
-	searxngSearch,
-	LRUCache,
-} from './web-research';
+import { WebResearchService } from './web-research/web-research.service';
 import {
 	AiBuilderTemporaryWorkflowRepository,
 	ExecutionRepository,
@@ -116,7 +107,6 @@ import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { TagService } from '@/services/tag.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -226,7 +216,7 @@ export class InstanceAiAdapterService {
 		private readonly roleService: RoleService,
 		private readonly telemetry: Telemetry,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
-		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly webResearchService: WebResearchService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -248,7 +238,17 @@ export class InstanceAiAdapterService {
 			credentialService: this.createCredentialAdapter(user),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user),
-			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
+			webResearchService: this.webResearchService.createLazyAdapter({
+				scopeId: user.id,
+				resolveBackend: async () => {
+					const config = await this.settingsService.resolveSearchConfig(user);
+					return {
+						braveApiKey: config.braveApiKey,
+						searxngUrl: config.searxngUrl,
+						searchProxyConfig,
+					};
+				},
+			}),
 			workspaceService: this.createWorkspaceAdapter(user),
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
@@ -1573,164 +1573,6 @@ export class InstanceAiAdapterService {
 				};
 			},
 		};
-	}
-
-	/** Cache for web research results, keyed per user to prevent cross-user data leaks. */
-	private readonly webResearchCache = new LRUCache<FetchedPage>({
-		maxEntries: 100,
-		ttlMs: 15 * 60 * 1000,
-	});
-
-	/** Cache for web search results, keyed per user to prevent cross-user data leaks. */
-	private readonly searchCache = new LRUCache<WebSearchResponse>({
-		maxEntries: 100,
-		ttlMs: 15 * 60 * 1000,
-	});
-
-	private createWebResearchAdapter(
-		user: User,
-		searchProxyConfig?: ServiceProxyConfig,
-	): InstanceAiWebResearchService {
-		const fetchCache = this.webResearchCache;
-		const searchCacheRef = this.searchCache;
-		const settingsService = this.settingsService;
-		const ssrf = this.ssrfProtectionService;
-		const userId = user.id;
-
-		// Lazy search method that resolves credentials on first call
-		let resolvedSearchMethod: ReturnType<typeof this.buildSearchMethod>;
-		let searchResolved = false;
-		const lazySearch: InstanceAiWebResearchService['search'] = async (query, options) => {
-			if (!searchResolved) {
-				const config = await settingsService.resolveSearchConfig(user);
-				resolvedSearchMethod = this.buildSearchMethod(
-					config.braveApiKey ?? '',
-					config.searxngUrl ?? '',
-					searchCacheRef,
-					searchProxyConfig,
-					userId,
-				);
-				searchResolved = true;
-			}
-			if (!resolvedSearchMethod) return { query, results: [] };
-			return await resolvedSearchMethod(query, options);
-		};
-
-		return {
-			search: lazySearch,
-
-			async fetchUrl(
-				url: string,
-				options?: {
-					maxContentLength?: number;
-					maxResponseBytes?: number;
-					timeoutMs?: number;
-					authorizeUrl?: (targetUrl: string) => Promise<void>;
-				},
-			) {
-				const cacheKey = `${userId}:${url}`;
-
-				// Check cache first
-				const cached = fetchCache.get(cacheKey);
-				if (cached) {
-					// If cached result redirected to a different host, authorize it
-					if (options?.authorizeUrl && cached.finalUrl) {
-						const origHost = new URL(url).hostname;
-						const finalHost = new URL(cached.finalUrl).hostname;
-						if (origHost !== finalHost) {
-							// Throws when the caller's domain tracker hasn't approved the
-							// redirect target — let it propagate so the tool suspends for
-							// HITL approval instead of leaking cached cross-host content.
-							await options.authorizeUrl(cached.finalUrl);
-						}
-					}
-					return cached;
-				}
-
-				// Fetch and extract — pass authorizeUrl for redirect-hop gating
-				const page = await fetchAndExtract(url, {
-					maxContentLength: options?.maxContentLength,
-					maxResponseBytes: options?.maxResponseBytes,
-					timeoutMs: options?.timeoutMs,
-					authorizeUrl: options?.authorizeUrl,
-					ssrf,
-				});
-
-				// Attempt summarization (truncation fallback — no model injection yet)
-				const result = await maybeSummarize(page);
-
-				// Cache the result
-				fetchCache.set(cacheKey, result);
-
-				return result;
-			},
-		};
-	}
-
-	/**
-	 * Build a cached search function based on provider priority:
-	 *   1. Brave Search (if API key is set)
-	 *   2. SearXNG (if URL is set)
-	 *   3. Disabled (returns undefined)
-	 */
-	private buildSearchMethod(
-		apiKey: string,
-		searxngUrl: string,
-		cache: LRUCache<WebSearchResponse>,
-		searchProxyConfig?: ServiceProxyConfig,
-		userId?: string,
-	) {
-		type SearchOptions = {
-			maxResults?: number;
-			includeDomains?: string[];
-			excludeDomains?: string[];
-		};
-
-		const keyPrefix = userId ? `${userId}:` : '';
-
-		// When the AI service proxy is enabled (licensed instance), search always goes
-		// through the proxy which provides managed Brave Search with credit tracking.
-		// This intentionally takes priority over local SearXNG or API key configuration.
-		if (searchProxyConfig) {
-			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = `${keyPrefix}${JSON.stringify([query, options ?? {}])}`;
-				const cached = cache.get(cacheKey);
-				if (cached) return cached;
-
-				const result = await braveSearch('', query, {
-					...options,
-					proxyConfig: searchProxyConfig,
-				});
-				cache.set(cacheKey, result);
-				return result;
-			};
-		}
-
-		if (apiKey) {
-			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = `${keyPrefix}${JSON.stringify([query, options ?? {}])}`;
-				const cached = cache.get(cacheKey);
-				if (cached) return cached;
-
-				const result = await braveSearch(apiKey, query, options ?? {});
-				cache.set(cacheKey, result);
-				return result;
-			};
-		}
-
-		if (searxngUrl) {
-			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = `${keyPrefix}${JSON.stringify([query, options ?? {}])}`;
-				const cached = cache.get(cacheKey);
-				if (cached) return cached;
-
-				const result = await searxngSearch(searxngUrl, query, options ?? {});
-				cache.set(cacheKey, result);
-				return result;
-			};
-		}
-
-		return undefined;
 	}
 
 	/** Lazy-resolved node definition directories. */

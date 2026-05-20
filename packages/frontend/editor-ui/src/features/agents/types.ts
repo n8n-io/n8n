@@ -128,4 +128,6 @@ export type {
 	AgentJsonSkillConfig as AgentJsonSkillRef,
 	AgentJsonConfig as AgentJsonConfigRef,
 	AgentJsonConfig,
+	AgentJsonWebSearchConfig,
+	AgentJsonWebSearchCredential,
 } from '@n8n/api-types';

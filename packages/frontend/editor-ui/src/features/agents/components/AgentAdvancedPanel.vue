@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
  * Behavior panel — execution-behavior knobs that used to live in the old
- * AgentOverviewPanel: reasoning depth (provider-gated) and tool-call
- * concurrency.
+ * AgentOverviewPanel: reasoning depth (provider-gated), web search, and
+ * tool-call concurrency.
  *
  * Thinking is always visible as a toggle but disabled (with a tooltip) when
  * the selected provider doesn't support it. The sub-control differs by
@@ -20,20 +20,46 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { getResourcePermissions } from '@n8n/permissions';
 
-import type { AgentJsonConfig } from '../types';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+
+import type {
+	AgentJsonConfig,
+	AgentJsonWebSearchConfig,
+	AgentJsonWebSearchCredential,
+} from '../types';
 import {
 	PROVIDER_CAPABILITIES,
 	REASONING_EFFORT_OPTIONS,
 	type ReasoningEffort,
 } from '../provider-capabilities';
 import { parseProvider } from '../utils/model-string';
+import {
+	DEFAULT_WEB_SEARCH_MODE,
+	setWebSearchCredential,
+	setWebSearchEnabled,
+	setWebSearchMode,
+	type WebSearchMode,
+} from '../utils/webSearchConfig';
+import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
 
 const i18n = useI18n();
+const uiStore = useUIStore();
+const credentialsStore = useCredentialsStore();
+const projectsStore = useProjectsStore();
 
 const props = withDefaults(
-	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; collapsible?: boolean }>(),
+	defineProps<{
+		config: AgentJsonConfig | null;
+		projectId: string;
+		disabled?: boolean;
+		collapsible?: boolean;
+	}>(),
 	{
 		disabled: false,
 		collapsible: false,
@@ -55,6 +81,55 @@ const reasoningEffort = ref<ReasoningEffort>(
 	(thinkingCfg.value?.reasoningEffort as ReasoningEffort) ?? 'medium',
 );
 const toolCallConcurrency = ref(props.config?.config?.toolCallConcurrency ?? 1);
+const webSearch = computed<AgentJsonWebSearchConfig | undefined>(() => props.config?.webSearch);
+const webSearchEnabled = computed(() => webSearch.value?.enabled === true);
+const webSearchMode = computed<WebSearchMode>(
+	() => webSearch.value?.mode ?? DEFAULT_WEB_SEARCH_MODE,
+);
+const showWebSearchCredentialSelect = computed(
+	() => webSearchEnabled.value && webSearchMode.value !== 'provider',
+);
+
+type WebSearchCredentialType = AgentJsonWebSearchCredential['type'];
+
+const WEB_SEARCH_MODE_OPTIONS: Array<{ value: WebSearchMode; labelKey: BaseTextKey }> = [
+	{ value: 'auto', labelKey: 'agents.builder.advanced.webSearch.mode.auto' },
+	{ value: 'provider', labelKey: 'agents.builder.advanced.webSearch.mode.provider' },
+	{ value: 'n8n', labelKey: 'agents.builder.advanced.webSearch.mode.n8n' },
+];
+
+function isWebSearchCredentialType(type: string): type is WebSearchCredentialType {
+	return type === 'braveSearchApi' || type === 'searXngApi';
+}
+
+function toWebSearchCredential(
+	credential: ICredentialsResponse,
+): AgentJsonWebSearchCredential | null {
+	if (!isWebSearchCredentialType(credential.type)) return null;
+	return { id: credential.id, name: credential.name, type: credential.type };
+}
+
+const webSearchCredentialOptions = computed<AgentCredentialOption[]>(() =>
+	credentialsStore.allCredentials
+		.filter((credential) => isWebSearchCredentialType(credential.type))
+		.map((credential) => ({
+			id: credential.id,
+			name: credential.name,
+			typeDisplayName: credentialsStore.getCredentialTypeByName(credential.type)?.displayName,
+			homeProject: credential.homeProject,
+		})),
+);
+
+const projectForPermissions = computed(() => {
+	if (projectsStore.currentProject?.id === props.projectId) return projectsStore.currentProject;
+	if (projectsStore.personalProject?.id === props.projectId) return projectsStore.personalProject;
+	return projectsStore.myProjects.find((project) => project.id === props.projectId) ?? null;
+});
+
+const credentialPermissions = computed(() => {
+	const permissions = getResourcePermissions(projectForPermissions.value?.scopes).credential;
+	return { ...permissions, create: !!permissions.create };
+});
 
 watch(
 	() => props.config,
@@ -114,6 +189,38 @@ function onConcurrencyInput(value: string) {
 	if (!Number.isFinite(n) || n < 1) return;
 	toolCallConcurrency.value = n;
 	void emitConcurrency();
+}
+
+function emitWebSearch(next: AgentJsonWebSearchConfig) {
+	emit('update:config', { webSearch: next });
+}
+
+function onWebSearchToggle(value: boolean) {
+	emitWebSearch(setWebSearchEnabled(webSearch.value, value));
+}
+
+function onWebSearchModeChange(value: WebSearchMode) {
+	emitWebSearch(setWebSearchMode(webSearch.value, value));
+}
+
+function onWebSearchCredentialChange(credentialId: string) {
+	const credential = credentialsStore.allCredentials.find((item) => item.id === credentialId);
+	const webSearchCredential = credential ? toWebSearchCredential(credential) : null;
+	if (!webSearchCredential) return;
+	emitWebSearch(setWebSearchCredential(webSearch.value, webSearchCredential));
+}
+
+function onCreateWebSearchCredential() {
+	uiStore.openNewCredential(
+		'braveSearchApi',
+		false,
+		false,
+		props.projectId,
+		undefined,
+		undefined,
+		undefined,
+		{ hideAskAssistant: true },
+	);
 }
 
 const thinkingDisabledReason = computed(() =>
@@ -214,6 +321,72 @@ const thinkingDisabledReason = computed(() =>
 					@update:model-value="onConcurrencyInput"
 				/>
 			</div>
+
+			<div :class="$style.webSearchGroup">
+				<div :class="$style.row">
+					<div :class="$style.rowLabel">
+						<N8nText size="small" :bold="true">{{
+							i18n.baseText('agents.builder.advanced.webSearch.label')
+						}}</N8nText>
+						<N8nText size="xsmall" color="text-light">
+							{{ i18n.baseText('agents.builder.advanced.webSearch.hint') }}
+						</N8nText>
+					</div>
+					<N8nSwitch2
+						:model-value="webSearchEnabled"
+						:disabled="props.disabled"
+						data-testid="agent-web-search-toggle"
+						@update:model-value="(v) => onWebSearchToggle(Boolean(v))"
+					/>
+				</div>
+
+				<div v-if="webSearchEnabled" :class="$style.webSearchSettings">
+					<div :class="$style.row">
+						<N8nText size="small" :bold="true">{{
+							i18n.baseText('agents.builder.advanced.webSearch.mode.label')
+						}}</N8nText>
+						<N8nSelect
+							:model-value="webSearchMode"
+							size="small"
+							:disabled="props.disabled"
+							:class="$style.shortInput"
+							data-testid="agent-web-search-mode-select"
+							@update:model-value="onWebSearchModeChange"
+						>
+							<N8nOption
+								v-for="opt in WEB_SEARCH_MODE_OPTIONS"
+								:key="opt.value"
+								:value="opt.value"
+								:label="i18n.baseText(opt.labelKey)"
+							/>
+						</N8nSelect>
+					</div>
+
+					<div v-if="showWebSearchCredentialSelect" :class="$style.row">
+						<div :class="$style.rowLabel">
+							<N8nText size="small" :bold="true">{{
+								i18n.baseText('agents.builder.advanced.webSearch.credential.label')
+							}}</N8nText>
+							<N8nText size="xsmall" color="text-light">
+								{{ i18n.baseText('agents.builder.advanced.webSearch.credential.hint') }}
+							</N8nText>
+						</div>
+						<AgentCredentialSelect
+							:model-value="webSearch?.credential?.id"
+							:class="$style.credentialSelect"
+							:credentials="webSearchCredentialOptions"
+							:placeholder="
+								i18n.baseText('agents.builder.advanced.webSearch.credential.placeholder')
+							"
+							data-test-id="agent-web-search-credential-select"
+							:credential-permissions="credentialPermissions"
+							:disabled="props.disabled"
+							@update:model-value="onWebSearchCredentialChange"
+							@create="onCreateWebSearchCredential"
+						/>
+					</div>
+				</div>
+			</div>
 		</div>
 	</N8nCollapsiblePanel>
 </template>
@@ -266,8 +439,28 @@ const thinkingDisabledReason = computed(() =>
 	min-width: 0;
 }
 
+.webSearchGroup {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.webSearchSettings {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	margin-left: var(--spacing--2xs);
+	padding-left: var(--spacing--md);
+	border-left: var(--border);
+}
+
 .shortInput {
 	width: 140px;
+	flex-shrink: 0;
+}
+
+.credentialSelect {
+	width: 18rem;
 	flex-shrink: 0;
 }
 </style>

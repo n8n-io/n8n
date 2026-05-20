@@ -11,6 +11,25 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (k: string) => k }),
 }));
 
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: () => ({ openNewCredential: vi.fn() }),
+}));
+
+vi.mock('@/features/credentials/credentials.store', () => ({
+	useCredentialsStore: () => ({
+		allCredentials: [],
+		getCredentialTypeByName: () => undefined,
+	}),
+}));
+
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: () => ({
+		currentProject: { id: 'project-1', scopes: ['credential:create'] },
+		personalProject: null,
+		myProjects: [],
+	}),
+}));
+
 // Sub-control flips depend on debouncing — execute synchronously in the test.
 vi.mock('@vueuse/core', async (importOriginal) => {
 	const actual = await importOriginal<typeof VueUse>();
@@ -71,7 +90,7 @@ describe('AgentAdvancedPanel', () => {
 			config: { thinking: { provider: 'anthropic', budgetTokens: 1024 } },
 		} as Partial<AgentJsonConfig>);
 		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
+			props: { config, projectId: 'project-1' },
 			global: { stubs: globalStubs },
 		});
 		await nextTick();
@@ -85,7 +104,7 @@ describe('AgentAdvancedPanel', () => {
 			config: { thinking: { provider: 'openai', reasoningEffort: 'high' } },
 		} as Partial<AgentJsonConfig>);
 		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
+			props: { config, projectId: 'project-1' },
 			global: { stubs: globalStubs },
 		});
 		await nextTick();
@@ -96,7 +115,7 @@ describe('AgentAdvancedPanel', () => {
 	it('disables the thinking toggle for providers that do not support it', () => {
 		const config = makeConfig({ model: 'google/gemini-pro' });
 		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
+			props: { config, projectId: 'project-1' },
 			global: { stubs: globalStubs },
 		});
 		const toggle = wrapper.find('[data-testid="agent-thinking-toggle"]');
@@ -107,7 +126,7 @@ describe('AgentAdvancedPanel', () => {
 	it('emits update:config with the thinking subtree when the toggle flips on', async () => {
 		const config = makeConfig();
 		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
+			props: { config, projectId: 'project-1' },
 			global: { stubs: globalStubs },
 		});
 		await wrapper.find('[data-testid="agent-thinking-toggle"]').trigger('click');
@@ -120,7 +139,7 @@ describe('AgentAdvancedPanel', () => {
 	it('disables every control when the disabled prop is true', () => {
 		const config = makeConfig();
 		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config, disabled: true },
+			props: { config, projectId: 'project-1', disabled: true },
 			global: { stubs: globalStubs },
 		});
 		const toggle = wrapper.find('[data-testid="agent-thinking-toggle"]');

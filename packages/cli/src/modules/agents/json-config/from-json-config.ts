@@ -1,6 +1,7 @@
 import type {
 	AgentBuilder,
 	BuiltMemory,
+	BuiltProviderTool,
 	BuiltTool,
 	CredentialProvider,
 	ModelConfig,
@@ -16,10 +17,12 @@ import type {
 	AgentJsonMemoryConfig,
 	AgentJsonToolConfig,
 	AgentJsonSkillConfig,
+	AgentJsonWebSearchConfig,
 } from '@n8n/api-types';
 
 import { mapCredentialForProvider } from './credential-field-mapping';
 import { resolveProviderToolName } from './provider-tool-aliases';
+import { assertNoManualWebSearchProviderTools } from './web-search-provider-tools';
 
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
@@ -33,6 +36,10 @@ export interface ToolExecutor {
 /** Factory function that reconstructs a BuiltMemory backend from serialized params. */
 export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Promise<BuiltMemory>;
 
+export type WebSearchToolFactory = (
+	config: AgentJsonWebSearchConfig,
+) => BuiltTool[] | Promise<BuiltTool[]>;
+
 export interface BuildFromJsonOptions {
 	/** Executes custom tool handlers inside isolates. */
 	toolExecutor: ToolExecutor;
@@ -43,6 +50,8 @@ export interface BuildFromJsonOptions {
 	skills?: Record<string, AgentSkill>;
 	/** Memory backend factories keyed by storage preset name. */
 	memoryFactory: MemoryFactory;
+	/** Creates n8n-managed fallback web-search tools for the resolved agent scope. */
+	createWebSearchTools?: WebSearchToolFactory;
 }
 
 /**
@@ -77,6 +86,11 @@ export async function buildFromJson(
 	}
 	agent.skills(configuredSkills);
 
+	if (config.webSearch?.enabled) {
+		assertNoManualWebSearchProviderTools(config);
+		await applyWebSearchFromConfig(agent, config, options);
+	}
+
 	// Provider tools
 	if (config.providerTools) {
 		for (const [name, args] of Object.entries(config.providerTools)) {
@@ -107,6 +121,123 @@ export async function buildFromJson(
 	}
 
 	return agent;
+}
+
+type WebSearchResolution =
+	| { type: 'provider'; tool: BuiltProviderTool }
+	| { type: 'fallback'; reason: string }
+	| { type: 'unsupported'; reason: string };
+
+async function applyWebSearchFromConfig(
+	agent: AgentBuilder,
+	config: AgentJsonConfig,
+	options: BuildFromJsonOptions,
+): Promise<void> {
+	const webSearch = config.webSearch;
+	if (!webSearch?.enabled) return;
+
+	const mode = webSearch.mode ?? 'auto';
+	const provider = getModelProvider(config.model);
+
+	if (mode !== 'n8n') {
+		const resolution = resolveProviderWebSearch(provider, webSearch);
+		if (resolution.type === 'provider') {
+			agent.providerTool(resolution.tool);
+			return;
+		}
+		if (mode === 'provider') {
+			throw new Error(resolution.reason);
+		}
+	}
+
+	if (!webSearch.credential) {
+		throw new Error('webSearch.credential is required when n8n fallback web search is selected');
+	}
+	if (!options.createWebSearchTools) {
+		throw new Error('n8n fallback web search is unavailable in this execution context');
+	}
+
+	const fallbackTools = await options.createWebSearchTools(webSearch);
+	for (const tool of fallbackTools) {
+		agent.tool(tool);
+	}
+}
+
+function getModelProvider(model: string): string | null {
+	const slashIdx = model.indexOf('/');
+	if (slashIdx === -1) return null;
+	return model.slice(0, slashIdx).toLowerCase();
+}
+
+function resolveProviderWebSearch(
+	provider: string | null,
+	config: AgentJsonWebSearchConfig,
+): WebSearchResolution {
+	const allowedDomains = config.allowedDomains;
+	const blockedDomains = config.blockedDomains;
+
+	switch (provider) {
+		case 'anthropic':
+			return {
+				type: 'provider',
+				tool: {
+					name: 'anthropic.web_search_20250305',
+					args: {
+						...(allowedDomains ? { allowedDomains } : {}),
+						...(blockedDomains ? { blockedDomains } : {}),
+					},
+				},
+			};
+
+		case 'openai':
+			if (blockedDomains?.length) {
+				return {
+					type: 'unsupported',
+					reason:
+						'OpenAI web search does not support blockedDomains; use mode "auto" or "n8n" with a webSearch credential.',
+				};
+			}
+			return {
+				type: 'provider',
+				tool: {
+					name: 'openai.web_search',
+					args: {
+						...(allowedDomains ? { filters: { allowedDomains } } : {}),
+					},
+				},
+			};
+
+		case 'xai':
+			if ((allowedDomains?.length ?? 0) > 5 || (blockedDomains?.length ?? 0) > 5) {
+				return {
+					type: 'unsupported',
+					reason: 'xAI web search supports at most 5 allowedDomains and 5 blockedDomains',
+				};
+			}
+			return {
+				type: 'provider',
+				tool: {
+					name: 'xai.web_search',
+					args: {
+						...(allowedDomains ? { allowedDomains } : {}),
+						...(blockedDomains ? { excludedDomains: blockedDomains } : {}),
+					},
+				},
+			};
+
+		case 'google':
+			return {
+				type: 'fallback',
+				reason:
+					'Google provider-hosted web search is not supported for agents because native Google provider tools cannot be mixed with regular n8n tools.',
+			};
+
+		default:
+			return {
+				type: 'unsupported',
+				reason: `Model provider "${provider ?? 'unknown'}" does not support provider-hosted web search`,
+			};
+	}
 }
 
 function getConfiguredSkills(

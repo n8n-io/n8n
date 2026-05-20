@@ -996,7 +996,9 @@ function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		{
+			createLazyAdapter: jest.fn().mockReturnValue({ search: jest.fn(), fetchUrl: jest.fn() }),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 	);
 
 	(
@@ -1127,7 +1129,9 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		{
+			createLazyAdapter: jest.fn().mockReturnValue({ search: jest.fn(), fetchUrl: jest.fn() }),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 	);
 
 	const adapter = service.createContext(mockUser).dataTableService;
@@ -1422,7 +1426,9 @@ function createWorkflowAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		mockAiBuilderTemporaryWorkflowRepository as unknown as AiBuilderTemporaryWorkflowRepository,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		{
+			createLazyAdapter: jest.fn().mockReturnValue({ search: jest.fn(), fetchUrl: jest.fn() }),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 	);
 
 	const context = service.createContext(mockUser, { threadId: 'thread-1' });
@@ -1967,7 +1973,9 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		mockRoleService as unknown as RoleService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		{
+			createLazyAdapter: jest.fn().mockReturnValue({ search: jest.fn(), fetchUrl: jest.fn() }),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
@@ -2235,7 +2243,9 @@ function createRunAdapterForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		{
+			createLazyAdapter: jest.fn().mockReturnValue({ search: jest.fn(), fetchUrl: jest.fn() }),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 	);
 
 	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;

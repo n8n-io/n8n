@@ -131,6 +131,7 @@ describe('AgentsService', () => {
 			agentsConfig,
 			globalConfig,
 			mock<Telemetry>(),
+			mock(),
 			chatIntegrationService,
 		);
 	});
@@ -199,6 +200,22 @@ describe('AgentsService', () => {
 			});
 
 			expect(result.valid).toBe(true);
+		});
+
+		it('rejects manual web-search providerTools when webSearch is enabled', async () => {
+			const result = await service.validateConfig({
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Help the user.',
+				webSearch: { enabled: true },
+				providerTools: {
+					'anthropic.web_search': {},
+				},
+			});
+
+			expect(result.valid).toBe(false);
+			if (result.valid) return;
+			expect(result.error).toContain('Do not configure web-search providerTools manually');
 		});
 	});
 
@@ -427,7 +444,7 @@ describe('AgentsService', () => {
 			expect(savedEntity.skills).toEqual(existingSkills);
 		});
 
-		it('preserves stored schema fields the client did not send (memory, description, credential)', async () => {
+		it('preserves stored schema fields the client did not send (memory, description, credential, webSearch)', async () => {
 			const previousSchema = {
 				name: 'Test Agent',
 				model: 'anthropic/claude-sonnet-4-5',
@@ -435,6 +452,15 @@ describe('AgentsService', () => {
 				description: 'previously stored description',
 				credential: 'cred-anthropic',
 				memory: { enabled: true, lastMessages: 20 },
+				webSearch: {
+					enabled: true,
+					mode: 'n8n',
+					credential: {
+						id: 'search-cred',
+						name: 'Brave Search',
+						type: 'braveSearchApi',
+					},
+				},
 				tools: [{ type: 'custom', id: 'tool-keep' } as const],
 			} as unknown as AgentJsonConfig;
 			const agent = makeAgent({ schema: previousSchema });
@@ -459,9 +485,56 @@ describe('AgentsService', () => {
 			expect(savedSchema.description).toBe('previously stored description');
 			expect(savedSchema.credential).toBe('cred-anthropic');
 			expect(savedSchema.memory).toEqual({ enabled: true, lastMessages: 20 });
+			expect(savedSchema.webSearch).toEqual({
+				enabled: true,
+				mode: 'n8n',
+				credential: {
+					id: 'search-cred',
+					name: 'Brave Search',
+					type: 'braveSearchApi',
+				},
+			});
 			expect(savedSchema.tools).toEqual([{ type: 'custom', id: 'tool-keep' }]);
 			// description column on the entity also stays untouched.
 			expect(savedEntity.description).toBe(agent.description);
+		});
+
+		it('updates stored webSearch when the inbound config provides it', async () => {
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Old instructions',
+					webSearch: {
+						enabled: false,
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const update = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Updated instructions',
+				webSearch: {
+					enabled: true,
+					mode: 'auto',
+					allowedDomains: ['docs.n8n.io'],
+				},
+			} as AgentJsonConfig;
+			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+				valid: true,
+				config: update,
+			});
+
+			await service.updateConfig(agentId, projectId, update);
+
+			const savedEntity = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(savedEntity.schema?.webSearch).toEqual({
+				enabled: true,
+				mode: 'auto',
+				allowedDomains: ['docs.n8n.io'],
+			});
 		});
 
 		it('rejects an active schedule integration when the agent is unpublished', async () => {

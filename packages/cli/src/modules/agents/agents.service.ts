@@ -53,6 +53,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
+import { WebResearchService } from '@/modules/instance-ai/web-research/web-research.service';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -83,11 +84,16 @@ import {
 	type MemoryFactory,
 	type ToolResolver,
 } from './json-config/from-json-config';
+import { findManualWebSearchProviderToolName } from './json-config/web-search-provider-tools';
 import { AgentPublishedVersionRepository } from './repositories/agent-published-version.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import {
+	createWebSearchFallbackTools,
+	resolveWebSearchBackendConfig,
+} from './tools/web-search-tools';
 
 type AgentToolEntries = Agent['tools'];
 
@@ -268,6 +274,7 @@ export class AgentsService {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly globalConfig: GlobalConfig,
 		private readonly telemetry: Telemetry,
+		private readonly webResearchService: WebResearchService,
 		private readonly chatIntegrationService: ChatIntegrationService,
 	) {}
 
@@ -1316,6 +1323,16 @@ export class AgentsService {
 			};
 		}
 
+		if (config.webSearch?.enabled) {
+			const providerToolName = findManualWebSearchProviderToolName(config);
+			if (providerToolName) {
+				return {
+					valid: false,
+					error: `Do not configure web-search providerTools manually when webSearch.enabled is true. Remove "${providerToolName}" and use webSearch instead.`,
+				};
+			}
+		}
+
 		try {
 			this.validateNodeToolExpressions(config);
 		} catch (error) {
@@ -1382,6 +1399,7 @@ export class AgentsService {
 		const credentialProvided = result.config.credential !== undefined;
 		const memoryProvided = result.config.memory !== undefined;
 		const providerToolsProvided = result.config.providerTools !== undefined;
+		const webSearchProvided = result.config.webSearch !== undefined;
 		const configBlockProvided = result.config.config !== undefined;
 
 		const { schemaConfig: decomposedSchema, integrations: decomposedIntegrations } =
@@ -1403,6 +1421,7 @@ export class AgentsService {
 			...(toolsProvided ? { tools: decomposedSchema.tools } : {}),
 			...(skillsProvided ? { skills: decomposedSchema.skills } : {}),
 			...(providerToolsProvided ? { providerTools: decomposedSchema.providerTools } : {}),
+			...(webSearchProvided ? { webSearch: decomposedSchema.webSearch } : {}),
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 		};
 
@@ -1783,6 +1802,20 @@ export class AgentsService {
 			},
 			skills: agentEntity.skills ?? {},
 			memoryFactory: this.getMemoryFactory(agentEntity.id),
+			createWebSearchTools: async (webSearchConfig) => {
+				const backendConfig = await resolveWebSearchBackendConfig(
+					webSearchConfig,
+					credentialProvider,
+				);
+				const webResearchService = this.webResearchService.createAdapter({
+					scopeId: `${agentEntity.id}:${userId}`,
+					backend:
+						backendConfig.type === 'brave'
+							? { braveApiKey: backendConfig.apiKey }
+							: { searxngUrl: backendConfig.apiUrl },
+				});
+				return createWebSearchFallbackTools(webResearchService, webSearchConfig);
+			},
 		});
 
 		await this.injectRuntimeDependencies({

@@ -47,6 +47,38 @@ describe('stripOrphanedToolMessages', () => {
 		expect(assistantMsg.content[0].type).toBe('text');
 	});
 
+	it('drops empty provider reasoning left around pending provider tool-calls', () => {
+		const messages: AgentMessage[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'reasoning',
+						text: '',
+						providerOptions: { openai: { itemId: 'rs_1', reasoningEncryptedContent: null } },
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'ws_1',
+						toolName: 'openai.web_search',
+						input: {},
+						providerExecuted: true,
+						state: 'pending',
+					},
+					{
+						type: 'text',
+						text: 'I found the docs.',
+					},
+				],
+			},
+		];
+
+		const result = stripOrphanedToolMessages(messages) as Message[];
+
+		expect(result).toHaveLength(1);
+		expect(result[0].content).toEqual([{ type: 'text', text: 'I found the docs.' }]);
+	});
+
 	it('drops empty messages after pending strip', () => {
 		const messages: AgentMessage[] = [
 			{ role: 'user', content: [{ type: 'text', text: 'Do it' }] },

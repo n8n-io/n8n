@@ -55,6 +55,33 @@ const NodeToolCredentialSchema = z.object({
 	name: z.string(),
 });
 
+const DomainNameSchema = z
+	.string()
+	.min(1)
+	.max(253)
+	.regex(
+		/^(?=.{1,253}$)(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/i,
+		'Domain must be a hostname like "docs.n8n.io"',
+	);
+
+const WebSearchCredentialSchema = z
+	.object({
+		id: z.string().min(1),
+		name: z.string().min(1),
+		type: z.enum(['braveSearchApi', 'searXngApi']),
+	})
+	.strict();
+
+const WebSearchConfigSchema = z
+	.object({
+		enabled: z.boolean(),
+		mode: z.enum(['auto', 'provider', 'n8n']).optional(),
+		allowedDomains: z.array(DomainNameSchema).optional(),
+		blockedDomains: z.array(DomainNameSchema).optional(),
+		credential: WebSearchCredentialSchema.optional(),
+	})
+	.strict();
+
 export const AgentModelSchema = z
 	.string()
 	.min(1)
@@ -128,6 +155,7 @@ export const AgentJsonConfigSchema = z.object({
 	tools: z.array(AgentJsonToolConfigSchema).optional(),
 	skills: z.array(AgentJsonSkillConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
+	webSearch: WebSearchConfigSchema.optional(),
 	integrations: z.array(AgentIntegrationSchema).optional(),
 	config: z
 		.object({
@@ -158,6 +186,8 @@ export type AgentJsonNodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node
 export type AgentJsonCustomToolConfig = Extract<AgentJsonToolConfig, { type: 'custom' }>;
 export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;
 export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
+export type AgentJsonWebSearchConfig = z.infer<typeof WebSearchConfigSchema>;
+export type AgentJsonWebSearchCredential = z.infer<typeof WebSearchCredentialSchema>;
 export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
 
 export interface ConfigValidationError {

@@ -37,6 +37,14 @@ interface OpenAIWebSearchConfig {
 	};
 }
 
+interface XaiWebSearchConfig {
+	/** Restrict results to these domains. xAI supports at most five. */
+	allowedDomains?: string[];
+	/** Exclude results from these domains. xAI supports at most five. */
+	excludedDomains?: string[];
+	enableImageUnderstanding?: boolean;
+}
+
 /**
  * Factory for creating provider-defined tools.
  *
@@ -124,6 +132,25 @@ export const providerTools = {
 
 		return {
 			name: 'openai.web_search',
+			args,
+		};
+	},
+
+	xaiWebSearch(config?: XaiWebSearchConfig): BuiltProviderTool {
+		const args: Record<string, unknown> = {};
+
+		if (config?.allowedDomains) {
+			args.allowedDomains = config.allowedDomains;
+		}
+		if (config?.excludedDomains) {
+			args.excludedDomains = config.excludedDomains;
+		}
+		if (config?.enableImageUnderstanding !== undefined) {
+			args.enableImageUnderstanding = config.enableImageUnderstanding;
+		}
+
+		return {
+			name: 'xai.web_search',
 			args,
 		};
 	},

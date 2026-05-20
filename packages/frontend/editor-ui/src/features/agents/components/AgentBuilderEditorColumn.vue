@@ -129,6 +129,7 @@ const i18n = useI18n();
 					<N8nCard variant="outlined" :class="$style.card">
 						<AgentAdvancedPanel
 							:config="localConfig"
+							:project-id="projectId"
 							:disabled="childrenDisabled"
 							collapsible
 							@update:config="emit('update:config', $event)"
