@@ -62,11 +62,16 @@ export function useWorkflowSetupSections(
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		if (!nodeType) return node.parameters as INodeParameters;
 
+		// returnNoneDisplayed=false: only resolve defaults for currently-displayed
+		// parameters. The setup UI doesn't render hidden parameters, and processing
+		// them walks duplicate definitions whose `typeOptions.multipleValues` may
+		// disagree with the runtime shape (e.g. Notion `options.sort.sortValue`),
+		// which crashes the resolver in `getNodeParameters`.
 		return (NodeHelpers.getNodeParameters(
 			nodeType.properties,
 			node.parameters as INodeParameters,
 			true,
-			true,
+			false,
 			node,
 			nodeType,
 		) ?? node.parameters) as INodeParameters;
