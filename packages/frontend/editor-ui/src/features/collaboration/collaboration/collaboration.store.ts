@@ -360,13 +360,13 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		}
 	}
 
-	async function initialize() {
+	async function initialize(workflowId: string) {
 		if (pushStoreEventListenerRemovalFn.value) {
 			return;
 		}
 
 		// Store the workflowId we're collaborating on
-		collaboratingWorkflowId.value = workflowsStore.workflowId;
+		collaboratingWorkflowId.value = workflowId;
 
 		// Fetch current write-lock state from backend to restore state after page refresh
 		const writeLock = await fetchWriteLockState();

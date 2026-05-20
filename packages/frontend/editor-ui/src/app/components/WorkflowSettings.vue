@@ -810,6 +810,7 @@ onMounted(async () => {
 			closeDialog();
 			// Open node creator for regular nodes
 			nodeCreatorStore.openNodeCreatorForRegularNodes(
+				workflowDocumentStore.value.workflowId,
 				NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
 			);
 		},
