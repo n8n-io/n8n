@@ -5,9 +5,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import axios from 'axios';
 import type { Response } from 'express';
-import { AuthService } from '@/auth/auth.service';
 import { OAuth1CredentialController } from '@/controllers/oauth/oauth1-credential.controller';
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { OAuthRequest } from '@/requests';
 import { OauthService } from '@/oauth/oauth.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -16,8 +14,6 @@ jest.mock('axios');
 
 describe('OAuth1CredentialController', () => {
 	const oauthService = mockInstance(OauthService);
-	const dynamicCredentialsProxy = mockInstance(DynamicCredentialsProxy);
-	const authService = mockInstance(AuthService);
 
 	mockInstance(Logger);
 	mockInstance(ExternalHooks);
@@ -33,9 +29,11 @@ describe('OAuth1CredentialController', () => {
 	});
 
 	describe('getAuthUri', () => {
-		it('should return a valid auth URI', async () => {
-			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', isResolvable: false });
+		it('should build CSRF state data and return a valid auth URI', async () => {
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockCsrfData = { cid: '1', origin: 'static-credential' as const, userId: '123' };
 			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
+			oauthService.buildCsrfStateData.mockResolvedValueOnce(mockCsrfData);
 			oauthService.generateAOauth1AuthUri.mockResolvedValueOnce(
 				'https://example.domain/oauth/authorize?oauth_token=random-token',
 			);
@@ -45,56 +43,11 @@ describe('OAuth1CredentialController', () => {
 			});
 			const authUri = await controller.getAuthUri(req);
 			expect(authUri).toEqual('https://example.domain/oauth/authorize?oauth_token=random-token');
-			expect(oauthService.generateAOauth1AuthUri).toHaveBeenCalledWith(mockResolvedCredential, {
-				cid: '1',
-				origin: 'static-credential',
-				userId: '123',
-			});
-			expect(dynamicCredentialsProxy.getSystemResolverId).not.toHaveBeenCalled();
-		});
-
-		it('falls back to static-credential origin when credential is resolvable but no resolver id is configured', async () => {
-			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', isResolvable: true });
-			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
-			oauthService.generateAOauth1AuthUri.mockResolvedValueOnce('https://example.domain/oauth');
-			dynamicCredentialsProxy.getSystemResolverId.mockResolvedValueOnce(null);
-
-			const req = mock<OAuthRequest.OAuth1Credential.Auth>({
-				user: mock<User>({ id: '123' }),
-				query: { id: '1' },
-			});
-			await controller.getAuthUri(req);
-
-			expect(dynamicCredentialsProxy.getSystemResolverId).toHaveBeenCalled();
-			expect(oauthService.generateAOauth1AuthUri).toHaveBeenCalledWith(mockResolvedCredential, {
-				cid: '1',
-				origin: 'static-credential',
-				userId: '123',
-			});
-		});
-
-		it('routes through dynamic-credential origin when credential is resolvable and resolver id is configured', async () => {
-			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', isResolvable: true });
-			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
-			oauthService.generateAOauth1AuthUri.mockResolvedValueOnce('https://example.domain/oauth');
-			dynamicCredentialsProxy.getSystemResolverId.mockResolvedValueOnce('private-resolver-id');
-			authService.getCookieToken.mockReturnValueOnce('user-jwt-token');
-
-			const req = mock<OAuthRequest.OAuth1Credential.Auth>({
-				user: mock<User>({ id: '123' }),
-				query: { id: '1' },
-			});
-			await controller.getAuthUri(req);
-
-			expect(authService.getCookieToken).toHaveBeenCalledWith(req);
-			expect(oauthService.generateAOauth1AuthUri).toHaveBeenCalledWith(mockResolvedCredential, {
-				cid: '1',
-				origin: 'dynamic-credential',
-				userId: '123',
-				credentialResolverId: 'private-resolver-id',
-				authorizationHeader: 'Bearer user-jwt-token',
-				authMetadata: { source: 'manual-execution' },
-			});
+			expect(oauthService.buildCsrfStateData).toHaveBeenCalledWith(mockResolvedCredential, req);
+			expect(oauthService.generateAOauth1AuthUri).toHaveBeenCalledWith(
+				mockResolvedCredential,
+				mockCsrfData,
+			);
 		});
 	});
 

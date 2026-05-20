@@ -1,57 +1,29 @@
+import { Logger } from '@n8n/backend-common';
 import { Get, RestController } from '@n8n/decorators';
 import axios from 'axios';
 import { Response } from 'express';
 import { ensureError, jsonStringify } from 'n8n-workflow';
 
-import { AuthService } from '@/auth/auth.service';
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { OAuthRequest } from '@/requests';
 
 import {
 	OauthService,
 	skipAuthOnOAuthCallback,
-	type CreateCsrfStateData,
 	type OAuth1CredentialData,
 } from '@/oauth/oauth.service';
-import { Logger } from '@n8n/backend-common';
 
 @RestController('/oauth1-credential')
 export class OAuth1CredentialController {
 	constructor(
 		private readonly oauthService: OauthService,
 		private readonly logger: Logger,
-		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
-		private readonly authService: AuthService,
 	) {}
 
 	/** Get Authorization url */
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth): Promise<string> {
 		const credential = await this.oauthService.getCredentialForUpdate(req);
-
-		const privateResolverId = credential.isResolvable
-			? await this.dynamicCredentialsProxy.getSystemResolverId()
-			: null;
-
-		let csrfData: CreateCsrfStateData;
-		if (credential.isResolvable && privateResolverId !== null) {
-			const cookieToken = this.authService.getCookieToken(req);
-			csrfData = {
-				cid: credential.id,
-				origin: 'dynamic-credential',
-				userId: req.user.id,
-				credentialResolverId: privateResolverId,
-				authorizationHeader: `Bearer ${cookieToken ?? ''}`,
-				authMetadata: { source: 'manual-execution' },
-			};
-		} else {
-			csrfData = {
-				cid: credential.id,
-				origin: 'static-credential',
-				userId: skipAuthOnOAuthCallback ? undefined : req.user.id,
-			};
-		}
-
+		const csrfData = await this.oauthService.buildCsrfStateData(credential, req);
 		const uri = await this.oauthService.generateAOauth1AuthUri(credential, csrfData);
 
 		this.logger.debug('OAuth1 authorization successful for new credential', {

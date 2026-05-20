@@ -9,11 +9,8 @@ import split from 'lodash/split';
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
 
-import { AuthService } from '@/auth/auth.service';
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { ExternalHooks } from '@/external-hooks';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
-import type { CreateCsrfStateData } from '@/oauth/oauth.service';
 import { OauthService, OauthVersion, skipAuthOnOAuthCallback } from '@/oauth/oauth.service';
 import { OAuthRequest } from '@/requests';
 
@@ -24,38 +21,13 @@ export class OAuth2CredentialController {
 		private readonly logger: Logger,
 		private readonly externalHooks: ExternalHooks,
 		private readonly oauthJweServiceProxy: OAuthJweServiceProxy,
-		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
-		private readonly authService: AuthService,
 	) {}
 
 	/** Get Authorization url */
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth2Credential.Auth): Promise<string> {
 		const credential = await this.oauthService.getCredentialForUpdate(req);
-
-		const privateResolverId = credential.isResolvable
-			? await this.dynamicCredentialsProxy.getSystemResolverId()
-			: null;
-
-		let csrfData: CreateCsrfStateData;
-		if (credential.isResolvable && privateResolverId !== null) {
-			const cookieToken = this.authService.getCookieToken(req);
-			csrfData = {
-				cid: credential.id,
-				origin: 'dynamic-credential',
-				userId: req.user.id,
-				credentialResolverId: privateResolverId,
-				authorizationHeader: `Bearer ${cookieToken ?? ''}`,
-				authMetadata: { source: 'manual-execution' },
-			};
-		} else {
-			csrfData = {
-				cid: credential.id,
-				origin: 'static-credential',
-				userId: req.user.id,
-			};
-		}
-
+		const csrfData = await this.oauthService.buildCsrfStateData(credential, req);
 		const uri = await this.oauthService.generateAOauth2AuthUri(credential, csrfData);
 		return uri;
 	}

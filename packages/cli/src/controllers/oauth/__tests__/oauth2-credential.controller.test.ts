@@ -5,9 +5,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
 import { UserError } from 'n8n-workflow';
-import { AuthService } from '@/auth/auth.service';
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { OAuthRequest } from '@/requests';
 import { OauthService } from '@/oauth/oauth.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -21,8 +19,6 @@ describe('OAuth2CredentialController', () => {
 	const oauthService = mockInstance(OauthService);
 	const externalHooks = mockInstance(ExternalHooks);
 	const oauthJweServiceProxy = mockInstance(OAuthJweServiceProxy);
-	const dynamicCredentialsProxy = mockInstance(DynamicCredentialsProxy);
-	const authService = mockInstance(AuthService);
 
 	mockInstance(Logger);
 
@@ -37,32 +33,11 @@ describe('OAuth2CredentialController', () => {
 	});
 
 	describe('getAuthUri', () => {
-		it('should return a valid auth URI', async () => {
-			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-			const mockGetUri = jest.fn().mockReturnValue({
-				toString: () =>
-					'https://example.domain/oauth2/auth?client_id=client_id&redirect_uri=http://localhost:5678/rest/oauth2-credential/callback&response_type=code&state=state&scope=openid',
-			});
-			jest.mocked(ClientOAuth2).mockImplementation(
-				() =>
-					({
-						code: {
-							getUri: mockGetUri,
-						},
-					}) as any,
-			);
-
-			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', isResolvable: false });
+		it('should build CSRF state data and return a valid auth URI', async () => {
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockCsrfData = { cid: '1', origin: 'static-credential' as const, userId: '123' };
 			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
-			oauthService.getOAuthCredentials.mockResolvedValueOnce({
-				clientId: 'client_id',
-				clientSecret: 'client_secret',
-				authUrl: 'https://example.domain/oauth2/auth',
-				accessTokenUrl: 'https://example.domain/oauth2/token',
-				scope: 'openid',
-				grantType: 'authorizationCode',
-				authentication: 'header',
-			});
+			oauthService.buildCsrfStateData.mockResolvedValueOnce(mockCsrfData);
 			oauthService.generateAOauth2AuthUri.mockResolvedValue('https://example.domain/oauth2/auth');
 
 			const req = mock<OAuthRequest.OAuth2Credential.Auth>({
@@ -73,58 +48,11 @@ describe('OAuth2CredentialController', () => {
 			const authUri = await controller.getAuthUri(req);
 
 			expect(authUri).toContain('https://example.domain/oauth2/auth');
-			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(mockResolvedCredential, {
-				cid: '1',
-				origin: 'static-credential',
-				userId: '123',
-			});
-			expect(dynamicCredentialsProxy.getSystemResolverId).not.toHaveBeenCalled();
-		});
-
-		it('falls back to static-credential origin when credential is resolvable but no resolver id is configured', async () => {
-			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', isResolvable: true });
-			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
-			oauthService.generateAOauth2AuthUri.mockResolvedValue('https://example.domain/oauth2/auth');
-			dynamicCredentialsProxy.getSystemResolverId.mockResolvedValueOnce(null);
-
-			const req = mock<OAuthRequest.OAuth2Credential.Auth>({
-				user: mock<User>({ id: '123' }),
-				query: { id: '1' },
-			});
-
-			await controller.getAuthUri(req);
-
-			expect(dynamicCredentialsProxy.getSystemResolverId).toHaveBeenCalled();
-			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(mockResolvedCredential, {
-				cid: '1',
-				origin: 'static-credential',
-				userId: '123',
-			});
-		});
-
-		it('routes through dynamic-credential origin when credential is resolvable and resolver id is configured', async () => {
-			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', isResolvable: true });
-			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
-			oauthService.generateAOauth2AuthUri.mockResolvedValue('https://example.domain/oauth2/auth');
-			dynamicCredentialsProxy.getSystemResolverId.mockResolvedValueOnce('private-resolver-id');
-			authService.getCookieToken.mockReturnValueOnce('user-jwt-token');
-
-			const req = mock<OAuthRequest.OAuth2Credential.Auth>({
-				user: mock<User>({ id: '123' }),
-				query: { id: '1' },
-			});
-
-			await controller.getAuthUri(req);
-
-			expect(authService.getCookieToken).toHaveBeenCalledWith(req);
-			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(mockResolvedCredential, {
-				cid: '1',
-				origin: 'dynamic-credential',
-				userId: '123',
-				credentialResolverId: 'private-resolver-id',
-				authorizationHeader: 'Bearer user-jwt-token',
-				authMetadata: { source: 'manual-execution' },
-			});
+			expect(oauthService.buildCsrfStateData).toHaveBeenCalledWith(mockResolvedCredential, req);
+			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(
+				mockResolvedCredential,
+				mockCsrfData,
+			);
 		});
 	});
 

@@ -12,6 +12,7 @@ import { Credentials } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { AuthService } from '@/auth/auth.service';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -44,6 +45,7 @@ describe('OauthService', () => {
 	const externalHooks = mockInstance(ExternalHooks);
 	const cipher = mock<Cipher>();
 	const dynamicCredentialsProxy = mockInstance(DynamicCredentialsProxy);
+	const authService = mockInstance(AuthService);
 
 	let service: OauthService;
 
@@ -85,6 +87,7 @@ describe('OauthService', () => {
 			externalHooks,
 			cipher,
 			dynamicCredentialsProxy,
+			authService,
 		);
 	});
 
@@ -524,10 +527,10 @@ describe('OauthService', () => {
 			await expect((service as any).decodeCsrfState(encodedState, req)).rejects.toThrow(AuthError);
 		});
 
-		it('should bypass user validation for dynamic-credential origin (no userId check)', async () => {
+		it('should succeed for dynamic-credential origin when userId matches req.user.id', async () => {
 			const csrfData = {
 				cid: 'credential-id',
-				userId: 'different-user-id',
+				userId: 'user-id',
 				origin: 'dynamic-credential' as const,
 			};
 			const state = {
@@ -549,15 +552,37 @@ describe('OauthService', () => {
 				token: 'token',
 				createdAt: timestamp,
 				cid: 'credential-id',
-				userId: 'different-user-id',
+				userId: 'user-id',
 				origin: 'dynamic-credential',
 			});
 			expect(credential).toBe(mockCredential);
-			expect(cipher.decryptV2).toHaveBeenCalledWith('encrypted-data');
 			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 		});
 
-		it('should bypass user validation for dynamic-credential origin even when req.user is undefined', async () => {
+		it('should throw AuthError for dynamic-credential origin when userId does not match req.user.id', async () => {
+			const csrfData = {
+				cid: 'credential-id',
+				userId: 'different-user-id',
+				origin: 'dynamic-credential' as const,
+			};
+			const state = {
+				token: 'token',
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decryptV2.mockResolvedValue(JSON.stringify(csrfData));
+			const req = mock<AuthenticatedRequest>({
+				user: mock<User>({ id: 'user-id' }),
+			});
+
+			await expect((service as any).decodeCsrfState(encodedState, req)).rejects.toThrow(AuthError);
+			await expect((service as any).decodeCsrfState(encodedState, req)).rejects.toThrow(
+				'Unauthorized',
+			);
+		});
+
+		it('should bypass user validation for dynamic-credential origin when req.user is undefined', async () => {
 			const csrfData = {
 				cid: 'credential-id',
 				userId: 'user-id',
@@ -655,6 +680,57 @@ describe('OauthService', () => {
 			await expect((service as any).decodeCsrfState(encodedState, req)).rejects.toThrow(
 				'Unauthorized',
 			);
+		});
+	});
+
+	describe('buildCsrfStateData', () => {
+		it('returns static-credential data when credential is not resolvable', async () => {
+			const credential = mock<CredentialsEntity>({ id: 'cred-1', isResolvable: false });
+			const req = mock<OAuthRequest.OAuth1Credential.Auth>({ user: mock<User>({ id: 'user-1' }) });
+
+			const result = await service.buildCsrfStateData(credential, req);
+
+			expect(result).toEqual({ cid: 'cred-1', origin: 'static-credential', userId: 'user-1' });
+			expect(dynamicCredentialsProxy.getSystemResolverId).not.toHaveBeenCalled();
+		});
+
+		it('returns static-credential data when credential is resolvable but no system resolver is configured', async () => {
+			const credential = mock<CredentialsEntity>({ id: 'cred-1', isResolvable: true });
+			const req = mock<OAuthRequest.OAuth1Credential.Auth>({ user: mock<User>({ id: 'user-1' }) });
+			dynamicCredentialsProxy.getSystemResolverId.mockResolvedValueOnce(null);
+
+			const result = await service.buildCsrfStateData(credential, req);
+
+			expect(result).toEqual({ cid: 'cred-1', origin: 'static-credential', userId: 'user-1' });
+		});
+
+		it('returns static-credential data when credential is resolvable, resolver exists, but cookie token is missing', async () => {
+			const credential = mock<CredentialsEntity>({ id: 'cred-1', isResolvable: true });
+			const req = mock<OAuthRequest.OAuth1Credential.Auth>({ user: mock<User>({ id: 'user-1' }) });
+			dynamicCredentialsProxy.getSystemResolverId.mockResolvedValueOnce('system-resolver');
+			authService.getCookieToken.mockReturnValueOnce(undefined);
+
+			const result = await service.buildCsrfStateData(credential, req);
+
+			expect(result).toEqual({ cid: 'cred-1', origin: 'static-credential', userId: 'user-1' });
+		});
+
+		it('returns dynamic-credential data when credential is resolvable, resolver exists, and cookie token is present', async () => {
+			const credential = mock<CredentialsEntity>({ id: 'cred-1', isResolvable: true });
+			const req = mock<OAuthRequest.OAuth1Credential.Auth>({ user: mock<User>({ id: 'user-1' }) });
+			dynamicCredentialsProxy.getSystemResolverId.mockResolvedValueOnce('system-resolver');
+			authService.getCookieToken.mockReturnValueOnce('jwt-token');
+
+			const result = await service.buildCsrfStateData(credential, req);
+
+			expect(result).toEqual({
+				cid: 'cred-1',
+				origin: 'dynamic-credential',
+				userId: 'user-1',
+				credentialResolverId: 'system-resolver',
+				authorizationHeader: 'Bearer jwt-token',
+				authMetadata: { source: 'manual-execution' },
+			});
 		});
 	});
 
@@ -858,13 +934,13 @@ describe('OauthService', () => {
 			);
 		});
 
-		it('should resolve dynamic credential without user validation but still verify CSRF', async () => {
+		it('should resolve dynamic credential and verify CSRF when userId matches', async () => {
 			const token = new (require('csrf'))();
 			const stateToken = token.create('csrf-secret');
 
 			const csrfData = {
 				cid: 'credential-id',
-				userId: 'different-user-id',
+				userId: 'user-id',
 				origin: 'dynamic-credential' as const,
 			};
 			const state = {
@@ -881,7 +957,7 @@ describe('OauthService', () => {
 
 			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
 				query: { state: encodedState },
-				user: mock<User>({ id: 'user-id' }), // Different user ID - should be bypassed
+				user: mock<User>({ id: 'user-id' }),
 			});
 
 			cipher.decryptV2.mockResolvedValue(JSON.stringify(csrfData));
@@ -894,7 +970,6 @@ describe('OauthService', () => {
 
 			const result = await service.resolveCredential(req);
 
-			// Should succeed despite different user ID because origin is dynamic-credential
 			expect(result[0]).toEqual(mockCredential);
 			expect(result[1]).toEqual(mockDecryptedData);
 			expect(result[2]).toEqual(mockOAuthCredentials);
@@ -902,11 +977,33 @@ describe('OauthService', () => {
 				token: stateToken,
 				createdAt: timestamp,
 				cid: 'credential-id',
-				userId: 'different-user-id',
+				userId: 'user-id',
 				origin: 'dynamic-credential',
 			});
-			// CSRF validation should still be called
 			expect(verifySpy).toHaveBeenCalled();
+		});
+
+		it('should reject dynamic credential callback when userId does not match req.user.id', async () => {
+			const csrfData = {
+				cid: 'credential-id',
+				userId: 'different-user-id',
+				origin: 'dynamic-credential' as const,
+			};
+			const state = {
+				token: 'token',
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+
+			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+				query: { state: encodedState },
+				user: mock<User>({ id: 'user-id' }),
+			});
+
+			cipher.decryptV2.mockResolvedValue(JSON.stringify(csrfData));
+
+			await expect(service.resolveCredential(req)).rejects.toThrow(AuthError);
 		});
 
 		it('should still verify CSRF for dynamic credentials even when req.user is undefined', async () => {
