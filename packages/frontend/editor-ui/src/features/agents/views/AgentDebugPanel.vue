@@ -63,7 +63,7 @@ function runMatchesFilter(run: AgentDebugRun, filter: DebugRunFilter): boolean {
 }
 
 function countForFilter(filter: DebugRunFilter): number {
-	return debugStore.runs.filter((run) => runMatchesFilter(run, filter)).length;
+	return conversationRuns.value.filter((run) => runMatchesFilter(run, filter)).length;
 }
 
 function filterLabel(filter: DebugRunFilter): string {
@@ -80,8 +80,17 @@ const filterOptions = computed<Array<{ label: string; value: DebugRunFilter }>>(
 	{ label: filterLabel('slow_run'), value: 'slow_run' },
 ]);
 
+const conversationRuns = computed(() => {
+	const seenThreadIds = new Set<string>();
+	return debugStore.runs.filter((run) => {
+		if (seenThreadIds.has(run.threadId)) return false;
+		seenThreadIds.add(run.threadId);
+		return true;
+	});
+});
+
 const filteredRuns = computed(() =>
-	debugStore.runs.filter((run) => runMatchesFilter(run, selectedFilter.value)),
+	conversationRuns.value.filter((run) => runMatchesFilter(run, selectedFilter.value)),
 );
 
 function formatDate(fullDate: string) {
@@ -373,6 +382,10 @@ onBeforeUnmount(() => {
 
 .runsPanel {
 	min-width: 0;
+	overflow: hidden;
+	border: var(--border);
+	border-radius: var(--border-radius-base);
+	background-color: var(--background--surface);
 }
 
 .runRow {
@@ -391,8 +404,9 @@ onBeforeUnmount(() => {
 }
 
 .filters {
-	padding: 0 0 var(--spacing--sm);
+	padding: var(--spacing--sm);
 	overflow-x: auto;
+	border-bottom: var(--border);
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
 }
