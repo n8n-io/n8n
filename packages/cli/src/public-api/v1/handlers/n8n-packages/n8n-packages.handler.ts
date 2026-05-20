@@ -42,8 +42,11 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 
 			return await new Promise<Response>((resolve, reject) => {
 				stream.on('error', reject);
-				res.on('close', () => resolve(res));
 				res.on('finish', () => resolve(res));
+				res.on('close', () => {
+					if (!res.writableFinished) stream.destroy();
+					resolve(res);
+				});
 				stream.pipe(res);
 			});
 		},

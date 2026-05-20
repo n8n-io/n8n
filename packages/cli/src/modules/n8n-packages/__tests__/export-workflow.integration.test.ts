@@ -26,7 +26,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'Project']);
+	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'ProjectRelation', 'Project']);
 });
 
 describe('workflow package export', () => {
