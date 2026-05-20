@@ -194,22 +194,27 @@ function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
 function handleApprovalSelect(item: PendingConfirmationItem, key: string) {
 	switch (key) {
 		case 'always-allow':
-			handleAlwaysAllow(item);
+			void handleAlwaysAllow(item);
 			return;
 		case 'allow-once':
-			handleConfirm(item, true);
+			void handleConfirm(item, true);
 			return;
 		case 'deny':
-			handleConfirm(item, false);
+			void handleConfirm(item, false);
 	}
 }
 
 // Text input state per requestId
 const textInputValues = ref<Record<string, string>>({});
 
-function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
+async function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 	const conf = item.toolCall.confirmation;
 	if (thread.resolvedConfirmationIds.has(conf.requestId)) return;
+	// Await the POST first so a network failure leaves the card visible and
+	// the backend's wait state intact — matches the auto-approve watcher
+	// behaviour. `confirmAction` already surfaces a toast on failure.
+	const ok = await thread.confirmAction(conf.requestId, { kind: 'approval', approved });
+	if (!ok) return;
 	// "Always allow" is offered alongside Approve/Deny for non-destructive
 	// generic approvals; include it in the option set so telemetry reflects
 	// what the user actually chose between.
@@ -226,12 +231,17 @@ function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 		[],
 	);
 	thread.resolveConfirmation(conf.requestId, approved ? 'approved' : 'denied');
-	void thread.confirmAction(conf.requestId, { kind: 'approval', approved });
 }
 
-function handleAlwaysAllow(item: PendingConfirmationItem) {
+async function handleAlwaysAllow(item: PendingConfirmationItem) {
 	const conf = item.toolCall.confirmation;
 	if (thread.resolvedConfirmationIds.has(conf.requestId)) return;
+	// Confirm with the backend before granting the session-allow key — a
+	// failed POST would otherwise hide the card while the backend keeps
+	// waiting, AND seed an auto-approve key the watcher would use to
+	// silently approve later matching confirmations.
+	const ok = await thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
+	if (!ok) return;
 	thread.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
 	trackInputCompleted(
 		conf,
@@ -245,7 +255,6 @@ function handleAlwaysAllow(item: PendingConfirmationItem) {
 		[],
 	);
 	thread.resolveConfirmation(conf.requestId, 'approved');
-	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
 }
 
 function handleTextSubmit(conf: InstanceAiConfirmation) {

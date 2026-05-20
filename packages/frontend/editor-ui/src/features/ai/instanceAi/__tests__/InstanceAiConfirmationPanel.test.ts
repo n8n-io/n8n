@@ -264,6 +264,44 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			);
 		});
 
+		it('does not grant the session-allow key when always-allow POST fails', async () => {
+			injectPendingConfirmation(
+				thread,
+				{
+					requestId: 'req-always-fail',
+					severity: 'info',
+					message: 'Run this workflow?',
+				},
+				{ action: 'run' },
+			);
+			vi.spyOn(thread, 'confirmAction').mockResolvedValue(false);
+			const addKeySpy = vi.spyOn(thread, 'addAlwaysAllowKey');
+			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
+			await userEvent.click(getByTestId('instance-ai-panel-confirm-always-allow'));
+
+			expect(addKeySpy).not.toHaveBeenCalled();
+			expect(resolveSpy).not.toHaveBeenCalled();
+			expect(mockTelemetryTrack).not.toHaveBeenCalled();
+		});
+
+		it('does not resolve the confirmation when an approve POST fails', async () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-approve-fail',
+				severity: 'info',
+				message: 'Run this workflow?',
+			});
+			vi.spyOn(thread, 'confirmAction').mockResolvedValue(false);
+			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
+			await userEvent.click(getByTestId('instance-ai-panel-confirm-approve'));
+
+			expect(resolveSpy).not.toHaveBeenCalled();
+			expect(mockTelemetryTrack).not.toHaveBeenCalled();
+		});
+
 		it('hides always-allow on destructive confirmations and narrows the option set', async () => {
 			injectPendingConfirmation(thread, {
 				requestId: 'req-destructive',
