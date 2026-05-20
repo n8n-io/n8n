@@ -1,19 +1,31 @@
 import { z } from 'zod';
 
+export const valueLookupPathSchema = z.object({
+	nodeType: z.string().min(1),
+	path: z.string().min(1),
+});
+
+export type ValueLookupPath = z.infer<typeof valueLookupPathSchema>;
+
 /**
  * Schema for `N8N_SECURITY_SENSITIVE_FIELD_RULES` (or its `_FILE` variant).
  *
- * Flat object keyed by node-type identifier. The `*` key applies to every
- * trigger type and is unioned with any type-specific entry. Each value is a
- * list of dot-paths into the trigger item's `.json` that must be stripped
- * before any node consumes the trigger output.
+ * Flat object keyed by a logical alias. Each rule pairs a node-type matcher
+ * with a dot-path into the trigger item's `.json`. The `*` node-type
+ * wildcard applies the rule to every trigger type. When a rule matches, the
+ * value at `path` is removed from the trigger output and stored under the
+ * alias on the secure-artifact context for later consumption by node
+ * backends.
  *
  * @example
  * {
- *   "*": ["headers.authorization", "headers.cookie"],
- *   "n8n-nodes-base.formTrigger": ["body.password"]
+ *   "api_key": { "nodeType": "*", "path": "headers.authorization" },
+ *   "form_password": {
+ *     "nodeType": "n8n-nodes-base.formTrigger",
+ *     "path": "body.password"
+ *   }
  * }
  */
-export const sensitiveFieldRulesSchema = z.record(z.string().min(1), z.array(z.string().min(1)));
+export const sensitiveFieldRulesSchema = z.record(z.string().min(1), valueLookupPathSchema);
 
 export type SensitiveFieldRules = z.infer<typeof sensitiveFieldRulesSchema>;
