@@ -617,6 +617,35 @@ describe('OauthService', () => {
 			expect(cipher.decryptV2).toHaveBeenCalledWith('encrypted-data');
 		});
 
+		it('should bypass user validation for dynamic-credential origin when state has no userId (external flow)', async () => {
+			const csrfData = {
+				cid: 'credential-id',
+				origin: 'dynamic-credential' as const,
+				// no userId — state created by dynamic-credentials.controller (external/Keycloak flow)
+			};
+			const state = {
+				token: 'token',
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decryptV2.mockResolvedValue(JSON.stringify(csrfData));
+			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
+			credentialsRepository.findOneBy.mockResolvedValue(mockCredential as any);
+			const req = mock<AuthenticatedRequest>({
+				user: mock<User>({ id: 'user-id' }),
+			});
+
+			const [decodedState, credential] = await (service as any).decodeCsrfState(encodedState, req);
+
+			expect(decodedState).toMatchObject({
+				cid: 'credential-id',
+				origin: 'dynamic-credential',
+			});
+			expect(credential).toBe(mockCredential);
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+		});
+
 		it('should require user validation for static-credential origin', async () => {
 			const csrfData = {
 				cid: 'credential-id',

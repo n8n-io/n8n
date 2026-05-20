@@ -300,9 +300,16 @@ export class OauthService {
 		}
 
 		// Dynamic credentials: skip user-ownership check since the credential may be shared,
-		// but still validate userId when the caller is an authenticated n8n user.
+		// but validate userId when both the state and the caller carry an n8n user identity
+		// (prevents CSRF-state reuse across users in the browser-initiated OAuth flow).
+		// When the flow was initiated externally (e.g. via dynamic-credentials.controller),
+		// the state has no userId and the check is skipped.
 		if (decryptedState.origin === 'dynamic-credential') {
-			if (req.user?.id !== undefined && decryptedState.userId !== req.user.id) {
+			if (
+				req.user?.id !== undefined &&
+				decryptedState.userId !== undefined &&
+				decryptedState.userId !== req.user.id
+			) {
 				throw new AuthError('Unauthorized');
 			}
 			return [
