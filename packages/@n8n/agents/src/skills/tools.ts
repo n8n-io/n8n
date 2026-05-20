@@ -14,6 +14,7 @@ import {
 
 const MAX_OUTPUT_BYTES = 64 * 1024;
 const TRUNCATION_FOOTER = '\n\n[... output truncated to 64 KB ...]';
+const SECRET_REDACTION = '[REDACTED]';
 const LINKED_FILE_GROUPS: Array<keyof RuntimeSkillLinkedFiles> = [
 	'references',
 	'templates',
@@ -297,9 +298,19 @@ function envelopeValue(value: string): string {
 }
 
 function cap(content: string): string {
-	const bytes = Buffer.from(content, 'utf8');
-	if (bytes.byteLength <= MAX_OUTPUT_BYTES) return content;
+	const redacted = redactSecrets(content);
+	const bytes = Buffer.from(redacted, 'utf8');
+	if (bytes.byteLength <= MAX_OUTPUT_BYTES) return redacted;
 	return `${bytes.subarray(0, MAX_OUTPUT_BYTES).toString('utf8')}${TRUNCATION_FOOTER}`;
+}
+
+function redactSecrets(content: string): string {
+	return content
+		.replace(/\b(authorization)(\s*:\s*Bearer\s+)[^\s"',;]+/gi, `$1$2${SECRET_REDACTION}`)
+		.replace(
+			/\b(api[_-]?key|token|password|passwd|secret|credential)(\s*[:=]\s*)(["']?)[^\s"',;]+(\3)/gi,
+			`$1$2$3${SECRET_REDACTION}$4`,
+		);
 }
 
 function isPresentString(value: string | undefined): value is string {

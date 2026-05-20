@@ -377,15 +377,15 @@ function categoryFor(sourceDirectory: string): string | undefined {
 }
 
 function compareRuntimeSkills(left: RuntimeSkill, right: RuntimeSkill) {
-	return left.name.localeCompare(right.name) || left.id.localeCompare(right.id);
+	return compareStrings(left.name, right.name) || compareStrings(left.id, right.id);
 }
 
 function compareRegistryEntries(left: RuntimeSkillRegistryEntry, right: RuntimeSkillRegistryEntry) {
-	return left.name.localeCompare(right.name) || left.id.localeCompare(right.id);
+	return compareStrings(left.name, right.name) || compareStrings(left.id, right.id);
 }
 
 function compareLinkedFiles(left: RuntimeSkillLinkedFile, right: RuntimeSkillLinkedFile) {
-	return left.path.localeCompare(right.path);
+	return compareStrings(left.path, right.path);
 }
 
 function normalizeLinkedFilePath(filePath: string): string | null {
@@ -418,11 +418,17 @@ function stableClone(value: unknown): unknown {
 		return Object.fromEntries(
 			Object.entries(value)
 				.filter(([, entryValue]) => entryValue !== undefined)
-				.sort(([left], [right]) => left.localeCompare(right))
+				.sort(([left], [right]) => compareStrings(left, right))
 				.map(([key, entryValue]) => [key, stableClone(entryValue)]),
 		);
 	}
 	return value;
+}
+
+function compareStrings(left: string, right: string): number {
+	if (left < right) return -1;
+	if (left > right) return 1;
+	return 0;
 }
 
 function stableRecord<T extends object>(value: T): T {

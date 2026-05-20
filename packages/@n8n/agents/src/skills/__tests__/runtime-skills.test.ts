@@ -98,6 +98,7 @@ Follow the workflow-building process.`);
 		const result = parseRuntimeSkillMarkdown(`---
 name: Workflow Builder
 description: Build workflows.
+descripton: Typo should fail
 interface:
   unknown: no
 ---
@@ -109,6 +110,7 @@ Body`);
 		expect(result.errors).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ code: 'invalid_name', field: 'name' }),
+				expect.objectContaining({ code: 'unknown_field', field: 'descripton' }),
 				expect.objectContaining({ code: 'unknown_field', field: 'interface.unknown' }),
 			]),
 		);
@@ -152,6 +154,47 @@ description: Has no instructions.
 		expect(left.skills.map((skill) => skill.id)).toEqual(['a', 'b']);
 	});
 
+	it('uses locale-independent ordering for registry hashes', () => {
+		const localeCompareSpy = jest
+			.spyOn(String.prototype, 'localeCompare')
+			.mockImplementation(() => {
+				throw new Error('localeCompare must not be used for registry ordering');
+			});
+
+		try {
+			expect(() =>
+				createRuntimeSkillRegistry([
+					{
+						id: 'skill-b',
+						name: 'skill-b',
+						description: 'Second skill',
+						instructions: 'B body',
+						metadata: { zebra: true, alpha: true },
+						linkedFiles: {
+							references: [
+								{ path: 'references/z.md', bytes: 1, sha256: 'z' },
+								{ path: 'references/a.md', bytes: 1, sha256: 'a' },
+							],
+							templates: [],
+							scripts: [],
+							assets: [],
+							examples: [],
+							other: [],
+						},
+					},
+					{
+						id: 'skill-a',
+						name: 'skill-a',
+						description: 'First skill',
+						instructions: 'A body',
+					},
+				]),
+			).not.toThrow();
+		} finally {
+			localeCompareSpy.mockRestore();
+		}
+	});
+
 	it('rejects duplicate skill ids and names', () => {
 		expect(() =>
 			createRuntimeSkillRegistry([
@@ -165,7 +208,7 @@ description: Has no instructions.
 				{ id: 'one', name: 'Same', description: 'A', instructions: 'A' },
 				{ id: 'two', name: 'same', description: 'B', instructions: 'B' },
 			]),
-		).toThrow('Duplicate skill name "Same"');
+		).toThrow('Duplicate skill name "same"');
 	});
 
 	it('loads filesystem-backed skills and linked files from a directory', async () => {
@@ -278,6 +321,36 @@ Use the workflow SDK.`,
 		await expect(viewTool.handler?.({ name: 'Missing skill' }, {})).resolves.toMatchObject({
 			success: false,
 		});
+	});
+
+	it('redacts likely secrets from skill_view content before returning it', async () => {
+		const secretValue = 'super-secret-value';
+		const longToken = 'x'.repeat(1024);
+		const source = createRuntimeSkillSource([
+			{
+				id: 'credentials-guide',
+				name: 'Credentials guide',
+				description: 'Use for credential examples.',
+				instructions: [
+					`Use token=${secretValue}`,
+					'Authorization: Bearer bearer-secret-value',
+					`api_key=${longToken}`,
+					'safe content '.repeat(6000),
+				].join('\n'),
+			},
+		]);
+		const viewTool = createSkillViewTool(source);
+
+		const output = (await viewTool.handler?.({ name: 'Credentials guide' }, {})) as {
+			content?: string;
+		};
+
+		expect(output.content).toContain('token=[REDACTED]');
+		expect(output.content).toContain('Authorization: Bearer [REDACTED]');
+		expect(output.content).toContain('api_key=[REDACTED]');
+		expect(output.content).not.toContain(secretValue);
+		expect(output.content).not.toContain('bearer-secret-value');
+		expect(output.content).not.toContain(longToken.slice(0, 32));
 	});
 
 	it('uses skill_view for registered linked files when the source supports file loading', async () => {

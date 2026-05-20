@@ -12,6 +12,20 @@ import {
 } from './types';
 
 export const RUNTIME_SKILL_NAME_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const RUNTIME_SKILL_FRONTMATTER_FIELDS = [
+	'name',
+	'description',
+	'recommended_tools',
+	'allowed_tools',
+	'interface',
+	'policy',
+	'dependencies',
+	'platforms',
+	'version',
+	'license',
+	'compatibility',
+	'metadata',
+] as const;
 
 export interface ParseRuntimeSkillMarkdownOptions {
 	id?: string;
@@ -49,6 +63,8 @@ export function parseRuntimeSkillMarkdown(
 	if (!frontmatter.ok) return frontmatter;
 
 	const errors: RuntimeSkillValidationError[] = [];
+	rejectUnknownFields(frontmatter.data, RUNTIME_SKILL_FRONTMATTER_FIELDS, undefined, errors);
+
 	const name = requiredFrontmatterString(frontmatter.data, 'name', errors);
 	if (name && (options.validateName ?? true) && !RUNTIME_SKILL_NAME_PATTERN.test(name)) {
 		errors.push({
@@ -444,15 +460,15 @@ function optionalMcpServers(
 
 function rejectUnknownFields(
 	value: Record<string, unknown>,
-	allowedFields: string[],
-	fieldPrefix: string,
+	allowedFields: readonly string[],
+	fieldPrefix: string | undefined,
 	errors: RuntimeSkillValidationError[],
 ): void {
 	const allowed = new Set(allowedFields);
 	for (const field of Object.keys(value)) {
 		if (allowed.has(field)) continue;
 
-		const nestedField = `${fieldPrefix}.${field}`;
+		const nestedField = fieldPrefix ? `${fieldPrefix}.${field}` : field;
 		errors.push({
 			code: 'unknown_field',
 			message: `Unknown field "${nestedField}"`,
