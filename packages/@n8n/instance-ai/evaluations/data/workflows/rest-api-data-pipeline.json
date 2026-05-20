@@ -2,7 +2,7 @@
 	"conversation": [
 		{
 			"role": "user",
-			"text": "I want to grab some posts from an API, filter them, and summarize the rest in Slack."
+			"text": "Daily, fetch posts from an API, filter some out, and post the rest to a Slack channel."
 		},
 		{
 			"role": "assistant",
@@ -10,15 +10,15 @@
 		},
 		{
 			"role": "user",
-			"text": "GET https://jsonplaceholder.typicode.com/posts. Drop any post whose title contains the word 'qui'. Post the summary to #api-digest."
+			"text": "GET https://jsonplaceholder.typicode.com/posts. Drop any post whose title contains the word 'qui'. Post to #api-digest."
 		},
 		{
 			"role": "assistant",
-			"text": "Plan: scheduled HTTP GET → filter out titles containing 'qui' → Slack message to #api-digest with the remaining count + the titles. Run it daily?"
+			"text": "What should the Slack message look like?"
 		},
 		{
 			"role": "user",
-			"text": "Yes."
+			"text": "It should say how many posts remain after filtering and list each remaining post's title."
 		}
 	],
 	"messageBudget": 6,
