@@ -29,6 +29,7 @@ export type Agent = {
 	provider: string | null;
 	model: string | null;
 	isCompiled: boolean;
+	isRunnable?: boolean;
 	createdAt: string;
 	updatedAt: string;
 	versionId: string | null;

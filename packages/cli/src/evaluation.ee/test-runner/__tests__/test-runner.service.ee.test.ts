@@ -1,6 +1,7 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig } from '@n8n/config';
 import type {
+	EvaluationCollectionRepository,
 	TestRun,
 	TestCaseExecutionRepository,
 	TestRunRepository,
@@ -24,10 +25,26 @@ import { TestRunnerService } from '../test-runner.service.ee';
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
+import type { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+
+// Tier high enough that the resolver's tier-default branch lifts the cap to
+// 5, which is greater than every concurrency value used in these tests.
+// Tests that need a tighter cap mock the env var explicitly.
+// `getValue` is wired so callers asking for the eval-concurrency license
+// quota get `undefined` — the resolver then falls through to the tier
+// default, which is the path the surrounding tests assume.
+const buildLicenseMock = (planName = 'Enterprise', concurrencyQuota?: number) =>
+	mock<License>({
+		getPlanName: jest.fn().mockReturnValue(planName),
+		getValue: jest.fn((feature: string) =>
+			feature === 'quota:evaluations:concurrencyLimit' ? concurrencyQuota : undefined,
+		) as never,
+	});
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
@@ -47,6 +64,8 @@ describe('TestRunnerService', () => {
 	const publisher = mock<Publisher>();
 	const instanceSettings = mock<InstanceSettings>({ hostId: 'test-host-id', isMultiMain: false });
 	const concurrencyControlService = mock<ConcurrencyControlService>();
+	const workflowHistoryService = mock<WorkflowHistoryService>();
+	const evaluationCollectionRepository = mock<EvaluationCollectionRepository>();
 	let testRunnerService: TestRunnerService;
 
 	mockInstance(LoadNodesAndCredentials, {
@@ -68,6 +87,9 @@ describe('TestRunnerService', () => {
 			publisher,
 			instanceSettings,
 			concurrencyControlService,
+			buildLicenseMock(),
+			workflowHistoryService,
+			evaluationCollectionRepository,
 		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
@@ -511,6 +533,9 @@ describe('TestRunnerService', () => {
 				publisher,
 				instanceSettings,
 				concurrencyControlService,
+				buildLicenseMock(),
+				workflowHistoryService,
+				evaluationCollectionRepository,
 			);
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
@@ -829,6 +854,9 @@ describe('TestRunnerService', () => {
 					publisher,
 					instanceSettings,
 					concurrencyControlService,
+					buildLicenseMock(),
+					workflowHistoryService,
+					evaluationCollectionRepository,
 				);
 			});
 
@@ -2231,10 +2259,10 @@ describe('TestRunnerService', () => {
 			expect(concurrencyControlService.release).toHaveBeenCalledTimes(3);
 		});
 
-		test('telemetry payload includes concurrency, parallel_enabled, concurrency_limited_by_config, flag_enabled_for_user', async () => {
+		test('telemetry payload includes concurrency, parallel_enabled, concurrency_limited_by_config, concurrency_limit_source', async () => {
 			setupHappyPathMocks(2);
 
-			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 4, true);
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 4);
 
 			const trackCalls = telemetry.track.mock.calls.filter(
 				([eventName]) => eventName === 'Test run finished',
@@ -2246,20 +2274,68 @@ describe('TestRunnerService', () => {
 					concurrency: 4,
 					parallel_enabled: true,
 					concurrency_limited_by_config: false,
-					flag_enabled_for_user: true,
+					// Env var not set in this test, so the resolver falls through
+					// to the license-tier default — tagged as `tier`.
+					concurrency_limit_source: 'tier',
 				}),
 			);
 		});
 
-		test('flag_enabled_for_user defaults to false when not passed', async () => {
+		test('concurrency_limit_source reports `env` when N8N_CONCURRENCY_EVALUATION_LIMIT is set', async () => {
 			setupHappyPathMocks(2);
+			const originalEnv = process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+			process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = '5';
+			try {
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 2);
+				const payload = telemetry.track.mock.calls.find(
+					([eventName]) => eventName === 'Test run finished',
+				)?.[1] as Record<string, unknown>;
+				expect(payload.concurrency_limit_source).toBe('env');
+			} finally {
+				if (originalEnv === undefined) delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+				else process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = originalEnv;
+			}
+		});
 
-			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
-
-			const payload = telemetry.track.mock.calls.find(
-				([eventName]) => eventName === 'Test run finished',
-			)?.[1] as Record<string, unknown>;
-			expect(payload.flag_enabled_for_user).toBe(false);
+		test('concurrency_limit_source reports `license` when env is unset and the license issues a quota', async () => {
+			// Swap in a license that carries the per-customer quota
+			// `quota:evaluations:concurrencyLimit`. Env is unset, so the
+			// resolver's middle precedence branch fires.
+			const licensedRunner = new TestRunnerService(
+				logger,
+				telemetry,
+				workflowRepository,
+				workflowRunner,
+				activeExecutions,
+				testRunRepository,
+				testCaseExecutionRepository,
+				errorReporter,
+				executionsConfig,
+				mock(),
+				publisher,
+				instanceSettings,
+				concurrencyControlService,
+				buildLicenseMock('Community', 4),
+				workflowHistoryService,
+				evaluationCollectionRepository,
+			);
+			setupHappyPathMocks(2);
+			const originalEnv = process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+			delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+			try {
+				await licensedRunner.runTest(USER as never, WORKFLOW_ID, 2);
+				const payload = telemetry.track.mock.calls.find(
+					([eventName]) => eventName === 'Test run finished',
+				)?.[1] as Record<string, unknown>;
+				expect(payload.concurrency_limit_source).toBe('license');
+				// Community tier would otherwise have clamped requested
+				// concurrency=2 to 1; the license-issued cap of 4 lets it
+				// flow through unchanged.
+				expect(payload.concurrency).toBe(2);
+			} finally {
+				if (originalEnv === undefined) delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+				else process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = originalEnv;
+			}
 		});
 
 		test('telemetry parallel_enabled is false for sequential runs', async () => {
@@ -2284,7 +2360,7 @@ describe('TestRunnerService', () => {
 		test('telemetry payload reports realised fan-out (cases_started, peak_in_flight)', async () => {
 			const { inFlightTracker } = setupHappyPathMocks(6);
 
-			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 3, true);
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 3);
 
 			const payload = telemetry.track.mock.calls.find(
 				([eventName]) => eventName === 'Test run finished',
@@ -2316,23 +2392,36 @@ describe('TestRunnerService', () => {
 				publisher,
 				instanceSettings,
 				concurrencyControlService,
+				buildLicenseMock(),
+				workflowHistoryService,
+				evaluationCollectionRepository,
 			);
 
 			const { inFlightTracker } = setupHappyPathMocks(6);
 
-			await cappedService.runTest(USER as never, WORKFLOW_ID, 5);
+			// Env var explicitly set → resolver returns the parsed config value
+			// (2) and ignores the tier default.
+			const originalEnv = process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+			process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = '2';
+			try {
+				await cappedService.runTest(USER as never, WORKFLOW_ID, 5);
 
-			expect(inFlightTracker.max).toBeLessThanOrEqual(2);
-			const payload = telemetry.track.mock.calls.find(
-				([eventName]) => eventName === 'Test run finished',
-			)?.[1] as Record<string, unknown>;
-			expect(payload).toEqual(
-				expect.objectContaining({
-					concurrency: 2,
-					parallel_enabled: true,
-					concurrency_limited_by_config: true,
-				}),
-			);
+				expect(inFlightTracker.max).toBeLessThanOrEqual(2);
+				const payload = telemetry.track.mock.calls.find(
+					([eventName]) => eventName === 'Test run finished',
+				)?.[1] as Record<string, unknown>;
+				expect(payload).toEqual(
+					expect.objectContaining({
+						concurrency: 2,
+						parallel_enabled: true,
+						concurrency_limited_by_config: true,
+						concurrency_limit_source: 'env',
+					}),
+				);
+			} finally {
+				if (originalEnv === undefined) delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+				else process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = originalEnv;
+			}
 		});
 
 		test('abort during throttle wait evicts the queue entry and short-circuits without an UNKNOWN_ERROR row', async () => {
@@ -2400,6 +2489,9 @@ describe('TestRunnerService', () => {
 				publisher,
 				multiMainInstance,
 				concurrencyControlService,
+				buildLicenseMock(),
+				workflowHistoryService,
+				evaluationCollectionRepository,
 			);
 
 			setupHappyPathMocks(4);
@@ -2416,6 +2508,395 @@ describe('TestRunnerService', () => {
 			expect(testRunRepository.isCancellationRequested).toHaveBeenCalled();
 			expect(testRunRepository.markAsCancelled).toHaveBeenCalled();
 			expect(testRunRepository.markAsCompleted).not.toHaveBeenCalled();
+		});
+
+		// Cache-invalidation hook (TRUST-80). When a run that belongs to an
+		// eval collection finishes successfully, the collection's cached
+		// AI-insights envelope is now stale — the freshly-completed run can
+		// flip the winner / produce new regressions. Bust the cache so the
+		// next `EvalInsightsService.generateInsights` call regenerates.
+		// Skipping `markAsError` / `markAsCancelled` on purpose: those
+		// terminal states still satisfy the service's filter
+		// (`status === 'completed' && metrics`) as false, so a previously
+		// running run that ends in error never contributed to the cache.
+		describe('runTest - collection insights cache invalidation (TRUST-80)', () => {
+			test('busts the insights cache after a collection-tagged run completes', async () => {
+				setupHappyPathMocks(2);
+				// Override the outer beforeEach so the run row carries a
+				// non-null `collectionId`.
+				testRunRepository.createTestRun.mockResolvedValueOnce(
+					mock<TestRun>({ id: 'tr-coll', collectionId: 'col-x' }),
+				);
+				evaluationCollectionRepository.updateInsightsCache.mockResolvedValue(undefined as never);
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+				expect(evaluationCollectionRepository.updateInsightsCache).toHaveBeenCalledWith(
+					'col-x',
+					null,
+				);
+			});
+
+			test('does not call updateInsightsCache when the completed run has no collectionId', async () => {
+				setupHappyPathMocks(2);
+				// `mock<TestRun>(...)` returns a deep-mocked proxy where
+				// unset fields evaluate truthy, so we have to spell out the
+				// nullish `collectionId` explicitly to exercise the
+				// non-collection branch of the runner.
+				testRunRepository.createTestRun.mockResolvedValueOnce(
+					mock<TestRun>({ id: 'tr-solo', collectionId: null }),
+				);
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+				expect(evaluationCollectionRepository.updateInsightsCache).not.toHaveBeenCalled();
+			});
+
+			test('keeps the run marked completed when the cache bust fails', async () => {
+				// Failure-isolation guarantee: if `updateInsightsCache` throws
+				// the exception must not escape into the outer try/catch in
+				// `runTest`, which would re-mark the (already-persisted)
+				// completed run as `error`. Worst case on cache-bust failure
+				// is a stale envelope on the next insights request, which the
+				// user can resolve with `forceRegenerate: true`.
+				setupHappyPathMocks(2);
+				testRunRepository.createTestRun.mockResolvedValueOnce(
+					mock<TestRun>({ id: 'tr-cache-fail', collectionId: 'col-y' }),
+				);
+				evaluationCollectionRepository.updateInsightsCache.mockRejectedValueOnce(
+					new Error('db transient failure'),
+				);
+
+				await expect(
+					testRunnerService.runTest(USER as never, WORKFLOW_ID, 1),
+				).resolves.toBeUndefined();
+
+				expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+				// Crucial: the failure path must not have flipped the row
+				// back to `error` via the outer catch block.
+				expect(testRunRepository.markAsError).not.toHaveBeenCalled();
+				expect(evaluationCollectionRepository.updateInsightsCache).toHaveBeenCalledWith(
+					'col-y',
+					null,
+				);
+			});
+		});
+	});
+
+	describe('startTestRun - collection context (TRUST-72)', () => {
+		const USER = mock<{ id: string }>({ id: 'user-1' });
+
+		test('loads workflow JSON from WorkflowHistory when workflowVersionId is set', async () => {
+			workflowRepository.findById.mockResolvedValueOnce({
+				id: 'wf-1',
+				name: 'Live',
+				nodes: [{ name: 'LiveNode' }],
+				connections: {},
+				settings: {},
+			} as never);
+			workflowHistoryService.findVersion.mockResolvedValueOnce({
+				versionId: 'wfv-pinned',
+				nodes: [{ name: 'SnapshotNode' } as never],
+				connections: { SnapshotNode: {} } as never,
+			} as never);
+			testRunRepository.createTestRun.mockResolvedValueOnce(mock<TestRun>({ id: 'tr-pin' }));
+			// Short-circuit the execution loop so we only assert the lookup side
+			// effects — the runner's own logic is exercised by other tests.
+			workflowRepository.findById.mockClear();
+			const { finished } = await testRunnerService.startTestRun(USER as never, 'wf-1', 1, {
+				collectionId: 'col-1',
+				workflowVersionId: 'wfv-pinned',
+				evaluationConfigId: 'cfg-1',
+			});
+			// Drain the detached execution promise so we don't leak a microtask
+			// into the next test.
+			await finished.catch(() => undefined);
+
+			expect(workflowHistoryService.findVersion).toHaveBeenCalledWith('wf-1', 'wfv-pinned');
+			expect(testRunRepository.createTestRun).toHaveBeenCalledWith(
+				'wf-1',
+				expect.objectContaining({
+					collectionId: 'col-1',
+					workflowVersionId: 'wfv-pinned',
+					evaluationConfigId: 'cfg-1',
+				}),
+			);
+		});
+
+		test('overwrites workflowData.versionId with the pinned history versionId', async () => {
+			// `ExecutionPersistence` reads `workflowData.versionId` and stores
+			// it on the execution row. If the live workflow's `versionId` leaks
+			// through the spread, every pinned-collection execution would be
+			// recorded under the wrong version and break compare-view fidelity.
+			// We capture the workflow object handed to `executeTestRun`'s first
+			// consumer (`validateWorkflowConfiguration`) to assert the pinned
+			// versionId rather than the live one is what flows downstream.
+			workflowRepository.findById.mockResolvedValueOnce({
+				id: 'wf-1',
+				name: 'Live',
+				versionId: 'wfv-live-current',
+				nodes: [{ name: 'LiveNode' }],
+				connections: {},
+				settings: {},
+			} as never);
+			workflowHistoryService.findVersion.mockResolvedValueOnce({
+				versionId: 'wfv-pinned',
+				nodes: [{ name: 'SnapshotNode' } as never],
+				connections: { SnapshotNode: {} } as never,
+			} as never);
+			testRunRepository.createTestRun.mockResolvedValueOnce(mock<TestRun>({ id: 'tr-pin-v' }));
+
+			let capturedWorkflow: { versionId?: string } | undefined;
+			const validateSpy = jest
+				.spyOn(
+					testRunnerService as unknown as {
+						validateWorkflowConfiguration: (wf: { versionId?: string }) => void;
+					},
+					'validateWorkflowConfiguration',
+				)
+				.mockImplementation((wf) => {
+					capturedWorkflow = wf;
+					// Short-circuit the rest of executeTestRun via a `TestRunError`
+					// path so the detached promise settles cleanly (markAsError)
+					// instead of running the dataset trigger against bogus JSON.
+					throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
+				});
+
+			const { finished } = await testRunnerService.startTestRun(USER as never, 'wf-1', 1, {
+				collectionId: 'col-1',
+				workflowVersionId: 'wfv-pinned',
+				evaluationConfigId: 'cfg-1',
+			});
+			await finished.catch(() => undefined);
+
+			expect(validateSpy).toHaveBeenCalledTimes(1);
+			expect(capturedWorkflow?.versionId).toBe('wfv-pinned');
+			expect(capturedWorkflow?.versionId).not.toBe('wfv-live-current');
+
+			validateSpy.mockRestore();
+		});
+
+		test('does not call workflowHistoryService.findVersion when workflowVersionId is omitted', async () => {
+			workflowHistoryService.findVersion.mockClear();
+			workflowRepository.findById.mockResolvedValueOnce({
+				id: 'wf-1',
+				nodes: [],
+				connections: {},
+				settings: {},
+			} as never);
+			testRunRepository.createTestRun.mockResolvedValueOnce(mock<TestRun>({ id: 'tr-no-pin' }));
+
+			const { finished } = await testRunnerService.startTestRun(USER as never, 'wf-1', 1);
+			await finished.catch(() => undefined);
+
+			expect(workflowHistoryService.findVersion).not.toHaveBeenCalled();
+			expect(testRunRepository.createTestRun).toHaveBeenCalledWith(
+				'wf-1',
+				expect.objectContaining({ workflowVersionId: null, collectionId: null }),
+			);
+		});
+	});
+
+	describe('cancelCollection (TRUST-72)', () => {
+		test('aborts local running runs and broadcasts cancel-collection in multi-main', async () => {
+			// USER intentionally unused here — `cancelCollection` does not take a user.
+			const multiMain = mock<InstanceSettings>({ hostId: 'main-a', isMultiMain: true });
+			const service = new TestRunnerService(
+				logger,
+				telemetry,
+				workflowRepository,
+				workflowRunner,
+				activeExecutions,
+				testRunRepository,
+				testCaseExecutionRepository,
+				errorReporter,
+				executionsConfig,
+				mock(),
+				publisher,
+				multiMain,
+				concurrencyControlService,
+				buildLicenseMock(),
+				workflowHistoryService,
+				evaluationCollectionRepository,
+			);
+
+			testRunRepository.find.mockResolvedValue([{ id: 'tr-running' } as never]);
+			// Seed an abort controller for the running run so the local cancel
+			// path actually fires.
+			(
+				service as unknown as { abortControllers: Map<string, AbortController> }
+			).abortControllers.set('tr-running', new AbortController());
+
+			await service.cancelCollection('col-1');
+
+			expect(testRunRepository.requestCancellation).toHaveBeenCalledWith('tr-running');
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'cancel-collection',
+				payload: { collectionId: 'col-1' },
+			});
+		});
+
+		test('aborts a locally-held `new`-status run (pre-`markAsRunning` window)', async () => {
+			// `executeTestRun` registers the abort controller in
+			// `abortControllers` *before* it flips status from `new` to
+			// `running`. A `cancel-collection` arriving in that window must
+			// still abort the local controller — querying only `running`
+			// runs would silently skip these on every main, leaving the
+			// freshly-kicked run to drain via DB-poll instead of stopping
+			// immediately.
+			//
+			// Critically: drive the mock from the `where` clause so we
+			// actually exercise the status filter. With a plain
+			// `mockResolvedValue([...])` the mock would return the seeded
+			// row regardless of which statuses the caller queried, and the
+			// test would pass against both pre-fix (`status:'running'`-only)
+			// and post-fix code — proving nothing.
+			const seeded = [{ id: 'tr-new-local', status: 'new' as const }];
+			testRunRepository.find.mockImplementation(async (opts: unknown) => {
+				const where = (opts as { where: unknown }).where;
+				const clauses = (Array.isArray(where) ? where : [where]) as Array<{
+					status?: string;
+				}>;
+				const statuses = new Set(clauses.map((c) => c.status));
+				return seeded.filter((r) => statuses.has(r.status)) as never;
+			});
+
+			const newRunAbort = new AbortController();
+			(
+				testRunnerService as unknown as { abortControllers: Map<string, AbortController> }
+			).abortControllers.set('tr-new-local', newRunAbort);
+
+			// Provide a no-op dbManager so the DB-fallback path doesn't throw
+			// on the pre-fix code path that *would* take it for this run.
+			// Without this, the test would fail on a transaction TypeError
+			// before reaching the abort assertions, hiding the actual bug.
+			const dbManager = mock<{ transaction: jest.Mock }>();
+			dbManager.transaction.mockImplementation(async (cb: (trx: unknown) => Promise<void>) => {
+				await cb({});
+			});
+			(testRunRepository as unknown as { manager: typeof dbManager }).manager = dbManager;
+
+			await testRunnerService.cancelCollection('col-new-window');
+
+			expect(newRunAbort.signal.aborted).toBe(true);
+			// Local abort wins — no DB-cancel fallback needed for this run.
+			expect(testRunRepository.markAsCancelled).not.toHaveBeenCalledWith(
+				'tr-new-local',
+				expect.anything(),
+			);
+		});
+
+		test('falls back to DB cancel for runs not held locally', async () => {
+			testRunRepository.find.mockResolvedValue([
+				{ id: 'tr-foreign' } as never,
+				{ id: 'tr-mine' } as never,
+			]);
+			(
+				testRunnerService as unknown as { abortControllers: Map<string, AbortController> }
+			).abortControllers.set('tr-mine', new AbortController());
+
+			const trxUpdate = jest.fn().mockResolvedValue({ affected: 1 });
+			const dbManager = mock<{ transaction: jest.Mock }>();
+			dbManager.transaction.mockImplementation(
+				async (cb: (trx: { update: jest.Mock }) => Promise<void>) => {
+					await cb({ update: trxUpdate });
+				},
+			);
+			(testRunRepository as unknown as { manager: typeof dbManager }).manager = dbManager;
+
+			await testRunnerService.cancelCollection('col-2');
+
+			// `tr-foreign` is the run we don't hold locally → fallback fires.
+			// Assert the update is scoped to `id` AND `status: In([...])` so a
+			// run that completed between the initial find and this update is
+			// not clobbered. We don't lock down the exact entity ref — the
+			// shape of the where clause is the contract.
+			expect(trxUpdate).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					id: 'tr-foreign',
+					status: expect.anything(),
+				}),
+				expect.objectContaining({ status: 'cancelled' }),
+			);
+			// `tr-mine` was held locally → no fallback update should fire.
+			expect(trxUpdate).not.toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ id: 'tr-mine' }),
+				expect.anything(),
+			);
+		});
+
+		test('fallback update does not clobber a run that completed between find and update', async () => {
+			// `activeRuns` is sampled before the requestCancellation loop and
+			// pubsub broadcast. By the time the fallback transaction runs, a
+			// foreign main may have completed (or errored) the run naturally.
+			// The status-scoped update should affect 0 rows in that case, and
+			// the test-case sweep must be skipped — otherwise we'd silently
+			// re-mark a `completed` run as `cancelled` and corrupt the record.
+			testRunRepository.find.mockResolvedValue([{ id: 'tr-just-finished' } as never]);
+
+			const trxUpdate = jest.fn().mockResolvedValue({ affected: 0 }); // race: row no longer 'new'/'running'
+			const dbManager = mock<{ transaction: jest.Mock }>();
+			dbManager.transaction.mockImplementation(
+				async (cb: (trx: { update: jest.Mock }) => Promise<void>) => {
+					await cb({ update: trxUpdate });
+				},
+			);
+			(testRunRepository as unknown as { manager: typeof dbManager }).manager = dbManager;
+
+			await testRunnerService.cancelCollection('col-race');
+
+			// Update was attempted with status filter — the filter is what
+			// makes the in-DB WHERE narrow so the row stays untouched.
+			expect(trxUpdate).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ id: 'tr-just-finished', status: expect.anything() }),
+				expect.objectContaining({ status: 'cancelled' }),
+			);
+			// Update affected 0 → don't sweep cases. (The sweep has its own
+			// status filter so this is also a redundant check, but it makes
+			// the "winner takes all" intent explicit at the run level.)
+			expect(testCaseExecutionRepository.markAllPendingAsCancelled).not.toHaveBeenCalledWith(
+				'tr-just-finished',
+				expect.anything(),
+			);
+		});
+	});
+
+	describe('cancelTestRun', () => {
+		test('fallback update does not clobber a run that completed between requestCancellation and update', async () => {
+			// Mirrors the collection-level race: between `requestCancellation`
+			// (the DB-flag pass) and this fallback update, a foreign main can
+			// finish the run naturally. The update must be scoped by status
+			// so the terminal state wins.
+			// No abort controller registered → `cancelTestRunLocally` returns
+			// false → fallback path fires.
+			const trxUpdate = jest.fn().mockResolvedValue({ affected: 0 });
+			const dbManager = mock<{ transaction: jest.Mock }>();
+			dbManager.transaction.mockImplementation(
+				async (cb: (trx: { update: jest.Mock }) => Promise<void>) => {
+					await cb({ update: trxUpdate });
+				},
+			);
+			(testRunRepository as unknown as { manager: typeof dbManager }).manager = dbManager;
+
+			await testRunnerService.cancelTestRun('tr-just-finished');
+
+			expect(trxUpdate).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					id: 'tr-just-finished',
+					status: expect.anything(),
+				}),
+				expect.objectContaining({ status: 'cancelled' }),
+			);
+			expect(testCaseExecutionRepository.markAllPendingAsCancelled).not.toHaveBeenCalledWith(
+				'tr-just-finished',
+				expect.anything(),
+			);
 		});
 	});
 });

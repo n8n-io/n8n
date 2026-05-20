@@ -1,6 +1,6 @@
 // Mock external SDKs and other workspace modules so we can drive the factory
 // end-to-end in Jest without touching real sandboxes, filesystems, or the
-// Mastra runtime.
+// native workspace runtime.
 
 interface DaytonaCreateParams {
 	snapshot?: string;
@@ -44,36 +44,9 @@ jest.mock('@daytonaio/sdk', () => {
 	return { Daytona, DaytonaError, Image };
 });
 
-jest.mock('@mastra/core/workspace', () => {
-	class LocalSandbox {
-		constructor(public opts: unknown) {}
-	}
-	class LocalFilesystem {
-		constructor(public opts: unknown) {}
-	}
-	class Workspace {
-		sandbox: { processes?: { list: jest.Mock; kill: jest.Mock; get: jest.Mock } } & {
-			[k: string]: unknown;
-		};
-		filesystem: { writeFile: jest.Mock };
-		constructor(public opts: { sandbox: unknown; filesystem: unknown }) {
-			this.sandbox = {
-				...(opts.sandbox as Record<string, unknown>),
-				processes: {
-					list: jest.fn().mockResolvedValue([]),
-					kill: jest.fn().mockResolvedValue(undefined),
-					get: jest.fn().mockResolvedValue(undefined),
-				},
-			};
-			this.filesystem = { writeFile: jest.fn().mockResolvedValue(undefined) };
-		}
-		init = jest.fn().mockResolvedValue(undefined);
-	}
-	return { LocalSandbox, LocalFilesystem, Workspace };
-});
-
-jest.mock('@mastra/daytona', () => {
+jest.mock('../daytona-sandbox', () => {
 	class DaytonaSandbox {
+		start = jest.fn().mockResolvedValue(undefined);
 		constructor(public opts: unknown) {}
 	}
 	return { DaytonaSandbox };
@@ -100,6 +73,9 @@ const capturedSandboxes: MockN8nSandbox[] = [];
 
 jest.mock('../n8n-sandbox-sandbox', () => ({
 	N8nSandboxServiceSandbox: class {
+		start = jest.fn(async () => {
+			await Promise.resolve();
+		});
 		destroy = jest.fn(async () => {
 			await Promise.resolve();
 		});
@@ -118,6 +94,7 @@ jest.mock('../sandbox-setup', () => ({
 	formatNodeCatalogLine: jest.fn((x: { name?: string }) => x.name ?? ''),
 	getWorkspaceRoot: jest.fn(async () => await Promise.resolve('/home/daytona/workspace')),
 	setupSandboxWorkspace: jest.fn(async () => await Promise.resolve()),
+	writeCuratedExamples: jest.fn(async () => await Promise.resolve()),
 	PACKAGE_JSON: '{}',
 	TSCONFIG_JSON: '{}',
 	BUILD_MJS: '',
@@ -170,6 +147,29 @@ function makeN8nSandboxConfig(): SandboxConfig {
 		apiKey: 'secret',
 	} as SandboxConfig;
 }
+
+function makeLocalConfig(): SandboxConfig {
+	return {
+		enabled: true,
+		provider: 'local',
+	} as SandboxConfig;
+}
+
+describe('BuilderSandboxFactory createLocal production guard', () => {
+	it('rejects the local provider in production', async () => {
+		const originalEnv = process.env.NODE_ENV;
+		process.env.NODE_ENV = 'production';
+		try {
+			const factory = new BuilderSandboxFactory(makeLocalConfig(), undefined);
+
+			await expect(factory.create('builder-1', makeContext())).rejects.toThrow(
+				'LocalSandbox (provider: "local") is not allowed in production',
+			);
+		} finally {
+			process.env.NODE_ENV = originalEnv;
+		}
+	});
+});
 
 describe('BuilderSandboxFactory createDaytona snapshot branching', () => {
 	beforeEach(() => {
@@ -230,6 +230,21 @@ describe('BuilderSandboxFactory createDaytona snapshot branching', () => {
 		await factory.create('builder-1', makeContext());
 
 		expect(ensureSnapshotSpy).toHaveBeenCalledWith(expect.anything(), 'proxy');
+	});
+
+	it('writes curated examples into the new Daytona sandbox', async () => {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
+		const sandboxSetup = require('../sandbox-setup') as typeof import('../sandbox-setup');
+		(sandboxSetup.writeCuratedExamples as jest.Mock).mockClear();
+
+		const config = makeDaytonaConfig();
+		const snapshotManager = new SnapshotManager('node:20', NOOP_LOGGER, '1.123.0');
+		jest.spyOn(snapshotManager, 'ensureSnapshot').mockResolvedValue('n8n/instance-ai:1.123.0');
+
+		const factory = new BuilderSandboxFactory(config, snapshotManager, NOOP_LOGGER);
+		await factory.create('builder-1', makeContext());
+
+		expect(sandboxSetup.writeCuratedExamples).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -382,11 +397,16 @@ describe('BuilderSandboxFactory.createN8nSandbox cleanup on failure', () => {
 	});
 
 	it('returns a cleanup handle that destroys the sandbox when create succeeds', async () => {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
+		const sandboxSetup = require('../sandbox-setup') as typeof import('../sandbox-setup');
+		(sandboxSetup.writeCuratedExamples as jest.Mock).mockClear();
+
 		const factory = new BuilderSandboxFactory(makeN8nSandboxConfig(), undefined);
 		const bw = await factory.create('b-3', makeContext());
 
 		expect(capturedSandboxes).toHaveLength(1);
 		expect(capturedSandboxes[0].destroy).not.toHaveBeenCalled();
+		expect(sandboxSetup.writeCuratedExamples).toHaveBeenCalledTimes(1);
 
 		await bw.cleanup();
 

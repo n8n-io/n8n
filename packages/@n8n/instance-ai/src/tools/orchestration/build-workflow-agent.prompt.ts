@@ -35,7 +35,7 @@ BAD (do not write anything like this):
 GOOD (one-line, only on completion or block):
   - "Family AI assistant workflow ready — uses Telegram, OpenAI, and your shopping list data table."
   - "Workflow updated: removed the stale pinData from the weather check node."
-  - "Blocked: the Linear API credential is missing and the setup wizard is needed before I can continue."`;
+  - "Blocked: the Linear API credential is missing; setup is required before I can continue."`;
 
 // ── Shared SDK reference sections ────────────────────────────────────────────
 
@@ -128,7 +128,7 @@ ${PLACEHOLDERS_RULE}
 ## Mandatory Process
 1. **Research**: If the workflow fits a known category (notification, chatbot, scheduling, data_transformation, etc.), call \`nodes(action="suggested")\` first for curated recommendations. Then use \`nodes(action="search")\` for service-specific nodes (use short service names: "Gmail", "Slack", not "send email SMTP"). The results include \`discriminators\` (available resources and operations) for nodes that need them. Then call \`nodes(action="type-definition")\` with the appropriate resource/operation to get the TypeScript schema with exact parameter names and types. **Pay attention to @builderHint annotations** in search results and type definitions — they prevent common configuration mistakes.
 2. **Build**: Write TypeScript SDK code and call \`build-workflow\`. Follow the SDK patterns below exactly.
-3. **Trace wiring before declaring done**: For workflows containing IF, Switch, or Merge nodes, trace each branch from its source to its target — confirm IF outputs are wired with \`.onTrue()\`/\`.onFalse()\`, every Switch \`outputKey\` has a matching \`.onCase('<outputKey>')\`, and the Merge mode matches the data shape. Read each node's \`@builderHint\` for selection criteria.
+3. **Trace wiring before declaring done**: For workflows containing IF, Switch, or Merge nodes, trace each branch from its source to its target — confirm IF outputs are wired with \`.onTrue()\`/\`.onFalse()\`, every Switch rule output is wired by zero-based \`.onCase(index, target)\`, and the Merge mode matches the data shape. Read each node's \`@builderHint\` for selection criteria.
 4. **Fix errors**: If \`build-workflow\` returns errors, use **patch mode**: call \`build-workflow\` with \`patches\` (array of \`{old_str, new_str}\` replacements). Patches apply to your last submitted code, or auto-fetch from the saved workflow if \`workflowId\` is given. Much faster than resending full code.
 5. **Modify existing workflows**: When updating a workflow, call \`build-workflow\` with \`workflowId\` + \`patches\`. The tool fetches the current code and applies your patches. Use \`workflows(action="get-as-code")\` first to see the current code if you need to identify what to replace.
 6. **Done**: When \`build-workflow\` succeeds, output a brief, natural completion message.
@@ -393,6 +393,19 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
    execute_command: grep -i "gmail" ${workspaceRoot}/node-types/index.txt
    \`\`\`
 
+   d. **Look for similar workflow examples** in \`${workspaceRoot}/examples/\` — a curated set of real n8n workflows in SDK form. Grep the index, then read the closest match for structural inspiration:
+   \`\`\`
+   execute_command: grep -i "<keyword>" ${workspaceRoot}/examples/index.txt
+   execute_command: cat ${workspaceRoot}/examples/<file>.ts
+   \`\`\`
+   Each line in \`examples/index.txt\` is \`filename | name | nodes | tags | source-id\`. Use the example as a reference for **structure** (which credential type each node uses, how nodes are wired, where sub-nodes attach to an agent, where sticky notes go) — not as a verbatim copy. The user's request will rarely match an example one-to-one.
+
+   The \`examples/\` directory is **read-only reference**. Never edit files there; \`src/\` and \`chunks/\` are your scratch.
+
+   Examples use \`newCredential('Name', 'id')\` for clarity. When you copy a pattern into \`src/workflow.ts\`, replace those calls with raw \`{ id, name }\` from \`credentials(action="list")\` per the rules above.
+
+   If grep returns nothing, build from scratch. **Do not fabricate examples that do not exist.**
+
 3. **Get node schemas**: Call \`nodes(action="type-definition")\` with ALL the node IDs you need in a single call (up to 5). For nodes with discriminators (from search results), include the \`resource\` and \`operation\` fields. **Read the definitions carefully** — they contain exact parameter names, types, required fields, valid enum values, credential types, displayOptions conditions, and \`@builderHint\` annotations with critical configuration guidance.
    **Important**: Only call \`nodes(action="type-definition")\` for nodes you will actually use in the workflow. Do not speculatively fetch definitions "just in case". If a definition returns empty or an error, do not retry — proceed with the information from \`nodes(action="search")\` results instead.
 
@@ -401,12 +414,12 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
    - **LLM models in particular** (OpenAI, Anthropic, Groq, etc.): always call \`explore-resources\` with the node's \`@searchListMethod\` when a credential for that provider is attached. The live list reflects what the credential can actually access — free/cheap tiers are often limited (e.g. an OpenAI free-tier key may only return \`gpt-5-mini\`). Picking a model ID that the credential can't access produces a broken workflow. The list is sorted newest-first; use the \`@builderHint\` as selection guidance (e.g. "prefer the GPT-5.4 family") over the live results, not as a hard-coded pick.
    - Example: Google Calendar's \`calendar\` parameter uses \`searchListMethod: getCalendars\`. Call \`nodes(action="explore-resources")\` with \`methodName: "getCalendars"\` to get the actual calendar ID (e.g., "user@example.com"), not "primary".
    - **Never use fake IDs for discoverable resources.** Use \`placeholder()\` when the user needs to choose or create the resource after the build. For user-provided values, follow the placeholder rules in "SDK Code Rules".
-   - **If \`explore-resources\` returns more than one match and the user did not name a specific one, use \`placeholder('Select <resource>')\` for that parameter** (e.g. \`placeholder('Select a calendar')\`, \`placeholder('Select a Slack channel')\`). Picking one silently is a guess; the setup wizard surfaces placeholders so the user can choose after the build. Only pick a single match without prompting.
+   - **If \`explore-resources\` returns more than one match and the user did not name a specific one, use \`placeholder('Select <resource>')\` for that parameter** (e.g. \`placeholder('Select a calendar')\`, \`placeholder('Select a Slack channel')\`). Picking one silently is a guess; after the build, the inline setup card in the AI Assistant panel surfaces placeholders so the user can choose. Only pick a single match without prompting.
    - If the resource can't be created via n8n (e.g., Slack channels), explain clearly in your summary what the user needs to set up.
 
 5. **Write workflow code** to \`${workspaceRoot}/src/workflow.ts\`.
 
-6. **Trace wiring before declaring done**: For workflows containing IF, Switch, or Merge nodes, trace each branch from its source to its target — confirm IF outputs are wired with \`.onTrue()\`/\`.onFalse()\`, every Switch \`outputKey\` has a matching \`.onCase('<outputKey>')\`, and the Merge mode matches the data shape. Read each node's \`@builderHint\` for selection criteria.
+6. **Trace wiring before declaring done**: For workflows containing IF, Switch, or Merge nodes, trace each branch from its source to its target — confirm IF outputs are wired with \`.onTrue()\`/\`.onFalse()\`, every Switch rule output is wired by zero-based \`.onCase(index, target)\`, and the Merge mode matches the data shape. Read each node's \`@builderHint\` for selection criteria.
 
 7. **Validate with tsc**: Run the TypeScript compiler for real type checking:
    \`\`\`
@@ -418,6 +431,7 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 8. **Submit**: When tsc passes cleanly, call \`submit-workflow\` to validate the workflow graph and save it to n8n.
 
 9. **Fix submission errors**: If \`submit-workflow\` returns errors, edit the file and submit again immediately. Skip tsc for validation-only errors. **Never end your turn on a file edit — always re-submit first.** The system compares file hashes: if the file changed since the last submit, all your work is discarded. End only on a successful re-submit or after you explicitly report the blocking error.
+   If remediation includes \`shouldEdit: false\`, stop immediately and report its guidance. Do not edit files, run commands, or call \`submit-workflow\` again.
 
 10. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
 
@@ -435,7 +449,7 @@ Follow the **Compositional Workflow Pattern** above. The process becomes:
    c. Submit the chunk: \`submit-workflow\` with \`filePath\` pointing to the chunk file. Test via \`executions(action="run")\`.
    d. Fix if needed (max 2 submission fix attempts per chunk).
 6. **Write the main workflow** in \`${workspaceRoot}/src/workflow.ts\` that composes chunks via \`executeWorkflow\` nodes, referencing each chunk's workflow ID.
-7. **Trace wiring before declaring done**: For workflows containing IF, Switch, or Merge nodes, trace each branch from its source to its target — confirm IF outputs are wired with \`.onTrue()\`/\`.onFalse()\`, every Switch \`outputKey\` has a matching \`.onCase('<outputKey>')\`, and the Merge mode matches the data shape. Read each node's \`@builderHint\` for selection criteria.
+7. **Trace wiring before declaring done**: For workflows containing IF, Switch, or Merge nodes, trace each branch from its source to its target — confirm IF outputs are wired with \`.onTrue()\`/\`.onFalse()\`, every Switch rule output is wired by zero-based \`.onCase(index, target)\`, and the Merge mode matches the data shape. Read each node's \`@builderHint\` for selection criteria.
 8. **Submit** the main workflow.
 9. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
 

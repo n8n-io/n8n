@@ -1,17 +1,18 @@
 /**
  * Consolidated credentials tool — list, get, delete, search-types, setup, test.
  */
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { CREDENTIALS_TOOL_ID } from './tool-ids';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-export const CREDENTIALS_TOOL_ID = 'credentials';
+export { CREDENTIALS_TOOL_ID };
 
 const DEFAULT_LIMIT = 50;
 
@@ -246,6 +247,11 @@ const resumeSchema = z.object({
 	autoSetup: z.object({ credentialType: z.string() }).optional(),
 });
 
+interface CredentialToolContext {
+	resumeData: z.infer<typeof resumeSchema> | undefined;
+	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>;
+}
+
 // ── Handlers ───────────────────────────────────────────────────────────────
 
 async function handleList(context: InstanceAiContext, input: Extract<Input, { action: 'list' }>) {
@@ -284,10 +290,9 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 async function handleDelete(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'delete' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: CredentialToolContext,
 ) {
-	const resumeData = ctx?.agent?.resumeData as z.infer<typeof resumeSchema> | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const resumeData = ctx.resumeData;
 
 	if (context.permissions?.deleteCredential === 'blocked') {
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
@@ -297,13 +302,11 @@ async function handleDelete(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Delete credential "${input.credentialName ?? input.credentialId}"? This cannot be undone.`,
 			severity: 'destructive' as const,
 		});
-		// suspend() never resolves — this line is unreachable but satisfies the type checker
-		return { success: false };
 	}
 
 	// State 2: Denied
@@ -335,15 +338,20 @@ async function handleSearchTypes(
 async function handleSetup(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'setup' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: CredentialToolContext,
 ) {
-	const resumeData = ctx?.agent?.resumeData as z.infer<typeof resumeSchema> | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const resumeData = ctx.resumeData;
 	const isFinalize = input.credentialFlow?.stage === 'finalize';
 
-	// State 1: First call — look up existing credentials per type and suspend.
-	// Scope the lookup to `projectId` when provided so the candidates match what
-	// the workflow being built can actually use.
+	if (!input.credentials || input.credentials.length === 0) {
+		return {
+			error: 'missing_credentials',
+			message:
+				'The `credentials` array is required for the setup action. Pass an array of { credentialType, reason?, suggestedName? } entries describing each credential to set up.',
+		};
+	}
+
+	// State 1: First call — look up existing credentials per type and suspend
 	if (resumeData === undefined || resumeData === null) {
 		const credentialRequests = await Promise.all(
 			input.credentials.map(
@@ -365,7 +373,7 @@ async function handleSetup(
 		const typeNames = input.credentials
 			.map((c: { credentialType: string }) => c.credentialType)
 			.join(', ');
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
 			message: isFinalize
 				? `Your workflow is verified. Add credentials to make it production-ready: ${typeNames}`
@@ -377,8 +385,6 @@ async function handleSetup(
 			...(input.projectId ? { projectId: input.projectId } : {}),
 			...(input.credentialFlow ? { credentialFlow: input.credentialFlow } : {}),
 		});
-		// suspend() never resolves
-		return { success: false };
 	}
 
 	// State 2: Not approved — user clicked "Later" / skipped.
@@ -433,27 +439,27 @@ export function createCredentialsTool(
 ) {
 	const inputSchema = buildInputSchema(options);
 
-	return createTool({
-		id: CREDENTIALS_TOOL_ID,
-		description: getToolDescription(options),
-		inputSchema,
-		suspendSchema,
-		resumeSchema,
-		execute: async (input: Input, ctx) => {
-			switch (input.action) {
+	return new Tool(CREDENTIALS_TOOL_ID)
+		.description(getToolDescription(options))
+		.input(inputSchema)
+		.suspend(suspendSchema)
+		.resume(resumeSchema)
+		.handler(async (input, ctx) => {
+			const parsedInput = inputSchema.parse(input) as Input;
+			switch (parsedInput.action) {
 				case 'list':
-					return await handleList(context, input);
+					return await handleList(context, parsedInput);
 				case 'get':
-					return await handleGet(context, input);
+					return await handleGet(context, parsedInput);
 				case 'delete':
-					return await handleDelete(context, input, ctx);
+					return await handleDelete(context, parsedInput, ctx);
 				case 'search-types':
-					return await handleSearchTypes(context, input);
+					return await handleSearchTypes(context, parsedInput);
 				case 'setup':
-					return await handleSetup(context, input, ctx);
+					return await handleSetup(context, parsedInput, ctx);
 				case 'test':
-					return await handleTest(context, input);
+					return await handleTest(context, parsedInput);
 			}
-		},
-	});
+		})
+		.build();
 }

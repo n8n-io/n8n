@@ -152,7 +152,6 @@ export class ExecutionLevelTracer {
 
 			const { span: activeNodeSpan } = nodeStart;
 			activeNodeSpan.setAttributes(buildNodeEndAttributes(params));
-			activeNodeSpan.setStatus({ code: SpanStatusCode.OK });
 
 			if (params.error) {
 				activeNodeSpan.setStatus({ code: SpanStatusCode.ERROR });
@@ -160,6 +159,8 @@ export class ExecutionLevelTracer {
 				if (recordableException) {
 					activeNodeSpan.recordException(recordableException);
 				}
+			} else {
+				activeNodeSpan.setStatus({ code: SpanStatusCode.OK });
 			}
 
 			activeNodeSpan.end();
@@ -247,7 +248,7 @@ function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | 
 
 	if (params.customAttributes) {
 		for (const [key, value] of Object.entries(params.customAttributes)) {
-			attrs[`n8n.node.custom.${key}`] = value;
+			attrs[`${ATTR.NODE_CUSTOM_PREFIX}${key}`] = value;
 		}
 	}
 

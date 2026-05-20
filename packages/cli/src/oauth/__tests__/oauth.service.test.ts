@@ -19,6 +19,7 @@ import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
+import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import {
 	OauthService,
 	OauthVersion,
@@ -44,6 +45,7 @@ describe('OauthService', () => {
 	const externalHooks = mockInstance(ExternalHooks);
 	const cipher = mock<Cipher>();
 	const dynamicCredentialsProxy = mockInstance(DynamicCredentialsProxy);
+	const oauthJweServiceProxy = mockInstance(OAuthJweServiceProxy);
 
 	let service: OauthService;
 
@@ -85,6 +87,7 @@ describe('OauthService', () => {
 			externalHooks,
 			cipher,
 			dynamicCredentialsProxy,
+			oauthJweServiceProxy,
 		);
 	});
 
@@ -136,7 +139,7 @@ describe('OauthService', () => {
 				enumerable: true,
 			});
 
-			const promise = service.getCredential(req);
+			const promise = service.getCredentialForUpdate(req);
 			await expect(promise).rejects.toThrow(BadRequestError);
 			await expect(promise).rejects.toThrow('Required credential ID is missing');
 		});
@@ -149,10 +152,10 @@ describe('OauthService', () => {
 
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
-			await expect(service.getCredential(req)).rejects.toThrow(NotFoundError);
+			await expect(service.getCredentialForUpdate(req)).rejects.toThrow(NotFoundError);
 			expect(logger.error).toHaveBeenCalledWith(
 				'OAuth credential authorization failed because the current user does not have the correct permissions',
-				{ userId: '123' },
+				{ userId: '123', credentialId: 'credential-id' },
 			);
 		});
 
@@ -165,13 +168,13 @@ describe('OauthService', () => {
 
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
 
-			const result = await service.getCredential(req);
+			const result = await service.getCredentialForUpdate(req);
 
 			expect(result).toBe(mockCredential);
 			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
 				'credential-id',
 				req.user,
-				['credential:read'],
+				['credential:update'],
 			);
 		});
 	});
@@ -404,20 +407,28 @@ describe('OauthService', () => {
 			};
 			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
 			cipher.decryptV2.mockResolvedValue(JSON.stringify(csrfData));
+			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
 
-			const result = await (service as any).decodeCsrfState(encodedState, req);
+			const [decodedState, credential] = await (service as any).decodeCsrfState(encodedState, req);
 
 			expect(cipher.decryptV2).toHaveBeenCalledWith('encrypted-data');
-			expect(result).toMatchObject({
+			expect(decodedState).toMatchObject({
 				token: 'token',
 				createdAt: timestamp,
 				cid: 'credential-id',
 				userId: 'user-id',
 				origin: 'static-credential',
 			});
+			expect(credential).toBe(mockCredential);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'credential-id',
+				req.user,
+				['credential:update'],
+			);
 		});
 
 		it('should throw error when state format is invalid', async () => {
@@ -529,20 +540,24 @@ describe('OauthService', () => {
 			};
 			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
 			cipher.decryptV2.mockResolvedValue(JSON.stringify(csrfData));
+			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
+			credentialsRepository.findOneBy.mockResolvedValue(mockCredential as any);
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
 
-			const result = await (service as any).decodeCsrfState(encodedState, req);
+			const [decodedState, credential] = await (service as any).decodeCsrfState(encodedState, req);
 
-			expect(result).toMatchObject({
+			expect(decodedState).toMatchObject({
 				token: 'token',
 				createdAt: timestamp,
 				cid: 'credential-id',
 				userId: 'different-user-id',
 				origin: 'dynamic-credential',
 			});
+			expect(credential).toBe(mockCredential);
 			expect(cipher.decryptV2).toHaveBeenCalledWith('encrypted-data');
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 		});
 
 		it('should bypass user validation for dynamic-credential origin even when req.user is undefined', async () => {
@@ -558,19 +573,22 @@ describe('OauthService', () => {
 			};
 			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
 			cipher.decryptV2.mockResolvedValue(JSON.stringify(csrfData));
+			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
+			credentialsRepository.findOneBy.mockResolvedValue(mockCredential as any);
 			const req = mock<AuthenticatedRequest>({
 				user: undefined,
 			});
 
-			const result = await (service as any).decodeCsrfState(encodedState, req);
+			const [decodedState, credential] = await (service as any).decodeCsrfState(encodedState, req);
 
-			expect(result).toMatchObject({
+			expect(decodedState).toMatchObject({
 				token: 'token',
 				createdAt: timestamp,
 				cid: 'credential-id',
 				userId: 'user-id',
 				origin: 'dynamic-credential',
 			});
+			expect(credential).toBe(mockCredential);
 			expect(cipher.decryptV2).toHaveBeenCalledWith('encrypted-data');
 		});
 
@@ -760,7 +778,7 @@ describe('OauthService', () => {
 			});
 
 			cipher.decryptV2.mockResolvedValue(JSON.stringify(csrfData));
-			credentialsRepository.findOneBy.mockResolvedValue(mockCredential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
 			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
 			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
 			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
@@ -781,7 +799,7 @@ describe('OauthService', () => {
 			});
 		});
 
-		it('should throw UnexpectedError when credential is not found', async () => {
+		it('should throw NotFoundError when credential is not found', async () => {
 			const csrfData = {
 				cid: 'credential-id',
 				userId: 'user-id',
@@ -800,12 +818,10 @@ describe('OauthService', () => {
 				user: mock<User>({ id: 'user-id' }),
 			});
 
-			credentialsRepository.findOneBy.mockResolvedValue(null);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
-			await expect(service.resolveCredential(req)).rejects.toThrow(UnexpectedError);
-			await expect(service.resolveCredential(req)).rejects.toThrow(
-				'OAuth callback failed because of insufficient permissions',
-			);
+			await expect(service.resolveCredential(req)).rejects.toThrow(NotFoundError);
+			await expect(service.resolveCredential(req)).rejects.toThrow('Credential not found');
 		});
 
 		it('should throw UnexpectedError when CSRF state is invalid', async () => {
@@ -832,7 +848,7 @@ describe('OauthService', () => {
 				user: mock<User>({ id: 'user-id' }),
 			});
 
-			credentialsRepository.findOneBy.mockResolvedValue(mockCredential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
 			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
 			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
 			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
@@ -1122,6 +1138,7 @@ describe('OauthService', () => {
 			const credential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'oAuth2Api',
+				isManaged: false,
 			});
 			const mockDecryptedData = { clientId: 'client-id', scope: 'old-scope' };
 			const mockOAuthCredentials = { clientId: 'client-id', scope: 'old-scope' };
@@ -1143,10 +1160,39 @@ describe('OauthService', () => {
 			);
 		});
 
+		it.each(['facebookGraphApiOAuth2Api', 'facebookGraphAppOAuth2Api'])(
+			'should not delete scope for %s credentials',
+			async (credentialType) => {
+				const credential = mock<CredentialsEntity>({
+					id: '1',
+					type: credentialType,
+					isManaged: false,
+				});
+				const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
+				const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
+				const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+				jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+				credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+				credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+
+				await service.getOAuthCredentials(credential);
+
+				expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+					mockAdditionalData,
+					{ clientId: 'client-id', scope: 'custom-scope' },
+					credentialType,
+					'internal',
+					undefined,
+					undefined,
+				);
+			},
+		);
 		it('should not delete scope for wordpressOAuth2Api credentials', async () => {
 			const credential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'wordpressOAuth2Api',
+				isManaged: false,
 			});
 			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
 			const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
@@ -1197,6 +1243,7 @@ describe('OauthService', () => {
 			const credential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'customOAuth2Api',
+				isManaged: false,
 			});
 			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
 			const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
@@ -1264,6 +1311,61 @@ describe('OauthService', () => {
 			credentialsHelper.getCredentialsProperties.mockImplementation(() => {
 				throw new Error('Unknown credential type');
 			});
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id' },
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should delete scope for managed credentials of a generic editable-scope type', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'googleOAuth2Api',
+				isManaged: true,
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id' },
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should delete scope for managed credentials that inherit an editable scope property', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'customOAuth2Api',
+				isManaged: true,
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{ displayName: 'Scope', name: 'scope', type: 'string', default: '' },
+			]);
 
 			await service.getOAuthCredentials(credential);
 
@@ -1506,6 +1608,11 @@ describe('OauthService', () => {
 					grant_types: ['authorization_code', 'refresh_token'],
 				}),
 			);
+			// JWE fields are only added behind both feature gates (flag + jweEnabled).
+			const dcrPayload = (axios.post as jest.Mock).mock.calls[0][1];
+			expect(dcrPayload).not.toHaveProperty('jwks_uri');
+			expect(dcrPayload).not.toHaveProperty('id_token_encrypted_response_alg');
+			expect(dcrPayload).not.toHaveProperty('id_token_encrypted_response_enc');
 			expect(externalHooks.run).toHaveBeenCalledWith(
 				'oauth2.dynamicClientRegistration',
 				expect.any(Array),
@@ -2699,6 +2806,131 @@ describe('OauthService', () => {
 				expect(error).toBeInstanceOf(BadRequestError);
 				expect((error as Error).message).toContain('OAuth url must use HTTP or HTTPS protocol');
 			}
+		});
+	});
+
+	describe('generateAOauth2AuthUri with DCR and JWE fields', () => {
+		beforeEach(() => {
+			const axios = require('axios');
+			jest.mocked(axios.get).mockResolvedValue({
+				data: {
+					authorization_endpoint: 'https://example.domain/oauth2/auth',
+					token_endpoint: 'https://example.domain/oauth2/token',
+					registration_endpoint: 'https://example.domain/oauth2/register',
+					grant_types_supported: ['authorization_code', 'refresh_token'],
+					token_endpoint_auth_methods_supported: ['client_secret_basic'],
+					code_challenge_methods_supported: ['S256'],
+					scopes_supported: ['openid'],
+				},
+			} as any);
+			jest.mocked(axios.post).mockResolvedValue({
+				data: { client_id: 'rid', client_secret: 'rs' },
+			} as any);
+
+			const { ClientOAuth2 } = require('@n8n/client-oauth2');
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: {
+							getUri: jest.fn().mockReturnValue({
+								toString: () => 'https://example.domain/oauth2/auth?state=state',
+							}),
+						},
+					}) as any,
+			);
+
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+		});
+
+		async function runDcr(
+			jweEnabled: boolean | undefined,
+			inlineJwks: boolean | undefined = undefined,
+		) {
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				serverUrl: 'https://example.domain',
+				useDynamicClientRegistration: true,
+				jweEnabled,
+				inlineJwks,
+			} as OAuth2CredentialData);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			const axios = require('axios');
+			return (axios.post as jest.Mock).mock.calls[0][1];
+		}
+
+		it.each([
+			['jweEnabled=false, inlineJwks=undefined', false, undefined],
+			['jweEnabled=false, inlineJwks=true', false, true],
+			['jweEnabled=undefined, inlineJwks=true', undefined, true],
+		])(
+			'skips the proxy entirely when the credential has not opted into JWE (%s)',
+			async (_label, jweEnabled, inlineJwks) => {
+				const payload = await runDcr(jweEnabled, inlineJwks);
+
+				expect(oauthJweServiceProxy.getDcrJweFields).not.toHaveBeenCalled();
+				expect(payload).not.toHaveProperty('jwks_uri');
+				expect(payload).not.toHaveProperty('jwks');
+				expect(payload).not.toHaveProperty('id_token_encrypted_response_alg');
+				expect(payload).not.toHaveProperty('id_token_encrypted_response_enc');
+			},
+		);
+
+		it('forwards inlineJwks to the proxy when the credential has opted in', async () => {
+			oauthJweServiceProxy.getDcrJweFields.mockResolvedValue({});
+
+			await runDcr(true, true);
+
+			expect(oauthJweServiceProxy.getDcrJweFields).toHaveBeenCalledWith(true);
+		});
+
+		it('defaults inlineJwks to false when the credential leaves it unset', async () => {
+			oauthJweServiceProxy.getDcrJweFields.mockResolvedValue({});
+
+			await runDcr(true, undefined);
+
+			expect(oauthJweServiceProxy.getDcrJweFields).toHaveBeenCalledWith(false);
+		});
+
+		it('includes jwks_uri (not jwks) when the proxy returns the URI shape', async () => {
+			const fields = {
+				jwks_uri: 'http://localhost:5678/rest/.well-known/jwks.json',
+				id_token_encrypted_response_alg: 'RSA-OAEP-256',
+			};
+			oauthJweServiceProxy.getDcrJweFields.mockResolvedValue(fields);
+
+			const payload = await runDcr(true, false);
+
+			expect(payload).toMatchObject(fields);
+			expect(payload).not.toHaveProperty('jwks');
+			// We deliberately leave `enc` for the IdP to choose.
+			expect(payload).not.toHaveProperty('id_token_encrypted_response_enc');
+		});
+
+		it('includes jwks (not jwks_uri) when the proxy returns the inline shape', async () => {
+			const fields = {
+				jwks: { keys: [{ kty: 'RSA', alg: 'RSA-OAEP-256', kid: 'kid-1', n: 'n', e: 'AQAB' }] },
+				id_token_encrypted_response_alg: 'RSA-OAEP-256',
+			};
+			oauthJweServiceProxy.getDcrJweFields.mockResolvedValue(fields);
+
+			const payload = await runDcr(true, true);
+
+			expect(payload).toMatchObject(fields);
+			expect(payload).not.toHaveProperty('jwks_uri');
+		});
+
+		it('propagates errors thrown by the proxy', async () => {
+			oauthJweServiceProxy.getDcrJweFields.mockRejectedValue(
+				new Error('OAuth JWE public key is missing an "alg" field'),
+			);
+
+			await expect(runDcr(true)).rejects.toThrow('OAuth JWE public key is missing an "alg" field');
 		});
 	});
 

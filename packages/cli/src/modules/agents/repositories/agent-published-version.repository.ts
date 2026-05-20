@@ -5,7 +5,7 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 
 import { AgentPublishedVersion } from '../entities/agent-published-version.entity';
 import type { Agent } from '../entities/agent.entity';
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
+import type { AgentJsonConfig } from '@n8n/api-types';
 
 @Service()
 export class AgentPublishedVersionRepository extends Repository<AgentPublishedVersion> {

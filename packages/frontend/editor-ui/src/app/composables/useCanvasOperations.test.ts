@@ -87,6 +87,19 @@ vi.mock('vue-router', async (importOriginal) => ({
 	}),
 }));
 
+vi.mock('@/app/api/workflows', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/app/api/workflows')>();
+	return {
+		...actual,
+		getNewWorkflow: vi.fn().mockResolvedValue({ name: 'New Workflow', settings: {} }),
+	};
+});
+
+vi.mock('@n8n/rest-api-client/api/workflowHistory', () => ({
+	getWorkflowHistory: vi.fn().mockResolvedValue([]),
+	getWorkflowVersion: vi.fn().mockResolvedValue({ workflow: { nodes: [], connections: {} } }),
+}));
+
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
 import { GRID_SIZE, PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
@@ -3955,7 +3968,7 @@ describe('useCanvasOperations', () => {
 			workflowsStore.setLastSuccessfulExecution = vi.fn((value) => {
 				workflowsStore.lastSuccessfulExecution = value;
 			});
-			const setActiveExecutionId = vi.spyOn(workflowState, 'setActiveExecutionId');
+			const resetWorkflowSpy = workflowsStore.resetWorkflow as ReturnType<typeof vi.fn>;
 			uiStore.resetLastInteractedWith = vi.fn();
 			executionsStore.activeExecution = null;
 
@@ -3989,10 +4002,14 @@ describe('useCanvasOperations', () => {
 				createNodeActive: false,
 			});
 			expect(workflowsStore.removeTestWebhook).toHaveBeenCalledWith('workflow-id');
-			expect(workflowsStore.resetWorkflow).toHaveBeenCalled();
 			expect(resetStateSpy).toHaveBeenCalled();
+			expect(resetWorkflowSpy).toHaveBeenCalled();
+			// resetState() must run BEFORE resetWorkflow() — resetState reads workflowId
+			// to target the per-workflow execution-state store, and resetWorkflow empties it.
+			expect(resetStateSpy.mock.invocationCallOrder[0]).toBeLessThan(
+				resetWorkflowSpy.mock.invocationCallOrder[0],
+			);
 			expect(workflowsStore.currentWorkflowExecutions).toEqual([]);
-			expect(setActiveExecutionId).toHaveBeenCalledWith(undefined);
 			expect(workflowsStore.lastSuccessfulExecution).toBeNull();
 			expect(uiStore.resetLastInteractedWith).toHaveBeenCalled();
 			expect(uiStore.markStateClean).toHaveBeenCalled();
@@ -4676,7 +4693,7 @@ describe('useCanvasOperations', () => {
 		});
 
 		it.each(UPDATE_WEBHOOK_ID_NODE_TYPES)(
-			'should regenerate webhook ids for node type "%s" on pasting into canvas',
+			'should regenerate webhook ids for node type "%s" on pasting into canvas and sync default paths',
 			async (type) => {
 				// This mock is needed for addImportedNodesToWorkflow to work
 				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
@@ -4695,7 +4712,7 @@ describe('useCanvasOperations', () => {
 						position: [200, 200] as [number, number],
 						webhookId: 'first-webhook',
 						parameters: {
-							path: 'some-path',
+							path: 'first-webhook',
 						},
 					},
 					{
@@ -4707,7 +4724,7 @@ describe('useCanvasOperations', () => {
 						webhookId: 'second-webhook',
 						parameters: {
 							options: {
-								path: 'some-path',
+								path: 'second-webhook',
 							},
 						},
 					},
@@ -4724,18 +4741,197 @@ describe('useCanvasOperations', () => {
 
 				const canvasOperations = useCanvasOperations();
 
-				// This should not throw even when nodes can't be added due to maxNodes limit
 				const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'paste');
 
 				expect(workflow.nodes).toHaveLength(2);
 				expect(workflow.nodes![0].name).toBe('Execute Workflow Trigger 1');
 				expect(workflow.nodes![0].webhookId).not.toBe('first-webhook');
-				expect(workflow.nodes![0].parameters.path).not.toBe('some-path');
+				expect(workflow.nodes![0].parameters.path).toBe(workflow.nodes![0].webhookId);
 				expect(workflow.nodes![1].name).toBe('Execute Workflow Trigger 2');
 				expect(workflow.nodes![1].webhookId).not.toBe('second-webhook');
-				expect((workflow.nodes![1].parameters.options as { path: string }).path).not.toBe(
-					'some-path',
+				expect((workflow.nodes![1].parameters.options as { path: string }).path).toBe(
+					workflow.nodes![1].webhookId,
 				);
+			},
+		);
+
+		it.each(UPDATE_WEBHOOK_ID_NODE_TYPES)(
+			'should preserve user-defined paths for node type "%s" on importing into canvas',
+			async (type) => {
+				// This mock is needed for addImportedNodesToWorkflow to work
+				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
+					nodes: {},
+					connections: {},
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				} as unknown as Workflow);
+
+				const nodesToImport = [
+					{
+						id: 'import-1',
+						name: 'Execute Workflow Trigger 1',
+						type,
+						typeVersion: 1,
+						position: [200, 200] as [number, number],
+						webhookId: 'first-webhook',
+						parameters: {
+							path: 'my-custom-path',
+						},
+					},
+					{
+						id: 'import-2',
+						name: 'Execute Workflow Trigger 2',
+						type,
+						typeVersion: 1,
+						position: [300, 300] as [number, number],
+						webhookId: 'second-webhook',
+						parameters: {
+							options: {
+								path: 'my-custom-form',
+							},
+						},
+					},
+				];
+
+				const workflowDataToImport = {
+					nodes: nodesToImport,
+					connections: {},
+				};
+
+				const canvasOperations = useCanvasOperations();
+
+				const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'file');
+
+				expect(workflow.nodes).toHaveLength(2);
+				expect(workflow.nodes![0].webhookId).not.toBe('first-webhook');
+				expect(workflow.nodes![0].parameters.path).toBe('my-custom-path');
+				expect(workflow.nodes![1].webhookId).not.toBe('second-webhook');
+				expect((workflow.nodes![1].parameters.options as { path: string }).path).toBe(
+					'my-custom-form',
+				);
+			},
+		);
+
+		it.each(UPDATE_WEBHOOK_ID_NODE_TYPES)(
+			'should preserve user-defined paths for node type "%s" on pasting into canvas',
+			async (type) => {
+				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
+					nodes: {},
+					connections: {},
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				} as unknown as Workflow);
+
+				const nodesToImport = [
+					{
+						id: 'import-1',
+						name: 'Execute Workflow Trigger 1',
+						type,
+						typeVersion: 1,
+						position: [200, 200] as [number, number],
+						webhookId: 'first-webhook',
+						parameters: {
+							options: {
+								path: 'my-custom-form',
+							},
+						},
+					},
+				];
+
+				const workflowDataToImport = {
+					nodes: nodesToImport,
+					connections: {},
+				};
+
+				const canvasOperations = useCanvasOperations();
+
+				const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'paste');
+
+				expect(workflow.nodes).toHaveLength(1);
+				expect(workflow.nodes![0].webhookId).not.toBe('first-webhook');
+				expect((workflow.nodes![0].parameters.options as { path: string }).path).toBe(
+					'my-custom-form',
+				);
+			},
+		);
+
+		it.each(UPDATE_WEBHOOK_ID_NODE_TYPES)(
+			'should regenerate webhook id for node type "%s" when no path is defined',
+			async (type) => {
+				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
+					nodes: {},
+					connections: {},
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				} as unknown as Workflow);
+
+				const nodesToImport = [
+					{
+						id: 'import-1',
+						name: 'Execute Workflow Trigger 1',
+						type,
+						typeVersion: 1,
+						position: [200, 200] as [number, number],
+						webhookId: 'first-webhook',
+						parameters: {},
+					},
+				];
+
+				const workflowDataToImport = {
+					nodes: nodesToImport,
+					connections: {},
+				};
+
+				const canvasOperations = useCanvasOperations();
+
+				const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'paste');
+
+				expect(workflow.nodes).toHaveLength(1);
+				expect(workflow.nodes![0].webhookId).not.toBe('first-webhook');
+				expect(workflow.nodes![0].parameters.path).toBeUndefined();
+				expect(workflow.nodes![0].parameters.options).toBeUndefined();
+			},
+		);
+
+		it.each(UPDATE_WEBHOOK_ID_NODE_TYPES)(
+			'should preserve user-defined parameters.path even when it equals the empty string for node type "%s"',
+			async (type) => {
+				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
+					nodes: {},
+					connections: {},
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				} as unknown as Workflow);
+
+				const nodesToImport = [
+					{
+						id: 'import-1',
+						name: 'Execute Workflow Trigger 1',
+						type,
+						typeVersion: 1,
+						position: [200, 200] as [number, number],
+						webhookId: 'first-webhook',
+						parameters: {
+							options: {
+								path: '',
+							},
+						},
+					},
+				];
+
+				const workflowDataToImport = {
+					nodes: nodesToImport,
+					connections: {},
+				};
+
+				const canvasOperations = useCanvasOperations();
+
+				const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'file');
+
+				expect(workflow.nodes).toHaveLength(1);
+				expect(workflow.nodes![0].webhookId).not.toBe('first-webhook');
+				// Empty options.path is not equal to previous webhookId, so it should not be replaced
+				expect((workflow.nodes![0].parameters.options as { path: string }).path).toBe('');
 			},
 		);
 
@@ -4800,6 +4996,58 @@ describe('useCanvasOperations', () => {
 				expect((workflow.nodes![1].parameters.options as { path: string }).path).toBe('some-path');
 			},
 		);
+
+		it('should remap nodeGroups nodeIds when regenerating IDs', async () => {
+			// This mock is needed for addImportedNodesToWorkflow to work
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
+				nodes: {},
+				connections: {},
+				connectionsBySourceNode: {},
+				renameNode: vi.fn(),
+			} as unknown as Workflow);
+
+			const oldId1 = 'old-node-id-1';
+			const oldId2 = 'old-node-id-2';
+
+			const workflowDataWithGroups = {
+				nodes: [
+					{
+						id: oldId1,
+						name: 'Node 1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: oldId2,
+						name: 'Node 2',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+				nodeGroups: [{ id: 'group-1', name: 'My Group', nodeIds: [oldId1, oldId2] }],
+			};
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData(workflowDataWithGroups, 'paste', {
+				regenerateIds: true,
+			});
+
+			// Node IDs should have been reassigned
+			const newId1 = result.nodes![0].id;
+			const newId2 = result.nodes![1].id;
+			expect(newId1).not.toBe(oldId1);
+			expect(newId2).not.toBe(oldId2);
+
+			// nodeGroups should reference the new IDs
+			expect(result.nodeGroups).toEqual([
+				{ id: 'group-1', name: 'My Group', nodeIds: [newId1, newId2] },
+			]);
+		});
 	});
 
 	describe('duplicateNodes', () => {

@@ -9,12 +9,19 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
 }));
 
-function nodeRef(overrides: Partial<AgentJsonToolRef['node']> = {}): AgentJsonToolRef {
+function nodeRef(
+	overrides: Partial<Extract<AgentJsonToolRef, { type: 'node' }>['node']> = {},
+): Extract<AgentJsonToolRef, { type: 'node' }> {
 	return {
 		type: 'node',
 		name: 'Slack',
 		requireApproval: false,
-		node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1, ...overrides },
+		node: {
+			nodeType: 'n8n-nodes-base.slack',
+			nodeTypeVersion: 1,
+			nodeParameters: {},
+			...overrides,
+		},
 	};
 }
 

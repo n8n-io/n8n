@@ -61,6 +61,32 @@ describe('Git Node', () => {
 		jest.clearAllMocks();
 	});
 
+	describe('Environment validation', () => {
+		it('should not include invalid inherited environment keys in simple-git env', async () => {
+			const inheritedEnvKey = 'N8N_TEST_INVALID_ENV_KEY';
+			(Object.prototype as Record<string, unknown>)[inheritedEnvKey] = 'ignored';
+
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('log')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({});
+
+			mockGit.log.mockResolvedValueOnce({ all: [] } as any);
+
+			try {
+				await gitNode.execute.call(mockExecuteFunctions);
+			} finally {
+				delete (Object.prototype as Record<string, unknown>)[inheritedEnvKey];
+			}
+
+			expect(mockGit.env).toHaveBeenCalledTimes(1);
+			const envArg = mockGit.env.mock.calls[0][0] as Record<string, string>;
+			expect(Object.prototype.hasOwnProperty.call(envArg, inheritedEnvKey)).toBe(false);
+			expect(envArg[inheritedEnvKey]).toBeUndefined();
+			expect(envArg.GIT_TERMINAL_PROMPT).toBe('0');
+		});
+	});
+
 	describe('Branch switching', () => {
 		const mockNodeParameters = (params: Record<string, unknown>) => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(

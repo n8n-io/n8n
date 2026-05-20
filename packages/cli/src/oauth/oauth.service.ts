@@ -52,6 +52,7 @@ import {
 } from './types';
 import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 
 export function shouldSkipAuthOnOAuthCallback() {
 	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'false';
@@ -74,6 +75,7 @@ export class OauthService {
 		private readonly externalHooks: ExternalHooks,
 		private readonly cipher: Cipher,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
+		private readonly oauthJweServiceProxy: OAuthJweServiceProxy,
 	) {}
 
 	private validateOAuthUrlOrThrow(url: string): void {
@@ -90,7 +92,7 @@ export class OauthService {
 		return `${restUrl}/oauth${oauthVersion}-credential`;
 	}
 
-	async getCredential(
+	async getCredentialForUpdate(
 		req: OAuthRequest.OAuth1Credential.Auth | OAuthRequest.OAuth2Credential.Auth,
 	): Promise<CredentialsEntity> {
 		const { id: credentialId } = req.query;
@@ -102,13 +104,13 @@ export class OauthService {
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			req.user,
-			['credential:read'],
+			['credential:update'],
 		);
 
 		if (!credential) {
 			this.logger.error(
 				'OAuth credential authorization failed because the current user does not have the correct permissions',
-				{ userId: req.user.id },
+				{ userId: req.user.id, credentialId },
 			);
 			throw new NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 		}
@@ -250,7 +252,7 @@ export class OauthService {
 	protected async decodeCsrfState(
 		encodedState: string,
 		req: AuthenticatedRequest,
-	): Promise<CsrfState & CreateCsrfStateData> {
+	): Promise<[CsrfState & CreateCsrfStateData, CredentialsEntity | null]> {
 		const errorMessage = 'Invalid state format';
 		const decodedState = Buffer.from(encodedState, 'base64').toString();
 		const decoded = jsonParse<CsrfState>(decodedState, {
@@ -270,28 +272,31 @@ export class OauthService {
 
 		// Dynamic credentials: skip user validation (e.g. embed/iframe flows) as they do not contain an n8n user
 		if (decryptedState.origin === 'dynamic-credential') {
-			return {
-				...decoded,
-				...decryptedState,
-			};
+			return [
+				{ ...decoded, ...decryptedState },
+				await this.getCredentialWithoutUser(decryptedState.cid),
+			];
 		}
 
 		// Static credentials: skip user validation only when N8N_SKIP_AUTH_ON_OAUTH_CALLBACK is true (e.g. embed/iframe)
 		if (skipAuthOnOAuthCallback) {
-			return {
-				...decoded,
-				...decryptedState,
-			};
+			return [
+				{ ...decoded, ...decryptedState },
+				await this.getCredentialWithoutUser(decryptedState.cid),
+			];
 		}
 
 		if (req.user?.id === undefined || decryptedState.userId !== req.user.id) {
 			throw new AuthError('Unauthorized');
 		}
 
-		return {
-			...decoded,
-			...decryptedState,
-		};
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			decryptedState.cid,
+			req.user,
+			['credential:update'],
+		);
+
+		return [{ ...decoded, ...decryptedState }, credential];
 	}
 
 	protected verifyCsrfState(
@@ -313,10 +318,9 @@ export class OauthService {
 		[CredentialsEntity, ICredentialDataDecryptedObject, T, CsrfState & CreateCsrfStateData]
 	> {
 		const { state: encodedState } = req.query;
-		const state = await this.decodeCsrfState(encodedState, req);
-		const credential = await this.getCredentialWithoutUser(state.cid);
+		const [state, credential] = await this.decodeCsrfState(encodedState, req);
 		if (!credential) {
-			throw new UnexpectedError('OAuth callback failed because of insufficient permissions');
+			throw new NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 		}
 
 		const additionalData = await this.getAdditionalData();
@@ -350,11 +354,16 @@ export class OauthService {
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
 		// Skip the cleanup when the credential exposes scope as user-editable (directly or via
 		// inheritance) so that manually entered scopes survive reconnects.
+		// For managed credentials we always strip the scope so that the pre-registered default
+		// scope on n8n's OAuth app is used, regardless of credential type.
+		const userCanEditScope =
+			GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type) ||
+			this.hasEditableScopeProperty(credential.type);
+
 		if (
 			decryptedDataOriginal?.scope &&
 			credential.type.includes('OAuth2') &&
-			!GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type) &&
-			!this.hasEditableScopeProperty(credential.type)
+			(credential.isManaged || !userCanEditScope)
 		) {
 			delete decryptedDataOriginal.scope;
 		}
@@ -530,6 +539,9 @@ export class OauthService {
 				client_name: 'n8n',
 				client_uri: 'https://n8n.io/',
 				scope,
+				...(oauthCredentials.jweEnabled === true
+					? await this.oauthJweServiceProxy.getDcrJweFields(oauthCredentials.inlineJwks === true)
+					: {}),
 			};
 
 			await this.externalHooks.run('oauth2.dynamicClientRegistration', [registerPayload]);

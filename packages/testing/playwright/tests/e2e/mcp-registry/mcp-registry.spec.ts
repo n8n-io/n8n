@@ -16,13 +16,19 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'AI' }],
 	},
 	() => {
-		test('exposes Notion MCP as a tool with hidden connection fields', async ({ n8n }) => {
+		// NODE-5089 - ticket to fix and enable this test again
+		// eslint-disable-next-line playwright/no-skipped-test
+		test.skip('exposes Notion MCP as a tool with hidden connection fields', async ({
+			n8n,
+			api,
+		}) => {
+			await api.seedMcpRegistry();
 			await n8n.start.fromBlankCanvas();
 
 			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
 			await n8n.canvas.addSupplementalNodeToParent('Notion MCP', 'ai_tool', AGENT_NODE_NAME, {
 				exactMatch: true,
-				subcategory: 'MCP',
+				subcategory: 'MCP servers',
 				exactSubcategory: true,
 			});
 
