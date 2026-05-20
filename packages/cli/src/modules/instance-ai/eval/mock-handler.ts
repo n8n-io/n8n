@@ -228,6 +228,7 @@ async function generateMockResponse(
 
 	const requestPath = extractEndpointPath(request.url);
 	const requestMethod = request.method ?? 'GET';
+	const requestHostname = extractHostname(request.url);
 
 	for (let attempt = 0; attempt <= context.maxRetries; attempt++) {
 		try {
@@ -235,6 +236,7 @@ async function generateMockResponse(
 				serviceName,
 				method: requestMethod,
 				pathname: requestPath,
+				hostname: requestHostname,
 			});
 			return materializeSpec(spec);
 		} catch (error) {
@@ -301,14 +303,19 @@ function createSubmitResponseTool(capture: { spec?: MockResponseSpec }) {
 		.build();
 }
 
-function createQuirksLookupTool(serviceName: string, method: string, pathname: string) {
+function createQuirksLookupTool(
+	serviceName: string,
+	method: string,
+	pathname: string,
+	hostname?: string,
+) {
 	return new Tool('get_endpoint_quirks')
 		.description(
 			'Returns guidance about known mocking quirks for the current request. Always call before submit_response.',
 		)
 		.input(z.object({}))
 		.handler(async () => {
-			const guidance = findMockQuirks(serviceName, method, pathname);
+			const guidance = findMockQuirks(serviceName, method, pathname, hostname);
 			if (guidance.length === 0) {
 				return 'No specific quirks for this endpoint. Follow the API docs and the system rules.';
 			}
@@ -319,14 +326,21 @@ function createQuirksLookupTool(serviceName: string, method: string, pathname: s
 
 async function callLlm(
 	userPrompt: string,
-	requestInfo: { serviceName: string; method: string; pathname: string },
+	requestInfo: { serviceName: string; method: string; pathname: string; hostname?: string },
 ): Promise<MockResponseSpec> {
 	const capture: { spec?: MockResponseSpec } = {};
 
 	const agent = createEvalAgent('eval-mock-responder', {
 		instructions: MOCK_SYSTEM_PROMPT,
 	})
-		.tool(createQuirksLookupTool(requestInfo.serviceName, requestInfo.method, requestInfo.pathname))
+		.tool(
+			createQuirksLookupTool(
+				requestInfo.serviceName,
+				requestInfo.method,
+				requestInfo.pathname,
+				requestInfo.hostname,
+			),
+		)
 		.tool(createSubmitResponseTool(capture));
 
 	const result = await agent.generate(userPrompt);
@@ -439,6 +453,14 @@ function extractEndpointPath(url: string): string {
 		return new URL(url).pathname;
 	} catch {
 		return url;
+	}
+}
+
+function extractHostname(url: string): string | undefined {
+	try {
+		return new URL(url).hostname;
+	} catch {
+		return undefined;
 	}
 }
 

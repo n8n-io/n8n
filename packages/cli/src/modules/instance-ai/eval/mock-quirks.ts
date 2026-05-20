@@ -11,6 +11,15 @@
 export interface MockQuirk {
 	/** Matched against the service name extracted from the request URL. */
 	service: string;
+	/**
+	 * Additional hostname patterns (with `*` = single DNS label wildcard) checked
+	 * against the request hostname. Use when service extraction (first hostname
+	 * label after stripping `api.`/`www.`) doesn't yield the canonical service
+	 * name — e.g. `files.slack.com` resolves to "Files" not "Slack", and
+	 * `<bucket>.s3.amazonaws.com` resolves to the bucket name not "S3". Either
+	 * service equality OR any hostname pattern matching is enough to apply.
+	 */
+	hostnames?: string[];
 	/** `${METHOD} ${path}` pattern (no query, no host). Omit to apply service-wide. */
 	endpoint?: string;
 	guidance: string;
@@ -65,6 +74,10 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 	},
 	{
 		service: 'Slack',
+		// Covers files.slack.com (PUT /upload/v1/<token>), hooks.slack.com (incoming
+		// webhooks), and any future subdomain — the service-name extractor maps these
+		// to "Files" / "Hooks" otherwise and the quirk wouldn't fire.
+		hostnames: ['*.slack.com'],
 		guidance:
 			'Slack file endpoints are ALL JSON metadata — NEVER pick `type: "binary"`. The response SHAPE differs per endpoint and matters: the Slack node parses specific keys and silently drops items when the shape is wrong.\n\n' +
 			'  * `POST /api/files.getUploadURLExternal` → `{ ok: true, upload_url: "https://files.slack.com/upload/v1/<token>", file_id: "F0ABC123" }`. The next step (Slack v2.4 nodes) PUTs binary bytes to `upload_url`.\n' +
@@ -91,6 +104,17 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 	},
 	{
 		service: 'S3',
+		// Bucket-style hostnames resolve to the bucket name (e.g.
+		// `my-bucket.s3.amazonaws.com` → service "My-bucket"), so virtual-hosted
+		// requests would never match `service: 'S3'` alone. Path-style on
+		// `s3.amazonaws.com` / `s3.<region>.amazonaws.com` already matches via
+		// the service field.
+		hostnames: [
+			'*.s3.amazonaws.com',
+			'*.s3.*.amazonaws.com',
+			's3.amazonaws.com',
+			's3.*.amazonaws.com',
+		],
 		guidance:
 			'Amazon S3 routes by HTTP method on `<bucket>.s3.amazonaws.com` or `s3.<region>.amazonaws.com`:\n' +
 			"  * `GET /<key>` (`GetObject`) → BINARY. Infer `contentType` from the key's file extension; default `application/octet-stream`. Set `filename` to the last path segment.\n" +
@@ -109,16 +133,43 @@ export function quirkMatches(
 	service: string,
 	method: string,
 	pathname: string,
+	hostname?: string,
 ): boolean {
-	if (quirk.service !== service) return false;
+	const serviceMatch = quirk.service === service;
+	const hostnameMatch =
+		hostname !== undefined &&
+		quirk.hostnames !== undefined &&
+		quirk.hostnames.some((pattern) => hostnameMatchesPattern(pattern, hostname));
+	if (!serviceMatch && !hostnameMatch) return false;
 	if (!quirk.endpoint) return true;
 	const key = `${method.toUpperCase()} ${pathname}`;
 	return quirk.endpoint.toUpperCase() === key.toUpperCase();
 }
 
 /** Returns all matching guidance lines (composes service-wide + endpoint-specific). */
-export function findMockQuirks(service: string, method: string, pathname: string): string[] {
-	return MOCK_QUIRKS.filter((q) => quirkMatches(q, service, method, pathname)).map(
+export function findMockQuirks(
+	service: string,
+	method: string,
+	pathname: string,
+	hostname?: string,
+): string[] {
+	return MOCK_QUIRKS.filter((q) => quirkMatches(q, service, method, pathname, hostname)).map(
 		(q) => q.guidance,
 	);
+}
+
+/**
+ * Match a hostname pattern against a DNS hostname. `*` matches exactly one
+ * DNS label (no dots); literal dots are literal. Exported for testing.
+ *
+ * Examples:
+ *   hostnameMatchesPattern('*.slack.com', 'files.slack.com')          → true
+ *   hostnameMatchesPattern('*.slack.com', 'a.b.slack.com')            → false
+ *   hostnameMatchesPattern('*.s3.*.amazonaws.com', 'b.s3.us-east-1.amazonaws.com') → true
+ */
+export function hostnameMatchesPattern(pattern: string, hostname: string): boolean {
+	const parts = pattern
+		.split('.')
+		.map((p) => (p === '*' ? '[^.]+' : p.replace(/[.+^${}()|[\]\\?*]/g, '\\$&')));
+	return new RegExp(`^${parts.join('\\.')}$`).test(hostname);
 }
