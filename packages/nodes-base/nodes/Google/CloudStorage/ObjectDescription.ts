@@ -9,6 +9,8 @@ import {
 } from 'n8n-workflow';
 import { Readable } from 'stream';
 
+import { getGoogleAccessToken } from '../GenericFunctions';
+
 const RESUMABLE_UPLOAD_CHUNK_SIZE = 8 * 1024 * 1024;
 
 /**
@@ -246,27 +248,58 @@ export const objectOperations: INodeProperties[] = [
 										uploadHeaders['X-Upload-Content-Length'] = contentLength;
 									}
 
-									const uploadSessionResponse =
-										await this.helpers.httpRequestWithAuthentication.call(
+									const authenticationMethod = this.getNodeParameter(
+										'authentication',
+									) as string;
+
+									let uploadSessionResponse;
+									if (authenticationMethod === 'serviceAccount') {
+										const credentials =
+											await this.getCredentials('googleCloudStorageApi');
+										const { access_token } = await getGoogleAccessToken.call(
 											this,
-											'googleCloudStorageOAuth2Api',
-											{
-												method: 'POST',
-												url: `/b/${bucketName}/o/`,
-												baseURL: 'https://storage.googleapis.com/upload/storage/v1',
-												qs: {
-													...requestOptions.qs,
-													uploadType: 'resumable',
-												},
-												headers: uploadHeaders,
-												body: metadata,
-												// Required so the IDataObject body is serialized as JSON.
-												// Without this, httpRequestWithAuthentication passes the object as-is
-												// and the GCS session initiation receives a malformed body.
-												json: true,
-												returnFullResponse: true,
-											},
+											credentials,
+											'cloudStorage',
 										);
+										uploadSessionResponse = await this.helpers.httpRequest({
+											method: 'POST',
+											url: `/b/${bucketName}/o/`,
+											baseURL: 'https://storage.googleapis.com/upload/storage/v1',
+											qs: {
+												...requestOptions.qs,
+												uploadType: 'resumable',
+											},
+											headers: {
+												...uploadHeaders,
+												Authorization: `Bearer ${access_token}`,
+											},
+											body: metadata,
+											json: true,
+											returnFullResponse: true,
+										});
+									} else {
+										uploadSessionResponse =
+											await this.helpers.httpRequestWithAuthentication.call(
+												this,
+												'googleCloudStorageOAuth2Api',
+												{
+													method: 'POST',
+													url: `/b/${bucketName}/o/`,
+													baseURL: 'https://storage.googleapis.com/upload/storage/v1',
+													qs: {
+														...requestOptions.qs,
+														uploadType: 'resumable',
+													},
+													headers: uploadHeaders,
+													body: metadata,
+													// Required so the IDataObject body is serialized as JSON.
+													// Without this, httpRequestWithAuthentication passes the object as-is
+													// and the GCS session initiation receives a malformed body.
+													json: true,
+													returnFullResponse: true,
+												},
+											);
+									}
 
 									const uploadUrl = uploadSessionResponse.headers.location as string | undefined;
 									if (!uploadUrl) {

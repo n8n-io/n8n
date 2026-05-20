@@ -1,5 +1,7 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
+import { getGoogleAccessToken } from '../GenericFunctions';
+
 export async function searchProjects(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -18,12 +20,27 @@ export async function searchProjects(
 		qs.filter = 'lifecycleState:ACTIVE';
 	}
 
-	const response = await this.helpers.requestOAuth2.call(this, 'googleCloudStorageOAuth2Api', {
-		method: 'GET',
-		url: 'https://cloudresourcemanager.googleapis.com/v1/projects',
-		qs,
-		json: true,
-	});
+	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
+
+	let response;
+	if (authenticationMethod === 'serviceAccount') {
+		const credentials = await this.getCredentials('googleCloudStorageApi');
+		const { access_token } = await getGoogleAccessToken.call(this, credentials, 'cloudStorage');
+		response = await this.helpers.httpRequest({
+			method: 'GET',
+			url: 'https://cloudresourcemanager.googleapis.com/v1/projects',
+			qs,
+			headers: { Authorization: `Bearer ${access_token}` },
+			json: true,
+		});
+	} else {
+		response = await this.helpers.requestOAuth2.call(this, 'googleCloudStorageOAuth2Api', {
+			method: 'GET',
+			url: 'https://cloudresourcemanager.googleapis.com/v1/projects',
+			qs,
+			json: true,
+		});
+	}
 
 	const projects = (response.projects as IDataObject[]) ?? [];
 
