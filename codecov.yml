@@ -89,7 +89,6 @@ component_management:
         - packages/node-dev/**
         - packages/nodes-base/**
         - packages/@n8n/json-schema-to-zod/**
-        - packages/@n8n/nodes-langchain/**
       statuses:
         - type: project
           target: auto
@@ -106,6 +105,7 @@ component_management:
         - packages/@n8n/instance-ai/**
         - packages/@n8n/mcp-browser/**
         - packages/@n8n/mcp-browser-extension/**
+        - packages/@n8n/nodes-langchain/**
     - component_id: utils_packages
       name: Utils
       paths:
