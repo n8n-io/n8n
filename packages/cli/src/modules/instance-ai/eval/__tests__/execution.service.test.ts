@@ -82,6 +82,7 @@ import {
 } from '../workflow-analysis';
 import { createLlmMockHandler } from '../mock-handler';
 import type { MockHints } from '../workflow-analysis';
+import { UserError } from 'n8n-workflow';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -309,16 +310,41 @@ describe('EvalExecutionService', () => {
 		// must not run until TRUST-113 wires the credential rewrite + wire
 		// server, or the workflow would hit real provider APIs.
 		describe('safety gate (no rewriter wired)', () => {
-			it('returns an error result for non-empty unpinNodes without invoking the workflow', async () => {
+			it('runs the compatibility guard, then refuses with the gate error when the guard passes', async () => {
 				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
 					unpinNodes: ['Agent'],
 				});
 
 				expect(result.success).toBe(false);
 				expect(result.errors).toEqual([expect.stringContaining('not yet enabled')]);
-				expect(assertUnpinCompatibilityMock).not.toHaveBeenCalled();
+				// Guard runs first so the user gets actionable diagnostics when their
+				// workflow has a permanent compatibility issue. When the guard passes,
+				// the gate fires with the generic "not yet enabled" message.
+				expect(assertUnpinCompatibilityMock).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'wf-1' }),
+					['Agent'],
+				);
 				expect(generateMockHintsMock).not.toHaveBeenCalled();
 				expect(mockProcessRunExecutionData).not.toHaveBeenCalled();
+			});
+
+			it("surfaces the guard's error when the workflow has a permanent compatibility issue", async () => {
+				assertUnpinCompatibilityMock.mockImplementation(() => {
+					throw new UserError(
+						'Cannot unpin AI root nodes — protocol-binary sub-nodes ' +
+							'(cannot be intercepted via HTTP): "Mem" (memoryPostgresChat) → "Agent"',
+					);
+				});
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['Agent'],
+				});
+
+				expect(result.success).toBe(false);
+				// Guard's protocol-binary message wins over the generic gate message —
+				// the user needs to fix the workflow regardless of when the feature ships.
+				expect(result.errors).toEqual([expect.stringContaining('memoryPostgresChat')]);
+				expect(result.errors[0]).not.toContain('not yet enabled');
 			});
 
 			it('refuses regardless of how many roots are requested', async () => {

@@ -95,6 +95,20 @@ export class EvalExecutionService {
 
 		const unpinNodes = options.unpinNodes ?? [];
 
+		// Run the compatibility guard FIRST — protocol-binary or unmapped-vendor
+		// errors are actionable ("replace this Postgres memory") and the user
+		// needs them whether or not the feature is enabled. The gate below
+		// only kicks in when the workflow IS otherwise compatible, so the guard
+		// never gets shadowed by a more generic refusal.
+		try {
+			assertUnpinCompatibility(workflowEntity, unpinNodes);
+		} catch (error) {
+			if (error instanceof UserError) {
+				return this.errorResult(executionId, error.message);
+			}
+			throw error;
+		}
+
 		// Safety gate: this PR ships only the API surface for `unpinNodes`. The
 		// credential rewrite + eval wire server that route vendor SDK traffic
 		// through localhost land in TRUST-113. Without them, unpinning would let
@@ -107,15 +121,6 @@ export class EvalExecutionService {
 				'`unpinNodes` is reserved — vendor SDK interception is not yet enabled in this build. ' +
 					'Submit the request without `unpinNodes` to use the existing pinned path.',
 			);
-		}
-
-		try {
-			assertUnpinCompatibility(workflowEntity, unpinNodes);
-		} catch (error) {
-			if (error instanceof UserError) {
-				return this.errorResult(executionId, error.message);
-			}
-			throw error;
 		}
 
 		const unpinSet = unpinNodes.length > 0 ? new Set(unpinNodes) : undefined;
