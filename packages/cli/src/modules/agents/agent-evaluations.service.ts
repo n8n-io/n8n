@@ -404,6 +404,7 @@ export class AgentEvaluationsService {
 			agentId: evaluationCase.agentId,
 			executionId: evaluationCase.executionId,
 			status: evaluationCase.status,
+			rejectionReason: evaluationCase.rejectionReason,
 			input: evaluationCase.input,
 			expectedOutput: evaluationCase.expectedOutput,
 			actualOutput: evaluationCase.actualOutput,

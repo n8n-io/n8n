@@ -1,4 +1,4 @@
-import type { AgentReviewStatus } from '@n8n/api-types';
+import type { AgentReviewRejectionReason, AgentReviewStatus } from '@n8n/api-types';
 import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
@@ -28,6 +28,9 @@ export class AgentEvaluationCase extends WithTimestampsAndStringId {
 
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentReviewStatus;
+
+	@Column({ type: 'varchar', length: 32, nullable: true })
+	rejectionReason: AgentReviewRejectionReason | null;
 
 	@Column({ type: 'text' })
 	input: string;

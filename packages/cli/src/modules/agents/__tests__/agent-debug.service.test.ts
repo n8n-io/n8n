@@ -1,4 +1,7 @@
-import type { UpsertAgentReviewCaseDto } from '@n8n/api-types';
+import {
+	DEFAULT_AGENT_REVIEW_REJECTION_REASON,
+	type UpsertAgentReviewCaseDto,
+} from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
 import { AgentDebugService, computeAgentDebugSignals } from '../agent-debug.service';
@@ -174,6 +177,7 @@ describe('AgentDebugService', () => {
 			agentId: 'agent-1',
 			executionId: 'execution-1',
 			status: 'approved',
+			rejectionReason: null,
 			input: 'Question',
 			expectedOutput: 'Expected answer',
 			actualOutput: 'Actual answer',
@@ -235,6 +239,7 @@ describe('AgentDebugService', () => {
 			agentId: 'agent-1',
 			executionId: 'execution-1',
 			status: 'approved',
+			rejectionReason: null,
 			input: execution.userMessage,
 			expectedOutput: '',
 			actualOutput: '',
@@ -274,6 +279,7 @@ describe('AgentDebugService', () => {
 				agentId: 'agent-1',
 				executionId: 'execution-1',
 				status: 'approved',
+				rejectionReason: null,
 				input: execution.userMessage,
 				expectedOutput: 'Expected summary',
 				actualOutput: execution.assistantResponse,
@@ -288,9 +294,90 @@ describe('AgentDebugService', () => {
 			expect.objectContaining({
 				id: 'review-1',
 				status: 'approved',
+				rejectionReason: null,
 				expectedOutput: 'Expected summary',
 				actualOutput: execution.assistantResponse,
 				createdAt: now.toISOString(),
+			}),
+		);
+	});
+
+	it('stores a rejection reason for rejected review cases', async () => {
+		const execution = executionFixture();
+		mockRunLookup(execution);
+		agentEvaluationCaseRepository.findByExecutionId.mockResolvedValue(null);
+		agentEvaluationCaseRepository.create.mockReturnValue({
+			id: 'review-1',
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			executionId: 'execution-1',
+			status: 'approved',
+			rejectionReason: null,
+			input: execution.userMessage,
+			expectedOutput: '',
+			actualOutput: '',
+			notes: null,
+			createdById: 'user-1',
+			updatedById: null,
+			createdAt: now,
+			updatedAt: now,
+		} as AgentEvaluationCase);
+		agentEvaluationCaseRepository.save.mockImplementation(
+			async (review) =>
+				({
+					...review,
+					id: 'review-1',
+					createdAt: now,
+					updatedAt: now,
+				}) as AgentEvaluationCase,
+		);
+
+		const review = await service.upsertRunReview(
+			'project-1',
+			'agent-1',
+			'execution-1',
+			{ status: 'rejected', rejectionReason: 'wrong_tool' },
+			'user-1',
+		);
+
+		expect(agentEvaluationCaseRepository.save).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'rejected',
+				rejectionReason: 'wrong_tool',
+			}),
+		);
+		expect(review).toEqual(
+			expect.objectContaining({
+				status: 'rejected',
+				rejectionReason: 'wrong_tool',
+			}),
+		);
+	});
+
+	it('defaults missing rejection reasons for rejected review cases', async () => {
+		const execution = executionFixture();
+		mockRunLookup(execution);
+		agentEvaluationCaseRepository.findByExecutionId.mockResolvedValue(reviewFixture());
+		agentEvaluationCaseRepository.save.mockImplementation(
+			async (review) =>
+				({
+					...review,
+					updatedAt: now,
+				}) as AgentEvaluationCase,
+		);
+
+		await service.upsertRunReview(
+			'project-1',
+			'agent-1',
+			'execution-1',
+			{ status: 'rejected' },
+			'user-1',
+		);
+
+		expect(agentEvaluationCaseRepository.save).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'rejected',
+				rejectionReason: DEFAULT_AGENT_REVIEW_REJECTION_REASON,
 			}),
 		);
 	});

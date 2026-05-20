@@ -25,12 +25,30 @@ export const agentReviewStatusSchema = z.enum(['approved', 'rejected']);
 
 export type AgentReviewStatus = z.infer<typeof agentReviewStatusSchema>;
 
+export const AGENT_REVIEW_REJECTION_REASONS = [
+	'incorrect_answer',
+	'incomplete_answer',
+	'wrong_tool',
+	'missing_tool',
+	'hallucination',
+	'bad_format',
+	'unsafe_behavior',
+	'other',
+] as const;
+
+export const DEFAULT_AGENT_REVIEW_REJECTION_REASON = 'incorrect_answer';
+
+export const agentReviewRejectionReasonSchema = z.enum(AGENT_REVIEW_REJECTION_REASONS);
+
+export type AgentReviewRejectionReason = z.infer<typeof agentReviewRejectionReasonSchema>;
+
 export interface AgentReviewCase {
 	id: string;
 	projectId: string;
 	agentId: string;
 	executionId: string;
 	status: AgentReviewStatus;
+	rejectionReason: AgentReviewRejectionReason | null;
 	input: string;
 	expectedOutput: string;
 	actualOutput: string;
@@ -55,6 +73,7 @@ export interface AgentReviewCasesResponse {
 
 export class UpsertAgentReviewCaseDto extends Z.class({
 	status: agentReviewStatusSchema,
+	rejectionReason: agentReviewRejectionReasonSchema.optional(),
 	expectedOutput: z.string().optional(),
 	notes: z.string().max(2000).optional(),
 }) {}

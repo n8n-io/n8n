@@ -46,6 +46,7 @@ describe('AgentEvaluationsService', () => {
 			agentId: 'agent-1',
 			executionId: 'execution-1',
 			status: 'approved',
+			rejectionReason: null,
 			input: 'Question',
 			expectedOutput: 'Expected answer',
 			actualOutput: 'Actual answer',

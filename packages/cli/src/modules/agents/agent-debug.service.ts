@@ -1,14 +1,15 @@
-import type {
-	AgentDebugInsight,
-	AgentDebugInsightsResponse,
-	AgentDebugRun,
-	AgentDebugRunDetail,
-	AgentDebugRunsResponse,
-	AgentDebugSignal,
-	AgentDebugSignalType,
-	AgentReviewCase,
-	AgentReviewCasesResponse,
-	UpsertAgentReviewCaseDto,
+import {
+	DEFAULT_AGENT_REVIEW_REJECTION_REASON,
+	type AgentDebugInsight,
+	type AgentDebugInsightsResponse,
+	type AgentDebugRun,
+	type AgentDebugRunDetail,
+	type AgentDebugRunsResponse,
+	type AgentDebugSignal,
+	type AgentDebugSignalType,
+	type AgentReviewCase,
+	type AgentReviewCasesResponse,
+	type UpsertAgentReviewCaseDto,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
@@ -292,6 +293,10 @@ export class AgentDebugService {
 			});
 
 		review.status = payload.status;
+		review.rejectionReason =
+			payload.status === 'rejected'
+				? (payload.rejectionReason ?? DEFAULT_AGENT_REVIEW_REJECTION_REASON)
+				: null;
 		review.input = execution.userMessage;
 		review.expectedOutput = payload.expectedOutput ?? execution.assistantResponse;
 		review.actualOutput = execution.assistantResponse;
@@ -442,6 +447,7 @@ export class AgentDebugService {
 			agentId: review.agentId,
 			executionId: review.executionId,
 			status: review.status,
+			rejectionReason: review.rejectionReason,
 			input: review.input,
 			expectedOutput: review.expectedOutput,
 			actualOutput: review.actualOutput,
