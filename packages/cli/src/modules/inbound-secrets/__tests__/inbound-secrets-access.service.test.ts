@@ -20,10 +20,7 @@ describe('InboundSecretsAccessService', () => {
 	const plaintextArtifacts = JSON.stringify({
 		version: 1,
 		artifacts: {
-			Webhook: [
-				{ 'headers.authorization': 'Bearer xyz', 'headers.content-type': 'json' },
-				{ 'headers.authorization': 'Bearer abc' },
-			],
+			api_key: ['Bearer xyz', 'Bearer abc'],
 		},
 	});
 
@@ -32,57 +29,20 @@ describe('InboundSecretsAccessService', () => {
 		cipher.decryptV2.mockResolvedValue(plaintextArtifacts);
 	});
 
-	it('returns the leaf value for the given source node, path, and itemIndex', async () => {
-		const result = await service.getInboundArtifacts(
+	it('returns the array stored under the requested alias', async () => {
+		const result = await service.getRuntimeCredentials(
 			buildRunExecutionData(ENCRYPTED_BLOB),
-			'Webhook',
-			'headers.authorization',
-			0,
+			'api_key',
 		);
 
-		expect(result).toBe('Bearer xyz');
+		expect(result).toEqual(['Bearer xyz', 'Bearer abc']);
 		expect(cipher.decryptV2).toHaveBeenCalledWith(ENCRYPTED_BLOB);
 	});
 
-	it('addresses artifacts by itemIndex', async () => {
-		const result = await service.getInboundArtifacts(
+	it('returns undefined when the alias is not in the artifacts map', async () => {
+		const result = await service.getRuntimeCredentials(
 			buildRunExecutionData(ENCRYPTED_BLOB),
-			'Webhook',
-			'headers.authorization',
-			1,
-		);
-
-		expect(result).toBe('Bearer abc');
-	});
-
-	it('returns undefined when the source node is not in the artifacts map', async () => {
-		const result = await service.getInboundArtifacts(
-			buildRunExecutionData(ENCRYPTED_BLOB),
-			'Unknown',
-			'headers.authorization',
-			0,
-		);
-
-		expect(result).toBeUndefined();
-	});
-
-	it('returns undefined when the requested path is not in the inner map', async () => {
-		const result = await service.getInboundArtifacts(
-			buildRunExecutionData(ENCRYPTED_BLOB),
-			'Webhook',
-			'headers.missing',
-			0,
-		);
-
-		expect(result).toBeUndefined();
-	});
-
-	it('returns undefined when itemIndex is out of range', async () => {
-		const result = await service.getInboundArtifacts(
-			buildRunExecutionData(ENCRYPTED_BLOB),
-			'Webhook',
-			'headers.authorization',
-			99,
+			'unknown_alias',
 		);
 
 		expect(result).toBeUndefined();
@@ -93,23 +53,16 @@ describe('InboundSecretsAccessService', () => {
 			executionData: { runtimeData: {} },
 		} as unknown as IRunExecutionData;
 
-		const result = await service.getInboundArtifacts(
-			runExecutionData,
-			'Webhook',
-			'headers.authorization',
-			0,
-		);
+		const result = await service.getRuntimeCredentials(runExecutionData, 'api_key');
 
 		expect(result).toBeUndefined();
 		expect(cipher.decryptV2).not.toHaveBeenCalled();
 	});
 
 	it('returns undefined and does not call the cipher when secureArtifacts is not a string', async () => {
-		const result = await service.getInboundArtifacts(
+		const result = await service.getRuntimeCredentials(
 			buildRunExecutionData({ not: 'a string' }),
-			'Webhook',
-			'headers.authorization',
-			0,
+			'api_key',
 		);
 
 		expect(result).toBeUndefined();
@@ -120,12 +73,7 @@ describe('InboundSecretsAccessService', () => {
 		cipher.decryptV2.mockResolvedValueOnce('not json');
 
 		await expect(
-			service.getInboundArtifacts(
-				buildRunExecutionData(ENCRYPTED_BLOB),
-				'Webhook',
-				'headers.authorization',
-				0,
-			),
+			service.getRuntimeCredentials(buildRunExecutionData(ENCRYPTED_BLOB), 'api_key'),
 		).rejects.toThrow();
 	});
 });
