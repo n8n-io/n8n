@@ -585,7 +585,9 @@ export class WorkflowRunner {
 					} else if (abortController.signal.aborted) {
 						error = new ManualExecutionCancelledError(executionId);
 					} else {
-						error = new Error(`Job completion lost or timed out for execution ${executionId}`);
+						error = new Error(
+							`Job completion lost or timed out for execution ${executionId}: ${caught instanceof Error ? caught.message : 'unknown error'}`,
+						);
 					}
 
 					// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
