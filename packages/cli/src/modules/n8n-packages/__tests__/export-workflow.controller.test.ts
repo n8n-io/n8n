@@ -53,8 +53,8 @@ describe('n8n-packages export', () => {
 			expect(route?.licenseFeature).toBe('feat:n8nPackages');
 		});
 
-		it('has no @ProjectScope or @GlobalScope decorator', () => {
-			expect(route?.accessScope).toBeUndefined();
+		it('enforces workflow:export global scope', () => {
+			expect(route?.accessScope).toEqual({ scope: 'workflow:export', globalOnly: true });
 		});
 	});
 });
