@@ -40,8 +40,12 @@ test.describe(
 			await n8n.navigate.toInstanceAi();
 
 			// Create first thread with a unique message
-			await n8n.instanceAi.sendMessage('Message in first thread');
+			await n8n.instanceAi.sendMessage(
+				'For this thread switch test, reply with exactly: first thread ready',
+			);
 			await n8n.instanceAi.waitForResponseComplete();
+			await expect(n8n.page).toHaveURL(/\/instance-ai\/[^/]+$/);
+			const firstThreadPath = new URL(n8n.page.url()).pathname;
 
 			// Sidebar starts collapsed; open it so the new-thread button and
 			// thread list are queryable.
@@ -51,33 +55,33 @@ test.describe(
 			await n8n.instanceAi.sidebar.getNewThreadButton().click();
 			await expect(n8n.instanceAi.getChatInput()).toBeVisible({ timeout: 10_000 });
 
-			await n8n.instanceAi.sendMessage('Message in second thread');
+			await n8n.instanceAi.sendMessage(
+				'For this thread switch test, reply with exactly: second thread ready',
+			);
 			await n8n.instanceAi.waitForResponseComplete();
 
-			// Sidebar is ordered by most recent activity, so the first thread is now second.
-			const firstThread = n8n.instanceAi.sidebar.getThreadItems().nth(1);
+			const firstThread = n8n.instanceAi.sidebar.getThreadByHref(firstThreadPath);
 			await expect(firstThread).toBeVisible({ timeout: 10_000 });
 			await firstThread.click();
 
 			// Should show the first thread's user message (messages load async)
-			await expect(n8n.instanceAi.getUserMessages().first()).toContainText(
-				'Message in first thread',
-				{ timeout: 30_000 },
-			);
+			await expect(n8n.instanceAi.getUserMessages().first()).toContainText('first thread ready', {
+				timeout: 30_000,
+			});
 		});
 
 		test('should rename thread via double-click', async ({ n8n }) => {
-			await n8n.navigate.toInstanceAi();
-
-			await n8n.instanceAi.sendMessage('Thread to rename');
-			await n8n.instanceAi.waitForResponseComplete();
+			const thread = await n8n.api.createInstanceAiThread();
+			await n8n.api.renameInstanceAiThread(thread.id, 'Thread to rename');
+			await n8n.instanceAi.gotoThread(thread.id);
 
 			// Sidebar starts collapsed; open it so the thread list is queryable.
 			await n8n.instanceAi.openSidebar();
 
 			// Double-click the thread to enter rename mode
-			const thread = n8n.instanceAi.sidebar.getThreadItems().first();
-			await thread.dblclick();
+			const threadItem = n8n.instanceAi.sidebar.getThreadByTitle('Thread to rename');
+			await expect(threadItem).toBeVisible({ timeout: 5_000 });
+			await threadItem.dblclick();
 
 			// Find the rename input and type a new name
 			const input = n8n.instanceAi.sidebar.getRenameInput();

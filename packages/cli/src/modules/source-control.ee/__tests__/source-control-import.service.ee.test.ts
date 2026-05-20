@@ -292,6 +292,64 @@ describe('SourceControlImportService', () => {
 			);
 		});
 
+		it('should reset nodeGroups to empty when they are invalid', async () => {
+			const mockUserId = 'user-id-123';
+			const mockWorkflowFile = '/mock/workflow-bad-groups.json';
+			const mockWorkflowData = {
+				id: 'wf-1',
+				name: 'Workflow with bad groups',
+				active: false,
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Node 1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				versionId: 'v1',
+				nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['nonexistent-node'] }],
+				owner: { type: 'personal', personalEmail: 'user@example.com' },
+				parentFolderId: null,
+			};
+			const candidates = [
+				mock<SourceControlledFile>({ file: mockWorkflowFile, id: mockWorkflowData.id }),
+			];
+
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), {
+					id: 'personal-project-id-123',
+					name: 'Personal Project',
+					type: 'personal',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				}),
+			);
+			workflowRepository.findByIds.mockResolvedValue([]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsert.mockResolvedValue({
+				identifiers: [{ id: mockWorkflowData.id }],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			fsReadFile.mockResolvedValueOnce(JSON.stringify(mockWorkflowData));
+
+			await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				`Workflow file ${mockWorkflowFile} has invalid nodeGroups, resetting to empty`,
+			);
+			expect(workflowRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({ id: mockWorkflowData.id, nodeGroups: [] }),
+				['id'],
+			);
+		});
+
 		it('should skip corrupted workflow files but import valid ones', async () => {
 			const mockUserId = 'user-id-123';
 			const mockCorruptedFile = '/mock/corrupted-workflow.json';

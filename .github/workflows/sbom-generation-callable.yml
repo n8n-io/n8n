@@ -82,7 +82,9 @@ jobs:
         if: failure()
         env:
           SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          RELEASE_TAG_REF: ${{ inputs.release_tag_ref }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           node .github/scripts/slack/notify.mjs \
             --channel '#alerts-build' \
-            --text '<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|SBOM generation and attachment failed for release ${{ inputs.release_tag_ref }}>'
+            --text "<${RUN_URL}|SBOM generation and attachment failed for release ${RELEASE_TAG_REF}>"

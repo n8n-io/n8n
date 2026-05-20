@@ -7,16 +7,25 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 @BackendModule({ name: 'mcp-registry' })
 export class McpRegistryModule implements ModuleInterface {
-	async nodeLoaders() {
+	async init() {
 		const { McpRegistryService } = await import('./registry/mcp-registry.service');
+		await Container.get(McpRegistryService).init();
+
+		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
+			await import('./mcp-registry-test.controller');
+		}
+	}
+
+	async entities() {
+		const { McpRegistryServerEntity } = await import('./registry/mcp-registry-server.entity');
+		return [McpRegistryServerEntity];
+	}
+
+	async nodeLoaders() {
 		const { McpRegistryNodeLoader } = await import('./mcp-registry-node-loader');
 
 		return [
-			new McpRegistryNodeLoader(
-				Container.get(McpRegistryService),
-				Container.get(LoadNodesAndCredentials),
-				Container.get(Logger),
-			),
+			new McpRegistryNodeLoader(Container.get(LoadNodesAndCredentials), Container.get(Logger)),
 		];
 	}
 }

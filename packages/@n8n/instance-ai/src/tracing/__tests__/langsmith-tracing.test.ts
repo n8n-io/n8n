@@ -1,3 +1,4 @@
+import { createToolRegistry } from '../../tool-registry';
 import type { InstanceAiTraceRun } from '../../types';
 
 jest.mock('langsmith', () => {
@@ -245,15 +246,15 @@ type LangSmithMockModule = {
 };
 
 interface ExecutableTool {
-	execute: (input: unknown, context: unknown) => Promise<unknown>;
+	handler: (input: unknown, context: unknown) => Promise<unknown>;
 }
 
 function isExecutableTool(value: unknown): value is ExecutableTool {
 	return (
 		typeof value === 'object' &&
 		value !== null &&
-		'execute' in value &&
-		typeof value.execute === 'function'
+		'handler' in value &&
+		typeof value.handler === 'function'
 	);
 }
 
@@ -423,14 +424,10 @@ describe('createInstanceAiTraceContext', () => {
 			tracing?.actorRun,
 			buildAgentTraceInputs({
 				systemPrompt: ['line 1', 'line 2', 'line 3', 'line 4'].join('\n').repeat(700),
-				tools: {
-					'build-workflow': {
-						description: 'Build or patch a workflow from SDK code.',
-					},
-					'submit-workflow': {
-						description: 'Submit a workflow to n8n.',
-					},
-				} as never,
+				tools: createToolRegistry([
+					['build-workflow', { description: 'Build or patch a workflow from SDK code.' } as never],
+					['submit-workflow', { description: 'Submit a workflow to n8n.' } as never],
+				]),
 				modelId: 'anthropic/claude-sonnet-4-6',
 			}),
 		);
@@ -474,11 +471,12 @@ describe('createInstanceAiTraceContext', () => {
 				tracing?.actorRun,
 				buildAgentTraceInputs({
 					systemPrompt: 'system prompt',
-					tools: {
-						'build-workflow': {
-							description: 'Build or patch a workflow from SDK code.',
-						},
-					} as never,
+					tools: createToolRegistry([
+						[
+							'build-workflow',
+							{ description: 'Build or patch a workflow from SDK code.' } as never,
+						],
+					]),
 					modelId: 'anthropic/claude-sonnet-4-6',
 				}),
 			);
@@ -499,7 +497,7 @@ describe('createInstanceAiTraceContext', () => {
 				url: 'https://custom.endpoint/v1',
 				apiKey: 'sk-super-secret-key',
 			},
-			tools: {} as never,
+			tools: createToolRegistry(),
 		});
 
 		expect(inputs.model).toBe('openai-compat/gpt-4o');
@@ -598,26 +596,24 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing).toBeDefined();
 
 		const wrappedTools = tracing!.wrapTools(
-			{ 'ask-user': createAskUserTool() },
+			createToolRegistry([['ask-user', createAskUserTool()]]),
 			{ agentRole: 'orchestrator', tags: ['orchestrator'] },
 		);
-		const wrappedAskUser = wrappedTools['ask-user'];
+		const wrappedAskUser = wrappedTools.get('ask-user');
 		expect(wrappedAskUser).toBeDefined();
 		if (!isExecutableTool(wrappedAskUser)) {
 			throw new Error('Wrapped ask-user tool is not executable');
 		}
 
 		await tracing!.withRunTree(tracing!.orchestratorRun, async () => {
-			await wrappedAskUser.execute(
+			await wrappedAskUser.handler(
 				{
 					questions: [{ id: 'q1', question: 'What do you want?', type: 'text' }],
 				},
 				{
-					agent: {
-						suspend: async () => {
-							await Promise.resolve();
-							return undefined;
-						},
+					suspend: async () => {
+						await Promise.resolve();
+						return undefined;
 					},
 				},
 			);
@@ -677,36 +673,34 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing).toBeDefined();
 
 		const wrappedTools = tracing!.wrapTools(
-			{ 'ask-user': createAskUserTool() },
+			createToolRegistry([['ask-user', createAskUserTool()]]),
 			{ agentRole: 'orchestrator', tags: ['orchestrator'] },
 		);
-		const wrappedAskUser = wrappedTools['ask-user'];
+		const wrappedAskUser = wrappedTools.get('ask-user');
 		expect(wrappedAskUser).toBeDefined();
 		if (!isExecutableTool(wrappedAskUser)) {
 			throw new Error('Wrapped ask-user tool is not executable');
 		}
 
 		const result = await tracing!.withRunTree(tracing!.orchestratorRun, async () => {
-			return await wrappedAskUser.execute(
+			return await wrappedAskUser.handler(
 				{
 					questions: [{ id: 'q1', question: 'What do you want?', type: 'text' }],
 				},
 				{
-					agent: {
-						resumeData: {
-							approved: true,
-							answers: [
-								{
-									questionId: 'q1',
-									selectedOptions: [],
-									customText: 'Need Slack notifications',
-								},
-							],
-						},
-						suspend: async () => {
-							await Promise.resolve();
-							return undefined;
-						},
+					resumeData: {
+						approved: true,
+						answers: [
+							{
+								questionId: 'q1',
+								selectedOptions: [],
+								customText: 'Need Slack notifications',
+							},
+						],
+					},
+					suspend: async () => {
+						await Promise.resolve();
+						return undefined;
 					},
 				},
 			);
