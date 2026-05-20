@@ -117,18 +117,19 @@ export async function populateEvalDataTable(
 		'info',
 		`target dataTableId=${target.dataTableId} agent=${j(target.targetAgentNodeName)} inputColumns=${j(target.inputColumns)} expectedOutputColumns=${j(target.expectedOutputColumns)} pairs=${j(target.expectedToActualPairs)}`,
 	);
-	if (!target.targetAgentNodeName) {
-		log('warn', 'skip:no-agent');
+	const targetAiNodeName = target.targetAgentNodeName ?? target.targetNodeName;
+	if (!targetAiNodeName) {
+		log('warn', 'skip:no-ai-target');
 		return {
 			status: 'skipped' as const,
-			reason: 'No agent node reachable from EvaluationTrigger.',
+			reason: 'No AI target node reachable from EvaluationTrigger.',
 		};
 	}
 
 	const { rows: historyRows } = await extractRowsFromExecutionHistory(context, {
 		workflow,
 		workflowId: input.workflowId,
-		agentNodeName: target.targetAgentNodeName,
+		agentNodeName: targetAiNodeName,
 		inputColumns: target.inputColumns,
 		expectedToActualPairs: target.expectedToActualPairs,
 	});
@@ -145,7 +146,7 @@ export async function populateEvalDataTable(
 			workflow,
 			columns: target.inputColumns,
 			rowCount: GENERATE_ROW_COUNT,
-			targetAgentNodeName: target.targetAgentNodeName,
+			targetAgentNodeName: targetAiNodeName,
 			...(historyRows.length > 0 ? { realExamples: historyRows } : {}),
 			...(context.logger ? { logger: context.logger } : {}),
 		});
