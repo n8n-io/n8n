@@ -1,4 +1,4 @@
-import { TableCheck, type QueryRunner } from '@n8n/typeorm';
+import { TableCheck } from '@n8n/typeorm';
 
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
@@ -21,26 +21,6 @@ function enumCheckExpression(columnName: string, values: string[]) {
 	return `${columnName} IN (${values.map((value) => `'${value}'`).join(', ')})`;
 }
 
-async function tableHasColumn(queryRunner: QueryRunner, tableName: string, columnName: string) {
-	const table = await queryRunner.getTable(tableName);
-	return table?.findColumnByName(columnName) !== undefined;
-}
-
-async function columnAllowsNull(queryRunner: QueryRunner, tableName: string, columnName: string) {
-	const table = await queryRunner.getTable(tableName);
-	return table?.findColumnByName(columnName)?.isNullable ?? false;
-}
-
-async function tableHasIndex(queryRunner: QueryRunner, tableName: string, indexName: string) {
-	const table = await queryRunner.getTable(tableName);
-	return table?.indices.some((index) => index.name === indexName) ?? false;
-}
-
-async function tableHasCheck(queryRunner: QueryRunner, tableName: string, checkName: string) {
-	const table = await queryRunner.getTable(tableName);
-	return table?.checks.some((check) => check.name === checkName) ?? false;
-}
-
 export class UpdateAgentEvaluationReviewData1784000000013 implements ReversibleMigration {
 	async up({
 		escape,
@@ -50,6 +30,8 @@ export class UpdateAgentEvaluationReviewData1784000000013 implements ReversibleM
 		tablePrefix,
 		schemaBuilder: { addColumns, addNotNull, column, createIndex },
 	}: MigrationContext) {
+		await addColumns(EXECUTION_TABLE, [column('agentVersionId').varchar(255)]);
+
 		const executionTable = escape.tableName(EXECUTION_TABLE);
 		const threadTable = escape.tableName('agent_execution_threads');
 		const agentTable = escape.tableName('agents');
@@ -64,10 +46,6 @@ export class UpdateAgentEvaluationReviewData1784000000013 implements ReversibleM
 			? `${agentTable}.${updatedAt}::text`
 			: `${agentTable}.${updatedAt}`;
 
-		if (!(await tableHasColumn(queryRunner, executionTable, 'agentVersionId'))) {
-			await addColumns(EXECUTION_TABLE, [column('agentVersionId').varchar(255)]);
-		}
-
 		await runQuery(`
 			UPDATE ${executionTable}
 			SET ${agentVersionId} = (
@@ -80,13 +58,13 @@ export class UpdateAgentEvaluationReviewData1784000000013 implements ReversibleM
 			WHERE ${agentVersionId} IS NULL
 		`);
 
-		if (await columnAllowsNull(queryRunner, executionTable, 'agentVersionId')) {
-			await addNotNull(EXECUTION_TABLE, 'agentVersionId');
-		}
-		const executionVersionIndex = `IDX_${tablePrefix}${EXECUTION_TABLE}_agentVersionId_createdAt`;
-		if (!(await tableHasIndex(queryRunner, executionTable, executionVersionIndex))) {
-			await createIndex(EXECUTION_TABLE, ['agentVersionId', 'createdAt']);
-		}
+		await addNotNull(EXECUTION_TABLE, 'agentVersionId');
+		await createIndex(EXECUTION_TABLE, ['agentVersionId', 'createdAt']);
+
+		await addColumns(EVALUATION_CASE_TABLE, [
+			column('conversationId').varchar(36),
+			column('toolCallCorrection').json,
+		]);
 
 		const reviewTable = escape.tableName(EVALUATION_CASE_TABLE);
 		const conversationId = escape.columnName('conversationId');
@@ -95,13 +73,6 @@ export class UpdateAgentEvaluationReviewData1784000000013 implements ReversibleM
 		const rejectionReason = escape.columnName(REJECTION_REASON_COLUMN);
 		const checkName = `CHK_${tablePrefix}${EVALUATION_CASE_TABLE}_${REJECTION_REASON_COLUMN}`;
 		const fullReviewTableName = `${tablePrefix}${EVALUATION_CASE_TABLE}`;
-
-		if (!(await tableHasColumn(queryRunner, reviewTable, 'conversationId'))) {
-			await addColumns(EVALUATION_CASE_TABLE, [column('conversationId').varchar(36)]);
-		}
-		if (!(await tableHasColumn(queryRunner, reviewTable, 'toolCallCorrection'))) {
-			await addColumns(EVALUATION_CASE_TABLE, [column('toolCallCorrection').json]);
-		}
 
 		await runQuery(`
 			UPDATE ${reviewTable}
@@ -113,17 +84,12 @@ export class UpdateAgentEvaluationReviewData1784000000013 implements ReversibleM
 			WHERE ${conversationId} IS NULL
 		`);
 
-		if (await columnAllowsNull(queryRunner, reviewTable, 'conversationId')) {
-			await addNotNull(EVALUATION_CASE_TABLE, 'conversationId');
-		}
+		await addNotNull(EVALUATION_CASE_TABLE, 'conversationId');
 
-		if (await tableHasCheck(queryRunner, fullReviewTableName, checkName)) {
-			await queryRunner.dropCheckConstraint(fullReviewTableName, checkName);
-		}
+		await queryRunner.dropCheckConstraint(fullReviewTableName, checkName);
 		await runQuery(`
 			UPDATE ${reviewTable}
 			SET ${rejectionReason} = CASE
-				WHEN ${rejectionReason} IN ('wrong_answer', 'wrong_tool_calling', 'other') THEN ${rejectionReason}
 				WHEN ${rejectionReason} IN ('incorrect_answer', 'incomplete_answer') THEN 'wrong_answer'
 				WHEN ${rejectionReason} IN ('wrong_tool', 'missing_tool') THEN 'wrong_tool_calling'
 				WHEN ${rejectionReason} IS NULL THEN NULL
