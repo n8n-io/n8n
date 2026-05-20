@@ -1,0 +1,59 @@
+name: 'CI: Instance AI Evals'
+
+# Triggers separately from ci-pull-requests.yml so build/tests/lint don't
+# re-run on review activity. Eval fires only at approval (gate before
+# merge) and on the merge queue (final check). Bare pushes don't fire it.
+on:
+  pull_request_review:
+    types: [submitted]
+  merge_group:
+
+concurrency:
+  group: instance-ai-evals-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-paths:
+    name: Check Eval Should Run
+    runs-on: ubuntu-latest
+    if: >-
+      github.repository == 'n8n-io/n8n' &&
+      (github.event_name == 'merge_group' ||
+        (github.event_name == 'pull_request_review' &&
+         github.event.review.state == 'approved' &&
+         !github.event.pull_request.head.repo.fork &&
+         github.event.pull_request.draft == false))
+    outputs:
+      should_run: ${{ steps.ci-filter.outputs.results && fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
+      commit_sha: ${{ steps.commit-sha.outputs.sha }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
+
+      - name: Capture commit SHA for cache consistency
+        id: commit-sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Check for relevant changes
+        id: ci-filter
+        uses: ./.github/actions/ci-filter
+        with:
+          mode: filter
+          filters: |
+            instance-ai-workflow-eval:
+              packages/@n8n/instance-ai/src/**
+              packages/@n8n/instance-ai/evaluations/**
+              packages/cli/src/modules/instance-ai/**
+              packages/core/src/execution-engine/eval-mock-helpers.ts
+              .github/workflows/test-evals-instance-ai*.yml
+              .github/workflows/ci-instance-ai-evals.yml
+
+  run-evals:
+    name: Instance AI Workflow Evals
+    needs: check-paths
+    if: needs.check-paths.outputs.should_run == 'true'
+    uses: ./.github/workflows/test-evals-instance-ai.yml
+    with:
+      branch: ${{ needs.check-paths.outputs.commit_sha }}
+    secrets: inherit
