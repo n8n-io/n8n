@@ -2,6 +2,7 @@ import {
 	InstanceAiConfirmRequestDto,
 	InstanceAiFeedbackRequestDto,
 	InstanceAiGatewayCapabilitiesDto,
+	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	InstanceAiRenameThreadRequestDto,
 	InstanceAiSendMessageRequest,
@@ -18,7 +19,7 @@ import {
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { AuthenticatedRequest } from '@n8n/db';
+import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import {
 	RestController,
 	GlobalScope,
@@ -43,6 +44,7 @@ import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiService } from './instance-ai.service';
+import { CredentialsService } from '@/credentials/credentials.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -99,6 +101,8 @@ export class InstanceAiController {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
 		private readonly urlService: UrlService,
+		private readonly userRepository: UserRepository,
+		private readonly credentialsService: CredentialsService,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
@@ -162,7 +166,6 @@ export class InstanceAiController {
 			req.user,
 			threadId,
 			payload.message,
-			payload.researchMode,
 			payload.attachments,
 			payload.timeZone,
 			payload.pushRef,
@@ -579,7 +582,7 @@ export class InstanceAiController {
 		}
 
 		// Exclude snapshots for active/suspended runs — they have no matching
-		// assistant message in Mastra memory yet and would misalign the
+		// assistant message in native memory yet and would misalign the
 		// positional snapshot-to-message matching in parseStoredMessages.
 		const threadStatus = this.instanceAiService.getThreadStatus(threadId);
 		const activeRunId = this.instanceAiService.getActiveRunId(threadId);
@@ -788,6 +791,18 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	@Post('/gateway/credentials', { skipAuth: true })
+	async gatewayCreateCredential(
+		req: Request,
+		_res: Response,
+		@Body payload: InstanceAiGatewayCreateCredentialDto,
+	) {
+		const user = await this.resolveGatewayUser(this.getGatewayKeyHeader(req));
+		await this.assertGatewayEnabled(user.id);
+		const credential = await this.credentialsService.createUnmanagedCredential(payload, user);
+		return { credentialId: credential.id };
+	}
+
 	@Get('/gateway/status')
 	@GlobalScope('instanceAi:gateway')
 	async gatewayStatus(req: AuthenticatedRequest) {
@@ -880,6 +895,23 @@ export class InstanceAiController {
 		if (userId) return userId;
 
 		throw new ForbiddenError('Invalid API key');
+	}
+
+	/**
+	 * Resolve a gateway API key to its associated User. Requires a user-scoped
+	 * key — the static env-var key (which has no associated DB user) is rejected.
+	 */
+	private async resolveGatewayUser(key: string | undefined): Promise<User> {
+		const userId = this.validateGatewayApiKey(key);
+		if (userId === 'env-gateway') {
+			throw new ForbiddenError('Credential creation requires a user-scoped gateway key');
+		}
+		const user = await this.userRepository.findOne({
+			where: { id: userId },
+			relations: ['role', 'role.scopes'],
+		});
+		if (!user) throw new ForbiddenError('Invalid API key');
+		return user;
 	}
 
 	private writeSseEvent(res: FlushableResponse, stored: StoredEvent): void {

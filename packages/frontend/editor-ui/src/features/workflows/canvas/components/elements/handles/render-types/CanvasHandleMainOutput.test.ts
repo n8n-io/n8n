@@ -2,18 +2,41 @@ import CanvasHandleMainOutput from './CanvasHandleMainOutput.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import {
 	createCanvasHandleProvide,
+	createCanvasNodeProvide,
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
+import type { ComputedRef } from 'vue';
+import type { CanvasConnectionPort } from '../../../../canvas.types';
+
+const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
+	injectCanvasRenderData: vi.fn(() => ({
+		value: {
+			nodeInputsByNodeId: renderNodeInputsMap,
+			nodeOutputsByNodeId: renderNodeOutputsMap,
+			executionIssuesByNodeName: new Map(),
+		},
+	})),
+}));
 
 const renderComponent = createComponentRenderer(CanvasHandleMainOutput, {
 	global: {
 		provide: {
 			...createCanvasProvide(),
+			...createCanvasNodeProvide(),
 		},
 	},
 });
 
 describe('CanvasHandleMainOutput', () => {
+	beforeEach(() => {
+		renderNodeInputsMap.clear();
+		renderNodeOutputsMap.clear();
+	});
+
 	it('should render correctly', async () => {
 		const label = 'Test Label';
 		const { container, getByText, getByTestId } = renderComponent({

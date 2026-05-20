@@ -80,60 +80,6 @@ describe('ExecutionRecorder', () => {
 		});
 	});
 
-	describe('working memory tool chunks', () => {
-		it('records update_working_memory as a regular tool call when present', () => {
-			const recorder = new ExecutionRecorder();
-
-			recorder.record({ type: 'text-delta', id: 't1', delta: 'Hello' });
-			recorder.record({
-				type: 'tool-call',
-				toolCallId: 'wm-1',
-				toolName: 'update_working_memory',
-				input: { memory: '# Name: Alice' },
-			} as StreamChunk);
-			recorder.record({
-				type: 'tool-result',
-				toolCallId: 'wm-1',
-				toolName: 'update_working_memory',
-				output: { success: true },
-			} as StreamChunk);
-			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
-
-			const record = recorder.getMessageRecord();
-
-			expect(record.workingMemory).toBeNull();
-			expect(record.toolCalls).toEqual([
-				{
-					name: 'update_working_memory',
-					input: { memory: '# Name: Alice' },
-					output: { success: true },
-				},
-			]);
-			expect(record.timeline.some((e) => e.type === 'working-memory')).toBe(false);
-		});
-
-		it('does not derive execution working memory from update_working_memory calls', () => {
-			const recorder = new ExecutionRecorder();
-
-			recorder.record({
-				type: 'tool-call',
-				toolCallId: 'wm-1',
-				toolName: 'update_working_memory',
-				input: { memory: 'first' },
-			} as StreamChunk);
-			recorder.record({
-				type: 'tool-call',
-				toolCallId: 'wm-2',
-				toolName: 'update_working_memory',
-				input: { memory: 'second' },
-			} as StreamChunk);
-			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
-
-			const record = recorder.getMessageRecord();
-			expect(record.workingMemory).toBeNull();
-		});
-	});
-
 	describe('suspension', () => {
 		it('records suspension as a timeline event', () => {
 			const recorder = new ExecutionRecorder();

@@ -8,6 +8,8 @@ import { InstanceAiRunSnapshotRepository } from '../repositories/instance-ai-run
 export interface SaveSnapshotOptions {
 	messageGroupId?: string;
 	runIds?: string[];
+	traceId?: string;
+	spanId?: string;
 	langsmithRunId?: string;
 	langsmithTraceId?: string;
 }
@@ -44,6 +46,8 @@ export class DbSnapshotStorage {
 			runId: row.runId,
 			messageGroupId: row.messageGroupId ?? undefined,
 			runIds: row.runIds ?? undefined,
+			traceId: row.traceId ?? undefined,
+			spanId: row.spanId ?? undefined,
 			langsmithRunId: row.langsmithRunId ?? undefined,
 			langsmithTraceId: row.langsmithTraceId ?? undefined,
 			createdAt: row.createdAt,
@@ -57,7 +61,7 @@ export class DbSnapshotStorage {
 		runId: string,
 		options: SaveSnapshotOptions = {},
 	): Promise<void> {
-		const { messageGroupId, runIds, langsmithRunId, langsmithTraceId } = options;
+		const { messageGroupId, runIds, traceId, spanId, langsmithRunId, langsmithTraceId } = options;
 		await this.repo.upsert(
 			{
 				threadId,
@@ -65,6 +69,8 @@ export class DbSnapshotStorage {
 				messageGroupId: messageGroupId ?? null,
 				runIds: runIds ?? null,
 				tree: JSON.stringify(agentTree),
+				traceId: traceId ?? null,
+				spanId: spanId ?? null,
 				langsmithRunId: langsmithRunId ?? null,
 				langsmithTraceId: langsmithTraceId ?? null,
 			},
@@ -78,7 +84,7 @@ export class DbSnapshotStorage {
 		runId: string,
 		options: SaveSnapshotOptions = {},
 	): Promise<void> {
-		const { messageGroupId, runIds, langsmithRunId, langsmithTraceId } = options;
+		const { messageGroupId, runIds, traceId, spanId, langsmithRunId, langsmithTraceId } = options;
 
 		// Prefer lookup by messageGroupId when available
 		if (messageGroupId) {
@@ -94,7 +100,9 @@ export class DbSnapshotStorage {
 						tree: JSON.stringify(agentTree),
 						messageGroupId,
 						runIds: runIds ?? existing.runIds,
-						// Preserve existing LangSmith IDs if caller didn't provide new ones.
+						// Preserve existing trace IDs if caller didn't provide new ones.
+						traceId: traceId ?? existing.traceId,
+						spanId: spanId ?? existing.spanId,
 						langsmithRunId: langsmithRunId ?? existing.langsmithRunId,
 						langsmithTraceId: langsmithTraceId ?? existing.langsmithTraceId,
 					},
@@ -112,6 +120,8 @@ export class DbSnapshotStorage {
 					tree: JSON.stringify(agentTree),
 					messageGroupId: messageGroupId ?? byRunId.messageGroupId,
 					runIds: runIds ?? byRunId.runIds,
+					traceId: traceId ?? byRunId.traceId,
+					spanId: spanId ?? byRunId.spanId,
 					langsmithRunId: langsmithRunId ?? byRunId.langsmithRunId,
 					langsmithTraceId: langsmithTraceId ?? byRunId.langsmithTraceId,
 				},
@@ -133,6 +143,8 @@ export class DbSnapshotStorage {
 			runId: r.runId,
 			messageGroupId: r.messageGroupId ?? undefined,
 			runIds: r.runIds ?? undefined,
+			traceId: r.traceId ?? undefined,
+			spanId: r.spanId ?? undefined,
 			langsmithRunId: r.langsmithRunId ?? undefined,
 			langsmithTraceId: r.langsmithTraceId ?? undefined,
 			createdAt: r.createdAt,
