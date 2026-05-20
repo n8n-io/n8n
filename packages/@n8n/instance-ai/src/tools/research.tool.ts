@@ -2,7 +2,6 @@
  * Consolidated research tool — web-search + fetch-url.
  */
 import { Tool } from '@n8n/agents';
-import { get as pslGet } from 'psl';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
@@ -18,7 +17,10 @@ import type { InstanceAiContext } from '../types';
 import { sanitizeWebContent, wrapUntrustedData } from './web-research/sanitize-web-content';
 
 /** True when both URLs share an eTLD+1 (per Public Suffix List) and target is HTTPS. */
-function isSameRegistrableDomainOverHttps(originalUrl: string, redirectUrl: string): boolean {
+async function isSameRegistrableDomainOverHttps(
+	originalUrl: string,
+	redirectUrl: string,
+): Promise<boolean> {
 	let originalHost: string;
 	let redirectUrlObj: URL;
 	try {
@@ -28,6 +30,7 @@ function isSameRegistrableDomainOverHttps(originalUrl: string, redirectUrl: stri
 		return false;
 	}
 	if (redirectUrlObj.protocol !== 'https:') return false;
+	const { get: pslGet } = await import('psl');
 	const originalDomain = pslGet(originalHost);
 	const redirectDomain = pslGet(redirectUrlObj.hostname);
 	return originalDomain !== null && redirectDomain !== null && originalDomain === redirectDomain;
@@ -223,7 +226,7 @@ async function handleFetchUrl(
 		if (redirectCheck.blocked) {
 			throw new Error(`Access to ${new URL(targetUrl).hostname} is blocked by admin.`);
 		}
-		if (isSameRegistrableDomainOverHttps(input.url, targetUrl)) return;
+		if (await isSameRegistrableDomainOverHttps(input.url, targetUrl)) return;
 		throw new Error(
 			`Redirect from ${new URL(input.url).hostname} to ${new URL(targetUrl).hostname} is not allowed. ` +
 				'Skip this URL and try a different research strategy — retrying the same URL will not help.',
