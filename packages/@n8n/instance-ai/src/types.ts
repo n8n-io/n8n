@@ -21,6 +21,7 @@ import type {
 	GenericValue,
 	INodeInputConfiguration,
 	INodeTypes,
+	ITaskData,
 	NodeConnectionType,
 } from 'n8n-workflow';
 
@@ -218,6 +219,11 @@ export interface InstanceAiWorkflowService {
 		versionId: string,
 		data: { name?: string | null; description?: string | null },
 	): Promise<void>;
+	/** Per-node `ITaskData[]` of the workflow's most recent execution.
+	 *  Equivalent to `workflowsStore.getWorkflowRunData` on the canvas — used by
+	 *  workflow validation to detect previously-failed nodes. Returns `null`
+	 *  when the workflow has no execution history or the caller has no access. */
+	getLatestRunData?(workflowId: string): Promise<Record<string, ITaskData[]> | null>;
 }
 
 export interface ExecutionSummary {

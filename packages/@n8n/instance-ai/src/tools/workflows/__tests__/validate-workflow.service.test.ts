@@ -587,4 +587,176 @@ describe('validateWorkflowConfig', () => {
 			});
 		});
 	});
+
+	describe('execution issues', () => {
+		function stubLatestRunData(
+			context: InstanceAiContext,
+			runData: Record<string, unknown[]> | null,
+		): void {
+			(context.workflowService as unknown as Record<string, unknown>).getLatestRunData = jest
+				.fn()
+				.mockImplementation(async (_workflowId: string) => {
+					return await Promise.resolve(runData);
+				});
+		}
+
+		it('flags a node whose most recent execution had an error', async () => {
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+				makeDescription({ credentials: [] }),
+			);
+			stubLatestRunData(context, {
+				'HTTP Request': [{ error: { message: 'connect ECONNREFUSED' } }],
+			});
+
+			const result = await validateWorkflowConfig(context, { workflowId: 'w1' });
+
+			expect(result.valid).toBe(false);
+			expect(result.issues['HTTP Request'].execution).toBe(true);
+			expect(result.summary).toContain(
+				'HTTP Request: execution: A previous execution of this node failed: connect ECONNREFUSED',
+			);
+		});
+
+		it('does not flag a node whose most recent execution completed without error', async () => {
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+				makeDescription({ credentials: [] }),
+			);
+			stubLatestRunData(context, {
+				'HTTP Request': [{ data: {} }], // task with no `error`
+			});
+
+			const result = await validateWorkflowConfig(context, { workflowId: 'w1' });
+
+			expect(result.valid).toBe(true);
+			expect(result.issues).toEqual({});
+		});
+
+		it('does not flag any execution issues when the workflow has no execution history', async () => {
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+				makeDescription({ credentials: [] }),
+			);
+			stubLatestRunData(context, null);
+
+			const result = await validateWorkflowConfig(context, { workflowId: 'w1' });
+
+			expect(result.valid).toBe(true);
+		});
+
+		it('skips execution checks silently in inline-workflow mode', async () => {
+			const context = createMockContext();
+			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+				makeDescription({ credentials: [] }),
+			);
+			// Even though getLatestRunData would return errors, inline mode has no
+			// workflowId so the fetch never happens.
+			stubLatestRunData(context, {
+				'HTTP Request': [{ error: { message: 'should not surface' } }],
+			});
+
+			const node = makeNode({ name: 'HTTP Request' });
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
+
+			expect(result.valid).toBe(true);
+			expect(context.workflowService.getLatestRunData).not.toHaveBeenCalled();
+		});
+
+		it('honors ignoreIssues: ["execution"] to suppress execution flags', async () => {
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+				makeDescription({ credentials: [] }),
+			);
+			stubLatestRunData(context, {
+				'HTTP Request': [{ error: { message: 'connect ECONNREFUSED' } }],
+			});
+
+			const result = await validateWorkflowConfig(context, {
+				workflowId: 'w1',
+				ignoreIssues: ['execution'],
+			});
+
+			expect(result.valid).toBe(true);
+			expect(context.workflowService.getLatestRunData).not.toHaveBeenCalled();
+		});
+
+		it('skips execution checks when the adapter does not implement getLatestRunData', async () => {
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+				makeDescription({ credentials: [] }),
+			);
+			// No stubLatestRunData — the optional method is absent on this adapter.
+
+			const result = await validateWorkflowConfig(context, { workflowId: 'w1' });
+
+			expect(result.valid).toBe(true);
+		});
+
+		it('reports execution alongside parameter/credential issues on the same node', async () => {
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflow([makeNode()]),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+				makeDescription({
+					credentials: [{ name: 'telegramApi', required: true }],
+				}),
+			);
+			stubLatestRunData(context, {
+				'Send Telegram message': [{ error: { message: 'unauthorized' } }],
+			});
+
+			const result = await validateWorkflowConfig(context, { workflowId: 'w1' });
+
+			const nodeIssues = result.issues['Send Telegram message'];
+			expect(nodeIssues.credentials?.telegramApi).toBeDefined();
+			expect(nodeIssues.execution).toBe(true);
+			expect(result.summary).toEqual(
+				expect.arrayContaining([
+					'Send Telegram message: credentials.telegramApi: Credentials for Telegram are not set.',
+					'Send Telegram message: execution: A previous execution of this node failed: unauthorized',
+				]),
+			);
+		});
+
+		it('handles task errors without a message field gracefully', async () => {
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+				makeDescription({ credentials: [] }),
+			);
+			stubLatestRunData(context, {
+				'HTTP Request': [{ error: {} }], // error object with no message
+			});
+
+			const result = await validateWorkflowConfig(context, { workflowId: 'w1' });
+
+			expect(result.valid).toBe(false);
+			expect(result.issues['HTTP Request'].execution).toBe(true);
+			// Summary should fall back to a generic line since no error message exists
+			expect(
+				result.summary.some((line) =>
+					line.startsWith('HTTP Request: execution: A previous execution of this node failed'),
+				),
+			).toBe(true);
+		});
+	});
 });

@@ -76,7 +76,7 @@ const validateAction = z.object({
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	ignoreIssues: z
-		.array(z.enum(['parameters', 'credentials', 'input', 'typeUnknown']))
+		.array(z.enum(['parameters', 'credentials', 'input', 'execution', 'typeUnknown']))
 		.optional()
 		.describe('Issue categories to suppress from the result'),
 });

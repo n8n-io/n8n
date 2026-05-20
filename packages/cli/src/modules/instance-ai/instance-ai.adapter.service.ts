@@ -315,6 +315,7 @@ export class InstanceAiAdapterService {
 			aiBuilderTemporaryWorkflowRepository,
 			workflowHistoryService,
 			enterpriseWorkflowService,
+			executionRepository,
 			license,
 			allowSendingParameterValues,
 			telemetry,
@@ -446,6 +447,31 @@ export class InstanceAiAdapterService {
 				]);
 				if (!wf) throw new Error(`Workflow ${workflowId} not found or not accessible`);
 				return toWorkflowJSON(wf, { redactParameters });
+			},
+
+			async getLatestRunData(workflowId: string) {
+				// Caller must be able to read the workflow to see its execution history.
+				// Silent null on no-access keeps validation usable even when access was
+				// revoked between fetches — validation degrades gracefully instead of
+				// throwing in the middle of a per-node loop.
+				const accessible = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:read',
+				]);
+				if (!accessible) return null;
+
+				const [latest] = await executionRepository.find({
+					select: ['id'],
+					where: { workflowId },
+					order: { startedAt: 'DESC' },
+					take: 1,
+				});
+				if (!latest) return null;
+
+				const execution = await executionRepository.findSingleExecution(latest.id, {
+					includeData: true,
+					unflattenData: true,
+				});
+				return execution?.data?.resultData?.runData ?? null;
 			},
 
 			async createFromWorkflowJSON(

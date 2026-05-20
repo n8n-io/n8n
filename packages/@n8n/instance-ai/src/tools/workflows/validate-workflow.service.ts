@@ -9,9 +9,10 @@
  *      HTTP genericCredentialType / proxy-auth paths, AI-gateway-managed bypass).
  *   2. Required-input-connection issues (AI Agent missing language model, Merge
  *      missing a branch, etc.).
+ *   3. Execution issues — `execution: true` on nodes whose most recent run had
+ *      an error. Requires workflowId; inline-workflow mode skips silently.
  *
  * Still deferred:
- *   3. Execution issues (last-run errors).
  *   4. Niche edge cases (usedCredentialIds polish, pinData skip, inline JSON).
  */
 import type { DisplayOptions, NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
@@ -21,6 +22,7 @@ import type {
 	INodeInputConfiguration,
 	INodeIssueObjectProperty,
 	INodeIssues,
+	ITaskData,
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { NodeHelpers, getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
@@ -319,6 +321,24 @@ async function computeInputIssues(
 	return { input: foundIssues };
 }
 
+// ── Execution check ─────────────────────────────────────────────────────────
+
+/**
+ * Returns the first error message in a node's most recent task data, or `null`
+ * if none had an error. Mirrors `hasNodeExecutionIssues` (useNodeHelpers.ts:242)
+ * but additionally surfaces the error text so the summary can include it — the
+ * `INodeIssues.execution` boolean stays in canvas-parity.
+ */
+function getFirstExecutionError(taskData: ITaskData[] | undefined): string | null {
+	if (!taskData) return null;
+	for (const task of taskData) {
+		if (task.error !== undefined) {
+			return task.error.message ?? 'Unknown error';
+		}
+	}
+	return null;
+}
+
 // ── Per-node orchestration ──────────────────────────────────────────────────
 
 async function computeNodeIssues(
@@ -328,6 +348,8 @@ async function computeNodeIssues(
 	connectionsByDestination: IConnections,
 	node: NodeJSON,
 	usedCredentialIds: Set<string>,
+	latestRunData: Record<string, ITaskData[]> | null,
+	executionErrors: Record<string, string>,
 	ignoreIssues: ReadonlySet<string>,
 ): Promise<INodeIssues | null> {
 	if (node.disabled) return null;
@@ -389,12 +411,26 @@ async function computeNodeIssues(
 		}
 	}
 
+	if (!ignoreIssues.has('execution') && latestRunData) {
+		const errorMessage = getFirstExecutionError(latestRunData[node.name]);
+		if (errorMessage !== null) {
+			issues = issues ?? {};
+			issues.execution = true;
+			executionErrors[node.name] = errorMessage;
+		}
+	}
+
 	return issues;
 }
 
 // ── Summary formatting ──────────────────────────────────────────────────────
 
-function formatSummaryLines(nodeName: string, issues: INodeIssues, pushTo: string[]): void {
+function formatSummaryLines(
+	nodeName: string,
+	issues: INodeIssues,
+	executionErrors: Record<string, string>,
+	pushTo: string[],
+): void {
 	if (issues.typeUnknown) {
 		pushTo.push(`${nodeName}: typeUnknown: Unknown node type`);
 	}
@@ -410,7 +446,15 @@ function formatSummaryLines(nodeName: string, issues: INodeIssues, pushTo: strin
 		}
 	}
 	if (issues.execution === true) {
-		pushTo.push(`${nodeName}: execution: A previous execution of this node failed`);
+		// Canvas parity keeps the structured signal as a boolean; the summary
+		// gets the actual error message so the LLM doesn't need a separate call
+		// to figure out what went wrong.
+		const detail = executionErrors[nodeName];
+		pushTo.push(
+			detail
+				? `${nodeName}: execution: A previous execution of this node failed: ${detail}`
+				: `${nodeName}: execution: A previous execution of this node failed`,
+		);
 	}
 }
 
@@ -449,6 +493,26 @@ export async function validateWorkflowConfig(
 		(workflowJson.connections ?? {}) as IConnections,
 	);
 
+	// Fetch the latest run data once for the workflow. Skip when we have no
+	// workflowId (inline-JSON mode has no execution context) or when execution
+	// issues are suppressed. Adapter may not expose the method on older
+	// installs — degrades silently.
+	let latestRunData: Record<string, ITaskData[]> | null = null;
+	if (
+		input.workflowId &&
+		!ignoreIssues.has('execution') &&
+		context.workflowService.getLatestRunData
+	) {
+		latestRunData = await context.workflowService
+			.getLatestRunData(input.workflowId)
+			.catch(() => null);
+	}
+
+	// Per-node execution error messages, populated by computeNodeIssues and
+	// consumed by formatSummaryLines so the LLM-facing summary carries the actual
+	// error text without changing the canvas-parity INodeIssues shape.
+	const executionErrors: Record<string, string> = {};
+
 	const issues: Record<string, INodeIssues> = {};
 	const summary: string[] = [];
 
@@ -462,6 +526,8 @@ export async function validateWorkflowConfig(
 				connectionsByDestination,
 				node,
 				usedCredentialIds,
+				latestRunData,
+				executionErrors,
 				ignoreIssues,
 			);
 			return { node, nodeIssues };
@@ -471,7 +537,7 @@ export async function validateWorkflowConfig(
 	for (const { node, nodeIssues } of perNode) {
 		if (!nodeIssues || !node.name) continue;
 		issues[node.name] = nodeIssues;
-		formatSummaryLines(node.name, nodeIssues, summary);
+		formatSummaryLines(node.name, nodeIssues, executionErrors, summary);
 	}
 
 	return {
