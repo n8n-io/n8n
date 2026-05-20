@@ -176,7 +176,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			});
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
-			const { getByTestId } = renderComponent();
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
 			await userEvent.click(getByTestId('instance-ai-panel-confirm-approve'));
 
 			expect(mockTelemetryTrack).toHaveBeenCalledWith(
@@ -188,7 +188,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					provided_inputs: [
 						{
 							label: 'Run this workflow?',
-							options: ['approve', 'deny'],
+							options: ['approve', 'deny', 'approve_always'],
 							option_chosen: 'approve',
 						},
 					],
@@ -206,7 +206,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			});
 			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
-			const { getByTestId } = renderComponent();
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
 			await userEvent.click(getByTestId('instance-ai-panel-confirm-approve'));
 
 			expect(confirmSpy).toHaveBeenCalledWith('req-explicit-approval', {
@@ -223,7 +223,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			});
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
-			const { getByTestId } = renderComponent();
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
 			await userEvent.click(getByTestId('instance-ai-panel-confirm-deny'));
 
 			expect(mockTelemetryTrack).toHaveBeenCalledWith(
@@ -233,7 +233,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					provided_inputs: [
 						{
 							label: 'Delete this file?',
-							options: ['approve', 'deny'],
+							options: ['approve', 'deny', 'approve_always'],
 							option_chosen: 'deny',
 						},
 					],
@@ -253,7 +253,9 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			);
 			thread.messages[0].agentTree!.toolCalls[0].toolName = 'evals';
 
-			const { container, getByTestId, getByText } = renderComponent();
+			const { container, getByTestId, getByText } = renderComponent({
+				props: { kind: 'floating' },
+			});
 
 			expect(getByText('Propose evaluations')).toBeInTheDocument();
 			expect(getByTestId('instance-ai-panel-confirm-speech')).toBeInTheDocument();
@@ -263,6 +265,140 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			expect(container).not.toHaveTextContent(/\bevals\b/);
 			expect(container.querySelector('[class*="preview"]')).toBeNull();
 			expect(container.querySelector('pre, code')).toBeNull();
+		});
+
+		it('tracks always-allow click and records the key on the runtime', async () => {
+			injectPendingConfirmation(
+				thread,
+				{
+					requestId: 'req-always',
+					severity: 'info',
+					message: 'Run this workflow?',
+				},
+				{ action: 'run' },
+			);
+			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const addKeySpy = vi.spyOn(thread, 'addAlwaysAllowKey');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
+			await userEvent.click(getByTestId('instance-ai-panel-confirm-always-allow'));
+
+			expect(addKeySpy).toHaveBeenCalledWith('test-tool', { action: 'run' });
+			expect(mockTelemetryTrack).toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.objectContaining({
+					type: 'approval',
+					provided_inputs: [
+						{
+							label: 'Run this workflow?',
+							options: ['approve', 'deny', 'approve_always'],
+							option_chosen: 'approve_always',
+						},
+					],
+				}),
+			);
+		});
+
+		it('does not grant the session-allow key when always-allow POST fails', async () => {
+			injectPendingConfirmation(
+				thread,
+				{
+					requestId: 'req-always-fail',
+					severity: 'info',
+					message: 'Run this workflow?',
+				},
+				{ action: 'run' },
+			);
+			vi.spyOn(thread, 'confirmAction').mockResolvedValue(false);
+			const addKeySpy = vi.spyOn(thread, 'addAlwaysAllowKey');
+			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
+			await userEvent.click(getByTestId('instance-ai-panel-confirm-always-allow'));
+
+			expect(addKeySpy).not.toHaveBeenCalled();
+			expect(resolveSpy).not.toHaveBeenCalled();
+			expect(mockTelemetryTrack).not.toHaveBeenCalled();
+		});
+
+		it('does not resolve the confirmation when an approve POST fails', async () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-approve-fail',
+				severity: 'info',
+				message: 'Run this workflow?',
+			});
+			vi.spyOn(thread, 'confirmAction').mockResolvedValue(false);
+			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
+			await userEvent.click(getByTestId('instance-ai-panel-confirm-approve'));
+
+			expect(resolveSpy).not.toHaveBeenCalled();
+			expect(mockTelemetryTrack).not.toHaveBeenCalled();
+		});
+
+		it('ignores repeated clicks while the confirm POST is in flight', async () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-double-click',
+				severity: 'info',
+				message: 'Run this workflow?',
+			});
+			let resolvePost: (value: boolean) => void = () => {};
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockReturnValue(
+				new Promise<boolean>((resolve) => {
+					resolvePost = resolve;
+				}),
+			);
+
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
+			const approveButton = getByTestId('instance-ai-panel-confirm-approve');
+			await userEvent.click(approveButton);
+			await userEvent.click(approveButton);
+			await userEvent.click(approveButton);
+
+			expect(confirmSpy).toHaveBeenCalledTimes(1);
+
+			resolvePost(true);
+		});
+
+		it('hides always-allow on destructive confirmations and narrows the option set', async () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-destructive',
+				severity: 'destructive',
+				message: 'Delete workflow?',
+			});
+			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByTestId, queryByTestId } = renderComponent({ props: { kind: 'floating' } });
+
+			expect(queryByTestId('instance-ai-panel-confirm-always-allow')).toBeNull();
+
+			await userEvent.click(getByTestId('instance-ai-panel-confirm-approve'));
+
+			expect(mockTelemetryTrack).toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.objectContaining({
+					provided_inputs: [
+						{
+							label: 'Delete workflow?',
+							options: ['approve', 'deny'],
+							option_chosen: 'approve',
+						},
+					],
+				}),
+			);
+		});
+
+		it('renders nothing when mounted as inline for a floating-eligible confirmation', () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-inline-skip',
+				severity: 'info',
+				message: 'Run this workflow?',
+			});
+
+			const { queryByTestId } = renderComponent({ props: { kind: 'inline' } });
+			expect(queryByTestId('instance-ai-panel-confirm-approve')).toBeNull();
+			expect(queryByTestId('instance-ai-confirmation-panel')).toBeNull();
 		});
 	});
 
@@ -276,7 +412,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			});
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
-			const { container } = renderComponent();
+			const { container } = renderComponent({ props: { kind: 'inline' } });
 			const input = container.querySelector('input[type="text"]') as HTMLInputElement;
 			await userEvent.type(input, 'My Workflow');
 			await userEvent.keyboard('{Enter}');
@@ -308,7 +444,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			});
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
-			const { container } = renderComponent();
+			const { container } = renderComponent({ props: { kind: 'inline' } });
 			// Find the skip button (shown when input is empty)
 			const buttons = container.querySelectorAll('button');
 			const skipBtn = Array.from(buttons).find(
@@ -345,7 +481,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			});
 			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
-			const { getByTestId, queryByTestId } = renderComponent();
+			const { getByTestId, queryByTestId } = renderComponent({ props: { kind: 'inline' } });
 
 			expect(queryByTestId('instance-ai-panel-confirm-approve')).toBeNull();
 			expect(queryByTestId('instance-ai-panel-confirm-deny')).toBeNull();
@@ -404,7 +540,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			injectPendingConfirmation(thread, questionsConfirmation);
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
-			renderComponent();
+			renderComponent({ props: { kind: 'inline' } });
 
 			const answers: QuestionAnswer[] = [
 				{
@@ -466,7 +602,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			injectPendingConfirmation(thread, questionsConfirmation);
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
-			renderComponent();
+			renderComponent({ props: { kind: 'inline' } });
 
 			const answers: QuestionAnswer[] = [
 				{
@@ -509,7 +645,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			injectPendingConfirmation(thread, questionsConfirmation);
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
-			renderComponent();
+			renderComponent({ props: { kind: 'inline' } });
 
 			const answers: QuestionAnswer[] = [
 				{
@@ -550,7 +686,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			injectPendingConfirmation(thread, questionsConfirmation);
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
-			renderComponent();
+			renderComponent({ props: { kind: 'inline' } });
 
 			const answers: QuestionAnswer[] = [
 				{

@@ -166,7 +166,7 @@ async function handleRun(
 			.catch(() => input.workflowId);
 		return await suspend({
 			requestId: nanoid(),
-			message: `Execute workflow "${workflowName}" (ID: ${input.workflowId})?`,
+			message: `Execute ${workflowName} (ID: ${input.workflowId})`,
 			severity: 'warning' as const,
 		});
 	}
