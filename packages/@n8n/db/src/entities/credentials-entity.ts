@@ -62,7 +62,7 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	resolverId: string | null;
 
 	/**
-	 * Arbitrary key-value metadata attached to this credential (e.g. owner, dashboard URL).
+	 * Arbitrary key-value metadata attached to this credential (e.g. owner, dashboard URL, expiration date).
 	 */
 	@JsonColumn({ nullable: true })
 	metadata: Record<string, unknown> | null;
