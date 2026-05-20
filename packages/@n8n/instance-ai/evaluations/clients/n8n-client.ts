@@ -440,6 +440,19 @@ export class N8nClient {
 	}
 
 	/**
+	 * Seed the MCP registry with the test fixture (Notion + Linear mock servers)
+	 * and trigger a synthetic node-type reload. Requires the server to be running
+	 * with `E2E_TESTS=true` so the test controller is mounted.
+	 * POST /rest/mcp-registry/test/seed  body: none
+	 */
+	async seedMcpRegistry(): Promise<{ count: number }> {
+		const result = (await this.fetch('/rest/mcp-registry/test/seed', {
+			method: 'POST',
+		})) as { data: { ok: boolean; count: number } };
+		return { count: result.data.count };
+	}
+
+	/**
 	 * Delete a credential by ID.
 	 * DELETE /rest/credentials/:id
 	 */

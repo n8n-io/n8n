@@ -52,6 +52,7 @@ import {
 	type BuildResult,
 } from '../harness/runner';
 import { syncDataset, type DatasetExampleInputs } from '../langsmith/dataset-sync';
+import { seedMcpRegistry } from '../mcp-registry/seeder';
 import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { writeWorkflowReport } from '../report/workflow-report';
 import type {
@@ -194,6 +195,14 @@ async function main(): Promise<void> {
 			logger.info(`Seeding credentials...${tag}`);
 			const seedResult = await seedCredentials(client, undefined, logger);
 			logger.info(`Seeded ${String(seedResult.credentialIds.length)} credential(s)${tag}`);
+
+			logger.info(`Seeding MCP registry...${tag}`);
+			const mcpSeedResult = await seedMcpRegistry(client, logger);
+			if (mcpSeedResult.seeded) {
+				logger.info(`Seeded ${String(mcpSeedResult.count)} MCP registry server(s)${tag}`);
+			} else {
+				logger.info(`Skipped MCP registry seed (test endpoint unavailable)${tag}`);
+			}
 
 			const preRunWorkflowIds = await snapshotWorkflowIds(client);
 			const claimedWorkflowIds = new Set<string>();
