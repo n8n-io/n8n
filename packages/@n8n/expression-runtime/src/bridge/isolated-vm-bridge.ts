@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
+import { blockedErrorProperties } from '../runtime/safe-globals';
 
 // Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
 // file is statically imported (e.g. for error classes). The native module is
@@ -28,30 +29,6 @@ function isErrorSentinel(value: unknown): value is ErrorSentinel {
 		value !== null &&
 		(value as Record<string, unknown>).__isError === true
 	);
-}
-
-/**
- * Serialize an error into a transferable metadata object.
- *
- * Host-side callbacks (getValueAtPath, etc.) catch errors and return this
- * sentinel instead of letting the error cross the isolate boundary (which
- * strips custom class identity and properties). The isolate-side proxy
- * detects __isError and reconstructs a proper Error to throw.
- */
-function serializeError(err: unknown): ErrorSentinel {
-	if (err instanceof Error) {
-		const extra = Object.fromEntries(
-			Object.entries(err).filter(([key]) => key !== 'name' && key !== 'message' && key !== 'stack'),
-		);
-		return {
-			__isError: true,
-			name: err.name,
-			message: err.message,
-			stack: err.stack,
-			extra,
-		};
-	}
-	return { __isError: true, name: 'Error', message: String(err), extra: {} };
 }
 
 /**
@@ -93,6 +70,9 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	private disposed = false;
 	private config: Required<BridgeConfig>;
 	private logger: Required<BridgeConfig>['logger'];
+	/** Host Errors keyed by sentinel token. Cleared at the end of every `execute()`. See `#serializeError`/`#reconstructError`. */
+	private errorSideChannel = new Map<string, Error>();
+	private errorTokenCounter = 0;
 
 	constructor(config: BridgeConfig = {}) {
 		this.config = {
@@ -343,7 +323,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				// Primitive value
 				return value;
 			} catch (err) {
-				return serializeError(err);
+				return this.serializeError(err);
 			}
 		});
 	}
@@ -408,7 +388,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				// Primitive element
 				return element;
 			} catch (err) {
-				return serializeError(err);
+				return this.serializeError(err);
 			}
 		});
 	}
@@ -450,7 +430,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				// Execute function with parent as `this` to preserve method context
 				return (fn as (...fnArgs: unknown[]) => unknown).call(parent, ...args);
 			} catch (err) {
-				return serializeError(err);
+				return this.serializeError(err);
 			}
 		});
 	}
@@ -556,27 +536,71 @@ try {
 			getValueAtPath.release();
 			getArrayElement.release();
 			callFunctionAtPath.release();
+			// Drop any leftover side-channel entries from this execution so
+			// the next caller can't inherit them.
+			this.errorSideChannel.clear();
 		}
 	}
 
 	/**
-	 * Reconstruct an error from serialized isolate data.
+	 * Serialize a host-side error into a transferable sentinel.
 	 *
-	 * Maps error names back to their host-side classes and restores
-	 * custom properties that would otherwise be lost crossing the boundary.
+	 * Host-side callbacks (getValueAtPath, etc.) catch errors and return
+	 * this sentinel rather than letting the error cross the isolate boundary
+	 * (which would strip its class identity and own properties via
+	 * `ivm.copy: true`).
+	 *
+	 * The sentinel carries only `name`, `message`, and an opaque `__token`.
+	 * The original Error stays on the host in `this.errorSideChannel` and
+	 * is re-surfaced by `reconstructError` when the sentinel comes back.
+	 * The isolate never sees the stack or any own properties.
+	 *
+	 * This closes the leak that bundling stack/extra into the
+	 * sentinel produced — a `try { … } catch(e) { e.extra.password }` in
+	 * an expression would otherwise read whatever the host Error carried.
+	 */
+	private serializeError(err: unknown): ErrorSentinel {
+		if (err instanceof Error) {
+			const token = `__err_${this.errorTokenCounter++}`;
+			this.errorSideChannel.set(token, err);
+			return {
+				__isError: true,
+				__token: token,
+				name: err.name,
+				message: err.message,
+			};
+		}
+		return { __isError: true, name: 'Error', message: String(err) };
+	}
+
+	/**
+	 * Reconstruct an error from a sentinel returned by the isolate.
+	 *
+	 * Sentinels arrive in two shapes:
+	 *   - From the host's `serializeError`: carries `__token`; the original
+	 *     Error is in `this.errorSideChannel`. Returned directly, preserving
+	 *     class identity, stack, and own properties.
+	 *   - From the in-isolate `wrappedCode` outer catch: carries inline
+	 *     `stack` and `extra` (isolate-realm data — no host file paths or
+	 *     credentials). Rebuilt as a fresh Error here.
 	 */
 	private reconstructError(data: ErrorSentinel): Error {
+		if (data.__token !== undefined) {
+			const original = this.errorSideChannel.get(data.__token);
+			if (original) return original;
+		}
+
 		const error = new Error(data.message);
 		error.name = data.name || 'Error';
-		if (data.stack) {
-			error.stack = data.stack;
-		}
-
-		// Restore custom properties transferred via copy: true
+		if (data.stack) error.stack = data.stack;
 		if (data.extra) {
-			Object.assign(error, data.extra);
+			const safeExtra = Object.fromEntries(
+				Object.entries(data.extra).filter(
+					([key, value]) => !blockedErrorProperties.has(key) && typeof value !== 'function',
+				),
+			);
+			Object.assign(error, safeExtra);
 		}
-
 		return error;
 	}
 

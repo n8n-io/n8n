@@ -20,8 +20,12 @@ export interface ErrorSentinel {
 	__isError: true;
 	name: string;
 	message: string;
+	/** Present only on sentinels built by the in-isolate `wrappedCode` outer catch. */
 	stack?: string;
+	/** Present only on sentinels built by the in-isolate `wrappedCode` outer catch. */
 	extra?: Record<string, unknown>;
+	/** Opaque key into the host's side channel. Present only on sentinels from host-side `serializeError`. */
+	__token?: string;
 }
 
 interface ObjectMetadata {

@@ -53,7 +53,7 @@ export const SafeObject = new Proxy(Object, {
  * Properties blocked on Error and all Error subclasses.
  * These can be exploited for sandbox escape via V8's stack trace API.
  */
-const blockedErrorProperties = new Set([
+export const blockedErrorProperties = new Set([
 	'captureStackTrace',
 	'prepareStackTrace',
 	'stackTraceLimit',
