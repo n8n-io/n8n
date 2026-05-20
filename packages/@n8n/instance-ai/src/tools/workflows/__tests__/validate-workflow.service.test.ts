@@ -1,7 +1,7 @@
 import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext, NodeDescription } from '../../../types';
-import { verifyWorkflow } from '../verify-workflow.service';
+import { validateWorkflowConfig } from '../validate-workflow.service';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -93,14 +93,14 @@ function makeDescription(overrides: Partial<NodeDescription> = {}): NodeDescript
 }
 
 // ---------------------------------------------------------------------------
-// verifyWorkflow
+// validateWorkflowConfig
 // ---------------------------------------------------------------------------
 
-describe('verifyWorkflow', () => {
+describe('validateWorkflowConfig', () => {
 	describe('input validation', () => {
 		it('rejects when neither workflowId nor workflow is provided', async () => {
 			const context = createMockContext();
-			await expect(verifyWorkflow(context, {})).rejects.toThrow(
+			await expect(validateWorkflowConfig(context, {})).rejects.toThrow(
 				'requires either workflowId or workflow',
 			);
 		});
@@ -108,7 +108,7 @@ describe('verifyWorkflow', () => {
 		it('rejects when both workflowId and workflow are provided', async () => {
 			const context = createMockContext();
 			await expect(
-				verifyWorkflow(context, { workflowId: 'w1', workflow: makeWorkflow([]) }),
+				validateWorkflowConfig(context, { workflowId: 'w1', workflow: makeWorkflow([]) }),
 			).rejects.toThrow('not both');
 		});
 	});
@@ -123,9 +123,9 @@ describe('verifyWorkflow', () => {
 			);
 			const node = makeNode();
 
-			const result = await verifyWorkflow(context, { workflow: makeWorkflow([node]) });
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
 
-			expect(result.verified).toBe(false);
+			expect(result.valid).toBe(false);
 			expect(result.issues[node.name!].credentials).toEqual({
 				telegramApi: ['Credentials for Telegram are not set.'],
 			});
@@ -148,9 +148,9 @@ describe('verifyWorkflow', () => {
 				credentials: { telegramApi: { id: 'cred-1', name: 'My Telegram' } },
 			});
 
-			const result = await verifyWorkflow(context, { workflow: makeWorkflow([node]) });
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
 
-			expect(result.verified).toBe(true);
+			expect(result.valid).toBe(true);
 			expect(result.issues).toEqual({});
 		});
 
@@ -166,7 +166,7 @@ describe('verifyWorkflow', () => {
 				credentials: { telegramApi: { id: 'cred-missing', name: 'Foreign Telegram' } },
 			});
 
-			const result = await verifyWorkflow(context, { workflow: makeWorkflow([node]) });
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
 
 			expect(result.issues[node.name!].credentials?.telegramApi?.[0]).toContain(
 				'Credentials with name Foreign Telegram do not exist',
@@ -188,7 +188,7 @@ describe('verifyWorkflow', () => {
 				credentials: { telegramApi: { name: 'Same Name' } as { name: string } },
 			});
 
-			const result = await verifyWorkflow(context, { workflow: makeWorkflow([node]) });
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
 
 			expect(result.issues[node.name!].credentials?.telegramApi?.[0]).toContain(
 				'Credentials with name Same Name exist for telegramApi',
@@ -213,9 +213,9 @@ describe('verifyWorkflow', () => {
 				},
 			});
 
-			const result = await verifyWorkflow(context, { workflow: makeWorkflow([node]) });
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
 
-			expect(result.verified).toBe(true);
+			expect(result.valid).toBe(true);
 			expect(result.issues).toEqual({});
 		});
 
@@ -234,10 +234,10 @@ describe('verifyWorkflow', () => {
 			);
 			const node = makeNode({ parameters: {} });
 
-			const result = await verifyWorkflow(context, { workflow: makeWorkflow([node]) });
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
 
 			// displayOptions exclude httpSslAuth → no issue should be reported
-			expect(result.verified).toBe(true);
+			expect(result.valid).toBe(true);
 		});
 	});
 
@@ -268,9 +268,9 @@ describe('verifyWorkflow', () => {
 				},
 			});
 
-			const result = await verifyWorkflow(context, { workflow: makeWorkflow([node]) });
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
 
-			expect(result.verified).toBe(false);
+			expect(result.valid).toBe(false);
 			expect(result.issues[node.name!].credentials?.httpBasicAuth?.[0]).toContain(
 				'Credentials for HTTP Request are not set.',
 			);
@@ -288,7 +288,7 @@ describe('verifyWorkflow', () => {
 				},
 			});
 
-			const result = await verifyWorkflow(context, { workflow: makeWorkflow([node]) });
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
 
 			expect(result.issues[node.name!].credentials?.githubApi?.[0]).toContain(
 				'Credentials for HTTP Request are not set.',
@@ -307,7 +307,7 @@ describe('verifyWorkflow', () => {
 			});
 			const node = makeNode({ parameters: { chatId: '' } });
 
-			const result = await verifyWorkflow(context, { workflow: makeWorkflow([node]) });
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
 
 			expect(result.issues[node.name!].parameters).toEqual({
 				chatId: ['Parameter "chatId" is required'],
@@ -329,7 +329,7 @@ describe('verifyWorkflow', () => {
 			});
 			const node = makeNode({ parameters: { chatId: '' } });
 
-			const result = await verifyWorkflow(context, {
+			const result = await validateWorkflowConfig(context, {
 				workflow: makeWorkflow([node]),
 				ignoreIssues: ['credentials'],
 			});
@@ -349,9 +349,9 @@ describe('verifyWorkflow', () => {
 			);
 			const node = makeNode({ disabled: true });
 
-			const result = await verifyWorkflow(context, { workflow: makeWorkflow([node]) });
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
 
-			expect(result.verified).toBe(true);
+			expect(result.valid).toBe(true);
 			expect(result.issues).toEqual({});
 		});
 
@@ -360,7 +360,7 @@ describe('verifyWorkflow', () => {
 			(context.nodeService.getDescription as jest.Mock).mockRejectedValue(new Error('not found'));
 			const node = makeNode({ type: 'n8n-nodes-base.madeUpType' });
 
-			const result = await verifyWorkflow(context, { workflow: makeWorkflow([node]) });
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
 
 			expect(result.issues[node.name!].typeUnknown).toBe(true);
 			expect(result.summary).toContain('Send Telegram message: typeUnknown: Unknown node type');
@@ -380,11 +380,11 @@ describe('verifyWorkflow', () => {
 				}),
 			);
 
-			const result = await verifyWorkflow(context, { workflowId: 'w1' });
+			const result = await validateWorkflowConfig(context, { workflowId: 'w1' });
 
 			expect(context.workflowService.getAsWorkflowJSON).toHaveBeenCalledWith('w1');
 			expect(result.workflowId).toBe('w1');
-			expect(result.verified).toBe(false);
+			expect(result.valid).toBe(false);
 		});
 	});
 });

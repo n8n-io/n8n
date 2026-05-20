@@ -17,7 +17,7 @@ import {
 	applyNodeChanges,
 	buildCompletedReport,
 } from './workflows/setup-workflow.service';
-import { verifyWorkflow } from './workflows/verify-workflow.service';
+import { validateWorkflowConfig } from './workflows/validate-workflow.service';
 import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
@@ -68,11 +68,11 @@ const setupAction = z.object({
 	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
 });
 
-const verifyAction = z.object({
+const validateAction = z.object({
 	action: z
-		.literal('verify')
+		.literal('validate')
 		.describe(
-			'Return the per-node issues a human would see as red warning indicators on the canvas: missing credentials, parameter validation errors, etc. Use this to confirm a workflow is ready to run before suggesting the user execute or publish it.',
+			'Return the per-node configuration issues a human would see as red warning indicators on the canvas: missing credentials, parameter validation errors, etc. Static check (does not execute the workflow). Use this to confirm a workflow is configured correctly before suggesting the user run or publish it.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	ignoreIssues: z
@@ -157,7 +157,7 @@ type Input =
 	| z.infer<typeof deleteAction>
 	| z.infer<typeof unarchiveAction>
 	| z.infer<typeof setupAction>
-	| z.infer<typeof verifyAction>
+	| z.infer<typeof validateAction>
 	| z.infer<typeof publishExtendedAction>
 	| z.infer<typeof unpublishAction>
 	| z.infer<typeof listVersionsAction>
@@ -177,7 +177,7 @@ export type WorkflowAction =
 	| 'delete'
 	| 'unarchive'
 	| 'setup'
-	| 'verify'
+	| 'validate'
 	| 'publish'
 	| 'unpublish'
 	| 'list-versions'
@@ -203,7 +203,7 @@ const WORKFLOW_ACTION_ORDER = [
 	'delete',
 	'unarchive',
 	'setup',
-	'verify',
+	'validate',
 	'publish',
 	'unpublish',
 	'list-versions',
@@ -219,7 +219,7 @@ const WORKFLOW_ACTION_LABELS = {
 	delete: 'archive',
 	unarchive: 'restore archived workflows',
 	setup: 'set up credentials and parameters',
-	verify: 'verify configuration',
+	validate: 'validate configuration',
 	publish: 'publish',
 	unpublish: 'unpublish',
 	'list-versions': 'list versions',
@@ -246,7 +246,7 @@ function getSupportedWorkflowActionSchemas(
 		delete: deleteAction,
 		unarchive: unarchiveAction,
 		setup: setupAction,
-		verify: verifyAction,
+		validate: validateAction,
 		publish: hasNamedVersions ? publishExtendedAction : publishBaseAction,
 		unpublish: unpublishAction,
 		...(hasVersions
@@ -623,12 +623,12 @@ async function handleSetup(
 	}
 }
 
-async function handleVerify(
+async function handleValidate(
 	context: InstanceAiContext,
-	input: Extract<Input, { action: 'verify' }>,
+	input: Extract<Input, { action: 'validate' }>,
 ) {
 	try {
-		return await verifyWorkflow(context, {
+		return await validateWorkflowConfig(context, {
 			workflowId: input.workflowId,
 			ignoreIssues: input.ignoreIssues,
 		});
@@ -637,8 +637,8 @@ async function handleVerify(
 			workflowId: input.workflowId,
 			issues: {} as Record<string, never>,
 			summary: [] as string[],
-			verified: false,
-			error: error instanceof Error ? error.message : 'Failed to verify workflow',
+			valid: false,
+			error: error instanceof Error ? error.message : 'Failed to validate workflow',
 		};
 	}
 }
@@ -1006,8 +1006,8 @@ export function createWorkflowsTool(
 					return await handleUnarchive(context, workflowInput, ctx);
 				case 'setup':
 					return await handleSetup(context, workflowInput, ctx, setupState);
-				case 'verify':
-					return await handleVerify(context, workflowInput);
+				case 'validate':
+					return await handleValidate(context, workflowInput);
 				case 'publish':
 					return await handlePublish(context, workflowInput, ctx);
 				case 'unpublish':

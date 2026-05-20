@@ -1,5 +1,5 @@
 /**
- * Verify workflow service — computes the same per-node issues that the editor
+ * Validate workflow service — computes the same per-node issues that the editor
  * canvas surfaces as red warning indicators (missing credentials, parameter
  * issues, etc.). Mirrors `getNodeIssues` in
  * `packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts`.
@@ -18,17 +18,17 @@ import type { InstanceAiContext, NodeDescription } from '../../types';
 
 // ── Output shape ────────────────────────────────────────────────────────────
 
-export interface VerifyWorkflowResult {
+export interface ValidateWorkflowResult {
 	workflowId?: string;
 	/** Per-node `INodeIssues`. Nodes without issues are omitted. */
 	issues: Record<string, INodeIssues>;
 	/** Human-readable lines, one per issue, suitable for inline display in chat output. */
 	summary: string[];
 	/** True when no issues were found across all nodes. */
-	verified: boolean;
+	valid: boolean;
 }
 
-export interface VerifyWorkflowInput {
+export interface ValidateWorkflowInput {
 	workflowId?: string;
 	workflow?: WorkflowJSON;
 	ignoreIssues?: string[];
@@ -345,15 +345,15 @@ function formatSummaryLines(nodeName: string, issues: INodeIssues, pushTo: strin
  * Verify a workflow and return per-node issues mirroring the canvas red badges.
  * Accepts either a stored workflow (`workflowId`) or an inline `WorkflowJSON`.
  */
-export async function verifyWorkflow(
+export async function validateWorkflowConfig(
 	context: InstanceAiContext,
-	input: VerifyWorkflowInput,
-): Promise<VerifyWorkflowResult> {
+	input: ValidateWorkflowInput,
+): Promise<ValidateWorkflowResult> {
 	if (!input.workflowId && !input.workflow) {
-		throw new Error('verifyWorkflow requires either workflowId or workflow');
+		throw new Error('validateWorkflowConfig requires either workflowId or workflow');
 	}
 	if (input.workflowId && input.workflow) {
-		throw new Error('verifyWorkflow accepts workflowId OR workflow, not both');
+		throw new Error('validateWorkflowConfig accepts workflowId OR workflow, not both');
 	}
 
 	const workflowJson: WorkflowJSON =
@@ -395,6 +395,6 @@ export async function verifyWorkflow(
 		...(input.workflowId ? { workflowId: input.workflowId } : {}),
 		issues,
 		summary,
-		verified: summary.length === 0,
+		valid: summary.length === 0,
 	};
 }
