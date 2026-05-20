@@ -298,8 +298,10 @@ export class Git implements INodeType {
 		};
 
 		const operation = this.getNodeParameter('operation', 0);
-		const isFileNotFoundError = (error: unknown): error is Error & { code: 'ENOENT' } =>
+
+		const isFileNotFoundError = (error: unknown) =>
 			error instanceof Error && 'code' in error && error.code === 'ENOENT';
+
 		const resolvePathAllowingMissingParents = async (path: string): Promise<ResolvedFilePath> => {
 			try {
 				return await this.helpers.resolvePath(path);
