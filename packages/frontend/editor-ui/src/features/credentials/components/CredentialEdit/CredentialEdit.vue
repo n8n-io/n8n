@@ -688,7 +688,7 @@ async function loadCurrentCredential(id = props.activeId ?? '') {
 				? currentCredentials.isResolvable
 				: false;
 		credentialMetadata.value =
-			'metadata' in currentCredentials && currentCredentials.metadata != null
+			'metadata' in currentCredentials && currentCredentials.metadata
 				? currentCredentials.metadata
 				: null;
 	} catch (error) {
