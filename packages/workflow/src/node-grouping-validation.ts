@@ -35,7 +35,6 @@ export type NodeGroupingValidationInput<TNode extends INode = INode> = {
 
 export type NodeSelectionValidationResult<TNode extends INode = INode> =
 	| { valid: true; subGraph: TNode[]; subGraphData: ExtractableSubgraphData }
-	| { valid: false; reason: 'too-few-nodes' }
 	| { valid: false; reason: 'trigger-selected'; triggers: string[] }
 	| { valid: false; reason: 'invalid-subgraph'; errors: ExtractableErrorResult[] }
 	| { valid: false; reason: 'multiple-input-branches'; node: string }
@@ -43,6 +42,7 @@ export type NodeSelectionValidationResult<TNode extends INode = INode> =
 
 export type NodeGroupValidationResult<TNode extends INode = INode> =
 	| NodeSelectionValidationResult<TNode>
+	| { valid: false; reason: 'too-few-nodes' }
 	| {
 			valid: false;
 			reason: 'non-main-boundary';
