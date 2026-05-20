@@ -261,6 +261,21 @@ describe('workflow package export', () => {
 			expect(manifest.workflows![0].id).toBe(wf.id);
 		});
 
+		it("allows a global owner to export a team project's workflows without being a member", async () => {
+			// Global owners bypass the per-project scope check, so the typical operator
+			// path — exporting a workflow from a project they have no relation to — must work.
+			const projectAdmin = await createMember();
+			const project = await createTeamProject('Foreign Project', projectAdmin);
+			const wf = await createWorkflow(
+				{ name: 'Foreign Workflow', nodes: [], connections: {} },
+				project,
+			);
+			const globalOwner = await createOwner();
+
+			const { manifest } = await exportSingleWorkflow(globalOwner, wf.id);
+			expect(manifest.workflows![0].id).toBe(wf.id);
+		});
+
 		it('allows a direct-share recipient to export the shared workflow', async () => {
 			const owner = await createOwner();
 			const ownerProject = await createTeamProject('Source Project', owner);
