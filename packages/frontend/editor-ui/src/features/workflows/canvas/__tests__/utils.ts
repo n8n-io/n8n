@@ -27,11 +27,9 @@ export function createCanvasNodeData({
 	type = 'test',
 	typeVersion = 1,
 	disabled = false,
-	inputs = [],
-	outputs = [],
 	connections = { [CanvasConnectionMode.Input]: {}, [CanvasConnectionMode.Output]: {} },
 	execution = { running: false },
-	issues = { execution: [], validation: [], visible: false },
+	issues = { validation: [], visible: false },
 	pinnedData = { count: 0, visible: false },
 	runData = { outputMap: {}, iterations: 0, visible: false },
 	render = {
@@ -50,8 +48,6 @@ export function createCanvasNodeData({
 		pinnedData,
 		runData,
 		disabled,
-		inputs,
-		outputs,
 		connections,
 		render,
 	};
@@ -223,28 +219,32 @@ export function createCanvasHandleProvide({
 export function createCanvasConnection(
 	nodeA: CanvasNode,
 	nodeB: CanvasNode,
-	{ sourceIndex = 0, targetIndex = 0 } = {},
+	{
+		sourceIndex = 0,
+		targetIndex = 0,
+		sourceType = NodeConnectionTypes.Main as NodeConnectionType,
+		targetType = NodeConnectionTypes.Main as NodeConnectionType,
+	} = {},
 ) {
-	const nodeAOutput = nodeA.data?.outputs[sourceIndex];
-	const nodeBInput = nodeA.data?.inputs[targetIndex];
-
 	return {
 		id: `${nodeA.id}-${nodeB.id}`,
 		source: nodeA.id,
 		target: nodeB.id,
-		...(nodeAOutput ? { sourceHandle: `outputs/${nodeAOutput.type}/${nodeAOutput.index}` } : {}),
-		...(nodeBInput ? { targetHandle: `inputs/${nodeBInput.type}/${nodeBInput.index}` } : {}),
+		sourceHandle: `outputs/${sourceType}/${sourceIndex}`,
+		targetHandle: `inputs/${targetType}/${targetIndex}`,
 	};
 }
 
 export function createCanvasGraphEdge(
 	nodeA: GraphNode,
 	nodeB: GraphNode,
-	{ sourceIndex = 0, targetIndex = 0 } = {},
+	{
+		sourceIndex = 0,
+		targetIndex = 0,
+		sourceType = NodeConnectionTypes.Main as NodeConnectionType,
+		targetType = NodeConnectionTypes.Main as NodeConnectionType,
+	} = {},
 ): GraphEdge {
-	const nodeAOutput = nodeA.data?.outputs[sourceIndex];
-	const nodeBInput = nodeA.data?.inputs[targetIndex];
-
 	return {
 		id: `${nodeA.id}-${nodeB.id}`,
 		source: nodeA.id,
@@ -259,7 +259,7 @@ export function createCanvasGraphEdge(
 		targetNode: nodeB,
 		data: {},
 		events: {},
-		...(nodeAOutput ? { sourceHandle: `outputs/${nodeAOutput.type}/${nodeAOutput.index}` } : {}),
-		...(nodeBInput ? { targetHandle: `inputs/${nodeBInput.type}/${nodeBInput.index}` } : {}),
+		sourceHandle: `outputs/${sourceType}/${sourceIndex}`,
+		targetHandle: `inputs/${targetType}/${targetIndex}`,
 	};
 }

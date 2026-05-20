@@ -332,12 +332,12 @@ describe('agent-run-reducer', () => {
 			});
 		});
 
-		it('applies rich render hints to workflow flow aliases', () => {
+		it('applies rich render hints to background agent tools', () => {
 			const state = stateWithRun('run-1', 'root');
-			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-builder', 'workflow-build-flow'));
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-builder', 'build-workflow-with-agent'));
 			reduceEvent(
 				state,
-				makeToolCall('run-1', 'root', 'tc-data-table', 'agent-data-table-manager'),
+				makeToolCall('run-1', 'root', 'tc-data-table', 'manage-data-tables-with-agent'),
 			);
 
 			expect(state.toolCallsById['tc-builder'].renderHint).toBe('builder');

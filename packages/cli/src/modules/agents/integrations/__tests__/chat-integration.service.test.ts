@@ -1,4 +1,3 @@
-import type { AgentCredentialIntegration } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
@@ -17,6 +16,7 @@ import {
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
 import { ChatIntegrationService } from '../chat-integration.service';
+import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 
 /**
  * Test double — exposes the registry without invoking the real Chat SDK
@@ -54,10 +54,9 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	} as unknown as Agent;
 }
 
-const slackIntegration: AgentCredentialIntegration = {
+const slackIntegration: AgentCredentialIntegrationConfig = {
 	type: 'slack',
 	credentialId: 'cred-1',
-	credentialName: 'Acme Slack',
 };
 
 function buildServiceWith(
@@ -122,7 +121,7 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 
 		await service.syncToConfig(agent, [slackIntegration], []);
 
-		expect(disconnectSpy).toHaveBeenCalledWith('agent-1', 'slack', 'cred-1');
+		expect(disconnectSpy).toHaveBeenCalledWith('agent-1', slackIntegration);
 		expect(connectSpy).not.toHaveBeenCalled();
 	});
 });
@@ -234,6 +233,145 @@ describe('ChatIntegrationService', () => {
 	});
 });
 
+describe('ChatIntegrationService — onBeforeDisconnect plumbing', () => {
+	type ConnectionStub = {
+		chat: {
+			shutdown: jest.Mock;
+			webhooks: Record<string, unknown>;
+			onAction: jest.Mock;
+			onNewMention: jest.Mock;
+			onSubscribedMessage: jest.Mock;
+			initialize: jest.Mock;
+		};
+		bridge: { dispose: jest.Mock };
+		context: AgentChatIntegrationContext;
+	};
+
+	const seedConnection = (
+		service: ChatIntegrationService,
+		key: string,
+		ctx: AgentChatIntegrationContext,
+	): ConnectionStub => {
+		const stub: ConnectionStub = {
+			chat: {
+				shutdown: jest.fn().mockResolvedValue(undefined),
+				webhooks: {},
+				onAction: jest.fn(),
+				onNewMention: jest.fn(),
+				onSubscribedMessage: jest.fn(),
+				initialize: jest.fn(),
+			},
+			bridge: { dispose: jest.fn() },
+			context: ctx,
+		};
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		(service as any).connections.set(key, stub);
+		return stub;
+	};
+
+	const makeCtx = (
+		overrides: Partial<AgentChatIntegrationContext> = {},
+	): AgentChatIntegrationContext => ({
+		agentId: 'agent-1',
+		projectId: 'project-1',
+		credentialId: 'cred-1',
+		credential: { accessToken: 'bot-token' },
+		webhookUrlFor: () => 'https://n8n.example.com/wh',
+		...overrides,
+	});
+
+	beforeEach(() => {
+		Container.reset();
+	});
+
+	it('invokes the integration onBeforeDisconnect hook with the captured context on user-initiated disconnect', async () => {
+		const onBeforeDisconnect = jest.fn().mockResolvedValue(undefined);
+		const telegram = new FakeIntegration('telegram', false);
+		(telegram as unknown as { onBeforeDisconnect: typeof onBeforeDisconnect }).onBeforeDisconnect =
+			onBeforeDisconnect;
+
+		const registry = new ChatIntegrationRegistry();
+		registry.register(telegram);
+
+		const { service } = buildServiceWith({ registry });
+		const ctx = makeCtx();
+		const stub = seedConnection(service, 'agent-1:telegram:cred-1', ctx);
+
+		await service.disconnect('agent-1', { type: 'telegram', credentialId: 'cred-1' });
+
+		expect(onBeforeDisconnect).toHaveBeenCalledTimes(1);
+		expect(onBeforeDisconnect).toHaveBeenCalledWith(ctx);
+		// Order: external teardown → local shutdown → dispose
+		expect(onBeforeDisconnect.mock.invocationCallOrder[0]).toBeLessThan(
+			stub.chat.shutdown.mock.invocationCallOrder[0],
+		);
+		expect(stub.bridge.dispose).toHaveBeenCalledTimes(1);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect((service as any).connections.size).toBe(0);
+	});
+
+	it('swallows errors from onBeforeDisconnect and still tears down local state', async () => {
+		const onBeforeDisconnect = jest.fn().mockRejectedValue(new Error('telegram 500'));
+		const telegram = new FakeIntegration('telegram', false);
+		(telegram as unknown as { onBeforeDisconnect: typeof onBeforeDisconnect }).onBeforeDisconnect =
+			onBeforeDisconnect;
+
+		const registry = new ChatIntegrationRegistry();
+		registry.register(telegram);
+
+		const { service } = buildServiceWith({ registry });
+		const stub = seedConnection(service, 'agent-1:telegram:cred-1', makeCtx());
+
+		await expect(
+			service.disconnect('agent-1', { type: 'telegram', credentialId: 'cred-1' }),
+		).resolves.toBeUndefined();
+
+		expect(onBeforeDisconnect).toHaveBeenCalledTimes(1);
+		expect(stub.chat.shutdown).toHaveBeenCalledTimes(1);
+		expect(stub.bridge.dispose).toHaveBeenCalledTimes(1);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect((service as any).connections.size).toBe(0);
+	});
+
+	it('skips onBeforeDisconnect when caller passes skipExternalHooks: true', async () => {
+		const onBeforeDisconnect = jest.fn().mockResolvedValue(undefined);
+		const telegram = new FakeIntegration('telegram', false);
+		(telegram as unknown as { onBeforeDisconnect: typeof onBeforeDisconnect }).onBeforeDisconnect =
+			onBeforeDisconnect;
+
+		const registry = new ChatIntegrationRegistry();
+		registry.register(telegram);
+
+		const { service } = buildServiceWith({ registry });
+		seedConnection(service, 'agent-1:telegram:cred-1', makeCtx());
+
+		await service.disconnect(
+			'agent-1',
+			{ type: 'telegram', credentialId: 'cred-1' },
+			{ skipExternalHooks: true },
+		);
+
+		expect(onBeforeDisconnect).not.toHaveBeenCalled();
+	});
+
+	it('disconnectAll never runs onBeforeDisconnect — graceful shutdown must not release remote state', async () => {
+		const onBeforeDisconnect = jest.fn().mockResolvedValue(undefined);
+		const telegram = new FakeIntegration('telegram', false);
+		(telegram as unknown as { onBeforeDisconnect: typeof onBeforeDisconnect }).onBeforeDisconnect =
+			onBeforeDisconnect;
+
+		const registry = new ChatIntegrationRegistry();
+		registry.register(telegram);
+
+		const { service } = buildServiceWith({ registry });
+		seedConnection(service, 'agent-1:telegram:cred-1', makeCtx());
+
+		await service.disconnectAll();
+
+		expect(onBeforeDisconnect).not.toHaveBeenCalled();
+	});
+});
+
 describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -250,8 +388,8 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			agentRepository.findPublished.mockResolvedValue([
 				makeAgent({
 					integrations: [
-						{ type: 'telegram', credentialId: 'c1', credentialName: 'Tg' },
-						{ type: 'linear', credentialId: 'c2', credentialName: 'Ln' },
+						{ type: 'telegram', credentialId: 'c1' },
+						{ type: 'linear', credentialId: 'c2' },
 					],
 				}),
 			]);
@@ -271,12 +409,15 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			await service.reconnectAll();
 
 			expect(connectSpy).toHaveBeenCalledTimes(1);
-			// Followers must not run external hooks during startup reconnect — the
-			// leader owns Telegram setWebhook etc., so a follower racing it would
-			// just trip Telegram's 1/sec rate limit.
-			expect(connectSpy).toHaveBeenCalledWith('agent-1', 'c2', 'linear', 'u1', 'project-1', {
-				skipExternalHooks: true,
-			});
+			// Followers must not run external hooks during startup reconnect. The
+			// leader owns external setup; followers only build local runtime state.
+			expect(connectSpy).toHaveBeenCalledWith(
+				'agent-1',
+				{ type: 'linear', credentialId: 'c2' },
+				'u1',
+				'project-1',
+				{ skipExternalHooks: true },
+			);
 		});
 
 		it('connects every integration when this main is the leader and runs external hooks', async () => {
@@ -288,8 +429,8 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			agentRepository.findPublished.mockResolvedValue([
 				makeAgent({
 					integrations: [
-						{ type: 'telegram', credentialId: 'c1', credentialName: 'Tg' },
-						{ type: 'linear', credentialId: 'c2', credentialName: 'Ln' },
+						{ type: 'telegram', credentialId: 'c1' },
+						{ type: 'linear', credentialId: 'c2' },
 					],
 				}),
 			]);
@@ -310,7 +451,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			expect(connectSpy).toHaveBeenCalledTimes(2);
 			for (const call of connectSpy.mock.calls) {
-				expect(call[5]).toEqual({ skipExternalHooks: false });
+				expect(call[4]).toEqual({ skipExternalHooks: false });
 			}
 		});
 
@@ -321,7 +462,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			const agentRepository = mock<AgentRepository>();
 			agentRepository.findPublished.mockResolvedValue([
 				makeAgent({
-					integrations: [{ type: 'linear', credentialId: 'c1', credentialName: 'Ln' }],
+					integrations: [{ type: 'linear', credentialId: 'c1' }],
 				}),
 			]);
 
@@ -365,7 +506,9 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			const disconnectOneSpy = jest
 				.spyOn(
-					service as unknown as { disconnectOne: (k: string) => Promise<void> },
+					service as unknown as {
+						disconnectOne: (k: string, options?: { skipExternalHooks?: boolean }) => Promise<void>;
+					},
 					'disconnectOne',
 				)
 				.mockImplementation(async () => undefined);
@@ -373,23 +516,32 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			await service.disconnectLeaderOnlyIntegrations();
 
 			expect(disconnectOneSpy).toHaveBeenCalledTimes(1);
-			expect(disconnectOneSpy).toHaveBeenCalledWith('agent-1:telegram:c1');
+			// Leader stepdown is a role transition, not a user-initiated disconnect.
+			// Only local runtime state should be cleared here.
+			expect(disconnectOneSpy).toHaveBeenCalledWith('agent-1:telegram:c1', {
+				skipExternalHooks: true,
+			});
 		});
 	});
 
 	describe('handleIntegrationChanged', () => {
-		it('routes disconnect actions to disconnect()', async () => {
+		it('routes disconnect actions to disconnect() and skips external hooks on the peer', async () => {
 			const { service } = buildServiceWith();
 			const disconnectSpy = jest.spyOn(service, 'disconnect').mockResolvedValue();
 
 			await service.handleIntegrationChanged({
 				agentId: 'a1',
-				type: 'linear',
-				credentialId: 'c1',
+				integration: { type: 'linear', credentialId: 'c1' },
 				action: 'disconnect',
 			});
 
-			expect(disconnectSpy).toHaveBeenCalledWith('a1', 'linear', 'c1');
+			// External teardown already ran on the originator. The peer must skip it
+			// so cluster-wide remote state is released exactly once.
+			expect(disconnectSpy).toHaveBeenCalledWith(
+				'a1',
+				{ type: 'linear', credentialId: 'c1' },
+				{ skipExternalHooks: true },
+			);
 		});
 
 		it('skips connect for a leader-only integration on a follower', async () => {
@@ -402,8 +554,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			await service.handleIntegrationChanged({
 				agentId: 'a1',
-				type: 'telegram',
-				credentialId: 'c1',
+				integration: { type: 'telegram', credentialId: 'c1' },
 				action: 'connect',
 			});
 
@@ -431,17 +582,21 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			await service.handleIntegrationChanged({
 				agentId: 'a1',
-				type: 'linear',
-				credentialId: 'c1',
+				integration: { type: 'linear', credentialId: 'c1' },
 				action: 'connect',
 			});
 
-			// External hooks (Telegram setWebhook, DB validation) already ran on
-			// the originator — the peer must skip them to avoid duplicate API
-			// calls and the resulting 429 rate-limit failure.
-			expect(connectSpy).toHaveBeenCalledWith('a1', 'c1', 'linear', 'u1', 'p1', {
-				skipExternalHooks: true,
-			});
+			// External hooks already ran on the originator. The peer must skip them
+			// to avoid duplicate external side effects.
+			expect(connectSpy).toHaveBeenCalledWith(
+				'a1',
+				{ type: 'linear', credentialId: 'c1' },
+				'u1',
+				'p1',
+				{
+					skipExternalHooks: true,
+				},
+			);
 		});
 
 		it('falls through user list until one succeeds', async () => {
@@ -472,15 +627,20 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			await service.handleIntegrationChanged({
 				agentId: 'a1',
-				type: 'linear',
-				credentialId: 'c1',
+				integration: { type: 'linear', credentialId: 'c1' },
 				action: 'connect',
 			});
 
 			expect(connectSpy).toHaveBeenCalledTimes(2);
-			expect(connectSpy).toHaveBeenLastCalledWith('a1', 'c1', 'linear', 'u-with-access', 'p1', {
-				skipExternalHooks: true,
-			});
+			expect(connectSpy).toHaveBeenLastCalledWith(
+				'a1',
+				{ type: 'linear', credentialId: 'c1' },
+				'u-with-access',
+				'p1',
+				{
+					skipExternalHooks: true,
+				},
+			);
 		});
 
 		it('no-ops when the agent has been deleted', async () => {
@@ -496,8 +656,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			await service.handleIntegrationChanged({
 				agentId: 'gone',
-				type: 'linear',
-				credentialId: 'c1',
+				integration: { type: 'linear', credentialId: 'c1' },
 				action: 'connect',
 			});
 
@@ -518,8 +677,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			await service.handleIntegrationChanged({
 				agentId: 'a1',
-				type: 'linear',
-				credentialId: 'c1',
+				integration: { type: 'linear', credentialId: 'c1' },
 				action: 'connect',
 			});
 
@@ -532,7 +690,11 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			const publisher = mock<Publisher>();
 			const { service } = buildServiceWith({ multiMainEnabled: false, publisher });
 
-			await service.broadcastIntegrationChange('a1', 'linear', 'c1', 'connect');
+			await service.broadcastIntegrationChange(
+				'a1',
+				{ type: 'linear', credentialId: 'c1' },
+				'connect',
+			);
 
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
@@ -541,14 +703,17 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			const publisher = mock<Publisher>();
 			const { service } = buildServiceWith({ multiMainEnabled: true, publisher });
 
-			await service.broadcastIntegrationChange('a1', 'linear', 'c1', 'disconnect');
+			await service.broadcastIntegrationChange(
+				'a1',
+				{ type: 'linear', credentialId: 'c1' },
+				'disconnect',
+			);
 
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'agent-chat-integration-changed',
 				payload: {
 					agentId: 'a1',
-					type: 'linear',
-					credentialId: 'c1',
+					integration: { type: 'linear', credentialId: 'c1' },
 					action: 'disconnect',
 				},
 			});
@@ -557,22 +722,23 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 		it('publishes settings alongside a connect broadcast', async () => {
 			const publisher = mock<Publisher>();
 			const { service } = buildServiceWith({ multiMainEnabled: true, publisher });
-			const settings = {
-				type: 'telegram' as const,
-				accessMode: 'private' as const,
-				allowedUsers: ['123'],
+			const integration: AgentCredentialIntegrationConfig = {
+				type: 'telegram',
+				credentialId: 'c1',
+				settings: {
+					accessMode: 'private' as const,
+					allowedUsers: ['123'],
+				},
 			};
 
-			await service.broadcastIntegrationChange('a1', 'telegram', 'c1', 'connect', settings);
+			await service.broadcastIntegrationChange('a1', integration, 'connect');
 
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'agent-chat-integration-changed',
 				payload: {
 					agentId: 'a1',
-					type: 'telegram',
-					credentialId: 'c1',
+					integration,
 					action: 'connect',
-					settings,
 				},
 			});
 		});
@@ -584,7 +750,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			const { service } = buildServiceWith({ multiMainEnabled: true, publisher });
 
 			await expect(
-				service.broadcastIntegrationChange('a1', 'linear', 'c1', 'connect'),
+				service.broadcastIntegrationChange('a1', { type: 'linear', credentialId: 'c1' }, 'connect'),
 			).resolves.toBeUndefined();
 		});
 	});

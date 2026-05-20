@@ -9,7 +9,7 @@ import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.
 
 import { TestNodeWithTracing } from './test-node-with-tracing';
 import { createRunExecutionData } from 'n8n-workflow';
-import type { INodeType, INodeTypeData, NodeLoadingDetails } from 'n8n-workflow';
+import type { IDataObject, INodeType, INodeTypeData, NodeLoadingDetails } from 'n8n-workflow';
 import { readFileSync } from 'fs';
 import path from 'path';
 
@@ -103,16 +103,17 @@ export async function executeWorkflow(
 		mode?: 'webhook' | 'trigger' | 'manual' | 'retry';
 		retryOf?: string;
 		tracingContext?: { traceparent: string; tracestate?: string };
+		triggerData?: IDataObject;
 	} = {},
 ): Promise<string> {
-	const { mode = 'webhook', retryOf, tracingContext } = options;
+	const { mode = 'webhook', retryOf, tracingContext, triggerData } = options;
 	const triggerNode = workflow.nodes.find((n) => n.type === 'n8n-nodes-base.manualTrigger')!;
 	const executionData = createRunExecutionData({
 		executionData: {
 			nodeExecutionStack: [
 				{
 					node: triggerNode,
-					data: { main: [[{ json: {}, pairedItem: { item: 0 } }]] },
+					data: { main: [[{ json: triggerData ?? {}, pairedItem: { item: 0 } }]] },
 					source: null,
 				},
 			],
