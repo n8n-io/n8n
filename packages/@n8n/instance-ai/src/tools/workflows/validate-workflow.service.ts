@@ -1,18 +1,29 @@
 /**
  * Validate workflow service — computes the same per-node issues that the editor
  * canvas surfaces as red warning indicators (missing credentials, parameter
- * issues, etc.). Mirrors `getNodeIssues` in
+ * issues, missing required input connections, etc.). Mirrors `getNodeIssues` in
  * `packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts`.
  *
- * Phase 1 scope: parameter issues + credential issues (notSet, notIdentified,
- * doNotExist, HTTP genericCredentialType / proxy-auth paths, AI-gateway-managed
- * bypass). Input issues, execution issues, and pinData/foreign-credential
- * polish land in later phases.
+ * Phases shipped:
+ *   1. Parameter issues + credential issues (notSet, notIdentified, doNotExist,
+ *      HTTP genericCredentialType / proxy-auth paths, AI-gateway-managed bypass).
+ *   2. Required-input-connection issues (AI Agent missing language model, Merge
+ *      missing a branch, etc.).
+ *
+ * Still deferred:
+ *   3. Execution issues (last-run errors).
+ *   4. Niche edge cases (usedCredentialIds polish, pinData skip, inline JSON).
  */
 import type { DisplayOptions, NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions } from '@n8n/workflow-sdk';
-import type { INodeIssueObjectProperty, INodeIssues } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import type {
+	IConnections,
+	INodeInputConfiguration,
+	INodeIssueObjectProperty,
+	INodeIssues,
+	NodeConnectionType,
+} from 'n8n-workflow';
+import { NodeHelpers, getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 
 import type { InstanceAiContext, NodeDescription } from '../../types';
 
@@ -262,11 +273,59 @@ async function computeCredentialIssues(
 	return { credentials: foundIssues };
 }
 
+// ── Input-connection check ──────────────────────────────────────────────────
+
+/**
+ * Compute input-connection issues for a node. Mirrors `getNodeInputIssues` in
+ * useNodeHelpers.ts (lines 378-414).
+ *
+ * Required inputs (non-string `INodeInputConfiguration` with `required: true`)
+ * must have at least one parent connection of the matching type. AI Agent
+ * sub-node attachments (`ai_languageModel`, `ai_memory`, etc.) and Merge node
+ * branches are the most common cases.
+ *
+ * `connectionsByDestination` is computed once in the entry function and reused
+ * across nodes — `mapConnectionsByDestination` is O(n) per call so deduping
+ * matters for big workflows.
+ */
+async function computeInputIssues(
+	context: InstanceAiContext,
+	workflowJson: WorkflowJSON,
+	connectionsByDestination: IConnections,
+	nodeName: string,
+): Promise<INodeIssues | null> {
+	if (!context.nodeService.getResolvedNodeInputs) return null;
+
+	const inputs = await context.nodeService
+		.getResolvedNodeInputs(workflowJson, nodeName)
+		.catch(() => [] as Array<NodeConnectionType | INodeInputConfiguration>);
+
+	const foundIssues: INodeIssueObjectProperty = {};
+
+	for (const input of inputs) {
+		// Plain-string inputs (`'main'`, `'ai_tool'`, ...) carry no `required` flag.
+		if (typeof input === 'string') continue;
+		if (input.required !== true) continue;
+
+		const parents = getParentNodes(connectionsByDestination, nodeName, input.type, 1);
+		if (parents.length === 0) {
+			foundIssues[input.type] = [
+				`No node connected to required input "${input.displayName ?? input.type}"`,
+			];
+		}
+	}
+
+	if (Object.keys(foundIssues).length === 0) return null;
+	return { input: foundIssues };
+}
+
 // ── Per-node orchestration ──────────────────────────────────────────────────
 
 async function computeNodeIssues(
 	context: InstanceAiContext,
 	cache: CredentialLookupCache,
+	workflowJson: WorkflowJSON,
+	connectionsByDestination: IConnections,
 	node: NodeJSON,
 	usedCredentialIds: Set<string>,
 	ignoreIssues: ReadonlySet<string>,
@@ -311,6 +370,22 @@ async function computeNodeIssues(
 			} else {
 				NodeHelpers.mergeIssues(issues, credentialIssues);
 			}
+		}
+	}
+
+	if (!ignoreIssues.has('input')) {
+		const inputIssues = await computeInputIssues(
+			context,
+			workflowJson,
+			connectionsByDestination,
+			node.name,
+		);
+		// NodeHelpers.mergeIssues doesn't know about the `input` key (only
+		// `parameters` + `credentials`), so set it directly. `computeInputIssues`
+		// already aggregates every input issue for the node into a single object.
+		if (inputIssues?.input) {
+			issues = issues ?? {};
+			issues.input = inputIssues.input;
 		}
 	}
 
@@ -368,6 +443,12 @@ export async function validateWorkflowConfig(
 	// populate this Set here.
 	const usedCredentialIds = new Set<string>();
 
+	// Invert connections once — every per-node input-issue check needs the
+	// destination-keyed view, and mapConnectionsByDestination is O(n).
+	const connectionsByDestination = mapConnectionsByDestination(
+		(workflowJson.connections ?? {}) as IConnections,
+	);
+
 	const issues: Record<string, INodeIssues> = {};
 	const summary: string[] = [];
 
@@ -377,6 +458,8 @@ export async function validateWorkflowConfig(
 			const nodeIssues = await computeNodeIssues(
 				context,
 				cache,
+				workflowJson,
+				connectionsByDestination,
 				node,
 				usedCredentialIds,
 				ignoreIssues,

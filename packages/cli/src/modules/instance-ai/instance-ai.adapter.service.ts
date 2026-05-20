@@ -87,6 +87,7 @@ import {
 	type WorkflowExecuteMode,
 	type ExecutionError,
 	NodeHelpers,
+	Workflow,
 	createRunExecutionData,
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -2042,6 +2043,32 @@ export class InstanceAiAdapterService {
 				}
 
 				return Array.from(credentialTypes);
+			},
+
+			getResolvedNodeInputs: async (workflowJson, nodeName) => {
+				const nodeJson = workflowJson.nodes.find((n) => n.name === nodeName);
+				if (!nodeJson) return [];
+
+				const nodeType = this.nodeTypes.getByNameAndVersion(
+					nodeJson.type,
+					nodeJson.typeVersion ?? 1,
+				);
+				if (!nodeType) return [];
+
+				// Construct a transient Workflow so dynamic `inputs` expressions can be
+				// evaluated against the node's current parameters and the surrounding
+				// workflow graph. Not persisted; lives only for this call.
+				const workflow = new Workflow({
+					nodes: workflowJson.nodes as unknown as INode[],
+					connections: workflowJson.connections as unknown as IConnections,
+					active: false,
+					nodeTypes: this.nodeTypes,
+				});
+
+				const workflowNode = workflow.getNode(nodeName);
+				if (!workflowNode) return [];
+
+				return NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType.description);
 			},
 
 			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> => {

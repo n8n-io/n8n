@@ -17,7 +17,12 @@ import type {
 	McpToolCallResult,
 } from '@n8n/api-types';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import type { GenericValue, INodeTypes } from 'n8n-workflow';
+import type {
+	GenericValue,
+	INodeInputConfiguration,
+	INodeTypes,
+	NodeConnectionType,
+} from 'n8n-workflow';
 
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
@@ -356,6 +361,15 @@ export interface InstanceAiNodeService {
 		parameters: Record<string, unknown>,
 		existingCredentials?: Record<string, unknown>,
 	): Promise<string[]>;
+	/** Resolve a node's input definitions in the context of a full workflow so
+	 *  expression-based dynamic inputs evaluate against current parameter values.
+	 *  Mirrors NodeHelpers.getNodeInputs. Returns the same post-evaluation shape
+	 *  as INodeTypeDescription['inputs']. Used by workflow validation to detect
+	 *  required-but-unconnected inputs (e.g. AI Agent missing language model). */
+	getResolvedNodeInputs?(
+		workflow: WorkflowJSON,
+		nodeName: string,
+	): Promise<Array<NodeConnectionType | INodeInputConfiguration>>;
 }
 
 /** Richer node type shape that includes inputs, outputs, codex, and builderHint.

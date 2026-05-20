@@ -73,8 +73,8 @@ function makeNode(overrides: Partial<NodeJSON> = {}): NodeJSON {
 	} as NodeJSON;
 }
 
-function makeWorkflow(nodes: NodeJSON[]): WorkflowJSON {
-	return { nodes, connections: {} } as unknown as WorkflowJSON;
+function makeWorkflow(nodes: NodeJSON[], connections: Record<string, unknown> = {}): WorkflowJSON {
+	return { nodes, connections } as unknown as WorkflowJSON;
 }
 
 function makeDescription(overrides: Partial<NodeDescription> = {}): NodeDescription {
@@ -385,6 +385,206 @@ describe('validateWorkflowConfig', () => {
 			expect(context.workflowService.getAsWorkflowJSON).toHaveBeenCalledWith('w1');
 			expect(result.workflowId).toBe('w1');
 			expect(result.valid).toBe(false);
+		});
+	});
+
+	describe('input issues', () => {
+		// Mock helper that stages the resolved-inputs result. Real adapter constructs
+		// a Workflow instance and calls NodeHelpers.getNodeInputs; here we mock at
+		// the service-interface boundary so we control the shape directly.
+		function stubResolvedInputs(
+			context: InstanceAiContext,
+			perNodeInputs: Record<string, unknown[]>,
+		): void {
+			(context.nodeService as unknown as Record<string, unknown>).getResolvedNodeInputs = jest
+				.fn()
+				.mockImplementation(async (_workflow: WorkflowJSON, nodeName: string) => {
+					return await Promise.resolve(perNodeInputs[nodeName] ?? []);
+				});
+		}
+
+		it('flags an AI Agent node missing its required ai_languageModel attachment', async () => {
+			const context = createMockContext();
+			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+				makeDescription({
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					credentials: [],
+				}),
+			);
+			stubResolvedInputs(context, {
+				Agent: [
+					'main',
+					{
+						type: 'ai_languageModel',
+						displayName: 'Chat Model',
+						required: true,
+						maxConnections: 1,
+					},
+				],
+			});
+
+			const node = makeNode({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+			});
+
+			const result = await validateWorkflowConfig(context, {
+				workflow: makeWorkflow([node]),
+			});
+
+			expect(result.valid).toBe(false);
+			expect(result.issues.Agent.input).toEqual({
+				ai_languageModel: ['No node connected to required input "Chat Model"'],
+			});
+			expect(result.summary).toContain(
+				'Agent: input.ai_languageModel: No node connected to required input "Chat Model"',
+			);
+		});
+
+		it('does not flag an AI Agent when the language model is attached', async () => {
+			const context = createMockContext();
+			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+				makeDescription({
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					credentials: [],
+				}),
+			);
+			stubResolvedInputs(context, {
+				Agent: [
+					'main',
+					{
+						type: 'ai_languageModel',
+						displayName: 'Chat Model',
+						required: true,
+						maxConnections: 1,
+					},
+				],
+			});
+
+			const node = makeNode({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+			});
+			const model = makeNode({
+				name: 'OpenAI Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1,
+			});
+
+			// `connections` keyed by SOURCE node — `OpenAI Chat Model` feeds Agent's
+			// `ai_languageModel` input.
+			const connections = {
+				'OpenAI Chat Model': {
+					ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+			};
+
+			const result = await validateWorkflowConfig(context, {
+				workflow: makeWorkflow([node, model], connections),
+			});
+
+			expect(result.valid).toBe(true);
+			expect(result.issues).toEqual({});
+		});
+
+		it('does not flag optional inputs (required !== true)', async () => {
+			const context = createMockContext();
+			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+				makeDescription({
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					credentials: [],
+				}),
+			);
+			stubResolvedInputs(context, {
+				Agent: [
+					'main',
+					{ type: 'ai_memory', displayName: 'Memory' }, // no `required` flag
+				],
+			});
+
+			const node = makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' });
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
+
+			expect(result.valid).toBe(true);
+		});
+
+		it('does not flag plain-string inputs (no required field)', async () => {
+			const context = createMockContext();
+			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+				makeDescription({ credentials: [] }),
+			);
+			// Standard nodes have plain `'main'` string inputs — never carry a required flag.
+			stubResolvedInputs(context, {
+				'Send Telegram message': ['main'],
+			});
+
+			const node = makeNode();
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
+
+			expect(result.valid).toBe(true);
+		});
+
+		it('honors ignoreIssues: ["input"] to suppress input issues', async () => {
+			const context = createMockContext();
+			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+				makeDescription({
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					credentials: [],
+				}),
+			);
+			stubResolvedInputs(context, {
+				Agent: [{ type: 'ai_languageModel', displayName: 'Chat Model', required: true }],
+			});
+
+			const node = makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' });
+			const result = await validateWorkflowConfig(context, {
+				workflow: makeWorkflow([node]),
+				ignoreIssues: ['input'],
+			});
+
+			expect(result.valid).toBe(true);
+			expect(result.issues).toEqual({});
+		});
+
+		it('skips input checks entirely when getResolvedNodeInputs is not implemented', async () => {
+			const context = createMockContext();
+			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+				makeDescription({ credentials: [] }),
+			);
+			// Adapter optionality: no getResolvedNodeInputs method on the service.
+			// Validation should still succeed without crashing.
+			const node = makeNode();
+
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
+
+			expect(result.valid).toBe(true);
+		});
+
+		it('uses the input.type as fallback message label when displayName is missing', async () => {
+			const context = createMockContext();
+			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+				makeDescription({
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					credentials: [],
+				}),
+			);
+			stubResolvedInputs(context, {
+				Agent: [{ type: 'ai_tool', required: true }], // no displayName
+			});
+
+			const node = makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' });
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
+
+			expect(result.issues.Agent.input).toEqual({
+				ai_tool: ['No node connected to required input "ai_tool"'],
+			});
 		});
 	});
 });
