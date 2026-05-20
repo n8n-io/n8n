@@ -33,7 +33,12 @@
   "dependencies": {
     "@n8n/errors": "workspace:*",
     "@n8n/tournament": "workspace:*",
+<<<<<<< HEAD
     "isolated-vm": "^6.0.2",
+=======
+    "isolated-vm": "catalog:",
+    "jmespath": "0.16.0",
+>>>>>>> 059574ea (refactor(core): Resolve $jmespath in-isolate for VM engine (no-changelog) (#30736))
     "js-base64": "catalog:",
     "jssha": "3.3.1",
     "lodash": "catalog:",
@@ -45,6 +50,7 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@types/jmespath": "^0.15.0",
     "@types/lodash": "catalog:",
     "@types/luxon": "3.2.0",
     "@types/md5": "^2.3.5",
