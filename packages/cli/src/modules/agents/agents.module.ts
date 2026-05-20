@@ -9,6 +9,7 @@ import { InstanceSettings } from 'n8n-core';
 export class AgentsModule implements ModuleInterface {
 	async init() {
 		await import('./agents.controller');
+		await import('./agent-debug.controller');
 		await import('./builder/agents-builder-settings.controller');
 
 		const { AgentsService } = await import('./agents.service');
@@ -21,6 +22,9 @@ export class AgentsModule implements ModuleInterface {
 
 		const { AgentExecutionService } = await import('./agent-execution.service');
 		Container.get(AgentExecutionService);
+
+		const { AgentDebugService } = await import('./agent-debug.service');
+		Container.get(AgentDebugService);
 
 		const { AgentEvaluationCaseRepository } = await import(
 			'./repositories/agent-evaluation-case.repository'
