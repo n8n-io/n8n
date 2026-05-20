@@ -32,7 +32,6 @@ describe('useCanvasNode', () => {
 		expect(result.runDataOutputMap.value).toEqual({});
 		expect(result.runDataIterations.value).toBe(0);
 		expect(result.hasRunData.value).toBe(false);
-		expect(result.issues.value).toEqual([]);
 		expect(result.hasIssues.value).toBe(false);
 		expect(result.executionStatus.value).toBeUndefined();
 		expect(result.executionWaiting.value).toBeUndefined();
@@ -54,7 +53,6 @@ describe('useCanvasNode', () => {
 					[CanvasConnectionMode.Output]: {},
 				},
 				issues: {
-					execution: ['execution_error1'],
 					validation: ['validation_error1'],
 					visible: true,
 				},
@@ -92,7 +90,7 @@ describe('useCanvasNode', () => {
 		expect(result.runDataOutputMap.value).toEqual({});
 		expect(result.runDataIterations.value).toBe(1);
 		expect(result.hasRunData.value).toBe(true);
-		expect(result.issues.value).toEqual(['execution_error1', 'validation_error1']);
+		expect(result.validationErrors.value).toEqual(['validation_error1']);
 		expect(result.hasIssues.value).toBe(true);
 		expect(result.executionStatus.value).toBe('running');
 		expect(result.executionWaiting.value).toBe('waiting');
