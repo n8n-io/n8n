@@ -31,7 +31,10 @@ import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
 import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 
 const EVAL_SETUP_TOOL_NAMES = ['workflows', 'nodes'] as const;
-const EVAL_SETUP_WORKFLOW_ACTIONS = ['get', 'update'] as const satisfies readonly WorkflowAction[];
+const EVAL_SETUP_WORKFLOW_ACTIONS = [
+	'get-json',
+	'update',
+] as const satisfies readonly WorkflowAction[];
 
 /**
  * Build the eval-setup sub-agent's tool set.

@@ -405,6 +405,40 @@ describe('workflows tool', () => {
 		});
 	});
 
+	describe('get-json action', () => {
+		it('should return full WorkflowJSON with node metadata', async () => {
+			const workflow = {
+				id: 'wf1',
+				name: 'Test WF',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 2,
+						position: [0, 0],
+						parameters: { text: '={{ $json.input }}' },
+						credentials: { openAiApi: { id: 'cred-1', name: 'OpenAI' } },
+						disabled: false,
+					},
+				],
+				connections: {},
+			};
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(workflow);
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'get-json', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(context.workflowService.getAsWorkflowJSON).toHaveBeenCalledWith('wf1');
+			expect(result).toEqual(workflow);
+		});
+	});
+
 	describe('delete action', () => {
 		it('should return denied when permission is blocked', async () => {
 			const context = createMockContext({

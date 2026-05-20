@@ -75,7 +75,8 @@ describe('buildEvalSetupTools', () => {
 		const tools = buildEvalSetupTools(ctx);
 		const schema = getInputSchema(tools.get('workflows'));
 
-		expect(schema.safeParse({ action: 'get', workflowId: 'w1' }).success).toBe(true);
+		expect(schema.safeParse({ action: 'get-json', workflowId: 'w1' }).success).toBe(true);
+		expect(schema.safeParse({ action: 'get', workflowId: 'w1' }).success).toBe(false);
 		expect(
 			schema.safeParse({
 				action: 'update',
