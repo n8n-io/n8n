@@ -470,7 +470,7 @@ export class InMemoryMemory
 			const contentHash = entry.contentHash ?? hashEpisodicMemoryContent(entry.content);
 			const duplicate = this.episodicMemory.find(
 				(existing) =>
-					existing.agentId === entry.agentId &&
+					existing.namespace === entry.namespace &&
 					existing.resourceId === entry.resourceId &&
 					existing.contentHash === contentHash,
 			);
@@ -484,7 +484,7 @@ export class InMemoryMemory
 
 			const row: EpisodicMemoryEntry = {
 				id: crypto.randomUUID(),
-				agentId: entry.agentId,
+				namespace: entry.namespace,
 				resourceId: entry.resourceId,
 				content: entry.content,
 				contentHash,
@@ -559,7 +559,9 @@ export class InMemoryMemory
 		opts?: EpisodicMemorySearchOptions,
 	): Promise<RetrievedEpisodicMemoryEntry[]> {
 		const scoped = this.episodicMemory
-			.filter((entry) => entry.agentId === scope.agentId && entry.resourceId === scope.resourceId)
+			.filter(
+				(entry) => entry.namespace === scope.namespace && entry.resourceId === scope.resourceId,
+			)
 			.map(cloneEpisodicMemoryEntry);
 		return rankEpisodicMemoryEntries(scoped, query, opts);
 	}
@@ -591,7 +593,7 @@ export class InMemoryMemory
 			this.episodicMemory
 				.filter(
 					(entry) =>
-						entry.agentId === scope.agentId &&
+						entry.namespace === scope.namespace &&
 						entry.resourceId === scope.resourceId &&
 						entry.status === 'active',
 				)

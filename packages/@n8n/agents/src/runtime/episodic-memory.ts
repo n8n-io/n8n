@@ -299,9 +299,9 @@ export function hashEpisodicMemoryEvidence(evidenceText: string): string {
 function requireEpisodicMemoryScope(
 	persistence: AgentPersistenceOptions | undefined,
 ): EpisodicMemoryScope | null {
-	if (!persistence?.agentId || !persistence.resourceId) return null;
+	if (!persistence?.resourceId) return null;
 	return {
-		agentId: persistence.agentId,
+		namespace: persistence.episodicMemoryNamespace ?? persistence.resourceId,
 		resourceId: persistence.episodicMemoryResourceId ?? persistence.resourceId,
 	};
 }
