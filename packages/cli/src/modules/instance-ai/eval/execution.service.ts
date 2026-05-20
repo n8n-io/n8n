@@ -41,14 +41,16 @@ import { generatePinData } from './pin-data-generator';
 
 import {
 	assertUnpinCompatibility,
+	buildVendorLlmRouting,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	type MockHints,
+	type VendorLlmRouting,
 } from './workflow-analysis';
 import { createLlmMockHandler } from './mock-handler';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
-import { LlmWireServer } from './llm-wire-server';
+import { type InterceptedTurn, LlmWireServer } from './llm-wire-server';
 import { patchNoProxyForLoopback } from './proxy-loopback';
 
 // ---------------------------------------------------------------------------
@@ -124,6 +126,9 @@ export class EvalExecutionService {
 
 		const unpinSet = unpinNodes.length > 0 ? new Set(unpinNodes) : undefined;
 		const hints = await this.analyzeWorkflow(workflowEntity, options.scenarioHints, unpinSet);
+		const vendorLlmRouting = interceptionEnabled
+			? buildVendorLlmRouting(workflowEntity, unpinNodes)
+			: undefined;
 
 		return await this.execute(
 			workflowEntity,
@@ -132,6 +137,7 @@ export class EvalExecutionService {
 			hints,
 			options.scenarioHints,
 			interceptionEnabled,
+			vendorLlmRouting,
 		);
 	}
 
@@ -245,6 +251,7 @@ export class EvalExecutionService {
 		hints: MockHints,
 		scenarioHints?: string,
 		interceptionEnabled = false,
+		vendorLlmRouting?: VendorLlmRouting,
 	): Promise<InstanceAiEvalExecutionResult> {
 		const nodeResults: Record<string, InstanceAiEvalNodeResult> = {};
 
@@ -274,7 +281,12 @@ export class EvalExecutionService {
 		try {
 			let serverUrl: string | undefined;
 			if (interceptionEnabled) {
-				wireServer = new LlmWireServer();
+				wireServer = new LlmWireServer({
+					mockHandler,
+					rootToSubNode: vendorLlmRouting?.rootToSubNode,
+					onIntercept: (turn) => this.recordWireServerTurn(turn, nodeResults),
+					logger: this.logger,
+				});
 				serverUrl = await wireServer.start();
 				restoreNoProxy = patchNoProxyForLoopback();
 				this.logger.debug(`[EvalMock] Wire server listening at ${serverUrl}`);
@@ -284,6 +296,7 @@ export class EvalExecutionService {
 				additionalData.credentialsHelper,
 				serverUrl,
 				this.logger,
+				vendorLlmRouting?.subNodeToRoot,
 			);
 			additionalData.credentialsHelper = credentialsHelper;
 			additionalData.evalLlmMockHandler = this.createInterceptingHandler(mockHandler, nodeResults);
@@ -462,6 +475,35 @@ export class EvalExecutionService {
 	}
 
 	// ── Request interception ─────────────────────────────────────────────
+
+	/**
+	 * Record a wire-server model turn against the AI root in `nodeResults`.
+	 * Attribution mirrors `createInterceptingHandler` so vendor-SDK traffic
+	 * and HTTP-helper traffic land in the same ledger shape — downstream
+	 * consumers (eval UI, graders) don't need to special-case the two.
+	 */
+	private recordWireServerTurn(
+		turn: InterceptedTurn,
+		nodeResults: Record<string, InstanceAiEvalNodeResult>,
+	): void {
+		const entry = (nodeResults[turn.rootName] ??= {
+			output: null,
+			interceptedRequests: [],
+			executionMode: 'mocked',
+		});
+		entry.executionMode = 'mocked';
+		entry.interceptedRequests.push({
+			url: turn.url,
+			method: turn.method,
+			nodeType: turn.nodeType,
+			requestBody: turn.requestBody,
+			mockResponse: turn.mockResponse,
+		});
+
+		this.logger.debug(
+			`[EvalMock] Wire server intercepted ${turn.method} ${turn.url} attributed to root "${turn.rootName}"`,
+		);
+	}
 
 	/**
 	 * Wraps the mock handler to collect intercepted request metadata for diagnostics.

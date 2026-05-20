@@ -29,18 +29,26 @@ jest.mock('../mock-handler', () => ({
 }));
 jest.mock('../workflow-analysis', () => ({
 	assertUnpinCompatibility: jest.fn(),
+	buildVendorLlmRouting: jest.fn().mockReturnValue({
+		subNodeToRoot: new Map(),
+		rootToSubNode: new Map(),
+	}),
 	generateMockHints: jest.fn(),
 	identifyNodesForHints: jest.fn(),
 	identifyNodesForPinData: jest.fn(),
 }));
 const mockWireServerStart = jest.fn();
 const mockWireServerStop = jest.fn();
+const capturedWireServerOptions: { last: unknown } = { last: undefined };
 jest.mock('../llm-wire-server', () => ({
-	LlmWireServer: jest.fn().mockImplementation(() => ({
-		start: mockWireServerStart,
-		stop: mockWireServerStop,
-		url: 'http://127.0.0.1:54321',
-	})),
+	LlmWireServer: jest.fn().mockImplementation((options: unknown) => {
+		capturedWireServerOptions.last = options;
+		return {
+			start: mockWireServerStart,
+			stop: mockWireServerStop,
+			url: 'http://127.0.0.1:54321',
+		};
+	}),
 }));
 const mockRestoreNoProxy = jest.fn();
 jest.mock('../proxy-loopback', () => ({
@@ -476,6 +484,43 @@ describe('EvalExecutionService', () => {
 				expect(mockProcessRunExecutionData).not.toHaveBeenCalled();
 				// Server was never started — guard runs before boot.
 				expect(mockWireServerStart).not.toHaveBeenCalled();
+			});
+
+			it('records a wire-server turn against the AI root in nodeResults via onIntercept', async () => {
+				// Simulate the wire server firing onIntercept mid-execution by
+				// invoking the captured callback before processRunExecutionData
+				// resolves. This exercises `recordWireServerTurn` end-to-end
+				// without booting a real Express server.
+				mockProcessRunExecutionData.mockImplementation(async () => {
+					const opts = capturedWireServerOptions.last as {
+						onIntercept?: (turn: unknown) => void;
+					};
+					opts.onIntercept?.({
+						rootName: 'Agent',
+						url: 'https://api.openai.com/v1/chat/completions',
+						method: 'POST',
+						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						requestBody: { model: 'gpt-4o', messages: [] },
+						mockResponse: { content: 'hello from mock' },
+					});
+					return makeIRun();
+				});
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['Agent'],
+				});
+
+				expect(result.nodeResults['Agent']).toBeDefined();
+				expect(result.nodeResults['Agent'].executionMode).toBe('mocked');
+				expect(result.nodeResults['Agent'].interceptedRequests).toEqual([
+					{
+						url: 'https://api.openai.com/v1/chat/completions',
+						method: 'POST',
+						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						requestBody: { model: 'gpt-4o', messages: [] },
+						mockResponse: { content: 'hello from mock' },
+					},
+				]);
 			});
 		});
 	});

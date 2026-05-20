@@ -11,21 +11,34 @@ import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper';
 import { LlmWireServer } from '../llm-wire-server';
 
 /**
- * M1 acceptance fixture (mechanism). Proves end-to-end that:
+ * M1 / M2 acceptance fixture (mechanism). Proves end-to-end that:
  *   1. `LlmWireServer` boots on a real loopback port.
  *   2. `EvalMockedCredentialsHelper` rewrites the resolved `openAiApi`
- *      credential's `url` field to that exact URL.
- *   3. A POST against the rewritten URL hits the live server and gets back a
- *      well-formed OpenAI chat-completion envelope.
+ *      credential's `url` field to a path that includes the AI root name as
+ *      a token: `/eval/<root>/v1`. The token survives the OpenAI SDK's
+ *      `baseURL + "/chat/completions"` concatenation.
+ *   3. A POST against the rewritten URL hits the live server, the wire
+ *      server attributes the call back to the correct root via the path
+ *      token, and returns a well-formed OpenAI chat-completion envelope.
  *
  * The full LangChain SDK round-trip (vendor SDK as the caller, not raw fetch)
  * lands in TRUST-115's M3 fixture — see the master spec.
  */
-describe('TRUST-113 M1: helper + wire server end-to-end rewrite', () => {
+describe('TRUST-114 M2: helper + wire server end-to-end rewrite with root token', () => {
 	let server: LlmWireServer;
+	const subNode: INode = {
+		id: 'sub-node-1',
+		name: 'OpenAI Chat Model',
+		type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+	};
 
 	beforeEach(async () => {
-		server = new LlmWireServer();
+		server = new LlmWireServer({
+			rootToSubNode: new Map([['LLM Chain', subNode]]),
+		});
 		await server.start();
 	});
 
@@ -47,12 +60,18 @@ describe('TRUST-113 M1: helper + wire server end-to-end rewrite', () => {
 		} as ICredentialsHelper;
 	}
 
-	it('rewrites the openAiApi base URL to the wire server with the /v1 path', async () => {
+	it('rewrites the openAiApi base URL to include the root token', async () => {
 		const realCreds: ICredentialDataDecryptedObject = {
 			apiKey: 'sk-real-secret',
 			url: 'https://api.openai.com/v1',
 		};
-		const helper = new EvalMockedCredentialsHelper(makeInner(realCreds), server.url);
+		const subNodeToRoot = new Map([['OpenAI Chat Model', 'LLM Chain']]);
+		const helper = new EvalMockedCredentialsHelper(
+			makeInner(realCreds),
+			server.url,
+			undefined,
+			subNodeToRoot,
+		);
 		const nodeCreds: INodeCredentialsDetails = { id: 'cred-1', name: 'OpenAI' };
 
 		const result = await helper.getDecrypted(
@@ -63,7 +82,7 @@ describe('TRUST-113 M1: helper + wire server end-to-end rewrite', () => {
 			{ node: { name: 'OpenAI Chat Model', id: 'node-1' } as INode } as IExecuteData,
 		);
 
-		expect(result.url).toBe(`${server.url}/v1`);
+		expect(result.url).toBe(`${server.url}/eval/LLM%20Chain/v1`);
 		expect(result.apiKey).toBe('sk-real-secret');
 		expect(helper.rewrittenCredentials).toEqual([
 			{
@@ -80,7 +99,13 @@ describe('TRUST-113 M1: helper + wire server end-to-end rewrite', () => {
 			apiKey: 'sk-real-secret',
 			url: 'https://api.openai.com/v1',
 		};
-		const helper = new EvalMockedCredentialsHelper(makeInner(realCreds), server.url);
+		const subNodeToRoot = new Map([['OpenAI Chat Model', 'LLM Chain']]);
+		const helper = new EvalMockedCredentialsHelper(
+			makeInner(realCreds),
+			server.url,
+			undefined,
+			subNodeToRoot,
+		);
 		const nodeCreds: INodeCredentialsDetails = { id: 'cred-1', name: 'OpenAI' };
 
 		const rewritten = await helper.getDecrypted(
@@ -94,14 +119,16 @@ describe('TRUST-113 M1: helper + wire server end-to-end rewrite', () => {
 		// Mirror the LangChain OpenAI node behaviour: `credentials.url` becomes
 		// the SDK's `baseURL` verbatim (LmChatOpenAi.node.ts:765), and the SDK
 		// appends `/chat/completions`. So this is the exact URL the SDK would
-		// post to — if the rewrite were missing `/v1`, this would 404.
+		// post to — if the rewrite dropped `/v1` the SDK would 404, and if it
+		// dropped `/eval/<root>/` the wire server's unrouted handler would
+		// return a 500 explaining the misconfiguration.
 		const baseUrl = String(rewritten.url);
 		const response = await fetch(`${baseUrl}/chat/completions`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				model: 'gpt-4o-mini',
-				messages: [{ role: 'user', content: 'M1 mechanism check' }],
+				messages: [{ role: 'user', content: 'M2 mechanism check' }],
 			}),
 		});
 		const body = (await response.json()) as {
@@ -117,7 +144,13 @@ describe('TRUST-113 M1: helper + wire server end-to-end rewrite', () => {
 
 	it('leaves the URL alone for credential types not in the provider map', async () => {
 		const realCreds: ICredentialDataDecryptedObject = { accessToken: 'real-token' };
-		const helper = new EvalMockedCredentialsHelper(makeInner(realCreds), server.url);
+		const subNodeToRoot = new Map([['OpenAI Chat Model', 'LLM Chain']]);
+		const helper = new EvalMockedCredentialsHelper(
+			makeInner(realCreds),
+			server.url,
+			undefined,
+			subNodeToRoot,
+		);
 
 		const result = await helper.getDecrypted(
 			{} as IWorkflowExecuteAdditionalData,

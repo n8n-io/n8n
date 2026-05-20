@@ -118,6 +118,60 @@ type UnpinRefusal = {
 	reason: 'protocol_binary' | 'unsupported_vendor_llm' | 'unsafe_baseurl_override';
 };
 
+/**
+ * Routing maps for vendor SDK interception. `subNodeToRoot` lets the credentials
+ * helper embed the calling sub-node's root in the rewritten URL; `rootToSubNode`
+ * lets the wire server fetch the sub-node `INode` for the mock handler.
+ *
+ * Known limitation: when a single vendor LLM sub-node feeds multiple unpinned
+ * roots, the first root in `unpinNodes` wins. See the "first wins" test in
+ * `workflow-analysis.test.ts` for the contract.
+ */
+export interface VendorLlmRouting {
+	subNodeToRoot: Map<string, string>;
+	rootToSubNode: Map<string, INode>;
+}
+
+/** Walk inbound `ai_languageModel` connections per unpinned root and build the routing maps. */
+export function buildVendorLlmRouting(
+	workflow: IWorkflowBase,
+	unpinNodes: string[],
+): VendorLlmRouting {
+	const subNodeToRoot = new Map<string, string>();
+	const rootToSubNode = new Map<string, INode>();
+
+	if (unpinNodes.length === 0) return { subNodeToRoot, rootToSubNode };
+
+	const nodesByName = new Map(workflow.nodes.map((n) => [n.name, n]));
+	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
+
+	for (const rootName of unpinNodes) {
+		const inbound = connectionsByDestination[rootName];
+		if (!inbound) continue;
+
+		for (const [connType, groups] of Object.entries(inbound)) {
+			if (connType !== 'ai_languageModel' || !Array.isArray(groups)) continue;
+			for (const group of groups) {
+				if (!Array.isArray(group)) continue;
+				for (const conn of group) {
+					const subNode = nodesByName.get(conn.node);
+					if (!subNode || subNode.disabled) continue;
+					if (!SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(subNode.type)) continue;
+
+					if (!subNodeToRoot.has(subNode.name)) {
+						subNodeToRoot.set(subNode.name, rootName);
+					}
+					if (!rootToSubNode.has(rootName)) {
+						rootToSubNode.set(rootName, subNode);
+					}
+				}
+			}
+		}
+	}
+
+	return { subNodeToRoot, rootToSubNode };
+}
+
 /** Throws if any unpinned AI root has a sub-node we can't intercept: protocol-binary, unmapped vendor LLM, or unsafe baseURL override. */
 export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: string[]): void {
 	if (unpinNodes.length === 0) return;

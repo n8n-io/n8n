@@ -39,6 +39,7 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		private readonly inner: ICredentialsHelper,
 		private readonly serverUrl?: string,
 		private readonly logger?: Logger,
+		private readonly subNodeToRoot?: ReadonlyMap<string, string>,
 	) {
 		super();
 	}
@@ -147,14 +148,34 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		}
 
 		const { field, pathPrefix } = mapping;
+		const subNodeName = executeData?.node?.name;
+		const rootName = subNodeName ? this.subNodeToRoot?.get(subNodeName) : undefined;
+
+		if (subNodeName && !rootName && this.subNodeToRoot) {
+			// The wire server is up and a routing map exists, but the calling
+			// sub-node isn't in it. `buildVendorLlmRouting` should have included
+			// every supported vendor LLM sub-node feeding an unpinned root, so
+			// reaching here means a workflow shape we didn't anticipate. The
+			// wire server's unrouted-/v1 handler will surface the resulting
+			// misattribution loudly — leave a breadcrumb here too.
+			this.logger?.warn(
+				`[EvalMock] No vendor LLM routing entry for sub-node "${subNodeName}" — ` +
+					'wire-server attribution will be unrouted. Check buildVendorLlmRouting coverage.',
+			);
+		}
+
 		this.rewrittenCredentials.push({
-			nodeName: executeData?.node?.name ?? 'unknown',
+			nodeName: subNodeName ?? 'unknown',
 			credentialType: type,
 			credentialId: nodeCredentials.id ?? undefined,
 			field,
 		});
 
-		return { ...credentials, [field]: `${this.serverUrl}${pathPrefix}` };
+		const rewrittenUrl = rootName
+			? `${this.serverUrl}/eval/${encodeURIComponent(rootName)}${pathPrefix}`
+			: `${this.serverUrl}${pathPrefix}`;
+
+		return { ...credentials, [field]: rewrittenUrl };
 	}
 
 	async updateCredentials(
