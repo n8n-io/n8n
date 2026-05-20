@@ -41,6 +41,7 @@ const {
 	credentials,
 	modelsByProvider,
 	isLoading,
+	projectId,
 	horizontal = false,
 	warnMissingCredentials = false,
 } = defineProps<{
@@ -48,6 +49,7 @@ const {
 	credentials: AgentCredentialsByProvider | null;
 	modelsByProvider: AgentModelsByProvider;
 	isLoading: boolean;
+	projectId?: string;
 	horizontal?: boolean;
 	warnMissingCredentials?: boolean;
 }>();
@@ -82,8 +84,22 @@ const selectedLabel = computed(
 	() => selectedModel?.name ?? i18n.baseText('agents.modelSelector.defaultLabel'),
 );
 
+const projectForPermissions = computed(() => {
+	if (projectId) {
+		if (projectsStore.currentProject?.id === projectId) return projectsStore.currentProject;
+		if (projectsStore.personalProject?.id === projectId) return projectsStore.personalProject;
+		return projectsStore.myProjects.find((project) => project.id === projectId) ?? null;
+	}
+
+	return projectsStore.currentProject ?? projectsStore.personalProject;
+});
+
+const createCredentialProjectId = computed(
+	() => projectForPermissions.value?.id ?? projectId ?? projectsStore.personalProject?.id,
+);
+
 const canCreateCredentials = computed(() => {
-	return getResourcePermissions(projectsStore.personalProject?.scopes).credential.create;
+	return !!getResourcePermissions(projectForPermissions.value?.scopes).credential.create;
 });
 
 function getProviderCredentialTypes(provider: AgentModelProvider): readonly [string, ...string[]] {
@@ -287,7 +303,7 @@ const filteredMenu = computed(() => {
 
 function openNewCredential(credentialType: string) {
 	if (canCreateCredentials.value) {
-		uiStore.openNewCredential(credentialType);
+		uiStore.openNewCredential(credentialType, false, false, createCredentialProjectId.value);
 	}
 }
 

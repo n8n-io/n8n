@@ -151,6 +151,7 @@ function onInstructionsInput(value: string) {
 				:credentials="credentialsByProvider"
 				:models-by-provider="filteredAgents"
 				:is-loading="isLoading"
+				:project-id="projectId"
 				:warn-missing-credentials="true"
 				horizontal
 				data-testid="agent-model-selector"

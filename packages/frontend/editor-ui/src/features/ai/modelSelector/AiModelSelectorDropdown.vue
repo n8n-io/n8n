@@ -117,6 +117,16 @@ defineExpose({
 
 		<template #item-leading="{ item, ui }">
 			<slot name="item-leading" :item="item" :ui="ui" />
+			<N8nIcon
+				v-if="!item.data && item.icon?.type === 'icon'"
+				:icon="item.icon.value"
+				:class="ui.class"
+				color="text-light"
+				size="large"
+			/>
+			<span v-else-if="!item.data && item.icon?.type === 'emoji'" :class="[$style.emoji, ui.class]">
+				{{ item.icon.value }}
+			</span>
 		</template>
 
 		<template #item-label="{ item, ui }">
@@ -228,6 +238,11 @@ defineExpose({
 .infoIcon,
 .menuIcon {
 	flex-shrink: 0;
+}
+
+.emoji {
+	font-size: var(--font-size--sm);
+	line-height: 1;
 }
 
 .infoIcon {

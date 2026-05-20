@@ -70,28 +70,19 @@ export function useAgentModelCredentials(userId: string) {
 		);
 	}
 
-	const autoSelectCredentials = computed<AgentCredentialsByProvider>(() => {
-		const credentials: AgentCredentialsByProvider = {};
-
-		for (const provider of AGENT_MODEL_PROVIDERS) {
-			credentials[provider] = getCredentialsForProvider(provider)[0]?.id ?? null;
-		}
-
-		return credentials;
-	});
-
 	const credentialsByProvider = computed<AgentCredentialsByProvider | null>(() => {
 		if (!isCredentialsReady.value) return null;
 
 		const credentials: AgentCredentialsByProvider = {};
 		for (const provider of AGENT_MODEL_PROVIDERS) {
+			const providerCredentials = getCredentialsForProvider(provider);
 			const selectedCredentialId = selectedCredentials.value[provider] ?? null;
 
 			credentials[provider] =
 				selectedCredentialId &&
-				credentialsStore.allCredentials.some((credential) => credential.id === selectedCredentialId)
+				providerCredentials.some((credential) => credential.id === selectedCredentialId)
 					? selectedCredentialId
-					: autoSelectCredentials.value[provider];
+					: (providerCredentials[0]?.id ?? null);
 		}
 
 		return credentials;

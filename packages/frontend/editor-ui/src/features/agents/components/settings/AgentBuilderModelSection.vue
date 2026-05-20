@@ -204,6 +204,7 @@ function onCancel() {
 				:credentials="credentialsByProvider"
 				:models-by-provider="filteredAgents"
 				:is-loading="isLoading"
+				:project-id="projectId"
 				:warn-missing-credentials="true"
 				horizontal
 				@change="onModelChange"
