@@ -1,6 +1,5 @@
 import { Service } from '@n8n/di';
-import { IDataObject } from '@n8n/workflow-sdk';
-import { IRunExecutionData } from 'n8n-workflow';
+import type { IDataObject, IRunExecutionData } from 'n8n-workflow';
 
 export interface InboundSecretProvider {
 	getInboundArtifacts(

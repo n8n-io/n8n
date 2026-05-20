@@ -199,24 +199,36 @@ describe('ExecuteSingleContext', () => {
 	});
 
 	describe('getInboundArtifact', () => {
+		const boundItemIndex = 5;
+		const boundContext = new ExecuteSingleContext(
+			workflow,
+			node,
+			additionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			inputData,
+			boundItemIndex,
+			executeData,
+			abortSignal,
+		);
+
 		beforeEach(() => {
 			additionalData.getInboundArtifact.mockReset();
 		});
 
-		it('defaults itemIndex to 0 when omitted', async () => {
+		it('defaults itemIndex to the context-bound itemIndex when omitted', async () => {
 			additionalData.getInboundArtifact.mockResolvedValue('Bearer xyz');
 
-			const result = await executeSingleContext.getInboundArtifact(
-				'Webhook',
-				'headers.authorization',
-			);
+			const result = await boundContext.getInboundArtifact('Webhook', 'headers.authorization');
 
 			expect(result).toBe('Bearer xyz');
 			expect(additionalData.getInboundArtifact).toHaveBeenCalledWith(
 				runExecutionData,
 				'Webhook',
 				'headers.authorization',
-				0,
+				boundItemIndex,
 			);
 		});
 

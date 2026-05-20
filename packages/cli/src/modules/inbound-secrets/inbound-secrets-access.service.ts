@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
-import { IDataObject } from '@n8n/workflow-sdk';
 import { Cipher } from 'n8n-core';
-import { IRunExecutionData, toSecureArtifacts } from 'n8n-workflow';
+import type { IDataObject, IRunExecutionData } from 'n8n-workflow';
+import { toSecureArtifacts } from 'n8n-workflow';
 
 import { InboundSecretProvider } from '@/services/inbound-secret-proxy.service';
 
