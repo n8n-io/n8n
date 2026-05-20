@@ -759,4 +759,80 @@ describe('validateWorkflowConfig', () => {
 			).toBe(true);
 		});
 	});
+
+	describe('parameter-value redaction (N8N_AI_ALLOW_SENDING_PARAMETER_VALUES)', () => {
+		function stubLatestRunData(
+			context: InstanceAiContext,
+			runData: Record<string, unknown[]> | null,
+		): void {
+			(context.workflowService as unknown as Record<string, unknown>).getLatestRunData = jest
+				.fn()
+				.mockImplementation(async (_workflowId: string) => {
+					return await Promise.resolve(runData);
+				});
+		}
+
+		it('drops the error message text from the summary when allowSendingParameterValues is false', async () => {
+			const context = createMockContext({ allowSendingParameterValues: false });
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+				makeDescription({ credentials: [] }),
+			);
+			stubLatestRunData(context, {
+				'HTTP Request': [{ error: { message: 'Bearer token sk-secret rejected' } }],
+			});
+
+			const result = await validateWorkflowConfig(context, { workflowId: 'w1' });
+
+			// Structured signal still flows — the canvas badge equivalent.
+			expect(result.issues['HTTP Request'].execution).toBe(true);
+			// Summary must not include the message text.
+			expect(result.summary).toContain(
+				'HTTP Request: execution: A previous execution of this node failed',
+			);
+			expect(result.summary.some((line) => line.includes('Bearer token sk-secret rejected'))).toBe(
+				false,
+			);
+		});
+
+		it('includes the error message when allowSendingParameterValues is true', async () => {
+			const context = createMockContext({ allowSendingParameterValues: true });
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+				makeDescription({ credentials: [] }),
+			);
+			stubLatestRunData(context, {
+				'HTTP Request': [{ error: { message: 'connect ECONNREFUSED' } }],
+			});
+
+			const result = await validateWorkflowConfig(context, { workflowId: 'w1' });
+
+			expect(result.summary).toContain(
+				'HTTP Request: execution: A previous execution of this node failed: connect ECONNREFUSED',
+			);
+		});
+
+		it('defaults to allowing message text when the flag is unset (undefined)', async () => {
+			const context = createMockContext(); // no flag in overrides
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+				makeDescription({ credentials: [] }),
+			);
+			stubLatestRunData(context, {
+				'HTTP Request': [{ error: { message: 'connect ECONNREFUSED' } }],
+			});
+
+			const result = await validateWorkflowConfig(context, { workflowId: 'w1' });
+
+			expect(result.summary).toContain(
+				'HTTP Request: execution: A previous execution of this node failed: connect ECONNREFUSED',
+			);
+		});
+	});
 });

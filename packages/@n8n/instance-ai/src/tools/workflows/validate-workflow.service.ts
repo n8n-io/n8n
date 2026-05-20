@@ -3,17 +3,6 @@
  * canvas surfaces as red warning indicators (missing credentials, parameter
  * issues, missing required input connections, etc.). Mirrors `getNodeIssues` in
  * `packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts`.
- *
- * Phases shipped:
- *   1. Parameter issues + credential issues (notSet, notIdentified, doNotExist,
- *      HTTP genericCredentialType / proxy-auth paths, AI-gateway-managed bypass).
- *   2. Required-input-connection issues (AI Agent missing language model, Merge
- *      missing a branch, etc.).
- *   3. Execution issues — `execution: true` on nodes whose most recent run had
- *      an error. Requires workflowId; inline-workflow mode skips silently.
- *
- * Still deferred:
- *   4. Niche edge cases (usedCredentialIds polish, pinData skip, inline JSON).
  */
 import type { DisplayOptions, NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions } from '@n8n/workflow-sdk';
@@ -28,8 +17,6 @@ import type {
 import { NodeHelpers, getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 
 import type { InstanceAiContext, NodeDescription } from '../../types';
-
-// ── Output shape ────────────────────────────────────────────────────────────
 
 export interface ValidateWorkflowResult {
 	workflowId?: string;
@@ -46,8 +33,6 @@ export interface ValidateWorkflowInput {
 	workflow?: WorkflowJSON;
 	ignoreIssues?: string[];
 }
-
-// ── Per-credential-type lookup cache ────────────────────────────────────────
 
 interface CredentialLookupCache {
 	byType: Map<string, Promise<Array<{ id: string; name: string }>>>;
@@ -75,8 +60,6 @@ async function listCredentialsByType(
 	}
 	return await promise;
 }
-
-// ── Frontend-mirrored credential checks ─────────────────────────────────────
 
 /** Mirrors `selectedCredsAreUnusable` in useNodeHelpers.ts. */
 function selectedCredsAreUnusable(node: NodeJSON, credentialType: string): boolean {
@@ -138,7 +121,7 @@ function doNotExistIssue(
 
 /**
  * Compute credential issues for a node. Mirrors `getNodeCredentialIssues` in
- * useNodeHelpers.ts (lines 416-572).
+ * useNodeHelpers.ts.
  *
  * `usedCredentialIds` represents the set of credential IDs the workflow
  * already references — the editor uses this to suppress the "doesn't exist"
@@ -275,8 +258,6 @@ async function computeCredentialIssues(
 	return { credentials: foundIssues };
 }
 
-// ── Input-connection check ──────────────────────────────────────────────────
-
 /**
  * Compute input-connection issues for a node. Mirrors `getNodeInputIssues` in
  * useNodeHelpers.ts (lines 378-414).
@@ -321,8 +302,6 @@ async function computeInputIssues(
 	return { input: foundIssues };
 }
 
-// ── Execution check ─────────────────────────────────────────────────────────
-
 /**
  * Returns the first error message in a node's most recent task data, or `null`
  * if none had an error. Mirrors `hasNodeExecutionIssues` (useNodeHelpers.ts:242)
@@ -339,8 +318,6 @@ function getFirstExecutionError(taskData: ITaskData[] | undefined): string | nul
 	return null;
 }
 
-// ── Per-node orchestration ──────────────────────────────────────────────────
-
 async function computeNodeIssues(
 	context: InstanceAiContext,
 	cache: CredentialLookupCache,
@@ -350,6 +327,7 @@ async function computeNodeIssues(
 	usedCredentialIds: Set<string>,
 	latestRunData: Record<string, ITaskData[]> | null,
 	executionErrors: Record<string, string>,
+	allowSendingParameterValues: boolean,
 	ignoreIssues: ReadonlySet<string>,
 ): Promise<INodeIssues | null> {
 	if (node.disabled) return null;
@@ -416,14 +394,18 @@ async function computeNodeIssues(
 		if (errorMessage !== null) {
 			issues = issues ?? {};
 			issues.execution = true;
-			executionErrors[node.name] = errorMessage;
+			// Only retain the message text when the instance permits sending
+			// parameter-derived strings to the LLM. Error messages can embed
+			// parameter values (URLs, headers, payloads), so skip the detail in
+			// the summary when restricted; the `execution: true` flag still flows.
+			if (allowSendingParameterValues) {
+				executionErrors[node.name] = errorMessage;
+			}
 		}
 	}
 
 	return issues;
 }
-
-// ── Summary formatting ──────────────────────────────────────────────────────
 
 function formatSummaryLines(
 	nodeName: string,
@@ -457,8 +439,6 @@ function formatSummaryLines(
 		);
 	}
 }
-
-// ── Entry point ─────────────────────────────────────────────────────────────
 
 /**
  * Verify a workflow and return per-node issues mirroring the canvas red badges.
@@ -513,6 +493,11 @@ export async function validateWorkflowConfig(
 	// error text without changing the canvas-parity INodeIssues shape.
 	const executionErrors: Record<string, string> = {};
 
+	// Default to allowing parameter-derived strings — package-only / test
+	// contexts that don't set the flag behave the same as the legacy permissive
+	// instance config. CLI adapter sets it explicitly from globalConfig.
+	const allowSendingParameterValues = context.allowSendingParameterValues !== false;
+
 	const issues: Record<string, INodeIssues> = {};
 	const summary: string[] = [];
 
@@ -528,6 +513,7 @@ export async function validateWorkflowConfig(
 				usedCredentialIds,
 				latestRunData,
 				executionErrors,
+				allowSendingParameterValues,
 				ignoreIssues,
 			);
 			return { node, nodeIssues };

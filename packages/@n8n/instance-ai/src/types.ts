@@ -628,6 +628,10 @@ export interface InstanceAiContext {
 	allowedRunWorkflowIds?: ReadonlySet<string>;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
+	/** When `false`, callers must avoid surfacing node parameter values (or anything derived from them
+	 *  — e.g. raw execution-error text) to the LLM. Defaults to `true` when
+	 *  absent so package-only / test contexts behave unchanged. */
+	allowSendingParameterValues?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance.
 	 *  Injected into the system prompt so the agent can explain why certain capabilities are missing. */
 	licenseHints?: string[];

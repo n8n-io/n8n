@@ -253,6 +253,7 @@ export class InstanceAiAdapterService {
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
+			allowSendingParameterValues: this.allowSendingParameterValues,
 		};
 	}
 
