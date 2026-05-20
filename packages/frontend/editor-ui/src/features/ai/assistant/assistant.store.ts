@@ -726,18 +726,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		});
 	}
 
-	watch(route, () => {
-		const activeWorkflowId = workflowsStore.workflowId;
-		if (
-			!currentSessionId.value ||
-			!currentSessionWorkflowId.value ||
-			currentSessionWorkflowId.value === activeWorkflowId
-		) {
-			return;
-		}
-		resetAssistantChat(activeWorkflowId);
-	});
-
 	watch(
 		() => uiStore.stateIsDirty,
 		() => {
@@ -760,6 +748,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		unreadCount,
 		streaming,
 		currentSessionId,
+		currentSessionWorkflowId,
 		lastUnread,
 		isSessionEnded,
 		isFloatingButtonShown,
