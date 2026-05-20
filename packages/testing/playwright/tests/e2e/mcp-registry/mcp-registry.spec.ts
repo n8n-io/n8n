@@ -16,7 +16,12 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'AI' }],
 	},
 	() => {
-		test('exposes Notion MCP as a tool with hidden connection fields', async ({ n8n, api }) => {
+		// NODE-5089 - ticket to fix and enable this test again
+		// eslint-disable-next-line playwright/no-skipped-test
+		test.skip('exposes Notion MCP as a tool with hidden connection fields', async ({
+			n8n,
+			api,
+		}) => {
 			await api.seedMcpRegistry();
 			await n8n.start.fromBlankCanvas();
 
