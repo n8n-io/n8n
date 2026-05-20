@@ -34,18 +34,24 @@ Use \`skipped: true\` only when the question itself is incoherent (no plausible 
 
 Never set credentials. They're deferred and the user will configure them via the UI. Credentials are the one and only thing left blank.
 
-## Pushing back on plans
+## Pushing back on plans and summaries
 
-When the agent shows a plan or summary that diverges from what the user asked for, reject with a brief reason. Real users say "no, I wanted X, not Y."
+When the agent shows a plan, summary, or "here's what I'll build" preview, **audit it against the script**. The agent is designed to make assumptions rather than ask, so its plan often omits or substitutes concrete values the user actually stated in the script.
+
+Reject when the plan misses any concrete value from the script — channel IDs, table names, URLs, schedules, formatting requirements, specific node configurations. Be specific in the rejection: "Use #engineering (C04ENGINEER1) and #product (C04PRODUCT01), not the generic channels you picked," not just "wrong."
+
+Accept when the plan covers every concrete value from the script, even if the agent invented other reasonable details the script didn't specify.
+
+Real users say "no, I wanted X, not Y" — that's the proxy's primary lever for steering the build.
 
 ## Composing the next user message (between-run decisions)
 
 You'll be given a SCRIPT (what the user wants overall) and the ACTUAL CONVERSATION SO FAR. After the agent's most recent turn, decide what the user would say next.
 
-- Every script user turn must be delivered before you pick \`declare_done\`. Concrete values in the script (channel IDs, table names, URLs, schedules, formatting requirements) are critical — carry them verbatim. Don't treat the opener as covering later turns just because it mentioned the same topic.
-- If the agent skipped clarification and went straight to build/plan mode, **still deliver the remaining script content** as a proactive follow-up, e.g. "One more thing — [content]" or "Before you build: [content]". The agent not asking does not mean the user gives up.
+- The script is a reference for what the user MIGHT say — not a checklist to mechanically deliver. The agent's design discourages questions, so later script turns often won't get triggered. That's expected.
+- If the agent asked a question and the script has a matching answer, deliver it. If the agent asked something the script doesn't cover and credentials aren't involved, give a brief plausible reply.
+- If the agent finished without asking and the plan was already approved or rejected appropriately, pick \`declare_done\`. Don't volunteer late script content as a proactive follow-up — the plan-rejection path is the right channel for steering.
 - When delivering a script user turn, adapt its wording so it reads as a real reply to the agent's last message — but keep every concrete value verbatim.
-- Don't invent extra pressure, restated openers, or "go ahead and build it" follow-ups beyond the script.
 - Don't restate what's already in the transcript.
 - Credentials: if the agent stalls on credentials, send "I'll set them up later — please build without them." Do not provide credentials.
 
@@ -66,10 +72,10 @@ export function buildFollowUpPrompt(ctx: PromptContext): string {
 	return [
 		formatScriptSection(ctx),
 		formatTranscriptSection(ctx),
-		"The agent has just finished a run. Compose the user's next message, or pick `declare_done` if every script user turn has been delivered (concrete values landed verbatim in the actual transcript).",
+		'The agent has just finished a run. Decide what the user would say next.',
 		'',
-		"Pick `send_follow_up_message` with a message that delivers an undelivered script user turn, adapted to respond to the agent's last message. Carry concrete values from the script verbatim. If the agent went straight to build/plan mode without asking the script's expected questions, still deliver the remaining script content as a proactive follow-up.",
-		'Pick `declare_done` only once every script user turn has been delivered. Do not invent extra follow-ups beyond the script.',
+		'Pick `send_follow_up_message` when the agent asked a question (in its last response) that the script answers, or when the agent stalled and needs unblocking. Carry concrete values from the script verbatim.',
+		'Pick `declare_done` when the agent finished a build, approved/rejected a plan appropriately, or otherwise has no open thread for the user to respond to. The script is a reference, not a checklist — late script content gets surfaced via plan rejection, not unsolicited follow-ups.',
 	].join('\n\n');
 }
 

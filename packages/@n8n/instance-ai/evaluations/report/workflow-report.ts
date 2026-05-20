@@ -10,6 +10,7 @@
 import fs from 'fs';
 import path from 'path';
 
+import { isAskUserNode, isResumeNode, tryRenderToolDetail } from './tool-renderers';
 import type {
 	ConversationMetrics,
 	ExecutionScenarioResult,
@@ -277,6 +278,7 @@ function renderTranscriptTurn(turn: TraceNode, turnNum: number): string {
 	const assistantResponse = pickString(turn.outputs, 'response');
 	const reasoning = collectReasoning(turn);
 	const toolsUsed = collectToolNames(turn);
+	const keyToolDetails = collectKeyToolDetails(turn);
 	const followUpType = plannedFollowUpType(userMessage);
 
 	const headerLabel = followUpType
@@ -312,12 +314,69 @@ function renderTranscriptTurn(turn: TraceNode, turnNum: number): string {
 			`<details class="transcript-aside"><summary>💭 reasoning</summary><div class="transcript-reasoning">${escapeHtml(reasoning)}</div></details>`,
 		);
 	}
+	for (const detail of keyToolDetails) {
+		parts.push(detail);
+	}
 	if (toolsUsed.length > 0) {
 		parts.push(
 			`<div class="transcript-tools">🔧 ${toolsUsed.map((t) => escapeHtml(t)).join(', ')}</div>`,
 		);
 	}
 	return `<div class="transcript-turn">${parts.join('')}</div>`;
+}
+
+/**
+ * Surface the inputs of the tools that drive the multi-turn conversation —
+ * plan items, ask-user questions, confirmation resumes — so a reader can see
+ * what the agent did inside a turn without drilling into the raw trace.
+ */
+function collectKeyToolDetails(turn: TraceNode): string[] {
+	// Walk descendants once; collapse each ask-user suspend+resume pair into
+	// the resume (which carries answers). We link the pair by the question-id
+	// signature because suspends and resumes don't share a metadata key.
+	const askUserNodes: TraceNode[] = [];
+	const otherDetails: string[] = [];
+	const ctx = { escapeHtml };
+
+	walkDescendants(turn, (node) => {
+		if (node.runType !== 'tool') return;
+		if (isAskUserNode(node)) {
+			askUserNodes.push(node);
+			return;
+		}
+		const block = tryRenderToolDetail(node, ctx);
+		if (block) otherDetails.push(block);
+	});
+
+	const askUserBlocks: string[] = [];
+	const askUserBySignature = new Map<string, TraceNode>();
+	for (const node of askUserNodes) {
+		const sig = askUserSignature(node);
+		if (!sig) {
+			askUserBlocks.push(tryRenderToolDetail(node, ctx) ?? '');
+			continue;
+		}
+		const existing = askUserBySignature.get(sig);
+		if (!existing || (isResumeNode(node) && !isResumeNode(existing))) {
+			askUserBySignature.set(sig, node);
+		}
+	}
+	for (const node of askUserBySignature.values()) {
+		const block = tryRenderToolDetail(node, ctx);
+		if (block) askUserBlocks.push(block);
+	}
+
+	return [...askUserBlocks.filter(Boolean), ...otherDetails];
+}
+
+function askUserSignature(node: TraceNode): string | null {
+	if (!isRecord(node.inputs)) return null;
+	const input = 'input' in node.inputs ? node.inputs.input : node.inputs;
+	if (!isRecord(input) || !Array.isArray(input.questions)) return null;
+	const ids = input.questions
+		.filter(isRecord)
+		.map((q) => (typeof q.id === 'string' ? q.id : JSON.stringify(q.question ?? '')));
+	return ids.length > 0 ? ids.join('|') : null;
 }
 
 function pickString(value: unknown, key: string): string {
@@ -758,6 +817,13 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.transcript-aside > summary { cursor: pointer; color: var(--text-muted); font-size: 11px; padding: 2px 0; }
 	.transcript-reasoning { color: var(--text-muted); font-size: 12px; line-height: 1.5; padding: 6px 8px; background: var(--bg-primary); border-left: 2px solid var(--border); border-radius: 2px; white-space: pre-wrap; margin-top: 4px; }
 	.transcript-tools { color: var(--text-muted); font-size: 11px; font-family: monospace; padding: 4px 0 0 26px; }
+	.transcript-plan, .transcript-questions { margin: 4px 0 4px 18px; padding: 0; font-size: 12px; line-height: 1.5; color: var(--text-primary); }
+	.transcript-plan li, .transcript-questions li { margin: 4px 0; }
+	.transcript-answer { color: var(--text-secondary); font-size: 12px; margin: 2px 0 6px 16px; padding: 2px 0; }
+	.transcript-resume { font-size: 11px; font-family: monospace; color: var(--text-muted); padding: 2px 0 2px 26px; }
+	.transcript-resume code { background: var(--bg-tertiary); padding: 0 4px; border-radius: 2px; }
+	.transcript-section-label { font-size: 11px; color: var(--text-muted); margin: 6px 0 2px 18px; text-transform: uppercase; letter-spacing: 0.04em; }
+	.transcript-empty { font-size: 12px; color: var(--text-muted); font-style: italic; margin: 4px 0 4px 18px; }
 
 	/* Conversation trace — scoped to .trace-tree to avoid colliding with the
 	 * execution-trace .trace-node styling above. */

@@ -59,6 +59,7 @@ import type {
 	MultiRunEvaluation,
 	ExecutionScenarioResult,
 	ExecutionScenario,
+	TraceNode,
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
@@ -212,6 +213,7 @@ async function main(): Promise<void> {
 		let experimentName: string | undefined;
 		let outcome: ComparisonOutcome | undefined;
 		let slugByTestCase: Map<WorkflowTestCase, string> | undefined;
+		let tracePromises: Map<string, Promise<TraceNode[]>> | undefined;
 
 		if (hasLangSmith) {
 			logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
@@ -220,6 +222,7 @@ async function main(): Promise<void> {
 			experimentName = langsmithRun.experimentName;
 			outcome = langsmithRun.outcome;
 			slugByTestCase = langsmithRun.slugByTestCase;
+			tracePromises = langsmithRun.tracePromises;
 		} else {
 			logger.info('No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)');
 			evaluation = await runDirectLoop({ args, lanes, logger, prebuiltManifest });
@@ -239,7 +242,7 @@ async function main(): Promise<void> {
 		console.log(`Results:    ${jsonPath}`);
 		console.log(`PR comment: ${prCommentPath}`);
 		const reportResults = flattenRunsForReport(evaluation);
-		await attachConversationTraces(reportResults, logger);
+		await attachConversationTraces(reportResults, logger, tracePromises);
 		const htmlPath = writeWorkflowReport(reportResults);
 		console.log(`Report:     ${htmlPath}`);
 		console.log(
@@ -259,14 +262,14 @@ async function main(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /**
- * For each test-case result that carries a `threadId`, pull the backend's
- * LangSmith conversation trace and attach it. Best-effort: if the LangSmith
- * client / project isn't configured the function is a no-op; per-result
- * fetch errors are swallowed.
+ * Attach LangSmith conversation traces to each result. Prefers per-build
+ * promises kicked off as builds completed; falls back to a fresh pull for
+ * any threadId that wasn't pre-pulled (e.g. runDirectLoop path).
  */
 async function attachConversationTraces(
 	results: WorkflowTestCaseResult[],
 	logger: EvalLogger,
+	tracePromises?: Map<string, Promise<TraceNode[]>>,
 ): Promise<void> {
 	if (!process.env.LANGSMITH_API_KEY) {
 		logger.verbose('Skipping conversation-trace ingestion (LANGSMITH_API_KEY not set)');
@@ -280,25 +283,32 @@ async function attachConversationTraces(
 	);
 	if (targets.length === 0) return;
 
-	const client = new Client();
-	logger.info(
-		`Pulling LangSmith traces for ${String(targets.length)} thread(s) from project '${projectName}'...`,
-	);
+	const fallbackClient = tracePromises ? undefined : new Client();
 	const started = Date.now();
 
+	let failures = 0;
 	await Promise.all(
 		targets.map(async (result) => {
+			const inflight = tracePromises?.get(result.threadId);
+			const promise = inflight ?? fetchThreadTraces(fallbackClient!, projectName, result.threadId);
 			try {
-				const trace = await fetchThreadTraces(client, projectName, result.threadId);
-				result.conversationTrace = trace;
+				result.conversationTrace = await promise;
 			} catch (error: unknown) {
+				failures++;
 				const msg = error instanceof Error ? error.message : String(error);
-				logger.verbose(`Trace fetch failed for ${result.threadId}: ${msg}`);
+				logger.warn(`Trace fetch failed for ${result.threadId}: ${msg}`);
 			}
 		}),
 	);
 
-	logger.verbose(`Trace ingestion completed in ${String(Date.now() - started)}ms`);
+	const elapsedMs = Date.now() - started;
+	if (failures > 0) {
+		logger.warn(
+			`Trace ingestion: ${String(targets.length - failures)}/${String(targets.length)} succeeded in ${String(elapsedMs)}ms (${String(failures)} failed)`,
+		);
+	} else {
+		logger.verbose(`Trace ingestion completed in ${String(elapsedMs)}ms`);
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -310,10 +320,16 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	experimentName: string;
 	outcome: ComparisonOutcome;
 	slugByTestCase: Map<WorkflowTestCase, string>;
+	tracePromises: Map<string, Promise<TraceNode[]>>;
 }> {
 	const { args, lanes, logger, prebuiltManifest } = config;
 
 	const lsClient = new Client();
+
+	// Per-build trace pulls, keyed by threadId. Kicked off as each build completes
+	// so fetches spread over the run rather than bursting at the end.
+	const tracePromises = new Map<string, Promise<TraceNode[]>>();
+	const langsmithProjectName = 'instance-ai';
 	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter, args.exclude);
 	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
 
@@ -432,6 +448,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const build = await fetchPrebuiltBuild(lane.runner.client, prebuiltId, logger);
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
+				kickOffTracePull(build);
 				return { build, lane, buildDurationMs };
 			}
 			// Orchestrator path: allocator spreads distinct fileSlugs across lanes;
@@ -447,6 +464,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				});
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
+				kickOffTracePull(build);
 				return { build, lane, buildDurationMs };
 			} finally {
 				allocator.release(lane, fileSlug);
@@ -454,6 +472,14 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		})();
 		buildCache.set(key, promise);
 		return await promise;
+	}
+
+	function kickOffTracePull(build: BuildResult): void {
+		if (!build.threadId || tracePromises.has(build.threadId)) return;
+		tracePromises.set(
+			build.threadId,
+			fetchThreadTraces(lsClient, langsmithProjectName, build.threadId),
+		);
 	}
 
 	const target = async (inputs: TargetInputs): Promise<TargetOutput> => {
@@ -656,6 +682,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			experimentName: experimentResults.experimentName,
 			outcome,
 			slugByTestCase,
+			tracePromises,
 		};
 	} finally {
 		if (!args.keepWorkflows) {

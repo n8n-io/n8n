@@ -15,13 +15,9 @@ export async function fetchThreadTraces(
 	threadId: string,
 ): Promise<TraceNode[]> {
 	if (!threadId.startsWith(EVAL_THREAD_PREFIX)) return [];
-	try {
-		const runs = await collectRuns(client, projectName, threadId);
-		const filtered = runs.filter(hasEvalThreadId);
-		return filtered.length > 0 ? assembleForest(filtered) : [];
-	} catch {
-		return [];
-	}
+	const runs = await collectRuns(client, projectName, threadId);
+	const filtered = runs.filter(hasEvalThreadId);
+	return filtered.length > 0 ? assembleForest(filtered) : [];
 }
 
 function hasEvalThreadId(run: Run): boolean {

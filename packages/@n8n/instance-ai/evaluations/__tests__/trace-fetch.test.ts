@@ -70,11 +70,12 @@ describe('fetchThreadTraces', () => {
 		);
 	});
 
-	it('returns an empty array when the client throws', async () => {
+	it('propagates LangSmith client errors so callers can log and degrade', async () => {
 		const client = new FakeClient();
 		client.setNextRuns(new Error('LangSmith down'));
-		const trace = await fetchThreadTraces(client as unknown as Client, 'p-test', 'eval-thread-123');
-		expect(trace).toEqual([]);
+		await expect(
+			fetchThreadTraces(client as unknown as Client, 'p-test', 'eval-thread-123'),
+		).rejects.toThrow('LangSmith down');
 	});
 
 	it('escapes double-quotes in the thread id', async () => {
