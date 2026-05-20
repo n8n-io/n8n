@@ -3,17 +3,15 @@ import { Cipher } from 'n8n-core';
 import type { IDataObject, IRunExecutionData } from 'n8n-workflow';
 import { toSecureArtifacts } from 'n8n-workflow';
 
-import { InboundSecretProvider } from '@/services/inbound-secret-proxy.service';
+import { RuntimeCredentialProvider } from '@/services/runtime-credential-proxy.service';
 
 @Service()
-export class InboundSecretsAccessService implements InboundSecretProvider {
+export class InboundSecretsAccessService implements RuntimeCredentialProvider {
 	constructor(private readonly cipher: Cipher) {}
 
-	async getInboundArtifacts(
+	async getRuntimeCredentials(
 		runExecutionData: IRunExecutionData,
-		nodeName: string,
-		path: string,
-		itemIndex: number,
+		alias: string,
 	): Promise<IDataObject[string] | undefined> {
 		const secureArtifacts = runExecutionData.executionData?.runtimeData?.secureArtifacts;
 
@@ -21,7 +19,7 @@ export class InboundSecretsAccessService implements InboundSecretProvider {
 			const decryptedSecureArtifacts = await this.cipher.decryptV2(secureArtifacts);
 			const parsedSecureArtifacts = toSecureArtifacts(decryptedSecureArtifacts);
 
-			return parsedSecureArtifacts.artifacts[nodeName]?.[itemIndex]?.[path];
+			return parsedSecureArtifacts.artifacts[alias];
 		}
 		return undefined;
 	}

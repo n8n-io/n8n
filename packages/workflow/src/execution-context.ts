@@ -33,7 +33,7 @@ const SecureArtifactsSchemaV1 = z.object({
 	 * - Each per-item map is keyed by the extraction path; values are the
 	 *   leaf data extracted from that item.
 	 */
-	artifacts: z.record(z.string(), z.array(z.record(z.string(), JsonValueSchema))),
+	artifacts: z.record(z.string(), JsonValueSchema),
 
 	/**
 	 * Optional metadata produced by the hook (e.g. provenance, hook id).

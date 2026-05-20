@@ -86,17 +86,8 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 		};
 	}
 
-	async getInboundArtifact(
-		nodeName: string,
-		path: string,
-		itemIndex: number = this.itemIndex,
-	): Promise<IDataObject[string] | undefined> {
-		return await this.additionalData.getInboundArtifact(
-			this.runExecutionData,
-			nodeName,
-			path,
-			itemIndex,
-		);
+	async getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined> {
+		return await this.additionalData.getRuntimeCredential(this.runExecutionData, alias);
 	}
 
 	evaluateExpression(expression: string, itemIndex: number = this.itemIndex) {
