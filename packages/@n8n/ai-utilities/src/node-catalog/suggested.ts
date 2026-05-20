@@ -32,7 +32,7 @@ function formatCategoryResult(
 	}
 
 	const nodes = categoryData.nodes.map((node: CategorySuggestedNode) => {
-		const nodeType = nodeTypeParser.getNodeType(node.name);
+		const nodeType = nodeTypeParser.getLeanNodeType(node.name);
 		if (nodeType) {
 			return {
 				name: node.name,

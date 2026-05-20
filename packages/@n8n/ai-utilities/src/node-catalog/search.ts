@@ -50,7 +50,7 @@ function formatBuilderHint(
 	nodeId: string,
 	version: number,
 ): string {
-	const nodeType = nodeTypeParser.getNodeType(nodeId, version);
+	const nodeType = nodeTypeParser.getLeanNodeType(nodeId, version);
 	const hint = nodeType?.builderHint?.searchHint;
 	if (!hint) return '';
 	return `  @builderHint ${hint}`;
@@ -64,7 +64,7 @@ function getDirectRelatedNodeIds(
 	nodeId: string,
 	version: number,
 ): string[] {
-	const nodeType = nodeTypeParser.getNodeType(nodeId, version);
+	const nodeType = nodeTypeParser.getLeanNodeType(nodeId, version);
 	const relatedNodes = nodeType?.builderHint?.relatedNodes;
 	if (!relatedNodes) return [];
 
@@ -80,7 +80,7 @@ function getRelatedNodesWithHints(
 	version: number,
 	nodeFilter?: (nodeId: string) => boolean,
 ): IRelatedNode[] | undefined {
-	const nodeType = nodeTypeParser.getNodeType(nodeId, version);
+	const nodeType = nodeTypeParser.getLeanNodeType(nodeId, version);
 	return nodeType?.builderHint?.relatedNodes?.filter((r) => nodeFilter?.(r.nodeType) ?? true);
 }
 
@@ -136,7 +136,7 @@ function collectAllRelatedNodeIds(
 			allRelated.add(relatedId);
 
 			// Get the related node's version and add to queue for recursive processing
-			const relatedNodeType = nodeTypeParser.getNodeType(relatedId);
+			const relatedNodeType = nodeTypeParser.getLeanNodeType(relatedId);
 			if (relatedNodeType) {
 				const relatedVersion = Array.isArray(relatedNodeType.version)
 					? relatedNodeType.version[relatedNodeType.version.length - 1]
@@ -381,7 +381,7 @@ export function formatNodeResult(
 	nodeId: string,
 	version?: number,
 ): string | undefined {
-	const nodeType = nodeTypeParser.getNodeType(nodeId, version);
+	const nodeType = nodeTypeParser.getLeanNodeType(nodeId, version);
 	if (!nodeType) return undefined;
 
 	const resolvedVersion =
@@ -490,7 +490,7 @@ function searchForQuery(
 			for (const relatedId of relatedNodeIds) {
 				if (nodeFilter && !nodeFilter(relatedId)) continue;
 
-				const nodeType = nodeTypeParser.getNodeType(relatedId);
+				const nodeType = nodeTypeParser.getLeanNodeType(relatedId);
 				if (nodeType) {
 					const version = Array.isArray(nodeType.version)
 						? nodeType.version[nodeType.version.length - 1]

@@ -94,7 +94,7 @@ function findNodeDir(
  * Convert string to snake_case for file/folder naming
  * Examples: "runOnceForAllItems" -> "run_once_for_all_items"
  */
-function toSnakeCase(str: string): string {
+export function toSnakeCase(str: string): string {
 	return str
 		.replace(/([A-Z])/g, '_$1')
 		.toLowerCase()
@@ -154,7 +154,7 @@ function getAvailableDiscriminators(
  *   "n8n-nodes-base.httpRequest" -> { package: "n8n-nodes-base", nodeName: "httpRequest" }
  *   "@n8n/n8n-nodes-langchain.agent" -> { package: "n8n-nodes-langchain", nodeName: "agent" }
  */
-function parseNodeId(nodeId: string): { packageName: string; nodeName: string } | null {
+export function parseNodeId(nodeId: string): { packageName: string; nodeName: string } | null {
 	// Handle @n8n/ prefixed packages (langchain)
 	if (nodeId.startsWith('@n8n/')) {
 		const withoutPrefix = nodeId.slice(5); // Remove "@n8n/"

@@ -86,7 +86,7 @@ export class NodeTypeParser {
 
 		return results.map((result) => {
 			// Find the full node type to check if it's a trigger
-			const nodeType = this.getNodeType(result.name, result.version);
+			const nodeType = this.getLeanNodeType(result.name, result.version);
 			return {
 				id: result.name,
 				displayName: result.displayName,
@@ -98,7 +98,7 @@ export class NodeTypeParser {
 	}
 
 	/**
-	 * Get node type description for a specific node.
+	 * Get the lean node type description for a specific node.
 	 * Returns the latest version if version is not specified.
 	 *
 	 * The returned object is a `LeanNodeTypeDescription` — it carries
@@ -106,7 +106,7 @@ export class NodeTypeParser {
 	 * For full type information including `properties`, read from disk
 	 * via the `getNodeTypes` helper.
 	 */
-	getNodeType(nodeId: string, version?: number): LeanNodeTypeDescription | null {
+	getLeanNodeType(nodeId: string, version?: number): LeanNodeTypeDescription | null {
 		const versions = this.nodeTypeIndex.get(nodeId);
 
 		if (!versions || versions.length === 0) {
@@ -143,7 +143,7 @@ export class NodeTypeParser {
 	 * not retain).
 	 */
 	getVersionDiscriminators(nodeId: string, version: number): VersionDiscriminators | null {
-		const node = this.getNodeType(nodeId, version);
+		const node = this.getLeanNodeType(nodeId, version);
 		return node?.discriminatorsByVersion.get(version) ?? null;
 	}
 }
