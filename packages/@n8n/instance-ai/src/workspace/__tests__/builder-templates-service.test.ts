@@ -25,7 +25,12 @@ interface MockState {
 	/** Opaque archive bytes — the service treats these as a black box, no extraction. */
 	archive: Buffer;
 	etag: string | null;
+	/** Default status for an archive fetch (used by both channels when not overridden). */
 	archiveStatus?: number;
+	/** Per-channel status override for the `/v<minor>/` URL. */
+	exactStatus?: number;
+	/** Per-channel status override for the `/latest/` URL. */
+	latestStatus?: number;
 	respondNotModified?: boolean;
 	/** When `null`, sidecar returns 404; when a string, that body is served; default = correct sha. */
 	sha256Override?: string | null;
@@ -33,7 +38,21 @@ interface MockState {
 	transientFailuresBeforeSuccess?: number;
 	/** When true, the archive 200 response omits its ETag header. */
 	omitEtagHeader?: boolean;
-	calls: { fetch: number; archiveFetches: number; lastIfNoneMatch: string | null };
+	calls: {
+		fetch: number;
+		archiveFetches: number;
+		exactFetches: number;
+		latestFetches: number;
+		lastIfNoneMatch: string | null;
+	};
+}
+
+function isExactArchiveUrl(url: string): boolean {
+	return /\/v\d+\.\d+\/templates\.tar\.gz$/.test(url);
+}
+
+function isLatestArchiveUrl(url: string): boolean {
+	return url.endsWith('/latest/templates.tar.gz');
 }
 
 function installMockFetch(state: MockState): jest.Mock {
@@ -51,11 +70,15 @@ function installMockFetch(state: MockState): jest.Mock {
 			});
 		}
 
-		if (!url.endsWith('/templates.tar.gz')) {
+		const exact = isExactArchiveUrl(url);
+		const latest = isLatestArchiveUrl(url);
+		if (!exact && !latest) {
 			return new Response('unhandled', { status: 500 });
 		}
 
 		state.calls.archiveFetches++;
+		if (exact) state.calls.exactFetches++;
+		else state.calls.latestFetches++;
 		state.calls.lastIfNoneMatch = headers.get('if-none-match');
 
 		if (state.respondNotModified) {
@@ -67,7 +90,8 @@ function installMockFetch(state: MockState): jest.Mock {
 			return new Response('temporarily unavailable', { status: 503 });
 		}
 
-		const status = state.archiveStatus ?? 200;
+		const channelStatus = exact ? state.exactStatus : state.latestStatus;
+		const status = channelStatus ?? state.archiveStatus ?? 200;
 		if (status >= 400) return new Response('error', { status });
 		const etag = state.omitEtagHeader ? null : state.etag;
 		return archiveResponse(state.archive, etag, status);
@@ -85,7 +109,8 @@ function makeOptions(
 	overrides: Partial<BuilderTemplatesServiceOptions> = {},
 ): BuilderTemplatesServiceOptions {
 	return {
-		cdnBaseUrl: 'https://cdn.example/n8n-sdk-templates/v1',
+		cdnBaseUrl: 'https://cdn.example/n8n-sdk-templates',
+		sdkVersion: '0.15.0',
 		cacheDir,
 		refreshIntervalMs: 60_000,
 		fetchTimeoutMs: 1_000,
@@ -99,7 +124,13 @@ function makeState(): MockState {
 	return {
 		archive: Buffer.from('opaque-archive-bytes-v1'),
 		etag: '"sha-1"',
-		calls: { fetch: 0, archiveFetches: 0, lastIfNoneMatch: null },
+		calls: {
+			fetch: 0,
+			archiveFetches: 0,
+			exactFetches: 0,
+			latestFetches: 0,
+			lastIfNoneMatch: null,
+		},
 	};
 }
 
@@ -192,6 +223,7 @@ describe('BuilderTemplatesService', () => {
 		const archive = Buffer.from('opaque-archive-bytes-pre-existing');
 		await fsp.writeFile(path.join(cacheDir, 'templates.tar.gz'), archive);
 		await fsp.writeFile(path.join(cacheDir, 'etag.txt'), '"pre-existing"');
+		await fsp.writeFile(path.join(cacheDir, 'channel.txt'), 'exact');
 
 		// Block any network call so we know hydration came from disk.
 		globalThis.fetch = jest.fn(
@@ -203,8 +235,8 @@ describe('BuilderTemplatesService', () => {
 
 		expect(bundle.version).toBe('"pre-existing"');
 		expect(bundle.archive?.equals(archive)).toBe(true);
-		// getVersion() strips the quotes for telemetry use; raw etag stays on bundle.version.
-		expect(svc.getVersion()).toBe('pre-existing');
+		// getVersion() prefixes with the channel + strips quotes for telemetry use; raw etag stays on bundle.version.
+		expect(svc.getVersion()).toBe('v0.15:pre-existing');
 	});
 
 	it('keeps the existing bundle when the refresh fetch errors', async () => {
@@ -361,6 +393,7 @@ describe('BuilderTemplatesService', () => {
 		const corruptArchive = Buffer.from('this-is-the-corrupt-archive-on-disk');
 		await fsp.writeFile(path.join(cacheDir, 'templates.tar.gz'), corruptArchive);
 		await fsp.writeFile(path.join(cacheDir, 'etag.txt'), '"stale"');
+		await fsp.writeFile(path.join(cacheDir, 'channel.txt'), 'exact');
 		// Sha that does NOT match the archive on disk
 		await fsp.writeFile(path.join(cacheDir, 'templates.tar.gz.sha256'), 'deadbeef'.repeat(8));
 
@@ -378,6 +411,132 @@ describe('BuilderTemplatesService', () => {
 		expect(state.calls.lastIfNoneMatch).toBeNull();
 	});
 
+	describe('versioned URLs', () => {
+		it('fetches /v<major>.<minor>/templates.tar.gz when SDK version is set', async () => {
+			const cacheDir = await makeTempDir();
+			const state = makeState();
+			const fetchMock = installMockFetch(state);
+
+			const svc = new BuilderTemplatesService(makeOptions(cacheDir, { sdkVersion: '0.15.0' }));
+			const bundle = await svc.getBundle();
+
+			expect(bundle.archive?.equals(state.archive)).toBe(true);
+			expect(fetchMock).toHaveBeenCalledWith(
+				'https://cdn.example/n8n-sdk-templates/v0.15/templates.tar.gz',
+				expect.any(Object),
+			);
+		});
+
+		it('prefixes getVersion with the exact channel (v<major>.<minor>:<etag>)', async () => {
+			const cacheDir = await makeTempDir();
+			const state = makeState();
+			installMockFetch(state);
+
+			const svc = new BuilderTemplatesService(makeOptions(cacheDir, { sdkVersion: '0.15.0' }));
+			await svc.getBundle();
+			expect(svc.getVersion()).toBe('v0.15:sha-1');
+		});
+
+		it('returns an empty bundle when both /v<minor>/ and /latest/ return 404', async () => {
+			const cacheDir = await makeTempDir();
+			const state = makeState();
+			state.exactStatus = 404;
+			state.latestStatus = 404;
+			installMockFetch(state);
+
+			const svc = new BuilderTemplatesService(makeOptions(cacheDir, { sdkVersion: '0.17.0' }));
+			const bundle = await svc.getBundle();
+
+			expect(bundle.archive).toBeNull();
+			expect(bundle.version).toBeNull();
+			expect(state.calls.exactFetches).toBe(1);
+			expect(state.calls.latestFetches).toBe(1);
+		});
+
+		it('does not fall back to /latest/ when the exact channel returns 500 (transport error)', async () => {
+			const cacheDir = await makeTempDir();
+			const state = makeState();
+			state.exactStatus = 500;
+			installMockFetch(state);
+
+			const svc = new BuilderTemplatesService(
+				makeOptions(cacheDir, { sdkVersion: '0.15.0', maxAttempts: 1 }),
+			);
+			const bundle = await svc.getBundle();
+
+			expect(bundle.archive).toBeNull();
+			expect(state.calls.latestFetches).toBe(0);
+		});
+
+		it('drops legacy disk cache when channel.txt is missing and refetches fresh', async () => {
+			const cacheDir = await makeTempDir();
+			await fsp.mkdir(cacheDir, { recursive: true });
+			const legacyArchive = Buffer.from('opaque-archive-legacy');
+			await fsp.writeFile(path.join(cacheDir, 'templates.tar.gz'), legacyArchive);
+			await fsp.writeFile(path.join(cacheDir, 'etag.txt'), '"legacy-etag"');
+			await fsp.writeFile(path.join(cacheDir, 'templates.tar.gz.sha256'), sha256Hex(legacyArchive));
+			// Note: no channel.txt — represents a pre-versioned cache layout.
+
+			const state = makeState();
+			installMockFetch(state);
+
+			const svc = new BuilderTemplatesService(makeOptions(cacheDir, { sdkVersion: '0.15.0' }));
+			const bundle = await svc.getBundle();
+
+			// Came from the network, not the legacy disk archive.
+			expect(bundle.archive?.equals(state.archive)).toBe(true);
+			expect(svc.getVersion()).toBe('v0.15:sha-1');
+			expect(state.calls.lastIfNoneMatch).toBeNull();
+
+			const channelOnDisk = await fsp.readFile(path.join(cacheDir, 'channel.txt'), 'utf-8');
+			expect(channelOnDisk).toBe('exact');
+		});
+
+		it('honours channel.txt on warm restart so getVersion keeps the latest: prefix', async () => {
+			const cacheDir = await makeTempDir();
+			await fsp.mkdir(cacheDir, { recursive: true });
+			const archive = Buffer.from('opaque-archive-bytes-from-latest');
+			await fsp.writeFile(path.join(cacheDir, 'templates.tar.gz'), archive);
+			await fsp.writeFile(path.join(cacheDir, 'etag.txt'), '"latest-etag"');
+			await fsp.writeFile(path.join(cacheDir, 'templates.tar.gz.sha256'), sha256Hex(archive));
+			await fsp.writeFile(path.join(cacheDir, 'channel.txt'), 'latest');
+
+			globalThis.fetch = jest.fn(
+				() => new Response('', { status: 500 }),
+			) as unknown as typeof globalThis.fetch;
+
+			const svc = new BuilderTemplatesService(
+				makeOptions(cacheDir, { sdkVersion: '0.17.0', refreshIntervalMs: 60_000 }),
+			);
+			const bundle = await svc.getBundle();
+
+			expect(bundle.archive?.equals(archive)).toBe(true);
+			expect(svc.getVersion()).toBe('latest:latest-etag');
+		});
+
+		it('falls back to /latest/ when /v<minor>/ returns 404', async () => {
+			const cacheDir = await makeTempDir();
+			const state = makeState();
+			state.exactStatus = 404;
+			const logger = { warn: jest.fn(), info: jest.fn(), error: jest.fn(), debug: jest.fn() };
+			installMockFetch(state);
+
+			const svc = new BuilderTemplatesService(
+				makeOptions(cacheDir, { sdkVersion: '0.17.0', logger }),
+			);
+			const bundle = await svc.getBundle();
+
+			expect(bundle.archive?.equals(state.archive)).toBe(true);
+			expect(svc.getVersion()).toBe('latest:sha-1');
+			expect(state.calls.exactFetches).toBeGreaterThan(0);
+			expect(state.calls.latestFetches).toBeGreaterThan(0);
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('falling back to /latest/'),
+				expect.any(Object),
+			);
+		});
+	});
+
 	it('getVersion strips the W/ prefix and surrounding quotes for telemetry', async () => {
 		const cacheDir = await makeTempDir();
 		const state = makeState();
@@ -386,7 +545,7 @@ describe('BuilderTemplatesService', () => {
 
 		const svc = new BuilderTemplatesService(makeOptions(cacheDir));
 		await svc.getBundle();
-		expect(svc.getVersion()).toBe('abc-123');
+		expect(svc.getVersion()).toBe('v0.15:abc-123');
 	});
 });
 
