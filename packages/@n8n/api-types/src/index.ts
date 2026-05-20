@@ -173,6 +173,8 @@ export {
 	type Role,
 	type User,
 	type UsersList,
+	type MfaMethod,
+	mfaMethodSchema,
 	usersListSchema,
 	userBaseSchema,
 	userDetailSchema,

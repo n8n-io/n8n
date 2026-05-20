@@ -11,7 +11,8 @@ import {
 	IMPORT_CURL_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
-	MFA_SETUP_MODAL_KEY,
+	TOTP_SETUP_WIZARD_MODAL_KEY,
+	WEBAUTHN_SETUP_WIZARD_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
 	NPS_SURVEY_MODAL_KEY,
@@ -97,7 +98,8 @@ import ImportCurlModal from '@/features/ndv/parameters/components/ImportCurlModa
 import BinaryDataViewModal from '@/features/ndv/runData/components/BinaryDataViewModal.vue';
 import ImportWorkflowUrlModal from '@/app/components/ImportWorkflowUrlModal.vue';
 import InviteUsersModal from '@/features/settings/users/components/InviteUsersModal.vue';
-import MfaSetupModal from '@/features/core/auth/components/MfaSetupModal.vue';
+import TotpSetupWizardModal from '@/features/core/auth/components/TotpSetupWizardModal.vue';
+import WebAuthnSetupWizardModal from '@/features/core/auth/components/WebAuthnSetupWizardModal.vue';
 import ModalRoot from '@/app/components/ModalRoot.vue';
 import NpsSurvey from '@/app/components/NpsSurvey.vue';
 import PersonalizationModal from '@/features/settings/users/components/PersonalizationModal.vue';
@@ -234,8 +236,24 @@ import InstanceAiCredentialSetupModal, {
 			<ActivationModal />
 		</ModalRoot>
 
-		<ModalRoot :name="MFA_SETUP_MODAL_KEY">
-			<MfaSetupModal />
+		<ModalRoot :name="TOTP_SETUP_WIZARD_MODAL_KEY">
+			<template #default>
+				<TotpSetupWizardModal />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="WEBAUTHN_SETUP_WIZARD_MODAL_KEY">
+			<template
+				#default="{
+					data,
+				}: {
+					data: {
+						method: 'passkey' | 'security_key';
+					};
+				}"
+			>
+				<WebAuthnSetupWizardModal :data="data" />
+			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="PROMPT_MFA_CODE_MODAL_KEY">

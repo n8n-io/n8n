@@ -1,0 +1,286 @@
+<script setup lang="ts">
+import { computed, ref } from 'vue';
+import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nInfoTip,
+	N8nInput,
+	N8nInputLabel,
+	N8nNotice,
+} from '@n8n/design-system';
+
+import Modal from '@/app/components/Modal.vue';
+import { WEBAUTHN_SETUP_WIZARD_MODAL_KEY } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useToast } from '@/app/composables/useToast';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import type { MfaMethod } from '@n8n/api-types';
+import { twoFactorWizardBus } from '../auth.eventBus';
+import { suggestCredentialLabel } from '../utils/suggest-label';
+import { isWebauthnUserCancellation } from '../utils/webauthn-error';
+import MfaWizardSteps from './MfaWizardSteps.vue';
+
+const props = defineProps<{
+	data?: {
+		method: 'passkey' | 'security_key';
+	};
+}>();
+
+const i18n = useI18n();
+const uiStore = useUIStore();
+const usersStore = useUsersStore();
+const toast = useToast();
+
+const method = computed<'passkey' | 'security_key'>(() => props.data?.method ?? 'passkey');
+const attachment = computed<'platform' | 'cross-platform'>(() =>
+	method.value === 'passkey' ? 'platform' : 'cross-platform',
+);
+
+const label = ref(suggestCredentialLabel(navigator.userAgent, props.data?.method ?? 'passkey'));
+const submitting = ref(false);
+const totalSteps = 2;
+
+const title = computed(() =>
+	method.value === 'passkey'
+		? i18n.baseText('settings.personal.twoFactor.passkeyWizard.title')
+		: i18n.baseText('settings.personal.twoFactor.securityKeyWizard.title'),
+);
+
+const heading = computed(() =>
+	method.value === 'passkey'
+		? i18n.baseText('settings.personal.twoFactor.passkeyWizard.heading')
+		: i18n.baseText('settings.personal.twoFactor.securityKeyWizard.heading'),
+);
+
+const description = computed(() =>
+	method.value === 'passkey'
+		? i18n.baseText('settings.personal.twoFactor.passkeyWizard.description')
+		: i18n.baseText('settings.personal.twoFactor.securityKeyWizard.description'),
+);
+
+const labelFieldLabel = computed(() =>
+	method.value === 'passkey'
+		? i18n.baseText('settings.personal.twoFactor.passkeyWizard.label')
+		: i18n.baseText('settings.personal.twoFactor.securityKeyWizard.label'),
+);
+
+const labelFieldPlaceholder = computed(() =>
+	method.value === 'passkey'
+		? i18n.baseText('settings.personal.twoFactor.passkeyWizard.label.placeholder')
+		: i18n.baseText('settings.personal.twoFactor.securityKeyWizard.label.placeholder'),
+);
+
+const submitLabel = computed(() =>
+	method.value === 'passkey'
+		? i18n.baseText('settings.personal.twoFactor.passkeyWizard.register')
+		: i18n.baseText('settings.personal.twoFactor.securityKeyWizard.register'),
+);
+
+const tone = computed(() => (method.value === 'passkey' ? 'passkey' : 'security_key'));
+
+const onBack = () => {
+	uiStore.closeModal(WEBAUTHN_SETUP_WIZARD_MODAL_KEY);
+};
+
+const inlineError = ref('');
+
+const onRegister = async () => {
+	if (!label.value.trim()) return;
+	submitting.value = true;
+	inlineError.value = '';
+	try {
+		await usersStore.registerWebAuthnCredential(label.value.trim(), attachment.value);
+		const completed: MfaMethod = method.value;
+		const toastKeys: { title: BaseTextKey; message: BaseTextKey } =
+			completed === 'passkey'
+				? {
+						title: 'settings.personal.twoFactor.toast.enabled.passkey.title',
+						message: 'settings.personal.twoFactor.toast.enabled.passkey.message',
+					}
+				: {
+						title: 'settings.personal.twoFactor.toast.enabled.security_key.title',
+						message: 'settings.personal.twoFactor.toast.enabled.security_key.message',
+					};
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText(toastKeys.title),
+			message: i18n.baseText(toastKeys.message),
+		});
+		twoFactorWizardBus.emit('completed', { method: completed });
+		uiStore.closeModal(WEBAUTHN_SETUP_WIZARD_MODAL_KEY);
+	} catch (e) {
+		if (isWebauthnUserCancellation(e)) {
+			inlineError.value = i18n.baseText('settings.personal.twoFactor.webauthn.error.cancelled');
+		} else {
+			// Surface the real error so it's debuggable from devtools — the generic
+			// message hides whether the browser-side ceremony or the server-side
+			// verify is the cause.
+			console.error('WebAuthn registration failed', e);
+			const detail = e instanceof Error && e.message ? `: ${e.message}` : '';
+			inlineError.value =
+				i18n.baseText('settings.personal.twoFactor.webauthn.error.generic') + detail;
+		}
+	} finally {
+		submitting.value = false;
+	}
+};
+</script>
+
+<template>
+	<Modal width="460px" :title="title" :name="WEBAUTHN_SETUP_WIZARD_MODAL_KEY" :center="true">
+		<template #content>
+			<MfaWizardSteps :current="2" :total="totalSteps" />
+
+			<div>
+				<div :class="$style.stepLabel">
+					{{
+						i18n.baseText('settings.personal.twoFactor.passkeyWizard.step', {
+							interpolate: { current: 2, total: totalSteps },
+						})
+					}}
+				</div>
+				<div :class="[$style.bigIcon, $style[`tone_${tone}`], { [$style.pulse]: submitting }]">
+					<N8nIcon :icon="method === 'passkey' ? 'fingerprint' : 'key-round'" :size="36" />
+				</div>
+				<div :class="$style.heading">{{ heading }}</div>
+				<div :class="$style.description">{{ description }}</div>
+				<N8nInputLabel :label="labelFieldLabel" :class="$style.labelField">
+					<N8nInput
+						v-model="label"
+						:placeholder="labelFieldPlaceholder"
+						data-test-id="mfa-webauthn-label-input"
+					/>
+				</N8nInputLabel>
+				<N8nNotice
+					v-if="method === 'security_key'"
+					theme="info"
+					:content="i18n.baseText('settings.personal.twoFactor.securityKeyWizard.info')"
+					:class="$style.infoNotice"
+					data-test-id="mfa-webauthn-pin-info"
+				/>
+				<N8nInfoTip
+					v-if="inlineError"
+					theme="danger"
+					:class="$style.errorTip"
+					data-test-id="mfa-webauthn-error"
+				>
+					{{ inlineError }}
+				</N8nInfoTip>
+			</div>
+		</template>
+		<template #footer>
+			<div :class="$style.footer">
+				<N8nButton variant="subtle" @click="onBack">
+					{{ i18n.baseText('settings.personal.twoFactor.back') }}
+				</N8nButton>
+				<N8nButton
+					:loading="submitting"
+					:disabled="!label.trim()"
+					data-test-id="mfa-webauthn-register-button"
+					@click="onRegister"
+				>
+					{{ submitLabel }}
+				</N8nButton>
+			</div>
+		</template>
+	</Modal>
+</template>
+
+<style module lang="scss">
+.stepLabel {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+	letter-spacing: 0.04em;
+	margin-bottom: var(--spacing--sm);
+	text-transform: uppercase;
+	font-weight: var(--font-weight--medium);
+}
+
+.bigIcon {
+	width: calc(var(--spacing--3xl) + var(--spacing--xs));
+	height: calc(var(--spacing--3xl) + var(--spacing--xs));
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: var(--spacing--xs) auto var(--spacing--sm);
+	font-size: var(--font-size--2xl);
+	position: relative;
+}
+
+.pulse::before {
+	content: '';
+	position: absolute;
+	inset: calc(-1 * var(--spacing--3xs));
+	border-radius: 50%;
+	border: var(--spacing--5xs) solid currentColor;
+	opacity: 0.4;
+	animation: mfaPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes mfaPulse {
+	0%,
+	100% {
+		transform: scale(1);
+		opacity: 0.4;
+	}
+	50% {
+		transform: scale(1.15);
+		opacity: 0.1;
+	}
+}
+
+.tone_passkey {
+	background: var(--background--info);
+	color: var(--color--blue-500);
+}
+
+.tone_security_key {
+	background: var(--color--orange-alpha-100);
+	color: var(--color--orange-500);
+}
+
+.heading {
+	text-align: center;
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
+	margin-bottom: var(--spacing--3xs);
+}
+
+.errorTip {
+	margin-top: var(--spacing--2xs);
+	margin-bottom: 0;
+}
+
+.description {
+	text-align: center;
+	font-size: var(--font-size--xs);
+	color: var(--color--text--tint-1);
+	line-height: 1.5;
+	margin-bottom: var(--spacing--sm);
+}
+
+.labelField {
+	margin-bottom: var(--spacing--xs);
+}
+
+.infoTip {
+	margin-bottom: 0;
+}
+
+.infoNotice {
+	margin-bottom: var(--spacing--3xs);
+	&:last-child {
+		margin-bottom: 0;
+	}
+}
+
+.footer {
+	display: flex;
+	gap: var(--spacing--3xs);
+	justify-content: flex-end;
+}
+</style>

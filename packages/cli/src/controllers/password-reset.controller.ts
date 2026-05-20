@@ -1,6 +1,7 @@
 import {
 	ChangePasswordRequestDto,
 	ForgotPasswordRequestDto,
+	PasswordResetWebAuthnOptionsRequestDto,
 	ResolvePasswordTokenQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -124,7 +125,10 @@ export class PasswordResetController {
 				throw new UnprocessableRequestError('forgotPassword.ldapUserPasswordResetUnavailable');
 			}
 
-			const url = this.authService.generatePasswordResetUrl(user);
+			const availableMethods = user.mfaEnabled
+				? await this.mfaService.getAvailableMfaMethods(user.id)
+				: [];
+			const url = await this.authService.generatePasswordResetUrl(user, availableMethods);
 
 			const { id, firstName } = user;
 			try {
@@ -189,6 +193,28 @@ export class PasswordResetController {
 	}
 
 	/**
+	 * Generate WebAuthn authentication options for the user identified by the
+	 * password reset token. Used by the change-password view when the user's
+	 * active 2FA method is passkey or security key.
+	 */
+	@Post('/password-reset/webauthn-options', {
+		skipAuth: true,
+		ipRateLimit: true,
+	})
+	async getPasswordResetWebAuthnOptions(
+		_req: AuthlessRequest,
+		_res: Response,
+		@Body payload: PasswordResetWebAuthnOptionsRequestDto,
+	) {
+		const user = await this.authService.resolvePasswordResetToken(payload.token);
+		if (!user || !user.mfaEnabled) {
+			throw new NotFoundError('');
+		}
+
+		return await this.mfaService.webauthn.generateAuthenticationOptions(user.id);
+	}
+
+	/**
 	 * Verify password reset token and update password.
 	 */
 	@Post('/change-password', {
@@ -200,19 +226,30 @@ export class PasswordResetController {
 		res: Response,
 		@Body payload: ChangePasswordRequestDto,
 	) {
-		const { token, password, mfaCode } = payload;
+		const { token, password, mfaCode, webauthnResponse } = payload;
 
 		const user = await this.authService.resolvePasswordResetToken(token);
 		if (!user) throw new NotFoundError('');
 
 		if (user.mfaEnabled) {
-			if (!mfaCode) throw new BadRequestError('If MFA enabled, mfaCode is required.');
+			const hasMfaCode = typeof mfaCode === 'string' && mfaCode.length > 0;
+			const hasWebauthn = webauthnResponse !== undefined && webauthnResponse !== null;
 
-			const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(user.id);
+			if (!hasMfaCode && !hasWebauthn) {
+				throw new BadRequestError('Two-factor verification is required to change password.');
+			}
 
-			const validToken = this.mfaService.totp.verifySecret({ secret, mfaCode });
+			let valid: boolean;
+			if (hasWebauthn) {
+				valid = await this.mfaService.validateWebAuthn(user.id, webauthnResponse);
+			} else {
+				const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(
+					user.id,
+				);
+				valid = this.mfaService.totp.verifySecret({ secret, mfaCode: mfaCode! });
+			}
 
-			if (!validToken) throw new BadRequestError('Invalid MFA token.');
+			if (!valid) throw new BadRequestError('Invalid MFA token.');
 		}
 
 		const passwordHash = await this.passwordUtility.hash(password);
@@ -221,7 +258,7 @@ export class PasswordResetController {
 
 		this.logger.info('User password updated successfully', { userId: user.id });
 
-		this.authService.issueCookie(res, user, user.mfaEnabled, req.browserId);
+		await this.authService.rotateSession(res, user, user.mfaEnabled, req);
 
 		this.eventService.emit('user-updated', { user, fieldsChanged: ['password'] });
 

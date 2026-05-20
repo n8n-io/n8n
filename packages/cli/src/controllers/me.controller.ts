@@ -19,7 +19,7 @@ import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.e
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
-import { MfaService } from '@/mfa/mfa.service';
+import { countMfaProofs, MfaService } from '@/mfa/mfa.service';
 import { MeRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
@@ -95,18 +95,29 @@ export class MeController {
 			payloadWithoutPassword,
 		]);
 
-		const preUpdateUser = await this.userRepository.findOneByOrFail({ id: userId });
 		await this.userService.update(userId, payloadWithoutPassword);
 		const user = await this.userService.findUserWithAuthIdentities(userId);
 
 		this.logger.info('User updated successfully', { userId });
 
-		this.authService.issueCookie(res, user, req.authInfo?.usedMfa ?? false, req.browserId);
-
+		// `req.user` is the pre-update snapshot from the auth middleware — diff
+		// against it to avoid an extra DB read for fields we already have.
+		const previous: Record<'email' | 'firstName' | 'lastName', string> = {
+			email: currentEmail,
+			firstName: currentFirstName,
+			lastName: currentLastName,
+		};
 		const changeableFields = ['email', 'firstName', 'lastName'] as const;
 		const fieldsChanged = changeableFields.filter(
-			(key) => key in payload && payload[key] !== preUpdateUser[key],
+			(key) => key in payload && payload[key] !== previous[key],
 		);
+
+		// Email changes invalidate other sessions, like password and 2FA changes.
+		if (fieldsChanged.includes('email')) {
+			await this.authService.rotateSession(res, user, req.authInfo?.usedMfa ?? false, req);
+		} else {
+			this.authService.issueCookie(res, user, req.authInfo?.usedMfa ?? false, req.browserId);
+		}
 
 		this.eventService.emit('user-updated', { user, fieldsChanged });
 
@@ -138,12 +149,13 @@ export class MeController {
 		}
 
 		if (mfaEnabled) {
-			if (!payload.mfaCode) {
-				throw new BadRequestError('Two-factor code is required to change email');
+			const { mfaCode, webauthnResponse } = payload;
+			if (countMfaProofs({ mfaCode, webauthnResponse }) < 1) {
+				throw new BadRequestError('Two-factor verification is required to change email');
 			}
 
-			const isMfaCodeValid = await this.mfaService.validateMfa(userId, payload.mfaCode, undefined);
-			if (!isMfaCodeValid) {
+			const isValid = await this.mfaService.validateProof(userId, { mfaCode, webauthnResponse });
+			if (!isValid) {
 				throw new InvalidMfaCodeError();
 			}
 		} else {
@@ -196,7 +208,7 @@ export class MeController {
 		@Body payload: PasswordUpdateRequestDto,
 	) {
 		const { user } = req;
-		const { currentPassword, newPassword, mfaCode } = payload;
+		const { currentPassword, newPassword, mfaCode, webauthnResponse } = payload;
 
 		if (this.isUserManagedByEnv(user)) {
 			throw new ForbiddenError(
@@ -233,12 +245,15 @@ export class MeController {
 		}
 
 		if (user.mfaEnabled) {
-			if (typeof mfaCode !== 'string') {
-				throw new BadRequestError('Two-factor code is required to change password.');
+			if (countMfaProofs({ mfaCode, webauthnResponse }) < 1) {
+				throw new BadRequestError('Two-factor verification is required to change password.');
 			}
 
-			const isMfaCodeValid = await this.mfaService.validateMfa(user.id, mfaCode, undefined);
-			if (!isMfaCodeValid) {
+			const isValid = await this.mfaService.validateProof(user.id, {
+				mfaCode,
+				webauthnResponse,
+			});
+			if (!isValid) {
 				throw new InvalidMfaCodeError();
 			}
 		}
@@ -248,7 +263,7 @@ export class MeController {
 		const updatedUser = await this.userRepository.save(user, { transaction: false });
 		this.logger.info('Password updated successfully', { userId: user.id });
 
-		this.authService.issueCookie(res, updatedUser, req.authInfo?.usedMfa ?? false, req.browserId);
+		await this.authService.rotateSession(res, updatedUser, req.authInfo?.usedMfa ?? false, req);
 
 		this.eventService.emit('user-updated', { user: updatedUser, fieldsChanged: ['password'] });
 

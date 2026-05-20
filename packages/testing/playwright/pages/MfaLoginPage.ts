@@ -7,11 +7,11 @@ import { BasePage } from './BasePage';
  */
 export class MfaLoginPage extends BasePage {
 	get container(): Locator {
-		return this.page.getByTestId('mfa-login-form');
+		return this.page.getByTestId('mfa-totp-screen');
 	}
 
 	getForm(): Locator {
-		return this.container;
+		return this.container.getByTestId('mfa-login-form');
 	}
 
 	getMfaCodeField(): Locator {
@@ -51,5 +51,13 @@ export class MfaLoginPage extends BasePage {
 		await this.clickEnterRecoveryCode();
 		await this.fillMfaRecoveryCode(recoveryCode);
 		// Form auto-submits
+	}
+
+	/**
+	 * Switcher link shown when the user has both TOTP and a webauthn credential.
+	 * Clicking it flips the screen from TOTP to the webauthn prompt.
+	 */
+	getSwitcherLink(): Locator {
+		return this.container.getByTestId('mfa-switcher').getByRole('button');
 	}
 }

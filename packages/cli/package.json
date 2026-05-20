@@ -142,6 +142,7 @@
     "@parcel/watcher": "^2.5.1",
     "@rudderstack/rudder-sdk-node": "catalog:",
     "@sentry/node": "catalog:sentry",
+    "@simplewebauthn/server": "^13.2.2",
     "aws4": "1.11.0",
     "axios": "catalog:",
     "bcryptjs": "2.4.3",

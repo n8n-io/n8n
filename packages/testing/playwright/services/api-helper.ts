@@ -6,6 +6,8 @@ import type {
 	InstanceAiThreadInfo,
 } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
+import merge from 'lodash/merge';
+import omitBy from 'lodash/omitBy';
 import { setTimeout as wait } from 'node:timers/promises';
 
 import type { UserCredentials } from '../config/test-users';
@@ -165,12 +167,33 @@ export class ApiHelpers {
 	// ===== CORE METHODS =====
 
 	async resetDatabase(): Promise<void> {
+		await this.resetDatabaseWith({});
+	}
+
+	/**
+	 * Same as {@link resetDatabase} but lets a spec override one or more
+	 * seed-user records. Pass `null` to drop a field from the default
+	 * (e.g. `{ owner: { mfaSecret: null, mfaRecoveryCodes: null } }`) so the
+	 * owner is created without a TOTP secret.
+	 */
+	async resetDatabaseWith(overrides: {
+		owner?: Record<string, unknown>;
+		admin?: Record<string, unknown>;
+		members?: typeof INSTANCE_MEMBER_CREDENTIALS;
+		chat?: Record<string, unknown>;
+	}): Promise<void> {
+		// `omitBy(merge(base, patch), v => v === null)` reads as "apply the
+		// patch, then drop any field the caller set to `null`" — lets a spec
+		// remove an inherited field from the seed default.
+		const apply = <T extends object>(base: T, patch?: Record<string, unknown>): T =>
+			omitBy(merge({}, base, patch), (value) => value === null) as T;
+
 		const response = await this.request.post('/rest/e2e/reset', {
 			data: {
-				owner: INSTANCE_OWNER_CREDENTIALS,
-				members: INSTANCE_MEMBER_CREDENTIALS,
-				admin: INSTANCE_ADMIN_CREDENTIALS,
-				chat: INSTANCE_CHAT_CREDENTIALS,
+				owner: apply(INSTANCE_OWNER_CREDENTIALS, overrides.owner),
+				members: overrides.members ?? INSTANCE_MEMBER_CREDENTIALS,
+				admin: apply(INSTANCE_ADMIN_CREDENTIALS, overrides.admin),
+				chat: apply(INSTANCE_CHAT_CREDENTIALS, overrides.chat),
 			},
 		});
 

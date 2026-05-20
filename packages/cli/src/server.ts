@@ -484,7 +484,7 @@ export class Server extends AbstractServer {
 				ResponseHelper.send(async (req: AuthenticatedRequest) => {
 					return req.user
 						? await frontendService.getSettings()
-						: await frontendService.getPublicSettings(!!req.authInfo?.mfaEnrollmentRequired);
+						: await frontendService.getPublicSettings();
 				}),
 			);
 		}

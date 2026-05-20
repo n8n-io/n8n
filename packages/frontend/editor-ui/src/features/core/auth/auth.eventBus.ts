@@ -1,4 +1,5 @@
 import { createEventBus } from '@n8n/utils/event-bus';
+import type { MfaMethod } from '@n8n/api-types';
 
 export interface ConfirmPasswordClosedEventPayload {
 	currentPassword: string;
@@ -29,3 +30,9 @@ export interface MfaModalEvents {
  * Event bus for transmitting the MFA code from a modal back to the view
  */
 export const promptMfaCodeBus = createEventBus<MfaModalEvents>();
+
+export interface TwoFactorWizardEvents {
+	completed: { method: MfaMethod };
+}
+
+export const twoFactorWizardBus = createEventBus<TwoFactorWizardEvents>();

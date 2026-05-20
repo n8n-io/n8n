@@ -1,78 +1,39 @@
 <script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import { I18nT } from 'vue-i18n';
+import { useI18n } from '@n8n/i18n';
+//@ts-ignore
+import QrcodeVue from 'qrcode.vue';
+import { N8nButton, N8nInfoTip, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
+
 import Modal from '@/app/components/Modal.vue';
 import {
 	MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH,
 	MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED,
-	MFA_SETUP_MODAL_KEY,
-	VIEWS,
+	TOTP_SETUP_WIZARD_MODAL_KEY,
 } from '@/app/constants';
-import { ref, onMounted } from 'vue';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { mfaEventBus } from '../auth.eventBus';
 import { useToast } from '@/app/composables/useToast';
-//@ts-ignore
-import QrcodeVue from 'qrcode.vue';
 import { useClipboard } from '@/app/composables/useClipboard';
-import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import router from '@/app/router';
-import { I18nT } from 'vue-i18n';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { twoFactorWizardBus } from '../auth.eventBus';
+import MfaWizardSteps from './MfaWizardSteps.vue';
 
-import { N8nButton, N8nInfoTip, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
-// ---------------------------------------------------------------------------
-// #region Reactive properties
-// ---------------------------------------------------------------------------
+const i18n = useI18n();
+const usersStore = useUsersStore();
+const toast = useToast();
+const clipboard = useClipboard();
+const uiStore = useUIStore();
 
-const MFA_SETUP_MODAL_KEY_NAME = ref(MFA_SETUP_MODAL_KEY);
-const modalBus = ref(mfaEventBus);
 const secret = ref('');
 const qrCode = ref('');
-const readyToSubmit = ref(false);
-const formBus = ref(mfaEventBus);
-const showRecoveryCodes = ref(false);
 const recoveryCodes = ref<string[]>([]);
 const recoveryCodesDownloaded = ref(false);
 const authenticatorCode = ref('');
 const infoTextErrorMessage = ref('');
 const loadingQrCode = ref(true);
-
-// #endregion
-
-// ---------------------------------------------------------------------------
-// #region Composable
-// ---------------------------------------------------------------------------
-
-const clipboard = useClipboard();
-const userStore = useUsersStore();
-const settingsStore = useSettingsStore();
-const i18n = useI18n();
-const toast = useToast();
-
-// #endregion
-
-// ---------------------------------------------------------------------------
-// #region Methods
-// ---------------------------------------------------------------------------
-
-const closeDialog = () => {
-	modalBus.value.emit('close');
-};
-
-const onInput = (value: string) => {
-	if (value.length !== MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH) {
-		infoTextErrorMessage.value = '';
-		return;
-	}
-	userStore
-		.verifyMfaCode({ mfaCode: value })
-		.then(() => {
-			showRecoveryCodes.value = true;
-			authenticatorCode.value = value;
-		})
-		.catch(() => {
-			infoTextErrorMessage.value = i18n.baseText('mfa.setup.invalidCode');
-		});
-};
+const showRecoveryCodes = ref(false);
+const submitting = ref(false);
 
 const onCopySecretToClipboard = () => {
 	void clipboard.copy(secret.value);
@@ -83,8 +44,31 @@ const onCopySecretToClipboard = () => {
 	});
 };
 
-const onSaveClick = () => {
-	formBus.value.emit('submit');
+const verifying = ref(false);
+
+const verifyCode = async () => {
+	if (authenticatorCode.value.length !== MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH) return;
+	if (verifying.value) return;
+	verifying.value = true;
+	try {
+		await usersStore.verifyMfaCode({ mfaCode: authenticatorCode.value });
+		showRecoveryCodes.value = true;
+	} catch {
+		infoTextErrorMessage.value = i18n.baseText('mfa.setup.invalidCode');
+	} finally {
+		verifying.value = false;
+	}
+};
+
+const onInput = () => {
+	if (infoTextErrorMessage.value) infoTextErrorMessage.value = '';
+	if (authenticatorCode.value.length === MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH) {
+		void verifyCode();
+	}
+};
+
+const onContinue = async () => {
+	await verifyCode();
 };
 
 const onDownloadClick = () => {
@@ -102,18 +86,25 @@ const onDownloadClick = () => {
 	recoveryCodesDownloaded.value = true;
 };
 
-const onSetupClick = async () => {
+const onBack = () => {
+	if (showRecoveryCodes.value) {
+		showRecoveryCodes.value = false;
+		return;
+	}
+	uiStore.closeModal(TOTP_SETUP_WIZARD_MODAL_KEY);
+};
+
+const onEnable = async () => {
+	submitting.value = true;
 	try {
-		await userStore.enableMfa({ mfaCode: authenticatorCode.value });
-		closeDialog();
+		await usersStore.enableMfa({ mfaCode: authenticatorCode.value });
 		toast.showMessage({
 			type: 'success',
-			title: i18n.baseText('mfa.setup.step2.toast.setupFinished.message'),
+			title: i18n.baseText('settings.personal.twoFactor.toast.enabled.totp.title'),
+			message: i18n.baseText('settings.personal.twoFactor.toast.enabled.totp.message'),
 		});
-		if (settingsStore.isMFAEnforced) {
-			await userStore.logout();
-			await router.push({ name: VIEWS.SIGNIN });
-		}
+		twoFactorWizardBus.emit('completed', { method: 'totp' });
+		uiStore.closeModal(TOTP_SETUP_WIZARD_MODAL_KEY);
 	} catch (e) {
 		if (e.errorCode === MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED) {
 			toast.showMessage({
@@ -122,17 +113,15 @@ const onSetupClick = async () => {
 			});
 			return;
 		}
-
-		toast.showMessage({
-			type: 'error',
-			title: i18n.baseText('mfa.setup.step2.toast.setupFinished.error.message'),
-		});
+		toast.showError(e, i18n.baseText('settings.personal.twoFactor.toast.error.title'));
+	} finally {
+		submitting.value = false;
 	}
 };
 
-const getMfaQR = async () => {
+onMounted(async () => {
 	try {
-		const response = await userStore.fetchMfaQR();
+		const response = await usersStore.fetchMfaQR();
 		qrCode.value = response.qrCode;
 		secret.value = response.secret;
 		recoveryCodes.value = response.recoveryCodes;
@@ -141,19 +130,7 @@ const getMfaQR = async () => {
 	} finally {
 		loadingQrCode.value = false;
 	}
-};
-
-// #endregion
-
-// ---------------------------------------------------------------------------
-// #region Lifecycle hooks
-// ---------------------------------------------------------------------------
-
-onMounted(async () => {
-	await getMfaQR();
 });
-
-// #endregion
 </script>
 
 <template>
@@ -161,25 +138,38 @@ onMounted(async () => {
 		width="460px"
 		height="80%"
 		max-height="640px"
-		:title="
-			!showRecoveryCodes
-				? i18n.baseText('mfa.setup.step1.title')
-				: i18n.baseText('mfa.setup.step2.title')
-		"
-		:event-bus="modalBus"
-		:name="MFA_SETUP_MODAL_KEY_NAME"
+		:title="i18n.baseText('settings.personal.twoFactor.totpWizard.title')"
+		:name="TOTP_SETUP_WIZARD_MODAL_KEY"
 		:center="true"
 		:loading="loadingQrCode"
 	>
 		<template #content>
-			<div v-if="!showRecoveryCodes" :class="[$style.container, $style.modalContent]">
+			<MfaWizardSteps :current="showRecoveryCodes ? 3 : 2" :total="3" />
+			<div :class="$style.stepLabel">
+				<template v-if="!showRecoveryCodes">
+					{{
+						i18n.baseText('settings.personal.twoFactor.totpWizard.scan.step', {
+							interpolate: { current: 2, total: 3 },
+						})
+					}}
+				</template>
+				<template v-else>
+					{{
+						i18n.baseText('settings.personal.twoFactor.totpWizard.recovery.step', {
+							interpolate: { current: 3, total: 3 },
+						})
+					}}
+				</template>
+			</div>
+
+			<div v-if="!showRecoveryCodes" :class="$style.container">
 				<div :class="$style.textContainer">
 					<N8nText size="large" color="text-dark" :bold="true">{{
 						i18n.baseText('mfa.setup.step1.instruction1.title')
 					}}</N8nText>
 				</div>
 				<div>
-					<N8nText size="medium" :bold="false">
+					<N8nText size="medium">
 						<I18nT keypath="mfa.setup.step1.instruction1.subtitle" tag="span" scope="global">
 							<template #part1>
 								{{ i18n.baseText('mfa.setup.step1.instruction1.subtitle.part1') }}
@@ -204,12 +194,7 @@ onMounted(async () => {
 					}}</N8nText>
 				</div>
 				<div :class="[$style.form, infoTextErrorMessage ? $style.error : '']">
-					<N8nInputLabel
-						size="medium"
-						:bold="false"
-						:class="$style.labelTooltip"
-						:label="i18n.baseText('mfa.setup.step1.input.label')"
-					>
+					<N8nInputLabel size="medium" :label="i18n.baseText('mfa.setup.step1.input.label')">
 						<N8nInput
 							v-model="authenticatorCode"
 							type="text"
@@ -221,22 +206,21 @@ onMounted(async () => {
 						/>
 					</N8nInputLabel>
 					<div :class="[$style.infoText, 'mt-4xs']">
-						<span size="small" v-text="infoTextErrorMessage"></span>
+						<span v-text="infoTextErrorMessage"></span>
 					</div>
 				</div>
 			</div>
+
 			<div v-else :class="$style.container">
 				<div>
-					<N8nText size="medium" :bold="false">{{
-						i18n.baseText('mfa.setup.step2.description')
-					}}</N8nText>
+					<N8nText size="medium">{{ i18n.baseText('mfa.setup.step2.description') }}</N8nText>
 				</div>
 				<div :class="$style.recoveryCodesContainer">
-					<div v-for="recoveryCode in recoveryCodes" :key="recoveryCode">
-						<N8nText size="medium">{{ recoveryCode }}</N8nText>
+					<div v-for="code in recoveryCodes" :key="code">
+						<N8nText size="medium">{{ code }}</N8nText>
 					</div>
 				</div>
-				<N8nInfoTip :bold="false" :class="$style['edit-mode-footer-infotip']">
+				<N8nInfoTip>
 					<I18nT keypath="mfa.setup.step2.infobox.description" tag="span" scope="global">
 						<template #part1>
 							{{ i18n.baseText('mfa.setup.step2.infobox.description.part1') }}
@@ -261,55 +245,52 @@ onMounted(async () => {
 			</div>
 		</template>
 		<template #footer>
-			<div v-if="showRecoveryCodes">
-				<div>
-					<N8nButton
-						float="right"
-						:disabled="!recoveryCodesDownloaded"
-						:label="i18n.baseText('mfa.setup.step2.button.save')"
-						size="large"
-						data-test-id="mfa-save-button"
-						@click="onSetupClick"
-					/>
-				</div>
-			</div>
-			<div v-else>
-				<div>
-					<N8nButton
-						float="right"
-						:label="i18n.baseText('mfa.setup.step1.button.continue')"
-						size="large"
-						:disabled="!readyToSubmit"
-						@click="onSaveClick"
-					/>
-				</div>
+			<div :class="$style.footer">
+				<N8nButton variant="subtle" @click="onBack">
+					{{ i18n.baseText('settings.personal.twoFactor.back') }}
+				</N8nButton>
+				<N8nButton
+					v-if="!showRecoveryCodes"
+					:disabled="authenticatorCode.length !== 6"
+					:loading="verifying"
+					data-test-id="mfa-continue-button"
+					@click="onContinue"
+				>
+					{{ i18n.baseText('settings.personal.twoFactor.picker.continue') }}
+				</N8nButton>
+				<N8nButton
+					v-else
+					:disabled="!recoveryCodesDownloaded"
+					:loading="submitting"
+					data-test-id="mfa-save-button"
+					@click="onEnable"
+				>
+					{{ i18n.baseText('settings.personal.twoFactor.totpWizard.enable') }}
+				</N8nButton>
 			</div>
 		</template>
 	</Modal>
 </template>
 
 <style module lang="scss">
+.stepLabel {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+	letter-spacing: 0.04em;
+	margin-bottom: var(--spacing--sm);
+	text-transform: uppercase;
+	font-weight: var(--font-weight--medium);
+}
+
 .container {
 	display: flex;
 	flex-direction: column;
-	height: 100%;
+	gap: var(--spacing--sm);
 }
 
-.container > * {
-	overflow: visible;
-	margin-bottom: var(--spacing--sm);
-	&:last-child {
-		margin-bottom: 0;
-	}
-}
 .textContainer {
 	text-align: left;
 	margin: 0;
-	margin-bottom: 5px;
-}
-
-.formContainer {
-	padding-bottom: var(--spacing--xl);
 }
 
 .qrContainer {
@@ -320,9 +301,6 @@ onMounted(async () => {
 	}
 }
 
-.headerContainer {
-	text-align: center;
-}
 .recoveryCodesContainer {
 	display: flex;
 	flex-direction: column;
@@ -330,13 +308,8 @@ onMounted(async () => {
 	text-align: center;
 	flex-wrap: nowrap;
 	justify-content: space-between;
-	align-items: normal;
-	align-content: normal;
-	padding-top: var(--spacing--xs);
-	padding-bottom: var(--spacing--xs);
+	padding: var(--spacing--xs) 0;
 	gap: var(--spacing--xs);
-	margin-bottom: var(--spacing--2xs);
-	overflow-y: auto;
 }
 
 .recoveryCodesContainer span {
@@ -346,18 +319,15 @@ onMounted(async () => {
 	color: var(--mfa--recovery-code--color);
 }
 
-.form:first-child span {
-	color: var(--color--text);
-	font-weight: var(--font-weight--regular);
-	font-size: var(--font-size--sm);
-}
 .form input {
 	width: 50%;
 	height: 30px;
 }
+
 .secret {
 	color: var(--color--primary);
 	font-weight: var(--font-weight--bold);
+	cursor: pointer;
 }
 
 .loseAccessText {
@@ -373,13 +343,9 @@ onMounted(async () => {
 	font-size: var(--font-size--2xs);
 }
 
-.modalFooter {
-	justify-content: space-between;
+.footer {
 	display: flex;
-	flex-direction: row;
-}
-
-.notice {
-	margin: 0;
+	gap: var(--spacing--3xs);
+	justify-content: flex-end;
 }
 </style>

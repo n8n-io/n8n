@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import AuthView from './AuthView.vue';
@@ -15,7 +15,9 @@ import { useSSOStore } from '@/features/settings/sso/sso.store';
 
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/app/constants';
-import type { LoginRequestDto } from '@n8n/api-types';
+import type { LoginRequestDto, MfaMethod } from '@n8n/api-types';
+import { LAST_2FA_METHOD_KEY } from '../auth.constants';
+import { isWebauthnUserCancellation } from '../utils/webauthn-error';
 
 export type EmailOrLdapLoginIdAndPassword = Pick<
 	LoginRequestDto,
@@ -37,6 +39,7 @@ const telemetry = useTelemetry();
 
 const loading = ref(false);
 const showMfaView = ref(false);
+const availableMfaMethods = ref<MfaMethod[]>(['totp']);
 const emailOrLdapLoginId = ref('');
 const password = ref('');
 const reportError = ref(false);
@@ -66,7 +69,7 @@ const formConfig: IFormBoxConfig = reactive({
 				...(!isLdapLoginEnabled.value && { validationRules: [{ name: 'VALID_EMAIL' }] }),
 				showRequiredAsterisk: false,
 				validateOnBlur: false,
-				autocomplete: 'email',
+				autocomplete: 'username webauthn',
 				capitalize: true,
 				focusInitially: true,
 			},
@@ -92,6 +95,14 @@ const onMFASubmitted = async (form: MfaCodeOrMfaRecoveryCode) => {
 		password: password.value,
 		mfaCode: form.mfaCode,
 		mfaRecoveryCode: form.mfaRecoveryCode,
+	});
+};
+
+const onWebAuthnSubmitted = async (webauthnResponse: unknown) => {
+	await login({
+		emailOrLdapLoginId: emailOrLdapLoginId.value,
+		password: password.value,
+		webauthnResponse,
 	});
 };
 
@@ -124,6 +135,18 @@ const getRedirectQueryParameter = () => {
 	return redirect;
 };
 
+const persistLastMethodOnSuccess = (form: LoginRequestDto) => {
+	let method: MfaMethod | null = null;
+	if (form.mfaCode) method = 'totp';
+	else if (form.webauthnResponse) method = 'security_key';
+	if (!method) return;
+	try {
+		localStorage.setItem(LAST_2FA_METHOD_KEY, method);
+	} catch {
+		// localStorage unavailable
+	}
+};
+
 const login = async (form: LoginRequestDto) => {
 	try {
 		loading.value = true;
@@ -132,8 +155,10 @@ const login = async (form: LoginRequestDto) => {
 			password: form.password,
 			mfaCode: form.mfaCode,
 			mfaRecoveryCode: form.mfaRecoveryCode,
+			webauthnResponse: form.webauthnResponse,
 		});
 		loading.value = false;
+		persistLastMethodOnSuccess(form);
 		await settingsStore.getSettings();
 
 		toast.clearAllStickyNotifications();
@@ -161,6 +186,9 @@ const login = async (form: LoginRequestDto) => {
 		await router.push({ name: VIEWS.HOMEPAGE });
 	} catch (error) {
 		if (error.errorCode === MFA_AUTHENTICATION_REQUIRED_ERROR_CODE) {
+			const methods = (error.meta as { availableMethods?: MfaMethod[] } | undefined)
+				?.availableMethods;
+			availableMfaMethods.value = methods?.length ? methods : ['totp'];
 			showMfaView.value = true;
 			cacheCredentials(form);
 			return;
@@ -196,6 +224,44 @@ const cacheCredentials = (form: EmailOrLdapLoginIdAndPassword) => {
 	emailOrLdapLoginId.value = form.emailOrLdapLoginId;
 	password.value = form.password;
 };
+
+const onSigninWithPasskeyComplete = async () => {
+	await settingsStore.getSettings();
+	toast.clearAllStickyNotifications();
+	telemetry.track('User attempted to login', { result: 'passkey_success' });
+
+	if (isRedirectSafe()) {
+		const redirect = getRedirectQueryParameter();
+		if (redirect.startsWith('http')) {
+			window.location.href = redirect;
+			return;
+		}
+		void router.push(redirect);
+		return;
+	}
+	await router.push({ name: VIEWS.HOMEPAGE });
+};
+
+// Conditional UI: while the signin page is mounted, ask the browser to surface
+// any saved discoverable passkey for this origin via its native autofill UI.
+// Tapping the suggestion runs the WebAuthn ceremony and posts the assertion to
+// the passwordless verify endpoint.
+onMounted(async () => {
+	try {
+		const { browserSupportsWebAuthnAutofill } = await import('@simplewebauthn/browser');
+		if (!(await browserSupportsWebAuthnAutofill())) return;
+
+		const signedIn = await usersStore.signinWithPasskey({ useBrowserAutofill: true });
+		if (!signedIn) return;
+		await onSigninWithPasskeyComplete();
+	} catch (e) {
+		// Benign dismissals / abort signals are common on this path (the user
+		// may submit the password form before completing autofill, or close
+		// the OS picker). Only surface real failures.
+		if (isWebauthnUserCancellation(e)) return;
+		toast.showError(e, locale.baseText('auth.signin.passkey.error'));
+	}
+});
 </script>
 
 <template>
@@ -211,7 +277,10 @@ const cacheCredentials = (form: EmailOrLdapLoginIdAndPassword) => {
 		<MfaView
 			v-if="showMfaView"
 			:report-error="reportError"
+			:email="emailOrLdapLoginId"
+			:available-methods="availableMfaMethods"
 			@submit="onMFASubmitted"
+			@webauthn-submit="onWebAuthnSubmitted"
 			@on-back-click="onBackClick"
 			@on-form-changed="onFormChanged"
 		/>

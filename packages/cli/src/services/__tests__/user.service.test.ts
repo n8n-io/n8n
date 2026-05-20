@@ -66,6 +66,7 @@ describe('UserService', () => {
 		globalConfig,
 		jwtService,
 		projectService,
+		mock(),
 	);
 
 	const commonMockUser = Object.assign(new User(), {

@@ -38,6 +38,7 @@ export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
 
 export { LoginRequestDto } from './auth/login-request.dto';
+export { PasswordlessVerifyRequestDto } from './auth/passwordless-verify-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
 export { EmbedLoginQueryDto } from './auth/embed-login-query.dto';
 export { EmbedLoginBodyDto } from './auth/embed-login-body.dto';
@@ -60,6 +61,7 @@ export { DismissBannerRequestDto } from './owner/dismiss-banner-request.dto';
 export { ForgotPasswordRequestDto } from './password-reset/forgot-password-request.dto';
 export { ResolvePasswordTokenQueryDto } from './password-reset/resolve-password-token-query.dto';
 export { ChangePasswordRequestDto } from './password-reset/change-password-request.dto';
+export { PasswordResetWebAuthnOptionsRequestDto } from './password-reset/password-reset-webauthn-options-request.dto';
 
 export { CreateProjectDto } from './project/create-project.dto';
 export { UpdateProjectDto, UpdateProjectWithRelationsDto } from './project/update-project.dto';
@@ -237,6 +239,8 @@ export { TestSecretsProviderConnectionDto } from './secrets-provider/test-secret
 export { UpdateSecretsProviderConnectionDto } from './secrets-provider/update-secrets-provider-connection.dto';
 
 export { GetQuickConnectApiKeyDto } from './quick-connect/create-quick-connect-credential.dto';
+
+export { isPlatformCredential, type WebAuthnCredentialResponse } from './webauthn/index';
 
 export {
 	ExecutionRedactionQueryDtoSchema,

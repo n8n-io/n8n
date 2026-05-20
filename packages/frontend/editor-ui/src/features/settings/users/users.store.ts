@@ -26,6 +26,7 @@ import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import * as mfaApi from '@n8n/rest-api-client/api/mfa';
+import * as webauthnApi from '@n8n/rest-api-client/api/webauthn';
 import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
 import * as invitationsApi from './invitation.api';
 import { computed, ref } from 'vue';
@@ -276,8 +277,23 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		await usersApi.validatePasswordToken(rootStore.restApiContext, params);
 	};
 
-	const changePassword = async (params: { token: string; password: string; mfaCode?: string }) => {
+	const changePassword = async (params: {
+		token: string;
+		password: string;
+		mfaCode?: string;
+		webauthnResponse?: unknown;
+	}) => {
 		await usersApi.changePassword(rootStore.restApiContext, params);
+	};
+
+	const getPasswordResetWebAuthnAssertion = async (token: string) => {
+		const { startAuthentication } = await import('@simplewebauthn/browser');
+		const options = await usersApi.getPasswordResetWebAuthnOptions(rootStore.restApiContext, {
+			token,
+		});
+		return await startAuthentication({
+			optionsJSON: options as Parameters<typeof startAuthentication>[0]['optionsJSON'],
+		});
 	};
 
 	const updateUser = async (params: UserUpdateRequestDto) => {
@@ -394,6 +410,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		await mfaApi.enableMfa(rootStore.restApiContext, data);
 		if (currentUser.value) {
 			currentUser.value.mfaEnabled = true;
+			const existing = currentUser.value.availableMfaMethods ?? [];
+			if (!existing.includes('totp')) {
+				currentUser.value.availableMfaMethods = [...existing, 'totp'];
+			}
 		}
 	};
 
@@ -402,12 +422,84 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 		if (currentUser.value) {
 			currentUser.value.mfaEnabled = false;
+			currentUser.value.availableMfaMethods = [];
 		}
 	};
 
 	const updateEnforceMfa = async (enforce: boolean) => {
 		await mfaApi.updateEnforceMfa(rootStore.restApiContext, enforce);
 		settingsStore.isMFAEnforced = enforce;
+	};
+
+	// WebAuthn / Security Keys
+
+	const registerWebAuthnCredential = async (
+		label: string,
+		attachment: 'platform' | 'cross-platform',
+	) => {
+		const { startRegistration } = await import('@simplewebauthn/browser');
+		const options = await webauthnApi.getRegistrationOptions(rootStore.restApiContext, attachment);
+		const attestationResponse = await startRegistration({
+			optionsJSON: options as Parameters<typeof startRegistration>[0]['optionsJSON'],
+		});
+		const result = await webauthnApi.verifyRegistration(rootStore.restApiContext, {
+			label,
+			response: attestationResponse,
+			attachment,
+		});
+		if (currentUser.value) {
+			currentUser.value.mfaEnabled = true;
+			const existing = currentUser.value.availableMfaMethods ?? [];
+			if (!existing.includes(result.method)) {
+				currentUser.value.availableMfaMethods = [...existing, result.method];
+			}
+		}
+		return result;
+	};
+
+	const fetchWebAuthnCredentials = async () => {
+		return await webauthnApi.getCredentials(rootStore.restApiContext);
+	};
+
+	const deleteWebAuthnCredential = async (id: string, proof: webauthnApi.DeleteCredentialProof) => {
+		await webauthnApi.deleteCredential(rootStore.restApiContext, id, proof);
+	};
+
+	const updateWebAuthnCredentialLabel = async (id: string, label: string) => {
+		await webauthnApi.updateCredential(rootStore.restApiContext, id, { label });
+	};
+
+	const verifyWebAuthnAuthentication = async (email: string, kind?: 'passkey' | 'security_key') => {
+		const { startAuthentication } = await import('@simplewebauthn/browser');
+		const options = await webauthnApi.getAuthenticationOptions(
+			rootStore.restApiContext,
+			email,
+			kind,
+		);
+		const assertionResponse = await startAuthentication({
+			optionsJSON: options as Parameters<typeof startAuthentication>[0]['optionsJSON'],
+		});
+		return assertionResponse;
+	};
+
+	const signinWithPasskey = async (
+		options: { useBrowserAutofill?: boolean } = {},
+	): Promise<boolean> => {
+		const { startAuthentication } = await import('@simplewebauthn/browser');
+		const response = await webauthnApi.getPasswordlessAuthOptions(rootStore.restApiContext);
+		const { challengeId } = response;
+		const assertion = await startAuthentication({
+			optionsJSON: response as unknown as Parameters<typeof startAuthentication>[0]['optionsJSON'],
+			useBrowserAutofill: options.useBrowserAutofill,
+		});
+		const user = await webauthnApi.verifyPasswordlessAuth(
+			rootStore.restApiContext,
+			challengeId,
+			assertion,
+		);
+		if (!user) return false;
+		await setCurrentUser(user);
+		return true;
 	};
 
 	const sendConfirmationEmail = async () => {
@@ -479,6 +571,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		sendForgotPasswordEmail,
 		validatePasswordToken,
 		changePassword,
+		getPasswordResetWebAuthnAssertion,
 		updateUser,
 		updateUserName,
 		updateUserSettings,
@@ -498,6 +591,12 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		disableMfa,
 		updateEnforceMfa,
 		canEnableMFA,
+		registerWebAuthnCredential,
+		fetchWebAuthnCredentials,
+		deleteWebAuthnCredential,
+		updateWebAuthnCredentialLabel,
+		verifyWebAuthnAuthentication,
+		signinWithPasskey,
 		sendConfirmationEmail,
 		updateGlobalRole,
 		setEasyAIWorkflowOnboardingDone,

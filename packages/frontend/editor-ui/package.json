@@ -52,6 +52,7 @@
     "@pinecone-database/connect": "0.0.4",
     "@replit/codemirror-indentation-markers": "^6.5.3",
     "@sentry/vue": "catalog:frontend",
+    "@simplewebauthn/browser": "^13.2.2",
     "@types/semver": "^7.7.0",
     "@typescript/vfs": "^1.6.0",
     "@vscode/markdown-it-katex": "^1.1.2",

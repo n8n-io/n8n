@@ -31,6 +31,9 @@ export const userBaseSchema = z.object({
 	role: roleSchema.optional(),
 });
 
+export const mfaMethodSchema = z.enum(['totp', 'passkey', 'security_key']);
+export type MfaMethod = z.infer<typeof mfaMethodSchema>;
+
 export const userDetailSchema = userBaseSchema.extend({
 	isPending: z.boolean().optional(),
 	isOwner: z.boolean().optional(),
@@ -39,6 +42,7 @@ export const userDetailSchema = userBaseSchema.extend({
 	personalizationAnswers: z.object({}).passthrough().nullable().optional(),
 	projectRelations: z.array(userProjectSchema).nullable().optional(),
 	mfaEnabled: z.boolean().optional(),
+	availableMfaMethods: z.array(mfaMethodSchema).optional(),
 	lastActiveAt: z.string().nullable().optional(),
 	inviteAcceptUrl: z.string().optional(),
 	isManagedByEnv: z.boolean().optional(),

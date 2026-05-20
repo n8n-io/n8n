@@ -8,7 +8,7 @@ import { BasePage } from './BasePage';
  */
 export class MfaSetupModal extends BasePage {
 	get container(): Locator {
-		return this.page.getByTestId('mfaSetup-modal');
+		return this.page.getByTestId('totpSetupWizard-modal');
 	}
 
 	getTokenInput(): Locator {
@@ -24,11 +24,15 @@ export class MfaSetupModal extends BasePage {
 	}
 
 	async clickCopySecretToClipboard(): Promise<void> {
-		await this.clickByTestId('mfa-secret-button');
+		await this.container.getByTestId('mfa-secret-button').click();
+	}
+
+	async clickContinue(): Promise<void> {
+		await this.container.getByTestId('mfa-continue-button').click();
 	}
 
 	async clickDownloadRecoveryCodes(): Promise<void> {
-		await this.clickByTestId('mfa-recovery-codes-button');
+		await this.container.getByTestId('mfa-recovery-codes-button').click();
 	}
 
 	async clickSave(): Promise<void> {

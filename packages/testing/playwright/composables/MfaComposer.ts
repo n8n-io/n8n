@@ -24,6 +24,8 @@ export class MfaComposer {
 
 		const token = authenticator.generate(mfaSecret);
 		await this.n8n.mfaSetupModal.fillToken(token);
+		// The TOTP wizard now has a two-step flow: verify code, then show recovery codes.
+		await this.n8n.mfaSetupModal.clickContinue();
 		await expect(this.n8n.mfaSetupModal.getDownloadRecoveryCodesButton()).toBeVisible();
 		await this.n8n.mfaSetupModal.clickDownloadRecoveryCodes();
 		await this.n8n.mfaSetupModal.clickSave();
@@ -64,6 +66,27 @@ export class MfaComposer {
 
 		await expect(this.n8n.mfaLogin.getForm()).toBeVisible();
 		await this.n8n.mfaLogin.submitMfaRecoveryCode(recoveryCode);
+		await expect(this.n8n.page).toHaveURL(/workflows/);
+	}
+
+	/**
+	 * Complete the MFA login via a WebAuthn ceremony. The browser ceremony is
+	 * served by whichever virtual authenticator was attached to the page —
+	 * see `utils/webauthn-virtual-authenticator.ts`. If the MFA screen lands
+	 * on the TOTP form (which can happen when the seed user has both
+	 * `mfaSecret` and a webauthn credential, with `localStorage.n8n.last2faMethod`
+	 * pointing at `totp`), flip to webauthn via the switcher first.
+	 */
+	async loginWithWebAuthn(email: string, password: string): Promise<void> {
+		await this.n8n.signIn.fillEmail(email);
+		await this.n8n.signIn.fillPassword(password);
+		await this.n8n.signIn.clickSubmit();
+
+		if (await this.n8n.mfaLogin.getForm().isVisible()) {
+			await this.n8n.mfaLogin.getSwitcherLink().click();
+		}
+
+		await this.n8n.mfaWebauthnLogin.clickWebAuthnButton();
 		await expect(this.n8n.page).toHaveURL(/workflows/);
 	}
 }

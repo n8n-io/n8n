@@ -14,10 +14,10 @@ import jwt from 'jsonwebtoken';
 
 import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
+import type { License } from '@/license';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
-import type { License } from '@/license';
 
 describe('AuthService', () => {
 	const browserId = 'test-browser-id';
@@ -56,10 +56,7 @@ describe('AuthService', () => {
 	jest.useFakeTimers({ now });
 
 	const validToken =
-		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjpmYWxzZSwiaWF0IjoxNzA2NzUwNjI1LCJleHAiOjE3MDczNTU0MjV9.N7JgwETmO41o4FUDVb4pA1HM3Clj4jyjDK-lE8Fa1Zw'; // Generated using `authService.issueJWT(user, false, browserId)`
-
-	const validTokenWithMfa =
-		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjp0cnVlLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNzM1NTQyNX0.9kTTue-ZdBQ0CblH0IrqW9K-k0WWfxfsWTglyPB10ko'; // Generated using `authService.issueJWT(user, true, browserId)`
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjpmYWxzZSwiaWF0IjoxNzA2NzUwNjI1LCJleHAiOjE3MDczNTU0MjV9.N7JgwETmO41o4FUDVb4pA1HM3Clj4jyjDK-lE8Fa1Zw'; // Pre-generated; the `hash` field is now ignored by validateToken — kept here only because the JWT signature is still valid against the test's signing secret.
 
 	beforeEach(() => {
 		jest.resetAllMocks();
@@ -70,39 +67,51 @@ describe('AuthService', () => {
 		license.isWithinUsersLimit.mockReturnValue(true);
 	});
 
-	describe('createJWTHash', () => {
-		it('should generate unique hashes', () => {
-			expect(authService.createJWTHash(user)).toEqual('mJAYx4Wb7k');
-			expect(
-				authService.createJWTHash(
-					mock<User>({ email: user.email, password: 'newPasswordHash', mfaEnabled: false }),
-				),
-			).toEqual('FVALtU7AE0');
-			expect(
-				authService.createJWTHash(
-					mock<User>({ email: 'test1@example.com', password: user.password, mfaEnabled: false }),
-				),
-			).toEqual('y8ha6X01jd');
-			expect(
-				authService.createJWTHash(
-					mock<User>({
-						email: user.email,
-						password: user.password,
-						mfaEnabled: true,
-						mfaSecret: 'secret',
-					}),
-				),
-			).toEqual('WUXEVFet9W');
-			expect(
-				authService.createJWTHash(
-					mock<User>({
-						email: user.email,
-						password: 'newPasswordHash',
-						mfaEnabled: true,
-						mfaSecret: 'secret',
-					}),
-				),
-			).toEqual('toYQYKufH6');
+	describe('invalidateOtherSessions', () => {
+		it('should bump tokensValidAfter on the user record', async () => {
+			await authService.invalidateOtherSessions(user.id);
+			expect(userRepository.update).toHaveBeenCalledWith(
+				user.id,
+				expect.objectContaining({ tokensValidAfter: expect.any(Date) }),
+			);
+		});
+	});
+
+	describe('rotateSession', () => {
+		it('should invalidate other sessions before issuing a fresh cookie', async () => {
+			const res = mock<Response>();
+			const callOrder: string[] = [];
+			userRepository.update.mockImplementation(async () => {
+				callOrder.push('invalidate');
+				return await mock();
+			});
+			res.cookie.mockImplementation(() => {
+				callOrder.push('issueCookie');
+				return res;
+			});
+
+			await authService.rotateSession(res, user, true, { browserId });
+
+			expect(callOrder).toEqual(['invalidate', 'issueCookie']);
+			expect(userRepository.update).toHaveBeenCalledWith(
+				user.id,
+				expect.objectContaining({ tokensValidAfter: expect.any(Date) }),
+			);
+			expect(res.cookie).toHaveBeenCalledWith(
+				AUTH_COOKIE_NAME,
+				expect.any(String),
+				expect.objectContaining({ httpOnly: true }),
+			);
+		});
+
+		it('should pass usedMfa through to the issued JWT', async () => {
+			const res = mock<Response>();
+
+			await authService.rotateSession(res, user, true, { browserId });
+
+			const [, token] = res.cookie.mock.calls[0];
+			const decoded = jwt.decode(token as string) as { usedMfa: boolean };
+			expect(decoded.usedMfa).toBe(true);
 		});
 	});
 
@@ -517,7 +526,7 @@ describe('AuthService', () => {
 		it('should issue a cookie with the correct options', () => {
 			authService.issueCookie(res, user, false, browserId);
 
-			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
+			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
@@ -540,7 +549,7 @@ describe('AuthService', () => {
 				expect(() => {
 					authService.issueCookie(res, user, false, browserId);
 				}).not.toThrowError('Maximum number of users reached');
-				expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
+				expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 					httpOnly: true,
 					maxAge: 604800000,
 					sameSite: 'lax',
@@ -552,7 +561,7 @@ describe('AuthService', () => {
 		it('should issue a cookie with the correct options, when 2FA was used', () => {
 			authService.issueCookie(res, user, true, browserId);
 
-			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validTokenWithMfa, {
+			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
@@ -565,7 +574,7 @@ describe('AuthService', () => {
 
 			authService.issueCookie(res, user, false, browserId);
 
-			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
+			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'none',
@@ -700,16 +709,13 @@ describe('AuthService', () => {
 			['no user is found', null],
 			['the user is disabled', { ...userData, disabled: true }],
 			[
-				'user password does not match the one on the token',
-				{ ...userData, password: 'something else' },
-			],
-			[
-				'user email does not match the one on the token',
-				{ ...userData, email: 'someone@example.com' },
-			],
-			[
-				'user mfa secret does not match the one on the token',
-				{ ...userData, mfaEnabled: true, mfaSecret: '123' },
+				'tokensValidAfter is newer than the token (sensitive change after issue)',
+				{
+					...userData,
+					// validToken was issued at iat=1706750625 (2024-02-01T01:23:45Z); a
+					// timestamp 10s later forces invalidation.
+					tokensValidAfter: new Date('2024-02-01T01:23:55.000Z'),
+				},
 			],
 		])('should throw if %s', async (_, data) => {
 			userRepository.findOne.mockResolvedValueOnce(data && mock<User>(data));
@@ -807,11 +813,11 @@ describe('AuthService', () => {
 	});
 
 	describe('generatePasswordResetUrl', () => {
-		it('should generate a valid url', () => {
+		it('should generate a valid url', async () => {
 			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.instance');
-			const url = authService.generatePasswordResetUrl(user);
-			expect(url).toEqual(
-				'https://n8n.instance/change-password?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJoYXNoIjoibUpBWXg0V2I3ayIsImlhdCI6MTcwNjc1MDYyNSwiZXhwIjoxNzA2NzUxODI1fQ.rg90I7MKjc_KC77mov59XYAeRc-CoW9ka4mt1dCfrnk&mfaEnabled=false',
+			const url = await authService.generatePasswordResetUrl(user);
+			expect(url).toMatch(
+				/^https:\/\/n8n\.instance\/change-password\?token=[\w.-]+&mfaEnabled=false$/,
 			);
 		});
 	});
@@ -827,7 +833,6 @@ describe('AuthService', () => {
 
 			expect(decoded.sub).toEqual(user.id);
 			expect(decoded.exp - decoded.iat).toEqual(1200); // Expires in 20 minutes
-			expect(decoded.hash).toEqual('mJAYx4Wb7k');
 		});
 	});
 
@@ -865,10 +870,14 @@ describe('AuthService', () => {
 			expect(resolvedUser).toBeUndefined();
 		});
 
-		it('should not return a user if the password sha does not match', async () => {
+		it('should not return a user if tokensValidAfter is newer than the token', async () => {
 			const token = authService.generatePasswordResetToken(user);
-			const updatedUser = Object.create(user);
-			updatedUser.password = 'something-else';
+			// Use a fresh mock so the bump doesn't leak into the shared `user`
+			// fixture via prototype chain (jest-mock-extended is a Proxy).
+			const updatedUser = mock<User>({
+				...userData,
+				tokensValidAfter: new Date(Date.now() + 60_000),
+			});
 			userRepository.findOne.mockResolvedValueOnce(updatedUser);
 
 			const resolvedUser = await authService.resolvePasswordResetToken(token);
@@ -1178,11 +1187,14 @@ describe('AuthService', () => {
 				).rejects.toThrow('Unauthorized');
 			});
 
-			it('should throw when user password has changed', async () => {
+			it('should throw when tokensValidAfter is bumped after the JWT was issued', async () => {
 				const token = authService.issueJWT(user, false, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 				userRepository.findOne.mockResolvedValue(
-					mock<User>({ ...userData, password: 'newPasswordHash' }),
+					mock<User>({
+						...userData,
+						tokensValidAfter: new Date(Date.now() + 10_000),
+					}),
 				);
 
 				await expect(

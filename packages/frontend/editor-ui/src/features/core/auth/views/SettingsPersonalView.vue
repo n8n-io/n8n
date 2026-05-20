@@ -1,7 +1,12 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { ROLE, type Role } from '@n8n/api-types';
-import { useI18n } from '@n8n/i18n';
+import {
+	isPlatformCredential,
+	ROLE,
+	type Role,
+	type WebAuthnCredentialResponse,
+} from '@n8n/api-types';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { IFormInputs, ThemeOption } from '@/Interface';
@@ -10,26 +15,28 @@ import {
 	CHANGE_PASSWORD_MODAL_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 	MFA_DOCS_URL,
-	MFA_SETUP_MODAL_KEY,
-	PROMPT_MFA_CODE_MODAL_KEY,
+	TOTP_SETUP_WIZARD_MODAL_KEY,
+	WEBAUTHN_SETUP_WIZARD_MODAL_KEY,
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
-import type { MfaModalEvents } from '../auth.eventBus';
-import { promptMfaCodeBus } from '../auth.eventBus';
-import type { BaseTextKey } from '@n8n/i18n';
+import {
+	twoFactorWizardBus,
+	confirmPasswordEventBus,
+	type ConfirmPasswordModalEvents,
+} from '../auth.eventBus';
+import { useMfaReverify } from '../composables/useMfaReverify';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import type { ConfirmPasswordModalEvents } from '../auth.eventBus';
-import { confirmPasswordEventBus } from '../auth.eventBus';
-
 import {
 	N8nAvatar,
+	N8nBadge,
 	N8nButton,
 	N8nFormInputs,
 	N8nHeading,
+	N8nIcon,
 	N8nInputLabel,
 	N8nLink,
 	N8nNotice,
@@ -50,6 +57,8 @@ type UserBasicDetailsForm = {
 
 type UserBasicDetailsWithMfa = UserBasicDetailsForm & {
 	mfaCode?: string;
+	mfaRecoveryCode?: string;
+	webauthnResponse?: unknown;
 };
 
 type RoleContent = {
@@ -110,15 +119,109 @@ const isPersonalSecurityEnabled = computed((): boolean => {
 	return usersStore.isInstanceOwner || !isExternalAuthEnabled.value;
 });
 
-const mfaDisabled = computed((): boolean => {
-	return !usersStore.mfaEnabled;
-});
 const mfaEnforced = computed((): boolean => {
 	return settingsStore.isMFAEnforced;
 });
 const isMfaFeatureEnabled = computed((): boolean => {
 	return settingsStore.isMfaFeatureEnabled;
 });
+
+// `availableMfaMethods` (server-derived) is the source of truth for TOTP;
+// `webauthnCredentials` (full list with metadata) is the source of truth for
+// passkey/security_key counts and rendering. Keeping these split avoids the
+// dual-signal drift where the badge ("2 registered") and the activation check
+// can disagree.
+const hasTotp = computed(
+	() =>
+		currentUser.value?.mfaEnabled === true &&
+		(currentUser.value.availableMfaMethods ?? []).includes('totp'),
+);
+const webauthnCredentials = ref<WebAuthnCredentialResponse[]>([]);
+
+const passkeyCredentials = computed<WebAuthnCredentialResponse[]>(() =>
+	webauthnCredentials.value.filter(isPlatformCredential),
+);
+const securityKeyCredentials = computed<WebAuthnCredentialResponse[]>(() =>
+	webauthnCredentials.value.filter((c) => !isPlatformCredential(c)),
+);
+
+const has2fa = computed(
+	() =>
+		hasTotp.value || passkeyCredentials.value.length > 0 || securityKeyCredentials.value.length > 0,
+);
+
+const formatSetupDate = (iso: string) => {
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return null;
+	return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
+};
+
+const relativeTimeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+const formatRelativeTime = (iso: string | null) => {
+	if (!iso) return null;
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return null;
+	const diffSec = Math.round((date.getTime() - Date.now()) / 1000);
+	const abs = Math.abs(diffSec);
+	if (abs < 60) return relativeTimeFormatter.format(Math.round(diffSec), 'second');
+	if (abs < 3600) return relativeTimeFormatter.format(Math.round(diffSec / 60), 'minute');
+	if (abs < 86400) return relativeTimeFormatter.format(Math.round(diffSec / 3600), 'hour');
+	if (abs < 86400 * 30) return relativeTimeFormatter.format(Math.round(diffSec / 86400), 'day');
+	if (abs < 86400 * 365)
+		return relativeTimeFormatter.format(Math.round(diffSec / (86400 * 30)), 'month');
+	return relativeTimeFormatter.format(Math.round(diffSec / (86400 * 365)), 'year');
+};
+
+const formatCredentialMeta = (c: WebAuthnCredentialResponse) => {
+	const parts: string[] = [];
+	const setupDate = formatSetupDate(c.createdAt);
+	if (setupDate) {
+		parts.push(
+			i18n.baseText('settings.personal.method.detail.addedOn', {
+				interpolate: { date: setupDate },
+			}),
+		);
+	}
+	const lastUsed = formatRelativeTime(c.lastUsedAt);
+	parts.push(
+		lastUsed
+			? i18n.baseText('settings.personal.method.detail.lastUsed', {
+					interpolate: { when: lastUsed },
+				})
+			: i18n.baseText('settings.personal.method.detail.neverUsed'),
+	);
+	return parts.join(' · ');
+};
+
+async function refreshWebauthnCredentials() {
+	try {
+		webauthnCredentials.value = await usersStore.fetchWebAuthnCredentials();
+	} catch {
+		webauthnCredentials.value = [];
+	}
+}
+
+async function removeWebAuthnCredential(credential: WebAuthnCredentialResponse) {
+	// Re-verify with the same kind of authenticator the user is removing:
+	// `reverify` filters `allowCredentials` server-side so the OS picker can
+	// only satisfy the ceremony with a matching credential.
+	const kind = isPlatformCredential(credential) ? 'passkey' : 'security_key';
+	const proof = await reverify(kind);
+	if (!proof) return;
+	try {
+		await usersStore.deleteWebAuthnCredential(credential.id, proof);
+		showToast({
+			title: i18n.baseText('settings.personal.mfa.toast.disabledMfa.title'),
+			message: i18n.baseText('settings.personal.mfa.toast.disabledMfa.message'),
+			type: 'success',
+			duration: 0,
+		});
+		await refreshWebauthnCredentials();
+	} catch (e) {
+		showError(e, i18n.baseText('settings.personal.mfa.toast.disabledMfa.error.message'));
+	}
+}
+const { reverify } = useMfaReverify();
 
 const hasAnyPersonalisationChanges = computed((): boolean => {
 	return currentSelectedTheme.value !== uiStore.theme;
@@ -159,8 +262,9 @@ const roles = computed<Record<Role, RoleContent>>(() => ({
 
 const currentUserRole = computed<RoleContent>(() => roles.value[usersStore.globalRoleName]);
 
-onMounted(() => {
+onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.personal.personalSettings'));
+	void refreshWebauthnCredentials();
 	formInputs.value = [
 		{
 			name: 'firstName',
@@ -232,19 +336,9 @@ async function onSubmit(data: Record<string, string | number | boolean | null | 
 	const emailChanged = usersStore.currentUser?.email !== form.email;
 
 	if (usersStore.currentUser?.mfaEnabled && emailChanged) {
-		uiStore.openModal(PROMPT_MFA_CODE_MODAL_KEY);
-
-		promptMfaCodeBus.once('closed', async (payload: MfaModalEvents['closed']) => {
-			if (!payload) {
-				// User closed the modal without submitting the form
-				return;
-			}
-
-			await saveUserSettings({
-				...form,
-				mfaCode: payload.mfaCode,
-			});
-		});
+		const proof = await reverify();
+		if (!proof) return;
+		await saveUserSettings({ ...form, ...proof });
 	} else if (emailChanged) {
 		uiStore.openModal(CONFIRM_PASSWORD_MODAL_KEY);
 		confirmPasswordEventBus.once('close', async (payload: ConfirmPasswordModalEvents['close']) => {
@@ -274,6 +368,7 @@ async function updateUserBasicInfo(userBasicInfo: UserBasicDetailsWithMfa) {
 		lastName: userBasicInfo.lastName,
 		email: userBasicInfo.email,
 		mfaCode: userBasicInfo.mfaCode,
+		webauthnResponse: userBasicInfo.webauthnResponse,
 		currentPassword: userBasicInfo.currentPassword,
 	});
 	hasAnyBasicInfoChanges.value = false;
@@ -295,53 +390,78 @@ function openPasswordModal() {
 	uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);
 }
 
-async function onMfaEnableClick() {
-	if (!settingsStore.isCloudDeployment || !usersStore.isInstanceOwner) {
-		uiStore.openModal(MFA_SETUP_MODAL_KEY);
-		return;
+async function canEnableMfaPreCheck(): Promise<boolean> {
+	if (settingsStore.isCloudDeployment && usersStore.isInstanceOwner) {
+		try {
+			await usersStore.canEnableMFA();
+		} catch (e) {
+			showToast({
+				title: i18n.baseText('settings.personal.mfa.toast.canEnableMfa.title'),
+				message: e.message,
+				type: 'error',
+			});
+			await usersStore.sendConfirmationEmail();
+			return false;
+		}
 	}
+	return true;
+}
 
-	try {
-		await usersStore.canEnableMFA();
-		uiStore.openModal(MFA_SETUP_MODAL_KEY);
-	} catch (e) {
-		showToast({
-			title: i18n.baseText('settings.personal.mfa.toast.canEnableMfa.title'),
-			message: e.message,
-			type: 'error',
+async function onSetupPasskeyClick() {
+	if (!(await canEnableMfaPreCheck())) return;
+	uiStore.openModalWithData({
+		name: WEBAUTHN_SETUP_WIZARD_MODAL_KEY,
+		data: { method: 'passkey' },
+	});
+}
+
+function isMethodActive(method: 'totp' | 'security_key'): boolean {
+	if (method === 'totp') return hasTotp.value;
+	if (method === 'security_key') return securityKeyCredentials.value.length > 0;
+	return false;
+}
+
+async function onTwoFactorMethodClick(method: 'totp' | 'security_key') {
+	if (!(await canEnableMfaPreCheck())) return;
+	if (method === 'totp') {
+		uiStore.openModal(TOTP_SETUP_WIZARD_MODAL_KEY);
+	} else {
+		uiStore.openModalWithData({
+			name: WEBAUTHN_SETUP_WIZARD_MODAL_KEY,
+			data: { method: 'security_key' },
 		});
-		await usersStore.sendConfirmationEmail();
 	}
 }
 
-async function disableMfa(payload: MfaModalEvents['closed']) {
-	if (!payload) {
-		// User closed the modal without submitting the form
-		return;
-	}
+async function onDisable2faClick() {
+	await disableMfa();
+}
 
+async function disableMfa() {
+	const proof = await reverify();
+	if (!proof) return;
 	try {
-		await usersStore.disableMfa(payload);
-
+		await usersStore.disableMfa(proof);
 		showToast({
 			title: i18n.baseText('settings.personal.mfa.toast.disabledMfa.title'),
 			message: i18n.baseText('settings.personal.mfa.toast.disabledMfa.message'),
 			type: 'success',
 			duration: 0,
 		});
+		await refreshWebauthnCredentials();
 	} catch (e) {
 		showError(e, i18n.baseText('settings.personal.mfa.toast.disabledMfa.error.message'));
 	}
 }
 
-async function onMfaDisableClick() {
-	uiStore.openModal(PROMPT_MFA_CODE_MODAL_KEY);
+const onWizardCompleted = () => {
+	void refreshWebauthnCredentials();
+};
 
-	promptMfaCodeBus.once('closed', disableMfa);
-}
+twoFactorWizardBus.on('completed', onWizardCompleted);
 
 onBeforeUnmount(() => {
-	promptMfaCodeBus.off('closed', disableMfa);
+	twoFactorWizardBus.off('completed', onWizardCompleted);
 });
 </script>
 
@@ -401,41 +521,204 @@ onBeforeUnmount(() => {
 					}}</N8nLink>
 				</N8nInputLabel>
 			</div>
-			<div v-if="isMfaFeatureEnabled" data-test-id="mfa-section">
-				<div class="mb-xs">
-					<N8nInputLabel :label="i18n.baseText('settings.personal.mfa.section.title')" />
-					<N8nText :bold="false" :class="$style.infoText">
-						{{
-							mfaDisabled
-								? i18n.baseText('settings.personal.mfa.button.disabled.infobox')
-								: i18n.baseText('settings.personal.mfa.button.enabled.infobox')
-						}}
-						<N8nLink :to="MFA_DOCS_URL" size="small" :bold="true">
-							{{ i18n.baseText('generic.learnMore') }}
-						</N8nLink>
-					</N8nText>
+			<div v-if="isMfaFeatureEnabled">
+				<div class="mb-s" data-test-id="passkey-section">
+					<div class="mb-xs">
+						<N8nInputLabel :label="i18n.baseText('settings.personal.passkey.section.title')" />
+						<N8nText :bold="false" :class="$style.infoText">
+							{{ i18n.baseText('settings.personal.passkey.description') }}
+						</N8nText>
+					</div>
+					<div :class="$style.methodCard" data-test-id="passkey-card">
+						<div :class="$style.methodCardHeader">
+							<div :class="[$style.activeMethodIcon, $style.tone_passkey]">
+								<N8nIcon icon="fingerprint" />
+							</div>
+							<div :class="$style.methodCardContent">
+								<div :class="$style.methodCardLabel">
+									<N8nText :bold="true">{{
+										i18n.baseText('settings.personal.twoFactor.method.passkey.name')
+									}}</N8nText>
+									<N8nBadge v-if="passkeyCredentials.length > 0" theme="success">{{
+										passkeyCredentials.length === 1
+											? i18n.baseText('settings.personal.method.badge.registeredOne')
+											: i18n.baseText('settings.personal.method.badge.registeredMany', {
+													interpolate: { count: String(passkeyCredentials.length) },
+												})
+									}}</N8nBadge>
+								</div>
+								<span :class="$style.methodDetail">{{
+									i18n.baseText('settings.personal.twoFactor.method.passkey.detail')
+								}}</span>
+							</div>
+							<N8nButton
+								v-if="passkeyCredentials.length === 0"
+								variant="subtle"
+								size="small"
+								:label="i18n.baseText('settings.personal.method.button.setUp')"
+								data-test-id="enable-passkey-button"
+								@click="onSetupPasskeyClick"
+							/>
+						</div>
+						<div v-if="passkeyCredentials.length > 0" :class="$style.credList">
+							<div
+								v-for="cred in passkeyCredentials"
+								:key="cred.id"
+								:class="$style.credItem"
+								:data-test-id="`passkey-cred-${cred.id}`"
+							>
+								<div :class="$style.credIconSm">
+									<N8nIcon icon="fingerprint" size="xsmall" />
+								</div>
+								<div :class="$style.credMeta">
+									<div :class="$style.credName">{{ cred.label }}</div>
+									<div :class="$style.credSub">{{ formatCredentialMeta(cred) }}</div>
+								</div>
+								<button
+									type="button"
+									:class="$style.credTrash"
+									:aria-label="i18n.baseText('settings.personal.method.button.remove')"
+									:data-test-id="`remove-passkey-${cred.id}`"
+									@click="removeWebAuthnCredential(cred)"
+								>
+									<N8nIcon icon="trash-2" size="small" />
+								</button>
+							</div>
+							<N8nButton
+								variant="ghost"
+								size="small"
+								icon="plus"
+								:class="$style.addAnotherBtn"
+								:label="i18n.baseText('settings.personal.method.button.addAnother.passkey')"
+								data-test-id="add-passkey-button"
+								@click="onSetupPasskeyClick"
+							/>
+						</div>
+					</div>
 				</div>
-				<N8nNotice
-					v-if="mfaDisabled && mfaEnforced"
-					:content="i18n.baseText('settings.personal.mfa.enforced')"
-				/>
 
-				<N8nButton
-					variant="subtle"
-					v-if="mfaDisabled"
-					:class="$style.button"
-					:label="i18n.baseText('settings.personal.mfa.button.enabled')"
-					data-test-id="enable-mfa-button"
-					@click="onMfaEnableClick"
-				/>
-				<N8nButton
-					variant="subtle"
-					v-else
-					:class="$style.disableMfaButton"
-					:label="i18n.baseText('settings.personal.mfa.button.disabled')"
-					data-test-id="disable-mfa-button"
-					@click="onMfaDisableClick"
-				/>
+				<div data-test-id="mfa-section">
+					<div class="mb-xs">
+						<N8nInputLabel :label="i18n.baseText('settings.personal.twoFactor.section.title')" />
+						<N8nText :bold="false" :class="$style.infoText">
+							{{ i18n.baseText('settings.personal.twoFactor.description') }}
+							<N8nLink :to="MFA_DOCS_URL" size="small" :bold="true">
+								{{ i18n.baseText('generic.learnMore') }}
+							</N8nLink>
+						</N8nText>
+					</div>
+					<N8nNotice
+						v-if="!has2fa && mfaEnforced"
+						:content="i18n.baseText('settings.personal.mfa.enforced')"
+					/>
+					<div :class="$style.methodCards">
+						<!-- TOTP card -->
+						<div :class="$style.methodCard" data-test-id="mfa-method-totp">
+							<div :class="$style.methodCardHeader">
+								<div :class="[$style.activeMethodIcon, $style.tone_totp]">
+									<N8nIcon icon="shield" />
+								</div>
+								<div :class="$style.methodCardContent">
+									<div :class="$style.methodCardLabel">
+										<N8nText :bold="true">{{
+											i18n.baseText('settings.personal.twoFactor.method.totp.name')
+										}}</N8nText>
+										<N8nBadge v-if="isMethodActive('totp')" theme="success">{{
+											i18n.baseText('settings.personal.mfa.status.enabled')
+										}}</N8nBadge>
+									</div>
+									<span :class="$style.methodDetail">{{
+										i18n.baseText('settings.personal.twoFactor.picker.totp.description')
+									}}</span>
+								</div>
+								<N8nButton
+									v-if="isMethodActive('totp')"
+									variant="destructive"
+									size="small"
+									:label="i18n.baseText('settings.personal.method.button.disable')"
+									data-test-id="mfa-method-totp-disable"
+									@click="onDisable2faClick"
+								/>
+								<N8nButton
+									v-else
+									variant="subtle"
+									size="small"
+									:label="i18n.baseText('settings.personal.method.button.setUp')"
+									data-test-id="mfa-method-totp-setup"
+									@click="onTwoFactorMethodClick('totp')"
+								/>
+							</div>
+						</div>
+
+						<!-- Security key card with optional credential list -->
+						<div :class="$style.methodCard" data-test-id="mfa-method-security_key">
+							<div :class="$style.methodCardHeader">
+								<div :class="[$style.activeMethodIcon, $style.tone_security_key]">
+									<N8nIcon icon="key-round" />
+								</div>
+								<div :class="$style.methodCardContent">
+									<div :class="$style.methodCardLabel">
+										<N8nText :bold="true">{{
+											i18n.baseText('settings.personal.twoFactor.method.security_key.name')
+										}}</N8nText>
+										<N8nBadge v-if="securityKeyCredentials.length > 0" theme="success">{{
+											securityKeyCredentials.length === 1
+												? i18n.baseText('settings.personal.method.badge.registeredOne')
+												: i18n.baseText('settings.personal.method.badge.registeredMany', {
+														interpolate: { count: String(securityKeyCredentials.length) },
+													})
+										}}</N8nBadge>
+									</div>
+									<span :class="$style.methodDetail">{{
+										i18n.baseText('settings.personal.twoFactor.picker.security_key.description')
+									}}</span>
+								</div>
+								<N8nButton
+									v-if="securityKeyCredentials.length === 0"
+									variant="subtle"
+									size="small"
+									:label="i18n.baseText('settings.personal.method.button.setUp')"
+									data-test-id="mfa-method-security_key-setup"
+									@click="onTwoFactorMethodClick('security_key')"
+								/>
+							</div>
+							<div v-if="securityKeyCredentials.length > 0" :class="$style.credList">
+								<div
+									v-for="cred in securityKeyCredentials"
+									:key="cred.id"
+									:class="$style.credItem"
+									:data-test-id="`security-key-cred-${cred.id}`"
+								>
+									<div :class="$style.credIconSm">
+										<N8nIcon icon="key-round" size="xsmall" />
+									</div>
+									<div :class="$style.credMeta">
+										<div :class="$style.credName">{{ cred.label }}</div>
+										<div :class="$style.credSub">{{ formatCredentialMeta(cred) }}</div>
+									</div>
+									<button
+										type="button"
+										:class="$style.credTrash"
+										:aria-label="i18n.baseText('settings.personal.method.button.remove')"
+										:data-test-id="`remove-security-key-${cred.id}`"
+										@click="removeWebAuthnCredential(cred)"
+									>
+										<N8nIcon icon="trash-2" size="small" />
+									</button>
+								</div>
+								<N8nButton
+									variant="ghost"
+									size="small"
+									icon="plus"
+									:class="$style.addAnotherBtn"
+									:label="i18n.baseText('settings.personal.method.button.addAnother.security_key')"
+									data-test-id="add-security-key-button"
+									@click="onTwoFactorMethodClick('security_key')"
+								/>
+							</div>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 		<div>
@@ -520,25 +803,148 @@ onBeforeUnmount(() => {
 	justify-self: start;
 }
 
-.disableMfaButton {
-	> span {
-		font-weight: var(--font-weight--bold);
-	}
-}
-
-.button {
-	font-size: var(--spacing--xs);
-	> span {
-		font-weight: var(--font-weight--bold);
-	}
-}
-
 .infoText {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	font-size: var(--font-size--xs);
+	color: var(--text-color--subtle);
+}
+
+.methodDetail {
+	font-size: var(--font-size--xs);
+	color: var(--text-color--subtle);
+	line-height: var(--line-height--md);
 }
 
 .themeSelect {
 	max-width: 50%;
+}
+
+.methodCards {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	margin-top: var(--spacing--xs);
+}
+
+.methodCard {
+	display: flex;
+	flex-direction: column;
+	padding: var(--spacing--xs) var(--spacing--sm);
+	background: var(--background--surface);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border-radius: var(--radius--lg);
+}
+
+.methodCardHeader {
+	display: flex;
+	gap: var(--spacing--xs);
+	align-items: center;
+}
+
+.credList {
+	margin-top: var(--spacing--2xs);
+	padding-top: var(--spacing--2xs);
+	border-top: var(--border-width) var(--border-style) var(--color--foreground);
+	display: flex;
+	flex-direction: column;
+}
+
+.credItem {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--3xs) 0;
+}
+
+.credItem + .credItem {
+	border-top: var(--border-width) var(--border-style) var(--color--foreground);
+}
+
+.credIconSm {
+	width: var(--spacing--m);
+	height: var(--spacing--m);
+	border-radius: var(--radius--xs);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	color: var(--text-color--subtle);
+	background: var(--color--background--light-2);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
+}
+
+.credMeta {
+	flex: 1;
+	min-width: 0;
+}
+
+.credName {
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--medium);
+	color: var(--text-color);
+	margin-bottom: var(--spacing--5xs);
+}
+
+.credSub {
+	font-size: var(--font-size--2xs);
+	color: var(--text-color--subtle);
+}
+
+.credTrash {
+	flex-shrink: 0;
+	background: transparent;
+	border: none;
+	color: var(--text-color--subtle);
+	cursor: pointer;
+	padding: var(--spacing--3xs);
+	border-radius: var(--radius--xs);
+}
+
+.credTrash:hover {
+	color: var(--color--danger);
+	background: var(--color--background--light-2);
+}
+
+.addAnotherBtn {
+	align-self: center;
+	margin-top: var(--spacing--2xs);
+}
+
+.methodCardContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	flex: 1;
+}
+
+.methodCardLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.activeMethodIcon {
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
+	border-radius: var(--radius--xs);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	font-size: var(--font-size--md);
+}
+
+.tone_totp {
+	background: var(--color--green-alpha-100);
+	color: var(--color--green-500);
+}
+
+.tone_passkey {
+	background: var(--background--info);
+	color: var(--color--blue-500);
+}
+
+.tone_security_key {
+	background: var(--color--orange-alpha-100);
+	color: var(--color--orange-500);
 }
 </style>

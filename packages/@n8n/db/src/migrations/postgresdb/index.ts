@@ -146,6 +146,7 @@ import { AddWorkflowUnpublishScopeToCustomRoles1769900001000 } from '../common/1
 import { CreateChatHubToolsTable1770000000000 } from '../common/1770000000000-CreateChatHubToolsTable';
 import { ExpandProviderIdColumnLength1770000000000 } from '../common/1770000000000-ExpandProviderIdColumnLength';
 import { CreateWorkflowBuilderSessionTable1770220686000 } from '../common/1770220686000-CreateWorkflowBuilderSessionTable';
+import { CreateWebauthnCredentialTable1770500000000 } from '../common/1770500000000-CreateWebauthnCredentialTable';
 import { AddScalingFieldsToTestRun1771417407753 } from '../common/1771417407753-AddScalingFieldsToTestRun';
 import { MigrateExternalSecretsToEntityStorage1771500000000 } from '../common/1771500000000-MigrateExternalSecretsToEntityStorage';
 import { AddUnshareScopeToCustomRoles1771500000001 } from '../common/1771500000001-AddUnshareScopeToCustomRoles';
@@ -174,6 +175,7 @@ import { CreateEvaluationConfig1778100000000 } from '../common/1778100000000-Cre
 import { AddWorkflowVersionToTestRun1778100001000 } from '../common/1778100001000-AddWorkflowVersionToTestRun';
 import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778100002000-AddEvaluationConfigColumnsToTestRun';
 import { CreateEvaluationCollection1778496086558 } from '../common/1778496086558-CreateEvaluationCollection';
+import { AddSessionInvalidationAndWebauthnLastUsedAt1778728323878 } from '../common/1778728323878-AddSessionInvalidationAndWebauthnLastUsedAt';
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
 import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
 import { CreateAgentObservationTables1784000000000 } from '../common/1784000000000-CreateAgentObservationTables';
@@ -333,6 +335,7 @@ export const postgresMigrations: Migration[] = [
 	CreateChatHubToolsTable1770000000000,
 	ExpandProviderIdColumnLength1770000000000,
 	CreateWorkflowBuilderSessionTable1770220686000,
+	CreateWebauthnCredentialTable1770500000000,
 	AddScalingFieldsToTestRun1771417407753,
 	MigrateExternalSecretsToEntityStorage1771500000000,
 	AddUnshareScopeToCustomRoles1771500000001,
@@ -362,6 +365,7 @@ export const postgresMigrations: Migration[] = [
 	AddWorkflowVersionToTestRun1778100001000,
 	AddEvaluationConfigColumnsToTestRun1778100002000,
 	CreateEvaluationCollection1778496086558,
+	AddSessionInvalidationAndWebauthnLastUsedAt1778728323878,
 	CreateAgentTables1783000000000,
 	CreateAgentExecutionTables1783000000001,
 	CreateAgentObservationTables1784000000000,

@@ -8,6 +8,7 @@ import type {
 	Role,
 	UsersList,
 	User,
+	MfaMethod,
 } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import type {
@@ -75,6 +76,8 @@ export interface CurrentUserResponse extends IUserResponse {
 	featureFlags?: FeatureFlags;
 }
 
+export type { MfaMethod };
+
 export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;
@@ -82,6 +85,7 @@ export interface IUser extends IUserResponse {
 	fullName?: string;
 	createdAt?: string;
 	mfaEnabled: boolean;
+	availableMfaMethods?: MfaMethod[];
 	mfaAuthenticated?: boolean;
 }
 
@@ -137,9 +141,16 @@ export async function validatePasswordToken(
 
 export async function changePassword(
 	context: IRestApiContext,
-	params: { token: string; password: string; mfaCode?: string },
+	params: { token: string; password: string; mfaCode?: string; webauthnResponse?: unknown },
 ): Promise<void> {
 	await makeRestApiRequest(context, 'POST', '/change-password', params);
+}
+
+export async function getPasswordResetWebAuthnOptions(
+	context: IRestApiContext,
+	params: { token: string },
+): Promise<unknown> {
+	return await makeRestApiRequest(context, 'POST', '/password-reset/webauthn-options', params);
 }
 
 export async function updateCurrentUser(

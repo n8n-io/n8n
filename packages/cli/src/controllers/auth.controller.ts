@@ -1,4 +1,8 @@
-import { LoginRequestDto, ResolveSignupTokenQueryDto } from '@n8n/api-types';
+import {
+	LoginRequestDto,
+	PasswordlessVerifyRequestDto,
+	ResolveSignupTokenQueryDto,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import type { User, PublicUser, AuthProviderType } from '@n8n/db';
@@ -69,7 +73,7 @@ export class AuthController {
 		res: Response,
 		@Body payload: LoginRequestDto,
 	): Promise<PublicUser | undefined> {
-		const { emailOrLdapLoginId, password, mfaCode, mfaRecoveryCode } = payload;
+		const { emailOrLdapLoginId, password, mfaCode, mfaRecoveryCode, webauthnResponse } = payload;
 
 		const currentAuthenticationMethod = getCurrentAuthenticationMethod();
 		this.validateEmailFormat(currentAuthenticationMethod, emailOrLdapLoginId);
@@ -90,19 +94,36 @@ export class AuthController {
 			preliminaryUser,
 		);
 
-		await this.validateMfa(user, mfaCode, mfaRecoveryCode);
+		await this.validateMfa(user, mfaCode, mfaRecoveryCode, webauthnResponse);
 
-		this.authService.issueCookie(res, user, user.mfaEnabled, req.browserId);
+		return await this.completeLogin(res, req, user, {
+			authenticationMethod: usedAuthenticationMethod,
+			usedMfa: user.mfaEnabled,
+		});
+	}
+
+	/**
+	 * Final steps of a successful login: issue the session cookie, emit the
+	 * `user-logged-in` event, and return the public user payload. Shared by the
+	 * password login and the passwordless webauthn login.
+	 */
+	private async completeLogin(
+		res: Response,
+		req: { browserId?: string },
+		user: User,
+		opts: { authenticationMethod: AuthProviderType; usedMfa: boolean },
+	): Promise<PublicUser> {
+		this.authService.issueCookie(res, user, opts.usedMfa, req.browserId);
 
 		this.eventService.emit('user-logged-in', {
 			user,
-			authenticationMethod: usedAuthenticationMethod,
+			authenticationMethod: opts.authenticationMethod,
 		});
 
 		return await this.userService.toPublic(user, {
 			posthog: this.postHog,
 			withScopes: true,
-			mfaAuthenticated: user.mfaEnabled,
+			mfaAuthenticated: opts.usedMfa,
 		});
 	}
 
@@ -165,13 +186,21 @@ export class AuthController {
 		user: User,
 		mfaCode: string | undefined,
 		mfaRecoveryCode: string | undefined,
+		webauthnResponse?: unknown,
 	): Promise<void> {
 		if (!user.mfaEnabled) {
 			return;
 		}
 
-		if (!mfaCode && !mfaRecoveryCode) {
-			throw new AuthError('MFA Error', 998);
+		if (!mfaCode && !mfaRecoveryCode && !webauthnResponse) {
+			const availableMethods = await this.mfaService.getAvailableMfaMethods(user.id);
+			throw new AuthError('MFA Error', 998, { availableMethods });
+		}
+
+		if (webauthnResponse) {
+			const valid = await this.mfaService.validateWebAuthn(user.id, webauthnResponse);
+			if (valid) return;
+			throw new AuthError('Invalid security key response');
 		}
 
 		const isMfaCodeOrMfaRecoveryCodeValid = await this.mfaService.validateMfa(
@@ -183,6 +212,40 @@ export class AuthController {
 		if (!isMfaCodeOrMfaRecoveryCodeValid) {
 			throw new AuthError('Invalid mfa token or recovery code');
 		}
+	}
+
+	/** Generate WebAuthn authentication options for passwordless signin. */
+	@Post('/login/webauthn/options', {
+		skipAuth: true,
+		ipRateLimit: { limit: 20, windowMs: 5 * Time.minutes.toMilliseconds },
+	})
+	async getPasswordlessAuthOptions() {
+		return await this.mfaService.webauthn.generatePasswordlessAuthenticationOptions();
+	}
+
+	/** Verify a WebAuthn assertion and sign the user in passwordlessly. */
+	@Post('/login/webauthn/verify', {
+		skipAuth: true,
+		ipRateLimit: { limit: 20, windowMs: 5 * Time.minutes.toMilliseconds },
+	})
+	async verifyPasswordlessAuth(
+		req: AuthlessRequest,
+		res: Response,
+		@Body payload: PasswordlessVerifyRequestDto,
+	): Promise<PublicUser> {
+		const user = await this.mfaService.webauthn.verifyPasswordlessAuthentication(
+			payload.challengeId,
+			payload.response,
+		);
+
+		this.validateSsoRestrictions(user, user.email);
+
+		// WebAuthn UV (biometric/PIN) satisfies the second factor, so the session
+		// is issued with `usedMfa: true` and bypasses the MFA-enforced gate.
+		return await this.completeLogin(res, req, user, {
+			authenticationMethod: 'email',
+			usedMfa: true,
+		});
 	}
 
 	/** Check if the user is already logged in */

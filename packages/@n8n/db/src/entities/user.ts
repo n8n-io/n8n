@@ -102,6 +102,16 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@Column({ type: 'simple-array', default: '' })
 	mfaRecoveryCodes: string[];
 
+	/**
+	 * Bumped on any sensitive account change (2FA enable/disable/switch, new
+	 * credential, password change, etc.). Auth middleware rejects any JWT whose
+	 * `iat` is older than this — invalidates sessions on other devices / tabs
+	 * while the mutating session continues via the fresh cookie issued in the
+	 * same response.
+	 */
+	@Column({ type: 'datetime', nullable: true })
+	tokensValidAfter?: Date | null;
+
 	@Column({ type: 'date', nullable: true })
 	lastActiveAt?: Date | null;
 

@@ -33,6 +33,7 @@ describe('UsersController', () => {
 		jwtService,
 		urlService,
 		provisioningService,
+		mock(),
 	);
 
 	beforeEach(() => {
