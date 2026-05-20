@@ -4,7 +4,7 @@
 // Rather than wire up the full orchestrator (which requires a
 // BackgroundTaskManager, workflowTaskService, trace context, etc.), we
 // invoke the same builder sub-agent that the orchestrator would delegate
-// to — a Mastra Agent given the sandbox builder prompt plus
+// to — a native Agent given the sandbox builder prompt plus
 // `submit-workflow` and a few supporting domain tools. For single-workflow
 // prompts in the pairwise dataset the orchestrator's only job is to route
 // here, so skipping it loses nothing material.
@@ -21,16 +21,11 @@
 // ---------------------------------------------------------------------------
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/require-await */
-// `normalizeWorkflow` returns `SimpleWorkflow`, imported transitively from
-// `ai-workflow-builder.ee` whose `@/*` alias collides with instance-ai's own
-// `@/*` mapping; the type resolves to `error` here even though runtime is
-// correct. The `waitForConfirmation` callback must be async to satisfy the
+// The `waitForConfirmation` callback must be async to satisfy the
 // resumable-stream control contract even though the auto-approve path has
 // nothing to await.
 
-import { Agent } from '@mastra/core/agent';
-import type { ToolsInput } from '@mastra/core/agent';
-import { InMemoryStore } from '@mastra/core/storage';
+import { Agent } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { createWriteStream, type WriteStream } from 'node:fs';
@@ -44,12 +39,15 @@ import {
 	createInMemoryWorkflowTaskService,
 	type InMemoryWorkflowTaskService,
 } from './stub-workflow-task-service';
-import type { SimpleWorkflow } from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
-import { registerWithMastra } from '../../src/agent/register-with-mastra';
+import type { SimpleWorkflow } from '../../../ai-workflow-builder.ee/src/types/workflow';
 import { MAX_STEPS } from '../../src/constants/max-steps';
 import type { InstanceAiEventBus, StoredEvent } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
-import { executeResumableStream } from '../../src/runtime/resumable-stream-executor';
+import {
+	executeResumableStream,
+	normalizeStreamSource,
+} from '../../src/runtime/resumable-stream-executor';
+import { createToolRegistry, toolRegistryValues } from '../../src/tool-registry';
 import { createAllTools } from '../../src/tools';
 import { createSandboxBuilderAgentPrompt } from '../../src/tools/orchestration/build-workflow-agent.prompt';
 import { createVerifyBuiltWorkflowTool } from '../../src/tools/orchestration/verify-built-workflow.tool';
@@ -57,7 +55,7 @@ import {
 	createSubmitWorkflowTool,
 	type SubmitWorkflowAttempt,
 } from '../../src/tools/workflows/submit-workflow.tool';
-import type { ModelConfig, OrchestrationContext } from '../../src/types';
+import type { InstanceAiToolRegistry, ModelConfig, OrchestrationContext } from '../../src/types';
 import { asResumable } from '../../src/utils/stream-helpers';
 import { createRemediation } from '../../src/workflow-loop/remediation';
 import type { WorkflowBuildOutcome } from '../../src/workflow-loop/workflow-loop-state';
@@ -198,7 +196,7 @@ export async function buildInProcess(
 	}
 
 	const allTools = createAllTools(services.context);
-	const builderTools: ToolsInput = {};
+	const builderTools: InstanceAiToolRegistry = createToolRegistry();
 
 	let builderWs: BuilderWorkspace;
 	try {
@@ -286,44 +284,38 @@ export async function buildInProcess(
 		'templates',
 	] as const;
 	for (const name of sandboxToolNames) {
-		const tool = (allTools as Record<string, unknown>)[name];
-		if (tool) builderTools[name] = tool;
+		const tool = allTools.get(name);
+		if (tool) builderTools.set(name, tool);
 	}
 
 	// `submit-workflow` reports each attempt back via the onAttempt callback.
 	// Production wires this to `workflowTaskService.reportBuildOutcome` so the
 	// builder loop and `verify-built-workflow` can read it. We mirror that
 	// here so the same prompt contract works in eval.
-	builderTools['submit-workflow'] = createSubmitWorkflowTool(
-		services.context,
-		builderWs.workspace,
-		async (attempt) => {
-			await workflowTaskService.reportBuildOutcome(
-				toWorkflowBuildOutcome(workItemId, runId, taskId, attempt),
-			);
-		},
+	builderTools.set(
+		'submit-workflow',
+		createSubmitWorkflowTool(
+			services.context,
+			builderWs.workspace,
+			undefined,
+			async (attempt: SubmitWorkflowAttempt) => {
+				await workflowTaskService.reportBuildOutcome(
+					toWorkflowBuildOutcome(workItemId, runId, taskId, attempt),
+				);
+			},
+		),
 	);
-	builderTools['verify-built-workflow'] = createVerifyBuiltWorkflowTool(verifyContext);
+	builderTools.set('verify-built-workflow', createVerifyBuiltWorkflowTool(verifyContext));
 
-	const agent = new Agent({
-		id: agentId,
-		name: 'Eval Workflow Builder',
-		instructions: {
-			role: 'system' as const,
-			content: prompt,
+	const agent = new Agent(agentId)
+		.model(modelId)
+		.instructions(prompt, {
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' as const } },
 			},
-		},
-		model: modelId,
-		tools: builderTools,
-		workspace: builderWs.workspace,
-	});
-
-	// Register with Mastra so HITL-suspending tools can persist a snapshot
-	// and `resumeStream` can pick it back up on auto-approve.
-	const mastraStorage = new InMemoryStore({ id: 'eval-' + nanoid(6) });
-	registerWithMastra(agentId, agent, mastraStorage);
+		})
+		.tool(toolRegistryValues(builderTools))
+		.workspace(builderWs.workspace);
 
 	const abortController = new AbortController();
 	const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs);
@@ -335,13 +327,14 @@ export async function buildInProcess(
 
 	let finalText: string | undefined;
 	try {
-		const streamSource = await agent.stream(options.prompt, {
-			maxSteps,
+		const streamResult = await agent.stream(options.prompt, {
+			maxIterations: maxSteps,
 			abortSignal: abortController.signal,
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' as const } },
 			},
 		});
+		const streamSource = normalizeStreamSource(streamResult);
 
 		const result = await executeResumableStream({
 			agent: asResumable(agent),
@@ -369,19 +362,12 @@ export async function buildInProcess(
 					}
 				},
 				// Match production (`consumeStreamWithHitl`): when a suspension
-				// auto-resumes, pass `maxSteps` and the same providerOptions to
-				// `resumeStream`. Without these, Mastra's `resumeStream` defaults
-				// to its built-in `stepCountIs(5)` cap — which silently truncates
-				// the agent's post-suspension work after every HITL tool. In a
-				// builder run that creates data tables before writing the file,
-				// the resume budget gets eaten by the time the agent reaches
-				// `submit-workflow`, and the run dies mid-flow with a stale
-				// `finishReason: 'suspended'`. See `consume-with-hitl.ts` for
-				// the production wiring.
-				buildResumeOptions: ({ mastraRunId, suspension }) => ({
-					runId: mastraRunId,
+				// auto-resumes, pass `maxIterations` and the same providerOptions to
+				// `resume`.
+				buildResumeOptions: ({ agentRunId, suspension }) => ({
+					runId: agentRunId,
 					toolCallId: suspension.toolCallId,
-					maxSteps,
+					maxIterations: maxSteps,
 					providerOptions: {
 						anthropic: { cacheControl: { type: 'ephemeral' as const } },
 					},
@@ -389,14 +375,17 @@ export async function buildInProcess(
 			},
 		});
 
-		if (result.text) {
-			finalText = await result.text;
+		const resultText = result.text ?? streamSource.text;
+		if (resultText) {
+			finalText = await resultText;
 		}
-		// Pull stream-level totals when the underlying Mastra source exposes
+		// Pull stream-level totals when the underlying stream source exposes
 		// them. `finishReason === 'length'` / 'tool-calls' pinpoints
 		// maxSteps exhaustion, and `totalUsage` is our only cost signal.
-		const usage = await safeSettle(streamSource.totalUsage ?? streamSource.usage);
-		const finishReason = await safeSettle(streamSource.finishReason);
+		const usage = await Promise.resolve(streamSource.totalUsage ?? streamSource.usage).catch(
+			() => undefined,
+		);
+		const finishReason = await Promise.resolve(streamSource.finishReason).catch(() => undefined);
 		chunkLog?.write({
 			kind: 'stream-finish',
 			status: result.status,
@@ -864,16 +853,6 @@ async function openChunkLog(filePath: string): Promise<ChunkLog> {
 			await new Promise<void>((resolve) => stream.end(() => resolve()));
 		},
 	};
-}
-
-/** Await an optional promise without letting a rejection propagate. */
-async function safeSettle<T>(value: Promise<T> | undefined): Promise<T | undefined> {
-	if (!value) return undefined;
-	try {
-		return await value;
-	} catch {
-		return undefined;
-	}
 }
 
 /**

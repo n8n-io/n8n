@@ -2,9 +2,8 @@
  * Sanitizes MCP tool Zod schemas for Anthropic compatibility.
  *
  * Problem: Chrome DevTools MCP (and potentially other MCP servers) return JSON
- * schemas with `type: ["string", "null"]`. Mastra converts these to
- * `z.union([z.string(), z.null()])`. Anthropic's API rejects `ZodNull` —
- * `@mastra/schema-compat` throws "does not support zod type: ZodNull".
+ * schemas with `type: ["string", "null"]`. Some tool adapters convert these
+ * to `z.union([z.string(), z.null()])`, and Anthropic's API rejects `ZodNull`.
  *
  * Solution: Walk the Zod schema tree and replace ZodNull unions with optional
  * non-null alternatives. For example:
@@ -12,8 +11,10 @@
  *   z.nullable(z.string())           →  z.string().optional()
  */
 
-import type { ToolsInput } from '@mastra/core/agent';
+import type { BuiltTool } from '@n8n/agents';
 import { z } from 'zod';
+
+import type { InstanceAiToolRegistry } from '../types';
 
 export const MCP_SCHEMA_MAX_DEPTH = 32;
 export const MCP_SCHEMA_MAX_NODES = 1_000;
@@ -78,6 +79,7 @@ interface ValidateJsonSchemaOptions {
 	maxObjectProperties?: number;
 	maxUnionOptions?: number;
 	toolName?: string;
+	path?: string;
 }
 
 interface JsonSchemaValidationContext {
@@ -193,7 +195,7 @@ export function assertMcpJsonSchemaWithinLimits(
 	schema: unknown,
 	options: ValidateJsonSchemaOptions = {},
 ): void {
-	validateJsonSchemaNode(schema, '$.inputSchema', 0, {
+	validateJsonSchemaNode(schema, options.path ?? '$.inputSchema', 0, {
 		toolName: options.toolName,
 		maxDepth: options.maxDepth ?? MCP_SCHEMA_MAX_DEPTH,
 		maxNodes: options.maxNodes ?? MCP_SCHEMA_MAX_NODES,
@@ -632,9 +634,8 @@ export function ensureTopLevelObject(schema: z.ZodTypeAny): z.ZodTypeAny {
 
 /**
  * Sanitize a single Zod input schema for Anthropic compatibility.
- * Must be called BEFORE passing to `createTool()`, because Mastra captures
- * the schema in a closure at construction time — post-creation mutation
- * does not affect the JSON Schema sent to the API.
+ * Must be called before registering a tool with the agent runtime, because
+ * tool builders/adapters can capture the schema during construction.
  *
  * Uses strict mode: throws on description conflicts in discriminated unions
  * to prevent silently degraded schemas. Harmonize field descriptions at the
@@ -648,8 +649,8 @@ export function sanitizeInputSchema<T extends z.ZodTypeAny>(schema: T): T {
 }
 
 /**
- * Sanitize all MCP tool schemas in-place for Anthropic compatibility.
- * Mutates the tool objects' inputSchema and outputSchema properties.
+ * Sanitize all MCP tool schemas for Anthropic compatibility.
+ * Keeps the registry instance and replaces updated tool entries.
  *
  * Uses non-strict mode (no build-time errors on conflicts) because external
  * MCP tools are third-party and we can't enforce description harmonization.
@@ -660,7 +661,7 @@ export function sanitizeInputSchema<T extends z.ZodTypeAny>(schema: T): T {
  * throwing.
  */
 export function sanitizeMcpToolSchemas(
-	tools: ToolsInput,
+	tools: InstanceAiToolRegistry,
 	options: {
 		maxDepth?: number;
 		maxNodes?: number;
@@ -668,43 +669,71 @@ export function sanitizeMcpToolSchemas(
 		maxUnionOptions?: number;
 		onError?: (error: McpSchemaSanitizationError) => void;
 	} = {},
-): ToolsInput {
-	for (const [name, tool] of Object.entries(tools)) {
-		const t = tool as { inputSchema?: z.ZodTypeAny; outputSchema?: z.ZodTypeAny };
+): InstanceAiToolRegistry {
+	for (const [name, tool] of tools) {
+		let inputSchema: BuiltTool['inputSchema'] = tool.inputSchema;
+		let outputSchema: BuiltTool['outputSchema'] = tool.outputSchema;
 		const budget = { nodes: 0 };
 		try {
-			if (t.inputSchema) {
-				t.inputSchema = ensureTopLevelObject(
-					sanitizeZodType(t.inputSchema, false, {
+			if (inputSchema) {
+				if (inputSchema instanceof z.ZodType) {
+					inputSchema = ensureTopLevelObject(
+						sanitizeZodType(inputSchema, false, {
+							maxDepth: options.maxDepth,
+							maxNodes: options.maxNodes,
+							maxObjectProperties: options.maxObjectProperties,
+							maxUnionOptions: options.maxUnionOptions,
+							toolName: name,
+							path: '$.inputSchema',
+							budget,
+						}),
+					);
+				} else {
+					assertMcpJsonSchemaWithinLimits(inputSchema, {
 						maxDepth: options.maxDepth,
 						maxNodes: options.maxNodes,
 						maxObjectProperties: options.maxObjectProperties,
 						maxUnionOptions: options.maxUnionOptions,
 						toolName: name,
-						path: '$.inputSchema',
-						budget,
-					}),
-				);
+					});
+				}
 			}
-			if (t.outputSchema) {
-				t.outputSchema = sanitizeZodType(t.outputSchema, false, {
-					maxDepth: options.maxDepth,
-					maxNodes: options.maxNodes,
-					maxObjectProperties: options.maxObjectProperties,
-					maxUnionOptions: options.maxUnionOptions,
-					toolName: name,
-					path: '$.outputSchema',
-					budget,
-				});
+			if (outputSchema) {
+				if (outputSchema instanceof z.ZodType) {
+					outputSchema = sanitizeZodType(outputSchema, false, {
+						maxDepth: options.maxDepth,
+						maxNodes: options.maxNodes,
+						maxObjectProperties: options.maxObjectProperties,
+						maxUnionOptions: options.maxUnionOptions,
+						toolName: name,
+						path: '$.outputSchema',
+						budget,
+					});
+				} else {
+					assertMcpJsonSchemaWithinLimits(outputSchema, {
+						maxDepth: options.maxDepth,
+						maxNodes: options.maxNodes,
+						maxObjectProperties: options.maxObjectProperties,
+						maxUnionOptions: options.maxUnionOptions,
+						toolName: name,
+						path: '$.outputSchema',
+					});
+				}
 			}
 		} catch (error) {
 			if (error instanceof McpSchemaSanitizationError) {
-				delete (tools as Record<string, unknown>)[name];
+				tools.delete(name);
 				options.onError?.(error);
 				continue;
 			}
 			throw error;
 		}
+
+		tools.set(name, {
+			...tool,
+			...(inputSchema ? { inputSchema } : {}),
+			...(outputSchema ? { outputSchema } : {}),
+		});
 	}
 
 	return tools;

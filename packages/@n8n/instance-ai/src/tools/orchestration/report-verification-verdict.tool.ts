@@ -8,7 +8,7 @@
  * no infinite loops.
  */
 
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
@@ -99,17 +99,19 @@ function defaultRemediationForVerdict(
 }
 
 export function createReportVerificationVerdictTool(context: OrchestrationContext) {
-	return createTool({
-		id: 'report-verification-verdict',
-		description:
+	return new Tool('report-verification-verdict')
+		.description(
 			'Report the result of verifying a workflow after building it. ' +
-			'Call this after running a workflow and (optionally) debugging a failed execution. ' +
-			'Returns deterministic guidance on what to do next (done, rebuild, or blocked).',
-		inputSchema: reportVerificationVerdictInputSchema,
-		outputSchema: z.object({
-			guidance: z.string(),
-		}),
-		execute: async (input: z.infer<typeof reportVerificationVerdictInputSchema>) => {
+				'Call this after running a workflow and (optionally) debugging a failed execution. ' +
+				'Returns deterministic guidance on what to do next (done, rebuild, or blocked).',
+		)
+		.input(reportVerificationVerdictInputSchema)
+		.output(
+			z.object({
+				guidance: z.string(),
+			}),
+		)
+		.handler(async (input: z.infer<typeof reportVerificationVerdictInputSchema>) => {
 			if (!context.workflowTaskService) {
 				return { guidance: 'Error: verification verdict reporting not available.' };
 			}
@@ -172,6 +174,6 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 			return {
 				guidance: formatWorkflowLoopGuidance(action, { workItemId: input.workItemId }),
 			};
-		},
-	});
+		})
+		.build();
 }
