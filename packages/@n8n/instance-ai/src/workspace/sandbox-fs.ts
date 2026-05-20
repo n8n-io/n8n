@@ -125,8 +125,11 @@ export async function writeFileViaSandbox(
 		await runWriteCommand(`printf '%s' '${chunk}' >> '${escapedTempPath}'`);
 	}
 
+	// Decode + cleanup in one shell expression; the exit reflects base64's
+	// status. Avoid the variable name `status` — it's a read-only builtin in
+	// zsh, which silently breaks the assignment and loses base64's exit code.
 	await runWriteCommand(
-		`base64 -d '${escapedTempPath}' > '${escapeSingleQuotes(filePath)}'; status=$?; rm -f '${escapedTempPath}'; exit $status`,
+		`base64 -d '${escapedTempPath}' > '${escapeSingleQuotes(filePath)}'; rc=$?; rm -f '${escapedTempPath}'; exit $rc`,
 	);
 }
 

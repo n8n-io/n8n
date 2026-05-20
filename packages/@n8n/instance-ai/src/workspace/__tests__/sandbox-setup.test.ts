@@ -335,6 +335,9 @@ describe('writeCuratedExamples', () => {
 		const tarCalls = fs.runInSandbox.mock.calls.filter(([, cmd]) => cmd.includes('tar -xzf'));
 		expect(tarCalls).toHaveLength(1);
 		expect(tarCalls[0][1]).toMatch(/tar -xzf .* -C .* rm -f .*/);
+		// `status` is a read-only builtin in zsh — assigning to it would
+		// silently drop tar's exit code. Use any other name.
+		expect(tarCalls[0][1]).not.toMatch(/\bstatus=\$\?/);
 	});
 
 	it('falls back to shell writes when the workspace has no filesystem', async () => {

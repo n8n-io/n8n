@@ -351,9 +351,10 @@ export async function writeCuratedExamples(
 	// behind if `tar` exits non-zero. `rm -f` is always run; the exec's
 	// status is `tar`'s exit code. `2>&1` folds tar's stderr into stdout so
 	// the failure cause is still visible if the sandbox runtime drops stderr.
+	// Avoid the variable name `status` — it's a read-only builtin in zsh.
 	const extract = await runInSandbox(
 		workspace,
-		`tar -xzf '${escapeSingleQuotes(archivePath)}' -C '${escapeSingleQuotes(examplesDir)}' 2>&1; status=$?; rm -f '${escapeSingleQuotes(archivePath)}'; exit $status`,
+		`tar -xzf '${escapeSingleQuotes(archivePath)}' -C '${escapeSingleQuotes(examplesDir)}' 2>&1; rc=$?; rm -f '${escapeSingleQuotes(archivePath)}'; exit $rc`,
 	);
 	if (extract.exitCode !== 0) {
 		logger?.warn('[sandbox-setup] failed to extract curated examples', {
