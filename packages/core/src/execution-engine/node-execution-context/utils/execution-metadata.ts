@@ -23,7 +23,7 @@ export function setWorkflowExecutionMetadata(
 	if (typeof key !== 'string') {
 		throw new InvalidExecutionMetadataError('key', key);
 	}
-	if (key.replace(/[\p{L}\p{N}_]/gu, '').length !== 0) {
+	if (key.replace(/[\p{L}\p{N}\p{M}_]/gu, '').length !== 0) {
 		throw new InvalidExecutionMetadataError(
 			'key',
 			key,

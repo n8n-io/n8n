@@ -191,7 +191,9 @@ describe('Execution Metadata functions', () => {
 
 			// Japanese
 			const japaneseKey = 'response_テスト';
-			expect(() => setWorkflowExecutionMetadata(executionData, japaneseKey, 'value1')).not.toThrow();
+			expect(() =>
+				setWorkflowExecutionMetadata(executionData, japaneseKey, 'value1'),
+			).not.toThrow();
 
 			// Korean
 			const koreanKey = 'response_테스트';
@@ -199,6 +201,19 @@ describe('Execution Metadata functions', () => {
 
 			expect(metadata).toHaveProperty(japaneseKey, 'value1');
 			expect(metadata).toHaveProperty(koreanKey, 'value2');
+		});
+
+		test('should allow Unicode combining marks (Devanagari)', () => {
+			const { metadata, executionData } = createExecutionDataWithMetadata();
+
+			// `lodash/snakeCase('नमस्ते')` preserves combining marks (e.g. U+094D virama,
+			// U+0947 vowel sign) which fall under \p{M}, not \p{L}.
+			const devanagariKey = 'response_नमस्ते';
+			expect(() =>
+				setWorkflowExecutionMetadata(executionData, devanagariKey, 'value1'),
+			).not.toThrow();
+
+			expect(metadata).toHaveProperty(devanagariKey, 'value1');
 		});
 
 		test('should still reject special characters that could cause issues', () => {
