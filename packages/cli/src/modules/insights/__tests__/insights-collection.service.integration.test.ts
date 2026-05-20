@@ -228,7 +228,7 @@ describe('workflowExecuteAfterHandler', () => {
 		});
 
 		const allInsights = await insightsRawRepository.find();
-		expect(allInsights).toHaveLength(3);
+		expect(allInsights).toHaveLength(mode === 'error' ? 2 : 3);
 		expect(allInsights).toContainEqual(
 			expect.objectContaining({ metaId: metadata.metaId, type: 'success', value: 1 }),
 		);
@@ -239,13 +239,19 @@ describe('workflowExecuteAfterHandler', () => {
 				value: stoppedAt.diff(startedAt).toMillis(),
 			}),
 		);
-		expect(allInsights).toContainEqual(
-			expect.objectContaining({
-				metaId: metadata.metaId,
-				type: 'time_saved_min',
-				value: 3,
-			}),
-		);
+		if (mode !== 'error') {
+			expect(allInsights).toContainEqual(
+				expect.objectContaining({
+					metaId: metadata.metaId,
+					type: 'time_saved_min',
+					value: 3,
+				}),
+			);
+		} else {
+			expect(allInsights).not.toContainEqual(
+				expect.objectContaining({ metaId: metadata.metaId, type: 'time_saved_min' }),
+			);
+		}
 	});
 });
 

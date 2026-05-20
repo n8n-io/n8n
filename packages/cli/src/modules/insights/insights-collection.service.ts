@@ -189,7 +189,8 @@ export class InsightsCollectionService {
 		}
 
 		// time saved event
-		if (status === 'success') {
+		// Skip for error workflows: their executions represent failure handling, not work saved.
+		if (status === 'success' && ctx.runData.mode !== 'error') {
 			const finalTimeSaved = this.calculateTimeSaved(ctx);
 			if (finalTimeSaved !== undefined) {
 				this.bufferedInsights.add({
