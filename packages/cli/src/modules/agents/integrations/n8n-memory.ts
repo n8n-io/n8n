@@ -520,7 +520,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 			const contentHash = entry.contentHash ?? hashEpisodicMemoryContent(entry.content);
 			const now = new Date();
 			const entity = this.memoryEntryRepository.create({
-				agentId: entry.agentId,
+				agentId: entry.namespace,
 				resourceId: entry.resourceId,
 				content: entry.content,
 				contentHash,
@@ -539,7 +539,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 				if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
 
 				const existing = await this.memoryEntryRepository.findOneBy({
-					agentId: entry.agentId,
+					agentId: entry.namespace,
 					resourceId: entry.resourceId,
 					contentHash,
 				});
@@ -597,7 +597,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 			const contentHash = entry.contentHash ?? hashEpisodicMemoryContent(entry.content);
 			const now = new Date();
 			const entity = entryRepo.create({
-				agentId: entry.agentId,
+				agentId: entry.namespace,
 				resourceId: entry.resourceId,
 				content: entry.content,
 				contentHash,
@@ -616,7 +616,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 			} catch (error) {
 				if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
 				const existing = await entryRepo.findOneBy({
-					agentId: entry.agentId,
+					agentId: entry.namespace,
 					resourceId: entry.resourceId,
 					contentHash,
 				});
@@ -664,7 +664,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 	): Promise<RetrievedEpisodicMemoryEntry[]> {
 		const statuses = opts?.includeStatuses ?? ['active'];
 		const entities = await this.memoryEntryRepository.find({
-			where: { agentId: scope.agentId, resourceId: scope.resourceId, status: In(statuses) },
+			where: { agentId: scope.namespace, resourceId: scope.resourceId, status: In(statuses) },
 		});
 		return rankEpisodicMemoryEntries(
 			entities.map((entity) => this.toEpisodicMemoryEntry(entity)),
@@ -706,7 +706,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 
 			const activeEntries = await entryRepo.find({
 				where: {
-					agentId: scope.agentId,
+					agentId: scope.namespace,
 					resourceId: scope.resourceId,
 					id: In(actionIds),
 					status: 'active',
@@ -729,7 +729,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 			const existingReplacements = replacementHashes.length
 				? await entryRepo.find({
 						where: {
-							agentId: scope.agentId,
+							agentId: scope.namespace,
 							resourceId: scope.resourceId,
 							contentHash: In(replacementHashes),
 						},
@@ -755,7 +755,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 
 				if (existing) {
 					await entryRepo.update(
-						{ agentId: scope.agentId, resourceId: scope.resourceId, id: existing.id },
+						{ agentId: scope.namespace, resourceId: scope.resourceId, id: existing.id },
 						update,
 					);
 					replacements.push({
@@ -766,7 +766,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 				}
 
 				const entity = entryRepo.create({
-					agentId: scope.agentId,
+					agentId: scope.namespace,
 					resourceId: scope.resourceId,
 					content: item.entry.content,
 					contentHash,
@@ -786,13 +786,13 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 				} catch (error) {
 					if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
 					const persisted = await entryRepo.findOneBy({
-						agentId: scope.agentId,
+						agentId: scope.namespace,
 						resourceId: scope.resourceId,
 						contentHash,
 					});
 					if (!persisted) throw error;
 					await entryRepo.update(
-						{ agentId: scope.agentId, resourceId: scope.resourceId, id: persisted.id },
+						{ agentId: scope.namespace, resourceId: scope.resourceId, id: persisted.id },
 						update,
 					);
 					existingByHash.set(contentHash, persisted);
@@ -808,7 +808,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 			if (effectiveDrop.length > 0) {
 				await entryRepo.update(
 					{
-						agentId: scope.agentId,
+						agentId: scope.namespace,
 						resourceId: scope.resourceId,
 						id: In(effectiveDrop),
 						status: 'active',
@@ -853,7 +853,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 				if (itemSupersededIds.length > 0) {
 					await entryRepo.update(
 						{
-							agentId: scope.agentId,
+							agentId: scope.namespace,
 							resourceId: scope.resourceId,
 							id: In(itemSupersededIds),
 							status: 'active',
@@ -930,7 +930,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 	private toEpisodicMemoryEntry(entity: AgentMemoryEntryEntity): EpisodicMemoryEntry {
 		return {
 			id: entity.id,
-			agentId: entity.agentId,
+			namespace: entity.agentId,
 			resourceId: entity.resourceId,
 			content: entity.content,
 			contentHash: entity.contentHash,

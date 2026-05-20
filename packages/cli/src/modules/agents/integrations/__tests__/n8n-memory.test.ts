@@ -1146,7 +1146,7 @@ describe('N8nMemory', () => {
 
 			const [result] = await memory.saveEpisodicMemoryEntries([
 				{
-					agentId: 'agent-1',
+					namespace: 'agent-1',
 					resourceId: 'resource-1',
 					content: 'User chose Postgres for the memory store.',
 					embedding: [1, 0],
@@ -1186,7 +1186,7 @@ describe('N8nMemory', () => {
 			]);
 
 			const results = await memory.searchEpisodicMemoryEntries(
-				{ agentId: 'agent-1', resourceId: 'resource-1' },
+				{ namespace: 'agent-1', resourceId: 'resource-1' },
 				'Postgres memory store',
 				{ queryEmbedding: [1, 0], topK: 1 },
 			);
@@ -1249,7 +1249,7 @@ describe('N8nMemory', () => {
 
 			const result = await memory.saveEpisodicMemoryEntryWithSources(
 				{
-					agentId: 'agent-1',
+					namespace: 'agent-1',
 					resourceId: 'resource-1',
 					content: 'User chose Postgres for durable memory storage.',
 					embedding: [1, 0],
@@ -1290,7 +1290,7 @@ describe('N8nMemory', () => {
 			await expect(
 				memory.saveEpisodicMemoryEntryWithSources(
 					{
-						agentId: 'agent-1',
+						namespace: 'agent-1',
 						resourceId: 'resource-1',
 						content: 'User chose Postgres for durable memory storage.',
 					},
@@ -1348,14 +1348,14 @@ describe('N8nMemory', () => {
 				.mockResolvedValueOnce([]);
 
 			const result = await memory.applyEpisodicMemoryReflection(
-				{ agentId: 'agent-1', resourceId: 'resource-1' },
+				{ namespace: 'agent-1', resourceId: 'resource-1' },
 				{
 					drop: ['noise'],
 					merge: [
 						{
 							supersedes: ['memory-1', 'memory-2'],
 							entry: {
-								agentId: 'agent-1',
+								namespace: 'agent-1',
 								resourceId: 'resource-1',
 								content: 'User switched memory store from SQLite to Postgres.',
 								embedding: [1, 0],
@@ -1442,14 +1442,14 @@ describe('N8nMemory', () => {
 				.mockResolvedValueOnce([]);
 
 			const result = await memory.applyEpisodicMemoryReflection(
-				{ agentId: 'agent-1', resourceId: 'resource-1' },
+				{ namespace: 'agent-1', resourceId: 'resource-1' },
 				{
 					drop: [],
 					merge: [
 						{
 							supersedes: ['memory-1', 'memory-2'],
 							entry: {
-								agentId: 'agent-1',
+								namespace: 'agent-1',
 								resourceId: 'resource-1',
 								content: replacementContent,
 								contentHash: replacementHash,
