@@ -78,7 +78,6 @@ catalog:
   js-tiktoken: 1.0.21
   jsonrepair: 3.13.2
   jsonwebtoken: 9.0.3
-  jszip: ^3.10.1
   kafkajs: 2.2.4
   langchain: 1.2.30
   langsmith: 0.6.0

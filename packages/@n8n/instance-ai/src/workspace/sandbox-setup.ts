@@ -297,13 +297,20 @@ export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<str
 }
 
 /**
- * Write the curated workflow examples bundle into `${root}/examples/`.
+ * Write the curated workflow examples archive into `${root}/examples/`.
  *
- * Used by `setupSandboxWorkspace` (local provider) and by the Daytona /
- * n8n-sandbox factory paths, which skip the full setup but still need the
- * curated reference material the builder agent greps against.
+ * Used by the Daytona / n8n-sandbox factory paths. The local provider
+ * deliberately skips this — dev iteration on the SDK doesn't need the
+ * curated reference set, and the agent there operates fine without it
+ * (same fallback as a cold start with the CDN unreachable).
  *
- * No-op when the bundle is null or empty (e.g. `templatesService` was not
+ * The CDN payload is a flat `.tar.gz` of `<slug>.ts` + `index.txt`. We
+ * write the bytes into the sandbox and run `tar -xzf` in-sandbox to
+ * expand them into `examples/` — far cheaper than 100+ individual
+ * `writeFile` round-trips for remote providers. The archive file is
+ * removed after extraction so it doesn't leak into the agent's view.
+ *
+ * No-op when the bundle is empty (e.g. `templatesService` was not
  * configured, or the CDN fetch failed and there was no disk cache).
  */
 export async function writeCuratedExamples(
@@ -311,19 +318,51 @@ export async function writeCuratedExamples(
 	bundle: BuilderTemplatesBundle | null,
 	logger?: Logger,
 ): Promise<void> {
-	if (!bundle || bundle.files.length === 0) return;
-	const start = Date.now();
+	if (!bundle?.archive) return;
 
-	const root = await getWorkspaceRoot(workspace);
-	const fileMap = new Map<string, string>();
-	fileMap.set('examples/index.txt', bundle.indexTxt);
-	for (const example of bundle.files) {
-		fileMap.set(`examples/${example.filename}`, example.content);
+	if (workspace.filesystem?.provider === 'local') {
+		logger?.debug('[sandbox-setup] skipping curated examples for local provider');
+		return;
 	}
-	await writeWorkspaceFiles(workspace, root, fileMap);
+
+	const start = Date.now();
+	const root = await getWorkspaceRoot(workspace);
+	const archivePath = `${root}/.templates.tar.gz`;
+	const examplesDir = `${root}/examples`;
+
+	if (workspace.filesystem) {
+		await workspace.filesystem.mkdir(examplesDir, { recursive: true });
+		await workspace.filesystem.writeFile(archivePath, bundle.archive, { recursive: true });
+	} else {
+		const mkdirResult = await runInSandbox(
+			workspace,
+			`mkdir -p '${escapeSingleQuotes(examplesDir)}'`,
+		);
+		if (mkdirResult.exitCode !== 0) {
+			logger?.warn('[sandbox-setup] failed to create examples/ dir', {
+				stderr: mkdirResult.stderr,
+			});
+			return;
+		}
+		await writeFileViaSandbox(workspace, archivePath, bundle.archive);
+	}
+
+	// Extract and clean up in one command so a partial state isn't left
+	// behind if `tar` exits non-zero. `rm -f` is always run; the exec's
+	// status is `tar`'s exit code.
+	const extract = await runInSandbox(
+		workspace,
+		`tar -xzf '${escapeSingleQuotes(archivePath)}' -C '${escapeSingleQuotes(examplesDir)}'; status=$?; rm -f '${escapeSingleQuotes(archivePath)}'; exit $status`,
+	);
+	if (extract.exitCode !== 0) {
+		logger?.warn('[sandbox-setup] failed to extract curated examples', {
+			stderr: extract.stderr,
+		});
+		return;
+	}
 
 	logger?.debug('[sandbox-setup] prepared curated examples', {
-		count: bundle.files.length,
+		bytes: bundle.archive.byteLength,
 		version: bundle.version,
 		durationMs: Date.now() - start,
 	});
@@ -386,8 +425,9 @@ export async function setupSandboxWorkspace(
 	// ── Write workspace files ──────────────────────────────────────────────
 
 	await writeWorkspaceFiles(workspace, root, files);
-	const templatesBundle = (await context.templatesService?.getBundle()) ?? null;
-	await writeCuratedExamples(workspace, templatesBundle, context.logger);
+	// Curated examples are deliberately skipped here: the local provider is
+	// for dev iteration on the SDK itself; the builder agent operates fine
+	// without templates, same as a cold start with the CDN unreachable.
 
 	// npm install (must run after package.json is in place)
 	const npmResult = await runInSandbox(workspace, 'npm install --ignore-scripts', root);

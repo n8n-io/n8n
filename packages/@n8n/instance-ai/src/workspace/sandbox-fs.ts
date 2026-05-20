@@ -19,7 +19,11 @@ export interface SandboxWorkspace {
 	filesystem?: {
 		provider?: string;
 		basePath?: string;
-		writeFile: (path: string, content: string, options?: { recursive?: boolean }) => Promise<void>;
+		writeFile: (
+			path: string,
+			content: string | Buffer,
+			options?: { recursive?: boolean },
+		) => Promise<void>;
 		mkdir: (path: string, options?: { recursive?: boolean }) => Promise<void>;
 	};
 	sandbox?: {

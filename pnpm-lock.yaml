@@ -189,9 +189,6 @@ catalogs:
     jsonwebtoken:
       specifier: 9.0.3
       version: 9.0.3
-    jszip:
-      specifier: ^3.10.1
-      version: 3.10.1
     kafkajs:
       specifier: 2.2.4
       version: 2.2.4
@@ -1772,9 +1769,6 @@ importers:
       flatted:
         specifier: 3.4.2
         version: 3.4.2
-      jszip:
-        specifier: 'catalog:'
-        version: 3.10.1
       langsmith:
         specifier: 0.6.0
         version: 0.6.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))

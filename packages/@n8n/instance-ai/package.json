@@ -61,7 +61,6 @@
     "csv-parse": "6.2.1",
     "fast-glob": "catalog:",
     "flatted": "catalog:",
-    "jszip": "catalog:",
     "langsmith": "catalog:",
     "linkedom": "^0.18.9",
     "luxon": "catalog:",

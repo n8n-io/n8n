@@ -35,7 +35,7 @@ function createSetupContext(
 }
 
 function createLocalWorkspace(
-	writeFile: jest.Mock<Promise<void>, [string, string, { recursive?: boolean }?]>,
+	writeFile: jest.Mock<Promise<void>, [string, string | Buffer, { recursive?: boolean }?]>,
 	mkdir?: jest.Mock<Promise<void>, [string, { recursive?: boolean }?]>,
 ): SandboxWorkspace {
 	return {
@@ -142,7 +142,7 @@ describe('setupSandboxWorkspace', () => {
 			runInSandbox,
 			readFileViaSandbox,
 		);
-		const writeFile = jest.fn<Promise<void>, [string, string, { recursive?: boolean }?]>(
+		const writeFile = jest.fn<Promise<void>, [string, string | Buffer, { recursive?: boolean }?]>(
 			async () => {},
 		);
 
@@ -172,7 +172,7 @@ describe('setupSandboxWorkspace', () => {
 			runInSandbox,
 			readFileViaSandbox,
 		);
-		const writeFile = jest.fn<Promise<void>, [string, string, { recursive?: boolean }?]>(
+		const writeFile = jest.fn<Promise<void>, [string, string | Buffer, { recursive?: boolean }?]>(
 			async () => {},
 		);
 		const mkdir = jest.fn<Promise<void>, [string, { recursive?: boolean }?]>(async () => {});
@@ -186,7 +186,10 @@ describe('setupSandboxWorkspace', () => {
 		);
 	});
 
-	it('writes the curated examples bundle into examples/ when templatesService returns one', async () => {
+	it('never writes examples/ on the local provider even when a bundle is available', async () => {
+		// Local provider is for SDK dev iteration; the agent operates fine without
+		// the curated reference set, so setupSandboxWorkspace must not pay the
+		// per-file/archive write cost here.
 		const runInSandbox: RunInSandboxMock = jest.fn<
 			Promise<{ exitCode: number; stdout: string; stderr: string }>,
 			[SandboxWorkspace, string, string?]
@@ -201,45 +204,22 @@ describe('setupSandboxWorkspace', () => {
 			runInSandbox,
 			readFileViaSandbox,
 		);
-		const writeFile = jest.fn<Promise<void>, [string, string, { recursive?: boolean }?]>(
+		const writeFile = jest.fn<Promise<void>, [string, string | Buffer, { recursive?: boolean }?]>(
 			async () => {},
 		);
 
 		const bundle: BuilderTemplatesBundle = {
-			files: [{ filename: 'demo.ts', content: '// demo template' }],
-			indexTxt: 'demo.ts | Demo | nodes | tag | n8n:1\n',
+			archive: Buffer.from('opaque-archive-bytes'),
 			version: 'test-sha',
 		};
 		await setupSandboxWorkspace(createLocalWorkspace(writeFile), createSetupContext(bundle));
 
 		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
-		expect(writtenPaths).toContain('/sandbox/examples/index.txt');
-		expect(writtenPaths).toContain('/sandbox/examples/demo.ts');
-	});
-
-	it('skips writing examples/ when templatesService is absent', async () => {
-		const runInSandbox: RunInSandboxMock = jest.fn<
-			Promise<{ exitCode: number; stdout: string; stderr: string }>,
-			[SandboxWorkspace, string, string?]
-		>();
-		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
-		const readFileViaSandbox: ReadFileViaSandboxMock = jest.fn<
-			Promise<string | null>,
-			[SandboxWorkspace, string]
-		>();
-		readFileViaSandbox.mockResolvedValue(null);
-		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
-			runInSandbox,
-			readFileViaSandbox,
-		);
-		const writeFile = jest.fn<Promise<void>, [string, string, { recursive?: boolean }?]>(
-			async () => {},
-		);
-
-		await setupSandboxWorkspace(createLocalWorkspace(writeFile), createSetupContext());
-
-		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
-		expect(writtenPaths.some((p) => p.startsWith('/sandbox/examples/'))).toBe(false);
+		expect(writtenPaths.some((p) => p.includes('/examples/'))).toBe(false);
+		expect(writtenPaths.some((p) => p.endsWith('.templates.tar.gz'))).toBe(false);
+		// `tar` must not be exec'd on the local provider either.
+		const tarInvocations = runInSandbox.mock.calls.filter(([, cmd]) => cmd.includes('tar -xzf'));
+		expect(tarInvocations).toEqual([]);
 	});
 
 	it('does not write the initialized marker when npm install fails', async () => {
@@ -257,7 +237,7 @@ describe('setupSandboxWorkspace', () => {
 			runInSandbox,
 			readFileViaSandbox,
 		);
-		const writeFile = jest.fn<Promise<void>, [string, string, { recursive?: boolean }?]>(
+		const writeFile = jest.fn<Promise<void>, [string, string | Buffer, { recursive?: boolean }?]>(
 			async () => {},
 		);
 
@@ -270,6 +250,170 @@ describe('setupSandboxWorkspace', () => {
 			expect.any(String),
 			{ recursive: true },
 		]);
+	});
+});
+
+describe('writeCuratedExamples', () => {
+	afterEach(() => {
+		jest.dontMock('../sandbox-fs');
+		jest.resetModules();
+	});
+
+	type WriteCuratedExamples = (
+		workspace: SandboxWorkspace,
+		bundle: BuilderTemplatesBundle | null,
+		logger?: { debug?: jest.Mock; warn?: jest.Mock },
+	) => Promise<void>;
+
+	type FsMocks = {
+		runInSandbox: RunInSandboxMock;
+		writeFileViaSandbox: jest.Mock<Promise<void>, [SandboxWorkspace, string, string | Buffer]>;
+	};
+
+	function loadWriteCuratedExamples(): { fn: WriteCuratedExamples; fs: FsMocks } {
+		const runInSandbox: RunInSandboxMock = jest.fn<
+			Promise<{ exitCode: number; stdout: string; stderr: string }>,
+			[SandboxWorkspace, string, string?]
+		>();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const writeFileViaSandbox = jest.fn<Promise<void>, [SandboxWorkspace, string, string | Buffer]>(
+			async () => {},
+		);
+		jest.resetModules();
+		jest.doMock('../sandbox-fs', () => ({
+			runInSandbox,
+			readFileViaSandbox: jest.fn().mockResolvedValue(null),
+			writeFileViaSandbox,
+			escapeSingleQuotes: (value: string) => value.replace(/'/g, "'\\''"),
+		}));
+
+		let loaded: { writeCuratedExamples: WriteCuratedExamples } | undefined;
+		jest.isolateModules(() => {
+			// eslint-disable-next-line @typescript-eslint/no-require-imports
+			loaded = require('../sandbox-setup') as {
+				writeCuratedExamples: WriteCuratedExamples;
+			};
+		});
+		if (!loaded) throw new Error('Failed to load sandbox-setup');
+		return { fn: loaded.writeCuratedExamples, fs: { runInSandbox, writeFileViaSandbox } };
+	}
+
+	function makeDaytonaWorkspace() {
+		const filesystem = {
+			provider: 'daytona' as const,
+			writeFile: jest.fn<Promise<void>, [string, Buffer, { recursive?: boolean }?]>(async () => {}),
+			mkdir: jest.fn<Promise<void>, [string, { recursive?: boolean }?]>(async () => {}),
+		};
+		const workspace = { filesystem } as unknown as SandboxWorkspace;
+		return { workspace, filesystem };
+	}
+
+	function makeShellOnlyWorkspace(): SandboxWorkspace {
+		// No filesystem property → forces the writeFileViaSandbox fallback.
+		return {} as unknown as SandboxWorkspace;
+	}
+
+	const ARCHIVE = Buffer.from('opaque-archive-bytes-v1');
+
+	it('writes the archive and runs tar on a non-local provider', async () => {
+		const { fn, fs } = loadWriteCuratedExamples();
+		const { workspace, filesystem } = makeDaytonaWorkspace();
+
+		await fn(workspace, { archive: ARCHIVE, version: '"v1"' });
+
+		// Filesystem path: mkdir for examples/, then writeFile for the archive.
+		expect(filesystem.mkdir).toHaveBeenCalledWith(expect.stringContaining('/examples'), {
+			recursive: true,
+		});
+		expect(filesystem.writeFile).toHaveBeenCalledWith(
+			expect.stringMatching(/\.templates\.tar\.gz$/),
+			ARCHIVE,
+			{ recursive: true },
+		);
+
+		// tar exec runs exactly once with extract + rm in one shell expression.
+		const tarCalls = fs.runInSandbox.mock.calls.filter(([, cmd]) => cmd.includes('tar -xzf'));
+		expect(tarCalls).toHaveLength(1);
+		expect(tarCalls[0][1]).toMatch(/tar -xzf .* -C .* rm -f .*/);
+	});
+
+	it('falls back to shell writes when the workspace has no filesystem', async () => {
+		const { fn, fs } = loadWriteCuratedExamples();
+		const workspace = makeShellOnlyWorkspace();
+
+		await fn(workspace, { archive: ARCHIVE, version: '"v1"' });
+
+		// mkdir is exec'd, then archive written via writeFileViaSandbox, then tar.
+		const mkdirCalls = fs.runInSandbox.mock.calls.filter(([, cmd]) => cmd.startsWith('mkdir -p'));
+		expect(mkdirCalls).toHaveLength(1);
+
+		expect(fs.writeFileViaSandbox).toHaveBeenCalledWith(
+			workspace,
+			expect.stringMatching(/\.templates\.tar\.gz$/),
+			ARCHIVE,
+		);
+
+		const tarCalls = fs.runInSandbox.mock.calls.filter(([, cmd]) => cmd.includes('tar -xzf'));
+		expect(tarCalls).toHaveLength(1);
+	});
+
+	it('warns and continues when tar exits non-zero', async () => {
+		const { fn, fs } = loadWriteCuratedExamples();
+		fs.runInSandbox.mockImplementation(async (_, cmd) => {
+			const stderr = cmd.includes('tar -xzf') ? 'tar: bad archive' : '';
+			const exitCode = cmd.includes('tar -xzf') ? 1 : 0;
+			return await Promise.resolve({ exitCode, stdout: '', stderr });
+		});
+		const { workspace } = makeDaytonaWorkspace();
+		const logger = { debug: jest.fn(), warn: jest.fn() };
+
+		// Must not throw.
+		await fn(workspace, { archive: ARCHIVE, version: '"v1"' }, logger);
+
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('failed to extract'),
+			expect.objectContaining({ stderr: 'tar: bad archive' }),
+		);
+	});
+
+	it('no-ops when bundle.archive is null', async () => {
+		const { fn, fs } = loadWriteCuratedExamples();
+		const { workspace, filesystem } = makeDaytonaWorkspace();
+
+		await fn(workspace, { archive: null, version: null });
+
+		expect(filesystem.writeFile).not.toHaveBeenCalled();
+		expect(fs.runInSandbox).not.toHaveBeenCalled();
+	});
+
+	it('no-ops when bundle is null', async () => {
+		const { fn, fs } = loadWriteCuratedExamples();
+		const { workspace, filesystem } = makeDaytonaWorkspace();
+
+		await fn(workspace, null);
+
+		expect(filesystem.writeFile).not.toHaveBeenCalled();
+		expect(fs.runInSandbox).not.toHaveBeenCalled();
+	});
+
+	it('skips the local provider even with a non-empty bundle', async () => {
+		const { fn, fs } = loadWriteCuratedExamples();
+		const writeFile = jest.fn<Promise<void>, [string, string | Buffer, { recursive?: boolean }?]>(
+			async () => {},
+		);
+		const workspace = {
+			filesystem: {
+				provider: 'local',
+				basePath: '/sandbox',
+				writeFile,
+				mkdir: jest.fn<Promise<void>, [string, { recursive?: boolean }?]>(async () => {}),
+			},
+		} as unknown as SandboxWorkspace;
+
+		await fn(workspace, { archive: ARCHIVE, version: '"v1"' });
+
+		expect(writeFile).not.toHaveBeenCalled();
+		expect(fs.runInSandbox).not.toHaveBeenCalled();
 	});
 });
 

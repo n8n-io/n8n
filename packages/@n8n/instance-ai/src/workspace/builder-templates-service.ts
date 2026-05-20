@@ -1,10 +1,10 @@
 /**
  * Builder templates service: fetches the curated workflow-template bundle from
- * the n8n-sdk-templates CDN as a single `templates.zip`, caches it on disk,
- * and exposes its contents to the sandbox setup as a ready-to-write
- * `BuilderTemplatesBundle`.
+ * the n8n-sdk-templates CDN as a single `templates.tar.gz`, caches it on disk,
+ * and hands the raw bytes to the sandbox where `tar -xzf` expands them into
+ * `examples/`. No host-side extraction.
  *
- * The zip is produced by `n8n-io/n8n-sdk-templates` and contains:
+ * The archive is produced by `n8n-io/n8n-sdk-templates` and is flat:
  *   - `index.txt`        — pipe-delimited catalog used for grep-style lookup
  *   - `<slug>.ts`        — one pre-rendered SDK file per publishable template
  *
@@ -13,26 +13,24 @@
  *     with a hard timeout. On any fetch error, return an empty bundle.
  *   - Subsequent calls: return memoised bundle synchronously. If the disk
  *     cache is older than the TTL, fire a background refresh.
- *   - Refresh: GET `templates.zip` with `If-None-Match`. On 304 just bump the
- *     timestamp; on 200 extract the new zip and atomically swap. On any
- *     failure keep the existing bundle.
+ *   - Refresh: GET `templates.tar.gz` with `If-None-Match`. On 304 just bump
+ *     the timestamp; on 200 atomically swap the cache. On any failure keep
+ *     the existing bundle.
  *   - Cold-start retry: the initial (blocking) refresh retries transient
  *     errors (network/5xx/408/429) with exponential backoff. Background
  *     refreshes stay single-attempt to avoid log spam on persistent outages.
- *   - Integrity: alongside `templates.zip` the CDN serves
- *     `templates.zip.sha256` (hex digest). When present, every fresh bundle
- *     and every disk-loaded cache is verified against it. On mismatch the
- *     bundle is rejected; on 404 we proceed and warn (the companion repo may
- *     pre-date the sidecar requirement). This is a defence against transport
- *     corruption and accidental CDN inconsistency — not a tamper-proof
- *     security boundary, since the sidecar shares the zip's trust root.
+ *   - Integrity: alongside `templates.tar.gz` the CDN serves
+ *     `templates.tar.gz.sha256` (hex digest). When present, every fresh
+ *     bundle and every disk-loaded cache is verified against it. On mismatch
+ *     the bundle is rejected; on 404 we proceed and warn. This guards
+ *     against transport corruption and accidental CDN inconsistency — not
+ *     against tampering, since the sidecar shares the archive's trust root.
  *
  * The HTTP ETag doubles as the bundle version — surfaced via telemetry so we
  * can correlate template-set revisions with usage events.
  *
  * Never throws.
  */
-import JSZip from 'jszip';
 import { createHash } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
@@ -47,15 +45,14 @@ const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_RETRY_BACKOFF_BASE_MS = 1_000;
 const RETRY_BACKOFF_CAP_MS = 5_000;
 const DEFAULT_CACHE_SUBDIR = 'n8n-sdk-templates';
-const ZIP_FILENAME = 'templates.zip';
+const ARCHIVE_FILENAME = 'templates.tar.gz';
 const ETAG_FILENAME = 'etag.txt';
-const SHA256_FILENAME = 'templates.zip.sha256';
-const INDEX_ENTRY = 'index.txt';
+const SHA256_FILENAME = 'templates.tar.gz.sha256';
 
 export interface BuilderTemplatesServiceOptions {
-	/** Base URL hosting `templates.zip` and `templates.zip.sha256`. */
+	/** Base URL hosting `templates.tar.gz` and `templates.tar.gz.sha256`. */
 	cdnBaseUrl?: string;
-	/** Directory where the service persists the zip + ETag + sha sidecar between runs. */
+	/** Directory where the service persists the archive + ETag + sha sidecar between runs. */
 	cacheDir?: string;
 	/** Time-to-live before a refresh fires in the background. Default 24h. */
 	refreshIntervalMs?: number;
@@ -71,35 +68,29 @@ export interface BuilderTemplatesServiceOptions {
 	logger?: Logger;
 }
 
-export interface ExampleFile {
-	filename: string;
-	content: string;
-}
-
 export interface BuilderTemplatesBundle {
-	files: ExampleFile[];
-	indexTxt: string;
-	/** ETag of the zip (content-hashed by R2), or null when no bundle has been loaded. */
+	/** Raw .tar.gz bytes for the sandbox to extract. Null when no bundle is loaded. */
+	archive: Buffer | null;
+	/** ETag of the archive (content-hashed by R2), or null when no bundle has been loaded. */
 	version: string | null;
 }
 
-const EMPTY_BUNDLE: BuilderTemplatesBundle = { files: [], indexTxt: '', version: null };
+const EMPTY_BUNDLE: BuilderTemplatesBundle = { archive: null, version: null };
 
 interface CacheState {
 	bundle: BuilderTemplatesBundle;
 	lastFetched: number;
-	/** sha256 hex of the zip currently in `bundle`, when known. */
+	/** sha256 hex of the archive currently in `bundle`, when known. */
 	sha256: string | null;
 }
 
 interface FetchedBundle {
 	bundle: BuilderTemplatesBundle;
-	rawBuffer: Buffer;
 	sha256: string | null;
 }
 
 export class BuilderTemplatesService {
-	private readonly zipUrl: string;
+	private readonly archiveUrl: string;
 	private readonly sha256Url: string;
 	private readonly cacheDir: string;
 	private readonly refreshIntervalMs: number;
@@ -115,7 +106,7 @@ export class BuilderTemplatesService {
 
 	constructor(opts: BuilderTemplatesServiceOptions = {}) {
 		const base = (opts.cdnBaseUrl ?? DEFAULT_CDN_BASE_URL).replace(/\/+$/, '');
-		this.zipUrl = `${base}/${ZIP_FILENAME}`;
+		this.archiveUrl = `${base}/${ARCHIVE_FILENAME}`;
 		this.sha256Url = `${base}/${SHA256_FILENAME}`;
 		this.cacheDir = opts.cacheDir ?? path.join(os.homedir(), '.n8n', DEFAULT_CACHE_SUBDIR);
 		this.refreshIntervalMs = opts.refreshIntervalMs ?? DEFAULT_REFRESH_INTERVAL_MS;
@@ -174,10 +165,10 @@ export class BuilderTemplatesService {
 	}
 
 	private async loadFromDisk(): Promise<CacheState | null> {
-		const zipPath = path.join(this.cacheDir, ZIP_FILENAME);
+		const archivePath = path.join(this.cacheDir, ARCHIVE_FILENAME);
 		try {
-			const stat = await fsp.stat(zipPath);
-			const buffer = await fsp.readFile(zipPath);
+			const stat = await fsp.stat(archivePath);
+			const buffer = await fsp.readFile(archivePath);
 			const actualSha = sha256Hex(buffer);
 			const expectedSha = await this.readSha256FromDisk();
 
@@ -190,8 +181,11 @@ export class BuilderTemplatesService {
 			}
 
 			const etag = await this.readEtagFromDisk();
-			const bundle = await extractBundle(buffer, etag);
-			return { bundle, lastFetched: stat.mtimeMs, sha256: actualSha };
+			return {
+				bundle: { archive: buffer, version: etag },
+				lastFetched: stat.mtimeMs,
+				sha256: actualSha,
+			};
 		} catch (error) {
 			if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
 				this.logger?.warn('[builder-templates] failed to load disk cache', {
@@ -226,7 +220,7 @@ export class BuilderTemplatesService {
 			const fetched = await this.fetchBundleWithRetries(maxAttempts);
 			if (!fetched) return;
 
-			await this.persist(fetched.rawBuffer, fetched.bundle.version, fetched.sha256);
+			await this.persist(fetched.bundle.archive, fetched.bundle.version, fetched.sha256);
 			this.state = {
 				bundle: fetched.bundle,
 				lastFetched: Date.now(),
@@ -235,7 +229,7 @@ export class BuilderTemplatesService {
 		} catch (error) {
 			this.logger?.warn('[builder-templates] refresh failed', {
 				error: error instanceof Error ? error.message : String(error),
-				url: this.zipUrl,
+				url: this.archiveUrl,
 			});
 		}
 	}
@@ -260,7 +254,7 @@ export class BuilderTemplatesService {
 	> {
 		// Only send a conditional request when we already have a bundle in
 		// memory to fall back to. Sending If-None-Match with an orphan etag
-		// (e.g. zip missing/corrupt but etag.txt present) could return 304
+		// (e.g. archive missing/corrupt but etag.txt present) could return 304
 		// and leave the service permanently empty for this process.
 		const headers: Record<string, string> = {};
 		const cachedEtag = this.state?.bundle.version ?? null;
@@ -268,29 +262,29 @@ export class BuilderTemplatesService {
 
 		let response: Response;
 		try {
-			response = await fetch(this.zipUrl, {
+			response = await fetch(this.archiveUrl, {
 				headers,
 				signal: AbortSignal.timeout(this.fetchTimeoutMs),
 			});
 		} catch (error) {
 			// Network / abort errors — assume transient.
-			this.logger?.warn('[builder-templates] zip fetch threw', {
+			this.logger?.warn('[builder-templates] archive fetch threw', {
 				error: error instanceof Error ? error.message : String(error),
-				url: this.zipUrl,
+				url: this.archiveUrl,
 			});
 			return { kind: 'failed', retryable: true };
 		}
 
 		if (response.status === 304 && this.state) {
-			await touchZipFile(path.join(this.cacheDir, ZIP_FILENAME));
+			await touchArchiveFile(path.join(this.cacheDir, ARCHIVE_FILENAME));
 			this.state = { ...this.state, lastFetched: Date.now() };
 			return { kind: 'not-modified' };
 		}
 
 		if (!response.ok) {
-			this.logger?.warn('[builder-templates] zip fetch returned non-OK', {
+			this.logger?.warn('[builder-templates] archive fetch returned non-OK', {
 				status: response.status,
-				url: this.zipUrl,
+				url: this.archiveUrl,
 			});
 			return { kind: 'failed', retryable: isRetryableStatus(response.status) };
 		}
@@ -300,22 +294,24 @@ export class BuilderTemplatesService {
 		const expectedSha = await this.fetchSha256Sidecar();
 
 		if (expectedSha && expectedSha !== actualSha) {
-			this.logger?.warn('[builder-templates] sha256 mismatch on downloaded zip, rejecting', {
+			this.logger?.warn('[builder-templates] sha256 mismatch on downloaded archive, rejecting', {
 				expected: expectedSha,
 				actual: actualSha,
-				url: this.zipUrl,
+				url: this.archiveUrl,
 			});
 			// Treat as a hard failure that isn't worth retrying — the sidecar
-			// and zip come from the same origin, so a retry will almost
+			// and archive come from the same origin, so a retry will almost
 			// certainly return the same mismatched pair.
 			return { kind: 'failed', retryable: false };
 		}
 
 		const etag = normaliseEtag(response.headers.get('etag'));
-		const bundle = await extractBundle(buffer, etag);
 		return {
 			kind: 'fetched',
-			bundle: { bundle, rawBuffer: buffer, sha256: actualSha },
+			bundle: {
+				bundle: { archive: buffer, version: etag },
+				sha256: actualSha,
+			},
 		};
 	}
 
@@ -351,12 +347,17 @@ export class BuilderTemplatesService {
 		}
 	}
 
-	private async persist(buffer: Buffer, etag: string | null, sha256: string | null): Promise<void> {
+	private async persist(
+		buffer: Buffer | null,
+		etag: string | null,
+		sha256: string | null,
+	): Promise<void> {
+		if (!buffer) return;
 		await fsp.mkdir(this.cacheDir, { recursive: true });
 		// Write metadata first, payload last. If we crash between the metadata
-		// write and the zip write, the disk is left in an "orphan metadata"
-		// state — `loadFromDisk` will see no zip → return null → next refresh
-		// goes out unconditionally (no stale If-None-Match echoed back).
+		// write and the archive write, the disk is left in an "orphan metadata"
+		// state — `loadFromDisk` will see no archive → return null → next
+		// refresh goes out unconditionally (no stale If-None-Match echoed back).
 		if (etag) {
 			await atomicWriteFile(path.join(this.cacheDir, ETAG_FILENAME), etag);
 		} else {
@@ -367,7 +368,7 @@ export class BuilderTemplatesService {
 		} else {
 			await unlinkIfExists(path.join(this.cacheDir, SHA256_FILENAME));
 		}
-		await atomicWriteFile(path.join(this.cacheDir, ZIP_FILENAME), buffer);
+		await atomicWriteFile(path.join(this.cacheDir, ARCHIVE_FILENAME), buffer);
 	}
 }
 
@@ -404,30 +405,6 @@ async function sleep(ms: number): Promise<void> {
 	await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function extractBundle(buffer: Buffer, etag: string | null): Promise<BuilderTemplatesBundle> {
-	const zip = await JSZip.loadAsync(buffer);
-	const files: ExampleFile[] = [];
-	let indexTxt = '';
-
-	const entries = Object.entries(zip.files).filter(([, entry]) => !entry.dir);
-	const reads = await Promise.all(
-		entries.map(async ([name, entry]) => ({ name, content: await entry.async('string') })),
-	);
-
-	for (const { name, content } of reads) {
-		if (name === INDEX_ENTRY) {
-			indexTxt = content;
-			continue;
-		}
-		if (name.endsWith('.ts')) {
-			files.push({ filename: name, content });
-		}
-	}
-
-	files.sort((a, b) => a.filename.localeCompare(b.filename));
-	return { files, indexTxt, version: etag };
-}
-
 async function atomicWriteFile(target: string, contents: Buffer | string): Promise<void> {
 	const tmp = `${target}.tmp-${process.pid}-${Date.now()}`;
 	try {
@@ -451,7 +428,7 @@ async function unlinkIfExists(target: string): Promise<void> {
 	}
 }
 
-async function touchZipFile(target: string): Promise<void> {
+async function touchArchiveFile(target: string): Promise<void> {
 	const now = new Date();
 	try {
 		await fsp.utimes(target, now, now);
