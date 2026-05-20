@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	isAgentWebSearchCredentialType,
 	setWebSearchCredential,
 	setWebSearchEnabled,
 	setWebSearchMode,
@@ -55,5 +56,10 @@ describe('webSearchConfig', () => {
 			mode: 'auto',
 			credential: { id: 'cred-1', name: 'Brave', type: 'braveSearchApi' },
 		});
+	});
+
+	it('only exposes Brave Search credentials in the agent UI', () => {
+		expect(isAgentWebSearchCredentialType('braveSearchApi')).toBe(true);
+		expect(isAgentWebSearchCredentialType('searXngApi')).toBe(false);
 	});
 });

@@ -141,6 +141,23 @@ describe('AgentCredentialSelect', () => {
 		expect(wrapper.find('[data-test-id="node-credentials-select-item-new"]').exists()).toBe(true);
 	});
 
+	it('uses a caller-provided create action label', () => {
+		const wrapper = mount(AgentCredentialSelect, {
+			props: {
+				modelValue: '',
+				placeholder: 'Select a credential...',
+				dataTestId: 'agent-credential-select',
+				credentialPermissions: { create: true },
+				createLabel: 'Create Brave Search credential',
+				credentials: [{ id: 'a', name: 'Brave', typeDisplayName: 'Brave Search' }],
+			},
+		});
+
+		expect(wrapper.find('[data-testid="credential-select-footer"]').text()).toContain(
+			'Create Brave Search credential',
+		);
+	});
+
 	it('disables the create action when the caller cannot create credentials', () => {
 		const wrapper = renderSelect({ canCreateCredential: false });
 

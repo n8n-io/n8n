@@ -25,9 +25,11 @@ Custom tools:
 - Return JSON-serializable values. Do not call \`.build()\`.
 - Register the returned custom tool id in config after \`build_custom_tool\`.
 
-Provider tools:
-- Match provider tools to the configured model provider.
-- Anthropic: \`providerTools["anthropic.web_search"]\`.
-- OpenAI: \`providerTools["openai.web_search"]\` or \`providerTools["openai.image_generation"]\`, only for compatible OpenAI models.`,
+Web search and provider tools:
+- For normal web search, prefer top-level \`webSearch\`: \`{ "webSearch": { "enabled": true, "mode": "auto" } }\`.
+- When fallback search is required, call \`list_credentials\` with \`["braveSearchApi","searXngApi"]\`. Prefer \`braveSearchApi\` when both are available and the user has no stated preference; use \`searXngApi\` when the user asks for SearXNG or only SearXNG is available.
+- Call \`ask_credential\` for the chosen single credential type and store \`webSearch.credential = { id: credentialId, name: credentialName, type: "<braveSearchApi or searXngApi>" }\`.
+- Raw \`providerTools\` are an advanced escape hatch for provider-specific tools. Do not configure web-search provider tools manually when \`webSearch.enabled\` is true.
+- OpenAI image generation: \`providerTools["openai.image_generation"]\`, only for compatible OpenAI models.`,
 	};
 }

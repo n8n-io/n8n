@@ -18,6 +18,7 @@ const props = defineProps<{
 	selectedCredentialId: string | null;
 	permissions: PermissionsRecord['credential'];
 	placeholder?: string;
+	createLabel?: string;
 	loading?: boolean;
 	disabled?: boolean;
 }>();
@@ -103,7 +104,7 @@ const onCreateNewCredential = async () => {
 					@click="onCreateNewCredential()"
 				>
 					<N8nIcon size="xsmall" icon="plus" />
-					{{ i18n.baseText('nodeCredentials.createNew') }}
+					{{ props.createLabel ?? i18n.baseText('nodeCredentials.createNew') }}
 				</button>
 			</N8nTooltip>
 		</template>

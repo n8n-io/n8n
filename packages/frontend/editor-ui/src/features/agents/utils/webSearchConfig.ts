@@ -1,8 +1,16 @@
 import type { AgentJsonWebSearchConfig, AgentJsonWebSearchCredential } from '@n8n/api-types';
 
 export type WebSearchMode = NonNullable<AgentJsonWebSearchConfig['mode']>;
+export type AgentWebSearchCredentialType = Extract<
+	AgentJsonWebSearchCredential['type'],
+	'braveSearchApi'
+>;
 
 export const DEFAULT_WEB_SEARCH_MODE: WebSearchMode = 'auto';
+
+export function isAgentWebSearchCredentialType(type: string): type is AgentWebSearchCredentialType {
+	return type === 'braveSearchApi';
+}
 
 export function setWebSearchEnabled(
 	current: AgentJsonWebSearchConfig | undefined,

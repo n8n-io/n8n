@@ -15,6 +15,14 @@ describe('formatToolNameForDisplay', () => {
 		expect(formatToolNameForDisplay('ask__credential')).toBe('Ask credential');
 	});
 
+	it('formats web search tool names as product labels', () => {
+		expect(formatToolNameForDisplay('web_search')).toBe('Web search');
+		expect(formatToolNameForDisplay('openai.web_search')).toBe('Web search');
+		expect(formatToolNameForDisplay('xai.web_search')).toBe('Web search');
+		expect(formatToolNameForDisplay('anthropic.web_search_20250305')).toBe('Web search');
+		expect(formatToolNameForDisplay('web_open')).toBe('Fetch page');
+	});
+
 	it('returns an empty string for missing or blank names', () => {
 		expect(formatToolNameForDisplay(undefined)).toBe('');
 		expect(formatToolNameForDisplay('   ')).toBe('');

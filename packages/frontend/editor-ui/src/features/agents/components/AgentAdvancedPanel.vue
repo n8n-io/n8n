@@ -41,6 +41,7 @@ import {
 import { parseProvider } from '../utils/model-string';
 import {
 	DEFAULT_WEB_SEARCH_MODE,
+	isAgentWebSearchCredentialType,
 	setWebSearchCredential,
 	setWebSearchEnabled,
 	setWebSearchMode,
@@ -90,28 +91,22 @@ const showWebSearchCredentialSelect = computed(
 	() => webSearchEnabled.value && webSearchMode.value !== 'provider',
 );
 
-type WebSearchCredentialType = AgentJsonWebSearchCredential['type'];
-
 const WEB_SEARCH_MODE_OPTIONS: Array<{ value: WebSearchMode; labelKey: BaseTextKey }> = [
 	{ value: 'auto', labelKey: 'agents.builder.advanced.webSearch.mode.auto' },
 	{ value: 'provider', labelKey: 'agents.builder.advanced.webSearch.mode.provider' },
 	{ value: 'n8n', labelKey: 'agents.builder.advanced.webSearch.mode.n8n' },
 ];
 
-function isWebSearchCredentialType(type: string): type is WebSearchCredentialType {
-	return type === 'braveSearchApi' || type === 'searXngApi';
-}
-
 function toWebSearchCredential(
 	credential: ICredentialsResponse,
 ): AgentJsonWebSearchCredential | null {
-	if (!isWebSearchCredentialType(credential.type)) return null;
+	if (!isAgentWebSearchCredentialType(credential.type)) return null;
 	return { id: credential.id, name: credential.name, type: credential.type };
 }
 
 const webSearchCredentialOptions = computed<AgentCredentialOption[]>(() =>
 	credentialsStore.allCredentials
-		.filter((credential) => isWebSearchCredentialType(credential.type))
+		.filter((credential) => isAgentWebSearchCredentialType(credential.type))
 		.map((credential) => ({
 			id: credential.id,
 			name: credential.name,
@@ -378,6 +373,7 @@ const thinkingDisabledReason = computed(() =>
 							:placeholder="
 								i18n.baseText('agents.builder.advanced.webSearch.credential.placeholder')
 							"
+							:create-label="i18n.baseText('agents.builder.advanced.webSearch.credential.create')"
 							data-test-id="agent-web-search-credential-select"
 							:credential-permissions="credentialPermissions"
 							:disabled="props.disabled"

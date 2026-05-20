@@ -18,6 +18,7 @@ const props = defineProps<{
 	placeholder: string;
 	dataTestId: string;
 	credentialPermissions: PermissionsRecord['credential'];
+	createLabel?: string;
 	loading?: boolean;
 	disabled?: boolean;
 }>();
@@ -54,6 +55,7 @@ function onCredentialSelected(credentialId: string) {
 		:placeholder="placeholder"
 		:loading="loading"
 		:disabled="disabled"
+		:create-label="createLabel"
 		:data-test-id="dataTestId"
 		@credential-selected="onCredentialSelected"
 		@new-credential="emit('create')"
