@@ -2,6 +2,8 @@ import type { ExecutionStatus, WorkflowExecuteMode, INode } from 'n8n-workflow';
 
 import type { TracingContext } from './tracing-context';
 
+type ProjectContext = { id: string };
+
 export type StartWorkflowParams = {
 	executionId: string;
 	/** Parent context — incoming webhook traceparent or parent sub-workflow span. */
@@ -12,6 +14,7 @@ export type StartWorkflowParams = {
 	 */
 	linkTo?: TracingContext;
 	workflow: { id: string; name: string; versionId?: string; nodeCount: number };
+	project?: ProjectContext;
 };
 
 export type EndWorkflowParams = {
