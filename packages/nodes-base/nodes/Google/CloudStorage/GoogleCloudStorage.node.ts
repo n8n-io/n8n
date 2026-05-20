@@ -27,17 +27,11 @@ export class GoogleCloudStorage implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
-				name: 'googleCloudStorageApi',
+				name: 'googleApi',
 				required: true,
 				displayOptions: {
 					show: {
 						authentication: ['serviceAccount'],
-					},
-				},
-				testedBy: {
-					request: {
-						method: 'GET',
-						url: '/b/',
 					},
 				},
 			},

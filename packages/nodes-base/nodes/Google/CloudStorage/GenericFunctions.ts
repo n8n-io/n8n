@@ -24,7 +24,7 @@ export async function searchProjects(
 
 	let response;
 	if (authenticationMethod === 'serviceAccount') {
-		const credentials = await this.getCredentials('googleCloudStorageApi');
+		const credentials = await this.getCredentials('googleApi');
 		const { access_token } = await getGoogleAccessToken.call(this, credentials, 'cloudStorage');
 		response = await this.helpers.httpRequest({
 			method: 'GET',
