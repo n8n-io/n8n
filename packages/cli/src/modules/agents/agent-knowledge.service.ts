@@ -70,6 +70,7 @@ export class AgentKnowledgeService {
 		}
 
 		const resourceId = draftChatMemoryResourceId(userId);
+		// TODO: Add pagination and lazy source expansion before exposing large knowledge bases.
 		const entries = await this.memoryEntryRepository.find({
 			where: { agentId, resourceId, status: 'active' },
 			order: { lastSeenAt: 'DESC', createdAt: 'DESC', id: 'ASC' },

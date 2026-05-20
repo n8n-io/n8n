@@ -3,7 +3,10 @@ import { computed } from 'vue';
 import { N8nButton, N8nText, N8nSwitch } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
-import { AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY } from '../constants';
+import {
+	AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
+	AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
+} from '../constants';
 import type { AgentJsonConfig } from '../types';
 
 const props = withDefaults(
@@ -88,8 +91,20 @@ function openEpisodicMemoryCredentialModal() {
 	uiStore.openModalWithData({
 		name: AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
 		data: {
+			credentialType: AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
+			displayName: 'OpenAI',
 			initialValue: episodicMemoryCredential.value,
-			onSelect: enableEpisodicMemory,
+			title: i18n.baseText('agents.builder.episodicMemoryCredentialModal.title'),
+			description: i18n.baseText('agents.builder.episodicMemoryCredentialModal.description'),
+			cancelLabel: i18n.baseText('generic.cancel'),
+			confirmLabel: i18n.baseText('agents.builder.episodicMemoryCredentialModal.confirm'),
+			showDelete: false,
+			hideCreateNew: false,
+			source: 'agent_episodic_memory',
+			pickerDataTestId: 'agent-episodic-memory-credential-picker',
+			onSelect: (credentialId: string | null) => {
+				if (credentialId) enableEpisodicMemory(credentialId);
+			},
 		},
 	});
 }
