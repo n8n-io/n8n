@@ -117,33 +117,6 @@ export function toTelemetryMetadata(
 	return metadata;
 }
 
-function redactSecretString(value: string): string {
-	const assignmentReplacements = new Map<string, string>();
-	let assignmentIndex = 0;
-	const withAuthRedacted = value.replace(
-		/\b(Bearer|Basic|Token)\s+[A-Za-z0-9._~+/=-]+/gi,
-		'$1 [redacted]',
-	);
-	const withAssignmentPlaceholders = withAuthRedacted.replace(
-		/\b(api[_-]?key|authorization|password|secret|token)\s*=\s*([^&\s]+)/gi,
-		(_match, key: string) => {
-			const placeholder = `__N8N_TRACE_REDACTED_ASSIGNMENT_${assignmentIndex++}__`;
-			assignmentReplacements.set(placeholder, `${key}=[redacted]`);
-			return placeholder;
-		},
-	);
-
-	let scrubbed = scrubSecretsInText(withAssignmentPlaceholders).replaceAll(
-		'[REDACTED]',
-		'[redacted]',
-	);
-	for (const [placeholder, replacement] of assignmentReplacements) {
-		scrubbed = scrubbed.replaceAll(placeholder, replacement);
-	}
-
-	return scrubbed;
-}
-
 function redactTelemetryJsonValue(
 	value: unknown,
 	keyHint?: string,
@@ -159,7 +132,7 @@ function redactTelemetryJsonValue(
 	}
 
 	if (typeof value === 'string') {
-		return redactSecretString(value);
+		return scrubSecretsInText(value);
 	}
 
 	if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
@@ -213,11 +186,11 @@ function redactTelemetryAttribute(key: string, value: unknown): unknown {
 			const parsed: unknown = JSON.parse(trimmed);
 			return JSON.stringify(redactTelemetryJsonValue(parsed, key, 0, maxDepth));
 		} catch {
-			return redactSecretString(value);
+			return scrubSecretsInText(value);
 		}
 	}
 
-	return redactSecretString(value);
+	return scrubSecretsInText(value);
 }
 
 function parseTelemetryJson(value: unknown): unknown {

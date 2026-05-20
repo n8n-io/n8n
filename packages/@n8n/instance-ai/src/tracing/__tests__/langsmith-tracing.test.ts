@@ -522,11 +522,11 @@ describe('createInstanceAiTraceContext', () => {
 				'ai.prompt.messages': JSON.stringify([
 					{
 						role: 'user',
-						content: [{ type: 'text', text: 'use token=secret-token' }],
+						content: [{ type: 'text', text: 'use access_token=secret-token' }],
 						credentials: { apiKey: 'secret-key', id: 'cred-1' },
 					},
 				]),
-				'ai.response.text': 'Authorization: Bearer abc.def.ghi',
+				'ai.response.text': 'Authorization: Bearer abcdefghijklmnopqrstuvwxyz',
 				'ai.telemetry.metadata.thread_id': 'thread-1',
 				'ai.usage.inputTokens': 123,
 				'ai.usage.outputTokens': 45,
@@ -550,11 +550,11 @@ describe('createInstanceAiTraceContext', () => {
 				'ai.prompt.messages': JSON.stringify([
 					{
 						role: 'user',
-						content: [{ type: 'text', text: 'use token=[redacted]' }],
+						content: [{ type: 'text', text: 'use [REDACTED]' }],
 						credentials: '[redacted]',
 					},
 				]),
-				'ai.response.text': 'Authorization: Bearer [redacted]',
+				'ai.response.text': '[REDACTED]',
 				'ai.telemetry.metadata.thread_id': 'thread-1',
 				'ai.usage.inputTokens': 123,
 				'ai.usage.outputTokens': 45,
@@ -622,7 +622,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(serialized).not.toContain('ghp_1234567890abcdefghijklmnop');
 		expect(serialized).not.toContain('secret123');
 		expect(serialized).not.toContain('abcdefghijklmnopqrstuvwxyz');
-		expect(serialized).toContain('[redacted]');
+		expect(serialized).toContain('[REDACTED]');
 	});
 
 	it('uses cache-only Anthropic input tokens for LangSmith prompt totals', () => {
