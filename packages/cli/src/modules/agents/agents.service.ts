@@ -64,6 +64,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { getAgentCurrentVersionId } from './utils/agent-version.utils';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 import { AgentExecutionService } from './agent-execution.service';
@@ -158,6 +159,7 @@ interface StreamChatResponseConfig {
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
 	agentId: string;
+	agentVersionId: string;
 	message: string;
 	memory: AgentMemoryScope;
 	projectId: string;
@@ -188,7 +190,13 @@ export class AgentsService {
 	 */
 	private readonly runtimes = new TtlMap<
 		string,
-		{ agent: RuntimeAgent; agentId: string; toolRegistry: ToolRegistry; projectId: string }
+		{
+			agent: RuntimeAgent;
+			agentId: string;
+			agentVersionId: string;
+			toolRegistry: ToolRegistry;
+			projectId: string;
+		}
 	>(30 * Time.minutes.toMilliseconds);
 
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
@@ -620,6 +628,7 @@ export class AgentsService {
 	private async getRuntime(params: GetRuntimeParams): Promise<{
 		agent: RuntimeAgent;
 		agentId: string;
+		agentVersionId: string;
 		toolRegistry: ToolRegistry;
 		projectId: string;
 	}> {
@@ -635,6 +644,7 @@ export class AgentsService {
 
 		let n8nUserId = params.n8nUserId;
 		let agentData: Agent = agentEntity;
+		let agentVersionId = getAgentCurrentVersionId(agentEntity);
 
 		if (usePublishedVersion) {
 			const publishedSchema = agentEntity.publishedVersion?.schema;
@@ -650,6 +660,9 @@ export class AgentsService {
 
 			// Resolve n8n user from publishedById when not provided by the caller.
 			n8nUserId ??= agentEntity.publishedVersion?.publishedById ?? undefined;
+			agentVersionId =
+				agentEntity.publishedVersion?.publishedFromVersionId ??
+				getAgentCurrentVersionId(agentEntity);
 		}
 
 		if (!n8nUserId) {
@@ -664,7 +677,13 @@ export class AgentsService {
 			integrationType,
 		);
 
-		this.runtimes.set(cacheKey, { agent: agentInstance, agentId, toolRegistry, projectId });
+		this.runtimes.set(cacheKey, {
+			agent: agentInstance,
+			agentId,
+			agentVersionId,
+			toolRegistry,
+			projectId,
+		});
 		const runtime = this.runtimes.get(cacheKey);
 		if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
 		return runtime;
@@ -845,6 +864,7 @@ export class AgentsService {
 			.recordMessage({
 				threadId,
 				agentId,
+				agentVersionId: runtime.agentVersionId,
 				agentName: agentInstance.name,
 				projectId,
 				userMessage: '',
@@ -936,6 +956,7 @@ export class AgentsService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
+			agentVersionId: runtime.agentVersionId,
 			message,
 			memory,
 			projectId: runtime.projectId,
@@ -988,6 +1009,7 @@ export class AgentsService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
+			agentVersionId: runtime.agentVersionId,
 			message,
 			memory,
 			projectId: runtime.projectId,
@@ -1020,6 +1042,7 @@ export class AgentsService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
+			agentVersionId: runtime.agentVersionId,
 			message,
 			memory,
 			projectId: runtime.projectId,
@@ -1035,7 +1058,16 @@ export class AgentsService {
 	 * deliberately distinct from the n8n user ID used for RBAC.
 	 */
 	private async *streamChatResponse(config: StreamChatResponseConfig): AsyncGenerator<StreamChunk> {
-		const { agentInstance, toolRegistry, agentId, message, memory, projectId, source } = config;
+		const {
+			agentInstance,
+			toolRegistry,
+			agentId,
+			agentVersionId,
+			message,
+			memory,
+			projectId,
+			source,
+		} = config;
 		const { threadId, resourceId } = memory;
 
 		const recorder = new ExecutionRecorder(toolRegistry);
@@ -1071,6 +1103,7 @@ export class AgentsService {
 			.recordMessage({
 				threadId,
 				agentId,
+				agentVersionId,
 				agentName: agentInstance.name,
 				projectId,
 				userMessage: message,
@@ -1207,6 +1240,7 @@ export class AgentsService {
 			.recordMessage({
 				threadId,
 				agentId,
+				agentVersionId: getAgentCurrentVersionId(agentEntity),
 				agentName: agentInstance.name,
 				projectId,
 				userMessage: message,
