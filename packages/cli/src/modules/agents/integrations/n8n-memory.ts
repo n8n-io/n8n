@@ -18,6 +18,7 @@ import {
 	type EpisodicMemoryCursor,
 	type EpisodicMemoryEntry,
 	type EpisodicMemoryEntrySource,
+	type EpisodicMemoryMethods,
 	type EpisodicMemoryReflectionApply,
 	type EpisodicMemoryReflectionResult,
 	type EpisodicMemoryScope,
@@ -25,7 +26,6 @@ import {
 	type MemoryDescriptor,
 	type NewEpisodicMemoryCursor,
 	type NewEpisodicMemoryEntry,
-	type NewEpisodicMemoryEntrySource,
 	type NewEpisodicMemoryEntrySourceForEntry,
 	type NewObservationLogEntry,
 	type ObservationCursor,
@@ -81,6 +81,18 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 		private readonly memoryEntrySourceRepository: AgentMemoryEntrySourceRepository,
 		private readonly memoryEntryCursorRepository: AgentMemoryEntryCursorRepository,
 	) {}
+
+	readonly episodic: EpisodicMemoryMethods = {
+		saveEntryWithSources: async (entry, sources) =>
+			await this.saveEpisodicMemoryEntryWithSources(entry, sources),
+		searchEntries: async (scope, query, opts) =>
+			await this.searchEpisodicMemoryEntries(scope, query, opts),
+		getEntrySources: async (entryIds) => await this.getEpisodicMemoryEntrySources(entryIds),
+		applyReflection: async (scope, reflection) =>
+			await this.applyEpisodicMemoryReflection(scope, reflection),
+		getCursor: async (scope) => await this.getEpisodicMemoryCursor(scope),
+		setCursor: async (cursor) => await this.setEpisodicMemoryCursor(cursor),
+	};
 
 	// ── Thread management ────────────────────────────────────────────────
 
@@ -510,83 +522,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 
 	// ── Episodic memory ──────────────────────────────────────────────────
 
-	async saveEpisodicMemoryEntries(
-		entries: NewEpisodicMemoryEntry[],
-	): Promise<EpisodicMemoryEntry[]> {
-		const saved: EpisodicMemoryEntry[] = [];
-
-		for (const entry of entries) {
-			await this.ensureResource(entry.resourceId);
-			const contentHash = entry.contentHash ?? hashEpisodicMemoryContent(entry.content);
-			const now = new Date();
-			const entity = this.memoryEntryRepository.create({
-				agentId: entry.namespace,
-				resourceId: entry.resourceId,
-				content: entry.content,
-				contentHash,
-				...activeLifecycleState(),
-				embeddingModel: entry.embeddingModel ?? null,
-				embedding: entry.embedding ?? null,
-				metadata: entry.metadata ?? null,
-				createdAt: entry.createdAt ?? now,
-				lastSeenAt: entry.lastSeenAt ?? now,
-			});
-
-			try {
-				const persisted = await this.memoryEntryRepository.save(entity);
-				saved.push(this.toEpisodicMemoryEntry(persisted));
-			} catch (error) {
-				if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
-
-				const existing = await this.memoryEntryRepository.findOneBy({
-					agentId: entry.namespace,
-					resourceId: entry.resourceId,
-					contentHash,
-				});
-				if (!existing) throw error;
-				markLifecycleActive(existing);
-				existing.lastSeenAt = entry.lastSeenAt ?? now;
-				existing.updatedAt = now;
-				const updated = await this.memoryEntryRepository.save(existing);
-				saved.push(this.toEpisodicMemoryEntry(updated));
-			}
-		}
-
-		return saved;
-	}
-
-	async saveEpisodicMemoryEntrySources(
-		sources: NewEpisodicMemoryEntrySource[],
-	): Promise<EpisodicMemoryEntrySource[]> {
-		const saved: EpisodicMemoryEntrySource[] = [];
-		for (const source of sources) {
-			const evidenceHash = hashEpisodicMemoryEvidence(source.evidenceText);
-			const entity = this.memoryEntrySourceRepository.create({
-				memoryEntryId: source.memoryEntryId,
-				observationId: source.observationId,
-				threadId: source.threadId,
-				evidenceHash,
-				evidenceText: source.evidenceText,
-				createdAt: source.createdAt,
-			});
-			try {
-				const persisted = await this.memoryEntrySourceRepository.save(entity);
-				saved.push(this.toEpisodicMemoryEntrySource(persisted));
-			} catch (error) {
-				if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
-				const existing = await this.memoryEntrySourceRepository.findOneBy({
-					memoryEntryId: source.memoryEntryId,
-					observationId: source.observationId,
-					evidenceHash,
-				});
-				if (!existing) throw error;
-				saved.push(this.toEpisodicMemoryEntrySource(existing));
-			}
-		}
-		return saved;
-	}
-
-	async saveEpisodicMemoryEntryWithSources(
+	private async saveEpisodicMemoryEntryWithSources(
 		entry: NewEpisodicMemoryEntry,
 		sources: NewEpisodicMemoryEntrySourceForEntry[],
 	): Promise<EpisodicMemoryEntry | null> {
@@ -657,7 +593,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 		});
 	}
 
-	async searchEpisodicMemoryEntries(
+	private async searchEpisodicMemoryEntries(
 		scope: EpisodicMemoryScope,
 		query: string,
 		opts?: EpisodicMemorySearchOptions,
@@ -673,16 +609,9 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 		);
 	}
 
-	async supersedeEpisodicMemoryEntries(ids: string[], supersededBy: string): Promise<void> {
-		const filteredIds = ids.filter((id) => id !== supersededBy);
-		if (filteredIds.length === 0) return;
-		await this.memoryEntryRepository.update(
-			{ id: In(filteredIds), status: 'active' },
-			supersededLifecycleState(supersededBy),
-		);
-	}
-
-	async getEpisodicMemoryEntrySources(entryIds: string[]): Promise<EpisodicMemoryEntrySource[]> {
+	private async getEpisodicMemoryEntrySources(
+		entryIds: string[],
+	): Promise<EpisodicMemoryEntrySource[]> {
 		if (entryIds.length === 0) return [];
 		const entities = await this.memoryEntrySourceRepository.find({
 			where: { memoryEntryId: In(entryIds) },
@@ -691,7 +620,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 		return entities.map((entity) => this.toEpisodicMemoryEntrySource(entity));
 	}
 
-	async applyEpisodicMemoryReflection(
+	private async applyEpisodicMemoryReflection(
 		scope: EpisodicMemoryScope,
 		reflection: EpisodicMemoryReflectionApply,
 	): Promise<EpisodicMemoryReflectionResult> {
@@ -872,7 +801,9 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 		});
 	}
 
-	async getEpisodicMemoryCursor(scope: ObservationLogScope): Promise<EpisodicMemoryCursor | null> {
+	private async getEpisodicMemoryCursor(
+		scope: ObservationLogScope,
+	): Promise<EpisodicMemoryCursor | null> {
 		const entity = await this.memoryEntryCursorRepository.findOneBy(scope);
 		if (!entity) return null;
 		return {
@@ -884,7 +815,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 		};
 	}
 
-	async setEpisodicMemoryCursor(cursor: NewEpisodicMemoryCursor): Promise<void> {
+	private async setEpisodicMemoryCursor(cursor: NewEpisodicMemoryCursor): Promise<void> {
 		await this.memoryEntryCursorRepository.upsert(
 			{
 				scopeKind: cursor.scopeKind,

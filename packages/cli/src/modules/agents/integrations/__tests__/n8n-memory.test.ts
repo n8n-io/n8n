@@ -1135,16 +1135,14 @@ describe('N8nMemory', () => {
 		});
 
 		it('stores active source-backed entries with a content hash', async () => {
-			memoryEntryRepository.save.mockImplementation(async (input) =>
+			transactionMemoryEntrySave.mockResolvedValueOnce([
 				makeMemoryEntryEntity({
-					...(input as AgentMemoryEntryEntity),
 					id: 'memory-1',
-					createdAt: new Date('2026-05-05T00:00:00Z'),
-					updatedAt: new Date('2026-05-05T00:00:00Z'),
+					content: 'User chose Postgres for the memory store.',
 				}),
-			);
+			]);
 
-			const [result] = await memory.saveEpisodicMemoryEntries([
+			const result = await memory.episodic.saveEntryWithSources(
 				{
 					namespace: 'agent-1',
 					resourceId: 'resource-1',
@@ -1152,9 +1150,16 @@ describe('N8nMemory', () => {
 					embedding: [1, 0],
 					embeddingModel: 'openai/text-embedding-3-small',
 				},
-			]);
+				[
+					{
+						observationId: 'obs-1',
+						threadId: 'thread-1',
+						evidenceText: 'User chose Postgres',
+					},
+				],
+			);
 
-			expect(memoryEntryRepository.create).toHaveBeenCalledWith(
+			expect(transactionMemoryEntryCreate).toHaveBeenCalledWith(
 				expect.objectContaining({
 					agentId: 'agent-1',
 					resourceId: 'resource-1',
@@ -1163,6 +1168,14 @@ describe('N8nMemory', () => {
 					contentHash: expect.any(String),
 				}),
 			);
+			expect(transactionMemoryEntrySourceSave).toHaveBeenCalledWith([
+				expect.objectContaining({
+					memoryEntryId: 'memory-1',
+					observationId: 'obs-1',
+					evidenceHash: hashEpisodicMemoryEvidence('User chose Postgres'),
+					evidenceText: 'User chose Postgres',
+				}),
+			]);
 			expect(result).toMatchObject({
 				id: 'memory-1',
 				content: 'User chose Postgres for the memory store.',
@@ -1185,7 +1198,7 @@ describe('N8nMemory', () => {
 				}),
 			]);
 
-			const results = await memory.searchEpisodicMemoryEntries(
+			const results = await memory.episodic.searchEntries(
 				{ namespace: 'agent-1', resourceId: 'resource-1' },
 				'Postgres memory store',
 				{ queryEmbedding: [1, 0], topK: 1 },
@@ -1199,36 +1212,6 @@ describe('N8nMemory', () => {
 				},
 			});
 			expect(results.map((result) => result.id)).toEqual(['memory-1']);
-		});
-
-		it('links source observations without duplicating existing links', async () => {
-			const createdAt = new Date('2026-05-05T00:00:00Z');
-			memoryEntrySourceRepository.save.mockResolvedValue({
-				id: 'source-1',
-				memoryEntryId: 'memory-1',
-				observationId: 'obs-1',
-				threadId: 'thread-1',
-				evidenceHash: hashEpisodicMemoryEvidence('User chose Postgres'),
-				evidenceText: 'User chose Postgres',
-				createdAt,
-				updatedAt: createdAt,
-			} as AgentMemoryEntrySourceEntity);
-
-			const [source] = await memory.saveEpisodicMemoryEntrySources([
-				{
-					memoryEntryId: 'memory-1',
-					observationId: 'obs-1',
-					threadId: 'thread-1',
-					evidenceText: 'User chose Postgres',
-					createdAt,
-				},
-			]);
-
-			expect(source).toMatchObject({
-				id: 'source-1',
-				memoryEntryId: 'memory-1',
-				observationId: 'obs-1',
-			});
 		});
 
 		it('stores an episodic entry and its sources in one transaction', async () => {
@@ -1247,7 +1230,7 @@ describe('N8nMemory', () => {
 				}),
 			]);
 
-			const result = await memory.saveEpisodicMemoryEntryWithSources(
+			const result = await memory.episodic.saveEntryWithSources(
 				{
 					namespace: 'agent-1',
 					resourceId: 'resource-1',
@@ -1288,7 +1271,7 @@ describe('N8nMemory', () => {
 			transactionMemoryEntrySourceSave.mockRejectedValueOnce(new Error('source write failed'));
 
 			await expect(
-				memory.saveEpisodicMemoryEntryWithSources(
+				memory.episodic.saveEntryWithSources(
 					{
 						namespace: 'agent-1',
 						resourceId: 'resource-1',
@@ -1314,7 +1297,7 @@ describe('N8nMemory', () => {
 				makeMemoryEntrySourceEntity({ memoryEntryId: 'memory-1' }),
 			]);
 
-			const sources = await memory.getEpisodicMemoryEntrySources(['memory-1', 'memory-2']);
+			const sources = await memory.episodic.getEntrySources(['memory-1', 'memory-2']);
 
 			expect(memoryEntrySourceRepository.find).toHaveBeenCalledWith({
 				where: { memoryEntryId: In(['memory-1', 'memory-2']) },
@@ -1347,7 +1330,7 @@ describe('N8nMemory', () => {
 				])
 				.mockResolvedValueOnce([]);
 
-			const result = await memory.applyEpisodicMemoryReflection(
+			const result = await memory.episodic.applyReflection(
 				{ namespace: 'agent-1', resourceId: 'resource-1' },
 				{
 					drop: ['noise'],
@@ -1441,7 +1424,7 @@ describe('N8nMemory', () => {
 				])
 				.mockResolvedValueOnce([]);
 
-			const result = await memory.applyEpisodicMemoryReflection(
+			const result = await memory.episodic.applyReflection(
 				{ namespace: 'agent-1', resourceId: 'resource-1' },
 				{
 					drop: [],
@@ -1495,7 +1478,7 @@ describe('N8nMemory', () => {
 		it('upserts the episodic cursor by observation scope', async () => {
 			const lastIndexedObservationCreatedAt = new Date('2026-05-05T00:00:00Z');
 
-			await memory.setEpisodicMemoryCursor({
+			await memory.episodic.setCursor({
 				scopeKind: 'thread',
 				scopeId: 'thread:thread-1:resource:resource-1',
 				lastIndexedObservationId: 'obs-1',
@@ -1524,7 +1507,7 @@ describe('N8nMemory', () => {
 				updatedAt: new Date('2026-05-05T00:00:01Z'),
 			} as AgentMemoryEntryCursorEntity);
 
-			const cursor = await memory.getEpisodicMemoryCursor({
+			const cursor = await memory.episodic.getCursor({
 				scopeKind: 'thread',
 				scopeId: 'thread:thread-1:resource:resource-1',
 			});
