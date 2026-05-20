@@ -6,9 +6,12 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import * as fs from 'fs/promises';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import * as path from 'path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
+import { synthesizeMcpRegistryTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 
 export type NodeFilter = (nodeId: string) => boolean;
 
@@ -45,6 +48,13 @@ export class NodeCatalogService {
 	private nodeTypeParser: NodeTypeParser | undefined;
 
 	private nodeDefinitionDirs: string[] = [];
+
+	/**
+	 * Synthetic MCP registry node descriptions indexed by their prefixed name
+	 * (e.g. `@n8n/mcp-registry.notion`). Used by `getNodeTypes` to synthesise
+	 * type-def content for registry slugs, which have no on-disk artifact.
+	 */
+	private mcpRegistryDescriptions = new Map<string, INodeTypeDescription>();
 
 	private initPromise: Promise<void> | undefined;
 
@@ -132,8 +142,33 @@ export class NodeCatalogService {
 		const cached = this.getCache.get(cacheKey);
 		if (cached) return cached;
 
-		const { getNodeTypes } = await import('@n8n/ai-workflow-builder');
-		const result = getNodeTypes(nodeIds, { nodeDefinitionDirs: this.nodeDefinitionDirs });
+		const registryIds: NodeRequest[] = [];
+		const onDiskIds: NodeRequest[] = [];
+		for (const id of nodeIds) {
+			const nodeId = typeof id === 'string' ? id : id.nodeId;
+			if (nodeId.startsWith(`${MCP_REGISTRY_PACKAGE_NAME}.`)) {
+				registryIds.push(id);
+			} else {
+				onDiskIds.push(id);
+			}
+		}
+
+		const parts: string[] = [];
+
+		for (const id of registryIds) {
+			const nodeId = typeof id === 'string' ? id : id.nodeId;
+			const description = this.mcpRegistryDescriptions.get(nodeId);
+			if (description) {
+				parts.push(synthesizeMcpRegistryTypeDef(description));
+			}
+		}
+
+		if (onDiskIds.length > 0) {
+			const { getNodeTypes } = await import('@n8n/ai-workflow-builder');
+			parts.push(getNodeTypes(onDiskIds, { nodeDefinitionDirs: this.nodeDefinitionDirs }));
+		}
+
+		const result = parts.join('\n\n');
 		this.getCache.set(cacheKey, result);
 		return result;
 	}
@@ -161,6 +196,7 @@ export class NodeCatalogService {
 		const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 
 		this.nodeTypeParser = new NodeTypeParserClass(nodeTypeDescriptions);
+		this.indexMcpRegistryDescriptions(nodeTypeDescriptions);
 		this.nodeDefinitionDirs = await this.resolveBuiltinNodeDefinitionDirs();
 
 		setSchemaBaseDirs(this.nodeDefinitionDirs);
@@ -177,6 +213,7 @@ export class NodeCatalogService {
 		const { NodeTypeParser: NodeTypeParserClass } = await import('@n8n/ai-workflow-builder');
 		const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 		this.nodeTypeParser = new NodeTypeParserClass(nodeTypeDescriptions);
+		this.indexMcpRegistryDescriptions(nodeTypeDescriptions);
 
 		this.searchStates.clear();
 		this.suggestTool = undefined;
@@ -187,6 +224,16 @@ export class NodeCatalogService {
 		this.logger.debug('NodeCatalogService refreshed node types', {
 			nodeTypeCount: nodeTypeDescriptions.length,
 		});
+	}
+
+	private indexMcpRegistryDescriptions(descriptions: INodeTypeDescription[]): void {
+		this.mcpRegistryDescriptions.clear();
+		const prefix = `${MCP_REGISTRY_PACKAGE_NAME}.`;
+		for (const description of descriptions) {
+			if (description.name.startsWith(prefix)) {
+				this.mcpRegistryDescriptions.set(description.name, description);
+			}
+		}
 	}
 
 	private async resolveBuiltinNodeDefinitionDirs(): Promise<string[]> {

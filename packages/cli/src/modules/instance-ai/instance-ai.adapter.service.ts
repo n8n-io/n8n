@@ -109,6 +109,8 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
+import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
+import { synthesizeMcpRegistryTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
@@ -1883,13 +1885,31 @@ export class InstanceAiAdapterService {
 			},
 
 			getNodeTypeDefinition: async (nodeType, options) => {
+				const nodes = await getNodes();
+
+				// Synthetic MCP registry nodes have no on-disk type-def, so the
+				// standard resolver would 404 on them. Match either the bare slug
+				// (e.g. `notion`) or the package-prefixed form, then synthesise
+				// the TypeScript content from the in-memory description.
+				const registryNode =
+					nodes.find((n) => n.name === `${MCP_REGISTRY_PACKAGE_NAME}.${nodeType}`) ??
+					(nodeType.startsWith(`${MCP_REGISTRY_PACKAGE_NAME}.`)
+						? nodes.find((n) => n.name === nodeType)
+						: undefined);
+				if (registryNode) {
+					const builderHint = registryNode.builderHint?.searchHint;
+					return {
+						content: synthesizeMcpRegistryTypeDef(registryNode),
+						...(builderHint ? { builderHint } : {}),
+					};
+				}
+
 				const result = resolveNodeTypeDefinition(nodeType, this.getNodeDefinitionDirs(), options);
 
 				if (result.error) {
 					return { content: '', error: result.error };
 				}
 
-				const nodes = await getNodes();
 				const nodeDesc = findNodeByVersion(
 					nodes,
 					nodeType,
