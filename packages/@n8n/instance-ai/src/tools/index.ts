@@ -42,6 +42,10 @@ const loadCompleteCheckpointTool = lazyMod(
 const loadDelegateTool = lazyMod(
 	() => require('./orchestration/delegate.tool') as typeof import('./orchestration/delegate.tool'),
 );
+const loadEvalDataAgentTool = lazyMod(
+	() =>
+		require('./orchestration/eval-data-agent.tool') as typeof import('./orchestration/eval-data-agent.tool'),
+);
 const loadEvalSetupAgentTool = lazyMod(
 	() =>
 		require('./orchestration/eval-setup-agent.tool') as typeof import('./orchestration/eval-setup-agent.tool'),
@@ -159,6 +163,7 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 			ORCHESTRATION_TOOL_IDS.EVAL_SETUP_WITH_AGENT,
 			loadEvalSetupAgentTool().createEvalSetupAgentTool(context),
 		],
+		[ORCHESTRATION_TOOL_IDS.EVAL_DATA, loadEvalDataAgentTool().createEvalDataAgentTool(context)],
 	];
 
 	if (context.browserMcpConfig || hasGatewayBrowserTools(context)) {
