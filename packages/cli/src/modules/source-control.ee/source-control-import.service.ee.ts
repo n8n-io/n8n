@@ -451,10 +451,12 @@ export class SourceControlImportService {
 			// Unless data is corrupted, there should always be an owner.
 			// We keep tables without an owner because they can still be imported
 			// and assigned to the pulling user's personal project.
-			const owner = table.ownedBy;
-			return (
-				!owner || context.hasAccessToAllProjects() || !!context.findAuthorizedProjectByOwner(owner)
-			);
+			if (!table.ownedBy) {
+				return true;
+			}
+
+			const isOwnedByAuthorizedProject = !!context.findAuthorizedProjectByOwner(table.ownedBy);
+			return context.hasAccessToAllProjects() || isOwnedByAuthorizedProject;
 		});
 	}
 
