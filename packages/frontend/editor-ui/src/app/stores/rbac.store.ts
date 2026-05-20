@@ -42,6 +42,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		folder: {},
 		insights: {},
 		dataTable: {},
+		dashboard: {},
 		execution: {},
 		workflowTags: {},
 		role: {},

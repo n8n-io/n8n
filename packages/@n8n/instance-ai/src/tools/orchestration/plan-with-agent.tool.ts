@@ -634,7 +634,16 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 			'and best practices, designs the architecture, and shows it to the user ' +
 			'for approval. Use when the request requires 2 or more tasks with ' +
 			'dependencies. When this tool returns, the plan is already approved ' +
-			'and tasks are dispatched — just acknowledge briefly and end your turn.',
+			'and tasks are dispatched — just acknowledge briefly and end your turn. ' +
+			'\n\n' +
+			'**DO NOT call this tool for dashboard / KPI / metrics / data-visualization / ' +
+			'admin-page requests** — even when they involve data tables and look multi-step. ' +
+			'Those go directly to the `dashboards` tool. The dashboards feature provides ' +
+			'KPI / chart / table widgets, multi-view tabs, row CRUD with input hints, and ' +
+			'workflow-bound row actions natively — building HTML pages from a Webhook node ' +
+			"for that purpose is wrong. If the dashboard needs a data table that doesn't " +
+			'exist yet, call `data-tables.create` directly, then `dashboards.preview-spec`. ' +
+			'No plan needed.',
 		inputSchema: z.object({
 			guidance: z
 				.string()

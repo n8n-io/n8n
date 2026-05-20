@@ -35,6 +35,7 @@ export class ModuleRegistry {
 		'external-secrets',
 		'community-packages',
 		'data-table',
+		'dashboard',
 		'mcp',
 		'provisioning',
 		'breaking-changes',

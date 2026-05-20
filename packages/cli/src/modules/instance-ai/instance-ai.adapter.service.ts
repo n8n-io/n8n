@@ -63,7 +63,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { LessThan } from '@n8n/typeorm';
@@ -247,6 +247,7 @@ export class InstanceAiAdapterService {
 			credentialService: this.createCredentialAdapter(user),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user),
+			dashboardService: this.createDashboardAdapter(user),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			licenseHints: this.buildLicenseHints(),
@@ -1284,6 +1285,71 @@ export class InstanceAiAdapterService {
 				} catch {
 					return { accountIdentifier: undefined };
 				}
+			},
+		};
+	}
+
+	private createDashboardAdapter(
+		user: User,
+	): import('@n8n/instance-ai').InstanceAiDashboardService {
+		const { resolveProjectId } = this.createProjectScopeHelpers(user);
+
+		const lazy = async () => {
+			const { DashboardService } = await import('@/modules/dashboard/dashboard.service');
+			return Container.get(DashboardService);
+		};
+
+		const summarize = (d: import('@/modules/dashboard/dashboard.entity').Dashboard) => ({
+			id: d.id,
+			name: d.name,
+			description: d.description ?? null,
+			projectId: d.projectId,
+			tags: d.tags ?? null,
+			archived: d.archived,
+			updatedAt: d.updatedAt instanceof Date ? d.updatedAt.toISOString() : String(d.updatedAt),
+		});
+
+		return {
+			async list(options?: { projectId?: string }) {
+				const projectId = await resolveProjectId(['dashboard:listProject'], options?.projectId);
+				const svc = await lazy();
+				const { data } = await svc.getManyAndCount({ filter: { projectId } });
+				return data.map(summarize);
+			},
+			async get(dashboardId: string, options?: { projectId?: string }) {
+				const projectId = await resolveProjectId(['dashboard:read'], options?.projectId);
+				const svc = await lazy();
+				const d = await svc.getDashboard(dashboardId, projectId);
+				return { ...summarize(d), spec: d.spec };
+			},
+			async create(name, spec, options) {
+				const projectId = await resolveProjectId(['dashboard:create'], options?.projectId);
+				const svc = await lazy();
+				const created = await svc.createDashboard(projectId, {
+					name,
+					description: options?.description,
+					// Spec is structurally validated at the API layer; cast here to bridge
+					// the loose tool-side type with the strict server-side DTO type.
+					spec: spec as unknown as Parameters<typeof svc.createDashboard>[1]['spec'],
+					tags: options?.tags,
+				});
+				return { ...summarize(created), spec: created.spec };
+			},
+			async update(dashboardId, patch, options) {
+				const projectId = await resolveProjectId(['dashboard:update'], options?.projectId);
+				const svc = await lazy();
+				const updated = await svc.updateDashboard(
+					dashboardId,
+					projectId,
+					patch as unknown as Parameters<typeof svc.updateDashboard>[2],
+				);
+				if (!updated) throw new Error('Dashboard not found after update');
+				return { ...summarize(updated), spec: updated.spec };
+			},
+			async delete(dashboardId: string, options?: { projectId?: string }) {
+				const projectId = await resolveProjectId(['dashboard:delete'], options?.projectId);
+				const svc = await lazy();
+				await svc.deleteDashboard(dashboardId, projectId);
 			},
 		};
 	}

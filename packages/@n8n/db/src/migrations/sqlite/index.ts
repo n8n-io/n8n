@@ -172,6 +172,8 @@ import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001
 import { CreateAgentObservationTables1784000000000 } from '../common/1784000000000-CreateAgentObservationTables';
 import { ReplaceAgentObservationTables1784000000001 } from '../common/1784000000001-ReplaceAgentObservationTables';
 import { DropAgentExecutionWorkingMemory1784000000002 } from '../common/1784000000002-DropAgentExecutionWorkingMemory';
+import { CreateDashboardTables1785000000000 } from '../common/1785000000000-CreateDashboardTables';
+import { AddDashboardVersionColumn1785000000001 } from '../common/1785000000001-AddDashboardVersionColumn';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -349,6 +351,8 @@ const sqliteMigrations: Migration[] = [
 	ReplaceAgentObservationTables1784000000001,
 	DropAgentExecutionWorkingMemory1784000000002,
 	LimitWorkflowVersionTriggerToContent1784000000003,
+	CreateDashboardTables1785000000000,
+	AddDashboardVersionColumn1785000000001,
 ];
 
 export { sqliteMigrations };

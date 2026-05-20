@@ -457,6 +457,59 @@ export interface InstanceAiDataTableService {
 	): Promise<{ deletedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 }
 
+// ── Dashboards ──────────────────────────────────────────────────────────────
+
+export interface DashboardSummary {
+	id: string;
+	name: string;
+	description?: string | null;
+	projectId: string;
+	tags?: string[] | null;
+	archived: boolean;
+	updatedAt: string;
+}
+
+export interface DashboardViewLike {
+	id: string;
+	name: string;
+	icon?: string;
+	widgets: Array<Record<string, unknown>>;
+}
+
+export interface DashboardSpecLike {
+	version: 1;
+	views?: DashboardViewLike[];
+	widgets?: Array<Record<string, unknown>>;
+	globalFilters?: Array<Record<string, unknown>>;
+	actions?: Array<Record<string, unknown>>;
+}
+
+export interface DashboardDetail extends DashboardSummary {
+	spec: DashboardSpecLike;
+}
+
+export interface InstanceAiDashboardService {
+	list(options?: { projectId?: string }): Promise<DashboardSummary[]>;
+	get(dashboardId: string, options?: { projectId?: string }): Promise<DashboardDetail>;
+	create(
+		name: string,
+		spec: DashboardSpecLike,
+		options?: { projectId?: string; description?: string; tags?: string[] },
+	): Promise<DashboardDetail>;
+	update(
+		dashboardId: string,
+		patch: Partial<{
+			name: string;
+			description: string | null;
+			spec: DashboardSpecLike;
+			tags: string[];
+			archived: boolean;
+		}>,
+		options?: { projectId?: string },
+	): Promise<DashboardDetail>;
+	delete(dashboardId: string, options?: { projectId?: string }): Promise<void>;
+}
+
 // ── Web Research ────────────────────────────────────────────────────────────
 
 export interface FetchedPage {
@@ -585,6 +638,7 @@ export interface InstanceAiContext {
 	credentialService: InstanceAiCredentialService;
 	nodeService: InstanceAiNodeService;
 	dataTableService: InstanceAiDataTableService;
+	dashboardService?: InstanceAiDashboardService;
 	webResearchService?: InstanceAiWebResearchService;
 	workspaceService?: InstanceAiWorkspaceService;
 	/**

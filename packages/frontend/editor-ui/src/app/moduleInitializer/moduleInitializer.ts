@@ -1,6 +1,7 @@
 import { type Router } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { DataTableModule } from '@/features/core/dataTable/module.descriptor';
+import { DashboardsModule } from '@/features/core/dashboards/module.descriptor';
 import { registerResource } from '@/app/moduleInitializer/resourceRegistry';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -19,6 +20,7 @@ import * as modalRegistry from '@/app/moduleInitializer/modalRegistry';
 const modules: FrontendModuleDescription[] = [
 	InsightsModule,
 	DataTableModule,
+	DashboardsModule,
 	MCPModule,
 	ChatModule,
 	InstanceAiModule,

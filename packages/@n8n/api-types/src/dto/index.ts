@@ -198,6 +198,23 @@ export {
 } from './data-table/update-data-table-column.dto';
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
+export { AggregateDataTableDto } from './data-table/aggregate-data-table.dto';
+
+export { CreateDashboardDto } from './dashboard/create-dashboard.dto';
+export { UpdateDashboardDto } from './dashboard/update-dashboard.dto';
+export {
+	ListDashboardsQueryDto,
+	type DashboardListFilter,
+	type DashboardListOptions,
+	type ListDashboardsQuerySortOptions,
+} from './dashboard/list-dashboards-query.dto';
+export {
+	ShareDashboardDto,
+	UnshareDashboardDto,
+	dashboardShareRoleSchema,
+	type DashboardShareRole,
+} from './dashboard/share-dashboard.dto';
+export { ExecuteDashboardActionDto } from './dashboard/execute-dashboard-action.dto';
 
 export * from './evaluations';
 

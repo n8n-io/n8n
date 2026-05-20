@@ -1819,7 +1819,13 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 			'The agent handles node discovery, schema lookups, code generation, and validation internally. ' +
 			'For edits to an existing workflow, call directly with `bypassPlan: true`, the existing `workflowId`, and a one-sentence `reason` — the orchestrator runs a lightweight verify afterwards. ' +
 			'For new workflows, multi-workflow builds, or data-table schema changes, go through `plan` — ' +
-			'a runtime guard rejects direct calls without `bypassPlan: true` outside replan/checkpoint follow-ups, because those paths need the orchestrator-run checkpoint for end-to-end verification.',
+			'a runtime guard rejects direct calls without `bypassPlan: true` outside replan/checkpoint follow-ups, because those paths need the orchestrator-run checkpoint for end-to-end verification. ' +
+			'\n\n' +
+			'**DO NOT use this tool to "build a dashboard", "render a UI", "serve an HTML page", ' +
+			'or "create a web app".** Webhook-served HTML is NOT a dashboard — n8n has a ' +
+			'first-class `dashboards` tool for that. If the user asks for a dashboard, a CRM ' +
+			'view, a Kanban board, a KPI page, an admin panel, a pipeline view, or anything ' +
+			'that displays/edits records from a data table — use the `dashboards` tool instead.',
 		inputSchema: buildWorkflowAgentInputSchema,
 		outputSchema: z.object({
 			result: z.string(),

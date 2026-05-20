@@ -1,5 +1,6 @@
 import type {
 	AddDataTableColumnDto,
+	AggregateDataTableDto,
 	CreateDataTableDto,
 	DeleteDataTableRowsDto,
 	ListDataTableContentQueryDto,
@@ -264,6 +265,18 @@ export class DataTableService {
 				count: result.count,
 				data: normalizeRows(result.data, columns),
 			};
+		});
+	}
+
+	async aggregateRows(dataTableId: string, projectId: string, dto: AggregateDataTableDto) {
+		await this.validateDataTableExists(dataTableId, projectId);
+
+		return await this.dataTableColumnRepository.manager.transaction(async (em) => {
+			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, em);
+			const transformedDto = dto.filter
+				? { ...dto, filter: this.validateAndTransformFilters(dto.filter, columns) }
+				: dto;
+			return await this.dataTableRowsRepository.aggregate(dataTableId, transformedDto, columns, em);
 		});
 	}
 

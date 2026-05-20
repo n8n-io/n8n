@@ -1,4 +1,9 @@
-import { DataTableFilter, ListDataTableContentQueryDto } from '@n8n/api-types';
+import {
+	AggregateDataTableDto,
+	AggregateOp,
+	DataTableFilter,
+	ListDataTableContentQueryDto,
+} from '@n8n/api-types';
 import { withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -588,6 +593,163 @@ export class DataTableRowsRepository {
 			.getRawMany<DataTableRawRowReturn>();
 
 		return normalizeRows(rows, columns);
+	}
+
+	/**
+	 * Hard server-side cap on group cardinality. A widget grouping by a
+	 * high-cardinality column (e.g. `user_id`) could otherwise return millions of
+	 * rows and OOM the renderer.
+	 */
+	private static readonly MAX_GROUPS = 5000;
+
+	async aggregate(
+		dataTableId: string,
+		dto: AggregateDataTableDto,
+		columns: DataTableColumn[],
+		trx?: EntityManager,
+	): Promise<{ rows: Array<Record<string, unknown>>; totalGroups: number; truncated: boolean }> {
+		const em = trx ?? this.dataSource.manager;
+		const dbType = this.dataSource.options.type;
+		const tableReference = 'dataTable';
+
+		const validColumnNames = new Set([...columns.map((c) => c.name), ...DATA_TABLE_SYSTEM_COLUMNS]);
+
+		this.validateAggregateColumns(dto, validColumnNames);
+
+		const buildAggExpression = (op: AggregateOp): string => {
+			const fn = op.fn.toUpperCase();
+			if (fn === 'COUNT' && !op.column) {
+				return `COUNT(*) AS ${quoteIdentifier(op.alias, dbType)}`;
+			}
+			const colRef = `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(
+				op.column as string,
+				dbType,
+			)}`;
+			return `${fn}(${colRef}) AS ${quoteIdentifier(op.alias, dbType)}`;
+		};
+
+		const aggSelects = dto.ops.map(buildAggExpression);
+		const groupBy = dto.groupBy ?? [];
+
+		const baseQuery = em.createQueryBuilder().from(toTableName(dataTableId), tableReference);
+
+		if (dto.filter) {
+			this.applyFilters(baseQuery, dto.filter, tableReference);
+		}
+
+		const dataQuery = baseQuery.clone();
+		const groupExpressions = groupBy.map((g) =>
+			this.buildGroupExpression(g, tableReference, dbType),
+		);
+		const groupSelects = groupExpressions.map(
+			(g) => `${g.sql} AS ${quoteIdentifier(g.alias, dbType)}`,
+		);
+
+		const selectClause = [...groupSelects, ...aggSelects].join(', ');
+		dataQuery.select(selectClause);
+
+		if (groupExpressions.length > 0) {
+			dataQuery.groupBy(groupExpressions.map((g) => g.sql).join(', '));
+		}
+
+		// Apply explicit sort directives. Unknown columns/aliases are rejected
+		// (no silent "fall back to no sort" — that hides spec bugs).
+		const aliases = new Set(dto.ops.map((o) => o.alias));
+		for (const directive of dto.sort ?? []) {
+			const isColumn = validColumnNames.has(directive.column);
+			const isAlias = aliases.has(directive.column);
+			if (!isColumn && !isAlias) {
+				throw new UserError(`Unknown sort column or alias: ${directive.column}`);
+			}
+			dataQuery.addOrderBy(quoteIdentifier(directive.column, dbType), directive.direction);
+		}
+
+		// Hard cap on returned rows (cardinality bomb defense). Caller-supplied
+		// `take` is clamped to MAX_GROUPS to keep the response bounded.
+		const effectiveTake = Math.min(
+			dto.take ?? DataTableRowsRepository.MAX_GROUPS,
+			DataTableRowsRepository.MAX_GROUPS,
+		);
+		dataQuery.limit(effectiveTake);
+		if (dto.skip) dataQuery.offset(dto.skip);
+
+		const rows = await dataQuery.getRawMany<Record<string, unknown>>();
+
+		let totalGroups = rows.length;
+		let truncated = false;
+		if (groupExpressions.length > 0) {
+			// Count distinct group keys without the row cap, so the UI can show
+			// "showing 5000 of N" even when truncated.
+			const countQuery = baseQuery
+				.clone()
+				.select(
+					`COUNT(DISTINCT ${groupExpressions.map((g) => g.sql).join(' || ')})`,
+					'totalGroups',
+				);
+			const result = await countQuery.getRawOne<{ totalGroups: number | string | null }>();
+			totalGroups =
+				typeof result?.totalGroups === 'number'
+					? result.totalGroups
+					: Number(result?.totalGroups) || 0;
+			truncated = totalGroups > rows.length;
+		}
+
+		return { rows, totalGroups, truncated };
+	}
+
+	/**
+	 * Build the SQL fragment for one `GroupByDirective` — either a plain column,
+	 * or a date column bucketed by hour/day/week/month/quarter/year.
+	 */
+	private buildGroupExpression(
+		directive: string | { column: string; bucket?: string },
+		tableReference: string,
+		dbType: DataSourceOptions['type'],
+	): { sql: string; alias: string } {
+		const isString = typeof directive === 'string';
+		const column = isString ? directive : directive.column;
+		const bucket = isString ? undefined : directive.bucket;
+		const colRef = `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(column, dbType)}`;
+		if (!bucket) return { sql: colRef, alias: column };
+
+		const alias = `${column}__${bucket}`;
+		if (['sqlite', 'sqlite-pooled'].includes(dbType)) {
+			const fmt: Record<string, string> = {
+				hour: '%Y-%m-%dT%H:00:00',
+				day: '%Y-%m-%d',
+				week: '%Y-W%W',
+				month: '%Y-%m',
+				quarter: '%Y-Q',
+				year: '%Y',
+			};
+			if (bucket === 'quarter') {
+				// SQLite has no native quarter — emit "YYYY-Q<n>".
+				return {
+					sql: `(strftime('%Y', ${colRef}) || '-Q' || CAST(((CAST(strftime('%m', ${colRef}) AS INTEGER) - 1) / 3 + 1) AS TEXT))`,
+					alias,
+				};
+			}
+			return { sql: `strftime('${fmt[bucket]}', ${colRef})`, alias };
+		}
+		// Postgres
+		return { sql: `to_char(date_trunc('${bucket}', ${colRef}), 'YYYY-MM-DD"T"HH24:MI:SS')`, alias };
+	}
+
+	private validateAggregateColumns(dto: AggregateDataTableDto, validColumnNames: Set<string>) {
+		for (const op of dto.ops) {
+			if (op.column && !validColumnNames.has(op.column)) {
+				throw new UserError(`Unknown column in aggregate op: ${op.column}`);
+			}
+			if (op.fn !== 'count' && !op.column) {
+				throw new UserError(`Aggregate op "${op.fn}" requires a column`);
+			}
+		}
+		for (const directive of dto.groupBy ?? []) {
+			const col = typeof directive === 'string' ? directive : directive.column;
+			if (!validColumnNames.has(col)) {
+				throw new UserError(`Unknown column in groupBy: ${col}`);
+			}
+		}
 	}
 
 	private getManyQuery(

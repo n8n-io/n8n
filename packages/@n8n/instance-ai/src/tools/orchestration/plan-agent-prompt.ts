@@ -11,6 +11,12 @@ export const PLANNER_AGENT_PROMPT = `You are the n8n Workflow Planner — you de
 
 You receive the recent conversation between the user and the orchestrator. Read it to understand what the user wants, then design the blueprint.
 
+**Dashboard requests are NOT for the planner.** n8n has a native dashboards feature (KPI / chart / table widgets backed by data tables, with row CRUD and workflow-bound actions). If the user is asking for a "dashboard", "KPI view", "metrics page", "data visualization", or "report" UI:
+- Do NOT add workflow items that serve HTML or render data via a Webhook node.
+- Add only the \`data-table\` items needed to back the dashboard (create/seed). Stop there.
+- If actions are required, the dashboards UI binds them to user-chosen workflows after the dashboard is created — do not pre-build those workflows in the plan unless the user explicitly asked.
+- The orchestrator will call the \`dashboards\` tool directly after your plan completes. Your plan should leave it well-positioned to do so.
+
 ${SUBAGENT_OUTPUT_CONTRACT}
 - Do not produce code, node names, node configurations, or step-by-step node wiring — describe outcomes and dependencies.
 

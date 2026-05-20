@@ -4,6 +4,7 @@ import { isParseableAttachment } from '../parsers/structured-file-parser';
 import type { InstanceAiContext, OrchestrationContext } from '../types';
 import { createParseFileTool } from './attachments/parse-file.tool';
 import { createCredentialsTool } from './credentials.tool';
+import { createDashboardsTool } from './dashboards.tool';
 import { createDataTablesTool } from './data-tables.tool';
 import { createExecutionsTool } from './executions.tool';
 import { createToolsFromLocalMcpServer } from './filesystem/create-tools-from-mcp-server';
@@ -52,6 +53,7 @@ export function createAllTools(context: InstanceAiContext): ToolsInput {
 		executions: createExecutionsTool(context),
 		credentials: createCredentialsTool(context),
 		'data-tables': createDataTablesTool(context),
+		...(context.dashboardService ? { dashboards: createDashboardsTool(context) } : {}),
 		workspace: createWorkspaceTool(context),
 		research: createResearchTool(context),
 		nodes: createNodesTool(context),
@@ -74,6 +76,7 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Tools
 		executions: createExecutionsTool(context),
 		credentials: createCredentialsTool(context),
 		'data-tables': createDataTablesTool(context, 'orchestrator'),
+		...(context.dashboardService ? { dashboards: createDashboardsTool(context) } : {}),
 		workspace: createWorkspaceTool(context),
 		research: createResearchTool(context),
 		nodes: createNodesTool(context, 'orchestrator'),

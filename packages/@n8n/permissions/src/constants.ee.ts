@@ -57,6 +57,14 @@ export const RESOURCES = {
 		'writeColumn',
 		'listProject',
 	] as const,
+	dashboard: [
+		...DEFAULT_OPERATIONS,
+		'share',
+		'unshare',
+		'execute',
+		'listProject',
+		'aggregate',
+	] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get', 'reveal'] as const,
 	workflowTags: ['update', 'list'] as const,
 	role: ['manage'] as const,
@@ -88,6 +96,7 @@ export const API_KEY_RESOURCES = {
 	dataTable: ['create', 'read', 'update', 'delete', 'list'] as const,
 	dataTableRow: ['create', 'read', 'update', 'delete', 'upsert'] as const,
 	dataTableColumn: ['create', 'read', 'delete', 'update'] as const,
+	dashboard: ['create', 'read', 'update', 'delete', 'list', 'execute'] as const,
 	folder: ['create', 'delete', 'read', 'update', 'list'] as const,
 	insights: ['read'] as const,
 } as const;

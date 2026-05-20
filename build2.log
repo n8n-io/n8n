@@ -1,0 +1,4 @@
+
+> @n8n/instance-ai@1.6.0 build /Users/makina/n8n/n8n/packages/@n8n/instance-ai
+> tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json
+

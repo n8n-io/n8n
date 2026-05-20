@@ -1,6 +1,7 @@
 import {
 	AddDataTableRowsDto,
 	AddDataTableColumnDto,
+	AggregateDataTableDto,
 	CreateDataTableDto,
 	DeleteDataTableRowsDto,
 	DownloadDataTableCsvQueryDto,
@@ -301,6 +302,30 @@ export class DataTableController {
 			} else {
 				throw e;
 			}
+		}
+	}
+
+	@Post('/:dataTableId/aggregate')
+	@ProjectScope('dataTable:readRow')
+	async aggregateRows(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataTableId') dataTableId: string,
+		@Body dto: AggregateDataTableDto,
+	) {
+		try {
+			return await this.dataTableService.aggregateRows(dataTableId, req.params.projectId, dto);
+		} catch (e: unknown) {
+			if (e instanceof DataTableNotFoundError) {
+				throw new NotFoundError(e.message);
+			}
+			if (e instanceof DataTableValidationError) {
+				throw new BadRequestError(e.message);
+			}
+			if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			}
+			throw e;
 		}
 	}
 
