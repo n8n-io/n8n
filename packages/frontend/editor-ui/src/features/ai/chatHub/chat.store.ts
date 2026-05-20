@@ -575,7 +575,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			createdAt: new Date(),
 			startedAt: new Date(),
 			stoppedAt: undefined,
-			workflowId: workflowId,
+			workflowId,
 			data: createRunExecutionData({
 				resultData: { runData: {} },
 			}),

@@ -187,7 +187,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const startLockStatePolling = (workflowId: string) => {
 		stopLockStatePolling();
 		lockStatePollTimer.value = window.setInterval(
-			() => pollLockState(workflowId),
+			async () => await pollLockState(workflowId),
 			LOCK_STATE_POLL_INTERVAL,
 		);
 	};
