@@ -179,7 +179,7 @@ function handleCopyClick(commandData: { command: string }) {
 	}[commandData.command];
 
 	telemetry.track('User copied ndv data', {
-		node_type: activeNode?.type,
+		node_type: activeNode.value?.type,
 		push_ref: props.pushRef,
 		run_index: props.runIndex,
 		view: 'json',
