@@ -412,17 +412,12 @@ export const collectTextDeltas = (chunks: StreamChunk[]): string => {
 		.join('');
 };
 
-export function createSqliteMemory(): {
+export function createInMemoryAgentMemory(): {
 	memory: InMemoryMemory;
 	cleanup: () => void;
-	url: string;
 } {
-	// In-memory backend; the `url` field is kept on the return type so existing
-	// integration tests that reference it (e.g. for "restart" scenarios) keep
-	// compiling, but it's not load-bearing — InMemoryMemory has no persistence.
 	return {
 		memory: new InMemoryMemory(),
-		url: '',
 		cleanup: () => {
 			// no-op for in-memory backend
 		},

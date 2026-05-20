@@ -1,19 +1,20 @@
-import type {
-	AgentDbMessage,
-	AgentMessage,
-	BuiltMemory,
-	BuiltObservationLogStore,
-	MemoryDescriptor,
-	NewObservationLogEntry,
-	ObservationCursor,
-	ObservationLogEntry,
-	ObservationLogReadOptions,
-	ObservationLogReflection,
-	ObservationLogReflectionResult,
-	ObservationLogScope,
-	ObservationLogScopeKind,
-	ObservationLockHandle,
-	Thread,
+import {
+	normalizeObservationLogReflection,
+	createObservationLogThreadScopePrefix,
+	type AgentDbMessage,
+	type AgentMessage,
+	type BuiltMemory,
+	type BuiltObservationLogStore,
+	type MemoryDescriptor,
+	type NewObservationLogEntry,
+	type ObservationCursor,
+	type ObservationLogEntry,
+	type ObservationLogReadOptions,
+	type ObservationLogReflection,
+	type ObservationLogReflectionResult,
+	type ObservationLogScope,
+	type ObservationLogScopeKind,
+	type Thread,
 } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import type { FindOptionsWhere } from '@n8n/typeorm';
@@ -103,21 +104,32 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 
 	async deleteThread(threadId: string): Promise<void> {
 		await this.threadRepository.manager.transaction(async (trx) => {
-			const scope = { scopeKind: 'thread' as const, scopeId: threadId };
-			await trx.delete(AgentObservationEntity, scope);
-			await trx.delete(AgentObservationCursorEntity, scope);
-			await trx.delete(AgentObservationLockEntity, scope);
+			const legacyScope = { scopeKind: 'thread' as const, scopeId: threadId };
+			const resourceScope = {
+				scopeKind: 'thread' as const,
+				scopeId: Like(`${createObservationLogThreadScopePrefix(threadId)}%`),
+			};
+			for (const scope of [legacyScope, resourceScope]) {
+				await trx.delete(AgentObservationEntity, scope);
+				await trx.delete(AgentObservationCursorEntity, scope);
+				await trx.delete(AgentObservationLockEntity, scope);
+			}
 			await trx.delete(AgentThreadEntity, { id: threadId });
 		});
 	}
 
 	async deleteThreadsByPrefix(threadIdPrefix: string): Promise<void> {
 		const scopeId = Like(`${threadIdPrefix}%`);
+		const resourceScopeId = Like(`${createObservationLogThreadScopePrefix(threadIdPrefix)}%`);
 		await this.threadRepository.manager.transaction(async (trx) => {
-			const scope = { scopeKind: 'thread' as const, scopeId };
-			await trx.delete(AgentObservationEntity, scope);
-			await trx.delete(AgentObservationCursorEntity, scope);
-			await trx.delete(AgentObservationLockEntity, scope);
+			for (const scope of [
+				{ scopeKind: 'thread' as const, scopeId },
+				{ scopeKind: 'thread' as const, scopeId: resourceScopeId },
+			]) {
+				await trx.delete(AgentObservationEntity, scope);
+				await trx.delete(AgentObservationCursorEntity, scope);
+				await trx.delete(AgentObservationLockEntity, scope);
+			}
 			await trx.delete(AgentThreadEntity, { id: scopeId });
 		});
 	}
@@ -195,29 +207,6 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 		});
 	}
 
-	// ── Working memory ───────────────────────────────────────────────────
-
-	async getWorkingMemory(params: {
-		threadId: string;
-		resourceId: string;
-		scope: 'resource' | 'thread';
-	}): Promise<string | null> {
-		void params;
-		// Legacy `workingMemory` metadata is intentionally ignored. The new
-		// observation-log pipeline will own memory state.
-		return null;
-	}
-
-	async saveWorkingMemory(
-		params: { threadId: string; resourceId: string; scope: 'resource' | 'thread' },
-		content: string,
-	): Promise<void> {
-		void params;
-		void content;
-		// Legacy `workingMemory` metadata is intentionally ignored. The new
-		// observation-log pipeline will own memory state.
-	}
-
 	// ── Observation log ──────────────────────────────────────────────────
 
 	async appendObservationLogEntries(
@@ -271,7 +260,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 	async getMessagesForScope(
 		scopeKind: ObservationLogScopeKind,
 		scopeId: string,
-		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string } },
+		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string }; resourceId?: string },
 	): Promise<AgentDbMessage[]> {
 		if (scopeKind !== 'thread') {
 			throw new UnexpectedError(
@@ -279,7 +268,10 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 			);
 		}
 
-		const baseWhere: FindOptionsWhere<AgentMessageEntity> = { threadId: scopeId };
+		const baseWhere: FindOptionsWhere<AgentMessageEntity> = {
+			threadId: scopeId,
+			...(opts?.resourceId !== undefined && { resourceId: opts.resourceId }),
+		};
 		const where: FindOptionsWhere<AgentMessageEntity>[] = opts?.since
 			? [
 					{ ...baseWhere, createdAt: MoreThan(opts.since.sinceCreatedAt) },
@@ -320,9 +312,21 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 	): Promise<ObservationLogReflectionResult> {
 		return await this.observationRepository.manager.transaction(async (trx) => {
 			const repo = trx.getRepository(AgentObservationEntity);
-			const inserted = reflection.merge.length
+			const activeEntries = await repo.find({
+				where: {
+					scopeKind: scope.scopeKind,
+					scopeId: scope.scopeId,
+					status: 'active',
+				},
+				order: { createdAt: 'ASC', id: 'ASC' },
+			});
+			const normalized = normalizeObservationLogReflection(
+				activeEntries.map((entry) => this.toObservationLogEntry(entry)),
+				reflection,
+			);
+			const inserted = normalized.merge.length
 				? await repo.save(
-						reflection.merge.map((entry) =>
+						normalized.merge.map((entry) =>
 							repo.create({
 								scopeKind: scope.scopeKind,
 								scopeId: scope.scopeId,
@@ -338,14 +342,14 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 					)
 				: [];
 
-			if (reflection.drop.length > 0) {
+			if (normalized.drop.length > 0) {
 				await repo.update(
-					{ scopeKind: scope.scopeKind, scopeId: scope.scopeId, id: In(reflection.drop) },
+					{ scopeKind: scope.scopeKind, scopeId: scope.scopeId, id: In(normalized.drop) },
 					{ status: 'dropped', supersededBy: null },
 				);
 			}
 
-			for (const [index, merge] of reflection.merge.entries()) {
+			for (const [index, merge] of normalized.merge.entries()) {
 				const replacement = inserted[index];
 				if (replacement && merge.supersedes.length > 0) {
 					await repo.update(
@@ -356,8 +360,8 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 			}
 
 			return {
-				droppedIds: [...reflection.drop],
-				supersededIds: reflection.merge.flatMap((entry) => entry.supersedes),
+				droppedIds: [...normalized.drop],
+				supersededIds: normalized.merge.flatMap((entry) => entry.supersedes),
 				inserted: inserted.map((entry) => this.toObservationLogEntry(entry)),
 			};
 		});
@@ -395,22 +399,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 		);
 	}
 
-	// ── Observational memory: locks ──────────────────────────────────────
-
-	async acquireObservationLock(
-		scopeKind: ObservationLogScopeKind,
-		scopeId: string,
-		opts: { ttlMs: number; holderId: string },
-	): Promise<ObservationLockHandle | null> {
-		const handle = await this.acquireObservationLogTaskLock(scopeKind, scopeId, 'observer', opts);
-		if (!handle) return null;
-		return {
-			scopeKind: handle.scopeKind,
-			scopeId: handle.scopeId,
-			holderId: handle.holderId,
-			heldUntil: handle.heldUntil,
-		};
-	}
+	// ── Observation log: locks ───────────────────────────────────────────
 
 	async acquireObservationLogTaskLock(
 		scopeKind: ObservationLogScopeKind,
@@ -455,26 +444,15 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore {
 		return { scopeKind, scopeId, taskKind, holderId: opts.holderId, heldUntil };
 	}
 
-	async releaseObservationLock(
-		handle: ObservationLockHandle & { scopeKind: ObservationLogScopeKind },
-	): Promise<void> {
-		await this.releaseScopeLock(handle);
-	}
-
 	async releaseObservationLogTaskLock(handle: ObservationLogTaskLockHandle): Promise<void> {
 		await this.releaseScopeLock(handle);
 	}
 
-	private async releaseScopeLock(
-		handle: ObservationLockHandle & { scopeKind: ObservationLogScopeKind },
-	): Promise<void> {
-		const taskKind: ObservationLogTaskKind =
-			'taskKind' in handle && handle.taskKind === 'reflector' ? 'reflector' : 'observer';
-
+	private async releaseScopeLock(handle: ObservationLogTaskLockHandle): Promise<void> {
 		await this.observationLockRepository.delete({
 			scopeKind: handle.scopeKind,
 			scopeId: handle.scopeId,
-			taskKind,
+			taskKind: handle.taskKind,
 			holderId: handle.holderId,
 		});
 	}

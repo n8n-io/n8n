@@ -103,8 +103,10 @@ defineExpose({
 	setCursorPosition,
 	focus: () => {
 		if (!hasFocus.value) {
-			setCursorPosition('lastExpression');
 			focus();
+			requestAnimationFrame(() => {
+				setCursorPosition('lastExpression');
+			});
 		}
 	},
 	selectAll: () => {
