@@ -26,7 +26,6 @@ import { useCredentialsStore } from '../../credentials.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
@@ -48,6 +47,7 @@ import { ElSwitch } from 'element-plus';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import QuickConnectButton from '../../quickConnect/components/QuickConnectButton.vue';
 import QuickConnectBanner from '../../quickConnect/components/QuickConnectBanner.vue';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 type Props = {
 	mode: string;
@@ -97,7 +97,7 @@ const credentialsStore = useCredentialsStore();
 const ndvStore = injectNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 
@@ -243,7 +243,7 @@ function onDocumentationUrlClick(): void {
 		docs_link: documentationUrl.value,
 		credential_type: credentialTypeName.value,
 		source: 'modal',
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 	});
 }
 

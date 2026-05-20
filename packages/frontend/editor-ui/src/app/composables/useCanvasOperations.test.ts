@@ -96,6 +96,19 @@ vi.mock('vue-router', async (importOriginal) => ({
 	}),
 }));
 
+vi.mock('@/app/api/workflows', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/app/api/workflows')>();
+	return {
+		...actual,
+		getNewWorkflow: vi.fn().mockResolvedValue({ name: 'New Workflow', settings: {} }),
+	};
+});
+
+vi.mock('@n8n/rest-api-client/api/workflowHistory', () => ({
+	getWorkflowHistory: vi.fn().mockResolvedValue([]),
+	getWorkflowVersion: vi.fn().mockResolvedValue({ workflow: { nodes: [], connections: {} } }),
+}));
+
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
 import { GRID_SIZE, PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
@@ -4992,6 +5005,58 @@ describe('useCanvasOperations', () => {
 				expect((workflow.nodes![1].parameters.options as { path: string }).path).toBe('some-path');
 			},
 		);
+
+		it('should remap nodeGroups nodeIds when regenerating IDs', async () => {
+			// This mock is needed for addImportedNodesToWorkflow to work
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
+				nodes: {},
+				connections: {},
+				connectionsBySourceNode: {},
+				renameNode: vi.fn(),
+			} as unknown as Workflow);
+
+			const oldId1 = 'old-node-id-1';
+			const oldId2 = 'old-node-id-2';
+
+			const workflowDataWithGroups = {
+				nodes: [
+					{
+						id: oldId1,
+						name: 'Node 1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: oldId2,
+						name: 'Node 2',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+				nodeGroups: [{ id: 'group-1', name: 'My Group', nodeIds: [oldId1, oldId2] }],
+			};
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData(workflowDataWithGroups, 'paste', {
+				regenerateIds: true,
+			});
+
+			// Node IDs should have been reassigned
+			const newId1 = result.nodes![0].id;
+			const newId2 = result.nodes![1].id;
+			expect(newId1).not.toBe(oldId1);
+			expect(newId2).not.toBe(oldId2);
+
+			// nodeGroups should reference the new IDs
+			expect(result.nodeGroups).toEqual([
+				{ id: 'group-1', name: 'My Group', nodeIds: [newId1, newId2] },
+			]);
+		});
 	});
 
 	describe('duplicateNodes', () => {

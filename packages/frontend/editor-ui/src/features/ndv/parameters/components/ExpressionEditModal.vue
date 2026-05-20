@@ -93,7 +93,7 @@ const rootNode = computed(() => {
 
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];
-	return workflowDocumentStore?.value?.getParentNodesByDepth(rootNode.value) ?? [];
+	return workflowDocumentStore.value.getParentNodesByDepth(rootNode.value) ?? [];
 });
 
 watch(
@@ -112,7 +112,7 @@ watch(
 			const telemetryPayload = createExpressionTelemetryPayload(
 				segments.value,
 				props.modelValue.toString(),
-				workflowsStore.workflowId,
+				workflowDocumentStore.value.workflowId,
 				ndvStore.value.pushRef,
 				ndvStore.value.activeNode?.type ?? '',
 			);
