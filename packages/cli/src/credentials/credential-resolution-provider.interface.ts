@@ -45,5 +45,5 @@ export interface ICredentialResolutionProvider {
 	 * on the running user's behalf (e.g. OAuth2 callback for `isResolvable`
 	 * credentials). Returns null when the provider is unavailable.
 	 */
-	getSystemResolverId(): Promise<string | null>;
+	getSystemResolverId(): string | null;
 }

@@ -144,7 +144,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		}
 	}
 
-	async getSystemResolverId(): Promise<string> {
+	getSystemResolverId(): string {
 		return SYSTEM_RESOLVER_ID;
 	}
 
