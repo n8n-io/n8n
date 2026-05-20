@@ -1,6 +1,11 @@
 <script lang="ts" setup>
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
+import {
+	getAppNameFromCredType,
+	getNodeAuthOptions,
+	getNodeCredentialForSelectedAuthType,
+} from '@/app/utils/nodeTypesUtils';
 import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
@@ -28,6 +33,7 @@ const telemetry = useTelemetry();
 const rootStore = useRootStore();
 const thread = useThread();
 const credentialsStore = useCredentialsStore();
+const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 
 // ---------------------------------------------------------------------------
@@ -50,7 +56,43 @@ const isFinalize = computed(() => props.credentialFlow?.stage === 'finalize');
 const isSubmitted = ref(false);
 const isDeferred = ref(false);
 
-const selections = ref<Record<string, string | null>>({});
+// Keyed by the request's credentialType. The value's `credentialType` carries the
+// *actual* type of the chosen credential — equal to the key in the common case,
+// or different when the user swapped auth types in the modal (e.g. a request for
+// `notionApi` fulfilled by a `notionOAuth2Api` credential the user just created).
+const selections = ref<Record<string, { credentialId: string; credentialType: string } | null>>({});
+
+// ---------------------------------------------------------------------------
+// Acceptable credential types per request
+// ---------------------------------------------------------------------------
+
+/**
+ * Credential types this request will accept. When `nodeType` is provided the
+ * set includes every credential supported by the node's `authentication`
+ * options (e.g. notionApi + notionOAuth2Api for the Notion node); otherwise
+ * only the originally-requested type.
+ */
+function getAcceptableTypes(req: InstanceAiCredentialRequest): string[] {
+	const types = new Set<string>([req.credentialType]);
+	if (!req.nodeType) return [...types];
+
+	const nodeType = nodeTypesStore.getNodeType(req.nodeType);
+	if (!nodeType) return [...types];
+
+	const authOptions = getNodeAuthOptions(nodeType);
+	for (const option of authOptions) {
+		const cred = getNodeCredentialForSelectedAuthType(nodeType, option.value);
+		if (cred) types.add(cred.name);
+	}
+	// Single-credential nodes have no `authentication` option but still declare
+	// the credential in `credentials[]`.
+	if (authOptions.length === 0) {
+		for (const cred of nodeType.credentials ?? []) {
+			types.add(cred.name);
+		}
+	}
+	return [...types];
+}
 
 // ---------------------------------------------------------------------------
 // Auto-select from existing credentials
@@ -62,7 +104,10 @@ function initSelections() {
 
 		if (req.existingCredentials?.length === 1) {
 			// Auto-select when exactly one credential available
-			selections.value[req.credentialType] = req.existingCredentials[0].id;
+			selections.value[req.credentialType] = {
+				credentialId: req.existingCredentials[0].id,
+				credentialType: req.credentialType,
+			};
 		} else {
 			selections.value[req.credentialType] = null;
 		}
@@ -75,16 +120,17 @@ const stopDeleteListener = credentialsStore.$onAction(({ name, after, args }) =>
 	if (name !== 'deleteCredential') return;
 	after(() => {
 		const deletedId = (args[0] as { id: string }).id;
-		for (const [credType, selectedId] of Object.entries(selections.value)) {
-			if (selectedId === deletedId) {
+		for (const [credType, sel] of Object.entries(selections.value)) {
+			if (sel?.credentialId === deletedId) {
 				selections.value[credType] = null;
 			}
 		}
 	});
 });
 
-// Listen for credential creation to auto-select newly created credentials
-// when using the button path (no NodeCredentials rendered)
+// Listen for credential creation to auto-select newly created credentials.
+// Accepts any credential whose type is valid for the current request's node —
+// so the user swapping auth types in the modal still binds the new cred.
 const stopCreateListener = credentialsStore.$onAction(({ name, after }) => {
 	if (name !== 'createNewCredential') return;
 	after((newCred) => {
@@ -92,8 +138,11 @@ const stopCreateListener = credentialsStore.$onAction(({ name, after }) => {
 		const req = currentRequest.value;
 		if (!req) return;
 		const cred = newCred as { id: string; type: string };
-		if (cred.type === req.credentialType) {
-			selections.value[req.credentialType] = cred.id;
+		if (getAcceptableTypes(req).includes(cred.type)) {
+			selections.value[req.credentialType] = {
+				credentialId: cred.id,
+				credentialType: cred.type,
+			};
 		}
 	});
 });
@@ -108,7 +157,8 @@ onBeforeUnmount(() => {
 // ---------------------------------------------------------------------------
 
 function isStepComplete(credentialType: string): boolean {
-	return selections.value[credentialType] !== null;
+	const sel = selections.value[credentialType];
+	return sel !== null && sel !== undefined;
 }
 
 const allSelected = computed(() =>
@@ -144,7 +194,7 @@ watch(
 			return;
 		}
 		const nextIncomplete = props.credentialRequests.findIndex(
-			(r, idx) => idx > currentStepIndex.value && !isStepComplete(r.credentialType),
+			(req, idx) => idx > currentStepIndex.value && !isStepComplete(req.credentialType),
 		);
 		if (nextIncomplete >= 0) {
 			goToStep(nextIncomplete);
@@ -161,20 +211,21 @@ watch(allSelected, async (nowComplete, wasComplete) => {
 });
 
 onMounted(async () => {
-	// Ensure the credentials store is populated so NodeCredentials can show
-	// existing credentials in the dropdown. The Instance AI page may not have
-	// fetched them yet.
+	// Ensure the credentials and node-types stores are populated. The credential
+	// dropdown needs the cred list; the auth-type swap UI in the credential modal
+	// needs the node description so it can enumerate the node's auth options.
 	try {
 		await Promise.all([
 			credentialsStore.fetchAllCredentials(),
 			credentialsStore.fetchCredentialTypes(false),
+			nodeTypesStore.loadNodeTypesIfNotLoaded(),
 		]);
 	} catch (error) {
 		console.warn('Failed to preload credentials for Instance AI setup', error);
 	}
 
 	const firstIncomplete = props.credentialRequests.findIndex(
-		(r) => !isStepComplete(r.credentialType),
+		(req) => !isStepComplete(req.credentialType),
 	);
 	if (firstIncomplete > 0) {
 		goToStep(firstIncomplete);
@@ -204,26 +255,51 @@ const hasExistingCredentials = computed(() => {
 function openNewCredentialModal() {
 	const req = currentRequest.value;
 	if (!req) return;
+
+	if (req.nodeType) {
+		// Pass a synthetic node as contextNode + showAuthOptions=true so the modal
+		// renders the auth-type dropdown (e.g. "API Key / OAuth2" for Notion).
+		uiStore.openNewCredential(
+			req.credentialType,
+			true,
+			false,
+			props.projectId,
+			req.suggestedName,
+			req.nodeType,
+			syntheticNodeUi(req),
+		);
+		return;
+	}
+
 	uiStore.openNewCredential(req.credentialType, false, false, props.projectId, req.suggestedName);
 }
 
 /** Build a minimal synthetic INodeUi so NodeCredentials can render in standalone mode. */
 function syntheticNodeUi(req: InstanceAiCredentialRequest): INodeUi {
-	const selectedId = selections.value[req.credentialType];
-	const selectedCred = selectedId
-		? (req.existingCredentials?.find((c) => c.id === selectedId) ??
-			credentialsStore.getCredentialById(selectedId))
+	const sel = selections.value[req.credentialType];
+	const selectedCred = sel
+		? (req.existingCredentials?.find((c) => c.id === sel.credentialId) ??
+			credentialsStore.getCredentialById(sel.credentialId))
 		: undefined;
+
+	const nodeType = req.nodeType ? nodeTypesStore.getNodeType(req.nodeType) : null;
+	const typeVersion = nodeType
+		? Array.isArray(nodeType.version)
+			? nodeType.version[nodeType.version.length - 1]
+			: nodeType.version
+		: 1;
+
+	const selectedType = sel?.credentialType ?? req.credentialType;
 
 	return {
 		id: req.credentialType,
 		name: req.credentialType,
-		type: 'n8n-nodes-base.noOp',
-		typeVersion: 1,
+		type: req.nodeType ?? 'n8n-nodes-base.noOp',
+		typeVersion,
 		position: [0, 0],
 		parameters: {},
 		credentials: selectedCred
-			? { [req.credentialType]: { id: selectedCred.id, name: selectedCred.name } }
+			? { [selectedType]: { id: selectedCred.id, name: selectedCred.name } }
 			: {},
 	} as INodeUi;
 }
@@ -232,16 +308,18 @@ function syntheticNodeUi(req: InstanceAiCredentialRequest): INodeUi {
 // Event handlers
 // ---------------------------------------------------------------------------
 
-function onCredentialSelected(
-	credentialType: string,
-	updateInfo: INodeUpdatePropertiesInformation,
-) {
-	const credentialData = updateInfo.properties.credentials?.[credentialType];
+function onCredentialSelected(updateInfo: INodeUpdatePropertiesInformation) {
+	const req = currentRequest.value;
+	if (!req) return;
+	const credentialData = updateInfo.properties.credentials?.[req.credentialType];
 	const credentialId = typeof credentialData === 'string' ? undefined : credentialData?.id;
 	if (credentialId) {
-		selections.value[credentialType] = credentialId;
+		selections.value[req.credentialType] = {
+			credentialId,
+			credentialType: req.credentialType,
+		};
 	} else {
-		selections.value[credentialType] = null;
+		selections.value[req.credentialType] = null;
 	}
 }
 
@@ -251,9 +329,13 @@ function trackCredentialInput() {
 	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
 	const skipped: Array<{ label: string; options: string[] }> = [];
 	for (const req of props.credentialRequests) {
-		const selected = selections.value[req.credentialType];
-		if (selected) {
-			provided.push({ label: req.credentialType, options: [], option_chosen: selected });
+		const sel = selections.value[req.credentialType];
+		if (sel) {
+			provided.push({
+				label: req.credentialType,
+				options: [],
+				option_chosen: sel.credentialId,
+			});
 		} else {
 			skipped.push({ label: req.credentialType, options: [] });
 		}
@@ -271,8 +353,8 @@ function trackCredentialInput() {
 
 async function handleContinue() {
 	const credentials: Record<string, string> = {};
-	for (const [type, id] of Object.entries(selections.value)) {
-		if (id) credentials[type] = id;
+	for (const sel of Object.values(selections.value)) {
+		if (sel) credentials[sel.credentialType] = sel.credentialId;
 	}
 
 	trackCredentialInput();
@@ -348,7 +430,7 @@ async function handleLater() {
 							standalone
 							hide-issues
 							hide-ask-assistant
-							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"
+							@credential-selected="onCredentialSelected($event)"
 						/>
 						<N8nButton
 							v-else

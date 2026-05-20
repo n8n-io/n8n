@@ -168,12 +168,8 @@ const selectedCredentialType = computed(() => {
 	if (selectedCredential.value !== '') {
 		return credentialsStore.getCredentialTypeByName(selectedCredential.value) ?? null;
 	} else if (requiredCredentials.value) {
-		// Use the recommended auth option (managed OAuth sorts first) or the first available
-		const nodeAuthOptions = getNodeAuthOptions(activeNodeType.value);
-		if (nodeAuthOptions.length > 0 && activeNodeType.value?.credentials) {
-			return getNodeCredentialForSelectedAuthType(activeNodeType.value, nodeAuthOptions[0].value);
-		}
-		// No auth options — fall back to the explicitly requested type or the first credential
+		// Honor an explicitly requested credential type when it matches a declared
+		// credential of the node — the caller has signalled their intent.
 		if (props.activeId) {
 			const nodeCredential = activeNodeType.value?.credentials?.find(
 				(c) => c.name === props.activeId,
@@ -181,6 +177,12 @@ const selectedCredentialType = computed(() => {
 			if (nodeCredential) {
 				return nodeCredential;
 			}
+		}
+		// Otherwise fall back to the recommended auth option (managed OAuth sorts first)
+		// or the first declared credential.
+		const nodeAuthOptions = getNodeAuthOptions(activeNodeType.value);
+		if (nodeAuthOptions.length > 0 && activeNodeType.value?.credentials) {
+			return getNodeCredentialForSelectedAuthType(activeNodeType.value, nodeAuthOptions[0].value);
 		}
 		return activeNodeType.value?.credentials?.[0] ?? null;
 	}

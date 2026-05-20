@@ -861,6 +861,242 @@ describe('credentials tool', () => {
 			expect(suspendFn).not.toHaveBeenCalled();
 		});
 
+		describe('node-bound credentials', () => {
+			const notionDescription = {
+				name: 'n8n-nodes-base.notion',
+				displayName: 'Notion',
+				description: '',
+				group: [],
+				version: 2.2,
+				inputs: ['main'],
+				outputs: ['main'],
+				credentials: [
+					{
+						name: 'notionApi',
+						required: true,
+						displayOptions: { show: { authentication: ['apiKey'] } },
+					},
+					{
+						name: 'notionOAuth2Api',
+						required: true,
+						displayOptions: { show: { authentication: ['oAuth2'] } },
+					},
+				],
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'API Key', value: 'apiKey' },
+							{ name: 'OAuth2', value: 'oAuth2' },
+						],
+						default: 'apiKey',
+					},
+				],
+			};
+
+			function createNodeContext(description: typeof notionDescription) {
+				const context = createMockContext();
+				(context.nodeService as unknown as { getDescription: jest.Mock }).getDescription = jest
+					.fn()
+					.mockResolvedValue(description);
+				return context;
+			}
+
+			it('resolves credentialType from nodeType and prefers the OAuth2 variant', async () => {
+				const context = createNodeContext(notionDescription);
+				const suspendFn = jest.fn();
+
+				const tool = createCredentialsTool(context);
+				await executeTool(
+					tool,
+					{
+						action: 'setup' as const,
+						credentials: [{ nodeType: 'n8n-nodes-base.notion' }],
+					},
+					suspendCtx(suspendFn),
+				);
+
+				expect(context.credentialService.list).toHaveBeenCalledWith({
+					type: 'notionOAuth2Api',
+				});
+				expect(suspendFn).toHaveBeenCalledTimes(1);
+				expect(suspendFn.mock.calls[0][0]).toEqual(
+					expect.objectContaining({
+						credentialRequests: [
+							expect.objectContaining({
+								credentialType: 'notionOAuth2Api',
+								nodeType: 'n8n-nodes-base.notion',
+							}),
+						],
+					}),
+				);
+			});
+
+			it('honors a preferred credentialType when both are provided', async () => {
+				const context = createNodeContext(notionDescription);
+				const suspendFn = jest.fn();
+
+				const tool = createCredentialsTool(context);
+				await executeTool(
+					tool,
+					{
+						action: 'setup' as const,
+						credentials: [{ nodeType: 'n8n-nodes-base.notion', credentialType: 'notionApi' }],
+					},
+					suspendCtx(suspendFn),
+				);
+
+				expect(suspendFn.mock.calls[0][0]).toEqual(
+					expect.objectContaining({
+						credentialRequests: [
+							expect.objectContaining({
+								credentialType: 'notionApi',
+								nodeType: 'n8n-nodes-base.notion',
+							}),
+						],
+					}),
+				);
+			});
+
+			it('ignores an unsupported preferred credentialType and falls back to OAuth2', async () => {
+				const context = createNodeContext(notionDescription);
+				const suspendFn = jest.fn();
+
+				const tool = createCredentialsTool(context);
+				await executeTool(
+					tool,
+					{
+						action: 'setup' as const,
+						credentials: [{ nodeType: 'n8n-nodes-base.notion', credentialType: 'slackApi' }],
+					},
+					suspendCtx(suspendFn),
+				);
+
+				expect(suspendFn.mock.calls[0][0]).toEqual(
+					expect.objectContaining({
+						credentialRequests: [
+							expect.objectContaining({
+								credentialType: 'notionOAuth2Api',
+								nodeType: 'n8n-nodes-base.notion',
+							}),
+						],
+					}),
+				);
+			});
+
+			it('falls back to the default authentication value when no OAuth variant exists', async () => {
+				const apiKeyOnlyDescription = {
+					...notionDescription,
+					credentials: [
+						{
+							name: 'slackApi',
+							required: true,
+							displayOptions: { show: { authentication: ['accessToken'] } },
+						},
+						{
+							name: 'slackBotApi',
+							required: true,
+							displayOptions: { show: { authentication: ['botToken'] } },
+						},
+					],
+					properties: [
+						{
+							displayName: 'Authentication',
+							name: 'authentication',
+							type: 'options',
+							options: [
+								{ name: 'Access Token', value: 'accessToken' },
+								{ name: 'Bot Token', value: 'botToken' },
+							],
+							default: 'botToken',
+						},
+					],
+				};
+				const context = createNodeContext(apiKeyOnlyDescription);
+				const suspendFn = jest.fn();
+
+				const tool = createCredentialsTool(context);
+				await executeTool(
+					tool,
+					{
+						action: 'setup' as const,
+						credentials: [{ nodeType: 'n8n-nodes-base.slack' }],
+					},
+					suspendCtx(suspendFn),
+				);
+
+				expect(suspendFn.mock.calls[0][0]).toEqual(
+					expect.objectContaining({
+						credentialRequests: [
+							expect.objectContaining({
+								credentialType: 'slackBotApi',
+							}),
+						],
+					}),
+				);
+			});
+
+			it('returns an error when nodeType lookup fails', async () => {
+				const context = createMockContext();
+				(context.nodeService as unknown as { getDescription: jest.Mock }).getDescription = jest
+					.fn()
+					.mockRejectedValue(new Error('not found'));
+
+				const tool = createCredentialsTool(context);
+				const result = await tool.handler!(
+					{
+						action: 'setup',
+						credentials: [{ nodeType: 'n8n-nodes-base.unknown' }],
+					},
+					noSuspendCtx(),
+				);
+
+				expect(result).toEqual({
+					error: 'node_not_found',
+					message: expect.stringContaining('n8n-nodes-base.unknown'),
+				});
+			});
+
+			it('returns an error when the node declares no credentials', async () => {
+				const noCredsDescription = { ...notionDescription, credentials: [] };
+				const context = createNodeContext(noCredsDescription);
+
+				const tool = createCredentialsTool(context);
+				const result = await tool.handler!(
+					{
+						action: 'setup',
+						credentials: [{ nodeType: 'n8n-nodes-base.notion' }],
+					},
+					noSuspendCtx(),
+				);
+
+				expect(result).toEqual({
+					error: 'no_credentials_for_node',
+					message: expect.stringContaining('n8n-nodes-base.notion'),
+				});
+			});
+
+			it('returns invalid_request when neither nodeType nor credentialType is provided', async () => {
+				const context = createMockContext();
+				const tool = createCredentialsTool(context);
+
+				const result = await tool.handler!(
+					{
+						action: 'setup',
+						credentials: [{ reason: 'just because' }],
+					},
+					noSuspendCtx(),
+				);
+
+				expect(result).toEqual({
+					error: 'invalid_request',
+					message: expect.stringContaining('nodeType or credentialType'),
+				});
+			});
+		});
+
 		it('should default reason when not provided in credential requests', async () => {
 			const context = createMockContext();
 			(context.credentialService.list as jest.Mock).mockResolvedValue([]);

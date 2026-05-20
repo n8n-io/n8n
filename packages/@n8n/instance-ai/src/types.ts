@@ -17,7 +17,12 @@ import type {
 	McpToolCallResult,
 } from '@n8n/api-types';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import type { GenericValue, INodeTypes } from 'n8n-workflow';
+import type {
+	GenericValue,
+	ICredentialsDisplayOptions,
+	INodeTypes,
+	NodeParameterValueType,
+} from 'n8n-workflow';
 
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
@@ -124,13 +129,13 @@ export interface NodeDescription extends NodeSummary {
 		type: string;
 		required?: boolean;
 		description?: string;
-		default?: unknown;
+		default?: NodeParameterValueType;
 		options?: Array<{ name: string; value: string | number | boolean }>;
 	}>;
 	credentials?: Array<{
 		name: string;
 		required?: boolean;
-		displayOptions?: Record<string, unknown>;
+		displayOptions?: ICredentialsDisplayOptions;
 	}>;
 	inputs: string[];
 	outputs: string[];

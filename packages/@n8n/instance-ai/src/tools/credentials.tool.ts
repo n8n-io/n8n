@@ -3,6 +3,7 @@
  */
 import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import type { NodeParameterValue } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -91,9 +92,18 @@ const setupAction = z.object({
 	credentials: z
 		.array(
 			z.object({
+				nodeType: z
+					.string()
+					.optional()
+					.describe(
+						'n8n node type this credential is for (e.g. "n8n-nodes-base.notion"). Prefer passing this whenever the credential is for a known workflow node — the backend resolves a sensible auth option (preferring OAuth2 when supported) and the user can switch between supported auth types in the setup modal.',
+					),
 				credentialType: z
 					.string()
-					.describe('n8n credential type name (e.g. "slackApi", "gmailOAuth2Api")'),
+					.optional()
+					.describe(
+						'Specific n8n credential type name (e.g. "daytonaApi"). Required when nodeType is not provided (e.g. instance-level credentials not tied to a node). When both are provided, this is the preferred starting auth option.',
+					),
 				reason: z.string().optional().describe('Why this credential is needed (shown to user)'),
 				suggestedName: z
 					.string()
@@ -103,7 +113,9 @@ const setupAction = z.object({
 					),
 			}),
 		)
-		.describe('List of credentials to set up'),
+		.describe(
+			'List of credentials to set up. Each entry must include nodeType or credentialType (or both).',
+		),
 	projectId: z
 		.string()
 		.optional()
@@ -230,6 +242,7 @@ const suspendSchema = z.object({
 		.array(
 			z.object({
 				credentialType: z.string(),
+				nodeType: z.string().optional(),
 				reason: z.string(),
 				existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })),
 				suggestedName: z.string().optional(),
@@ -334,6 +347,85 @@ async function handleSearchTypes(
 	return { results };
 }
 
+/**
+ * The `authentication` property's default is always a primitive at runtime (it's
+ * an `options` field). Narrow from the wide `NodeParameterValueType` so `.includes`
+ * on `NodeParameterValue[]` typechecks.
+ */
+function isParameterValue(value: unknown): value is NodeParameterValue {
+	return (
+		value === null ||
+		typeof value === 'string' ||
+		typeof value === 'number' ||
+		typeof value === 'boolean'
+	);
+}
+
+/**
+ * Resolve a concrete credential type for a node. Reads the node description and
+ * picks the preferred credential from `credentials[]` using these rules in order:
+ *   1. If `preferred` matches a declared credential name, use it.
+ *   2. Prefer the credential whose name matches /oauth2?/i (Notion → notionOAuth2Api).
+ *   3. Fall back to the credential gated by the node's default `authentication` value.
+ *   4. Fall back to the first declared credential.
+ */
+async function resolveCredentialTypeForNode(
+	nodeService: InstanceAiContext['nodeService'],
+	nodeType: string,
+	preferred?: string,
+): Promise<{ credentialType: string } | { error: string; message: string }> {
+	let desc;
+	try {
+		desc = await nodeService.getDescription(nodeType);
+	} catch {
+		return {
+			error: 'node_not_found',
+			message: `Could not look up node "${nodeType}". Pass a credentialType directly, or check the nodeType spelling.`,
+		};
+	}
+
+	const credentials = desc.credentials ?? [];
+	if (credentials.length === 0) {
+		return {
+			error: 'no_credentials_for_node',
+			message: `Node "${nodeType}" does not declare any credentials. Pass a credentialType directly if this is intentional.`,
+		};
+	}
+
+	// 1. Preferred match
+	if (preferred && credentials.some((c) => c.name === preferred)) {
+		return { credentialType: preferred };
+	}
+
+	// 2. OAuth2 preference — substring match on credential name
+	const oauthCred = credentials.find((c) => /oauth2?/i.test(c.name));
+	if (oauthCred) {
+		return { credentialType: oauthCred.name };
+	}
+
+	// 3. Default-auth-value fallback. Find the auth field (first key referenced in any
+	//    credential's `displayOptions.show`), look up its default on `properties[]`,
+	//    then pick the credential whose displayOptions.show[authField] contains it.
+	const authField = credentials
+		.flatMap((c) => (c.displayOptions?.show ? Object.keys(c.displayOptions.show) : []))
+		.find(Boolean);
+
+	if (authField) {
+		const defaultValue = desc.properties.find((p) => p.name === authField)?.default;
+		if (isParameterValue(defaultValue)) {
+			const defaultCred = credentials.find((c) =>
+				c.displayOptions?.show?.[authField]?.includes(defaultValue),
+			);
+			if (defaultCred) {
+				return { credentialType: defaultCred.name };
+			}
+		}
+	}
+
+	// 4. First credential
+	return { credentialType: credentials[0].name };
+}
+
 async function handleSetup(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'setup' }>,
@@ -346,37 +438,77 @@ async function handleSetup(
 		return {
 			error: 'missing_credentials',
 			message:
-				'The `credentials` array is required for the setup action. Pass an array of { credentialType, reason?, suggestedName? } entries describing each credential to set up.',
+				'The `credentials` array is required for the setup action. Pass an array of { nodeType?, credentialType?, reason?, suggestedName? } entries. Each entry must include nodeType or credentialType (or both).',
 		};
 	}
 
-	// State 1: First call — look up existing credentials per type and suspend
+	// State 1: First call — resolve each entry, look up existing credentials, suspend
 	if (resumeData === undefined || resumeData === null) {
+		interface ResolvedRequest {
+			credentialType: string;
+			nodeType?: string;
+			reason?: string;
+			suggestedName?: string;
+		}
+
+		const resolved: ResolvedRequest[] = [];
+		for (const req of input.credentials) {
+			if (!req.nodeType && !req.credentialType) {
+				return {
+					error: 'invalid_request',
+					message: 'Each credentials entry must include nodeType or credentialType (or both).',
+				};
+			}
+
+			let credentialType = req.credentialType;
+			if (req.nodeType) {
+				const result = await resolveCredentialTypeForNode(
+					context.nodeService,
+					req.nodeType,
+					req.credentialType,
+				);
+				if ('error' in result) return result;
+				credentialType = result.credentialType;
+			}
+
+			// Unreachable given the validation above, but narrow for the type checker.
+			if (!credentialType) {
+				return {
+					error: 'invalid_request',
+					message: 'Could not determine credentialType for entry.',
+				};
+			}
+
+			resolved.push({
+				credentialType,
+				...(req.nodeType ? { nodeType: req.nodeType } : {}),
+				...(req.reason ? { reason: req.reason } : {}),
+				...(req.suggestedName ? { suggestedName: req.suggestedName } : {}),
+			});
+		}
+
 		const credentialRequests = await Promise.all(
-			input.credentials.map(
-				async (req: { credentialType: string; reason?: string; suggestedName?: string }) => {
-					const existing = await context.credentialService.list({
-						type: req.credentialType,
-						...(input.projectId ? { projectId: input.projectId } : {}),
-					});
-					return {
-						credentialType: req.credentialType,
-						reason: req.reason ?? `Required for ${req.credentialType}`,
-						existingCredentials: existing.map((c) => ({ id: c.id, name: c.name })),
-						...(req.suggestedName ? { suggestedName: req.suggestedName } : {}),
-					};
-				},
-			),
+			resolved.map(async (req) => {
+				const existing = await context.credentialService.list({
+					type: req.credentialType,
+					...(input.projectId ? { projectId: input.projectId } : {}),
+				});
+				return {
+					credentialType: req.credentialType,
+					...(req.nodeType ? { nodeType: req.nodeType } : {}),
+					reason: req.reason ?? `Required for ${req.credentialType}`,
+					existingCredentials: existing.map((c) => ({ id: c.id, name: c.name })),
+					...(req.suggestedName ? { suggestedName: req.suggestedName } : {}),
+				};
+			}),
 		);
 
-		const typeNames = input.credentials
-			.map((c: { credentialType: string }) => c.credentialType)
-			.join(', ');
+		const typeNames = resolved.map((r) => r.credentialType).join(', ');
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: isFinalize
 				? `Your workflow is verified. Add credentials to make it production-ready: ${typeNames}`
-				: input.credentials.length === 1
+				: resolved.length === 1
 					? `Select or create a ${typeNames} credential`
 					: `Select or create credentials: ${typeNames}`,
 			severity: 'info' as const,

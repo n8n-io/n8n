@@ -7,7 +7,9 @@ import type { InstanceAiCredentialRequest } from '@n8n/api-types';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { mockedStore } from '@/__tests__/utils';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -85,6 +87,9 @@ describe('InstanceAiCredentialSetup', () => {
 		const credentialsStore = useCredentialsStore();
 		vi.spyOn(credentialsStore, 'fetchAllCredentials').mockResolvedValue([]);
 		vi.spyOn(credentialsStore, 'fetchCredentialTypes').mockResolvedValue(undefined);
+
+		const nodeTypesStore = useNodeTypesStore();
+		vi.spyOn(nodeTypesStore, 'loadNodeTypesIfNotLoaded').mockResolvedValue(undefined);
 	});
 
 	describe('credential list', () => {
@@ -341,6 +346,95 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(resolveSpy).not.toHaveBeenCalled();
 			// Should show the form again (not deferred state)
 			expect(getByText('instanceAi.credential.deny')).toBeTruthy();
+		});
+	});
+
+	describe('node-bound credential flow', () => {
+		const notionNodeDescription = {
+			name: 'n8n-nodes-base.notion',
+			displayName: 'Notion',
+			version: 2.2,
+			credentials: [
+				{
+					name: 'notionApi',
+					required: true,
+					displayOptions: { show: { authentication: ['apiKey'] } },
+				},
+				{
+					name: 'notionOAuth2Api',
+					required: true,
+					displayOptions: { show: { authentication: ['oAuth2'] } },
+				},
+			],
+			properties: [
+				{
+					displayName: 'Authentication',
+					name: 'authentication',
+					type: 'options',
+					options: [
+						{ name: 'API Key', value: 'apiKey' },
+						{ name: 'OAuth2', value: 'oAuth2' },
+					],
+					default: 'apiKey',
+				},
+			],
+		};
+
+		function makeNotionRequest(
+			credentialType: 'notionApi' | 'notionOAuth2Api' = 'notionOAuth2Api',
+		): InstanceAiCredentialRequest {
+			return {
+				credentialType,
+				nodeType: 'n8n-nodes-base.notion',
+				reason: 'Required for Notion',
+				existingCredentials: [],
+			};
+		}
+
+		it('opens the credential modal with auth-options enabled and a Notion contextNode', async () => {
+			const uiStore = useUIStore();
+			const openNewCredSpy = vi.spyOn(uiStore, 'openNewCredential');
+
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(notionNodeDescription);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: [makeNotionRequest()],
+					message: 'Set up credentials',
+				},
+			});
+
+			await userEvent.click(getByTestId('instance-ai-credential-setup-button'));
+
+			expect(openNewCredSpy).toHaveBeenCalledTimes(1);
+			const args = openNewCredSpy.mock.calls[0];
+			expect(args[0]).toBe('notionOAuth2Api');
+			expect(args[1]).toBe(true); // showAuthOptions
+			expect(args[2]).toBe(false); // forceManualMode
+			expect(args[5]).toBe('n8n-nodes-base.notion'); // nodeName
+			expect(args[6]).toMatchObject({
+				type: 'n8n-nodes-base.notion',
+				typeVersion: 2.2,
+			});
+		});
+
+		it('falls back to the 5-arg call when nodeType is absent', async () => {
+			const uiStore = useUIStore();
+			const openNewCredSpy = vi.spyOn(uiStore, 'openNewCredential');
+
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: makeCredentialRequests(1),
+					message: 'Set up credentials',
+				},
+			});
+
+			await userEvent.click(getByTestId('instance-ai-credential-setup-button'));
+
+			expect(openNewCredSpy).toHaveBeenCalledWith('type1', false, false, undefined, undefined);
 		});
 	});
 
