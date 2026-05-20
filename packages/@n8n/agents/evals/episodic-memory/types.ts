@@ -86,6 +86,23 @@ export interface EpisodicEvalFinalAnswer {
 	answer: string;
 }
 
+export type EpisodicEvalLogPhase =
+	| 'run'
+	| 'scenario'
+	| 'thread'
+	| 'recall'
+	| 'final-question'
+	| 'scoring'
+	| 'error';
+
+export interface EpisodicEvalLogEvent {
+	timestamp: string;
+	phase: EpisodicEvalLogPhase;
+	message: string;
+	scenarioId?: string;
+	details?: Record<string, unknown>;
+}
+
 export interface EpisodicDeterministicMetrics {
 	entryCoverage: number;
 	sourceBackedPrecision: number;

@@ -10,23 +10,22 @@ import type { EpisodicEvalScenarioResult } from '../types';
 describe('episodic memory eval artifacts', () => {
 	it('emits scorecard artifacts from in-memory episodic entries', async () => {
 		const memory = new InspectableInMemoryMemory();
-		const scope = { agentId: 'agent-1', resourceId: 'resource-1' };
-		const [entry] = await memory.saveEpisodicMemoryEntries([
+		const scope = { namespace: 'agent-1', resourceId: 'resource-1' };
+		await memory.episodic.saveEntryWithSources(
 			{
 				...scope,
 				content: 'North Pier uses `North Pier Vendor Queue - Trial`.',
 				embeddingModel: 'test',
 				embedding: [1, 0],
 			},
-		]);
-		await memory.saveEpisodicMemoryEntrySources([
-			{
-				memoryEntryId: entry.id,
-				observationId: 'obs-1',
-				threadId: 'thread-1',
-				evidenceText: 'The tracker is North Pier Vendor Queue - Trial.',
-			},
-		]);
+			[
+				{
+					observationId: 'obs-1',
+					threadId: 'thread-1',
+					evidenceText: 'The tracker is North Pier Vendor Queue - Trial.',
+				},
+			],
+		);
 		const entries = memory.getEvalEntries(scope);
 		const scorecard = aggregateScorecard({
 			deterministic: {
@@ -62,6 +61,7 @@ describe('episodic memory eval artifacts', () => {
 			answers: [],
 			scorecard: buildAggregateScorecard([result]),
 			report: buildMarkdownReport([result]),
+			log: [],
 		});
 
 		await expect(readFile(join(outputDir, 'scorecard.json'), 'utf8')).resolves.toContain(
@@ -73,5 +73,6 @@ describe('episodic memory eval artifacts', () => {
 		await expect(readFile(join(outputDir, 'report.md'), 'utf8')).resolves.toContain(
 			'| Smoke | 1.000 | 1.000 | n/a | 0 |',
 		);
+		await expect(readFile(join(outputDir, 'log.json'), 'utf8')).resolves.toContain('[]');
 	});
 });

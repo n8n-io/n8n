@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import type { EpisodicEvalScenarioResult } from './types';
+import type { EpisodicEvalLogEvent, EpisodicEvalScenarioResult } from './types';
 
 export interface EpisodicEvalArtifacts {
 	results: EpisodicEvalScenarioResult[];
@@ -11,6 +11,7 @@ export interface EpisodicEvalArtifacts {
 	answers: unknown[];
 	scorecard: unknown;
 	report: string;
+	log: EpisodicEvalLogEvent[];
 }
 
 export async function writeEvalArtifacts(
@@ -25,6 +26,7 @@ export async function writeEvalArtifacts(
 		writeJson(outputDir, 'recalls.json', artifacts.recalls),
 		writeJson(outputDir, 'answers.json', artifacts.answers),
 		writeJson(outputDir, 'scorecard.json', artifacts.scorecard),
+		writeJson(outputDir, 'log.json', artifacts.log),
 		writeFile(join(outputDir, 'report.md'), artifacts.report),
 	]);
 }

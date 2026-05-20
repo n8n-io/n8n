@@ -12,6 +12,7 @@ import type {
 	EpisodicEvalEntry,
 	EpisodicEvalFailureKind,
 	EpisodicEvalFinalAnswer,
+	EpisodicEvalLogEvent,
 	EpisodicEvalRecallEntry,
 	EpisodicEvalRecallResult,
 	EpisodicEvalScenarioResult,
@@ -36,12 +37,13 @@ export interface EpisodicEvalRunOptions {
 	model: string;
 	judgeEnabled: boolean;
 	judgeModel: string;
+	log?: (event: EpisodicEvalLogEvent) => void;
 }
 
 interface ScenarioRuntime {
 	agent: Agent;
 	memory: InspectableInMemoryMemory;
-	agentId: string;
+	namespace: string;
 	resourceId: string;
 	scope: EpisodicMemoryScope;
 }
@@ -51,11 +53,25 @@ export async function runEpisodicMemoryEval(
 ): Promise<EpisodicEvalArtifacts> {
 	const scenarios = getScenariosForPreset(options.preset);
 	const results: EpisodicEvalScenarioResult[] = [];
+	const log: EpisodicEvalLogEvent[] = [];
+	const emit = createEvalLogger(log, options.log);
 
+	emit({
+		phase: 'run',
+		message: 'Starting episodic memory eval',
+		details: {
+			preset: options.preset,
+			scenarios: scenarios.length,
+			model: options.model,
+			judgeEnabled: options.judgeEnabled,
+			judgeModel: options.judgeModel,
+		},
+	});
 	for (const scenario of scenarios) {
-		results.push(await runScenario(scenario, options));
+		results.push(await runScenario(scenario, options, emit));
 	}
 
+	const scorecard = buildAggregateScorecard(results);
 	const artifacts: EpisodicEvalArtifacts = {
 		results,
 		entries: results.flatMap((result) =>
@@ -76,33 +92,73 @@ export async function runEpisodicMemoryEval(
 		answers: results.flatMap((result) =>
 			result.finalAnswers.map((answer) => ({ scenarioId: result.scenarioId, ...answer })),
 		),
-		scorecard: buildAggregateScorecard(results),
+		scorecard,
 		report: buildMarkdownReport(results),
+		log,
 	};
 	await writeEvalArtifacts(options.outputDir, artifacts);
+	emit({
+		phase: 'run',
+		message: 'Finished episodic memory eval',
+		details: {
+			outputDir: options.outputDir,
+			overall: scorecard.overall,
+			deterministic: scorecard.deterministic,
+			judge: scorecard.judge,
+		},
+	});
 	return artifacts;
 }
 
 async function runScenario(
 	scenario: EpisodicMemoryScenario,
 	options: EpisodicEvalRunOptions,
+	emit: EvalLogger,
 ): Promise<EpisodicEvalScenarioResult> {
 	const runtime = createScenarioRuntime(scenario.id, options.model);
 	try {
+		emit({
+			phase: 'scenario',
+			scenarioId: scenario.id,
+			message: 'Starting scenario',
+			details: {
+				name: scenario.name,
+				threads: scenario.threads.length,
+				isolatedThreads: scenario.isolatedThreads?.length ?? 0,
+			},
+		});
 		for (const thread of scenario.threads) {
-			await runThread(runtime, thread.id, runtime.resourceId, thread.prompts);
+			await runThread(runtime, scenario.id, thread.id, runtime.resourceId, thread.prompts, emit);
 		}
 		for (const isolatedThread of scenario.isolatedThreads ?? []) {
 			await runThread(
 				runtime,
+				scenario.id,
 				isolatedThread.id,
 				isolatedThread.resourceId,
 				isolatedThread.prompts,
+				emit,
 			);
 		}
 
 		const recalls = await runRecallQueries(runtime, scenario);
+		emit({
+			phase: 'recall',
+			scenarioId: scenario.id,
+			message: 'Completed recall queries',
+			details: {
+				queries: recalls.length,
+				toolCalls: recalls.filter((recall) => recall.toolCalled).length,
+				results: recalls.reduce((sum, recall) => sum + recall.results.length, 0),
+			},
+		});
 		const finalAnswers = await runFinalQuestions(runtime, scenario);
+		emit({
+			phase: 'final-question',
+			scenarioId: scenario.id,
+			message: 'Completed final questions',
+			details: { questions: finalAnswers.length },
+		});
 		await runtime.agent.close();
 
 		const entries = runtime.memory.getEvalEntries(runtime.scope);
@@ -119,6 +175,22 @@ async function runScenario(
 		const scorecard = aggregateScorecard({ deterministic: metrics, judge: judgeScores });
 		const observations = await collectActiveObservations(runtime, scenario);
 		const failures = collectFailures({ scenario, entries, recalls, observations });
+		emit({
+			phase: 'scoring',
+			scenarioId: scenario.id,
+			message: 'Scored scenario',
+			details: {
+				activeEntries: entries.filter((entry) => entry.status === 'active').length,
+				supersededEntries: entries.filter((entry) => entry.status === 'superseded').length,
+				droppedEntries: entries.filter((entry) => entry.status === 'dropped').length,
+				recallQueries: recalls.length,
+				recallToolCalls: recalls.filter((recall) => recall.toolCalled).length,
+				failures: failures.length,
+				overall: scorecard.overall,
+				deterministic: scorecard.deterministic,
+				judge: scorecard.judge,
+			},
+		});
 
 		return {
 			scenarioId: scenario.id,
@@ -129,6 +201,14 @@ async function runScenario(
 			scorecard,
 			failures,
 		};
+	} catch (error) {
+		emit({
+			phase: 'error',
+			scenarioId: scenario.id,
+			message: 'Scenario failed',
+			details: { error: formatUnknownError(error) },
+		});
+		throw error;
 	} finally {
 		await runtime.agent.close();
 	}
@@ -136,7 +216,7 @@ async function runScenario(
 
 function createScenarioRuntime(scenarioId: string, model: string): ScenarioRuntime {
 	const memory = new InspectableInMemoryMemory();
-	const agentId = `em-eval-${scenarioId}`;
+	const namespace = `em-eval-${scenarioId}`;
 	const resourceId = `resource-${scenarioId}`;
 	const agent = new Agent(`em-eval-${scenarioId}`)
 		.model(model)
@@ -163,28 +243,42 @@ function createScenarioRuntime(scenarioId: string, model: string): ScenarioRunti
 					maxEntriesPerRun: 8,
 				}),
 		);
-	return { agent, memory, agentId, resourceId, scope: { agentId, resourceId } };
+	return { agent, memory, namespace, resourceId, scope: { namespace, resourceId } };
 }
 
 async function runThread(
 	runtime: ScenarioRuntime,
+	scenarioId: string,
 	threadId: string,
 	resourceId: string,
 	prompts: string[],
+	emit: EvalLogger,
 ): Promise<void> {
+	emit({
+		phase: 'thread',
+		scenarioId,
+		message: 'Starting setup thread',
+		details: { threadId, resourceId, prompts: prompts.length },
+	});
 	for (const prompt of prompts) {
 		await runtime.agent
 			.generate(prompt, {
 				persistence: {
 					threadId,
 					resourceId,
-					agentId: runtime.agentId,
+					episodicMemoryNamespace: runtime.namespace,
 					episodicMemoryResourceId: resourceId,
 				},
 			})
 			.then(assertGenerateSucceeded);
 		await runtime.agent.close();
 	}
+	emit({
+		phase: 'thread',
+		scenarioId,
+		message: 'Completed setup thread',
+		details: { threadId, resourceId, prompts: prompts.length },
+	});
 }
 
 async function runRecallQueries(
@@ -197,7 +291,7 @@ async function runRecallQueries(
 			persistence: {
 				threadId: `${scenario.id}-recall-${query.id}`,
 				resourceId: runtime.resourceId,
-				agentId: runtime.agentId,
+				episodicMemoryNamespace: runtime.namespace,
 				episodicMemoryResourceId: runtime.resourceId,
 			},
 		});
@@ -218,7 +312,7 @@ async function runFinalQuestions(
 			persistence: {
 				threadId: `${scenario.id}-final-${question.id}`,
 				resourceId: runtime.resourceId,
-				agentId: runtime.agentId,
+				episodicMemoryNamespace: runtime.namespace,
 				episodicMemoryResourceId: runtime.resourceId,
 			},
 		});
@@ -387,4 +481,17 @@ function extractText(result: GenerateResult): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+type EvalLogger = (event: Omit<EpisodicEvalLogEvent, 'timestamp'>) => void;
+
+function createEvalLogger(
+	events: EpisodicEvalLogEvent[],
+	onEvent?: (event: EpisodicEvalLogEvent) => void,
+): EvalLogger {
+	return (event) => {
+		const logged = { timestamp: new Date().toISOString(), ...event };
+		events.push(logged);
+		onEvent?.(logged);
+	};
 }
