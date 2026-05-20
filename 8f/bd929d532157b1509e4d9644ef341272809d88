@@ -1,0 +1,36 @@
+packages/cli/src/modules/inbound-secrets/inbound-secrets-access.service.ts
+  s_ad72ea1c24d75b::t_4f31910d20355e 12
+packages/cli/src/modules/inbound-secrets/__tests__/inbound-secrets-access.service.test.ts
+  s_ad72ea1c24d75b::t_b43cff95ea87da 33,43,56,63,76
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-single-context.test.ts
+  s_ad72ea1c24d75b::t_047585c08e20be 201,203,206-207,209,212,216,218
+packages/workflow/src/interfaces.ts
+  s_ad72ea1c24d75b::t_48d7d5a2b50a1f 1114
+packages/cli/src/workflow-execute-additional-data.ts
+  s_ad72ea1c24d75b::t_4f8075c9165a65 571
+packages/core/src/execution-engine/node-execution-context/execute-context.ts
+  s_ad72ea1c24d75b::t_f7f0111f3c15ec 144
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_ad72ea1c24d75b::t_f510b9ad4fc0b7 391,399,408
+  s_ad72ea1c24d75b::t_43100bba05a89d 393,396-397,406
+packages/cli/src/services/runtime-credential-proxy.service.ts
+  s_ad72ea1c24d75b::t_14f7f52e8f2758 5,19,24
+packages/cli/src/services/__tests__/runtime-credential-proxy.service.test.ts
+  s_ad72ea1c24d75b::t_9fdf7c780d723e 18,25,29,32,37,40,46,49-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "8fbd929d532157b1509e4d9644ef341272809d88",
+  "prompts": {},
+  "sessions": {
+    "s_ad72ea1c24d75b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2398351-404b-443b-b321-0a68ac8c2244",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
