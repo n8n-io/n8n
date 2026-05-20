@@ -199,6 +199,8 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 	const refusals: UnpinRefusal[] = [];
 
 	for (const rootName of unpinNodes) {
+		const rootNode = nodesByName.get(rootName);
+		if (!rootNode || rootNode.disabled) continue;
 		const inbound = connectionsByDestination[rootName];
 		if (!inbound) continue;
 

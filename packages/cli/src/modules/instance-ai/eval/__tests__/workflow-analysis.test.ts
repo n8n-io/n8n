@@ -257,6 +257,23 @@ describe('assertUnpinCompatibility', () => {
 		expect(() => assertUnpinCompatibility(workflow, ['Ghost'])).not.toThrow();
 	});
 
+	it('ignores disabled roots even when their sub-nodes would otherwise be refused', () => {
+		const nodes = [
+			makeNode({ name: 'PgMem', type: '@n8n/n8n-nodes-langchain.memoryPostgresChat' }),
+			makeNode({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				disabled: true,
+			}),
+		];
+		const connections: IConnections = {
+			PgMem: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
+		};
+		expect(() =>
+			assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']),
+		).not.toThrow();
+	});
+
 	it.each([
 		['Postgres memory', '@n8n/n8n-nodes-langchain.memoryPostgresChat'],
 		['Redis memory', '@n8n/n8n-nodes-langchain.memoryRedisChat'],

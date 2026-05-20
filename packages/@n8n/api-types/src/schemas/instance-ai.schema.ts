@@ -1158,7 +1158,7 @@ export class InstanceAiEvalExecutionRequest extends Z.class({
 	 * Refused if any sub-node uses a protocol-binary client (e.g. Postgres
 	 * memory) — those cannot be intercepted via HTTP.
 	 */
-	unpinNodes: z.array(z.string().min(1).max(200)).max(50).optional(),
+	unpinNodes: z.array(z.string().min(1)).max(50).optional(),
 }) {}
 
 // ---------------------------------------------------------------------------
