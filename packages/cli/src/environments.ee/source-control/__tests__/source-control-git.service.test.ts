@@ -4,8 +4,8 @@ import { simpleGit } from 'simple-git';
 import type { SimpleGit } from 'simple-git';
 
 import { SourceControlGitService } from '../source-control-git.service.ee';
-import type { SourceControlPreferences } from '../types/source-control-preferences';
 import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '../types/source-control-preferences';
 
 const MOCK_BRANCHES = {
 	all: ['origin/master', 'origin/feature/branch'],
@@ -19,6 +19,8 @@ const MOCK_BRANCHES = {
 const mockGitInstance = {
 	branch: jest.fn().mockResolvedValue(MOCK_BRANCHES),
 	env: jest.fn().mockReturnThis(),
+	fetch: jest.fn().mockResolvedValue(undefined),
+	raw: jest.fn().mockResolvedValue(''),
 };
 
 jest.mock('simple-git', () => {
@@ -505,6 +507,61 @@ describe('SourceControlGitService', () => {
 					expect.not.stringContaining('Test"User'), // No unescaped quote in final command
 				);
 			});
+		});
+	});
+
+	describe('requiresAdminPushForProjectsMigration', () => {
+		beforeEach(() => {
+			mockSourceControlPreferencesService.getPreferences.mockReturnValue({
+				branchName: 'main',
+			} as SourceControlPreferences);
+		});
+
+		it('should return true when workflows exist on remote but projects do not', async () => {
+			mockGitInstance.raw.mockImplementation(async (args: string[]) => {
+				const path = args[2];
+				if (path === 'workflows') {
+					return '040000 tree abc\tworkflows\n';
+				}
+				if (path === 'projects') {
+					return '';
+				}
+				return '';
+			});
+
+			await expect(sourceControlGitService.requiresAdminPushForProjectsMigration()).resolves.toBe(
+				true,
+			);
+		});
+
+		it('should return false when both workflows and projects exist on remote', async () => {
+			mockGitInstance.raw.mockImplementation(async (args: string[]) => {
+				const path = args[2];
+				if (path === 'workflows' || path === 'projects') {
+					return `040000 tree abc\t${path}\n`;
+				}
+				return '';
+			});
+
+			await expect(sourceControlGitService.requiresAdminPushForProjectsMigration()).resolves.toBe(
+				false,
+			);
+		});
+
+		it('should return false when workflows do not exist on remote', async () => {
+			mockGitInstance.raw.mockResolvedValue('');
+
+			await expect(sourceControlGitService.requiresAdminPushForProjectsMigration()).resolves.toBe(
+				false,
+			);
+		});
+
+		it('should reject when remote directory check fails (fail closed for migration guard)', async () => {
+			mockGitInstance.raw.mockRejectedValue(new Error('network error'));
+
+			await expect(sourceControlGitService.requiresAdminPushForProjectsMigration()).rejects.toThrow(
+				'network error',
+			);
 		});
 	});
 });

@@ -1,4 +1,4 @@
-import { computed, reactive } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -103,6 +103,20 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		return await vcApi.getAggregatedStatus(rootStore.restApiContext);
 	};
 
+	const prefetchedPushStatus = ref<SourceControlledFile[] | null>(null);
+
+	const prefetchPushStatus = async () => {
+		const status = await getAggregatedStatus();
+		prefetchedPushStatus.value = status;
+		return status;
+	};
+
+	const takePrefetchedPushStatus = () => {
+		const status = prefetchedPushStatus.value;
+		prefetchedPushStatus.value = null;
+		return status;
+	};
+
 	const getRemoteWorkflow = async (workflowId: string) => {
 		return await vcApi.getRemoteWorkflow(rootStore.restApiContext, workflowId);
 	};
@@ -111,6 +125,8 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		isEnterpriseSourceControlEnabled,
 		state,
 		preferences,
+		prefetchPushStatus,
+		takePrefetchedPushStatus,
 		pushWorkfolder,
 		pullWorkfolder,
 		getPreferences,
