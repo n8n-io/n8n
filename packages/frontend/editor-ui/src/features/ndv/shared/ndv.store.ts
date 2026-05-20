@@ -492,12 +492,12 @@ export function disposeNDVStore(store: NDVStore) {
 }
 
 export function injectNDVStore(): ShallowRef<ReturnType<typeof useNDVStore>> {
+	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStoreRef = injectStrict(WorkflowDocumentStoreKey);
 	return computed(() => {
-		const workflowDocumentStore = workflowDocumentStoreRef.value;
-		if (!workflowDocumentStore) {
-			throw new Error('NDV store has not been initialized');
-		}
-		return useNDVStore(workflowDocumentStore.documentId);
+		const documentId =
+			workflowDocumentStoreRef.value?.documentId ??
+			createWorkflowDocumentId(workflowsStore.workflowId);
+		return useNDVStore(documentId);
 	});
 }
