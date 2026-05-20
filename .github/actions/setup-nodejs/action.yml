@@ -38,7 +38,7 @@ runs:
     # (including parallel E2E shards) hit the cache. Blacksmith transparently
     # routes actions/cache through its S3 backend.
     - name: Restore Node.js Toolcache
-      if: runner.os == 'Linux'
+      if: runner.os == 'Linux' && runner.arch == 'X64'
       uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
         path: /opt/hostedtoolcache/node/${{ inputs.node-version }}/x64
