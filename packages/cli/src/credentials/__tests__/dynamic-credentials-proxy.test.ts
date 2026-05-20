@@ -33,6 +33,7 @@ describe('DynamicCredentialsProxy', () => {
 
 		mockResolverProvider = {
 			resolveIfNeeded: jest.fn(),
+			getSystemResolverId: jest.fn(),
 		};
 
 		mockStorageProvider = {
@@ -205,6 +206,20 @@ describe('DynamicCredentialsProxy', () => {
 
 			// Verify by checking it doesn't throw when storing resolvable credential
 			expect(() => proxy.setStorageProvider(mockStorageProvider)).not.toThrow();
+		});
+	});
+
+	describe('getSystemResolverId', () => {
+		it('returns null when no resolver provider is set', async () => {
+			await expect(proxy.getSystemResolverId()).resolves.toBeNull();
+		});
+
+		it('delegates to the resolver provider when set', async () => {
+			mockResolverProvider.getSystemResolverId.mockResolvedValue('system-n8n');
+			proxy.setResolverProvider(mockResolverProvider);
+
+			await expect(proxy.getSystemResolverId()).resolves.toBe('system-n8n');
+			expect(mockResolverProvider.getSystemResolverId).toHaveBeenCalled();
 		});
 	});
 });

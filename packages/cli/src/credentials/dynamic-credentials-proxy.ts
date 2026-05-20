@@ -37,6 +37,19 @@ export class DynamicCredentialsProxy
 		this.resolvingProvider = provider;
 	}
 
+	/**
+	 * Returns the seeded system resolver id used to store private credentials
+	 * on the user's behalf (e.g. OAuth2 callback for `isResolvable` credentials).
+	 * Returns null when the system resolver has not been seeded or the dynamic
+	 * credentials provider is not registered.
+	 */
+	async getSystemResolverId(): Promise<string | null> {
+		if (!this.resolvingProvider) {
+			return null;
+		}
+		return await this.resolvingProvider.getSystemResolverId();
+	}
+
 	async resolveIfNeeded(
 		credentialsResolveMetadata: CredentialResolveMetadata,
 		staticData: ICredentialDataDecryptedObject,
