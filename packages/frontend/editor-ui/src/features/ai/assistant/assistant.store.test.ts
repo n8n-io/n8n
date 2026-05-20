@@ -25,8 +25,9 @@ import type { Telemetry } from '@/app/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import type { INodeUi } from '@/Interface';
 
-const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
+const { mockWorkflowDocumentStore, mockNdvStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
+		documentId: 'test-id',
 		allNodes: [] as INodeUi[],
 		workflowTriggerNodes: [] as INodeUi[],
 		name: '',
@@ -35,12 +36,19 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 		getNodeByName: vi.fn().mockReturnValue(null),
 		getSnapshot: vi.fn().mockReturnValue({}),
 	},
+	mockNdvStore: {
+		activeNode: null as INodeUi | null,
+	},
 }));
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
 	injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+}));
+
+vi.mock('@/features/ndv/shared/ndv.store', () => ({
+	useNDVStore: vi.fn().mockReturnValue(mockNdvStore),
 }));
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
@@ -84,6 +92,7 @@ describe('AI Assistant store', () => {
 		vi.clearAllMocks();
 		currentRouteParams = {};
 		mockWorkflowDocumentStore.allNodes = [];
+		mockNdvStore.activeNode = null;
 		setActivePinia(createPinia());
 		settingsStore = useSettingsStore();
 		settingsStore.setSettings(
@@ -344,15 +353,14 @@ describe('AI Assistant store', () => {
 			currentRouteName = view;
 			currentRouteParams = nodeId ? { nodeId } : {};
 
-			const workflowsStore = useWorkflowsStore();
-			workflowsStore.activeNode = () => ({
+			mockNdvStore.activeNode = {
 				id: 'test-node',
 				name: 'Test Node',
 				type: 'test',
 				typeVersion: 1,
 				position: [0, 0],
 				parameters: {},
-			});
+			};
 
 			const assistantStore = useAssistantStore();
 
@@ -365,8 +373,7 @@ describe('AI Assistant store', () => {
 		it(`should hide ai assistant floating button if on canvas of ${view} page`, () => {
 			currentRouteName = view;
 
-			const workflowsStore = useWorkflowsStore();
-			workflowsStore.activeNode = () => null;
+			mockNdvStore.activeNode = null;
 
 			const assistantStore = useAssistantStore();
 
