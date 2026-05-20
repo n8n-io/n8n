@@ -64,14 +64,9 @@ export class Telemetry {
 		});
 
 		this.identify({ instanceId, userId, versionCli, projectId, userRole });
-		this.groupIdentify({ instanceId });
 
 		this.flushPageEvents();
 		this.track('Session started', { session_id: rootStore.pushRef });
-	}
-
-	groupIdentify({ instanceId }: { instanceId: string }) {
-		usePostHog()?.groupIdentify?.('company', instanceId);
 	}
 
 	identify({ instanceId, userId, versionCli, projectId, userRole }: TelemetryIdentifyOptions) {

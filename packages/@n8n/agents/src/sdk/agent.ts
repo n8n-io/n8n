@@ -344,6 +344,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		} else {
 			this.telemetryBuilder = undefined;
 			this.telemetryConfig = t;
+			this.runtime?.setTelemetry(t);
 		}
 		return this;
 	}
