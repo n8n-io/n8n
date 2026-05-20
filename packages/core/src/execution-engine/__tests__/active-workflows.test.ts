@@ -42,9 +42,20 @@ describe('ActiveWorkflows', () => {
 	const pollNode = mock<INode>();
 
 	let activeWorkflows: ActiveWorkflows;
+	let acquireIsolate: jest.Mock;
+	let releaseIsolate: jest.Mock;
+
+	// The cron callback registered for scheduled polls is `() => void executeTrigger()` —
+	// fire-and-forget. A single `await callback()` returns immediately, so we yield to
+	// the event loop via setImmediate to let the full async chain settle.
+	const flushPromises = async () => await new Promise<void>((resolve) => setImmediate(resolve));
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		acquireIsolate = jest.fn().mockResolvedValue(undefined);
+		releaseIsolate = jest.fn().mockResolvedValue(undefined);
+		// @ts-expect-error -- assign minimal expression stub for isolate-acquisition tests
+		workflow.expression = { acquireIsolate, releaseIsolate };
 		activeWorkflows = new ActiveWorkflows(
 			mock(),
 			scheduledTaskManager,
@@ -194,6 +205,125 @@ describe('ActiveWorkflows', () => {
 			});
 		});
 
+		describe('should acquire expression isolate around scheduled polls', () => {
+			// Regression test for CAT-3147: scheduled cron-driven polls run outside
+			// the activation acquire/release window, so the expression bridge fails
+			// with "No bridge acquired for this context" on every tick.
+			it('should acquire and release the isolate when the scheduled poll fires', async () => {
+				triggersAndPollers.runPoll.mockResolvedValueOnce(null); // initial activation test poll
+				triggersAndPollers.runPoll.mockResolvedValueOnce(null); // scheduled poll
+
+				await addWorkflow({ pollNodes: [pollNode] });
+
+				acquireIsolate.mockClear();
+				releaseIsolate.mockClear();
+				triggersAndPollers.runPoll.mockClear();
+
+				const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
+				const executeScheduledPoll = registerCronCall[1] as () => Promise<void>;
+
+				await executeScheduledPoll();
+				await flushPromises();
+
+				expect(acquireIsolate).toHaveBeenCalledTimes(1);
+				expect(releaseIsolate).toHaveBeenCalledTimes(1);
+				expect(triggersAndPollers.runPoll).toHaveBeenCalledTimes(1);
+
+				const [acquireOrder] = acquireIsolate.mock.invocationCallOrder;
+				const [runPollOrder] = triggersAndPollers.runPoll.mock.invocationCallOrder;
+				const [releaseOrder] = releaseIsolate.mock.invocationCallOrder;
+
+				expect(acquireOrder).toBeLessThan(runPollOrder);
+				expect(runPollOrder).toBeLessThan(releaseOrder);
+			});
+
+			it('should not acquire the isolate during the initial activation test poll', async () => {
+				// The outer ActiveWorkflowManager.add() acquire covers the test poll
+				// and the subsequent countTriggers call. Nested acquire/release would
+				// release the outer's bridge early and break countTriggers.
+				triggersAndPollers.runPoll.mockResolvedValueOnce(null);
+
+				await addWorkflow({ pollNodes: [pollNode] });
+
+				expect(triggersAndPollers.runPoll).toHaveBeenCalledTimes(1);
+				expect(acquireIsolate).not.toHaveBeenCalled();
+				expect(releaseIsolate).not.toHaveBeenCalled();
+			});
+
+			it('should release the isolate when __emit throws after a successful poll', async () => {
+				const pollData = [[{ json: { foo: 'bar' } }]];
+				triggersAndPollers.runPoll.mockResolvedValueOnce(null); // initial activation test poll
+				triggersAndPollers.runPoll.mockResolvedValueOnce(pollData); // scheduled poll returns data
+
+				const emitError = new Error('emit failed');
+				pollFunctions.__emit.mockImplementationOnce(() => {
+					throw emitError;
+				});
+
+				await addWorkflow({ pollNodes: [pollNode] });
+
+				acquireIsolate.mockClear();
+				releaseIsolate.mockClear();
+
+				const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
+				const executeScheduledPoll = registerCronCall[1] as () => Promise<void>;
+
+				await executeScheduledPoll();
+				await flushPromises();
+
+				expect(acquireIsolate).toHaveBeenCalledTimes(1);
+				expect(releaseIsolate).toHaveBeenCalledTimes(1);
+				expect(pollFunctions.__emitError).toHaveBeenCalledWith(emitError);
+			});
+
+			it('should route a failed acquireIsolate on a scheduled poll through __emitError', async () => {
+				// Without this routing, the rejection would escape the cron callback
+				// `() => void executeTrigger()` and become an unhandled rejection — the
+				// user would only see a process-level log line, not an error execution.
+				triggersAndPollers.runPoll.mockResolvedValueOnce(null); // initial activation test poll
+
+				await addWorkflow({ pollNodes: [pollNode] });
+
+				const acquireError = new Error('Failed to acquire isolate');
+				acquireIsolate.mockClear();
+				releaseIsolate.mockClear();
+				acquireIsolate.mockRejectedValueOnce(acquireError);
+				triggersAndPollers.runPoll.mockClear();
+
+				const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
+				const executeScheduledPoll = registerCronCall[1] as () => Promise<void>;
+
+				await executeScheduledPoll();
+				await flushPromises();
+
+				expect(acquireIsolate).toHaveBeenCalledTimes(1);
+				expect(triggersAndPollers.runPoll).not.toHaveBeenCalled();
+				expect(pollFunctions.__emitError).toHaveBeenCalledWith(acquireError);
+			});
+
+			it('should release the isolate even when the scheduled poll throws', async () => {
+				const error = new Error('Poll function failed');
+				triggersAndPollers.runPoll
+					.mockResolvedValueOnce(null) // initial activation test poll
+					.mockRejectedValueOnce(error); // scheduled poll fails
+
+				await addWorkflow({ pollNodes: [pollNode] });
+
+				acquireIsolate.mockClear();
+				releaseIsolate.mockClear();
+
+				const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
+				const executeScheduledPoll = registerCronCall[1] as () => Promise<void>;
+
+				await executeScheduledPoll();
+				await flushPromises();
+
+				expect(acquireIsolate).toHaveBeenCalledTimes(1);
+				expect(releaseIsolate).toHaveBeenCalledTimes(1);
+				expect(pollFunctions.__emitError).toHaveBeenCalledWith(error);
+			});
+		});
+
 		describe('should handle polling errors', () => {
 			it('should throw error when poll fails during initial testing', async () => {
 				const error = new Error('Poll function failed');
@@ -221,6 +351,7 @@ describe('ActiveWorkflows', () => {
 
 				// Execute the trigger function to simulate a regular poll
 				await executeTrigger();
+				await flushPromises();
 
 				expect(triggersAndPollers.runPoll).toHaveBeenCalledTimes(2);
 				expect(pollFunctions.__emit).not.toHaveBeenCalled();

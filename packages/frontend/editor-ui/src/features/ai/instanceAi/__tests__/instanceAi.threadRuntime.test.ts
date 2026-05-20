@@ -160,7 +160,6 @@ type RuntimeRegistry = {
 function createRuntimeRegistry(): RuntimeRegistry {
 	const runtimes = new Map<string, ThreadRuntime>();
 	const hooks = {
-		getResearchMode: () => false,
 		onTitleUpdated: vi.fn(),
 		onRunFinish: vi.fn(),
 	} satisfies Parameters<typeof createThreadRuntime>[1];
@@ -801,7 +800,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			activeThreadId,
 			'hello',
 			undefined,
-			undefined,
 			expect.any(String),
 			'iframe-push-ref-123',
 		);
@@ -816,7 +814,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			expect.anything(),
 			activeThreadId,
 			'hello',
-			undefined,
 			undefined,
 			expect.any(String),
 			undefined,
@@ -858,6 +855,17 @@ describe('createThreadRuntime - SSE and hydration', () => {
 
 		expect(activeRuntime(registry).messages).toHaveLength(0);
 		expect(activeRuntime(registry).isSendingMessage).toBe(false);
+	});
+
+	test('sendMessage sets activeRunId from postMessage response before run-start', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-from-post' });
+
+		const sendPromise = activeRuntime(registry).sendMessage('hello');
+		await vi.waitFor(() => {
+			expect(activeRuntime(registry).activeRunId).toBe('run-from-post');
+		});
+
+		await sendPromise;
 	});
 });
 

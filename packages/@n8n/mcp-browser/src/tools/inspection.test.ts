@@ -110,7 +110,7 @@ describe('createInspectionTools', () => {
 				const result = await getTool().execute({}, TOOL_CONTEXT);
 				const data = structuredOf(result);
 
-				expect(data.snapshot).toBe('- text "Your key is [REDACTED:anthropic_api_key]" [ref=e1]');
+				expect(data.snapshot).toBe('- text "Your key is [REDACTED:anthropic_api_key:1]" [ref=e1]');
 				expect(textOf(result)).not.toContain(secret);
 			});
 		});
@@ -363,7 +363,7 @@ describe('createInspectionTools', () => {
 				const result = await getTool().execute({ script: '"secret"' }, TOOL_CONTEXT);
 				const data = structuredOf(result);
 
-				expect(data.result).toBe('[REDACTED:anthropic_api_key]');
+				expect(data.result).toBe('[REDACTED:anthropic_api_key:1]');
 				expect(textOf(result)).not.toContain(secret);
 			});
 

@@ -44,7 +44,6 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
 import {
@@ -123,7 +122,6 @@ const nodeValues = ref<INodeParameters>(getNodeSettingsInitialValues());
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
-const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
@@ -158,10 +156,11 @@ const hiddenIssuesInputs = ref<string[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
 const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
-const { isPreviewMode } = useSettingsStore();
+const settingsStore = useSettingsStore();
+const { isPreviewMode } = settingsStore;
 const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
 const currentWorkflow = computed(() =>
-	workflowsListStore.getWorkflowById(workflowsStore.workflowId),
+	workflowsListStore.getWorkflowById(workflowDocumentStore.value.workflowId),
 );
 const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 const isHomeProjectTeam = computed(
@@ -434,6 +433,19 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			_node,
 			isToolNode.value,
 		);
+	} else if (parameterData.name.includes('.') || parameterData.name.includes('[')) {
+		// A nested property on the node itself changed (e.g. a fixedCollection setting
+		// like `customTelemetryTags.tag`). Update the nested path in `nodeValues`,
+		// then persist the whole top-level field back to the node.
+		const topLevelKey = parameterData.name.split(/[.[]/)[0];
+		const valueForSetter = newValue === undefined ? null : newValue;
+		nodeSettingsParameters.setValue(nodeValues, parameterData.name, valueForSetter);
+
+		workflowDocumentStore?.value?.setNodeValue({
+			name: _node.name,
+			key: topLevelKey,
+			value: nodeValues.value[topLevelKey] as NodeParameterValue,
+		});
 	} else {
 		// A property on the node itself changed
 
@@ -488,7 +500,11 @@ const populateHiddenIssuesSet = () => {
 };
 
 const nodeSettings = computed(() =>
-	createCommonNodeSettings(isToolNode.value || isModelNode.value, i18n.baseText.bind(i18n)),
+	createCommonNodeSettings(
+		isToolNode.value || isModelNode.value,
+		i18n.baseText.bind(i18n),
+		settingsStore.isOtelEnabled,
+	),
 );
 
 const iconSource = useNodeIconSource(nodeType, node);
@@ -566,7 +582,7 @@ const onFeatureRequestClick = () => {
 	if (node.value) {
 		telemetry.track('User clicked ndv link', {
 			node_type: node.value.type,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 			push_ref: props.pushRef,
 			pane: NodeConnectionTypes.Main,
 			type: 'i-wish-this-node-would',

@@ -1,8 +1,9 @@
-import type { Workspace } from '@mastra/core/workspace';
 import { nanoid } from 'nanoid';
 
 import type { BuilderWorkspace } from '../workspace/builder-sandbox-factory';
 import type { FilesystemMutationGuardSetter } from '../workspace/guarded-filesystem';
+
+type Workspace = BuilderWorkspace['workspace'];
 
 interface BuilderSandboxSessionInternal {
 	sessionId: string;

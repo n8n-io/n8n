@@ -228,7 +228,7 @@ describe('createNavigationTools', () => {
 			const result = await tool.execute({ url: 'http://example.com' }, TOOL_CONTEXT);
 			const data = structuredOf(result);
 
-			expect(data.snapshot).toBe('- text "API key [REDACTED:anthropic_api_key]"');
+			expect(data.snapshot).toBe('- text "API key [REDACTED:anthropic_api_key:1]"');
 			expect(textOf(result)).not.toContain(secret);
 		});
 

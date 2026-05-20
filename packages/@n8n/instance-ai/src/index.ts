@@ -1,4 +1,14 @@
+import './source-map-filter';
+
 export { MAX_STEPS } from './constants/max-steps';
+export type {
+	AgentDbMessage,
+	AgentMessage,
+	BuiltMemory,
+	CheckpointStore,
+	SerializableAgentState,
+	Thread,
+} from '@n8n/agents';
 export { wrapUntrustedData } from './tools/web-research/sanitize-web-content';
 export type { Logger } from './logger';
 export { generateCompactionSummary } from './compaction';
@@ -9,6 +19,7 @@ export {
 	appendGeneratedWorkflowIdToRootMetadata,
 	appendRootRunMetadata,
 	createInstanceAiTraceContext,
+	createInternalOperationTraceContext,
 	createTraceReplayOnlyContext,
 	continueInstanceAiTraceContext,
 	releaseTraceClient,
@@ -35,17 +46,21 @@ export { createSubAgent } from './agent/sub-agent-factory';
 export type { SubAgentOptions } from './agent/sub-agent-factory';
 export { createAllTools, createOrchestrationTools } from './tools';
 export { startBuildWorkflowAgentTask } from './tools/orchestration/build-workflow-agent.tool';
+export {
+	createSubAgentResourceIdPrefix,
+	SUB_AGENT_RESOURCE_PREFIX,
+} from './tools/orchestration/agent-persistence';
 export { BUILDER_AGENT_PROMPT } from './tools/orchestration/build-workflow-agent.prompt';
 export { startDataTableAgentTask } from './tools/orchestration/data-table-agent.tool';
 export { startDetachedDelegateTask } from './tools/orchestration/delegate.tool';
 export { startResearchAgentTask } from './tools/orchestration/research-with-agent.tool';
-export { createMemory } from './memory/memory-config';
 export {
 	iterationEntrySchema,
 	formatPreviousAttempts,
-	MastraIterationLogStorage,
-	MastraTaskStorage,
+	ThreadIterationLogStorage,
+	ThreadTaskStorage,
 	PlannedTaskStorage,
+	getThread,
 	TerminalOutcomeStorage,
 	patchThread,
 	WorkflowLoopStorage,
@@ -61,12 +76,11 @@ export type {
 } from './storage';
 export { truncateToTitle, generateTitleForRun } from './memory/title-utils';
 export { McpClientManager } from './mcp/mcp-client-manager';
-export { mapMastraChunkToEvent } from './stream/map-chunk';
+export { mapAgentChunkToEvent } from './stream/map-chunk';
 export { isRecord, parseSuspension, asResumable } from './utils/stream-helpers';
 export { createEvalAgent, extractText, Tool, SONNET_MODEL, HAIKU_MODEL } from './utils/eval-agents';
 export type { SuspensionInfo, Resumable } from './utils/stream-helpers';
 export { buildAgentTreeFromEvents, findAgentNodeInTree } from './utils/agent-tree';
-export { registerWithMastra } from './agent/register-with-mastra';
 export { createSandbox, createWorkspace } from './workspace/create-workspace';
 export type { SandboxConfig } from './workspace/create-workspace';
 export { BuilderSandboxFactory } from './workspace/builder-sandbox-factory';

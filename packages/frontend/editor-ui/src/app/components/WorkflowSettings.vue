@@ -187,7 +187,7 @@ const readOnlyEnv = computed(
 	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
 );
 const workflowName = computed(() => workflowDocumentStore.value.name);
-const workflowId = computed(() => workflowsStore.workflowId);
+const workflowId = computed(() => workflowDocumentStore.value.workflowId);
 const workflow = computed(() => workflowsListStore.getWorkflowById(workflowId.value));
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
@@ -511,7 +511,7 @@ const handleCreateNewResolver = async () => {
 
 	openCreateModal({
 		onSave: async (resolverId: string) => {
-			await loadCredentialResolvers();
+			await loadCredentialResolvers({ includeSystem: true });
 			workflowSettings.value.credentialResolverId = resolverId;
 		},
 	});
@@ -522,10 +522,10 @@ const handleEditResolver = async () => {
 
 	openEditModal(workflowSettings.value.credentialResolverId, {
 		onSave: async () => {
-			await loadCredentialResolvers();
+			await loadCredentialResolvers({ includeSystem: true });
 		},
 		onDelete: async (deletedResolverId: string) => {
-			await loadCredentialResolvers();
+			await loadCredentialResolvers({ includeSystem: true });
 			if (workflowSettings.value.credentialResolverId === deletedResolverId) {
 				workflowSettings.value.credentialResolverId = undefined;
 			}
@@ -621,7 +621,7 @@ const saveSettings = async () => {
 
 	void externalHooks.run('workflowSettings.saveSettings', { oldSettings: { ...oldSettings } });
 	telemetry.track('User updated workflow settings', {
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 		// null and undefined values are removed from the object, but we need the keys to be there
 		time_saved: workflowSettings.value.timeSavedPerExecution ?? '',
 		error_workflow: workflowSettings.value.errorWorkflow ?? '',
@@ -685,7 +685,7 @@ onMounted(async () => {
 	executionTimeout.value = rootStore.executionTimeout;
 	maxExecutionTimeout.value = rootStore.maxExecutionTimeout;
 
-	if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
+	if (!workflowsStore.isWorkflowSaved[workflowDocumentStore.value.workflowId]) {
 		toast.showMessage({
 			title: 'No workflow active',
 			message: 'No workflow active to display settings of.',
@@ -720,7 +720,7 @@ onMounted(async () => {
 
 		if (isCredentialResolverEnabled.value && canListCredentialResolvers) {
 			promises.push(
-				loadCredentialResolvers().then((success) => {
+				loadCredentialResolvers({ includeSystem: true }).then((success) => {
 					resolversLoaded = success;
 				}),
 				loadCredentialResolverTypes(),
@@ -799,7 +799,7 @@ onMounted(async () => {
 		dialogVisible: true,
 	});
 	telemetry.track('User opened workflow settings', {
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 	});
 
 	// Register custom action for opening SavedTime node creator

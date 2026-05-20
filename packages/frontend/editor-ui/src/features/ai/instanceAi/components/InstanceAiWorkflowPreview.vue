@@ -6,6 +6,11 @@ import type { PushMessage } from '@n8n/api-types';
 import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { IWorkflowDb } from '@/Interface';
+import {
+	isFixWithAiError,
+	type FixWithAiError,
+	type FixWithAiOfferState,
+} from '../useFixWithAiOffer';
 
 const props = withDefaults(
 	defineProps<{
@@ -16,6 +21,8 @@ const props = withDefaults(
 	{ refreshKey: 0 },
 );
 
+export type WorkflowFailuresReport = FixWithAiOfferState;
+
 const emit = defineEmits<{
 	'iframe-ready': [];
 	/** Fires after a workflow fetch resolves and the new workflow has been
@@ -23,6 +30,8 @@ const emit = defineEmits<{
 	 * the iframe). Used by `useEventRelay` to gate buffered-event replay so the
 	 * iframe always receives `openWorkflow` before the `executionEvent`s. */
 	'workflow-loaded': [workflowId: string];
+	/** Embedded canvas finished a run with node failures (iframe push is isolated). */
+	'workflow-failures': [report: WorkflowFailuresReport];
 }>();
 
 const i18n = useI18n();
@@ -34,12 +43,48 @@ const isLoading = ref(false);
 const fetchError = ref<string | null>(null);
 let fetchGeneration = 0;
 
+function getPreviewIframe(): HTMLIFrameElement | null {
+	return (
+		(previewRef.value as { iframeRef?: HTMLIFrameElement | null } | undefined)?.iframeRef ?? null
+	);
+}
+
+function parseWorkflowFailureErrors(errors: unknown): FixWithAiError[] {
+	if (!Array.isArray(errors)) return [];
+	return errors.filter(isFixWithAiError);
+}
+
+function isMessageFromPreviewIframe(event: MessageEvent): boolean {
+	if (event.origin !== window.location.origin) return false;
+
+	const iframeWindow = getPreviewIframe()?.contentWindow;
+	if (!iframeWindow) return false;
+
+	return event.source === iframeWindow;
+}
+
 function handleIframeMessage(event: MessageEvent) {
+	if (!isMessageFromPreviewIframe(event)) return;
 	if (typeof event.data !== 'string' || !event.data.includes('"command"')) return;
 	try {
 		const json = JSON.parse(event.data);
 		if (json.command === 'n8nReady') {
 			emit('iframe-ready');
+		} else if (json.command === 'reportWorkflowFailures') {
+			const errors = parseWorkflowFailureErrors(json.errors);
+			if (
+				errors.length === 0 ||
+				typeof json.workflowId !== 'string' ||
+				typeof json.executionId !== 'string'
+			) {
+				return;
+			}
+			emit('workflow-failures', {
+				workflowId: json.workflowId,
+				workflowName: typeof json.workflowName === 'string' ? json.workflowName : undefined,
+				executionId: json.executionId,
+				errors,
+			});
 		}
 	} catch {
 		// Ignore parse errors
@@ -47,13 +92,16 @@ function handleIframeMessage(event: MessageEvent) {
 }
 
 function relayPushEvent(event: PushMessage) {
-	const iframe = (previewRef.value as { iframeRef?: HTMLIFrameElement | null } | undefined)
-		?.iframeRef;
-	if (!iframe?.contentWindow) return;
-	iframe.contentWindow.postMessage(
+	const iframeWindow = getPreviewIframe()?.contentWindow;
+	if (!iframeWindow) return;
+	iframeWindow.postMessage(
 		JSON.stringify({ command: 'executionEvent', event }),
 		window.location.origin,
 	);
+}
+
+function requestFitView() {
+	previewRef.value?.requestFitView();
 }
 
 function openWorkflowInEditor() {
@@ -114,7 +162,7 @@ onBeforeUnmount(() => {
 	window.removeEventListener('message', handleIframeMessage);
 });
 
-defineExpose({ relayPushEvent });
+defineExpose({ relayPushEvent, requestFitView });
 </script>
 
 <template>

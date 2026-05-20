@@ -17,6 +17,15 @@ All Instance AI configuration is done via environment variables.
 | `N8N_INSTANCE_AI_BROWSER_MCP` | boolean | `false` | Enable Chrome DevTools MCP for browser-assisted credential setup |
 | `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED` | boolean | `false` | Disable the local gateway (filesystem, shell, browser) for all users |
 
+### Tracing
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `N8N_DIAGNOSTICS_ENABLED` | boolean | `true` | When set to `false`, Instance AI tracing is disabled. |
+| `LANGSMITH_API_KEY` / `LANGCHAIN_API_KEY` | string | unset | Enables direct LangSmith export for local and self-hosted setups. |
+| `LANGSMITH_ENDPOINT` / `LANGCHAIN_ENDPOINT` | string | unset | Optional direct LangSmith endpoint override. |
+| `LANGSMITH_TRACING` / `LANGCHAIN_TRACING_V2` | boolean | unset | LangSmith SDK tracing flags. `false` disables tracing; `true` enables direct tracing when direct LangSmith credentials or endpoints are configured. |
+
 ### Memory
 
 | Variable | Type | Default | Description |
@@ -81,7 +90,7 @@ Sandbox workspaces persist per thread — the same container is reused across me
 | `N8N_INSTANCE_AI_THREAD_TTL_DAYS` | number | `90` | Conversation thread TTL in days. Threads older than this are auto-expired. 0 = no expiration. |
 | `N8N_INSTANCE_AI_SNAPSHOT_PRUNE_INTERVAL` | number | `3600000` | Interval in ms between snapshot pruning runs. 0 = disabled. |
 | `N8N_INSTANCE_AI_SNAPSHOT_RETENTION` | number | `86400000` | Retention period in ms for orphaned workflow snapshots before pruning. |
-| `N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT` | number | `600000` | Timeout in ms for HITL confirmation requests. 0 = no timeout. |
+| `N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT` | number | `86400000` | Timeout in ms for HITL confirmation requests. 0 = no timeout. |
 
 ## Enabling / Disabling
 

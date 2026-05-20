@@ -59,23 +59,29 @@ describe('BUILTIN_PATTERNS coverage', () => {
 
 describe('redactString', () => {
 	it('redacts issuer-shaped secrets', () => {
-		expect(redactString(`key=${ANTHROPIC}`)).toBe('key=[REDACTED:anthropic_api_key]');
-		expect(redactString(`token=${GITHUB}`)).toBe('token=[REDACTED:github_pat]');
+		expect(redactString(`key=${ANTHROPIC}`)).toBe('key=[REDACTED:anthropic_api_key:1]');
+		expect(redactString(`token=${GITHUB}`)).toBe('token=[REDACTED:github_pat:1]');
 	});
 
 	it.each(FIXTURES)('redacts $slug', ({ slug, secret }) => {
-		expect(redactString(`before ${secret} after`)).toBe(`before [REDACTED:${slug}] after`);
+		expect(redactString(`before ${secret} after`)).toBe(`before [REDACTED:${slug}:1] after`);
 	});
 
 	it('redacts multiple different patterns in one string', () => {
 		expect(redactString(`anthropic=${ANTHROPIC} github=${GITHUB}`)).toBe(
-			'anthropic=[REDACTED:anthropic_api_key] github=[REDACTED:github_pat]',
+			'anthropic=[REDACTED:anthropic_api_key:1] github=[REDACTED:github_pat:2]',
+		);
+	});
+
+	it('uses the same number for repeated occurrences of the same secret', () => {
+		expect(redactString(`${ANTHROPIC} ${ANTHROPIC}`)).toBe(
+			'[REDACTED:anthropic_api_key:1] [REDACTED:anthropic_api_key:1]',
 		);
 	});
 
 	it('preserves aria-tree refs around redacted values', () => {
 		expect(redactString(`button "Copy ${ANTHROPIC}" [ref=e42]`)).toBe(
-			'button "Copy [REDACTED:anthropic_api_key]" [ref=e42]',
+			'button "Copy [REDACTED:anthropic_api_key:1]" [ref=e42]',
 		);
 	});
 
@@ -113,9 +119,27 @@ describe('redactCallToolResult', () => {
 
 		expect(result.content[0]).toEqual({
 			type: 'text',
-			text: JSON.stringify({ result: '[REDACTED:anthropic_api_key]' }),
+			text: JSON.stringify({ result: '[REDACTED:anthropic_api_key:1]' }),
 		});
-		expect(result.structuredContent).toEqual({ result: '[REDACTED:anthropic_api_key]' });
+		expect(result.structuredContent).toEqual({ result: '[REDACTED:anthropic_api_key:1]' });
+	});
+
+	it('uses one numbering scope across text content and structured content', () => {
+		const result: CallToolResult = {
+			content: [{ type: 'text', text: `anthropic=${ANTHROPIC}` }],
+			structuredContent: { github: GITHUB, repeated: ANTHROPIC },
+		};
+
+		redactCallToolResult(result);
+
+		expect(result.content[0]).toEqual({
+			type: 'text',
+			text: 'anthropic=[REDACTED:anthropic_api_key:1]',
+		});
+		expect(result.structuredContent).toEqual({
+			github: '[REDACTED:github_pat:2]',
+			repeated: '[REDACTED:anthropic_api_key:1]',
+		});
 	});
 
 	it('leaves image content blocks untouched', () => {
@@ -129,7 +153,7 @@ describe('redactCallToolResult', () => {
 		redactCallToolResult(result);
 
 		expect(result.content[0]).toEqual({ type: 'image', data: ANTHROPIC, mimeType: 'image/png' });
-		expect(result.content[1]).toEqual({ type: 'text', text: '[REDACTED:anthropic_api_key]' });
+		expect(result.content[1]).toEqual({ type: 'text', text: '[REDACTED:anthropic_api_key:1]' });
 	});
 
 	it('redacts nested plain object and array values', () => {
@@ -143,7 +167,7 @@ describe('redactCallToolResult', () => {
 		redactCallToolResult(result);
 
 		expect(result.structuredContent).toEqual({
-			entries: [{ text: '[REDACTED:anthropic_api_key]' }, { text: 'safe' }],
+			entries: [{ text: '[REDACTED:anthropic_api_key:1]' }, { text: 'safe' }],
 		});
 	});
 
@@ -179,6 +203,6 @@ describe('redactCallToolResult', () => {
 
 		let walk = result.structuredContent as Chain;
 		for (let i = 0; i < 12; i++) walk = walk.a!;
-		expect(walk.leak).toBe('[REDACTED:anthropic_api_key]');
+		expect(walk.leak).toBe('[REDACTED:anthropic_api_key:1]');
 	});
 });
