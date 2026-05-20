@@ -177,7 +177,7 @@ import { CreateMcpRegistryServerTable1784000000005 } from '../common/17840000000
 import { AddNodeGroupsColumnToWorkflowAndHistory1784000000006 } from '../common/1784000000006-AddNodeGroupsColumnToWorkflowAndHistory';
 import { CreateInstanceAiCheckpointTable1784000000007 } from '../common/1784000000007-CreateInstanceAiCheckpointTable';
 import { ResetInstanceAiNativePersistence1784000000008 } from '../common/1784000000008-ResetInstanceAiNativePersistence';
-import { AddMetadataToCredentials1785000000000 } from '../common/1785000000000-AddMetadataToCredentials';
+import { AddMetadataToCredentials1779304131925 } from '../common/1779304131925-AddMetadataToCredentials';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -360,7 +360,7 @@ const sqliteMigrations: Migration[] = [
 	AddNodeGroupsColumnToWorkflowAndHistory1784000000006,
 	CreateInstanceAiCheckpointTable1784000000007,
 	ResetInstanceAiNativePersistence1784000000008,
-	AddMetadataToCredentials1785000000000,
+	AddMetadataToCredentials1779304131925,
 ];
 
 export { sqliteMigrations };
