@@ -472,6 +472,10 @@ describe('WorkflowService', () => {
 			activeWorkflowManagerMock = mock();
 			externalHooksMock = mock<ExternalHooks>();
 
+			workflowRepositoryMock.create.mockImplementation(
+				(data) => Object.assign(new WorkflowEntity(), data) as WorkflowEntity,
+			);
+
 			workflowService = new WorkflowService(
 				mock(), // logger
 				mock(), // sharedWorkflowRepository

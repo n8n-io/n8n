@@ -1,7 +1,13 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User, ListQueryDb, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
+import type {
+	User,
+	ListQueryDb,
+	WorkflowFolderUnionFull,
+	WorkflowHistory,
+	WorkflowEntity,
+} from '@n8n/db';
 import {
 	SharedWorkflow,
 	ExecutionRepository,
@@ -12,7 +18,6 @@ import {
 	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
 	ProjectRepository,
-	WorkflowEntity,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -27,7 +32,13 @@ import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
 
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
-import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-workflow';
+import {
+	PROJECT_ROOT,
+	Workflow,
+	assert,
+	calculateWorkflowChecksum,
+	ensureError,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { getErrorDescription, getErrorNodeId } from './utils';
@@ -721,7 +732,8 @@ export class WorkflowService {
 
 		// Run hook before destructive state changes so a rejection leaves
 		// the previous active version running instead of deactivating it.
-		const candidateWorkflow = Object.assign(new WorkflowEntity(), workflow, {
+		const candidateWorkflow = this.workflowRepository.create({
+			...workflow,
 			active: true,
 			activeVersionId: versionIdToActivate,
 			activeVersion: versionToActivate,
@@ -730,7 +742,7 @@ export class WorkflowService {
 		try {
 			await this.externalHooks.run('workflow.activate', [candidateWorkflow]);
 		} catch (error) {
-			throw new WorkflowActivationBadRequestError((error as Error).message, {
+			throw new WorkflowActivationBadRequestError(ensureError(error).message, {
 				nodeId: getErrorNodeId(error),
 				description: getErrorDescription(error),
 			});
