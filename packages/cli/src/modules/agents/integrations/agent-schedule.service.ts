@@ -342,7 +342,7 @@ export class AgentScheduleService {
 				message,
 				memory: {
 					threadId,
-					resourceId: scheduledRunMemoryResourceId(threadId),
+					resourceId: scheduledRunMemoryResourceId(executionUserId),
 				},
 			})) {
 				chunkCount += 1;

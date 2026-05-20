@@ -12,6 +12,7 @@ import {
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
+	AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
@@ -91,10 +92,12 @@ export const AgentsModule: FrontendModuleDescription = {
 		},
 		{
 			key: AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
-			component: async () => await import('./components/AgentEpisodicMemoryCredentialModal.vue'),
+			component: async () => await import('../ai/chatHub/components/CredentialSelectorModal.vue'),
 			initialState: {
 				open: false,
 				data: {
+					credentialType: AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
+					displayName: 'OpenAI',
 					initialValue: null,
 					onSelect: () => {},
 				},
