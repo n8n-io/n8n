@@ -11,7 +11,7 @@ const DEFAULT_MIGRATION_GLOBS = [
 	'packages/@n8n/db/src/migrations/sqlite/*.ts',
 ];
 
-const MIGRATION_FILENAME = /^(\d{10,16})-.+\.ts$/;
+const MIGRATION_FILENAME = /^(\d{10,16})-(.+\.ts)$/;
 
 // Window above the ordering floor in which a new migration timestamp is
 // permitted. 1 second of headroom = 1000 unique slots — plenty for any
@@ -24,6 +24,9 @@ interface ParsedMigration {
 	relativePath: string;
 	fileName: string;
 	timestamp: number;
+	// Slot key groups dialect-override pairs (same timestamp + suffix across
+	// common/ and a dialect dir) into one logical ordering slot.
+	slotKey: string;
 }
 
 export class MigrationTimestampRule extends BaseRule<CodeHealthContext> {
@@ -53,11 +56,13 @@ export class MigrationTimestampRule extends BaseRule<CodeHealthContext> {
 			if (!match) continue;
 			const timestamp = Number(match[1]);
 			if (!Number.isFinite(timestamp)) continue;
+			const suffix = match[2];
 			parsed.push({
 				filePath,
 				relativePath: path.relative(rootDir, filePath),
 				fileName,
 				timestamp,
+				slotKey: `${timestamp}-${suffix}`,
 			});
 		}
 
@@ -74,14 +79,31 @@ export class MigrationTimestampRule extends BaseRule<CodeHealthContext> {
 				? new Set(changedFiles.map((p) => path.normalize(p)))
 				: undefined;
 
-		const sortedDesc = parsed.map((p) => p.timestamp).sort((a, b) => b - a);
-		const globalMax = sortedDesc[0] ?? 0;
-		const secondMax = sortedDesc[1] ?? 0;
+		// Dedupe to ordering slots: a `common/<ts>-<name>.ts` paired with a
+		// `postgresdb|sqlite/<ts>-<name>.ts` override is one logical migration
+		// (same TypeORM class name, only one runs per dialect) and occupies a
+		// single slot. Two files at the same timestamp with *different*
+		// suffixes remain distinct slots and still trip ordering.
+		const slotByKey = new Map<string, { timestamp: number; slotKey: string }>();
+		for (const m of parsed) {
+			if (!slotByKey.has(m.slotKey)) {
+				slotByKey.set(m.slotKey, { timestamp: m.timestamp, slotKey: m.slotKey });
+			}
+		}
+		const slotsDesc = Array.from(slotByKey.values()).sort((a, b) => {
+			if (b.timestamp !== a.timestamp) return b.timestamp - a.timestamp;
+			return a.slotKey.localeCompare(b.slotKey);
+		});
+		const globalMaxSlot = slotsDesc[0];
+		const secondMaxSlot = slotsDesc[1];
+		const globalMax = globalMaxSlot?.timestamp ?? 0;
+		const secondMax = secondMaxSlot?.timestamp ?? 0;
 
 		const violations: Violation[] = [];
 		for (const migration of parsed) {
-			const { filePath, relativePath, fileName, timestamp } = migration;
-			const floor = timestamp === globalMax ? secondMax : globalMax;
+			const { filePath, relativePath, fileName, timestamp, slotKey } = migration;
+			const isHeadSlot = globalMaxSlot?.slotKey === slotKey;
+			const floor = isHeadSlot ? secondMax : globalMax;
 			const ceiling = Math.max(now, floor + ceilingBuffer);
 
 			const isChanged = changedFilesSet?.has(path.normalize(relativePath)) ?? false;
