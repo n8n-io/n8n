@@ -1,4 +1,4 @@
-import { nextTick } from 'vue';
+import { nextTick, type ShallowRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
@@ -23,18 +23,20 @@ import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import {
 	useWorkflowDocumentStore as createWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	type WorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowImport } from '@/app/composables/useWorkflowImport';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { injectStrict } from '@/app/utils/injectStrict';
-import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 interface PostMessageHandlerDeps {
 	workflowState: WorkflowState;
+	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>;
 }
 
-export function usePostMessageHandler({ workflowState }: PostMessageHandlerDeps) {
-	const currentWorkflowDocumentStore = injectStrict(WorkflowDocumentStoreKey);
+export function usePostMessageHandler({
+	workflowState,
+	currentWorkflowDocumentStore,
+}: PostMessageHandlerDeps) {
 	const i18n = useI18n();
 	const toast = useToast();
 	const canvasStore = useCanvasStore();
@@ -50,7 +52,7 @@ export function usePostMessageHandler({ workflowState }: PostMessageHandlerDeps)
 	const route = useRoute();
 	const workflowsStore = useWorkflowsStore();
 	const { resetWorkspace, openExecution, fitView } = useCanvasOperations();
-	const { importWorkflowExact } = useWorkflowImport();
+	const { importWorkflowExact } = useWorkflowImport(currentWorkflowDocumentStore);
 
 	function emitPostMessageReady() {
 		if (window.parent) {

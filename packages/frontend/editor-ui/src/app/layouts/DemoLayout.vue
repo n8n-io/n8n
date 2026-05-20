@@ -35,6 +35,7 @@ const {
 
 const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
 	workflowState,
+	currentWorkflowDocumentStore,
 });
 
 // Initialize push event handlers so relayed execution events (via postMessage

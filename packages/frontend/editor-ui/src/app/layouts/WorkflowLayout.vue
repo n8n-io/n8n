@@ -30,6 +30,7 @@ provide(WorkflowStateKey, workflowState);
 const {
 	isLoading,
 	workflowId,
+	currentWorkflowDocumentStore,
 	isDebugRoute,
 	initializeData,
 	initializeWorkflow,
@@ -39,6 +40,7 @@ const {
 
 const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
 	workflowState,
+	currentWorkflowDocumentStore,
 });
 
 onMounted(async () => {
