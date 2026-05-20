@@ -348,14 +348,27 @@ function isOoxml(mime: string): boolean {
 	return mime.startsWith('application/vnd.openxmlformats-');
 }
 
+function isTextMime(mime: string): boolean {
+	return TEXT_MIMES.has(mime) || mime.startsWith('text/');
+}
+
 function applySizeHint(base: Buffer, hint: FixtureSizeHint, mime: string): Buffer {
 	if (hint === 'small') return base;
 	if (NO_PAD_MIMES.has(mime) || isOoxml(mime)) return base;
 	const target = SIZE_TARGETS[hint];
 	if (base.length >= target) return base;
-	// Pad with deterministic bytes seeded from the mime so the padding is
-	// reproducible across runs. PDF / PNG / JPEG / WAV / OGG / GIF tolerate
-	// trailing bytes (decoders stop at their own EOF marker).
+
+	if (isTextMime(mime)) {
+		// Pad text fixtures with ASCII space so the buffer stays parseable at
+		// medium/large sizes. JSON.parse, XML/HTML parsers, and CSV consumers
+		// all tolerate trailing whitespace; random-byte padding would corrupt
+		// them at the first non-whitespace byte after the document end.
+		return Buffer.concat([base, Buffer.alloc(target - base.length, 0x20)]);
+	}
+
+	// PDF / PNG / JPEG / WAV / OGG / GIF tolerate trailing bytes (decoders
+	// stop at their own EOF marker). Deterministic seed keeps the bytes
+	// reproducible across runs.
 	return Buffer.concat([base, deterministicBytes(`pad:${mime}`, target - base.length)]);
 }
 
@@ -388,7 +401,7 @@ export function synthesizeBinaryFixture(
 	const binary = pickBinaryFixture(mime, filename);
 	if (binary) return applySizeHint(binary, hint, mime);
 
-	if (TEXT_MIMES.has(mime) || mime.startsWith('text/')) {
+	if (isTextMime(mime)) {
 		return applySizeHint(textFixture(mime, filename), hint, mime);
 	}
 

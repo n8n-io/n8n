@@ -155,6 +155,41 @@ describe('eval-mock-fixtures', () => {
 				});
 				expect(buf.length).toBeGreaterThanOrEqual(64 * 1024);
 			});
+
+			it('should pad JSON text fixtures so JSON.parse still accepts the buffer at medium size', () => {
+				const buf = synthesizeBinaryFixture('application/json', 'data.json', {
+					sizeHint: 'medium',
+				});
+				expect(buf.length).toBeGreaterThanOrEqual(64 * 1024);
+				const parsed = JSON.parse(buf.toString('utf8')) as { filename: string; mock: boolean };
+				expect(parsed).toEqual({ filename: 'data.json', mock: true });
+			});
+
+			it('should pad CSV text fixtures with whitespace (no embedded control bytes)', () => {
+				const buf = synthesizeBinaryFixture('text/csv', 'rows.csv', { sizeHint: 'large' });
+				expect(buf.length).toBeGreaterThanOrEqual(1024 * 1024);
+				// First lines stay parseable; padding contains no non-printable bytes.
+				const text = buf.toString('utf8');
+				expect(text.startsWith('id,name\n1,rows.csv\n')).toBe(true);
+				const padTail = text.slice('id,name\n1,rows.csv\n'.length);
+				expect(padTail).toMatch(/^ *$/);
+			});
+
+			it('should pad XML text fixtures so a well-formed XML parser tolerates the buffer', () => {
+				const buf = synthesizeBinaryFixture('application/xml', 'doc.xml', { sizeHint: 'medium' });
+				const text = buf.toString('utf8');
+				expect(text.startsWith('<?xml version="1.0"?>\n<file name="doc.xml"/>\n')).toBe(true);
+				// Padding is whitespace only — preserves XML well-formedness.
+				const padTail = text.slice('<?xml version="1.0"?>\n<file name="doc.xml"/>\n'.length);
+				expect(padTail).toMatch(/^[\s]*$/);
+			});
+
+			it('should pad arbitrary text/* MIMEs (text/markdown) with whitespace', () => {
+				const buf = synthesizeBinaryFixture('text/markdown', 'notes.md', { sizeHint: 'medium' });
+				const text = buf.toString('utf8');
+				expect(text.startsWith('mock file: notes.md\n')).toBe(true);
+				expect(text.slice('mock file: notes.md\n'.length)).toMatch(/^ *$/);
+			});
 		});
 
 		describe('content-type defaults', () => {
