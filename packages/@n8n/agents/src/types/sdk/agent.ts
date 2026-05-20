@@ -137,6 +137,8 @@ export interface ExecutionOptions {
 
 export interface PersistedExecutionOptions {
 	maxIterations?: number;
+	/** Number of completed LLM iterations at suspension time. */
+	iterationCount?: number;
 }
 
 export interface ToolResultEntry {

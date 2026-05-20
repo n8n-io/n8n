@@ -1,14 +1,4 @@
 <script setup lang="ts">
-/**
- * Behavior panel — execution-behavior knobs that used to live in the old
- * AgentOverviewPanel: reasoning depth (provider-gated) and tool-call
- * concurrency.
- *
- * Thinking is always visible as a toggle but disabled (with a tooltip) when
- * the selected provider doesn't support it. The sub-control differs by
- * provider: Anthropic takes a `budgetTokens` number, OpenAI takes a
- * `reasoningEffort` low/medium/high select.
- */
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import {
@@ -48,13 +38,93 @@ const capabilities = computed(
 	() => PROVIDER_CAPABILITIES[provider.value] ?? { thinking: false as const },
 );
 
+// ---------------------------------------------------------------------------
+// Generic helper for numeric config fields
+// ---------------------------------------------------------------------------
+
+type ConfigObj = NonNullable<AgentJsonConfig['config']>;
+
+/** Keys of the config object whose value type is `number | undefined`. */
+type NumberConfigKey = keyof {
+	[K in keyof ConfigObj as ConfigObj[K] extends number | undefined ? K : never]: unknown;
+};
+
+/**
+ * Creates a ref, debounced config-emit, input handler, and watch-sync
+ * function for one numeric field inside `config`.
+ *
+ * @param key          Config key (must be a numeric field).
+ * @param defaultValue Local value when the key is absent from the config.
+ *                     Pass `null` for optional fields that render as an empty
+ *                     placeholder — the key is removed from the config when null.
+ * @param parse        Converts raw input to the new value.
+ *                     Return `undefined` to reject the input (no update).
+ *                     Return `null` to clear the key from the config.
+ */
+function makeField<T extends number | null>(
+	key: NumberConfigKey,
+	defaultValue: T,
+	parse: (raw: string) => T | undefined,
+) {
+	const value = ref((props.config?.config?.[key] ?? defaultValue) as T);
+
+	const debouncedEmit = useDebounceFn(() => {
+		const cfg = { ...(props.config?.config ?? {}) };
+		if (value.value === null) {
+			delete (cfg as Partial<ConfigObj>)[key];
+		} else {
+			(cfg as ConfigObj)[key] = value.value as number;
+		}
+		emit('update:config', { config: cfg });
+	}, 500);
+
+	return {
+		modelValue: computed(() => (value.value !== null ? String(value.value) : '')),
+		onInput(raw: string) {
+			const next = parse(raw);
+			if (next === undefined) return;
+			value.value = next;
+			void debouncedEmit();
+		},
+		sync(cfg: AgentJsonConfig | null) {
+			value.value = (cfg?.config?.[key] ?? defaultValue) as T;
+		},
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Numeric config fields — add new ones here
+// ---------------------------------------------------------------------------
+
+const {
+	modelValue: concurrencyModelValue,
+	onInput: onConcurrencyInput,
+	sync: syncConcurrency,
+} = makeField('toolCallConcurrency', 1, (raw) => {
+	const n = Number(raw);
+	return Number.isFinite(n) && n >= 1 ? n : undefined;
+});
+
+const {
+	modelValue: maxIterationsModelValue,
+	onInput: onMaxIterationsInput,
+	sync: syncMaxIterations,
+} = makeField('maxIterations', null as number | null, (raw) => {
+	if (raw === '') return null as number | null;
+	const n = Number(raw);
+	return Number.isFinite(n) && n >= 1 && n <= 200 ? Math.round(n) : undefined;
+});
+
+// ---------------------------------------------------------------------------
+// Thinking — provider-gated, handled separately
+// ---------------------------------------------------------------------------
+
 const thinkingCfg = computed(() => props.config?.config?.thinking ?? null);
 const thinkingEnabled = ref(thinkingCfg.value !== null);
 const budgetTokens = ref(thinkingCfg.value?.budgetTokens ?? 1024);
 const reasoningEffort = ref<ReasoningEffort>(
 	(thinkingCfg.value?.reasoningEffort as ReasoningEffort) ?? 'medium',
 );
-const toolCallConcurrency = ref(props.config?.config?.toolCallConcurrency ?? 1);
 
 watch(
 	() => props.config,
@@ -64,7 +134,8 @@ watch(
 		thinkingEnabled.value = t !== null;
 		budgetTokens.value = t?.budgetTokens ?? 1024;
 		reasoningEffort.value = (t?.reasoningEffort as ReasoningEffort) ?? 'medium';
-		toolCallConcurrency.value = cfg.config?.toolCallConcurrency ?? 1;
+		syncConcurrency(cfg);
+		syncMaxIterations(cfg);
 	},
 	{ deep: true },
 );
@@ -102,18 +173,6 @@ function onBudgetInput(value: string) {
 function onReasoningEffortChange(value: ReasoningEffort) {
 	reasoningEffort.value = value;
 	emitThinking();
-}
-
-const emitConcurrency = useDebounceFn(() => {
-	emit('update:config', {
-		config: { ...props.config?.config, toolCallConcurrency: toolCallConcurrency.value },
-	});
-}, 500);
-function onConcurrencyInput(value: string) {
-	const n = Number(value);
-	if (!Number.isFinite(n) || n < 1) return;
-	toolCallConcurrency.value = n;
-	void emitConcurrency();
 }
 
 const thinkingDisabledReason = computed(() =>
@@ -207,11 +266,31 @@ const thinkingDisabledReason = computed(() =>
 				</div>
 				<N8nInput
 					type="number"
-					:model-value="String(toolCallConcurrency)"
+					:model-value="concurrencyModelValue"
 					:disabled="props.disabled"
 					:class="$style.shortInput"
 					data-testid="agent-concurrency-input"
 					@update:model-value="onConcurrencyInput"
+				/>
+			</div>
+
+			<div :class="$style.row">
+				<div :class="$style.rowLabel">
+					<N8nText size="small" :bold="true">{{
+						i18n.baseText('agents.builder.advanced.maxIterations.label')
+					}}</N8nText>
+					<N8nText size="xsmall" color="text-light">
+						{{ i18n.baseText('agents.builder.advanced.maxIterations.hint') }}
+					</N8nText>
+				</div>
+				<N8nInput
+					type="number"
+					:model-value="maxIterationsModelValue"
+					:placeholder="i18n.baseText('agents.builder.advanced.maxIterations.placeholder')"
+					:disabled="props.disabled"
+					:class="$style.shortInput"
+					data-testid="agent-max-iterations-input"
+					@update:model-value="onMaxIterationsInput"
 				/>
 			</div>
 		</div>

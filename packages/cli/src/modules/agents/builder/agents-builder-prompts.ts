@@ -603,7 +603,8 @@ export function getConfigRulesSection(): string {
 	- \`memory.observationalMemory\` tunes observation-log memory. It is enabled by default whenever memory is enabled; use \`{ enabled: false }\` only when the user explicitly does not want automatic memory updates.
 	  - Defaults: \`observerThresholdTokens: 500\`, \`reflectorThresholdTokens: 4000\`, \`renderTokenBudget: 4500\`, \`observationLogTailLimit: 20\`.
 	  - Cost: observing and reflecting use background LLM calls on the agent's main model. Mention this if the user asks about cost.
-	- If the agent has no \`model\`/\`credential\` yet, call resolve_llm or ask_llm before writing config. Do not write a placeholder/default model without a credential.`;
+	- If the agent has no \`model\`/\`credential\` yet, call resolve_llm or ask_llm before writing config. Do not write a placeholder/default model without a credential.
+  - \`config.maxIterations\` caps the number of agent loop iterations per run. Do not set or change this unless the user explicitly asks.`;
 }
 
 export function getSchemaReferenceSection(): string {
