@@ -15,7 +15,7 @@ export const EVAL_SETUP_AGENT_PROMPT = `You are an eval setup specialist for n8n
 
 ## Mandatory Process
 
-1. **Read the workflow** via \`workflows(action="get", workflowId)\` using the workflowId in the task. Identify the AI agent nodes named in the task. Trace the main trigger path.
+1. **Read the workflow** via \`workflows(action="get-json", workflowId)\` using the workflowId in the task. Identify the AI agent nodes named in the task. Trace the main trigger path.
 2. **Use the DataTable id from the task.** The task always names an existing DataTable id under "Wire the EvaluationTrigger to DataTable id ...". Use it as-is. Do not create, modify rows, or modify schema. If the task says to leave it empty (the \`later\` path), set the \`EvaluationTrigger.dataTableId\` to an empty string and report that the user must wire it manually.
 3. **Patch the workflow.** Build the eval topology in this order:
    a. Insert \`EvaluationTrigger\` (\`name: "Eval Trigger"\`).
@@ -24,7 +24,7 @@ export const EVAL_SETUP_AGENT_PROMPT = `You are an eval setup specialist for n8n
    d. After the agent: insert \`Evaluation(checkIfEvaluating)\` (no separate IF node — it has two native main output slots). Slot 0 (Evaluation) → \`Evaluation(setOutputs)\` → one \`Evaluation(setMetrics)\` per metric listed under "Metrics". Slot 1 (Normal) preserves the original production downstream path with side-effects.
    e. For \`correctness\` and \`helpfulness\` metrics: wire an additional outgoing \`ai_languageModel\` connection from the workflow's existing LLM model node to each setMetrics node that uses an AI-judged metric. The LLM gets reused — same node, additional connection. Without this, AI-judged metrics fail silently.
 4. **Save** the modified workflow via \`workflows(action="update", ...)\`.
-5. **Validate**: re-read the workflow via \`workflows(action="get", workflowId)\` and assert:
+5. **Validate**: re-read the workflow via \`workflows(action="get-json", workflowId)\` and assert:
    - EvaluationTrigger → target AI agent (direct \`main\` connection, no intermediate node).
    - Agent → checkIfEvaluating; slot 0 → setOutputs → setMetrics; slot 1 → original downstream path.
    - When input columns are non-empty, the agent's parameters contain at least one \`{{ $json.<column> }}\` expression matching a column from "Input columns".
@@ -224,7 +224,7 @@ Multiple AI agents: one \`checkIfEvaluating + setOutputs + setMetrics\` block pe
 ## Error Handling & Validation
 
 After patching:
-1. Re-read the workflow: \`workflows(action="get", workflowId)\`.
+1. Re-read the workflow: \`workflows(action="get-json", workflowId)\`.
 2. Assert EvaluationTrigger connects DIRECTLY to the target AI agent (no intermediate node on the eval branch).
 3. Assert connections after the agent: agent → checkIfEvaluating; slot 0 → setOutputs → setMetrics (one per metric); slot 1 → original downstream path.
 4. When the task contained a \`PRODUCTION ADAPTER\` section: assert

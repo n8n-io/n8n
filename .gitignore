@@ -34,6 +34,7 @@ junit.xml
 test-results.json
 *.0x
 packages/testing/playwright/playwright-report
+packages/testing/playwright/eval-report
 packages/testing/playwright/test-results
 packages/testing/playwright/eval-results.json
 packages/@n8n/instance-ai/eval-results.json

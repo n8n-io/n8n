@@ -43,11 +43,6 @@ export class AgentsModule implements ModuleInterface {
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
 
-		// Warm the node catalog so the agent runtime can attach search/execute tools
-		// synchronously on each agent reconstruction. The underlying init is idempotent.
-		const { NodeCatalogService } = await import('@/node-catalog');
-		await Container.get(NodeCatalogService).initialize();
-
 		// Register Chat and Schedule services. Importing the services here also
 		// registers any @OnLeaderTakeover/@OnLeaderStepdown decorators with
 		// MultiMainMetadata before start.ts:295 wires up the listeners.
