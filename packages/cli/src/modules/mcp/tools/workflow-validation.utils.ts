@@ -74,7 +74,7 @@ export async function getMcpWorkflow(
 
 	if (!workflow.settings?.availableInMCP) {
 		throw new WorkflowAccessError(
-			"Workflow is not available in MCP. Enable MCP access from the workflow's card in the workflows list.",
+			'Workflow is not available in MCP. Enable MCP access from the workflow card in the workflows list, or from the workflow settings.',
 			'not_available_in_mcp',
 		);
 	}
