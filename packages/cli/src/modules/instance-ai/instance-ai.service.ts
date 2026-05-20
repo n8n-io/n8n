@@ -380,7 +380,26 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 
 @Service()
 export class InstanceAiService {
-	private readonly mcpClientManager: McpClientManager;
+	// Lazy-initialized. The constructor stashes ssrf deps below so the
+	// `mcpClientManager` getter can construct on first access. Constructing
+	// it eagerly in the constructor would force `new McpClientManager()` ->
+	// require('./mcp/mcp-client-manager') -> require('@n8n/agents') at
+	// service-instance time, which is at boot (controller.registry.ts
+	// instantiates every controller at boot for route registration, and
+	// InstanceAiController has InstanceAiService as a ctor dep). Deferring
+	// to first access keeps @n8n/agents (78 files, ~310 KB on disk) out of
+	// the idle boot graph.
+	private _mcpClientManager?: McpClientManager;
+	private readonly _ssrfProtectionConfig: SsrfProtectionConfig;
+	private readonly _ssrfProtectionService: SsrfProtectionService;
+	private get mcpClientManager(): McpClientManager {
+		if (!this._mcpClientManager) {
+			this._mcpClientManager = new McpClientManager(
+				this._ssrfProtectionConfig.enabled ? this._ssrfProtectionService : undefined,
+			);
+		}
+		return this._mcpClientManager;
+	}
 
 	private readonly instanceAiConfig: InstanceAiConfig;
 
@@ -508,19 +527,21 @@ export class InstanceAiService {
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
 		this.formBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.form}`;
 
-		this.mcpClientManager = new McpClientManager(
-			ssrfProtectionConfig.enabled ? ssrfProtectionService : undefined,
-		);
+		// Stash ssrf deps so the lazy `mcpClientManager` getter can construct on demand.
+		this._ssrfProtectionConfig = ssrfProtectionConfig;
+		this._ssrfProtectionService = ssrfProtectionService;
 
 		// When the admin changes MCP settings, tear down existing clients so the
 		// next agent run rebuilds them against the new config. In-flight tool
 		// calls on disconnected clients will fail — that's accepted: the
 		// alternative is leaking clients keyed by stale config until shutdown.
 		// We only listen for the MCP-changed flag so unrelated settings saves
-		// don't churn live MCP connections.
+		// don't churn live MCP connections. Skip if the client was never
+		// constructed (no MCP-related work has happened on this instance).
 		this.eventService.on('instance-ai-settings-updated', ({ mcpSettingsChanged }) => {
 			if (!mcpSettingsChanged) return;
-			this.mcpClientManager.disconnect().catch((error: unknown) => {
+			if (!this._mcpClientManager) return;
+			this._mcpClientManager.disconnect().catch((error: unknown) => {
 				this.logger.warn('Failed to disconnect MCP clients after settings change', {
 					error: getErrorMessage(error),
 				});
