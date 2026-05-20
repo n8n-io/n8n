@@ -4,6 +4,7 @@ import {
 	collectStrings,
 	extractDirectJsonColumnRefs,
 	extractNamedRefMatches,
+	findAgentSubComponents,
 	nodeHasName,
 	unique,
 } from './column-ref-utils';
@@ -34,4 +35,26 @@ export function analyzeAgentInputColumns(
 		return { agentNodeName, inputColumns: [FALLBACK_COLUMN] };
 	}
 	return { agentNodeName, inputColumns: refs };
+}
+
+export function analyzeAgentEvalInputColumns(
+	workflow: WorkflowJSON,
+	agentNodeName: string,
+): AgentInputColumns {
+	const agentInput = analyzeAgentInputColumns(workflow, agentNodeName);
+	const nodesByName = new Map(
+		(workflow.nodes ?? []).filter(nodeHasName).map((n) => [n.name, n] as const),
+	);
+	const subComponentColumns = findAgentSubComponents(workflow, agentNodeName).flatMap(
+		(nodeName) => {
+			const node = nodesByName.get(nodeName);
+			if (!node) return [];
+			return collectStrings(node.parameters).flatMap((text) => extractDirectJsonColumnRefs(text));
+		},
+	);
+
+	return {
+		agentNodeName,
+		inputColumns: unique([...agentInput.inputColumns, ...subComponentColumns]),
+	};
 }

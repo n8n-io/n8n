@@ -1,6 +1,6 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { analyzeAgentInputColumns } from './analyze-agent-input-columns.service';
+import { analyzeAgentEvalInputColumns } from './analyze-agent-input-columns.service';
 import {
 	extractJsonColumnRefs,
 	extractNamedRefMatches,
@@ -249,7 +249,8 @@ export function analyzeEvalDataRequirements(
 			targetAgentNodeName,
 		);
 		const inputTargetNodeName =
-			resolvedTargetAgentNodeName ?? (targetAgentNodeName === undefined ? targetNodeName : undefined);
+			resolvedTargetAgentNodeName ??
+			(targetAgentNodeName === undefined ? targetNodeName : undefined);
 
 		return [
 			{
@@ -258,7 +259,7 @@ export function analyzeEvalDataRequirements(
 				targetNodeName,
 				targetAgentNodeName: resolvedTargetAgentNodeName,
 				inputColumns: inputTargetNodeName
-					? analyzeAgentInputColumns(workflow, inputTargetNodeName).inputColumns
+					? analyzeAgentEvalInputColumns(workflow, inputTargetNodeName).inputColumns
 					: [],
 				expectedOutputColumns: expectedColumnsFromMetricNodes(reachableNodes),
 				actualOutputColumns: actualColumnsFromSetOutputs(reachableNodes),

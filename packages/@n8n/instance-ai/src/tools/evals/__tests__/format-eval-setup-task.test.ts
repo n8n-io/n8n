@@ -91,7 +91,7 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 		);
 	});
 
-	it("sub-component rewrites use $('<AgentName>').item.json.<col> form, not $json", () => {
+	it('sub-component rewrites use the shared $json.<col> input shape', () => {
 		const task = formatEvalSetupTask({
 			...BASE,
 			detectedAiNodes: ['Chef Agent'],
@@ -106,11 +106,8 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 				},
 			],
 		});
-		expect(task).toContain(
-			`Replace \`$('Sender ID').item.json.id\` with \`{{ ${nodeItemJsonExpression('Chef Agent', 'sender_id')} }}\``,
-		);
-		// Sub-component must not fall back to plain $json.<col>
-		expect(task).not.toMatch(/In `Postgres Memory`:[\s\S]*\{\{ \$json\.sender_id \}\}/);
+		expect(task).toContain("Replace `$('Sender ID').item.json.id` with `{{ $json.sender_id }}`");
+		expect(task).not.toMatch(/In `Postgres Memory`:[\s\S]*\$\('Chef Agent'\)/);
 	});
 
 	it('escapes generated adapter assignments and rewrite expressions', () => {
@@ -145,7 +142,7 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 			`value: ${JSON.stringify(`={{ ${nodeItemJsonExpression(sourceNodeName, sourceField)} }}`)}`,
 		);
 		expect(task).toContain(`with \`{{ ${currentJsonExpression('user_message')} }}\``);
-		expect(task).toContain(`with \`{{ ${nodeItemJsonExpression(agentNodeName, 'sender_id')} }}\``);
+		expect(task).toContain(`with \`{{ ${currentJsonExpression('sender_id')} }}\``);
 	});
 });
 

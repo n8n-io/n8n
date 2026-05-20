@@ -4,22 +4,19 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { analyzeAgentInputColumns } from './analyze-agent-input-columns.service';
-import { applyPinData } from './apply-pin-data.service';
-import { isRecord } from './column-ref-utils';
+import { analyzeAgentEvalInputColumns } from './analyze-agent-input-columns.service';
 import {
 	describeMetricForWorkflow,
 	recommendedMetricId,
 } from './describe-metric-for-workflow.service';
 import { detectAgentNamedRefs, type NamedRef } from './detect-agent-named-refs.service';
 import { detectAiNodes, type DetectAiNodesResult } from './detect-ai-nodes';
-import { detectToolRefs } from './detect-tool-refs.service';
 import {
 	createEmptyEvalDataTable,
 	formatEvalDataTableColumnNameMap,
 } from './ensure-eval-data-table.service';
+import { analyzeEvalDataRequirements } from './eval-data-requirements.service';
 import { formatEvalSetupTask } from './format-eval-setup-task';
-import { generateToolRefPinData } from './generate-tool-ref-pin-data.service';
 import {
 	METRIC_CATALOG,
 	METRIC_IDS,
@@ -88,12 +85,26 @@ const proposeAction = z.object({
 		.describe('Required when the workflow has more than one AI node.'),
 });
 
+const offerDataPopulationAction = z.object({
+	action: z
+		.literal('offer-data-population')
+		.describe(
+			'Ask the user whether to populate the eval DataTable after eval setup is wired. On approval returns `{ approved: true, workflowId, targetAgentNodeName? }` so the orchestrator can call `eval-data`.',
+		),
+	workflowId: z.string(),
+	targetAgentNodeName: z
+		.string()
+		.optional()
+		.describe('Required when the workflow has more than one AI node.'),
+});
+
 const inputSchema = sanitizeInputSchema(
 	z.discriminatedUnion('action', [
 		offerAction,
 		recommendMetricAction,
 		selectMetricsAction,
 		proposeAction,
+		offerDataPopulationAction,
 	]),
 );
 
@@ -160,7 +171,7 @@ type EvalsToolExecutionContext = {
 function composeOfferMessage(aiNodeNames: string[], namedRefs: NamedRef[]): string {
 	const subject =
 		aiNodeNames.length === 1
-			? `This workflow uses AI node \`${aiNodeNames[0]}\`.`
+			? `This workflow uses AI node ${aiNodeNames[0]}.`
 			: `This workflow uses ${aiNodeNames.length} AI nodes.`;
 	const baseMessage =
 		`${subject} AI answers can change unpredictably when you tweak prompts, models, or data — ` +
@@ -171,10 +182,8 @@ function composeOfferMessage(aiNodeNames: string[], namedRefs: NamedRef[]): stri
 	if (namedRefs.length === 0) return baseMessage;
 
 	// Disclosure: cite which named nodes will move and into which dataset columns.
-	const sourceNodes = [...new Set(namedRefs.map((r) => r.nodeName))]
-		.map((n) => `\`${n}\``)
-		.join(', ');
-	const targetColumns = namedRefs.map((r) => `\`${r.column}\``).join(', ');
+	const sourceNodes = [...new Set(namedRefs.map((r) => r.nodeName))].map((n) => n).join(', ');
+	const targetColumns = namedRefs.map((r) => r.column).join(', ');
 
 	const sourceLabel = namedRefs.length === 1 ? 'node' : 'nodes';
 
@@ -260,11 +269,11 @@ function composeTargetAgentMessage(
 	aiNodeNames: string[],
 	targetAgentNodeName: string | undefined,
 ): string {
-	const list = aiNodeNames.map((name) => `\`${name}\``).join(', ');
+	const list = aiNodeNames.join(', ');
 	if (targetAgentNodeName) {
-		return `I couldn't find AI node \`${targetAgentNodeName}\`. Pick one of these AI nodes to set up evals for: ${list}.`;
+		return `I couldn't find AI node ${targetAgentNodeName}. Pick one of these AI nodes to set up test cases for: ${list}.`;
 	}
-	return `This workflow has multiple AI nodes: ${list}. Which AI node should I set up evals for?`;
+	return `This workflow has multiple AI nodes: ${list}. Which AI node should I set up test cases for?`;
 }
 
 function resolveTargetAgent(
@@ -305,17 +314,6 @@ function targetAgentSkippedResponse(resolution: Exclude<TargetAgentResolution, {
 	};
 }
 
-function pinDataCoversRef(pinData: WorkflowJSON['pinData'] | undefined, ref: NamedRef): boolean {
-	const items = pinData?.[ref.nodeName];
-	if (!items) return false;
-
-	return items.some((item) => {
-		const json = item.json;
-		if (isRecord(json)) return Object.hasOwn(json, ref.field);
-		return Object.hasOwn(item, ref.field);
-	});
-}
-
 // ── Tool factory ───────────────────────────────────────────────────────────
 
 export function createEvalsTool(context: InstanceAiContext) {
@@ -324,7 +322,8 @@ export function createEvalsTool(context: InstanceAiContext) {
 			"Eval suite orchestration. action='offer' → eligibility precheck after a fresh build; when eligible, returns a chat message you must output verbatim and then end the turn so the user can reply naturally. " +
 				"action='recommend-metric' → opinionated single-metric suggestion; suspends with approve/deny. Call FIRST when choosing metrics. " +
 				"action='select-metrics' → multi-select picker; call ONLY when `recommend-metric` was denied. " +
-				"action='propose' → build the task spec for the eval-setup sub-agent and create or link the DataTable.",
+				"action='propose' → build the task spec for the eval-setup sub-agent and create or link the DataTable. " +
+				"action='offer-data-population' → ask whether to populate the DataTable after setup.",
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)
@@ -339,6 +338,8 @@ export function createEvalsTool(context: InstanceAiContext) {
 					return await executeSelectMetrics(context, input, ctx);
 				case 'propose':
 					return await executePropose(context, input);
+				case 'offer-data-population':
+					return await executeOfferDataPopulation(context, input, ctx);
 			}
 		})
 		.build();
@@ -514,32 +515,9 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 	}
 
 	const agentName = target.agentName;
-	const { inputColumns: directColumns } = analyzeAgentInputColumns(wf, agentName);
+	const { inputColumns: directColumns } = analyzeAgentEvalInputColumns(wf, agentName);
 	const namedRefs = detectAgentNamedRefs(wf, agentName);
-
-	// Resolve sub-component refs (tool/memory/...) via pinData on their source
-	// nodes. The LLM generates one fixture per source node; we write it to the
-	// workflow JSON. This shadows the production-adapter rewrite for those
-	// refs, so they're subtracted from `namedRefs` before formatting the task.
-	const toolRefs = detectToolRefs(wf, agentName);
-	let workflowWithPinData = wf;
-	if (toolRefs.length > 0) {
-		const generated = await generateToolRefPinData({
-			workflow: wf,
-			agentNodeName: agentName,
-			refs: toolRefs,
-		});
-		const patched = applyPinData(wf, generated);
-		if (patched !== wf) {
-			await context.workflowService.updateFromWorkflowJSON(input.workflowId, patched, {
-				...(input.projectId ? { projectId: input.projectId } : {}),
-			});
-			workflowWithPinData = patched;
-		}
-	}
-	const filteredNamedRefs = namedRefs.filter(
-		(r) => !(r.targetNodeName !== agentName && pinDataCoversRef(workflowWithPinData.pinData, r)),
-	);
+	const filteredNamedRefs = namedRefs;
 	const namedRefColumns = filteredNamedRefs.map((r) => r.column);
 
 	// Combined column list: direct $json refs + named-ref-derived columns.
@@ -549,6 +527,8 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 	let resolvedMetrics = getMetricsByIds(input.metrics ?? []);
 	if (resolvedMetrics.length === 0) {
 		resolvedMetrics = getMetricsByIds(['correctness']);
+	} else if (!resolvedMetrics.some((metric) => metric.id === 'correctness')) {
+		resolvedMetrics = [METRIC_CATALOG.correctness, ...resolvedMetrics];
 	}
 	const outputColumns = getMetricDatasetColumns(resolvedMetrics);
 	const dataTableColumns = [...new Set([...inputColumns, ...outputColumns])];
@@ -630,4 +610,52 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 			: {}),
 		datasetChoice,
 	};
+}
+
+// ── action: offer-data-population ──────────────────────────────────────────
+
+function composeDataPopulationOfferMessage(): string {
+	return (
+		'I can add sample test cases to the table now, using recent successful runs when available ' +
+		'or generated input examples when there is not enough history. Want me to populate it?'
+	);
+}
+
+async function executeOfferDataPopulation(
+	context: InstanceAiContext,
+	input: z.infer<typeof offerDataPopulationAction>,
+	ctx: EvalsToolExecutionContext,
+) {
+	const workflow = await context.workflowService.getAsWorkflowJSON(input.workflowId);
+	const requirements = analyzeEvalDataRequirements(workflow, input.targetAgentNodeName);
+	const target = requirements.targets[0];
+
+	if (!target) {
+		return {
+			approved: false as const,
+			skipped: true as const,
+			reason: requirements.reason ?? 'No test-case table is wired for this workflow.',
+		};
+	}
+
+	if (hasResumeData(ctx)) {
+		const resumeData = getConfirmResume(ctx);
+		if (!resumeData?.approved) return { approved: false as const };
+		return {
+			approved: true as const,
+			workflowId: input.workflowId,
+			...(target.targetAgentNodeName ? { targetAgentNodeName: target.targetAgentNodeName } : {}),
+		};
+	}
+
+	const suspend = getSuspend(ctx);
+	if (suspend) {
+		return await suspend({
+			requestId: nanoid(),
+			message: composeDataPopulationOfferMessage(),
+			severity: 'info' as const,
+		});
+	}
+
+	return { approved: false as const };
 }

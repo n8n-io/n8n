@@ -41,7 +41,9 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 vi.mock('../toolLabels', () => ({
-	useToolLabel: () => ({ getToolLabel: (name: string) => name }),
+	useToolLabel: () => ({
+		getToolLabel: (name: string) => (name === 'evals' ? 'Propose evaluations' : name),
+	}),
 }));
 
 // Stub heavy child components
@@ -87,6 +89,13 @@ vi.mock('../components/InstanceAiWorkflowSetup.vue', () => ({
 }));
 vi.mock('../components/PlanReviewPanel.vue', () => ({
 	default: { template: '<div />', props: ['plannedTasks', 'message', 'readOnly'] },
+}));
+
+vi.mock('../components/InstanceAiMarkdown.vue', () => ({
+	default: {
+		props: ['content'],
+		template: '<span data-test-id="mock-instance-ai-markdown">{{ content }}</span>',
+	},
 }));
 
 const renderComponent = createThreadComponentRenderer(InstanceAiConfirmationPanel);
@@ -230,6 +239,30 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					],
 				}),
 			);
+		});
+
+		it('renders eval metric confirmation as speech text, not preview/code', () => {
+			injectPendingConfirmation(
+				thread,
+				{
+					requestId: 'req-evals',
+					severity: 'info',
+					message: "Based on this workflow, I'd measure **Correctness**. Sound good?",
+				},
+				{ action: 'recommend-metric' },
+			);
+			thread.messages[0].agentTree!.toolCalls[0].toolName = 'evals';
+
+			const { container, getByTestId, getByText } = renderComponent();
+
+			expect(getByText('Propose evaluations')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-panel-confirm-speech')).toBeInTheDocument();
+			expect(getByTestId('mock-instance-ai-markdown')).toHaveTextContent(
+				"Based on this workflow, I'd measure **Correctness**. Sound good?",
+			);
+			expect(container).not.toHaveTextContent(/\bevals\b/);
+			expect(container.querySelector('[class*="preview"]')).toBeNull();
+			expect(container.querySelector('pre, code')).toBeNull();
 		});
 	});
 

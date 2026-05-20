@@ -177,6 +177,44 @@ describe('analyzeEvalDataRequirements', () => {
 		expect(result.targets[0].targetNodeName).toBe('Agent');
 	});
 
+	it('includes input columns read by connected memory nodes', () => {
+		const workflow = wf(
+			[
+				{
+					name: 'EvalTrig',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					typeVersion: 1,
+					parameters: { dataTableId: { value: 'dt-1' } },
+					position: [0, 0],
+					id: 't',
+				},
+				{
+					name: 'Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					parameters: { text: '={{ $json.user_query }}' },
+					position: [200, 0],
+					id: 'a',
+				},
+				{
+					name: 'Memory',
+					type: '@n8n/n8n-nodes-langchain.memoryPostgres',
+					typeVersion: 1,
+					parameters: { sessionIdExpression: '={{ $json.chat_id }}' },
+					position: [200, 100],
+					id: 'm',
+				},
+			],
+			{
+				EvalTrig: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+				Memory: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
+			},
+		);
+
+		const result = analyzeEvalDataRequirements(workflow);
+		expect(result.targets[0].inputColumns.sort()).toEqual(['chat_id', 'user_query']);
+	});
+
 	it('uses reachable root AI nodes as targets even when they are not agents', () => {
 		const workflow = wf(
 			[

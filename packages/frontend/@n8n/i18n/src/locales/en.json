@@ -5751,6 +5751,7 @@
 	"instanceAi.tools.executions.debug": "Debugging execution",
 	"instanceAi.tools.executions.get-node-output": "Reading node output",
 	"instanceAi.tools.executions.stop": "Stopping execution",
+	"instanceAi.tools.evals": "Propose evaluations",
 	"instanceAi.tools.credentials": "Credentials",
 	"instanceAi.tools.credentials.list": "Checking credentials",
 	"instanceAi.tools.credentials.get": "Reading credential",

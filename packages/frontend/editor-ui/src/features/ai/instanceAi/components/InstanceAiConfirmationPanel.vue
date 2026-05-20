@@ -16,6 +16,7 @@ import InstanceAiQuestions from './InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
 import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
+import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
 const thread = useThread();
 const i18n = useI18n();
@@ -283,6 +284,10 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 		(item) => !item.toolCall.confirmation.domainAccess && !item.toolCall.confirmation.webSearch,
 	);
 }
+
+function shouldRenderApprovalAsSpeech(item: PendingConfirmationItem): boolean {
+	return item.toolCall.toolName === 'evals';
+}
 </script>
 
 <template>
@@ -493,7 +498,15 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 									<N8nText size="medium" bold>
 										{{ getToolLabel(item.toolCall.toolName, item.toolCall.args) }}
 									</N8nText>
-									<ConfirmationPreview>{{
+									<N8nText
+										v-if="shouldRenderApprovalAsSpeech(item)"
+										tag="div"
+										size="large"
+										data-test-id="instance-ai-panel-confirm-speech"
+									>
+										<InstanceAiMarkdown :content="item.toolCall.confirmation!.message" />
+									</N8nText>
+									<ConfirmationPreview v-else>{{
 										item.toolCall.confirmation!.message
 									}}</ConfirmationPreview>
 								</div>

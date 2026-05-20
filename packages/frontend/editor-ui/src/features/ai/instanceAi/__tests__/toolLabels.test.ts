@@ -8,6 +8,7 @@ vi.mock('@n8n/i18n', () => ({
 			const translations: Record<string, string> = {
 				'instanceAi.tools.nodes': 'Search nodes',
 				'instanceAi.tools.executions': 'Run workflow',
+				'instanceAi.tools.evals': 'Propose evaluations',
 				'instanceAi.tools.workspace_execute_command': 'Running command',
 				'instanceAi.stepTimeline.showData': 'Show data',
 				'instanceAi.stepTimeline.hideData': 'Hide data',
@@ -89,6 +90,7 @@ describe('useToolLabel', () => {
 	test('getToolLabel returns translated label when found', () => {
 		const { getToolLabel } = useToolLabel();
 		expect(getToolLabel('nodes')).toBe('Search nodes');
+		expect(getToolLabel('evals')).toBe('Propose evaluations');
 		expect(getToolLabel('workspace_execute_command')).toBe('Running command');
 	});
 

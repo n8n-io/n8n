@@ -1,6 +1,9 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { analyzeAgentInputColumns } from '../analyze-agent-input-columns.service';
+import {
+	analyzeAgentEvalInputColumns,
+	analyzeAgentInputColumns,
+} from '../analyze-agent-input-columns.service';
 
 type TestNode = Partial<WorkflowJSON['nodes'][number]>;
 
@@ -116,5 +119,39 @@ describe('analyzeAgentInputColumns', () => {
 		]);
 		const result = analyzeAgentInputColumns(workflow, 'Agent');
 		expect(result.inputColumns).toEqual([]);
+	});
+});
+
+describe('analyzeAgentEvalInputColumns', () => {
+	it('includes direct $json refs from connected memory sub-components', () => {
+		const workflow = {
+			name: 't',
+			nodes: [
+				{
+					name: 'Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					parameters: { text: '={{ $json.user_query }}' },
+					position: [0, 0],
+					id: 'a',
+				},
+				{
+					name: 'Memory',
+					type: '@n8n/n8n-nodes-langchain.memoryPostgres',
+					typeVersion: 1,
+					parameters: { sessionIdExpression: '={{ $json.chat_id }}' },
+					position: [0, 100],
+					id: 'm',
+				},
+			],
+			connections: {
+				Memory: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
+			},
+			pinData: {},
+			settings: {},
+		} as unknown as WorkflowJSON;
+
+		const result = analyzeAgentEvalInputColumns(workflow, 'Agent');
+		expect(result.inputColumns.sort()).toEqual(['chat_id', 'user_query']);
 	});
 });
