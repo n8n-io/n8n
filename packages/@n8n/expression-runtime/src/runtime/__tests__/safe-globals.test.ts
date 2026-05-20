@@ -2,22 +2,21 @@ import { describe, it, expect } from 'vitest';
 import { __sanitize, ExpressionError } from '../safe-globals';
 
 describe('__sanitize', () => {
-	it('throws for string keys in the unsafe-property set', () => {
+	it('throws an ExpressionError for denied property names', () => {
 		expect(() => __sanitize('constructor')).toThrow(ExpressionError);
 		expect(() => __sanitize('__proto__')).toThrow(ExpressionError);
 		expect(() => __sanitize('prototype')).toThrow(ExpressionError);
 	});
 
-	it('returns string keys unchanged when they are not in the unsafe-property set', () => {
+	it('returns allowed string keys unchanged', () => {
 		expect(__sanitize('foo')).toBe('foo');
 		expect(__sanitize('')).toBe('');
 		expect(__sanitize('0')).toBe('0');
 	});
 
-	it('coerces non-string values to a string before checking the unsafe-property set', () => {
-		// An object whose `toString` returns a denied name must be rejected:
-		// JavaScript invokes `toString` when the value is used as a property
-		// key (`obj[value]`), so a check that only handles strings is incomplete.
+	it('coerces object values via toString before the denylist check', () => {
+		// JavaScript invokes `toString` when an object is used as a property key,
+		// so the denylist check must operate on the coerced string, not the raw value.
 		const coercingToConstructor = { toString: () => 'constructor' };
 		expect(() => __sanitize(coercingToConstructor)).toThrow(ExpressionError);
 
@@ -32,11 +31,9 @@ describe('__sanitize', () => {
 		expect(() => __sanitize(coercingViaSymbolToPrimitive)).toThrow(ExpressionError);
 	});
 
-	it('returns the coerced key string so the caller cannot re-trigger toString', () => {
-		// If the function returned the original object, the property access
-		// `obj[__sanitize(x)]` would call `x.toString()` a second time and
-		// could resolve to a different string than the one we just checked.
-		// Returning the already-coerced string locks the result.
+	it('returns the coerced string so subsequent property access uses the validated value', () => {
+		// Returning the already-coerced string ensures that `obj[__sanitize(x)]`
+		// uses exactly the string that was checked, not a second toString() call.
 		let calls = 0;
 		const k = {
 			toString: () => {
@@ -54,9 +51,8 @@ describe('__sanitize', () => {
 	});
 
 	it('passes symbols through unchanged', () => {
-		// `String(symbol)` throws, and symbol-keyed property access cannot
-		// reach the string-valued unsafe-property set, so symbols are passed
-		// through as-is.
+		// `String(symbol)` throws, and symbol keys are outside the string denylist,
+		// so symbols are returned as-is.
 		const s = Symbol('arbitrary');
 		expect(__sanitize(s)).toBe(s);
 	});
