@@ -38,6 +38,15 @@ const lazyClass = <TConstructor extends LazyConstructor>(load: () => TConstructo
 			) => LazyClass;
 			return new Real(...args);
 		}
+
+		static [Symbol.hasInstance](instance: unknown): boolean {
+			if (instance === null || (typeof instance !== 'object' && typeof instance !== 'function')) {
+				return false;
+			}
+
+			const Real = load() as unknown as { prototype: object };
+			return Object.prototype.isPrototypeOf.call(Real.prototype, instance);
+		}
 	} as unknown as TConstructor;
 
 const defineLazyExport = <TValue>(name: string, load: () => TValue): void => {
