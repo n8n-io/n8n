@@ -127,6 +127,12 @@ export function resolveMemoryConfigDefaults(
 }
 
 export function normalizeMemoryConfig(config: MemoryConfig): MemoryConfig {
+	if (isEpisodicMemoryEnabled(config.episodicMemory) && !hasEpisodicMemoryStore(config.memory)) {
+		throw new Error(
+			'Episodic memory requires a storage backend that implements BuiltEpisodicMemoryStore.',
+		);
+	}
+
 	if (!config.observationalMemory) {
 		return config;
 	}

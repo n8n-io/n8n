@@ -1562,7 +1562,6 @@ export class AgentRuntime {
 					scope,
 					observationScope,
 					threadId: persistence.threadId,
-					eventBus: this.eventBus,
 				}),
 		);
 	}

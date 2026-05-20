@@ -7,7 +7,6 @@ import {
 	DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
 } from './episodic-memory-defaults';
-import type { AgentEventBus } from './event-bus';
 import { normalizeFlatReflectionActions } from './memory-lifecycle';
 import { renderObservationLog } from './observation-log-renderer';
 import { Tool } from '../sdk/tool';
@@ -23,7 +22,6 @@ import type {
 	EpisodicMemorySearchOptions,
 	RetrievedEpisodicMemoryEntry,
 } from '../types';
-import { AgentEvent } from '../types/runtime/event';
 import type { AgentPersistenceOptions } from '../types/sdk/agent';
 import type { ObservationLogEntry, ObservationLogScope } from '../types/sdk/observation-log';
 
@@ -70,7 +68,6 @@ export interface RunEpisodicMemoryIndexerOpts {
 	observationScope: ObservationLogScope;
 	threadId: string;
 	now?: Date;
-	eventBus: AgentEventBus;
 }
 
 export type RunEpisodicMemoryIndexerResult =
@@ -122,64 +119,54 @@ export async function runEpisodicMemoryIndexer(
 ): Promise<RunEpisodicMemoryIndexerResult> {
 	if (!isEpisodicMemoryEnabled(opts.config)) return { status: 'skipped', reason: 'disabled' };
 
-	try {
-		const normalized = withEpisodicMemoryDefaults(opts.config);
-		if (!normalized.extract) return { status: 'skipped', reason: 'no-extract' };
+	const normalized = withEpisodicMemoryDefaults(opts.config);
+	if (!normalized.extract) return { status: 'skipped', reason: 'no-extract' };
 
-		const observations = await getNewActiveObservations(opts.memory, opts.observationScope);
-		if (observations.length === 0) return { status: 'skipped', reason: 'no-observations' };
+	const observations = await getNewActiveObservations(opts.memory, opts.observationScope);
+	if (observations.length === 0) return { status: 'skipped', reason: 'no-observations' };
 
-		const renderedObservations = renderObservationLog(observations) ?? '';
-		const existingEntries = await opts.memory.episodic.searchEntries(
-			opts.scope,
-			observations.map((entry) => entry.text).join('\n'),
-			{ topK: Math.max(normalized.topK, 20) },
-		);
+	const renderedObservations = renderObservationLog(observations) ?? '';
+	const existingEntries = await opts.memory.episodic.searchEntries(
+		opts.scope,
+		observations.map((entry) => entry.text).join('\n'),
+		{ topK: Math.max(normalized.topK, 20) },
+	);
 
-		const extraction = await normalized.extract({
-			scope: opts.scope,
-			observationScope: opts.observationScope,
-			now: opts.now ?? new Date(),
-			observations,
-			renderedObservations,
-			existingEntries,
+	const extraction = await normalized.extract({
+		scope: opts.scope,
+		observationScope: opts.observationScope,
+		now: opts.now ?? new Date(),
+		observations,
+		renderedObservations,
+		existingEntries,
+	});
+
+	const candidates = validateCandidates(extraction.entries, observations).slice(
+		0,
+		normalized.maxEntriesPerRun,
+	);
+
+	const savedEntries: EpisodicMemoryEntry[] = [];
+	if (candidates.length > 0) {
+		const { embeddings } = await embedMany({
+			model: normalized.embedder,
+			values: candidates.map((entry) => entry.content),
 		});
-
-		const candidates = validateCandidates(extraction.entries, observations).slice(
-			0,
-			normalized.maxEntriesPerRun,
-		);
-
-		const savedEntries: EpisodicMemoryEntry[] = [];
-		if (candidates.length > 0) {
-			const { embeddings } = await embedMany({
-				model: normalized.embedder,
-				values: candidates.map((entry) => entry.content),
-			});
-			for (const [index, candidate] of candidates.entries()) {
-				const saved = await saveCandidate(opts, normalized, candidate, embeddings[index]);
-				if (saved) savedEntries.push(saved);
-			}
+		for (const [index, candidate] of candidates.entries()) {
+			const saved = await saveCandidate(opts, normalized, candidate, embeddings[index]);
+			if (saved) savedEntries.push(saved);
 		}
-
-		await advanceEpisodicCursor(opts.memory, opts.observationScope, observations);
-		if (savedEntries.length > 0 && normalized.reflect) {
-			await runEpisodicMemoryReflection(opts, normalized, savedEntries, observations);
-		}
-		return {
-			status: 'ran',
-			entriesWritten: savedEntries.length,
-			observationsIndexed: observations.length,
-		};
-	} catch (error) {
-		opts.eventBus.emit({
-			type: AgentEvent.Error,
-			message: 'Episodic memory indexing failed',
-			error,
-			source: 'episodic-memory',
-		});
-		throw error;
 	}
+
+	if (savedEntries.length > 0 && normalized.reflect) {
+		await runEpisodicMemoryReflection(opts, normalized, savedEntries, observations);
+	}
+	await advanceEpisodicCursor(opts.memory, opts.observationScope, observations);
+	return {
+		status: 'ran',
+		entriesWritten: savedEntries.length,
+		observationsIndexed: observations.length,
+	};
 }
 
 export function createRecallMemoryTool(opts: {

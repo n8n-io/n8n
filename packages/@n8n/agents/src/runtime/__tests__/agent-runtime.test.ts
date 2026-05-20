@@ -2881,6 +2881,45 @@ describe('AgentRuntime — observation log jobs', () => {
 			expect.arrayContaining([expect.objectContaining({ error, source: 'reflector' })]),
 		);
 	});
+
+	it('emits one error event when an episodic indexer background task fails', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
+		const memory = new InMemoryMemory();
+		const bus = new AgentEventBus();
+		const error = new Error('episodic extraction failed');
+		const errorEvents: AgentEventData[] = [];
+		bus.on(AgentEvent.Error, (event) => errorEvents.push(event));
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			eventBus: bus,
+			memory,
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				observationLogTailLimit: 20,
+				observe: async () =>
+					await Promise.resolve('* CRITICAL (14:30) User chose Postgres for memory storage.'),
+			},
+			episodicMemory: {
+				embedder: { specificationVersion: 'v2' } as never,
+				extract: async () => await Promise.reject(error),
+			},
+		});
+
+		await runtime.generate('please remember this', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+
+		expect(errorEvents).toEqual([
+			expect.objectContaining({
+				error,
+				source: 'episodic-memory',
+				message: 'Episodic memory indexing task failed',
+			}),
+		]);
+	});
 });
 
 // ---------------------------------------------------------------------------

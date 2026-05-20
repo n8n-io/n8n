@@ -5,9 +5,14 @@ import {
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
 } from '../../runtime/episodic-memory-defaults';
 import { InMemoryMemory } from '../../runtime/memory-store';
-import type { EpisodicMemoryConfig } from '../../types';
+import type { BuiltMemory, EpisodicMemoryConfig } from '../../types';
 import { Agent } from '../agent';
-import { Memory, resolveEpisodicMemoryConfig } from '../memory';
+import {
+	Memory,
+	normalizeMemoryConfig,
+	resolveEpisodicMemoryConfig,
+	resolveMemoryConfigDefaults,
+} from '../memory';
 
 type EmbeddingProviderOpts = {
 	apiKey?: string;
@@ -37,6 +42,20 @@ jest.mock('@ai-sdk/openai', () => ({
 }));
 
 describe('Memory builder — episodic memory', () => {
+	const minimalBackend = {
+		getThread: jest.fn().mockResolvedValue(null),
+		saveThread: jest.fn().mockResolvedValue({}),
+		deleteThread: jest.fn().mockResolvedValue(undefined),
+		getMessages: jest.fn().mockResolvedValue([]),
+		saveMessages: jest.fn().mockResolvedValue(undefined),
+		deleteMessages: jest.fn().mockResolvedValue(undefined),
+		describe: () => ({
+			name: 'minimal',
+			constructorName: 'MinimalMemory',
+			connectionParams: null,
+		}),
+	} as unknown as BuiltMemory;
+
 	it('resolves episodic memory defaults from the agent model', async () => {
 		const memory = new Memory().storage(new InMemoryMemory()).episodicMemory({
 			embeddingProviderOptions: {
@@ -129,5 +148,31 @@ describe('Memory builder — episodic memory', () => {
 		expect(embedder.modelId).toBe('text-embedding-3-small');
 		expect(embedder.apiKey).toBeUndefined();
 		expect(embedder.baseURL).toBeUndefined();
+	});
+
+	it('rejects direct configs with episodic memory on unsupported backends', () => {
+		expect(() =>
+			normalizeMemoryConfig({
+				memory: minimalBackend,
+				lastMessages: 10,
+				episodicMemory: {
+					embedder: { specificationVersion: 'v2' } as never,
+					extract: async () => await Promise.resolve({ entries: [] }),
+				},
+			}),
+		).toThrow(/BuiltEpisodicMemoryStore/);
+	});
+
+	it('rejects default resolution with episodic memory on unsupported backends', () => {
+		expect(() =>
+			resolveMemoryConfigDefaults(
+				{
+					memory: minimalBackend,
+					lastMessages: 10,
+					episodicMemory: {},
+				},
+				{ defaultModel: 'openai/gpt-4o-mini' },
+			),
+		).toThrow(/BuiltEpisodicMemoryStore/);
 	});
 });

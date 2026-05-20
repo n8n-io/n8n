@@ -13,7 +13,6 @@ import {
 	rankEpisodicMemoryEntries,
 	runEpisodicMemoryIndexer,
 } from '../episodic-memory';
-import { AgentEventBus } from '../event-bus';
 import { InMemoryMemory } from '../memory-store';
 
 jest.mock('ai', () => ({
@@ -313,7 +312,6 @@ describe('runEpisodicMemoryIndexer', () => {
 			scope: { namespace: 'agent-1', resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
-			eventBus: new AgentEventBus(),
 			now: new Date('2026-05-12T10:01:00.000Z'),
 		});
 
@@ -332,7 +330,6 @@ describe('runEpisodicMemoryIndexer', () => {
 				scope: { namespace: 'agent-1', resourceId: 'user-1' },
 				observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 				threadId: 'thread-1',
-				eventBus: new AgentEventBus(),
 			}),
 		).resolves.toEqual({ status: 'skipped', reason: 'no-observations' });
 	});
@@ -367,7 +364,6 @@ describe('runEpisodicMemoryIndexer', () => {
 				scope: { namespace: 'agent-1', resourceId: 'user-1' },
 				observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 				threadId: 'thread-1',
-				eventBus: new AgentEventBus(),
 				now: new Date('2026-05-12T10:01:00.000Z'),
 			}),
 		).rejects.toThrow(sourceError);
@@ -428,7 +424,6 @@ describe('runEpisodicMemoryIndexer', () => {
 			scope: { namespace: 'agent-1', resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
-			eventBus: new AgentEventBus(),
 		});
 
 		const sources = Reflect.get(memory, 'episodicMemorySources') as Array<{
@@ -481,7 +476,6 @@ describe('runEpisodicMemoryIndexer', () => {
 			scope: { namespace: 'agent-1', resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
-			eventBus: new AgentEventBus(),
 		});
 
 		const [stored] = await memory.episodic.searchEntries(
@@ -519,7 +513,6 @@ describe('runEpisodicMemoryIndexer', () => {
 			scope: { namespace: 'agent-1', resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
-			eventBus: new AgentEventBus(),
 		});
 
 		expect(result).toEqual({ status: 'ran', entriesWritten: 0, observationsIndexed: 1 });
@@ -580,7 +573,6 @@ describe('runEpisodicMemoryIndexer', () => {
 			scope: { namespace: 'agent-1', resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
-			eventBus: new AgentEventBus(),
 		});
 
 		expect(result).toEqual({ status: 'ran', entriesWritten: 0, observationsIndexed: 3 });
@@ -630,7 +622,6 @@ describe('runEpisodicMemoryIndexer', () => {
 			scope: { namespace: 'agent-1', resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
-			eventBus: new AgentEventBus(),
 		});
 
 		const entries = await memory.episodic.searchEntries(
@@ -702,7 +693,6 @@ describe('runEpisodicMemoryIndexer', () => {
 			scope: { namespace: 'agent-1', resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
-			eventBus: new AgentEventBus(),
 		});
 
 		const active = await memory.episodic.searchEntries(
@@ -800,7 +790,6 @@ describe('runEpisodicMemoryIndexer', () => {
 			scope: { namespace: 'agent-1', resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
-			eventBus: new AgentEventBus(),
 		});
 
 		const [stored] = await memory.episodic.searchEntries(
@@ -851,7 +840,6 @@ describe('runEpisodicMemoryIndexer', () => {
 			scope: { namespace: 'agent-1', resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
-			eventBus: new AgentEventBus(),
 		});
 
 		const active = await memory.episodic.searchEntries(
@@ -913,7 +901,6 @@ describe('runEpisodicMemoryIndexer', () => {
 			scope: { namespace: 'agent-1', resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
-			eventBus: new AgentEventBus(),
 		});
 
 		const active = await memory.episodic.searchEntries(
@@ -927,9 +914,8 @@ describe('runEpisodicMemoryIndexer', () => {
 		);
 	});
 
-	it('keeps saved entries and advances the cursor when reflection fails', async () => {
+	it('keeps saved entries but does not advance the cursor when reflection fails', async () => {
 		const memory = new InMemoryMemory();
-		const eventBus = new AgentEventBus();
 		const [observation] = await memory.appendObservationLogEntries([
 			{
 				scopeKind: 'thread',
@@ -952,8 +938,11 @@ describe('runEpisodicMemoryIndexer', () => {
 					},
 				],
 			});
-		const reflect: EpisodicMemoryReflectFn = () => {
-			throw new Error('reflect failed');
+		let reflectAttempts = 0;
+		const reflect: EpisodicMemoryReflectFn = async () => {
+			reflectAttempts += 1;
+			if (reflectAttempts === 1) throw new Error('reflect failed');
+			return await Promise.resolve({ drop: [], merge: [] });
 		};
 
 		await expect(
@@ -963,7 +952,6 @@ describe('runEpisodicMemoryIndexer', () => {
 				scope: { namespace: 'agent-1', resourceId: 'user-1' },
 				observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 				threadId: 'thread-1',
-				eventBus,
 			}),
 		).rejects.toThrow('reflect failed');
 
@@ -974,6 +962,23 @@ describe('runEpisodicMemoryIndexer', () => {
 				{ queryEmbedding: [1, 0] },
 			),
 		).resolves.toHaveLength(1);
+		await expect(
+			memory.episodic.getCursor({
+				scopeKind: 'thread',
+				scopeId: 'thread:thread-1:resource:user-1',
+			}),
+		).resolves.toBeNull();
+
+		await expect(
+			runEpisodicMemoryIndexer({
+				memory,
+				config: { embedder: fakeEmbedder, extract, reflect },
+				scope: { namespace: 'agent-1', resourceId: 'user-1' },
+				observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
+				threadId: 'thread-1',
+			}),
+		).resolves.toMatchObject({ status: 'ran' });
+
 		await expect(
 			memory.episodic.getCursor({
 				scopeKind: 'thread',
