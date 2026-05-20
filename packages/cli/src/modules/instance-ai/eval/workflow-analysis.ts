@@ -125,6 +125,28 @@ function isVendorLlmSubNode(nodeType: string): boolean {
 }
 
 /**
+ * Detects parameter overrides on supported vendor LLM sub-nodes that bypass
+ * the credential-URL rewrite. The LangChain OpenAI node, for example, prefers
+ * `options.baseURL` over `credentials.url` when building the SDK client
+ * (`LmChatOpenAi.node.ts:761-765`):
+ *
+ *     if (options.baseURL) { configuration.baseURL = options.baseURL; }
+ *     else if (credentials.url) { configuration.baseURL = credentials.url; }
+ *
+ * So a sub-node configured with a non-empty `options.baseURL` would talk to
+ * the operator's override URL even after we rewrite the credential. Refuse
+ * the unpin until parameter-level rewriting exists.
+ */
+function hasUnsafeBaseUrlOverride(node: INode): boolean {
+	if (node.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi') {
+		const options = (node.parameters?.options ?? {}) as Record<string, unknown>;
+		const baseURL = options.baseURL;
+		return typeof baseURL === 'string' && baseURL.trim().length > 0;
+	}
+	return false;
+}
+
+/**
  * AI sub-node types that use a protocol-binary client (TCP, native driver, etc.).
  * These cannot be intercepted via the HTTP wire server, so the root they hang off
  * cannot be unpinned safely. `assertUnpinCompatibility` refuses unpin requests
@@ -170,12 +192,12 @@ type UnpinRefusal = {
 	root: string;
 	subNode: string;
 	subNodeType: string;
-	reason: 'protocol_binary' | 'unsupported_vendor_llm';
+	reason: 'protocol_binary' | 'unsupported_vendor_llm' | 'unsafe_baseurl_override';
 };
 
 /**
  * Refuse unpinning AI roots whose inbound `ai_*` sub-nodes can't be intercepted
- * over HTTP. Two categories are refused:
+ * over HTTP. Three categories are refused:
  *   - **Protocol-binary** sub-nodes (Postgres memory, Redis memory, native
  *     vector stores) — they don't speak HTTP at all.
  *   - **Unsupported vendor LLM** sub-nodes (anything matching
@@ -184,6 +206,10 @@ type UnpinRefusal = {
  *     URL into the SDK and would call the real provider with real
  *     credentials, because `EVAL_PROVIDER_URL_FIELD` has no rewrite mapping
  *     for them yet.
+ *   - **Unsafe baseURL override** on a supported vendor LLM — the SDK
+ *     prefers a configured `options.baseURL` over `credentials.url`, so
+ *     rewriting the credential isn't enough. Refused until parameter-level
+ *     rewriting exists.
  *
  * Walks destination-indexed connections once per call and throws a `UserError`
  * listing every offending root → sub-node pair grouped by reason. Refusing up
@@ -219,10 +245,16 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 							subNodeType: sourceNode.type,
 							reason: 'protocol_binary',
 						});
-					} else if (
-						isVendorLlmSubNode(sourceNode.type) &&
-						!SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)
-					) {
+					} else if (SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)) {
+						if (hasUnsafeBaseUrlOverride(sourceNode)) {
+							refusals.push({
+								root: rootName,
+								subNode: sourceNode.name,
+								subNodeType: sourceNode.type,
+								reason: 'unsafe_baseurl_override',
+							});
+						}
+					} else if (isVendorLlmSubNode(sourceNode.type)) {
 						refusals.push({
 							root: rootName,
 							subNode: sourceNode.name,
@@ -242,6 +274,7 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 
 	const protocolBinary = refusals.filter((r) => r.reason === 'protocol_binary');
 	const unsupportedVendor = refusals.filter((r) => r.reason === 'unsupported_vendor_llm');
+	const baseUrlOverride = refusals.filter((r) => r.reason === 'unsafe_baseurl_override');
 
 	const segments: string[] = [];
 	if (protocolBinary.length > 0) {
@@ -254,10 +287,15 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 			`unsupported vendor LLM sub-nodes (no eval URL-rewrite mapping yet): ${formatPairs(unsupportedVendor)}`,
 		);
 	}
+	if (baseUrlOverride.length > 0) {
+		segments.push(
+			`vendor LLM sub-nodes with a configured options.baseURL that bypasses the credential rewrite: ${formatPairs(baseUrlOverride)}`,
+		);
+	}
 
 	throw new UserError(
 		`Cannot unpin AI root nodes — ${segments.join('; ')}. ` +
-			'Leave these roots pinned, or replace the sub-node with one that has interception support.',
+			'Leave these roots pinned, remove the parameter override, or replace the sub-node with one that has interception support.',
 	);
 }
 

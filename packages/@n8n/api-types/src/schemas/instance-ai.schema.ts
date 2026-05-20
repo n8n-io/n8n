@@ -1155,8 +1155,24 @@ export class InstanceAiEvalExecutionRequest extends Z.class({
 	 * AI root node names (Agent, Chain, etc.) whose sub-nodes should run their
 	 * real vendor SDK code instead of being pinned. The eval pipeline rewrites
 	 * matching credentials so vendor traffic lands on the eval wire server.
-	 * Refused if any sub-node uses a protocol-binary client (e.g. Postgres
-	 * memory) — those cannot be intercepted via HTTP.
+	 *
+	 * The compatibility guard refuses the request up front (no execution
+	 * attempted) when any inbound `ai_*` sub-node of a requested root falls
+	 * into one of these categories:
+	 *   - **Protocol-binary client**: Postgres/Redis/MongoDB memory, native
+	 *     vector stores (PGVector / Mongo / Redis / Milvus). These don't
+	 *     speak HTTP and can't be intercepted by the wire server.
+	 *   - **Unsupported vendor LLM**: any `@n8n/n8n-nodes-langchain.lm*` node
+	 *     not yet on the supported list (currently `lmChatOpenAi` only).
+	 *     These would call the real provider with real credentials because
+	 *     there's no eval URL-rewrite mapping for them.
+	 *   - **Unsafe `options.baseURL` override**: a supported vendor LLM
+	 *     configured with a non-empty `options.baseURL` parameter. The SDK
+	 *     prefers that over the rewritten credential URL, so the override
+	 *     would bypass the wire server.
+	 *
+	 * Refused requests come back as an error-shaped `InstanceAiEvalExecutionResult`
+	 * with the offending root → sub-node pairs listed in `errors`.
 	 */
 	unpinNodes: z.array(z.string().min(1)).max(50).optional(),
 }) {}

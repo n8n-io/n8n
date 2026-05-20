@@ -425,6 +425,109 @@ describe('assertUnpinCompatibility', () => {
 				assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']),
 			).not.toThrow();
 		});
+
+		describe('lmChatOpenAi options.baseURL override', () => {
+			function agentWithOpenAi(parameters: Record<string, unknown>) {
+				const nodes = [
+					makeNode({
+						name: 'OpenAI',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						parameters,
+					}),
+					makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+				];
+				const connections: IConnections = {
+					OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+				};
+				return makeWorkflow(nodes, connections);
+			}
+
+			it('allows lmChatOpenAi with no options', () => {
+				const workflow = agentWithOpenAi({});
+				expect(() => assertUnpinCompatibility(workflow, ['Agent'])).not.toThrow();
+			});
+
+			it('allows lmChatOpenAi with empty options.baseURL', () => {
+				const workflow = agentWithOpenAi({ options: { baseURL: '' } });
+				expect(() => assertUnpinCompatibility(workflow, ['Agent'])).not.toThrow();
+			});
+
+			it('allows lmChatOpenAi when options.baseURL is whitespace-only', () => {
+				const workflow = agentWithOpenAi({ options: { baseURL: '   ' } });
+				expect(() => assertUnpinCompatibility(workflow, ['Agent'])).not.toThrow();
+			});
+
+			it('refuses lmChatOpenAi when options.baseURL is set — credential rewrite would be bypassed', () => {
+				const workflow = agentWithOpenAi({
+					options: { baseURL: 'https://my-proxy.example.com/v1' },
+				});
+
+				let thrown: unknown;
+				try {
+					assertUnpinCompatibility(workflow, ['Agent']);
+				} catch (e) {
+					thrown = e;
+				}
+
+				expect(thrown).toBeInstanceOf(UserError);
+				const message = (thrown as UserError).message;
+				expect(message).toContain('options.baseURL');
+				expect(message).toContain('"OpenAI"');
+				expect(message).not.toContain('unsupported vendor LLM');
+			});
+
+			it('groups baseURL-override refusals alongside protocol-binary refusals', () => {
+				const nodes = [
+					makeNode({
+						name: 'OpenAI',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						parameters: { options: { baseURL: 'https://my-proxy.example.com/v1' } },
+					}),
+					makeNode({
+						name: 'PgMem',
+						type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
+					}),
+					makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+				];
+				const connections: IConnections = {
+					OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+					PgMem: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
+				};
+
+				let thrown: unknown;
+				try {
+					assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']);
+				} catch (e) {
+					thrown = e;
+				}
+
+				expect(thrown).toBeInstanceOf(UserError);
+				const message = (thrown as UserError).message;
+				expect(message).toContain('protocol-binary');
+				expect(message).toContain('PgMem');
+				expect(message).toContain('options.baseURL');
+				expect(message).toContain('OpenAI');
+			});
+
+			it('skips the baseURL check when the OpenAI sub-node is disabled', () => {
+				const nodes = [
+					makeNode({
+						name: 'OpenAI',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						parameters: { options: { baseURL: 'https://my-proxy.example.com/v1' } },
+						disabled: true,
+					}),
+					makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+				];
+				const connections: IConnections = {
+					OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+				};
+
+				expect(() =>
+					assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']),
+				).not.toThrow();
+			});
+		});
 	});
 });
 
