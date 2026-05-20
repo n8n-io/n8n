@@ -1,8 +1,15 @@
 import type { AttributeValue } from '@n8n/agents';
 import { createHash } from 'node:crypto';
 
+import {
+	DOMAIN_TOOL_IDS,
+	ORCHESTRATION_TOOL_IDS,
+	ORCHESTRATION_TOOL_NAMES,
+	WORKSPACE_TOOL_IDS,
+} from '../tools/tool-ids';
 import type { InstanceAiToolRegistry } from '../types';
 import { formatAgentRoleLabel, formatTraceLabel } from './trace-labels';
+import { scrubSecretsInText } from '../utils/scrub-secrets';
 import { isRecord } from '../utils/stream-helpers';
 
 const MAX_TRACE_DEPTH = 4;
@@ -111,9 +118,30 @@ export function toTelemetryMetadata(
 }
 
 function redactSecretString(value: string): string {
-	return value
-		.replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/g, 'Bearer [redacted]')
-		.replace(/(api[_-]?key|authorization|password|secret|token)=([^&\s]+)/gi, '$1=[redacted]');
+	const assignmentReplacements = new Map<string, string>();
+	let assignmentIndex = 0;
+	const withAuthRedacted = value.replace(
+		/\b(Bearer|Basic|Token)\s+[A-Za-z0-9._~+/=-]+/gi,
+		'$1 [redacted]',
+	);
+	const withAssignmentPlaceholders = withAuthRedacted.replace(
+		/\b(api[_-]?key|authorization|password|secret|token)\s*=\s*([^&\s]+)/gi,
+		(_match, key: string) => {
+			const placeholder = `__N8N_TRACE_REDACTED_ASSIGNMENT_${assignmentIndex++}__`;
+			assignmentReplacements.set(placeholder, `${key}=[redacted]`);
+			return placeholder;
+		},
+	);
+
+	let scrubbed = scrubSecretsInText(withAssignmentPlaceholders).replaceAll(
+		'[REDACTED]',
+		'[redacted]',
+	);
+	for (const [placeholder, replacement] of assignmentReplacements) {
+		scrubbed = scrubbed.replaceAll(placeholder, replacement);
+	}
+
+	return scrubbed;
 }
 
 function redactTelemetryJsonValue(
@@ -625,7 +653,7 @@ function buildLangSmithUsageMetadata(
 	};
 }
 
-function normalizeAnthropicUsageForLangSmith(attributes: Record<string, unknown>): void {
+function normalizeUsageForLangSmith(attributes: Record<string, unknown>): void {
 	const usageMetadata = buildLangSmithUsageMetadata(attributes);
 	if (!usageMetadata) {
 		return;
@@ -658,8 +686,13 @@ function normalizeAnthropicUsageForLangSmith(attributes: Record<string, unknown>
 	attributes['ai.usage.inputTokens'] = totalInputTokens;
 	attributes[LANGSMITH_USAGE_METADATA] = JSON.stringify(usageMetadata);
 	if (inputTokens !== undefined) {
+		attributes['langsmith.metadata.original_input_tokens'] = inputTokens;
 		attributes['langsmith.metadata.anthropic_original_input_tokens'] = inputTokens;
 	}
+	attributes['langsmith.metadata.total_input_tokens'] = totalInputTokens;
+	attributes['langsmith.metadata.regular_input_tokens'] = regularInputTokens;
+	attributes['langsmith.metadata.cache_read_input_tokens'] = cacheReadTokens;
+	attributes['langsmith.metadata.cache_creation_input_tokens'] = cacheCreationTokens;
 	attributes['langsmith.metadata.anthropic_total_input_tokens'] = totalInputTokens;
 	attributes['langsmith.metadata.anthropic_regular_input_tokens'] = regularInputTokens;
 	attributes['langsmith.metadata.anthropic_cache_read_input_tokens'] = cacheReadTokens;
@@ -874,7 +907,7 @@ export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 		attributes[key] = redactTelemetryAttribute(key, value);
 	}
 	enrichLangSmithPromptAttribute(attributes);
-	normalizeAnthropicUsageForLangSmith(attributes);
+	normalizeUsageForLangSmith(attributes);
 	renameNativeLlmSpanForLangSmith(span, attributes);
 	renameNativeToolSpanForLangSmith(span, attributes);
 	moveNonLlmUsageAttributes(attributes);
@@ -935,30 +968,14 @@ function classifyToolSource(name: string, toolRecord: Record<string, unknown>): 
 
 	if (
 		name.startsWith('workspace_') ||
-		name === 'write-file' ||
-		name === 'submit-workflow' ||
-		name === 'apply-workflow-credentials'
+		name === WORKSPACE_TOOL_IDS.WRITE_FILE ||
+		name === WORKSPACE_TOOL_IDS.SUBMIT_WORKFLOW ||
+		name === ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS
 	) {
 		return 'workspace';
 	}
 
-	if (
-		[
-			'plan',
-			'submit-plan',
-			'add-plan-item',
-			'remove-plan-item',
-			'create-tasks',
-			'build-workflow-with-agent',
-			'manage-data-tables-with-agent',
-			'research-with-agent',
-			'delegate',
-			'browser-credential-setup',
-			'complete-checkpoint',
-			'verify-built-workflow',
-			'report-verification-verdict',
-		].includes(name)
-	) {
+	if (ORCHESTRATION_TOOL_NAMES.has(name)) {
 		return 'orchestration';
 	}
 
@@ -969,13 +986,23 @@ function classifyToolCategory(name: string): string {
 	if (name.includes('credential')) return 'credential';
 	if (name.includes('browser')) return 'browser';
 	if (name.includes('data-table')) return 'data-table';
-	if (name.includes('workflow') || name === 'build-workflow' || name === 'submit-workflow') {
+	if (
+		name.includes('workflow') ||
+		name === DOMAIN_TOOL_IDS.BUILD_WORKFLOW ||
+		name === WORKSPACE_TOOL_IDS.SUBMIT_WORKFLOW
+	) {
 		return 'workflow';
 	}
-	if (name === 'nodes' || name === 'materialize-node-type') return 'node';
-	if (name === 'executions') return 'execution';
+	if (name === DOMAIN_TOOL_IDS.NODES || name === 'materialize-node-type') return 'node';
+	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execution';
 	if (name.includes('research')) return 'research';
-	if (name === 'plan' || name.includes('plan') || name === 'create-tasks') return 'planning';
+	if (
+		name === ORCHESTRATION_TOOL_IDS.PLAN ||
+		name.includes('plan') ||
+		name === ORCHESTRATION_TOOL_IDS.CREATE_TASKS
+	) {
+		return 'planning';
+	}
 	if (name.startsWith('workspace_')) return 'workspace';
 	if (name.includes('file') || name.includes('filesystem')) return 'filesystem';
 	return 'other';
@@ -984,7 +1011,9 @@ function classifyToolCategory(name: string): string {
 function classifyToolSideEffect(name: string): string {
 	if (name.includes('browser')) return 'browser';
 	if (name.includes('research')) return 'network';
-	if (name === 'executions' || name.includes('execute') || name.includes('run')) return 'execute';
+	if (name === DOMAIN_TOOL_IDS.EXECUTIONS || name.includes('execute') || name.includes('run')) {
+		return 'execute';
+	}
 	if (
 		name.includes('write') ||
 		name.includes('submit') ||
@@ -998,7 +1027,7 @@ function classifyToolSideEffect(name: string): string {
 	) {
 		return 'write';
 	}
-	if (name.includes('ask-user') || name.includes('pause-for-user')) return 'none';
+	if (name.includes(DOMAIN_TOOL_IDS.ASK_USER) || name.includes('pause-for-user')) return 'none';
 	return 'read';
 }
 
@@ -1023,11 +1052,7 @@ function getToolInputSchema(tool: unknown): unknown {
 	}
 
 	if (isRecord(inputSchema) && typeof inputSchema.safeParse === 'function') {
-		const definition = isRecord(inputSchema._def) ? inputSchema._def : undefined;
-		return {
-			type: 'zod',
-			...(typeof definition?.typeName === 'string' ? { typeName: definition.typeName } : {}),
-		};
+		return { type: 'zod' };
 	}
 
 	return inputSchema;
@@ -1040,13 +1065,14 @@ function summarizeToolForManifest(name: string, tool: unknown): Record<string, u
 			? undefined
 			: redactTelemetryJsonValue(schema, undefined, 0, MAX_PROMPT_SCHEMA_TRACE_DEPTH);
 	const toolRecord = isRecord(tool) ? tool : {};
+	const description = summarizeToolDescription(tool);
 	const providerOptions = isRecord(toolRecord.providerOptions)
 		? redactTelemetryJsonValue(toolRecord.providerOptions)
 		: undefined;
 
 	return {
 		name,
-		...(summarizeToolDescription(tool) ? { description: summarizeToolDescription(tool) } : {}),
+		...(description ? { description } : {}),
 		kind: toolRecord.mcpTool === true ? 'mcp' : 'local',
 		source: classifyToolSource(name, toolRecord),
 		category: classifyToolCategory(name),
@@ -1072,11 +1098,10 @@ function summarizeToolSet(
 		return {};
 	}
 
-	const summaries = Array.from(tools, ([name, tool]) => summarizeToolForManifest(name, tool));
+	const toolEntries = Array.from(tools);
+	const summaries = toolEntries.map(([name, tool]) => summarizeToolForManifest(name, tool));
 	const manifestHash = stableHash(summaries);
-	const toolNames = summaries
-		.map((tool) => (typeof tool.name === 'string' ? tool.name : undefined))
-		.filter((name): name is string => name !== undefined);
+	const toolNames = toolEntries.map(([name]) => name);
 	if (fieldPrefix === 'loaded') {
 		return {
 			assigned_tool_count: summaries.length,

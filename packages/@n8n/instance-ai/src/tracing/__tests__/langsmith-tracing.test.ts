@@ -310,6 +310,7 @@ const {
 	continueInstanceAiTraceContext,
 	mergeTraceRunInputs,
 	redactLangSmithTelemetrySpan,
+	releaseTraceClient,
 	submitLangsmithUserFeedback,
 	withCurrentTraceSpan,
 } =
@@ -349,6 +350,8 @@ describe('createInstanceAiTraceContext', () => {
 	const originalLangSmithTracing = process.env.LANGSMITH_TRACING;
 	const originalLangChainTracingV2 = process.env.LANGCHAIN_TRACING_V2;
 	const originalTraceInternal = process.env.N8N_INSTANCE_AI_TRACE_INTERNAL;
+	const originalDiagnosticsEnabled = process.env.N8N_DIAGNOSTICS_ENABLED;
+	const originalInstanceTracingEnabled = process.env.N8N_INSTANCE_AI_TRACING_ENABLED;
 
 	beforeEach(() => {
 		langsmithMock.reset();
@@ -357,6 +360,8 @@ describe('createInstanceAiTraceContext', () => {
 		delete process.env.LANGSMITH_TRACING;
 		delete process.env.LANGCHAIN_TRACING_V2;
 		delete process.env.N8N_INSTANCE_AI_TRACE_INTERNAL;
+		delete process.env.N8N_DIAGNOSTICS_ENABLED;
+		delete process.env.N8N_INSTANCE_AI_TRACING_ENABLED;
 	});
 
 	afterAll(() => {
@@ -375,6 +380,16 @@ describe('createInstanceAiTraceContext', () => {
 			delete process.env.N8N_INSTANCE_AI_TRACE_INTERNAL;
 		} else {
 			process.env.N8N_INSTANCE_AI_TRACE_INTERNAL = originalTraceInternal;
+		}
+		if (originalDiagnosticsEnabled === undefined) {
+			delete process.env.N8N_DIAGNOSTICS_ENABLED;
+		} else {
+			process.env.N8N_DIAGNOSTICS_ENABLED = originalDiagnosticsEnabled;
+		}
+		if (originalInstanceTracingEnabled === undefined) {
+			delete process.env.N8N_INSTANCE_AI_TRACING_ENABLED;
+		} else {
+			process.env.N8N_INSTANCE_AI_TRACING_ENABLED = originalInstanceTracingEnabled;
 		}
 	});
 
@@ -453,6 +468,22 @@ describe('createInstanceAiTraceContext', () => {
 		expect(typeof telemetry.metadata?.workflow_sdk_version).toBe('string');
 
 		await telemetry.provider?.shutdown();
+	});
+
+	it('does not mutate LangSmith tracing environment flags while creating a context', async () => {
+		delete process.env.LANGSMITH_TRACING;
+		delete process.env.LANGCHAIN_TRACING_V2;
+
+		await createInstanceAiTraceContext({
+			threadId: 'thread-env',
+			messageId: 'message-env',
+			runId: 'run-env',
+			userId: 'user-env',
+			input: { message: 'hello' },
+		});
+
+		expect(process.env.LANGSMITH_TRACING).toBeUndefined();
+		expect(process.env.LANGCHAIN_TRACING_V2).toBeUndefined();
 	});
 
 	it('uses the current foreground actor run in native telemetry metadata', async () => {
@@ -549,6 +580,11 @@ describe('createInstanceAiTraceContext', () => {
 				'langsmith.span.parent_id': 'parent-run-1',
 				'langsmith.span.kind': 'llm',
 				'langsmith.is_root': true,
+				'langsmith.metadata.original_input_tokens': 123,
+				'langsmith.metadata.total_input_tokens': 123,
+				'langsmith.metadata.regular_input_tokens': 56,
+				'langsmith.metadata.cache_read_input_tokens': 67,
+				'langsmith.metadata.cache_creation_input_tokens': 0,
 				'langsmith.metadata.anthropic_original_input_tokens': 123,
 				'langsmith.metadata.anthropic_total_input_tokens': 123,
 				'langsmith.metadata.anthropic_regular_input_tokens': 56,
@@ -559,6 +595,34 @@ describe('createInstanceAiTraceContext', () => {
 		);
 		expect(redacted.attributes['ai.operationId']).toBeUndefined();
 		expect(redacted.attributes['instance_ai.usage.ai.usage.inputTokens']).toBeUndefined();
+	});
+
+	it('redacts common token formats inside telemetry strings', () => {
+		const span = {
+			attributes: {
+				'ai.operationId': 'ai.streamText.doStream',
+				'ai.response.text':
+					'openai=sk-proj-1234567890abcdefghijklmnopqrst slack=xoxb-1234567890-abcdef github=ghp_1234567890abcdefghijklmnop',
+				'ai.prompt.messages': JSON.stringify([
+					{
+						role: 'user',
+						content: 'use api_key=secret123 and Authorization: Bearer abcdefghijklmnopqrstuvwxyz',
+					},
+				]),
+			},
+		};
+
+		const redacted = redactLangSmithTelemetrySpan(span) as {
+			attributes: Record<string, unknown>;
+		};
+		const serialized = JSON.stringify(redacted.attributes);
+
+		expect(serialized).not.toContain('sk-proj-1234567890abcdefghijklmnopqrst');
+		expect(serialized).not.toContain('xoxb-1234567890-abcdef');
+		expect(serialized).not.toContain('ghp_1234567890abcdefghijklmnop');
+		expect(serialized).not.toContain('secret123');
+		expect(serialized).not.toContain('abcdefghijklmnopqrstuvwxyz');
+		expect(serialized).toContain('[redacted]');
 	});
 
 	it('uses cache-only Anthropic input tokens for LangSmith prompt totals', () => {
@@ -590,6 +654,11 @@ describe('createInstanceAiTraceContext', () => {
 				'langsmith.metadata.anthropic_total_input_tokens': 100,
 				'langsmith.metadata.anthropic_regular_input_tokens': 0,
 				'langsmith.metadata.anthropic_cache_read_input_tokens': 100,
+				'langsmith.metadata.original_input_tokens': 0,
+				'langsmith.metadata.total_input_tokens': 100,
+				'langsmith.metadata.regular_input_tokens': 0,
+				'langsmith.metadata.cache_read_input_tokens': 100,
+				'langsmith.metadata.cache_creation_input_tokens': 0,
 			}),
 		);
 	});
@@ -894,6 +963,42 @@ describe('createInstanceAiTraceContext', () => {
 		expect(orchestratorSpan?.attributes['gen_ai.completion']).toBe(
 			JSON.stringify({ result: 'done' }),
 		);
+	});
+
+	it('shuts down product telemetry once when the root run finishes', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-shutdown',
+			messageId: 'message-shutdown',
+			runId: 'run-shutdown',
+			userId: 'user-shutdown',
+			input: { message: 'hello' },
+		});
+
+		expect(tracing).toBeDefined();
+		const provider = agentsMock.getProvider();
+
+		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
+		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done again' } });
+
+		expect(provider.shutdown).toHaveBeenCalledTimes(1);
+	});
+
+	it('shuts down product telemetry when releasing a trace client', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-release',
+			messageId: 'message-release',
+			runId: 'run-release',
+			userId: 'user-release',
+			input: { message: 'hello' },
+		});
+
+		expect(tracing).toBeDefined();
+		const provider = agentsMock.getProvider();
+
+		releaseTraceClient(tracing!.rootRun.traceId);
+		await Promise.resolve();
+
+		expect(provider.shutdown).toHaveBeenCalledTimes(1);
 	});
 
 	it('creates a new orchestrator resume root when continuing a trace', async () => {
@@ -1746,6 +1851,45 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing?.orchestratorRun).toBeDefined();
 	});
 
+	it('respects diagnostics opt-out before proxy auto-enable', async () => {
+		process.env.N8N_DIAGNOSTICS_ENABLED = 'false';
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-diagnostics-disabled',
+			messageId: 'message-diagnostics-disabled',
+			runId: 'run-diagnostics-disabled',
+			userId: 'user-diagnostics-disabled',
+			input: { message: 'proxy test' },
+			proxyConfig: {
+				apiUrl: 'https://proxy.example.com/langsmith',
+				// eslint-disable-next-line @typescript-eslint/require-await
+				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
+			},
+		});
+
+		expect(tracing).toBeUndefined();
+	});
+
+	it('allows the Instance AI tracing flag to explicitly override diagnostics opt-out', async () => {
+		process.env.N8N_DIAGNOSTICS_ENABLED = 'false';
+		process.env.N8N_INSTANCE_AI_TRACING_ENABLED = 'true';
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-instance-ai-tracing-enabled',
+			messageId: 'message-instance-ai-tracing-enabled',
+			runId: 'run-instance-ai-tracing-enabled',
+			userId: 'user-instance-ai-tracing-enabled',
+			input: { message: 'proxy test' },
+			proxyConfig: {
+				apiUrl: 'https://proxy.example.com/langsmith',
+				// eslint-disable-next-line @typescript-eslint/require-await
+				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
+			},
+		});
+
+		expect(tracing).toBeDefined();
+	});
+
 	it('creates OTel product spans when proxyConfig is provided', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-client',
@@ -1897,6 +2041,8 @@ describe('submitLangsmithUserFeedback', () => {
 	const originalLangSmithApiKey = process.env.LANGSMITH_API_KEY;
 	const originalLangSmithTracing = process.env.LANGSMITH_TRACING;
 	const originalLangChainTracingV2 = process.env.LANGCHAIN_TRACING_V2;
+	const originalDiagnosticsEnabled = process.env.N8N_DIAGNOSTICS_ENABLED;
+	const originalInstanceTracingEnabled = process.env.N8N_INSTANCE_AI_TRACING_ENABLED;
 
 	beforeEach(() => {
 		langsmithMock.reset();
@@ -1904,6 +2050,8 @@ describe('submitLangsmithUserFeedback', () => {
 		process.env.LANGSMITH_API_KEY = 'test-key';
 		delete process.env.LANGSMITH_TRACING;
 		delete process.env.LANGCHAIN_TRACING_V2;
+		delete process.env.N8N_DIAGNOSTICS_ENABLED;
+		delete process.env.N8N_INSTANCE_AI_TRACING_ENABLED;
 	});
 
 	afterAll(() => {
@@ -1917,6 +2065,16 @@ describe('submitLangsmithUserFeedback', () => {
 			delete process.env.LANGCHAIN_TRACING_V2;
 		} else {
 			process.env.LANGCHAIN_TRACING_V2 = originalLangChainTracingV2;
+		}
+		if (originalDiagnosticsEnabled === undefined) {
+			delete process.env.N8N_DIAGNOSTICS_ENABLED;
+		} else {
+			process.env.N8N_DIAGNOSTICS_ENABLED = originalDiagnosticsEnabled;
+		}
+		if (originalInstanceTracingEnabled === undefined) {
+			delete process.env.N8N_INSTANCE_AI_TRACING_ENABLED;
+		} else {
+			process.env.N8N_INSTANCE_AI_TRACING_ENABLED = originalInstanceTracingEnabled;
 		}
 	});
 

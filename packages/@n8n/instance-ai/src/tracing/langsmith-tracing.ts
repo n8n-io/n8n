@@ -106,6 +106,7 @@ interface ProductOtelTraceRuntime {
 	telemetry: BuiltTelemetry;
 	spans: Map<string, OtelApiSpan>;
 	contexts: Map<string, OtelContext>;
+	shutdown: boolean;
 }
 
 interface OTelTracer {
@@ -378,6 +379,24 @@ async function finishProductSpanBestEffort(
 	}
 }
 
+async function shutdownProductOtelRuntime(
+	runtime: ProductOtelTraceRuntime,
+	traceId: string,
+): Promise<void> {
+	if (runtime.shutdown) return;
+
+	runtime.shutdown = true;
+	runtime.spans.clear();
+	runtime.contexts.clear();
+	otelTraceRuntimes.delete(traceId);
+
+	try {
+		await Telemetry.shutdown(runtime.telemetry);
+	} catch {
+		// Product tracing is best-effort and must not fail or mask agent execution.
+	}
+}
+
 async function withProxyHeaders<T>(
 	proxyConfig: ServiceProxyConfig | undefined,
 	fn: () => T | Promise<T>,
@@ -621,13 +640,29 @@ interface CurrentTraceSpanOptions<T = unknown> {
 type NativeToolContext = ToolContext | InterruptibleToolContext;
 type TraceableNativeTool = BuiltTool & { handler: NonNullable<BuiltTool['handler']> };
 
-function isLangSmithTracingEnabled(proxyAvailable?: boolean): boolean {
-	const tracingFlag =
-		process.env.LANGCHAIN_TRACING_V2 ?? process.env.LANGSMITH_TRACING ?? undefined;
-	if (tracingFlag?.toLowerCase() === 'false') {
+function readBooleanEnvFlag(value: string | undefined): boolean | undefined {
+	const normalized = value?.toLowerCase();
+	if (normalized === 'true') return true;
+	if (normalized === 'false') return false;
+	return undefined;
+}
+
+function isLangSmithTracingEnabled(proxyAvailable = false): boolean {
+	const instanceTracingFlag = readBooleanEnvFlag(process.env.N8N_INSTANCE_AI_TRACING_ENABLED);
+	if (instanceTracingFlag !== undefined) {
+		return instanceTracingFlag;
+	}
+
+	if (readBooleanEnvFlag(process.env.N8N_DIAGNOSTICS_ENABLED) === false) {
 		return false;
 	}
 
+	const tracingFlag = readBooleanEnvFlag(
+		process.env.LANGCHAIN_TRACING_V2 ?? process.env.LANGSMITH_TRACING,
+	);
+	if (tracingFlag === false) {
+		return false;
+	}
 	if (proxyAvailable) {
 		return true;
 	}
@@ -637,7 +672,7 @@ function isLangSmithTracingEnabled(proxyAvailable?: boolean): boolean {
 			process.env.LANGCHAIN_API_KEY ??
 			process.env.LANGSMITH_ENDPOINT ??
 			process.env.LANGCHAIN_ENDPOINT ??
-			tracingFlag?.toLowerCase() === 'true',
+			tracingFlag === true,
 	);
 }
 
@@ -646,11 +681,6 @@ function isInternalOperationTracingEnabled(): boolean {
 		process.env.N8N_INSTANCE_AI_TRACE_INTERNAL === 'true' ||
 		process.env.N8N_INSTANCE_AI_TRACE_INCLUDE_INTERNAL === 'true'
 	);
-}
-
-function ensureLangSmithTracingEnv(): void {
-	process.env.LANGCHAIN_TRACING_V2 ??= 'true';
-	process.env.LANGSMITH_TRACING ??= 'true';
 }
 
 function normalizeErrorMessage(error: unknown): string {
@@ -680,12 +710,17 @@ function mergeMetadata(
 }
 
 /**
- * Unconditionally remove the cached LangSmith Client for a trace.
+ * Unconditionally remove the cached OTel runtime for a trace.
  * Call after run finalization (success or failure) so its OTel runtime can be
  * garbage-collected.
  */
 export function releaseTraceClient(traceId: string): void {
-	otelTraceRuntimes.delete(traceId);
+	const runtime = otelTraceRuntimes.get(traceId);
+	if (!runtime) {
+		return;
+	}
+
+	void shutdownProductOtelRuntime(runtime, traceId);
 }
 
 export interface SubmitLangsmithUserFeedbackOptions {
@@ -1042,7 +1077,10 @@ function createTraceContext(
 			async () => await finishProductSpanBestEffort(otelRuntime, run, finishOptions),
 		);
 		if (!run.parentRunId) {
-			otelTraceRuntimes.delete(run.traceId);
+			await withProxyHeadersBestEffort(
+				proxyConfig,
+				async () => await shutdownProductOtelRuntime(otelRuntime, run.traceId),
+			);
 		}
 	};
 
@@ -1060,7 +1098,10 @@ function createTraceContext(
 				}),
 		);
 		if (!run.parentRunId) {
-			otelTraceRuntimes.delete(run.traceId);
+			await withProxyHeadersBestEffort(
+				proxyConfig,
+				async () => await shutdownProductOtelRuntime(otelRuntime, run.traceId),
+			);
 		}
 	};
 
@@ -1502,6 +1543,7 @@ async function createProductOtelRuntime(
 		telemetry,
 		spans: new Map(),
 		contexts: new Map(),
+		shutdown: false,
 	};
 }
 
@@ -1541,8 +1583,6 @@ export async function createInstanceAiTraceContext(
 	if (!isLangSmithTracingEnabled(!!options.proxyConfig)) {
 		return undefined;
 	}
-
-	ensureLangSmithTracingEnv();
 
 	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
 	const baseMetadata = buildBaseMetadata(options);
@@ -1604,8 +1644,6 @@ export async function continueInstanceAiTraceContext(
 	if (existingContext?.rootRun.traceId === 'stub' && !isLangSmithTracingEnabled(!!proxyConfig)) {
 		return existingContext;
 	}
-
-	ensureLangSmithTracingEnv();
 
 	const baseMetadata = buildBaseMetadata(options);
 	const projectName = existingContext?.projectName ?? options.projectName ?? DEFAULT_PROJECT_NAME;
@@ -1682,8 +1720,6 @@ export async function createDetachedSubAgentTraceContext(
 		return undefined;
 	}
 
-	ensureLangSmithTracingEnv();
-
 	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
 	const baseMetadata = buildBaseMetadata(options);
 
@@ -1742,8 +1778,6 @@ export async function createInternalOperationTraceContext(
 	if (!isInternalOperationTracingEnabled() || !isLangSmithTracingEnabled(!!options.proxyConfig)) {
 		return undefined;
 	}
-
-	ensureLangSmithTracingEnv();
 
 	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
 	const baseMetadata = buildBaseMetadata({
