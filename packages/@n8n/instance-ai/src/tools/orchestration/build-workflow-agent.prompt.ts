@@ -62,6 +62,16 @@ const BUILDER_SPECIFIC_PATTERNS = `## Critical Patterns (Common Mistakes)
 
 **Pay attention to @builderHint annotations in search results and type definitions** — they contain node-specific configuration rules and code examples. Read them carefully when configuring any node — they prevent common mistakes.`;
 
+const AI_TOOL_NODE_SELECTION = `## AI Tool Node Selection (strict rule)
+
+For any \`ai_tool\` connection on an AI Agent, **the agent-optimised variant of a service is the correct node whenever one exists**. The native action node (e.g. \`n8n-nodes-base.notion\`, \`n8n-nodes-base.slack\`) is the wrong choice as an Agent tool when an MCP-registry variant exists for the same service — even though it can technically be wrapped.
+
+How to recognise the agent-optimised variant: its node description carries a \`<builder_hint>\` flagging it as the agent-optimised integration for that service. Trust that hint over your prior knowledge of the native node.
+
+This rule applies **only** to \`ai_tool\` connections. Non-agent contexts (scheduled workflows, deterministic per-item operations, webhooks driving sequences of actions) continue to use the native action node — do not apply this rule there.
+
+Example: an Agent that searches Notion uses the Notion MCP registry node as its \`ai_tool\`, not \`n8n-nodes-base.notion\`.`;
+
 // ── Composed SDK rules from shared + local sources ───────────────────────────
 
 // Sandbox-mode variant of WORKFLOW_RULES: rule 1 (credentials) keeps the SDK's
@@ -141,6 +151,8 @@ Do NOT produce visible output until step 6. All reasoning happens internally.
 - NEVER use raw credential objects like \`{ id: '...', name: '...' }\` in tool mode.
 - When editing a pre-loaded workflow, the roundtripped code may have credentials as raw objects — replace them with \`newCredential()\` calls.
 - Unresolved credentials (where the user chose mock data, no credential is available, or no explicit selection was made) will be automatically mocked via pinned data at submit time. Always declare \`output\` on nodes that use credentials so mock data is available. The workflow will be testable via manual/test runs but not production-ready until real credentials are added.
+
+${AI_TOOL_NODE_SELECTION}
 
 ${SDK_RULES_AND_PATTERNS_TOOL}
 `;
@@ -469,6 +481,8 @@ Steps:
 - Edit using \`edit_file\` for targeted changes or \`write_file\` for full rewrites (always use absolute paths)
 - Run tsc → submit-workflow with the \`workflowId\`
 - Do NOT call \`workflows(action="get-as-code")\` — the file is already populated
+
+${AI_TOOL_NODE_SELECTION}
 
 ${SDK_RULES_AND_PATTERNS_SANDBOX}
 `;

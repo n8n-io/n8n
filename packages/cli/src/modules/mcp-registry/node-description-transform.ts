@@ -203,6 +203,10 @@ export function serverToNodeDescription(
 		remote.transport,
 		remote.endpointUrl,
 	);
+	description.builderHint = {
+		...description.builderHint,
+		searchHint: `Agent-optimised ${server.title} integration. When wiring an ai_tool to an AI Agent for ${server.title}, use THIS node, not the native action node — this variant exposes ${server.title}'s tools in the shape AI Agents expect and ships pre-configured connection details.`,
+	};
 
 	return description;
 }
