@@ -492,7 +492,7 @@ describe('AgentEvaluationsService', () => {
 		);
 	});
 
-	it('always runs the required answer and tool metrics', async () => {
+	it('runs only the metrics selected for the suite', async () => {
 		const review = reviewFixture({
 			expectedOutput: 'Expected answer',
 			actualOutput: 'Old answer',
@@ -519,7 +519,45 @@ describe('AgentEvaluationsService', () => {
 
 		expect(response.run?.cases[0].metrics).toEqual([
 			expect.objectContaining({ id: 'answer-correctness', pass: true }),
-			expect.objectContaining({ id: 'called-tools-unordered', pass: true }),
 		]);
+	});
+
+	it('does not pass different non-Latin answers as empty-token matches', async () => {
+		const review = reviewFixture({
+			expectedOutput: '猫です',
+			actualOutput: '猫です',
+		});
+		agentEvaluationCaseRepository.countByStatus.mockResolvedValue({
+			total: AGENT_EVALUATION_MIN_REVIEWED_CASES,
+			approved: AGENT_EVALUATION_MIN_REVIEWED_CASES,
+			rejected: 0,
+		});
+		agentEvaluationCaseRepository.findByAgent.mockResolvedValue([review]);
+		agentsService.executeEvaluationCase.mockResolvedValue({
+			output: '犬です',
+			error: null,
+			finishReason: 'stop',
+			durationMs: 125,
+			toolCalls: [],
+			missingToolMocks: [],
+			warnings: [],
+		});
+
+		const response = await service.runSuite('project-1', 'agent-1', 'user-1', {
+			enabledMetricIds: ['answer-correctness'],
+		});
+
+		expect(response.run?.cases[0]).toEqual(
+			expect.objectContaining({
+				status: 'failed',
+				metrics: [
+					expect.objectContaining({
+						id: 'answer-correctness',
+						score: 0,
+						pass: false,
+					}),
+				],
+			}),
+		);
 	});
 });

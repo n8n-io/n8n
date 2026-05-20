@@ -1105,6 +1105,15 @@ export class AgentsService {
 			skills: sourceSkills,
 			memoryFactory: this.getMemoryFactory(),
 		});
+		const runtimeTools = await this.injectEvaluationRuntimeMocks({
+			agent: agentInstance,
+			config: evaluationConfig,
+			credentialProvider,
+			projectId,
+			takeMockOutput,
+			warnings,
+		});
+		resolvedTools.push(...runtimeTools);
 
 		const recorder = new ExecutionRecorder(buildToolRegistry(resolvedTools));
 		const input = this.toEvaluationInput(message, conversationHistory);
@@ -1204,6 +1213,56 @@ export class AgentsService {
 				nodeTypeVersion: ref.node.nodeTypeVersion,
 				displayName: ref.name,
 				nodeParameters: ref.node.nodeParameters,
+			},
+		};
+	}
+
+	private async injectEvaluationRuntimeMocks(params: {
+		agent: RuntimeAgent;
+		config: AgentJsonConfig;
+		credentialProvider: CredentialProvider;
+		projectId: string;
+		takeMockOutput: (toolName: string, input: unknown) => unknown;
+		warnings: string[];
+	}): Promise<BuiltTool[]> {
+		const { agent, config, credentialProvider, projectId, takeMockOutput, warnings } = params;
+		const tools: BuiltTool[] = [];
+
+		try {
+			const { createGetEnvironmentTool } = await import('./tools/environment-tool');
+			tools.push(
+				this.toEvaluationRuntimeMockTool(createGetEnvironmentTool().build(), takeMockOutput),
+			);
+		} catch (toolError) {
+			this.logger.warn('Failed to inject get_environment mock tool for evaluation', {
+				error: toolError instanceof Error ? toolError.message : String(toolError),
+			});
+			warnings.push('The get_environment tool is unavailable in this evaluation run.');
+		}
+
+		if (this.shouldAttachNodeTools(config.config)) {
+			tools.push(
+				...this.agentsToolsService
+					.getRuntimeTools(credentialProvider, projectId)
+					.map((tool) => this.toEvaluationRuntimeMockTool(tool, takeMockOutput)),
+			);
+		}
+
+		if (tools.length > 0) agent.tool(tools);
+		return tools;
+	}
+
+	private toEvaluationRuntimeMockTool(
+		tool: BuiltTool,
+		takeMockOutput: (toolName: string, input: unknown) => unknown,
+	): BuiltTool {
+		return {
+			...tool,
+			handler: async (input) => takeMockOutput(tool.name, input),
+			editable: false,
+			metadata: {
+				...tool.metadata,
+				evaluationRuntimeTool: true,
 			},
 		};
 	}
@@ -1468,7 +1527,7 @@ export class AgentsService {
 			.recordMessage({
 				threadId,
 				agentId,
-				agentVersionId: agentEntity.publishedVersion.publishedFromVersionId,
+				agentVersionId: getAgentCurrentVersionId(agentEntity),
 				agentName: agentInstance.name,
 				projectId,
 				userMessage: message,

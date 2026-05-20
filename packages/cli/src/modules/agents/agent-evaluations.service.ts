@@ -445,10 +445,12 @@ export class AgentEvaluationsService {
 		];
 	}
 
-	private selectMetrics(
-		_enabledMetricIds: string[] | undefined,
-	): AgentEvaluationMetricSuggestion[] {
-		return this.suggestMetrics();
+	private selectMetrics(enabledMetricIds: string[] | undefined): AgentEvaluationMetricSuggestion[] {
+		const metrics = this.suggestMetrics();
+		if (!enabledMetricIds || enabledMetricIds.length === 0) return metrics;
+
+		const enabled = new Set(enabledMetricIds);
+		return metrics.filter((metric) => enabled.has(metric.id));
 	}
 
 	private async findExecutionsById(
@@ -686,10 +688,12 @@ export class AgentEvaluationsService {
 	}
 
 	private toTokens(value: string): string[] {
-		return value
-			.toLowerCase()
-			.split(/[^a-z0-9]+/)
-			.filter((token) => token.length > 0);
+		return (
+			value
+				.normalize('NFKC')
+				.toLocaleLowerCase()
+				.match(/[\p{L}\p{N}]+/gu) ?? []
+		);
 	}
 
 	private toRunSummary(results: AgentEvaluationRunCaseResult[]): AgentEvaluationRunSummary {
