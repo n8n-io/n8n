@@ -114,15 +114,31 @@ export interface NodeProxy {
 }
 
 /**
+ * The methods on `data.$input` that typed-RPC handlers dispatch into.
+ * Mirrors the host-side `ProxyInput` shape (`packages/workflow/src/interfaces.ts`),
+ * restricted to the no-arg method forms the host enforces (`$input.first()`,
+ * `.last()`, `.all()` throw on any arguments). Properties like `.item`,
+ * `.context`, `.params` stay on `getValueAtPath` and aren't part of this
+ * type.
+ */
+export interface InputProxy {
+	first?: () => unknown;
+	last?: () => unknown;
+	all?: () => unknown;
+}
+
+/**
  * Workflow data proxy from `WorkflowDataProxy.getDataProxy()`.
  *
- * `$` is the named typed-RPC accessor (`$('NodeName').first()` etc.) and is
- * called directly from typed-RPC handlers. Everything else flows through
- * the generic data-access primitives (`getValueAtPath`, `getArrayElement`),
- * which read paths off the index signature without needing per-key types.
+ * `$` and `$input` are the typed-RPC accessors (`$('NodeName').first()`,
+ * `$input.first()`, etc.) and are called directly from typed-RPC handlers.
+ * Everything else flows through the generic data-access primitives
+ * (`getValueAtPath`, `getArrayElement`), which read paths off the index
+ * signature without needing per-key types.
  */
 export interface WorkflowData {
 	$?: (nodeName: string) => NodeProxy | null | undefined;
+	$input?: InputProxy;
 	[key: string]: unknown;
 }
 

@@ -201,6 +201,35 @@ export function buildContext(
 		});
 	};
 
+	// $input — current-node input proxy. Same synthetic-Proxy pattern as
+	// `target.$()`: intercept the typed-RPC method names (`first`, `last`,
+	// `all`, all zero-arg per the host's `WorkflowDataProxy`), delegate
+	// everything else (notably the `.item` getter and `.params` / `.context`
+	// properties) to a lazy proxy on `$input`.
+	const lazyInputProxy = createDeepLazyProxy(['$input'], undefined, callbacks);
+	const sendInputMethod = (type: 'getInputFirst' | 'getInputLast' | 'getInputAll') => {
+		return () => {
+			const result = callbacks.callHost.applySync(null, [{ type }], {
+				arguments: { copy: true },
+				result: { copy: true },
+			});
+			throwIfErrorSentinel(result);
+			return result;
+		};
+	};
+	target.$input = new Proxy({} as Record<string, unknown>, {
+		get(_emptyTarget, prop) {
+			if (prop === 'first') return sendInputMethod('getInputFirst');
+			if (prop === 'last') return sendInputMethod('getInputLast');
+			if (prop === 'all') return sendInputMethod('getInputAll');
+			return (lazyInputProxy as Record<string | symbol, unknown>)[prop];
+		},
+		has(_emptyTarget, prop) {
+			if (prop === 'first' || prop === 'last' || prop === 'all') return true;
+			return prop in (lazyInputProxy as Record<string | symbol, unknown>);
+		},
+	});
+
 	// -------------------------------------------------------------------------
 	// Resolve an unknown key from the host. Called by the proxy's has/get traps
 	// for keys not already on the target. The resolved value is cached on target
