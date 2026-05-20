@@ -14,7 +14,7 @@ import { createMember, createOwner } from '@test-integration/db/users';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import { FORMAT_VERSION } from '../spec/constants';
-import { readExport } from './utils/tar';
+import { readExport } from './utils/tar-support';
 
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages']);
