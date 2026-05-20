@@ -2,7 +2,6 @@
 import loaders from 'virtual:lucide-icons';
 
 import type { IconBodyLoader } from '../../composables/useIconBodyLoader';
-
 const cache = new Map<string, string>();
 
 export const loadLucideIconBody: IconBodyLoader = async (name) => {
