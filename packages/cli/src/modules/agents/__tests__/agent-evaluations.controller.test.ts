@@ -18,7 +18,9 @@ describe('AgentEvaluationsController route access scopes', () => {
 		({ handlerName, route }) => {
 			expect(route.accessScope).toBeDefined();
 			expect(route.accessScope?.globalOnly).toBe(false);
-			expect(route.accessScope?.scope).toBe('agent:read');
+			expect(route.accessScope?.scope).toBe(
+				handlerName === 'runSuite' ? 'agent:execute' : 'agent:read',
+			);
 		},
 	);
 });
