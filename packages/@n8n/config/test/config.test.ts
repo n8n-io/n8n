@@ -375,6 +375,9 @@ describe('GlobalConfig', () => {
 			ttl: 10,
 			interval: 3,
 		},
+		evaluation: {
+			collectionsEnabled: false,
+		},
 		generic: {
 			timezone: 'America/New_York',
 			releaseChannel: 'dev',
