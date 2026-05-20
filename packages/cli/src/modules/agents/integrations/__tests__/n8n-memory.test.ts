@@ -19,12 +19,13 @@ import type { AgentObservationLockRepository } from '../../repositories/agent-ob
 import type { AgentObservationRepository } from '../../repositories/agent-observation.repository';
 import type { AgentResourceRepository } from '../../repositories/agent-resource.repository';
 import type { AgentThreadRepository } from '../../repositories/agent-thread.repository';
-import { N8nMemory } from '../n8n-memory';
+import { N8nMemory, type N8nMemoryImplementation } from '../n8n-memory';
 
 const estimateObservationTokens = (text: string) => Math.ceil(text.length / 4);
 
 describe('N8nMemory', () => {
-	let memory: N8nMemory;
+	let memory: N8nMemoryImplementation;
+	let memoryService: N8nMemory;
 	let messageRepository: jest.Mocked<AgentMessageRepository>;
 	let threadRepository: jest.Mocked<AgentThreadRepository>;
 	let resourceRepository: jest.Mocked<AgentResourceRepository>;
@@ -164,7 +165,7 @@ describe('N8nMemory', () => {
 			value: { transaction: memoryEntryRunInTransaction },
 		});
 
-		memory = new N8nMemory(
+		memoryService = new N8nMemory(
 			threadRepository,
 			messageRepository,
 			resourceRepository,
@@ -175,6 +176,7 @@ describe('N8nMemory', () => {
 			memoryEntrySourceRepository,
 			memoryEntryCursorRepository,
 		);
+		memory = memoryService.getImplementation('agent-1');
 	});
 
 	function makeMessageEntity(id: string, createdAt: Date, text: string): AgentMessageEntity {
@@ -1144,7 +1146,6 @@ describe('N8nMemory', () => {
 
 			const result = await memory.episodic.saveEntryWithSources(
 				{
-					namespace: 'agent-1',
 					resourceId: 'resource-1',
 					content: 'User chose Postgres for the memory store.',
 					embedding: [1, 0],
@@ -1199,7 +1200,7 @@ describe('N8nMemory', () => {
 			]);
 
 			const results = await memory.episodic.searchEntries(
-				{ namespace: 'agent-1', resourceId: 'resource-1' },
+				{ resourceId: 'resource-1' },
 				'Postgres memory store',
 				{ queryEmbedding: [1, 0], topK: 1 },
 			);
@@ -1232,7 +1233,6 @@ describe('N8nMemory', () => {
 
 			const result = await memory.episodic.saveEntryWithSources(
 				{
-					namespace: 'agent-1',
 					resourceId: 'resource-1',
 					content: 'User chose Postgres for durable memory storage.',
 					embedding: [1, 0],
@@ -1273,7 +1273,6 @@ describe('N8nMemory', () => {
 			await expect(
 				memory.episodic.saveEntryWithSources(
 					{
-						namespace: 'agent-1',
 						resourceId: 'resource-1',
 						content: 'User chose Postgres for durable memory storage.',
 					},
@@ -1331,14 +1330,13 @@ describe('N8nMemory', () => {
 				.mockResolvedValueOnce([]);
 
 			const result = await memory.episodic.applyReflection(
-				{ namespace: 'agent-1', resourceId: 'resource-1' },
+				{ resourceId: 'resource-1' },
 				{
 					drop: ['noise'],
 					merge: [
 						{
 							supersedes: ['memory-1', 'memory-2'],
 							entry: {
-								namespace: 'agent-1',
 								resourceId: 'resource-1',
 								content: 'User switched memory store from SQLite to Postgres.',
 								embedding: [1, 0],
@@ -1425,14 +1423,13 @@ describe('N8nMemory', () => {
 				.mockResolvedValueOnce([]);
 
 			const result = await memory.episodic.applyReflection(
-				{ namespace: 'agent-1', resourceId: 'resource-1' },
+				{ resourceId: 'resource-1' },
 				{
 					drop: [],
 					merge: [
 						{
 							supersedes: ['memory-1', 'memory-2'],
 							entry: {
-								namespace: 'agent-1',
 								resourceId: 'resource-1',
 								content: replacementContent,
 								contentHash: replacementHash,

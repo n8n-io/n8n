@@ -15,6 +15,7 @@ import {
 	type BuiltEpisodicMemoryStore,
 	type BuiltMemory,
 	type BuiltObservationLogStore,
+	type BuiltObservationLogTaskLockStore,
 	type EpisodicMemoryCursor,
 	type EpisodicMemoryEntry,
 	type EpisodicMemoryEntrySource,
@@ -68,9 +69,50 @@ import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
 const estimateObservationTokens = (text: string) => Math.ceil(text.length / 4);
 
+export type N8nMemoryImplementation = BuiltMemory &
+	BuiltObservationLogStore &
+	BuiltObservationLogTaskLockStore &
+	BuiltEpisodicMemoryStore;
+
 @Service()
-export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEpisodicMemoryStore {
+export class N8nMemory {
 	constructor(
+		private readonly threadRepository: AgentThreadRepository,
+		private readonly messageRepository: AgentMessageRepository,
+		private readonly resourceRepository: AgentResourceRepository,
+		private readonly observationRepository: AgentObservationRepository,
+		private readonly observationCursorRepository: AgentObservationCursorRepository,
+		private readonly observationLockRepository: AgentObservationLockRepository,
+		private readonly memoryEntryRepository: AgentMemoryEntryRepository,
+		private readonly memoryEntrySourceRepository: AgentMemoryEntrySourceRepository,
+		private readonly memoryEntryCursorRepository: AgentMemoryEntryCursorRepository,
+	) {}
+
+	getImplementation(agentId: string): N8nMemoryImplementation {
+		return new N8nMemoryImpl(
+			agentId,
+			this.threadRepository,
+			this.messageRepository,
+			this.resourceRepository,
+			this.observationRepository,
+			this.observationCursorRepository,
+			this.observationLockRepository,
+			this.memoryEntryRepository,
+			this.memoryEntrySourceRepository,
+			this.memoryEntryCursorRepository,
+		);
+	}
+}
+
+export class N8nMemoryImpl
+	implements
+		BuiltMemory,
+		BuiltObservationLogStore,
+		BuiltObservationLogTaskLockStore,
+		BuiltEpisodicMemoryStore
+{
+	constructor(
+		private readonly agentId: string,
 		private readonly threadRepository: AgentThreadRepository,
 		private readonly messageRepository: AgentMessageRepository,
 		private readonly resourceRepository: AgentResourceRepository,
@@ -536,7 +578,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 			const contentHash = entry.contentHash ?? hashEpisodicMemoryContent(entry.content);
 			const now = new Date();
 			const entity = entryRepo.create({
-				agentId: entry.namespace,
+				agentId: this.agentId,
 				resourceId: entry.resourceId,
 				content: entry.content,
 				contentHash,
@@ -555,7 +597,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 			} catch (error) {
 				if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
 				const existing = await entryRepo.findOneBy({
-					agentId: entry.namespace,
+					agentId: this.agentId,
 					resourceId: entry.resourceId,
 					contentHash,
 				});
@@ -603,7 +645,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 	): Promise<RetrievedEpisodicMemoryEntry[]> {
 		const statuses = opts?.includeStatuses ?? ['active'];
 		const entities = await this.memoryEntryRepository.find({
-			where: { agentId: scope.namespace, resourceId: scope.resourceId, status: In(statuses) },
+			where: { agentId: this.agentId, resourceId: scope.resourceId, status: In(statuses) },
 		});
 		return rankEpisodicMemoryEntries(
 			entities.map((entity) => this.toEpisodicMemoryEntry(entity)),
@@ -638,7 +680,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 
 			const activeEntries = await entryRepo.find({
 				where: {
-					agentId: scope.namespace,
+					agentId: this.agentId,
 					resourceId: scope.resourceId,
 					id: In(actionIds),
 					status: 'active',
@@ -661,7 +703,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 			const existingReplacements = replacementHashes.length
 				? await entryRepo.find({
 						where: {
-							agentId: scope.namespace,
+							agentId: this.agentId,
 							resourceId: scope.resourceId,
 							contentHash: In(replacementHashes),
 						},
@@ -687,7 +729,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 
 				if (existing) {
 					await entryRepo.update(
-						{ agentId: scope.namespace, resourceId: scope.resourceId, id: existing.id },
+						{ agentId: this.agentId, resourceId: scope.resourceId, id: existing.id },
 						update,
 					);
 					replacements.push({
@@ -698,7 +740,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 				}
 
 				const entity = entryRepo.create({
-					agentId: scope.namespace,
+					agentId: this.agentId,
 					resourceId: scope.resourceId,
 					content: item.entry.content,
 					contentHash,
@@ -718,13 +760,13 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 				} catch (error) {
 					if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
 					const persisted = await entryRepo.findOneBy({
-						agentId: scope.namespace,
+						agentId: this.agentId,
 						resourceId: scope.resourceId,
 						contentHash,
 					});
 					if (!persisted) throw error;
 					await entryRepo.update(
-						{ agentId: scope.namespace, resourceId: scope.resourceId, id: persisted.id },
+						{ agentId: this.agentId, resourceId: scope.resourceId, id: persisted.id },
 						update,
 					);
 					existingByHash.set(contentHash, persisted);
@@ -740,7 +782,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 			if (effectiveDrop.length > 0) {
 				await entryRepo.update(
 					{
-						agentId: scope.namespace,
+						agentId: this.agentId,
 						resourceId: scope.resourceId,
 						id: In(effectiveDrop),
 						status: 'active',
@@ -785,7 +827,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 				if (itemSupersededIds.length > 0) {
 					await entryRepo.update(
 						{
-							agentId: scope.namespace,
+							agentId: this.agentId,
 							resourceId: scope.resourceId,
 							id: In(itemSupersededIds),
 							status: 'active',
@@ -886,7 +928,6 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 	private toEpisodicMemoryEntry(entity: AgentMemoryEntryEntity): EpisodicMemoryEntry {
 		return {
 			id: entity.id,
-			namespace: entity.agentId,
 			resourceId: entity.resourceId,
 			content: entity.content,
 			contentHash: entity.contentHash,
