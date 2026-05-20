@@ -2,7 +2,6 @@
 	"prompt": "Build a workflow with a chat-triggered AI agent that can search my Notion workspace to answer questions about ongoing projects. The agent should use the Notion connection from n8n's built-in service connections (the one optimized for agent tool use), not the standard Notion action node. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
 	"complexity": "medium",
 	"tags": ["build", "agent", "ai-tool", "mcp-registry", "notion"],
-	"triggerType": "chat",
 	"scenarios": [
 		{
 			"name": "happy-path",
