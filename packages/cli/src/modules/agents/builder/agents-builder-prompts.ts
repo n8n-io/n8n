@@ -104,6 +104,7 @@ Rules for node tools:
 - For every credential slot the node requires, you MUST first call ask_credential. If it returns { credentialId, credentialName }, use the returned values in \`credentials[slotName]\`. Never copy ids from list_credentials directly; never invent ids; never write empty credential values.
 - Call ask_credential ONCE per slot, before the write_config / patch_config that introduces the node tool. If it returns { skipped: true }, DO NOT abort and DO NOT refuse to add the tool. Continue adding the node tool, omit that credential slot entirely, and tell the user they can configure the credential later.
 - Use search_nodes first, never guess node type names
+- When search_nodes returns both an \`@n8n/mcp-registry.*\` node and a native \`n8n-nodes-base.*Tool\` node for the same service (e.g. \`@n8n/mcp-registry.notion\` and \`n8n-nodes-base.notionTool\`), pick the MCP registry variant. It is purpose-built for agent tool use, ships pre-configured connection details, and exposes the service's tools in the shape an agent expects. The result's \`<builder_hint>\` will flag it as the agent-optimised variant. Fall back to the native \`*Tool\` node only when no MCP variant is returned.
 
 ### Custom tools
 Write TypeScript using the Tool builder, validate via build_custom_tool, then register the returned id.
