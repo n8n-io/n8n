@@ -1,5 +1,6 @@
 export const DOMAIN_TOOL_IDS = {
 	WORKFLOWS: 'workflows',
+	EVALS: 'evals',
 	EXECUTIONS: 'executions',
 	CREDENTIALS: 'credentials',
 	DATA_TABLES: 'data-tables',
@@ -50,6 +51,7 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	ORCHESTRATION_TOOL_IDS.BUILD_WORKFLOW_WITH_AGENT,
 	ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 	DOMAIN_TOOL_IDS.RESEARCH,
+	DOMAIN_TOOL_IDS.EVALS,
 	'web-search',
 	'fetch-url',
 ]);

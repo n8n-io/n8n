@@ -94,6 +94,8 @@ describe('WorkflowSettingsVue', () => {
 		// Mock specific store actions that tests assert on
 		workflowsStore.updateWorkflow = vi.fn();
 		workflowsListStore.fetchWorkflow = vi.fn();
+		// Component calls this on mount; avoid a real XHR with stubActions: false.
+		settingsStore.getTimezones = vi.fn().mockResolvedValue({});
 
 		// Create document store on the main pinia (same one the component uses).
 		// With stubActions: false, setSettings and getSettingsSnapshot work normally.

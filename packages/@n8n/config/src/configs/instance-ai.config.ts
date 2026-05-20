@@ -112,5 +112,5 @@ export class InstanceAiConfig {
 
 	/** Timeout in milliseconds for HITL confirmation requests. 0 = no timeout. */
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
-	confirmationTimeout: number = 10 * 60 * 1000; // 10 minutes
+	confirmationTimeout: number = 24 * 60 * 60 * 1000; // 24 hours
 }

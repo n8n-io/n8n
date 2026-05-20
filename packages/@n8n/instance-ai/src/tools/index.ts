@@ -6,6 +6,7 @@ import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } 
 import { createParseFileTool } from './attachments/parse-file.tool';
 import { createCredentialsTool } from './credentials.tool';
 import { createDataTablesTool } from './data-tables.tool';
+import { createEvalsTool } from './evals/evals.tool';
 import { createExecutionsTool } from './executions.tool';
 import { createNodesTool } from './nodes.tool';
 import { createBrowserCredentialSetupTool } from './orchestration/browser-credential-setup.tool';
@@ -32,6 +33,7 @@ import { createWorkspaceTool } from './workspace.tool';
 export function createAllTools(context: InstanceAiContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [
 		[DOMAIN_TOOL_IDS.WORKFLOWS, createWorkflowsTool(context)],
+		[DOMAIN_TOOL_IDS.EVALS, createEvalsTool(context)],
 		[DOMAIN_TOOL_IDS.EXECUTIONS, createExecutionsTool(context)],
 		[DOMAIN_TOOL_IDS.CREDENTIALS, createCredentialsTool(context)],
 		[DOMAIN_TOOL_IDS.DATA_TABLES, createDataTablesTool(context)],
@@ -56,6 +58,7 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 export function createOrchestratorDomainTools(context: InstanceAiContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [
 		[DOMAIN_TOOL_IDS.WORKFLOWS, createWorkflowsTool(context, 'orchestrator')],
+		[DOMAIN_TOOL_IDS.EVALS, createEvalsTool(context)],
 		[DOMAIN_TOOL_IDS.EXECUTIONS, createExecutionsTool(context)],
 		[DOMAIN_TOOL_IDS.CREDENTIALS, createCredentialsTool(context)],
 		[DOMAIN_TOOL_IDS.DATA_TABLES, createDataTablesTool(context, 'orchestrator')],
