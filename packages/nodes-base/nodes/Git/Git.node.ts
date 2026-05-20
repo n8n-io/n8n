@@ -297,8 +297,6 @@ export class Git implements INodeType {
 			}
 		};
 
-		const operation = this.getNodeParameter('operation', 0);
-
 		const isFileNotFoundError = (error: unknown) =>
 			error instanceof Error && 'code' in error && error.code === 'ENOENT';
 
@@ -319,6 +317,8 @@ export class Git implements INodeType {
 				return join(resolvedParentPath, basename(path)) as ResolvedFilePath;
 			}
 		};
+
+		const operation = this.getNodeParameter('operation', 0);
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
@@ -327,6 +327,7 @@ export class Git implements INodeType {
 					operation === 'clone'
 						? await resolvePathAllowingMissingParents(repositoryPath)
 						: await this.helpers.resolvePath(repositoryPath);
+
 				const isFilePathBlocked = this.helpers.isFilePathBlocked(resolvedRepositoryPath);
 				if (isFilePathBlocked) {
 					throw new NodeOperationError(

@@ -590,6 +590,7 @@ describe('Git Node', () => {
 			);
 
 			expect(mockFsPromises.mkdir).not.toHaveBeenCalled();
+			expect(mockSimpleGit).not.toHaveBeenCalled();
 			expect(mockGit.clone).not.toHaveBeenCalled();
 		});
 
