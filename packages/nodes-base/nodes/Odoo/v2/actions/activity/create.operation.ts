@@ -88,12 +88,16 @@ export async function execute(
 			const res_model = this.getNodeParameter('res_model', i, undefined, {
 				extractValue: true,
 			}) as string;
-			const res_id = this.getNodeParameter('res_id', i, undefined, {
-				extractValue: true,
-			}) as number;
-			const activity_type_id = this.getNodeParameter('activity_type_id', i, undefined, {
-				extractValue: true,
-			}) as number;
+			const res_id = Number(
+				this.getNodeParameter('res_id', i, undefined, {
+					extractValue: true,
+				}),
+			);
+			const activity_type_id = Number(
+				this.getNodeParameter('activity_type_id', i, undefined, {
+					extractValue: true,
+				}),
+			);
 
 			const mappingMode = this.getNodeParameter('additionalFields.mappingMode', i) as string;
 			let additionalFlat: IDataObject;

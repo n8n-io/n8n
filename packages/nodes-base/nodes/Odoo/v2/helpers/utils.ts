@@ -78,17 +78,27 @@ export function odooGetDBName(databaseName: string | undefined, url: string): st
 	return hostname.split('.')[0];
 }
 
+const LIST_OPERATORS = new Set(['in', 'notIn']);
+
 /**
  * Converts the filter fixedCollection value into an Odoo domain array.
  * e.g. [['email', '=', 'foo@bar.com'], ['name', 'like', 'foo']]
+ *
+ * For `in` / `not in` operators Odoo requires a list value, not a scalar.
+ * Users enter comma-separated values which are split and coerced here.
  */
 export function buildDomain(filters: IOdooFilters | undefined): unknown[][] {
 	if (!filters?.filter?.length) return [];
-	return filters.filter.map(({ fieldName, operator, value }) => [
-		fieldName,
-		mapFilterOperators[operator] ?? operator,
-		value,
-	]);
+	return filters.filter.map(({ fieldName, operator, value }) => {
+		let resolvedValue: unknown = value;
+		if (LIST_OPERATORS.has(operator)) {
+			resolvedValue = String(value)
+				.split(',')
+				.map((v) => v.trim())
+				.map((v) => (v !== '' && !Number.isNaN(Number(v)) ? Number(v) : v));
+		}
+		return [fieldName, mapFilterOperators[operator] ?? operator, resolvedValue];
+	});
 }
 
 /**

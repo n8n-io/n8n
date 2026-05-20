@@ -22,9 +22,11 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const activityId = this.getNodeParameter('activityId', i, undefined, {
-				extractValue: true,
-			}) as number;
+			const activityId = Number(
+				this.getNodeParameter('activityId', i, undefined, {
+					extractValue: true,
+				}),
+			);
 
 			await odooApiRequest.call(this, 'mail.activity', 'unlink', {
 				ids: [activityId],

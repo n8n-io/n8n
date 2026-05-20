@@ -65,6 +65,10 @@ export class OdooApiKeyApi implements ICredentialType {
 			baseURL: '={{$credentials.url.replace(/\\/$/, "")}}',
 			url: '/json/2/res.partner/search_read',
 			method: 'POST',
+			headers: {
+				'X-Odoo-Database':
+					'={{$credentials.db || $credentials.url.replace(/\\/$/, "").split(".")[0].split("//")[1]}}',
+			},
 			body: {
 				domain: [],
 				fields: ['id'],

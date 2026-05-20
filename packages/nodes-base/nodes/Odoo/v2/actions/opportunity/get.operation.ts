@@ -45,9 +45,11 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const opportunityId = this.getNodeParameter('opportunityId', i, undefined, {
-				extractValue: true,
-			}) as number;
+			const opportunityId = Number(
+				this.getNodeParameter('opportunityId', i, undefined, {
+					extractValue: true,
+				}),
+			);
 			const options = this.getNodeParameter('options', i) as IDataObject;
 			const fields = (options.fieldsList as string[]) ?? [];
 

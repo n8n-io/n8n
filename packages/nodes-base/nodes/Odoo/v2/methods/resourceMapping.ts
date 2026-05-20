@@ -9,6 +9,9 @@ import { odooApiRequest } from '../transport';
 
 type OdooFieldType = string;
 
+// Field types that are never writable in Odoo (computed relational sets)
+const READ_ONLY_TYPES = new Set(['one2many', 'many2many']);
+
 function mapOdooType(odooType: OdooFieldType): FieldType {
 	switch (odooType) {
 		case 'char':
@@ -66,7 +69,7 @@ async function getModelRMCFields(
 				required: isCreate && requiredFields.has(key),
 				defaultMatch: false,
 				canBeUsedToMatch: true,
-				display: true,
+				display: !field.readonly && !READ_ONLY_TYPES.has(field.type),
 				removed: true,
 				type,
 			};

@@ -1,4 +1,5 @@
 export {
+	getActivityFields,
 	getContactFields,
 	getCountries,
 	getModels,

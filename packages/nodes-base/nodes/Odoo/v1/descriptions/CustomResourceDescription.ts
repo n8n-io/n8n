@@ -97,6 +97,7 @@ export const customResourceDescription: INodeProperties[] = [
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getModelFields',
+							loadOptionsDependsOn: ['customResource'],
 						},
 					},
 					{
@@ -329,6 +330,7 @@ export const customResourceDescription: INodeProperties[] = [
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getModelFields',
+							loadOptionsDependsOn: ['customResource'],
 						},
 					},
 					{

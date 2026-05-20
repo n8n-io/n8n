@@ -17,7 +17,7 @@ const properties: INodeProperties[] = [
 		type: 'resourceMapper',
 		default: { mappingMode: 'defineBelow', value: null },
 		noDataExpression: true,
-		required: true,
+
 		typeOptions: {
 			loadOptionsDependsOn: ['resource', 'operation'],
 			resourceMapper: {
@@ -44,9 +44,11 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const contactId = this.getNodeParameter('contactId', i, undefined, {
-				extractValue: true,
-			}) as number;
+			const contactId = Number(
+				this.getNodeParameter('contactId', i, undefined, {
+					extractValue: true,
+				}),
+			);
 			const mappingMode = this.getNodeParameter('fieldsToSend.mappingMode', i) as string;
 
 			let vals: IDataObject;

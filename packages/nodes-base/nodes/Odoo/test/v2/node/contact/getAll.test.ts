@@ -110,6 +110,42 @@ describe('OdooV2 — contact:getAll', () => {
 		});
 	});
 
+	it('converts comma-separated string to list for in operator', async () => {
+		setupParams({
+			filters: {
+				filter: [{ fieldName: 'id', operator: 'in', value: '1, 2, 3' }],
+			},
+		});
+		(transport.odooApiRequest as jest.Mock).mockResolvedValue([MOCK_CONTACTS[0]]);
+
+		await node.execute.call(exec);
+
+		expect(transport.odooApiRequest).toHaveBeenCalledWith('res.partner', 'search_read', {
+			domain: [['id', 'in', [1, 2, 3]]],
+			fields: [],
+			limit: 10,
+			offset: 0,
+		});
+	});
+
+	it('converts comma-separated string to list for not in operator', async () => {
+		setupParams({
+			filters: {
+				filter: [{ fieldName: 'id', operator: 'notIn', value: '10, 20' }],
+			},
+		});
+		(transport.odooApiRequest as jest.Mock).mockResolvedValue([]);
+
+		await node.execute.call(exec);
+
+		expect(transport.odooApiRequest).toHaveBeenCalledWith('res.partner', 'search_read', {
+			domain: [['id', 'not in', [10, 20]]],
+			fields: [],
+			limit: 10,
+			offset: 0,
+		});
+	});
+
 	it('returns each contact as a separate output item', async () => {
 		setupParams({ returnAll: true });
 		(transport.odooApiRequest as jest.Mock).mockResolvedValue(MOCK_CONTACTS);

@@ -50,9 +50,11 @@ export async function execute(
 			const model = this.getNodeParameter('customResource', i, undefined, {
 				extractValue: true,
 			}) as string;
-			const recordId = this.getNodeParameter('recordId', i, undefined, {
-				extractValue: true,
-			}) as number;
+			const recordId = Number(
+				this.getNodeParameter('recordId', i, undefined, {
+					extractValue: true,
+				}),
+			);
 			const options = this.getNodeParameter('options', i) as IDataObject;
 
 			const fieldsRaw = (options.fieldsList as string) ?? '';

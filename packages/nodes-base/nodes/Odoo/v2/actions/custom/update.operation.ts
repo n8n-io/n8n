@@ -22,7 +22,6 @@ const properties: INodeProperties[] = [
 			value: null,
 		},
 		noDataExpression: true,
-		required: true,
 		typeOptions: {
 			loadOptionsDependsOn: ['resource', 'operation', 'customResource.value'],
 			resourceMapper: {
@@ -55,9 +54,11 @@ export async function execute(
 			const model = this.getNodeParameter('customResource', i, undefined, {
 				extractValue: true,
 			}) as string;
-			const recordId = this.getNodeParameter('recordId', i, undefined, {
-				extractValue: true,
-			}) as number;
+			const recordId = Number(
+				this.getNodeParameter('recordId', i, undefined, {
+					extractValue: true,
+				}),
+			);
 
 			const mappingMode = this.getNodeParameter('fieldsToSend.mappingMode', i) as string;
 
