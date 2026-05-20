@@ -62,14 +62,14 @@ describe('workflowDocument.store orchestration', () => {
 		// Verify all are populated
 		expect(workflowDocumentStore.allNodes).toHaveLength(2);
 		expect(workflowDocumentStore.connectionsBySourceNode).toHaveProperty('A');
-		expect(workflowDocumentStore.pinData).toHaveProperty('A');
+		expect(workflowDocumentStore.pinnedDataByNodeName).toHaveProperty('A');
 
 		// removeAllNodes should clear all three
 		workflowDocumentStore.removeAllNodes();
 
 		expect(workflowDocumentStore.allNodes).toHaveLength(0);
 		expect(workflowDocumentStore.connectionsBySourceNode).toEqual({});
-		expect(workflowDocumentStore.pinData).toEqual({});
+		expect(workflowDocumentStore.pinnedDataByNodeName).toEqual({});
 	});
 
 	it('disposeWorkflowDocumentStore disposes the instance and clears scoped state', () => {
