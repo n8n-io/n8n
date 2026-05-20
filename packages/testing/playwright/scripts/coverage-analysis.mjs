@@ -138,8 +138,7 @@ export function inferType(filePath) {
  * budget stays under ~3 minutes even at the max attempt count.
  */
 async function fetchJson(url, retries = 10) {
-	const backoff = (attempt) =>
-		Math.min(Math.pow(2, attempt) * 1000, 30_000) + Math.random() * 500;
+	const backoff = (attempt) => Math.min(Math.pow(2, attempt) * 1000, 30_000) + Math.random() * 500;
 
 	for (let attempt = 0; attempt <= retries; attempt++) {
 		let res;
