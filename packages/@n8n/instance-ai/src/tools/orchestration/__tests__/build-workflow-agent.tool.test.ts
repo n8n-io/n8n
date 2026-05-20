@@ -1683,8 +1683,7 @@ describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
 		expect(out).toBeUndefined();
 		expect(suspend).toHaveBeenCalledWith(
 			expect.objectContaining({
-				message:
-					'Edit existing workflow "Existing Workflow" (ID: WF_EXISTING)? Reason: Swap Slack channel on this notifier.',
+				message: 'Edit Existing Workflow (ID: WF_EXISTING)',
 				severity: 'warning',
 			}),
 		);
