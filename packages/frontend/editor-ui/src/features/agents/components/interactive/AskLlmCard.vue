@@ -53,7 +53,9 @@ watch(
 	{ immediate: true },
 );
 
-const filteredAgents = computed<AgentModelsByProvider>(() => getModelsForPicker());
+const filteredAgents = computed<AgentModelsByProvider>(() =>
+	getModelsForPicker(credentialsByProvider.value),
+);
 
 function onModelChange(selection: AgentModelSelection) {
 	if (props.disabled) return;

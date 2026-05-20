@@ -42,7 +42,7 @@ describe('useModelCatalog', () => {
 		mocks.getModelCatalog.mockReset();
 	});
 
-	it('returns models for the agent providers without requiring selected credentials', async () => {
+	it('returns models for the agent providers that have selected credentials', async () => {
 		mocks.getModelCatalog.mockResolvedValue({
 			openai: provider('openai', {
 				'gpt-5': model('gpt-5', 'GPT-5'),
@@ -70,13 +70,22 @@ describe('useModelCatalog', () => {
 
 		await ensureLoaded('project-1');
 
-		const result = getModelsForPicker();
+		const resultWithoutCredentials = getModelsForPicker(null);
+
+		expect(resultWithoutCredentials.openai?.models).toEqual([]);
+		expect(resultWithoutCredentials['azure-openai']?.models).toEqual([]);
+		expect(resultWithoutCredentials['aws-bedrock']?.models).toEqual([]);
+		expect(resultWithoutCredentials.nvidia?.models).toEqual([]);
+
+		const result = getModelsForPicker({
+			openai: 'openai-credential-id',
+			nvidia: 'nvidia-credential-id',
+			'azure-openai': null,
+		});
 
 		expect(modelIds(result.openai?.models ?? [])).toEqual(['gpt-5']);
-		expect(modelIds(result['azure-openai']?.models ?? [])).toEqual(['cohere-command-a', 'gpt-4o']);
-		expect(modelIds(result['aws-bedrock']?.models ?? [])).toEqual([
-			'anthropic.claude-sonnet-4-5-v1:0',
-		]);
+		expect(result['azure-openai']?.models).toEqual([]);
+		expect(result['aws-bedrock']?.models).toEqual([]);
 		expect(modelIds(result.nvidia?.models ?? [])).toEqual([
 			'nvidia/llama-3.3-nemotron-super-49b-v1',
 		]);

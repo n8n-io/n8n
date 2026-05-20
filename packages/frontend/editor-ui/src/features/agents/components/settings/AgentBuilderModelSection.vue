@@ -57,7 +57,9 @@ const showModePicker = computed(() => isProxyAvailable.value);
  */
 const showCustomPicker = computed(() => store.mode === 'custom' || !isProxyAvailable.value);
 
-const filteredAgents = computed<AgentModelsByProvider>(() => getModelsForPicker());
+const filteredAgents = computed<AgentModelsByProvider>(() =>
+	getModelsForPicker(credentialsByProvider.value),
+);
 
 const selectedAgent = computed<AgentModelOption | null>(() => {
 	const settings = store.effectiveSettings;

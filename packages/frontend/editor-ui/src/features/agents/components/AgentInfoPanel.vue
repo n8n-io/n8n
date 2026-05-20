@@ -64,7 +64,9 @@ watch(
 	{ immediate: true },
 );
 
-const filteredAgents = computed<AgentModelsByProvider>(() => getModelsForPicker());
+const filteredAgents = computed<AgentModelsByProvider>(() =>
+	getModelsForPicker(credentialsByProvider.value),
+);
 
 const selectedAgent = computed<AgentModelOption | null>(() => {
 	const modelStr = modelToString(props.config?.model);

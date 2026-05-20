@@ -3,6 +3,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { getModelCatalog, type ProviderCatalog, type ModelInfo } from './useAgentApi';
 import {
 	AGENT_MODEL_PROVIDERS,
+	type AgentCredentialsByProvider,
 	type AgentModelOption,
 	type AgentModelProvider,
 	type AgentModelsByProvider,
@@ -63,10 +64,14 @@ export function useModelCatalog() {
 		return Object.values(p.models).sort((a, b) => a.name.localeCompare(b.name));
 	}
 
-	function getModelsForPicker(): AgentModelsByProvider {
+	function getModelsForPicker(
+		credentials: AgentCredentialsByProvider | null,
+	): AgentModelsByProvider {
 		const response = createEmptyModelsResponse();
 
 		for (const provider of AGENT_MODEL_PROVIDERS) {
+			if (!credentials?.[provider]) continue;
+
 			const providerInfo = catalog.value[provider];
 			if (!providerInfo) continue;
 

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue';
-import { N8nDropdownMenu, N8nIcon, N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import type {
 	ChatHubProvider,
@@ -31,9 +30,9 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { truncateBeforeLast } from '@n8n/utils';
 import ChatProviderAvatar from './ChatProviderAvatar.vue';
 import { applySearch, buildModelSelectorMenuItems } from '../model-selector.utils';
+import AiModelSelectorDropdown from '@/features/ai/modelSelector/AiModelSelectorDropdown.vue';
 
 const {
 	selectedAgent,
@@ -189,207 +188,37 @@ defineExpose({
 </script>
 
 <template>
-	<N8nDropdownMenu
+	<AiModelSelectorDropdown
 		ref="dropdownRef"
 		:items="filteredMenu"
-		teleported
-		placement="bottom-start"
-		:extra-popper-class="[$style.component, searchQuery ? $style.searching : ''].join(' ')"
-		searchable
-		:emptyText="searchQuery ? i18n.baseText('chatHub.models.selector.noMatch') : undefined"
+		:selected-label="selectedLabel"
+		:selected-credential-name="credentialsName"
+		:credentials-missing="isCredentialsMissing"
+		:credentials-missing-label="i18n.baseText('chatHub.agent.credentialsMissing')"
+		:no-match-label="i18n.baseText('chatHub.models.selector.noMatch')"
+		:horizontal="horizontal"
+		:text="text"
+		data-test-id="chat-model-selector"
+		credential-data-test-id="chat-model-selector-credential"
+		:max-selected-name-chars="MAX_AGENT_NAME_CHARS"
 		@search="handleSearch"
 		@select="onSelect"
 	>
-		<template #trigger>
-			<N8nButton
-				:variant="text ? 'ghost' : 'outline'"
-				:class="[$style.dropdownButton, horizontal && $style.dropdownButtonHorizontal]"
-				:text="text"
-				size="large"
-				data-test-id="chat-model-selector"
-			>
-				<ChatAgentAvatar
-					:agent="selectedAgent"
-					:size="credentialsName || !isCredentialsRequired ? 'md' : 'sm'"
-					:class="$style.icon"
-				/>
-				<div :class="[$style.selected, horizontal && $style.selectedHorizontal]">
-					<N8nText>
-						{{ truncateBeforeLast(selectedLabel, MAX_AGENT_NAME_CHARS) }}
-					</N8nText>
-					<N8nText
-						v-if="credentialsName"
-						:size="horizontal ? 'small' : 'xsmall'"
-						color="text-light"
-						data-test-id="chat-model-selector-credential"
-					>
-						{{ truncateBeforeLast(credentialsName, MAX_AGENT_NAME_CHARS) }}
-					</N8nText>
-					<N8nText v-else-if="isCredentialsMissing" size="xsmall" color="danger">
-						<N8nIcon
-							icon="node-validation-error"
-							size="xsmall"
-							:class="$style.credentialsMissingIcon"
-						/>
-						{{ i18n.baseText('chatHub.agent.credentialsMissing') }}
-					</N8nText>
-				</div>
-				<N8nIcon
-					:class="horizontal && $style.chevronHorizontal"
-					icon="chevron-down"
-					size="medium"
-				/>
-			</N8nButton>
+		<template #trigger-leading="{ ui }">
+			<ChatAgentAvatar
+				:agent="selectedAgent"
+				:size="credentialsName || !isCredentialsRequired ? 'md' : 'sm'"
+				:class="ui.class"
+			/>
 		</template>
 
-		<template #item-leading="{ item }">
+		<template #item-leading="{ item, ui }">
 			<ChatProviderAvatar
 				v-if="item.data?.provider"
 				:provider="item.data?.provider"
 				:icon="item.icon"
-				:class="$style.menuIcon"
+				:class="ui.class"
 			/>
 		</template>
-
-		<template #item-label="{ item, ui }">
-			<template v-if="item.data?.parts">
-				<div :class="[$style.flattenedLabel, ui.class]">
-					<template v-for="(part, index) in item.data.parts" :key="index">
-						<N8nText v-if="index > 0" color="text-light" :class="$style.separator">
-							<N8nIcon icon="chevron-right" size="small" />
-						</N8nText>
-						<N8nText
-							size="medium"
-							:color="index === item.data.parts.length - 1 ? 'text-dark' : 'text-base'"
-						>
-							{{ part }}
-						</N8nText>
-					</template>
-				</div>
-			</template>
-			<N8nText v-else :class="ui.class" size="medium" color="text-dark">
-				{{ item.label }}
-			</N8nText>
-		</template>
-
-		<template #item-trailing="{ item, ui }">
-			<N8nTooltip
-				v-if="item.data?.description"
-				:content="truncateBeforeLast(item.data.description, 200, 0)"
-				:class="ui.class"
-				:content-class="$style.tooltip"
-				placement="right"
-			>
-				<N8nIcon icon="info" size="medium" color="text-light" :class="$style.infoIcon" />
-			</N8nTooltip>
-		</template>
-	</N8nDropdownMenu>
+	</AiModelSelectorDropdown>
 </template>
-
-<style lang="scss" module>
-.component {
-	z-index: var(--floating-ui--z);
-	width: auto !important;
-}
-
-.dropdownButton {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	width: fit-content;
-	padding-block: var(--spacing--2xs);
-
-	/* disable underline */
-	text-decoration: none !important;
-}
-
-.credentialsMissingIcon {
-	display: inline-block;
-	margin-bottom: -1px;
-}
-
-.selected {
-	display: flex;
-	flex-direction: column;
-	align-items: start;
-	gap: var(--spacing--4xs);
-}
-
-.dropdownButtonHorizontal {
-	width: 100%;
-	display: flex;
-	justify-content: stretch;
-	/* padding: var(--spacing--2xs) var(--spacing--xs); */
-	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
-	border-radius: var(--radius--2xs);
-
-	> div {
-		width: 100%;
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-	}
-
-	&:hover {
-		border-color: var(--border-color--strong);
-	}
-}
-
-.selectedHorizontal {
-	flex-direction: row;
-	align-items: center;
-	gap: var(--spacing--xs);
-	flex: 1;
-	min-width: 0;
-	overflow: hidden;
-
-	> div {
-		font-weight: var(--font-weight--bold);
-		white-space: nowrap;
-		text-overflow: ellipsis;
-	}
-}
-
-.chevronHorizontal {
-	align-self: flex-end;
-	margin-bottom: var(--spacing--5xs);
-}
-
-.icon {
-	flex-shrink: 0;
-	margin-block: -4px;
-}
-
-.infoIcon,
-.menuIcon {
-	flex-shrink: 0;
-}
-
-.infoIcon {
-	margin-inline: var(--spacing--5xs);
-}
-
-.avatarIcon {
-	margin-right: var(--spacing--2xs);
-}
-
-.tooltip {
-	/* higher than dropdown submenu */
-	z-index: calc(999999 + 1000) !important;
-}
-
-.flattenedLabel {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	overflow: hidden;
-	flex-grow: 1;
-	white-space: nowrap;
-}
-
-.separator {
-	flex-shrink: 0;
-	display: inline-flex;
-	align-items: center;
-}
-</style>

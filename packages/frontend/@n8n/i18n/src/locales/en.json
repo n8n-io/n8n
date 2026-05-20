@@ -4461,7 +4461,7 @@
 	"agents.modelSelector.noMatch": "No models found",
 	"agents.modelSelector.noModels": "No models available for this provider",
 	"agents.modelSelector.moreModels": "More {provider} models",
-	"agents.modelSelector.createCredential": "Create {credential}",
+	"agents.modelSelector.configureCredentials": "Configure credentials",
 	"agents.modelSelector.credentialsMissing": "Credentials missing",
 	"agents.askLlm.chooseModel": "Choose a model",
 	"agents.builder.unconfigured.title": "Set up the agent builder",
