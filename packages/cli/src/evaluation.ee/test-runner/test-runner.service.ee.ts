@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
+	EvaluationCollectionRepository,
 	TestCaseExecutionRepository,
 	TestRun,
 	TestRunRepository,
@@ -95,6 +96,7 @@ export class TestRunnerService {
 		private readonly concurrencyControlService: ConcurrencyControlService,
 		private readonly license: License,
 		private readonly workflowHistoryService: WorkflowHistoryService,
+		private readonly evaluationCollectionRepository: EvaluationCollectionRepository,
 	) {}
 
 	/**
@@ -1066,6 +1068,38 @@ export class TestRunnerService {
 				this.logger.debug('Aggregated metrics', aggregatedMetrics);
 
 				await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
+
+				// If this run belongs to an eval collection, a fresh
+				// `completed` status with new metrics can flip the
+				// winner / produce new regressions in the insights
+				// envelope. Bust any cached envelope so the next
+				// `EvalInsightsService.generateInsights` call regenerates
+				// against the up-to-date set. Cache busts happen here (not
+				// in the repository) because terminal-state setters live
+				// in this service; centralising the bust avoids spreading
+				// the dependency across every call site.
+				//
+				// Failure isolation: an exception from `updateInsightsCache`
+				// must NOT propagate. The run is already persisted as
+				// `completed` with its metrics; if the outer catch sees an
+				// error here it would re-mark the run as `error` and we'd
+				// lose a successful run. Worst case on cache-bust failure
+				// is a stale envelope on the next insights request, which
+				// the user can resolve with `forceRegenerate: true`.
+				if (testRun.collectionId) {
+					try {
+						await this.evaluationCollectionRepository.updateInsightsCache(
+							testRun.collectionId,
+							null,
+						);
+					} catch (cacheError) {
+						this.logger.warn('Failed to bust eval-collection insights cache', {
+							testRunId: testRun.id,
+							collectionId: testRun.collectionId,
+							error: cacheError instanceof Error ? cacheError.message : String(cacheError),
+						});
+					}
+				}
 
 				this.logger.debug('Test run finished', { workflowId, testRunId: testRun.id });
 			}
