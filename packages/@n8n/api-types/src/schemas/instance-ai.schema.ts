@@ -668,7 +668,6 @@ export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
-	researchMode: z.boolean().optional(),
 	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
@@ -826,7 +825,7 @@ export type InstanceAiSSEConnectionState =
 	| 'reconnecting';
 
 // ---------------------------------------------------------------------------
-// Thread Inspector types (debug panel — raw Mastra storage inspection)
+// Thread Inspector types (debug panel — raw agent memory inspection)
 // ---------------------------------------------------------------------------
 
 export interface InstanceAiThreadInfo {
@@ -1055,21 +1054,13 @@ export interface InstanceAiModelCredential {
 	provider: string;
 }
 
-const BUILDER_RENDER_HINT_TOOLS = new Set(['build-workflow-with-agent', 'workflow-build-flow']);
-const DATA_TABLE_RENDER_HINT_TOOLS = new Set([
-	'manage-data-tables-with-agent',
-	'agent-data-table-manager',
-]);
-const RESEARCH_RENDER_HINT_TOOLS = new Set(['research-with-agent']);
-const PLANNER_RENDER_HINT_TOOLS = new Set(['plan']);
-
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
-	if (BUILDER_RENDER_HINT_TOOLS.has(toolName)) return 'builder';
-	if (DATA_TABLE_RENDER_HINT_TOOLS.has(toolName)) return 'data-table';
-	if (RESEARCH_RENDER_HINT_TOOLS.has(toolName)) return 'researcher';
-	if (PLANNER_RENDER_HINT_TOOLS.has(toolName)) return 'planner';
+	if (toolName === 'build-workflow-with-agent') return 'builder';
+	if (toolName === 'manage-data-tables-with-agent') return 'data-table';
+	if (toolName === 'research-with-agent') return 'researcher';
+	if (toolName === 'plan') return 'planner';
 	return 'default';
 }
 
@@ -1116,6 +1107,20 @@ export interface InstanceAiEvalMockedCredential {
 	credentialId?: string;
 }
 
+/**
+ * Records a credential field that was rewritten (e.g. routed to the eval wire
+ * server) during evaluation. Populated when the caller opts into the unpin
+ * path via `InstanceAiEvalExecutionRequest.unpinNodes`. Field added in the
+ * foundation PR; the rewrite path itself is wired up in a later PR and stays
+ * empty until then.
+ */
+export interface InstanceAiEvalRewrittenCredential {
+	nodeName: string;
+	credentialType: string;
+	credentialId?: string;
+	field: string;
+}
+
 export interface InstanceAiEvalExecutionResult {
 	executionId: string;
 	success: boolean;
@@ -1123,10 +1128,19 @@ export interface InstanceAiEvalExecutionResult {
 	errors: string[];
 	hints: InstanceAiEvalMockHints;
 	mockedCredentials: InstanceAiEvalMockedCredential[];
+	rewrittenCredentials?: InstanceAiEvalRewrittenCredential[];
 }
 
 export class InstanceAiEvalExecutionRequest extends Z.class({
 	scenarioHints: z.string().max(2000).optional(),
+	/**
+	 * AI root node names (Agent, Chain, etc.) whose sub-nodes should run their
+	 * real vendor SDK code instead of being pinned. The eval pipeline rewrites
+	 * matching credentials so vendor traffic lands on the eval wire server.
+	 * Refused if any sub-node uses a protocol-binary client (e.g. Postgres
+	 * memory) — those cannot be intercepted via HTTP.
+	 */
+	unpinNodes: z.array(z.string().min(1).max(200)).max(50).optional(),
 }) {}
 
 // ---------------------------------------------------------------------------

@@ -72,11 +72,6 @@ const groupedThreads = computed(() => {
 	});
 });
 
-function handleNewThread() {
-	if (!activeThreadId.value) return;
-	void router.push({ name: INSTANCE_AI_VIEW });
-}
-
 async function handleDeleteThread(threadId: string) {
 	const wasActive = threadId === activeThreadId.value;
 	const deleted = await store.deleteThread(threadId);
@@ -154,15 +149,18 @@ function handleThreadAction(action: string, threadId: string) {
 					placement="bottom"
 					:show-after="TOOLTIP_DELAY_MS"
 				>
-					<N8nIconButton
-						icon="plus"
-						variant="ghost"
-						size="small"
-						icon-size="large"
-						:aria-label="i18n.baseText('instanceAi.thread.new')"
-						data-test-id="instance-ai-new-thread-button"
-						@click="handleNewThread"
-					/>
+					<RouterLink v-slot="{ href, navigate }" :to="{ name: INSTANCE_AI_VIEW }" custom>
+						<N8nIconButton
+							:href="href"
+							icon="plus"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							:aria-label="i18n.baseText('instanceAi.thread.new')"
+							data-test-id="instance-ai-new-thread-button"
+							@click="navigate"
+						/>
+					</RouterLink>
 				</N8nTooltip>
 			</div>
 		</div>

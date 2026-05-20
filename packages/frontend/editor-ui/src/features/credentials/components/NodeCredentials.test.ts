@@ -186,6 +186,8 @@ describe('NodeCredentials', () => {
 		renderComponent = createComponentRenderer(NodeCredentials, defaultRenderOptions);
 
 		credentialsStore = mockedStore(useCredentialsStore);
+		// Component triggers this on mount; avoid a real XHR with stubActions: false.
+		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
 		ndvStore = mockedStore(useNDVStore);
 		uiStore = mockedStore(useUIStore);
 		projectsStore = mockedStore(useProjectsStore);

@@ -1,14 +1,13 @@
 /**
  * Daytona Filesystem Adapter
  *
- * Implements MastraFilesystem backed by the Daytona SDK's FileSystem API.
- * This gives Daytona workspaces all built-in Mastra workspace tools:
+ * Implements a native agents filesystem backed by the Daytona SDK's FileSystem API.
+ * This gives Daytona workspaces all built-in workspace tools:
  * read_file, write_file, edit_file, list_files, grep, ast_edit, etc.
  *
  * Without this adapter, Daytona workspaces only get sandbox tools (execute_command).
  */
 
-import { FileNotFoundError, MastraFilesystem } from '@mastra/core/workspace';
 import type {
 	FileContent,
 	FileStat,
@@ -19,21 +18,23 @@ import type {
 	RemoveOptions,
 	CopyOptions,
 	ProviderStatus,
-} from '@mastra/core/workspace';
-import type { DaytonaSandbox } from '@mastra/daytona';
+} from '@n8n/agents';
+import { BaseFilesystem } from '@n8n/agents';
+
+import type { DaytonaSandbox } from './daytona-sandbox';
 
 /**
- * A MastraFilesystem implementation that delegates to the Daytona SDK's
+ * A native agents filesystem implementation that delegates to the Daytona SDK's
  * sandbox.instance.fs API for all file operations.
  */
-export class DaytonaFilesystem extends MastraFilesystem {
+export class DaytonaFilesystem extends BaseFilesystem {
 	readonly id: string;
 	readonly name = 'DaytonaFilesystem';
 	readonly provider = 'daytona';
 	status: ProviderStatus = 'pending';
 
 	constructor(private readonly sandbox: DaytonaSandbox) {
-		super({ name: 'DaytonaFilesystem' });
+		super();
 		this.id = `daytona-fs-${sandbox.id}`;
 	}
 
@@ -133,10 +134,8 @@ export class DaytonaFilesystem extends MastraFilesystem {
 		try {
 			info = await this.fs.getFileDetails(path);
 		} catch (error: unknown) {
-			// Translate Daytona's 404 into Mastra's FileNotFoundError so that
-			// callers like wrapWithReadTracker can handle missing files correctly.
 			if (isDaytona404(error)) {
-				throw new FileNotFoundError(path);
+				throw new DaytonaFileNotFoundError(path);
 			}
 			throw error;
 		}
@@ -148,6 +147,13 @@ export class DaytonaFilesystem extends MastraFilesystem {
 			createdAt: new Date(info.modTime ?? 0),
 			modifiedAt: new Date(info.modTime ?? 0),
 		};
+	}
+}
+
+class DaytonaFileNotFoundError extends Error {
+	constructor(path: string) {
+		super(`File not found: ${path}`);
+		this.name = 'DaytonaFileNotFoundError';
 	}
 }
 

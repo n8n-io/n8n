@@ -12,15 +12,14 @@
  * It can also ask the user questions directly via the ask-user tool.
  */
 
-import { Agent } from '@mastra/core/agent';
-import type { ToolsInput } from '@mastra/core/agent';
-import { createTool } from '@mastra/core/tools';
+import { Agent, Tool } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { DateTime } from 'luxon';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { createAddPlanItemTool, createRemovePlanItemTool } from './add-plan-item.tool';
+import { createSubAgentPersistence } from './agent-persistence';
 import { BlueprintAccumulator } from './blueprint-accumulator';
 import { truncateLabel } from './display-utils';
 import { PLANNER_AGENT_PROMPT } from './plan-agent-prompt';
@@ -32,11 +31,10 @@ import {
 	traceSubAgentTools,
 	withTraceRun,
 } from './tracing-utils';
-import { registerWithMastra } from '../../agent/register-with-mastra';
 import { MAX_STEPS } from '../../constants/max-steps';
-import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
-import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
-import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
+import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/consume-with-hitl';
+import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
+import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 import { CREDENTIALS_TOOL_ID } from '../credentials.tool';
 import { DATA_TABLES_TOOL_ID } from '../data-tables.tool';
@@ -47,12 +45,18 @@ import { createTemplatesTool } from '../templates.tool';
 const MESSAGE_HISTORY_COUNT = 5;
 
 /** Read-only discovery tools the planner gets from domainTools. */
-const PLANNER_DOMAIN_TOOL_NAMES = ['nodes', 'credentials', 'data-tables', 'workflows', 'ask-user'];
+const PLANNER_DOMAIN_TOOL_NAMES = [
+	'nodes',
+	CREDENTIALS_TOOL_ID,
+	DATA_TABLES_TOOL_ID,
+	'workflows',
+	ASK_USER_TOOL_ID,
+];
 
 /** Research tools added when available. */
 const PLANNER_RESEARCH_TOOL_NAMES = ['research'];
 
-const RELEVANT_PRIOR_TOOL_NAMES = new Set([
+const RELEVANT_PRIOR_TOOL_NAMES = new Set<string>([
 	ASK_USER_TOOL_ID,
 	CREDENTIALS_TOOL_ID,
 	DATA_TABLES_TOOL_ID,
@@ -89,37 +93,23 @@ interface DataTableBrief {
 	name: string;
 }
 
-/** Extract plain text from Mastra memory content (string, array of parts, or {format, parts}). */
+/** Extract plain text from persisted native memory content. */
 function extractTextFromMemoryContent(content: unknown): string {
 	if (typeof content === 'string') return content;
-
-	// Mastra format-2 structured content: { format: 2, parts: [{ type: 'text', text: '...' }] }
-	if (isStructuredContent(content)) {
-		return extractTextParts(content.parts);
-	}
-
-	// Array of content parts: [{ type: 'text', text: '...' }]
-	if (Array.isArray(content)) {
-		return extractTextParts(content);
-	}
-
-	return typeof content === 'object' && content !== null ? JSON.stringify(content) : '';
-}
-
-function isStructuredContent(value: unknown): value is { format: number; parts: unknown[] } {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'parts' in value &&
-		Array.isArray((value as Record<string, unknown>).parts)
-	);
+	if (Array.isArray(content)) return extractTextParts(content);
+	return '';
 }
 
 function extractTextParts(parts: unknown[]): string {
 	return parts
 		.filter(
 			(c): c is { type: 'text'; text: string } =>
-				typeof c === 'object' && c !== null && 'text' in c,
+				typeof c === 'object' &&
+				c !== null &&
+				'type' in c &&
+				c.type === 'text' &&
+				'text' in c &&
+				typeof c.text === 'string',
 		)
 		.map((c) => c.text)
 		.join('\n');
@@ -163,16 +153,16 @@ async function getRecentMessages(
 ): Promise<FormattedMessage[]> {
 	const messages: FormattedMessage[] = [];
 
-	// Retrieve previously-saved messages from memory
+	// Retrieve previously-saved messages from memory.
 	if (context.memory) {
 		try {
-			const result = await context.memory.recall({
-				threadId: context.threadId,
-				perPage: count,
+			const history = await context.memory.getMessages(context.threadId, {
+				limit: count,
 			});
 
-			for (const m of result.messages) {
-				const role = m.role as string;
+			for (const m of history) {
+				if (!('role' in m)) continue;
+				const role = m.role;
 				const content = extractTextFromMemoryContent(m.content);
 				if ((role === 'user' || role === 'assistant') && content.length > 0) {
 					messages.push({ role, content });
@@ -626,52 +616,58 @@ async function clearPlannedTaskGraph(context: OrchestrationContext): Promise<voi
 // ---------------------------------------------------------------------------
 
 export function createPlanWithAgentTool(context: OrchestrationContext) {
-	return createTool({
-		id: 'plan',
-		description:
+	return new Tool('plan')
+		.description(
 			'Design and execute a multi-step plan. Spawns a planner agent that reads ' +
-			'the conversation history, discovers available credentials, data tables, ' +
-			'and best practices, designs the architecture, and shows it to the user ' +
-			'for approval. Use when the request requires 2 or more tasks with ' +
-			'dependencies. When this tool returns, the plan is already approved ' +
-			'and tasks are dispatched — just acknowledge briefly and end your turn.',
-		inputSchema: z.object({
-			guidance: z
-				.string()
-				.optional()
-				.describe(
-					'Optional steering note for the planner — use ONLY when the conversation ' +
-						'history alone is ambiguous about what to build. The planner reads the ' +
-						'last 5 messages directly, so do NOT rewrite the user request here.',
-				),
-		}),
-		outputSchema: z.object({
-			result: z.string(),
-		}),
-		execute: async (input: { guidance?: string }) => {
+				'the conversation history, discovers available credentials, data tables, ' +
+				'and best practices, designs the architecture, and shows it to the user ' +
+				'for approval. Use when the request requires 2 or more tasks with ' +
+				'dependencies. When this tool returns, the plan is already approved ' +
+				'and tasks are dispatched — just acknowledge briefly and end your turn.',
+		)
+		.input(
+			z.object({
+				guidance: z
+					.string()
+					.optional()
+					.describe(
+						'Optional steering note for the planner — use ONLY when the conversation ' +
+							'history alone is ambiguous about what to build. The planner reads the ' +
+							'last 5 messages directly, so do NOT rewrite the user request here.',
+					),
+			}),
+		)
+		.output(
+			z.object({
+				result: z.string(),
+			}),
+		)
+		.handler(async (input: { guidance?: string }) => {
 			// ── Collect planner tools ──────────────────────────────────────
-			const plannerTools: ToolsInput = {};
+			const plannerTools = createToolRegistry();
 
 			for (const name of PLANNER_DOMAIN_TOOL_NAMES) {
-				if (name in context.domainTools) {
-					plannerTools[name] = context.domainTools[name];
+				const tool = context.domainTools.get(name);
+				if (tool) {
+					plannerTools.set(name, tool);
 				}
 			}
 
 			for (const name of PLANNER_RESEARCH_TOOL_NAMES) {
-				if (name in context.domainTools) {
-					plannerTools[name] = context.domainTools[name];
+				const tool = context.domainTools.get(name);
+				if (tool) {
+					plannerTools.set(name, tool);
 				}
 			}
 
 			// Best-practices guidance — planner-exclusive
-			plannerTools.templates = createTemplatesTool();
+			plannerTools.set('templates', createTemplatesTool());
 
 			// Incremental plan accumulation + approval tools
 			const accumulator = new BlueprintAccumulator();
-			plannerTools['add-plan-item'] = createAddPlanItemTool(accumulator, context);
-			plannerTools['remove-plan-item'] = createRemovePlanItemTool(accumulator, context);
-			plannerTools['submit-plan'] = createSubmitPlanTool(accumulator, context);
+			plannerTools.set('add-plan-item', createAddPlanItemTool(accumulator, context));
+			plannerTools.set('remove-plan-item', createRemovePlanItemTool(accumulator, context));
+			plannerTools.set('submit-plan', createSubmitPlanTool(accumulator, context));
 
 			// ── Retrieve conversation history ─────────────────────────────
 			const messages = await getRecentMessages(context, MESSAGE_HISTORY_COUNT);
@@ -695,7 +691,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				payload: {
 					parentId: context.orchestratorAgentId,
 					role: 'planner',
-					tools: Object.keys(plannerTools),
+					tools: toolRegistryKeys(plannerTools),
 					kind: 'planner' as const,
 					title: 'Planning',
 					subtitle: truncateLabel(subtitle),
@@ -717,56 +713,61 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 
 			try {
 				// ── Create & stream sub-agent (inline, blocking) ──────────
-				const subAgent = new Agent({
-					id: subAgentId,
-					name: 'Workflow Planner Agent',
-					instructions: {
-						role: 'system' as const,
-						content: PLANNER_AGENT_PROMPT,
+				const subAgent = new Agent('Workflow Planner Agent')
+					.model(context.modelId)
+					.instructions(PLANNER_AGENT_PROMPT, {
 						providerOptions: {
 							anthropic: { cacheControl: { type: 'ephemeral' } },
 						},
-					},
-					model: context.modelId,
-					tools: tracedPlannerTools,
+					})
+					.tool(toolRegistryValues(tracedPlannerTools))
+					.checkpoint(context.checkpointStore ?? 'memory');
+				const telemetry = context.tracing?.getTelemetry?.({
+					agentRole: 'planner',
+					functionId: 'instance-ai.subagent.planner',
+					executionMode: 'background',
+					metadata: { agent_id: subAgentId },
 				});
-
-				registerWithMastra(subAgentId, subAgent, context.storage);
+				if (telemetry) {
+					subAgent.telemetry(telemetry);
+				}
+				mergeTraceRunInputs(
+					traceRun,
+					buildAgentTraceInputs({
+						systemPrompt: PLANNER_AGENT_PROMPT,
+						tools: tracedPlannerTools,
+						modelId: context.modelId,
+					}),
+				);
 
 				const resultText = await withTraceRun(context, traceRun, async () => {
-					const traceParent = getTraceParentRun();
-					return await withTraceParentContext(traceParent, async () => {
-						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-						const stream = await subAgent.stream(briefing, {
-							maxSteps: MAX_STEPS.PLANNER,
-							abortSignal: context.abortSignal,
-							providerOptions: {
-								anthropic: { cacheControl: { type: 'ephemeral' } },
-							},
-							...(llmStepTraceHooks?.executionOptions ?? {}),
-						});
-
-						const result = await consumeStreamWithHitl({
-							agent: subAgent,
-							stream: stream as {
-								runId?: string;
-								fullStream: AsyncIterable<unknown>;
-								text: Promise<string>;
-							},
-							runId: context.runId,
-							agentId: subAgentId,
-							eventBus: context.eventBus,
-							logger: context.logger,
-							threadId: context.threadId,
-							abortSignal: context.abortSignal,
-							waitForConfirmation: context.waitForConfirmation,
-							onActivity: context.touchRun,
-							llmStepTraceHooks,
-							maxSteps: MAX_STEPS.PLANNER,
-						});
-
-						return await result.text;
+					const persistence = await createSubAgentPersistence(context, {
+						agentKind: 'planner',
 					});
+					const stream = await subAgent.stream(briefing, {
+						maxIterations: MAX_STEPS.PLANNER,
+						abortSignal: context.abortSignal,
+						persistence,
+						providerOptions: {
+							anthropic: { cacheControl: { type: 'ephemeral' } },
+						},
+					});
+
+					const result = await consumeStreamWithHitl({
+						agent: subAgent,
+						stream,
+						runId: context.runId,
+						agentId: subAgentId,
+						eventBus: context.eventBus,
+						logger: context.logger,
+						threadId: context.threadId,
+						abortSignal: context.abortSignal,
+						waitForConfirmation: context.waitForConfirmation,
+						maxIterations: MAX_STEPS.PLANNER,
+						persistence,
+					});
+
+					return await requireCompletedHitlText(result, 'Planner sub-agent');
 				});
 
 				await finishTraceRun(context, traceRun, {
@@ -855,6 +856,6 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 
 				return { result: `Planner error: ${errorMessage}` };
 			}
-		},
-	});
+		})
+		.build();
 }
