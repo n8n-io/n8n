@@ -21,6 +21,7 @@ export const ORCHESTRATION_TOOL_IDS = {
 	TASK_CONTROL: 'task-control',
 	DELEGATE: 'delegate',
 	BUILD_WORKFLOW_WITH_AGENT: 'build-workflow-with-agent',
+	EVAL_SETUP_WITH_AGENT: 'eval-setup-with-agent',
 	MANAGE_DATA_TABLES_WITH_AGENT: 'manage-data-tables-with-agent',
 	RESEARCH_WITH_AGENT: 'research-with-agent',
 	BROWSER_CREDENTIAL_SETUP: 'browser-credential-setup',

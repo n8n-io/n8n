@@ -11,6 +11,7 @@
  */
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
+import type { CheckpointTuple } from '@langchain/langgraph';
 import {
 	Annotation,
 	Command,
@@ -41,11 +42,28 @@ async function getCheckpointMessages(
 	checkpointer: MemorySaver,
 	threadId: string,
 ): Promise<BaseMessage[]> {
-	const tuple = await checkpointer.getTuple({
-		configurable: { thread_id: threadId },
-	});
-	const messages = tuple?.checkpoint?.channel_values?.messages;
+	let latestTuple: CheckpointTuple | undefined;
+	for await (const tuple of checkpointer.list({ configurable: { thread_id: threadId } })) {
+		if (!latestTuple || isLaterCheckpoint(tuple, latestTuple)) latestTuple = tuple;
+	}
+
+	const messages = latestTuple?.checkpoint?.channel_values?.messages;
 	return Array.isArray(messages) ? (messages as BaseMessage[]) : [];
+}
+
+function isLaterCheckpoint(candidate: CheckpointTuple, current: CheckpointTuple): boolean {
+	const candidateStep = getCheckpointStep(candidate);
+	const currentStep = getCheckpointStep(current);
+
+	if (candidateStep !== currentStep) return candidateStep > currentStep;
+
+	return candidate.checkpoint.ts > current.checkpoint.ts;
+}
+
+function getCheckpointStep(tuple: CheckpointTuple): number {
+	const step = tuple.metadata?.step;
+
+	return typeof step === 'number' ? step : Number.NEGATIVE_INFINITY;
 }
 
 // ============================================================================
