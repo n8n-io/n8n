@@ -483,9 +483,7 @@ export class InMemoryMemory
 			const contentHash = entry.contentHash ?? hashEpisodicMemoryContent(entry.content);
 			const duplicate = this.episodicMemory.find(
 				(existing) =>
-					existing.namespace === entry.namespace &&
-					existing.resourceId === entry.resourceId &&
-					existing.contentHash === contentHash,
+					existing.resourceId === entry.resourceId && existing.contentHash === contentHash,
 			);
 			if (duplicate) {
 				markLifecycleActive(duplicate);
@@ -497,7 +495,6 @@ export class InMemoryMemory
 
 			const row: EpisodicMemoryEntry = {
 				id: crypto.randomUUID(),
-				namespace: entry.namespace,
 				resourceId: entry.resourceId,
 				content: entry.content,
 				contentHash,
@@ -572,9 +569,7 @@ export class InMemoryMemory
 		opts?: EpisodicMemorySearchOptions,
 	): Promise<RetrievedEpisodicMemoryEntry[]> {
 		const scoped = this.episodicMemory
-			.filter(
-				(entry) => entry.namespace === scope.namespace && entry.resourceId === scope.resourceId,
-			)
+			.filter((entry) => entry.resourceId === scope.resourceId)
 			.map(cloneEpisodicMemoryEntry);
 		return rankEpisodicMemoryEntries(scoped, query, opts);
 	}
@@ -606,12 +601,7 @@ export class InMemoryMemory
 	): Promise<EpisodicMemoryReflectionResult> {
 		const activeIds = new Set(
 			this.episodicMemory
-				.filter(
-					(entry) =>
-						entry.namespace === scope.namespace &&
-						entry.resourceId === scope.resourceId &&
-						entry.status === 'active',
-				)
+				.filter((entry) => entry.resourceId === scope.resourceId && entry.status === 'active')
 				.map((entry) => entry.id),
 		);
 		const normalized = normalizeFlatReflectionActions({

@@ -286,10 +286,7 @@ function requireEpisodicMemoryScope(
 	persistence: AgentPersistenceOptions | undefined,
 ): EpisodicMemoryScope | null {
 	if (!persistence?.resourceId) return null;
-	return {
-		namespace: persistence.episodicMemoryNamespace ?? persistence.resourceId,
-		resourceId: persistence.episodicMemoryResourceId ?? persistence.resourceId,
-	};
+	return { resourceId: persistence.resourceId };
 }
 
 export function getEpisodicMemoryScope(

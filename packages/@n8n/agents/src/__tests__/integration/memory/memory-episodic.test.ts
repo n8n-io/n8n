@@ -255,7 +255,7 @@ async function generateSuccessfully(
 }
 
 function scope(resourceId: string) {
-	return { namespace: resourceId, resourceId };
+	return { resourceId };
 }
 
 function toolNames(messages: Parameters<typeof findAllToolCalls>[0]): string[] {

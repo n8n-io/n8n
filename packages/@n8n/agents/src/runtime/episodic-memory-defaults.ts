@@ -524,7 +524,7 @@ export interface CreateEpisodicMemoryReflectFnOptions {
 export function buildEpisodicMemoryExtractorPrompt(input: EpisodicMemoryExtractorInput): string {
 	return [
 		`Current timestamp: ${input.now.toISOString()}`,
-		`Scope: namespace:${input.scope.namespace}:resource:${input.scope.resourceId}`,
+		`Scope: resource:${input.scope.resourceId}`,
 		`Observation scope: ${input.observationScope.scopeKind}:${input.observationScope.scopeId}`,
 		`Active observation batch:\n${renderObservationsWithIds(input.observations)}`,
 		`Existing episodic entries for duplicate-awareness context:\n${renderExistingEntries(input.existingEntries)}`,
@@ -550,7 +550,7 @@ export function createEpisodicMemoryExtractFn(
 export function buildEpisodicMemoryReflectorPrompt(input: EpisodicMemoryReflectorInput): string {
 	return [
 		`Current timestamp: ${input.now.toISOString()}`,
-		`Scope: namespace:${input.scope.namespace}:resource:${input.scope.resourceId}`,
+		`Scope: resource:${input.scope.resourceId}`,
 		`Seed entry IDs: ${input.seedEntryIds.length ? input.seedEntryIds.join(', ') : '(none)'}`,
 		`Active episodic entries:\n${renderEntriesWithSources(input.entries, input.sources)}`,
 	].join('\n\n');

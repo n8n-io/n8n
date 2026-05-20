@@ -28,7 +28,6 @@ function entry(overrides: Partial<EpisodicMemoryEntry> = {}): EpisodicMemoryEntr
 	const now = new Date('2026-05-12T10:00:00.000Z');
 	return {
 		id: overrides.id ?? crypto.randomUUID(),
-		namespace: overrides.namespace ?? 'agent-1',
 		resourceId: overrides.resourceId ?? 'user-1',
 		content: overrides.content ?? 'User chose Postgres for the memory store.',
 		contentHash: overrides.contentHash ?? crypto.randomUUID(),
@@ -169,7 +168,7 @@ describe('createRecallMemoryTool', () => {
 		const tool = createRecallMemoryTool({
 			memory,
 			config: { embedder: fakeEmbedder },
-			scope: { namespace: 'agent-1', resourceId: 'user-1' },
+			scope: { resourceId: 'user-1' },
 		});
 
 		expect(tool.systemInstruction).toContain('Only call recall_memory');
@@ -187,28 +186,13 @@ describe('createRecallMemoryTool', () => {
 });
 
 describe('getEpisodicMemoryScope', () => {
-	it('uses the episodic-specific resource partition when provided', () => {
-		expect(
-			getEpisodicMemoryScope({
-				episodicMemoryNamespace: 'agent-1',
-				resourceId: 'chat-user-1',
-				threadId: 'thread-1',
-				episodicMemoryResourceId: 'integration:slack:thread-1',
-			}),
-		).toEqual({
-			namespace: 'agent-1',
-			resourceId: 'integration:slack:thread-1',
-		});
-	});
-
-	it('falls back to the persistence resourceId for existing SDK callers', () => {
+	it('uses the persistence resourceId as the episodic memory scope', () => {
 		expect(
 			getEpisodicMemoryScope({
 				resourceId: 'chat-user-1',
 				threadId: 'thread-1',
 			}),
 		).toEqual({
-			namespace: 'chat-user-1',
 			resourceId: 'chat-user-1',
 		});
 	});
@@ -220,7 +204,6 @@ describe('InMemoryMemory episodic source cleanup', () => {
 		const orphaned = await saveEpisodicEntry(
 			memory,
 			{
-				namespace: 'agent-1',
 				resourceId: 'user-1',
 				content: 'User chose Postgres for durable memory storage.',
 			},
@@ -235,7 +218,6 @@ describe('InMemoryMemory episodic source cleanup', () => {
 		const shared = await saveEpisodicEntry(
 			memory,
 			{
-				namespace: 'agent-1',
 				resourceId: 'user-1',
 				content: 'User prefers source-backed cross-session recall.',
 			},
@@ -256,18 +238,13 @@ describe('InMemoryMemory episodic source cleanup', () => {
 		await memory.deleteThread('thread-1');
 
 		await expect(
-			memory.episodic.searchEntries(
-				{ namespace: 'agent-1', resourceId: 'user-1' },
-				'source-backed',
-				{ topK: 10 },
-			),
+			memory.episodic.searchEntries({ resourceId: 'user-1' }, 'source-backed', { topK: 10 }),
 		).resolves.toEqual([expect.objectContaining({ id: shared.id })]);
 		await expect(
-			memory.episodic.searchEntries(
-				{ namespace: 'agent-1', resourceId: 'user-1' },
-				'Postgres storage',
-				{ includeStatuses: ['dropped'], topK: 10 },
-			),
+			memory.episodic.searchEntries({ resourceId: 'user-1' }, 'Postgres storage', {
+				includeStatuses: ['dropped'],
+				topK: 10,
+			}),
 		).resolves.toEqual([expect.objectContaining({ id: orphaned.id, status: 'dropped' })]);
 	});
 });
@@ -309,7 +286,7 @@ describe('runEpisodicMemoryIndexer', () => {
 		const result = await runEpisodicMemoryIndexer({
 			memory,
 			config: { embedder: fakeEmbedder, extract },
-			scope: { namespace: 'agent-1', resourceId: 'user-1' },
+			scope: { resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
 			now: new Date('2026-05-12T10:01:00.000Z'),
@@ -317,7 +294,7 @@ describe('runEpisodicMemoryIndexer', () => {
 
 		expect(result).toEqual({ status: 'ran', entriesWritten: 1, observationsIndexed: 1 });
 		const stored = await memory.episodic.searchEntries(
-			{ namespace: 'agent-1', resourceId: 'user-1' },
+			{ resourceId: 'user-1' },
 			'Postgres enterprise',
 			{ queryEmbedding: [1, 0] },
 		);
@@ -327,7 +304,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			runEpisodicMemoryIndexer({
 				memory,
 				config: { embedder: fakeEmbedder, extract },
-				scope: { namespace: 'agent-1', resourceId: 'user-1' },
+				scope: { resourceId: 'user-1' },
 				observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 				threadId: 'thread-1',
 			}),
@@ -361,7 +338,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			runEpisodicMemoryIndexer({
 				memory,
 				config: { embedder: fakeEmbedder, extract },
-				scope: { namespace: 'agent-1', resourceId: 'user-1' },
+				scope: { resourceId: 'user-1' },
 				observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 				threadId: 'thread-1',
 				now: new Date('2026-05-12T10:01:00.000Z'),
@@ -369,10 +346,7 @@ describe('runEpisodicMemoryIndexer', () => {
 		).rejects.toThrow(sourceError);
 
 		await expect(
-			memory.episodic.searchEntries(
-				{ namespace: 'agent-1', resourceId: 'user-1' },
-				'Postgres memory',
-			),
+			memory.episodic.searchEntries({ resourceId: 'user-1' }, 'Postgres memory'),
 		).resolves.toEqual([]);
 		await expect(
 			memory.episodic.getCursor({
@@ -421,7 +395,7 @@ describe('runEpisodicMemoryIndexer', () => {
 		await runEpisodicMemoryIndexer({
 			memory,
 			config: { embedder: fakeEmbedder, extract },
-			scope: { namespace: 'agent-1', resourceId: 'user-1' },
+			scope: { resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
 		});
@@ -473,13 +447,13 @@ describe('runEpisodicMemoryIndexer', () => {
 		await runEpisodicMemoryIndexer({
 			memory,
 			config: { embedder: fakeEmbedder, extract },
-			scope: { namespace: 'agent-1', resourceId: 'user-1' },
+			scope: { resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
 		});
 
 		const [stored] = await memory.episodic.searchEntries(
-			{ namespace: 'agent-1', resourceId: 'user-1' },
+			{ resourceId: 'user-1' },
 			'VENDORSTATUSCOMPLETE',
 			{ topK: 1 },
 		);
@@ -510,14 +484,14 @@ describe('runEpisodicMemoryIndexer', () => {
 		const result = await runEpisodicMemoryIndexer({
 			memory,
 			config: { embedder: fakeEmbedder, extract },
-			scope: { namespace: 'agent-1', resourceId: 'user-1' },
+			scope: { resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
 		});
 
 		expect(result).toEqual({ status: 'ran', entriesWritten: 0, observationsIndexed: 1 });
 		await expect(
-			memory.episodic.searchEntries({ namespace: 'agent-1', resourceId: 'user-1' }, 'API key'),
+			memory.episodic.searchEntries({ resourceId: 'user-1' }, 'API key'),
 		).resolves.toEqual([]);
 	});
 
@@ -570,24 +544,20 @@ describe('runEpisodicMemoryIndexer', () => {
 		const result = await runEpisodicMemoryIndexer({
 			memory,
 			config: { embedder: fakeEmbedder, extract },
-			scope: { namespace: 'agent-1', resourceId: 'user-1' },
+			scope: { resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
 		});
 
 		expect(result).toEqual({ status: 'ran', entriesWritten: 0, observationsIndexed: 3 });
 		await expect(
-			memory.episodic.searchEntries(
-				{ namespace: 'agent-1', resourceId: 'user-1' },
-				'memory feature decisions',
-			),
+			memory.episodic.searchEntries({ resourceId: 'user-1' }, 'memory feature decisions'),
 		).resolves.toEqual([]);
 	});
 
 	it('ignores legacy extractor supersedes and keeps lifecycle decisions in reflection', async () => {
 		const memory = new InMemoryMemory();
 		const oldEntry = await saveEpisodicEntry(memory, {
-			namespace: 'agent-1',
 			resourceId: 'user-1',
 			content: 'User planned SQLite for local-first memory storage.',
 			embedding: [1, 0],
@@ -619,13 +589,13 @@ describe('runEpisodicMemoryIndexer', () => {
 		await runEpisodicMemoryIndexer({
 			memory,
 			config: { embedder: fakeEmbedder, extract },
-			scope: { namespace: 'agent-1', resourceId: 'user-1' },
+			scope: { resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
 		});
 
 		const entries = await memory.episodic.searchEntries(
-			{ namespace: 'agent-1', resourceId: 'user-1' },
+			{ resourceId: 'user-1' },
 			'SQLite Postgres memory storage',
 			{ includeStatuses: ['active', 'superseded'], queryEmbedding: [1, 0], topK: 10 },
 		);
@@ -637,7 +607,6 @@ describe('runEpisodicMemoryIndexer', () => {
 		const oldEntry = await saveEpisodicEntry(
 			memory,
 			{
-				namespace: 'agent-1',
 				resourceId: 'user-1',
 				content: 'User planned SQLite for local-first memory storage.',
 				embedding: [1, 0],
@@ -690,13 +659,13 @@ describe('runEpisodicMemoryIndexer', () => {
 		await runEpisodicMemoryIndexer({
 			memory,
 			config: { embedder: fakeEmbedder, extract, reflect },
-			scope: { namespace: 'agent-1', resourceId: 'user-1' },
+			scope: { resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
 		});
 
 		const active = await memory.episodic.searchEntries(
-			{ namespace: 'agent-1', resourceId: 'user-1' },
+			{ resourceId: 'user-1' },
 			'Postgres enterprise constraints',
 			{ queryEmbedding: [1, 0], topK: 10 },
 		);
@@ -704,7 +673,7 @@ describe('runEpisodicMemoryIndexer', () => {
 		expect(active[0].content).toContain('from SQLite to Postgres');
 
 		const inactive = await memory.episodic.searchEntries(
-			{ namespace: 'agent-1', resourceId: 'user-1' },
+			{ resourceId: 'user-1' },
 			'SQLite Postgres',
 			{ includeStatuses: ['superseded'], queryEmbedding: [1, 0], topK: 10 },
 		);
@@ -737,7 +706,6 @@ describe('runEpisodicMemoryIndexer', () => {
 		const oldEntry = await saveEpisodicEntry(
 			memory,
 			{
-				namespace: 'agent-1',
 				resourceId: 'user-1',
 				content: 'User planned a Harborlight vendor intake pilot.',
 				embedding: [1, 0],
@@ -787,13 +755,13 @@ describe('runEpisodicMemoryIndexer', () => {
 		await runEpisodicMemoryIndexer({
 			memory,
 			config: { embedder: fakeEmbedder, extract, reflect },
-			scope: { namespace: 'agent-1', resourceId: 'user-1' },
+			scope: { resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
 		});
 
 		const [stored] = await memory.episodic.searchEntries(
-			{ namespace: 'agent-1', resourceId: 'user-1' },
+			{ resourceId: 'user-1' },
 			'REFLECTEDVENDORSTATUSCOMPLETE',
 			{ topK: 1 },
 		);
@@ -804,7 +772,6 @@ describe('runEpisodicMemoryIndexer', () => {
 	it('reflects obvious noise as dropped and excludes it from active search', async () => {
 		const memory = new InMemoryMemory();
 		const noise = await saveEpisodicEntry(memory, {
-			namespace: 'agent-1',
 			resourceId: 'user-1',
 			content: 'Agent queried memory and no entries were found.',
 			embedding: [1, 0],
@@ -837,19 +804,19 @@ describe('runEpisodicMemoryIndexer', () => {
 		await runEpisodicMemoryIndexer({
 			memory,
 			config: { embedder: fakeEmbedder, extract, reflect },
-			scope: { namespace: 'agent-1', resourceId: 'user-1' },
+			scope: { resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
 		});
 
 		const active = await memory.episodic.searchEntries(
-			{ namespace: 'agent-1', resourceId: 'user-1' },
+			{ resourceId: 'user-1' },
 			'no entries found',
 			{ queryEmbedding: [1, 0], topK: 10 },
 		);
 		expect(active.map((entry) => entry.id)).not.toContain(noise.id);
 		const [dropped] = await memory.episodic.searchEntries(
-			{ namespace: 'agent-1', resourceId: 'user-1' },
+			{ resourceId: 'user-1' },
 			'no entries found',
 			{ includeStatuses: ['dropped'], queryEmbedding: [1, 0] },
 		);
@@ -859,7 +826,6 @@ describe('runEpisodicMemoryIndexer', () => {
 	it('ignores invalid reflection actions and keeps similar distinct cases active', async () => {
 		const memory = new InMemoryMemory();
 		const northstar = await saveEpisodicEntry(memory, {
-			namespace: 'agent-1',
 			resourceId: 'user-1',
 			content: 'Northstar routing issue was caused by stale manager email mappings.',
 			embedding: [1, 0],
@@ -898,13 +864,13 @@ describe('runEpisodicMemoryIndexer', () => {
 		await runEpisodicMemoryIndexer({
 			memory,
 			config: { embedder: fakeEmbedder, extract, reflect },
-			scope: { namespace: 'agent-1', resourceId: 'user-1' },
+			scope: { resourceId: 'user-1' },
 			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 			threadId: 'thread-1',
 		});
 
 		const active = await memory.episodic.searchEntries(
-			{ namespace: 'agent-1', resourceId: 'user-1' },
+			{ resourceId: 'user-1' },
 			'Northstar Southeast routing invoice',
 			{ queryEmbedding: [1, 0], topK: 10 },
 		);
@@ -949,18 +915,16 @@ describe('runEpisodicMemoryIndexer', () => {
 			runEpisodicMemoryIndexer({
 				memory,
 				config: { embedder: fakeEmbedder, extract, reflect },
-				scope: { namespace: 'agent-1', resourceId: 'user-1' },
+				scope: { resourceId: 'user-1' },
 				observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 				threadId: 'thread-1',
 			}),
 		).rejects.toThrow('reflect failed');
 
 		await expect(
-			memory.episodic.searchEntries(
-				{ namespace: 'agent-1', resourceId: 'user-1' },
-				'Postgres memory store',
-				{ queryEmbedding: [1, 0] },
-			),
+			memory.episodic.searchEntries({ resourceId: 'user-1' }, 'Postgres memory store', {
+				queryEmbedding: [1, 0],
+			}),
 		).resolves.toHaveLength(1);
 		await expect(
 			memory.episodic.getCursor({
@@ -973,7 +937,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			runEpisodicMemoryIndexer({
 				memory,
 				config: { embedder: fakeEmbedder, extract, reflect },
-				scope: { namespace: 'agent-1', resourceId: 'user-1' },
+				scope: { resourceId: 'user-1' },
 				observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
 				threadId: 'thread-1',
 			}),

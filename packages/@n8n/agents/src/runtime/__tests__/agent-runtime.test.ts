@@ -2658,7 +2658,7 @@ describe('AgentRuntime — observation log jobs', () => {
 		await runtime.dispose();
 
 		const entries = await memory.episodic.searchEntries(
-			{ namespace: 'resource-1', resourceId: 'resource-1' },
+			{ resourceId: 'resource-1' },
 			'Postgres storage',
 			{ queryEmbedding: [1, 0] },
 		);
@@ -2677,7 +2677,6 @@ describe('AgentRuntime — observation log jobs', () => {
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
 		await memory.episodic.saveEntryWithSources(
 			{
-				namespace: 'resource-1',
 				resourceId: 'resource-1',
 				content: 'Earlier session: user chose Postgres for memory storage.',
 				embedding: [1, 0],
@@ -2692,7 +2691,6 @@ describe('AgentRuntime — observation log jobs', () => {
 		);
 		await memory.episodic.saveEntryWithSources(
 			{
-				namespace: 'resource-2',
 				resourceId: 'resource-2',
 				content: 'Earlier session: user chose SQLite for memory storage.',
 				embedding: [1, 0],
