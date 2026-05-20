@@ -99,6 +99,25 @@ function readFieldAccessor(
 	return { field: quoted.value, endIndex: closeBracketIndex + 1 };
 }
 
+function readFieldPathAccessor(
+	text: string,
+	start: number,
+): { field: string; endIndex: number } | undefined {
+	const first = readFieldAccessor(text, start);
+	if (!first) return undefined;
+
+	const fields = [first.field];
+	let endIndex = first.endIndex;
+	while (true) {
+		const next = readFieldAccessor(text, endIndex);
+		if (!next) break;
+		fields.push(next.field);
+		endIndex = next.endIndex;
+	}
+
+	return { field: fields.join('.'), endIndex };
+}
+
 const ITEM_JSON_ACCESSOR_PATTERNS = [
 	'.item.json',
 	'.first().json',
@@ -112,17 +131,17 @@ function readItemJsonField(
 ): { field: string; endIndex: number } | undefined {
 	for (const accessor of ITEM_JSON_ACCESSOR_PATTERNS) {
 		if (!text.startsWith(accessor, start)) continue;
-		return readFieldAccessor(text, start + accessor.length);
+		return readFieldPathAccessor(text, start + accessor.length);
 	}
 
 	const itemMatching = /^\.itemMatching\(\d+\)\.json/.exec(text.slice(start));
 	if (itemMatching) {
-		return readFieldAccessor(text, start + itemMatching[0].length);
+		return readFieldPathAccessor(text, start + itemMatching[0].length);
 	}
 
 	const allItem = /^\.all\(\)\[\d+\]\.json/.exec(text.slice(start));
 	if (allItem) {
-		return readFieldAccessor(text, start + allItem[0].length);
+		return readFieldPathAccessor(text, start + allItem[0].length);
 	}
 
 	return undefined;
@@ -133,7 +152,7 @@ function readDirectJsonField(
 	start: number,
 ): { field: string; endIndex: number } | undefined {
 	if (!text.startsWith('.json', start)) return undefined;
-	return readFieldAccessor(text, start + '.json'.length);
+	return readFieldPathAccessor(text, start + '.json'.length);
 }
 
 function readItemsJsonField(
@@ -156,45 +175,92 @@ export function jsonFieldAccessor(field: string): string {
 	return JS_IDENTIFIER.test(field) ? `.${field}` : `[${JSON.stringify(field)}]`;
 }
 
+export function jsonPathAccessor(path: string): string {
+	return path.split('.').map(jsonFieldAccessor).join('');
+}
+
 export function currentJsonExpression(field: string): string {
 	return `$json${jsonFieldAccessor(field)}`;
 }
 
+export function currentJsonPathExpression(path: string): string {
+	return `$json${jsonPathAccessor(path)}`;
+}
+
 export function nodeItemJsonExpression(nodeName: string, field: string): string {
-	return `$(${JSON.stringify(nodeName)}).item.json${jsonFieldAccessor(field)}`;
+	return `$(${JSON.stringify(nodeName)}).item.json${jsonPathAccessor(field)}`;
+}
+
+export interface DirectJsonRefMatch {
+	field: string;
+	originalExpression: string;
+}
+
+function readJsonRefAt(
+	text: string,
+	index: number,
+): { field: string; endIndex: number } | undefined {
+	if (text.startsWith('$json', index) && !isIdentifierPart(charAt(text, index + 5))) {
+		return readFieldPathAccessor(text, index + 5);
+	}
+
+	if (text.startsWith('$input', index) && !isIdentifierPart(charAt(text, index + 6))) {
+		return readItemJsonField(text, index + 6) ?? readItemsJsonField(text, index + 6);
+	}
+
+	return undefined;
+}
+
+function readBareItemJsonRefAt(
+	text: string,
+	index: number,
+): { field: string; endIndex: number } | undefined {
+	if (!text.startsWith('item.json', index)) return undefined;
+	const previous = charAt(text, index - 1);
+	if (previous && (isIdentifierPart(previous) || previous === '.')) return undefined;
+	return readFieldPathAccessor(text, index + 'item.json'.length);
+}
+
+export function extractJsonRefMatches(text: string): DirectJsonRefMatch[] {
+	const matches: DirectJsonRefMatch[] = [];
+
+	for (let index = 0; index < text.length; index++) {
+		const match = readJsonRefAt(text, index);
+		if (!match) continue;
+		matches.push({
+			field: match.field,
+			originalExpression: text.slice(index, match.endIndex),
+		});
+		index = match.endIndex - 1;
+	}
+
+	return matches;
 }
 
 export function extractJsonColumnRefs(text: string): string[] {
-	const refs: string[] = [];
+	return unique(extractJsonRefMatches(text).map((match) => match.field));
+}
+
+export function extractDirectJsonRefMatches(text: string): DirectJsonRefMatch[] {
+	const matches = extractJsonRefMatches(text);
 
 	for (let index = 0; index < text.length; index++) {
-		if (text.startsWith('$json', index) && !isIdentifierPart(charAt(text, index + 5))) {
-			const match = readFieldAccessor(text, index + 5);
-			if (match) {
-				refs.push(match.field);
-				index = match.endIndex - 1;
-			}
-			continue;
-		}
-
-		if (text.startsWith('$input', index) && !isIdentifierPart(charAt(text, index + 6))) {
-			const match = readItemJsonField(text, index + 6) ?? readItemsJsonField(text, index + 6);
-			if (match) {
-				refs.push(match.field);
-				index = match.endIndex - 1;
-			}
-		}
+		const match = readBareItemJsonRefAt(text, index);
+		if (!match) continue;
+		matches.push({
+			field: match.field,
+			originalExpression: text.slice(index, match.endIndex),
+		});
+		index = match.endIndex - 1;
 	}
 
-	return unique(refs);
+	const dedup = new Map<string, DirectJsonRefMatch>();
+	for (const match of matches) dedup.set(match.originalExpression, match);
+	return [...dedup.values()];
 }
 
 export function extractDirectJsonColumnRefs(text: string): string[] {
-	const refs = extractJsonColumnRefs(text);
-	for (const match of text.matchAll(/(?:^|[^\w.])item\.json\.([A-Za-z_][A-Za-z0-9_]*)/g)) {
-		if (match[1]) refs.push(match[1]);
-	}
-	return unique(refs);
+	return unique(extractDirectJsonRefMatches(text).map((match) => match.field));
 }
 
 /**

@@ -2,6 +2,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../../types';
 import { createEvalsTool } from '../evals.tool';
+import * as sampleRowsService from '../generate-sample-rows.service';
 
 /** Minimal AI workflow: trigger + agent node. Agent references $json.user_query. */
 function aiWf(): WorkflowJSON {
@@ -201,6 +202,47 @@ function aiWfWithDirectAndNamedRef(): WorkflowJSON {
 	} as unknown as WorkflowJSON;
 }
 
+/** AI workflow where agent and memory read different nested fields from the same event object. */
+function aiWfWithNestedAgentAndMemoryRefs(): WorkflowJSON {
+	return {
+		name: 'Telegram AI Flow',
+		nodes: [
+			{
+				id: '1',
+				name: 'Telegram Trigger',
+				type: 'n8n-nodes-base.telegramTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				id: '2',
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				position: [200, 0],
+				parameters: { text: '={{ $json.message.text }}' },
+			},
+			{
+				id: '3',
+				name: 'Postgres Memory',
+				type: '@n8n/n8n-nodes-langchain.memoryPostgres',
+				typeVersion: 1,
+				position: [200, 200],
+				parameters: { sessionIdExpression: '={{ $json.message.chat.id }}' },
+			},
+		],
+		connections: {
+			'Telegram Trigger': {
+				main: [[{ node: 'Agent', type: 'main', index: 0 }]],
+			},
+			'Postgres Memory': {
+				ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]],
+			},
+		},
+	} as unknown as WorkflowJSON;
+}
+
 /** AI workflow with two named refs that share the same source field name. */
 function aiWfWithNamedRefCollision(): WorkflowJSON {
 	return {
@@ -294,10 +336,15 @@ function makeCtx(
 				tableName: 'x',
 				projectId: 'p',
 			}),
+			getSchema: jest.fn().mockResolvedValue([]),
+			addColumn: jest.fn().mockResolvedValue(undefined),
 			queryRows: jest.fn().mockResolvedValue({ count: 0, data: [] }),
 			...dataTableOverrides,
 		},
-		executionService: {} as never,
+		executionService: {
+			list: jest.fn().mockResolvedValue([]),
+			getNodeOutput: jest.fn(),
+		} as never,
 		credentialService: {} as never,
 		nodeService: {} as never,
 		logger: {
@@ -482,7 +529,10 @@ describe('evals tool — offer-data-population action', () => {
 		);
 	});
 
-	it('returns approval context after the user approves population', async () => {
+	it('populates the wired table after the user approves population', async () => {
+		jest
+			.spyOn(sampleRowsService, 'generateSampleRows')
+			.mockResolvedValue([{ user_query: 'How do I reset my password?' }]);
 		const ctx = makeCtx(evalConfiguredWf());
 		const tool = createEvalsTool(ctx);
 
@@ -490,11 +540,24 @@ describe('evals tool — offer-data-population action', () => {
 			agent: { resumeData: { approved: true } },
 		} as never)) as Record<string, unknown>;
 
-		expect(result).toEqual({
+		expect(result).toMatchObject({
 			approved: true,
 			workflowId: 'w1',
 			targetAgentNodeName: 'Agent',
+			status: 'generated',
+			rowCount: 1,
+			table: {
+				id: 'dt-existing',
+				name: 'x',
+				rowCount: 1,
+				inputColumns: ['user_query'],
+			},
 		});
+		expect(ctx.dataTableService.insertRows).toHaveBeenCalledWith(
+			'dt-existing',
+			[{ user_query: 'How do I reset my password?' }],
+			undefined,
+		);
 	});
 
 	it('skips when there is no wired test-case table to populate', async () => {
@@ -1206,6 +1269,40 @@ describe('evals tool — propose with named refs', () => {
 				{ name: 'user_query', type: 'string' },
 			]) as unknown,
 			undefined,
+		);
+	});
+
+	it('flattens nested agent and memory refs into separate DataTable columns', async () => {
+		const create = jest.fn().mockResolvedValue({ id: 'dt-1', name: 'x', columns: [] });
+		const ctx = makeCtx(aiWfWithNestedAgentAndMemoryRefs(), { create });
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.handler!(
+			{
+				action: 'propose',
+				workflowId: 'w1',
+				metrics: ['correctness'],
+			},
+			{
+				agent: {},
+			} as never,
+		)) as { task: string };
+
+		expect(create).toHaveBeenCalledWith(
+			expect.any(String) as unknown,
+			expect.arrayContaining([
+				{ name: 'message_text', type: 'string' },
+				{ name: 'message_chat_id', type: 'string' },
+				{ name: 'expected_output', type: 'string' },
+			]) as unknown,
+			undefined,
+		);
+		expect(result.task).toContain('Eval Production Adapter');
+		expect(result.task).toContain('value: "={{ $json.message.text }}"');
+		expect(result.task).toContain('value: "={{ $json.message.chat.id }}"');
+		expect(result.task).toContain('Replace `$json.message.text` with `{{ $json.message_text }}`');
+		expect(result.task).toContain(
+			'Replace `$json.message.chat.id` with `{{ $json.message_chat_id }}`',
 		);
 	});
 

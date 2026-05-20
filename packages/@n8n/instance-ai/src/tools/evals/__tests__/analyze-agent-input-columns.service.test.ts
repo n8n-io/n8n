@@ -3,6 +3,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	analyzeAgentEvalInputColumns,
 	analyzeAgentInputColumns,
+	detectAgentEvalInputRefs,
 } from '../analyze-agent-input-columns.service';
 
 type TestNode = Partial<WorkflowJSON['nodes'][number]>;
@@ -88,6 +89,21 @@ describe('analyzeAgentInputColumns', () => {
 		expect(result.inputColumns.sort()).toEqual(['context', 'q']);
 	});
 
+	it('keeps nested $json paths as separate input columns', () => {
+		const workflow = wf([
+			{
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				parameters: { text: '={{ $json.message.text }} {{ $json.message.chat.id }}' },
+				position: [0, 0],
+				id: 'a',
+			},
+		]);
+		const result = analyzeAgentInputColumns(workflow, 'Agent');
+		expect(result.inputColumns.sort()).toEqual(['message.chat.id', 'message.text']);
+	});
+
 	it('extracts bracket field references from direct $json access', () => {
 		const workflow = wf([
 			{
@@ -153,5 +169,49 @@ describe('analyzeAgentEvalInputColumns', () => {
 
 		const result = analyzeAgentEvalInputColumns(workflow, 'Agent');
 		expect(result.inputColumns.sort()).toEqual(['chat_id', 'user_query']);
+	});
+
+	it('returns direct ref rewrite metadata for nested agent and memory paths', () => {
+		const workflow = {
+			name: 't',
+			nodes: [
+				{
+					name: 'Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					parameters: { text: '={{ $json.message.text }}' },
+					position: [0, 0],
+					id: 'a',
+				},
+				{
+					name: 'Memory',
+					type: '@n8n/n8n-nodes-langchain.memoryPostgres',
+					typeVersion: 1,
+					parameters: { sessionIdExpression: '={{ $json.message.chat.id }}' },
+					position: [0, 100],
+					id: 'm',
+				},
+			],
+			connections: {
+				Memory: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
+			},
+			pinData: {},
+			settings: {},
+		} as unknown as WorkflowJSON;
+
+		expect(detectAgentEvalInputRefs(workflow, 'Agent')).toEqual([
+			{
+				field: 'message.text',
+				originalExpression: '$json.message.text',
+				column: 'message.text',
+				targetNodeName: 'Agent',
+			},
+			{
+				field: 'message.chat.id',
+				originalExpression: '$json.message.chat.id',
+				column: 'message.chat.id',
+				targetNodeName: 'Memory',
+			},
+		]);
 	});
 });

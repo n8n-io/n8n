@@ -1,7 +1,9 @@
 import {
 	collectStrings,
 	currentJsonExpression,
+	currentJsonPathExpression,
 	extractDirectJsonColumnRefs,
+	extractDirectJsonRefMatches,
 	extractJsonColumnRefs,
 	extractNamedRefMatches,
 	nodeItemJsonExpression,
@@ -18,6 +20,11 @@ describe('column-ref-utils', () => {
 	describe('extractJsonColumnRefs', () => {
 		it('extracts $json.field references', () => {
 			expect(extractJsonColumnRefs('hello {{ $json.user_query }}')).toEqual(['user_query']);
+		});
+		it('keeps nested $json paths distinct', () => {
+			expect(extractJsonColumnRefs('{{ $json.message.chat.id }} {{ $json.message.text }}')).toEqual(
+				['message.chat.id', 'message.text'],
+			);
 		});
 		it('extracts $json["field"] references', () => {
 			expect(extractJsonColumnRefs('hello {{ $json["user-query"] }}')).toEqual(['user-query']);
@@ -51,6 +58,20 @@ describe('column-ref-utils', () => {
 			).toEqual(['context', 'user_query']);
 		});
 
+		it('extracts direct nested refs with original expressions', () => {
+			expect(
+				extractDirectJsonRefMatches(
+					'{{ $json.message.text }} {{ $input.item.json.message.chat.id }}',
+				),
+			).toEqual([
+				{ field: 'message.text', originalExpression: '$json.message.text' },
+				{
+					field: 'message.chat.id',
+					originalExpression: '$input.item.json.message.chat.id',
+				},
+			]);
+		});
+
 		it('extracts bracket field references from direct $json access', () => {
 			expect(extractDirectJsonColumnRefs('hello {{ $json["user-input"] }}')).toEqual([
 				'user-input',
@@ -67,7 +88,7 @@ describe('column-ref-utils', () => {
 			const text = [
 				'={{ $("Quoted \\"Node\\"").first().json["field-key"] }}',
 				"={{ $items('Other\\'s Node')[0].json.foo }}",
-				'={{ $node.Source.item.json.bar }}',
+				'={{ $node.Source.item.json.bar.nested }}',
 				'={{ $node["Legacy"].json["baz qux"] }}',
 			].join('\n');
 
@@ -84,8 +105,8 @@ describe('column-ref-utils', () => {
 				},
 				{
 					nodeName: 'Source',
-					field: 'bar',
-					originalExpression: '$node.Source.item.json.bar',
+					field: 'bar.nested',
+					originalExpression: '$node.Source.item.json.bar.nested',
 				},
 				{
 					nodeName: 'Legacy',
@@ -102,9 +123,13 @@ describe('column-ref-utils', () => {
 			expect(currentJsonExpression('unsafe-name')).toBe('$json["unsafe-name"]');
 		});
 
+		it('formats nested source paths for production adapter assignments', () => {
+			expect(currentJsonPathExpression('message.chat.id')).toBe('$json.message.chat.id');
+		});
+
 		it('escapes node names and field names for generated expressions', () => {
-			expect(nodeItemJsonExpression('Voice "or" Text', 'message-id')).toBe(
-				'$("Voice \\"or\\" Text").item.json["message-id"]',
+			expect(nodeItemJsonExpression('Voice "or" Text', 'message.chat.id')).toBe(
+				'$("Voice \\"or\\" Text").item.json.message.chat.id',
 			);
 		});
 	});

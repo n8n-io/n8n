@@ -11,7 +11,7 @@ import {
 export interface NamedRef {
 	/** Source node name extracted from $('NodeName') reference. */
 	nodeName: string;
-	/** Field after .item.json.<field>. */
+	/** Field or nested path after .item.json, e.g. "text" or "message.chat.id". */
 	field: string;
 	/** Original expression substring, useful for the rewrite step (no $('… surrounding). E.g., "$('Voice or Text').item.json.text". */
 	originalExpression: string;

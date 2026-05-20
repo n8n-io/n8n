@@ -4,7 +4,10 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { analyzeAgentEvalInputColumns } from './analyze-agent-input-columns.service';
+import {
+	analyzeAgentEvalInputColumns,
+	detectAgentEvalInputRefs,
+} from './analyze-agent-input-columns.service';
 import {
 	describeMetricForWorkflow,
 	recommendedMetricId,
@@ -25,6 +28,7 @@ import {
 	proposeDefaultMetricIds,
 	type MetricId,
 } from './metric-catalog';
+import { populateEvalDataTable } from './populate-eval-data-table.service';
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../../types';
 
@@ -89,9 +93,10 @@ const offerDataPopulationAction = z.object({
 	action: z
 		.literal('offer-data-population')
 		.describe(
-			'Ask the user whether to populate the eval DataTable after eval setup is wired. On approval returns `{ approved: true, workflowId, targetAgentNodeName? }` so the orchestrator can call `eval-data`.',
+			'Ask the user whether to populate the eval DataTable after eval setup is wired. On approval, populates it immediately and returns the inserted table summary.',
 		),
 	workflowId: z.string(),
+	projectId: z.string().optional(),
 	targetAgentNodeName: z
 		.string()
 		.optional()
@@ -516,6 +521,7 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 
 	const agentName = target.agentName;
 	const { inputColumns: directColumns } = analyzeAgentEvalInputColumns(wf, agentName);
+	const directRefs = detectAgentEvalInputRefs(wf, agentName);
 	const namedRefs = detectAgentNamedRefs(wf, agentName);
 	const filteredNamedRefs = namedRefs;
 	const namedRefColumns = filteredNamedRefs.map((r) => r.column);
@@ -551,6 +557,13 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 					...ref,
 					column: normalizedColumnNames.get(ref.column) ?? ref.column,
 				}));
+	const taskDirectRefs =
+		normalizedColumnNames === undefined
+			? directRefs
+			: directRefs.map((ref) => ({
+					...ref,
+					column: normalizedColumnNames.get(ref.column) ?? ref.column,
+				}));
 
 	let dataTableId: string | undefined = input.existingDataTableId;
 	let createdTable: { id: string; name: string; projectId?: string } | undefined;
@@ -579,6 +592,7 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 		suggestedInputColumns: taskInputColumns,
 		suggestedOutputColumns: taskOutputColumns,
 		enabledMetrics: resolvedMetrics,
+		directRefs: taskDirectRefs,
 		namedRefs: taskNamedRefs,
 		targetAgentNodeName: agentName,
 	});
@@ -645,6 +659,11 @@ async function executeOfferDataPopulation(
 			approved: true as const,
 			workflowId: input.workflowId,
 			...(target.targetAgentNodeName ? { targetAgentNodeName: target.targetAgentNodeName } : {}),
+			...(await populateEvalDataTable(context, {
+				workflowId: input.workflowId,
+				...(input.projectId ? { projectId: input.projectId } : {}),
+				...(target.targetAgentNodeName ? { targetAgentNodeName: target.targetAgentNodeName } : {}),
+			})),
 		};
 	}
 

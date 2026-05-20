@@ -266,7 +266,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toMatch(/evals\(action="recommend-metric", workflowId\)/);
 			expect(prompt).toMatch(/evals\(action="select-metrics", workflowId\)/);
 			expect(prompt).toMatch(/evals\(action="propose"/);
-			expect(prompt).toMatch(/evals\(action="offer-data-population", workflowId\)/);
+			expect(prompt).toMatch(/evals\(action="offer-data-population", workflowId, projectId\)/);
 			expect(prompt).toContain('eval-setup-with-agent');
 		});
 

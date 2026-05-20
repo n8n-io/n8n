@@ -3,6 +3,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	collectStrings,
 	extractDirectJsonColumnRefs,
+	extractDirectJsonRefMatches,
 	extractNamedRefMatches,
 	findAgentSubComponents,
 	nodeHasName,
@@ -12,6 +13,17 @@ import {
 export interface AgentInputColumns {
 	agentNodeName: string;
 	inputColumns: string[];
+}
+
+export interface DirectJsonRef {
+	/** Full path after $json / item.json, e.g. "message.chat.id". */
+	field: string;
+	/** Original expression substring to replace, e.g. "$json.message.chat.id". */
+	originalExpression: string;
+	/** Proposed raw dataset column name before DataTable normalization. */
+	column: string;
+	/** Node whose parameter contains the reference: agent, memory, tool, parser, etc. */
+	targetNodeName: string;
 }
 
 const FALLBACK_COLUMN = 'input';
@@ -57,4 +69,37 @@ export function analyzeAgentEvalInputColumns(
 		agentNodeName,
 		inputColumns: unique([...agentInput.inputColumns, ...subComponentColumns]),
 	};
+}
+
+export function detectAgentEvalInputRefs(
+	workflow: WorkflowJSON,
+	agentNodeName: string,
+): DirectJsonRef[] {
+	const nodesByName = new Map(
+		(workflow.nodes ?? []).filter(nodeHasName).map((n) => [n.name, n] as const),
+	);
+	const targets = [agentNodeName, ...findAgentSubComponents(workflow, agentNodeName)];
+	const refs: DirectJsonRef[] = [];
+
+	for (const targetNodeName of targets) {
+		const node = nodesByName.get(targetNodeName);
+		if (!node) continue;
+
+		const dedup = new Map<string, DirectJsonRef>();
+		for (const text of collectStrings(node.parameters)) {
+			for (const match of extractDirectJsonRefMatches(text)) {
+				const key = `${match.originalExpression}\x00${match.field}`;
+				if (dedup.has(key)) continue;
+				dedup.set(key, {
+					field: match.field,
+					originalExpression: match.originalExpression,
+					column: match.field,
+					targetNodeName,
+				});
+			}
+		}
+		refs.push(...dedup.values());
+	}
+
+	return refs;
 }

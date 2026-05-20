@@ -46,6 +46,52 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 		expect(task).toMatch(/name: "text"/);
 	});
 
+	it('emits adapter assignments and rewrites for nested direct refs', () => {
+		const task = formatEvalSetupTask({
+			...BASE,
+			suggestedInputColumns: ['message.text', 'message.chat.id'],
+			directRefs: [
+				{
+					field: 'message.text',
+					originalExpression: '$json.message.text',
+					column: 'message.text',
+					targetNodeName: 'General Agent',
+				},
+				{
+					field: 'message.chat.id',
+					originalExpression: '$json.message.chat.id',
+					column: 'message.chat.id',
+					targetNodeName: 'Postgres Memory',
+				},
+			],
+		});
+
+		expect(task).toMatch(/PRODUCTION ADAPTER/);
+		expect(task).toContain('- message_text');
+		expect(task).toContain('- message_chat_id');
+		expect(task).toContain('value: "={{ $json.message.text }}"');
+		expect(task).toContain('value: "={{ $json.message.chat.id }}"');
+		expect(task).toContain('Replace `$json.message.text` with `{{ $json.message_text }}`');
+		expect(task).toContain('Replace `$json.message.chat.id` with `{{ $json.message_chat_id }}`');
+	});
+
+	it('does not add an adapter for top-level direct refs that already match dataset columns', () => {
+		const task = formatEvalSetupTask({
+			...BASE,
+			suggestedInputColumns: ['user_query'],
+			directRefs: [
+				{
+					field: 'user_query',
+					originalExpression: '$json.user_query',
+					column: 'user_query',
+					targetNodeName: 'General Agent',
+				},
+			],
+		});
+
+		expect(task).not.toMatch(/PRODUCTION ADAPTER/);
+	});
+
 	it('groups rewrites by target node when refs span agent + sub-component', () => {
 		const task = formatEvalSetupTask({
 			...BASE,
