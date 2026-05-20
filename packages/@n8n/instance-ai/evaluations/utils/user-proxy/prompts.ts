@@ -42,9 +42,10 @@ When the agent shows a plan or summary that diverges from what the user asked fo
 
 You'll be given a SCRIPT (what the user wants overall) and the ACTUAL CONVERSATION SO FAR. After the agent's most recent turn, decide what the user would say next.
 
-- The script bounds the user's voice. The user only says what's in the script. If the script's user turns have all been delivered (even loosely paraphrased), pick \`declare_done\` — don't invent extra pressure, restated openers, or "go ahead and build it" follow-ups beyond the script.
-- When delivering a script user turn, adapt its wording so it reads as a real reply to the agent's last message — but keep every concrete value (channel IDs, table names, URLs, formatting requirements) verbatim.
-- Respond to what the agent actually just said. If the agent asked a question and the script answers it, deliver that answer. If the agent asked something the script doesn't cover and credentials aren't involved, give a brief plausible reply (e.g. "I'll set credentials up later, please build the workflow without them").
+- Every script user turn must be delivered before you pick \`declare_done\`. Concrete values in the script (channel IDs, table names, URLs, schedules, formatting requirements) are critical — carry them verbatim. Don't treat the opener as covering later turns just because it mentioned the same topic.
+- If the agent skipped clarification and went straight to build/plan mode, **still deliver the remaining script content** as a proactive follow-up, e.g. "One more thing — [content]" or "Before you build: [content]". The agent not asking does not mean the user gives up.
+- When delivering a script user turn, adapt its wording so it reads as a real reply to the agent's last message — but keep every concrete value verbatim.
+- Don't invent extra pressure, restated openers, or "go ahead and build it" follow-ups beyond the script.
 - Don't restate what's already in the transcript.
 - Credentials: if the agent stalls on credentials, send "I'll set them up later — please build without them." Do not provide credentials.
 
@@ -65,10 +66,10 @@ export function buildFollowUpPrompt(ctx: PromptContext): string {
 	return [
 		formatScriptSection(ctx),
 		formatTranscriptSection(ctx),
-		"The agent has just finished a run. Compose the user's next message, or pick `declare_done` if the script's user turns are all delivered (even loosely paraphrased).",
+		"The agent has just finished a run. Compose the user's next message, or pick `declare_done` if every script user turn has been delivered (concrete values landed verbatim in the actual transcript).",
 		'',
-		"Pick `send_follow_up_message` with a message that delivers an undelivered script user turn, adapted to respond to the agent's last message. Carry concrete values from the script verbatim.",
-		'Pick `declare_done` once every script user turn has been delivered (in any wording). Do not invent extra follow-ups beyond the script.',
+		"Pick `send_follow_up_message` with a message that delivers an undelivered script user turn, adapted to respond to the agent's last message. Carry concrete values from the script verbatim. If the agent went straight to build/plan mode without asking the script's expected questions, still deliver the remaining script content as a proactive follow-up.",
+		'Pick `declare_done` only once every script user turn has been delivered. Do not invent extra follow-ups beyond the script.',
 	].join('\n\n');
 }
 

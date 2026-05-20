@@ -2,6 +2,7 @@
 // (utils/user-proxy/deterministic.ts) and the autoApprove fallback
 // (harness/chat-loop.ts) to avoid copy-pasted dispatch logic.
 
+import { instanceGatewayResourceDecisionSchema } from '@n8n/api-types';
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 
 import { getNestedRecord } from './safe-extract';
@@ -29,9 +30,10 @@ export function tryInfrastructureResponse(
 			? (resourceDecision.options as unknown[]).filter((o): o is string => typeof o === 'string')
 			: [];
 		const allowOption = options.find((o) => o.toLowerCase().includes('allow')) ?? options[0];
+		const parsed = instanceGatewayResourceDecisionSchema.safeParse(allowOption);
 		return {
 			kind: 'resourceDecision',
-			resourceDecision: isResourceDecision(allowOption) ? allowOption : 'allowOnce',
+			resourceDecision: parsed.success ? parsed.data : 'allowOnce',
 		};
 	}
 
@@ -47,10 +49,4 @@ export function tryInfrastructureResponse(
 
 export function getEventPayload(event: CapturedEvent): Record<string, unknown> {
 	return getNestedRecord(event.data, 'payload') ?? {};
-}
-
-function isResourceDecision(
-	value: string | undefined,
-): value is 'denyOnce' | 'allowOnce' | 'allowForSession' {
-	return value === 'denyOnce' || value === 'allowOnce' || value === 'allowForSession';
 }
