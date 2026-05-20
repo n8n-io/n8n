@@ -1,0 +1,141 @@
+{
+	"id": "contact-form-multi-turn",
+	"description": "Multi-turn build: vague first ask, answer planner questions, then refine error handling. Scored with binary yes/no questions (LLM judge).",
+	"complexity": "medium",
+	"tags": ["build", "multi-turn", "webhook", "gmail", "telegram", "google-sheets", "refinement"],
+	"triggerType": "webhook",
+	"annotations": {
+		"code_necessary": false
+	},
+	"session": {
+		"timeoutMs": 900000,
+		"autoApprove": {
+			"domainAccess": "allow_all",
+			"credentials": "empty_selection",
+			"setupWorkflow": true,
+			"resourceDecisions": "allow_once"
+		},
+		"turns": [
+			{
+				"id": "initial-build",
+				"user": "Create a workflow that handles contact form submissions via a webhook. It should send an auto-reply email to the submitter, notify my team on Telegram, and log each submission to Google Sheets.",
+				"expect": {
+					"runFinishes": true,
+					"workflowCreated": true
+				},
+				"whenAgentAsks": {
+					"match": "any",
+					"answers": [
+						{
+							"questionId": "google_sheet",
+							"customText": "Use documentId 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms and sheet name Contact Submissions"
+						},
+						{
+							"questionId": "telegram_channel",
+							"customText": "Post to channel #contact-alerts"
+						},
+						{
+							"questionContains": "credential",
+							"customText": "I'll configure credentials later — use placeholders and complete all other node settings"
+						}
+					]
+				}
+			},
+			{
+				"id": "refine-partial-failure",
+				"user": "If Telegram fails, the email and Google Sheets steps should still run. Don't ask me more questions — just update the workflow.",
+				"expect": {
+					"runFinishes": true,
+					"workflowUpdated": true
+				}
+			},
+			{
+				"id": "acknowledge-done",
+				"user": "Looks good. Summarize what the workflow does in two sentences.",
+				"expect": {
+					"runFinishes": true,
+					"workflowUpdated": false
+				}
+			}
+		]
+	},
+	"binaryEvals": {
+		"model": "anthropic/claude-sonnet-4-6",
+		"evaluateOn": "final",
+		"questions": [
+			{
+				"id": "has_webhook_trigger",
+				"question": "Does the final workflow use a Webhook trigger as the entry point for contact form submissions?",
+				"scope": "workflow",
+				"mustPass": true
+			},
+			{
+				"id": "three_parallel_actions",
+				"question": "Does the final workflow perform all three actions the user requested: auto-reply email to the submitter, Telegram team notification, and Google Sheets logging?",
+				"scope": "workflow",
+				"mustPass": true
+			},
+			{
+				"id": "sheets_configured",
+				"question": "Is the Google Sheets node configured with documentId '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms' and sheet name 'Contact Submissions' (or equivalent sheetName parameter)?",
+				"scope": "workflow",
+				"mustPass": true
+			},
+			{
+				"id": "telegram_failure_isolated",
+				"question": "After the refinement turn, does the workflow route or branch so that a Telegram failure does not prevent the email and Google Sheets actions from still executing?",
+				"scope": "workflow",
+				"mustPass": true
+			},
+			{
+				"id": "no_hardcoded_secrets",
+				"question": "Does the workflow avoid hardcoded API keys, passwords, or bearer tokens in node parameters?",
+				"scope": "workflow",
+				"mustPass": true
+			},
+			{
+				"id": "final_summary_accurate",
+				"question": "In the last assistant message, does the two-sentence summary correctly describe webhook intake, the three outbound actions, and graceful handling when Telegram fails?",
+				"scope": "conversation",
+				"mustPass": true,
+				"evalAfterTurn": "acknowledge-done"
+			},
+			{
+				"id": "asked_before_second_build",
+				"question": "On the first turn only, did the agent ask the user at least one clarifying question (via ask-user or equivalent) before finishing the initial workflow?",
+				"scope": "trace",
+				"mustPass": false,
+				"evalAfterTurn": "initial-build"
+			}
+		]
+	},
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "Valid submission triggers all three actions",
+			"dataSetup": "Webhook receives Jane Smith (jane@example.com) with message 'Interested in enterprise plan'. Gmail, Telegram, and Google Sheets return success.",
+			"successCriteria": "Workflow completes without errors. Auto-reply sent to jane@example.com. Telegram notification includes name, email, and message. Row logged to Google Sheets.",
+			"binaryQuestions": [
+				{
+					"id": "happy_path_executes",
+					"question": "Given the mocked execution, did all three outbound actions succeed for the happy-path submission?",
+					"mustPass": true
+				}
+			]
+		},
+		{
+			"name": "telegram-fails-others-succeed",
+			"description": "Telegram errors but email and sheets still complete",
+			"dataSetup": "Webhook receives Tom Lee (tom@example.com). Gmail and Google Sheets succeed. Telegram returns chat-not-found error.",
+			"successCriteria": "Workflow does not crash. Email and Sheets still complete despite Telegram failure.",
+			"requires": "mock-server",
+			"binaryQuestions": [
+				{
+					"id": "partial_failure_handled",
+					"question": "When Telegram fails, do email and Google Sheets still execute successfully?",
+					"mustPass": true
+				}
+			]
+		}
+	]
+}

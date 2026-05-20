@@ -38,6 +38,22 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SEMANTIC_RECALL_TOP_K')
 	semanticRecallTopK: number = 5;
 
+	/** LLM for observational memory Observer/Reflector compression agents. */
+	@Env('N8N_INSTANCE_AI_OBSERVER_MODEL')
+	observerModel: string = 'google/gemini-2.5-flash';
+
+	/** Estimated tokens in unobserved transcript before the Observer runs. */
+	@Env('N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS')
+	observerMessageTokens: number = 30_000;
+
+	/** Estimated active observation-log tokens before the Reflector runs. */
+	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
+	reflectorObservationTokens: number = 40_000;
+
+	/** Maximum estimated tokens to render into the system prompt from the observation log. */
+	@Env('N8N_INSTANCE_AI_OBSERVATION_RENDER_TOKEN_BUDGET')
+	observationRenderTokenBudget: number = 4500;
+
 	/** Maximum LLM reasoning steps for sub-agents spawned via delegate tool. */
 	@Env('N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS')
 	subAgentMaxSteps: number = 100;

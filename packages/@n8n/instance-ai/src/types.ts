@@ -816,6 +816,11 @@ export interface InstanceAiMemoryConfig {
 	semanticRecallTopK?: number;
 	/** Thread TTL in days. Threads older than this are auto-expired on cleanup. 0 = no expiration. */
 	threadTtlDays?: number;
+	/** Model for observational memory Observer/Reflector (provider/model). */
+	observerModel?: string;
+	observerThresholdTokens?: number;
+	reflectorThresholdTokens?: number;
+	observationRenderTokenBudget?: number;
 }
 
 // ── Model configuration ─────────────────────────────────────────────────────

@@ -91,8 +91,11 @@ import type {
 	ToolResultEntry,
 } from '../types/sdk/agent';
 import type { AgentDbMessage, AgentMessage, ContentToolCall, Message } from '../types/sdk/message';
-import { createObservationLogThreadScopeId } from '../types/sdk/observation-log';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../types/sdk/observation-log';
+import {
+	createObservationLogThreadScopeId,
+	estimateObservationTokens,
+} from '../types/sdk/observation-log';
 import type { JSONObject, JSONValue } from '../types/utils/json';
 import { parseWithSchema } from '../utils/parse';
 import { isZodSchema } from '../utils/zod';
@@ -1657,15 +1660,30 @@ export class AgentRuntime {
 			lockStore: hasObservationLogTaskLockStore(memory) ? memory : undefined,
 			lockTtlMs,
 			onEvent: (event) => {
-				if (event.type !== 'failed') return;
 				const source = event.task.taskKind;
-				const message = `Observation log ${source} task failed`;
-				logger.warn(message, {
-					error: event.error,
+				const scopeMeta = {
 					scopeKind: event.task.scopeKind,
 					scopeId: event.task.scopeId,
-				});
-				this.eventBus.emit({ type: AgentEvent.Error, message, error: event.error, source });
+				};
+
+				if (event.type === 'failed') {
+					const message = `Observation log ${source} task failed`;
+					logger.warn(message, { error: event.error, ...scopeMeta });
+					this.eventBus.emit({ type: AgentEvent.Error, message, error: event.error, source });
+					return;
+				}
+
+				if (event.type === 'skipped') {
+					logger.info(`[observational-memory] ${source} task skipped (lock-held)`, scopeMeta);
+					return;
+				}
+
+				if (event.type === 'completed') {
+					logger.info(
+						`[observational-memory] ${source} task completed`,
+						summarizeMemoryTaskResult(event.value, scopeMeta),
+					);
+				}
 			},
 		});
 		return this.memoryTasks;
@@ -2418,10 +2436,27 @@ export class AgentRuntime {
 			...scope,
 			order: 'asc',
 		});
-		list.observationLogMemory =
-			renderObservationLog(observations, {
+		const rendered = renderObservationLog(observations, {
+			renderTokenBudget: this.config.observationLog?.renderTokenBudget,
+		});
+		list.observationLogMemory = rendered ?? undefined;
+
+		if (rendered) {
+			logger.info('[observational-memory] injected observations into system prompt', {
+				...scope,
+				threadId: options.threadId,
+				activeEntries: observations.length,
+				renderedChars: rendered.length,
+				estimatedTokens: estimateObservationTokens(rendered),
 				renderTokenBudget: this.config.observationLog?.renderTokenBudget,
-			}) ?? undefined;
+			});
+		} else {
+			logger.info('[observational-memory] no observations to inject into system prompt', {
+				...scope,
+				threadId: options.threadId,
+				activeEntries: observations.length,
+			});
+		}
 	}
 
 	/**

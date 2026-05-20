@@ -413,12 +413,13 @@ LangSmith integration provides step-level observability:
 - **Synthetic tool traces** — internal tools tracked separately from
   LLM-invoked tools
 
-## Message Compaction
+## Observational Memory
 
-For conversations that exceed the context window, `generateCompactionSummary()`
-creates an LLM-generated summary of the conversation history. The summary uses
-a structured format (Goal, Important facts, Current state, Open issues, Next
-step) and is included as a `<conversation-summary>` block in subsequent requests.
+Long-running orchestrator threads use the observation-log pipeline from
+`@n8n/agents`. Background Observer and Reflector agents compress older messages
+into structured observations (CRITICAL / IMPORTANT / INFO / COMPLETION) stored
+in `instance_ai_observations`. The active log is rendered into the system prompt
+as a `## Memory` block on each turn.
 
 ## Domain Access Gating
 

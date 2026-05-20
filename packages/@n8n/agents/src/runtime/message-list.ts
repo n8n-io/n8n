@@ -102,6 +102,9 @@ export class AgentMessageList {
 	/** Rendered observation-log memory for this run. Set by buildMessageList / resume. */
 	observationLogMemory: string | undefined;
 
+	/** One-shot guard so we log the fully-assembled system prompt at most once per run. */
+	private hasLoggedAssembledSystemPrompt = false;
+
 	addHistory(messages: AgentMessage[] | AgentDbMessage[]): void {
 		for (const m of messages) {
 			const dbMsg = this.addMessage(m, 'history');
@@ -206,7 +209,18 @@ export class AgentMessageList {
 
 		const observationLogMemory = this.observationLogMemory?.trim();
 		if (observationLogMemory) {
+			console.log('[agent-runtime] observation log memory for system prompt', observationLogMemory);
 			systemPrompt += `\n\n${observationLogMemory}`;
+		}
+
+		if (!this.hasLoggedAssembledSystemPrompt) {
+			this.hasLoggedAssembledSystemPrompt = true;
+			console.log('[agent-runtime] assembled system prompt for run', {
+				baseInstructionsChars: baseInstructions.length,
+				observationLogMemoryChars: observationLogMemory?.length ?? 0,
+				totalChars: systemPrompt.length,
+				systemPrompt: JSON.stringify(systemPrompt, null, 2),
+			});
 		}
 
 		const systemMessage: ModelMessage = instructionProviderOptions

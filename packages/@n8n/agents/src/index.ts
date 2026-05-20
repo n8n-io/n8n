@@ -103,7 +103,7 @@ export {
 } from './types';
 
 export { Tool, wrapToolForApproval } from './sdk/tool';
-export { Memory } from './sdk/memory';
+export { Memory, resolveMemoryConfigDefaults } from './sdk/memory';
 export { Guardrail } from './sdk/guardrail';
 export { Eval } from './sdk/eval';
 export { evaluate } from './sdk/evaluate';

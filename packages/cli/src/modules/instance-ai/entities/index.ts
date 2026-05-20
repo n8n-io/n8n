@@ -4,3 +4,6 @@ export { InstanceAiResource } from './instance-ai-resource.entity';
 export { InstanceAiRunSnapshot } from './instance-ai-run-snapshot.entity';
 export { InstanceAiIterationLog } from './instance-ai-iteration-log.entity';
 export { InstanceAiCheckpoint } from './instance-ai-checkpoint.entity';
+export { InstanceAiObservationEntity } from './instance-ai-observation.entity';
+export { InstanceAiObservationCursorEntity } from './instance-ai-observation-cursor.entity';
+export { InstanceAiObservationLockEntity } from './instance-ai-observation-lock.entity';

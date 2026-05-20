@@ -183,6 +183,35 @@ export function normalizeStreamSource(result: unknown): ResumableStreamSource {
 	throw new Error('Unsupported agent stream result');
 }
 
+interface AccumulatedUsage {
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+	cost: number;
+	finishCount: number;
+}
+
+function createUsageAccumulator(): AccumulatedUsage {
+	return { promptTokens: 0, completionTokens: 0, totalTokens: 0, cost: 0, finishCount: 0 };
+}
+
+function accumulateFinishUsage(acc: AccumulatedUsage, chunk: unknown): void {
+	if (!isRecord(chunk) || chunk.type !== 'finish') return;
+	acc.finishCount += 1;
+	const usage = chunk.usage;
+	if (isRecord(usage)) {
+		if (typeof usage.promptTokens === 'number') acc.promptTokens += usage.promptTokens;
+		if (typeof usage.completionTokens === 'number') acc.completionTokens += usage.completionTokens;
+		if (typeof usage.totalTokens === 'number') acc.totalTokens += usage.totalTokens;
+		if (typeof usage.cost === 'number') acc.cost += usage.cost;
+	}
+	if (typeof chunk.totalCost === 'number') {
+		// totalCost on the finish chunk already includes sub-agents for this turn.
+		// Prefer it when present (overwrites the per-turn `usage.cost` summed above).
+		acc.cost = chunk.totalCost;
+	}
+}
+
 export async function executeResumableStream(
 	options: ExecuteResumableStreamOptions,
 ): Promise<ExecuteResumableStreamResult> {
@@ -190,6 +219,7 @@ export async function executeResumableStream(
 	let activeAgentRunId = options.stream.runId ?? options.initialAgentRunId ?? '';
 	let text = options.stream.text;
 	const workSummaryAccumulator = new WorkSummaryAccumulator();
+	const usageAcc = createUsageAccumulator();
 
 	let currentResponseId: string | undefined;
 	let nativeStepIndex = 0;
@@ -218,6 +248,8 @@ export async function executeResumableStream(
 				const responseRunId = activeAgentRunId || options.context.runId;
 				currentResponseId = `${responseRunId}:step:${nativeStepIndex}`;
 			}
+
+			accumulateFinishUsage(usageAcc, chunk);
 
 			const parsedSuspension = parseSuspension(chunk);
 			if (parsedSuspension) {
@@ -297,8 +329,22 @@ export async function executeResumableStream(
 		}
 
 		if (!suspension) {
+			const status: TraceStatus = hasError ? 'errored' : 'completed';
+			if (status === 'completed') {
+				console.log('[Instance AI] run completed — token usage', {
+					threadId: options.context.threadId,
+					runId: options.context.runId,
+					agentRunId: activeAgentRunId,
+					agentId: options.context.agentId,
+					promptTokens: usageAcc.promptTokens,
+					completionTokens: usageAcc.completionTokens,
+					totalTokens: usageAcc.totalTokens,
+					cost: usageAcc.cost,
+					finishChunks: usageAcc.finishCount,
+				});
+			}
 			return {
-				status: hasError ? 'errored' : 'completed',
+				status,
 				agentRunId: activeAgentRunId,
 				text,
 				workSummary: workSummaryAccumulator.toSummary(),

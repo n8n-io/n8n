@@ -8,6 +8,14 @@ const mockAgentInstances: Array<{
 	telemetry: jest.Mock;
 }> = [];
 
+const mockMemoryBuilderInstances: Array<{
+	storage: jest.Mock;
+	lastMessages: jest.Mock;
+	semanticRecall: jest.Mock;
+	observationalMemory: jest.Mock;
+	build: jest.Mock;
+}> = [];
+
 jest.mock('@n8n/agents', () => ({
 	Agent: jest.fn().mockImplementation(function Agent(this: (typeof mockAgentInstances)[number]) {
 		this.model = jest.fn().mockReturnThis();
@@ -19,6 +27,17 @@ jest.mock('@n8n/agents', () => ({
 		this.telemetry = jest.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
+	Memory: jest.fn().mockImplementation(function Memory(
+		this: (typeof mockMemoryBuilderInstances)[number],
+	) {
+		this.storage = jest.fn().mockReturnThis();
+		this.lastMessages = jest.fn().mockReturnThis();
+		this.semanticRecall = jest.fn().mockReturnThis();
+		this.observationalMemory = jest.fn().mockReturnThis();
+		this.build = jest.fn().mockReturnValue({ memory: {}, lastMessages: 20 });
+		mockMemoryBuilderInstances.push(this);
+	}),
+	resolveMemoryConfigDefaults: jest.fn((config: unknown) => config),
 }));
 
 const mockBuiltTool = (name: string, marker?: string) => ({
@@ -127,8 +146,36 @@ describe('createInstanceAgent', () => {
 	beforeEach(() => {
 		Agent.mockClear();
 		mockAgentInstances.length = 0;
+		mockMemoryBuilderInstances.length = 0;
 		createToolsFromLocalMcpServer.mockReset();
 		createToolsFromLocalMcpServer.mockReturnValue(new Map());
+	});
+
+	it('enables observational memory when observer model is configured', async () => {
+		const memory = { getMessages: jest.fn() };
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'obs-memory-run',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			memoryConfig: {
+				lastMessages: 20,
+				observerModel: 'google/gemini-2.5-flash',
+				observerThresholdTokens: 30_000,
+			},
+			memory,
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		const builder = mockMemoryBuilderInstances[0];
+		expect(builder?.storage).toHaveBeenCalledWith(memory);
+		expect(builder?.observationalMemory).toHaveBeenCalledWith({
+			observerThresholdTokens: 30_000,
+		});
+		expect(mockAgentInstances[0]?.memory).toHaveBeenCalled();
 	});
 
 	it('attaches a fresh native toolset for each run-scoped orchestrator agent', async () => {
