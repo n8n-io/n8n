@@ -481,6 +481,7 @@ export function getPollStartDate(lastTimeChecked: string | undefined): string {
 export function filterAndManageProcessedItems(
 	responseData: IDataObject[],
 	processedIds: string[],
+	changeType: 'Created' | 'Updated' = 'Updated',
 ): { newItems: IDataObject[]; updatedProcessedIds: string[] } {
 	const processedIdsSet = new Set(processedIds);
 
@@ -491,7 +492,9 @@ export function filterAndManageProcessedItems(
 		if (typeof item.Id !== 'string') continue;
 
 		const itemKey =
-			typeof item.LastModifiedDate === 'string' ? `${item.Id}_${item.LastModifiedDate}` : item.Id;
+			changeType === 'Updated' && typeof item.LastModifiedDate === 'string'
+				? `${item.Id}_${item.LastModifiedDate}`
+				: item.Id;
 
 		if (!processedIdsSet.has(itemKey)) {
 			newItems.push(item);
