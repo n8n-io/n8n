@@ -6,6 +6,7 @@ import type {
 	AgentEvaluationRunMetricResult,
 	AgentEvaluationRunSummary,
 	AgentEvaluationSuiteDraft,
+	AgentEvaluationSuiteRun,
 	AgentEvaluationSuiteRunRequest,
 	AgentEvaluationSuiteRunResponse,
 	AgentEvaluationSuiteSetupResponse,
@@ -19,14 +20,17 @@ import { randomUUID } from 'crypto';
 
 import { AgentsService, type AgentEvaluationToolMock } from './agents.service';
 import type { AgentEvaluationCase } from './entities/agent-evaluation-case.entity';
+import type { AgentEvaluationRun } from './entities/agent-evaluation-run.entity';
 import type { AgentExecution } from './entities/agent-execution.entity';
 import type { TimelineEvent } from './execution-recorder';
 import { AgentEvaluationCaseRepository } from './repositories/agent-evaluation-case.repository';
+import { AgentEvaluationRunRepository } from './repositories/agent-evaluation-run.repository';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentCurrentVersionId } from './utils/agent-version.utils';
 
 const DATASET_PREVIEW_LIMIT = 10;
+const RECENT_RUNS_LIMIT = 20;
 const SUITE_CASE_LIMIT = 100;
 const FIRST_RUN_CASE_LIMIT = AGENT_EVALUATION_MIN_REVIEWED_CASES;
 const SIMILARITY_PASS_THRESHOLD = 0.65;
@@ -43,6 +47,7 @@ interface AgentEvaluationVersionContext {
 export class AgentEvaluationsService {
 	constructor(
 		private readonly agentEvaluationCaseRepository: AgentEvaluationCaseRepository,
+		private readonly agentEvaluationRunRepository: AgentEvaluationRunRepository,
 		private readonly agentExecutionRepository: AgentExecutionRepository,
 		private readonly agentsService: AgentsService,
 		private readonly agentRepository: AgentRepository,
@@ -56,7 +61,7 @@ export class AgentEvaluationsService {
 		const versionContext = await this.resolveVersionContext(projectId, agentId, agentVersionId);
 		if (!versionContext) return this.emptyDatasetResponse();
 
-		const [summary, cases] = await Promise.all([
+		const [summary, cases, recentRuns] = await Promise.all([
 			this.agentEvaluationCaseRepository.countByStatus(
 				projectId,
 				agentId,
@@ -68,11 +73,13 @@ export class AgentEvaluationsService {
 				versionContext.selectedAgentVersionId,
 				DATASET_PREVIEW_LIMIT,
 			),
+			this.agentEvaluationRunRepository.findRecentByAgent(projectId, agentId, RECENT_RUNS_LIMIT),
 		]);
 
 		return {
 			currentAgentVersionId: versionContext.currentAgentVersionId,
 			versions: versionContext.versions,
+			recentRuns: recentRuns.map((run) => this.toRunDto(run)),
 			cases: cases.map((evaluationCase) => this.toReviewDto(evaluationCase)),
 			summary,
 			nextCursor: null,
@@ -238,20 +245,23 @@ export class AgentEvaluationsService {
 		}
 
 		const completedAt = new Date();
+		const run: AgentEvaluationSuiteRun = {
+			id: randomUUID(),
+			suiteId: this.toSuiteId(agentId, versionContext.selectedAgentVersionId),
+			agentVersionId: versionContext.selectedAgentVersionId,
+			startedAt: startedAt.toISOString(),
+			completedAt: completedAt.toISOString(),
+			summary: this.toRunSummary(results),
+			cases: results,
+			warnings: [...warnings],
+		};
+		await this.agentEvaluationRunRepository.saveRun(projectId, agentId, userId, run);
+
 		return {
 			currentAgentVersionId: versionContext.currentAgentVersionId,
 			versions: versionContext.versions,
 			readiness,
-			run: {
-				id: randomUUID(),
-				suiteId: this.toSuiteId(agentId, versionContext.selectedAgentVersionId),
-				agentVersionId: versionContext.selectedAgentVersionId,
-				startedAt: startedAt.toISOString(),
-				completedAt: completedAt.toISOString(),
-				summary: this.toRunSummary(results),
-				cases: results,
-				warnings: [...warnings],
-			},
+			run,
 		};
 	}
 
@@ -274,6 +284,7 @@ export class AgentEvaluationsService {
 		return {
 			currentAgentVersionId: '',
 			versions: [],
+			recentRuns: [],
 			cases: [],
 			summary: this.emptySummary(),
 			nextCursor: null,
@@ -582,6 +593,19 @@ export class AgentEvaluationsService {
 			failedCases,
 			errorCases,
 			averageScore,
+		};
+	}
+
+	private toRunDto(run: AgentEvaluationRun): AgentEvaluationSuiteRun {
+		return {
+			id: run.id,
+			suiteId: run.suiteId,
+			agentVersionId: run.agentVersionId,
+			startedAt: run.startedAt.toISOString(),
+			completedAt: run.completedAt.toISOString(),
+			summary: run.summary,
+			cases: run.cases,
+			warnings: run.warnings,
 		};
 	}
 

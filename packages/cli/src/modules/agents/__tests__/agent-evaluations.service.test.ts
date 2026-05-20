@@ -4,14 +4,17 @@ import { mock } from 'jest-mock-extended';
 import { AgentEvaluationsService } from '../agent-evaluations.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentEvaluationCase } from '../entities/agent-evaluation-case.entity';
+import type { AgentEvaluationRun } from '../entities/agent-evaluation-run.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentEvaluationCaseRepository } from '../repositories/agent-evaluation-case.repository';
+import type { AgentEvaluationRunRepository } from '../repositories/agent-evaluation-run.repository';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
 describe('AgentEvaluationsService', () => {
 	const now = new Date('2026-05-18T12:00:00.000Z');
 	let agentEvaluationCaseRepository: jest.Mocked<AgentEvaluationCaseRepository>;
+	let agentEvaluationRunRepository: jest.Mocked<AgentEvaluationRunRepository>;
 	let agentExecutionRepository: jest.Mocked<AgentExecutionRepository>;
 	let agentsService: jest.Mocked<AgentsService>;
 	let agentRepository: jest.Mocked<AgentRepository>;
@@ -25,6 +28,7 @@ describe('AgentEvaluationsService', () => {
 
 	beforeEach(() => {
 		agentEvaluationCaseRepository = mock<AgentEvaluationCaseRepository>();
+		agentEvaluationRunRepository = mock<AgentEvaluationRunRepository>();
 		agentExecutionRepository = mock<AgentExecutionRepository>();
 		agentsService = mock<AgentsService>();
 		agentRepository = mock<AgentRepository>();
@@ -35,6 +39,7 @@ describe('AgentEvaluationsService', () => {
 			publishedVersion: null,
 		} as never);
 		agentEvaluationCaseRepository.summarizeVersions.mockResolvedValue([]);
+		agentEvaluationRunRepository.findRecentByAgent.mockResolvedValue([]);
 		queryBuilder = {
 			innerJoin: jest.fn().mockReturnThis(),
 			where: jest.fn().mockReturnThis(),
@@ -44,6 +49,7 @@ describe('AgentEvaluationsService', () => {
 		agentExecutionRepository.createQueryBuilder.mockReturnValue(queryBuilder as never);
 		service = new AgentEvaluationsService(
 			agentEvaluationCaseRepository,
+			agentEvaluationRunRepository,
 			agentExecutionRepository,
 			agentsService,
 			agentRepository,
@@ -69,6 +75,31 @@ describe('AgentEvaluationsService', () => {
 			updatedAt: now,
 			...overrides,
 		} as AgentEvaluationCase;
+	}
+
+	function runFixture(overrides: Partial<AgentEvaluationRun> = {}): AgentEvaluationRun {
+		return {
+			id: 'run-1',
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			agentVersionId: 'version-1',
+			suiteId: 'agent-agent-1-version-1-reviewed-cases-v0',
+			startedAt: now,
+			completedAt: now,
+			summary: {
+				totalCases: 1,
+				passedCases: 1,
+				failedCases: 0,
+				errorCases: 0,
+				averageScore: 1,
+			},
+			cases: [],
+			warnings: [],
+			createdById: 'user-1',
+			createdAt: now,
+			updatedAt: now,
+			...overrides,
+		} as AgentEvaluationRun;
 	}
 
 	it('requires more reviewed cases when the dataset is below the threshold', async () => {
@@ -119,6 +150,39 @@ describe('AgentEvaluationsService', () => {
 			reviewedCases: AGENT_EVALUATION_MIN_REVIEWED_CASES,
 			remainingCases: 0,
 		});
+	});
+
+	it('loads recent evaluation runs with the dataset', async () => {
+		agentEvaluationCaseRepository.countByStatus.mockResolvedValue({
+			total: AGENT_EVALUATION_MIN_REVIEWED_CASES,
+			approved: 4,
+			rejected: 1,
+		});
+		agentEvaluationCaseRepository.findByAgent.mockResolvedValue([]);
+		agentEvaluationRunRepository.findRecentByAgent.mockResolvedValue([
+			runFixture({ id: 'run-1', agentVersionId: 'version-1' }),
+			runFixture({ id: 'run-2', agentVersionId: 'version-2' }),
+		]);
+
+		const dataset = await service.getDataset('project-1', 'agent-1');
+
+		expect(agentEvaluationRunRepository.findRecentByAgent).toHaveBeenCalledWith(
+			'project-1',
+			'agent-1',
+			20,
+		);
+		expect(dataset.recentRuns).toEqual([
+			expect.objectContaining({
+				id: 'run-1',
+				agentVersionId: 'version-1',
+				completedAt: now.toISOString(),
+			}),
+			expect.objectContaining({
+				id: 'run-2',
+				agentVersionId: 'version-2',
+				completedAt: now.toISOString(),
+			}),
+		]);
 	});
 
 	it('loads a requested reviewed version when it is still runnable', async () => {
@@ -253,6 +317,7 @@ describe('AgentEvaluationsService', () => {
 		expect(response.run).toBeNull();
 		expect(agentExecutionRepository.createQueryBuilder).not.toHaveBeenCalled();
 		expect(agentsService.executeEvaluationCase).not.toHaveBeenCalled();
+		expect(agentEvaluationRunRepository.saveRun).not.toHaveBeenCalled();
 	});
 
 	it('does not run a suite for a reviewed version without a runnable snapshot', async () => {
@@ -295,6 +360,7 @@ describe('AgentEvaluationsService', () => {
 		expect(response.run).toBeNull();
 		expect(agentExecutionRepository.createQueryBuilder).not.toHaveBeenCalled();
 		expect(agentsService.executeEvaluationCase).not.toHaveBeenCalled();
+		expect(agentEvaluationRunRepository.saveRun).not.toHaveBeenCalled();
 	});
 
 	it('runs the first evaluation with reviewed cases and recorded tool mocks', async () => {
@@ -347,6 +413,15 @@ describe('AgentEvaluationsService', () => {
 			message: 'Question',
 			toolMocks: [{ toolName: 'lookup', outputs: [{ answer: 42 }] }],
 		});
+		expect(agentEvaluationRunRepository.saveRun).toHaveBeenCalledWith(
+			'project-1',
+			'agent-1',
+			'user-1',
+			expect.objectContaining({
+				suiteId: 'agent-agent-1-version-1-reviewed-cases-v0',
+				agentVersionId: 'version-1',
+			}),
+		);
 		expect(response.run).toEqual(
 			expect.objectContaining({
 				suiteId: 'agent-agent-1-version-1-reviewed-cases-v0',

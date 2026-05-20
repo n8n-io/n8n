@@ -226,6 +226,7 @@ async function loadDataset(agentVersionId = selectedAgentVersionId.value ?? unde
 			selectedAgentVersionId.value =
 				dataset.value.readiness.agentVersionId || dataset.value.currentAgentVersionId;
 		}
+		completedRuns.value = dataset.value.recentRuns;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('agents.builder.evaluations.dataset.loadError'));
 	} finally {

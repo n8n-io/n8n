@@ -22,6 +22,7 @@ export interface AgentEvaluationVersionSummary extends AgentReviewSummary {
 export interface AgentEvaluationDatasetResponse extends AgentReviewCasesResponse {
 	currentAgentVersionId: string;
 	versions: AgentEvaluationVersionSummary[];
+	recentRuns: AgentEvaluationSuiteRun[];
 	readiness: AgentEvaluationDatasetReadiness;
 }
 

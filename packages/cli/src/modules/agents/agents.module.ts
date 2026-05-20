@@ -35,6 +35,11 @@ export class AgentsModule implements ModuleInterface {
 		);
 		Container.get(AgentEvaluationCaseRepository);
 
+		const { AgentEvaluationRunRepository } = await import(
+			'./repositories/agent-evaluation-run.repository'
+		);
+		Container.get(AgentEvaluationRunRepository);
+
 		const { AgentPublishedVersionRepository } = await import(
 			'./repositories/agent-published-version.repository'
 		);
@@ -108,6 +113,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity');
 		const { AgentExecution } = await import('./entities/agent-execution.entity');
 		const { AgentEvaluationCase } = await import('./entities/agent-evaluation-case.entity');
+		const { AgentEvaluationRun } = await import('./entities/agent-evaluation-run.entity');
 		const { AgentPublishedVersion } = await import('./entities/agent-published-version.entity');
 		const { AgentObservationEntity } = await import('./entities/agent-observation.entity');
 		const { AgentObservationCursorEntity } = await import(
@@ -124,6 +130,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentExecutionThread,
 			AgentExecution,
 			AgentEvaluationCase,
+			AgentEvaluationRun,
 			AgentPublishedVersion,
 			AgentObservationEntity,
 			AgentObservationCursorEntity,
