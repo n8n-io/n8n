@@ -164,7 +164,7 @@ export interface ICredentialsDecrypted<T extends object = ICredentialDataDecrypt
 	sharedWithProjects?: ProjectSharingData[];
 	isGlobal?: boolean;
 	isResolvable?: boolean;
-	metadata?: Record<string, unknown> | null;
+	metadata?: IDataObject | null;
 }
 
 export interface ICredentialsEncrypted {

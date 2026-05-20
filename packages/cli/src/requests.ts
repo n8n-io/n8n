@@ -18,6 +18,7 @@ import type {
 import type { Request } from 'express';
 import type {
 	ICredentialDataDecryptedObject,
+	IDataObject,
 	INodeCredentialTestRequest,
 	IPersonalizationSurveyAnswersV4,
 } from 'n8n-workflow';
@@ -80,7 +81,7 @@ export declare namespace CredentialRequest {
 		isManaged?: boolean;
 		isGlobal?: boolean;
 		isResolvable?: boolean;
-		metadata?: Record<string, unknown> | null;
+		metadata?: IDataObject | null;
 	}>;
 
 	type Get = AuthenticatedRequest<{ credentialId: string }, {}, {}, Record<string, string>>;

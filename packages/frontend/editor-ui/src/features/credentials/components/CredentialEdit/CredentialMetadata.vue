@@ -3,15 +3,16 @@ import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import { ElCol, ElRow } from 'element-plus';
+import type { IDataObject } from 'n8n-workflow';
 
 type Props = {
-	modelValue: Record<string, unknown> | null;
+	modelValue: IDataObject | null;
 	readonly?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), { readonly: false });
 const emit = defineEmits<{
-	'update:modelValue': [value: Record<string, unknown> | null];
+	'update:modelValue': [value: IDataObject | null];
 }>();
 
 const i18n = useI18n();
@@ -59,12 +60,7 @@ function updateEntryValue(key: string, value: string) {
 		</N8nText>
 
 		<div v-if="entries.length > 0" :class="$style.entries">
-			<ElRow
-				v-for="entry in entries"
-				:key="entry.key"
-				:gutter="8"
-				:class="$style.entryRow"
-			>
+			<ElRow v-for="entry in entries" :key="entry.key" :gutter="8" :class="$style.entryRow">
 				<ElCol :span="8">
 					<N8nInput
 						:model-value="entry.key"

@@ -1,5 +1,6 @@
 import { Column, Entity, Index, OneToMany } from '@n8n/typeorm';
 import { IsObject, IsString, Length } from 'class-validator';
+import type { IDataObject } from 'n8n-workflow';
 
 import { JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
 import type { SharedCredentials } from './shared-credentials';
@@ -65,7 +66,7 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	 * Arbitrary key-value metadata attached to this credential (e.g. owner, dashboard URL, expiration date).
 	 */
 	@JsonColumn({ nullable: true })
-	metadata: Record<string, unknown> | null;
+	metadata: IDataObject | null;
 
 	toJSON() {
 		const { shared, ...rest } = this;

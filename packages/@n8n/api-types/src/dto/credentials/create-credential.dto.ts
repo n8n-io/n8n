@@ -1,3 +1,4 @@
+import type { IDataObject } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { Z } from '../../zod-class';
@@ -10,5 +11,5 @@ export class CreateCredentialDto extends Z.class({
 	uiContext: z.string().optional(),
 	isGlobal: z.boolean().optional(),
 	isResolvable: z.boolean().optional(),
-	metadata: z.record(z.string(), z.unknown()).optional(),
+	metadata: (z.object({}).catchall(z.any()) satisfies z.ZodType<IDataObject>).optional(),
 }) {}

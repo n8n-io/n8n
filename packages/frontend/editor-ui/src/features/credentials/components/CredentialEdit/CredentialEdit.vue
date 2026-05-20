@@ -8,6 +8,7 @@ import type {
 	CredentialInformation,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
+	IDataObject,
 	INode,
 	INodeParameters,
 	INodeProperties,
@@ -133,7 +134,7 @@ const isResolvable = ref(false);
 const useCustomOAuth = ref(false);
 const pendingAuthType = ref<string | null>(null);
 const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>({});
-const credentialMetadata = ref<Record<string, unknown> | null>(null);
+const credentialMetadata = ref<IDataObject | null>(null);
 
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
@@ -406,7 +407,9 @@ const showHeaderSaveButton = computed(
 	() =>
 		showSaveButton.value &&
 		!!credentialType.value &&
-		(activeTab.value === 'connection' || activeTab.value === 'sharing' || activeTab.value === 'details'),
+		(activeTab.value === 'connection' ||
+			activeTab.value === 'sharing' ||
+			activeTab.value === 'details'),
 );
 
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
@@ -757,7 +760,7 @@ function onResolvableChange(value: boolean) {
 	hasUnsavedChanges.value = true;
 }
 
-function onMetadataChange(value: Record<string, unknown> | null) {
+function onMetadataChange(value: IDataObject | null) {
 	credentialMetadata.value = value;
 	hasUnsavedChanges.value = true;
 }

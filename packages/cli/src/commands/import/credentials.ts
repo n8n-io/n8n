@@ -351,6 +351,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			isResolvable: true,
 			resolvableAllowFallback: true,
 			resolverId: true,
+			metadata: true,
 		} satisfies Record<ImportableCredentialProperty, true>;
 
 		return property in importableProperties;
