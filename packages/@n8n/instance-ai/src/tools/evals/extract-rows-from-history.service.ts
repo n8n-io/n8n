@@ -2,7 +2,8 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { IConnection, IConnections } from 'n8n-workflow';
 import { getParentNodes, mapConnectionsByDestination, NodeConnectionTypes } from 'n8n-workflow';
 
-import { isRecord, nodeHasName, nodeTypeEndsWith } from './column-ref-utils';
+import { isRecord, nodeHasName, nodeTypeEndsWith, unique } from './column-ref-utils';
+import { EXPECTED_TOOLS_COLUMN } from './metric-catalog';
 import type { InstanceAiContext, NodeOutputResult } from '../../types';
 
 const SCAN_LIMIT = 100;
@@ -13,11 +14,6 @@ export interface ExtractRowsInput {
 	workflowId: string;
 	agentNodeName: string;
 	inputColumns: string[];
-	/**
-	 * For each expected_* column, the agent output field whose value should
-	 * be projected into that column. Empty array means no expected columns
-	 * to populate from history.
-	 */
 	expectedToActualPairs: Array<{ expectedColumn: string; actualField: string }>;
 }
 
@@ -110,16 +106,30 @@ function projectRow(
 		if (!isRecord(agentJson)) return undefined;
 		for (const { expectedColumn, actualField } of expectedToActualPairs) {
 			const value = agentJson[actualField];
-			if (value === undefined || value === null) return undefined;
-			row[expectedColumn] = typeof value === 'string' ? value : JSON.stringify(value);
+			const projected = projectExpectedValue(expectedColumn, value);
+			if (projected === undefined) return undefined;
+			row[expectedColumn] = projected;
 		}
 	}
 
 	return row;
 }
 
-function rowKey(row: Record<string, string>): string {
-	return JSON.stringify(row);
+function projectExpectedValue(expectedColumn: string, value: unknown): string | undefined {
+	if (value === undefined || value === null) return undefined;
+	if (expectedColumn === EXPECTED_TOOLS_COLUMN) return formatExpectedTools(value);
+	return typeof value === 'string' ? value : JSON.stringify(value);
+}
+
+function formatExpectedTools(value: unknown): string | undefined {
+	if (!Array.isArray(value)) return undefined;
+	const tools = unique(
+		value.flatMap((step) => {
+			const tool = isRecord(step) && isRecord(step.action) ? step.action.tool : undefined;
+			return typeof tool === 'string' && tool.trim().length > 0 ? [tool.trim()] : [];
+		}),
+	);
+	return tools.length > 0 ? tools.join(', ') : undefined;
 }
 
 export async function extractRowsFromExecutionHistory(
@@ -131,18 +141,19 @@ export async function extractRowsFromExecutionHistory(
 		return { rows: [], scannedExecutions: 0 };
 	}
 
-	const summaries = [
-		...(await ctx.executionService.list({
+	const [successSummaries, errorSummaries] = await Promise.all([
+		ctx.executionService.list({
 			workflowId: input.workflowId,
 			status: 'success',
 			limit: SCAN_LIMIT,
-		})),
-		...(await ctx.executionService.list({
+		}),
+		ctx.executionService.list({
 			workflowId: input.workflowId,
 			status: 'error',
 			limit: SCAN_LIMIT,
-		})),
-	];
+		}),
+	]);
+	const summaries = [...successSummaries, ...errorSummaries];
 
 	const rows: Array<Record<string, string>> = [];
 	const seenRows = new Set<string>();
@@ -197,7 +208,7 @@ export async function extractRowsFromExecutionHistory(
 		if (scannedExecution) scannedExecutions++;
 		if (!row) continue;
 
-		const key = rowKey(row);
+		const key = JSON.stringify(row);
 		if (seenRows.has(key)) continue;
 		seenRows.add(key);
 		rows.push(row);

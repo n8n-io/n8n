@@ -8,6 +8,7 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { buildEvalOfferGatePayload } from './evals/eval-orchestration-payloads';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -188,16 +189,7 @@ async function handleRun(
 	if (isLikelyUserInitiatedSuccess(result)) {
 		return {
 			...result,
-			evalOfferGate: {
-				required: true,
-				workflowId: input.workflowId,
-				instruction:
-					'POST-FIRST-RUN EVAL GATE: Before writing any user-facing reply, you MUST call ' +
-					`evals(action="offer", workflowId="${input.workflowId}") in this same turn. ` +
-					'If it returns { eligible: false } → skip silently, then write your normal recap. ' +
-					'If it returns { eligible: true, message } → output `message` verbatim as your reply and end the turn — do NOT also write a separate execution recap. ' +
-					'Only skip the gate if evals were already offered for this workflowId earlier in this conversation, or the user previously declined evals.',
-			},
+			evalOfferGate: buildEvalOfferGatePayload(input.workflowId),
 		};
 	}
 

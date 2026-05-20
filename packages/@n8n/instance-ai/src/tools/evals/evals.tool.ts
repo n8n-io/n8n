@@ -53,12 +53,10 @@ const recommendMetricAction = z.object({
 	action: z
 		.literal('recommend-metric')
 		.describe(
-			'Ask the user to approve the single metric chosen by the orchestration agent. The caller must inspect the workflow and pass `metricId`; this tool does not infer a default. On approval returns `{ approved: true, metricId }` — pass that single id to `propose` and skip `select-metrics`. On denial returns `{ approved: false }` — fall through to `select-metrics` so the user can pick from the full list.',
+			'Ask the user to approve metricId. On approval pass it to propose; on denial use select-metrics.',
 		),
 	workflowId: z.string(),
-	metricId: metricIdSchema.describe(
-		'Metric chosen by the orchestration agent after inspecting the workflow.',
-	),
+	metricId: metricIdSchema.describe('Metric chosen by the orchestration agent.'),
 	targetAgentNodeName: z
 		.string()
 		.optional()
@@ -72,9 +70,7 @@ const selectMetricsAction = z.object({
 			'Multi-select picker over all canned metrics — call this ONLY when `recommend-metric` returned `{ approved: false }`. Returns chosenMetricIds.',
 		),
 	workflowId: z.string(),
-	recommendedMetricId: metricIdSchema
-		.optional()
-		.describe('Optional metric chosen by the orchestration agent, used only to mark the option.'),
+	recommendedMetricId: metricIdSchema.optional().describe('Metric to mark as recommended.'),
 	targetAgentNodeName: z
 		.string()
 		.optional()
@@ -100,7 +96,7 @@ const offerDataPopulationAction = z.object({
 	action: z
 		.literal('offer-data-population')
 		.describe(
-			'Ask the user whether to populate the eval DataTable after eval setup is wired. On approval, populates it immediately and returns the inserted table summary.',
+			'Ask whether to populate the eval DataTable; on approval, insert rows and return a summary.',
 		),
 	workflowId: z.string(),
 	projectId: z.string().optional(),
@@ -194,7 +190,7 @@ function composeOfferMessage(aiNodeNames: string[], namedRefs: NamedRef[]): stri
 	if (namedRefs.length === 0) return baseMessage;
 
 	// Disclosure: cite which named nodes will move and into which dataset columns.
-	const sourceNodes = [...new Set(namedRefs.map((r) => r.nodeName))].map((n) => n).join(', ');
+	const sourceNodes = [...new Set(namedRefs.map((r) => r.nodeName))].join(', ');
 	const targetColumns = namedRefs.map((r) => r.column).join(', ');
 
 	const sourceLabel = namedRefs.length === 1 ? 'node' : 'nodes';
@@ -531,13 +527,10 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 	const { inputColumns: directColumns } = analyzeAgentEvalInputColumns(wf, agentName);
 	const directRefs = detectAgentEvalInputRefs(wf, agentName);
 	const namedRefs = detectAgentNamedRefs(wf, agentName);
-	const filteredNamedRefs = namedRefs;
-	const namedRefColumns = filteredNamedRefs.map((r) => r.column);
+	const namedRefColumns = namedRefs.map((r) => r.column);
 
-	// Combined column list: direct $json refs + named-ref-derived columns.
 	const inputColumns = [...new Set([...directColumns, ...namedRefColumns])];
 
-	// metrics may be undefined when sanitizeInputSchema flattens the discriminated union
 	const resolvedMetrics = getMetricsByIds(input.metrics ?? []);
 	if (resolvedMetrics.length === 0) {
 		return { skipped: true as const, reason: 'metrics-required' as const };
@@ -548,28 +541,11 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 		datasetChoice === 'create-empty'
 			? formatEvalDataTableColumnNameMap(dataTableColumns)
 			: undefined;
-	const taskInputColumns =
-		normalizedColumnNames === undefined
-			? inputColumns
-			: inputColumns.map((column) => normalizedColumnNames.get(column) ?? column);
-	const taskOutputColumns =
-		normalizedColumnNames === undefined
-			? outputColumns
-			: outputColumns.map((column) => normalizedColumnNames.get(column) ?? column);
-	const taskNamedRefs =
-		normalizedColumnNames === undefined
-			? filteredNamedRefs
-			: filteredNamedRefs.map((ref) => ({
-					...ref,
-					column: normalizedColumnNames.get(ref.column) ?? ref.column,
-				}));
-	const taskDirectRefs =
-		normalizedColumnNames === undefined
-			? directRefs
-			: directRefs.map((ref) => ({
-					...ref,
-					column: normalizedColumnNames.get(ref.column) ?? ref.column,
-				}));
+	const normalizeColumn = (column: string) => normalizedColumnNames?.get(column) ?? column;
+	const taskInputColumns = inputColumns.map(normalizeColumn);
+	const taskOutputColumns = outputColumns.map(normalizeColumn);
+	const taskNamedRefs = namedRefs.map((ref) => ({ ...ref, column: normalizeColumn(ref.column) }));
+	const taskDirectRefs = directRefs.map((ref) => ({ ...ref, column: normalizeColumn(ref.column) }));
 
 	let dataTableId: string | undefined = input.existingDataTableId;
 	let createdTable: { id: string; name: string; projectId?: string } | undefined;
@@ -632,15 +608,6 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 	};
 }
 
-// ── action: offer-data-population ──────────────────────────────────────────
-
-function composeDataPopulationOfferMessage(): string {
-	return (
-		'I can add sample test cases to the table now, using recent successful runs when available ' +
-		'or generated input examples when there is not enough history. Want me to populate it?'
-	);
-}
-
 async function executeOfferDataPopulation(
 	context: InstanceAiContext,
 	input: z.infer<typeof offerDataPopulationAction>,
@@ -665,14 +632,15 @@ async function executeOfferDataPopulation(
 	if (hasResumeData(ctx)) {
 		const resumeData = getConfirmResume(ctx);
 		if (!resumeData?.approved) return { approved: false as const };
+		const targetAiNodeName = target.targetAgentNodeName ?? target.targetNodeName;
 		return {
 			approved: true as const,
 			workflowId: input.workflowId,
-			...(target.targetAgentNodeName ? { targetAgentNodeName: target.targetAgentNodeName } : {}),
+			...(targetAiNodeName ? { targetAgentNodeName: targetAiNodeName } : {}),
 			...(await populateEvalDataTable(context, {
 				workflowId: input.workflowId,
 				...(input.projectId ? { projectId: input.projectId } : {}),
-				...(target.targetAgentNodeName ? { targetAgentNodeName: target.targetAgentNodeName } : {}),
+				...(targetAiNodeName ? { targetAgentNodeName: targetAiNodeName } : {}),
 			})),
 		};
 	}
@@ -681,7 +649,7 @@ async function executeOfferDataPopulation(
 	if (suspend) {
 		return await suspend({
 			requestId: nanoid(),
-			message: composeDataPopulationOfferMessage(),
+			message: 'I can add sample test cases to the table now. Want me to populate it?',
 			severity: 'info' as const,
 		});
 	}

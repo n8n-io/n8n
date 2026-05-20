@@ -12,6 +12,7 @@ import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { formatTimestamp } from '../utils/format-timestamp';
 import { detectAiNodes } from './evals/detect-ai-nodes';
+import { buildEvalPublishReminderPayload } from './evals/eval-orchestration-payloads';
 import { setupSuspendSchema, setupResumeSchema } from './workflows/setup-workflow.schema';
 import {
 	analyzeWorkflow,
@@ -800,27 +801,12 @@ async function handlePublish(
 async function maybeBuildEvalRunReminder(
 	context: InstanceAiContext,
 	workflowId: string,
-): Promise<
-	| {
-			required: true;
-			workflowId: string;
-			instruction: string;
-	  }
-	| undefined
-> {
+): Promise<ReturnType<typeof buildEvalPublishReminderPayload> | undefined> {
 	try {
 		const workflow = await context.workflowService.getAsWorkflowJSON(workflowId);
 		const detection = detectAiNodes(workflow);
 		if (!detection.alreadyConfigured) return undefined;
-		return {
-			required: true,
-			workflowId,
-			instruction:
-				'POST-PUBLISH EVAL RUN REMINDER: This workflow has an eval suite wired. ' +
-				'Before ending the turn, briefly suggest the user run the evals to confirm the published changes still pass. ' +
-				`A one-liner is enough: e.g. "Want me to run the evals against ${workflowId} to make sure the update didn't regress anything?" ` +
-				'Do NOT auto-run them — just offer.',
-		};
+		return buildEvalPublishReminderPayload(workflowId);
 	} catch {
 		return undefined;
 	}

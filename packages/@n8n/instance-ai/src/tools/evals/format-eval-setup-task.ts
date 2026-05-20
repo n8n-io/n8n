@@ -57,7 +57,6 @@ function formatProductionAdapter(
 	);
 	if (namedRefs.length === 0 && directRefsNeedingAdapter.length === 0) return '';
 
-	// Set adapter assignments: one per unique column, using canonical single-quote syntax.
 	const assignmentsByColumn = new Map<string, AdapterAssignment>();
 	for (const r of directRefsNeedingAdapter) {
 		const column = columnNameFor(r.column);

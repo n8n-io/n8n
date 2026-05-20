@@ -2,6 +2,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import {
 	collectStrings,
+	type DirectJsonRefMatch,
 	extractDirectJsonColumnRefs,
 	extractDirectJsonRefMatches,
 	extractNamedRefMatches,
@@ -15,13 +16,7 @@ export interface AgentInputColumns {
 	inputColumns: string[];
 }
 
-export interface DirectJsonRef {
-	field: string;
-	path: string[];
-	originalExpression: string;
-	column: string;
-	targetNodeName: string;
-}
+export type DirectJsonRef = DirectJsonRefMatch & { column: string; targetNodeName: string };
 
 const FALLBACK_COLUMN = 'input';
 
@@ -87,13 +82,7 @@ export function detectAgentEvalInputRefs(
 			for (const match of extractDirectJsonRefMatches(text)) {
 				const key = `${match.originalExpression}\x00${match.field}`;
 				if (dedup.has(key)) continue;
-				dedup.set(key, {
-					field: match.field,
-					path: match.path,
-					originalExpression: match.originalExpression,
-					column: match.field,
-					targetNodeName,
-				});
+				dedup.set(key, { ...match, column: match.field, targetNodeName });
 			}
 		}
 		refs.push(...dedup.values());

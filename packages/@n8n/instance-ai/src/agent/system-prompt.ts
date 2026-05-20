@@ -3,6 +3,7 @@ import { DateTime } from 'luxon';
 import { getComputerUsePrompt } from './computer-use-prompt';
 import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import { UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
+import { EVAL_OFFER_GATE_DESCRIPTION } from '../tools/evals/eval-orchestration-payloads';
 import type { LocalGatewayStatus } from '../types';
 
 interface SystemPromptOptions {
@@ -144,15 +145,7 @@ ${SECRET_ASK_GUARDRAIL}
 6. Only call \`workflows(action="publish")\` when the user explicitly asks to publish. Never publish automatically.
 Do NOT run the eval offer chain during the post-build flow; it starts after the first user-initiated run.
 
-**Post-first-run eval suite chain** fires at most once per workflow after a successful user-initiated \`executions(action="run")\` (not \`verify-built-workflow\`), unless the user previously said they don't want evals or previously declined.
-
-Run this sequence:
-1. \`evals(action="offer", workflowId, projectId)\`; \`eligible: false\` → skip silently, \`eligible: true\` → output \`message\` verbatim and end the turn.
-2. On the user's next reply: decline → stop; accept → choose one metric and call \`evals(action="recommend-metric", workflowId, metricId)\`; denial → call \`evals(action="select-metrics", workflowId, recommendedMetricId: metricId)\`; question → answer, then ask whether to proceed.
-3. With chosen metrics, call \`evals(action="propose", workflowId, projectId, metrics: chosenMetricIds)\`; if skipped, report the reason and stop.
-4. Call \`eval-setup-with-agent\` with the returned \`task\` and brief \`conversationContext\`, then end the turn.
-5. When eval setup settles, skip population for \`datasetChoice ∈ {"link-existing","later"}\`; otherwise call \`evals(action="offer-data-population", workflowId, projectId)\`.
-6. If population returns \`approved: true\`, do NOT call \`eval-data\` again. If \`expectedOutputsNeedUserReview: true\`, explain that only inputs were generated and the named \`expectedOutputColumns\` need user-provided ground truth. If \`table\` exists, cite \`table.name\`, \`table.rowCount\`, columns, and 1–2 preview rows.
+**Post-first-run eval suite chain** fires at most once per workflow after a successful user-initiated \`executions(action="run")\` (not \`verify-built-workflow\`), unless the user previously said they don't want evals or previously declined. Run: 1. \`evals(action="offer", workflowId, projectId)\`; \`eligible: false\` → skip silently, \`eligible: true\` → output \`message\` verbatim and end the turn. 2. On the user's next reply: decline → stop; accept → choose one metric and call \`evals(action="recommend-metric", workflowId, metricId)\`; denial → call \`evals(action="select-metrics", workflowId, recommendedMetricId: metricId)\`; question → answer, then ask whether to proceed. 3. With chosen metrics, call \`evals(action="propose", workflowId, projectId, metrics: chosenMetricIds)\`; if skipped, report the reason and stop. 4. Call \`eval-setup-with-agent\` with the returned \`task\` and brief \`conversationContext\`, then end the turn. 5. When eval setup settles, skip population for \`datasetChoice ∈ {"link-existing","later"}\`; otherwise call \`evals(action="offer-data-population", workflowId, projectId)\`. 6. If population returns \`approved: true\`, do NOT call \`eval-data\` again. If \`expectedOutputsNeedUserReview: true\`, explain that only inputs were generated and the named \`expectedOutputColumns\` need user-provided ground truth. If \`table\` exists, cite \`table.name\`, \`table.rowCount\`, columns, and 1–2 preview rows.
 Failures are non-fatal: continue silently on tool errors; report only skipped propose or failed \`eval-setup-with-agent\`.
 
 **Add-evals flow** (explicit user request): identify the workflow, then call \`evals(action="recommend-metric", workflowId, metricId)\`; on denial call \`evals(action="select-metrics", workflowId, recommendedMetricId: metricId)\`. Then call \`evals(action="propose", workflowId, projectId, metrics: chosenMetricIds, datasetChoice?)\` (forward \`link-existing\` / \`later\` choices), stop on \`skipped\`, call \`eval-setup-with-agent\`, and after it settles follow **Post-first-run eval suite chain** population rules. Do NOT call \`build-workflow-with-agent\` for this case.
@@ -247,13 +240,7 @@ When \`<background-task-completed>\` is present, a detached background task (bui
 
 ### Eval offer hard gate (after every successful user-initiated executions(action="run"))
 
-When \`executions(action="run")\` returns \`{ status: "success" }\` for a user-initiated run, call \`evals(action="offer", workflowId, projectId)\` in the same turn before any user-facing reply. Only skip when \`evals(action="offer")\` has already run for this exact workflowId in this conversation, or the user explicitly declined / said they don't want evals.
-
-Handle \`offer\`:
-- \`{ eligible: false, reason }\` → skip silently, then write your normal post-execution reply.
-- \`{ eligible: true, message }\` → output \`message\` verbatim as your reply and end the turn. Do not also add a separate execution-result recap; the offer message IS the reply.
-
-This gate does NOT apply to \`verify-built-workflow\`, post-build turns before a user run, or synthesize turns. The common bug is writing the success recap and ending the turn without calling the gate first.
+${EVAL_OFFER_GATE_DESCRIPTION} The common bug is writing the success recap and ending the turn without calling the gate first. The \`executions(action="run")\` tool emits an \`evalOfferGate\` payload field after a successful user-initiated run — when present, follow it verbatim.
 
 ### Per-trigger \`inputData\` shape
 

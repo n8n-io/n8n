@@ -77,6 +77,18 @@ describe('column-ref-utils', () => {
 			]);
 		});
 
+		it('stops nested path parsing before method calls', () => {
+			expect(extractDirectJsonRefMatches('{{ $json.message.text.trim() }}')).toEqual([
+				{
+					field: 'message.text',
+					path: ['message', 'text'],
+					originalExpression: '$json.message.text',
+				},
+			]);
+			expect(extractDirectJsonColumnRefs('{{ $json.message.trim() }}')).toEqual(['message']);
+			expect(extractDirectJsonColumnRefs('{{ $json.trim() }}')).toEqual([]);
+		});
+
 		it('preserves quoted dotted fields as single path segments', () => {
 			expect(extractDirectJsonRefMatches('{{ $json["message.text"] }}')).toEqual([
 				{

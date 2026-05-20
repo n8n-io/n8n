@@ -100,7 +100,9 @@ function readFieldAccessor(text: string, start: number): FieldPathAccessor | und
 
 function readFieldPathAccessor(text: string, start: number): FieldPathAccessor | undefined {
 	const first = readFieldAccessor(text, start);
+	const isMethodCall = (endIndex: number) => charAt(text, skipWhitespace(text, endIndex)) === '(';
 	if (!first) return undefined;
+	if (isMethodCall(first.endIndex)) return undefined;
 
 	const fields = [first.field];
 	const path = [...first.path];
@@ -108,6 +110,7 @@ function readFieldPathAccessor(text: string, start: number): FieldPathAccessor |
 	while (true) {
 		const next = readFieldAccessor(text, endIndex);
 		if (!next) break;
+		if (isMethodCall(next.endIndex)) break;
 		fields.push(next.field);
 		path.push(...next.path);
 		endIndex = next.endIndex;

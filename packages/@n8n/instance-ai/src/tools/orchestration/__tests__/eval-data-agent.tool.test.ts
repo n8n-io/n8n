@@ -440,6 +440,34 @@ describe('eval-data tool', () => {
 		);
 	});
 
+	it('populates eval data when the requested target is a supported non-agent AI node', async () => {
+		const dataTableService = defaultDataTableService({
+			getSchema: jest.fn().mockResolvedValue([{ name: 'user_query' }]),
+		});
+		const ctx = buildOrchestrationCtx({ workflow: nonAgentAiTargetEvalWf(), dataTableService });
+		const generateSpy = jest
+			.spyOn(sampleRowsService, 'generateSampleRows')
+			.mockResolvedValue([{ user_query: 'generated' }]);
+
+		const result = await runEvalDataTool(ctx, {
+			workflowId: 'w1',
+			targetAgentNodeName: 'LLM Chain',
+		});
+
+		expect(result.status).toBe('generated');
+		expect(generateSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				columns: ['user_query'],
+				targetAgentNodeName: 'LLM Chain',
+			}),
+		);
+		expect(dataTableService.insertRows).toHaveBeenCalledWith(
+			'dt-1',
+			[{ user_query: 'generated' }],
+			undefined,
+		);
+	});
+
 	it('passes the requested target agent through requirement analysis', async () => {
 		const dataTableService = defaultDataTableService({
 			getSchema: jest.fn().mockResolvedValue([{ name: 'answer_query' }]),

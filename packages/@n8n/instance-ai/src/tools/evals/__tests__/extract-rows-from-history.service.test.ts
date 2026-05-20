@@ -432,6 +432,42 @@ describe('extractRowsFromExecutionHistory', () => {
 		expect(result.rows).toEqual([{ user_query: 'hi', expected_response: 'hello world' }]);
 	});
 
+	it('extracts expected tools from agent intermediate steps when requested', async () => {
+		const ctx = buildContext({
+			list: jest
+				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
+				.mockResolvedValueOnce([executionSummary('e1')])
+				.mockResolvedValueOnce([]),
+			getNodeOutput: jest.fn<
+				ReturnType<ExecutionService['getNodeOutput']>,
+				Parameters<ExecutionService['getNodeOutput']>
+			>(
+				async (_id, nodeName) =>
+					await Promise.resolve(
+						nodeName === 'Trigger'
+							? nodeOutput('Trigger', { user_query: 'hi' })
+							: nodeOutput('Agent', {
+									intermediateSteps: [
+										{ action: { tool: 'calculator' } },
+										{ action: { tool: 'search' } },
+										{ action: { tool: 'calculator' } },
+									],
+								}),
+					),
+			),
+		});
+		const result = await extractRowsFromExecutionHistory(ctx, {
+			workflow: buildWorkflow(),
+			workflowId: 'w1',
+			agentNodeName: 'Agent',
+			inputColumns: ['user_query'],
+			expectedToActualPairs: [
+				{ expectedColumn: 'expected_tools', actualField: 'intermediateSteps' },
+			],
+		});
+		expect(result.rows).toEqual([{ user_query: 'hi', expected_tools: 'calculator, search' }]);
+	});
+
 	it('skips execution if the agent output is missing the actualField', async () => {
 		const ctx = buildContext({
 			list: jest
