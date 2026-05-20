@@ -198,58 +198,24 @@ describe('ExecuteSingleContext', () => {
 		});
 	});
 
-	describe('getInboundArtifact', () => {
-		const boundItemIndex = 5;
-		const boundContext = new ExecuteSingleContext(
-			workflow,
-			node,
-			additionalData,
-			mode,
-			runExecutionData,
-			runIndex,
-			connectionInputData,
-			inputData,
-			boundItemIndex,
-			executeData,
-			abortSignal,
-		);
-
+	describe('getRuntimeCredential', () => {
 		beforeEach(() => {
-			additionalData.getInboundArtifact.mockReset();
+			additionalData.getRuntimeCredential.mockReset();
 		});
 
-		it('defaults itemIndex to the context-bound itemIndex when omitted', async () => {
-			additionalData.getInboundArtifact.mockResolvedValue('Bearer xyz');
+		it('forwards the alias to the additionalData callback and returns its value', async () => {
+			additionalData.getRuntimeCredential.mockResolvedValue('Bearer xyz');
 
-			const result = await boundContext.getInboundArtifact('Webhook', 'headers.authorization');
+			const result = await executeSingleContext.getRuntimeCredential('api_key');
 
 			expect(result).toBe('Bearer xyz');
-			expect(additionalData.getInboundArtifact).toHaveBeenCalledWith(
-				runExecutionData,
-				'Webhook',
-				'headers.authorization',
-				boundItemIndex,
-			);
-		});
-
-		it('forwards an explicit itemIndex', async () => {
-			additionalData.getInboundArtifact.mockResolvedValue('Bearer abc');
-
-			const result = await executeSingleContext.getInboundArtifact('Webhook', 'k', 3);
-
-			expect(result).toBe('Bearer abc');
-			expect(additionalData.getInboundArtifact).toHaveBeenCalledWith(
-				runExecutionData,
-				'Webhook',
-				'k',
-				3,
-			);
+			expect(additionalData.getRuntimeCredential).toHaveBeenCalledWith(runExecutionData, 'api_key');
 		});
 
 		it('returns undefined when the underlying callback yields undefined', async () => {
-			additionalData.getInboundArtifact.mockResolvedValue(undefined);
+			additionalData.getRuntimeCredential.mockResolvedValue(undefined);
 
-			const result = await executeSingleContext.getInboundArtifact('Webhook', 'missing');
+			const result = await executeSingleContext.getRuntimeCredential('missing');
 
 			expect(result).toBeUndefined();
 		});

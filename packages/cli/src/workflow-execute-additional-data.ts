@@ -568,7 +568,7 @@ export async function getBase({
 		variables,
 		workflowSettings,
 		async getRuntimeCredential(runExecutionData, alias) {
-			return await Container.get(RuntimeCredentialProxyService).getRuntimeCredentials(
+			return await Container.get(RuntimeCredentialProxyService).getRuntimeCredential(
 				runExecutionData,
 				alias,
 			);

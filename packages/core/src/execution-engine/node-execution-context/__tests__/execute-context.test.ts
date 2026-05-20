@@ -388,43 +388,24 @@ describe('ExecuteContext', () => {
 		});
 	});
 
-	describe('getInboundArtifact', () => {
+	describe('getRuntimeCredential', () => {
 		beforeEach(() => {
-			additionalData.getInboundArtifact.mockReset();
+			additionalData.getRuntimeCredential.mockReset();
 		});
 
-		it('defaults itemIndex to 0 when omitted', async () => {
-			additionalData.getInboundArtifact.mockResolvedValue('Bearer xyz');
+		it('forwards the alias to the additionalData callback and returns its value', async () => {
+			additionalData.getRuntimeCredential.mockResolvedValue('Bearer xyz');
 
-			const result = await executeContext.getInboundArtifact('Webhook', 'headers.authorization');
+			const result = await executeContext.getRuntimeCredential('api_key');
 
 			expect(result).toBe('Bearer xyz');
-			expect(additionalData.getInboundArtifact).toHaveBeenCalledWith(
-				runExecutionData,
-				'Webhook',
-				'headers.authorization',
-				0,
-			);
-		});
-
-		it('forwards an explicit itemIndex', async () => {
-			additionalData.getInboundArtifact.mockResolvedValue('Bearer abc');
-
-			const result = await executeContext.getInboundArtifact('Webhook', 'k', 3);
-
-			expect(result).toBe('Bearer abc');
-			expect(additionalData.getInboundArtifact).toHaveBeenCalledWith(
-				runExecutionData,
-				'Webhook',
-				'k',
-				3,
-			);
+			expect(additionalData.getRuntimeCredential).toHaveBeenCalledWith(runExecutionData, 'api_key');
 		});
 
 		it('returns undefined when the underlying callback yields undefined', async () => {
-			additionalData.getInboundArtifact.mockResolvedValue(undefined);
+			additionalData.getRuntimeCredential.mockResolvedValue(undefined);
 
-			const result = await executeContext.getInboundArtifact('Webhook', 'missing');
+			const result = await executeContext.getRuntimeCredential('missing');
 
 			expect(result).toBeUndefined();
 		});

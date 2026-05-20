@@ -1111,7 +1111,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getInputData(inputIndex?: number, connectionType?: NodeConnectionType): INodeExecutionData[];
 		getNodeInputs(): INodeInputConfiguration[];
 		getNodeOutputs(): INodeOutputConfiguration[];
-		getRuntimeCredentials(alias: string): Promise<IDataObject[string] | undefined>;
+		getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined>;
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;

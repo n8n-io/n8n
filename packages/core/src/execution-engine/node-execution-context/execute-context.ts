@@ -141,7 +141,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			)) as IExecuteFunctions['getNodeParameter'];
 	}
 
-	async getRuntimeCredentials(alias: string): Promise<IDataObject[string] | undefined> {
+	async getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined> {
 		return await this.additionalData.getRuntimeCredential(this.runExecutionData, alias);
 	}
 

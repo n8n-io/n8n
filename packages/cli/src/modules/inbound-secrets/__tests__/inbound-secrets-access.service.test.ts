@@ -30,7 +30,7 @@ describe('InboundSecretsAccessService', () => {
 	});
 
 	it('returns the array stored under the requested alias', async () => {
-		const result = await service.getRuntimeCredentials(
+		const result = await service.getRuntimeCredential(
 			buildRunExecutionData(ENCRYPTED_BLOB),
 			'api_key',
 		);
@@ -40,7 +40,7 @@ describe('InboundSecretsAccessService', () => {
 	});
 
 	it('returns undefined when the alias is not in the artifacts map', async () => {
-		const result = await service.getRuntimeCredentials(
+		const result = await service.getRuntimeCredential(
 			buildRunExecutionData(ENCRYPTED_BLOB),
 			'unknown_alias',
 		);
@@ -53,14 +53,14 @@ describe('InboundSecretsAccessService', () => {
 			executionData: { runtimeData: {} },
 		} as unknown as IRunExecutionData;
 
-		const result = await service.getRuntimeCredentials(runExecutionData, 'api_key');
+		const result = await service.getRuntimeCredential(runExecutionData, 'api_key');
 
 		expect(result).toBeUndefined();
 		expect(cipher.decryptV2).not.toHaveBeenCalled();
 	});
 
 	it('returns undefined and does not call the cipher when secureArtifacts is not a string', async () => {
-		const result = await service.getRuntimeCredentials(
+		const result = await service.getRuntimeCredential(
 			buildRunExecutionData({ not: 'a string' }),
 			'api_key',
 		);
@@ -73,7 +73,7 @@ describe('InboundSecretsAccessService', () => {
 		cipher.decryptV2.mockResolvedValueOnce('not json');
 
 		await expect(
-			service.getRuntimeCredentials(buildRunExecutionData(ENCRYPTED_BLOB), 'api_key'),
+			service.getRuntimeCredential(buildRunExecutionData(ENCRYPTED_BLOB), 'api_key'),
 		).rejects.toThrow();
 	});
 });

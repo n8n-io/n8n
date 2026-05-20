@@ -9,7 +9,7 @@ import { RuntimeCredentialProvider } from '@/services/runtime-credential-proxy.s
 export class InboundSecretsAccessService implements RuntimeCredentialProvider {
 	constructor(private readonly cipher: Cipher) {}
 
-	async getRuntimeCredentials(
+	async getRuntimeCredential(
 		runExecutionData: IRunExecutionData,
 		alias: string,
 	): Promise<IDataObject[string] | undefined> {

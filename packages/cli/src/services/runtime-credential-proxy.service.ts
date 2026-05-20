@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 import type { IDataObject, IRunExecutionData } from 'n8n-workflow';
 
 export interface RuntimeCredentialProvider {
-	getRuntimeCredentials(
+	getRuntimeCredential(
 		runExecutionData: IRunExecutionData,
 		alias: string,
 	): Promise<IDataObject[string] | undefined>;
@@ -16,12 +16,12 @@ export class RuntimeCredentialProxyService implements RuntimeCredentialProvider 
 		this.provider = provider;
 	}
 
-	async getRuntimeCredentials(
+	async getRuntimeCredential(
 		runExecutionData: IRunExecutionData,
 		alias: string,
 	): Promise<IDataObject[string] | undefined> {
 		if (this.provider) {
-			return await this.provider.getRuntimeCredentials(runExecutionData, alias);
+			return await this.provider.getRuntimeCredential(runExecutionData, alias);
 		}
 		return undefined;
 	}
