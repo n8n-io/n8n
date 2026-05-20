@@ -5,8 +5,8 @@ export default defineConfig(baseConfig, {
 	ignores: ['scripts/**/*.cjs'],
 }, {
 	rules: {
-		// Mastra tool names are kebab-case identifiers (e.g. 'list-workflows')
-		// which require quotes in object literals — skip naming checks for those
+		// Tool names may be kebab-case identifiers (e.g. 'list-workflows'), which
+		// require quotes in object literals. Skip naming checks for those.
 		'@typescript-eslint/naming-convention': [
 			'error',
 			{

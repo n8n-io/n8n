@@ -1,7 +1,7 @@
 import type { InstanceAiThreadStatusResponse } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
-import type { InstanceAiTraceContext } from '../types';
+import type { InstanceAiTraceContext, ModelConfig } from '../types';
 import type {
 	InstanceAiLivenessPolicy,
 	InstanceAiLivenessSurface,
@@ -13,12 +13,13 @@ export interface ActiveRunState {
 	abortController: AbortController;
 	messageGroupId?: string;
 	tracing?: InstanceAiTraceContext;
+	modelId?: ModelConfig;
 	startedAt?: number;
 	lastActivityAt?: number;
 }
 
 export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
-	mastraRunId: string;
+	agentRunId: string;
 	agent: unknown;
 	threadId: string;
 	user: TUser;
@@ -32,7 +33,7 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 }
 
 /**
- * Flat confirmation payload consumed by Mastra tool `resumeSchema`s and sub-agent HITL.
+ * Flat confirmation payload consumed by native tool `resumeSchema`s and sub-agent HITL.
  * The service layer constructs this from the typed `InstanceAiConfirmRequest` discriminated
  * union sent by the frontend — only one subset of fields is populated per call, matching
  * the confirmation kind that was originally requested.
@@ -268,6 +269,7 @@ export class RunStateRegistry<TUser = unknown> {
 			abortController: suspended.abortController,
 			messageGroupId: suspended.messageGroupId,
 			tracing: suspended.tracing,
+			modelId: suspended.modelId,
 			startedAt: suspended.startedAt ?? suspended.createdAt,
 			lastActivityAt: now,
 		});
@@ -367,9 +369,13 @@ export class RunStateRegistry<TUser = unknown> {
 	 * Returns thread IDs and request IDs that should be cancelled/rejected.
 	 * Does NOT mutate state — the caller is responsible for cancelling.
 	 */
+	sweepTimedOut(maxAgeMs: number): {
+		suspendedThreadIds: string[];
+		confirmationRequestIds: string[];
+	};
 	sweepTimedOut(
 		policy: InstanceAiLivenessPolicy,
-		now = Date.now(),
+		now?: number,
 	): {
 		activeThreadIds: string[];
 		suspendedThreadIds: string[];
@@ -377,7 +383,41 @@ export class RunStateRegistry<TUser = unknown> {
 		activeTimeouts: Record<string, RunStateTimeoutDetails>;
 		suspendedTimeouts: Record<string, RunStateTimeoutDetails>;
 		confirmationTimeouts: Record<string, RunStateTimeoutDetails>;
-	} {
+	};
+	sweepTimedOut(
+		policyOrMaxAgeMs: InstanceAiLivenessPolicy | number,
+		now = Date.now(),
+	):
+		| {
+				suspendedThreadIds: string[];
+				confirmationRequestIds: string[];
+		  }
+		| {
+				activeThreadIds: string[];
+				suspendedThreadIds: string[];
+				confirmationRequestIds: string[];
+				activeTimeouts: Record<string, RunStateTimeoutDetails>;
+				suspendedTimeouts: Record<string, RunStateTimeoutDetails>;
+				confirmationTimeouts: Record<string, RunStateTimeoutDetails>;
+		  } {
+		if (typeof policyOrMaxAgeMs === 'number') {
+			const maxAgeMs = policyOrMaxAgeMs;
+			const suspendedThreadIds: string[] = [];
+			for (const [threadId, run] of this.suspendedRuns) {
+				if (now - run.createdAt >= maxAgeMs) {
+					suspendedThreadIds.push(threadId);
+				}
+			}
+			const confirmationRequestIds: string[] = [];
+			for (const [reqId, pending] of this.pendingConfirmations) {
+				if (now - pending.createdAt >= maxAgeMs) {
+					confirmationRequestIds.push(reqId);
+				}
+			}
+			return { suspendedThreadIds, confirmationRequestIds };
+		}
+
+		const policy = policyOrMaxAgeMs;
 		const activeThreadIds: string[] = [];
 		const activeTimeouts: Record<string, RunStateTimeoutDetails> = {};
 		for (const [threadId, run] of this.activeRuns) {
