@@ -302,6 +302,30 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			expect(mockTelemetryTrack).not.toHaveBeenCalled();
 		});
 
+		it('ignores repeated clicks while the confirm POST is in flight', async () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-double-click',
+				severity: 'info',
+				message: 'Run this workflow?',
+			});
+			let resolvePost: (value: boolean) => void = () => {};
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockReturnValue(
+				new Promise<boolean>((resolve) => {
+					resolvePost = resolve;
+				}),
+			);
+
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
+			const approveButton = getByTestId('instance-ai-panel-confirm-approve');
+			await userEvent.click(approveButton);
+			await userEvent.click(approveButton);
+			await userEvent.click(approveButton);
+
+			expect(confirmSpy).toHaveBeenCalledTimes(1);
+
+			resolvePost(true);
+		});
+
 		it('hides always-allow on destructive confirmations and narrows the option set', async () => {
 			injectPendingConfirmation(thread, {
 				requestId: 'req-destructive',

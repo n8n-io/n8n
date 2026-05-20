@@ -207,54 +207,74 @@ function handleApprovalSelect(item: PendingConfirmationItem, key: string) {
 // Text input state per requestId
 const textInputValues = ref<Record<string, string>>({});
 
+// In-flight guard so a double-click or repeated Enter while the first POST
+// is still pending doesn't fire a second request for the same requestId.
+// `resolvedConfirmationIds` is only updated *after* the await, so we need
+// our own synchronous lock for the window in between.
+const inFlightConfirmations = new Set<string>();
+
 async function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 	const conf = item.toolCall.confirmation;
 	if (thread.resolvedConfirmationIds.has(conf.requestId)) return;
-	// Await the POST first so a network failure leaves the card visible and
-	// the backend's wait state intact — matches the auto-approve watcher
-	// behaviour. `confirmAction` already surfaces a toast on failure.
-	const ok = await thread.confirmAction(conf.requestId, { kind: 'approval', approved });
-	if (!ok) return;
-	// "Always allow" is offered alongside Approve/Deny for non-destructive
-	// generic approvals; include it in the option set so telemetry reflects
-	// what the user actually chose between.
-	const alwaysAllowAvailable = !isDestructive(item);
-	trackInputCompleted(
-		conf,
-		[
-			{
-				label: conf.message,
-				options: alwaysAllowAvailable ? ['approve', 'deny', 'approve_always'] : ['approve', 'deny'],
-				option_chosen: approved ? 'approve' : 'deny',
-			},
-		],
-		[],
-	);
-	thread.resolveConfirmation(conf.requestId, approved ? 'approved' : 'denied');
+	if (inFlightConfirmations.has(conf.requestId)) return;
+	inFlightConfirmations.add(conf.requestId);
+	try {
+		// Await the POST first so a network failure leaves the card visible and
+		// the backend's wait state intact — matches the auto-approve watcher
+		// behaviour. `confirmAction` already surfaces a toast on failure.
+		const ok = await thread.confirmAction(conf.requestId, { kind: 'approval', approved });
+		if (!ok) return;
+		// "Always allow" is offered alongside Approve/Deny for non-destructive
+		// generic approvals; include it in the option set so telemetry reflects
+		// what the user actually chose between.
+		const alwaysAllowAvailable = !isDestructive(item);
+		trackInputCompleted(
+			conf,
+			[
+				{
+					label: conf.message,
+					options: alwaysAllowAvailable
+						? ['approve', 'deny', 'approve_always']
+						: ['approve', 'deny'],
+					option_chosen: approved ? 'approve' : 'deny',
+				},
+			],
+			[],
+		);
+		thread.resolveConfirmation(conf.requestId, approved ? 'approved' : 'denied');
+	} finally {
+		inFlightConfirmations.delete(conf.requestId);
+	}
 }
 
 async function handleAlwaysAllow(item: PendingConfirmationItem) {
 	const conf = item.toolCall.confirmation;
 	if (thread.resolvedConfirmationIds.has(conf.requestId)) return;
-	// Confirm with the backend before granting the session-allow key — a
-	// failed POST would otherwise hide the card while the backend keeps
-	// waiting, AND seed an auto-approve key the watcher would use to
-	// silently approve later matching confirmations.
-	const ok = await thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
-	if (!ok) return;
-	thread.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
-	trackInputCompleted(
-		conf,
-		[
-			{
-				label: conf.message,
-				options: ['approve', 'deny', 'approve_always'],
-				option_chosen: 'approve_always',
-			},
-		],
-		[],
-	);
-	thread.resolveConfirmation(conf.requestId, 'approved');
+	if (inFlightConfirmations.has(conf.requestId)) return;
+	inFlightConfirmations.add(conf.requestId);
+	try {
+		// Confirm with the backend before granting the session-allow key — a
+		// failed POST would otherwise hide the card while the backend keeps
+		// waiting, AND seed an auto-approve key the watcher would use to
+		// silently approve later matching confirmations.
+		const ok = await thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
+		if (!ok) return;
+		thread.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
+		trackInputCompleted(
+			conf,
+			[
+				{
+					label: conf.message,
+					options: ['approve', 'deny', 'approve_always'],
+					option_chosen: 'approve_always',
+				},
+			],
+			[],
+		);
+		thread.resolveConfirmation(conf.requestId, 'approved');
+	} finally {
+		inFlightConfirmations.delete(conf.requestId);
+	}
 }
 
 function handleTextSubmit(conf: InstanceAiConfirmation) {
