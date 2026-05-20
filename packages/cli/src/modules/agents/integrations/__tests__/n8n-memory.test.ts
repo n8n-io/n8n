@@ -1475,8 +1475,33 @@ describe('N8nMemory', () => {
 			});
 		});
 
-		it('upserts the episodic cursor by observation scope', async () => {
+		const mockEpisodicCursorWrite = () => {
+			const insertQueryBuilder = {
+				insert: jest.fn().mockReturnThis(),
+				into: jest.fn().mockReturnThis(),
+				values: jest.fn().mockReturnThis(),
+				orIgnore: jest.fn().mockReturnThis(),
+				execute: jest.fn().mockResolvedValue({ raw: {}, generatedMaps: [], identifiers: [] }),
+			};
+			const updateQueryBuilder = {
+				update: jest.fn().mockReturnThis(),
+				set: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				setParameters: jest.fn().mockReturnThis(),
+				execute: jest.fn().mockResolvedValue({ affected: 1 }),
+			};
+
+			memoryEntryCursorRepository.createQueryBuilder
+				.mockReturnValueOnce(insertQueryBuilder as never)
+				.mockReturnValueOnce(updateQueryBuilder as never);
+
+			return { insertQueryBuilder, updateQueryBuilder };
+		};
+
+		it('only advances the episodic cursor by observation keyset', async () => {
 			const lastIndexedObservationCreatedAt = new Date('2026-05-05T00:00:00Z');
+			const { insertQueryBuilder, updateQueryBuilder } = mockEpisodicCursorWrite();
 
 			await memory.episodic.setCursor({
 				scopeKind: 'thread',
@@ -1485,15 +1510,32 @@ describe('N8nMemory', () => {
 				lastIndexedObservationCreatedAt,
 			});
 
-			expect(memoryEntryCursorRepository.upsert).toHaveBeenCalledWith(
+			expect(insertQueryBuilder.values).toHaveBeenCalledWith(
 				expect.objectContaining({
 					scopeKind: 'thread',
 					scopeId: 'thread:thread-1:resource:resource-1',
 					lastIndexedObservationId: 'obs-1',
 					lastIndexedObservationCreatedAt,
 				}),
-				expect.objectContaining({ conflictPaths: ['scopeKind', 'scopeId'] }),
 			);
+			expect(insertQueryBuilder.orIgnore).toHaveBeenCalled();
+			expect(updateQueryBuilder.where).toHaveBeenCalledWith('"scopeKind" = :scopeKind');
+			expect(updateQueryBuilder.andWhere).toHaveBeenCalledWith('"scopeId" = :scopeId');
+			expect(updateQueryBuilder.andWhere).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'"lastIndexedObservationCreatedAt" < :lastIndexedObservationCreatedAt',
+				),
+			);
+			expect(updateQueryBuilder.andWhere).toHaveBeenCalledWith(
+				expect.stringContaining('"lastIndexedObservationId" < :lastIndexedObservationId'),
+			);
+			expect(updateQueryBuilder.setParameters).toHaveBeenCalledWith({
+				scopeKind: 'thread',
+				scopeId: 'thread:thread-1:resource:resource-1',
+				lastIndexedObservationId: 'obs-1',
+				lastIndexedObservationCreatedAt,
+			});
+			expect(memoryEntryCursorRepository.upsert).not.toHaveBeenCalled();
 		});
 
 		it('reads episodic cursors as dates', async () => {

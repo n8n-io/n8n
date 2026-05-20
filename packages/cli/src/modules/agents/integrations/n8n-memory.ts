@@ -473,6 +473,9 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 		const now = new Date();
 		const heldUntil = new Date(now.getTime() + opts.ttlMs);
 
+		// FIXME: This persisted lock is per task kind. In multi-main mode, different
+		// memory tasks for the same scope can still overlap across servers, so an
+		// episodic indexer could read while an observer is still writing observations.
 		const updateResult = await this.observationLockRepository
 			.createQueryBuilder()
 			.update(AgentObservationLockEntity)
@@ -816,16 +819,38 @@ export class N8nMemory implements BuiltMemory, BuiltObservationLogStore, BuiltEp
 	}
 
 	private async setEpisodicMemoryCursor(cursor: NewEpisodicMemoryCursor): Promise<void> {
-		await this.memoryEntryCursorRepository.upsert(
-			{
+		const cursorRow: QueryDeepPartialEntity<AgentMemoryEntryCursorEntity> = {
+			scopeKind: cursor.scopeKind,
+			scopeId: cursor.scopeId,
+			lastIndexedObservationId: cursor.lastIndexedObservationId,
+			lastIndexedObservationCreatedAt: cursor.lastIndexedObservationCreatedAt,
+			updatedAt: cursor.updatedAt ?? new Date(),
+		};
+
+		await this.memoryEntryCursorRepository
+			.createQueryBuilder()
+			.insert()
+			.into(AgentMemoryEntryCursorEntity)
+			.values(cursorRow)
+			.orIgnore()
+			.execute();
+
+		await this.memoryEntryCursorRepository
+			.createQueryBuilder()
+			.update(AgentMemoryEntryCursorEntity)
+			.set(cursorRow)
+			.where('"scopeKind" = :scopeKind')
+			.andWhere('"scopeId" = :scopeId')
+			.andWhere(
+				'("lastIndexedObservationCreatedAt" < :lastIndexedObservationCreatedAt OR ("lastIndexedObservationCreatedAt" = :lastIndexedObservationCreatedAt AND "lastIndexedObservationId" < :lastIndexedObservationId))',
+			)
+			.setParameters({
 				scopeKind: cursor.scopeKind,
 				scopeId: cursor.scopeId,
 				lastIndexedObservationId: cursor.lastIndexedObservationId,
 				lastIndexedObservationCreatedAt: cursor.lastIndexedObservationCreatedAt,
-				updatedAt: cursor.updatedAt ?? new Date(),
-			},
-			{ conflictPaths: ['scopeKind', 'scopeId'], skipUpdateIfNoValuesChanged: false },
-		);
+			})
+			.execute();
 	}
 
 	// ── Descriptor ───────────────────────────────────────────────────────
