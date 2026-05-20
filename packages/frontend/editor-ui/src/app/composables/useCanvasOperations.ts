@@ -2864,7 +2864,9 @@ export function useCanvasOperations() {
 
 		for (const node of nodes) {
 			const nodeSaveData = serializeNode(nodeTypesStore, node);
-			const pinDataForNode = pinDataToExecutionData(workflowDocumentStore.value.pinData)[node.name];
+			const pinDataForNode = pinDataToExecutionData(
+				workflowDocumentStore.value.pinnedDataByNodeName,
+			)[node.name];
 
 			if (pinDataForNode) {
 				data.pinData[node.name] = pinDataForNode as IPinData[string];
