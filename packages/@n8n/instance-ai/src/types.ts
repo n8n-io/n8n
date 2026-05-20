@@ -9,6 +9,12 @@ import type {
 	Workspace,
 } from '@n8n/agents';
 import type {
+	FetchedPage,
+	WebResearchService as InstanceAiWebResearchService,
+	WebSearchResponse,
+	WebSearchResult,
+} from '@n8n/ai-utilities';
+import type {
 	TaskList,
 	InstanceAiAttachment,
 	InstanceAiPermissions,
@@ -484,57 +490,7 @@ export interface InstanceAiDataTableService {
 
 // ── Web Research ────────────────────────────────────────────────────────────
 
-export interface FetchedPage {
-	url: string;
-	finalUrl: string;
-	title: string;
-	content: string;
-	truncated: boolean;
-	contentLength: number;
-	safetyFlags?: {
-		jsRenderingSuspected?: boolean;
-		loginRequired?: boolean;
-	};
-}
-
-export interface WebSearchResult {
-	title: string;
-	url: string;
-	snippet: string;
-	publishedDate?: string;
-}
-
-export interface WebSearchResponse {
-	query: string;
-	results: WebSearchResult[];
-}
-
-export interface InstanceAiWebResearchService {
-	/** Search the web. Only available when a search API key is configured. */
-	search?(
-		query: string,
-		options?: {
-			maxResults?: number;
-			includeDomains?: string[];
-			excludeDomains?: string[];
-		},
-	): Promise<WebSearchResponse>;
-
-	fetchUrl(
-		url: string,
-		options?: {
-			maxContentLength?: number;
-			maxResponseBytes?: number;
-			timeoutMs?: number;
-			/**
-			 * Called before following each redirect hop and on cache hits with a
-			 * cross-host `finalUrl`. Throw to abort the fetch (the tool will
-			 * suspend for HITL approval). Internal — not part of the public API.
-			 */
-			authorizeUrl?: (url: string) => Promise<void>;
-		},
-	): Promise<FetchedPage>;
-}
+export type { FetchedPage, InstanceAiWebResearchService, WebSearchResponse, WebSearchResult };
 
 // ── Filesystem MCP server ────────────────────────────────────────────────────
 

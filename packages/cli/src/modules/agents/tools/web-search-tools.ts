@@ -1,11 +1,7 @@
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import { Tool } from '@n8n/agents';
 import type { AgentJsonWebSearchConfig } from '@n8n/api-types';
-import {
-	sanitizeWebContent,
-	wrapUntrustedData,
-	type InstanceAiWebResearchService,
-} from '@n8n/instance-ai';
+import { sanitizeWebContent, type WebResearchService, wrapUntrustedData } from '@n8n/ai-utilities';
 import { z } from 'zod';
 
 const MAX_SEARCH_RESULTS = 20;
@@ -90,7 +86,7 @@ export async function resolveWebSearchBackendConfig(
 }
 
 export function createWebSearchFallbackTools(
-	webResearchService: InstanceAiWebResearchService,
+	webResearchService: WebResearchService,
 	config: AgentJsonWebSearchConfig,
 ): BuiltTool[] {
 	const policy = getDomainPolicy(config);

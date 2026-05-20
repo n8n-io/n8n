@@ -127,6 +127,35 @@ export default defineConfig(
 		},
 	},
 	{
+		files: ['./src/modules/agents/**/*.ts'],
+		rules: {
+			'no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						{
+							name: '@n8n/instance-ai',
+							message:
+								'Agents must not depend on Instance AI. Use @n8n/ai-utilities for shared AI utilities.',
+						},
+					],
+					patterns: [
+						{
+							group: ['@n8n/instance-ai/**'],
+							message:
+								'Agents must not depend on Instance AI. Use @n8n/ai-utilities for shared AI utilities.',
+						},
+						{
+							group: ['@/modules/instance-ai/**'],
+							message:
+								'Agents must not depend on Instance AI internals. Use @/modules/web-research for shared CLI web research.',
+						},
+					],
+				},
+			],
+		},
+	},
+	{
 		files: ['**/*.module.ts'],
 
 		rules: {

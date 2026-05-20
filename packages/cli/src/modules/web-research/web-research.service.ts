@@ -1,14 +1,13 @@
 import type {
 	FetchedPage,
-	InstanceAiWebResearchService,
-	ServiceProxyConfig,
+	WebResearchService as WebResearchAdapter,
 	WebSearchResponse,
-} from '@n8n/instance-ai';
+} from '@n8n/ai-utilities';
 import { Service } from '@n8n/di';
 
 import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 
-import { braveSearch } from './brave-search';
+import { braveSearch, type WebResearchProxyConfig } from './brave-search';
 import { LRUCache } from './cache';
 import { fetchAndExtract } from './fetch-and-extract';
 import { searxngSearch } from './searxng-search';
@@ -23,7 +22,7 @@ interface SearchOptions {
 export interface WebResearchBackendConfig {
 	braveApiKey?: string;
 	searxngUrl?: string;
-	searchProxyConfig?: ServiceProxyConfig;
+	searchProxyConfig?: WebResearchProxyConfig;
 }
 
 @Service()
@@ -45,7 +44,7 @@ export class WebResearchService {
 	createAdapter(params: {
 		scopeId: string;
 		backend: WebResearchBackendConfig;
-	}): InstanceAiWebResearchService {
+	}): WebResearchAdapter {
 		return this.createLazyAdapter({
 			scopeId: params.scopeId,
 			resolveBackend: async () => params.backend,
@@ -55,7 +54,7 @@ export class WebResearchService {
 	createLazyAdapter(params: {
 		scopeId: string;
 		resolveBackend: () => Promise<WebResearchBackendConfig>;
-	}): InstanceAiWebResearchService {
+	}): WebResearchAdapter {
 		const fetchCache = this.webResearchCache;
 		const ssrf = this.ssrfProtectionService;
 		const scopeId = params.scopeId;
@@ -63,7 +62,7 @@ export class WebResearchService {
 		let searchMethodPromise:
 			| Promise<ReturnType<WebResearchService['buildSearchMethod']>>
 			| undefined;
-		const lazySearch: InstanceAiWebResearchService['search'] = async (query, options) => {
+		const lazySearch: WebResearchAdapter['search'] = async (query, options) => {
 			if (!searchMethodPromise) {
 				searchMethodPromise = params
 					.resolveBackend()

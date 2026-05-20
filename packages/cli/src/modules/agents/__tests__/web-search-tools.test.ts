@@ -1,6 +1,6 @@
 import { zodToJsonSchema, type CredentialProvider } from '@n8n/agents';
 import type { AgentJsonWebSearchConfig } from '@n8n/api-types';
-import type { InstanceAiWebResearchService } from '@n8n/instance-ai';
+import type { WebResearchService } from '@n8n/ai-utilities';
 
 import {
 	createWebSearchFallbackTools,
@@ -77,7 +77,7 @@ describe('web search fallback tools', () => {
 	});
 
 	it('search applies configured policy, sanitizes snippets, and wraps untrusted data', async () => {
-		const service: InstanceAiWebResearchService = {
+		const service: WebResearchService = {
 			search: jest.fn().mockResolvedValue({
 				query: 'n8n docs',
 				results: [
@@ -143,7 +143,7 @@ describe('web search fallback tools', () => {
 	});
 
 	it('keeps domain regex out of the model-facing schema but validates it in the handler', async () => {
-		const service: InstanceAiWebResearchService = {
+		const service: WebResearchService = {
 			search: jest.fn(),
 			fetchUrl: jest.fn(),
 		};
@@ -165,7 +165,7 @@ describe('web search fallback tools', () => {
 	});
 
 	it('rejects search domains that broaden the configured allow-list', async () => {
-		const service: InstanceAiWebResearchService = {
+		const service: WebResearchService = {
 			search: jest.fn(),
 			fetchUrl: jest.fn(),
 		};
@@ -186,7 +186,7 @@ describe('web search fallback tools', () => {
 	});
 
 	it('open enforces domain policy on initial URLs and redirect targets', async () => {
-		const service: InstanceAiWebResearchService = {
+		const service: WebResearchService = {
 			search: jest.fn(),
 			fetchUrl: jest.fn().mockImplementation(async (_url, options) => {
 				await options?.authorizeUrl?.('https://evil.example/final');
@@ -216,7 +216,7 @@ describe('web search fallback tools', () => {
 	});
 
 	it('open sanitizes page content and wraps it as untrusted data', async () => {
-		const service: InstanceAiWebResearchService = {
+		const service: WebResearchService = {
 			search: jest.fn(),
 			fetchUrl: jest.fn().mockResolvedValue({
 				url: 'https://docs.n8n.io/start',

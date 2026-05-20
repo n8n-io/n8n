@@ -1,4 +1,4 @@
-import type { FetchedPage } from '@n8n/instance-ai';
+import type { FetchedPage } from '@n8n/ai-utilities';
 
 import { maybeSummarize } from '../summarize-content';
 

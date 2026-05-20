@@ -1,5 +1,5 @@
-// Mock the barrel import so these adapter tests only exercise local formatting helpers.
-jest.mock('@n8n/instance-ai', () => ({
+// Mock the shared sanitizer so these adapter tests only exercise local formatting helpers.
+jest.mock('@n8n/ai-utilities', () => ({
 	wrapUntrustedData(content: string, source: string, label?: string): string {
 		const esc = (s: string) =>
 			s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

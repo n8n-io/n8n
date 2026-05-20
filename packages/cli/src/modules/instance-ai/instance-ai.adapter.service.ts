@@ -32,7 +32,7 @@ import type {
 	ServiceProxyConfig,
 	CredentialTypeSearchResult,
 } from '@n8n/instance-ai';
-import { wrapUntrustedData } from '@n8n/instance-ai';
+import { wrapUntrustedData } from '@n8n/ai-utilities';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -43,8 +43,8 @@ import {
 	resolveNodeTypeDefinition,
 	resolveBuiltinNodeDefinitionDirs,
 	listNodeDiscriminators,
-} from './node-definition-resolver';
-import { WebResearchService } from './web-research/web-research.service';
+} from '@/node-catalog/node-definition-resolver';
+import { WebResearchService } from '@/modules/web-research/web-research.service';
 import {
 	AiBuilderTemporaryWorkflowRepository,
 	ExecutionRepository,

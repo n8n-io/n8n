@@ -1752,6 +1752,9 @@ importers:
       '@n8n/agents':
         specifier: workspace:*
         version: link:../agents
+      '@n8n/ai-utilities':
+        specifier: workspace:*
+        version: link:../ai-utilities
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../api-types

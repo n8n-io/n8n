@@ -1,5 +1,5 @@
-// Mock the barrel import so these adapter tests only exercise local formatting helpers.
-jest.mock('@n8n/instance-ai', () => ({
+// Mock the shared sanitizer so these adapter tests only exercise local formatting helpers.
+jest.mock('@n8n/ai-utilities', () => ({
 	wrapUntrustedData(content: string, source: string, label?: string): string {
 		const esc = (s: string) =>
 			s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -46,7 +46,7 @@ import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee'
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EventService } from '@/events/event.service';
 import type { RoleService } from '@/services/role.service';
-import type { WebResearchService } from '../web-research/web-research.service';
+import type { WebResearchService } from '@/modules/web-research/web-research.service';
 import type { Telemetry } from '@/telemetry';
 
 jest.mock('@/permissions.ee/check-access');

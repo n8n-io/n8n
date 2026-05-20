@@ -31,7 +31,7 @@ import path from 'node:path';
 import {
 	listNodeDiscriminators,
 	resolveNodeTypeDefinition,
-} from '../../../../cli/src/modules/instance-ai/node-definition-resolver';
+} from '../../../../cli/src/node-catalog/node-definition-resolver';
 import type {
 	InstanceAiContext,
 	InstanceAiCredentialService,

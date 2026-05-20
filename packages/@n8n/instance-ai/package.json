@@ -52,6 +52,7 @@
     "@joplin/turndown-plugin-gfm": "^1.0.12",
     "@mozilla/readability": "^0.6.0",
     "@n8n/agents": "workspace:*",
+    "@n8n/ai-utilities": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/mcp-browser": "workspace:*",
     "@n8n/sandbox-client": "0.0.4",

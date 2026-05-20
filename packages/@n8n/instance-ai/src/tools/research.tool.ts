@@ -2,6 +2,7 @@
  * Consolidated research tool — web-search + fetch-url.
  */
 import { Tool } from '@n8n/agents';
+import { sanitizeWebContent, wrapUntrustedData } from '@n8n/ai-utilities';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
@@ -14,7 +15,6 @@ import {
 	domainGatingResumeSchema,
 } from '../domain-access';
 import type { InstanceAiContext } from '../types';
-import { sanitizeWebContent, wrapUntrustedData } from './web-research/sanitize-web-content';
 
 /** True when both URLs share an eTLD+1 (per Public Suffix List) and target is HTTPS. */
 async function isSameRegistrableDomainOverHttps(

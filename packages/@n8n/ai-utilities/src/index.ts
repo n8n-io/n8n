@@ -60,6 +60,13 @@ export {
 	getBatchingOptionFields,
 	getTemplateNoticeField,
 } from './utils/shared-fields';
+export { sanitizeWebContent, wrapUntrustedData } from './web-research';
+export type {
+	FetchedPage,
+	WebResearchService,
+	WebSearchResponse,
+	WebSearchResult,
+} from './web-research';
 export {
 	createToolFromNode,
 	createZodSchemaFromArgs,

@@ -1,4 +1,4 @@
-import type { WebSearchResponse } from '@n8n/instance-ai';
+import type { WebSearchResponse } from '@n8n/ai-utilities';
 
 interface SearxngResult {
 	url: string;

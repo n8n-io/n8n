@@ -1,4 +1,4 @@
-import type { WebSearchResponse } from '@n8n/instance-ai';
+import type { WebSearchResponse } from '@n8n/ai-utilities';
 
 const BRAVE_SEARCH_PATH = '/res/v1/web/search';
 const BRAVE_SEARCH_URL = `https://api.search.brave.com${BRAVE_SEARCH_PATH}`;
@@ -16,6 +16,11 @@ interface BraveSearchApiResponse {
 	};
 }
 
+export interface WebResearchProxyConfig {
+	apiUrl: string;
+	getAuthHeaders: () => Promise<Record<string, string>>;
+}
+
 /**
  * Execute a web search using the Brave Search API.
  *
@@ -30,10 +35,7 @@ export async function braveSearch(
 		maxResults?: number;
 		includeDomains?: string[];
 		excludeDomains?: string[];
-		proxyConfig?: {
-			apiUrl: string;
-			getAuthHeaders: () => Promise<Record<string, string>>;
-		};
+		proxyConfig?: WebResearchProxyConfig;
 	},
 ): Promise<WebSearchResponse> {
 	let searchQuery = query;
