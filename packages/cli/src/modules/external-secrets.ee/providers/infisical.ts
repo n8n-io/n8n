@@ -8,11 +8,16 @@ import { DOCS_HELP_NOTICE } from '../constants';
 import type { SecretsProviderSettings } from '../types';
 import { SecretsProvider } from '../types';
 
+type InfisicalAuthMethod = 'universalAuth';
+
 interface InfisicalSettings {
 	siteURL: string;
 	projectId: string;
 	environment: string;
 	secretPath: string;
+	authMethod: InfisicalAuthMethod;
+
+	// Universal Auth
 	clientId: string;
 	clientSecret: string;
 }
@@ -87,6 +92,17 @@ export class InfisicalProvider extends SecretsProvider {
 			default: '/',
 		},
 		{
+			displayName: 'Authentication Method',
+			name: 'authMethod',
+			type: 'options',
+			required: true,
+			noDataExpression: true,
+			options: [{ name: 'Universal Auth', value: 'universalAuth' }],
+			default: 'universalAuth',
+		},
+
+		// Universal Auth
+		{
 			displayName: 'Client ID',
 			name: 'clientId',
 			type: 'string',
@@ -94,6 +110,11 @@ export class InfisicalProvider extends SecretsProvider {
 			required: true,
 			noDataExpression: true,
 			placeholder: 'e.g. 8a7b1f1c-9f2a-4d6c-bf1a-2c4e6f8b1d3a',
+			displayOptions: {
+				show: {
+					authMethod: ['universalAuth'],
+				},
+			},
 		},
 		{
 			displayName: 'Client Secret',
@@ -104,6 +125,11 @@ export class InfisicalProvider extends SecretsProvider {
 			noDataExpression: true,
 			placeholder: '***************',
 			typeOptions: { password: true },
+			displayOptions: {
+				show: {
+					authMethod: ['universalAuth'],
+				},
+			},
 		},
 	];
 
@@ -149,10 +175,12 @@ export class InfisicalProvider extends SecretsProvider {
 	protected async doConnect(): Promise<void> {
 		this.refreshAbort = new AbortController();
 
-		if (!this.settings.clientId || !this.settings.clientSecret) {
-			throw new UnexpectedError('Client ID and Client Secret are required for Universal Auth');
+		if (this.settings.authMethod === 'universalAuth') {
+			if (!this.settings.clientId || !this.settings.clientSecret) {
+				throw new UnexpectedError('Client ID and Client Secret are required for Universal Auth');
+			}
+			await this.loginUniversalAuth();
 		}
-		await this.loginUniversalAuth();
 
 		const [testSuccess, testMessage] = await this.test();
 		if (!testSuccess) {

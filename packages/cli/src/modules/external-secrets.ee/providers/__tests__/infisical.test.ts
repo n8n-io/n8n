@@ -17,6 +17,7 @@ const universalAuthSettings = {
 		projectId: PROJECT_ID,
 		environment: ENVIRONMENT,
 		secretPath: SECRET_PATH,
+		authMethod: 'universalAuth',
 		clientId: 'test-client-id',
 		clientSecret: 'test-client-secret',
 	},
