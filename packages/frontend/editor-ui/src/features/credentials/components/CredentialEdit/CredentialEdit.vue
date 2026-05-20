@@ -686,7 +686,7 @@ async function loadCurrentCredential(id = props.activeId ?? '') {
 				: false;
 		credentialMetadata.value =
 			'metadata' in currentCredentials && currentCredentials.metadata != null
-				? (currentCredentials.metadata as Record<string, unknown>)
+				? currentCredentials.metadata
 				: null;
 	} catch (error) {
 		toast.showError(
