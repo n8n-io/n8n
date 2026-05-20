@@ -120,6 +120,12 @@ export interface NodeProxy {
  * `.last()`, `.all()` throw on any arguments). Properties like `.item`,
  * `.context`, `.params` stay on `getValueAtPath` and aren't part of this
  * type.
+ *
+ * Return types are `unknown` rather than `INodeExecutionData` / `[]`:
+ * results cross the isolate boundary via `applySync({ result: { copy: true } })`,
+ * which structured-clones the value and erases nominal types. The handlers
+ * pass the clone through verbatim, so a precise return type would be
+ * misleading. Matches the `NodeProxy` return type for the same reason.
  */
 export interface InputProxy {
 	first?: () => unknown;
