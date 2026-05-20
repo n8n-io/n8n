@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { defineComponent } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
@@ -12,10 +13,23 @@ vi.mock('@/app/stores/workflowsList.store', () => ({
 	})),
 }));
 
+let mockIframeWindow: Window;
+const mockIframeElement = { contentWindow: null as Window | null };
+
+function dispatchIframeMessage(data: unknown, source: Window | null = mockIframeWindow) {
+	window.dispatchEvent(
+		new MessageEvent('message', {
+			data: typeof data === 'string' ? data : JSON.stringify(data),
+			origin: window.location.origin,
+			source,
+		}),
+	);
+}
+
 const renderComponent = createComponentRenderer(InstanceAiWorkflowPreview, {
 	global: {
 		stubs: {
-			WorkflowPreview: {
+			WorkflowPreview: defineComponent({
 				template:
 					'<div data-test-id="workflow-preview" :data-can-execute="canExecute" :data-suppress-notifications="suppressNotifications" :data-allow-error-notifications="allowErrorNotifications" />',
 				props: [
@@ -28,7 +42,10 @@ const renderComponent = createComponentRenderer(InstanceAiWorkflowPreview, {
 					'allowErrorNotifications',
 					'loaderType',
 				],
-			},
+				setup(_, { expose }) {
+					expose({ iframeRef: mockIframeElement });
+				},
+			}),
 		},
 	},
 });
@@ -48,6 +65,8 @@ describe('InstanceAiWorkflowPreview', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		vi.clearAllMocks();
+		mockIframeWindow = { postMessage: vi.fn() } as unknown as Window;
+		mockIframeElement.contentWindow = mockIframeWindow;
 	});
 
 	it('should render without throwing', () => {
@@ -103,14 +122,10 @@ describe('InstanceAiWorkflowPreview', () => {
 			props: { workflowId: null },
 		});
 
-		window.dispatchEvent(
-			new MessageEvent('message', {
-				data: JSON.stringify({
-					command: 'n8nReady',
-					pushRef: 'iframe-push-ref-abc',
-				}),
-			}),
-		);
+		dispatchIframeMessage({
+			command: 'n8nReady',
+			pushRef: 'iframe-push-ref-abc',
+		});
 
 		await waitFor(() => {
 			expect(emitted('iframe-ready')).toBeTruthy();
@@ -148,14 +163,74 @@ describe('InstanceAiWorkflowPreview', () => {
 			props: { workflowId: null },
 		});
 
+		dispatchIframeMessage({ command: 'n8nReady' });
+
+		await waitFor(() => {
+			expect(emitted('iframe-ready')).toBeTruthy();
+		});
+	});
+
+	it('should emit workflow-failures on reportWorkflowFailures postMessage', async () => {
+		const { emitted } = renderComponent({ props: { workflowId: null } });
+
+		dispatchIframeMessage({
+			command: 'reportWorkflowFailures',
+			workflowId: 'wf-1',
+			workflowName: 'My Workflow',
+			executionId: 'exec-1',
+			errors: [{ nodeName: 'Extract Emails', errorMessage: 'Intentional break' }],
+		});
+
+		await waitFor(() => {
+			expect(emitted('workflow-failures')).toBeTruthy();
+		});
+		expect(emitted('workflow-failures')).toEqual([
+			[
+				{
+					workflowId: 'wf-1',
+					workflowName: 'My Workflow',
+					executionId: 'exec-1',
+					errors: [{ nodeName: 'Extract Emails', errorMessage: 'Intentional break' }],
+				},
+			],
+		]);
+	});
+
+	it('should ignore reportWorkflowFailures when payload is invalid', async () => {
+		const { emitted } = renderComponent({ props: { workflowId: null } });
+
+		dispatchIframeMessage({ command: 'reportWorkflowFailures', errors: [] });
+
+		dispatchIframeMessage({
+			command: 'reportWorkflowFailures',
+			workflowId: 'wf-1',
+			errors: [{ nodeName: 'HTTP Request', errorMessage: 'Connection refused' }],
+		});
+
+		await waitFor(() => {
+			expect(emitted('workflow-failures')).toBeUndefined();
+		});
+	});
+
+	it('should ignore postMessages from unexpected origins or sources', async () => {
+		const { emitted } = renderComponent({ props: { workflowId: null } });
+
 		window.dispatchEvent(
 			new MessageEvent('message', {
-				data: JSON.stringify({ command: 'n8nReady' }),
+				data: JSON.stringify({
+					command: 'reportWorkflowFailures',
+					workflowId: 'wf-1',
+					executionId: 'exec-1',
+					errors: [{ nodeName: 'HTTP Request', errorMessage: 'Connection refused' }],
+				}),
+				origin: 'https://evil.example',
+				source: mockIframeWindow,
 			}),
 		);
 
 		await waitFor(() => {
-			expect(emitted('iframe-ready')).toBeTruthy();
+			expect(emitted('workflow-failures')).toBeUndefined();
+			expect(emitted('iframe-ready')).toBeUndefined();
 		});
 	});
 });
