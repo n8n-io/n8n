@@ -1,10 +1,41 @@
-import { gfm } from '@joplin/turndown-plugin-gfm';
-import { Readability } from '@mozilla/readability';
+// The HTML-processing stack used by extractHtml() is deferred until the
+// first actual fetch. Eagerly importing these pulls a huge transitive
+// graph into idle n8n processes (require-cache probe confirmed):
+//   - linkedom              : 0.17 MiB / 124 files + brings in @mixmark-io/domino (0.52 / 52)
+//   - @mozilla/readability  : 0.09 MiB / 3 files
+//   - turndown              : ~0.02 MiB / 1 file + pulls entities, htmlparser2, css-*, domutils, dom-serializer
+//   - @joplin/turndown-plugin-gfm : 0.01 MiB / 1 file
+// extractHtml() only runs when the agent actually fetches a URL, so the
+// require() can safely be deferred to that call site.
+import type { Readability as TReadability } from '@mozilla/readability';
 import type { FetchedPage } from '@n8n/instance-ai';
-import { parseHTML } from 'linkedom';
+import type { parseHTML as TParseHtml } from 'linkedom';
 import type { SsrfBridge } from 'n8n-core';
-import TurndownService from 'turndown';
+import type TTurndownService from 'turndown';
 import { Agent } from 'undici';
+
+let _linkedom: typeof import('linkedom') | undefined;
+let _readability: typeof import('@mozilla/readability') | undefined;
+let _turndown: typeof import('turndown') | undefined;
+let _turndownGfm: typeof import('@joplin/turndown-plugin-gfm') | undefined;
+
+function loadLinkedom(): typeof TParseHtml {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	return (_linkedom ??= require('linkedom')).parseHTML;
+}
+function loadReadability(): typeof TReadability {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	return (_readability ??= require('@mozilla/readability')).Readability;
+}
+function loadTurndown(): typeof TTurndownService {
+	// turndown's CJS export IS the constructor (module.exports = TurndownService).
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	return (_turndown ??= require('turndown')) as unknown as typeof TTurndownService;
+}
+function loadTurndownGfm(): typeof import('@joplin/turndown-plugin-gfm').gfm {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	return (_turndownGfm ??= require('@joplin/turndown-plugin-gfm')).gfm;
+}
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 120_000;
@@ -171,12 +202,13 @@ function extractHtml(
 	maxContentLength: number,
 ): FetchedPage {
 	const html = body.toString('utf-8');
-	const { document } = parseHTML(html);
+	const { document } = loadLinkedom()(html);
 
 	// Detect safety flags from raw HTML
 	const safetyFlags = detectSafetyFlags(html);
 
 	// Use Readability to extract main content
+	const Readability = loadReadability();
 	const reader = new Readability(document as unknown as Document);
 	const article = reader.parse();
 
@@ -276,12 +308,13 @@ function extractPlainText(
 	};
 }
 
-function createTurndownService(): TurndownService {
+function createTurndownService(): TTurndownService {
+	const TurndownService = loadTurndown();
 	const turndown = new TurndownService({
 		headingStyle: 'atx',
 		codeBlockStyle: 'fenced',
 	});
-	turndown.use(gfm);
+	turndown.use(loadTurndownGfm());
 	return turndown;
 }
 
