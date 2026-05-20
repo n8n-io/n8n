@@ -24,7 +24,7 @@ import { Cipher } from 'n8n-core';
 import fsp from 'node:fs/promises';
 import { basename, isAbsolute } from 'node:path';
 
-import type { DataTable } from '@/modules/data-table/data-table.entity';
+import { DataTable } from '@/modules/data-table/data-table.entity';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
@@ -411,7 +411,7 @@ describe('SourceControlService', () => {
 		);
 
 		const remoteDataTableDate = new Date('2024-01-01T00:00:00.000Z');
-		remoteInScopeDataTable = {
+		remoteInScopeDataTable = Object.assign(new DataTable(), {
 			id: 'remoteInScopeDataTable',
 			name: 'Remote In Scope Data Table',
 			columns: [],
@@ -419,8 +419,8 @@ describe('SourceControlService', () => {
 			projectId: projectA.id,
 			createdAt: remoteDataTableDate,
 			updatedAt: remoteDataTableDate,
-		} as DataTable;
-		remoteOutOfScopeDataTable = {
+		});
+		remoteOutOfScopeDataTable = Object.assign(new DataTable(), {
 			id: 'remoteOutOfScopeDataTable',
 			name: 'Remote Out Of Scope Data Table',
 			columns: [],
@@ -428,7 +428,7 @@ describe('SourceControlService', () => {
 			projectId: projectB.id,
 			createdAt: remoteDataTableDate,
 			updatedAt: remoteDataTableDate,
-		} as DataTable;
+		});
 
 		tags = await Promise.all([
 			createTag({
