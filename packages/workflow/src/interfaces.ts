@@ -3553,16 +3553,27 @@ export interface WorkflowInputsData {
 }
 
 export interface ResourceMapperField {
+	/** Field key sent to/received from the API (e.g. "name", "email"). Becomes the key in the mapped value object at runtime. */
 	id: string;
+	/** Human-readable label shown in the mapping form. */
 	displayName: string;
+	/** When true the field is pre-selected as a matching column for update/upsert. If only one field exists in the schema it becomes the match regardless. */
 	defaultMatch: boolean;
+	/** Allows the field to appear in the "Matching Columns" dropdown. Set false for fields that can never uniquely identify a record. */
 	canBeUsedToMatch?: boolean;
+	/** When true the field cannot be removed in 'add' mode and is labelled "mandatory field". Fields hidden by addAllFields=false are still shown when required=true. */
 	required: boolean;
+	/** When false the field is completely excluded from the UI, the "Add field" dropdown, and matching selectors. Use for computed/read-only fields the user must never touch. */
 	display: boolean;
+	/** Controls the input widget: 'options' → dropdown (requires `options`), 'boolean' → toggle, 'number' → numeric, 'dateTime' → date picker, 'array'/'object' → JSON editor. */
 	type?: FieldType;
+	/** When true the field is hidden by default but still accessible via the "Add field" dropdown so the user can opt in. Toggled by user add/remove actions. */
 	removed?: boolean;
+	/** Enumerated choices for fields of type 'options'. Each entry: { name (label), value }. */
 	options?: INodePropertyOptions[];
+	/** Disables the input so the user cannot edit the value. Matching columns are always forced read-only by the UI regardless of this flag. */
 	readOnly?: boolean;
+	/** Pre-filled value applied when the field is first shown or re-added. Omit to leave the input empty. */
 	defaultValue?: string | number | boolean | null;
 }
 
