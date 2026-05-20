@@ -29,20 +29,28 @@ export class SecuritySettingsController {
 	@GlobalScope('securitySettings:manage')
 	@Get('/')
 	async getSecuritySettings(_req: AuthenticatedRequest, _res: Response) {
+		const redactionEnforcementEnabled = isRedactionEnforcementEnabled();
+
 		const [
 			settings,
 			publishedPersonalWorkflowsCount,
 			sharedPersonalWorkflowsCount,
 			sharedPersonalCredentialsCount,
+			redactionSettings,
 		] = await Promise.all([
 			this.securitySettingsService.arePersonalSpaceSettingsEnabled(),
 			this.securitySettingsService.getPublishedPersonalWorkflowsCount(),
 			this.securitySettingsService.getSharedPersonalWorkflowsCount(),
 			this.securitySettingsService.getSharedPersonalCredentialsCount(),
+			redactionEnforcementEnabled
+				? this.instanceRedactionEnforcementService.get()
+				: Promise.resolve(undefined),
 		]);
 
-		const redactionEnforcement = isRedactionEnforcementEnabled()
-			? { floor: settingsToFloor(await this.instanceRedactionEnforcementService.get()) }
+		// API surface uses a single `floor` enum, while the service stores the
+		// three booleans the cache layer was built around. Translate at the boundary.
+		const redactionEnforcement = redactionSettings
+			? { floor: settingsToFloor(redactionSettings) }
 			: undefined;
 
 		return {
@@ -69,25 +77,14 @@ export class SecuritySettingsController {
 			);
 		}
 
-		const updatedSettings: Record<string, unknown> = {};
+		const updatedSettings: Partial<UpdateSecuritySettingsDto> = {};
 		if (dto.personalSpacePublishing !== undefined) {
 			await this.securitySettingsService.setPersonalSpaceSetting(
 				PERSONAL_SPACE_PUBLISHING_SETTING,
 				dto.personalSpacePublishing,
 			);
 			updatedSettings.personalSpacePublishing = dto.personalSpacePublishing;
-
-			this.eventService.emit('instance-policies-updated', {
-				user: {
-					id: req.user.id,
-					email: req.user.email,
-					firstName: req.user.firstName,
-					lastName: req.user.lastName,
-					role: req.user.role,
-				},
-				settingName: 'workflow_publishing',
-				value: dto.personalSpacePublishing,
-			});
+			this.emitInstancePolicyUpdated(req, 'workflow_publishing', dto.personalSpacePublishing);
 		}
 		if (dto.personalSpaceSharing !== undefined) {
 			await this.securitySettingsService.setPersonalSpaceSetting(
@@ -95,20 +92,12 @@ export class SecuritySettingsController {
 				dto.personalSpaceSharing,
 			);
 			updatedSettings.personalSpaceSharing = dto.personalSpaceSharing;
-
-			this.eventService.emit('instance-policies-updated', {
-				user: {
-					id: req.user.id,
-					email: req.user.email,
-					firstName: req.user.firstName,
-					lastName: req.user.lastName,
-					role: req.user.role,
-				},
-				settingName: 'workflow_sharing',
-				value: dto.personalSpaceSharing,
-			});
+			this.emitInstancePolicyUpdated(req, 'workflow_sharing', dto.personalSpaceSharing);
 		}
 
+		// TODO(IAM-622): emit a dedicated audit event with before/after state for
+		// redaction enforcement changes. The existing `instance-policies-updated`
+		// event carries a single boolean and can't represent the `floor` enum.
 		if (dto.redactionEnforcement !== undefined && isRedactionEnforcementEnabled()) {
 			await this.instanceRedactionEnforcementService.set(
 				floorToSettings(dto.redactionEnforcement.floor),
@@ -117,5 +106,23 @@ export class SecuritySettingsController {
 		}
 
 		return updatedSettings;
+	}
+
+	private emitInstancePolicyUpdated(
+		req: AuthenticatedRequest,
+		settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing',
+		value: boolean,
+	) {
+		this.eventService.emit('instance-policies-updated', {
+			user: {
+				id: req.user.id,
+				email: req.user.email,
+				firstName: req.user.firstName,
+				lastName: req.user.lastName,
+				role: req.user.role,
+			},
+			settingName,
+			value,
+		});
 	}
 }
