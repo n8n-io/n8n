@@ -41,8 +41,17 @@ function universalAuthLoginResponse(accessToken = 'new-access-token', expiresIn 
 	};
 }
 
-function listSecretsResponse(secrets: Array<{ secretKey: string; secretValue: string }>) {
-	return { secrets };
+type ImportFixture = {
+	secretPath: string;
+	environment: string;
+	secrets: Array<{ secretKey: string; secretValue: string }>;
+};
+
+function listSecretsResponse(
+	secrets: Array<{ secretKey: string; secretValue: string }>,
+	imports: ImportFixture[] = [],
+) {
+	return { secrets, imports };
 }
 
 describe('InfisicalProvider', () => {
@@ -249,6 +258,151 @@ describe('InfisicalProvider', () => {
 			await provider.update();
 
 			expect(provider.getSecret('KEY')).toBe('val');
+			updateScope.done();
+		});
+	});
+
+	describe('update with imports', () => {
+		const makeImport = (
+			secrets: Array<{ secretKey: string; secretValue: string }>,
+			secretPath = '/imported',
+			environment = ENVIRONMENT,
+		): ImportFixture => ({ secretPath, environment, secrets });
+
+		async function setupConnectedProvider() {
+			const provider = new InfisicalProvider(logger);
+			await provider.init(universalAuthSettings);
+
+			const connectScope = nock(SITE_URL)
+				.post('/api/v1/auth/universal-auth/login')
+				.reply(200, universalAuthLoginResponse('connect-token'))
+				.get(`/api/v1/workspace/${PROJECT_ID}`)
+				.reply(200, workspaceResponse());
+
+			await provider.connect();
+			connectScope.done();
+
+			return provider;
+		}
+
+		it('caches secrets from imports alongside top-level secrets', async () => {
+			const provider = await setupConnectedProvider();
+
+			const updateScope = nock(SITE_URL)
+				.get('/api/v4/secrets')
+				.query(true)
+				.reply(
+					200,
+					listSecretsResponse(
+						[{ secretKey: 'API_KEY', secretValue: 'top-value' }],
+						[
+							makeImport([
+								{ secretKey: 'IMPORTED_KEY', secretValue: 'from-import' },
+								{ secretKey: 'ANOTHER', secretValue: 'also' },
+							]),
+						],
+					),
+				);
+
+			await provider.update();
+
+			expect(provider.getSecret('API_KEY')).toBe('top-value');
+			expect(provider.getSecret('IMPORTED_KEY')).toBe('from-import');
+			expect(provider.getSecret('ANOTHER')).toBe('also');
+			expect(provider.getSecretNames().sort()).toEqual(['ANOTHER', 'API_KEY', 'IMPORTED_KEY']);
+			updateScope.done();
+		});
+
+		it('prefers top-level secrets over imports when keys collide', async () => {
+			const provider = await setupConnectedProvider();
+
+			const updateScope = nock(SITE_URL)
+				.get('/api/v4/secrets')
+				.query(true)
+				.reply(
+					200,
+					listSecretsResponse(
+						[{ secretKey: 'SHARED_KEY', secretValue: 'wins' }],
+						[makeImport([{ secretKey: 'SHARED_KEY', secretValue: 'loses' }])],
+					),
+				);
+
+			await provider.update();
+
+			expect(provider.getSecret('SHARED_KEY')).toBe('wins');
+			expect(provider.getSecretNames()).toEqual(['SHARED_KEY']);
+			updateScope.done();
+		});
+
+		it('keeps the value from the first import when later imports define the same key', async () => {
+			const provider = await setupConnectedProvider();
+
+			const updateScope = nock(SITE_URL)
+				.get('/api/v4/secrets')
+				.query(true)
+				.reply(
+					200,
+					listSecretsResponse(
+						[],
+						[
+							makeImport([{ secretKey: 'DUP', secretValue: 'first' }], '/imported-a'),
+							makeImport([{ secretKey: 'DUP', secretValue: 'second' }], '/imported-b'),
+						],
+					),
+				);
+
+			await provider.update();
+
+			expect(provider.getSecret('DUP')).toBe('first');
+			updateScope.done();
+		});
+
+		it('caches keys sourced only from imports when top-level secrets is empty', async () => {
+			const provider = await setupConnectedProvider();
+
+			const updateScope = nock(SITE_URL)
+				.get('/api/v4/secrets')
+				.query(true)
+				.reply(
+					200,
+					listSecretsResponse(
+						[],
+						[
+							makeImport([{ secretKey: 'FROM_A', secretValue: 'a' }], '/imported-a'),
+							makeImport([{ secretKey: 'FROM_B', secretValue: 'b' }], '/imported-b'),
+						],
+					),
+				);
+
+			await provider.update();
+
+			expect(provider.getSecret('FROM_A')).toBe('a');
+			expect(provider.getSecret('FROM_B')).toBe('b');
+			expect(provider.getSecretNames().sort()).toEqual(['FROM_A', 'FROM_B']);
+			updateScope.done();
+		});
+
+		it('handles imports with empty secrets arrays without affecting the cache', async () => {
+			const provider = await setupConnectedProvider();
+
+			const updateScope = nock(SITE_URL)
+				.get('/api/v4/secrets')
+				.query(true)
+				.reply(
+					200,
+					listSecretsResponse(
+						[],
+						[
+							makeImport([], '/empty'),
+							makeImport([{ secretKey: 'REAL', secretValue: 'value' }], '/has-secrets'),
+						],
+					),
+				);
+
+			await provider.update();
+
+			expect(provider.getSecret('REAL')).toBe('value');
+			expect(provider.getSecretNames()).toEqual(['REAL']);
 			updateScope.done();
 		});
 	});

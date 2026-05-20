@@ -29,8 +29,15 @@ interface InfisicalSecret {
 	secretValue: string;
 }
 
+interface InfisicalImport {
+	secrets: InfisicalSecret[];
+	secretPath: string;
+	environment: string;
+}
+
 interface InfisicalListSecretsResponse {
 	secrets: InfisicalSecret[];
+	imports: InfisicalImport[];
 }
 
 const TOKEN_REFRESH_LEEWAY_SECONDS = 60;
@@ -230,8 +237,26 @@ export class InfisicalProvider extends SecretsProvider {
 		return resp.data;
 	}
 
+	private dedupeSecrets(secrets: InfisicalSecret[], imports: InfisicalImport[]): InfisicalSecret[] {
+		const dedupedSecrets = new Map<string, InfisicalSecret>();
+		secrets.forEach((s) => {
+			dedupedSecrets.set(s.secretKey, s);
+		});
+		imports.forEach((i) => {
+			i.secrets.forEach((s) => {
+				if (!dedupedSecrets.has(s.secretKey)) {
+					dedupedSecrets.set(s.secretKey, s);
+				}
+			});
+		});
+		return Array.from(dedupedSecrets.values());
+	}
+
 	private cacheSecrets(data: InfisicalListSecretsResponse): void {
-		this.cachedSecrets = Object.fromEntries(data.secrets.map((s) => [s.secretKey, s.secretValue]));
+		const dedupedSecrets = this.dedupeSecrets(data.secrets, data.imports);
+		this.cachedSecrets = Object.fromEntries(
+			dedupedSecrets.map((s) => [s.secretKey, s.secretValue]),
+		);
 		this.logger.debug(
 			`Infisical provider cached ${Object.keys(this.cachedSecrets).length} secrets`,
 		);

@@ -2882,9 +2882,6 @@ importers:
       http-proxy-middleware:
         specifier: ^3.0.5
         version: 3.0.5
-      infisical-node:
-        specifier: 1.3.0
-        version: 1.3.0
       ioredis:
         specifier: 5.3.2
         version: 5.3.2
@@ -16334,10 +16331,6 @@ packages:
   infer-owner@1.0.4:
     resolution: {integrity: sha512-IClj+Xz94+d7irH5qRyfJonOdfTzuDaifE6ZPWfx0N0+/ATZCbuTPq2prFl526urkQd90WyUKIh1DfBQ2hMz9A==}
 
-  infisical-node@1.3.0:
-    resolution: {integrity: sha512-tTnnExRAO/ZyqiRdnSlBisErNToYWgtunMWh+8opClEt5qjX7l6HC/b4oGo2AuR2Pf41IR+oqo+dzkM1TCvlUA==}
-    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
-
   inflected@2.1.0:
     resolution: {integrity: sha512-hAEKNxvHf2Iq3H60oMBHkB4wl5jn3TPF3+fXek/sRwAB5gP9xWs4r7aweSF95f99HFoz69pnZTcu8f0SIHV18w==}
 
@@ -21666,14 +21659,8 @@ packages:
   turndown@7.2.2:
     resolution: {integrity: sha512-1F7db8BiExOKxjSMU2b7if62D/XOyQyZbPKq/nUwopfgnHlqXHqQ0lvfUTeUIr1lZJzOPFn43dODyMSIfvWRKQ==}
 
-  tweetnacl-util@0.15.1:
-    resolution: {integrity: sha512-RKJBIj8lySrShN4w6i/BonWp2Z/uxwC3h4y7xsRrpP59ZboCd0GpEVsOnMDYLMmKBpYhb5TgHzZXy7wTfYFBRw==}
-
   tweetnacl@0.14.5:
     resolution: {integrity: sha512-KXXFFdAbFXY4geFIwoyNK+f5Z1b7swfXABfL7HXCmoIWMKU3dmS26672A4EeQtDzLKy7SXmfBu51JolvEKwtGA==}
-
-  tweetnacl@1.0.3:
-    resolution: {integrity: sha512-6rt+RN7aOi1nGMyC4Xa5DdYiukl2UWCbcJft7YhxReBGQD7OAM8Pbxw6YMo4r2diNEA8FEmu32YOn9rhaiE5yw==}
 
   type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
@@ -37976,15 +37963,6 @@ snapshots:
   infer-owner@1.0.4:
     optional: true
 
-  infisical-node@1.3.0:
-    dependencies:
-      axios: 1.16.0
-      dotenv: 16.6.1
-      tweetnacl: 1.0.3
-      tweetnacl-util: 0.15.1
-    transitivePeerDependencies:
-      - debug
-
   inflected@2.1.0: {}
 
   inflight@1.0.6:
@@ -44796,11 +44774,7 @@ snapshots:
     dependencies:
       '@mixmark-io/domino': 2.2.0
 
-  tweetnacl-util@0.15.1: {}
-
   tweetnacl@0.14.5: {}
-
-  tweetnacl@1.0.3: {}
 
   type-check@0.4.0:
     dependencies:
