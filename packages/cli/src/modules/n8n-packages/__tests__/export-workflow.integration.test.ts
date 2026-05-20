@@ -163,6 +163,68 @@ describe('workflow package export', () => {
 			).rejects.toThrow(ownerWorkflow.id);
 		});
 
+		it('fails the whole batch and only names the inaccessible ids when mixed with accessible ones', async () => {
+			const owner = await createOwner();
+			const ownerProject = await createTeamProject('Owner Project', owner);
+			const ownerWorkflow = await createWorkflow(
+				{ name: 'Owner Only', nodes: [], connections: {} },
+				ownerProject,
+			);
+			const member = await createMember();
+			const memberPersonal = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+				member.id,
+			);
+			const memberWorkflow = await createWorkflow(
+				{ name: 'Member Workflow', nodes: [], connections: {} },
+				memberPersonal,
+			);
+
+			const error = (await service
+				.exportWorkflows({
+					user: member,
+					workflowIds: [memberWorkflow.id, ownerWorkflow.id],
+				})
+				.catch((e: Error) => e)) as Error;
+
+			expect(error).toBeInstanceOf(Error);
+			expect(error.message).toContain(ownerWorkflow.id);
+			// Accessible ids must not appear in the error — otherwise the response itself
+			// becomes an oracle ("these are yours; this one isn't") for batched probes.
+			expect(error.message).not.toContain(memberWorkflow.id);
+		});
+
+		it("denies one member access to another member's personal workflow", async () => {
+			const memberA = await createMember();
+			const memberB = await createMember();
+			const memberAPersonal = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(memberA.id);
+			const wf = await createWorkflow(
+				{ name: 'Member A Workflow', nodes: [], connections: {} },
+				memberAPersonal,
+			);
+
+			await expect(
+				service.exportWorkflows({ user: memberB, workflowIds: [wf.id] }),
+			).rejects.toThrow(wf.id);
+		});
+
+		it('denies a member access to a workflow shared only with someone else', async () => {
+			const owner = await createOwner();
+			const ownerProject = await createTeamProject('Source Project', owner);
+			const wf = await createWorkflow(
+				{ name: 'Shared Workflow', nodes: [], connections: {} },
+				ownerProject,
+			);
+			const sharee = await createMember();
+			const bystander = await createMember();
+			await shareWorkflowWithUsers(wf, [sharee]);
+
+			await expect(
+				service.exportWorkflows({ user: bystander, workflowIds: [wf.id] }),
+			).rejects.toThrow(wf.id);
+		});
+
 		it('allows a personal-project owner to export their own workflows', async () => {
 			const member = await createMember();
 			const personal = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
