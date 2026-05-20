@@ -4,8 +4,9 @@ import { isParseableAttachment } from '../parsers/structured-file-parser';
 import { createToolRegistry } from '../tool-registry';
 import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } from '../types';
 import { createParseFileTool } from './attachments/parse-file.tool';
-import { createCredentialsTool, CREDENTIALS_TOOL_ID } from './credentials.tool';
-import { createDataTablesTool, DATA_TABLES_TOOL_ID } from './data-tables.tool';
+import { createCredentialsTool } from './credentials.tool';
+import { createDataTablesTool } from './data-tables.tool';
+import { createEvalsTool } from './evals/evals.tool';
 import { createExecutionsTool } from './executions.tool';
 import { createNodesTool } from './nodes.tool';
 import { createBrowserCredentialSetupTool } from './orchestration/browser-credential-setup.tool';
@@ -17,8 +18,9 @@ import { createPlanTool } from './orchestration/plan.tool';
 import { createReportVerificationVerdictTool } from './orchestration/report-verification-verdict.tool';
 import { createVerifyBuiltWorkflowTool } from './orchestration/verify-built-workflow.tool';
 import { createResearchTool } from './research.tool';
-import { ASK_USER_TOOL_ID, createAskUserTool } from './shared/ask-user.tool';
+import { createAskUserTool } from './shared/ask-user.tool';
 import { createTaskControlTool } from './task-control.tool';
+import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from './tool-ids';
 import { createApplyWorkflowCredentialsTool } from './workflows/apply-workflow-credentials.tool';
 import { createBuildWorkflowTool } from './workflows/build-workflow.tool';
 import { createWorkflowsTool } from './workflows.tool';
@@ -30,19 +32,20 @@ import { createWorkspaceTool } from './workspace.tool';
  */
 export function createAllTools(context: InstanceAiContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [
-		['workflows', createWorkflowsTool(context)],
-		['executions', createExecutionsTool(context)],
-		[CREDENTIALS_TOOL_ID, createCredentialsTool(context)],
-		[DATA_TABLES_TOOL_ID, createDataTablesTool(context)],
-		['workspace', createWorkspaceTool(context)],
-		['research', createResearchTool(context)],
-		['nodes', createNodesTool(context)],
-		[ASK_USER_TOOL_ID, createAskUserTool()],
-		['build-workflow', createBuildWorkflowTool(context)],
+		[DOMAIN_TOOL_IDS.WORKFLOWS, createWorkflowsTool(context)],
+		[DOMAIN_TOOL_IDS.EVALS, createEvalsTool(context)],
+		[DOMAIN_TOOL_IDS.EXECUTIONS, createExecutionsTool(context)],
+		[DOMAIN_TOOL_IDS.CREDENTIALS, createCredentialsTool(context)],
+		[DOMAIN_TOOL_IDS.DATA_TABLES, createDataTablesTool(context)],
+		[DOMAIN_TOOL_IDS.WORKSPACE, createWorkspaceTool(context)],
+		[DOMAIN_TOOL_IDS.RESEARCH, createResearchTool(context)],
+		[DOMAIN_TOOL_IDS.NODES, createNodesTool(context)],
+		[DOMAIN_TOOL_IDS.ASK_USER, createAskUserTool()],
+		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, createBuildWorkflowTool(context)],
 	];
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
-		tools.push(['parse-file', createParseFileTool(context)]);
+		tools.push([DOMAIN_TOOL_IDS.PARSE_FILE, createParseFileTool(context)]);
 	}
 
 	return createToolRegistry(tools);
@@ -54,18 +57,19 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
  */
 export function createOrchestratorDomainTools(context: InstanceAiContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [
-		['workflows', createWorkflowsTool(context, 'orchestrator')],
-		['executions', createExecutionsTool(context)],
-		[CREDENTIALS_TOOL_ID, createCredentialsTool(context)],
-		[DATA_TABLES_TOOL_ID, createDataTablesTool(context, 'orchestrator')],
-		['workspace', createWorkspaceTool(context)],
-		['research', createResearchTool(context)],
-		['nodes', createNodesTool(context, 'orchestrator')],
-		[ASK_USER_TOOL_ID, createAskUserTool()],
+		[DOMAIN_TOOL_IDS.WORKFLOWS, createWorkflowsTool(context, 'orchestrator')],
+		[DOMAIN_TOOL_IDS.EVALS, createEvalsTool(context)],
+		[DOMAIN_TOOL_IDS.EXECUTIONS, createExecutionsTool(context)],
+		[DOMAIN_TOOL_IDS.CREDENTIALS, createCredentialsTool(context)],
+		[DOMAIN_TOOL_IDS.DATA_TABLES, createDataTablesTool(context, 'orchestrator')],
+		[DOMAIN_TOOL_IDS.WORKSPACE, createWorkspaceTool(context)],
+		[DOMAIN_TOOL_IDS.RESEARCH, createResearchTool(context)],
+		[DOMAIN_TOOL_IDS.NODES, createNodesTool(context, 'orchestrator')],
+		[DOMAIN_TOOL_IDS.ASK_USER, createAskUserTool()],
 	];
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
-		tools.push(['parse-file', createParseFileTool(context)]);
+		tools.push([DOMAIN_TOOL_IDS.PARSE_FILE, createParseFileTool(context)]);
 	}
 
 	return createToolRegistry(tools);
@@ -77,25 +81,37 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
  */
 export function createOrchestrationTools(context: OrchestrationContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [
-		['plan', createPlanWithAgentTool(context)],
-		['create-tasks', createPlanTool(context)],
-		['task-control', createTaskControlTool(context)],
-		['delegate', createDelegateTool(context)],
-		['build-workflow-with-agent', createBuildWorkflowAgentTool(context)],
-		['complete-checkpoint', createCompleteCheckpointTool(context)],
+		[ORCHESTRATION_TOOL_IDS.PLAN, createPlanWithAgentTool(context)],
+		[ORCHESTRATION_TOOL_IDS.CREATE_TASKS, createPlanTool(context)],
+		[ORCHESTRATION_TOOL_IDS.TASK_CONTROL, createTaskControlTool(context)],
+		[ORCHESTRATION_TOOL_IDS.DELEGATE, createDelegateTool(context)],
+		[ORCHESTRATION_TOOL_IDS.BUILD_WORKFLOW_WITH_AGENT, createBuildWorkflowAgentTool(context)],
+		[ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT, createCompleteCheckpointTool(context)],
 	];
 
 	if (context.browserMcpConfig || hasGatewayBrowserTools(context)) {
-		tools.push(['browser-credential-setup', createBrowserCredentialSetupTool(context)]);
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.BROWSER_CREDENTIAL_SETUP,
+			createBrowserCredentialSetupTool(context),
+		]);
 	}
 
 	if (context.workflowTaskService) {
-		tools.push(['report-verification-verdict', createReportVerificationVerdictTool(context)]);
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.REPORT_VERIFICATION_VERDICT,
+			createReportVerificationVerdictTool(context),
+		]);
 	}
 
 	if (context.workflowTaskService && context.domainContext) {
-		tools.push(['verify-built-workflow', createVerifyBuiltWorkflowTool(context)]);
-		tools.push(['apply-workflow-credentials', createApplyWorkflowCredentialsTool(context)]);
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
+			createVerifyBuiltWorkflowTool(context),
+		]);
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS,
+			createApplyWorkflowCredentialsTool(context),
+		]);
 	}
 
 	return createToolRegistry(tools);
