@@ -97,6 +97,12 @@ export const useAgentDebugStore = defineStore('agentDebug', () => {
 		}
 	}
 
+	function clearSelectedRun() {
+		selectedRun.value = null;
+		loadingDetail.value = false;
+		latestDetailKey = null;
+	}
+
 	async function fetchInsights(projectId: string, agentId: string) {
 		const rootStore = useRootStore();
 		insights.value = await getAgentDebugInsights(rootStore.restApiContext, projectId, agentId);
@@ -154,6 +160,7 @@ export const useAgentDebugStore = defineStore('agentDebug', () => {
 		fetchRuns,
 		loadMore,
 		fetchRunDetail,
+		clearSelectedRun,
 		fetchInsights,
 		saveRunReview,
 		clearRunReview,
