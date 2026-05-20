@@ -454,7 +454,8 @@ Test cases live in `evaluations/data/workflows/*.json`. Drop a file in, the CLI 
       "name": "happy-path",
       "description": "Normal operation",
       "dataSetup": "The webhook receives a submission from Jane (jane@example.com)...",
-      "successCriteria": "The workflow executes without errors. An email is sent to jane@example.com..."
+      "successCriteria": "The workflow executes without errors. An email is sent to jane@example.com...",
+      "binaryChecks": ["has_trigger", "all_nodes_connected", "no_empty_set_nodes"]
     }
   ]
 }
@@ -481,6 +482,29 @@ Test cases live in `evaluations/data/workflows/*.json`. Drop a file in, the CLI 
 - Edge cases — empty data, missing fields, single vs multiple items
 - Error scenarios only if the workflow is expected to handle them gracefully. Most agent-built workflows don't include error handling, so "the workflow crashes on invalid input" is a legitimate finding, not a test-case failure.
 
+### Binary checks per scenario
+
+Scenarios can opt into deterministic pass/fail checks on the built workflow JSON via `binaryChecks: string[]`. Each name resolves against the registry in `binaryChecks/checks/index.ts`. Unknown names are rejected at fixture-load time, before the harness spins up any containers.
+
+A binary-check failure is **authoritative** — it overrides the LLM verifier's verdict, flips the scenario to `success: false`, sets `failureCategory: 'binary_check_failure'`, and prefixes the verifier's reasoning with the failed check names. The verifier still runs; it just doesn't get to declare success on a structurally broken workflow.
+
+Both **deterministic** and **LLM-based** checks (e.g. `fulfills_user_request`, `valid_data_flow`) work — LLM checks reuse the same Sonnet model the verifier already uses, so no extra configuration is needed. Cost is bounded by per-scenario opt-in: an LLM check only runs when its name appears in `binaryChecks`.
+
+Pick the subset that matters for the workflow you're testing. A reasonable default for new fixtures:
+
+```json
+"binaryChecks": [
+  "has_nodes",
+  "has_trigger",
+  "all_nodes_connected",
+  "no_empty_set_nodes",
+  "no_hardcoded_credentials",
+  "valid_field_references"
+]
+```
+
+The full list of available checks lives next to the implementations in `binaryChecks/checks/`.
+
 ### Adding a new credential type
 
 `credentials/seeder.ts` seeds generic creds (HTTP Header, HTTP Basic) on every run, plus env-gated creds (GitHub, Gmail, Teams, Linear…) when the matching env var is set. If your scenario needs a credential type that isn't there, add it to the appropriate list in `seeder.ts` — env-gated if it requires a real token, generic if a placeholder is fine.
@@ -494,6 +518,7 @@ When a scenario fails, the verifier categorizes the root cause:
 - **framework_issue** — Phase 1 failed (empty trigger content) or the eval framework itself cascaded an error.
 - **verification_failure** — the verifier couldn't produce a valid result.
 - **build_failure** — Instance AI failed to build the workflow or a scenario timed out.
+- **binary_check_failure** — a deterministic check listed in `scenario.binaryChecks` returned `pass: false`. Distinct from `builder_issue` (assigned by the LLM verifier).
 
 Suite pass rates typically sit between 40–65%; most failures are `builder_issue` on scenarios that require error handling the agent doesn't produce by default.
 

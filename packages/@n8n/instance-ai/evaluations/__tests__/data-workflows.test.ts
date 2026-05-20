@@ -25,7 +25,14 @@ const STUB_TEST_CASE = JSON.stringify({
 	prompt: 'stub',
 	complexity: 'simple',
 	tags: [],
-	scenarios: [],
+	scenarios: [
+		{
+			name: 'happy-path',
+			description: 'stub',
+			dataSetup: 'stub',
+			successCriteria: 'stub',
+		},
+	],
 });
 
 beforeEach(() => {

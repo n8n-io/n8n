@@ -126,6 +126,9 @@ export function formatComparisonMarkdown(
 
 	lines.push(...renderPerTestCaseDetails(evaluation, options.slugByTestCase));
 
+	const binaryChecksSection = renderBinaryChecksSection(evaluation);
+	if (binaryChecksSection.length > 0) lines.push(...binaryChecksSection);
+
 	if (comparison) {
 		const otherFindings = renderOtherFindings(comparison);
 		if (otherFindings.length > 0) lines.push(...otherFindings);
@@ -407,6 +410,45 @@ function renderPerTestCaseDetails(
 	}
 	lines.push('');
 	lines.push('</details>');
+	lines.push('');
+	return lines;
+}
+
+/**
+ * Pass-rate breakdown per binary check across every scenario run that requested
+ * one. Returns empty when no scenario asked for binary checks, so older runs
+ * and runs whose fixtures opted out don't show a blank section.
+ */
+function renderBinaryChecksSection(evaluation: MultiRunEvaluation): string[] {
+	const perCheck = new Map<string, { runs: number; passes: number }>();
+	for (const tc of evaluation.testCases) {
+		for (const sa of tc.scenarios) {
+			for (const sr of sa.runs) {
+				if (!sr.binaryCheckResults) continue;
+				for (const r of sr.binaryCheckResults) {
+					const entry = perCheck.get(r.name) ?? { runs: 0, passes: 0 };
+					entry.runs++;
+					if (r.pass) entry.passes++;
+					perCheck.set(r.name, entry);
+				}
+			}
+		}
+	}
+	if (perCheck.size === 0) return [];
+
+	const lines: string[] = [
+		'#### Binary checks',
+		'',
+		'| Check | Runs | Pass rate |',
+		'|---|---|---|',
+	];
+	const sortedNames = [...perCheck.keys()].sort();
+	for (const name of sortedNames) {
+		const entry = perCheck.get(name);
+		if (!entry) continue;
+		const pct = entry.runs > 0 ? Math.round((entry.passes / entry.runs) * 100) : 0;
+		lines.push(`| ${name} | ${String(entry.runs)} | ${String(pct)}% |`);
+	}
 	lines.push('');
 	return lines;
 }

@@ -136,6 +136,19 @@ export interface TestScenario {
 	dataSetup: string;
 	/** Criteria the LLM verifier checks against the execution result */
 	successCriteria: string;
+	/**
+	 * Names of binary checks (see `binaryChecks/checks/index.ts`) to run against the
+	 * built workflow. Each must pass for the scenario to pass; failures override
+	 * the LLM verifier verdict. Unknown names are rejected at fixture load time.
+	 */
+	binaryChecks?: string[];
+	/**
+	 * Per-scenario annotations forwarded as `ctx.annotations` to binary checks.
+	 * Lets fixture authors flag false-positive scenarios (e.g. `code_necessary: true`
+	 * suppresses `no_unnecessary_code_nodes` for prompts where a Code node is the
+	 * right answer).
+	 */
+	annotations?: Record<string, unknown>;
 }
 
 export interface WorkflowTestCase {
@@ -150,6 +163,12 @@ export interface WorkflowTestCase {
 // Workflow test case results
 // ---------------------------------------------------------------------------
 
+export interface BinaryCheckOutcome {
+	name: string;
+	pass: boolean;
+	comment?: string;
+}
+
 export interface ScenarioResult {
 	scenario: TestScenario;
 	success: boolean;
@@ -160,6 +179,8 @@ export interface ScenarioResult {
 	failureCategory?: string;
 	/** Detailed root cause explanation */
 	rootCause?: string;
+	/** Per-check pass/fail; absent when the scenario didn't request any binary checks. */
+	binaryCheckResults?: BinaryCheckOutcome[];
 }
 
 export interface WorkflowTestCaseResult {

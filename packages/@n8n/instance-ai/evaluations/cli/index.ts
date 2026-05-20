@@ -65,6 +65,12 @@ import type {
 // n8n degrades above ~4 concurrent builds.
 const MAX_CONCURRENT_BUILDS = 4;
 
+const binaryCheckOutcomeSchema = z.object({
+	name: z.string(),
+	pass: z.boolean(),
+	comment: z.string().optional(),
+});
+
 const targetOutputSchema = z.object({
 	buildSuccess: z.boolean().default(false),
 	passed: z.boolean().default(false),
@@ -75,6 +81,7 @@ const targetOutputSchema = z.object({
 	rootCause: z.string().optional(),
 	execErrors: z.array(z.string()).default([]),
 	evalResult: z.unknown().optional(),
+	binaryCheckResults: z.array(binaryCheckOutcomeSchema).optional(),
 	/** Only set on the scenario that initiated the build. */
 	buildDurationMs: z.number().optional(),
 	execDurationMs: z.number().default(0),
@@ -279,6 +286,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			workflowId: string;
 			scenario: TestScenario;
 			workflowJsons: BuildResult['workflowJsons'];
+			prompt: string;
 		}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
 	}
 
@@ -312,12 +320,14 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					workflowId: string;
 					scenario: TestScenario;
 					workflowJsons: BuildResult['workflowJsons'];
+					prompt: string;
 				}) =>
 					await executeScenario(
 						lane.client,
 						execArgs.workflowId,
 						execArgs.scenario,
 						execArgs.workflowJsons,
+						execArgs.prompt,
 						logger,
 						args.timeoutMs,
 					),
@@ -421,6 +431,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				workflowId: build.workflowId,
 				scenario,
 				workflowJsons: build.workflowJsons,
+				prompt: inputs.prompt,
 			});
 		} catch (error: unknown) {
 			// Mirror direct mode's per-scenario guard — without this, n8n API errors
@@ -459,6 +470,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			rootCause,
 			execErrors: result.evalResult?.errors ?? [],
 			evalResult: result.evalResult,
+			binaryCheckResults: result.binaryCheckResults,
 			buildDurationMs,
 			execDurationMs,
 			nodeCount,
@@ -788,6 +800,7 @@ function reshapeLangSmithRuns(
 					reasoning: output.reasoning,
 					failureCategory: output.failureCategory,
 					rootCause: output.rootCause,
+					...(output.binaryCheckResults ? { binaryCheckResults: output.binaryCheckResults } : {}),
 				});
 			}
 
@@ -933,6 +946,45 @@ function computeAggregateMetrics(evaluation: MultiRunEvaluation): AggregateMetri
 	};
 }
 
+/**
+ * Aggregate binary-check pass/fail across every scenario run. Returns
+ * `undefined` when no scenario in the run requested any binary checks — keeps
+ * older results consistent and lets PR-comment / report renderers skip the
+ * section entirely.
+ */
+function computeBinaryCheckSummary(
+	evaluation: MultiRunEvaluation,
+):
+	| {
+			totalChecksRun: number;
+			totalChecksPassed: number;
+			perCheck: Record<string, { runs: number; passes: number }>;
+	  }
+	| undefined {
+	const perCheck: Record<string, { runs: number; passes: number }> = {};
+	let totalChecksRun = 0;
+	let totalChecksPassed = 0;
+
+	for (const tc of evaluation.testCases) {
+		for (const sa of tc.scenarios) {
+			for (const sr of sa.runs) {
+				if (!sr.binaryCheckResults) continue;
+				for (const r of sr.binaryCheckResults) {
+					const entry = perCheck[r.name] ?? { runs: 0, passes: 0 };
+					entry.runs++;
+					if (r.pass) entry.passes++;
+					perCheck[r.name] = entry;
+					totalChecksRun++;
+					if (r.pass) totalChecksPassed++;
+				}
+			}
+		}
+	}
+
+	if (totalChecksRun === 0) return undefined;
+	return { totalChecksRun, totalChecksPassed, perCheck };
+}
+
 /** Pass rate of each iteration formatted as e.g. "37% / 37% / 37%". */
 function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 	const { totalRuns, testCases } = evaluation;
@@ -959,6 +1011,7 @@ function writeEvalResults(
 	const metrics = computeAggregateMetrics(evaluation);
 
 	const result = outcome?.kind === 'ok' ? outcome.result : undefined;
+	const binaryChecksSummary = computeBinaryCheckSummary(evaluation);
 
 	const report = {
 		timestamp: new Date().toISOString(),
@@ -972,6 +1025,7 @@ function writeEvalResults(
 			passAtK: metrics.passAtK,
 			passHatK: metrics.passHatK,
 			passRatePerIter: metrics.passRatePerIter,
+			...(binaryChecksSummary ? { binaryChecks: binaryChecksSummary } : {}),
 		},
 		// Structured comparison payload only — the rendered markdown lives in
 		// the sibling `eval-pr-comment.md` file so consumers can pick the format
@@ -1004,6 +1058,7 @@ function writeEvalResults(
 					rootCause: sr.rootCause,
 					execErrors: sr.evalResult?.errors ?? [],
 					evalResult: sr.evalResult,
+					...(sr.binaryCheckResults ? { binaryChecks: sr.binaryCheckResults } : {}),
 				})),
 			})),
 		})),

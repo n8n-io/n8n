@@ -8,7 +8,16 @@
 			"name": "happy-path",
 			"description": "A valid contact form submission triggers all 3 actions",
 			"dataSetup": "The webhook receives a contact form submission from Jane Smith (jane@example.com) with the message 'I am interested in your enterprise plan, can you send me more details?'. The Gmail, Telegram, and Google Sheets nodes return success responses.",
-			"successCriteria": "The workflow executes without errors. The webhook returns a response acknowledging the submission. An auto-reply email is sent to jane@example.com. A Telegram notification is sent containing the submission details (name, email, message). The submission is logged to Google Sheets with the form fields. All 3 actions receive the data from the webhook trigger."
+			"successCriteria": "The workflow executes without errors. The webhook returns a response acknowledging the submission. An auto-reply email is sent to jane@example.com. A Telegram notification is sent containing the submission details (name, email, message). The submission is logged to Google Sheets with the form fields. All 3 actions receive the data from the webhook trigger.",
+			"binaryChecks": [
+				"has_nodes",
+				"has_trigger",
+				"all_nodes_connected",
+				"no_empty_set_nodes",
+				"no_hardcoded_credentials",
+				"no_invalid_from_ai",
+				"valid_field_references"
+			]
 		},
 		{
 			"name": "missing-fields",

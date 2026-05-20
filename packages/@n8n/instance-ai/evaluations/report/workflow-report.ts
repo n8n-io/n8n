@@ -68,6 +68,7 @@ function renderScenarioDetail(sr: ScenarioResult): string {
 		if (sr.reasoning) {
 			html += `<div class="diagnosis">${escapeHtml(sr.reasoning)}</div>`;
 		}
+		html += renderBinaryChecks(sr);
 		return html;
 	}
 
@@ -78,9 +79,13 @@ function renderScenarioDetail(sr: ScenarioResult): string {
 				? 'warn'
 				: sr.failureCategory === 'mock_issue'
 					? 'fail'
-					: 'info';
+					: sr.failureCategory === 'binary_check_failure'
+						? 'fail'
+						: 'info';
 		html += `<div class="category-badge category-${catClass}">${escapeHtml(sr.failureCategory)}${sr.rootCause ? ': ' + escapeHtml(sr.rootCause) : ''}</div>`;
 	}
+
+	html += renderBinaryChecks(sr);
 
 	// 1. Error — what broke
 	if (sr.evalResult.errors.length > 0) {
@@ -183,6 +188,26 @@ function renderScenarioDetail(sr: ScenarioResult): string {
 		html += '</details>';
 	}
 
+	return html;
+}
+
+function renderBinaryChecks(sr: ScenarioResult): string {
+	if (!sr.binaryCheckResults || sr.binaryCheckResults.length === 0) return '';
+
+	const passCount = sr.binaryCheckResults.filter((r) => r.pass).length;
+	const totalCount = sr.binaryCheckResults.length;
+	const headerCls = passCount === totalCount ? 'pass' : 'fail';
+
+	let html = `<details class="section" ${passCount < totalCount ? 'open' : ''}>`;
+	html += `<summary>Binary checks <span class="${headerCls}">${String(passCount)}/${String(totalCount)} passed</span></summary>`;
+	html += '<ul class="binary-checks">';
+	for (const r of sr.binaryCheckResults) {
+		const icon = r.pass ? '&#10003;' : '&#10007;';
+		const cls = r.pass ? 'pass' : 'fail';
+		const comment = r.comment ? ` — ${escapeHtml(r.comment)}` : '';
+		html += `<li class="${cls}"><span class="scenario-icon ${cls}">${icon}</span> <code>${escapeHtml(r.name)}</code>${comment}</li>`;
+	}
+	html += '</ul></details>';
 	return html;
 }
 

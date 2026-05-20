@@ -13,11 +13,16 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { SSE_SETTLE_DELAY_MS, startSseConnection, waitForAllActivity } from './chat-loop';
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
+import { applyBinaryCheckResults } from './score-folder';
+import { SONNET_MODEL } from '../../src/utils/eval-agents';
+import { runBinaryChecks } from '../binaryChecks/index';
+import type { BinaryCheckContext } from '../binaryChecks/types';
 import { verifyChecklist } from '../checklist/verifier';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
 import type {
+	BinaryCheckOutcome,
 	ChecklistItem,
 	CapturedEvent,
 	ScenarioResult,
@@ -103,6 +108,7 @@ export async function runWorkflowTestCase(
 					build.workflowId!,
 					scenario,
 					build.workflowJsons,
+					testCase.prompt,
 					logger,
 					timeoutMs,
 				);
@@ -288,16 +294,21 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 /**
  * Execute a single scenario against a pre-built workflow and verify the result.
+ *
+ * `prompt` is the user-facing prompt the orchestrator received. It is forwarded
+ * to binary checks via `ctx.prompt` so checks that compare workflow against user
+ * intent (e.g. `inbound_trigger_auth_defaults`) can evaluate correctly.
  */
 export async function executeScenario(
 	client: N8nClient,
 	workflowId: string,
 	scenario: TestScenario,
 	workflowJsons: WorkflowResponse[],
+	prompt: string,
 	logger: EvalLogger,
 	timeoutMs?: number,
 ): Promise<ScenarioResult> {
-	return await runScenario(client, scenario, workflowId, workflowJsons, logger, timeoutMs);
+	return await runScenario(client, scenario, workflowId, workflowJsons, prompt, logger, timeoutMs);
 }
 
 /**
@@ -342,6 +353,7 @@ async function runScenario(
 	scenario: TestScenario,
 	workflowId: string,
 	workflowJsons: WorkflowResponse[],
+	prompt: string,
 	logger: EvalLogger,
 	timeoutMs?: number,
 ): Promise<ScenarioResult> {
@@ -353,8 +365,20 @@ async function runScenario(
 		`    [${scenario.name}] exec=${String(Math.round(execMs / 1000))}s (${Object.keys(evalResult.nodeResults).length} nodes)`,
 	);
 
+	const binaryCheckResults = await runScenarioBinaryChecks(
+		scenario,
+		workflowJsons[0],
+		prompt,
+		logger,
+	);
+
 	const verifyStart = Date.now();
-	const verificationArtifact = buildVerificationArtifact(scenario, evalResult, workflowJsons);
+	const verificationArtifact = buildVerificationArtifact(
+		scenario,
+		evalResult,
+		workflowJsons,
+		binaryCheckResults,
+	);
 
 	const scenarioChecklist: ChecklistItem[] = [
 		{
@@ -378,23 +402,90 @@ async function runScenario(
 	const failureCategory = result?.failureCategory ?? (result ? undefined : 'verification_failure');
 	const rootCause = result?.rootCause;
 
-	const categoryLabel = failureCategory ? ` [${failureCategory}]` : '';
-	logger.info(
-		`    [${scenario.name}] ${passed ? 'PASS' : 'FAIL'}${categoryLabel} verify=${String(Math.round(verifyMs / 1000))}s`,
+	const folded = applyBinaryCheckResults(
+		{
+			success: passed,
+			score: passed ? 1 : 0,
+			reasoning,
+			failureCategory,
+		},
+		binaryCheckResults,
 	);
-	if (!passed) {
-		logger.info(`    [${scenario.name}] ${reasoning}`);
+
+	const categoryLabel = folded.failureCategory ? ` [${folded.failureCategory}]` : '';
+	logger.info(
+		`    [${scenario.name}] ${folded.success ? 'PASS' : 'FAIL'}${categoryLabel} verify=${String(Math.round(verifyMs / 1000))}s`,
+	);
+	if (!folded.success) {
+		logger.info(`    [${scenario.name}] ${folded.reasoning}`);
 	}
 
 	return {
 		scenario,
-		success: passed,
+		success: folded.success,
 		evalResult,
-		score: passed ? 1 : 0,
-		reasoning,
-		failureCategory,
+		score: folded.score,
+		reasoning: folded.reasoning,
+		failureCategory: folded.failureCategory,
 		rootCause,
+		...(binaryCheckResults ? { binaryCheckResults } : {}),
 	};
+}
+
+/**
+ * Run the binary checks configured on the scenario, if any. Returns `undefined`
+ * when the scenario doesn't request any so downstream code can distinguish
+ * "didn't ask" from "asked, all passed".
+ *
+ * LLM checks become eligible because we pass the same Sonnet model the verifier
+ * uses; they only fire when listed in `scenario.binaryChecks`, so per-scenario
+ * opt-in keeps the cost bounded.
+ */
+async function runScenarioBinaryChecks(
+	scenario: TestScenario,
+	workflow: WorkflowResponse | undefined,
+	prompt: string,
+	logger: EvalLogger,
+): Promise<BinaryCheckOutcome[] | undefined> {
+	if (!scenario.binaryChecks || scenario.binaryChecks.length === 0) return undefined;
+	if (!workflow) return undefined;
+
+	const ctx: BinaryCheckContext = {
+		prompt,
+		modelId: SONNET_MODEL,
+		...(scenario.annotations ? { annotations: scenario.annotations } : {}),
+	};
+
+	let outcomes: BinaryCheckOutcome[];
+	try {
+		const feedback = await runBinaryChecks(workflow, ctx, { only: scenario.binaryChecks });
+		outcomes = feedback
+			.filter((f) => f.kind === 'metric')
+			.map((f) => ({
+				name: f.metric,
+				pass: f.score === 1,
+				...(f.comment ? { comment: f.comment } : {}),
+			}));
+	} catch (error) {
+		// Defense in depth — unknown names are rejected at fixture load time,
+		// but if `runBinaryChecks` throws anyway, mark every requested check failed.
+		const msg = error instanceof Error ? error.message : String(error);
+		logger.error(`    [${scenario.name}] binary checks errored: ${msg}`);
+		outcomes = scenario.binaryChecks.map((name) => ({
+			name,
+			pass: false,
+			comment: `Runner error: ${msg}`,
+		}));
+	}
+
+	const failed = outcomes.filter((r) => !r.pass);
+	if (failed.length > 0) {
+		logger.info(
+			`    [${scenario.name}] binary checks failed: ${failed.map((f) => f.name).join(', ')}`,
+		);
+	}
+
+	return outcomes;
 }
 
 // ---------------------------------------------------------------------------
@@ -410,6 +501,7 @@ function buildVerificationArtifact(
 	scenario: TestScenario,
 	evalResult: InstanceAiEvalExecutionResult,
 	workflowJsons: WorkflowResponse[],
+	binaryCheckResults?: BinaryCheckOutcome[],
 ): string {
 	const sections: string[] = [];
 
@@ -421,6 +513,18 @@ function buildVerificationArtifact(
 		`**Data setup:** ${scenario.dataSetup}`,
 		'',
 	);
+
+	// --- Binary checks (deterministic ground truth, shown to the verifier as
+	//     informational context — its verdict is still LLM-driven). ---
+	if (binaryCheckResults && binaryCheckResults.length > 0) {
+		sections.push('## Binary checks (deterministic)', '');
+		for (const r of binaryCheckResults) {
+			const status = r.pass ? 'PASS' : 'FAIL';
+			const comment = r.comment ? ` — ${r.comment}` : '';
+			sections.push(`- ${r.name}: ${status}${comment}`);
+		}
+		sections.push('');
+	}
 
 	// --- Pre-analysis: flag known issues programmatically ---
 	const preAnalysis: string[] = [];
