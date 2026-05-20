@@ -8,14 +8,9 @@ import {
 	N8nBadge,
 	N8nHeading,
 	N8nNotice,
-	N8nSelect2,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type {
-	SelectItemProps,
-	SelectValue,
-} from '@n8n/design-system/v2/components/Select/Select.types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { RedactionFloor } from '@n8n/api-types';
@@ -27,6 +22,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useRedactionEnforcementFeatureFlag } from '@/features/redaction-enforcement/composables/useRedactionEnforcementFeatureFlag';
+import DataRedactionSection from './DataRedactionSection.vue';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
@@ -39,29 +35,8 @@ const { isEnabled: isRedactionEnforcementFlagEnabled } = useRedactionEnforcement
 
 const mfaTooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
 const personalSpaceTooltipKey = 'settings.security.personalSpace.unlicensed_tooltip';
-const dataRedactionTooltipKey = 'settings.security.dataRedaction.unlicensed_tooltip';
 const showPublishingDialog = ref(false);
 const showSharingDialog = ref(false);
-const showRedactionEnableDialog = ref(false);
-const showRedactionDisableDialog = ref(false);
-
-type EnforcedFloor = Exclude<RedactionFloor, 'off'>;
-
-// Map the new floor enum to the existing i18n key suffixes so we don't
-// churn translations. 'production' uses the legacy 'non-manual' suffix.
-const FLOOR_TO_LEGACY_KEY: Record<EnforcedFloor, 'non-manual' | 'all'> = {
-	production: 'non-manual',
-	all: 'all',
-};
-
-const redactionFloorOptions = computed<Array<SelectItemProps & { value: EnforcedFloor }>>(() =>
-	(['production', 'all'] as EnforcedFloor[]).map((value) => ({
-		value,
-		label: i18n.baseText(
-			`settings.security.dataRedaction.scope.option.${FLOOR_TO_LEGACY_KEY[value]}` as BaseTextKey,
-		),
-	})),
-);
 
 const isEnforceMFAEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA],
@@ -69,10 +44,6 @@ const isEnforceMFAEnabled = computed(
 
 const isPersonalSpacePolicyLicensed = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.PersonalSpacePolicy],
-);
-
-const isDataRedactionLicensed = computed(
-	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction],
 );
 
 async function onUpdateMfaEnforced(value: string | number | boolean) {
@@ -106,7 +77,7 @@ const { state } = useAsyncState(async () => {
 		sharedPersonalWorkflowsCount: settings.sharedPersonalWorkflowsCount,
 		sharedPersonalCredentialsCount: settings.sharedPersonalCredentialsCount,
 		managedByEnv: settings.managedByEnv,
-		redactionFloor: (settings.redactionEnforcement?.floor ?? 'off') as RedactionFloor,
+		initialRedactionFloor: (settings.redactionEnforcement?.floor ?? 'off') as RedactionFloor,
 	};
 }, undefined);
 
@@ -197,86 +168,6 @@ const sharingCountText = computed(() => {
 		},
 	});
 });
-
-async function updateRedactionFloor(nextFloor: RedactionFloor, isToggling: boolean) {
-	const previousFloor = state.value?.redactionFloor ?? 'off';
-	try {
-		await securitySettingsApi.updateSecuritySettings(rootStore.restApiContext, {
-			redactionEnforcement: { floor: nextFloor },
-		});
-		showToast({
-			type: 'success',
-			title: isToggling
-				? nextFloor !== 'off'
-					? i18n.baseText('settings.security.dataRedaction.enforce.success.enabled')
-					: i18n.baseText('settings.security.dataRedaction.enforce.success.disabled')
-				: i18n.baseText('settings.security.dataRedaction.scope.success'),
-			message: '',
-		});
-	} catch (error) {
-		if (state.value) {
-			state.value = { ...state.value, redactionFloor: previousFloor };
-		}
-		showError(
-			error,
-			isToggling
-				? i18n.baseText('settings.security.dataRedaction.enforce.error')
-				: i18n.baseText('settings.security.dataRedaction.scope.error'),
-		);
-	}
-}
-
-const dataRedactionEnforced = computed({
-	get: () => (state.value?.redactionFloor ?? 'off') !== 'off',
-	set: (value: boolean) => {
-		if (value) {
-			showRedactionEnableDialog.value = true;
-			return;
-		}
-		showRedactionDisableDialog.value = true;
-	},
-});
-
-function confirmEnableRedactionEnforcement() {
-	showRedactionEnableDialog.value = false;
-	if (state.value) {
-		state.value = { ...state.value, redactionFloor: 'production' };
-	}
-	void updateRedactionFloor('production', true);
-}
-
-function confirmDisableRedactionEnforcement() {
-	showRedactionDisableDialog.value = false;
-	if (state.value) {
-		state.value = { ...state.value, redactionFloor: 'off' };
-	}
-	void updateRedactionFloor('off', true);
-}
-
-const dataRedactionFloor = computed<EnforcedFloor>(() => {
-	const current = state.value?.redactionFloor ?? 'off';
-	return current === 'off' ? 'production' : current;
-});
-
-function onSelectRedactionFloor(value: SelectValue | undefined) {
-	if (!value) return;
-	const nextFloor = value as EnforcedFloor;
-	if (nextFloor === dataRedactionFloor.value) return;
-	if (state.value) {
-		state.value = { ...state.value, redactionFloor: nextFloor };
-	}
-	void updateRedactionFloor(nextFloor, false);
-}
-
-const affectedScopeText = computed(() => {
-	const floor = state.value?.redactionFloor ?? 'off';
-	if (floor === 'off') {
-		return i18n.baseText('settings.security.dataRedaction.affectedScope.none');
-	}
-	return i18n.baseText(
-		`settings.security.dataRedaction.affectedScope.${FLOOR_TO_LEGACY_KEY[floor]}` as BaseTextKey,
-	);
-});
 </script>
 
 <template>
@@ -346,92 +237,11 @@ const affectedScopeText = computed(() => {
 			</div>
 		</div>
 
-		<template v-if="isRedactionEnforcementFlagEnabled">
-			<N8nHeading tag="h2" size="large" class="mb-l">
-				{{ i18n.baseText('settings.security.dataRedaction.title') }}
-			</N8nHeading>
-
-			<div :class="$style.settingsSection">
-				<div :class="$style.settingsContainer">
-					<div :class="$style.settingsContainerInfo">
-						<N8nText :bold="true"
-							>{{ i18n.baseText('settings.security.dataRedaction.enforce.title') }}
-							<N8nBadge v-if="!isDataRedactionLicensed" class="ml-4xs">{{
-								i18n.baseText('generic.upgrade')
-							}}</N8nBadge>
-						</N8nText>
-						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('settings.security.dataRedaction.enforce.message') }}
-						</N8nText>
-					</div>
-					<div :class="$style.settingsContainerAction">
-						<EnterpriseEdition :features="[EnterpriseEditionFeature.DataRedaction]">
-							<ElSwitch
-								v-if="state !== undefined"
-								v-model="dataRedactionEnforced"
-								size="large"
-								:disabled="isManagedByEnv"
-								data-test-id="enable-redaction-enforcement"
-							/>
-							<template #fallback>
-								<N8nTooltip>
-									<ElSwitch
-										v-if="state !== undefined"
-										:model-value="dataRedactionEnforced"
-										size="large"
-										:disabled="true"
-										data-test-id="enable-redaction-enforcement"
-									/>
-									<template #content>
-										<I18nT :keypath="dataRedactionTooltipKey" tag="span" scope="global">
-											<template #action>
-												<a @click="goToUpgrade">
-													{{
-														i18n.baseText('settings.security.dataRedaction.unlicensed_tooltip.link')
-													}}
-												</a>
-											</template>
-										</I18nT>
-									</template>
-								</N8nTooltip>
-							</template>
-						</EnterpriseEdition>
-					</div>
-				</div>
-				<div
-					v-if="state !== undefined && dataRedactionEnforced && isDataRedactionLicensed"
-					:class="$style.settingsContainer"
-					data-test-id="redaction-enforcement-scope-row"
-				>
-					<div :class="$style.settingsContainerInfo">
-						<N8nText :bold="true">{{
-							i18n.baseText('settings.security.dataRedaction.scope.title')
-						}}</N8nText>
-						<N8nText size="small" color="text-light">{{
-							i18n.baseText('settings.security.dataRedaction.scope.description')
-						}}</N8nText>
-					</div>
-					<div :class="$style.settingsContainerAction">
-						<N8nSelect2
-							:model-value="dataRedactionFloor"
-							:items="redactionFloorOptions"
-							size="medium"
-							:disabled="isManagedByEnv"
-							data-test-id="redaction-enforcement-scope-select"
-							@update:model-value="onSelectRedactionFloor"
-						/>
-					</div>
-				</div>
-				<div :class="$style.settingsCountRow" data-test-id="redaction-enforcement-summary">
-					<N8nText size="small">
-						{{ i18n.baseText('settings.security.dataRedaction.affectedScope.label') }}
-					</N8nText>
-					<N8nText size="small" color="text-light">
-						{{ affectedScopeText }}
-					</N8nText>
-				</div>
-			</div>
-		</template>
+		<DataRedactionSection
+			v-if="isRedactionEnforcementFlagEnabled && state !== undefined"
+			:initial-floor="state.initialRedactionFloor"
+			:managed-by-env="isManagedByEnv"
+		/>
 
 		<N8nHeading tag="h2" size="large" class="mb-l">
 			{{ i18n.baseText('settings.security.personalSpace.title') }}
@@ -582,30 +392,6 @@ const affectedScopeText = computed(() => {
 			@action="confirmDisableSharing"
 			@cancel="showSharingDialog = false"
 			@update:open="showSharingDialog = $event"
-		/>
-
-		<N8nAlertDialog
-			:open="showRedactionEnableDialog"
-			:title="i18n.baseText('settings.security.dataRedaction.enforce.confirmEnable.headline')"
-			:description="i18n.baseText('settings.security.dataRedaction.enforce.confirmEnable.message')"
-			:action-label="i18n.baseText('settings.security.dataRedaction.enforce.confirmEnable.action')"
-			size="medium"
-			data-test-id="redaction-enforcement-enable-confirm"
-			@action="confirmEnableRedactionEnforcement"
-			@cancel="showRedactionEnableDialog = false"
-			@update:open="showRedactionEnableDialog = $event"
-		/>
-
-		<N8nAlertDialog
-			:open="showRedactionDisableDialog"
-			:title="i18n.baseText('settings.security.dataRedaction.enforce.confirmDisable.headline')"
-			:description="i18n.baseText('settings.security.dataRedaction.enforce.confirmDisable.message')"
-			:action-label="i18n.baseText('settings.security.dataRedaction.enforce.confirmDisable.action')"
-			size="medium"
-			data-test-id="redaction-enforcement-disable-confirm"
-			@action="confirmDisableRedactionEnforcement"
-			@cancel="showRedactionDisableDialog = false"
-			@update:open="showRedactionDisableDialog = $event"
 		/>
 	</div>
 </template>
