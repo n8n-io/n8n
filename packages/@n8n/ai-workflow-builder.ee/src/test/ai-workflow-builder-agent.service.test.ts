@@ -550,7 +550,7 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				undefined,
 				'test-user-id',
-				'code-builder',
+				undefined,
 			);
 		});
 
@@ -581,7 +581,7 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				workflowId,
 				'test-user-id',
-				'code-builder',
+				undefined,
 			);
 		});
 
@@ -597,7 +597,7 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				workflowId,
 				'test-user-id',
-				'code-builder',
+				undefined,
 			);
 		});
 
@@ -621,7 +621,7 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				workflowId,
 				'test-user-id',
-				'code-builder',
+				undefined,
 			);
 		});
 
@@ -645,7 +645,7 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				workflowId,
 				'test-user-id',
-				'code-builder',
+				undefined,
 			);
 		});
 
@@ -661,7 +661,33 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				workflowId,
 				undefined,
+				undefined,
+			);
+		});
+
+		it('should route to the code-builder agent when isCodeBuilder is true', async () => {
+			const workflowId = 'test-workflow';
+			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({ sessions: [] });
+
+			await service.getSessions(workflowId, mockUser, true);
+
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				workflowId,
+				'test-user-id',
 				'code-builder',
+			);
+		});
+
+		it('should route to the default agent when isCodeBuilder is false', async () => {
+			const workflowId = 'test-workflow';
+			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({ sessions: [] });
+
+			await service.getSessions(workflowId, mockUser, false);
+
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				workflowId,
+				'test-user-id',
+				undefined,
 			);
 		});
 	});

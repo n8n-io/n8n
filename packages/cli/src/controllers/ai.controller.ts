@@ -251,7 +251,11 @@ export class AiController {
 		@Body payload: AiSessionRetrievalRequestDto,
 	) {
 		try {
-			const sessions = await this.workflowBuilderService.getSessions(payload.workflowId, req.user);
+			const sessions = await this.workflowBuilderService.getSessions(
+				payload.workflowId,
+				req.user,
+				payload.codeBuilder,
+			);
 			return sessions;
 		} catch (e) {
 			assert(e instanceof Error);

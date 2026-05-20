@@ -76,8 +76,12 @@ export class WorkflowBuilderSessionRepository
 	}
 
 	private parseThreadId(threadId: string): { workflowId: string; userId: string } {
-		// Format: "workflow-{workflowId}-user-{userId}"
-		const match = threadId.match(/^workflow-(.+)-user-(.+)$/);
+		// Format: "workflow-{workflowId}-user-{userId}" with an optional "-code" suffix
+		// for the code-builder agent variant. The userId is anchored to UUID shape so the
+		// greedy workflowId capture doesn't swallow the suffix or part of the user id.
+		const match = threadId.match(
+			/^workflow-(.+)-user-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:-code)?$/i,
+		);
 		if (!match) {
 			throw new Error(`Invalid thread ID format: ${threadId}`);
 		}

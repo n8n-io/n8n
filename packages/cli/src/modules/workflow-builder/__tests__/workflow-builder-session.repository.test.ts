@@ -53,6 +53,11 @@ describe('WorkflowBuilderSessionRepository', () => {
 		jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQueryBuilder as never);
 	});
 
+	const userId = 'af6cc09d-e809-41c6-9e92-ca26dfd11487';
+	const workflowId = 'wf123';
+	const validThreadId = `workflow-${workflowId}-user-${userId}`;
+	const codeBuilderThreadId = `${validThreadId}-code`;
+
 	describe('parseThreadId', () => {
 		it('should throw error for invalid thread ID format', async () => {
 			await expect(repository.getSession('invalid-thread-id')).rejects.toThrow(
@@ -66,14 +71,40 @@ describe('WorkflowBuilderSessionRepository', () => {
 			);
 		});
 
+		it('should throw error for thread ID with non-uuid user id', async () => {
+			await expect(repository.getSession('workflow-wf123-user-user456')).rejects.toThrow(
+				'Invalid thread ID format: workflow-wf123-user-user456',
+			);
+		});
+
 		it('should throw error for empty thread ID', async () => {
 			await expect(repository.getSession('')).rejects.toThrow('Invalid thread ID format: ');
+		});
+
+		it('should parse thread ID with -code suffix without including the suffix in userId', async () => {
+			entityManager.findOne.mockResolvedValueOnce(null);
+
+			await repository.getSession(codeBuilderThreadId);
+
+			expect(entityManager.findOne).toHaveBeenCalledWith(WorkflowBuilderSession, {
+				where: { workflowId, userId },
+			});
+		});
+
+		it('should parse thread ID where the workflow id itself contains the word "user"', async () => {
+			const trickyWorkflowId = 'wf-with-user-segment-123';
+			const trickyThreadId = `workflow-${trickyWorkflowId}-user-${userId}`;
+			entityManager.findOne.mockResolvedValueOnce(null);
+
+			await repository.getSession(trickyThreadId);
+
+			expect(entityManager.findOne).toHaveBeenCalledWith(WorkflowBuilderSession, {
+				where: { workflowId: trickyWorkflowId, userId },
+			});
 		});
 	});
 
 	describe('getSession', () => {
-		const validThreadId = 'workflow-wf123-user-user456';
-
 		it('should return null when no session exists', async () => {
 			entityManager.findOne.mockResolvedValueOnce(null);
 
@@ -81,7 +112,7 @@ describe('WorkflowBuilderSessionRepository', () => {
 
 			expect(result).toBeNull();
 			expect(entityManager.findOne).toHaveBeenCalledWith(WorkflowBuilderSession, {
-				where: { workflowId: 'wf123', userId: 'user456' },
+				where: { workflowId, userId },
 			});
 		});
 
@@ -96,8 +127,8 @@ describe('WorkflowBuilderSessionRepository', () => {
 			// Use a plain object instead of mock to avoid proxy issues with arrays
 			const entity = {
 				id: 'session-id',
-				workflowId: 'wf123',
-				userId: 'user456',
+				workflowId,
+				userId,
 				messages: storedMessages,
 				previousSummary: 'Previous summary',
 				updatedAt: new Date('2023-12-01T12:00:00Z'),
@@ -119,8 +150,8 @@ describe('WorkflowBuilderSessionRepository', () => {
 		it('should return undefined previousSummary when null in entity', async () => {
 			const entity = new WorkflowBuilderSession();
 			entity.id = 'session-id';
-			entity.workflowId = 'wf123';
-			entity.userId = 'user456';
+			entity.workflowId = workflowId;
+			entity.userId = userId;
 			entity.messages = [];
 			entity.previousSummary = null;
 			entityManager.findOne.mockResolvedValueOnce(entity);
@@ -133,8 +164,8 @@ describe('WorkflowBuilderSessionRepository', () => {
 		it('should return empty messages array when messages fail validation', async () => {
 			const entity = new WorkflowBuilderSession();
 			entity.id = 'session-id';
-			entity.workflowId = 'wf123';
-			entity.userId = 'user456';
+			entity.workflowId = workflowId;
+			entity.userId = userId;
 			entity.messages = [];
 			entity.previousSummary = null;
 			entityManager.findOne.mockResolvedValueOnce(entity);
@@ -146,8 +177,6 @@ describe('WorkflowBuilderSessionRepository', () => {
 	});
 
 	describe('saveSession', () => {
-		const validThreadId = 'workflow-wf123-user-user456';
-
 		it('should upsert session with serialized messages', async () => {
 			const messages = [new HumanMessage('Hello'), new AIMessage('Hi there!')];
 
@@ -160,8 +189,8 @@ describe('WorkflowBuilderSessionRepository', () => {
 			expect(mockQueryBuilder.into).toHaveBeenCalledWith(WorkflowBuilderSession);
 			expect(mockQueryBuilder.values).toHaveBeenCalledWith({
 				id: expect.any(String),
-				workflowId: 'wf123',
-				userId: 'user456',
+				workflowId,
+				userId,
 				messages: expect.any(Array),
 				previousSummary: 'Summary',
 				activeVersionCardId: null,
@@ -172,6 +201,17 @@ describe('WorkflowBuilderSessionRepository', () => {
 				['workflowId', 'userId'],
 			);
 			expect(mockExecute).toHaveBeenCalled();
+		});
+
+		it('should upsert session when the thread id carries the -code suffix', async () => {
+			await repository.saveSession(codeBuilderThreadId, {
+				messages: [],
+				updatedAt: new Date(),
+			});
+
+			expect(mockQueryBuilder.values).toHaveBeenCalledWith(
+				expect.objectContaining({ workflowId, userId }),
+			);
 		});
 
 		it('should set previousSummary to null when undefined', async () => {
@@ -196,16 +236,25 @@ describe('WorkflowBuilderSessionRepository', () => {
 	});
 
 	describe('deleteSession', () => {
-		const validThreadId = 'workflow-wf123-user-user456';
-
 		it('should delete session by workflowId and userId', async () => {
 			entityManager.delete.mockResolvedValueOnce({ affected: 1 } as never);
 
 			await repository.deleteSession(validThreadId);
 
 			expect(entityManager.delete).toHaveBeenCalledWith(WorkflowBuilderSession, {
-				workflowId: 'wf123',
-				userId: 'user456',
+				workflowId,
+				userId,
+			});
+		});
+
+		it('should delete session for a -code suffix thread id', async () => {
+			entityManager.delete.mockResolvedValueOnce({ affected: 1 } as never);
+
+			await repository.deleteSession(codeBuilderThreadId);
+
+			expect(entityManager.delete).toHaveBeenCalledWith(WorkflowBuilderSession, {
+				workflowId,
+				userId,
 			});
 		});
 

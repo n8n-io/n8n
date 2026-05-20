@@ -273,7 +273,11 @@ describe('WorkflowBuilderService', () => {
 			const result = await service.getSessions('workflow-123', mockUser);
 
 			expect(MockedAiWorkflowBuilderService).toHaveBeenCalledTimes(1);
-			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser);
+			expect(mockAiService.getSessions).toHaveBeenCalledWith(
+				'workflow-123',
+				mockUser,
+				undefined,
+			);
 			expect(result).toEqual(mockSessions);
 		});
 
@@ -286,8 +290,20 @@ describe('WorkflowBuilderService', () => {
 
 			const result = await service.getSessions(undefined, mockUser);
 
-			expect(mockAiService.getSessions).toHaveBeenCalledWith(undefined, mockUser);
+			expect(mockAiService.getSessions).toHaveBeenCalledWith(undefined, mockUser, undefined);
 			expect(result).toEqual(mockSessions);
+		});
+
+		it('should forward the isCodeBuilder flag to the underlying service', async () => {
+			const mockSessions = { sessions: [] };
+
+			const mockAiService = mock<AiWorkflowBuilderService>();
+			(mockAiService.getSessions as jest.Mock).mockResolvedValue(mockSessions);
+			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+
+			await service.getSessions('workflow-123', mockUser, true);
+
+			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser, true);
 		});
 	});
 
