@@ -1,10 +1,10 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { StructuredToolInterface } from '@langchain/core/tools';
+import { NodeTypeParser } from '@n8n/ai-utilities/node-catalog';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { PlanOutput } from '../../../types/planning';
 import type { ChatPayload } from '../../../workflow-builder-agent';
-import { NodeTypeParser } from '../../utils/node-type-parser';
 import { ChatSetupHandler, extractNodeNamesFromPlan } from '../chat-setup-handler';
 
 function createMockTool(name: string): StructuredToolInterface {
@@ -172,7 +172,7 @@ describe('ChatSetupHandler', () => {
 		it('uses nodeTypeParser to look up each suggestedNode', async () => {
 			const { llm } = createMockLlm();
 			const nodeTypeParser = new NodeTypeParser([mockHttpRequestNodeType, mockSlackNodeType]);
-			const getNodeTypeSpy = jest.spyOn(nodeTypeParser, 'getNodeType');
+			const getNodeTypeSpy = jest.spyOn(nodeTypeParser, 'getLeanNodeType');
 
 			const tools = [
 				createMockTool('search_nodes'),
@@ -197,7 +197,7 @@ describe('ChatSetupHandler', () => {
 
 			await handler.execute({ payload });
 
-			// formatNodeResult calls getNodeType multiple times per node (for hints, discriminators, etc.)
+			// formatNodeResult calls getLeanNodeType multiple times per node (for hints, discriminators, etc.)
 			// Verify that both node types were looked up
 			const calledNodeIds = new Set(getNodeTypeSpy.mock.calls.map((call) => call[0]));
 			expect(calledNodeIds).toContain('n8n-nodes-base.httpRequest');
@@ -207,7 +207,7 @@ describe('ChatSetupHandler', () => {
 		it('does NOT look up nodes when planOutput is absent', async () => {
 			const { llm } = createMockLlm();
 			const nodeTypeParser = new NodeTypeParser([mockHttpRequestNodeType, mockSlackNodeType]);
-			const getNodeTypeSpy = jest.spyOn(nodeTypeParser, 'getNodeType');
+			const getNodeTypeSpy = jest.spyOn(nodeTypeParser, 'getLeanNodeType');
 
 			const tools = [
 				createMockTool('search_nodes'),
@@ -237,7 +237,7 @@ describe('ChatSetupHandler', () => {
 		it('does NOT look up nodes when plan has no suggestedNodes', async () => {
 			const { llm } = createMockLlm();
 			const nodeTypeParser = new NodeTypeParser([mockHttpRequestNodeType]);
-			const getNodeTypeSpy = jest.spyOn(nodeTypeParser, 'getNodeType');
+			const getNodeTypeSpy = jest.spyOn(nodeTypeParser, 'getLeanNodeType');
 
 			const tools = [
 				createMockTool('search_nodes'),
@@ -278,7 +278,7 @@ describe('ChatSetupHandler', () => {
 				mockSlackNodeType,
 				mockSetNodeType,
 			]);
-			const getNodeTypeSpy = jest.spyOn(nodeTypeParser, 'getNodeType');
+			const getNodeTypeSpy = jest.spyOn(nodeTypeParser, 'getLeanNodeType');
 
 			const tools = [
 				createMockTool('search_nodes'),
@@ -318,7 +318,7 @@ describe('ChatSetupHandler', () => {
 
 			await handler.execute({ payload });
 
-			// Verify all three unique nodes were looked up (getNodeType is called
+			// Verify all three unique nodes were looked up (getLeanNodeType is called
 			// multiple times per node internally by formatNodeResult helpers)
 			const calledNodeIds = new Set(getNodeTypeSpy.mock.calls.map((call) => call[0]));
 			expect(calledNodeIds).toContain('n8n-nodes-base.httpRequest');

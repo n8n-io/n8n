@@ -61,7 +61,7 @@ const nodeCredentialsRecord = z.record(credentialIdByTypeSchema).optional();
 const nodeParametersRecord = z.record(z.record(z.unknown())).optional();
 
 /** Workflow-setup wizard: apply the chosen credentials/parameters. Approval is implied;
- *  the service maps this to `action: 'apply'` for the underlying Mastra resume schema. */
+ *  the service maps this to `action: 'apply'` for the setup resume schema. */
 const setupWorkflowApplyConfirmSchema = z.object({
 	kind: z.literal('setupWorkflowApply'),
 	nodeCredentials: nodeCredentialsRecord,
@@ -69,7 +69,7 @@ const setupWorkflowApplyConfirmSchema = z.object({
 });
 
 /** Workflow-setup wizard: run a test-trigger against a specific node. Approval is implied;
- *  the service maps this to `action: 'test-trigger'` for the underlying Mastra resume schema. */
+ *  the service maps this to `action: 'test-trigger'` for the setup resume schema. */
 const setupWorkflowTestTriggerConfirmSchema = z.object({
 	kind: z.literal('setupWorkflowTestTrigger'),
 	testTriggerNode: z.string(),
