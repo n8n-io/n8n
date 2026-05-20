@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'CreateAgentHistoryTable1784000000010';
+const MIGRATION_NAME = 'CreateAgentHistoryTable1784000000009';
 
 describe('CreateAgentHistoryTable Migration', () => {
 	let dataSource: DataSource;
