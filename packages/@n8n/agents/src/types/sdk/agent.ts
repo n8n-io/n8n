@@ -295,4 +295,6 @@ export interface SerializableAgentState {
 export type AgentPersistenceOptions = {
 	threadId: string;
 	resourceId: string;
+	episodicMemoryNamespace?: string;
+	episodicMemoryResourceId?: string;
 };
