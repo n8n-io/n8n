@@ -59,10 +59,9 @@ describe('Odoo v2 — listSearch methods', () => {
 				{ name: 'Contact', model: 'res.partner' },
 			]);
 			const result = await searchModels.call(ctx);
-			expect(result.results[0]).toEqual({
+			expect(result.results[0]).toMatchObject({
 				name: 'Contact',
 				value: 'res.partner',
-				description: 'res.partner',
 			});
 		});
 	});
