@@ -10,6 +10,13 @@ import { AgentRuntime } from '../runtime/agent-runtime';
 import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
 import { AgentEventBus } from '../runtime/event-bus';
 import { createAgentToolResult } from '../runtime/tool-adapter';
+import {
+	appendSkillCatalogToInstructions,
+	createRuntimeSkillSource,
+	createRuntimeSkillTools,
+	RUNTIME_SKILL_TOOL_NAMES,
+} from '../skills';
+import type { RuntimeSkill, RuntimeSkillSource } from '../skills';
 import type {
 	AgentEventHandler,
 	AgentMiddleware,
@@ -104,6 +111,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private deferredToolSearchTopK: number | undefined;
 
 	private providerTools: BuiltProviderTool[] = [];
+
+	private skillSource?: RuntimeSkillSource;
+
+	private hasRuntimeSkillTool = false;
 
 	private memoryConfig?: MemoryConfig;
 
@@ -204,6 +215,34 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		if (options?.search?.topK !== undefined) {
 			this.deferredToolSearchTopK = options.search.topK;
 		}
+		return this;
+	}
+
+	/**
+	 * Add runtime-loadable skills to the agent. The model sees only a compact
+	 * name/description catalog in the system prompt, then calls `skill_view`
+	 * to retrieve the full instructions for a relevant skill.
+	 */
+	skills(sourceOrSkills: RuntimeSkillSource | RuntimeSkill[]): this {
+		const source = Array.isArray(sourceOrSkills)
+			? createRuntimeSkillSource(sourceOrSkills)
+			: sourceOrSkills;
+
+		if (this.hasRuntimeSkillTool) {
+			this.tools = this.tools.filter((tool) => !RUNTIME_SKILL_TOOL_NAMES.has(tool.name));
+			this.hasRuntimeSkillTool = false;
+		}
+
+		this.skillSource = source;
+		if (source.registry.skills.length === 0) return this;
+
+		const reservedTool = this.tools.find((tool) => RUNTIME_SKILL_TOOL_NAMES.has(tool.name));
+		if (reservedTool) {
+			throw new Error(`Tool name "${reservedTool.name}" is reserved for runtime skills`);
+		}
+
+		this.tools.push(...createRuntimeSkillTools(source));
+		this.hasRuntimeSkillTool = true;
 		return this;
 	}
 
@@ -671,7 +710,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		let finalDeferredTools = configuredDeferredTools;
 		if (this.requireToolApprovalValue) {
 			finalStaticTools = finalTools.map((t) =>
-				t.suspendSchema ? t : wrapToolForApproval(t, { requireApproval: true }),
+				RUNTIME_SKILL_TOOL_NAMES.has(t.name) || t.suspendSchema
+					? t
+					: wrapToolForApproval(t, { requireApproval: true }),
 			);
 			finalDeferredTools = configuredDeferredTools.map((t) =>
 				t.suspendSchema ? t : wrapToolForApproval(t, { requireApproval: true }),
@@ -708,7 +749,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		// Detect collisions between direct, deferred, and MCP tools.
 		const staticNames = new Set(finalStaticTools.map((t) => t.name));
-		const reservedDeferredToolNames = new Set([SEARCH_TOOLS_TOOL_NAME, LOAD_TOOL_TOOL_NAME]);
+		const reservedDeferredToolNames = new Set([
+			SEARCH_TOOLS_TOOL_NAME,
+			LOAD_TOOL_TOOL_NAME,
+			...RUNTIME_SKILL_TOOL_NAMES,
+		]);
 		const deferredNames = new Set<string>();
 		const deferredCollisions: string[] = [];
 		for (const tool of finalDeferredTools) {
@@ -756,6 +801,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			: undefined;
 
 		let instructions = this.instructionsText;
+		if (this.skillSource) {
+			instructions = appendSkillCatalogToInstructions(instructions, this.skillSource.registry);
+		}
 		if (this.workspaceInstance) {
 			const wsInstructions = this.workspaceInstance.getInstructions();
 			if (wsInstructions) {

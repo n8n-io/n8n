@@ -41,6 +41,7 @@
     "@openrouter/ai-sdk-provider": "catalog:",
     "ai": "^6.0.116",
     "ajv": "^8.18.0",
+    "yaml": "catalog:",
     "zod": "catalog:"
   },
   "peerDependencies": {
