@@ -184,6 +184,7 @@ import { CreateMcpRegistryServerTable1784000000005 } from '../common/17840000000
 import { AddNodeGroupsColumnToWorkflowAndHistory1784000000006 } from '../common/1784000000006-AddNodeGroupsColumnToWorkflowAndHistory';
 import { CreateInstanceAiCheckpointTable1784000000007 } from '../common/1784000000007-CreateInstanceAiCheckpointTable';
 import { ResetInstanceAiNativePersistence1784000000008 } from '../common/1784000000008-ResetInstanceAiNativePersistence';
+import { CreateAgentHistoryTable1784000000009 } from '../common/1784000000009-CreateAgentHistoryTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -373,4 +374,5 @@ export const postgresMigrations: Migration[] = [
 	AddNodeGroupsColumnToWorkflowAndHistory1784000000006,
 	CreateInstanceAiCheckpointTable1784000000007,
 	ResetInstanceAiNativePersistence1784000000008,
+	CreateAgentHistoryTable1784000000009,
 ];

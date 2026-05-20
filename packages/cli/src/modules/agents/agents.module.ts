@@ -22,10 +22,8 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionService } = await import('./agent-execution.service');
 		Container.get(AgentExecutionService);
 
-		const { AgentPublishedVersionRepository } = await import(
-			'./repositories/agent-published-version.repository'
-		);
-		Container.get(AgentPublishedVersionRepository);
+		const { AgentHistoryRepository } = await import('./repositories/agent-history.repository');
+		Container.get(AgentHistoryRepository);
 
 		// Register the sandboxed runtime service (lazy — the V8 isolate is only
 		// created on first use, so this import has negligible startup cost).
@@ -94,7 +92,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity');
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity');
 		const { AgentExecution } = await import('./entities/agent-execution.entity');
-		const { AgentPublishedVersion } = await import('./entities/agent-published-version.entity');
+		const { AgentHistory } = await import('./entities/agent-history.entity');
 		const { AgentObservationEntity } = await import('./entities/agent-observation.entity');
 		const { AgentObservationCursorEntity } = await import(
 			'./entities/agent-observation-cursor.entity'
@@ -109,7 +107,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentMessageEntity,
 			AgentExecutionThread,
 			AgentExecution,
-			AgentPublishedVersion,
+			AgentHistory,
 			AgentObservationEntity,
 			AgentObservationCursorEntity,
 			AgentObservationLockEntity,

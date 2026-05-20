@@ -18,6 +18,7 @@ import {
 	UpdateAgentScheduleDto,
 	UpdateAgentSkillDto,
 	AgentDisconnectIntegrationDto,
+	PublishAgentDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
@@ -397,8 +398,14 @@ export class AgentsController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
+		@Body payload: PublishAgentDto,
 	) {
-		const agent = await this.agentsService.publishAgent(agentId, req.params.projectId, req.user.id);
+		const agent = await this.agentsService.publishAgent(
+			agentId,
+			req.params.projectId,
+			req.user.id,
+			payload?.versionId,
+		);
 		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
@@ -700,7 +707,7 @@ export class AgentsController {
 		const { credentialId } = integration;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		if (!agent.publishedVersion)
+		if (!agent.activeVersionId)
 			throw new ConflictError(
 				`Agent "${agentId}" must be published before connecting an integration`,
 			);

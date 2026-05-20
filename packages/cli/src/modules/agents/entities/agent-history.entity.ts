@@ -4,21 +4,30 @@ import { JsonColumn, User, WithTimestamps } from '@n8n/db';
 import {
 	Column,
 	Entity,
+	Index,
 	JoinColumn,
 	ManyToOne,
-	OneToOne,
 	PrimaryColumn,
 	type Relation,
 } from '@n8n/typeorm';
 
 import type { Agent } from './agent.entity';
 
-@Entity({ name: 'agent_published_version' })
-export class AgentPublishedVersion extends WithTimestamps {
+/**
+ * Immutable snapshot of an agent's published state. Created on publish and
+ * never mutated. The currently-active row for an agent is the one pointed to
+ * by `Agent.activeVersionId`.
+ */
+@Entity({ name: 'agent_history' })
+export class AgentHistory extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
+	versionId: string;
+
+	@Index()
+	@Column({ type: 'varchar', length: 36 })
 	agentId: string;
 
-	@OneToOne('Agent', { onDelete: 'CASCADE' })
+	@ManyToOne('Agent', { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'agentId' })
 	agent: Relation<Agent>;
 
@@ -36,22 +45,6 @@ export class AgentPublishedVersion extends WithTimestamps {
 
 	@JsonColumn({ nullable: true, default: null })
 	skills: Record<string, AgentSkill> | null;
-
-	/**
-	 * The agent's draft versionId at the time this snapshot was published.
-	 * Compared against Agent.versionId to detect draft divergence from the published version.
-	 */
-	@Column({ type: 'varchar', length: 36 })
-	publishedFromVersionId: string;
-
-	@Column({ type: 'varchar', length: 128, nullable: true })
-	model: string | null;
-
-	@Column({ type: 'varchar', length: 128, nullable: true })
-	provider: string | null;
-
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	credentialId: string | null;
 
 	@Column({ type: 'uuid', nullable: true })
 	publishedById: string | null;
