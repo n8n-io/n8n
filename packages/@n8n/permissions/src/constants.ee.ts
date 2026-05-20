@@ -91,6 +91,7 @@ export const API_KEY_RESOURCES = {
 	dataTableColumn: ['create', 'read', 'delete', 'update'] as const,
 	folder: ['create', 'delete', 'read', 'update', 'list'] as const,
 	insights: ['read'] as const,
+	n8nPackage: ['export'] as const,
 } as const;
 
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';
