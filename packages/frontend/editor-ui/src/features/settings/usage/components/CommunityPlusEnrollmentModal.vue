@@ -193,8 +193,4 @@ const confirm = async () => {
 	justify-content: space-between;
 	align-items: center;
 }
-
-.skip {
-	padding: 0;
-}
 </style>

@@ -109,7 +109,7 @@ import { ExecutionContextService } from './execution-context.service';
 export const establishExecutionContext = async (
 	workflow: Workflow,
 	runExecutionData: IRunExecutionData,
-	additionalData: IWorkflowExecuteAdditionalData,
+	additionalData: IWorkflowExecuteAdditionalData | undefined,
 	mode: WorkflowExecuteMode,
 ): Promise<void> => {
 	assertExecutionDataExists(runExecutionData.executionData, workflow, additionalData, mode);
@@ -129,6 +129,10 @@ export const establishExecutionContext = async (
 		version: 1,
 		establishedAt: Date.now(),
 		source: mode,
+		redaction: {
+			version: 1,
+			policy: workflow.settings?.redactionPolicy ?? 'none',
+		},
 	};
 
 	if (runExecutionData.parentExecution) {

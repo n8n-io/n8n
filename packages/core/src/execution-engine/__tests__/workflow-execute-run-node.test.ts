@@ -29,12 +29,16 @@ jest.mock('@/errors/error-reporter', () => ({
 	},
 }));
 
-jest.mock('../node-execution-context', () => ({
-	ExecuteContext: jest.fn().mockImplementation(() => ({
-		hints: [],
-	})),
-	PollContext: jest.fn().mockImplementation(() => ({})),
-}));
+jest.mock('../node-execution-context', () => {
+	const actual = jest.requireActual('../node-execution-context');
+	return {
+		...actual,
+		ExecuteContext: jest.fn().mockImplementation(() => ({
+			hints: [],
+		})),
+		PollContext: jest.fn().mockImplementation(() => ({})),
+	};
+});
 
 jest.mock('../triggers-and-pollers', () => ({
 	TriggersAndPollers: jest.fn(),
@@ -557,6 +561,286 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			expect(closeFunction1).toHaveBeenCalled();
 			expect(closeFunction2).toHaveBeenCalled();
 		});
+
+		it('should call close functions when execute returns an EngineRequest', async () => {
+			const engineRequest = { actions: [{ type: 'test' }], metadata: {} };
+			const closeFunction1 = jest.fn().mockResolvedValue(undefined);
+			const closeFunction2 = jest.fn().mockResolvedValue(undefined);
+
+			mockNodeType.execute = jest.fn().mockResolvedValue(engineRequest);
+
+			const mockContextInstance = {
+				hints: [],
+			};
+
+			mockExecuteContext.mockImplementation(
+				(
+					_workflow,
+					_node,
+					_additionalData,
+					_mode,
+					_runExecutionData,
+					_runIndex,
+					_connectionInputData,
+					_inputData,
+					_executionData,
+					closeFunctions,
+				) => {
+					closeFunctions.push(closeFunction1, closeFunction2);
+					return mockContextInstance as unknown as ExecuteContext;
+				},
+			);
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				mockExecutionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(result).toEqual(engineRequest);
+			expect(closeFunction1).toHaveBeenCalled();
+			expect(closeFunction2).toHaveBeenCalled();
+		});
+
+		it('should call close functions when execute throws an error', async () => {
+			const closeFunction1 = jest.fn().mockResolvedValue(undefined);
+			const closeFunction2 = jest.fn().mockResolvedValue(undefined);
+
+			mockNodeType.execute = jest.fn().mockRejectedValue(new Error('Execution failed'));
+
+			const mockContextInstance = {
+				hints: [],
+			};
+
+			mockExecuteContext.mockImplementation(
+				(
+					_workflow,
+					_node,
+					_additionalData,
+					_mode,
+					_runExecutionData,
+					_runIndex,
+					_connectionInputData,
+					_inputData,
+					_executionData,
+					closeFunctions,
+				) => {
+					closeFunctions.push(closeFunction1, closeFunction2);
+					return mockContextInstance as unknown as ExecuteContext;
+				},
+			);
+
+			await expect(
+				workflowExecute.runNode(
+					mockWorkflow,
+					mockExecutionData,
+					mockRunExecutionData,
+					0,
+					mockAdditionalData,
+					'manual',
+				),
+			).rejects.toThrow('Execution failed');
+
+			expect(closeFunction1).toHaveBeenCalled();
+			expect(closeFunction2).toHaveBeenCalled();
+		});
+
+		it('should call all close functions via Promise.allSettled even when some fail', async () => {
+			const mockData = [[{ json: { result: 'test' } }]];
+			const closeFunction1 = jest.fn().mockResolvedValue(undefined);
+			const closeFunction2 = jest.fn().mockRejectedValue(new Error('Close error 1'));
+			const closeFunction3 = jest.fn().mockResolvedValue(undefined);
+
+			mockNodeType.execute = jest.fn().mockResolvedValue(mockData);
+
+			const mockContextInstance = {
+				hints: [],
+			};
+
+			mockExecuteContext.mockImplementation(
+				(
+					_workflow,
+					_node,
+					_additionalData,
+					_mode,
+					_runExecutionData,
+					_runIndex,
+					_connectionInputData,
+					_inputData,
+					_executionData,
+					closeFunctions,
+				) => {
+					closeFunctions.push(closeFunction1, closeFunction2, closeFunction3);
+					return mockContextInstance as unknown as ExecuteContext;
+				},
+			);
+
+			await expect(
+				workflowExecute.runNode(
+					mockWorkflow,
+					mockExecutionData,
+					mockRunExecutionData,
+					0,
+					mockAdditionalData,
+					'manual',
+				),
+			).rejects.toThrow('Close error 1');
+
+			expect(closeFunction1).toHaveBeenCalled();
+			expect(closeFunction2).toHaveBeenCalled();
+			expect(closeFunction3).toHaveBeenCalled();
+		});
+
+		it('should throw close function error when EngineRequest is returned', async () => {
+			const engineRequest = { actions: [{ type: 'test' }], metadata: {} };
+			const closeFunction1 = jest.fn().mockRejectedValue(new Error('Close error on EngineRequest'));
+
+			mockNodeType.execute = jest.fn().mockResolvedValue(engineRequest);
+
+			const mockContextInstance = {
+				hints: [],
+			};
+
+			mockExecuteContext.mockImplementation(
+				(
+					_workflow,
+					_node,
+					_additionalData,
+					_mode,
+					_runExecutionData,
+					_runIndex,
+					_connectionInputData,
+					_inputData,
+					_executionData,
+					closeFunctions,
+				) => {
+					closeFunctions.push(closeFunction1);
+					return mockContextInstance as unknown as ExecuteContext;
+				},
+			);
+
+			await expect(
+				workflowExecute.runNode(
+					mockWorkflow,
+					mockExecutionData,
+					mockRunExecutionData,
+					0,
+					mockAdditionalData,
+					'manual',
+				),
+			).rejects.toThrow('Close error on EngineRequest');
+
+			expect(closeFunction1).toHaveBeenCalled();
+		});
+
+		it('should call close functions after custom operation completes', async () => {
+			const mockData = [[{ json: { result: 'custom operation result' } }]];
+			const mockCustomOperation = jest.fn().mockResolvedValue(mockData);
+			const closeFunction1 = jest.fn().mockResolvedValue(undefined);
+			const closeFunction2 = jest.fn().mockResolvedValue(undefined);
+
+			const customOpNode = {
+				...mockNode,
+				parameters: {
+					resource: 'testResource',
+					operation: 'testOperation',
+				},
+			};
+
+			const customOpNodeType = {
+				...mockNodeType,
+				customOperations: {
+					testResource: {
+						testOperation: mockCustomOperation,
+					},
+				},
+				execute: undefined,
+			};
+
+			mockWorkflow.nodeTypes.getByNameAndVersion = jest.fn().mockReturnValue(customOpNodeType);
+
+			const customOpExecutionData = {
+				...mockExecutionData,
+				node: customOpNode,
+			};
+
+			const mockContextInstance = { hints: [] };
+			mockExecuteContext.mockImplementation(
+				(
+					_workflow,
+					_node,
+					_additionalData,
+					_mode,
+					_runExecutionData,
+					_runIndex,
+					_connectionInputData,
+					_inputData,
+					_executionData,
+					closeFunctions,
+				) => {
+					closeFunctions.push(closeFunction1, closeFunction2);
+					return mockContextInstance as unknown as ExecuteContext;
+				},
+			);
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				customOpExecutionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(mockCustomOperation).toHaveBeenCalled();
+			expect(result).toEqual({ data: mockData, hints: [] });
+			expect(closeFunction1).toHaveBeenCalled();
+			expect(closeFunction2).toHaveBeenCalled();
+		});
+
+		it('should not mask execution error with close function error', async () => {
+			const closeFunction1 = jest.fn().mockRejectedValue(new Error('Close error'));
+
+			mockNodeType.execute = jest.fn().mockRejectedValue(new Error('Execution failed'));
+
+			const mockContextInstance = {
+				hints: [],
+			};
+
+			mockExecuteContext.mockImplementation(
+				(
+					_workflow,
+					_node,
+					_additionalData,
+					_mode,
+					_runExecutionData,
+					_runIndex,
+					_connectionInputData,
+					_inputData,
+					_executionData,
+					closeFunctions,
+				) => {
+					closeFunctions.push(closeFunction1);
+					return mockContextInstance as unknown as ExecuteContext;
+				},
+			);
+
+			await expect(
+				workflowExecute.runNode(
+					mockWorkflow,
+					mockExecutionData,
+					mockRunExecutionData,
+					0,
+					mockAdditionalData,
+					'manual',
+				),
+			).rejects.toThrow('Execution failed');
+
+			expect(closeFunction1).toHaveBeenCalled();
+		});
 	});
 
 	describe('poll node type handling', () => {
@@ -1018,6 +1302,297 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 			// Should return undefined because first input is empty and we use first input in v0
 			expect(result).toEqual({ data: undefined });
+		});
+	});
+
+	describe('customTelemetryTags', () => {
+		let getParameterValue: jest.Mock;
+
+		beforeEach(() => {
+			getParameterValue = jest.fn();
+			mockWorkflow.expression = {
+				getParameterValue,
+			} as unknown as Workflow['expression'];
+
+			mockAdditionalData.webhookWaitingBaseUrl = 'https://n8n.local/webhook-waiting';
+			mockAdditionalData.formWaitingBaseUrl = 'https://n8n.local/form-waiting';
+			mockAdditionalData.variables = {};
+
+			mockNodeType.execute = jest.fn().mockResolvedValue([[{ json: {} }]]);
+			const mockContextInstance = { hints: [] };
+			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
+		});
+
+		const makeTelemetryExecutionData = (overrides: Partial<IExecuteData> = {}): IExecuteData => ({
+			...mockExecutionData,
+			data: { main: [[{ json: { env: 'prod' } }]] },
+			source: null,
+			...overrides,
+		});
+
+		const runNodeForTelemetry = async (executionData: IExecuteData) => {
+			await workflowExecute.runNode(
+				mockWorkflow,
+				executionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+		};
+
+		it('evaluates tag expressions and writes them into metadata.tracing', async () => {
+			const node: INode = {
+				...mockNode,
+				customTelemetryTags: {
+					tag: [
+						{ key: 'env', value: '={{ $json.env }}' },
+						{ key: 'static', value: 'foo' },
+					],
+				},
+			};
+			getParameterValue.mockImplementation((value: string) =>
+				value === '={{ $json.env }}' ? 'prod' : value,
+			);
+
+			const executionData = makeTelemetryExecutionData({ node });
+
+			await runNodeForTelemetry(executionData);
+
+			expect(executionData.metadata?.tracing).toEqual({ env: 'prod', static: 'foo' });
+		});
+
+		it('preserves existing tracing entries on key collision', async () => {
+			const node: INode = {
+				...mockNode,
+				customTelemetryTags: {
+					tag: [{ key: 'env', value: 'user-set' }],
+				},
+			};
+			getParameterValue.mockReturnValue('user-set');
+
+			const executionData = makeTelemetryExecutionData({
+				node,
+				metadata: { tracing: { env: 'node-authored' } },
+			});
+
+			await runNodeForTelemetry(executionData);
+
+			expect(executionData.metadata?.tracing).toEqual({ env: 'node-authored' });
+		});
+
+		it('skips tags with empty or whitespace keys', async () => {
+			const node: INode = {
+				...mockNode,
+				customTelemetryTags: {
+					tag: [
+						{ key: '   ', value: 'ignored' },
+						{ key: 'kept', value: 'value' },
+					],
+				},
+			};
+			getParameterValue.mockImplementation((value: string) => value);
+
+			const executionData = makeTelemetryExecutionData({ node });
+
+			await runNodeForTelemetry(executionData);
+
+			expect(executionData.metadata?.tracing).toEqual({ kept: 'value' });
+		});
+
+		it('preserves string, number, and boolean evaluated values', async () => {
+			const node: INode = {
+				...mockNode,
+				customTelemetryTags: {
+					tag: [
+						{ key: 'count', value: '={{ 42 }}' },
+						{ key: 'enabled', value: '={{ true }}' },
+					],
+				},
+			};
+			getParameterValue.mockImplementation((value: string) => (value === '={{ 42 }}' ? 42 : true));
+
+			const executionData = makeTelemetryExecutionData({ node });
+
+			await runNodeForTelemetry(executionData);
+
+			expect(executionData.metadata?.tracing).toEqual({ count: 42, enabled: true });
+		});
+
+		it('skips tags when expression evaluates to a non-primitive value', async () => {
+			const node: INode = {
+				...mockNode,
+				customTelemetryTags: {
+					tag: [
+						{ key: 'obj', value: '={{ $json }}' },
+						{ key: 'ok', value: 'still-here' },
+					],
+				},
+			};
+			getParameterValue.mockImplementation((value: string) =>
+				value === '={{ $json }}' ? { nested: 1 } : value,
+			);
+
+			const executionData = makeTelemetryExecutionData({ node });
+
+			await runNodeForTelemetry(executionData);
+
+			expect(executionData.metadata?.tracing).toEqual({ ok: 'still-here' });
+		});
+
+		it('ignores tags whose expression evaluates to null or undefined', async () => {
+			const node: INode = {
+				...mockNode,
+				customTelemetryTags: {
+					tag: [
+						{ key: 'maybe', value: '={{ $json.missing }}' },
+						{ key: 'definitely', value: 'value' },
+					],
+				},
+			};
+			getParameterValue.mockImplementation((value: string) =>
+				value === '={{ $json.missing }}' ? undefined : value,
+			);
+
+			const executionData = makeTelemetryExecutionData({ node });
+
+			await runNodeForTelemetry(executionData);
+
+			expect(executionData.metadata?.tracing).toEqual({ definitely: 'value' });
+		});
+
+		it('does not modify metadata when customTelemetryTags is absent', async () => {
+			const executionData = makeTelemetryExecutionData();
+
+			await runNodeForTelemetry(executionData);
+
+			expect(executionData.metadata).toBeUndefined();
+		});
+
+		it('continues evaluating remaining tags after one expression throws', async () => {
+			const node: INode = {
+				...mockNode,
+				customTelemetryTags: {
+					tag: [
+						{ key: 'broken', value: '={{ $json.missing.deep }}' },
+						{ key: 'ok', value: 'value' },
+					],
+				},
+			};
+			getParameterValue.mockImplementation((value: string) => {
+				if (value === '={{ $json.missing.deep }}') throw new Error('boom');
+				return value;
+			});
+
+			const executionData = makeTelemetryExecutionData({ node });
+
+			await runNodeForTelemetry(executionData);
+
+			expect(executionData.metadata?.tracing).toEqual({ ok: 'value' });
+		});
+
+		it('writes tracing for trigger nodes', async () => {
+			const node: INode = {
+				...mockNode,
+				customTelemetryTags: {
+					tag: [{ key: 'env', value: 'prod' }],
+				},
+			};
+			getParameterValue.mockReturnValue('prod');
+
+			mockNodeType.trigger = jest.fn();
+			mockNodeType.execute = undefined;
+			mockNodeType.poll = undefined;
+			mockNodeType.webhook = undefined;
+
+			const mockTriggersAndPollersInstance = {
+				runTrigger: jest.fn().mockResolvedValue({
+					manualTriggerResponse: Promise.resolve([[{ json: { triggered: 'data' } }]]),
+				}),
+			};
+			mockContainer.get.mockImplementation((token) => {
+				if (token === TriggersAndPollers) return mockTriggersAndPollersInstance;
+				return { sentry: { backendDsn: '' } };
+			});
+
+			const executionData = makeTelemetryExecutionData({ node });
+
+			await runNodeForTelemetry(executionData);
+
+			expect(executionData.metadata?.tracing).toEqual({ env: 'prod' });
+		});
+
+		it('writes tracing for poll nodes in non-manual mode', async () => {
+			const node: INode = {
+				...mockNode,
+				customTelemetryTags: {
+					tag: [{ key: 'env', value: 'staging' }],
+				},
+			};
+			getParameterValue.mockReturnValue('staging');
+
+			mockNodeType.poll = jest.fn();
+			mockNodeType.execute = undefined;
+
+			const executionData = makeTelemetryExecutionData({ node });
+
+			await workflowExecute.runNode(
+				mockWorkflow,
+				executionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'trigger',
+			);
+
+			expect(executionData.metadata?.tracing).toEqual({ env: 'staging' });
+		});
+
+		it('writes tracing when execution uses a custom operation instead of execute()', async () => {
+			const mockData = [[{ json: { result: 'custom operation result' } }]];
+			const mockCustomOperation = jest.fn().mockResolvedValue(mockData);
+
+			const customOpNode: INode = {
+				...mockNode,
+				parameters: {
+					resource: 'testResource',
+					operation: 'testOperation',
+				},
+				customTelemetryTags: {
+					tag: [{ key: 'env', value: '={{ $json.env }}' }],
+				},
+			};
+
+			const customOpNodeType = {
+				...mockNodeType,
+				customOperations: {
+					testResource: {
+						testOperation: mockCustomOperation,
+					},
+				},
+				execute: undefined,
+			};
+
+			mockWorkflow.nodeTypes.getByNameAndVersion = jest.fn().mockReturnValue(customOpNodeType);
+
+			getParameterValue.mockImplementation((value: string) =>
+				value === '={{ $json.env }}' ? 'prod' : value,
+			);
+
+			const executionData = makeTelemetryExecutionData({ node: customOpNode });
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				executionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(mockCustomOperation).toHaveBeenCalled();
+			expect(result).toEqual({ data: mockData, hints: [] });
+			expect(executionData.metadata?.tracing).toEqual({ env: 'prod' });
 		});
 	});
 });

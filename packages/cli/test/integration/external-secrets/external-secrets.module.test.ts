@@ -59,6 +59,7 @@ describe('ExternalSecretsModule', () => {
 
 			const config = Container.get(ExternalSecretsConfig);
 			config.externalSecretsForProjects = false;
+			config.externalSecretsMultipleConnections = false;
 
 			module = Container.get(ExternalSecretsModule);
 
@@ -149,12 +150,14 @@ describe('ExternalSecretsModule', () => {
 				providerKey: 'my-vault',
 				type: 'dummy',
 				encryptedSettings,
+				isEnabled: true,
 			});
 
 			await connectionRepository.save({
 				providerKey: 'another-vault',
 				type: 'another_dummy',
 				encryptedSettings,
+				isEnabled: true,
 			});
 		});
 

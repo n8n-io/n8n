@@ -21,10 +21,12 @@ export class DynamicCredentialsModule implements ModuleInterface {
 			DynamicCredentialResolverRegistry,
 			DynamicCredentialStorageService,
 			DynamicCredentialService,
+			N8nResolverSeeder,
 		} = await import('./services');
 		await import('./workflow-status.controller');
 
 		await Container.get(DynamicCredentialResolverRegistry).init();
+		await Container.get(N8nResolverSeeder).seed();
 
 		// Register the credential resolution provider with CredentialsHelper
 		const { DynamicCredentialsProxy } = await import('../../credentials/dynamic-credentials-proxy');
@@ -46,6 +48,16 @@ export class DynamicCredentialsModule implements ModuleInterface {
 		);
 
 		return [DynamicCredentialResolver, DynamicCredentialEntry, DynamicCredentialUserEntry];
+	}
+
+	async context() {
+		if (!isFeatureFlagEnabled()) {
+			return {};
+		}
+		const { CredentialCheckProxyService } = await import(
+			'./services/credential-check-proxy.service'
+		);
+		return { credentialCheckProxy: Container.get(CredentialCheckProxyService) };
 	}
 
 	@OnShutdown()

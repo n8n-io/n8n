@@ -1,6 +1,6 @@
 import { FROM_AI_AUTO_GENERATED_MARKER } from 'n8n-workflow';
 
-import type { Expression, ExpressionContext, FromAIArgumentType } from '../types/base';
+import type { FromAIArgumentType, NodeInstance } from '../types/base';
 
 /**
  * Parse n8n expression string to extract the inner expression
@@ -20,148 +20,6 @@ export function isExpression(value: unknown): boolean {
 }
 
 /**
- * Create a proxy-based context that tracks property accesses
- */
-function createExpressionProxy(path: string[] = []): unknown {
-	const handler: ProxyHandler<object> = {
-		get(_target, prop) {
-			if (prop === Symbol.toPrimitive || prop === 'valueOf' || prop === 'toString') {
-				return () => buildPath(path);
-			}
-			if (prop === '__path__') {
-				return path;
-			}
-			if (typeof prop === 'symbol') {
-				return undefined;
-			}
-			return createExpressionProxy([...path, String(prop)]);
-		},
-		apply(_target, _thisArg, args) {
-			// Handle function calls like $('NodeName') or input.first()
-			const lastPart = path[path.length - 1];
-			const parentPath = path.slice(0, -1);
-
-			if (lastPart === 'keys' && parentPath.join('.') === 'binary') {
-				// Special case: $.binary.keys() -> Object.keys($binary)
-				return { __path__: ['__SPECIAL__', 'Object.keys($binary)'] };
-			}
-
-			// Handle $('NodeName') syntax
-			if (path.length === 1 && path[0] === '$') {
-				const nodeName = String(args[0]);
-				return createExpressionProxy(['$', `('${nodeName}')`, 'item']);
-			}
-
-			// Regular function call like input.first()
-			const argsStr = args.map((a) => JSON.stringify(a)).join(', ');
-			return createExpressionProxy([...parentPath, `${lastPart}(${argsStr})`]);
-		},
-	};
-
-	return new Proxy(function () {}, handler);
-}
-
-/**
- * Mapping from expression context property names to n8n expression roots.
- * Maps SDK property names (e.g., 'json') to their n8n equivalents (e.g., '$json').
- */
-const EXPRESSION_ROOT_MAPPINGS: Record<string, string> = {
-	json: '$json',
-	binary: '$binary',
-	env: '$env',
-	vars: '$vars',
-	secrets: '$secrets',
-	itemIndex: '$itemIndex',
-	runIndex: '$runIndex',
-	now: '$now',
-	today: '$today',
-	execution: '$execution',
-	workflow: '$workflow',
-	input: '$input',
-	$: '$',
-} as const;
-
-/**
- * Build the expression path string
- */
-function buildPath(path: string[]): string {
-	if (path.length === 0) return '';
-
-	// Handle special paths
-	if (path[0] === '__SPECIAL__') {
-		return path[1];
-	}
-
-	let result = '';
-	for (let i = 0; i < path.length; i++) {
-		const part = path[i];
-
-		// Handle the root expression context
-		if (i === 0) {
-			result = EXPRESSION_ROOT_MAPPINGS[part] ?? part;
-			continue;
-		}
-
-		// Handle function call notation
-		if (part.startsWith('(')) {
-			result += part;
-			continue;
-		}
-
-		// Handle method calls
-		if (part.includes('(')) {
-			result += '.' + part;
-			continue;
-		}
-
-		// Regular property access
-		result += '.' + part;
-	}
-
-	return result;
-}
-
-/**
- * Serialize an expression function to n8n expression string
- *
- * Uses a proxy-based approach to capture property accesses from the
- * expression function and convert them to n8n expression format.
- *
- * @param fn - Expression function like $ => $.json.name
- * @returns n8n expression string like '={{ $json.name }}'
- *
- * @example
- * ```typescript
- * serializeExpression($ => $.json.name)        // '={{ $json.name }}'
- * serializeExpression($ => $('Config').json.x) // "={{ $('Config').item.json.x }}"
- * serializeExpression($ => $.env.API_TOKEN)    // '={{ $env.API_TOKEN }}'
- * ```
- */
-export function serializeExpression<T>(fn: Expression<T>): string {
-	// Create a proxy to capture the expression
-	const proxy = createExpressionProxy([]) as ExpressionContext;
-
-	// Execute the function with the proxy
-	const result = fn(proxy);
-
-	// Extract the path from the result
-	let exprPath: string;
-
-	if (result && typeof result === 'object' && '__path__' in result) {
-		const path = (result as { __path__: string[] }).__path__;
-		exprPath = buildPath(path);
-	} else if (typeof result === 'string') {
-		// Handle template literals - need special processing
-		// For now, return as-is if it's a string
-		exprPath = String(result);
-	} else {
-		exprPath = String(result);
-	}
-
-	return `={{ ${exprPath} }}`;
-}
-
-/**
  * Mark a string as an n8n expression by adding the required '=' prefix.
  *
  * Use this for any parameter value that contains {{ }} expression syntax.
@@ -178,17 +36,6 @@ export function serializeExpression<T>(fn: Expression<T>): string {
  * expr('={{ $json.x }}')             // '={{ $json.x }}' (strips redundant =)
  * ```
  */
-function isPlaceholderLike(value: unknown): value is { __placeholder: true; hint: string } {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'__placeholder' in value &&
-		(value as Record<string, unknown>).__placeholder === true &&
-		'hint' in value &&
-		typeof (value as Record<string, unknown>).hint === 'string'
-	);
-}
-
 function isNewCredentialLike(value: unknown): value is { __newCredential: true; name: string } {
 	return (
 		typeof value === 'object' &&
@@ -202,15 +49,10 @@ function isNewCredentialLike(value: unknown): value is { __newCredential: true; 
 
 export function expr(expression: string): string {
 	if (typeof expression !== 'string') {
-		// At runtime, the AST interpreter may pass non-string values (e.g. PlaceholderImpl objects).
+		// At runtime, the AST interpreter may pass non-string values (e.g. NewCredentialImpl objects).
 		// TypeScript narrows to `never` here since the param is typed as `string`,
 		// so we re-bind as `unknown` to perform runtime type checks.
 		const value: unknown = expression;
-		if (isPlaceholderLike(value)) {
-			throw new Error(
-				`expr(placeholder('${value.hint}')) is invalid. Use placeholder() directly as the value, not inside expr().`,
-			);
-		}
 		if (isNewCredentialLike(value)) {
 			throw new Error(
 				`expr(newCredential('${value.name}')) is invalid. Use newCredential() directly in the credentials config, not inside expr().`,
@@ -221,6 +63,66 @@ export function expr(expression: string): string {
 	// Strip any leading '=' to prevent double-equals patterns from LLM output
 	const normalized = expression.startsWith('=') ? expression.slice(1) : expression;
 	return '=' + normalized;
+}
+
+// =============================================================================
+// Explicit Node JSON Reference Generator
+// =============================================================================
+
+type NodeJsonReference = NodeInstance<string, string, unknown> | string;
+
+const IDENTIFIER_PATH_SEGMENT = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
+function resolveNodeName(node: NodeJsonReference): string {
+	return typeof node === 'string' ? node : node.name;
+}
+
+function escapeNodeName(nodeName: string): string {
+	return nodeName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function normalizePath(path: string | readonly string[]): string[] {
+	const segments = typeof path === 'string' ? path.split('.') : [...path];
+	const normalized = segments.map((segment) => segment.trim());
+
+	if (normalized.length === 0 || normalized.some((segment) => segment.length === 0)) {
+		throw new Error('nodeJson() requires a non-empty JSON path.');
+	}
+
+	return normalized;
+}
+
+function formatPathSegment(segment: string): string {
+	if (IDENTIFIER_PATH_SEGMENT.test(segment)) {
+		return `.${segment}`;
+	}
+
+	return `[${JSON.stringify(segment)}]`;
+}
+
+/**
+ * Build an expression that references JSON data from a specific node by name.
+ *
+ * Prefer this over `$json` when a value comes from an AI subnode, a fan-in
+ * branch, or any node other than the immediate main-flow predecessor.
+ *
+ * @example
+ * ```typescript
+ * nodeJson(telegramTrigger, 'message.chat.id')
+ * // "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+ *
+ * nodeJson('Set User', ['profile', 'user-id'])
+ * // "={{ $('Set User').item.json.profile[\"user-id\"] }}"
+ * ```
+ */
+export function nodeJson(node: NodeJsonReference, path: string | readonly string[]): string {
+	const nodeName = resolveNodeName(node);
+	if (!nodeName) {
+		throw new Error('nodeJson() requires a node or node name.');
+	}
+
+	const pathExpression = normalizePath(path).map(formatPathSegment).join('');
+	return `={{ $('${escapeNodeName(nodeName)}').item.json${pathExpression} }}`;
 }
 
 // =============================================================================

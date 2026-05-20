@@ -4,9 +4,9 @@ import { Time } from '@n8n/constants';
 import { MultiMainMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
+import assert from 'node:assert';
 
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { RedisClientService } from '@/services/redis-client.service';
+import { LeaderElectionClient } from '@/scaling/leader-election-client';
 import { TypedEmitter } from '@/typed-emitter';
 
 type MultiMainEvents = {
@@ -28,31 +28,37 @@ type MultiMainEvents = {
 /** Designates leader and followers when running multiple main processes. */
 @Service()
 export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
+	private leaderCheckInterval: NodeJS.Timeout | undefined;
+
+	private leaderCheckInProgress = false;
+
+	private get hostId() {
+		return this.instanceSettings.hostId;
+	}
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly publisher: Publisher,
-		private readonly redisClientService: RedisClientService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly metadata: MultiMainMetadata,
 		private readonly errorReporter: ErrorReporter,
+		private readonly client: LeaderElectionClient,
 	) {
 		super();
 		this.logger = this.logger.scoped(['scaling', 'multi-main-setup']);
 	}
 
-	private leaderKey: string;
-
-	private readonly leaderKeyTtl = this.globalConfig.multiMainSetup.ttl;
-
-	private leaderCheckInterval: NodeJS.Timeout | undefined;
-
 	async init() {
-		const prefix = this.globalConfig.redis.prefix;
-		const validPrefix = this.redisClientService.toValidPrefix(prefix);
-		this.leaderKey = validPrefix + ':main_instance_leader';
-
-		await this.tryBecomeLeader(); // prevent initial wait
+		const result = await this.client.setLeaderIfNotExists();
+		if (!result.ok) {
+			this.logRedisCommandFailure('Failed to set leader key in Redis during init', result.error);
+			this.instanceSettings.markAsFollower();
+		} else if (result.result) {
+			// we became leader
+			this.takeOverAsLeader();
+		} else {
+			this.instanceSettings.markAsFollower();
+		}
 
 		this.leaderCheckInterval = setInterval(async () => {
 			await this.checkLeader();
@@ -63,87 +69,21 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	async shutdown() {
 		clearInterval(this.leaderCheckInterval);
 
-		const { isLeader } = this.instanceSettings;
-
-		if (isLeader) await this.publisher.clear(this.leaderKey);
-	}
-
-	private async checkLeader() {
-		const leaderId = await this.publisher.get(this.leaderKey);
-
-		const { hostId } = this.instanceSettings;
-
-		if (leaderId === hostId) {
-			if (!this.instanceSettings.isLeader) {
-				// This indicates that the remote state indicated that this host is the leader, but this
-				// host believed it was a follower. See CAT-2200 for more context.
-				this.errorReporter.info(
-					`[Instance ID ${hostId}] Remote/Local leadership mismatch, marking self as leader`,
-					{
-						shouldBeLogged: true,
-						shouldReport: true,
-					},
-				);
+		if (this.instanceSettings.isLeader) {
+			// TODO: We should guard here that we only remove the key the key in Redis matches
+			// our host ID.
+			const result = await this.client.clearLeader();
+			if (!result.ok) {
+				this.logger.warn('Failed to clear leader key from Redis', { error: result.error });
 			}
-			this.instanceSettings.markAsLeader();
-
-			this.logger.debug(`[Instance ID ${hostId}] Leader is this instance`);
-
-			await this.publisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
-
-			return;
 		}
 
-		if (leaderId && leaderId !== hostId) {
-			this.logger.debug(`[Instance ID ${hostId}] Leader is other instance "${leaderId}"`);
-
-			if (this.instanceSettings.isLeader) {
-				this.instanceSettings.markAsFollower();
-
-				this.emit('leader-stepdown');
-
-				this.logger.warn('[Multi-main setup] Leader failed to renew leader key');
-			}
-
-			return;
-		}
-
-		if (!leaderId) {
-			this.logger.debug(
-				`[Instance ID ${hostId}] Leadership vacant, attempting to become leader...`,
-			);
-
-			this.instanceSettings.markAsFollower();
-
-			this.emit('leader-stepdown');
-
-			await this.tryBecomeLeader();
-		}
+		this.client.destroy();
 	}
 
-	private async tryBecomeLeader() {
-		const { hostId } = this.instanceSettings;
-
-		// this can only succeed if leadership is currently vacant
-		const keySetSuccessfully = await this.publisher.setIfNotExists(
-			this.leaderKey,
-			hostId,
-			this.leaderKeyTtl,
-		);
-
-		if (keySetSuccessfully) {
-			this.logger.info(`[Instance ID ${hostId}] Leader is now this instance`);
-
-			this.instanceSettings.markAsLeader();
-
-			this.emit('leader-takeover');
-		} else {
-			this.instanceSettings.markAsFollower();
-		}
-	}
-
-	async fetchLeaderKey() {
-		return await this.publisher.get(this.leaderKey);
+	async fetchLeaderKey(): Promise<string | null> {
+		const result = await this.client.getLeader();
+		return result.ok ? result.result : null;
 	}
 
 	registerEventHandlers() {
@@ -152,9 +92,141 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		for (const { eventHandlerClass, methodName, eventName } of handlers) {
 			const instance = Container.get(eventHandlerClass);
 			this.on(eventName, async () => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-				return instance[methodName].call(instance);
+				return await instance[methodName].call(instance);
 			});
 		}
+	}
+
+	private async checkLeader() {
+		if (this.leaderCheckInProgress) {
+			this.logger.warn('Previous leader check is still in progress, skipping this check');
+			return;
+		}
+
+		this.leaderCheckInProgress = true;
+		try {
+			if (this.instanceSettings.isLeader) {
+				await this.checkAreWeStillLeader();
+			} else {
+				await this.checkCanBecomeLeader();
+			}
+		} finally {
+			this.leaderCheckInProgress = false;
+		}
+	}
+
+	/** Renew our leadership lease. If we've lost the lease, step down to follower. */
+	private async checkAreWeStillLeader() {
+		assert(this.instanceSettings.isLeader);
+
+		const renewTtlResult = await this.client.tryRenewLeaderTtl();
+		if (!renewTtlResult.ok) {
+			this.logRedisCommandFailure('Failed to renew leader TTL', renewTtlResult.error);
+			// There's a decision to be made here: Do we step down or not? Redis might
+			// be unavailable for all clients or only for us. We could also track the TTL
+			// locally, but this would make the implementation more complex and error-prone.
+			// For now we accept that this might cause some inconsistencies in a network
+			// partition scenario, but eventually the system will recover once Redis is available again.
+			return;
+		}
+
+		const renewalResult = renewTtlResult.result;
+		if (renewalResult.id === 'success') {
+			this.logger.debug(`[Instance ID ${this.hostId}] Leader is this instance`);
+			return;
+		}
+
+		this.logger.warn('[Multi-main setup] Leader failed to renew leader key');
+
+		if (renewalResult.id === 'other-host-is-leader') {
+			this.logger.debug(
+				`[Instance ID ${this.hostId}] Leader is other instance "${renewalResult.currentLeaderId}"`,
+			);
+			this.stepDownToFollower();
+			return;
+		}
+
+		// The only remaining case is 'key-missing', which means we lost leadership
+		// (e.g. due to Redis unavailability or a network partition). In this case
+		// we try to become leader and step down if that fails.
+		assert(renewalResult.id === 'key-missing');
+
+		const result = await this.client.setLeaderIfNotExists();
+		if (!result.ok) {
+			this.logRedisCommandFailure('Failed to set leader key in Redis', result.error);
+			this.stepDownToFollower();
+			return;
+		}
+
+		if (!result.result) {
+			this.stepDownToFollower();
+		}
+	}
+
+	private async checkCanBecomeLeader() {
+		assert(!this.instanceSettings.isLeader);
+
+		const getResult = await this.client.getLeader();
+		if (!getResult.ok) {
+			this.logRedisCommandFailure('Failed to get leader key from Redis', getResult.error);
+			return;
+		}
+
+		const leaderId = getResult.result;
+		if (leaderId && leaderId === this.hostId) {
+			this.errorReporter.info(
+				`[Instance ID ${this.hostId}] Remote/Local leadership mismatch, marking self as leader`,
+				{
+					shouldBeLogged: true,
+					shouldReport: true,
+				},
+			);
+
+			this.takeOverAsLeader();
+			return;
+		}
+
+		if (leaderId) {
+			this.logger.debug(`[Instance ID ${this.hostId}] Leader is other instance "${leaderId}"`);
+			return;
+		}
+
+		this.logger.debug(
+			`[Instance ID ${this.hostId}] Leadership vacant, attempting to become leader...`,
+		);
+
+		const result = await this.client.setLeaderIfNotExists();
+		if (!result.ok) {
+			this.logger.warn('Failed to try leader key set in Redis', { error: result.error });
+			return;
+		}
+
+		if (result.result) {
+			this.takeOverAsLeader();
+		}
+	}
+
+	private takeOverAsLeader() {
+		assert(!this.instanceSettings.isLeader);
+
+		this.logger.info(`[Instance ID ${this.hostId}] Leader is now this instance`);
+
+		this.instanceSettings.markAsLeader();
+
+		this.emit('leader-takeover');
+	}
+
+	private stepDownToFollower() {
+		assert(this.instanceSettings.isLeader);
+
+		this.logger.info(`[Instance ID ${this.hostId}] This is now a follower instance`);
+
+		this.instanceSettings.markAsFollower();
+
+		this.emit('leader-stepdown');
+	}
+
+	private logRedisCommandFailure(message: string, error: Error) {
+		this.logger.warn(`${message}: ${error.message}`, { error });
 	}
 }

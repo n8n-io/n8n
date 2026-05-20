@@ -1,3 +1,4 @@
+import { NodeOperationError } from 'n8n-workflow';
 import type { IDataTableProjectService, IExecuteFunctions, INode } from 'n8n-workflow';
 
 import { ANY_CONDITION } from '../../common/constants';
@@ -102,6 +103,36 @@ describe('DataTable Get Operation - Sort Feature', () => {
 				}),
 			);
 		});
+
+		it.each(['createdAt', 'updatedAt'])(
+			'should allow sorting by system column %s even though getColumns does not include it',
+			async (column: string) => {
+				(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((param) => {
+					if (param === DATA_TABLE_ID_FIELD) return { mode: 'id', value: 'table123' };
+					if (param === 'orderBy') return true;
+					if (param === 'orderByColumn') return column;
+					if (param === 'orderByDirection') return 'DESC';
+					if (param === 'returnAll') return false;
+					if (param === 'limit') return 10;
+					if (param === 'filters.conditions') return [];
+					if (param === 'matchType') return ANY_CONDITION;
+					return undefined;
+				});
+
+				(mockDataTableProxy.getManyRowsAndCount as jest.Mock).mockResolvedValue({
+					data: [{ id: 1 }],
+					count: 1,
+				});
+
+				await getOperation.execute.call(mockExecuteFunctions, 0);
+
+				expect(mockDataTableProxy.getManyRowsAndCount).toHaveBeenCalledWith(
+					expect.objectContaining({
+						sortBy: [column, 'DESC'],
+					}),
+				);
+			},
+		);
 
 		it('should sort by id column', async () => {
 			// ARRANGE
@@ -242,6 +273,48 @@ describe('DataTable Get Operation - Sort Feature', () => {
 					}),
 				}),
 			);
+		});
+	});
+
+	describe('Column Validation', () => {
+		it('should throw when orderBy column does not exist in the table', async () => {
+			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((param) => {
+				if (param === DATA_TABLE_ID_FIELD) return { mode: 'id', value: 'table123' };
+				if (param === 'orderBy') return true;
+				if (param === 'orderByColumn') return 'nonExistentColumn';
+				if (param === 'returnAll') return false;
+				if (param === 'limit') return 10;
+				if (param === 'filters.conditions') return [];
+				if (param === 'matchType') return ANY_CONDITION;
+				return undefined;
+			});
+
+			await expect(getOperation.execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
+				NodeOperationError,
+			);
+			expect(mockDataTableProxy.getManyRowsAndCount).not.toHaveBeenCalled();
+		});
+
+		it('should not throw when orderBy column exists in the table', async () => {
+			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((param) => {
+				if (param === DATA_TABLE_ID_FIELD) return { mode: 'id', value: 'table123' };
+				if (param === 'orderBy') return true;
+				if (param === 'orderByColumn') return 'name';
+				if (param === 'orderByDirection') return 'ASC';
+				if (param === 'returnAll') return false;
+				if (param === 'limit') return 10;
+				if (param === 'filters.conditions') return [];
+				if (param === 'matchType') return ANY_CONDITION;
+				return undefined;
+			});
+
+			(mockDataTableProxy.getManyRowsAndCount as jest.Mock).mockResolvedValue({
+				data: [{ id: 1, name: 'Alice' }],
+				count: 1,
+			});
+
+			await expect(getOperation.execute.call(mockExecuteFunctions, 0)).resolves.not.toThrow();
+			expect(mockDataTableProxy.getManyRowsAndCount).toHaveBeenCalled();
 		});
 	});
 

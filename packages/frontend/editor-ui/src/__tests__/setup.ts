@@ -86,17 +86,29 @@ configure({ testIdAttribute: 'data-test-id' });
  */
 class JsonDomPointerEvent extends MouseEvent implements PointerEvent {
 	readonly pointerId: number;
+
 	readonly pointerType: string;
+
 	readonly pressure: number;
+
 	readonly tangentialPressure: number;
+
 	readonly tiltX: number;
+
 	readonly tiltY: number;
+
 	readonly twist: number;
+
 	readonly width: number;
+
 	readonly height: number;
+
 	readonly isPrimary: boolean;
+
 	readonly altitudeAngle: number;
+
 	readonly azimuthAngle: number;
+	readonly persistentDeviceId: number;
 
 	constructor(type: string, params: PointerEventInit = {}) {
 		super(type, params);
@@ -112,11 +124,13 @@ class JsonDomPointerEvent extends MouseEvent implements PointerEvent {
 		this.altitudeAngle = params.altitudeAngle ?? Math.PI / 2;
 		this.azimuthAngle = params.azimuthAngle ?? 0;
 		this.isPrimary = params.isPrimary ?? true;
+		this.persistentDeviceId = 0;
 	}
 
 	getCoalescedEvents(): PointerEvent[] {
 		return [];
 	}
+
 	getPredictedEvents(): PointerEvent[] {
 		return [];
 	}
@@ -206,6 +220,8 @@ export class IntersectionObserver {
 	root = null;
 
 	rootMargin = '';
+
+	scrollMargin = '';
 
 	thresholds = [];
 
@@ -336,17 +352,29 @@ Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
 
 class SpeechSynthesisUtterance {
 	text = '';
+
 	lang = '';
+
 	voice = null;
+
 	volume = 1;
+
 	rate = 1;
+
 	pitch = 1;
+
 	onstart = null;
+
 	onend = null;
+
 	onerror = null;
+
 	onpause = null;
+
 	onresume = null;
+
 	onmark = null;
+
 	onboundary = null;
 
 	constructor(text?: string) {
@@ -356,7 +384,9 @@ class SpeechSynthesisUtterance {
 	}
 
 	addEventListener = vi.fn();
+
 	removeEventListener = vi.fn();
+
 	dispatchEvent = vi.fn(() => true);
 }
 
@@ -382,4 +412,21 @@ Object.defineProperty(window, 'speechSynthesis', {
 	},
 });
 
-loadLanguage('en', englishBaseText as LocaleMessages);
+loadLanguage('en', englishBaseText as unknown as LocaleMessages);
+
+// Block jsdom XHRs from making real network requests in tests. Unmocked store
+// actions used to fire real /rest/* calls; on Node 22 the resulting dual-stack
+// DNS AggregateError emits via socketErrorListener AFTER the test has finished,
+// and vitest 4 promotes that to a test-run failure (~22% miss rate on shard 2).
+// Short-circuiting send() means any unmocked request fails synchronously during
+// the test instead of racing teardown.
+XMLHttpRequest.prototype.send = function (this: XMLHttpRequest) {
+	Object.defineProperty(this, 'readyState', { value: 4, configurable: true });
+	Object.defineProperty(this, 'status', { value: 0, configurable: true });
+	Object.defineProperty(this, 'statusText', { value: '', configurable: true });
+	queueMicrotask(() => {
+		this.dispatchEvent(new Event('readystatechange'));
+		this.dispatchEvent(new Event('error'));
+		this.dispatchEvent(new Event('loadend'));
+	});
+};

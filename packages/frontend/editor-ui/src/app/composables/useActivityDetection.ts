@@ -26,7 +26,7 @@ export function useActivityDetection() {
 
 	// Watch for writer status changes
 	watch(
-		() => collaborationStore.isCurrentUserWriter,
+		() => collaborationStore.isCurrentTabWriter,
 		(isWriter) => {
 			if (isWriter) {
 				attachListeners();
@@ -37,8 +37,8 @@ export function useActivityDetection() {
 	);
 
 	onMounted(() => {
-		// Attach listeners if user is writer
-		if (collaborationStore.isCurrentUserWriter) {
+		// Attach listeners if current tab is writer
+		if (collaborationStore.isCurrentTabWriter) {
 			attachListeners();
 		}
 	});

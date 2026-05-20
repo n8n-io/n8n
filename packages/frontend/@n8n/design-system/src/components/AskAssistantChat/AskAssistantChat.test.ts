@@ -626,7 +626,7 @@ describe('AskAssistantChat', () => {
 			expect(props.isStreaming).toBe(true);
 		});
 
-		it('should pass defaultExpanded as true to ThinkingMessage', () => {
+		it('should pass defaultExpanded as false to ThinkingMessage when not streaming', () => {
 			const message = createToolMessage({
 				id: '1',
 				displayTitle: 'Search Results',
@@ -638,7 +638,8 @@ describe('AskAssistantChat', () => {
 			expect(thinkingMessageCallCount).toBe(1);
 
 			const props = getThinkingMessageProps();
-			expect(props.defaultExpanded).toBe(true);
+			// defaultExpanded is false when not streaming (e.g., loading from session)
+			expect(props.defaultExpanded).toBe(false);
 		});
 
 		it('should use thinkingCompletionMessage prop instead of default when provided and tools completed', () => {
@@ -1394,6 +1395,64 @@ describe('AskAssistantChat', () => {
 
 		it('should NOT show footer rating when there are no messages', () => {
 			const wrapper = renderWithFooterRating([], false);
+
+			expect(wrapper.queryByTestId('footer-rating')).toBeFalsy();
+		});
+
+		it('should show footer rating for code builder when workflow-updated is last message (no text response)', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'user',
+					type: 'text',
+					content: 'Build me a workflow',
+				},
+				{
+					id: '2',
+					role: 'assistant',
+					type: 'tool',
+					toolName: 'build_workflow',
+					toolCallId: 'tc-1',
+					displayTitle: 'Building workflow',
+					status: 'completed',
+					updates: [],
+				},
+				{
+					id: '3',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{}',
+				},
+			];
+
+			const wrapper = renderWithFooterRating(messages, false);
+
+			expect(wrapper.queryByTestId('footer-rating')).toBeTruthy();
+		});
+
+		it('should NOT show footer rating for code builder when user has responded after workflow-updated', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'user',
+					type: 'text',
+					content: 'Build me a workflow',
+				},
+				{
+					id: '2',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{}',
+				},
+				{
+					id: '3',
+					role: 'user',
+					type: 'text',
+					content: 'Can you modify this?',
+				},
+			];
+
+			const wrapper = renderWithFooterRating(messages, false);
 
 			expect(wrapper.queryByTestId('footer-rating')).toBeFalsy();
 		});

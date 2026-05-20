@@ -9,12 +9,12 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	ICredentialsHelper,
-	Expression,
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
 	NodeConnectionType,
 	IRunData,
+	WorkflowExpression,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -45,7 +45,7 @@ describe('SupplyDataContext', () => {
 		},
 	});
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({ expression, nodeTypes });
 	const node = mock<INode>({
 		name: 'Test Node',
@@ -59,7 +59,11 @@ describe('SupplyDataContext', () => {
 		testParameter: 'testValue',
 	};
 	const credentialsHelper = mock<ICredentialsHelper>();
-	const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		credentialsHelper,
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+	});
 	const mode: WorkflowExecuteMode = 'manual';
 	const runExecutionData = mock<IRunExecutionData>({
 		resultData: { runData: {} },
@@ -270,6 +274,8 @@ describe('SupplyDataContext', () => {
 				credentialsHelper,
 				hooks: mockHooks,
 				currentNodeExecutionIndex: 0,
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 			});
 			const testRunExecutionData = mock<IRunExecutionData>({
 				resultData: {
@@ -427,6 +433,8 @@ describe('SupplyDataContext', () => {
 				credentialsHelper,
 				hooks: mockHooks,
 				currentNodeExecutionIndex: 0,
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 			});
 			const testRunExecutionData = mock<IRunExecutionData>({
 				resultData: {
@@ -494,6 +502,8 @@ describe('SupplyDataContext', () => {
 				credentialsHelper,
 				hooks: mockHooks,
 				currentNodeExecutionIndex: 0,
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 			});
 
 			// Create run execution data with plain object (not mock) to avoid mock functions
@@ -560,6 +570,8 @@ describe('SupplyDataContext', () => {
 				credentialsHelper,
 				hooks: mockHooks,
 				currentNodeExecutionIndex: 0,
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 			});
 			const testRunExecutionData = mock<IRunExecutionData>({
 				resultData: {

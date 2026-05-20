@@ -16,7 +16,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROFILES_DIR = resolve(__dirname, '../profiles');
-const THRESHOLD = 0.10; // 10%
+const THRESHOLD = 0.1; // 10%
 
 const BASELINE_PATH = resolve(PROFILES_DIR, 'baseline.json');
 const CURRENT_PATH = resolve(PROFILES_DIR, 'benchmark-results.json');
@@ -27,7 +27,7 @@ if (!existsSync(BASELINE_PATH)) {
 }
 
 if (!existsSync(CURRENT_PATH)) {
-	console.error('❌ No current results found. Run bench:ci to generate them.');
+	console.error('❌ No current results found. Run bench:compare to generate them.');
 	process.exit(1);
 }
 
@@ -55,13 +55,19 @@ for (const file of current.files) {
 			const base = baselineMap.get(key);
 
 			if (!base) {
-				results.push({ name: bench.name, status: 'new', current: bench.hz, baseline: null, ratio: null });
+				results.push({
+					name: bench.name,
+					status: 'new',
+					current: bench.hz,
+					baseline: null,
+					ratio: null,
+				});
 				continue;
 			}
 
 			const ratio = bench.hz / base.hz;
-			const isRegression = ratio < (1 - THRESHOLD);
-			const isImprovement = ratio > (1 + THRESHOLD);
+			const isRegression = ratio < 1 - THRESHOLD;
+			const isImprovement = ratio > 1 + THRESHOLD;
 
 			if (isRegression) hasRegression = true;
 
@@ -81,26 +87,39 @@ console.log(`\nBenchmark Comparison (±${(THRESHOLD * 100).toFixed(0)}% threshol
 console.log(''.padEnd(70, '─'));
 
 for (const r of results) {
-	const icon = r.status === 'regression' ? '❌' : r.status === 'improved' ? '✅' : r.status === 'new' ? '🆕' : '  ';
+	const icon =
+		r.status === 'regression'
+			? '❌'
+			: r.status === 'improved'
+				? '✅'
+				: r.status === 'new'
+					? '🆕'
+					: '  ';
 	const changeStr = r.ratio !== null ? `${((r.ratio - 1) * 100).toFixed(1)}%` : 'new';
 	const currentStr = r.current.toFixed(0).padStart(8);
 	const baselineStr = r.baseline !== null ? r.baseline.toFixed(0).padStart(8) : '     N/A';
 
-	console.log(`${icon} ${r.name.padEnd(35)} ${currentStr} hz (was ${baselineStr}) ${changeStr.padStart(7)}`);
+	console.log(
+		`${icon} ${r.name.padEnd(35)} ${currentStr} hz (was ${baselineStr}) ${changeStr.padStart(7)}`,
+	);
 }
 
 console.log(''.padEnd(70, '─'));
 
-const regressions = results.filter(r => r.status === 'regression');
-const improvements = results.filter(r => r.status === 'improved');
+const regressions = results.filter((r) => r.status === 'regression');
+const improvements = results.filter((r) => r.status === 'improved');
 
 if (hasRegression) {
-	console.log(`\n❌ FAILED: ${regressions.length} regression(s) exceeded ${(THRESHOLD * 100).toFixed(0)}% threshold\n`);
+	console.log(
+		`\n❌ FAILED: ${regressions.length} regression(s) exceeded ${(THRESHOLD * 100).toFixed(0)}% threshold\n`,
+	);
 	process.exit(1);
 } else {
 	console.log(`\n✅ PASSED: All benchmarks within threshold`);
 	if (improvements.length > 0) {
-		console.log(`   ${improvements.length} improved - consider updating baseline with: pnpm bench:baseline`);
+		console.log(
+			`   ${improvements.length} improved - consider updating baseline with: pnpm bench:baseline`,
+		);
 	}
 	console.log('');
 	process.exit(0);

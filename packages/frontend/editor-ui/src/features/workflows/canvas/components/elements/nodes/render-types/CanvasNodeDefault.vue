@@ -4,6 +4,7 @@ import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
+import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
 import CanvasNodeSettingsIcons from './parts/CanvasNodeSettingsIcons.vue';
@@ -16,6 +17,7 @@ import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
+import { getNodeIconSize, type NodeIconSource } from '@/app/utils/nodeIcon';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -23,6 +25,7 @@ const i18n = useI18n();
 const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
 	activate: [id: string, event: MouseEvent];
+	'replace:node': [id: string];
 }>();
 
 const { initialized, viewport, isExperimentalNdvActive } = useCanvas();
@@ -30,10 +33,9 @@ const { calculateNodeBorderOpacity } = useZoomAdjustedValues(viewport);
 const route = useRoute();
 const {
 	id,
+	name,
 	label,
 	subtitle,
-	inputs,
-	outputs,
 	connections,
 	isDisabled,
 	isReadOnly,
@@ -44,10 +46,15 @@ const {
 	executionWaitingForNext,
 	executionRunning,
 	hasRunData,
-	hasExecutionErrors,
 	render,
 	isNotInstalledCommunityNode,
 } = useCanvasNode();
+const renderData = injectCanvasRenderData();
+const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(id.value)?.value ?? []);
+const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
+const hasExecutionErrors = computed(
+	() => (renderData.value.executionIssuesByNodeName.get(name.value)?.value?.length ?? 0) > 0,
+);
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
 	useNodeConnections({
 		inputs,
@@ -74,12 +81,17 @@ const classes = computed(() => {
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
 		[$style.warning]: renderOptions.value.dirtiness !== undefined,
+		[$style.placeholder]: renderOptions.value.placeholder,
 		waiting: executionWaiting.value || executionStatus.value === 'waiting',
 		running: executionRunning.value || executionWaitingForNext.value,
 	};
 });
 
-const iconSize = computed(() => (renderOptions.value.configuration ? 30 : 40));
+const iconSize = computed(() => {
+	const iconName = iconSource.value?.type === 'icon' ? iconSource.value.name : undefined;
+	if (renderOptions.value.configuration) return getNodeIconSize('configuration', iconName);
+	return getNodeIconSize('canvas', iconName);
+});
 
 const nodeSize = computed(() =>
 	calculateNodeSize(
@@ -124,7 +136,15 @@ const isStrikethroughVisible = computed(() => {
 	return isDisabled.value && isSingleMainInputNode && isSingleMainOutputNode;
 });
 
-const iconSource = computed(() => renderOptions.value.icon);
+const iconSource = computed(() => {
+	if (renderOptions.value.placeholder) {
+		return {
+			type: 'icon',
+			name: 'plus',
+		} as NodeIconSource;
+	}
+	return renderOptions.value.icon;
+});
 
 const showTooltip = ref(false);
 
@@ -146,6 +166,11 @@ function openContextMenu(event: MouseEvent) {
 }
 
 function onActivate(event: MouseEvent) {
+	if (renderOptions.value.placeholder) {
+		emit('replace:node', id.value);
+		return;
+	}
+
 	emit('activate', id.value, event);
 }
 </script>
@@ -352,6 +377,18 @@ function onActivate(event: MouseEvent) {
 
 	&.waiting {
 		--canvas-node--border-color: transparent;
+	}
+
+	&.placeholder {
+		background: var(--color--foreground--tint-2);
+		border: 2px dashed var(--color--foreground--shade-2);
+		cursor: pointer;
+
+		&:hover {
+			.icon {
+				color: var(--color--primary);
+			}
+		}
 	}
 }
 

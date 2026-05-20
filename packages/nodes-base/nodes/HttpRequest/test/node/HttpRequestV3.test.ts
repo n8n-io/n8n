@@ -298,6 +298,239 @@ describe('HttpRequestV3', () => {
 				'URL parameter must be a string, got number',
 			);
 		});
+		it('should throw error when URL is only whitespace', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return '   ';
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'URL parameter cannot be empty',
+			);
+		});
+
+		it('should trim whitespace from valid URL', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return '  http://example.com  ';
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
+			const requestArgs = (executeFunctions.helpers.request as jest.Mock).mock.calls[0][0];
+			expect(requestArgs.uri ?? requestArgs.url).toBe('http://example.com');
+		});
+	});
+
+	describe('JSON Parameter Validation', () => {
+		it.each([
+			{
+				field: 'body',
+				params: {
+					sendBody: true,
+					specifyBody: 'json',
+					jsonBody: '{"valid": true}',
+					'bodyParameters.parameters': [],
+				},
+			},
+			{
+				field: 'query',
+				params: {
+					sendQuery: true,
+					specifyQuery: 'json',
+					jsonQuery: '{"key": "value"}',
+					'queryParameters.parameters': [],
+				},
+			},
+			{
+				field: 'headers',
+				params: {
+					sendHeaders: true,
+					specifyHeaders: 'json',
+					jsonHeaders: '{"X-Custom": "header"}',
+					'headerParameters.parameters': [],
+				},
+			},
+		])('should accept valid JSON in $field parameter', async ({ params }) => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'POST';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return params[paramName as keyof typeof params] ?? undefined;
+				}
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toBeDefined();
+		});
+
+		it.each([
+			{
+				field: 'body',
+				fieldName: 'JSON Body',
+				params: {
+					sendBody: true,
+					specifyBody: 'json',
+					jsonBody: '{"invalid: json}',
+					'bodyParameters.parameters': [],
+				},
+			},
+			{
+				field: 'query',
+				fieldName: 'JSON Query Parameters',
+				params: {
+					sendQuery: true,
+					specifyQuery: 'json',
+					jsonQuery: '{not valid}',
+					'queryParameters.parameters': [],
+				},
+			},
+			{
+				field: 'headers',
+				fieldName: 'JSON Headers',
+				params: {
+					sendHeaders: true,
+					specifyHeaders: 'json',
+					jsonHeaders: 'not json at all',
+					'headerParameters.parameters': [],
+				},
+			},
+		])(
+			'should throw descriptive error for invalid JSON in $field parameter',
+			async ({ fieldName, params }) => {
+				(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+				(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+					switch (paramName) {
+						case 'method':
+							return 'POST';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return options;
+						default:
+							return params[paramName as keyof typeof params] ?? undefined;
+					}
+				});
+				const response = {
+					headers: { 'content-type': 'application/json' },
+					body: Buffer.from(JSON.stringify({ success: true })),
+				};
+				(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+				await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+					`The value in the "${fieldName}" field is not valid JSON`,
+				);
+			},
+		);
+	});
+
+	describe('Response parsing', () => {
+		it('should return empty object for autodetect JSON response with empty body', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			const response = {
+				headers: { 'content-type': 'application/json', 'content-length': '0' },
+				body: Buffer.from(''),
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+		});
+
+		it('should return empty object for JSON response format with empty body', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return {
+							...options,
+							response: {
+								response: {
+									responseFormat: 'json',
+								},
+							},
+						};
+					case 'options.response.response.responseFormat':
+						return 'json';
+					default:
+						return undefined;
+				}
+			});
+			const response = {
+				headers: { 'content-type': 'application/json', 'content-length': '0' },
+				body: '',
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+		});
 	});
 
 	describe('Cross-Origin Redirects', () => {
@@ -422,6 +655,158 @@ describe('HttpRequestV3', () => {
 					sendCredentialsOnCrossOriginRedirect: true,
 				}),
 			);
+		});
+	});
+
+	describe('Pagination parameter validation', () => {
+		it('should keep valid pagination parameters and ignore invalid parameter names', async () => {
+			const paginationTestOptions = {
+				...options,
+				response: {
+					response: {
+						neverError: false,
+						responseFormat: 'json',
+						fullResponse: false,
+						outputPropertyName: 'data',
+					},
+				},
+			};
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return paginationTestOptions;
+						case 'options.pagination.pagination':
+							return {
+								paginationMode: 'updateAParameterInEachRequest',
+								parameters: {
+									parameters: [
+										{
+											type: 'qs',
+											// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+											name: 'page',
+											value: '1',
+										},
+										{
+											type: 'qs',
+											name: 'constructor',
+											value: 'ignored',
+										},
+									],
+								},
+								paginationCompleteWhen: 'responseIsEmpty',
+								statusCodesWhenComplete: '',
+								completeExpression: '',
+								limitPagesFetched: false,
+								maxRequests: 10,
+								requestInterval: 0,
+							};
+						case 'options.response.response.responseFormat':
+							return 'json';
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as jest.Mock).mockResolvedValue([
+				{
+					headers: { 'content-type': 'application/json' },
+					body: { success: true },
+					statusCode: 200,
+				},
+			]);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+			expect(executeFunctions.helpers.requestWithAuthenticationPaginated).toHaveBeenCalledTimes(1);
+			const paginationData = (
+				executeFunctions.helpers.requestWithAuthenticationPaginated as jest.Mock
+			).mock.calls[0][2] as {
+				request: {
+					qs: Record<string, unknown>;
+				};
+			};
+			expect(paginationData.request.qs).toEqual({ page: '1' });
+			expect(Object.prototype.hasOwnProperty.call(paginationData.request.qs, 'constructor')).toBe(
+				false,
+			);
+		});
+
+		it('should reject invalid pagination parameter type values', async () => {
+			const paginationTestOptions = {
+				...options,
+				response: {
+					response: {
+						neverError: false,
+						responseFormat: 'json',
+						fullResponse: false,
+						outputPropertyName: 'data',
+					},
+				},
+			};
+
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as jest.Mock).mockResolvedValue([
+				{
+					headers: { 'content-type': 'application/json' },
+					body: { success: true },
+					statusCode: 200,
+				},
+			]);
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue({
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			});
+
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return paginationTestOptions;
+						case 'options.pagination.pagination':
+							return {
+								paginationMode: 'updateAParameterInEachRequest',
+								parameters: {
+									parameters: [
+										{
+											type: '__proto__' as unknown as 'qs',
+											// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+											name: 'page',
+											value: '1',
+										},
+									],
+								},
+								paginationCompleteWhen: 'responseIsEmpty',
+								statusCodesWhenComplete: '',
+								completeExpression: '',
+								limitPagesFetched: false,
+								maxRequests: 10,
+								requestInterval: 0,
+							};
+						default:
+							return defaultValue;
+					}
+				},
+			);
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'Parameter type must be one of: body, headers, qs for parameter [1] in pagination settings',
+			);
+			expect(executeFunctions.helpers.requestWithAuthenticationPaginated).not.toHaveBeenCalled();
 		});
 	});
 });

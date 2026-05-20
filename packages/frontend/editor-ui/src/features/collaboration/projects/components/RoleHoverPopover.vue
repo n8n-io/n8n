@@ -1,55 +1,15 @@
 <script setup lang="ts">
 import type { Role } from '@n8n/permissions';
-import { N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
-
-// UI-visible permission scopes (excludes auto-added :list, :execute, :listProject)
-const UI_VISIBLE_SCOPES = new Set([
-	// project (3)
-	'project:read',
-	'project:update',
-	'project:delete',
-	// folder (5)
-	'folder:read',
-	'folder:update',
-	'folder:create',
-	'folder:move',
-	'folder:delete',
-	// workflow (6)
-	'workflow:read',
-	'workflow:update',
-	'workflow:create',
-	'workflow:publish',
-	'workflow:move',
-	'workflow:delete',
-	// credential (6)
-	'credential:read',
-	'credential:update',
-	'credential:create',
-	'credential:share',
-	'credential:move',
-	'credential:delete',
-	// dataTable (6)
-	'dataTable:read',
-	'dataTable:readRow',
-	'dataTable:update',
-	'dataTable:writeRow',
-	'dataTable:create',
-	'dataTable:delete',
-	// projectVariable (4)
-	'projectVariable:read',
-	'projectVariable:update',
-	'projectVariable:create',
-	'projectVariable:delete',
-	// sourceControl (1)
-	'sourceControl:push',
-]);
-
-const TOTAL_PROJECT_PERMISSIONS = UI_VISIBLE_SCOPES.size; // 31
+import {
+	UI_VISIBLE_SCOPES,
+	TOTAL_PROJECT_PERMISSIONS,
+} from '@/features/project-roles/projectRoleScopes';
 
 const props = defineProps<{
 	role: Role;
@@ -79,12 +39,14 @@ const onButtonClick = () => {
 		void router.push({
 			name: VIEWS.PROJECT_ROLE_SETTINGS,
 			params: { roleSlug: props.role.slug },
+			query: { from: VIEWS.PROJECT_SETTINGS },
 		});
 	} else {
 		// Non-admin OR system role → view route
 		void router.push({
 			name: VIEWS.PROJECT_ROLE_VIEW,
 			params: { roleSlug: props.role.slug },
+			query: { from: VIEWS.PROJECT_SETTINGS },
 		});
 	}
 };
@@ -101,7 +63,7 @@ const onButtonClick = () => {
 		<slot />
 		<template #content>
 			<div :class="$style.popoverContent">
-				<N8nText tag="div" :bold="true" size="medium" :class="$style.roleName">
+				<N8nText tag="div" :bold="true" size="large" :class="$style.roleName">
 					{{ role.displayName }}
 				</N8nText>
 				<N8nText tag="div" size="small" color="text-light" :class="$style.permissionCount">
@@ -117,11 +79,14 @@ const onButtonClick = () => {
 				<N8nText v-if="role.description" tag="div" size="small" :class="$style.description">
 					{{ role.description }}
 				</N8nText>
-				<N8nButton type="tertiary" size="small" :class="$style.actionButton" @click="onButtonClick">
+				<N8nButton
+					variant="outline"
+					size="small"
+					:class="$style.actionButton"
+					@click="onButtonClick"
+				>
 					{{ buttonText }}
-					<template #append>
-						<span :class="$style.externalIcon">↗</span>
-					</template>
+					<N8nIcon icon="arrow-up-right" size="large" :class="$style.externalIcon" />
 				</N8nButton>
 			</div>
 		</template>
@@ -135,7 +100,7 @@ const onButtonClick = () => {
 }
 
 .roleName {
-	margin-bottom: var(--spacing--4xs);
+	margin-bottom: var(--spacing--2xs);
 }
 
 .permissionCount {
@@ -147,6 +112,8 @@ const onButtonClick = () => {
 }
 
 .actionButton {
+	display: flex;
+	align-items: center;
 	margin-top: var(--spacing--2xs);
 }
 

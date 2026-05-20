@@ -66,6 +66,23 @@ export type SelectProps<
 
 	/** Icon to be displayed in the trigger */
 	icon?: IconName;
+
+	/**
+	 * The positioning mode for the dropdown content.
+	 * `item-aligned` aligns to the selected item (default).
+	 * `popper` uses floating UI for viewport-aware positioning.
+	 * @defaultValue 'item-aligned'
+	 */
+	position?: 'item-aligned' | 'popper';
+
+	/** The preferred side when position is 'popper'. @defaultValue 'bottom' */
+	side?: 'top' | 'right' | 'bottom' | 'left';
+
+	/** The distance in pixels from the trigger when position is 'popper'. @defaultValue 4 */
+	sideOffset?: number;
+
+	/** Additional CSS class(es) applied to the dropdown content container (portaled). */
+	contentClass?: string;
 };
 
 export type SelectEmits<

@@ -9,6 +9,9 @@ import { useCanvasTraversal } from '../composables/useCanvasTraversal';
 import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
 import { CanvasKey } from '@/app/constants';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
 import type { NodeCreatorOpenSource } from '@/Interface';
 import type {
 	CanvasConnection,
@@ -42,7 +45,9 @@ import type {
 import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, type IConnections } from 'n8n-workflow';
+import type { CanvasRenderData } from '../canvas.utils';
+import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
 	computed,
 	nextTick,
@@ -65,7 +70,6 @@ import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
-import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
 const $style = useCssModule();
@@ -129,6 +133,7 @@ const emit = defineEmits<{
 	'open:sub-workflow': [nodeId: string];
 	'start-chat': [];
 	'extract-workflow': [ids: string[]];
+	'save:workflow': [];
 }>();
 
 const props = withDefaults(
@@ -138,12 +143,15 @@ const props = withDefaults(
 		connections: CanvasConnection[];
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
+		renderData: CanvasRenderData;
 		readOnly?: boolean;
+		canExecute?: boolean;
 		executing?: boolean;
 		keyBindings?: boolean;
 		loading?: boolean;
 		suppressInteraction?: boolean;
 		hideControls?: boolean;
+		initialViewport?: ViewportTransform | null;
 	}>(),
 	{
 		id: 'canvas',
@@ -152,6 +160,7 @@ const props = withDefaults(
 		controlsPosition: PanelPosition.BottomLeft,
 		eventBus: () => createEventBus(),
 		readOnly: false,
+		canExecute: false,
 		executing: false,
 		keyBindings: true,
 		loading: false,
@@ -161,10 +170,14 @@ const props = withDefaults(
 );
 
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
+const usersStore = useUsersStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+
+const renderData = toRef(props, 'renderData');
+provide(CanvasRenderDataKey, renderData);
 const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
-const chatPanelStateStore = useChatPanelStateStore();
 const setupPanelStore = useSetupPanelStore();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
@@ -206,7 +219,7 @@ const {
 	getDownstreamNodes,
 	getUpstreamNodes,
 } = useCanvasTraversal(vueFlow);
-const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive);
+const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive, toRef(props, 'renderData'));
 
 const isPaneReady = ref(false);
 
@@ -356,6 +369,9 @@ const keyMap = computed(() => {
 		z: onToggleZoomMode,
 	};
 
+	if (props.readOnly && props.canExecute) {
+		return { ...readOnlyKeymap, ctrl_enter: () => emit('run:workflow') };
+	}
 	if (props.readOnly) return readOnlyKeymap;
 
 	const fullKeymap: KeyMap = {
@@ -366,13 +382,20 @@ const keyMap = computed(() => {
 		d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
 		p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
 		f2: emitWithLastSelectedNode((id) => emit('update:node:name', id)),
-		tab: () => emit('create:node', 'tab'),
+		n: () => emit('create:node', 'node_shortcut'),
+		tab: {
+			disabled: () => usersStore.isCalloutDismissed(NODE_CREATOR_SHORTCUT_COACHMARK_KEY),
+			run: () => {
+				props.eventBus.emit('deprecated:tab-shortcut');
+			},
+		},
 		shift_s: () => emit('create:sticky'),
 		shift_f: () => emit('toggle:focus-panel'),
 		ctrl_alt_n: () => emit('create:workflow'),
 		ctrl_enter: () => emit('run:workflow'),
 		// override the default cmd+s which saves the page html as file
-		ctrl_s: () => {},
+		// also triggers manual save when autosave is disabled
+		ctrl_s: () => emit('save:workflow'),
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
 		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		c: () => emit('start-chat'),
@@ -447,8 +470,7 @@ function onNodeDragStop(event: NodeDragEvent) {
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
-		focusedNodesStore.confirmNodes([node.id], 'canvas_selection');
-		chatPanelStateStore.focusRequested++;
+		focusedNodesStore.setUnconfirmedFromCanvasSelection([node.id]);
 	}
 
 	emit('click:node', node.id, getProjectedPosition(event));
@@ -543,6 +565,10 @@ function onFocusNode(id: string) {
 			setCenter,
 		});
 	}
+}
+
+function onReplaceNode(id: string) {
+	emit('replace:node', id);
 }
 
 function onAddToAi(id: string) {
@@ -708,6 +734,10 @@ async function onFitBounds(nodes: GraphNode[]) {
 }
 
 async function onFitView() {
+	if (document.hidden) {
+		fitViewWhileHidden = true;
+		return;
+	}
 	await fitView({ maxZoom: defaultZoom, padding: 0.2 });
 }
 
@@ -933,28 +963,81 @@ function onWindowBlur() {
 
 const initialized = ref(false);
 
+let pendingFitViewOnInit = false;
+let pendingConnections: IConnections | null = null;
+
+// When fitView runs while the browser tab is in the background, VueFlow's
+// container dimensions are 0 (offsetWidth/offsetHeight return 0 for hidden
+// tabs) and fall back to 500×500, producing a wrong viewport transform.
+// Track this so we can re-run fitView once the tab becomes visible.
+let fitViewWhileHidden = false;
+
+function onVisibilityChange() {
+	if (!document.hidden && fitViewWhileHidden) {
+		fitViewWhileHidden = false;
+		void onFitView();
+	}
+}
+
+function onRequestFitViewOnInit() {
+	if (initialized.value) {
+		void onFitView();
+		return;
+	}
+	pendingFitViewOnInit = true;
+}
+
+function onRequestSetConnectionsOnInit(connections: IConnections) {
+	// Always defer — this event is only emitted during importWorkflowExact which
+	// recreates all nodes. VueFlow will drop edges applied before node handles
+	// exist, so we must wait for onNodesInitialized.
+	initialized.value = false;
+	pendingConnections = connections;
+}
+
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
+	props.eventBus.on('fitView:onNodesInit', onRequestFitViewOnInit);
+	props.eventBus.on('setConnections:onNodesInit', onRequestSetConnectionsOnInit);
 	props.eventBus.on('nodes:select', onSelectNodes);
 	props.eventBus.on('nodes:selectAll', () => addSelectedNodes(graphNodes.value));
 	props.eventBus.on('tidyUp', onTidyUp);
 	window.addEventListener('blur', onWindowBlur);
+	document.addEventListener('visibilitychange', onVisibilityChange);
 });
 
 onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
+	props.eventBus.off('fitView:onNodesInit', onRequestFitViewOnInit);
+	props.eventBus.off('setConnections:onNodesInit', onRequestSetConnectionsOnInit);
 	props.eventBus.off('nodes:select', onSelectNodes);
 	props.eventBus.off('tidyUp', onTidyUp);
 	window.removeEventListener('blur', onWindowBlur);
+	document.removeEventListener('visibilitychange', onVisibilityChange);
 });
 
 onPaneReady(async () => {
-	await onFitView();
+	if (props.initialViewport) {
+		await setViewport(props.initialViewport);
+	} else {
+		await onFitView();
+	}
 	isPaneReady.value = true;
 });
 
 onNodesInitialized(() => {
 	initialized.value = true;
+
+	if (pendingConnections) {
+		const connections = pendingConnections;
+		pendingConnections = null;
+		workflowDocumentStore?.value?.setConnections(connections);
+	}
+
+	if (pendingFitViewOnInit) {
+		pendingFitViewOnInit = false;
+		void onFitView();
+	}
 });
 
 watch(
@@ -1054,6 +1137,7 @@ defineExpose({
 					v-bind="nodeProps"
 					:data="nodeDataById[nodeProps.id]"
 					:read-only="readOnly"
+					:can-execute="canExecute"
 					:event-bus="eventBus"
 					:hovered="nodesHoveredById[nodeProps.id]"
 					:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"
@@ -1071,6 +1155,7 @@ defineExpose({
 					@move="onUpdateNodePosition"
 					@add="onClickNodeAdd"
 					@focus="onFocusNode"
+					@replace:node="onReplaceNode"
 					@add:ai="onAddToAi"
 				>
 					<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
@@ -1151,6 +1236,8 @@ defineExpose({
 	height: 100%;
 	opacity: 0;
 	transition: opacity 300ms ease;
+	-webkit-user-select: none;
+	user-select: none;
 
 	&.ready {
 		opacity: 1;
@@ -1177,12 +1264,12 @@ defineExpose({
 .spotlightActive {
 	:deep(.vue-flow__edges) {
 		opacity: 0.2;
-		transition: opacity 0.15s ease;
+		transition: opacity 0.5s ease;
 	}
 
 	:deep(.vue-flow__node) {
-		opacity: 0.2;
-		transition: opacity 0.15s ease;
+		opacity: 0.4;
+		transition: opacity 0.5s ease;
 	}
 
 	:deep(.vue-flow__node:has(.highlighted)) {

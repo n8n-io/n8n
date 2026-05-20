@@ -11,7 +11,8 @@ export type * from './config';
 export type * from './utils';
 export type * from './categorization';
 export type * from './best-practices';
-export type * from './node-guidance';
+export type * from './session-storage';
+export * from './sessions';
 export type * from './planning';
 
 // exports with enumerations, export types and enums

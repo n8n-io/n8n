@@ -1,4 +1,9 @@
-import type { ExecutionStatus, INodeConnections, NodeConnectionType } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	IConnections,
+	INodeConnections,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import type {
 	DefaultEdge,
 	Node,
@@ -66,15 +71,10 @@ export type CanvasNodeDefaultRender = {
 		configurable: boolean;
 		configuration: boolean;
 		trigger: boolean;
-		inputs: {
-			labelSize: CanvasNodeDefaultRenderLabelSize;
-		};
-		outputs: {
-			labelSize: CanvasNodeDefaultRenderLabelSize;
-		};
 		tooltip?: string;
 		dirtiness?: CanvasNodeDirtinessType;
 		icon?: NodeIconSource;
+		placeholder?: boolean;
 	}>;
 };
 
@@ -105,14 +105,11 @@ export interface CanvasNodeData {
 	type: INodeUi['type'];
 	typeVersion: INodeUi['typeVersion'];
 	disabled: INodeUi['disabled'];
-	inputs: CanvasConnectionPort[];
-	outputs: CanvasConnectionPort[];
 	connections: {
 		[CanvasConnectionMode.Input]: INodeConnections;
 		[CanvasConnectionMode.Output]: INodeConnections;
 	};
 	issues: {
-		execution: string[];
 		validation: string[];
 		visible: boolean;
 	};
@@ -177,6 +174,10 @@ export type CanvasNodeEventBusEvents = {
 
 export type CanvasEventBusEvents = {
 	fitView: never;
+	/** Deferred fitView — waits for VueFlow's onNodesInitialized before fitting. */
+	'fitView:onNodesInit': never;
+	/** Deferred setConnections — waits for VueFlow's onNodesInitialized so handles exist. */
+	'setConnections:onNodesInit': IConnections;
 	'saved:workflow': { isFirstSave: boolean };
 	'open:execution': IExecutionResponse;
 	'nodes:select': { ids: string[]; panIntoView?: boolean };
@@ -194,6 +195,7 @@ export type CanvasEventBusEvents = {
 		trackBulk?: boolean;
 	};
 	'create:sticky': never;
+	'deprecated:tab-shortcut': never;
 };
 
 export interface CanvasNodeInjectionData {

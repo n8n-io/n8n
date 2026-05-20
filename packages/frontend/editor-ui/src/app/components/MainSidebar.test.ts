@@ -19,7 +19,7 @@ vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		resolve: vi.fn(() => ({ meta: {} })),
 	}),
-	useRoute: () => reactive({}),
+	useRoute: () => reactive({ params: {} }),
 	RouterLink: vi.fn(),
 }));
 

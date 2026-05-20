@@ -5,21 +5,20 @@ import { useExecutionsStore } from '../executions.store';
 import { useI18n } from '@n8n/i18n';
 import type { ExecutionFilterType } from '../executions.types';
 import type { IWorkflowDb } from '@/Interface';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { NO_NETWORK_ERROR_CODE } from '@n8n/rest-api-client';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { useRoute, useRouter } from 'vue-router';
-import { injectStrict } from '@/app/utils/injectStrict';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { executionRetryMessage } from '../executions.utils';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const executionsStore = useExecutionsStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsListStore = useWorkflowsListStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -33,7 +32,7 @@ const loadingMore = ref(false);
 
 const workflow = ref<IWorkflowDb | undefined>();
 
-const workflowId = injectStrict(WorkflowIdKey);
+const workflowId = useInjectWorkflowId();
 
 const executionId = computed(() => {
 	const id = route.params.executionId;
@@ -50,7 +49,19 @@ const executions = computed(() =>
 );
 
 const execution = computed(() => {
-	return executions.value.find((e) => e.id === executionId.value) ?? currentExecution.value;
+	const fromList = executions.value.find((e) => e.id === executionId.value);
+	const current = currentExecution.value;
+
+	if (!fromList) {
+		return current;
+	}
+
+	// Keep workflowVersionId from execution details if available
+	if (current?.id === fromList.id && current.workflowVersionId) {
+		return { ...fromList, workflowVersionId: current.workflowVersionId };
+	}
+
+	return fromList;
 });
 
 const currentExecution = ref<ExecutionSummary | undefined>();
@@ -128,7 +139,7 @@ async function initializeRoute() {
 		await router
 			.replace({
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: workflow.value.id, executionId: executions.value[0].id },
+				params: { workflowId: workflow.value.id, executionId: executions.value[0].id },
 				query: route.query,
 			})
 			.catch(() => {});
@@ -138,12 +149,13 @@ async function initializeRoute() {
 function fetchWorkflow() {
 	// Skip fetching if it's a new workflow that hasn't been saved yet
 	if (isNewWorkflowRoute.value || !workflowId.value) {
-		workflow.value = workflowsStore.workflow;
+		workflow.value = workflowDocumentStore.value.getSnapshot();
 		return;
 	}
 
 	// Use the workflow from the list store (already loaded by WorkflowLayout)
-	workflow.value = workflowsListStore.workflowsById[workflowId.value] ?? workflowsStore.workflow;
+	workflow.value =
+		workflowsListStore.workflowsById[workflowId.value] ?? workflowDocumentStore.value.getSnapshot();
 }
 
 async function onAutoRefreshToggle(value: boolean) {
@@ -230,14 +242,14 @@ async function onExecutionDelete(id?: string) {
 				await router
 					.replace({
 						name: VIEWS.EXECUTION_PREVIEW,
-						params: { name: workflow.value.id, executionId: nextExecution.id },
+						params: { workflowId: workflow.value.id, executionId: nextExecution.id },
 					})
 					.catch(() => {});
 			} else {
 				// If there are no executions left, show empty state
 				await router.replace({
 					name: VIEWS.EXECUTION_HOME,
-					params: { name: workflow.value.id },
+					params: { workflowId: workflow.value.id },
 				});
 			}
 		}
@@ -291,11 +303,14 @@ async function onLoadMore(): Promise<void> {
 	}
 }
 
+const hasMore = computed(
+	() =>
+		!executionsStore.executionsFilters.status?.includes('running') &&
+		executions.value.length < executionsStore.executionsCount,
+);
+
 async function loadMore(): Promise<void> {
-	if (
-		!!executionsStore.executionsFilters.status?.includes('running') ||
-		executions.value.length >= executionsStore.executionsCount
-	) {
+	if (!hasMore.value) {
 		return;
 	}
 
@@ -326,6 +341,7 @@ async function loadMore(): Promise<void> {
 		:workflow="workflow"
 		:loading="loading"
 		:loading-more="loadingMore"
+		:has-more="hasMore"
 		@execution:stop="onExecutionStop"
 		@execution:delete="onExecutionDelete"
 		@execution:retry="onExecutionRetry"

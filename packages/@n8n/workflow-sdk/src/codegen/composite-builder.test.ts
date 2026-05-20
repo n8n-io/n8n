@@ -20,6 +20,83 @@ function prepareGraph(json: WorkflowJSON) {
 
 describe('composite-builder', () => {
 	describe('buildCompositeTree', () => {
+		describe('deferred connection deduplication', () => {
+			it('preserves both normal and error connections with same source/target indices', () => {
+				// Bug: deduplication key omits isErrorOutput, so when NodeA has both a main
+				// output AND an error output going to the same MergeNode input 0, one is dropped.
+				const json: WorkflowJSON = {
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'NodeA',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4.2,
+							position: [200, -100],
+							onError: 'continueErrorOutput',
+						},
+						{
+							id: '3',
+							name: 'NodeB',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [200, 100],
+						},
+						{
+							id: '4',
+							name: 'MergeNode',
+							type: 'n8n-nodes-base.merge',
+							typeVersion: 3,
+							position: [400, 0],
+							parameters: { mode: 'combine' },
+						},
+					],
+					connections: {
+						Trigger: {
+							main: [
+								[
+									{ node: 'NodeA', type: 'main', index: 0 },
+									{ node: 'NodeB', type: 'main', index: 0 },
+								],
+							],
+						},
+						NodeA: {
+							main: [[{ node: 'MergeNode', type: 'main', index: 0 }]],
+							error: [[{ node: 'MergeNode', type: 'main', index: 0 }]],
+						},
+						NodeB: {
+							main: [[{ node: 'MergeNode', type: 'main', index: 1 }]],
+						},
+					},
+				};
+
+				const graph = prepareGraph(json);
+				const tree = buildCompositeTree(graph);
+
+				// Both normal and error connections from NodeA to MergeNode input 0
+				// should be in deferredConnections (not deduplicated away)
+				const nodeAToMerge = tree.deferredConnections.filter(
+					(conn) =>
+						conn.sourceNodeName === 'NodeA' &&
+						conn.targetNode.name === 'MergeNode' &&
+						conn.targetInputIndex === 0,
+				);
+
+				expect(nodeAToMerge).toHaveLength(2);
+				const errorConn = nodeAToMerge.find((c) => c.isErrorOutput === true);
+				const normalConn = nodeAToMerge.find((c) => !c.isErrorOutput);
+				expect(errorConn).toBeDefined();
+				expect(normalConn).toBeDefined();
+			});
+		});
+
 		describe('simple workflows', () => {
 			it('builds single trigger as leaf', () => {
 				const json: WorkflowJSON = {

@@ -15,12 +15,15 @@ export interface OAuth2CredentialData {
 	additionalBodyProperties?: string;
 	grantType: OAuth2GrantType;
 	ignoreSSLIssues?: boolean;
+	tokenExpiredStatusCode?: number;
 	oauthTokenData?: {
 		access_token: string;
 		refresh_token?: string;
 	};
 	useDynamicClientRegistration?: boolean;
 	serverUrl?: string;
+	jweEnabled?: boolean;
+	inlineJwks?: boolean;
 }
 
 /**

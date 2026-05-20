@@ -1,18 +1,23 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
 import { ElDialog } from 'element-plus';
-import { N8nButton, N8nCard, N8nCheckbox, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nCard, N8nCheckbox, N8nIcon, N8nText } from '@n8n/design-system';
 import { ref, watch, computed } from 'vue';
 import { useAccessSettingsCsvExport } from '@/features/settings/sso/provisioning/composables/useAccessSettingsCsvExport';
-import type { UserRoleProvisioningSetting } from './UserRoleProvisioningDropdown.vue';
+import type { RoleAssignmentTransitionType } from '../composables/useUserRoleProvisioningForm';
 import type { SupportedProtocolType } from '../../sso.store';
 
 const visible = defineModel<boolean>();
 
-const props = defineProps<{
-	newProvisioningSetting: UserRoleProvisioningSetting;
-	authProtocol: SupportedProtocolType;
-}>();
+const props = withDefaults(
+	defineProps<{
+		transitionType: RoleAssignmentTransitionType;
+		showProjectRolesCsv: boolean;
+		authProtocol: SupportedProtocolType;
+		willDeleteProjectRules?: boolean;
+	}>(),
+	{ willDeleteProjectRules: false },
+);
 
 const emit = defineEmits<{
 	confirmProvisioning: [];
@@ -32,13 +37,11 @@ const {
 	accessSettingsCsvExportOnModalClose,
 } = useAccessSettingsCsvExport();
 
-const isDisablingProvisioning = computed(() => props.newProvisioningSetting === 'disabled');
+const isSwitchingToManual = computed(() => props.transitionType === 'switchToManual');
 
-const messagingKey = computed(() => (isDisablingProvisioning.value ? 'disable' : 'enable'));
+const messagingKey = computed(() => (isSwitchingToManual.value ? 'disable' : 'enable'));
 
-const shouldShowProjectRolesCsv = computed(
-	() => props.newProvisioningSetting === 'instance_and_project_roles',
-);
+const shouldShowProjectRolesCsv = computed(() => props.showProjectRolesCsv);
 
 watch(visible, () => {
 	loading.value = false;
@@ -75,24 +78,11 @@ const onConfirmProvisioningSetting = () => {
 		:title="locale.baseText(`settings.provisioningConfirmDialog.${messagingKey}.title`)"
 		width="650"
 	>
-		<template v-if="!isDisablingProvisioning">
+		<template v-if="!isSwitchingToManual">
 			<div class="mb-s">
-				<N8nText color="text-base"
-					>{{
-						locale.baseText(
-							newProvisioningSetting === 'instance_and_project_roles'
-								? 'settings.provisioningConfirmDialog.breakingChangeDescription.firstSentence.partOne.withProjectRoles'
-								: 'settings.provisioningConfirmDialog.breakingChangeDescription.firstSentence.partOne',
-						)
-					}}
-				</N8nText>
-				<N8nText :class="$style.descriptionTextPartTwo" color="text-base">
-					{{
-						locale.baseText(
-							'settings.provisioningConfirmDialog.breakingChangeDescription.firstSentence.partTwo',
-						)
-					}}</N8nText
-				>
+				<N8nText color="text-base">{{
+					locale.baseText('settings.provisioningConfirmDialog.enable.description')
+				}}</N8nText>
 			</div>
 			<div class="mb-s">
 				<N8nText color="text-base"
@@ -102,16 +92,6 @@ const onConfirmProvisioningSetting = () => {
 						>{{ locale.baseText('settings.provisioningConfirmDialog.link.docs') }}</a
 					></N8nText
 				>
-			</div>
-			<div class="mb-s">
-				<N8nText
-					v-n8n-html="
-						locale.baseText(
-							'settings.provisioningConfirmDialog.breakingChangeDescription.secondLine',
-						)
-					"
-					color="text-base"
-				></N8nText>
 			</div>
 			<ul :class="$style.list" class="mb-s">
 				<li>
@@ -166,12 +146,27 @@ const onConfirmProvisioningSetting = () => {
 				>
 			</div>
 		</template>
+		<div
+			v-if="props.willDeleteProjectRules"
+			class="mb-s"
+			data-test-id="provisioning-project-rules-deletion-warning"
+		>
+			<N8nCallout theme="danger">
+				<N8nText color="text-base" size="small" :bold="true">{{
+					locale.baseText('settings.provisioningConfirmDialog.projectRulesDeletion.warning')
+				}}</N8nText>
+				<br />
+				<N8nText color="text-base" size="small">{{
+					locale.baseText('settings.provisioningConfirmDialog.projectRulesDeletion.description')
+				}}</N8nText>
+			</N8nCallout>
+		</div>
 		<div class="mb-s">
 			<N8nCard :class="$style.card">
 				<N8nCheckbox
 					v-model="confirmationChecked"
 					:disabled="
-						!isDisablingProvisioning &&
+						!isSwitchingToManual &&
 						(!hasDownloadedInstanceRoleCsv ||
 							(shouldShowProjectRolesCsv && !hasDownloadedProjectRoleCsv))
 					"
@@ -187,43 +182,47 @@ const onConfirmProvisioningSetting = () => {
 		</div>
 
 		<template #footer>
-			<N8nButton
-				variant="ghost"
-				type="button"
-				data-test-id="provisioning-cancel-button"
-				@click="emit('cancel')"
-				>{{ locale.baseText('settings.provisioningConfirmDialog.button.cancel') }}</N8nButton
-			>
-			<N8nButton
-				variant="solid"
-				type="button"
-				:disabled="
-					loading ||
-					!confirmationChecked ||
-					(!isDisablingProvisioning && !hasDownloadedInstanceRoleCsv) ||
-					(shouldShowProjectRolesCsv && !hasDownloadedProjectRoleCsv)
-				"
-				data-test-id="provisioning-confirm-button"
-				@click="onConfirmProvisioningSetting"
-				>{{
-					locale.baseText(`settings.provisioningConfirmDialog.button.${messagingKey}.confirm`)
-				}}</N8nButton
-			>
+			<div :class="$style.footer">
+				<N8nButton
+					variant="ghost"
+					type="button"
+					data-test-id="provisioning-cancel-button"
+					@click="emit('cancel')"
+					>{{ locale.baseText('settings.provisioningConfirmDialog.button.cancel') }}</N8nButton
+				>
+				<N8nButton
+					variant="solid"
+					type="button"
+					:disabled="
+						loading ||
+						!confirmationChecked ||
+						(!isSwitchingToManual && !hasDownloadedInstanceRoleCsv) ||
+						(shouldShowProjectRolesCsv && !hasDownloadedProjectRoleCsv)
+					"
+					data-test-id="provisioning-confirm-button"
+					@click="onConfirmProvisioningSetting"
+					>{{
+						locale.baseText(`settings.provisioningConfirmDialog.button.${messagingKey}.confirm`)
+					}}</N8nButton
+				>
+			</div>
 		</template>
 	</ElDialog>
 </template>
 
 <style lang="scss" module>
+.footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--spacing--xs);
+}
+
 .button {
 	margin-left: var(--spacing--xs);
 }
 
 .card {
 	background-color: var(--color--background--light-1);
-}
-
-.descriptionTextPartTwo {
-	margin-left: 4px;
 }
 
 .icon {

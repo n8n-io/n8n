@@ -22,6 +22,7 @@ import CanvasNodeRenderer from './CanvasNodeRenderer.vue';
 import CanvasHandleRenderer from '../handles/CanvasHandleRenderer.vue';
 import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { CanvasNodeKey } from '@/app/constants';
+import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
 import type { NodeProps, XYPosition } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
@@ -38,6 +39,7 @@ import { CONFIGURATION_NODE_RADIUS, GRID_SIZE } from '@/app/utils/nodeViewUtils'
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
+	canExecute?: boolean;
 	eventBus?: EventBus<CanvasEventBusEvents>;
 	hovered?: boolean;
 	nearbyHovered?: boolean;
@@ -66,6 +68,7 @@ const emit = defineEmits<{
 	'update:outputs': [id: string];
 	move: [id: string, position: XYPosition];
 	focus: [id: string];
+	'replace:node': [id: string];
 	'add:ai': [id: string];
 }>();
 
@@ -77,12 +80,14 @@ const contextMenu = useContextMenu();
 
 const { connectingHandle, isExperimentalNdvActive } = useCanvas();
 
+const renderData = injectCanvasRenderData();
+
 /*
   Toolbar slot classes
 */
 const nodeClasses = ref<string[]>([]);
-const inputs = computed(() => props.data.inputs);
-const outputs = computed(() => props.data.outputs);
+const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(props.id)?.value ?? []);
+const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(props.id)?.value ?? []);
 const connections = computed(() => props.data.connections);
 const {
 	mainInputs,
@@ -285,6 +290,10 @@ function onFocus(id: string) {
 	emit('focus', id);
 }
 
+function onReplaceNode(id: string) {
+	emit('replace:node', id);
+}
+
 function onAddToAi(id: string) {
 	emit('add:ai', id);
 }
@@ -407,6 +416,7 @@ onBeforeUnmount(() => {
 			v-else-if="hasToolbar"
 			data-test-id="canvas-node-toolbar"
 			:read-only="readOnly"
+			:can-execute="canExecute"
 			:class="$style.canvasNodeToolbar"
 			:show-status-icons="isExperimentalNdvActive"
 			:items-class="$style.canvasNodeToolbarItems"
@@ -426,6 +436,7 @@ onBeforeUnmount(() => {
 			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromNode"
 			@delete="onDelete"
+			@replace:node="onReplaceNode"
 		/>
 
 		<CanvasNodeTrigger

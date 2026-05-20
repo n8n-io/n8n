@@ -10,6 +10,11 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { reactive, ref } from 'vue';
 import { createTestWorkflow } from '@/__tests__/mocks';
+import { telemetry } from '@/app/plugins/telemetry';
+
+vi.mock('@/app/plugins/telemetry', () => ({
+	telemetry: { track: vi.fn() },
+}));
 
 const eventBus = createEventBus();
 
@@ -50,6 +55,17 @@ vi.mock('@/features/workflows/workflowDiff/useViewportSync', () => ({
 		selectedDetailId: ref(undefined),
 		triggerNodeClick: vi.fn(),
 	}),
+}));
+
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
+	injectCanvasRenderData: vi.fn(() => ({
+		value: {
+			nodeInputsByNodeId: new Map(),
+			nodeOutputsByNodeId: new Map(),
+			executionIssuesByNodeName: new Map(),
+		},
+	})),
 }));
 
 vi.mock('@/features/workflows/workflowDiff/useWorkflowDiff', () => ({
@@ -160,6 +176,13 @@ describe('WorkflowDiffModal', () => {
 		// Component should render with the basic structure
 		expect(container.querySelector('.header')).toBeInTheDocument();
 		expect(container.querySelector('h4')).toBeInTheDocument();
+		await waitFor(() => {
+			expect(telemetry.track).toHaveBeenCalledWith('user_clicks_compare_workflows', {
+				instance_id: '',
+				workflow_id: 'test-workflow-id',
+				source: 'push_pull_modal',
+			});
+		});
 	});
 
 	it('should initialize with correct props', () => {

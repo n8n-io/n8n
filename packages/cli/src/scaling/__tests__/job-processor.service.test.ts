@@ -1,15 +1,18 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { IExecutionResponse, ExecutionRepository, Project } from '@n8n/db';
+import { WorkflowPublishHistoryRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { WorkflowExecute as ActualWorkflowExecute, InstanceSettings } from 'n8n-core';
 import { ExternalSecretsProxy } from 'n8n-core';
 import { mockInstance } from 'n8n-core/test/utils';
 import {
 	type IPinData,
+	type IRun,
 	type ITaskData,
 	type IWorkflowExecuteAdditionalData,
 	Workflow,
+	NodeConnectionTypes,
 	type IRunExecutionData,
 	type WorkflowExecuteMode,
 	type ExecutionError,
@@ -17,6 +20,7 @@ import {
 
 import { JobProcessor } from '../job-processor';
 import type { Job } from '../scaling.types';
+import type { NodeTypes } from '@/node-types';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
@@ -26,8 +30,10 @@ import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.ser
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+mockInstance(WorkflowPublishHistoryRepository);
 mockInstance(VariablesService, {
 	getAllCached: jest.fn().mockResolvedValue([]),
 });
@@ -36,6 +42,7 @@ mockInstance(ExternalSecretsProxy);
 mockInstance(WorkflowStaticDataService);
 mockInstance(WorkflowStatisticsService);
 mockInstance(ExternalHooks);
+mockInstance(WorkflowHookContextService);
 mockInstance(DataTableProxyService);
 mockInstance(OwnershipService, {
 	getWorkflowProjectCached: jest.fn().mockResolvedValue(mock<Project>({ id: 'project-id' })),
@@ -723,6 +730,415 @@ describe('JobProcessor', () => {
 				response: { error?: { stack?: string } };
 			};
 			expect(lastResponse.response.error?.stack).toBeUndefined();
+		});
+
+		it('should invoke tool via execute for tool wrapper nodes without supplyData', async () => {
+			const executionRepository = mock<ExecutionRepository>();
+			const toolNode = {
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequestTool',
+				typeVersion: 4.4,
+				parameters: {},
+				position: [0, 0] as [number, number],
+			};
+			executionRepository.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'trigger',
+					workflowData: {
+						id: 'wf-1',
+						nodes: [toolNode],
+						staticData: {},
+					},
+					data: mock<IRunExecutionData>({
+						executionData: undefined,
+					}),
+				}),
+			);
+			executionRepository.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					status: 'success',
+					workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
+					data: mock<IRunExecutionData>({ resultData: { runData: {} } }),
+				}),
+			);
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			const mcpInstanceSettings = {
+				hostId: 'worker-host-123',
+			} as unknown as InstanceSettings;
+
+			// Mock nodeTypes to return a node without supplyData but with AiTool output
+			const mockExecuteFn = jest
+				.fn()
+				.mockResolvedValue([[{ json: { result: 'tool response data' } }]]);
+			const nodeTypes = mock<NodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					name: 'httpRequestTool',
+					outputs: [NodeConnectionTypes.AiTool],
+					properties: [],
+				},
+				execute: mockExecuteFn,
+			} as never);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				mock(),
+				nodeTypes,
+				mcpInstanceSettings,
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+			);
+
+			const job = mock<Job>();
+			job.data = {
+				workflowId: 'wf-1',
+				executionId: 'exec-mcp-tool-wrapper',
+				loadStaticData: false,
+				isMcpExecution: true,
+				mcpType: 'trigger',
+				mcpSessionId: 'session-tool',
+				mcpMessageId: 'msg-tool',
+				mcpToolCall: {
+					toolName: 'HTTP Request',
+					arguments: { url: 'https://example.com' },
+					sourceNodeName: 'HTTP Request',
+				},
+			};
+
+			await jobProcessor.processJob(job);
+
+			// execute should have been called (not supplyData)
+			expect(mockExecuteFn).toHaveBeenCalled();
+
+			// Should send mcp-response with tool result
+			const mcpResponseCalls = (job.progress as jest.Mock).mock.calls.filter(
+				(call: unknown[]) => (call[0] as { kind: string }).kind === 'mcp-response',
+			);
+			expect(mcpResponseCalls.length).toBeGreaterThan(0);
+			const lastResponse = mcpResponseCalls[mcpResponseCalls.length - 1][0] as {
+				kind: string;
+				mcpType: string;
+				response: unknown;
+			};
+			expect(lastResponse).toMatchObject({
+				kind: 'mcp-response',
+				mcpType: 'trigger',
+			});
+			// Response should contain the tool's output data
+			expect(lastResponse.response).toEqual([{ result: 'tool response data' }]);
+		});
+
+		it('should invoke tool via supplyData for nodes with supplyData method', async () => {
+			const executionRepository = mock<ExecutionRepository>();
+			const toolNode = {
+				name: 'Tool HTTP Request',
+				type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0] as [number, number],
+			};
+			executionRepository.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'trigger',
+					workflowData: {
+						id: 'wf-1',
+						nodes: [toolNode],
+						staticData: {},
+					},
+					data: mock<IRunExecutionData>({
+						executionData: undefined,
+					}),
+				}),
+			);
+			executionRepository.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					status: 'success',
+					workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
+					data: mock<IRunExecutionData>({ resultData: { runData: {} } }),
+				}),
+			);
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			const mcpInstanceSettings = {
+				hostId: 'worker-host-123',
+			} as unknown as InstanceSettings;
+
+			// Mock a tool that supplyData returns
+			const mockTool = { invoke: jest.fn().mockResolvedValue('supply data tool result') };
+			const mockSupplyData = jest.fn().mockResolvedValue({ response: mockTool });
+
+			const nodeTypes = mock<NodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					name: 'toolHttpRequest',
+					outputs: [NodeConnectionTypes.AiTool],
+					properties: [],
+				},
+				supplyData: mockSupplyData,
+			} as never);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				mock(),
+				nodeTypes,
+				mcpInstanceSettings,
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+			);
+
+			const job = mock<Job>();
+			job.data = {
+				workflowId: 'wf-1',
+				executionId: 'exec-mcp-supply-data',
+				loadStaticData: false,
+				isMcpExecution: true,
+				mcpType: 'trigger',
+				mcpSessionId: 'session-supply',
+				mcpMessageId: 'msg-supply',
+				mcpToolCall: {
+					toolName: 'Tool HTTP Request',
+					arguments: { query: 'test' },
+					sourceNodeName: 'Tool HTTP Request',
+				},
+			};
+
+			await jobProcessor.processJob(job);
+
+			// supplyData path should have been used
+			expect(mockSupplyData).toHaveBeenCalled();
+			expect(mockTool.invoke).toHaveBeenCalledWith({ query: 'test' });
+
+			// Should send mcp-response with tool result
+			const mcpResponseCalls = (job.progress as jest.Mock).mock.calls.filter(
+				(call: unknown[]) => (call[0] as { kind: string }).kind === 'mcp-response',
+			);
+			expect(mcpResponseCalls.length).toBeGreaterThan(0);
+			const lastResponse = mcpResponseCalls[mcpResponseCalls.length - 1][0] as {
+				response: unknown;
+			};
+			expect(lastResponse.response).toBe('supply data tool result');
+		});
+	});
+
+	describe('waitTill propagation', () => {
+		it('carries waitTill on JobFinishedProps from the worker run (lightweight path)', () => {
+			const waitTill = new Date(Date.now() + 60_000);
+			const jobProcessor = new JobProcessor(
+				logger,
+				mock<ExecutionRepository>(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				executionsConfig,
+				mock(),
+			);
+			const run = mock<IRun>({
+				status: 'waiting',
+				stoppedAt: new Date(),
+				data: mock<IRunExecutionData>({
+					resultData: { runData: {}, error: undefined },
+					executionData: undefined,
+				}),
+			});
+			// set Date field after construction, else jest-mock-extended serializes them otherwise.
+			run.waitTill = waitTill;
+
+			const props = jobProcessor['deriveJobFinishedProps'](run, new Date());
+
+			expect(props.waitTill).toBe(waitTill);
+			expect(props.status).toBe('waiting');
+		});
+
+		it('carries waitTill on JobFinishedProps from the persisted execution (DB-fetch path)', async () => {
+			const waitTill = new Date(Date.now() + 60_000);
+			const executionRepository = mock<ExecutionRepository>();
+			const persisted = mock<IExecutionResponse>({
+				status: 'waiting',
+				stoppedAt: new Date(),
+				data: mock<IRunExecutionData>({
+					resultData: { runData: {}, error: undefined },
+					executionData: undefined,
+				}),
+			});
+			persisted.waitTill = waitTill;
+			executionRepository.findSingleExecution.mockResolvedValueOnce(persisted);
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				executionsConfig,
+				mock(),
+			);
+
+			const props = await jobProcessor['fetchJobFinishedResult']('exec-1');
+
+			expect(props.waitTill).toBe(waitTill);
+			expect(props.status).toBe('waiting');
+		});
+
+		it('defaults waitTill to null on JobFinishedProps when the run is not waiting', async () => {
+			const executionRepository = mock<ExecutionRepository>();
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				executionsConfig,
+				mock(),
+			);
+			const run = mock<IRun>({
+				status: 'success',
+				stoppedAt: new Date(),
+				data: mock<IRunExecutionData>({
+					resultData: { runData: {}, error: undefined },
+					executionData: undefined,
+				}),
+			});
+			run.waitTill = undefined;
+			expect(jobProcessor['deriveJobFinishedProps'](run, new Date()).waitTill).toBeNull();
+
+			const persisted = mock<IExecutionResponse>({
+				status: 'success',
+				stoppedAt: new Date(),
+				data: mock<IRunExecutionData>({
+					resultData: { runData: {}, error: undefined },
+					executionData: undefined,
+				}),
+			});
+			persisted.waitTill = null;
+			executionRepository.findSingleExecution.mockResolvedValueOnce(persisted);
+			expect((await jobProcessor['fetchJobFinishedResult']('exec-1')).waitTill).toBeNull();
+		});
+	});
+
+	describe('project info in log metadata', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+		it('should include project info in log metadata when present in job data', async () => {
+			const executionRepository = mock<ExecutionRepository>();
+			executionRepository.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: { id: 'wf-1', name: 'Test Workflow', nodes: [] },
+					data: mock<IRunExecutionData>({
+						executionData: undefined,
+					}),
+				}),
+			);
+			// Second call for checking errors
+			executionRepository.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					status: 'success',
+					data: mock<IRunExecutionData>({ resultData: { runData: {} } }),
+				}),
+			);
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+			);
+
+			const job = mock<Job>();
+			job.data = {
+				workflowId: 'wf-1',
+				executionId: 'exec-1',
+				loadStaticData: false,
+				projectId: 'proj-123',
+				projectName: 'My Project',
+			};
+
+			await jobProcessor.processJob(job);
+
+			// "Worker started" log should include project info
+			expect(logger.info).toHaveBeenCalledWith(
+				expect.stringContaining('Worker started execution'),
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					workflowName: 'Test Workflow',
+					projectId: 'proj-123',
+					projectName: 'My Project',
+				}),
+			);
+
+			// "Worker finished" log should include project info
+			expect(logger.info).toHaveBeenCalledWith(
+				expect.stringContaining('Worker finished execution'),
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					workflowName: 'Test Workflow',
+					projectId: 'proj-123',
+					projectName: 'My Project',
+				}),
+			);
+		});
+
+		it('should not include project info in log metadata when absent from job data', async () => {
+			const executionRepository = mock<ExecutionRepository>();
+			executionRepository.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: { id: 'wf-1', name: 'Test Workflow', nodes: [] },
+					data: mock<IRunExecutionData>({
+						executionData: undefined,
+					}),
+				}),
+			);
+			executionRepository.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					status: 'success',
+					data: mock<IRunExecutionData>({ resultData: { runData: {} } }),
+				}),
+			);
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+			);
+
+			const job = mock<Job>();
+			job.data = {
+				workflowId: 'wf-1',
+				executionId: 'exec-1',
+				loadStaticData: false,
+			};
+
+			await jobProcessor.processJob(job);
+
+			// "Worker started" log should not include project fields
+			const startedCall = (logger.info as jest.Mock).mock.calls.find(
+				(call: unknown[]) =>
+					typeof call[0] === 'string' && call[0].includes('Worker started execution'),
+			) as [string, Record<string, unknown>] | undefined;
+			expect(startedCall).toBeDefined();
+			expect(startedCall![1].workflowId).toBe('wf-1');
+			expect(startedCall![1]).not.toHaveProperty('projectId');
+			expect(startedCall![1]).not.toHaveProperty('projectName');
 		});
 	});
 });

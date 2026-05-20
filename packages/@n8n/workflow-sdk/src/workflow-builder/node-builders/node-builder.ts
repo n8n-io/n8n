@@ -9,8 +9,8 @@ import {
 	type NodeInput,
 	type TriggerInput,
 	type StickyNoteConfig,
-	type PlaceholderValue,
 	type NewCredentialValue,
+	type CredentialReference,
 	type DeclaredConnection,
 	type NodeChain,
 	type InputTarget,
@@ -20,12 +20,14 @@ import {
 	type IfElseTarget,
 	type SwitchCaseTarget,
 } from '../../types/base';
+import { extractHint, isPlaceholderValue } from '../string-utils';
 import {
 	isSwitchCaseComposite,
 	isIfElseComposite,
 	isSplitInBatchesBuilder,
 	extractSplitInBatchesBuilder,
 } from '../type-guards';
+import { assertPlainObject } from '../validation-helpers';
 
 /**
  * Type guard to check if a value is an InputTarget
@@ -98,6 +100,80 @@ function generateNodeName(type: string): string {
 }
 
 /**
+ * Normalize the various credential-slot shapes the agent (or hand-written code)
+ * may emit into the canonical `CredentialReference | NewCredentialValue` form
+ * downstream code expects.
+ *
+ * Accepted shapes (all converge to `NewCredentialValue` or `CredentialReference`):
+ * - bare placeholder marker string → `newCredential(extractedHint)`
+ * - `{ value: <string|placeholder> }` → `newCredential(<hint or literal>)`
+ * - `{ id: <placeholder>, name: <string|placeholder> }` → `newCredential(<name or id-hint>)`
+ * - `{ id: <string>, name: <string> }` → unchanged `CredentialReference`
+ * - `NewCredentialValue` instance → unchanged
+ *
+ * Returns a new config object when any normalization happens; otherwise a
+ * shallow copy (matching the previous `{ ...config }` semantics).
+ */
+export function normalizeNodeConfig(config: NodeConfig): NodeConfig {
+	const creds = config?.credentials as Record<string, unknown> | undefined;
+	if (!creds) return { ...config };
+
+	let normalizedCreds:
+		| Record<string, CredentialReference | NewCredentialValue | string>
+		| undefined;
+	const setNormalized = (key: string, next: CredentialReference | NewCredentialValue | string) => {
+		normalizedCreds ??= { ...creds } as Record<
+			string,
+			CredentialReference | NewCredentialValue | string
+		>;
+		normalizedCreds[key] = next;
+	};
+
+	for (const [key, value] of Object.entries(creds)) {
+		// 1. Bare placeholder marker string → newCredential(extractedHint)
+		if (typeof value === 'string' && isPlaceholderValue(value)) {
+			setNormalized(key, new NewCredentialImpl(extractHint(value)));
+			continue;
+		}
+		if (!value || typeof value !== 'object') {
+			continue;
+		}
+		const obj = value as Record<string, unknown>;
+		// Already a NewCredentialValue — leave alone
+		if ('__newCredential' in obj) continue;
+
+		// 2. { value: ... } → newCredential
+		if ('value' in obj && !('id' in obj)) {
+			const v = String(obj.value);
+			const name = isPlaceholderValue(v) ? extractHint(v) : v;
+			setNormalized(key, new NewCredentialImpl(name));
+			continue;
+		}
+
+		// 3. { id, name } where id is a placeholder marker → newCredential(name)
+		if ('id' in obj) {
+			const idStr = typeof obj.id === 'string' ? obj.id : '';
+			if (isPlaceholderValue(idStr)) {
+				const rawName = obj.name;
+				const name =
+					typeof rawName === 'string' && rawName.length > 0 && !isPlaceholderValue(rawName)
+						? rawName
+						: typeof rawName === 'string' && isPlaceholderValue(rawName)
+							? extractHint(rawName)
+							: extractHint(idStr);
+				setNormalized(key, new NewCredentialImpl(name));
+				continue;
+			}
+		}
+
+		// 4. else: leave as CredentialReference / plain string
+	}
+
+	if (!normalizedCreds) return { ...config };
+	return { ...config, credentials: normalizedCreds } as NodeConfig;
+}
+
+/**
  * Internal node instance implementation
  */
 class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = unknown>
@@ -121,9 +197,9 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	) {
 		this.type = type;
 		this.version = version;
-		this.config = { ...config };
+		this.config = normalizeNodeConfig(config);
 		this.id = id ?? uuid();
-		this.name = name ?? config.name ?? generateNodeName(type);
+		this.name = name ?? config?.name ?? generateNodeName(type);
 		this._connections = connections ?? [];
 	}
 
@@ -202,6 +278,8 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	/**
 	 * Create a terminal input target for connecting to a specific input index.
 	 * Use this to connect a node to a specific input of a multi-input node like Merge.
+	 *
+	 * Index is **0-based**: `.input(0)` is the FIRST input, `.input(1)` is the SECOND.
 	 */
 	input(index: number): InputTarget {
 		return {
@@ -214,6 +292,8 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	/**
 	 * Create an output selector for connecting from a specific output index.
 	 * Use this for multi-output nodes (like text classifiers) to connect from specific outputs.
+	 *
+	 * Index is **0-based**: `.output(0)` is the FIRST output, `.output(1)` is the SECOND.
 	 */
 	output(index: number): OutputSelector<TType, TVersion, TOutput> {
 		return new OutputSelectorImpl(this, index) as unknown as OutputSelector<
@@ -274,41 +354,18 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 		return builder.onCase(index, target);
 	}
 
-	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this {
-		const errorOutputIndex = this.calculateErrorOutputIndex();
-		this._connections.push({ target: handler, outputIndex: errorOutputIndex });
+	onError<T extends NodeInstance<string, string, unknown>>(handler: T | InputTarget): this {
+		if (isInputTarget(handler)) {
+			this._connections.push({
+				target: handler.node,
+				outputIndex: 0,
+				targetInputIndex: handler.inputIndex,
+				connectionType: 'error',
+			});
+		} else {
+			this._connections.push({ target: handler, outputIndex: 0, connectionType: 'error' });
+		}
 		return this;
-	}
-
-	/**
-	 * Calculate the error output index based on node type.
-	 * Error outputs are always the last output after regular outputs:
-	 * - Regular nodes: index 1 (after main output 0)
-	 * - IF nodes: index 2 (after true=0, false=1)
-	 * - Switch nodes: index = numberOfOutputs (determined from parameters)
-	 */
-	private calculateErrorOutputIndex(): number {
-		// IF nodes have true (0) and false (1) branches, error at index 2
-		if (isIfNodeType(this.type)) {
-			return 2;
-		}
-
-		// Switch nodes have variable outputs based on parameters
-		if (isSwitchNodeType(this.type)) {
-			const params = this.config.parameters as Record<string, unknown> | undefined;
-			if (params?.numberOutputs !== undefined && typeof params.numberOutputs === 'number') {
-				return params.numberOutputs;
-			}
-			const rules = params?.rules as Record<string, unknown> | undefined;
-			const innerRules = rules?.rules as unknown[] | undefined;
-			if (innerRules?.length !== undefined) {
-				return innerRules.length;
-			}
-			return 4;
-		}
-
-		// Regular nodes: error at index 1 (after main output 0)
-		return 1;
 	}
 
 	getConnections(): DeclaredConnection[] {
@@ -499,8 +556,8 @@ class NodeChainImpl<
 		return builder;
 	}
 
-	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this {
-		this.tail.onError(handler);
+	onError<T extends NodeInstance<string, string, unknown>>(handler: T | InputTarget): this {
+		this.tail.onError(handler as T);
 		return this;
 	}
 
@@ -603,6 +660,27 @@ function extractNodesFromTarget(target: unknown): Array<NodeInstance<string, str
 		return nodes;
 	}
 
+	// Handle SplitInBatchesBuilder (fluent API) - the sibNode plus any recorded
+	// done/each branch targets. Recurses so nested builders inside either branch
+	// are collected too.
+	if (isSplitInBatchesBuilder(target)) {
+		const builder = extractSplitInBatchesBuilder(target);
+		const nodes: Array<NodeInstance<string, string, unknown>> = [builder.sibNode];
+		for (const doneTarget of builder._doneBatches) {
+			nodes.push(...extractNodesFromTarget(doneTarget));
+		}
+		for (const eachTarget of builder._eachBatches) {
+			nodes.push(...extractNodesFromTarget(eachTarget));
+		}
+		if (builder._doneTarget !== undefined) {
+			nodes.push(...extractNodesFromTarget(builder._doneTarget));
+		}
+		if (builder._eachTarget !== undefined) {
+			nodes.push(...extractNodesFromTarget(builder._eachTarget));
+		}
+		return nodes;
+	}
+
 	// Check if it's a node-like object with type, version, config
 	if (
 		target !== null &&
@@ -651,6 +729,7 @@ class IfElseBuilderImpl<TOutput = unknown> implements IfElseBuilder<TOutput> {
 	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, TOutput>;
 	trueBranch: IfElseTarget = null;
 	falseBranch: IfElseTarget = null;
+	errorBranch?: IfElseTarget;
 	/** All nodes from both branches (for workflow-builder) */
 	_allBranchNodes: Array<NodeInstance<string, string, unknown>> = [];
 
@@ -666,6 +745,12 @@ class IfElseBuilderImpl<TOutput = unknown> implements IfElseBuilder<TOutput> {
 
 	onFalse(target: IfElseTarget): IfElseBuilder<TOutput> {
 		this.falseBranch = target;
+		this._updateAllBranchNodes();
+		return this;
+	}
+
+	onError(target: IfElseTarget): IfElseBuilder<TOutput> {
+		this.errorBranch = target;
 		this._updateAllBranchNodes();
 		return this;
 	}
@@ -688,6 +773,13 @@ class IfElseBuilderImpl<TOutput = unknown> implements IfElseBuilder<TOutput> {
 		for (const node of extractNodesFromTarget(this.falseBranch)) {
 			if (!allNodes.some((n) => n.name === node.name)) {
 				allNodes.push(node);
+			}
+		}
+		if (this.errorBranch) {
+			for (const node of extractNodesFromTarget(this.errorBranch)) {
+				if (!allNodes.some((n) => n.name === node.name)) {
+					allNodes.push(node);
+				}
 			}
 		}
 		this._allBranchNodes = allNodes;
@@ -772,6 +864,11 @@ class SwitchCaseBuilderImpl<TOutput = unknown> implements SwitchCaseBuilder<TOut
 export function node<TNode extends NodeInput>(
 	input: TNode,
 ): NodeInstance<TNode['type'], `${TNode['version']}`, unknown> {
+	assertPlainObject(
+		input,
+		'node',
+		"a configuration object { type, version, config }. Example: node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {} } })",
+	);
 	const versionStr = String(input.version) as `${TNode['version']}`;
 	// Copy top-level output into config if present
 	const config: NodeConfig = input.output
@@ -811,6 +908,7 @@ export interface IfElseFactoryConfig {
 export function ifElse<TOutput = unknown>(
 	input: IfElseFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.if', string, TOutput> {
+	assertPlainObject(input, 'ifElse', 'a config object { version, config }');
 	return node({
 		type: 'n8n-nodes-base.if',
 		version: input.version,
@@ -832,20 +930,25 @@ export interface MergeFactoryConfig {
  * Create a Merge node for combining data from multiple branches.
  * Use .input(n) method to connect sources to specific input indices.
  *
+ * Input indices are **0-based**: `.input(0)` is the FIRST input, `.input(1)` is
+ * the SECOND. When wiring N sources, use indices `0, 1, ..., N-1` — never start
+ * at 1.
+ *
  * @param input - Config with version (required) and config object
  * @returns A Merge NodeInstance with .input(n) method for branch connections
  *
  * @example
  * ```typescript
  * const mergeNode = merge({ version: 3, config: { name: 'Combine Data' } });
- * source1.to(mergeNode.input(0));
- * source2.to(mergeNode.input(1));
+ * source1.to(mergeNode.input(0)); // first input
+ * source2.to(mergeNode.input(1)); // second input
  * mergeNode.to(downstream);
  * ```
  */
 export function merge<TOutput = unknown>(
 	input: MergeFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.merge', string, TOutput> {
+	assertPlainObject(input, 'merge', 'a config object { version, config }');
 	return node({
 		type: 'n8n-nodes-base.merge',
 		version: input.version,
@@ -881,6 +984,7 @@ export interface SwitchCaseFactoryConfig {
 export function switchCase<TOutput = unknown>(
 	input: SwitchCaseFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.switch', string, TOutput> {
+	assertPlainObject(input, 'switchCase', 'a config object { version, config }');
 	return node({
 		type: 'n8n-nodes-base.switch',
 		version: input.version,
@@ -906,6 +1010,11 @@ export function switchCase<TOutput = unknown>(
 export function trigger<TTrigger extends TriggerInput>(
 	input: TTrigger,
 ): TriggerInstance<TTrigger['type'], `${TTrigger['version']}`, unknown> {
+	assertPlainObject(
+		input,
+		'trigger',
+		"a configuration object { type, version, config }. Example: trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {} } })",
+	);
 	const versionStr = String(input.version) as `${TTrigger['version']}`;
 	// Copy top-level output into config if present
 	const config: NodeConfig = input.output
@@ -1095,33 +1204,23 @@ export function sticky(
 }
 
 /**
- * Placeholder implementation
- */
-class PlaceholderImpl implements PlaceholderValue {
-	readonly __placeholder = true as const;
-	readonly hint: string;
-
-	constructor(hint: string) {
-		this.hint = hint;
-	}
-
-	toString(): string {
-		return `<__PLACEHOLDER_VALUE__${this.hint}__>`;
-	}
-
-	toJSON(): string {
-		return this.toString();
-	}
-}
-
-/**
- * Create a placeholder value for template parameters
+ * Create a placeholder value for template parameters.
  *
- * Placeholders are used to mark values that need to be filled in
- * when a workflow template is instantiated.
+ * Returns the marker string `<__PLACEHOLDER_VALUE__<hint>__>`, which is
+ * structurally a `string` — so it flows through every string-typed slot in
+ * generated node types without TypeScript complaints. The workflow compiler
+ * recognises the marker via {@link isPlaceholderValue} and treats the slot as
+ * "to be filled in by the user before execution".
+ *
+ * Inside a node's `credentials` slot, the marker is normalised to
+ * `newCredential(hint)` at config ingest — see {@link normalizeNodeConfig}.
+ *
+ * Note: a small number of parameters carry `placeholderSupported: false` in
+ * their description (e.g. webhook `path`) and the workflow compiler will throw
+ * a clear error if a placeholder lands in such a slot.
  *
  * @param hint - Description shown to users (e.g., 'Enter Channel')
- * @returns A placeholder value that serializes to the placeholder format
+ * @returns The placeholder marker string.
  *
  * @example
  * ```typescript
@@ -1131,50 +1230,59 @@ class PlaceholderImpl implements PlaceholderValue {
  * // Serializes channel as: '<__PLACEHOLDER_VALUE__Enter Channel__>'
  * ```
  */
-export function placeholder(hint: string): PlaceholderValue {
-	return new PlaceholderImpl(hint);
+export function placeholder(hint: string): string {
+	return `<__PLACEHOLDER_VALUE__${hint}__>`;
 }
 
 /**
- * New credential implementation
- * Currently serializes to undefined (not yet implemented).
- * Will be implemented to create actual credentials later.
+ * New credential implementation.
+ * When `id` is provided, serializes to `{ id, name }` to link an existing credential.
+ * When `id` is omitted, serializes to undefined (placeholder for credential to be created).
  */
 class NewCredentialImpl implements NewCredentialValue {
 	readonly __newCredential = true as const;
 	readonly name: string;
+	readonly id?: string;
 
-	constructor(name: string) {
+	constructor(name: string, id?: string) {
 		this.name = name;
+		this.id = id;
 	}
 
-	toJSON(): undefined {
-		// TODO: Implement credential creation
+	toJSON(): { id: string; name: string } | undefined {
+		if (this.id !== undefined) {
+			return { id: this.id, name: this.name };
+		}
 		return undefined;
 	}
 }
 
 /**
- * Create a new credential marker for credentials that need to be created
+ * Create a credential marker.
  *
- * Use this when a workflow needs a credential that doesn't exist yet.
- * Currently serializes to undefined (not yet implemented).
+ * When called with just a name, creates a placeholder for a credential that needs
+ * to be created (serializes to undefined, omitted from JSON).
+ *
+ * When called with both name and id, links an existing credential
+ * (serializes to `{ id, name }` in JSON).
  *
  * @param name - Display name for the credential (e.g., 'My Slack Bot')
- * @returns A credential marker (currently serializes to undefined)
+ * @param id - Optional ID of an existing credential to link
+ * @returns A credential marker
  *
  * @example
  * ```typescript
- * const slackNode = node('n8n-nodes-base.slack', 'v2.2', {
- *   parameters: { channel: '#general' },
- *   credentials: { slackApi: newCredential('My Slack Bot') }
- * });
- * // Currently: credential is omitted from JSON output
- * // TODO: Will create actual credentials when implemented
+ * // Link existing credential
+ * credentials: { slackApi: newCredential('Slack Bot', 'cred-123') }
+ * // → { slackApi: { id: 'cred-123', name: 'Slack Bot' } }
+ *
+ * // Placeholder (credential to be created)
+ * credentials: { slackApi: newCredential('My Slack Bot') }
+ * // → {} (omitted from JSON)
  * ```
  */
-export function newCredential(name: string): NewCredentialValue {
-	return new NewCredentialImpl(name);
+export function newCredential(name: string, id?: string): NewCredentialValue {
+	return new NewCredentialImpl(name, id);
 }
 
 /**

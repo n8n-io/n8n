@@ -1,4 +1,6 @@
+import { computed } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import ParameterInput from './ParameterInput.vue';
 import type { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { CompletionResult } from '@codemirror/autocomplete';
@@ -13,16 +15,14 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import {
 	createTestExpressionLocalResolveContext,
 	createMockEnterpriseSettings,
-	createTestNode,
-	createTestWorkflowObject,
 	createTestNodeProperties,
 } from '@/__tests__/mocks';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { NodeConnectionTypes, type INodeParameterResourceLocator } from 'n8n-workflow';
+import { type INodeParameterResourceLocator } from 'n8n-workflow';
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
-import { nextTick } from 'vue';
+import { nextTick, reactive } from 'vue';
 
 function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
 	return {
@@ -50,6 +50,11 @@ function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
 function getNodeTypesStateMock(): Partial<ReturnType<typeof useNodeTypesStore>> {
 	return {
 		allNodeTypes: [],
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	};
 }
 
@@ -62,13 +67,15 @@ beforeEach(() => {
 	mockNodeTypesState = getNodeTypesStateMock();
 	mockCompletionResult = {};
 	mockBuilderState.trackWorkflowBuilderJourney.mockClear();
-	mockIsPlaceholderValue.mockClear();
+	mockIsPlaceholderValue.mockReset();
+	mockExtractPlaceholderLabels.mockReset().mockReturnValue([]);
 	mockBuilderState.isAIBuilderEnabled = true;
 });
 
 vi.mock('@/features/ndv/shared/ndv.store', () => {
 	return {
 		useNDVStore: vi.fn(() => mockNdvState),
+		injectNDVStore: vi.fn(() => mockNdvState),
 	};
 });
 
@@ -110,15 +117,22 @@ vi.mock('@/features/ai/assistant/builder.store', () => {
 });
 
 const mockIsPlaceholderValue = vi.fn();
+const mockExtractPlaceholderLabels = vi.fn().mockReturnValue([]);
 
 vi.mock('@/features/ai/assistant/composables/useBuilderTodos', () => {
 	return {
 		isPlaceholderValue: (value: unknown) => mockIsPlaceholderValue(value),
+		extractPlaceholderLabels: (value: unknown) => mockExtractPlaceholderLabels(value),
 	};
 });
 
 const renderComponent = createComponentRenderer(ParameterInput, {
 	pinia: createTestingPinia(),
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
 });
 
 const settingsStore = mockedStore(useSettingsStore);
@@ -149,6 +163,11 @@ describe('ParameterInput.vue', () => {
 		mockNodeTypesState = {
 			allNodeTypes: [],
 			getNodeType: vi.fn().mockReturnValue(null),
+			getAllNodeTypes: vi.fn().mockReturnValue({
+				nodeTypes: {},
+				init: async () => {},
+				getByNameAndVersion: () => undefined,
+			}),
 		};
 		settingsStore.settings.enterprise = createMockEnterpriseSettings();
 	});
@@ -702,16 +721,7 @@ describe('ParameterInput.vue', () => {
 	});
 
 	describe('data mapper', () => {
-		const workflow = createTestWorkflowObject({
-			nodes: [createTestNode({ name: 'n0' }), createTestNode({ name: 'n1' })],
-			connections: {
-				n1: {
-					[NodeConnectionTypes.Main]: [[{ node: 'n0', index: 0, type: NodeConnectionTypes.Main }]],
-				},
-			},
-		});
 		const ctx = createTestExpressionLocalResolveContext({
-			workflow,
 			nodeName: 'n0',
 			inputNode: { name: 'n1', runIndex: 0, branchIndex: 0 },
 		});
@@ -899,8 +909,210 @@ describe('ParameterInput.vue', () => {
 		});
 	});
 
+	describe('credential change resets options value', () => {
+		test('should reset options value when credentials change', async () => {
+			mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => [
+				{ name: 'GPT-4', value: 'gpt-4' },
+				{ name: 'GPT-3.5', value: 'gpt-3.5-turbo' },
+			]);
+
+			const activeNode = reactive({
+				id: faker.string.uuid(),
+				name: 'Test Node',
+				parameters: { model: 'gpt-3.5-turbo' },
+				position: [0, 0] as [number, number],
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1,
+				credentials: {
+					openAiApi: { id: '1', name: 'OpenAI Account 1' },
+				},
+			});
+
+			mockNdvState = {
+				...getNdvStateMock(),
+				activeNode,
+			};
+
+			const { emitted } = renderComponent({
+				props: {
+					path: 'model',
+					parameter: createTestNodeProperties({
+						displayName: 'Model',
+						name: 'model',
+						type: 'options',
+						default: 'gpt-4',
+						typeOptions: { loadOptionsMethod: 'getModels' },
+					}),
+					modelValue: 'gpt-3.5-turbo',
+				},
+			});
+
+			await waitFor(() => {
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalled();
+			});
+
+			// Change credentials — the previously selected model should be reset to the default
+			activeNode.credentials = {
+				openAiApi: { id: '2', name: 'OpenAI Account 2' },
+			};
+			await nextTick();
+
+			await waitFor(() => {
+				expect(emitted('update')).toContainEqual([
+					expect.objectContaining({ name: 'model', value: 'gpt-4' }),
+				]);
+			});
+		});
+
+		test('should not reset non-options parameter when credentials change', async () => {
+			const activeNode = reactive({
+				id: faker.string.uuid(),
+				name: 'Test Node',
+				parameters: { temperature: 0.9 },
+				position: [0, 0] as [number, number],
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1,
+				credentials: {
+					openAiApi: { id: '1', name: 'OpenAI Account 1' },
+				},
+			});
+
+			mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => []);
+
+			mockNdvState = {
+				...getNdvStateMock(),
+				activeNode,
+			};
+
+			const { emitted } = renderComponent({
+				props: {
+					path: 'temperature',
+					parameter: createTestNodeProperties({
+						displayName: 'Temperature',
+						name: 'temperature',
+						type: 'number',
+						default: 0.7,
+						typeOptions: { loadOptionsMethod: 'getTemperature' },
+					}),
+					modelValue: 0.9,
+				},
+			});
+
+			await waitFor(() => {
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalled();
+			});
+
+			activeNode.credentials = {
+				openAiApi: { id: '2', name: 'OpenAI Account 2' },
+			};
+			await nextTick();
+
+			await waitFor(() => {
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalledTimes(2);
+			});
+
+			const updates = emitted('update') ?? [];
+			expect(updates).not.toContainEqual([expect.objectContaining({ name: 'temperature' })]);
+		});
+
+		test('should not reset options value on initial load', async () => {
+			mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => [
+				{ name: 'GPT-4', value: 'gpt-4' },
+			]);
+
+			mockNdvState = {
+				...getNdvStateMock(),
+				activeNode: reactive({
+					id: faker.string.uuid(),
+					name: 'Test Node',
+					parameters: { model: 'gpt-4' },
+					position: [0, 0] as [number, number],
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1,
+					credentials: {
+						openAiApi: { id: '1', name: 'OpenAI Account 1' },
+					},
+				}),
+			};
+
+			const { emitted } = renderComponent({
+				props: {
+					path: 'model',
+					parameter: createTestNodeProperties({
+						displayName: 'Model',
+						name: 'model',
+						type: 'options',
+						default: 'gpt-4',
+						typeOptions: { loadOptionsMethod: 'getModels' },
+					}),
+					modelValue: 'gpt-4',
+				},
+			});
+
+			await waitFor(() => {
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalled();
+			});
+
+			expect(emitted('update')).toBeUndefined();
+		});
+
+		test('should not reset options value on first credential assignment', async () => {
+			mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => [
+				{ name: 'GPT-4', value: 'gpt-4' },
+				{ name: 'GPT-3.5', value: 'gpt-3.5-turbo' },
+			]);
+
+			const activeNode = reactive({
+				id: faker.string.uuid(),
+				name: 'Test Node',
+				parameters: { model: 'gpt-3.5-turbo' },
+				position: [0, 0] as [number, number],
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1,
+				credentials: {} as Record<string, { id: string; name: string }>,
+			});
+
+			mockNdvState = {
+				...getNdvStateMock(),
+				activeNode,
+			};
+
+			const { emitted } = renderComponent({
+				props: {
+					path: 'model',
+					parameter: createTestNodeProperties({
+						displayName: 'Model',
+						name: 'model',
+						type: 'options',
+						default: 'gpt-4',
+						typeOptions: { loadOptionsMethod: 'getModels' },
+					}),
+					modelValue: 'gpt-3.5-turbo',
+				},
+			});
+
+			await waitFor(() => {
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalled();
+			});
+
+			// Assign credentials for the first time (from empty to having credentials)
+			activeNode.credentials = {
+				openAiApi: { id: '1', name: 'OpenAI Account 1' },
+			};
+			await nextTick();
+
+			await waitFor(() => {
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalledTimes(2);
+			});
+
+			// Should NOT reset the value since this is first credential assignment, not a change
+			const updates = emitted('update') ?? [];
+			expect(updates).not.toContainEqual([expect.objectContaining({ name: 'model' })]);
+		});
+	});
+
 	describe('multi-line string handling', () => {
-		test('should replace all newlines with pipes in single-line string display', async () => {
+		test('should render multi-line string value as textarea', async () => {
 			const multiLineValue = 'line1\nline2\nline3';
 			const { container } = renderComponent({
 				props: {
@@ -916,9 +1128,9 @@ describe('ParameterInput.vue', () => {
 			});
 
 			await nextTick();
-			const input = container.querySelector('input') as HTMLInputElement;
+			const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
 			await waitFor(() => {
-				expect(input.value).toBe('line1|line2|line3');
+				expect(textarea.value).toBe(multiLineValue);
 			});
 		});
 
@@ -943,7 +1155,28 @@ describe('ParameterInput.vue', () => {
 			expect(textarea.value).toBe(multiLineValue);
 		});
 
-		test('should handle consecutive newlines correctly', async () => {
+		test('should keep pipe characters as-is in single-line input', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'pattern',
+					parameter: createTestNodeProperties({
+						displayName: 'Pattern',
+						name: 'pattern',
+						type: 'string',
+					}),
+					modelValue: 'foo|bar',
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await waitFor(() => {
+				expect(input.value).toBe('foo|bar');
+			});
+		});
+
+		test('should render string with consecutive newlines as textarea', async () => {
 			const { container } = renderComponent({
 				props: {
 					path: 'test',
@@ -958,10 +1191,105 @@ describe('ParameterInput.vue', () => {
 			});
 
 			await nextTick();
-			const input = container.querySelector('input') as HTMLInputElement;
+			const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
 			await waitFor(() => {
-				expect(input.value).toBe('a|||b');
+				expect(textarea.value).toBe('a\n\n\nb');
 			});
+		});
+	});
+
+	describe('JSON Password Field Validation', () => {
+		const jsonPasswordParameter = createTestNodeProperties({
+			displayName: 'Service Account Key',
+			name: 'serviceAccountKey',
+			type: 'json',
+			default: '',
+			required: true,
+			typeOptions: {
+				password: true,
+			},
+			noDataExpression: true,
+		});
+
+		it('renders as a password input', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input[type="password"]');
+			expect(input).toBeInTheDocument();
+		});
+
+		it('shows validation error for invalid JSON input', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await fireEvent.update(input, '{invalid');
+
+			expect(queryByTestId('parameter-issues')).toBeInTheDocument();
+		});
+
+		it('does not show validation error for valid JSON input', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await fireEvent.update(input, '{"type": "service_account"}');
+
+			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
+		});
+
+		it('does not show validation error for empty input', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await fireEvent.update(input, '');
+
+			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
+		});
+
+		it('clears validation error when invalid JSON is corrected', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+
+			await fireEvent.update(input, '{invalid');
+			expect(queryByTestId('parameter-issues')).toBeInTheDocument();
+
+			await fireEvent.update(input, '{"valid": true}');
+			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
 		});
 	});
 });

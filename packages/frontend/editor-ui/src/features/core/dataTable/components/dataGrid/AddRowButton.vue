@@ -17,6 +17,7 @@ const props = defineProps<{
 		<N8nIconButton
 			variant="ghost"
 			icon="plus"
+			:aria-label="i18n.baseText('dataTable.addRow.label')"
 			:disabled="props.params.disabled"
 			@click="props.params.onClick"
 		/>

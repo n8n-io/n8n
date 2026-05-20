@@ -53,9 +53,7 @@ import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { EventService } from '@/events/event.service';
-import { License } from '@/license';
 import { ProjectService } from '@/services/project.service.ee';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 let owner: User;
 let member: User;
@@ -114,6 +112,7 @@ beforeEach(async () => {
 	anotherMember = await createMember();
 
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 
 	folderListMissingRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
@@ -143,6 +142,14 @@ describe('POST /workflows', () => {
 	test('should set pin data to null if no pin data', async () => {
 		const pinData = await testWithPinData(false);
 		expect(pinData).toBeNull();
+	});
+
+	test('should reject workflow with pinData exceeding size limit', async () => {
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1); // > 12 MB
+		const workflow = makeWorkflow({ withPinData: false });
+		workflow.pinData = { data: [{ json: { data: largeValue } }] };
+		const response = await authOwnerAgent.post('/workflows').send(workflow);
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('should retain accept `workflow.id`', async () => {
@@ -225,6 +232,7 @@ describe('POST /workflows', () => {
 				'workflow:read',
 				'workflow:share',
 				'workflow:unpublish',
+				'workflow:unshare',
 				'workflow:update',
 			].sort(),
 		);
@@ -828,6 +836,24 @@ describe('POST /workflows', () => {
 			expect(createdWorkflow?.settings).toMatchObject({ saveExecutionProgress: true });
 			expect(createdWorkflow?.meta).toMatchObject({ testMeta: 'value' });
 		});
+
+		test('should persist redactionPolicy setting to the database on create', async () => {
+			testServer.license.enable('feat:dataRedaction');
+			const payload = {
+				name: 'Redaction Policy Workflow',
+				nodes: [],
+				connections: {},
+				settings: { redactionPolicy: 'non-manual' },
+			};
+
+			const response = await authOwnerAgent.post('/workflows').send(payload).expect(200);
+
+			const dbWorkflow = await workflowRepository.findOneBy({
+				id: response.body.data.id,
+			});
+
+			expect(dbWorkflow?.settings).toMatchObject({ redactionPolicy: 'non-manual' });
+		});
 	});
 });
 
@@ -1163,6 +1189,7 @@ describe('GET /workflows', () => {
 					'workflow:read',
 					'workflow:share',
 					'workflow:unpublish',
+					'workflow:unshare',
 					'workflow:update',
 				].sort(),
 			);
@@ -1189,9 +1216,12 @@ describe('GET /workflows', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
+					'workflow:unshare',
 					'workflow:update',
+					'workflow:updateRedactionSetting',
 				].sort(),
 			);
 
@@ -1206,9 +1236,12 @@ describe('GET /workflows', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
+					'workflow:unshare',
 					'workflow:update',
+					'workflow:updateRedactionSetting',
 				].sort(),
 			);
 		}
@@ -2331,6 +2364,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:read',
 					'workflow:share',
 					'workflow:unpublish',
+					'workflow:unshare',
 					'workflow:update',
 				].sort(),
 			);
@@ -2362,9 +2396,12 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
+					'workflow:unshare',
 					'workflow:update',
+					'workflow:updateRedactionSetting',
 				].sort(),
 			);
 
@@ -2379,9 +2416,12 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
+					'workflow:unshare',
 					'workflow:update',
+					'workflow:updateRedactionSetting',
 				].sort(),
 			);
 
@@ -3081,10 +3121,20 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(versions[0].versionId).toBe(workflow.versionId);
 	});
 
-	test('should update the version counter', async () => {
+	test('should update the version counter when nodes change', async () => {
 		const workflow = await createWorkflow({}, owner);
 		const payload = {
-			name: 'name updated',
+			nodes: [
+				{
+					id: 'new-node',
+					name: 'New Node',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
 			versionId: workflow.versionId,
 		};
 
@@ -3100,6 +3150,21 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(versionCounter).toBe(workflow.versionCounter + 1);
 	});
 
+	test('should not update the version counter on metadata-only changes', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const payload = {
+			name: 'name updated',
+			versionId: workflow.versionId,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updated = await workflowRepository.findOneBy({ id: workflow.id });
+		expect(updated?.versionCounter).toBe(workflow.versionCounter);
+	});
+
 	test('should update workflow without updating its active version', async () => {
 		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
@@ -3107,6 +3172,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 		const payload = {
 			nodes: [],
+			connections: {},
 		};
 
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
@@ -3338,6 +3404,32 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(updatedWorkflow!.isArchived).toBe(true);
 	});
 
+	test('should reject update with pinData exceeding size limit', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1); // > 12 MB
+
+		const response = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ pinData: { myNode: [{ json: { data: largeValue } }] } });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should allow update without pinData on workflow that has oversized pinData', async () => {
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1);
+		const workflow = await createWorkflow(
+			{ pinData: { myNode: [{ json: { data: largeValue } }] } as IPinData },
+			owner,
+		);
+
+		const response = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ name: 'Updated name' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.name).toBe('Updated name');
+	});
+
 	describe('Security: Mass Assignment Protection on Update', () => {
 		test.each([
 			{
@@ -3503,6 +3595,30 @@ describe('PATCH /workflows/:workflowId', () => {
 			saveDataErrorExecution: 'all',
 		});
 		expect(updatedWorkflow?.name).toBe('Updated Name');
+	});
+
+	test('should persist updated redactionPolicy setting to the database', async () => {
+		testServer.license.enable('feat:dataRedaction');
+		const workflow = await createWorkflowWithHistory(
+			{
+				settings: {
+					redactionPolicy: 'none',
+				},
+			},
+			owner,
+		);
+
+		const payload = {
+			settings: { redactionPolicy: 'all' },
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const dbWorkflow = await workflowRepository.findOneBy({ id: workflow.id });
+
+		expect(dbWorkflow?.settings).toMatchObject({ redactionPolicy: 'all' });
 	});
 });
 
@@ -4118,8 +4234,8 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 			.post(`/workflows/${workflow.id}/deactivate`)
 			.send({ expectedChecksum: outdatedChecksum });
 
-		expect(response.statusCode).toBe(400);
-		expect(response.body.code).toBe(100);
+		expect(response.statusCode).toBe(409);
+		expect(response.body.code).toBe(409);
 	});
 
 	test('should allow deactivation when expectedChecksum matches', async () => {
@@ -4151,32 +4267,58 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 });
 
 describe('POST /workflows/:workflowId/run', () => {
-	let sharingSpy: jest.SpyInstance;
-	let tamperingSpy: jest.SpyInstance;
-	let workflow: IWorkflowBase;
+	test('should always use the workflow from the database, ignoring workflowData in the request body', async () => {
+		const dbWorkflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: uuid(),
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						parameters: {},
+						typeVersion: 1,
+						position: [240, 300],
+					},
+				],
+				connections: {},
+			},
+			owner,
+		);
 
-	beforeAll(() => {
-		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
+		// Send modified workflowData with an extra injected node
+		const tamperedWorkflowData = {
+			...dbWorkflow,
+			nodes: [
+				...dbWorkflow.nodes,
+				{
+					id: uuid(),
+					name: 'Injected',
+					type: 'n8n-nodes-base.noOp',
+					parameters: {},
+					typeVersion: 1,
+					position: [500, 300],
+				},
+			],
+		};
 
-		sharingSpy = jest.spyOn(License.prototype, 'isSharingEnabled');
-		tamperingSpy = jest.spyOn(enterpriseWorkflowService, 'preventTampering');
-		workflow = workflowRepository.create({ id: uuid() });
+		const response = await authOwnerAgent
+			.post(`/workflows/${dbWorkflow.id}/run`)
+			.send({ workflowData: tamperedWorkflowData });
+
+		// The endpoint should accept the request (the DB workflow exists)
+		// It should NOT use the tampered workflowData
+		expect(response.statusCode).not.toBe(404);
 	});
 
-	test('should prevent tampering if sharing is enabled', async () => {
-		sharingSpy.mockReturnValue(true);
+	test('should return 404 for a non-existent workflow', async () => {
+		const nonExistentId = uuid();
+		const fakeWorkflow = workflowRepository.create({ id: nonExistentId });
 
-		await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({ workflowData: workflow });
+		const response = await authOwnerAgent
+			.post(`/workflows/${nonExistentId}/run`)
+			.send({ workflowData: fakeWorkflow });
 
-		expect(tamperingSpy).toHaveBeenCalledTimes(1);
-	});
-
-	test('should skip tampering prevention if sharing is disabled', async () => {
-		sharingSpy.mockReturnValue(false);
-
-		await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({ workflowData: workflow });
-
-		expect(tamperingSpy).not.toHaveBeenCalled();
+		expect(response.statusCode).toBe(404);
 	});
 });
 
@@ -4341,8 +4483,8 @@ describe('POST /workflows/:workflowId/archive', () => {
 			.post(`/workflows/${workflow.id}/archive`)
 			.send({ expectedChecksum: outdatedChecksum });
 
-		expect(response.statusCode).toBe(400);
-		expect(response.body.code).toBe(100);
+		expect(response.statusCode).toBe(409);
+		expect(response.body.code).toBe(409);
 	});
 
 	test('should allow archive when expectedChecksum matches', async () => {

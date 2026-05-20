@@ -8,13 +8,14 @@ import type {
 	WorkflowHistoryRequestParams,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
+import WorkflowHistoryUpgradeFooter from './WorkflowHistoryUpgradeFooter.vue';
 import type { IUser } from 'n8n-workflow';
-import { I18nT } from 'vue-i18n';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import { N8nLoading, N8nIcon, N8nText } from '@n8n/design-system';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 import {
 	computeTimelineEntries,
+	getVersionLabel,
 	type TimelineEntry,
 } from '@/features/workflows/workflowHistory/utils';
 
@@ -27,7 +28,8 @@ const props = defineProps<{
 	evaluatedPruneTimeInHours: number;
 	shouldUpgrade?: boolean;
 	isListLoading?: boolean;
-	activeVersionId?: string;
+	publishedVersionId?: string;
+	isWorkflowDiffsEnabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -35,6 +37,7 @@ const emit = defineEmits<{
 	preview: [value: { event: MouseEvent; id: WorkflowVersionId }];
 	loadMore: [value: WorkflowHistoryRequestParams];
 	upgrade: [];
+	compare: [value: { id: WorkflowVersionId }];
 }>();
 
 const i18n = useI18n();
@@ -83,7 +86,7 @@ const getActions = (item: WorkflowHistory, index: number) => {
 		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
 	}
 
-	if (item.versionId === props.activeVersionId) {
+	if (item.versionId === props.publishedVersionId) {
 		filteredActions = filteredActions.filter((action) => action.value !== 'publish');
 	} else {
 		filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
@@ -100,6 +103,49 @@ const onAction = ({ action, id, data }: WorkflowHistoryAction) => {
 const onPreview = ({ event, id }: { event: MouseEvent; id: WorkflowVersionId }) => {
 	shouldAutoScroll.value = false;
 	emit('preview', { event, id });
+};
+
+const onCompare = ({ id }: { id: WorkflowVersionId }) => {
+	shouldAutoScroll.value = false;
+	emit('compare', { id });
+};
+
+const getHistoryVersionLabel = (workflowHistory: WorkflowHistory): string => {
+	const currentVersionId = props.items[0]?.versionId;
+
+	return getVersionLabel({ workflowHistory, currentVersionId });
+};
+
+const getItemToCompareWith = (
+	item: WorkflowHistory,
+	index: number,
+): { name: string; versionId: WorkflowVersionId } | null => {
+	if (!props.isWorkflowDiffsEnabled) {
+		return null;
+	}
+
+	if (!props.selectedItem) {
+		return null;
+	}
+
+	const isSelected = props.items[index]?.versionId === props.selectedItem?.versionId;
+
+	if (isSelected) {
+		const previousVersion = props.items[index + 1];
+		if (!previousVersion) {
+			return null;
+		}
+
+		return {
+			name: getHistoryVersionLabel(previousVersion),
+			versionId: previousVersion.versionId,
+		};
+	}
+
+	return {
+		name: getHistoryVersionLabel(props.selectedItem),
+		versionId: item.versionId,
+	};
 };
 
 const onItemMounted = ({
@@ -169,12 +215,15 @@ const pruneTimeDisplay = computed(() => {
 					:key="versionEntry.item.versionId"
 					:index="versionEntry.originalIndex"
 					:item="versionEntry.item"
+					:compare-with="getItemToCompareWith(versionEntry.item, versionEntry.originalIndex)"
 					:is-selected="versionEntry.item.versionId === props.selectedItem?.versionId"
-					:is-version-active="versionEntry.item.versionId === props.activeVersionId"
+					:is-published="versionEntry.item.versionId === props.publishedVersionId"
 					:actions="getActions(versionEntry.item, versionEntry.originalIndex)"
+					:is-workflow-diffs-enabled="props.isWorkflowDiffsEnabled"
 					:is-grouped="true"
 					@action="onAction"
 					@preview="onPreview"
+					@compare="onCompare"
 					@mounted="onItemMounted"
 				/>
 			</template>
@@ -184,11 +233,14 @@ const pruneTimeDisplay = computed(() => {
 				v-if="entry.type === 'version'"
 				:index="entry.originalIndex"
 				:item="entry.item"
+				:compare-with="getItemToCompareWith(entry.item, entry.originalIndex)"
 				:is-selected="entry.item.versionId === props.selectedItem?.versionId"
-				:is-version-active="entry.item.versionId === props.activeVersionId"
+				:is-published="entry.item.versionId === props.publishedVersionId"
 				:actions="getActions(entry.item, entry.originalIndex)"
+				:is-workflow-diffs-enabled="props.isWorkflowDiffsEnabled"
 				@action="onAction"
 				@preview="onPreview"
+				@compare="onCompare"
 				@mounted="onItemMounted"
 			/>
 		</template>
@@ -210,17 +262,11 @@ const pruneTimeDisplay = computed(() => {
 			<N8nLoading :rows="3" class="mb-xs" />
 			<N8nLoading :rows="3" class="mb-xs" />
 		</li>
-		<li v-if="props.shouldUpgrade" :class="$style.retention">
-			<span data-test-id="prune-time-display">
-				{{ pruneTimeDisplay }}
-			</span>
-			<I18nT keypath="workflowHistory.upgrade" tag="span" scope="global">
-				<template #link>
-					<a href="#" @click="emit('upgrade')">
-						{{ i18n.baseText('workflowHistory.upgrade.link') }}
-					</a>
-				</template>
-			</I18nT>
+		<li v-if="props.shouldUpgrade">
+			<WorkflowHistoryUpgradeFooter
+				:prune-time-display="pruneTimeDisplay"
+				@upgrade="emit('upgrade')"
+			/>
 		</li>
 	</ul>
 </template>
@@ -244,14 +290,6 @@ const pruneTimeDisplay = computed(() => {
 
 .sentinel {
 	height: 1px;
-}
-
-.retention {
-	display: grid;
-	padding: var(--spacing--sm);
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--lg);
-	text-align: center;
 }
 
 .groupHeader {

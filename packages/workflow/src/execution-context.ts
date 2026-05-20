@@ -2,6 +2,64 @@ import z, { type ZodType } from 'zod/v4';
 
 import { jsonParse } from './utils';
 
+/**
+ * JSON-shaped value type — what survives an encrypt → JSON serialize →
+ * decrypt → JSON parse round-trip. Used as the leaf type for secure artifacts.
+ */
+type JsonPrimitive = string | number | boolean | null;
+type JsonValue = JsonPrimitive | { [key: string]: JsonValue } | JsonValue[];
+
+const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+	z.union([
+		z.string(),
+		z.number(),
+		z.boolean(),
+		z.null(),
+		z.record(z.string(), JsonValueSchema),
+		z.array(JsonValueSchema),
+	]),
+);
+
+const SecureArtifactsSchemaV1 = z.object({
+	version: z.literal(1),
+
+	/**
+	 * Artifacts produced by context-establishment hooks (e.g. a trigger
+	 * stripper) and consumed by node backends later in the execution.
+	 *
+	 * - Outer key: source node name.
+	 * - Inner array is parallel to the trigger items array — index `i`
+	 *   corresponds to `triggerItems[i]`.
+	 * - Each per-item map is keyed by the extraction path; values are the
+	 *   leaf data extracted from that item.
+	 */
+	artifacts: z.record(z.string(), z.array(z.record(z.string(), JsonValueSchema))),
+
+	/**
+	 * Optional metadata produced by the hook (e.g. provenance, hook id).
+	 */
+	metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+export type ISecureArtifactsV1 = z.output<typeof SecureArtifactsSchemaV1>;
+
+export const SecureArtifactsSchema = z
+	.discriminatedUnion('version', [SecureArtifactsSchemaV1])
+	.meta({
+		title: 'ISecureArtifacts',
+	});
+
+/**
+ * Decrypted structure of the `secureArtifacts` field on the execution context.
+ * Carries values produced by context-establishment hooks (e.g. trigger
+ * stripping) for later consumption by node backends. Always encrypted as a
+ * single string when stored on `IExecutionContext`; only exists in this
+ * structured form on `PlaintextExecutionContext` during runtime.
+ *
+ * @see PlaintextExecutionContext.secureArtifacts
+ */
+export type ISecureArtifacts = z.output<typeof SecureArtifactsSchema>;
+
 const CredentialContextSchemaV1 = z.object({
 	version: z.literal(1),
 	/**
@@ -30,20 +88,37 @@ export const CredentialContextSchema = z
  */
 export type ICredentialContext = z.output<typeof CredentialContextSchema>;
 
-const WorkflowExecuteModeSchema = z.union([
-	z.literal('cli'),
-	z.literal('error'),
-	z.literal('integrated'),
-	z.literal('internal'),
-	z.literal('manual'),
-	z.literal('retry'),
-	z.literal('trigger'),
-	z.literal('webhook'),
-	z.literal('evaluation'),
-	z.literal('chat'),
+export const WorkflowExecuteModeList = [
+	'cli',
+	'error',
+	'integrated',
+	'internal',
+	'manual',
+	'retry',
+	'trigger',
+	'webhook',
+	'evaluation',
+	'chat',
+	'agent',
+] as const;
+
+const WorkflowExecuteModeSchema = z.enum(WorkflowExecuteModeList);
+
+export type WorkflowExecuteModeValues = (typeof WorkflowExecuteModeList)[number];
+
+const RedactionPolicySchema = z.union([
+	z.literal('none'),
+	z.literal('all'),
+	z.literal('non-manual'),
+	z.literal('manual-only'),
 ]);
 
-export type WorkflowExecuteModeValues = z.infer<typeof WorkflowExecuteModeSchema>;
+const RedactionSettingSchemaV1 = z.object({
+	version: z.literal(1),
+	policy: RedactionPolicySchema,
+});
+
+export type IRedactionSettingV1 = z.output<typeof RedactionSettingSchemaV1>;
 
 const ExecutionContextSchemaV1 = z.object({
 	version: z.literal(1),
@@ -82,6 +157,25 @@ const ExecutionContextSchemaV1 = z.object({
 		description:
 			'Encrypted credential context for dynamic credential resolution Always encrypted when stored, decrypted on-demand by credential resolver @see ICredentialContext for decrypted structure',
 	}),
+
+	/**
+	 * Encrypted artifacts produced by context-establishment hooks
+	 * (e.g. a trigger stripper) for later consumption by node backends.
+	 * Always encrypted when stored, decrypted on demand by
+	 * `ExecutionContextService`.
+	 * @see ISecureArtifacts for the decrypted structure.
+	 */
+	secureArtifacts: z.string().optional().meta({
+		description:
+			'Encrypted artifacts produced by context-establishment hooks. Always encrypted when stored, decrypted on-demand by ExecutionContextService. @see ISecureArtifacts for decrypted structure',
+	}),
+
+	/**
+	 * Redaction setting captured at execution time.
+	 * Persisted so the correct redaction policy is applied when reading execution data,
+	 * regardless of any subsequent changes to the workflow setting.
+	 */
+	redaction: RedactionSettingSchemaV1.optional(),
 });
 
 export type IExecutionContextV1 = z.output<typeof ExecutionContextSchemaV1>;
@@ -143,8 +237,12 @@ export type IExecutionContext = z.output<typeof ExecutionContextSchema>;
  * };
  * ```
  */
-export type PlaintextExecutionContext = Omit<IExecutionContext, 'credentials'> & {
+export type PlaintextExecutionContext = Omit<
+	IExecutionContext,
+	'credentials' | 'secureArtifacts'
+> & {
 	credentials?: ICredentialContext;
+	secureArtifacts?: ISecureArtifacts;
 };
 
 export const safeParse = <T extends ZodType>(value: string | object, schema: T) => {
@@ -185,4 +283,9 @@ export const toExecutionContext = (value: string | object): IExecutionContext =>
 export const toCredentialContext = (value: string | object): ICredentialContext => {
 	// here we could implement a mgiration policy for migrating old credential context versions to newer ones
 	return safeParse(value, CredentialContextSchema);
+};
+
+export const toSecureArtifacts = (value: string | object): ISecureArtifacts => {
+	// here we could implement a migration policy for migrating old secure artifacts versions to newer ones
+	return safeParse(value, SecureArtifactsSchema);
 };

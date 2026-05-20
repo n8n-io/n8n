@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, type Mock, type MockInstance } from 'vitest';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useBuilderStore } from './builder.store';
@@ -17,9 +17,9 @@ const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
+import { createTestNode } from '@/__tests__/mocks';
 import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';
-import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import { nextTick, reactive } from 'vue';
 import * as chatAPI from '@/features/ai/assistant/assistant.api';
 import * as telemetryModule from '@/app/composables/useTelemetry';
@@ -31,11 +31,16 @@ import {
 import type { Telemetry } from '@/app/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
+import type { INodeUi } from '@/Interface';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
 
 // Mock useI18n to return the keys instead of translations
@@ -50,7 +55,6 @@ vi.mock('@n8n/i18n', () => ({
 
 // Mock workflowHistory API
 vi.mock('@n8n/rest-api-client/api/workflowHistory', async (importOriginal) => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const actual = await importOriginal<typeof import('@n8n/rest-api-client/api/workflowHistory')>();
 	return {
 		...actual,
@@ -114,11 +118,11 @@ let posthogStore: ReturnType<typeof usePostHog>;
 let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
+let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 let pinia: ReturnType<typeof createTestingPinia>;
 
-let setWorkflowNameSpy: ReturnType<typeof vi.fn>;
-let getNodeTypeSpy: ReturnType<typeof vi.fn>;
-let getCredentialsByTypeSpy: ReturnType<typeof vi.fn>;
+let getNodeTypeSpy: Mock;
+let getCredentialsByTypeSpy: Mock;
 
 const apiSpy = vi.spyOn(chatAPI, 'chatWithBuilder');
 
@@ -145,9 +149,9 @@ vi.mock('vue-router', () => ({
 }));
 
 let workflowState: WorkflowState;
+
 describe('AI Builder store', () => {
 	beforeEach(() => {
-		vi.clearAllMocks();
 		mockDocumentState = undefined;
 		pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
@@ -155,6 +159,7 @@ describe('AI Builder store', () => {
 		settingsStore.setSettings(
 			merge({}, defaultSettings, {
 				posthog: DEFAULT_POSTHOG_SETTINGS,
+				aiAssistant: { enabled: true, setup: true },
 			}),
 		);
 		window.posthog = {
@@ -169,21 +174,16 @@ describe('AI Builder store', () => {
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		credentialsStore = mockedStore(useCredentialsStore);
 
-		workflowsStore.workflowId = 'test-workflow-id';
-		workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
-		workflowsStore.workflow.nodes = [];
-		workflowsStore.workflow.connections = {};
-		workflowsStore.allNodes = [];
-		workflowsStore.nodesByName = {};
-		workflowsStore.workflowExecutionData = null;
+		workflowsStore.setWorkflowId('test-workflow-id');
+		workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		workflowDocumentStore.setNodes([]);
+		workflowDocumentStore.setConnections({});
+		workflowsStore.setWorkflowExecutionData(null);
 
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
-
-		setWorkflowNameSpy = vi.fn().mockImplementation(({ newName }: { newName: string }) => {
-			workflowsStore.workflow.name = newName;
-		});
-		vi.spyOn(workflowState, 'setWorkflowName').mockImplementation(setWorkflowNameSpy);
 
 		getNodeTypeSpy = vi.fn();
 		vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(getNodeTypeSpy);
@@ -1222,6 +1222,80 @@ describe('AI Builder store', () => {
 		});
 	});
 
+	describe('isLowCredits', () => {
+		it('should return false when credits are undefined', () => {
+			const builderStore = useBuilderStore();
+			expect(builderStore.isLowCredits).toBe(false);
+		});
+
+		it('should return false when credits are above 10%', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(100, 89);
+			expect(builderStore.isLowCredits).toBe(false);
+		});
+
+		it('should return true when credits are exactly 10%', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(100, 90);
+			expect(builderStore.isLowCredits).toBe(true);
+		});
+
+		it('should return true when credits are below 10%', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(100, 95);
+			expect(builderStore.isLowCredits).toBe(true);
+		});
+
+		it('should return false when quota is unlimited (-1)', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(-1, 50);
+			expect(builderStore.isLowCredits).toBe(false);
+		});
+
+		it('should return true when quota is 0', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(0, 0);
+			expect(builderStore.isLowCredits).toBe(true);
+		});
+
+		it('should return true when all credits are consumed', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(100, 100);
+			expect(builderStore.isLowCredits).toBe(true);
+		});
+	});
+
+	describe('creditsPercentageRemaining', () => {
+		it('should return undefined when credits are not initialized', () => {
+			const builderStore = useBuilderStore();
+			expect(builderStore.creditsPercentageRemaining).toBeUndefined();
+		});
+
+		it('should return undefined when quota is unlimited (-1)', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(-1, 50);
+			expect(builderStore.creditsPercentageRemaining).toBeUndefined();
+		});
+
+		it('should return 0 when quota is 0', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(0, 0);
+			expect(builderStore.creditsPercentageRemaining).toBe(0);
+		});
+
+		it('should return correct percentage', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(100, 30);
+			expect(builderStore.creditsPercentageRemaining).toBe(70);
+		});
+
+		it('should return 0 when all credits consumed', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(100, 100);
+			expect(builderStore.creditsPercentageRemaining).toBe(0);
+		});
+	});
+
 	describe('fetchBuilderCredits', () => {
 		const mockGetBuilderCredits = vi.spyOn(chatAPI, 'getBuilderCredits');
 
@@ -1512,17 +1586,23 @@ describe('AI Builder store', () => {
 
 	describe('workflowTodos', () => {
 		it('returns empty array when no validation issues exist', () => {
-			workflowsStore.workflowValidationIssues = [];
-			workflowsStore.workflow.nodes = [];
+			workflowDocumentStore.setNodes([]);
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
 		});
 
 		it('includes credential validation issues', () => {
-			workflowsStore.workflowValidationIssues = [
-				{ node: 'HTTP Request', type: 'credentials', value: 'Missing credentials' },
-			];
+			workflowDocumentStore.setNodes([
+				{
+					...createTestNode({ name: 'HTTP Request' }),
+					issues: { credentials: { value: ['Missing credentials'] } },
+				},
+				createTestNode({ name: 'Issue Target' }),
+			]);
+			workflowDocumentStore.setConnections({
+				'HTTP Request': { main: [[{ node: 'Issue Target', type: 'main', index: 0 }]] },
+			});
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toContainEqual(
@@ -1531,8 +1611,7 @@ describe('AI Builder store', () => {
 		});
 
 		it('includes placeholder issues from node parameters', () => {
-			workflowsStore.workflowValidationIssues = [];
-			workflowsStore.workflow.nodes = [
+			workflowDocumentStore.setNodes([
 				{
 					id: 'node-1',
 					name: 'HTTP Request',
@@ -1543,7 +1622,7 @@ describe('AI Builder store', () => {
 						url: '<__PLACEHOLDER_VALUE__Enter URL__>',
 					},
 				},
-			];
+			]);
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toContainEqual(
@@ -1552,10 +1631,7 @@ describe('AI Builder store', () => {
 		});
 
 		it('combines credential and placeholder issues', () => {
-			workflowsStore.workflowValidationIssues = [
-				{ node: 'HTTP Request', type: 'credentials', value: 'Missing credentials' },
-			];
-			workflowsStore.workflow.nodes = [
+			workflowDocumentStore.setNodes([
 				{
 					id: 'node-1',
 					name: 'HTTP Request',
@@ -1565,8 +1641,15 @@ describe('AI Builder store', () => {
 					parameters: {
 						url: '<__PLACEHOLDER_VALUE__Enter URL__>',
 					},
+					issues: {
+						credentials: { value: ['Missing credentials'] },
+					},
 				},
-			];
+				createTestNode({ id: 'issue-target-node', name: 'Issue Target' }),
+			]);
+			workflowDocumentStore.setConnections({
+				'HTTP Request': { main: [[{ node: 'Issue Target', type: 'main', index: 0 }]] },
+			});
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos.length).toBeGreaterThanOrEqual(2);
@@ -1581,8 +1664,7 @@ describe('AI Builder store', () => {
 
 	describe('placeholderIssues', () => {
 		it('returns empty array when nodes have no parameters', () => {
-			workflowsStore.workflowValidationIssues = [];
-			workflowsStore.workflow.nodes = [
+			workflowDocumentStore.setNodes([
 				{
 					id: 'node-1',
 					name: 'Start',
@@ -1591,31 +1673,29 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 					parameters: {},
 				},
-			];
+			]);
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
 		});
 
 		it('returns empty array when node has undefined parameters', () => {
-			workflowsStore.workflowValidationIssues = [];
-			workflowsStore.workflow.nodes = [
+			workflowDocumentStore.setNodes([
 				{
 					id: 'node-1',
 					name: 'Start',
 					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [0, 0],
-				} as Parameters<typeof workflowsStore.workflow.nodes.push>[0],
-			];
+				} as INodeUi,
+			]);
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
 		});
 
 		it('detects placeholders in nested object parameters', () => {
-			workflowsStore.workflowValidationIssues = [];
-			workflowsStore.workflow.nodes = [
+			workflowDocumentStore.setNodes([
 				{
 					id: 'node-1',
 					name: 'HTTP Request',
@@ -1630,7 +1710,7 @@ describe('AI Builder store', () => {
 						},
 					},
 				},
-			];
+			]);
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1642,8 +1722,7 @@ describe('AI Builder store', () => {
 		});
 
 		it('detects placeholders in array parameters', () => {
-			workflowsStore.workflowValidationIssues = [];
-			workflowsStore.workflow.nodes = [
+			workflowDocumentStore.setNodes([
 				{
 					id: 'node-1',
 					name: 'HTTP Request',
@@ -1657,7 +1736,7 @@ describe('AI Builder store', () => {
 						],
 					},
 				},
-			];
+			]);
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1669,8 +1748,7 @@ describe('AI Builder store', () => {
 		});
 
 		it('detects multiple placeholders in the same node', () => {
-			workflowsStore.workflowValidationIssues = [];
-			workflowsStore.workflow.nodes = [
+			workflowDocumentStore.setNodes([
 				{
 					id: 'node-1',
 					name: 'HTTP Request',
@@ -1682,7 +1760,7 @@ describe('AI Builder store', () => {
 						body: '<__PLACEHOLDER_VALUE__Enter Body__>',
 					},
 				},
-			];
+			]);
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1690,8 +1768,7 @@ describe('AI Builder store', () => {
 		});
 
 		it('detects placeholders across multiple nodes', () => {
-			workflowsStore.workflowValidationIssues = [];
-			workflowsStore.workflow.nodes = [
+			workflowDocumentStore.setNodes([
 				{
 					id: 'node-1',
 					name: 'HTTP Request',
@@ -1712,7 +1789,7 @@ describe('AI Builder store', () => {
 						channel: '<__PLACEHOLDER_VALUE__Enter Channel__>',
 					},
 				},
-			];
+			]);
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1722,10 +1799,9 @@ describe('AI Builder store', () => {
 		});
 
 		it('deduplicates identical placeholder issues (same node, path, and label)', () => {
-			workflowsStore.workflowValidationIssues = [];
 			// Simulate a scenario where the same placeholder appears twice
 			// (which shouldn't happen in practice but tests the deduplication)
-			workflowsStore.workflow.nodes = [
+			workflowDocumentStore.setNodes([
 				{
 					id: 'node-1',
 					name: 'HTTP Request',
@@ -1736,7 +1812,7 @@ describe('AI Builder store', () => {
 						url: '<__PLACEHOLDER_VALUE__Enter URL__>',
 					},
 				},
-			];
+			]);
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1749,7 +1825,7 @@ describe('AI Builder store', () => {
 			// The message format from the store uses i18n which is mocked to return the key
 			const expectedMessage = 'aiAssistant.builder.executeMessage.fillParameter';
 
-			workflowsStore.workflow.nodes = [
+			workflowDocumentStore.setNodes([
 				{
 					id: 'node-1',
 					name: 'HTTP Request',
@@ -1765,8 +1841,7 @@ describe('AI Builder store', () => {
 						},
 					},
 				},
-			];
-			workflowsStore.workflowValidationIssues = [];
+			]);
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1775,7 +1850,7 @@ describe('AI Builder store', () => {
 		});
 
 		it('does not skip placeholder when existing parameter issue has different message', () => {
-			workflowsStore.workflow.nodes = [
+			workflowDocumentStore.setNodes([
 				{
 					id: 'node-1',
 					name: 'HTTP Request',
@@ -1791,8 +1866,7 @@ describe('AI Builder store', () => {
 						},
 					},
 				},
-			];
-			workflowsStore.workflowValidationIssues = [];
+			]);
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1801,8 +1875,7 @@ describe('AI Builder store', () => {
 		});
 
 		it('ignores non-string parameter values', () => {
-			workflowsStore.workflowValidationIssues = [];
-			workflowsStore.workflow.nodes = [
+			workflowDocumentStore.setNodes([
 				{
 					id: 'node-1',
 					name: 'HTTP Request',
@@ -1815,15 +1888,14 @@ describe('AI Builder store', () => {
 						config: null,
 					},
 				},
-			];
+			]);
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
 		});
 
 		it('ignores strings that do not match placeholder format', () => {
-			workflowsStore.workflowValidationIssues = [];
-			workflowsStore.workflow.nodes = [
+			workflowDocumentStore.setNodes([
 				{
 					id: 'node-1',
 					name: 'HTTP Request',
@@ -1837,15 +1909,14 @@ describe('AI Builder store', () => {
 						wrongPrefix: 'PLACEHOLDER__test__>',
 					},
 				},
-			];
+			]);
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
 		});
 
 		it('ignores placeholder with empty label', () => {
-			workflowsStore.workflowValidationIssues = [];
-			workflowsStore.workflow.nodes = [
+			workflowDocumentStore.setNodes([
 				{
 					id: 'node-1',
 					name: 'HTTP Request',
@@ -1857,20 +1928,27 @@ describe('AI Builder store', () => {
 						body: '<__PLACEHOLDER_VALUE__   __>', // whitespace-only label
 					},
 				},
-			];
+			]);
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
 		});
 
 		it('filters out non-credential and non-parameter validation issues', () => {
-			workflowsStore.workflowValidationIssues = [
-				{ node: 'HTTP Request', type: 'credentials', value: 'Missing credentials' },
-				{ node: 'HTTP Request', type: 'parameters', value: 'Missing parameter' },
-				{ node: 'HTTP Request', type: 'execution', value: 'Execution error' },
-				{ node: 'HTTP Request', type: 'unknown' as 'parameters', value: 'Unknown issue' },
-			];
-			workflowsStore.workflow.nodes = [];
+			workflowDocumentStore.setNodes([
+				{
+					...createTestNode({ name: 'HTTP Request' }),
+					issues: {
+						credentials: { value: ['Missing credentials'] },
+						parameters: { value: ['Missing parameter'] },
+						execution: true,
+					},
+				},
+				createTestNode({ name: 'Issue Target' }),
+			]);
+			workflowDocumentStore.setConnections({
+				'HTTP Request': { main: [[{ node: 'Issue Target', type: 'main', index: 0 }]] },
+			});
 
 			const builderStore = useBuilderStore();
 			// Should only include credentials and parameters types
@@ -2007,10 +2085,13 @@ describe('AI Builder store', () => {
 	});
 
 	describe('Version management and revert functionality', () => {
-		const mockGetAiSessions = vi.spyOn(chatAPI, 'getAiSessions');
-		const mockTruncateBuilderMessages = vi.spyOn(chatAPI, 'truncateBuilderMessages');
+		let mockGetAiSessions: MockInstance<typeof chatAPI.getAiSessions>;
+		let mockTruncateBuilderMessages: MockInstance<typeof chatAPI.truncateBuilderMessages>;
 
 		beforeEach(() => {
+			mockGetAiSessions = vi.spyOn(chatAPI, 'getAiSessions');
+			mockTruncateBuilderMessages = vi.spyOn(chatAPI, 'truncateBuilderMessages');
+
 			mockGetAiSessions.mockReset();
 			mockTruncateBuilderMessages.mockReset();
 		});
@@ -2176,13 +2257,16 @@ describe('AI Builder store', () => {
 			it('should switch to plan mode when nodes become empty and plan mode is available', async () => {
 				enablePlanModeExperiment();
 				const builderStore = useBuilderStore();
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(workflowsStore.workflowId),
+				);
 
 				// Start with nodes, then clear them (simulates workflow load sequence)
-				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				workflowDocumentStore.setNodes([createTestNode({ name: 'Node1' })]);
 				await nextTick();
 				expect(builderStore.builderMode).toBe('build');
 
-				workflowsStore.workflow.nodes = [];
+				workflowDocumentStore.setNodes([]);
 				await nextTick();
 				expect(builderStore.builderMode).toBe('plan');
 			});
@@ -2190,18 +2274,21 @@ describe('AI Builder store', () => {
 			it('should switch to build mode when nodes are added', async () => {
 				enablePlanModeExperiment();
 				// Start with nodes so the watcher can observe changes
-				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(workflowsStore.workflowId),
+				);
+				workflowDocumentStore.setNodes([createTestNode({ name: 'Node1' })]);
 
 				const builderStore = useBuilderStore();
 				await nextTick();
 
 				// Clear nodes to trigger plan mode
-				workflowsStore.workflow.nodes = [];
+				workflowDocumentStore.setNodes([]);
 				await nextTick();
 				expect(builderStore.builderMode).toBe('plan');
 
 				// Add nodes back to trigger build mode
-				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				workflowDocumentStore.setNodes([createTestNode({ name: 'Node1' })]);
 				await nextTick();
 				expect(builderStore.builderMode).toBe('build');
 			});
@@ -2210,7 +2297,7 @@ describe('AI Builder store', () => {
 				const builderStore = useBuilderStore();
 
 				// Change workflowId to trigger the watcher (nodes stay empty)
-				workflowsStore.workflowId = 'different-workflow-id';
+				workflowsStore.setWorkflowId('different-workflow-id');
 				await nextTick();
 
 				expect(builderStore.builderMode).toBe('build');
@@ -2219,16 +2306,19 @@ describe('AI Builder store', () => {
 			it('should not change mode when chat has messages', async () => {
 				enablePlanModeExperiment();
 				const builderStore = useBuilderStore();
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(workflowsStore.workflowId),
+				);
 
 				// Add nodes first so we can trigger a change later
-				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				workflowDocumentStore.setNodes([createTestNode({ name: 'Node1' })]);
 				await nextTick();
 
 				// Simulate an active conversation
 				builderStore.chatMessages = [{ role: 'user', type: 'text', text: 'hello' } as never];
 
 				// Remove nodes — would normally switch to plan, but chat has messages
-				workflowsStore.workflow.nodes = [];
+				workflowDocumentStore.setNodes([]);
 				await nextTick();
 
 				// Should stay at build because chat has messages
@@ -2240,16 +2330,52 @@ describe('AI Builder store', () => {
 				const builderStore = useBuilderStore();
 
 				// Simulate navigating to a new empty workflow
-				workflowsStore.workflowId = 'new-empty-workflow';
-				workflowsStore.workflow.nodes = [];
+				workflowsStore.setWorkflowId('new-empty-workflow');
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(workflowsStore.workflowId),
+				);
+				workflowDocumentStore.setNodes([]);
 				await nextTick();
 
 				expect(builderStore.builderMode).toBe('plan');
 			});
+
+			it('should not switch to plan mode after restoreToVersion truncates messages', async () => {
+				enablePlanModeExperiment();
+				const builderStore = useBuilderStore();
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(workflowsStore.workflowId),
+				);
+
+				// Simulate a conversation with nodes on canvas (active build session)
+				builderStore.chatMessages = [
+					{ role: 'user', type: 'text', text: 'Build me something' } as never,
+					{ role: 'assistant', type: 'text', text: 'Done' } as never,
+				];
+				workflowDocumentStore.setNodes([createTestNode({ name: 'Node1' })]);
+				await nextTick();
+				expect(builderStore.builderMode).toBe('build');
+
+				// Simulate what happens during restore: chat messages are truncated to []
+				// and nodes are cleared. The watcher would normally switch to plan mode.
+				builderStore.chatMessages = [];
+				workflowDocumentStore.setNodes([]);
+				await nextTick();
+
+				// The watcher fires and sets plan mode
+				expect(builderStore.builderMode).toBe('plan');
+
+				// Simulate the nextTick override that onRestoreConfirm performs
+				builderStore.builderMode = 'build';
+				await nextTick();
+
+				// Should stay in build mode — the override sticks
+				expect(builderStore.builderMode).toBe('build');
+			});
 		});
 
 		describe('fetchExistingVersionIds and message enrichment', () => {
-			it('should enrich messages with revertVersion when versions exist', async () => {
+			it('should convert revertVersion on user messages into version card messages', async () => {
 				const builderStore = useBuilderStore();
 
 				// Mark workflow as saved to allow loadSessions
@@ -2273,6 +2399,11 @@ describe('AI Builder store', () => {
 									revertVersionId: 'version-1',
 								} as unknown as ChatRequest.MessageResponse,
 								{
+									type: 'workflow-updated',
+									id: 'msg-1-workflow-updated',
+									codeSnippet: '{}',
+								} as unknown as ChatRequest.MessageResponse,
+								{
 									type: 'message',
 									role: 'assistant',
 									text: 'Created workflow',
@@ -2290,15 +2421,200 @@ describe('AI Builder store', () => {
 
 				await builderStore.loadSessions();
 
-				// Should have 2 messages
-				expect(builderStore.chatMessages).toHaveLength(2);
+				// Should have 3 messages: user message + assistant message + version card
+				// (workflow-updated messages are filtered out of the UI)
+				expect(builderStore.chatMessages).toHaveLength(3);
 
-				// First message should have revertVersion object
-				const firstMessage = builderStore.chatMessages[0] as ChatUI.TextMessage;
-				expect(firstMessage).toHaveProperty('revertVersion');
-				expect(firstMessage.revertVersion).toEqual({
-					id: 'version-1',
+				// Version card should be at the end (after the AI response),
+				// matching live session ordering from stopStreaming()
+				const versionCard = builderStore.chatMessages[2];
+				expect(versionCard.type).toBe('custom');
+				expect(versionCard).toHaveProperty('customType', 'version_card');
+				expect(versionCard).toHaveProperty('data');
+				expect((versionCard as Record<string, unknown>).data).toEqual({
+					versionId: 'version-1',
 					createdAt: '2024-01-01T00:00:00Z',
+				});
+			});
+
+			it('should create version cards from tool messages in session API (no workflow-updated)', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved to allow loadSessions
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+
+				// Mock API to return messages matching real backend format:
+				// tool messages (add_nodes, connect_nodes) instead of workflow-updated
+				mockGetAiSessions.mockResolvedValueOnce({
+					sessions: [
+						{
+							sessionId: 'session-1',
+							lastUpdated: '2024-01-01T00:00:00Z',
+							messages: [
+								{
+									type: 'message',
+									role: 'user',
+									text: 'Create workflow',
+									id: 'msg-1',
+									revertVersionId: 'version-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'tool',
+									role: 'assistant',
+									toolName: 'add_nodes',
+									toolCallId: 'tool-1',
+									status: 'completed',
+									updates: [],
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'tool',
+									role: 'assistant',
+									toolName: 'connect_nodes',
+									toolCallId: 'tool-2',
+									status: 'completed',
+									updates: [],
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Created workflow',
+									id: 'msg-2',
+								} as unknown as ChatRequest.MessageResponse,
+							],
+						},
+					],
+				});
+
+				vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds).mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				});
+
+				await builderStore.loadSessions();
+
+				// Should have: user + tool + tool + assistant + version card = 5 messages
+				expect(builderStore.chatMessages).toHaveLength(5);
+
+				const versionCard = builderStore.chatMessages[4];
+				expect(versionCard.type).toBe('custom');
+				expect(versionCard).toHaveProperty('customType', 'version_card');
+				expect((versionCard as Record<string, unknown>).data).toEqual({
+					versionId: 'version-1',
+					createdAt: '2024-01-01T00:00:00Z',
+				});
+			});
+
+			it('should NOT create version cards when only non-modifying tools exist', async () => {
+				const builderStore = useBuilderStore();
+
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+
+				// Mock with only non-modifying tools (search_nodes, validate_structure)
+				mockGetAiSessions.mockResolvedValueOnce({
+					sessions: [
+						{
+							sessionId: 'session-1',
+							lastUpdated: '2024-01-01T00:00:00Z',
+							messages: [
+								{
+									type: 'message',
+									role: 'user',
+									text: 'What can you do?',
+									id: 'msg-1',
+									revertVersionId: 'version-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'tool',
+									role: 'assistant',
+									toolName: 'search_nodes',
+									toolCallId: 'tool-1',
+									status: 'completed',
+									updates: [],
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Here is a plan',
+									id: 'msg-2',
+								} as unknown as ChatRequest.MessageResponse,
+							],
+						},
+					],
+				});
+
+				vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds).mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				});
+
+				await builderStore.loadSessions();
+
+				// No version card should be created
+				const versionCards = builderStore.chatMessages.filter(
+					(msg) =>
+						msg.type === 'custom' && 'customType' in msg && msg.customType === 'version_card',
+				);
+				expect(versionCards).toHaveLength(0);
+			});
+
+			it('should create version cards even when version has been pruned from history', async () => {
+				const builderStore = useBuilderStore();
+
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+
+				// Session with revertVersionId on user message + tool messages
+				mockGetAiSessions.mockResolvedValueOnce({
+					sessions: [
+						{
+							sessionId: 'session-1',
+							lastUpdated: '2024-01-01T00:00:00Z',
+							messages: [
+								{
+									type: 'message',
+									role: 'user',
+									text: 'Build it',
+									id: 'msg-1',
+									revertVersionId: 'pruned-version',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'tool',
+									role: 'assistant',
+									toolName: 'add_nodes',
+									toolCallId: 'tool-1',
+									status: 'completed',
+									updates: [],
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Done',
+									id: 'msg-2',
+								} as unknown as ChatRequest.MessageResponse,
+							],
+						},
+					],
+				});
+
+				// Version does NOT exist (pruned) — API returns empty
+				vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds).mockResolvedValueOnce({
+					versions: [],
+				});
+
+				await builderStore.loadSessions();
+
+				// Version card should still be created even though version is pruned
+				const versionCards = builderStore.chatMessages.filter(
+					(msg) =>
+						msg.type === 'custom' && 'customType' in msg && msg.customType === 'version_card',
+				);
+				expect(versionCards).toHaveLength(1);
+				expect((versionCards[0] as Record<string, unknown>).data).toEqual({
+					versionId: 'pruned-version',
+					// No createdAt since version was pruned
 				});
 			});
 
@@ -2456,12 +2772,459 @@ describe('AI Builder store', () => {
 				expect(typeof builderStore.sendChatMessage).toBe('function');
 			});
 		});
+
+		describe('collapsedMessageIds computed', () => {
+			function makeVersionCard(id: string, versionId: string): ChatUI.AssistantMessage {
+				return {
+					id,
+					role: 'assistant',
+					type: 'custom',
+					customType: 'version_card',
+					data: { versionId },
+				} as unknown as ChatUI.AssistantMessage;
+			}
+
+			function makeTextMessage(
+				id: string,
+				role: 'user' | 'assistant',
+				text: string,
+			): ChatUI.AssistantMessage {
+				return { id, role, type: 'text', text } as unknown as ChatUI.AssistantMessage;
+			}
+
+			it('should return empty set when no activeVersionCardId is set', () => {
+				const builderStore = useBuilderStore();
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build something'),
+					makeTextMessage('ai-1', 'assistant', 'Done'),
+					makeVersionCard('vc-1', 'v-1'),
+				];
+
+				expect(builderStore.collapsedMessageIds.size).toBe(0);
+			});
+
+			it('should collapse all messages after active card when no resumeAfterRestoreMessageId', () => {
+				const builderStore = useBuilderStore();
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeTextMessage('ai-1', 'assistant', 'Done v1'),
+					makeVersionCard('vc-1', 'v-1'),
+					makeTextMessage('user-2', 'user', 'Build v2'),
+					makeTextMessage('ai-2', 'assistant', 'Done v2'),
+					makeVersionCard('vc-2', 'v-2'),
+					makeTextMessage('user-3', 'user', 'Build v3'),
+					makeTextMessage('ai-3', 'assistant', 'Done v3'),
+					makeVersionCard('vc-3', 'v-3'),
+				];
+
+				// Simulate restore to vc-1
+				builderStore.activeVersionCardId = 'vc-1';
+
+				const collapsed = builderStore.collapsedMessageIds;
+				// Everything after vc-1 should be collapsed
+				expect(collapsed.has('user-2')).toBe(true);
+				expect(collapsed.has('ai-2')).toBe(true);
+				expect(collapsed.has('vc-2')).toBe(true);
+				expect(collapsed.has('user-3')).toBe(true);
+				expect(collapsed.has('ai-3')).toBe(true);
+				expect(collapsed.has('vc-3')).toBe(true);
+				// Messages before and including vc-1 should NOT be collapsed
+				expect(collapsed.has('user-1')).toBe(false);
+				expect(collapsed.has('ai-1')).toBe(false);
+				expect(collapsed.has('vc-1')).toBe(false);
+			});
+
+			it('should collapse only messages between active card and resume point', () => {
+				const builderStore = useBuilderStore();
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeTextMessage('ai-1', 'assistant', 'Done v1'),
+					makeVersionCard('vc-1', 'v-1'),
+					makeTextMessage('user-2', 'user', 'Build v2'),
+					makeTextMessage('ai-2', 'assistant', 'Done v2'),
+					makeVersionCard('vc-2', 'v-2'),
+					// Resume point — user sends new message after restore
+					makeTextMessage('user-3', 'user', 'Build v3 (after restore)'),
+					makeTextMessage('ai-3', 'assistant', 'Done v3'),
+					makeVersionCard('vc-3', 'v-3'),
+				];
+
+				// Simulate: restore to vc-1, then user sent user-3
+				builderStore.activeVersionCardId = 'vc-1';
+				builderStore.resumeAfterRestoreMessageId = 'user-3';
+
+				const collapsed = builderStore.collapsedMessageIds;
+				// Only messages between vc-1 and user-3 should be collapsed
+				expect(collapsed.has('user-2')).toBe(true);
+				expect(collapsed.has('ai-2')).toBe(true);
+				expect(collapsed.has('vc-2')).toBe(true);
+				// Messages after resume point should NOT be collapsed
+				expect(collapsed.has('user-3')).toBe(false);
+				expect(collapsed.has('ai-3')).toBe(false);
+				expect(collapsed.has('vc-3')).toBe(false);
+			});
+
+			it('should handle messages without IDs gracefully', () => {
+				const builderStore = useBuilderStore();
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeVersionCard('vc-1', 'v-1'),
+					// Message without ID (e.g., a thinking indicator)
+					{
+						role: 'assistant',
+						type: 'text',
+						text: 'thinking...',
+					} as unknown as ChatUI.AssistantMessage,
+					makeTextMessage('user-2', 'user', 'Build v2'),
+					makeVersionCard('vc-2', 'v-2'),
+				];
+
+				builderStore.activeVersionCardId = 'vc-1';
+
+				const collapsed = builderStore.collapsedMessageIds;
+				// The message without ID should not be in the set
+				expect(collapsed.has('user-2')).toBe(true);
+				expect(collapsed.has('vc-2')).toBe(true);
+				// No undefined in the set
+				expect(collapsed.has(undefined as unknown as string)).toBe(false);
+			});
+
+			it('should return empty set when activeVersionCardId points to non-existent message', () => {
+				const builderStore = useBuilderStore();
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeVersionCard('vc-1', 'v-1'),
+				];
+
+				builderStore.activeVersionCardId = 'non-existent';
+
+				expect(builderStore.collapsedMessageIds.size).toBe(0);
+			});
+
+			it('collapsed range should remain stable when new messages are appended after resume', () => {
+				const builderStore = useBuilderStore();
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeVersionCard('vc-1', 'v-1'),
+					makeTextMessage('user-2', 'user', 'Build v2'),
+					makeVersionCard('vc-2', 'v-2'),
+					makeTextMessage('user-3', 'user', 'After restore'),
+					makeTextMessage('ai-3', 'assistant', 'Done v3'),
+					makeVersionCard('vc-3', 'v-3'),
+				];
+
+				builderStore.activeVersionCardId = 'vc-1';
+				builderStore.resumeAfterRestoreMessageId = 'user-3';
+
+				const collapsedBefore = new Set(builderStore.collapsedMessageIds);
+				expect(collapsedBefore.has('user-2')).toBe(true);
+				expect(collapsedBefore.has('vc-2')).toBe(true);
+
+				// Simulate appending more messages (second send after restore)
+				builderStore.chatMessages = [
+					...builderStore.chatMessages,
+					makeTextMessage('user-4', 'user', 'Build v4'),
+					makeTextMessage('ai-4', 'assistant', 'Done v4'),
+					makeVersionCard('vc-4', 'v-4'),
+				];
+
+				const collapsedAfter = builderStore.collapsedMessageIds;
+				// Same collapsed range (user-2, vc-2 still collapsed)
+				expect(collapsedAfter.has('user-2')).toBe(true);
+				expect(collapsedAfter.has('vc-2')).toBe(true);
+				// New messages NOT collapsed
+				expect(collapsedAfter.has('user-4')).toBe(false);
+				expect(collapsedAfter.has('ai-4')).toBe(false);
+				expect(collapsedAfter.has('vc-4')).toBe(false);
+			});
+
+			it('should return empty set when active card is the last version card (restore to latest)', () => {
+				const builderStore = useBuilderStore();
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeVersionCard('vc-1', 'v-1'),
+					makeTextMessage('user-2', 'user', 'Build v2'),
+					makeVersionCard('vc-2', 'v-2'),
+					makeTextMessage('user-3', 'user', 'Build v3'),
+					makeVersionCard('vc-3', 'v-3'),
+				];
+
+				// Restore to the latest version — nothing should collapse
+				builderStore.activeVersionCardId = 'vc-3';
+
+				expect(builderStore.collapsedMessageIds.size).toBe(0);
+			});
+
+			it('should return empty set when active card is the only version card', () => {
+				const builderStore = useBuilderStore();
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeVersionCard('vc-1', 'v-1'),
+					makeTextMessage('user-2', 'user', 'More chat'),
+				];
+
+				builderStore.activeVersionCardId = 'vc-1';
+
+				expect(builderStore.collapsedMessageIds.size).toBe(0);
+			});
+
+			it('version card IDs should use userMessageId for consistency across reload', () => {
+				// During live streaming, version card IDs are `version-card-${userMessageId}`.
+				// During loadSessions, they are also `version-card-${userMessageId}`.
+				// This test documents the contract so a mismatch doesn't regress.
+				const builderStore = useBuilderStore();
+				const userMessageId = 'user-msg-abc';
+				const expectedCardId = `version-card-${userMessageId}`;
+
+				builderStore.chatMessages = [
+					makeTextMessage(userMessageId, 'user', 'Build v1'),
+					makeVersionCard(expectedCardId, 'v-1'),
+					makeTextMessage('user-msg-def', 'user', 'Build v2'),
+					makeVersionCard('version-card-user-msg-def', 'v-2'),
+				];
+
+				// Simulate restore saved with live-generated ID
+				builderStore.activeVersionCardId = expectedCardId;
+
+				// Should match and collapse messages after the card
+				const collapsed = builderStore.collapsedMessageIds;
+				expect(collapsed.has('user-msg-def')).toBe(true);
+				expect(collapsed.has('version-card-user-msg-def')).toBe(true);
+			});
+		});
+
+		describe('restore then send new message flow', () => {
+			function makeVersionCard(id: string, versionId: string): ChatUI.AssistantMessage {
+				return {
+					id,
+					role: 'assistant',
+					type: 'custom',
+					customType: 'version_card',
+					data: { versionId },
+				} as unknown as ChatUI.AssistantMessage;
+			}
+
+			function makeTextMessage(
+				id: string,
+				role: 'user' | 'assistant',
+				text: string,
+			): ChatUI.AssistantMessage {
+				return { id, role, type: 'text', text } as unknown as ChatUI.AssistantMessage;
+			}
+
+			it('should freeze collapse range when first message is sent after restore', () => {
+				const builderStore = useBuilderStore();
+
+				// Set up: 3 versions, restore to vc-1
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeVersionCard('vc-1', 'v-1'),
+					makeTextMessage('user-2', 'user', 'Build v2'),
+					makeVersionCard('vc-2', 'v-2'),
+					makeTextMessage('user-3', 'user', 'Build v3'),
+					makeVersionCard('vc-3', 'v-3'),
+				];
+
+				// Simulate restore: sets activeVersionCardId, clears resume
+				builderStore.activeVersionCardId = 'vc-1';
+				builderStore.resumeAfterRestoreMessageId = undefined;
+
+				// Before sending: everything after vc-1 is collapsed
+				expect(builderStore.collapsedMessageIds.has('vc-3')).toBe(true);
+
+				// Simulate sendChatMessage setting resumeAfterRestoreMessageId
+				// (mimicking the logic at builder.store.ts line 900-901)
+				builderStore.resumeAfterRestoreMessageId = 'user-4';
+				builderStore.chatMessages = [
+					...builderStore.chatMessages,
+					makeTextMessage('user-4', 'user', 'New message after restore'),
+				];
+
+				// user-2, vc-2, user-3, vc-3 should still be collapsed
+				expect(builderStore.collapsedMessageIds.has('user-2')).toBe(true);
+				expect(builderStore.collapsedMessageIds.has('vc-2')).toBe(true);
+				expect(builderStore.collapsedMessageIds.has('user-3')).toBe(true);
+				expect(builderStore.collapsedMessageIds.has('vc-3')).toBe(true);
+				// user-4 (resume point) should NOT be collapsed
+				expect(builderStore.collapsedMessageIds.has('user-4')).toBe(false);
+			});
+
+			it('should not update resumeAfterRestoreMessageId on second message send', () => {
+				const builderStore = useBuilderStore();
+
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeVersionCard('vc-1', 'v-1'),
+					makeTextMessage('user-2', 'user', 'Build v2'),
+					makeVersionCard('vc-2', 'v-2'),
+				];
+
+				// Restore to vc-1
+				builderStore.activeVersionCardId = 'vc-1';
+				// First send already happened
+				builderStore.resumeAfterRestoreMessageId = 'user-3';
+
+				builderStore.chatMessages = [
+					...builderStore.chatMessages,
+					makeTextMessage('user-3', 'user', 'First after restore'),
+					makeVersionCard('vc-3', 'v-3'),
+					makeTextMessage('user-4', 'user', 'Second after restore'),
+				];
+
+				// The check in sendChatMessage: activeVersionCardId && !resumeAfterRestoreMessageId
+				// Since resumeAfterRestoreMessageId is already set, it stays at user-3
+				expect(builderStore.resumeAfterRestoreMessageId).toBe('user-3');
+
+				// Collapsed should still only be between vc-1 and user-3
+				expect(builderStore.collapsedMessageIds.has('user-2')).toBe(true);
+				expect(builderStore.collapsedMessageIds.has('vc-2')).toBe(true);
+				// Everything from user-3 onward should NOT be collapsed
+				expect(builderStore.collapsedMessageIds.has('user-3')).toBe(false);
+				expect(builderStore.collapsedMessageIds.has('vc-3')).toBe(false);
+				expect(builderStore.collapsedMessageIds.has('user-4')).toBe(false);
+			});
+
+			it('should restore collapse state from loadSessions', async () => {
+				const builderStore = useBuilderStore();
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+
+				// Version card IDs are generated as `version-card-${userMessageId}`
+				// by loadSessions (line ~1248). The session stores the generated ID.
+				mockGetAiSessions.mockResolvedValueOnce({
+					sessions: [
+						{
+							sessionId: 'session-1',
+							lastUpdated: '2024-01-01T00:00:00Z',
+							activeVersionCardId: 'version-card-user-msg-1',
+							resumeAfterRestoreMessageId: 'user-msg-3',
+							messages: [
+								{
+									type: 'message',
+									role: 'user',
+									text: 'Build v1',
+									id: 'user-msg-1',
+									revertVersionId: 'version-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'workflow-updated',
+									id: 'wu-1',
+									codeSnippet: '{}',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Done v1',
+									id: 'ai-msg-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'user',
+									text: 'Build v2',
+									id: 'user-msg-2',
+									revertVersionId: 'version-2',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'workflow-updated',
+									id: 'wu-2',
+									codeSnippet: '{}',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Done v2',
+									id: 'ai-msg-2',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'user',
+									text: 'After restore',
+									id: 'user-msg-3',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Done v3',
+									id: 'ai-msg-3',
+								} as unknown as ChatRequest.MessageResponse,
+							],
+						},
+					],
+				});
+
+				vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds).mockResolvedValue({
+					versions: [
+						{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' },
+						{ versionId: 'version-2', createdAt: '2024-01-02T00:00:00Z' },
+					],
+				});
+
+				await builderStore.loadSessions();
+
+				// activeVersionCardId should be restored from the session
+				expect(builderStore.activeVersionCardId).toBe('version-card-user-msg-1');
+
+				// resumeAfterRestoreMessageId should be restored
+				expect(builderStore.resumeAfterRestoreMessageId).toBe('user-msg-3');
+
+				// Messages between the active card and resume point should be collapsed
+				const collapsed = builderStore.collapsedMessageIds;
+				expect(collapsed.size).toBeGreaterThan(0);
+
+				// user-msg-3 (resume point) should NOT be collapsed
+				expect(collapsed.has('user-msg-3')).toBe(false);
+			});
+
+			it('should handle re-restore within collapsed region', () => {
+				const builderStore = useBuilderStore();
+
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeVersionCard('vc-1', 'v-1'),
+					makeTextMessage('user-2', 'user', 'Build v2'),
+					makeVersionCard('vc-2', 'v-2'),
+					makeTextMessage('user-3', 'user', 'Build v3'),
+					makeVersionCard('vc-3', 'v-3'),
+					// Resume region
+					makeTextMessage('user-4', 'user', 'After first restore'),
+					makeVersionCard('vc-4', 'v-4'),
+				];
+
+				// State: restored to vc-1, resumed at user-4
+				builderStore.activeVersionCardId = 'vc-1';
+				builderStore.resumeAfterRestoreMessageId = 'user-4';
+
+				// vc-2, vc-3 collapsed, vc-4 visible
+				expect(builderStore.collapsedMessageIds.has('vc-2')).toBe(true);
+				expect(builderStore.collapsedMessageIds.has('vc-3')).toBe(true);
+				expect(builderStore.collapsedMessageIds.has('vc-4')).toBe(false);
+
+				// Now re-restore to vc-2 (within the collapsed group)
+				// This simulates restoreToVersion() behavior
+				builderStore.activeVersionCardId = 'vc-2';
+				builderStore.resumeAfterRestoreMessageId = undefined;
+
+				// Now vc-3, user-4, vc-4 should be collapsed
+				// vc-1, user-2, vc-2 should be visible
+				expect(builderStore.collapsedMessageIds.has('vc-1')).toBe(false);
+				expect(builderStore.collapsedMessageIds.has('user-2')).toBe(false);
+				expect(builderStore.collapsedMessageIds.has('vc-2')).toBe(false);
+				expect(builderStore.collapsedMessageIds.has('user-3')).toBe(true);
+				expect(builderStore.collapsedMessageIds.has('vc-3')).toBe(true);
+				expect(builderStore.collapsedMessageIds.has('user-4')).toBe(true);
+				expect(builderStore.collapsedMessageIds.has('vc-4')).toBe(true);
+			});
+		});
 	});
 
 	describe('Page title status', () => {
 		it('should set title to AI_BUILDING when streaming starts', async () => {
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowName = 'Test Workflow';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setName('Test Workflow');
 
 			// Mock the API to prevent actual calls
 			apiSpy.mockImplementation(() => {});
@@ -2475,7 +3238,10 @@ describe('AI Builder store', () => {
 			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
 
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowName = 'Test Workflow';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setName('Test Workflow');
 
 			// Start streaming first
 			builderStore.streaming = true;
@@ -2490,7 +3256,10 @@ describe('AI Builder store', () => {
 			Object.defineProperty(document, 'hidden', { value: false, configurable: true });
 
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowName = 'Test Workflow';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setName('Test Workflow');
 
 			// Start streaming first
 			builderStore.streaming = true;
@@ -2505,7 +3274,10 @@ describe('AI Builder store', () => {
 			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
 
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowName = 'Test Workflow';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setName('Test Workflow');
 
 			builderStore.streaming = true;
 			builderStore.abortStreaming();
@@ -2521,7 +3293,10 @@ describe('AI Builder store', () => {
 			Object.defineProperty(document, 'hidden', { value: false, configurable: true });
 
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowName = 'Test Workflow';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setName('Test Workflow');
 
 			setDocumentTitleMock.mockClear();
 
@@ -2548,9 +3323,16 @@ describe('AI Builder store', () => {
 
 		it('should not show revertVersion on user message during streaming', async () => {
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowId = 'test-workflow-123';
+			workflowsStore.setWorkflowId('test-workflow-123');
 			workflowsStore.isNewWorkflow = false;
-			workflowsStore.workflowVersionId = 'version-1';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
 
 			await builderStore.sendChatMessage({ text: 'Build a workflow' });
 
@@ -2560,12 +3342,30 @@ describe('AI Builder store', () => {
 			expect(userMessage.revertVersion).toBeUndefined();
 		});
 
-		it('should add revertVersion to user message after streaming when workflow was modified', async () => {
+		it('should insert a version card message after streaming when workflow was modified', async () => {
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowId = 'test-workflow-123';
+			workflowsStore.setWorkflowId('test-workflow-123');
 			workflowsStore.isNewWorkflow = false;
-			workflowsStore.workflowVersionId = 'version-1';
-			workflowsStore.workflow.updatedAt = '2024-01-01T00:00:00Z';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
+			workflowDocumentStore.setUpdatedAt('2024-01-01T00:00:00Z');
+
+			// Mock the workflow history API to return the version as existing
+			// Called twice: once for saveWorkflowAndGetRevertVersion, once for savePostModificationVersion
+			const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+			vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds)
+				.mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				})
+				.mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				});
 
 			await builderStore.sendChatMessage({ text: 'Build a workflow' });
 
@@ -2583,27 +3383,40 @@ describe('AI Builder store', () => {
 				});
 			}
 
-			// Complete streaming
+			// Complete streaming — stopStreaming is async (saves post-modification version)
 			if (capturedDoneCallback) {
 				capturedDoneCallback();
 			}
 
-			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+			// Wait for the version card to be appended (async stopStreaming)
+			await vi.waitFor(() => {
+				const last = builderStore.chatMessages[builderStore.chatMessages.length - 1];
+				expect(last.type).toBe('custom');
+			});
 
-			// User message should now have revertVersion
-			const userMessage = builderStore.chatMessages[0] as ChatUI.TextMessage;
-			expect(userMessage.role).toBe('user');
-			expect(userMessage.revertVersion).toEqual({
-				id: 'version-1',
+			// A version card message should be appended
+			const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
+			expect(lastMessage.type).toBe('custom');
+			expect(lastMessage).toHaveProperty('customType', 'version_card');
+			expect(lastMessage).toHaveProperty('data');
+			expect((lastMessage as Record<string, unknown>).data).toEqual({
+				versionId: 'version-1',
 				createdAt: '2024-01-01T00:00:00Z',
 			});
 		});
 
 		it('should not add revertVersion to user message after streaming when workflow was not modified', async () => {
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowId = 'test-workflow-123';
+			workflowsStore.setWorkflowId('test-workflow-123');
 			workflowsStore.isNewWorkflow = false;
-			workflowsStore.workflowVersionId = 'version-1';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
 
 			await builderStore.sendChatMessage({ text: 'What can you help me with?' });
 
@@ -2840,10 +3653,23 @@ describe('AI Builder store', () => {
 
 		const triggerSuccessfulStreamingComplete = async () => {
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowName = 'Test Workflow';
-			workflowsStore.workflowId = 'test-workflow-123';
+			workflowsStore.setWorkflowId('test-workflow-123');
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId('test-workflow-123'),
+			);
+			workflowDocumentStore.setName('Test Workflow');
 			workflowsStore.isNewWorkflow = false;
-			workflowsStore.workflowVersionId = 'version-1';
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
+
+			// Mock version check for saveWorkflowAndGetRevertVersion + savePostModificationVersion
+			const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+			vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds).mockResolvedValue({
+				versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+			});
 
 			// Trigger sendChatMessage to start streaming and capture callbacks
 			await builderStore.sendChatMessage({ text: 'test message' });
@@ -2862,10 +3688,18 @@ describe('AI Builder store', () => {
 				});
 			}
 
-			// Simulate successful completion by calling the done callback
+			// Simulate successful completion — stopStreaming is async
 			if (capturedDoneCallback) {
 				capturedDoneCallback();
 			}
+
+			// Wait for async stopStreaming to finish (saves post-mod version, shows notifications)
+			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+			// Flush pending microtasks from the async stopStreaming chain
+			await vi.waitFor(() => {
+				const last = builderStore.chatMessages[builderStore.chatMessages.length - 1];
+				expect(last.type).toBe('custom');
+			});
 		};
 
 		it('should show browser notification when streaming completes successfully and tab is hidden', async () => {
@@ -2889,7 +3723,10 @@ describe('AI Builder store', () => {
 			mockIsNotificationsEnabled.value = true;
 
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowName = 'Test Workflow';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setName('Test Workflow');
 
 			builderStore.streaming = true;
 			builderStore.abortStreaming();
@@ -2965,7 +3802,7 @@ describe('AI Builder store', () => {
 			// Add focused nodes
 			const { useFocusedNodesStore } = await import('./focusedNodes.store');
 			const focusedNodesStore = useFocusedNodesStore();
-			workflowsStore.allNodes = [
+			workflowDocumentStore.setNodes([
 				{
 					id: 'test-node-1',
 					name: 'HTTP Request',
@@ -2974,7 +3811,7 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 					parameters: {},
 				},
-			] as unknown as typeof workflowsStore.allNodes;
+			]);
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 			track.mockReset();
 
@@ -2998,7 +3835,7 @@ describe('AI Builder store', () => {
 
 			const { useFocusedNodesStore } = await import('./focusedNodes.store');
 			const focusedNodesStore = useFocusedNodesStore();
-			workflowsStore.allNodes = [
+			workflowDocumentStore.setNodes([
 				{
 					id: 'test-node-1',
 					name: 'HTTP Request',
@@ -3007,7 +3844,7 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 					parameters: {},
 				},
-			] as unknown as typeof workflowsStore.allNodes;
+			]);
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 			track.mockReset();
 
@@ -3043,7 +3880,7 @@ describe('AI Builder store', () => {
 
 			const { useFocusedNodesStore } = await import('./focusedNodes.store');
 			const focusedNodesStore = useFocusedNodesStore();
-			workflowsStore.allNodes = [
+			workflowDocumentStore.setNodes([
 				{
 					id: 'test-node-1',
 					name: 'HTTP Request',
@@ -3052,7 +3889,7 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 					parameters: {},
 				},
-			] as unknown as typeof workflowsStore.allNodes;
+			]);
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 			track.mockReset();
 
@@ -3075,7 +3912,7 @@ describe('AI Builder store', () => {
 
 			const { useFocusedNodesStore } = await import('./focusedNodes.store');
 			const focusedNodesStore = useFocusedNodesStore();
-			workflowsStore.allNodes = [
+			workflowDocumentStore.setNodes([
 				{
 					id: 'test-node-1',
 					name: 'HTTP Request',
@@ -3084,7 +3921,7 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 					parameters: {},
 				},
-			] as unknown as typeof workflowsStore.allNodes;
+			]);
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 
 			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
@@ -3097,6 +3934,216 @@ describe('AI Builder store', () => {
 			const userMessage = builderStore.chatMessages.find((m) => m.role === 'user');
 			expect(userMessage).toBeDefined();
 			expect((userMessage as Record<string, unknown>).focusedNodeNames).toEqual(['HTTP Request']);
+		});
+
+		it('should set isHelpStreaming when streaming response contains assistant tool message', async () => {
+			const builderStore = useBuilderStore();
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			let capturedOnMessage: ((data: any) => void) | null = null;
+			let capturedOnDone: (() => void) | null = null;
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+				capturedOnMessage = onMessage;
+				capturedOnDone = onDone;
+			});
+
+			await builderStore.sendChatMessage({ text: 'what does this node do?' });
+
+			expect(builderStore.streaming).toBe(true);
+			expect(builderStore.isHelpStreaming).toBe(false);
+
+			// Simulate backend routing to the assistant (help path)
+			capturedOnMessage!({
+				messages: [
+					{
+						type: 'tool',
+						toolName: 'assistant',
+						toolCallId: 'assistant-123',
+						displayTitle: 'Asking assistant',
+						status: 'running',
+					},
+				],
+				sessionId: 'test-session',
+			});
+
+			expect(builderStore.isHelpStreaming).toBe(true);
+
+			// Complete streaming
+			capturedOnDone!();
+			expect(builderStore.streaming).toBe(false);
+			expect(builderStore.isHelpStreaming).toBe(false);
+		});
+
+		it('should NOT set isHelpStreaming for regular build tool messages', async () => {
+			const builderStore = useBuilderStore();
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			let capturedOnMessage: ((data: any) => void) | null = null;
+			let capturedOnDone: (() => void) | null = null;
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+				capturedOnMessage = onMessage;
+				capturedOnDone = onDone;
+			});
+
+			await builderStore.sendChatMessage({ text: 'build a workflow' });
+
+			expect(builderStore.isHelpStreaming).toBe(false);
+
+			// Simulate a build tool message (not assistant)
+			capturedOnMessage!({
+				messages: [
+					{
+						type: 'tool',
+						toolName: 'generate_workflow',
+						toolCallId: 'tool-456',
+						displayTitle: 'Building workflow',
+						status: 'running',
+					},
+				],
+				sessionId: 'test-session',
+			});
+
+			expect(builderStore.isHelpStreaming).toBe(false);
+
+			capturedOnDone!();
+		});
+	});
+
+	describe('latestRevertVersion', () => {
+		it('returns null when chatMessages is empty', () => {
+			const builderStore = useBuilderStore();
+			expect(builderStore.latestRevertVersion).toBeNull();
+		});
+
+		it('returns null when no messages have revertVersion', () => {
+			const builderStore = useBuilderStore();
+			builderStore.$patch({
+				chatMessages: [
+					{ id: '1', type: 'text', role: 'user', content: 'hello', read: true },
+					{ id: '2', type: 'text', role: 'assistant', content: 'hi', read: true },
+				],
+			});
+			expect(builderStore.latestRevertVersion).toBeNull();
+		});
+
+		it('returns the revertVersion from a version card message', () => {
+			const builderStore = useBuilderStore();
+			builderStore.$patch({
+				chatMessages: [
+					{ id: '1', type: 'text', role: 'user', content: 'build a workflow', read: true },
+					{ id: '2', type: 'text', role: 'assistant', content: 'done', read: true },
+					{
+						id: 'vc-1',
+						type: 'custom',
+						role: 'assistant',
+						customType: 'version_card',
+						data: { versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' },
+					},
+				],
+			});
+			expect(builderStore.latestRevertVersion).toEqual({
+				id: 'version-1',
+				createdAt: '2024-01-01T00:00:00Z',
+			});
+		});
+
+		it('returns the latest version card when multiple exist', () => {
+			const builderStore = useBuilderStore();
+			builderStore.$patch({
+				chatMessages: [
+					{ id: '1', type: 'text', role: 'user', content: 'build a workflow', read: true },
+					{
+						id: 'vc-1',
+						type: 'custom',
+						role: 'assistant',
+						customType: 'version_card',
+						data: { versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' },
+					},
+					{ id: '2', type: 'text', role: 'user', content: 'modify it', read: true },
+					{
+						id: 'vc-2',
+						type: 'custom',
+						role: 'assistant',
+						customType: 'version_card',
+						data: { versionId: 'version-2', createdAt: '2024-01-02T00:00:00Z' },
+					},
+				],
+			});
+			expect(builderStore.latestRevertVersion).toEqual({
+				id: 'version-2',
+				createdAt: '2024-01-02T00:00:00Z',
+			});
+		});
+	});
+
+	describe('generated pin data', () => {
+		it('storeGeneratedPinData stores pin data without applying it', () => {
+			const builderStore = useBuilderStore();
+			const pinData = { 'Node A': [{ json: { test: true } }] };
+
+			builderStore.storeGeneratedPinData(pinData);
+
+			expect(builderStore.hasDeferredPinData).toBe(true);
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			expect(workflowDocumentStore.pinData).toEqual({});
+		});
+
+		it('storeGeneratedPinData merges multiple calls', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.storeGeneratedPinData({ 'Node A': [{ json: { a: 1 } }] });
+			builderStore.storeGeneratedPinData({ 'Node B': [{ json: { b: 2 } }] });
+
+			expect(builderStore.hasDeferredPinData).toBe(true);
+		});
+
+		it('hasDeferredPinData returns false when no data is stored', () => {
+			const builderStore = useBuilderStore();
+			expect(builderStore.hasDeferredPinData).toBe(false);
+		});
+
+		it('applyGeneratedPinData applies data and marks state dirty', () => {
+			const builderStore = useBuilderStore();
+			const uiStore = useUIStore();
+			const pinData = { 'Node A': [{ json: { test: true } }] };
+
+			builderStore.storeGeneratedPinData(pinData);
+			builderStore.applyGeneratedPinData();
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			expect(workflowDocumentStore.pinData).toEqual(pinData);
+			expect(uiStore.stateIsDirty).toBe(true);
+			expect(builderStore.hasDeferredPinData).toBe(false);
+			expect(builderStore.pinDataApplied).toBe(true);
+		});
+
+		it('applyGeneratedPinData is a no-op when no data is stored', () => {
+			const builderStore = useBuilderStore();
+			const uiStore = useUIStore();
+
+			builderStore.applyGeneratedPinData();
+
+			expect(uiStore.stateIsDirty).toBe(false);
+			expect(builderStore.pinDataApplied).toBe(false);
+		});
+
+		it('resetBuilderChat clears generated pin data and pinDataApplied', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.storeGeneratedPinData({ 'Node A': [{ json: { test: true } }] });
+			builderStore.applyGeneratedPinData();
+			expect(builderStore.pinDataApplied).toBe(true);
+
+			builderStore.resetBuilderChat();
+
+			expect(builderStore.hasDeferredPinData).toBe(false);
+			expect(builderStore.pinDataApplied).toBe(false);
 		});
 	});
 });

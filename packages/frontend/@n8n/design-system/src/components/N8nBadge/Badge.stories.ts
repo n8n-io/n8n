@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nBadge from './Badge.vue';
 
 export default {
-	title: 'Atoms/Badge',
+	title: 'Core/Badge',
 	component: N8nBadge,
 	argTypes: {
 		theme: {
@@ -13,6 +13,12 @@ export default {
 		size: {
 			type: 'select',
 			options: ['small', 'medium', 'large'],
+		},
+	},
+
+	parameters: {
+		docs: {
+			description: { component: 'A compact status label for highlighting state or metadata.' },
 		},
 	},
 };

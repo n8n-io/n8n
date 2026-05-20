@@ -12,3 +12,11 @@ test-fixtures/real-workflows/*.generated.ts
 scripts/*.js
 scripts/*.js.map
 scripts/*.d.ts
+
+# Curation pipeline intermediates (committed: manifest.json, templates.zip, _calibration.json, _coverage-report.json)
+examples/_raw/
+examples/_failures.log
+examples/_catalog-snapshot.json
+
+# Workflow JSONs are extracted from templates.zip at runtime — only the zip is committed
+examples/workflows/

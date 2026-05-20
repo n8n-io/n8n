@@ -14,6 +14,7 @@ import {
 	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
 	MAX_AGENT_NAME_CHARS,
 	NEW_AGENT_MENU_ID,
+	providerDisplayNames,
 } from '@/features/ai/chatHub/constants';
 import { useI18n } from '@n8n/i18n';
 
@@ -39,6 +40,7 @@ const {
 	includeCustomAgents = true,
 	credentials,
 	text,
+	horizontal = false,
 	warnMissingCredentials = false,
 	agents,
 	isLoading,
@@ -47,6 +49,8 @@ const {
 	includeCustomAgents?: boolean;
 	credentials: CredentialsMap | null;
 	text?: boolean;
+	/** Display trigger as a full-width horizontal row instead of compact stacked layout */
+	horizontal?: boolean;
 	warnMissingCredentials?: boolean;
 	agents: ChatModelsResponse;
 	isLoading: boolean;
@@ -97,6 +101,7 @@ const menu = computed(() =>
 		isLoading,
 		i18n,
 		settings: settingStore.moduleSettings?.['chat-hub']?.providers ?? {},
+		credentials,
 	}),
 );
 
@@ -122,9 +127,10 @@ function openCredentialsSelectorOrCreate(provider: ChatHubLLMProvider) {
 	uiStore.openModalWithData({
 		name: CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
 		data: {
-			provider,
+			credentialType,
+			displayName: providerDisplayNames[provider],
 			initialValue: credentials?.[provider] ?? null,
-			onSelect: handleSelectCredentials,
+			onSelect: (credentialId: string | null) => handleSelectCredentials(provider, credentialId),
 		},
 	});
 }
@@ -196,9 +202,10 @@ defineExpose({
 	>
 		<template #trigger>
 			<N8nButton
-				variant="ghost"
-				:class="$style.dropdownButton"
+				:variant="text ? 'ghost' : 'outline'"
+				:class="[$style.dropdownButton, horizontal && $style.dropdownButtonHorizontal]"
 				:text="text"
+				size="large"
 				data-test-id="chat-model-selector"
 			>
 				<ChatAgentAvatar
@@ -206,11 +213,16 @@ defineExpose({
 					:size="credentialsName || !isCredentialsRequired ? 'md' : 'sm'"
 					:class="$style.icon"
 				/>
-				<div :class="$style.selected">
-					<div>
+				<div :class="[$style.selected, horizontal && $style.selectedHorizontal]">
+					<N8nText>
 						{{ truncateBeforeLast(selectedLabel, MAX_AGENT_NAME_CHARS) }}
-					</div>
-					<N8nText v-if="credentialsName" size="xsmall" color="text-light">
+					</N8nText>
+					<N8nText
+						v-if="credentialsName"
+						:size="horizontal ? 'small' : 'xsmall'"
+						color="text-light"
+						data-test-id="chat-model-selector-credential"
+					>
 						{{ truncateBeforeLast(credentialsName, MAX_AGENT_NAME_CHARS) }}
 					</N8nText>
 					<N8nText v-else-if="isCredentialsMissing" size="xsmall" color="danger">
@@ -222,7 +234,11 @@ defineExpose({
 						{{ i18n.baseText('chatHub.agent.credentialsMissing') }}
 					</N8nText>
 				</div>
-				<N8nIcon icon="chevron-down" size="medium" />
+				<N8nIcon
+					:class="horizontal && $style.chevronHorizontal"
+					icon="chevron-down"
+					size="medium"
+				/>
 			</N8nButton>
 		</template>
 
@@ -261,7 +277,8 @@ defineExpose({
 				v-if="item.data?.description"
 				:content="truncateBeforeLast(item.data.description, 200, 0)"
 				:class="ui.class"
-				:popper-class="$style.tooltip"
+				:content-class="$style.tooltip"
+				placement="right"
 			>
 				<N8nIcon icon="info" size="medium" color="text-light" :class="$style.infoIcon" />
 			</N8nTooltip>
@@ -280,6 +297,7 @@ defineExpose({
 	align-items: center;
 	gap: var(--spacing--xs);
 	width: fit-content;
+	padding-block: var(--spacing--2xs);
 
 	/* disable underline */
 	text-decoration: none !important;
@@ -295,6 +313,46 @@ defineExpose({
 	flex-direction: column;
 	align-items: start;
 	gap: var(--spacing--4xs);
+}
+
+.dropdownButtonHorizontal {
+	width: 100%;
+	display: flex;
+	justify-content: stretch;
+	/* padding: var(--spacing--2xs) var(--spacing--xs); */
+	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
+	border-radius: var(--radius--2xs);
+
+	> div {
+		width: 100%;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	&:hover {
+		border-color: var(--border-color--strong);
+	}
+}
+
+.selectedHorizontal {
+	flex-direction: row;
+	align-items: center;
+	gap: var(--spacing--xs);
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+
+	> div {
+		font-weight: var(--font-weight--bold);
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+}
+
+.chevronHorizontal {
+	align-self: flex-end;
+	margin-bottom: var(--spacing--5xs);
 }
 
 .icon {

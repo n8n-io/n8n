@@ -20,18 +20,22 @@ import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStyles } from '@/app/composables/useStyles';
 import { useExposeCssVar } from '@/app/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
+import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const route = useRoute();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
 const { setAppZIndexes } = useStyles();
-const { toastBottomOffset, askAiFloatingButtonBottomOffset } = useFloatingUiOffsets();
+const { toastBottomOffset, toastRightOffset, askAiFloatingButtonBottomOffset } =
+	useFloatingUiOffsets();
 
 // Initialize undo/redo
 useHistoryHelper(route);
@@ -48,6 +52,11 @@ const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const hasContentFooter = ref(false);
+const workflowId = useWorkflowId();
+const currentWorkflowDocumentStore = shallowRef<WorkflowDocumentStore | null>(null);
+
+provide(WorkflowIdKey, workflowId);
+provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
 
 useTelemetryContext({ ndv_source: computed(() => ndvStore.lastSetActiveNodeSource) });
 
@@ -88,6 +97,7 @@ const setLayoutRef = (el: Element) => {
 };
 
 useExposeCssVar('--toast--offset', toastBottomOffset);
+useExposeCssVar('--toast--right', toastRightOffset);
 useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloatingButtonBottomOffset);
 </script>
 

@@ -18,6 +18,7 @@ import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
 import { License } from '@/license';
+import { containsExpression } from '@/utils';
 
 import {
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
@@ -37,10 +38,6 @@ import type { KeyPairType } from './types/key-pair-type';
 import type { RemoteResourceOwner, StatusResourceOwner } from './types/resource-owner';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 
-function stringContainsExpression(testString: string): boolean {
-	return /^=.*\{\{.+\}\}/.test(testString);
-}
-
 export function sanitizeCredentialData(
 	data: ICredentialDataDecryptedObject,
 ): ICredentialDataDecryptedObject {
@@ -53,7 +50,7 @@ export function sanitizeCredentialData(
 		} else if (typeof value === 'object') {
 			result[key] = sanitizeCredentialData(value as ICredentialDataDecryptedObject);
 		} else if (typeof value === 'string') {
-			result[key] = stringContainsExpression(value) ? value : '';
+			result[key] = containsExpression(value) ? value : '';
 		}
 
 		// NOTE: number and boolean values are synchable for backward compatibility
@@ -75,14 +72,17 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  */
 function mergeSingleValue(sanitizedRemoteValue: unknown, localValue: unknown): unknown {
 	if (typeof sanitizedRemoteValue === 'string') {
-		if (stringContainsExpression(sanitizedRemoteValue)) {
+		if (containsExpression(sanitizedRemoteValue)) {
 			return sanitizedRemoteValue;
 		} else if (localValue !== undefined && localValue !== null) {
 			// Local value is preserved if it exists (secret handling)
 			return localValue;
 		}
 
-		return undefined;
+		// The remote field exists as an empty string (key is part of the schema)
+		// but local has no value for it. Preserve the empty string so the field
+		// is not silently dropped from the merged credential.
+		return '';
 	}
 
 	if (typeof sanitizedRemoteValue === 'number' || typeof sanitizedRemoteValue === 'boolean') {
@@ -129,8 +129,6 @@ export function mergeRemoteCrendetialDataIntoLocalCredentialData({
 }): ICredentialDataDecryptedObject {
 	const merged: ICredentialDataDecryptedObject = {};
 
-	// This is a safe guard, in principle remote data should already be sanitized
-	// This prevents importing invalid data that should have not been synched in the first place
 	const sanitizedRemote = sanitizeCredentialData(remote);
 
 	for (const [key, sanitizedRemoteValue] of Object.entries(sanitizedRemote)) {
@@ -140,6 +138,13 @@ export function mergeRemoteCrendetialDataIntoLocalCredentialData({
 		if (mergedValue !== undefined) {
 			merged[key] = mergedValue as CredentialInformation;
 		}
+	}
+
+	// Because oauthTokenData is explicitly stripped from the remote data during sanitization,
+	// it will never exist in the sanitizedRemote object. Therefore, it is skipped in the loop above.
+	// We manually merge it back from local to prevent OAuth credentials being wiped out on pull.
+	if (local.oauthTokenData) {
+		merged.oauthTokenData = local.oauthTokenData;
 	}
 
 	return merged;

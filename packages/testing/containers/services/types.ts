@@ -1,5 +1,8 @@
 import type { StartedTestContainer, StartedNetwork } from 'testcontainers';
 
+/** Hostname that containers use to reach the host machine (Docker Desktop built-in) */
+export const EXTERNAL_HOST = 'host.docker.internal';
+
 export const SERVICE_NAMES = [
 	'postgres',
 	'redis',
@@ -19,6 +22,8 @@ export const SERVICE_NAMES = [
 	'mysql',
 	'localstack',
 	'kent',
+	'postgresExporter',
+	'cadvisor',
 ] as const;
 
 export type ServiceName = (typeof SERVICE_NAMES)[number];
@@ -50,11 +55,15 @@ export interface StartContext {
 	isQueueMode: boolean;
 	usePostgres: boolean;
 	needsLoadBalancer: boolean;
+	/** When true, services should target host.testcontainers.internal instead of Docker-internal hostnames */
+	external: boolean;
 	environment: Record<string, string>;
 	serviceResults: Partial<Record<ServiceName, ServiceResult>>;
 	allocatedPorts: { main?: number; loadBalancer?: number };
 	baseUrl?: string;
 }
+
+export type LoadBalancerPolicy = 'first' | 'round_robin' | 'random' | 'least_conn' | 'ip_hash';
 
 export interface StackConfig {
 	mains?: number;
@@ -63,7 +72,16 @@ export interface StackConfig {
 	env?: Record<string, string>;
 	projectName?: string;
 	resourceQuota?: { memory?: number; cpu?: number };
+	workerResourceQuota?: { memory?: number; cpu?: number };
 	services?: readonly ServiceName[];
+	/** When true, services target host machine instead of Docker-internal n8n */
+	external?: boolean;
+	/**
+	 * Caddy load-balancer upstream-selection policy. Only applies when `mains > 1`.
+	 * Defaults to `'first'` — sticky to main #1, useful for UI debuggability.
+	 * Benchmarks should set `'round_robin'` to actually distribute load.
+	 */
+	lbPolicy?: LoadBalancerPolicy;
 }
 
 export interface Service<TResult extends ServiceResult = ServiceResult> {

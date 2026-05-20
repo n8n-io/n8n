@@ -1,6 +1,6 @@
 import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { ToolMessage } from '@langchain/core/messages';
+import type { BaseMessage, ToolMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
@@ -106,13 +106,13 @@ export interface ExpressionValue {
 
 export interface BuilderFeatureFlags {
 	templateExamples?: boolean;
-	/** Enable CodeWorkflowBuilder (default: false). When false, uses legacy multi-agent system. */
-	codeBuilder?: boolean;
-	/** Enable pin data generation in code builder (default: true when codeBuilder is true). */
+	/** Enable pin data generation in code builder (default: true). */
 	pinData?: boolean;
 	planMode?: boolean;
 	/** Enable introspection tool for diagnostic data collection. Disabled by default. */
 	enableIntrospection?: boolean;
+	/** Enable merged ask/build experience with assistant subgraph (default: false). */
+	mergeAskBuild?: boolean;
 }
 
 export interface ChatPayload {
@@ -153,11 +153,9 @@ export class WorkflowBuilderAgent {
 	private stageLLMs: StageLLMs;
 	private logger?: Logger;
 	private tracer?: LangChainTracer;
-	private instanceUrl?: string;
 	private runMetadata?: Record<string, unknown>;
 	private onGenerationSuccess?: () => Promise<void>;
 	private nodeDefinitionDirs?: string[];
-	private resourceLocatorCallback?: ResourceLocatorCallback;
 	private onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void;
 	private assistantHandler?: AssistantHandler;
 	/** Feature flags stored from the first chat call to ensure consistency across a session */
@@ -169,11 +167,9 @@ export class WorkflowBuilderAgent {
 		this.logger = config.logger;
 		this.checkpointer = config.checkpointer;
 		this.tracer = config.tracer;
-		this.instanceUrl = config.instanceUrl;
 		this.runMetadata = config.runMetadata;
 		this.onGenerationSuccess = config.onGenerationSuccess;
 		this.nodeDefinitionDirs = config.nodeDefinitionDirs;
-		this.resourceLocatorCallback = config.resourceLocatorCallback;
 		this.onTelemetryEvent = config.onTelemetryEvent;
 		this.assistantHandler = config.assistantHandler;
 	}
@@ -187,11 +183,9 @@ export class WorkflowBuilderAgent {
 			parsedNodeTypes: this.parsedNodeTypes,
 			stageLLMs: this.stageLLMs,
 			logger: this.logger,
-			instanceUrl: this.instanceUrl,
 			checkpointer: this.checkpointer,
 			featureFlags,
-			onGenerationSuccess: this.onGenerationSuccess,
-			resourceLocatorCallback: this.resourceLocatorCallback,
+			assistantHandler: this.assistantHandler,
 		});
 	}
 
@@ -217,66 +211,103 @@ export class WorkflowBuilderAgent {
 		userId?: string,
 		abortSignal?: AbortSignal,
 		externalCallbacks?: Callbacks,
+		historicalMessages?: BaseMessage[],
 	) {
 		this.validateMessageLength(payload.message);
 
-		// Feature flag: Route to CodeWorkflowBuilder if enabled (default: false)
-		const useCodeWorkflowBuilder = payload.featureFlags?.codeBuilder ?? false;
+		yield* this.routeCodeBuilder(
+			payload,
+			userId,
+			abortSignal,
+			externalCallbacks,
+			historicalMessages,
+		);
+	}
 
-		if (useCodeWorkflowBuilder) {
-			const usePlanMode = payload.featureFlags?.planMode === true;
+	/**
+	 * Route code-builder requests: handle resume flows, plan mode, and triage.
+	 */
+	private async *routeCodeBuilder(
+		payload: ChatPayload,
+		userId: string | undefined,
+		abortSignal: AbortSignal | undefined,
+		externalCallbacks: Callbacks | undefined,
+		historicalMessages: BaseMessage[] | undefined,
+	) {
+		const usePlanMode = payload.featureFlags?.planMode === true;
 
-			// Check if this is a plan decision resume (approval/modify/reject)
-			if (payload.resumeData && payload.resumeInterrupt?.type === 'plan') {
-				const decision = parsePlanDecision(payload.resumeData);
-
-				if (decision.action === 'approve') {
-					// Plan approved: extract plan, route to CodeWorkflowBuilder with plan context
-					this.logger?.debug('Plan approved, routing to CodeWorkflowBuilder with plan', {
-						userId,
-					});
-					const codePayload: ChatPayload = {
-						...payload,
-						planOutput: payload.resumeInterrupt.plan,
-						resumeData: undefined,
-						resumeInterrupt: undefined,
-					};
-					yield* this.runCodeWorkflowBuilder(codePayload, userId, abortSignal);
-					return;
-				}
-
-				// Plan modify or reject: resume multi-agent system
-				this.logger?.debug('Plan modify/reject, resuming multi-agent system', {
-					userId,
-					action: decision.action,
-				});
-				yield* this.runMultiAgentSystem(payload, userId, abortSignal, externalCallbacks);
-				return;
-			}
-
-			// Initial plan request: route to multi-agent for discovery + planning
-			if (usePlanMode && payload.mode === 'plan') {
-				this.logger?.debug('Plan mode with code builder, routing to multi-agent for planning', {
-					userId,
-				});
-				yield* this.runMultiAgentSystem(payload, userId, abortSignal, externalCallbacks);
-				return;
-			}
-
-			const isMergeAskBuildEnabled = process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD === 'true';
-			if (isMergeAskBuildEnabled && this.assistantHandler) {
-				this.logger?.debug('Routing through triage agent', { userId });
-				yield* this.runTriageAgent(payload, userId, abortSignal);
-			} else {
-				this.logger?.debug('Routing to code workflow builder', { userId });
-				yield* this.runCodeWorkflowBuilder(payload, userId, abortSignal);
-			}
+		// web_fetch_approval resumes always go through multi-agent (where the interrupt lives)
+		if (payload.resumeData && payload.resumeInterrupt?.type === 'web_fetch_approval') {
+			this.logger?.debug('web_fetch_approval resume, routing to multi-agent system', {
+				userId,
+			});
+			yield* this.runMultiAgentSystem(
+				payload,
+				userId,
+				abortSignal,
+				externalCallbacks,
+				historicalMessages,
+			);
 			return;
 		}
 
-		// Fall back to legacy multi-agent system
-		this.logger?.debug('Routing to legacy multi-agent system', { userId });
-		yield* this.runMultiAgentSystem(payload, userId, abortSignal, externalCallbacks);
+		// Check if this is a plan decision resume (approval/modify/reject)
+		if (payload.resumeData && payload.resumeInterrupt?.type === 'plan') {
+			const decision = parsePlanDecision(payload.resumeData);
+
+			if (decision.action === 'approve') {
+				// Plan approved: extract plan, route to CodeWorkflowBuilder with plan context
+				this.logger?.debug('Plan approved, routing to CodeWorkflowBuilder with plan', {
+					userId,
+				});
+				const codePayload: ChatPayload = {
+					...payload,
+					planOutput: payload.resumeInterrupt.plan,
+					resumeData: undefined,
+					resumeInterrupt: undefined,
+				};
+				yield* this.runCodeWorkflowBuilder(codePayload, userId, abortSignal);
+				return;
+			}
+
+			// Plan modify or reject: resume multi-agent system
+			this.logger?.debug('Plan modify/reject, resuming multi-agent system', {
+				userId,
+				action: decision.action,
+			});
+			yield* this.runMultiAgentSystem(
+				payload,
+				userId,
+				abortSignal,
+				externalCallbacks,
+				historicalMessages,
+			);
+			return;
+		}
+
+		// Initial plan request: route to multi-agent for discovery + planning
+		if (usePlanMode && payload.mode === 'plan') {
+			this.logger?.debug('Plan mode with code builder, routing to multi-agent for planning', {
+				userId,
+			});
+			yield* this.runMultiAgentSystem(
+				payload,
+				userId,
+				abortSignal,
+				externalCallbacks,
+				historicalMessages,
+			);
+			return;
+		}
+
+		const isMergeAskBuildEnabled = payload.featureFlags?.mergeAskBuild === true;
+		if (isMergeAskBuildEnabled && this.assistantHandler) {
+			this.logger?.debug('Routing through triage agent', { userId });
+			yield* this.runTriageAgent(payload, userId, abortSignal);
+		} else {
+			this.logger?.debug('Routing to code workflow builder', { userId });
+			yield* this.runCodeWorkflowBuilder(payload, userId, abortSignal);
+		}
 	}
 
 	private async *runCodeWorkflowBuilder(
@@ -284,6 +315,9 @@ export class WorkflowBuilderAgent {
 		userId: string | undefined,
 		abortSignal: AbortSignal | undefined,
 	) {
+		const workflowId = payload.workflowContext?.currentWorkflow?.id;
+		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
+
 		const codeWorkflowBuilder = new CodeWorkflowBuilder({
 			llm: this.stageLLMs.builder,
 			nodeTypes: this.parsedNodeTypes,
@@ -295,7 +329,8 @@ export class WorkflowBuilderAgent {
 			runMetadata: {
 				...this.runMetadata,
 				userMessageId: payload.id,
-				workflowId: payload.workflowContext?.currentWorkflow?.id,
+				workflowId,
+				ls_thread_id: threadId,
 			},
 			onTelemetryEvent: this.onTelemetryEvent,
 			generatePinData: payload.featureFlags?.pinData ?? true,
@@ -329,8 +364,7 @@ export class WorkflowBuilderAgent {
 		// Only reuse the SDK session if the most recent interaction was an
 		// assistant exchange. If build requests or plans happened in between,
 		// the SDK's internal conversation context is stale and would confuse
-		// the assistant (e.g. "Did this answer solve your question?" from an
-		// unrelated earlier exchange).
+		// the assistant.
 		const lastEntry = session?.conversationEntries?.at(-1);
 		const sdkSessionId =
 			lastEntry?.type === 'assistant-exchange' ? session?.sdkSessionId : undefined;
@@ -378,8 +412,6 @@ export class WorkflowBuilderAgent {
 		outcome: TriageAgentOutcome,
 		collectedText: string[],
 	) {
-		// Two-step flow: save assistant-exchange even when build also ran,
-		// so the diagnosis context is preserved in conversation history.
 		if (outcome.assistantSummary) {
 			session.conversationEntries.push({
 				type: 'assistant-exchange',
@@ -389,8 +421,6 @@ export class WorkflowBuilderAgent {
 			session.sdkSessionId = outcome.sdkSessionId;
 		}
 		if (outcome.buildExecuted) {
-			// SessionChatHandler saves the build entry — only persist here
-			// if we also recorded an assistant exchange above.
 			if (outcome.assistantSummary) {
 				await saveCodeBuilderSession(this.checkpointer, threadId, session);
 			}
@@ -411,6 +441,7 @@ export class WorkflowBuilderAgent {
 		userId: string | undefined,
 		abortSignal: AbortSignal | undefined,
 		externalCallbacks: Callbacks | undefined,
+		historicalMessages?: BaseMessage[],
 	) {
 		const { agent, threadConfig, streamConfig } = this.setupAgentAndConfigs(
 			payload,
@@ -420,7 +451,7 @@ export class WorkflowBuilderAgent {
 		);
 
 		try {
-			const stream = await this.createAgentStream(payload, streamConfig, agent);
+			const stream = await this.createAgentStream(payload, streamConfig, agent, historicalMessages);
 			yield* this.processAgentStream(stream, agent, threadConfig);
 		} catch (error: unknown) {
 			this.handleStreamError(error);
@@ -459,6 +490,7 @@ export class WorkflowBuilderAgent {
 		const threadConfig: RunnableConfig = {
 			configurable: {
 				thread_id: threadId,
+				userId,
 			},
 		};
 
@@ -482,6 +514,7 @@ export class WorkflowBuilderAgent {
 		payload: ChatPayload,
 		streamConfig: RunnableConfig,
 		agent: ReturnType<typeof this.createWorkflow>,
+		historicalMessages?: BaseMessage[],
 	): Promise<AsyncIterable<StreamEvent>> {
 		const additionalKwargs: Record<string, unknown> = {};
 		if (payload.versionId) additionalKwargs.versionId = payload.versionId;
@@ -489,31 +522,41 @@ export class WorkflowBuilderAgent {
 		if (payload.resumeData !== undefined) additionalKwargs.resumeData = payload.resumeData;
 
 		const humanMessage = new HumanMessage({
+			id: payload.id,
 			content: payload.message,
 			additional_kwargs: additionalKwargs,
 		});
 
 		const workflowJSON = this.getDefaultWorkflowJSON(payload);
 		const workflowContext = payload.workflowContext;
-
 		const mode = payload.mode ?? 'build';
+
+		// Include historical messages (from persistent storage) along with the new message.
+		// The messagesStateReducer will properly merge these with any existing checkpoint state.
+		const messages = [...(historicalMessages ?? []), humanMessage];
+
+		// web_fetch_approval resumes are handled internally by the tool via interrupt()/Command.resume.
+		// Injecting AIMessage (with raw interrupt JSON) and HumanMessage causes the LLM to echo them.
+		const isWebFetchResume = payload.resumeInterrupt?.type === 'web_fetch_approval';
 
 		const stream = payload.resumeData
 			? await agent.stream(
 					new Command({
 						resume: payload.resumeData,
 						update: {
-							messages: [
-								...(payload.resumeInterrupt
-									? [
-											new AIMessage({
-												content: JSON.stringify(payload.resumeInterrupt),
-												additional_kwargs: { messageType: payload.resumeInterrupt.type },
-											}),
-										]
-									: []),
-								humanMessage,
-							],
+							messages: isWebFetchResume
+								? []
+								: [
+										...(payload.resumeInterrupt
+											? [
+													new AIMessage({
+														content: JSON.stringify(payload.resumeInterrupt),
+														additional_kwargs: { messageType: payload.resumeInterrupt.type },
+													}),
+												]
+											: []),
+										humanMessage,
+									],
 							workflowJSON,
 							workflowContext,
 							...(payload.mode ? { mode: payload.mode } : {}),
@@ -523,7 +566,7 @@ export class WorkflowBuilderAgent {
 				)
 			: await agent.stream(
 					{
-						messages: [humanMessage],
+						messages,
 						workflowJSON,
 						workflowOperations: [],
 						workflowContext,
