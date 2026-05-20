@@ -21,7 +21,7 @@ type N8nPackagesHandlers = {
 const n8nPackagesHandlers: N8nPackagesHandlers = {
 	exportWorkflows: [
 		isLicensed(LICENSE_FEATURES.N8N_PACKAGES),
-		publicApiScope('n8nPackage:export'),
+		publicApiScope('workflow:export'),
 		async (req, res) => {
 			if (!Container.get(GlobalConfig).publicApi.packagesEnabled) {
 				throw new NotFoundError('Not Found');

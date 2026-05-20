@@ -75,7 +75,7 @@ export const RESOURCES = {
 
 export const API_KEY_RESOURCES = {
 	tag: [...DEFAULT_OPERATIONS] as const,
-	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate'] as const,
+	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate', 'export'] as const,
 	variable: ['create', 'update', 'delete', 'list'] as const,
 	securityAudit: ['generate'] as const,
 	project: ['create', 'update', 'delete', 'list'] as const,
@@ -91,7 +91,6 @@ export const API_KEY_RESOURCES = {
 	dataTableColumn: ['create', 'read', 'delete', 'update'] as const,
 	folder: ['create', 'delete', 'read', 'update', 'list'] as const,
 	insights: ['read'] as const,
-	n8nPackage: ['export'] as const,
 } as const;
 
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';
