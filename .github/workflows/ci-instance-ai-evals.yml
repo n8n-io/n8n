@@ -1,15 +1,16 @@
 name: 'CI: Instance AI Evals'
 
 # Triggers separately from ci-pull-requests.yml so build/tests/lint don't
-# re-run on review activity. Eval fires only at approval (gate before
-# merge) and on the merge queue (final check). Bare pushes don't fire it.
+# re-run on review activity. Eval fires only when a reviewer approves —
+# acts as the merge gate. Bare pushes don't fire it; `dismiss_stale_reviews_on_push`
+# on master forces a re-approval (and a fresh eval) if anything changes
+# between approval and merge.
 on:
   pull_request_review:
     types: [submitted]
-  merge_group:
 
 concurrency:
-  group: instance-ai-evals-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
+  group: instance-ai-evals-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -18,18 +19,16 @@ jobs:
     runs-on: ubuntu-latest
     if: >-
       github.repository == 'n8n-io/n8n' &&
-      (github.event_name == 'merge_group' ||
-        (github.event_name == 'pull_request_review' &&
-         github.event.review.state == 'approved' &&
-         !github.event.pull_request.head.repo.fork &&
-         github.event.pull_request.draft == false))
+      github.event.review.state == 'approved' &&
+      !github.event.pull_request.head.repo.fork &&
+      github.event.pull_request.draft == false
     outputs:
       should_run: ${{ steps.ci-filter.outputs.results && fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
       - name: Capture commit SHA for cache consistency
         id: commit-sha

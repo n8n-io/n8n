@@ -91,7 +91,6 @@ jobs:
               packages/@n8n/instance-ai/evaluations/**
               packages/cli/src/modules/instance-ai/**
               packages/core/src/execution-engine/eval-mock-helpers.ts
-              .github/workflows/test-evals-instance-ai*.yml
               .github/workflows/test-evals-discovery.yml
             db:
               packages/cli/src/databases/**
