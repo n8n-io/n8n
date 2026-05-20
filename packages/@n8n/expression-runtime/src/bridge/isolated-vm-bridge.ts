@@ -594,11 +594,12 @@ try {
 		error.name = data.name || 'Error';
 		if (data.stack) error.stack = data.stack;
 		if (data.extra) {
-			for (const [key, value] of Object.entries(data.extra)) {
-				if (!blockedErrorProperties.has(key) && typeof value !== 'function') {
-					(error as unknown as Record<string, unknown>)[key] = value;
-				}
-			}
+			const safeExtra = Object.fromEntries(
+				Object.entries(data.extra).filter(
+					([key, value]) => !blockedErrorProperties.has(key) && typeof value !== 'function',
+				),
+			);
+			Object.assign(error, safeExtra);
 		}
 		return error;
 	}
