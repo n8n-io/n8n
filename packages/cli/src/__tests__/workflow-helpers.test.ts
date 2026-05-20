@@ -7,6 +7,7 @@ import type { ITaskData, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import {
+	getDataLastExecutedNodeData,
 	getVariables,
 	preserveInputOverride,
 	removeDefaultValues,
@@ -507,5 +508,45 @@ describe('validatePinDataSize', () => {
 		).toThrow(
 			`Workflow with pinned data exceeds the maximum allowed size of ${Math.floor(limit / (1024 * 1024))} MB`,
 		);
+	});
+});
+
+describe('getDataLastExecutedNodeData', () => {
+	const taskData = {
+		startTime: 0,
+		executionIndex: 0,
+		executionTime: 0,
+		source: [],
+		data: { main: [[{ json: { ok: true } }]] },
+	} as unknown as ITaskData;
+
+	const buildRun = (resultData: object) =>
+		({ data: { resultData }, mode: 'manual' }) as unknown as Parameters<
+			typeof getDataLastExecutedNodeData
+		>[0];
+
+	it('returns the last node task data when pinData is an empty object', () => {
+		const result = getDataLastExecutedNodeData(
+			buildRun({
+				runData: { 'AI Agent': [taskData] },
+				pinData: {},
+				lastNodeExecuted: 'AI Agent',
+			}),
+		);
+		expect(result).toBe(taskData);
+	});
+
+	it('returns the last node task data when pinData is null', () => {
+		// Persisted execution data stores pinData as `null` when no data is pinned.
+		// The destructuring default `pinData = {}` only fires for undefined, so a
+		// null value used to slip through and crash on `pinData[lastNodeExecuted]`.
+		const result = getDataLastExecutedNodeData(
+			buildRun({
+				runData: { 'AI Agent': [taskData] },
+				pinData: null,
+				lastNodeExecuted: 'AI Agent',
+			}),
+		);
+		expect(result).toBe(taskData);
 	});
 });
