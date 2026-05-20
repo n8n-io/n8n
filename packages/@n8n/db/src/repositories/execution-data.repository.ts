@@ -7,7 +7,7 @@ import chunk from 'lodash/chunk';
 
 import { ExecutionData } from '../entities';
 
-export const BATCH_SIZE = 900;
+const BATCH_SIZE = 900;
 
 @Service()
 export class ExecutionDataRepository extends Repository<ExecutionData> {
@@ -33,21 +33,14 @@ export class ExecutionDataRepository extends Repository<ExecutionData> {
 			.then((results) => results.map(({ workflowData }) => workflowData));
 	}
 
-	async deleteMany(executionIds: string[], tx?: EntityManager) {
+	async deleteMany(executionIds: string[]) {
 		if (executionIds.length === 0) return;
 
 		const executionIdBatches = chunk(executionIds, BATCH_SIZE);
-
-		const deleteInTransaction = async (transactionManager: EntityManager) => {
+		await this.manager.transaction(async (transactionManager) => {
 			for (const batch of executionIdBatches) {
 				await transactionManager.delete(ExecutionData, { executionId: In(batch) });
 			}
-		};
-
-		if (tx) {
-			await deleteInTransaction(tx);
-		} else {
-			await this.manager.transaction(deleteInTransaction);
-		}
+		});
 	}
 }

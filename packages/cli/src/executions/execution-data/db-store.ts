@@ -15,7 +15,7 @@ export class DbStore implements ExecutionDataStore {
 	constructor(private readonly repository: ExecutionDataRepository) {}
 
 	async write({ executionId }: ExecutionRef, payload: ExecutionDataPayload, tx?: EntityManager) {
-		const repo = tx ? tx.getRepository(ExecutionData) : this.repository;
+		const repo = this.getRepository(tx);
 		await repo.upsert({ ...payload, executionId }, ['executionId']);
 	}
 
@@ -23,7 +23,7 @@ export class DbStore implements ExecutionDataStore {
 		{ executionId }: ExecutionRef,
 		tx?: EntityManager,
 	): Promise<ExecutionDataBundle | null> {
-		const repo = tx ? tx.getRepository(ExecutionData) : this.repository;
+		const repo = this.getRepository(tx);
 		const result = await repo.findOne({
 			where: { executionId },
 			select: ['data', 'workflowData', 'workflowVersionId'],
@@ -34,9 +34,13 @@ export class DbStore implements ExecutionDataStore {
 		return { ...result, version: EXECUTION_DATA_BUNDLE_VERSION };
 	}
 
-	async delete(ref: ExecutionRef | ExecutionRef[], tx?: EntityManager) {
+	async delete(ref: ExecutionRef | ExecutionRef[]) {
 		const ids = (Array.isArray(ref) ? ref : [ref]).map((r) => r.executionId);
 
-		await this.repository.deleteMany(ids, tx);
+		await this.repository.deleteMany(ids);
+	}
+
+	private getRepository(tx?: EntityManager) {
+		return tx ? tx.getRepository(ExecutionData) : this.repository;
 	}
 }
