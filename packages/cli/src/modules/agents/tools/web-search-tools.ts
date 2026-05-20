@@ -22,11 +22,20 @@ const domainSchema = z
 		'Domain must be a hostname like "docs.n8n.io"',
 	);
 
+const modelFacingDomainSchema = z.string().min(1).max(253);
+
 const webSearchInputSchema = z.object({
 	query: z.string().min(1),
 	maxResults: z.number().int().min(1).max(MAX_SEARCH_RESULTS).optional(),
 	includeDomains: z.array(domainSchema).optional(),
 	excludeDomains: z.array(domainSchema).optional(),
+});
+
+const webSearchModelInputSchema = z.object({
+	query: z.string().min(1),
+	maxResults: z.number().int().min(1).max(MAX_SEARCH_RESULTS).optional(),
+	includeDomains: z.array(modelFacingDomainSchema).optional(),
+	excludeDomains: z.array(modelFacingDomainSchema).optional(),
 });
 
 const webOpenInputSchema = z.object({
@@ -39,6 +48,7 @@ export type WebSearchBackendConfig =
 	| { type: 'searxng'; apiUrl: string };
 
 type SearchInput = z.infer<typeof webSearchInputSchema>;
+type SearchModelInput = z.infer<typeof webSearchModelInputSchema>;
 type OpenInput = z.infer<typeof webOpenInputSchema>;
 
 interface DomainPolicy {
@@ -90,8 +100,9 @@ export function createWebSearchFallbackTools(
 			.description(
 				'Search the web for current information using the configured n8n search backend.',
 			)
-			.input(webSearchInputSchema)
-			.handler(async (input: SearchInput) => {
+			.input(webSearchModelInputSchema)
+			.handler(async (rawInput: SearchModelInput) => {
+				const input = webSearchInputSchema.parse(rawInput);
 				const domainOptions = resolveSearchDomainOptions(input, policy);
 				const search = webResearchService.search;
 				if (!search) {

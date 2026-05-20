@@ -1,4 +1,4 @@
-import type { CredentialProvider } from '@n8n/agents';
+import { zodToJsonSchema, type CredentialProvider } from '@n8n/agents';
 import type { AgentJsonWebSearchConfig } from '@n8n/api-types';
 import type { InstanceAiWebResearchService } from '@n8n/instance-ai';
 
@@ -140,6 +140,28 @@ describe('web search fallback tools', () => {
 		expect(snippet).not.toContain('<!-- hidden -->');
 		expect(snippet).not.toContain('</untrusted_data>\u200B');
 		expect(snippet).toContain('&lt;/untrusted_data>');
+	});
+
+	it('keeps domain regex out of the model-facing schema but validates it in the handler', async () => {
+		const service: InstanceAiWebResearchService = {
+			search: jest.fn(),
+			fetchUrl: jest.fn(),
+		};
+		const [searchTool] = createWebSearchFallbackTools(service, makeSearchConfig());
+
+		const schema = zodToJsonSchema(searchTool.inputSchema) as {
+			properties: {
+				includeDomains: { items: { pattern?: string } };
+				excludeDomains: { items: { pattern?: string } };
+			};
+		};
+		expect(schema.properties.includeDomains.items.pattern).toBeUndefined();
+		expect(schema.properties.excludeDomains.items.pattern).toBeUndefined();
+
+		await expect(
+			searchTool.handler?.({ query: 'n8n', includeDomains: ['not a hostname'] }, {}),
+		).rejects.toThrow('Domain must be a hostname');
+		expect(service.search).not.toHaveBeenCalled();
 	});
 
 	it('rejects search domains that broaden the configured allow-list', async () => {
