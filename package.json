@@ -37,6 +37,7 @@
     "lint:fix": "turbo run lint:fix",
     "lint:ci": "turbo run lint lint:styles",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
+    "generate:sbom": "cdxgen -t pnpm --no-install-deps -o sbom-source.cdx.json compiled/",
     "generate:third-party-licenses": "node scripts/generate-third-party-licenses.mjs",
     "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
     "start": "node scripts/os-normalize.mjs --dir packages/cli/bin n8n",
@@ -58,6 +59,7 @@
   "devDependencies": {
     "@babel/preset-env": "^7.26.0",
     "@biomejs/biome": "^1.9.0",
+    "@cyclonedx/cdxgen": "12.4.0",
     "@dotenvx/dotenvx": "^1.40.0",
     "@n8n/eslint-config": "workspace:*",
     "@types/jest": "^29.5.3",
