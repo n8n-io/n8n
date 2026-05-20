@@ -104,7 +104,7 @@ export function resolveMemoryConfigDefaults(
 
 	if (!hasObservationLogStore(config.memory)) {
 		throw new Error(
-			"Observational memory requires a storage backend that implements BuiltObservationLogStore (e.g. n8n's N8nMemory).",
+			'Observational memory requires a storage backend that implements BuiltObservationLogStore.',
 		);
 	}
 
@@ -133,7 +133,7 @@ export function normalizeMemoryConfig(config: MemoryConfig): MemoryConfig {
 
 	if (!hasObservationLogStore(config.memory)) {
 		throw new Error(
-			"Observational memory requires a storage backend that implements BuiltObservationLogStore (e.g. n8n's N8nMemory).",
+			'Observational memory requires a storage backend that implements BuiltObservationLogStore.',
 		);
 	}
 
@@ -183,7 +183,7 @@ export class Memory {
 	 * Set the storage backend for conversation history.
 	 *
 	 * - `'memory'` — in-process memory (default, lost on restart)
-	 * - A `BuiltMemory` instance — for a persistent backend (e.g. cli's `N8nMemory`)
+	 * - A `BuiltMemory` instance — for a persistent backend
 	 */
 	storage(backend: 'memory' | BuiltMemory): this {
 		if (backend === 'memory') {
@@ -285,7 +285,7 @@ export class Memory {
 
 		if (!hasObservationLogStore(memory)) {
 			throw new Error(
-				"Observational memory requires a storage backend that implements BuiltObservationLogStore (e.g. n8n's N8nMemory).",
+				'Observational memory requires a storage backend that implements BuiltObservationLogStore.',
 			);
 		}
 

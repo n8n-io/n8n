@@ -2653,12 +2653,12 @@ describe('AgentRuntime — observation log jobs', () => {
 		});
 
 		await runtime.generate('Please remember the Postgres decision.', {
-			persistence: { agentId: 'agent-1', threadId: 'thread-1', resourceId: 'resource-1' },
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 		});
 		await runtime.dispose();
 
 		const entries = await memory.searchEpisodicMemoryEntries(
-			{ agentId: 'agent-1', resourceId: 'resource-1' },
+			{ namespace: 'resource-1', resourceId: 'resource-1' },
 			'Postgres storage',
 			{ queryEmbedding: [1, 0] },
 		);
@@ -2677,7 +2677,7 @@ describe('AgentRuntime — observation log jobs', () => {
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
 		await memory.saveEpisodicMemoryEntries([
 			{
-				agentId: 'agent-1',
+				namespace: 'resource-1',
 				resourceId: 'resource-1',
 				content: 'Earlier session: user chose Postgres for memory storage.',
 				embedding: [1, 0],
@@ -2685,7 +2685,7 @@ describe('AgentRuntime — observation log jobs', () => {
 		]);
 		await memory.saveEpisodicMemoryEntries([
 			{
-				agentId: 'agent-1',
+				namespace: 'resource-2',
 				resourceId: 'resource-2',
 				content: 'Earlier session: user chose SQLite for memory storage.',
 				embedding: [1, 0],
@@ -2701,7 +2701,7 @@ describe('AgentRuntime — observation log jobs', () => {
 		});
 
 		await runtime.generate('What storage did we choose?', {
-			persistence: { agentId: 'agent-1', threadId: 'thread-1', resourceId: 'resource-1' },
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 		});
 
 		const callArgs = (generateText.mock.calls[0] as [unknown])[0] as {
