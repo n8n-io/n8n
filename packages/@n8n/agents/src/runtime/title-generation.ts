@@ -1,4 +1,5 @@
-import { generateText, type LanguageModel } from 'ai';
+import type { LanguageModel } from 'ai';
+import { loadAi } from './lazy-ai';
 
 import type { BuiltMemory, BuiltTelemetry, TitleGenerationConfig } from '../types';
 import { createFilteredLogger } from './logger';
@@ -129,7 +130,7 @@ export async function generateTitleFromMessage(
 		return null;
 	}
 
-	const result = await generateText({
+	const result = await loadAi().generateText({
 		model,
 		messages: [
 			{ role: 'system', content: opts?.instructions ?? DEFAULT_TITLE_INSTRUCTIONS },
@@ -169,7 +170,7 @@ export async function generateTitleAndEmojiFromMessage(
 		return null;
 	}
 
-	const result = await generateText({
+	const result = await loadAi().generateText({
 		model,
 		messages: [
 			{ role: 'system', content: opts?.instructions ?? DEFAULT_TITLE_AND_EMOJI_INSTRUCTIONS },

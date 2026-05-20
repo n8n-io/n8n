@@ -1,4 +1,5 @@
-import { tool, jsonSchema, type Tool as AiSdkTool } from 'ai';
+import type { Tool as AiSdkTool } from 'ai';
+import { loadAi } from './lazy-ai';
 import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
@@ -114,16 +115,17 @@ export function toAiSdkTools(tools?: BuiltTool[]): Record<string, AiSdkTool> {
 	const result: Record<string, AiSdkTool> = {};
 	for (const t of tools) {
 		if (t.inputSchema) {
+			const ai = loadAi();
 			if (isZodSchema(t.inputSchema)) {
-				result[t.name] = tool({
+				result[t.name] = ai.tool({
 					description: t.description,
 					inputSchema: t.inputSchema,
 					providerOptions: t.providerOptions,
 				});
 			} else {
-				result[t.name] = tool({
+				result[t.name] = ai.tool({
 					description: t.description,
-					inputSchema: jsonSchema(fixSchema(t.inputSchema)),
+					inputSchema: ai.jsonSchema(fixSchema(t.inputSchema)),
 					providerOptions: t.providerOptions,
 				});
 			}
