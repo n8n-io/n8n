@@ -114,6 +114,10 @@ export const usePostHog = defineStore('posthog', () => {
 		};
 	}
 
+	const groupIdentify = (groupKey: string, instanceId: string) => {
+		window.posthog?.group?.(groupKey, instanceId);
+	};
+
 	const identify = () => {
 		const instanceId = rootStore.instanceId;
 		const user = usersStore.currentUser;
@@ -183,6 +187,7 @@ export const usePostHog = defineStore('posthog', () => {
 
 		window.posthog?.init(config.apiKey, options);
 		identify();
+		groupIdentify('company', instanceId);
 
 		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
 			featureFlags.value = evaluatedFeatureFlags;
@@ -233,6 +238,7 @@ export const usePostHog = defineStore('posthog', () => {
 		waitForFeatureFlags,
 		reset,
 		identify,
+		groupIdentify,
 		setMetadata,
 		capture,
 		overrides,

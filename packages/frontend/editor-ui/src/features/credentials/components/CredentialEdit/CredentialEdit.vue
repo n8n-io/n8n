@@ -32,7 +32,6 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { Project, ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { assert } from '@n8n/utils/assert';
@@ -71,6 +70,13 @@ import { useDynamicCredentials } from '@/features/resolvers/composables/useDynam
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import type { CredentialModeOption } from './CredentialModeSelector.vue';
 
+const MANAGED_CREDENTIAL_HIDDEN_PROPERTIES = new Set([
+	'scope',
+	'customScopes',
+	'enabledScopes',
+	'customScopesNotice',
+]);
+
 type Props = {
 	modalName: string;
 	activeId?: string;
@@ -83,7 +89,6 @@ const credentialsStore = useCredentialsStore();
 const ndvStore = useNDVStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const projectsStore = useProjectsStore();
 const externalSecretsStore = useExternalSecretsStore();
@@ -279,6 +284,10 @@ const managedOAuthAvailable = computed(() => {
 		false
 	);
 });
+
+const isManagedOAuthMode = computed(
+	() => isOAuthType.value && managedOAuthAvailable.value && !useCustomOAuth.value,
+);
 
 const isOAuthConnected = computed(() => isOAuthType.value && !!credentialData.value.oauthTokenData);
 const credentialProperties = computed(() => {
@@ -572,6 +581,13 @@ function displayCredentialParameter(parameter: INodeProperties): boolean {
 		return false;
 	}
 
+	if (
+		MANAGED_CREDENTIAL_HIDDEN_PROPERTIES.has(parameter.name) &&
+		(isEditingManagedCredential.value || isManagedOAuthMode.value)
+	) {
+		return false;
+	}
+
 	if (parameter.displayOptions?.hideOnCloud && settingsStore.isCloudDeployment) {
 		return false;
 	}
@@ -684,7 +700,7 @@ function onTabSelect(tab: string) {
 		credential_type: credType,
 		node_type: activeNode ? activeNode.type : null,
 		tab,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 		credential_id: credentialId.value,
 		sharing_enabled: EnterpriseEditionFeature.Sharing,
 	});
@@ -940,7 +956,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialDetails.type,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 			credential_id: credential.id,
 			is_complete: !!requiredPropertiesFilled.value,
 			is_new: isNewCredential,
@@ -1077,7 +1093,7 @@ async function createCredential(
 	telemetry.track('User created credentials', {
 		credential_type: credentialDetails.type,
 		credential_id: credential.id,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 	});
 
 	return credential;
@@ -1262,7 +1278,7 @@ async function oAuthCredentialAuthorize() {
 
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialTypeName.value,
-			workflow_id: workflowsStore.workflowId || null,
+			workflow_id: workflowDocumentStore.value.workflowId || null,
 			credential_id: credentialId.value,
 			is_complete: !!requiredPropertiesFilled.value,
 			is_new: props.mode === 'new' && !credentialId.value,

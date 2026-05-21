@@ -31,6 +31,7 @@ test.use({
 test.describe(
 	'What is the sync webhook latency floor at 1 main + 1 worker?',
 	{
+		tag: '@bench:webhook',
 		annotation: [
 			{ type: 'owner', description: 'Catalysts' },
 			{ type: 'question', description: 'webhook-sync-latency-floor' },

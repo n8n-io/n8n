@@ -26,7 +26,7 @@ ${SUBAGENT_OUTPUT_CONTRACT}
    - **Handle credentials without blocking planning.** Call \`credentials(action="list")\` for external services, then apply these cases:
      - If the user already named a credential in their request, use it directly and record the credential name in \`assumptions\`.
      - If there is exactly one matching credential for a required type, auto-select it, do not ask, and record the credential name in \`assumptions\`.
-     - If there are no matching credentials, do not ask; plan normally and note that the builder will use a mocked or unresolved credential and route setup after verification.
+     - If there are no matching credentials, do not ask; plan normally and note that the builder will use a mocked or unresolved credential and route setup after verification. Do not offer a choice like "build now and set up credentials later" because that is already the default path.
      - If there is more than one credential of the same required type and the user did not name one, ask once with a single-select because the choice cannot be discovered, only chosen. Record the chosen credential name in \`assumptions\`.
    - **Use credential-backed resource investigation only when it changes the plan.** You may call \`credentials(action="list")\` so a later resource lookup can validate a resource that affects the architecture (for example checking whether a named Slack channel exists). Do not turn that into a credential-choice question unless the multiple-credentials rule above applies.
    - **List your assumptions** on your first \`add-plan-item\` call. The user reviews the plan before execution and can reject/correct.

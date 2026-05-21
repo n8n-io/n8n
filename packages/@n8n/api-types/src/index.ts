@@ -8,7 +8,7 @@ export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
-export * from './agents';
+export * from './agents/index';
 export * from './instance-registry-types';
 export * from './redaction-enforcement';
 export {
@@ -395,6 +395,7 @@ export type {
 	InstanceAiEvalNodeResult,
 	InstanceAiEvalMockHints,
 	InstanceAiEvalMockedCredential,
+	InstanceAiEvalRewrittenCredential,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalToolCall,
 	InstanceAiEvalToolResult,
@@ -437,7 +438,23 @@ export {
 	type EvalVersionsResponse,
 } from './schemas/eval-collections.schema';
 
+export {
+	aiInsightsStatusSchema,
+	aiInsightsPayloadSchema,
+	aiInsightsResponseSchema,
+	generateInsightsSchema,
+	GenerateInsightsDto,
+	type AiInsightsStatus,
+	type AiInsightsWinner,
+	type AiInsightsRegression,
+	type AiInsightsSuggestedNext,
+	type AiInsightsPayload,
+	type AiInsightsResponse,
+	type GenerateInsightsPayload,
+} from './schemas/eval-insights.schema';
+
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
+export { xssCheck } from './utils/xss-check';
 
 export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';
 export {

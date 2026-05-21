@@ -3,18 +3,12 @@ import { z } from 'zod';
 
 import type { Eval } from './eval';
 import type { McpClient } from './mcp-client';
-import { Memory } from './memory';
+import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './memory';
 import { Telemetry } from './telemetry';
 import { Tool, wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
 import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
 import { AgentEventBus } from '../runtime/event-bus';
-import { hasObservationStore } from '../runtime/observation-store';
-import {
-	runObservationalCycle,
-	type RunObservationalCycleOpts,
-	type RunObservationalCycleResult,
-} from '../runtime/observational-cycle';
 import { createAgentToolResult } from '../runtime/tool-adapter';
 import type {
 	AgentEventHandler,
@@ -26,8 +20,6 @@ import type {
 	BuiltProviderTool,
 	BuiltTool,
 	BuiltTelemetry,
-	CompactFn,
-	ObserveFn,
 	CheckpointStore,
 	ExecutionOptions,
 	GenerateResult,
@@ -42,7 +34,7 @@ import type {
 	ThinkingConfigFor,
 	ResumeOptions,
 } from '../types';
-import { AgentEvent } from '../types/runtime/event';
+import type { AgentEvent } from '../types/runtime/event';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
 import type { Workspace } from '../workspace/workspace';
@@ -72,8 +64,10 @@ export interface AgentSnapshot {
 	tools: ReadonlyArray<{ name: string; description: string | undefined }>;
 	/** True when `.memory()` has been configured. */
 	hasMemory: boolean;
-	/** True when observational memory has been configured on the memory builder. */
+	/** True when observation-log memory has been configured on the memory builder. */
 	hasObservationalMemory: boolean;
+	/** True when episodic memory has been configured on the memory builder. */
+	hasEpisodicMemory: boolean;
 	/** The thinking config if set, otherwise null. */
 	thinking: ThinkingConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
@@ -232,8 +226,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			// Memory builder — call build()
 			this.memoryConfig = m.build();
 		} else if ('memory' in m && 'lastMessages' in m) {
-			// MemoryConfig — use directly
-			this.memoryConfig = m;
+			// MemoryConfig — validate the same invariants as the builder path
+			this.memoryConfig = normalizeMemoryConfig(m);
 		} else if (
 			typeof m === 'object' &&
 			m !== null &&
@@ -352,6 +346,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		} else {
 			this.telemetryBuilder = undefined;
 			this.telemetryConfig = t;
+			this.runtime?.setTelemetry(t);
 		}
 		return this;
 	}
@@ -535,6 +530,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			tools: this.tools.map((t) => ({ name: t.name, description: t.description })),
 			hasMemory: this.memoryConfig !== undefined,
 			hasObservationalMemory: this.memoryConfig?.observationalMemory !== undefined,
+			hasEpisodicMemory: this.memoryConfig?.episodicMemory !== undefined,
 			thinking: this.thinkingConfig ?? null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
 			requireToolApproval: this.requireToolApprovalValue,
@@ -569,100 +565,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	async close(): Promise<void> {
 		if (this.runtime) await this.runtime.dispose();
-	}
-
-	/** Run one observational cycle for a thread synchronously. */
-	async reflect(opts: {
-		threadId: string;
-		resourceId: string;
-		observe?: ObserveFn;
-		compact?: CompactFn;
-	}): Promise<{ status: 'no-config' } | RunObservationalCycleResult> {
-		const cycle = await this.buildCycleOpts(opts);
-		if (cycle === null) return { status: 'no-config' };
-		return await runObservationalCycle(cycle);
-	}
-
-	/**
-	 * Schedule an observational-memory cycle on the background-task tracker
-	 * and return immediately. Used by consumers (e.g. the cli's post-stream
-	 * trigger) that want the observer + compactor to run without blocking
-	 * the response. Errors inside the cycle are surfaced via
-	 * `AgentEvent.Error` (source: 'observer' | 'compactor').
-	 *
-	 * No-ops when observational memory isn't configured or no observer is
-	 * available — same `'no-config'` short-circuit as `reflect()`.
-	 */
-	reflectInBackground(opts: {
-		threadId: string;
-		resourceId: string;
-		observe?: ObserveFn;
-		compact?: CompactFn;
-	}): void {
-		void (async () => {
-			const cycle = await this.buildCycleOpts(opts);
-			if (cycle === null) return;
-			const runtime = await this.ensureBuilt();
-			runtime.scheduleBackgroundCycle(cycle);
-		})().catch((error: unknown) => {
-			const message = error instanceof Error ? error.message : String(error);
-			this.eventBus.emit({ type: AgentEvent.Error, message, error });
-		});
-	}
-
-	/**
-	 * Build {@link RunObservationalCycleOpts} from the agent's configured
-	 * observational memory + per-call observer/compactor overrides.
-	 */
-	private async buildCycleOpts(opts: {
-		threadId: string;
-		resourceId: string;
-		observe?: ObserveFn;
-		compact?: CompactFn;
-	}): Promise<RunObservationalCycleOpts | null> {
-		const obsConfig = this.memoryConfig?.observationalMemory;
-		const memory = this.memoryConfig?.memory;
-		const workingMemory = this.memoryConfig?.workingMemory;
-		if (
-			!obsConfig ||
-			!memory ||
-			!workingMemory ||
-			!this.modelConfig ||
-			!hasObservationStore(memory)
-		) {
-			return null;
-		}
-		const runtime = await this.ensureBuilt();
-		const telemetry = runtime.getConfiguredTelemetry();
-		return {
-			memory,
-			threadId: opts.threadId,
-			resourceId: opts.resourceId,
-			model: this.modelConfig,
-			workingMemory: {
-				template: workingMemory.template,
-				structured: workingMemory.structured,
-				...(workingMemory.schema !== undefined && { schema: workingMemory.schema }),
-			},
-			...((opts.observe ?? obsConfig.observe)
-				? { observe: opts.observe ?? obsConfig.observe }
-				: {}),
-			...((opts.compact ?? obsConfig.compact)
-				? { compact: opts.compact ?? obsConfig.compact }
-				: {}),
-			...(obsConfig.trigger !== undefined && { trigger: obsConfig.trigger }),
-			...(obsConfig.compactionThreshold !== undefined && {
-				compactionThreshold: obsConfig.compactionThreshold,
-			}),
-			...(obsConfig.gapThresholdMs !== undefined && { gapThresholdMs: obsConfig.gapThresholdMs }),
-			...(obsConfig.observerPrompt !== undefined && { observerPrompt: obsConfig.observerPrompt }),
-			...(obsConfig.compactorPrompt !== undefined && {
-				compactorPrompt: obsConfig.compactorPrompt,
-			}),
-			...(obsConfig.lockTtlMs !== undefined && { lockTtlMs: obsConfig.lockTtlMs }),
-			...(telemetry !== undefined && { telemetry }),
-			eventBus: this.eventBus,
-		};
 	}
 
 	/** Generate a response (non-streaming). Lazy-builds on first call. */
@@ -852,6 +754,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 
 		const modelConfig: ModelConfig = this.modelConfig;
+		const memoryConfig = this.memoryConfig
+			? resolveMemoryConfigDefaults(this.memoryConfig, { defaultModel: modelConfig })
+			: undefined;
 
 		let instructions = this.instructionsText;
 		if (this.workspaceInstance) {
@@ -873,17 +778,18 @@ export class Agent implements BuiltAgent, AgentBuilder {
 					: undefined,
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
-			memory: this.memoryConfig?.memory,
-			lastMessages: this.memoryConfig?.lastMessages,
-			workingMemory: this.memoryConfig?.workingMemory,
-			semanticRecall: this.memoryConfig?.semanticRecall,
+			memory: memoryConfig?.memory,
+			lastMessages: memoryConfig?.lastMessages,
+			observationLog: memoryConfig?.observationLog,
+			observationalMemory: memoryConfig?.observationalMemory,
+			episodicMemory: memoryConfig?.episodicMemory,
+			semanticRecall: memoryConfig?.semanticRecall,
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
 			thinking: this.thinkingConfig,
 			eventBus: this.eventBus,
 			toolCallConcurrency: this.concurrencyValue,
-			titleGeneration: this.memoryConfig?.titleGeneration,
-			observationalMemory: this.memoryConfig?.observationalMemory,
+			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
 		});
 

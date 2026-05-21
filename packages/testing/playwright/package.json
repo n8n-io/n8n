@@ -23,6 +23,8 @@
     "test:workflows": "playwright test --project=cli-workflows",
     "test:workflows:schema": "SCHEMA=true playwright test --project=cli-workflows",
     "test:workflows:update": "playwright test --project=cli-workflows --update-snapshots",
+    "test:evals": "playwright test --project=eval",
+    "test:evals:smoke": "playwright test --project=eval:smoke",
     "coverage:report": "node scripts/generate-coverage-report.js",
     "coverage:clean": "rm -rf coverage .nyc_output",
     "coverage:analyse": "node scripts/coverage-analysis.mjs",
@@ -38,7 +40,9 @@
     "janitor:fix": "tsx ../janitor/src/cli.ts --fix --write"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "0.91.1",
     "@currents/playwright": "catalog:e2e",
+    "@types/debug": "^4.1.12",
     "@memlab/api": "2.0.0",
     "@memlab/heap-analysis": "2.0.0",
     "@n8n/api-types": "workspace:*",
@@ -58,6 +62,7 @@
     "flatted": "catalog:",
     "generate-schema": "2.6.0",
     "jsonwebtoken": "catalog:",
+    "langsmith": "catalog:",
     "mockserver-client": "^5.15.0",
     "n8n": "workspace:*",
     "n8n-containers": "workspace:*",
