@@ -1,6 +1,9 @@
 import { AgentJsonConfigSchema } from '@n8n/api-types';
 
-import { MEMORY_PRESETS_SECTION } from '../builder/agents-builder-prompts';
+import {
+	getSchemaReferenceSection,
+	MEMORY_PRESETS_SECTION,
+} from '../builder/agents-builder-prompts';
 
 const baseConfig = {
 	name: 'Test Agent',
@@ -33,5 +36,13 @@ describe('agents builder prompt', () => {
 	it('describes observation-log memory', () => {
 		expect(MEMORY_PRESETS_SECTION).toContain('observation log');
 		expect(MEMORY_PRESETS_SECTION).toContain('renderTokenBudget');
+	});
+
+	it('describes episodic memory credential selection', () => {
+		expect(MEMORY_PRESETS_SECTION).toContain('Episodic Memory');
+		expect(MEMORY_PRESETS_SECTION).toContain('memory.episodicMemory');
+		expect(MEMORY_PRESETS_SECTION).toContain('ask_credential');
+		expect(MEMORY_PRESETS_SECTION).toContain('openAiApi');
+		expect(getSchemaReferenceSection()).toContain('episodicMemory');
 	});
 });
