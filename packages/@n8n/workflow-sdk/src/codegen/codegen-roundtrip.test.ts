@@ -189,8 +189,11 @@ describe('parseWorkflowCode', () => {
 					alwaysOutputData: true,
 					onError: 'continueErrorOutput',
 					retryOnFail: true,
+					maxTries: 4,
+					waitBetweenTries: 2500,
 					notesInFlow: true,
 					notes: 'Keep execution settings',
+					extendsCredential: 'notionApi',
 				},
 				{
 					id: 'success-id',
@@ -236,8 +239,11 @@ describe('parseWorkflowCode', () => {
 				alwaysOutputData: true,
 				onError: 'continueErrorOutput',
 				retryOnFail: true,
+				maxTries: 4,
+				waitBetweenTries: 2500,
 				notesInFlow: true,
 				notes: 'Keep execution settings',
+				extendsCredential: 'notionApi',
 			}),
 		);
 	});
