@@ -15,7 +15,7 @@ import type {
 	WorkflowTagMappingRepository,
 	Variables,
 } from '@n8n/db';
-import { GLOBAL_ADMIN_ROLE, In, PROJECT_OWNER_ROLE, User } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, In, PROJECT_OWNER_ROLE, User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { captor, mock } from 'jest-mock-extended';
 import { Cipher, type InstanceSettings } from 'n8n-core';
@@ -526,25 +526,72 @@ describe('SourceControlExportService', () => {
 	});
 
 	describe('exportWorkflowsToWorkFolder', () => {
-		it('should export workflows to work folder', async () => {
+		it('should export workflows with all required fields', async () => {
 			// Arrange
-			workflowRepository.findByIds.mockResolvedValue([mock()]);
+			const nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }];
+			const workflowId = 'wf-1';
+			const nodes = [
+				{
+					id: 'node-1',
+					type: 'n8n-nodes-base.noOp',
+					name: 'NoOp',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				},
+			];
+			workflowRepository.find.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), {
+					id: workflowId,
+					name: 'Test Workflow',
+					nodes,
+					connections: {},
+					settings: {},
+					triggerCount: 1,
+					versionId: 'v1',
+					parentFolder: null,
+					isArchived: false,
+					nodeGroups,
+				}),
+			]);
 			sharedWorkflowRepository.findByWorkflowIds.mockResolvedValue([
 				mock<SharedWorkflow>({
+					workflowId,
 					project: mock({
 						type: 'personal',
-						projectRelations: [{ role: PROJECT_OWNER_ROLE, user: mock() }],
+						projectRelations: [
+							{ role: PROJECT_OWNER_ROLE, user: mock({ email: 'user@test.com' }) },
+						],
 					}),
 					workflow: mock(),
 				}),
 			]);
 
 			// Act
-			const result = await service.exportWorkflowsToWorkFolder([mock()]);
+			const result = await service.exportWorkflowsToWorkFolder([
+				mock<SourceControlledFile>({ id: workflowId }),
+			]);
 
 			// Assert
 			expect(result.count).toBe(1);
 			expect(result.files).toHaveLength(1);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(expect.stringContaining(workflowId), dataCaptor);
+			const exported = JSON.parse(dataCaptor.value);
+			expect(exported).toEqual({
+				id: workflowId,
+				name: 'Test Workflow',
+				nodes,
+				connections: {},
+				settings: {},
+				triggerCount: 1,
+				versionId: 'v1',
+				parentFolderId: null,
+				isArchived: false,
+				nodeGroups,
+				owner: { type: 'personal', personalEmail: 'user@test.com' },
+			});
 		});
 
 		it('should throw an error if workflow has no owner', async () => {
