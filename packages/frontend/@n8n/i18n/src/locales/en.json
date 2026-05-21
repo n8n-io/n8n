@@ -5743,6 +5743,7 @@
 	"instanceAi.tools.workflows.delete.imperative": "archive workflow",
 	"instanceAi.tools.workflows.unarchive.imperative": "restore archived workflow",
 	"instanceAi.tools.workflows.setup": "Setting up workflow",
+	"instanceAi.tools.workflows.validate": "Validating workflow",
 	"instanceAi.tools.workflows.publish": "Publishing workflow",
 	"instanceAi.tools.workflows.publish.imperative": "publish workflow",
 	"instanceAi.tools.workflows.unpublish": "Unpublishing workflow",
