@@ -246,10 +246,13 @@ export class PathResolvingService {
 	 */
 	resolveHealthzEndpoint(path: string = ''): string {
 		const healthEndpoint = this.globalConfig.endpoints.health;
+		const normalizedHealth = healthEndpoint.startsWith('/')
+			? healthEndpoint.slice(1)
+			: healthEndpoint;
 		const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
 		if (!normalizedPath) {
-			return this.resolveEndpoint(healthEndpoint);
+			return this.resolveEndpoint(normalizedHealth);
 		}
-		return this.resolveEndpoint(`${healthEndpoint}/${normalizedPath}`);
+		return this.resolveEndpoint(`${normalizedHealth}/${normalizedPath}`);
 	}
 }
