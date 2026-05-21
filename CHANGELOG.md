@@ -1,3 +1,12 @@
+## [2.22.1](https://github.com/n8n-io/n8n/compare/n8n@2.22.0...n8n@2.22.1) (2026-05-21)
+
+
+### Bug Fixes
+
+* **core:** Populate manual user id on webhook execution data path ([#30780](https://github.com/n8n-io/n8n/issues/30780)) ([c6d3a88](https://github.com/n8n-io/n8n/commit/c6d3a888cd4188d80bfed446958bf535bd52d696))
+* **core:** Validate non-empty prompts in AI vendor nodes before API calls ([#30819](https://github.com/n8n-io/n8n/issues/30819)) ([d419e49](https://github.com/n8n-io/n8n/commit/d419e495126acc84c950d819eacab7885af368f4))
+
+
 # [2.22.0](https://github.com/n8n-io/n8n/compare/n8n@2.21.0...n8n@2.22.0) (2026-05-19)
 
 
