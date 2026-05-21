@@ -1307,9 +1307,7 @@ describe('WorkflowSettingsVue', () => {
 						: ['workflow:update']
 				) as Array<'workflow:update' | 'workflow:enableRedaction' | 'workflow:disableRedaction'>;
 				projectsStore.personalProject = mock<Project>({
-					scopes: hasPermission
-						? ['workflow:enableRedaction', 'workflow:disableRedaction']
-						: [],
+					scopes: hasPermission ? ['workflow:enableRedaction', 'workflow:disableRedaction'] : [],
 				});
 				const workflow = createTestWorkflow({
 					id: '1',

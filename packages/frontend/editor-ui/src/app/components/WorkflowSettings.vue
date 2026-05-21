@@ -225,23 +225,22 @@ const isRedactionEnforcedByInstance = computed(
 
 // Enforcement wins over permission — an admin cannot override an instance-level policy.
 function getRedactionLockReason(currentValue: string): 'enforcement' | 'permission' | null {
-  if (!isDataRedactionLicensed.value) return null;
-  if (isRedactionEnforcedByInstance.value) return 'enforcement';
-  if (
-    currentValue === 'default'
-      ? !projectPermissions.value.workflow.enableRedaction
-      : !projectPermissions.value.workflow.disableRedaction
-  ) return 'permission';
-  return null;
+	if (!isDataRedactionLicensed.value) return null;
+	if (isRedactionEnforcedByInstance.value) return 'enforcement';
+	if (
+		currentValue === 'default'
+			? !projectPermissions.value.workflow.enableRedaction
+			: !projectPermissions.value.workflow.disableRedaction
+	)
+		return 'permission';
+	return null;
 }
 
 const productionRedactionLockReason = computed(() =>
-  getRedactionLockReason(redactProductionData.value),
+	getRedactionLockReason(redactProductionData.value),
 );
 
-const manualRedactionLockReason = computed(() =>
-  getRedactionLockReason(redactManualData.value),
-);
+const manualRedactionLockReason = computed(() => getRedactionLockReason(redactManualData.value));
 
 const isProductionRedactionLocked = computed(() => productionRedactionLockReason.value !== null);
 const isManualRedactionLocked = computed(() => manualRedactionLockReason.value !== null);
@@ -1323,12 +1322,12 @@ onBeforeUnmount(() => {
 							]"
 						>
 							{{ i18n.baseText('workflowSettings.redactManualData') }}
-						<N8nIcon
-							v-if="isManualRedactionLocked"
-							icon="lock"
-							size="xsmall"
-							style="opacity: 1"
-							:data-test-id="
+							<N8nIcon
+								v-if="isManualRedactionLocked"
+								icon="lock"
+								size="xsmall"
+								style="opacity: 1"
+								:data-test-id="
 									manualRedactionLockReason === 'enforcement'
 										? 'workflow-settings-redaction-enforced-lock'
 										: undefined
