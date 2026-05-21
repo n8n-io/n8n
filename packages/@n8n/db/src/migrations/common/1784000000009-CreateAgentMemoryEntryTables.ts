@@ -68,6 +68,9 @@ export class CreateAgentMemoryEntryTables1784000000009 implements ReversibleMigr
 		await createTable('agents_memory_entry_sources')
 			.withColumns(
 				column('id').varchar(36).primary.notNull,
+				column('agentId')
+					.varchar(36)
+					.notNull.comment('Agent that owns the linked episodic memory entry source'),
 				column('memoryEntryId').varchar(36).notNull,
 				column('observationId').varchar(36).notNull,
 				column('threadId')
@@ -82,7 +85,12 @@ export class CreateAgentMemoryEntryTables1784000000009 implements ReversibleMigr
 			)
 			.withIndexOn(['memoryEntryId', 'observationId', 'evidenceHash'], true)
 			.withIndexOn('observationId')
-			.withIndexOn('threadId')
+			.withIndexOn(['agentId', 'threadId'])
+			.withForeignKey('agentId', {
+				tableName: 'agents',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
 			.withForeignKey('memoryEntryId', {
 				tableName: 'agents_memory_entries',
 				columnName: 'id',

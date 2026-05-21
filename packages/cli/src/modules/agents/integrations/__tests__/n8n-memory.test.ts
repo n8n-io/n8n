@@ -538,18 +538,38 @@ describe('N8nMemory', () => {
 
 			expect(transactionMemoryEntrySourceFind).toHaveBeenNthCalledWith(1, {
 				select: { memoryEntryId: true },
-				where: { threadId: 'thread-1' },
+				where: { agentId: 'agent-1', threadId: 'thread-1' },
 			});
 			expect(transactionDelete).toHaveBeenCalledWith(AgentMemoryEntrySourceEntity, {
 				threadId: 'thread-1',
+				agentId: 'agent-1',
 			});
 			expect(transactionMemoryEntrySourceFind).toHaveBeenNthCalledWith(2, {
 				select: { memoryEntryId: true },
-				where: { memoryEntryId: In(['orphaned-memory', 'shared-memory']) },
+				where: { agentId: 'agent-1', memoryEntryId: In(['orphaned-memory', 'shared-memory']) },
 			});
 			expect(transactionMemoryEntryUpdate).toHaveBeenCalledWith(
-				{ id: In(['orphaned-memory']), status: 'active' },
+				{ agentId: 'agent-1', id: In(['orphaned-memory']), status: 'active' },
 				{ status: 'dropped', supersededBy: null },
+			);
+		});
+
+		it('does not clean up episodic source rows owned by another agent', async () => {
+			transactionMemoryEntrySourceFind.mockResolvedValueOnce([]);
+
+			await memory.deleteThread('thread-1');
+
+			expect(transactionMemoryEntrySourceFind).toHaveBeenCalledWith({
+				select: { memoryEntryId: true },
+				where: { agentId: 'agent-1', threadId: 'thread-1' },
+			});
+			expect(transactionDelete).not.toHaveBeenCalledWith(
+				AgentMemoryEntrySourceEntity,
+				expect.objectContaining({ threadId: 'thread-1' }),
+			);
+			expect(transactionMemoryEntryUpdate).not.toHaveBeenCalledWith(
+				expect.objectContaining({ id: In(['other-agent-memory']) }),
+				expect.anything(),
 			);
 		});
 
@@ -614,11 +634,14 @@ describe('N8nMemory', () => {
 			const threadId = Like('test-agent-1%');
 			expect(transactionMemoryEntrySourceFind).toHaveBeenNthCalledWith(1, {
 				select: { memoryEntryId: true },
-				where: { threadId },
+				where: { agentId: 'agent-1', threadId },
 			});
-			expect(transactionDelete).toHaveBeenCalledWith(AgentMemoryEntrySourceEntity, { threadId });
+			expect(transactionDelete).toHaveBeenCalledWith(AgentMemoryEntrySourceEntity, {
+				threadId,
+				agentId: 'agent-1',
+			});
 			expect(transactionMemoryEntryUpdate).toHaveBeenCalledWith(
-				{ id: In(['prefix-orphaned-memory']), status: 'active' },
+				{ agentId: 'agent-1', id: In(['prefix-orphaned-memory']), status: 'active' },
 				{ status: 'dropped', supersededBy: null },
 			);
 		});
@@ -687,6 +710,7 @@ describe('N8nMemory', () => {
 		const evidenceText = overrides.evidenceText ?? 'User chose Postgres';
 		return {
 			id: 'source-1',
+			agentId: 'agent-1',
 			memoryEntryId: 'memory-1',
 			observationId: 'obs-1',
 			threadId: 'thread-1',
@@ -1271,6 +1295,7 @@ describe('N8nMemory', () => {
 			);
 			expect(transactionMemoryEntrySourceSave).toHaveBeenCalledWith([
 				expect.objectContaining({
+					agentId: 'agent-1',
 					memoryEntryId: 'memory-1',
 					observationId: 'obs-1',
 					evidenceHash: hashEpisodicMemoryEvidence('User chose Postgres'),
@@ -1352,6 +1377,7 @@ describe('N8nMemory', () => {
 			expect(memoryEntrySourceRepository.save).not.toHaveBeenCalled();
 			expect(transactionMemoryEntrySourceSave).toHaveBeenCalledWith([
 				expect.objectContaining({
+					agentId: 'agent-1',
 					memoryEntryId: 'memory-atomic',
 					observationId: 'obs-atomic',
 					evidenceHash: hashEpisodicMemoryEvidence('User chose Postgres'),
@@ -1399,7 +1425,7 @@ describe('N8nMemory', () => {
 			const sources = await memory.episodic.getEntrySources(['memory-1', 'memory-2']);
 
 			expect(memoryEntrySourceRepository.find).toHaveBeenCalledWith({
-				where: { memoryEntryId: In(['memory-1', 'memory-2']) },
+				where: { agentId: 'agent-1', memoryEntryId: In(['memory-1', 'memory-2']) },
 				order: { createdAt: 'ASC', id: 'ASC' },
 			});
 			expect(sources).toHaveLength(1);
@@ -1461,12 +1487,14 @@ describe('N8nMemory', () => {
 			]);
 			expect(transactionMemoryEntrySourceSave).toHaveBeenCalledWith([
 				expect.objectContaining({
+					agentId: 'agent-1',
 					memoryEntryId: 'merged-memory-1',
 					observationId: 'obs-1',
 					evidenceHash: hashEpisodicMemoryEvidence('User planned SQLite'),
 					evidenceText: 'User planned SQLite',
 				}),
 				expect.objectContaining({
+					agentId: 'agent-1',
 					memoryEntryId: 'merged-memory-1',
 					observationId: 'obs-2',
 					evidenceHash: hashEpisodicMemoryEvidence('User switched to Postgres'),
@@ -1548,10 +1576,12 @@ describe('N8nMemory', () => {
 			);
 			expect(transactionMemoryEntrySourceSave).toHaveBeenCalledWith([
 				expect.objectContaining({
+					agentId: 'agent-1',
 					memoryEntryId: 'existing-replacement',
 					observationId: 'obs-1',
 				}),
 				expect.objectContaining({
+					agentId: 'agent-1',
 					memoryEntryId: 'existing-replacement',
 					observationId: 'obs-2',
 				}),

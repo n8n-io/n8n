@@ -228,26 +228,31 @@ export class N8nMemoryImpl
 		threadId: string | FindOperator<string>,
 	): Promise<void> {
 		const sourceRepo = trx.getRepository(AgentMemoryEntrySourceEntity);
+		const entryRepo = trx.getRepository(AgentMemoryEntryEntity);
 		const affectedSources = await sourceRepo.find({
 			select: { memoryEntryId: true },
-			where: { threadId },
+			where: { agentId: this.agentId, threadId },
 		});
 		const affectedEntryIds = uniqueStrings(affectedSources.map((source) => source.memoryEntryId));
 		if (affectedEntryIds.length === 0) return;
 
-		await trx.delete(AgentMemoryEntrySourceEntity, { threadId });
+		await trx.delete(AgentMemoryEntrySourceEntity, {
+			agentId: this.agentId,
+			threadId,
+		});
 
 		const remainingSources = await sourceRepo.find({
 			select: { memoryEntryId: true },
-			where: { memoryEntryId: In(affectedEntryIds) },
+			where: { agentId: this.agentId, memoryEntryId: In(affectedEntryIds) },
 		});
 		const entriesWithSources = new Set(remainingSources.map((source) => source.memoryEntryId));
 		const orphanedEntryIds = affectedEntryIds.filter((id) => !entriesWithSources.has(id));
 		if (orphanedEntryIds.length === 0) return;
 
-		await trx
-			.getRepository(AgentMemoryEntryEntity)
-			.update({ id: In(orphanedEntryIds), status: 'active' }, droppedLifecycleState());
+		await entryRepo.update(
+			{ agentId: this.agentId, id: In(orphanedEntryIds), status: 'active' },
+			droppedLifecycleState(),
+		);
 	}
 
 	// ── Message persistence ──────────────────────────────────────────────
@@ -672,6 +677,7 @@ export class N8nMemoryImpl
 			for (const source of sources) {
 				const evidenceHash = hashEpisodicMemoryEvidence(source.evidenceText);
 				const sourceEntity = sourceRepo.create({
+					agentId: this.agentId,
 					memoryEntryId: persisted.id,
 					observationId: source.observationId,
 					threadId: source.threadId,
@@ -684,6 +690,7 @@ export class N8nMemoryImpl
 				} catch (error) {
 					if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
 					const existing = await sourceRepo.findOneBy({
+						agentId: this.agentId,
 						memoryEntryId: persisted.id,
 						observationId: source.observationId,
 						evidenceHash,
@@ -717,7 +724,7 @@ export class N8nMemoryImpl
 	): Promise<EpisodicMemoryEntrySource[]> {
 		if (entryIds.length === 0) return [];
 		const entities = await this.memoryEntrySourceRepository.find({
-			where: { memoryEntryId: In(entryIds) },
+			where: { agentId: this.agentId, memoryEntryId: In(entryIds) },
 			order: { createdAt: 'ASC', id: 'ASC' },
 		});
 		return entities.map((entity) => this.toEpisodicMemoryEntrySource(entity));
@@ -854,11 +861,11 @@ export class N8nMemoryImpl
 				const replacement = replacements[index];
 				if (!replacement) continue;
 				const sourceRows = await sourceRepo.find({
-					where: { memoryEntryId: In(item.supersedes) },
+					where: { agentId: this.agentId, memoryEntryId: In(item.supersedes) },
 					order: { createdAt: 'ASC', id: 'ASC' },
 				});
 				const existingReplacementSources = await sourceRepo.find({
-					where: { memoryEntryId: replacement.id },
+					where: { agentId: this.agentId, memoryEntryId: replacement.id },
 				});
 				const existingKeys = new Set(
 					existingReplacementSources.map(
@@ -871,6 +878,7 @@ export class N8nMemoryImpl
 					existingKeys.add(key);
 					return [
 						sourceRepo.create({
+							agentId: this.agentId,
 							memoryEntryId: replacement.id,
 							observationId: source.observationId,
 							threadId: source.threadId,
