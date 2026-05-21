@@ -54,11 +54,22 @@ export class CreateAgentHistoryTable1784000000009 implements ReversibleMigration
 		const agentsTable = escape.tableName('agents');
 		const userTable = escape.tableName('user');
 
+		// Per-column COALESCE + TRIM + NULLIF so that a user with only one
+		// half of their name set (e.g. firstName='Foo', lastName=NULL) still
+		// produces 'Foo' rather than collapsing to 'Unknown'. Plain
+		// `firstName || ' ' || lastName` would null out the whole expression
+		// when either side is NULL on both SQLite and Postgres.
 		await runQuery(
 			`INSERT INTO ${agentHistoryTable} ("versionId", "agentId", "schema", "tools", "skills", "publishedById", "author", "createdAt", "updatedAt")
 			 SELECT apv."publishedFromVersionId", apv."agentId", apv."schema", apv."tools", apv."skills",
 			        apv."publishedById",
-			        COALESCE(u."firstName" || ' ' || u."lastName", 'Unknown'),
+			        COALESCE(
+			          NULLIF(
+			            TRIM(COALESCE(u."firstName", '') || ' ' || COALESCE(u."lastName", '')),
+			            ''
+			          ),
+			          'Unknown'
+			        ),
 			        apv."createdAt", apv."updatedAt"
 			 FROM ${agentPublishedVersionTable} apv
 			 LEFT JOIN ${userTable} u ON u."id" = apv."publishedById"`,

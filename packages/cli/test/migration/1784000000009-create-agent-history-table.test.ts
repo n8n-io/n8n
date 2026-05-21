@@ -43,7 +43,11 @@ describe('CreateAgentHistoryTable Migration', () => {
 		await dbConnection.close();
 	});
 
-	async function insertUser(context: TestMigrationContext, id: string): Promise<void> {
+	async function insertUser(
+		context: TestMigrationContext,
+		id: string,
+		overrides: { firstName?: string | null; lastName?: string | null } = {},
+	): Promise<void> {
 		const tableName = context.escape.tableName('user');
 		await context.runQuery(
 			`INSERT INTO ${tableName} ("id", "email", "firstName", "lastName", "password", "roleSlug", "createdAt", "updatedAt")
@@ -51,8 +55,8 @@ describe('CreateAgentHistoryTable Migration', () => {
 			{
 				id,
 				email: `${id}@test.com`,
-				firstName: 'Test',
-				lastName: 'User',
+				firstName: overrides.firstName === undefined ? 'Test' : overrides.firstName,
+				lastName: overrides.lastName === undefined ? 'User' : overrides.lastName,
 				password: 'hashed',
 				roleSlug: 'global:member',
 				createdAt: new Date(),
@@ -191,6 +195,54 @@ describe('CreateAgentHistoryTable Migration', () => {
 					id: unpublishedAgentId,
 				});
 				expect(unpublishedAgentRow[0].activeVersionId).toBeNull();
+			});
+		});
+
+		it('preserves a partially-populated publisher name (only firstName or only lastName)', async () => {
+			const projectId = randomUUID();
+			const firstNameOnlyUserId = randomUUID();
+			const lastNameOnlyUserId = randomUUID();
+			const firstAgentId = randomUUID();
+			const lastAgentId = randomUUID();
+			const firstVersionId = randomUUID();
+			const lastVersionId = randomUUID();
+
+			await withContext(async (context) => {
+				await insertProject(context, projectId);
+				await insertUser(context, firstNameOnlyUserId, { firstName: 'Solo', lastName: null });
+				await insertUser(context, lastNameOnlyUserId, { firstName: null, lastName: 'Onlylast' });
+				await insertAgent(context, {
+					id: firstAgentId,
+					projectId,
+					versionId: firstVersionId,
+				});
+				await insertAgent(context, { id: lastAgentId, projectId, versionId: lastVersionId });
+				await insertPublishedVersion(context, {
+					agentId: firstAgentId,
+					publishedFromVersionId: firstVersionId,
+					publishedById: firstNameOnlyUserId,
+					schema: { name: 'First-only Agent' },
+				});
+				await insertPublishedVersion(context, {
+					agentId: lastAgentId,
+					publishedFromVersionId: lastVersionId,
+					publishedById: lastNameOnlyUserId,
+					schema: { name: 'Last-only Agent' },
+				});
+			});
+
+			await runSingleMigration(MIGRATION_NAME);
+			dataSource = Container.get(DataSource);
+
+			await withContext(async (context) => {
+				const historyTable = context.escape.tableName('agent_history');
+				const rows = await context.runQuery<Array<{ agentId: string; author: string }>>(
+					`SELECT "agentId", "author" FROM ${historyTable} WHERE "agentId" IN (:firstId, :lastId)`,
+					{ firstId: firstAgentId, lastId: lastAgentId },
+				);
+				const authorByAgent = new Map(rows.map((r) => [r.agentId, r.author]));
+				expect(authorByAgent.get(firstAgentId)).toBe('Solo');
+				expect(authorByAgent.get(lastAgentId)).toBe('Onlylast');
 			});
 		});
 

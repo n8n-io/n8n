@@ -8,6 +8,18 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
 
+/**
+ * Render a User's display name for the snapshot `author` column. Treats
+ * either missing name part gracefully — `firstName='Foo', lastName=null`
+ * yields `'Foo'` rather than `'Foo null'`. Falls back to `'Unknown'` when
+ * neither part is populated. Exported for unit-test coverage; the migration
+ * backfill mirrors this logic in SQL with COALESCE + TRIM + NULLIF.
+ */
+export function renderAuthor(user: User): string {
+	const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+	return name || 'Unknown';
+}
+
 @Service()
 export class AgentHistoryRepository extends Repository<AgentHistory> {
 	constructor(dataSource: DataSource) {
@@ -36,10 +48,7 @@ export class AgentHistoryRepository extends Repository<AgentHistory> {
 		trx?: EntityManager,
 	): Promise<AgentHistory> {
 		const { publishedBy } = data;
-		const author =
-			typeof publishedBy === 'string'
-				? publishedBy
-				: `${publishedBy.firstName} ${publishedBy.lastName}`;
+		const author = typeof publishedBy === 'string' ? publishedBy : renderAuthor(publishedBy);
 		const publishedById = typeof publishedBy === 'string' ? null : publishedBy.id;
 		const repo = trx?.getRepository(AgentHistory) ?? this;
 		// TypeORM's QueryDeepPartialEntity cannot represent Zod-inferred types
