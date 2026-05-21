@@ -41,6 +41,8 @@
     "@n8n/config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@stryker-mutator/core": "catalog:",
+    "@stryker-mutator/vitest-runner": "catalog:",
     "@types/express": "catalog:",
     "@types/jmespath": "^0.15.0",
     "@types/lodash": "catalog:",

@@ -20,6 +20,8 @@ nodelinter.config.json
 !.github/scripts/package-lock.json
 packages/**/.turbo
 .turbo
+.stryker-tmp/
+**/reports/mutation/
 *.tsbuildinfo
 .stylelintcache
 *.swp
