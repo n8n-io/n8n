@@ -72,11 +72,11 @@ jobs:
           TRIALS: ${{ inputs.trials || 3 }}
         run: |
           set -o pipefail
+          EVAL_ARGS=(--trials "$TRIALS" --fail-on-zero-pass)
           if [ -n "$FILTER" ]; then
-            pnpm eval:discovery --filter "$FILTER" --trials "$TRIALS" 2>&1 | tee discovery-eval-output.txt
-          else
-            pnpm eval:discovery --trials "$TRIALS" 2>&1 | tee discovery-eval-output.txt
+            EVAL_ARGS+=(--filter "$FILTER")
           fi
+          pnpm eval:discovery "${EVAL_ARGS[@]}" 2>&1 | tee discovery-eval-output.txt
 
       - name: Post eval results to PR
         if: ${{ always() && github.event_name == 'pull_request' && hashFiles('packages/@n8n/instance-ai/discovery-eval-output.txt') != '' }}
