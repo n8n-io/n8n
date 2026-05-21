@@ -476,11 +476,10 @@ export function useNDVStore(pinia: Pinia): NDVStore;
 export function useNDVStore(): NDVStore;
 export function useNDVStore(idOrPinia?: NDVStoreId | Pinia): NDVStore {
 	const pinia = typeof idOrPinia === 'string' ? undefined : idOrPinia;
-	// The migration to a per-workflow-document scoped NDV store is not yet complete.
-	// Until callers are fully migrated, always resolve to the default store and
-	// ignore any explicit `id` argument. The signature is preserved so that
-	// call sites can be updated incrementally without further churn.
-	return defineNDVStore(DEFAULT_NDV_STORE_ID, true)(pinia);
+	const isExplicitStoreId = typeof idOrPinia === 'string';
+	const storeId = isExplicitStoreId ? idOrPinia : DEFAULT_NDV_STORE_ID;
+
+	return defineNDVStore(storeId, !isExplicitStoreId)(pinia);
 }
 
 export function disposeNDVStore(store: NDVStore) {
