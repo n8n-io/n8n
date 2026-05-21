@@ -110,8 +110,6 @@ component_management:
       name: Utils
       paths:
         - packages/@n8n/create-node/**
-        - packages/@n8n/eslint-config/**
-        - packages/@n8n/eslint-plugin-community-nodes/**
         - packages/@n8n/node-cli/**
         - packages/@n8n/utils/**
 
@@ -131,4 +129,4 @@ ignore:
   - (?s:.*/scripts/.*)\Z
   # Test/build infrastructure packages
   - (?s:.*/packages/testing/.*)\Z
-  - (?s:.*/packages/@n8n/(benchmark|typescript-config|vitest-config|stylelint-config)/.*)\Z
+  - (?s:.*/packages/@n8n/(benchmark|eslint-config|eslint-plugin-community-nodes|stylelint-config|typescript-config|vitest-config)/.*)\Z
