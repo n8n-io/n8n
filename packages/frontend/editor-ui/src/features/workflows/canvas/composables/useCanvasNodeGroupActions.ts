@@ -23,15 +23,8 @@ export function useCanvasNodeGroupActions(
 		return expandSelectionWithSubNodes(nodes.map((n) => n.id));
 	});
 
-	const anyMemberGrouped = computed(() =>
-		expandedSelectionIds.value.some(
-			(id) => workflowDocumentStore.value.getGroupForNode(id) !== undefined,
-		),
-	);
-
 	const canGroup = computed(() => {
 		if (isReadOnly.value) return false;
-		if (anyMemberGrouped.value) return false;
 		return isSelectionGroupable(expandedSelectionIds.value).valid;
 	});
 

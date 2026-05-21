@@ -62,8 +62,12 @@ describe('useCanvasNodeGroupActions', () => {
 			expect(canGroup.value).toBe(true);
 		});
 
-		it('is false when any node in the expanded selection is already grouped', () => {
-			workflowDocumentStore.createGroup(['a', 'c'], 'Group');
+		it('is false when validation rejects the selection because a node is already grouped', () => {
+			isSelectionGroupableMock.mockReturnValue({
+				valid: false,
+				reason: 'node-already-grouped',
+				nodeIds: ['a'],
+			});
 			const { canGroup } = useCanvasNodeGroupActions(
 				computed(() => [makeNode('a'), makeNode('b')]),
 			);
