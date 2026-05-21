@@ -179,6 +179,7 @@ import { CreateInstanceAiCheckpointTable1784000000007 } from '../common/17840000
 import { ResetInstanceAiNativePersistence1784000000008 } from '../common/1784000000008-ResetInstanceAiNativePersistence';
 import { CreateAgentMemoryEntryTables1784000000009 } from '../common/1784000000009-CreateAgentMemoryEntryTables';
 import { RefactorAgentObservationScope1784000000010 } from '../common/1784000000010-RefactorAgentObservationScope';
+import { AddSourceWorkflowIdToWorkflow1784000000009 } from '../common/1784000000009-AddSourceWorkflowIdToWorkflow';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -363,6 +364,7 @@ const sqliteMigrations: Migration[] = [
 	ResetInstanceAiNativePersistence1784000000008,
 	CreateAgentMemoryEntryTables1784000000009,
 	RefactorAgentObservationScope1784000000010,
+	AddSourceWorkflowIdToWorkflow1784000000009,
 ];
 
 export { sqliteMigrations };
