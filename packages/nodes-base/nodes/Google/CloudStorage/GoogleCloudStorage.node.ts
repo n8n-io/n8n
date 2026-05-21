@@ -62,12 +62,12 @@ export class GoogleCloudStorage implements INodeType {
 				type: 'options',
 				options: [
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'OAuth2 (recommended)',
+						name: 'OAuth2',
 						value: 'oAuth2',
 					},
 					{
-						name: 'Service Account',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Service Account (recommended)',
 						value: 'serviceAccount',
 					},
 				],
