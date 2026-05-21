@@ -36,6 +36,7 @@ import { BackgroundTaskTracker } from './background-task-tracker';
 import { DeferredToolManager } from './deferred-tool-manager';
 import { AgentEventBus } from './event-bus';
 import { toJsonValue } from './json-value';
+import { loadAi } from './lazy-ai';
 import { createFilteredLogger } from './logger';
 import { saveMessagesToThread } from './memory-store';
 import { AgentMessageList, type SerializedMessageList } from './message-list';
@@ -197,18 +198,8 @@ export interface AgentRuntimeConfig {
 const MAX_LOOP_ITERATIONS = 20;
 const logger = createFilteredLogger();
 
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-type AiSdk = Pick<typeof import('ai'), 'generateText' | 'streamText' | 'Output'>;
-
-let aiSdkPromise: Promise<AiSdk> | undefined;
-
-async function getAiSdk(): Promise<AiSdk> {
-	aiSdkPromise ??= import('ai').then(({ generateText, streamText, Output }) => ({
-		generateText,
-		streamText,
-		Output,
-	}));
-	return await aiSdkPromise;
+function getAiSdk(): ReturnType<typeof loadAi> {
+	return loadAi();
 }
 
 const EMPTY_MESSAGE_LIST: SerializedMessageList = {
@@ -632,7 +623,7 @@ export class AgentRuntime {
 
 		if (this.config.memory.queryEmbeddings && this.config.semanticRecall.embedder) {
 			// Tier 3: runtime embeds the query, backend does vector search
-			const { embed } = await import('ai');
+			const { embed } = getAiSdk();
 			const embeddingModel = createEmbeddingModel(
 				this.config.semanticRecall.embedder,
 				this.config.semanticRecall.apiKey,
@@ -942,7 +933,7 @@ export class AgentRuntime {
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
 		const runTelemetry = this.resolveTelemetry(options);
-		const staticLoopContext = await this.buildStaticLoopContext({
+		const staticLoopContext = this.buildStaticLoopContext({
 			...options,
 			persistence: options?.persistence,
 		});
@@ -992,7 +983,7 @@ export class AgentRuntime {
 		}
 
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
-		const { generateText } = await getAiSdk();
+		const { generateText } = getAiSdk();
 		for (let i = 0; i < maxIterations; i++) {
 			if (this.eventBus.isAborted) {
 				this.updateState({ status: 'cancelled' });
@@ -1180,7 +1171,7 @@ export class AgentRuntime {
 		let structuredOutput: unknown;
 		const collectedSubAgentUsage: SubAgentUsage[] = [];
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
-		const { streamText } = await getAiSdk();
+		const { streamText } = getAiSdk();
 
 		const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
 			await this.cleanupRun(runId);
@@ -1198,7 +1189,7 @@ export class AgentRuntime {
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
 		const runTelemetry = this.resolveTelemetry(options);
-		const staticLoopContext = await this.buildStaticLoopContext({
+		const staticLoopContext = this.buildStaticLoopContext({
 			...options,
 			persistence: options?.persistence,
 		});
@@ -1576,7 +1567,7 @@ export class AgentRuntime {
 		const embedder = this.config.semanticRecall?.embedder;
 		if (!embedder) return;
 
-		const { embedMany } = await import('ai');
+		const { embedMany } = getAiSdk();
 		const embeddingModel = createEmbeddingModel(embedder, this.config.semanticRecall?.apiKey);
 
 		const { embeddings } = await embedMany({
@@ -2099,10 +2090,10 @@ export class AgentRuntime {
 	}
 
 	/** Build run-stable LLM call dependencies shared by all iterations. */
-	private async buildStaticLoopContext(
+	private buildStaticLoopContext(
 		execOptions?: ExecutionOptions & { persistence?: AgentPersistenceOptions },
 	) {
-		const { Output } = await getAiSdk();
+		const { Output } = getAiSdk();
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const model = createModel(this.config.model);
 		return {
