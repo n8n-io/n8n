@@ -154,6 +154,21 @@ type RuntimeSandboxEntry = {
 	setupPromise: Promise<void> | undefined;
 };
 
+function getThreadScopedSandboxName(threadId: string): string {
+	return `instance-ai-thread-${threadId}`;
+}
+
+function withThreadScopedSandboxIdentity(config: SandboxConfig, threadId: string): SandboxConfig {
+	if (!config.enabled || config.provider !== 'daytona') return config;
+
+	const name = getThreadScopedSandboxName(threadId);
+	return {
+		...config,
+		id: name,
+		name,
+	};
+}
+
 function getUserFacingErrorMessage(error: unknown): string {
 	if (error instanceof UserError) {
 		return error.message;
@@ -685,7 +700,7 @@ export class InstanceAiService {
 		threadId: string,
 		user: User,
 	): Promise<RuntimeSandboxEntry | undefined> {
-		const config = await this.resolveSandboxConfig(user);
+		const config = withThreadScopedSandboxIdentity(await this.resolveSandboxConfig(user), threadId);
 		if (!config.enabled) return undefined;
 
 		const sandbox = await createSandbox(config);

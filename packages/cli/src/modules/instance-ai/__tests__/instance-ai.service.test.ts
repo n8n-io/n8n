@@ -129,6 +129,7 @@ import {
 	resumeAgentRun,
 	setupSandboxWorkspace,
 	type InstanceAiContext,
+	type SandboxConfig,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
 	type SpawnBackgroundTaskOptions,
@@ -479,7 +480,7 @@ const fakeUser = { id: 'user-1' } as User;
 type WorkspaceServiceInternals = {
 	sandboxes: Map<string, unknown>;
 	sandboxCreations: Map<string, Promise<unknown>>;
-	resolveSandboxConfig: jest.MockedFunction<(user: User) => Promise<{ enabled: true }>>;
+	resolveSandboxConfig: jest.MockedFunction<(user: User) => Promise<SandboxConfig>>;
 	getOrCreateWorkspace: (
 		threadId: string,
 		user: User,
@@ -731,7 +732,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		) as unknown as WorkspaceServiceInternals;
 		service.sandboxes = new Map();
 		service.sandboxCreations = new Map();
-		service.resolveSandboxConfig = jest.fn(async (_user: User) => ({ enabled: true as const }));
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => ({
+			enabled: true,
+			provider: 'daytona',
+		}));
 
 		let resolveSandbox!: (sandbox: unknown) => void;
 		const sandboxPromise = new Promise((resolve) => {
@@ -753,6 +757,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 
 		expect(firstEntry).toBe(secondEntry);
 		expect(createSandbox).toHaveBeenCalledTimes(1);
+		expect(createSandbox).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'instance-ai-thread-thread-1',
+				name: 'instance-ai-thread-thread-1',
+			}),
+		);
 		expect(createWorkspace).toHaveBeenCalledTimes(1);
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
@@ -765,7 +775,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		) as unknown as WorkspaceServiceInternals;
 		service.sandboxes = new Map();
 		service.sandboxCreations = new Map();
-		service.resolveSandboxConfig = jest.fn(async (_user: User) => ({ enabled: true as const }));
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => ({
+			enabled: true,
+			provider: 'daytona',
+		}));
 
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
@@ -798,7 +811,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		) as unknown as WorkspaceServiceInternals;
 		service.sandboxes = new Map();
 		service.sandboxCreations = new Map();
-		service.resolveSandboxConfig = jest.fn(async (_user: User) => ({ enabled: true as const }));
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => ({
+			enabled: true,
+			provider: 'daytona',
+		}));
 
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
@@ -904,7 +920,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.sandboxes = new Map();
 		service.sandboxCreations = new Map();
 		service.domainAccessTrackersByThread = new Map();
-		service.resolveSandboxConfig = jest.fn(async (_user: User) => ({ enabled: true as const }));
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => ({
+			enabled: true,
+			provider: 'daytona',
+		}));
 		(createAllTools as jest.Mock).mockReturnValue(new Map());
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
@@ -931,6 +950,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		await lazyWorkspace.ensureWorkspace();
 
 		expect(createSandbox).toHaveBeenCalledTimes(1);
+		expect(createSandbox).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'instance-ai-thread-thread-1',
+				name: 'instance-ai-thread-thread-1',
+			}),
+		);
 		expect(createWorkspace).toHaveBeenCalledTimes(1);
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
