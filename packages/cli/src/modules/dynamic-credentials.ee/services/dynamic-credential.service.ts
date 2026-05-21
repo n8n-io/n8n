@@ -21,6 +21,7 @@ import type {
 	CredentialResolveMetadata,
 	ICredentialResolutionProvider,
 } from '../../../credentials/credential-resolution-provider.interface';
+import { SYSTEM_RESOLVER_ID } from '../constants';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 import { DynamicCredentialsConfig } from '../dynamic-credentials.config';
 import { CredentialResolutionError } from '../errors/credential-resolution.error';
@@ -141,6 +142,10 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		} catch (error) {
 			return this.handleResolutionError(credentialsResolveMetadata, error, resolverId);
 		}
+	}
+
+	getSystemResolverId(): string {
+		return SYSTEM_RESOLVER_ID;
 	}
 
 	/**
