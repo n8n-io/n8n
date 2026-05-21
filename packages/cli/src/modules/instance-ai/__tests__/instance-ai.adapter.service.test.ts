@@ -1456,6 +1456,51 @@ describe('createWorkflowAdapter', () => {
 		mockedUserHasScopes.mockResolvedValue(true);
 	});
 
+	it('preserves node-level execution options when returning WorkflowJSON', async () => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			id: 'wf-settings',
+			name: 'Debug Workflow',
+			active: false,
+			versionId: 'version-id',
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date('2026-01-01'),
+			updatedAt: new Date('2026-01-01'),
+			nodes: [
+				{
+					id: 'debug-id',
+					name: 'DebugHelper',
+					type: 'n8n-nodes-base.debugHelper',
+					typeVersion: 1,
+					position: [208, 0],
+					parameters: { category: 'randomData' },
+					notes: 'Keep execution settings',
+					notesInFlow: true,
+					executeOnce: true,
+					retryOnFail: true,
+					alwaysOutputData: true,
+					onError: 'continueErrorOutput',
+				},
+			],
+			connections: {},
+			settings: {},
+		});
+
+		const result = await adapter.getAsWorkflowJSON('wf-settings');
+
+		expect(result.nodes[0]).toEqual(
+			expect.objectContaining({
+				notes: 'Keep execution settings',
+				notesInFlow: true,
+				executeOnce: true,
+				retryOnFail: true,
+				alwaysOutputData: true,
+				onError: 'continueErrorOutput',
+			}),
+		);
+	});
+
 	it('lists active workflows by default', async () => {
 		const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests();
 
