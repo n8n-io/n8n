@@ -6,16 +6,16 @@ import {
 	IContextEstablishmentHook,
 } from '@n8n/decorators';
 
-import { InboundSecretsService } from './inbound-secrets.service';
+import { RuntimeCredentialsService } from './runtime-credentials.service';
 
 @ContextEstablishmentHook({
 	alwaysExecute: true,
 })
-export class InboundSecretContextHook implements IContextEstablishmentHook {
-	constructor(private readonly inboundSecretsService: InboundSecretsService) {}
+export class RuntimeCredentialsContextHook implements IContextEstablishmentHook {
+	constructor(private readonly runtimeCredentialsService: RuntimeCredentialsService) {}
 
 	hookDescription: HookDescription = {
-		name: 'InboundSecretContextHook',
+		name: 'RuntimeCredentialsContextHook',
 	};
 
 	isApplicableToTriggerNode(_nodeType: string): boolean {
@@ -24,7 +24,7 @@ export class InboundSecretContextHook implements IContextEstablishmentHook {
 	}
 
 	async execute(options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
-		const { triggerItems, artifactsByAlias } = this.inboundSecretsService.strip(
+		const { triggerItems, artifactsByAlias } = this.runtimeCredentialsService.strip(
 			options.triggerItems ?? [],
 			options.triggerNode.type,
 		);
