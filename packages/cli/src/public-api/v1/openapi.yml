@@ -144,6 +144,8 @@ paths:
     $ref: './handlers/folders/spec/paths/folders.folderId.yml'
   /n8n-packages/export:
     $ref: './handlers/n8n-packages/spec/paths/n8n-packages.export.yml'
+  /n8n-packages/import:
+    $ref: './handlers/n8n-packages/spec/paths/n8n-packages.import.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'

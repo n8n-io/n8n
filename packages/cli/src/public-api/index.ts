@@ -149,6 +149,8 @@ function createLazyValidatorMiddleware(
 	};
 }
 
+const PACKAGE_UPLOAD_CONTENT_TYPES = ['application/gzip', 'application/octet-stream'] as const;
+
 function createApiRouter(
 	version: string,
 	openApiSpecPath: string,
@@ -156,6 +158,7 @@ function createApiRouter(
 	publicApiEndpoint: string,
 ): Router {
 	const globalConfig = Container.get(GlobalConfig);
+	const payloadLimit = `${globalConfig.endpoints.payloadSizeMax}mb`;
 	const apiController = express.Router();
 
 	if (!globalConfig.publicApi.swaggerUiDisabled) {
@@ -182,7 +185,10 @@ function createApiRouter(
 
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
-		express.json(),
+		// Binary package uploads must be buffered before express.json(); otherwise the
+		// stream can be consumed without populating req.rawBody for the import handler.
+		express.raw({ type: [...PACKAGE_UPLOAD_CONTENT_TYPES], limit: payloadLimit }),
+		express.json({ limit: payloadLimit }),
 		jsonParseErrorHandler,
 		createLazyValidatorMiddleware(openApiSpecPath, handlersDirectory, version),
 	);

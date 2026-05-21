@@ -71,7 +71,7 @@ describe('WorkflowCreationService', () => {
 		const nestedTransaction = jest.fn(
 			async (cb: (em: unknown) => Promise<void>) => await cb(transactionManager),
 		);
-		const managerExists = jest.fn<() => Promise<boolean>>().mockResolvedValue(true);
+		const managerExists = jest.fn().mockResolvedValue(true);
 
 		Object.defineProperty(projectRepositoryMock, 'manager', {
 			value: {
