@@ -14,11 +14,14 @@ import { InMemoryMemory } from '../../runtime/memory-store';
 export type { StreamChunk };
 
 /**
- * Returns `describe` or `describe.skip` depending on whether the API key is set.
+ * Returns `describe` or `describe.skip` depending on whether the provider API keys are set.
  */
-export function describeIf(provider: 'anthropic' | 'openai') {
-	const envVar = provider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY';
-	return process.env[envVar] ? _describe : _describe.skip;
+export function describeIf(...providers: Array<'anthropic' | 'openai'>) {
+	const hasAllKeys = providers.every((provider) => {
+		const envVar = provider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY';
+		return Boolean(process.env[envVar]);
+	});
+	return hasAllKeys ? _describe : _describe.skip;
 }
 
 /**
