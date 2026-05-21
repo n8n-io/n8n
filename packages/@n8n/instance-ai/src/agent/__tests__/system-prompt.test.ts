@@ -1,6 +1,18 @@
 import { getSystemPrompt } from '../system-prompt';
 
 describe('getSystemPrompt', () => {
+	describe('first visible turn guidance', () => {
+		it('instructs the agent to send a concise sentence before the first tool call', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('before your first tool call');
+			expect(prompt).toContain('write one short sentence');
+			expect(prompt).toContain("Keep it tied to the user's goal, not the tool name");
+			expect(prompt).toContain('Never let an empty assistant message');
+			expect(prompt).toContain('[Calling tools: ...]');
+		});
+	});
+
 	describe('license hints', () => {
 		it('includes License Limitations section when hints are provided', () => {
 			const prompt = getSystemPrompt({
@@ -136,6 +148,23 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('outcome.triggerNodes');
 			expect(prompt).not.toContain('outcome.usesWorkflowPinDataForVerification');
 			expect(prompt).not.toContain('outcome.verificationPinData');
+		});
+
+		it('grounds workflow setup in the inline assistant card', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('inline setup card in the AI Assistant panel');
+			expect(prompt).toContain(
+				'Do not tell the user to open the editor, use the canvas, or click a Setup button',
+			);
+			expect(prompt).not.toMatch(/setup wizard/i);
+		});
+
+		it('makes post-build credential setup the default path', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('Do not ask whether to build now and set up credentials later');
+			expect(prompt).toContain('building first and routing setup after verification');
 		});
 
 		it('reads workflowId/workItemId from the outcome field, not result', () => {

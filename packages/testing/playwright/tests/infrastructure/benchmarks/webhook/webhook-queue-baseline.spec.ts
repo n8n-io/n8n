@@ -22,6 +22,7 @@ test.use({ capability: benchConfig('webhook-queue-baseline', { mains: MAINS, wor
 test.describe(
 	'What is the webhook ingestion ceiling in queue mode at 1 main + 1 worker?',
 	{
+		tag: '@bench:webhook',
 		annotation: [
 			{ type: 'owner', description: 'Catalysts' },
 			{ type: 'question', description: 'webhook-queue-baseline' },

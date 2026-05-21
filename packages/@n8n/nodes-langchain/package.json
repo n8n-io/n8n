@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.21.0",
+  "version": "2.22.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -66,6 +66,7 @@
       "dist/credentials/MinimaxApi.credentials.js",
       "dist/credentials/MoonshotApi.credentials.js",
       "dist/credentials/LemonadeApi.credentials.js",
+      "dist/credentials/NvidiaApi.credentials.js",
       "dist/credentials/OllamaApi.credentials.js",
       "dist/credentials/OpenRouterApi.credentials.js",
       "dist/credentials/PineconeApi.credentials.js",
@@ -129,6 +130,7 @@
       "dist/nodes/llms/LmChatMinimax/LmChatMinimax.node.js",
       "dist/nodes/llms/LmChatMoonshot/LmChatMoonshot.node.js",
       "dist/nodes/llms/LMChatLemonade/LmChatLemonade.node.js",
+      "dist/nodes/llms/LmChatNvidia/LmChatNvidia.node.js",
       "dist/nodes/llms/LMChatOllama/LmChatOllama.node.js",
       "dist/nodes/llms/LmChatOpenRouter/LmChatOpenRouter.node.js",
       "dist/nodes/llms/LmChatVercelAiGateway/LmChatVercelAiGateway.node.js",
@@ -265,7 +267,8 @@
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
     "@n8n/json-schema-to-zod": "workspace:*",
-    "@n8n/typeorm": "catalog:",
+    "@n8n/typeorm": "0.3.20-16",
+    "mysql2": "3.17.0",
     "@n8n/typescript-config": "workspace:*",
     "@oracle/langchain-oracledb":"0.2.0",
     "@pinecone-database/pinecone": "^5.0.2",

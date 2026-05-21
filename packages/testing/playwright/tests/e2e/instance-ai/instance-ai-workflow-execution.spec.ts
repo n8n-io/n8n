@@ -72,9 +72,7 @@ test.describe(
 			await setNode.hover();
 
 			// Click the execute node button on the toolbar
-			const executeNodeButton = n8n.instanceAi.getPreviewExecuteNodeButton('node execution test');
-			await expect(executeNodeButton).toBeVisible({ timeout: 5_000 });
-			await executeNodeButton.click();
+			await n8n.instanceAi.executePreviewNodeByName('node execution test');
 
 			// The node should show a success indicator after execution
 			await expect(
@@ -107,8 +105,7 @@ test.describe(
 			});
 
 			// Double-click a node to open NDV
-			const setNode = n8n.instanceAi.getPreviewNodeByName('ndv output test');
-			await setNode.dblclick();
+			await n8n.instanceAi.openPreviewNodeByName('ndv output test');
 
 			// The NDV output panel should be visible with execution data
 			await expect(n8n.instanceAi.getPreviewNdvOutputPanel()).toBeVisible({

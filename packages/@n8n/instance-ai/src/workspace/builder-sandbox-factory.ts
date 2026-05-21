@@ -3,20 +3,24 @@
  *
  * Creates an ephemeral sandbox + workspace per builder invocation.
  * - Daytona mode: creates from pre-warmed Image (config + deps baked in),
- *   then writes the node-types catalog post-creation via filesystem API.
+ *   then writes the node-types catalog and curated examples post-creation
+ *   via filesystem API.
  * - Local mode: per-builder subdirectory with full setup (development only)
  */
 
-import { Daytona } from '@daytonaio/sdk';
-import { Workspace, LocalFilesystem, LocalSandbox } from '@mastra/core/workspace';
-import { DaytonaSandbox } from '@mastra/daytona';
+import type { Daytona } from '@daytonaio/sdk';
+import { Workspace } from '@n8n/agents';
 import assert from 'node:assert/strict';
 import { join as posixJoin } from 'node:path/posix';
 
+import { loadDaytona } from './lazy-daytona';
 import type { ErrorReporter, Logger } from '../logger';
 import type { SandboxConfig } from './create-workspace';
 import { DaytonaFilesystem } from './daytona-filesystem';
+import { DaytonaSandbox } from './daytona-sandbox';
 import { createGuardedFilesystem, type FilesystemMutationGuardSetter } from './guarded-filesystem';
+import { LocalFilesystem } from './local-filesystem';
+import { LocalSandbox } from './local-sandbox';
 import { N8nSandboxFilesystem } from './n8n-sandbox-filesystem';
 import { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
 import {
@@ -27,7 +31,12 @@ import {
 import { runInSandbox, writeFileViaSandbox } from './sandbox-fs';
 import type { SnapshotManager } from './snapshot-manager';
 import type { InstanceAiContext } from '../types';
-import { formatNodeCatalogLine, getWorkspaceRoot, setupSandboxWorkspace } from './sandbox-setup';
+import {
+	formatNodeCatalogLine,
+	getWorkspaceRoot,
+	setupSandboxWorkspace,
+	writeCuratedExamples,
+} from './sandbox-setup';
 
 const NOOP_LOGGER: Logger = {
 	info: () => {},
@@ -40,6 +49,68 @@ export interface BuilderWorkspace {
 	workspace: Workspace;
 	cleanup: () => Promise<void>;
 	setFilesystemMutationGuard?: FilesystemMutationGuardSetter;
+}
+
+interface BuilderSandboxNamingHints {
+	runId?: string;
+	threadId?: string;
+}
+
+const SANDBOX_NAME_MAX_LEN = 63;
+const SANDBOX_LABEL_MAX_LEN = 63;
+const NAME_PREFIX_SLUG_MAX_LEN = 24;
+// 8 chars of nanoid alphabet (~1 in 218T collision); enough for a transient sandbox.
+const SHORT_RUN_ID_LEN = 8;
+
+// Daytona names must be DNS-label-ish (a-z, 0-9, hyphens).
+function slugifyName(value: string, maxLen: number): string {
+	const slug = value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+	return slug.slice(0, maxLen).replace(/-+$/, '');
+}
+
+// Daytona labels accept letters, digits, '_', '.', '-' — keep originals where possible
+// so values like `run_id=abc_xyz` are preserved.
+function slugifyLabel(value: string, maxLen: number): string {
+	return value
+		.replace(/[^A-Za-z0-9_.-]+/g, '-')
+		.replace(/^[-.]+|[-.]+$/g, '')
+		.slice(0, maxLen)
+		.replace(/[-.]+$/, '');
+}
+
+function buildSandboxName(
+	builderId: string,
+	namePrefix: string | undefined,
+	runId: string | undefined,
+): string {
+	const parts: string[] = [];
+	if (namePrefix) {
+		const prefixSlug = slugifyName(namePrefix, NAME_PREFIX_SLUG_MAX_LEN);
+		if (prefixSlug) parts.push(prefixSlug);
+	}
+	if (runId) {
+		const runSlug = slugifyName(runId, SHORT_RUN_ID_LEN);
+		if (runSlug) parts.push(runSlug);
+	}
+	const builderSlug = slugifyName(builderId, SANDBOX_NAME_MAX_LEN);
+	if (builderSlug) parts.push(builderSlug);
+	const joined = slugifyName(parts.join('-'), SANDBOX_NAME_MAX_LEN);
+	return joined || 'n8n-builder';
+}
+
+function buildSandboxLabels(
+	builderId: string,
+	namePrefix: string | undefined,
+	naming: BuilderSandboxNamingHints | undefined,
+): Record<string, string> {
+	const labels: Record<string, string> = { 'n8n-builder': builderId };
+	if (namePrefix) labels.name_prefix = slugifyLabel(namePrefix, SANDBOX_LABEL_MAX_LEN);
+	if (naming?.runId) labels.run_id = slugifyLabel(naming.runId, SANDBOX_LABEL_MAX_LEN);
+	if (naming?.threadId) labels.thread_id = slugifyLabel(naming.threadId, SANDBOX_LABEL_MAX_LEN);
+	return labels;
 }
 
 async function cleanupTrackedSandboxProcesses(workspace: Workspace): Promise<void> {
@@ -57,7 +128,7 @@ async function cleanupTrackedSandboxProcesses(workspace: Workspace): Promise<voi
 	// does not keep stdout/stderr listener closures alive after builder cleanup.
 	for (const process of processes) {
 		try {
-			if (process.running) {
+			if (process.exitCode === undefined) {
 				await processManager.kill(process.pid);
 			} else {
 				await processManager.get(process.pid);
@@ -125,18 +196,23 @@ export class BuilderSandboxFactory {
 		});
 	}
 
-	async create(builderId: string, context: InstanceAiContext): Promise<BuilderWorkspace> {
+	async create(
+		builderId: string,
+		context: InstanceAiContext,
+		naming?: BuilderSandboxNamingHints,
+	): Promise<BuilderWorkspace> {
 		if (this.config.provider === 'local') {
 			return await this.createLocal(builderId, context);
 		}
 		if (this.config.provider === 'n8n-sandbox') {
 			return await this.createN8nSandbox(builderId, context);
 		}
-		return await this.createDaytona(builderId, context);
+		return await this.createDaytona(builderId, context, naming);
 	}
 
 	private async getDaytona(): Promise<Daytona> {
 		const config = this.assertIsDaytona();
+		const { Daytona } = loadDaytona();
 		if (config.getAuthToken) {
 			// Proxy mode: create a fresh client with a fresh JWT each time
 			const apiKey = await config.getAuthToken();
@@ -163,6 +239,7 @@ export class BuilderSandboxFactory {
 	private async createDaytona(
 		builderId: string,
 		context: InstanceAiContext,
+		naming: BuilderSandboxNamingHints | undefined,
 	): Promise<BuilderWorkspace> {
 		const config = this.assertIsDaytona();
 		assert(this.imageManager, 'Daytona snapshot manager required');
@@ -176,14 +253,17 @@ export class BuilderSandboxFactory {
 		// are loud and trackable in Sentry, regardless of which path
 		// ultimately succeeds.
 		const createTimeoutSeconds = config.createTimeoutSeconds ?? 300;
+		const sandboxName = buildSandboxName(builderId, config.namePrefix, naming?.runId);
+		const sandboxLabels = buildSandboxLabels(builderId, config.namePrefix, naming);
 		const createSandboxFn = async () => {
 			const daytona = await this.getDaytona();
 			const snapshotName = await snapshotManager.ensureSnapshot(daytona, mode);
 			const baseParams = {
-				language: 'typescript',
+				language: 'typescript' as const,
 				ephemeral: true,
-				labels: { 'n8n-builder': builderId },
-			} as const;
+				name: sandboxName,
+				labels: sandboxLabels,
+			};
 
 			if (snapshotName) {
 				try {
@@ -238,8 +318,8 @@ export class BuilderSandboxFactory {
 		};
 
 		try {
-			// Wrap raw Sandbox in DaytonaSandbox for Mastra Workspace compatibility.
-			// DaytonaSandbox.start() reconnects to the existing sandbox by ID.
+			// Wrap raw Sandbox in the native provider; start() reconnects to
+			// the existing sandbox by ID.
 			// Use the same apiKey source as getDaytona() — fresh token in proxy mode, static key in direct mode.
 			const apiKey = config.getAuthToken ? await config.getAuthToken() : config.daytonaApiKey;
 			const daytonaSandbox = new DaytonaSandbox({
@@ -265,6 +345,10 @@ export class BuilderSandboxFactory {
 			} else {
 				await writeFileViaSandbox(workspace, `${root}/node-types/index.txt`, catalog);
 			}
+
+			// Curated examples — also too large to bake into the image, written
+			// post-creation. Without this the builder sees an empty examples/ dir.
+			await writeCuratedExamples(workspace, this.logger);
 
 			await this.linkWorkspaceSdkIfEnabled(workspace, root);
 
@@ -320,6 +404,8 @@ export class BuilderSandboxFactory {
 				await writeFileViaSandbox(workspace, `${root}/node-types/index.txt`, catalog);
 			}
 
+			await writeCuratedExamples(workspace, this.logger);
+
 			await this.linkWorkspaceSdkIfEnabled(workspace, root);
 
 			return {
@@ -358,6 +444,12 @@ export class BuilderSandboxFactory {
 		builderId: string,
 		context: InstanceAiContext,
 	): Promise<BuilderWorkspace> {
+		if (process.env.NODE_ENV === 'production') {
+			throw new Error(
+				'LocalSandbox (provider: "local") is not allowed in production. Use "daytona" or "n8n-sandbox" provider for isolated sandbox execution.',
+			);
+		}
+
 		const dir = `./workspace-builders/${builderId}`;
 		const sandbox = new LocalSandbox({ workingDirectory: dir });
 		const guardedFilesystem = createGuardedFilesystem(new LocalFilesystem({ basePath: dir }));

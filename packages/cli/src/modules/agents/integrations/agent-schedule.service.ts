@@ -1,9 +1,9 @@
 import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
 	DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
+	isAgentScheduleIntegration,
 	type AgentScheduleConfig,
 	type AgentScheduleIntegration,
-	isAgentScheduleIntegration,
 } from '@n8n/api-types';
 import { ProjectRelationRepository } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';

@@ -1,8 +1,11 @@
 import type { AgentSnapshot, ToolDescriptor } from '@n8n/agents';
 import type { JSONSchema7 } from 'json-schema';
 
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
-import { AgentJsonConfigSchema } from '../json-config/agent-json-config';
+import {
+	AgentJsonConfigSchema,
+	RunnableAgentJsonConfigSchema,
+	type AgentJsonConfig,
+} from '@n8n/api-types';
 import { buildFromJson } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
 
@@ -47,17 +50,46 @@ describe('buildFromJson()', () => {
 			agent as {
 				memoryConfig?: {
 					lastMessages: number;
-					workingMemory?: {
-						template: string;
-						structured: boolean;
-						scope: 'resource' | 'thread';
-						instruction?: string;
+					observationLog?: {
+						renderTokenBudget?: number;
+					};
+					observationalMemory?: {
+						observerThresholdTokens?: number;
+						reflectorThresholdTokens?: number;
+						observationLogTailLimit?: number;
+						lockTtlMs?: number;
+						observe?: unknown;
+						reflect?: unknown;
 					};
 				};
 			}
 		).memoryConfig;
 
 	const makeMockMemoryFactory = () => jest.fn();
+
+	const makeMockMemoryBackend = () => ({
+		getThread: jest.fn(),
+		saveThread: jest.fn(),
+		deleteThread: jest.fn(),
+		getMessages: jest.fn().mockResolvedValue([]),
+		saveMessages: jest.fn(),
+		deleteMessages: jest.fn(),
+		appendObservationLogEntries: jest.fn(),
+		getActiveObservationLog: jest.fn(),
+		getObservationLog: jest.fn(),
+		dropObservationLogEntries: jest.fn(),
+		supersedeObservationLogEntries: jest.fn(),
+		applyObservationLogReflection: jest.fn(),
+		getMessagesForScope: jest.fn(),
+		getCursor: jest.fn(),
+		setCursor: jest.fn(),
+		acquireObservationLogTaskLock: jest.fn(),
+		releaseObservationLogTaskLock: jest.fn(),
+		describe: jest
+			.fn()
+			.mockReturnValue({ name: 'n8n', constructorName: 'N8nMemory', connectionParams: null }),
+		close: jest.fn(),
+	});
 
 	it('sets name, model, and instructions', async () => {
 		const agent = await buildFromJson(
@@ -128,7 +160,7 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.tools.some((t) => t.name === 'my_search')).toBe(true);
 	});
 
-	it('injects attached skill names, descriptions, and ids into instructions, but not bodies', async () => {
+	it('wires attached skills through the shared runtime skill loader without inlining bodies', async () => {
 		const config = makeConfig({
 			skills: [{ type: 'skill', id: 'skill_0Ab9ZkLm3Pq7Xy2N' }],
 		});
@@ -151,16 +183,10 @@ describe('buildFromJson()', () => {
 		);
 
 		const instructions = agent.snapshot.instructions ?? '';
-		expect(instructions).toContain('Skill loading protocol:');
-		expect(instructions).toContain('Skills are optional instruction packs, not execution tools');
-		expect(instructions).toContain('Available skills:');
-		expect(instructions).toContain('name: Summarize notes');
-		expect(instructions).toContain('description: Use for meeting notes and transcripts');
-		expect(instructions).toContain('id: skill_0Ab9ZkLm3Pq7Xy2N');
-		expect(instructions).toContain("call load_skill once with that skill's id");
-		expect(instructions).toContain('do not call load_skill again');
-		expect(instructions).toContain('Do not load a skill just because it is listed here');
+		expect(instructions).toBe('You are a test agent.');
 		expect(instructions).not.toContain('Extract decisions and action items.');
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(true);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
 	});
 
 	it('wires load_skill for attached skills and returns the selected skill body on demand', async () => {
@@ -197,12 +223,16 @@ describe('buildFromJson()', () => {
 
 		await expect(loadSkill!.handler?.({ skillId: 'summarize_notes' }, {})).resolves.toMatchObject({
 			ok: true,
+			success: true,
 			skillId: 'summarize_notes',
+			name: 'Summarize notes',
+			content: 'Extract decisions and action items.',
 			instructions: 'Extract decisions and action items.',
 		});
 
 		await expect(loadSkill!.handler?.({ skillId: 'unused_skill' }, {})).resolves.toMatchObject({
 			ok: false,
+			success: false,
 		});
 	});
 
@@ -223,6 +253,33 @@ describe('buildFromJson()', () => {
 				},
 			),
 		).rejects.toThrow('Skill "missing_skill" not found in stored skill bodies');
+	});
+
+	it('rejects custom tools that reuse runtime skill tool names', async () => {
+		const descriptor = makeToolDescriptor({ name: 'load_skill' });
+		const config = makeConfig({
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
+			tools: [{ type: 'custom', id: 'reserved_tool' }],
+		});
+
+		await expect(
+			buildFromJson(
+				config,
+				{ reserved_tool: descriptor },
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					skills: {
+						summarize_notes: {
+							name: 'Summarize notes',
+							description: 'Use for meeting notes and transcripts',
+							instructions: 'Extract decisions and action items.',
+						},
+					},
+				},
+			),
+		).rejects.toThrow('Tool name "load_skill" is reserved for runtime skills');
 	});
 
 	it('throws when custom tool id is not found in descriptors', async () => {
@@ -415,21 +472,20 @@ describe('buildFromJson()', () => {
 	});
 
 	it('configures memory when enabled', async () => {
-		const mockMemory = {
-			getThread: jest.fn(),
-			saveThread: jest.fn(),
-			deleteThread: jest.fn(),
-			getMessages: jest.fn().mockResolvedValue([]),
-			saveMessages: jest.fn(),
-			deleteMessages: jest.fn(),
-			describe: jest
-				.fn()
-				.mockReturnValue({ name: 'n8n', constructorName: 'N8nMemory', connectionParams: null }),
-			close: jest.fn(),
-		};
-
+		const mockMemory = makeMockMemoryBackend();
 		const config = makeConfig({
-			memory: { enabled: true, storage: 'n8n', lastMessages: 15 },
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				lastMessages: 15,
+				observationalMemory: {
+					observerThresholdTokens: 4_000,
+					reflectorThresholdTokens: 12_000,
+					renderTokenBudget: 4_000,
+					observationLogTailLimit: 10,
+					lockTtlMs: 5_000,
+				},
+			},
 		});
 
 		const memoryFactory = jest.fn().mockReturnValue(mockMemory);
@@ -447,26 +503,56 @@ describe('buildFromJson()', () => {
 		expect(memoryFactory).toHaveBeenCalledWith(config.memory);
 		expect(agent.snapshot.hasMemory).toBe(true);
 		expect(getMemoryConfig(agent)?.lastMessages).toBe(15);
-		expect(getMemoryConfig(agent)?.workingMemory).toMatchObject({
-			structured: false,
-			scope: 'thread',
+		expect(getMemoryConfig(agent)?.observationLog).toEqual({ renderTokenBudget: 4_000 });
+		expect(getMemoryConfig(agent)?.observationalMemory).toMatchObject({
+			observerThresholdTokens: 4_000,
+			reflectorThresholdTokens: 12_000,
+			observationLogTailLimit: 10,
+			lockTtlMs: 5_000,
 		});
-		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Thread memory');
-		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Current goal/task');
-		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Key active items');
-		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Resolved or superseded');
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain(
-			'only to this same session/thread',
+		expect(getMemoryConfig(agent)?.observationalMemory?.observe).toBeUndefined();
+		expect(getMemoryConfig(agent)?.observationalMemory?.reflect).toBeUndefined();
+	});
+
+	it('enables observational memory by default when memory is enabled', async () => {
+		const config = makeConfig({
+			memory: { enabled: true, storage: 'n8n' },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
 		);
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('different session');
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('new thread');
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('cross-thread profile');
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain(
-			'Treat working memory as internal context',
+
+		expect(agent.snapshot.hasObservationalMemory).toBe(true);
+		expect(getMemoryConfig(agent)?.observationalMemory).toEqual({});
+		expect(getMemoryConfig(agent)?.observationLog).toEqual({});
+	});
+
+	it('can disable observational memory while keeping message memory', async () => {
+		const config = makeConfig({
+			memory: { enabled: true, storage: 'n8n', observationalMemory: { enabled: false } },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
 		);
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).not.toContain(
-			'update_working_memory',
-		);
+
+		expect(agent.snapshot.hasMemory).toBe(true);
+		expect(agent.snapshot.hasObservationalMemory).toBe(false);
+		expect(getMemoryConfig(agent)?.observationLog).toBeUndefined();
+		expect(getMemoryConfig(agent)?.observationalMemory).toBeUndefined();
 	});
 
 	it('skips memory when memory.enabled is false', async () => {
@@ -503,6 +589,24 @@ describe('AgentJsonConfigSchema', () => {
 			instructions: 'Be helpful.',
 		};
 		expect(() => AgentJsonConfigSchema.parse(config)).not.toThrow();
+	});
+
+	it('accepts a blank model for draft configs', () => {
+		const config = {
+			name: 'test',
+			model: '',
+			instructions: '',
+		};
+		expect(() => AgentJsonConfigSchema.parse(config)).not.toThrow();
+	});
+
+	it('requires model and credential for runnable configs', () => {
+		const config = {
+			name: 'test',
+			model: '',
+			instructions: 'Be helpful.',
+		};
+		expect(() => RunnableAgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
 	it('rejects invalid model format (no slash)', () => {
@@ -689,7 +793,7 @@ describe('AgentJsonConfigSchema', () => {
 					cronExpression: '0 0 * * *',
 					wakeUpPrompt: 'tick',
 				},
-				{ type: 'slack', credentialId: 'cred-1', credentialName: 'Acme Slack' },
+				{ type: 'slack', credentialId: 'cred-1' },
 			],
 		};
 		const parsed = AgentJsonConfigSchema.parse(config);
@@ -698,18 +802,71 @@ describe('AgentJsonConfigSchema', () => {
 		expect(parsed.integrations?.[1]).toMatchObject({
 			type: 'slack',
 			credentialId: 'cred-1',
-			credentialName: 'Acme Slack',
 		});
 	});
 
-	it('rejects a chat integration missing credentialName at the schema level', () => {
+	it('validates Telegram private integration settings', () => {
 		const config = {
 			name: 'test',
 			model: 'anthropic/claude-sonnet-4-5',
 			credential: 'my-key',
 			instructions: '',
-			integrations: [{ type: 'slack', credentialId: 'cred-1' }],
+			integrations: [
+				{
+					type: 'telegram',
+					credentialId: 'cred-1',
+					settings: {
+						accessMode: 'private',
+						allowedUsers: ['123', '123', '456', 'john_doe123'],
+					},
+				},
+			],
 		};
+
+		const parsed = AgentJsonConfigSchema.parse(config);
+
+		expect(parsed.integrations?.[0]).toMatchObject({
+			type: 'telegram',
+			settings: {
+				accessMode: 'private',
+				allowedUsers: ['123', '456', 'john_doe123'],
+			},
+		});
+	});
+
+	it('rejects Telegram private integration settings without valid user IDs', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+			integrations: [
+				{
+					type: 'telegram',
+					credentialId: 'cred-1',
+					settings: { accessMode: 'private', allowedUsers: [] },
+				},
+			],
+		};
+
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
+
+	it('rejects Telegram integration settings with entries containing invalid characters', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+			integrations: [
+				{
+					type: 'telegram',
+					credentialId: 'cred-1',
+					settings: { accessMode: 'private', allowedUsers: ['user name'] },
+				},
+			],
+		};
+
 		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
@@ -726,7 +883,7 @@ describe('AgentJsonConfigSchema', () => {
 					cronExpression: '0 0 * * *',
 					wakeUpPrompt: 'tick',
 				},
-				{ type: 'slack', credentialId: 'cred-1', credentialName: 'Acme Slack' },
+				{ type: 'slack', credentialId: 'cred-1' },
 			],
 		};
 		const parsed = AgentJsonConfigSchema.parse(config);
@@ -735,18 +892,6 @@ describe('AgentJsonConfigSchema', () => {
 		expect(parsed.integrations?.[1]).toMatchObject({
 			type: 'slack',
 			credentialId: 'cred-1',
-			credentialName: 'Acme Slack',
 		});
-	});
-
-	it('rejects a chat integration missing credentialName at the schema level', () => {
-		const config = {
-			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
-			credential: 'my-key',
-			instructions: '',
-			integrations: [{ type: 'slack', credentialId: 'cred-1' }],
-		};
-		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 });
