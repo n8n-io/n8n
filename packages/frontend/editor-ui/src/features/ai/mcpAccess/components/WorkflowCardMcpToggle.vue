@@ -47,7 +47,9 @@ async function toggleMcpAccess(enabled: boolean) {
 	try {
 		await mcpStore.toggleWorkflowMcpAccess(props.workflowId, enabled);
 		optimisticAvailability.value = enabled;
-		mcp.trackMcpAccessEnabledForWorkflow(props.workflowId);
+		if (enabled) {
+			mcp.trackMcpAccessEnabledForWorkflow(props.workflowId);
+		}
 	} catch (error) {
 		toast.showError(error, locale.baseText('workflowSettings.toggleMCP.error.title'));
 	}
