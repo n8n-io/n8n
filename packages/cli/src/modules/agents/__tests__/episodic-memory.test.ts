@@ -31,7 +31,7 @@ describe('n8n episodic memory policy', () => {
 
 	it('builds the extractor prompt from observations and existing entries', () => {
 		const prompt = buildN8nEpisodicMemoryExtractorPrompt({
-			scope: { namespace: 'agent-1', resourceId: 'user-1' },
+			scope: { resourceId: 'user-1' },
 			observationScope: {
 				scopeKind: 'thread',
 				scopeId: 'thread:thread-1:resource:user-1',
@@ -55,7 +55,6 @@ describe('n8n episodic memory policy', () => {
 			existingEntries: [
 				{
 					id: 'mem-1',
-					namespace: 'agent-1',
 					resourceId: 'user-1',
 					content: 'User planned SQLite for local-first memory storage.',
 					contentHash: 'hash-1',
@@ -74,7 +73,7 @@ describe('n8n episodic memory policy', () => {
 		});
 
 		expect(prompt).toContain('Current timestamp: 2026-05-12T15:00:00.000Z');
-		expect(prompt).toContain('Scope: namespace:agent-1:resource:user-1');
+		expect(prompt).toContain('Scope: resource:user-1');
 		expect(prompt).toContain('[obs-1] CRITICAL 2026-05-12T14:30:00.000Z');
 		expect(prompt).toContain('User switched memory store choice to Postgres.');
 		expect(prompt).toContain('[mem-1] User planned SQLite for local-first memory storage.');
@@ -91,13 +90,12 @@ describe('n8n episodic memory policy', () => {
 
 	it('builds the reflector prompt from active entries and source evidence', () => {
 		const prompt = buildN8nEpisodicMemoryReflectorPrompt({
-			scope: { namespace: 'agent-1', resourceId: 'user-1' },
+			scope: { resourceId: 'user-1' },
 			now: new Date('2026-05-12T15:00:00.000Z'),
 			seedEntryIds: ['mem-2'],
 			entries: [
 				{
 					id: 'mem-1',
-					namespace: 'agent-1',
 					resourceId: 'user-1',
 					content: 'User planned SQLite for local-first memory storage.',
 					contentHash: 'hash-1',
@@ -126,7 +124,7 @@ describe('n8n episodic memory policy', () => {
 		});
 
 		expect(prompt).toContain('Current timestamp: 2026-05-12T15:00:00.000Z');
-		expect(prompt).toContain('Scope: namespace:agent-1:resource:user-1');
+		expect(prompt).toContain('Scope: resource:user-1');
 		expect(prompt).toContain('Seed entry IDs: mem-2');
 		expect(prompt).toContain('[mem-1] User planned SQLite for local-first memory storage.');
 		expect(prompt).toContain('source observation obs-1');
