@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, h } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, h } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from '@/app/composables/useToast';
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -272,6 +272,18 @@ const redactManualData = computed({
 			workflowSettings.value.redactionPolicy = productionRedacted ? 'non-manual' : 'none';
 		}
 	},
+});
+
+// Workflow-level invariant: manual redaction requires production redaction
+// (mirrors the instance-level "production-only or production+manual" rule).
+const isManualRedactionDisabledByProduction = computed(
+	() => redactProductionData.value !== 'redact',
+);
+
+watch(redactProductionData, (newVal) => {
+	if (newVal !== 'redact' && redactManualData.value === 'redact') {
+		redactManualData.value = 'default';
+	}
 });
 
 const mcpToggleDisabled = computed(() => {
@@ -1326,12 +1338,16 @@ onBeforeUnmount(() => {
 							class="ignore-key-press-canvas"
 							:class="{ [$style['setting-name--disabled']]: isRedactionSettingLocked }"
 						>
-							<N8nTooltip :disabled="!isRedactionSettingLocked" :enterable="true" placement="top">
+							<N8nTooltip
+								:disabled="!isRedactionSettingLocked && !isManualRedactionDisabledByProduction"
+								:enterable="true"
+								placement="top"
+							>
 								<template #content>
-									<span v-if="redactionLockReason === 'enforcement'">{{
+									<span v-if="isRedactionSettingLocked && redactionLockReason === 'enforcement'">{{
 										i18n.baseText('workflowSettings.redactionEnforcementNotice')
 									}}</span>
-									<span v-else
+									<span v-else-if="isRedactionSettingLocked"
 										>{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}
 										<span
 											:class="$style['permission-notice-link']"
@@ -1341,6 +1357,9 @@ onBeforeUnmount(() => {
 											}}</span
 										></span
 									>
+									<span v-else>{{
+										i18n.baseText('workflowSettings.redactManualData.requiresProductionHint')
+									}}</span>
 								</template>
 								<N8nSelect
 									v-model="redactManualData"
@@ -1348,7 +1367,8 @@ onBeforeUnmount(() => {
 										!isDataRedactionLicensed ||
 										readOnlyEnv ||
 										!workflowPermissions.updateRedactionSetting ||
-										isRedactionSettingLocked
+										isRedactionSettingLocked ||
+										isManualRedactionDisabledByProduction
 									"
 									:placeholder="i18n.baseText('workflowSettings.selectOption')"
 									filterable
