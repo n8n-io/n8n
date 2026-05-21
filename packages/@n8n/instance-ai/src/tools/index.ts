@@ -13,6 +13,8 @@ import { createBrowserCredentialSetupTool } from './orchestration/browser-creden
 import { createBuildWorkflowAgentTool } from './orchestration/build-workflow-agent.tool';
 import { createCompleteCheckpointTool } from './orchestration/complete-checkpoint.tool';
 import { createDelegateTool } from './orchestration/delegate.tool';
+import { createEvalDataAgentTool } from './orchestration/eval-data-agent.tool';
+import { createEvalSetupAgentTool } from './orchestration/eval-setup-agent.tool';
 import { createPlanWithAgentTool } from './orchestration/plan-with-agent.tool';
 import { createPlanTool } from './orchestration/plan.tool';
 import { createReportVerificationVerdictTool } from './orchestration/report-verification-verdict.tool';
@@ -87,6 +89,8 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		[ORCHESTRATION_TOOL_IDS.DELEGATE, createDelegateTool(context)],
 		[ORCHESTRATION_TOOL_IDS.BUILD_WORKFLOW_WITH_AGENT, createBuildWorkflowAgentTool(context)],
 		[ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT, createCompleteCheckpointTool(context)],
+		[ORCHESTRATION_TOOL_IDS.EVAL_SETUP_WITH_AGENT, createEvalSetupAgentTool(context)],
+		[ORCHESTRATION_TOOL_IDS.EVAL_DATA, createEvalDataAgentTool(context)],
 	];
 
 	if (context.browserMcpConfig || hasGatewayBrowserTools(context)) {

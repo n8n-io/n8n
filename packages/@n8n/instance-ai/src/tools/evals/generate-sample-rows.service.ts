@@ -9,6 +9,8 @@ import { createEvalAgent, extractText, HAIKU_MODEL } from '../../utils/eval-agen
 const FACET_COUNT = 5;
 const DEFAULT_ROW_COUNT = 25;
 const SYSTEM_PROMPT_MAX_CHARS = 2000;
+const REAL_EXAMPLES_MAX_COUNT = 10;
+const REAL_EXAMPLE_VALUE_MAX_CHARS = 300;
 
 export interface SampleRowFacet {
 	length: string;
@@ -145,6 +147,52 @@ function buildAgentContextBlock(context: AgentContext | undefined): string {
 const FORMAT_INFERENCE =
 	"Inspect the agent's system prompt, prompt template, and connected tools to infer what kind of text this agent receives at runtime. It may be a user chat message, output from another tool, scraped web content, structured records (JSON/key-value), document chunks, log lines, code, etc. Generate inputs that look like what would arrive at the agent in production. Do not assume a human user when the agent suggests otherwise.";
 
+function truncateExampleValue(value: string): string {
+	return value.length > REAL_EXAMPLE_VALUE_MAX_CHARS
+		? `${value.slice(0, REAL_EXAMPLE_VALUE_MAX_CHARS)}…`
+		: value;
+}
+
+/**
+ * Render a small block of recent real inputs (filtered to the requested
+ * `columns`) as a reference for the LLM. Returns an empty string when no
+ * usable examples exist — the caller injects this block only when
+ * non-empty, so the generator keeps producing rows from agent context
+ * alone when history is missing.
+ *
+ * The directive is explicit that these are flavour reference, not seed
+ * data to copy: the generator must produce NEW inputs in the same domain
+ * and tone, not paraphrase the examples.
+ */
+function buildRealExamplesBlock(
+	examples: ReadonlyArray<Record<string, unknown>> | undefined,
+	columns: string[],
+): string {
+	if (!examples || examples.length === 0 || columns.length === 0) return '';
+	const filtered: Array<Record<string, string>> = [];
+	for (const example of examples.slice(0, REAL_EXAMPLES_MAX_COUNT)) {
+		const row: Record<string, string> = {};
+		let hasValue = false;
+		for (const col of columns) {
+			const raw = example[col];
+			if (raw === undefined || raw === null) continue;
+			const str = typeof raw === 'string' ? raw : JSON.stringify(raw);
+			if (str.length === 0) continue;
+			row[col] = truncateExampleValue(str);
+			hasValue = true;
+		}
+		if (hasValue) filtered.push(row);
+	}
+	if (filtered.length === 0) return '';
+	const numbered = filtered.map((row, i) => `${i + 1}. ${JSON.stringify(row)}`).join('\n');
+	return [
+		'',
+		'Recent real inputs the agent has received in production (REFERENCE, not seeds):',
+		numbered,
+		'Use these as a hint about the actual domain, tone and shape of inputs the agent sees. Do NOT copy or paraphrase them — produce NEW inputs that fit the same setting.',
+	].join('\n');
+}
+
 const BATCH_SYSTEM_INSTRUCTIONS = `You generate realistic test inputs for an n8n workflow evaluation dataset.
 
 Output: JSON array of objects. Keys = exactly the provided column names. Values = short strings. No prose outside the JSON.
@@ -158,6 +206,7 @@ export interface RunBatchInput {
 	rowCount: number;
 	context: AgentContext | undefined;
 	columns: string[];
+	realExamples?: ReadonlyArray<Record<string, unknown>>;
 	logger?: Pick<Logger, 'warn'>;
 }
 
@@ -194,17 +243,23 @@ export async function runBatch(input: RunBatchInput): Promise<Array<Record<strin
 			model: HAIKU_MODEL,
 			instructions: BATCH_SYSTEM_INSTRUCTIONS,
 		});
-		const userText = [
-			buildAgentContextBlock(input.context),
-			'',
-			FORMAT_INFERENCE,
-			'',
-			`Variation focus for this batch: length = ${input.facet.length}; mode = ${input.facet.edgeMode}.`,
-			input.facet.instructions,
-			'',
-			`Columns: ${generatedColumns.join(', ')}`,
-			`Generate exactly ${requestedRowCount} rows.`,
-		].join('\n');
+		const realExamplesBlock = buildRealExamplesBlock(input.realExamples, generatedColumns);
+		const sections = [buildAgentContextBlock(input.context)];
+		if (realExamplesBlock) sections.push(realExamplesBlock);
+		sections.push(FORMAT_INFERENCE);
+		sections.push(
+			[
+				`Variation focus for this batch: length = ${input.facet.length}; mode = ${input.facet.edgeMode}.`,
+				input.facet.instructions,
+			].join('\n'),
+		);
+		sections.push(
+			[
+				`Columns: ${generatedColumns.join(', ')}`,
+				`Generate exactly ${requestedRowCount} rows.`,
+			].join('\n'),
+		);
+		const userText = sections.join('\n\n');
 		const result = await agent.generate(userText);
 		const text = extractText(result);
 		const parsed: unknown = JSON.parse(stripMarkdownFences(text));
@@ -235,6 +290,15 @@ export interface GenerateSampleRowsInput {
 	columns: string[];
 	rowCount?: number;
 	targetAgentNodeName?: string;
+	/**
+	 * Recent real input rows extracted from the workflow's execution history.
+	 * When present (typically below the history threshold that would otherwise
+	 * have been used directly), they are passed to the LLM as a flavour
+	 * reference — rows are filtered to the requested `columns`, truncated, and
+	 * accompanied by an explicit "reference, not seed" directive so the
+	 * generator produces new in-domain inputs instead of paraphrasing them.
+	 */
+	realExamples?: ReadonlyArray<Record<string, unknown>>;
 	logger?: Pick<Logger, 'warn'>;
 }
 
@@ -270,6 +334,7 @@ export async function generateSampleRows(
 				rowCount: counts[i],
 				context,
 				columns: input.columns,
+				realExamples: input.realExamples,
 				logger: input.logger,
 			});
 		}),
