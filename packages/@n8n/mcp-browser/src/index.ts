@@ -1,5 +1,6 @@
 export { BrowserConnection } from './connection';
 export { createBrowserTools } from './tools/index';
+export { browserCreateCredentialSchema } from './tools/credential';
 export { configureLogger } from './logger';
 export type { LogLevel } from './logger';
 export { parseServerOptions } from './server-config';
