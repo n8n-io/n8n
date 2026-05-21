@@ -34,6 +34,7 @@ import {
 	ExecutionRepository,
 	In,
 	ProjectRelationRepository,
+	User,
 	UserRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -420,7 +421,7 @@ export class AgentsService {
 	async publishAgent(
 		agentId: string,
 		projectId: string,
-		userId: string,
+		user: User,
 		versionId?: string,
 	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
@@ -455,7 +456,7 @@ export class AgentsService {
 							agent.schema,
 							agent.skills ?? {},
 						),
-						publishedById: userId,
+						publishedBy: user,
 					},
 					trx,
 				);
@@ -487,7 +488,7 @@ export class AgentsService {
 				);
 		}
 
-		this.logger.debug('Published SDK agent', { agentId, projectId, userId });
+		this.logger.debug('Published SDK agent', { agentId, projectId, userId: user.id });
 
 		return agent;
 	}

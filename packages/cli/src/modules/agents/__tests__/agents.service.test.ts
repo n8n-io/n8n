@@ -7,6 +7,7 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -36,6 +37,8 @@ const agentId = 'agent-1';
 const projectId = 'project-1';
 const userId = 'user-1';
 const versionId = 'v1';
+const testUser = { id: userId, firstName: 'Test', lastName: 'User' } as User;
+const testUserAuthor = `${testUser.firstName} ${testUser.lastName}`;
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
@@ -60,6 +63,7 @@ function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
 		tools: null,
 		skills: null,
 		publishedById: null,
+		author: testUserAuthor,
 		...overrides,
 	} as unknown as AgentHistory;
 }
@@ -526,7 +530,9 @@ describe('AgentsService', () => {
 		it('throws NotFoundError when the agent does not exist', async () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 
-			await expect(service.publishAgent(agentId, projectId, userId)).rejects.toThrow(NotFoundError);
+			await expect(service.publishAgent(agentId, projectId, testUser)).rejects.toThrow(
+				NotFoundError,
+			);
 		});
 
 		it('calls saveVersion with the correct payload, using agent.versionId as the snapshot PK', async () => {
@@ -535,7 +541,7 @@ describe('AgentsService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			agentHistoryRepository.saveVersion.mockResolvedValue(history);
 
-			await service.publishAgent(agentId, projectId, userId);
+			await service.publishAgent(agentId, projectId, testUser);
 
 			expect(agentHistoryRepository.saveVersion).toHaveBeenCalledWith(
 				{
@@ -544,7 +550,7 @@ describe('AgentsService', () => {
 					schema: agent.schema,
 					tools: null,
 					skills: null,
-					publishedById: userId,
+					publishedBy: testUser,
 				},
 				mockTrx,
 			);
@@ -576,7 +582,7 @@ describe('AgentsService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			agentHistoryRepository.saveVersion.mockResolvedValue(makeAgentHistory());
 
-			await service.publishAgent(agentId, projectId, userId);
+			await service.publishAgent(agentId, projectId, testUser);
 
 			expect(agentHistoryRepository.saveVersion).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -600,7 +606,7 @@ describe('AgentsService', () => {
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			await expect(service.publishAgent(agentId, projectId, userId)).rejects.toThrow(
+			await expect(service.publishAgent(agentId, projectId, testUser)).rejects.toThrow(
 				'Cannot publish agent with missing skill bodies: missing_skill',
 			);
 		});
@@ -610,7 +616,7 @@ describe('AgentsService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			agentHistoryRepository.saveVersion.mockResolvedValue(makeAgentHistory());
 
-			await service.publishAgent(agentId, projectId, userId);
+			await service.publishAgent(agentId, projectId, testUser);
 
 			expect(agent.versionId).toMatch(
 				/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
@@ -625,7 +631,7 @@ describe('AgentsService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			agentHistoryRepository.saveVersion.mockResolvedValue(history);
 
-			const result = await service.publishAgent(agentId, projectId, userId);
+			const result = await service.publishAgent(agentId, projectId, testUser);
 
 			expect(result.activeVersion).toBe(history);
 			expect(result).toBe(agent);
@@ -638,7 +644,7 @@ describe('AgentsService', () => {
 				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 				agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(existingHistory);
 
-				await service.publishAgent(agentId, projectId, userId, 'v1');
+				await service.publishAgent(agentId, projectId, testUser, 'v1');
 
 				expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledWith(
 					'v1',
@@ -656,7 +662,7 @@ describe('AgentsService', () => {
 				agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(null);
 
 				await expect(
-					service.publishAgent(agentId, projectId, userId, 'foreign-version'),
+					service.publishAgent(agentId, projectId, testUser, 'foreign-version'),
 				).rejects.toThrow(NotFoundError);
 				expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
 			});
@@ -680,7 +686,7 @@ describe('AgentsService', () => {
 			chatIntegrationService.syncToConfig.mockResolvedValue(undefined);
 			Container.set(ChatIntegrationService, chatIntegrationService);
 
-			await service.publishAgent(agentId, projectId, userId);
+			await service.publishAgent(agentId, projectId, testUser);
 
 			expect(chatIntegrationService.syncToConfig).toHaveBeenCalledWith(
 				agent,
@@ -707,7 +713,7 @@ describe('AgentsService', () => {
 			chatIntegrationService.syncToConfig.mockResolvedValue(undefined);
 			Container.set(ChatIntegrationService, chatIntegrationService);
 
-			await service.publishAgent(agentId, projectId, userId);
+			await service.publishAgent(agentId, projectId, testUser);
 
 			expect(chatIntegrationService.syncToConfig).not.toHaveBeenCalled();
 		});

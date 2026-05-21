@@ -26,6 +26,7 @@ export class CreateAgentHistoryTable1784000000009 implements ReversibleMigration
 				column('tools').json,
 				column('skills').json,
 				column('publishedById').uuid,
+				column('author').varchar(255).notNull,
 			)
 			.withIndexOn('agentId')
 			.withForeignKey('agentId', {
@@ -51,11 +52,16 @@ export class CreateAgentHistoryTable1784000000009 implements ReversibleMigration
 		const agentHistoryTable = escape.tableName('agent_history');
 		const agentPublishedVersionTable = escape.tableName('agent_published_version');
 		const agentsTable = escape.tableName('agents');
+		const userTable = escape.tableName('user');
 
 		await runQuery(
-			`INSERT INTO ${agentHistoryTable} ("versionId", "agentId", "schema", "tools", "skills", "publishedById", "createdAt", "updatedAt")
-			 SELECT "publishedFromVersionId", "agentId", "schema", "tools", "skills", "publishedById", "createdAt", "updatedAt"
-			 FROM ${agentPublishedVersionTable}`,
+			`INSERT INTO ${agentHistoryTable} ("versionId", "agentId", "schema", "tools", "skills", "publishedById", "author", "createdAt", "updatedAt")
+			 SELECT apv."publishedFromVersionId", apv."agentId", apv."schema", apv."tools", apv."skills",
+			        apv."publishedById",
+			        COALESCE(u."firstName" || ' ' || u."lastName", 'Unknown'),
+			        apv."createdAt", apv."updatedAt"
+			 FROM ${agentPublishedVersionTable} apv
+			 LEFT JOIN ${userTable} u ON u."id" = apv."publishedById"`,
 		);
 
 		await runQuery(

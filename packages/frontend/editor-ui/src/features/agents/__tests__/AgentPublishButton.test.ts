@@ -84,7 +84,7 @@ const activeVersion: AgentVersion = {
 	versionId: 'v1',
 	schema: null,
 	skills: null,
-	publishedById: null,
+	author: 'Test User',
 };
 
 function createAgent(overrides: Partial<AgentResource> = {}): AgentResource {

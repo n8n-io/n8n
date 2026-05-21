@@ -1,6 +1,6 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import { type AgentJsonConfig, type AgentSkill } from '@n8n/api-types';
-import { JsonColumn, User, WithTimestamps } from '@n8n/db';
+import { JsonColumn, WithTimestamps } from '@n8n/db';
 import {
 	Column,
 	Entity,
@@ -46,10 +46,19 @@ export class AgentHistory extends WithTimestamps {
 	@JsonColumn({ nullable: true, default: null })
 	skills: Record<string, AgentSkill> | null;
 
+	/**
+	 * Runtime pointer to the publishing user. Auto-nulls when the user is
+	 * deleted (DB FK with ON DELETE SET NULL). Read by the schedule trigger
+	 * and the published-runtime loader to resolve an execution identity.
+	 */
 	@Column({ type: 'uuid', nullable: true })
 	publishedById: string | null;
 
-	@ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
-	@JoinColumn({ name: 'publishedById' })
-	publishedBy?: User | null;
+	/**
+	 * Denormalized human-readable attribution, frozen at publish time.
+	 * Survives user deletion and rename — the version timeline shows the
+	 * name the publisher had at the time of publish.
+	 */
+	@Column()
+	author: string;
 }

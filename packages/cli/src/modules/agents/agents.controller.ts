@@ -403,7 +403,7 @@ export class AgentsController {
 		const agent = await this.agentsService.publishAgent(
 			agentId,
 			req.params.projectId,
-			req.user.id,
+			req.user,
 			payload?.versionId,
 		);
 		return await this.withRunnableState(agent, req.params.projectId, req.user);

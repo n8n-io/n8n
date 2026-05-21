@@ -70,7 +70,7 @@ export interface AgentVersionDto {
 	versionId: string;
 	schema: AgentJsonConfig | null;
 	skills: Record<string, AgentSkill> | null;
-	publishedById: string | null;
+	author: string;
 }
 
 export interface AgentPersistedMessageContentPart {

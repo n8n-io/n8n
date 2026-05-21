@@ -104,7 +104,7 @@ describe('CreateAgentHistoryTable Migration', () => {
 		data: {
 			agentId: string;
 			publishedFromVersionId: string;
-			publishedById: string;
+			publishedById: string | null;
 			schema: Record<string, unknown>;
 		},
 	): Promise<void> {
@@ -163,14 +163,20 @@ describe('CreateAgentHistoryTable Migration', () => {
 				const agentsTable = context.escape.tableName('agents');
 
 				const historyRows = await context.runQuery<
-					Array<{ versionId: string; agentId: string; publishedById: string }>
-				>(`SELECT "versionId", "agentId", "publishedById" FROM ${historyTable}`);
+					Array<{
+						versionId: string;
+						agentId: string;
+						publishedById: string;
+						author: string;
+					}>
+				>(`SELECT "versionId", "agentId", "publishedById", "author" FROM ${historyTable}`);
 
 				expect(historyRows).toHaveLength(1);
 				expect(historyRows[0]).toEqual({
 					versionId: publishedVersionId,
 					agentId: publishedAgentId,
 					publishedById: userId,
+					author: 'Test User',
 				});
 
 				const publishedAgentRow = await context.runQuery<Array<{ activeVersionId: string | null }>>(
@@ -185,6 +191,38 @@ describe('CreateAgentHistoryTable Migration', () => {
 					id: unpublishedAgentId,
 				});
 				expect(unpublishedAgentRow[0].activeVersionId).toBeNull();
+			});
+		});
+
+		it('falls back to "Unknown" when the published version has no publisher to join to', async () => {
+			const projectId = randomUUID();
+			const agentId = randomUUID();
+			const versionId = randomUUID();
+
+			await withContext(async (context) => {
+				await insertProject(context, projectId);
+				await insertAgent(context, { id: agentId, projectId, versionId });
+				await insertPublishedVersion(context, {
+					agentId,
+					publishedFromVersionId: versionId,
+					publishedById: null,
+					schema: { name: 'Orphan Agent' },
+				});
+			});
+
+			await runSingleMigration(MIGRATION_NAME);
+			dataSource = Container.get(DataSource);
+
+			await withContext(async (context) => {
+				const historyTable = context.escape.tableName('agent_history');
+				const rows = await context.runQuery<
+					Array<{ publishedById: string | null; author: string }>
+				>(`SELECT "publishedById", "author" FROM ${historyTable} WHERE "agentId" = :id`, {
+					id: agentId,
+				});
+				expect(rows).toHaveLength(1);
+				expect(rows[0].publishedById).toBeNull();
+				expect(rows[0].author).toBe('Unknown');
 			});
 		});
 
