@@ -6,6 +6,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import {
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
+	DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
 } from '../constants';
 import type { AgentJsonConfig } from '../types';
 
@@ -36,7 +37,7 @@ function onEnableMemory() {
 			...existingMemory,
 			enabled: true,
 			storage: 'n8n',
-			lastMessages: existingMemory?.lastMessages ?? 10,
+			lastMessages: existingMemory?.lastMessages ?? DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
 		},
 	});
 }
@@ -67,7 +68,7 @@ function enableEpisodicMemory(credentialId: string) {
 			...existingMemory,
 			enabled: true,
 			storage: 'n8n',
-			lastMessages: existingMemory?.lastMessages ?? 10,
+			lastMessages: existingMemory?.lastMessages ?? DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
 			episodicMemory: {
 				...(existingEpisodicMemory?.enabled === true ? existingEpisodicMemory : {}),
 				enabled: true,
