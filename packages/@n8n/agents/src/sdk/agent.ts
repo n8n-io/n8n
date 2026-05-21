@@ -73,6 +73,8 @@ export interface AgentSnapshot {
 	hasMemory: boolean;
 	/** True when observation-log memory has been configured on the memory builder. */
 	hasObservationalMemory: boolean;
+	/** True when episodic memory has been configured on the memory builder. */
+	hasEpisodicMemory: boolean;
 	/** The thinking config if set, otherwise null. */
 	thinking: ThinkingConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
@@ -561,6 +563,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			tools: this.tools.map((t) => ({ name: t.name, description: t.description })),
 			hasMemory: this.memoryConfig !== undefined,
 			hasObservationalMemory: this.memoryConfig?.observationalMemory !== undefined,
+			hasEpisodicMemory: this.memoryConfig?.episodicMemory !== undefined,
 			thinking: this.thinkingConfig ?? null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
 			requireToolApproval: this.requireToolApprovalValue,
@@ -828,6 +831,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			lastMessages: memoryConfig?.lastMessages,
 			observationLog: memoryConfig?.observationLog,
 			observationalMemory: memoryConfig?.observationalMemory,
+			episodicMemory: memoryConfig?.episodicMemory,
 			semanticRecall: memoryConfig?.semanticRecall,
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
