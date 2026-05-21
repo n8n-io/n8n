@@ -72,23 +72,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function isToolResultOutput(value: JSONValue): value is ToolResultPart['output'] {
-	if (!isRecord(value) || typeof value.type !== 'string') return false;
+type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
 
-	switch (value.type) {
-		case 'text':
-		case 'error-text':
-			return typeof value.value === 'string';
-		case 'json':
-		case 'error-json':
-			return 'value' in value;
-		case 'execution-denied':
-			return !('reason' in value) || typeof value.reason === 'string';
-		case 'content':
-			return Array.isArray(value.value);
-		default:
-			return false;
-	}
+function isContentToolResultOutput(value: JSONValue): value is ContentToolResultOutput {
+	return isRecord(value) && value.type === 'content' && Array.isArray(value.value);
 }
 
 /** Convert a single n8n MessageContent block to an AI SDK content part. */
@@ -129,7 +116,7 @@ function toolCallToResultPart(
 			type: 'tool-result',
 			toolCallId: block.toolCallId,
 			toolName: block.toolName,
-			output: isToolResultOutput(block.output)
+			output: isContentToolResultOutput(block.output)
 				? block.output
 				: { type: 'json', value: block.output },
 		};
