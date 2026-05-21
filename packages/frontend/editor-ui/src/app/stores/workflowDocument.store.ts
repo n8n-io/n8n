@@ -211,7 +211,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 
 		workflowDocumentNodes.onNodesChange((event) => {
 			if (event.action !== CHANGE_ACTION.DELETE) return;
-			// removeAllNodes fires DELETE with empty payload; clearNodeGroups handles it explicitly.
 			const { id } = event.payload as NodeRemovedPayload;
 			if (id) workflowDocumentNodeGroups.removeNodeFromGroups(id);
 		});

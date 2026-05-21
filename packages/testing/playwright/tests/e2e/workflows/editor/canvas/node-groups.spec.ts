@@ -22,7 +22,7 @@ const requirements: TestRequirements = {
 test.describe(
 	'Canvas node groups',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Adore' }],
 	},
 	() => {
 		let workflowId: string;
@@ -205,7 +205,7 @@ test.describe(
 test.describe(
 	'Canvas node groups loaded from API',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Adore' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n, setupRequirements }) => {

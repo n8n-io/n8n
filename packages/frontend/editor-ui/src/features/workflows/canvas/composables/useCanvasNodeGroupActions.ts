@@ -31,7 +31,6 @@ export function useCanvasNodeGroupActions(
 
 	const canGroup = computed(() => {
 		if (isReadOnly.value) return false;
-		if (expandedSelectionIds.value.length < 2) return false;
 		if (anyMemberGrouped.value) return false;
 		return isSelectionGroupable(expandedSelectionIds.value).valid;
 	});

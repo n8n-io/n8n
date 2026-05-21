@@ -14,8 +14,6 @@ import {
 	GROUP_HEADER_HEIGHT as HEADER_HEIGHT,
 } from '../../../stores/canvasNodeGroups.constants';
 
-// Matches the `var(--spacing--sm)` horizontal padding on the header (16px each side).
-const HEADER_PADDING_X = 16;
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
 
 const props = withDefaults(
@@ -59,10 +57,6 @@ const layout = computed(() => {
 		frameHeight: rect.height + PADDING_Y_TOP + PADDING_Y_BOTTOM,
 	};
 });
-
-const titleMaxWidth = computed(() =>
-	Math.max(0, (layout.value?.width ?? 0) - 2 * HEADER_PADDING_X),
-);
 
 function onTitleUpdate(value: string) {
 	emit('update:name', props.group.id, value);
@@ -140,7 +134,7 @@ watch(
 					:model-value="group.name"
 					:read-only="readOnly"
 					:min-width="0"
-					:max-width="titleMaxWidth"
+					max-width="100%"
 					:placeholder="i18n.baseText('canvas.nodeGroup.titlePlaceholder')"
 					@update:model-value="onTitleUpdate"
 					@mousedown.stop
