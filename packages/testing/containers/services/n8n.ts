@@ -173,8 +173,10 @@ async function createContainer(
 	const { projectName, environment, network, resourceQuota, filesToMount, coverageHostDir } =
 		shared;
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
+	// When n8n is hosted under a custom base path, the readiness endpoint moves with it
+	const basePath = (environment.N8N_BASE_PATH ?? '').replace(/\/+$/, '');
 	const { strategy: waitStrategy, getLastBody: getLastReadinessBody } = createReadinessProbe(
-		'/healthz/readiness',
+		`${basePath}/healthz/readiness`,
 		N8N_READINESS_PORT,
 		{ startupTimeoutMs: N8N_STARTUP_TIMEOUT_MS, readTimeoutMs: N8N_READ_TIMEOUT_MS },
 	);
