@@ -83,6 +83,7 @@ export class ClientOAuth2Token {
 		const body: Record<string, string> = {
 			refresh_token: this.refreshToken,
 			grant_type: 'refresh_token',
+			...(options.resource ? { resource: options.resource } : {}),
 		};
 
 		// Handle different authentication methods
