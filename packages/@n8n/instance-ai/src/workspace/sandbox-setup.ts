@@ -26,7 +26,11 @@ import { createRequire } from 'node:module';
 
 import type { Logger } from '../logger';
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
-import { isLinkWorkspaceSdkEnabled } from './pack-workspace-sdk';
+import {
+	isLinkWorkspaceSdkEnabled,
+	packWorkspaceSdk,
+	type WorkspaceSdkTarball,
+} from './pack-workspace-sdk';
 import {
 	runInSandbox,
 	readFileViaSandbox,
@@ -36,6 +40,44 @@ import {
 } from './sandbox-fs';
 
 const hostRequire = createRequire(__filename);
+const NOOP_LOGGER: Logger = {
+	info: () => {},
+	warn: () => {},
+	error: () => {},
+	debug: () => {},
+};
+
+type SandboxWorkspaceSetupStep =
+	| 'resolve-workspace-root'
+	| 'read-initialization-marker'
+	| 'list-node-types'
+	| 'write-workspace-files'
+	| 'write-curated-examples'
+	| 'install-dependencies'
+	| 'link-workspace-sdk'
+	| 'write-initialization-marker';
+
+function getErrorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
+
+export class SandboxWorkspaceSetupError extends Error {
+	constructor(
+		readonly step: SandboxWorkspaceSetupStep,
+		readonly originalError: unknown,
+	) {
+		super(`Sandbox workspace setup failed during ${step}: ${getErrorMessage(originalError)}`);
+		this.name = 'SandboxWorkspaceSetupError';
+	}
+}
+
+async function setupStep<T>(step: SandboxWorkspaceSetupStep, action: () => Promise<T>): Promise<T> {
+	try {
+		return await action();
+	} catch (error) {
+		throw new SandboxWorkspaceSetupError(step, error);
+	}
+}
 
 export const WORKSPACE_DIR = 'workspace';
 
@@ -163,6 +205,61 @@ function buildLocalProviderPackageJson(): string {
 	return buildPackageJson(`file:${sdkPath}`);
 }
 
+function getSandboxProvider(workspace: SandboxWorkspace): string | undefined {
+	return workspace.filesystem?.provider ?? workspace.sandbox?.provider;
+}
+
+function buildWorkspacePackageJson(workspace: SandboxWorkspace): string {
+	return getSandboxProvider(workspace) === 'local' ? buildLocalProviderPackageJson() : PACKAGE_JSON;
+}
+
+let sdkTarballPromise: Promise<WorkspaceSdkTarball | null> | null = null;
+
+export async function linkWorkspaceSdkIfEnabled(
+	workspace: SandboxWorkspace,
+	root: string,
+	logger?: Logger,
+): Promise<void> {
+	if (!isLinkWorkspaceSdkEnabled() || getSandboxProvider(workspace) === 'local') return;
+
+	sdkTarballPromise ??= packWorkspaceSdk(logger ?? NOOP_LOGGER).catch((error: unknown) => {
+		sdkTarballPromise = null;
+		throw error;
+	});
+	const packed = await sdkTarballPromise;
+	if (!packed) {
+		sdkTarballPromise = null;
+		throw new Error(
+			'N8N_INSTANCE_AI_SANDBOX_LINK_SDK is enabled, but the workspace SDK could not be packed. Run `pnpm build` in packages/@n8n/workflow-sdk or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
+		);
+	}
+
+	const remotePath = `${root}/${packed.filename}`;
+	if (workspace.filesystem) {
+		await writeWorkspaceFile(workspace, workspace.filesystem, remotePath, packed.tarball);
+	} else {
+		await writeFileViaSandbox(workspace, remotePath, packed.tarball);
+	}
+
+	const install = await runInSandbox(
+		workspace,
+		`npm install '${escapeSingleQuotes(remotePath)}' --no-save --ignore-scripts --force`,
+		root,
+	);
+	if (install.exitCode !== 0) {
+		logger?.error('Failed to link workspace SDK into sandbox', {
+			exitCode: install.exitCode,
+			stderr: install.stderr,
+		});
+		throw new Error(`Failed to install workspace SDK tarball: ${install.stderr}`);
+	}
+
+	logger?.info('Linked workspace SDK into sandbox', {
+		version: packed.version,
+		sdkPath: packed.sdkPath,
+	});
+}
+
 /**
  * Runner script that executes a workflow TS file via tsx, calls validate() + toJSON(),
  * and outputs structured JSON to stdout. Executed via: node --import tsx build.mjs ./src/workflow.ts
@@ -241,13 +338,14 @@ async function writeWorkspaceFiles(
 		// `writeFile` only creates parent dirs as a side-effect of writing a file.
 		await Promise.all(
 			ALWAYS_PRESENT_DIRS.map(
-				async (dir) => await filesystem.mkdir(`${root}/${dir}`, { recursive: true }),
+				async (dir) => await createWorkspaceDirectory(workspace, filesystem, `${root}/${dir}`),
 			),
 		);
 		await Promise.all(
-			[...files].map(async ([path, content]) => {
-				await filesystem.writeFile(`${root}/${path}`, content, { recursive: true });
-			}),
+			[...files].map(
+				async ([path, content]) =>
+					await writeWorkspaceFile(workspace, filesystem, `${root}/${path}`, content),
+			),
 		);
 		return;
 	}
@@ -262,6 +360,48 @@ async function writeWorkspaceFiles(
 
 	for (const [path, content] of files) {
 		await writeFileViaSandbox(workspace, `${root}/${path}`, content);
+	}
+}
+
+type WorkspaceFilesystem = NonNullable<SandboxWorkspace['filesystem']>;
+
+async function createWorkspaceDirectory(
+	workspace: SandboxWorkspace,
+	filesystem: WorkspaceFilesystem,
+	path: string,
+): Promise<void> {
+	try {
+		await filesystem.mkdir(path, { recursive: true });
+	} catch (error) {
+		try {
+			const result = await runInSandbox(workspace, `mkdir -p '${escapeSingleQuotes(path)}'`);
+			if (result.exitCode === 0) return;
+
+			throw new Error(result.stderr || `mkdir exited with code ${result.exitCode}`);
+		} catch (fallbackError) {
+			throw new Error(
+				`Failed to create sandbox workspace directory "${path}": ${getErrorMessage(error)}; command fallback failed: ${getErrorMessage(fallbackError)}`,
+			);
+		}
+	}
+}
+
+async function writeWorkspaceFile(
+	workspace: SandboxWorkspace,
+	filesystem: WorkspaceFilesystem,
+	path: string,
+	content: string | Buffer,
+): Promise<void> {
+	try {
+		await filesystem.writeFile(path, content, { recursive: true });
+	} catch (error) {
+		try {
+			await writeFileViaSandbox(workspace, path, content);
+		} catch (fallbackError) {
+			throw new Error(
+				`Failed to write sandbox workspace file "${path}": ${getErrorMessage(error)}; command fallback failed: ${getErrorMessage(fallbackError)}`,
+			);
+		}
 	}
 }
 
@@ -350,11 +490,17 @@ export async function setupSandboxWorkspace(
 	workspace: SandboxWorkspace,
 	context: InstanceAiContext,
 ): Promise<boolean> {
-	const root = await getWorkspaceRoot(workspace);
+	const root = await setupStep(
+		'resolve-workspace-root',
+		async () => await getWorkspaceRoot(workspace),
+	);
 	const markerFile = `${root}/.sandbox-initialized`;
 
 	// Check marker file for idempotency
-	const marker = await readFileViaSandbox(workspace, markerFile);
+	const marker = await setupStep(
+		'read-initialization-marker',
+		async () => await readFileViaSandbox(workspace, markerFile),
+	);
 	if (marker !== null) return false;
 
 	// ── Collect all files ──────────────────────────────────────────────────
@@ -365,12 +511,15 @@ export async function setupSandboxWorkspace(
 	// its workspace location via `file:` — this makes SDK changes visible in
 	// the sandbox after `pnpm build`, without a publish. Daytona/n8n-sandbox
 	// stay on the registry-pinned PACKAGE_JSON (they can't see the host FS).
-	files.set('package.json', buildLocalProviderPackageJson());
+	files.set('package.json', buildWorkspacePackageJson(workspace));
 	files.set('tsconfig.json', TSCONFIG_JSON);
 	files.set('build.mjs', BUILD_MJS);
 
 	// Node types catalog
-	const nodeTypes = await context.nodeService.listSearchable();
+	const nodeTypes = await setupStep(
+		'list-node-types',
+		async () => await context.nodeService.listSearchable(),
+	);
 	const catalogLines = nodeTypes.map(formatNodeCatalogLine);
 	files.set('node-types/index.txt', catalogLines.join('\n'));
 
@@ -394,19 +543,36 @@ export async function setupSandboxWorkspace(
 
 	// ── Write workspace files ──────────────────────────────────────────────
 
-	await writeWorkspaceFiles(workspace, root, files);
-	await writeCuratedExamples(workspace, context.logger);
+	await setupStep(
+		'write-workspace-files',
+		async () => await writeWorkspaceFiles(workspace, root, files),
+	);
+	await setupStep(
+		'write-curated-examples',
+		async () => await writeCuratedExamples(workspace, context.logger),
+	);
 
 	// npm install (must run after package.json is in place)
-	const npmResult = await runInSandbox(workspace, 'npm install --ignore-scripts', root);
-	if (npmResult.exitCode !== 0) {
-		throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
-	}
+	await setupStep('install-dependencies', async () => {
+		const npmResult = await runInSandbox(workspace, 'npm install --ignore-scripts', root);
+		if (npmResult.exitCode !== 0) {
+			throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
+		}
+	});
 
-	await writeWorkspaceFiles(
-		workspace,
-		root,
-		new Map([['.sandbox-initialized', new Date().toISOString()]]),
+	await setupStep(
+		'link-workspace-sdk',
+		async () => await linkWorkspaceSdkIfEnabled(workspace, root, context.logger),
+	);
+
+	await setupStep(
+		'write-initialization-marker',
+		async () =>
+			await writeWorkspaceFiles(
+				workspace,
+				root,
+				new Map([['.sandbox-initialized', new Date().toISOString()]]),
+			),
 	);
 
 	return true;

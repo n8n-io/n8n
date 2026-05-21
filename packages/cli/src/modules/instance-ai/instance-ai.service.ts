@@ -12,11 +12,11 @@ import {
 	type ToolCategory,
 	type TaskList,
 } from '@n8n/api-types';
-import type { Message } from '@n8n/agents';
+import type { Message, Workspace } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
-import { ErrorReporter, InstanceSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 
 import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
@@ -28,14 +28,14 @@ import {
 	createAllTools,
 	createSandbox,
 	createWorkspace,
+	createLazyRuntimeWorkspace,
+	setupSandboxWorkspace,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
 	continueInstanceAiTraceContext,
 	createInstanceAiLivenessPolicyConfig,
 	InstanceAiLivenessPolicy,
 	McpClientManager,
-	BuilderSandboxFactory,
-	SnapshotManager,
 	createDomainAccessTracker,
 	BackgroundTaskManager,
 	buildAgentTreeFromEvents,
@@ -49,7 +49,6 @@ import {
 	TerminalOutcomeStorage,
 	applyPlannedTaskPermissions,
 	PLANNED_TASK_PERMISSION_OVERRIDES,
-	BuilderSandboxSessionRegistry,
 	releaseTraceClient,
 	submitLangsmithUserFeedback,
 	resumeAgentRun,
@@ -65,6 +64,7 @@ import {
 	type ConfirmationData,
 	type BuiltMemory,
 	type DomainAccessTracker,
+	type InstanceAiContext,
 	type ManagedBackgroundTask,
 	type McpServerConfig,
 	type ModelConfig,
@@ -146,6 +146,13 @@ function isTextMessagePart(part: unknown): part is { type: 'text'; text: string 
 }
 
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
+
+type RuntimeSandboxEntry = {
+	sandbox: NonNullable<Awaited<ReturnType<typeof createSandbox>>>;
+	workspace: NonNullable<ReturnType<typeof createWorkspace>>;
+	setupComplete: boolean;
+	setupPromise: Promise<void> | undefined;
+};
 
 function getUserFacingErrorMessage(error: unknown): string {
 	if (error instanceof UserError) {
@@ -406,8 +413,6 @@ export class InstanceAiService {
 		MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD,
 	);
 
-	private readonly builderSandboxSessions: BuilderSandboxSessionRegistry;
-
 	/** Trace contexts keyed by the n8n run ID that started the orchestration turn. */
 	private readonly traceContextsByRunId = new Map<
 		string,
@@ -418,14 +423,11 @@ export class InstanceAiService {
 			traceSlug?: string;
 		}
 	>();
-	/** Active sandboxes keyed by thread ID — persisted across messages within a conversation. */
-	private readonly sandboxes = new Map<
-		string,
-		{
-			sandbox: Awaited<ReturnType<typeof createSandbox>>;
-			workspace: ReturnType<typeof createWorkspace>;
-		}
-	>();
+	/** Shared runtime workspaces keyed by thread ID. Used by the active run and its sub-agents. */
+	private readonly sandboxes = new Map<string, RuntimeSandboxEntry>();
+
+	/** In-flight runtime workspace creations keyed by thread ID. */
+	private readonly sandboxCreations = new Map<string, Promise<RuntimeSandboxEntry | undefined>>();
 
 	/** Per-user Local Gateway connections. Handles pairing tokens, session keys, and tool dispatch. */
 	private readonly gatewayRegistry = new LocalGatewayRegistry();
@@ -488,7 +490,6 @@ export class InstanceAiService {
 		private readonly telemetry: Telemetry,
 		private readonly userRepository: UserRepository,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
-		private readonly errorReporter: ErrorReporter,
 		ssrfProtectionConfig: SsrfProtectionConfig,
 		ssrfProtectionService: SsrfProtectionService,
 		private readonly eventService: EventService,
@@ -509,9 +510,6 @@ export class InstanceAiService {
 				void this.finalizeCancelledSuspendedRun(suspended, reason);
 			},
 		});
-		this.builderSandboxSessions = new BuilderSandboxSessionRegistry(
-			this.instanceAiConfig.builderSandboxTtlMs,
-		);
 		this.defaultTimeZone = globalConfig.generic.timezone;
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.oauth2CallbackUrl = `${this.urlService.getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`;
@@ -636,49 +634,92 @@ export class InstanceAiService {
 		return base;
 	}
 
-	private async createBuilderFactory(user: User): Promise<BuilderSandboxFactory | undefined> {
-		const config = await this.resolveSandboxConfig(user);
-		if (!config.enabled) return undefined;
-
-		if (config.provider === 'daytona') {
-			return new BuilderSandboxFactory(
-				config,
-				new SnapshotManager(config.image, this.logger, config.n8nVersion, this.errorReporter),
-				this.logger,
-				this.errorReporter,
-			);
+	/** Get or create the shared runtime sandbox + workspace for a thread. */
+	private async getOrCreateWorkspace(
+		threadId: string,
+		user: User,
+		context: InstanceAiContext,
+	): Promise<RuntimeSandboxEntry | undefined> {
+		const existing = this.sandboxes.get(threadId);
+		if (existing) {
+			await this.ensureWorkspaceSetup(existing, context);
+			return existing;
 		}
 
-		return new BuilderSandboxFactory(config, undefined, this.logger);
+		const pending = this.sandboxCreations.get(threadId);
+		if (pending) {
+			const entry = await pending;
+			if (entry) await this.ensureWorkspaceSetup(entry, context);
+			return entry;
+		}
+
+		const creation = this.createWorkspaceEntry(threadId, user);
+		this.sandboxCreations.set(threadId, creation);
+		try {
+			const entry = await creation;
+			if (entry) await this.ensureWorkspaceSetup(entry, context);
+			return entry;
+		} finally {
+			this.sandboxCreations.delete(threadId);
+		}
 	}
 
-	/** Get or create a sandbox + workspace for a thread. Returns undefined when sandbox is disabled. */
-	private async getOrCreateWorkspace(threadId: string, user: User) {
-		const existing = this.sandboxes.get(threadId);
-		if (existing) return existing;
+	private async ensureWorkspaceSetup(
+		entry: RuntimeSandboxEntry,
+		context: InstanceAiContext,
+	): Promise<void> {
+		if (entry.setupComplete) return;
 
+		entry.setupPromise ??= setupSandboxWorkspace(entry.workspace, context)
+			.then(() => {
+				entry.setupComplete = true;
+			})
+			.finally(() => {
+				entry.setupPromise = undefined;
+			});
+
+		await entry.setupPromise;
+	}
+
+	private async createWorkspaceEntry(
+		threadId: string,
+		user: User,
+	): Promise<RuntimeSandboxEntry | undefined> {
 		const config = await this.resolveSandboxConfig(user);
 		if (!config.enabled) return undefined;
 
 		const sandbox = await createSandbox(config);
 		const workspace = createWorkspace(sandbox);
 		if (!sandbox || !workspace) return undefined;
+		try {
+			await workspace.init();
+		} catch (error) {
+			try {
+				await workspace.destroy();
+			} catch {
+				// Best-effort cleanup when the sandbox cannot start
+			}
+			throw error;
+		}
 
-		const entry = { sandbox, workspace };
+		const entry: RuntimeSandboxEntry = {
+			sandbox,
+			workspace,
+			setupComplete: false,
+			setupPromise: undefined,
+		};
 		this.sandboxes.set(threadId, entry);
 		return entry;
 	}
 
-	/** Destroy and remove the sandbox for a thread. */
+	/** Destroy and remove the shared runtime workspace for a thread. */
 	private async destroySandbox(threadId: string): Promise<void> {
 		const entry = this.sandboxes.get(threadId);
 		if (!entry?.sandbox) return;
 
 		this.sandboxes.delete(threadId);
 		try {
-			if ('destroy' in entry.sandbox && typeof entry.sandbox.destroy === 'function') {
-				await (entry.sandbox.destroy as () => Promise<void>)();
-			}
+			await entry.workspace?.destroy();
 		} catch (error) {
 			this.logger.warn('Failed to destroy sandbox', {
 				threadId,
@@ -1679,7 +1720,6 @@ export class InstanceAiService {
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.threadPushRef.delete(threadId);
 		this.deleteTraceContextsForThread(threadId);
-		await this.builderSandboxSessions.cleanupThread(threadId, 'thread_cleared');
 		await this.destroySandbox(threadId);
 		await this.reapAiTemporaryForThreadCleanup(threadId);
 		this.eventBus.clearThread(threadId);
@@ -1725,10 +1765,7 @@ export class InstanceAiService {
 		const sandboxCleanups = [...this.sandboxes.keys()].map(
 			async (threadId) => await this.destroySandbox(threadId),
 		);
-		await Promise.allSettled([
-			...sandboxCleanups,
-			this.builderSandboxSessions.cleanupAll('service_shutdown'),
-		]);
+		await Promise.allSettled(sandboxCleanups);
 
 		this.domainAccessTrackersByThread.clear();
 		this.traceContextsByRunId.clear();
@@ -2290,8 +2327,8 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		pushRef?: string,
 	) {
-		const localGatewayDisabledGlobally =
-			this.settingsService.getAdminSettings().localGatewayDisabled;
+		const adminSettings = this.settingsService.getAdminSettings();
+		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
 		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
 			user.id,
 		);
@@ -2392,7 +2429,24 @@ export class InstanceAiService {
 		}
 
 		const domainTools = createAllTools(context);
-		const sandboxEntry = await this.getOrCreateWorkspace(threadId, user);
+		let runtimeWorkspace: Workspace | undefined;
+		if (adminSettings.sandboxEnabled) {
+			let sandboxEntryPromise: Promise<RuntimeSandboxEntry | undefined> | undefined;
+			const getSandboxEntry = async () => {
+				sandboxEntryPromise ??= this.getOrCreateWorkspace(threadId, user, context).catch(
+					(error: unknown) => {
+						sandboxEntryPromise = undefined;
+						throw error;
+					},
+				);
+
+				return await sandboxEntryPromise;
+			};
+
+			runtimeWorkspace = createLazyRuntimeWorkspace({
+				ensureWorkspace: async () => (await getSandboxEntry())?.workspace,
+			});
+		}
 
 		const orchestrationContext: OrchestrationContext = {
 			threadId,
@@ -2449,9 +2503,7 @@ export class InstanceAiService {
 			sendCorrectionToTask: (taskId, correction) =>
 				this.sendCorrectionToTask(threadId, taskId, correction),
 			workflowTaskService: workflowTasks,
-			workspace: sandboxEntry?.workspace,
-			builderSandboxFactory: await this.createBuilderFactory(user),
-			builderSandboxSessionRegistry: this.builderSandboxSessions,
+			workspace: runtimeWorkspace,
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 			tracingProxyConfig,
@@ -2468,7 +2520,6 @@ export class InstanceAiService {
 			plannedTaskService,
 			modelId,
 			orchestrationContext,
-			sandboxEntry,
 		};
 	}
 

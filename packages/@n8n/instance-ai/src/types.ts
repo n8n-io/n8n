@@ -26,7 +26,6 @@ import type { DomainAccessTracker } from './domain-access/domain-access-tracker'
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { McpClientManager } from './mcp/mcp-client-manager';
-import type { BuilderSandboxSessionRegistry } from './runtime/builder-sandbox-session-registry';
 import type { IterationLog } from './storage/iteration-log';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
@@ -35,7 +34,6 @@ import type {
 	WorkflowLoopAction,
 	WorkflowLoopState,
 } from './workflow-loop/workflow-loop-state';
-import type { BuilderSandboxFactory } from './workspace/builder-sandbox-factory';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -1048,12 +1046,8 @@ export interface OrchestrationContext {
 	plannedTaskService?: PlannedTaskService;
 	/** Run one scheduler pass after plan/task state changes. */
 	schedulePlannedTasks?: () => Promise<void>;
-	/** Sandbox workspace — when present, enables sandbox-based workflow building */
+	/** Shared runtime workspace for the current orchestration context. */
 	workspace?: Workspace;
-	/** Factory for creating per-builder ephemeral sandboxes from a pre-warmed snapshot */
-	builderSandboxFactory?: BuilderSandboxFactory;
-	/** Process-local registry for retaining recently finished builder sandboxes. */
-	builderSandboxSessionRegistry?: BuilderSandboxSessionRegistry;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
 	/** Native memory store — used to retrieve thread message history for sub-agents. */
@@ -1115,12 +1109,7 @@ export interface CreateInstanceAgentOptions {
 	 * Intended for tests and fallback paths that need the full toolset visible immediately.
 	 */
 	disableDeferredTools?: boolean;
-	/**
-	 * @deprecated Ignored by the orchestrator. Passing a workspace here used to auto-register
-	 * workspace tools on the orchestrator, which the LLM abused as a `sleep` primitive
-	 * and mis-routed for build-task polling. Sandbox access is now scoped to the workflow-builder
-	 * subagent via `builderSandboxFactory`; `orchestrationContext.workspace` still flows to it.
-	 */
+	/** @deprecated Use `orchestrationContext.workspace` for the shared runtime workspace. */
 	workspace?: Workspace;
 	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Falls back to instance default. */
 	timeZone?: string;

@@ -1,0 +1,123 @@
+import {
+	Workspace,
+	type CommandResult,
+	type WorkspaceFilesystem,
+	type WorkspaceSandbox,
+} from '@n8n/agents';
+
+import { createLazyRuntimeWorkspace } from '../lazy-runtime-workspace';
+
+function createMockWorkspace() {
+	const executeCommand = jest.fn<
+		Promise<CommandResult>,
+		Parameters<NonNullable<WorkspaceSandbox['executeCommand']>>
+	>(
+		async (_command, _args, options) =>
+			await Promise.resolve({
+				success: true,
+				exitCode: 0,
+				stdout: options?.env?.CUSTOM_ENV ?? '',
+				stderr: '',
+				executionTimeMs: 1,
+			}),
+	);
+	const filesystem: WorkspaceFilesystem = {
+		id: 'fs',
+		name: 'Filesystem',
+		provider: 'test',
+		status: 'ready',
+		readFile: jest.fn(async () => await Promise.resolve('hello')),
+		writeFile: jest.fn(async () => await Promise.resolve()),
+		appendFile: jest.fn(async () => await Promise.resolve()),
+		deleteFile: jest.fn(async () => await Promise.resolve()),
+		copyFile: jest.fn(async () => await Promise.resolve()),
+		moveFile: jest.fn(async () => await Promise.resolve()),
+		mkdir: jest.fn(async () => await Promise.resolve()),
+		rmdir: jest.fn(async () => await Promise.resolve()),
+		readdir: jest.fn(async () => await Promise.resolve([])),
+		exists: jest.fn(async () => await Promise.resolve(true)),
+		stat: jest.fn(
+			async (path: string) =>
+				await Promise.resolve({
+					name: path,
+					path,
+					type: 'file' as const,
+					size: 5,
+					createdAt: new Date('2026-01-01T00:00:00.000Z'),
+					modifiedAt: new Date('2026-01-01T00:00:00.000Z'),
+				}),
+		),
+	};
+	const sandbox: WorkspaceSandbox = {
+		id: 'sandbox',
+		name: 'Sandbox',
+		provider: 'test',
+		status: 'running',
+		getDefaultCommandEnv: jest.fn(() => ({ CUSTOM_ENV: 'enabled' })),
+		executeCommand,
+	};
+
+	return {
+		workspace: new Workspace({ filesystem, sandbox }),
+		filesystem,
+		sandbox,
+		executeCommand,
+	};
+}
+
+describe('createLazyRuntimeWorkspace', () => {
+	it('advertises workspace tools without creating the real workspace', async () => {
+		const { workspace } = createMockWorkspace();
+		const ensureWorkspace = jest.fn(async () => await Promise.resolve(workspace));
+		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
+
+		const tools = lazyWorkspace.getTools();
+		lazyWorkspace.getInstructions();
+
+		expect(ensureWorkspace).not.toHaveBeenCalled();
+		expect(tools.some((tool) => tool.name === 'workspace_read_file')).toBe(true);
+		expect(tools.some((tool) => tool.name === 'workspace_execute_command')).toBe(true);
+
+		const readFile = tools.find((tool) => tool.name === 'workspace_read_file');
+		await readFile?.handler?.({ path: '/workspace/report.md' }, {});
+
+		expect(ensureWorkspace).toHaveBeenCalledTimes(1);
+	});
+
+	it('merges sandbox default env after the real workspace is created', async () => {
+		const { workspace, executeCommand } = createMockWorkspace();
+		const ensureWorkspace = jest.fn(async () => await Promise.resolve(workspace));
+		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
+		const executeCommandTool = lazyWorkspace
+			.getTools()
+			.find((tool) => tool.name === 'workspace_execute_command');
+
+		const result = await executeCommandTool?.handler?.({ command: 'echo $CUSTOM_ENV' }, {});
+
+		expect(result).toMatchObject({ stdout: 'enabled' });
+		expect(executeCommand.mock.calls[0]?.[0]).toBe('echo $CUSTOM_ENV');
+		expect(executeCommand.mock.calls[0]?.[1]).toEqual([]);
+		expect(executeCommand.mock.calls[0]?.[2]?.env).toMatchObject({
+			CUSTOM_ENV: 'enabled',
+		});
+	});
+
+	it('retries workspace creation after the first lazy initialization fails', async () => {
+		const { workspace } = createMockWorkspace();
+		const ensureWorkspace = jest
+			.fn()
+			.mockRejectedValueOnce(new Error('setup failed'))
+			.mockResolvedValueOnce(workspace);
+		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
+		const readFile = lazyWorkspace.getTools().find((tool) => tool.name === 'workspace_read_file');
+
+		await expect(readFile?.handler?.({ path: '/workspace/report.md' }, {})).rejects.toThrow(
+			'setup failed',
+		);
+		await expect(readFile?.handler?.({ path: '/workspace/report.md' }, {})).resolves.toEqual({
+			content: 'hello',
+		});
+
+		expect(ensureWorkspace).toHaveBeenCalledTimes(2);
+	});
+});
