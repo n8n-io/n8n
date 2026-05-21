@@ -187,6 +187,7 @@ async function onSubmit(message: string, attachments: File[]) {
 		workflowAgent.value,
 		{} as ChatHubSendMessageRequest['credentials'],
 		attachments,
+		workflowDocumentStore.value.workflowId,
 	);
 
 	inputRef.value?.reset();
@@ -206,6 +207,7 @@ async function handleRegenerateMessage(message: ChatMessageType) {
 		message.id,
 		workflowAgent.value,
 		{} as ChatHubSendMessageRequest['credentials'],
+		workflowDocumentStore.value.workflowId,
 	);
 }
 
@@ -232,6 +234,7 @@ async function handleEditMessage(
 		{} as ChatHubSendMessageRequest['credentials'],
 		keptAttachmentIndices,
 		newFiles,
+		workflowDocumentStore.value.workflowId,
 	);
 
 	editingMessageId.value = undefined;
