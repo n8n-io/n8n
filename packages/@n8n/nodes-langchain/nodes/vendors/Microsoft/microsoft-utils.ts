@@ -142,33 +142,6 @@ function hasAuthorizationHeader(headers: Record<string, string>) {
 	return Object.keys(headers).some((headerName) => headerName.toLowerCase() === 'authorization');
 }
 
-function redactHeaderValue(headerName: string, headerValue: string) {
-	return headerName.toLowerCase() === 'authorization' ? '<redacted>' : headerValue;
-}
-
-function redactHeaders(headers: Record<string, string> | undefined) {
-	if (!headers) return undefined;
-
-	return Object.fromEntries(
-		Object.entries(headers).map(([headerName, headerValue]) => [
-			headerName,
-			redactHeaderValue(headerName, headerValue),
-		]),
-	);
-}
-
-function getErrorDetails(error: unknown) {
-	if (error instanceof Error) {
-		return {
-			name: error.name,
-			message: error.message,
-			stack: error.stack,
-		};
-	}
-
-	return error;
-}
-
 function getAuthorizationHeader(headers: Record<string, string> | undefined) {
 	if (!headers) return undefined;
 
@@ -255,10 +228,6 @@ async function getMcpServerConfigsWithoutAudienceTokens(
 
 	const agenticAppId = MicrosoftRuntimeUtility.ResolveAgentIdentity(turnContext, mcpAuthToken);
 	const endpoint = getToolingGatewayUrl(agenticAppId);
-	console.warn('Falling back to raw Microsoft MCP server discovery', {
-		agenticAppId,
-		endpoint,
-	});
 	const response = await proxyFetch(endpoint, {
 		headers: MicrosoftToolingUtility.GetToolRequestHeaders(
 			mcpAuthToken,
@@ -284,17 +253,7 @@ async function getMcpServerConfigsWithoutAudienceTokens(
 		.map((rawServer) => normalizeMcpServerConfig(rawServer))
 		.filter((server): server is MCPServerConfig => server !== undefined);
 
-	console.warn('Raw Microsoft MCP server discovery completed', {
-		serverCount: servers.length,
-		servers: servers.map((server) => ({
-			name: server.mcpServerName,
-			url: server.url,
-			audience: server.audience,
-			scope: server.scope,
-			hasAuthorizationHeader: hasAuthorizationHeader(server.headers ?? {}),
-			headers: redactHeaders(server.headers),
-		})),
-	});
+	console.warn(`Microsoft MCP server discovery completed: ${servers.length} servers found`);
 
 	return servers;
 }
@@ -307,17 +266,9 @@ async function attachMcpServerAuthorization(
 ) {
 	const sharedScope =
 		defaultToolingConfigurationProvider.getConfiguration().mcpPlatformAuthenticationScope;
-	const scope = getMcpServerTokenScope(server, sharedScope);
+	const scope = resolveTokenScopeForServer(server, sharedScope);
 
 	if (scope === sharedScope && hasAuthorizationHeader(server.headers ?? {})) return server;
-
-	console.warn('Resolving Microsoft MCP server authorization', {
-		serverName: server.mcpServerName,
-		audience: server.audience,
-		serverScope: server.scope,
-		resolvedScope: scope,
-		usesSharedToken: scope === sharedScope,
-	});
 
 	const token =
 		scope === sharedScope
@@ -330,10 +281,6 @@ async function attachMcpServerAuthorization(
 				);
 
 	if (!token) {
-		console.error('Microsoft MCP server token exchange returned no token', {
-			serverName: server.mcpServerName,
-			resolvedScope: scope,
-		});
 		throw new Error(`Failed to obtain token for MCP server '${server.mcpServerName}'`);
 	}
 
@@ -344,19 +291,6 @@ async function attachMcpServerAuthorization(
 			Authorization: `Bearer ${token}`,
 		},
 	};
-}
-
-function getMcpScopeAudience(scope: string) {
-	const scopeSeparatorIndex = scope.lastIndexOf('/');
-	return scopeSeparatorIndex === -1 ? scope : scope.slice(0, scopeSeparatorIndex);
-}
-
-function getMcpServerTokenScope(server: MCPServerConfig, sharedScope: string) {
-	if (!server.scope) return resolveTokenScopeForServer(server, sharedScope);
-	if (server.scope.includes('/')) return server.scope;
-
-	const audience = server.audience ?? getMcpScopeAudience(sharedScope);
-	return `${audience}/${server.scope}`;
 }
 
 function getMcpServerHeaders(
@@ -372,7 +306,6 @@ function getMcpServerHeaders(
 			MICROSOFT_TOOL_OPTIONS,
 		),
 	};
-	const serverAuthorization = getAuthorizationHeader(server.headers);
 
 	for (const [headerName, headerValue] of Object.entries(server.headers ?? {})) {
 		if (headerName.toLowerCase() !== 'authorization') {
@@ -380,12 +313,10 @@ function getMcpServerHeaders(
 		}
 	}
 
+	const serverAuthorization = getAuthorizationHeader(server.headers);
 	if (serverAuthorization) {
-		delete headers.Authorization;
 		headers.Authorization = serverAuthorization;
-	}
-
-	if (mcpAuthToken && !hasAuthorizationHeader(headers)) {
+	} else if (mcpAuthToken && !hasAuthorizationHeader(headers)) {
 		headers.Authorization = `Bearer ${mcpAuthToken}`;
 	}
 
@@ -442,9 +373,7 @@ export async function getMicrosoftMcpTools(
 			MICROSOFT_TOOL_OPTIONS,
 		);
 	} catch (error) {
-		console.warn('Microsoft SDK listToolServers failed, using raw discovery fallback', {
-			error: getErrorDetails(error),
-		});
+		console.warn('Microsoft SDK listToolServers failed, falling back to direct discovery');
 		servers = await getMcpServerConfigsWithoutAudienceTokens(turnContext, mcpAuthToken);
 		shouldAttachServerAuthorization = true;
 	}
@@ -453,10 +382,6 @@ export async function getMicrosoftMcpTools(
 
 	if (selectedTools?.length) {
 		servers = servers.filter((server) => selectedTools.includes(server.mcpServerName));
-		console.warn('Filtered Microsoft MCP servers by selected tools', {
-			selectedTools,
-			remainingServers: servers.map((server) => server.mcpServerName),
-		});
 	}
 
 	const tenantId =
@@ -478,17 +403,12 @@ export async function getMicrosoftMcpTools(
 					mcpAuthToken,
 				);
 			} catch (error) {
-				console.error(`Failed to authorize MCP server ${server.mcpServerName}:`, error);
+				console.warn(`Skipping MCP server ${server.mcpServerName}: failed to authorize`, error);
 				continue;
 			}
 		}
 
 		const headers = getMcpServerHeaders(authorizedServer, turnContext, mcpAuthToken, tenantId);
-		console.warn('Connecting Microsoft MCP server', {
-			serverName: authorizedServer.mcpServerName,
-			url: authorizedServer.url,
-			headers: redactHeaders(headers),
-		});
 
 		const clientResult = await connectMcpClient({
 			serverTransport: 'httpStreamable', // Microsoft servers use HTTP
@@ -499,7 +419,10 @@ export async function getMicrosoftMcpTools(
 		});
 
 		if (!clientResult.ok) {
-			console.error(`Failed to connect to MCP server ${server.mcpServerName}:`, clientResult.error);
+			console.warn(
+				`Skipping MCP server ${server.mcpServerName}: failed to connect`,
+				clientResult.error,
+			);
 			continue;
 		}
 
@@ -510,7 +433,7 @@ export async function getMicrosoftMcpTools(
 		try {
 			mcpTools = await getAllTools(client);
 		} catch (error) {
-			console.error(`Failed to get tools from MCP server ${server.mcpServerName}:`, error);
+			console.warn(`Skipping MCP server ${server.mcpServerName}: failed to list tools`, error);
 			continue;
 		}
 

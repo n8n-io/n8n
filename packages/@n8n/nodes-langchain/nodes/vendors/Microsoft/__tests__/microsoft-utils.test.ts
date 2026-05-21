@@ -790,18 +790,15 @@ describe('microsoft-utils', () => {
 				'https://agent365.svc.cloud.microsoft/agents/v2/agent-identity/mcpServers',
 				expect.any(Object),
 			);
-			expect(AgenticAuthenticationService.GetAgenticUserToken).toHaveBeenCalledWith(
-				mockAuthorization,
-				'agentic',
-				mockTurnContext,
-				['mcp-scope/McpServers.DataverseCustom.All'],
-			);
+			// mcp_CalendarTools has no audience → V1 server → uses shared token directly,
+			// no OBO exchange needed
+			expect(AgenticAuthenticationService.GetAgenticUserToken).not.toHaveBeenCalled();
 			expect(connectMcpClient).toHaveBeenCalledTimes(1);
 			expect(connectMcpClient).toHaveBeenCalledWith(
 				expect.objectContaining({
 					endpointUrl: 'http://calendar-server',
 					headers: expect.objectContaining({
-						Authorization: 'Bearer calendar-audience-token',
+						Authorization: 'Bearer test-token',
 					}),
 				}),
 			);
@@ -827,13 +824,13 @@ describe('microsoft-utils', () => {
 
 			(getAllTools as Mock).mockResolvedValue([]);
 
-			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			try {
 				await getMicrosoftMcpTools(mockTurnContext, mockAuthorization, 'test-token', undefined);
 
 				expect(consoleSpy).toHaveBeenCalledWith(
-					'Failed to connect to MCP server mcp_CalendarTools:',
+					'Skipping MCP server mcp_CalendarTools: failed to connect',
 					'Connection failed',
 				);
 			} finally {
