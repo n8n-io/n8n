@@ -143,9 +143,9 @@ export class MigrateThing1234567890000 implements IrreversibleMigration {
 
 **Don't extract single-line steps.** A method whose body is one DSL call adds no information — the call site is already self-documenting. Pull out a method only when the step is multi-line, has its own control flow, or genuinely needs a name to explain *why* it exists. The bar is "does this hide complexity worth hiding?"
 
-### Use `runQuery()`, not `queryRunner` directly
+### Prefer `runQuery()` over `queryRunner`
 
-Always run SQL through `runQuery()` from `MigrationContext`. Never call `queryRunner.query()` or `queryRunner.manager.*` from a migration.
+Run SQL through `runQuery()` from `MigrationContext`. Never call `queryRunner.query()` or `queryRunner.manager.*` from a migration.
 
 **Why:** `runQuery()` handles table-prefix escaping and parameter binding consistently. `queryRunner.query()` bypasses those safety nets. `queryRunner.manager` calls couple the migration to TypeORM entity definitions, which change over time — a migration that worked at v1.0 can break at v2.0 if the entity shape evolves.
 
@@ -154,11 +154,11 @@ Always run SQL through `runQuery()` from `MigrationContext`. Never call `queryRu
 Don't `import { Entity }` and call ORM methods on it. Use raw SQL via `runQuery()` instead.
 
 ```typescript
-// BAD: value import; ties migration to current entity shape
+// 🚫 value import; ties migration to current entity shape
 import { ApiKey } from '../../entities';
 await queryRunner.manager.update(ApiKey, { id }, { scopes });
 
-// GOOD: inline row type, raw SQL
+// ✅ inline row type, raw SQL
 type ApiKeyRow = { id: string; scopes: string };
 await runQuery(`UPDATE ${table} SET scopes = :scopes WHERE id = :id`, { scopes, id });
 ```
@@ -172,23 +172,6 @@ await runQuery(`UPDATE ${table} SET scopes = :scopes WHERE id = :id`, { scopes, 
 Use `escape.tableName()`, `escape.columnName()`, and `escape.indexName()` for every identifier. Don't hand-roll `${tablePrefix}my_table` or hardcode quoted names like `"model_tmp"`.
 
 **Why:** The DB type, table prefix, and quoting rules differ between Postgres and SQLite. The `escape.*` helpers apply the right rules; manual interpolation will eventually be wrong on one of them.
-
-### Don't throw `n8n-workflow` error classes
-
-Migration failures aren't user-facing errors. Throw a plain `Error` if a migration genuinely can't proceed, or log a warning and skip the row.
-
-```typescript
-// BAD
-import { UnexpectedError } from 'n8n-workflow';
-throw new UnexpectedError('Could not parse row');
-
-// GOOD
-throw new Error('Could not parse row');
-// or
-logger.warn(`[${migrationName}] Skipping row ${id}: ${(error as Error).message}`);
-```
-
-**Why:** `UserError` / `UnexpectedError` belong to the runtime error taxonomy used by the workflow engine and API. They carry HTTP semantics and i18n context that don't apply to a migration that's running once during startup.
 
 ### Prefer inlining over importing from sibling packages
 
@@ -204,7 +187,7 @@ Acceptable exceptions: utilities whose semantics are stable and whose inline imp
 
 ### 1.1 Use the DSL for Schema Changes
 
-Use the schema builder DSL for additions, removals, and changes. It handles cross-database type mapping automatically.
+Use the schema builder DSL for additions, removals, and changes. It handles cross-database type mapping automatically. If we are missing a helper, either add one or bring it to others' attention.
 
 ```typescript
 export class CreateMyTable1234567890000 implements ReversibleMigration {
@@ -232,100 +215,16 @@ export class CreateMyTable1234567890000 implements ReversibleMigration {
 }
 ```
 
-### 1.2 Use Raw SQL for Altering Large Existing Tables
-
-The DSL's `addColumns()` / `dropColumns()` internally **copies the entire table on SQLite**. For tables with millions of rows (`execution_data`, `execution_entity`, `workflow_statistics`), this is catastrophic.
-
-```typescript
-// BAD: copies entire execution_data table on SQLite
-await addColumns('execution_data', [column('newCol').text]);
-
-// GOOD: metadata-only operation on both databases
-const table = escape.tableName('execution_data');
-const col = escape.columnName('newCol');
-await runQuery(`ALTER TABLE ${table} ADD COLUMN ${col} TEXT`);
-```
-
-**When to use raw SQL over DSL:**
-- Adding nullable columns to large tables
-- Altering column types (requires table recreation on SQLite regardless)
-- Any operation on tables that can have >100k rows
-
-### 1.3 Single Migration File or Separate for SQLite & Postgres
-
-**Choose between a single common migration or split files:**
-
-- **Small differences (a single statement, a CHECK constraint, slightly different syntax):** keep one migration in `common/` and branch on `isSqlite` / `isPostgres`.
-- **Large differences (different table recreation strategies, different intermediate steps, fundamentally different SQL):** write **separate files** in `postgresdb/` and `sqlite/`. A common migration full of `if (isSqlite) { ... }` blocks is harder to read and review than two focused files.
-
-```typescript
-// Small difference — keep in common/, branch inline
-if (isPostgres) {
-  await runQuery(`ALTER TABLE ${table} ALTER COLUMN ${col} TYPE VARCHAR(256)`);
-} else if (isSqlite) {
-  // Temp column trick (for simple cases)
-  await runQuery(`ALTER TABLE ${table} ADD COLUMN "${col}_tmp" VARCHAR(256)`);
-  await runQuery(`UPDATE ${table} SET "${col}_tmp" = ${col}`);
-  await runQuery(`ALTER TABLE ${table} DROP COLUMN ${col}`);
-  await runQuery(`ALTER TABLE ${table} ADD COLUMN ${col} VARCHAR(256)`);
-  await runQuery(`UPDATE ${table} SET ${col} = "${col}_tmp"`);
-  await runQuery(`ALTER TABLE ${table} DROP COLUMN "${col}_tmp"`);
-}
-```
-
-### 1.4 SQLite Specifics
-
-SQLite has stricter limitations than PostgreSQL. The most important ones to plan around:
-
-**DSL operations that trigger full table recreation on SQLite:**
-
-| DSL call | Why |
-|---|---|
-| `schemaBuilder.addColumns(table, [...])` | TypeORM's SQLite driver copies the table to preserve column ordering and constraints |
-| `schemaBuilder.dropColumns(table, [...])` | Same — no native `DROP COLUMN` before SQLite 3.35 |
-| `schemaBuilder.addForeignKey(...)` | FKs are part of `CREATE TABLE`; cannot be added with `ALTER` |
-| `schemaBuilder.dropForeignKey(...)` | FKs are part of `CREATE TABLE`; cannot be removed with `ALTER` |
-| `schemaBuilder.addNotNull(table, col)` | Nullability changes go through TypeORM's `changeColumn`, which recreates the table |
-| `schemaBuilder.dropNotNull(table, col)` | Same |
-| Any column type change via `changeColumn` (default, comment, type) | SQLite has no `ALTER COLUMN` |
-| `column().withEnumCheck([...])` value changes | CHECK constraint is baked into `CREATE TABLE` |
-| Renaming a column referenced by an index, view, or trigger | SQLite has to rebuild dependents |
-
-Because table recreation copies all rows into a new table, it is expensive on large tables (`execution_data`, `execution_entity`, `workflow_statistics`) — see [1.2](#12-use-raw-sql-for-altering-large-existing-tables).
-
-**Disable foreign keys around table recreation to prevent data loss.**
-
-When SQLite copies a table to apply a schema change, child tables with `ON DELETE CASCADE` foreign keys can have their rows silently deleted as the old table is dropped. Always set `transaction = false as const` on the migration class — the framework wraps the migration with `PRAGMA foreign_keys=OFF` and re-enables them after (`runDisablingForeignKeys` in `migration-helpers.ts`).
-
-```typescript
-export class MyTableRecreation1234567890000 implements ReversibleMigration {
-  transaction = false as const; // Required for any DDL that recreates a table
-
-  async up({ schemaBuilder }: MigrationContext) {
-    // Safe: FKs are off, so CASCADE won't fire when the temp table is dropped
-  }
-}
-```
-
-**Other SQLite limitations:**
-- No native enum type — use `.withEnumCheck(column, values)` to create CHECK constraints
-- No `DROP COLUMN` before SQLite 3.35 — requires table recreation
-
-**Key rules:**
-- **Always branch on `isSqlite` / `isPostgres`** when SQL syntax differs
-- Place branching logic in `common/` for small differences; split into `postgresdb/` and `sqlite/` for fundamentally different implementations
-- SQLite migrations that do DDL must set `transaction = false as const`
-
-### 1.5 Primary Keys
+### 1.2 Primary Keys
 
 Every table needs a primary key. Choose the type in this order:
 
 1. **Integer** — `column('id').int.primary.autoGenerate2`. Preferred for new tables: compact, fast joins, no ordering surprises. `autoGenerate2` uses Postgres `IDENTITY` (not the older `serial`).
 2. **UUID** — `column('id').uuid.primary`. Use when IDs are generated client-side, exposed in URLs, or need to be unguessable; also when rows are created across multiple writers (sharding, offline clients). Generate UUIDs in application code; do **not** chain `.autoGenerate2` on `.uuid` (the DSL throws — `DEFAULT uuid_generate_v4()` fails on managed Postgres like Supabase). Prefer `.uuid` over `.varchar(36)`: Postgres stores `uuid` as 16 bytes versus 37 bytes for `varchar(36)`, which adds up across joined tables and indexes.
-3. **String** — `column('id').varchar(36).primary`. Last resort, for legacy IDs whose format isn't a real UUID (n8n's older nanoid-style IDs). New tables should not use this.
+3. **String** — `column('id').varchar(36).primary`. Use for IDs whose format isn't an UUID (e.g. nanoid-style IDs).
 
 **DSL behavior to know:**
-- `.primary` already implies `notNull` (see `column.ts:236`). Don't chain `.notNull` after `.primary` — it's redundant.
+- `.primary` already implies `notNull`. Don't chain `.notNull` after `.primary` — it's redundant.
 - `.primary` already creates the primary-key index. Don't add a separate `.withIndexOn(['id'])` for it.
 
 **Composite primary keys:** chain `.primary` on each participating column.
@@ -338,30 +237,18 @@ await createTable('membership')
   );
 ```
 
-### 1.6 Column Sizing
-
-| Data type | Minimum size | Rationale |
-|---|---|---|
-| UUIDs / internal IDs | `varchar(36)` | Standard UUID is 36 chars |
-| Tokens, secrets, OAuth state | `TEXT` | Unbounded — external providers control the length |
-| Model names, provider IDs | `varchar(255)` | Provider-controlled, research before choosing smaller |
-| User-facing text (names, labels) | `varchar(255)` | Unless you have a specific reason for smaller |
-| JSON blobs | `json` (DSL) or `TEXT` | Never varchar for JSON |
-
-**When in doubt, use TEXT.** The storage overhead is negligible compared to the cost of a fix migration.
-
-### 1.7 Foreign Key Constraints
+### 1.4 Foreign Key Constraints
 
 | Relationship type | `onDelete` strategy | Example |
 |---|---|---|
 | Child is meaningless without parent | `CASCADE` | `annotation_tag_mapping` → `annotation` |
 | Child should outlive parent | `SET NULL` | `workflow_publish_history.userId` → `user` |
 | Audit/statistics/history tables | `NO ACTION` or `SET NULL` | `workflow_statistics` → `workflow_entity` |
-| Reference should prevent deletion | `RESTRICT` | Rarely needed in practice |
+| Reference should prevent deletion | `RESTRICT` |  |
 
 **Always specify `onDelete` explicitly.** Don't rely on database defaults.
 
-### 1.8 Index Management
+### 1.5 Index Management
 
 ```typescript
 // Creating indices
@@ -379,8 +266,14 @@ await schemaBuilder.dropIndex('my_table', ['columnA'], { skipIfMissing: true });
 - **Don't index low-cardinality columns alone** (booleans, status enums with 2–3 values). Either skip the index or make it a partial index — both Postgres and SQLite (since 3.8.0) support `WHERE` clauses on indexes.
 - **Unique indexes enforce uniqueness AND speed up lookups.** Prefer them over a separate unique constraint + index pair.
 - **Drop unused indexes.** If a query plan no longer uses it, drop it in a follow-up migration.
-- **Always use `skipIfMissing: true` when dropping.** Older databases may not have the index if it was added conditionally; a missing-index error blocks the whole migration.
 - **Name indexes via the DSL,** never hand-roll names. The DSL prefixes them consistently so they line up across environments.
+
+### 1.7 Single Migration File or Separate for SQLite & Postgres
+
+**Choose between a single common migration or split files:**
+
+- **Small differences (a single statement, a CHECK constraint, slightly different syntax):** keep one migration in `common/` and branch on `isSqlite` / `isPostgres`.
+- **Large differences (different table recreation strategies, different intermediate steps, fundamentally different SQL):** write **separate files** in `postgresdb/` and `sqlite/`. A common migration full of `if (isSqlite) { ... }` blocks is harder to read and review than two focused files.
 
 ### 1.9 Reversibility
 
