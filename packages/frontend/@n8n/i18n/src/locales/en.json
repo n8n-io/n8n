@@ -6135,6 +6135,8 @@
 	"agents.builder.tools.builtIn.title": "Built-in node tools",
 	"agents.builder.tools.builtIn.hint": "Let the agent search the n8n node catalog and execute nodes on demand.",
 	"agents.builder.tools.empty": "No tools added yet.",
+	"agents.builder.tools.type.workflow": "Workflow",
+	"agents.builder.tools.type.custom": "Custom tool",
 	"agents.builder.tools.workflows.title": "Workflows",
 	"agents.builder.tools.remove": "Remove tool",
 	"agents.builder.tools.back": "Back to tools",

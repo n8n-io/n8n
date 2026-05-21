@@ -2,7 +2,8 @@
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
@@ -103,14 +104,108 @@ function toolNodeType(tool: AgentJsonToolRef) {
 	return nodeTypesStore.getNodeType(node.type, node.typeVersion) ?? null;
 }
 
-const toolRows = computed(() =>
-	props.tools.map((tool, index) => ({
-		index,
-		label: toolLabel(tool, index),
-		nodeType: toolNodeType(tool),
-		fallbackIcon: toolIcon(tool),
-	})),
-);
+function toolTypeLabel(tool: AgentJsonToolRef, index: number, nodeType = toolNodeType(tool)) {
+	if (tool.type === 'node') {
+		return nodeType?.displayName.replace(/ Tool$/, '') ?? toolLabel(tool, index);
+	}
+
+	if (tool.type === 'workflow') return i18n.baseText('agents.builder.tools.type.workflow');
+	if (tool.type === 'custom') return i18n.baseText('agents.builder.tools.type.custom');
+	return toolLabel(tool, index);
+}
+
+type ToolRow = {
+	index: number;
+	label: string;
+	typeLabel: string;
+	nodeType: ReturnType<typeof toolNodeType>;
+	fallbackIcon: IconName;
+	isGrouped: boolean;
+	items: Array<{ index: number; label: string; nodeType: ReturnType<typeof toolNodeType> }>;
+};
+
+type ToolMenuItem = DropdownMenuItemProps<number, { nodeType: ReturnType<typeof toolNodeType> }>;
+
+const toolRows = computed<ToolRow[]>(() => {
+	const rows = props.tools.map((tool, index) => {
+		const nodeType = toolNodeType(tool);
+		return {
+			index,
+			label: toolLabel(tool, index),
+			typeLabel: toolTypeLabel(tool, index, nodeType),
+			nodeType,
+			fallbackIcon: toolIcon(tool),
+			raw: tool,
+		};
+	});
+
+	const groupedRows: ToolRow[] = [];
+	const nodeGroups = new Map<string, typeof rows>();
+
+	for (const row of rows) {
+		if (row.raw.type !== 'node' || !row.nodeType) {
+			groupedRows.push({
+				index: row.index,
+				label: row.label,
+				typeLabel: row.typeLabel,
+				nodeType: row.nodeType,
+				fallbackIcon: row.fallbackIcon,
+				isGrouped: false,
+				items: [{ index: row.index, label: row.label, nodeType: row.nodeType }],
+			});
+			continue;
+		}
+
+		const key = row.nodeType.name;
+		const group = nodeGroups.get(key);
+		if (group) {
+			group.push(row);
+		} else {
+			nodeGroups.set(key, [row]);
+		}
+	}
+
+	for (const group of nodeGroups.values()) {
+		if (group.length === 1) {
+			const [row] = group;
+			groupedRows.push({
+				index: row.index,
+				label: row.label,
+				typeLabel: row.typeLabel,
+				nodeType: row.nodeType,
+				fallbackIcon: row.fallbackIcon,
+				isGrouped: false,
+				items: [{ index: row.index, label: row.label, nodeType: row.nodeType }],
+			});
+			continue;
+		}
+
+		const [first] = group;
+		groupedRows.push({
+			index: first.index,
+			label: `${group.length} ${first.typeLabel}`,
+			typeLabel: first.typeLabel,
+			nodeType: first.nodeType,
+			fallbackIcon: first.fallbackIcon,
+			isGrouped: true,
+			items: group.map((row) => ({
+				index: row.index,
+				label: row.label,
+				nodeType: row.nodeType,
+			})),
+		});
+	}
+
+	return groupedRows.sort((left, right) => left.index - right.index);
+});
+
+function toolMenuItems(tool: ToolRow): ToolMenuItem[] {
+	return tool.items.map((item) => ({
+		id: item.index,
+		label: item.label,
+		data: { nodeType: item.nodeType },
+	}));
+}
 </script>
 
 <template>
@@ -164,8 +259,35 @@ const toolRows = computed(() =>
 
 			<div :class="$style.chips">
 				<template v-for="tool in toolRows" :key="`tool-${tool.index}`">
+					<N8nDropdownMenu
+						v-if="tool.isGrouped"
+						:items="toolMenuItems(tool)"
+						placement="bottom-start"
+						data-testid="agent-capabilities-tool-group"
+						@select="emit('open-tool', $event)"
+					>
+						<template #trigger>
+							<AgentChipButton data-testid="agent-capabilities-tool-row">
+								<template #icon>
+									<NodeIcon :node-type="tool.nodeType" :size="16" />
+								</template>
+								<span :class="$style.groupChipLabel">
+									{{ tool.label }}
+									<N8nIcon icon="chevron-down" :size="12" color="text-light" />
+								</span>
+							</AgentChipButton>
+						</template>
+						<template #item-leading="{ item, ui }">
+							<NodeIcon
+								v-if="item.data?.nodeType"
+								:node-type="item.data.nodeType"
+								:size="16"
+								:class="ui.class"
+							/>
+						</template>
+					</N8nDropdownMenu>
 					<AgentChipButton
-						v-if="tool.nodeType"
+						v-else-if="tool.nodeType"
 						data-testid="agent-capabilities-tool-row"
 						@click="emit('open-tool', tool.index)"
 					>
@@ -275,6 +397,12 @@ const toolRows = computed(() =>
 	gap: var(--spacing--2xs);
 	min-width: 0;
 	margin-top: var(--spacing--5xs);
+}
+
+.groupChipLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .disabled {
