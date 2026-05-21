@@ -1,4 +1,3 @@
-import { Logger } from '@n8n/backend-common';
 import {
 	WorkflowPublishedVersionRepository,
 	type SharedWorkflow,
@@ -46,7 +45,6 @@ export interface PublishedWorkflowData {
 @Service()
 export class WorkflowPublishedDataService {
 	constructor(
-		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 	) {}
@@ -64,7 +62,6 @@ export class WorkflowPublishedDataService {
 					extra: { workflowId },
 				}),
 			);
-			this.logger.warn(`Published version record not found for workflow "${workflowId}"`);
 			return null;
 		}
 
