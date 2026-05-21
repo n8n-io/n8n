@@ -67,9 +67,6 @@ jobs:
           LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
           LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
           LANGSMITH_REVISION_ID: ${{ github.sha }}
-          # Prefer the PR's actual head ref so experiment names track the
-          # source branch on pull_request_review (where github.head_ref is
-          # empty and github.ref_name resolves to "<PR>/merge").
           LANGSMITH_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
           FILTER: ${{ inputs.filter }}
           TRIALS: ${{ inputs.trials || 3 }}
@@ -82,8 +79,6 @@ jobs:
           pnpm eval:discovery "${EVAL_ARGS[@]}" 2>&1 | tee discovery-eval-output.txt
 
       - name: Post eval results to PR
-        # Eval may be triggered by pull_request or pull_request_review; both
-        # expose github.event.pull_request.*, so the comment lookup works.
         if: ${{ always() && github.event.pull_request.number && hashFiles('packages/@n8n/instance-ai/discovery-eval-output.txt') != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
