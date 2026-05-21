@@ -225,11 +225,20 @@ function appendNodeConfigOptions(configParts: string[], node: SemanticNode): voi
 	if (node.json.retryOnFail) {
 		configParts.push('retryOnFail: true');
 	}
+	if (typeof node.json.maxTries === 'number') {
+		configParts.push(`maxTries: ${node.json.maxTries}`);
+	}
+	if (typeof node.json.waitBetweenTries === 'number') {
+		configParts.push(`waitBetweenTries: ${node.json.waitBetweenTries}`);
+	}
 	if (node.json.alwaysOutputData) {
 		configParts.push('alwaysOutputData: true');
 	}
 	if (node.json.onError) {
 		configParts.push(`onError: '${node.json.onError}'`);
+	}
+	if (node.json.extendsCredential) {
+		configParts.push(`extendsCredential: '${escapeString(node.json.extendsCredential)}'`);
 	}
 }
 
