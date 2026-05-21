@@ -1,10 +1,8 @@
+import type { SimplifiedNodeType } from '@/Interface';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon';
 
-export type ToolRowNodeType = {
-	name: string;
-	displayName: string;
-} | null;
+export type ToolRowNodeType = SimplifiedNodeType | null;
 
 export type ToolRowItem = {
 	index: number;

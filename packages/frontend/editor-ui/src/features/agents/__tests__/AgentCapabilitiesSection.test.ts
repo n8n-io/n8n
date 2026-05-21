@@ -1,10 +1,29 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { SimplifiedNodeType } from '@/Interface';
 import AgentCapabilitiesSection from '../components/AgentCapabilitiesSection.vue';
 import type { AgentJsonToolRef, CustomToolEntry } from '../types';
 
-const getNodeType = vi.fn(() => null);
+const getNodeType = vi.fn<(type: string, version?: number) => SimplifiedNodeType | null>(
+	() => null,
+);
+
+function createNodeType(name: string, displayName: string): SimplifiedNodeType {
+	return {
+		name,
+		displayName,
+		description: '',
+		group: [],
+		icon: 'file:placeholder.svg',
+		iconUrl: undefined,
+		iconColor: undefined,
+		badgeIconUrl: undefined,
+		codex: undefined,
+		defaults: {},
+		outputs: [],
+	};
+}
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
@@ -104,10 +123,7 @@ describe('AgentCapabilitiesSection', () => {
 	it('keeps a single tool of the same type ungrouped', () => {
 		getNodeType.mockImplementation((type: string) => {
 			if (type === 'n8n-nodes-base.gmailTool') {
-				return {
-					name: 'n8n-nodes-base.gmailTool',
-					displayName: 'Gmail Tool',
-				};
+				return createNodeType('n8n-nodes-base.gmailTool', 'Gmail Tool');
 			}
 
 			return null;
@@ -132,10 +148,7 @@ describe('AgentCapabilitiesSection', () => {
 	it('groups tools once the same node type reaches the threshold', () => {
 		getNodeType.mockImplementation((type: string) => {
 			if (type === 'n8n-nodes-base.gmailTool') {
-				return {
-					name: 'n8n-nodes-base.gmailTool',
-					displayName: 'Gmail Tool',
-				};
+				return createNodeType('n8n-nodes-base.gmailTool', 'Gmail Tool');
 			}
 
 			return null;
@@ -170,10 +183,7 @@ describe('AgentCapabilitiesSection', () => {
 	it('groups more than two tools of the same node type', () => {
 		getNodeType.mockImplementation((type: string) => {
 			if (type === 'n8n-nodes-base.gmailTool') {
-				return {
-					name: 'n8n-nodes-base.gmailTool',
-					displayName: 'Gmail Tool',
-				};
+				return createNodeType('n8n-nodes-base.gmailTool', 'Gmail Tool');
 			}
 
 			return null;
