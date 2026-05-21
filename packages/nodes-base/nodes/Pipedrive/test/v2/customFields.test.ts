@@ -411,5 +411,8 @@ describe('Pipedrive v2 Type Coercion', () => {
 		it('should return the original value when it cannot be parsed', () => {
 			expect(toDateOnly('not-a-date')).toBe('not-a-date');
 		});
+		it('should fall back to Date parsing for non-standard but parseable inputs', () => {
+			expect(toDateOnly('Jan 15, 2024 UTC')).toBe('2024-01-15');
+		});
 	});
 });
