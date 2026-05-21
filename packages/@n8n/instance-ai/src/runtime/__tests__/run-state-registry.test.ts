@@ -15,6 +15,7 @@ jest.mock('nanoid', () => ({
 }));
 
 const mockedNanoid = jest.mocked(nanoid);
+const day = 24 * 60 * 60_000;
 
 interface TestUser {
 	id: string;
@@ -27,7 +28,7 @@ function createSuspendedRunState(
 	return {
 		runId: 'run_abc',
 		abortController: new AbortController(),
-		mastraRunId: 'mastra-1',
+		agentRunId: 'agent-run-1',
 		agent: {},
 		threadId: 'thread-1',
 		user: { id: 'user-1', name: 'Alice' },
@@ -1085,7 +1086,7 @@ describe('RunStateRegistry', () => {
 
 		it('does not time out an active run while a pending confirmation owns the wait', () => {
 			const confirmationPolicy = new InstanceAiLivenessPolicy({
-				confirmationTimeoutMs: 60_000,
+				confirmationTimeoutMs: day,
 				backgroundTaskIdleTimeoutMs: 0,
 				backgroundTaskMaxLifetimeMs: 0,
 				activeRunIdleTimeoutMs: 10_000,

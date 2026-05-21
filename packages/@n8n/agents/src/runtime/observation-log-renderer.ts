@@ -5,15 +5,17 @@ import type {
 } from '../types/sdk/observation-log';
 import { estimateObservationTokens } from '../types/sdk/observation-log';
 
-const MARKER_SYMBOLS: Record<ObservationLogMarker, string> = {
-	critical: '🔴',
-	important: '🟡',
-	info: '🟢',
-	completion: '✅',
+const MARKER_LABELS: Record<ObservationLogMarker, string> = {
+	critical: 'CRITICAL',
+	important: 'IMPORTANT',
+	info: 'INFO',
+	completion: 'COMPLETION',
 };
 
 const MEMORY_INTRO =
 	'The following is your memory of this conversation. It accumulates as observations are made. Older entries may have been merged or dropped during periodic restructuring.';
+const MARKER_LEGEND =
+	'Marker legend: CRITICAL = must retain, IMPORTANT = useful continuity, INFO = contextual detail, COMPLETION = completed/resolved.';
 
 export interface RenderObservationLogOptions {
 	renderTokenBudget?: number;
@@ -38,7 +40,7 @@ function observationTokenCount(entry: ObservationLogEntry, tokenCounter: TokenCo
 }
 
 function renderBullet(entry: ObservationLogEntry, indent = ''): string {
-	return `${indent}* ${MARKER_SYMBOLS[entry.marker]} (${formatObservationTime(entry.createdAt)}) ${entry.text}`;
+	return `${indent}* ${MARKER_LABELS[entry.marker]} (${formatObservationTime(entry.createdAt)}) ${entry.text}`;
 }
 
 export function renderObservationLog(
@@ -69,18 +71,21 @@ export function renderObservationLog(
 			const children = childrenByParent.get(entry.parentId) ?? [];
 			children.push(entry);
 			childrenByParent.set(entry.parentId, children);
-		} else {
+		} else if (!entry.parentId) {
 			roots.push(entry);
 		}
 	}
 
-	const lines: string[] = ['## Memory', '', MEMORY_INTRO, ''];
+	if (roots.length === 0) return null;
+
+	const lines: string[] = ['<observations>', '## Memory', '', MEMORY_INTRO, MARKER_LEGEND, ''];
 	for (const root of roots) {
 		lines.push(renderBullet(root));
 		for (const child of childrenByParent.get(root.id) ?? []) {
 			lines.push(renderBullet(child, '  '));
 		}
 	}
+	lines.push('</observations>');
 
 	return lines.join('\n');
 }

@@ -7,6 +7,7 @@ import { NDVStoreKey, WorkflowStateKey } from '@/app/constants/injectionKeys';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
 import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
+import { useReportWorkflowFailuresToParent } from '@/app/composables/useReportWorkflowFailuresToParent';
 import { usePushConnection } from '@/app/composables/usePushConnection/usePushConnection';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -41,6 +42,8 @@ const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessag
 	currentWorkflowDocumentStore,
 	currentNDVStore,
 });
+
+useReportWorkflowFailuresToParent(() => currentWorkflowDocumentStore.value?.name ?? undefined);
 
 // Initialize push event handlers so relayed execution events (via postMessage
 // from the parent) are processed for node highlighting, execution state, etc.
