@@ -120,4 +120,23 @@ describe('createLazyRuntimeWorkspace', () => {
 
 		expect(ensureWorkspace).toHaveBeenCalledTimes(2);
 	});
+
+	it('retries workspace creation after the first lazy initialization returns unavailable', async () => {
+		const { workspace } = createMockWorkspace();
+		const ensureWorkspace = jest
+			.fn()
+			.mockResolvedValueOnce(undefined)
+			.mockResolvedValueOnce(workspace);
+		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
+		const readFile = lazyWorkspace.getTools().find((tool) => tool.name === 'workspace_read_file');
+
+		await expect(readFile?.handler?.({ path: '/workspace/report.md' }, {})).rejects.toThrow(
+			'Instance AI runtime workspace is unavailable.',
+		);
+		await expect(readFile?.handler?.({ path: '/workspace/report.md' }, {})).resolves.toEqual({
+			content: 'hello',
+		});
+
+		expect(ensureWorkspace).toHaveBeenCalledTimes(2);
+	});
 });

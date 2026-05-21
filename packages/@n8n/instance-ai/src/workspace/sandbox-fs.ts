@@ -19,6 +19,7 @@ export interface SandboxWorkspace {
 	filesystem?: {
 		provider?: string;
 		basePath?: string;
+		init?: () => Promise<void>;
 		writeFile: (
 			path: string,
 			content: string | Buffer,

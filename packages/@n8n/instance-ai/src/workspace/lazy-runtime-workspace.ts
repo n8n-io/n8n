@@ -63,6 +63,7 @@ class LazyRuntimeWorkspaceResolver {
 
 		const workspace = await this.workspacePromise;
 		if (!workspace) {
+			this.workspacePromise = undefined;
 			throw new Error('Instance AI runtime workspace is unavailable.');
 		}
 

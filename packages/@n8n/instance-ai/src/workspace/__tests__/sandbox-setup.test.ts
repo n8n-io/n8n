@@ -3,7 +3,7 @@ import { jsonParse } from 'n8n-workflow';
 import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
 import type { SandboxWorkspace } from '../sandbox-fs';
 import type { setupSandboxWorkspace as setupSandboxWorkspaceFunction } from '../sandbox-setup';
-import { formatNodeCatalogLine } from '../sandbox-setup';
+import { formatNodeCatalogLine, getWorkspaceRoot } from '../sandbox-setup';
 
 type SetupSandboxWorkspace = typeof setupSandboxWorkspaceFunction;
 type LinkWorkspaceSdkIfEnabled = (
@@ -391,6 +391,36 @@ describe('setupSandboxWorkspace', () => {
 		expect(writeFile).toHaveBeenCalledWith('/workspace/workflow-sdk.tgz', tarball, {
 			recursive: true,
 		});
+	});
+});
+
+describe('getWorkspaceRoot', () => {
+	it('uses the resolved filesystem base path for lazy local workspaces', async () => {
+		let initialized = false;
+		const executeCommand = jest.fn();
+		const init = jest.fn<Promise<void>, []>(async () => {
+			await Promise.resolve();
+			initialized = true;
+		});
+		const workspace = {
+			filesystem: {
+				provider: 'lazy',
+				get basePath() {
+					return initialized ? '/sandbox' : undefined;
+				},
+				init,
+				writeFile: jest.fn(),
+				mkdir: jest.fn(),
+			},
+			sandbox: {
+				executeCommand,
+			},
+		} as unknown as SandboxWorkspace;
+
+		await expect(getWorkspaceRoot(workspace)).resolves.toBe('/sandbox');
+
+		expect(init).toHaveBeenCalledTimes(1);
+		expect(executeCommand).not.toHaveBeenCalled();
 	});
 });
 

@@ -413,10 +413,20 @@ const workspaceRootCache = new WeakMap<SandboxWorkspace, string>();
 
 function getLocalFilesystemRoot(workspace: SandboxWorkspace): string | null {
 	const filesystem = workspace.filesystem;
-	if (!filesystem || filesystem.provider !== 'local') return null;
+	if (!filesystem) return null;
+
+	const provider = filesystem.provider;
+	if (provider !== 'local' && provider !== 'lazy') return null;
 
 	const basePath = Reflect.get(filesystem, 'basePath');
 	return typeof basePath === 'string' && basePath.length > 0 ? basePath : null;
+}
+
+async function initializeLazyFilesystem(workspace: SandboxWorkspace): Promise<void> {
+	const filesystem = workspace.filesystem;
+	if (filesystem?.provider !== 'lazy') return;
+
+	await filesystem.init?.();
 }
 
 export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<string> {
@@ -427,6 +437,13 @@ export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<str
 	if (localRoot) {
 		workspaceRootCache.set(workspace, localRoot);
 		return localRoot;
+	}
+
+	await initializeLazyFilesystem(workspace);
+	const initializedLocalRoot = getLocalFilesystemRoot(workspace);
+	if (initializedLocalRoot) {
+		workspaceRootCache.set(workspace, initializedLocalRoot);
+		return initializedLocalRoot;
 	}
 
 	const result = await runInSandbox(workspace, 'echo $HOME');

@@ -476,6 +476,10 @@ function createTemporaryCleanupService({
 }
 
 const fakeUser = { id: 'user-1' } as User;
+const daytonaSandboxConfig = {
+	enabled: true,
+	provider: 'daytona',
+} satisfies SandboxConfig;
 
 type WorkspaceServiceInternals = {
 	sandboxes: Map<string, unknown>;
@@ -732,10 +736,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		) as unknown as WorkspaceServiceInternals;
 		service.sandboxes = new Map();
 		service.sandboxCreations = new Map();
-		service.resolveSandboxConfig = jest.fn(async (_user: User) => ({
-			enabled: true,
-			provider: 'daytona',
-		}));
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
 
 		let resolveSandbox!: (sandbox: unknown) => void;
 		const sandboxPromise = new Promise((resolve) => {
@@ -775,10 +776,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		) as unknown as WorkspaceServiceInternals;
 		service.sandboxes = new Map();
 		service.sandboxCreations = new Map();
-		service.resolveSandboxConfig = jest.fn(async (_user: User) => ({
-			enabled: true,
-			provider: 'daytona',
-		}));
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
 
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
@@ -811,10 +809,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		) as unknown as WorkspaceServiceInternals;
 		service.sandboxes = new Map();
 		service.sandboxCreations = new Map();
-		service.resolveSandboxConfig = jest.fn(async (_user: User) => ({
-			enabled: true,
-			provider: 'daytona',
-		}));
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
 
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
@@ -920,10 +915,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.sandboxes = new Map();
 		service.sandboxCreations = new Map();
 		service.domainAccessTrackersByThread = new Map();
-		service.resolveSandboxConfig = jest.fn(async (_user: User) => ({
-			enabled: true,
-			provider: 'daytona',
-		}));
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
 		(createAllTools as jest.Mock).mockReturnValue(new Map());
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
