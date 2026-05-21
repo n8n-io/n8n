@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import {
 	type INode,
 	type IPinData,
@@ -9,7 +10,6 @@ import {
 	UserError,
 } from 'n8n-workflow';
 
-import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { extractNodeConfig } from './node-config';
 
 /** Targets of `ai_*` connections — Agent/Chain root nodes. Pinning these short-circuits sub-node SDK calls. */

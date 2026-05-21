@@ -7,6 +7,8 @@ import {
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { normalizePinData } from '@n8n/workflow-sdk';
 import {
 	type EvalLlmMockHandler,
 	type EvalMockHttpResponse,
@@ -34,11 +36,11 @@ import { PostHogClient } from '@/posthog';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { normalizePinData } from '@n8n/workflow-sdk';
-
+import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
+import { type InterceptedTurn, LlmWireServer } from './llm-wire-server';
+import { createLlmMockHandler } from './mock-handler';
 import { generatePinData } from './pin-data-generator';
-
+import { patchNoProxyForLoopback } from './proxy-loopback';
 import {
 	assertUnpinCompatibility,
 	buildVendorLlmRouting,
@@ -48,10 +50,6 @@ import {
 	type MockHints,
 	type VendorLlmRouting,
 } from './workflow-analysis';
-import { createLlmMockHandler } from './mock-handler';
-import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
-import { type InterceptedTurn, LlmWireServer } from './llm-wire-server';
-import { patchNoProxyForLoopback } from './proxy-loopback';
 
 // ---------------------------------------------------------------------------
 // Constants
