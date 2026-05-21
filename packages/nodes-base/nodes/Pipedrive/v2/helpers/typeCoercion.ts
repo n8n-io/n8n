@@ -38,3 +38,20 @@ export function toRfc3339(value: string): string {
 	if (Number.isNaN(date.getTime())) return value;
 	return date.toISOString();
 }
+
+/**
+ * Reduces any supported date/datetime input to a YYYY-MM-DD string for
+ * Pipedrive fields that only accept a calendar date (e.g. deal
+ * `expected_close_date`, activity `due_date`). The dateTime widget emits
+ * ISO 8601 strings with a time component, which Pipedrive rejects for
+ * these fields.
+ */
+export function toDateOnly(value: string): string {
+	if (!value) return value;
+	if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+	const datePart = value.split('T')[0].split(' ')[0];
+	if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return datePart;
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return value;
+	return date.toISOString().slice(0, 10);
+}

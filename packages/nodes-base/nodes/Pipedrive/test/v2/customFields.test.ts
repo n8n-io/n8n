@@ -2,7 +2,12 @@ import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { encodeCustomFieldsV2, resolveCustomFieldsV2 } from '../../v2/helpers/customFields';
 import { addFieldsToBody } from '../../v2/helpers/fields';
-import { coerceToBoolean, coerceToNumber, toRfc3339 } from '../../v2/helpers/typeCoercion';
+import {
+	coerceToBoolean,
+	coerceToNumber,
+	toDateOnly,
+	toRfc3339,
+} from '../../v2/helpers/typeCoercion';
 import type { ICustomProperties } from '../../v2/transport';
 
 const customProperties: ICustomProperties = {
@@ -386,6 +391,25 @@ describe('Pipedrive v2 Type Coercion', () => {
 		});
 		it('should pass through date-only format unchanged', () => {
 			expect(toRfc3339('2024-01-15')).toBe('2024-01-15');
+		});
+	});
+
+	describe('toDateOnly', () => {
+		it('should pass through YYYY-MM-DD unchanged', () => {
+			expect(toDateOnly('2024-01-15')).toBe('2024-01-15');
+		});
+		it('should strip the time component from an ISO datetime', () => {
+			expect(toDateOnly('2024-01-15T00:00:00.000Z')).toBe('2024-01-15');
+			expect(toDateOnly('2024-01-15T14:30:00Z')).toBe('2024-01-15');
+		});
+		it('should strip the time component from a space-separated datetime', () => {
+			expect(toDateOnly('2024-01-15 14:30:00')).toBe('2024-01-15');
+		});
+		it('should return an empty input unchanged', () => {
+			expect(toDateOnly('')).toBe('');
+		});
+		it('should return the original value when it cannot be parsed', () => {
+			expect(toDateOnly('not-a-date')).toBe('not-a-date');
 		});
 	});
 });
