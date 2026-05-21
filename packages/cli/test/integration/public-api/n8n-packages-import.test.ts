@@ -1,0 +1,140 @@
+import { mockInstance, testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
+import { LICENSE_FEATURES } from '@n8n/constants';
+import type { Project, User } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
+
+import { createOwnerWithApiKey } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
+
+import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
+import { Telemetry } from '@/telemetry';
+
+mockInstance(Telemetry);
+
+const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
+
+let owner: User;
+let ownerPersonalProject: Project;
+let authOwnerAgent: SuperAgentTest;
+
+beforeAll(async () => {
+	owner = await createOwnerWithApiKey();
+	Container.get(InstanceSettings).markAsLeader();
+	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+		owner.id,
+	);
+});
+
+beforeEach(async () => {
+	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
+	authOwnerAgent = testServer.publicApiAgentFor(owner);
+	testServer.license.enable(LICENSE_FEATURES.N8N_PACKAGES);
+	Container.get(GlobalConfig).publicApi.packagesEnabled = true;
+});
+
+afterEach(() => {
+	Container.get(GlobalConfig).publicApi.packagesEnabled = false;
+});
+
+const testWithAPIKey = (method: 'post', url: string, apiKey: string | null) => async () => {
+	void authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
+	const response = await authOwnerAgent[method](url);
+	expect(response.statusCode).toBe(401);
+};
+
+async function buildImportPackage(): Promise<Buffer> {
+	const writer = new TarPackageWriter();
+	const wfId = 'wf-http-source';
+	writer.writeFile(
+		'manifest.json',
+		JSON.stringify({
+			packageFormatVersion: '1',
+			exportedAt: new Date().toISOString(),
+			sourceN8nVersion: '1.0.0',
+			sourceId: 'http-integration-source',
+			workflows: [{ id: wfId, name: 'HTTP Imported', target: `workflows/${wfId}` }],
+		}),
+	);
+	writer.writeDirectory(`workflows/${wfId}`);
+	writer.writeFile(
+		`workflows/${wfId}/workflow.json`,
+		JSON.stringify({
+			id: wfId,
+			name: 'HTTP Imported',
+			nodes: [
+				{
+					id: 'manual-trigger',
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			versionId: 'wire-version-id',
+			parentFolderId: null,
+			activeVersionId: null,
+			isArchived: false,
+		}),
+	);
+
+	const stream = writer.finalize();
+	const chunks: Buffer[] = [];
+	for await (const chunk of stream) {
+		chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as ArrayBuffer));
+	}
+	return Buffer.concat(chunks);
+}
+
+describe('POST /n8n-packages/import', () => {
+	test('should fail due to missing API Key', testWithAPIKey('post', '/n8n-packages/import', null));
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('post', '/n8n-packages/import', 'abcXYZ'),
+	);
+
+	test('rejects unsupported Content-Type', async () => {
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.set('Content-Type', 'application/json')
+			.send({ not: 'a tar' });
+
+		expect(response.statusCode).toBe(415);
+	});
+
+	test('imports a package and returns the rich ImportResult', async () => {
+		const tarBuffer = await buildImportPackage();
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.set('Content-Type', 'application/gzip')
+			.send(tarBuffer);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({
+			package: {
+				sourceN8nVersion: '1.0.0',
+				sourceId: 'http-integration-source',
+				exportedAt: expect.any(String),
+			},
+			workflows: [
+				{
+					sourceId: 'wf-http-source',
+					localId: expect.any(String),
+					name: 'HTTP Imported',
+					projectId: ownerPersonalProject.id,
+					parentFolderId: null,
+					activeVersionId: null,
+				},
+			],
+		});
+
+		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
+	});
+});
