@@ -158,7 +158,7 @@
       "langsmith@<=0.6.0": "0.6.0",
       "protobufjs@<=7.5.8": "7.5.8",
       "vue-i18n@<=11.4.4": "11.4.4",
-      "brace-expansion@<=5.0.6": "5.0.6"
+      "brace-expansion@<3.0.0": "2.0.3"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
