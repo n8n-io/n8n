@@ -589,6 +589,26 @@ describe('WorkflowCard', () => {
 		expect(mcpToggle).toHaveAttribute('aria-checked', 'true');
 	});
 
+	it('should render the MCP toggle as off when the instance module is disabled, even if the workflow is available in MCP', () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: false,
+				isMcpModuleActive: true,
+			},
+		});
+
+		const mcpToggle = getByTestId('workflow-card-mcp-toggle');
+		expect(mcpToggle).toHaveAttribute('aria-checked', 'false');
+	});
+
 	it('should toggle MCP access when the MCP button is clicked', async () => {
 		const data = createWorkflow({
 			scopes: ['workflow:update'],

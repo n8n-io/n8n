@@ -751,7 +751,7 @@ const tags = computed(
 					<span :class="$style.mcpToggle">
 						<N8nIcon :class="$style.mcpIcon" icon="mcp" size="medium" />
 						<N8nSwitch2
-							:model-value="isAvailableInMCP"
+							:model-value="props.isMcpEnabled && isAvailableInMCP"
 							:disabled="!canToggleMcp"
 							size="small"
 							:aria-label="mcpTooltipContent"
