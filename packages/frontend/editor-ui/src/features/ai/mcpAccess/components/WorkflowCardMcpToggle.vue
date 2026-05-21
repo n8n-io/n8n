@@ -32,16 +32,16 @@ const showToggle = computed(
 	() => props.isMcpModuleActive && (props.canEdit || isAvailableInMCP.value),
 );
 
+const switchModelValue = computed(() => props.isMcpEnabled && isAvailableInMCP.value);
+
 const tooltipContent = computed(() => {
 	if (!props.canEdit) {
 		return locale.baseText('workflows.item.availableInMCP');
 	}
-	return isAvailableInMCP.value
+	return switchModelValue.value
 		? locale.baseText('workflows.item.disableMCPAccess')
 		: locale.baseText('workflows.item.enableMCPAccess');
 });
-
-const switchModelValue = computed(() => props.isMcpEnabled && isAvailableInMCP.value);
 
 async function toggleMcpAccess(enabled: boolean) {
 	try {
