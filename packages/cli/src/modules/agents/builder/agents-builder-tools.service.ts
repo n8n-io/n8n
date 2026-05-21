@@ -1,4 +1,4 @@
-import { Tool } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import {
 	agentSkillSchema,
@@ -322,8 +322,8 @@ export class AgentsBuilderToolsService {
 					'Returns the schedule trigger plus every connected chat platform with the list of ' +
 					'credential types it supports (`credentialTypes: string[]`). ' +
 					'Call this BEFORE asking the user for a credential. Then pick ONE entry from the ' +
-					'returned `credentialTypes` (prefer the OAuth variant if present, e.g. `slackOAuth2Api` ' +
-					'over `slackApi`) and pass it to `ask_credential` as the singular `credentialType` arg.',
+					'returned `credentialTypes` and pass it to `ask_credential` as the singular ' +
+					'`credentialType` arg.',
 			)
 			.input(z.object({}))
 			.handler(async () => {
