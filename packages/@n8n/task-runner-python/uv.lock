@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.13"
 
 [manifest]
-constraints = [{ name = "urllib3", specifier = ">=2.6.3" }]
+constraints = [{ name = "urllib3", specifier = ">=2.7.0" }]
 
 [[package]]
 name = "aiohappyeyeballs"
