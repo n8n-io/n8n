@@ -813,6 +813,7 @@ describe('CredentialsHelper', () => {
 	describe('getDecrypted - credential resolution integration', () => {
 		const mockCredentialResolutionProvider = {
 			resolveIfNeeded: jest.fn(),
+			getSystemResolverId: jest.fn(),
 		};
 
 		const mockAdditionalData = {
