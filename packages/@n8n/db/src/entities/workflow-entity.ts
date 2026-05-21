@@ -126,4 +126,13 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 
 	@OneToMany('TestRun', 'workflow')
 	testRuns: TestRun[];
+
+	/**
+	 * Workflow id from the source package when this workflow was imported.
+	 * Null for workflows created directly. Used by import to detect re-imports
+	 * of the same source workflow on the target instance.
+	 */
+	@Index()
+	@Column({ type: 'varchar', nullable: true })
+	sourceWorkflowId: string | null;
 }
