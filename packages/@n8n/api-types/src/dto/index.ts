@@ -98,6 +98,7 @@ export { UpdateVariableRequestDto } from './variables/update-variable-request.dt
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
 export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';
+export type { CredentialConnectionStatus } from './credentials/credential-connection-status';
 
 export {
 	MAX_PINNED_DATA_SIZE,
