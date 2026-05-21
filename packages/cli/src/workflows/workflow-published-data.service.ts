@@ -5,6 +5,8 @@ import {
 	type WorkflowEntity,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ErrorReporter } from 'n8n-core';
+import { UnexpectedError } from 'n8n-workflow';
 import type { IConnections, IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
 
 export interface PublishedWorkflowData {
@@ -45,6 +47,7 @@ export interface PublishedWorkflowData {
 export class WorkflowPublishedDataService {
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 	) {}
 
@@ -52,10 +55,15 @@ export class WorkflowPublishedDataService {
 		const record =
 			await this.workflowPublishedVersionRepository.getPublishedVersionWithRelations(workflowId);
 
-		// This can happen legitimately: e.g. a workflow activated before the
-		// publication service flag was enabled won't have a record yet, or
-		// a workflow was just deactivated and the record was deleted.
+		// This should not happen: only triggers read from this service, and they
+		// only do so when the flag is on; the publication service stops triggers
+		// before deleting the record. If we hit this, we have a real bug.
 		if (!record?.publishedVersion || !record.workflow) {
+			this.errorReporter.error(
+				new UnexpectedError('Published version record not found for workflow', {
+					extra: { workflowId },
+				}),
+			);
 			this.logger.warn(`Published version record not found for workflow "${workflowId}"`);
 			return null;
 		}

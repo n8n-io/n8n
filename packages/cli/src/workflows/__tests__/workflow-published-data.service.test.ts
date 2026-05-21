@@ -1,16 +1,22 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowPublishedVersionRepository, WorkflowPublishedVersion } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
+import type { ErrorReporter } from 'n8n-core';
 
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 describe('WorkflowPublishedDataService', () => {
 	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
+	const errorReporter = mock<ErrorReporter>();
 	let service: WorkflowPublishedDataService;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		service = new WorkflowPublishedDataService(mockLogger(), workflowPublishedVersionRepository);
+		service = new WorkflowPublishedDataService(
+			mockLogger(),
+			errorReporter,
+			workflowPublishedVersionRepository,
+		);
 	});
 
 	// Verifies that we hit the repository and return the data it provides.

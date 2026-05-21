@@ -217,6 +217,8 @@ export class LiveWebhooks implements IWebhookManager {
 			: await this.loadFromActiveVersion(workflowId);
 	}
 
+	// This is the new path for the workflow publication service. Behind a flag,
+	// disabled by default.
 	private async loadFromPublishedVersion(workflowId: string): Promise<WebhookExecutionData> {
 		const publishedData =
 			await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
@@ -231,12 +233,16 @@ export class LiveWebhooks implements IWebhookManager {
 			workflowName: publishedData.name,
 			staticData: publishedData.staticData,
 			settings: publishedData.settings,
+			// Reading from the published workflow data service implies the workflow
+			// is active -- inactive workflows have no published version record.
 			isActive: true,
 			ownerProjectId: findOwnerProjectId(publishedData.shared),
 			activeWorkflowData: { ...workflow, nodes, connections },
 		};
 	}
 
+	// This is the old path, before the workflow publication service. Currently
+	// the default.
 	private async loadFromActiveVersion(workflowId: string): Promise<WebhookExecutionData> {
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: workflowId },
