@@ -9,11 +9,7 @@ const OBSERVATION_LOCK_TASK_KIND_COLUMN = 'taskKind';
 const LEGACY_OBSERVATION_LOCK_TASK_KIND_VALUES = "'observer', 'reflector'";
 
 export class CreateAgentMemoryEntryTables1784000000009 implements ReversibleMigration {
-	async up({
-		schemaBuilder: { createTable, dropTable, column },
-		queryRunner,
-		tablePrefix,
-	}: MigrationContext) {
+	async up({ schemaBuilder: { createTable, column }, queryRunner, tablePrefix }: MigrationContext) {
 		await this.dropObservationLockTaskKindCheck(queryRunner, tablePrefix);
 
 		await createTable('agents_memory_entries')
