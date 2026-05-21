@@ -39,6 +39,12 @@ vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	}),
 }));
 
+vi.mock('@/app/stores/workflows.store', () => ({
+	useWorkflowsStore: () => ({
+		workflowId: 'test-workflow-id',
+	}),
+}));
+
 vi.mock('@/app/stores/history.store', () => ({
 	useHistoryStore: () => historyStoreMock,
 }));

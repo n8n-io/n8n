@@ -6,6 +6,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import type { IWorkflowDb } from '@/Interface';
@@ -17,6 +19,19 @@ const useCanvasOperations = vi.hoisted(() => vi.fn());
 vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations,
 }));
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const actual = (await importOriginal()) as Record<string, unknown>;
+	const useNDVStoreFn = actual.useNDVStore as (id: string) => unknown;
+	const { createWorkflowDocumentId: makeDocId } = await import(
+		'@/app/stores/workflowDocument.store'
+	);
+	const { shallowRef: makeShallow } = await import('vue');
+	return {
+		...actual,
+		injectNDVStore: vi.fn(() => makeShallow(useNDVStoreFn(makeDocId('test-workflow')))),
+	};
+});
 
 describe('useWorkflowResourcesLocator', () => {
 	let workflowsListStoreMock: MockedStore<typeof useWorkflowsListStore>;
@@ -31,8 +46,12 @@ describe('useWorkflowResourcesLocator', () => {
 		vi.clearAllMocks();
 
 		createTestingPinia();
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'test-workflow';
 		workflowsListStoreMock = mockedStore(useWorkflowsListStore);
-		ndvStoreMock = mockedStore(useNDVStore);
+		ndvStoreMock = useNDVStore(createWorkflowDocumentId('test-workflow')) as MockedStore<
+			typeof useNDVStore
+		>;
 
 		useCanvasOperations.mockReturnValue({ renameNode: renameNodeMock });
 	});

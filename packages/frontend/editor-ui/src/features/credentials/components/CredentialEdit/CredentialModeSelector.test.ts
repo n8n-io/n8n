@@ -5,11 +5,18 @@ import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import type { INodeUi } from '@/Interface';
+import { shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 const dropboxOAuth2ApiType: ICredentialType = {
 	name: 'dropboxOAuth2Api',
@@ -121,7 +128,17 @@ const threeAuthNodeType = {
 	],
 } as unknown as INodeTypeDescription;
 
-const renderComponent = createComponentRenderer(CredentialModeSelector);
+const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+	null,
+);
+
+const renderComponent = createComponentRenderer(CredentialModeSelector, {
+	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+		},
+	},
+});
 
 function setupStores(opts: {
 	nodeType: INodeTypeDescription;
@@ -130,7 +147,14 @@ function setupStores(opts: {
 }) {
 	const pinia = createTestingPinia({ stubActions: false });
 
-	const ndvStore = mockedStore(useNDVStore);
+	const workflowsStore = mockedStore(useWorkflowsStore);
+	workflowsStore.workflowId = 'test-workflow';
+	workflowDocumentStoreRef.value = useWorkflowDocumentStore(
+		createWorkflowDocumentId('test-workflow'),
+	);
+	const ndvStore = useNDVStore(createWorkflowDocumentId('test-workflow')) as MockedStore<
+		typeof useNDVStore
+	>;
 	ndvStore.activeNode = opts.node;
 
 	const nodeTypesStore = mockedStore(useNodeTypesStore);

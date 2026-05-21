@@ -3,10 +3,16 @@ import { createTestingPinia } from '@pinia/testing';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import { STORES } from '@n8n/stores';
 import { getNDVStoreId } from '@/features/ndv/shared/ndv.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { waitFor } from '@testing-library/vue';
 import { createTestNodeProperties } from '@/__tests__/mocks';
+import { setActivePinia } from 'pinia';
+import { shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 vi.mock('@/app/composables/useWorkflowHelpers', () => {
 	return { useWorkflowHelpers: vi.fn(() => ({ resolveExpression: vi.fn(() => 'topSecret') })) };
@@ -14,16 +20,21 @@ vi.mock('@/app/composables/useWorkflowHelpers', () => {
 
 describe('ParameterInputWrapper.vue', () => {
 	test('should resolve expression', async () => {
-		const { getByTestId } = renderComponent(ParameterInputWrapper, {
-			pinia: createTestingPinia({
-				initialState: {
-					[getNDVStoreId(createWorkflowDocumentId('default'))]: {
-						activeNodeName: 'testNode',
-						input: { nodeName: 'inputNode' },
-					},
-					[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
+		const pinia = createTestingPinia({
+			initialState: {
+				[getNDVStoreId(createWorkflowDocumentId('default'))]: {
+					activeNodeName: 'testNode',
+					input: { nodeName: 'inputNode' },
 				},
-			}),
+				[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
+			},
+		});
+		setActivePinia(pinia);
+		const workflowDocumentStoreRef = shallowRef(
+			useWorkflowDocumentStore(createWorkflowDocumentId('default')),
+		);
+		const { getByTestId } = renderComponent(ParameterInputWrapper, {
+			pinia,
 			props: {
 				parameter: createTestNodeProperties({
 					name: 'test',
@@ -34,6 +45,9 @@ describe('ParameterInputWrapper.vue', () => {
 				isForCredential: true,
 			},
 			global: {
+				provide: {
+					[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+				},
 				mocks: {
 					$ndvStore: {
 						activeNode: vi.fn(() => ({ test: 'test' })),

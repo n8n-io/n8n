@@ -12,8 +12,21 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import type { IWorkflowDb } from '@/Interface';
+import type { IWorkflowDb, INodeUi } from '@/Interface';
 import * as vueuse from '@vueuse/core';
+import { shallowRef } from 'vue';
+
+const { mockNdvStore } = vi.hoisted(() => ({
+	mockNdvStore: {
+		activeNode: null as INodeUi | null,
+		activeNodeName: null as string | null,
+	},
+}));
+
+vi.mock('@/features/ndv/shared/ndv.store', () => ({
+	useNDVStore: vi.fn().mockReturnValue(mockNdvStore),
+	injectNDVStore: vi.fn(() => shallowRef(mockNdvStore)),
+}));
 
 vi.mock('@vueuse/core', async () => {
 	const actual = await vi.importActual('@vueuse/core');

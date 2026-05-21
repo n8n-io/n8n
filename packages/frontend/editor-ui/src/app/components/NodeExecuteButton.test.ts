@@ -3,6 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore, getTooltip } from '@/__tests__/utils';
 import { mockNode, mockNodeTypeDescription } from '@/__tests__/mocks';
@@ -135,14 +136,7 @@ describe('NodeExecuteButton', () => {
 		vi.clearAllMocks();
 		nodeViewEventBusEmitSpy = vi.spyOn(nodeViewEventBus, 'emit');
 
-		renderComponent = createComponentRenderer(NodeExecuteButton, {
-			pinia: createTestingPinia(),
-			props: {
-				nodeName: 'test-node',
-				telemetrySource: 'test-source',
-			},
-		});
-
+		const pinia = createTestingPinia();
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsStore.workflowId = 'abc123';
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('abc123'));
@@ -150,8 +144,21 @@ describe('NodeExecuteButton', () => {
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
+		renderComponent = createComponentRenderer(NodeExecuteButton, {
+			pinia,
+			props: {
+				nodeName: 'test-node',
+				telemetrySource: 'test-source',
+			},
+			global: {
+				provide: {
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(workflowDocumentStore),
+				},
+			},
+		});
+
 		nodeTypesStore = mockedStore(useNodeTypesStore);
-		ndvStore = mockedStore(useNDVStore);
+		ndvStore = useNDVStore(createWorkflowDocumentId('abc123')) as MockedStore<typeof useNDVStore>;
 
 		runWorkflow = useRunWorkflow({ router: useRouter() });
 		externalHooks = useExternalHooks();

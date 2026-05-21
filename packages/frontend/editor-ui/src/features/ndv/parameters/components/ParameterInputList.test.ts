@@ -1,15 +1,18 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
+import { mockedStore, getTooltip, hoverTooltipTrigger, type MockedStore } from '@/__tests__/utils';
 import ParameterInputList from './ParameterInputList.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { flushPromises } from '@vue/test-utils';
 import { shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
@@ -108,7 +111,7 @@ vi.mock('vue-router', async () => {
 	};
 });
 
-let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
+let ndvStore: MockedStore<typeof useNDVStore>;
 
 const workflowDocumentStoreMock = {
 	getChildNodes: vi.fn().mockReturnValue([]),
@@ -129,6 +132,9 @@ const renderComponent = createComponentRenderer(ParameterInputList, {
 		isReadOnly: false,
 	},
 	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: shallowRef(null),
+		},
 		stubs: {
 			ParameterInputFull: { template: '<div data-test-id="parameter-input"></div>' },
 			Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
@@ -139,7 +145,11 @@ const renderComponent = createComponentRenderer(ParameterInputList, {
 describe('ParameterInputList', () => {
 	beforeEach(() => {
 		createTestingPinia();
-		ndvStore = mockedStore(useNDVStore);
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'test-workflow';
+		ndvStore = useNDVStore(createWorkflowDocumentId('test-workflow')) as MockedStore<
+			typeof useNDVStore
+		>;
 		workflowDocumentStoreMock.getChildNodes.mockReturnValue([]);
 		workflowDocumentStoreMock.getParentNodes.mockReturnValue([]);
 		workflowDocumentStoreMock.getParentNodesByDepth.mockReturnValue([]);
@@ -406,6 +416,9 @@ describe('ParameterInputList', () => {
 				isReadOnly: false,
 			},
 			global: {
+				provide: {
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(null),
+				},
 				stubs: {
 					Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
 				},

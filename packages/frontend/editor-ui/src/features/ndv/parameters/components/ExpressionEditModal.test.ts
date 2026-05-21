@@ -6,6 +6,12 @@ import { setActivePinia, type Pinia } from 'pinia';
 import { defaultSettings } from '@/__tests__/defaults';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { createTestNodeProperties } from '@/__tests__/mocks';
+import { shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -23,7 +29,17 @@ vi.mock('@/app/composables/useWorkflowHelpers', async (importOriginal) => {
 	return { ...actual, resolveParameter: vi.fn(() => 123) };
 });
 
-const renderModal = createComponentRenderer(ExpressionEditModal);
+const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+	null,
+);
+
+const renderModal = createComponentRenderer(ExpressionEditModal, {
+	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+		},
+	},
+});
 
 describe('ExpressionEditModal', () => {
 	let pinia: Pinia;
@@ -32,6 +48,9 @@ describe('ExpressionEditModal', () => {
 		pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		useSettingsStore().setSettings(defaultSettings);
+		workflowDocumentStoreRef.value = useWorkflowDocumentStore(
+			createWorkflowDocumentId('test-workflow'),
+		);
 	});
 
 	afterEach(() => {

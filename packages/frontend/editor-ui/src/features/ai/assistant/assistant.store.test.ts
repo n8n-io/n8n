@@ -49,6 +49,7 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	useNDVStore: vi.fn().mockReturnValue(mockNdvStore),
+	injectNDVStore: vi.fn(() => shallowRef(mockNdvStore)),
 }));
 
 let settingsStore: ReturnType<typeof useSettingsStore>;

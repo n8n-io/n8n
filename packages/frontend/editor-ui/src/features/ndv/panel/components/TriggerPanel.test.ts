@@ -7,12 +7,16 @@ import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { setActivePinia } from 'pinia';
 import { computed, shallowRef } from 'vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+
+const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+	null,
+);
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
@@ -34,6 +38,7 @@ describe('TriggerPanel.vue', () => {
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 		workflowDocStore.setNodes([node]);
+		workflowDocumentStoreRef.value = workflowDocStore;
 		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocStore));
 
 		nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -56,6 +61,7 @@ describe('TriggerPanel.vue', () => {
 			global: {
 				provide: {
 					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+					[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
 				},
 			},
 		});
@@ -72,6 +78,7 @@ describe('TriggerPanel.vue', () => {
 			global: {
 				provide: {
 					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+					[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
 				},
 			},
 		});
@@ -86,6 +93,7 @@ describe('TriggerPanel.vue', () => {
 			global: {
 				provide: {
 					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+					[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
 				},
 			},
 		});
@@ -101,6 +109,7 @@ describe('TriggerPanel.vue', () => {
 			global: {
 				provide: {
 					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+					[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
 				},
 			},
 		});
@@ -115,6 +124,7 @@ describe('TriggerPanel.vue', () => {
 			global: {
 				provide: {
 					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+					[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
 				},
 			},
 		});

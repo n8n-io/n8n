@@ -4,6 +4,8 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useNodeSettingsParameters } from './useNodeSettingsParameters';
 import * as nodeHelpers from '@/app/composables/useNodeHelpers';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
@@ -14,6 +16,19 @@ import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 import { CHAT_TRIGGER_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/app/constants';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const actual = (await importOriginal()) as Record<string, unknown>;
+	const useNDVStoreFn = actual.useNDVStore as (id: string) => unknown;
+	const { createWorkflowDocumentId: makeDocId } = await import(
+		'@/app/stores/workflowDocument.store'
+	);
+	const { shallowRef: makeShallow } = await import('vue');
+	return {
+		...actual,
+		injectNDVStore: vi.fn(() => makeShallow(useNDVStoreFn(makeDocId('test-workflow')))),
+	};
+});
 
 describe('useNodeSettingsParameters', () => {
 	beforeEach(() => {
@@ -27,7 +42,11 @@ describe('useNodeSettingsParameters', () => {
 		beforeEach(() => {
 			setActivePinia(createTestingPinia());
 
-			ndvStore = mockedStore(useNDVStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.workflowId = 'test-workflow';
+			ndvStore = useNDVStore(createWorkflowDocumentId('test-workflow')) as MockedStore<
+				typeof useNDVStore
+			>;
 			focusPanelStore = mockedStore(useFocusPanelStore);
 
 			ndvStore.activeNode = {

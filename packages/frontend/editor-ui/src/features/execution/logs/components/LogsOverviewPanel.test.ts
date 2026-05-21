@@ -17,6 +17,20 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
 import { createLogTree, flattenLogEntries } from '../logs.utils';
 import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { shallowRef } from 'vue';
+import type { INodeUi } from '@/Interface';
+
+const { mockNdvStore } = vi.hoisted(() => ({
+	mockNdvStore: {
+		activeNode: null as INodeUi | null,
+		activeNodeName: null as string | null,
+	},
+}));
+
+vi.mock('@/features/ndv/shared/ndv.store', () => ({
+	useNDVStore: vi.fn().mockReturnValue(mockNdvStore),
+	injectNDVStore: vi.fn(() => shallowRef(mockNdvStore)),
+}));
 
 const { mockDocumentStore } = vi.hoisted(() => ({
 	mockDocumentStore: {

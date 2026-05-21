@@ -1,11 +1,11 @@
-import { reactive, computed } from 'vue';
+import { reactive, computed, shallowRef } from 'vue';
 import {
 	createTestNode,
 	createTestWorkflowObject,
 	createTestWorkflowExecutionResponse,
 	defaultNodeDescriptions,
 } from '@/__tests__/mocks';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { WorkflowIdKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import RunData from './RunData.vue';
@@ -1446,14 +1446,15 @@ describe('RunData', () => {
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
 		schemaPreviewStore = mockedStore(useSchemaPreviewStore);
-		ndvStore = mockedStore(useNDVStore);
 
 		nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 		const testWorkflowId = workflowId ?? 'test-workflow';
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(testWorkflowId));
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(workflowNodes[0]);
 
-		// Mock ndvStore methods
+		ndvStore = useNDVStore(createWorkflowDocumentId(testWorkflowId)) as MockedStore<
+			typeof useNDVStore
+		>;
 		ndvStore.setOutputPanelEditModeEnabled = vi.fn();
 		ndvStore.setOutputPanelEditModeValue = vi.fn();
 
@@ -1498,6 +1499,7 @@ describe('RunData', () => {
 			global: {
 				provide: {
 					[WorkflowIdKey as unknown as string]: computed(() => workflowId ?? 'test-workflow'),
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(workflowDocumentStore),
 				},
 				stubs: {
 					RunDataPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },

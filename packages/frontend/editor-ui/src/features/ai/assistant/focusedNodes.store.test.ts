@@ -927,7 +927,9 @@ describe('useFocusedNodesStore', () => {
 			const chatPanelStateStore = useChatPanelStateStore();
 			chatPanelStateStore.isOpen = true;
 
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = useNDVStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			) as ReturnType<typeof mockedStore<typeof useNDVStore>>;
 			ndvStore.activeNode = createMockNode(
 				'node-2',
 				'Code',

@@ -1,10 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h, ref, shallowRef } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { createEventBus } from '@n8n/utils/event-bus';
 import AIBuilderDiffModal from './AIBuilderDiffModal.vue';
-import type { IWorkflowDb } from '@/Interface';
+import type { IWorkflowDb, INodeUi } from '@/Interface';
+
+const { mockNdvStore } = vi.hoisted(() => ({
+	mockNdvStore: {
+		activeNode: null as INodeUi | null,
+		activeNodeName: null as string | null,
+	},
+}));
+
+vi.mock('@/features/ndv/shared/ndv.store', () => ({
+	useNDVStore: vi.fn().mockReturnValue(mockNdvStore),
+	injectNDVStore: vi.fn(() => shallowRef(mockNdvStore)),
+}));
 
 // Mock Modal component
 vi.mock('@/app/components/Modal.vue', () => ({

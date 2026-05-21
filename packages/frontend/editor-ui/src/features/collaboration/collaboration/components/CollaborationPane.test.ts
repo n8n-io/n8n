@@ -1,13 +1,27 @@
 import { createTestingPinia } from '@pinia/testing';
 import { mock } from 'vitest-mock-extended';
+import { shallowRef } from 'vue';
 
 import { STORES } from '@n8n/stores';
 import CollaborationPane from './CollaborationPane.vue';
 import type { IUser } from '@n8n/rest-api-client/api/users';
+import type { INodeUi } from '@/Interface';
 
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitAllPromises } from '@/__tests__/utils';
+
+const { mockNdvStore } = vi.hoisted(() => ({
+	mockNdvStore: {
+		activeNode: null as INodeUi | null,
+		activeNodeName: null as string | null,
+	},
+}));
+
+vi.mock('@/features/ndv/shared/ndv.store', () => ({
+	useNDVStore: vi.fn().mockReturnValue(mockNdvStore),
+	injectNDVStore: vi.fn(() => shallowRef(mockNdvStore)),
+}));
 
 const OWNER_USER = mock<IUser>({ id: 'owner-id' });
 const MEMBER_USER = mock<IUser>({ id: 'member-id' });

@@ -13,6 +13,7 @@ import { nextTick, shallowRef } from 'vue';
 import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
@@ -104,7 +105,13 @@ const mockTools = [
 	},
 ];
 
-const renderModal = createComponentRenderer(FromAiParametersModal);
+const renderModal = createComponentRenderer(FromAiParametersModal, {
+	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: shallowRef(mockWorkflowDocumentStore),
+		},
+	},
+});
 let pinia: ReturnType<typeof createTestingPinia>;
 let agentRequestStore: ReturnType<typeof useAgentRequestStore>;
 let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;

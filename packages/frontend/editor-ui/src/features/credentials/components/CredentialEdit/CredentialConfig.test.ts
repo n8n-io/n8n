@@ -14,9 +14,17 @@ import { vi } from 'vitest';
 import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { mockedStore } from '@/__tests__/utils';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { addCredentialTranslation } from '@n8n/i18n';
 import type { INodeUi } from '@/Interface';
+import { shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { setActivePinia } from 'pinia';
 
 vi.mock('@n8n/i18n', async () => {
 	const actual = await vi.importActual('@n8n/i18n');
@@ -32,19 +40,25 @@ const mockCredentialType: ICredentialType = {
 	properties: [],
 };
 
-const defaultRenderOptions: RenderOptions<typeof CredentialConfig> = {
-	pinia: createTestingPinia({
-		initialState: {
-			[STORES.SETTINGS]: {
-				settings: {
-					enterprise: {
-						sharing: false,
-						externalSecrets: false,
-					},
+const defaultPinia = createTestingPinia({
+	initialState: {
+		[STORES.SETTINGS]: {
+			settings: {
+				enterprise: {
+					sharing: false,
+					externalSecrets: false,
 				},
 			},
 		},
-	}),
+	},
+});
+setActivePinia(defaultPinia);
+const workflowDocumentStoreRef = shallowRef(
+	useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow')),
+);
+
+const defaultRenderOptions: RenderOptions<typeof CredentialConfig> = {
+	pinia: defaultPinia,
 	props: {
 		isManaged: true,
 		mode: 'edit',
@@ -59,6 +73,11 @@ const defaultRenderOptions: RenderOptions<typeof CredentialConfig> = {
 			update: false,
 			delete: false,
 			list: false,
+		},
+	},
+	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
 		},
 	},
 };
@@ -521,7 +540,11 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			const ndvStore = mockedStore(useNDVStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.workflowId = 'test-workflow';
+			const ndvStore = useNDVStore(createWorkflowDocumentId('test-workflow')) as MockedStore<
+				typeof useNDVStore
+			>;
 			ndvStore.activeNode = {
 				parameters: { authentication: 'accessToken' },
 				type: 'n8n-nodes-base.dropbox',

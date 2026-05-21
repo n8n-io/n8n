@@ -6,7 +6,13 @@ import { createTestNodeProperties } from '@/__tests__/mocks';
 import ParameterInputExpanded from './ParameterInputExpanded.vue';
 import type { INodePropertyCollection } from 'n8n-workflow';
 import userEvent from '@testing-library/user-event';
-import { nextTick } from 'vue';
+import { nextTick, shallowRef } from 'vue';
+import { setActivePinia } from 'pinia';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
@@ -61,9 +67,19 @@ describe('ParameterInputExpanded.vue', () => {
 			},
 		},
 	});
+	setActivePinia(mockPinia);
+
+	const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+		useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow')),
+	);
 
 	const renderComponent = createComponentRenderer(ParameterInputExpanded, {
 		pinia: mockPinia,
+		global: {
+			provide: {
+				[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+			},
+		},
 	});
 
 	describe('FixedCollectionParameter', () => {

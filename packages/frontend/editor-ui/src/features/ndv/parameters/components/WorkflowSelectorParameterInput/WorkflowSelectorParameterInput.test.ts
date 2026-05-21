@@ -52,6 +52,19 @@ let projectsStore: MockedStore<typeof useProjectsStore>;
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const actual = (await importOriginal()) as Record<string, unknown>;
+	const useNDVStoreFn = actual.useNDVStore as (id: string) => unknown;
+	const { createWorkflowDocumentId: makeDocId } = await import(
+		'@/app/stores/workflowDocument.store'
+	);
+	const { shallowRef: makeShallow } = await import('vue');
+	return {
+		...actual,
+		injectNDVStore: vi.fn(() => makeShallow(useNDVStoreFn(makeDocId('default')))),
+	};
+});
+
 describe('WorkflowSelectorParameterInput', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({}));

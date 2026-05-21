@@ -3,6 +3,7 @@ import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 import { getNDVStoreId } from '@/features/ndv/shared/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 import SqlEditor from '@/features/shared/editors/components/SqlEditor/SqlEditor.vue';
 import { renderComponent, type RenderOptions } from '@/__tests__/render';
@@ -25,10 +26,19 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 
 const EXPRESSION_OUTPUT_TEST_ID = 'inline-expression-editor-output';
 
+const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+	null,
+);
+
 const DEFAULT_SETUP: RenderOptions<typeof SqlEditor> = {
 	props: {
 		dialect: 'PostgreSQL',
 		isReadOnly: false,
+	},
+	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+		},
 	},
 };
 
@@ -95,6 +105,7 @@ describe('SqlEditor.vue', () => {
 		);
 		vi.mocked(workflowDocumentStore).getNodeByName.mockReturnValue(nodes[0]);
 		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
+		workflowDocumentStoreRef.value = workflowDocumentStore;
 	});
 
 	afterAll(() => {

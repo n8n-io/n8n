@@ -9,13 +9,27 @@ import { cleanup, screen, waitFor, within } from '@testing-library/vue';
 import merge from 'lodash/merge';
 import Assignment from './Assignment.vue';
 import { flushPromises } from '@vue/test-utils';
+import { setActivePinia } from 'pinia';
+import { shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 vi.mock('vue-router');
 
+const defaultPinia = createTestingPinia({
+	initialState: { [STORES.SETTINGS]: { settings: merge({}, defaultSettings) } },
+});
+setActivePinia(defaultPinia);
+
+const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+	useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow')),
+);
+
 const DEFAULT_SETUP: RenderOptions<typeof Assignment> = {
-	pinia: createTestingPinia({
-		initialState: { [STORES.SETTINGS]: { settings: merge({}, defaultSettings) } },
-	}),
+	pinia: defaultPinia,
 	props: {
 		path: 'parameters.fields.0',
 		modelValue: {
@@ -25,6 +39,11 @@ const DEFAULT_SETUP: RenderOptions<typeof Assignment> = {
 			value: '',
 		},
 		issues: [],
+	},
+	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+		},
 	},
 };
 

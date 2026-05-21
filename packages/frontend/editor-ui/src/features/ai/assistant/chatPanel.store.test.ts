@@ -36,6 +36,19 @@ Object.defineProperty(window, 'innerWidth', {
 	value: 1920,
 });
 
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const actual = (await importOriginal()) as Record<string, unknown>;
+	const useNDVStoreFn = actual.useNDVStore as (id: string) => unknown;
+	const { createWorkflowDocumentId: makeDocId } = await import(
+		'@/app/stores/workflowDocument.store'
+	);
+	const { shallowRef: makeShallow } = await import('vue');
+	return {
+		...actual,
+		injectNDVStore: vi.fn(() => makeShallow(useNDVStoreFn(makeDocId('default')))),
+	};
+});
+
 describe('chatPanel.store', () => {
 	let chatPanelStore: ReturnType<typeof useChatPanelStore>;
 	let chatPanelStateStore: ReturnType<typeof useChatPanelStateStore>;

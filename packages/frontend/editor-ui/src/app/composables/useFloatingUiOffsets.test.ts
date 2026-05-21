@@ -10,7 +10,7 @@ import {
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 import { setActivePinia } from 'pinia';
 import { useFloatingUiOffsets } from './useFloatingUiOffsets';
-import { reactive } from 'vue';
+import { reactive, shallowRef } from 'vue';
 import { EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import { createTestNode } from '@/__tests__/mocks';
 import { createTestingPinia } from '@pinia/testing';
@@ -29,6 +29,9 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
+import * as ndvStoreModule from '@/features/ndv/shared/ndv.store';
+const injectNDVStoreSpy = vi.spyOn(ndvStoreModule, 'injectNDVStore');
+
 describe(useFloatingUiOffsets, () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
@@ -39,6 +42,11 @@ describe(useFloatingUiOffsets, () => {
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 		workflowDocumentStore.setNodes([createTestNode({ name: 'n0' })]);
+		injectNDVStoreSpy.mockReturnValue(
+			shallowRef(useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId))) as ReturnType<
+				typeof ndvStoreModule.injectNDVStore
+			>,
+		);
 	});
 
 	describe('toastBottomOffset', () => {

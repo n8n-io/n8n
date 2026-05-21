@@ -4,6 +4,13 @@ import { flushPromises } from '@vue/test-utils';
 import RunDataJson from '@/features/ndv/runData/components/RunDataJson.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useElementSize } from '@vueuse/core'; // Import the composable to mock
+import { shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { setActivePinia } from 'pinia';
 
 vi.mock('@vueuse/core', async () => {
 	const originalModule = await vi.importActual('@vueuse/core');
@@ -56,9 +63,15 @@ describe('RunDataJson.vue', () => {
 	beforeEach(cleanup);
 
 	it('renders json values properly', async () => {
+		const pinia = createTestingPinia();
+		setActivePinia(pinia);
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('default'));
 		const { container } = renderComponent({
 			global: {
-				plugins: [createTestingPinia()],
+				plugins: [pinia],
+				provide: {
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(workflowDocumentStore),
+				},
 			},
 		});
 		// Resolve the defineAsyncComponent import to prevent EnvironmentTeardownError

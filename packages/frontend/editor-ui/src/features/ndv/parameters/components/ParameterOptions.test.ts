@@ -4,6 +4,12 @@ import { within, waitFor } from '@testing-library/vue';
 import ParameterOptions from './ParameterOptions.vue';
 import { setActivePinia, createPinia } from 'pinia';
 import { createTestNodeProperties } from '@/__tests__/mocks';
+import { shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 const DEFAULT_PARAMETER = createTestNodeProperties({
 	displayName: 'Fields to Set',
@@ -12,12 +18,32 @@ const DEFAULT_PARAMETER = createTestNodeProperties({
 	default: {},
 });
 
+const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+	null,
+);
+
+function renderParameterOptions(options: Parameters<typeof renderComponent>[1]) {
+	return renderComponent(ParameterOptions, {
+		...options,
+		global: {
+			...options?.global,
+			provide: {
+				...options?.global?.provide,
+				[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+			},
+		},
+	});
+}
+
 describe('ParameterOptions', () => {
 	let pinia: ReturnType<typeof createPinia>;
 
 	beforeEach(async () => {
 		pinia = createPinia();
 		setActivePinia(pinia);
+		workflowDocumentStoreRef.value = useWorkflowDocumentStore(
+			createWorkflowDocumentId('test-workflow'),
+		);
 	});
 
 	afterEach(() => {
@@ -25,7 +51,7 @@ describe('ParameterOptions', () => {
 	});
 
 	it('renders default options properly', () => {
-		const { getByTestId } = renderComponent(ParameterOptions, {
+		const { getByTestId } = renderParameterOptions({
 			props: {
 				parameter: DEFAULT_PARAMETER,
 				isReadOnly: false,
@@ -38,7 +64,7 @@ describe('ParameterOptions', () => {
 	});
 
 	it("doesn't render expression with showExpression set to false", () => {
-		const { getByTestId, queryByTestId } = renderComponent(ParameterOptions, {
+		const { getByTestId, queryByTestId } = renderParameterOptions({
 			props: {
 				parameter: DEFAULT_PARAMETER,
 				isReadOnly: false,
@@ -54,7 +80,7 @@ describe('ParameterOptions', () => {
 
 	it('should render loading state', () => {
 		const CUSTOM_LOADING_MESSAGE = 'Loading...';
-		const { getByTestId, getByText } = renderComponent(ParameterOptions, {
+		const { getByTestId, getByText } = renderParameterOptions({
 			props: {
 				parameter: DEFAULT_PARAMETER,
 				isReadOnly: false,
@@ -69,7 +95,7 @@ describe('ParameterOptions', () => {
 	});
 
 	it('should render horizontal icon', () => {
-		const { container } = renderComponent(ParameterOptions, {
+		const { container } = renderParameterOptions({
 			props: {
 				parameter: DEFAULT_PARAMETER,
 				value: 'manual',
@@ -85,7 +111,7 @@ describe('ParameterOptions', () => {
 			{ label: 'Action 1', value: 'action1' },
 			{ label: 'Action 2', value: 'action2' },
 		];
-		const { getByTestId } = renderComponent(ParameterOptions, {
+		const { getByTestId } = renderParameterOptions({
 			props: {
 				parameter: DEFAULT_PARAMETER,
 				value: 'manual',
@@ -107,7 +133,7 @@ describe('ParameterOptions', () => {
 	});
 
 	it('should emit update:modelValue when changing to expression', async () => {
-		const { emitted, getByTestId } = renderComponent(ParameterOptions, {
+		const { emitted, getByTestId } = renderParameterOptions({
 			props: {
 				parameter: DEFAULT_PARAMETER,
 				value: 'manual',
@@ -120,7 +146,7 @@ describe('ParameterOptions', () => {
 	});
 
 	it('should emit update:modelValue when changing to fixed', async () => {
-		const { emitted, getByTestId } = renderComponent(ParameterOptions, {
+		const { emitted, getByTestId } = renderParameterOptions({
 			props: {
 				parameter: DEFAULT_PARAMETER,
 				value: '=manual',

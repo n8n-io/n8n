@@ -2,12 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import NodeIssueItem from './NodeIssueItem.vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 vi.mock('@/app/components/NodeIcon.vue', () => ({
 	default: {
@@ -15,20 +19,30 @@ vi.mock('@/app/components/NodeIcon.vue', () => ({
 	},
 }));
 
-const renderComponent = createComponentRenderer(NodeIssueItem);
+const renderComponent = createComponentRenderer(NodeIssueItem, {
+	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: shallowRef(null),
+		},
+	},
+});
 
 function formatNodeIssueMessage(value: string | string[]) {
 	return Array.isArray(value) ? value.join(', ') : value;
 }
 
 describe('NodeIssueItem', () => {
-	let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
+	let ndvStore: MockedStore<typeof useNDVStore>;
 	let pinia: ReturnType<typeof createTestingPinia>;
 
 	beforeEach(() => {
 		pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
-		ndvStore = mockedStore(useNDVStore);
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'test-workflow';
+		ndvStore = useNDVStore(createWorkflowDocumentId('test-workflow')) as MockedStore<
+			typeof useNDVStore
+		>;
 		ndvStore.setActiveNodeName = vi.fn();
 	});
 

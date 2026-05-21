@@ -1,5 +1,5 @@
 import { mockNode } from '@/__tests__/mocks';
-import { renderComponent } from '@/__tests__/render';
+import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
 import { type NodeTypesByTypeNameAndVersion } from '@/Interface';
@@ -8,13 +8,24 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import type { CommunityNodeType } from '@n8n/api-types';
 import type { TestingPinia } from '@pinia/testing';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import { vi, type MockedFunction } from 'vitest';
-import { ref } from 'vue';
+import { ref, shallowRef } from 'vue';
 import NodeSettingsInvalidNodeWarning from './NodeSettingsInvalidNodeWarning.vue';
+
+const renderComponent = createComponentRenderer(NodeSettingsInvalidNodeWarning, {
+	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: shallowRef(null),
+		},
+	},
+});
 
 vi.mock('@/features/settings/communityNodes/composables/useInstallNode');
 vi.mock('@/app/composables/useTelemetry', () => ({
@@ -22,6 +33,21 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 		track: vi.fn(),
 	}),
 }));
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const actual = (await importOriginal()) as Record<string, unknown>;
+	const useNDVStoreFn = actual.useNDVStore as (id: string) => unknown;
+	const createWorkflowDocumentIdFn = (await import('@/app/stores/workflowDocument.store'))
+		.createWorkflowDocumentId;
+	return {
+		...actual,
+		// Bypass `injectStrict(WorkflowDocumentStoreKey)` so the store can be
+		// constructed outside a component setup (e.g. via mockedStore).
+		injectNDVStore: vi.fn(() =>
+			shallowRef(useNDVStoreFn(createWorkflowDocumentIdFn('test-workflow'))),
+		),
+	};
+});
 
 const mockInstallNode = vi.fn();
 const mockUseInstallNode = useInstallNode as MockedFunction<typeof useInstallNode>;
@@ -43,10 +69,14 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		pinia = createTestingPinia();
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'test-workflow';
 		mockUseUsersStore = mockedStore(useUsersStore);
 		mockUseNodeCreatorStore = mockedStore(useNodeCreatorStore);
 		mockUseNodeTypesStore = mockedStore(useNodeTypesStore);
-		mockUseNDVStore = mockedStore(useNDVStore);
+		mockUseNDVStore = useNDVStore(createWorkflowDocumentId('test-workflow')) as MockedStore<
+			typeof useNDVStore
+		>;
 		mockUseUIStore = mockedStore(useUIStore);
 		mockUseInstallNode.mockReturnValue({
 			installNode: mockInstallNode,
@@ -62,7 +92,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 			mockUseUsersStore.isAdmin = isAdmin;
 			mockUseUsersStore.isInstanceOwner = isInstanceOwner;
 			const node = mockNode({ name: 'Test Node', type: 'n8n-nodes-test.testNode' });
-			const { getByTestId } = renderComponent(NodeSettingsInvalidNodeWarning, {
+			const { getByTestId } = renderComponent({
 				props: {
 					node,
 				},
@@ -76,7 +106,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 			mockUseUsersStore.isAdmin = false;
 			mockUseUsersStore.isInstanceOwner = false;
 			const node = mockNode({ name: 'Test Node', type: 'n8n-nodes-test.testNode' });
-			const { getByText } = renderComponent(NodeSettingsInvalidNodeWarning, {
+			const { getByText } = renderComponent({
 				props: {
 					node,
 				},
@@ -100,7 +130,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 			const mockOpenNodeCreatorWithNode = vi.fn();
 			mockUseNodeCreatorStore.openNodeCreatorWithNode = mockOpenNodeCreatorWithNode;
 
-			const { getByRole } = renderComponent(NodeSettingsInvalidNodeWarning, {
+			const { getByRole } = renderComponent({
 				props: {
 					node,
 				},
@@ -121,7 +151,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 				}) as CommunityNodeType;
 			const node = mockNode({ name: 'Test Node', type: 'n8n-nodes-test.testNode' });
 
-			const { getByTestId } = renderComponent(NodeSettingsInvalidNodeWarning, {
+			const { getByTestId } = renderComponent({
 				props: {
 					node,
 				},
@@ -148,7 +178,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 			const node = mockNode({ name: 'Test Node', type: 'n8n-nodes-test.testNode' });
 			mockInstallNode.mockResolvedValue({ success: true });
 
-			const { getByTestId } = renderComponent(NodeSettingsInvalidNodeWarning, {
+			const { getByTestId } = renderComponent({
 				props: {
 					node,
 				},
@@ -178,7 +208,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 			const node = mockNode({ name: 'Test Node', type: 'n8n-nodes-test-preview.testNode' });
 			mockInstallNode.mockResolvedValue({ success: true });
 
-			const { getByTestId } = renderComponent(NodeSettingsInvalidNodeWarning, {
+			const { getByTestId } = renderComponent({
 				props: {
 					node,
 				},
@@ -209,7 +239,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 			const mockOpenModalWithData = vi.fn();
 			mockUseUIStore.openModalWithData = mockOpenModalWithData;
 
-			const { getByTestId } = renderComponent(NodeSettingsInvalidNodeWarning, {
+			const { getByTestId } = renderComponent({
 				props: {
 					node,
 				},
@@ -242,7 +272,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 			const mockUnsetActiveNodeName = vi.fn();
 			mockUseNDVStore.unsetActiveNodeName = mockUnsetActiveNodeName;
 
-			const { rerender } = renderComponent(NodeSettingsInvalidNodeWarning, {
+			const { rerender } = renderComponent({
 				props: {
 					node,
 				},
@@ -274,7 +304,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 			const mockUnsetActiveNodeName = vi.fn();
 			mockUseNDVStore.unsetActiveNodeName = mockUnsetActiveNodeName;
 
-			renderComponent(NodeSettingsInvalidNodeWarning, {
+			renderComponent({
 				props: {
 					node,
 				},
@@ -290,7 +320,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 			mockUseUsersStore.isAdmin = true;
 			const node = mockNode({ name: 'Custom Node', type: 'custom-node' });
 
-			const { getByText } = renderComponent(NodeSettingsInvalidNodeWarning, {
+			const { getByText } = renderComponent({
 				props: {
 					node,
 				},

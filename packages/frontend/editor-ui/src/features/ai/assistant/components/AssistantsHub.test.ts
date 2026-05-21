@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { reactive } from 'vue';
+import { reactive, shallowRef } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 
@@ -11,6 +11,19 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { VIEWS } from '@/app/constants';
 import { BUILDER_ENABLED_VIEWS } from '../constants';
+import type { INodeUi } from '@/Interface';
+
+const { mockNdvStore } = vi.hoisted(() => ({
+	mockNdvStore: {
+		activeNode: null as INodeUi | null,
+		activeNodeName: null as string | null,
+	},
+}));
+
+vi.mock('@/features/ndv/shared/ndv.store', () => ({
+	useNDVStore: vi.fn().mockReturnValue(mockNdvStore),
+	injectNDVStore: vi.fn(() => shallowRef(mockNdvStore)),
+}));
 
 // Mock vue-router
 const mockRoute = reactive({ name: VIEWS.WORKFLOW });

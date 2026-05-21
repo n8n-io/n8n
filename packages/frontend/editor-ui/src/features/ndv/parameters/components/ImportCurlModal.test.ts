@@ -2,10 +2,13 @@ import { createComponentRenderer } from '@/__tests__/render';
 import ImportCurlModal from './ImportCurlModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { IMPORT_CURL_MODAL_KEY } from '@/app/constants';
-import { mockedStore } from '@/__tests__/utils';
-import { nextTick } from 'vue';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { nextTick, shallowRef } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import userEvent from '@testing-library/user-event';
 
 const mockTelemetryTrack = vi.fn();
@@ -36,6 +39,11 @@ vi.mock('@/app/composables/useImportCurlCommand', () => ({
 
 const renderModal = createComponentRenderer(ImportCurlModal, {
 	pinia: createTestingPinia(),
+	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: shallowRef(null),
+		},
+	},
 });
 
 const testNode = {
@@ -69,7 +77,11 @@ describe('ImportCurlModal', () => {
 			},
 		};
 		uiStore.modalStack = [IMPORT_CURL_MODAL_KEY];
-		const ndvStore = mockedStore(useNDVStore);
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'test-workflow';
+		const ndvStore = useNDVStore(createWorkflowDocumentId('test-workflow')) as MockedStore<
+			typeof useNDVStore
+		>;
 		ndvStore.activeNode = testNode;
 
 		const { getByTestId } = renderModal();
@@ -93,7 +105,11 @@ describe('ImportCurlModal', () => {
 			},
 		};
 		uiStore.modalStack = [IMPORT_CURL_MODAL_KEY];
-		const ndvStore = mockedStore(useNDVStore);
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'test-workflow';
+		const ndvStore = useNDVStore(createWorkflowDocumentId('test-workflow')) as MockedStore<
+			typeof useNDVStore
+		>;
 		ndvStore.activeNode = testNode;
 
 		const { getByTestId } = renderModal();
@@ -116,7 +132,11 @@ describe('ImportCurlModal', () => {
 			},
 		};
 		uiStore.modalStack = [IMPORT_CURL_MODAL_KEY];
-		const ndvStore = mockedStore(useNDVStore);
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'test-workflow';
+		const ndvStore = useNDVStore(createWorkflowDocumentId('test-workflow')) as MockedStore<
+			typeof useNDVStore
+		>;
 		ndvStore.activeNode = testNode;
 
 		const { getByTestId } = renderModal();
@@ -145,7 +165,11 @@ describe('ImportCurlModal', () => {
 			},
 		};
 		uiStore.modalStack = [IMPORT_CURL_MODAL_KEY];
-		const ndvStore = mockedStore(useNDVStore);
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'test-workflow';
+		const ndvStore = useNDVStore(createWorkflowDocumentId('test-workflow')) as MockedStore<
+			typeof useNDVStore
+		>;
 		ndvStore.activeNode = testNode;
 
 		const { getByTestId } = renderModal();
@@ -174,7 +198,11 @@ describe('ImportCurlModal', () => {
 			},
 		};
 		uiStore.modalStack = [IMPORT_CURL_MODAL_KEY];
-		const ndvStore = mockedStore(useNDVStore);
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'test-workflow';
+		const ndvStore = useNDVStore(createWorkflowDocumentId('test-workflow')) as MockedStore<
+			typeof useNDVStore
+		>;
 		ndvStore.activeNode = testNode;
 
 		const { getByTestId } = renderModal();

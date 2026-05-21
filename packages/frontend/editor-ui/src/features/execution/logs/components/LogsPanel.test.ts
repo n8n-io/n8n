@@ -1,7 +1,7 @@
 import { renderComponent } from '@/__tests__/render';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
-import { mockedStore } from '@/__tests__/utils';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -11,7 +11,8 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { computed, h, nextTick, ref, shallowRef } from 'vue';
+import { computed, defineComponent, h, nextTick, ref, shallowRef } from 'vue';
+import { mount } from '@vue/test-utils';
 import {
 	aiAgentNode,
 	aiChatExecutionResponse as aiChatExecutionResponseTemplate,
@@ -79,7 +80,6 @@ describe('LogsPanel', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let nodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 	let logsStore: ReturnType<typeof mockedStore<typeof useLogsStore>>;
-	let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 	let workflowState: WorkflowState;
 
@@ -89,6 +89,27 @@ describe('LogsPanel', () => {
 		workflowsStore.setWorkflowId(workflow.id);
 		const store = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 		store.hydrate(workflow);
+	}
+
+	function withProvide<T>(setupFn: () => T): T {
+		// Use a null shallowRef so injectNDVStore/injectWorkflowDocumentStore
+		// falls back to workflowsStore.workflowId at evaluation time.
+		let result!: T;
+		const TestComp = defineComponent({
+			setup() {
+				result = setupFn();
+				return () => h('div');
+			},
+		});
+		mount(TestComp, {
+			global: {
+				provide: {
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(null),
+				},
+				plugins: [pinia],
+			},
+		});
+		return result;
 	}
 
 	function render() {
@@ -135,8 +156,6 @@ describe('LogsPanel', () => {
 
 		nodeTypeStore = mockedStore(useNodeTypesStore);
 		nodeTypeStore.setNodeTypes(nodeTypes);
-
-		ndvStore = mockedStore(useNDVStore);
 
 		uiStore = mockedStore(useUIStore);
 
@@ -403,7 +422,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should still show logs for a removed node', async () => {
-		const operations = useCanvasOperations();
+		const operations = withProvide(() => useCanvasOperations());
 
 		const workflow = deepCopy(aiChatWorkflow);
 		setWorkflow(workflow);
@@ -435,17 +454,21 @@ describe('LogsPanel', () => {
 		setWorkflow(aiChatWorkflow);
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
+		const scopedNdvStore = useNDVStore(createWorkflowDocumentId(aiChatWorkflow.id)) as MockedStore<
+			typeof useNDVStore
+		>;
+
 		const rendered = render();
 		const aiAgentRow = (await rendered.findAllByRole('treeitem'))[0];
 
-		expect(ndvStore.activeNodeName).toBe(null);
-		expect(ndvStore.output.run).toBe(undefined);
+		expect(scopedNdvStore.activeNodeName).toBe(null);
+		expect(scopedNdvStore.output.run).toBe(undefined);
 
 		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Open...')[0]);
 
 		await waitFor(() => {
-			expect(ndvStore.activeNodeName).toBe('AI Agent');
-			expect(ndvStore.output.run).toBe(0);
+			expect(scopedNdvStore.activeNodeName).toBe('AI Agent');
+			expect(scopedNdvStore.output.run).toBe(0);
 		});
 	});
 
@@ -501,7 +524,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should show new name when a node is renamed', async () => {
-		const canvasOperations = useCanvasOperations();
+		const canvasOperations = withProvide(() => useCanvasOperations());
 
 		logsStore.toggleOpen(true);
 
@@ -588,7 +611,7 @@ describe('LogsPanel', () => {
 		});
 
 		it("should automatically select a log for the selected node on canvas even after it's renamed", async () => {
-			const canvasOperations = useCanvasOperations();
+			const canvasOperations = withProvide(() => useCanvasOperations());
 
 			const workflow = deepCopy(aiChatWorkflow);
 			workflow.id = 'test-workflow-id';

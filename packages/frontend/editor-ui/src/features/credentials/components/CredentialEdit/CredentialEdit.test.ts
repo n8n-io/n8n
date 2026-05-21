@@ -3,15 +3,23 @@ import CredentialEdit from './CredentialEdit.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { STORES } from '@n8n/stores';
-import { retry, mockedStore } from '@/__tests__/utils';
+import { retry, mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from '../../credentials.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import type { ICredentialsResponse } from '../../credentials.types';
 import { within, waitFor } from '@testing-library/vue';
 import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
+import { shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { setActivePinia } from 'pinia';
 
 vi.mock('vue-router', async () => ({
 	...(await vi.importActual('vue-router')),
@@ -201,27 +209,47 @@ const googleBigQueryOAuth2Api: ICredentialType = {
 	supportedNodes: ['n8n-nodes-base.googleBigQuery'],
 };
 
-const renderComponent = createComponentRenderer(CredentialEdit, {
-	pinia: createTestingPinia({
-		initialState: {
-			[STORES.UI]: {
-				modalsById: {
-					[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
-				},
+const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+	null,
+);
+const ensureWorkflowDocumentStoreRef = () => {
+	if (!workflowDocumentStoreRef.value) {
+		workflowDocumentStoreRef.value = useWorkflowDocumentStore(
+			createWorkflowDocumentId('test-workflow'),
+		);
+	}
+};
+
+const defaultRendererPinia = createTestingPinia({
+	initialState: {
+		[STORES.UI]: {
+			modalsById: {
+				[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
 			},
-			[STORES.SETTINGS]: {
-				settings: {
-					enterprise: {
-						sharing: true,
-						externalSecrets: false,
-					},
-					templates: {
-						host: '',
-					},
+		},
+		[STORES.SETTINGS]: {
+			settings: {
+				enterprise: {
+					sharing: true,
+					externalSecrets: false,
+				},
+				templates: {
+					host: '',
 				},
 			},
 		},
-	}),
+	},
+});
+setActivePinia(defaultRendererPinia);
+ensureWorkflowDocumentStoreRef();
+
+const renderComponent = createComponentRenderer(CredentialEdit, {
+	pinia: defaultRendererPinia,
+	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+		},
+	},
 });
 describe('CredentialEdit', () => {
 	beforeEach(() => {
@@ -587,7 +615,11 @@ describe('CredentialEdit', () => {
 				[discordOAuth2ApiManagedCapable.name]: discordOAuth2ApiManagedCapable,
 			};
 
-			const ndvStore = mockedStore(useNDVStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.workflowId = 'test-workflow';
+			const ndvStore = useNDVStore(createWorkflowDocumentId('test-workflow')) as MockedStore<
+				typeof useNDVStore
+			>;
 			ndvStore.activeNode = {
 				name: 'DiscordTest',
 				type: 'n8n-nodes-base.discord',

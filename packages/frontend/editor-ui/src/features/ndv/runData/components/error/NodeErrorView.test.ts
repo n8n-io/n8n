@@ -1,9 +1,9 @@
-import { reactive, computed } from 'vue';
+import { reactive, computed, shallowRef } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { WorkflowIdKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import userEvent from '@testing-library/user-event';
 import type { NodeError } from 'n8n-workflow';
-import { mockedStore } from '@/__tests__/utils';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import NodeErrorView from './NodeErrorView.vue';
@@ -11,6 +11,10 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 const mockRouterResolve = vi.fn(() => ({
 	href: '',
@@ -32,13 +36,18 @@ Object.defineProperty(window, 'open', {
 
 let mockChatPanelStore: ReturnType<typeof mockedStore<typeof useChatPanelStore>>;
 let mockNodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
-let mockNDVStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
+let mockNDVStore: MockedStore<typeof useNDVStore>;
 let mockWorkflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+
+const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+	null,
+);
 
 const renderComponent = createComponentRenderer(NodeErrorView, {
 	global: {
 		provide: {
 			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+			[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
 		},
 	},
 });
@@ -50,8 +59,14 @@ describe('NodeErrorView.vue', () => {
 		createTestingPinia();
 		mockChatPanelStore = mockedStore(useChatPanelStore);
 		mockNodeTypeStore = mockedStore(useNodeTypesStore);
-		mockNDVStore = mockedStore(useNDVStore);
 		mockWorkflowsStore = mockedStore(useWorkflowsStore);
+		mockWorkflowsStore.workflowId = 'current-workflow-id';
+		workflowDocumentStoreRef.value = useWorkflowDocumentStore(
+			createWorkflowDocumentId('current-workflow-id'),
+		);
+		mockNDVStore = useNDVStore(createWorkflowDocumentId('current-workflow-id')) as MockedStore<
+			typeof useNDVStore
+		>;
 
 		//@ts-expect-error
 		error = {

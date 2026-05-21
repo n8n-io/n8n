@@ -4,6 +4,16 @@ import { setActivePinia } from 'pinia';
 import CommunityNodeDetails from './CommunityNodeDetails.vue';
 import { waitFor } from '@testing-library/vue';
 import { userEvent } from '@testing-library/user-event';
+import { shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+
+const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+	null,
+);
 
 const fetchCredentialTypes = vi.fn();
 const getCommunityNodeAttributes = vi.fn(() => ({ npmVersion: '1.0.0' }));
@@ -128,12 +138,21 @@ vi.mock('@/features/shared/nodeCreator/composables/useViewStacks', () => ({
 }));
 
 describe('CommunityNodeDetails', () => {
-	const renderComponent = createComponentRenderer(CommunityNodeDetails);
+	const renderComponent = createComponentRenderer(CommunityNodeDetails, {
+		global: {
+			provide: {
+				[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+			},
+		},
+	});
 	let pinia: TestingPinia;
 
 	beforeEach(() => {
 		pinia = createTestingPinia();
 		setActivePinia(pinia);
+		workflowDocumentStoreRef.value = useWorkflowDocumentStore(
+			createWorkflowDocumentId('test-workflow'),
+		);
 	});
 
 	afterEach(() => {

@@ -7,8 +7,10 @@ import { setActivePinia } from 'pinia';
 import { beforeEach, describe, vi } from 'vitest';
 import { useAutocompleteTelemetry } from './useAutocompleteTelemetry';
 
-const trackSpy = vi.fn();
-const setAutocompleteOnboardedSpy = vi.fn();
+const { trackSpy, setAutocompleteOnboardedSpy } = vi.hoisted(() => ({
+	trackSpy: vi.fn(),
+	setAutocompleteOnboardedSpy: vi.fn(),
+}));
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: trackSpy })),

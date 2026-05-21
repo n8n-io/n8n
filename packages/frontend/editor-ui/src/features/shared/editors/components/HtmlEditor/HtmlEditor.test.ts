@@ -8,11 +8,26 @@ import { userEvent } from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { htmlEditorEventBus } from '@/app/event-bus';
+import { shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+
+const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+	null,
+);
 
 const DEFAULT_SETUP = {
 	props: {
 		modelValue: '<html><ul><li>one</li><li>two</li></ul></html>',
 		isReadOnly: false,
+	},
+	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+		},
 	},
 };
 
@@ -25,6 +40,9 @@ describe('HtmlEditor.vue', () => {
 		},
 	});
 	setActivePinia(pinia);
+	workflowDocumentStoreRef.value = useWorkflowDocumentStore(
+		createWorkflowDocumentId('test-workflow'),
+	);
 
 	afterAll(() => {
 		vi.clearAllMocks();

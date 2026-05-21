@@ -4,6 +4,8 @@ import { CHAT_EMBED_MODAL_KEY, WEBHOOK_NODE_TYPE } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
+import { shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 const renderComponent = createComponentRenderer(ChatEmbedModal, {
 	pinia: createTestingPinia({
@@ -20,6 +22,11 @@ const renderComponent = createComponentRenderer(ChatEmbedModal, {
 			},
 		},
 	}),
+	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: shallowRef(null),
+		},
+	},
 });
 
 describe('ChatEmbedModal', () => {
