@@ -1,3 +1,11 @@
+## [1.123.46](https://github.com/n8n-io/n8n/compare/n8n@1.123.45...n8n@1.123.46) (2026-05-21)
+
+
+### Bug Fixes
+
+* **core:** Require admin push when migrating legacy environments to projects folder ([#30530](https://github.com/n8n-io/n8n/issues/30530)) ([96a0380](https://github.com/n8n-io/n8n/commit/96a0380a6d3ff6cdfa1770bf90a5fa4cfd84ae8f))
+
+
 ## [1.123.45](https://github.com/n8n-io/n8n/compare/n8n@1.123.44...n8n@1.123.45) (2026-05-20)
 
 
