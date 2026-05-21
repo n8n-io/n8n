@@ -199,7 +199,8 @@ export class AgentsBuilderService {
 			.model(modelConfig)
 			.instructions(instructions)
 			.memory(builderMemory)
-			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
+			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
+			.configuration({ maxIterations: 30 });
 
 		const telemetry = await buildBuilderTelemetry({
 			agentId,
