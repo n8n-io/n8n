@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="30" cy="30" r="28" fill="#0F62FE"/>
+  
+  <!-- DB2 Text -->
+  <text x="30" y="38" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="white" text-anchor="middle">DB2</text>
+  
+  <!-- Database icon elements -->
+  <ellipse cx="30" cy="18" rx="12" ry="4" fill="white" opacity="0.3"/>
+  <rect x="18" y="18" width="24" height="8" fill="white" opacity="0.2"/>
+  <ellipse cx="30" cy="26" rx="12" ry="4" fill="white" opacity="0.3"/>
+</svg>
+
+<!-- Made with Bob -->
