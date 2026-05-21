@@ -72,6 +72,11 @@ describe('SourceControlImportService', () => {
 		[],
 		[],
 	);
+	const globalMemberContext = new SourceControlContext(
+		Object.assign(new User(), { id: 'user1', role: GLOBAL_MEMBER_ROLE }),
+		[Object.assign(new Project(), { id: 'project1', name: 'Team Project 1', type: 'team' })],
+		[],
+	);
 
 	const service = new SourceControlImportService(
 		mockLogger,
@@ -104,7 +109,10 @@ describe('SourceControlImportService', () => {
 	const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
 	const fsReadFile = jest.spyOn(fsp, 'readFile');
 
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => {
+		jest.clearAllMocks();
+		sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue({});
+	});
 
 	describe('getRemoteVersionIdsFromFiles', () => {
 		const mockWorkflowFile = '/mock/workflow1.json';
@@ -2876,7 +2884,7 @@ describe('SourceControlImportService', () => {
 					.mockResolvedValueOnce(JSON.stringify(mockDataTable2) as any);
 
 				// Act
-				const result = await service.getRemoteDataTablesFromFiles();
+				const result = await service.getRemoteDataTablesFromFiles(globalAdminContext);
 
 				// Assert
 				expect(result).toEqual([mockDataTable1, mockDataTable2]);
@@ -2891,7 +2899,7 @@ describe('SourceControlImportService', () => {
 				globMock.mockResolvedValue([]);
 
 				// Act
-				const result = await service.getRemoteDataTablesFromFiles();
+				const result = await service.getRemoteDataTablesFromFiles(globalAdminContext);
 
 				// Assert
 				expect(result).toEqual([]);
@@ -2917,10 +2925,54 @@ describe('SourceControlImportService', () => {
 					.mockResolvedValueOnce('invalid json' as any);
 
 				// Act
-				const result = await service.getRemoteDataTablesFromFiles();
+				const result = await service.getRemoteDataTablesFromFiles(globalAdminContext);
 
 				// Assert
 				expect(result).toEqual([mockDataTable]);
+			});
+
+			it('should return only data tables from authorized projects', async () => {
+				// Arrange
+				const authorizedDataTable = {
+					id: 'dt1',
+					name: 'Authorized Table',
+					ownedBy: { type: 'team', teamId: 'project1', teamName: 'Team Project 1' },
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				};
+				const unauthorizedDataTable = {
+					id: 'dt2',
+					name: 'Unauthorized Table',
+					ownedBy: { type: 'team', teamId: 'project2', teamName: 'Team Project 2' },
+					columns: [],
+					createdAt: '2024-01-03T00:00:00.000Z',
+					updatedAt: '2024-01-04T00:00:00.000Z',
+				};
+				const unownedDataTable = {
+					id: 'dt3',
+					name: 'Unowned Table',
+					ownedBy: null,
+					columns: [],
+					createdAt: '2024-01-05T00:00:00.000Z',
+					updatedAt: '2024-01-06T00:00:00.000Z',
+				};
+
+				globMock.mockResolvedValue([
+					'/mock/n8n/git/datatables/dt1.json',
+					'/mock/n8n/git/datatables/dt2.json',
+					'/mock/n8n/git/datatables/dt3.json',
+				]);
+				fsReadFile
+					.mockResolvedValueOnce(JSON.stringify(authorizedDataTable) as any)
+					.mockResolvedValueOnce(JSON.stringify(unauthorizedDataTable) as any)
+					.mockResolvedValueOnce(JSON.stringify(unownedDataTable) as any);
+
+				// Act
+				const result = await service.getRemoteDataTablesFromFiles(globalMemberContext);
+
+				// Assert
+				expect(result).toEqual([authorizedDataTable, unownedDataTable]);
 			});
 		});
 
@@ -2947,7 +2999,7 @@ describe('SourceControlImportService', () => {
 				dataTableRepository.find.mockResolvedValue(mockDataTables as any);
 
 				// Act
-				const result = await service.getLocalDataTablesFromDb();
+				const result = await service.getLocalDataTablesFromDb(globalAdminContext);
 
 				// Assert
 				expect(result).toHaveLength(1);
@@ -2971,6 +3023,34 @@ describe('SourceControlImportService', () => {
 						'project.projectRelations',
 						'project.projectRelations.role',
 					],
+					where: {},
+				});
+			});
+
+			it('should scope database query to data tables in authorized projects', async () => {
+				// Arrange
+				const where = { project: { id: 'project1' } };
+				sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue(
+					where as any,
+				);
+				dataTableRepository.find.mockResolvedValue([]);
+
+				// Act
+				const result = await service.getLocalDataTablesFromDb(globalMemberContext);
+
+				// Assert
+				expect(result).toEqual([]);
+				expect(
+					sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter,
+				).toHaveBeenCalledWith(globalMemberContext);
+				expect(dataTableRepository.find).toHaveBeenCalledWith({
+					relations: [
+						'columns',
+						'project',
+						'project.projectRelations',
+						'project.projectRelations.role',
+					],
+					where,
 				});
 			});
 
@@ -2979,7 +3059,7 @@ describe('SourceControlImportService', () => {
 				dataTableRepository.find.mockResolvedValue([]);
 
 				// Act
-				const result = await service.getLocalDataTablesFromDb();
+				const result = await service.getLocalDataTablesFromDb(globalAdminContext);
 
 				// Assert
 				expect(result).toEqual([]);
@@ -2991,7 +3071,7 @@ describe('SourceControlImportService', () => {
 				dataTableRepository.find.mockRejectedValue(error);
 
 				// Act
-				const result = await service.getLocalDataTablesFromDb();
+				const result = await service.getLocalDataTablesFromDb(globalAdminContext);
 
 				// Assert
 				expect(result).toEqual([]);
@@ -3003,7 +3083,7 @@ describe('SourceControlImportService', () => {
 				dataTableRepository.find.mockRejectedValue(error);
 
 				// Act & Assert
-				await expect(service.getLocalDataTablesFromDb()).rejects.toThrow(
+				await expect(service.getLocalDataTablesFromDb(globalAdminContext)).rejects.toThrow(
 					'Database connection failed',
 				);
 			});

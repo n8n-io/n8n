@@ -1,14 +1,7 @@
 import type { ContextEstablishmentOptions } from '@n8n/decorators';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import type {
-	INode,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	INodeTypes,
-	Workflow,
-} from 'n8n-workflow';
+import type { INode, INodeExecutionData } from 'n8n-workflow';
 
 import { InboundSecretContextHook } from '../inbound-secrets-context-hook';
 import type { InboundSecretsService, StripResult } from '../inbound-secrets.service';
@@ -16,103 +9,63 @@ import type { InboundSecretsService, StripResult } from '../inbound-secrets.serv
 describe('InboundSecretContextHook', () => {
 	let service: MockProxy<InboundSecretsService>;
 	let hook: InboundSecretContextHook;
-	let getByNameAndVersion: jest.Mock;
 
-	const buildOptions = (
-		triggerItems: INodeExecutionData[] | null,
-		sensitiveOutputFields?: string[],
-	): ContextEstablishmentOptions => {
-		getByNameAndVersion.mockReturnValue({
-			description: { sensitiveOutputFields } as Partial<INodeTypeDescription>,
-		} as INodeType);
-		return {
+	const buildOptions = (triggerItems: INodeExecutionData[] | null): ContextEstablishmentOptions =>
+		({
 			triggerNode: {
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
 				typeVersion: 1,
 			} as INode,
-			workflow: { nodeTypes: { getByNameAndVersion } as unknown as INodeTypes } as Workflow,
 			triggerItems,
 			context: mock(),
 			options: {},
-		};
-	};
+		}) as unknown as ContextEstablishmentOptions;
 
 	const stripResult = (
 		triggerItems: INodeExecutionData[],
-		artifactsByItem: Array<Record<string, unknown>>,
-	): StripResult =>
-		({
-			triggerItems,
-			artifactsByItem,
-		}) as StripResult;
+		artifactsByAlias: Record<string, unknown>,
+	): StripResult => ({ triggerItems, artifactsByAlias }) as StripResult;
 
 	beforeEach(() => {
 		service = mock<InboundSecretsService>();
-		getByNameAndVersion = jest.fn();
 		hook = new InboundSecretContextHook(service);
 	});
 
-	it('forwards descriptionPaths/type to service.strip and emits contextUpdate keyed by trigger name', async () => {
+	it('forwards items and trigger type to service.strip and emits the alias-keyed contextUpdate', async () => {
 		const input: INodeExecutionData[] = [{ json: { headers: { authorization: 'Bearer xyz' } } }];
 		const stripped: INodeExecutionData[] = [{ json: { headers: { authorization: undefined } } }];
-		service.strip.mockReturnValue(
-			stripResult(stripped, [{ 'headers.authorization': 'Bearer xyz' }]),
-		);
+		service.strip.mockReturnValue(stripResult(stripped, { api_key: ['Bearer xyz'] }));
 
-		const result = await hook.execute(
-			buildOptions(input, ['headers.authorization', 'headers.cookie']),
-		);
+		const result = await hook.execute(buildOptions(input));
 
-		expect(service.strip).toHaveBeenCalledWith(input, 'n8n-nodes-base.webhook', [
-			'headers.authorization',
-			'headers.cookie',
-		]);
+		expect(service.strip).toHaveBeenCalledWith(input, 'n8n-nodes-base.webhook');
 		expect(result).toEqual({
 			triggerItems: stripped,
 			contextUpdate: {
 				secureArtifacts: {
 					version: 1,
-					artifacts: { Webhook: [{ 'headers.authorization': 'Bearer xyz' }] },
+					artifacts: { api_key: ['Bearer xyz'] },
 				},
 			},
 		});
 	});
 
 	it('passes an empty array to service.strip when triggerItems is null', async () => {
-		service.strip.mockReturnValue(stripResult([], []));
+		service.strip.mockReturnValue(stripResult([], {}));
 
 		await hook.execute(buildOptions(null));
 
-		expect(service.strip).toHaveBeenCalledWith([], 'n8n-nodes-base.webhook', []);
+		expect(service.strip).toHaveBeenCalledWith([], 'n8n-nodes-base.webhook');
 	});
 
-	it('omits contextUpdate when every per-item map is empty', async () => {
+	it('omits contextUpdate when no aliases produced a value', async () => {
 		const input: INodeExecutionData[] = [{ json: { body: { foo: 'bar' } } }];
-		service.strip.mockReturnValue(stripResult(input, [{}]));
+		service.strip.mockReturnValue(stripResult(input, {}));
 
 		const result = await hook.execute(buildOptions(input));
 
 		expect(result).toEqual({ triggerItems: input });
 		expect(result.contextUpdate).toBeUndefined();
-	});
-
-	it('fails open when the node-type lookup throws (admin rules still apply)', async () => {
-		const input: INodeExecutionData[] = [{ json: { headers: { authorization: 'x' } } }];
-		const options = buildOptions(input);
-		getByNameAndVersion.mockImplementation(() => {
-			throw new Error('unknown node type');
-		});
-		service.strip.mockReturnValue(stripResult(input, [{ 'headers.authorization': 'x' }]));
-
-		const result = await hook.execute(options);
-
-		expect(service.strip).toHaveBeenCalledWith(input, 'n8n-nodes-base.webhook', []);
-		expect(result.contextUpdate).toEqual({
-			secureArtifacts: {
-				version: 1,
-				artifacts: { Webhook: [{ 'headers.authorization': 'x' }] },
-			},
-		});
 	});
 });
