@@ -380,6 +380,12 @@ export function createPage({
 
 	const shellInner = frameIdentity !== undefined;
 
+	// `ctx.getInstanceBaseUrl()` strips the trailing slash, so normalise once
+	// here to avoid producing URLs like `http://host/basepathrest/login`.
+	const normalizedInstanceBaseUrl = instanceBaseUrl.endsWith('/')
+		? instanceBaseUrl
+		: `${instanceBaseUrl}/`;
+
 	// How the page learns who the visitor is. The `/rest/login` bootstrap can only work on
 	// the real origin: from the frame's opaque origin the request carries no cookie, and the
 	// `/signin` it falls back to would render editor-ui inside the sandbox. So the inner
@@ -395,7 +401,7 @@ export function createPage({
 						metadata = { user: injectedVisitor };
 					} else if (authentication === 'n8nUserAuth') {
 						try {
-							const response = await fetch('${instanceBaseUrl}rest/login', {
+							const response = await fetch('${normalizedInstanceBaseUrl}rest/login', {
 									method: 'GET',
 									headers: { 'browser-id': localStorage.getItem('n8n-browserId') }
 							});
@@ -414,7 +420,7 @@ export function createPage({
 								},
 							};
 						} catch (error) {
-							window.location.href = '${instanceBaseUrl}signin?redirect=' + encodeURIComponent(window.location.href);
+							window.location.href = '${normalizedInstanceBaseUrl}signin?redirect=' + encodeURIComponent(window.location.href);
 							return;
 						}
 					}`
