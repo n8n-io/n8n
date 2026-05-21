@@ -36,9 +36,7 @@ const emit = defineEmits<Emits>();
 const workflowsStore = useWorkflowsStore();
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = computed(() =>
-	workflowId.value
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value))
-		: undefined,
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 );
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -98,8 +96,8 @@ const parameterRequiredPattern = /Parameter\s+".+"\s+is\s+required/i;
  * Custom formatter for issue messages in the execute panel.
  * Transforms verbose validation messages into user-friendly action prompts.
  */
-function formatIssueMessage(issue: string | string[]): string {
-	const baseMessage = workflowsStore.formatIssueMessage(issue);
+function formatNodeIssueMessage(issue: string | string[]): string {
+	const baseMessage = workflowDocumentStore.value.formatNodeIssueMessage(issue);
 
 	// Transform "Parameter "X" is required" → "Choose model" (for Model) or keep original
 	if (parameterRequiredPattern.test(baseMessage)) {
@@ -120,7 +118,7 @@ function formatIssueMessage(issue: string | string[]): string {
 
 // Helper to get node type
 function getNodeTypeByName(nodeName: string) {
-	const node = workflowDocumentStore.value?.getNodeByName(nodeName);
+	const node = workflowDocumentStore.value.getNodeByName(nodeName);
 
 	if (!node) return null;
 	return nodeTypesStore.getNodeType(node.type);
@@ -140,7 +138,7 @@ const isExecutionBlocked = computed(
 );
 
 const hasPinDataApplied = computed(
-	() => Object.keys(workflowDocumentStore.value?.pinData ?? {}).length > 0,
+	() => Object.keys(workflowDocumentStore.value.pinData).length > 0,
 );
 
 const showPostExecutionFollowUps = computed(
@@ -198,7 +196,7 @@ function scrollIntoView() {
 
 function trackBuilderPlaceholders(issue: WorkflowValidationIssue) {
 	builderStore.trackWorkflowBuilderJourney('user_clicked_todo', {
-		node_type: workflowDocumentStore.value?.getNodeByName(issue.node)?.type,
+		node_type: workflowDocumentStore.value.getNodeByName(issue.node)?.type,
 		type: issue.type,
 	});
 }
@@ -258,10 +256,10 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 					>
 						<NodeIssueItem
 							v-for="issue in issuesByType.other"
-							:key="`${formatIssueMessage(issue.value)}_${issue.node}`"
+							:key="`${formatNodeIssueMessage(issue.value)}_${issue.node}`"
 							:issue="issue"
 							:get-node-type="getNodeTypeByName"
-							:format-issue-message="formatIssueMessage"
+							:format-node-issue-message="formatNodeIssueMessage"
 							@click="() => trackBuilderPlaceholders(issue)"
 						/>
 					</TransitionGroup>

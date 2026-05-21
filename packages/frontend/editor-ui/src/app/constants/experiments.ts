@@ -73,11 +73,7 @@ export const EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT = createExperiment(
 
 export const FOCUSED_NODES_EXPERIMENT = createExperiment('064_focused_nodes');
 
-export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_0', {
-	control: 'control',
-	variantResources: 'variant-resources',
-	variantInspiration: 'variant-inspiration',
-});
+export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_1');
 
 export const SIDEBAR_EXPANDED_EXPERIMENT = createExperiment('067_sidebar_expanded');
 export const EMPTY_STATE_EXPERIMENT = createExperiment('070_empty_screen_layout', {
@@ -98,11 +94,26 @@ export const CODE_WORKFLOW_BUILDER_EXPERIMENT = createExperiment('071_coding_wor
 });
 
 export const AI_BUILDER_SETUP_WIZARD_EXPERIMENT = createExperiment('079_ai_builder_setup_wizard');
+export const INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT = createExperiment(
+	'082_instance_ai_proactive_agent',
+);
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+export const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_EXPERIMENT = createExperiment(
+	'085_instance_ai_prompt_suggestions_v2',
+);
 export const AA_EXPERIMENT_CHECK = createExperiment('078_experiment_check_aa');
 
 export const CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT = createExperiment('077_chat_hub_semantic_search');
 
 export const FLOATING_CHAT_HUB_PANEL_EXPERIMENT = createExperiment('078_floating_chat_hub_panel');
+export const SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT = createExperiment(
+	'081_surface_mcp_to_new_cloud_users',
+	{
+		control: 'control',
+		variant1: 'variant-1',
+		variant2: 'variant-2',
+	},
+);
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
@@ -126,7 +137,10 @@ export const EXPERIMENTS_TO_TRACK = [
 	AI_BUILDER_REVIEW_CHANGES_EXPERIMENT.name,
 	MERGE_ASK_BUILD_EXPERIMENT.name,
 	AI_BUILDER_SETUP_WIZARD_EXPERIMENT.name,
+	INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT.name,
+	INSTANCE_AI_PROMPT_SUGGESTIONS_V2_EXPERIMENT.name,
 	AA_EXPERIMENT_CHECK.name,
 	CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,
 	FLOATING_CHAT_HUB_PANEL_EXPERIMENT.name,
+	SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.name,
 ];

@@ -6,16 +6,19 @@ import {
 	ICredentialResolver,
 } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { Not } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 
+import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_TYPE } from '../constants';
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { ResolverConfigExpressionService } from './resolver-config-expression.service';
 import { DynamicCredentialResolver } from '../database/entities/credential-resolver';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 import { DynamicCredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error';
+import { SystemResolverModificationError } from '../errors/system-resolver-modification.error';
 
 export interface CreateResolverParams {
 	name: string;
@@ -58,9 +61,12 @@ export class DynamicCredentialResolverService {
 	 * @throws {CredentialResolverValidationError} When the resolver type is unknown or config is invalid
 	 */
 	async create(params: CreateResolverParams): Promise<DynamicCredentialResolver> {
+		if (params.type === SYSTEM_RESOLVER_TYPE) {
+			throw new SystemResolverModificationError('create');
+		}
 		await this.validateConfig(params.type, params.config);
 
-		const encryptedConfig = this.encryptConfig(params.config);
+		const encryptedConfig = await this.encryptConfig(params.config);
 
 		const resolver = this.repository.create({
 			name: params.name,
@@ -71,7 +77,7 @@ export class DynamicCredentialResolverService {
 		const saved = await this.repository.save(resolver);
 		this.logger.debug(`Created credential resolver "${saved.name}" (${saved.id})`);
 
-		return this.withDecryptedConfig(saved);
+		return await this.withDecryptedConfig(saved);
 	}
 
 	/**
@@ -80,7 +86,17 @@ export class DynamicCredentialResolverService {
 	 */
 	async findAll(): Promise<DynamicCredentialResolver[]> {
 		const resolvers = await this.repository.find();
-		return resolvers.map((resolver) => this.withDecryptedConfig(resolver));
+		return await Promise.all(
+			resolvers.map(async (resolver) => await this.withDecryptedConfig(resolver)),
+		);
+	}
+
+	/** Same as findAll() but excludes the system-managed resolver. Used by admin-facing endpoints. */
+	async findAllPublic(): Promise<DynamicCredentialResolver[]> {
+		const resolvers = await this.repository.find({ where: { id: Not(SYSTEM_RESOLVER_ID) } });
+		return await Promise.all(
+			resolvers.map(async (resolver) => await this.withDecryptedConfig(resolver)),
+		);
 	}
 
 	/**
@@ -88,6 +104,11 @@ export class DynamicCredentialResolverService {
 	 */
 	getAvailableTypes(): ICredentialResolver[] {
 		return this.registry.getAllResolvers();
+	}
+
+	/** Same as getAvailableTypes() but excludes the system N8N resolver type. */
+	getAvailablePublicTypes(): ICredentialResolver[] {
+		return this.getAvailableTypes().filter((r) => r.metadata.name !== SYSTEM_RESOLVER_TYPE);
 	}
 
 	/**
@@ -100,7 +121,7 @@ export class DynamicCredentialResolverService {
 		if (!resolver) {
 			throw new DynamicCredentialResolverNotFoundError(id);
 		}
-		return this.withDecryptedConfig(resolver);
+		return await this.withDecryptedConfig(resolver);
 	}
 
 	/**
@@ -109,6 +130,12 @@ export class DynamicCredentialResolverService {
 	 * @throws {CredentialResolverValidationError} When the config is invalid for the resolver type
 	 */
 	async update(id: string, params: UpdateResolverParams): Promise<DynamicCredentialResolver> {
+		if (id === SYSTEM_RESOLVER_ID) {
+			throw new SystemResolverModificationError('update');
+		}
+		if (params.type === SYSTEM_RESOLVER_TYPE) {
+			throw new SystemResolverModificationError('update');
+		}
 		const existing = await this.repository.findOneBy({ id });
 		if (!existing) {
 			throw new DynamicCredentialResolverNotFoundError(id);
@@ -118,14 +145,14 @@ export class DynamicCredentialResolverService {
 			existing.type = params.type;
 			// Re-validate existing config against new type if config wasn't provided
 			if (params.config === undefined) {
-				const existingConfig = this.decryptConfig(existing.config);
+				const existingConfig = await this.decryptConfig(existing.config);
 				await this.validateConfig(existing.type, existingConfig);
 			}
 		}
 
 		if (params.config !== undefined) {
 			await this.validateConfig(existing.type, params.config);
-			existing.config = this.encryptConfig(params.config);
+			existing.config = await this.encryptConfig(params.config);
 		}
 
 		if (params.name !== undefined) {
@@ -143,7 +170,7 @@ export class DynamicCredentialResolverService {
 				await resolver.deleteAllSecrets({
 					resolverId: id,
 					resolverName: resolver.metadata.name,
-					configuration: this.decryptConfig(existing.config),
+					configuration: await this.decryptConfig(existing.config),
 				});
 			}
 		}
@@ -151,7 +178,7 @@ export class DynamicCredentialResolverService {
 		const saved = await this.repository.save(existing);
 		this.logger.debug(`Updated credential resolver "${saved.name}" (${saved.id})`);
 
-		return this.withDecryptedConfig(saved);
+		return await this.withDecryptedConfig(saved);
 	}
 
 	/**
@@ -173,6 +200,9 @@ export class DynamicCredentialResolverService {
 	 * @throws {DynamicCredentialResolverNotFoundError} When resolver is not found
 	 */
 	async delete(id: string): Promise<void> {
+		if (id === SYSTEM_RESOLVER_ID) {
+			throw new SystemResolverModificationError('delete');
+		}
 		const existing = await this.repository.findOneBy({ id });
 		if (!existing) {
 			throw new DynamicCredentialResolverNotFoundError(id);
@@ -241,15 +271,15 @@ export class DynamicCredentialResolverService {
 	/**
 	 * Encrypts the config for storage.
 	 */
-	private encryptConfig(config: CredentialResolverConfiguration): string {
-		return this.cipher.encrypt(config);
+	private async encryptConfig(config: CredentialResolverConfiguration): Promise<string> {
+		return await this.cipher.encryptV2(config);
 	}
 
 	/**
 	 * Decrypts the config from storage.
 	 */
-	private decryptConfig(encryptedConfig: string): CredentialResolverConfiguration {
-		const decryptedData = this.cipher.decrypt(encryptedConfig);
+	private async decryptConfig(encryptedConfig: string): Promise<CredentialResolverConfiguration> {
+		const decryptedData = await this.cipher.decryptV2(encryptedConfig);
 		try {
 			return jsonParse<CredentialResolverConfiguration>(decryptedData);
 		} catch {
@@ -262,8 +292,10 @@ export class DynamicCredentialResolverService {
 	/**
 	 * Populates the decryptedConfig field on the resolver.
 	 */
-	private withDecryptedConfig(resolver: DynamicCredentialResolver): DynamicCredentialResolver {
-		resolver.decryptedConfig = this.decryptConfig(resolver.config);
+	private async withDecryptedConfig(
+		resolver: DynamicCredentialResolver,
+	): Promise<DynamicCredentialResolver> {
+		resolver.decryptedConfig = await this.decryptConfig(resolver.config);
 		return resolver;
 	}
 }

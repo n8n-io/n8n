@@ -8,10 +8,7 @@ import {
 } from 'n8n-workflow';
 import { computed, reactive, ref, watch, type Ref } from 'vue';
 import { useWorkflowsStore } from '../stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -35,11 +32,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 	const nodeTypesStore = useNodeTypesStore();
 	const agentRequestStore = useAgentRequestStore();
 
-	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const selectedToolMap = reactive<Record<string, string | undefined>>({});
 	const error = ref<Error | undefined>(undefined);
@@ -116,7 +109,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			currentNodeParameters: newNode.parameters,
 			credentials: newNode.credentials,
 			projectId: projectsStore.currentProjectId,
-			workflowId: workflowsStore.workflowId,
+			workflowId: workflowDocumentStore.value.workflowId,
 		});
 
 		// Load available tools
@@ -201,13 +194,13 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 
 	const getHitlToolParameters = async (newNode: INode): Promise<IFormInput[]> => {
 		const result: IFormInput[] = [];
-		const connectedToolNodeNames = workflowsStore.workflowObject.getParentNodes(
+		const connectedToolNodeNames = workflowDocumentStore.value.getParentNodes(
 			newNode.name,
 			'ALL_NON_MAIN',
 			1,
 		);
 		const connectedTools = connectedToolNodeNames
-			.map((nodeName) => workflowDocumentStore.value?.getNodeByName(nodeName) ?? null)
+			.map((nodeName) => workflowDocumentStore.value.getNodeByName(nodeName) ?? null)
 			.filter((tool): tool is INode => !!tool);
 
 		const ignoredFields = ['tool', 'toolParameters'];
@@ -273,7 +266,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			const initialValue = inputQuery?.[value.key]
 				? inputQuery[value.key]
 				: (agentRequestStore.getQueryValue(
-						workflowsStore.workflowId,
+						workflowDocumentStore.value.workflowId,
 						toolNode.id,
 						toolNode.name,
 						value.key,
@@ -303,7 +296,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			const queryValue =
 				inputQuery ??
 				agentRequestStore.getQueryValue(
-					workflowsStore.workflowId,
+					workflowDocumentStore.value.workflowId,
 					toolNode.id,
 					toolNode.name,
 					key,

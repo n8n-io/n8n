@@ -17,6 +17,7 @@ import {
 	sessionKeyProperty,
 	contextWindowLengthProperty,
 	expressionSessionKeyProperty,
+	scopedSessionHint,
 } from '../descriptions';
 
 export class MemoryXata implements INodeType {
@@ -25,7 +26,7 @@ export class MemoryXata implements INodeType {
 		name: 'memoryXata',
 		icon: 'file:xata.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 		description: 'Use Xata Memory',
 		defaults: {
 			name: 'Xata',
@@ -93,6 +94,7 @@ export class MemoryXata implements INodeType {
 			},
 			sessionKeyProperty,
 			expressionSessionKeyProperty(1.4),
+			scopedSessionHint(1.5),
 			{
 				...contextWindowLengthProperty,
 				displayOptions: { hide: { '@version': [{ _cnd: { lt: 1.3 } }] } },

@@ -28,7 +28,7 @@ describe('FrontendService', () => {
 	let originalEnv: NodeJS.ProcessEnv;
 	const globalConfig = mock<GlobalConfig>({
 		database: { type: 'sqlite' },
-		endpoints: { rest: 'rest' },
+		endpoints: { rest: 'rest', health: '/healthz' },
 		diagnostics: { enabled: false },
 		templates: { enabled: false, host: '' },
 		nodes: {},
@@ -48,13 +48,18 @@ describe('FrontendService', () => {
 		generic: { releaseChannel: 'stable', timezone: 'UTC' },
 		publicApi: { path: 'api', swaggerUiDisabled: false },
 		workflows: { callerPolicyDefaultOption: 'workflowsFromSameOwner' },
-		executions: { pruneData: false, pruneDataMaxAge: 336, pruneDataMaxCount: 10000 },
+		executions: {
+			pruneData: false,
+			pruneDataMaxAge: 336,
+			pruneDataMaxCount: 10000,
+			concurrency: { productionLimit: -1, evaluationLimit: -1 },
+		},
 		hideUsagePage: false,
 		license: { tenantId: 1 },
 		mfa: { enabled: false },
 		deployment: { type: 'default' },
 		workflowHistory: { pruneTime: 24 },
-		path: '',
+		path: '/',
 		sso: {
 			ldap: { loginEnabled: false },
 			saml: { loginEnabled: false },
@@ -62,6 +67,9 @@ describe('FrontendService', () => {
 		},
 		credentials: {
 			overwrite: { skipTypes: [] },
+		},
+		userManagement: {
+			password: { minLength: 8 },
 		},
 	});
 
@@ -134,6 +142,9 @@ describe('FrontendService', () => {
 	const urlService = mock<UrlService>({
 		getInstanceBaseUrl: jest.fn().mockReturnValue('http://localhost:5678'),
 		getWebhookBaseUrl: jest.fn().mockReturnValue('http://localhost:5678'),
+		getInstanceJwksUri: jest
+			.fn()
+			.mockReturnValue('http://localhost:5678/rest/.well-known/jwks.json'),
 	});
 
 	const securityConfig = mock<SecurityConfig>({
@@ -218,6 +229,105 @@ describe('FrontendService', () => {
 				}),
 			);
 		});
+
+		it('should surface logStreaming.managedByEnv from instanceSettingsLoader config', async () => {
+			globalConfig.instanceSettingsLoader = {
+				logStreamingManagedByEnv: true,
+			} as GlobalConfig['instanceSettingsLoader'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.logStreaming).toEqual({ managedByEnv: true });
+		});
+
+		it('should default logStreaming.managedByEnv to false when flag is off', async () => {
+			globalConfig.instanceSettingsLoader = {
+				logStreamingManagedByEnv: false,
+			} as GlobalConfig['instanceSettingsLoader'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.logStreaming).toEqual({ managedByEnv: false });
+		});
+
+		it('should surface communityNodesManagedByEnv from instanceSettingsLoader config', async () => {
+			globalConfig.instanceSettingsLoader = {
+				communityPackagesManagedByEnv: true,
+			} as GlobalConfig['instanceSettingsLoader'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.communityNodesManagedByEnv).toBe(true);
+		});
+
+		it('should default communityNodesManagedByEnv to false when flag is off', async () => {
+			globalConfig.instanceSettingsLoader = {
+				communityPackagesManagedByEnv: false,
+			} as GlobalConfig['instanceSettingsLoader'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.communityNodesManagedByEnv).toBe(false);
+		});
+
+		it('refreshes evaluationConcurrencyLimit when license tier changes between getSettings calls', async () => {
+			// Env override unset for this test so the resolver follows the
+			// license-tier branch. The override is restored by the suite's
+			// afterEach via `process.env = originalEnv`.
+			delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+			license.getPlanName.mockReturnValue('Community');
+
+			const { service } = createMockService();
+			const initial = await service.getSettings();
+			expect(initial.evaluationConcurrencyLimit).toBe(1);
+
+			// Simulate a license upgrade landing after settings have been
+			// initialised. The next getSettings() call must surface the new
+			// tier default without requiring an instance restart.
+			license.getPlanName.mockReturnValue('Enterprise');
+			const refreshed = await service.getSettings();
+			expect(refreshed.evaluationConcurrencyLimit).toBe(5);
+		});
+
+		it('keeps env override winning over license tier on refresh', async () => {
+			// Operator-set env always wins, even after a license change.
+			process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = '7';
+			globalConfig.executions = {
+				...globalConfig.executions,
+				concurrency: { productionLimit: -1, evaluationLimit: 7 },
+			} as GlobalConfig['executions'];
+			license.getPlanName.mockReturnValue('Community');
+
+			const { service } = createMockService();
+			const initial = await service.getSettings();
+			expect(initial.evaluationConcurrencyLimit).toBe(7);
+
+			license.getPlanName.mockReturnValue('Enterprise');
+			const refreshed = await service.getSettings();
+			expect(refreshed.evaluationConcurrencyLimit).toBe(7);
+		});
+
+		it('surfaces the license-issued evaluation concurrency quota when env is unset', async () => {
+			// `quota:evaluations:concurrencyLimit` lets the license-management
+			// service raise (or lower) a customer's cap without a code change.
+			// With env unset, the FE settings must reflect the license value
+			// rather than the tier default.
+			delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+			license.getPlanName.mockReturnValue('Community');
+			(license.getValue as jest.Mock).mockImplementation((feature: string) =>
+				feature === 'quota:evaluations:concurrencyLimit' ? 4 : undefined,
+			);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			// Community tier would otherwise be 1; the license override lifts
+			// it to 4.
+			expect(settings.evaluationConcurrencyLimit).toBe(4);
+		});
 	});
 
 	describe('getPublicSettings', () => {
@@ -229,6 +339,7 @@ describe('FrontendService', () => {
 					smtpSetup: false,
 					showSetupOnFirstLoad: true,
 					authenticationMethod: 'email',
+					passwordMinLength: 8,
 				},
 				sso: {
 					saml: { loginEnabled: false },
@@ -258,6 +369,7 @@ describe('FrontendService', () => {
 					smtpSetup: false,
 					showSetupOnFirstLoad: true,
 					authenticationMethod: 'email',
+					passwordMinLength: 8,
 				},
 				sso: {
 					saml: { loginEnabled: false },
@@ -281,6 +393,21 @@ describe('FrontendService', () => {
 			const settings = await service.getPublicSettings(true);
 
 			expect(settings).toEqual(expectedPublicSettings);
+		});
+
+		it('should expose configured passwordMinLength in settings', async () => {
+			(globalConfig as any).userManagement = { password: { minLength: 12 } };
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.userManagement.passwordMinLength).toBe(12);
+
+			const publicSettings = await service.getPublicSettings(false);
+			expect(publicSettings.userManagement.passwordMinLength).toBe(12);
+
+			// Restore default
+			(globalConfig as any).userManagement = { password: { minLength: 8 } };
 		});
 
 		it('should set showSetupOnFirstLoad to false in preview mode', async () => {
@@ -553,6 +680,98 @@ describe('FrontendService', () => {
 			(service as any).overwriteCredentialsProperties();
 
 			expect(credential.__skipManagedCreation).toBeUndefined();
+		});
+
+		describe('JWKS URI injection', () => {
+			const expectedJwksUri = 'http://localhost:5678/rest/.well-known/jwks.json';
+
+			const makeJwksUriProperty = () => ({
+				displayName: 'JWKS URI',
+				name: 'jwksUri',
+				type: 'string' as const,
+				default: '',
+			});
+
+			it('should inject the instance JWKS URI on oAuth2Api', () => {
+				const credential = {
+					name: 'oAuth2Api',
+					displayName: 'OAuth2 API',
+					properties: [makeJwksUriProperty()],
+				} as unknown as ICredentialType;
+
+				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+
+				const { service } = createMockService();
+				(service as any).overwriteCredentialsProperties();
+
+				const jwksProperty = credential.properties?.find((p) => p.name === 'jwksUri');
+				expect(jwksProperty?.default).toBe(expectedJwksUri);
+			});
+
+			it('should not touch standard OAuth2-extending credentials (jwksUri not inherited)', () => {
+				// Both `jweEnabled` and `jwksUri` carry `doNotInherit: true` so
+				// provider-specific OAuth2 credentials (Google, Slack, GitHub, ...)
+				// don't inherit them. Without a `jwksUri` property in scope, the
+				// injection has nothing to mutate.
+				const credential = {
+					name: 'slackOAuth2Api',
+					displayName: 'Slack OAuth2 API',
+					properties: [],
+				} as unknown as ICredentialType;
+
+				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+
+				const { service } = createMockService();
+				(service as any).overwriteCredentialsProperties();
+
+				expect(credential.properties).toEqual([]);
+			});
+
+			it('should inject the JWKS URI on JWE-aware OAuth2 extensions that re-declare jwksUri', () => {
+				// Custom credentials extending oAuth2Api can opt into the JWE flow
+				// by re-declaring both `jweEnabled` and `jwksUri`. The runtime URL
+				// injection must reach those credentials so the user sees the
+				// instance JWKS endpoint without the credential class hardcoding
+				// it (which would be impossible per-instance).
+				const credential = {
+					name: 'metaOAuth2Api',
+					displayName: 'Meta OAuth2 API',
+					properties: [makeJwksUriProperty()],
+				} as unknown as ICredentialType;
+
+				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+				(credentialTypes.getParentTypes as jest.Mock).mockReturnValue(['oAuth2Api']);
+
+				const { service } = createMockService();
+				(service as any).overwriteCredentialsProperties();
+
+				const jwksProperty = credential.properties?.find((p) => p.name === 'jwksUri');
+				expect(jwksProperty?.default).toBe(expectedJwksUri);
+			});
+
+			it('should leave non-OAuth2 credentials untouched', () => {
+				const credential = {
+					name: 'httpBasicAuth',
+					displayName: 'Basic Auth',
+					properties: [
+						{
+							displayName: 'User',
+							name: 'user',
+							type: 'string' as const,
+							default: '',
+						},
+					],
+				} as unknown as ICredentialType;
+
+				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+
+				const { service } = createMockService();
+				(service as any).overwriteCredentialsProperties();
+
+				expect(credential.properties).toEqual([
+					{ displayName: 'User', name: 'user', type: 'string', default: '' },
+				]);
+			});
 		});
 	});
 

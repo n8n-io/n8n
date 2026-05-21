@@ -1,4 +1,9 @@
-import type { ChatHubMessageStatus, PushMessage, WorkerStatus } from '@n8n/api-types';
+import type {
+	AgentCredentialIntegrationConfig,
+	ChatHubMessageStatus,
+	PushMessage,
+	WorkerStatus,
+} from '@n8n/api-types';
 import type { IWorkflowBase, WorkflowActivateMode } from 'n8n-workflow';
 
 export type PubSubCommandMap = {
@@ -27,6 +32,8 @@ export type PubSubCommandMap = {
 	// #endregion
 
 	'reload-source-control-config': never;
+
+	'reload-mcp-registry': never;
 
 	// #region Community packages
 
@@ -80,6 +87,8 @@ export type PubSubCommandMap = {
 	'display-workflow-activation-error': {
 		workflowId: string;
 		errorMessage: string;
+		errorDescription?: string;
+		nodeId?: string;
 	};
 
 	'relay-execution-lifecycle-event': PushMessage & {
@@ -170,6 +179,46 @@ export type PubSubCommandMap = {
 	 */
 	'cancel-test-run': {
 		testRunId: string;
+	};
+
+	/**
+	 * Cancel every running test run inside an evaluation collection across all
+	 * main instances. Used when a user cancels a collection — each main checks
+	 * its in-flight runs and aborts those that belong to the collection.
+	 */
+	'cancel-collection': {
+		collectionId: string;
+	};
+
+	// #endregion
+
+	// #region Agents
+
+	/**
+	 * Reconcile a single agent chat integration across main instances.
+	 * Published by the main that handled the user's connect/disconnect request
+	 * after the change is persisted; every main applies the same connect or
+	 * disconnect locally so the in-memory `connections` map stays in sync.
+	 */
+	'agent-chat-integration-changed': {
+		agentId: string;
+		integration: AgentCredentialIntegrationConfig;
+		action: 'connect' | 'disconnect';
+	};
+
+	/**
+	 * Drop the cached agent runtime in `AgentsService.runtimes` across mains.
+	 * Published by the main that handled an agent mutation (publish, unpublish,
+	 * config update, tool/skill change, delete) after the change is persisted.
+	 * Every main drops its cache entry so the next request rebuilds the runtime
+	 * from the current DB state, picking up the new model/credential/tools/skills.
+	 *
+	 * Without this, peer mains keep serving webhook traffic from a stale
+	 * compiled runtime — including stale embedded credentials — until the
+	 * 30-minute TTL evicts the entry.
+	 */
+	'agent-config-changed': {
+		agentId: string;
 	};
 
 	// #endregion

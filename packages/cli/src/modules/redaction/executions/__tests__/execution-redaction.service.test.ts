@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { IRunExecutionData, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
@@ -15,14 +15,13 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ExecutionRedactionService } from '../execution-redaction.service';
 import { FullItemRedactionStrategy } from '../strategies/full-item-redaction.strategy';
-import { NodeDefinedFieldRedactionStrategy } from '../strategies/node-defined-field-redaction.strategy';
 
 describe('ExecutionRedactionService', () => {
 	const logger = mockInstance(Logger);
+	const licenseState = mockInstance(LicenseState);
 	const workflowFinderService = mockInstance(WorkflowFinderService);
 	const eventService = mock<EventService>();
 	const fullItemRedactionStrategy = mockInstance(FullItemRedactionStrategy);
-	const nodeDefinedFieldRedactionStrategy = mockInstance(NodeDefinedFieldRedactionStrategy);
 
 	let service: ExecutionRedactionService;
 
@@ -36,17 +35,17 @@ describe('ExecutionRedactionService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		licenseState.isDataRedactionLicensed.mockReturnValue(true);
 		service = new ExecutionRedactionService(
 			logger,
+			licenseState,
 			workflowFinderService,
 			eventService,
 			fullItemRedactionStrategy,
-			nodeDefinedFieldRedactionStrategy,
 		);
 		// Default: user lacks execution:reveal scope
 		workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
 		fullItemRedactionStrategy.apply.mockResolvedValue(undefined);
-		nodeDefinedFieldRedactionStrategy.apply.mockResolvedValue(undefined);
 	});
 
 	const makeExecution = (
@@ -135,6 +134,66 @@ describe('ExecutionRedactionService', () => {
 			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
 		});
 
+		it('skips data-less executions and still processes the rest', async () => {
+			// A queued (`status: new`) execution row whose `executionData.data`
+			// has not been written yet returns `data: undefined` from the
+			// repository's unflatten path. Surfaces under parallel evaluation
+			// when several rows linger in `new` state long enough for FE
+			// polling to catch them. The service must short-circuit those
+			// rows without crashing the rest of the batch.
+			const populated = makeExecution({ policy: 'all', mode: 'trigger', workflowId: 'wf-1' });
+			const dataless = {
+				id: 'queued-1',
+				mode: 'trigger' as WorkflowExecuteMode,
+				workflowId: 'wf-2',
+				data: undefined,
+				workflowData: { settings: {}, nodes: [] },
+			} as unknown as RedactableExecution;
+			const options: ExecutionRedactionOptions = { user: mockUser };
+
+			await expect(
+				service.processExecutions([dataless, populated], options),
+			).resolves.toBeUndefined();
+
+			// The populated row still triggered the DB scope check, the
+			// data-less one did not contribute its workflow id to the query.
+			const [calledIds] = workflowFinderService.findWorkflowIdsWithScopeForUser.mock.calls[0];
+			expect(new Set(calledIds)).toEqual(new Set(['wf-1']));
+		});
+
+		it('skips data-less executions on the reveal-success path (audit-emit)', async () => {
+			// Reveal-success audit loop reads `resolvePolicy(execution)`, which
+			// dereferences `.data.executionData`. With a data-less row in the
+			// batch, the success path used to 500 even though the data-less
+			// row had no payload to reveal. Verify the audit event fires for
+			// the populated row and not for the data-less one.
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
+			const populated = makeExecution({ policy: 'all', mode: 'trigger', workflowId: 'wf-1' });
+			const dataless = {
+				id: 'queued-1',
+				mode: 'trigger' as WorkflowExecuteMode,
+				workflowId: 'wf-2',
+				data: undefined,
+				workflowData: { settings: {}, nodes: [] },
+			} as unknown as RedactableExecution;
+			const options: ExecutionRedactionOptions = {
+				user: mockUser,
+				redactExecutionData: false,
+			};
+
+			await expect(
+				service.processExecutions([dataless, populated], options),
+			).resolves.toBeUndefined();
+
+			const revealedCalls = eventService.emit.mock.calls.filter(
+				([eventName]) => eventName === 'execution-data-revealed',
+			);
+			expect(revealedCalls).toHaveLength(1);
+			expect(revealedCalls[0][1]).toEqual(
+				expect.objectContaining({ executionId: populated.id, workflowId: 'wf-1' }),
+			);
+		});
+
 		it('uses a single DB query for N executions (policy-driven)', async () => {
 			const executions = [
 				makeExecution({ policy: 'all', mode: 'trigger', workflowId: 'wf-1' }),
@@ -192,8 +251,6 @@ describe('ExecutionRedactionService', () => {
 
 			// FullItemRedactionStrategy called only for allExecution and nonManualTrigger
 			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(2);
-			// NodeDefinedFieldRedactionStrategy called for all 4
-			expect(nodeDefinedFieldRedactionStrategy.apply).toHaveBeenCalledTimes(4);
 		});
 
 		it('uses a single DB query for N executions when redactExecutionData === true', async () => {
@@ -230,8 +287,6 @@ describe('ExecutionRedactionService', () => {
 
 			// FullItemRedactionStrategy.requiresRedaction always returns true when in the pipeline
 			fullItemRedactionStrategy.requiresRedaction.mockReturnValue(true);
-			// NodeDefinedFieldRedactionStrategy.requiresRedaction returns false (no sensitive fields)
-			nodeDefinedFieldRedactionStrategy.requiresRedaction.mockReturnValue(false);
 
 			const executions = [noneExecution, allExecution, nonManualManual];
 			const options: ExecutionRedactionOptions = { user: mockUser, keepOriginal: true };
@@ -302,46 +357,6 @@ describe('ExecutionRedactionService', () => {
 		});
 	});
 
-	describe('NodeDefinedFieldRedactionStrategy inclusion', () => {
-		it('is always included when redacting', async () => {
-			const execution = makeExecution({ policy: 'all', mode: 'trigger' });
-			await service.processExecution(execution, { user: mockUser });
-			expect(nodeDefinedFieldRedactionStrategy.apply).toHaveBeenCalledTimes(1);
-		});
-
-		it('is included even when policy is "none" (no item clearing)', async () => {
-			const execution = makeExecution({ policy: 'none', mode: 'trigger' });
-			await service.processExecution(execution, { user: mockUser });
-			expect(nodeDefinedFieldRedactionStrategy.apply).toHaveBeenCalledTimes(1);
-		});
-
-		it('is included on reveal path (redactExecutionData === false)', async () => {
-			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
-				new Set(['workflow-123']),
-			);
-			const execution = makeExecution({ policy: 'all', mode: 'trigger' });
-			await service.processExecution(execution, { user: mockUser, redactExecutionData: false });
-			expect(nodeDefinedFieldRedactionStrategy.apply).toHaveBeenCalledTimes(1);
-		});
-	});
-
-	describe('strategy ordering', () => {
-		it('runs FullItemRedactionStrategy before NodeDefinedFieldRedactionStrategy', async () => {
-			const callOrder: string[] = [];
-			fullItemRedactionStrategy.apply.mockImplementation(async () => {
-				callOrder.push('full');
-			});
-			nodeDefinedFieldRedactionStrategy.apply.mockImplementation(async () => {
-				callOrder.push('node-defined');
-			});
-
-			const execution = makeExecution({ policy: 'all', mode: 'trigger' });
-			await service.processExecution(execution, { user: mockUser });
-
-			expect(callOrder).toEqual(['full', 'node-defined']);
-		});
-	});
-
 	describe('context passed to strategies', () => {
 		it('passes redactExecutionData from options', async () => {
 			const execution = makeExecution({ policy: 'all', mode: 'trigger' });
@@ -368,22 +383,6 @@ describe('ExecutionRedactionService', () => {
 
 			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
 			expect(context.userCanReveal).toBe(false);
-		});
-
-		it('passes userCanReveal: true when policyAllowsReveal (policy=none)', async () => {
-			const execution = makeExecution({ policy: 'none', mode: 'trigger' });
-			await service.processExecution(execution, { user: mockUser });
-
-			const [, context] = nodeDefinedFieldRedactionStrategy.apply.mock.calls[0];
-			expect(context.userCanReveal).toBe(true);
-		});
-
-		it('passes userCanReveal: true when policyAllowsReveal (policy=non-manual, mode=manual)', async () => {
-			const execution = makeExecution({ policy: 'non-manual', mode: 'manual' });
-			await service.processExecution(execution, { user: mockUser });
-
-			const [, context] = nodeDefinedFieldRedactionStrategy.apply.mock.calls[0];
-			expect(context.userCanReveal).toBe(true);
 		});
 	});
 
@@ -568,6 +567,26 @@ describe('ExecutionRedactionService', () => {
 			const execution = makeExecution({ withRuntimeData: false, mode: 'trigger' });
 			await service.processExecution(execution, { user: mockUser });
 			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('license enforcement', () => {
+		it('should treat policy as none when data-redaction license is missing', async () => {
+			licenseState.isDataRedactionLicensed.mockReturnValue(false);
+
+			const execution = makeExecution({ policy: 'all', mode: 'trigger' });
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('should apply policy when data-redaction license is present', async () => {
+			licenseState.isDataRedactionLicensed.mockReturnValue(true);
+
+			const execution = makeExecution({ policy: 'all', mode: 'trigger' });
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
 		});
 	});
 

@@ -10,7 +10,7 @@ import FromAiOverrideField from './ParameterInputOverrides/FromAiOverrideField.v
 import ParameterOverrideSelectableList from './ParameterInputOverrides/ParameterOverrideSelectableList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { getMappedResult } from '@/app/utils/mappingUtils';
 import {
 	hasExpressionMapping,
@@ -38,6 +38,7 @@ import { ChatHubToolContextKey, ExpressionLocalResolveContextSymbol } from '@/ap
 import { N8nInputLabel } from '@n8n/design-system';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import type { ParameterOptionsOverrides } from '@/features/ndv/shared/ndv.utils';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 type Props = {
 	parameter: INodeProperties;
@@ -85,7 +86,8 @@ const menuExpanded = ref(false);
 const forceShowExpression = ref(false);
 const wrapperHovered = ref(false);
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const telemetry = useTelemetry();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
@@ -95,7 +97,7 @@ const activeNode = computed(() => {
 	const ctx = expressionLocalResolveCtx?.value;
 
 	if (ctx) {
-		return ctx.workflow.getNode(ctx.nodeName);
+		return workflowDocumentStore.value.getNodeByName(ctx.nodeName);
 	}
 
 	return ndvStore.activeNode;

@@ -89,6 +89,7 @@ describe('workflowFailedToActivate', () => {
 		expect(mockShowError).toHaveBeenCalledWith(
 			expect.any(Error),
 			expect.stringContaining('"newStateName":"published"'),
+			{ message: undefined, description: undefined },
 		);
 	});
 
@@ -105,6 +106,7 @@ describe('workflowFailedToActivate', () => {
 		expect(mockShowError).toHaveBeenCalledWith(
 			expect.any(Error),
 			expect.stringContaining('"newStateName":"published"'),
+			{ message: undefined, description: undefined },
 		);
 	});
 

@@ -1,6 +1,221 @@
 import { Telemetry } from '../sdk/telemetry';
 import type { BuiltTelemetry, OpaqueTracer, OpaqueTracerProvider } from '../types/telemetry';
 
+let registeredOtelContext = false;
+
+const LANGSMITH_TRACEABLE = 'langsmith.traceable';
+const LANGSMITH_IS_ROOT = 'langsmith.is_root';
+const LANGSMITH_PARENT_RUN_ID = 'langsmith.span.parent_id';
+const LANGSMITH_TRACEABLE_PARENT_OTEL_SPAN_ID = 'langsmith.traceable_parent_otel_span_id';
+const AI_OPERATION_ID = 'ai.operationId';
+const TRACEABLE_AI_SDK_OPERATIONS = new Set([
+	'ai.generateText.doGenerate',
+	'ai.streamText.doStream',
+	'ai.generateObject.doGenerate',
+	'ai.streamObject.doStream',
+	'ai.toolCall',
+]);
+
+interface OtelSpanLike {
+	attributes: Record<string, unknown>;
+	spanContext(): {
+		traceId: string;
+		spanId: string;
+	};
+	parentSpanId?: string;
+	parentSpanContext?: {
+		spanId?: string;
+	};
+}
+
+interface SpanProcessorLike {
+	forceFlush(): Promise<void>;
+	onStart(span: unknown, parentContext: unknown): void;
+	onEnd(span: unknown): void;
+	shutdown(): Promise<void>;
+}
+
+interface BatchSpanProcessorConstructor {
+	new (exporter: unknown): SpanProcessorLike;
+}
+
+interface ExportResultLike {
+	code: number;
+	error?: Error;
+}
+
+type ExportResultCallback = (result: ExportResultLike) => void;
+
+interface SpanExporterLike {
+	export(spans: unknown[], resultCallback: ExportResultCallback): void;
+	shutdown(): Promise<void>;
+}
+
+interface LangSmithOTLPTraceExporterConfig {
+	apiKey?: string;
+	projectName?: string;
+	url?: string;
+	headers?: Record<string, string>;
+	transformExportedSpan?: (span: unknown) => unknown;
+}
+
+interface LangSmithOTLPTraceExporterConstructor {
+	new (cfg?: LangSmithOTLPTraceExporterConfig): SpanExporterLike;
+}
+
+interface LangSmithRunTree {
+	getSharedClient(): {
+		awaitPendingTraceBatches(): Promise<void>;
+	};
+}
+
+const OTEL_EXPORT_RESULT_FAILED = 1;
+
+function toExportError(error: unknown): Error {
+	return error instanceof Error ? error : new Error(String(error));
+}
+
+function createHeaderRefreshingLangSmithExporter(
+	LangSmithOTLPTraceExporter: LangSmithOTLPTraceExporterConstructor,
+	getExporterConfig: (headers: Record<string, string>) => LangSmithOTLPTraceExporterConfig,
+	getHeaders: () => Promise<Record<string, string>>,
+): SpanExporterLike {
+	return {
+		export(spans, resultCallback) {
+			void (async () => {
+				try {
+					const headers = await getHeaders();
+					const exporter = new LangSmithOTLPTraceExporter(getExporterConfig(headers));
+					exporter.export(spans, resultCallback);
+				} catch (error) {
+					resultCallback({ code: OTEL_EXPORT_RESULT_FAILED, error: toExportError(error) });
+				}
+			})();
+		},
+
+		async shutdown() {
+			await Promise.resolve();
+		},
+	};
+}
+
+function isOtelSpanLike(value: unknown): value is OtelSpanLike {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		typeof Reflect.get(value, 'spanContext') === 'function' &&
+		typeof Reflect.get(value, 'attributes') === 'object'
+	);
+}
+
+function getParentSpanId(span: OtelSpanLike): string | undefined {
+	return span.parentSpanId ?? span.parentSpanContext?.spanId;
+}
+
+function getUuidFromOtelSpanId(spanId: string): string {
+	const paddedHex = spanId.padStart(16, '0');
+	return `00000000-0000-0000-${paddedHex.substring(0, 4)}-${paddedHex.substring(4, 16)}`;
+}
+
+function isTraceableSpan(span: OtelSpanLike): boolean {
+	const operationId = span.attributes[AI_OPERATION_ID];
+	return (
+		span.attributes[LANGSMITH_TRACEABLE] === 'true' ||
+		(typeof operationId === 'string' && TRACEABLE_AI_SDK_OPERATIONS.has(operationId))
+	);
+}
+
+function createLangSmithSpanProcessor(options: {
+	exporter: unknown;
+	BatchSpanProcessor: BatchSpanProcessorConstructor;
+	RunTree: LangSmithRunTree;
+}): SpanProcessorLike {
+	const delegate = new options.BatchSpanProcessor(options.exporter);
+	const traceMap: Record<
+		string,
+		{
+			spanCount: number;
+			spanInfo: Record<string, { isTraceable: boolean; parentSpanId?: string }>;
+		}
+	> = {};
+
+	return {
+		async forceFlush() {
+			await delegate.forceFlush();
+		},
+
+		onStart(span, parentContext) {
+			if (!isOtelSpanLike(span)) {
+				delegate.onStart(span, parentContext);
+				return;
+			}
+
+			const spanContext = span.spanContext();
+			traceMap[spanContext.traceId] ??= {
+				spanCount: 0,
+				spanInfo: {},
+			};
+
+			const traceInfo = traceMap[spanContext.traceId];
+			traceInfo.spanCount++;
+			const traceable = isTraceableSpan(span);
+			const parentSpanId = getParentSpanId(span);
+			traceInfo.spanInfo[spanContext.spanId] = {
+				isTraceable: traceable,
+				...(parentSpanId ? { parentSpanId } : {}),
+			};
+
+			let currentCandidateParentSpanId = parentSpanId;
+			let traceableParentSpanId: string | undefined;
+			while (currentCandidateParentSpanId) {
+				const currentSpanInfo = traceInfo.spanInfo[currentCandidateParentSpanId];
+				if (currentSpanInfo?.isTraceable) {
+					traceableParentSpanId = currentCandidateParentSpanId;
+					break;
+				}
+				currentCandidateParentSpanId = currentSpanInfo?.parentSpanId;
+			}
+
+			if (!traceableParentSpanId) {
+				span.attributes[LANGSMITH_IS_ROOT] = true;
+			} else {
+				span.attributes[LANGSMITH_PARENT_RUN_ID] = getUuidFromOtelSpanId(traceableParentSpanId);
+				span.attributes[LANGSMITH_TRACEABLE_PARENT_OTEL_SPAN_ID] = traceableParentSpanId;
+			}
+
+			if (traceable) {
+				delegate.onStart(span, parentContext);
+			}
+		},
+
+		onEnd(span) {
+			if (!isOtelSpanLike(span)) {
+				delegate.onEnd(span);
+				return;
+			}
+
+			const spanContext = span.spanContext();
+			const traceInfo = traceMap[spanContext.traceId];
+			const spanInfo = traceInfo?.spanInfo[spanContext.spanId];
+			if (!traceInfo || !spanInfo) return;
+
+			traceInfo.spanCount--;
+			if (traceInfo.spanCount <= 0) {
+				delete traceMap[spanContext.traceId];
+			}
+
+			if (spanInfo.isTraceable) {
+				delegate.onEnd(span);
+			}
+		},
+
+		async shutdown() {
+			await options.RunTree.getSharedClient().awaitPendingTraceBatches();
+			await delegate.shutdown();
+		},
+	};
+}
+
 export interface LangSmithTelemetryConfig {
 	/** LangSmith API key. If omitted, resolved via `.credential()` or LANGSMITH_API_KEY env var. */
 	apiKey?: string;
@@ -13,6 +228,13 @@ export interface LangSmithTelemetryConfig {
 	 * as `${endpoint}/otel/v1/traces`. Use this for custom collectors or testing.
 	 */
 	url?: string;
+	/**
+	 * Default headers to send with LangSmith OTLP export requests.
+	 * Callback headers are resolved per export request.
+	 */
+	headers?: Record<string, string> | (() => Promise<Record<string, string>>);
+	/** Optional hook for redacting or annotating spans before LangSmith export. */
+	transformExportedSpan?: (span: unknown) => unknown;
 }
 
 /**
@@ -29,21 +251,18 @@ async function createLangSmithTracer(
 			spanProcessors?: unknown[];
 		}) => OpaqueTracerProvider & {
 			getTracer(name: string): OpaqueTracer;
+			register(config?: { propagator?: null }): void;
 		};
 	};
 
 	const { LangSmithOTLPTraceExporter } = (await import('langsmith/experimental/otel/exporter')) as {
-		LangSmithOTLPTraceExporter: new (cfg?: {
-			apiKey?: string;
-			projectName?: string;
-			endpoint?: string;
-		}) => unknown;
+		LangSmithOTLPTraceExporter: LangSmithOTLPTraceExporterConstructor;
 	};
-
-	const { LangSmithOTLPSpanProcessor } = (await import(
-		'langsmith/experimental/otel/processor'
-	)) as {
-		LangSmithOTLPSpanProcessor: new (exporter: unknown) => unknown;
+	const { BatchSpanProcessor } = (await import('@opentelemetry/sdk-trace-base')) as {
+		BatchSpanProcessor: BatchSpanProcessorConstructor;
+	};
+	const { RunTree } = (await import('langsmith')) as {
+		RunTree: LangSmithRunTree;
 	};
 
 	// SECURITY: When the engine-resolved credential is the active key (i.e. no
@@ -56,18 +275,44 @@ async function createLangSmithTracer(
 		: (config?.url ??
 			(config?.endpoint ? `${config.endpoint.replace(/\/$/, '')}/otel/v1/traces` : undefined));
 
-	const exporter = new LangSmithOTLPTraceExporter({
+	const buildExporterConfig = (
+		headers?: Record<string, string>,
+	): LangSmithOTLPTraceExporterConfig => ({
 		apiKey,
 		projectName: config?.project,
+		...(headers ? { headers } : {}),
+		...(config?.transformExportedSpan
+			? { transformExportedSpan: config.transformExportedSpan }
+			: {}),
 		...(url ? { url } : {}),
 	});
 
-	const processor = new LangSmithOTLPSpanProcessor(exporter);
+	const headers = config?.headers;
+	const exporter =
+		typeof headers === 'function'
+			? createHeaderRefreshingLangSmithExporter(
+					LangSmithOTLPTraceExporter,
+					buildExporterConfig,
+					headers,
+				)
+			: new LangSmithOTLPTraceExporter(buildExporterConfig(headers));
+
+	const processor = createLangSmithSpanProcessor({
+		exporter,
+		BatchSpanProcessor,
+		RunTree,
+	});
 
 	const provider = new NodeTracerProvider({
 		spanProcessors: [processor],
 	});
-	// Do NOT call provider.register() — avoid polluting the global tracer provider.
+	if (!registeredOtelContext) {
+		// AI SDK creates nested operation/provider/tool spans through the active
+		// OpenTelemetry context. Without the Node context manager these spans are
+		// exported as separate root traces even when an explicit tracer is passed.
+		provider.register({ propagator: null });
+		registeredOtelContext = true;
+	}
 
 	return { tracer: provider.getTracer('@n8n/agents'), provider };
 }

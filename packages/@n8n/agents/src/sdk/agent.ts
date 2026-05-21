@@ -3,14 +3,21 @@ import { z } from 'zod';
 
 import type { Eval } from './eval';
 import type { McpClient } from './mcp-client';
-import { Memory } from './memory';
+import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './memory';
 import { Telemetry } from './telemetry';
 import { Tool, wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
+import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
 import { AgentEventBus } from '../runtime/event-bus';
 import { createAgentToolResult } from '../runtime/tool-adapter';
+import {
+	appendSkillCatalogToInstructions,
+	createRuntimeSkillSource,
+	createRuntimeSkillTools,
+	RUNTIME_SKILL_TOOL_NAMES,
+} from '../skills';
+import type { RuntimeSkill, RuntimeSkillSource } from '../skills';
 import type {
-	AgentEvent,
 	AgentEventHandler,
 	AgentMiddleware,
 	BuiltAgent,
@@ -34,6 +41,8 @@ import type {
 	ThinkingConfigFor,
 	ResumeOptions,
 } from '../types';
+import type { AgentEvent } from '../types/runtime/event';
+import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
 import type { Workspace } from '../workspace/workspace';
 
@@ -41,14 +50,46 @@ const DEFAULT_LAST_MESSAGES = 10;
 
 type ToolParameter = BuiltTool | { build(): BuiltTool };
 
+interface DeferredToolOptions {
+	search?: {
+		topK?: number;
+	};
+}
+
+/**
+ * Lightweight read-only view of an agent's configured state.
+ * Returned by `Agent.snapshot` for testing and debugging purposes.
+ */
+export interface AgentSnapshot {
+	/** Agent name. */
+	name: string;
+	/** Parsed model identifier. Both fields are null if no model has been set. */
+	model: { provider: string | null; name: string | null };
+	/** Instruction text passed to `.instructions()`, or null if not set. */
+	instructions: string | null;
+	/** Minimal description of each directly registered tool. */
+	tools: ReadonlyArray<{ name: string; description: string | undefined }>;
+	/** True when `.memory()` has been configured. */
+	hasMemory: boolean;
+	/** True when observation-log memory has been configured on the memory builder. */
+	hasObservationalMemory: boolean;
+	/** True when episodic memory has been configured on the memory builder. */
+	hasEpisodicMemory: boolean;
+	/** The thinking config if set, otherwise null. */
+	thinking: ThinkingConfig | null;
+	/** Tool-call concurrency limit if set, otherwise null. */
+	toolCallConcurrency: number | null;
+	/** Whether `.requireToolApproval()` was called. */
+	requireToolApproval: boolean;
+}
+
 /**
  * Builder for creating AI agents with a fluent API.
  *
  * Usage:
  * ```typescript
  * const agent = new Agent('assistant')
- *   .model('anthropic', 'claude-sonnet-4')   // typed: Agent<'anthropic'>
- *   .credential('anthropic')
+ *   .model('anthropic', 'claude-sonnet-4')
  *   .instructions('You are a helpful assistant.')
  *   .tool(searchTool);
  *
@@ -56,12 +97,10 @@ type ToolParameter = BuiltTool | { build(): BuiltTool };
  * ```
  */
 
-export class Agent implements BuiltAgent {
+export class Agent implements BuiltAgent, AgentBuilder {
 	readonly name: string;
 
-	private modelId?: string;
-
-	private modelConfigObj?: ModelConfig;
+	private modelConfig?: ModelConfig;
 
 	private instructionProviderOpts?: ProviderOptions;
 
@@ -69,7 +108,15 @@ export class Agent implements BuiltAgent {
 
 	private tools: BuiltTool[] = [];
 
+	private deferredTools: BuiltTool[] = [];
+
+	private deferredToolSearchTopK: number | undefined;
+
 	private providerTools: BuiltProviderTool[] = [];
+
+	private skillSource?: RuntimeSkillSource;
+
+	private hasRuntimeSkillTool = false;
 
 	private memoryConfig?: MemoryConfig;
 
@@ -86,10 +133,6 @@ export class Agent implements BuiltAgent {
 	private checkpointStore?: 'memory' | CheckpointStore;
 
 	private thinkingConfig?: ThinkingConfig;
-
-	private credentialName?: string;
-
-	private resolvedKey?: string;
 
 	private runtime?: AgentRuntime;
 
@@ -115,6 +158,14 @@ export class Agent implements BuiltAgent {
 		this.name = name;
 	}
 
+	hasCheckpointStorage(): boolean {
+		return this.checkpointStore !== undefined;
+	}
+
+	hasMemory(): boolean {
+		return this.memoryConfig !== undefined;
+	}
+
 	/**
 	 * Set the model with provider type information.
 	 *
@@ -129,11 +180,9 @@ export class Agent implements BuiltAgent {
 	 */
 	model(providerOrIdOrConfig: string | ModelConfig, modelName?: string): this {
 		if (typeof providerOrIdOrConfig === 'string') {
-			this.modelId = modelName ? `${providerOrIdOrConfig}/${modelName}` : providerOrIdOrConfig;
-			this.modelConfigObj = undefined;
+			this.modelConfig = modelName ? `${providerOrIdOrConfig}/${modelName}` : providerOrIdOrConfig;
 		} else {
-			this.modelConfigObj = providerOrIdOrConfig;
-			this.modelId = undefined;
+			this.modelConfig = providerOrIdOrConfig;
 		}
 		return this;
 	}
@@ -147,14 +196,49 @@ export class Agent implements BuiltAgent {
 
 	/** Add a tool to the agent's capabilities. Accepts a built tool or a Tool builder (which will be built automatically). Can also accept an array of tools. */
 	tool(t: ToolParameter | ToolParameter[]): this {
-		if (Array.isArray(t)) {
-			for (const tool of t) {
-				this.tool(tool);
-			}
-			return this;
+		const tools = Array.isArray(t) ? t : [t];
+		const builtTools = tools.map((tool) => ('build' in tool ? tool.build() : tool));
+		for (const built of builtTools) {
+			this.assertToolNameAvailable(built.name);
 		}
-		const built = 'build' in t ? t.build() : t;
-		this.tools.push(built);
+		this.tools.push(...builtTools);
+		return this;
+	}
+
+	/** Add tools that are searchable through `search_tools` and activated on demand with `load_tool`. */
+	deferredTool(t: ToolParameter | ToolParameter[], options?: DeferredToolOptions): this {
+		const tools = Array.isArray(t) ? t : [t];
+		for (const tool of tools) {
+			const built = 'build' in tool ? tool.build() : tool;
+			this.deferredTools.push(built);
+		}
+		if (options?.search?.topK !== undefined) {
+			this.deferredToolSearchTopK = options.search.topK;
+		}
+		return this;
+	}
+
+	/**
+	 * Add runtime-loadable skills to the agent. The model sees only a compact
+	 * name/description catalog in the system prompt, then calls `load_skill`
+	 * to retrieve the full instructions for a relevant skill.
+	 */
+	skills(sourceOrSkills: RuntimeSkillSource | RuntimeSkill[]): this {
+		const source = Array.isArray(sourceOrSkills)
+			? createRuntimeSkillSource(sourceOrSkills)
+			: sourceOrSkills;
+
+		this.removeRuntimeSkillTools();
+		this.skillSource = source;
+		if (source.registry.skills.length === 0) return this;
+
+		const reservedTool = this.tools.find((tool) => RUNTIME_SKILL_TOOL_NAMES.has(tool.name));
+		if (reservedTool) {
+			throw new Error(`Tool name "${reservedTool.name}" is reserved for runtime skills`);
+		}
+
+		this.tools.push(...createRuntimeSkillTools(source));
+		this.hasRuntimeSkillTool = true;
 		return this;
 	}
 
@@ -164,17 +248,33 @@ export class Agent implements BuiltAgent {
 		return this;
 	}
 
+	/** Read the declared tools. Lists only tools added via tool() */
+	get declaredTools(): BuiltTool[] {
+		return this.tools;
+	}
+
 	/** Set the memory configuration. Accepts a MemoryConfig, Memory builder, or bare BuiltMemory. */
 	memory(m: MemoryConfig | Memory | BuiltMemory): this {
 		if (m instanceof Memory) {
 			// Memory builder — call build()
 			this.memoryConfig = m.build();
 		} else if ('memory' in m && 'lastMessages' in m) {
-			// MemoryConfig — use directly
-			this.memoryConfig = m;
-		} else {
+			// MemoryConfig — validate the same invariants as the builder path
+			this.memoryConfig = normalizeMemoryConfig(m);
+		} else if (
+			typeof m === 'object' &&
+			m !== null &&
+			typeof m.getMessages === 'function' &&
+			typeof m.saveMessages === 'function'
+		) {
 			// Bare BuiltMemory — wrap in minimal config
 			this.memoryConfig = { memory: m, lastMessages: DEFAULT_LAST_MESSAGES };
+		} else {
+			throw new Error(
+				'Invalid memory configuration. Use: new Memory().lastMessages(N) for in-process memory, ' +
+					'or new Memory().storage(myBuiltMemoryBackend).lastMessages(N) for a persistent backend. ' +
+					'See the Memory class documentation for all options.',
+			);
 		}
 		return this;
 	}
@@ -227,34 +327,6 @@ export class Agent implements BuiltAgent {
 	}
 
 	/**
-	 * Declare a credential this agent requires. The execution engine resolves
-	 * the credential name to an API key at build time and injects it into the
-	 * model configuration — user code never handles raw keys.
-	 *
-	 * @example
-	 * ```typescript
-	 * const agent = new Agent('assistant')
-	 *   .model('anthropic/claude-sonnet-4-5')
-	 *   .credential('anthropic')
-	 *   .instructions('You are helpful.');
-	 * ```
-	 */
-	credential(name: string): this {
-		this.credentialName = name;
-		return this;
-	}
-
-	/** @internal Read the declared credential name (used by the execution engine). */
-	protected get declaredCredential(): string | undefined {
-		return this.credentialName;
-	}
-
-	/** @internal Set the resolved API key (called by the execution engine before super.build()). */
-	protected set resolvedApiKey(key: string) {
-		this.resolvedKey = key;
-	}
-
-	/**
 	 * Set a structured output schema. When set, the agent's response will be
 	 * parsed into a typed object matching the schema, available as `result.output`.
 	 *
@@ -286,12 +358,12 @@ export class Agent implements BuiltAgent {
 	 * // Anthropic — budgetTokens
 	 * new Agent('thinker')
 	 *   .model('anthropic', 'claude-sonnet-4-5')
-	 *   .thinking({ budgetTokens: 10000 })
+	 *   .thinking('anthropic', { budgetTokens: 5000 })
 	 *
 	 * // OpenAI — reasoningEffort
 	 * new Agent('thinker')
 	 *   .model('openai', 'o3-mini')
-	 *   .thinking({ reasoningEffort: 'high' })
+	 *   .thinking('openai', { reasoningEffort: 'high' })
 	 * ```
 	 */
 	thinking<P extends Provider>(_provider: P, config?: ThinkingConfigFor<P>): this {
@@ -307,6 +379,7 @@ export class Agent implements BuiltAgent {
 		} else {
 			this.telemetryBuilder = undefined;
 			this.telemetryConfig = t;
+			this.runtime?.setTelemetry(t);
 		}
 		return this;
 	}
@@ -387,6 +460,15 @@ export class Agent implements BuiltAgent {
 	}
 
 	/**
+	 * Remove a previously registered event handler. Pair with `on()` so
+	 * per-request subscribers (e.g. the cli's ExecutionRecorder) can detach
+	 * cleanly between turns instead of accumulating on a long-lived agent.
+	 */
+	off(event: AgentEvent, handler: AgentEventHandler): void {
+		this.eventBus.off(event, handler);
+	}
+
+	/**
 	 * Wrap this agent as a tool for use in multi-agent composition.
 	 * The tool sends a text prompt to this agent and returns the text of the response.
 	 *
@@ -447,6 +529,47 @@ export class Agent implements BuiltAgent {
 		return tool.build();
 	}
 
+	/**
+	 * Return a lightweight read-only snapshot of the agent's configured state.
+	 * Useful for testing and debugging — does not trigger a build.
+	 */
+	get snapshot(): AgentSnapshot {
+		let model: AgentSnapshot['model'];
+		const rawModelId =
+			typeof this.modelConfig === 'string'
+				? this.modelConfig
+				: this.modelConfig && typeof this.modelConfig === 'object' && 'id' in this.modelConfig
+					? this.modelConfig.id
+					: undefined;
+
+		if (rawModelId) {
+			const slashIdx = rawModelId.indexOf('/');
+			if (slashIdx === -1) {
+				model = { provider: null, name: rawModelId };
+			} else {
+				model = {
+					provider: rawModelId.slice(0, slashIdx),
+					name: rawModelId.slice(slashIdx + 1),
+				};
+			}
+		} else {
+			model = { provider: null, name: null };
+		}
+
+		return {
+			name: this.name,
+			model,
+			instructions: this.instructionsText ?? null,
+			tools: this.tools.map((t) => ({ name: t.name, description: t.description })),
+			hasMemory: this.memoryConfig !== undefined,
+			hasObservationalMemory: this.memoryConfig?.observationalMemory !== undefined,
+			hasEpisodicMemory: this.memoryConfig?.episodicMemory !== undefined,
+			thinking: this.thinkingConfig ?? null,
+			toolCallConcurrency: this.concurrencyValue ?? null,
+			requireToolApproval: this.requireToolApprovalValue,
+		};
+	}
+
 	/** Return the latest state snapshot of the agent. Returns `{ status: 'idle' }` before first run. */
 	getState(): SerializableAgentState {
 		if (!this.runtime) {
@@ -466,6 +589,15 @@ export class Agent implements BuiltAgent {
 	 */
 	abort(): void {
 		this.eventBus.abort();
+	}
+
+	/**
+	 * Wait for any in-flight background tasks (title generation, future
+	 * observer cycles) to settle. Call before letting the agent go out of
+	 * scope to ensure deferred writes land. Safe to call multiple times.
+	 */
+	async close(): Promise<void> {
+		if (this.runtime) await this.runtime.dispose();
 	}
 
 	/** Generate a response (non-streaming). Lazy-builds on first call. */
@@ -556,8 +688,7 @@ export class Agent implements BuiltAgent {
 
 	/** @internal Validate configuration and produce an AgentRuntime. Overridden by the execution engine. */
 	protected async build(): Promise<AgentRuntime> {
-		const hasModel = this.modelId ?? this.modelConfigObj;
-		if (!hasModel) {
+		if (!this.modelConfig) {
 			throw new Error(`Agent "${this.name}" requires a model`);
 		}
 		if (!this.instructionsText) {
@@ -565,6 +696,7 @@ export class Agent implements BuiltAgent {
 		}
 
 		const finalTools = [...this.tools];
+		const configuredDeferredTools = [...this.deferredTools];
 
 		if (this.workspaceInstance) {
 			const wsTools = this.workspaceInstance.getTools();
@@ -572,15 +704,23 @@ export class Agent implements BuiltAgent {
 		}
 
 		let finalStaticTools = finalTools;
+		let finalDeferredTools = configuredDeferredTools;
 		if (this.requireToolApprovalValue) {
 			finalStaticTools = finalTools.map((t) =>
+				RUNTIME_SKILL_TOOL_NAMES.has(t.name) || t.suspendSchema
+					? t
+					: wrapToolForApproval(t, { requireApproval: true }),
+			);
+			finalDeferredTools = configuredDeferredTools.map((t) =>
 				t.suspendSchema ? t : wrapToolForApproval(t, { requireApproval: true }),
 			);
 		}
 
 		// Validate checkpoint requirement from static tools and known MCP approval config
 		// before attempting any network connections (allows fast failure).
-		const staticNeedsCheckpoint = finalStaticTools.some((t) => t.suspendSchema);
+		const staticNeedsCheckpoint =
+			finalStaticTools.some((t) => t.suspendSchema) ||
+			finalDeferredTools.some((t) => t.suspendSchema);
 		const mcpNeedsCheckpoint =
 			(this.requireToolApprovalValue && this.mcpClients.length > 0) ||
 			this.mcpClients.some((c) => c.declaresApproval());
@@ -604,9 +744,41 @@ export class Agent implements BuiltAgent {
 			);
 		}
 
-		// Detect collisions between MCP tools and static tools.
+		// Detect collisions between direct, deferred, and MCP tools.
+		const staticCollisions = findDuplicateToolNames(finalStaticTools);
+		if (staticCollisions.length > 0) {
+			throw new Error(
+				`Static tool name collision — the following tool names resolve to duplicates: ${staticCollisions.join(', ')}`,
+			);
+		}
+
 		const staticNames = new Set(finalStaticTools.map((t) => t.name));
-		const collisions = mcpTools.filter((t) => staticNames.has(t.name)).map((t) => t.name);
+		const reservedDeferredToolNames = new Set([
+			SEARCH_TOOLS_TOOL_NAME,
+			LOAD_TOOL_TOOL_NAME,
+			...RUNTIME_SKILL_TOOL_NAMES,
+		]);
+		const deferredNames = new Set<string>();
+		const deferredCollisions: string[] = [];
+		for (const tool of finalDeferredTools) {
+			if (
+				staticNames.has(tool.name) ||
+				reservedDeferredToolNames.has(tool.name) ||
+				deferredNames.has(tool.name)
+			) {
+				deferredCollisions.push(tool.name);
+			}
+			deferredNames.add(tool.name);
+		}
+		if (deferredCollisions.length > 0) {
+			throw new Error(
+				`Deferred tool name collision — the following tool names resolve to duplicates or reserved tools: ${deferredCollisions.join(', ')}`,
+			);
+		}
+
+		const collisions = mcpTools
+			.filter((t) => staticNames.has(t.name) || deferredNames.has(t.name))
+			.map((t) => t.name);
 		if (collisions.length > 0) {
 			throw new Error(
 				`MCP tool name collision — the following tool names resolve to duplicates: ${collisions.join(', ')}`,
@@ -617,7 +789,8 @@ export class Agent implements BuiltAgent {
 
 		// Validate checkpoint again after discovering actual MCP tools
 		// (catches the case where MCP tools have suspendSchema after listing).
-		const allNeedCheckpoint = allTools.some((t) => t.suspendSchema);
+		const allNeedCheckpoint =
+			allTools.some((t) => t.suspendSchema) || finalDeferredTools.some((t) => t.suspendSchema);
 		if (allNeedCheckpoint && !this.checkpointStore) {
 			throw new Error(
 				`Agent "${this.name}" has tools requiring approval or suspend/resume but no checkpoint storage. ` +
@@ -626,24 +799,15 @@ export class Agent implements BuiltAgent {
 			);
 		}
 
-		let modelConfig: ModelConfig;
-		if (this.modelConfigObj) {
-			if (
-				this.resolvedKey &&
-				typeof this.modelConfigObj === 'object' &&
-				'id' in this.modelConfigObj
-			) {
-				modelConfig = { ...this.modelConfigObj, apiKey: this.resolvedKey };
-			} else {
-				modelConfig = this.modelConfigObj;
-			}
-		} else if (this.resolvedKey) {
-			modelConfig = { id: this.modelId!, apiKey: this.resolvedKey };
-		} else {
-			modelConfig = this.modelId!;
-		}
+		const modelConfig: ModelConfig = this.modelConfig;
+		const memoryConfig = this.memoryConfig
+			? resolveMemoryConfigDefaults(this.memoryConfig, { defaultModel: modelConfig })
+			: undefined;
 
 		let instructions = this.instructionsText;
+		if (this.skillSource) {
+			instructions = appendSkillCatalogToInstructions(instructions, this.skillSource.registry);
+		}
 		if (this.workspaceInstance) {
 			const wsInstructions = this.workspaceInstance.getInstructions();
 			if (wsInstructions) {
@@ -656,21 +820,53 @@ export class Agent implements BuiltAgent {
 			model: modelConfig,
 			instructions,
 			tools: allTools.length > 0 ? allTools : undefined,
+			deferredTools: finalDeferredTools.length > 0 ? finalDeferredTools : undefined,
+			toolSearch:
+				finalDeferredTools.length > 0 && this.deferredToolSearchTopK !== undefined
+					? { topK: this.deferredToolSearchTopK }
+					: undefined,
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
-			memory: this.memoryConfig?.memory,
-			lastMessages: this.memoryConfig?.lastMessages,
-			workingMemory: this.memoryConfig?.workingMemory,
-			semanticRecall: this.memoryConfig?.semanticRecall,
+			memory: memoryConfig?.memory,
+			lastMessages: memoryConfig?.lastMessages,
+			observationLog: memoryConfig?.observationLog,
+			observationalMemory: memoryConfig?.observationalMemory,
+			episodicMemory: memoryConfig?.episodicMemory,
+			semanticRecall: memoryConfig?.semanticRecall,
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
 			thinking: this.thinkingConfig,
 			eventBus: this.eventBus,
 			toolCallConcurrency: this.concurrencyValue,
-			titleGeneration: this.memoryConfig?.titleGeneration,
+			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
 		});
 
 		return this.runtime;
 	}
+
+	private assertToolNameAvailable(toolName: string): void {
+		if (!this.hasRuntimeSkillTool || !RUNTIME_SKILL_TOOL_NAMES.has(toolName)) return;
+
+		throw new Error(`Tool name "${toolName}" is reserved for runtime skills`);
+	}
+
+	private removeRuntimeSkillTools(): void {
+		if (!this.hasRuntimeSkillTool) return;
+
+		this.tools = this.tools.filter((tool) => !RUNTIME_SKILL_TOOL_NAMES.has(tool.name));
+		this.hasRuntimeSkillTool = false;
+	}
+}
+
+function findDuplicateToolNames(tools: BuiltTool[]): string[] {
+	const seen = new Set<string>();
+	const duplicates = new Set<string>();
+	for (const tool of tools) {
+		if (seen.has(tool.name)) {
+			duplicates.add(tool.name);
+		}
+		seen.add(tool.name);
+	}
+	return [...duplicates].sort();
 }

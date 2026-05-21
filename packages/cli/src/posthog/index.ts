@@ -1,3 +1,4 @@
+import { EVAL_COLLECTIONS_FLAG } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -100,6 +101,22 @@ export class PostHogClient {
 	}
 
 	async getFeatureFlags(user: Pick<PublicUser, 'id' | 'createdAt'>): Promise<FeatureFlags> {
+		// Catch PostHog errors here (rather than letting them propagate) so
+		// env-var overrides still apply when PostHog is unreachable. Without
+		// this, a transient PostHog outage would short-circuit the override
+		// path and leave operators without an escape hatch.
+		let flags: FeatureFlags = {};
+		try {
+			flags = await this.fetchFlagsFromPostHog(user);
+		} catch {
+			// fall through to env overrides
+		}
+		return this.applyEnvOverrides(flags);
+	}
+
+	private async fetchFlagsFromPostHog(
+		user: Pick<PublicUser, 'id' | 'createdAt'>,
+	): Promise<FeatureFlags> {
 		if (!this.postHog) return {};
 
 		const { instanceId } = this.instanceSettings;
@@ -124,5 +141,19 @@ export class PostHogClient {
 		}
 
 		return flags ?? {};
+	}
+
+	/**
+	 * Applies env-var overrides on top of PostHog-resolved flags. The override
+	 * is force-enable only — `false` defers to PostHog. Cached PostHog data is
+	 * stored without overrides so changing the env var (across restarts)
+	 * doesn't poison the cache.
+	 */
+	private applyEnvOverrides(flags: FeatureFlags): FeatureFlags {
+		const overrides: FeatureFlags = {};
+		if (this.globalConfig.evaluation.collectionsEnabled) {
+			overrides[EVAL_COLLECTIONS_FLAG] = true;
+		}
+		return Object.keys(overrides).length === 0 ? flags : { ...flags, ...overrides };
 	}
 }

@@ -16,6 +16,7 @@ import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify'
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { CacheService } from '@/services/cache/cache.service';
 import type { UrlService } from '@/services/url.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
@@ -166,6 +167,7 @@ describe('SamlService', () => {
 	let userRepository: UserRepository;
 	let provisioningService: ProvisioningService;
 	let cipher: Cipher;
+	let cacheService: jest.Mocked<CacheService>;
 	const validator = new SamlValidator(mock());
 	const logger = mockLogger();
 
@@ -214,8 +216,11 @@ describe('SamlService', () => {
 		});
 		provisioningService = mock<ProvisioningService>();
 		cipher = mock<Cipher>();
-		cipher.encrypt = jest.fn((data: string) => `encrypted:${data}`) as Cipher['encrypt'];
-		cipher.decrypt = jest.fn((data: string) => data.replace('encrypted:', ''));
+		cipher.encryptV2 = jest.fn(async (data: string) => `encrypted:${data}`) as Cipher['encryptV2'];
+		cipher.decryptV2 = jest.fn(async (data: string) =>
+			data.replace('encrypted:', ''),
+		) as Cipher['decryptV2'];
+		cacheService = mock<CacheService>();
 
 		jest
 			.spyOn(ssoHelpers, 'reloadAuthenticationMethod')
@@ -231,6 +236,7 @@ describe('SamlService', () => {
 			instanceSettings,
 			provisioningService,
 			cipher,
+			cacheService,
 		);
 		// Mock GlobalConfig container access
 		Container.set(require('@n8n/config').GlobalConfig, globalConfig);
@@ -293,6 +299,7 @@ describe('SamlService', () => {
 					'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastname',
 					'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn',
 				],
+				rawAttributes: {},
 			});
 
 			// ACT & ASSERT
@@ -326,20 +333,24 @@ describe('SamlService', () => {
 					n8nProjectRoles: ['projectRole1', 'projectRole2'],
 				},
 				missingAttributes: [],
+				rawAttributes: { email: 'test@test.com', role: 'admin' },
 			});
 
-			const attributes = await samlService.getAttributesFromLoginResponse(
+			const result = await samlService.getAttributesFromLoginResponse(
 				mock<express.Request>(),
 				'post',
 			);
 
-			expect(attributes).toEqual({
-				email: 'test@test.com',
-				firstName: 'test',
-				lastName: 'test',
-				userPrincipalName: 'test',
-				n8nInstanceRole: 'global:admin',
-				n8nProjectRoles: ['projectRole1', 'projectRole2'],
+			expect(result).toEqual({
+				mapped: {
+					email: 'test@test.com',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+					n8nInstanceRole: 'global:admin',
+					n8nProjectRoles: ['projectRole1', 'projectRole2'],
+				},
+				raw: { email: 'test@test.com', role: 'admin' },
 			});
 		});
 	});
@@ -414,10 +425,8 @@ describe('SamlService', () => {
 	describe('handleSamlLogin', () => {
 		it('throws error for invalid email', async () => {
 			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-				email: 'invalid',
-				firstName: '',
-				lastName: '',
-				userPrincipalName: '',
+				mapped: { email: 'invalid', firstName: '', lastName: '', userPrincipalName: '' },
+				raw: {},
 			});
 
 			await expect(
@@ -439,7 +448,10 @@ describe('SamlService', () => {
 					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
 				],
 			} as any;
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
 
 			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
@@ -447,6 +459,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: false,
 			});
 		});
@@ -463,7 +476,10 @@ describe('SamlService', () => {
 				email: samlAttributes.email,
 				authIdentities: [],
 			} as any;
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
 			jest.spyOn(samlHelpers, 'updateUserFromSamlAttributes').mockResolvedValue(mockUser);
 
@@ -472,6 +488,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: true,
 			});
 		});
@@ -484,7 +501,10 @@ describe('SamlService', () => {
 				userPrincipalName: 'foo@bar.com',
 			};
 
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
 			jest.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(false);
 
@@ -493,6 +513,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: undefined,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: false,
 			});
 		});
@@ -508,7 +529,10 @@ describe('SamlService', () => {
 			mockUser.firstName = '';
 			mockUser.lastName = '';
 
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
 			jest.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
 			jest.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
@@ -518,6 +542,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: true,
 			});
 		});
@@ -533,7 +558,10 @@ describe('SamlService', () => {
 			mockUser.firstName = 'Jane';
 			mockUser.lastName = 'Doe';
 
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
 			jest.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
 			jest.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
@@ -543,6 +571,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: false,
 			});
 		});
@@ -563,7 +592,10 @@ describe('SamlService', () => {
 					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
 				],
 			} as any;
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
 
 			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
@@ -576,6 +608,74 @@ describe('SamlService', () => {
 				mockUser.id,
 				samlAttributes.n8nProjectRoles,
 			);
+		});
+
+		it('calls provisionExpressionMappedRolesForUser when expression mapping is enabled', async () => {
+			const samlAttributes = {
+				email: 'foo@bar.com',
+				firstName: 'Foo',
+				lastName: 'Bar',
+				userPrincipalName: 'foo@bar.com',
+			};
+			const rawAttributes = { email: 'foo@bar.com', department: 'engineering', role: 'admin' };
+			const mockUser = {
+				id: '123',
+				email: samlAttributes.email,
+				authIdentities: [
+					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
+				],
+			} as any;
+
+			provisioningService.isExpressionMappingEnabled = jest.fn().mockResolvedValue(true);
+			provisioningService.provisionExpressionMappedRolesForUser = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: rawAttributes,
+			});
+			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
+
+			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(provisioningService.provisionExpressionMappedRolesForUser).toHaveBeenCalledWith(
+				mockUser,
+				expect.objectContaining({ $provider: 'saml', $saml: { attributes: rawAttributes } }),
+			);
+			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
+			expect(provisioningService.provisionProjectRolesForUser).not.toHaveBeenCalled();
+		});
+
+		it('falls through to direct-claim provisioning when expression mapping is disabled', async () => {
+			const samlAttributes = {
+				email: 'foo@bar.com',
+				firstName: '',
+				lastName: '',
+				userPrincipalName: 'foo@bar.com',
+				n8nInstanceRole: 'global:admin',
+			};
+			const mockUser = {
+				id: '123',
+				email: samlAttributes.email,
+				authIdentities: [
+					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
+				],
+			} as any;
+
+			provisioningService.isExpressionMappingEnabled = jest.fn().mockResolvedValue(false);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
+			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
+
+			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(provisioningService.provisionInstanceRoleForUser).toHaveBeenCalledWith(
+				mockUser,
+				'global:admin',
+			);
+			expect(provisioningService.provisionExpressionMappedRolesForUser).not.toHaveBeenCalled();
 		});
 	});
 
@@ -867,7 +967,7 @@ describe('SamlService', () => {
 					metadata: mockSamlConfig.metadata,
 				});
 
-				expect(cipher.encrypt).toHaveBeenCalledWith(RSA_TEST_PRIVATE_KEY);
+				expect(cipher.encryptV2).toHaveBeenCalledWith(RSA_TEST_PRIVATE_KEY);
 			});
 
 			it('should not expose plaintext private key via getter', async () => {
@@ -906,13 +1006,13 @@ describe('SamlService', () => {
 				});
 
 				// @ts-expect-error -- accessing private method for testing
-				const decrypted = samlService.getDecryptedSigningPrivateKey();
+				const decrypted = await samlService.getDecryptedSigningPrivateKey();
 				expect(decrypted).toBe(RSA_TEST_PRIVATE_KEY);
 			});
 
-			it('should return undefined when no signing key is stored', () => {
+			it('should return undefined when no signing key is stored', async () => {
 				// @ts-expect-error -- accessing private method for testing
-				expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
+				expect(await samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
 			});
 
 			it('should return undefined when feature flag is disabled', async () => {
@@ -922,7 +1022,7 @@ describe('SamlService', () => {
 				});
 
 				// @ts-expect-error -- accessing private method for testing
-				expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
+				expect(await samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
 			});
 
 			it('should throw BadRequestError when decryption fails', async () => {
@@ -930,12 +1030,12 @@ describe('SamlService', () => {
 				await samlService.loadPreferencesWithoutValidation({
 					signingPrivateKey: 'corrupted-encrypted-data',
 				});
-				cipher.decrypt = jest.fn(() => {
+				cipher.decryptV2 = jest.fn(async () => {
 					throw new Error('Decryption failed');
-				});
+				}) as Cipher['decryptV2'];
 
 				// @ts-expect-error -- accessing private method for testing
-				expect(() => samlService.getDecryptedSigningPrivateKey()).toThrow(
+				await expect(samlService.getDecryptedSigningPrivateKey()).rejects.toThrow(
 					'Failed to decrypt SAML signing private key',
 				);
 			});
@@ -970,7 +1070,7 @@ describe('SamlService', () => {
 
 				// The encrypted key should be stored as-is (not re-encrypted)
 				expect(samlService.samlPreferences.signingPrivateKey).toBe(encryptedKey);
-				expect(cipher.encrypt).not.toHaveBeenCalled();
+				expect(cipher.encryptV2).not.toHaveBeenCalled();
 			});
 
 			it('should survive loadFromDbAndApplySamlPreferences after saving encrypted key', async () => {
@@ -1006,7 +1106,7 @@ describe('SamlService', () => {
 
 				// Step 5: Verify the key can still be decrypted back to the original PEM
 				// @ts-expect-error -- accessing private method for testing
-				expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
+				expect(await samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
 			});
 		});
 
@@ -1077,7 +1177,7 @@ describe('SamlService', () => {
 					metadata: mockSamlConfig.metadata,
 				});
 
-				expect(cipher.encrypt).toHaveBeenCalledWith(EC_TEST_PRIVATE_KEY);
+				expect(cipher.encryptV2).toHaveBeenCalledWith(EC_TEST_PRIVATE_KEY);
 				expect(samlService.samlPreferences.signingPrivateKey).toBe(
 					`encrypted:${EC_TEST_PRIVATE_KEY}`,
 				);
@@ -1091,7 +1191,7 @@ describe('SamlService', () => {
 				});
 
 				// @ts-expect-error -- accessing private method for testing
-				const decrypted = samlService.getDecryptedSigningPrivateKey();
+				const decrypted = await samlService.getDecryptedSigningPrivateKey();
 				expect(decrypted).toBe(EC_TEST_PRIVATE_KEY);
 			});
 		});
@@ -1120,7 +1220,7 @@ describe('SamlService', () => {
 				// Key should remain unchanged
 				expect(samlService.samlPreferences.signingPrivateKey).toBe(encryptedBefore);
 				// @ts-expect-error -- accessing private method for testing
-				expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
+				expect(await samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
 			});
 
 			it('should not trigger feature flag check for blanking value', async () => {
@@ -1160,7 +1260,7 @@ describe('SamlService', () => {
 				});
 
 				// @ts-expect-error -- accessing private method for testing
-				expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
+				expect(await samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
 
 				// Clear the key
 				await samlService.setSamlPreferences({
@@ -1170,7 +1270,7 @@ describe('SamlService', () => {
 
 				expect(samlService.samlPreferences.signingPrivateKey).toBeUndefined();
 				// @ts-expect-error -- accessing private method for testing
-				expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
+				expect(await samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
 			});
 
 			it('should clear signing certificate when empty string is sent', async () => {
@@ -1382,6 +1482,7 @@ describe('SamlService', () => {
 			jest
 				.spyOn(samlService as any, 'broadcastReloadSAMLConfigurationCommand')
 				.mockResolvedValue(undefined);
+			jest.spyOn(validator, 'validateMetadata').mockResolvedValue(true);
 		});
 
 		test('should broadcast reload by default', async () => {
@@ -1613,6 +1714,86 @@ describe('SamlService', () => {
 			// These should NOT have a proxy property
 			expect(httpAgent).not.toHaveProperty('proxy');
 			expect(httpsAgent).not.toHaveProperty('proxy');
+		});
+	});
+
+	describe('pending test configs', () => {
+		test('storePendingTestConfig writes metadata to the cache under a random token with TTL', async () => {
+			const metadata = '<EntityDescriptor/>';
+
+			const token = await samlService.storePendingTestConfig(metadata);
+
+			expect(token).toMatch(/^[0-9a-f]+$/);
+			expect(cacheService.set).toHaveBeenCalledWith(
+				`saml:pending-test-config:${token}`,
+				metadata,
+				10 * 60 * 1000,
+			);
+		});
+
+		test('consumePendingTestConfig returns metadata from the cache and deletes it', async () => {
+			const metadata = '<EntityDescriptor/>';
+			cacheService.get.mockResolvedValueOnce(metadata);
+
+			const result = await samlService.consumePendingTestConfig('abc123');
+
+			expect(result).toBe(metadata);
+			expect(cacheService.get).toHaveBeenCalledWith('saml:pending-test-config:abc123');
+			expect(cacheService.delete).toHaveBeenCalledWith('saml:pending-test-config:abc123');
+		});
+
+		test('consumePendingTestConfig returns undefined for unknown tokens and does not delete', async () => {
+			cacheService.get.mockResolvedValueOnce(undefined);
+
+			const result = await samlService.consumePendingTestConfig('unknown-token');
+
+			expect(result).toBeUndefined();
+			expect(cacheService.delete).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getAttributesFromLoginResponse with metadataOverride', () => {
+		test('uses a temporary IdP built from the provided metadata instead of the stored one', async () => {
+			const overrideMetadata = '<EntityDescriptor override/>';
+			const overrideIdp = { id: 'override-idp' };
+			const getStoredIdp = jest
+				.spyOn(samlService, 'getIdentityProviderInstance')
+				.mockReturnValue(mock<IdentityProviderInstance>());
+			const createFromMetadata = jest
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				.spyOn(samlService as any, 'createIdentityProviderFromMetadata')
+				.mockResolvedValue(overrideIdp);
+
+			const serviceProviderInstance = mock<ServiceProviderInstance>();
+			serviceProviderInstance.parseLoginResponse.mockResolvedValue({
+				samlContent: '',
+				extract: {},
+			});
+			jest
+				.spyOn(samlService, 'getServiceProviderInstance')
+				.mockReturnValue(serviceProviderInstance);
+
+			jest.spyOn(samlHelpers, 'getMappedSamlAttributesFromFlowResult').mockReturnValue({
+				attributes: {
+					email: 'test@test.com',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+				},
+				missingAttributes: [],
+				rawAttributes: {},
+			});
+
+			const req = { body: {} } as express.Request;
+			await samlService.getAttributesFromLoginResponse(req, 'post', overrideMetadata);
+
+			expect(createFromMetadata).toHaveBeenCalledWith(overrideMetadata);
+			expect(getStoredIdp).not.toHaveBeenCalled();
+			expect(serviceProviderInstance.parseLoginResponse).toHaveBeenCalledWith(
+				overrideIdp,
+				'post',
+				req,
+			);
 		});
 	});
 });

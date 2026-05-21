@@ -7,9 +7,11 @@ import { retry, mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from '../../credentials.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ICredentialsResponse } from '../../credentials.types';
 import { within, waitFor } from '@testing-library/vue';
-import type { ICredentialType } from 'n8n-workflow';
+import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
 
 vi.mock('vue-router', async () => ({
 	...(await vi.importActual('vue-router')),
@@ -447,5 +449,318 @@ describe('CredentialEdit', () => {
 				expect(getByTestId('credential-edit-dialog')).toBeInTheDocument();
 			});
 		});
+	});
+
+	describe('managed credential scope hiding', () => {
+		const discordOAuth2Api: ICredentialType = {
+			name: 'discordOAuth2Api',
+			extends: ['oAuth2Api'],
+			displayName: 'Discord OAuth2 API',
+			documentationUrl: 'discord',
+			properties: [
+				{
+					displayName: 'Custom Scopes',
+					name: 'customScopes',
+					type: 'boolean',
+					default: false,
+				},
+				{
+					displayName: 'Custom Scopes Notice',
+					name: 'customScopesNotice',
+					type: 'notice',
+					default: '',
+					displayOptions: { show: { customScopes: [true] } },
+				},
+				{
+					displayName: 'Enabled Scopes',
+					name: 'enabledScopes',
+					type: 'string',
+					default: 'identify guilds',
+					displayOptions: { show: { customScopes: [true] } },
+				},
+			],
+			iconUrl: '',
+			supportedNodes: [],
+		};
+
+		const setupStores = (isManaged: boolean) => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialData.mockResolvedValueOnce({
+				// @ts-expect-error data is decrypted
+				data: { customScopes: true, scope: 'identify guilds' },
+				createdAt: '2026-05-12T10:00:00.000Z',
+				updatedAt: '2026-05-12T10:00:00.000Z',
+				id: 'cred-1',
+				name: 'Discord account',
+				type: 'discordOAuth2Api',
+				isManaged,
+				sharedWithProjects: [],
+				scopes: ['credential:update'],
+				oauthTokenData: false,
+			});
+
+			credentialsStore.state.credentials = {
+				'cred-1': {
+					id: 'cred-1',
+					name: 'Discord account',
+					type: 'discordOAuth2Api',
+					isManaged,
+				} as ICredentialsResponse,
+			};
+
+			credentialsStore.state.credentialTypes = {
+				[oAuth2Api.name]: oAuth2Api,
+				[discordOAuth2Api.name]: discordOAuth2Api,
+			};
+
+			return credentialsStore;
+		};
+
+		test('hides Scope, Custom Scopes, Enabled Scopes and notice when credential is managed', async () => {
+			const credentialsStore = setupStores(true);
+
+			const { queryByText } = renderComponent({
+				props: {
+					activeId: 'cred-1',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+			expect(queryByText('Scope')).not.toBeInTheDocument();
+			expect(queryByText('Custom Scopes')).not.toBeInTheDocument();
+			expect(queryByText('Enabled Scopes')).not.toBeInTheDocument();
+			expect(queryByText('Custom Scopes Notice')).not.toBeInTheDocument();
+		});
+
+		test('shows Custom Scopes and dependent fields when credential is not managed', async () => {
+			const credentialsStore = setupStores(false);
+
+			const { queryByText } = renderComponent({
+				props: {
+					activeId: 'cred-1',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+			await retry(() => expect(queryByText('Custom Scopes')).toBeInTheDocument());
+			expect(queryByText('Enabled Scopes')).toBeInTheDocument();
+		});
+
+		const discordOAuth2ApiManagedCapable: ICredentialType = {
+			...discordOAuth2Api,
+			__overwrittenProperties: ['clientId', 'clientSecret'],
+		};
+
+		const setupManagedCapableStores = (credentialData: Record<string, unknown>) => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialData.mockResolvedValueOnce({
+				// @ts-expect-error data is decrypted
+				data: credentialData,
+				createdAt: '2026-05-12T10:00:00.000Z',
+				updatedAt: '2026-05-12T10:00:00.000Z',
+				id: 'cred-2',
+				name: 'Discord account',
+				type: 'discordOAuth2Api',
+				isManaged: false,
+				sharedWithProjects: [],
+				scopes: ['credential:update'],
+				oauthTokenData: false,
+			});
+
+			credentialsStore.state.credentials = {
+				'cred-2': {
+					id: 'cred-2',
+					name: 'Discord account',
+					type: 'discordOAuth2Api',
+					isManaged: false,
+				} as ICredentialsResponse,
+			};
+
+			credentialsStore.state.credentialTypes = {
+				[oAuth2Api.name]: oAuth2Api,
+				[discordOAuth2ApiManagedCapable.name]: discordOAuth2ApiManagedCapable,
+			};
+
+			const ndvStore = mockedStore(useNDVStore);
+			ndvStore.activeNode = {
+				name: 'DiscordTest',
+				type: 'n8n-nodes-base.discord',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			} as INode;
+
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getNodeType = () =>
+				({
+					displayName: 'Discord',
+					name: 'n8n-nodes-base.discord',
+					group: ['output'],
+					version: 1,
+					description: 'Discord',
+					defaults: { name: 'Discord' },
+					inputs: ['main'],
+					outputs: ['main'],
+					credentials: [{ name: 'discordOAuth2Api', required: true }],
+					properties: [],
+				}) as unknown as INodeTypeDescription;
+
+			return credentialsStore;
+		};
+
+		test('hides scope fields when managed OAuth is available and user has not opted into custom OAuth', async () => {
+			const credentialsStore = setupManagedCapableStores({ grantType: 'authorizationCode' });
+
+			const { queryByText } = renderComponent({
+				props: {
+					activeId: 'cred-2',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+			expect(queryByText('Scope')).not.toBeInTheDocument();
+			expect(queryByText('Custom Scopes')).not.toBeInTheDocument();
+			expect(queryByText('Enabled Scopes')).not.toBeInTheDocument();
+			expect(queryByText('Custom Scopes Notice')).not.toBeInTheDocument();
+		});
+
+		test('shows scope fields when managed OAuth is available but user has provided their own clientId/clientSecret', async () => {
+			const credentialsStore = setupManagedCapableStores({
+				grantType: 'authorizationCode',
+				clientId: 'my-client-id',
+				clientSecret: 'my-client-secret',
+				customScopes: true,
+			});
+
+			const { queryByText } = renderComponent({
+				props: {
+					activeId: 'cred-2',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+			await retry(() => expect(queryByText('Custom Scopes')).toBeInTheDocument());
+			expect(queryByText('Enabled Scopes')).toBeInTheDocument();
+		});
+	});
+
+	test('should use the requested credential type when node has multiple credential types', async () => {
+		const alphaCredType: ICredentialType = {
+			name: 'alphaApi',
+			displayName: 'Alpha API',
+			properties: [
+				{
+					displayName: 'Alpha Key',
+					name: 'alphaKey',
+					type: 'string',
+					default: '',
+				},
+			],
+		};
+
+		const betaCredType: ICredentialType = {
+			name: 'betaApi',
+			displayName: 'Beta API',
+			properties: [
+				{
+					displayName: 'Beta Token',
+					name: 'betaToken',
+					type: 'string',
+					default: '',
+				},
+			],
+		};
+
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalsById: {
+						[CREDENTIAL_EDIT_MODAL_KEY]: {
+							open: true,
+							showAuthSelector: true,
+						},
+					},
+				},
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							sharing: true,
+							externalSecrets: false,
+						},
+						templates: {
+							host: '',
+						},
+					},
+				},
+				[STORES.PROJECTS]: {
+					personalProject: {
+						id: 'personal-project',
+						type: 'personal',
+						scopes: ['credential:create', 'credential:read'],
+					},
+				},
+			},
+		});
+
+		const credStore = mockedStore(useCredentialsStore);
+		credStore.state.credentialTypes = {
+			alphaApi: alphaCredType,
+			betaApi: betaCredType,
+		};
+		credStore.getNewCredentialName.mockResolvedValue('Beta API');
+
+		const ndvStore = mockedStore(useNDVStore);
+		ndvStore.activeNode = {
+			name: 'DualCredTest',
+			type: 'n8n-nodes-base.dualCredTest',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		} as INode;
+
+		const nodeTypesStore = mockedStore(useNodeTypesStore);
+		const mockNodeType = {
+			displayName: 'Dual Credential Test',
+			name: 'n8n-nodes-base.dualCredTest',
+			group: ['transform'],
+			version: 1,
+			description: 'Test node',
+			defaults: { name: 'Dual Credential Test' },
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [
+				{ name: 'alphaApi', required: true },
+				{ name: 'betaApi', required: true },
+			],
+			properties: [],
+		} as unknown as INodeTypeDescription;
+		nodeTypesStore.getNodeType = () => mockNodeType;
+
+		renderComponent({
+			props: {
+				activeId: 'betaApi',
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'new',
+			},
+			pinia,
+		});
+
+		await retry(() =>
+			expect(credStore.getNewCredentialName).toHaveBeenCalledWith({
+				credentialTypeName: 'betaApi',
+			}),
+		);
 	});
 });

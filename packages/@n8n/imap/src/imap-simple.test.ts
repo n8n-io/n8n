@@ -57,17 +57,19 @@ describe('ImapSimple', () => {
 			expect(onMail).toHaveBeenCalledWith(3);
 		});
 
-		it('should suppress ECONNRESET errors if ending', () => {
+		it('should suppress errors after end() by removing forwarding listeners', () => {
 			const { imapSimple, mockImap } = createImap();
 			const onError = vi.fn();
 			imapSimple.on('error', onError);
 			imapSimple.end();
 
+			// After end(), forwarding listeners are removed so errors
+			// on the raw imap no longer propagate to imapSimple
 			mockImap.emit('error', { message: 'reset', code: 'ECONNRESET' });
 			expect(onError).not.toHaveBeenCalled();
 		});
 
-		it('should forward ECONNRESET errors if not ending', () => {
+		it('should forward all errors before end() is called', () => {
 			const { imapSimple, mockImap } = createImap();
 			const onError = vi.fn();
 			imapSimple.on('error', onError);
@@ -78,7 +80,76 @@ describe('ImapSimple', () => {
 		});
 	});
 
+	describe('event listener cleanup', () => {
+		it('should remove forwarding listeners and keep only close+error on end()', () => {
+			const { imapSimple, mockImap } = createImap();
+
+			// Verify listeners were added by ImapSimple constructor
+			expect(mockImap.listenerCount('mail')).toBe(1);
+			expect(mockImap.listenerCount('error')).toBe(1);
+
+			imapSimple.end();
+
+			// All forwarding listeners should be removed
+			expect(mockImap.listenerCount('mail')).toBe(0);
+			expect(mockImap.listenerCount('alert')).toBe(0);
+
+			// A no-op error handler suppresses errors during disconnect
+			expect(mockImap.listenerCount('error')).toBe(1);
+
+			// A once-close handler forwards the final close event
+			expect(mockImap.listenerCount('close')).toBe(1);
+		});
+
+		it('should still forward the close event after end()', () => {
+			const { imapSimple, mockImap } = createImap();
+			const onClose = vi.fn();
+			imapSimple.on('close', onClose);
+
+			imapSimple.end();
+			mockImap.emit('close', false);
+
+			expect(onClose).toHaveBeenCalledWith(false);
+		});
+
+		it('should auto-remove the close handler after it fires once', () => {
+			const { imapSimple, mockImap } = createImap();
+
+			imapSimple.end();
+			mockImap.emit('close', false);
+
+			// once handler auto-removed after firing
+			expect(mockImap.listenerCount('close')).toBe(0);
+		});
+	});
+
 	describe('search', () => {
+		it('should not throw if fetch emits error after end', async () => {
+			const { imapSimple, mockImap } = createImap();
+
+			const fetchEmitter = new EventEmitter();
+			vi.mocked(mockImap.search).mockImplementation((_criteria, onResult) =>
+				onResult(null as unknown as Error, [1]),
+			);
+			mockImap.fetch = vi.fn(() => fetchEmitter);
+
+			const searchPromise = imapSimple.search(['UNSEEN'], { bodies: ['BODY'] });
+
+			const messageEmitter = new EventEmitter();
+			const bodyStream = Readable.from('body');
+			fetchEmitter.emit('message', messageEmitter, 1);
+			messageEmitter.emit('body', bodyStream, { which: 'TEXT', size: 4 });
+			messageEmitter.emit('attributes', { uid: 1 });
+			await new Promise((resolve) => bodyStream.on('end', resolve));
+			messageEmitter.emit('end');
+			fetchEmitter.emit('end');
+
+			await searchPromise;
+
+			// Error after fetchOnEnd must not throw an uncaught exception
+			expect(() => fetchEmitter.emit('error', new Error('late error'))).not.toThrow();
+		});
+
 		it('should resolve with messages returned from fetch', async () => {
 			const { imapSimple, mockImap } = createImap();
 
@@ -138,6 +209,31 @@ describe('ImapSimple', () => {
 	});
 
 	describe('getPartData', () => {
+		it('should not throw if fetch emits error after end', async () => {
+			const { imapSimple, mockImap } = createImap();
+
+			const fetchEmitter = new EventEmitter();
+			mockImap.fetch = vi.fn(() => fetchEmitter);
+
+			const message = { attributes: { uid: 123 } };
+			const part = { partID: '1.2', encoding: 'BASE64' };
+			const partDataPromise = imapSimple.getPartData(mock(message), mock(part));
+
+			const messageEmitter = new EventEmitter();
+			const bodyStream = Readable.from('body');
+			fetchEmitter.emit('message', messageEmitter);
+			messageEmitter.emit('body', bodyStream, { which: part.partID, size: 4 });
+			messageEmitter.emit('attributes', {});
+			await new Promise((resolve) => bodyStream.on('end', resolve));
+			messageEmitter.emit('end');
+			fetchEmitter.emit('end');
+
+			await partDataPromise;
+
+			// Error after fetchOnEnd must not throw an uncaught exception
+			expect(() => fetchEmitter.emit('error', new Error('late error'))).not.toThrow();
+		});
+
 		it('should return decoded part data', async () => {
 			const { imapSimple, mockImap } = createImap();
 

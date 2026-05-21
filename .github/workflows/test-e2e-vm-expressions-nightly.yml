@@ -1,0 +1,51 @@
+name: 'Test: E2E VM Expressions Nightly'
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'GitHub branch/ref to test'
+        required: false
+        type: string
+        default: 'master'
+
+jobs:
+  prepare-docker:
+    uses: ./.github/workflows/prepare-docker-reusable.yml
+    with:
+      branch: ${{ github.event_name == 'schedule' && 'master' || inputs.branch }}
+    secrets: inherit
+
+  e2e:
+    name: E2E
+    needs: [prepare-docker]
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      branch: ${{ github.event_name == 'schedule' && 'master' || inputs.branch }}
+      test-mode: docker-artifact
+      test-command: pnpm --filter=n8n-playwright test:container:multi-main:e2e
+      workers: '1'
+      pre-generated-matrix: '[{"shard":1},{"shard":2},{"shard":3},{"shard":4},{"shard":5},{"shard":6},{"shard":7},{"shard":8},{"shard":9},{"shard":10},{"shard":11},{"shard":12},{"shard":13},{"shard":14},{"shard":15},{"shard":16}]'
+      n8n-env: '{"N8N_EXPRESSION_ENGINE":"vm"}'
+      artifact-prefix: vm-expressions
+    secrets: inherit
+
+  notify-on-failure:
+    name: Notify Slack on failure
+    runs-on: ubuntu-slim
+    needs: [e2e]
+    if: ${{ always() && github.event_name == 'schedule' && contains(needs.*.result, 'failure') }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#project-secure-expression-evaluation' \
+            --text 'VM expression E2E nightly failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'

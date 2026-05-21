@@ -1,7 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { McpError, ErrorCode, CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
-import { mock, mockDeep } from 'jest-mock-extended';
+import { proxyFetch } from '@n8n/ai-utilities';
 import { StructuredToolkit } from 'n8n-core';
 import {
 	type IExecuteFunctions,
@@ -10,27 +10,34 @@ import {
 	type ILoadOptionsFunctions,
 	type INode,
 	type ISupplyDataFunctions,
+	jsonParse,
 } from 'n8n-workflow';
-
-import { proxyFetch } from '@n8n/ai-utilities';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { getTools } from '../loadOptions';
 import { McpClientTool } from '../McpClientTool.node';
+import { buildMcpToolName } from '../utils';
+import type { MockedFunction } from 'vitest';
 
-jest.mock('@modelcontextprotocol/sdk/client/sse.js');
-jest.mock('@modelcontextprotocol/sdk/client/index.js');
-jest.mock('@n8n/ai-utilities', () => ({
-	...jest.requireActual('@n8n/ai-utilities'),
-	proxyFetch: jest.fn(),
+vi.mock('@modelcontextprotocol/sdk/client/sse.js');
+vi.mock('@modelcontextprotocol/sdk/client/index.js');
+vi.mock('@n8n/ai-utilities', async () => ({
+	...(await vi.importActual('@n8n/ai-utilities')),
+	proxyFetch: vi.fn(),
 }));
 
-const mockedProxyFetch = proxyFetch as jest.MockedFunction<typeof proxyFetch>;
+const mockedProxyFetch = proxyFetch as MockedFunction<typeof proxyFetch>;
 
 describe('McpClientTool', () => {
+	beforeEach(() => {
+		vi.resetAllMocks();
+		vi.restoreAllMocks();
+	});
+
 	describe('loadOptions: getTools', () => {
 		it('should return a list of tools', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'MyTool',
@@ -41,7 +48,15 @@ describe('McpClientTool', () => {
 			});
 
 			const result = await getTools.call(
-				mock<ILoadOptionsFunctions>({ getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })) }),
+				mock<ILoadOptionsFunctions>({
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
+				}),
 			);
 
 			expect(result).toEqual([
@@ -55,26 +70,63 @@ describe('McpClientTool', () => {
 		});
 
 		it('should handle errors', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockRejectedValue(new Error('Fail!'));
-
+			vi.spyOn(Client.prototype, 'connect').mockRejectedValue(new Error('Fail!'));
 			const node = mock<INode>({ typeVersion: 1 });
-			await expect(
-				getTools.call(mock<ILoadOptionsFunctions>({ getNode: jest.fn(() => node) })),
-			).rejects.toEqual(new NodeOperationError(node, 'Could not connect to your MCP server'));
+			const mockLoadOptionsFunctions = mock<ILoadOptionsFunctions>({
+				getNode: vi.fn(() => node),
+				getNodeParameter: vi.fn((key: string) => {
+					const parameters: Record<string, unknown> = {
+						authentication: 'none',
+					};
+					return parameters[key] as never;
+				}),
+			});
+
+			await expect(getTools.call(mockLoadOptionsFunctions)).rejects.toBeInstanceOf(
+				NodeOperationError,
+			);
+
+			await expect(getTools.call(mockLoadOptionsFunctions)).rejects.toThrow(
+				'Could not connect to your MCP server',
+			);
+		});
+
+		it('should close client after listing tools', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+			const closeSpy = vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			await getTools.call(
+				mock<ILoadOptionsFunctions>({
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
+				}),
+			);
+
+			expect(closeSpy).toHaveBeenCalled();
 		});
 	});
 
 	describe('supplyData', () => {
-		beforeEach(() => {
-			jest.resetAllMocks();
-		});
-
 		it('should return a valid toolkit with usable tools (that returns a string)', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest
-				.spyOn(Client.prototype, 'callTool')
-				.mockResolvedValue({ content: [{ type: 'text', text: 'result from tool' }] });
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'result from tool' }],
+			});
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'MyTool1',
@@ -91,9 +143,15 @@ describe('McpClientTool', () => {
 
 			const supplyDataResult = await new McpClientTool().supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-					logger: { debug: jest.fn(), error: jest.fn() },
-					addInputData: jest.fn(() => ({ index: 0 })),
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
 				}),
 				0,
 			);
@@ -109,8 +167,8 @@ describe('McpClientTool', () => {
 		});
 
 		it('should support selecting tools to expose', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'MyTool1',
@@ -127,20 +185,22 @@ describe('McpClientTool', () => {
 
 			const supplyDataResult = await new McpClientTool().supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() =>
+					getNode: vi.fn(() =>
 						mock<INode>({
 							typeVersion: 1,
+							name: 'MCP Client',
 						}),
 					),
-					getNodeParameter: jest.fn((key, _index) => {
+					getNodeParameter: vi.fn((key, _index) => {
 						const parameters: Record<string, any> = {
 							include: 'selected',
 							includeTools: ['MyTool2'],
+							authentication: 'none',
 						};
 						return parameters[key];
 					}),
-					logger: { debug: jest.fn(), error: jest.fn() },
-					addInputData: jest.fn(() => ({ index: 0 })),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
 				}),
 				0,
 			);
@@ -150,12 +210,12 @@ describe('McpClientTool', () => {
 
 			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
 			expect(tools).toHaveLength(1);
-			expect(tools[0].name).toBe('MyTool2');
+			expect(tools[0].name).toBe(buildMcpToolName('MCP Client', 'MyTool2'));
 		});
 
 		it('should support selecting tools to exclude', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'MyTool1',
@@ -172,20 +232,22 @@ describe('McpClientTool', () => {
 
 			const supplyDataResult = await new McpClientTool().supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() =>
+					getNode: vi.fn(() =>
 						mock<INode>({
 							typeVersion: 1,
+							name: 'MCP Client',
 						}),
 					),
-					getNodeParameter: jest.fn((key, _index) => {
+					getNodeParameter: vi.fn((key, _index) => {
 						const parameters: Record<string, any> = {
 							include: 'except',
 							excludeTools: ['MyTool2'],
+							authentication: 'none',
 						};
 						return parameters[key];
 					}),
-					logger: { debug: jest.fn(), error: jest.fn() },
-					addInputData: jest.fn(() => ({ index: 0 })),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
 				}),
 				0,
 			);
@@ -195,12 +257,12 @@ describe('McpClientTool', () => {
 
 			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
 			expect(tools).toHaveLength(1);
-			expect(tools[0].name).toBe('MyTool1');
+			expect(tools[0].name).toBe(buildMcpToolName('MCP Client', 'MyTool1'));
 		});
 
 		it('should support header auth', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'MyTool1',
@@ -214,8 +276,8 @@ describe('McpClientTool', () => {
 
 			const supplyDataResult = await new McpClientTool().supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-					getNodeParameter: jest.fn((key, _index) => {
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+					getNodeParameter: vi.fn((key, _index) => {
 						const parameters: Record<string, any> = {
 							include: 'except',
 							excludeTools: ['MyTool2'],
@@ -224,9 +286,9 @@ describe('McpClientTool', () => {
 						};
 						return parameters[key];
 					}),
-					logger: { debug: jest.fn(), error: jest.fn() },
-					addInputData: jest.fn(() => ({ index: 0 })),
-					getCredentials: jest.fn().mockResolvedValue({ name: 'my-header', value: 'header-value' }),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
+					getCredentials: vi.fn().mockResolvedValue({ name: 'my-header', value: 'header-value' }),
 				}),
 				0,
 			);
@@ -242,7 +304,7 @@ describe('McpClientTool', () => {
 			});
 
 			// Verify the eventSourceInit fetch injects auth headers and Accept header
-			const customFetch = jest.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
+			const customFetch = vi.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
 			await customFetch?.(url, {} as any);
 			expect(mockedProxyFetch).toHaveBeenCalledWith(url, {
 				headers: { Accept: 'text/event-stream', 'my-header': 'header-value' },
@@ -250,8 +312,8 @@ describe('McpClientTool', () => {
 		});
 
 		it('should support bearer auth', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'MyTool1',
@@ -265,8 +327,8 @@ describe('McpClientTool', () => {
 
 			const supplyDataResult = await new McpClientTool().supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-					getNodeParameter: jest.fn((key, _index) => {
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+					getNodeParameter: vi.fn((key, _index) => {
 						const parameters: Record<string, any> = {
 							include: 'except',
 							excludeTools: ['MyTool2'],
@@ -275,9 +337,9 @@ describe('McpClientTool', () => {
 						};
 						return parameters[key];
 					}),
-					logger: { debug: jest.fn(), error: jest.fn() },
-					addInputData: jest.fn(() => ({ index: 0 })),
-					getCredentials: jest.fn().mockResolvedValue({ token: 'my-token' }),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
+					getCredentials: vi.fn().mockResolvedValue({ token: 'my-token' }),
 				}),
 				0,
 			);
@@ -293,7 +355,7 @@ describe('McpClientTool', () => {
 			});
 
 			// Verify the eventSourceInit fetch injects auth headers and Accept header
-			const customFetch = jest.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
+			const customFetch = vi.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
 			await customFetch?.(url, {} as any);
 			expect(mockedProxyFetch).toHaveBeenCalledWith(url, {
 				headers: { Accept: 'text/event-stream', Authorization: 'Bearer my-token' },
@@ -301,11 +363,12 @@ describe('McpClientTool', () => {
 		});
 
 		it('should successfully execute a tool', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest
-				.spyOn(Client.prototype, 'callTool')
-				.mockResolvedValue({ toolResult: 'Sunny', content: [] });
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				toolResult: 'Sunny',
+				content: [],
+			});
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'Weather Tool',
@@ -317,13 +380,20 @@ describe('McpClientTool', () => {
 
 			const supplyDataResult = await new McpClientTool().supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() =>
+					getNode: vi.fn(() =>
 						mock<INode>({
 							typeVersion: 1,
+							name: 'MCP Client',
 						}),
 					),
-					logger: { debug: jest.fn(), error: jest.fn() },
-					addInputData: jest.fn(() => ({ index: 0 })),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
 				}),
 				0,
 			);
@@ -332,18 +402,128 @@ describe('McpClientTool', () => {
 			expect(supplyDataResult.response).toBeInstanceOf(StructuredToolkit);
 
 			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
-			const toolResult = await tools[0].invoke({ location: 'Berlin' });
+			const toolResult: string = await tools[0].invoke({ location: 'Berlin' });
 			expect(toolResult).toEqual('Sunny');
 		});
 
+		it('should prioritize structuredContent over content for tool execution', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Success' }],
+				structuredContent: { id: '123', status: 'active' },
+			});
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'Status Tool',
+						description: 'Gets the current status',
+						inputSchema: { type: 'object', properties: {} },
+					},
+				],
+			});
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
+				}),
+				0,
+			);
+
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
+			const toolResult: string = await tools[0].invoke({});
+			expect(jsonParse(toolResult)).toEqual({ id: '123', status: 'active' });
+		});
+
+		it('should fall back to content when structuredContent is null', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'result from tool' }],
+				toolResult: undefined,
+				structuredContent: null,
+			});
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'Status Tool',
+						description: 'Gets the current status',
+						inputSchema: { type: 'object', properties: {} },
+					},
+				],
+			});
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
+				}),
+				0,
+			);
+
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
+			const toolResult: string = await tools[0].invoke({});
+			expect(toolResult).toEqual(JSON.stringify([{ type: 'text', text: 'result from tool' }]));
+		});
+
+		it('should return empty object directly when structuredContent is an empty object', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'result from tool' }],
+				toolResult: undefined,
+				structuredContent: {},
+			});
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'Status Tool',
+						description: 'Gets the current status',
+						inputSchema: { type: 'object', properties: {} },
+					},
+				],
+			});
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
+				}),
+				0,
+			);
+
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
+			const toolResult: string = await tools[0].invoke({});
+			expect(toolResult).toEqual(JSON.stringify({}));
+		});
+
 		it('should handle tool errors', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
 				isError: true,
 				toolResult: 'Weather unknown at location',
 				content: [{ text: 'Weather unknown at location' }],
 			});
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'Weather Tool',
@@ -354,13 +534,20 @@ describe('McpClientTool', () => {
 			});
 
 			const supplyDataFunctions = mock<ISupplyDataFunctions>({
-				getNode: jest.fn(() =>
+				getNode: vi.fn(() =>
 					mock<INode>({
 						typeVersion: 1,
+						name: 'MCP Client',
 					}),
 				),
-				logger: { debug: jest.fn(), error: jest.fn() },
-				addInputData: jest.fn(() => ({ index: 0 })),
+				logger: { debug: vi.fn(), error: vi.fn() },
+				addInputData: vi.fn(() => ({ index: 0 })),
+				getNodeParameter: vi.fn((key: string) => {
+					const parameters: Record<string, unknown> = {
+						authentication: 'none',
+					};
+					return parameters[key] as never;
+				}),
 			});
 			const supplyDataResult = await new McpClientTool().supplyData.call(supplyDataFunctions, 0);
 
@@ -373,18 +560,240 @@ describe('McpClientTool', () => {
 			expect(supplyDataFunctions.addOutputData).toHaveBeenCalledWith(
 				NodeConnectionTypes.AiTool,
 				0,
-				new NodeOperationError(supplyDataFunctions.getNode(), 'Weather unknown at location'),
+				expect.objectContaining({ message: 'Weather unknown at location' }),
 			);
 		});
 
+		it('should not call MCP tool when execution is cancelled before tool invocation', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			const callToolSpy = vi
+				.spyOn(Client.prototype, 'callTool')
+				.mockResolvedValue({ content: [{ type: 'text', text: 'should not reach here' }] });
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const abortController = new AbortController();
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
+					getExecutionCancelSignal: vi.fn(() => abortController.signal),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
+				}),
+				0,
+			);
+
+			// Abort after supplyData returns but before tool invocation
+			abortController.abort();
+
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
+			const result = await tools[0].invoke({ input: 'foo' });
+
+			expect(result).toEqual('Execution was cancelled');
+			expect(callToolSpy).not.toHaveBeenCalled();
+		});
+
+		it('should short-circuit supplyData when execution is already cancelled', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const abortController = new AbortController();
+			abortController.abort();
+
+			await expect(
+				new McpClientTool().supplyData.call(
+					mock<ISupplyDataFunctions>({
+						getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+						logger: { debug: vi.fn(), error: vi.fn() },
+						addInputData: vi.fn(() => ({ index: 0 })),
+						getExecutionCancelSignal: vi.fn(() => abortController.signal),
+					}),
+					0,
+				),
+			).rejects.toThrow('Execution was cancelled');
+
+			expect(Client.prototype.connect).not.toHaveBeenCalled();
+		});
+
+		it('should pass abort signal to client.callTool options', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			const callToolSpy = vi
+				.spyOn(Client.prototype, 'callTool')
+				.mockResolvedValue({ content: [{ type: 'text', text: 'result' }] });
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const abortController = new AbortController();
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
+					getExecutionCancelSignal: vi.fn(() => abortController.signal),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
+				}),
+				0,
+			);
+
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
+			await tools[0].invoke({ input: 'foo' });
+
+			expect(callToolSpy).toHaveBeenCalledWith(
+				expect.any(Object),
+				expect.any(Object),
+				expect.objectContaining({ signal: abortController.signal }),
+			);
+		});
+
+		it('should return cancellation message on in-flight abort without logging tool failure', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockRejectedValue(
+				new Error('The operation was aborted'),
+			);
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const abortController = new AbortController();
+			const errorLogger = vi.fn();
+
+			const supplyDataFunctions = mock<ISupplyDataFunctions>({
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+				logger: { debug: vi.fn(), error: errorLogger },
+				addInputData: vi.fn(() => ({ index: 0 })),
+				getExecutionCancelSignal: vi.fn(() => abortController.signal),
+				getNodeParameter: vi.fn((key: string) => {
+					const parameters: Record<string, unknown> = {
+						authentication: 'none',
+					};
+					return parameters[key] as never;
+				}),
+			});
+			const supplyDataResult = await new McpClientTool().supplyData.call(supplyDataFunctions, 0);
+
+			// Abort after tools are created but the signal will be checked in catch
+			abortController.abort();
+
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
+			const result = await tools[0].invoke({ input: 'foo' });
+
+			expect(result).toEqual('Execution was cancelled');
+			// Should NOT log as a tool failure via onError callback
+			expect(errorLogger).not.toHaveBeenCalledWith(
+				expect.stringContaining('failed to execute'),
+				expect.anything(),
+			);
+		});
+
+		it('should close client when MCP server returns no tools', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [] });
+			const closeSpy = vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			await expect(
+				new McpClientTool().supplyData.call(
+					mock<ISupplyDataFunctions>({
+						getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+						logger: { debug: vi.fn(), error: vi.fn() },
+						addInputData: vi.fn(() => ({ index: 0 })),
+						addOutputData: vi.fn(),
+						getNodeParameter: vi.fn((key: string) => {
+							const parameters: Record<string, unknown> = {
+								authentication: 'none',
+							};
+							return parameters[key] as never;
+						}),
+					}),
+					0,
+				),
+			).rejects.toThrow('MCP Server returned no tools');
+
+			expect(closeSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should call client.close() when closeFunction is invoked', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool1',
+						description: 'MyTool1 does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+			const closeSpy = vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'McpClientTool' })),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
+				}),
+				0,
+			);
+
+			expect(supplyDataResult.closeFunction).toBeDefined();
+			await supplyDataResult.closeFunction?.();
+
+			expect(closeSpy).toHaveBeenCalledTimes(1);
+		});
+
 		it('should support setting a timeout', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			const callToolSpy = jest
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			const callToolSpy = vi
 				.spyOn(Client.prototype, 'callTool')
 				.mockRejectedValue(
 					new McpError(ErrorCode.RequestTimeout, 'Request timed out', { timeout: 200 }),
 				);
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'SlowTool',
@@ -394,18 +803,19 @@ describe('McpClientTool', () => {
 				],
 			});
 
-			const mockNode = mock<INode>({ typeVersion: 1 });
+			const mockNode = mock<INode>({ typeVersion: 1, name: 'MCP Client' });
 			const supplyDataResult = await new McpClientTool().supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mockNode),
-					getNodeParameter: jest.fn((key, _index) => {
+					getNode: vi.fn(() => mockNode),
+					getNodeParameter: vi.fn((key, _index) => {
 						const parameters: Record<string, any> = {
 							'options.timeout': 200,
+							authentication: 'none',
 						};
 						return parameters[key];
 					}),
-					logger: { debug: jest.fn(), error: jest.fn() },
-					addInputData: jest.fn(() => ({ index: 0 })),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
 				}),
 				0,
 			);
@@ -424,16 +834,12 @@ describe('McpClientTool', () => {
 	});
 
 	describe('execute', () => {
-		beforeEach(() => {
-			jest.resetAllMocks();
-		});
-
 		it('should execute tool when tool name is in item.json.tool (from agent)', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
 				content: [{ type: 'text', text: 'Weather is sunny' }],
 			});
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'get_weather',
@@ -446,18 +852,18 @@ describe('McpClientTool', () => {
 				],
 			});
 
-			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool' });
+			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool', name: 'MCP Client' });
 			const mockExecuteFunctions = mock<any>({
-				getNode: jest.fn(() => mockNode),
-				getInputData: jest.fn(() => [
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [
 					{
 						json: {
-							tool: 'get_weather',
+							tool: buildMcpToolName('MCP Client', 'get_weather'),
 							location: 'Berlin',
 						},
 					},
 				]),
-				getNodeParameter: jest.fn((key) => {
+				getNodeParameter: vi.fn((key) => {
 					const params: Record<string, any> = {
 						include: 'all',
 						includeTools: [],
@@ -496,11 +902,11 @@ describe('McpClientTool', () => {
 		it.each([false, undefined])(
 			'should filter out tool arguments when additionalProperties is %s',
 			async (additionalProperties) => {
-				jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-				jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+				vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
 					content: [{ type: 'text', text: 'Weather is sunny' }],
 				});
-				jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 					tools: [
 						{
 							name: 'get_weather',
@@ -514,20 +920,20 @@ describe('McpClientTool', () => {
 					],
 				});
 
-				const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool' });
+				const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool', name: 'MCP Client' });
 				const mockExecuteFunctions = mock<any>({
-					getNode: jest.fn(() => mockNode),
-					getInputData: jest.fn(() => [
+					getNode: vi.fn(() => mockNode),
+					getInputData: vi.fn(() => [
 						{
 							json: {
-								tool: 'get_weather',
+								tool: buildMcpToolName('MCP Client', 'get_weather'),
 								location: 'Berlin',
 								foo: 'bar',
 								sessionId: '123',
 							},
 						},
 					]),
-					getNodeParameter: jest.fn((key) => {
+					getNodeParameter: vi.fn((key) => {
 						const params: Record<string, any> = {
 							include: 'all',
 							includeTools: [],
@@ -565,11 +971,11 @@ describe('McpClientTool', () => {
 		);
 
 		it('should pass all arguments when schema has additionalProperties: true', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
 				content: [{ type: 'text', text: 'Success' }],
 			});
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'flexible_tool',
@@ -579,19 +985,19 @@ describe('McpClientTool', () => {
 				],
 			});
 
-			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool' });
+			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool', name: 'MCP Client' });
 			const mockExecuteFunctions = mock<any>({
-				getNode: jest.fn(() => mockNode),
-				getInputData: jest.fn(() => [
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [
 					{
 						json: {
-							tool: 'flexible_tool',
+							tool: buildMcpToolName('MCP Client', 'flexible_tool'),
 							foo: 'bar',
 							extra: 'data',
 						},
 					},
 				]),
-				getNodeParameter: jest.fn((key) => {
+				getNodeParameter: vi.fn((key) => {
 					const params: Record<string, any> = {
 						include: 'all',
 						includeTools: [],
@@ -616,10 +1022,11 @@ describe('McpClientTool', () => {
 			);
 		});
 
-		it('should not execute if tool name does not match', async () => {
+		it('should treat isError: true as success on version 1.2 (legacy behavior)', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
-				content: [{ type: 'text', text: 'Should not be called' }],
+				isError: true,
+				content: [{ type: 'text', text: 'simulated tool-level error' }],
 			});
 			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
@@ -631,10 +1038,154 @@ describe('McpClientTool', () => {
 				],
 			});
 
-			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool' });
+			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool', name: 'MCP Client' });
 			const mockExecuteFunctions = mock<any>({
 				getNode: jest.fn(() => mockNode),
 				getInputData: jest.fn(() => [
+					{
+						json: {
+							tool: buildMcpToolName('MCP Client', 'get_weather'),
+							location: 'Berlin',
+						},
+					},
+				]),
+				getNodeParameter: jest.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+
+			const result = await new McpClientTool().execute.call(mockExecuteFunctions);
+
+			expect(result).toEqual([
+				[
+					{
+						json: { response: [{ type: 'text', text: 'simulated tool-level error' }] },
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('should throw NodeOperationError when tool result has isError: true (version 1.3+)', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				isError: true,
+				content: [{ type: 'text', text: 'simulated tool-level error' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1.3, type: 'mcpClientTool', name: 'MCP Client' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: jest.fn(() => mockNode),
+				getInputData: jest.fn(() => [
+					{
+						json: {
+							tool: buildMcpToolName('MCP Client', 'get_weather'),
+							location: 'Berlin',
+						},
+					},
+				]),
+				getNodeParameter: jest.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+
+			await expect(new McpClientTool().execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'simulated tool-level error',
+			);
+		});
+
+		it('should throw generic error when isError: true with no text content (version 1.3+)', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				isError: true,
+				content: [{ type: 'image', data: 'abc', mimeType: 'image/png' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1.3, type: 'mcpClientTool', name: 'MCP Client' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: jest.fn(() => mockNode),
+				getInputData: jest.fn(() => [
+					{
+						json: {
+							tool: buildMcpToolName('MCP Client', 'get_weather'),
+							location: 'Berlin',
+						},
+					},
+				]),
+				getNodeParameter: jest.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+
+			await expect(new McpClientTool().execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Tool "get_weather" returned an error',
+			);
+		});
+
+		it('should not execute if tool name does not match', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Should not be called' }],
+			});
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool', name: 'MCP Client' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [
 					{
 						json: {
 							tool: 'different_tool',
@@ -642,7 +1193,7 @@ describe('McpClientTool', () => {
 						},
 					},
 				]),
-				getNodeParameter: jest.fn((key) => {
+				getNodeParameter: vi.fn((key) => {
 					const params: Record<string, any> = {
 						include: 'all',
 						includeTools: [],
@@ -662,12 +1213,12 @@ describe('McpClientTool', () => {
 		});
 
 		it('should throw error when MCP server connection fails', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockRejectedValue(new Error('Connection failed'));
+			vi.spyOn(Client.prototype, 'connect').mockRejectedValue(new Error('Connection failed'));
 
-			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool' });
+			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool', name: 'MCP Client' });
 			const mockExecuteFunctions = mock<any>({
-				getNode: jest.fn(() => mockNode),
-				getInputData: jest.fn(() => [
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [
 					{
 						json: {
 							tool: 'get_weather',
@@ -675,7 +1226,7 @@ describe('McpClientTool', () => {
 						},
 					},
 				]),
-				getNodeParameter: jest.fn((key) => {
+				getNodeParameter: vi.fn((key) => {
 					const params: Record<string, any> = {
 						include: 'all',
 						includeTools: [],
@@ -694,16 +1245,15 @@ describe('McpClientTool', () => {
 		});
 
 		it('should handle multiple items', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest
-				.spyOn(Client.prototype, 'callTool')
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool')
 				.mockResolvedValueOnce({
 					content: [{ type: 'text', text: 'Weather in Berlin is sunny' }],
 				})
 				.mockResolvedValueOnce({
 					content: [{ type: 'text', text: 'Weather in London is rainy' }],
 				});
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'get_weather',
@@ -713,24 +1263,24 @@ describe('McpClientTool', () => {
 				],
 			});
 
-			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool' });
+			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool', name: 'MCP Client' });
 			const mockExecuteFunctions = mock<any>({
-				getNode: jest.fn(() => mockNode),
-				getInputData: jest.fn(() => [
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [
 					{
 						json: {
-							tool: 'get_weather',
+							tool: buildMcpToolName('MCP Client', 'get_weather'),
 							location: 'Berlin',
 						},
 					},
 					{
 						json: {
-							tool: 'get_weather',
+							tool: buildMcpToolName('MCP Client', 'get_weather'),
 							location: 'London',
 						},
 					},
 				]),
-				getNodeParameter: jest.fn((key) => {
+				getNodeParameter: vi.fn((key) => {
 					const params: Record<string, any> = {
 						include: 'all',
 						includeTools: [],
@@ -766,11 +1316,11 @@ describe('McpClientTool', () => {
 		});
 
 		it('should respect tool filtering (selected tools)', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
 				content: [{ type: 'text', text: 'Weather is sunny' }],
 			});
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'get_weather',
@@ -785,18 +1335,18 @@ describe('McpClientTool', () => {
 				],
 			});
 
-			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool' });
+			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool', name: 'MCP Client' });
 			const mockExecuteFunctions = mock<any>({
-				getNode: jest.fn(() => mockNode),
-				getInputData: jest.fn(() => [
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [
 					{
 						json: {
-							tool: 'get_weather',
+							tool: buildMcpToolName('MCP Client', 'get_weather'),
 							location: 'Berlin',
 						},
 					},
 				]),
-				getNodeParameter: jest.fn((key) => {
+				getNodeParameter: vi.fn((key) => {
 					const params: Record<string, any> = {
 						include: 'selected',
 						includeTools: ['get_weather'],
@@ -815,12 +1365,70 @@ describe('McpClientTool', () => {
 			expect(result[0][0].json.response).toEqual([{ type: 'text', text: 'Weather is sunny' }]);
 		});
 
-		it('should execute tool with timeout', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+		it('should call MCP server with original unprefixed tool name', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
 				content: [{ type: 'text', text: 'Weather is sunny' }],
 			});
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: {
+							type: 'object',
+							properties: { location: { type: 'string' } },
+						},
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({
+				typeVersion: 1,
+				type: 'mcpClientTool',
+				name: 'GitHub MCP',
+			});
+			const mockExecuteFunctions = mock<any>({
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [
+					{
+						json: {
+							tool: buildMcpToolName('GitHub MCP', 'get_weather'),
+							location: 'Berlin',
+						},
+					},
+				]),
+				getNodeParameter: vi.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						sseEndpoint: 'https://test.com/sse',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+
+			await new McpClientTool().execute.call(mockExecuteFunctions);
+
+			expect(Client.prototype.callTool).toHaveBeenCalledWith(
+				{
+					name: 'get_weather',
+					arguments: { location: 'Berlin' },
+				},
+				expect.anything(),
+				expect.anything(),
+			);
+		});
+
+		it('should pass abort signal to client.callTool in execute()', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			const callToolSpy = vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Weather is sunny' }],
+			});
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'get_weather',
@@ -829,13 +1437,17 @@ describe('McpClientTool', () => {
 					},
 				],
 			});
-			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool' });
+
+			const abortController = new AbortController();
+
+			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool', name: 'MCP Client' });
 			const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 			mockExecuteFunctions.getNode.mockReturnValue(mockNode);
+			mockExecuteFunctions.getExecutionCancelSignal.mockReturnValue(abortController.signal);
 			mockExecuteFunctions.getInputData.mockReturnValue([
 				{
 					json: {
-						tool: 'get_weather',
+						tool: buildMcpToolName('MCP Client', 'get_weather'),
 						location: 'Berlin',
 					},
 				},
@@ -853,13 +1465,451 @@ describe('McpClientTool', () => {
 
 			await new McpClientTool().execute.call(mockExecuteFunctions);
 
-			expect(Client.prototype.callTool).toHaveBeenCalledWith(
+			expect(callToolSpy).toHaveBeenCalledWith(
 				{
 					name: 'get_weather',
 					arguments: { location: 'Berlin' },
 				},
 				CallToolResultSchema,
-				{ timeout: 12345 },
+				expect.objectContaining({ timeout: 12345, signal: abortController.signal }),
+			);
+		});
+
+		it('should throw when execution is already cancelled', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const abortController = new AbortController();
+			abortController.abort();
+
+			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool', name: 'MCP Client' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [{ json: { tool: 'get_weather', location: 'Berlin' } }]),
+				getNodeParameter: vi.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						sseEndpoint: 'https://test.com/sse',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+				getExecutionCancelSignal: vi.fn(() => abortController.signal),
+			});
+
+			await expect(new McpClientTool().execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Execution was cancelled',
+			);
+			expect(Client.prototype.callTool).not.toHaveBeenCalled();
+		});
+
+		it('should pass abort signal to client.callTool in execute path', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Weather is sunny' }],
+			});
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const abortController = new AbortController();
+
+			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool', name: 'MCP Client' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [
+					{
+						json: {
+							tool: buildMcpToolName('MCP Client', 'get_weather'),
+							location: 'Berlin',
+						},
+					},
+				]),
+				getNodeParameter: vi.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						sseEndpoint: 'https://test.com/sse',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+				getExecutionCancelSignal: vi.fn(() => abortController.signal),
+			});
+
+			await new McpClientTool().execute.call(mockExecuteFunctions);
+
+			expect(Client.prototype.callTool).toHaveBeenCalledWith(
+				expect.any(Object),
+				CallToolResultSchema,
+				expect.objectContaining({ signal: abortController.signal }),
+			);
+		});
+	});
+
+	describe('supplyData cancellation', () => {
+		it('should handle mid-flight abort without calling onError', async () => {
+			const abortController = new AbortController();
+
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockImplementation(async () => {
+				// Simulate abort happening during the call
+				abortController.abort();
+				throw new Error('The operation was aborted');
+			});
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockSupplyDataFunctions = mock<ISupplyDataFunctions>({
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+				logger: { debug: vi.fn(), error: vi.fn() },
+				addInputData: vi.fn(() => ({ index: 0 })),
+				getExecutionCancelSignal: vi.fn(() => abortController.signal),
+				getNodeParameter: vi.fn((key: string) => {
+					const parameters: Record<string, unknown> = {
+						authentication: 'none',
+					};
+					return parameters[key] as never;
+				}),
+			});
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mockSupplyDataFunctions,
+				0,
+			);
+
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
+			const result = await tools[0].invoke({ input: 'foo' });
+
+			expect(result).toEqual('Execution was cancelled');
+			// Cancellation should NOT trigger the onError callback (which logs via logger.error)
+			expect(mockSupplyDataFunctions.logger.error).not.toHaveBeenCalled();
+		});
+
+		it('should not connect to MCP server when execution is already cancelled', async () => {
+			const abortController = new AbortController();
+			abortController.abort();
+
+			const connectSpy = vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockSupplyDataFunctions = mock<ISupplyDataFunctions>({
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+				logger: { debug: vi.fn(), error: vi.fn() },
+				addInputData: vi.fn(() => ({ index: 0 })),
+				addOutputData: vi.fn(),
+				getExecutionCancelSignal: vi.fn(() => abortController.signal),
+			});
+
+			await expect(new McpClientTool().supplyData.call(mockSupplyDataFunctions, 0)).rejects.toThrow(
+				'Execution was cancelled',
+			);
+			expect(connectSpy).not.toHaveBeenCalled();
+		});
+
+		it('should close client connection after execution', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Weather is sunny' }],
+			});
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+			const closeSpy = vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const mockNode = mock<INode>({
+				typeVersion: 1,
+				type: 'mcpClientTool',
+				name: 'McpClientTool',
+			});
+			const mockExecuteFunctions = mock<any>({
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [
+					{
+						json: {
+							tool: 'get_weather',
+							location: 'Berlin',
+						},
+					},
+				]),
+				getNodeParameter: vi.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						sseEndpoint: 'https://test.com/sse',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+
+			await new McpClientTool().execute.call(mockExecuteFunctions);
+
+			expect(closeSpy).toHaveBeenCalled();
+		});
+
+		it('should close client connection even when tool call fails', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockRejectedValue(new Error('Tool call failed'));
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+			const closeSpy = vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [
+					{
+						json: {
+							tool: 'get_weather',
+							location: 'Berlin',
+						},
+					},
+				]),
+				getNodeParameter: vi.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						sseEndpoint: 'https://test.com/sse',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+
+			await expect(new McpClientTool().execute.call(mockExecuteFunctions)).rejects.toThrow();
+
+			expect(closeSpy).toHaveBeenCalled();
+		});
+
+		it('should close client when mcpTools is empty', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [] });
+			const closeSpy = vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [{ json: { tool: 'get_weather' } }]),
+				getNodeParameter: vi.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						sseEndpoint: 'https://test.com/sse',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+
+			await expect(new McpClientTool().execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'MCP Server returned no tools',
+			);
+
+			expect(closeSpy).toHaveBeenCalled();
+		});
+
+		it('should close client when item.json.tool is missing', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+			const closeSpy = vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [{ json: { location: 'Berlin' } }]),
+				getNodeParameter: vi.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						sseEndpoint: 'https://test.com/sse',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+
+			await expect(new McpClientTool().execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Tool name not found',
+			);
+
+			expect(closeSpy).toHaveBeenCalled();
+		});
+
+		it('should close client when getAllTools throws after connection succeeds', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockRejectedValue(new Error('listTools failed'));
+			const closeSpy = vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [{ json: { tool: 'get_weather' } }]),
+				getNodeParameter: vi.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						sseEndpoint: 'https://test.com/sse',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+
+			await expect(new McpClientTool().execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'listTools failed',
+			);
+
+			expect(closeSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('supplyData tool name prefixing', () => {
+		it('should prefix tool names with sanitized node name', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'list_tools',
+						description: 'Lists tools',
+						inputSchema: { type: 'object', properties: {} },
+					},
+				],
+			});
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: vi.fn(() =>
+						mock<INode>({
+							typeVersion: 1,
+							name: 'GitHub MCP',
+						}),
+					),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
+				}),
+				0,
+			);
+
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
+			expect(tools[0].name).toBe('GitHub_MCP_list_tools');
+		});
+
+		it('should call MCP server with original tool name via supplyData tools', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'ok' }],
+			});
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: vi.fn(() =>
+						mock<INode>({
+							typeVersion: 1,
+							name: 'Weather MCP',
+						}),
+					),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
+					getNodeParameter: vi.fn((key: string) => {
+						const parameters: Record<string, unknown> = {
+							authentication: 'none',
+						};
+						return parameters[key] as never;
+					}),
+				}),
+				0,
+			);
+
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
+			expect(tools[0].name).toBe('Weather_MCP_get_weather');
+
+			await tools[0].invoke({ location: 'Berlin' });
+
+			expect(Client.prototype.callTool).toHaveBeenCalledWith(
+				{ name: 'get_weather', arguments: { location: 'Berlin' } },
+				expect.anything(),
+				expect.anything(),
 			);
 		});
 	});

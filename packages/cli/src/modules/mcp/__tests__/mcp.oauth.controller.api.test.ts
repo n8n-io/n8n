@@ -1,4 +1,5 @@
 import { testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -207,6 +208,33 @@ describe('POST /mcp-oauth/register', () => {
 		expect(response.statusCode).toBeGreaterThanOrEqual(400);
 	});
 
+	test('should reject registration when client_name is missing', async () => {
+		const response = await testServer.restlessAgent.post('/mcp-oauth/register').send({
+			redirect_uris: ['https://example.com/callback'],
+			grant_types: ['authorization_code'],
+		});
+
+		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+	});
+
+	test('should reject registration when grant_types is missing', async () => {
+		const response = await testServer.restlessAgent.post('/mcp-oauth/register').send({
+			client_name: 'Test Client',
+			redirect_uris: ['https://example.com/callback'],
+		});
+
+		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+	});
+
+	test('should reject registration when redirect_uris is missing', async () => {
+		const response = await testServer.restlessAgent.post('/mcp-oauth/register').send({
+			client_name: 'Test Client',
+			grant_types: ['authorization_code'],
+		});
+
+		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+	});
+
 	test('should reject registration when MCP access is disabled', async () => {
 		await mcpSettingsService.setEnabled(false);
 
@@ -233,6 +261,70 @@ describe('POST /mcp-oauth/register', () => {
 		const response = await testServer.restlessAgent.post('/mcp-oauth/register').send(clientData);
 
 		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+	});
+
+	test('should reject with 503 server_error when instance client limit is reached (pre-check)', async () => {
+		const globalConfig = Container.get(GlobalConfig);
+		const originalLimit = globalConfig.endpoints.mcpMaxRegisteredClients;
+		globalConfig.endpoints.mcpMaxRegisteredClients = 1;
+
+		try {
+			const clientData = {
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+			};
+
+			const first = await testServer.restlessAgent.post('/mcp-oauth/register').send(clientData);
+			expect(first.statusCode).toBe(201);
+
+			const second = await testServer.restlessAgent.post('/mcp-oauth/register').send(clientData);
+			expect(second.statusCode).toBe(503);
+			expect(second.body).toMatchObject({
+				error: 'server_error',
+				error_description: expect.stringContaining('maximum of 1 registered MCP clients'),
+			});
+		} finally {
+			globalConfig.endpoints.mcpMaxRegisteredClients = originalLimit;
+		}
+	});
+
+	test('should reject with descriptive server_error on the post-insert rollback (race path)', async () => {
+		const { McpOAuthService } = await import('../mcp-oauth-service');
+		const globalConfig = Container.get(GlobalConfig);
+		const originalLimit = globalConfig.endpoints.mcpMaxRegisteredClients;
+		globalConfig.endpoints.mcpMaxRegisteredClients = 1;
+
+		// Stub the pre-check guard to always pass, simulating two concurrent
+		// registrations that both saw count < limit and made it past the guard.
+		const guardSpy = jest
+			.spyOn(McpOAuthService.prototype, 'isClientLimitReached')
+			.mockResolvedValue(false);
+
+		try {
+			const clientData = {
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+			};
+
+			const first = await testServer.restlessAgent.post('/mcp-oauth/register').send(clientData);
+			expect(first.statusCode).toBe(201);
+
+			// Now count = 1, limit = 1. The guard is stubbed to pass; the
+			// post-insert check sees count = 2 > 1 and throws.
+			const second = await testServer.restlessAgent.post('/mcp-oauth/register').send(clientData);
+			expect(second.statusCode).toBe(500);
+			expect(second.body).toMatchObject({
+				error: 'server_error',
+				error_description: expect.stringContaining('maximum of 1 registered MCP clients'),
+			});
+		} finally {
+			guardSpy.mockRestore();
+			globalConfig.endpoints.mcpMaxRegisteredClients = originalLimit;
+		}
 	});
 });
 

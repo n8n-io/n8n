@@ -28,12 +28,6 @@ import type { SourceControlScopedService } from '../source-control-scoped.servic
 import { SourceControlContext } from '../types/source-control-context';
 
 describe('SourceControlExportService', () => {
-	const globalAdminContext = new SourceControlContext(
-		Object.assign(new User(), {
-			role: GLOBAL_ADMIN_ROLE,
-		}),
-	);
-
 	const cipher = Container.get(Cipher);
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
@@ -45,6 +39,12 @@ describe('SourceControlExportService', () => {
 	const folderRepository = mock<FolderRepository>();
 	const sourceControlScopedService = mock<SourceControlScopedService>();
 	const dataTableRepository = mock<DataTableRepository>();
+
+	const globalAdminContext = new SourceControlContext(
+		Object.assign(new User(), { role: GLOBAL_ADMIN_ROLE }),
+		[],
+		[],
+	);
 
 	const service = new SourceControlExportService(
 		mock(),
@@ -64,7 +64,10 @@ describe('SourceControlExportService', () => {
 	const fsWriteFile = jest.spyOn(fsp, 'writeFile');
 	const fsReadFile = jest.spyOn(fsp, 'readFile');
 
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => {
+		jest.clearAllMocks();
+		sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue({});
+	});
 
 	describe('exportCredentialsToWorkFolder', () => {
 		const credentialData = {
@@ -727,10 +730,6 @@ describe('SourceControlExportService', () => {
 			];
 
 			dataTableRepository.find.mockResolvedValue(mockDataTables as any);
-			sourceControlScopedService.getAuthorizedProjectsFromContext.mockResolvedValue([
-				mock<Project>({ id: 'project1' }),
-				mock<Project>({ id: 'project2' }),
-			]);
 
 			// Act
 			const result = await service.exportDataTablesToWorkFolder(candidates, globalAdminContext);
@@ -790,6 +789,40 @@ describe('SourceControlExportService', () => {
 			expect(result.count).toBe(0);
 			expect(result.files).toHaveLength(0);
 			expect(fsWriteFile).not.toHaveBeenCalled();
+		});
+
+		it('should scope exported data tables to projects the user can push to', async () => {
+			// Arrange
+			const candidates = [
+				{
+					id: 'dt1',
+					name: 'Test Table 1',
+					type: 'datatable' as const,
+					status: 'created' as const,
+					file: '/mock/n8n/git/datatables/dt1.json',
+					location: 'local' as const,
+					conflict: false,
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				},
+			];
+			const scopedFilter = { project: { id: 'authorized-project' } };
+			sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue(
+				scopedFilter as any,
+			);
+			dataTableRepository.find.mockResolvedValue([]);
+
+			// Act
+			await service.exportDataTablesToWorkFolder(candidates, globalAdminContext);
+
+			// Assert
+			expect(
+				sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter,
+			).toHaveBeenCalledWith(globalAdminContext);
+			expect(dataTableRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: expect.objectContaining(scopedFilter),
+				}),
+			);
 		});
 
 		it('should handle export errors gracefully', async () => {

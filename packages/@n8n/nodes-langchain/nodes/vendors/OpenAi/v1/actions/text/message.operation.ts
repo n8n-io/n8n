@@ -6,7 +6,12 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
+import {
+	accumulateTokenUsage,
+	jsonParse,
+	NodeOperationError,
+	updateDisplayOptions,
+} from 'n8n-workflow';
 
 import { getConnectedTools } from '@utils/helpers';
 
@@ -236,6 +241,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const nodeVersion = this.getNode().typeVersion;
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true });
 	let messages = this.getNodeParameter('messages.values', i, []) as IDataObject[];
+	if (!messages.some((m) => typeof m.content === 'string' && m.content.trim() !== '')) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
 	const options = this.getNodeParameter('options', i, {});
 	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
 	const maxToolsIterations =
@@ -293,6 +303,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	if (!response) return [];
 
+	if (response.usage) {
+		accumulateTokenUsage(this, response.usage.prompt_tokens, response.usage.completion_tokens);
+	}
+
 	let currentIteration = 1;
 	let toolCalls = response?.choices[0]?.message?.tool_calls;
 
@@ -333,6 +347,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		response = (await apiRequest.call(this, 'POST', '/chat/completions', {
 			body,
 		})) as ChatCompletion;
+
+		if (response.usage) {
+			accumulateTokenUsage(this, response.usage.prompt_tokens, response.usage.completion_tokens);
+		}
 
 		toolCalls = response.choices[0].message.tool_calls;
 		currentIteration += 1;

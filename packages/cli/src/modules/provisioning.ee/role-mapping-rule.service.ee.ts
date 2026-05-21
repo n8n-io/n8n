@@ -11,7 +11,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { type FindOptionsOrder, In } from '@n8n/typeorm';
+import { type EntityManager, type FindOptionsOrder, In } from '@n8n/typeorm';
 import type { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -90,8 +90,6 @@ export class RoleMappingRuleService {
 
 		assertRoleCompatibleWithMappingType(role, dto.type);
 
-		await this.assertOrderAvailable(dto.type, dto.order);
-
 		const projects =
 			uniqueProjectIds.length > 0
 				? await this.projectRepository.findBy({ id: In(uniqueProjectIds) })
@@ -101,16 +99,37 @@ export class RoleMappingRuleService {
 			throw new BadRequestError('One or more projects were not found');
 		}
 
+		const existingRules = await this.roleMappingRuleRepository.find({
+			where: { type: dto.type },
+			select: ['id', 'order'],
+			order: { order: 'ASC' },
+		});
+
+		// Clamp the requested index into the valid range. Omitted order appends.
+		const requestedOrder = dto.order ?? existingRules.length;
+		const targetIndex = Math.min(Math.max(requestedOrder, 0), existingRules.length);
+
+		// Save the new rule at a temporary order beyond any currently-used slot,
+		// so the unique (type, order) constraint cannot fire on the initial insert.
+		const maxOrder = existingRules.length > 0 ? existingRules[existingRules.length - 1].order : -1;
+		const tempOrder = Math.max(maxOrder, existingRules.length - 1) + 1;
+
 		const rule = new RoleMappingRule();
 		rule.expression = dto.expression;
 		rule.role = role;
 		rule.type = dto.type;
-		rule.order = dto.order;
+		rule.order = tempOrder;
 		rule.projects = projects;
 
 		const saved = await this.roleMappingRuleRepository.save(rule);
 
-		await this.normalizeOrderForType(dto.type);
+		// Build the final ordering: existing rules in their current order, with the
+		// newly saved rule spliced in at targetIndex. applyOrder atomically renumbers
+		// everything to [0..n-1] using its two-phase transaction.
+		const reorderedIds = existingRules.map((r) => r.id);
+		reorderedIds.splice(targetIndex, 0, saved.id);
+
+		await this.applyOrder(reorderedIds);
 
 		const loaded = await this.roleMappingRuleRepository.findOneOrFail({
 			where: { id: saved.id },
@@ -194,7 +213,7 @@ export class RoleMappingRuleService {
 		return this.toResponse(loaded);
 	}
 
-	async delete(id: string): Promise<void> {
+	async delete(id: string): Promise<{ ruleType: 'instance' | 'project' }> {
 		if (typeof id !== 'string' || id.length === 0) {
 			throw new BadRequestError('Rule id is required');
 		}
@@ -208,6 +227,72 @@ export class RoleMappingRuleService {
 		const ruleType = rule.type as 'instance' | 'project';
 		await this.roleMappingRuleRepository.remove(rule);
 		await this.normalizeOrderForType(ruleType);
+		return { ruleType };
+	}
+
+	async deleteAllOfType(type: 'instance' | 'project', tx?: EntityManager): Promise<number> {
+		const repo = tx ? tx.getRepository(RoleMappingRule) : this.roleMappingRuleRepository;
+		const result = await repo.delete({ type });
+		return result.affected ?? 0;
+	}
+
+	async move(id: string, targetIndex: number): Promise<RoleMappingRuleResponse> {
+		if (typeof id !== 'string' || id.length === 0) {
+			throw new BadRequestError('Rule id is required');
+		}
+
+		const rule = await this.roleMappingRuleRepository.findOne({
+			where: { id },
+			relations: ['projects', 'role'],
+		});
+
+		if (!rule) {
+			throw new NotFoundError('Could not find role mapping rule');
+		}
+
+		const type = rule.type as 'instance' | 'project';
+
+		const all = await this.roleMappingRuleRepository.find({
+			where: { type },
+			select: ['id', 'order'],
+			order: { order: 'ASC' },
+		});
+
+		const clampedIndex = Math.min(targetIndex, all.length - 1);
+		const currentIndex = all.findIndex((r) => r.id === id);
+
+		const reordered = [...all];
+		reordered.splice(currentIndex, 1);
+		reordered.splice(clampedIndex, 0, all[currentIndex]);
+
+		await this.applyOrder(reordered.map((r) => r.id));
+
+		const loaded = await this.roleMappingRuleRepository.findOneOrFail({
+			where: { id },
+			relations: ['projects', 'role'],
+		});
+
+		return this.toResponse(loaded);
+	}
+
+	private async applyOrder(orderedIds: string[]): Promise<void> {
+		if (orderedIds.length === 0) return;
+
+		await this.roleMappingRuleRepository.manager.transaction(async (tx) => {
+			const offset = orderedIds.length + 1000;
+
+			// Phase 1: move all rules to high offset values to vacate the target slots.
+			// This avoids transient unique constraint violations on (type, order) when
+			// shifting rules into positions that are already occupied.
+			for (let i = 0; i < orderedIds.length; i++) {
+				await tx.update(RoleMappingRule, { id: orderedIds[i] }, { order: offset + i });
+			}
+
+			// Phase 2: assign the final sequential order values starting from 0.
+			for (let i = 0; i < orderedIds.length; i++) {
+				await tx.update(RoleMappingRule, { id: orderedIds[i] }, { order: i });
+			}
+		});
 	}
 
 	private async normalizeOrderForType(type: 'instance' | 'project'): Promise<void> {
@@ -222,19 +307,7 @@ export class RoleMappingRuleService {
 		// Early exit: already a contiguous sequence starting at 0
 		if (rules.every((r, i) => r.order === i)) return;
 
-		await this.roleMappingRuleRepository.manager.transaction(async (tx) => {
-			// Phase 1 — move all to a safe high offset to avoid unique constraint
-			// conflicts during resequencing (checked per-statement in SQLite/Postgres)
-			const offset = rules.length + 1000;
-			for (let i = 0; i < rules.length; i++) {
-				await tx.update(RoleMappingRule, { id: rules[i].id }, { order: offset + i });
-			}
-
-			// Phase 2 — assign final 0-based contiguous orders
-			for (let i = 0; i < rules.length; i++) {
-				await tx.update(RoleMappingRule, { id: rules[i].id }, { order: i });
-			}
-		});
+		await this.applyOrder(rules.map((r) => r.id));
 	}
 
 	private async assertOrderAvailable(

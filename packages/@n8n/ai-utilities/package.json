@@ -1,15 +1,51 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "0.8.0",
+  "version": "0.16.0",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
   "main": "dist/cjs/index.js",
+  "typesVersions": {
+    "*": {
+      "text-editor": [
+        "dist/esm/utils/text-editor.d.ts"
+      ],
+      "node-catalog": [
+        "dist/esm/node-catalog/index.d.ts"
+      ],
+      "fromai-helpers": [
+        "dist/esm/utils/fromai-helpers.d.ts"
+      ],
+      "http-proxy-agent": [
+        "dist/esm/utils/http-proxy-agent.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "types": "./dist/esm/index.d.ts",
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js"
+    },
+    "./text-editor": {
+      "types": "./dist/esm/utils/text-editor.d.ts",
+      "import": "./dist/esm/utils/text-editor.js",
+      "require": "./dist/cjs/utils/text-editor.js"
+    },
+    "./node-catalog": {
+      "types": "./dist/esm/node-catalog/index.d.ts",
+      "import": "./dist/esm/node-catalog/index.js",
+      "require": "./dist/cjs/node-catalog/index.js"
+    },
+    "./fromai-helpers": {
+      "types": "./dist/esm/utils/fromai-helpers.d.ts",
+      "import": "./dist/esm/utils/fromai-helpers.js",
+      "require": "./dist/cjs/utils/fromai-helpers.js"
+    },
+    "./http-proxy-agent": {
+      "types": "./dist/esm/utils/http-proxy-agent.d.ts",
+      "import": "./dist/esm/utils/http-proxy-agent.js",
+      "require": "./dist/cjs/utils/http-proxy-agent.js"
     },
     "./*": "./*"
   },
@@ -43,13 +79,14 @@
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:",
     "@langchain/core": "catalog:",
-    "@langchain/classic": "1.0.5",
+    "@langchain/classic": "1.0.27",
     "@langchain/community": "catalog:",
     "@langchain/textsplitters": "1.0.1",
     "@langchain/openai": "catalog:",
     "langchain": "catalog:",
     "@n8n/config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "tmp-promise": "3.0.3",
     "js-tiktoken": "catalog:",
     "https-proxy-agent": "catalog:",

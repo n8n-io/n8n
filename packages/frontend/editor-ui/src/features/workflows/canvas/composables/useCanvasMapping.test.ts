@@ -1,8 +1,9 @@
-import type { INode, NodeApiError, Workflow } from 'n8n-workflow';
+import type { INode, Workflow } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import type { Ref } from 'vue';
-import { ref } from 'vue';
+import type { ComputedRef, Ref } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
+import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 
 import {
 	createTestNode,
@@ -29,6 +30,7 @@ import type { IPinData } from 'n8n-workflow';
 import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
+	type CanvasConnectionPort,
 	type CanvasNodeDefaultRender,
 } from '../canvas.types';
 import { createCanvasConnectionHandleString, createCanvasConnectionId } from '../canvas.utils';
@@ -36,7 +38,6 @@ import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { createTestingPinia } from '@pinia/testing';
 import { MarkerType } from '@vue-flow/core';
-import { mock } from 'vitest-mock-extended';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	injectWorkflowState,
@@ -62,6 +63,38 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 		},
 	}),
 }));
+
+const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+
+const testRenderData = shallowRef<CanvasRenderData>({
+	nodeInputsByNodeId: renderNodeInputsMap,
+	nodeOutputsByNodeId: renderNodeOutputsMap,
+	executionIssuesByNodeName: new Map(),
+});
+
+const emptyRenderData = shallowRef<CanvasRenderData>({
+	nodeInputsByNodeId: new Map(),
+	nodeOutputsByNodeId: new Map(),
+	executionIssuesByNodeName: new Map(),
+});
+
+function createRenderDataWithExecutionIssuesByNodeName(
+	issuesByNodeName: Record<string, string[]> = {},
+): Ref<CanvasRenderData> {
+	const executionIssuesByNodeName = new Map<string, ComputedRef<string[]>>();
+	for (const [nodeName, issues] of Object.entries(issuesByNodeName)) {
+		executionIssuesByNodeName.set(
+			nodeName,
+			computed(() => issues),
+		);
+	}
+	return shallowRef({
+		nodeInputsByNodeId: new Map(),
+		nodeOutputsByNodeId: new Map(),
+		executionIssuesByNodeName,
+	});
+}
 
 vi.mock('@/app/composables/useWorkflowState', async () => {
 	const actual = await vi.importActual('@/app/composables/useWorkflowState');
@@ -109,9 +142,12 @@ beforeEach(() => {
 	workflowState = useWorkflowState();
 	vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
+	renderNodeInputsMap.clear();
+	renderNodeOutputsMap.clear();
+
 	// Set workflow ID so document store can be created
 	const workflowsStore = useWorkflowsStore();
-	workflowsStore.workflow.id = 'test-workflow';
+	workflowsStore.setWorkflowId('test-workflow');
 });
 
 afterEach(() => {
@@ -121,9 +157,32 @@ afterEach(() => {
 function setPinData(pinData: IPinData) {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflow.id),
+		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
 	workflowDocumentStore.setPinData(pinData);
+}
+
+/**
+ * Populate the render data maps directly for tests
+ * that rely on per-node inputs/outputs from the render data.
+ */
+function setupRenderNodes(
+	entries: Array<{
+		id: string;
+		inputs: CanvasConnectionPort[];
+		outputs?: CanvasConnectionPort[];
+	}>,
+) {
+	for (const { id, inputs, outputs = [] } of entries) {
+		renderNodeInputsMap.set(
+			id,
+			computed(() => inputs),
+		);
+		renderNodeOutputsMap.set(
+			id,
+			computed(() => outputs),
+		);
+	}
 }
 
 describe('useCanvasMapping', () => {
@@ -139,6 +198,7 @@ describe('useCanvasMapping', () => {
 			nodes: ref(nodes),
 			connections: ref(connections),
 			workflowObject: ref(workflowObject) as Ref<Workflow>,
+			renderData: emptyRenderData,
 		});
 
 		expect(mappedNodes.value).toEqual([]);
@@ -164,6 +224,7 @@ describe('useCanvasMapping', () => {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
+				renderData: emptyRenderData,
 			});
 
 			expect(mappedNodes.value).toEqual([
@@ -187,7 +248,6 @@ describe('useCanvasMapping', () => {
 							waitingForNext: false,
 						},
 						issues: {
-							execution: [],
 							validation: [],
 							visible: false,
 						},
@@ -200,20 +260,6 @@ describe('useCanvasMapping', () => {
 							outputMap: {},
 							visible: false,
 						},
-						inputs: [
-							{
-								index: 0,
-								label: undefined,
-								type: 'main',
-							},
-						],
-						outputs: [
-							{
-								index: 0,
-								label: undefined,
-								type: 'main',
-							},
-						],
 						connections: {
 							[CanvasConnectionMode.Input]: {},
 							[CanvasConnectionMode.Output]: {},
@@ -223,17 +269,15 @@ describe('useCanvasMapping', () => {
 							options: {
 								configurable: false,
 								configuration: false,
+								dirtiness: undefined,
 								icon: {
+									badge: undefined,
 									src: '/nodes/test-node/icon.svg',
 									type: 'file',
 								},
+								placeholder: undefined,
+								tooltip: undefined,
 								trigger: true,
-								inputs: {
-									labelSize: 'small',
-								},
-								outputs: {
-									labelSize: 'small',
-								},
 							},
 						},
 					},
@@ -258,6 +302,7 @@ describe('useCanvasMapping', () => {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
+				renderData: emptyRenderData,
 			});
 
 			expect(mappedNodes.value[0]?.data?.disabled).toEqual(true);
@@ -282,6 +327,7 @@ describe('useCanvasMapping', () => {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
+				renderData: emptyRenderData,
 			});
 
 			expect(mappedNodes.value[0]?.data?.execution.running).toEqual(true);
@@ -300,7 +346,10 @@ describe('useCanvasMapping', () => {
 				},
 			};
 
-			workflowsStore.workflow.connections = connections;
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setConnections(connections);
 
 			const workflowObject = createTestWorkflowObject({
 				nodes,
@@ -311,6 +360,7 @@ describe('useCanvasMapping', () => {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
+				renderData: emptyRenderData,
 			});
 
 			expect(mappedNodes.value[0]?.data?.connections[CanvasConnectionMode.Output]).toHaveProperty(
@@ -363,6 +413,7 @@ describe('useCanvasMapping', () => {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
+				renderData: emptyRenderData,
 			});
 
 			const rootStore = mockedStore(useRootStore);
@@ -377,12 +428,6 @@ describe('useCanvasMapping', () => {
 					icon: {
 						src: 'http://test.local/nodes/test-node/icon.svg',
 						type: 'file',
-					},
-					inputs: {
-						labelSize: 'small',
-					},
-					outputs: {
-						labelSize: 'small',
 					},
 				},
 			});
@@ -405,6 +450,7 @@ describe('useCanvasMapping', () => {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
+				renderData: emptyRenderData,
 			});
 
 			expect(mappedNodes.value[0]?.data?.render).toEqual({
@@ -436,6 +482,7 @@ describe('useCanvasMapping', () => {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
+				renderData: emptyRenderData,
 			});
 
 			expect(mappedNodes.value[0]?.data?.render).toEqual({
@@ -462,6 +509,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(nodeExecutionRunDataOutputMapById.value).toEqual({});
@@ -492,6 +540,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(nodeExecutionRunDataOutputMapById.value).toEqual({
@@ -553,6 +602,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(nodeExecutionRunDataOutputMapById.value).toEqual({
@@ -625,6 +675,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(nodeExecutionRunDataOutputMapById.value).toEqual({
@@ -685,6 +736,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(nodeExecutionRunDataOutputMapById.value).toEqual({
@@ -735,6 +787,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(nodeExecutionRunDataOutputMapById.value).toEqual({
@@ -815,6 +868,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				// Should have byTarget field for non-main connections
@@ -897,6 +951,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				const embeddingOutputData = nodeExecutionRunDataOutputMapById.value[embeddingNode.id];
@@ -928,6 +983,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 				expect(additionalNodePropertiesById.value).toEqual({});
 			});
@@ -947,6 +1003,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 				expect(additionalNodePropertiesById.value[nodes[0].id]).toEqual({
 					style: { zIndex: -100 },
@@ -974,6 +1031,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(additionalNodePropertiesById.value[nodes[0].id]).toEqual({
@@ -1005,6 +1063,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(additionalNodePropertiesById.value[nodes[0].id]).toEqual({
@@ -1042,6 +1101,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(additionalNodePropertiesById.value[nodes[0].id]).toEqual({
@@ -1057,148 +1117,48 @@ describe('useCanvasMapping', () => {
 		});
 
 		describe('node issues', () => {
-			it('should return empty arrays when node has no issues', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
+			it('should return empty validation and not visible when node has no issues', () => {
 				const node = createTestNode({ name: 'Test Node' });
 				const nodes = [node];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.getWorkflowRunData = {};
-
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedNodes.value[0]?.data?.issues).toEqual({
-					execution: [],
 					validation: [],
 					visible: false,
 				});
 			});
 
-			it('should handle execution errors', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
+			it('should mark issues.visible when renderData reports execution errors', () => {
 				const node = createTestNode({ name: 'Test Node' });
 				const nodes = [node];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				const errorMessage = 'Test error message';
-				const errorDescription = 'Test error description';
-				workflowsStore.getWorkflowRunData = {
-					'Test Node': [
-						{
-							startTime: 0,
-							executionTime: 0,
-							executionIndex: 0,
-							source: [],
-							error: mock<NodeApiError>({
-								message: errorMessage,
-								description: errorDescription,
-							}),
-						},
-					],
-				};
+				const renderData = createRenderDataWithExecutionIssuesByNodeName({
+					[node.name]: ['Test error message (Test error description)'],
+				});
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData,
 				});
 
 				expect(mappedNodes.value[0]?.data?.issues).toEqual({
-					execution: [`${errorMessage} (${errorDescription})`],
 					validation: [],
 					visible: true,
 				});
 			});
 
-			it('should handle execution error without description', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				const node = createTestNode({ name: 'Test Node' });
-				const nodes = [node];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				const errorMessage = 'Test error message';
-				workflowsStore.getWorkflowRunData = {
-					'Test Node': [
-						{
-							startTime: 0,
-							executionTime: 0,
-							executionIndex: 0,
-							source: [],
-							error: mock<NodeApiError>({
-								message: errorMessage,
-								description: null,
-							}),
-						},
-					],
-				};
-
-				const { nodes: mappedNodes } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
-				});
-
-				expect(mappedNodes.value[0]?.data?.issues).toEqual({
-					execution: [errorMessage],
-					validation: [],
-					visible: true,
-				});
-			});
-
-			it('should handle multiple execution errors', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				const node = createTestNode({ name: 'Test Node' });
-				const nodes = [node];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				workflowsStore.getWorkflowRunData = {
-					'Test Node': [
-						{
-							startTime: 0,
-							executionTime: 0,
-							executionIndex: 0,
-							source: [],
-							error: mock<NodeApiError>({
-								message: 'Error 1',
-								description: 'Description 1',
-							}),
-						},
-						{
-							startTime: 0,
-							executionTime: 0,
-							executionIndex: 1,
-							source: [],
-							error: mock<NodeApiError>({
-								message: 'Error 2',
-								description: 'Description 2',
-							}),
-						},
-					],
-				};
-
-				const { nodes: mappedNodes } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
-				});
-
-				expect(mappedNodes.value[0]?.data?.issues).toEqual({
-					execution: ['Error 1 (Description 1)', 'Error 2 (Description 2)'],
-					validation: [],
-					visible: true,
-				});
-			});
-
-			it('should handle node issues', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
+			it('should expose validation errors from node.issues', () => {
 				const node = createTestNode({
 					name: 'Test Node',
 					issues: {
@@ -1209,23 +1169,20 @@ describe('useCanvasMapping', () => {
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.getWorkflowRunData = {};
-
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedNodes.value[0]?.data?.issues).toEqual({
-					execution: [],
 					validation: ['Node Type "n8n-nodes-base.set" is not known.'],
 					visible: true,
 				});
 			});
 
-			it('should combine execution errors and node issues', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
+			it('should mark issues.visible when both validation and execution errors are present', () => {
 				const node = createTestNode({
 					name: 'Test Node',
 					issues: {
@@ -1235,37 +1192,24 @@ describe('useCanvasMapping', () => {
 				const nodes = [node];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				workflowsStore.getWorkflowRunData = {
-					'Test Node': [
-						{
-							startTime: 0,
-							executionTime: 0,
-							executionIndex: 0,
-							source: [],
-							error: mock<NodeApiError>({
-								message: 'Execution error',
-								description: 'Error description',
-							}),
-						},
-					],
-				};
+				const renderData = createRenderDataWithExecutionIssuesByNodeName({
+					[node.name]: ['Execution error (Error description)'],
+				});
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData,
 				});
 
 				expect(mappedNodes.value[0]?.data?.issues).toEqual({
-					execution: ['Execution error (Error description)'],
 					validation: ['Node Type "n8n-nodes-base.set" is not known.'],
 					visible: true,
 				});
 			});
 
 			it('should handle multiple nodes with different issues', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
 				const node1 = createTestNode({
 					name: 'Node 1',
 					issues: {
@@ -1276,35 +1220,22 @@ describe('useCanvasMapping', () => {
 				const nodes = [node1, node2];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				workflowsStore.getWorkflowRunData = {
-					'Node 2': [
-						{
-							startTime: 0,
-							executionTime: 0,
-							executionIndex: 0,
-							source: [],
-							error: mock<NodeApiError>({
-								message: 'Execution error',
-								description: 'Error description',
-							}),
-						},
-					],
-				};
+				const renderData = createRenderDataWithExecutionIssuesByNodeName({
+					[node2.name]: ['Execution error (Error description)'],
+				});
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData,
 				});
 
 				expect(mappedNodes.value[0]?.data?.issues).toEqual({
-					execution: [],
 					validation: ['Node Type "n8n-nodes-base.set" is not known.'],
 					visible: true,
 				});
 				expect(mappedNodes.value[1]?.data?.issues).toEqual({
-					execution: ['Execution error (Error description)'],
 					validation: [],
 					visible: true,
 				});
@@ -1324,6 +1255,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedNodes.value[0]?.data?.runData?.iterations).toEqual(0);
@@ -1372,6 +1304,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedNodes.value[0]?.data?.runData?.iterations).toEqual(2);
@@ -1411,6 +1344,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedNodes.value[0]?.data?.runData?.iterations).toEqual(0);
@@ -1450,6 +1384,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedNodes.value[0]?.data?.runData?.iterations).toEqual(2);
@@ -1480,6 +1415,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedNodes.value[0]?.data?.execution?.status).toEqual('success');
@@ -1515,6 +1451,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedNodes.value[0]?.data?.execution?.status).toEqual('success');
@@ -1543,6 +1480,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedNodes.value[0]?.data?.execution?.status).toEqual('canceled');
@@ -1561,6 +1499,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedNodes.value[0]?.data?.execution?.status).toEqual('new');
@@ -1582,6 +1521,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(nodeHasIssuesById.value[node.id]).toBe(false);
@@ -1611,6 +1551,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(nodeHasIssuesById.value[node.id]).toBe(true);
@@ -1640,6 +1581,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(nodeHasIssuesById.value[node.id]).toBe(true);
@@ -1664,6 +1606,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(nodeHasIssuesById.value[node.id]).toBe(false);
@@ -1688,44 +1631,27 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(nodeHasIssuesById.value[node.id]).toBe(true);
 			});
 
-			it('should return true for execution errors even with other issues', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				const node = createTestNode({
-					name: 'Test Node',
-					issues: {
-						typeUnknown: true,
-					},
-				} as Partial<INode>);
+			it('should return true when renderData reports execution errors', () => {
+				const node = createTestNode({ name: 'Test Node' });
 				const nodes = [node];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				workflowsStore.getWorkflowRunData = {
-					'Test Node': [
-						{
-							startTime: 0,
-							executionTime: 0,
-							executionIndex: 0,
-							source: [],
-							executionStatus: 'error',
-							error: mock<NodeApiError>({
-								message: 'Execution error',
-								description: 'Error description',
-							}),
-						},
-					],
-				};
+				const renderData = createRenderDataWithExecutionIssuesByNodeName({
+					[node.name]: ['Execution error (Error description)'],
+				});
 				setPinData({});
 
 				const { nodeHasIssuesById } = useCanvasMapping({
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData,
 				});
 
 				expect(nodeHasIssuesById.value[node.id]).toBe(true);
@@ -1771,6 +1697,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(nodeHasIssuesById.value[node1.id]).toBe(false); // Has issues but also pinned data
@@ -1795,6 +1722,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 				expect(nodeHasIssuesById.value[node1.id]).toBe(true); // Has error status
 			});
@@ -1829,6 +1757,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(nodeHasIssuesById.value[node1.id]).toBe(false); // Last run was successful
@@ -1861,6 +1790,7 @@ describe('useCanvasMapping', () => {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
+				renderData: emptyRenderData,
 			});
 
 			expect(nodeExecutionWaitingForNextById.value[node1.id]).toBe(true);
@@ -1891,6 +1821,7 @@ describe('useCanvasMapping', () => {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
+				renderData: emptyRenderData,
 			});
 
 			expect(nodeExecutionWaitingForNextById.value[node1.id]).toBe(false);
@@ -1921,6 +1852,7 @@ describe('useCanvasMapping', () => {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
+				renderData: emptyRenderData,
 			});
 
 			expect(nodeExecutionWaitingForNextById.value[node1.id]).toBe(false);
@@ -1951,6 +1883,7 @@ describe('useCanvasMapping', () => {
 				nodes: ref(nodesList),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
+				renderData: emptyRenderData,
 			});
 
 			const renderOptions = mappedNodes.value[0]?.data?.render as CanvasNodeDefaultRender;
@@ -1980,6 +1913,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodesList),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				const renderOptions = mappedNodes.value[0]?.data?.render as CanvasNodeDefaultRender;
@@ -2009,6 +1943,7 @@ describe('useCanvasMapping', () => {
 				nodes: ref(nodesList),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
+				renderData: emptyRenderData,
 			});
 
 			const renderOptions = mappedNodes.value[0]?.data?.render as CanvasNodeDefaultRender;
@@ -2037,6 +1972,7 @@ describe('useCanvasMapping', () => {
 				nodes: ref(nodesList),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
+				renderData: emptyRenderData,
 			});
 
 			const renderOptions = mappedNodes.value[0]?.data?.render as CanvasNodeDefaultRender;
@@ -2064,6 +2000,7 @@ describe('useCanvasMapping', () => {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
+				renderData: emptyRenderData,
 			});
 
 			const source = manualTriggerNode.id;
@@ -2134,6 +2071,7 @@ describe('useCanvasMapping', () => {
 				nodes: ref(nodes),
 				connections: ref(connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
+				renderData: emptyRenderData,
 			});
 
 			const sourceA = manualTriggerNode.id;
@@ -2263,6 +2201,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.data?.status).toBeUndefined();
@@ -2316,6 +2255,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.data?.status).toEqual('success');
@@ -2369,6 +2309,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.data?.status).toBeUndefined();
@@ -2418,6 +2359,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.data?.status).toEqual('running');
@@ -2444,6 +2386,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.label).toBe(undefined);
@@ -2473,6 +2416,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.label).toBe('3 items');
@@ -2502,6 +2446,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.label).toBe('1 item');
@@ -2531,6 +2476,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.label).toBe('');
@@ -2574,6 +2520,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.label).toBe('3 items');
@@ -2617,6 +2564,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.label).toBe('1 item');
@@ -2660,6 +2608,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.label).toBe('');
@@ -2703,6 +2652,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.label).toBe('2 items');
@@ -2755,6 +2705,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.label).toBe('3 items total');
@@ -2813,6 +2764,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.label).toBe('2 items');
@@ -2859,6 +2811,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				// Should show pinned data count (2 items), not execution data count (3 items)
@@ -2888,6 +2841,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.label).toBe('');
@@ -2935,6 +2889,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				// Should show the count for output index 1 (3 items), not index 0 (1 item)
@@ -2970,6 +2925,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.data?.status).toEqual('running');
@@ -3015,6 +2971,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.data?.status).toEqual('pinned');
@@ -3043,6 +3000,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.data?.status).toEqual('error');
@@ -3086,6 +3044,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.data?.status).toEqual('success');
@@ -3114,6 +3073,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.data?.status).toBeUndefined();
@@ -3160,6 +3120,19 @@ describe('useCanvasMapping', () => {
 					},
 				};
 
+				setupRenderNodes([
+					{
+						id: manualTriggerNode.id,
+						inputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
+						outputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
+					},
+					{
+						id: setNode.id,
+						inputs: [{ type: NodeConnectionTypes.Main, index: 0, maxConnections: 1 }],
+						outputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
+					},
+				]);
+
 				const workflowObject = createTestWorkflowObject({
 					nodes,
 					connections,
@@ -3169,13 +3142,13 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: testRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.data?.maxConnections).toEqual(1);
 			});
 
 			it('should use minimum maxConnections when multiple ports have limits', () => {
-				const nodeTypesStore = mockedStore(useNodeTypesStore);
 				const manualTriggerNode = mockNode({
 					name: 'Manual Trigger',
 					type: MANUAL_TRIGGER_NODE_TYPE,
@@ -3193,30 +3166,18 @@ describe('useCanvasMapping', () => {
 					},
 				};
 
-				nodeTypesStore.nodeTypes = {
-					[MANUAL_TRIGGER_NODE_TYPE]: {
-						1: mockNodeTypeDescription({
-							name: MANUAL_TRIGGER_NODE_TYPE,
-							outputs: [
-								{
-									type: NodeConnectionTypes.Main,
-									maxConnections: 3,
-								},
-							],
-						}),
+				setupRenderNodes([
+					{
+						id: manualTriggerNode.id,
+						inputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
+						outputs: [{ type: NodeConnectionTypes.Main, index: 0, maxConnections: 3 }],
 					},
-					[SET_NODE_TYPE]: {
-						1: mockNodeTypeDescription({
-							name: SET_NODE_TYPE,
-							inputs: [
-								{
-									type: NodeConnectionTypes.Main,
-									maxConnections: 2,
-								},
-							],
-						}),
+					{
+						id: setNode.id,
+						inputs: [{ type: NodeConnectionTypes.Main, index: 0, maxConnections: 2 }],
+						outputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
 					},
-				};
+				]);
 
 				const workflowObject = createTestWorkflowObject({
 					nodes,
@@ -3227,6 +3188,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: testRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.data?.maxConnections).toEqual(2);
@@ -3251,6 +3213,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.data?.maxConnections).toBeUndefined();
@@ -3283,6 +3246,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.data?.source.node).toEqual(manualTriggerNode.name);
@@ -3331,6 +3295,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.data?.status).toEqual('success');
@@ -3389,6 +3354,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				expect(mappedConnections.value[0]?.data?.status).toEqual('success');
@@ -3434,6 +3400,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				// Non-main connection should not be marked as success when target hasn't executed
@@ -3495,6 +3462,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				// Non-main connection should be marked as success when both source and target have executed
@@ -3584,6 +3552,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				// Should have two connections from the model node
@@ -3669,6 +3638,7 @@ describe('useCanvasMapping', () => {
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					renderData: emptyRenderData,
 				});
 
 				// Should count the 6 items inside response, not just 1 wrapper object

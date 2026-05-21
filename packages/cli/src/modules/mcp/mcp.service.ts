@@ -17,9 +17,20 @@ import {
 	type IRun,
 } from 'n8n-workflow';
 
+import {
+	createAddDataTableColumnTool,
+	createAddDataTableRowsTool,
+	createCreateDataTableTool,
+	createDeleteDataTableColumnTool,
+	createRenameDataTableColumnTool,
+	createRenameDataTableTool,
+	createSearchDataTablesTool,
+} from './tools/data-table';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
+import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
+import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
 import { createSearchFoldersTool } from './tools/search-folders.tool';
 import { createSearchProjectsTool } from './tools/search-projects.tool';
@@ -35,10 +46,12 @@ import { getMcpInstructions } from './tools/workflow-builder/mcp-instructions';
 import { createSearchWorkflowNodesTool } from './tools/workflow-builder/search-workflow-nodes.tool';
 import { getSdkReferenceContent } from './tools/workflow-builder/sdk-reference-content';
 import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validate-workflow-code.tool';
-import { WorkflowBuilderToolsService } from './tools/workflow-builder/workflow-builder-tools.service';
+import { NodeCatalogService } from '@/node-catalog';
 
 import { ActiveExecutions } from '@/active-executions';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -83,7 +96,7 @@ export class McpService {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly roleService: RoleService,
 		private readonly projectService: ProjectService,
-		private readonly workflowBuilderToolsService: WorkflowBuilderToolsService,
+		private readonly nodeCatalogService: NodeCatalogService,
 		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly projectRepository: ProjectRepository,
@@ -91,6 +104,8 @@ export class McpService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly executionService: ExecutionService,
+		private readonly dataTableProxyService: DataTableProxyService,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	async getServer(user: User) {
@@ -121,7 +136,6 @@ export class McpService {
 		const executeWorkflowTool = createExecuteWorkflowTool(
 			user,
 			this.workflowFinderService,
-			this.activeExecutions,
 			this.workflowRunner,
 			this.telemetry,
 			this,
@@ -139,6 +153,18 @@ export class McpService {
 			this.telemetry,
 		);
 		server.registerTool(getExecutionTool.name, getExecutionTool.config, getExecutionTool.handler);
+
+		const searchExecutionsTool = createSearchExecutionsTool(
+			user,
+			this.executionService,
+			this.workflowFinderService,
+			this.telemetry,
+		);
+		server.registerTool(
+			searchExecutionsTool.name,
+			searchExecutionsTool.config,
+			searchExecutionsTool.handler,
+		);
 
 		const workflowDetailsTool = createWorkflowDetailsTool(
 			user,
@@ -164,6 +190,7 @@ export class McpService {
 			this.workflowFinderService,
 			this.workflowService,
 			this.telemetry,
+			this.collaborationService,
 		);
 		server.registerTool(
 			publishWorkflowTool.name,
@@ -176,6 +203,7 @@ export class McpService {
 			this.workflowFinderService,
 			this.workflowService,
 			this.telemetry,
+			this.collaborationService,
 		);
 		server.registerTool(
 			unpublishWorkflowTool.name,
@@ -208,6 +236,77 @@ export class McpService {
 		);
 		server.registerTool(testWorkflowTool.name, testWorkflowTool.config, testWorkflowTool.handler);
 
+		const listCredentialsTool = createListCredentialsTool(
+			user,
+			this.credentialsService,
+			this.telemetry,
+		);
+		server.registerTool(
+			listCredentialsTool.name,
+			listCredentialsTool.config,
+			listCredentialsTool.handler,
+		);
+
+		// Data table tools
+		const dataTableOps = this.dataTableProxyService.makeDataTableOperationsForUser(user);
+
+		const searchDataTablesTool = createSearchDataTablesTool(user, dataTableOps, this.telemetry);
+		server.registerTool(
+			searchDataTablesTool.name,
+			searchDataTablesTool.config,
+			searchDataTablesTool.handler,
+		);
+
+		const createDataTableTool = createCreateDataTableTool(user, dataTableOps, this.telemetry);
+		server.registerTool(
+			createDataTableTool.name,
+			createDataTableTool.config,
+			createDataTableTool.handler,
+		);
+
+		const renameDataTableTool = createRenameDataTableTool(user, dataTableOps, this.telemetry);
+		server.registerTool(
+			renameDataTableTool.name,
+			renameDataTableTool.config,
+			renameDataTableTool.handler,
+		);
+
+		const addDataTableColumnTool = createAddDataTableColumnTool(user, dataTableOps, this.telemetry);
+		server.registerTool(
+			addDataTableColumnTool.name,
+			addDataTableColumnTool.config,
+			addDataTableColumnTool.handler,
+		);
+
+		const deleteDataTableColumnTool = createDeleteDataTableColumnTool(
+			user,
+			dataTableOps,
+			this.telemetry,
+		);
+		server.registerTool(
+			deleteDataTableColumnTool.name,
+			deleteDataTableColumnTool.config,
+			deleteDataTableColumnTool.handler,
+		);
+
+		const renameDataTableColumnTool = createRenameDataTableColumnTool(
+			user,
+			dataTableOps,
+			this.telemetry,
+		);
+		server.registerTool(
+			renameDataTableColumnTool.name,
+			renameDataTableColumnTool.config,
+			renameDataTableColumnTool.handler,
+		);
+
+		const addDataTableRowsTool = createAddDataTableRowsTool(user, dataTableOps, this.telemetry);
+		server.registerTool(
+			addDataTableRowsTool.name,
+			addDataTableRowsTool.config,
+			addDataTableRowsTool.handler,
+		);
+
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
 			await this.registerBuilderTools(server, user);
@@ -217,25 +316,25 @@ export class McpService {
 	}
 
 	private async registerBuilderTools(server: InstanceType<typeof McpServer>, user: User) {
-		await this.workflowBuilderToolsService.initialize();
+		await this.nodeCatalogService.initialize();
 
 		const searchNodesTool = createSearchWorkflowNodesTool(
 			user,
-			this.workflowBuilderToolsService,
+			this.nodeCatalogService,
 			this.telemetry,
 		);
 		server.registerTool(searchNodesTool.name, searchNodesTool.config, searchNodesTool.handler);
 
 		const getNodeTypesTool = createGetWorkflowNodeTypesTool(
 			user,
-			this.workflowBuilderToolsService,
+			this.nodeCatalogService,
 			this.telemetry,
 		);
 		server.registerTool(getNodeTypesTool.name, getNodeTypesTool.config, getNodeTypesTool.handler);
 
 		const suggestedNodesTool = createGetSuggestedWorkflowNodesTool(
 			user,
-			this.workflowBuilderToolsService,
+			this.nodeCatalogService,
 			this.telemetry,
 		);
 		server.registerTool(
@@ -250,6 +349,7 @@ export class McpService {
 		const createTool = createCreateWorkflowFromCodeTool(
 			user,
 			this.workflowCreationService,
+			this.workflowFinderService,
 			this.urlService,
 			this.telemetry,
 			this.nodeTypes,
@@ -281,7 +381,13 @@ export class McpService {
 			searchFoldersTool.handler,
 		);
 
-		const archiveTool = createArchiveWorkflowTool(user, this.workflowService, this.telemetry);
+		const archiveTool = createArchiveWorkflowTool(
+			user,
+			this.workflowFinderService,
+			this.workflowService,
+			this.telemetry,
+			this.collaborationService,
+		);
 		server.registerTool(archiveTool.name, archiveTool.config, archiveTool.handler);
 
 		const updateTool = createUpdateWorkflowTool(
@@ -293,6 +399,7 @@ export class McpService {
 			this.nodeTypes,
 			this.credentialsService,
 			this.sharedWorkflowRepository,
+			this.collaborationService,
 		);
 		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
 
@@ -302,7 +409,7 @@ export class McpService {
 			'n8n://workflow-sdk/reference',
 			{
 				description:
-					'n8n Workflow SDK reference — patterns, expressions, and rules for building workflows. Get this FIRST before building workflows to learn the SDK.',
+					'Required n8n Workflow SDK reference for building workflows from code. Read this before writing workflow code.',
 			},
 			async () => ({
 				contents: [

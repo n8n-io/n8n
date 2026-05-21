@@ -9,6 +9,8 @@ export const STORES = {
 	WORKFLOWS_V2: 'workflowsV2',
 	WORKFLOWS_EE: 'workflowsEE',
 	WORKFLOW_DOCUMENTS: 'workflowDocuments',
+	EXECUTION_DATA: 'executionData',
+	WORKFLOW_EXECUTION_STATES: 'workflowExecutionStates',
 	EXECUTIONS: 'executions',
 	NDV: 'ndv',
 	TEMPLATES: 'templates',
@@ -50,6 +52,9 @@ export const STORES = {
 	CHAT_HUB_PANEL: 'chatHubPanel',
 	EXPERIMENT_EMPTY_STATE_BUILDER_PROMPT: 'emptyStateBuilderPrompt',
 	EXPERIMENT_CREDENTIALS_APP_SELECTION: 'credentialsAppSelection',
+	EXPERIMENT_SURFACE_MCP_TO_NEW_CLOUD_USERS: 'surfaceMcpToNewCloudUsers',
 	SETUP_PANEL: 'setupPanel',
 	FOCUSED_NODES: 'focusedNodes',
+	FAVORITES: 'favorites',
+	AI_GATEWAY: 'aiGateway',
 } as const;

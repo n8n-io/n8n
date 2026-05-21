@@ -79,6 +79,51 @@ const slackOAuth2Api: ICredentialType = {
 	],
 };
 
+const mcpOAuth2ApiWithNoVisibleProps: ICredentialType = {
+	name: 'mcpOAuth2Api',
+	extends: ['oAuth2Api'],
+	displayName: 'MCP OAuth2 API',
+	properties: [
+		{
+			displayName: 'Use Dynamic Client Registration',
+			name: 'useDynamicClientRegistration',
+			type: 'hidden',
+			default: true,
+		},
+		{
+			displayName: 'Server URL',
+			name: 'serverUrl',
+			type: 'hidden',
+			default: 'https://mcp.example.com/mcp',
+		},
+		{
+			displayName: 'Allowed HTTP Request Domains',
+			name: 'allowedHttpRequestDomains',
+			type: 'hidden',
+			default: 'none',
+		},
+	],
+};
+
+const oauth2ApiWithVisibleAllowedHttpRequestDomains: ICredentialType = {
+	name: 'customOAuth2Api',
+	extends: ['oAuth2Api'],
+	displayName: 'Custom OAuth2 API',
+	properties: [
+		{
+			displayName: 'Allowed HTTP Request Domains',
+			name: 'allowedHttpRequestDomains',
+			type: 'options',
+			options: [
+				{ name: 'All', value: 'all' },
+				{ name: 'Specific Domains', value: 'domains' },
+				{ name: 'None', value: 'none' },
+			],
+			default: 'all',
+		},
+	],
+};
+
 const nonOAuthApi: ICredentialType = {
 	name: 'openAiApi',
 	displayName: 'OpenAI API',
@@ -193,15 +238,15 @@ describe('useCredentialOAuth', () => {
 		});
 	});
 
-	describe('hasManagedOAuthCredentials', () => {
+	describe('canOAuthCredentialQuickConnect', () => {
 		it('should return false for non-OAuth types', () => {
-			const { hasManagedOAuthCredentials } = useCredentialOAuth();
-			expect(hasManagedOAuthCredentials('openAiApi')).toBe(false);
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('openAiApi')).toBe(false);
 		});
 
 		it('should return false when no overwritten properties', () => {
-			const { hasManagedOAuthCredentials } = useCredentialOAuth();
-			expect(hasManagedOAuthCredentials('slackOAuth2Api')).toBe(false);
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(false);
 		});
 
 		it('should return false when some required properties not overwritten', () => {
@@ -211,8 +256,8 @@ describe('useCredentialOAuth', () => {
 				__overwrittenProperties: ['someOtherProp'],
 			};
 
-			const { hasManagedOAuthCredentials } = useCredentialOAuth();
-			expect(hasManagedOAuthCredentials('slackOAuth2Api')).toBe(false);
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(false);
 		});
 
 		it('should return true when all required properties are overwritten', () => {
@@ -222,8 +267,8 @@ describe('useCredentialOAuth', () => {
 				__overwrittenProperties: ['clientId'],
 			};
 
-			const { hasManagedOAuthCredentials } = useCredentialOAuth();
-			expect(hasManagedOAuthCredentials('slackOAuth2Api')).toBe(true);
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(true);
 		});
 
 		it('should ignore notice-type properties', () => {
@@ -243,8 +288,8 @@ describe('useCredentialOAuth', () => {
 				__overwrittenProperties: ['clientId'],
 			};
 
-			const { hasManagedOAuthCredentials } = useCredentialOAuth();
-			expect(hasManagedOAuthCredentials('slackOAuth2Api')).toBe(true);
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(true);
 		});
 
 		it('should ignore hidden properties even when required', () => {
@@ -272,13 +317,13 @@ describe('useCredentialOAuth', () => {
 				__overwrittenProperties: ['clientId', 'clientSecret'],
 			};
 
-			const { hasManagedOAuthCredentials } = useCredentialOAuth();
-			expect(hasManagedOAuthCredentials('dropboxOAuth2Api')).toBe(true);
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('dropboxOAuth2Api')).toBe(true);
 		});
 
 		it('should return false for unknown credential types', () => {
-			const { hasManagedOAuthCredentials } = useCredentialOAuth();
-			expect(hasManagedOAuthCredentials('unknownType')).toBe(false);
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('unknownType')).toBe(false);
 		});
 
 		it('should return false when __skipManagedCreation is true', () => {
@@ -289,8 +334,16 @@ describe('useCredentialOAuth', () => {
 				__skipManagedCreation: true,
 			};
 
-			const { hasManagedOAuthCredentials } = useCredentialOAuth();
-			expect(hasManagedOAuthCredentials('slackOAuth2Api')).toBe(false);
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(false);
+		});
+
+		it('should return when there are no visible properties even if there are no overwritten properties', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.mcpOAuth2Api = mcpOAuth2ApiWithNoVisibleProps;
+
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('mcpOAuth2Api')).toBe(true);
 		});
 	});
 
@@ -306,43 +359,59 @@ describe('useCredentialOAuth', () => {
 		};
 
 		let mockPopup: { closed: boolean; close: ReturnType<typeof vi.fn> };
-		let mockBroadcastChannel: {
-			close: ReturnType<typeof vi.fn>;
-			addEventListener: ReturnType<typeof vi.fn>;
-			postMessage: ReturnType<typeof vi.fn>;
-		};
+		class MockBroadcastChannel {
+			static failOauth = false;
+
+			static noopEventListener = false;
+
+			static closeCalled = false;
+
+			static __reset() {
+				MockBroadcastChannel.closeCalled = false;
+				MockBroadcastChannel.noopEventListener = false;
+				MockBroadcastChannel.failOauth = false;
+			}
+
+			close = () => {
+				MockBroadcastChannel.closeCalled = true;
+			};
+
+			addEventListener = (event: string, handler: (e: MessageEvent) => void) => {
+				if (MockBroadcastChannel.noopEventListener) {
+					return;
+				}
+
+				if (MockBroadcastChannel.failOauth) {
+					if (event === 'message') {
+						setTimeout(() => handler({ data: 'error' } as MessageEvent), 0);
+					}
+				} else {
+					if (event === 'message') {
+						setTimeout(() => handler({ data: 'success' } as MessageEvent), 0);
+					}
+				}
+			};
+
+			removeEventListener = vi.fn();
+
+			postMessage = vi.fn();
+		}
 
 		beforeEach(() => {
 			mockPopup = { closed: false, close: vi.fn() };
-			mockBroadcastChannel = {
-				close: vi.fn(),
-				addEventListener: vi.fn(),
-				postMessage: vi.fn(),
-			};
 
-			vi.stubGlobal(
-				'BroadcastChannel',
-				vi.fn().mockImplementation(() => mockBroadcastChannel),
-			);
+			vi.stubGlobal('BroadcastChannel', MockBroadcastChannel);
 			vi.stubGlobal('open', vi.fn().mockReturnValue(mockPopup));
 		});
 
 		afterEach(() => {
+			MockBroadcastChannel.__reset();
 			vi.unstubAllGlobals();
 		});
 
 		it('should call oAuth2Authorize for OAuth2 types', async () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
-
-			// Make the BroadcastChannel fire success immediately
-			mockBroadcastChannel.addEventListener.mockImplementation(
-				(event: string, handler: (e: MessageEvent) => void) => {
-					if (event === 'message') {
-						setTimeout(() => handler({ data: 'success' } as MessageEvent), 0);
-					}
-				},
-			);
 
 			const { authorize } = useCredentialOAuth();
 			const result = await authorize(mockCredential);
@@ -358,14 +427,6 @@ describe('useCredentialOAuth', () => {
 				type: 'oAuth1Api',
 			};
 			credentialsStore.oAuth1Authorize.mockResolvedValue('https://oauth1.example.com/auth');
-
-			mockBroadcastChannel.addEventListener.mockImplementation(
-				(event: string, handler: (e: MessageEvent) => void) => {
-					if (event === 'message') {
-						setTimeout(() => handler({ data: 'success' } as MessageEvent), 0);
-					}
-				},
-			);
 
 			const { authorize } = useCredentialOAuth();
 			const result = await authorize(oauth1Credential);
@@ -411,13 +472,7 @@ describe('useCredentialOAuth', () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
 
-			mockBroadcastChannel.addEventListener.mockImplementation(
-				(event: string, handler: (e: MessageEvent) => void) => {
-					if (event === 'message') {
-						setTimeout(() => handler({ data: 'error' } as MessageEvent), 0);
-					}
-				},
-			);
+			MockBroadcastChannel.failOauth = true;
 
 			const { authorize } = useCredentialOAuth();
 			const result = await authorize(mockCredential);
@@ -430,18 +485,10 @@ describe('useCredentialOAuth', () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
 
-			mockBroadcastChannel.addEventListener.mockImplementation(
-				(event: string, handler: (e: MessageEvent) => void) => {
-					if (event === 'message') {
-						setTimeout(() => handler({ data: 'success' } as MessageEvent), 0);
-					}
-				},
-			);
-
 			const { authorize } = useCredentialOAuth();
 			await authorize(mockCredential);
 
-			expect(mockBroadcastChannel.close).toHaveBeenCalled();
+			expect(MockBroadcastChannel.closeCalled).toBeTruthy();
 		});
 
 		it('should return false when aborted via signal', async () => {
@@ -449,9 +496,7 @@ describe('useCredentialOAuth', () => {
 			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
 
 			// Don't fire any BroadcastChannel message - instead simulate abort
-			mockBroadcastChannel.addEventListener.mockImplementation(() => {
-				// no-op: message handler never fires
-			});
+			MockBroadcastChannel.noopEventListener = true;
 
 			const originalAddEventListener = AbortSignal.prototype.addEventListener;
 			vi.spyOn(AbortSignal.prototype, 'addEventListener').mockImplementation(function (
@@ -487,27 +532,33 @@ describe('useCredentialOAuth', () => {
 		};
 
 		let mockPopup: { closed: boolean; close: ReturnType<typeof vi.fn> };
-		let mockBroadcastChannel: {
-			close: ReturnType<typeof vi.fn>;
-			addEventListener: ReturnType<typeof vi.fn>;
-			removeEventListener: ReturnType<typeof vi.fn>;
-			postMessage: ReturnType<typeof vi.fn>;
-		};
+
+		class MockBroadcastChannel {
+			static failOauth = false;
+
+			close = vi.fn();
+
+			addEventListener = (event: string, handler: (e: MessageEvent) => void) => {
+				if (MockBroadcastChannel.failOauth) {
+					if (event === 'message') {
+						setTimeout(() => handler({ data: 'error' } as MessageEvent), 0);
+					}
+				} else {
+					if (event === 'message') {
+						setTimeout(() => handler({ data: 'success' } as MessageEvent), 0);
+					}
+				}
+			};
+
+			removeEventListener = vi.fn();
+
+			postMessage = vi.fn();
+		}
 
 		beforeEach(() => {
 			mockTrack.mockClear();
 			mockPopup = { closed: false, close: vi.fn() };
-			mockBroadcastChannel = {
-				close: vi.fn(),
-				addEventListener: vi.fn(),
-				removeEventListener: vi.fn(),
-				postMessage: vi.fn(),
-			};
-
-			vi.stubGlobal(
-				'BroadcastChannel',
-				vi.fn().mockImplementation(() => mockBroadcastChannel),
-			);
+			vi.stubGlobal('BroadcastChannel', MockBroadcastChannel);
 			vi.stubGlobal('open', vi.fn().mockReturnValue(mockPopup));
 		});
 
@@ -520,14 +571,7 @@ describe('useCredentialOAuth', () => {
 			credentialsStore.createNewCredential.mockResolvedValue(createdCredential);
 			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
 
-			mockBroadcastChannel.addEventListener.mockImplementation(
-				(event: string, handler: (e: MessageEvent) => void) => {
-					if (event === 'message') {
-						setTimeout(() => handler({ data: 'success' } as MessageEvent), 0);
-					}
-				},
-			);
-
+			MockBroadcastChannel.failOauth = false;
 			return credentialsStore;
 		}
 
@@ -536,16 +580,47 @@ describe('useCredentialOAuth', () => {
 			credentialsStore.createNewCredential.mockResolvedValue(createdCredential);
 			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
 
-			mockBroadcastChannel.addEventListener.mockImplementation(
-				(event: string, handler: (e: MessageEvent) => void) => {
-					if (event === 'message') {
-						setTimeout(() => handler({ data: 'error' } as MessageEvent), 0);
-					}
-				},
-			);
+			MockBroadcastChannel.failOauth = true;
 
 			return credentialsStore;
 		}
+
+		it('should not set allowedHttpRequestDomains for hidden property', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			credentialsStore.state.credentialTypes.mcpOAuth2Api = mcpOAuth2ApiWithNoVisibleProps;
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('mcpOAuth2Api');
+
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'mcpOAuth2Api',
+					data: {},
+				}),
+				undefined,
+				undefined,
+				{ skipStoreUpdate: true },
+			);
+		});
+
+		it('should set allowedHttpRequestDomains when property is not hidden', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			credentialsStore.state.credentialTypes.customOAuth2Api =
+				oauth2ApiWithVisibleAllowedHttpRequestDomains;
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('customOAuth2Api');
+
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'customOAuth2Api',
+					data: { allowedHttpRequestDomains: 'none' },
+				}),
+				undefined,
+				undefined,
+				{ skipStoreUpdate: true },
+			);
+		});
 
 		it('should track "User created credentials" after credential creation', async () => {
 			setupSuccessfulOAuthFlow();

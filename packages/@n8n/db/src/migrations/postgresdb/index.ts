@@ -49,6 +49,8 @@ import { ChangeDefaultForIdInUserTable1762771264000 } from './1762771264000-Chan
 import { ConvertAgentIdToUuid1765804780000 } from './1765804780000-ConvertAgentIdToUuid';
 import { ExpandInsightsWorkflowIdLength1766500000000 } from './1766500000000-ExpandInsightsWorkflowIdLength';
 import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './1767018516000-ChangeWorkflowStatisticsFKToNoAction';
+import { ExpandVariablesValueColumnToText1777420800000 } from './1777420800000-ExpandVariablesValueColumnToText';
+import { LimitWorkflowVersionTriggerToContent1784000000003 } from './1784000000003-LimitWorkflowVersionTriggerToContent';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -155,6 +157,33 @@ import { AddTypeToChatHubSessions1772700000000 } from '../common/1772700000000-A
 import { CreateRoleMappingRuleTable1772800000000 } from '../common/1772800000000-CreateRoleMappingRuleTable';
 import { CreateCredentialDependencyTable1773000000000 } from '../common/1773000000000-CreateCredentialDependencyTable';
 import { AddRestoreFieldsToWorkflowBuilderSession1774280963551 } from '../common/1774280963551-AddRestoreFieldsToWorkflowBuilderSession';
+import { CreateInstanceVersionHistoryTable1774854660000 } from '../common/1774854660000-CreateInstanceVersionHistoryTable';
+import { CreateInstanceAiTables1775000000000 } from '../common/1775000000000-CreateInstanceAiTables';
+import { CreateTokenExchangeJtiTable1775116241000 } from '../common/1775116241000-CreateTokenExchangeJtiTable';
+import { ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000 } from '../common/1775740765000-ChangeWorkflowPublishHistoryVersionIdToSetNull';
+import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-CreateTrustedKeyTables';
+import { CreateFavoritesTable1776150756000 } from '../common/1776150756000-CreateFavoritesTable';
+import { CreateDeploymentKeyTable1777000000000 } from '../common/1777000000000-CreateDeploymentKeyTable';
+import { AddJweKeyIndexesToDeploymentKey1777023444000 } from '../common/1777023444000-AddJweKeyIndexesToDeploymentKey';
+import { AddTracingContextToExecution1777045000000 } from '../common/1777045000000-AddTracingContextToExecution';
+import { AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 } from '../common/1777100000000-AddLangsmithIdsToInstanceAiRunSnapshots';
+import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/1777281990043-CreateAiBuilderTemporaryWorkflowTable';
+import { AddRunIndexToTestCaseExecution1777996709110 } from '../common/1777996709110-AddRunIndexToTestCaseExecution';
+import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
+import { CreateEvaluationConfig1778100000000 } from '../common/1778100000000-CreateEvaluationConfig';
+import { AddWorkflowVersionToTestRun1778100001000 } from '../common/1778100001000-AddWorkflowVersionToTestRun';
+import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778100002000-AddEvaluationConfigColumnsToTestRun';
+import { CreateEvaluationCollection1778496086558 } from '../common/1778496086558-CreateEvaluationCollection';
+import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
+import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
+import { CreateAgentObservationTables1784000000000 } from '../common/1784000000000-CreateAgentObservationTables';
+import { ReplaceAgentObservationTables1784000000001 } from '../common/1784000000001-ReplaceAgentObservationTables';
+import { DropAgentExecutionWorkingMemory1784000000002 } from '../common/1784000000002-DropAgentExecutionWorkingMemory';
+import { AddInsightsRawTimestampIdIndex1784000000004 } from '../common/1784000000004-AddInsightsRawTimestampIdIndex';
+import { CreateMcpRegistryServerTable1784000000005 } from '../common/1784000000005-CreateMcpRegistryServerTable';
+import { AddNodeGroupsColumnToWorkflowAndHistory1784000000006 } from '../common/1784000000006-AddNodeGroupsColumnToWorkflowAndHistory';
+import { CreateInstanceAiCheckpointTable1784000000007 } from '../common/1784000000007-CreateInstanceAiCheckpointTable';
+import { ResetInstanceAiNativePersistence1784000000008 } from '../common/1784000000008-ResetInstanceAiNativePersistence';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -315,4 +344,33 @@ export const postgresMigrations: Migration[] = [
 	CreateRoleMappingRuleTable1772800000000,
 	CreateCredentialDependencyTable1773000000000,
 	AddRestoreFieldsToWorkflowBuilderSession1774280963551,
+	CreateInstanceVersionHistoryTable1774854660000,
+	CreateInstanceAiTables1775000000000,
+	CreateTokenExchangeJtiTable1775116241000,
+	ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000,
+	CreateTrustedKeyTables1776000000000,
+	CreateFavoritesTable1776150756000,
+	CreateDeploymentKeyTable1777000000000,
+	AddJweKeyIndexesToDeploymentKey1777023444000,
+	AddTracingContextToExecution1777045000000,
+	AddLangsmithIdsToInstanceAiRunSnapshots1777100000000,
+	CreateAiBuilderTemporaryWorkflowTable1777281990043,
+	ExpandVariablesValueColumnToText1777420800000,
+	AddRunIndexToTestCaseExecution1777996709110,
+	AddExecutionDeduplicationKey1778000000000,
+	CreateEvaluationConfig1778100000000,
+	AddWorkflowVersionToTestRun1778100001000,
+	AddEvaluationConfigColumnsToTestRun1778100002000,
+	CreateEvaluationCollection1778496086558,
+	CreateAgentTables1783000000000,
+	CreateAgentExecutionTables1783000000001,
+	CreateAgentObservationTables1784000000000,
+	ReplaceAgentObservationTables1784000000001,
+	DropAgentExecutionWorkingMemory1784000000002,
+	LimitWorkflowVersionTriggerToContent1784000000003,
+	AddInsightsRawTimestampIdIndex1784000000004,
+	CreateMcpRegistryServerTable1784000000005,
+	AddNodeGroupsColumnToWorkflowAndHistory1784000000006,
+	CreateInstanceAiCheckpointTable1784000000007,
+	ResetInstanceAiNativePersistence1784000000008,
 ];
