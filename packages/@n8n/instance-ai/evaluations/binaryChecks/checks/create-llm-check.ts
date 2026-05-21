@@ -49,13 +49,13 @@ export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 		kind: 'llm',
 		async run(workflow: WorkflowResponse, ctx: BinaryCheckContext) {
 			if (!ctx.modelId) {
-				return { pass: true, comment: 'Skipped: no modelId in context' };
+				return { pass: true, applicable: false, comment: 'Skipped: no modelId in context' };
 			}
 
 			if (options.skipIf) {
 				const skipMessage = options.skipIf(workflow, ctx);
 				if (skipMessage) {
-					return { pass: true, comment: skipMessage };
+					return { pass: true, applicable: false, comment: skipMessage };
 				}
 			}
 

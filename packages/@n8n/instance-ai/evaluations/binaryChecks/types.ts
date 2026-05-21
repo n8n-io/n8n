@@ -10,10 +10,17 @@ import type { WorkflowResponse } from '../clients/n8n-client';
 
 /**
  * Result of a single binary check.
+ *
+ * `applicable: false` means the check had no subject to evaluate in this
+ * workflow (e.g. an agent-specific check on a workflow with no agent nodes).
+ * Treat this distinctly from pass/fail — N/A runs are excluded from per-check
+ * pass-rate denominators so the signal stays clean. Defaults to `true` when
+ * omitted, matching the existing always-applies checks.
  */
 export interface BinaryCheckResult {
 	pass: boolean;
 	comment?: string;
+	applicable?: boolean;
 }
 
 /**

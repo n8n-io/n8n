@@ -140,8 +140,18 @@ Every run produces:
 
 - **Console** — live progress, per-scenario pass/fail with `[failure_category]` tag, and a grouped summary.
 - **`eval-results.json`** — structured results in `--output-dir` (or cwd). Consumed by the CI PR comment.
-- **`.data/workflow-eval-report.html`** — self-contained debugging view with per-node execution traces, intercepted requests, mock responses, Phase 1 hints, and verifier reasoning.
+- **`.data/workflow-eval-report.html`** — self-contained debugging view with per-node execution traces, intercepted requests, mock responses, Phase 1 hints, verifier reasoning, and the per-built-workflow check rubric (see below).
 - **LangSmith experiment** — only when `LANGSMITH_API_KEY` is set. See the caveat in [Environment variables](#environment-variables).
+
+### Workflow checks (per built workflow)
+
+After every successful build, the eval grades the workflow JSON against the binary-check rubric in `binaryChecks/checks/`. Each named check is yes/no with a structured N/A for "no subject to evaluate in this workflow" (e.g. an agent-only check on a workflow with no agent). The signal surfaces in three places:
+
+- **HTML report** — a "Workflow checks" disclosure on each test case (open if any failed). Pass / fail / N/A counts and per-check rows with kind tag (`deterministic` / `llm`).
+- **PR comment / `eval-results.json`** — a "Workflow checks" table with pass / fail / N/A counts and pass rate per check, aggregated across every successful build in the run.
+- **LangSmith Feedback** — one `check.<name>` Feedback per check per scenario row (score 1 for pass, 0 for fail). N/A is intentionally omitted so per-experiment column averages reduce to per-check pass-rate cleanly.
+
+The checks run **once per built workflow**, not per scenario — every scenario row in LangSmith carries the same outcomes for its build. Failures don't flip `scenario_pass`; they're independent signals per the rubric spec in `.claude/specs/how-axes-investigation.md`. LLM checks (`fulfills_user_request`, `valid_data_flow`, `correct_node_operations`, `handles_multiple_items`, `descriptive_node_names`, `response_matches_workflow_changes`) reuse the same Sonnet model as the verifier, so no extra configuration is needed — they're auto-skipped (N/A) when no Anthropic key is set.
 
 ## Environment variables
 

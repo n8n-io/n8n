@@ -7,17 +7,16 @@ export const noUnnecessaryCodeNodes: BinaryCheck = {
 	description: 'No code nodes in the workflow (prefer built-in nodes)',
 	kind: 'deterministic',
 	run(workflow, ctx) {
+		const codeNodes = (workflow.nodes ?? []).filter((n) => n.type === CODE_NODE_TYPE);
+		if (codeNodes.length === 0) return { pass: true, applicable: false };
+
 		if (ctx.annotations?.code_necessary === true) {
 			return { pass: true, comment: 'Code marked as necessary by annotation' };
 		}
 
-		const codeNodes = (workflow.nodes ?? []).filter((n) => n.type === CODE_NODE_TYPE);
-
 		return {
-			pass: codeNodes.length === 0,
-			...(codeNodes.length > 0
-				? { comment: `Code node(s) found: ${codeNodes.map((n) => n.name).join(', ')}` }
-				: {}),
+			pass: false,
+			comment: `Code node(s) found: ${codeNodes.map((n) => n.name).join(', ')}`,
 		};
 	},
 };

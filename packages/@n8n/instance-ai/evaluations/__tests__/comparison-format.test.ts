@@ -190,6 +190,60 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toMatch(/### Instance AI Workflow Eval — `abc12345`/);
 	});
 
+	it('renders the Workflow checks table when at least one run has outcomes', () => {
+		// Same fixture shape, but attach per-run workflowChecks to surface the
+		// new section. Two builds, has_trigger passes both times, valid_field_references
+		// passes once + fails once → 1/2 = 50%; agent_has_language_model N/A in both.
+		const withChecks = evaluation({
+			totalRuns: 2,
+			testCases: [
+				{
+					userText: 'workflow with checks',
+					scenarios: [{ name: 'happy', passCount: 2, passes: [true, true] }],
+				},
+			],
+		});
+		withChecks.testCases[0].runs[0].workflowChecks = [
+			{ name: 'has_trigger', description: 'd', kind: 'deterministic', status: 'pass' },
+			{ name: 'valid_field_references', description: 'd', kind: 'deterministic', status: 'pass' },
+			{
+				name: 'agent_has_language_model',
+				description: 'd',
+				kind: 'deterministic',
+				status: 'n_a',
+			},
+		];
+		withChecks.testCases[0].runs[1].workflowChecks = [
+			{ name: 'has_trigger', description: 'd', kind: 'deterministic', status: 'pass' },
+			{ name: 'valid_field_references', description: 'd', kind: 'deterministic', status: 'fail' },
+			{
+				name: 'agent_has_language_model',
+				description: 'd',
+				kind: 'deterministic',
+				status: 'n_a',
+			},
+		];
+
+		const md = formatComparisonMarkdown(withChecks, { kind: 'no_baseline' });
+
+		expect(md).toMatch(/#### Workflow checks/);
+		expect(md).toMatch(/Scored over 2 successful build/);
+		expect(md).toMatch(/`has_trigger`/);
+		expect(md).toMatch(/`valid_field_references`/);
+		expect(md).toMatch(/`agent_has_language_model`/);
+		// has_trigger → 2 pass, 0 fail, 0 N/A
+		expect(md).toMatch(/\| `has_trigger` \| deterministic \| 2 \| 0 \| 0 \| 100% \|/);
+		// valid_field_references → 1 pass, 1 fail, 0 N/A → 50%
+		expect(md).toMatch(/\| `valid_field_references` \| deterministic \| 1 \| 1 \| 0 \| 50% \|/);
+		// agent_has_language_model → 0/0 scored, 2 N/A
+		expect(md).toMatch(/\| `agent_has_language_model` \| deterministic \| 0 \| 0 \| 2 \| — \|/);
+	});
+
+	it('omits the Workflow checks section when no run has outcomes', () => {
+		const md = formatComparisonMarkdown(evalFixture, { kind: 'no_baseline' });
+		expect(md).not.toMatch(/#### Workflow checks/);
+	});
+
 	it('marks new failure categories with 🆕', () => {
 		const pr: ExperimentBucket = {
 			experimentName: 'pr',

@@ -4,6 +4,8 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { WorkflowResponse } from '../../clients/n8n-client';
 import type { BinaryCheck } from '../types';
 
+const SWITCH_NODE_TYPE = 'n8n-nodes-base.switch';
+
 function toWorkflowJson(workflow: WorkflowResponse): WorkflowJSON {
 	return {
 		name: workflow.name,
@@ -25,6 +27,9 @@ export const switchFallbackOutputEnabled: BinaryCheck = {
 	description: 'Switch fallback branches are only wired when the extra fallback output exists',
 	kind: 'deterministic',
 	run(workflow: WorkflowResponse) {
+		const switchNodes = (workflow.nodes ?? []).filter((n) => n.type === SWITCH_NODE_TYPE);
+		if (switchNodes.length === 0) return { pass: true, applicable: false };
+
 		const result = validateWorkflow(toWorkflowJson(workflow), {
 			allowNoTrigger: true,
 			allowDisconnectedNodes: true,

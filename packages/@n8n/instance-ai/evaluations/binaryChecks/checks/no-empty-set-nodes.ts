@@ -12,7 +12,7 @@ export const noEmptySetNodes: BinaryCheck = {
 	kind: 'deterministic',
 	run(workflow) {
 		const setNodes = (workflow.nodes ?? []).filter((n) => n.type === SET_NODE_TYPE);
-		if (setNodes.length === 0) return { pass: true };
+		if (setNodes.length === 0) return { pass: true, applicable: false };
 
 		const empty: string[] = [];
 		for (const node of setNodes) {

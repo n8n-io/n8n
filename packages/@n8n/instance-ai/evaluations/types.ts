@@ -212,6 +212,30 @@ export interface WorkflowTestCaseResult {
 	conversationMetrics?: ConversationMetrics;
 	threadId?: string;
 	transcript?: TranscriptTurn[];
+	/**
+	 * Per-check outcomes graded against the built workflow JSON.
+	 * Absent when the build failed or the check suite was skipped.
+	 */
+	workflowChecks?: CheckOutcome[];
+}
+
+// ---------------------------------------------------------------------------
+// Rubric check outcomes
+//
+// The eval rubric is built from many independent named yes/no checks. A
+// `CheckOutcome` is the unit of measurement we surface per run; across runs,
+// per-check pass-rate is the regression signal. The same shape will be reused
+// when conversation-side (HOW) checks land — see `.claude/specs/how-axes-investigation.md`.
+// ---------------------------------------------------------------------------
+
+export type CheckStatus = 'pass' | 'fail' | 'n_a';
+
+export interface CheckOutcome {
+	name: string;
+	description: string;
+	kind: 'deterministic' | 'llm';
+	status: CheckStatus;
+	comment?: string;
 }
 
 // ---------------------------------------------------------------------------

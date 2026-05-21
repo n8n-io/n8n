@@ -43,6 +43,8 @@ export const memorySessionKeyExpression: BinaryCheck = {
 			(node) => connectedMemoryNodeNames.has(node.name) && isMemoryNode(node.type),
 		);
 
+		if (memoryNodes.length === 0) return { pass: true, applicable: false };
+
 		const issues = memoryNodes.flatMap((node) =>
 			getUnsafeSessionKeyParameters(node).map(
 				(parameterName) => `"${node.name}" uses $json in ${parameterName}`,

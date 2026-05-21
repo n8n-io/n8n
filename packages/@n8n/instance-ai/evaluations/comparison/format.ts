@@ -126,6 +126,9 @@ export function formatComparisonMarkdown(
 
 	lines.push(...renderPerTestCaseDetails(evaluation, options.slugByTestCase));
 
+	const workflowChecksSection = renderWorkflowChecksSection(evaluation);
+	if (workflowChecksSection.length > 0) lines.push(...workflowChecksSection);
+
 	if (comparison) {
 		const otherFindings = renderOtherFindings(comparison);
 		if (otherFindings.length > 0) lines.push(...otherFindings);
@@ -135,6 +138,66 @@ export function formatComparisonMarkdown(
 	if (failureDetails.length > 0) lines.push(...failureDetails);
 
 	return lines.join('\n');
+}
+
+/**
+ * Per-check pass-rate table aggregated across every successful build in the
+ * evaluation. Returns empty when no run produced any check outcomes (no
+ * Anthropic key configured, every build failed, or workflow-check feature off).
+ *
+ * `passes / scored` is the regression signal: a check whose pass-rate drops
+ * outside its CI band on a PR run is the workflow-side rubric movement we
+ * want surfaced. Per-check signals are independent of `scenario_pass`.
+ */
+function renderWorkflowChecksSection(evaluation: MultiRunEvaluation): string[] {
+	const perCheck = new Map<
+		string,
+		{ kind: 'deterministic' | 'llm'; passes: number; fails: number; nA: number }
+	>();
+	let scoredBuilds = 0;
+
+	for (const tc of evaluation.testCases) {
+		for (const run of tc.runs) {
+			if (!run.workflowChecks) continue;
+			scoredBuilds++;
+			for (const outcome of run.workflowChecks) {
+				const entry = perCheck.get(outcome.name) ?? {
+					kind: outcome.kind,
+					passes: 0,
+					fails: 0,
+					nA: 0,
+				};
+				if (outcome.status === 'pass') entry.passes++;
+				else if (outcome.status === 'fail') entry.fails++;
+				else entry.nA++;
+				perCheck.set(outcome.name, entry);
+			}
+		}
+	}
+
+	if (perCheck.size === 0) return [];
+
+	const lines: string[] = [
+		'#### Workflow checks',
+		'',
+		`_Scored over ${String(scoredBuilds)} successful build(s). N/A = check did not apply to that workflow._`,
+		'',
+		'| Check | Kind | Pass | Fail | N/A | Pass rate |',
+		'|---|---|---|---|---|---|',
+	];
+
+	const sortedNames = [...perCheck.keys()].sort();
+	for (const name of sortedNames) {
+		const entry = perCheck.get(name);
+		if (!entry) continue;
+		const scored = entry.passes + entry.fails;
+		const rate = scored > 0 ? `${String(Math.round((entry.passes / scored) * 100))}%` : '—';
+		lines.push(
+			`| \`${name}\` | ${entry.kind} | ${String(entry.passes)} | ${String(entry.fails)} | ${String(entry.nA)} | ${rate} |`,
+		);
+	}
+	lines.push('');
+	return lines;
 }
 
 function formatHeading(commitSha?: string): string {

@@ -12,7 +12,7 @@ export const vectorStoreHasEmbeddings: BinaryCheck = {
 	kind: 'deterministic',
 	run(workflow) {
 		const nodes = (workflow.nodes ?? []).filter((n) => isVectorStoreNode(n.type));
-		if (nodes.length === 0) return { pass: true };
+		if (nodes.length === 0) return { pass: true, applicable: false };
 
 		const embeddingTargets = collectTargetsByConnectionType(
 			workflow.connections ?? {},

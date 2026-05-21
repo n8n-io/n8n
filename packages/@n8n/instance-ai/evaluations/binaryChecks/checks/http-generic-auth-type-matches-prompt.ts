@@ -42,17 +42,15 @@ export const httpGenericAuthTypeMatchesPrompt: BinaryCheck = {
 		'HTTP Request nodes pick a genericAuthType consistent with the prompt — prefer httpBearerAuth for Authorization: Bearer flows; reserve httpHeaderAuth for custom header names',
 	kind: 'deterministic',
 	run(workflow, ctx) {
+		const genericAuthNodes = (workflow.nodes ?? []).filter(isHttpRequestWithGenericAuth);
+		if (genericAuthNodes.length === 0) return { pass: true, applicable: false };
+
+		const bearerIntent = promptAsksForBearer(ctx.prompt);
+		const customHeaderIntent = promptSpecifiesCustomHeaderName(ctx.prompt);
+
 		const issues: string[] = [];
-
-		for (const node of workflow.nodes ?? []) {
-			if (!isHttpRequestWithGenericAuth(node)) continue;
-
-			const genericAuthType = getGenericAuthType(node);
-			if (genericAuthType !== 'httpHeaderAuth') continue;
-
-			const bearerIntent = promptAsksForBearer(ctx.prompt);
-			const customHeaderIntent = promptSpecifiesCustomHeaderName(ctx.prompt);
-
+		for (const node of genericAuthNodes) {
+			if (getGenericAuthType(node) !== 'httpHeaderAuth') continue;
 			if (bearerIntent && !customHeaderIntent) {
 				issues.push(
 					`"${node.name}" uses httpHeaderAuth but the prompt asks for Bearer auth — should be httpBearerAuth`,

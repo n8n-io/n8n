@@ -1,13 +1,21 @@
 // ---------------------------------------------------------------------------
 // Binary checks evaluator for instance-ai
 //
-// Runs all registered checks against a built workflow and
-// returns Feedback[] compatible with the existing harness.
+// Runs all registered checks against a built workflow and returns both:
+//   - `Feedback[]` (for the existing subagent path that emits LangSmith
+//     feedback per-check + an overall pass-rate row).
+//   - `CheckOutcome[]` (the universal per-check rubric outcome — pass/fail/n_a
+//     — surfaced by the workflow eval CLI on every built workflow).
+//
+// N/A outcomes (the check had no subject to evaluate, e.g. an agent-only
+// check on a workflow with no agent) are excluded from the pass-rate
+// denominator so the signal stays clean.
 // ---------------------------------------------------------------------------
 
-import type { BinaryCheck, BinaryCheckContext } from './types';
+import type { BinaryCheck, BinaryCheckContext, BinaryCheckResult } from './types';
 import type { WorkflowResponse } from '../clients/n8n-client';
 import type { Feedback } from '../subagent/types';
+import type { CheckOutcome, CheckStatus } from '../types';
 import { DETERMINISTIC_CHECKS, LLM_CHECKS } from './checks/index';
 
 const EVALUATOR_NAME = 'binary-checks';
@@ -17,67 +25,92 @@ export interface BinaryChecksOptions {
 	only?: string[];
 }
 
+export interface BinaryChecksRun {
+	feedback: Feedback[];
+	outcomes: CheckOutcome[];
+}
+
 /**
- * Run binary checks against a workflow and return Feedback items.
+ * Run binary checks against a workflow.
  *
- * Each check produces one Feedback with score 0 (fail) or 1 (pass).
- * An overall score (pass rate) is emitted with kind 'score'.
+ * Returns both the `Feedback[]` (for the existing subagent caller) and the
+ * `CheckOutcome[]` per-check rubric view (used by the workflow eval CLI).
  *
- * LLM checks are automatically skipped when `ctx.modelId` is not set.
+ * LLM checks are automatically skipped (status: 'n_a') when `ctx.modelId` is
+ * not set.
  */
 export async function runBinaryChecks(
 	workflow: WorkflowResponse,
 	ctx: BinaryCheckContext,
 	options?: BinaryChecksOptions,
-): Promise<Feedback[]> {
+): Promise<BinaryChecksRun> {
 	const selected = resolveChecks(options?.only, ctx);
 
 	const results = await Promise.allSettled(
-		selected.map(async (check) => {
-			const result = await check.run(workflow, ctx);
-			return {
-				evaluator: EVALUATOR_NAME,
-				metric: check.name,
-				score: result.pass ? 1 : 0,
-				kind: 'metric' as const,
-				...(result.comment ? { comment: result.comment } : {}),
-			};
-		}),
+		selected.map(async (check) => await check.run(workflow, ctx)),
 	);
 
-	const feedback: Feedback[] = results.map((settled, i) => {
-		if (settled.status === 'fulfilled') return settled.value;
-
+	const outcomes: CheckOutcome[] = results.map((settled, i) => {
+		const check = selected[i];
+		if (settled.status === 'fulfilled') {
+			return toOutcome(check, settled.value);
+		}
 		const message =
 			settled.reason instanceof Error ? settled.reason.message : String(settled.reason);
 		return {
-			evaluator: EVALUATOR_NAME,
-			metric: selected[i].name,
-			score: 0,
-			kind: 'metric' as const,
+			name: check.name,
+			description: check.description,
+			kind: check.kind,
+			status: 'fail',
 			comment: `Error: ${message}`,
 		};
 	});
 
-	// Overall pass rate as the evaluator-level score
-	const totalChecks = feedback.length;
-	const passCount = feedback.filter((f) => f.score === 1).length;
-	const passRate = totalChecks > 0 ? passCount / totalChecks : 0;
+	const feedback: Feedback[] = outcomes
+		.filter((o) => o.status !== 'n_a')
+		.map((o) => ({
+			evaluator: EVALUATOR_NAME,
+			metric: o.name,
+			score: o.status === 'pass' ? 1 : 0,
+			kind: 'metric' as const,
+			...(o.comment ? { comment: o.comment } : {}),
+		}));
+
+	const scoredOutcomes = outcomes.filter((o) => o.status !== 'n_a');
+	const totalScored = scoredOutcomes.length;
+	const passCount = scoredOutcomes.filter((o) => o.status === 'pass').length;
+	const passRate = totalScored > 0 ? passCount / totalScored : 0;
+	const naCount = outcomes.length - totalScored;
+
+	const passRateComment = `${String(passCount)}/${String(totalScored)} checks passed${
+		naCount > 0 ? ` (${String(naCount)} N/A)` : ''
+	}`;
 
 	feedback.push({
 		evaluator: EVALUATOR_NAME,
 		metric: 'pass_rate',
 		score: passRate,
 		kind: 'score',
-		comment: `${String(passCount)}/${String(totalChecks)} checks passed`,
+		comment: passRateComment,
 	});
 
-	return feedback;
+	return { feedback, outcomes };
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function toOutcome(check: BinaryCheck, result: BinaryCheckResult): CheckOutcome {
+	const status: CheckStatus = result.applicable === false ? 'n_a' : result.pass ? 'pass' : 'fail';
+	return {
+		name: check.name,
+		description: check.description,
+		kind: check.kind,
+		status,
+		...(result.comment ? { comment: result.comment } : {}),
+	};
+}
 
 function resolveChecks(only: string[] | undefined, ctx: BinaryCheckContext): BinaryCheck[] {
 	const allChecks = [...DETERMINISTIC_CHECKS, ...LLM_CHECKS];

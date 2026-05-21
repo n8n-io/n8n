@@ -47,6 +47,7 @@ import {
 	buildWorkflow,
 	executeScenario,
 	cleanupBuild,
+	runWorkflowChecks,
 	runWorkflowTestCase,
 	runWithConcurrency,
 	type BuildResult,
@@ -55,6 +56,7 @@ import { syncDataset, type DatasetExampleInputs } from '../langsmith/dataset-syn
 import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { writeWorkflowReport } from '../report/workflow-report';
 import type {
+	CheckOutcome,
 	MultiRunEvaluation,
 	ExecutionScenarioResult,
 	ExecutionScenario,
@@ -65,6 +67,14 @@ import type {
 
 // n8n degrades above ~4 concurrent builds.
 const MAX_CONCURRENT_BUILDS = 4;
+
+const checkOutcomeSchema = z.object({
+	name: z.string(),
+	description: z.string(),
+	kind: z.enum(['deterministic', 'llm']),
+	status: z.enum(['pass', 'fail', 'n_a']),
+	comment: z.string().optional(),
+});
 
 const targetOutputSchema = z.object({
 	buildSuccess: z.boolean().default(false),
@@ -82,6 +92,12 @@ const targetOutputSchema = z.object({
 	nodeCount: z.number().default(0),
 	/** The thread id used during the build — keys the LangSmith trace lookup. */
 	threadId: z.string().optional(),
+	/**
+	 * Per-check rubric outcomes against the built workflow. Replicated onto
+	 * every scenario row that shares a built workflow so the LangSmith feedback
+	 * extractor can emit `check.<name>` Feedback per row without re-running.
+	 */
+	workflowChecks: z.array(checkOutcomeSchema).optional(),
 });
 
 type TargetOutput = Omit<z.infer<typeof targetOutputSchema>, 'evalResult'> & {
@@ -389,6 +405,15 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
+				if (build.success && !build.workflowChecks) {
+					const entry = conversationByFileSlug.get(fileSlug);
+					build.workflowChecks = await runWorkflowChecks({
+						workflow: build.workflowJsons[0],
+						prompt: entry?.conversation[0]?.text ?? '',
+						agentText: undefined,
+						logger,
+					});
+				}
 				return { build, lane, buildDurationMs };
 			}
 			// Orchestrator path: allocator spreads distinct fileSlugs across lanes;
@@ -447,6 +472,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				execDurationMs: 0,
 				nodeCount: 0,
 				threadId: build.threadId,
+				workflowChecks: build.workflowChecks,
 			};
 		}
 
@@ -477,6 +503,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				buildDurationMs,
 				execDurationMs: Date.now() - execStart,
 				nodeCount,
+				workflowChecks: build.workflowChecks,
 			};
 		}
 		const execDurationMs = Date.now() - execStart;
@@ -500,6 +527,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			execDurationMs,
 			nodeCount,
 			threadId: build.threadId,
+			workflowChecks: build.workflowChecks,
 		};
 	};
 
@@ -530,6 +558,19 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		];
 		if (output.buildDurationMs !== undefined) {
 			feedback.push({ key: 'build_duration_s', score: output.buildDurationMs / 1000 });
+		}
+		// One Feedback per per-build check — `check.<name>`. N/A outcomes are
+		// skipped so per-experiment averages of the score column reduce to the
+		// per-check pass-rate without the N/A runs polluting the denominator.
+		if (output.workflowChecks) {
+			for (const outcome of output.workflowChecks) {
+				if (outcome.status === 'n_a') continue;
+				feedback.push({
+					key: `check.${outcome.name}`,
+					score: outcome.status === 'pass' ? 1 : 0,
+					comment: outcome.comment ?? undefined,
+				});
+			}
 		}
 		return feedback;
 	};
@@ -805,6 +846,7 @@ function reshapeLangSmithRuns(
 			let workflowId: string | undefined;
 			let buildError: string | undefined;
 			let threadId: string | undefined;
+			let workflowChecks: CheckOutcome[] | undefined;
 
 			for (const scenario of testCase.executionScenarios) {
 				const run = byKey.get(`${String(iter)}/${fileSlug}/${scenario.name}`);
@@ -822,6 +864,7 @@ function reshapeLangSmithRuns(
 				if (output.workflowId) workflowId = output.workflowId;
 				if (output.threadId) threadId = output.threadId;
 				if (!output.buildSuccess && output.reasoning) buildError = output.reasoning;
+				if (output.workflowChecks && !workflowChecks) workflowChecks = output.workflowChecks;
 				executionScenarioResults.push({
 					scenario,
 					success: output.passed,
@@ -842,6 +885,7 @@ function reshapeLangSmithRuns(
 				buildError,
 				threadId,
 				transcript,
+				workflowChecks,
 			});
 		}
 		allRunResults.push(runResults);
@@ -1014,6 +1058,8 @@ function writeEvalResults(
 
 	const result = outcome?.kind === 'ok' ? outcome.result : undefined;
 
+	const checksSummary = summarizeWorkflowChecks(evaluation);
+
 	const report = {
 		timestamp: new Date().toISOString(),
 		duration,
@@ -1026,6 +1072,7 @@ function writeEvalResults(
 			passAtK: metrics.passAtK,
 			passHatK: metrics.passHatK,
 			passRatePerIter: metrics.passRatePerIter,
+			...(checksSummary ? { workflowChecks: checksSummary } : {}),
 		},
 		// Structured comparison payload only — the rendered markdown lives in
 		// the sibling `eval-pr-comment.md` file so consumers can pick the format
@@ -1044,6 +1091,9 @@ function writeEvalResults(
 			name: tc.testCase.conversation[0].text.slice(0, 70),
 			buildSuccessCount: tc.buildSuccessCount,
 			totalRuns,
+			workflowChecksPerRun: tc.runs.map((run) =>
+				run.workflowChecks ? summarizeOutcomes(run.workflowChecks) : null,
+			),
 			scenarios: tc.executionScenarios.map((sa) => ({
 				name: sa.scenario.name,
 				passCount: sa.passCount,
@@ -1078,6 +1128,56 @@ function writeEvalResults(
 	);
 
 	return { jsonPath, prCommentPath };
+}
+
+/**
+ * Aggregate per-check workflow-rubric outcomes across every successful build
+ * in the evaluation. Returns `undefined` when no run produced any outcomes
+ * (e.g. every build failed, or no Anthropic key was available for LLM checks
+ * and every check was N/A).
+ *
+ * `passes / scored` is the per-check pass-rate signal described in
+ * `.claude/specs/how-axes-investigation.md`. N/A runs are excluded from
+ * `scored` so the denominator stays clean.
+ */
+function summarizeWorkflowChecks(evaluation: MultiRunEvaluation):
+	| {
+			totalBuilds: number;
+			perCheck: Record<string, { passes: number; fails: number; nA: number; scored: number }>;
+	  }
+	| undefined {
+	const perCheck: Record<string, { passes: number; fails: number; nA: number; scored: number }> =
+		{};
+	let totalBuilds = 0;
+
+	for (const tc of evaluation.testCases) {
+		for (const run of tc.runs) {
+			if (!run.workflowChecks) continue;
+			totalBuilds++;
+			for (const outcome of run.workflowChecks) {
+				const entry = perCheck[outcome.name] ?? { passes: 0, fails: 0, nA: 0, scored: 0 };
+				if (outcome.status === 'pass') {
+					entry.passes++;
+					entry.scored++;
+				} else if (outcome.status === 'fail') {
+					entry.fails++;
+					entry.scored++;
+				} else {
+					entry.nA++;
+				}
+				perCheck[outcome.name] = entry;
+			}
+		}
+	}
+
+	if (totalBuilds === 0) return undefined;
+	return { totalBuilds, perCheck };
+}
+
+function summarizeOutcomes(outcomes: CheckOutcome[]): Record<string, CheckOutcome['status']> {
+	const out: Record<string, CheckOutcome['status']> = {};
+	for (const outcome of outcomes) out[outcome.name] = outcome.status;
+	return out;
 }
 
 /**
