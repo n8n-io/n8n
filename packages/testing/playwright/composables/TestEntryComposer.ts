@@ -16,7 +16,7 @@ export class TestEntryComposer {
 	 */
 	async fromHome() {
 		await this.n8n.goHome();
-		await this.n8n.page.waitForURL('/home/workflows');
+		await this.n8n.page.waitForURL(/\/home\/workflows$/);
 	}
 
 	/**
