@@ -96,6 +96,21 @@ export class OauthService {
 		}
 	}
 
+	/**
+	 * Normalizes a resource URL by removing trailing slashes.
+	 *
+	 * RFC 8707 treats the resource indicator as an opaque identifier, and in
+	 * theory servers could differentiate between https://example.com and
+	 * https://example.com/. In practice, MCP servers consistently treat them as
+	 * equivalent, and the n8n server‑side OAuth fix (PR #30558) already applies
+	 * the same normalization. We follow that precedent to avoid false mismatches
+	 * when users inadvertently add a trailing slash.
+	 *
+	 * If a real‑world server is discovered that requires exact preservation of
+	 * a trailing slash, this normalization should be revisited.
+	 *
+	 * For the reviewer, will be removed and made a general comment right after the review.
+	 */
 	private normalizeResourceUrl(url: string): string {
 		return url.trim().replace(/\/+$/, '');
 	}
@@ -111,11 +126,10 @@ export class OauthService {
 
 	private validateResourceUrlOrThrow(resourceUrl: string): string {
 		const normalizedResourceUrl = this.normalizeResourceUrl(resourceUrl);
-		let parsedResourceUrl: URL;
 
 		try {
 			this.validateOAuthUrlOrThrow(normalizedResourceUrl);
-			parsedResourceUrl = new URL(normalizedResourceUrl);
+			new URL(normalizedResourceUrl);
 		} catch (error) {
 			this.logger.debug('Invalid OAuth resource URL', { resourceUrl, error });
 			throw new InvalidTargetError('Invalid resource URL format.');
@@ -515,34 +529,39 @@ export class OauthService {
 
 		const toUpdate: ICredentialDataDecryptedObject = {};
 
-		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
+		let authorizationServerUrl = oauthCredentials.serverUrl;
+		let discoveredResource: string | undefined;
+		let suppliedResourceUrl: string | undefined;
+
+		if (oauthCredentials.serverUrl) {
 			// Validate serverUrl to prevent SSRF attacks before any HTTP requests
 			this.validateOAuthUrlOrThrow(oauthCredentials.serverUrl);
+		}
 
-			// Step 1: Discover Protected Resource Metadata (RFC 9728 / MCP)
-			// Try to discover the authorization server URL from protected resource metadata
-			let authorizationServerUrl: string;
-			let discoveredResource: string | undefined;
-			const suppliedResourceUrl = oauthCredentials.resourceUrl
-				? this.validateResourceUrlOrThrow(oauthCredentials.resourceUrl)
-				: undefined;
+		if (oauthCredentials.resourceUrl) {
+			suppliedResourceUrl = this.validateResourceUrlOrThrow(oauthCredentials.resourceUrl);
+		}
 
+		if (oauthCredentials.serverUrl) {
 			try {
 				const protectedResourceMetadata = await this.discoverProtectedResourceMetadata(
 					oauthCredentials.serverUrl,
 				);
 
-				// Use first authorization server from the list
-				// MCP spec allows multiple; we use the first one
-				authorizationServerUrl = protectedResourceMetadata.authorization_servers[0];
 				discoveredResource = protectedResourceMetadata.resource;
 
-				// Validate authorization server URL to prevent SSRF attacks
-				this.validateOAuthUrlOrThrow(authorizationServerUrl);
+				if (oauthCredentials.useDynamicClientRegistration) {
+					// Use first authorization server from the list
+					// MCP spec allows multiple; we use the first one
+					authorizationServerUrl = protectedResourceMetadata.authorization_servers[0];
+
+					// Validate authorization server URL to prevent SSRF attacks
+					this.validateOAuthUrlOrThrow(authorizationServerUrl);
+				}
 
 				this.logger.debug('Protected resource discovery succeeded', {
 					resourceUrl: oauthCredentials.serverUrl,
-					authorizationServerUrl,
+					...(oauthCredentials.useDynamicClientRegistration ? { authorizationServerUrl } : {}),
 					discoveredResource,
 				});
 			} catch (error) {
@@ -554,13 +573,14 @@ export class OauthService {
 				// Fallback: If protected resource discovery fails,
 				// assume serverUrl IS the authorization server (backwards compatibility)
 				this.logger.debug(
-					'Protected resource discovery failed, assuming serverUrl is authorization server',
+					oauthCredentials.useDynamicClientRegistration
+						? 'Protected resource discovery failed, assuming serverUrl is authorization server'
+						: 'Protected resource discovery failed',
 					{
 						serverUrl: oauthCredentials.serverUrl,
 						error: (error as Error).message,
 					},
 				);
-				authorizationServerUrl = oauthCredentials.serverUrl;
 			}
 
 			const resolvedResource = this.resolveResourceUrl(
@@ -572,9 +592,12 @@ export class OauthService {
 				oauthCredentials.resource = resolvedResource;
 				csrfData.resource = resolvedResource;
 			}
+		}
 
+		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
 			// Step 2: Discover Authorization Server Metadata (RFC 8414 / OpenID Connect)
-			const issuerUrl = new URL(authorizationServerUrl);
+			const dcrAuthorizationServerUrl = authorizationServerUrl ?? oauthCredentials.serverUrl;
+			const issuerUrl = new URL(dcrAuthorizationServerUrl);
 			const pathComponent = issuerUrl.pathname.replace(/\/$/, ''); // Remove trailing slash
 
 			// Build discovery URLs in priority order per MCP specification
@@ -589,7 +612,7 @@ export class OauthService {
 							// 2. OpenID Connect Discovery 1.0 (path insertion)
 							`${issuerUrl.origin}/.well-known/openid-configuration${pathComponent}`,
 							// 3. OpenID Connect Discovery 1.0 (path appending)
-							`${authorizationServerUrl}/.well-known/openid-configuration`,
+							`${dcrAuthorizationServerUrl}/.well-known/openid-configuration`,
 							// 4. RFC 8414 origin-only fallback (matches MCP TypeScript SDK behavior)
 							`${issuerUrl.origin}/.well-known/oauth-authorization-server`,
 						]

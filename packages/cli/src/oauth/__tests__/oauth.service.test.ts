@@ -3382,6 +3382,33 @@ describe('OauthService', () => {
 					}),
 				).rejects.toThrow('Invalid resource URL format.');
 			});
+
+			it('should include user-supplied resource URL for non-DCR MCP OAuth2 credentials', async () => {
+				jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(
+					makeDcrCredentials({
+						clientId: 'client-id',
+						clientSecret: 'client-secret',
+						authUrl: 'https://auth.example.com/oauth2/auth',
+						accessTokenUrl: 'https://auth.example.com/oauth2/token',
+						useDynamicClientRegistration: false,
+						resourceUrl: 'https://mcp.example.com/mcp///',
+					} as Partial<OAuth2CredentialData>),
+				);
+				jest.mocked(axios.get).mockRejectedValue(new Error('discovery unavailable'));
+
+				const authUri = await service.generateAOauth2AuthUri(credential, {
+					cid: credential.id,
+					origin: 'static-credential',
+					userId: 'user-id',
+				});
+
+				const url = new URL(authUri);
+				expect(url.origin + url.pathname).toBe('https://auth.example.com/oauth2/auth');
+				expect(url.searchParams.get('resource')).toBe('https://mcp.example.com/mcp');
+				expect(cipher.encryptV2).toHaveBeenLastCalledWith(
+					expect.stringContaining('"resource":"https://mcp.example.com/mcp"'),
+				);
+			});
 		});
 
 		describe('convertCredentialToOptions', () => {
