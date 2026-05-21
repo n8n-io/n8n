@@ -183,6 +183,7 @@ import { AddInsightsRawTimestampIdIndex1784000000004 } from '../common/178400000
 import { CreateMcpRegistryServerTable1784000000005 } from '../common/1784000000005-CreateMcpRegistryServerTable';
 import { AddNodeGroupsColumnToWorkflowAndHistory1784000000006 } from '../common/1784000000006-AddNodeGroupsColumnToWorkflowAndHistory';
 import { CreateInstanceAiCheckpointTable1784000000007 } from '../common/1784000000007-CreateInstanceAiCheckpointTable';
+import { RemoveInsightsReadScopeFromMemberApiKeys1779321600000 } from './1784000000009--RemoveInsightsReadScopeFromMemberApiKeys';
 import { ResetInstanceAiNativePersistence1784000000008 } from '../common/1784000000008-ResetInstanceAiNativePersistence';
 import type { Migration } from '../migration-types';
 
@@ -372,5 +373,6 @@ export const postgresMigrations: Migration[] = [
 	CreateMcpRegistryServerTable1784000000005,
 	AddNodeGroupsColumnToWorkflowAndHistory1784000000006,
 	CreateInstanceAiCheckpointTable1784000000007,
+	RemoveInsightsReadScopeFromMemberApiKeys1779321600000,
 	ResetInstanceAiNativePersistence1784000000008,
 ];
