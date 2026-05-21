@@ -1,6 +1,7 @@
 {
 	"compilerOptions": {
 		"ignoreDeprecations": "6.0",
+		"isolatedModules": true,
 		"noUncheckedSideEffectImports": false,
 		"strict": true,
 		"module": "commonjs",

@@ -4,7 +4,6 @@ const { resolve } = require('path');
 
 /** @type {import('ts-jest').TsJestGlobalOptions} */
 const tsJestOptions = {
-	isolatedModules: true,
 	tsconfig: {
 		...compilerOptions,
 		declaration: false,
