@@ -174,6 +174,7 @@ import { CreateEvaluationConfig1778100000000 } from '../common/1778100000000-Cre
 import { AddWorkflowVersionToTestRun1778100001000 } from '../common/1778100001000-AddWorkflowVersionToTestRun';
 import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778100002000-AddEvaluationConfigColumnsToTestRun';
 import { CreateEvaluationCollection1778496086558 } from '../common/1778496086558-CreateEvaluationCollection';
+import { SplitRedactionScopeInCustomRoles1784000000009 } from '../common/1784000000009-SplitRedactionScopeInCustomRoles';
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
 import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
 import { CreateAgentObservationTables1784000000000 } from '../common/1784000000000-CreateAgentObservationTables';
@@ -373,4 +374,5 @@ export const postgresMigrations: Migration[] = [
 	AddNodeGroupsColumnToWorkflowAndHistory1784000000006,
 	CreateInstanceAiCheckpointTable1784000000007,
 	ResetInstanceAiNativePersistence1784000000008,
+	SplitRedactionScopeInCustomRoles1784000000009,
 ];

@@ -71,6 +71,7 @@ import { getBase as getWorkflowExecutionData } from '@/workflow-execute-addition
 import { WorkflowValidationService } from './workflow-validation.service';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { getRequiredRedactionScopes } from './utils';
 
 @Service()
 export class WorkflowService {
@@ -408,15 +409,17 @@ export class WorkflowService {
 			delete workflowUpdateData.settings.redactionPolicy;
 		}
 
-		// Strip redactionPolicy if user lacks scope and value is changing
+		// Strip redactionPolicy if user lacks the required directional scope
 		if (
 			workflowUpdateData.settings?.redactionPolicy !== undefined &&
 			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy
 		) {
-			const isDisabling = workflowUpdateData.settings.redactionPolicy === 'none';
-			const requiredScope = isDisabling ? 'workflow:disableRedaction' : 'workflow:enableRedaction';
+			const requiredScopes = getRequiredRedactionScopes(
+				workflow.settings?.redactionPolicy,
+				workflowUpdateData.settings.redactionPolicy,
+			);
 
-			const canUpdate = await userHasScopes(user, [requiredScope], false, {
+			const canUpdate = await userHasScopes(user, requiredScopes, false, {
 				projectId: ownerProject.id,
 			});
 			if (!canUpdate) {
