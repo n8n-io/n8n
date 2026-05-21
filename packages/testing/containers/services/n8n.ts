@@ -250,11 +250,13 @@ async function createContainer(
 		startupTimeoutMs,
 	} = shared;
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
+	// When n8n is hosted under a custom base path, the readiness endpoint moves with it
+	const basePath = (environment.N8N_BASE_PATH ?? '').replace(/\/+$/, '');
 	// The engine serves no REST API; its health route lives on the engine port.
 	const readiness =
 		role === 'engine'
 			? { path: '/healthz', port: ENGINE_PORT }
-			: { path: '/healthz/readiness', port: N8N_READINESS_PORT };
+			: { path: `${basePath}/healthz/readiness`, port: N8N_READINESS_PORT };
 	const { strategy: waitStrategy, getLastBody: getLastReadinessBody } = createReadinessProbe(
 		readiness.path,
 		readiness.port,

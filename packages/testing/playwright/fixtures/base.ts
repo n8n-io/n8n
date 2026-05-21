@@ -1,6 +1,7 @@
 import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwright';
 import { fixtures as currentsFixtures } from '@currents/playwright';
 import { test as base, expect, request } from '@playwright/test';
+import type { APIRequestContext } from '@playwright/test';
 import type { ServiceHelpers } from 'n8n-containers/services/types';
 import type { N8NConfig, N8NStack } from 'n8n-containers/stack';
 import { createN8NStack } from 'n8n-containers/stack';
@@ -86,6 +87,42 @@ function logKeepalive(container: N8NStack): void {
 	console.log(`    Project: ${container.projectName}`);
 	console.log('    Cleanup: pnpm --filter n8n-containers stack:clean:all');
 	console.log('=========================================================\n');
+}
+
+const API_REQUEST_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'fetch', 'head'] as const;
+
+function getUrlOrigin(url: string): string {
+	return new URL(url).origin;
+}
+
+function getBasePath(url: string): string {
+	const { pathname } = new URL(url);
+	return pathname === '/' ? '' : pathname.replace(/\/+$/, '');
+}
+
+const API_REQUEST_METHOD_SET = new Set<string>(API_REQUEST_METHODS);
+
+function withBasePathRequest(context: APIRequestContext, basePath: string): APIRequestContext {
+	if (!basePath) return context;
+
+	const prefix = (url: unknown) =>
+		typeof url === 'string' && url.startsWith('/') && !url.startsWith(`${basePath}/`)
+			? `${basePath}${url}`
+			: url;
+
+	return new Proxy(context, {
+		get(target, prop, receiver) {
+			const value = Reflect.get(target, prop, receiver);
+
+			if (typeof value !== 'function') return value;
+			if (typeof prop !== 'string' || !API_REQUEST_METHOD_SET.has(prop)) {
+				return value.bind(target);
+			}
+
+			return (url: unknown, ...args: unknown[]) =>
+				(value as (...a: unknown[]) => unknown).call(target, prefix(url), ...args);
+		},
+	});
 }
 
 export const test = base.extend<
@@ -229,8 +266,11 @@ export const test = base.extend<
 		async ({ n8nContainer, n8nStackConfig }, use) => {
 			if (n8nContainer) {
 				console.log('Resetting database for new container');
-				const apiContext = await request.newContext({ baseURL: n8nContainer.baseUrl });
-				const api = new ApiHelpers(apiContext);
+				const basePath = getBasePath(n8nContainer.baseUrl);
+				const apiContext = await request.newContext({
+					baseURL: getUrlOrigin(n8nContainer.baseUrl),
+				});
+				const api = new ApiHelpers(withBasePathRequest(apiContext, basePath));
 				await api.resetDatabase();
 				await apiContext.dispose();
 
@@ -251,9 +291,10 @@ export const test = base.extend<
 		await use(frontendUrl);
 	},
 
-	n8n: async ({ context, n8nStackConfig }, use, testInfo) => {
+	n8n: async ({ context, frontendUrl, n8nStackConfig }, use, testInfo) => {
 		const apiOptions = { workflowSettings: workflowSettingsFor(n8nStackConfig) };
 		await setupDefaultInterceptors(context);
+		const frontendBasePath = getBasePath(frontendUrl);
 		const page = await context.newPage();
 
 		// Set debounce multiplier for E2E tests - 1 means normal timing (no change)
@@ -262,7 +303,11 @@ export const test = base.extend<
 			sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '1');
 		});
 
-		const n8nInstance = new n8nPage(page, new ApiHelpers(page.context().request, apiOptions));
+		const n8nInstance = new n8nPage(
+			page,
+			new ApiHelpers(withBasePathRequest(page.context().request, frontendBasePath), apiOptions),
+			frontendBasePath,
+		);
 		await n8nInstance.api.setupFromTags(testInfo.tags);
 
 		// Auth fallback: untagged tests establish the owner session
@@ -280,8 +325,11 @@ export const test = base.extend<
 	},
 
 	api: async ({ backendUrl, n8nStackConfig }, use, testInfo) => {
-		const context = await request.newContext({ baseURL: backendUrl });
-		const api = new ApiHelpers(context, { workflowSettings: workflowSettingsFor(n8nStackConfig) });
+		const basePath = getBasePath(backendUrl);
+		const context = await request.newContext({ baseURL: getUrlOrigin(backendUrl) });
+		const api = new ApiHelpers(withBasePathRequest(context, basePath), {
+			workflowSettings: workflowSettingsFor(n8nStackConfig),
+		});
 		await api.setupFromTags(testInfo.tags);
 
 		const hasAuthTag = testInfo.tags.some((tag) => tag.startsWith('@auth:'));
@@ -313,10 +361,11 @@ export const test = base.extend<
 				);
 			}
 
-			const context = await request.newContext({ baseURL: mainUrls[mainIndex] });
+			const basePath = getBasePath(mainUrls[mainIndex]);
+			const context = await request.newContext({ baseURL: getUrlOrigin(mainUrls[mainIndex]) });
 			contexts.push(context);
 
-			const api = new ApiHelpers(context, {
+			const api = new ApiHelpers(withBasePathRequest(context, basePath), {
 				workflowSettings: workflowSettingsFor(n8nStackConfig),
 			});
 			await api.setupFromTags(testInfo.tags.filter((tag) => tag.toLowerCase() !== '@db:reset'));
