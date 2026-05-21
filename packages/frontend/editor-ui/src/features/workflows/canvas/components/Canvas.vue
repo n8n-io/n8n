@@ -155,6 +155,7 @@ const props = withDefaults(
 		loading?: boolean;
 		suppressInteraction?: boolean;
 		hideControls?: boolean;
+		showNodeGroups?: boolean;
 		initialViewport?: ViewportTransform | null;
 	}>(),
 	{
@@ -170,6 +171,7 @@ const props = withDefaults(
 		loading: false,
 		suppressInteraction: false,
 		hideControls: false,
+		showNodeGroups: true,
 	},
 );
 
@@ -1239,7 +1241,7 @@ defineExpose({
 		</slot>
 
 		<CanvasNodeGroupsLayer
-			v-if="isCanvasNodeGroupingEnabled"
+			v-if="showNodeGroups && isCanvasNodeGroupingEnabled"
 			:read-only="readOnly || suppressInteraction"
 			:autofocus-group-id="nodeGroupIdToAutofocusTitle"
 			@title:focused="onNodeGroupTitleFocused"
@@ -1247,7 +1249,7 @@ defineExpose({
 		/>
 
 		<CanvasSelectionToolbar
-			v-if="isCanvasNodeGroupingEnabled"
+			v-if="showNodeGroups && isCanvasNodeGroupingEnabled"
 			:selected-nodes="selectedNodes"
 			:read-only="readOnly || suppressInteraction"
 			@group-created="onNodeGroupCreated"
