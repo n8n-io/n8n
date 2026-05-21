@@ -81,20 +81,30 @@ export function useWorkflowDocumentNodeGroups() {
 	function getNextDefaultName(baseName: string) {
 		const names = new Set(allGroups.value.map((group) => group.name));
 		let index = 1;
-		let name = `${baseName} ${index}`;
-
-		while (names.has(name)) {
-			index++;
-			name = `${baseName} ${index}`;
+		let name = baseName;
+		const match = baseName.match(/(\d+)$/);
+		if (match) {
+			index = parseInt(match[1], 10);
+			name = baseName.slice(0, -match[1].length);
+		} else {
+			name = `${baseName} `;
 		}
 
-		return name;
+		while (names.has(`${name}${index}`)) {
+			index++;
+		}
+
+		return `${name}${index}`;
 	}
 
 	function updateName(id: string, name: string) {
 		const group = groups.value.get(id);
 		if (!group || group.name === name) return;
-		applyUpsertGroup({ ...group, name }, CHANGE_ACTION.UPDATE);
+		let newName = name;
+		if (allGroups.value.some((g) => g.name === name)) {
+			newName = getNextDefaultName(name);
+		}
+		applyUpsertGroup({ ...group, name: newName }, CHANGE_ACTION.UPDATE);
 	}
 
 	function deleteGroup(id: string) {

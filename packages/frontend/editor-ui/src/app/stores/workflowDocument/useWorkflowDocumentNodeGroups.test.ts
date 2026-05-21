@@ -32,10 +32,30 @@ describe('useWorkflowDocumentNodeGroups', () => {
 		});
 
 		it('uses the next available numbered name', () => {
-			nodeGroups.createGroup(['a', 'b'], 'Group 1');
-			nodeGroups.createGroup(['c', 'd'], 'Group 2');
+			nodeGroups.setNodeGroups([
+				{ id: 'g1', name: 'Group 1', nodeIds: ['a', 'b'] },
+				{ id: 'g2', name: 'Group 2', nodeIds: ['c', 'd'] },
+			]);
 
 			expect(nodeGroups.getNextDefaultName('Group')).toBe('Group 3');
+		});
+
+		it('increments a trailing number in the base name', () => {
+			nodeGroups.setNodeGroups([
+				{ id: 'g1', name: 'Q2', nodeIds: ['a', 'b'] },
+				{ id: 'g2', name: 'Q3', nodeIds: ['c', 'd'] },
+			]);
+
+			expect(nodeGroups.getNextDefaultName('Q2')).toBe('Q4');
+		});
+
+		it('uses the first available number after the trailing base number', () => {
+			nodeGroups.setNodeGroups([
+				{ id: 'g1', name: 'Release 2026', nodeIds: ['a', 'b'] },
+				{ id: 'g2', name: 'Release 2028', nodeIds: ['c', 'd'] },
+			]);
+
+			expect(nodeGroups.getNextDefaultName('Release 2026')).toBe('Release 2027');
 		});
 	});
 
