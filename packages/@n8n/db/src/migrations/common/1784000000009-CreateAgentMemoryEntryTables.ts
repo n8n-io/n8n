@@ -1,17 +1,10 @@
-import { TableCheck } from '@n8n/typeorm';
-
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const MEMORY_ENTRY_STATUSES = ['active', 'superseded', 'dropped'];
 const OBSERVATION_SCOPE_KINDS = ['thread', 'resource'];
-const OBSERVATION_LOCKS_TABLE = 'agents_observation_locks';
-const OBSERVATION_LOCK_TASK_KIND_COLUMN = 'taskKind';
-const LEGACY_OBSERVATION_LOCK_TASK_KIND_VALUES = "'observer', 'reflector'";
 
 export class CreateAgentMemoryEntryTables1784000000009 implements ReversibleMigration {
-	async up({ schemaBuilder: { createTable, column, dropEnumCheck } }: MigrationContext) {
-		await dropEnumCheck(OBSERVATION_LOCKS_TABLE, OBSERVATION_LOCK_TASK_KIND_COLUMN);
-
+	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable('agents_memory_entries')
 			.withColumns(
 				column('id').varchar(36).primary.notNull,
@@ -48,6 +41,28 @@ export class CreateAgentMemoryEntryTables1784000000009 implements ReversibleMigr
 			.withForeignKey('supersededBy', {
 				tableName: 'agents_memory_entries',
 				columnName: 'id',
+			}).withTimestamps;
+
+		await createTable('agents_memory_entry_locks')
+			.withColumns(
+				column('agentId').varchar(36).notNull.primary,
+				column('resourceId')
+					.varchar(255)
+					.notNull.primary.comment('agents_resources.id partition locked for episodic indexing'),
+				column('holderId')
+					.varchar(64)
+					.notNull.comment('Ephemeral background-task lock owner token'),
+				column('heldUntil').timestampTimezone(3).notNull,
+			)
+			.withForeignKey('agentId', {
+				tableName: 'agents',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withForeignKey('resourceId', {
+				tableName: 'agents_resources',
+				columnName: 'id',
+				onDelete: 'CASCADE',
 			}).withTimestamps;
 
 		await createTable('agents_memory_entry_sources')
@@ -101,37 +116,10 @@ export class CreateAgentMemoryEntryTables1784000000009 implements ReversibleMigr
 		).withTimestamps;
 	}
 
-	async down({
-		schemaBuilder: { dropTable },
-		queryRunner,
-		tablePrefix,
-		escape,
-		runQuery,
-	}: MigrationContext) {
+	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
 		await dropTable('agents_memory_entry_cursors');
+		await dropTable('agents_memory_entry_locks');
 		await dropTable('agents_memory_entry_sources');
 		await dropTable('agents_memory_entries');
-		await this.restoreObservationLockTaskKindCheck(queryRunner, tablePrefix, escape, runQuery);
-	}
-
-	private async restoreObservationLockTaskKindCheck(
-		queryRunner: MigrationContext['queryRunner'],
-		tablePrefix: string,
-		escape: MigrationContext['escape'],
-		runQuery: MigrationContext['runQuery'],
-	) {
-		const fullTableName = `${tablePrefix}${OBSERVATION_LOCKS_TABLE}`;
-		const checkName = `CHK_${tablePrefix}${OBSERVATION_LOCKS_TABLE}_${OBSERVATION_LOCK_TASK_KIND_COLUMN}`;
-		const escapedColumnName = escape.columnName(OBSERVATION_LOCK_TASK_KIND_COLUMN);
-		await runQuery(
-			`DELETE FROM ${escape.tableName(OBSERVATION_LOCKS_TABLE)} WHERE ${escape.columnName(OBSERVATION_LOCK_TASK_KIND_COLUMN)} NOT IN (${LEGACY_OBSERVATION_LOCK_TASK_KIND_VALUES})`,
-		);
-		await queryRunner.createCheckConstraint(
-			fullTableName,
-			new TableCheck({
-				name: checkName,
-				expression: `${escapedColumnName} IN (${LEGACY_OBSERVATION_LOCK_TASK_KIND_VALUES})`,
-			}),
-		);
 	}
 }

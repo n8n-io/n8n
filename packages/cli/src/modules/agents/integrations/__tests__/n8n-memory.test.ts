@@ -4,6 +4,7 @@ import { mock } from 'jest-mock-extended';
 
 import { AgentMemoryEntryCursorEntity } from '../../entities/agent-memory-entry-cursor.entity';
 import { AgentMemoryEntryEntity } from '../../entities/agent-memory-entry.entity';
+import type { AgentMemoryEntryLockEntity } from '../../entities/agent-memory-entry-lock.entity';
 import { AgentMemoryEntrySourceEntity } from '../../entities/agent-memory-entry-source.entity';
 import type { AgentMessageEntity } from '../../entities/agent-message.entity';
 import { AgentObservationCursorEntity } from '../../entities/agent-observation-cursor.entity';
@@ -12,6 +13,7 @@ import { AgentObservationEntity } from '../../entities/agent-observation.entity'
 import { AgentThreadEntity } from '../../entities/agent-thread.entity';
 import type { AgentMessageRepository } from '../../repositories/agent-message.repository';
 import type { AgentMemoryEntryCursorRepository } from '../../repositories/agent-memory-entry-cursor.repository';
+import type { AgentMemoryEntryLockRepository } from '../../repositories/agent-memory-entry-lock.repository';
 import type { AgentMemoryEntrySourceRepository } from '../../repositories/agent-memory-entry-source.repository';
 import type { AgentMemoryEntryRepository } from '../../repositories/agent-memory-entry.repository';
 import type { AgentObservationCursorRepository } from '../../repositories/agent-observation-cursor.repository';
@@ -34,6 +36,7 @@ describe('N8nMemory', () => {
 	let observationCursorRepository: jest.Mocked<AgentObservationCursorRepository>;
 	let observationLockRepository: jest.Mocked<AgentObservationLockRepository>;
 	let memoryEntryRepository: jest.Mocked<AgentMemoryEntryRepository>;
+	let memoryEntryLockRepository: jest.Mocked<AgentMemoryEntryLockRepository>;
 	let memoryEntrySourceRepository: jest.Mocked<AgentMemoryEntrySourceRepository>;
 	let memoryEntryCursorRepository: jest.Mocked<AgentMemoryEntryCursorRepository>;
 	let runInTransaction: jest.Mock;
@@ -64,6 +67,7 @@ describe('N8nMemory', () => {
 		observationCursorRepository = mock<AgentObservationCursorRepository>();
 		observationLockRepository = mock<AgentObservationLockRepository>();
 		memoryEntryRepository = mock<AgentMemoryEntryRepository>();
+		memoryEntryLockRepository = mock<AgentMemoryEntryLockRepository>();
 		memoryEntrySourceRepository = mock<AgentMemoryEntrySourceRepository>();
 		memoryEntryCursorRepository = mock<AgentMemoryEntryCursorRepository>();
 		resourceRepository.existsBy.mockResolvedValue(true);
@@ -174,6 +178,7 @@ describe('N8nMemory', () => {
 			observationCursorRepository,
 			observationLockRepository,
 			memoryEntryRepository,
+			memoryEntryLockRepository,
 			memoryEntrySourceRepository,
 			memoryEntryCursorRepository,
 		);
@@ -1122,6 +1127,100 @@ describe('N8nMemory', () => {
 				scopeKind: 'resource',
 				scopeId: 't-1',
 				taskKind: 'reflector',
+				holderId: 'A',
+			});
+		});
+
+		const mockEpisodicLockWrite = ({
+			updateAffected,
+			claimed,
+		}: {
+			updateAffected: number;
+			claimed?: AgentMemoryEntryLockEntity | null;
+		}) => {
+			const updateQueryBuilder = {
+				update: jest.fn().mockReturnThis(),
+				set: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				setParameters: jest.fn().mockReturnThis(),
+				execute: jest.fn().mockResolvedValue({ affected: updateAffected }),
+			};
+			const insertQueryBuilder = {
+				insert: jest.fn().mockReturnThis(),
+				into: jest.fn().mockReturnThis(),
+				values: jest.fn().mockReturnThis(),
+				orIgnore: jest.fn().mockReturnThis(),
+				execute: jest.fn().mockResolvedValue({ raw: {}, generatedMaps: [], identifiers: [] }),
+			};
+
+			memoryEntryLockRepository.createQueryBuilder
+				.mockReturnValueOnce(updateQueryBuilder as never)
+				.mockReturnValueOnce(insertQueryBuilder as never);
+			memoryEntryLockRepository.findOneBy.mockResolvedValue(claimed ?? null);
+
+			return { updateQueryBuilder, insertQueryBuilder };
+		};
+
+		it('acquires episodic task locks by bound agent and resource', async () => {
+			const { insertQueryBuilder } = mockEpisodicLockWrite({
+				updateAffected: 0,
+				claimed: {
+					agentId: 'agent-1',
+					resourceId: 'resource-1',
+					holderId: 'A',
+					heldUntil: new Date(Date.now() + 60_000),
+				} as AgentMemoryEntryLockEntity,
+			});
+
+			const handle = await memory.episodic.taskLock?.acquire('resource-1', {
+				ttlMs: 60_000,
+				holderId: 'A',
+			});
+
+			expect(handle).toMatchObject({ resourceId: 'resource-1', holderId: 'A' });
+			expect(insertQueryBuilder.values).toHaveBeenCalledWith(
+				expect.objectContaining({ agentId: 'agent-1', resourceId: 'resource-1', holderId: 'A' }),
+			);
+			expect(observationLockRepository.createQueryBuilder).not.toHaveBeenCalled();
+		});
+
+		it('uses the bound agent id for episodic task lock isolation', async () => {
+			const agentTwoMemory = memoryService.getImplementation('agent-2');
+			const { updateQueryBuilder } = mockEpisodicLockWrite({ updateAffected: 1 });
+
+			const handle = await agentTwoMemory.episodic.taskLock?.acquire('resource-1', {
+				ttlMs: 60_000,
+				holderId: 'B',
+			});
+
+			expect(handle).toMatchObject({ resourceId: 'resource-1', holderId: 'B' });
+			expect(updateQueryBuilder.setParameters).toHaveBeenCalledWith(
+				expect.objectContaining({ agentId: 'agent-2', resourceId: 'resource-1' }),
+			);
+		});
+
+		it('refuses episodic task locks held by another live holder', async () => {
+			mockEpisodicLockWrite({ updateAffected: 0 });
+
+			const handle = await memory.episodic.taskLock?.acquire('resource-1', {
+				ttlMs: 60_000,
+				holderId: 'B',
+			});
+
+			expect(handle).toBeNull();
+		});
+
+		it('releases episodic task locks by bound agent, resource, and holder', async () => {
+			await memory.episodic.taskLock?.release({
+				resourceId: 'resource-1',
+				holderId: 'A',
+				heldUntil: new Date(),
+			});
+
+			expect(memoryEntryLockRepository.delete).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				resourceId: 'resource-1',
 				holderId: 'A',
 			});
 		});

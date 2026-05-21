@@ -3,7 +3,7 @@ import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
 
 import type { ObservationScopeKind } from './agent-observation.entity';
 
-export type ObservationTaskKind = 'observer' | 'reflector' | 'episodic-indexer';
+export type ObservationTaskKind = 'observer' | 'reflector';
 
 @Entity({ name: 'agents_observation_locks' })
 export class AgentObservationLockEntity extends WithTimestamps {

@@ -101,6 +101,9 @@ export class AgentsModule implements ModuleInterface {
 		);
 		const { AgentObservationLockEntity } = await import('./entities/agent-observation-lock.entity');
 		const { AgentMemoryEntryEntity } = await import('./entities/agent-memory-entry.entity');
+		const { AgentMemoryEntryLockEntity } = await import(
+			'./entities/agent-memory-entry-lock.entity'
+		);
 		const { AgentMemoryEntrySourceEntity } = await import(
 			'./entities/agent-memory-entry-source.entity'
 		);
@@ -121,6 +124,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentObservationCursorEntity,
 			AgentObservationLockEntity,
 			AgentMemoryEntryEntity,
+			AgentMemoryEntryLockEntity,
 			AgentMemoryEntrySourceEntity,
 			AgentMemoryEntryCursorEntity,
 		];

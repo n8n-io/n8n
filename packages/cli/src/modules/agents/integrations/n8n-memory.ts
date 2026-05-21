@@ -24,6 +24,7 @@ import {
 	type EpisodicMemoryReflectionResult,
 	type EpisodicMemoryScope,
 	type EpisodicMemorySearchOptions,
+	type EpisodicMemoryTaskLockHandle,
 	type MemoryDescriptor,
 	type NewEpisodicMemoryCursor,
 	type NewEpisodicMemoryEntry,
@@ -51,6 +52,7 @@ import { isUniqueConstraintError } from '@/response-helper';
 
 import { AgentMemoryEntryCursorEntity } from '../entities/agent-memory-entry-cursor.entity';
 import { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity';
+import { AgentMemoryEntryLockEntity } from '../entities/agent-memory-entry-lock.entity';
 import { AgentMemoryEntrySourceEntity } from '../entities/agent-memory-entry-source.entity';
 import type { AgentMessageEntity } from '../entities/agent-message.entity';
 import { AgentObservationCursorEntity } from '../entities/agent-observation-cursor.entity';
@@ -59,6 +61,7 @@ import { AgentObservationEntity } from '../entities/agent-observation.entity';
 import { AgentThreadEntity } from '../entities/agent-thread.entity';
 import { AgentMessageRepository } from '../repositories/agent-message.repository';
 import { AgentMemoryEntryCursorRepository } from '../repositories/agent-memory-entry-cursor.repository';
+import { AgentMemoryEntryLockRepository } from '../repositories/agent-memory-entry-lock.repository';
 import { AgentMemoryEntrySourceRepository } from '../repositories/agent-memory-entry-source.repository';
 import { AgentMemoryEntryRepository } from '../repositories/agent-memory-entry.repository';
 import { AgentObservationCursorRepository } from '../repositories/agent-observation-cursor.repository';
@@ -79,6 +82,7 @@ export class N8nMemory {
 		private readonly observationCursorRepository: AgentObservationCursorRepository,
 		private readonly observationLockRepository: AgentObservationLockRepository,
 		private readonly memoryEntryRepository: AgentMemoryEntryRepository,
+		private readonly memoryEntryLockRepository: AgentMemoryEntryLockRepository,
 		private readonly memoryEntrySourceRepository: AgentMemoryEntrySourceRepository,
 		private readonly memoryEntryCursorRepository: AgentMemoryEntryCursorRepository,
 	) {}
@@ -93,6 +97,7 @@ export class N8nMemory {
 			this.observationCursorRepository,
 			this.observationLockRepository,
 			this.memoryEntryRepository,
+			this.memoryEntryLockRepository,
 			this.memoryEntrySourceRepository,
 			this.memoryEntryCursorRepository,
 		);
@@ -115,6 +120,7 @@ export class N8nMemoryImpl
 		private readonly observationCursorRepository: AgentObservationCursorRepository,
 		private readonly observationLockRepository: AgentObservationLockRepository,
 		private readonly memoryEntryRepository: AgentMemoryEntryRepository,
+		private readonly memoryEntryLockRepository: AgentMemoryEntryLockRepository,
 		private readonly memoryEntrySourceRepository: AgentMemoryEntrySourceRepository,
 		private readonly memoryEntryCursorRepository: AgentMemoryEntryCursorRepository,
 	) {}
@@ -129,6 +135,11 @@ export class N8nMemoryImpl
 			await this.applyEpisodicMemoryReflection(scope, reflection),
 		getCursor: async (scope) => await this.getEpisodicMemoryCursor(scope),
 		setCursor: async (cursor) => await this.setEpisodicMemoryCursor(cursor),
+		taskLock: {
+			acquire: async (resourceId, opts) =>
+				await this.acquireEpisodicMemoryTaskLock(resourceId, opts),
+			release: async (handle) => await this.releaseEpisodicMemoryTaskLock(handle),
+		},
 	};
 
 	// ── Thread management ────────────────────────────────────────────────
@@ -510,9 +521,8 @@ export class N8nMemoryImpl
 		const now = new Date();
 		const heldUntil = new Date(now.getTime() + opts.ttlMs);
 
-		// FIXME: This persisted lock is per task kind. In multi-main mode, different
-		// memory tasks for the same scope can still overlap across servers, so an
-		// episodic indexer could read while an observer is still writing observations.
+		// FIXME: This persisted lock is per task kind. In multi-main mode, observer
+		// and reflector tasks for the same scope can still overlap across servers.
 		const updateResult = await this.observationLockRepository
 			.createQueryBuilder()
 			.update(AgentObservationLockEntity)
@@ -561,6 +571,59 @@ export class N8nMemoryImpl
 	}
 
 	// ── Episodic memory ──────────────────────────────────────────────────
+
+	private async acquireEpisodicMemoryTaskLock(
+		resourceId: string,
+		opts: { ttlMs: number; holderId: string },
+	): Promise<EpisodicMemoryTaskLockHandle | null> {
+		await this.ensureResource(resourceId);
+
+		const now = new Date();
+		const heldUntil = new Date(now.getTime() + opts.ttlMs);
+		const updateResult = await this.memoryEntryLockRepository
+			.createQueryBuilder()
+			.update(AgentMemoryEntryLockEntity)
+			.set({ holderId: opts.holderId, heldUntil })
+			.where('"agentId" = :agentId')
+			.andWhere('"resourceId" = :resourceId')
+			.andWhere('("holderId" = :holderId OR "heldUntil" <= :now)')
+			.setParameters({
+				agentId: this.agentId,
+				resourceId,
+				holderId: opts.holderId,
+				now,
+			})
+			.execute();
+
+		if ((updateResult.affected ?? 0) > 0) {
+			return { resourceId, holderId: opts.holderId, heldUntil };
+		}
+
+		await this.memoryEntryLockRepository
+			.createQueryBuilder()
+			.insert()
+			.into(AgentMemoryEntryLockEntity)
+			.values({ agentId: this.agentId, resourceId, holderId: opts.holderId, heldUntil })
+			.orIgnore()
+			.execute();
+
+		const claimed = await this.memoryEntryLockRepository.findOneBy({
+			agentId: this.agentId,
+			resourceId,
+			holderId: opts.holderId,
+		});
+		if (!claimed) return null;
+
+		return { resourceId, holderId: opts.holderId, heldUntil };
+	}
+
+	private async releaseEpisodicMemoryTaskLock(handle: EpisodicMemoryTaskLockHandle): Promise<void> {
+		await this.memoryEntryLockRepository.delete({
+			agentId: this.agentId,
+			resourceId: handle.resourceId,
+			holderId: handle.holderId,
+		});
+	}
 
 	private async saveEpisodicMemoryEntryWithSources(
 		entry: NewEpisodicMemoryEntry,
