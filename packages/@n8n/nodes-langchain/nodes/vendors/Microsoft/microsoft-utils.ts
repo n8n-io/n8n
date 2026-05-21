@@ -27,12 +27,19 @@ import { invokeAgent } from './langchain-utils';
 import {
 	McpToolServerConfigurationService,
 	defaultToolingConfigurationProvider,
+	resolveTokenScopeForServer,
 	Utility as MicrosoftToolingUtility,
 	type MCPServerConfig,
+	type ToolOptions,
 } from '@microsoft/agents-a365-tooling';
+import {
+	AgenticAuthenticationService,
+	Utility as MicrosoftRuntimeUtility,
+} from '@microsoft/agents-a365-runtime';
 
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StructuredToolkit } from 'n8n-core';
+import { proxyFetch } from '@n8n/ai-utilities';
 import { connectMcpClient, getAllTools } from '../../mcp/shared/utils';
 import {
 	buildMcpToolName,
@@ -129,9 +136,227 @@ export const microsoftMcpServers: INodePropertyOptions[] = [
 ];
 
 const MS_TENANT_ID_HEADER = 'x-ms-tenant-id';
+const MICROSOFT_TOOL_OPTIONS: ToolOptions = { orchestratorName: 'LangChain' };
 
 function hasAuthorizationHeader(headers: Record<string, string>) {
 	return Object.keys(headers).some((headerName) => headerName.toLowerCase() === 'authorization');
+}
+
+function redactHeaderValue(headerName: string, headerValue: string) {
+	return headerName.toLowerCase() === 'authorization' ? '<redacted>' : headerValue;
+}
+
+function redactHeaders(headers: Record<string, string> | undefined) {
+	if (!headers) return undefined;
+
+	return Object.fromEntries(
+		Object.entries(headers).map(([headerName, headerValue]) => [
+			headerName,
+			redactHeaderValue(headerName, headerValue),
+		]),
+	);
+}
+
+function getErrorDetails(error: unknown) {
+	if (error instanceof Error) {
+		return {
+			name: error.name,
+			message: error.message,
+			stack: error.stack,
+		};
+	}
+
+	return error;
+}
+
+function getAuthorizationHeader(headers: Record<string, string> | undefined) {
+	if (!headers) return undefined;
+
+	for (const [headerName, headerValue] of Object.entries(headers)) {
+		if (headerName.toLowerCase() === 'authorization') {
+			return headerValue;
+		}
+	}
+
+	return undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function getStringProperty(value: Record<string, unknown>, key: string) {
+	const property = value[key];
+	return typeof property === 'string' ? property : undefined;
+}
+
+function getHeadersProperty(value: Record<string, unknown>) {
+	const headers = value.headers;
+	if (!isRecord(headers)) return undefined;
+
+	const result: Record<string, string> = {};
+	for (const [headerName, headerValue] of Object.entries(headers)) {
+		if (typeof headerValue === 'string') {
+			result[headerName] = headerValue;
+		}
+	}
+
+	return result;
+}
+
+function getRawMcpServers(payload: unknown) {
+	if (Array.isArray(payload)) return payload;
+	if (!isRecord(payload)) return undefined;
+
+	const mcpServers = payload.mcpServers;
+	if (Array.isArray(mcpServers)) return mcpServers;
+
+	const value = payload.value;
+	if (Array.isArray(value)) return value;
+
+	return undefined;
+}
+
+function getMcpPlatformBaseUrl() {
+	return defaultToolingConfigurationProvider.getConfiguration().mcpPlatformEndpoint;
+}
+
+function getToolingGatewayUrl(agenticAppId: string) {
+	return `${getMcpPlatformBaseUrl()}/agents/v2/${agenticAppId}/mcpServers`;
+}
+
+function getMcpServerUrl(mcpServerName: string) {
+	return `${getMcpPlatformBaseUrl()}/agents/servers/${mcpServerName}/`;
+}
+
+function normalizeMcpServerConfig(rawServer: unknown): MCPServerConfig | undefined {
+	if (!isRecord(rawServer)) return undefined;
+
+	const mcpServerName =
+		getStringProperty(rawServer, 'mcpServerName') ??
+		getStringProperty(rawServer, 'mcpServerUniqueName');
+	if (!mcpServerName) return undefined;
+
+	return {
+		mcpServerName,
+		url: getStringProperty(rawServer, 'url') ?? getMcpServerUrl(mcpServerName),
+		headers: getHeadersProperty(rawServer),
+		audience: getStringProperty(rawServer, 'audience'),
+		scope: getStringProperty(rawServer, 'scope'),
+		publisher: getStringProperty(rawServer, 'publisher'),
+	};
+}
+
+async function getMcpServerConfigsWithoutAudienceTokens(
+	turnContext: TurnContext,
+	mcpAuthToken: string,
+) {
+	MicrosoftToolingUtility.ValidateAuthToken(mcpAuthToken);
+
+	const agenticAppId = MicrosoftRuntimeUtility.ResolveAgentIdentity(turnContext, mcpAuthToken);
+	const endpoint = getToolingGatewayUrl(agenticAppId);
+	console.warn('Falling back to raw Microsoft MCP server discovery', {
+		agenticAppId,
+		endpoint,
+	});
+	const response = await proxyFetch(endpoint, {
+		headers: MicrosoftToolingUtility.GetToolRequestHeaders(
+			mcpAuthToken,
+			turnContext,
+			MICROSOFT_TOOL_OPTIONS,
+		),
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to read MCP servers from endpoint: ${response.status}`);
+	}
+
+	const payload: unknown = await response.json();
+	const rawServers = getRawMcpServers(payload);
+	if (!rawServers) {
+		console.error('Microsoft MCP server discovery returned an unsupported payload shape', {
+			payload,
+		});
+		throw new Error('Failed to read MCP servers from endpoint: response is not a server list');
+	}
+
+	const servers = rawServers
+		.map((rawServer) => normalizeMcpServerConfig(rawServer))
+		.filter((server): server is MCPServerConfig => server !== undefined);
+
+	console.warn('Raw Microsoft MCP server discovery completed', {
+		serverCount: servers.length,
+		servers: servers.map((server) => ({
+			name: server.mcpServerName,
+			url: server.url,
+			audience: server.audience,
+			scope: server.scope,
+			hasAuthorizationHeader: hasAuthorizationHeader(server.headers ?? {}),
+			headers: redactHeaders(server.headers),
+		})),
+	});
+
+	return servers;
+}
+
+async function attachMcpServerAuthorization(
+	server: MCPServerConfig,
+	turnContext: TurnContext,
+	authorization: Authorization,
+	mcpAuthToken: string,
+) {
+	const sharedScope =
+		defaultToolingConfigurationProvider.getConfiguration().mcpPlatformAuthenticationScope;
+	const scope = getMcpServerTokenScope(server, sharedScope);
+
+	if (scope === sharedScope && hasAuthorizationHeader(server.headers ?? {})) return server;
+
+	console.warn('Resolving Microsoft MCP server authorization', {
+		serverName: server.mcpServerName,
+		audience: server.audience,
+		serverScope: server.scope,
+		resolvedScope: scope,
+		usesSharedToken: scope === sharedScope,
+	});
+
+	const token =
+		scope === sharedScope
+			? mcpAuthToken
+			: await AgenticAuthenticationService.GetAgenticUserToken(
+					authorization,
+					'agentic',
+					turnContext,
+					[scope],
+				);
+
+	if (!token) {
+		console.error('Microsoft MCP server token exchange returned no token', {
+			serverName: server.mcpServerName,
+			resolvedScope: scope,
+		});
+		throw new Error(`Failed to obtain token for MCP server '${server.mcpServerName}'`);
+	}
+
+	return {
+		...server,
+		headers: {
+			...server.headers,
+			Authorization: `Bearer ${token}`,
+		},
+	};
+}
+
+function getMcpScopeAudience(scope: string) {
+	const scopeSeparatorIndex = scope.lastIndexOf('/');
+	return scopeSeparatorIndex === -1 ? scope : scope.slice(0, scopeSeparatorIndex);
+}
+
+function getMcpServerTokenScope(server: MCPServerConfig, sharedScope: string) {
+	if (!server.scope) return resolveTokenScopeForServer(server, sharedScope);
+	if (server.scope.includes('/')) return server.scope;
+
+	const audience = server.audience ?? getMcpScopeAudience(sharedScope);
+	return `${audience}/${server.scope}`;
 }
 
 function getMcpServerHeaders(
@@ -141,11 +366,24 @@ function getMcpServerHeaders(
 	tenantId: string | undefined,
 ) {
 	const headers: Record<string, string> = {
-		...MicrosoftToolingUtility.GetToolRequestHeaders(mcpAuthToken, turnContext, {
-			orchestratorName: 'LangChain',
-		}),
-		...(server.headers ?? {}),
+		...MicrosoftToolingUtility.GetToolRequestHeaders(
+			mcpAuthToken,
+			turnContext,
+			MICROSOFT_TOOL_OPTIONS,
+		),
 	};
+	const serverAuthorization = getAuthorizationHeader(server.headers);
+
+	for (const [headerName, headerValue] of Object.entries(server.headers ?? {})) {
+		if (headerName.toLowerCase() !== 'authorization') {
+			headers[headerName] = headerValue;
+		}
+	}
+
+	if (serverAuthorization) {
+		delete headers.Authorization;
+		headers.Authorization = serverAuthorization;
+	}
 
 	if (mcpAuthToken && !hasAuthorizationHeader(headers)) {
 		headers.Authorization = `Bearer ${mcpAuthToken}`;
@@ -193,17 +431,32 @@ export async function getMicrosoftMcpTools(
 ) {
 	const configService: McpToolServerConfigurationService = new McpToolServerConfigurationService();
 
-	let servers = await configService.listToolServers(
-		turnContext,
-		authorization,
-		'agentic',
-		mcpAuthToken,
-	);
+	let shouldAttachServerAuthorization = false;
+	let servers: MCPServerConfig[];
+	try {
+		servers = await configService.listToolServers(
+			turnContext,
+			authorization,
+			'agentic',
+			mcpAuthToken,
+			MICROSOFT_TOOL_OPTIONS,
+		);
+	} catch (error) {
+		console.warn('Microsoft SDK listToolServers failed, using raw discovery fallback', {
+			error: getErrorDetails(error),
+		});
+		servers = await getMcpServerConfigsWithoutAudienceTokens(turnContext, mcpAuthToken);
+		shouldAttachServerAuthorization = true;
+	}
 
 	if (servers.length === 0) return undefined;
 
 	if (selectedTools?.length) {
 		servers = servers.filter((server) => selectedTools.includes(server.mcpServerName));
+		console.warn('Filtered Microsoft MCP servers by selected tools', {
+			selectedTools,
+			remainingServers: servers.map((server) => server.mcpServerName),
+		});
 	}
 
 	const tenantId =
@@ -215,11 +468,31 @@ export async function getMicrosoftMcpTools(
 	const timeout = 60000;
 
 	for (const server of servers) {
-		const headers = getMcpServerHeaders(server, turnContext, mcpAuthToken, tenantId);
+		let authorizedServer = server;
+		if (shouldAttachServerAuthorization) {
+			try {
+				authorizedServer = await attachMcpServerAuthorization(
+					server,
+					turnContext,
+					authorization,
+					mcpAuthToken,
+				);
+			} catch (error) {
+				console.error(`Failed to authorize MCP server ${server.mcpServerName}:`, error);
+				continue;
+			}
+		}
+
+		const headers = getMcpServerHeaders(authorizedServer, turnContext, mcpAuthToken, tenantId);
+		console.warn('Connecting Microsoft MCP server', {
+			serverName: authorizedServer.mcpServerName,
+			url: authorizedServer.url,
+			headers: redactHeaders(headers),
+		});
 
 		const clientResult = await connectMcpClient({
 			serverTransport: 'httpStreamable', // Microsoft servers use HTTP
-			endpointUrl: server.url,
+			endpointUrl: authorizedServer.url,
 			headers,
 			name: 'Microsoft-Agent-365',
 			version: 1,

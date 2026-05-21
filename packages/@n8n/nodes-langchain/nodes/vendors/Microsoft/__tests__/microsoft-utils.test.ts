@@ -74,6 +74,9 @@ vi.mock('@microsoft/agents-a365-observability', () => ({
 }));
 
 vi.mock('@microsoft/agents-a365-runtime', () => ({
+	AgenticAuthenticationService: {
+		GetAgenticUserToken: vi.fn().mockResolvedValue('per-audience-token'),
+	},
 	getMcpPlatformAuthenticationScope: vi.fn().mockReturnValue('mcp-scope'),
 	getObservabilityAuthenticationScope: vi.fn().mockReturnValue('observability-scope'),
 	Utility: {
@@ -81,10 +84,15 @@ vi.mock('@microsoft/agents-a365-runtime', () => ({
 	},
 }));
 
+vi.mock('@n8n/ai-utilities', () => ({
+	proxyFetch: vi.fn(),
+}));
+
 vi.mock('@microsoft/agents-a365-tooling', () => ({
 	McpToolServerConfigurationService: vi.fn().mockImplementation(function () {
 		return { listToolServers: vi.fn().mockResolvedValue([]) };
 	}),
+	resolveTokenScopeForServer: vi.fn().mockReturnValue('mcp-scope'),
 	Utility: {
 		ValidateAuthToken: vi.fn(),
 		GetToolRequestHeaders: vi.fn().mockReturnValue({}),
@@ -92,6 +100,7 @@ vi.mock('@microsoft/agents-a365-tooling', () => ({
 	defaultToolingConfigurationProvider: {
 		getConfiguration: vi.fn().mockReturnValue({
 			mcpPlatformAuthenticationScope: 'mcp-scope',
+			mcpPlatformEndpoint: 'https://agent365.svc.cloud.microsoft',
 		}),
 	},
 }));
@@ -110,7 +119,12 @@ vi.mock('uuid', () => ({
 }));
 
 import { MemoryStorage, AgentApplication, CloudAdapter } from '@microsoft/agents-hosting';
-import { McpToolServerConfigurationService } from '@microsoft/agents-a365-tooling';
+import {
+	McpToolServerConfigurationService,
+	Utility as MicrosoftToolingUtility,
+} from '@microsoft/agents-a365-tooling';
+import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
+import { proxyFetch } from '@n8n/ai-utilities';
 
 describe('microsoft-utils', () => {
 	beforeAll(async () => {
@@ -696,6 +710,101 @@ describe('microsoft-utils', () => {
 				name: 'Microsoft-Agent-365',
 				version: 1,
 			});
+		});
+
+		test('should prefer per-server authorization headers for tool calls', async () => {
+			const mockServers = [
+				{
+					mcpServerName: 'mcp_CalendarTools',
+					url: 'http://calendar-server',
+					headers: {
+						authorization: 'Bearer per-server-token',
+						'x-ms-custom-header': 'custom-value',
+					},
+				},
+			];
+
+			(MicrosoftToolingUtility.GetToolRequestHeaders as Mock).mockReturnValueOnce({
+				Authorization: 'Bearer shared-token',
+				'x-ms-channel-id': 'msteams',
+			});
+			mockConfigService.listToolServers.mockResolvedValue(mockServers);
+
+			const mockClient = { close: vi.fn() };
+			(connectMcpClient as Mock).mockResolvedValue({
+				ok: true,
+				result: mockClient,
+			});
+
+			(getAllTools as Mock).mockResolvedValue([]);
+
+			await getMicrosoftMcpTools(mockTurnContext, mockAuthorization, 'test-token', undefined);
+
+			expect(connectMcpClient).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: {
+						Authorization: 'Bearer per-server-token',
+						'x-ms-channel-id': 'msteams',
+						'x-ms-custom-header': 'custom-value',
+						'x-ms-tenant-id': 'test-tenant-id',
+					},
+				}),
+			);
+		});
+
+		test('should fallback to filtered server discovery before per-server token exchange', async () => {
+			mockConfigService.listToolServers.mockRejectedValue(new Error('insufficient permissions'));
+			(proxyFetch as Mock).mockResolvedValueOnce({
+				ok: true,
+				json: vi.fn().mockResolvedValue({
+					mcpServers: [
+						{
+							mcpServerName: 'mcp_CalendarTools',
+							url: 'http://calendar-server',
+							scope: 'McpServers.DataverseCustom.All',
+						},
+						{
+							mcpServerName: 'mcp_MailTools',
+							url: 'http://mail-server',
+							audience: 'mail-audience',
+						},
+					],
+				}),
+			});
+			(AgenticAuthenticationService.GetAgenticUserToken as Mock).mockResolvedValueOnce(
+				'calendar-audience-token',
+			);
+
+			const mockClient = { close: vi.fn() };
+			(connectMcpClient as Mock).mockResolvedValue({
+				ok: true,
+				result: mockClient,
+			});
+			(getAllTools as Mock).mockResolvedValue([]);
+
+			await getMicrosoftMcpTools(mockTurnContext, mockAuthorization, 'test-token', [
+				'mcp_CalendarTools',
+			]);
+
+			expect(proxyFetch).toHaveBeenCalledWith(
+				'https://agent365.svc.cloud.microsoft/agents/v2/agent-identity/mcpServers',
+				expect.any(Object),
+			);
+			expect(AgenticAuthenticationService.GetAgenticUserToken).toHaveBeenCalledWith(
+				mockAuthorization,
+				'agentic',
+				mockTurnContext,
+				['mcp-scope/McpServers.DataverseCustom.All'],
+			);
+			expect(connectMcpClient).toHaveBeenCalledTimes(1);
+			expect(connectMcpClient).toHaveBeenCalledWith(
+				expect.objectContaining({
+					endpointUrl: 'http://calendar-server',
+					headers: expect.objectContaining({
+						Authorization: 'Bearer calendar-audience-token',
+					}),
+				}),
+			);
 		});
 
 		test('should handle connection errors gracefully', async () => {
