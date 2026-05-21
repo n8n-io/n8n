@@ -288,6 +288,22 @@ describe('PathResolvingService', () => {
 			const service = createService({ basePath: '/custom-path' });
 			expect(service.resolveHealthzEndpoint('readiness')).toBe('/custom-path/healthz/readiness');
 		});
+
+		it('should honor a customized health endpoint from globalConfig', () => {
+			const service = createService({
+				basePath: '/custom-path',
+				endpoints: { health: '/my-health' } as GlobalConfig['endpoints'],
+			});
+			expect(service.resolveHealthzEndpoint()).toBe('/custom-path/my-health');
+			expect(service.resolveHealthzEndpoint('readiness')).toBe('/custom-path/my-health/readiness');
+		});
+
+		it('should honor a customized health endpoint without leading slash', () => {
+			const service = createService({
+				endpoints: { health: 'my-health' } as GlobalConfig['endpoints'],
+			});
+			expect(service.resolveHealthzEndpoint()).toBe('/my-health');
+		});
 	});
 
 	describe('real-world scenarios', () => {
