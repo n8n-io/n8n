@@ -114,7 +114,7 @@ function doNotExistIssue(
 	return {
 		[credentialType]: [
 			`Credentials with name ${credentialName} do not exist for ${credentialTypeDisplayName}.`,
-			'You can create credentials with the exact name and then they get auto-selected on refresh..',
+			'You can create credentials with the exact name and then they get auto-selected on refresh.',
 		],
 	};
 }
