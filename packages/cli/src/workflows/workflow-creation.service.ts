@@ -1,12 +1,14 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User, Project } from '@n8n/db';
 import {
 	WorkflowEntity,
 	SharedWorkflow,
 	SharedWorkflowRepository,
+	Project,
 	ProjectRepository,
 	TagRepository,
+	type EntityManager,
+	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
@@ -64,6 +66,7 @@ export class WorkflowCreationService {
 			uiContext?: string;
 			publicApi?: boolean;
 			source?: WorkflowActionSource;
+			transactionManager?: EntityManager;
 		} = {},
 	): Promise<WorkflowEntity> {
 		const {
@@ -75,6 +78,7 @@ export class WorkflowCreationService {
 			uiContext,
 			publicApi = false,
 			source = 'ui',
+			transactionManager: outerTransactionManager,
 		} = options;
 
 		// Ensure workflow is created as inactive
@@ -89,17 +93,27 @@ export class WorkflowCreationService {
 			newWorkflow.tags = await this.tagRepository.findMany(tagIds);
 		}
 
-		// Resolve target project and require workflow:create before credential checks
+		// Resolve target project and require workflow:create before credential checks.
+		// When joining an outer transaction, use its EntityManager for reads so a pool-size-1
+		// Postgres setup does not block waiting for a second connection.
 		const effectiveProjectId =
-			projectId ?? (await this.projectRepository.getPersonalProjectForUserOrFail(user.id)).id;
+			projectId ??
+			(
+				await this.projectRepository.getPersonalProjectForUserOrFail(
+					user.id,
+					outerTransactionManager,
+				)
+			).id;
 
 		let project: Project | null = await this.projectService.getProjectWithScope(
 			user,
 			effectiveProjectId,
 			['workflow:create'],
+			outerTransactionManager,
 		);
 		if (!project) {
-			if (!(await this.projectRepository.exists({ where: { id: effectiveProjectId } }))) {
+			const em = outerTransactionManager ?? this.projectRepository.manager;
+			if (!(await em.exists(Project, { where: { id: effectiveProjectId } }))) {
 				throw new NotFoundError('Project not found');
 			}
 			const message = "You don't have the permissions to save the workflow in this project.";
@@ -145,7 +159,7 @@ export class WorkflowCreationService {
 
 		const { manager: dbManager } = this.projectRepository;
 
-		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
+		const persistWorkflow = async (transactionManager: EntityManager) => {
 			project = await this.projectService.getProjectWithScope(
 				user,
 				effectiveProjectId,
@@ -222,7 +236,11 @@ export class WorkflowCreationService {
 					includeActiveVersion: true,
 				},
 			);
-		});
+		};
+
+		const savedWorkflow = outerTransactionManager
+			? await persistWorkflow(outerTransactionManager)
+			: await dbManager.transaction(persistWorkflow);
 
 		if (!savedWorkflow) {
 			this.logger.error('Failed to create workflow', { userId: user.id });
