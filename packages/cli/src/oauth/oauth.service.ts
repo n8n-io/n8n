@@ -62,6 +62,13 @@ export const skipAuthOnOAuthCallback = shouldSkipAuthOnOAuthCallback();
 
 export { OauthVersion, type OAuth1CredentialData, type CreateCsrfStateData, type CsrfState };
 
+export class InvalidTargetError extends AuthError {
+	constructor(message: string) {
+		super(message, 'invalid_target');
+		this.name = 'InvalidTargetError';
+	}
+}
+
 @Service()
 export class OauthService {
 	constructor(
@@ -83,6 +90,72 @@ export class OauthService {
 			this.logger.error('Invalid OAuth URL', { url, error: e });
 			throw e;
 		}
+	}
+
+	private normalizeResourceUrl(url: string): string {
+		return url.trim().replace(/\/+$/, '');
+	}
+
+	private parseUrlOriginOrThrow(url: string, message: string): string {
+		try {
+			return new URL(url).origin;
+		} catch (error) {
+			this.logger.debug('Invalid OAuth URL format', { url, error });
+			throw new InvalidTargetError(message);
+		}
+	}
+
+	private validateResourceUrlOrThrow(resourceUrl: string): string {
+		const normalizedResourceUrl = this.normalizeResourceUrl(resourceUrl);
+
+		try {
+			this.validateOAuthUrlOrThrow(normalizedResourceUrl);
+			new URL(normalizedResourceUrl);
+		} catch (error) {
+			this.logger.debug('Invalid OAuth resource URL', { resourceUrl, error });
+			throw new InvalidTargetError('Invalid resource URL format.');
+		}
+
+		return normalizedResourceUrl;
+	}
+
+	private resolveResourceUrl(
+		suppliedResourceUrl: string | undefined,
+		discoveredResource: string | undefined,
+		serverUrl: string,
+	): string | undefined {
+		if (!suppliedResourceUrl) return discoveredResource;
+
+		if (discoveredResource && suppliedResourceUrl !== discoveredResource) {
+			this.logger.debug('OAuth resource URL does not match discovered resource', {
+				suppliedResourceUrl,
+				discoveredResource,
+			});
+			throw new InvalidTargetError(
+				"The provided resource URL does not match the server's advertised resource.",
+			);
+		}
+
+		if (!discoveredResource) {
+			const resourceOrigin = this.parseUrlOriginOrThrow(
+				suppliedResourceUrl,
+				'Invalid resource URL format.',
+			);
+			const serverOrigin = this.parseUrlOriginOrThrow(
+				serverUrl,
+				'Invalid OAuth server URL format.',
+			);
+
+			if (resourceOrigin !== serverOrigin) {
+				this.logger.debug('OAuth resource URL origin does not match server URL origin', {
+					resourceOrigin,
+					serverOrigin,
+				});
+				throw new InvalidTargetError('Resource URL origin must match the server URL origin.');
+			}
+		}
+
+		return suppliedResourceUrl;
 	}
 
 	getBaseUrl(oauthVersion: OauthVersion) {
@@ -406,6 +479,10 @@ export class OauthService {
 			// Step 1: Discover Protected Resource Metadata (RFC 9728 / MCP)
 			// Try to discover the authorization server URL from protected resource metadata
 			let authorizationServerUrl: string;
+			let discoveredResource: string | undefined;
+			const suppliedResourceUrl = oauthCredentials.resourceUrl
+				? this.validateResourceUrlOrThrow(oauthCredentials.resourceUrl)
+				: undefined;
 
 			try {
 				const protectedResourceMetadata = await this.discoverProtectedResourceMetadata(
@@ -415,6 +492,7 @@ export class OauthService {
 				// Use first authorization server from the list
 				// MCP spec allows multiple; we use the first one
 				authorizationServerUrl = protectedResourceMetadata.authorization_servers[0];
+				discoveredResource = protectedResourceMetadata.resource;
 
 				// Validate authorization server URL to prevent SSRF attacks
 				this.validateOAuthUrlOrThrow(authorizationServerUrl);
@@ -422,6 +500,7 @@ export class OauthService {
 				this.logger.debug('Protected resource discovery succeeded', {
 					resourceUrl: oauthCredentials.serverUrl,
 					authorizationServerUrl,
+					discoveredResource,
 				});
 			} catch (error) {
 				// Re-throw security validation errors immediately (don't fall back)
@@ -440,6 +519,13 @@ export class OauthService {
 				);
 				authorizationServerUrl = oauthCredentials.serverUrl;
 			}
+
+			const resolvedResource = this.resolveResourceUrl(
+				suppliedResourceUrl,
+				discoveredResource,
+				oauthCredentials.serverUrl,
+			);
+			if (resolvedResource) csrfData.resource = resolvedResource;
 
 			// Step 2: Discover Authorization Server Metadata (RFC 8414 / OpenID Connect)
 			const issuerUrl = new URL(authorizationServerUrl);
@@ -695,6 +781,7 @@ export class OauthService {
 			redirectUri: `${this.getBaseUrl(OauthVersion.V2)}/callback`,
 			scopes: split(credential.scope ?? 'openid', ','),
 			scopesSeparator: credential.scope?.includes(',') ? ',' : ' ',
+			resource: credential.resource,
 			ignoreSSLIssues: credential.ignoreSSLIssues ?? false,
 		};
 
@@ -719,7 +806,7 @@ export class OauthService {
 	 */
 	private async discoverProtectedResourceMetadata(
 		resourceUrl: string,
-	): Promise<{ authorization_servers: string[] }> {
+	): Promise<{ authorization_servers: string[]; resource?: string }> {
 		// Validate input to prevent SSRF (defense-in-depth)
 		this.validateOAuthUrlOrThrow(resourceUrl);
 
@@ -754,7 +841,14 @@ export class OauthService {
 					Array.isArray(data.authorization_servers) &&
 					data.authorization_servers.length > 0
 				) {
-					return data as { authorization_servers: string[] };
+					const resource =
+						typeof data.resource === 'string'
+							? this.normalizeResourceUrl(data.resource)
+							: undefined;
+					return {
+						authorization_servers: data.authorization_servers,
+						...(resource ? { resource } : {}),
+					};
 				}
 			} catch (error) {
 				// Continue to next URL
