@@ -17,6 +17,14 @@ on:
         required: false
         default: false
         type: boolean
+      merge-base:
+        description: |
+          Optional base SHA from ci-filter. When set and the caller event is
+          merge_group, test jobs scope to packages affected since this SHA
+          (turbo `[<sha>]` filter) instead of running the full suite.
+        required: false
+        default: ''
+        type: string
 env:
   NODE_OPTIONS: --max-old-space-size=7168
 
@@ -26,6 +34,7 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
+      MERGE_BASE: ${{ inputs.merge-base }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -36,8 +45,17 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
 
+      - name: Fetch merge base for affected detection
+        if: github.event_name == 'merge_group' && env.MERGE_BASE != ''
+        run: git fetch --depth=1 origin "$MERGE_BASE"
+
       - name: Test Unit
-        run: pnpm test:ci:backend:unit --summarize
+        run: |
+          if [ "${{ github.event_name }}" = "merge_group" ] && [ -n "$MERGE_BASE" ]; then
+            pnpm turbo run test:unit --continue --filter="[$MERGE_BASE]" --summarize
+          else
+            pnpm test:ci:backend:unit --summarize
+          fi
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -69,6 +87,7 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
+      MERGE_BASE: ${{ inputs.merge-base }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -79,8 +98,17 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
 
+      - name: Fetch merge base for affected detection
+        if: github.event_name == 'merge_group' && env.MERGE_BASE != ''
+        run: git fetch --depth=1 origin "$MERGE_BASE"
+
       - name: Test Integration
-        run: pnpm test:ci:backend:integration --summarize
+        run: |
+          if [ "${{ github.event_name }}" = "merge_group" ] && [ -n "$MERGE_BASE" ]; then
+            pnpm turbo run test:integration --continue --concurrency=1 --filter="[$MERGE_BASE]" --summarize
+          else
+            pnpm test:ci:backend:integration --summarize
+          fi
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -112,6 +140,7 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
+      MERGE_BASE: ${{ inputs.merge-base }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -122,8 +151,17 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
 
+      - name: Fetch merge base for affected detection
+        if: github.event_name == 'merge_group' && env.MERGE_BASE != ''
+        run: git fetch --depth=1 origin "$MERGE_BASE"
+
       - name: Test Nodes
-        run: pnpm turbo test --filter=n8n-nodes-base --summarize
+        run: |
+          if [ "${{ github.event_name }}" = "merge_group" ] && [ -n "$MERGE_BASE" ]; then
+            pnpm turbo run test --filter="n8n-nodes-base[$MERGE_BASE]" --summarize
+          else
+            pnpm turbo test --filter=n8n-nodes-base --summarize
+          fi
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -159,6 +197,7 @@ jobs:
         shard: [1, 2]
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
+      MERGE_BASE: ${{ inputs.merge-base }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -169,8 +208,17 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
 
+      - name: Fetch merge base for affected detection
+        if: github.event_name == 'merge_group' && env.MERGE_BASE != ''
+        run: git fetch --depth=1 origin "$MERGE_BASE"
+
       - name: Test
-        run: pnpm test:ci:frontend --summarize -- --shard=${{ matrix.shard }}/2
+        run: |
+          if [ "${{ github.event_name }}" = "merge_group" ] && [ -n "$MERGE_BASE" ]; then
+            pnpm turbo run test --continue --filter="./packages/frontend/**[$MERGE_BASE]" --summarize -- --shard=${{ matrix.shard }}/2
+          else
+            pnpm test:ci:frontend --summarize -- --shard=${{ matrix.shard }}/2
+          fi
         env:
           VITEST_SHARD: ${{ matrix.shard }}/2
 
