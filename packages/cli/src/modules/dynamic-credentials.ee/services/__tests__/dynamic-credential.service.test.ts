@@ -1092,4 +1092,10 @@ describe('DynamicCredentialService', () => {
 			});
 		});
 	});
+
+	describe('getSystemResolverId', () => {
+		it('returns the seeded system resolver id constant', () => {
+			expect(service.getSystemResolverId()).toBe('system-n8n');
+		});
+	});
 });

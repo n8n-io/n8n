@@ -2807,6 +2807,32 @@ describe('AgentRuntime — telemetry propagation', () => {
 		expect(expTelemetry.recordOutputs).toBe(false);
 	});
 
+	it('uses updated telemetry config for later runs', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const updatedTelemetry: BuiltTelemetry = {
+			...baseTelemetry,
+			functionId: 'updated-agent',
+			metadata: { env: 'updated' },
+		};
+
+		const runtime = new AgentRuntime({
+			name: 'telemetry-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			eventBus: new AgentEventBus(),
+			telemetry: baseTelemetry,
+		});
+
+		runtime.setTelemetry(updatedTelemetry);
+		await runtime.generate('hello');
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const expTelemetry = callArgs.experimental_telemetry as Record<string, unknown>;
+		expect(expTelemetry.functionId).toBe('updated-agent');
+		expect(expTelemetry.metadata).toEqual({ env: 'updated' });
+	});
+
 	it('wraps generate calls in a telemetry root span when the tracer supports active spans', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		const span = {

@@ -3,14 +3,15 @@ import type {
 	SerializableAgentState,
 	StreamChunk,
 	StreamResult,
+	Agent as RuntimeAgent,
 } from '@n8n/agents';
-import { Agent, Memory } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NodeCatalogService } from '@/node-catalog';
 
 import { AgentsService } from '../agents.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
@@ -36,6 +37,7 @@ export class AgentsBuilderService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentsService: AgentsService,
+		private readonly nodeCatalogService: NodeCatalogService,
 		private readonly agentsBuilderToolsService: AgentsBuilderToolsService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly builderSettings: AgentsBuilderSettingsService,
@@ -143,11 +145,20 @@ export class AgentsBuilderService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		user: User,
-	): Promise<Agent> {
+	): Promise<RuntimeAgent> {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
+
+		// Warm the node catalog in the background so the first node-related tool call
+		// can reuse an initialized parser.
+		void this.nodeCatalogService.initialize().catch((error) => {
+			this.logger.warn('Failed to initialize node catalog in builder warmup', {
+				error: error instanceof Error ? error.message : String(error),
+				agentId,
+			});
+		});
 
 		// Resolve the model the builder should run on. Throws
 		// `BuilderNotConfiguredError` when none of custom-credential / proxy /
@@ -179,6 +190,8 @@ export class AgentsBuilderService {
 			user,
 		);
 
+		const { Agent, Memory } = await import('@n8n/agents');
+
 		const builderMemory = new Memory().storage(this.n8nMemory).lastMessages(40);
 
 		// Be careful with provider specific options, since user can change model to openai, grok, etc.
@@ -188,7 +201,7 @@ export class AgentsBuilderService {
 			.memory(builderMemory)
 			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
 
-		const telemetry = buildBuilderTelemetry({
+		const telemetry = await buildBuilderTelemetry({
 			agentId,
 			projectId,
 			userId: user.id,
