@@ -4,7 +4,7 @@ import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n
 import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import Csrf from 'csrf';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
@@ -13,6 +13,7 @@ import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
 	RESPONSE_ERROR_MESSAGES,
 } from '@/constants';
+import { AuthService } from '@/auth/auth.service';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -52,6 +53,7 @@ import {
 } from './types';
 import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 
 export function shouldSkipAuthOnOAuthCallback() {
 	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'false';
@@ -74,6 +76,8 @@ export class OauthService {
 		private readonly externalHooks: ExternalHooks,
 		private readonly cipher: Cipher,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
+		private readonly authService: AuthService,
+		private readonly oauthJweServiceProxy: OAuthJweServiceProxy,
 	) {}
 
 	private validateOAuthUrlOrThrow(url: string): void {
@@ -114,6 +118,33 @@ export class OauthService {
 		}
 
 		return credential;
+	}
+
+	async buildCsrfStateData(
+		credential: CredentialsEntity,
+		req: OAuthRequest.OAuth1Credential.Auth | OAuthRequest.OAuth2Credential.Auth,
+	): Promise<CreateCsrfStateData> {
+		if (credential.isResolvable) {
+			const resolverId = this.dynamicCredentialsProxy.getSystemResolverId();
+			if (resolverId !== null) {
+				const cookieToken = this.authService.getCookieToken(req as Request);
+				if (cookieToken) {
+					return {
+						cid: credential.id,
+						origin: 'dynamic-credential',
+						userId: req.user.id,
+						credentialResolverId: resolverId,
+						authorizationHeader: `Bearer ${cookieToken}`,
+						authMetadata: { source: 'manual-execution' },
+					};
+				}
+			}
+		}
+		return {
+			cid: credential.id,
+			origin: 'static-credential',
+			userId: req.user.id,
+		};
 	}
 
 	protected async getAdditionalData() {
@@ -268,8 +299,19 @@ export class OauthService {
 			throw new UnexpectedError(errorMessage);
 		}
 
-		// Dynamic credentials: skip user validation (e.g. embed/iframe flows) as they do not contain an n8n user
+		// Dynamic credentials: skip user-ownership check since the credential may be shared,
+		// but validate userId when both the state and the caller carry an n8n user identity
+		// (prevents CSRF-state reuse across users in the browser-initiated OAuth flow).
+		// When the flow was initiated externally (e.g. via dynamic-credentials.controller),
+		// the state has no userId and the check is skipped.
 		if (decryptedState.origin === 'dynamic-credential') {
+			if (
+				req.user?.id !== undefined &&
+				decryptedState.userId !== undefined &&
+				decryptedState.userId !== req.user.id
+			) {
+				throw new AuthError('Unauthorized');
+			}
 			return [
 				{ ...decoded, ...decryptedState },
 				await this.getCredentialWithoutUser(decryptedState.cid),
@@ -537,6 +579,9 @@ export class OauthService {
 				client_name: 'n8n',
 				client_uri: 'https://n8n.io/',
 				scope,
+				...(oauthCredentials.jweEnabled === true
+					? await this.oauthJweServiceProxy.getDcrJweFields(oauthCredentials.inlineJwks === true)
+					: {}),
 			};
 
 			await this.externalHooks.run('oauth2.dynamicClientRegistration', [registerPayload]);
