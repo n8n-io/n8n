@@ -5,6 +5,30 @@
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "tool": [
+        "dist/sdk/tool.d.ts"
+      ],
+      "catalog": [
+        "dist/sdk/catalog.d.ts"
+      ]
+    }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./tool": {
+      "types": "./dist/sdk/tool.d.ts",
+      "default": "./dist/sdk/tool.js"
+    },
+    "./catalog": {
+      "types": "./dist/sdk/catalog.d.ts",
+      "default": "./dist/sdk/catalog.js"
+    }
+  },
   "files": [
     "dist/**/*"
   ],

@@ -4,6 +4,7 @@ import { mock } from 'jest-mock-extended';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import type { InboundSecretsConfig } from '../inbound-secrets.config';
+import type { SensitiveFieldRules } from '../inbound-secrets.schemas';
 import { InboundSecretsService } from '../inbound-secrets.service';
 
 const item = (json: IDataObject): INodeExecutionData => ({ json });
@@ -20,11 +21,14 @@ describe('InboundSecretsService', () => {
 	describe('init', () => {
 		it.each([
 			['default empty object', '{}'],
-			['valid universal rule', '{"*":["headers.authorization"]}'],
-			['valid type-specific rule', '{"n8n-nodes-base.webhook":["body.token"]}'],
+			['single universal rule', '{"api_key":{"nodeType":"*","path":"headers.authorization"}}'],
 			[
-				'valid combined rules',
-				'{"*":["headers.authorization"],"n8n-nodes-base.formTrigger":["body.password"]}',
+				'type-specific rule',
+				'{"form_pw":{"nodeType":"n8n-nodes-base.formTrigger","path":"body.password"}}',
+			],
+			[
+				'multiple aliases combined',
+				'{"api_key":{"nodeType":"*","path":"headers.authorization"},"form_pw":{"nodeType":"n8n-nodes-base.formTrigger","path":"body.password"}}',
 			],
 		])('accepts %s', (_name, raw) => {
 			config.sensitiveFieldRules = raw;
@@ -34,10 +38,12 @@ describe('InboundSecretsService', () => {
 		it.each([
 			['malformed JSON', 'not json at all'],
 			['valid JSON but not an object', '"a string"'],
-			['valid JSON but value is not an array', '{"*":"not-an-array"}'],
-			['valid JSON but path entry is not a string', '{"*":[123]}'],
-			['empty key', '{"":["x"]}'],
-			['empty path string', '{"*":[""]}'],
+			['legacy array shape', '{"*":["headers.authorization"]}'],
+			['missing path', '{"api_key":{"nodeType":"*"}}'],
+			['missing nodeType', '{"api_key":{"path":"headers.authorization"}}'],
+			['empty alias key', '{"":{"nodeType":"*","path":"headers.authorization"}}'],
+			['empty path string', '{"api_key":{"nodeType":"*","path":""}}'],
+			['empty nodeType string', '{"api_key":{"nodeType":"","path":"headers.authorization"}}'],
 		])('throws on %s', (_name, raw) => {
 			config.sensitiveFieldRules = raw;
 			expect(() => service.init()).toThrow(/N8N_SECURITY_SENSITIVE_FIELD_RULES/);
@@ -45,138 +51,107 @@ describe('InboundSecretsService', () => {
 	});
 
 	describe('strip', () => {
-		const initWith = (rules: Record<string, string[]>) => {
+		const initWith = (rules: SensitiveFieldRules) => {
 			config.sensitiveFieldRules = JSON.stringify(rules);
 			service.init();
 		};
 
 		type StripCase = {
 			name: string;
-			rules?: Record<string, string[]>;
+			rules: SensitiveFieldRules;
 			triggerType?: string;
-			descriptionPaths?: string[];
 			input: IDataObject[];
 			expectedJson: IDataObject[];
-			expectedArtifacts: Array<Record<string, unknown>>;
+			expectedArtifacts: Record<string, unknown>;
 		};
 
 		const cases: StripCase[] = [
 			{
-				name: 'no matching path: items untouched, empty artifacts',
-				rules: { '*': ['headers.authorization'] },
+				name: 'no matching path: items untouched, alias omitted',
+				rules: { api_key: { nodeType: '*', path: 'headers.authorization' } },
 				input: [{ body: { foo: 'bar' } }],
 				expectedJson: [{ body: { foo: 'bar' } }],
-				expectedArtifacts: [{}],
+				expectedArtifacts: {},
 			},
 			{
-				name: 'universal * strips and captures, siblings untouched',
-				rules: { '*': ['headers.authorization'] },
+				name: 'wildcard nodeType strips and captures, siblings untouched',
+				rules: { api_key: { nodeType: '*', path: 'headers.authorization' } },
 				input: [{ headers: { authorization: 'secret', other: 'keep-me' } }],
 				expectedJson: [{ headers: { authorization: undefined, other: 'keep-me' } }],
-				expectedArtifacts: [{ 'headers.authorization': 'secret' }],
+				expectedArtifacts: { api_key: ['secret'] },
 			},
 			{
 				name: 'type-specific rule applies when trigger type matches',
-				rules: { 'n8n-nodes-base.formTrigger': ['body.password'] },
+				rules: { form_pw: { nodeType: 'n8n-nodes-base.formTrigger', path: 'body.password' } },
 				triggerType: 'n8n-nodes-base.formTrigger',
 				input: [{ body: { password: 'p' } }],
 				expectedJson: [{ body: { password: undefined } }],
-				expectedArtifacts: [{ 'body.password': 'p' }],
+				expectedArtifacts: { form_pw: ['p'] },
 			},
 			{
-				name: 'unions universal and type-specific rules when both apply',
+				name: 'type-specific rule omitted when trigger type does not match',
+				rules: { form_pw: { nodeType: 'n8n-nodes-base.formTrigger', path: 'body.password' } },
+				triggerType: 'n8n-nodes-base.webhook',
+				input: [{ body: { password: 'p' } }],
+				expectedJson: [{ body: { password: 'p' } }],
+				expectedArtifacts: {},
+			},
+			{
+				name: 'multiple aliases populate independently when both match',
 				rules: {
-					'*': ['headers.authorization'],
-					'n8n-nodes-base.formTrigger': ['body.password'],
+					api_key: { nodeType: '*', path: 'headers.authorization' },
+					form_pw: { nodeType: 'n8n-nodes-base.formTrigger', path: 'body.password' },
 				},
 				triggerType: 'n8n-nodes-base.formTrigger',
 				input: [{ headers: { authorization: 'a' }, body: { password: 'p' } }],
 				expectedJson: [{ headers: { authorization: undefined }, body: { password: undefined } }],
-				expectedArtifacts: [{ 'headers.authorization': 'a', 'body.password': 'p' }],
+				expectedArtifacts: { api_key: ['a'], form_pw: ['p'] },
 			},
 			{
-				name: 'only universal rule when type-specific does not match',
-				rules: {
-					'*': ['headers.authorization'],
-					'n8n-nodes-base.formTrigger': ['body.password'],
-				},
-				input: [{ headers: { authorization: 'a' }, body: { password: 'p' } }],
-				expectedJson: [{ headers: { authorization: undefined }, body: { password: 'p' } }],
-				expectedArtifacts: [{ 'headers.authorization': 'a' }],
-			},
-			{
-				name: 'applied independently to every item in the batch',
-				rules: { '*': ['headers.authorization'] },
+				name: 'multi-item batch flattens into a single array per alias',
+				rules: { api_key: { nodeType: '*', path: 'headers.authorization' } },
 				input: [{ headers: { authorization: '1' } }, { headers: { authorization: '2' } }],
 				expectedJson: [
 					{ headers: { authorization: undefined } },
 					{ headers: { authorization: undefined } },
 				],
-				expectedArtifacts: [{ 'headers.authorization': '1' }, { 'headers.authorization': '2' }],
+				expectedArtifacts: { api_key: ['1', '2'] },
 			},
 			{
-				name: 'descriptionPaths apply additively without admin rules',
-				descriptionPaths: ['body.token'],
-				input: [{ body: { token: 't' } }],
-				expectedJson: [{ body: { token: undefined } }],
-				expectedArtifacts: [{ 'body.token': 't' }],
-			},
-			{
-				name: 'admin and descriptionPaths union',
-				rules: {
-					'*': ['headers.authorization'],
-					'n8n-nodes-base.webhook': ['headers.x-internal'],
-				},
-				descriptionPaths: ['headers.cookie'],
-				input: [{ headers: { authorization: 'a', 'x-internal': 'i', cookie: 'c' } }],
-				expectedJson: [
-					{ headers: { authorization: undefined, 'x-internal': undefined, cookie: undefined } },
-				],
-				expectedArtifacts: [
-					{
-						'headers.authorization': 'a',
-						'headers.x-internal': 'i',
-						'headers.cookie': 'c',
-					},
-				],
-			},
-			{
-				name: 'duplicate paths across admin and description extracted once',
-				rules: { '*': ['headers.authorization'] },
-				descriptionPaths: ['headers.authorization'],
-				input: [{ headers: { authorization: 'a' } }],
-				expectedJson: [{ headers: { authorization: undefined } }],
-				expectedArtifacts: [{ 'headers.authorization': 'a' }],
+				name: 'empty input array produces no aliases and does not throw',
+				rules: { api_key: { nodeType: '*', path: 'headers.authorization' } },
+				input: [],
+				expectedJson: [],
+				expectedArtifacts: {},
 			},
 			{
 				name: 'Date leaves coerced to ISO string',
-				rules: { '*': ['body.when'] },
+				rules: { stamp: { nodeType: '*', path: 'body.when' } },
 				input: [{ body: { when: new Date('2026-01-15T00:00:00.000Z') } }],
 				expectedJson: [{ body: { when: undefined } }],
-				expectedArtifacts: [{ 'body.when': '2026-01-15T00:00:00.000Z' }],
+				expectedArtifacts: { stamp: ['2026-01-15T00:00:00.000Z'] },
 			},
 			{
-				name: 'function leaves dropped (JSON.stringify → undefined)',
-				rules: { '*': ['body.fn'] },
+				name: 'function leaves dropped (JSON.stringify yields undefined)',
+				rules: { fn: { nodeType: '*', path: 'body.fn' } },
 				input: [{ body: { fn: () => 1 } as unknown as IDataObject }],
 				expectedJson: [{ body: { fn: undefined } }],
-				expectedArtifacts: [{}],
+				expectedArtifacts: {},
 			},
 			{
-				name: 'nested object leaves preserved',
-				rules: { '*': ['body.nested'] },
+				name: 'nested object leaves preserved inside the alias array',
+				rules: { nested: { nodeType: '*', path: 'body.nested' } },
 				input: [{ body: { nested: { id: 'x', tags: ['a', 'b'] } } }],
 				expectedJson: [{ body: { nested: undefined } }],
-				expectedArtifacts: [{ 'body.nested': { id: 'x', tags: ['a', 'b'] } }],
+				expectedArtifacts: { nested: [{ id: 'x', tags: ['a', 'b'] }] },
 			},
 		];
 
 		it.each(cases)(
 			'$name',
 			({
-				rules = {},
+				rules,
 				triggerType = 'n8n-nodes-base.webhook',
-				descriptionPaths = [],
 				input,
 				expectedJson,
 				expectedArtifacts,
@@ -184,15 +159,15 @@ describe('InboundSecretsService', () => {
 				initWith(rules);
 				const items = input.map(item);
 
-				const result = service.strip(items, triggerType, descriptionPaths);
+				const result = service.strip(items, triggerType);
 
 				items.forEach((it, i) => expect(it.json).toEqual(expectedJson[i]));
-				expect(result.artifactsByItem).toEqual(expectedArtifacts);
+				expect(result.artifactsByAlias).toEqual(expectedArtifacts);
 			},
 		);
 
 		it('returns the same triggerItems array reference', () => {
-			initWith({ '*': ['headers.authorization'] });
+			initWith({ api_key: { nodeType: '*', path: 'headers.authorization' } });
 			const items = [item({ headers: { authorization: 'x' } })];
 			const json = items[0].json;
 
