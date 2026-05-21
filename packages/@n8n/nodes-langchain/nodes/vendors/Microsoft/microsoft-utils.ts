@@ -16,21 +16,19 @@ import {
 } from 'n8n-workflow';
 
 import {
-	ExecutionType,
-	type InvokeAgentDetails,
 	InvokeAgentScope,
-	type TenantDetails,
 	BaggageBuilder,
 	ObservabilityManager,
 	type Builder,
 	defaultObservabilityConfigurationProvider,
 } from '@microsoft/agents-a365-observability';
 import { type Activity, ActivityTypes } from '@microsoft/agents-activity';
-import { v4 as uuid } from 'uuid';
 import { invokeAgent } from './langchain-utils';
 import {
 	McpToolServerConfigurationService,
 	defaultToolingConfigurationProvider,
+	Utility as MicrosoftToolingUtility,
+	type MCPServerConfig,
 } from '@microsoft/agents-a365-tooling';
 
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -132,6 +130,34 @@ export const microsoftMcpServers: INodePropertyOptions[] = [
 
 const MS_TENANT_ID_HEADER = 'x-ms-tenant-id';
 
+function hasAuthorizationHeader(headers: Record<string, string>) {
+	return Object.keys(headers).some((headerName) => headerName.toLowerCase() === 'authorization');
+}
+
+function getMcpServerHeaders(
+	server: MCPServerConfig,
+	turnContext: TurnContext,
+	mcpAuthToken: string,
+	tenantId: string | undefined,
+) {
+	const headers: Record<string, string> = {
+		...MicrosoftToolingUtility.GetToolRequestHeaders(mcpAuthToken, turnContext, {
+			orchestratorName: 'LangChain',
+		}),
+		...(server.headers ?? {}),
+	};
+
+	if (mcpAuthToken && !hasAuthorizationHeader(headers)) {
+		headers.Authorization = `Bearer ${mcpAuthToken}`;
+	}
+
+	if (tenantId) {
+		headers[MS_TENANT_ID_HEADER] = tenantId;
+	}
+
+	return headers;
+}
+
 function isMicrosoftObservabilityEnabled(): boolean {
 	return (
 		process.env.ENABLE_OBSERVABILITY === 'true' &&
@@ -189,13 +215,7 @@ export async function getMicrosoftMcpTools(
 	const timeout = 60000;
 
 	for (const server of servers) {
-		const headers: Record<string, string> = {};
-		if (mcpAuthToken) {
-			headers['Authorization'] = `Bearer ${mcpAuthToken}`;
-		}
-		if (tenantId) {
-			headers[MS_TENANT_ID_HEADER] = tenantId;
-		}
+		const headers = getMcpServerHeaders(server, turnContext, mcpAuthToken, tenantId);
 
 		const clientResult = await connectMcpClient({
 			serverTransport: 'httpStreamable', // Microsoft servers use HTTP
@@ -279,7 +299,7 @@ export const configureActivityCallback = (
 	return async (turnContext: TurnContext) => {
 		const agentId = turnContext.activity.recipient?.agenticAppId ?? clientId;
 		const agentName = turnContext.activity.recipient?.name ?? 'Microsoft Agent 365';
-		const tenantDetails: TenantDetails = {
+		const tenantDetails = {
 			tenantId: turnContext.activity.recipient?.tenantId ?? tenantId ?? '',
 		};
 		const conversationId = turnContext.activity.conversation?.id;
@@ -288,24 +308,26 @@ export const configureActivityCallback = (
 		const baggageScope = new BaggageBuilder()
 			.tenantId(tenantDetails.tenantId)
 			.agentId(agentId)
-			.correlationId(uuid())
 			.agentName(agentName)
 			.conversationId(conversationId)
 			.build();
 
 		await baggageScope.run(async () => {
-			const invokeAgentDetails: InvokeAgentDetails = {
-				agentId,
-				agentName,
+			const request = {
+				content: inputText || 'Unknown text',
+				sessionId: conversationId,
 				conversationId,
-				request: {
-					content: inputText || 'Unknown text',
-					executionType: ExecutionType.HumanToAgent,
-					sessionId: conversationId,
-				},
 			};
 
-			const invokeAgentScope = InvokeAgentScope.start(invokeAgentDetails, tenantDetails);
+			const invokeScopeDetails = {};
+
+			const agentDetails = {
+				agentId,
+				agentName,
+				tenantId: tenantDetails.tenantId,
+			};
+
+			const invokeAgentScope = InvokeAgentScope.start(request, invokeScopeDetails, agentDetails);
 
 			await invokeAgentScope.withActiveSpanAsync(async () => {
 				invokeAgentScope.recordInputMessages([inputText || 'Unknown text']);
@@ -345,7 +367,7 @@ export const configureActivityCallback = (
 							mcpLogs = result?.logs;
 						}
 					} catch (error) {
-						console.log('Error retrieving MCP tools');
+						console.error('Error retrieving MCP tools:', error);
 					}
 				}
 

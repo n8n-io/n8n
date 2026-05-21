@@ -87,6 +87,7 @@ vi.mock('@microsoft/agents-a365-tooling', () => ({
 	}),
 	Utility: {
 		ValidateAuthToken: vi.fn(),
+		GetToolRequestHeaders: vi.fn().mockReturnValue({}),
 	},
 	defaultToolingConfigurationProvider: {
 		getConfiguration: vi.fn().mockReturnValue({
