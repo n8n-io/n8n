@@ -33,6 +33,16 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 		track: vi.fn(),
 	}),
 }));
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('vue-router')>();
+	return {
+		...actual,
+		useRoute: () => ({
+			name: 'NodeView',
+			params: { workflowId: 'test-workflow-id' },
+		}),
+	};
+});
 
 vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
 	const actual = (await importOriginal()) as Record<string, unknown>;
@@ -140,7 +150,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 			const viewDetailsButton = getByRole('button', { name: 'View details' });
 			viewDetailsButton.click();
 
-			expect(mockOpenNodeCreatorWithNode).toHaveBeenCalledWith('Test Node');
+			expect(mockOpenNodeCreatorWithNode).toHaveBeenCalledWith('test-workflow-id', 'Test Node');
 		});
 
 		it('should open NPM page when node is not verified community node', async () => {

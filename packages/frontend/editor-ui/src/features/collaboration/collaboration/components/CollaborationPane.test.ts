@@ -4,6 +4,17 @@ import { shallowRef } from 'vue';
 
 import { STORES } from '@n8n/stores';
 import CollaborationPane from './CollaborationPane.vue';
+
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('vue-router')>();
+	return {
+		...actual,
+		useRoute: () => ({
+			name: 'NodeView',
+			params: { workflowId: 'test-workflow-id' },
+		}),
+	};
+});
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import type { INodeUi } from '@/Interface';
 

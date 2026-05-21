@@ -300,6 +300,58 @@ describe('useExpressionEditor', () => {
 		});
 	});
 
+	describe('initialCursorPosition', () => {
+		test('should place cursor inside the empty expression block when value is auto-converted', async () => {
+			const editorValue = 'Hello {{  }}';
+			const expectedPosition = editorValue.lastIndexOf(' }}');
+			const {
+				expressionEditor: { editor },
+			} = await renderExpressionEditor({
+				editorValue,
+				initialCursorPosition: 'lastExpression',
+				extensions: [n8nLang()],
+			});
+
+			expect(toValue(editor)?.state.selection).toEqual(EditorSelection.single(expectedPosition));
+		});
+
+		test('should place cursor at end when option is "end"', async () => {
+			const editorValue = 'text here';
+			const {
+				expressionEditor: { editor },
+			} = await renderExpressionEditor({
+				editorValue,
+				initialCursorPosition: 'end',
+			});
+
+			expect(toValue(editor)?.state.selection).toEqual(EditorSelection.single(editorValue.length));
+		});
+
+		test('should place cursor at the given numeric position', async () => {
+			const editorValue = 'text here';
+			const {
+				expressionEditor: { editor },
+			} = await renderExpressionEditor({
+				editorValue,
+				initialCursorPosition: 3,
+			});
+
+			expect(toValue(editor)?.state.selection).toEqual(EditorSelection.single(3));
+		});
+
+		test('should default to position 0 when no option is provided', async () => {
+			const editorValue = 'Hello {{  }}';
+			const {
+				expressionEditor: { editor },
+			} = await renderExpressionEditor({
+				editorValue,
+				extensions: [n8nLang()],
+			});
+
+			expect(toValue(editor)?.state.selection).toEqual(EditorSelection.single(0));
+		});
+	});
+
 	describe('select()', () => {
 		test('should select number range', async () => {
 			const editorValue = 'text here';

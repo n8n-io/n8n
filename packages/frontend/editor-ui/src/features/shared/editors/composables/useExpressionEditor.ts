@@ -66,6 +66,7 @@ export const useExpressionEditor = ({
 	autocompleteTelemetry,
 	isReadOnly = false,
 	disableSearchDialog = false,
+	initialCursorPosition,
 	onChange = () => {},
 }: {
 	editorRef: MaybeRefOrGetter<HTMLElement | undefined>;
@@ -77,6 +78,7 @@ export const useExpressionEditor = ({
 	autocompleteTelemetry?: MaybeRefOrGetter<{ enabled: true; parameterPath: string }>;
 	isReadOnly?: MaybeRefOrGetter<boolean>;
 	disableSearchDialog?: MaybeRefOrGetter<boolean>;
+	initialCursorPosition?: number | 'lastExpression' | 'end';
 	onChange?: (viewUpdate: ViewUpdate) => void;
 }) => {
 	const ndvStore = injectNDVStore();
@@ -233,13 +235,33 @@ export const useExpressionEditor = ({
 		}
 	}
 
+	function resolveInitialCursorPosition(
+		doc: string,
+		pos: number | 'lastExpression' | 'end',
+	): number {
+		if (typeof pos === 'number') return pos;
+		if (pos === 'end') return doc.length;
+		const END_OF_EXPRESSION = ' }}';
+		const endOfLastExpression = doc.lastIndexOf(END_OF_EXPRESSION);
+		return endOfLastExpression !== -1 ? endOfLastExpression : doc.length;
+	}
+
 	watch(toRef(editorRef), () => {
 		const parent = toValue(editorRef);
 
 		if (!parent) return;
 
+		const docContent = toValue(editorValue) ?? '';
+		const initialSelection =
+			initialCursorPosition !== undefined
+				? EditorSelection.cursor(resolveInitialCursorPosition(docContent, initialCursorPosition))
+				: undefined;
+
+		let hasReceivedFocus = false;
+
 		const state = EditorState.create({
-			doc: toValue(editorValue),
+			doc: docContent,
+			selection: initialSelection,
 			extensions: [
 				TARGET_NODE_PARAMETER_FACET.of(
 					expressionLocalResolveContext.value
@@ -251,9 +273,15 @@ export const useExpressionEditor = ({
 				readOnlyExtensions.value.of([EditorState.readOnly.of(toValue(isReadOnly))]),
 				telemetryExtensions.value.of([]),
 				EditorView.updateListener.of(onEditorUpdate),
-				EditorView.focusChangeEffect.of((_, newHasFocus) => {
+				EditorView.focusChangeEffect.of((currentState, newHasFocus) => {
 					hasFocus.value = newHasFocus;
-					selection.value = state.selection.ranges[0];
+					selection.value = currentState.selection.ranges[0];
+					if (newHasFocus && !hasReceivedFocus && initialSelection) {
+						hasReceivedFocus = true;
+						requestAnimationFrame(() => {
+							editor.value?.dispatch({ selection: initialSelection });
+						});
+					}
 					if (!newHasFocus) {
 						autocompleteStatus.value = null;
 						void debouncedUpdateSegments();

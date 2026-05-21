@@ -339,6 +339,22 @@ describe('useRunWorkflow({ router })', () => {
 			);
 		});
 
+		it('should use the passed-in workflowState when injection is unavailable', async () => {
+			vi.mocked(injectWorkflowState).mockReturnValue(undefined as unknown as WorkflowState);
+
+			const setActiveExecutionId = vi.spyOn(workflowState, 'setActiveExecutionId');
+			const { runWorkflowApi } = useRunWorkflow({ router, workflowState });
+
+			vi.mocked(pushConnectionStore).isConnected = true;
+			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({
+				executionId: '123',
+				waitingForWebhook: false,
+			});
+
+			await expect(runWorkflowApi({} as IStartRunData)).resolves.not.toThrow();
+			expect(setActiveExecutionId).toHaveBeenCalled();
+		});
+
 		it('should successfully run a workflow', async () => {
 			const setActiveExecutionId = vi.spyOn(workflowState, 'setActiveExecutionId');
 			const { runWorkflowApi } = useRunWorkflow({ router });

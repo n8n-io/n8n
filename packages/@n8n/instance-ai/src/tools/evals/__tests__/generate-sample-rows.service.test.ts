@@ -275,6 +275,110 @@ describe('runBatch', () => {
 		expect(rows).toEqual([]);
 		expect(generate).not.toHaveBeenCalled();
 	});
+
+	describe('realExamples few-shot block', () => {
+		function captureBatchPrompt(generate: GenerateMock): string {
+			return getPromptText(generate);
+		}
+
+		it('injects a reference-not-seed block when examples are provided', async () => {
+			const generate = createGenerateMock();
+			mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+				typeof createEvalAgent
+			>);
+			mockExtractText.mockReturnValue(JSON.stringify([]));
+			await runBatch({
+				facet: BATCH_FACET,
+				rowCount: 1,
+				context: BATCH_CONTEXT,
+				columns: ['user_query'],
+				realExamples: [{ user_query: 'how do I refund an order?' }],
+			});
+			const promptText = captureBatchPrompt(generate);
+			expect(promptText).toContain('Recent real inputs the agent has received in production');
+			expect(promptText).toContain('REFERENCE, not seeds');
+			expect(promptText).toContain('how do I refund an order?');
+			expect(promptText).toMatch(/Do NOT copy or paraphrase them/);
+		});
+
+		it('omits the block entirely when realExamples is undefined', async () => {
+			const generate = createGenerateMock();
+			mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+				typeof createEvalAgent
+			>);
+			mockExtractText.mockReturnValue(JSON.stringify([]));
+			await runBatch({
+				facet: BATCH_FACET,
+				rowCount: 1,
+				context: BATCH_CONTEXT,
+				columns: ['user_query'],
+			});
+			expect(captureBatchPrompt(generate)).not.toContain('Recent real inputs');
+		});
+
+		it('filters examples to the requested columns and drops rows that lack all of them', async () => {
+			const generate = createGenerateMock();
+			mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+				typeof createEvalAgent
+			>);
+			mockExtractText.mockReturnValue(JSON.stringify([]));
+			await runBatch({
+				facet: BATCH_FACET,
+				rowCount: 1,
+				context: BATCH_CONTEXT,
+				columns: ['user_query'],
+				realExamples: [
+					{ user_query: 'real one', expected_response: 'should not leak' },
+					{ unrelated: 'dropped' },
+				],
+			});
+			const promptText = captureBatchPrompt(generate);
+			expect(promptText).toContain('real one');
+			expect(promptText).not.toContain('should not leak');
+			expect(promptText).not.toContain('dropped');
+			expect(promptText).not.toContain('unrelated');
+		});
+
+		it('caps the example list at 10 entries', async () => {
+			const generate = createGenerateMock();
+			mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+				typeof createEvalAgent
+			>);
+			mockExtractText.mockReturnValue(JSON.stringify([]));
+			const examples = Array.from({ length: 13 }, (_, i) => ({ user_query: `q${i}` }));
+			await runBatch({
+				facet: BATCH_FACET,
+				rowCount: 1,
+				context: BATCH_CONTEXT,
+				columns: ['user_query'],
+				realExamples: examples,
+			});
+			const promptText = captureBatchPrompt(generate);
+			expect(promptText).toContain('q0');
+			expect(promptText).toContain('q9');
+			expect(promptText).not.toContain('q10');
+			expect(promptText).not.toContain('q12');
+		});
+
+		it('truncates values longer than 300 characters with an ellipsis', async () => {
+			const generate = createGenerateMock();
+			mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+				typeof createEvalAgent
+			>);
+			mockExtractText.mockReturnValue(JSON.stringify([]));
+			const longValue = 'x'.repeat(500);
+			await runBatch({
+				facet: BATCH_FACET,
+				rowCount: 1,
+				context: BATCH_CONTEXT,
+				columns: ['user_query'],
+				realExamples: [{ user_query: longValue }],
+			});
+			const promptText = captureBatchPrompt(generate);
+			expect(promptText).toMatch(/x{300}…/);
+			expect(promptText).not.toMatch(/x{301}/);
+		});
+	});
 });
 
 describe('extractAgentContext', () => {

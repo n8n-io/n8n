@@ -55,6 +55,12 @@ vi.mock('@n8n/rest-api-client', async (importOriginal) => {
 	};
 });
 
+const getRedactionEnforcement = vi.fn();
+vi.mock('@n8n/rest-api-client/api/redaction-enforcement', () => ({
+	getRedactionEnforcement: (...args: unknown[]) => getRedactionEnforcement(...args),
+	updateRedactionEnforcement: vi.fn(),
+}));
+
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
@@ -98,6 +104,10 @@ vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
 
 describe('WorkflowSettingsVue', () => {
 	beforeEach(async () => {
+		getRedactionEnforcement.mockResolvedValue({
+			redactionEnforced: false,
+			redactionScope: 'non-manual',
+		});
 		pinia = createTestingPinia({ stubActions: false });
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
@@ -1205,6 +1215,102 @@ describe('WorkflowSettingsVue', () => {
 			const productionSelect = getByTestId('workflow-settings-redact-production-select');
 			const input = productionSelect.querySelector('input');
 			expect(input).toBeDisabled();
+		});
+
+		describe('instance enforcement', () => {
+			const setUpEnforcement = (params: {
+				enforced: boolean;
+				flagEnabled: boolean;
+				hasUpdatePermission?: boolean;
+			}) => {
+				vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+				settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
+				settingsStore.settings.envFeatureFlags = {
+					...settingsStore.settings.envFeatureFlags,
+					N8N_ENV_FEAT_REDACTION_ENFORCEMENT: params.flagEnabled ? 'true' : 'false',
+				};
+				getRedactionEnforcement.mockResolvedValue({
+					redactionEnforced: params.enforced,
+					redactionScope: 'non-manual',
+				});
+
+				const scopes = (
+					(params.hasUpdatePermission ?? true)
+						? ['workflow:update', 'workflow:updateRedactionSetting']
+						: ['workflow:update']
+				) as Array<'workflow:update' | 'workflow:updateRedactionSetting'>;
+				const workflow = createTestWorkflow({
+					id: '1',
+					name: 'Test Workflow',
+					active: true,
+					scopes,
+				});
+				workflowsListStore.workflowsById = { '1': workflow };
+				workflowsListStore.getWorkflowById.mockImplementation(() => workflow);
+			};
+
+			it('locks both redaction selects with enforcement copy when enforcement is on', async () => {
+				setUpEnforcement({ enforced: true, flagEnabled: true });
+
+				const { getByTestId, getAllByTestId, queryByText } = createComponent({ pinia });
+				await flushPromises();
+
+				const productionInput = within(
+					getByTestId('workflow-settings-redact-production-select'),
+				).getByRole('combobox');
+				const manualInput = within(getByTestId('workflow-settings-redact-manual-select')).getByRole(
+					'combobox',
+				);
+				expect(productionInput).toBeDisabled();
+				expect(manualInput).toBeDisabled();
+
+				const lockIcons = getAllByTestId('workflow-settings-redaction-enforced-lock');
+				expect(lockIcons).toHaveLength(2);
+
+				// Permission-only tooltip copy must not be shown when enforcement is the lock reason.
+				expect(queryByText('View users with access')).not.toBeInTheDocument();
+			});
+
+			it('leaves both redaction selects editable when enforcement is off', async () => {
+				setUpEnforcement({ enforced: false, flagEnabled: true });
+
+				const { getByTestId, queryByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				const productionInput = within(
+					getByTestId('workflow-settings-redact-production-select'),
+				).getByRole('combobox');
+				const manualInput = within(getByTestId('workflow-settings-redact-manual-select')).getByRole(
+					'combobox',
+				);
+				expect(productionInput).not.toBeDisabled();
+				expect(manualInput).not.toBeDisabled();
+				expect(queryByTestId('workflow-settings-redaction-enforced-lock')).not.toBeInTheDocument();
+			});
+
+			it('ignores enforcement state when the feature flag is off', async () => {
+				setUpEnforcement({ enforced: true, flagEnabled: false });
+
+				const { getByTestId, queryByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				const productionInput = within(
+					getByTestId('workflow-settings-redact-production-select'),
+				).getByRole('combobox');
+				expect(productionInput).not.toBeDisabled();
+				expect(queryByTestId('workflow-settings-redaction-enforced-lock')).not.toBeInTheDocument();
+				expect(getRedactionEnforcement).not.toHaveBeenCalled();
+			});
+
+			it('prefers enforcement copy when both enforcement and missing permission would lock', async () => {
+				setUpEnforcement({ enforced: true, flagEnabled: true, hasUpdatePermission: false });
+
+				const { getAllByTestId, queryByText } = createComponent({ pinia });
+				await flushPromises();
+
+				expect(getAllByTestId('workflow-settings-redaction-enforced-lock')).toHaveLength(2);
+				expect(queryByText('View users with access')).not.toBeInTheDocument();
+			});
 		});
 	});
 });

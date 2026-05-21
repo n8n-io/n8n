@@ -343,6 +343,7 @@ describe('useNodeCreatorStore', () => {
 			nodeCreatorStore.openNodeCreatorForConnectingNode({
 				connection,
 				eventSource: 'plus_endpoint',
+				workflowId: 'test-wf-id',
 			});
 
 			expect(nodeCreatorStore.selectedView).toEqual(AI_UNCATEGORIZED_CATEGORY);
@@ -364,6 +365,7 @@ describe('useNodeCreatorStore', () => {
 				connection,
 				eventSource: 'plus_endpoint',
 				nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
+				workflowId: 'test-wf-id',
 			});
 
 			expect(nodeCreatorStore.selectedView).toEqual(REGULAR_NODE_CREATOR_VIEW);
@@ -385,6 +387,7 @@ describe('useNodeCreatorStore', () => {
 				connection,
 				eventSource: 'plus_endpoint',
 				nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
+				workflowId: 'test-wf-id',
 			});
 
 			expect(nodeCreatorStore.selectedView).toEqual(REGULAR_NODE_CREATOR_VIEW);
@@ -400,6 +403,7 @@ describe('useNodeCreatorStore', () => {
 				connection,
 				eventSource: 'plus_endpoint',
 				nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
+				workflowId: 'test-wf-id',
 			});
 
 			expect(nodeCreatorStore.selectedView).not.toEqual(REGULAR_NODE_CREATOR_VIEW);
@@ -449,7 +453,7 @@ describe('useNodeCreatorStore', () => {
 			mockUseNodeTypesStore.getNodeType = vi.fn();
 			mockUseNodeTypesStore.communityNodeType = vi.fn();
 
-			await nodeCreatorStore.openNodeCreatorWithNode(nodeName);
+			await nodeCreatorStore.openNodeCreatorWithNode('test-wf-id', nodeName);
 
 			expect(mockUseNDVStore.unsetActiveNodeName).not.toHaveBeenCalled();
 			expect(mockUseNodeTypesStore.getNodeType).not.toHaveBeenCalled();
@@ -465,7 +469,7 @@ describe('useNodeCreatorStore', () => {
 			mockUseNodeTypesStore.getNodeType = vi.fn(() => null);
 			mockUseNodeTypesStore.communityNodeType = vi.fn(() => undefined);
 
-			await nodeCreatorStore.openNodeCreatorWithNode(nodeName);
+			await nodeCreatorStore.openNodeCreatorWithNode('test-wf-id', nodeName);
 
 			expect(mockUseNDVStore.unsetActiveNodeName).toHaveBeenCalled();
 			expect(mockUseNodeTypesStore.getNodeType).toHaveBeenCalledWith('test-type');
@@ -491,7 +495,7 @@ describe('useNodeCreatorStore', () => {
 				],
 			} as ActionsRecord<SimplifiedNodeType[]>;
 
-			await nodeCreatorStore.openNodeCreatorWithNode(nodeName);
+			await nodeCreatorStore.openNodeCreatorWithNode('test-wf-id', nodeName);
 			expect(mockUseNDVStore.unsetActiveNodeName).toHaveBeenCalled();
 			expect(mockUseNodeTypesStore.getNodeType).toHaveBeenCalledWith('test-type');
 			expect(nodeCreatorStore.isCreateNodeActive).toBe(true);
@@ -539,7 +543,7 @@ describe('useNodeCreatorStore', () => {
 				[nodeType.name]: [],
 			};
 
-			await nodeCreatorStore.openNodeCreatorWithNode(nodeName);
+			await nodeCreatorStore.openNodeCreatorWithNode('test-wf-id', nodeName);
 
 			expect(mockUseNDVStore.unsetActiveNodeName).toHaveBeenCalled();
 			expect(mockUseNodeTypesStore.getNodeType).toHaveBeenCalledWith('test-type');
@@ -577,7 +581,7 @@ describe('useNodeCreatorStore', () => {
 
 			nodeCreatorStore.actions = {};
 
-			await nodeCreatorStore.openNodeCreatorWithNode(nodeName);
+			await nodeCreatorStore.openNodeCreatorWithNode('test-wf-id', nodeName);
 
 			expect(mockedPrepareCommunityNodeDetailsViewStack).toHaveBeenCalledWith(
 				{
