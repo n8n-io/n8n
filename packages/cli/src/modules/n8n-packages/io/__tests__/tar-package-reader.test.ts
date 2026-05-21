@@ -1,7 +1,11 @@
 import type { Readable } from 'node:stream';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+
 import { TarPackageReader } from '../tar/tar-package-reader';
 import { TarPackageWriter } from '../tar/tar-package-writer';
+
+const TEST_MAX_UNCOMPRESSED_BYTES = 16 * 1024 * 1024;
 
 async function streamToBuffer(stream: Readable): Promise<Buffer> {
 	const chunks: Buffer[] = [];
@@ -36,7 +40,7 @@ describe('TarPackageReader', () => {
 			writer.writeFile('workflows/my-workflow-abc/workflow.json', workflowJson);
 		});
 
-		const reader = new TarPackageReader(buffer);
+		const reader = new TarPackageReader(buffer, TEST_MAX_UNCOMPRESSED_BYTES);
 
 		await expect(reader.readManifest()).resolves.toEqual(manifest);
 		await expect(reader.readFile('workflows/my-workflow-abc/workflow.json')).resolves.toEqual(
@@ -53,7 +57,7 @@ describe('TarPackageReader', () => {
 			writer.writeFile('workflows/b/workflow.json', '{}');
 		});
 
-		const reader = new TarPackageReader(buffer);
+		const reader = new TarPackageReader(buffer, TEST_MAX_UNCOMPRESSED_BYTES);
 
 		await expect(reader.listEntries()).resolves.toEqual(
 			expect.arrayContaining([
@@ -70,8 +74,32 @@ describe('TarPackageReader', () => {
 			writer.writeFile('workflows/a/workflow.json', '{}');
 		});
 
-		const reader = new TarPackageReader(buffer);
+		const reader = new TarPackageReader(buffer, TEST_MAX_UNCOMPRESSED_BYTES);
 
+		await expect(reader.readManifest()).rejects.toThrow(BadRequestError);
 		await expect(reader.readManifest()).rejects.toThrow(/manifest\.json/);
+	});
+
+	it('rejects packages exceeding the uncompressed size limit', async () => {
+		const buffer = await buildPackage((writer) => {
+			writer.writeFile('manifest.json', '{"packageFormatVersion":"1"}');
+			writer.writeFile('oversized.bin', 'x'.repeat(500));
+		});
+
+		const reader = new TarPackageReader(buffer, 100);
+
+		await expect(reader.readManifest()).rejects.toThrow(BadRequestError);
+		await expect(reader.readManifest()).rejects.toThrow(/uncompressed size/i);
+	});
+
+	it('rejects invalid manifest JSON', async () => {
+		const buffer = await buildPackage((writer) => {
+			writer.writeFile('manifest.json', '{not-json');
+		});
+
+		const reader = new TarPackageReader(buffer, TEST_MAX_UNCOMPRESSED_BYTES);
+
+		await expect(reader.readManifest()).rejects.toThrow(BadRequestError);
+		await expect(reader.readManifest()).rejects.toThrow(/not valid JSON/i);
 	});
 });
