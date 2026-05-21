@@ -5,6 +5,7 @@ export const NEW_AGENT_VIEW = 'NewAgentView';
 export const AGENT_VIEW = 'AgentView';
 export const AGENT_SESSIONS_LIST_VIEW = 'AgentSessionsListView';
 export const AGENT_SESSION_DETAIL_VIEW = 'AgentSessionDetailView';
+export const AGENT_DEBUG_RUN_DETAIL_VIEW = 'AgentDebugRunDetailView';
 export const PROJECT_AGENTS = 'ProjectAgents';
 export const AGENT_BUILDER_SETTINGS_VIEW = 'SettingsAgentBuilderView';
 
@@ -19,10 +20,14 @@ export const AGENT_ADD_TRIGGER_MODAL_KEY = 'agentAddTriggerModal';
 export const AGENT_SECTION_KEY = '__agent';
 /** Synthetic tree key for the advanced panel (thinking/concurrency/approval). */
 export const ADVANCED_SECTION_KEY = '__advanced';
+/** Synthetic tree key for the evaluations list panel. */
+export const EVALS_SECTION_KEY = '__evals';
 /** Synthetic tree key for the full raw config.json view. */
 export const CONFIG_JSON_SECTION_KEY = '__config_json';
 /** Synthetic tree key for the agent executions tab. */
 export const EXECUTIONS_SECTION_KEY = '__executions';
+/** Synthetic tree key for the agent debug tab. */
+export const DEBUG_SECTION_KEY = '__debug';
 
 /**
  * Status of an assistant message during/after streaming.
