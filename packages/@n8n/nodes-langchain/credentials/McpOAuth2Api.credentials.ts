@@ -16,5 +16,13 @@ export class McpOAuth2Api implements ICredentialType {
 			type: 'boolean',
 			default: true,
 		},
+		{
+			displayName: 'Resource URL',
+			name: 'resourceUrl',
+			type: 'string',
+			default: '',
+			description:
+				"Optional. The exact protected resource URL required by the MCP server. Leave empty to use the server's default, discovered automatically.",
+		},
 	];
 }
