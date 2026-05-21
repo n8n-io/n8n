@@ -69,24 +69,6 @@ import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
 const estimateObservationTokens = (text: string) => Math.ceil(text.length / 4);
 
-export type N8nMemoryImplementation = BuiltMemory &
-	BuiltObservationLogStore &
-	BuiltObservationLogTaskLockStore &
-	BuiltEpisodicMemoryStore & {
-		deleteMessagesByThread(threadId: string, resourceId?: string): Promise<void>;
-		deleteThreadsByPrefix(threadIdPrefix: string): Promise<void>;
-		getMessagesForScope(
-			scopeKind: ObservationLogScopeKind,
-			scopeId: string,
-			opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string }; resourceId?: string },
-		): Promise<AgentDbMessage[]>;
-		getCursor(
-			scopeKind: ObservationLogScopeKind,
-			scopeId: string,
-		): Promise<ObservationCursor | null>;
-		setCursor(cursor: ObservationCursor & { scopeKind: ObservationLogScopeKind }): Promise<void>;
-	};
-
 @Service()
 export class N8nMemory {
 	constructor(
@@ -101,7 +83,7 @@ export class N8nMemory {
 		private readonly memoryEntryCursorRepository: AgentMemoryEntryCursorRepository,
 	) {}
 
-	getImplementation(agentId: string): N8nMemoryImplementation {
+	getImplementation(agentId: string) {
 		return new N8nMemoryImpl(
 			agentId,
 			this.threadRepository,

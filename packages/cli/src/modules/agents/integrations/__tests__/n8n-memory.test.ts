@@ -19,9 +19,10 @@ import type { AgentObservationLockRepository } from '../../repositories/agent-ob
 import type { AgentObservationRepository } from '../../repositories/agent-observation.repository';
 import type { AgentResourceRepository } from '../../repositories/agent-resource.repository';
 import type { AgentThreadRepository } from '../../repositories/agent-thread.repository';
-import { N8nMemory, type N8nMemoryImplementation } from '../n8n-memory';
+import { N8nMemory } from '../n8n-memory';
 
 const estimateObservationTokens = (text: string) => Math.ceil(text.length / 4);
+type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
 
 describe('N8nMemory', () => {
 	let memory: N8nMemoryImplementation;

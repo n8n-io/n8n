@@ -4,9 +4,11 @@ import { mock } from 'jest-mock-extended';
 import { AgentExecutionService } from '../agent-execution.service';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
-import type { N8nMemory, N8nMemoryImplementation } from '../integrations/n8n-memory';
+import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
+
+type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
 
 function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecutionThread {
 	return {

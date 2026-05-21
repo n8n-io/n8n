@@ -27,7 +27,7 @@ import {
 	type AgentChatIntegrationContext,
 } from '../integrations/agent-chat-integration';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import type { N8nMemory, N8nMemoryImplementation } from '../integrations/n8n-memory';
+import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentPublishedVersionRepository } from '../repositories/agent-published-version.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -36,6 +36,7 @@ const agentId = 'agent-1';
 const projectId = 'project-1';
 const userId = 'user-1';
 const versionId = 'v1';
+type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
