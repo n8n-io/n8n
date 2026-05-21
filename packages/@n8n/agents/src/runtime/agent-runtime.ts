@@ -510,10 +510,7 @@ export class AgentRuntime {
 				);
 			}
 
-			const mergedMaxIterations =
-				persistedMaxIterations !== undefined && callerMaxIterations !== undefined
-					? Math.max(persistedMaxIterations, callerMaxIterations)
-					: (persistedMaxIterations ?? callerMaxIterations);
+			const mergedMaxIterations = callerMaxIterations ?? persistedMaxIterations;
 			const mergedExecOptions: ExecutionOptions & { iterationCount?: number } = {
 				...callerExecOptions,
 				...(mergedMaxIterations !== undefined ? { maxIterations: mergedMaxIterations } : {}),
