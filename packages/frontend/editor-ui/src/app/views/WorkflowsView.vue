@@ -268,8 +268,10 @@ const foldersEnabled = computed(() => {
 	return settingsStore.isFoldersFeatureEnabled;
 });
 
+const mcpModuleActive = computed(() => settingsStore.isModuleActive('mcp'));
+
 const mcpEnabled = computed(() => {
-	return settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled;
+	return mcpModuleActive.value && settingsStore.moduleSettings.mcp?.mcpAccessEnabled;
 });
 
 const showFolders = computed(() => {
@@ -2017,6 +2019,7 @@ const onNameSubmit = async (name: string) => {
 					:are-folders-enabled="settingsStore.isFoldersFeatureEnabled"
 					:are-tags-enabled="settingsStore.areTagsEnabled"
 					:is-mcp-enabled="mcpEnabled"
+					:is-mcp-module-active="mcpModuleActive"
 					@click:tag="onClickTag"
 					@workflow:deleted="refreshWorkflows"
 					@workflow:archived="refreshWorkflows"

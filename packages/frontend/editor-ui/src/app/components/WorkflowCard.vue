@@ -73,6 +73,7 @@ const props = withDefaults(
 		showOwnershipBadge?: boolean;
 		areTagsEnabled?: boolean;
 		isMcpEnabled?: boolean;
+		isMcpModuleActive?: boolean;
 		areFoldersEnabled?: boolean;
 	}>(),
 	{
@@ -81,6 +82,7 @@ const props = withDefaults(
 		showOwnershipBadge: false,
 		areTagsEnabled: true,
 		isMcpEnabled: false,
+		isMcpModuleActive: false,
 		areFoldersEnabled: false,
 	},
 );
@@ -280,7 +282,9 @@ const canToggleMcp = computed(
 	() => workflowPermissions.value.update && !props.readOnly && !props.data.isArchived,
 );
 
-const showMcpToggle = computed(() => canToggleMcp.value || isAvailableInMCP.value);
+const showMcpToggle = computed(
+	() => props.isMcpModuleActive && (canToggleMcp.value || isAvailableInMCP.value),
+);
 
 const mcpTooltipContent = computed(() => {
 	if (!canToggleMcp.value) {

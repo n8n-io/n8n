@@ -560,6 +560,7 @@ describe('WorkflowCard', () => {
 			props: {
 				data,
 				isMcpEnabled: true,
+				isMcpModuleActive: true,
 			},
 		});
 
@@ -580,6 +581,7 @@ describe('WorkflowCard', () => {
 			props: {
 				data,
 				isMcpEnabled: true,
+				isMcpModuleActive: true,
 			},
 		});
 
@@ -605,6 +607,7 @@ describe('WorkflowCard', () => {
 			props: {
 				data,
 				isMcpEnabled: true,
+				isMcpModuleActive: true,
 			},
 		});
 
@@ -626,6 +629,7 @@ describe('WorkflowCard', () => {
 			props: {
 				data,
 				isMcpEnabled: true,
+				isMcpModuleActive: true,
 			},
 		});
 
@@ -656,6 +660,7 @@ describe('WorkflowCard', () => {
 			props: {
 				data,
 				isMcpEnabled: false,
+				isMcpModuleActive: true,
 			},
 		});
 
@@ -691,6 +696,7 @@ describe('WorkflowCard', () => {
 			props: {
 				data,
 				isMcpEnabled: false,
+				isMcpModuleActive: true,
 			},
 		});
 
@@ -716,6 +722,7 @@ describe('WorkflowCard', () => {
 			props: {
 				data,
 				isMcpEnabled: false,
+				isMcpModuleActive: true,
 			},
 		});
 
@@ -738,6 +745,7 @@ describe('WorkflowCard', () => {
 			props: {
 				data,
 				isMcpEnabled: true,
+				isMcpModuleActive: true,
 			},
 		});
 
@@ -757,6 +765,26 @@ describe('WorkflowCard', () => {
 			props: {
 				data,
 				isMcpEnabled: true,
+				isMcpModuleActive: true,
+			},
+		});
+
+		expect(queryByTestId('workflow-card-mcp-toggle')).not.toBeInTheDocument();
+	});
+
+	it('should hide MCP toggle when the MCP module is not loaded on the instance', () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { queryByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: false,
+				isMcpModuleActive: false,
 			},
 		});
 
@@ -776,6 +804,7 @@ describe('WorkflowCard', () => {
 			props: {
 				data,
 				isMcpEnabled: true,
+				isMcpModuleActive: true,
 			},
 		});
 
