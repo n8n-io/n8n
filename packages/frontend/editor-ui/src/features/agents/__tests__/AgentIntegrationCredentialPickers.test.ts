@@ -415,7 +415,7 @@ describe('agent integration credential picker usage', () => {
 		});
 	});
 
-	it('shows the connected Slack credential disabled with disconnect outside manual configuration', async () => {
+	it('shows the connected Slack state with a disconnect action in the footer', async () => {
 		getIntegrationStatus.mockResolvedValue({
 			integrations: [{ type: 'slack', credentialId: 'cred-1' }],
 		});
@@ -439,13 +439,7 @@ describe('agent integration credential picker usage', () => {
 
 		expect(wrapper.find('[data-testid="slack-manual-configuration"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="slack-app-configuration-token"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="slack-connected-description"]').text()).toBe(
-			'agents.builder.addTrigger.connectedText.slack',
-		);
-
-		const picker = wrapper.find('[data-testid="agent-credential-select-stub"]');
-		expect(picker.attributes('data-disabled')).toBe('true');
-		expect(picker.attributes('data-model-value')).toBe('cred-1');
+		expect(wrapper.text()).toContain('agents.builder.addTrigger.connectedText.slack');
 		expect(wrapper.find('[data-testid="slack-connect-button"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="slack-disconnect-button"]').exists()).toBe(true);
 

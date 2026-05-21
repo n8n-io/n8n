@@ -108,17 +108,17 @@ function stringProperty(
 }
 
 function hasSessionShape(value: unknown): value is SlackAppSetupSession {
-	if (!isRecord(value)) return false;
-	return (
-		typeof value.projectId === 'string' &&
-		typeof value.agentId === 'string' &&
-		typeof value.userId === 'string' &&
-		typeof value.appId === 'string' &&
-		typeof value.clientId === 'string' &&
-		typeof value.clientSecret === 'string' &&
-		typeof value.signingSecret === 'string' &&
-		typeof value.redirectUrl === 'string'
-	);
+	const keys: Array<keyof SlackAppSetupSession> = [
+		'projectId',
+		'agentId',
+		'userId',
+		'appId',
+		'clientId',
+		'clientSecret',
+		'signingSecret',
+		'redirectUrl',
+	];
+	return isRecord(value) && keys.every((k) => typeof value[k] === 'string');
 }
 
 @Service()
@@ -135,7 +135,7 @@ export class SlackAppSetupService {
 	) {}
 
 	async createApp(options: CreateSlackAppOptions): Promise<CreateSlackAgentAppResponse> {
-		const agent = await this.getPublishedAgent(options.agentId, options.projectId);
+		const agent = await this.getAgent(options.agentId, options.projectId, true);
 		const appConfigurationToken = options.appConfigurationToken.trim();
 		if (!appConfigurationToken) {
 			throw new BadRequestError('Slack app configuration token is required');
@@ -202,7 +202,7 @@ export class SlackAppSetupService {
 			throw new BadRequestError('Slack app setup state does not match this agent');
 		}
 
-		const agent = await this.getPublishedAgent(session.agentId, session.projectId);
+		const agent = await this.getAgent(session.agentId, session.projectId, true);
 		const user = await this.userRepository.findOne({
 			where: { id: session.userId },
 			relations: ['role'],
@@ -259,17 +259,14 @@ export class SlackAppSetupService {
 		await this.agentsService.saveCredentialIntegration(agent, integration);
 	}
 
-	private async getAgent(agentId: string, projectId: string): Promise<Agent> {
+	private async getAgent(
+		agentId: string,
+		projectId: string,
+		requirePublished = false,
+	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
-		return agent;
-	}
-
-	private async getPublishedAgent(agentId: string, projectId: string): Promise<Agent> {
-		const agent = await this.getAgent(agentId, projectId);
-		if (!agent.publishedVersion) {
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		if (requirePublished && !agent.publishedVersion) {
 			throw new ConflictError(
 				`Agent "${agentId}" must be published before connecting an integration`,
 			);
