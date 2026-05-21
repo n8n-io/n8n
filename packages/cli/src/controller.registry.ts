@@ -1,5 +1,5 @@
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { inProduction, Logger } from '@n8n/backend-common';
+import { inProduction } from '@n8n/backend-common';
 import { type BooleanLicenseFeature } from '@n8n/constants';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type {
@@ -32,8 +32,6 @@ import { isAuthenticatedRequest } from '@n8n/db';
 
 @Service()
 export class ControllerRegistry {
-	private readonly logger: Logger;
-
 	constructor(
 		private readonly license: License,
 		private readonly authService: AuthService,
@@ -41,9 +39,7 @@ export class ControllerRegistry {
 		private readonly lastActiveAtService: LastActiveAtService,
 		private readonly rateLimitService: RateLimitService,
 		private readonly pathResolvingService: PathResolvingService,
-	) {
-		this.logger = Container.get(Logger);
-	}
+	) {}
 
 	activate(app: Application) {
 		for (const controllerClass of this.metadata.controllerClasses) {
@@ -61,8 +57,6 @@ export class ControllerRegistry {
 			: this.pathResolvingService.resolveRestEndpoint(metadata.basePath);
 
 		const prefix = controllerPath.replace(/\/+/g, '/').replace(/\/$/, '');
-
-		this.logger.debug(`Controller prefix: ${prefix} (controller: ${controllerClass.name})`);
 
 		app.use(prefix === '' ? '/' : prefix, router);
 

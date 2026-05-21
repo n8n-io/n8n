@@ -80,12 +80,7 @@ export class Push extends TypedEmitter<PushEvents> {
 			const pushEndpoint = pathResolvingService.resolveRestEndpoint('push');
 
 			server.on('upgrade', (request: WebSocketPushRequest, socket, upgradeHead) => {
-				this.logger.debug(`Upgrade request: ${request.url}`);
-				this.logger.debug(`Push endpoint: ${pushEndpoint}`);
-				this.logger.debug(`Pathname: ${parseUrl(request.url).pathname}`);
-
-				if (parseUrl(request.url).pathname?.includes(pushEndpoint)) {
-					this.logger.debug(`Upgrading websocket connection for ${request.url}`);
+				if (parseUrl(request.url).pathname === pushEndpoint) {
 					wsServer.handleUpgrade(request, socket, upgradeHead, (ws) => {
 						request.ws = ws;
 

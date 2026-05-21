@@ -1,3 +1,4 @@
+---
 openapi: 3.0.0
 info:
   title: n8n Public API
@@ -10,10 +11,10 @@ info:
     url: https://github.com/n8n-io/n8n/blob/master/LICENSE.md
   version: 1.1.1
 externalDocs:
-    description: 'n8n API documentation'
-    url: 'https://docs.n8n.io/api/'
+  description: n8n API documentation
+  url: https://docs.n8n.io/api/
 servers:
-    - {url: /api/v1}
+  - url: /api/v1
 tags:
   - name: User
     description: Operations about users

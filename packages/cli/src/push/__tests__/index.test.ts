@@ -12,6 +12,7 @@ import { Push } from '@/push';
 import { SSEPush } from '@/push/sse.push';
 import type { WebSocketPushRequest, SSEPushRequest, PushResponse } from '@/push/types';
 import { WebSocketPush } from '@/push/websocket.push';
+import type { PathResolvingService } from '@/services/path-resolving.service';
 
 import type { PushConfig } from '../push.config';
 
@@ -43,8 +44,9 @@ describe('Push', () => {
 	});
 
 	describe('setupPushServer', () => {
-		const basePath = '';
-		const restEndpoint = 'rest';
+		const pathResolvingService = mock<PathResolvingService>({
+			resolveRestEndpoint: (path: string) => `/rest${path ? `/${path}` : ''}`,
+		});
 		const app = mock<Application>();
 		const server = mock<Server>();
 		// @ts-expect-error `jest.spyOn` typings don't allow `constructor`
@@ -55,7 +57,7 @@ describe('Push', () => {
 				config.backend = 'sse';
 				push = new Push(config, mock(), logger, mock(), mock());
 
-				push.setupPushServer(basePath, restEndpoint, server, app);
+				push.setupPushServer(pathResolvingService, server, app);
 
 				expect(wssSpy).not.toHaveBeenCalled();
 				expect(server.on).not.toHaveBeenCalled();
@@ -73,7 +75,7 @@ describe('Push', () => {
 				push = new Push(config, mock(), logger, mock(), mock());
 				wssSpy.mockReturnValue(wsServer);
 
-				push.setupPushServer(basePath, restEndpoint, server, app);
+				push.setupPushServer(pathResolvingService, server, app);
 
 				expect(wssSpy).toHaveBeenCalledWith({ noServer: true });
 				const onUpgradeCaptor = captor<typeof onUpgrade>();
@@ -83,6 +85,14 @@ describe('Push', () => {
 
 			test('should not upgrade non-push urls', () => {
 				const request = mock<WebSocketPushRequest>({ url: '/rest/testing' });
+
+				onUpgrade(request, socket, upgradeHead);
+
+				expect(wsServer.handleUpgrade).not.toHaveBeenCalled();
+			});
+
+			test('should not upgrade urls that contain the push endpoint as a substring', () => {
+				const request = mock<WebSocketPushRequest>({ url: '/rest/push-other' });
 
 				onUpgrade(request, socket, upgradeHead);
 

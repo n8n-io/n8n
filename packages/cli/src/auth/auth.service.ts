@@ -15,6 +15,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
+import { PathResolvingService } from '@/services/path-resolving.service';
 import { UrlService } from '@/services/url.service';
 
 interface AuthJwtPayload {
@@ -70,31 +71,37 @@ export class AuthService {
 		private readonly userRepository: UserRepository,
 		private readonly invalidAuthTokenRepository: InvalidAuthTokenRepository,
 		private readonly mfaService: MfaService,
+		private readonly pathResolvingService: PathResolvingService,
 	) {
 		const restEndpoint = globalConfig.endpoints.rest;
+		// Resolved against the configured base path so an exact match against
+		// `req.baseUrl + req.route.path` continues to work when n8n is hosted
+		// under N8N_BASE_PATH.
+		const basePath = this.pathResolvingService.getBasePath();
+		const prefix = basePath === '/' ? '' : basePath;
 		this.skipBrowserIdCheckEndpoints = [
 			// we need to exclude push endpoint because we can't send custom header on websocket requests
 			// TODO: Implement a custom handshake for push, to avoid having to send any data on querystring or headers
-			`/${restEndpoint}/push`,
+			`${prefix}/${restEndpoint}/push`,
 
 			// We need to exclude binary-data downloading endpoint because we can't send custom headers on `<embed>` tags
-			`/${restEndpoint}/binary-data/`,
+			`${prefix}/${restEndpoint}/binary-data/`,
 
 			// oAuth callback urls aren't called by the frontend. therefore we can't send custom header on these requests
-			`/${restEndpoint}/oauth1-credential/callback`,
-			`/${restEndpoint}/oauth2-credential/callback`,
+			`${prefix}/${restEndpoint}/oauth1-credential/callback`,
+			`${prefix}/${restEndpoint}/oauth2-credential/callback`,
 
 			// Skip browser ID check for type files
-			'/types/nodes.json',
-			'/types/credentials.json',
-			'/types/node-versions.json',
-			'/mcp-oauth/authorize/',
+			`${prefix}/types/nodes.json`,
+			`${prefix}/types/credentials.json`,
+			`${prefix}/types/node-versions.json`,
+			`${prefix}/mcp-oauth/authorize/`,
 
 			// Skip browser ID check for chat hub attachments
-			`/${restEndpoint}/chat/conversations/:sessionId/messages/:messageId/attachments/:index`,
+			`${prefix}/${restEndpoint}/chat/conversations/:sessionId/messages/:messageId/attachments/:index`,
 
 			// Skip browser ID check for Instance AI SSE endpoint — EventSource can't send custom headers
-			`/${restEndpoint}/instance-ai/events/:threadId`,
+			`${prefix}/${restEndpoint}/instance-ai/events/:threadId`,
 		];
 	}
 
@@ -295,10 +302,7 @@ export class AuthService {
 		endpoint: string,
 		method: string,
 	) {
-		if (
-			method === 'GET' &&
-			this.skipBrowserIdCheckEndpoints.some((skipEndpoint) => endpoint.includes(skipEndpoint))
-		) {
+		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
 			jwtPayload.browserId &&

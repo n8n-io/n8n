@@ -492,7 +492,7 @@ describe('ChatTrigger Templates Security', () => {
 	});
 
 	describe('BasePath functionality', () => {
-		it('should use custom instanceBaseUrl in redirect URL', () => {
+		it('should use custom instanceBaseUrl in redirect URL when input already ends with a slash', () => {
 			const customBasePath = '/custom/path/';
 			const result = createPage({
 				...defaultParams,
@@ -500,19 +500,41 @@ describe('ChatTrigger Templates Security', () => {
 				authentication: 'n8nUserAuth',
 			});
 
-			// Should contain the custom instanceBaseUrl in the redirect URL
 			expect(result).toContain(`window.location.href = '${customBasePath}signin?redirect='`);
+			expect(result).toContain(`fetch('${customBasePath}rest/login'`);
+		});
+
+		it('should add a trailing slash to instanceBaseUrl when input does not end with one', () => {
+			const result = createPage({
+				...defaultParams,
+				instanceBaseUrl: '/custom/path',
+				authentication: 'n8nUserAuth',
+			});
+
+			expect(result).toContain(`window.location.href = '/custom/path/signin?redirect='`);
+			expect(result).toContain(`fetch('/custom/path/rest/login'`);
+		});
+
+		it('should handle an absolute instanceBaseUrl without trailing slash', () => {
+			const result = createPage({
+				...defaultParams,
+				instanceBaseUrl: 'http://localhost:5678/custom-path',
+				authentication: 'n8nUserAuth',
+			});
+
+			expect(result).toContain(
+				`window.location.href = 'http://localhost:5678/custom-path/signin?redirect='`,
+			);
+			expect(result).toContain(`fetch('http://localhost:5678/custom-path/rest/login'`);
 		});
 
 		it('should use default instanceBaseUrl when not provided', () => {
-			// Create params without instanceBaseUrl to test default behavior
 			const { instanceBaseUrl: _, ...paramsWithoutBaseUrl } = defaultParams;
 			const result = createPage({
 				...paramsWithoutBaseUrl,
 				authentication: 'n8nUserAuth',
 			});
 
-			// When instanceBaseUrl is not provided, it should default to '/'
 			expect(result).toContain(`window.location.href = '/signin?redirect='`);
 		});
 
@@ -522,7 +544,6 @@ describe('ChatTrigger Templates Security', () => {
 				authentication: 'n8nUserAuth',
 			});
 
-			// Should use encodeURIComponent for the redirect parameter
 			expect(result).toContain('encodeURIComponent(window.location.href)');
 		});
 	});
