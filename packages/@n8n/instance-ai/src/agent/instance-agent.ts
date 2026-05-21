@@ -14,27 +14,11 @@ import {
 } from '../tool-registry';
 import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
+import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
 import type { CreateInstanceAgentOptions, InstanceAiToolRegistry } from '../types';
 
 // ── Agent factory ───────────────────────────────────────────────────────────
-
-const ALWAYS_LOADED_TOOLS = new Set([
-	'plan',
-	'create-tasks',
-	'delegate',
-	'ask-user',
-	'credentials',
-	'workflows',
-	'build-workflow-with-agent',
-	'verify-built-workflow',
-	'research',
-	'evals',
-	'web-search',
-	'fetch-url',
-]);
-
-const CHECKPOINT_FOLLOW_UP_TOOLS = new Set(['complete-checkpoint', 'executions']);
 
 function splitDeferredTools(
 	tools: InstanceAiToolRegistry,
@@ -45,8 +29,8 @@ function splitDeferredTools(
 
 	for (const [name, tool] of tools) {
 		if (
-			ALWAYS_LOADED_TOOLS.has(name) ||
-			(options.isCheckpointFollowUp && CHECKPOINT_FOLLOW_UP_TOOLS.has(name))
+			ALWAYS_LOADED_TOOL_NAMES.has(name) ||
+			(options.isCheckpointFollowUp && CHECKPOINT_FOLLOW_UP_TOOL_NAMES.has(name))
 		) {
 			coreTools.set(name, tool);
 		} else {

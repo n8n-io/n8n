@@ -2,7 +2,9 @@ import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-export const ASK_USER_TOOL_ID = 'ask-user';
+import { ASK_USER_TOOL_ID } from '../tool-ids';
+
+export { ASK_USER_TOOL_ID };
 
 const questionSchema = z.object({
 	id: z.string().describe('Unique question identifier'),
