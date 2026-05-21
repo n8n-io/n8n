@@ -38,6 +38,7 @@ export const RESOURCES = {
 		'execute',
 		'execute-chat',
 		'export',
+		'import',
 		'move',
 		'activate',
 		'deactivate',
@@ -75,7 +76,7 @@ export const RESOURCES = {
 
 export const API_KEY_RESOURCES = {
 	tag: [...DEFAULT_OPERATIONS] as const,
-	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate', 'export'] as const,
+	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate', 'export', 'import'] as const,
 	variable: ['create', 'update', 'delete', 'list'] as const,
 	securityAudit: ['generate'] as const,
 	project: ['create', 'update', 'delete', 'list'] as const,
