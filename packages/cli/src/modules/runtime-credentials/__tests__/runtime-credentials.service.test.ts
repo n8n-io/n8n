@@ -3,19 +3,19 @@ import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import type { InboundSecretsConfig } from '../inbound-secrets.config';
-import type { SensitiveFieldRules } from '../inbound-secrets.schemas';
-import { InboundSecretsService } from '../inbound-secrets.service';
+import type { RuntimeCredentialsConfig } from '../runtime-credentials.config';
+import type { SensitiveFieldRules } from '../runtime-credentials.schemas';
+import { RuntimeCredentialsService } from '../runtime-credentials.service';
 
 const item = (json: IDataObject): INodeExecutionData => ({ json });
 
-describe('InboundSecretsService', () => {
-	let service: InboundSecretsService;
-	let config: MockProxy<InboundSecretsConfig>;
+describe('RuntimeCredentialsService', () => {
+	let service: RuntimeCredentialsService;
+	let config: MockProxy<RuntimeCredentialsConfig>;
 
 	beforeEach(() => {
-		config = mock<InboundSecretsConfig>();
-		service = new InboundSecretsService(mockLogger(), config);
+		config = mock<RuntimeCredentialsConfig>();
+		service = new RuntimeCredentialsService(mockLogger(), config);
 	});
 
 	describe('init', () => {

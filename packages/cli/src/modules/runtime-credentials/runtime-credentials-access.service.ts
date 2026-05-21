@@ -6,7 +6,7 @@ import { toSecureArtifacts } from 'n8n-workflow';
 import { RuntimeCredentialProvider } from '@/services/runtime-credential-proxy.service';
 
 @Service()
-export class InboundSecretsAccessService implements RuntimeCredentialProvider {
+export class RuntimeCredentialsAccessService implements RuntimeCredentialProvider {
 	constructor(private readonly cipher: Cipher) {}
 
 	async getRuntimeCredential(
