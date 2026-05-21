@@ -7,6 +7,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useEvaluationStore } from '../evaluation.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 import { computed, watch } from 'vue';
 import EvaluationsPaywall from '../components/Paywall/EvaluationsPaywall.vue';
@@ -19,6 +20,7 @@ const props = defineProps<{
 
 const usageStore = useUsageStore();
 const evaluationStore = useEvaluationStore();
+const workflowsStore = useWorkflowsStore();
 const telemetry = useTelemetry();
 const toast = useToast();
 const locale = useI18n();
@@ -31,6 +33,8 @@ const evaluationsLicensed = computed(() => {
 const isProtectedEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
+
+const workflowIsSaved = computed(() => workflowsStore.isWorkflowSaved[props.workflowId] === true);
 
 const runs = computed(() => {
 	return Object.values(evaluationStore.testRunsById ?? {}).filter(
@@ -46,6 +50,8 @@ const showWizard = computed(() => !hasRuns.value);
 
 // Method to run a test - will be used by the SetupWizard component
 async function runTest() {
+	if (!workflowIsSaved.value) return;
+
 	try {
 		await evaluationStore.startTestRun(props.workflowId);
 	} catch (error) {
@@ -67,14 +73,31 @@ const evaluationsQuotaExceeded = computed(() => {
 	);
 });
 
-const { isReady } = useAsyncState(async () => {
+async function fetchTestRuns() {
+	if (!workflowIsSaved.value) return;
+
 	try {
-		await usageStore.getLicenseInfo();
 		await evaluationStore.fetchTestRuns(props.workflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
 	}
+}
+
+const { isReady } = useAsyncState(async () => {
+	try {
+		await usageStore.getLicenseInfo();
+	} catch (error) {
+		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
+	}
+
+	await fetchTestRuns();
 }, undefined);
+
+watch(workflowIsSaved, async (isSaved) => {
+	if (isSaved) {
+		await fetchTestRuns();
+	}
+});
 
 watch(
 	isReady,

@@ -33,6 +33,7 @@ jest.mock('../../tools', () => ({
 		(context: { runLabel?: string }) =>
 			new Map([
 				['workflows', mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`)],
+				['evals', mockBuiltTool(`evals-${context.runLabel ?? 'unknown'}`)],
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
 				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
 			]),
@@ -41,6 +42,7 @@ jest.mock('../../tools', () => ({
 		(context: { runLabel?: string }) =>
 			new Map([
 				['workflows', mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`)],
+				['evals', mockBuiltTool(`evals-${context.runLabel ?? 'unknown'}`)],
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
 				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
 				['executions', mockBuiltTool(`executions-${context.runLabel ?? 'unknown'}`)],
@@ -350,5 +352,33 @@ describe('createInstanceAgent', () => {
 		expect(agentTools.custom_plan).toMatchObject({ marker: 'custom-plan' });
 		expect(mcpContextTools.get('shared_tool')).toMatchObject({ marker: 'local-shared' });
 		expect(mcpContextTools.get('github_workflows')).toMatchObject({ marker: 'github-workflows' });
+	});
+
+	it('keeps evals always loaded so user-requested eval setup can route directly', async () => {
+		const memoryConfig = { lastMessages: 20 } as never;
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'evals-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'evals-test',
+				browserMcpConfig: undefined,
+			},
+			memoryConfig,
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		const attachedTools = getAttachedTools();
+		const deferredTools = getDeferredTools();
+
+		expect(attachedTools['evals-evals-test']).toMatchObject({
+			name: 'evals-evals-test',
+		});
+		expect(deferredTools['evals-evals-test']).toBeUndefined();
 	});
 });
