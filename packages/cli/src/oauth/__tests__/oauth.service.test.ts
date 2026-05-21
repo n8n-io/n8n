@@ -21,6 +21,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import {
+	InvalidTargetError,
 	OauthService,
 	OauthVersion,
 	shouldSkipAuthOnOAuthCallback,
@@ -2931,6 +2932,357 @@ describe('OauthService', () => {
 			);
 
 			await expect(runDcr(true)).rejects.toThrow('OAuth JWE public key is missing an "alg" field');
+		});
+	});
+
+	describe('RFC 8707 resource parameter support', () => {
+		const axios = require('axios');
+		const credential = mock<CredentialsEntity>({ id: '1', type: 'mcpOAuth2Api' });
+
+		const makeDcrCredentials = (
+			overrides: Partial<OAuth2CredentialData> = {},
+		): OAuth2CredentialData =>
+			({
+				clientId: '',
+				clientSecret: '',
+				authUrl: '',
+				accessTokenUrl: '',
+				scope: 'openid',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+				useDynamicClientRegistration: true,
+				serverUrl: 'https://mcp.example.com/mcp',
+				...overrides,
+			}) as OAuth2CredentialData;
+
+		const mockClientOAuth2UriFromOptions = async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			jest.mocked(ClientOAuth2).mockImplementation(
+				(options) =>
+					({
+						code: {
+							getUri: () => ({
+								toString: () => {
+									const url = new URL(options.authorizationUri ?? '');
+									if (options.resource) url.searchParams.set('resource', options.resource);
+									if (options.state) url.searchParams.set('state', options.state);
+									return url.toString();
+								},
+							}),
+						},
+					}) as any,
+			);
+		};
+
+		const mockSuccessfulAuthorizationServerDiscovery = () => {
+			jest.mocked(axios.get).mockResolvedValueOnce({
+				data: {
+					authorization_endpoint: 'https://auth.example.com/oauth2/auth',
+					token_endpoint: 'https://auth.example.com/oauth2/token',
+					registration_endpoint: 'https://auth.example.com/oauth2/register',
+					grant_types_supported: ['authorization_code'],
+					token_endpoint_auth_methods_supported: ['client_secret_basic'],
+					scopes_supported: ['openid'],
+				},
+			});
+			jest.mocked(axios.post).mockResolvedValueOnce({
+				data: {
+					client_id: 'registered-client-id',
+					client_secret: 'registered-client-secret',
+				},
+			});
+		};
+
+		describe('InvalidTargetError', () => {
+			it('should expose OAuth invalid_target response metadata', () => {
+				const error = new InvalidTargetError('Invalid resource');
+
+				expect(error.name).toBe('InvalidTargetError');
+				expect(error.errorCode).toBe('invalid_target');
+				expect(error.httpStatusCode).toBe(401);
+			});
+		});
+
+		describe('discoverProtectedResourceMetadata', () => {
+			it('should return normalized resource from protected resource metadata', async () => {
+				jest.mocked(axios.get).mockResolvedValueOnce({
+					data: {
+						authorization_servers: ['https://auth.example.com'],
+						resource: 'https://mcp.example.com/mcp///',
+					},
+				});
+
+				const result = await (service as any).discoverProtectedResourceMetadata(
+					'https://mcp.example.com/mcp',
+				);
+
+				expect(result).toEqual({
+					authorization_servers: ['https://auth.example.com'],
+					resource: 'https://mcp.example.com/mcp',
+				});
+			});
+
+			it('should return undefined resource when metadata omits resource', async () => {
+				jest.mocked(axios.get).mockResolvedValueOnce({
+					data: {
+						authorization_servers: ['https://auth.example.com'],
+					},
+				});
+
+				const result = await (service as any).discoverProtectedResourceMetadata(
+					'https://mcp.example.com',
+				);
+
+				expect(result).toEqual({
+					authorization_servers: ['https://auth.example.com'],
+				});
+				expect(result.resource).toBeUndefined();
+			});
+
+			it('should keep all advertised authorization servers while callers use the first one', async () => {
+				jest.mocked(axios.get).mockResolvedValueOnce({
+					data: {
+						authorization_servers: ['https://auth1.example.com', 'https://auth2.example.com'],
+						resource: 'https://mcp.example.com',
+					},
+				});
+
+				const result = await (service as any).discoverProtectedResourceMetadata(
+					'https://mcp.example.com',
+				);
+
+				expect(result.authorization_servers).toEqual([
+					'https://auth1.example.com',
+					'https://auth2.example.com',
+				]);
+				expect(result.resource).toBe('https://mcp.example.com');
+			});
+
+			it('should throw when protected resource discovery fails for every candidate URL', async () => {
+				jest.mocked(axios.get).mockRejectedValue(new Error('network unavailable'));
+
+				await expect(
+					(service as any).discoverProtectedResourceMetadata('https://mcp.example.com/mcp'),
+				).rejects.toThrow('Failed to discover protected resource metadata');
+			});
+		});
+
+		describe('validateResourceUrlOrThrow', () => {
+			it('should normalize valid resource URLs before returning them', () => {
+				expect(
+					(service as any).validateResourceUrlOrThrow(' https://mcp.example.com/mcp/// '),
+				).toBe('https://mcp.example.com/mcp');
+			});
+
+			it('should reject malformed resource URLs with a generic invalid_target error', () => {
+				expect(() => (service as any).validateResourceUrlOrThrow('not-a-url')).toThrow(
+					InvalidTargetError,
+				);
+				expect(() => (service as any).validateResourceUrlOrThrow('not-a-url')).toThrow(
+					'Invalid resource URL format.',
+				);
+			});
+
+			it('should reject resource URLs blocked by OAuth URL validation', () => {
+				expect(() => (service as any).validateResourceUrlOrThrow('ftp://127.0.0.1/mcp')).toThrow(
+					InvalidTargetError,
+				);
+			});
+		});
+
+		describe('resolveResourceUrl', () => {
+			it('should use discovered resource when no resource URL is supplied', () => {
+				expect(
+					(service as any).resolveResourceUrl(
+						undefined,
+						'https://mcp.example.com/mcp',
+						'https://mcp.example.com/mcp',
+					),
+				).toBe('https://mcp.example.com/mcp');
+			});
+
+			it('should return undefined when neither supplied nor discovered resource is available', () => {
+				expect(
+					(service as any).resolveResourceUrl(undefined, undefined, 'https://mcp.example.com/mcp'),
+				).toBeUndefined();
+			});
+
+			it('should accept supplied resource when it matches the discovered resource', () => {
+				expect(
+					(service as any).resolveResourceUrl(
+						'https://mcp.example.com/mcp',
+						'https://mcp.example.com/mcp',
+						'https://mcp.example.com/mcp',
+					),
+				).toBe('https://mcp.example.com/mcp');
+			});
+
+			it('should reject supplied resource when it does not match the discovered resource', () => {
+				expect(() =>
+					(service as any).resolveResourceUrl(
+						'https://mcp.example.com/other',
+						'https://mcp.example.com/mcp',
+						'https://mcp.example.com/mcp',
+					),
+				).toThrow(InvalidTargetError);
+			});
+
+			it('should accept supplied resource with matching origin when discovery has no resource', () => {
+				expect(
+					(service as any).resolveResourceUrl(
+						'https://mcp.example.com/resource',
+						undefined,
+						'https://mcp.example.com/mcp',
+					),
+				).toBe('https://mcp.example.com/resource');
+			});
+
+			it('should reject supplied resource with mismatched origin when discovery has no resource', () => {
+				expect(() =>
+					(service as any).resolveResourceUrl(
+						'https://other.example.com/resource',
+						undefined,
+						'https://mcp.example.com/mcp',
+					),
+				).toThrow('Resource URL origin must match the server URL origin.');
+			});
+		});
+
+		describe('generateAOauth2AuthUri', () => {
+			beforeEach(async () => {
+				await mockClientOAuth2UriFromOptions();
+				jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+			});
+
+			it('should include discovered resource in the authorize URL and CSRF state', async () => {
+				jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(makeDcrCredentials());
+				jest.mocked(axios.get).mockResolvedValueOnce({
+					data: {
+						authorization_servers: ['https://auth.example.com'],
+						resource: 'https://mcp.example.com/mcp///',
+					},
+				});
+				mockSuccessfulAuthorizationServerDiscovery();
+
+				const authUri = await service.generateAOauth2AuthUri(credential, {
+					cid: credential.id,
+					origin: 'static-credential',
+					userId: 'user-id',
+				});
+
+				const url = new URL(authUri);
+				expect(url.searchParams.get('resource')).toBe('https://mcp.example.com/mcp');
+				expect(cipher.encryptV2).toHaveBeenLastCalledWith(
+					expect.stringContaining('"resource":"https://mcp.example.com/mcp"'),
+				);
+			});
+
+			it('should omit resource when discovery and credential input do not provide one', async () => {
+				jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(makeDcrCredentials());
+				jest.mocked(axios.get).mockResolvedValueOnce({
+					data: {
+						authorization_servers: ['https://auth.example.com'],
+					},
+				});
+				mockSuccessfulAuthorizationServerDiscovery();
+
+				const authUri = await service.generateAOauth2AuthUri(credential, {
+					cid: credential.id,
+					origin: 'static-credential',
+					userId: 'user-id',
+				});
+
+				expect(new URL(authUri).searchParams.has('resource')).toBe(false);
+				expect(cipher.encryptV2).toHaveBeenLastCalledWith(expect.not.stringContaining('resource'));
+			});
+
+			it('should include normalized user-supplied resource URL when it matches discovery', async () => {
+				jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(
+					makeDcrCredentials({
+						resourceUrl: 'https://mcp.example.com/mcp///',
+					} as Partial<OAuth2CredentialData>),
+				);
+				jest.mocked(axios.get).mockResolvedValueOnce({
+					data: {
+						authorization_servers: ['https://auth.example.com'],
+						resource: 'https://mcp.example.com/mcp',
+					},
+				});
+				mockSuccessfulAuthorizationServerDiscovery();
+
+				const authUri = await service.generateAOauth2AuthUri(credential, {
+					cid: credential.id,
+					origin: 'static-credential',
+					userId: 'user-id',
+				});
+
+				expect(new URL(authUri).searchParams.get('resource')).toBe('https://mcp.example.com/mcp');
+			});
+
+			it('should reject user-supplied resource URL that differs from discovered resource', async () => {
+				jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(
+					makeDcrCredentials({
+						resourceUrl: 'https://mcp.example.com/other',
+					} as Partial<OAuth2CredentialData>),
+				);
+				jest.mocked(axios.get).mockResolvedValueOnce({
+					data: {
+						authorization_servers: ['https://auth.example.com'],
+						resource: 'https://mcp.example.com/mcp',
+					},
+				});
+
+				await expect(
+					service.generateAOauth2AuthUri(credential, {
+						cid: credential.id,
+						origin: 'static-credential',
+						userId: 'user-id',
+					}),
+				).rejects.toThrow(InvalidTargetError);
+			});
+
+			it('should reject malformed user-supplied resource URL before generating authorize URL', async () => {
+				jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(
+					makeDcrCredentials({
+						resourceUrl: 'not-a-url',
+					} as Partial<OAuth2CredentialData>),
+				);
+
+				await expect(
+					service.generateAOauth2AuthUri(credential, {
+						cid: credential.id,
+						origin: 'static-credential',
+						userId: 'user-id',
+					}),
+				).rejects.toThrow('Invalid resource URL format.');
+			});
+		});
+
+		describe('convertCredentialToOptions', () => {
+			it('should include resource when credential has resource set', () => {
+				const options = (service as any).convertCredentialToOptions({
+					clientId: 'client-id',
+					clientSecret: 'client-secret',
+					authUrl: 'https://auth.example.com/oauth2/auth',
+					accessTokenUrl: 'https://auth.example.com/oauth2/token',
+					resource: 'https://mcp.example.com/mcp',
+				});
+
+				expect(options).toEqual(
+					expect.objectContaining({ resource: 'https://mcp.example.com/mcp' }),
+				);
+			});
+
+			it('should not emit a concrete resource value when credential has no resource', () => {
+				const options = (service as any).convertCredentialToOptions({
+					clientId: 'client-id',
+					clientSecret: 'client-secret',
+					authUrl: 'https://auth.example.com/oauth2/auth',
+					accessTokenUrl: 'https://auth.example.com/oauth2/token',
+				});
+
+				expect(options.resource).toBeUndefined();
+			});
 		});
 	});
 

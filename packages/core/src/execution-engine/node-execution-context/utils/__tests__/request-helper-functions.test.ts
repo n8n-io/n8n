@@ -1310,6 +1310,54 @@ describe('Request Helper Functions', () => {
 			);
 		});
 
+		test('should refresh the OAuth2 token with authorization code grant type and resource parameter', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				...mockCredentialData,
+				oauthTokenData: {
+					...mockCredentialData.oauthTokenData,
+					resource: 'https://mcp.example.com/mcp',
+				},
+			});
+			nock(baseUrl)
+				.post('/token', {
+					client_id: 'test-client-id',
+					client_secret: 'test-client-secret',
+					grant_type: 'refresh_token',
+					refresh_token: 'old-refresh-token',
+					resource: 'https://mcp.example.com/mcp',
+				})
+				.reply(200, {
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
+				});
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual({
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+				resource: 'https://mcp.example.com/mcp',
+			});
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledWith(
+				mockNode.credentials!['test-credentials-type'],
+				'test-credentials-type',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({
+						access_token: 'new-token',
+						refresh_token: 'new-refresh-token',
+					}),
+				}),
+				mockAdditionalData,
+			);
+		});
+
 		test('should throw an error if the OAuth2 token is not connected', async () => {
 			mockThis.getCredentials.mockResolvedValue({
 				...mockCredentialData,
@@ -1348,6 +1396,7 @@ describe('Request Helper Functions', () => {
 				mockNode.credentials = {
 					'test-credentials-type': { id: 'test-credentials-id', name: 'test-credentials-name' },
 				};
+				(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
 			});
 
 			test('decrypts the refreshed token via the proxy when present', async () => {
@@ -1357,10 +1406,9 @@ describe('Request Helper Functions', () => {
 						refresh_token: 'new-refresh-token',
 					}),
 				};
-				const additionalDataWithProxy = {
-					...mockAdditionalData,
-					'oauth-jwe': { oauthJweProxyProvider },
-				} as unknown as IWorkflowExecuteAdditionalData;
+				(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = {
+					oauthJweProxyProvider,
+				};
 
 				mockThis.getCredentials.mockResolvedValue({ ...mockCredentialData, jweEnabled: true });
 				nock(baseUrl).post('/token').reply(200, {
@@ -1372,21 +1420,21 @@ describe('Request Helper Functions', () => {
 					mockThis,
 					'test-credentials-type',
 					mockNode,
-					additionalDataWithProxy,
+					mockAdditionalData,
 				);
 
 				expect(oauthJweProxyProvider.decryptOAuth2TokenData).toHaveBeenCalledWith(
 					expect.objectContaining({ access_token: 'jwe-blob' }),
 				);
 				expect(
-					additionalDataWithProxy.credentialsHelper.updateCredentialsOauthTokenData,
+					mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
 				).toHaveBeenCalledWith(
 					expect.anything(),
 					'test-credentials-type',
 					expect.objectContaining({
 						oauthTokenData: expect.objectContaining({ access_token: 'decrypted-token' }),
 					}),
-					additionalDataWithProxy,
+					mockAdditionalData,
 				);
 			});
 
@@ -1420,10 +1468,9 @@ describe('Request Helper Functions', () => {
 							),
 						),
 				};
-				const additionalDataWithProxy = {
-					...mockAdditionalData,
-					'oauth-jwe': { oauthJweProxyProvider },
-				} as unknown as IWorkflowExecuteAdditionalData;
+				(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = {
+					oauthJweProxyProvider,
+				};
 
 				mockThis.getCredentials.mockResolvedValue({ ...mockCredentialData, jweEnabled: true });
 				nock(baseUrl).post('/token').reply(200, {
@@ -1432,15 +1479,10 @@ describe('Request Helper Functions', () => {
 				});
 
 				await expect(
-					refreshOAuth2Token.call(
-						mockThis,
-						'test-credentials-type',
-						mockNode,
-						additionalDataWithProxy,
-					),
+					refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
 				).rejects.toThrow('Expected at least one JWE-encrypted token but received only plaintext');
 				expect(
-					additionalDataWithProxy.credentialsHelper.updateCredentialsOauthTokenData,
+					mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
 				).not.toHaveBeenCalled();
 			});
 		});
