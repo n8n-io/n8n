@@ -109,10 +109,11 @@ export class OauthService {
 
 	private validateResourceUrlOrThrow(resourceUrl: string): string {
 		const normalizedResourceUrl = this.normalizeResourceUrl(resourceUrl);
+		let parsedResourceUrl: URL;
 
 		try {
 			this.validateOAuthUrlOrThrow(normalizedResourceUrl);
-			new URL(normalizedResourceUrl);
+			parsedResourceUrl = new URL(normalizedResourceUrl);
 		} catch (error) {
 			this.logger.debug('Invalid OAuth resource URL', { resourceUrl, error });
 			throw new InvalidTargetError('Invalid resource URL format.');
@@ -527,7 +528,10 @@ export class OauthService {
 				discoveredResource,
 				oauthCredentials.serverUrl,
 			);
-			if (resolvedResource) csrfData.resource = resolvedResource;
+			if (resolvedResource) {
+				oauthCredentials.resource = resolvedResource;
+				csrfData.resource = resolvedResource;
+			}
 
 			// Step 2: Discover Authorization Server Metadata (RFC 8414 / OpenID Connect)
 			const issuerUrl = new URL(authorizationServerUrl);
