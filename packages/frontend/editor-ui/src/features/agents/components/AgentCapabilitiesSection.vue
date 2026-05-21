@@ -3,7 +3,6 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
-import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
@@ -12,6 +11,8 @@ import type { AgentSkill, CustomToolEntry } from '../types';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import type { ToolMenuItem, ToolRow } from './AgentCapabilitiesSection.types';
+import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import AgentChipButton from './AgentChipButton.vue';
 
 const props = withDefaults(
@@ -114,89 +115,20 @@ function toolTypeLabel(tool: AgentJsonToolRef, index: number, nodeType = toolNod
 	return toolLabel(tool, index);
 }
 
-type ToolRow = {
-	index: number;
-	label: string;
-	typeLabel: string;
-	nodeType: ReturnType<typeof toolNodeType>;
-	fallbackIcon: IconName;
-	isGrouped: boolean;
-	items: Array<{ index: number; label: string; nodeType: ReturnType<typeof toolNodeType> }>;
-};
-
-type ToolMenuItem = DropdownMenuItemProps<number, { nodeType: ReturnType<typeof toolNodeType> }>;
-
 const toolRows = computed<ToolRow[]>(() => {
-	const rows = props.tools.map((tool, index) => {
-		const nodeType = toolNodeType(tool);
-		return {
-			index,
-			label: toolLabel(tool, index),
-			typeLabel: toolTypeLabel(tool, index, nodeType),
-			nodeType,
-			fallbackIcon: toolIcon(tool),
-			raw: tool,
-		};
-	});
-
-	const groupedRows: ToolRow[] = [];
-	const nodeGroups = new Map<string, typeof rows>();
-
-	for (const row of rows) {
-		if (row.raw.type !== 'node' || !row.nodeType) {
-			groupedRows.push({
-				index: row.index,
-				label: row.label,
-				typeLabel: row.typeLabel,
-				nodeType: row.nodeType,
-				fallbackIcon: row.fallbackIcon,
-				isGrouped: false,
-				items: [{ index: row.index, label: row.label, nodeType: row.nodeType }],
-			});
-			continue;
-		}
-
-		const key = row.nodeType.name;
-		const group = nodeGroups.get(key);
-		if (group) {
-			group.push(row);
-		} else {
-			nodeGroups.set(key, [row]);
-		}
-	}
-
-	for (const group of nodeGroups.values()) {
-		if (group.length === 1) {
-			const [row] = group;
-			groupedRows.push({
-				index: row.index,
-				label: row.label,
-				typeLabel: row.typeLabel,
-				nodeType: row.nodeType,
-				fallbackIcon: row.fallbackIcon,
-				isGrouped: false,
-				items: [{ index: row.index, label: row.label, nodeType: row.nodeType }],
-			});
-			continue;
-		}
-
-		const [first] = group;
-		groupedRows.push({
-			index: first.index,
-			label: `${group.length} ${first.typeLabel}`,
-			typeLabel: first.typeLabel,
-			nodeType: first.nodeType,
-			fallbackIcon: first.fallbackIcon,
-			isGrouped: true,
-			items: group.map((row) => ({
-				index: row.index,
-				label: row.label,
-				nodeType: row.nodeType,
-			})),
-		});
-	}
-
-	return groupedRows.sort((left, right) => left.index - right.index);
+	return buildToolRows(
+		props.tools.map((tool, index) => {
+			const nodeType = toolNodeType(tool);
+			return {
+				index,
+				label: toolLabel(tool, index),
+				typeLabel: toolTypeLabel(tool, index, nodeType),
+				nodeType,
+				fallbackIcon: toolIcon(tool),
+				toolType: tool.type,
+			};
+		}),
+	);
 });
 
 function toolMenuItems(tool: ToolRow): ToolMenuItem[] {

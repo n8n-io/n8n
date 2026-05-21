@@ -101,7 +101,35 @@ describe('AgentCapabilitiesSection', () => {
 		expect(text).not.toContain('tool_123');
 	});
 
-	it('groups duplicate node tool types into a dropdown chip and opens individual tools', async () => {
+	it('keeps a single tool of the same type ungrouped', () => {
+		getNodeType.mockImplementation((type: string) => {
+			if (type === 'n8n-nodes-base.gmailTool') {
+				return {
+					name: 'n8n-nodes-base.gmailTool',
+					displayName: 'Gmail Tool',
+				};
+			}
+
+			return null;
+		});
+
+		const wrapper = mountSection([
+			{
+				type: 'node',
+				name: 'inbox_triage',
+				node: {
+					nodeType: 'n8n-nodes-base.gmailTool',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+				},
+			},
+		]);
+
+		expect(wrapper.text()).not.toContain('2 Gmail');
+		expect(wrapper.text()).toContain('Inbox triage');
+	});
+
+	it('groups tools once the same node type reaches the threshold', () => {
 		getNodeType.mockImplementation((type: string) => {
 			if (type === 'n8n-nodes-base.gmailTool') {
 				return {
@@ -137,5 +165,53 @@ describe('AgentCapabilitiesSection', () => {
 		expect(wrapper.text()).toContain('2 Gmail');
 		expect(wrapper.text()).not.toContain('Inbox triage');
 		expect(wrapper.text()).not.toContain('Send follow up');
+	});
+
+	it('groups more than two tools of the same node type', () => {
+		getNodeType.mockImplementation((type: string) => {
+			if (type === 'n8n-nodes-base.gmailTool') {
+				return {
+					name: 'n8n-nodes-base.gmailTool',
+					displayName: 'Gmail Tool',
+				};
+			}
+
+			return null;
+		});
+
+		const wrapper = mountSection([
+			{
+				type: 'node',
+				name: 'inbox_triage',
+				node: {
+					nodeType: 'n8n-nodes-base.gmailTool',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+				},
+			},
+			{
+				type: 'node',
+				name: 'send_follow_up',
+				node: {
+					nodeType: 'n8n-nodes-base.gmailTool',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+				},
+			},
+			{
+				type: 'node',
+				name: 'archive_message',
+				node: {
+					nodeType: 'n8n-nodes-base.gmailTool',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+				},
+			},
+		]);
+
+		expect(wrapper.text()).toContain('3 Gmail');
+		expect(wrapper.text()).not.toContain('Inbox triage');
+		expect(wrapper.text()).not.toContain('Send follow up');
+		expect(wrapper.text()).not.toContain('Archive message');
 	});
 });
