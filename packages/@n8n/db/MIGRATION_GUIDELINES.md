@@ -10,8 +10,6 @@
 - [Data Migrations](#data-migrations)
 - [Quick Reference](#quick-reference)
 
-> A categorized review of past migration mistakes and their PR threads lives in [`MIGRATION_REVIEW.md`](./MIGRATION_REVIEW.md). The rules below summarize what to do; the review explains *why* by walking through real incidents.
-
 ---
 
 ## Overview
@@ -35,14 +33,6 @@ packages/@n8n/db/src/migrations/
 |---|---|
 | `ReversibleMigration` | Schema changes that can be cleanly undone (add/drop column, create/drop table). Requires a working `down()`. |
 | `IrreversibleMigration` | Data transformations, destructive changes, or anything where `down()` would lose data. No `down()` allowed. |
-
-### Execution Model
-
-- Migrations run in **array order** as defined in `postgresdb/index.ts` and `sqlite/index.ts`
-- Timestamps are for **uniqueness**, not automatic ordering
-- Each migration receives a `MigrationContext` with database-aware helpers
-- Migrations run inside a transaction by default
-- SQLite migrations that do DDL (`CREATE TABLE`, `ALTER TABLE`) should set `transaction = false as const` — the framework wraps these with `PRAGMA foreign_keys=OFF` automatically
 
 ### MigrationContext API
 
@@ -171,7 +161,7 @@ export class MigrateThing1234567890000 implements IrreversibleMigration {
 
 Run SQL through `runQuery()` from `MigrationContext`. Never call `queryRunner.query()` or `queryRunner.manager.*` from a migration.
 
-**Why:** `runQuery()` handles table-prefix escaping and parameter binding consistently. `queryRunner.query()` bypasses those safety nets. `queryRunner.manager` calls couple the migration to TypeORM entity definitions, which change over time — a migration that worked at v1.0 can break at v2.0 if the entity shape evolves.
+**Why:** `runQuery()` handles named parameter binding consistently, while identifiers still need `escape.tableName()`, `escape.columnName()`, and `escape.indexName()`. `queryRunner.query()` bypasses the parameter helper. `queryRunner.manager` calls couple the migration to TypeORM entity definitions, which change over time — a migration that worked at v1.0 can break at v2.0 if the entity shape evolves.
 
 ### Never import entities as values
 
