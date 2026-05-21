@@ -104,6 +104,7 @@ import type {
 	NodeConnectionType,
 	INodeParameters,
 	INodeFilter,
+	IWorkflowGroup,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -2769,12 +2770,17 @@ export function useCanvasOperations() {
 				),
 			);
 
-			await addImportedNodesToWorkflow(workflowData, {
+			const importResult = await addImportedNodesToWorkflow(workflowData, {
 				trackBulk,
 				trackHistory,
 				viewport,
 				setStateDirty,
 			});
+
+			applyImportedNodeGroups(
+				workflowData.nodeGroups,
+				new Set(importResult.nodes?.map((node) => node.id).filter(isPresent) ?? []),
+			);
 
 			if (importTags && settingsStore.areTagsEnabled && Array.isArray(workflowData.tags)) {
 				await importWorkflowTags(workflowData);
@@ -2849,6 +2855,43 @@ export function useCanvasOperations() {
 		return workflowData;
 	}
 
+	function getNodeGroupsFullyContainedInSelection(
+		nodeIds: Set<string>,
+		groups: IWorkflowGroup[],
+	): IWorkflowGroup[] {
+		return groups
+			.filter(
+				(group) => group.nodeIds.length > 0 && group.nodeIds.every((nodeId) => nodeIds.has(nodeId)),
+			)
+			.map((group) => ({
+				...group,
+				nodeIds: [...group.nodeIds],
+			}));
+	}
+
+	function applyImportedNodeGroups(
+		nodeGroups: IWorkflowGroup[] | undefined,
+		importedNodeIds: Set<string>,
+	) {
+		if (!nodeGroups?.length || importedNodeIds.size === 0 || !workflowDocumentStore.value) {
+			return;
+		}
+
+		const groupsToImport = getNodeGroupsFullyContainedInSelection(importedNodeIds, nodeGroups);
+		const existingGroupNames = new Set(
+			workflowDocumentStore.value.allGroups.map((group) => group.name),
+		);
+
+		for (const group of groupsToImport) {
+			const name = existingGroupNames.has(group.name)
+				? workflowDocumentStore.value.getNextDefaultName(group.name)
+				: group.name;
+
+			workflowDocumentStore.value.createGroup(group.nodeIds, name);
+			existingGroupNames.add(name);
+		}
+	}
+
 	function getNodesToSave(nodes: INode[]): WorkflowData {
 		if (!workflowDocumentStore.value) {
 			throw new Error('Cannot serialize nodes: workflow document store is unavailable');
@@ -2860,6 +2903,7 @@ export function useCanvasOperations() {
 			pinData: {} as IPinData,
 		} satisfies WorkflowData;
 
+		const exportedNodeIds = new Set(nodes.map((node) => node.id));
 		const exportedNodeNames = new Set<string>();
 
 		for (const node of nodes) {
@@ -2885,6 +2929,14 @@ export function useCanvasOperations() {
 		}
 
 		data.connections = getConnectionsForNodes(data.nodes, exportedNodeNames);
+
+		const nodeGroups = getNodeGroupsFullyContainedInSelection(
+			exportedNodeIds,
+			workflowDocumentStore.value.allGroups,
+		);
+		if (nodeGroups.length > 0) {
+			data.nodeGroups = nodeGroups;
+		}
 
 		workflowHelpers.removeForeignCredentialsFromWorkflow(data, credentialsStore.allCredentials);
 
