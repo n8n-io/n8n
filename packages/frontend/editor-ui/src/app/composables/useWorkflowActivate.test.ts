@@ -33,11 +33,16 @@ vi.mock('@/app/stores/workflowsList.store', () => ({
 
 const mockSetActiveState = vi.fn();
 const mockSetChecksum = vi.fn();
+const mockSetVersionData = vi.fn();
 vi.mock('@/app/stores/workflowDocument.store', () => ({
+	injectWorkflowDocumentStore: vi.fn(() => ({
+		value: { getNodeById: vi.fn() },
+	})),
 	useWorkflowDocumentStore: vi.fn(() => ({
 		checksum: 'test-checksum',
 		setActiveState: mockSetActiveState,
 		setChecksum: mockSetChecksum,
+		setVersionData: mockSetVersionData,
 	})),
 	createWorkflowDocumentId: vi.fn((id: string) => id),
 }));

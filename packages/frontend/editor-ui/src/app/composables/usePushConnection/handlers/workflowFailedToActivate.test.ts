@@ -1,6 +1,5 @@
 import { workflowFailedToActivate } from './workflowFailedToActivate';
 import type { WorkflowFailedToActivate } from '@n8n/api-types/push/workflow';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import * as activationConfirmation from '@/app/composables/useWorkflowActivateConfirmation';
 
 vi.mock('@/app/stores/workflows.store', () => ({
@@ -44,8 +43,6 @@ vi.mock('@n8n/i18n', () => ({
 vi.mock('@/app/composables/useWorkflowActivateConfirmation');
 
 describe('workflowFailedToActivate', () => {
-	const options = { workflowState: {} as WorkflowState };
-
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
@@ -58,7 +55,7 @@ describe('workflowFailedToActivate', () => {
 			data: { workflowId: 'wf-1', errorMessage: 'Webhook registration failed' },
 		};
 
-		await workflowFailedToActivate(event, options);
+		await workflowFailedToActivate(event);
 
 		expect(activationConfirmation.rejectActivationConfirmation).toHaveBeenCalledWith('wf-1');
 	});
@@ -71,7 +68,7 @@ describe('workflowFailedToActivate', () => {
 			data: { workflowId: 'wf-1', errorMessage: 'error' },
 		};
 
-		await workflowFailedToActivate(event, options);
+		await workflowFailedToActivate(event);
 
 		expect(mockCloseModal).toHaveBeenCalledWith('activation');
 	});
@@ -84,7 +81,7 @@ describe('workflowFailedToActivate', () => {
 			data: { workflowId: 'wf-1', errorMessage: 'Webhook failed' },
 		};
 
-		await workflowFailedToActivate(event, options);
+		await workflowFailedToActivate(event);
 
 		expect(mockShowError).toHaveBeenCalledWith(
 			expect.any(Error),
@@ -101,7 +98,7 @@ describe('workflowFailedToActivate', () => {
 			data: { workflowId: 'wf-1', errorMessage: 'Webhook failed' },
 		};
 
-		await workflowFailedToActivate(event, options);
+		await workflowFailedToActivate(event);
 
 		expect(mockShowError).toHaveBeenCalledWith(
 			expect.any(Error),
@@ -118,7 +115,7 @@ describe('workflowFailedToActivate', () => {
 			data: { workflowId: 'wf-other', errorMessage: 'error' },
 		};
 
-		await workflowFailedToActivate(event, options);
+		await workflowFailedToActivate(event);
 
 		expect(activationConfirmation.rejectActivationConfirmation).toHaveBeenCalledWith('wf-other');
 		expect(mockCloseModal).not.toHaveBeenCalled();
