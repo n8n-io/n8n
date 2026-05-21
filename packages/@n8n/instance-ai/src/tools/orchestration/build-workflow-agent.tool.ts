@@ -1045,7 +1045,10 @@ export async function startBuildWorkflowAgentTask(
 								workspace = activeBuilderSession.workspace;
 								root = activeBuilderSession.root;
 							} else {
-								builderWs = await factory.create(subAgentId, domainContext);
+								builderWs = await factory.create(subAgentId, domainContext, {
+									runId: context.runId,
+									threadId: context.threadId,
+								});
 								workspace = builderWs.workspace;
 								root = await getWorkspaceRoot(workspace);
 							}
@@ -1737,10 +1740,9 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 							context,
 							input.workflowId,
 						);
-						const reason = input.reason?.trim();
 						return await ctx.suspend({
 							requestId: nanoid(),
-							message: `Edit existing workflow "${workflowName}" (ID: ${input.workflowId})?${reason ? ` Reason: ${reason}` : ''}`,
+							message: `Edit ${workflowName} (ID: ${input.workflowId})`,
 							severity: 'warning',
 						});
 					}

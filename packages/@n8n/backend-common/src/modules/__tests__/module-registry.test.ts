@@ -44,7 +44,7 @@ describe('eligibleModules', () => {
 			'instance-version-history',
 			'encryption-key-manager',
 			'oauth-jwe',
-			'inbound-secrets',
+			'runtime-credentials',
 			'mcp-registry',
 		]);
 	});
@@ -76,7 +76,7 @@ describe('eligibleModules', () => {
 			'instance-version-history',
 			'encryption-key-manager',
 			'oauth-jwe',
-			'inbound-secrets',
+			'runtime-credentials',
 			'mcp-registry',
 			'instance-ai',
 		]);

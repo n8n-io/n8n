@@ -48,6 +48,18 @@ jest.mock('../orchestration/delegate.tool', () => ({
 	createDelegateTool: jest.fn(() => ({ id: 'delegate' })),
 }));
 
+jest.mock('../evals/evals.tool', () => ({
+	createEvalsTool: jest.fn(() => ({ id: 'evals' })),
+}));
+
+jest.mock('../orchestration/eval-setup-agent.tool', () => ({
+	createEvalSetupAgentTool: jest.fn(() => ({ id: 'eval-setup-with-agent' })),
+}));
+
+jest.mock('../orchestration/eval-data-agent.tool', () => ({
+	createEvalDataAgentTool: jest.fn(() => ({ id: 'eval-data' })),
+}));
+
 jest.mock('../orchestration/plan-with-agent.tool', () => ({
 	createPlanWithAgentTool: jest.fn(() => ({ id: 'plan' })),
 }));
@@ -123,6 +135,7 @@ describe('domain tool construction', () => {
 
 		expect(Object.fromEntries(domainTools)).toMatchObject({
 			workflows: { id: 'workflows' },
+			evals: { id: 'evals' },
 			executions: { id: 'executions' },
 			credentials: { id: 'credentials' },
 			'data-tables': { id: 'data-tables' },
@@ -141,6 +154,7 @@ describe('domain tool construction', () => {
 
 		expect(Object.fromEntries(orchestratorTools)).toMatchObject({
 			workflows: { id: 'workflows-filtered' },
+			evals: { id: 'evals' },
 			executions: { id: 'executions' },
 			credentials: { id: 'credentials' },
 			'data-tables': { id: 'data-tables-orchestrator' },

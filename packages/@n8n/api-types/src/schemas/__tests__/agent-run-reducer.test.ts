@@ -339,9 +339,11 @@ describe('agent-run-reducer', () => {
 				state,
 				makeToolCall('run-1', 'root', 'tc-data-table', 'manage-data-tables-with-agent'),
 			);
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-eval-setup', 'eval-setup-with-agent'));
 
 			expect(state.toolCallsById['tc-builder'].renderHint).toBe('builder');
 			expect(state.toolCallsById['tc-data-table'].renderHint).toBe('data-table');
+			expect(state.toolCallsById['tc-eval-setup'].renderHint).toBe('eval-setup');
 		});
 
 		it('tool-result resolves tool call', () => {

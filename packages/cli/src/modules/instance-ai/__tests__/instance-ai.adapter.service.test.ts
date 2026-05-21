@@ -1658,6 +1658,22 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
+	it('persists pinData as an empty object (not undefined) when the SDK workflow has no pinData', async () => {
+		// Regression: explicit `pinData: undefined` round-tripped as SQL NULL,
+		// which then crashed `getDataLastExecutedNodeData` on test-webhook runs.
+		// Match the manual UI path, which stores `{}`.
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ pinData: {} }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
 	it('clears the AI-builder temporary marker when promoting the main workflow', async () => {
 		const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockWorkflowRepository } =
 			createWorkflowAdapterForTests();
