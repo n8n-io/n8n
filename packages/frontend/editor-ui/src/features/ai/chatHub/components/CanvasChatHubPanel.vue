@@ -16,7 +16,6 @@ import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { flattenModel } from '@/features/ai/chatHub/chat.utils';
 import { useChatStore } from '../chat.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useChatSession } from '../composables/useChatSession';
@@ -42,7 +41,6 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const chatStore = useChatStore();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const chatHubPanelStore = useChatHubPanelStore();
 const telemetry = useTelemetry();
@@ -72,7 +70,7 @@ const agentDisplayName = computed(() => {
 });
 
 const workflowAgent = computed<ChatModelDto | null>(() => {
-	const workflowId = workflowsStore.workflowId;
+	const workflowId = workflowDocumentStore.value.workflowId;
 	if (!workflowId) return null;
 
 	const params = chatTriggerNode.value?.parameters;
@@ -174,7 +172,7 @@ async function handleSelectSession(selectedSessionId: ChatSessionId) {
 
 // Reset session when workflow changes
 watch(
-	() => workflowsStore.workflowId,
+	() => workflowDocumentStore.value.workflowId,
 	() => {
 		sessionId.value = uuidv4();
 	},
@@ -300,7 +298,7 @@ defineExpose({
 				<CanvasChatSessionDropdown
 					:session-id="sessionId"
 					:session-title="sessionIdText"
-					:workflow-id="workflowsStore.workflowId"
+					:workflow-id="workflowDocumentStore.workflowId"
 					@select-session="handleSelectSession"
 				/>
 				<N8nTooltip placement="bottom">
