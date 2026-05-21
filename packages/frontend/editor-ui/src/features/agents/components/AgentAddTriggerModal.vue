@@ -26,7 +26,8 @@ import { useAgentConfirmationModal } from '../composables/useAgentConfirmationMo
 import { createSlackAgentApp } from '../composables/useAgentApi';
 import type { AgentResource } from '../types';
 import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
-import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
+import type { AgentCredentialOption } from './AgentCredentialSelect.vue';
+import AgentIntegrationCredentialConnection from './AgentIntegrationCredentialConnection.vue';
 import AgentIntegrationSettingsForm from './AgentIntegrationSettingsForm.vue';
 
 const props = defineProps<{
@@ -261,28 +262,25 @@ async function onConnect(type: string) {
 	}
 }
 
-function openSlackAppAuthorizationPopup(installUrl: string): Window {
+function openSlackAppAuthorizationPopup(installUrl: string): Window | null {
 	const parsedUrl = new URL(installUrl);
 	if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
 		throw new Error('Invalid Slack installation URL');
 	}
 
 	const params =
-		'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
-	const popup = window.open(parsedUrl.toString(), 'Slack App Authorization', params);
-	if (!popup) {
-		throw new Error('Could not open Slack installation window');
-	}
-	return popup;
+		'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700,noopener';
+	return window.open(parsedUrl.toString(), 'Slack App Authorization', params);
 }
 
-async function waitForSlackAppSetupCompletion(popup: Window): Promise<boolean> {
+async function waitForSlackAppSetupCompletion(popup: Window | null): Promise<boolean> {
 	return await new Promise((resolve) => {
 		const oauthChannel = new BroadcastChannel('oauth-callback');
 		let pollInFlight = false;
 		let settled = false;
 
 		const closePopup = () => {
+			if (!popup) return;
 			try {
 				popup.close();
 			} catch {
@@ -521,81 +519,35 @@ onMounted(async () => {
 						</N8nButton>
 					</div>
 
-					<div
+					<AgentIntegrationCredentialConnection
 						v-if="!isConnected(currentIntegration.type) && currentIntegration.type !== 'slack'"
-						:class="$style.connectForm"
-					>
-						<label :class="$style.label">
-							<N8nText size="small" bold>
-								{{ currentIntegration.label }}
-								{{ i18n.baseText('agents.builder.addTrigger.credential') }}
-							</N8nText>
-						</label>
-						<div :class="$style.selectRow">
-							<AgentCredentialSelect
-								v-model="selectedCredentials[currentIntegration.type]"
-								:class="$style.select"
-								:placeholder="i18n.baseText('agents.builder.addTrigger.selectCredential')"
-								:credentials="credentialsByType[currentIntegration.type] ?? []"
-								:credential-permissions="credentialPermissions"
-								:loading="credentialsLoading"
-								:disabled="isLoading(currentIntegration.type)"
-								:data-test-id="`${currentIntegration.type}-credential-select`"
-								@create="onCreateCredential(currentIntegration)"
-							/>
-							<N8nButton
-								v-if="selectedCredentials[currentIntegration.type]"
-								variant="outline"
-								size="small"
-								icon="pen"
-								:aria-label="i18n.baseText('agents.builder.addTrigger.editCredential')"
-								:data-testid="`${currentIntegration.type}-edit-credential`"
-								@click="onEditCredential(currentIntegration.type)"
-							/>
-						</div>
-					</div>
+						v-model="selectedCredentials[currentIntegration.type]"
+						:integration-type="currentIntegration.type"
+						:integration-label="currentIntegration.label"
+						:credentials="credentialsByType[currentIntegration.type] ?? []"
+						:credential-permissions="credentialPermissions"
+						:credentials-loading="credentialsLoading"
+						:disabled="isLoading(currentIntegration.type)"
+						@create="onCreateCredential(currentIntegration)"
+						@edit="onEditCredential(currentIntegration.type)"
+					/>
 
-					<div
+					<AgentIntegrationCredentialConnection
 						v-else-if="isConnected(currentIntegration.type) && currentIntegration.type === 'slack'"
-						:class="$style.connectForm"
-					>
-						<label :class="$style.label">
-							<N8nText size="small" bold>
-								{{ currentIntegration.label }}
-								{{ i18n.baseText('agents.builder.addTrigger.credential') }}
-							</N8nText>
-						</label>
-						<N8nText
-							:class="$style.connectedDescription"
-							size="small"
-							data-testid="slack-connected-description"
-						>
-							{{ integrationConnectedText(currentIntegration.type) }}
-						</N8nText>
-						<div :class="$style.selectRow">
-							<AgentCredentialSelect
-								:model-value="connectedCredentials[currentIntegration.type]"
-								:class="$style.select"
-								:placeholder="i18n.baseText('agents.builder.addTrigger.selectCredential')"
-								:credentials="credentialsByType[currentIntegration.type] ?? []"
-								:credential-permissions="credentialPermissions"
-								:loading="credentialsLoading"
-								:disabled="true"
-								:data-test-id="`${currentIntegration.type}-credential-select`"
-								@create="onCreateCredential(currentIntegration)"
-							/>
-							<N8nButton
-								variant="destructive"
-								:loading="isLoading(currentIntegration.type)"
-								size="small"
-								:data-testid="`${currentIntegration.type}-disconnect-button`"
-								@click="onDisconnect(currentIntegration.type)"
-							>
-								<template #prefix><N8nIcon icon="unlink" size="xsmall" /></template>
-								{{ i18n.baseText('agents.builder.addTrigger.disconnect') }}
-							</N8nButton>
-						</div>
-					</div>
+						:model-value="connectedCredentials[currentIntegration.type]"
+						:integration-type="currentIntegration.type"
+						:integration-label="currentIntegration.label"
+						:credentials="credentialsByType[currentIntegration.type] ?? []"
+						:credential-permissions="credentialPermissions"
+						:credentials-loading="credentialsLoading"
+						:disabled="true"
+						:connected="true"
+						:connected-description="integrationConnectedText(currentIntegration.type)"
+						:show-disconnect-button="true"
+						:loading="isLoading(currentIntegration.type)"
+						@create="onCreateCredential(currentIntegration)"
+						@disconnect="onDisconnect(currentIntegration.type)"
+					/>
 
 					<div
 						v-else-if="isConnected(currentIntegration.type) && currentIntegration.type !== 'slack'"
@@ -619,89 +571,36 @@ onMounted(async () => {
 						:setup-slack-app="onSetupSlackApp"
 					>
 						<template v-if="currentIntegration.type === 'slack'" #manualConfiguration>
-							<div :class="$style.connectForm">
-								<label :class="$style.label">
-									<N8nText size="small" bold>
-										{{ currentIntegration.label }}
-										{{ i18n.baseText('agents.builder.addTrigger.credential') }}
-									</N8nText>
-								</label>
-								<div :class="$style.selectRow">
-									<AgentCredentialSelect
-										:model-value="
-											selectedCredentials[currentIntegration.type] ||
-											connectedCredentials[currentIntegration.type]
-										"
-										:class="$style.select"
-										:placeholder="i18n.baseText('agents.builder.addTrigger.selectCredential')"
-										:credentials="credentialsByType[currentIntegration.type] ?? []"
-										:credential-permissions="credentialPermissions"
-										:loading="credentialsLoading"
-										:disabled="
-											isConnected(currentIntegration.type) || isLoading(currentIntegration.type)
-										"
-										:data-test-id="`${currentIntegration.type}-credential-select`"
-										@update:model-value="selectedCredentials[currentIntegration.type] = $event"
-										@create="onCreateCredential(currentIntegration)"
-									/>
-									<N8nButton
-										v-if="
-											!isConnected(currentIntegration.type) &&
-											selectedCredentials[currentIntegration.type]
-										"
-										variant="outline"
-										size="small"
-										icon="pen"
-										:aria-label="i18n.baseText('agents.builder.addTrigger.editCredential')"
-										:data-testid="`${currentIntegration.type}-edit-credential`"
-										@click="onEditCredential(currentIntegration.type)"
-									/>
-									<N8nButton
-										v-if="isConnected(currentIntegration.type)"
-										variant="destructive"
-										:loading="isLoading(currentIntegration.type)"
-										size="small"
-										:data-testid="`${currentIntegration.type}-disconnect-button`"
-										@click="onDisconnect(currentIntegration.type)"
-									>
-										<template #prefix><N8nIcon icon="unlink" size="xsmall" /></template>
-										{{ i18n.baseText('agents.builder.addTrigger.disconnect') }}
-									</N8nButton>
-									<N8nButton
-										v-else
-										variant="solid"
-										:disabled="
-											!selectedCredentials[currentIntegration.type] ||
-											isLoading(currentIntegration.type) ||
-											publishing
-										"
-										:loading="isLoading(currentIntegration.type) || publishing"
-										size="small"
-										:data-testid="`${currentIntegration.type}-connect-button`"
-										@click="onConnect(currentIntegration.type)"
-									>
-										<template #prefix><N8nIcon icon="plug" size="xsmall" /></template>
-										{{ i18n.baseText('agents.builder.addTrigger.connect') }}
-									</N8nButton>
-								</div>
-								<N8nText
-									v-if="!isConnected(currentIntegration.type) && hasError(currentIntegration.type)"
-									:class="$style.errorText"
-									size="small"
-								>
-									{{ errorMessages[currentIntegration.type] }}
-									<a
-										v-if="
-											selectedCredentials[currentIntegration.type] &&
-											!errorIsConflict[currentIntegration.type]
-										"
-										:class="$style.link"
-										href="#"
-										@click.prevent="onEditCredential(currentIntegration.type)"
-										>{{ i18n.baseText('agents.builder.addTrigger.editCredential') }}</a
-									>
-								</N8nText>
-							</div>
+							<AgentIntegrationCredentialConnection
+								:model-value="
+									selectedCredentials[currentIntegration.type] ||
+									connectedCredentials[currentIntegration.type]
+								"
+								:integration-type="currentIntegration.type"
+								:integration-label="currentIntegration.label"
+								:credentials="credentialsByType[currentIntegration.type] ?? []"
+								:credential-permissions="credentialPermissions"
+								:credentials-loading="credentialsLoading"
+								:disabled="
+									isConnected(currentIntegration.type) || isLoading(currentIntegration.type)
+								"
+								:connected="isConnected(currentIntegration.type)"
+								:show-connect-button="!isConnected(currentIntegration.type)"
+								:show-disconnect-button="isConnected(currentIntegration.type)"
+								:loading="isLoading(currentIntegration.type)"
+								:publishing="publishing"
+								:error-message="
+									!isConnected(currentIntegration.type) && hasError(currentIntegration.type)
+										? errorMessages[currentIntegration.type]
+										: ''
+								"
+								:error-is-conflict="errorIsConflict[currentIntegration.type]"
+								@update:model-value="selectedCredentials[currentIntegration.type] = $event"
+								@create="onCreateCredential(currentIntegration)"
+								@edit="onEditCredential(currentIntegration.type)"
+								@connect="onConnect(currentIntegration.type)"
+								@disconnect="onDisconnect(currentIntegration.type)"
+							/>
 						</template>
 					</AgentIntegrationSettingsForm>
 
@@ -831,27 +730,6 @@ onMounted(async () => {
 	color: var(--color--text--tint-1);
 }
 
-.connectForm {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-}
-
-.label {
-	display: block;
-}
-
-.selectRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
-.select {
-	flex: 1;
-	min-width: 0;
-}
-
 .footer {
 	display: flex;
 	gap: var(--spacing--2xs);
@@ -868,10 +746,6 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-}
-
-.connectedDescription {
-	color: var(--color--text--tint-1);
 }
 
 .errorText {

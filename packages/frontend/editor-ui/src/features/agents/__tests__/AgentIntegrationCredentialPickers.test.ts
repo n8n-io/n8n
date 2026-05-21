@@ -507,11 +507,67 @@ describe('agent integration credential picker usage', () => {
 			'Slack App Authorization',
 			expect.any(String),
 		);
+		expect(vi.mocked(window.open).mock.calls[0]?.[2]).toContain('noopener');
 
 		for (let attempts = 0; attempts < 3 && !broadcastHandler; attempts++) {
 			await flushPromises();
 		}
 		expect(broadcastHandler).toBeDefined();
+		broadcastHandler?.({ data: 'success' } as MessageEvent);
+		await flushPromises();
+		await flushPromises();
+
+		expect(onConnectedTriggersChange).toHaveBeenLastCalledWith(['slack']);
+		expect(onTriggerAdded).toHaveBeenCalledWith({
+			triggerType: 'slack',
+			triggers: ['slack'],
+		});
+	});
+
+	it('waits for the Slack OAuth callback when noopener prevents a popup handle', async () => {
+		getIntegrationStatus
+			.mockResolvedValue({ integrations: [{ type: 'slack', credentialId: 'cred-created' }] })
+			.mockResolvedValueOnce({ integrations: [] })
+			.mockResolvedValueOnce({ integrations: [] });
+		fetchAllCredentialsForWorkflow
+			.mockResolvedValueOnce([{ id: 'cred-1', name: 'Workspace Slack', type: 'slackApi' }])
+			.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Workspace Slack', type: 'slackApi' },
+				{ id: 'cred-created', name: 'Slack - Agent', type: 'slackApi' },
+			]);
+		createSlackAgentApp.mockResolvedValue({
+			appId: 'A123',
+			installUrl: 'https://slack.com/oauth/v2/authorize?state=setup-state',
+		});
+		vi.mocked(window.open).mockReturnValue(null);
+		const onConnectedTriggersChange = vi.fn();
+		const onTriggerAdded = vi.fn();
+
+		const wrapper = mount(AgentAddTriggerModal, {
+			props: {
+				modalName: 'agentAddTriggerModal',
+				data: {
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					isPublished: true,
+					initialTriggerType: 'slack',
+					connectedTriggers: [],
+					onConnectedTriggersChange,
+					onTriggerAdded,
+				},
+			},
+			global: { stubs: globalStubs },
+		});
+		await flushPromises();
+
+		await wrapper.find('[data-testid="slack-app-configuration-token"]').setValue('xoxe-config');
+		await wrapper.find('[data-testid="slack-create-app"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="slack-app-setup-error"]').exists()).toBe(false);
+		expect(broadcastHandler).toBeDefined();
+
 		broadcastHandler?.({ data: 'success' } as MessageEvent);
 		await flushPromises();
 		await flushPromises();
