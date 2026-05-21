@@ -194,31 +194,14 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 				for (const conn of group) {
 					const sourceNode = nodesByName.get(conn.node);
 					if (!sourceNode || sourceNode.disabled) continue;
-
-					if (PROTOCOL_BINARY_SUB_NODE_TYPES.has(sourceNode.type)) {
-						refusals.push({
-							root: rootName,
-							subNode: sourceNode.name,
-							subNodeType: sourceNode.type,
-							reason: 'protocol_binary',
-						});
-					} else if (SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)) {
-						if (hasUnsafeBaseUrlOverride(sourceNode)) {
-							refusals.push({
-								root: rootName,
-								subNode: sourceNode.name,
-								subNodeType: sourceNode.type,
-								reason: 'unsafe_baseurl_override',
-							});
-						}
-					} else if (isVendorLlmSubNode(sourceNode.type)) {
-						refusals.push({
-							root: rootName,
-							subNode: sourceNode.name,
-							subNodeType: sourceNode.type,
-							reason: 'unsupported_vendor_llm',
-						});
-					}
+					const reason = categorizeSubNodeRefusal(sourceNode);
+					if (reason === null) continue;
+					refusals.push({
+						root: rootName,
+						subNode: sourceNode.name,
+						subNodeType: sourceNode.type,
+						reason,
+					});
 				}
 			}
 		}
@@ -226,34 +209,50 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 
 	if (refusals.length === 0) return;
 
-	const formatPairs = (list: UnpinRefusal[]) =>
-		list.map((r) => `"${r.subNode}" (${r.subNodeType}) → "${r.root}"`).join(', ');
-
-	const protocolBinary = refusals.filter((r) => r.reason === 'protocol_binary');
-	const unsupportedVendor = refusals.filter((r) => r.reason === 'unsupported_vendor_llm');
-	const baseUrlOverride = refusals.filter((r) => r.reason === 'unsafe_baseurl_override');
-
-	const segments: string[] = [];
-	if (protocolBinary.length > 0) {
-		segments.push(
-			`protocol-binary sub-nodes (cannot be intercepted via HTTP): ${formatPairs(protocolBinary)}`,
-		);
-	}
-	if (unsupportedVendor.length > 0) {
-		segments.push(
-			`unsupported vendor LLM sub-nodes (no eval URL-rewrite mapping yet): ${formatPairs(unsupportedVendor)}`,
-		);
-	}
-	if (baseUrlOverride.length > 0) {
-		segments.push(
-			`vendor LLM sub-nodes with a configured options.baseURL that bypasses the credential rewrite: ${formatPairs(baseUrlOverride)}`,
-		);
-	}
+	const segments = [
+		formatRefusalSegment(
+			refusals,
+			'protocol_binary',
+			'protocol-binary sub-nodes (cannot be intercepted via HTTP)',
+		),
+		formatRefusalSegment(
+			refusals,
+			'unsupported_vendor_llm',
+			'unsupported vendor LLM sub-nodes (no eval URL-rewrite mapping yet)',
+		),
+		formatRefusalSegment(
+			refusals,
+			'unsafe_baseurl_override',
+			'vendor LLM sub-nodes with a configured options.baseURL that bypasses the credential rewrite',
+		),
+	].filter((s): s is string => s !== undefined);
 
 	throw new UserError(
 		`Cannot unpin AI root nodes — ${segments.join('; ')}. ` +
 			'Leave these roots pinned, remove the parameter override, or replace the sub-node with one that has interception support.',
 	);
+}
+
+/** Classify a sub-node into one of the three refusal reasons, or null if acceptable. Order matters: protocol-binary, then baseURL-override on a supported vendor, then unsupported `lm*`. */
+function categorizeSubNodeRefusal(sourceNode: INode): UnpinRefusal['reason'] | null {
+	if (PROTOCOL_BINARY_SUB_NODE_TYPES.has(sourceNode.type)) return 'protocol_binary';
+	if (SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)) {
+		return hasUnsafeBaseUrlOverride(sourceNode) ? 'unsafe_baseurl_override' : null;
+	}
+	if (isVendorLlmSubNode(sourceNode.type)) return 'unsupported_vendor_llm';
+	return null;
+}
+
+/** One segment of the `assertUnpinCompatibility` error message, or undefined when no refusals match. */
+function formatRefusalSegment(
+	refusals: UnpinRefusal[],
+	reason: UnpinRefusal['reason'],
+	label: string,
+): string | undefined {
+	const matching = refusals.filter((r) => r.reason === reason);
+	if (matching.length === 0) return undefined;
+	const pairs = matching.map((r) => `"${r.subNode}" (${r.subNodeType}) → "${r.root}"`).join(', ');
+	return `${label}: ${pairs}`;
 }
 
 /** Nodes that should receive mock hints — excludes AI sub-nodes (handled via root) and pinned nodes. */

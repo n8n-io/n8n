@@ -308,43 +308,24 @@ export class EvalExecutionService {
 			this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
 			const executionData = this.buildExecutionData(startNode, pinData);
 
-			// Mark the trigger node as pinned (it gets its output from pin data, not execution)
-			// Preserve any configIssues that checkNodeConfig may have already recorded.
+			// Mark the trigger node as pinned (it gets its output from pin data, not execution).
 			if (Object.keys(triggerPinData).length > 0) {
-				const existing = nodeResults[startNode.name];
-				nodeResults[startNode.name] = {
-					output: null,
-					interceptedRequests: [],
-					executionMode: 'pinned',
-					...(existing?.configIssues ? { configIssues: existing.configIssues } : {}),
-				};
+				this.markNodeAsPinned(startNode.name, nodeResults);
 			}
-
-			// Mark bypass nodes as pinned
 			for (const nodeName of Object.keys(hints.bypassPinData)) {
-				const existing = nodeResults[nodeName];
-				nodeResults[nodeName] = {
-					output: null,
-					interceptedRequests: [],
-					executionMode: 'pinned',
-					...(existing?.configIssues ? { configIssues: existing.configIssues } : {}),
-				};
+				this.markNodeAsPinned(nodeName, nodeResults);
 			}
 
 			const result = await this.runWorkflow(workflow, additionalData, executionData);
 			return this.buildResult(executionId, result, nodeResults, hints, credentialsHelper);
 		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : String(error);
-			this.logger.error(`[EvalMock] Workflow execution failed: ${message}`);
-			return {
+			return this.buildPartialFailureResult(
 				executionId,
-				success: false,
+				error,
 				nodeResults,
-				errors: [`Execution failed: ${message}`],
 				hints,
-				mockedCredentials: credentialsHelper?.mockedCredentials ?? [],
-				rewrittenCredentials: credentialsHelper?.rewrittenCredentials ?? [],
-			};
+				credentialsHelper,
+			);
 		} finally {
 			if (restoreNoProxy) restoreNoProxy();
 			if (wireServer) {
@@ -537,6 +518,53 @@ export class EvalExecutionService {
 			);
 
 			return response;
+		};
+	}
+
+	/**
+	 * Mark a node entry as pinned, preserving any config issues that
+	 * `checkNodeConfig` may have already recorded on it. Used both for the
+	 * trigger node (which receives its output from `triggerPinData`) and for
+	 * each bypass node — the shape of the entry is identical, just the trigger
+	 * is gated by the trigger-has-content branch above.
+	 */
+	private markNodeAsPinned(
+		nodeName: string,
+		nodeResults: Record<string, InstanceAiEvalNodeResult>,
+	): void {
+		const existing = nodeResults[nodeName];
+		nodeResults[nodeName] = {
+			output: null,
+			interceptedRequests: [],
+			executionMode: 'pinned',
+			...(existing?.configIssues ? { configIssues: existing.configIssues } : {}),
+		};
+	}
+
+	/**
+	 * Build the failure result returned when execution threw partway through —
+	 * preserves the accumulated `nodeResults`, `hints`, and credential
+	 * diagnostics rather than discarding them like `errorResult` does. Lifted
+	 * out of the `execute()` catch block so the inline expression count there
+	 * stays within complexity bounds.
+	 */
+	private buildPartialFailureResult(
+		executionId: string,
+		error: unknown,
+		nodeResults: Record<string, InstanceAiEvalNodeResult>,
+		hints: MockHints,
+		credentialsHelper: EvalMockedCredentialsHelper | undefined,
+	): InstanceAiEvalExecutionResult {
+		const message = error instanceof Error ? error.message : String(error);
+		this.logger.error(`[EvalMock] Workflow execution failed: ${message}`);
+		return {
+			executionId,
+			success: false,
+			nodeResults,
+			errors: [`Execution failed: ${message}`],
+			hints,
+			mockedCredentials: credentialsHelper?.mockedCredentials ?? [],
+			rewrittenCredentials: credentialsHelper?.rewrittenCredentials ?? [],
 		};
 	}
 
