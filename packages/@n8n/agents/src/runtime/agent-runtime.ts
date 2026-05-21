@@ -1016,7 +1016,7 @@ export class AgentRuntime {
 			}
 		}
 
-		const { generateText } = await getAiSdk();
+		const { generateText } = loadAi();
 		for (; iterationCount < maxIterations; iterationCount++) {
 			if (this.eventBus.isAborted) {
 				this.updateState({ status: 'cancelled' });
@@ -1208,7 +1208,7 @@ export class AgentRuntime {
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		let iterationCount = options?.iterationCount ?? 0;
 		let reachedStopCondition = false;
-		const { streamText } = await getAiSdk();
+		const { streamText } = loadAi();
 
 		const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
 			await this.cleanupRun(runId);
