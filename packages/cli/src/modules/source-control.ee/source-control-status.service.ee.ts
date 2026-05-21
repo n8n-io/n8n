@@ -202,7 +202,7 @@ export class SourceControlStatusService {
 			this.getStatusWorkflows(options, context, collectVerbose, remoteFolders),
 			this.getStatusCredentials(options, context, collectVerbose),
 			this.getStatusVariables(options, collectVerbose),
-			this.getStatusDataTables(options, collectVerbose),
+			this.getStatusDataTables(options, context, collectVerbose),
 			this.getStatusTagsMappings(options, context, collectVerbose),
 			this.getStatusFoldersMapping(options, context, collectVerbose, remoteFolders),
 			this.getStatusProjects(options, context, collectVerbose),
@@ -675,12 +675,16 @@ export class SourceControlStatusService {
 		};
 	}
 
-	private async getStatusDataTables(options: SourceControlGetStatus, collectVerbose: boolean) {
+	private async getStatusDataTables(
+		options: SourceControlGetStatus,
+		context: SourceControlContext,
+		collectVerbose: boolean,
+	) {
 		const sourceControlledFiles: SourceControlledFile[] = [];
 		const dataTablesRemote =
-			(await this.sourceControlImportService.getRemoteDataTablesFromFiles()) ?? [];
+			(await this.sourceControlImportService.getRemoteDataTablesFromFiles(context)) ?? [];
 		const dataTablesLocal =
-			(await this.sourceControlImportService.getLocalDataTablesFromDb()) ?? [];
+			(await this.sourceControlImportService.getLocalDataTablesFromDb(context)) ?? [];
 
 		const localById = new Map(dataTablesLocal.map((dt) => [dt.id, dt]));
 		const remoteById = new Map(dataTablesRemote.map((dt) => [dt.id, dt]));
