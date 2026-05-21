@@ -4613,7 +4613,7 @@
 	"settings.security.dataRedaction.enforce.confirmDisable.message": "Redaction will no longer be enforced across this instance. Workflows will fall back to their own redaction settings. Workflow editors will be able to change those settings freely.",
 	"settings.security.dataRedaction.enforce.confirmDisable.action": "Disable",
 	"settings.security.dataRedaction.scope.title": "Redact executions",
-	"settings.security.dataRedaction.scope.description": "Select whether to redact manual executions, production executions, or both.",
+	"settings.security.dataRedaction.scope.description": "Select whether to redact production executions, or manual and production executions.",
 	"settings.security.dataRedaction.scope.option.manual-only": "Manual executions",
 	"settings.security.dataRedaction.scope.option.non-manual": "Production executions (Recommended)",
 	"settings.security.dataRedaction.scope.option.all": "Manual and production executions",
