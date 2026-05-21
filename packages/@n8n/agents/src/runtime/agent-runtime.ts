@@ -1103,7 +1103,7 @@ export class AgentRuntime {
 		}
 
 		if (!reachedStopCondition && iterationCount >= maxIterations) {
-			lastFinishReason = 'length';
+			lastFinishReason = 'max-iterations';
 		}
 
 		await this.saveToMemory(list, options);
@@ -1437,7 +1437,7 @@ export class AgentRuntime {
 			this.emitTurnEnd(newMessages, extractSettledToolCalls(list.responseDelta()));
 		}
 		if (!reachedStopCondition && iterationCount >= maxIterations) {
-			lastFinishReason = 'length';
+			lastFinishReason = 'max-iterations';
 		}
 
 		const costUsage = this.applyCost(totalUsage);

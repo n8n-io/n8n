@@ -10,7 +10,14 @@ import type { SerializedMessageList } from '../runtime/message-list';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONValue } from '../utils/json';
 
-export type FinishReason = 'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other';
+export type FinishReason =
+	| 'stop'
+	| 'max-iterations'
+	| 'length'
+	| 'content-filter'
+	| 'tool-calls'
+	| 'error'
+	| 'other';
 
 export type TokenUsage<T extends Record<string, unknown> = Record<string, unknown>> = {
 	promptTokens: number;

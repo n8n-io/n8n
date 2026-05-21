@@ -1071,7 +1071,7 @@ export class AgentsService {
 						toolName: value.toolName,
 					});
 				}
-				if (value.type === 'finish' && value.finishReason === 'length') {
+				if (value.type === 'finish' && value.finishReason === 'max-iterations') {
 					for (const chunk of getMaxIterationsChunks()) {
 						yield chunk;
 					}

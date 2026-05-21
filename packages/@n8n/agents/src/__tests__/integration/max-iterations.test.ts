@@ -223,7 +223,7 @@ describe('maxIterations integration', () => {
 				{ runId, toolCallId, maxIterations: 1 },
 			);
 
-			expect(resumed.finishReason).toBe('length');
+			expect(resumed.finishReason).toBe('max-iterations');
 			expect(resumed.error).toBeUndefined();
 		},
 	);
@@ -281,7 +281,7 @@ describe('maxIterations integration', () => {
 			const secondSuspended = resumed1.pendingSuspend[0];
 			const resumed2 = await resumeAgent(agent2, method, { approved: true }, secondSuspended);
 
-			expect(resumed2.finishReason).toBe('length');
+			expect(resumed2.finishReason).toBe('max-iterations');
 			expect(resumed2.error).toBeUndefined();
 			expect(resumed2.pendingSuspend).toHaveLength(0);
 

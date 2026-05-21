@@ -816,7 +816,7 @@ describe('AgentsService', () => {
 				name: 'test',
 				stream: jest.fn().mockResolvedValue({
 					runId: 'run-1',
-					stream: makeStream([{ type: 'finish', finishReason: 'length' }]),
+					stream: makeStream([{ type: 'finish', finishReason: 'max-iterations' }]),
 				}),
 			};
 
