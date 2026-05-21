@@ -5726,6 +5726,7 @@
 	"instanceAi.tools.workflows.get-as-code": "Reading workflow code",
 	"instanceAi.tools.workflows.delete": "Archiving workflow",
 	"instanceAi.tools.workflows.setup": "Setting up workflow",
+	"instanceAi.tools.workflows.validate": "Validating workflow",
 	"instanceAi.tools.workflows.publish": "Publishing workflow",
 	"instanceAi.tools.workflows.unpublish": "Unpublishing workflow",
 	"instanceAi.tools.workflows.list-versions": "Listing workflow versions",
