@@ -8,7 +8,7 @@ jest.mock('../node-config', () => ({
 }));
 
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
-import type { IConnections, INode, IWorkflowBase } from 'n8n-workflow';
+import type { IConnections, INode, INodeParameters, IWorkflowBase } from 'n8n-workflow';
 
 import {
 	assertUnpinCompatibility,
@@ -427,7 +427,7 @@ describe('assertUnpinCompatibility', () => {
 		});
 
 		describe('lmChatOpenAi options.baseURL override', () => {
-			function agentWithOpenAi(parameters: Record<string, unknown>) {
+			function agentWithOpenAi(parameters: INodeParameters) {
 				const nodes = [
 					makeNode({
 						name: 'OpenAI',
