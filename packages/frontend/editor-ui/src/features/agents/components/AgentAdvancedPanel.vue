@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import {
 	N8nCollapsiblePanel,
-	N8nInput,
+	N8nInputNumber2,
 	N8nSelect,
 	N8nSwitch2,
 	N8nText,
@@ -50,44 +50,36 @@ type NumberConfigKey = keyof {
 };
 
 /**
- * Creates a ref, debounced config-emit, input handler, and watch-sync
- * function for one numeric field inside `config`.
+ * Creates a ref, debounced config-emit, change handler, and watch-sync
+ * function for one numeric field inside `config`. Designed for N8nInputNumber2
+ * which emits numbers directly (NaN when the field is cleared).
  *
  * @param key          Config key (must be a numeric field).
- * @param defaultValue Local value when the key is absent from the config.
- *                     Pass `null` for optional fields that render as an empty
- *                     placeholder — the key is removed from the config when null.
- * @param parse        Converts raw input to the new value.
- *                     Return `undefined` to reject the input (no update).
- *                     Return `null` to clear the key from the config.
+ * @param defaultValue Fallback when the key is absent or the field is cleared.
+ *                     Pass `undefined` for optional fields — the key is removed
+ *                     from the config when the field is cleared.
  */
-function makeField<T extends number | null>(
-	key: NumberConfigKey,
-	defaultValue: T,
-	parse: (raw: string) => T | undefined,
-) {
-	const value = ref((props.config?.config?.[key] ?? defaultValue) as T);
+function makeNumberField(key: NumberConfigKey, defaultValue: number | undefined) {
+	const value = ref<number | undefined>(props.config?.config?.[key] ?? defaultValue);
 
 	const debouncedEmit = useDebounceFn(() => {
 		const cfg = { ...(props.config?.config ?? {}) };
-		if (value.value === null) {
+		if (value.value === undefined) {
 			delete (cfg as Partial<ConfigObj>)[key];
 		} else {
-			(cfg as ConfigObj)[key] = value.value as number;
+			(cfg as ConfigObj)[key] = value.value;
 		}
 		emit('update:config', { config: cfg });
 	}, 500);
 
 	return {
-		modelValue: computed(() => (value.value !== null ? String(value.value) : '')),
-		onInput(raw: string) {
-			const next = parse(raw);
-			if (next === undefined) return;
-			value.value = next;
+		modelValue: value,
+		onChange(n: number) {
+			value.value = isNaN(n) ? defaultValue : n;
 			void debouncedEmit();
 		},
 		sync(cfg: AgentJsonConfig | null) {
-			value.value = (cfg?.config?.[key] ?? defaultValue) as T;
+			value.value = cfg?.config?.[key] ?? defaultValue;
 		},
 	};
 }
@@ -96,24 +88,24 @@ function makeField<T extends number | null>(
 // Numeric config fields — add new ones here
 // ---------------------------------------------------------------------------
 
+const CONCURRENCY_MIN = 1;
+const CONCURRENCY_MAX = 20;
+const MAX_ITERATIONS_MIN = 1;
+const MAX_ITERATIONS_MAX = 200;
+const BUDGET_TOKENS_MIN = 1;
+const BUDGET_TOKENS_DEFAULT = 1024;
+
 const {
 	modelValue: concurrencyModelValue,
-	onInput: onConcurrencyInput,
+	onChange: onConcurrencyChange,
 	sync: syncConcurrency,
-} = makeField('toolCallConcurrency', 1, (raw) => {
-	const n = Number(raw);
-	return Number.isFinite(n) && n >= 1 ? n : undefined;
-});
+} = makeNumberField('toolCallConcurrency', CONCURRENCY_MIN);
 
 const {
 	modelValue: maxIterationsModelValue,
-	onInput: onMaxIterationsInput,
+	onChange: onMaxIterationsChange,
 	sync: syncMaxIterations,
-} = makeField('maxIterations', null as number | null, (raw) => {
-	if (raw === '') return null as number | null;
-	const n = Number(raw);
-	return Number.isFinite(n) && n >= 1 && n <= 200 ? Math.round(n) : undefined;
-});
+} = makeNumberField('maxIterations', undefined);
 
 // ---------------------------------------------------------------------------
 // Thinking — provider-gated, handled separately
@@ -121,7 +113,7 @@ const {
 
 const thinkingCfg = computed(() => props.config?.config?.thinking ?? null);
 const thinkingEnabled = ref(thinkingCfg.value !== null);
-const budgetTokens = ref(thinkingCfg.value?.budgetTokens ?? 1024);
+const budgetTokens = ref(thinkingCfg.value?.budgetTokens ?? BUDGET_TOKENS_DEFAULT);
 const reasoningEffort = ref<ReasoningEffort>(
 	(thinkingCfg.value?.reasoningEffort as ReasoningEffort) ?? 'medium',
 );
@@ -132,7 +124,7 @@ watch(
 		if (!cfg) return;
 		const t = cfg.config?.thinking ?? null;
 		thinkingEnabled.value = t !== null;
-		budgetTokens.value = t?.budgetTokens ?? 1024;
+		budgetTokens.value = t?.budgetTokens ?? BUDGET_TOKENS_DEFAULT;
 		reasoningEffort.value = (t?.reasoningEffort as ReasoningEffort) ?? 'medium';
 		syncConcurrency(cfg);
 		syncMaxIterations(cfg);
@@ -163,9 +155,8 @@ function onThinkingToggle(value: boolean) {
 }
 
 const emitBudget = useDebounceFn(emitThinking, 500);
-function onBudgetInput(value: string) {
-	const n = Number(value);
-	if (!Number.isFinite(n) || n < 1) return;
+function onBudgetChange(n: number) {
+	if (isNaN(n) || n < BUDGET_TOKENS_MIN) return;
 	budgetTokens.value = n;
 	void emitBudget();
 }
@@ -226,13 +217,14 @@ const thinkingDisabledReason = computed(() =>
 				<N8nText size="small" :bold="true">{{
 					i18n.baseText('agents.builder.advanced.budgetTokens.label')
 				}}</N8nText>
-				<N8nInput
-					type="number"
-					:model-value="String(budgetTokens)"
+				<N8nInputNumber2
+					:model-value="budgetTokens"
+					:min="BUDGET_TOKENS_MIN"
+					:precision="0"
 					:disabled="props.disabled"
 					:class="$style.shortInput"
 					data-testid="agent-budget-tokens-input"
-					@update:model-value="onBudgetInput"
+					@update:model-value="onBudgetChange"
 				/>
 			</div>
 
@@ -264,13 +256,15 @@ const thinkingDisabledReason = computed(() =>
 						{{ i18n.baseText('agents.builder.advanced.concurrency.hint') }}
 					</N8nText>
 				</div>
-				<N8nInput
-					type="number"
+				<N8nInputNumber2
 					:model-value="concurrencyModelValue"
+					:min="CONCURRENCY_MIN"
+					:max="CONCURRENCY_MAX"
+					:precision="0"
 					:disabled="props.disabled"
 					:class="$style.shortInput"
 					data-testid="agent-concurrency-input"
-					@update:model-value="onConcurrencyInput"
+					@update:model-value="onConcurrencyChange"
 				/>
 			</div>
 
@@ -283,14 +277,15 @@ const thinkingDisabledReason = computed(() =>
 						{{ i18n.baseText('agents.builder.advanced.maxIterations.hint') }}
 					</N8nText>
 				</div>
-				<N8nInput
-					type="number"
+				<N8nInputNumber2
 					:model-value="maxIterationsModelValue"
-					:placeholder="i18n.baseText('agents.builder.advanced.maxIterations.placeholder')"
+					:min="MAX_ITERATIONS_MIN"
+					:max="MAX_ITERATIONS_MAX"
+					:precision="0"
 					:disabled="props.disabled"
 					:class="$style.shortInput"
 					data-testid="agent-max-iterations-input"
-					@update:model-value="onMaxIterationsInput"
+					@update:model-value="onMaxIterationsChange"
 				/>
 			</div>
 		</div>
