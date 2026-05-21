@@ -1,11 +1,9 @@
-import type { Workspace } from '@mastra/core/workspace';
-
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { BuilderSandboxSessionRegistry } from '../builder-sandbox-session-registry';
 
 function makeBuilderWorkspace(cleanup = jest.fn(async () => {})): BuilderWorkspace {
 	return {
-		workspace: { id: 'workspace' } as unknown as Workspace,
+		workspace: { id: 'workspace' } as BuilderWorkspace['workspace'],
 		cleanup,
 	};
 }

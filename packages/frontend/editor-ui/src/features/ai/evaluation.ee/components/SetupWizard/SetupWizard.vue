@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { ref, computed } from 'vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useEvaluationStore } from '../../evaluation.store';
 import { VIEWS } from '@/app/constants';
 import StepHeader from '../shared/StepHeader.vue';
@@ -11,19 +10,20 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 defineEmits<{
 	runTest: [];
 }>();
 
 const router = useRouter();
 const locale = useI18n();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const evaluationStore = useEvaluationStore();
 const usageStore = useUsageStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const hasRuns = computed(() => {
-	return evaluationStore.testRunsByWorkflowId[workflowsStore.workflowId]?.length > 0;
+	return evaluationStore.testRunsByWorkflowId[workflowDocumentStore.value.workflowId]?.length > 0;
 });
 
 const evaluationsAvailable = computed(() => {
@@ -74,7 +74,7 @@ const toggleStep = (index: number) => {
 function navigateToWorkflow(
 	action?: 'addEvaluationTrigger' | 'addEvaluationNode' | 'executeEvaluation',
 ) {
-	const routeWorkflowId = workflowsStore.workflowId || 'new';
+	const routeWorkflowId = workflowDocumentStore.value.workflowId || 'new';
 
 	void router.push({
 		name: VIEWS.WORKFLOW,

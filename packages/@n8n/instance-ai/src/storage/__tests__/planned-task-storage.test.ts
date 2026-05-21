@@ -1,19 +1,26 @@
-import type { Memory } from '@mastra/memory';
-
-jest.mock('../thread-patch', () => ({
-	patchThread: jest.fn(),
-}));
-
 import type { PlannedTaskGraph } from '../../types';
 import { PlannedTaskStorage } from '../planned-task-storage';
-import { patchThread } from '../thread-patch';
+import { patchThread, type PatchableThreadMemory } from '../thread-patch';
+import type * as ThreadPatch from '../thread-patch';
+
+jest.mock('../thread-patch', () => {
+	const actual =
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		jest.requireActual<typeof ThreadPatch>('../thread-patch');
+
+	return {
+		...actual,
+		patchThread: jest.fn(),
+	};
+});
 
 const mockedPatchThread = jest.mocked(patchThread);
+type TestMemory = PatchableThreadMemory & { getThread: jest.Mock };
 
-function makeMemory(): Memory {
+function makeMemory(): TestMemory {
 	return {
-		getThreadById: jest.fn(),
-	} as unknown as Memory;
+		getThread: jest.fn(),
+	};
 }
 
 function makeGraph(overrides: Partial<PlannedTaskGraph> = {}): PlannedTaskGraph {
@@ -43,7 +50,7 @@ function makeGraph(overrides: Partial<PlannedTaskGraph> = {}): PlannedTaskGraph 
 }
 
 describe('PlannedTaskStorage', () => {
-	let memory: Memory;
+	let memory: TestMemory;
 	let storage: PlannedTaskStorage;
 
 	beforeEach(() => {
@@ -55,7 +62,7 @@ describe('PlannedTaskStorage', () => {
 	describe('get() kind parsing', () => {
 		it('round-trips a graph containing a checkpoint task', async () => {
 			const graph = makeGraph();
-			(memory.getThreadById as jest.Mock).mockResolvedValue({
+			memory.getThread.mockResolvedValue({
 				metadata: { instanceAiPlannedTasks: graph },
 			});
 
@@ -69,7 +76,7 @@ describe('PlannedTaskStorage', () => {
 		});
 
 		it('returns null when the stored graph has an unknown kind', async () => {
-			(memory.getThreadById as jest.Mock).mockResolvedValue({
+			memory.getThread.mockResolvedValue({
 				metadata: {
 					instanceAiPlannedTasks: {
 						...makeGraph(),

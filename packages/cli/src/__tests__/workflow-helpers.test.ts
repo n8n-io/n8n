@@ -4,15 +4,19 @@ import type { CredentialsEntity, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import type { ITaskData, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
 
+import type { IRun } from 'n8n-workflow';
+
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import {
+	getDataLastExecutedNodeData,
 	getVariables,
 	preserveInputOverride,
 	removeDefaultValues,
 	replaceInvalidCredentials,
 	shouldRestartParentExecution,
 	validatePinDataSize,
+	validateWorkflowNodeGroups,
 } from '@/workflow-helpers';
 
 describe('workflow-helpers', () => {
@@ -380,6 +384,74 @@ describe('removeDefaultValues', () => {
 	});
 });
 
+describe('validateWorkflowNodeGroups', () => {
+	const makeNode = (id: string) =>
+		({ id, name: `Node ${id}`, type: 'test', position: [0, 0], parameters: {} }) as never;
+
+	it('should pass when nodeGroups is undefined', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: undefined }),
+		).not.toThrow();
+	});
+
+	it('should pass when nodeGroups is empty', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: [] }),
+		).not.toThrow();
+	});
+
+	it('should pass when all nodeIds reference existing nodes', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({
+				nodes: [makeNode('n1'), makeNode('n2')],
+				nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['n1', 'n2'] }],
+			}),
+		).not.toThrow();
+	});
+
+	it('should throw when a nodeId does not reference an existing node', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({
+				nodes: [makeNode('n1')],
+				nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: ['n1', 'n999'] }],
+			}),
+		).toThrow('Group "My Group" references node ID "n999" that does not exist in the workflow.');
+	});
+
+	it('should throw for the first invalid nodeId found', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({
+				nodes: [],
+				nodeGroups: [{ id: 'g1', name: 'Empty Group', nodeIds: ['bad1', 'bad2'] }],
+			}),
+		).toThrow('Group "Empty Group" references node ID "bad1"');
+	});
+
+	it('should throw when a node belongs to multiple groups', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({
+				nodes: [makeNode('n1'), makeNode('n2')],
+				nodeGroups: [
+					{ id: 'g1', name: 'Group A', nodeIds: ['n1'] },
+					{ id: 'g2', name: 'Group B', nodeIds: ['n1', 'n2'] },
+				],
+			}),
+		).toThrow('Node "n1" belongs to multiple groups: "Group A" and "Group B".');
+	});
+
+	it('should throw when group names are not unique', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({
+				nodes: [makeNode('n1')],
+				nodeGroups: [
+					{ id: 'g1', name: 'Duplicate', nodeIds: ['n1'] },
+					{ id: 'g2', name: 'Duplicate', nodeIds: [] },
+				],
+			}),
+		).toThrow('Duplicate node group name "Duplicate".');
+	});
+});
+
 describe('validatePinDataSize', () => {
 	const baseWorkflow: IWorkflowBase = {
 		id: '1',
@@ -438,5 +510,45 @@ describe('validatePinDataSize', () => {
 		).toThrow(
 			`Workflow with pinned data exceeds the maximum allowed size of ${Math.floor(limit / (1024 * 1024))} MB`,
 		);
+	});
+});
+
+describe('getDataLastExecutedNodeData', () => {
+	const lastNodeTaskData: ITaskData = {
+		startTime: 0,
+		executionIndex: 0,
+		executionTime: 0,
+		executionStatus: 'success',
+		source: [],
+		data: { main: [[{ json: { ok: true } }]] },
+	};
+
+	function buildRun(pinData: unknown): IRun {
+		return {
+			mode: 'webhook',
+			startedAt: new Date(),
+			status: 'success',
+			storedAt: 'db',
+			data: {
+				resultData: {
+					runData: { 'Log Assistant Message': [lastNodeTaskData] },
+					lastNodeExecuted: 'Log Assistant Message',
+					// Persisted execution data can contain `pinData: null` for workflows
+					// created without a pinData column (e.g. older AI-built workflows).
+					pinData,
+				},
+			},
+		} as unknown as IRun;
+	}
+
+	it('returns last node run data when pinData is null', () => {
+		// Regression: destructure default `pinData = {}` only applies to undefined,
+		// so a null value used to throw `Cannot read properties of null`.
+		expect(() => getDataLastExecutedNodeData(buildRun(null))).not.toThrow();
+		expect(getDataLastExecutedNodeData(buildRun(null))).toBe(lastNodeTaskData);
+	});
+
+	it('returns last node run data when pinData is undefined', () => {
+		expect(getDataLastExecutedNodeData(buildRun(undefined))).toBe(lastNodeTaskData);
 	});
 });

@@ -1,4 +1,4 @@
-import { EVAL_PARALLEL_EXECUTION_FLAG } from '@n8n/api-types';
+import { EVAL_COLLECTIONS_FLAG } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -150,9 +150,10 @@ export class PostHogClient {
 	 * doesn't poison the cache.
 	 */
 	private applyEnvOverrides(flags: FeatureFlags): FeatureFlags {
-		if (this.globalConfig.evaluation.parallelExecutionEnabled) {
-			return { ...flags, [EVAL_PARALLEL_EXECUTION_FLAG]: true };
+		const overrides: FeatureFlags = {};
+		if (this.globalConfig.evaluation.collectionsEnabled) {
+			overrides[EVAL_COLLECTIONS_FLAG] = true;
 		}
-		return flags;
+		return Object.keys(overrides).length === 0 ? flags : { ...flags, ...overrides };
 	}
 }
