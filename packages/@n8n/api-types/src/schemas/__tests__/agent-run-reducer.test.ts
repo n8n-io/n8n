@@ -332,16 +332,18 @@ describe('agent-run-reducer', () => {
 			});
 		});
 
-		it('applies rich render hints to workflow flow aliases', () => {
+		it('applies rich render hints to background agent tools', () => {
 			const state = stateWithRun('run-1', 'root');
-			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-builder', 'workflow-build-flow'));
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-builder', 'build-workflow-with-agent'));
 			reduceEvent(
 				state,
-				makeToolCall('run-1', 'root', 'tc-data-table', 'agent-data-table-manager'),
+				makeToolCall('run-1', 'root', 'tc-data-table', 'manage-data-tables-with-agent'),
 			);
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-eval-setup', 'eval-setup-with-agent'));
 
 			expect(state.toolCallsById['tc-builder'].renderHint).toBe('builder');
 			expect(state.toolCallsById['tc-data-table'].renderHint).toBe('data-table');
+			expect(state.toolCallsById['tc-eval-setup'].renderHint).toBe('eval-setup');
 		});
 
 		it('tool-result resolves tool call', () => {
@@ -476,6 +478,33 @@ describe('agent-run-reducer', () => {
 				requestId: 'req-1',
 				severity: 'warning',
 				message: 'Are you sure?',
+			});
+		});
+
+		it('confirmation-request passes through webSearch metadata when present', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'research'));
+			reduceEvent(state, {
+				type: 'confirmation-request',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					requestId: 'req-ws',
+					toolCallId: 'tc-1',
+					toolName: 'research',
+					args: { action: 'web-search', query: 'sanuli' },
+					severity: 'info',
+					message: 'n8n AI wants to search the web for: sanuli',
+					webSearch: { query: 'sanuli' },
+				},
+			});
+
+			const tc = state.toolCallsById['tc-1'];
+			expect(tc.confirmation).toEqual({
+				requestId: 'req-ws',
+				severity: 'info',
+				message: 'n8n AI wants to search the web for: sanuli',
+				webSearch: { query: 'sanuli' },
 			});
 		});
 

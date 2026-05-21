@@ -17,7 +17,7 @@ export class FavoritesController {
 
 	@Get('/')
 	async getFavorites(req: AuthenticatedRequest) {
-		return await this.favoritesService.getEnrichedFavorites(req.user.id);
+		return await this.favoritesService.getEnrichedFavorites(req.user);
 	}
 
 	@Post('/')

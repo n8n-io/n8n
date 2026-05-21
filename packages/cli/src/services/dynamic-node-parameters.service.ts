@@ -30,6 +30,7 @@ import { WorkflowLoaderService } from './workflow-loader.service';
 import { SharedWorkflowRepository, User } from '@n8n/db';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Logger } from '@n8n/backend-common';
+import { withExpressionIsolate } from '@/utils';
 
 type LocalResourceMappingMethod = (
 	this: ILocalLoadOptionsFunctions,
@@ -134,10 +135,11 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('loadOptions', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		// Need to use untyped call since `this` usage is widespread and we don't have `strictBindCallApply`
-		// enabled in `tsconfig.json`
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return await method.call(thisArgs);
+		return await withExpressionIsolate(workflow, async () => {
+			// Need to use untyped call since `this` usage is widespread and we don't have `strictBindCallApply`
+			// enabled in `tsconfig.json`
+			return await method.call(thisArgs);
+		});
 	}
 
 	/** Returns the available options via a loadOptions param */
@@ -210,17 +212,19 @@ export class DynamicNodeParametersService {
 			[],
 		);
 		const routingNode = new RoutingNode(executeFunctions, tempNodeType);
-		const optionsData = await routingNode.runNode();
+		return await withExpressionIsolate(workflow, async () => {
+			const optionsData = await routingNode.runNode();
 
-		if (optionsData?.length === 0) {
-			return [];
-		}
+			if (optionsData?.length === 0) {
+				return [];
+			}
 
-		if (!Array.isArray(optionsData)) {
-			throw new UnexpectedError('The returned data is not an array');
-		}
+			if (!Array.isArray(optionsData)) {
+				throw new UnexpectedError('The returned data is not an array');
+			}
 
-		return optionsData[0].map((item) => item.json) as unknown as INodePropertyOptions[];
+			return optionsData[0].map((item) => item.json) as unknown as INodePropertyOptions[];
+		});
 	}
 
 	async getResourceLocatorResults(
@@ -237,8 +241,9 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('listSearch', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return await method.call(thisArgs, filter, paginationToken);
+		return await withExpressionIsolate(workflow, async () => {
+			return await method.call(thisArgs, filter, paginationToken);
+		});
 	}
 
 	/** Returns the available mapping fields for the ResourceMapper component */
@@ -254,7 +259,9 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('resourceMapping', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		return this.removeDuplicateResourceMappingFields(await method.call(thisArgs));
+		return await withExpressionIsolate(workflow, async () =>
+			this.removeDuplicateResourceMappingFields(await method.call(thisArgs)),
+		);
 	}
 
 	/** Returns the available workflow input mapping fields for the ResourceMapper component */
@@ -284,8 +291,9 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('actionHandler', handler, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return await method.call(thisArgs, payload);
+		return await withExpressionIsolate(workflow, async () => {
+			return await method.call(thisArgs, payload);
+		});
 	}
 
 	private getMethod(

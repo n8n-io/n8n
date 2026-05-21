@@ -15,6 +15,9 @@ test.describe(
 			await n8n.instanceAi.sendMessage('First thread message');
 			await n8n.instanceAi.waitForResponseComplete();
 
+			// Sidebar starts collapsed; open it so the thread list is queryable.
+			await n8n.instanceAi.openSidebar();
+
 			const threadCountBefore = await n8n.instanceAi.sidebar.getThreadItems().count();
 
 			// Click new thread button
@@ -37,35 +40,48 @@ test.describe(
 			await n8n.navigate.toInstanceAi();
 
 			// Create first thread with a unique message
-			await n8n.instanceAi.sendMessage('Message in first thread');
+			await n8n.instanceAi.sendMessage(
+				'For this thread switch test, reply with exactly: first thread ready',
+			);
 			await n8n.instanceAi.waitForResponseComplete();
+			await expect(n8n.page).toHaveURL(/\/instance-ai\/[^/]+$/);
+			const firstThreadPath = new URL(n8n.page.url()).pathname;
+
+			// Sidebar starts collapsed; open it so the new-thread button and
+			// thread list are queryable.
+			await n8n.instanceAi.openSidebar();
 
 			// Create second thread
 			await n8n.instanceAi.sidebar.getNewThreadButton().click();
 			await expect(n8n.instanceAi.getChatInput()).toBeVisible({ timeout: 10_000 });
 
-			await n8n.instanceAi.sendMessage('Message in second thread');
+			await n8n.instanceAi.sendMessage(
+				'For this thread switch test, reply with exactly: second thread ready',
+			);
 			await n8n.instanceAi.waitForResponseComplete();
 
-			// Switch back to first thread by its title (LLM-generated from recording)
-			await n8n.instanceAi.sidebar.getThreadByTitle('First Thread Message').click();
+			const firstThread = n8n.instanceAi.sidebar.getThreadByHref(firstThreadPath);
+			await expect(firstThread).toBeVisible({ timeout: 10_000 });
+			await firstThread.click();
 
 			// Should show the first thread's user message (messages load async)
-			await expect(n8n.instanceAi.getUserMessages().first()).toContainText(
-				'Message in first thread',
-				{ timeout: 30_000 },
-			);
+			await expect(n8n.instanceAi.getUserMessages().first()).toContainText('first thread ready', {
+				timeout: 30_000,
+			});
 		});
 
 		test('should rename thread via double-click', async ({ n8n }) => {
-			await n8n.navigate.toInstanceAi();
+			const thread = await n8n.api.createInstanceAiThread();
+			await n8n.api.renameInstanceAiThread(thread.id, 'Thread to rename');
+			await n8n.instanceAi.gotoThread(thread.id);
 
-			await n8n.instanceAi.sendMessage('Thread to rename');
-			await n8n.instanceAi.waitForResponseComplete();
+			// Sidebar starts collapsed; open it so the thread list is queryable.
+			await n8n.instanceAi.openSidebar();
 
 			// Double-click the thread to enter rename mode
-			const thread = n8n.instanceAi.sidebar.getThreadItems().first();
-			await thread.dblclick();
+			const threadItem = n8n.instanceAi.sidebar.getThreadByTitle('Thread to rename');
+			await expect(threadItem).toBeVisible({ timeout: 5_000 });
+			await threadItem.dblclick();
 
 			// Find the rename input and type a new name
 			const input = n8n.instanceAi.sidebar.getRenameInput();
@@ -86,9 +102,14 @@ test.describe(
 			await n8n.instanceAi.sendMessage('Thread to delete');
 			await n8n.instanceAi.waitForResponseComplete();
 
-			// Verify target thread is visible in the sidebar
-			const targetThread = n8n.instanceAi.sidebar.getThreadByTitle('Thread to Delete');
+			// Sidebar starts collapsed; open it so the thread list is queryable.
+			await n8n.instanceAi.openSidebar();
+
+			// Verify target thread is visible in the sidebar. Its generated title is not part of
+			// the behavior under test, so use the current thread item instead of title text.
+			const targetThread = n8n.instanceAi.sidebar.getThreadItems().first();
 			await expect(targetThread).toBeVisible({ timeout: 10_000 });
+			const threadCountBefore = await n8n.instanceAi.sidebar.getThreadItems().count();
 
 			// Hover the target thread to reveal the three-dots button, then click it
 			await targetThread.hover();
@@ -101,8 +122,8 @@ test.describe(
 			await n8n.instanceAi.sidebar.getDeleteMenuItem().click();
 
 			// Thread should no longer be visible
-			await expect(n8n.instanceAi.sidebar.getThreadByTitle('Thread to Delete')).toBeHidden({
-				timeout: 5_000,
+			await expect(n8n.instanceAi.sidebar.getThreadItems()).toHaveCount(threadCountBefore - 1, {
+				timeout: 10_000,
 			});
 		});
 	},

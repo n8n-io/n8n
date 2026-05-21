@@ -15,6 +15,9 @@ test.describe(
 				'Build a simple workflow with a manual trigger and a set node called "run button visibility test"',
 			);
 
+			// New builds route through the planner and pause for user approval.
+			await n8n.instanceAi.approveBuildPlan();
+
 			// Wait for preview to show canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 120_000,
@@ -32,6 +35,8 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger connected to a set node called "full execution test"',
 			);
+
+			await n8n.instanceAi.approveBuildPlan();
 
 			// Wait for preview to show canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
@@ -54,6 +59,8 @@ test.describe(
 				'Build a simple workflow with a manual trigger connected to a set node called "node execution test"',
 			);
 
+			await n8n.instanceAi.approveBuildPlan();
+
 			// Wait for preview to show canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 120_000,
@@ -65,9 +72,7 @@ test.describe(
 			await setNode.hover();
 
 			// Click the execute node button on the toolbar
-			const executeNodeButton = n8n.instanceAi.getPreviewExecuteNodeButton('node execution test');
-			await expect(executeNodeButton).toBeVisible({ timeout: 5_000 });
-			await executeNodeButton.click();
+			await n8n.instanceAi.executePreviewNodeByName('node execution test');
 
 			// The node should show a success indicator after execution
 			await expect(
@@ -84,6 +89,8 @@ test.describe(
 				'Build a simple workflow with a manual trigger connected to a set node called "ndv output test"',
 			);
 
+			await n8n.instanceAi.approveBuildPlan();
+
 			// Wait for preview to show canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 120_000,
@@ -98,8 +105,7 @@ test.describe(
 			});
 
 			// Double-click a node to open NDV
-			const setNode = n8n.instanceAi.getPreviewNodeByName('ndv output test');
-			await setNode.dblclick();
+			await n8n.instanceAi.openPreviewNodeByName('ndv output test');
 
 			// The NDV output panel should be visible with execution data
 			await expect(n8n.instanceAi.getPreviewNdvOutputPanel()).toBeVisible({
@@ -117,6 +123,8 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger connected to a set node called "re-run test"',
 			);
+
+			await n8n.instanceAi.approveBuildPlan();
 
 			// Wait for preview to show canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({

@@ -1,74 +1,105 @@
 <script lang="ts" setup>
-import { N8nButton, N8nText } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types';
+import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
-import { useInstanceAiStore } from '../instanceAi.store';
-import ConfirmationFooter from './ConfirmationFooter.vue';
+import { useThread } from '../instanceAi.store';
+import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
-import SplitButton from './SplitButton.vue';
 
 type DomainAction = 'allow_once' | 'allow_domain' | 'allow_all';
 
-const props = defineProps<{
+interface DomainProps {
 	requestId: string;
+	severity?: string;
 	url: string;
 	host: string;
+	query?: never;
+}
+
+interface WebSearchProps {
+	requestId: string;
 	severity?: string;
-}>();
+	query: string;
+	url?: never;
+	host?: never;
+}
+
+const props = defineProps<DomainProps | WebSearchProps>();
 
 const i18n = useI18n();
-const store = useInstanceAiStore();
+const thread = useThread();
 const resolved = ref(false);
 
+const isWebSearch = computed(() => props.query !== undefined);
 const isDestructive = computed(() => props.severity === 'destructive');
 
-const primaryAction = computed<DomainAction>(() =>
-	isDestructive.value ? 'allow_once' : 'allow_domain',
+const promptText = computed(() =>
+	isWebSearch.value
+		? i18n.baseText('instanceAi.webSearch.prompt')
+		: i18n.baseText('instanceAi.domainAccess.prompt', {
+				interpolate: { domain: props.host ?? '' },
+			}),
 );
 
-const primaryLabel = computed(() =>
-	isDestructive.value
-		? i18n.baseText('instanceAi.domainAccess.allowOnce')
-		: i18n.baseText('instanceAi.domainAccess.allowDomain'),
+const previewText = computed(() => (isWebSearch.value ? props.query : props.url) ?? '');
+
+const persistentLabel = computed(() =>
+	isWebSearch.value
+		? i18n.baseText('instanceAi.webSearch.allowThread')
+		: i18n.baseText('instanceAi.domainAccess.allowDomain', {
+				interpolate: { domain: props.host ?? '' },
+			}),
 );
 
-const dropdownItems = computed<Array<ActionDropdownItem<DomainAction>>>(() =>
-	isDestructive.value
-		? [
-				{
-					id: 'allow_domain' as const,
-					label: i18n.baseText('instanceAi.domainAccess.allowDomain'),
-				},
-			]
-		: [
-				{
-					id: 'allow_once' as const,
-					label: i18n.baseText('instanceAi.domainAccess.allowOnce'),
-				},
-			],
-);
+// Mirrors the floating-approval layout: persistent option first, single-use
+// allow next, deny last. Destructive hides the persistent row by design.
+const options = computed<ApprovalOption[]>(() => {
+	const list: ApprovalOption[] = [];
+	if (!isDestructive.value) {
+		list.push({
+			key: 'allow_domain',
+			icon: 'check',
+			label: persistentLabel.value,
+			suffix: i18n.baseText('instanceAi.confirmation.alwaysAllowSuffix'),
+			testId: 'domain-access-allow-domain',
+		});
+	}
+	list.push({
+		key: 'allow_once',
+		icon: 'check',
+		label: i18n.baseText('instanceAi.domainAccess.allowOnce'),
+		destructive: isDestructive.value,
+		testId: 'domain-access-allow-once',
+	});
+	list.push({
+		key: 'deny',
+		icon: 'ban',
+		label: i18n.baseText('instanceAi.domainAccess.deny'),
+		withArrow: false,
+		testId: 'domain-access-deny',
+	});
+	return list;
+});
 
-function handleAction(approved: boolean, domainAccessAction?: string) {
+function handleAction(approved: boolean, domainAccessAction?: DomainAction) {
 	resolved.value = true;
-	store.resolveConfirmation(props.requestId, approved ? 'approved' : 'denied');
-	void store.confirmAction(
+	thread.resolveConfirmation(props.requestId, approved ? 'approved' : 'denied');
+	void thread.confirmAction(
 		props.requestId,
-		approved,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		domainAccessAction,
+		approved && domainAccessAction
+			? { kind: 'domainAccessApprove', domainAccessAction }
+			: { kind: 'domainAccessDeny' },
 	);
 }
 
-function onPrimaryClick() {
-	handleAction(true, primaryAction.value);
-}
-
-function onDropdownSelect(action: string) {
-	handleAction(true, action);
+function onSelect(key: string) {
+	if (key === 'deny') {
+		handleAction(false);
+		return;
+	}
+	if (key === 'allow_once' || key === 'allow_domain' || key === 'allow_all') {
+		handleAction(true, key);
+	}
 }
 </script>
 
@@ -76,32 +107,12 @@ function onDropdownSelect(action: string) {
 	<div v-if="!resolved">
 		<div :class="$style.body">
 			<N8nText tag="div" size="medium" bold>
-				{{
-					i18n.baseText('instanceAi.domainAccess.prompt', { interpolate: { domain: props.host } })
-				}}
+				{{ promptText }}
 			</N8nText>
-			<ConfirmationPreview>{{ props.url }}</ConfirmationPreview>
+			<ConfirmationPreview>{{ previewText }}</ConfirmationPreview>
 		</div>
 
-		<ConfirmationFooter>
-			<N8nButton
-				variant="outline"
-				size="medium"
-				:label="i18n.baseText('instanceAi.domainAccess.deny')"
-				data-test-id="domain-access-deny"
-				@click="handleAction(false)"
-			/>
-			<SplitButton
-				:variant="isDestructive ? 'destructive' : 'solid'"
-				:label="primaryLabel"
-				:items="dropdownItems"
-				data-test-id="domain-access-primary"
-				dropdown-test-id="domain-access-dropdown"
-				caret-aria-label="More approval options"
-				@click="onPrimaryClick"
-				@select="onDropdownSelect"
-			/>
-		</ConfirmationFooter>
+		<ApprovalOptionList :options="options" @select="onSelect" />
 	</div>
 </template>
 

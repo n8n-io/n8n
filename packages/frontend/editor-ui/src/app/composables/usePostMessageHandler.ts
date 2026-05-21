@@ -21,21 +21,24 @@ import type { IWorkflowDb } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import {
-	type useWorkflowDocumentStore,
 	useWorkflowDocumentStore as createWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	type WorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowImport } from '@/app/composables/useWorkflowImport';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 interface PostMessageHandlerDeps {
 	workflowState: WorkflowState;
-	currentWorkflowDocumentStore: ShallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>;
+	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>;
+	currentNDVStore: ShallowRef<ReturnType<typeof useNDVStore> | null>;
 }
 
 export function usePostMessageHandler({
 	workflowState,
 	currentWorkflowDocumentStore,
+	currentNDVStore,
 }: PostMessageHandlerDeps) {
 	const i18n = useI18n();
 	const toast = useToast();
@@ -52,7 +55,7 @@ export function usePostMessageHandler({
 	const route = useRoute();
 	const workflowsStore = useWorkflowsStore();
 	const { resetWorkspace, openExecution, fitView } = useCanvasOperations();
-	const { importWorkflowExact } = useWorkflowImport(currentWorkflowDocumentStore);
+	const { importWorkflowExact } = useWorkflowImport(currentWorkflowDocumentStore, currentNDVStore);
 
 	function emitPostMessageReady() {
 		if (window.parent) {
@@ -138,9 +141,9 @@ export function usePostMessageHandler({
 
 		const wfId = workflowsStore.workflowId;
 		if (wfId) {
-			currentWorkflowDocumentStore.value = createWorkflowDocumentStore(
-				createWorkflowDocumentId(wfId),
-			);
+			const workflowDocumentId = createWorkflowDocumentId(wfId);
+			currentWorkflowDocumentStore.value = createWorkflowDocumentStore(workflowDocumentId);
+			currentNDVStore.value = useNDVStore(workflowDocumentId);
 		}
 
 		void nextTick(() => {
@@ -249,10 +252,14 @@ export function usePostMessageHandler({
 						type: 'error',
 					});
 				}
+			} else if (json?.command === 'resetWorkflow') {
+				resetWorkspace();
 			} else if (json?.command === 'setActiveExecution') {
 				executionsStore.activeExecution = (await executionsStore.fetchExecution(
 					json.executionId,
 				)) as ExecutionSummary;
+			} else if (json?.command === 'fitView') {
+				canvasEventBus.emit('fitView');
 			} else if (json?.command === 'executionEvent') {
 				// Relay execution push events from parent into the iframe's push pipeline.
 				// Uses onMessageReceivedHandlers (part of the store's public API) to dispatch

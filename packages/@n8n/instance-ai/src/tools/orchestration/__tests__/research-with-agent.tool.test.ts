@@ -1,18 +1,7 @@
-import type { ToolsInput } from '@mastra/core/agent';
-
+import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiEventBus } from '../../../event-bus/event-bus.interface';
+import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext, TaskStorage } from '../../../types';
-
-// Mock all heavy Mastra dependencies to avoid ESM issues in Jest
-jest.mock('@mastra/core/agent', () => ({
-	Agent: jest.fn(),
-}));
-jest.mock('@mastra/core/mastra', () => ({
-	Mastra: jest.fn(),
-}));
-jest.mock('../../../stream/map-chunk', () => ({
-	mapMastraChunkToEvent: jest.fn(),
-}));
 
 const { createResearchWithAgentTool, researchWithAgentInputSchema } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
@@ -34,10 +23,17 @@ function createMockEventBus(): InstanceAiEventBus {
 }
 
 function createMockContext(overrides?: Partial<OrchestrationContext>): OrchestrationContext {
-	const domainTools: ToolsInput = {
-		research: { id: 'research' } as never,
-		'list-workflows': { id: 'list-workflows' } as never,
-	};
+	const domainTools = createToolRegistry([
+		['research', { name: 'research', description: 'research', handler: jest.fn() }],
+		[
+			'list-workflows',
+			{
+				name: 'list-workflows',
+				description: 'list-workflows',
+				handler: jest.fn(),
+			},
+		],
+	]);
 
 	return {
 		threadId: 'thread-123',
@@ -45,14 +41,17 @@ function createMockContext(overrides?: Partial<OrchestrationContext>): Orchestra
 		userId: 'test-user',
 		orchestratorAgentId: 'agent-001',
 		modelId: 'anthropic/claude-sonnet-4-5',
-		storage: { id: 'test-storage' } as OrchestrationContext['storage'],
 		subAgentMaxSteps: 10,
 		eventBus: createMockEventBus(),
 		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 		domainTools,
 		abortSignal: new AbortController().signal,
 		taskStorage: {} as TaskStorage,
-		spawnBackgroundTask: jest.fn(),
+		spawnBackgroundTask: jest.fn(() => ({
+			status: 'started' as const,
+			taskId: 'spawn-task-id',
+			agentId: 'spawn-agent-id',
+		})),
 		cancelBackgroundTask: jest.fn(),
 		...overrides,
 	};
@@ -90,10 +89,11 @@ describe('research-with-agent tool', () => {
 			const context = createMockContext();
 			const tool = createResearchWithAgentTool(context);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ goal: 'How does Stripe webhook verification work?' },
 				{} as never,
-			)) as { result: string };
+			);
 
 			expect(result.result).toContain('Research started');
 			expect(result.result).toMatch(/task: research-/);
@@ -104,7 +104,7 @@ describe('research-with-agent tool', () => {
 			const context = createMockContext();
 			const tool = createResearchWithAgentTool(context);
 
-			await tool.execute!({ goal: 'test research' }, {} as never);
+			await executeTool(tool, { goal: 'test research' }, {} as never);
 
 			expect(context.eventBus.publish).toHaveBeenCalledWith(
 				'thread-123',
@@ -122,13 +122,16 @@ describe('research-with-agent tool', () => {
 
 		it('returns error when research tool is not available', async () => {
 			const context = createMockContext({
-				domainTools: {
-					'list-workflows': { id: 'list-workflows' } as never,
-				},
+				domainTools: createToolRegistry([
+					[
+						'list-workflows',
+						{ name: 'list-workflows', description: 'list-workflows', handler: jest.fn() },
+					],
+				]),
 			});
 			const tool = createResearchWithAgentTool(context);
 
-			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as { result: string };
+			const result = await executeTool(tool, { goal: 'test' }, {} as never);
 
 			expect(result.result).toBe('Error: research tool not available.');
 			expect(context.spawnBackgroundTask).not.toHaveBeenCalled();
@@ -140,9 +143,44 @@ describe('research-with-agent tool', () => {
 			});
 			const tool = createResearchWithAgentTool(context);
 
-			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as { result: string };
+			const result = await executeTool(tool, { goal: 'test' }, {} as never);
 
 			expect(result.result).toBe('Error: background task support not available.');
+		});
+
+		it('does not publish agent-spawned when spawn returns duplicate', async () => {
+			// The single-flight dedupe path used to emit a phantom `agent-spawned`
+			// before checking the spawn outcome — leaving an orphan card in the UI.
+			const context = createMockContext({
+				spawnBackgroundTask: jest.fn(() => ({
+					status: 'duplicate' as const,
+					existing: {
+						taskId: 'task-existing',
+						agentId: 'agent-existing',
+						role: 'web-researcher',
+					},
+				})),
+			});
+			const tool = createResearchWithAgentTool(context);
+
+			const result = await executeTool(tool, { goal: 'test' }, {} as never);
+
+			expect(result.result).toContain('Research already in progress');
+			expect(result.taskId).toBe('task-existing');
+			expect(context.eventBus.publish).not.toHaveBeenCalled();
+		});
+
+		it('does not publish agent-spawned when spawn returns limit-reached', async () => {
+			const context = createMockContext({
+				spawnBackgroundTask: jest.fn(() => ({ status: 'limit-reached' as const })),
+			});
+			const tool = createResearchWithAgentTool(context);
+
+			const result = await executeTool(tool, { goal: 'test' }, {} as never);
+
+			expect(result.result).toContain('limit reached');
+			expect(result.taskId).toBe('');
+			expect(context.eventBus.publish).not.toHaveBeenCalled();
 		});
 	});
 });

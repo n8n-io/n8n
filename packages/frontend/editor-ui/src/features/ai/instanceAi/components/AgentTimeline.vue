@@ -11,7 +11,7 @@ import { computed } from 'vue';
 import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from '../agentTimeline.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
 import { isActiveBuilderAgent } from '../builderAgents';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
@@ -23,13 +23,13 @@ import TaskChecklist from './TaskChecklist.vue';
 import ToolCallStep from './ToolCallStep.vue';
 
 const i18n = useI18n();
-const store = useInstanceAiStore();
+const thread = useThread();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
 
 /** Resolve artifact name from the enriched registry (falls back to extracted name). */
 function resolveArtifactName(artifact: ArtifactInfo): string {
-	const entry = store.producedArtifacts.get(artifact.resourceId);
+	const entry = thread.producedArtifacts.get(artifact.resourceId);
 	return entry?.name ?? artifact.name;
 }
 
@@ -120,7 +120,7 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 
 	const numTasks = ((tc.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length;
 	const eventProps = {
-		thread_id: store.currentThreadId,
+		thread_id: thread.id,
 		input_thread_id: tc.confirmation?.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
 		type: 'plan-review',
@@ -137,8 +137,12 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	};
 	telemetry.track('User finished providing input', eventProps);
 
-	store.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
-	void store.confirmAction(requestId, approved, undefined, undefined, undefined, feedback);
+	thread.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
+	void thread.confirmAction(requestId, {
+		kind: 'approval',
+		approved,
+		...(feedback ? { userInput: feedback } : {}),
+	});
 }
 
 /** Find the latest plan-review confirmation from a planner child's submit-plan tool call.
@@ -203,10 +207,11 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					:is-loading="toolCallsById[entry.toolCallId].isLoading"
 					:tool-call-id="toolCallsById[entry.toolCallId].toolCallId"
 				/>
-				<!-- Hidden tool calls (builder/data-table/researcher handled by child agent via AgentSection) -->
+				<!-- Hidden tool calls (builder/data-table/researcher/eval-setup handled by child agent via AgentSection) -->
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'researcher'" />
+				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'eval-setup'" />
 				<!-- Plan review must match before the planner renderHint suppression:
 				     when the plan tool attaches the confirmation to its own tool call
 				     (no planner child agent), that suppression would otherwise hide it. -->
@@ -289,7 +294,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 						:name="resolveArtifactName(artifact)"
 						:resource-id="artifact.resourceId"
 						:project-id="artifact.projectId"
-						:archived="store.producedArtifacts.get(artifact.resourceId)?.archived"
+						:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
 						:metadata="formatArtifactMetadata(artifact)"
 					/>
 				</template>

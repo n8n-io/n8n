@@ -18,7 +18,12 @@ on:
       - 'docker/images/runners/**'
       - 'scripts/build-n8n.mjs'
       - 'scripts/dockerize-n8n.mjs'
+      - 'scripts/smoke-n8n-image.mjs'
   workflow_dispatch:
+
+concurrency:
+  group: docker-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   docker-smoke-test:
@@ -42,12 +47,20 @@ jobs:
           build-command: 'pnpm build:docker:clean'
           enable-docker-cache: true
 
-      - name: Verify n8n image starts
-        run: |
-          docker run --rm -d --name n8n-smoke-test n8nio/n8n:local
-          sleep 5
-          docker logs n8n-smoke-test 2>&1 | tail -20
-          docker stop n8n-smoke-test
+      - uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
+
+      - id: cloud-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          owner: n8n-io
+          repositories: n8n-cloud
+
+      - name: Verify image against live n8n-cloud helm chart
+        env:
+          GH_TOKEN: ${{ steps.cloud-token.outputs.token }}
+        run: pnpm build:docker:smoke
 
   notify-on-failure:
     name: Notify on nightly smoke test failure
@@ -55,10 +68,14 @@ jobs:
     needs: [docker-smoke-test]
     if: needs.docker-smoke-test.result == 'failure' && github.event_name == 'schedule'
     steps:
-      - uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          method: chat.postMessage
-          token: ${{ secrets.QBOT_SLACK_TOKEN }}
-          payload: |
-            channel: C0A9RLY8Y20
-            text: "🚨 Nightly Docker smoke test failed (no-cache build) - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel C0A9RLY8Y20 \
+            --text '🚨 Nightly Docker smoke test failed (no-cache build) - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'

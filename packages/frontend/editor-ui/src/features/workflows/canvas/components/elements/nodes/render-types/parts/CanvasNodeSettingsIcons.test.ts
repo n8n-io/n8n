@@ -21,6 +21,17 @@ vi.mock('@/features/resolvers/composables/useDynamicCredentials', () => ({
 	useDynamicCredentials: vi.fn(),
 }));
 
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
+	injectCanvasRenderData: vi.fn(() => ({
+		value: {
+			nodeInputsByNodeId: new Map(),
+			nodeOutputsByNodeId: new Map(),
+			executionIssuesByNodeName: new Map(),
+		},
+	})),
+}));
+
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 const mockedUseDynamicCredentials = vi.mocked(useDynamicCredentials);
@@ -54,7 +65,7 @@ describe('CanvasNodeSettingsIcons', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		credentialsStore = mockedStore(useCredentialsStore);
 
-		workflowsStore.workflow.id = WORKFLOW_ID;
+		workflowsStore.workflowId = WORKFLOW_ID;
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(WORKFLOW_ID));
 
 		// Default: feature flag disabled

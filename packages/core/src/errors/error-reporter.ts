@@ -26,6 +26,9 @@ type ErrorReporterInitOptions = {
 	/** Threshold in ms for event loop block detection. Only used if `withEventLoopBlockDetection` is true. */
 	eventLoopBlockThreshold?: number;
 
+	/** Max event loop block events per hour per instance. Only used if `withEventLoopBlockDetection` is true. */
+	eventLoopBlockMaxEventsPerHour?: number;
+
 	/** Sample rate for Sentry traces (0.0 to 1.0). 0 means disabled */
 	tracesSampleRate: number;
 
@@ -87,6 +90,8 @@ export class ErrorReporter {
 						stack = `\n${e.stack}\n`;
 					}
 					meta = e.extra;
+				} else if (e.stack) {
+					stack = `\n${e.stack}\n`;
 				}
 				const msg = [e.message + context, stack].join('');
 				// Default to logging the error if option is not specified
@@ -114,6 +119,7 @@ export class ErrorReporter {
 		releaseDate,
 		withEventLoopBlockDetection,
 		eventLoopBlockThreshold,
+		eventLoopBlockMaxEventsPerHour,
 		profilesSampleRate,
 		tracesSampleRate,
 		eligibleIntegrations = {},
@@ -194,6 +200,7 @@ export class ErrorReporter {
 						server_type: serverType,
 					},
 					eventLoopBlockThreshold,
+					eventLoopBlockMaxEventsPerHour,
 				)
 			: [];
 
@@ -333,12 +340,17 @@ export class ErrorReporter {
 		if (tags) event.tags = { ...event.tags, ...tags };
 	}
 
-	private async getEventLoopBlockIntegration(tags: Record<string, string>, threshold?: number) {
+	private async getEventLoopBlockIntegration(
+		tags: Record<string, string>,
+		threshold?: number,
+		maxEventsPerHour?: number,
+	) {
 		try {
 			const { eventLoopBlockIntegration } = await import('@sentry/node-native');
 			return [
 				eventLoopBlockIntegration({
 					...(threshold ? { threshold } : {}),
+					...(maxEventsPerHour ? { maxEventsPerHour } : {}),
 					staticTags: tags,
 				}),
 			];

@@ -26,19 +26,14 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import WorkflowActivationErrorMessage from '@/app/components/WorkflowActivationErrorMessage.vue';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
 
 const modalBus = createEventBus();
 const i18n = useI18n();
 
 const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 const { showMessage } = useToast();
@@ -51,7 +46,7 @@ const description = ref('');
 const versionName = ref('');
 
 const foundTriggers = computed(() =>
-	getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes),
+	getActivatableTriggerNodes(workflowDocumentStore.value.workflowTriggerNodes),
 );
 
 const containsTrigger = computed((): boolean => {
@@ -64,7 +59,11 @@ const wfHasAnyChanges = computed(() => {
 	);
 });
 
-const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
+const nodesWithValidationIssues = computed(
+	() => workflowDocumentStore.value.nodesWithValidationIssues,
+);
+
+const hasNodeIssues = computed(() => workflowDocumentStore.value.hasPublishBlockingIssues);
 
 const inputsDisabled = computed(() => {
 	return (
@@ -174,7 +173,9 @@ const aiGatewayWarningNodeNames = computed(() =>
 async function displayActivationError() {
 	let errorMessage: string | VNode;
 	try {
-		const errorData = await workflowsStore.getActivationError(workflowsStore.workflowId);
+		const errorData = await workflowsStore.getActivationError(
+			workflowDocumentStore.value.workflowId,
+		);
 
 		if (errorData === undefined) {
 			errorMessage = i18n.baseText(
@@ -208,7 +209,7 @@ async function handlePublish() {
 
 	// Activate the workflow
 	const { success, errorHandled } = await workflowActivate.publishWorkflow(
-		workflowsStore.workflowId,
+		workflowDocumentStore.value.workflowId,
 		workflowDocumentStore.value?.versionId ?? '',
 		{
 			name: versionName.value,
@@ -234,7 +235,7 @@ async function handlePublish() {
 		}
 
 		telemetry.track('User published version from canvas', {
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 		});
 
 		// For now, just close the modal after successful activation
@@ -289,15 +290,15 @@ async function handlePublish() {
 				<N8nCallout v-else-if="activeCalloutId === 'nodeIssues'" theme="danger" icon="status-error">
 					{{
 						i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
-							interpolate: { count: workflowsStore.nodesWithIssues.length },
-							adjustToNumber: workflowsStore.nodesWithIssues.length,
+							interpolate: { count: nodesWithValidationIssues.length },
+							adjustToNumber: nodesWithValidationIssues.length,
 						})
 					}}
 					<ul :class="$style.nodeLinks">
-						<li v-for="node in workflowsStore.nodesWithIssues" :key="node.id">
+						<li v-for="node in nodesWithValidationIssues" :key="node.id">
 							<N8nLink
 								size="small"
-								:to="`/workflow/${workflowsStore.workflowId}/${node.id}`"
+								:to="`/workflow/${workflowDocumentStore.workflowId}/${node.id}`"
 								@click="modalBus.emit('close')"
 								>{{ node.name }}</N8nLink
 							>

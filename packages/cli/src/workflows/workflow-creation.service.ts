@@ -109,6 +109,8 @@ export class WorkflowCreationService {
 
 		WorkflowHelpers.addNodeIds(newWorkflow);
 		WorkflowHelpers.resolveNodeWebhookIds(newWorkflow, this.nodeTypes);
+		WorkflowHelpers.validateWorkflowStructure(newWorkflow);
+		WorkflowHelpers.validateWorkflowNodeGroups(newWorkflow);
 
 		if ('pinData' in newWorkflow) {
 			WorkflowHelpers.validatePinDataSize(newWorkflow);

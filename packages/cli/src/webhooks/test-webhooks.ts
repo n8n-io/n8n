@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type express from 'express';
@@ -53,6 +54,7 @@ const SINGLE_WEBHOOK_TRIGGERS = [
 @Service()
 export class TestWebhooks implements IWebhookManager {
 	constructor(
+		private readonly logger: Logger,
 		private readonly push: Push,
 		private readonly nodeTypes: NodeTypes,
 		private readonly registrations: TestWebhookRegistrationsService,
@@ -225,7 +227,12 @@ export class TestWebhooks implements IWebhookManager {
 
 		const workflow = this.toWorkflow(workflowEntity);
 
-		await this.deactivateWebhooks(workflow);
+		await workflow.expression.acquireIsolate();
+		try {
+			await this.deactivateWebhooks(workflow);
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
 	}
 
 	clearTimeout(key: string) {
@@ -476,7 +483,19 @@ export class TestWebhooks implements IWebhookManager {
 
 			if (!foundWebhook) {
 				// As it removes all webhooks of the workflow execute only once
-				void this.deactivateWebhooks(workflow);
+				void (async () => {
+					await workflow.expression.acquireIsolate();
+					try {
+						await this.deactivateWebhooks(workflow);
+					} finally {
+						await workflow.expression.releaseIsolate();
+					}
+				})().catch((error) => {
+					this.logger.error('Failed to deactivate test webhooks on cancel', {
+						error,
+						workflowId,
+					});
+				});
 			}
 
 			foundWebhook = true;

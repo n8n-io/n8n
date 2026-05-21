@@ -1012,6 +1012,66 @@ describe('LdapService', () => {
 
 			expect(result).toEqual(foundUsers[0]);
 		});
+
+		describe('filter construction', () => {
+			const captureFilter = () => {
+				const search = jest.fn().mockResolvedValue({ searchEntries: [] });
+				Client.prototype.search = search;
+				return () => {
+					expect(search).toHaveBeenCalledTimes(1);
+					const [, options] = search.mock.calls[0];
+					return options.filter as string;
+				};
+			};
+
+			it.each([
+				{ input: 'alice', expectedSnippet: '(uid=alice)' },
+				{ input: 'alice*', expectedSnippet: '(uid=alice\\2a)' },
+				{ input: '*)(uid=*', expectedSnippet: '(uid=\\2a\\29\\28uid=\\2a)' },
+				{ input: 'alice\\)', expectedSnippet: '(uid=alice\\5c\\29)' },
+				{ input: 'alice\0admin', expectedSnippet: '(uid=alice\\00admin)' },
+			])(
+				'should escape special characters in the loginId search filter for input %p',
+				async ({ input, expectedSnippet }) => {
+					const ldapService = createDefaultLdapService({ ...ldapConfig, userFilter: '' });
+					const getCaptured = captureFilter();
+
+					(getLdapIds as jest.Mock).mockResolvedValue([]);
+
+					await ldapService.init();
+					await ldapService.findAndAuthenticateLdapUser(
+						input,
+						'fakePassword',
+						ldapConfig.loginIdAttribute,
+						'',
+					);
+
+					expect(getCaptured()).toContain(expectedSnippet);
+				},
+			);
+
+			it('should preserve the configured userFilter when constructing the loginId filter', async () => {
+				const userFilter = '(objectClass=inetOrgPerson)';
+				const ldapService = createDefaultLdapService({ ...ldapConfig, userFilter });
+				const getCaptured = captureFilter();
+
+				(getLdapIds as jest.Mock).mockResolvedValue([]);
+
+				await ldapService.init();
+				await ldapService.findAndAuthenticateLdapUser(
+					'alice',
+					'fakePassword',
+					ldapConfig.loginIdAttribute,
+					userFilter,
+				);
+
+				const filter = getCaptured();
+				expect(filter).toBe('(&(objectClass=inetOrgPerson)(uid=alice))');
+				const opens = (filter.match(/\(/g) ?? []).length;
+				const closes = (filter.match(/\)/g) ?? []).length;
+				expect(opens).toBe(closes);
+			});
+		});
 	});
 
 	describe('testConnection()', () => {
@@ -1661,6 +1721,45 @@ describe('LdapService', () => {
 
 				const result = await ldapService.handleLogin('jdoe', 'password');
 				expect(result).toBeUndefined();
+			});
+		});
+
+		describe('filter construction', () => {
+			it('should escape special characters in the email duplicate-check filter', async () => {
+				const trickyEmail = 'eve*)(uid=admin@example.com';
+				const ldapService = createDefaultLdapService({
+					...ldapConfig,
+					enforceEmailUniqueness: true,
+				});
+
+				const search = jest
+					.fn()
+					.mockResolvedValueOnce({
+						searchEntries: [
+							{
+								dn: 'uid=eve,ou=users,dc=example,dc=com',
+								cn: 'Eve',
+								mail: trickyEmail,
+								uid: 'eve',
+							},
+						],
+					})
+					.mockResolvedValueOnce({ searchEntries: [] });
+				Client.prototype.search = search;
+
+				(getAuthIdentityByLdapId as jest.Mock).mockResolvedValue(null);
+				(getUserByEmail as jest.Mock).mockResolvedValue(null);
+				(createLdapUserOnLocalDb as jest.Mock).mockResolvedValue(mock<User>());
+
+				await ldapService.init();
+				await ldapService.handleLogin('eve', 'password');
+
+				expect(search).toHaveBeenCalledTimes(2);
+				const [, secondCallOptions] = search.mock.calls[1];
+				const emailFilter = secondCallOptions.filter as string;
+
+				expect(emailFilter).toContain('eve\\2a\\29\\28uid=admin@example.com');
+				expect(emailFilter).not.toContain(trickyEmail);
 			});
 		});
 	});

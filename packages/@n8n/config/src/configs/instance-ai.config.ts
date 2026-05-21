@@ -82,6 +82,14 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 300_000;
 
+	/** Prefix prepended to every Daytona sandbox name (e.g. `eval-baseline-daily`); also surfaced as a `name_prefix` label. */
+	@Env('N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX')
+	sandboxNamePrefix: string = '';
+
+	/** How long to keep completed workflow-builder sandboxes warm for follow-up fixes. 0 = disabled. */
+	@Env('N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS')
+	builderSandboxTtlMs: number = 10 * 60 * 1000;
+
 	/** Brave Search API key for web search. No key = search + research agent disabled. */
 	@Env('INSTANCE_AI_BRAVE_SEARCH_API_KEY')
 	braveSearchApiKey: string = '';
@@ -98,15 +106,15 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
 	threadTtlDays: number = 90;
 
-	/** Interval in milliseconds between snapshot pruning runs. 0 = disabled. */
+	/** Interval in milliseconds between native persistence pruning runs. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_SNAPSHOT_PRUNE_INTERVAL')
 	snapshotPruneInterval: number = 60 * 60 * 1000; // 1 hour
 
-	/** Retention period in milliseconds for orphaned workflow snapshots before pruning. */
+	/** Retention period in milliseconds for stale native persistence checkpoints before pruning. */
 	@Env('N8N_INSTANCE_AI_SNAPSHOT_RETENTION')
 	snapshotRetention: number = 24 * 60 * 60 * 1000; // 24 hours
 
 	/** Timeout in milliseconds for HITL confirmation requests. 0 = no timeout. */
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
-	confirmationTimeout: number = 10 * 60 * 1000; // 10 minutes
+	confirmationTimeout: number = 24 * 60 * 60 * 1000; // 24 hours
 }

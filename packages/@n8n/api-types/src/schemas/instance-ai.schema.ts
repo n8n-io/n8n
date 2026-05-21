@@ -73,6 +73,7 @@ export const instanceAiAgentKindSchema = z.enum([
 	'delegate',
 	'browser-setup',
 	'planner',
+	'eval-setup',
 ]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
@@ -88,6 +89,11 @@ export const domainAccessMetaSchema = z.object({
 	host: z.string(),
 });
 export type DomainAccessMeta = z.infer<typeof domainAccessMetaSchema>;
+
+export const webSearchMetaSchema = z.object({
+	query: z.string(),
+});
+export type WebSearchMeta = z.infer<typeof webSearchMetaSchema>;
 
 export const UNSAFE_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
@@ -245,6 +251,17 @@ export const workflowSetupNodeSchema = z.object({
 			'Whether this node still requires user intervention. ' +
 				'False when credentials are set and valid, parameters are resolved, etc.',
 		),
+	subnodeRootNode: z
+		.object({
+			name: z.string(),
+			type: z.string(),
+			typeVersion: z.number(),
+			id: z.string(),
+		})
+		.optional()
+		.describe(
+			'Snapshot of the root node for this sub-node connected via a non-Main port (e.g. ai_languageModel, ai_memory, ai_tool). Carries the metadata needed to render the group header even when the root node itself has no setup request.',
+		),
 });
 export type InstanceAiWorkflowSetupNode = z.infer<typeof workflowSetupNodeSchema>;
 
@@ -283,7 +300,14 @@ export type PlannedTaskArg = z.infer<typeof plannedTaskArgSchema>;
 /** Protocol prefix used by the daemon to signal a resource-access confirmation is required. */
 export const GATEWAY_CONFIRMATION_REQUIRED_PREFIX = 'GATEWAY_CONFIRMATION_REQUIRED::';
 
-export const gatewayConfirmationRequiredPayloadSchema = z.object({
+export const instanceGatewayResourceDecisionSchema = z.enum([
+	'denyOnce',
+	'allowOnce',
+	'allowForSession',
+]);
+export type InstanceGatewayResourceDecision = z.infer<typeof instanceGatewayResourceDecisionSchema>;
+
+export const gatewayConfirmationRequiredWirePayloadSchema = z.object({
 	toolGroup: z.string(),
 	resource: z.string(),
 	description: z.string(),
@@ -291,11 +315,30 @@ export const gatewayConfirmationRequiredPayloadSchema = z.object({
 	options: z.array(z.string()),
 });
 
+export type GatewayConfirmationRequiredWirePayload = z.infer<
+	typeof gatewayConfirmationRequiredWirePayloadSchema
+>;
+
+export const gatewayConfirmationRequiredPayloadSchema =
+	gatewayConfirmationRequiredWirePayloadSchema.extend({
+		options: z.array(instanceGatewayResourceDecisionSchema),
+	});
+
 export type GatewayConfirmationRequiredPayload = z.infer<
 	typeof gatewayConfirmationRequiredPayloadSchema
 >;
 
 // ---------------------------------------------------------------------------
+
+export const confirmationInputTypeSchema = z.enum([
+	'approval',
+	'text',
+	'questions',
+	'plan-review',
+	'resource-decision',
+	'continue',
+]);
+export type InstanceAiConfirmationInputType = z.infer<typeof confirmationInputTypeSchema>;
 
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
@@ -315,13 +358,13 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'Target project ID — used to scope actions (e.g. credential creation) to the correct project',
 		),
-	inputType: z
-		.enum(['approval', 'text', 'questions', 'plan-review', 'resource-decision'])
+	inputType: confirmationInputTypeSchema
 		.optional()
 		.describe(
 			'UI mode: approval (default) shows approve/deny, text shows a text input, ' +
 				'questions shows structured Q&A wizard, plan-review shows plan approval with feedback, ' +
-				'resource-decision shows 5-option gateway permission dialog',
+				'resource-decision shows 5-option gateway permission dialog, ' +
+				'continue shows a single primary button (used by pause-for-user)',
 		),
 	questions: z
 		.array(
@@ -345,6 +388,9 @@ export const confirmationRequestPayloadSchema = z.object({
 	domainAccess: domainAccessMetaSchema
 		.optional()
 		.describe('When present, renders domain-access approval UI instead of generic confirm'),
+	webSearch: webSearchMetaSchema
+		.optional()
+		.describe('When present, renders web-search approval UI instead of generic confirm'),
 	credentialFlow: credentialFlowSchema
 		.optional()
 		.describe(
@@ -359,6 +405,54 @@ export const confirmationRequestPayloadSchema = z.object({
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
 });
+export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
+
+function isNonEmptyString(value: unknown): value is string {
+	return typeof value === 'string' && value.trim().length > 0;
+}
+
+function hasItems<T>(items: T[] | undefined): items is [T, ...T[]] {
+	return Array.isArray(items) && items.length > 0;
+}
+
+function argsContainPlannedTasks(args: Record<string, unknown>): boolean {
+	const tasks = args.tasks;
+	if (!Array.isArray(tasks)) return false;
+
+	return tasks.some((task) => plannedTaskArgSchema.safeParse(task).success);
+}
+
+function assertNever(value: never): never {
+	throw new Error(`Unhandled confirmation input type: ${String(value)}`);
+}
+
+/**
+ * True when the current frontend has enough typed confirmation payload to show
+ * a meaningful waiting-for-user UI. Correlation metadata alone must not count.
+ */
+export function isDisplayableConfirmationRequest(
+	payload: InstanceAiConfirmationRequestPayload,
+): boolean {
+	if (hasItems(payload.setupRequests)) return true;
+	if (hasItems(payload.credentialRequests)) return true;
+	if (payload.domainAccess) return true;
+
+	const inputType = payload.inputType ?? 'approval';
+	switch (inputType) {
+		case 'approval':
+		case 'text':
+		case 'continue':
+			return isNonEmptyString(payload.message);
+		case 'questions':
+			return hasItems(payload.questions);
+		case 'plan-review':
+			return hasItems(payload.planItems) || argsContainPlannedTasks(payload.args);
+		case 'resource-decision':
+			return payload.resourceDecision !== undefined;
+		default:
+			return assertNever(inputType);
+	}
+}
 
 export const statusPayloadSchema = z.object({
 	message: z.string().describe('Transient status message. Empty string clears the indicator.'),
@@ -445,6 +539,13 @@ export class InstanceAiGatewayCapabilitiesDto extends Z.class({
 	toolCategories: z.array(toolCategorySchema).default([]),
 }) {}
 export type InstanceAiGatewayCapabilities = InstanceType<typeof InstanceAiGatewayCapabilitiesDto>;
+
+export class InstanceAiGatewayCreateCredentialDto extends Z.class({
+	name: z.string().min(1).max(128),
+	type: z.string().min(1).max(128),
+	data: z.record(z.unknown()),
+	projectId: z.string().optional(),
+}) {}
 
 // ---------------------------------------------------------------------------
 // Filesystem bridge payloads (browser ↔ server round-trip)
@@ -558,7 +659,8 @@ export type InstanceAiFilesystemResponse = InstanceType<typeof InstanceAiFilesys
 // ---------------------------------------------------------------------------
 
 const instanceAiAttachmentSchema = z.object({
-	data: z.string().max(700_000), // ~512 KB decoded + base64 overhead
+	// Base64 inflates ~4/3 — 14M chars covers ~10MB decoded.
+	data: z.string().max(14_000_000, { message: 'Attachment exceeds 10 MB limit' }),
 	mimeType: z.string().max(100),
 	fileName: z.string().max(300),
 });
@@ -567,7 +669,6 @@ export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
-	researchMode: z.boolean().optional(),
 	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
@@ -601,28 +702,6 @@ export interface InstanceAiSendMessageResponse {
 	runId: string;
 }
 
-export interface InstanceAiConfirmResponse {
-	approved: boolean;
-	credentialId?: string;
-	credentials?: Record<string, string>;
-	/** Per-node credential assignments: `{ nodeName: { credType: credId } }`.
-	 *  Preferred over `credentials` when present — enables card-scoped selection. */
-	nodeCredentials?: Record<string, Record<string, string>>;
-	autoSetup?: { credentialType: string };
-	userInput?: string;
-	domainAccessAction?: DomainAccessAction;
-	resourceDecision?: string;
-	action?: 'apply' | 'test-trigger';
-	nodeParameters?: Record<string, Record<string, unknown>>;
-	testTriggerNode?: string;
-	answers?: Array<{
-		questionId: string;
-		selectedOptions: string[];
-		customText?: string;
-		skipped?: boolean;
-	}>;
-}
-
 // ---------------------------------------------------------------------------
 // Frontend store types (shared so both sides agree on structure)
 // ---------------------------------------------------------------------------
@@ -634,8 +713,9 @@ export interface InstanceAiConfirmation {
 	message: string;
 	credentialRequests?: InstanceAiCredentialRequest[];
 	projectId?: string;
-	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision';
+	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision' | 'continue';
 	domainAccess?: DomainAccessMeta;
+	webSearch?: WebSearchMeta;
 	credentialFlow?: InstanceAiCredentialFlow;
 	setupRequests?: InstanceAiWorkflowSetupNode[];
 	workflowId?: string;
@@ -665,6 +745,7 @@ export interface InstanceAiToolCallState {
 		| 'data-table'
 		| 'researcher'
 		| 'planner'
+		| 'eval-setup'
 		| 'default';
 	confirmation?: InstanceAiConfirmation;
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
@@ -683,7 +764,8 @@ export interface InstanceAiAgentNode {
 	tools?: string[];
 	/** Background task ID — present only for background agents (workflow-builder, data-table-manager). */
 	taskId?: string;
-	/** Agent kind for card dispatch (builder, data-table, researcher, delegate, browser-setup). */
+	/** Agent kind for card dispatch (builder, data-table, researcher, delegate,
+	 * browser-setup, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
@@ -735,6 +817,7 @@ export interface InstanceAiThreadSummary {
 	id: string;
 	title: string;
 	createdAt: string;
+	updatedAt: string;
 	metadata?: Record<string, unknown>;
 }
 
@@ -745,7 +828,7 @@ export type InstanceAiSSEConnectionState =
 	| 'reconnecting';
 
 // ---------------------------------------------------------------------------
-// Thread Inspector types (debug panel — raw Mastra storage inspection)
+// Thread Inspector types (debug panel — raw agent memory inspection)
 // ---------------------------------------------------------------------------
 
 export interface InstanceAiThreadInfo {
@@ -843,6 +926,7 @@ const instanceAiPermissionsSchema = z.object({
 	cleanupTestExecutions: instanceAiPermissionModeSchema,
 	readFilesystem: instanceAiPermissionModeSchema,
 	fetchUrl: instanceAiPermissionModeSchema,
+	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
 });
 
@@ -866,15 +950,27 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	cleanupTestExecutions: 'require_approval',
 	readFilesystem: 'require_approval',
 	fetchUrl: 'require_approval',
+	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
 };
 
-/** Permission keys that remain active when branchReadOnly is enabled.
- *  When changing this set, also update the read-only section in
- *  `packages/@n8n/instance-ai/src/agent/system-prompt.ts` (`getReadOnlySection`). */
+/**
+ * Permission keys that remain active when branchReadOnly is enabled.
+ *
+ * This set mirrors n8n's own backend permission model for protected branches:
+ * publish/unpublish, credential delete/update, and workflow update have no
+ * hard backend lockout — only project-scope gates. branchReadOnly is a
+ * UX-level nudge toward the source-control sync workflow, not a global write
+ * block (only data-table mutations have a hard middleware lockout). Trimming
+ * this set would make the AI stricter than human users on the same instance.
+ *
+ * When changing this set, also update the read-only section in
+ * `packages/@n8n/instance-ai/src/agent/system-prompt.ts` (`getReadOnlySection`).
+ */
 const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions> = new Set([
 	'readFilesystem',
 	'fetchUrl',
+	'webSearch',
 	'publishWorkflow',
 	'deleteCredential',
 	'restoreWorkflowVersion',
@@ -915,7 +1011,6 @@ export interface InstanceAiAdminSettingsResponse {
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
 	localGatewayDisabled: boolean;
-	optinModalDismissed: boolean;
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
@@ -935,7 +1030,6 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
-	optinModalDismissed: z.boolean().optional(),
 }) {}
 
 // ---------------------------------------------------------------------------
@@ -963,21 +1057,14 @@ export interface InstanceAiModelCredential {
 	provider: string;
 }
 
-const BUILDER_RENDER_HINT_TOOLS = new Set(['build-workflow-with-agent', 'workflow-build-flow']);
-const DATA_TABLE_RENDER_HINT_TOOLS = new Set([
-	'manage-data-tables-with-agent',
-	'agent-data-table-manager',
-]);
-const RESEARCH_RENDER_HINT_TOOLS = new Set(['research-with-agent']);
-const PLANNER_RENDER_HINT_TOOLS = new Set(['plan']);
-
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
-	if (BUILDER_RENDER_HINT_TOOLS.has(toolName)) return 'builder';
-	if (DATA_TABLE_RENDER_HINT_TOOLS.has(toolName)) return 'data-table';
-	if (RESEARCH_RENDER_HINT_TOOLS.has(toolName)) return 'researcher';
-	if (PLANNER_RENDER_HINT_TOOLS.has(toolName)) return 'planner';
+	if (toolName === 'build-workflow-with-agent') return 'builder';
+	if (toolName === 'manage-data-tables-with-agent') return 'data-table';
+	if (toolName === 'research-with-agent') return 'researcher';
+	if (toolName === 'plan') return 'planner';
+	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
 	return 'default';
 }
 
@@ -1018,16 +1105,46 @@ export interface InstanceAiEvalMockHints {
 	bypassPinData: Record<string, Array<{ json: Record<string, unknown> }>>;
 }
 
+export interface InstanceAiEvalMockedCredential {
+	nodeName: string;
+	credentialType: string;
+	credentialId?: string;
+}
+
+/**
+ * Records a credential field that was rewritten (e.g. routed to the eval wire
+ * server) during evaluation. Populated when the caller opts into the unpin
+ * path via `InstanceAiEvalExecutionRequest.unpinNodes`. Field added in the
+ * foundation PR; the rewrite path itself is wired up in a later PR and stays
+ * empty until then.
+ */
+export interface InstanceAiEvalRewrittenCredential {
+	nodeName: string;
+	credentialType: string;
+	credentialId?: string;
+	field: string;
+}
+
 export interface InstanceAiEvalExecutionResult {
 	executionId: string;
 	success: boolean;
 	nodeResults: Record<string, InstanceAiEvalNodeResult>;
 	errors: string[];
 	hints: InstanceAiEvalMockHints;
+	mockedCredentials: InstanceAiEvalMockedCredential[];
+	rewrittenCredentials?: InstanceAiEvalRewrittenCredential[];
 }
 
 export class InstanceAiEvalExecutionRequest extends Z.class({
 	scenarioHints: z.string().max(2000).optional(),
+	/**
+	 * AI root node names (Agent, Chain, etc.) whose sub-nodes should run their
+	 * real vendor SDK code instead of being pinned. The eval pipeline rewrites
+	 * matching credentials so vendor traffic lands on the eval wire server.
+	 * Refused if any sub-node uses a protocol-binary client (e.g. Postgres
+	 * memory) — those cannot be intercepted via HTTP.
+	 */
+	unpinNodes: z.array(z.string().min(1).max(200)).max(50).optional(),
 }) {}
 
 // ---------------------------------------------------------------------------

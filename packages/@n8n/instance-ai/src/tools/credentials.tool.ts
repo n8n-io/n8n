@@ -1,15 +1,18 @@
 /**
  * Consolidated credentials tool — list, get, delete, search-types, setup, test.
  */
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { CREDENTIALS_TOOL_ID } from './tool-ids';
 
 // ── Constants ──────────────────────────────────────────────────────────────
+
+export { CREDENTIALS_TOOL_ID };
 
 const DEFAULT_LIMIT = 50;
 
@@ -123,18 +126,100 @@ const testAction = z.object({
 	credentialId: credentialIdField,
 });
 
-const inputSchema = sanitizeInputSchema(
-	z.discriminatedUnion('action', [
-		listAction,
-		getAction,
-		deleteAction,
-		searchTypesAction,
-		setupAction,
-		testAction,
-	]),
-);
+const CREDENTIAL_ACTION_SCHEMAS = {
+	list: listAction,
+	get: getAction,
+	delete: deleteAction,
+	'search-types': searchTypesAction,
+	setup: setupAction,
+	test: testAction,
+} as const;
 
-type Input = z.infer<typeof inputSchema>;
+export type CredentialAction = keyof typeof CREDENTIAL_ACTION_SCHEMAS;
+type CredentialActionSchema = z.ZodDiscriminatedUnionOption<'action'>;
+
+export interface CredentialsToolOptions {
+	allowedActions?: readonly CredentialAction[];
+	descriptionPrefix?: string;
+	descriptionSuffix?: string;
+}
+
+const CREDENTIAL_ACTION_ORDER = [
+	'list',
+	'get',
+	'delete',
+	'search-types',
+	'setup',
+	'test',
+] as const satisfies readonly CredentialAction[];
+
+const CREDENTIAL_ACTION_LABELS = {
+	list: 'list',
+	get: 'get',
+	delete: 'delete',
+	'search-types': 'search available types',
+	setup: 'set up new credentials',
+	test: 'test connections',
+} satisfies Record<CredentialAction, string>;
+
+function getCredentialActions(options: CredentialsToolOptions): CredentialAction[] {
+	if (!options.allowedActions) return [...CREDENTIAL_ACTION_ORDER];
+
+	const allowedActions = new Set(options.allowedActions);
+	return CREDENTIAL_ACTION_ORDER.filter((action) => allowedActions.has(action));
+}
+
+function createCredentialInputSchema(actions: readonly CredentialAction[]) {
+	const actionSchemas: CredentialActionSchema[] = actions.map(
+		(action) => CREDENTIAL_ACTION_SCHEMAS[action],
+	);
+
+	if (actionSchemas.length === 0) {
+		throw new Error('Credentials tool requires at least one allowed action');
+	}
+
+	if (actionSchemas.length === 1) {
+		return sanitizeInputSchema(actionSchemas[0]);
+	}
+
+	return sanitizeInputSchema(
+		z.discriminatedUnion(
+			'action',
+			actionSchemas as [
+				CredentialActionSchema,
+				CredentialActionSchema,
+				...CredentialActionSchema[],
+			],
+		),
+	);
+}
+
+type Input =
+	| z.infer<typeof listAction>
+	| z.infer<typeof getAction>
+	| z.infer<typeof deleteAction>
+	| z.infer<typeof searchTypesAction>
+	| z.infer<typeof setupAction>
+	| z.infer<typeof testAction>;
+
+function buildInputSchema(options: CredentialsToolOptions) {
+	return createCredentialInputSchema(getCredentialActions(options));
+}
+
+function formatActionList(actions: readonly CredentialAction[]): string {
+	const labels = actions.map((action) => CREDENTIAL_ACTION_LABELS[action]);
+	if (labels.length <= 2) return labels.join(' and ');
+
+	const lastLabel = labels[labels.length - 1];
+	return `${labels.slice(0, -1).join(', ')}, and ${lastLabel}`;
+}
+
+function getToolDescription(options: CredentialsToolOptions): string {
+	const actionList = formatActionList(getCredentialActions(options));
+	const description = `${options.descriptionPrefix ?? 'Manage credentials'} — ${actionList}.`;
+
+	return options.descriptionSuffix ? `${description} ${options.descriptionSuffix}` : description;
+}
 
 // ── Suspend / resume schemas (superset covering delete + setup) ────────────
 
@@ -161,6 +246,11 @@ const resumeSchema = z.object({
 	credentials: z.record(z.string()).optional(),
 	autoSetup: z.object({ credentialType: z.string() }).optional(),
 });
+
+interface CredentialToolContext {
+	resumeData: z.infer<typeof resumeSchema> | undefined;
+	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>;
+}
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -200,10 +290,9 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 async function handleDelete(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'delete' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: CredentialToolContext,
 ) {
-	const resumeData = ctx?.agent?.resumeData as z.infer<typeof resumeSchema> | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const resumeData = ctx.resumeData;
 
 	if (context.permissions?.deleteCredential === 'blocked') {
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
@@ -213,13 +302,11 @@ async function handleDelete(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Delete credential "${input.credentialName ?? input.credentialId}"? This cannot be undone.`,
+			message: `Delete ${input.credentialName ?? input.credentialId}`,
 			severity: 'destructive' as const,
 		});
-		// suspend() never resolves — this line is unreachable but satisfies the type checker
-		return { success: false };
 	}
 
 	// State 2: Denied
@@ -251,18 +338,28 @@ async function handleSearchTypes(
 async function handleSetup(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'setup' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: CredentialToolContext,
 ) {
-	const resumeData = ctx?.agent?.resumeData as z.infer<typeof resumeSchema> | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const resumeData = ctx.resumeData;
 	const isFinalize = input.credentialFlow?.stage === 'finalize';
+
+	if (!input.credentials || input.credentials.length === 0) {
+		return {
+			error: 'missing_credentials',
+			message:
+				'The `credentials` array is required for the setup action. Pass an array of { credentialType, reason?, suggestedName? } entries describing each credential to set up.',
+		};
+	}
 
 	// State 1: First call — look up existing credentials per type and suspend
 	if (resumeData === undefined || resumeData === null) {
 		const credentialRequests = await Promise.all(
 			input.credentials.map(
 				async (req: { credentialType: string; reason?: string; suggestedName?: string }) => {
-					const existing = await context.credentialService.list({ type: req.credentialType });
+					const existing = await context.credentialService.list({
+						type: req.credentialType,
+						...(input.projectId ? { projectId: input.projectId } : {}),
+					});
 					return {
 						credentialType: req.credentialType,
 						reason: req.reason ?? `Required for ${req.credentialType}`,
@@ -276,7 +373,7 @@ async function handleSetup(
 		const typeNames = input.credentials
 			.map((c: { credentialType: string }) => c.credentialType)
 			.join(', ');
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
 			message: isFinalize
 				? `Your workflow is verified. Add credentials to make it production-ready: ${typeNames}`
@@ -288,8 +385,6 @@ async function handleSetup(
 			...(input.projectId ? { projectId: input.projectId } : {}),
 			...(input.credentialFlow ? { credentialFlow: input.credentialFlow } : {}),
 		});
-		// suspend() never resolves
-		return { success: false };
 	}
 
 	// State 2: Not approved — user clicked "Later" / skipped.
@@ -338,29 +433,33 @@ async function handleTest(context: InstanceAiContext, input: Extract<Input, { ac
 
 // ── Tool factory ───────────────────────────────────────────────────────────
 
-export function createCredentialsTool(context: InstanceAiContext) {
-	return createTool({
-		id: 'credentials',
-		description:
-			'Manage credentials — list, get, delete, search available types, set up new credentials, and test connections.',
-		inputSchema,
-		suspendSchema,
-		resumeSchema,
-		execute: async (input: Input, ctx) => {
-			switch (input.action) {
+export function createCredentialsTool(
+	context: InstanceAiContext,
+	options: CredentialsToolOptions = {},
+) {
+	const inputSchema = buildInputSchema(options);
+
+	return new Tool(CREDENTIALS_TOOL_ID)
+		.description(getToolDescription(options))
+		.input(inputSchema)
+		.suspend(suspendSchema)
+		.resume(resumeSchema)
+		.handler(async (input, ctx) => {
+			const parsedInput = inputSchema.parse(input) as Input;
+			switch (parsedInput.action) {
 				case 'list':
-					return await handleList(context, input);
+					return await handleList(context, parsedInput);
 				case 'get':
-					return await handleGet(context, input);
+					return await handleGet(context, parsedInput);
 				case 'delete':
-					return await handleDelete(context, input, ctx);
+					return await handleDelete(context, parsedInput, ctx);
 				case 'search-types':
-					return await handleSearchTypes(context, input);
+					return await handleSearchTypes(context, parsedInput);
 				case 'setup':
-					return await handleSetup(context, input, ctx);
+					return await handleSetup(context, parsedInput, ctx);
 				case 'test':
-					return await handleTest(context, input);
+					return await handleTest(context, parsedInput);
 			}
-		},
-	});
+		})
+		.build();
 }

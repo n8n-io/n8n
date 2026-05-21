@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { XYPosition } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { v4 as uuid } from 'uuid';
 import { computed, ref, watch } from 'vue';
 
@@ -27,7 +27,7 @@ const hovering = ref(false);
 const targetRef = ref<HTMLElement>();
 const id = ref(uuid());
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const isDragging = computed(() => ndvStore.isDraggableDragging);
 const draggableType = computed(() => ndvStore.draggableType);
 const draggableDimensions = computed(() => ndvStore.draggable.dimensions);

@@ -2,15 +2,37 @@ import CanvasHandleRenderer from './CanvasHandleRenderer.vue';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import { CanvasNodeHandleKey } from '@/app/constants';
-import { ref } from 'vue';
-import { CanvasConnectionMode, type CanvasElementPortWithRenderData } from '../../../canvas.types';
+import { ref, type ComputedRef } from 'vue';
+import {
+	CanvasConnectionMode,
+	type CanvasConnectionPort,
+	type CanvasElementPortWithRenderData,
+} from '../../../canvas.types';
 import { Position } from '@vue-flow/core';
-import { createCanvasProvide } from '@/features/workflows/canvas/__tests__/utils';
+import {
+	createCanvasNodeProvide,
+	createCanvasProvide,
+} from '@/features/workflows/canvas/__tests__/utils';
+
+const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
+	injectCanvasRenderData: vi.fn(() => ({
+		value: {
+			nodeInputsByNodeId: renderNodeInputsMap,
+			nodeOutputsByNodeId: renderNodeOutputsMap,
+			executionIssuesByNodeName: new Map(),
+		},
+	})),
+}));
 
 const renderComponent = createComponentRenderer(CanvasHandleRenderer, {
 	global: {
 		provide: {
 			...createCanvasProvide(),
+			...createCanvasNodeProvide(),
 		},
 	},
 });

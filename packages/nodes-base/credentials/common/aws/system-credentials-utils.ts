@@ -3,7 +3,12 @@ import { Container } from '@n8n/di';
 import { ApplicationError } from 'n8n-workflow';
 import { readFile } from 'fs/promises';
 
-type Resolvers = 'environment' | 'podIdentity' | 'containerMetadata' | 'instanceMetadata';
+type Resolvers =
+	| 'environment'
+	| 'roleForServiceAccount'
+	| 'podIdentity'
+	| 'containerMetadata'
+	| 'instanceMetadata';
 type ReturnData = {
 	accessKeyId: string;
 	secretAccessKey: string;
@@ -17,15 +22,17 @@ export const credentialsResolver: Record<Resolvers, () => Promise<ReturnData | n
 	instanceMetadata: getInstanceMetadataCredentials,
 	containerMetadata: getContainerMetadataCredentials,
 	podIdentity: getPodIdentityCredentials,
+	roleForServiceAccount: getRoleForServiceAccountCredentials,
 };
 
 /**
  * Retrieves AWS credentials from various system sources following the AWS credential chain.
  * Attempts to get credentials in the following order:
  * 1. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN)
- * 2. EKS Pod Identity (AWS_CONTAINER_CREDENTIALS_FULL_URI)
- * 3. ECS/Fargate container metadata (AWS_CONTAINER_CREDENTIALS_RELATIVE_URI)
- * 4. EC2 instance metadata service
+ * 2. IAM Role for Service Account (AWS_ROLE_ARN + AWS_WEB_IDENTITY_TOKEN_FILE)
+ * 3. EKS Pod Identity (AWS_CONTAINER_CREDENTIALS_FULL_URI)
+ * 4. ECS/Fargate container metadata (AWS_CONTAINER_CREDENTIALS_RELATIVE_URI)
+ * 5. EC2 instance metadata service
  */
 export async function getSystemCredentials() {
 	if (!Container.get(SecurityConfig).awsSystemCredentialsAccess) {
@@ -36,6 +43,7 @@ export async function getSystemCredentials() {
 
 	const resolveOrder: Resolvers[] = [
 		'environment',
+		'roleForServiceAccount',
 		'podIdentity',
 		'containerMetadata',
 		'instanceMetadata',
@@ -262,6 +270,77 @@ async function getPodIdentityCredentials() {
 			accessKeyId: credentialsData.AccessKeyId,
 			secretAccessKey: credentialsData.SecretAccessKey,
 			sessionToken: credentialsData.Token,
+		};
+	} catch (error) {
+		return null;
+	}
+}
+
+/**
+ * Retrieves AWS credentials by assuming a role via OIDC web identity (IRSA).
+ * Used when running in EKS with IAM Roles for Service Accounts configured.
+ * Reads the OIDC token from the file at AWS_WEB_IDENTITY_TOKEN_FILE and calls
+ * STS AssumeRoleWithWebIdentity to exchange it for temporary credentials.
+ *
+ * @returns Promise resolving to credentials object or null if IRSA is not configured
+ *
+ * @see {@link https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html IRSA}
+ * @see {@link https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRoleWithWebIdentity.html STS API}
+ * @see {@link https://github.com/aws/aws-sdk-js-v3/blob/main/packages-internal/credential-provider-web-identity/src/fromWebToken.ts AWS SDK v3 implementation}
+ */
+async function getRoleForServiceAccountCredentials() {
+	const iamRole = envGetter('AWS_ROLE_ARN');
+	const webIdentityTokenFile = envGetter('AWS_WEB_IDENTITY_TOKEN_FILE');
+
+	try {
+		if (!iamRole || !webIdentityTokenFile) {
+			return null;
+		}
+
+		const token = (await readFile(webIdentityTokenFile, 'utf8')).trim();
+		if (!token) {
+			return null;
+		}
+
+		const headers: Record<string, string> = {
+			'User-Agent': 'n8n-aws-credential',
+			'Content-Type': 'application/x-www-form-urlencoded',
+			Accept: 'application/json',
+		};
+
+		const body = new URLSearchParams({
+			Action: 'AssumeRoleWithWebIdentity',
+			RoleArn: iamRole,
+			RoleSessionName: 'n8n-web-identity-session',
+			WebIdentityToken: token,
+			Version: '2011-06-15',
+		});
+
+		// Global STS endpoint; China/GovCloud regions unsupported until region is passed through getSystemCredentials
+		// STS supports Accept: application/json (undocumented) to return JSON instead of XML.
+		const credentialsResponse = await fetch('https://sts.amazonaws.com', {
+			method: 'POST',
+			headers,
+			body: body.toString(),
+			signal: AbortSignal.timeout(2000),
+		});
+
+		if (!credentialsResponse.ok) {
+			return null;
+		}
+
+		const data = await credentialsResponse.json();
+		const credentialsData =
+			data?.AssumeRoleWithWebIdentityResponse?.AssumeRoleWithWebIdentityResult?.Credentials;
+
+		if (!credentialsData || !credentialsData.AccessKeyId || !credentialsData.SecretAccessKey) {
+			return null;
+		}
+
+		return {
+			accessKeyId: credentialsData.AccessKeyId,
+			secretAccessKey: credentialsData.SecretAccessKey,
+			sessionToken: credentialsData.SessionToken,
 		};
 	} catch (error) {
 		return null;

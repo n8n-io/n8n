@@ -169,6 +169,7 @@ export class ProxyServer {
 			strictBodyMatching?: boolean;
 			partialBodyMatching?: boolean;
 			sequential?: boolean;
+			repeatLastResponse?: boolean;
 		} = {},
 	): Promise<void> {
 		try {
@@ -222,7 +223,7 @@ export class ProxyServer {
 			// In sequential mode, make the last LLM expectation unlimited so it
 			// acts as a fallback — returning the same final response for any extra
 			// calls caused by tool execution divergence during replay.
-			if (options.sequential && expectations.length > 0) {
+			if (options.sequential && options.repeatLastResponse !== false && expectations.length > 0) {
 				for (let i = expectations.length - 1; i >= 0; i--) {
 					const path = (expectations[i].httpRequest as { path?: string })?.path;
 					if (path === '/v1/messages') {
@@ -341,7 +342,7 @@ export class ProxyServer {
 			await fs.mkdir(targetDir, { recursive: true });
 			const seenRequests = new Set<string>();
 
-			for (const expectation of recordedExpectations) {
+			for (const [index, expectation] of recordedExpectations.entries()) {
 				if (
 					!expectation.httpRequest ||
 					!(
@@ -413,7 +414,8 @@ export class ProxyServer {
 					.digest('hex')
 					.substring(0, 8);
 
-				const filename = `${Date.now()}-${hostName}-${method}-${expectation.httpRequest.path.replace(/[^a-zA-Z0-9]/g, '_')}-${hash}.json`;
+				const sequence = String(index).padStart(4, '0');
+				const filename = `${sequence}-${Date.now()}-${hostName}-${method}-${expectation.httpRequest.path.replace(/[^a-zA-Z0-9]/g, '_')}-${hash}.json`;
 				processedExpectation.id = filename;
 				const filePath = join(targetDir, filename);
 

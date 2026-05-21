@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import ButtonParameter, { type Props } from './ButtonParameter.vue';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore, injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -17,12 +17,16 @@ vi.mock('@n8n/stores/useRootStore');
 vi.mock('@/features/ai/assistant/assistant.api');
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
+	const { shallowRef } = await import('vue');
+	const mockStore = {
+		getParentNodesByDepth: vi.fn().mockReturnValue([]),
+		getNodeByName: vi.fn().mockReturnValue(null),
+	};
 	return {
 		...actual,
-		useWorkflowDocumentStore: vi.fn(() => ({
-			getParentNodesByDepth: vi.fn().mockReturnValue([]),
-		})),
+		useWorkflowDocumentStore: vi.fn(() => mockStore),
 		createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+		injectWorkflowDocumentStore: vi.fn(() => shallowRef(mockStore)),
 	};
 });
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -65,6 +69,14 @@ describe('ButtonParameter', () => {
 			ndvInputData: [{}],
 			activeNode: { name: 'TestNode', parameters: {} },
 			isDraggableDragging: false,
+		} as any);
+
+		vi.mocked(injectNDVStore).mockReturnValue({
+			ndvInputData: [{}],
+			ndvInputDataWithPinnedData: [{}],
+			activeNode: { name: 'TestNode', parameters: {} },
+			isDraggableDragging: false,
+			pushRef: 'testPushRef',
 		} as any);
 
 		vi.mocked(useWorkflowsStore).mockReturnValue({

@@ -6,8 +6,7 @@ import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import ExpressionFunctionIcon from './ExpressionFunctionIcon.vue';
 import InlineExpressionEditorInput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
 import InlineExpressionEditorOutput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -23,6 +22,7 @@ import { isEventTargetContainedBy } from '@/app/utils/htmlUtils';
 
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const i18n = useI18n();
 const isFocused = ref(false);
 const segments = ref<Segment[]>([]);
@@ -58,8 +58,8 @@ const emit = defineEmits<{
 }>();
 
 const telemetry = useTelemetry();
-const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
+const ndvStore = injectNDVStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const canvas = inject(CanvasKey, undefined);
 const isInExperimentalNdv = useIsInExperimentalNdv();
@@ -108,7 +108,7 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 		const telemetryPayload = createExpressionTelemetryPayload(
 			segments.value,
 			props.modelValue,
-			workflowsStore.workflowId,
+			workflowDocumentStore.value.workflowId,
 			ndvStore.pushRef,
 			ndvStore.activeNode?.type ?? '',
 		);

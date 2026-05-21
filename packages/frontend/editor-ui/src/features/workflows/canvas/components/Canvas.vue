@@ -46,6 +46,8 @@ import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes, type IConnections } from 'n8n-workflow';
+import type { CanvasRenderData } from '../canvas.utils';
+import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
 	computed,
 	nextTick,
@@ -131,6 +133,7 @@ const emit = defineEmits<{
 	'open:sub-workflow': [nodeId: string];
 	'start-chat': [];
 	'extract-workflow': [ids: string[]];
+	'save:workflow': [];
 }>();
 
 const props = withDefaults(
@@ -140,6 +143,7 @@ const props = withDefaults(
 		connections: CanvasConnection[];
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
+		renderData: CanvasRenderData;
 		readOnly?: boolean;
 		canExecute?: boolean;
 		executing?: boolean;
@@ -168,6 +172,9 @@ const props = withDefaults(
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const usersStore = useUsersStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+
+const renderData = toRef(props, 'renderData');
+provide(CanvasRenderDataKey, renderData);
 const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
@@ -212,7 +219,7 @@ const {
 	getDownstreamNodes,
 	getUpstreamNodes,
 } = useCanvasTraversal(vueFlow);
-const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive);
+const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive, toRef(props, 'renderData'));
 
 const isPaneReady = ref(false);
 
@@ -387,7 +394,8 @@ const keyMap = computed(() => {
 		ctrl_alt_n: () => emit('create:workflow'),
 		ctrl_enter: () => emit('run:workflow'),
 		// override the default cmd+s which saves the page html as file
-		ctrl_s: () => {},
+		// also triggers manual save when autosave is disabled
+		ctrl_s: () => emit('save:workflow'),
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
 		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		c: () => emit('start-chat'),
@@ -1228,6 +1236,8 @@ defineExpose({
 	height: 100%;
 	opacity: 0;
 	transition: opacity 300ms ease;
+	-webkit-user-select: none;
+	user-select: none;
 
 	&.ready {
 		opacity: 1;

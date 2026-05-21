@@ -23,6 +23,7 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	createRunExecutionData,
 	NodeHelpers,
+	UserError,
 	Workflow,
 } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -37,12 +38,14 @@ import { normalizePinData } from '@n8n/workflow-sdk';
 import { generatePinData } from './pin-data-generator';
 
 import {
+	assertUnpinCompatibility,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	type MockHints,
 } from './workflow-analysis';
 import { createLlmMockHandler } from './mock-handler';
+import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -90,7 +93,38 @@ export class EvalExecutionService {
 			return this.errorResult(executionId, `Workflow ${workflowId} not found or not accessible`);
 		}
 
-		const hints = await this.analyzeWorkflow(workflowEntity, options.scenarioHints);
+		const unpinNodes = options.unpinNodes ?? [];
+
+		// Run the compatibility guard FIRST — protocol-binary or unmapped-vendor
+		// errors are actionable ("replace this Postgres memory") and the user
+		// needs them whether or not the feature is enabled. The gate below
+		// only kicks in when the workflow IS otherwise compatible, so the guard
+		// never gets shadowed by a more generic refusal.
+		try {
+			assertUnpinCompatibility(workflowEntity, unpinNodes);
+		} catch (error) {
+			if (error instanceof UserError) {
+				return this.errorResult(executionId, error.message);
+			}
+			throw error;
+		}
+
+		// Safety gate: this PR ships only the API surface for `unpinNodes`. The
+		// credential rewrite + eval wire server that route vendor SDK traffic
+		// through localhost land in TRUST-113. Without them, unpinning would let
+		// AI sub-nodes execute their real SDK code against real credentials,
+		// leaking traffic to the actual provider. Refuse the request until the
+		// rewrite path is wired up — TRUST-113 removes this gate.
+		if (unpinNodes.length > 0) {
+			return this.errorResult(
+				executionId,
+				'`unpinNodes` is reserved — vendor SDK interception is not yet enabled in this build. ' +
+					'Submit the request without `unpinNodes` to use the existing pinned path.',
+			);
+		}
+
+		const unpinSet = unpinNodes.length > 0 ? new Set(unpinNodes) : undefined;
+		const hints = await this.analyzeWorkflow(workflowEntity, options.scenarioHints, unpinSet);
 
 		return await this.execute(workflowEntity, user, executionId, hints, options.scenarioHints);
 	}
@@ -100,6 +134,7 @@ export class EvalExecutionService {
 	private async analyzeWorkflow(
 		workflowEntity: IWorkflowBase,
 		scenarioHints?: string,
+		unpinSet?: Set<string>,
 	): Promise<MockHints> {
 		// Phase 1: Generate mock hints for HTTP-interceptible nodes
 		const hintNodes = identifyNodesForHints(workflowEntity);
@@ -126,7 +161,7 @@ export class EvalExecutionService {
 		);
 
 		// Phase 1.5: Generate pin data for nodes that bypass the HTTP mock layer
-		const bypassNodes = identifyNodesForPinData(workflowEntity);
+		const bypassNodes = identifyNodesForPinData(workflowEntity, unpinSet);
 		const bypassNodeNames = bypassNodes.map((n) => n.name);
 
 		if (bypassNodeNames.length > 0) {
@@ -211,6 +246,8 @@ export class EvalExecutionService {
 			workflowId: workflowEntity.id,
 			workflowSettings: workflowEntity.settings ?? {},
 		});
+		const credentialsHelper = new EvalMockedCredentialsHelper(additionalData.credentialsHelper);
+		additionalData.credentialsHelper = credentialsHelper;
 		additionalData.evalLlmMockHandler = this.createInterceptingHandler(mockHandler, nodeResults);
 		additionalData.hooks = new ExecutionLifecycleHooks('evaluation', executionId, workflowEntity);
 
@@ -247,7 +284,7 @@ export class EvalExecutionService {
 
 		try {
 			const result = await this.runWorkflow(workflow, additionalData, executionData);
-			return this.buildResult(executionId, result, nodeResults, hints);
+			return this.buildResult(executionId, result, nodeResults, hints, credentialsHelper);
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : String(error);
 			this.logger.error(`[EvalMock] Workflow execution failed: ${message}`);
@@ -257,6 +294,7 @@ export class EvalExecutionService {
 				nodeResults,
 				errors: [`Execution failed: ${message}`],
 				hints,
+				mockedCredentials: credentialsHelper.mockedCredentials,
 			};
 		}
 	}
@@ -420,6 +458,7 @@ export class EvalExecutionService {
 		result: IRun,
 		nodeResults: Record<string, InstanceAiEvalNodeResult>,
 		hints: MockHints,
+		credentialsHelper: EvalMockedCredentialsHelper,
 	): InstanceAiEvalExecutionResult {
 		const errors: string[] = [];
 
@@ -461,6 +500,7 @@ export class EvalExecutionService {
 			nodeResults,
 			errors,
 			hints,
+			mockedCredentials: credentialsHelper.mockedCredentials,
 		};
 	}
 
@@ -477,6 +517,8 @@ export class EvalExecutionService {
 				warnings: [],
 				bypassPinData: {},
 			},
+			mockedCredentials: [],
+			rewrittenCredentials: [],
 		};
 	}
 }
