@@ -11,6 +11,7 @@ import { AgentExecutionThreadRepository } from './repositories/agent-execution-t
 export interface RecordMessageParams {
 	threadId: string;
 	agentId: string;
+	agentVersionId: string;
 	agentName: string;
 	projectId: string;
 	userMessage: string;
@@ -44,7 +45,8 @@ export class AgentExecutionService {
 	 * Creates or updates the thread, then inserts one row into agent_execution.
 	 */
 	async recordMessage(params: RecordMessageParams): Promise<string> {
-		const { threadId, agentId, agentName, projectId, record, source, hitlStatus } = params;
+		const { threadId, agentId, agentVersionId, agentName, projectId, record, source, hitlStatus } =
+			params;
 
 		// Ensure the thread exists and bump its updatedAt
 		const { thread, created } = await this.agentExecutionThreadRepository.findOrCreate(
@@ -74,6 +76,7 @@ export class AgentExecutionService {
 		const inserted = await this.agentExecutionRepository.save(
 			this.agentExecutionRepository.create({
 				threadId,
+				agentVersionId,
 				status,
 				startedAt,
 				stoppedAt,

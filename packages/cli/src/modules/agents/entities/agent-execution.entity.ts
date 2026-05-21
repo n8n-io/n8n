@@ -28,6 +28,9 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 36 })
 	threadId: string;
 
+	@Column({ type: 'varchar', length: 255 })
+	agentVersionId: string;
+
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentExecutionStatus;
 
