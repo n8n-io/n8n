@@ -41,7 +41,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
-import { AgentKnowledgeService } from './agent-knowledge.service';
 import { messagesToDto } from './agent-message-mapper';
 import {
 	type FlushableResponse,
@@ -105,7 +104,6 @@ export class AgentsController {
 		private readonly agentScheduleService: AgentScheduleService,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentExecutionService: AgentExecutionService,
-		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 	) {}
 
@@ -321,21 +319,6 @@ export class AgentsController {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
 		return { success: true };
-	}
-
-	@Get('/:agentId/knowledge')
-	@ProjectScope('agent:read')
-	async getKnowledge(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
-		const { projectId, agentId } = req.params;
-		const knowledge = await this.agentKnowledgeService.listAgentKnowledge({
-			projectId,
-			agentId,
-			userId: req.user.id,
-		});
-		if (!knowledge) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
-		return knowledge;
 	}
 
 	@Get('/:agentId')
