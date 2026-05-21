@@ -72,7 +72,7 @@ describe('N8nPromptInput', () => {
 				},
 			});
 			// Component always uses multiline textarea class
-			expect(container.querySelector('.multilineTextarea')).toBeTruthy();
+			expect(container.querySelector('.textarea')).toBeTruthy();
 		});
 
 		it('should adjust textarea height when text contains newlines', async () => {
@@ -167,9 +167,9 @@ describe('N8nPromptInput', () => {
 				},
 			});
 
-			// Warning should appear - look for actual element with class
-			const callout = container.querySelector('.warningCallout');
-			expect(callout).toBeTruthy();
+			// Warning should appear in the leading area
+			const leading = container.querySelector('.leading');
+			expect(leading).toBeTruthy();
 		});
 
 		it('should set maxlength attribute on textarea', () => {
@@ -339,6 +339,61 @@ describe('N8nPromptInput', () => {
 			await fireEvent.blur(textarea);
 
 			expect(render.emitted('blur')).toBeTruthy();
+		});
+
+		it('should focus the textarea when clicking the container', async () => {
+			const user = userEvent.setup();
+			const render = renderComponent({
+				global: {
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: { template: '<div><slot /></div>' },
+						N8nSendStopButton: false,
+						N8nTooltip: {
+							template: '<slot />',
+						},
+					},
+				},
+			});
+
+			const container = render.container.querySelector('.container') as HTMLElement;
+			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
+
+			await user.click(container);
+
+			expect(document.activeElement).toBe(textarea);
+			expect(render.container.querySelector('.focused')).toBeTruthy();
+		});
+
+		it('should not refocus the textarea when clicking a button inside the container', async () => {
+			const user = userEvent.setup();
+			const render = renderComponent({
+				props: {
+					modelValue: 'Hello',
+				},
+				global: {
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: { template: '<div><slot /></div>' },
+						N8nSendStopButton: {
+							template: '<button type="button">Send</button>',
+						},
+						N8nTooltip: {
+							template: '<slot />',
+						},
+					},
+				},
+			});
+
+			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
+			const focusSpy = vi.spyOn(textarea, 'focus');
+			const button = render.container.querySelector('button') as HTMLButtonElement;
+
+			await user.click(button);
+
+			expect(focusSpy).not.toHaveBeenCalled();
+			expect(document.activeElement).not.toBe(textarea);
+			expect(render.container.querySelector('.focused')).toBeFalsy();
 		});
 	});
 
@@ -588,30 +643,11 @@ describe('N8nPromptInput', () => {
 		});
 	});
 
-	describe('minLines prop', () => {
-		it('should start in multiline mode when minLines > 1', () => {
+	describe('minimum height', () => {
+		it('should maintain a one-line minimum height', () => {
 			const { container } = renderComponent({
 				props: {
-					minLines: 3,
-				},
-				global: {
-					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
-				},
-			});
-
-			// Should be in multiline mode from the start
-			expect(container.querySelector('.multilineTextarea')).toBeTruthy();
-			expect(container.querySelector('.singleLineWrapper')).toBeFalsy();
-		});
-
-		it('should maintain minimum height based on minLines', () => {
-			const minLines = 3;
-			const expectedMinHeight = minLines * 18; // 18px per line
-
-			const { container } = renderComponent({
-				props: {
-					minLines,
-					modelValue: '', // Empty value
+					modelValue: '',
 				},
 				global: {
 					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
@@ -619,18 +655,13 @@ describe('N8nPromptInput', () => {
 			});
 
 			const textarea = container.querySelector('textarea');
-			// Check that the textarea has the minimum height
 			const style = textarea?.getAttribute('style');
-			expect(style).toContain(`height: ${expectedMinHeight}px`);
+			expect(style).toContain('height: 24px');
 		});
 
-		it('should not go below minLines height when text is deleted', async () => {
-			const minLines = 2;
-			const expectedMinHeight = minLines * 18;
-
+		it('should return to one-line height when text is deleted', async () => {
 			const render = renderComponent({
 				props: {
-					minLines,
 					modelValue: 'Line 1\nLine 2\nLine 3',
 				},
 				global: {
@@ -638,12 +669,11 @@ describe('N8nPromptInput', () => {
 				},
 			});
 
-			// Clear the text
 			await render.rerender({ modelValue: '' });
 
 			const textarea = render.container.querySelector('textarea');
 			const style = textarea?.getAttribute('style');
-			expect(style).toContain(`height: ${expectedMinHeight}px`);
+			expect(style).toContain('height: 24px');
 		});
 	});
 
@@ -892,7 +922,6 @@ describe('N8nPromptInput', () => {
 				props: {
 					modelValue: 'Line1\nLine2',
 					maxLinesBeforeScroll: 10,
-					minLines: 2,
 				},
 				global: {
 					stubs: {

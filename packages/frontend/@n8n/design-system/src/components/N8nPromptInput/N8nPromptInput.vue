@@ -17,16 +17,19 @@ export interface N8nPromptInputProps {
 	placeholder?: string;
 	maxLength?: number;
 	maxLinesBeforeScroll?: number;
-	minLines?: number;
 	streaming?: boolean;
 	disabled?: boolean;
 	disabledTooltip?: string;
+	/** @deprecated Use disabled/disabledTooltip and leading or trailing slots for credit UI. */
 	creditsQuota?: number;
+	/** @deprecated Use disabled/disabledTooltip and leading or trailing slots for credit UI. */
 	creditsRemaining?: number;
+	/** @deprecated Use disabled/disabledTooltip and leading or trailing slots for credit UI. */
 	showAskOwnerTooltip?: boolean;
 	refocusAfterSend?: boolean;
 	autofocus?: boolean;
 	buttonLabel?: string;
+	layout?: 'multiline' | 'single-line';
 }
 
 const INFINITE_CREDITS = -1;
@@ -36,7 +39,6 @@ const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	placeholder: '',
 	maxLength: 5000,
 	maxLinesBeforeScroll: 10,
-	minLines: 1,
 	streaming: false,
 	disabled: false,
 	disabledTooltip: undefined,
@@ -46,6 +48,7 @@ const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	refocusAfterSend: false,
 	autofocus: false,
 	buttonLabel: undefined,
+	layout: 'multiline',
 });
 
 const emit = defineEmits<{
@@ -60,16 +63,12 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const textareaRef = ref<HTMLTextAreaElement>();
-const containerRef = ref<HTMLDivElement>();
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 const isFocused = ref(false);
 const textValue = ref(props.modelValue || '');
 const singleLineHeight = 24;
-const lineHeight = 18; // Height per line in multiline mode
-const textareaHeight = ref<number>(
-	props.minLines > 1 ? lineHeight * props.minLines : singleLineHeight,
-);
-const isMultiline = ref(props.minLines > 1);
+const textareaHeight = ref<number>(singleLineHeight);
+const isMultiline = ref(false);
 
 const textAreaMaxHeight = computed(() => {
 	return props.maxLinesBeforeScroll * 18;
@@ -91,7 +90,7 @@ const sendDisabled = computed(
 );
 
 const containerStyle = computed(() => {
-	return { minHeight: '80px' };
+	return props.layout === 'single-line' ? undefined : { minHeight: '80px' };
 });
 
 const hasNoCredits = computed(() => {
@@ -103,32 +102,38 @@ const hasNoCredits = computed(() => {
 	);
 });
 
-const textareaStyle = computed(() => ({
-	height: `${textareaHeight.value}px`,
-	overflowY: 'hidden' as const,
-}));
+const textareaStyle = computed(() =>
+	props.layout === 'single-line'
+		? undefined
+		: {
+				height: `${textareaHeight.value}px`,
+				overflowY: 'hidden' as const,
+			},
+);
+
+function clearTextareaHeight() {
+	if (!textareaRef.value) return;
+	textareaRef.value.style.height = '';
+	textareaRef.value.style.overflowY = '';
+}
 
 function adjustHeight() {
+	if (props.layout === 'single-line') {
+		clearTextareaHeight();
+		return;
+	}
+
 	// Store focus state and scroll position before potential mode change
 	const wasFocused = document.activeElement === textareaRef.value;
 	const wasMultiline = isMultiline.value;
-	const minHeight = props.minLines > 1 ? lineHeight * props.minLines : singleLineHeight;
+	const minHeight = singleLineHeight;
 
 	// If text is completely empty (not just whitespace), use minimum height
 	if (!textValue.value || textValue.value === '') {
-		// Respect minLines prop
-		if (props.minLines > 1) {
-			isMultiline.value = true;
-			textareaHeight.value = minHeight;
-			if (textareaRef.value) {
-				textareaRef.value.style.height = `${minHeight}px`;
-			}
-		} else {
-			isMultiline.value = false;
-			textareaHeight.value = singleLineHeight;
-			if (textareaRef.value) {
-				textareaRef.value.style.height = `${singleLineHeight}px`;
-			}
+		isMultiline.value = false;
+		textareaHeight.value = singleLineHeight;
+		if (textareaRef.value) {
+			textareaRef.value.style.height = `${singleLineHeight}px`;
 		}
 		return;
 	}
@@ -157,8 +162,7 @@ function adjustHeight() {
 	textareaRef.value.style.height = currentHeight; // Restore immediately to minimize flash
 
 	// Check if we need multiline mode
-	const shouldBeMultiline =
-		props.minLines > 1 || scrollHeight > singleLineHeight || textValue.value.includes('\n');
+	const shouldBeMultiline = scrollHeight > singleLineHeight || textValue.value.includes('\n');
 
 	// Update height tracking
 	const newHeight = Math.max(scrollHeight, minHeight);
@@ -191,14 +195,31 @@ watch(
 	async (newValue) => {
 		textValue.value = newValue || '';
 		await nextTick();
+		if (props.layout === 'single-line') return;
+
 		// Wait for an additional animation frame to ensure DOM has fully updated
 		await new Promise(requestAnimationFrame);
 		adjustHeight();
 	},
 );
 
+watch(
+	() => props.layout,
+	(layout) => {
+		if (layout === 'single-line') {
+			clearTextareaHeight();
+			return;
+		}
+
+		void nextTick(() => adjustHeight());
+	},
+);
+
 watch(textValue, (newValue, oldValue) => {
 	emit('update:modelValue', newValue);
+	// Single-line layout has fixed height; only multiline needs autosizing.
+	if (props.layout === 'single-line') return;
+
 	// Only adjust height if value actually changed
 	if (newValue !== oldValue) {
 		void nextTick(() => adjustHeight());
@@ -208,7 +229,7 @@ watch(textValue, (newValue, oldValue) => {
 async function refocusTextArea() {
 	await nextTick();
 	await new Promise(requestAnimationFrame);
-	textareaRef.value?.focus();
+	focusInput();
 }
 
 async function handleSubmit() {
@@ -226,6 +247,14 @@ async function handleStop() {
 }
 
 async function handleKeyDown(event: KeyboardEvent) {
+	if (props.layout === 'single-line' && event.key === 'Enter') {
+		event.preventDefault();
+		if (!sendDisabled.value) {
+			await handleSubmit();
+		}
+		return;
+	}
+
 	const hasModifier = event.ctrlKey || event.metaKey;
 	const isPrintableChar = event.key.length === 1 && !hasModifier;
 	const isDeletionKey = event.key === 'Backspace' || event.key === 'Delete';
@@ -272,12 +301,22 @@ function handleBlur(event: FocusEvent) {
 	emit('blur', event);
 }
 
+function handleContainerClick() {
+	if (isFocused.value || props.disabled || hasNoCredits.value) return;
+	focusInput();
+}
+
+function handleFocusableRegionClick(event: MouseEvent) {
+	if (event.target !== event.currentTarget) return;
+	handleContainerClick();
+}
+
 function focusInput() {
 	textareaRef.value?.focus();
 }
 
 onMounted(() => {
-	// Adjust height on mount to respect minLines or initial content
+	// Adjust height on mount to respect initial content
 	void nextTick(() => adjustHeight());
 
 	if (props.autofocus) {
@@ -294,44 +333,46 @@ defineExpose({
 	<N8nTooltip :disabled="!disabled || !disabledTooltip" :content="disabledTooltip" placement="top">
 		<div v-bind="$attrs" :class="$style.wrapper">
 			<div
-				ref="containerRef"
+				v-if="(showWarningBanner || $slots.leading) && layout !== 'single-line'"
+				:class="$style.leading"
+			>
+				<slot name="leading" />
+			</div>
+			<div
 				:class="[
 					$style.container,
 					{
 						[$style.focused]: isFocused,
 						[$style.disabled]: disabled || hasNoCredits,
+						[$style.singleLineContainer]: layout === 'single-line',
 					},
 				]"
 				:style="containerStyle"
+				@click.self="handleContainerClick"
 			>
 				<!-- Warning banner when character limit is reached -->
-				<N8nCallout
-					v-if="showWarningBanner"
-					slim
-					icon="info"
-					theme="warning"
-					:class="$style.warningCallout"
-				>
+				<N8nCallout v-if="showWarningBanner" slim icon="info" theme="warning">
 					{{ t('assistantChat.characterLimit', { limit: maxLength.toString() }) }}
 				</N8nCallout>
 
 				<!-- Use ScrollArea when content exceeds max height -->
 				<N8nScrollArea
 					ref="scrollAreaRef"
-					:class="$style.scrollAreaWrapper"
-					:max-height="`${textAreaMaxHeight}px`"
+					:class="[
+						$style.scrollAreaWrapper,
+						{ [$style.singleLineScrollArea]: layout === 'single-line' },
+					]"
+					:max-height="layout === 'single-line' ? undefined : `${textAreaMaxHeight}px`"
 					type="auto"
+					@click="handleFocusableRegionClick"
 				>
-					<!-- Chips row (above textarea) -->
-					<div v-if="$slots['inline-chips']" :class="$style.chipsRow">
-						<slot name="inline-chips" />
-					</div>
 					<!-- Textarea -->
 					<textarea
 						ref="textareaRef"
 						v-model="textValue"
 						:class="[
-							$style.multilineTextarea,
+							$style.textarea,
+							{ [$style.singleLineTextarea]: layout === 'single-line' },
 							'ignore-key-press-node-creator',
 							'ignore-key-press-canvas',
 						]"
@@ -342,68 +383,88 @@ defineExpose({
 						@keydown="handleKeyDown"
 						@focus="handleFocus"
 						@blur="handleBlur"
-						@input="adjustHeight"
+						@input="layout === 'single-line' ? undefined : adjustHeight"
 					/>
 				</N8nScrollArea>
-				<div :class="$style.bottomActions">
-					<!-- Slot for bottom actions chips (e.g., unconfirmed node chips) -->
-					<div v-if="$slots['bottom-actions-chips']" :class="$style.bottomActionsChips">
-						<slot name="bottom-actions-chips" />
+				<div
+					:class="[$style.bottomActions, { [$style.singleLineActions]: layout === 'single-line' }]"
+					@click="handleFocusableRegionClick"
+				>
+					<div
+						v-if="$slots['left-actions'] || $slots.actions || $slots['extra-actions']"
+						:class="$style.leftActions"
+						@click.stop
+					>
+						<slot name="left-actions">
+							<slot name="actions">
+								<slot name="extra-actions" />
+							</slot>
+						</slot>
 					</div>
-					<slot name="extra-actions" />
-					<N8nSendStopButton
-						data-test-id="send-message-button"
-						:streaming="streaming"
-						:disabled="sendDisabled"
-						:label="buttonLabel"
-						@send="handleSubmit"
-						@stop="handleStop"
-					/>
+					<div :class="$style.rightActions">
+						<div v-if="$slots['right-actions']" :class="$style.actionsContent" @click.stop>
+							<slot name="right-actions" />
+						</div>
+						<div :class="$style.actionsContent" @click.stop>
+							<N8nSendStopButton
+								data-test-id="send-message-button"
+								:streaming="streaming"
+								:disabled="sendDisabled"
+								:label="buttonLabel"
+								@send="handleSubmit"
+								@stop="handleStop"
+							/>
+						</div>
+					</div>
 				</div>
+			</div>
+			<div v-if="$slots.trailing && layout !== 'single-line'" :class="$style.trailing">
+				<slot name="trailing" />
 			</div>
 		</div>
 	</N8nTooltip>
 </template>
 
 <style lang="scss" module>
-.wrapper {
-	background: var(--color--background--light-2);
-	border: 1px solid var(--color--foreground);
-	border-radius: var(--radius--lg);
-}
+@use '../../css/mixins/focus';
 
-.container {
+.wrapper {
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	background: var(--color--background--light-3);
-	border: none;
-	border-bottom: 1px transparent solid;
+	gap: var(--spacing--2xs);
+}
+
+.container {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	background: var(--background--surface);
+	box-shadow: var(--shadow--outline), var(--shadow--xs);
 	border-radius: var(--radius--lg);
-	transition:
-		border-color 0.2s ease,
-		box-shadow 0.2s ease;
 	padding: var(--spacing--2xs);
-	box-sizing: border-box;
 
 	&.focused {
-		box-shadow: 0 0 0 1px var(--color--secondary);
-		border-bottom: 1px transparent solid;
+		@include focus.focus-ring;
+		box-shadow:
+			0 0 0 1px var(--focus--border-color),
+			var(--shadow--xs);
 	}
 
 	&.disabled {
-		background-color: var(--color--background);
 		cursor: not-allowed;
 
-		textarea {
+		textarea,
+		input {
 			cursor: not-allowed;
 			color: var(--color--text--tint-1);
 		}
 	}
 }
 
-.warningCallout {
-	margin: 0 var(--spacing--3xs) var(--spacing--2xs) var(--spacing--3xs);
+.singleLineContainer {
+	flex-direction: row;
+	align-items: center;
 }
 
 .scrollAreaWrapper {
@@ -411,7 +472,7 @@ defineExpose({
 	margin-bottom: 0;
 }
 
-.multilineTextarea {
+.textarea {
 	width: 100%;
 	border: none;
 	background: transparent;
@@ -435,26 +496,21 @@ defineExpose({
 .bottomActions {
 	display: flex;
 	align-items: center;
-	justify-content: flex-end;
-	gap: var(--spacing--xs) var(--spacing--2xs);
-	padding: var(--spacing--2xs) 0 0 var(--spacing--2xs);
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
 	margin-top: auto;
 }
 
-.bottomActionsChips {
+.leftActions,
+.rightActions,
+.actionsContent {
 	display: flex;
-	flex-wrap: wrap;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--2xs);
 }
 
-.chipsRow {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: 0 var(--spacing--3xs);
-	padding-bottom: var(--spacing--4xs);
+.rightActions {
+	margin-left: auto;
 }
 
 // Common styles
@@ -467,5 +523,13 @@ defineExpose({
 		color: var(--color--danger);
 		font-weight: var(--font-weight--bold);
 	}
+}
+
+.singleLineTextarea {
+	height: var(--height--sm);
+}
+
+.singleLineActions {
+	padding: 0;
 }
 </style>

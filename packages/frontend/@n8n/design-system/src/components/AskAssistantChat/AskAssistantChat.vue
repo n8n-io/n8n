@@ -625,14 +625,13 @@ defineExpose({
 								:credits-remaining="creditsRemaining"
 								:show-ask-owner-tooltip="showAskOwnerTooltip"
 								:max-length="maxCharacterLength"
-								:min-lines="2"
 								data-test-id="chat-suggestions-input"
 								autofocus
 								@upgrade-click="emit('upgrade-click')"
 								@submit="onSendMessage"
 								@stop="emit('stop')"
 							>
-								<template v-if="$slots['extra-actions']" #extra-actions>
+								<template v-if="$slots['extra-actions']" #left-actions>
 									<slot name="extra-actions" />
 								</template>
 							</N8nPromptInput>
@@ -701,7 +700,7 @@ defineExpose({
 				@submit="onSendMessage"
 				@stop="emit('stop')"
 			>
-				<template v-if="$slots['extra-actions']" #extra-actions>
+				<template v-if="$slots['extra-actions']" #left-actions>
 					<slot name="extra-actions" />
 				</template>
 			</N8nPromptInput>

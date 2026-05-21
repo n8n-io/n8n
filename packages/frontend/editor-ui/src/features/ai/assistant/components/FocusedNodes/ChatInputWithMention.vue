@@ -195,7 +195,7 @@ defineExpose({
 			@stop="onStop"
 			@upgrade-click="onUpgradeClick"
 		>
-			<template v-if="isFeatureEnabled && hasConfirmedNodes" #inline-chips>
+			<template v-if="isFeatureEnabled && hasConfirmedNodes" #leading>
 				<!-- All nodes confirmed: single "All nodes" chip -->
 				<span v-if="allNodesConfirmed" :class="$style.bundledConfirmedChip">
 					<span :class="$style.bundledIconWrapper">
@@ -262,9 +262,11 @@ defineExpose({
 				</template>
 			</template>
 
-			<!-- Extra actions: parent slot content + mention button -->
-			<template v-if="isFeatureEnabled || $slots['extra-actions']" #extra-actions>
-				<slot name="extra-actions" />
+			<!-- Left actions: parent slot content + mention button -->
+			<template v-if="isFeatureEnabled || $slots['left-actions'] || $slots.actions" #left-actions>
+				<slot name="left-actions">
+					<slot name="actions" />
+				</slot>
 				<N8nIconButton
 					v-if="isFeatureEnabled"
 					icon="at-sign"
@@ -277,8 +279,12 @@ defineExpose({
 				/>
 			</template>
 
-			<!-- Unconfirmed chips - in bottom actions row (only when feature enabled) -->
-			<template v-if="isFeatureEnabled && hasUnconfirmedNodes" #bottom-actions-chips>
+			<template v-if="$slots['right-actions']" #right-actions>
+				<slot name="right-actions" />
+			</template>
+
+			<!-- Unconfirmed chips - in trailing row (only when feature enabled) -->
+			<template v-if="isFeatureEnabled && hasUnconfirmedNodes" #trailing>
 				<!-- All nodes unconfirmed: single "All nodes" chip -->
 				<N8nTooltip
 					v-if="allNodesUnconfirmed"

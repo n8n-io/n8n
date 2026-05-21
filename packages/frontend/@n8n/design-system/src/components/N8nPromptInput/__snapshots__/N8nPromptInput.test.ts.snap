@@ -10,7 +10,6 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
       class="container"
       style="min-height: 80px;"
     >
-      <!-- Warning banner when character limit is reached -->
       <!--v-if-->
       <!-- Use ScrollArea when content exceeds max height -->
       <div
@@ -19,11 +18,9 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
         type="auto"
       >
         
-        <!-- Chips row (above textarea) -->
-        <!--v-if-->
         <!-- Textarea -->
         <textarea
-          class="multilineTextarea ignore-key-press-node-creator ignore-key-press-canvas"
+          class="textarea ignore-key-press-node-creator ignore-key-press-canvas"
           maxlength="5000"
           placeholder=""
           style="height: 24px; overflow-y: hidden;"
@@ -33,8 +30,9 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
       <div
         class="bottomActions"
       >
-        <!-- Slot for bottom actions chips (e.g., unconfirmed node chips) -->
         <!--v-if-->
+        
+        
         
         
         <button
@@ -101,7 +99,6 @@ exports[`N8nPromptInput > rendering > should render streaming state without disa
       class="container"
       style="min-height: 80px;"
     >
-      <!-- Warning banner when character limit is reached -->
       <!--v-if-->
       <!-- Use ScrollArea when content exceeds max height -->
       <div
@@ -110,11 +107,9 @@ exports[`N8nPromptInput > rendering > should render streaming state without disa
         type="auto"
       >
         
-        <!-- Chips row (above textarea) -->
-        <!--v-if-->
         <!-- Textarea -->
         <textarea
-          class="multilineTextarea ignore-key-press-node-creator ignore-key-press-canvas"
+          class="textarea ignore-key-press-node-creator ignore-key-press-canvas"
           maxlength="5000"
           placeholder=""
           style="height: 24px; overflow-y: hidden;"
@@ -124,8 +119,9 @@ exports[`N8nPromptInput > rendering > should render streaming state without disa
       <div
         class="bottomActions"
       >
-        <!-- Slot for bottom actions chips (e.g., unconfirmed node chips) -->
         <!--v-if-->
+        
+        
         
         
         <button

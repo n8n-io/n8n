@@ -55,9 +55,9 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				});
 				return () =>
 					h('div', { 'data-test-id': 'prompt-input' }, [
-						slots['inline-chips']?.(),
-						slots['extra-actions']?.(),
-						slots['bottom-actions-chips']?.(),
+						slots.leading?.(),
+						slots.actions?.(),
+						slots.trailing?.(),
 						h('textarea', {
 							'data-test-id': 'chat-textarea',
 							onInput: (e: Event) => emit('input', e),

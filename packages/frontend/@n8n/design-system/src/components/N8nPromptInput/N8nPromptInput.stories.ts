@@ -2,9 +2,15 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 import { ref } from 'vue';
 
+import '../../css/_tokens.scss';
+
 import N8nPromptInput from './N8nPromptInput.vue';
 import type { WorkflowSuggestion } from '../../types/assistant';
-import N8nPromptInputSuggestions from '../N8nPromptInputSuggestions/N8nPromptInputSuggestions.vue';
+import N8nButton from '../N8nButton/Button.vue';
+import N8nCard from '../N8nCard/Card.vue';
+import N8nHeading from '../N8nHeading/Heading.vue';
+import N8nIconButton from '../N8nIconButton';
+import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
 export default {
 	title: 'Core/PromptInput',
@@ -13,6 +19,10 @@ export default {
 		modelValue: {
 			control: 'text',
 		},
+		layout: {
+			control: 'select',
+			options: ['single-line', 'multiline'],
+		},
 		placeholder: {
 			control: 'text',
 		},
@@ -20,9 +30,6 @@ export default {
 			control: 'number',
 		},
 		maxLinesBeforeScroll: {
-			control: 'number',
-		},
-		minLines: {
 			control: 'number',
 		},
 		streaming: {
@@ -40,7 +47,7 @@ export default {
 		docs: {
 			description: {
 				component:
-					'A multiline prompt input with submit and stop actions plus optional credits UI.',
+					'A prompt input with single-line and multiline layouts, submit/stop actions, and slot-based top and bottom bars.',
 			},
 		},
 	},
@@ -109,14 +116,208 @@ export const SingleLine = Template.bind({});
 SingleLine.args = {
 	placeholder: 'Type your message here...',
 	maxLength: 1000,
-	minLines: 1,
+	layout: 'single-line',
 };
 
 export const MultiLine = Template.bind({});
 MultiLine.args = {
 	placeholder: 'Type your message here...',
 	maxLength: 1000,
-	minLines: 3,
+};
+
+const workflowSuggestions: WorkflowSuggestion[] = [
+	{
+		id: 'invoice-pipeline',
+		summary: 'Invoice processing pipeline',
+		prompt:
+			'Create an invoice parsing workflow using n8n forms. Extract key information and store in Airtable.',
+	},
+	{
+		id: 'ai-news-digest',
+		summary: 'Daily AI news digest',
+		prompt:
+			'Create a workflow that fetches the latest AI news every morning at 8 AM and sends a summary via Telegram.',
+	},
+	{
+		id: 'email-summary',
+		summary: 'Summarize emails with AI',
+		prompt:
+			'Build a workflow that retrieves emails, performs AI analysis, and sends a summary to Slack.',
+	},
+];
+
+const LeadingTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	props: Object.keys(argTypes),
+	components: {
+		N8nButton,
+		N8nCard,
+		N8nHeading,
+		N8nPromptInput,
+	},
+	template: `
+		<div style="width: 500px; max-width: 100%;">
+			<n8n-prompt-input v-bind="args" @submit="onSubmit" @stop="onStop">
+				<template #leading>
+					<n8n-card
+						style="
+							--card--padding: var(--spacing--sm);
+							background: var(--color--background--light);
+							border-color: var(--border-color);
+							box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+						"
+					>
+						<div
+							style="
+								display: flex;
+								flex-direction: column;
+								gap: var(--spacing--sm);
+								width: 100%;
+							"
+						>
+							<n8n-heading tag="div" size="small" bold color="text-dark">
+								Allow AI Assistant to archive workflow?
+							</n8n-heading>
+							<div
+								style="
+									display: flex;
+									justify-content: space-between;
+									align-items: center;
+									gap: var(--spacing--sm);
+									padding-top: var(--spacing--xs);
+								"
+							>
+								<n8n-button type="button" variant="secondary" size="medium">
+									Deny
+								</n8n-button>
+								<div style="display: flex; gap: var(--spacing--xs);">
+									<n8n-button type="button" variant="secondary" size="medium">
+										Allow once
+									</n8n-button>
+									<n8n-button type="button" variant="solid" size="medium">
+										Always allow
+									</n8n-button>
+								</div>
+							</div>
+						</div>
+					</n8n-card>
+				</template>
+			</n8n-prompt-input>
+		</div>
+	`,
+	methods: {
+		onSubmit: methods.onSubmit,
+		onStop: methods.onStop,
+	},
+});
+
+const TrailingTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	props: Object.keys(argTypes),
+	components: {
+		N8nPromptInput,
+	},
+	template: `
+		<div style="width: 500px; max-width: 100%;">
+			<n8n-prompt-input v-bind="args" @submit="onSubmit" @stop="onStop">
+				<template #trailing>
+					<div
+						style="
+							display: flex;
+							flex-wrap: wrap;
+							gap: var(--spacing--2xs);
+						"
+					>
+						<button
+							v-for="suggestion in args.suggestions"
+							:key="suggestion.id"
+							type="button"
+							style="
+								display: inline-flex;
+								align-items: center;
+								justify-content: center;
+								padding: var(--spacing--4xs) var(--spacing--2xs);
+								border-radius: 56px;
+								border: var(--border);
+								background: var(--color--background--light-3);
+								font-size: var(--font-size--2xs);
+								color: var(--color--text--shade-1);
+							"
+						>
+							{{ suggestion.summary }}
+						</button>
+					</div>
+				</template>
+			</n8n-prompt-input>
+		</div>
+	`,
+	methods: {
+		onSubmit: methods.onSubmit,
+		onStop: methods.onStop,
+	},
+});
+
+const ActionsTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	props: Object.keys(argTypes),
+	components: {
+		N8nIconButton,
+		N8nPromptInput,
+		N8nTooltip,
+	},
+	template: `
+		<div style="width: 500px; max-width: 100%;">
+			<n8n-prompt-input v-bind="args" @submit="onSubmit" @stop="onStop">
+				<template #left-actions>
+					<n8n-tooltip content="Context">
+						<n8n-icon-button
+							icon="plus"
+							title="Context"
+							variant="ghost"
+							size="medium"
+							@click="onContextClick"
+						/>
+					</n8n-tooltip>
+				</template>
+				<template #right-actions>
+					<n8n-tooltip content="Voice">
+						<n8n-icon-button
+							icon="mic"
+							title="Voice input"
+							variant="ghost"
+							size="medium"
+							@click="onMicClick"
+						/>
+					</n8n-tooltip>
+				</template>
+			</n8n-prompt-input>
+		</div>
+	`,
+	methods: {
+		onSubmit: methods.onSubmit,
+		onStop: methods.onStop,
+		onContextClick: action('context-click'),
+		onMicClick: action('mic-click'),
+	},
+});
+
+export const WithLeading = LeadingTemplate.bind({});
+WithLeading.args = {
+	placeholder: 'Type your message here...',
+	maxLength: 1000,
+};
+
+export const WithTrailing = TrailingTemplate.bind({});
+WithTrailing.args = {
+	placeholder: 'Type your message here...',
+	maxLength: 1000,
+	suggestions: workflowSuggestions,
+};
+
+export const WithActions = ActionsTemplate.bind({});
+WithActions.args = {
+	placeholder: 'Type your message here...',
+	maxLength: 1000,
 };
 
 export const Streaming = Template.bind({});
@@ -242,37 +443,34 @@ const MultipleInstancesTemplate: StoryFn = (args, { argTypes }) => ({
 	template: `
 		<div style="display: flex; flex-direction: column; gap: 20px;">
 			<div>
-				<h3>Single Line (minLines: 1)</h3>
+				<h3>Single Line layout</h3>
 				<div style="width: 500px; max-width: 100%;">
 					<n8n-prompt-input
 						:modelValue="val1"
 						@update:modelValue="val1 = $event"
 						:placeholder="'Single line input...'"
-						:min-lines="1"
 						:max-length="1000"
 					/>
 				</div>
 			</div>
 			<div>
-				<h3>Two Lines (minLines: 2)</h3>
+				<h3>Multiline with short text</h3>
 				<div style="width: 500px; max-width: 100%;">
 					<n8n-prompt-input
 						:modelValue="val2"
 						@update:modelValue="val2 = $event"
 						:placeholder="'Two line input...'"
-						:min-lines="2"
 						:max-length="1000"
 					/>
 				</div>
 			</div>
 			<div>
-				<h3>Three Lines (minLines: 3)</h3>
+				<h3>Multiline with longer text</h3>
 				<div style="width: 500px; max-width: 100%;">
 					<n8n-prompt-input
 						:modelValue="val3"
 						@update:modelValue="val3 = $event"
 						:placeholder="'Three line input...'"
-						:min-lines="3"
 						:max-length="1000"
 					/>
 				</div>
@@ -291,39 +489,103 @@ const MultipleInstancesTemplate: StoryFn = (args, { argTypes }) => ({
 export const DifferentSizes = MultipleInstancesTemplate.bind({});
 DifferentSizes.args = {};
 
-// Credit Tracking Stories
-export const WithCreditsAndUpgrade: StoryFn = Template.bind({});
+const CreditsTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	props: Object.keys(argTypes),
+	components: { N8nPromptInput },
+	template: `
+		<div style="width: 500px; max-width: 100%;">
+			<n8n-prompt-input v-bind="args" @submit="onSubmit" @stop="onStop">
+				<template #leading>
+					<div
+						style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing--2xs); color: var(--color--text--tint-1); font-size: var(--font-size--2xs);"
+					>
+						<span>{{ args.leadingMessage }}</span>
+						<button
+							v-if="args.leadingActionLabel"
+							type="button"
+							style="border: none; background: transparent; color: var(--color--primary); padding: 0; cursor: pointer;"
+							@click="onUpgradeClick"
+						>
+							{{ args.leadingActionLabel }}
+						</button>
+					</div>
+				</template>
+				<template #trailing>
+					<div
+						style="
+							display: flex;
+							flex-wrap: wrap;
+							gap: var(--spacing--2xs);
+						"
+					>
+						<button
+							v-for="suggestion in args.suggestions"
+							:key="suggestion.id"
+							type="button"
+							style="
+								display: inline-flex;
+								align-items: center;
+								justify-content: center;
+								padding: var(--spacing--4xs) var(--spacing--2xs);
+								border-radius: 56px;
+								border: var(--border);
+								background: var(--color--background--light-3);
+								font-size: var(--font-size--2xs);
+								color: var(--color--text--shade-1);
+							"
+						>
+							{{ suggestion.summary }}
+						</button>
+					</div>
+				</template>
+			</n8n-prompt-input>
+		</div>
+	`,
+	methods: {
+		onSubmit: methods.onSubmit,
+		onStop: methods.onStop,
+		onUpgradeClick: methods.onUpgradeClick,
+	},
+});
+
+export const WithCreditsAndUpgrade: StoryFn = CreditsTemplate.bind({});
 WithCreditsAndUpgrade.args = {
 	placeholder: 'Type your message here...',
-	creditsQuota: 150,
-	creditsRemaining: 119,
+	leadingMessage: 'Credits remaining',
+	leadingActionLabel: 'Upgrade',
+	suggestions: workflowSuggestions,
 };
-WithCreditsAndUpgrade.storyName = 'With Credits and Upgrade Button';
+WithCreditsAndUpgrade.storyName = 'With Leading and Trailing Upgrade';
 
-export const WithCreditsNoUpgrade: StoryFn = Template.bind({});
+export const WithCreditsNoUpgrade: StoryFn = CreditsTemplate.bind({});
 WithCreditsNoUpgrade.args = {
 	placeholder: 'Type your message here...',
-	creditsQuota: 150,
-	creditsRemaining: 23,
-	showAskOwnerTooltip: true,
+	leadingMessage: 'Credits remaining',
+	leadingActionLabel: 'Ask admin',
+	suggestions: workflowSuggestions,
 };
-WithCreditsNoUpgrade.storyName = 'With Credits (Shows Ask Admin Tooltip)';
+WithCreditsNoUpgrade.storyName = 'With Leading Ask Admin Action';
 
-export const LowCredits: StoryFn = Template.bind({});
+export const LowCredits: StoryFn = CreditsTemplate.bind({});
 LowCredits.args = {
 	placeholder: 'Type your message here...',
-	creditsQuota: 150,
-	creditsRemaining: 5,
+	leadingMessage: 'Low credit balance',
+	leadingActionLabel: 'Upgrade',
+	suggestions: workflowSuggestions,
 };
-LowCredits.storyName = 'Low Credits Remaining';
+LowCredits.storyName = 'Low Credits Leading and Trailing';
 
-export const NoCreditsRemaining: StoryFn = Template.bind({});
+export const NoCreditsRemaining: StoryFn = CreditsTemplate.bind({});
 NoCreditsRemaining.args = {
 	placeholder: 'Type your message here...',
-	creditsQuota: 150,
-	creditsRemaining: 0,
+	disabled: true,
+	disabledTooltip: 'No credits remaining. Ask an owner to add credits.',
+	leadingMessage: 'No credits remaining',
+	leadingActionLabel: 'Ask owner',
+	suggestions: workflowSuggestions,
 };
-NoCreditsRemaining.storyName = 'No Credits Remaining';
+NoCreditsRemaining.storyName = 'No Credits Leading and Trailing';
 
 const CreditsInteractiveTemplate: StoryFn = (args) => ({
 	components: { N8nPromptInput },
@@ -366,14 +628,62 @@ const CreditsInteractiveTemplate: StoryFn = (args) => ({
 			<n8n-prompt-input
 				v-bind="args"
 				v-model="inputValue"
-				:credits-quota="creditsQuota"
-				:credits-remaining="creditsRemaining"
+				:disabled="creditsRemaining === 0"
+				:disabled-tooltip="
+					creditsRemaining === 0 ? 'No credits remaining. Ask an owner to add credits.' : undefined
+				"
 				@submit="handleSubmit"
 				@stop="onStop"
 				@focus="onFocus"
 				@blur="onBlur"
-				@upgrade-click="onUpgradeClick"
-			/>
+			>
+				<template #leading>
+					<div
+						style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing--2xs); color: var(--color--text--tint-1); font-size: var(--font-size--2xs);"
+					>
+						<span>
+							{{ creditsRemaining === 0 ? 'No credits remaining' : 'Credits remaining' }}
+						</span>
+						<button
+							type="button"
+							style="border: none; background: transparent; color: var(--color--primary); padding: 0; cursor: pointer;"
+							@click="onUpgradeClick"
+						>
+							{{ creditsRemaining === 0 ? 'Ask owner' : 'Upgrade' }}
+						</button>
+					</div>
+				</template>
+				<template #trailing>
+					<div
+						style="
+							display: flex;
+							flex-wrap: wrap;
+							gap: var(--spacing--2xs);
+							opacity: creditsRemaining === 0 ? 0.6 : 1;
+						"
+					>
+						<button
+							v-for="suggestion in args.suggestions"
+							:key="suggestion.id"
+							type="button"
+							:disabled="creditsRemaining === 0"
+							style="
+								display: inline-flex;
+								align-items: center;
+								justify-content: center;
+								padding: var(--spacing--4xs) var(--spacing--2xs);
+								border-radius: 56px;
+								border: var(--border);
+								background: var(--color--background--light-3);
+								font-size: var(--font-size--2xs);
+								color: var(--color--text--shade-1);
+							"
+						>
+							{{ suggestion.summary }}
+						</button>
+					</div>
+				</template>
+			</n8n-prompt-input>
 		</div>
 	`,
 });
@@ -383,51 +693,30 @@ CreditsInteractive.args = {
 	placeholder: 'Type a message (uses 1 credit)...',
 	creditsQuota: 150,
 	creditsRemaining: 2,
+	suggestions: workflowSuggestions,
 };
 CreditsInteractive.storyName = 'Credits Interactive Demo';
-
-const workflowSuggestions: WorkflowSuggestion[] = [
-	{
-		id: 'invoice-pipeline',
-		summary: 'Invoice processing pipeline',
-		prompt:
-			'Create an invoice parsing workflow using n8n forms. Extract key information and store in Airtable.',
-	},
-	{
-		id: 'ai-news-digest',
-		summary: 'Daily AI news digest',
-		prompt:
-			'Create a workflow that fetches the latest AI news every morning at 8 AM and sends a summary via Telegram.',
-	},
-	{
-		id: 'email-summary',
-		summary: 'Summarize emails with AI',
-		prompt:
-			'Build a workflow that retrieves emails, performs AI analysis, and sends a summary to Slack.',
-	},
-];
 
 const SuggestionsTemplate: StoryFn = (args) => ({
 	setup: () => ({ args }),
 	components: {
-		N8nPromptInputSuggestions,
 		N8nPromptInput,
 	},
 	template: `
 		<div style="max-width: 710px; margin: 0 auto; padding: 20px;">
-			<N8nPromptInputSuggestions
-				:suggestions="args.suggestions"
-				:disabled="args.disabled"
-				:streaming="args.streaming"
-				:credits-quota="args.creditsQuota"
-				:credits-remaining="args.creditsRemaining"
-				:show-ask-owner-tooltip="args.showAskOwnerTooltip"
-				@suggestion-click="onSuggestionClick"
+			<div
+				style="
+					display: flex;
+					flex-direction: column;
+					align-items: center;
+					gap: var(--spacing--md);
+					max-width: 710px;
+					width: 100%;
+				"
 			>
-				<template #prompt-input>
+				<div style="width: 100%;">
 					<N8nPromptInput
 						placeholder="Describe the workflow you want to build..."
-						:min-lines="2"
 						:streaming="args.streaming"
 						:disabled="args.disabled"
 						:credits-quota="args.creditsQuota"
@@ -436,12 +725,42 @@ const SuggestionsTemplate: StoryFn = (args) => ({
 						@submit="onSubmit"
 						@upgrade-click="onUpgradeClick"
 					/>
-				</template>
-			</N8nPromptInputSuggestions>
+				</div>
+				<div
+					v-if="args.suggestions.length > 0 && !args.streaming"
+					style="
+						display: flex;
+						justify-content: center;
+						align-items: flex-start;
+						flex-wrap: wrap;
+						gap: var(--spacing--2xs);
+						width: 100%;
+					"
+				>
+					<button
+						v-for="suggestion in args.suggestions"
+						:key="suggestion.id"
+						type="button"
+						:disabled="args.disabled"
+						style="
+							display: inline-flex;
+							align-items: center;
+							justify-content: center;
+							padding: var(--spacing--4xs) var(--spacing--2xs);
+							border-radius: 56px;
+							border: var(--border);
+							background: var(--color--background--light-3);
+							font-size: var(--font-size--2xs);
+							color: var(--color--text--shade-1);
+						"
+					>
+						{{ suggestion.summary }}
+					</button>
+				</div>
+			</div>
 		</div>
 	`,
 	methods: {
-		onSuggestionClick: action('suggestion-clicked'),
 		onSubmit: methods.onSubmit,
 		onUpgradeClick: methods.onUpgradeClick,
 	},

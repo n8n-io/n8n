@@ -14,7 +14,7 @@ export interface N8nSendStopButtonProps {
 withDefaults(defineProps<N8nSendStopButtonProps>(), {
 	streaming: false,
 	disabled: false,
-	size: 'small',
+	size: 'medium',
 	label: undefined,
 });
 
