@@ -2,19 +2,7 @@ import express, { type Express, type Request, type Response } from 'express';
 import { type Server } from 'node:http';
 import { randomUUID } from 'node:crypto';
 
-/**
- * Local-only HTTP server that intercepts vendor SDK calls during evaluation.
- * Vendor credentials are rewritten by {@link EvalMockedCredentialsHelper} to
- * point at this server's URL, so e.g. the OpenAI SDK posts to
- * `127.0.0.1:<port>/v1/chat/completions` instead of `api.openai.com`.
- *
- * This PR (TRUST-113) ships the lifecycle + a hardcoded OpenAI envelope. The
- * mock-handler integration that returns scenario-specific content lands in
- * TRUST-114; SSE streaming + tool-call envelopes in TRUST-115.
- *
- * Bound to `127.0.0.1:0` so the OS assigns a free port — `url` is populated
- * after `start()` resolves.
- */
+/** Loopback HTTP server that intercepts vendor SDK calls during eval. Binds to an OS-assigned port. */
 export class LlmWireServer {
 	private server: Server | undefined;
 	private resolvedUrl: string | undefined;
@@ -50,6 +38,8 @@ export class LlmWireServer {
 		this.server = undefined;
 		this.resolvedUrl = undefined;
 
+		server.closeAllConnections();
+
 		await new Promise<void>((resolve, reject) => {
 			server.close((error) => (error ? reject(error) : resolve()));
 		});
@@ -65,12 +55,6 @@ export class LlmWireServer {
 	}
 }
 
-/**
- * Hardcoded OpenAI chat-completion envelope. Returned for every POST to
- * `/v1/chat/completions` until TRUST-114 wires the eval mock handler in.
- * The shape matches OpenAI's `chat.completion` response so the SDK accepts it
- * without quirks.
- */
 function buildOpenAiChatCompletionStub(requestBody: unknown): Record<string, unknown> {
 	const model =
 		typeof requestBody === 'object' && requestBody !== null && 'model' in requestBody

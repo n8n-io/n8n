@@ -100,11 +100,7 @@ export class EvalExecutionService {
 
 		const unpinNodes = options.unpinNodes ?? [];
 
-		// Run the compatibility guard FIRST — protocol-binary or unmapped-vendor
-		// errors are actionable ("replace this Postgres memory") and the user
-		// needs them whether or not the feature is enabled. The PostHog gate
-		// below only kicks in when the workflow IS otherwise compatible, so
-		// the guard never gets shadowed by a more generic refusal.
+		// Compatibility guard runs before the kill-switch so actionable errors aren't shadowed.
 		try {
 			assertUnpinCompatibility(workflowEntity, unpinNodes);
 		} catch (error) {
@@ -114,11 +110,6 @@ export class EvalExecutionService {
 			throw error;
 		}
 
-		// Resolve the PostHog kill-switch and apply the safety gate only when
-		// the caller opted in. For empty `unpinNodes`, today's pinned path
-		// runs unchanged — no flag check, no gate. When opt-in is requested,
-		// flag-off refuses the request so vendor SDKs can't execute against
-		// real credentials.
 		let interceptionEnabled = false;
 		if (unpinNodes.length > 0) {
 			interceptionEnabled = await this.isInterceptionEnabled(user);
@@ -144,19 +135,7 @@ export class EvalExecutionService {
 		);
 	}
 
-	/**
-	 * Resolves the PostHog kill-switch for the credential-rewrite code path.
-	 *
-	 * Two distinct cases:
-	 *   - **Unset flag (`undefined`)**: treated as ENABLED. The flag is a
-	 *     default-on kill-switch — operators flip it to `false` to disable.
-	 *     Until an explicit rule is configured in PostHog the rewrite path
-	 *     stays active for any caller that opts in via `unpinNodes`.
-	 *   - **Flag resolution error**: treated as DISABLED. A kill-switch's job
-	 *     is to disable the feature in emergencies, including when the flag
-	 *     plane itself is degraded — the user's request is refused (with a
-	 *     clear error) rather than silently running the rewrite.
-	 */
+	// Default-on kill-switch: unset → enabled, explicit `false` → disabled, resolution error → disabled.
 	private async isInterceptionEnabled(user: User): Promise<boolean> {
 		try {
 			const flags = await this.postHogClient.getFeatureFlags(user);
@@ -288,11 +267,7 @@ export class EvalExecutionService {
 			workflowSettings: workflowEntity.settings ?? {},
 		});
 
-		// Single try/finally wraps boot, setup, and run so a throw anywhere
-		// after `wireServer.start()` still tears the server + NO_PROXY patch
-		// back down. The boot has to be guarded too — a thrown
-		// `patchNoProxyForLoopback()` or helper construction would otherwise
-		// leak the live server.
+		// try/finally wraps boot so a throw never leaks the server or NO_PROXY patch.
 		let wireServer: LlmWireServer | undefined;
 		let restoreNoProxy: (() => void) | undefined;
 		let credentialsHelper: EvalMockedCredentialsHelper | undefined;

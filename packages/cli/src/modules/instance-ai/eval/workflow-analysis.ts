@@ -1,15 +1,3 @@
-/**
- * Workflow analysis utilities for evaluation mock execution.
- *
- * Identifies which nodes should receive mock hints and generates consistent
- * per-node hints + trigger data via a single LLM call.
- *
- * Adapted from @n8n/instance-ai/evaluations/support/ — this copy lives
- * in the CLI package because it runs in-process during workflow execution.
- * TODO: Extract to a shared @n8n/eval-utils package for reuse by
- * the eval CLI, MCP, and other consumers.
- */
-
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import {
@@ -24,17 +12,7 @@ import {
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { extractNodeConfig } from './node-config';
 
-// ---------------------------------------------------------------------------
-// Node classification
-// ---------------------------------------------------------------------------
-
-/**
- * Find node names that are targets of ai_* connections (Agent, Chain nodes).
- * These are "root" AI nodes whose sub-nodes use vendor SDKs. Pinning the root
- * prevents supplyData() on all connected sub-nodes, avoiding SDK calls entirely.
- *
- * Ported from @n8n/instance-ai/evaluations/support/service-node-classifier.ts
- */
+/** Targets of `ai_*` connections — Agent/Chain root nodes. Pinning these short-circuits sub-node SDK calls. */
 function findAiRootNodeNames(workflow: IWorkflowBase): Set<string> {
 	const roots = new Set<string>();
 	for (const nodeConns of Object.values(workflow.connections)) {
@@ -53,13 +31,7 @@ function findAiRootNodeNames(workflow: IWorkflowBase): Set<string> {
 	return roots;
 }
 
-/**
- * Find node names that are sources of ai_* connections (LLM models, tools, memory).
- * These are sub-nodes handled via their root — they should not be pinned individually
- * or receive mock hints.
- *
- * Ported from @n8n/instance-ai/evaluations/support/service-node-classifier.ts
- */
+/** Sources of `ai_*` connections — LLM/tool/memory sub-nodes. Handled via their root, never pinned individually. */
 function findAiSubNodeNames(workflow: IWorkflowBase): Set<string> {
 	const subNodes = new Set<string>();
 	for (const [sourceName, nodeConns] of Object.entries(workflow.connections)) {
@@ -72,71 +44,35 @@ function findAiSubNodeNames(workflow: IWorkflowBase): Set<string> {
 	return subNodes;
 }
 
-// ---------------------------------------------------------------------------
-// Bypass node types — nodes that use non-HTTP protocols or bypass n8n's
-// request helper functions. These can't be intercepted by the eval mock handler.
-// ---------------------------------------------------------------------------
-
+/** Node types that bypass the HTTP mock handler (non-HTTP protocols or non-helper HTTP). */
 const BYPASS_NODE_TYPES = new Set([
-	// Databases (TCP/binary protocol)
 	'n8n-nodes-base.redis',
 	'n8n-nodes-base.mongoDb',
 	'n8n-nodes-base.mySql',
 	'n8n-nodes-base.postgres',
 	'n8n-nodes-base.microsoftSql',
 	'n8n-nodes-base.snowflake',
-	// Message queues (TCP/binary protocol)
 	'n8n-nodes-base.kafka',
 	'n8n-nodes-base.rabbitmq',
 	'n8n-nodes-base.mqtt',
 	'n8n-nodes-base.amqp',
-	// File/network protocols
 	'n8n-nodes-base.ftp',
 	'n8n-nodes-base.ssh',
 	'n8n-nodes-base.ldap',
 	'n8n-nodes-base.emailSend',
-	// Non-helper HTTP
 	'n8n-nodes-base.rssFeedRead',
 	'n8n-nodes-base.git',
 ]);
 
-/**
- * AI sub-node types that **are** supported by the eval wire-server rewrite
- * path. The compatibility guard refuses unpinning when an inbound `ai_*`
- * sub-node uses a vendor SDK that isn't on this list — its vendor traffic
- * would escape interception and hit the real provider with real credentials.
- *
- * Currently OpenAI only; Tier 1 follow-ups (Anthropic, Azure, Cohere/Groq,
- * Google Gemini/Vertex, etc.) will extend this set together with the
- * matching entries in `EVAL_PROVIDER_URL_FIELD`.
- */
+/** LLM sub-node types whose vendor URL can be rewritten to the wire server (must match `EVAL_PROVIDER_URL_FIELD`). */
 const SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES = new Set(['@n8n/n8n-nodes-langchain.lmChatOpenAi']);
 
-/**
- * Heuristic for "this sub-node bakes a vendor base URL into its SDK at
- * construction time, so the only way to intercept its traffic is to rewrite
- * the credential URL". All `@n8n/n8n-nodes-langchain.lm*` nodes match — both
- * the chat (`lmChat*`) and legacy completion (`lmOpenAi`, `lmOllama`, etc.)
- * variants. The compatibility guard pairs this with
- * `SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES` to refuse unsupported vendors.
- */
+/** `lm*` nodes bake the vendor base URL into the SDK; only credential URL rewrite can intercept them. */
 function isVendorLlmSubNode(nodeType: string): boolean {
 	return nodeType.startsWith('@n8n/n8n-nodes-langchain.lm');
 }
 
-/**
- * Detects parameter overrides on supported vendor LLM sub-nodes that bypass
- * the credential-URL rewrite. The LangChain OpenAI node, for example, prefers
- * `options.baseURL` over `credentials.url` when building the SDK client
- * (`LmChatOpenAi.node.ts:761-765`):
- *
- *     if (options.baseURL) { configuration.baseURL = options.baseURL; }
- *     else if (credentials.url) { configuration.baseURL = credentials.url; }
- *
- * So a sub-node configured with a non-empty `options.baseURL` would talk to
- * the operator's override URL even after we rewrite the credential. Refuse
- * the unpin until parameter-level rewriting exists.
- */
+/** Non-empty `options.baseURL` on the LangChain OpenAI node beats credentials.url — credential rewrite isn't enough. */
 function hasUnsafeBaseUrlOverride(node: INode): boolean {
 	if (node.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi') {
 		const options = (node.parameters?.options ?? {}) as Record<string, unknown>;
@@ -146,12 +82,7 @@ function hasUnsafeBaseUrlOverride(node: INode): boolean {
 	return false;
 }
 
-/**
- * AI sub-node types that use a protocol-binary client (TCP, native driver, etc.).
- * These cannot be intercepted via the HTTP wire server, so the root they hang off
- * cannot be unpinned safely. `assertUnpinCompatibility` refuses unpin requests
- * for roots whose sub-nodes match this set.
- */
+/** AI sub-nodes that speak non-HTTP protocols — can't be intercepted, so their root must stay pinned. */
 const PROTOCOL_BINARY_SUB_NODE_TYPES = new Set([
 	// Memory backends
 	'@n8n/n8n-nodes-langchain.memoryPostgresChat',
@@ -165,15 +96,7 @@ const PROTOCOL_BINARY_SUB_NODE_TYPES = new Set([
 	'@n8n/n8n-nodes-langchain.chatHubVectorStorePGVector',
 ]);
 
-/**
- * Identify nodes that bypass the HTTP mock layer and need pin data instead.
- * Returns AI root nodes (Agent, Chain) and protocol/bypass nodes.
- *
- * `exclusionSet` opts AI root names out of pinning so their sub-nodes run real
- * vendor SDK code (routed through the eval wire server). `BYPASS_NODE_TYPES`
- * nodes ignore the exclusion set — they use protocol-binary clients and have
- * no HTTP interception path, so they must always be pinned.
- */
+/** Returns nodes that need pin data — AI roots (unless in `exclusionSet`) and bypass-protocol nodes. */
 export function identifyNodesForPinData(
 	workflow: IWorkflowBase,
 	exclusionSet?: Set<string>,
@@ -195,27 +118,7 @@ type UnpinRefusal = {
 	reason: 'protocol_binary' | 'unsupported_vendor_llm' | 'unsafe_baseurl_override';
 };
 
-/**
- * Refuse unpinning AI roots whose inbound `ai_*` sub-nodes can't be intercepted
- * over HTTP. Three categories are refused:
- *   - **Protocol-binary** sub-nodes (Postgres memory, Redis memory, native
- *     vector stores) — they don't speak HTTP at all.
- *   - **Unsupported vendor LLM** sub-nodes (anything matching
- *     `@n8n/n8n-nodes-langchain.lm*` that isn't on
- *     `SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES`) — they bake their vendor base
- *     URL into the SDK and would call the real provider with real
- *     credentials, because `EVAL_PROVIDER_URL_FIELD` has no rewrite mapping
- *     for them yet.
- *   - **Unsafe baseURL override** on a supported vendor LLM — the SDK
- *     prefers a configured `options.baseURL` over `credentials.url`, so
- *     rewriting the credential isn't enough. Refused until parameter-level
- *     rewriting exists.
- *
- * Walks destination-indexed connections once per call and throws a `UserError`
- * listing every offending root → sub-node pair grouped by reason. Refusing up
- * front (before any execution) keeps the safety story unambiguous — the only
- * way to opt into an unmapped vendor is to extend the support set.
- */
+/** Throws if any unpinned AI root has a sub-node we can't intercept: protocol-binary, unmapped vendor LLM, or unsafe baseURL override. */
 export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: string[]): void {
 	if (unpinNodes.length === 0) return;
 
@@ -299,11 +202,7 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 	);
 }
 
-/**
- * Identify which nodes in a workflow should receive mock hints.
- * Excludes AI sub-nodes (handled via their root) and nodes that will be
- * pinned (they don't execute, so hints are irrelevant for them).
- */
+/** Nodes that should receive mock hints — excludes AI sub-nodes (handled via root) and pinned nodes. */
 export function identifyNodesForHints(workflow: IWorkflowBase): INode[] {
 	const aiSubNodes = findAiSubNodeNames(workflow);
 	const aiRootNodes = findAiRootNodeNames(workflow);
@@ -414,11 +313,7 @@ function buildUserPrompt(
 
 const MAX_HINT_ATTEMPTS = 2;
 
-/**
- * Generate consistent mock hints for service nodes in a workflow. One Sonnet
- * call produces globalContext, triggerContent, and per-node hints — retried
- * once if the LLM returns an empty triggerContent or any structural issue.
- */
+/** One LLM call → globalContext + triggerContent + per-node hints. Retried once on structural issues. */
 export async function generateMockHints(options: GenerateMockHintsOptions): Promise<MockHints> {
 	const { workflow, nodeNames, scenarioHints } = options;
 	const emptyResult: MockHints = {
