@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { effectScope, watchEffect } from 'vue';
 import type { INodeExecutionData, IPinData } from 'n8n-workflow';
 import {
 	useWorkflowDocumentPinData,
@@ -19,7 +18,7 @@ describe('useWorkflowDocumentPinData', () => {
 	describe('initial state', () => {
 		it('should start with empty pin data', () => {
 			const { pinnedDataByNodeName } = createPinData();
-			expect(pinnedDataByNodeName).toEqual({});
+			expect(pinnedDataByNodeName.value).toEqual({});
 		});
 	});
 
@@ -32,7 +31,7 @@ describe('useWorkflowDocumentPinData', () => {
 
 			setPinData(data);
 
-			expect(pinnedDataByNodeName).toEqual({ Node1: [{ json: { key: 'value' } }] });
+			expect(pinnedDataByNodeName.value).toEqual({ Node1: [{ json: { key: 'value' } }] });
 		});
 
 		it('should fire event hook with bulk payload', () => {
@@ -57,7 +56,7 @@ describe('useWorkflowDocumentPinData', () => {
 
 			setPinData(data);
 
-			expect(pinnedDataByNodeName).toEqual({ Node1: [{ json: { key: 'value' } }] });
+			expect(pinnedDataByNodeName.value).toEqual({ Node1: [{ json: { key: 'value' } }] });
 		});
 
 		it('should replace existing pin data entirely', () => {
@@ -65,8 +64,8 @@ describe('useWorkflowDocumentPinData', () => {
 			setPinData({ Node1: [{ json: { a: 1 } }] });
 			setPinData({ Node2: [{ json: { b: 2 } }] });
 
-			expect(pinnedDataByNodeName).toEqual({ Node2: [{ json: { b: 2 } }] });
-			expect(pinnedDataByNodeName).not.toHaveProperty('Node1');
+			expect(pinnedDataByNodeName.value).toEqual({ Node2: [{ json: { b: 2 } }] });
+			expect(pinnedDataByNodeName.value).not.toHaveProperty('Node1');
 		});
 	});
 
@@ -76,7 +75,7 @@ describe('useWorkflowDocumentPinData', () => {
 
 			pinNodeData('Node1', [{ json: { key: 'value' } }]);
 
-			expect(pinnedDataByNodeName).toEqual({ Node1: [{ json: { key: 'value' } }] });
+			expect(pinnedDataByNodeName.value).toEqual({ Node1: [{ json: { key: 'value' } }] });
 		});
 
 		it('should fire event hook with add action for new node', () => {
@@ -121,13 +120,13 @@ describe('useWorkflowDocumentPinData', () => {
 
 			pinNodeData('Node1', data);
 
-			expect(pinnedDataByNodeName.Node1[0]).toEqual({
+			expect(pinnedDataByNodeName.value.Node1[0]).toEqual({
 				json: { key: 'value' },
 				binary: { file: { mimeType: 'text/plain', data: 'abc' } },
 				pairedItem: { item: 0 },
 			});
-			expect(pinnedDataByNodeName.Node1[0]).not.toHaveProperty('index');
-			expect(pinnedDataByNodeName.Node1[0]).not.toHaveProperty('executionIndex');
+			expect(pinnedDataByNodeName.value.Node1[0]).not.toHaveProperty('index');
+			expect(pinnedDataByNodeName.value.Node1[0]).not.toHaveProperty('executionIndex');
 		});
 
 		it('should wrap items without json key in { json: item }', () => {
@@ -136,7 +135,7 @@ describe('useWorkflowDocumentPinData', () => {
 
 			pinNodeData('Node1', data);
 
-			expect(pinnedDataByNodeName).toEqual({
+			expect(pinnedDataByNodeName.value).toEqual({
 				Node1: [{ json: { key: 'value' } }],
 			});
 		});
@@ -146,7 +145,7 @@ describe('useWorkflowDocumentPinData', () => {
 			pinNodeData('Node1', [{ json: { a: 1 } }]);
 			pinNodeData('Node2', [{ json: { b: 2 } }]);
 
-			expect(pinnedDataByNodeName).toEqual({
+			expect(pinnedDataByNodeName.value).toEqual({
 				Node1: [{ json: { a: 1 } }],
 				Node2: [{ json: { b: 2 } }],
 			});
@@ -157,7 +156,7 @@ describe('useWorkflowDocumentPinData', () => {
 			pinNodeData('Node1', [{ json: { a: 1 } }]);
 			pinNodeData('Node1', [{ json: { a: 2 } }]);
 
-			expect(pinnedDataByNodeName).toEqual({ Node1: [{ json: { a: 2 } }] });
+			expect(pinnedDataByNodeName.value).toEqual({ Node1: [{ json: { a: 2 } }] });
 		});
 
 		it('should handle non-array input by wrapping in array', () => {
@@ -166,7 +165,7 @@ describe('useWorkflowDocumentPinData', () => {
 
 			pinNodeData('Node1', data);
 
-			expect(pinnedDataByNodeName).toEqual({ Node1: [{ json: { key: 'value' } }] });
+			expect(pinnedDataByNodeName.value).toEqual({ Node1: [{ json: { key: 'value' } }] });
 		});
 	});
 
@@ -178,7 +177,7 @@ describe('useWorkflowDocumentPinData', () => {
 
 			unpinNodeData('Node1');
 
-			expect(pinnedDataByNodeName).toEqual({ Node2: [{ json: { b: 2 } }] });
+			expect(pinnedDataByNodeName.value).toEqual({ Node2: [{ json: { b: 2 } }] });
 		});
 
 		it('should fire event hook with delete action', () => {
@@ -200,7 +199,7 @@ describe('useWorkflowDocumentPinData', () => {
 
 			unpinNodeData('NonExistent');
 
-			expect(pinnedDataByNodeName).toEqual({});
+			expect(pinnedDataByNodeName.value).toEqual({});
 		});
 	});
 
@@ -214,8 +213,8 @@ describe('useWorkflowDocumentPinData', () => {
 
 			renamePinDataNode('OldName', 'NewName');
 
-			expect(pinnedDataByNodeName).not.toHaveProperty('OldName');
-			expect(pinnedDataByNodeName).toEqual({ NewName: [{ json: { key: 'value' } }] });
+			expect(pinnedDataByNodeName.value).not.toHaveProperty('OldName');
+			expect(pinnedDataByNodeName.value).toEqual({ NewName: [{ json: { key: 'value' } }] });
 			expect(hookSpy).toHaveBeenCalledWith({
 				action: 'update',
 				payload: { nodeName: 'NewName', data: [{ json: { key: 'value' } }] },
@@ -228,8 +227,8 @@ describe('useWorkflowDocumentPinData', () => {
 
 			renamePinDataNode('NonExistent', 'NewName');
 
-			expect(pinnedDataByNodeName).toEqual({ Node1: [{ json: { key: 'value' } }] });
-			expect(pinnedDataByNodeName).not.toHaveProperty('NewName');
+			expect(pinnedDataByNodeName.value).toEqual({ Node1: [{ json: { key: 'value' } }] });
+			expect(pinnedDataByNodeName.value).not.toHaveProperty('NewName');
 		});
 
 		it('should update pairedItem sourceOverwrite references', () => {
@@ -248,7 +247,7 @@ describe('useWorkflowDocumentPinData', () => {
 
 			renamePinDataNode('OldName', 'NewName');
 
-			const pairedItem = pinnedDataByNodeName.Node2[0].pairedItem as unknown as {
+			const pairedItem = pinnedDataByNodeName.value.Node2[0].pairedItem as unknown as {
 				sourceOverwrite: { previousNode: string };
 			};
 			expect(pairedItem.sourceOverwrite.previousNode).toBe('NewName');
@@ -276,7 +275,7 @@ describe('useWorkflowDocumentPinData', () => {
 
 			renamePinDataNode('OldName', 'NewName');
 
-			const pairedItems = pinnedDataByNodeName.Node2[0].pairedItem as unknown as Array<{
+			const pairedItems = pinnedDataByNodeName.value.Node2[0].pairedItem as unknown as Array<{
 				sourceOverwrite: { previousNode: string };
 			}>;
 			expect(pairedItems[0].sourceOverwrite.previousNode).toBe('NewName');
@@ -295,35 +294,7 @@ describe('useWorkflowDocumentPinData', () => {
 			});
 
 			expect(() => renamePinDataNode('OldName', 'NewName')).not.toThrow();
-			expect(pinnedDataByNodeName.Node2[0].pairedItem).toBe(0);
-		});
-	});
-
-	describe('per-key reactivity', () => {
-		it('should not invalidate a key-A subscriber when key B changes', () => {
-			const { pinnedDataByNodeName, pinNodeData } = createPinData();
-			const scope = effectScope();
-			let evaluations = 0;
-
-			scope.run(() => {
-				watchEffect(
-					() => {
-						evaluations += 1;
-						void pinnedDataByNodeName.A;
-					},
-					{ flush: 'sync' },
-				);
-			});
-
-			expect(evaluations).toBe(1);
-
-			pinNodeData('B', [{ json: { value: 1 } }]);
-			expect(evaluations).toBe(1);
-
-			pinNodeData('A', [{ json: { value: 1 } }]);
-			expect(evaluations).toBe(2);
-
-			scope.stop();
+			expect(pinnedDataByNodeName.value.Node2[0].pairedItem).toBe(0);
 		});
 	});
 
@@ -335,7 +306,7 @@ describe('useWorkflowDocumentPinData', () => {
 		it('should return undefined when indexing a non-existent node', () => {
 			const { pinnedDataByNodeName } = createPinData();
 
-			expect(pinDataToExecutionData(pinnedDataByNodeName).NonExistent).toBeUndefined();
+			expect(pinDataToExecutionData(pinnedDataByNodeName.value).NonExistent).toBeUndefined();
 		});
 
 		it('should return unwrapped json values for all nodes', () => {
@@ -343,7 +314,7 @@ describe('useWorkflowDocumentPinData', () => {
 			pinNodeData('Node1', [{ json: { key: 'value1' } }, { json: { key: 'value2' } }]);
 			pinNodeData('Node2', [{ json: { key: 'value3' } }]);
 
-			const result = pinDataToExecutionData(pinnedDataByNodeName);
+			const result = pinDataToExecutionData(pinnedDataByNodeName.value);
 
 			expect(result).toEqual({
 				Node1: [{ key: 'value1' }, { key: 'value2' }],
@@ -359,9 +330,9 @@ describe('useWorkflowDocumentPinData', () => {
 
 			const snapshot = getPinDataSnapshot();
 
-			expect(snapshot).toEqual(pinnedDataByNodeName);
+			expect(snapshot).toEqual(pinnedDataByNodeName.value);
 			snapshot.Node2 = [{ json: { key: 'new' } }];
-			expect(pinnedDataByNodeName).not.toHaveProperty('Node2');
+			expect(pinnedDataByNodeName.value).not.toHaveProperty('Node2');
 
 			pinNodeData('Node3', [{ json: { key: 'later' } }]);
 			expect(snapshot).not.toHaveProperty('Node3');

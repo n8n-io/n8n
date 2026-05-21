@@ -1,4 +1,4 @@
-import { shallowReactive } from 'vue';
+import { ref, readonly } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import type { INodeExecutionData, IDataObject, IPinData } from 'n8n-workflow';
 import { isJsonKeyObject, stringSizeInBytes } from '@/app/utils/typesUtils';
@@ -67,31 +67,26 @@ export function getPinDataSize(
 }
 
 export function useWorkflowDocumentPinData() {
-	// shallowReactive keeps per-key reactivity for `pinnedDataByNodeName[name]`
-	// reads while leaving nested arrays as plain JS — so getPinDataSnapshot()
-	// returns a clean IPinData suitable for JSON serialization.
-	const pinnedDataByNodeName = shallowReactive<IPinData>({});
+	const pinnedDataByNodeName = ref<IPinData>({});
 
 	const onPinnedDataChange = createEventHook<PinDataChangeEvent>();
 
 	function applyPinData(data: IPinData, action: ChangeAction = CHANGE_ACTION.UPDATE) {
-		for (const key of Object.keys(pinnedDataByNodeName)) {
-			delete pinnedDataByNodeName[key];
-		}
-		Object.assign(pinnedDataByNodeName, data);
+		pinnedDataByNodeName.value = data;
 		void onPinnedDataChange.trigger({ action, payload: { pinData: data } });
 	}
 
 	function applyNodePinData(nodeName: string, data: INodeExecutionData[]) {
-		const action: ChangeAction = pinnedDataByNodeName[nodeName]
+		const action: ChangeAction = pinnedDataByNodeName.value[nodeName]
 			? CHANGE_ACTION.UPDATE
 			: CHANGE_ACTION.ADD;
-		pinnedDataByNodeName[nodeName] = data;
+		pinnedDataByNodeName.value = { ...pinnedDataByNodeName.value, [nodeName]: data };
 		void onPinnedDataChange.trigger({ action, payload: { nodeName, data } });
 	}
 
 	function applyUnpin(nodeName: string) {
-		delete pinnedDataByNodeName[nodeName];
+		const { [nodeName]: _, ...rest } = pinnedDataByNodeName.value;
+		pinnedDataByNodeName.value = rest;
 		void onPinnedDataChange.trigger({
 			action: CHANGE_ACTION.DELETE,
 			payload: { nodeName, data: undefined },
@@ -99,11 +94,11 @@ export function useWorkflowDocumentPinData() {
 	}
 
 	function applyRenamePinDataNode(oldName: string, newName: string) {
-		if (pinnedDataByNodeName[oldName]) {
-			pinnedDataByNodeName[newName] = pinnedDataByNodeName[oldName];
-			delete pinnedDataByNodeName[oldName];
+		if (pinnedDataByNodeName.value[oldName]) {
+			const { [oldName]: renamed, ...rest } = pinnedDataByNodeName.value;
+			pinnedDataByNodeName.value = { ...rest, [newName]: renamed };
 		}
-		Object.values(pinnedDataByNodeName)
+		Object.values(pinnedDataByNodeName.value)
 			.flatMap((executionData) =>
 				executionData.flatMap((nodeExecution) =>
 					Array.isArray(nodeExecution.pairedItem)
@@ -118,7 +113,7 @@ export function useWorkflowDocumentPinData() {
 			});
 		void onPinnedDataChange.trigger({
 			action: CHANGE_ACTION.UPDATE,
-			payload: { nodeName: newName, data: pinnedDataByNodeName[newName] },
+			payload: { nodeName: newName, data: pinnedDataByNodeName.value[newName] },
 		});
 	}
 
@@ -139,15 +134,15 @@ export function useWorkflowDocumentPinData() {
 	}
 
 	function getPinDataSnapshot(): IPinData {
-		return { ...pinnedDataByNodeName };
+		return { ...pinnedDataByNodeName.value };
 	}
 
 	function getNodePinData(nodeName: string): INodeExecutionData[] | undefined {
-		return pinnedDataByNodeName[nodeName];
+		return pinnedDataByNodeName.value[nodeName];
 	}
 
 	return {
-		pinnedDataByNodeName,
+		pinnedDataByNodeName: readonly(pinnedDataByNodeName),
 		setPinData,
 		pinNodeData,
 		unpinNodeData,
