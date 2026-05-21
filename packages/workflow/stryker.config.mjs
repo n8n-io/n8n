@@ -5,14 +5,11 @@ export default {
 	plugins: ['@stryker-mutator/vitest-runner'],
 	reporters: ['progress', 'clear-text', 'html', 'json'],
 	coverageAnalysis: 'perTest',
-	mutate: [
-		'src/cron.ts',
-		'src/metadata-utils.ts',
-		'src/workflow-checksum.ts',
-		'src/deferred-promise.ts',
-	],
-	htmlReporter: { fileName: 'reports/mutation/calibration.html' },
-	jsonReporter: { fileName: 'reports/mutation/calibration.json' },
+	// Default empty — the `mutate` npm script always passes --mutate <file>.
+	// Direct invocation with no --mutate will fail fast (allowEmpty: false).
+	mutate: [],
+	htmlReporter: { fileName: 'reports/mutation/raw.html' },
+	jsonReporter: { fileName: 'reports/mutation/raw.json' },
 	timeoutMS: 60_000,
 	concurrency: 4,
 	tempDirName: '.stryker-tmp',

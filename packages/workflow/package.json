@@ -31,7 +31,8 @@
     "watch": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --watch",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:dev": "vitest --watch"
+    "test:dev": "vitest --watch",
+    "mutate": "node scripts/mutate.mjs"
   },
   "files": [
     "dist/**/*"
