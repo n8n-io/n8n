@@ -7,15 +7,15 @@ import {
 
 describe('n8n observation-log observer policy', () => {
 	it('uses the n8n observer defaults', () => {
-		expect(DEFAULT_OBSERVER_THRESHOLD_TOKENS).toBe(2000);
+		expect(DEFAULT_OBSERVER_THRESHOLD_TOKENS).toBe(500);
 		expect(DEFAULT_OBSERVATION_LOG_TAIL_LIMIT).toBe(20);
 		expect(DEFAULT_OBSERVER_PROMPT).toContain('Output the new observations only');
-		expect(DEFAULT_OBSERVER_PROMPT).toContain('🔴 CRITICAL');
+		expect(DEFAULT_OBSERVER_PROMPT).toContain('CRITICAL. Things the agent must not forget');
 	});
 
 	it('uses parseable markdown bullets for good output examples', () => {
 		expect(DEFAULT_OBSERVER_PROMPT).toContain(
-			'GOOD:\n* 🟡 (14:30) User is purchasing Claude Code subscriptions for their team.',
+			'GOOD:\n* IMPORTANT (14:30) User is purchasing Claude Code subscriptions for their team.',
 		);
 	});
 
@@ -29,11 +29,11 @@ describe('n8n observation-log observer policy', () => {
 			transcriptTokenCount: 42,
 			observationLogTail: [],
 			renderedObservationLogTail:
-				'## Memory\n\n* 🔴 (14:28) User is rebuilding observational memory.',
+				'## Memory\n\n* CRITICAL (14:28) User is rebuilding observational memory.',
 		});
 
 		expect(prompt).toContain('Current timestamp: 2026-05-12T14:30:00.000Z');
-		expect(prompt).toContain('* 🔴 (14:28) User is rebuilding observational memory.');
+		expect(prompt).toContain('* CRITICAL (14:28) User is rebuilding observational memory.');
 		expect(prompt).toContain('Remember daily-report-prod.');
 		expect(prompt).toContain('Unobserved transcript tokens: 42');
 	});

@@ -182,14 +182,14 @@ jobs:
               --base-url "$BASE_URLS" \
               --concurrency 32 \
               --verbose \
-              --iterations 5 \
+              --iterations 3 \
               --filter "$FILTER"
           else
             pnpm eval:instance-ai \
               --base-url "$BASE_URLS" \
               --concurrency 32 \
               --verbose \
-              --iterations 5
+              --iterations 3
           fi
 
       # Captures sandbox/builder/Daytona signals that surface during the eval

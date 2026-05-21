@@ -296,7 +296,7 @@ describe('GlobalConfig', () => {
 			threadTtlDays: 90,
 			snapshotPruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
-			confirmationTimeout: 600_000,
+			confirmationTimeout: 86_400_000,
 		},
 		queue: {
 			health: {
@@ -375,7 +375,9 @@ describe('GlobalConfig', () => {
 			enabled: false,
 			ttl: 10,
 			interval: 3,
-			newLeaderElection: false,
+		},
+		evaluation: {
+			collectionsEnabled: false,
 		},
 		generic: {
 			timezone: 'America/New_York',

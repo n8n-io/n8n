@@ -1,7 +1,9 @@
-import { Workspace, LocalFilesystem, LocalSandbox } from '@mastra/core/workspace';
-import { DaytonaSandbox } from '@mastra/daytona';
+import { Workspace } from '@n8n/agents';
 
 import { DaytonaFilesystem } from './daytona-filesystem';
+import { DaytonaSandbox } from './daytona-sandbox';
+import { LocalFilesystem } from './local-filesystem';
+import { LocalSandbox } from './local-sandbox';
 import { N8nSandboxFilesystem } from './n8n-sandbox-filesystem';
 import { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
 
