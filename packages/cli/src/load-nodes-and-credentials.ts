@@ -238,7 +238,10 @@ export class LoadNodesAndCredentials {
 			return path.startsWith('/') ? path : '/' + path;
 		};
 
-		const pathPrefix = `${basePath}/icons/${packageName}/`;
+		// At the root deployment, basePath is '/', which would produce '//icons/...'
+		// and cause url.substring() to slice one extra character. Treat '/' as empty.
+		const normalizedBasePath = basePath === '/' ? '' : basePath;
+		const pathPrefix = `${normalizedBasePath}/icons/${packageName}/`;
 		const urlFilePath = url.substring(pathPrefix.length);
 		const filePath = isCustom ? resolvePathCustom(urlFilePath) : resolvePath(urlFilePath);
 
