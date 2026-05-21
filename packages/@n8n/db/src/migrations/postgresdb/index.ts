@@ -51,6 +51,7 @@ import { ExpandInsightsWorkflowIdLength1766500000000 } from './1766500000000-Exp
 import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './1767018516000-ChangeWorkflowStatisticsFKToNoAction';
 import { ExpandVariablesValueColumnToText1777420800000 } from './1777420800000-ExpandVariablesValueColumnToText';
 import { LimitWorkflowVersionTriggerToContent1784000000003 } from './1784000000003-LimitWorkflowVersionTriggerToContent';
+import { RemoveInsightsReadScopeFromMemberApiKeys1784000000009 } from './1784000000009-RemoveInsightsReadScopeFromMemberApiKeys';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -183,7 +184,6 @@ import { AddInsightsRawTimestampIdIndex1784000000004 } from '../common/178400000
 import { CreateMcpRegistryServerTable1784000000005 } from '../common/1784000000005-CreateMcpRegistryServerTable';
 import { AddNodeGroupsColumnToWorkflowAndHistory1784000000006 } from '../common/1784000000006-AddNodeGroupsColumnToWorkflowAndHistory';
 import { CreateInstanceAiCheckpointTable1784000000007 } from '../common/1784000000007-CreateInstanceAiCheckpointTable';
-import { RemoveInsightsReadScopeFromMemberApiKeys1779321600000 } from './1784000000009--RemoveInsightsReadScopeFromMemberApiKeys';
 import { ResetInstanceAiNativePersistence1784000000008 } from '../common/1784000000008-ResetInstanceAiNativePersistence';
 import type { Migration } from '../migration-types';
 
@@ -373,6 +373,6 @@ export const postgresMigrations: Migration[] = [
 	CreateMcpRegistryServerTable1784000000005,
 	AddNodeGroupsColumnToWorkflowAndHistory1784000000006,
 	CreateInstanceAiCheckpointTable1784000000007,
-	RemoveInsightsReadScopeFromMemberApiKeys1779321600000,
+	RemoveInsightsReadScopeFromMemberApiKeys1784000000009,
 	ResetInstanceAiNativePersistence1784000000008,
 ];

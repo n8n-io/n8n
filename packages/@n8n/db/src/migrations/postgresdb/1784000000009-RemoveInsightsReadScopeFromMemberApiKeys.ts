@@ -5,7 +5,7 @@ import type { IrreversibleMigration, MigrationContext } from '../migration-types
  * by members in n8n versions spanning 2.16.x to 2.22.x.
  * See https://github.com/n8n-io/n8n/pull/27868 and https://github.com/n8n-io/n8n/pull/30778
  */
-export class RemoveInsightsReadScopeFromMemberApiKeys1779321600000
+export class RemoveInsightsReadScopeFromMemberApiKeys1784000000009
 	implements IrreversibleMigration
 {
 	async up(ctx: MigrationContext) {

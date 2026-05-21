@@ -52,6 +52,7 @@ import { AddAgentIdForeignKeys1765886667897 } from './1765886667897-AddAgentIdFo
 import { AddChatMessageIndices1766068346315 } from './1766068346315-AddChatMessageIndices';
 import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './1767018516000-ChangeWorkflowStatisticsFKToNoAction';
 import { LimitWorkflowVersionTriggerToContent1784000000003 } from './1784000000003-LimitWorkflowVersionTriggerToContent';
+import { RemoveInsightsReadScopeFromMemberApiKeys1784000000009 } from './1784000000009-RemoveInsightsReadScopeFromMemberApiKeys';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -176,7 +177,6 @@ import { AddInsightsRawTimestampIdIndex1784000000004 } from '../common/178400000
 import { CreateMcpRegistryServerTable1784000000005 } from '../common/1784000000005-CreateMcpRegistryServerTable';
 import { AddNodeGroupsColumnToWorkflowAndHistory1784000000006 } from '../common/1784000000006-AddNodeGroupsColumnToWorkflowAndHistory';
 import { CreateInstanceAiCheckpointTable1784000000007 } from '../common/1784000000007-CreateInstanceAiCheckpointTable';
-import { RemoveInsightsReadScopeFromMemberApiKeys1779321600000 } from './1784000000009--RemoveInsightsReadScopeFromMemberApiKeys';
 import { ResetInstanceAiNativePersistence1784000000008 } from '../common/1784000000008-ResetInstanceAiNativePersistence';
 import type { Migration } from '../migration-types';
 
@@ -359,7 +359,7 @@ const sqliteMigrations: Migration[] = [
 	CreateMcpRegistryServerTable1784000000005,
 	AddNodeGroupsColumnToWorkflowAndHistory1784000000006,
 	CreateInstanceAiCheckpointTable1784000000007,
-	RemoveInsightsReadScopeFromMemberApiKeys1779321600000,
+	RemoveInsightsReadScopeFromMemberApiKeys1784000000009,
 	ResetInstanceAiNativePersistence1784000000008,
 ];
 
