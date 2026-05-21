@@ -1,24 +1,37 @@
 <script lang="ts" setup>
-import { ref, watch, computed, onBeforeUnmount, useTemplateRef } from 'vue';
-import { N8nText, N8nIcon } from '@n8n/design-system';
+import { ref, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
+import { N8nText, N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { PushMessage } from '@n8n/api-types';
 import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { IWorkflowDb } from '@/Interface';
+import { isFixWithAiError, type FixWithAiError } from '../fixWithAi';
 
 const props = withDefaults(
 	defineProps<{
 		workflowId: string | null;
-		executionId: string | null;
 		/** Incremented to force re-fetch even when workflowId stays the same (e.g. workflow was modified). */
 		refreshKey?: number;
 	}>(),
 	{ refreshKey: 0 },
 );
 
+export interface WorkflowFailuresReport {
+	workflowId: string;
+	executionId: string;
+	errors: FixWithAiError[];
+}
+
 const emit = defineEmits<{
 	'iframe-ready': [];
+	/** Fires after a workflow fetch resolves and the new workflow has been
+	 * propagated to the embedded WorkflowPreview (which sends `openWorkflow` to
+	 * the iframe). Used by `useEventRelay` to gate buffered-event replay so the
+	 * iframe always receives `openWorkflow` before the `executionEvent`s. */
+	'workflow-loaded': [workflowId: string];
+	/** Embedded canvas finished a run with node failures (iframe push is isolated). */
+	'workflow-failures': [report: WorkflowFailuresReport];
 }>();
 
 const i18n = useI18n();
@@ -30,15 +43,47 @@ const isLoading = ref(false);
 const fetchError = ref<string | null>(null);
 let fetchGeneration = 0;
 
-// When executionId is set, switch WorkflowPreview to execution mode
-const previewMode = computed(() => (props.executionId ? 'execution' : 'workflow'));
+function getPreviewIframe(): HTMLIFrameElement | null {
+	return (
+		(previewRef.value as { iframeRef?: HTMLIFrameElement | null } | undefined)?.iframeRef ?? null
+	);
+}
+
+function isMessageFromPreviewIframe(event: MessageEvent): boolean {
+	if (event.origin !== window.location.origin) return false;
+
+	const iframeWindow = getPreviewIframe()?.contentWindow;
+	if (!iframeWindow) return false;
+
+	return event.source === iframeWindow;
+}
+
+function parseWorkflowFailureErrors(errors: unknown): FixWithAiError[] {
+	if (!Array.isArray(errors)) return [];
+	return errors.filter(isFixWithAiError);
+}
 
 function handleIframeMessage(event: MessageEvent) {
+	if (!isMessageFromPreviewIframe(event)) return;
 	if (typeof event.data !== 'string' || !event.data.includes('"command"')) return;
 	try {
 		const json = JSON.parse(event.data);
 		if (json.command === 'n8nReady') {
 			emit('iframe-ready');
+		} else if (json.command === 'reportWorkflowFailures') {
+			const errors = parseWorkflowFailureErrors(json.errors);
+			if (
+				errors.length === 0 ||
+				typeof json.workflowId !== 'string' ||
+				typeof json.executionId !== 'string'
+			) {
+				return;
+			}
+			emit('workflow-failures', {
+				workflowId: json.workflowId,
+				executionId: json.executionId,
+				errors,
+			});
 		}
 	} catch {
 		// Ignore parse errors
@@ -46,13 +91,22 @@ function handleIframeMessage(event: MessageEvent) {
 }
 
 function relayPushEvent(event: PushMessage) {
-	const iframe = (previewRef.value as { iframeRef?: HTMLIFrameElement | null } | undefined)
-		?.iframeRef;
-	if (!iframe?.contentWindow) return;
-	iframe.contentWindow.postMessage(
+	const iframeWindow = getPreviewIframe()?.contentWindow;
+	if (!iframeWindow) return;
+	iframeWindow.postMessage(
 		JSON.stringify({ command: 'executionEvent', event }),
 		window.location.origin,
 	);
+}
+
+function requestFitView() {
+	previewRef.value?.requestFitView();
+}
+
+function openWorkflowInEditor() {
+	const workflowId = workflow.value?.id ?? props.workflowId;
+	if (!workflowId) return;
+	window.open(`/workflow/${workflowId}`, '_blank', 'noopener');
 }
 
 async function fetchWorkflow(id: string) {
@@ -68,6 +122,13 @@ async function fetchWorkflow(id: string) {
 		const result = await workflowsListStore.fetchWorkflow(id);
 		if (generation !== fetchGeneration) return;
 		workflow.value = result;
+		// Wait for Vue to propagate the new workflow to <WorkflowPreview>'s
+		// reactive watcher, which posts `openWorkflow` to the iframe. Emitting
+		// after this tick lets parents replay buffered execution events
+		// without racing the workflow load.
+		await nextTick();
+		if (generation !== fetchGeneration) return;
+		emit('workflow-loaded', id);
 	} catch {
 		if (generation !== fetchGeneration) return;
 		workflow.value = null;
@@ -100,7 +161,7 @@ onBeforeUnmount(() => {
 	window.removeEventListener('message', handleIframeMessage);
 });
 
-defineExpose({ relayPushEvent });
+defineExpose({ relayPushEvent, requestFitView });
 </script>
 
 <template>
@@ -110,22 +171,35 @@ defineExpose({ relayPushEvent });
 			<N8nText color="text-light">{{ fetchError }}</N8nText>
 		</div>
 
-		<!-- Preview — stays mounted during re-fetch to keep iframe ready state -->
+		<!-- Always mounted so the iframe boots before any artifact exists; it hides itself
+		     internally when no workflow is set. Live execution state is painted onto
+		     the canvas via `relayPushEvent` from SDK push events. -->
 		<WorkflowPreview
-			v-if="workflow"
 			ref="previewComponent"
-			:mode="previewMode"
-			:workflow="workflow"
-			:execution-id="props.executionId ?? undefined"
+			mode="workflow"
+			:workflow="workflow ?? undefined"
 			:can-open-ndv="true"
+			:can-execute="true"
 			:hide-controls="false"
 			:suppress-notifications="true"
+			:allow-error-notifications="false"
 			loader-type="spinner"
+		/>
+
+		<N8nIconButton
+			v-if="workflow"
+			icon="external-link"
+			variant="subtle"
+			size="large"
+			:class="$style.openWorkflowButton"
+			:aria-label="i18n.baseText('instanceAi.previewTabBar.openWorkflowInEditor')"
+			data-test-id="instance-ai-workflow-preview-open-editor"
+			@click="openWorkflowInEditor"
 		/>
 
 		<!-- Loading overlay (shown during initial load or when no workflow yet) -->
 		<div v-if="isLoading && !workflow" :class="$style.centerState">
-			<N8nIcon icon="spinner" color="primary" size="xxlarge" spin />
+			<N8nIcon icon="loader-circle" :size="80" spin />
 		</div>
 	</div>
 </template>
@@ -145,5 +219,12 @@ defineExpose({ relayPushEvent });
 	justify-content: center;
 	gap: var(--spacing--xs);
 	height: 100%;
+}
+
+.openWorkflowButton {
+	position: absolute;
+	top: var(--spacing--xs);
+	right: var(--spacing--xs);
+	z-index: 1;
 }
 </style>

@@ -1,17 +1,19 @@
 import { Container } from '@n8n/di';
-import fs from 'fs';
-import { mock } from 'jest-mock-extended';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import type { DatabaseConfig } from '../src/index';
-import { GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
+import { ExecutionsConfig, GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
 
-jest.mock('fs');
-const mockFs = mock<typeof fs>();
-fs.readFileSync = mockFs.readFileSync;
+const { readFileSyncMock } = vi.hoisted(() => ({
+	readFileSyncMock: vi.fn(),
+}));
 
-const consoleWarnMock = jest.spyOn(console, 'warn').mockImplementation(() => {});
+vi.mock('node:fs', () => ({
+	readFileSync: readFileSyncMock,
+}));
+
+const consoleWarnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 // Ignore the sanitize function from the GlobalConfig nested types
 type ConfigShape<T> = T extends ReadonlyArray<infer U>
@@ -31,7 +33,7 @@ type GlobalConfigShape = ConfigShape<GlobalConfig>;
 describe('GlobalConfig', () => {
 	beforeEach(() => {
 		Container.reset();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	const originalEnv = process.env;
@@ -161,7 +163,10 @@ describe('GlobalConfig', () => {
 			logWriter: {
 				keepLogCount: 3,
 				logBaseName: 'n8nEventLog',
+				logFullPath: '',
 				maxFileSizeInKB: 10240,
+				maxMessagesPerParse: 10_000,
+				maxTotalMessagesPerFile: 500_000,
 			},
 		},
 		externalHooks: {
@@ -202,6 +207,7 @@ describe('GlobalConfig', () => {
 			indexingEnabled: true,
 			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
+			autosaveDisabled: false,
 		},
 		endpoints: {
 			metrics: {
@@ -233,7 +239,7 @@ describe('GlobalConfig', () => {
 			formWaiting: 'form-waiting',
 			mcp: 'mcp',
 			mcpBuilderEnabled: true,
-			mcpMaxRegisteredClients: 200,
+			mcpMaxRegisteredClients: 5000,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
 			formDataFileSizeMax: 200,
@@ -253,6 +259,9 @@ describe('GlobalConfig', () => {
 				prefix: 'cache',
 				ttl: 3600000,
 			},
+		},
+		chatTrigger: {
+			disablePublicChat: false,
 		},
 		chatHub: {
 			executionContextTtl: 3600,
@@ -279,14 +288,14 @@ describe('GlobalConfig', () => {
 			n8nSandboxServiceUrl: '',
 			n8nSandboxServiceApiKey: '',
 			sandboxTimeout: 300000,
+			builderSandboxTtlMs: 600_000,
 			braveSearchApiKey: '',
 			searxngUrl: '',
-			filesystemPath: '',
 			gatewayApiKey: '',
 			threadTtlDays: 90,
 			snapshotPruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
-			confirmationTimeout: 600_000,
+			confirmationTimeout: 86_400_000,
 		},
 		queue: {
 			health: {
@@ -334,6 +343,7 @@ describe('GlobalConfig', () => {
 			taskTimeout: 300,
 			taskRequestTimeout: 60,
 			heartbeatInterval: 30,
+			grantTokenTtl: 30,
 			insecureMode: false,
 		},
 		sentry: {
@@ -344,6 +354,7 @@ describe('GlobalConfig', () => {
 			profilesSampleRate: 0,
 			tracesSampleRate: 0,
 			eventLoopBlockThreshold: 500,
+			eventLoopBlockMaxEventsPerHour: 5,
 		},
 		logging: {
 			level: 'info',
@@ -363,6 +374,9 @@ describe('GlobalConfig', () => {
 			enabled: false,
 			ttl: 10,
 			interval: 3,
+		},
+		evaluation: {
+			collectionsEnabled: false,
 		},
 		generic: {
 			timezone: 'America/New_York',
@@ -412,6 +426,10 @@ describe('GlobalConfig', () => {
 				interval: 180,
 				batchSize: 100,
 			},
+			queueRetention: {
+				keepLastCompleted: 0,
+				keepLastFailed: 0,
+			},
 			recovery: {
 				maxLastExecutions: 3,
 				workflowDeactivationEnabled: false,
@@ -420,14 +438,15 @@ describe('GlobalConfig', () => {
 			saveDataOnSuccess: 'all',
 			saveExecutionProgress: false,
 			saveDataManualExecutions: true,
+			scheduledExecutionDeduplicationEnabled: false,
 		},
 		diagnostics: {
 			enabled: true,
 			frontendConfig: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn;https://telemetry.n8n.io',
 			backendConfig: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io',
 			posthogConfig: {
-				apiKey: 'phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo',
-				apiHost: 'https://us.i.posthog.com',
+				apiKey: 'phc_kMstNfAgBcBkWSh6KdsgN09heqqNe5VNmalHP1Ni9Q4',
+				apiHost: 'https://ph.n8n.io',
 			},
 		},
 		aiAssistant: {
@@ -472,6 +491,10 @@ describe('GlobalConfig', () => {
 			allowedHostnames: [],
 			dnsCacheMaxSize: 1024 * 1024,
 		},
+		httpRequest: {
+			enforceGlobalUserAgent: false,
+			globalUserAgentValue: '',
+		},
 		redis: {
 			prefix: 'n8n',
 		},
@@ -495,6 +518,44 @@ describe('GlobalConfig', () => {
 			engine: 'legacy',
 			poolSize: 1,
 			maxCodeCacheSize: 1024,
+			bridgeTimeout: 5000,
+			bridgeMemoryLimit: 128,
+			observabilityEnabled: true,
+			tracesEnabled: true,
+			slowEvaluationThresholdMs: 50,
+			tracesSampleRate: 0.0,
+		},
+		instanceSettingsLoader: {
+			ownerManagedByEnv: false,
+			ownerEmail: '',
+			ownerFirstName: 'Instance',
+			ownerLastName: 'Owner',
+			ownerPasswordHash: '',
+			ssoManagedByEnv: false,
+			oidcClientId: '',
+			oidcClientSecret: '',
+			oidcDiscoveryEndpoint: '',
+			oidcLoginEnabled: false,
+			oidcPrompt: 'select_account',
+			oidcAcrValues: '',
+			ssoUserRoleProvisioning: 'disabled',
+			securityPolicyManagedByEnv: false,
+			mfaEnforcedEnabled: false,
+			personalSpacePublishingEnabled: true,
+			personalSpaceSharingEnabled: true,
+			samlMetadata: '',
+			samlMetadataUrl: '',
+			samlLoginEnabled: false,
+			logStreamingManagedByEnv: false,
+			logStreamingDestinations: '',
+			mcpManagedByEnv: false,
+			mcpAccessEnabled: false,
+			communityPackagesManagedByEnv: false,
+			communityPackages: '',
+		},
+		agents: {
+			checkpointTtlSeconds: 345600,
+			modules: [],
 		},
 	} satisfies GlobalConfigShape;
 
@@ -505,7 +566,7 @@ describe('GlobalConfig', () => {
 		// which `toEqual` and `toBe` does not do.
 		expect(defaultConfig).toMatchObject(config);
 		expect(config).toMatchObject(defaultConfig);
-		expect(mockFs.readFileSync).not.toHaveBeenCalled();
+		expect(readFileSyncMock).not.toHaveBeenCalled();
 	});
 
 	it('should use values from env variables when defined', () => {
@@ -522,6 +583,8 @@ describe('GlobalConfig', () => {
 			N8N_DYNAMIC_BANNERS_ENDPOINT: 'https://localhost:5678/api/banners',
 			N8N_DYNAMIC_BANNERS_ENABLED: 'false',
 			N8N_PASSWORD_MIN_LENGTH: '12',
+			N8N_ENFORCE_GLOBAL_USER_AGENT: 'true',
+			N8N_GLOBAL_USER_AGENT_VALUE: 'AcmeCorp/1.0',
 		};
 		const config = Container.get(GlobalConfig);
 
@@ -565,8 +628,12 @@ describe('GlobalConfig', () => {
 					minLength: 12,
 				},
 			},
+			httpRequest: {
+				enforceGlobalUserAgent: true,
+				globalUserAgentValue: 'AcmeCorp/1.0',
+			},
 		});
-		expect(mockFs.readFileSync).not.toHaveBeenCalled();
+		expect(readFileSyncMock).not.toHaveBeenCalled();
 	});
 
 	it('should read values from files using _FILE env variables', () => {
@@ -574,7 +641,7 @@ describe('GlobalConfig', () => {
 		process.env = {
 			DB_POSTGRESDB_PASSWORD_FILE: passwordFile,
 		};
-		mockFs.readFileSync.calledWith(passwordFile, 'utf8').mockReturnValueOnce('password-from-file');
+		readFileSyncMock.mockReturnValueOnce('password-from-file');
 
 		const config = Container.get(GlobalConfig);
 		const expected = {
@@ -591,7 +658,7 @@ describe('GlobalConfig', () => {
 		// which `toEqual` and `toBe` does not do.
 		expect(config).toMatchObject(expected);
 		expect(expected).toMatchObject(config);
-		expect(mockFs.readFileSync).toHaveBeenCalled();
+		expect(readFileSyncMock).toHaveBeenCalled();
 	});
 
 	it('should warn when _FILE env variable value contains whitespace', () => {
@@ -599,9 +666,7 @@ describe('GlobalConfig', () => {
 		process.env = {
 			DB_POSTGRESDB_PASSWORD_FILE: passwordFile,
 		};
-		mockFs.readFileSync
-			.calledWith(passwordFile, 'utf8')
-			.mockReturnValueOnce('password-from-file\n');
+		readFileSyncMock.mockReturnValueOnce('password-from-file\n');
 
 		const config = Container.get(GlobalConfig);
 		expect(config.database.postgresdb.password).toBe('password-from-file');
@@ -698,6 +763,22 @@ describe('GlobalConfig', () => {
 
 			const config = Container.get(GlobalConfig);
 			expect(config.endpoints.health).toEqual('/api/v1/health');
+		});
+	});
+
+	describe('ExecutionsConfig', () => {
+		it('should default scheduledExecutionDeduplicationEnabled to false', () => {
+			process.env = {};
+			const config = Container.get(ExecutionsConfig);
+			expect(config.scheduledExecutionDeduplicationEnabled).toBe(false);
+		});
+
+		it('should enable scheduledExecutionDeduplicationEnabled when env var is set to true', () => {
+			process.env = {
+				N8N_SCHEDULED_EXECUTION_DEDUPLICATION_ENABLED: 'true',
+			};
+			const config = Container.get(ExecutionsConfig);
+			expect(config.scheduledExecutionDeduplicationEnabled).toBe(true);
 		});
 	});
 });

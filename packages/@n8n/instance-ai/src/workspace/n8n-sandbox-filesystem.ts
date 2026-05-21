@@ -8,11 +8,11 @@ import type {
 	ReadOptions,
 	RemoveOptions,
 	WriteOptions,
-} from '@mastra/core/workspace';
-import { MastraFilesystem } from '@mastra/core/workspace';
+} from '@n8n/agents';
+import { BaseFilesystem } from '@n8n/agents';
+import { SandboxServiceError } from '@n8n/sandbox-client';
 import { dirname } from 'node:path/posix';
 
-import { N8nSandboxServiceError } from './n8n-sandbox-client';
 import type { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
 
 function getParentDirectory(path: string): string | null {
@@ -20,8 +20,8 @@ function getParentDirectory(path: string): string | null {
 	return parent === '.' || parent === '/' ? null : parent;
 }
 
-/** Mastra filesystem adapter backed by the n8n sandbox service file API. */
-export class N8nSandboxFilesystem extends MastraFilesystem {
+/** Native agents filesystem adapter backed by the n8n sandbox service file API. */
+export class N8nSandboxFilesystem extends BaseFilesystem {
 	readonly id: string;
 
 	readonly name = 'N8nSandboxFilesystem';
@@ -31,7 +31,7 @@ export class N8nSandboxFilesystem extends MastraFilesystem {
 	status: ProviderStatus = 'pending';
 
 	constructor(private readonly sandbox: N8nSandboxServiceSandbox) {
-		super({ name: 'N8nSandboxFilesystem' });
+		super();
 		this.id = `n8n-sandbox-fs-${sandbox.id}`;
 	}
 
@@ -129,7 +129,7 @@ export class N8nSandboxFilesystem extends MastraFilesystem {
 			await client.stat(sandboxId, path);
 			return true;
 		} catch (error) {
-			if (error instanceof N8nSandboxServiceError && error.status === 404) {
+			if (error instanceof SandboxServiceError && error.status === 404) {
 				return false;
 			}
 			throw error;

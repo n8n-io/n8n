@@ -12,6 +12,7 @@
 		"dist"
 	],
 	"scripts": {
+		"check": "tsx src/cli.ts",
 		"build": "tsc -p tsconfig.build.json",
 		"dev": "tsc --watch",
 		"test": "vitest run",
@@ -32,6 +33,6 @@
 		"tsx": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:",
-		"yaml": "^2.4.0"
+		"yaml": "catalog:"
 	}
 }

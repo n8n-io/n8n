@@ -1,16 +1,11 @@
-import type { MastraMessageContentV2 } from '@mastra/core/agent';
-import type { MastraDBMessage } from '@mastra/core/memory';
-import type { Memory } from '@mastra/memory';
 import type { ChatHubLLMProvider } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { generateCompactionSummary, patchThread } from '@n8n/instance-ai';
-import type { ModelConfig } from '@n8n/instance-ai';
+import { generateCompactionSummary, getThread, patchThread } from '@n8n/instance-ai';
+import type { BuiltMemory, ModelConfig } from '@n8n/instance-ai';
 
 import { maxContextWindowTokens } from '@/modules/chat-hub/context-limits';
-
-import { TypeORMMemoryStorage } from './storage/typeorm-memory-storage';
 
 const METADATA_KEY = 'instanceAiConversationSummary';
 
@@ -67,6 +62,7 @@ function getContextWindowForModel(modelId: ModelConfig): number {
 
 /** Estimate tokens consumed by system prompt, tools, and working memory overhead. */
 const FIXED_CONTEXT_OVERHEAD_TOKENS = 8_000;
+const MIN_UNSUMMARIZED_TOKENS = 500;
 
 interface ConversationSummaryMetadata {
 	version: number;
@@ -74,6 +70,13 @@ interface ConversationSummaryMetadata {
 	summary: string;
 	updatedAt: string;
 }
+
+interface PendingCompactionInput {
+	label: string;
+	text: string;
+}
+
+type StoredCompactionMessage = Awaited<ReturnType<BuiltMemory['getMessages']>>[number];
 
 /**
  * Manages rolling compaction of older thread messages into a summary.
@@ -95,7 +98,6 @@ export class InstanceAiCompactionService {
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly memoryStorage: TypeORMMemoryStorage,
 		globalConfig: GlobalConfig,
 	) {
 		this.maxContextWindowTokensCap = globalConfig.instanceAi.maxContextWindowTokens;
@@ -110,29 +112,25 @@ export class InstanceAiCompactionService {
 	 */
 	async prepareCompactedContext(
 		threadId: string,
-		memory: Memory,
+		memory: BuiltMemory,
 		modelId: ModelConfig,
 		lastMessages: number,
 		compactionThreshold = 0.8,
+		currentInput?: PendingCompactionInput,
 	): Promise<string | null> {
 		try {
-			const recentTail = lastMessages;
+			const recentTail = Math.max(0, lastMessages);
+			const currentInputTokens = currentInput ? estimateTokens(currentInput.text) : 0;
 
 			// Load all messages for the thread, ordered chronologically
-			const { messages: allMessages } = await this.memoryStorage.listMessages({
-				threadId,
-				perPage: false,
-				orderBy: { field: 'createdAt', direction: 'ASC' },
-			});
-
-			if (allMessages.length <= recentTail) {
-				return await this.getCachedSummaryBlock(threadId, memory);
-			}
+			const allMessages = await memory.getMessages(threadId);
 
 			// Estimate total token usage across all messages
-			const totalTokens =
-				FIXED_CONTEXT_OVERHEAD_TOKENS +
-				allMessages.reduce((sum, m) => sum + estimateTokens(this.extractRawText(m)), 0);
+			const rawMessageTokens = allMessages.reduce(
+				(sum, m) => sum + estimateTokens(this.extractRawText(m)),
+				0,
+			);
+			const totalTokens = FIXED_CONTEXT_OVERHEAD_TOKENS + rawMessageTokens + currentInputTokens;
 
 			const modelContextWindow = getContextWindowForModel(modelId);
 			const contextWindow =
@@ -141,18 +139,22 @@ export class InstanceAiCompactionService {
 					: modelContextWindow;
 			const threshold = contextWindow * compactionThreshold;
 
+			// Load existing compaction state
+			const thread = await getThread(memory, threadId);
+			const existing = this.parseMetadata(thread?.metadata?.[METADATA_KEY]);
+
+			if (allMessages.length <= recentTail) {
+				return this.formatCachedSummaryBlock(existing);
+			}
+
 			// Only compact when context usage exceeds the threshold
 			if (totalTokens < threshold) {
-				return await this.getCachedSummaryBlock(threadId, memory);
+				return this.formatCachedSummaryBlock(existing);
 			}
 
 			// Split into prefix (older messages) and tail (recent)
 			const prefixEnd = allMessages.length - recentTail;
 			const prefix = allMessages.slice(0, prefixEnd);
-
-			// Load existing compaction state
-			const thread = await memory.getThreadById({ threadId });
-			const existing = this.parseMetadata(thread?.metadata?.[METADATA_KEY]);
 
 			// Find where the previous summary left off
 			let unsummarizedStart = 0;
@@ -170,16 +172,18 @@ export class InstanceAiCompactionService {
 				(sum, m) => sum + estimateTokens(this.extractRawText(m)),
 				0,
 			);
-			if (unsummarizedTokens < 500) {
-				return await this.getCachedSummaryBlock(threadId, memory);
+			if (unsummarizedTokens < MIN_UNSUMMARIZED_TOKENS) {
+				return this.formatCachedSummaryBlock(existing);
 			}
 
 			// Extract high-signal content from the unsummarized slice
 			const messageBatch = this.extractHighSignalContent(unsummarizedSlice);
 
 			if (messageBatch.length === 0) {
-				return await this.getCachedSummaryBlock(threadId, memory);
+				return this.formatCachedSummaryBlock(existing);
 			}
+
+			const lastCompactedMessage = unsummarizedSlice[unsummarizedSlice.length - 1];
 
 			// Generate the updated summary
 			const summary = await generateCompactionSummary(modelId, {
@@ -188,7 +192,6 @@ export class InstanceAiCompactionService {
 			});
 
 			// Persist the updated compaction state
-			const lastCompactedMessage = unsummarizedSlice[unsummarizedSlice.length - 1];
 			const newMetadata: ConversationSummaryMetadata = {
 				version: (existing?.version ?? 0) + 1,
 				upToMessageId: lastCompactedMessage.id,
@@ -208,12 +211,7 @@ export class InstanceAiCompactionService {
 		}
 	}
 
-	/**
-	 * Return the cached summary block if one exists, without re-generating.
-	 */
-	private async getCachedSummaryBlock(threadId: string, memory: Memory): Promise<string | null> {
-		const thread = await memory.getThreadById({ threadId });
-		const existing = this.parseMetadata(thread?.metadata?.[METADATA_KEY]);
+	private formatCachedSummaryBlock(existing: ConversationSummaryMetadata | null): string | null {
 		if (existing?.summary) {
 			return this.formatSummaryBlock(existing.summary);
 		}
@@ -221,8 +219,8 @@ export class InstanceAiCompactionService {
 	}
 
 	/** Get the full serialized text of a message (for token estimation). */
-	private extractRawText(msg: MastraDBMessage): string {
-		const content: unknown = msg.content;
+	private extractRawText(msg: StoredCompactionMessage): string {
+		const content: unknown = 'content' in msg ? msg.content : msg.data;
 		if (typeof content === 'string') return content;
 		return JSON.stringify(content);
 	}
@@ -232,11 +230,12 @@ export class InstanceAiCompactionService {
 	 * tool results, and system messages.
 	 */
 	private extractHighSignalContent(
-		messages: MastraDBMessage[],
+		messages: StoredCompactionMessage[],
 	): Array<{ role: string; text: string }> {
 		const result: Array<{ role: string; text: string }> = [];
 
 		for (const msg of messages) {
+			if (!('role' in msg)) continue;
 			if (msg.role !== 'user' && msg.role !== 'assistant') continue;
 
 			const text = this.extractTextFromContent(msg.content);
@@ -249,28 +248,29 @@ export class InstanceAiCompactionService {
 	}
 
 	/**
-	 * Extract plain text from a Mastra message content structure.
-	 * Handles both string content and structured content arrays.
+	 * Extract plain text from the persisted message content structure.
+	 * Handles native string content and structured content arrays.
 	 */
-	private extractTextFromContent(content: MastraMessageContentV2): string {
+	private extractTextFromContent(content: unknown): string {
 		if (typeof content === 'string') return content;
 
-		const inner = (content as Record<string, unknown>)?.content;
-		if (typeof inner === 'string') return inner;
-
-		if (Array.isArray(inner)) {
-			const textParts: string[] = [];
-			for (const part of inner) {
-				if (typeof part === 'string') {
-					textParts.push(part);
-				} else if (isTextPart(part)) {
-					textParts.push(part.text);
-				}
-			}
-			return textParts.join('\n');
+		if (Array.isArray(content)) {
+			return this.extractTextParts(content);
 		}
 
 		return '';
+	}
+
+	private extractTextParts(parts: unknown[]): string {
+		const textParts: string[] = [];
+		for (const part of parts) {
+			if (typeof part === 'string') {
+				textParts.push(part);
+			} else if (isTextPart(part)) {
+				textParts.push(part.text);
+			}
+		}
+		return textParts.join('\n');
 	}
 
 	private formatSummaryBlock(summary: string): string {
@@ -293,7 +293,7 @@ export class InstanceAiCompactionService {
 
 	private async saveMetadata(
 		threadId: string,
-		memory: Memory,
+		memory: BuiltMemory,
 		metadata: ConversationSummaryMetadata,
 	): Promise<void> {
 		await patchThread(memory, {

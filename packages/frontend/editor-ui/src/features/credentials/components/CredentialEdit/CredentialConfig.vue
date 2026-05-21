@@ -5,6 +5,7 @@ import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
+	INode,
 	INodeProperties,
 } from 'n8n-workflow';
 import { isCommunityPackageName } from 'n8n-workflow';
@@ -25,7 +26,6 @@ import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
@@ -47,6 +47,7 @@ import { ElSwitch } from 'element-plus';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import QuickConnectButton from '../../quickConnect/components/QuickConnectButton.vue';
 import QuickConnectBanner from '../../quickConnect/components/QuickConnectBanner.vue';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 type Props = {
 	mode: string;
@@ -70,6 +71,8 @@ type Props = {
 	managedOauthAvailable?: boolean;
 	useCustomOauth?: boolean;
 	isQuickConnectMode?: boolean;
+	contextNode?: INode | null;
+	hideAskAssistant?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -86,6 +89,7 @@ const emit = defineEmits<{
 	retest: [];
 	oauth: [];
 	quickConnect: [];
+	claimed: [];
 	'update:isResolvable': [value: boolean];
 }>();
 
@@ -93,7 +97,7 @@ const credentialsStore = useCredentialsStore();
 const ndvStore = useNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 
@@ -192,6 +196,7 @@ const isNewCredential = computed(() => props.mode === 'new' && !props.credential
 
 const isAskAssistantAvailable = computed(
 	() =>
+		!props.hideAskAssistant &&
 		documentationUrl.value &&
 		documentationUrl.value.includes(DOCS_DOMAIN) &&
 		props.credentialProperties.length &&
@@ -238,7 +243,7 @@ function onDocumentationUrlClick(): void {
 		docs_link: documentationUrl.value,
 		credential_type: credentialTypeName.value,
 		source: 'modal',
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 	});
 }
 
@@ -277,7 +282,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	</N8nCallout>
 	<div v-else>
 		<div :class="$style.config" data-test-id="node-credentials-config-container">
-			<FreeAiCreditsCallout :credential-type-name="credentialType?.name" />
+			<FreeAiCreditsCallout
+				:credential-type-name="credentialType?.name"
+				@claimed="$emit('claimed')"
+			/>
 
 			<CredentialModeSelector
 				v-if="canWrite"
@@ -286,11 +294,16 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				:show-managed-oauth-options="managedOauthAvailable"
 				:quick-connect-available="quickConnectAvailable"
 				:is-quick-connect-mode="isQuickConnectMode"
+				:context-node="contextNode"
 				@update:auth-type="onAuthTypeChange"
 			/>
 
 			<template v-if="isQuickConnectMode">
-				<QuickConnectBanner v-if="quickConnectBannerText" :text="quickConnectBannerText" />
+				<QuickConnectBanner
+					v-if="quickConnectBannerText || quickConnectOption?.disclaimer"
+					:text="quickConnectBannerText"
+					:disclaimer="quickConnectOption?.disclaimer"
+				/>
 				<QuickConnectButton
 					:service-name="serviceName"
 					:credential-type-name="credentialType.name"
@@ -301,7 +314,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 			<template v-else>
 				<N8nCallout
-					v-if="documentationUrl && credentialProperties.length && !isManagedOAuth"
+					v-if="documentationUrl && credentialProperties.length && !isManagedOAuth && canWrite"
 					:class="$style.docsCallout"
 					theme="custom"
 					iconless

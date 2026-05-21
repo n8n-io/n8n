@@ -7,7 +7,8 @@
  * type definitions in index.ts (module augmentation).
  */
 
-import type { IHttpRequestOptions, INode, IRequestOptions } from 'n8n-workflow';
+import type { IHttpRequestOptions, INode, INodeProperties, IRequestOptions } from 'n8n-workflow';
+import { Readable } from 'node:stream';
 
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from './index';
 
@@ -38,17 +39,66 @@ const EVAL_MOCK_RSA_KEY =
 	'1RGx/w0Q3n5FVjMP3oG3UcUx9EB7GD8NMo74J/lEJ2UsBnIP3ggOb3AE+pWHNE0K\n' +
 	'-----END RSA PRIVATE KEY-----';
 
+// Name patterns that indicate a property holds a secret value (case-insensitive).
+const SECRET_NAME_PATTERNS =
+	/key|secret|token|password|credential|auth|connectionString|apiToken|accessCode/i;
+
+// Name patterns that indicate a property holds configuration (case-insensitive).
+const CONFIG_NAME_PATTERNS =
+	/url|host|region|endpoint|domain|subdomain|port|base|zone|server|namespace|org|project|team|site|instance|tenant|account(?!.*key)|workspace|bucket|database|schema|cluster|version/i;
+
+/**
+ * Determine whether a credential property is a secret that must be masked,
+ * or a config value whose default should be preserved for the LLM mock layer.
+ *
+ * Classification order:
+ * 1. `typeOptions.password` — explicit secret marker by credential authors
+ * 2. Secret name patterns — catches unmarked keys/tokens/passwords
+ * 3. Non-string types (boolean, number, options) — always config
+ * 4. Config name patterns — URLs, regions, hosts, etc.
+ * 5. Fallback — treat as secret (safe default: never leak to LLM)
+ */
+export function isSecretCredentialProperty(prop: INodeProperties): boolean {
+	if (prop.typeOptions?.password === true) return true;
+	if (SECRET_NAME_PATTERNS.test(prop.name)) return true;
+
+	if (prop.type === 'boolean' || prop.type === 'number' || prop.type === 'options') return false;
+	if (CONFIG_NAME_PATTERNS.test(prop.name)) return false;
+
+	return true;
+}
+
+/** Format a property name into a descriptive placeholder, e.g. `secretAccessKey` → `<secret-access-key>`. */
+function toPlaceholder(name: string): string {
+	const kebab = name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+	return `<${kebab}>`;
+}
+
 /**
  * Build mock credentials for eval mode from the credential type's property definitions.
- * Includes auth-related fields (OAuth tokens, RSA keys) that nodes need beyond
- * the UI properties — nodes pick what they need and ignore the rest.
+ *
+ * Secret properties (API keys, passwords, tokens) are replaced with a
+ * descriptive placeholder like `<api-key>` so identifying credentials never
+ * reach the LLM, while the placeholder makes it obvious the value was mocked.
+ * Config properties (URLs, regions, hosts) keep their schema default values
+ * so the LLM mock handler sees realistic request URLs and can generate
+ * accurate responses.
+ *
+ * Also includes auth-related fields (OAuth tokens, RSA keys) that nodes need
+ * beyond the UI properties — nodes pick what they need and ignore the rest.
  */
-export function buildEvalMockCredentials(
-	properties: Array<{ name: string }>,
-): Record<string, unknown> {
+export function buildEvalMockCredentials(properties: INodeProperties[]): Record<string, unknown> {
 	const mockCredentials: Record<string, unknown> = {};
 	for (const prop of properties) {
-		mockCredentials[prop.name] = 'eval-mock-value';
+		if (prop.type === 'json') {
+			// Nodes `jsonParse` these before the request — must be valid JSON.
+			mockCredentials[prop.name] =
+				typeof prop.default === 'string' && prop.default.trim() ? prop.default : '{}';
+		} else if (isSecretCredentialProperty(prop)) {
+			mockCredentials[prop.name] = toPlaceholder(prop.name);
+		} else {
+			mockCredentials[prop.name] = prop.default ?? toPlaceholder(prop.name);
+		}
 	}
 	mockCredentials.oauthTokenData = {
 		access_token: 'eval-mock-access-token',
@@ -64,17 +114,55 @@ export function buildEvalMockCredentials(
 // ---------------------------------------------------------------------------
 
 /**
- * Convert an EvalMockHttpResponse into the full-response shape that callers expect
- * when `returnFullResponse` / `resolveWithFullResponse` is true.
- * Body is serialized to a Buffer so downstream processing (binary detection,
- * encoding detection, stream handling) works exactly as with a real HTTP response.
+ * Shape a mock response to match what axios's `result.data` would be for the
+ * same request. Node code reads body based on the request's `encoding` field,
+ * which maps 1:1 onto axios `responseType`.
+ *
+ * `__bodyResolved` tells HttpRequestV3 the body is already consumer-ready so
+ * it skips its Buffer→string→JSON.parse pipeline (which would crash on a
+ * plain object with "stream.on is not a function").
  */
-export function serializeMockToHttpResponse(mock: EvalMockHttpResponse) {
-	const body =
+export function serializeMockToHttpResponse(
+	mock: EvalMockHttpResponse,
+	requestOptions?: IHttpRequestOptions,
+) {
+	const common = {
+		headers: mock.headers,
+		statusCode: mock.statusCode,
+		statusMessage: 'OK',
+	};
+
+	const bytes = () =>
 		mock.body instanceof Buffer
 			? mock.body
-			: Buffer.from(typeof mock.body === 'string' ? mock.body : JSON.stringify(mock.body));
-	return { body, headers: mock.headers, statusCode: mock.statusCode, statusMessage: 'OK' };
+			: Buffer.from(typeof mock.body === 'string' ? mock.body : JSON.stringify(mock.body ?? ''));
+
+	switch (requestOptions?.encoding) {
+		case 'stream':
+			return { ...common, body: Readable.from(bytes()) };
+		case 'arraybuffer':
+		case 'blob':
+			return { ...common, body: bytes() };
+		case 'text':
+			return {
+				...common,
+				body:
+					mock.body instanceof Buffer
+						? mock.body.toString()
+						: typeof mock.body === 'string'
+							? mock.body
+							: JSON.stringify(mock.body ?? ''),
+				__bodyResolved: true,
+			};
+	}
+
+	// Default path (encoding is 'json' or undefined) — axios would return
+	// parsed data. If the mock already produced a parsed object, hand it
+	// through. If it handed us raw bytes, return them and let the node decode.
+	if (mock.body instanceof Buffer) {
+		return { ...common, body: mock.body };
+	}
+	return { ...common, body: mock.body, __bodyResolved: true };
 }
 
 /** Normalize legacy IRequestOptions or (uri, options) args into IHttpRequestOptions for the eval mock handler. */
@@ -122,7 +210,7 @@ export async function callEvalMockHandler(
 		throwHttpError(response, httpLibrary);
 	}
 
-	return returnFullResponse ? serializeMockToHttpResponse(response) : response.body;
+	return returnFullResponse ? serializeMockToHttpResponse(response, requestOptions) : response.body;
 }
 
 /**

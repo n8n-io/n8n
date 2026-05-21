@@ -5,31 +5,24 @@
  * Same pattern as build-workflow-agent.tool.ts — returns immediately with a taskId.
  */
 
-import { Agent } from '@mastra/core/agent';
-import type { ToolsInput } from '@mastra/core/agent';
-import { createTool } from '@mastra/core/tools';
+import { Agent, Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { createSubAgentPersistence } from './agent-persistence';
 import { truncateLabel } from './display-utils';
 import { RESEARCH_AGENT_PROMPT } from './research-agent-prompt';
 import {
-	createDetachedSubAgentTracing,
+	createDetachedSubAgentTraceFactory,
 	traceSubAgentTools,
 	withTraceContextActor,
 } from './tracing-utils';
-import { registerWithMastra } from '../../agent/register-with-mastra';
-import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
-import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
-import {
-	buildAgentTraceInputs,
-	getTraceParentRun,
-	mergeTraceRunInputs,
-	withTraceParentContext,
-} from '../../tracing/langsmith-tracing';
+import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
+import { MAX_STEPS } from '../../constants/max-steps';
+import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/consume-with-hitl';
+import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
+import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
-
-const RESEARCH_MAX_STEPS = 25;
 
 export interface StartResearchAgentInput {
 	goal: string;
@@ -50,16 +43,14 @@ export async function startResearchAgentTask(
 	context: OrchestrationContext,
 	input: StartResearchAgentInput,
 ): Promise<StartedResearchAgentTask> {
-	const researchTools: ToolsInput = {};
-	const toolNames = ['web-search', 'fetch-url'];
-	for (const name of toolNames) {
-		if (name in context.domainTools) {
-			researchTools[name] = context.domainTools[name];
-		}
+	const researchTools = createToolRegistry();
+	const researchTool = context.domainTools.get('research');
+	if (researchTool) {
+		researchTools.set('research', researchTool);
 	}
 
-	if (!researchTools['web-search']) {
-		return { result: 'Error: web-search tool not available.', taskId: '', agentId: '' };
+	if (researchTools.size === 0) {
+		return { result: 'Error: research tool not available.', taskId: '', agentId: '' };
 	}
 
 	if (!context.spawnBackgroundTask) {
@@ -69,29 +60,13 @@ export async function startResearchAgentTask(
 	const subAgentId = input.agentId ?? `agent-researcher-${nanoid(6)}`;
 	const taskId = input.taskId ?? `research-${nanoid(8)}`;
 
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-spawned',
-		runId: context.runId,
-		agentId: subAgentId,
-		payload: {
-			parentId: context.orchestratorAgentId,
-			role: 'web-researcher',
-			tools: Object.keys(researchTools),
-			taskId,
-			kind: 'researcher',
-			title: 'Researching',
-			subtitle: truncateLabel(input.goal),
-			goal: input.goal,
-		},
+	const briefing = await buildSubAgentBriefing({
+		task: input.goal,
+		conversationContext: input.conversationContext,
+		additionalContext: input.constraints ? `Constraints: ${input.constraints}` : undefined,
+		runningTasks: context.getRunningTaskSummaries?.(),
 	});
-
-	const conversationCtx = input.conversationContext
-		? `\n\n[CONVERSATION CONTEXT: ${input.conversationContext}]`
-		: '';
-	const briefing = input.constraints
-		? `${input.goal}${conversationCtx}\n\nConstraints: ${input.constraints}`
-		: `${input.goal}${conversationCtx}`;
-	const traceContext = await createDetachedSubAgentTracing(context, {
+	const createTraceContext = createDetachedSubAgentTraceFactory(context, {
 		agentId: subAgentId,
 		role: 'web-researcher',
 		kind: 'research',
@@ -105,28 +80,36 @@ export async function startResearchAgentTask(
 	});
 	const tracedResearchTools = traceSubAgentTools(context, researchTools, 'web-researcher');
 
-	context.spawnBackgroundTask({
+	const spawnOutcome = context.spawnBackgroundTask({
 		taskId,
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role: 'web-researcher',
-		traceContext,
+		createTraceContext,
 		plannedTaskId: input.plannedTaskId,
-		run: async (signal, drainCorrections) => {
+		dedupeKey: { role: 'web-researcher', plannedTaskId: input.plannedTaskId },
+		parentCheckpointId:
+			context.isCheckpointFollowUp === true ? context.checkpointTaskId : undefined,
+		run: async (signal, drainCorrections, waitForCorrection, { traceContext }) => {
 			return await withTraceContextActor(traceContext, async () => {
-				const subAgent = new Agent({
-					id: subAgentId,
-					name: 'Web Research Agent',
-					instructions: {
-						role: 'system' as const,
-						content: RESEARCH_AGENT_PROMPT,
+				const subAgent = new Agent('Web Research Agent')
+					.model(context.modelId)
+					.instructions(RESEARCH_AGENT_PROMPT, {
 						providerOptions: {
 							anthropic: { cacheControl: { type: 'ephemeral' } },
 						},
-					},
-					model: context.modelId,
-					tools: tracedResearchTools,
+					})
+					.tool(toolRegistryValues(tracedResearchTools))
+					.checkpoint(context.checkpointStore ?? 'memory');
+				const telemetry = traceContext?.getTelemetry?.({
+					agentRole: 'web-researcher',
+					functionId: 'instance-ai.subagent.web-researcher',
+					executionMode: 'background_subagent',
+					metadata: { agent_id: subAgentId, task_id: taskId },
 				});
+				if (telemetry) {
+					subAgent.telemetry(telemetry);
+				}
 				mergeTraceRunInputs(
 					traceContext?.actorRun,
 					buildAgentTraceInputs({
@@ -136,42 +119,75 @@ export async function startResearchAgentTask(
 					}),
 				);
 
-				registerWithMastra(subAgentId, subAgent, context.storage);
-
-				const traceParent = getTraceParentRun();
-				return await withTraceParentContext(traceParent, async () => {
-					const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-					const stream = await subAgent.stream(briefing, {
-						maxSteps: RESEARCH_MAX_STEPS,
-						abortSignal: signal,
-						providerOptions: {
-							anthropic: { cacheControl: { type: 'ephemeral' } },
-						},
-						...(llmStepTraceHooks?.executionOptions ?? {}),
-					});
-
-					const { text } = await consumeStreamWithHitl({
-						agent: subAgent,
-						stream,
-						runId: context.runId,
-						agentId: subAgentId,
-						eventBus: context.eventBus,
-						logger: context.logger,
-						threadId: context.threadId,
-						abortSignal: signal,
-						waitForConfirmation: context.waitForConfirmation,
-						drainCorrections,
-						llmStepTraceHooks,
-					});
-
-					return await text;
+				const persistence = await createSubAgentPersistence(context, {
+					agentKind: 'researcher',
 				});
+				const stream = await subAgent.stream(briefing, {
+					maxIterations: MAX_STEPS.RESEARCH,
+					abortSignal: signal,
+					persistence,
+					providerOptions: {
+						anthropic: { cacheControl: { type: 'ephemeral' } },
+					},
+				});
+
+				const result = await consumeStreamWithHitl({
+					agent: subAgent,
+					stream,
+					runId: context.runId,
+					agentId: subAgentId,
+					eventBus: context.eventBus,
+					logger: context.logger,
+					threadId: context.threadId,
+					abortSignal: signal,
+					waitForConfirmation: context.waitForConfirmation,
+					drainCorrections,
+					waitForCorrection,
+					maxIterations: MAX_STEPS.RESEARCH,
+					persistence,
+				});
+
+				return await requireCompletedHitlText(result, 'Research sub-agent');
 			});
 		},
 	});
 
+	if (spawnOutcome.status === 'duplicate') {
+		return {
+			result: `Research already in progress (task: ${spawnOutcome.existing.taskId}). Wait for the planned-task-follow-up — do not dispatch again.`,
+			taskId: spawnOutcome.existing.taskId,
+			agentId: spawnOutcome.existing.agentId,
+		};
+	}
+	if (spawnOutcome.status === 'limit-reached') {
+		return {
+			result:
+				'Could not start research: concurrent background-task limit reached. Wait for an existing task to finish and try again.',
+			taskId: '',
+			agentId: '',
+		};
+	}
+
+	// Spawn confirmed — publish the UI event now so duplicate/limit-reached
+	// rejections above don't leave a phantom card on the chat surface.
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-spawned',
+		runId: context.runId,
+		agentId: subAgentId,
+		payload: {
+			parentId: context.orchestratorAgentId,
+			role: 'web-researcher',
+			tools: toolRegistryKeys(researchTools),
+			taskId,
+			kind: 'researcher',
+			title: 'Researching',
+			subtitle: truncateLabel(input.goal),
+			goal: input.goal,
+		},
+	});
+
 	return {
-		result: `Research started (task: ${taskId}). Reply with one short sentence. Do NOT summarize the plan or list details.`,
+		result: `Research started (task: ${taskId}). Do NOT summarize the plan or list details.`,
 		taskId,
 		agentId: subAgentId,
 	};
@@ -197,21 +213,23 @@ export const researchWithAgentInputSchema = z.object({
 });
 
 export function createResearchWithAgentTool(context: OrchestrationContext) {
-	return createTool({
-		id: 'research-with-agent',
-		description:
+	return new Tool('research-with-agent')
+		.description(
 			'Spawn a background research agent that searches the web and reads pages ' +
-			'to answer a complex question. Returns immediately with a task ID — results ' +
-			'arrive when the research completes. Use when the question requires multiple ' +
-			'searches and page reads, or needs synthesis from several sources.',
-		inputSchema: researchWithAgentInputSchema,
-		outputSchema: z.object({
-			result: z.string(),
-			taskId: z.string(),
-		}),
-		execute: async (input: z.infer<typeof researchWithAgentInputSchema>) => {
+				'to answer a complex question. Returns immediately with a task ID — results ' +
+				'arrive when the research completes. Use when the question requires multiple ' +
+				'searches and page reads, or needs synthesis from several sources.',
+		)
+		.input(researchWithAgentInputSchema)
+		.output(
+			z.object({
+				result: z.string(),
+				taskId: z.string(),
+			}),
+		)
+		.handler(async (input: z.infer<typeof researchWithAgentInputSchema>) => {
 			const result = await startResearchAgentTask(context, input);
 			return await Promise.resolve({ result: result.result, taskId: result.taskId });
-		},
-	});
+		})
+		.build();
 }

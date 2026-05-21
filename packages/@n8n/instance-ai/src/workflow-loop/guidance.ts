@@ -9,15 +9,18 @@ export function formatWorkflowLoopGuidance(
 	options: WorkflowLoopGuidanceOptions = {},
 ): string {
 	switch (action.type) {
+		case 'ignored':
+			return `STALE REPORT IGNORED: ${action.reason}`;
+		case 'continue_building':
+			return `SUBMIT FAILED: ${action.reason}. Fix the workflow code and call \`submit-workflow\` again.`;
 		case 'done': {
-			if (action.mockedCredentialTypes?.length) {
-				const types = action.mockedCredentialTypes.join(', ');
+			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
 				return (
 					'Workflow verified successfully with temporary mock data. ' +
-					`Call \`setup-credentials\` with types [${types}] and ` +
-					'credentialFlow stage "finalize" to let the user add real credentials. ' +
-					'After the user selects credentials, call `apply-workflow-credentials` ' +
-					`with the workItemId "${options.workItemId ?? 'unknown'}" and workflowId to apply them.`
+					`Call \`workflows(action="setup")\` with workflowId "${action.workflowId ?? 'unknown'}" ` +
+					'to open the inline setup card in the AI Assistant panel for credentials, parameters, and triggers. ' +
+					'Do not tell the user to open the editor, use the canvas, or click a Setup button. ' +
+					'Do not call `credentials(action="setup")` or `apply-workflow-credentials` — `workflows(action="setup")` handles everything.'
 				);
 			}
 			return `Workflow verified successfully. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
@@ -26,25 +29,31 @@ export function formatWorkflowLoopGuidance(
 			return (
 				`VERIFY: Run workflow ${action.workflowId}. ` +
 				`If the build had mocked credentials, use \`verify-built-workflow\` with workItemId "${options.workItemId ?? 'unknown'}". ` +
-				'Otherwise use `run-workflow`. ' +
-				'If it fails, use `debug-execution` to diagnose. ' +
+				'Otherwise use `executions(action="run")`. ' +
+				'If it fails, use `executions(action="debug")` to diagnose. ' +
 				`Then call \`report-verification-verdict\` with workItemId "${options.workItemId ?? 'unknown'}" and your findings.`
 			);
 		case 'blocked':
 			return `BUILD BLOCKED: ${action.reason}. Explain this to the user and ask how to proceed.`;
 		case 'rebuild':
 			return (
-				`REBUILD NEEDED: The workflow at ${action.workflowId} needs structural repair. ` +
-				'Submit a new `plan` with one `build-workflow` task. ' +
-				`In the task spec, explain that workflow "${action.workflowId}" needs structural repair and include these details: ${action.failureDetails}`
+				`REBUILD NEEDED: Workflow "${action.workflowId}" needs structural repair. ` +
+				`Call \`build-workflow-with-agent\` directly with \`workflowId: "${action.workflowId}"\` ` +
+				`and \`workItemId: "${options.workItemId ?? 'unknown'}"\` ` +
+				'(no plan — this is a single-task rebuild; `workflowId` and `workItemId` are required ' +
+				'so the builder updates the existing workflow instead of creating a duplicate). ' +
+				`In the \`task\` parameter, describe the structural repair and include these details: ${action.failureDetails}`
 			);
 		case 'patch':
 			return (
 				`PATCH NEEDED: Node "${action.failedNodeName}" in workflow ${action.workflowId} needs a targeted fix. ` +
 				`Diagnosis: ${action.diagnosis}. ` +
 				(action.patch ? `Suggested fix: ${JSON.stringify(action.patch)}. ` : '') +
-				'Submit a new `plan` with one `build-workflow` task. ' +
-				`In the task spec, set mode "patch", include workflowId "${action.workflowId}", and describe the targeted fix.`
+				`Call \`build-workflow-with-agent\` directly with \`workflowId: "${action.workflowId}"\` ` +
+				`and \`workItemId: "${options.workItemId ?? 'unknown'}"\` ` +
+				'(no plan — this is a single-task patch; `workflowId` and `workItemId` are required ' +
+				'so the builder updates the existing workflow instead of creating a duplicate). ' +
+				'In the `task` parameter, describe the targeted fix to apply.'
 			);
 	}
 }

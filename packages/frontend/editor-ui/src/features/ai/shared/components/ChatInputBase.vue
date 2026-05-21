@@ -4,16 +4,24 @@ import { N8nIconButton, N8nInput, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSpeechRecognition } from '@vueuse/core';
 
-const props = defineProps<{
-	modelValue: string;
-	placeholder?: string;
-	isStreaming: boolean;
-	canSubmit: boolean;
-	disabled?: boolean;
-	showVoice?: boolean;
-	showAttach?: boolean;
-	acceptedMimeTypes?: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		modelValue: string;
+		placeholder?: string;
+		isStreaming: boolean;
+		canSubmit: boolean;
+		disabled?: boolean;
+		showVoice?: boolean;
+		showAttach?: boolean;
+		acceptedMimeTypes?: string;
+		autosize?: boolean | { minRows: number; maxRows: number };
+	}>(),
+	{
+		placeholder: undefined,
+		acceptedMimeTypes: undefined,
+		autosize: () => ({ minRows: 2, maxRows: 6 }),
+	},
+);
 
 const emit = defineEmits<{
 	'update:modelValue': [value: string];
@@ -122,14 +130,13 @@ defineExpose({
 		/>
 
 		<slot name="attachments" />
-
 		<N8nInput
 			ref="inputRef"
 			:model-value="modelValue"
 			type="textarea"
 			:placeholder="placeholder"
 			autocomplete="off"
-			:autosize="{ minRows: 1, maxRows: 6 }"
+			:autosize="autosize"
 			:disabled="disabled"
 			@update:model-value="emit('update:modelValue', $event)"
 			@keydown="handleKeydown"
@@ -193,14 +200,14 @@ defineExpose({
 	width: 100%;
 	border-radius: var(--radius--xl);
 	padding: var(--spacing--sm);
-	box-shadow: 0 10px 24px 0 color-mix(in srgb, var(--color--foreground--shade-2) 6%, transparent);
-	background-color: var(--color--background--light-2);
-	border: 1px solid light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
+	box-shadow:
+		var(--shadow--xs),
+		inset 0 0 0 1px light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
+	background-color: var(--background--surface);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
 	outline: 1px solid transparent;
-	outline-offset: 2px;
 
 	&:focus-within {
 		outline-color: var(--focus--border-color);
@@ -211,6 +218,7 @@ defineExpose({
 		line-height: 1.5em;
 		resize: none;
 		padding: 0 !important;
+		scrollbar-color: transparent transparent;
 	}
 
 	:global(.n8n-input) > div {

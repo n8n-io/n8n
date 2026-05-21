@@ -11,16 +11,19 @@ import type { INodeUi } from '@/Interface';
 import ExecuteMessage from './ExecuteMessage.vue';
 import { CHAT_TRIGGER_NODE_TYPE, SETUP_CREDENTIALS_MODAL_KEY } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useBuilderStore } from '../../builder.store';
 
-const workflowValidationIssuesRef = ref<
+const builderWorkflowTodosRef = ref<
 	Array<{ node: string; type: string; value: string | string[] }>
 >([]);
-const workflowTodosRef = ref<Array<{ node: string; type: string; value: string | string[] }>>([]);
 const executionWaitingForWebhookRef = ref(false);
 const selectedTriggerNodeNameRef = ref<string | undefined>(undefined);
 const hasNoCreditsRemainingRef = ref(false);
@@ -101,8 +104,7 @@ describe('ExecuteMessage', () => {
 		vi.clearAllMocks();
 		runWorkflowMock.mockReset();
 		showMessageMock.mockReset();
-		workflowValidationIssuesRef.value = [];
-		workflowTodosRef.value = [];
+		builderWorkflowTodosRef.value = [];
 		executionWaitingForWebhookRef.value = false;
 		selectedTriggerNodeNameRef.value = undefined;
 		hasNoCreditsRemainingRef.value = false;
@@ -121,20 +123,16 @@ describe('ExecuteMessage', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.workflow.id = 'test-workflow';
+		workflowsStore.setWorkflowId('test-workflow');
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		logsStore = mockedStore(useLogsStore);
 		uiStore = mockedStore(useUIStore);
 		builderStore = mockedStore(useBuilderStore);
 
-		workflowsStore.workflow.nodes = workflowNodes as unknown as INodeUi[];
-		workflowsStore.workflow.connections = {} as never;
-		Object.defineProperty(workflowsStore, 'workflowValidationIssues', {
-			get: () => workflowValidationIssuesRef.value,
-		});
-		workflowsStore.formatIssueMessage = vi.fn((value: string | string[]) =>
-			Array.isArray(value) ? value.join(', ') : String(value),
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId('test-workflow'),
 		);
+		workflowDocumentStore.setConnections({});
 		Object.defineProperty(workflowsStore, 'workflowExecutionData', {
 			get: () => workflowExecutionDataRef,
 		});
@@ -158,17 +156,23 @@ describe('ExecuteMessage', () => {
 			get: () => hasNoCreditsRemainingRef.value,
 		});
 		Object.defineProperty(builderStore, 'workflowTodos', {
-			get: () => workflowTodosRef.value,
+			get: () => builderWorkflowTodosRef.value,
 		});
 		builderStore.trackWorkflowBuilderJourney = vi.fn();
 
-		renderExecuteMessage = () => renderComponent({ pinia });
+		renderExecuteMessage = () => {
+			// Sync the document store with the latest workflowNodes state so
+			// tests that push nodes to workflowNodes after beforeEach have those
+			// reflected in the store's event-driven nodesByName / nodesById
+			// indices.
+			workflowDocumentStore.setNodes(workflowNodes);
+			return renderComponent({ pinia });
+		};
 	});
 
 	it('disables execution when validation issues exist', () => {
 		const issue = { node: 'Start Trigger', type: 'parameters', value: 'Missing field' };
-		workflowValidationIssuesRef.value = [issue];
-		workflowTodosRef.value = [issue];
+		builderWorkflowTodosRef.value = [issue];
 
 		const { getAllByTestId, getByText } = renderExecuteMessage();
 
@@ -181,7 +185,7 @@ describe('ExecuteMessage', () => {
 		workflowNodes[0].parameters = {
 			url: '<__PLACEHOLDER_VALUE__API endpoint URL__>',
 		};
-		workflowTodosRef.value = [
+		builderWorkflowTodosRef.value = [
 			{ node: 'Start Trigger', type: 'parameters', value: 'Fill in placeholder value' },
 		];
 
@@ -304,7 +308,7 @@ describe('ExecuteMessage', () => {
 
 	it('disables execution when no credits remaining and validation issues exist', () => {
 		hasNoCreditsRemainingRef.value = true;
-		workflowValidationIssuesRef.value = [
+		builderWorkflowTodosRef.value = [
 			{ node: 'Start Trigger', type: 'parameters', value: 'Missing field' },
 		];
 
@@ -352,7 +356,7 @@ describe('ExecuteMessage', () => {
 				url: ['Some other validation error'],
 			},
 		};
-		workflowTodosRef.value = [
+		builderWorkflowTodosRef.value = [
 			{ node: 'Start Trigger', type: 'parameters', value: 'Some other validation error' },
 			{ node: 'Start Trigger', type: 'parameters', value: 'Fill in placeholder value' },
 		];
@@ -369,7 +373,7 @@ describe('ExecuteMessage', () => {
 
 	it('tracks user_clicked_todo when clicking on an issue item', async () => {
 		const todoIssue = { node: 'HTTP Request', type: 'parameters', value: 'Missing URL' };
-		workflowTodosRef.value = [todoIssue];
+		builderWorkflowTodosRef.value = [todoIssue];
 		workflowNodes.push({
 			id: '2',
 			name: 'HTTP Request',
@@ -397,7 +401,7 @@ describe('ExecuteMessage', () => {
 			type: 'credentials',
 			value: "Credentials for 'OpenAI' are not set",
 		};
-		workflowTodosRef.value = [credentialIssue];
+		builderWorkflowTodosRef.value = [credentialIssue];
 		workflowNodes.push({
 			id: '2',
 			name: 'OpenAI Model',
@@ -426,12 +430,12 @@ describe('ExecuteMessage', () => {
 
 	it('tracks no_placeholder_values_left when all todos are resolved', async () => {
 		const todoIssue = { node: 'Start Trigger', type: 'parameters', value: 'Missing field' };
-		workflowTodosRef.value = [todoIssue];
+		builderWorkflowTodosRef.value = [todoIssue];
 
 		renderExecuteMessage();
 
 		// Simulate resolving all todos
-		workflowTodosRef.value = [];
+		builderWorkflowTodosRef.value = [];
 		await nextTick();
 		await flushPromises();
 
@@ -441,7 +445,7 @@ describe('ExecuteMessage', () => {
 	});
 
 	it('does not track no_placeholder_values_left when component mounts without issues', async () => {
-		workflowTodosRef.value = [];
+		builderWorkflowTodosRef.value = [];
 
 		renderExecuteMessage();
 		await nextTick();

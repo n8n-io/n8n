@@ -63,7 +63,7 @@ describe('composable integration', () => {
 	// 2. Tab auto-switches to executed workflow
 	// -----------------------------------------------------------------------
 	describe('tab auto-switch on execution', () => {
-		test('does not switch tab when viewing a different artifact', async () => {
+		test('switches to latest artifact when execution completes on different workflow', async () => {
 			h.registerWorkflow('wf-1', 'Workflow A');
 			h.registerWorkflow('wf-2', 'Workflow B');
 			h.selectTab('wf-2');
@@ -74,8 +74,8 @@ describe('composable integration', () => {
 			h.addExecutionResult('wf-1', 'exec-1');
 			await h.flush();
 
-			// Should stay on wf-2 — user chose that tab
-			expect(h.activeTabId.value).toBe('wf-2');
+			// Should switch to the workflow that was just built and executed
+			expect(h.activeTabId.value).toBe('wf-1');
 		});
 
 		test('auto-opens preview when streaming and build result appears', async () => {
@@ -267,17 +267,15 @@ describe('composable integration', () => {
 		test('resets all preview and execution state', async () => {
 			h.registerWorkflow('wf-1', 'My Workflow');
 			h.selectTab('wf-1');
-			h.markUserSentMessage();
 			h.simulatePushEvent(executionStartedEvent('exec-1', 'wf-1'));
 			await h.flush();
 
-			await h.switchThread('thread-2');
+			await h.routeToThread('thread-2');
 
-			expect(h.activeTabId.value).toBeNull();
+			expect(h.activeTabId.value).toBeUndefined();
 			expect(h.activeWorkflowId.value).toBeNull();
 			expect(h.activeExecutionId.value).toBeNull();
 			expect(h.isPreviewVisible.value).toBe(false);
-			expect(h.userSentMessage.value).toBe(false);
 			// Execution status should be cleared even though tabs remain in registry
 			const wfTab = h.allArtifactTabs.value.find((t) => t.id === 'wf-1');
 			expect(wfTab?.executionStatus).toBeUndefined();
@@ -489,7 +487,7 @@ describe('composable integration', () => {
 			expect(h.relayedEvents.length).toBeGreaterThan(0);
 		});
 
-		test('execution on inactive workflow — no relay until tab switch + iframe ready', async () => {
+		test('execution on inactive workflow — buffered events replay via workflowLoaded', async () => {
 			h.registerWorkflow('wf-1', 'Workflow A');
 			h.registerWorkflow('wf-2', 'Workflow B');
 			h.selectTab('wf-2');
@@ -505,12 +503,17 @@ describe('composable integration', () => {
 			// Tab shows success
 			expect(h.allArtifactTabs.value.find((t) => t.id === 'wf-1')?.executionStatus).toBe('success');
 
-			// Switch to wf-1 — iframe ready replays buffered (but buffer was cleared on finish)
+			// Switch to wf-1 — tab switch alone does not replay (waits for workflowLoaded)
 			h.selectTab('wf-1');
 			await h.flush();
-			await h.simulateIframeReady();
-			// Buffer is cleared after finish, so no replay
 			expect(h.relayedEvents.length).toBe(0);
+
+			// workflowLoaded replays buffered events
+			await h.simulateWorkflowLoaded('wf-1');
+			expect(h.relayedEvents.length).toBe(3);
+			expect(h.relayedEvents[0].type).toBe('executionStarted');
+			expect(h.relayedEvents[1].type).toBe('nodeExecuteBefore');
+			expect(h.relayedEvents[2].type).toBe('executionFinished');
 		});
 
 		test('thread switch during running execution stops relay', async () => {
@@ -526,8 +529,8 @@ describe('composable integration', () => {
 			expect(beforeThreadSwitch).toBeGreaterThan(0);
 
 			// Switch thread mid-execution — clears everything
-			await h.switchThread('thread-2');
-			expect(h.activeTabId.value).toBeNull();
+			await h.routeToThread('thread-2');
+			expect(h.activeTabId.value).toBeUndefined();
 
 			// No more relay after thread switch
 			expect(h.relayedEvents.length).toBe(beforeThreadSwitch);
@@ -556,11 +559,17 @@ describe('composable integration', () => {
 
 			expect(h.allArtifactTabs.value.find((t) => t.id === 'wf-1')?.executionStatus).toBe('success');
 
-			// Switch to workflow tab — iframe ready can replay (buffer cleared on finish though)
+			// Switch to workflow tab — tab switch alone does not replay
 			h.selectTab('wf-1');
 			await h.flush();
-			await h.simulateIframeReady();
-			expect(h.relayedEvents.length).toBe(0); // buffer cleared after finish
+			expect(h.relayedEvents.length).toBe(0);
+
+			// workflowLoaded replays buffered events
+			await h.simulateWorkflowLoaded('wf-1');
+			expect(h.relayedEvents.length).toBe(3);
+			expect(h.relayedEvents[0].type).toBe('executionStarted');
+			expect(h.relayedEvents[1].type).toBe('nodeExecuteBefore');
+			expect(h.relayedEvents[2].type).toBe('executionFinished');
 		});
 
 		test('rapid re-execution: relay tracks latest execution only', async () => {
@@ -795,8 +804,8 @@ describe('composable integration', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-dt',
-							toolName: 'create-data-table',
-							args: {},
+							toolName: 'data-tables',
+							args: { action: 'create' },
 							isLoading: false,
 							result: { table: { id: 'dt-1', name: 'Users Table' } },
 						},
@@ -836,8 +845,8 @@ describe('composable integration', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-del',
-							toolName: 'delete-data-table',
-							args: { dataTableId: 'dt-1' },
+							toolName: 'data-tables',
+							args: { action: 'delete', dataTableId: 'dt-1' },
 							isLoading: false,
 							result: { success: true },
 						},

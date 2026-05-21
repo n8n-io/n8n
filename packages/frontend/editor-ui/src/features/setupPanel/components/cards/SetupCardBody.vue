@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 import { type INodeProperties, NodeHelpers } from 'n8n-workflow';
@@ -15,9 +15,9 @@ import type {
 import type { INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const NESTED_PARAM_TYPES = new Set([
 	'collection',
@@ -51,7 +51,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const nodeHelpers = useNodeHelpers();
-const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const ndvStore = useNDVStore();
 
 const nodeType = computed(() =>
@@ -117,6 +117,29 @@ const openNdv = () => {
 	ndvStore.setActiveNodeName(props.state.node.name, 'other');
 };
 
+// Hide parameter issues until the user interacts with a parameter.
+const hideIssuesMap = ref(new Map<string, boolean>());
+
+watch(
+	simpleParameters,
+	(params) => {
+		for (const p of params) {
+			if (!hideIssuesMap.value.has(p.name)) {
+				hideIssuesMap.value.set(p.name, true);
+			}
+		}
+	},
+	{ immediate: true },
+);
+
+const hiddenIssuesInputs = computed(() =>
+	[...hideIssuesMap.value.entries()].filter(([, hidden]) => hidden).map(([name]) => name),
+);
+
+const revealParameterIssues = (parameterName: string) => {
+	hideIssuesMap.value.set(parameterName, false);
+};
+
 const onCredentialSelected = (updateInfo: INodeUpdatePropertiesInformation) => {
 	if (!props.state.credentialType) return;
 	emit('interacted');
@@ -145,7 +168,9 @@ const onValueChanged = (parameterData: IUpdateInformation) => {
 		? parameterData.name.replace(/^parameters\./, '')
 		: parameterData.name;
 
-	workflowState.updateNodeProperties({
+	revealParameterIssues(paramName);
+
+	workflowDocumentStore.value.updateNodeProperties({
 		name: props.state.node.name,
 		properties: {
 			parameters: {
@@ -205,9 +230,11 @@ const onValueChanged = (parameterData: IUpdateInformation) => {
 			:remove-last-parameter-margin="true"
 			:node="state.node"
 			:hide-delete="true"
+			:hidden-issues-inputs="hiddenIssuesInputs"
 			:path="isWizard ? 'parameters' : undefined"
 			:options-overrides="{ hideExpressionSelector: true, hideFocusPanelButton: true }"
 			@value-changed="onValueChanged"
+			@parameter-blur="revealParameterIssues"
 		/>
 
 		<N8nLink

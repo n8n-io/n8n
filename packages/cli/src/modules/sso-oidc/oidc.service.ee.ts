@@ -240,7 +240,18 @@ export class OidcService {
 				expectedNonce,
 			});
 		} catch (error) {
-			this.logger.error('Failed to exchange authorization code for tokens', { error });
+			const e = error as {
+				error?: string;
+				error_description?: string;
+				cause?: unknown;
+				message?: string;
+			};
+			this.logger.error('Failed to exchange authorization code for tokens', {
+				oauthError: e.error,
+				oauthErrorDescription: e.error_description,
+				cause: e.cause ? JSON.stringify(e.cause) : undefined,
+				message: e.message,
+			});
 			throw new BadRequestError('Invalid authorization code');
 		}
 
@@ -415,7 +426,18 @@ export class OidcService {
 				expectedNonce,
 			});
 		} catch (error) {
-			this.logger.error('Failed to exchange authorization code for tokens', { error });
+			const e = error as {
+				error?: string;
+				error_description?: string;
+				cause?: unknown;
+				message?: string;
+			};
+			this.logger.error('Failed to exchange authorization code for tokens', {
+				oauthError: e.error,
+				oauthErrorDescription: e.error_description,
+				cause: e.cause ? JSON.stringify(e.cause) : undefined,
+				message: e.message,
+			});
 			throw new BadRequestError('Invalid authorization code');
 		}
 
@@ -528,7 +550,7 @@ export class OidcService {
 				const discoveryUrl = new URL(oidcConfig.discoveryEndpoint);
 
 				if (oidcConfig.clientSecret && decryptSecret) {
-					oidcConfig.clientSecret = this.cipher.decrypt(oidcConfig.clientSecret);
+					oidcConfig.clientSecret = await this.cipher.decryptV2(oidcConfig.clientSecret);
 				}
 				return {
 					...oidcConfig,
@@ -593,7 +615,7 @@ export class OidcService {
 			key: OIDC_PREFERENCES_DB_KEY,
 			value: JSON.stringify({
 				...newConfig,
-				clientSecret: this.cipher.encrypt(newConfig.clientSecret),
+				clientSecret: await this.cipher.encryptV2(newConfig.clientSecret),
 			}),
 			loadOnStartup: true,
 		});

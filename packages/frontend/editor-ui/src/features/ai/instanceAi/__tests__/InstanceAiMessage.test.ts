@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import { createTestingPinia } from '@pinia/testing';
 import InstanceAiMessageComponent from '../components/InstanceAiMessage.vue';
 import type { InstanceAiMessage, InstanceAiAgentNode } from '@n8n/api-types';
@@ -11,7 +11,7 @@ vi.mock('@/features/ai/chatHub/components/ChatMarkdownChunk.vue', () => ({
 	},
 }));
 
-const renderComponent = createComponentRenderer(InstanceAiMessageComponent, {
+const renderComponent = createThreadComponentRenderer(InstanceAiMessageComponent, {
 	global: {
 		stubs: {
 			AgentActivityTree: {
@@ -50,7 +50,7 @@ function makeMessage(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMess
 
 describe('InstanceAiMessage', () => {
 	beforeEach(() => {
-		createTestingPinia();
+		createTestingPinia({ stubActions: false });
 	});
 
 	it('should render user message with user bubble', () => {
@@ -193,38 +193,6 @@ describe('InstanceAiMessage', () => {
 		});
 
 		expect(getByText('Recalling conversation...')).toBeInTheDocument();
-	});
-
-	it('should show background task indicator when child has active status and not streaming', () => {
-		const { getByText } = renderComponent({
-			props: {
-				message: makeMessage({
-					isStreaming: false,
-					agentTree: makeAgentTree({
-						status: 'completed',
-						children: [makeAgentTree({ agentId: 'child-1', status: 'active' })],
-					}),
-				}),
-			},
-		});
-
-		expect(getByText('Working in the background...')).toBeInTheDocument();
-	});
-
-	it('should NOT show background task indicator during streaming', () => {
-		const { queryByText } = renderComponent({
-			props: {
-				message: makeMessage({
-					isStreaming: true,
-					agentTree: makeAgentTree({
-						status: 'active',
-						children: [makeAgentTree({ agentId: 'child-1', status: 'active' })],
-					}),
-				}),
-			},
-		});
-
-		expect(queryByText('Working in the background...')).not.toBeInTheDocument();
 	});
 
 	it('should render agent activity tree when agentTree is present', () => {

@@ -1,21 +1,19 @@
-import { MastraSandbox } from '@mastra/core/workspace';
 import type {
 	CommandResult,
 	ExecuteCommandOptions,
 	ProviderStatus,
 	SandboxInfo,
-} from '@mastra/core/workspace';
+} from '@n8n/agents';
+import { BaseSandbox } from '@n8n/agents';
+import { SandboxClient } from '@n8n/sandbox-client';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-
-import { N8nSandboxClient, type DockerfileStepsBuilder } from './n8n-sandbox-client';
 
 export interface N8nSandboxServiceSandboxOptions {
 	id?: string;
 	apiKey?: string;
 	serviceUrl?: string;
 	timeout?: number;
-	dockerfile?: DockerfileStepsBuilder;
 }
 
 function shellEscape(value: string): string {
@@ -27,8 +25,8 @@ function toShellCommand(command: string, args: string[] = []): string {
 	return [command, ...args.map((arg) => shellEscape(arg))].join(' ');
 }
 
-/** Mastra sandbox adapter backed by the n8n sandbox service HTTP API. */
-export class N8nSandboxServiceSandbox extends MastraSandbox {
+/** Native agents sandbox adapter backed by the n8n sandbox service HTTP API. */
+export class N8nSandboxServiceSandbox extends BaseSandbox {
 	readonly name = 'N8nSandboxServiceSandbox';
 
 	readonly provider = 'n8n-sandbox';
@@ -37,13 +35,13 @@ export class N8nSandboxServiceSandbox extends MastraSandbox {
 
 	private readonly instanceId = `n8n-sandbox-${randomUUID()}`;
 
-	private readonly client: N8nSandboxClient;
+	private readonly client: SandboxClient;
 
 	private sandboxId?: string;
 
 	constructor(private readonly options: N8nSandboxServiceSandboxOptions) {
-		super({ name: 'N8nSandboxServiceSandbox' });
-		this.client = new N8nSandboxClient({
+		super();
+		this.client = new SandboxClient({
 			apiKey: options.apiKey,
 			baseUrl: options.serviceUrl,
 		});
@@ -60,9 +58,7 @@ export class N8nSandboxServiceSandbox extends MastraSandbox {
 			return;
 		}
 
-		const sandbox = await this.client.createSandbox({
-			dockerfile: this.options.dockerfile,
-		});
+		const sandbox = await this.client.createSandbox();
 		this.sandboxId = sandbox.id;
 	}
 
@@ -71,7 +67,12 @@ export class N8nSandboxServiceSandbox extends MastraSandbox {
 		await this.client.deleteSandbox(this.sandboxId);
 	}
 
-	override async getInfo(): Promise<SandboxInfo> {
+	override async stop(): Promise<void> {
+		// The remote service only supports create/delete today. Keep stop as a
+		// local lifecycle transition so BaseSandbox can manage status correctly.
+	}
+
+	async getInfo(): Promise<SandboxInfo> {
 		await this.ensureRunning();
 		const sandbox = await this.client.getSandbox(this.requireSandboxId());
 		return {
@@ -80,11 +81,9 @@ export class N8nSandboxServiceSandbox extends MastraSandbox {
 			provider: this.provider,
 			status: this.status,
 			createdAt: new Date(sandbox.createdAt * 1000),
-			lastUsedAt: new Date(sandbox.lastActiveAt * 1000),
 			metadata: {
+				lastActiveAt: new Date(sandbox.lastActiveAt * 1000).toISOString(),
 				remoteStatus: sandbox.status,
-				imageId: sandbox.imageId,
-				remoteProvider: sandbox.provider,
 			},
 		};
 	}
@@ -118,7 +117,7 @@ export class N8nSandboxServiceSandbox extends MastraSandbox {
 		};
 	}
 
-	getClient(): N8nSandboxClient {
+	getClient(): SandboxClient {
 		return this.client;
 	}
 

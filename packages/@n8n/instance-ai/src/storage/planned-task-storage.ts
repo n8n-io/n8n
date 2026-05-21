@@ -1,8 +1,7 @@
-import type { Memory } from '@mastra/memory';
 import { z } from 'zod';
 
 import type { PlannedTaskGraph } from '../types';
-import { patchThread } from './thread-patch';
+import { getThread, patchThread, type PatchableThreadMemory } from './thread-patch';
 
 const METADATA_KEY = 'instanceAiPlannedTasks';
 
@@ -11,6 +10,7 @@ const plannedTaskKindSchema = z.enum([
 	'build-workflow',
 	'manage-data-tables',
 	'research',
+	'checkpoint',
 ]);
 
 const plannedTaskStatusSchema = z.enum(['planned', 'running', 'succeeded', 'failed', 'cancelled']);
@@ -36,7 +36,7 @@ const plannedTaskRecordSchema = z.object({
 const plannedTaskGraphSchema = z.object({
 	planRunId: z.string(),
 	messageGroupId: z.string().optional(),
-	status: z.enum(['active', 'awaiting_replan', 'completed', 'cancelled']),
+	status: z.enum(['awaiting_approval', 'active', 'awaiting_replan', 'completed', 'cancelled']),
 	tasks: z.array(plannedTaskRecordSchema),
 });
 
@@ -46,10 +46,10 @@ function parseGraph(raw: unknown): PlannedTaskGraph | null {
 }
 
 export class PlannedTaskStorage {
-	constructor(private readonly memory: Memory) {}
+	constructor(private readonly memory: PatchableThreadMemory) {}
 
 	async get(threadId: string): Promise<PlannedTaskGraph | null> {
-		const thread = await this.memory.getThreadById({ threadId });
+		const thread = await getThread(this.memory, threadId);
 		if (!thread?.metadata?.[METADATA_KEY]) return null;
 		return parseGraph(thread.metadata[METADATA_KEY]);
 	}

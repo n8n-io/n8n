@@ -96,6 +96,7 @@ declare global {
 				userPropertiesOnce?: Record<string, string>,
 			): void;
 			reset?(resetDeviceId?: boolean): void;
+			group?(groupType: string, groupKey: string, groupPropertiesToSet?: IDataObject): void;
 			onFeatureFlags?(callback: (keys: string[], map: FeatureFlags) => void): void;
 			reloadFeatureFlags?(): void;
 			capture?(event: string, properties: IDataObject): void;
@@ -455,6 +456,7 @@ export type SimplifiedNodeType = Pick<
 	| 'outputs'
 > & {
 	tag?: NodeCreatorTag;
+	isNew?: boolean;
 };
 export interface SubcategoryItemProps {
 	description?: string;
@@ -464,6 +466,7 @@ export interface SubcategoryItemProps {
 		color?: string;
 	};
 	panelClass?: string;
+	connectionType?: NodeConnectionType;
 	title?: string;
 	subcategory?: string;
 	defaults?: INodeParameters;
@@ -552,6 +555,10 @@ export interface SectionCreateElement extends CreateElementBase {
 	 * Whether to show a separator at the bottom of the expanded section
 	 */
 	showSeparator?: boolean;
+	/**
+	 * Whether to render the section without its category header
+	 */
+	hideHeader?: boolean;
 }
 
 export interface ViewCreateElement extends CreateElementBase {
@@ -642,6 +649,9 @@ export interface NewCredentialsModal extends ModalState {
 	forceManualMode?: boolean;
 	projectId?: string;
 	suggestedName?: string;
+	nodeName?: string;
+	contextNode?: INodeUi;
+	hideAskAssistant?: boolean;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';

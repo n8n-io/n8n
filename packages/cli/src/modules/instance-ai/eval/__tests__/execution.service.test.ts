@@ -27,6 +27,7 @@ jest.mock('../mock-handler', () => ({
 	createLlmMockHandler: jest.fn(),
 }));
 jest.mock('../workflow-analysis', () => ({
+	assertUnpinCompatibility: jest.fn(),
 	generateMockHints: jest.fn(),
 	identifyNodesForHints: jest.fn(),
 	identifyNodesForPinData: jest.fn(),
@@ -74,12 +75,14 @@ jest.mock('n8n-workflow', () => {
 
 import { EvalExecutionService } from '../execution.service';
 import {
+	assertUnpinCompatibility,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 } from '../workflow-analysis';
 import { createLlmMockHandler } from '../mock-handler';
 import type { MockHints } from '../workflow-analysis';
+import { UserError } from 'n8n-workflow';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -88,6 +91,7 @@ import type { MockHints } from '../workflow-analysis';
 const generateMockHintsMock = jest.mocked(generateMockHints);
 const identifyNodesForHintsMock = jest.mocked(identifyNodesForHints);
 const identifyNodesForPinDataMock = jest.mocked(identifyNodesForPinData);
+const assertUnpinCompatibilityMock = jest.mocked(assertUnpinCompatibility);
 const createLlmMockHandlerMock = jest.mocked(createLlmMockHandler);
 
 function makeWorkflowEntity(overrides: Partial<IWorkflowBase> = {}) {
@@ -177,6 +181,7 @@ describe('EvalExecutionService', () => {
 		// Default mock returns — happy path
 		identifyNodesForHintsMock.mockReturnValue([]);
 		identifyNodesForPinDataMock.mockReturnValue([]);
+		assertUnpinCompatibilityMock.mockImplementation(() => undefined);
 		generateMockHintsMock.mockResolvedValue(makeEmptyHints());
 		createLlmMockHandlerMock.mockReturnValue(jest.fn());
 		mockGetStartNode.mockReturnValue(makeStartNode());
@@ -276,6 +281,87 @@ describe('EvalExecutionService', () => {
 			expect(result.executionId).toBeDefined();
 			expect(typeof result.executionId).toBe('string');
 			expect(result.executionId.length).toBeGreaterThan(0);
+		});
+	});
+
+	// ── unpinNodes handling ──────────────────────────────────────────
+
+	describe('unpinNodes', () => {
+		beforeEach(() => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+		});
+
+		it('calls assertUnpinCompatibility with an empty list when unpinNodes is omitted', async () => {
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(assertUnpinCompatibilityMock).toHaveBeenCalledWith(expect.anything(), []);
+		});
+
+		it('omits the exclusion set when unpinNodes is empty', async () => {
+			await service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: [] });
+
+			expect(identifyNodesForPinDataMock).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				undefined,
+			);
+		});
+
+		// Safety gate: this PR ships the surface only. Non-empty `unpinNodes`
+		// must not run until TRUST-113 wires the credential rewrite + wire
+		// server, or the workflow would hit real provider APIs.
+		describe('safety gate (no rewriter wired)', () => {
+			it('runs the compatibility guard, then refuses with the gate error when the guard passes', async () => {
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['Agent'],
+				});
+
+				expect(result.success).toBe(false);
+				expect(result.errors).toEqual([expect.stringContaining('not yet enabled')]);
+				// Guard runs first so the user gets actionable diagnostics when their
+				// workflow has a permanent compatibility issue. When the guard passes,
+				// the gate fires with the generic "not yet enabled" message.
+				expect(assertUnpinCompatibilityMock).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'wf-1' }),
+					['Agent'],
+				);
+				expect(generateMockHintsMock).not.toHaveBeenCalled();
+				expect(mockProcessRunExecutionData).not.toHaveBeenCalled();
+			});
+
+			it("surfaces the guard's error when the workflow has a permanent compatibility issue", async () => {
+				assertUnpinCompatibilityMock.mockImplementation(() => {
+					throw new UserError(
+						'Cannot unpin AI root nodes — protocol-binary sub-nodes ' +
+							'(cannot be intercepted via HTTP): "Mem" (memoryPostgresChat) → "Agent"',
+					);
+				});
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['Agent'],
+				});
+
+				expect(result.success).toBe(false);
+				// Guard's protocol-binary message wins over the generic gate message —
+				// the user needs to fix the workflow regardless of when the feature ships.
+				expect(result.errors).toEqual([expect.stringContaining('memoryPostgresChat')]);
+				expect(result.errors[0]).not.toContain('not yet enabled');
+			});
+
+			it('refuses regardless of how many roots are requested', async () => {
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['A', 'B', 'C'],
+				});
+
+				expect(result.success).toBe(false);
+				expect(result.errors[0]).toContain('unpinNodes');
+			});
+
+			it('still runs the workflow when unpinNodes is omitted', async () => {
+				await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(generateMockHintsMock).toHaveBeenCalled();
+				expect(mockProcessRunExecutionData).toHaveBeenCalled();
+			});
 		});
 	});
 
@@ -416,8 +502,8 @@ describe('EvalExecutionService', () => {
 			expect(result.nodeResults['HTTP Request'].startTime).toBe(1710000000);
 		});
 
-		it('captures output from run data, limited to MAX_OUTPUT_ITEMS_PER_NODE', async () => {
-			const items = Array.from({ length: 10 }, (_, i) => ({ json: { idx: i } }));
+		it('captures output limited to MAX_OUTPUT_ITEMS_PER_NODE and reports full outputCount', async () => {
+			const items = Array.from({ length: 15 }, (_, i) => ({ json: { idx: i } }));
 			mockProcessRunExecutionData.mockResolvedValue(
 				makeIRun({
 					data: {
@@ -440,8 +526,8 @@ describe('EvalExecutionService', () => {
 
 			const result = await service.executeWithLlmMock('wf-1', makeUser());
 
-			// MAX_OUTPUT_ITEMS_PER_NODE is 5
-			expect(result.nodeResults['HTTP Request'].output).toHaveLength(5);
+			expect(result.nodeResults['HTTP Request'].output).toHaveLength(10);
+			expect(result.nodeResults['HTTP Request'].outputCount).toBe(15);
 		});
 	});
 

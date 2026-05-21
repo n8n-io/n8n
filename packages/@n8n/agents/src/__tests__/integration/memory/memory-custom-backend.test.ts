@@ -8,7 +8,7 @@
 import { expect, it, beforeEach } from 'vitest';
 
 import { Agent, Memory, type AgentDbMessage } from '../../../index';
-import type { BuiltMemory, Thread } from '../../../types/sdk/memory';
+import type { BuiltMemory, MemoryDescriptor, Thread } from '../../../types/sdk/memory';
 import { describeIf, findLastTextContent, getModel } from '../helpers';
 
 const describe = describeIf('anthropic');
@@ -17,9 +17,11 @@ const describe = describeIf('anthropic');
 // Custom in-memory BuiltMemory implementation (simulates Redis, DynamoDB, etc.)
 // ---------------------------------------------------------------------------
 class CustomMapMemory implements BuiltMemory {
+	describe(): MemoryDescriptor {
+		throw new Error('Method not implemented.');
+	}
 	readonly threads = new Map<string, Thread>();
 	readonly messages = new Map<string, AgentDbMessage[]>();
-	readonly workingMemory = new Map<string, string>();
 
 	// --- Thread management ---
 
@@ -75,27 +77,6 @@ class CustomMapMemory implements BuiltMemory {
 				msgs.filter((m) => !idSet.has(m.id)),
 			);
 		}
-	}
-
-	// --- Working memory (Tier 2) ---
-
-	async getWorkingMemory(params: {
-		threadId: string;
-		resourceId: string;
-		scope: 'resource' | 'thread';
-	}): Promise<string | null> {
-		return (
-			this.workingMemory.get(params.scope === 'resource' ? params.resourceId : params.threadId) ??
-			null
-		);
-	}
-
-	async saveWorkingMemory(
-		params: { threadId: string; resourceId: string; scope: 'resource' | 'thread' },
-		content: string,
-	): Promise<void> {
-		const id = params.scope === 'resource' ? params.resourceId : params.threadId;
-		this.workingMemory.set(id, content);
 	}
 }
 
@@ -158,104 +139,6 @@ describe('custom BuiltMemory backend', () => {
 		// Thread 1 should have messages, thread 2 should have its own
 		expect(store.messages.get(thread1)!.length).toBeGreaterThan(0);
 		expect(store.messages.get(thread2)!.length).toBeGreaterThan(0);
-	});
-
-	it('persists and retrieves resource-scoped working memory via custom backend', async () => {
-		const memory = new Memory()
-			.storage(store)
-			.lastMessages(10)
-			.scope('resource')
-			.freeform('# User Profile\n- **Name**:\n- **Favorite color**:');
-
-		const agent = new Agent('custom-mem-working')
-			.model(getModel('anthropic'))
-			.instructions('You are a helpful assistant. Be concise. Always update your working memory.')
-			.memory(memory);
-
-		const threadId = `custom-wm-${Date.now()}`;
-		const resourceId = 'user-wm-1';
-		const options = { persistence: { threadId, resourceId } };
-
-		await agent.generate('My name is Kenji and my favorite color is teal.', options);
-
-		// Working memory should have been persisted keyed by resourceId
-		const wm = store.workingMemory.get(resourceId);
-		expect(wm).toBeDefined();
-		expect(wm!.toLowerCase()).toContain('kenji');
-
-		// New thread, same resourceId — resource-scoped working memory carries over
-		const thread2 = `custom-wm2-${Date.now()}`;
-		const result = await agent.generate('What is my name?', {
-			persistence: { threadId: thread2, resourceId },
-		});
-		expect(findLastTextContent(result.messages)?.toLowerCase()).toContain('kenji');
-	});
-
-	it('persists and retrieves thread-scoped working memory via custom backend', async () => {
-		const memory = new Memory()
-			.storage(store)
-			.lastMessages(10)
-			.scope('thread')
-			.freeform('# Conversation Notes\n- **Topic**:\n- **Key facts**:');
-
-		const agent = new Agent('custom-mem-thread-wm')
-			.model(getModel('anthropic'))
-			.instructions('You are a helpful assistant. Be concise. Always update your working memory.')
-			.memory(memory);
-
-		const threadId = `custom-twm-${Date.now()}`;
-		const resourceId = 'user-twm-1';
-
-		await agent.generate('The project codename is AURORA. Just acknowledge.', {
-			persistence: { threadId, resourceId },
-		});
-
-		// Working memory should be stored keyed by threadId
-		const wmByThread = store.workingMemory.get(threadId);
-		expect(wmByThread).toBeDefined();
-		expect(wmByThread!.toLowerCase()).toContain('aurora');
-
-		// Different thread for same resource — should NOT see the previous working memory
-		const thread2 = `custom-twm2-${Date.now()}`;
-		const result = await agent.generate(
-			'What is the project codename? Answer "unknown" if you have no information.',
-			{ persistence: { threadId: thread2, resourceId } },
-		);
-		expect(findLastTextContent(result.messages)?.toLowerCase()).not.toContain('aurora');
-
-		// Thread 2 working memory should be independent
-		expect(store.workingMemory.get(thread2)).not.toContain('aurora');
-	});
-
-	it('thread-scoped working memory allows recall within the same thread when history is truncated', async () => {
-		// Use lastMessages: 1 so earlier turns are pushed out of the history window.
-		// The agent must rely on working memory — not chat history — to recall old facts.
-		const memory = new Memory()
-			.storage(store)
-			.lastMessages(1)
-			.scope('thread')
-			.freeform('# Key facts\n- **Secret word**:\n- **User name**:');
-
-		const agent = new Agent('custom-mem-thread-wm-recall')
-			.model(getModel('anthropic'))
-			.instructions(
-				'You are a helpful assistant. Be concise. ' +
-					'Always update your working memory with any important facts you learn.',
-			)
-			.memory(memory);
-
-		const threadId = `custom-twm-recall-${Date.now()}`;
-		const options = { persistence: { threadId, resourceId: 'user-twm-recall' } };
-
-		// Turn 1: share a fact — agent writes it into working memory
-		await agent.generate('The secret word is COBALT. Remember it. Just acknowledge.', options);
-
-		// Turn 2: filler turn — this pushes turn 1 out of the 1-message history window
-		await agent.generate('Just say "ok".', options);
-
-		// Turn 3: ask for the fact — only working memory can supply it now (turn 1 is truncated)
-		const result = await agent.generate('What was the secret word I told you earlier?', options);
-		expect(findLastTextContent(result.messages)?.toLowerCase()).toContain('cobalt');
 	});
 
 	it('works with stream() path', async () => {

@@ -11,19 +11,42 @@ export class SplitInBatchesV3 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Loop Over Items (Split in Batches)',
 		name: 'splitInBatches',
-		icon: 'fa:sync',
+		icon: 'node:loop-over-items',
 		iconColor: 'dark-green',
 		group: ['organization'],
 		version: 3,
 		description: 'Split data into batches and iterate over each batch',
 		defaults: {
 			name: 'Loop Over Items',
-			color: '#007755',
 		},
 		inputs: [NodeConnectionTypes.Main],
 
 		outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 		outputNames: ['done', 'loop'],
+		builderHint: {
+			searchHint:
+				"Loop pattern: connect splitInBatches → per-item work → back to splitInBatches via `nextBatch(splitInBatches)`. The `done` output fires automatically after all items are processed. Already no-ops on empty input — do NOT add an IF gate before it to check 'has items?'.",
+			extraTypeDefContent: [
+				{
+					content: `<patterns>
+<pattern title="Per-item loop using splitInBatches with nextBatch">
+const sibNode = splitInBatches({
+  version: 3,
+  config: { name: 'Batch Process', parameters: { batchSize: 1 } }
+});
+
+export default workflow('id', 'name')
+  .add(startTrigger)
+  .to(fetchRecords)
+  .to(sibNode
+    .onDone(finalizeResults)
+    .onEachBatch(processRecord.to(nextBatch(sibNode)))
+  );
+</pattern>
+</patterns>`,
+				},
+			],
+		},
 		properties: [
 			{
 				displayName:

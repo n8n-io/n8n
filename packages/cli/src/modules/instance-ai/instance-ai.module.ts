@@ -20,6 +20,10 @@ export class InstanceAiModule implements ModuleInterface {
 		await Container.get(InstanceAiSettingsService).loadFromDb();
 		await import('./instance-ai.controller');
 
+		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
+			await import('./instance-ai-test.controller');
+		}
+
 		// Fire-and-forget: clean up expired conversation threads on startup
 		const { InstanceAiMemoryService } = await import('./instance-ai-memory.service');
 		const { InstanceAiService } = await import('./instance-ai.service');
@@ -27,26 +31,22 @@ export class InstanceAiModule implements ModuleInterface {
 		void Container.get(InstanceAiMemoryService)
 			.cleanupExpiredThreads(async (threadId) => await aiService.clearThreadState(threadId))
 			.catch(() => undefined);
-
-		// Register snapshot pruning — lifecycle decorators handle start/stop
-		await import('./snapshot-pruning.service');
 	}
 
 	async settings() {
+		const { GlobalConfig } = await import('@n8n/config');
 		const { InstanceAiService } = await import('./instance-ai.service');
 		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service');
+		const globalConfig = Container.get(GlobalConfig);
 		const service = Container.get(InstanceAiService);
 		const settingsService = Container.get(InstanceAiSettingsService);
-		const enabled = service.isEnabled();
-		const localGateway = service.isLocalFilesystemAvailable();
+		const enabled = settingsService.isAgentEnabled();
 		const localGatewayDisabled = settingsService.isLocalGatewayDisabled();
-		const localGatewayFallbackDirectory = service.getLocalFilesystemDirectory();
 		return {
 			enabled,
-			localGateway,
 			localGatewayDisabled,
-			localGatewayFallbackDirectory,
 			proxyEnabled: service.isProxyEnabled(),
+			cloudManaged: globalConfig.deployment.type === 'cloud',
 		};
 	}
 
@@ -54,23 +54,17 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiThread } = await import('./entities/instance-ai-thread.entity');
 		const { InstanceAiMessage } = await import('./entities/instance-ai-message.entity');
 		const { InstanceAiResource } = await import('./entities/instance-ai-resource.entity');
-		const { InstanceAiObservationalMemory } = await import(
-			'./entities/instance-ai-observational-memory.entity'
-		);
-		const { InstanceAiWorkflowSnapshot } = await import(
-			'./entities/instance-ai-workflow-snapshot.entity'
-		);
 		const { InstanceAiRunSnapshot } = await import('./entities/instance-ai-run-snapshot.entity');
 		const { InstanceAiIterationLog } = await import('./entities/instance-ai-iteration-log.entity');
+		const { InstanceAiCheckpoint } = await import('./entities/instance-ai-checkpoint.entity');
 
 		return [
 			InstanceAiThread,
 			InstanceAiMessage,
 			InstanceAiResource,
-			InstanceAiObservationalMemory,
-			InstanceAiWorkflowSnapshot,
 			InstanceAiRunSnapshot,
 			InstanceAiIterationLog,
+			InstanceAiCheckpoint,
 		];
 	}
 

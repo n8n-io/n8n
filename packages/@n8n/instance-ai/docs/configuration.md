@@ -17,6 +17,15 @@ All Instance AI configuration is done via environment variables.
 | `N8N_INSTANCE_AI_BROWSER_MCP` | boolean | `false` | Enable Chrome DevTools MCP for browser-assisted credential setup |
 | `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED` | boolean | `false` | Disable the local gateway (filesystem, shell, browser) for all users |
 
+### Tracing
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `N8N_DIAGNOSTICS_ENABLED` | boolean | `true` | When set to `false`, Instance AI tracing is disabled. |
+| `LANGSMITH_API_KEY` / `LANGCHAIN_API_KEY` | string | unset | Enables direct LangSmith export for local and self-hosted setups. |
+| `LANGSMITH_ENDPOINT` / `LANGCHAIN_ENDPOINT` | string | unset | Optional direct LangSmith endpoint override. |
+| `LANGSMITH_TRACING` / `LANGCHAIN_TRACING_V2` | boolean | unset | LangSmith SDK tracing flags. `false` disables tracing; `true` enables direct tracing when direct LangSmith credentials or endpoints are configured. |
+
 ### Memory
 
 | Variable | Type | Default | Description |
@@ -29,16 +38,10 @@ All Instance AI configuration is done via environment variables.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_FILESYSTEM_PATH` | string | `''` | Restrict local filesystem access to this directory. When empty, bare-metal installs can read any path the n8n process has access to. When set, `path.resolve()` + `fs.realpath()` containment prevents directory traversal and symlink escape. |
 | `N8N_INSTANCE_AI_GATEWAY_API_KEY` | string | `''` | Static API key for the filesystem gateway. Used by the `@n8n/computer-use` daemon to authenticate SSE and HTTP POST requests. When empty, the dynamic pairing token flow is used instead. |
 
-**Auto-detection** (no boolean flag needed):
-1. `N8N_INSTANCE_AI_FILESYSTEM_PATH` explicitly set → local FS (restricted to that path)
-2. Container detected (Docker, Kubernetes, systemd-nspawn) → gateway only
-3. Bare metal (default) → local FS (unrestricted)
-
-**Provider priority**: Gateway > Local > None — when both are available, gateway
-wins so the daemon's targeted project directory is preferred.
+Filesystem access requires the `@n8n/computer-use` gateway daemon. The user
+runs `npx @n8n/computer-use https://<your-n8n-instance>` on their machine to connect.
 
 See `docs/filesystem-access.md` for the full architecture, gateway protocol spec,
 and security model.
@@ -87,7 +90,7 @@ Sandbox workspaces persist per thread — the same container is reused across me
 | `N8N_INSTANCE_AI_THREAD_TTL_DAYS` | number | `90` | Conversation thread TTL in days. Threads older than this are auto-expired. 0 = no expiration. |
 | `N8N_INSTANCE_AI_SNAPSHOT_PRUNE_INTERVAL` | number | `3600000` | Interval in ms between snapshot pruning runs. 0 = disabled. |
 | `N8N_INSTANCE_AI_SNAPSHOT_RETENTION` | number | `86400000` | Retention period in ms for orphaned workflow snapshots before pruning. |
-| `N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT` | number | `600000` | Timeout in ms for HITL confirmation requests. 0 = no timeout. |
+| `N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT` | number | `86400000` | Timeout in ms for HITL confirmation requests. 0 = no timeout. |
 
 ## Enabling / Disabling
 
@@ -129,7 +132,6 @@ No separate storage configuration is needed.
 
 The same storage backend is used for:
 - Message history
-- Working memory state
 - Observational memory (observations and reflections)
 - Plan storage (thread-scoped)
 - Event persistence (for SSE replay)
@@ -191,15 +193,7 @@ N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox
 N8N_SANDBOX_SERVICE_URL=https://sandbox.example.com
 N8N_SANDBOX_SERVICE_API_KEY=sandbox-key
 
-# With filesystem access (bare metal — zero config, auto-detected)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
-# Nothing else needed! Local filesystem is auto-detected on bare metal.
-
-# With filesystem access (restricted to a specific directory)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
-N8N_INSTANCE_AI_FILESYSTEM_PATH=/home/user/my-project
-
-# With filesystem gateway (Docker/cloud — user runs daemon on their machine)
+# With filesystem gateway (user runs daemon on their machine)
 N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
 N8N_INSTANCE_AI_GATEWAY_API_KEY=my-secret-key
 # User runs: npx @n8n/computer-use

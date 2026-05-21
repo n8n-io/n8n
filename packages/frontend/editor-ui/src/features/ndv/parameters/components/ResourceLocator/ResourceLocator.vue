@@ -9,11 +9,10 @@ import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	getAppNameFromNodeName,
 	getMainAuthField,
@@ -157,10 +156,9 @@ const showSlowLoadNotice = ref(false);
 const longLoadingTimer = ref<NodeJS.Timeout | null>(null);
 
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
@@ -295,7 +293,7 @@ const currentRequestParams = computed(() => {
 		credentials: props.node?.credentials ?? {},
 		filter: searchFilter.value,
 		projectId: projectsStore.currentProjectId,
-		workflowId: workflowsStore.workflow.id,
+		workflowId: workflowDocumentStore.value.workflowId,
 	};
 });
 
@@ -431,6 +429,7 @@ const handleAddResourceClick = async () => {
 	const resolvedNodeParameters = await workflowHelpers.resolveRequiredParameters(
 		props.parameter,
 		currentRequestParams.value.parameters,
+		workflowDocumentStore.value.documentId,
 		expressionLocalResolveCtx?.value ?? {},
 	);
 
@@ -541,11 +540,33 @@ watch(
 	},
 );
 
+watch(
+	() => stringify(props.node?.credentials ?? {}),
+	(currentValue, oldValue) => {
+		const emptyCredentials = stringify({});
+		const isUpdated =
+			oldValue !== undefined && oldValue !== emptyCredentials && currentValue !== oldValue;
+		if (
+			isUpdated &&
+			props.modelValue &&
+			isResourceLocatorValue(props.modelValue) &&
+			props.modelValue.value !== ''
+		) {
+			emit('update:modelValue', {
+				...props.modelValue,
+				cachedResultName: '',
+				cachedResultUrl: '',
+				value: '',
+			});
+		}
+	},
+);
+
 onMounted(() => {
 	props.eventBus.on('refreshList', refreshList);
 	window.addEventListener('resize', setWidth);
 
-	useNDVStore().$subscribe(() => {
+	ndvStore.$subscribe(() => {
 		// Update the width when main panel dimension change
 		setWidth();
 	});
@@ -707,7 +728,7 @@ function onModeSelected(value: string): void {
 function trackEvent(event: string, params?: { [key: string]: string }): void {
 	telemetry.track(event, {
 		instance_id: rootStore.instanceId,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 		node_type: props.node?.type,
 		resource: props.node?.parameters.resource,
 		operation: props.node?.parameters.operation,
@@ -799,6 +820,7 @@ async function loadResources() {
 		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			params.parameters,
+			workflowDocumentStore.value.documentId,
 			expressionLocalResolveCtx?.value ?? {},
 		)) as INodeParameters;
 		const loadOptionsMethod = getPropertyArgument(currentMode.value, 'searchListMethod') as string;
@@ -813,7 +835,7 @@ async function loadResources() {
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: props.node.credentials,
 			projectId: projectsStore.currentProjectId,
-			workflowId: workflowsStore.workflow.id,
+			workflowId: workflowDocumentStore.value.workflowId,
 		};
 
 		if (params.filter) {

@@ -144,6 +144,14 @@ describe('POST /workflows', () => {
 		expect(pinData).toBeNull();
 	});
 
+	test('should reject workflow with pinData exceeding size limit', async () => {
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1); // > 12 MB
+		const workflow = makeWorkflow({ withPinData: false });
+		workflow.pinData = { data: [{ json: { data: largeValue } }] };
+		const response = await authOwnerAgent.post('/workflows').send(workflow);
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('should retain accept `workflow.id`', async () => {
 		const payload = {
 			id: 'HDssU5Ce250UWyLg_MNG4',
@@ -3113,10 +3121,20 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(versions[0].versionId).toBe(workflow.versionId);
 	});
 
-	test('should update the version counter', async () => {
+	test('should update the version counter when nodes change', async () => {
 		const workflow = await createWorkflow({}, owner);
 		const payload = {
-			name: 'name updated',
+			nodes: [
+				{
+					id: 'new-node',
+					name: 'New Node',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
 			versionId: workflow.versionId,
 		};
 
@@ -3132,6 +3150,21 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(versionCounter).toBe(workflow.versionCounter + 1);
 	});
 
+	test('should not update the version counter on metadata-only changes', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const payload = {
+			name: 'name updated',
+			versionId: workflow.versionId,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updated = await workflowRepository.findOneBy({ id: workflow.id });
+		expect(updated?.versionCounter).toBe(workflow.versionCounter);
+	});
+
 	test('should update workflow without updating its active version', async () => {
 		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
@@ -3139,6 +3172,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 		const payload = {
 			nodes: [],
+			connections: {},
 		};
 
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
@@ -3368,6 +3402,32 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(updatedWorkflow).not.toBeNull();
 		expect(updatedWorkflow!.name).toBe(workflow.name);
 		expect(updatedWorkflow!.isArchived).toBe(true);
+	});
+
+	test('should reject update with pinData exceeding size limit', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1); // > 12 MB
+
+		const response = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ pinData: { myNode: [{ json: { data: largeValue } }] } });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should allow update without pinData on workflow that has oversized pinData', async () => {
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1);
+		const workflow = await createWorkflow(
+			{ pinData: { myNode: [{ json: { data: largeValue } }] } as IPinData },
+			owner,
+		);
+
+		const response = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ name: 'Updated name' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.name).toBe('Updated name');
 	});
 
 	describe('Security: Mass Assignment Protection on Update', () => {

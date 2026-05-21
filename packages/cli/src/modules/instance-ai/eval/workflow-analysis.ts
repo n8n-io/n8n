@@ -12,7 +12,14 @@
 
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { type INode, type IPinData, type IWorkflowBase, jsonParse } from 'n8n-workflow';
+import {
+	type INode,
+	type IPinData,
+	type IWorkflowBase,
+	jsonParse,
+	mapConnectionsByDestination,
+	UserError,
+} from 'n8n-workflow';
 
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { extractNodeConfig } from './node-config';
@@ -94,18 +101,92 @@ const BYPASS_NODE_TYPES = new Set([
 ]);
 
 /**
+ * AI sub-node types that use a protocol-binary client (TCP, native driver, etc.).
+ * These cannot be intercepted via the HTTP wire server, so the root they hang off
+ * cannot be unpinned safely. `assertUnpinCompatibility` refuses unpin requests
+ * for roots whose sub-nodes match this set.
+ */
+const PROTOCOL_BINARY_SUB_NODE_TYPES = new Set([
+	// Memory backends
+	'@n8n/n8n-nodes-langchain.memoryPostgresChat',
+	'@n8n/n8n-nodes-langchain.memoryRedisChat',
+	'@n8n/n8n-nodes-langchain.memoryMongoDbChat',
+	// Vector stores
+	'@n8n/n8n-nodes-langchain.vectorStorePGVector',
+	'@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas',
+	'@n8n/n8n-nodes-langchain.vectorStoreRedis',
+	'@n8n/n8n-nodes-langchain.vectorStoreMilvus',
+	'@n8n/n8n-nodes-langchain.chatHubVectorStorePGVector',
+]);
+
+/**
  * Identify nodes that bypass the HTTP mock layer and need pin data instead.
  * Returns AI root nodes (Agent, Chain) and protocol/bypass nodes.
+ *
+ * `exclusionSet` opts AI root names out of pinning so their sub-nodes run real
+ * vendor SDK code (routed through the eval wire server). `BYPASS_NODE_TYPES`
+ * nodes ignore the exclusion set — they use protocol-binary clients and have
+ * no HTTP interception path, so they must always be pinned.
  */
-export function identifyNodesForPinData(workflow: IWorkflowBase): INode[] {
+export function identifyNodesForPinData(
+	workflow: IWorkflowBase,
+	exclusionSet?: Set<string>,
+): INode[] {
 	const aiRootNodes = findAiRootNodeNames(workflow);
 
 	return workflow.nodes.filter((node) => {
 		if (node.disabled) return false;
-		if (aiRootNodes.has(node.name)) return true;
+		if (aiRootNodes.has(node.name) && !exclusionSet?.has(node.name)) return true;
 		if (BYPASS_NODE_TYPES.has(node.type)) return true;
 		return false;
 	});
+}
+
+/**
+ * Refuse unpinning AI roots whose inbound `ai_*` sub-nodes can't be intercepted
+ * over HTTP. Walks the workflow's destination-indexed connections once per
+ * call and throws a `UserError` listing every offending root → sub-node pair.
+ */
+export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: string[]): void {
+	if (unpinNodes.length === 0) return;
+
+	const nodesByName = new Map(workflow.nodes.map((n) => [n.name, n]));
+	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
+
+	const refusals: Array<{ root: string; subNode: string; subNodeType: string }> = [];
+
+	for (const rootName of unpinNodes) {
+		const inbound = connectionsByDestination[rootName];
+		if (!inbound) continue;
+
+		for (const [connType, groups] of Object.entries(inbound)) {
+			if (!connType.startsWith('ai_') || !Array.isArray(groups)) continue;
+			for (const group of groups) {
+				if (!Array.isArray(group)) continue;
+				for (const conn of group) {
+					const sourceNode = nodesByName.get(conn.node);
+					if (!sourceNode || sourceNode.disabled) continue;
+					if (PROTOCOL_BINARY_SUB_NODE_TYPES.has(sourceNode.type)) {
+						refusals.push({
+							root: rootName,
+							subNode: sourceNode.name,
+							subNodeType: sourceNode.type,
+						});
+					}
+				}
+			}
+		}
+	}
+
+	if (refusals.length > 0) {
+		const detail = refusals
+			.map((r) => `"${r.subNode}" (${r.subNodeType}) → "${r.root}"`)
+			.join(', ');
+		throw new UserError(
+			`Cannot unpin AI root nodes whose sub-nodes use a protocol-binary client: ${detail}. ` +
+				'These sub-nodes cannot be intercepted via HTTP — leave the root pinned or replace the sub-node with an HTTP-based alternative.',
+		);
+	}
 }
 
 /**
@@ -160,6 +241,7 @@ RULES:
    - For service-specific triggers (Gmail Trigger, Slack Trigger, etc.): match the service's real event/message output format
    - For schedule triggers: include timestamp fields
    - For manual triggers: include the fields that downstream nodes reference
+   - CRITICAL: triggerContent must NEVER be an empty object ({}). Even for scenarios that test empty payloads ("empty submission", "no data", "missing fields"), emit the trigger envelope with empty *nested* fields — an empty webhook is { headers: {}, query: {}, body: {} }, a schedule with no context is { timestamp: "..." }. The workflow cannot execute without trigger output.
    - CRITICAL: check what downstream nodes reference (e.g., $json.body.email, $json.subject, $json.text) and ensure those paths exist in triggerContent
 3. Create a "nodeHints" object with one entry per node. Each hint describes what data that specific node's API response should contain, referencing entities from the global context.
 4. Hints should describe the DATA CONTENT, not the API response format. The mock server already knows the API schema.
@@ -220,9 +302,12 @@ function buildUserPrompt(
 	return sections.join('\n');
 }
 
+const MAX_HINT_ATTEMPTS = 2;
+
 /**
- * Generate consistent mock hints for service nodes in a workflow.
- * One LLM call produces a global context, trigger data, and per-node hints.
+ * Generate consistent mock hints for service nodes in a workflow. One Sonnet
+ * call produces globalContext, triggerContent, and per-node hints — retried
+ * once if the LLM returns an empty triggerContent or any structural issue.
  */
 export async function generateMockHints(options: GenerateMockHintsOptions): Promise<MockHints> {
 	const { workflow, nodeNames, scenarioHints } = options;
@@ -237,72 +322,78 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 	if (nodeNames.length === 0) return emptyResult;
 
 	const userPrompt = buildUserPrompt(workflow, nodeNames, scenarioHints);
+	const warnings: string[] = [];
 
-	try {
-		const agent = createEvalAgent('eval-hint-generator', {
-			instructions: SYSTEM_PROMPT,
-		});
+	for (let attempt = 1; attempt <= MAX_HINT_ATTEMPTS; attempt++) {
+		let reason = '';
+		try {
+			const agent = createEvalAgent('eval-hint-generator', {
+				instructions: SYSTEM_PROMPT,
+			});
 
-		const result = await agent.generate(userPrompt, {
-			providerOptions: { anthropic: { maxTokens: 4096 } },
-		});
+			const result = await agent.generate(userPrompt, {
+				providerOptions: { anthropic: { maxTokens: 4096 } },
+			});
 
-		let text: string = extractText(result);
+			const text = extractText(result)
+				.replace(/^```(?:json)?\s*\n?/i, '')
+				.replace(/\n?\s*```\s*$/i, '')
+				.trim();
 
-		text = text
-			.replace(/^```(?:json)?\s*\n?/i, '')
-			.replace(/\n?\s*```\s*$/i, '')
-			.trim();
+			const parsed: Record<string, unknown> = jsonParse(text);
 
-		const parsed: Record<string, unknown> = jsonParse(text);
+			// globalContext may come back as a string or object — normalize to string
+			let globalContext = '';
+			if (typeof parsed.globalContext === 'string') {
+				globalContext = parsed.globalContext;
+			} else if (typeof parsed.globalContext === 'object' && parsed.globalContext !== null) {
+				globalContext = JSON.stringify(parsed.globalContext);
+			}
 
-		// globalContext may come back as a string or object — normalize to string
-		let globalContext = '';
-		if (typeof parsed.globalContext === 'string') {
-			globalContext = parsed.globalContext;
-		} else if (typeof parsed.globalContext === 'object' && parsed.globalContext !== null) {
-			globalContext = JSON.stringify(parsed.globalContext);
+			if (
+				typeof parsed.nodeHints !== 'object' ||
+				parsed.nodeHints === null ||
+				Array.isArray(parsed.nodeHints)
+			) {
+				reason = `invalid nodeHints structure (raw: ${text.slice(0, 200)})`;
+			} else {
+				const triggerContent =
+					typeof parsed.triggerContent === 'object' &&
+					parsed.triggerContent !== null &&
+					!Array.isArray(parsed.triggerContent)
+						? parsed.triggerContent
+						: {};
+				if (Object.keys(triggerContent).length === 0) {
+					reason = 'empty triggerContent';
+				} else {
+					// Coerce nodeHints values to strings — LLM may return objects instead of strings
+					const nodeHints: Record<string, string> = {};
+					for (const [key, value] of Object.entries(parsed.nodeHints as Record<string, unknown>)) {
+						nodeHints[key] = typeof value === 'string' ? value : JSON.stringify(value);
+					}
+					return {
+						globalContext,
+						nodeHints,
+						triggerContent: triggerContent as Record<string, unknown>,
+						warnings,
+						bypassPinData: {},
+					};
+				}
+			}
+		} catch (error) {
+			reason = error instanceof Error ? error.message : String(error);
 		}
 
-		if (
-			typeof parsed.nodeHints !== 'object' ||
-			parsed.nodeHints === null ||
-			Array.isArray(parsed.nodeHints)
-		) {
-			const preview = text.slice(0, 300);
-			return {
-				...emptyResult,
-				warnings: [`Phase 1: LLM returned invalid structure. Raw: ${preview}`],
-			};
+		warnings.push(`Phase 1 attempt ${attempt}/${MAX_HINT_ATTEMPTS}: ${reason}`);
+		if (attempt < MAX_HINT_ATTEMPTS) {
+			Container.get(Logger).warn(
+				`[EvalMock] Phase 1 attempt ${attempt}/${MAX_HINT_ATTEMPTS} unusable (${reason}) — retrying`,
+			);
 		}
-
-		const warnings: string[] = [];
-		const triggerContent =
-			typeof parsed.triggerContent === 'object' &&
-			parsed.triggerContent !== null &&
-			!Array.isArray(parsed.triggerContent)
-				? parsed.triggerContent
-				: {};
-		if (Object.keys(triggerContent).length === 0) {
-			warnings.push('Phase 1: LLM returned empty triggerContent — trigger node will have no data');
-		}
-
-		// Coerce nodeHints values to strings — LLM may return objects instead of strings
-		const nodeHints: Record<string, string> = {};
-		for (const [key, value] of Object.entries(parsed.nodeHints as Record<string, unknown>)) {
-			nodeHints[key] = typeof value === 'string' ? value : JSON.stringify(value);
-		}
-
-		return {
-			globalContext,
-			nodeHints,
-			triggerContent: triggerContent as Record<string, unknown>,
-			warnings,
-			bypassPinData: {},
-		};
-	} catch (error) {
-		const errorMsg = error instanceof Error ? error.message : String(error);
-		Container.get(Logger).error(`[EvalMock] Phase 1 hint generation failed: ${errorMsg}`);
-		return { ...emptyResult, warnings: [`Phase 1 error: ${errorMsg}`] };
 	}
+
+	Container.get(Logger).error(
+		`[EvalMock] Phase 1 exhausted ${MAX_HINT_ATTEMPTS} attempts — ${warnings.join('; ')}`,
+	);
+	return { ...emptyResult, warnings };
 }

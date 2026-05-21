@@ -9,8 +9,11 @@ import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type { InstanceAiCredentialFlow, InstanceAiCredentialRequest } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useThread } from '../instanceAi.store';
+import ConfirmationFooter from './ConfirmationFooter.vue';
 
 const props = defineProps<{
 	requestId: string;
@@ -21,7 +24,9 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const store = useInstanceAiStore();
+const telemetry = useTelemetry();
+const rootStore = useRootStore();
+const thread = useThread();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 
@@ -133,6 +138,7 @@ function wrappedGoToPrev() {
 watch(
 	() => currentRequest.value && isStepComplete(currentRequest.value.credentialType),
 	(complete, prevComplete) => {
+		// Auto-advance only when not manually navigating
 		if (!complete || prevComplete || userNavigated.value) {
 			userNavigated.value = false;
 			return;
@@ -239,28 +245,63 @@ function onCredentialSelected(
 	}
 }
 
+function trackCredentialInput() {
+	const tc = thread.findToolCallByRequestId(props.requestId);
+	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
+	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
+	const skipped: Array<{ label: string; options: string[] }> = [];
+	for (const req of props.credentialRequests) {
+		const selected = selections.value[req.credentialType];
+		if (selected) {
+			provided.push({ label: req.credentialType, options: [], option_chosen: selected });
+		} else {
+			skipped.push({ label: req.credentialType, options: [] });
+		}
+	}
+	telemetry.track('User finished providing input', {
+		thread_id: thread.id,
+		input_thread_id: inputThreadId,
+		instance_id: rootStore.instanceId,
+		type: 'credential-setup',
+		provided_inputs: provided,
+		skipped_inputs: skipped,
+		num_tasks: props.credentialRequests.length,
+	});
+}
+
 async function handleContinue() {
 	const credentials: Record<string, string> = {};
 	for (const [type, id] of Object.entries(selections.value)) {
 		if (id) credentials[type] = id;
 	}
+
+	trackCredentialInput();
+
 	isSubmitted.value = true;
 
-	const success = await store.confirmAction(props.requestId, true, undefined, credentials);
+	const success = await thread.confirmAction(props.requestId, {
+		kind: 'credentialSelection',
+		credentials,
+	});
 	if (success) {
-		store.resolveConfirmation(props.requestId, 'approved');
+		thread.resolveConfirmation(props.requestId, 'approved');
 	} else {
 		isSubmitted.value = false;
 	}
 }
 
 async function handleLater() {
+	trackCredentialInput();
+
 	isSubmitted.value = true;
 	isDeferred.value = true;
 
-	const success = await store.confirmAction(props.requestId, false);
+	const success = await thread.confirmAction(props.requestId, {
+		kind: 'approval',
+		approved: false,
+	});
 	if (success) {
-		store.resolveConfirmation(props.requestId, 'deferred');
+		thread.resolveConfirmation(props.requestId, 'deferred');
 	} else {
 		isSubmitted.value = false;
 		isDeferred.value = false;
@@ -271,11 +312,7 @@ async function handleLater() {
 <template>
 	<div>
 		<template v-if="!isSubmitted">
-			<div
-				v-if="currentRequest"
-				data-test-id="instance-ai-credential-card"
-				:class="[$style.card, { [$style.completed]: allSelected }]"
-			>
+			<div v-if="currentRequest" data-test-id="instance-ai-credential-card" :class="$style.card">
 				<!-- Header -->
 				<header :class="$style.header">
 					<CredentialIcon :credential-type-name="currentRequest.credentialType" :size="16" />
@@ -310,6 +347,7 @@ async function handleLater() {
 							:suggested-credential-name="currentRequest.suggestedName"
 							standalone
 							hide-issues
+							hide-ask-assistant
 							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"
 						/>
 						<N8nButton
@@ -322,12 +360,12 @@ async function handleLater() {
 				</div>
 
 				<!-- Footer -->
-				<footer :class="$style.footer">
+				<ConfirmationFooter layout="row-between">
 					<div :class="$style.footerNav">
 						<N8nButton
 							v-if="showArrows"
-							variant="outline"
-							size="xsmall"
+							variant="ghost"
+							size="medium"
 							icon-only
 							:disabled="isPrevDisabled"
 							data-test-id="instance-ai-credential-prev"
@@ -341,8 +379,8 @@ async function handleLater() {
 						</N8nText>
 						<N8nButton
 							v-if="showArrows"
-							variant="outline"
-							size="xsmall"
+							variant="ghost"
+							size="medium"
 							icon-only
 							:disabled="isNextDisabled"
 							data-test-id="instance-ai-credential-next"
@@ -356,7 +394,7 @@ async function handleLater() {
 					<div :class="$style.footerActions">
 						<N8nButton
 							variant="outline"
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="
 								i18n.baseText(
@@ -369,7 +407,7 @@ async function handleLater() {
 						/>
 
 						<N8nButton
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.credential.continueButton')"
 							:disabled="!anySelected"
@@ -377,7 +415,7 @@ async function handleLater() {
 							@click="handleContinue"
 						/>
 					</div>
-				</footer>
+				</ConfirmationFooter>
 			</div>
 		</template>
 
@@ -409,10 +447,7 @@ async function handleLater() {
 	padding: 0;
 	border: var(--border);
 	border-radius: var(--radius);
-
-	&.completed {
-		border-color: var(--color--success);
-	}
+	background-color: var(--color--background--light-3);
 }
 
 .header {
@@ -447,14 +482,6 @@ async function handleLater() {
 	:global(.node-credentials) {
 		margin-top: 0;
 	}
-}
-
-.footer {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	border-top: var(--border);
-	padding: var(--spacing--xs) var(--spacing--sm);
 }
 
 .footerNav {

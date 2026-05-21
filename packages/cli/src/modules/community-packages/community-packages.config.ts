@@ -1,5 +1,9 @@
-import { AI_NODE_SDK_VERSION } from '@n8n/ai-utilities';
 import { Config, Env } from '@n8n/config';
+
+// Keep in sync with AI_NODE_SDK_VERSION in
+// packages/@n8n/ai-utilities/src/ai-node-sdk-version.ts.
+// Inlined to avoid loading the @n8n/ai-utilities barrel at boot.
+const AI_NODE_SDK_VERSION = 1;
 
 @Config
 export class CommunityPackagesConfig {
@@ -26,6 +30,10 @@ export class CommunityPackagesConfig {
 	/** Whether to load community packages */
 	@Env('N8N_COMMUNITY_PACKAGES_PREVENT_LOADING')
 	preventLoading: boolean = false;
+
+	/** Auth token for npm registry authentication */
+	@Env('N8N_COMMUNITY_PACKAGES_AUTH_TOKEN')
+	authToken: string = '';
 
 	/** Current AI Node SDK version from @n8n/ai-utilities, sent to Strapi API */
 	readonly aiNodeSdkVersion: number = AI_NODE_SDK_VERSION;

@@ -2,6 +2,31 @@
 
 Extra information specific to the `@n8n/db` package.
 
+## Creating Migrations
+
+Migration files are named `{TIMESTAMP}-{DescriptiveName}.ts`. The timestamp
+must be strictly greater than every existing migration timestamp in this
+package (across `common/`, `postgresdb/`, and `sqlite/`). TypeORM runs
+unrecorded migrations in timestamp order, so inserting a value below the
+current max corrupts ordering on databases that have already executed the
+later migrations.
+
+Use the generator — it picks a safe timestamp, writes the scaffold, and
+registers the migration in the relevant `index.ts` files:
+
+```sh
+pnpm --filter=@n8n/db migration:new <Name> [--folder=common|postgresdb|sqlite]
+```
+
+`<Name>` is PascalCase and describes the change (e.g. `AddTracingToExecution`).
+`--folder` defaults to `common`; use `postgresdb` or `sqlite` only for
+dialect-specific migrations. The generator picks `Date.now()` when it's
+greater than the current head, otherwise `max + 1`.
+
+The `migration-timestamp` rule in `@n8n/code-health` enforces both
+invariants (strict ordering and no far-future fabrication) at lint time;
+the generator is the easy path, the rule is the safety net.
+
 ## Migration DSL
 
 ### UUID Primary Keys

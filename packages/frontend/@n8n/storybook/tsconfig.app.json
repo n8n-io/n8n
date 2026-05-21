@@ -2,7 +2,6 @@
 	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
 	"compilerOptions": {
 		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-		"baseUrl": ".",
 		"rootDirs": [".", "../composables/src"],
 		"noEmit": true,
 		"moduleResolution": "bundler",

@@ -226,6 +226,14 @@ describe('instanceAi.reducer', () => {
 			expect(state.messages[0].agentTree!.status).toBe('completed');
 		});
 
+		test('run-finish alone is lifecycle-only and does not create visible text', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'completed'));
+
+			expect(state.messages[0].content).toBe('');
+			expect(state.messages[0].agentTree!.textContent).toBe('');
+		});
+
 		test('run-finish(cancelled) sets agentTree status to cancelled', () => {
 			const state = stateWithRun('run-1', 'agent-root');
 			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'cancelled'));
@@ -301,11 +309,11 @@ describe('instanceAi.reducer', () => {
 	describe('tool execution', () => {
 		test('tool-call adds entry with isLoading=true and correct renderHint', () => {
 			const state = stateWithRun('run-1', 'agent-root');
-			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'update-tasks'));
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'task-control'));
 
 			const tc = state.messages[0].agentTree!.toolCalls[0];
 			expect(tc.toolCallId).toBe('tc-1');
-			expect(tc.toolName).toBe('update-tasks');
+			expect(tc.toolName).toBe('task-control');
 			expect(tc.isLoading).toBe(true);
 			expect(tc.renderHint).toBe('tasks');
 		});
@@ -531,7 +539,7 @@ describe('instanceAi.reducer', () => {
 		test('tool-call with unsafe toolCallId is ignored', () => {
 			const state = stateWithRun('run-1', 'agent-root');
 
-			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', '__proto__', 'update-tasks'));
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', '__proto__', 'task-control'));
 
 			expect(state.messages[0].agentTree?.toolCalls).toHaveLength(0);
 			expectReducerMapsNotPolluted(state);
@@ -550,6 +558,38 @@ describe('instanceAi.reducer', () => {
 			});
 
 			expect(runState).toBeUndefined();
+		});
+
+		test('rebuildRunStateFromTree preserves planItems', () => {
+			const runState = rebuildRunStateFromTree({
+				agentId: 'agent-root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+				planItems: [
+					{
+						id: 'task-1',
+						title: 'Build workflow',
+						kind: 'build-workflow',
+						spec: 'Create the workflow',
+						deps: [],
+					},
+				],
+			});
+
+			expect(runState?.agentsById['agent-root']?.planItems).toEqual([
+				{
+					id: 'task-1',
+					title: 'Build workflow',
+					kind: 'build-workflow',
+					spec: 'Create the workflow',
+					deps: [],
+				},
+			]);
 		});
 	});
 
@@ -596,22 +636,24 @@ describe('instanceAi.reducer', () => {
 	});
 
 	describe('getRenderHint', () => {
-		test('returns tasks for "update-tasks"', () => {
-			expect(getRenderHint('update-tasks')).toBe('tasks');
+		test('returns tasks for "task-control"', () => {
+			expect(getRenderHint('task-control')).toBe('tasks');
 		});
 
 		test('returns delegate for "delegate"', () => {
 			expect(getRenderHint('delegate')).toBe('delegate');
 		});
 
-		test('returns builder for workflow builder flow aliases', () => {
+		test('returns builder for workflow builder tool', () => {
 			expect(getRenderHint('build-workflow-with-agent')).toBe('builder');
-			expect(getRenderHint('workflow-build-flow')).toBe('builder');
 		});
 
-		test('returns data-table for data-table flow aliases', () => {
+		test('returns data-table for data-table tool', () => {
 			expect(getRenderHint('manage-data-tables-with-agent')).toBe('data-table');
-			expect(getRenderHint('agent-data-table-manager')).toBe('data-table');
+		});
+
+		test('returns eval-setup for eval setup tool', () => {
+			expect(getRenderHint('eval-setup-with-agent')).toBe('eval-setup');
 		});
 
 		test('returns default for other tool names', () => {

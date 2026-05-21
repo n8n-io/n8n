@@ -25,6 +25,7 @@ import * as path from 'path';
 // eslint-disable-next-line import-x/no-cycle -- TODO: Refactor shared types/utils to break cycle
 import {
 	generateSingleVersionSchemaFile,
+	isPropertyOptional,
 	planSplitVersionSchemaFiles,
 } from './generate-zod-schemas';
 import { checkConditions } from '../validation/display-options';
@@ -55,6 +56,29 @@ const DISCRIMINATOR_FIELDS = ['resource', 'operation', 'mode'];
 /** Custom API Call operations don't have fixed schemas - skip them */
 const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
 
+/**
+ * Property types that render UI affordances but carry no data in the saved
+ * workflow JSON. They are skipped entirely from generated types/schemas.
+ *
+ * Note: `button` and `icon` are not in this list — they can carry data.
+ * See the type mappers for their dedicated schemas.
+ */
+const DISPLAY_ONLY_PROPERTY_TYPES = new Set(['notice', 'curlImport', 'credentials', 'callout']);
+
+/**
+ * Runtime shape for `type: 'icon'` properties (see N8nIconPicker).
+ * Values are stored as `{ type: 'icon' | 'emoji'; value: string }`.
+ */
+const ICON_TS_TYPE = "{ type: 'icon' | 'emoji'; value: string }";
+
+/**
+ * Runtime shape for `type: 'workflowSelector'` properties.
+ * The UI hardcodes two modes (see useWorkflowResourceLocatorModes.ts): `list` and `id`.
+ * Stored as an INodeParameterResourceLocator, or as an Expression string.
+ */
+const WORKFLOW_SELECTOR_TS_TYPE =
+	"{ __rl: true; mode: 'list' | 'id'; value: string | number; cachedResultName?: string; cachedResultUrl?: string } | Expression<string>";
+
 const ASSIGNMENT_TYPE_JSDOC = `/**
  * Assignment type determines how the value is interpreted.
  * - string: Direct string value or expression evaluating to string
@@ -70,7 +94,7 @@ function generateFilterTypeDeclaration(exported: boolean): string {
 	return [
 		`${prefix} FilterOptionsValue = { caseSensitive?: boolean; leftValue?: string; typeValidation?: 'strict' | 'loose' };`,
 		`${prefix} FilterConditionValue = { id?: string; leftValue: unknown; operator: { type: string; operation: string }; rightValue: unknown };`,
-		`${prefix} FilterValue = { options?: FilterOptionsValue; conditions: FilterConditionValue[]; combinator?: 'and' | 'or' };`,
+		`${prefix} FilterValue = { options: FilterOptionsValue; conditions: FilterConditionValue[]; combinator: 'and' | 'or' };`,
 	].join('\n');
 }
 
@@ -79,6 +103,13 @@ function generateAssignmentTypeDeclarations(exported: boolean): string {
 	return `${ASSIGNMENT_TYPE_JSDOC}
 ${prefix} AssignmentType = 'string' | 'number' | 'boolean' | 'array' | 'object' | 'binary';
 ${prefix} AssignmentCollectionValue = { assignments: Array<{ id: string; name: string; value: unknown; type: AssignmentType }> };`;
+}
+
+function generateResourceMapperTypeDeclaration(exported: boolean): string {
+	const prefix = exported ? 'export type' : 'type';
+	return `${prefix} ResourceMapperField = { id?: string; displayName?: string; required?: boolean; defaultMatch?: boolean; display?: boolean; type?: string; canBeUsedToMatch?: boolean; [key: string]: unknown };
+${prefix} ResourceMapperCommon = { matchingColumns?: string[]; cachedResultName?: string; [key: string]: unknown };
+${prefix} ResourceMapperValue = ResourceMapperCommon & { mappingMode: string; value?: null | Record<string, unknown>; schema?: ResourceMapperField[] };`;
 }
 
 function isCustomApiCall(operation: string): boolean {
@@ -219,8 +250,22 @@ const AI_TYPE_TO_SUBNODE_FIELD: Record<
 // Type Definitions
 // =============================================================================
 
+/**
+ * One variation of `extraTypeDefContent`, optionally gated by `displayOptions`.
+ * Variations with `displayOptions` are emitted only in narrowed discriminator
+ * types (e.g. per-mode or per-resource/operation files) whose combo matches.
+ * Variations without `displayOptions` are emitted unconditionally.
+ */
+export interface BuilderHintVariation {
+	content: string;
+	displayOptions?: {
+		show?: Record<string, unknown[]>;
+		hide?: Record<string, unknown[]>;
+	};
+}
+
 export interface ParameterBuilderHint {
-	message: string;
+	propertyHint: string;
 	placeholderSupported?: boolean;
 }
 
@@ -242,6 +287,10 @@ export interface NodeProperty {
 		values?: NodeProperty[];
 	}>;
 	displayOptions?: {
+		show?: Record<string, unknown[]>;
+		hide?: Record<string, unknown[]>;
+	};
+	disabledOptions?: {
 		show?: Record<string, unknown[]>;
 		hide?: Record<string, unknown[]>;
 	};
@@ -313,6 +362,117 @@ export interface JsonSchema {
 	enum?: unknown[];
 	const?: unknown;
 	$ref?: string;
+}
+
+// =============================================================================
+// JSDoc emission helpers
+// =============================================================================
+
+/**
+ * Emit `@builderHint` JSDoc plus optional multi-line `extraTypeDefContent` lines.
+ *
+ * `message` is HTML-escaped (`<` / `>` → entities) because it round-trips through
+ * the search engine's `<builder_hint>...</builder_hint>` XML envelope, where bare
+ * angle brackets would corrupt the wrapping tag.
+ *
+ * `extraTypeDefContent` does NOT escape angle brackets — author-written tags such
+ * as `<patterns>` must round-trip into the `.d.ts` verbatim so the LLM sees them
+ * as structural cues. Only `*\/` is escaped to keep the JSDoc block well-formed.
+ */
+/**
+ * Determines whether a variation should be emitted in the current scope.
+ *
+ * The two scopes are mutually exclusive so unconditional variations are
+ * NOT duplicated across narrowed types:
+ *
+ * - File-level header (no `combo`): emit ONLY unconditional variations
+ *   (those with no `displayOptions`). They appear once at the top of the
+ *   generated `.d.ts` and cover every narrowed type.
+ *
+ * - Narrowed config block (per `combo`): emit ONLY gated variations
+ *   whose `displayOptions` match the combo. Unconditional variations are
+ *   skipped here — they were already emitted at the file header.
+ */
+function variationApplies(
+	variation: BuilderHintVariation,
+	combo: DiscriminatorCombination | undefined,
+): boolean {
+	const opts = variation.displayOptions;
+
+	// File-level scope: only unconditional variations.
+	if (!combo) return !opts;
+
+	// Narrowed scope: only gated variations whose displayOptions match.
+	if (!opts) return false;
+
+	if (opts.show) {
+		for (const [key, conditions] of Object.entries(opts.show)) {
+			const value = combo[key];
+			if (value === undefined) return false;
+			if (!checkConditions(conditions, [value])) return false;
+		}
+	}
+	if (opts.hide) {
+		for (const [key, conditions] of Object.entries(opts.hide)) {
+			const value = combo[key];
+			if (value === undefined) continue;
+			if (checkConditions(conditions, [value])) return false;
+		}
+	}
+	return true;
+}
+
+function emitBuilderHint(
+	lines: string[],
+	indent: string,
+	hint: { propertyHint?: string; extraTypeDefContent?: BuilderHintVariation[] },
+	combo?: DiscriminatorCombination,
+): void {
+	if (hint.propertyHint) {
+		const safePropertyHint = hint.propertyHint
+			.replace(/\*\//g, '*\\/')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;');
+		lines.push(`${indent} * @builderHint ${safePropertyHint}`);
+	}
+
+	if (!hint.extraTypeDefContent) return;
+
+	for (const variation of hint.extraTypeDefContent) {
+		if (!variationApplies(variation, combo)) continue;
+		const safe = variation.content.replace(/\*\//g, '*\\/');
+		for (const line of safe.split('\n')) {
+			lines.push(`${indent} * ${line}`);
+		}
+	}
+}
+
+/**
+ * `builderHint` is an extended n8n property not part of the upstream
+ * `NodeTypeDescription`. Centralized cast keeps the rest of the file clean.
+ */
+function getNodeBuilderHint(node: NodeTypeDescription): NodeBuilderHint | undefined {
+	return (node as NodeTypeDescription & { builderHint?: NodeBuilderHint }).builderHint;
+}
+
+/**
+ * Emit a JSDoc block for the node-level builderHint scoped to a single
+ * discriminator combination — only variations whose `displayOptions` match the
+ * combo are rendered. The `propertyHint` is intentionally not re-emitted per combo
+ * (it already lands in the file-level node header).
+ */
+function emitNodeHintForCombo(
+	lines: string[],
+	node: NodeTypeDescription,
+	combo: DiscriminatorCombination,
+): void {
+	const hint = getNodeBuilderHint(node);
+	if (!hint?.extraTypeDefContent?.some((v) => variationApplies(v, combo))) return;
+
+	const hintLines: string[] = [`${INDENT}/**`];
+	emitBuilderHint(hintLines, INDENT, { extraTypeDefContent: hint.extraTypeDefContent }, combo);
+	hintLines.push(`${INDENT} */`);
+	lines.push(...hintLines);
 }
 
 // =============================================================================
@@ -687,10 +847,8 @@ function mapNestedPropertyType(
 	discriminatorContext?: DiscriminatorCombination,
 ): string {
 	const result = mapNestedPropertyTypeInner(prop, discriminatorContext);
-	if (prop.noDataExpression) {
-		return stripExpressionFromType(result);
-	}
-	return result;
+	const expressionAwareResult = prop.noDataExpression ? stripExpressionFromType(result) : result;
+	return wrapMultipleValuesType(prop, expressionAwareResult);
 }
 
 function mapNestedPropertyTypeInner(
@@ -707,6 +865,8 @@ function mapNestedPropertyTypeInner(
 				return 'string[]';
 			case 'resourceLocator':
 				return generateResourceLocatorType(prop);
+			case 'resourceMapper':
+				return 'ResourceMapperValue | Expression<string>';
 			case 'filter':
 				return 'FilterValue';
 			case 'assignmentCollection':
@@ -717,11 +877,9 @@ function mapNestedPropertyTypeInner(
 	}
 
 	switch (prop.type) {
-		case 'string':
-			if (prop.builderHint?.placeholderSupported === false) {
-				return 'string | Expression<string>';
-			}
-			return 'string | Expression<string> | PlaceholderValue';
+		case 'string': {
+			return 'string | Expression<string>';
+		}
 		case 'number':
 			return 'number | Expression<number>';
 		case 'boolean':
@@ -765,6 +923,8 @@ function mapNestedPropertyTypeInner(
 			return 'IDataObject | string | Expression<string>';
 		case 'resourceLocator':
 			return generateResourceLocatorType(prop);
+		case 'resourceMapper':
+			return 'ResourceMapperValue | Expression<string>';
 		case 'filter':
 			return 'FilterValue';
 		case 'assignmentCollection':
@@ -782,7 +942,16 @@ function mapNestedPropertyTypeInner(
 		case 'notice':
 		case 'curlImport':
 		case 'credentials':
+		case 'callout':
 			return '';
+		case 'button':
+			// Buttons with `hasInputField: true` (e.g. AiTransform's instructions)
+			// store the user-typed text; pure-action buttons store the default ''.
+			return 'string | Expression<string>';
+		case 'icon':
+			return ICON_TS_TYPE;
+		case 'workflowSelector':
+			return WORKFLOW_SELECTOR_TS_TYPE;
 		case 'credentialsSelect':
 			// credentialsSelect is a string value (credential type name)
 			return 'string | Expression<string>';
@@ -806,16 +975,6 @@ function quotePropertyName(name: string): string {
 		return `'${name.replace(/'/g, "\\'")}'`;
 	}
 	return name;
-}
-
-/**
- * Determine if a property should be optional in the generated type.
- * A property is optional if it's not required OR if it has a default value.
- * Properties with defaults can be omitted - the default will be used at runtime.
- */
-function isPropertyOptional(prop: NodeProperty): boolean {
-	const hasDefault = 'default' in prop && prop.default !== undefined;
-	return !prop.required || hasDefault;
 }
 
 /**
@@ -849,11 +1008,13 @@ function generateNestedPropertyJSDoc(
 
 	// Builder hint - guidance for AI/workflow builders
 	if (prop.builderHint) {
-		const safeBuilderHint = prop.builderHint.message
-			.replace(/\*\//g, '*\\/')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;');
-		lines.push(`${indent} * @builderHint ${safeBuilderHint}`);
+		emitBuilderHint(lines, indent, prop.builderHint);
+	}
+
+	// Placeholder support flag — signals to the builder agent (and the runtime
+	// guard) that placeholder() is rejected for this parameter.
+	if (prop.builderHint?.placeholderSupported === false) {
+		lines.push(`${indent} * @placeholderSupported false`);
 	}
 
 	// Search/load method annotations — signals to the builder agent that
@@ -961,7 +1122,7 @@ function generateFixedCollectionType(
 
 		for (const nestedProp of group.values) {
 			// Skip notice and other display-only types
-			if (['notice', 'curlImport', 'credentials'].includes(nestedProp.type)) {
+			if (DISPLAY_ONLY_PROPERTY_TYPES.has(nestedProp.type)) {
 				continue;
 			}
 
@@ -980,9 +1141,32 @@ function generateFixedCollectionType(
 
 		if (nestedProps.length > 0) {
 			const innerType = `{\n${nestedProps.join(';\n')};\n${INDENT.repeat(2)}}`;
-			const groupType = isMultipleValues ? `Array<${innerType}>` : innerType;
 
-			// Generate JSDoc for the group if it has builderHint or description
+			const minRequired = prop.typeOptions?.minRequiredFields;
+			const maxAllowed = prop.typeOptions?.maxAllowedFields;
+			const hasMinRequired = typeof minRequired === 'number' && minRequired > 0;
+
+			let groupType: string;
+			if (isMultipleValues) {
+				if (hasMinRequired) {
+					// Express the min-length constraint at the type level so the
+					// generated reference tells the builder the array must have
+					// at least N items (not just optional).
+					const requiredHead = Array(minRequired).fill(innerType).join(', ');
+					groupType = `[${requiredHead}, ...Array<${innerType}>]`;
+				} else {
+					groupType = `Array<${innerType}>`;
+				}
+			} else {
+				groupType = innerType;
+			}
+
+			// When minRequiredFields > 0, the group key itself is required —
+			// omitting it produces 0 entries and violates the constraint.
+			const groupOptional = hasMinRequired ? '' : '?';
+
+			// Generate JSDoc for the group if it has builderHint, description,
+			// or field-count constraints.
 			const groupJsDocLines: string[] = [];
 			if (group.displayName || group.description) {
 				const desc = (group.description ?? group.displayName ?? '')
@@ -992,23 +1176,31 @@ function generateFixedCollectionType(
 				groupJsDocLines.push(`${INDENT.repeat(2)}/** ${desc}`);
 			}
 			if (group.builderHint) {
-				const safeBuilderHint = group.builderHint.message
-					.replace(/\*\//g, '*\\/')
-					.replace(/</g, '&lt;')
-					.replace(/>/g, '&gt;');
 				if (groupJsDocLines.length === 0) {
 					groupJsDocLines.push(`${INDENT.repeat(2)}/**`);
 				}
-				groupJsDocLines.push(`${INDENT.repeat(2)} * @builderHint ${safeBuilderHint}`);
+				emitBuilderHint(groupJsDocLines, INDENT.repeat(2), group.builderHint);
+			}
+			if (isMultipleValues && hasMinRequired) {
+				if (groupJsDocLines.length === 0) {
+					groupJsDocLines.push(`${INDENT.repeat(2)}/**`);
+				}
+				groupJsDocLines.push(`${INDENT.repeat(2)} * @minItems ${minRequired}`);
+			}
+			if (isMultipleValues && typeof maxAllowed === 'number' && maxAllowed > 0) {
+				if (groupJsDocLines.length === 0) {
+					groupJsDocLines.push(`${INDENT.repeat(2)}/**`);
+				}
+				groupJsDocLines.push(`${INDENT.repeat(2)} * @maxItems ${maxAllowed}`);
 			}
 
 			if (groupJsDocLines.length > 0) {
 				groupJsDocLines.push(`${INDENT.repeat(2)} */`);
 				groups.push(
-					`${groupJsDocLines.join('\n')}\n${INDENT.repeat(2)}${groupName}?: ${groupType}`,
+					`${groupJsDocLines.join('\n')}\n${INDENT.repeat(2)}${groupName}${groupOptional}: ${groupType}`,
 				);
 			} else {
-				groups.push(`${groupName}?: ${groupType}`);
+				groups.push(`${groupName}${groupOptional}: ${groupType}`);
 			}
 		}
 	}
@@ -1021,9 +1213,185 @@ function generateFixedCollectionType(
 }
 
 /**
+ * Translate a property's disabledOptions into effective displayOptions that
+ * exclude the disabled states from the generated type. Returns
+ * { displayOptions, fullyDisabled } where fullyDisabled is true when every
+ * visible state is read-only.
+ *
+ * - For keys present in both displayOptions.show and disabledOptions.show, the
+ *   disabled values are subtracted from the show list. If any key is left with
+ *   no settable values, the property is fully disabled.
+ * - For keys in disabledOptions.show that aren't covered by displayOptions.show,
+ *   they are merged into displayOptions.hide — "disabled" is equivalent to
+ *   "unsettable" for schema purposes, so the field is excluded from those
+ *   states.
+ */
+export function narrowDisplayOptionsByDisabled(prop: NodeProperty): {
+	displayOptions: NodeProperty['displayOptions'];
+	fullyDisabled: boolean;
+} {
+	const { displayOptions, disabledOptions } = prop;
+	if (!disabledOptions?.show) {
+		return { displayOptions, fullyDisabled: false };
+	}
+
+	const currentShow = displayOptions?.show;
+	const narrowedShow: Record<string, unknown[]> = {};
+	const mergedHide: Record<string, unknown[]> = {};
+	for (const [key, values] of Object.entries(displayOptions?.hide ?? {})) {
+		mergedHide[key] = [...values];
+	}
+
+	if (currentShow) {
+		for (const [key, values] of Object.entries(currentShow)) {
+			const disabledValues = disabledOptions.show[key];
+			if (!disabledValues) {
+				narrowedShow[key] = values;
+				continue;
+			}
+			const remaining = values.filter(
+				(v) => !disabledValues.some((d) => JSON.stringify(d) === JSON.stringify(v)),
+			);
+			if (remaining.length === 0) {
+				return { displayOptions: undefined, fullyDisabled: true };
+			}
+			narrowedShow[key] = remaining;
+		}
+	}
+
+	for (const [key, values] of Object.entries(disabledOptions.show)) {
+		if (currentShow && key in currentShow) continue;
+		const existing = mergedHide[key] ?? [];
+		const seen = new Set(existing.map((v) => JSON.stringify(v)));
+		for (const v of values) {
+			if (!seen.has(JSON.stringify(v))) {
+				existing.push(v);
+			}
+		}
+		mergedHide[key] = existing;
+	}
+
+	const result: NonNullable<NodeProperty['displayOptions']> = {};
+	if (Object.keys(narrowedShow).length > 0) result.show = narrowedShow;
+	if (Object.keys(mergedHide).length > 0) result.hide = mergedHide;
+
+	return {
+		displayOptions: Object.keys(result).length > 0 ? result : undefined,
+		fullyDisabled: false,
+	};
+}
+
+/**
+ * Collapse a two-variant UX fork into a single displayOptions. Returns null if
+ * the two variants don't form a clean single-key partition.
+ *
+ * A fork qualifies when:
+ *  - all show/hide entries are equal across `a` and `b` except for exactly one
+ *    key K, and
+ *  - one variant has `hide: { K: H }` (with K absent from its `show`) while the
+ *    other has `show: { K: S }` (with K absent from its `hide`).
+ *
+ * The collapsed result is `hide: { K: H \ S }` plus the shared entries; if
+ * `H \ S` is empty the K constraint is dropped entirely (fully partitioned).
+ *
+ * Example — BigQuery `sqlQuery`:
+ *   variant a: `{ hide: { useLegacySql: [true] } }`
+ *   variant b: `{ show: { useLegacySql: [true] } }`
+ *   collapse → `{}` (no constraint — sqlQuery is settable in either mode)
+ *
+ * Multi-key forks (e.g. Cortex's 5-way `parameters`) return null and the caller
+ * keeps the first variant's displayOptions; the runtime path uses
+ * resolveOneOfSchemas so validation stays correct, only the .d.ts shows
+ * variant-1 only as a documented limitation.
+ */
+export function tryMergeUxForkVariants(
+	a: NodeProperty['displayOptions'] | undefined,
+	b: NodeProperty['displayOptions'] | undefined,
+): NodeProperty['displayOptions'] | null {
+	if (!a || !b) return null;
+
+	const aShow = a.show ?? {};
+	const aHide = a.hide ?? {};
+	const bShow = b.show ?? {};
+	const bHide = b.hide ?? {};
+
+	const allKeys = new Set<string>([
+		...Object.keys(aShow),
+		...Object.keys(aHide),
+		...Object.keys(bShow),
+		...Object.keys(bHide),
+	]);
+
+	const sharedShow: Record<string, unknown[]> = {};
+	const sharedHide: Record<string, unknown[]> = {};
+	let forkKey: string | null = null;
+	let hideValues: unknown[] | null = null;
+	let showValues: unknown[] | null = null;
+
+	for (const key of allKeys) {
+		const aS = aShow[key];
+		const bS = bShow[key];
+		const aH = aHide[key];
+		const bH = bHide[key];
+
+		const showEqual = JSON.stringify(aS ?? null) === JSON.stringify(bS ?? null);
+		const hideEqual = JSON.stringify(aH ?? null) === JSON.stringify(bH ?? null);
+
+		if (showEqual && hideEqual) {
+			if (aS !== undefined) sharedShow[key] = aS;
+			if (aH !== undefined) sharedHide[key] = aH;
+			continue;
+		}
+
+		if (forkKey !== null) return null; // more than one differing key
+		forkKey = key;
+
+		// Clean partition: K appears in hide of one variant and show of the other,
+		// with K absent from the opposite clause on each side.
+		if (aH !== undefined && aS === undefined && bS !== undefined && bH === undefined) {
+			hideValues = aH;
+			showValues = bS;
+		} else if (bH !== undefined && bS === undefined && aS !== undefined && aH === undefined) {
+			hideValues = bH;
+			showValues = aS;
+		} else {
+			return null;
+		}
+	}
+
+	const result: { show?: Record<string, unknown[]>; hide?: Record<string, unknown[]> } = {};
+	if (Object.keys(sharedShow).length > 0) result.show = sharedShow;
+
+	if (forkKey === null) {
+		if (Object.keys(sharedHide).length > 0) result.hide = sharedHide;
+		return result;
+	}
+
+	const showSerialized = (showValues ?? []).map((s) => JSON.stringify(s));
+	const remainingHide = (hideValues ?? []).filter(
+		(h) => !showSerialized.includes(JSON.stringify(h)),
+	);
+
+	if (remainingHide.length > 0) {
+		result.hide = { ...sharedHide, [forkKey]: remainingHide };
+	} else if (Object.keys(sharedHide).length > 0) {
+		result.hide = sharedHide;
+	}
+
+	return result;
+}
+
+/**
  * Merge properties with the same name for collection/fixedCollection types.
  * When multiple properties have the same name (e.g., multiple 'options' collections
  * with different displayOptions), their nested options should be merged.
+ *
+ * For same-named declarations whose displayOptions form a two-variant UX fork
+ * (e.g. BigQuery's `sqlQuery` `hide: { useLegacySql: [true] }` paired with
+ * `show: { useLegacySql: [true] }`), the displayOptions are collapsed to a
+ * single accurate representation via `tryMergeUxForkVariants`. Multi-key forks
+ * fall through and keep the first variant — the runtime path uses
+ * `resolveOneOfSchemas` so validation stays correct.
  *
  * @param properties - Array of node properties, possibly with duplicates
  * @returns Array of properties with duplicates merged
@@ -1033,22 +1401,45 @@ function mergeCollectionProperties(properties: NodeProperty[]): NodeProperty[] {
 
 	for (const prop of properties) {
 		// Skip display-only types
-		if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
+		if (DISPLAY_ONLY_PROPERTY_TYPES.has(prop.type)) {
 			continue;
 		}
 
-		if (seenProps.has(prop.name)) {
-			const existingProp = seenProps.get(prop.name)!;
+		// Narrow displayOptions so the emitted type reflects the actually-settable
+		// states: drop the property entirely if every visible state is read-only
+		// (e.g. the expression-prefilled sessionKey variant of the memory nodes,
+		// which lives only to render a disabled UI field in 'fromInput' mode).
+		const { displayOptions: narrowedDisplayOptions, fullyDisabled } =
+			narrowDisplayOptionsByDisabled(prop);
+		if (fullyDisabled) {
+			continue;
+		}
+		const normalizedProp: NodeProperty = { ...prop, displayOptions: narrowedDisplayOptions };
+
+		if (seenProps.has(normalizedProp.name)) {
+			const existingProp = seenProps.get(normalizedProp.name)!;
+
+			// Collapse a UX fork (e.g. hide+show partition of one key) into a
+			// single accurate displayOptions for the emitted type def.
+			if (existingProp.displayOptions && normalizedProp.displayOptions) {
+				const mergedDisplayOptions = tryMergeUxForkVariants(
+					existingProp.displayOptions,
+					normalizedProp.displayOptions,
+				);
+				if (mergedDisplayOptions !== null) {
+					existingProp.displayOptions = mergedDisplayOptions;
+				}
+			}
 
 			// For collection/fixedCollection types, merge nested options
 			if (
-				(prop.type === 'collection' || prop.type === 'fixedCollection') &&
-				prop.options &&
+				(normalizedProp.type === 'collection' || normalizedProp.type === 'fixedCollection') &&
+				normalizedProp.options &&
 				existingProp.options
 			) {
 				// Merge options, avoiding duplicates by name
 				const existingOptionNames = new Set(existingProp.options.map((o) => o.name));
-				for (const opt of prop.options) {
+				for (const opt of normalizedProp.options) {
 					if (!existingOptionNames.has(opt.name)) {
 						existingProp.options.push(opt);
 					}
@@ -1059,9 +1450,9 @@ function mergeCollectionProperties(properties: NodeProperty[]): NodeProperty[] {
 		}
 
 		// Create a shallow copy to avoid mutating the original when merging
-		seenProps.set(prop.name, {
-			...prop,
-			options: prop.options ? [...prop.options] : undefined,
+		seenProps.set(normalizedProp.name, {
+			...normalizedProp,
+			options: normalizedProp.options ? [...normalizedProp.options] : undefined,
 		});
 	}
 
@@ -1090,7 +1481,7 @@ function generateCollectionType(
 
 		// Skip notice and other display-only types
 		const nestedType = (nestedProp as NodeProperty).type;
-		if (['notice', 'curlImport', 'credentials'].includes(nestedType)) {
+		if (DISPLAY_ONLY_PROPERTY_TYPES.has(nestedType)) {
 			continue;
 		}
 
@@ -1115,14 +1506,11 @@ function generateCollectionType(
 }
 
 /**
- * Strip Expression<...> and PlaceholderValue from a type string.
+ * Strip Expression<...> from a type string.
  * Used when noDataExpression is true to produce plain types.
  */
 function stripExpressionFromType(typeStr: string): string {
-	return typeStr
-		.replace(/\s*\|\s*Expression<[^>]+>/g, '')
-		.replace(/\s*\|\s*PlaceholderValue/g, '')
-		.trim();
+	return typeStr.replace(/\s*\|\s*Expression<[^>]+>/g, '').trim();
 }
 
 /**
@@ -1133,10 +1521,16 @@ export function mapPropertyType(
 	discriminatorContext?: DiscriminatorCombination,
 ): string {
 	const result = mapPropertyTypeInner(prop, discriminatorContext);
-	if (prop.noDataExpression) {
-		return stripExpressionFromType(result);
+	const expressionAwareResult = prop.noDataExpression ? stripExpressionFromType(result) : result;
+	return wrapMultipleValuesType(prop, expressionAwareResult);
+}
+
+function wrapMultipleValuesType(prop: NodeProperty, typeStr: string): string {
+	if (!typeStr || prop.type === 'fixedCollection' || prop.type === 'multiOptions') {
+		return typeStr;
 	}
-	return result;
+
+	return prop.typeOptions?.multipleValues === true ? `Array<${typeStr}>` : typeStr;
 }
 
 function mapPropertyTypeInner(
@@ -1159,6 +1553,8 @@ function mapPropertyTypeInner(
 				return 'string[]';
 			case 'resourceLocator':
 				return generateResourceLocatorType(prop);
+			case 'resourceMapper':
+				return 'ResourceMapperValue | Expression<string>';
 			case 'filter':
 				return 'FilterValue';
 			case 'assignmentCollection':
@@ -1169,11 +1565,9 @@ function mapPropertyTypeInner(
 	}
 
 	switch (prop.type) {
-		case 'string':
-			if (prop.builderHint?.placeholderSupported === false) {
-				return 'string | Expression<string>';
-			}
-			return 'string | Expression<string> | PlaceholderValue';
+		case 'string': {
+			return 'string | Expression<string>';
+		}
 
 		case 'number':
 			return 'number | Expression<number>';
@@ -1225,6 +1619,9 @@ function mapPropertyTypeInner(
 		case 'resourceLocator':
 			return generateResourceLocatorType(prop);
 
+		case 'resourceMapper':
+			return 'ResourceMapperValue | Expression<string>';
+
 		case 'filter':
 			return 'FilterValue';
 
@@ -1249,7 +1646,19 @@ function mapPropertyTypeInner(
 		case 'notice':
 		case 'curlImport':
 		case 'credentials':
-			return ''; // Skip these types
+		case 'callout':
+			return ''; // Skip display-only types
+
+		case 'button':
+			// Buttons with `hasInputField: true` (e.g. AiTransform's instructions)
+			// store the user-typed text; pure-action buttons store the default ''.
+			return 'string | Expression<string>';
+
+		case 'icon':
+			return ICON_TS_TYPE;
+
+		case 'workflowSelector':
+			return WORKFLOW_SELECTOR_TS_TYPE;
 
 		case 'credentialsSelect':
 			// credentialsSelect is a string value (credential type name)
@@ -1373,7 +1782,7 @@ export function getPropertiesForCombination(
 		}
 
 		// Skip display-only types
-		if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
+		if (DISPLAY_ONLY_PROPERTY_TYPES.has(prop.type)) {
 			continue;
 		}
 
@@ -1567,20 +1976,19 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 
 		lines.push(`export type ${configName} = {`);
 
-		// Add discriminator fields
+		emitNodeHintForCombo(lines, node, combo);
+
+		// Discriminator literal fields for this combo.
 		for (const [key, value] of Object.entries(combo)) {
 			if (value !== undefined) {
 				lines.push(`${INDENT}${key}: '${value}';`);
 			}
 		}
 
-		// Track seen property names to avoid duplicates
-		const seenNames = new Set<string>();
-		for (const prop of props) {
-			if (seenNames.has(prop.name)) {
-				continue; // Skip duplicate property names
-			}
-			seenNames.add(prop.name);
+		// Merge same-named declarations (e.g. UX forks like BigQuery's sqlQuery)
+		// so the emitted type def reflects the OR of variants accurately.
+		const mergedProps = mergeCollectionProperties(props);
+		for (const prop of mergedProps) {
 			// Pass combo as discriminator context to filter redundant displayOptions
 			const propLine = generatePropertyLine(prop, isPropertyOptional(prop), combo);
 			if (propLine) {
@@ -1625,11 +2033,13 @@ export function generatePropertyJSDoc(
 
 	// Builder hint - guidance for AI/workflow builders
 	if (prop.builderHint) {
-		const safeBuilderHint = prop.builderHint.message
-			.replace(/\*\//g, '*\\/')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;');
-		lines.push(` * @builderHint ${safeBuilderHint}`);
+		emitBuilderHint(lines, '', prop.builderHint);
+	}
+
+	// Placeholder support flag — signals to the builder agent (and the runtime
+	// guard) that placeholder() is rejected for this parameter.
+	if (prop.builderHint?.placeholderSupported === false) {
+		lines.push(' * @placeholderSupported false');
 	}
 
 	// Search/load method annotations — signals to the builder agent that
@@ -1728,6 +2138,18 @@ export function generateNodeJSDoc(node: NodeTypeDescription): string {
 	const subnodeType = getSubnodeOutputType(node);
 	if (subnodeType) {
 		lines.push(` * @subnodeType ${subnodeType}`);
+	}
+
+	// Node-level builder hint — searchHint and unconditional extraTypeDefContent.
+	// `relatedNodes` and `inputs` are consumed elsewhere (search engine, subnode
+	// extraction). Variations with `displayOptions` are skipped here — they're
+	// emitted per-combo in narrowed config types via `emitNodeHintForCombo`.
+	const nodeHint = getNodeBuilderHint(node);
+	if (nodeHint && (nodeHint.searchHint || nodeHint.extraTypeDefContent?.length)) {
+		emitBuilderHint(lines, '', {
+			propertyHint: nodeHint.searchHint,
+			extraTypeDefContent: nodeHint.extraTypeDefContent,
+		});
 	}
 
 	lines.push(' */');
@@ -2046,21 +2468,23 @@ export function generateSharedFile(
 	lines.push('');
 
 	// Check properties
-	const outputProps = filteredProperties.filter(
-		(p) => !['notice', 'curlImport', 'credentials'].includes(p.type),
-	);
+	const outputProps = filteredProperties.filter((p) => !DISPLAY_ONLY_PROPERTY_TYPES.has(p.type));
 
 	// Helper types
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
 	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
+	const needsResourceMapper = outputProps.some((p) => p.type === 'resourceMapper');
 
-	if (needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment || needsResourceMapper) {
 		lines.push('// Helper types for special n8n fields');
 		if (needsFilter) {
 			lines.push(generateFilterTypeDeclaration(true));
 		}
 		if (needsAssignment) {
 			lines.push(generateAssignmentTypeDeclarations(true));
+		}
+		if (needsResourceMapper) {
+			lines.push(generateResourceMapperTypeDeclaration(true));
 		}
 		lines.push('');
 	}
@@ -2171,15 +2595,19 @@ export function generateDiscriminatorFile(
 	// Check what helper types we need
 	const needsFilter = props.some((p) => p.type === 'filter');
 	const needsAssignment = props.some((p) => p.type === 'assignmentCollection');
+	const needsResourceMapper = props.some((p) => p.type === 'resourceMapper');
 
 	// Inline helper types (only the ones needed)
-	if (needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment || needsResourceMapper) {
 		lines.push('// Helper types for special n8n fields');
 		if (needsFilter) {
 			lines.push(generateFilterTypeDeclaration(false));
 		}
 		if (needsAssignment) {
 			lines.push(generateAssignmentTypeDeclarations(false));
+		}
+		if (needsResourceMapper) {
+			lines.push(generateResourceMapperTypeDeclaration(false));
 		}
 		lines.push('');
 	}
@@ -2232,18 +2660,19 @@ export function generateDiscriminatorFile(
 	}
 	lines.push(`export type ${configName} = {`);
 
-	// Add discriminator fields
+	emitNodeHintForCombo(lines, node, combo);
+
+	// Discriminator literal fields for this combo.
 	for (const [key, value] of Object.entries(combo)) {
 		if (value !== undefined) {
 			lines.push(`${INDENT}${key}: '${value}';`);
 		}
 	}
 
-	// Add properties
-	const seenNames = new Set<string>();
-	for (const prop of props) {
-		if (seenNames.has(prop.name)) continue;
-		seenNames.add(prop.name);
+	// Merge same-named declarations (e.g. UX forks like BigQuery's sqlQuery)
+	// so the emitted type def reflects the OR of variants accurately.
+	const mergedProps = mergeCollectionProperties(props);
+	for (const prop of mergedProps) {
 		// Pass combo as discriminator context to filter redundant displayOptions
 		const propLine = generatePropertyLine(prop, isPropertyOptional(prop), combo);
 		if (propLine) {
@@ -2611,21 +3040,23 @@ export function generateSingleVersionTypeFile(
 		aiInputTypes.length > 0 ? `${nodeName}${versionSuffix}SubnodeConfig` : undefined;
 
 	// Check filtered properties that will actually be output
-	const outputProps = filteredProperties.filter(
-		(p) => !['notice', 'curlImport', 'credentials'].includes(p.type),
-	);
+	const outputProps = filteredProperties.filter((p) => !DISPLAY_ONLY_PROPERTY_TYPES.has(p.type));
 
 	// Helper types (if needed) based on filtered properties
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
 	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
+	const needsResourceMapper = outputProps.some((p) => p.type === 'resourceMapper');
 
-	if (needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment || needsResourceMapper) {
 		lines.push('// Helper types for special n8n fields');
 		if (needsFilter) {
 			lines.push(generateFilterTypeDeclaration(false));
 		}
 		if (needsAssignment) {
 			lines.push(generateAssignmentTypeDeclarations(false));
+		}
+		if (needsResourceMapper) {
+			lines.push(generateResourceMapperTypeDeclaration(false));
 		}
 		lines.push('');
 	}
@@ -2876,22 +3307,26 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 	lines.push('');
 	lines.push('');
 
-	// Check properties that will actually be output (skip notice, curlImport, etc.) across all node entries
+	// Check properties that will actually be output across all node entries
 	const outputProps = nodeArray.flatMap((n) =>
-		n.properties.filter((p) => !['notice', 'curlImport', 'credentials'].includes(p.type)),
+		n.properties.filter((p) => !DISPLAY_ONLY_PROPERTY_TYPES.has(p.type)),
 	);
 
 	// Helper types (if needed) - only add if they'll actually be used in output
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
 	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
+	const needsResourceMapper = outputProps.some((p) => p.type === 'resourceMapper');
 
-	if (needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment || needsResourceMapper) {
 		lines.push('// Helper types for special n8n fields');
 		if (needsFilter) {
 			lines.push(generateFilterTypeDeclaration(false));
 		}
 		if (needsAssignment) {
 			lines.push(generateAssignmentTypeDeclarations(false));
+		}
+		if (needsResourceMapper) {
+			lines.push(generateResourceMapperTypeDeclaration(false));
 		}
 		lines.push('');
 	}
@@ -3092,20 +3527,19 @@ function generateDiscriminatedUnionForEntry(
 
 		lines.push(`export type ${configName} = {`);
 
-		// Add discriminator fields
+		emitNodeHintForCombo(lines, node, combo);
+
+		// Discriminator literal fields for this combo.
 		for (const [key, value] of Object.entries(combo)) {
 			if (value !== undefined) {
 				lines.push(`${INDENT}${key}: '${value}';`);
 			}
 		}
 
-		// Track seen property names to avoid duplicates
-		const seenNames = new Set<string>();
-		for (const prop of props) {
-			if (seenNames.has(prop.name)) {
-				continue; // Skip duplicate property names
-			}
-			seenNames.add(prop.name);
+		// Merge same-named declarations (e.g. UX forks like BigQuery's sqlQuery)
+		// so the emitted type def reflects the OR of variants accurately.
+		const mergedProps = mergeCollectionProperties(props);
+		for (const prop of mergedProps) {
 			// Pass combo as discriminator context to filter redundant displayOptions
 			const propLine = generatePropertyLine(prop, isPropertyOptional(prop), combo);
 			if (propLine) {
@@ -3265,7 +3699,18 @@ interface BuilderHintInput {
 }
 
 interface NodeBuilderHint {
+	searchHint?: string;
+	relatedNodes?: Array<{ nodeType: string; relationHint: string }>;
 	inputs?: Record<string, BuilderHintInput>;
+	/**
+	 * Multi-line content (typically code examples wrapped in `<patterns>...</patterns>`)
+	 * emitted into the generated `.d.ts` but NOT surfaced in
+	 * `nodes(action="search")` results. Each variation may carry `displayOptions`
+	 * so per-mode / per-resource / per-operation examples land only in their
+	 * corresponding narrowed type. Variations with no `displayOptions` emit
+	 * once at the file-level node header.
+	 */
+	extraTypeDefContent?: BuilderHintVariation[];
 }
 
 /**

@@ -7,6 +7,7 @@
 import { deepCopy } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
+import { foldLegacyErrorConnections } from '../../../types/base';
 import type {
 	WorkflowJSON,
 	NodeJSON,
@@ -73,16 +74,15 @@ function serializeNode(
 
 	// Serialize parameters - for SDK-created nodes, also normalize resource locators
 	// (add __rl: true if missing) and escape newlines in expression strings.
-	// For fromJSON nodes, preserve parameters as-is.
-	let serializedParams: IDataObject | undefined;
-	if (config.parameters) {
-		const parsed = deepCopy(config.parameters);
-		if (isFromJson) {
-			serializedParams = parsed;
-		} else {
-			const normalized = normalizeResourceLocators(parsed);
-			serializedParams = escapeNewlinesInExpressionStrings(normalized) as IDataObject;
-		}
+	// Missing parameters are serialized as an empty object because n8n requires
+	// each persisted node to have an object-valued parameters field.
+	const parsedParams = deepCopy(config.parameters ?? {});
+	let serializedParams: IDataObject;
+	if (isFromJson) {
+		serializedParams = parsedParams;
+	} else {
+		const normalized = normalizeResourceLocators(parsedParams);
+		serializedParams = escapeNewlinesInExpressionStrings(normalized) as IDataObject;
 	}
 
 	const n8nNode: NodeJSON = {
@@ -102,8 +102,30 @@ function serializeNode(
 
 	// Add optional properties
 	if (config.credentials) {
-		// Serialize credentials to ensure newCredential() markers are converted to JSON
-		n8nNode.credentials = deepCopy(config.credentials);
+		if (typeof config.credentials !== 'object') {
+			// Real workflows occasionally carry credentials as a primitive (e.g. the
+			// post-redaction string `"[REDACTED]"`). Pass through unchanged.
+			n8nNode.credentials = deepCopy(config.credentials);
+		} else {
+			// `NodeConfig.credentials` is typed wide (string | { value } | etc.) at the
+			// public API. By this point `normalizeNodeConfig` has rewritten the loose
+			// shapes to `CredentialReference | NewCredentialValue`. Defensively skip
+			// any leftover placeholder marker strings or `{ value }` objects (they are
+			// placeholders the user must still fill in and have no `id`/`name` to
+			// serialize). Plain strings (e.g. legacy 'YOUR_CREDENTIALS' style refs)
+			// pass through unchanged for backwards compatibility.
+			const resolvable: NonNullable<NodeJSON['credentials']> = {};
+			for (const [key, value] of Object.entries(config.credentials)) {
+				if (typeof value === 'string') {
+					if (value.startsWith('<__PLACEHOLDER_VALUE__') && value.endsWith('__>')) continue;
+					resolvable[key] = value as unknown as { id?: string; name: string };
+					continue;
+				}
+				if (value && typeof value === 'object' && 'value' in value && !('id' in value)) continue;
+				resolvable[key] = value as { id?: string; name: string };
+			}
+			n8nNode.credentials = deepCopy(resolvable);
+		}
 	}
 	if (config.disabled) {
 		n8nNode.disabled = config.disabled;
@@ -212,6 +234,13 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 				connections[nodeName] = nodeConns;
 			}
 		}
+
+		// Emit the modern error-pin shape (main[errorIndex]) regardless of
+		// whether the internal graph used an 'error' connection-type key (from
+		// .onError() or from an imported legacy workflow). Node info is passed
+		// so IF / Switch / SplitInBatches place the error slot at the right
+		// index even when some natural outputs are unwired.
+		foldLegacyErrorConnections(connections, nodes);
 
 		// Build the workflow JSON
 		const json: WorkflowJSON = {
