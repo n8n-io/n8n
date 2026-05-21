@@ -226,11 +226,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			? createRuntimeSkillSource(sourceOrSkills)
 			: sourceOrSkills;
 
-		if (this.hasRuntimeSkillTool) {
-			this.tools = this.tools.filter((tool) => !RUNTIME_SKILL_TOOL_NAMES.has(tool.name));
-			this.hasRuntimeSkillTool = false;
-		}
-
+		this.removeRuntimeSkillTools();
 		this.skillSource = source;
 		if (source.registry.skills.length === 0) return this;
 
@@ -849,6 +845,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		if (!this.hasRuntimeSkillTool || !RUNTIME_SKILL_TOOL_NAMES.has(toolName)) return;
 
 		throw new Error(`Tool name "${toolName}" is reserved for runtime skills`);
+	}
+
+	private removeRuntimeSkillTools(): void {
+		if (!this.hasRuntimeSkillTool) return;
+
+		this.tools = this.tools.filter((tool) => !RUNTIME_SKILL_TOOL_NAMES.has(tool.name));
+		this.hasRuntimeSkillTool = false;
 	}
 }
 

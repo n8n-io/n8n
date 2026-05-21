@@ -465,6 +465,45 @@ Use the workflow SDK.`,
 		expect(agent.snapshot.instructions).toBe('Base instructions.');
 	});
 
+	it('replaces runtime skill tools when skills are reconfigured', async () => {
+		const initialSource = createRuntimeSkillSource([
+			{
+				id: 'summarize_notes',
+				name: 'Summarize notes',
+				description: 'Use for meeting notes.',
+				instructions: 'Extract decisions.',
+			},
+		]);
+		const materializedSource = createRuntimeSkillSource([
+			{
+				id: 'workflow_auditor',
+				name: 'Workflow auditor',
+				description: 'Use for workflow reviews.',
+				instructions: 'Audit the workflow.',
+			},
+		]);
+
+		const agent = new Agent('assistant')
+			.model('anthropic/claude-sonnet-4-5')
+			.instructions('Base instructions.')
+			.skills(initialSource)
+			.skills(materializedSource);
+
+		const toolNames = agent.snapshot.tools.map((tool) => tool.name);
+		expect(toolNames.filter((name) => name === 'list_skills')).toHaveLength(1);
+		expect(toolNames.filter((name) => name === 'load_skill')).toHaveLength(1);
+
+		const loadSkillTool = agent.declaredTools.find((tool) => tool.name === 'load_skill');
+		if (!loadSkillTool?.handler) throw new Error('Expected load_skill tool');
+
+		await expect(loadSkillTool.handler({ skillId: 'workflow_auditor' }, {})).resolves.toMatchObject(
+			{
+				skillId: 'workflow_auditor',
+				content: 'Audit the workflow.',
+			},
+		);
+	});
+
 	it('rejects tools that reuse runtime skill tool names after skills are attached', () => {
 		const source = createRuntimeSkillSource([
 			{
