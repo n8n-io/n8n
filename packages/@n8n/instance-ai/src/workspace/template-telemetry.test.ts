@@ -306,13 +306,13 @@ describe('createTypedToolObserver', () => {
 		};
 	}
 
-	it('emits typed read for mastra_workspace_read_file targeting examples/<slug>.ts', () => {
+	it('emits typed read for workspace_read_file targeting examples/<slug>.ts', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
 
 		observe(
-			toolCall('tc-1', 'mastra_workspace_read_file', {
+			toolCall('tc-1', 'workspace_read_file', {
 				path: '/workspace/examples/slack-daily-summary.ts',
 			}),
 		);
@@ -329,12 +329,12 @@ describe('createTypedToolObserver', () => {
 		expect(read!.props.bytes_read).toBeGreaterThan(0);
 	});
 
-	it('emits typed search for mastra_workspace_grep targeting examples/', () => {
+	it('emits typed search for workspace_grep targeting examples/', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
 
-		observe(toolCall('tc-2', 'mastra_workspace_grep', { pattern: 'slack', path: 'examples/' }));
+		observe(toolCall('tc-2', 'workspace_grep', { pattern: 'slack', path: 'examples/' }));
 		observe(toolResult('tc-2', 'examples/a.ts:1:1: slack\nexamples/b.ts:5:1: slack\n'));
 
 		const search = calls.find((c) => c.name === 'Builder template search');
@@ -348,9 +348,7 @@ describe('createTypedToolObserver', () => {
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
 
-		observe(
-			toolCall('tc-3', 'mastra_workspace_grep', { pattern: 'slack', path: 'examples/index.txt' }),
-		);
+		observe(toolCall('tc-3', 'workspace_grep', { pattern: 'slack', path: 'examples/index.txt' }));
 		observe(toolResult('tc-3', 'slack-daily.ts | Daily Slack\nslack-onboard.ts | Onboard\n'));
 
 		const search = calls.find((c) => c.name === 'Builder template search');
@@ -362,7 +360,7 @@ describe('createTypedToolObserver', () => {
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
 
-		observe(toolCall('tc-x', 'mastra_workspace_read_file', { path: '/workspace/src/workflow.ts' }));
+		observe(toolCall('tc-x', 'workspace_read_file', { path: '/workspace/src/workflow.ts' }));
 		observe(toolResult('tc-x', 'content'));
 
 		expect(calls.find((c) => c.name === 'Builder template read')).toBeUndefined();
@@ -373,7 +371,7 @@ describe('createTypedToolObserver', () => {
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
 
-		observe(toolCall('tc-y', 'mastra_workspace_grep', { pattern: 'foo', path: 'src/' }));
+		observe(toolCall('tc-y', 'workspace_grep', { pattern: 'foo', path: 'src/' }));
 		observe(toolResult('tc-y', 'src/a.ts:1:1: foo\n'));
 
 		expect(calls.find((c) => c.name === 'Builder template search')).toBeUndefined();
@@ -384,9 +382,7 @@ describe('createTypedToolObserver', () => {
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
 
-		observe(
-			toolCall('tc-z', 'mastra_workspace_write_file', { path: 'examples/foo.ts', content: 'x' }),
-		);
+		observe(toolCall('tc-z', 'workspace_write_file', { path: 'examples/foo.ts', content: 'x' }));
 		observe(toolResult('tc-z', 'ok'));
 
 		expect(calls.find((c) => c.name === 'Builder template read')).toBeUndefined();
@@ -398,7 +394,7 @@ describe('createTypedToolObserver', () => {
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
 
-		observe(toolCall('tc-e', 'mastra_workspace_read_file', { path: 'examples/foo.ts' }));
+		observe(toolCall('tc-e', 'workspace_read_file', { path: 'examples/foo.ts' }));
 		observe(toolError('tc-e', 'permission denied'));
 
 		expect(calls.find((c) => c.name === 'Builder template read')).toBeUndefined();
@@ -409,7 +405,7 @@ describe('createTypedToolObserver', () => {
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
 
-		observe(toolCall('tc-n', 'mastra_workspace_read_file', { path: 'examples/foo.ts' }));
+		observe(toolCall('tc-n', 'workspace_read_file', { path: 'examples/foo.ts' }));
 		observe(toolResult('tc-n', { not: 'a string' }));
 
 		expect(calls.find((c) => c.name === 'Builder template read')).toBeUndefined();

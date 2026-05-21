@@ -1,4 +1,6 @@
 import type {
+	Agent as RuntimeAgent,
+	AgentExecutionCounter,
 	BuiltAgent,
 	BuiltTool,
 	CredentialProvider,
@@ -24,8 +26,7 @@ import {
 	type ChatIntegrationDescriptor,
 	AgentPersistedMessageDto,
 } from '@n8n/api-types';
-import * as agents from '@n8n/agents';
-import { extractFromAIParameters } from '@n8n/ai-utilities';
+import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -90,7 +91,7 @@ import { ChatIntegrationService } from './integrations/chat-integration.service'
 type AgentToolEntries = Agent['tools'];
 
 interface InjectRuntimeDependenciesParams {
-	agent: agents.Agent;
+	agent: RuntimeAgent;
 	agentId: string;
 	projectId: string;
 	credentialProvider: CredentialProvider;
@@ -154,7 +155,7 @@ export interface ExecuteForSchedulePublishedConfig {
 }
 
 interface StreamChatResponseConfig {
-	agentInstance: agents.Agent;
+	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
 	agentId: string;
 	message: string;
@@ -187,7 +188,7 @@ export class AgentsService {
 	 */
 	private readonly runtimes = new TtlMap<
 		string,
-		{ agent: agents.Agent; agentId: string; toolRegistry: ToolRegistry; projectId: string }
+		{ agent: RuntimeAgent; agentId: string; toolRegistry: ToolRegistry; projectId: string }
 	>(30 * Time.minutes.toMilliseconds);
 
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
@@ -273,7 +274,7 @@ export class AgentsService {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
 	}
 
-	private createAgentExecutionCounter(agentId: string): agents.AgentExecutionCounter {
+	private createAgentExecutionCounter(agentId: string): AgentExecutionCounter {
 		return {
 			incrementMessageCount: () =>
 				this.telemetry.trackAgentExecution({ agent_id: agentId, message_count: 1 }),
@@ -617,7 +618,7 @@ export class AgentsService {
 	 * Return a cached runtime, or reconstruct one from the DB.
 	 */
 	private async getRuntime(params: GetRuntimeParams): Promise<{
-		agent: agents.Agent;
+		agent: RuntimeAgent;
 		agentId: string;
 		toolRegistry: ToolRegistry;
 		projectId: string;
@@ -778,7 +779,7 @@ export class AgentsService {
 	 * turn delegates to `NodeCatalogService`.
 	 */
 	private attachNodeToolChain(
-		agent: agents.Agent,
+		agent: RuntimeAgent,
 		credentialProvider: CredentialProvider,
 		projectId: string,
 	): void {
@@ -1726,7 +1727,7 @@ export class AgentsService {
 		credentialProvider: CredentialProvider,
 		userId: string,
 		integrationType?: string,
-	): Promise<{ agent: agents.Agent; toolRegistry: ToolRegistry }> {
+	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		const config = agentEntity.schema;
 		if (!config) {
 			throw new UserError('Agent has no JSON config.');

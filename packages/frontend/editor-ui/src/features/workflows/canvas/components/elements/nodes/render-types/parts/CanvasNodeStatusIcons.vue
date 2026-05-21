@@ -3,6 +3,7 @@ import { computed, useCssModule } from 'vue';
 import TitledList from '@/app/components/TitledList.vue';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useCanvasNode } from '../../../../../composables/useCanvasNode';
+import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import { useI18n } from '@n8n/i18n';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
 import { useRoute } from 'vue-router';
@@ -24,10 +25,9 @@ const i18n = useI18n();
 const $style = useCssModule();
 
 const {
+	name,
 	hasPinnedData,
-	executionErrors,
 	validationErrors,
-	hasExecutionErrors,
 	hasValidationErrors,
 	executionStatus,
 	hasRunData,
@@ -36,6 +36,11 @@ const {
 	render,
 	isNotInstalledCommunityNode,
 } = useCanvasNode();
+const renderData = injectCanvasRenderData();
+const executionErrors = computed(
+	() => renderData.value.executionIssuesByNodeName.get(name.value)?.value ?? [],
+);
+const hasExecutionErrors = computed(() => executionErrors.value.length > 0);
 const route = useRoute();
 
 const hideNodeIssues = computed(() => false); // @TODO Implement this
