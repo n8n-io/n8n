@@ -166,7 +166,10 @@ jobs:
           LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
           LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
           LANGSMITH_REVISION_ID: ${{ github.sha }}
-          LANGSMITH_BRANCH: ${{ github.head_ref || github.ref_name }}
+          # Prefer the PR's actual head ref so experiment names track the
+          # source branch on pull_request_review (where github.head_ref is
+          # empty and github.ref_name resolves to "<PR>/merge").
+          LANGSMITH_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
           FILTER: ${{ inputs.filter }}
         run: |
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
