@@ -1,3 +1,4 @@
+import { uniqueStrings } from './memory-lifecycle';
 import type {
 	BuiltObservationLogStore,
 	ObservationLogEntry,
@@ -120,7 +121,7 @@ export function normalizeObservationLogReflection(
 	const merge = reflection.merge
 		.map((entry) => {
 			const ownSeeds = new Set(entry.supersedes.filter((id) => activeById.has(id)));
-			const supersedes = uniqueObservationIds(
+			const supersedes = uniqueStrings(
 				entry.supersedes
 					.filter((id) => activeById.has(id))
 					.filter((id) => !isChildOnlyRemoval(id, ownSeeds, allMergeSeeds, dropSeeds, activeById))
@@ -213,17 +214,6 @@ export async function runObservationLogReflector(
 		reflection,
 		result,
 	};
-}
-
-function uniqueObservationIds(ids: string[]): string[] {
-	const seen = new Set<string>();
-	const unique: string[] = [];
-	for (const id of ids) {
-		if (seen.has(id)) continue;
-		seen.add(id);
-		unique.push(id);
-	}
-	return unique;
 }
 
 function descendantIds(id: string, childrenByParent: Map<string, ObservationLogEntry[]>): string[] {

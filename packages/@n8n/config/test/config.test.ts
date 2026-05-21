@@ -288,6 +288,7 @@ describe('GlobalConfig', () => {
 			n8nSandboxServiceUrl: '',
 			n8nSandboxServiceApiKey: '',
 			sandboxTimeout: 300000,
+			sandboxNamePrefix: '',
 			builderSandboxTtlMs: 600_000,
 			braveSearchApiKey: '',
 			searxngUrl: '',
@@ -374,6 +375,9 @@ describe('GlobalConfig', () => {
 			enabled: false,
 			ttl: 10,
 			interval: 3,
+		},
+		evaluation: {
+			collectionsEnabled: false,
 		},
 		generic: {
 			timezone: 'America/New_York',

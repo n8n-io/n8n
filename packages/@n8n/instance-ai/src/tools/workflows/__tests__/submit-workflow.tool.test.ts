@@ -303,6 +303,20 @@ describe('classifySubmitFailure', () => {
 		expect(remediation.guidance).toContain('Stop editing');
 	});
 
+	it('treats a not-found workflowId as code-fixable so the agent can drop the id', () => {
+		const remediation = classifySubmitFailure(
+			['Workflow save failed: Workflow not found'],
+			'workflow_save_failed',
+		);
+
+		expect(remediation).toMatchObject({
+			category: 'code_fixable',
+			shouldEdit: true,
+			reason: 'workflow_save_failed',
+		});
+		expect(remediation.guidance).toContain('Omit the workflowId');
+	});
+
 	it('routes missing or inaccessible credential save failures to setup', () => {
 		const remediation = classifySubmitFailure(
 			['Workflow save failed: Credential "slackApi" is not accessible'],

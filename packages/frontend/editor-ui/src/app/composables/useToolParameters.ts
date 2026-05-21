@@ -109,7 +109,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			currentNodeParameters: newNode.parameters,
 			credentials: newNode.credentials,
 			projectId: projectsStore.currentProjectId,
-			workflowId: workflowsStore.workflowId,
+			workflowId: workflowDocumentStore.value.workflowId,
 		});
 
 		// Load available tools
@@ -266,7 +266,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			const initialValue = inputQuery?.[value.key]
 				? inputQuery[value.key]
 				: (agentRequestStore.getQueryValue(
-						workflowsStore.workflowId,
+						workflowDocumentStore.value.workflowId,
 						toolNode.id,
 						toolNode.name,
 						value.key,
@@ -296,7 +296,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			const queryValue =
 				inputQuery ??
 				agentRequestStore.getQueryValue(
-					workflowsStore.workflowId,
+					workflowDocumentStore.value.workflowId,
 					toolNode.id,
 					toolNode.name,
 					key,

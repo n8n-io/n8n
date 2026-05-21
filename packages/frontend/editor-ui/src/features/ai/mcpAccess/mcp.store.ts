@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
 import { MCP_STORE } from './mcp.constants';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	useWorkflowDocumentStore,
@@ -32,7 +31,6 @@ import type {
 import { i18n } from '@n8n/i18n';
 
 export const useMCPStore = defineStore(MCP_STORE, () => {
-	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
@@ -84,10 +82,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			}
 		}
 
-		if (workflowId === workflowsStore.workflowId) {
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-			workflowDocumentStore.mergeSettings({ availableInMCP });
-		}
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		workflowDocumentStore.mergeSettings({ availableInMCP });
 	}
 
 	// Toggle MCP access for a single workflow
