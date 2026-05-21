@@ -20,7 +20,8 @@
 				"additionalFields": {
 					"deal_id": 8,
 					"person_id": 10,
-					"org_id": 7
+					"org_id": 7,
+					"user_id": 25455458
 				}
 			},
 			"id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",

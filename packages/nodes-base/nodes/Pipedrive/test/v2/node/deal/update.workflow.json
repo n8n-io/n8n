@@ -17,7 +17,8 @@
 				"dealId": 10,
 				"updateFields": {
 					"title": "Updated Deal",
-					"value": 7500
+					"value": 7500,
+					"user_id": 25455458
 				}
 			},
 			"id": "b8b8b8b8-1111-2222-3333-444444444444",

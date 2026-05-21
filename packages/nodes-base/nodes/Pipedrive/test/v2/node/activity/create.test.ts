@@ -15,6 +15,7 @@ describe('Test PipedriveV2, activity => create', () => {
 			deal_id: 8,
 			person_id: 10,
 			org_id: 7,
+			owner_id: 25455458,
 		})
 		.reply(200, {
 			success: true,
