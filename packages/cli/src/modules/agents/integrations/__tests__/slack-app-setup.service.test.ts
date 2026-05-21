@@ -1,5 +1,6 @@
 import type { User, UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
+import type { Cipher } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -37,6 +38,7 @@ describe('SlackAppSetupService', () => {
 	let fetchMock: jest.Mock;
 	let cacheStore: Map<string, unknown>;
 	let cacheService: jest.Mocked<CacheService>;
+	let cipher: jest.Mocked<Cipher>;
 	let credentialsService: jest.Mocked<CredentialsService>;
 	let userRepository: jest.Mocked<UserRepository>;
 	let agentRepository: jest.Mocked<AgentRepository>;
@@ -58,6 +60,15 @@ describe('SlackAppSetupService', () => {
 			cacheStore.delete(key);
 		});
 
+		cipher = mock<Cipher>();
+		cipher.encryptV2.mockImplementation(async (data: string | object) => {
+			const plaintext = typeof data === 'string' ? data : JSON.stringify(data);
+			return `encrypted:${Buffer.from(plaintext).toString('base64')}`;
+		});
+		cipher.decryptV2.mockImplementation(async (data: string) =>
+			Buffer.from(data.replace(/^encrypted:/, ''), 'base64').toString(),
+		);
+
 		credentialsService = mock<CredentialsService>();
 		userRepository = mock<UserRepository>();
 		agentRepository = mock<AgentRepository>();
@@ -69,6 +80,7 @@ describe('SlackAppSetupService', () => {
 
 		service = new SlackAppSetupService(
 			cacheService,
+			cipher,
 			credentialsService,
 			userRepository,
 			agentRepository,
@@ -150,18 +162,34 @@ describe('SlackAppSetupService', () => {
 		expect(installUrl.searchParams.get('redirect_uri')).toBe(callbackUrl);
 		expect(cacheService.set).toHaveBeenCalledWith(
 			`agents:slack-app-setup:${state}`,
-			expect.objectContaining({
-				agentId: 'agent-1',
-				projectId: 'project-1',
-				userId: 'user-1',
-				appId: 'A123',
-				clientId: 'C123',
-				clientSecret: 'client-secret',
-				signingSecret: 'signing-secret',
-				redirectUrl: callbackUrl,
-			}),
+			expect.stringMatching(/^encrypted:/),
 			60 * 60 * 1000,
 		);
+		const cachedSession = cacheStore.get(`agents:slack-app-setup:${state}`);
+		expect(cachedSession).not.toEqual(expect.objectContaining({ clientSecret: 'client-secret' }));
+		expect(String(cachedSession)).not.toContain('client-secret');
+		expect(String(cachedSession)).not.toContain('signing-secret');
+
+		const plaintextSession = JSON.parse(cipher.encryptV2.mock.calls[0]?.[0] as string) as {
+			agentId: string;
+			projectId: string;
+			userId: string;
+			appId: string;
+			clientId: string;
+			clientSecret: string;
+			signingSecret: string;
+			redirectUrl: string;
+		};
+		expect(plaintextSession).toEqual({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			userId: 'user-1',
+			appId: 'A123',
+			clientId: 'C123',
+			clientSecret: 'client-secret',
+			signingSecret: 'signing-secret',
+			redirectUrl: callbackUrl,
+		});
 		expect(credentialsService.createUnmanagedCredential).not.toHaveBeenCalled();
 		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
 	});
@@ -219,6 +247,7 @@ describe('SlackAppSetupService', () => {
 		});
 		const state = new URL(installUrl).searchParams.get('state');
 		expect(state).toBeTruthy();
+		const encryptedSession = cacheStore.get(`agents:slack-app-setup:${state}`);
 
 		await service.completeInstall({
 			projectId: 'project-1',
@@ -266,6 +295,7 @@ describe('SlackAppSetupService', () => {
 		);
 		expect(agentsService.saveCredentialIntegration).toHaveBeenCalledWith(agent, integration);
 		expect(cacheService.delete).toHaveBeenCalledWith(`agents:slack-app-setup:${state}`);
+		expect(cipher.decryptV2).toHaveBeenCalledWith(encryptedSession);
 	});
 
 	it('rejects a callback state that does not belong to the requested project and agent', async () => {

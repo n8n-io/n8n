@@ -9,6 +9,8 @@ import type {
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { Cipher } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -123,6 +125,7 @@ function hasSessionShape(value: unknown): value is SlackAppSetupSession {
 export class SlackAppSetupService {
 	constructor(
 		private readonly cacheService: CacheService,
+		private readonly cipher: Cipher,
 		private readonly credentialsService: CredentialsService,
 		private readonly userRepository: UserRepository,
 		private readonly agentRepository: AgentRepository,
@@ -162,18 +165,19 @@ export class SlackAppSetupService {
 		}
 
 		const state = randomBytes(32).toString('hex');
+		const setupSession = {
+			projectId: options.projectId,
+			agentId: options.agentId,
+			userId: options.user.id,
+			appId,
+			clientId,
+			clientSecret,
+			signingSecret,
+			redirectUrl,
+		} satisfies SlackAppSetupSession;
 		await this.cacheService.set(
 			this.cacheKey(state),
-			{
-				projectId: options.projectId,
-				agentId: options.agentId,
-				userId: options.user.id,
-				appId,
-				clientId,
-				clientSecret,
-				signingSecret,
-				redirectUrl,
-			} satisfies SlackAppSetupSession,
+			await this.cipher.encryptV2(JSON.stringify(setupSession)),
 			SLACK_APP_SETUP_TTL_MS,
 		);
 
@@ -341,10 +345,19 @@ export class SlackAppSetupService {
 		const key = this.cacheKey(state);
 		const cached = await this.cacheService.get<unknown>(key);
 		await this.cacheService.delete(key);
-		if (!hasSessionShape(cached)) {
+		if (typeof cached !== 'string') {
 			throw new BadRequestError('Slack app setup state has expired or is invalid');
 		}
-		return cached;
+
+		try {
+			const decrypted = await this.cipher.decryptV2(cached);
+			const session = jsonParse<unknown>(decrypted, { fallbackValue: null });
+			if (hasSessionShape(session)) {
+				return session;
+			}
+		} catch {}
+
+		throw new BadRequestError('Slack app setup state has expired or is invalid');
 	}
 
 	private cacheKey(state: string): string {
