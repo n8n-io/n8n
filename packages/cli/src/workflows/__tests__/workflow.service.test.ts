@@ -664,12 +664,11 @@ describe('WorkflowService', () => {
 
 			test('should strip policy when user has only disableRedaction for mixed transition (non-manual → manual-only)', async () => {
 				setupExistingWorkflow({ redactionPolicy: 'non-manual' });
-				userHasScopesMock.mockImplementation((_user, scopes) =>
-					Promise.resolve(
+				userHasScopesMock.mockImplementation(
+					async (_user, scopes) =>
 						Array.isArray(scopes) &&
-							scopes.includes('workflow:disableRedaction') &&
-							!scopes.includes('workflow:enableRedaction'),
-					),
+						scopes.includes('workflow:disableRedaction') &&
+						!scopes.includes('workflow:enableRedaction'),
 				);
 
 				const user = mock<User>();
@@ -690,12 +689,11 @@ describe('WorkflowService', () => {
 
 			test('should strip policy when user has only enableRedaction for mixed transition (non-manual → manual-only)', async () => {
 				setupExistingWorkflow({ redactionPolicy: 'non-manual' });
-				userHasScopesMock.mockImplementation((_user, scopes) =>
-					Promise.resolve(
+				userHasScopesMock.mockImplementation(
+					async (_user, scopes) =>
 						Array.isArray(scopes) &&
-							scopes.includes('workflow:enableRedaction') &&
-							!scopes.includes('workflow:disableRedaction'),
-					),
+						scopes.includes('workflow:enableRedaction') &&
+						!scopes.includes('workflow:disableRedaction'),
 				);
 
 				const user = mock<User>();
