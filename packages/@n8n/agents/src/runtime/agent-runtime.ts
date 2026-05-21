@@ -1,5 +1,4 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { generateText, streamText, Output } from 'ai';
 import type { z } from 'zod';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
@@ -69,6 +68,7 @@ import {
 	toAiSdkProviderTools,
 	toAiSdkTools,
 } from './tool-adapter';
+import { Telemetry } from '../sdk/telemetry';
 import { AgentEvent } from '../types/runtime/event';
 import type { AgentEventData } from '../types/runtime/event';
 import type {
@@ -196,6 +196,20 @@ export interface AgentRuntimeConfig {
 
 const MAX_LOOP_ITERATIONS = 30;
 const logger = createFilteredLogger();
+
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+type AiSdk = Pick<typeof import('ai'), 'generateText' | 'streamText' | 'Output'>;
+
+let aiSdkPromise: Promise<AiSdk> | undefined;
+
+async function getAiSdk(): Promise<AiSdk> {
+	aiSdkPromise ??= import('ai').then(({ generateText, streamText, Output }) => ({
+		generateText,
+		streamText,
+		Output,
+	}));
+	return await aiSdkPromise;
+}
 
 const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	messages: [],
@@ -362,6 +376,10 @@ export class AgentRuntime {
 			messageList: EMPTY_MESSAGE_LIST,
 			pendingToolCalls: {},
 		};
+	}
+
+	setTelemetry(telemetry: BuiltTelemetry | undefined): void {
+		this.config.telemetry = telemetry;
 	}
 
 	/**
@@ -766,14 +784,7 @@ export class AgentRuntime {
 
 	/** Best-effort flush of telemetry provider. Never throws. */
 	private async flushTelemetry(options?: ExecutionOptions): Promise<void> {
-		try {
-			const resolved = this.resolveTelemetry(options);
-			if (resolved?.provider) {
-				await resolved.provider.forceFlush();
-			}
-		} catch {
-			// Telemetry flush is best-effort — never block the response or mask the real error.
-		}
+		await Telemetry.forceFlush(this.resolveTelemetry(options));
 	}
 
 	/** Map resolved telemetry to AI SDK's experimental_telemetry shape. */
@@ -949,7 +960,7 @@ export class AgentRuntime {
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
 		const runTelemetry = this.resolveTelemetry(options);
-		const staticLoopContext = this.buildStaticLoopContext({
+		const staticLoopContext = await this.buildStaticLoopContext({
 			...options,
 			persistence: options?.persistence,
 		});
@@ -1003,6 +1014,7 @@ export class AgentRuntime {
 			}
 		}
 
+		const { generateText } = await getAiSdk();
 		for (; iterationCount < maxIterations; iterationCount++) {
 			if (this.eventBus.isAborted) {
 				this.updateState({ status: 'cancelled' });
@@ -1193,6 +1205,7 @@ export class AgentRuntime {
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		let iterationCount = options?.iterationCount ?? 0;
 		let reachedStopCondition = false;
+		const { streamText } = await getAiSdk();
 
 		const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
 			await this.cleanupRun(runId);
@@ -1210,7 +1223,7 @@ export class AgentRuntime {
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
 		const runTelemetry = this.resolveTelemetry(options);
-		const staticLoopContext = this.buildStaticLoopContext({
+		const staticLoopContext = await this.buildStaticLoopContext({
 			...options,
 			persistence: options?.persistence,
 		});
@@ -2119,9 +2132,10 @@ export class AgentRuntime {
 	}
 
 	/** Build run-stable LLM call dependencies shared by all iterations. */
-	private buildStaticLoopContext(
+	private async buildStaticLoopContext(
 		execOptions?: ExecutionOptions & { persistence?: AgentPersistenceOptions },
 	) {
+		const { Output } = await getAiSdk();
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const model = createModel(this.config.model);
 		return {
