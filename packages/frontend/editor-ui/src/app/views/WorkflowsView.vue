@@ -24,6 +24,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
 	DEBOUNCE_TIME,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
@@ -273,6 +274,10 @@ const mcpModuleActive = computed(() => settingsStore.isModuleActive('mcp'));
 const mcpEnabled = computed(() => {
 	return mcpModuleActive.value && settingsStore.moduleSettings.mcp?.mcpAccessEnabled;
 });
+
+const canManageInstanceMcp = computed(() =>
+	hasPermission(['rbac'], { rbac: { scope: ['mcp:manage'] } }),
+);
 
 const showFolders = computed(() => {
 	return foldersEnabled.value && !projectPages.isOverviewSubPage && !projectPages.isSharedSubPage;
@@ -2020,6 +2025,7 @@ const onNameSubmit = async (name: string) => {
 					:are-tags-enabled="settingsStore.areTagsEnabled"
 					:is-mcp-enabled="mcpEnabled"
 					:is-mcp-module-active="mcpModuleActive"
+					:can-manage-instance-mcp="canManageInstanceMcp"
 					@click:tag="onClickTag"
 					@workflow:deleted="refreshWorkflows"
 					@workflow:archived="refreshWorkflows"

@@ -71,6 +71,7 @@ const props = withDefaults(
 		areTagsEnabled?: boolean;
 		isMcpEnabled?: boolean;
 		isMcpModuleActive?: boolean;
+		canManageInstanceMcp?: boolean;
 		areFoldersEnabled?: boolean;
 	}>(),
 	{
@@ -80,6 +81,7 @@ const props = withDefaults(
 		areTagsEnabled: true,
 		isMcpEnabled: false,
 		isMcpModuleActive: false,
+		canManageInstanceMcp: false,
 		areFoldersEnabled: false,
 	},
 );
@@ -681,6 +683,7 @@ const tags = computed(
 					:can-edit="canEditMcp"
 					:is-mcp-enabled="props.isMcpEnabled"
 					:is-mcp-module-active="props.isMcpModuleActive"
+					:can-manage-instance-mcp="props.canManageInstanceMcp"
 				/>
 				<N8nActionToggle
 					:actions="actions"

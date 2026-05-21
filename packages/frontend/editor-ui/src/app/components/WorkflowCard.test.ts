@@ -561,6 +561,7 @@ describe('WorkflowCard', () => {
 				data,
 				isMcpEnabled: true,
 				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
 			},
 		});
 
@@ -582,6 +583,7 @@ describe('WorkflowCard', () => {
 				data,
 				isMcpEnabled: true,
 				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
 			},
 		});
 
@@ -602,6 +604,7 @@ describe('WorkflowCard', () => {
 				data,
 				isMcpEnabled: false,
 				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
 			},
 		});
 
@@ -628,6 +631,7 @@ describe('WorkflowCard', () => {
 				data,
 				isMcpEnabled: true,
 				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
 			},
 		});
 
@@ -650,6 +654,7 @@ describe('WorkflowCard', () => {
 				data,
 				isMcpEnabled: true,
 				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
 			},
 		});
 
@@ -681,6 +686,7 @@ describe('WorkflowCard', () => {
 				data,
 				isMcpEnabled: false,
 				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
 			},
 		});
 
@@ -721,6 +727,7 @@ describe('WorkflowCard', () => {
 				data,
 				isMcpEnabled: false,
 				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
 			},
 		});
 
@@ -749,6 +756,7 @@ describe('WorkflowCard', () => {
 				data,
 				isMcpEnabled: false,
 				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
 			},
 		});
 
@@ -775,6 +783,7 @@ describe('WorkflowCard', () => {
 				data,
 				isMcpEnabled: false,
 				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
 			},
 		});
 
@@ -798,6 +807,7 @@ describe('WorkflowCard', () => {
 				data,
 				isMcpEnabled: true,
 				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
 			},
 		});
 
@@ -818,10 +828,37 @@ describe('WorkflowCard', () => {
 				data,
 				isMcpEnabled: true,
 				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
 			},
 		});
 
 		expect(queryByTestId('workflow-card-mcp-toggle')).not.toBeInTheDocument();
+	});
+
+	it('should disable the MCP toggle for non-admins when instance MCP is off', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: false,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: false,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: false,
+			},
+		});
+
+		const mcpToggle = getByTestId('workflow-card-mcp-toggle');
+		expect(mcpToggle).toBeVisible();
+		expect(mcpToggle).toBeDisabled();
+
+		await userEvent.click(mcpToggle);
+		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		expect(mcpStore.toggleWorkflowMcpAccess).not.toHaveBeenCalled();
 	});
 
 	it('should hide MCP toggle when the MCP module is not loaded on the instance', () => {
@@ -857,6 +894,7 @@ describe('WorkflowCard', () => {
 				data,
 				isMcpEnabled: true,
 				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
 			},
 		});
 

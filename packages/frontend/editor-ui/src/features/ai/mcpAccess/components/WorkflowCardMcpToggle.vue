@@ -14,6 +14,7 @@ const props = defineProps<{
 	canEdit: boolean;
 	isMcpEnabled: boolean;
 	isMcpModuleActive: boolean;
+	canManageInstanceMcp: boolean;
 }>();
 
 const locale = useI18n();
@@ -34,9 +35,19 @@ const showToggle = computed(
 
 const switchModelValue = computed(() => props.isMcpEnabled && isAvailableInMCP.value);
 
+// Non-admins can't flip instance-level MCP, so the modal would be a dead end.
+const blockedByMissingAdminScope = computed(
+	() => !props.isMcpEnabled && !props.canManageInstanceMcp,
+);
+
+const switchDisabled = computed(() => !props.canEdit || blockedByMissingAdminScope.value);
+
 const tooltipContent = computed(() => {
 	if (!props.canEdit) {
 		return locale.baseText('workflows.item.availableInMCP');
+	}
+	if (blockedByMissingAdminScope.value) {
+		return locale.baseText('workflows.item.mcpDisabledByInstance');
 	}
 	return switchModelValue.value
 		? locale.baseText('workflows.item.disableMCPAccess')
@@ -80,7 +91,7 @@ async function onSwitchChange(nextValue: boolean) {
 			<N8nIcon :class="$style.icon" icon="mcp" size="medium" />
 			<N8nSwitch2
 				:model-value="switchModelValue"
-				:disabled="!canEdit"
+				:disabled="switchDisabled"
 				size="small"
 				:aria-label="tooltipContent"
 				data-test-id="workflow-card-mcp-toggle"
