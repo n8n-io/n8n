@@ -112,14 +112,17 @@ export function buildOpenAiErrorEnvelope(message: string): Record<string, unknow
 function extractAssistantContent(body: unknown): string {
 	if (body === null || body === undefined) return '';
 	if (typeof body === 'string') return body;
-	if (typeof body !== 'object') return String(body);
+	// At this point `body` is narrowed to a non-string, non-object primitive
+	// (number / boolean / bigint). JSON.parse can't produce symbols or
+	// functions, so the cast covers every realistic input shape.
+	if (typeof body !== 'object') return String(body as number | boolean | bigint);
 
 	const obj = body as Record<string, unknown>;
 
 	// chat.completion shape — pull the first assistant message's content.
 	const choices = obj.choices;
 	if (Array.isArray(choices) && choices.length > 0) {
-		const first = choices[0];
+		const first: unknown = choices[0];
 		if (typeof first === 'object' && first !== null) {
 			const message = (first as { message?: unknown }).message;
 			if (typeof message === 'object' && message !== null) {
@@ -144,7 +147,7 @@ function extractFinishReason(body: unknown): string {
 	if (typeof body !== 'object' || body === null) return 'stop';
 	const choices = (body as { choices?: unknown }).choices;
 	if (Array.isArray(choices) && choices.length > 0) {
-		const first = choices[0];
+		const first: unknown = choices[0];
 		if (typeof first === 'object' && first !== null) {
 			const reason = (first as { finish_reason?: unknown }).finish_reason;
 			if (typeof reason === 'string' && reason.length > 0) return reason;
