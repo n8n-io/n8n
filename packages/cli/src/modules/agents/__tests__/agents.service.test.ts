@@ -791,7 +791,7 @@ describe('AgentsService', () => {
 	});
 
 	describe('executeForWorkflow', () => {
-		it('passes an episodic namespace into persistence so scoped memory can run for workflow executions', async () => {
+		it('passes execution-scoped persistence for workflow executions', async () => {
 			const schema: AgentJsonConfig = {
 				name: 'Test Agent',
 				model: 'anthropic/claude-sonnet-4-5',
