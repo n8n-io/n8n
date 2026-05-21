@@ -235,10 +235,7 @@ export class AgentChatBridge {
 			message: text,
 			memory: {
 				threadId,
-				resourceId: integrationMemoryResourceId(
-					this.integration.type,
-					threadId.id,
-				),
+				resourceId: integrationMemoryResourceId(this.integration.type, threadId.id),
 			},
 			integrationType: this.integration.type,
 		});
