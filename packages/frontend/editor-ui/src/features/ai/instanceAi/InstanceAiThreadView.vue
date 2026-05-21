@@ -27,6 +27,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
+import { isPendingItemFloating } from './confirmationKinds';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useEventRelay } from './useEventRelay';
 import { useExecutionPushEvents } from './useExecutionPushEvents';
@@ -78,6 +79,13 @@ const builderAgents = computed(() => collectActiveBuilderAgents(thread.messages)
 // builder section (or which haven't produced anything renderable yet) would
 // otherwise leave an empty wrapper in the list — filter them out.
 const displayedMessages = computed(() => thread.messages.filter(messageHasVisibleContent));
+
+// True when at least one pending confirmation should occupy the chat-input
+// slot (generic approvals + domain/web-search access). Drives the swap
+// between the input and the floating confirmation panel.
+const hasFloatingConfirmation = computed(() =>
+	thread.pendingConfirmations.some(isPendingItemFloating),
+);
 
 // --- Execution tracking via push events (drives canvas relay) ---
 const executionTracking = useExecutionPushEvents();
@@ -616,7 +624,11 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 									:agent-node="builder"
 								/>
 							</div>
-							<InstanceAiConfirmationPanel />
+							<!-- Inline confirmations (questions, plan review, text, setup,
+								 credential, gateway resource-decision, continue) render in
+								 the chat flow. Floating-eligible items take over the chat
+								 input slot below instead — see `hasFloatingConfirmation`. -->
+							<InstanceAiConfirmationPanel kind="inline" />
 							<Transition name="confirmation-slide">
 								<InstanceAiFixWithAiPanel
 									v-if="activeFixWithAiOffer"
@@ -649,7 +661,12 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 						</Transition>
 					</div>
 
-					<!-- Floating input -->
+					<!-- Floating input — replaced by the confirmation panel while a
+						 floating-eligible approval is pending. StatusBar and credit
+						 banner stay anchored above the slot in both states. The
+						 leaving child is positioned absolutely during the cross-fade
+						 so the in-flow child can size the slot to its natural
+						 height. -->
 					<div ref="inputContainer" :class="$style.inputContainer">
 						<div :class="$style.inputConstraint">
 							<InstanceAiStatusBar />
@@ -660,17 +677,28 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 								@dismiss="creditBanner.dismiss()"
 							/>
-							<InstanceAiInput
-								ref="chatInputRef"
-								:is-streaming="thread.isStreaming"
-								:is-submitting="thread.isSendingMessage"
-								:is-awaiting-confirmation="thread.isAwaitingConfirmation"
-								:current-thread-id="thread.id"
-								:amend-context="thread.amendContext"
-								:contextual-suggestion="thread.contextualSuggestion"
-								@submit="handleSubmit"
-								@stop="handleStop"
-							/>
+							<div :class="$style.inputSwap">
+								<Transition name="input-swap">
+									<InstanceAiConfirmationPanel
+										v-if="hasFloatingConfirmation"
+										key="floating-confirmation"
+										kind="floating"
+									/>
+									<InstanceAiInput
+										v-else
+										ref="chatInputRef"
+										key="chat-input"
+										:is-streaming="thread.isStreaming"
+										:is-submitting="thread.isSendingMessage"
+										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
+										:current-thread-id="thread.id"
+										:amend-context="thread.amendContext"
+										:contextual-suggestion="thread.contextualSuggestion"
+										@submit="handleSubmit"
+										@stop="handleStop"
+									/>
+								</Transition>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -1016,6 +1044,13 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	}
 }
 
+// The leaving child is detached from layout (see `.input-swap-leave-active`
+// below) so the slot follows the entering child's intrinsic height during
+// the cross-fade.
+.inputSwap {
+	position: relative;
+}
+
 .previewPanel {
 	display: flex;
 	flex-direction: column;
@@ -1181,5 +1216,24 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 
 .artifacts-panel-preview-leave-active {
 	pointer-events: none;
+}
+
+// Cross-fade between the chat input and the floating confirmation panel.
+// Default-mode cross-fade: both children co-exist briefly, the leaving one
+// is absolute-positioned so it doesn't push the entering one down, and the
+// slot sizes to the in-flow (entering) child.
+.input-swap-enter-from,
+.input-swap-leave-to {
+	opacity: 0;
+}
+
+.input-swap-enter-active,
+.input-swap-leave-active {
+	transition: opacity 120ms ease;
+}
+
+.input-swap-leave-active {
+	position: absolute;
+	inset: 0;
 }
 </style>

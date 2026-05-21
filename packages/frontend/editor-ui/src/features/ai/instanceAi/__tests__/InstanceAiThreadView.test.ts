@@ -70,6 +70,16 @@ const InstanceAiWorkflowPreviewStub = defineComponent({
 	},
 });
 
+const InstanceAiConfirmationPanelStub = defineComponent({
+	name: 'InstanceAiConfirmationPanelStub',
+	props: {
+		kind: { type: String, required: true },
+	},
+	setup(props) {
+		return () => h('div', { 'data-test-id': `instance-ai-confirmation-panel-${props.kind}` });
+	},
+});
+
 const renderView = createComponentRenderer(InstanceAiThreadView, {
 	global: {
 		provide: {
@@ -78,6 +88,7 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 		stubs: {
 			InstanceAiInput: InstanceAiInputStub,
 			InstanceAiWorkflowPreview: InstanceAiWorkflowPreviewStub,
+			InstanceAiConfirmationPanel: InstanceAiConfirmationPanelStub,
 		},
 	},
 });
@@ -170,6 +181,65 @@ describe('InstanceAiThreadView', () => {
 		});
 		expect(thread.loadThreadStatus).toHaveBeenCalledWith();
 		expect(thread.connectSSE).toHaveBeenCalledWith();
+	});
+
+	it('keeps the chat input visible when no floating-eligible confirmation is pending', () => {
+		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(getByTestId('instance-ai-input-stub')).toBeTruthy();
+		expect(queryByTestId('instance-ai-confirmation-panel-floating')).toBeNull();
+		// Inline mount is always present so non-floating forms can render.
+		expect(getByTestId('instance-ai-confirmation-panel-inline')).toBeTruthy();
+	});
+
+	it('swaps the chat input for the floating panel when a generic approval is pending', () => {
+		thread.pendingConfirmations = [
+			{
+				messageId: 'msg-floating',
+				agentNode: { agentId: 'agent-1', role: 'orchestrator' },
+				toolCall: {
+					toolCallId: 'tc-1',
+					toolName: 'workflows',
+					args: { action: 'run' },
+					isLoading: true,
+					confirmationStatus: 'pending',
+					confirmation: { requestId: 'req-1', severity: 'info', message: 'Run?' },
+				},
+			},
+		] as unknown as ThreadRuntime['pendingConfirmations'];
+
+		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(getByTestId('instance-ai-confirmation-panel-floating')).toBeTruthy();
+		expect(queryByTestId('instance-ai-input-stub')).toBeNull();
+	});
+
+	it('keeps the chat input visible when only inline confirmations are pending', () => {
+		thread.pendingConfirmations = [
+			{
+				messageId: 'msg-questions',
+				agentNode: { agentId: 'agent-1', role: 'orchestrator' },
+				toolCall: {
+					toolCallId: 'tc-q',
+					toolName: 'ask-user',
+					args: {},
+					isLoading: true,
+					confirmationStatus: 'pending',
+					confirmation: {
+						requestId: 'req-q',
+						severity: 'info',
+						message: 'Pick',
+						inputType: 'questions',
+						questions: [{ id: 'q1', question: 'Pick?', type: 'single', options: ['a'] }],
+					},
+				},
+			},
+		] as unknown as ThreadRuntime['pendingConfirmations'];
+
+		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(getByTestId('instance-ai-input-stub')).toBeTruthy();
+		expect(queryByTestId('instance-ai-confirmation-panel-floating')).toBeNull();
 	});
 
 	it('connects the route thread when navigating to a known thread', async () => {
