@@ -272,9 +272,10 @@ export class ActiveWorkflows {
 					// polls fire from the cron scheduler's own async context outside
 					// that window and must acquire/release per tick — see CAT-3147.
 					const ownsIsolate = !testingTrigger;
-					if (ownsIsolate) await workflow.expression.acquireIsolate();
 
 					try {
+						if (ownsIsolate) await workflow.expression.acquireIsolate();
+
 						const pollResponse = await this.triggersAndPollers.runPoll(
 							workflow,
 							node,
