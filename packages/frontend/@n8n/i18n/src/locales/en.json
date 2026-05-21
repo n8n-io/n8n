@@ -2583,6 +2583,8 @@
 	"projectRoles.workflow:read.tooltip": "View workflows within the project",
 	"projectRoles.workflow:export": "Export",
 	"projectRoles.workflow:export.tooltip": "Include workflows in a portable package export",
+	"projectRoles.workflow:import": "Import",
+	"projectRoles.workflow:import.tooltip": "Import workflows from a portable package into the project",
 	"projectRoles.workflow:execute": "Execute",
 	"projectRoles.workflow:execute.tooltip": "Execute workflows within the project",
 	"projectRoles.workflow:update": "Edit",
