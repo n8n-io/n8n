@@ -59,6 +59,7 @@ export class WorkflowCreationService {
 			tagIds?: string[];
 			parentFolderId?: string;
 			projectId?: string;
+			sourceWorkflowId?: string;
 			autosaved?: boolean;
 			uiContext?: string;
 			publicApi?: boolean;
@@ -69,6 +70,7 @@ export class WorkflowCreationService {
 			tagIds,
 			parentFolderId,
 			projectId,
+			sourceWorkflowId,
 			autosaved = false,
 			uiContext,
 			publicApi = false,
@@ -78,6 +80,8 @@ export class WorkflowCreationService {
 		// Ensure workflow is created as inactive
 		newWorkflow.active = false;
 		newWorkflow.versionId = uuid();
+
+		newWorkflow.sourceWorkflowId = sourceWorkflowId ?? null;
 
 		await validateEntity(newWorkflow);
 
