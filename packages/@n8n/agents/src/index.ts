@@ -87,11 +87,11 @@ export { Agent } from './sdk/agent';
 export type { AgentSnapshot } from './sdk/agent';
 export {
 	appendSkillCatalogToInstructions,
+	createListSkillsTool,
 	createRuntimeSkillRegistry,
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
-	createSkillsListTool,
-	createSkillViewTool,
+	createSkillLoadTool,
 	formatSkillValidationErrors,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillsFromDirectory,
@@ -103,8 +103,8 @@ export {
 	RUNTIME_SKILL_LINKED_FILE_GROUPS,
 	RUNTIME_SKILL_NAME_PATTERN,
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
-	SKILLS_LIST_TOOL_NAME,
-	SKILL_VIEW_TOOL_NAME,
+	LIST_SKILLS_TOOL_NAME,
+	SKILL_LOAD_TOOL_NAME,
 	validateRuntimeSkill,
 } from './skills';
 export type {

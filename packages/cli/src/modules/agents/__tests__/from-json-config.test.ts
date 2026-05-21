@@ -185,11 +185,11 @@ describe('buildFromJson()', () => {
 		const instructions = agent.snapshot.instructions ?? '';
 		expect(instructions).toBe('You are a test agent.');
 		expect(instructions).not.toContain('Extract decisions and action items.');
-		expect(agent.snapshot.tools.some((tool) => tool.name === 'skills_list')).toBe(true);
-		expect(agent.snapshot.tools.some((tool) => tool.name === 'skill_view')).toBe(true);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(true);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
 	});
 
-	it('wires skill_view for attached skills and returns the selected skill body on demand', async () => {
+	it('wires load_skill for attached skills and returns the selected skill body on demand', async () => {
 		const config = makeConfig({
 			skills: [{ type: 'skill', id: 'summarize_notes' }],
 		});
@@ -216,18 +216,22 @@ describe('buildFromJson()', () => {
 			},
 		);
 
-		const skillView = agent.declaredTools.find((t) => t.name === 'skill_view');
-		expect(skillView).toBeDefined();
-		expect(skillView?.description).not.toContain('Summarize notes');
-		expect(skillView?.systemInstruction).toBeUndefined();
+		const loadSkill = agent.declaredTools.find((t) => t.name === 'load_skill');
+		expect(loadSkill).toBeDefined();
+		expect(loadSkill?.description).not.toContain('Summarize notes');
+		expect(loadSkill?.systemInstruction).toBeUndefined();
 
-		await expect(skillView!.handler?.({ name: 'Summarize notes' }, {})).resolves.toMatchObject({
+		await expect(loadSkill!.handler?.({ skillId: 'summarize_notes' }, {})).resolves.toMatchObject({
+			ok: true,
 			success: true,
+			skillId: 'summarize_notes',
 			name: 'Summarize notes',
 			content: 'Extract decisions and action items.',
+			instructions: 'Extract decisions and action items.',
 		});
 
-		await expect(skillView!.handler?.({ name: 'Unused skill' }, {})).resolves.toMatchObject({
+		await expect(loadSkill!.handler?.({ skillId: 'unused_skill' }, {})).resolves.toMatchObject({
+			ok: false,
 			success: false,
 		});
 	});
@@ -252,7 +256,7 @@ describe('buildFromJson()', () => {
 	});
 
 	it('rejects custom tools that reuse runtime skill tool names', async () => {
-		const descriptor = makeToolDescriptor({ name: 'skill_view' });
+		const descriptor = makeToolDescriptor({ name: 'load_skill' });
 		const config = makeConfig({
 			skills: [{ type: 'skill', id: 'summarize_notes' }],
 			tools: [{ type: 'custom', id: 'reserved_tool' }],
@@ -275,7 +279,7 @@ describe('buildFromJson()', () => {
 					},
 				},
 			),
-		).rejects.toThrow('Tool name "skill_view" is reserved for runtime skills');
+		).rejects.toThrow('Tool name "load_skill" is reserved for runtime skills');
 	});
 
 	it('throws when custom tool id is not found in descriptors', async () => {

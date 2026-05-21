@@ -218,7 +218,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	/**
 	 * Add runtime-loadable skills to the agent. The model sees only a compact
-	 * name/description catalog in the system prompt, then calls `skill_view`
+	 * name/description catalog in the system prompt, then calls `load_skill`
 	 * to retrieve the full instructions for a relevant skill.
 	 */
 	skills(sourceOrSkills: RuntimeSkillSource | RuntimeSkill[]): this {

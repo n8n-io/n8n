@@ -2,8 +2,8 @@ export {
 	RUNTIME_SKILL_FILE_NAME,
 	RUNTIME_SKILL_LINKED_FILE_GROUPS,
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
-	SKILLS_LIST_TOOL_NAME,
-	SKILL_VIEW_TOOL_NAME,
+	LIST_SKILLS_TOOL_NAME,
+	SKILL_LOAD_TOOL_NAME,
 } from './types';
 export type {
 	RuntimeSkill,
@@ -44,8 +44,8 @@ export {
 	type RenderSkillCatalogOptions,
 } from './prompt';
 export {
-	createSkillViewTool,
-	createSkillsListTool,
+	createListSkillsTool,
+	createSkillLoadTool,
 	createRuntimeSkillTools,
 	RUNTIME_SKILL_TOOL_NAMES,
 } from './tools';

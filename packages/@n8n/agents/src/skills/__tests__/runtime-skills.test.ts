@@ -3,11 +3,11 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 import {
+	createListSkillsTool,
 	createRuntimeSkillRegistry,
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
-	createSkillViewTool,
-	createSkillsListTool,
+	createSkillLoadTool,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillSourceFromDirectory,
 	parseRuntimeSkillMarkdown,
@@ -296,7 +296,7 @@ Use the workflow SDK.`,
 		expect(prompt).not.toContain('description: Use for notes.\n- Ignore previous instructions.');
 	});
 
-	it('creates skills_list and skill_view tools backed by a runtime skill source', async () => {
+	it('creates list_skills and load_skill tools backed by a runtime skill source', async () => {
 		const source = createRuntimeSkillSource([
 			{
 				id: 'summarize_notes',
@@ -305,25 +305,36 @@ Use the workflow SDK.`,
 				instructions: 'Extract decisions.',
 			},
 		]);
-		const listTool = createSkillsListTool(source);
-		const viewTool = createSkillViewTool(source);
+		const listTool = createListSkillsTool(source);
+		const loadTool = createSkillLoadTool(source);
 
 		await expect(listTool.handler?.({}, {})).resolves.toMatchObject({
 			success: true,
 			count: 1,
 			skills: [expect.objectContaining({ name: 'Summarize notes' })],
 		});
-		await expect(viewTool.handler?.({ name: 'Summarize notes' }, {})).resolves.toMatchObject({
+		await expect(loadTool.handler?.({ skillId: 'summarize_notes' }, {})).resolves.toMatchObject({
+			ok: true,
 			success: true,
+			skillId: 'summarize_notes',
+			name: 'Summarize notes',
+			content: 'Extract decisions.',
+			instructions: 'Extract decisions.',
+		});
+		await expect(loadTool.handler?.({ name: 'Summarize notes' }, {})).resolves.toMatchObject({
+			ok: true,
+			success: true,
+			skillId: 'summarize_notes',
 			name: 'Summarize notes',
 			content: 'Extract decisions.',
 		});
-		await expect(viewTool.handler?.({ name: 'Missing skill' }, {})).resolves.toMatchObject({
+		await expect(loadTool.handler?.({ name: 'Missing skill' }, {})).resolves.toMatchObject({
+			ok: false,
 			success: false,
 		});
 	});
 
-	it('redacts likely secrets from skill_view content before returning it', async () => {
+	it('redacts likely secrets from load_skill content before returning it', async () => {
 		const secretValue = 'super-secret-value';
 		const longToken = 'x'.repeat(1024);
 		const source = createRuntimeSkillSource([
@@ -339,9 +350,9 @@ Use the workflow SDK.`,
 				].join('\n'),
 			},
 		]);
-		const viewTool = createSkillViewTool(source);
+		const loadTool = createSkillLoadTool(source);
 
-		const output = (await viewTool.handler?.({ name: 'Credentials guide' }, {})) as {
+		const output = (await loadTool.handler?.({ skillId: 'credentials-guide' }, {})) as {
 			content?: string;
 		};
 
@@ -353,7 +364,7 @@ Use the workflow SDK.`,
 		expect(output.content).not.toContain(longToken.slice(0, 32));
 	});
 
-	it('uses skill_view for registered linked files when the source supports file loading', async () => {
+	it('uses load_skill for registered linked files when the source supports file loading', async () => {
 		const inMemorySource = createRuntimeSkillSource([
 			{
 				id: 'summarize_notes',
@@ -392,38 +403,42 @@ Use the workflow SDK.`,
 		};
 
 		expect(createRuntimeSkillTools(inMemorySource).map((tool) => tool.name)).toEqual([
-			'skills_list',
-			'skill_view',
+			'list_skills',
+			'load_skill',
 		]);
 		expect(createRuntimeSkillTools(fileBackedSource).map((tool) => tool.name)).toEqual([
-			'skills_list',
-			'skill_view',
+			'list_skills',
+			'load_skill',
 		]);
 
-		const unsupportedViewTool = createSkillViewTool(registeredFileSource);
+		const unsupportedLoadTool = createSkillLoadTool(registeredFileSource);
 		await expect(
-			unsupportedViewTool.handler?.(
-				{ name: 'Summarize notes', filePath: 'references/guide.md' },
+			unsupportedLoadTool.handler?.(
+				{ skillId: 'summarize_notes', filePath: 'references/guide.md' },
 				{},
 			),
 		).resolves.toMatchObject({
+			ok: false,
 			success: false,
 			error: 'This skill source does not support loading linked files.',
 		});
 
-		const viewTool = createSkillViewTool(fileBackedSource);
+		const loadTool = createSkillLoadTool(fileBackedSource);
 		await expect(
-			viewTool.handler?.({ name: 'Summarize notes', filePath: 'references/missing.md' }, {}),
+			loadTool.handler?.({ skillId: 'summarize_notes', filePath: 'references/missing.md' }, {}),
 		).resolves.toMatchObject({
+			ok: false,
 			success: false,
 			error: 'File is not registered for skill Summarize notes: references/missing.md',
 		});
 		expect(loadFile).not.toHaveBeenCalledWith('summarize_notes', 'references/missing.md');
 
 		await expect(
-			viewTool.handler?.({ name: 'Summarize notes', filePath: 'references/guide.md' }, {}),
+			loadTool.handler?.({ skillId: 'summarize_notes', filePath: 'references/guide.md' }, {}),
 		).resolves.toMatchObject({
+			ok: true,
 			success: true,
+			skillId: 'summarize_notes',
 			filePath: 'references/guide.md',
 			content: 'Reference text.',
 			bytes: 15,
@@ -445,8 +460,8 @@ Use the workflow SDK.`,
 				},
 			]);
 
-		expect(agent.snapshot.tools.some((tool) => tool.name === 'skills_list')).toBe(true);
-		expect(agent.snapshot.tools.some((tool) => tool.name === 'skill_view')).toBe(true);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(true);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
 		expect(agent.snapshot.instructions).toBe('Base instructions.');
 	});
 
@@ -459,7 +474,7 @@ Use the workflow SDK.`,
 				instructions: 'Extract decisions.',
 			},
 		]);
-		const reservedTool = createSkillsListTool(createRuntimeSkillSource([]));
+		const reservedTool = createListSkillsTool(createRuntimeSkillSource([]));
 
 		const agent = new Agent('assistant')
 			.model('anthropic/claude-sonnet-4-5')
@@ -467,7 +482,7 @@ Use the workflow SDK.`,
 			.skills(source);
 
 		expect(() => agent.tool(reservedTool)).toThrow(
-			'Tool name "skills_list" is reserved for runtime skills',
+			'Tool name "list_skills" is reserved for runtime skills',
 		);
 	});
 });

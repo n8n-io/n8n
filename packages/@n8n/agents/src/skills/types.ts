@@ -2,9 +2,9 @@ export const RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION = 1 as const;
 
 export const RUNTIME_SKILL_FILE_NAME = 'SKILL.md';
 
-export const SKILLS_LIST_TOOL_NAME = 'skills_list';
+export const LIST_SKILLS_TOOL_NAME = 'list_skills';
 
-export const SKILL_VIEW_TOOL_NAME = 'skill_view';
+export const SKILL_LOAD_TOOL_NAME = 'load_skill';
 
 export const RUNTIME_SKILL_LINKED_FILE_GROUPS = [
 	'references',

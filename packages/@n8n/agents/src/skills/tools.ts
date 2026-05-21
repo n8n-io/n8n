@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { Tool } from '../sdk/tool';
 import type { BuiltTool } from '../types';
 import {
-	SKILLS_LIST_TOOL_NAME,
-	SKILL_VIEW_TOOL_NAME,
+	LIST_SKILLS_TOOL_NAME,
+	SKILL_LOAD_TOOL_NAME,
 	type RuntimeSkillLinkedFile,
 	type RuntimeSkillLinkedFiles,
 	type RuntimeSkillRegistry,
@@ -24,7 +24,7 @@ const LINKED_FILE_GROUPS: Array<keyof RuntimeSkillLinkedFiles> = [
 	'other',
 ];
 
-export const RUNTIME_SKILL_TOOL_NAMES = new Set([SKILLS_LIST_TOOL_NAME, SKILL_VIEW_TOOL_NAME]);
+export const RUNTIME_SKILL_TOOL_NAMES = new Set([LIST_SKILLS_TOOL_NAME, SKILL_LOAD_TOOL_NAME]);
 
 const skillsListInputSchema = z.object({
 	category: z.string().optional().describe('Optional exact category filter.'),
@@ -103,23 +103,33 @@ const skillsListOutputSchema = z.object({
 	skills: z.array(compactSkillSchema),
 });
 
-const skillViewInputSchema = z.object({
-	name: z.string().describe('Skill name from skills_list.'),
-	filePath: z
-		.string()
-		.min(1)
-		.optional()
-		.describe('Optional linked file path relative to the skill directory.'),
-});
+const skillLoadInputSchema = z
+	.object({
+		skillId: z.string().min(1).optional().describe('Skill id from list_skills.'),
+		name: z.string().min(1).optional().describe('Skill name from list_skills.'),
+		filePath: z
+			.string()
+			.min(1)
+			.optional()
+			.describe('Optional linked file path relative to the skill directory.'),
+	})
+	.refine(({ skillId, name }) => skillId !== undefined || name !== undefined, {
+		message: 'Either skillId or name is required.',
+		path: ['skillId'],
+	});
 
-const skillViewOutputSchema = z.object({
+const skillLoadOutputSchema = z.object({
+	ok: z.boolean().optional(),
 	success: z.boolean(),
+	skillId: z.string().optional(),
 	name: z.string().optional(),
+	description: z.string().optional(),
 	path: z.string().optional(),
 	skillDir: z.string().optional(),
 	hash: z.string().optional(),
 	category: z.string().optional(),
 	content: z.string().optional(),
+	instructions: z.string().optional(),
 	filePath: z.string().optional(),
 	bytes: z.number().optional(),
 	sha256: z.string().optional(),
@@ -130,11 +140,11 @@ const skillViewOutputSchema = z.object({
 });
 
 export function createRuntimeSkillTools(source: RuntimeSkillSource): BuiltTool[] {
-	return [createSkillsListTool(source), createSkillViewTool(source)];
+	return [createListSkillsTool(source), createSkillLoadTool(source)];
 }
 
-export function createSkillsListTool(source: RuntimeSkillSource): BuiltTool {
-	return new Tool(SKILLS_LIST_TOOL_NAME)
+export function createListSkillsTool(source: RuntimeSkillSource): BuiltTool {
+	return new Tool(LIST_SKILLS_TOOL_NAME)
 		.description(
 			'List installed skills from the registry. Use before loading a skill when you need to discover available domains.',
 		)
@@ -156,20 +166,21 @@ export function createSkillsListTool(source: RuntimeSkillSource): BuiltTool {
 		.build();
 }
 
-export function createSkillViewTool(source: RuntimeSkillSource): BuiltTool {
-	return new Tool(SKILL_VIEW_TOOL_NAME)
+export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {
+	return new Tool(SKILL_LOAD_TOOL_NAME)
 		.description(
-			'Read an installed skill SKILL.md, or a registered linked file by relative filePath.',
+			'Load an installed skill SKILL.md, or a registered linked file by relative filePath.',
 		)
-		.input(skillViewInputSchema)
-		.output(skillViewOutputSchema)
-		.handler(async ({ name, filePath }) => {
-			const skillEntry = source.registry.skills.find((entry) => entry.name === name);
+		.input(skillLoadInputSchema)
+		.output(skillLoadOutputSchema)
+		.handler(async ({ skillId, name, filePath }) => {
+			const skillEntry = findSkillEntry(source.registry, { skillId, name });
 			if (!skillEntry) {
 				return {
+					ok: false,
 					success: false,
-					error: `Unknown skill: ${name}`,
-					availableSkills: source.registry.skills.map((entry) => entry.name).slice(0, 20),
+					error: `Unknown skill: ${skillId ?? name ?? ''}`,
+					availableSkills: source.registry.skills.map((entry) => entry.id).slice(0, 20),
 				};
 			}
 
@@ -177,18 +188,22 @@ export function createSkillViewTool(source: RuntimeSkillSource): BuiltTool {
 				const linkedFile = findRegisteredLinkedFile(skillEntry.linkedFiles, filePath);
 				if (!linkedFile) {
 					return {
+						ok: false,
 						success: false,
-						name,
+						skillId: skillEntry.id,
+						name: skillEntry.name,
 						filePath,
-						error: `File is not registered for skill ${name}: ${filePath}`,
+						error: `File is not registered for skill ${skillEntry.name}: ${filePath}`,
 						linkedFiles: skillEntry.linkedFiles,
 					};
 				}
 
 				if (!source.loadFile) {
 					return {
+						ok: false,
 						success: false,
-						name,
+						skillId: skillEntry.id,
+						name: skillEntry.name,
 						filePath,
 						error: 'This skill source does not support loading linked files.',
 						linkedFiles: skillEntry.linkedFiles,
@@ -198,17 +213,21 @@ export function createSkillViewTool(source: RuntimeSkillSource): BuiltTool {
 				const file = await source.loadFile(skillEntry.id, linkedFile.path);
 				if (!file) {
 					return {
+						ok: false,
 						success: false,
-						name,
+						skillId: skillEntry.id,
+						name: skillEntry.name,
 						filePath,
-						error: `File is not registered for skill ${name}: ${filePath}`,
+						error: `File is not registered for skill ${skillEntry.name}: ${filePath}`,
 						linkedFiles: skillEntry.linkedFiles,
 					};
 				}
 
 				return {
+					ok: true,
 					success: true,
-					name,
+					skillId: skillEntry.id,
+					name: skillEntry.name,
 					path: skillEntry.directory
 						? `${skillEntry.directory}/${linkedFile.path}`
 						: linkedFile.path,
@@ -225,21 +244,28 @@ export function createSkillViewTool(source: RuntimeSkillSource): BuiltTool {
 			const skill = await source.loadSkill(skillEntry.id);
 			if (!skill) {
 				return {
+					ok: false,
 					success: false,
-					name,
-					error: `Skill "${name}" is not attached to this agent.`,
-					availableSkills: source.registry.skills.map((entry) => entry.name).slice(0, 20),
+					skillId: skillEntry.id,
+					name: skillEntry.name,
+					error: `Skill "${skillEntry.name}" is not attached to this agent.`,
+					availableSkills: source.registry.skills.map((entry) => entry.id).slice(0, 20),
 				};
 			}
 
+			const content = cap(skill.instructions);
 			return {
+				ok: true,
 				success: true,
+				skillId: skillEntry.id,
 				name: skillEntry.name,
+				description: skill.description,
 				path: skillEntry.path ?? skillEntry.sourcePath,
 				skillDir: skillEntry.directory,
 				hash: skillEntry.hash,
 				category: skillEntry.category,
-				content: cap(skill.instructions),
+				content,
+				instructions: content,
 				activation: activationEnvelope(skillEntry),
 				linkedFiles: skillEntry.linkedFiles,
 			};
@@ -268,6 +294,22 @@ function categoriesFor(registry: RuntimeSkillRegistry): string[] {
 	return Array.from(
 		new Set(registry.skills.map((skill) => skill.category).filter(isPresentString)),
 	).sort();
+}
+
+function findSkillEntry(
+	registry: RuntimeSkillRegistry,
+	input: { skillId?: string; name?: string },
+): RuntimeSkillRegistryEntry | undefined {
+	if (input.skillId) {
+		const skillById = registry.skills.find((entry) => entry.id === input.skillId);
+		if (skillById) return skillById;
+	}
+
+	if (input.name) {
+		return registry.skills.find((entry) => entry.name === input.name);
+	}
+
+	return undefined;
 }
 
 function activationEnvelope(skill: RuntimeSkillRegistryEntry): string {
