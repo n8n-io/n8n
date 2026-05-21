@@ -218,8 +218,9 @@ defineExpose({
 	min-width: 0;
 	overflow: hidden;
 
-	> div {
+	> :global(.n8n-text) {
 		font-weight: var(--font-weight--bold);
+		overflow: hidden;
 		white-space: nowrap;
 		text-overflow: ellipsis;
 	}
