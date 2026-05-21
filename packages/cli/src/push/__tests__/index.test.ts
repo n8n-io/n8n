@@ -95,6 +95,14 @@ describe('Push', () => {
 				expect(wsServer.handleUpgrade).not.toHaveBeenCalled();
 			});
 
+			test('should not upgrade urls that contain the push endpoint as a substring', () => {
+				const request = mock<WebSocketPushRequest>({ url: '/rest/push-other' });
+
+				onUpgrade(request, socket, upgradeHead);
+
+				expect(wsServer.handleUpgrade).not.toHaveBeenCalled();
+			});
+
 			test('should upgrade push url, and route it to express', () => {
 				const request = mock<WebSocketPushRequest>({ url: '/rest/push' });
 

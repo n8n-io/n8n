@@ -181,7 +181,7 @@ export class Server extends AbstractServer {
 		await this.postHogClient.init();
 		this.postHogClient.setupExpressSessionContext(this.app);
 
-		const publicApiEndpoint = this.globalConfig.publicApi.path;
+		const publicApiEndpoint = pathResolvingService.resolvePublicApiEndpoint();
 
 		// Register auth strategies in priority order. The registry evaluates them
 		// sequentially — the first strategy that returns a non-null result wins.
@@ -194,6 +194,22 @@ export class Server extends AbstractServer {
 		const registry = Container.get(AuthStrategyRegistry);
 		registry.register(Container.get(ApiKeyAuthStrategy));
 		registry.register(Container.get(SessionCookieAuthStrategy));
+
+		// ----------------------------------------
+		// Public API
+		// ----------------------------------------
+
+		if (isApiEnabled()) {
+			// `loadPublicApiVersions` expects the path without a leading slash.
+			const publicApiPath = publicApiEndpoint.startsWith('/')
+				? publicApiEndpoint.slice(1)
+				: publicApiEndpoint;
+			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiPath);
+			this.app.use(...apiRouters);
+			if (frontendService) {
+				(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
+			}
+		}
 
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
@@ -357,7 +373,11 @@ export class Server extends AbstractServer {
 					// eslint-disable-next-line prefer-const
 					let { scope, packageName } = req.params;
 					if (scope) packageName = `@${scope}/${packageName}`;
-					const filePath = this.loadNodesAndCredentials.resolveIcon(basePath, packageName, req.originalUrl);
+					const filePath = this.loadNodesAndCredentials.resolveIcon(
+						basePath,
+						packageName,
+						req.originalUrl,
+					);
 					if (filePath) {
 						try {
 							await fsAccess(filePath);
@@ -416,7 +436,12 @@ export class Server extends AbstractServer {
 				},
 			});
 
-			// Route all UI urls to index.html to support history-api
+			// Route all UI urls to index.html to support history-api.
+			// Entries are matched against the path *relative* to `basePath`
+			// because the static middleware below is mounted at `basePath`.
+			// When the public API is disabled we still want to exclude its
+			// path from the SPA fallback, so HTML requests to `/api/*` do
+			// not silently serve `index.html`.
 			const nonUIRoutes: readonly string[] = [
 				'favicon.ico',
 				'assets',
@@ -428,6 +453,7 @@ export class Server extends AbstractServer {
 				'e2e',
 				this.restEndpoint,
 				this.endpointPresetCredentials,
+				isApiEnabled() ? '' : this.globalConfig.publicApi.path,
 				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
 			// Matched against the normalised path, so a non-UI asset requested in another
@@ -479,13 +505,13 @@ export class Server extends AbstractServer {
 				}
 			};
 			this.app.use(
-				`${basePath}/`,
+				basePath,
 				historyApiHandler,
 				express.static(staticCacheDir, cacheOptions),
 				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 			);
 		} else {
-			this.app.use(`${basePath}/`, express.static(staticCacheDir, cacheOptions));
+			this.app.use(basePath, express.static(staticCacheDir, cacheOptions));
 		}
 	}
 
