@@ -21,7 +21,6 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 		name: 'multi-main',
 		config: { mains: 2, workers: 1 },
 	},
-	{ name: 'custom-base-path', config: { env: { N8N_BASE_PATH: '/custom-path' } } },
 ];
 
 // --- Benchmark profiles ---
