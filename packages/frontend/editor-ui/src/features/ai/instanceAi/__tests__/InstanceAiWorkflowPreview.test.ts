@@ -176,7 +176,6 @@ describe('InstanceAiWorkflowPreview', () => {
 		dispatchIframeMessage({
 			command: 'reportWorkflowFailures',
 			workflowId: 'wf-1',
-			workflowName: 'My Workflow',
 			executionId: 'exec-1',
 			errors: [{ nodeName: 'Extract Emails', errorMessage: 'Intentional break' }],
 		});
@@ -188,7 +187,6 @@ describe('InstanceAiWorkflowPreview', () => {
 			[
 				{
 					workflowId: 'wf-1',
-					workflowName: 'My Workflow',
 					executionId: 'exec-1',
 					errors: [{ nodeName: 'Extract Emails', errorMessage: 'Intentional break' }],
 				},
@@ -200,7 +198,6 @@ describe('InstanceAiWorkflowPreview', () => {
 		const { emitted } = renderComponent({ props: { workflowId: null } });
 
 		dispatchIframeMessage({ command: 'reportWorkflowFailures', errors: [] });
-
 		dispatchIframeMessage({
 			command: 'reportWorkflowFailures',
 			workflowId: 'wf-1',

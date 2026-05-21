@@ -134,7 +134,7 @@ jobs:
     needs: install-and-build
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
-      collectCoverage: true
+      collectCoverage: ${{ github.event_name != 'merge_group' }}
     secrets: inherit
 
   typecheck:

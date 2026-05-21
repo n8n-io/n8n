@@ -652,6 +652,10 @@ describe('instanceAi.reducer', () => {
 			expect(getRenderHint('manage-data-tables-with-agent')).toBe('data-table');
 		});
 
+		test('returns eval-setup for eval setup tool', () => {
+			expect(getRenderHint('eval-setup-with-agent')).toBe('eval-setup');
+		});
+
 		test('returns default for other tool names', () => {
 			expect(getRenderHint('some-tool')).toBe('default');
 		});

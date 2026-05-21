@@ -33,12 +33,45 @@ runs:
     - name: Setup pnpm
       uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
 
+    # Cache the Node toolcache so setup-node skips the ~33s nodejs.org download
+    # on every subsequent job. First fresh runner pays the download; later jobs
+    # (including parallel E2E shards) hit the cache. Blacksmith transparently
+    # routes actions/cache through its S3 backend.
+    #
+    # The `x64.complete` sibling marker file must be cached alongside the
+    # toolchain — without it, setup-node's `tc.find` returns empty and the
+    # action re-downloads from nodejs.org. Re-downloads also keep the silent
+    # fall-through window open: errors during download/extract are swallowed,
+    # PATH is left untouched, and the runner image's baked-in Node 20.20.0
+    # quietly takes over. Caching the parent version dir captures the marker
+    # alongside the toolchain. Key bumped to v2 to invalidate stale entries.
+    - name: Restore Node.js Toolcache
+      if: runner.os == 'Linux' && runner.arch == 'X64'
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: /opt/hostedtoolcache/node/${{ inputs.node-version }}
+        key: node-toolcache-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.node-version }}
+
     - name: Setup Node.js
       uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
       with:
         node-version: ${{ inputs.node-version }}
         cache: 'pnpm'
         cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
+    # Fail fast if setup-node silently fell through to the runner's baked-in
+    # Node instead of activating the requested version.
+    # see: https://github.com/actions/setup-node/issues/1137
+    - name: Verify Node.js Version
+      shell: bash
+      env:
+        EXPECTED_NODE_VERSION: ${{ inputs.node-version }}
+      run: |
+        ACTUAL_NODE_VERSION="$(node --version)"
+        if [ "${ACTUAL_NODE_VERSION#v}" != "${EXPECTED_NODE_VERSION#v}" ]; then
+          echo "::error::setup-node did not activate Node ${EXPECTED_NODE_VERSION} (got ${ACTUAL_NODE_VERSION})"
+          exit 1
+        fi
 
     # To avoid setup-node cache failure.
     # see: https://github.com/actions/setup-node/issues/1137
@@ -72,7 +105,6 @@ runs:
       if: ${{ inputs.install-command != '' }}
       env:
         INSTALL_COMMAND: ${{ inputs.install-command }}
-        SAFE_CHAIN_LOGGING: verbose
       run: |
         timeout --kill-after=30s 300s $INSTALL_COMMAND --reporter=append-only
       shell: bash
