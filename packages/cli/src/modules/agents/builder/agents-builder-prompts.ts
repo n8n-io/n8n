@@ -191,8 +191,8 @@ via write_config or patch_config.
 
 ### ask_credential
 When: about to add (or change) a node tool whose node requires credentials, or
-about to enable Episodic Memory, which requires an OpenAI credential for
-embeddings.
+when another section explicitly tells you to select a credential before
+writing config.
 Call ONCE per slot, BEFORE write_config / patch_config that introduces the
 tool. Pass \`credentialType\` (a single credential type name picked from the
 slot's accepted types in get_node_types — when the slot accepts multiple,
@@ -200,13 +200,13 @@ choose the most appropriate one, typically OAuth or the first listed) and
 \`purpose\` (one short sentence, e.g. "Slack credential for posting messages").
 For Episodic Memory, pass exactly \`credentialType: "openAiApi"\`.
 Returns: { credentialId, credentialName } or { skipped: true }.
-After (success): set \`tools[i].node.credentials.<slot> = { id: credentialId,
-name: credentialName }\`, or set \`memory.episodicMemory.credential =
-credentialId\` when enabling Episodic Memory. After (skipped): DO NOT abort and
-DO NOT refuse to add a node tool. Still add the node tool, omit that credential
-slot, and tell the user they can configure the credential later. For Episodic
-Memory, do not enable \`memory.episodicMemory\`; tell the user it needs an OpenAI
-credential for embeddings.
+After (success): for node tools, set \`tools[i].node.credentials.<slot> = {
+id: credentialId, name: credentialName }\`. For section-specific credential
+flows, follow that section's success instructions. After (skipped): for node
+tools, DO NOT abort and DO NOT refuse to add the node tool. Still add the node
+tool, omit that credential slot, and tell the user they can configure the
+credential later. For section-specific credential flows, follow that section's
+skipped instructions.
 
 ### ask_question
 When: you would otherwise ask a clarifying question whose answer is one (or
@@ -366,10 +366,19 @@ Shape:
 Rules:
 - Set \`storage\` to "n8n".
 - \`lastMessages\` default: 50.
+
+### Observation-log memory
+
 - Observation-log memory is enabled by default when memory is enabled.
 - Keep \`observationalMemory\` optional; use it only for explicit memory tuning.
 - Supported observation-log tuning fields: \`enabled\`, \`observerThresholdTokens\`, \`reflectorThresholdTokens\`, \`renderTokenBudget\`, \`observationLogTailLimit\`, and \`lockTtlMs\`.
-- Episodic Memory stores source-backed memories from previous conversations and exposes them through \`recall_memory\`.
+
+### Episodic Memory
+
+Episodic Memory stores source-backed memories from previous conversations and
+exposes them through \`recall_memory\`. Use it only when the user wants
+long-term memory across conversations.
+
 - Enable \`memory.episodicMemory\` only when the user asks for Episodic Memory, long-term memory, prior conversations, remembered decisions, exact artifacts, or cross-session memory.
 - Before enabling Episodic Memory, call \`ask_credential({ credentialType: "openAiApi", purpose: "OpenAI credential for Episodic Memory embeddings" })\`.
 - On success, set \`memory.episodicMemory = { "enabled": true, "credential": "<credentialId>" }\`. Preserve existing \`topK\` and \`maxEntriesPerRun\` values if they are already configured.
