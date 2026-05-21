@@ -2,12 +2,12 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { INodeExecutionData, ISecureArtifactsV1, jsonParse } from 'n8n-workflow';
 
-import { InboundSecretsConfig } from './inbound-secrets.config';
+import { RuntimeCredentialsConfig } from './runtime-credentials.config';
 import {
 	SensitiveFieldRules,
 	sensitiveFieldRulesSchema,
 	ValueLookupPath,
-} from './inbound-secrets.schemas';
+} from './runtime-credentials.schemas';
 import { extractAndClear } from './path-traversal';
 
 type ArtifactItem = ISecureArtifactsV1['artifacts'][string];
@@ -18,12 +18,12 @@ export type StripResult = {
 };
 
 @Service()
-export class InboundSecretsService {
+export class RuntimeCredentialsService {
 	private sensitiveFieldRules: SensitiveFieldRules = {};
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly config: InboundSecretsConfig,
+		private readonly config: RuntimeCredentialsConfig,
 	) {}
 
 	init() {

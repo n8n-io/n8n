@@ -7,6 +7,7 @@ interface DaytonaCreateParams {
 	image?: { dockerfile: string };
 	language?: string;
 	ephemeral?: boolean;
+	name?: string;
 	labels?: Record<string, string>;
 }
 
@@ -245,6 +246,100 @@ describe('BuilderSandboxFactory createDaytona snapshot branching', () => {
 		await factory.create('builder-1', makeContext());
 
 		expect(sandboxSetup.writeCuratedExamples).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('BuilderSandboxFactory createDaytona naming + labels', () => {
+	beforeEach(() => {
+		daytonaCreateMock.mockReset();
+		daytonaCreateMock.mockResolvedValue({ id: 'sandbox-id' });
+		daytonaDeleteMock.mockClear();
+	});
+
+	function makeManager(): SnapshotManager {
+		const manager = new SnapshotManager('node:20', NOOP_LOGGER, '1.123.0');
+		jest.spyOn(manager, 'ensureSnapshot').mockResolvedValue('n8n/instance-ai:1.123.0');
+		return manager;
+	}
+
+	it('sets default name + labels when no namePrefix or naming hints are present', async () => {
+		const factory = new BuilderSandboxFactory(makeDaytonaConfig(), makeManager(), NOOP_LOGGER);
+		await factory.create('agent-builder-abc123', makeContext());
+
+		const [params] = daytonaCreateMock.mock.calls[0];
+		expect(params.name).toBe('agent-builder-abc123');
+		expect(params.labels).toEqual({ 'n8n-builder': 'agent-builder-abc123' });
+	});
+
+	it('prefixes the name and adds a name_prefix label when config.namePrefix is set', async () => {
+		const config = makeDaytonaConfig({
+			namePrefix: 'eval-baseline-daily',
+		} as Partial<SandboxConfig>);
+		const factory = new BuilderSandboxFactory(config, makeManager(), NOOP_LOGGER);
+		await factory.create('agent-builder-abc123', makeContext());
+
+		const [params] = daytonaCreateMock.mock.calls[0];
+		expect(params.name).toBe('eval-baseline-daily-agent-builder-abc123');
+		expect(params.labels).toMatchObject({
+			'n8n-builder': 'agent-builder-abc123',
+			name_prefix: 'eval-baseline-daily',
+		});
+	});
+
+	it('includes a short runId segment in the name and preserves originals in labels', async () => {
+		const factory = new BuilderSandboxFactory(makeDaytonaConfig(), makeManager(), NOOP_LOGGER);
+		await factory.create('agent-builder-abc123', makeContext(), {
+			runId: 'run_123456789',
+			threadId: 'thread.xyz',
+		});
+
+		const [params] = daytonaCreateMock.mock.calls[0];
+		expect(params.name).toBe('run-1234-agent-builder-abc123');
+		expect(params.labels).toMatchObject({
+			run_id: 'run_123456789',
+			thread_id: 'thread.xyz',
+		});
+	});
+
+	it('slugifies namePrefix values that contain non-DNS characters', async () => {
+		const config = makeDaytonaConfig({ namePrefix: 'Eval PR #12_345' } as Partial<SandboxConfig>);
+		const factory = new BuilderSandboxFactory(config, makeManager(), NOOP_LOGGER);
+		await factory.create('agent-builder-abc123', makeContext());
+
+		const [params] = daytonaCreateMock.mock.calls[0];
+		expect(params.name?.startsWith('eval-pr-12-345-')).toBe(true);
+		expect(params.labels?.name_prefix).toBe('Eval-PR-12_345');
+	});
+
+	it('combines namePrefix + runId + builderId in the expected order', async () => {
+		const config = makeDaytonaConfig({ namePrefix: 'eval-pr-12345' } as Partial<SandboxConfig>);
+		const factory = new BuilderSandboxFactory(config, makeManager(), NOOP_LOGGER);
+		await factory.create('agent-builder-abc123', makeContext(), { runId: 'run987654321' });
+
+		const [params] = daytonaCreateMock.mock.calls[0];
+		expect(params.name).toBe('eval-pr-12345-run98765-agent-builder-abc123');
+	});
+
+	it('caps the full sandbox name at the Daytona limit', async () => {
+		const config = makeDaytonaConfig({
+			namePrefix: 'a-very-long-deployment-tag-that-exceeds-the-budget',
+		} as Partial<SandboxConfig>);
+		const factory = new BuilderSandboxFactory(config, makeManager(), NOOP_LOGGER);
+		await factory.create('agent-builder-with-a-fairly-long-id', makeContext(), {
+			runId: 'run-abcdef1234567890',
+		});
+
+		const [params] = daytonaCreateMock.mock.calls[0];
+		expect(params.name?.length).toBeLessThanOrEqual(63);
+		expect(params.name?.endsWith('-')).toBe(false);
+	});
+
+	it('falls back to a sentinel when every name segment slugifies to empty', async () => {
+		const factory = new BuilderSandboxFactory(makeDaytonaConfig(), makeManager(), NOOP_LOGGER);
+		await factory.create('!!!', makeContext());
+
+		const [params] = daytonaCreateMock.mock.calls[0];
+		expect(params.name).toBe('n8n-builder');
 	});
 });
 
