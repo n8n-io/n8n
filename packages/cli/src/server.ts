@@ -181,10 +181,7 @@ export class Server extends AbstractServer {
 
 		await this.postHogClient.init();
 
-		// Use PathResolvingService for public API endpoint
 		const publicApiEndpoint = pathResolvingService.resolvePublicApiEndpoint();
-
-		this.logger.debug(`Public API endpoint: ${publicApiEndpoint}`);
 
 		// Register auth strategies in priority order. The registry evaluates them
 		// sequentially — the first strategy that returns a non-null result wins.
@@ -199,22 +196,12 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		if (isApiEnabled()) {
-			this.logger.debug(`Public API enabled`);
-
-			// Remove leading slash for loadPublicApiVersions (it expects path without leading slash)
+			// `loadPublicApiVersions` expects the path without a leading slash.
 			const publicApiPath = publicApiEndpoint.startsWith('/')
 				? publicApiEndpoint.slice(1)
 				: publicApiEndpoint;
 			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiPath);
-			this.logger.debug(`Public API routers: ${apiRouters.length}`);
-			this.logger.debug(`Public API latest version: ${apiLatestVersion}`);
-			this.app.use(
-				(req, _res, next) => {
-					this.logger.debug(`Public API request: ${req.url}`);
-					next();
-				},
-				...apiRouters,
-			);
+			this.app.use(...apiRouters);
 			if (frontendService) {
 				(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
 			}
@@ -383,7 +370,6 @@ export class Server extends AbstractServer {
 						packageName,
 						req.originalUrl,
 					);
-					this.logger.debug(`File path: ${filePath}`);
 					if (filePath) {
 						try {
 							await fsAccess(filePath);
@@ -402,7 +388,6 @@ export class Server extends AbstractServer {
 					operation,
 					version,
 				});
-				this.logger.debug(`File path: ${filePath}`);
 
 				if (filePath) {
 					try {
@@ -459,7 +444,12 @@ export class Server extends AbstractServer {
 				},
 			});
 
-			// Route all UI urls to index.html to support history-api
+			// Route all UI urls to index.html to support history-api.
+			// Entries are matched against the path *relative* to `basePath`
+			// because the static middleware below is mounted at `basePath`.
+			// When the public API is disabled we still want to exclude its
+			// path from the SPA fallback, so HTML requests to `/api/*` do
+			// not silently serve `index.html`.
 			const nonUIRoutes: readonly string[] = [
 				'favicon.ico',
 				'assets',
@@ -470,7 +460,7 @@ export class Server extends AbstractServer {
 				'e2e',
 				this.globalConfig.endpoints.rest,
 				this.endpointPresetCredentials,
-				isApiEnabled() ? this.globalConfig.publicApi.path : '',
+				isApiEnabled() ? '' : this.globalConfig.publicApi.path,
 				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
 			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
@@ -479,11 +469,6 @@ export class Server extends AbstractServer {
 					method,
 					headers: { accept },
 				} = req;
-
-				this.logger.debug(`Non UI routes: ${nonUIRoutes.join(', ')}`);
-				this.logger.debug(`Non UI routes regex: ${nonUIRoutesRegex.toString()}`);
-				this.logger.debug(`Non UI routes test: ${nonUIRoutesRegex.test(req.path)}`);
-				this.logger.debug(`History API handler: ${req.path}`);
 
 				if (
 					method === 'GET' &&
@@ -507,11 +492,7 @@ export class Server extends AbstractServer {
 			};
 
 			this.app.use(
-				`${basePath}`,
-				(req, _res, next) => {
-					this.logger.debug(`Request: ${req.url}`);
-					next();
-				},
+				basePath,
 				historyApiHandler,
 				express.static(staticCacheDir, {
 					...cacheOptions,
@@ -520,7 +501,7 @@ export class Server extends AbstractServer {
 				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 			);
 		} else {
-			this.app.use(`${basePath}`, express.static(staticCacheDir, cacheOptions));
+			this.app.use(basePath, express.static(staticCacheDir, cacheOptions));
 		}
 
 		installGlobalProxyAgent();
