@@ -9,8 +9,8 @@ const OBSERVATION_LOCK_TASK_KIND_COLUMN = 'taskKind';
 const LEGACY_OBSERVATION_LOCK_TASK_KIND_VALUES = "'observer', 'reflector'";
 
 export class CreateAgentMemoryEntryTables1784000000009 implements ReversibleMigration {
-	async up({ schemaBuilder: { createTable, column }, queryRunner, tablePrefix }: MigrationContext) {
-		await this.dropObservationLockTaskKindCheck(queryRunner, tablePrefix);
+	async up({ schemaBuilder: { createTable, column, dropEnumCheck } }: MigrationContext) {
+		await dropEnumCheck(OBSERVATION_LOCKS_TABLE, OBSERVATION_LOCK_TASK_KIND_COLUMN);
 
 		await createTable('agents_memory_entries')
 			.withColumns(
@@ -114,24 +114,6 @@ export class CreateAgentMemoryEntryTables1784000000009 implements ReversibleMigr
 		await this.restoreObservationLockTaskKindCheck(queryRunner, tablePrefix, escape, runQuery);
 	}
 
-	private async dropObservationLockTaskKindCheck(
-		queryRunner: MigrationContext['queryRunner'],
-		tablePrefix: string,
-	) {
-		const fullTableName = `${tablePrefix}${OBSERVATION_LOCKS_TABLE}`;
-		const table = await queryRunner.getTable(fullTableName);
-		const check = table?.checks.find(
-			(item) =>
-				item.name ===
-					`CHK_${tablePrefix}${OBSERVATION_LOCKS_TABLE}_${OBSERVATION_LOCK_TASK_KIND_COLUMN}` ||
-				item.expression?.includes(OBSERVATION_LOCK_TASK_KIND_COLUMN),
-		);
-
-		if (check) {
-			await queryRunner.dropCheckConstraint(fullTableName, check);
-		}
-	}
-
 	private async restoreObservationLockTaskKindCheck(
 		queryRunner: MigrationContext['queryRunner'],
 		tablePrefix: string,
@@ -139,12 +121,7 @@ export class CreateAgentMemoryEntryTables1784000000009 implements ReversibleMigr
 		runQuery: MigrationContext['runQuery'],
 	) {
 		const fullTableName = `${tablePrefix}${OBSERVATION_LOCKS_TABLE}`;
-		const table = await queryRunner.getTable(fullTableName);
-		if (!table) return;
-
 		const checkName = `CHK_${tablePrefix}${OBSERVATION_LOCKS_TABLE}_${OBSERVATION_LOCK_TASK_KIND_COLUMN}`;
-		if (table.checks.some((check) => check.name === checkName)) return;
-
 		const escapedColumnName = escape.columnName(OBSERVATION_LOCK_TASK_KIND_COLUMN);
 		await runQuery(
 			`DELETE FROM ${escape.tableName(OBSERVATION_LOCKS_TABLE)} WHERE ${escape.columnName(OBSERVATION_LOCK_TASK_KIND_COLUMN)} NOT IN (${LEGACY_OBSERVATION_LOCK_TASK_KIND_VALUES})`,
