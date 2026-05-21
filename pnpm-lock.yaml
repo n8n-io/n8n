@@ -470,9 +470,6 @@ patchedDependencies:
   '@types/express-serve-static-core@5.0.6':
     hash: d602248fcd302cf5a794d1e85a411633ba9635ea5d566d6f2e0429c7ae0fa3eb
     path: patches/@types__express-serve-static-core@5.0.6.patch
-  '@types/uuencode@0.0.3':
-    hash: 083a73709a54db57b092d986b43d27ddda3cb8008f9510e98bc9e6da0e1cbb62
-    path: patches/@types__uuencode@0.0.3.patch
   '@types/ws@8.18.1':
     hash: 682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb
     path: patches/@types__ws@8.18.1.patch
@@ -714,6 +711,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       https-proxy-agent:
         specifier: 'catalog:'
         version: 7.0.6
@@ -1625,6 +1625,9 @@ importers:
       transliteration:
         specifier: 2.3.5
         version: 2.3.5
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -1705,9 +1708,6 @@ importers:
       utf8:
         specifier: 3.0.0
         version: 3.0.0
-      uuencode:
-        specifier: 0.0.4
-        version: 0.0.4
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -1724,9 +1724,6 @@ importers:
       '@types/utf8':
         specifier: ^3.0.3
         version: 3.0.3
-      '@types/uuencode':
-        specifier: ^0.0.3
-        version: 0.0.3(patch_hash=083a73709a54db57b092d986b43d27ddda3cb8008f9510e98bc9e6da0e1cbb62)
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
@@ -2463,9 +2460,21 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.1(vitest@4.1.1)
       get-port:
         specifier: ^7.1.0
         version: 7.1.0
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
 
   packages/@n8n/task-runner:
     dependencies:
@@ -4702,6 +4711,9 @@ importers:
 
   packages/testing/playwright:
     devDependencies:
+      '@anthropic-ai/sdk':
+        specifier: 0.91.1
+        version: 0.91.1(zod@3.25.67)
       '@currents/playwright':
         specifier: catalog:e2e
         version: 1.15.3(bufferutil@4.0.9)(magicast@0.3.5)(utf-8-validate@5.0.10)
@@ -4741,6 +4753,9 @@ importers:
       '@types/autocannon':
         specifier: ^7.12.7
         version: 7.12.7
+      '@types/debug':
+        specifier: ^4.1.12
+        version: 4.1.12
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.10
@@ -4762,6 +4777,9 @@ importers:
       jsonwebtoken:
         specifier: 'catalog:'
         version: 9.0.3
+      langsmith:
+        specifier: 0.6.0
+        version: 0.6.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       mockserver-client:
         specifier: ^5.15.0
         version: 5.15.0
@@ -11618,9 +11636,6 @@ packages:
 
   '@types/utf8@3.0.3':
     resolution: {integrity: sha512-+lqLGxWZsEe4Z6OrzBI7Ym4SMUTaMS5yOrHZ0/IL0bpIye1Qbs4PpobJL2mLDbftUXlPFZR7fu6d1yM+bHLX1w==}
-
-  '@types/uuencode@0.0.3':
-    resolution: {integrity: sha512-NaBWHPPQvcXqiSaMAGa2Ea/XaFcK/nHwGe2akwJBXRLkCNa2+izx/F1aKJrzFH+L68D88VLYIATTYP7B2k4zVA==}
 
   '@types/uuid@10.0.0':
     resolution: {integrity: sha512-7gqG38EyHgyP1S+7+xomFtL+ZNHcKv6DwNaCZmJmo1vgMugyF3TCnXVg4t1uk89mLNwnLtnY3TpOpCOyp1/xHQ==}
@@ -21453,9 +21468,6 @@ packages:
 
   util@0.12.5:
     resolution: {integrity: sha512-kZf/K6hEIrWHI6XqOFUiiMa+79wE/D8Q+NCNAWclkyg3b4d2k7s0QGepNjiABc+aR3N1PAyHL7p6UcLY6LmrnA==}
-
-  uuencode@0.0.4:
-    resolution: {integrity: sha512-yEEhCuCi5wRV7Z5ZVf9iV2gWMvUZqKJhAs1ecFdKJ0qzbyaVelmsE3QjYAamehfp9FKLiZbKldd+jklG3O0LfA==}
 
   uuid-parse@1.1.0:
     resolution: {integrity: sha512-OdmXxA8rDsQ7YpNVbKSJkNzTw2I+S5WsbMDnCtIWSQaosNAcWtFuI/YK1TjzUI6nbkgiqEyh8gWngfcv8Asd9A==}
@@ -31424,10 +31436,6 @@ snapshots:
   '@types/unist@3.0.3': {}
 
   '@types/utf8@3.0.3': {}
-
-  '@types/uuencode@0.0.3(patch_hash=083a73709a54db57b092d986b43d27ddda3cb8008f9510e98bc9e6da0e1cbb62)':
-    dependencies:
-      '@types/node': 20.19.21
 
   '@types/uuid@10.0.0': {}
 
@@ -43816,8 +43824,6 @@ snapshots:
       is-generator-function: 1.1.0
       is-typed-array: 1.1.15
       which-typed-array: 1.1.19
-
-  uuencode@0.0.4: {}
 
   uuid-parse@1.1.0: {}
 
