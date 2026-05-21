@@ -83,6 +83,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'workflow:create',
 	'workflow:read',
 	'workflow:export',
+	'workflow:import',
 	'workflow:update',
 	'workflow:publish',
 	'workflow:unpublish',
