@@ -1,5 +1,6 @@
 // Decision schema (structured-output target) + encoders to InstanceAiConfirmRequest.
 
+import { domainAccessActionSchema, instanceGatewayResourceDecisionSchema } from '@n8n/api-types';
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -99,13 +100,22 @@ export function encodeConfirmationDecision(
 				...(decision.userInput ? { userInput: decision.userInput } : {}),
 			};
 
-		case 'respond_to_domain_access':
-			return decision.response === 'deny'
-				? { kind: 'domainAccessDeny' }
-				: { kind: 'domainAccessApprove', domainAccessAction: decision.response };
+		case 'respond_to_domain_access': {
+			if (decision.response === 'deny') return { kind: 'domainAccessDeny' };
+			const parsed = domainAccessActionSchema.safeParse(decision.response);
+			return {
+				kind: 'domainAccessApprove',
+				domainAccessAction: parsed.success ? parsed.data : 'allow_once',
+			};
+		}
 
-		case 'pick_resource_decision':
-			return { kind: 'resourceDecision', resourceDecision: decision.decision };
+		case 'pick_resource_decision': {
+			const parsed = instanceGatewayResourceDecisionSchema.safeParse(decision.decision);
+			return {
+				kind: 'resourceDecision',
+				resourceDecision: parsed.success ? parsed.data : 'allowOnce',
+			};
+		}
 
 		case 'send_follow_up_message':
 		case 'declare_done':
