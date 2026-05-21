@@ -244,10 +244,8 @@ describe('maxIterations integration', () => {
 			const state = await checkpointStore.load(runId);
 
 			expect(state).toBeDefined();
-			expect(state!.executionOptions).toEqual({
-				maxIterations: 3,
-				iterationCount: 1,
-			});
+			expect(state!.executionOptions).toEqual({ maxIterations: 3 });
+			expect(state!.iterationCount).toBe(1);
 		},
 	);
 
@@ -298,24 +296,4 @@ describe('maxIterations integration', () => {
 			);
 		},
 	);
-
-	it.each(methods)('rejects resume() attempts that change maxIterations (%s)', async (method) => {
-		const agent = createInterruptibleDeleteAgent();
-
-		const first = await runAgent(agent, method, 'Delete the file /tmp/immutable-limit.txt', {
-			maxIterations: 1,
-		});
-		expect(first.pendingSuspend).toBeDefined();
-
-		const { runId, toolCallId } = first.pendingSuspend[0];
-		const resumed = await resumeAgent(
-			agent,
-			method,
-			{ approved: true },
-			{ runId, toolCallId, maxIterations: 2 },
-		);
-
-		expect(resumed.finishReason).toBe('error');
-		expect(String(resumed.error)).toContain('Cannot change maxIterations when resuming a run');
-	});
 });

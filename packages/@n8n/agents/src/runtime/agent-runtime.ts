@@ -500,12 +500,12 @@ export class AgentRuntime {
 			const persistedMaxIterations = persisted.maxIterations;
 			const callerMaxIterations = callerExecOptions.maxIterations;
 			if (
-				persistedMaxIterations !== undefined &&
 				callerMaxIterations !== undefined &&
-				callerMaxIterations !== persistedMaxIterations
+				persistedMaxIterations !== undefined &&
+				callerMaxIterations < persistedMaxIterations
 			) {
 				throw new Error(
-					`Cannot change maxIterations when resuming a run. Expected ${persistedMaxIterations}, received ${callerMaxIterations}.`,
+					`Cannot decrease maxIterations when resuming a run. Expected >= ${persistedMaxIterations}, received ${callerMaxIterations}.`,
 				);
 			}
 
@@ -513,9 +513,7 @@ export class AgentRuntime {
 			const mergedExecOptions: ExecutionOptions & { iterationCount?: number } = {
 				...callerExecOptions,
 				...(mergedMaxIterations !== undefined ? { maxIterations: mergedMaxIterations } : {}),
-				...(persisted.iterationCount !== undefined
-					? { iterationCount: persisted.iterationCount }
-					: {}),
+				...(state.iterationCount !== undefined ? { iterationCount: state.iterationCount } : {}),
 			};
 
 			const resumeOptions: RuntimeExecutionOptions = {
@@ -2220,16 +2218,7 @@ export class AgentRuntime {
 		const resolvedMaxIterations = maxIterations ?? options?.maxIterations;
 		const resolvedIterationCount = iterationCount ?? options?.iterationCount;
 		const executionOptions: PersistedExecutionOptions | undefined =
-			resolvedMaxIterations !== undefined || resolvedIterationCount !== undefined
-				? {
-						...(resolvedMaxIterations !== undefined
-							? { maxIterations: resolvedMaxIterations }
-							: {}),
-						...(resolvedIterationCount !== undefined
-							? { iterationCount: resolvedIterationCount }
-							: {}),
-					}
-				: undefined;
+			resolvedMaxIterations !== undefined ? { maxIterations: resolvedMaxIterations } : undefined;
 
 		const state: SerializableAgentState = {
 			persistence: options?.persistence,
@@ -2238,6 +2227,7 @@ export class AgentRuntime {
 			pendingToolCalls,
 			usage: totalUsage,
 			executionOptions,
+			...(resolvedIterationCount !== undefined ? { iterationCount: resolvedIterationCount } : {}),
 		};
 		await this.runState.suspend(runId, state);
 		this.updateState({ status: 'suspended', pendingToolCalls, messageList: list.serialize() });

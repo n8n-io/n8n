@@ -144,8 +144,6 @@ export interface ExecutionOptions {
 
 export interface PersistedExecutionOptions {
 	maxIterations?: number;
-	/** Number of completed LLM iterations at suspension time. */
-	iterationCount?: number;
 }
 
 export interface ToolResultEntry {
@@ -299,6 +297,8 @@ export interface SerializableAgentState {
 	finishReason?: FinishReason;
 	usage?: TokenUsage;
 	executionOptions?: PersistedExecutionOptions;
+	/** Number of completed LLM iterations at suspension time. */
+	iterationCount?: number;
 }
 
 export type AgentPersistenceOptions = {
