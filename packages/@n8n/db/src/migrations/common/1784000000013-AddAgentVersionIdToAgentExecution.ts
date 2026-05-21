@@ -7,7 +7,7 @@ export class AddAgentVersionIdToAgentExecution1784000000013 implements Reversibl
 		escape,
 		isPostgres,
 		runQuery,
-		schemaBuilder: { addColumns, addNotNull, column, createIndex },
+		schemaBuilder: { addColumns, addNotNull, column },
 	}: MigrationContext) {
 		await addColumns(EXECUTION_TABLE, [column('agentVersionId').varchar(255)]);
 
@@ -38,11 +38,9 @@ export class AddAgentVersionIdToAgentExecution1784000000013 implements Reversibl
 		`);
 
 		await addNotNull(EXECUTION_TABLE, 'agentVersionId');
-		await createIndex(EXECUTION_TABLE, ['agentVersionId', 'createdAt']);
 	}
 
-	async down({ schemaBuilder: { dropColumns, dropIndex } }: MigrationContext) {
-		await dropIndex(EXECUTION_TABLE, ['agentVersionId', 'createdAt']);
+	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
 		await dropColumns(EXECUTION_TABLE, ['agentVersionId']);
 	}
 }

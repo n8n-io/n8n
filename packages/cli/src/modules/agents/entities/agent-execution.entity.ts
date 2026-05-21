@@ -20,7 +20,6 @@ export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
  */
 @Entity({ name: 'agent_execution' })
 @Index(['threadId', 'createdAt'])
-@Index(['agentVersionId', 'createdAt'])
 export class AgentExecution extends WithTimestampsAndStringId {
 	@ManyToOne(() => AgentExecutionThread, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'threadId' })
