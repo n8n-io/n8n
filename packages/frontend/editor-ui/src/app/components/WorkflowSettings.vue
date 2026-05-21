@@ -52,6 +52,8 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { useRedactionEnforcementFeatureFlag } from '@/features/redaction-enforcement/composables/useRedactionEnforcementFeatureFlag';
+import * as redactionEnforcementApi from '@n8n/rest-api-client/api/redaction-enforcement';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
@@ -66,6 +68,8 @@ const { trackMcpAccessEnabledForWorkflow } = useMcp();
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { isEnabled: isCredentialResolverEnabled } = useDynamicCredentials();
+const { isEnabled: isRedactionEnforcementFlagEnabled } = useRedactionEnforcementFeatureFlag();
+const isInstanceRedactionEnforced = ref(false);
 const canListCredentialResolvers = hasPermission(['rbac'], {
 	rbac: { scope: 'credentialResolver:list' },
 });
@@ -215,21 +219,32 @@ const isDataRedactionLicensed = computed(
 
 const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('redaction'));
 
-const isProductionRedactionLocked = computed(
-	() =>
-		isDataRedactionLicensed.value &&
-		(redactProductionData.value === 'default'
-			? !projectPermissions.value.workflow.enableRedaction
-			: !projectPermissions.value.workflow.disableRedaction),
+const isRedactionEnforcedByInstance = computed(
+	() => isRedactionEnforcementFlagEnabled.value && isInstanceRedactionEnforced.value,
 );
 
-const isManualRedactionLocked = computed(
-	() =>
-		isDataRedactionLicensed.value &&
-		(redactManualData.value === 'default'
-			? !projectPermissions.value.workflow.enableRedaction
-			: !projectPermissions.value.workflow.disableRedaction),
+// Enforcement wins over permission — an admin cannot override an instance-level policy.
+function getRedactionLockReason(currentValue: string): 'enforcement' | 'permission' | null {
+  if (!isDataRedactionLicensed.value) return null;
+  if (isRedactionEnforcedByInstance.value) return 'enforcement';
+  if (
+    currentValue === 'default'
+      ? !projectPermissions.value.workflow.enableRedaction
+      : !projectPermissions.value.workflow.disableRedaction
+  ) return 'permission';
+  return null;
+}
+
+const productionRedactionLockReason = computed(() =>
+  getRedactionLockReason(redactProductionData.value),
 );
+
+const manualRedactionLockReason = computed(() =>
+  getRedactionLockReason(redactManualData.value),
+);
+
+const isProductionRedactionLocked = computed(() => productionRedactionLockReason.value !== null);
+const isManualRedactionLocked = computed(() => manualRedactionLockReason.value !== null);
 
 const redactionMembersModalOpen = ref(false);
 
@@ -704,6 +719,17 @@ const onExecutionLogicModeChange = (value: string) => {
 };
 
 onMounted(async () => {
+	if (isRedactionEnforcementFlagEnabled.value) {
+		try {
+			const response = await redactionEnforcementApi.getRedactionEnforcement(
+				rootStore.restApiContext,
+			);
+			isInstanceRedactionEnforced.value = response.redactionEnforced;
+		} catch (error) {
+			console.debug('Failed to fetch redaction enforcement state', error);
+		}
+	}
+
 	executionTimeout.value = rootStore.executionTimeout;
 	maxExecutionTimeout.value = rootStore.maxExecutionTimeout;
 
@@ -1208,6 +1234,11 @@ onBeforeUnmount(() => {
 								icon="lock"
 								size="xsmall"
 								style="opacity: 1"
+								:data-test-id="
+									productionRedactionLockReason === 'enforcement'
+										? 'workflow-settings-redaction-enforced-lock'
+										: undefined
+								"
 							/>
 							<N8nBadge
 								v-if="!isDataRedactionLicensed"
@@ -1234,7 +1265,10 @@ onBeforeUnmount(() => {
 								placement="top"
 							>
 								<template #content>
-									<span
+									<span v-if="productionRedactionLockReason === 'enforcement'">{{
+										i18n.baseText('workflowSettings.redactionEnforcementNotice')
+									}}</span>
+									<span v-else
 										>{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}
 										<span
 											:class="$style['permission-notice-link']"
@@ -1289,7 +1323,17 @@ onBeforeUnmount(() => {
 							]"
 						>
 							{{ i18n.baseText('workflowSettings.redactManualData') }}
-							<N8nIcon v-if="isManualRedactionLocked" icon="lock" size="xsmall" />
+						<N8nIcon
+							v-if="isManualRedactionLocked"
+							icon="lock"
+							size="xsmall"
+							style="opacity: 1"
+							:data-test-id="
+									manualRedactionLockReason === 'enforcement'
+										? 'workflow-settings-redaction-enforced-lock'
+										: undefined
+								"
+							/>
 							<N8nBadge
 								v-if="!isDataRedactionLicensed"
 								:class="[$style['upgrade-badge'], 'ml-4xs']"
@@ -1311,7 +1355,10 @@ onBeforeUnmount(() => {
 						>
 							<N8nTooltip :disabled="!isManualRedactionLocked" :enterable="true" placement="top">
 								<template #content>
-									<span
+									<span v-if="manualRedactionLockReason === 'enforcement'">{{
+										i18n.baseText('workflowSettings.redactionEnforcementNotice')
+									}}</span>
+									<span v-else
 										>{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}
 										<span
 											:class="$style['permission-notice-link']"
