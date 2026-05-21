@@ -1329,7 +1329,6 @@
 	"agentSessions.actions": "Actions",
 	"agentSessions.empty": "No agent sessions",
 	"agentSessions.loadMore": "Load more",
-	"agentSessions.loadedAll": "No more sessions to fetch",
 	"agentSessions.deleteConfirm.headline": "Delete Session?",
 	"agentSessions.deleteConfirm.message": "This will delete the session and all its executions. This cannot be undone.",
 	"agentSessions.deleteConfirm.confirmButtonText": "Yes, delete",

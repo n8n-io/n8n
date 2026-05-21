@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
+import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -8,6 +9,7 @@ import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { SidebarStateKey } from '../instanceAiLayout';
+import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
 
 const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 },
@@ -54,6 +56,20 @@ const InstanceAiInputStub = defineComponent({
 	},
 });
 
+let workflowPreviewEmit:
+	| ((event: 'workflow-failures', payload: WorkflowFailuresReport) => void)
+	| null = null;
+
+const InstanceAiWorkflowPreviewStub = defineComponent({
+	name: 'InstanceAiWorkflowPreviewStub',
+	emits: ['iframe-ready', 'workflow-loaded', 'workflow-failures'],
+	setup(_, { emit, expose }) {
+		workflowPreviewEmit = emit as typeof workflowPreviewEmit;
+		expose({ relayPushEvent: vi.fn(), requestFitView: vi.fn() });
+		return () => h('div', { 'data-test-id': 'instance-ai-workflow-preview-stub' });
+	},
+});
+
 const InstanceAiConfirmationPanelStub = defineComponent({
 	name: 'InstanceAiConfirmationPanelStub',
 	props: {
@@ -71,6 +87,7 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 		},
 		stubs: {
 			InstanceAiInput: InstanceAiInputStub,
+			InstanceAiWorkflowPreview: InstanceAiWorkflowPreviewStub,
 			InstanceAiConfirmationPanel: InstanceAiConfirmationPanelStub,
 		},
 	},
@@ -84,6 +101,8 @@ describe('InstanceAiThreadView', () => {
 		// Default `stubActions: true` — every store action becomes a no-op spy.
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
+
+		workflowPreviewEmit = null;
 
 		thread = {
 			id: 'thread-1',
@@ -262,5 +281,76 @@ describe('InstanceAiThreadView', () => {
 			expect(getByTestId('instance-ai-artifacts-sidebar-edge')).toBeInTheDocument();
 		});
 		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
+	});
+
+	describe('Fix with AI card', () => {
+		const failureReport: WorkflowFailuresReport = {
+			workflowId: 'wf-1',
+			executionId: 'exec-1',
+			errors: [{ nodeName: 'Extract Emails', errorMessage: 'Intentional break' }],
+		};
+
+		function seedThreadArtifact(workflowId = 'wf-1', workflowName = 'My Workflow') {
+			thread.producedArtifacts = new Map([
+				[workflowId, { type: 'workflow', id: workflowId, name: workflowName }],
+			]) as typeof thread.producedArtifacts;
+		}
+
+		async function emitFailure(report: WorkflowFailuresReport = failureReport) {
+			await vi.waitFor(() => {
+				expect(workflowPreviewEmit).not.toBeNull();
+			});
+			workflowPreviewEmit?.('workflow-failures', report);
+		}
+
+		it('renders the card when the iframe reports a workflow failure', async () => {
+			seedThreadArtifact();
+			const { getByTestId, findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			await emitFailure();
+
+			const panel = await findByTestId('instance-ai-fix-with-ai-panel');
+			expect(panel).toHaveTextContent('Execution failed in ‘Extract Emails’ node');
+			expect(getByTestId('instance-ai-fix-with-ai-button')).toBeInTheDocument();
+		});
+
+		it('hides the card after dismiss', async () => {
+			seedThreadArtifact();
+			const user = userEvent.setup();
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			await emitFailure();
+			await user.click(await findByTestId('instance-ai-fix-with-ai-dismiss'));
+
+			await vi.waitFor(() => {
+				expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+			});
+		});
+
+		it('sends a fix prompt that names the failed node, error and workflow', async () => {
+			seedThreadArtifact('wf-1', 'My Workflow');
+			const user = userEvent.setup();
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			await emitFailure();
+			await user.click(await findByTestId('instance-ai-fix-with-ai-button'));
+
+			expect(thread.sendMessage).toHaveBeenCalledOnce();
+			const [prompt] = vi.mocked(thread.sendMessage).mock.calls[0];
+			expect(prompt).toContain('Extract Emails');
+			expect(prompt).toContain('Intentional break');
+			expect(prompt).toContain('My Workflow');
+		});
+
+		it('hides the card while the chat is busy', async () => {
+			seedThreadArtifact();
+			thread.isStreaming = true;
+
+			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			await emitFailure();
+
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+		});
 	});
 });
