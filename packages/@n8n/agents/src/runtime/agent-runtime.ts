@@ -591,10 +591,7 @@ export class AgentRuntime {
 		const list = new AgentMessageList();
 
 		if (this.config.memory && options?.persistence?.threadId) {
-			const memMessages = await this.config.memory.getMessages(options.persistence.threadId, {
-				limit: this.config.lastMessages ?? 10,
-				resourceId: options.persistence.resourceId,
-			});
+			const memMessages = await this.loadHistoryMessages(options.persistence);
 			if (memMessages.length > 0) {
 				list.addHistory(stripOrphanedToolMessages(memMessages));
 			}
@@ -614,6 +611,65 @@ export class AgentRuntime {
 
 		list.addInput(input);
 		return list;
+	}
+
+	/**
+	 * Load conversation history for the current turn.
+	 *
+	 * When observational memory is configured, returns only the unobserved transcript
+	 * since the observation cursor. Before the first observation, falls back to the
+	 * configured lastMessages window.
+	 */
+	private async loadHistoryMessages(
+		persistence: AgentPersistenceOptions,
+	): Promise<AgentDbMessage[]> {
+		const memory = this.config.memory;
+		if (!memory) return [];
+
+		const { threadId, resourceId } = persistence;
+
+		if (this.config.observationalMemory && hasObservationLogObserverMemory(memory)) {
+			const scope = this.getObservationLogScope(persistence);
+			const cursor = await memory.getCursor(scope.scopeKind, scope.scopeId);
+
+			if (cursor) {
+				const unobservedMessages = await memory.getMessagesForScope('thread', threadId, {
+					...(resourceId !== undefined && { resourceId }),
+					since: {
+						sinceCreatedAt: cursor.lastObservedAt,
+						sinceMessageId: cursor.lastObservedMessageId,
+					},
+				});
+
+				logger.info('[observational-memory] loaded unobserved history for context', {
+					threadId,
+					scopeKind: scope.scopeKind,
+					scopeId: scope.scopeId,
+					cursorMessageId: cursor.lastObservedMessageId,
+					messageCount: unobservedMessages.length,
+				});
+
+				return unobservedMessages;
+			}
+
+			const bootstrapMessages = await memory.getMessages(threadId, {
+				limit: this.config.lastMessages ?? 10,
+				resourceId,
+			});
+
+			logger.info('[observational-memory] loaded bootstrap history before first observation', {
+				threadId,
+				messageCount: bootstrapMessages.length,
+				lastMessages: this.config.lastMessages ?? 10,
+			});
+
+			return bootstrapMessages;
+		}
+
+		return await memory.getMessages(threadId, {
+			limit: this.config.lastMessages ?? 10,
+			resourceId,
+		});
 	}
 
 	/**
@@ -1535,6 +1591,14 @@ export class AgentRuntime {
 
 		const reflect = observationalMemory.reflect;
 		const reflectorThresholdTokens = observationalMemory.reflectorThresholdTokens;
+
+		console.log('[agent-runtime] scheduleObservationLogJobs', {
+			observe,
+			observerThresholdTokens,
+			reflectorThresholdTokens,
+			hasObservationLogObserverMemory: hasObservationLogObserverMemory(memory),
+		});
+
 		if (reflect && reflectorThresholdTokens !== undefined) {
 			tasks.push(
 				this.scheduleMemoryTask(

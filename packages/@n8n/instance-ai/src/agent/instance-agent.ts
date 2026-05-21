@@ -194,6 +194,8 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		}
 
 		if (memoryConfig.observerModel) {
+			console.log('[instance-ai] observational memory config', memoryConfig);
+
 			memoryBuilder.observationalMemory({
 				...(memoryConfig.observerThresholdTokens !== undefined && {
 					observerThresholdTokens: memoryConfig.observerThresholdTokens,

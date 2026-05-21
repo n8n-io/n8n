@@ -2868,8 +2868,164 @@ describe('AgentRuntime — observation log jobs', () => {
 		const systemPrompt = messages[0].content;
 		expect(systemPrompt).toContain('Resource two memory.');
 		expect(systemPrompt).not.toContain('Resource one memory.');
-		expect(JSON.stringify(messages)).toContain('remember resource-two preference');
 		expect(JSON.stringify(messages)).not.toContain('remember resource-one preference');
+		expect(JSON.stringify(messages)).not.toContain('remember resource-two preference');
+
+		await runtime.dispose();
+	});
+
+	it('loads only unobserved messages into context when an observation cursor exists', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Scoped response'));
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
+
+		const t = Date.now();
+		await memory.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'resource-1',
+			messages: [
+				{
+					id: 'msg-1',
+					createdAt: new Date(t),
+					role: 'user',
+					content: [{ type: 'text', text: 'observed message one' }],
+				},
+				{
+					id: 'msg-2',
+					createdAt: new Date(t + 1),
+					role: 'assistant',
+					content: [{ type: 'text', text: 'observed message two' }],
+				},
+				{
+					id: 'msg-3',
+					createdAt: new Date(t + 2),
+					role: 'user',
+					content: [{ type: 'text', text: 'unobserved message three' }],
+				},
+			],
+		});
+
+		const scopeId = createObservationLogThreadScopeId('thread-1', 'resource-1');
+		await memory.setCursor({
+			scopeKind: 'thread',
+			scopeId,
+			lastObservedMessageId: 'msg-2',
+			lastObservedAt: new Date(t + 1),
+			updatedAt: new Date(t + 1),
+		});
+		await memory.appendObservationLogEntries([
+			{
+				scopeKind: 'thread',
+				scopeId,
+				marker: 'critical',
+				text: 'Earlier context summarized.',
+			},
+		]);
+
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			lastMessages: 20,
+			observationalMemory: {
+				observerThresholdTokens: 10_000,
+				reflectorThresholdTokens: 10_000,
+				observationLogTailLimit: 20,
+				observe: async () => await Promise.resolve(''),
+				reflect: async () => await Promise.resolve('{"drop":[],"merge":[]}'),
+			},
+		});
+
+		await runtime.generate('new question', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+
+		const generateTextMock = generateText as jest.MockedFunction<
+			(input: {
+				messages: Array<{
+					role: string;
+					content: unknown;
+				}>;
+			}) => unknown
+		>;
+		const [{ messages }] = generateTextMock.mock.calls[0];
+		const serialized = JSON.stringify(messages);
+
+		expect(serialized).not.toContain('observed message one');
+		expect(serialized).not.toContain('observed message two');
+		expect(serialized).toContain('unobserved message three');
+		expect(serialized).toContain('new question');
+		expect(messages[0].content).toContain('Earlier context summarized.');
+
+		await runtime.dispose();
+	});
+
+	it('uses lastMessages bootstrap history before the first observation cursor exists', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Scoped response'));
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
+
+		const t = Date.now();
+		await memory.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'resource-1',
+			messages: [
+				{
+					id: 'msg-1',
+					createdAt: new Date(t),
+					role: 'user',
+					content: [{ type: 'text', text: 'bootstrap message one' }],
+				},
+				{
+					id: 'msg-2',
+					createdAt: new Date(t + 1),
+					role: 'user',
+					content: [{ type: 'text', text: 'bootstrap message two' }],
+				},
+				{
+					id: 'msg-3',
+					createdAt: new Date(t + 2),
+					role: 'user',
+					content: [{ type: 'text', text: 'bootstrap message three' }],
+				},
+			],
+		});
+
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			lastMessages: 2,
+			observationalMemory: {
+				observerThresholdTokens: 10_000,
+				reflectorThresholdTokens: 10_000,
+				observationLogTailLimit: 20,
+				observe: async () => await Promise.resolve(''),
+				reflect: async () => await Promise.resolve('{"drop":[],"merge":[]}'),
+			},
+		});
+
+		await runtime.generate('new question', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+
+		const generateTextMock = generateText as jest.MockedFunction<
+			(input: {
+				messages: Array<{
+					role: string;
+					content: unknown;
+				}>;
+			}) => unknown
+		>;
+		const [{ messages }] = generateTextMock.mock.calls[0];
+		const serialized = JSON.stringify(messages);
+
+		expect(serialized).not.toContain('bootstrap message one');
+		expect(serialized).toContain('bootstrap message two');
+		expect(serialized).toContain('bootstrap message three');
+		expect(serialized).toContain('new question');
 
 		await runtime.dispose();
 	});

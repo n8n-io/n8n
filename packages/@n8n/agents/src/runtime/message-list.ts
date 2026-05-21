@@ -4,7 +4,7 @@ import type { ModelMessage } from 'ai';
 import { toAiMessages } from './messages';
 import { stringifyError } from './runtime-helpers';
 import { stripOrphanedToolMessages } from './strip-orphaned-tool-messages';
-import { filterLlmMessages, getCreatedAt } from '../sdk/message';
+import { filterLlmMessages, getCreatedAt, isLlmMessage } from '../sdk/message';
 import type { SerializedMessageList } from '../types/runtime/message-list';
 import type { AgentDbMessage, AgentMessage, ContentToolCall } from '../types/sdk/message';
 import type { JSONValue } from '../types/utils/json';
@@ -12,6 +12,8 @@ import type { JSONValue } from '../types/utils/json';
 export type { SerializedMessageList };
 
 type MessageSource = 'history' | 'input' | 'response';
+
+const CONTEXT_WINDOW_LOG_PREVIEW_CHARS = 300;
 
 /**
  * Message container with Set-based source tracking.
@@ -104,6 +106,9 @@ export class AgentMessageList {
 
 	/** One-shot guard so we log the fully-assembled system prompt at most once per run. */
 	private hasLoggedAssembledSystemPrompt = false;
+
+	/** One-shot guard so we log the initial context window at most once per run. */
+	private hasLoggedContextWindow = false;
 
 	addHistory(messages: AgentMessage[] | AgentDbMessage[]): void {
 		for (const m of messages) {
@@ -199,6 +204,74 @@ export class AgentMessageList {
 		);
 	}
 
+	private getMessageSourceLabelById(messageId: string): MessageSource | 'unknown' {
+		for (const message of this.historySet) {
+			if (message.id === messageId) return 'history';
+		}
+		for (const message of this.inputSet) {
+			if (message.id === messageId) return 'input';
+		}
+		for (const message of this.responseSet) {
+			if (message.id === messageId) return 'response';
+		}
+		return 'unknown';
+	}
+
+	private summarizeMessageContent(message: AgentMessage): string {
+		if (!isLlmMessage(message)) return '[custom message]';
+
+		const parts: string[] = [];
+		for (const block of message.content) {
+			if (block.type === 'text') {
+				parts.push(block.text);
+			} else if (block.type === 'tool-call') {
+				const suffix =
+					block.state === 'resolved'
+						? ' (resolved)'
+						: block.state === 'rejected'
+							? ' (rejected)'
+							: '';
+				parts.push(`tool_call:${block.toolName}${suffix}`);
+			} else if (block.type === 'reasoning') {
+				parts.push('[reasoning]');
+			}
+		}
+
+		const joined = parts.join(' | ');
+		if (joined.length <= CONTEXT_WINDOW_LOG_PREVIEW_CHARS) return joined;
+		return `${joined.slice(0, CONTEXT_WINDOW_LOG_PREVIEW_CHARS)}...`;
+	}
+
+	private logContextWindow(
+		contextMessages: AgentDbMessage[],
+		observationLogMemory: string | undefined,
+	): void {
+		const messages = contextMessages.filter(isLlmMessage);
+		const historyMessages = messages.filter(
+			(message) => this.getMessageSourceLabelById(message.id) === 'history',
+		);
+		const inputMessages = messages.filter(
+			(message) => this.getMessageSourceLabelById(message.id) === 'input',
+		);
+		const responseMessages = messages.filter(
+			(message) => this.getMessageSourceLabelById(message.id) === 'response',
+		);
+
+		console.log('[instance-ai] context window after memory', {
+			totalMessages: messages.length + 1,
+			bySource: {
+				history: historyMessages.length,
+				input: inputMessages.length,
+				response: responseMessages.length,
+			},
+			hasObservationMemory: Boolean(observationLogMemory),
+			observationMemoryPreview: observationLogMemory
+				? JSON.stringify(observationLogMemory, null, 2)
+				: undefined,
+			messages: JSON.stringify(messages, null, 2),
+		});
+	}
+
 	/**
 	 * Full LLM context for a generateText / streamText call.
 	 * Prepends the system prompt (with observation-log memory appended if configured),
@@ -219,14 +292,22 @@ export class AgentMessageList {
 				baseInstructionsChars: baseInstructions.length,
 				observationLogMemoryChars: observationLogMemory?.length ?? 0,
 				totalChars: systemPrompt.length,
-				systemPrompt: JSON.stringify(systemPrompt, null, 2),
+				// systemPrompt: JSON.stringify(systemPrompt, null, 2),
 			});
 		}
 
 		const systemMessage: ModelMessage = instructionProviderOptions
 			? { role: 'system', content: systemPrompt, providerOptions: instructionProviderOptions }
 			: { role: 'system', content: systemPrompt };
-		return [systemMessage, ...toAiMessages(filterLlmMessages(stripOrphanedToolMessages(this.all)))];
+		const contextMessages = stripOrphanedToolMessages(this.all);
+		const llmMessages = filterLlmMessages(contextMessages);
+
+		if (!this.hasLoggedContextWindow) {
+			this.hasLoggedContextWindow = true;
+			this.logContextWindow(contextMessages, observationLogMemory);
+		}
+
+		return [systemMessage, ...toAiMessages(llmMessages)];
 	}
 
 	/**
