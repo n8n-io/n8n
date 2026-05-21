@@ -87,6 +87,7 @@ import {
 	type WorkflowExecuteMode,
 	type ExecutionError,
 	NodeHelpers,
+	Workflow,
 	createRunExecutionData,
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -252,6 +253,7 @@ export class InstanceAiAdapterService {
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
+			allowSendingParameterValues: this.allowSendingParameterValues,
 		};
 	}
 
@@ -314,6 +316,7 @@ export class InstanceAiAdapterService {
 			aiBuilderTemporaryWorkflowRepository,
 			workflowHistoryService,
 			enterpriseWorkflowService,
+			executionRepository,
 			license,
 			allowSendingParameterValues,
 			telemetry,
@@ -445,6 +448,31 @@ export class InstanceAiAdapterService {
 				]);
 				if (!wf) throw new Error(`Workflow ${workflowId} not found or not accessible`);
 				return toWorkflowJSON(wf, { redactParameters });
+			},
+
+			async getLatestRunData(workflowId: string) {
+				// Caller must be able to read the workflow to see its execution history.
+				// Silent null on no-access keeps validation usable even when access was
+				// revoked between fetches — validation degrades gracefully instead of
+				// throwing in the middle of a per-node loop.
+				const accessible = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:read',
+				]);
+				if (!accessible) return null;
+
+				const [latest] = await executionRepository.find({
+					select: ['id'],
+					where: { workflowId },
+					order: { startedAt: 'DESC' },
+					take: 1,
+				});
+				if (!latest) return null;
+
+				const execution = await executionRepository.findSingleExecution(latest.id, {
+					includeData: true,
+					unflattenData: true,
+				});
+				return execution?.data?.resultData?.runData ?? null;
 			},
 
 			async createFromWorkflowJSON(
@@ -2057,6 +2085,32 @@ export class InstanceAiAdapterService {
 				}
 
 				return Array.from(credentialTypes);
+			},
+
+			getResolvedNodeInputs: async (workflowJson, nodeName) => {
+				const nodeJson = workflowJson.nodes.find((n) => n.name === nodeName);
+				if (!nodeJson) return [];
+
+				const nodeType = this.nodeTypes.getByNameAndVersion(
+					nodeJson.type,
+					nodeJson.typeVersion ?? 1,
+				);
+				if (!nodeType) return [];
+
+				// Construct a transient Workflow so dynamic `inputs` expressions can be
+				// evaluated against the node's current parameters and the surrounding
+				// workflow graph. Not persisted; lives only for this call.
+				const workflow = new Workflow({
+					nodes: workflowJson.nodes as unknown as INode[],
+					connections: workflowJson.connections as unknown as IConnections,
+					active: false,
+					nodeTypes: this.nodeTypes,
+				});
+
+				const workflowNode = workflow.getNode(nodeName);
+				if (!workflowNode) return [];
+
+				return NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType.description);
 			},
 
 			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> => {

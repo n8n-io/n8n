@@ -56,8 +56,9 @@ import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { writeWorkflowReport } from '../report/workflow-report';
 import type {
 	MultiRunEvaluation,
-	ScenarioResult,
-	TestScenario,
+	ExecutionScenarioResult,
+	ExecutionScenario,
+	TranscriptTurn,
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
@@ -79,6 +80,8 @@ const targetOutputSchema = z.object({
 	buildDurationMs: z.number().optional(),
 	execDurationMs: z.number().default(0),
 	nodeCount: z.number().default(0),
+	/** The thread id used during the build — keys the LangSmith trace lookup. */
+	threadId: z.string().optional(),
 });
 
 type TargetOutput = Omit<z.infer<typeof targetOutputSchema>, 'evalResult'> & {
@@ -118,7 +121,6 @@ function parseTargetOutput(raw: unknown): TargetOutput | undefined {
 
 const runInputsSchema = z
 	.object({
-		prompt: z.string().default(''),
 		testCaseFile: z.string().default(''),
 		scenarioName: z.string().default(''),
 		/** 0-based iteration index; injected during multi-run expansion. */
@@ -236,7 +238,8 @@ async function main(): Promise<void> {
 		);
 		console.log(`Results:    ${jsonPath}`);
 		console.log(`PR comment: ${prCommentPath}`);
-		const htmlPath = writeWorkflowReport(flattenRunsForReport(evaluation));
+		const reportResults = flattenRunsForReport(evaluation);
+		const htmlPath = writeWorkflowReport(reportResults);
 		console.log(`Report:     ${htmlPath}`);
 		console.log(
 			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase }),
@@ -266,18 +269,38 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter, args.exclude);
 	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
 
+	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —
+	// the LangSmith target() output schema doesn't carry the full transcript.
+	const transcriptByThreadId = new Map<string, TranscriptTurn[]>();
+
+	// LangSmith dataset rows carry only per-scenario fields. The conversation
+	// for the build is sourced locally, keyed by fileSlug.
+	const conversationByFileSlug = new Map<
+		string,
+		{ conversation: WorkflowTestCase['conversation']; messageBudget?: number }
+	>();
+	for (const { testCase, fileSlug } of testCasesWithFiles) {
+		conversationByFileSlug.set(fileSlug, {
+			conversation: testCase.conversation,
+			messageBudget: testCase.messageBudget,
+		});
+	}
+
 	// LaneState carries the allocator-managed counters (activeBuilds,
-	// inflightPrompts) plus the lane's traced LangSmith wrappers. `runner` is
+	// inflightKeys) plus the lane's traced LangSmith wrappers. `runner` is
 	// the underlying Lane (n8n client, credential state) — named distinctly so
 	// it doesn't shadow the iteration variable `lane` in lanes.map().
 	interface LaneState {
 		runner: Lane;
 		activeBuilds: number;
-		inflightPrompts: Set<string>;
-		tracedBuild: (prompt: string) => Promise<BuildResult>;
+		inflightKeys: Set<string>;
+		tracedBuild: (buildArgs: {
+			conversation: WorkflowTestCase['conversation'];
+			messageBudget?: number;
+		}) => Promise<BuildResult>;
 		tracedExecute: (execArgs: {
 			workflowId: string;
-			scenario: TestScenario;
+			scenario: ExecutionScenario;
 			workflowJsons: BuildResult['workflowJsons'];
 		}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
 	}
@@ -288,12 +311,16 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		return {
 			runner: lane,
 			activeBuilds: 0,
-			inflightPrompts: new Set<string>(),
+			inflightKeys: new Set<string>(),
 			tracedBuild: traceable(
-				async (prompt: string) =>
+				async (buildArgs: {
+					conversation: WorkflowTestCase['conversation'];
+					messageBudget?: number;
+				}) =>
 					await buildWorkflow({
 						client: lane.client,
-						prompt,
+						conversation: buildArgs.conversation,
+						messageBudget: buildArgs.messageBudget,
 						timeoutMs: args.timeoutMs,
 						preRunWorkflowIds: lane.preRunWorkflowIds,
 						claimedWorkflowIds: lane.claimedWorkflowIds,
@@ -310,7 +337,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			tracedExecute: traceable(
 				async (execArgs: {
 					workflowId: string;
-					scenario: TestScenario;
+					scenario: ExecutionScenario;
 					workflowJsons: BuildResult['workflowJsons'];
 				}) =>
 					await executeScenario(
@@ -332,7 +359,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	});
 
 	// Work-stealing: each build acquires a lane that isn't already running its
-	// prompt, runs there (capped per-lane), then releases. Scenarios re-use the
+	// fileSlug, runs there (capped per-lane), then releases. Scenarios re-use the
 	// lane that built their workflow.
 	const allocator = new LaneAllocator(laneStates, MAX_CONCURRENT_BUILDS);
 	const buildCache = new Map<
@@ -342,7 +369,6 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	const buildDurations = new Map<string, number>();
 
 	async function getOrBuild(
-		prompt: string,
 		iteration: number,
 		fileSlug: string,
 	): Promise<{ build: BuildResult; lane: LaneState; buildDurationMs: number }> {
@@ -362,31 +388,41 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const build = await fetchPrebuiltBuild(lane.runner.client, prebuiltId, logger);
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
+				stashTranscript(build);
 				return { build, lane, buildDurationMs };
 			}
-			// Orchestrator path: allocator is keyed on prompt while the build
-			// cache is keyed on (iter, fileSlug). Granularity intentionally
-			// differs — the allocator wants to spread distinct prompts across
-			// lanes, while the cache dedupes scenarios within one file (which
-			// share both prompt and slug).
-			const lane = await allocator.acquire(prompt);
+			// Orchestrator path: allocator spreads distinct fileSlugs across lanes;
+			// the build cache dedupes scenarios within one file.
+			const lane = await allocator.acquire(fileSlug);
+			const entry = conversationByFileSlug.get(fileSlug);
+			if (!entry) throw new Error(`No conversation found for fileSlug=${fileSlug}`);
 			try {
 				const start = Date.now();
-				const build = await lane.tracedBuild(prompt);
+				const build = await lane.tracedBuild({
+					conversation: entry.conversation,
+					messageBudget: entry.messageBudget,
+				});
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
+				stashTranscript(build);
 				return { build, lane, buildDurationMs };
 			} finally {
-				allocator.release(lane, prompt);
+				allocator.release(lane, fileSlug);
 			}
 		})();
 		buildCache.set(key, promise);
 		return await promise;
 	}
 
+	function stashTranscript(build: BuildResult): void {
+		if (build.threadId && build.transcript) {
+			transcriptByThreadId.set(build.threadId, build.transcript);
+		}
+	}
+
 	const target = async (inputs: TargetInputs): Promise<TargetOutput> => {
 		const iteration = inputs._iteration ?? 0;
-		const scenario: TestScenario = {
+		const scenario: ExecutionScenario = {
 			name: inputs.scenarioName,
 			description: inputs.scenarioDescription,
 			dataSetup: inputs.dataSetup,
@@ -397,7 +433,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			build,
 			lane: builtOnLane,
 			buildDurationMs,
-		} = await getOrBuild(inputs.prompt, iteration, inputs.testCaseFile);
+		} = await getOrBuild(iteration, inputs.testCaseFile);
 
 		if (!build.success || !build.workflowId) {
 			return {
@@ -410,6 +446,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				buildDurationMs,
 				execDurationMs: 0,
 				nodeCount: 0,
+				threadId: build.threadId,
 			};
 		}
 
@@ -462,6 +499,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			buildDurationMs,
 			execDurationMs,
 			nodeCount,
+			threadId: build.threadId,
 		};
 	};
 
@@ -546,6 +584,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			experimentResults.results,
 			testCasesWithFiles,
 			args.iterations,
+			transcriptByThreadId,
 		);
 		const evaluation = aggregateResults(allRunResults, args.iterations);
 
@@ -745,6 +784,7 @@ function reshapeLangSmithRuns(
 	rows: Array<{ run: Run }>,
 	testCasesWithFiles: WorkflowTestCaseWithFile[],
 	numIterations: number,
+	transcriptByThreadId: Map<string, TranscriptTurn[]>,
 ): WorkflowTestCaseResult[][] {
 	// Index runs by (iteration, testCaseFile, scenarioName) using the `_iteration`
 	// we injected in expandExamplesForIterations. Falls back to 0 for single-run.
@@ -760,16 +800,17 @@ function reshapeLangSmithRuns(
 	for (let iter = 0; iter < numIterations; iter++) {
 		const runResults: WorkflowTestCaseResult[] = [];
 		for (const { testCase, fileSlug } of testCasesWithFiles) {
-			const scenarioResults: ScenarioResult[] = [];
+			const executionScenarioResults: ExecutionScenarioResult[] = [];
 			let workflowBuildSuccess = false;
 			let workflowId: string | undefined;
 			let buildError: string | undefined;
+			let threadId: string | undefined;
 
-			for (const scenario of testCase.scenarios) {
+			for (const scenario of testCase.executionScenarios) {
 				const run = byKey.get(`${String(iter)}/${fileSlug}/${scenario.name}`);
 				const output = run ? parseTargetOutput(run.outputs) : undefined;
 				if (!run || !output) {
-					scenarioResults.push({
+					executionScenarioResults.push({
 						scenario,
 						success: false,
 						score: 0,
@@ -779,8 +820,9 @@ function reshapeLangSmithRuns(
 				}
 				if (output.buildSuccess) workflowBuildSuccess = true;
 				if (output.workflowId) workflowId = output.workflowId;
+				if (output.threadId) threadId = output.threadId;
 				if (!output.buildSuccess && output.reasoning) buildError = output.reasoning;
-				scenarioResults.push({
+				executionScenarioResults.push({
 					scenario,
 					success: output.passed,
 					evalResult: output.evalResult,
@@ -791,12 +833,15 @@ function reshapeLangSmithRuns(
 				});
 			}
 
+			const transcript = threadId ? transcriptByThreadId.get(threadId) : undefined;
 			runResults.push({
 				testCase,
 				workflowBuildSuccess,
 				workflowId,
-				scenarioResults,
+				executionScenarioResults,
 				buildError,
+				threadId,
+				transcript,
 			});
 		}
 		allRunResults.push(runResults);
@@ -818,7 +863,7 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 	}
 
 	const totalScenarios = testCasesWithFiles.reduce(
-		(sum, { testCase }) => sum + testCase.scenarios.length,
+		(sum, { testCase }) => sum + testCase.executionScenarios.length,
 		0,
 	);
 	logger.info(
@@ -880,21 +925,30 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
  * HTML report. Previously we rendered only `tc.runs[0]`, which silently hid
  * iterations 2..N — a flaky scenario that passed once and failed twice would
  * appear clean in the uploaded artifact. For multi-iteration runs we prefix
- * each prompt with its iteration number so the cards are distinguishable at
- * a glance.
+ * the opening user turn with its iteration number so the cards are
+ * distinguishable at a glance.
  */
 function flattenRunsForReport(evaluation: MultiRunEvaluation): WorkflowTestCaseResult[] {
 	if (evaluation.totalRuns <= 1) {
 		return evaluation.testCases.map((tc) => tc.runs[0]);
 	}
 	return evaluation.testCases.flatMap((tc) =>
-		tc.runs.map((run, iter) => ({
-			...run,
-			testCase: {
-				...run.testCase,
-				prompt: `[iter ${String(iter + 1)}/${String(evaluation.totalRuns)}] ${run.testCase.prompt}`,
-			},
-		})),
+		tc.runs.map((run, iter) => {
+			const [opening, ...rest] = run.testCase.conversation;
+			return {
+				...run,
+				testCase: {
+					...run.testCase,
+					conversation: [
+						{
+							...opening,
+							text: `[iter ${String(iter + 1)}/${String(evaluation.totalRuns)}] ${opening.text}`,
+						},
+						...rest,
+					],
+				},
+			};
+		}),
 	);
 }
 
@@ -915,7 +969,7 @@ interface AggregateMetrics {
 
 function computeAggregateMetrics(evaluation: MultiRunEvaluation): AggregateMetrics {
 	const { totalRuns, testCases } = evaluation;
-	const allScenarios = testCases.flatMap((tc) => tc.scenarios);
+	const allScenarios = testCases.flatMap((tc) => tc.executionScenarios);
 	const total = allScenarios.length;
 	const kIndex = Math.max(totalRuns - 1, 0);
 	const built = testCases.filter((tc) => tc.buildSuccessCount > 0).length;
@@ -936,7 +990,7 @@ function computeAggregateMetrics(evaluation: MultiRunEvaluation): AggregateMetri
 /** Pass rate of each iteration formatted as e.g. "37% / 37% / 37%". */
 function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 	const { totalRuns, testCases } = evaluation;
-	const allScenarios = testCases.flatMap((tc) => tc.scenarios);
+	const allScenarios = testCases.flatMap((tc) => tc.executionScenarios);
 	if (allScenarios.length === 0) return '';
 	const rates: string[] = [];
 	for (let i = 0; i < totalRuns; i++) {
@@ -987,10 +1041,10 @@ function writeEvalResults(
 		comparisonStatus: outcome?.kind ?? 'not_attempted',
 		comparisonError: outcome?.kind === 'fetch_failed' ? outcome.error : undefined,
 		testCases: testCases.map((tc) => ({
-			name: tc.testCase.prompt.slice(0, 70),
+			name: tc.testCase.conversation[0].text.slice(0, 70),
 			buildSuccessCount: tc.buildSuccessCount,
 			totalRuns,
-			scenarios: tc.scenarios.map((sa) => ({
+			scenarios: tc.executionScenarios.map((sa) => ({
 				name: sa.scenario.name,
 				passCount: sa.passCount,
 				totalRuns,
@@ -1117,11 +1171,11 @@ function bucketFromEvaluation(
 		const fileSlug = slugByTestCase.get(tc.testCase);
 		if (!fileSlug) {
 			throw new Error(
-				`bucketFromEvaluation: no fileSlug for test case "${tc.testCase.prompt.slice(0, 60)}"`,
+				`bucketFromEvaluation: no fileSlug for test case "${tc.testCase.conversation[0].text.slice(0, 60)}"`,
 			);
 		}
 		const total = tc.runs.length;
-		for (const sa of tc.scenarios) {
+		for (const sa of tc.executionScenarios) {
 			const key = `${fileSlug}/${sa.scenario.name}`;
 			const failureCategories: Record<string, number> = {};
 			for (const sr of sa.runs) {
