@@ -73,6 +73,7 @@ catalog:
   form-data: 4.0.4
   http-proxy-agent: 7.0.2
   https-proxy-agent: 7.0.6
+  ibm_db: ^4.0.1
   iconv-lite: 0.6.3
   isolated-vm: ^6.1.2
   js-base64: 3.7.8

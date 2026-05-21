@@ -200,6 +200,7 @@
       "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
       "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js",
       "dist/nodes/vector_store/VectorStoreChromaDB/VectorStoreChromaDB.node.js",
+      "dist/nodes/vector_store/VectorStoreDb2/VectorStoreDb2.node.js",
       "dist/nodes/ToolExecutor/ToolExecutor.node.js",
       "dist/nodes/ModelSelector/ModelSelector.node.js",
       "dist/nodes/Guardrails/Guardrails.node.js"
