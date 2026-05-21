@@ -30,6 +30,11 @@ import {
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import {
+	useWorkflowExecutionStateStore,
+	createWorkflowExecutionStateId,
+	disposeWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import { useNDVStore, disposeNDVStore } from '@/features/ndv/shared/ndv.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { injectStrict } from '@/app/utils/injectStrict';
@@ -78,7 +83,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 	const { fetchParentFolder } = useParentFolder();
 
-	function disposeCurrentWorkflowDocumentStore() {
+	function disposeCurrentWorkflowStores() {
 		const ndvStore = currentNDVStore.value;
 		const workflowDocumentStore = currentWorkflowDocumentStore.value;
 
@@ -87,6 +92,14 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		}
 
 		if (workflowDocumentStore) {
+			// Execution state store is derived from the document store's workflow id
+			// (see injectWorkflowExecutionStateStore); dispose alongside the document
+			// store so per-workflow Pinia state doesn't leak across workflow switches.
+			disposeWorkflowExecutionStateStore(
+				useWorkflowExecutionStateStore(
+					createWorkflowExecutionStateId(workflowDocumentStore.workflowId),
+				),
+			);
 			disposeWorkflowDocumentStore(workflowDocumentStore);
 		}
 
@@ -131,7 +144,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		const templateId = route.params.id;
 		if (!templateId) return false;
 
-		disposeCurrentWorkflowDocumentStore();
+		disposeCurrentWorkflowStores();
 
 		// Load credentials and credential types for template import
 		try {
@@ -257,7 +270,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			);
 		}
 
-		disposeCurrentWorkflowDocumentStore();
+		disposeCurrentWorkflowStores();
 		resetWorkspace();
 
 		if (builderStore.streaming) {
@@ -303,7 +316,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	}
 
 	async function initializeWorkspaceForNewWorkflow() {
-		disposeCurrentWorkflowDocumentStore();
+		disposeCurrentWorkflowStores();
 		resetWorkspace();
 
 		const parentFolderId = route.query.parentFolderId as string | undefined;
@@ -471,7 +484,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	}
 
 	function cleanup() {
-		disposeCurrentWorkflowDocumentStore();
+		disposeCurrentWorkflowStores();
 		resetWorkspace();
 		uiStore.nodeViewInitialized = false;
 	}

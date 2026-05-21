@@ -16,7 +16,10 @@ import {
 } from '@/app/stores/workflowExecutionState.store';
 import { useExecutionDataStore, createExecutionDataId } from '@/app/stores/executionData.store';
 import { createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
-import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import type {
+	IExecutionResponse,
+	IExecutionsStopData,
+} from '@/features/execution/executions/executions.types';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 
@@ -39,6 +42,16 @@ function makeExecutionSummary(overrides: Partial<ExecutionSummary> = {}): Execut
 		startedAt: new Date(),
 		...overrides,
 	} as ExecutionSummary;
+}
+
+function makeStopData(overrides: Partial<IExecutionsStopData> = {}): IExecutionsStopData {
+	return {
+		mode: 'manual',
+		startedAt: new Date('2024-01-01T00:00:00Z'),
+		stoppedAt: new Date('2024-01-01T00:00:05Z'),
+		status: 'canceled',
+		...overrides,
+	};
 }
 
 describe('workflowExecutionState.store', () => {
@@ -490,6 +503,8 @@ describe('workflowExecutionState.store', () => {
 			stateStore.setSelectedTriggerNodeName('Trigger');
 			stateStore.setCurrentWorkflowExecutions([makeExecutionSummary({ id: '1' })]);
 			stateStore.setLastSuccessfulExecutionId('last-1');
+			stateStore.addExecutingNode('NodeA');
+			stateStore.addExecutingNode('NodeB');
 
 			stateStore.resetExecutionState();
 
@@ -504,6 +519,8 @@ describe('workflowExecutionState.store', () => {
 			expect(stateStore.selectedTriggerNodeName).toBeUndefined();
 			expect(stateStore.currentWorkflowExecutions).toEqual([]);
 			expect(stateStore.lastSuccessfulExecutionId).toBeNull();
+			expect(stateStore.executingNode).toEqual([]);
+			expect(stateStore.lastAddedExecutingNode).toBeNull();
 		});
 
 		it('disposes per-execution data stores for every tracked id', () => {
@@ -641,6 +658,217 @@ describe('workflowExecutionState.store', () => {
 			stateStore.setPendingExecution(null);
 
 			expect(spy.mock.calls.some((c) => c[0].action === 'delete')).toBe(true);
+		});
+	});
+
+	describe('loadExecution', () => {
+		it('clears pending and displayed when execution is null', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			stateStore.setPendingExecution(makeExecution({ id: IN_PROGRESS_EXECUTION_ID }));
+			stateStore.setDisplayedExecutionId('exec-prev');
+
+			stateStore.loadExecution(null);
+
+			expect(stateStore.pendingExecution).toBeNull();
+			expect(stateStore.displayedExecutionId).toBeUndefined();
+		});
+
+		it('stages IN_PROGRESS payload as pending scaffold and writes placeholder executionData', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			const scaffold = makeExecution({ id: IN_PROGRESS_EXECUTION_ID });
+
+			stateStore.loadExecution(scaffold);
+
+			expect(stateStore.activeExecutionId).toBeNull();
+			expect(stateStore.pendingExecution?.id).toBe(IN_PROGRESS_EXECUTION_ID);
+			expect(
+				useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).execution?.id,
+			).toBe(IN_PROGRESS_EXECUTION_ID);
+		});
+
+		it('writes to id-keyed executionData and sets displayedExecutionId when no active id is tracked', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			const execution = makeExecution({ id: 'exec-real' });
+
+			stateStore.loadExecution(execution);
+
+			expect(stateStore.activeExecutionId).toBeUndefined();
+			expect(stateStore.displayedExecutionId).toBe('exec-real');
+			expect(stateStore.pendingExecution).toBeNull();
+			expect(useExecutionDataStore(createExecutionDataId('exec-real')).execution?.id).toBe(
+				'exec-real',
+			);
+		});
+
+		it('only writes executionData when an active execution id is already tracked', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			useExecutionDataStore(createExecutionDataId('active-1')).setExecution(
+				makeExecution({ id: 'active-1' }),
+			);
+			stateStore.setActiveExecutionId('active-1');
+
+			stateStore.loadExecution(makeExecution({ id: 'other', executedNode: 'X' }));
+
+			// activeExecutionId untouched, displayedExecutionId stays at the active id.
+			expect(stateStore.activeExecutionId).toBe('active-1');
+			expect(stateStore.displayedExecutionId).toBe('active-1');
+			// But the new execution's data lands in its own store.
+			expect(useExecutionDataStore(createExecutionDataId('other')).execution?.executedNode).toBe(
+				'X',
+			);
+		});
+	});
+
+	describe('markExecutionAsStopped', () => {
+		it('clears active id, executing-node queue, and webhook flag', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			useExecutionDataStore(createExecutionDataId('exec-1')).setExecution(
+				makeExecution({ id: 'exec-1' }),
+			);
+			stateStore.setActiveExecutionId('exec-1');
+			stateStore.setExecutionWaitingForWebhook(true);
+			stateStore.addExecutingNode('NodeA');
+
+			stateStore.markExecutionAsStopped();
+
+			expect(stateStore.activeExecutionId).toBeUndefined();
+			expect(stateStore.executingNode).toEqual([]);
+			expect(stateStore.executionWaitingForWebhook).toBe(false);
+		});
+
+		it('applies stopData to executionData when active id is a string', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			useExecutionDataStore(createExecutionDataId('exec-1')).setExecution(
+				makeExecution({ id: 'exec-1', status: 'running' }),
+			);
+			stateStore.setActiveExecutionId('exec-1');
+
+			const stopData = makeStopData({ status: 'canceled' });
+			stateStore.markExecutionAsStopped(stopData);
+
+			const dataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+			expect(dataStore.execution?.status).toBe('canceled');
+			expect(dataStore.execution?.stoppedAt).toEqual(stopData.stoppedAt);
+		});
+
+		it('targets IN_PROGRESS placeholder and mirrors stopData onto pending scaffold when active id is null', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			stateStore.loadExecution(makeExecution({ id: IN_PROGRESS_EXECUTION_ID, status: 'running' }));
+
+			const stopData = makeStopData({ status: 'canceled' });
+			stateStore.markExecutionAsStopped(stopData);
+
+			// Pending scaffold receives the stop metadata.
+			expect(stateStore.pendingExecution?.status).toBe('canceled');
+			expect(stateStore.pendingExecution?.stoppedAt).toEqual(stopData.stoppedAt);
+			// Placeholder executionData store is also stopped.
+			expect(
+				useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).execution?.status,
+			).toBe('canceled');
+		});
+
+		it('falls back to displayedExecutionId when active id is undefined (stop-race-with-finished)', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			useExecutionDataStore(createExecutionDataId('exec-1')).setExecution(
+				makeExecution({ id: 'exec-1', status: 'running' }),
+			);
+			stateStore.setActiveExecutionId('exec-1');
+			stateStore.setActiveExecutionId(undefined); // displayedExecutionId still 'exec-1'
+
+			stateStore.markExecutionAsStopped(makeStopData({ status: 'canceled' }));
+
+			expect(stateStore.displayedExecutionId).toBe('exec-1');
+			expect(useExecutionDataStore(createExecutionDataId('exec-1')).execution?.status).toBe(
+				'canceled',
+			);
+		});
+
+		it('is a no-op on executionData stores when neither active nor displayed id is set', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			stateStore.addExecutingNode('NodeA');
+
+			expect(() => stateStore.markExecutionAsStopped()).not.toThrow();
+
+			// Side-effect state still clears.
+			expect(stateStore.executingNode).toEqual([]);
+			expect(stateStore.executionWaitingForWebhook).toBe(false);
+		});
+	});
+
+	describe('executingNode queue', () => {
+		it('addExecutingNode pushes name and updates lastAddedExecutingNode', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			stateStore.addExecutingNode('NodeA');
+			stateStore.addExecutingNode('NodeB');
+
+			expect(stateStore.executingNode).toEqual(['NodeA', 'NodeB']);
+			expect(stateStore.lastAddedExecutingNode).toBe('NodeB');
+		});
+
+		it('removeExecutingNode removes a single occurrence', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			stateStore.addExecutingNode('NodeA');
+			stateStore.addExecutingNode('NodeA');
+			stateStore.addExecutingNode('NodeB');
+
+			stateStore.removeExecutingNode('NodeA');
+
+			// One NodeA remains; sub-node parallel runs rely on multi-presence semantics.
+			expect(stateStore.executingNode).toEqual(['NodeA', 'NodeB']);
+		});
+
+		it('removeExecutingNode is a no-op for names not in the queue', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			stateStore.addExecutingNode('NodeA');
+
+			stateStore.removeExecutingNode('NodeX');
+
+			expect(stateStore.executingNode).toEqual(['NodeA']);
+		});
+
+		it('isNodeExecuting reflects queue membership', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			stateStore.addExecutingNode('NodeA');
+
+			expect(stateStore.isNodeExecuting('NodeA')).toBe(true);
+			expect(stateStore.isNodeExecuting('NodeB')).toBe(false);
+		});
+
+		it('clearNodeExecutionQueue empties the queue and clears lastAddedExecutingNode', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			stateStore.addExecutingNode('NodeA');
+			stateStore.addExecutingNode('NodeB');
+
+			stateStore.clearNodeExecutionQueue();
+
+			expect(stateStore.executingNode).toEqual([]);
+			expect(stateStore.lastAddedExecutingNode).toBeNull();
+		});
+
+		it('different workflowIds have isolated queues', () => {
+			const a = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-a'));
+			const b = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-b'));
+
+			a.addExecutingNode('A1');
+			b.addExecutingNode('B1');
+
+			expect(a.executingNode).toEqual(['A1']);
+			expect(b.executingNode).toEqual(['B1']);
+		});
+
+		it('markExecutionAsStopped clears the queue', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			useExecutionDataStore(createExecutionDataId('exec-1')).setExecution(
+				makeExecution({ id: 'exec-1' }),
+			);
+			stateStore.setActiveExecutionId('exec-1');
+			stateStore.addExecutingNode('NodeA');
+			stateStore.addExecutingNode('NodeB');
+
+			stateStore.markExecutionAsStopped();
+
+			expect(stateStore.executingNode).toEqual([]);
+			expect(stateStore.lastAddedExecutingNode).toBeNull();
 		});
 	});
 

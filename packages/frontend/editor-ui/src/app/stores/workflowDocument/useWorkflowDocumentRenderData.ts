@@ -20,13 +20,13 @@ import {
  */
 export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocumentId) {
 	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
-	const executionStateStore = useWorkflowExecutionStateStore(
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
 		createWorkflowExecutionStateId(workflowDocumentStore.workflowId),
 	);
 
 	return {
 		nodeInputsByNodeId: workflowDocumentStore.nodeInputsByNodeId,
 		nodeOutputsByNodeId: workflowDocumentStore.nodeOutputsByNodeId,
-		executionIssuesByNodeName: executionStateStore.activeExecutionIssuesByNodeName,
+		executionIssuesByNodeName: workflowExecutionStateStore.activeExecutionIssuesByNodeName,
 	};
 }

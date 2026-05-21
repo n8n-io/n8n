@@ -17,7 +17,7 @@ import {
  */
 export async function nodeExecuteAfterData({ data: pushData }: NodeExecuteAfterData) {
 	const workflowsStore = useWorkflowsStore();
-	const stateStore = useWorkflowExecutionStateStore(
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
 		createWorkflowExecutionStateId(workflowsStore.workflowId),
 	);
 	const workflowDocumentStore = computed(() =>
@@ -25,7 +25,7 @@ export async function nodeExecuteAfterData({ data: pushData }: NodeExecuteAfterD
 	);
 	const schemaPreviewStore = useSchemaPreviewStore();
 
-	const activeExecutionId = stateStore.activeExecutionId;
+	const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
 	if (typeof activeExecutionId === 'string') {
 		useExecutionDataStore(createExecutionDataId(activeExecutionId)).updateNodeExecutionRunData(
 			pushData,

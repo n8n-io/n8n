@@ -92,7 +92,7 @@ describe('usePushConnection composable', () => {
 
 		// Verify that the correct handler was called.
 		expect(testWebhookReceived).toHaveBeenCalledTimes(1);
-		expect(testWebhookReceived).toHaveBeenCalledWith(testEvent, expect.any(Object));
+		expect(testWebhookReceived).toHaveBeenCalledWith(testEvent);
 	});
 
 	it('should call removeEventListener when terminate is called', () => {

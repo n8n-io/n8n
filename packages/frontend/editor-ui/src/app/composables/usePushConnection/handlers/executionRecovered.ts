@@ -21,13 +21,13 @@ export async function executionRecovered(
 	options: { router: ReturnType<typeof useRouter>; workflowState: WorkflowState },
 ) {
 	const workflowsStore = useWorkflowsStore();
-	const stateStore = useWorkflowExecutionStateStore(
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
 		createWorkflowExecutionStateId(workflowsStore.workflowId),
 	);
 	const uiStore = useUIStore();
 
 	// No workflow is actively running, therefore we ignore this event
-	if (typeof stateStore.activeExecutionId === 'undefined') {
+	if (typeof workflowExecutionStateStore.activeExecutionId === 'undefined') {
 		return;
 	}
 
@@ -47,8 +47,8 @@ export async function executionRecovered(
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
 		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
 	} else {
-		handleExecutionFinishedWithSuccessOrOther(options.workflowState, execution.status, false);
+		handleExecutionFinishedWithSuccessOrOther(execution.status, false);
 	}
 
-	setRunExecutionData(execution, runExecutionData, options.workflowState);
+	setRunExecutionData(execution, runExecutionData);
 }

@@ -12,17 +12,13 @@ import type { PushPayload } from '@n8n/api-types';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { openFormPopupWindow } from '@/features/execution/executions/executions.utils';
 import { trackNodeExecution } from './trackNodeExecution';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 
 /**
  * Handles the 'nodeExecuteAfter' event, which happens after a node is executed.
  */
-export async function nodeExecuteAfter(
-	{ data: pushData }: NodeExecuteAfter,
-	{ workflowState }: { workflowState: WorkflowState },
-) {
+export async function nodeExecuteAfter({ data: pushData }: NodeExecuteAfter) {
 	const workflowsStore = useWorkflowsStore();
-	const stateStore = useWorkflowExecutionStateStore(
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
 		createWorkflowExecutionStateId(workflowsStore.workflowId),
 	);
 	const assistantStore = useAssistantStore();
@@ -60,7 +56,7 @@ export async function nodeExecuteAfter(
 		},
 	};
 
-	const activeExecutionId = stateStore.activeExecutionId;
+	const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
 	if (typeof activeExecutionId === 'string') {
 		useExecutionDataStore(createExecutionDataId(activeExecutionId)).updateNodeExecutionStatus(
 			pushDataWithPlaceholderOutputData,
@@ -71,7 +67,7 @@ export async function nodeExecuteAfter(
 		}
 	}
 
-	workflowState.executingNode.removeExecutingNode(pushData.nodeName);
+	workflowExecutionStateStore.removeExecutingNode(pushData.nodeName);
 
 	// Side effects
 	if (pushData.data.executionStatus === 'waiting' && pushData.data.metadata?.resumeFormUrl) {

@@ -12,7 +12,7 @@ import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/execu
 
 describe('nodeExecuteAfterData', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
-	let stateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
+	let workflowExecutionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
 
 	beforeEach(() => {
@@ -21,7 +21,9 @@ describe('nodeExecuteAfterData', () => {
 		workflowsStore = useWorkflowsStore();
 		workflowsStore.setWorkflowId('test-wf');
 
-		stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
+		workflowExecutionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowExecutionStateId('test-wf'),
+		);
 
 		executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
 		executionDataStore.setExecution(
@@ -49,7 +51,7 @@ describe('nodeExecuteAfterData', () => {
 			}),
 		);
 
-		stateStore.setActiveExecutionId('exec-1');
+		workflowExecutionStateStore.setActiveExecutionId('exec-1');
 	});
 
 	it('should update node execution data with incoming payload', async () => {
