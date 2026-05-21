@@ -3,6 +3,8 @@ import { Service } from '@n8n/di';
 import { N8nMemory } from './n8n-memory';
 import type {
 	IntegrationMessageContext,
+	IntegrationMessageSubject,
+	IntegrationSubjectPerson,
 	IntegrationMessageContextStore,
 	IntegrationMessageTarget,
 } from './integration-tools';
@@ -48,8 +50,33 @@ export function isIntegrationMessageContext(value: unknown): value is Integratio
 		isIntegrationMessageTarget(context.target) &&
 		(context.messageId === undefined || typeof context.messageId === 'string') &&
 		(context.interactingUserId === undefined || typeof context.interactingUserId === 'string') &&
+		(context.subject === undefined || isIntegrationMessageSubject(context.subject)) &&
 		typeof context.updatedAt === 'string'
 	);
+}
+
+function isIntegrationMessageSubject(value: unknown): value is IntegrationMessageSubject {
+	if (!value || typeof value !== 'object') return false;
+	const subject = value as Record<string, unknown>;
+	return (
+		typeof subject.type === 'string' &&
+		typeof subject.id === 'string' &&
+		(subject.title === undefined || typeof subject.title === 'string') &&
+		(subject.description === undefined || typeof subject.description === 'string') &&
+		(subject.url === undefined || typeof subject.url === 'string') &&
+		(subject.status === undefined || typeof subject.status === 'string') &&
+		(subject.labels === undefined ||
+			(Array.isArray(subject.labels) &&
+				subject.labels.every((label) => typeof label === 'string'))) &&
+		(subject.assignee === undefined || isIntegrationSubjectPerson(subject.assignee)) &&
+		(subject.author === undefined || isIntegrationSubjectPerson(subject.author))
+	);
+}
+
+function isIntegrationSubjectPerson(value: unknown): value is IntegrationSubjectPerson {
+	if (!value || typeof value !== 'object') return false;
+	const person = value as Record<string, unknown>;
+	return typeof person.id === 'string' && typeof person.name === 'string';
 }
 
 function isIntegrationMessageTarget(value: unknown): value is IntegrationMessageTarget {

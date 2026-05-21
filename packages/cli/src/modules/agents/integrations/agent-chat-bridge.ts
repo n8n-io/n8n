@@ -1,6 +1,6 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import { Container } from '@n8n/di';
-import type { ActionEvent, Author, Chat, Message, Thread } from 'chat';
+import type { ActionEvent, Author, Chat, Message, MessageSubject, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
 import type { AgentsService } from '../agents.service';
@@ -10,7 +10,11 @@ import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { CallbackStore } from './callback-store';
 import type { ComponentMapper } from './component-mapper';
 import { IntegrationMessageContextService } from './integration-message-context.service';
-import { buildIntegrationConnectionId, type IntegrationMessageContext } from './integration-tools';
+import {
+	buildIntegrationConnectionId,
+	type IntegrationMessageContext,
+	type IntegrationMessageSubject,
+} from './integration-tools';
 import { type InternalThread, type TextEndFn, type TextYieldFn, toInternalThreadId } from './types';
 import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 
@@ -40,6 +44,42 @@ function isIntegrationActionSuspendPayload(value: unknown): boolean {
 		'type' in value &&
 		value.type === 'integration_action'
 	);
+}
+
+function toIntegrationMessageSubject(
+	subject: MessageSubject | null | undefined,
+): IntegrationMessageSubject | undefined {
+	if (!subject || typeof subject.type !== 'string' || typeof subject.id !== 'string') {
+		return undefined;
+	}
+
+	const assignee = toIntegrationSubjectPerson(subject.assignee);
+	const author = toIntegrationSubjectPerson(subject.author);
+	const labels = subject.labels?.filter((label) => typeof label === 'string');
+
+	return {
+		type: subject.type,
+		id: subject.id,
+		...(typeof subject.title === 'string' ? { title: subject.title } : {}),
+		...(typeof subject.description === 'string' ? { description: subject.description } : {}),
+		...(typeof subject.url === 'string' ? { url: subject.url } : {}),
+		...(typeof subject.status === 'string' ? { status: subject.status } : {}),
+		...(labels && labels.length > 0 ? { labels } : {}),
+		...(assignee ? { assignee } : {}),
+		...(author ? { author } : {}),
+	};
+}
+
+function toIntegrationSubjectPerson(
+	person: MessageSubject['assignee'] | MessageSubject['author'],
+): IntegrationMessageSubject['assignee'] | undefined {
+	if (!person || typeof person.id !== 'string' || typeof person.name !== 'string') {
+		return undefined;
+	}
+	return {
+		id: person.id,
+		name: person.name,
+	};
 }
 
 /**
@@ -231,9 +271,11 @@ export class AgentChatBridge {
 		if (!text) return;
 
 		const threadId = this.resolveThreadId(thread);
+		const subject = await this.resolveMessageSubject(message);
 		await this.updateLatestMessageContext(threadId.id, message.author.userId, thread, {
 			messageId: message.id,
 			interactingUserId: message.author.userId,
+			subject,
 		});
 		// threadId.id already encodes platform + user identity (e.g. Telegram:
 		// "chat:botId-userId") so it serves as a per-chat-user resourceId that
@@ -842,12 +884,18 @@ export class AgentChatBridge {
 		threadId: string,
 		resourceId: string,
 		thread: Thread<unknown, unknown>,
-		options: { messageId?: string; interactingUserId?: string } = {},
+		options: {
+			messageId?: string;
+			interactingUserId?: string;
+			subject?: IntegrationMessageSubject;
+		} = {},
 	): Promise<IntegrationMessageContext | undefined> {
 		if (!this.messageContextStore) return undefined;
 
+		const integrationConnectionId = buildIntegrationConnectionId(this.integration);
+		const previousContext = await this.getPreviousContext(threadId, integrationConnectionId);
 		const context: IntegrationMessageContext = {
-			integrationConnectionId: buildIntegrationConnectionId(this.integration),
+			integrationConnectionId,
 			platform: this.integration.type,
 			target: {
 				type: 'thread',
@@ -856,6 +904,8 @@ export class AgentChatBridge {
 			},
 			...(options.messageId ? { messageId: options.messageId } : {}),
 			...(options.interactingUserId ? { interactingUserId: options.interactingUserId } : {}),
+			...(options.subject ? { subject: options.subject } : {}),
+			...(!options.subject && previousContext?.subject ? { subject: previousContext.subject } : {}),
 			updatedAt: new Date().toISOString(),
 		};
 
@@ -868,6 +918,42 @@ export class AgentChatBridge {
 				threadId,
 				error: error instanceof Error ? error.message : String(error),
 			});
+			return undefined;
+		}
+	}
+
+	private async getPreviousContext(
+		threadId: string,
+		integrationConnectionId: string,
+	): Promise<IntegrationMessageContext | undefined> {
+		if (!this.messageContextStore) return undefined;
+		try {
+			const previousContext = await this.messageContextStore.getLatest(threadId);
+			if (previousContext?.integrationConnectionId !== integrationConnectionId) {
+				return undefined;
+			}
+			return previousContext;
+		} catch (error) {
+			this.logger.warn('[AgentChatBridge] Failed to read previous message context', {
+				agentId: this.agentId,
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
+	}
+
+	private async resolveMessageSubject(
+		message: Message<unknown>,
+	): Promise<IntegrationMessageSubject | undefined> {
+		try {
+			return toIntegrationMessageSubject(await message.subject);
+		} catch (error) {
+			this.logger.debug(
+				`[AgentChatBridge] Failed to fetch message subject: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
 			return undefined;
 		}
 	}

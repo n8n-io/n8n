@@ -27,7 +27,25 @@ export interface IntegrationMessageContext {
 	target: IntegrationMessageTarget;
 	messageId?: string;
 	interactingUserId?: string;
+	subject?: IntegrationMessageSubject;
 	updatedAt: string;
+}
+
+export interface IntegrationMessageSubject {
+	type: string;
+	id: string;
+	title?: string;
+	description?: string;
+	url?: string;
+	status?: string;
+	labels?: string[];
+	assignee?: IntegrationSubjectPerson;
+	author?: IntegrationSubjectPerson;
+}
+
+export interface IntegrationSubjectPerson {
+	id: string;
+	name: string;
 }
 
 export interface IntegrationToolConnectionDescriptor {
@@ -72,12 +90,15 @@ export interface IntegrationActionExecutor {
 
 export type IntegrationContextQuery =
 	| 'get_current_message_context'
+	| 'get_current_subject'
 	| 'get_current_user'
 	| 'get_current_channel_info'
 	| 'get_user'
 	| 'get_channel_info'
 	| 'search_users'
-	| 'search_channels';
+	| 'search_channels'
+	| 'get_issue'
+	| 'search_issues';
 
 export type IntegrationAction = 'respond' | 'send_dm' | 'send_channel_message';
 
@@ -97,6 +118,7 @@ export type IntegrationActionResult =
 
 export const DEFAULT_INTEGRATION_CONTEXT_QUERIES: IntegrationContextQuery[] = [
 	'get_current_message_context',
+	'get_current_subject',
 	'get_current_user',
 	'get_current_channel_info',
 	'get_user',
@@ -154,7 +176,9 @@ const noInputSchema = z.object({}).strict();
 const platformUserIdSchema = z
 	.string()
 	.min(1)
-	.describe('Platform user ID, for example a Slack U... user ID. Do not pass a name.');
+	.describe(
+		'Platform user ID, for example a Slack U... ID or Linear user UUID. Do not pass a name.',
+	);
 
 const platformChannelIdSchema = z
 	.string()
@@ -171,6 +195,11 @@ const searchLimitSchema = z
 
 const getCurrentMessageContextInputSchema = z.object({
 	query: z.literal('get_current_message_context'),
+	input: noInputSchema,
+});
+
+const getCurrentSubjectInputSchema = z.object({
+	query: z.literal('get_current_subject'),
 	input: noInputSchema,
 });
 
@@ -242,26 +271,67 @@ const searchChannelsInputSchema = z.object({
 		.strict(),
 });
 
+const getIssueInputSchema = z.object({
+	query: z.literal('get_issue'),
+	input: z
+		.object({
+			issueId: z.string().min(1).describe('Linear issue UUID or identifier such as ENG-123.'),
+			includeComments: z
+				.boolean()
+				.optional()
+				.describe('Whether to include recent comments. Defaults to false.'),
+			commentsLimit: z
+				.number()
+				.int()
+				.min(1)
+				.max(20)
+				.optional()
+				.describe('Maximum number of recent comments to return. Defaults to 10.'),
+		})
+		.strict(),
+});
+
+const searchIssuesInputSchema = z.object({
+	query: z.literal('search_issues'),
+	input: z
+		.object({
+			query: z.string().min(1).describe('Search term for Linear issue title/content.'),
+			limit: searchLimitSchema,
+			teamId: z.string().min(1).optional().describe('Optional Linear team ID to scope search.'),
+			includeArchived: z
+				.boolean()
+				.optional()
+				.describe('Whether to include archived issues. Defaults to false.'),
+		})
+		.strict(),
+});
+
 type IntegrationContextToolInput =
 	| z.infer<typeof getCurrentMessageContextInputSchema>
+	| z.infer<typeof getCurrentSubjectInputSchema>
 	| z.infer<typeof getCurrentUserInputSchema>
 	| z.infer<typeof getCurrentChannelInfoInputSchema>
 	| z.infer<typeof getUserInputSchema>
 	| z.infer<typeof getChannelInfoInputSchema>
 	| z.infer<typeof searchUsersInputSchema>
-	| z.infer<typeof searchChannelsInputSchema>;
+	| z.infer<typeof searchChannelsInputSchema>
+	| z.infer<typeof getIssueInputSchema>
+	| z.infer<typeof searchIssuesInputSchema>;
 
 const CONTEXT_QUERY_INPUT_SCHEMAS: Record<
 	IntegrationContextQuery,
 	z.ZodType<IntegrationContextToolInput>
 > = {
 	get_current_message_context: getCurrentMessageContextInputSchema,
+	get_current_subject: getCurrentSubjectInputSchema,
 	get_current_user: getCurrentUserInputSchema,
 	get_current_channel_info: getCurrentChannelInfoInputSchema,
 	get_user: getUserInputSchema,
 	get_channel_info: getChannelInfoInputSchema,
 	search_users: searchUsersInputSchema,
 	search_channels: searchChannelsInputSchema,
+	get_issue: getIssueInputSchema,
+	search_issues: searchIssuesInputSchema,
 } satisfies Record<IntegrationContextQuery, z.ZodType<IntegrationContextToolInput>>;
 
 function buildContextInputSchema(queries: IntegrationContextQuery[]) {
@@ -335,18 +405,24 @@ function buildActionInputSchema(actions: IntegrationAction[]) {
 const CONTEXT_QUERY_DESCRIPTIONS = {
 	get_current_message_context:
 		'get_current_message_context: no input. Returns the latest place this agent communicated in this thread.',
+	get_current_subject:
+		'get_current_subject: no input. Returns the subject of the latest message context, such as a Linear issue, when available.',
 	get_current_user:
 		'get_current_user: no input. Returns the latest user who interacted in the current message context.',
 	get_current_channel_info:
 		'get_current_channel_info: no input. Returns metadata for the latest channel in the current message context.',
 	get_user:
-		'get_user: input.userId is required. Use a platform user ID such as a Slack U... ID, not a name, handle, or email.',
+		'get_user: input.userId is required. Use a platform user ID such as a Slack U... ID or Linear user UUID, not a name, handle, or email.',
 	get_channel_info:
 		'get_channel_info: input.channelId is required. Use a platform channel ID such as a Slack C... ID, not a channel name.',
 	search_users:
 		'search_users: input.query or input.email is required. Returns matching platform user IDs for names, handles, or emails.',
 	search_channels:
 		'search_channels: input.query is required. Returns matching platform channel IDs for channel names or IDs.',
+	get_issue:
+		'get_issue: input.issueId is required. For Linear, use an issue UUID or identifier such as ENG-123. Optional input.includeComments and input.commentsLimit add recent comments.',
+	search_issues:
+		'search_issues: input.query is required. For Linear, returns matching issue IDs/identifiers; optional input.teamId, input.limit, and input.includeArchived narrow results.',
 } satisfies Record<IntegrationContextQuery, string>;
 
 const ACTION_DESCRIPTIONS = {
@@ -423,6 +499,7 @@ export function createIntegrationContextTool(params: {
 			const persistence = ctx.persistence;
 			if (
 				input.query === 'get_current_message_context' ||
+				input.query === 'get_current_subject' ||
 				input.query === 'get_current_user' ||
 				input.query === 'get_current_channel_info'
 			) {
@@ -440,6 +517,9 @@ export function createIntegrationContextTool(params: {
 					if (input.query === 'get_current_message_context') {
 						return { ok: true, context: null };
 					}
+					if (input.query === 'get_current_subject') {
+						return { ok: true, subject: null };
+					}
 					return {
 						ok: false,
 						error: {
@@ -450,6 +530,9 @@ export function createIntegrationContextTool(params: {
 				}
 				if (input.query === 'get_current_message_context') {
 					return { ok: true, context };
+				}
+				if (input.query === 'get_current_subject') {
+					return { ok: true, subject: context.subject ?? null };
 				}
 				if (input.query === 'get_current_user') {
 					if (!context.interactingUserId) {
@@ -530,6 +613,12 @@ export function createIntegrationActionTool(params: {
 					return contextResult;
 				}
 				currentMessageContext = contextResult.context;
+			} else if (persistence) {
+				currentMessageContext = await getOptionalCurrentContext({
+					descriptor,
+					messageContextStore,
+					threadId: persistence.threadId,
+				});
 			}
 
 			const result = await actionExecutor.execute({
@@ -544,21 +633,24 @@ export function createIntegrationActionTool(params: {
 
 			if (!result.ok) return result;
 
+			let actionResult = result;
 			if (result.messageContext && persistence) {
+				const messageContext = withPreviousSubject(result.messageContext, currentMessageContext);
 				await messageContextStore.setLatest(
 					persistence.threadId,
 					persistence.resourceId,
-					result.messageContext,
+					messageContext,
 				);
+				actionResult = { ...result, messageContext };
 			}
 
-			if (!awaitsResponse) return result;
+			if (!awaitsResponse) return actionResult;
 
 			return await interruptCtx.suspend({
 				type: 'integration_action',
 				action: input.action,
 				integrationConnectionId: descriptor.integrationConnectionId,
-				messageContext: result.messageContext,
+				messageContext: actionResult.messageContext,
 			});
 		});
 }
@@ -613,6 +705,31 @@ function shouldAwaitResponse(message: z.infer<typeof messageSchema> | undefined)
 	return richInteraction.components.some((component) =>
 		['button', 'select', 'radio_select'].includes(component.type),
 	);
+}
+
+function withPreviousSubject(
+	context: IntegrationMessageContext,
+	previousContext: IntegrationMessageContext | undefined,
+): IntegrationMessageContext {
+	if (context.subject || !previousContext?.subject) return context;
+	if (context.integrationConnectionId !== previousContext.integrationConnectionId) return context;
+	return { ...context, subject: previousContext.subject };
+}
+
+async function getOptionalCurrentContext(params: {
+	descriptor: IntegrationToolConnectionDescriptor;
+	messageContextStore: IntegrationMessageContextStore;
+	threadId: string;
+}): Promise<IntegrationMessageContext | undefined> {
+	try {
+		const context = await params.messageContextStore.getLatest(params.threadId);
+		if (context?.integrationConnectionId !== params.descriptor.integrationConnectionId) {
+			return undefined;
+		}
+		return context;
+	} catch {
+		return undefined;
+	}
 }
 
 async function getRespondContext(params: {

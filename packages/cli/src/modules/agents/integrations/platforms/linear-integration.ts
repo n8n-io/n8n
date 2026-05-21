@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 
 import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
 import { loadLinearAdapter } from '../esm-loader';
+import type { IntegrationContextQuery } from '../integration-tools';
 
 /**
  * Linear platform integration.
@@ -25,6 +26,16 @@ export class LinearIntegration extends AgentChatIntegration {
 	readonly displayLabel = 'Linear';
 
 	readonly displayIcon = 'linear';
+
+	readonly contextQueries: IntegrationContextQuery[] = [
+		'get_current_message_context',
+		'get_current_subject',
+		'get_current_user',
+		'get_user',
+		'search_users',
+		'get_issue',
+		'search_issues',
+	];
 
 	constructor(private readonly logger: Logger) {
 		super();

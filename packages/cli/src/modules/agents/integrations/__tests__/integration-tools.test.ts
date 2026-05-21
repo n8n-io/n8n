@@ -96,6 +96,60 @@ describe('integration tools', () => {
 		expect(queryExecutor.execute).not.toHaveBeenCalled();
 	});
 
+	it('context tool returns the current message subject when available', async () => {
+		const messageContextStore = mock<IntegrationMessageContextStore>();
+		messageContextStore.getLatest.mockResolvedValue({
+			integrationConnectionId: 'linear:cred-c',
+			platform: 'linear',
+			target: { type: 'thread', threadId: 'linear:issue-comment-1' },
+			messageId: 'comment-1',
+			subject: {
+				type: 'issue',
+				id: 'ENG-123',
+				title: 'Fix signup',
+				description: 'Signup fails for invited users',
+				status: 'In Progress',
+				url: 'https://linear.app/n8n/issue/ENG-123/fix-signup',
+				labels: ['Bug'],
+				assignee: { id: 'user-1', name: 'Michael Drury' },
+				author: { id: 'user-2', name: 'Ada Lovelace' },
+			},
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		});
+		const queryExecutor = mock<IntegrationContextQueryExecutor>();
+
+		const tool = createIntegrationContextTool({
+			descriptor: getIntegrationToolConnectionDescriptors([linear])[0],
+			messageContextStore,
+			queryExecutor,
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(schema.safeParse({ query: 'get_current_subject', input: {} }).success).toBe(true);
+		expect(tool.description).toContain('get_current_subject: no input');
+
+		const result = await tool.handler!(
+			{ query: 'get_current_subject', input: {} },
+			{ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+		);
+
+		expect(result).toEqual({
+			ok: true,
+			subject: {
+				type: 'issue',
+				id: 'ENG-123',
+				title: 'Fix signup',
+				description: 'Signup fails for invited users',
+				status: 'In Progress',
+				url: 'https://linear.app/n8n/issue/ENG-123/fix-signup',
+				labels: ['Bug'],
+				assignee: { id: 'user-1', name: 'Michael Drury' },
+				author: { id: 'user-2', name: 'Ada Lovelace' },
+			},
+		});
+		expect(queryExecutor.execute).not.toHaveBeenCalled();
+	});
+
 	it('context tool schema requires platform IDs for user and channel lookups', () => {
 		const tool = createIntegrationContextTool({
 			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
@@ -149,6 +203,48 @@ describe('integration tools', () => {
 		expect(schema.safeParse({ query: 'search_channels', input: {} }).success).toBe(false);
 		expect(tool.description).toContain('search_users: input.query or input.email');
 		expect(tool.description).toContain('search_channels: input.query');
+	});
+
+	it('context tool schema accepts Linear issue lookup and search queries', () => {
+		const tool = createIntegrationContextTool({
+			descriptor: getIntegrationToolConnectionDescriptors([linear], 'agent-1', () => ({
+				contextQueries: [
+					'get_current_message_context',
+					'get_current_subject',
+					'get_current_user',
+					'get_user',
+					'search_users',
+					'get_issue',
+					'search_issues',
+				],
+			}))[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			queryExecutor: mock<IntegrationContextQueryExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(schema.safeParse({ query: 'get_issue', input: { issueId: 'ENG-123' } }).success).toBe(
+			true,
+		);
+		expect(
+			schema.safeParse({
+				query: 'get_issue',
+				input: { issueId: 'ENG-123', includeComments: true, commentsLimit: 5 },
+			}).success,
+		).toBe(true);
+		expect(schema.safeParse({ query: 'get_issue', input: {} }).success).toBe(false);
+		expect(
+			schema.safeParse({ query: 'search_issues', input: { query: 'signup bug' } }).success,
+		).toBe(true);
+		expect(
+			schema.safeParse({
+				query: 'search_issues',
+				input: { query: 'signup bug', teamId: 'team-1', includeArchived: true, limit: 5 },
+			}).success,
+		).toBe(true);
+		expect(schema.safeParse({ query: 'search_issues', input: {} }).success).toBe(false);
+		expect(tool.description).toContain('get_issue: input.issueId');
+		expect(tool.description).toContain('search_issues: input.query');
 	});
 
 	it('integration tool schemas convert to JSON Schema objects for model providers', () => {
@@ -305,5 +401,68 @@ describe('integration tools', () => {
 				messageId: '123.456',
 			}),
 		});
+	});
+
+	it('action tool preserves the current subject when updating message context', async () => {
+		const messageContextStore = mock<IntegrationMessageContextStore>();
+		messageContextStore.getLatest.mockResolvedValue({
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: { type: 'thread', threadId: 'slack:C123:123.456', channelId: 'slack:C123' },
+			messageId: '123.456',
+			subject: {
+				type: 'issue',
+				id: 'ENG-123',
+				title: 'Fix signup',
+			},
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		});
+		const actionExecutor = mock<IntegrationActionExecutor>();
+		actionExecutor.execute.mockResolvedValue({
+			ok: true,
+			messageContext: {
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				target: { type: 'dm', userId: 'slack:U123', threadId: 'slack:D123' },
+				messageId: '456.789',
+				updatedAt: '2026-05-18T10:01:00.000Z',
+			},
+		});
+
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore,
+			actionExecutor,
+		}).build();
+
+		const result = await tool.handler!(
+			{ action: 'send_dm', input: { userId: 'slack:U123', message: { text: 'Hello' } } },
+			makeInterruptibleCtx(),
+		);
+
+		expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+			'thread-1',
+			'resource-1',
+			expect.objectContaining({
+				target: { type: 'dm', userId: 'slack:U123', threadId: 'slack:D123' },
+				subject: {
+					type: 'issue',
+					id: 'ENG-123',
+					title: 'Fix signup',
+				},
+			}),
+		);
+		expect(result).toEqual(
+			expect.objectContaining({
+				ok: true,
+				messageContext: expect.objectContaining({
+					subject: {
+						type: 'issue',
+						id: 'ENG-123',
+						title: 'Fix signup',
+					},
+				}),
+			}),
+		);
 	});
 });

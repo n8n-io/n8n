@@ -10,12 +10,14 @@ import {
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
 import type { ComponentMapper } from '../component-mapper';
+import type { IntegrationMessageContextService } from '../integration-message-context.service';
 import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 
 type ChatBotLike = ConstructorParameters<typeof AgentChatBridge>[0];
 
 interface FakeThread {
 	id: string;
+	channelId?: string;
 	subscribe: jest.Mock;
 	post: jest.Mock;
 }
@@ -43,6 +45,7 @@ function makeBot() {
 function makeThread(): FakeThread {
 	return {
 		id: 'thread-1',
+		channelId: 'channel-1',
 		subscribe: jest.fn().mockResolvedValue(undefined),
 		post: jest.fn().mockResolvedValue(undefined),
 	};
@@ -237,6 +240,125 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledTimes(1);
 			const received = await drainIterable(thread.post.mock.calls[0][0]);
 			expect(received).toBe('Hello world');
+		});
+	});
+
+	describe('message context', () => {
+		it('stores a sanitized message subject from the inbound message', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+				messageContextStore,
+			);
+
+			await handlers.mention!(thread, {
+				id: 'message-1',
+				text: 'what is this about?',
+				author: { userId: 'u1', userName: 'user1' },
+				get subject() {
+					return Promise.resolve({
+						type: 'issue',
+						id: 'ENG-123',
+						title: 'Fix signup',
+						description: 'Signup fails for invited users',
+						status: 'In Progress',
+						url: 'https://linear.app/n8n/issue/ENG-123/fix-signup',
+						labels: ['Bug'],
+						assignee: { id: 'user-2', name: 'Michael Drury' },
+						author: { id: 'user-3', name: 'Ada Lovelace' },
+						raw: { internal: 'not persisted' },
+					});
+				},
+			});
+
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'thread-1',
+				'u1',
+				expect.objectContaining({
+					integrationConnectionId: 'test-streaming:cred-1',
+					platform: 'test-streaming',
+					target: { type: 'thread', threadId: 'thread-1', channelId: 'channel-1' },
+					messageId: 'message-1',
+					interactingUserId: 'u1',
+					subject: {
+						type: 'issue',
+						id: 'ENG-123',
+						title: 'Fix signup',
+						description: 'Signup fails for invited users',
+						status: 'In Progress',
+						url: 'https://linear.app/n8n/issue/ENG-123/fix-signup',
+						labels: ['Bug'],
+						assignee: { id: 'user-2', name: 'Michael Drury' },
+						author: { id: 'user-3', name: 'Ada Lovelace' },
+					},
+				}),
+			);
+		});
+
+		it('keeps the previous subject when an action click updates the latest context', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue({
+				integrationConnectionId: 'test-streaming:cred-1',
+				platform: 'test-streaming',
+				target: { type: 'thread', threadId: 'thread-1', channelId: 'channel-1' },
+				messageId: 'message-1',
+				interactingUserId: 'u1',
+				subject: {
+					type: 'issue',
+					id: 'ENG-123',
+					title: 'Fix signup',
+				},
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			});
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+				messageContextStore,
+			);
+
+			await handlers.action!({
+				actionId: 'resume:run-1:tool-1:0',
+				value: '{"approved":true}',
+				messageId: 'card-message-1',
+				thread,
+				threadId: 'thread-1',
+				user: { userId: 'u2', userName: 'user2' },
+				adapter: { deleteMessage: jest.fn().mockResolvedValue(undefined) },
+			});
+
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'thread-1',
+				'u2',
+				expect.objectContaining({
+					messageId: 'card-message-1',
+					interactingUserId: 'u2',
+					subject: {
+						type: 'issue',
+						id: 'ENG-123',
+						title: 'Fix signup',
+					},
+				}),
+			);
 		});
 	});
 });

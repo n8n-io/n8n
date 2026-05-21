@@ -49,6 +49,18 @@ describe('LinearIntegration', () => {
 		expect(integration.credentialTypes).toEqual(['linearOAuth2Api']);
 	});
 
+	it('advertises Linear issue and user context queries', () => {
+		expect(integration.contextQueries).toEqual([
+			'get_current_message_context',
+			'get_current_subject',
+			'get_current_user',
+			'get_user',
+			'search_users',
+			'get_issue',
+			'search_issues',
+		]);
+	});
+
 	it('rejects Linear API token credentials', async () => {
 		await expect(
 			integration.createAdapter(ctx({ apiKey: 'lin_api_xyz', signingSecret: 'sec' })),
