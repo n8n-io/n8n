@@ -17,7 +17,13 @@ import type {
 	McpToolCallResult,
 } from '@n8n/api-types';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import type { GenericValue, INodeTypes } from 'n8n-workflow';
+import type {
+	GenericValue,
+	INodeInputConfiguration,
+	INodeTypes,
+	ITaskData,
+	NodeConnectionType,
+} from 'n8n-workflow';
 
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
@@ -213,6 +219,11 @@ export interface InstanceAiWorkflowService {
 		versionId: string,
 		data: { name?: string | null; description?: string | null },
 	): Promise<void>;
+	/** Per-node `ITaskData[]` of the workflow's most recent execution.
+	 *  Equivalent to `workflowsStore.getWorkflowRunData` on the canvas — used by
+	 *  workflow validation to detect previously-failed nodes. Returns `null`
+	 *  when the workflow has no execution history or the caller has no access. */
+	getLatestRunData?(workflowId: string): Promise<Record<string, ITaskData[]> | null>;
 }
 
 export interface ExecutionSummary {
@@ -356,6 +367,15 @@ export interface InstanceAiNodeService {
 		parameters: Record<string, unknown>,
 		existingCredentials?: Record<string, unknown>,
 	): Promise<string[]>;
+	/** Resolve a node's input definitions in the context of a full workflow so
+	 *  expression-based dynamic inputs evaluate against current parameter values.
+	 *  Mirrors NodeHelpers.getNodeInputs. Returns the same post-evaluation shape
+	 *  as INodeTypeDescription['inputs']. Used by workflow validation to detect
+	 *  required-but-unconnected inputs (e.g. AI Agent missing language model). */
+	getResolvedNodeInputs?(
+		workflow: WorkflowJSON,
+		nodeName: string,
+	): Promise<Array<NodeConnectionType | INodeInputConfiguration>>;
 }
 
 /** Richer node type shape that includes inputs, outputs, codex, and builderHint.
@@ -608,6 +628,10 @@ export interface InstanceAiContext {
 	allowedRunWorkflowIds?: ReadonlySet<string>;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
+	/** When `false`, callers must avoid surfacing node parameter values (or anything derived from them
+	 *  — e.g. raw execution-error text) to the LLM. Defaults to `true` when
+	 *  absent so package-only / test contexts behave unchanged. */
+	allowSendingParameterValues?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance.
 	 *  Injected into the system prompt so the agent can explain why certain capabilities are missing. */
 	licenseHints?: string[];

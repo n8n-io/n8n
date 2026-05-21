@@ -74,6 +74,19 @@ interface BuilderMemoryBinding {
 	thread: string;
 }
 
+export interface BuildWorkflowAgentRunResult {
+	text: string;
+	outcome: WorkflowBuildOutcome;
+}
+
+export interface MainWorkflowSnapshot {
+	exists: boolean;
+	sourceHash?: string;
+}
+
+const WORKFLOW_NOT_SUBMITTED_FAILURE_SIGNATURE = 'workflow:not_submitted';
+const WORKFLOW_FINAL_SUBMIT_FAILED_FAILURE_SIGNATURE = 'workflow:final_submit_failed';
+
 export function getBuilderSessionMemory(
 	context: Pick<OrchestrationContext, 'memory'>,
 	activeBuilderSession: BuilderSandboxSession | undefined,
@@ -470,6 +483,15 @@ export async function finalizeBuildResult(
 	};
 }
 
+async function reportAndFinalizeBuildResult(
+	context: OrchestrationContext,
+	workItemId: string,
+	result: BuildWorkflowAgentRunResult,
+): Promise<BuildWorkflowAgentRunResult> {
+	await context.workflowTaskService?.reportBuildOutcome(result.outcome);
+	return await finalizeBuildResult(context, workItemId, result);
+}
+
 async function buildOutcomeWithLatestVerification(
 	context: OrchestrationContext,
 	workItemId: string,
@@ -540,6 +562,46 @@ function hashContent(content: string | null): string {
 	return createHash('sha256')
 		.update(content ?? '', 'utf8')
 		.digest('hex');
+}
+
+export function createMainWorkflowSnapshot(content: string | null): MainWorkflowSnapshot {
+	if (content === null) {
+		return { exists: false };
+	}
+
+	return {
+		exists: true,
+		sourceHash: hashContent(content),
+	};
+}
+
+export function shouldFinalSubmitMainWorkflow(input: {
+	initial: MainWorkflowSnapshot;
+	current: MainWorkflowSnapshot;
+}): boolean {
+	return (
+		input.current.exists &&
+		(!input.initial.exists || input.initial.sourceHash !== input.current.sourceHash)
+	);
+}
+
+function buildNotSubmittedOutcome(
+	workItemId: string,
+	runId: string,
+	taskId: string,
+	finalText: string,
+	failureSignature = WORKFLOW_NOT_SUBMITTED_FAILURE_SIGNATURE,
+): WorkflowBuildOutcome {
+	return withDeterministicRouting({
+		workItemId,
+		runId,
+		taskId,
+		submitted: false,
+		triggerType: 'manual_or_testable',
+		needsUserInput: false,
+		failureSignature,
+		summary: finalText,
+	});
 }
 
 function deterministicSuffix(seed: string, label: string, length: number): string {
@@ -782,6 +844,57 @@ async function compactSuccessfulBuilderMemory(input: {
 	}
 }
 
+async function finalizeSuccessfulMainWorkflowSubmit(input: {
+	context: OrchestrationContext;
+	binding: BuilderMemoryBinding;
+	activeBuilderSession: BuilderSandboxSession | undefined;
+	domainContext: InstanceAiContext | undefined;
+	workItemId: string;
+	taskId: string;
+	mainWorkflowPath: string;
+	mainWorkflowAttempt: SubmitWorkflowAttempt;
+	submitAttemptHistory: SubmitWorkflowAttempt[];
+	lastRequestedChange: string;
+	finalText: string;
+	shouldUseBuilderMemory: boolean;
+}): Promise<BuildWorkflowAgentRunResult> {
+	await promoteMainWorkflow(
+		input.domainContext,
+		input.context.logger,
+		input.mainWorkflowAttempt.workflowId,
+	);
+	await compactSuccessfulBuilderMemory({
+		context: input.context,
+		binding: input.binding,
+		activeBuilderSession: input.activeBuilderSession,
+		domainContext: input.domainContext,
+		workflowId: input.mainWorkflowAttempt.workflowId,
+		workItemId: input.workItemId,
+		mainWorkflowPath: input.mainWorkflowPath,
+		mainWorkflowAttempt: input.mainWorkflowAttempt,
+		lastRequestedChange: input.lastRequestedChange,
+		finalText: input.finalText,
+		shouldUseBuilderMemory: input.shouldUseBuilderMemory,
+	});
+	const outcome = await buildOutcomeWithLatestVerification(
+		input.context,
+		input.workItemId,
+		input.taskId,
+		input.mainWorkflowAttempt,
+		input.finalText,
+		supportingWorkflowIdsFromSubmitAttempts(
+			input.submitAttemptHistory,
+			input.mainWorkflowPath,
+			input.mainWorkflowAttempt.workflowId,
+			input.mainWorkflowAttempt.referencedWorkflowIds,
+		),
+	);
+	return {
+		text: input.finalText,
+		outcome,
+	};
+}
+
 export function resultFromLaterFailedMainSubmit(input: {
 	failedAttempt: SubmitWorkflowAttempt;
 	submitAttempts: SubmitWorkflowAttempt[];
@@ -801,7 +914,19 @@ export function resultFromLaterFailedMainSubmit(input: {
 		`A later submit failed: ${errorText}`;
 	return {
 		text,
-		outcome: buildOutcome(input.workItemId, input.runId, input.taskId, preservedAttempt, text),
+		outcome: buildOutcome(
+			input.workItemId,
+			input.runId,
+			input.taskId,
+			preservedAttempt,
+			text,
+			supportingWorkflowIdsFromSubmitAttempts(
+				input.submitAttempts,
+				input.mainWorkflowPath,
+				preservedAttempt.workflowId,
+				preservedAttempt.referencedWorkflowIds,
+			),
+		),
 	};
 }
 
@@ -840,6 +965,176 @@ export function shouldRecoverSavedWorkflowAfterFailedSubmit(
 function formatSubmitWorkflowErrors(output: SubmitWorkflowOutput, fallback: string): string {
 	const errors = output.errors?.join(' ') ?? '';
 	return errors.length > 0 ? errors : fallback;
+}
+
+export async function settleMissingMainWorkflowSubmit(input: {
+	context: OrchestrationContext;
+	workItemId: string;
+	runId: string;
+	taskId: string;
+	workflowId: string | undefined;
+	mainWorkflowPath: string;
+	initialMainWorkflowSnapshot: MainWorkflowSnapshot;
+	currentMainWorkflow: string | null;
+	currentMainWorkflowHash: string;
+	submitTool: BuiltTool | undefined;
+	submitAttempts: Map<string, SubmitWorkflowAttempt>;
+	submitAttemptHistory: SubmitWorkflowAttempt[];
+	finalText: string;
+	onSuccessfulSubmit: (attempt: SubmitWorkflowAttempt) => Promise<BuildWorkflowAgentRunResult>;
+	onRecoveredSubmit: (result: BuildWorkflowAgentRunResult) => Promise<BuildWorkflowAgentRunResult>;
+}): Promise<BuildWorkflowAgentRunResult> {
+	const currentSnapshot = createMainWorkflowSnapshot(input.currentMainWorkflow);
+	const shouldFinalSubmit = shouldFinalSubmitMainWorkflow({
+		initial: input.initialMainWorkflowSnapshot,
+		current: currentSnapshot,
+	});
+	input.context.trackTelemetry?.('Builder finished without submit', {
+		thread_id: input.context.threadId,
+		run_id: input.runId,
+		work_item_id: input.workItemId,
+		...(input.workflowId ? { workflow_id: input.workflowId } : {}),
+		has_main_workflow_file: currentSnapshot.exists,
+		main_workflow_changed: shouldFinalSubmit,
+		final_settlement: shouldFinalSubmit
+			? 'final_submit'
+			: input.currentMainWorkflow === null
+				? 'missing_file'
+				: 'unchanged_file',
+	});
+
+	if (!shouldFinalSubmit) {
+		const text =
+			input.currentMainWorkflow === null
+				? 'Error: workflow builder finished without creating or submitting /src/workflow.ts.'
+				: 'Error: workflow builder finished without submitting /src/workflow.ts; the file was unchanged from the start of the run.';
+		return await reportAndFinalizeBuildResult(input.context, input.workItemId, {
+			text,
+			outcome: buildNotSubmittedOutcome(input.workItemId, input.runId, input.taskId, text),
+		});
+	}
+
+	if (!input.submitTool?.handler) {
+		const text =
+			'Error: workflow builder wrote /src/workflow.ts, but submit-workflow was unavailable for final settlement.';
+		return await reportAndFinalizeBuildResult(input.context, input.workItemId, {
+			text,
+			outcome: buildNotSubmittedOutcome(
+				input.workItemId,
+				input.runId,
+				input.taskId,
+				text,
+				WORKFLOW_FINAL_SUBMIT_FAILED_FAILURE_SIGNATURE,
+			),
+		});
+	}
+
+	const attemptsBeforeFinalSubmit = input.submitAttemptHistory.length;
+	let finalSubmit: SubmitWorkflowOutput;
+	try {
+		const submitInput: Record<string, unknown> = { filePath: input.mainWorkflowPath };
+		if (input.workflowId) {
+			submitInput.workflowId = input.workflowId;
+		}
+		finalSubmit = (await input.submitTool.handler(submitInput, {})) as SubmitWorkflowOutput;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		const recordedAttempt = input.submitAttempts.get(input.mainWorkflowPath);
+		if (isFreshAttemptForHash(recordedAttempt, input.currentMainWorkflowHash)) {
+			if (recordedAttempt.success) {
+				return await input.onSuccessfulSubmit(recordedAttempt);
+			}
+
+			if (shouldRecoverSavedWorkflowAfterFailedSubmit(recordedAttempt)) {
+				const recovered = resultFromLaterFailedMainSubmit({
+					failedAttempt: recordedAttempt,
+					submitAttempts: input.submitAttemptHistory,
+					mainWorkflowPath: input.mainWorkflowPath,
+					workItemId: input.workItemId,
+					runId: input.runId,
+					taskId: input.taskId,
+				});
+				if (recovered) {
+					return await input.onRecoveredSubmit(recovered);
+				}
+			}
+
+			const recordedErrors = recordedAttempt.errors?.join(' ') ?? message;
+			const text = `Error: final submit of /src/workflow.ts failed. ${recordedErrors}`;
+			return await finalizeBuildResult(input.context, input.workItemId, {
+				text,
+				outcome: buildOutcome(input.workItemId, input.runId, input.taskId, recordedAttempt, text),
+			});
+		}
+
+		const text = `Error: final submit of /src/workflow.ts failed before recording an attempt. ${message}`;
+		const result = {
+			text,
+			outcome: buildNotSubmittedOutcome(
+				input.workItemId,
+				input.runId,
+				input.taskId,
+				text,
+				WORKFLOW_FINAL_SUBMIT_FAILED_FAILURE_SIGNATURE,
+			),
+		};
+		if (input.submitAttemptHistory.length === attemptsBeforeFinalSubmit) {
+			return await reportAndFinalizeBuildResult(input.context, input.workItemId, result);
+		}
+		return await finalizeBuildResult(input.context, input.workItemId, result);
+	}
+
+	const refreshedAttempt = attemptFromAutoResubmit({
+		latestAttempt: input.submitAttempts.get(input.mainWorkflowPath),
+		resubmit: finalSubmit,
+		filePath: input.mainWorkflowPath,
+		sourceHash: input.currentMainWorkflowHash,
+	});
+	if (finalSubmit.success && refreshedAttempt?.success) {
+		return await input.onSuccessfulSubmit(refreshedAttempt);
+	}
+
+	if (
+		refreshedAttempt &&
+		!refreshedAttempt.success &&
+		shouldRecoverSavedWorkflowAfterFailedSubmit(refreshedAttempt)
+	) {
+		const recovered = resultFromLaterFailedMainSubmit({
+			failedAttempt: refreshedAttempt,
+			submitAttempts: input.submitAttemptHistory,
+			mainWorkflowPath: input.mainWorkflowPath,
+			workItemId: input.workItemId,
+			runId: input.runId,
+			taskId: input.taskId,
+		});
+		if (recovered) {
+			return await input.onRecoveredSubmit(recovered);
+		}
+	}
+
+	const finalSubmitErrors =
+		refreshedAttempt?.errors?.join(' ') ??
+		formatSubmitWorkflowErrors(finalSubmit, 'Final submit did not record a main workflow attempt.');
+	const text = `Error: final submit of /src/workflow.ts failed. ${finalSubmitErrors}`;
+	const result = {
+		text,
+		outcome: refreshedAttempt
+			? buildOutcome(input.workItemId, input.runId, input.taskId, refreshedAttempt, text)
+			: buildNotSubmittedOutcome(
+					input.workItemId,
+					input.runId,
+					input.taskId,
+					text,
+					WORKFLOW_FINAL_SUBMIT_FAILED_FAILURE_SIGNATURE,
+				),
+	};
+	const reportedMainAttempt = input.submitAttempts.get(input.mainWorkflowPath);
+	// The submit tool's onAttempt hook reports recorded main-path attempts; only
+	// report here when final settlement failed before that hook captured one.
+	if (!refreshedAttempt || refreshedAttempt !== reportedMainAttempt) {
+		return await reportAndFinalizeBuildResult(input.context, input.workItemId, result);
+	}
+	return await finalizeBuildResult(input.context, input.workItemId, result);
 }
 
 export interface StartBuildWorkflowAgentInput {
@@ -1045,7 +1340,10 @@ export async function startBuildWorkflowAgentTask(
 								workspace = activeBuilderSession.workspace;
 								root = activeBuilderSession.root;
 							} else {
-								builderWs = await factory.create(subAgentId, domainContext);
+								builderWs = await factory.create(subAgentId, domainContext, {
+									runId: context.runId,
+									threadId: context.threadId,
+								});
 								workspace = builderWs.workspace;
 								root = await getWorkspaceRoot(workspace);
 							}
@@ -1079,6 +1377,9 @@ export async function startBuildWorkflowAgentTask(
 							}
 
 							const mainWorkflowPath = `${root}/src/workflow.ts`;
+							const initialMainWorkflowSnapshot = createMainWorkflowSnapshot(
+								await readFileViaSandbox(workspace, mainWorkflowPath),
+							);
 							builderTools.set(
 								'submit-workflow',
 								createIdentityEnforcedSubmitWorkflowTool({
@@ -1239,12 +1540,44 @@ export async function startBuildWorkflowAgentTask(
 							const currentMainWorkflowHash = hashContent(currentMainWorkflow);
 
 							if (!mainWorkflowAttempt) {
-								const text =
-									'Error: workflow builder finished without submitting /src/workflow.ts.';
-								return {
-									text,
-									outcome: buildOutcome(workItemId, context.runId, taskId, undefined, text),
-								};
+								return await settleMissingMainWorkflowSubmit({
+									context,
+									workItemId,
+									runId: context.runId,
+									taskId,
+									workflowId,
+									mainWorkflowPath,
+									initialMainWorkflowSnapshot,
+									currentMainWorkflow,
+									currentMainWorkflowHash,
+									submitTool: tracedBuilderTools.get('submit-workflow'),
+									submitAttempts,
+									submitAttemptHistory,
+									finalText,
+									onSuccessfulSubmit: async (attempt) =>
+										await finalizeSuccessfulMainWorkflowSubmit({
+											context,
+											binding: builderMemoryBinding,
+											activeBuilderSession,
+											domainContext,
+											workItemId,
+											taskId,
+											mainWorkflowPath,
+											mainWorkflowAttempt: attempt,
+											submitAttemptHistory,
+											lastRequestedChange: input.task,
+											finalText,
+											shouldUseBuilderMemory,
+										}),
+									onRecoveredSubmit: async (recovered) => {
+										await promoteMainWorkflow(
+											domainContext,
+											context.logger,
+											recovered.outcome.workflowId,
+										);
+										return await finalizeBuildResult(context, workItemId, recovered);
+									},
+								});
 							}
 
 							if (!mainWorkflowAttempt.success) {
