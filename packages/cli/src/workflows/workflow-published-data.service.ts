@@ -1,5 +1,9 @@
 import { Logger } from '@n8n/backend-common';
-import { WorkflowPublishedVersionRepository, type SharedWorkflow } from '@n8n/db';
+import {
+	WorkflowPublishedVersionRepository,
+	type SharedWorkflow,
+	type WorkflowEntity,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { IConnections, IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
 
@@ -11,6 +15,13 @@ export interface PublishedWorkflowData {
 	staticData: IDataObject | undefined;
 	settings: IWorkflowSettings | undefined;
 	shared: SharedWorkflow[];
+	/**
+	 * The underlying workflow entity loaded alongside the published version
+	 * (in the same query, with shared/project relations). Callers that need
+	 * more than the projected fields above should use this instead of
+	 * issuing a separate query.
+	 */
+	workflow: WorkflowEntity;
 }
 
 /**
@@ -59,6 +70,7 @@ export class WorkflowPublishedDataService {
 			staticData: workflow.staticData,
 			settings: workflow.settings,
 			shared: workflow.shared ?? [],
+			workflow,
 		};
 	}
 }

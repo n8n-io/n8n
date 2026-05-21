@@ -298,6 +298,14 @@ describe('LiveWebhooks', () => {
 
 			const activeNodes = [createWebhookNode('webhook-node-active', [100, 200])];
 
+			const workflowEntity = mock<WorkflowEntity>({
+				id: workflowId,
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: 'v1',
+				isArchived: false,
+			});
+
 			const publishedData: PublishedWorkflowData = {
 				id: workflowId,
 				name: 'Test Workflow',
@@ -308,15 +316,8 @@ describe('LiveWebhooks', () => {
 				shared: [
 					{ role: 'workflow:owner', projectId: 'project-1' } as PublishedWorkflowData['shared'][0],
 				],
+				workflow: workflowEntity,
 			};
-
-			const workflowEntity = mock<WorkflowEntity>({
-				id: workflowId,
-				name: 'Test Workflow',
-				active: true,
-				activeVersionId: 'v1',
-				isArchived: false,
-			});
 
 			const webhookEntity = mock<WebhookEntity>({
 				workflowId,

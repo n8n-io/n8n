@@ -37,6 +37,12 @@ interface WebhookExecutionData {
 	activeWorkflowData: IWorkflowBase;
 }
 
+function findOwnerProjectId(
+	shared: ReadonlyArray<{ role: string; projectId?: string }> | undefined,
+): string | undefined {
+	return shared?.find((share) => share.role === 'workflow:owner')?.projectId;
+}
+
 /**
  * Service for handling the execution of live webhooks, i.e. webhooks
  * that belong to activated workflows and use the production URL
@@ -206,71 +212,54 @@ export class LiveWebhooks implements IWebhookManager {
 	}
 
 	private async loadWebhookExecutionData(workflowId: string): Promise<WebhookExecutionData> {
-		if (this.workflowsConfig.useWorkflowPublicationService) {
-			const publishedData =
-				await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
-			if (publishedData === null) {
-				throw new NotFoundError(`Published version not found for workflow with id "${workflowId}"`);
-			}
-			const { nodes, connections } = publishedData;
-			const workflowName = publishedData.name;
-			const staticData = publishedData.staticData;
-			const settings = publishedData.settings;
-			const isActive = true;
-			const ownerProjectId = publishedData.shared.find(
-				(share) => share.role === 'workflow:owner',
-			)?.projectId;
+		return this.workflowsConfig.useWorkflowPublicationService
+			? await this.loadFromPublishedVersion(workflowId)
+			: await this.loadFromActiveVersion(workflowId);
+	}
 
-			const workflowEntity = await this.workflowRepository.findOne({
-				where: { id: workflowId },
-			});
-			if (!workflowEntity) {
-				throw new NotFoundError(`Could not find workflow with id "${workflowId}"`);
-			}
-			const activeWorkflowData: IWorkflowBase = { ...workflowEntity, nodes, connections };
-
-			return {
-				nodes,
-				connections,
-				workflowName,
-				staticData,
-				settings,
-				isActive,
-				ownerProjectId,
-				activeWorkflowData,
-			};
-		} else {
-			const workflowData = await this.workflowRepository.findOne({
-				where: { id: workflowId },
-				relations: { activeVersion: true, shared: true },
-			});
-			if (workflowData === null) {
-				throw new NotFoundError(`Could not find workflow with id "${workflowId}"`);
-			}
-			if (!workflowData.activeVersion) {
-				throw new NotFoundError(`Active version not found for workflow with id "${workflowId}"`);
-			}
-			const { nodes, connections } = workflowData.activeVersion;
-			const workflowName = workflowData.name;
-			const staticData = workflowData.staticData;
-			const settings = workflowData.settings;
-			const isActive = workflowData.activeVersionId !== null;
-			const ownerProjectId = workflowData.shared.find(
-				(share) => share.role === 'workflow:owner',
-			)?.projectId;
-			const activeWorkflowData: IWorkflowBase = { ...workflowData, nodes, connections };
-
-			return {
-				nodes,
-				connections,
-				workflowName,
-				staticData,
-				settings,
-				isActive,
-				ownerProjectId,
-				activeWorkflowData,
-			};
+	private async loadFromPublishedVersion(workflowId: string): Promise<WebhookExecutionData> {
+		const publishedData =
+			await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
+		if (publishedData === null) {
+			throw new NotFoundError(`Published version not found for workflow with id "${workflowId}"`);
 		}
+
+		const { nodes, connections, workflow } = publishedData;
+		return {
+			nodes,
+			connections,
+			workflowName: publishedData.name,
+			staticData: publishedData.staticData,
+			settings: publishedData.settings,
+			isActive: true,
+			ownerProjectId: findOwnerProjectId(publishedData.shared),
+			activeWorkflowData: { ...workflow, nodes, connections },
+		};
+	}
+
+	private async loadFromActiveVersion(workflowId: string): Promise<WebhookExecutionData> {
+		const workflowData = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			relations: { activeVersion: true, shared: true },
+		});
+		if (workflowData === null) {
+			throw new NotFoundError(`Could not find workflow with id "${workflowId}"`);
+		}
+		if (!workflowData.activeVersion) {
+			throw new NotFoundError(`Active version not found for workflow with id "${workflowId}"`);
+		}
+
+		const { nodes, connections } = workflowData.activeVersion;
+		return {
+			nodes,
+			connections,
+			workflowName: workflowData.name,
+			staticData: workflowData.staticData,
+			settings: workflowData.settings,
+			isActive: workflowData.activeVersionId !== null,
+			ownerProjectId: findOwnerProjectId(workflowData.shared),
+			activeWorkflowData: { ...workflowData, nodes, connections },
+		};
 	}
 
 	private async findWebhook(path: string, httpMethod: IHttpRequestMethods) {
