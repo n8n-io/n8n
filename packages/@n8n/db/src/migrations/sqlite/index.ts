@@ -178,10 +178,8 @@ import { AddNodeGroupsColumnToWorkflowAndHistory1784000000006 } from '../common/
 import { CreateInstanceAiCheckpointTable1784000000007 } from '../common/1784000000007-CreateInstanceAiCheckpointTable';
 import { ResetInstanceAiNativePersistence1784000000008 } from '../common/1784000000008-ResetInstanceAiNativePersistence';
 import { CreateAgentEvaluationCaseTable1784000000009 } from '../common/1784000000009-CreateAgentEvaluationCaseTable';
-import { AddRejectionReasonToAgentEvaluationCase1784000000010 } from '../common/1784000000010-AddRejectionReasonToAgentEvaluationCase';
-import { AddAgentVersionIdToAgentEvaluationCase1784000000011 } from '../common/1784000000011-AddAgentVersionIdToAgentEvaluationCase';
 import { CreateAgentEvaluationRunTable1784000000012 } from '../common/1784000000012-CreateAgentEvaluationRunTable';
-import { UpdateAgentEvaluationReviewData1784000000013 } from '../common/1784000000013-UpdateAgentEvaluationReviewData';
+import { AddAgentVersionIdToAgentExecution1784000000013 } from '../common/1784000000013-AddAgentVersionIdToAgentExecution';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -365,10 +363,8 @@ const sqliteMigrations: Migration[] = [
 	CreateInstanceAiCheckpointTable1784000000007,
 	ResetInstanceAiNativePersistence1784000000008,
 	CreateAgentEvaluationCaseTable1784000000009,
-	AddRejectionReasonToAgentEvaluationCase1784000000010,
-	AddAgentVersionIdToAgentEvaluationCase1784000000011,
 	CreateAgentEvaluationRunTable1784000000012,
-	UpdateAgentEvaluationReviewData1784000000013,
+	AddAgentVersionIdToAgentExecution1784000000013,
 ];
 
 export { sqliteMigrations };

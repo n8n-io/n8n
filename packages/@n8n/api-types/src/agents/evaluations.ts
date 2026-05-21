@@ -1,4 +1,4 @@
-import type { AgentReviewCasesResponse, AgentReviewSummary } from './debug';
+import type { AgentReviewCasesResponse, AgentReviewSummary } from './review';
 
 export const AGENT_EVALUATION_MIN_REVIEWED_CASES = 5;
 

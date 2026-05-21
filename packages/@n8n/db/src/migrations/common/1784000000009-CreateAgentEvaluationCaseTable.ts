@@ -1,5 +1,7 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
+const AGENT_REVIEW_REJECTION_REASONS = ['wrong_answer', 'wrong_tool_calling', 'other'];
+
 export class CreateAgentEvaluationCaseTable1784000000009 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable('agent_evaluation_case')
@@ -7,8 +9,12 @@ export class CreateAgentEvaluationCaseTable1784000000009 implements ReversibleMi
 				column('id').varchar(36).primary.notNull,
 				column('projectId').varchar(255).notNull,
 				column('agentId').varchar(36).notNull,
+				column('agentVersionId').varchar(255).notNull,
+				column('conversationId').varchar(36).notNull,
 				column('executionId').varchar(36).notNull,
 				column('status').varchar(16).notNull.withEnumCheck(['approved', 'rejected']),
+				column('rejectionReason').varchar(32).withEnumCheck(AGENT_REVIEW_REJECTION_REASONS),
+				column('toolCallCorrection').json,
 				column('input').text.notNull,
 				column('expectedOutput').text.notNull,
 				column('actualOutput').text.notNull,
@@ -18,6 +24,7 @@ export class CreateAgentEvaluationCaseTable1784000000009 implements ReversibleMi
 			)
 			.withIndexOn('projectId')
 			.withIndexOn(['agentId', 'status', 'updatedAt'])
+			.withIndexOn(['agentId', 'agentVersionId', 'status', 'updatedAt'])
 			.withIndexOn('executionId', true)
 			.withForeignKey('projectId', {
 				tableName: 'project',

@@ -1,6 +1,6 @@
 export * from './agent-integration.schema';
 export * from './agent-json-config.schema';
-export * from './debug';
+export * from './review';
 export * from './evaluations';
 export * from './dto';
 export * from './types';

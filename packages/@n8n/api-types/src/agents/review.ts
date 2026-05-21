@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { Z } from '../zod-class';
 
-export type AgentDebugSignalType =
+export type AgentReviewSignalType =
 	| 'failed_run'
 	| 'slow_run'
 	| 'high_cost'
@@ -11,11 +11,11 @@ export type AgentDebugSignalType =
 	| 'human_input_required'
 	| 'empty_response';
 
-export type AgentDebugSignalSeverity = 'info' | 'warning' | 'error';
+export type AgentReviewSignalSeverity = 'info' | 'warning' | 'error';
 
-export interface AgentDebugSignal {
-	type: AgentDebugSignalType;
-	severity: AgentDebugSignalSeverity;
+export interface AgentReviewSignal {
+	type: AgentReviewSignalType;
+	severity: AgentReviewSignalSeverity;
 	label: string;
 	description: string;
 	count: number;
@@ -91,7 +91,7 @@ export class UpsertAgentReviewCaseDto extends Z.class({
 	notes: z.string().max(2000).optional(),
 }) {}
 
-export interface AgentDebugRun {
+export interface AgentReviewRun {
 	id: string;
 	threadId: string;
 	sessionNumber: number;
@@ -112,50 +112,50 @@ export interface AgentDebugRun {
 	error: string | null;
 	hitlStatus: 'suspended' | 'resumed' | null;
 	source: string | null;
-	signals: AgentDebugSignal[];
+	signals: AgentReviewSignal[];
 	review: AgentReviewCase | null;
 }
 
-export interface AgentDebugRunVersionSummary {
+export interface AgentReviewRunVersionSummary {
 	agentVersionId: string;
 	total: number;
 	latestRunAt: string | null;
 }
 
-export type AgentDebugTimelineEvent = Record<string, unknown> & { type: string };
+export type AgentReviewTimelineEvent = Record<string, unknown> & { type: string };
 
-export interface AgentDebugToolCall {
+export interface AgentReviewToolCall {
 	name: string;
 	input: unknown;
 	output: unknown;
 }
 
-export interface AgentDebugRunDetail extends AgentDebugRun {
-	toolCalls: AgentDebugToolCall[] | null;
-	timeline: AgentDebugTimelineEvent[] | null;
+export interface AgentReviewRunDetail extends AgentReviewRun {
+	toolCalls: AgentReviewToolCall[] | null;
+	timeline: AgentReviewTimelineEvent[] | null;
 	workingMemory: string | null;
 }
 
-export interface AgentDebugRunsResponse {
-	runs: AgentDebugRun[];
-	versions: AgentDebugRunVersionSummary[];
+export interface AgentReviewRunsResponse {
+	runs: AgentReviewRun[];
+	versions: AgentReviewRunVersionSummary[];
 	nextCursor: string | null;
 }
 
-export interface AgentDebugInsight {
-	type: AgentDebugSignalType;
-	severity: AgentDebugSignalSeverity;
+export interface AgentReviewInsight {
+	type: AgentReviewSignalType;
+	severity: AgentReviewSignalSeverity;
 	label: string;
 	description: string;
 	count: number;
 	latestRunId: string;
 }
 
-export interface AgentDebugInsightsResponse {
+export interface AgentReviewInsightsResponse {
 	totalRuns: number;
 	totalSignals: number;
 	errorRate: number;
 	averageDuration: number;
 	totalCost: number;
-	insights: AgentDebugInsight[];
+	insights: AgentReviewInsight[];
 }
