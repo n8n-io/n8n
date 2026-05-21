@@ -78,7 +78,7 @@ export function buildFollowUpPrompt(ctx: PromptContext): string {
 		formatTranscriptSection(ctx),
 		'The agent has just finished a run. Decide what the user would say next.',
 		'',
-		'Pick `send_follow_up_message` when the agent asked a question (in its last response) that the script answers, or when the agent stalled and needs unblocking. Carry concrete values from the script verbatim.',
+		"Pick `send_follow_up_message` when the agent asked a question (in its last response) or stalled and needs unblocking. If the script answers the question, deliver that answer with concrete values verbatim. If the script doesn't cover it and credentials aren't involved, give a brief plausible reply.",
 		'Pick `declare_done` when the agent finished a build, approved/rejected a plan appropriately, or otherwise has no open thread for the user to respond to. The script is a reference, not a checklist — late script content gets surfaced via plan rejection, not unsolicited follow-ups.',
 	].join('\n\n');
 }
