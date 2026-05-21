@@ -34,8 +34,6 @@ import { AuthService } from '@/auth/auth.service';
 
 @Service()
 export class ControllerRegistry {
-	private readonly logger: Logger;
-
 	constructor(
 		private readonly license: License,
 		private readonly authService: AuthService,
@@ -43,9 +41,7 @@ export class ControllerRegistry {
 		private readonly lastActiveAtService: LastActiveAtService,
 		private readonly rateLimitService: RateLimitService,
 		private readonly pathResolvingService: PathResolvingService,
-	) {
-		this.logger = Container.get(Logger);
-	}
+	) {}
 
 	activate(app: Application) {
 		for (const controllerClass of this.metadata.controllerClasses) {
@@ -65,8 +61,6 @@ export class ControllerRegistry {
 			: this.pathResolvingService.resolveRestEndpoint(metadata.basePath);
 
 		const prefix = controllerPath.replace(/\/+/g, '/').replace(/\/$/, '');
-
-		this.logger.debug(`Controller prefix: ${prefix} (controller: ${controllerClass.name})`);
 
 		app.use(prefix === '' ? '/' : prefix, router);
 
