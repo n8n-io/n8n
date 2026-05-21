@@ -337,6 +337,33 @@ describe('integration tools', () => {
 		expect(tool.description).toContain('send_channel_message: input.channelId');
 	});
 
+	it('action tool schema accepts Slack emoji reaction actions', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1', () => ({
+				actions: ['respond', 'send_dm', 'send_channel_message', 'add_reaction'],
+			}))[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(schema.safeParse({ action: 'add_reaction', input: { emoji: 'eyes' } }).success).toBe(
+			true,
+		);
+		expect(
+			schema.safeParse({
+				action: 'add_reaction',
+				input: {
+					emoji: ':white_check_mark:',
+					threadId: 'slack:C123:123.456',
+					messageId: '123.456',
+				},
+			}).success,
+		).toBe(true);
+		expect(schema.safeParse({ action: 'add_reaction', input: {} }).success).toBe(false);
+		expect(tool.description).toContain('add_reaction: input.emoji is required');
+	});
+
 	it('action tool schema accepts Linear issue and comment creation actions', () => {
 		const tool = createIntegrationActionTool({
 			descriptor: getIntegrationToolConnectionDescriptors([linear], 'agent-1', () => ({

@@ -20,6 +20,7 @@ interface FakeThread {
 	channelId?: string;
 	subscribe: jest.Mock;
 	post: jest.Mock;
+	startTyping: jest.Mock;
 }
 
 function makeBot() {
@@ -48,6 +49,7 @@ function makeThread(): FakeThread {
 		channelId: 'channel-1',
 		subscribe: jest.fn().mockResolvedValue(undefined),
 		post: jest.fn().mockResolvedValue(undefined),
+		startTyping: jest.fn().mockResolvedValue(undefined),
 	};
 }
 
@@ -240,6 +242,73 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledTimes(1);
 			const received = await drainIterable(thread.post.mock.calls[0][0]);
 			expect(received).toBe('Hello world');
+		});
+	});
+
+	describe('Slack assistant status', () => {
+		const slackIntegration = {
+			type: 'slack',
+			credentialId: 'cred-1',
+		} as unknown as AgentCredentialIntegrationConfig;
+
+		it('sets a thinking status before executing a Slack mention', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: jest.fn(() =>
+					toStream([{ type: 'finish', finishReason: 'stop' }]),
+				),
+				resumeForChat: jest.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalled();
+		});
+
+		it('sets a thinking status before resuming a Slack action', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: jest.fn(() =>
+					toStream([{ type: 'finish', finishReason: 'stop' }]),
+				),
+				resumeForChat: jest.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
+
+			await handlers.action!({
+				actionId: 'resume:run-1:tool-1:0',
+				value: '{"approved":true}',
+				messageId: 'card-message-1',
+				thread,
+				threadId: 'thread-1',
+				user: { userId: 'u2', userName: 'user2' },
+				adapter: { deleteMessage: jest.fn().mockResolvedValue(undefined) },
+			});
+
+			expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
+			expect(agentExecutor.resumeForChat).toHaveBeenCalled();
 		});
 	});
 

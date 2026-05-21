@@ -46,7 +46,12 @@ export class SlackIntegration extends AgentChatIntegration {
 		'search_channels',
 	];
 
-	readonly actions: IntegrationAction[] = ['respond', 'send_dm', 'send_channel_message'];
+	readonly actions: IntegrationAction[] = [
+		'respond',
+		'send_dm',
+		'send_channel_message',
+		'add_reaction',
+	];
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const botToken = this.extractBotToken(ctx.credential);

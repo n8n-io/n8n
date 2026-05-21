@@ -104,6 +104,7 @@ export type IntegrationAction =
 	| 'respond'
 	| 'send_dm'
 	| 'send_channel_message'
+	| 'add_reaction'
 	| 'create_issue'
 	| 'create_comment';
 
@@ -382,6 +383,28 @@ const sendChannelMessageActionInputSchema = z.object({
 		.strict(),
 });
 
+const addReactionActionInputSchema = z.object({
+	action: z.literal('add_reaction'),
+	input: z
+		.object({
+			emoji: z
+				.string()
+				.min(1)
+				.describe('Emoji name or shortcode to add, for example eyes or :white_check_mark:.'),
+			threadId: z
+				.string()
+				.min(1)
+				.optional()
+				.describe('Optional Slack thread ID. Defaults to the latest message context.'),
+			messageId: z
+				.string()
+				.min(1)
+				.optional()
+				.describe('Optional Slack message timestamp. Defaults to the latest message context.'),
+		})
+		.strict(),
+});
+
 const createIssueActionInputSchema = z.object({
 	action: z.literal('create_issue'),
 	input: z
@@ -418,6 +441,7 @@ type IntegrationActionToolInput =
 	| z.infer<typeof respondActionInputSchema>
 	| z.infer<typeof sendDmActionInputSchema>
 	| z.infer<typeof sendChannelMessageActionInputSchema>
+	| z.infer<typeof addReactionActionInputSchema>
 	| z.infer<typeof createIssueActionInputSchema>
 	| z.infer<typeof createCommentActionInputSchema>;
 
@@ -425,6 +449,7 @@ const ACTION_INPUT_SCHEMAS: Record<IntegrationAction, z.ZodType<IntegrationActio
 	respond: respondActionInputSchema,
 	send_dm: sendDmActionInputSchema,
 	send_channel_message: sendChannelMessageActionInputSchema,
+	add_reaction: addReactionActionInputSchema,
 	create_issue: createIssueActionInputSchema,
 	create_comment: createCommentActionInputSchema,
 };
@@ -473,6 +498,8 @@ const ACTION_DESCRIPTIONS = {
 		'send_dm: input.userId and input.message are required. userId must be a platform user ID, not a name, handle, or email.',
 	send_channel_message:
 		'send_channel_message: input.channelId and input.message are required. channelId must be a platform channel ID, not a channel name.',
+	add_reaction:
+		'add_reaction: input.emoji is required. For Slack, optional input.threadId and input.messageId target a specific message; otherwise the latest message context is used.',
 	create_issue:
 		'create_issue: input.teamId and input.title are required. For Linear, optional input.description, input.assigneeId, input.projectId, input.labelIds, input.priority, input.stateId, and input.parentId configure the issue.',
 	create_comment:
@@ -481,7 +508,14 @@ const ACTION_DESCRIPTIONS = {
 
 const actionSuspendSchema = z.object({
 	type: z.literal('integration_action'),
-	action: z.enum(['respond', 'send_dm', 'send_channel_message', 'create_issue', 'create_comment']),
+	action: z.enum([
+		'respond',
+		'send_dm',
+		'send_channel_message',
+		'add_reaction',
+		'create_issue',
+		'create_comment',
+	]),
 	integrationConnectionId: z.string(),
 	messageContext: z.unknown(),
 });

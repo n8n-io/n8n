@@ -7,6 +7,15 @@ describe('SlackIntegration', () => {
 		integration = new SlackIntegration();
 	});
 
+	it('advertises Slack messaging and reaction actions', () => {
+		expect(integration.actions).toEqual([
+			'respond',
+			'send_dm',
+			'send_channel_message',
+			'add_reaction',
+		]);
+	});
+
 	describe('handleUnauthenticatedWebhook', () => {
 		it('echoes the challenge for a url_verification event', () => {
 			const result = integration.handleUnauthenticatedWebhook({

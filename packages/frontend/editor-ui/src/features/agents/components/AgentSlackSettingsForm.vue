@@ -86,11 +86,15 @@ const slackAppManifest = computed(() => {
 						'files:read',
 						'files:write',
 						'groups:read',
+						'groups:history',
 						'im:history',
 						'im:read',
 						'im:write',
+						'mpim:history',
 						'mpim:read',
 						'mpim:write',
+						'reactions:read',
+						'reactions:write',
 						'search:read.public',
 						'users:read',
 						'users:read.email',
@@ -101,7 +105,15 @@ const slackAppManifest = computed(() => {
 			settings: {
 				event_subscriptions: {
 					request_url: webhookUrl,
-					bot_events: ['app_mention', 'assistant_thread_context_changed', 'message.im'],
+					bot_events: [
+						'app_mention',
+						'assistant_thread_started',
+						'assistant_thread_context_changed',
+						'message.channels',
+						'message.groups',
+						'message.im',
+						'message.mpim',
+					],
 				},
 				interactivity: {
 					is_enabled: true,
