@@ -3,15 +3,18 @@ import { Service } from '@n8n/di';
 import { INodeExecutionData, ISecureArtifactsV1, jsonParse } from 'n8n-workflow';
 
 import { InboundSecretsConfig } from './inbound-secrets.config';
-import { SensitiveFieldRules, sensitiveFieldRulesSchema } from './inbound-secrets.schemas';
+import {
+	SensitiveFieldRules,
+	sensitiveFieldRulesSchema,
+	ValueLookupPath,
+} from './inbound-secrets.schemas';
 import { extractAndClear } from './path-traversal';
 
-type ArtifactItem = ISecureArtifactsV1['artifacts'][string][number];
-type ArtifactValue = ArtifactItem[string];
+type ArtifactItem = ISecureArtifactsV1['artifacts'][string];
 
 export type StripResult = {
 	triggerItems: INodeExecutionData[];
-	artifactsByItem: ArtifactItem[];
+	artifactsByAlias: Record<string, ArtifactItem>;
 };
 
 @Service()
@@ -43,40 +46,44 @@ export class InboundSecretsService {
 		this.sensitiveFieldRules = parsedRules.data;
 	}
 
-	strip(
-		items: INodeExecutionData[],
-		triggerNodeType: string,
-		descriptionPaths: string[] = [],
-	): StripResult {
-		const paths = Array.from(
-			new Set([
-				...(this.sensitiveFieldRules['*'] ?? []),
-				...(this.sensitiveFieldRules[triggerNodeType] ?? []),
-				...descriptionPaths,
-			]),
-		);
+	private extractFromItem(
+		rule: ValueLookupPath,
+		item: INodeExecutionData,
+	): ArtifactItem | undefined {
+		const extracted = extractAndClear(item.json, rule.path);
+		if (extracted === undefined) return undefined;
+		return toJsonValue(extracted);
+	}
 
-		const artifactsByItem = items.map((item) => {
-			const perItem: ArtifactItem = {};
-			for (const path of paths) {
-				const extracted = extractAndClear(item.json, path);
-				if (extracted === undefined) continue;
-				const sanitised = toJsonValue(extracted);
-				if (sanitised !== undefined) perItem[path] = sanitised;
+	strip(items: INodeExecutionData[], triggerNodeType: string): StripResult {
+		const artifactsByAlias: Record<string, ArtifactItem> = {};
+
+		for (const [alias, rule] of Object.entries(this.sensitiveFieldRules)) {
+			if (rule.nodeType !== '*' && rule.nodeType !== triggerNodeType) {
+				// This rule does not apply to this trigger
+				continue;
 			}
-			return perItem;
-		});
 
-		return { triggerItems: items, artifactsByItem };
+			const values = items
+				.map((item) => this.extractFromItem(rule, item))
+				.filter((value): value is ArtifactItem => value !== undefined);
+
+			if (values.length === 0) continue;
+
+			artifactsByAlias[alias] = values;
+		}
+
+		return { triggerItems: items, artifactsByAlias };
 	}
 }
 
 // Round-trip scrubs Date/non-serialisable leaves so the value conforms to JsonValueSchema.
-function toJsonValue(value: unknown): ArtifactValue | undefined {
+function toJsonValue(value: unknown): ArtifactItem | undefined {
+	if (value === undefined) return undefined;
 	try {
 		const serialised = JSON.stringify(value);
 		if (serialised === undefined) return undefined;
-		return JSON.parse(serialised) as ArtifactValue;
+		return JSON.parse(serialised) as ArtifactItem;
 	} catch {
 		return undefined;
 	}

@@ -409,7 +409,7 @@ describe('credentials tool', () => {
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					requestId: expect.any(String),
-					message: 'Delete credential "My Cred"? This cannot be undone.',
+					message: 'Delete My Cred',
 					severity: 'destructive',
 				}),
 			);
@@ -432,7 +432,7 @@ describe('credentials tool', () => {
 			expect(suspendFn).toHaveBeenCalledTimes(1);
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete credential "cred-99"? This cannot be undone.',
+					message: 'Delete cred-99',
 				}),
 			);
 		});
