@@ -1,28 +1,28 @@
 # n8n Migration Guidelines
 
-Comprehensive guidelines for writing database migrations in the n8n repository, based on analysis of **213 migration files** and **50 recent migration PRs** (Oct 2025 – Feb 2026), of which ~15 were fix commits correcting mistakes in earlier migrations.
-
 ---
 
 ## Table of Contents
 
-- [Architecture Overview](#architecture-overview)
+- [Overview](#overview)
+- [Common Guidance](#common-guidance)
 - [Part 1: Schema Migrations](#part-1-schema-migrations)
 - [Part 2: Data Migrations](#part-2-data-migrations)
-- [Part 3: Current Discrepancies & Anti-Patterns](#part-3-current-discrepancies--anti-patterns)
 - [Quick Reference](#quick-reference)
+
+> A categorized review of past migration mistakes and their PR threads lives in [`MIGRATION_REVIEW.md`](./MIGRATION_REVIEW.md). The rules below summarize what to do; the review explains *why* by walking through real incidents.
 
 ---
 
-## Architecture Overview
+## Overview
 
 ### Directory Structure
 
 ```
 packages/@n8n/db/src/migrations/
-├── common/           # 106 cross-database migrations (preferred location)
-├── postgresdb/       # 52 PostgreSQL-specific migrations + index.ts
-├── sqlite/           # 55 SQLite-specific migrations + index.ts
+├── common/           # Common migrations for both Postgres and SQLite
+├── postgresdb/       # PostgreSQL-specific migrations
+├── sqlite/           # SQLite-specific migrations
 ├── dsl/              # Schema builder DSL (table, column, indices)
 ├── __tests__/        # Migration tests
 ├── migration-types.ts
@@ -90,6 +90,116 @@ interface MigrationContext {
 
 ---
 
+## Common Guidance
+
+Rules that apply to every migration — schema or data, common or DB-specific. Read this section before writing anything.
+
+### Split the migration into small, named methods
+
+A migration class is still a class — `up()` shouldn't be a 200-line procedure. Break each logical step into a private method with a name that describes what it does (`createTable`, `backfillSlugs`, `dropLegacyIndex`). `up()` then reads as a short list of step calls.
+
+```typescript
+// BAD: everything inline in up()
+export class MigrateThing1234567890000 implements IrreversibleMigration {
+  async up(ctx: MigrationContext) {
+    // 80 lines of mixed DDL, raw SQL, batched updates, logging...
+  }
+}
+
+// GOOD: up() is a table of contents; only multi-step work gets its own method
+export class MigrateThing1234567890000 implements IrreversibleMigration {
+  async up(ctx: MigrationContext) {
+    const { schemaBuilder: { addColumns, column, createIndex } } = ctx;
+
+    // One-liner DSL calls stay inline — naming them adds no information.
+    await addColumns('my_table', [column('slug').varchar(255)]);
+
+    // The non-trivial step gets a named method.
+    await this.backfillSlugs(ctx);
+
+    await createIndex('my_table', ['slug'], true);
+  }
+
+  private async backfillSlugs({ escape, runQuery, runInBatches, parseJson, logger, migrationName }: MigrationContext) {
+    const table = escape.tableName('my_table');
+    await runInBatches<{ id: string; name: string }>(
+      `SELECT id, name FROM ${table} WHERE slug IS NULL`,
+      async (rows) => {
+        for (const row of rows) {
+          try {
+            const slug = row.name.toLowerCase().replace(/\s+/g, '-');
+            await runQuery(`UPDATE ${table} SET slug = :slug WHERE id = :id`, { slug, id: row.id });
+          } catch (error) {
+            logger.warn(`[${migrationName}] Failed to backfill row ${row.id}: ${(error as Error).message}`);
+          }
+        }
+      },
+    );
+  }
+}
+```
+
+**Why:** A migration is read more often than it's written — during review, during incident response, and years later when someone has to understand why a column exists. Named steps double as documentation. They also make it easier to skim a diff: a reviewer can tell at a glance whether the change is "added a new step" or "rewrote an existing one." Reversible migrations benefit even more — `down()` can call the same private helpers in reverse.
+
+**Don't extract single-line steps.** A method whose body is one DSL call adds no information — the call site is already self-documenting. Pull out a method only when the step is multi-line, has its own control flow, or genuinely needs a name to explain *why* it exists. The bar is "does this hide complexity worth hiding?"
+
+### Use `runQuery()`, not `queryRunner` directly
+
+Always run SQL through `runQuery()` from `MigrationContext`. Never call `queryRunner.query()` or `queryRunner.manager.*` from a migration.
+
+**Why:** `runQuery()` handles table-prefix escaping and parameter binding consistently. `queryRunner.query()` bypasses those safety nets. `queryRunner.manager` calls couple the migration to TypeORM entity definitions, which change over time — a migration that worked at v1.0 can break at v2.0 if the entity shape evolves.
+
+### Never import entities as values
+
+Don't `import { Entity }` and call ORM methods on it. Use raw SQL via `runQuery()` instead.
+
+```typescript
+// BAD: value import; ties migration to current entity shape
+import { ApiKey } from '../../entities';
+await queryRunner.manager.update(ApiKey, { id }, { scopes });
+
+// GOOD: inline row type, raw SQL
+type ApiKeyRow = { id: string; scopes: string };
+await runQuery(`UPDATE ${table} SET scopes = :scopes WHERE id = :id`, { scopes, id });
+```
+
+**Type-only imports** (`import type { Entity }`) are acceptable for typing query results, but prefer inline types like `type WorkflowRow = { id: string; nodes: string }` to avoid coupling to entities that may be renamed or restructured.
+
+**Why:** Migrations are a historical record — they must work against the schema *as it existed when they were written*. Importing live entities means later refactors silently change the meaning of old migrations.
+
+### Always escape identifiers
+
+Use `escape.tableName()`, `escape.columnName()`, and `escape.indexName()` for every identifier. Don't hand-roll `${tablePrefix}my_table` or hardcode quoted names like `"model_tmp"`.
+
+**Why:** The DB type, table prefix, and quoting rules differ between Postgres and SQLite. The `escape.*` helpers apply the right rules; manual interpolation will eventually be wrong on one of them.
+
+### Don't throw `n8n-workflow` error classes
+
+Migration failures aren't user-facing errors. Throw a plain `Error` if a migration genuinely can't proceed, or log a warning and skip the row.
+
+```typescript
+// BAD
+import { UnexpectedError } from 'n8n-workflow';
+throw new UnexpectedError('Could not parse row');
+
+// GOOD
+throw new Error('Could not parse row');
+// or
+logger.warn(`[${migrationName}] Skipping row ${id}: ${(error as Error).message}`);
+```
+
+**Why:** `UserError` / `UnexpectedError` belong to the runtime error taxonomy used by the workflow engine and API. They carry HTTP semantics and i18n context that don't apply to a migration that's running once during startup.
+
+### Prefer inlining over importing from sibling packages
+
+`@n8n/db` already depends on `n8n-workflow`, but the more a migration imports from other workspace packages, the more brittle it becomes. Inline small constants and types where you can. Use `parseJson()` from `MigrationContext` instead of importing `jsonParse` from `n8n-workflow`.
+
+**Why:** A migration that imports `ERROR_TRIGGER_NODE_TYPE` from `n8n-workflow` is now coupled to that constant's existence and value forever. If the constant is renamed or removed in a refactor years later, the migration breaks at install time on a fresh database.
+
+Acceptable exceptions: utilities whose semantics are stable and whose inline implementation would be substantial (e.g. `generateNanoId`).
+
+---
+
 ## Part 1: Schema Migrations
 
 ### 1.1 Use the DSL for Schema Changes
@@ -141,7 +251,7 @@ await runQuery(`ALTER TABLE ${table} ADD COLUMN ${col} TEXT`);
 - Altering column types (requires table recreation on SQLite regardless)
 - Any operation on tables that can have >100k rows
 
-### 1.3 Handle SQLite vs PostgreSQL Differences
+### 1.3 Single Migration File or Separate for SQLite & Postgres
 
 **Choose between a single common migration or split files:**
 
@@ -167,15 +277,19 @@ if (isPostgres) {
 
 SQLite has stricter limitations than PostgreSQL. The most important ones to plan around:
 
-**Operations that trigger full table recreation on SQLite:**
+**DSL operations that trigger full table recreation on SQLite:**
 
-| Operation | Why |
+| DSL call | Why |
 |---|---|
-| `ALTER COLUMN` (type change, nullability, default) | SQLite has no `ALTER COLUMN` — DSL copies the table |
-| Adding or dropping a foreign key constraint | FKs are part of the `CREATE TABLE` statement |
+| `schemaBuilder.addColumns(table, [...])` | TypeORM's SQLite driver copies the table to preserve column ordering and constraints |
+| `schemaBuilder.dropColumns(table, [...])` | Same — no native `DROP COLUMN` before SQLite 3.35 |
+| `schemaBuilder.addForeignKey(...)` | FKs are part of `CREATE TABLE`; cannot be added with `ALTER` |
+| `schemaBuilder.dropForeignKey(...)` | FKs are part of `CREATE TABLE`; cannot be removed with `ALTER` |
+| `schemaBuilder.addNotNull(table, col)` | Nullability changes go through TypeORM's `changeColumn`, which recreates the table |
+| `schemaBuilder.dropNotNull(table, col)` | Same |
+| Any column type change via `changeColumn` (default, comment, type) | SQLite has no `ALTER COLUMN` |
+| `column().withEnumCheck([...])` value changes | CHECK constraint is baked into `CREATE TABLE` |
 | Renaming a column referenced by an index, view, or trigger | SQLite has to rebuild dependents |
-| `DSL.addColumns()` / `dropColumns()` on any table | DSL recreates the table to preserve column ordering and constraints |
-| `withEnumCheck()` changes (adding/removing values) | CHECK constraint is baked into `CREATE TABLE` |
 
 Because table recreation copies all rows into a new table, it is expensive on large tables (`execution_data`, `execution_entity`, `workflow_statistics`) — see [1.2](#12-use-raw-sql-for-altering-large-existing-tables).
 
@@ -202,7 +316,29 @@ export class MyTableRecreation1234567890000 implements ReversibleMigration {
 - Place branching logic in `common/` for small differences; split into `postgresdb/` and `sqlite/` for fundamentally different implementations
 - SQLite migrations that do DDL must set `transaction = false as const`
 
-### 1.5 Column Sizing
+### 1.5 Primary Keys
+
+Every table needs a primary key. Choose the type in this order:
+
+1. **Integer** — `column('id').int.primary.autoGenerate2`. Preferred for new tables: compact, fast joins, no ordering surprises. `autoGenerate2` uses Postgres `IDENTITY` (not the older `serial`).
+2. **UUID** — `column('id').uuid.primary`. Use when IDs are generated client-side, exposed in URLs, or need to be unguessable; also when rows are created across multiple writers (sharding, offline clients). Generate UUIDs in application code; do **not** chain `.autoGenerate2` on `.uuid` (the DSL throws — `DEFAULT uuid_generate_v4()` fails on managed Postgres like Supabase). Prefer `.uuid` over `.varchar(36)`: Postgres stores `uuid` as 16 bytes versus 37 bytes for `varchar(36)`, which adds up across joined tables and indexes.
+3. **String** — `column('id').varchar(36).primary`. Last resort, for legacy IDs whose format isn't a real UUID (n8n's older nanoid-style IDs). New tables should not use this.
+
+**DSL behavior to know:**
+- `.primary` already implies `notNull` (see `column.ts:236`). Don't chain `.notNull` after `.primary` — it's redundant.
+- `.primary` already creates the primary-key index. Don't add a separate `.withIndexOn(['id'])` for it.
+
+**Composite primary keys:** chain `.primary` on each participating column.
+
+```typescript
+await createTable('membership')
+  .withColumns(
+    column('userId').uuid.primary,
+    column('roleId').uuid.primary,
+  );
+```
+
+### 1.6 Column Sizing
 
 | Data type | Minimum size | Rationale |
 |---|---|---|
@@ -214,7 +350,7 @@ export class MyTableRecreation1234567890000 implements ReversibleMigration {
 
 **When in doubt, use TEXT.** The storage overhead is negligible compared to the cost of a fix migration.
 
-### 1.6 Foreign Key Constraints
+### 1.7 Foreign Key Constraints
 
 | Relationship type | `onDelete` strategy | Example |
 |---|---|---|
@@ -225,7 +361,7 @@ export class MyTableRecreation1234567890000 implements ReversibleMigration {
 
 **Always specify `onDelete` explicitly.** Don't rely on database defaults.
 
-### 1.7 Index Management
+### 1.8 Index Management
 
 ```typescript
 // Creating indices
@@ -236,7 +372,17 @@ await schemaBuilder.createIndex('my_table', ['email'], true); // unique
 await schemaBuilder.dropIndex('my_table', ['columnA'], { skipIfMissing: true });
 ```
 
-### 1.8 Reversibility
+**Best practices:**
+- **Add indexes sparingly, and only when you've measured a speedup.** Every index slows down inserts/updates and consumes disk. Don't add one "just in case" — run the query against a realistic dataset, confirm it's slow, add the index, confirm the planner uses it and the query is now fast. If you can't show a measurable improvement, don't ship the index.
+- **Index foreign key columns.** Joins and cascading deletes hit FKs on every operation; an unindexed FK degrades into a sequential scan on the child table.
+- **Column order matters in composite indexes.** Put the most selective column first, and remember that an index on `(a, b)` covers queries filtering by `a` or by `a AND b` — but not by `b` alone.
+- **Don't index low-cardinality columns alone** (booleans, status enums with 2–3 values). Either skip the index or make it a partial index — both Postgres and SQLite (since 3.8.0) support `WHERE` clauses on indexes.
+- **Unique indexes enforce uniqueness AND speed up lookups.** Prefer them over a separate unique constraint + index pair.
+- **Drop unused indexes.** If a query plan no longer uses it, drop it in a follow-up migration.
+- **Always use `skipIfMissing: true` when dropping.** Older databases may not have the index if it was added conditionally; a missing-index error blocks the whole migration.
+- **Name indexes via the DSL,** never hand-roll names. The DSL prefixes them consistently so they line up across environments.
+
+### 1.9 Reversibility
 
 - `ReversibleMigration`: The `down()` **must actually work**. If shrinking a column, truncate data gracefully. If dropping a table, consider that the table may have been populated.
 - `IrreversibleMigration`: Use when `down()` would lose data or is impossible. Preferred for data transformations.
@@ -346,14 +492,15 @@ Data transformations are almost never cleanly reversible. Use `IrreversibleMigra
 When a migration both adds a column and backfills data, structure it clearly:
 
 ```typescript
-export class AddAndBackfillColumn implements IrreversibleMigration {
-  async up({ schemaBuilder: { addColumns, column }, escape, runQuery, runInBatches }: MigrationContext) {
-    // Step 1: Schema change
-    await addColumns('my_table', [column('newCol').text]);
+export class AddAndBackfillColumn1234567890000 implements IrreversibleMigration {
+  async up(ctx: MigrationContext) {
+    await ctx.schemaBuilder.addColumns('my_table', [ctx.schemaBuilder.column('newCol').text]);
+    await this.backfillNewCol(ctx);
+  }
 
-    // Step 2: Data backfill
+  private async backfillNewCol({ escape, runQuery, runInBatches }: MigrationContext) {
     const table = escape.tableName('my_table');
-    await runInBatches<Row>(
+    await runInBatches<{ id: string; oldCol: string }>(
       `SELECT id, oldCol FROM ${table}`,
       async (rows) => {
         for (const row of rows) {
@@ -369,118 +516,48 @@ export class AddAndBackfillColumn implements IrreversibleMigration {
 }
 ```
 
----
+### 2.7 Always Test Data Migrations
 
-## Part 3: Current Discrepancies & Anti-Patterns
+**Every data migration must ship with a test.** Schema-only migrations can usually be reviewed by reading the DSL calls; data migrations cannot — they encode assumptions about row shape, JSON structure, NULL handling, and edge cases that only show up when the migration actually runs against representative data.
 
-These are patterns found in the existing codebase that should **not** be followed in new migrations.
+Tests live in `packages/cli/test/migration/`, named to match the migration file (e.g. `1773000000000-create-credential-dependency-table.test.ts`). Use the helpers from `@n8n/backend-test-utils`:
 
-### 3.1 Direct `queryRunner` Usage Instead of `runQuery()`
-
-**Found in ~15 migrations**, mostly older ones but also some recent:
-
-| File | Issue |
-|---|---|
-| `1768402473068-ExpandModelColumnLength.ts` | Uses `queryRunner.query()` throughout instead of `runQuery()` |
-| `1763572724000-ChangeOAuthStateColumnToUnboundedVarchar.ts` | Uses `queryRunner.query()` for ALTER/RENAME |
-| `1770000000000-ExpandProviderIdColumnLength.ts` | Uses `queryRunner.query()` |
-| `1742918400000-AddScopesColumnToApiKeys.ts` | Uses `queryRunner.manager.update()` with TypeORM entity |
-| `1745322634000-CleanEvaluations.ts` | Uses `queryRunner.query()` |
-| `1759399811000-ChangeValueTypesForInsights.ts` | Uses `queryRunner.query()` |
-| `1750252139167-AddRolesTables.ts` | Uses `queryRunner.query()` |
-| `1764276827837-AddCreatorIdToProjectTable.ts` | Uses `queryRunner.query()` |
-
-**Why this is bad:** `runQuery()` handles table prefix escaping and parameter binding consistently. `queryRunner.query()` bypasses these safety nets. Direct `queryRunner.manager` calls couple migrations to entity definitions that may change.
-
-**Rule:** Always use `runQuery()` from `MigrationContext`. Never use `queryRunner.query()` or `queryRunner.manager` directly.
-
-### 3.2 Importing TypeORM Entities in Migrations
-
-**Found in 12 migrations:**
-
-| File | Imported entity |
-|---|---|
-| `1675940580449-PurgeInvalidWorkflowConnections.ts` | `WorkflowEntity` (value import — uses `queryRunner.manager.count()`) |
-| `1742918400000-AddScopesColumnToApiKeys.ts` | `ApiKey` (value import — uses `queryRunner.manager.update()`) |
-| `1658930531669-AddNodeIds.ts` | `WorkflowEntity` (type-only) |
-| `1630330987096-UpdateWorkflowCredentials.ts` | `CredentialsEntity`, `WorkflowEntity` (type-only) |
-| `1714133768519-CreateProject.ts` | `User` (type-only) |
-| `1760020838000-UniqueRoleNames.ts` | `Role` (type-only) |
-
-**Why this is bad:** Entity definitions change over time. A migration that ran fine in v1.0 could break if the entity shape changes in v2.0. Value imports (`import { Entity }`) are especially dangerous — they tie migration execution to the current entity state.
-
-**Rule:**
-- **Never import entities as values** in migrations. Use raw SQL via `runQuery()` instead of `queryRunner.manager`.
-- **Type-only imports** (`import type { Entity }`) are acceptable for typing query results, but prefer inline type definitions to avoid coupling:
+- **`initDbUpToMigration(MigrationName)`** — runs every migration *up to but not including* yours, leaving the DB in the exact state your migration will see in production.
+- **`runSingleMigration(MigrationName)`** — runs just your migration on top of that state.
 
 ```typescript
-// GOOD: inline type
-type WorkflowRow = { id: string; nodes: string };
+import { initDbUpToMigration, runSingleMigration } from '@n8n/backend-test-utils';
 
-// ACCEPTABLE: type-only import
-import type { WorkflowEntity } from '../../entities';
+describe('AddAndBackfillColumn1234567890000', () => {
+  beforeEach(async () => {
+    await initDbUpToMigration('AddAndBackfillColumn1234567890000');
+  });
 
-// BAD: value import for ORM operations
-import { ApiKey } from '../../entities';
-await queryRunner.manager.update(ApiKey, { id }, { scopes });
+  it('backfills newCol from oldCol', async () => {
+    // Seed rows in the pre-migration schema
+    await dataSource.query(`INSERT INTO my_table (id, oldCol) VALUES ('1', 'foo')`);
+
+    await runSingleMigration('AddAndBackfillColumn1234567890000');
+
+    const [row] = await dataSource.query(`SELECT newCol FROM my_table WHERE id = '1'`);
+    expect(row.newCol).toBe('transformed-foo');
+  });
+
+  it('skips rows with NULL oldCol without crashing', async () => {
+    await dataSource.query(`INSERT INTO my_table (id, oldCol) VALUES ('1', NULL)`);
+    await runSingleMigration('AddAndBackfillColumn1234567890000');
+    // assert no error and row still exists
+  });
+});
 ```
 
-### 3.3 Hardcoded Identifiers Without `escape.*`
+**What to cover:**
+- The happy path (correctly transforms a typical row)
+- Each edge case the migration claims to handle (NULL fields, malformed JSON, missing keys, legacy schema versions)
+- Idempotency where applicable — running the migration twice shouldn't double-apply transformations
+- Both SQLite and Postgres if the migration branches on DB type
 
-Several migrations, particularly in `sqlite/` and `postgresdb/` directories, hardcode table or column names:
-
-| File | Issue |
-|---|---|
-| `1745322634000-CleanEvaluations.ts` | Uses `${tablePrefix}test_definition` instead of `escape.tableName()` |
-| `1768402473068-ExpandModelColumnLength.ts` | Uses `"model_tmp"` as a hardcoded column name |
-
-**Rule:** Always use `escape.tableName()`, `escape.columnName()`, `escape.indexName()` for all identifiers.
-
-### 3.4 Inconsistent `transaction = false` Placement
-
-SQLite-specific migrations that do DDL consistently set `transaction = false as const` in the `sqlite/` directory. However, some `common/` migrations that do DDL (like table recreation for column type changes) **don't** set this flag — they rely on being wrapped by SQLite-specific counterparts or the framework's internal handling.
-
-**Rule for common/ migrations:** If a common migration does DDL that could be affected by SQLite's transaction limitations, and it has no corresponding SQLite-specific wrapper, it must set `transaction = false as const`.
-
-### 3.5 Inconsistent Error Class Usage
-
-| File | Issue |
-|---|---|
-| `1675940580449-PurgeInvalidWorkflowConnections.ts` | Uses `UserError` from `n8n-workflow` — migration errors are not user errors |
-| `1700571993961-AddGlobalAdminRole.ts` | Uses `UnexpectedError` from `n8n-workflow` — OK but prefer inlining |
-| `1740445074052-UpdateParentFolderIdColumn.ts` | Uses `UnexpectedError` from `n8n-workflow` |
-
-**Rule:** Don't import error classes from `n8n-workflow` for migration failures. Throw plain `Error` or use `logger.error()` and skip. If a migration genuinely can't proceed, a plain `throw new Error('reason')` is fine.
-
-### 3.6 Imports from `n8n-workflow` and `@n8n/utils`
-
-**Found in 10+ migrations:**
-
-| Package | Files using it |
-|---|---|
-| `n8n-workflow` | `MoveSshKeysToDatabase`, `UpdateWorkflowCredentials`, `AddNodeIds`, `PurgeInvalidWorkflowConnections`, `AddJsonKeyPinData`, `ActivateExecuteWorkflowTriggerWorkflows`, `CreateProject`, `AddGlobalAdminRole`, `MigrateExternalSecretsToEntityStorage`, `ExpandProviderIdColumnLength` |
-| `@n8n/utils` | `CreateProject`, `AddApiKeysTable` (sqlite) |
-
-While `n8n-workflow` is an existing dependency of `@n8n/db`, heavy use creates coupling risk. Constants like `ERROR_TRIGGER_NODE_TYPE` or utilities like `jsonParse` pulled from external packages lock migrations to those packages' APIs.
-
-**Rule:** Prefer inlining small constants and type definitions. Use `parseJson()` from `MigrationContext` instead of importing `jsonParse` from `n8n-workflow`. Only import from external packages when inlining would be impractical (e.g., `generateNanoId`).
-
-### 3.7 Missing `autoGenerate2` — Using Deprecated `autoGenerate`
-
-The DSL provides both `autoGenerate` (deprecated, uses `INCREMENT` strategy) and `autoGenerate2` (preferred, uses `IDENTITY` strategy). Some newer migrations still use the deprecated version.
-
-**Rule:** Always use `autoGenerate2` for new primary key columns.
-
-### 3.8 Summary of Anti-Pattern Severity
-
-| Anti-Pattern | Severity | Count | Risk |
-|---|---|---|---|
-| Direct `queryRunner` usage | **High** | ~15 files | Bypasses escaping, prefix handling |
-| Entity value imports | **High** | 2 files | Couples to mutable entity definitions |
-| Missing `escape.*` | **Medium** | ~5 files | Breaks with table prefixes |
-| `n8n-workflow` imports | **Low** | ~10 files | Coupling, but currently stable |
-| Entity type-only imports | **Low** | ~8 files | Acceptable, prefer inline types |
-| Hardcoded column sizes | **Low** (fixed) | 4+ files | Already fixed via follow-up migrations |
+**Why:** A data migration runs *once* per database, on production data, with no opportunity to retry cleanly. The cost of a bad migration is a customer-facing incident; the cost of a test is ten minutes. The migrations that caused the most damage historically were the ones with no tests.
 
 ---
 
@@ -522,70 +599,8 @@ The DSL provides both `autoGenerate` (deprecated, uses `INCREMENT` strategy) and
 - [ ] Logs progress and warnings via `logger`?
 - [ ] No `SELECT *` without `LIMIT` on potentially large tables?
 - [ ] No circular package dependencies introduced?
+- [ ] Has a test file in `packages/cli/test/migration/` covering happy path + edge cases?
 - [ ] Tested with dirty data (NULLs, missing fields, malformed JSON)?
 - [ ] Tested with realistic data volumes?
 - [ ] Tested on both SQLite and PostgreSQL?
 
-### Template: Schema Migration (Reversible)
-
-```typescript
-import type { MigrationContext, ReversibleMigration } from '../migration-types';
-
-export class MyMigrationName1234567890000 implements ReversibleMigration {
-  async up({ schemaBuilder: { createTable, column, addColumns, createIndex } }: MigrationContext) {
-    // Schema changes here
-  }
-
-  async down({ schemaBuilder: { dropTable, dropColumns, dropIndex } }: MigrationContext) {
-    // Reverse of up() — must actually work
-  }
-}
-```
-
-### Template: Data Migration (Irreversible)
-
-```typescript
-import type { MigrationContext, IrreversibleMigration } from '../migration-types';
-
-type MyRow = { id: string; data: string };
-
-export class MyDataMigration1234567890000 implements IrreversibleMigration {
-  async up({ escape, runQuery, runInBatches, parseJson, logger, migrationName }: MigrationContext) {
-    const table = escape.tableName('my_table');
-    const dataCol = escape.columnName('data');
-    const idCol = escape.columnName('id');
-
-    await runInBatches<MyRow>(
-      `SELECT ${idCol} AS id, ${dataCol} AS data FROM ${table}`,
-      async (rows) => {
-        for (const row of rows) {
-          try {
-            const parsed = parseJson(row.data);
-            // ... transform parsed data ...
-            await runQuery(`UPDATE ${table} SET ${dataCol} = :data WHERE ${idCol} = :id`, {
-              data: JSON.stringify(parsed),
-              id: row.id,
-            });
-          } catch (error) {
-            logger.warn(
-              `[${migrationName}] Failed to process row ${row.id}: ${(error as Error).message}. Skipping.`,
-            );
-          }
-        }
-      },
-      100,
-    );
-  }
-}
-```
-
-### Template: SQLite-Specific Wrapper (for DDL in common/ that needs transaction=false)
-
-```typescript
-// sqlite/1234567890000-MyMigration.ts
-import { MyMigrationCommon1234567890000 } from '../common/1234567890000-MyMigration';
-
-export class MyMigration1234567890000 extends MyMigrationCommon1234567890000 {
-  transaction = false as const;
-}
-```
