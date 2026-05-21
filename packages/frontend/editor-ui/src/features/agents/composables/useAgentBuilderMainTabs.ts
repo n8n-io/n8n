@@ -4,13 +4,14 @@ import { useRoute, useRouter } from 'vue-router';
 import type { LocationQueryValue } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 
-import { DEBUG_SECTION_KEY, EXECUTIONS_SECTION_KEY } from '../constants';
+import { DEBUG_SECTION_KEY, EVALS_SECTION_KEY, EXECUTIONS_SECTION_KEY } from '../constants';
 
-export type AgentBuilderMainTab = 'agent' | 'executions' | 'debug' | 'raw';
+export type AgentBuilderMainTab = 'agent' | 'executions' | 'debug' | 'evaluations' | 'raw';
 
 type AgentBuilderSection =
 	| typeof EXECUTIONS_SECTION_KEY
 	| typeof DEBUG_SECTION_KEY
+	| typeof EVALS_SECTION_KEY
 	| 'raw'
 	| null;
 
@@ -23,6 +24,7 @@ function getSectionFromQuery(
 	if (
 		value === EXECUTIONS_SECTION_KEY ||
 		value === DEBUG_SECTION_KEY ||
+		value === EVALS_SECTION_KEY ||
 		value === 'raw'
 	)
 		return value;
@@ -32,6 +34,7 @@ function getSectionFromQuery(
 function getSectionFromTab(tab: AgentBuilderMainTab): AgentBuilderSection {
 	if (tab === 'executions') return EXECUTIONS_SECTION_KEY;
 	if (tab === 'debug') return DEBUG_SECTION_KEY;
+	if (tab === 'evaluations') return EVALS_SECTION_KEY;
 	if (tab === 'raw') return 'raw';
 	return null;
 }
@@ -57,6 +60,7 @@ export function useAgentBuilderMainTabs({
 		get() {
 			if (selectedSection.value === EXECUTIONS_SECTION_KEY) return 'executions';
 			if (selectedSection.value === DEBUG_SECTION_KEY) return 'debug';
+			if (selectedSection.value === EVALS_SECTION_KEY) return 'evaluations';
 			if (selectedSection.value === 'raw') return 'raw';
 			return 'agent';
 		},
@@ -74,6 +78,10 @@ export function useAgentBuilderMainTabs({
 		{
 			label: i18n.baseText('agents.builder.header.tab.debug'),
 			value: 'debug' as const,
+		},
+		{
+			label: i18n.baseText('agents.builder.header.tab.evaluations'),
+			value: 'evaluations' as const,
 		},
 		{ label: i18n.baseText('agents.builder.header.tab.raw'), value: 'raw' as const },
 	]);

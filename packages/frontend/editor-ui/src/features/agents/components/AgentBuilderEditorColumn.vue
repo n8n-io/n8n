@@ -9,6 +9,7 @@ import AgentDebugPanel from '../views/AgentDebugPanel.vue';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
+import AgentEvalsPanel from './AgentEvalsPanel.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentJsonEditor from './AgentJsonEditor.vue';
@@ -78,6 +79,15 @@ const i18n = useI18n();
 						v-else-if="activeMainTab === 'debug'"
 						:title="i18n.baseText('agents.builder.header.tab.debug')"
 						:description="i18n.baseText('agentDebug.description')"
+					/>
+					<AgentPanelHeader
+						v-else-if="activeMainTab === 'evaluations'"
+						:title="i18n.baseText('agents.builder.header.tab.evaluations')"
+						:description="
+							i18n.baseText('agents.builder.evaluations.configuredInCode', {
+								interpolate: { count: '0' },
+							})
+						"
 					/>
 					<AgentPanelHeader
 						v-else-if="activeMainTab === 'raw'"
@@ -162,6 +172,14 @@ const i18n = useI18n();
 						@update:value="emit('update:config', $event)"
 					/>
 				</div>
+
+				<AgentEvalsPanel
+					v-else
+					:project-id="projectId"
+					:agent-id="agentId"
+					data-testid="agent-evaluations-panel"
+					@open-review="emit('update:activeMainTab', 'debug')"
+				/>
 			</div>
 		</div>
 	</section>
