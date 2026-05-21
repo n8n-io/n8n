@@ -1,12 +1,12 @@
 <script lang="ts" setup>
-const props = defineProps<{
+defineProps<{
 	data: string;
 	mimeType: string;
 }>();
 </script>
 
 <template>
-	<img :src="`data:${props.mimeType};base64,${props.data}`" :class="$style.image" />
+	<img :src="`data:${mimeType};base64,${data}`" :class="$style.image" />
 </template>
 
 <style module>

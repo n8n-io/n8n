@@ -1,16 +1,12 @@
 <script lang="ts" setup>
-const props = defineProps<{
+defineProps<{
 	data: string;
 	mimeType: string;
 }>();
 </script>
 
 <template>
-	<embed
-		:src="`data:${props.mimeType};base64,${props.data}`"
-		:type="props.mimeType"
-		:class="$style.file"
-	/>
+	<embed :src="`data:${mimeType};base64,${data}`" :type="mimeType" :class="$style.file" />
 </template>
 
 <style module>
