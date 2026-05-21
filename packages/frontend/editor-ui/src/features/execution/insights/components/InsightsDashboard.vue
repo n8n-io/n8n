@@ -262,7 +262,9 @@ onBeforeMount(async () => {
 						<span>{{ i18n.baseText('insights.chart.loading') }}</span>
 					</div>
 					<div :class="$style.insightsChartWrapper">
-						{{ granularity }}
+						<N8nHeading bold tag="h3" size="medium" class="mb-s">{{
+							i18n.baseText('insights.dashboard.chart.title', { interpolate: { granularity } })
+						}}</N8nHeading>
 						<component
 							:is="chartComponents[props.insightType]"
 							:type="props.insightType"
