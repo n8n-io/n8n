@@ -1,7 +1,7 @@
 import { NodeConnectionTypes, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
 
 import { bucketFields, bucketOperations } from './BucketDescription';
-import { searchProjects } from './GenericFunctions';
+import { authenticateServiceAccount, searchProjects } from './GenericFunctions';
 import { objectFields, objectOperations } from './ObjectDescription';
 
 export class GoogleCloudStorage implements INodeType {
@@ -72,6 +72,13 @@ export class GoogleCloudStorage implements INodeType {
 					},
 				],
 				default: 'oAuth2',
+				// Runs for every declarative request: injects the service-account
+				// bearer token when that auth method is selected. No-op for OAuth2.
+				routing: {
+					send: {
+						preSend: [authenticateServiceAccount],
+					},
+				},
 			},
 			{
 				displayName: 'Resource',
