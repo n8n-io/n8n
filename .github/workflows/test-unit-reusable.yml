@@ -215,7 +215,7 @@ jobs:
       - name: Test
         run: |
           if [ "${{ github.event_name }}" = "merge_group" ] && [ -n "$MERGE_BASE" ]; then
-            pnpm turbo run test --continue --filter="./packages/frontend/**[$MERGE_BASE]" --summarize -- --shard=${{ matrix.shard }}/2
+            pnpm turbo run test --continue --filter="{./packages/frontend/**}[$MERGE_BASE]" --summarize -- --shard=${{ matrix.shard }}/2
           else
             pnpm test:ci:frontend --summarize -- --shard=${{ matrix.shard }}/2
           fi
