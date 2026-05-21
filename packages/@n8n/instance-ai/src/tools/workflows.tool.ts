@@ -38,6 +38,13 @@ const getAction = z.object({
 	workflowId: z.string().describe('ID of the workflow'),
 });
 
+const getJsonAction = z.object({
+	action: z
+		.literal('get-json')
+		.describe('Get full WorkflowJSON for safe read-modify-update workflow edits'),
+	workflowId: z.string().describe('ID of the workflow'),
+});
+
 const getAsCodeAction = z.object({
 	action: z.literal('get-as-code').describe('Convert an existing workflow to TypeScript SDK code'),
 	workflowId: z.string().describe('ID of the workflow'),
@@ -65,6 +72,20 @@ const setupAction = z.object({
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
+});
+
+const updateAction = z.object({
+	action: z
+		.literal('update')
+		.describe(
+			'Save a complete modified WorkflowJSON back to the workflow. Use after reading via `get-json` and modifying the JSON. Replaces the full workflow definition.',
+		),
+	workflowId: z.string().describe('ID of the workflow'),
+	workflow: z
+		.record(z.unknown())
+		.describe(
+			'Full WorkflowJSON object (same shape as returned by `get-json`). This completely replaces the current workflow definition — ensure name, nodes, and connections are all included.',
+		),
 });
 
 const publishBaseAction = z.object({
@@ -139,10 +160,12 @@ interface WorkflowToolContext {
 type Input =
 	| z.infer<typeof listAction>
 	| z.infer<typeof getAction>
+	| z.infer<typeof getJsonAction>
 	| z.infer<typeof getAsCodeAction>
 	| z.infer<typeof deleteAction>
 	| z.infer<typeof unarchiveAction>
 	| z.infer<typeof setupAction>
+	| z.infer<typeof updateAction>
 	| z.infer<typeof publishExtendedAction>
 	| z.infer<typeof unpublishAction>
 	| z.infer<typeof listVersionsAction>
@@ -158,10 +181,12 @@ type PublishRollbackResult = {
 export type WorkflowAction =
 	| 'list'
 	| 'get'
+	| 'get-json'
 	| 'get-as-code'
 	| 'delete'
 	| 'unarchive'
 	| 'setup'
+	| 'update'
 	| 'publish'
 	| 'unpublish'
 	| 'list-versions'
@@ -183,10 +208,12 @@ type WorkflowsToolOptionsInput = WorkflowsToolOptions | 'full' | 'orchestrator';
 const WORKFLOW_ACTION_ORDER = [
 	'list',
 	'get',
+	'get-json',
 	'get-as-code',
 	'delete',
 	'unarchive',
 	'setup',
+	'update',
 	'publish',
 	'unpublish',
 	'list-versions',
@@ -198,10 +225,12 @@ const WORKFLOW_ACTION_ORDER = [
 const WORKFLOW_ACTION_LABELS = {
 	list: 'list',
 	get: 'inspect',
+	'get-json': 'inspect full WorkflowJSON',
 	'get-as-code': 'convert existing workflows to TypeScript SDK code',
 	delete: 'archive',
 	unarchive: 'restore archived workflows',
 	setup: 'set up credentials and parameters',
+	update: 'save a modified WorkflowJSON',
 	publish: 'publish',
 	unpublish: 'unpublish',
 	'list-versions': 'list versions',
@@ -224,10 +253,13 @@ function getSupportedWorkflowActionSchemas(
 	return {
 		list: listAction,
 		get: getAction,
-		...(surface !== 'orchestrator' ? { 'get-as-code': getAsCodeAction } : {}),
+		...(surface !== 'orchestrator'
+			? { 'get-json': getJsonAction, 'get-as-code': getAsCodeAction }
+			: {}),
 		delete: deleteAction,
 		unarchive: unarchiveAction,
 		setup: setupAction,
+		update: updateAction,
 		publish: hasNamedVersions ? publishExtendedAction : publishBaseAction,
 		unpublish: unpublishAction,
 		...(hasVersions
@@ -322,6 +354,21 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 	}
 }
 
+async function handleGetJson(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'get-json' }>,
+) {
+	try {
+		return await context.workflowService.getAsWorkflowJSON(input.workflowId);
+	} catch (error) {
+		return {
+			workflowId: input.workflowId,
+			found: false as const,
+			error: error instanceof Error ? error.message : 'Failed to fetch workflow JSON',
+		};
+	}
+}
+
 async function handleGetAsCode(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'get-as-code' }>,
@@ -359,7 +406,7 @@ async function handleDelete(
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Archive workflow "${workflowName}" (ID: ${input.workflowId})? This will deactivate it if needed and can be undone later.`,
+			message: `Archive ${workflowName} (ID: ${input.workflowId})`,
 			severity: 'warning' as const,
 		});
 	}
@@ -390,7 +437,7 @@ async function handleUnarchive(
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Restore archived workflow "${workflowName}" (ID: ${input.workflowId})? This will make it visible again but will not publish it.`,
+			message: `Restore ${workflowName} (ID: ${input.workflowId})`,
 			severity: 'warning' as const,
 		});
 	}
@@ -604,6 +651,63 @@ async function handleSetup(
 	}
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isWorkflowJson(value: unknown): value is WorkflowJSON {
+	return (
+		isRecord(value) &&
+		typeof value.name === 'string' &&
+		Array.isArray(value.nodes) &&
+		isRecord(value.connections)
+	);
+}
+
+async function handleUpdate(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'update' }>,
+	ctx: WorkflowToolContext,
+) {
+	const resumeData = ctx.resumeData;
+
+	if (context.permissions?.updateWorkflow === 'blocked') {
+		return { success: false, denied: true, reason: 'Action blocked by admin' };
+	}
+
+	const needsApproval = context.permissions?.updateWorkflow !== 'always_allow';
+
+	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const workflowName = await resolveWorkflowName(context, input.workflowId);
+		return await ctx.suspend({
+			requestId: nanoid(),
+			message: `Update workflow "${workflowName}" (ID: ${input.workflowId})?`,
+			severity: 'warning' as const,
+		});
+	}
+
+	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+		return { success: false, denied: true, reason: 'User denied the action' };
+	}
+
+	if (!isWorkflowJson(input.workflow)) {
+		return {
+			success: false,
+			error: 'Workflow JSON must include name, nodes, and connections.',
+		};
+	}
+
+	try {
+		await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow);
+		return { success: true, workflowId: input.workflowId };
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+}
+
 async function handlePublish(
 	context: InstanceAiContext,
 	input: PublishInput,
@@ -629,8 +733,8 @@ async function handlePublish(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: input.versionId
-				? `Publish version "${input.versionId}" of workflow "${workflowName}" (ID: ${input.workflowId})${dependencyNote}?`
-				: `Publish workflow "${workflowName}" (ID: ${input.workflowId})${dependencyNote}?`,
+				? `Publish version ${input.versionId} of ${workflowName} (ID: ${input.workflowId})${dependencyNote}`
+				: `Publish ${workflowName} (ID: ${input.workflowId})${dependencyNote}`,
 			severity: 'warning' as const,
 		});
 	}
@@ -775,7 +879,7 @@ async function handleUnpublish(
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Unpublish workflow "${workflowName}" (ID: ${input.workflowId})?`,
+			message: `Unpublish ${workflowName} (ID: ${input.workflowId})`,
 			severity: 'warning' as const,
 		});
 	}
@@ -838,7 +942,7 @@ async function handleRestoreVersion(
 
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Restore workflow to version ${versionLabel}? This will overwrite the current draft.`,
+			message: `Restore to version ${versionLabel}`,
 			severity: 'warning' as const,
 		});
 	}
@@ -883,7 +987,7 @@ async function handleUpdateVersion(
 
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Update workflow version "${input.versionId}" — set ${summary}?`,
+			message: `Update version ${input.versionId} — set ${summary}`,
 			severity: 'info' as const,
 		});
 	}
@@ -959,6 +1063,8 @@ export function createWorkflowsTool(
 					return await handleList(context, workflowInput);
 				case 'get':
 					return await handleGet(context, workflowInput);
+				case 'get-json':
+					return await handleGetJson(context, workflowInput);
 				case 'get-as-code':
 					return await handleGetAsCode(context, workflowInput);
 				case 'delete':
@@ -967,6 +1073,8 @@ export function createWorkflowsTool(
 					return await handleUnarchive(context, workflowInput, ctx);
 				case 'setup':
 					return await handleSetup(context, workflowInput, ctx, setupState);
+				case 'update':
+					return await handleUpdate(context, workflowInput, ctx);
 				case 'publish':
 					return await handlePublish(context, workflowInput, ctx);
 				case 'unpublish':

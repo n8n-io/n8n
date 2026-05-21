@@ -41,7 +41,8 @@
     "luxon": "catalog:",
     "md5": "2.3.0",
     "title-case": "3.0.3",
-    "transliteration": "2.3.5"
+    "transliteration": "2.3.5",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",

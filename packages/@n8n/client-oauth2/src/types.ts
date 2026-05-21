@@ -30,6 +30,7 @@ export interface OAuth2CredentialData {
 	 * Populated from either the discovered metadata or the user's resourceUrl override.
 	 */
 	resource?: string;
+	inlineJwks?: boolean;
 }
 
 /**
