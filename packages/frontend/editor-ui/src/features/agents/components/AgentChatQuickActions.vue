@@ -26,6 +26,7 @@ const emit = defineEmits<{
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 	'agent-published': [agent: AgentResource];
+	'agent-changed': [];
 }>();
 
 const i18n = useI18n();
@@ -57,6 +58,7 @@ function onAddTrigger() {
 			onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) =>
 				emit('trigger-added', payload),
 			onAgentPublished: (agent: AgentResource) => emit('agent-published', agent),
+			onAgentChanged: () => emit('agent-changed'),
 		},
 	});
 }

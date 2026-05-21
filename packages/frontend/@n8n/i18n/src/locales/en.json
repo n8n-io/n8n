@@ -6243,7 +6243,7 @@
 	"agents.builder.addTrigger.telegram.validation.required": "Add at least one Telegram user ID or username.",
 	"agents.builder.addTrigger.helpText.slack": "Connect a Slack bot credential to allow this agent to receive and respond to Slack messages.",
 	"agents.builder.addTrigger.helpText.telegram": "Connect a Telegram bot credential to allow this agent to receive and respond to Telegram messages.",
-	"agents.builder.addTrigger.helpText.linear": "Connect a Linear API credential to let this agent respond to comments in Linear issues. Point a Linear webhook at the URL below and paste its signing secret into the credential.",
+	"agents.builder.addTrigger.helpText.linear": "Connect a Linear OAuth credential to let this agent respond in Linear. For agent sessions, choose Application as the actor, point a Linear webhook at the URL below, and paste its signing secret into the credential.",
 	"agents.builder.addTrigger.connectedText.slack": "Your agent is connected to Slack and can receive messages.",
 	"agents.builder.addTrigger.connectedText.telegram": "Your agent is connected to Telegram and can receive messages.",
 	"agents.builder.addTrigger.connectedText.linear": "Your agent is connected to Linear and can reply to @-mentions.",

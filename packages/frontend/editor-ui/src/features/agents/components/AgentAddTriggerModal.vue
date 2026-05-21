@@ -40,6 +40,7 @@ const props = defineProps<{
 		onConnectedTriggersChange: (triggers: string[]) => void;
 		onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) => void;
 		onAgentPublished?: (agent: AgentResource) => void;
+		onAgentChanged?: () => Promise<void> | void;
 	};
 }>();
 
@@ -250,14 +251,17 @@ async function onConnect(type: string) {
 	const settings = settingsFormRef.value?.currentSettings;
 	const published = await ensurePublished();
 	if (!published) return;
+	let connected = false;
 	try {
 		await connect(type, credId, settings);
 		const triggers = computeConnectedTriggers();
 		props.data.onTriggerAdded({ triggerType: type, triggers });
 		emitConnectedTriggers();
+		connected = true;
 	} catch {
 		// Error details already surfaced in the shared state by `connect()`.
 	}
+	if (connected) await props.data.onAgentChanged?.();
 }
 
 async function onDisconnect(type: string) {
@@ -266,6 +270,7 @@ async function onDisconnect(type: string) {
 	await disconnect(type, credId);
 	selectedCredentials.value[type] = '';
 	emitConnectedTriggers();
+	await props.data.onAgentChanged?.();
 }
 
 function onCreateCredential(integration: ChatIntegrationDescriptor) {

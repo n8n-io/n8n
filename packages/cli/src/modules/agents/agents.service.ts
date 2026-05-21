@@ -1531,6 +1531,8 @@ export class AgentsService {
 				)
 			: [...existing, validated];
 
+		markAgentDraftDirty(agent);
+		this.clearRuntimes(agent.id);
 		const result = await this.agentRepository.save(agent);
 		await this.chatIntegrationService.broadcastIntegrationChange(agent.id, integration, 'connect');
 		return result;
@@ -1552,6 +1554,8 @@ export class AgentsService {
 		// filter by ref
 		agent.integrations = agent.integrations.filter((i) => i !== integration);
 
+		markAgentDraftDirty(agent);
+		this.clearRuntimes(agent.id);
 		const result = await this.agentRepository.save(agent);
 		await this.chatIntegrationService.broadcastIntegrationChange(
 			agent.id,
