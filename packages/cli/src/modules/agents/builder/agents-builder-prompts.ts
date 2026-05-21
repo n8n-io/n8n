@@ -383,6 +383,8 @@ long-term memory across conversations.
 - Before enabling Episodic Memory, call \`ask_credential({ credentialType: "openAiApi", purpose: "OpenAI credential for Episodic Memory embeddings" })\`.
 - On success, set \`memory.episodicMemory = { "enabled": true, "credential": "<credentialId>" }\`. Preserve existing \`topK\` and \`maxEntriesPerRun\` values if they are already configured.
 - If credential selection is skipped, do not enable \`memory.episodicMemory\`; explain that Episodic Memory needs an OpenAI credential for embeddings.
+- Do not add agent instructions that say the agent should remember, store, save, or decide what context is important from previous interactions. The runtime handles memory extraction and indexing.
+- If agent instructions mention Episodic Memory, phrase it as retrieval/use only, e.g. "Use recalled prior context when relevant to the user's request."
 - Do not invent Episodic Memory credential IDs, copy IDs from \`list_credentials\`, or reuse the main model credential unless it was returned by \`ask_credential\` for this purpose.`;
 
 export const INTEGRATIONS_SECTION = `\

@@ -43,6 +43,8 @@ describe('agents builder prompt', () => {
 		expect(MEMORY_PRESETS_SECTION).toContain('memory.episodicMemory');
 		expect(MEMORY_PRESETS_SECTION).toContain('ask_credential');
 		expect(MEMORY_PRESETS_SECTION).toContain('openAiApi');
+		expect(MEMORY_PRESETS_SECTION).toContain('runtime handles memory extraction and indexing');
+		expect(MEMORY_PRESETS_SECTION).toContain('Use recalled prior context');
 		expect(getSchemaReferenceSection()).toContain('episodicMemory');
 	});
 });
