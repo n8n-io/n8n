@@ -196,8 +196,8 @@ export function createRecallMemoryTool(opts: {
 		})
 		.toModelOutput((output) => ({
 			entries: output.entries.map((entry) => ({
-				...entry,
 				content: `Prior/historical entry: ${entry.content}`,
+				createdAt: entry.createdAt,
 			})),
 		}))
 		.build();

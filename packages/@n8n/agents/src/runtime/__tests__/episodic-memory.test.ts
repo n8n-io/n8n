@@ -183,6 +183,38 @@ describe('createRecallMemoryTool', () => {
 		expect(tool.systemInstruction).toContain('exact names');
 		expect(tool.description).toContain('prior artifacts');
 	});
+
+	it('strips retrieval metadata from the model-visible recall output', () => {
+		const memory = new InMemoryMemory();
+		const tool = createRecallMemoryTool({
+			memory,
+			config: { embedder: fakeEmbedder },
+			scope: { resourceId: 'user-1' },
+		});
+
+		expect(
+			tool.toModelOutput?.({
+				entries: [
+					{
+						id: 'memory-1',
+						content: 'User chose Postgres for durable memory storage.',
+						createdAt: '2026-05-20T13:42:36.631Z',
+						lexicalScore: 0.3,
+						vectorScore: 0.6,
+						rrfScore: 0.04,
+						finalScore: 0.04,
+					},
+				],
+			}),
+		).toEqual({
+			entries: [
+				{
+					content: 'Prior/historical entry: User chose Postgres for durable memory storage.',
+					createdAt: '2026-05-20T13:42:36.631Z',
+				},
+			],
+		});
+	});
 });
 
 describe('getEpisodicMemoryScope', () => {
