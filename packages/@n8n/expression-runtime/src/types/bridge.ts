@@ -5,6 +5,8 @@
 // Start here for CLI/backend (IsolatedVmBridge) or frontend (WebWorkerBridge).
 // ============================================================================
 
+import type { WorkflowData } from './evaluator';
+
 /**
  * Abstract interface for runtime bridges.
  *
@@ -32,7 +34,7 @@ export interface RuntimeBridge {
 	 * Note: Synchronous for Node.js vm module (Slice 1).
 	 *       Will be async for isolated-vm (Slice 2).
 	 */
-	execute(code: string, data: Record<string, unknown>, options?: ExecuteOptions): unknown;
+	execute(code: string, data: WorkflowData, options?: ExecuteOptions): unknown;
 
 	/**
 	 * Dispose of the isolated context and free resources.

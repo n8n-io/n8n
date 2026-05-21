@@ -122,6 +122,16 @@ function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
+function isTelemetryConfigurableAgent(
+	agent: unknown,
+): agent is { telemetry: (telemetry: unknown) => void } {
+	return (
+		typeof agent === 'object' &&
+		agent !== null &&
+		typeof Reflect.get(agent, 'telemetry') === 'function'
+	);
+}
+
 const INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS = 30 * 1000;
 
 function isTextMessagePart(part: unknown): part is { type: 'text'; text: string } {
@@ -370,7 +380,17 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 
 @Service()
 export class InstanceAiService {
-	private readonly mcpClientManager: McpClientManager;
+	private _mcpClientManager?: McpClientManager;
+	private readonly _ssrfProtectionConfig: SsrfProtectionConfig;
+	private readonly _ssrfProtectionService: SsrfProtectionService;
+	private get mcpClientManager(): McpClientManager {
+		if (!this._mcpClientManager) {
+			this._mcpClientManager = new McpClientManager(
+				this._ssrfProtectionConfig.enabled ? this._ssrfProtectionService : undefined,
+			);
+		}
+		return this._mcpClientManager;
+	}
 
 	private readonly instanceAiConfig: InstanceAiConfig;
 
@@ -498,9 +518,8 @@ export class InstanceAiService {
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
 		this.formBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.form}`;
 
-		this.mcpClientManager = new McpClientManager(
-			ssrfProtectionConfig.enabled ? ssrfProtectionService : undefined,
-		);
+		this._ssrfProtectionConfig = ssrfProtectionConfig;
+		this._ssrfProtectionService = ssrfProtectionService;
 
 		// When the admin changes MCP settings, tear down existing clients so the
 		// next agent run rebuilds them against the new config. In-flight tool
@@ -510,7 +529,8 @@ export class InstanceAiService {
 		// don't churn live MCP connections.
 		this.eventService.on('instance-ai-settings-updated', ({ mcpSettingsChanged }) => {
 			if (!mcpSettingsChanged) return;
-			this.mcpClientManager.disconnect().catch((error: unknown) => {
+			if (!this._mcpClientManager) return;
+			this._mcpClientManager.disconnect().catch((error: unknown) => {
 				this.logger.warn('Failed to disconnect MCP clients after settings change', {
 					error: getErrorMessage(error),
 				});
@@ -531,6 +551,7 @@ export class InstanceAiService {
 			n8nSandboxServiceApiKey,
 			sandboxImage,
 			sandboxTimeout,
+			sandboxNamePrefix,
 		} = this.instanceAiConfig;
 		if (!sandboxEnabled) {
 			return {
@@ -554,6 +575,7 @@ export class InstanceAiService {
 				image: sandboxImage || undefined,
 				n8nVersion: N8N_VERSION || undefined,
 				timeout: sandboxTimeout,
+				namePrefix: sandboxNamePrefix || undefined,
 			};
 		}
 
@@ -1714,7 +1736,7 @@ export class InstanceAiService {
 		this.traceContextsByRunId.clear();
 
 		this.eventBus.clear();
-		await this.mcpClientManager.disconnect();
+		await this._mcpClientManager?.disconnect();
 		this.logger.debug('Instance AI service shut down');
 	}
 
@@ -3809,6 +3831,25 @@ export class InstanceAiService {
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
 
 		try {
+			if (opts.tracing?.getTelemetry && isTelemetryConfigurableAgent(agent)) {
+				try {
+					agent.telemetry(
+						opts.tracing.getTelemetry({
+							agentRole: 'orchestrator',
+							functionId: 'instance-ai.orchestrator',
+							executionMode:
+								opts.tracing.traceKind === 'orchestrator_resume' ? 'resume' : 'foreground',
+						}),
+					);
+				} catch (error) {
+					this.logger.warn('Failed to configure Instance AI resume tracing', {
+						error: getErrorMessage(error),
+						threadId: opts.threadId,
+						runId: opts.runId,
+					});
+				}
+			}
+
 			const result = opts.tracing
 				? await opts.tracing.withActiveSpan(opts.tracing.actorRun, async () => {
 						return await resumeAgentRun(

@@ -116,6 +116,7 @@ import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import {
 	resumeAgentRun,
 	type ManagedBackgroundTask,
+	type InstanceAiTraceContext,
 	type SpawnBackgroundTaskOptions,
 	type SpawnBackgroundTaskResult,
 	type SpawnManagedBackgroundTaskOptions,
@@ -575,6 +576,7 @@ type TerminalGuardOrderServiceInternals = {
 			signal: AbortSignal;
 			abortController: AbortController;
 			snapshotStorage: unknown;
+			tracing?: InstanceAiTraceContext;
 		},
 	) => Promise<void>;
 };
@@ -1554,6 +1556,49 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		expect(service.telemetry.track).toHaveBeenCalledWith('Builder satisfied user intent', {
 			thread_id: 'thread-a',
 		});
+	});
+
+	it('rebinds resumed agents to resume trace telemetry', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const telemetry = { enabled: true };
+		const agent = { telemetry: jest.fn() };
+		const tracing = {
+			traceKind: 'orchestrator_resume',
+			actorRun: { id: 'actor-run' },
+			getTelemetry: jest.fn(() => telemetry),
+			withActiveSpan: jest.fn(async (_run: unknown, fn: () => Promise<unknown>) => await fn()),
+		} as unknown as InstanceAiTraceContext;
+		jest.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve('done'),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+
+		await service.processResumedStream(
+			agent,
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				snapshotStorage: {},
+				tracing,
+			},
+		);
+
+		expect(tracing.getTelemetry).toHaveBeenCalledWith({
+			agentRole: 'orchestrator',
+			functionId: 'instance-ai.orchestrator',
+			executionMode: 'resume',
+		});
+		expect(agent.telemetry).toHaveBeenCalledWith(telemetry);
+		expect(tracing.withActiveSpan).toHaveBeenCalledWith(tracing.actorRun, expect.any(Function));
 	});
 });
 
