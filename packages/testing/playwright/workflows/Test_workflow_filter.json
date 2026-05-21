@@ -1,0 +1,138 @@
+{
+	"name": "Filter test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "f332a7d1-31b4-4e78-b31e-9e8db945bf3f",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-60, 480]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    \"label\": \"Apple\",\n    tags: [],\n    meta: {foo: 'bar'}\n  },\n  {\n    \"label\": \"Banana\",\n    tags: ['exotic'],\n    meta: {}\n  },\n  {\n    \"label\": \"Pear\",\n    tags: ['other'],\n    meta: {}\n  },\n  {\n    \"label\": \"Orange\",\n    meta: {}\n  }\n]"
+			},
+			"id": "60697c7f-3948-4790-97ba-8aba03d02ac2",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [160, 480]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": ""
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ $json.tags }}",
+							"rightValue": "exotic",
+							"operator": {
+								"type": "array",
+								"operation": "contains",
+								"rightType": "any"
+							}
+						},
+						{
+							"leftValue": "={{ $json.meta }}",
+							"rightValue": "",
+							"operator": {
+								"type": "object",
+								"operation": "notEmpty",
+								"singleValue": true
+							}
+						},
+						{
+							"leftValue": "={{ $json.label }}",
+							"rightValue": "Pea",
+							"operator": {
+								"type": "string",
+								"operation": "startsWith",
+								"rightType": "string"
+							}
+						}
+					],
+					"combinator": "or"
+				},
+				"options": {}
+			},
+			"id": "7531191b-5ac3-45dc-8afb-27ae83d8f33a",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2,
+			"position": [380, 480]
+		},
+		{
+			"parameters": {},
+			"id": "d8c614ea-0bbf-4b12-ad7d-c9ebe09ce583",
+			"name": "Then",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [600, 400]
+		},
+		{
+			"parameters": {},
+			"id": "69364770-60d2-4ef4-9f29-9570718a9a10",
+			"name": "Else",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [600, 580]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If": {
+			"main": [
+				[
+					{
+						"node": "Then",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Else",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "a6249f48-d88f-4b80-9ed9-79555e522d48",
+	"id": "BWUTRs5RHxVgQ4uT",
+	"meta": {
+		"instanceId": "78577815012af39cf16dad7a787b0898c42fb7514b8a7f99b2136862c2af502c"
+	},
+	"tags": []
+}

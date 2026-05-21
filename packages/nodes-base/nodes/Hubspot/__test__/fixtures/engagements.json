@@ -1,0 +1,151 @@
+{
+	"request": {
+		"createWithOwnerId": {
+			"engagement": { "type": "TASK", "ownerId": 123456789, "timestamp": 1756645976000 },
+			"metadata": { "body": "Hello world", "subject": "Title" },
+			"associations": {}
+		},
+		"createWithoutOwnerId": {
+			"engagement": { "type": "TASK", "timestamp": 1756645976000 },
+			"metadata": { "body": "Hello world", "subject": "Title" },
+			"associations": {}
+		},
+		"createV2_1": {
+			"engagement": { "type": "TASK" },
+			"metadata": { "body": "Hello world", "subject": "Title" },
+			"associations": {}
+		}
+	},
+	"response": {
+		"createWithOwnerId": {
+			"associationCreateFailures": [],
+			"engagement": {
+				"id": 274361144556,
+				"portalId": 146787276,
+				"active": true,
+				"createdAt": 1756127696406,
+				"lastUpdated": 1756127696406,
+				"ownerId": 123456789,
+				"type": "TASK",
+				"timestamp": 1756645976000,
+				"allAccessibleTeamIds": [],
+				"bodyPreview": "Hello world",
+				"queueMembershipIds": [],
+				"bodyPreviewIsTruncated": false,
+				"bodyPreviewHtml": "<html>\n <head></head>\n <body>\n Hello world\n </body>\n</html>"
+			},
+			"associations": {
+				"contactIds": [],
+				"companyIds": [],
+				"dealIds": [],
+				"ownerIds": [],
+				"workflowIds": [],
+				"ticketIds": [],
+				"contentIds": [],
+				"quoteIds": [],
+				"marketingEventIds": [],
+				"partnerClientIds": [],
+				"orderIds": [],
+				"cartIds": []
+			},
+			"attachments": [],
+			"scheduledTasks": [],
+			"metadata": {
+				"body": "Hello world",
+				"status": "NOT_STARTED",
+				"forObjectType": "OWNER",
+				"subject": "Title",
+				"taskType": "TODO",
+				"reminders": [],
+				"priority": "NONE",
+				"isAllDay": false
+			}
+		},
+		"createWithoutOwnerId": {
+			"associationCreateFailures": [],
+			"engagement": {
+				"id": 274123775164,
+				"portalId": 146787276,
+				"active": true,
+				"createdAt": 1756127766844,
+				"lastUpdated": 1756127766844,
+				"type": "TASK",
+				"timestamp": 1756645976000,
+				"allAccessibleTeamIds": [],
+				"bodyPreview": "Hello world",
+				"queueMembershipIds": [],
+				"bodyPreviewIsTruncated": false,
+				"bodyPreviewHtml": "<html>\n <head></head>\n <body>\n Hello world\n </body>\n</html>"
+			},
+			"associations": {
+				"contactIds": [],
+				"companyIds": [],
+				"dealIds": [],
+				"ownerIds": [],
+				"workflowIds": [],
+				"ticketIds": [],
+				"contentIds": [],
+				"quoteIds": [],
+				"marketingEventIds": [],
+				"partnerClientIds": [],
+				"orderIds": [],
+				"cartIds": []
+			},
+			"attachments": [],
+			"scheduledTasks": [],
+			"metadata": {
+				"body": "Hello world",
+				"status": "NOT_STARTED",
+				"forObjectType": "OWNER",
+				"subject": "Title",
+				"taskType": "TODO",
+				"reminders": [],
+				"priority": "NONE",
+				"isAllDay": false
+			}
+		},
+		"createV2_1": {
+			"associationCreateFailures": [],
+			"engagement": {
+				"id": 274123775164,
+				"portalId": 146787276,
+				"active": true,
+				"createdAt": 1756127766844,
+				"lastUpdated": 1756127766844,
+				"type": "TASK",
+				"timestamp": 1756645976000,
+				"allAccessibleTeamIds": [],
+				"bodyPreview": "Hello world",
+				"queueMembershipIds": [],
+				"bodyPreviewIsTruncated": false,
+				"bodyPreviewHtml": "<html>\n <head></head>\n <body>\n Hello world\n </body>\n</html>"
+			},
+			"associations": {
+				"contactIds": [],
+				"companyIds": [],
+				"dealIds": [],
+				"ownerIds": [],
+				"workflowIds": [],
+				"ticketIds": [],
+				"contentIds": [],
+				"quoteIds": [],
+				"marketingEventIds": [],
+				"partnerClientIds": [],
+				"orderIds": [],
+				"cartIds": []
+			},
+			"attachments": [],
+			"scheduledTasks": [],
+			"metadata": {
+				"body": "Hello world",
+				"status": "NOT_STARTED",
+				"forObjectType": "OWNER",
+				"subject": "Title",
+				"taskType": "TODO",
+				"reminders": [],
+				"priority": "NONE",
+				"isAllDay": false
+			}
+		}
+	}
+}

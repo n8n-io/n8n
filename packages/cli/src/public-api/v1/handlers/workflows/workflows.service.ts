@@ -1,18 +1,17 @@
 import { GlobalConfig } from '@n8n/config';
-import type { Project, User } from '@n8n/db';
+import type { SharedWorkflow, User } from '@n8n/db';
 import {
 	WorkflowEntity,
 	WorkflowTagMapping,
-	SharedWorkflow,
 	TagRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
-import type { WorkflowId } from 'n8n-workflow';
+import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 
 import { License } from '@/license';
+import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
@@ -32,7 +31,7 @@ export async function getSharedWorkflowIds(
 	} else {
 		return await Container.get(WorkflowSharingService).getSharedWorkflowIds(user, {
 			workflowRoles: ['workflow:owner'],
-			projectRoles: ['project:personalOwner'],
+			projectRoles: [PROJECT_OWNER_ROLE_SLUG],
 			projectId,
 		});
 	}
@@ -44,7 +43,7 @@ export async function getSharedWorkflow(
 ): Promise<SharedWorkflow | null> {
 	return await Container.get(SharedWorkflowRepository).findOne({
 		where: {
-			...(!['global:owner', 'global:admin'].includes(user.role) && { userId: user.id }),
+			...(!['global:owner', 'global:admin'].includes(user.role.slug) && { userId: user.id }),
 			...(workflowId && { workflowId }),
 		},
 		relations: [
@@ -61,51 +60,20 @@ export async function getWorkflowById(id: string): Promise<WorkflowEntity | null
 }
 
 export async function createWorkflow(
-	workflow: WorkflowEntity,
 	user: User,
-	personalProject: Project,
-	role: WorkflowSharingRole,
+	body: WorkflowEntity & { projectId?: string },
 ): Promise<WorkflowEntity> {
-	const { manager: dbManager } = Container.get(SharedWorkflowRepository);
-	return await dbManager.transaction(async (transactionManager) => {
-		const newWorkflow = new WorkflowEntity();
-		Object.assign(newWorkflow, workflow);
-		const savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
-
-		const newSharedWorkflow = new SharedWorkflow();
-		Object.assign(newSharedWorkflow, {
-			role,
-			user,
-			project: personalProject,
-			workflow: savedWorkflow,
-		});
-		await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
-
-		return savedWorkflow;
-	});
-}
-
-export async function setWorkflowAsActive(workflowId: WorkflowId) {
-	await Container.get(WorkflowRepository).update(workflowId, {
-		active: true,
-		updatedAt: new Date(),
-	});
-}
-
-export async function setWorkflowAsInactive(workflowId: WorkflowId) {
-	return await Container.get(WorkflowRepository).update(workflowId, {
-		active: false,
-		updatedAt: new Date(),
+	const { projectId, ...rest } = body;
+	const workflow = Object.assign(new WorkflowEntity(), rest);
+	return await Container.get(WorkflowCreationService).createWorkflow(user, workflow, {
+		projectId,
+		publicApi: true,
+		source: 'api',
 	});
 }
 
 export async function deleteWorkflow(workflow: WorkflowEntity): Promise<WorkflowEntity> {
 	return await Container.get(WorkflowRepository).remove(workflow);
-}
-
-export async function updateWorkflow(workflowId: string, updateData: WorkflowEntity) {
-	// @ts-ignore CAT-957
-	return await Container.get(WorkflowRepository).update(workflowId, updateData);
 }
 
 export function parseTagNames(tags: string): string[] {

@@ -1,0 +1,39 @@
+name: 'Test: Benchmark Destroy Env'
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: benchmark
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: benchmarking
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Azure login
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
+        with:
+          client-id: ${{ secrets.BENCHMARK_ARM_CLIENT_ID }}
+          tenant-id: ${{ secrets.BENCHMARK_ARM_TENANT_ID }}
+          subscription-id: ${{ secrets.BENCHMARK_ARM_SUBSCRIPTION_ID }}
+
+      - name: Setup Node.js and install dependencies
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+
+      - name: Destroy cloud env
+        run: pnpm destroy-cloud-env
+        working-directory: packages/@n8n/benchmark

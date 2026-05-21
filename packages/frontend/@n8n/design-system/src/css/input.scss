@@ -11,7 +11,7 @@
 	@include mixins.e(inner) {
 		display: block;
 		resize: vertical;
-		padding: 8px 12px 5px 12px;
+		padding: 8px 12px 5px;
 		line-height: 1.5;
 		box-sizing: border-box;
 		width: 100%;
@@ -43,7 +43,7 @@
 	}
 
 	& .el-input__count {
-		color: var(--color-info);
+		color: var(--color--info);
 		background: var.$color-white;
 		position: absolute;
 		font-size: 12px;
@@ -66,11 +66,11 @@
 
 	@include mixins.when(exceed) {
 		.el-textarea__inner {
-			border-color: var(--color-danger);
+			border-color: var(--color--danger);
 		}
 
 		.el-input__count {
-			color: var(--color-danger);
+			color: var(--color--danger);
 		}
 	}
 }
@@ -97,7 +97,7 @@
 		height: 100%;
 		display: inline-flex;
 		align-items: center;
-		color: var(--color-info);
+		color: var(--color--info);
 		font-size: 12px;
 
 		.el-input__count-inner {
@@ -128,7 +128,7 @@
 		min-height: var.$input-height;
 		line-height: var.$input-height;
 		outline: none;
-		padding: 0 0 0 var(--spacing-2xs);
+		padding: 0 0 0 var(--spacing--2xs);
 		transition: var.$border-transition-base;
 		width: 100%;
 
@@ -145,10 +145,10 @@
 	@include mixins.e(suffix) {
 		position: absolute;
 		height: 100%;
-		right: var(--spacing-2xs);
+		right: var(--spacing--2xs);
 		top: 0;
 		text-align: center;
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 		transition: all 0.3s;
 		pointer-events: none;
 		display: flex;
@@ -217,12 +217,12 @@
 
 	@include mixins.when(exceed) {
 		.el-input__inner {
-			border-color: var(--color-danger);
+			border-color: var(--color--danger);
 		}
 
 		.el-input__suffix {
 			.el-input__count {
-				color: var(--color-danger);
+				color: var(--color--danger);
 			}
 		}
 	}
@@ -294,7 +294,7 @@
 
 	@include mixins.e((append, prepend)) {
 		background-color: var.$background-color-base;
-		color: var(--color-info);
+		color: var(--color--info);
 		vertical-align: middle;
 		display: table-cell;
 		position: relative;
@@ -309,7 +309,7 @@
 		padding: 0 10px;
 		width: 1px;
 		white-space: nowrap;
-		font-weight: var(--font-weight-regular);
+		font-weight: var(--font-weight--regular);
 
 		&:focus {
 			outline: none;

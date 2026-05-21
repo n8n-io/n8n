@@ -4,15 +4,15 @@
 		"@n8n/typescript-config/tsconfig.backend.json"
 	],
 	"compilerOptions": {
-		"rootDir": ".",
+		"target": "es2023",
+		"lib": ["es2023"],
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"baseUrl": "src",
 		"paths": {
-			"@/*": ["./*"]
+			"@/*": ["./src/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"types": ["node", "jest"]
 	},
-	"include": ["src/**/*.ts", "test/**/*.ts", "evaluations/**/*.ts"]
+	"include": ["src/**/*.ts", "test/**/*.ts", "evaluations/**/*.ts", "scripts/**/*.ts"]
 }

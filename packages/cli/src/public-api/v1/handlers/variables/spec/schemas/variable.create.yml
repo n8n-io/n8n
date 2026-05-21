@@ -1,0 +1,21 @@
+type: object
+additionalProperties: false
+required:
+  - key
+  - value
+properties:
+  id:
+    type: string
+    readOnly: true
+  key:
+    type: string
+  value:
+    type: string
+    example: test
+  type:
+    type: string
+    readOnly: true
+  projectId:
+    type: string
+    example: VmwOO9HeTEj20kxM
+    nullable: true

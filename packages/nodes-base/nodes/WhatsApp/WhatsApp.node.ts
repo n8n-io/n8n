@@ -10,6 +10,7 @@ import { sendAndWaitWebhooksDescription } from '../../utils/sendAndWait/descript
 import {
 	getSendAndWaitConfig,
 	getSendAndWaitProperties,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
 	sendAndWaitWebhook,
 } from '../../utils/sendAndWait/utils';
 
@@ -21,7 +22,8 @@ export class WhatsApp implements INodeType {
 		name: 'whatsApp',
 		icon: 'file:whatsapp.svg',
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '={{ $parameter["resource"] + ": " + $parameter["operation"] }}',
 		description: 'Access WhatsApp API',
 		defaults: {
@@ -30,6 +32,7 @@ export class WhatsApp implements INodeType {
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 		webhooks: sendAndWaitWebhooksDescription,
 		credentials: [
 			{
@@ -75,29 +78,32 @@ export class WhatsApp implements INodeType {
 	customOperations = {
 		message: {
 			async [SEND_AND_WAIT_OPERATION](this: IExecuteFunctions) {
+				const phoneNumberId = this.getNodeParameter('phoneNumberId', 0) as string;
+
+				const recipientPhoneNumber = sanitizePhoneNumber(
+					this.getNodeParameter('recipientPhoneNumber', 0) as string,
+				);
+
+				const config = getSendAndWaitConfig(this);
+				const instanceId = this.getInstanceId();
+
 				try {
-					const phoneNumberId = this.getNodeParameter('phoneNumberId', 0) as string;
-
-					const recipientPhoneNumber = sanitizePhoneNumber(
-						this.getNodeParameter('recipientPhoneNumber', 0) as string,
-					);
-
-					const config = getSendAndWaitConfig(this);
-					const instanceId = this.getInstanceId();
-
 					await this.helpers.httpRequestWithAuthentication.call(
 						this,
 						WHATSAPP_CREDENTIALS_TYPE,
 						createMessage(config, phoneNumberId, recipientPhoneNumber, instanceId),
 					);
-
-					const waitTill = configureWaitTillDate(this);
-
-					await this.putExecutionToWait(waitTill);
-					return [this.getInputData()];
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), error);
+					if (this.continueOnFail()) {
+						return [[{ json: { error: (error as Error).message } }]];
+					}
+					throw new NodeOperationError(this.getNode(), error as Error);
 				}
+
+				const waitTill = configureWaitTillDate(this);
+
+				await this.putExecutionToWait(waitTill);
+				return [this.getInputData()];
 			},
 		},
 	};

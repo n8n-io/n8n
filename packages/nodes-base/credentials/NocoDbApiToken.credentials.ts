@@ -10,7 +10,7 @@ export class NocoDbApiToken implements ICredentialType {
 
 	displayName = 'NocoDB API Token';
 
-	documentationUrl = 'nocoDb';
+	documentationUrl = 'nocodb';
 
 	properties: INodeProperties[] = [
 		{
@@ -19,13 +19,15 @@ export class NocoDbApiToken implements ICredentialType {
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
+			required: true,
 		},
 		{
 			displayName: 'Host',
 			name: 'host',
 			type: 'string',
 			default: '',
-			placeholder: 'http(s)://localhost:8080',
+			placeholder: 'https://app.nocodb.com',
+			required: true,
 		},
 	];
 

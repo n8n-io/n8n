@@ -36,9 +36,40 @@ export class Wordpress implements INodeType {
 			{
 				name: 'wordpressApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authType: ['basicAuth'],
+					},
+				},
+			},
+			{
+				name: 'wordpressOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authType: ['oAuth2'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authType',
+				type: 'options',
+				options: [
+					{
+						name: 'Basic Auth',
+						value: 'basicAuth',
+					},
+					{
+						name: 'OAuth2 (WordPress.com)',
+						value: 'oAuth2',
+					},
+				],
+				default: 'basicAuth',
+				description: 'The authentication method to use',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -275,6 +306,9 @@ export class Wordpress implements INodeType {
 						if (options.search) {
 							qs.search = options.search as string;
 						}
+						if (options.before) {
+							qs.before = options.before as string;
+						}
 						if (options.after) {
 							qs.after = options.after as string;
 						}
@@ -445,6 +479,9 @@ export class Wordpress implements INodeType {
 						}
 						if (options.search) {
 							qs.search = options.search as string;
+						}
+						if (options.before) {
+							qs.before = options.before as string;
 						}
 						if (options.after) {
 							qs.after = options.after as string;

@@ -1,0 +1,567 @@
+<script setup lang="ts">
+import { useDebounce } from '@/app/composables/useDebounce';
+import type { IResourceLocatorResultExpanded } from '@/Interface';
+import { N8nBadge, N8nIcon, N8nInput, N8nLoading, N8nPopover, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { createEventBus } from '@n8n/utils/event-bus';
+import type { INodeParameterResourceLocator } from 'n8n-workflow';
+import { computed, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
+
+const SEARCH_BAR_HEIGHT_PX = 40;
+const SCROLL_MARGIN_PX = 10;
+
+type Props = {
+	modelValue?: INodeParameterResourceLocator;
+	resources?: IResourceLocatorResultExpanded[];
+	show?: boolean;
+	filterable?: boolean;
+	loading?: boolean;
+	filter?: string;
+	hasMore?: boolean;
+	errorView?: boolean;
+	filterRequired?: boolean;
+	width?: number;
+	allowNewResources?: { label?: string };
+	eventBus?: EventBus;
+	disableInactiveItems?: boolean;
+	slowLoadNotice?: string;
+	showSlowLoadNotice?: boolean;
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	modelValue: undefined,
+	resources: () => [],
+	show: false,
+	filterable: false,
+	loading: false,
+	filter: '',
+	hasMore: false,
+	errorView: false,
+	filterRequired: false,
+	width: undefined,
+	allowNewResources: () => ({}),
+	disableInactiveItems: false,
+	eventBus: () => createEventBus(),
+	slowLoadNotice: undefined,
+	showSlowLoadNotice: false,
+});
+
+const emit = defineEmits<{
+	'update:modelValue': [value: INodeParameterResourceLocator['value']];
+	loadMore: [];
+	filter: [filter: string];
+	addResourceClick: [];
+}>();
+
+const { debounce } = useDebounce();
+const debouncedLoadMore = debounce(
+	() => {
+		emit('loadMore');
+	},
+	{ debounceTime: 500 },
+);
+
+const i18n = useI18n();
+const $style = useCssModule();
+
+const hoverIndex = ref(0);
+const showHoverUrl = ref(false);
+const searchRef = ref<HTMLInputElement>();
+const resultsContainerRef = ref<HTMLDivElement>();
+const itemsRef = ref<HTMLDivElement[]>([]);
+
+const sortedResources = computed<IResourceLocatorResultExpanded[]>(() => {
+	const seen = new Set();
+	const result = props.resources.reduce(
+		(acc, item: IResourceLocatorResultExpanded) => {
+			if (seen.has(item.value)) {
+				return acc;
+			}
+			seen.add(item.value);
+
+			if (props.modelValue && item.value === props.modelValue.value) {
+				acc.selected = item;
+			} else if (!item.isArchived) {
+				// Archived items are not shown in the list unless selected
+				acc.notSelected.push(item);
+			}
+
+			return acc;
+		},
+		{
+			selected: null as IResourceLocatorResultExpanded | null,
+			notSelected: [] as IResourceLocatorResultExpanded[],
+		},
+	);
+
+	// Resources are paginated, so the currently selected one may not actually be
+	// in the list.
+	// If that's the case we'll render the cached value.
+	if (result.selected === null && props.modelValue?.cachedResultName && props.modelValue.value) {
+		result.selected = {
+			name: props.modelValue.cachedResultName,
+			value: props.modelValue.value,
+			url: props.modelValue.cachedResultUrl,
+		};
+	}
+
+	if (result.selected) {
+		return [result.selected, ...result.notSelected];
+	}
+
+	return result.notSelected;
+});
+
+watch(
+	() => props.show,
+	(value) => {
+		if (value) {
+			hoverIndex.value = 0;
+			showHoverUrl.value = false;
+
+			setTimeout(() => {
+				if (value && props.filterable && searchRef.value) {
+					searchRef.value.focus();
+				}
+			}, 0);
+		}
+	},
+);
+
+onMounted(() => {
+	props.eventBus.on('keyDown', onKeyDown);
+});
+
+onBeforeUnmount(() => {
+	props.eventBus.off('keyDown', onKeyDown);
+});
+
+function openUrl(event: MouseEvent, url: string) {
+	event.preventDefault();
+	event.stopPropagation();
+
+	window.open(url, '_blank');
+}
+
+function onKeyDown(e: KeyboardEvent) {
+	if (e.key === 'ArrowDown') {
+		// hoverIndex 0 is reserved for the "add new resource" item
+		if (hoverIndex.value < sortedResources.value.length) {
+			hoverIndex.value++;
+
+			if (resultsContainerRef.value && itemsRef.value.length === 1) {
+				const item = itemsRef.value[0];
+				if (
+					item.offsetTop + item.clientHeight >
+					resultsContainerRef.value.scrollTop + resultsContainerRef.value.offsetHeight
+				) {
+					const top = item.offsetTop - resultsContainerRef.value.offsetHeight + item.clientHeight;
+					resultsContainerRef.value.scrollTo({ top });
+				}
+			}
+		}
+	} else if (e.key === 'ArrowUp') {
+		if (hoverIndex.value > 0) {
+			hoverIndex.value--;
+
+			const searchOffset = props.filterable ? SEARCH_BAR_HEIGHT_PX : 0;
+			if (resultsContainerRef.value && itemsRef.value.length === 1) {
+				const item = itemsRef.value[0];
+				if (item.offsetTop <= resultsContainerRef.value.scrollTop + searchOffset) {
+					resultsContainerRef.value.scrollTo({ top: item.offsetTop - searchOffset });
+				}
+			}
+		}
+	} else if (e.key === 'Enter') {
+		if (hoverIndex.value === 0 && props.allowNewResources.label) {
+			emit('addResourceClick');
+			return;
+		}
+
+		const item = sortedResources.value[hoverIndex.value - 1];
+		const selected = item?.value;
+
+		// Selected resource can be empty when loading or empty results
+		if (selected && typeof selected !== 'boolean') {
+			if (props.disableInactiveItems && item && 'active' in item && item.active === false) {
+				return;
+			}
+
+			emit('update:modelValue', selected);
+		}
+	}
+}
+
+function onFilterInput(value: string) {
+	emit('filter', value);
+}
+
+function onItemClick(selected: string | number | boolean, item?: IResourceLocatorResultExpanded) {
+	if (typeof selected === 'boolean') {
+		return;
+	}
+
+	// Prevent selection of inactive items
+	if (props.disableInactiveItems && item && 'active' in item && item.active === false) {
+		return;
+	}
+
+	emit('update:modelValue', selected);
+}
+
+function onItemHover(index: number) {
+	hoverIndex.value = index;
+
+	setTimeout(() => {
+		if (hoverIndex.value === index) {
+			showHoverUrl.value = true;
+		}
+	}, 250);
+}
+
+function onItemHoverLeave() {
+	showHoverUrl.value = false;
+}
+
+function onResultsEnd() {
+	if (props.loading || !props.hasMore) {
+		return;
+	}
+
+	if (resultsContainerRef.value) {
+		const diff =
+			resultsContainerRef.value.offsetHeight -
+			(resultsContainerRef.value.scrollHeight - resultsContainerRef.value.scrollTop);
+		if (diff > -SCROLL_MARGIN_PX && diff < SCROLL_MARGIN_PX) {
+			debouncedLoadMore();
+		}
+	}
+}
+
+function isWithinDropdown(element: HTMLElement) {
+	return Boolean(element.closest('.' + $style.popover));
+}
+
+defineExpose({ isWithinDropdown });
+
+const canLoadMore = computed(() => {
+	return props.hasMore && !props.loading && !props.filter;
+});
+
+watch(
+	canLoadMore,
+	(loadMore) => {
+		const isScrollable =
+			!!resultsContainerRef.value &&
+			resultsContainerRef.value?.scrollHeight > resultsContainerRef.value?.clientHeight;
+		if (loadMore && !isScrollable) {
+			debouncedLoadMore();
+		}
+	},
+	{ immediate: true },
+);
+</script>
+
+<template>
+	<N8nPopover
+		side="bottom"
+		:width="props.width ? `${props.width}px` : undefined"
+		:content-class="$style.popover"
+		:open="props.show"
+		:teleported="false"
+		:enable-scrolling="false"
+		data-test-id="resource-locator-dropdown"
+	>
+		<template #trigger>
+			<slot />
+		</template>
+		<template #content>
+			<div v-if="props.errorView" :class="$style.messageContainer">
+				<slot name="error"></slot>
+			</div>
+			<div
+				v-if="props.filterable && !props.errorView"
+				:class="$style.searchInput"
+				@keydown="onKeyDown"
+			>
+				<N8nInput
+					ref="searchRef"
+					:model-value="props.filter"
+					size="medium"
+					:clearable="true"
+					:placeholder="
+						props.allowNewResources.label
+							? i18n.baseText('resourceLocator.placeholder.searchOrCreate')
+							: i18n.baseText('resourceLocator.placeholder.search')
+					"
+					data-test-id="rlc-search"
+					@update:model-value="onFilterInput"
+				>
+					<template #prefix>
+						<N8nIcon :class="$style.searchIcon" icon="search" />
+					</template>
+				</N8nInput>
+			</div>
+			<div
+				v-if="props.filterRequired && !props.filter && !props.errorView && !props.loading"
+				:class="$style.searchRequired"
+			>
+				{{ i18n.baseText('resourceLocator.mode.list.searchRequired') }}
+			</div>
+			<div
+				v-else-if="
+					!props.errorView &&
+					!props.allowNewResources.label &&
+					sortedResources.length === 0 &&
+					!props.loading
+				"
+				:class="$style.messageContainer"
+			>
+				{{ i18n.baseText('resourceLocator.mode.list.noResults') }}
+			</div>
+			<div
+				v-else-if="!props.errorView"
+				ref="resultsContainerRef"
+				:class="$style.container"
+				@scroll="onResultsEnd"
+			>
+				<div
+					v-if="props.allowNewResources.label"
+					key="addResourceKey"
+					ref="itemsRef"
+					data-test-id="rlc-item-add-resource"
+					:class="{
+						[$style.resourceItem]: true,
+						[$style.hovering]: hoverIndex === 0,
+					}"
+					@mouseenter="() => onItemHover(0)"
+					@mouseleave="() => onItemHoverLeave()"
+					@click="() => emit('addResourceClick')"
+				>
+					<div :class="$style.resourceNameContainer">
+						<span :class="$style.addResourceText">{{ props.allowNewResources.label }}</span>
+						<N8nIcon :class="$style.addResourceIcon" icon="plus" />
+					</div>
+				</div>
+				<div
+					v-for="(result, i) in sortedResources"
+					:key="result.value.toString()"
+					ref="itemsRef"
+					:class="{
+						[$style.resourceItem]: true,
+						[$style.selected]: result.value === props.modelValue?.value,
+						[$style.hovering]: hoverIndex === i + 1,
+						[$style.disabled]:
+							props.disableInactiveItems && 'active' in result && result.active === false,
+					}"
+					data-test-id="rlc-item"
+					@click="() => onItemClick(result.value, result)"
+					@mouseenter="() => onItemHover(i + 1)"
+					@mouseleave="() => onItemHoverLeave()"
+				>
+					<div :class="$style.resourceNameContainer">
+						<span>{{ result.name }}</span>
+						<slot
+							name="item-badge"
+							:item="result"
+							:is-hovered="showHoverUrl && hoverIndex === i + 1"
+						></slot>
+						<span v-if="result.isArchived" :class="$style.badgesContainer">
+							<N8nBadge class="ml-3xs" theme="tertiary" bold data-test-id="workflow-archived-tag">
+								{{ i18n.baseText('workflows.item.archived') }}
+							</N8nBadge>
+						</span>
+						<div :class="$style.urlLink">
+							<N8nIcon
+								v-if="showHoverUrl && result.url && hoverIndex === i + 1"
+								icon="external-link"
+								size="small"
+								:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
+								@click="openUrl($event, result.url)"
+							/>
+						</div>
+					</div>
+				</div>
+				<div v-if="props.loading && !props.errorView">
+					<div v-for="i in 3" :key="i" :class="$style.loadingItem">
+						<N8nLoading :class="$style.loader" variant="p" :rows="1" />
+					</div>
+					<div
+						v-if="props.showSlowLoadNotice && props.slowLoadNotice"
+						:class="$style.slowLoadNoticeContainer"
+					>
+						<N8nText size="small" :class="$style.tipText"
+							>{{ i18n.baseText('generic.tip') }}:
+						</N8nText>
+
+						<span :class="$style.hintText">{{ props.slowLoadNotice }}</span>
+					</div>
+				</div>
+			</div>
+		</template>
+	</N8nPopover>
+</template>
+
+<style lang="scss" module>
+:root .popover {
+	--content--height: 236px;
+	padding: 0 !important;
+	border: var(--border);
+	display: flex;
+	max-height: calc(var(--content--height) + var(--spacing--xl));
+	flex-direction: column;
+
+	& ::-webkit-scrollbar {
+		width: 12px;
+	}
+
+	& ::-webkit-scrollbar-thumb {
+		border-radius: 12px;
+		background: var(--color--foreground--shade-1);
+		border: 3px solid white;
+	}
+
+	& ::-webkit-scrollbar-thumb:hover {
+		background: var(--color--foreground--shade-2);
+	}
+}
+
+.container {
+	position: relative;
+	overflow: auto;
+}
+
+.messageContainer {
+	height: 236px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.searchInput {
+	border-bottom: var(--border);
+	--input--border-color: none;
+	--input--font-size: var(--font-size--2xs);
+	width: 100%;
+	z-index: 1;
+}
+
+.selected {
+	color: var(--color--primary);
+}
+
+.resourceItem {
+	display: flex;
+	padding: 0 var(--spacing--xs);
+	white-space: nowrap;
+	height: 32px;
+	cursor: pointer;
+
+	&:hover {
+		background-color: var(--color--background);
+	}
+
+	&.disabled {
+		opacity: 0.6;
+
+		&:hover {
+			background-color: transparent;
+		}
+	}
+}
+
+.loadingItem {
+	padding: 10px var(--spacing--xs);
+}
+
+.loader {
+	max-width: 120px;
+
+	* {
+		margin-top: 0 !important;
+		max-height: 12px;
+	}
+}
+
+.hovering {
+	background-color: var(--color--background);
+}
+
+.searchRequired {
+	height: 50px;
+	margin-top: 40px;
+	padding-left: var(--spacing--xs);
+	font-size: var(--font-size--xs);
+	color: var(--color--text);
+	display: flex;
+	align-items: center;
+}
+
+.urlLink {
+	display: flex;
+	align-items: center;
+	font-size: var(--font-size--3xs);
+	color: var(--color--text);
+	margin-left: var(--spacing--2xs);
+
+	&:hover {
+		color: var(--color--primary);
+	}
+}
+
+.badgesContainer {
+	display: inline-flex;
+	align-items: center;
+	margin-left: var(--spacing--2xs);
+}
+
+.resourceNameContainer {
+	display: flex;
+	align-items: center;
+	font-size: var(--font-size--2xs);
+	min-width: 0;
+	align-self: center;
+	flex: 1;
+}
+
+.resourceNameContainer > :first-child {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	flex: 1;
+	min-width: 0;
+}
+
+.searchIcon {
+	color: var(--color--text--tint-1);
+}
+
+.addResourceText {
+	font-weight: var(--font-weight--bold);
+}
+
+.addResourceIcon {
+	color: var(--color--text--tint-1);
+
+	margin-left: var(--spacing--2xs);
+}
+
+.tipText {
+	color: var(--color--text--shade-1);
+	font-weight: var(--font-weight--bold);
+	white-space: nowrap;
+	align-self: flex-start;
+}
+
+.slowLoadNoticeContainer {
+	display: flex;
+	align-items: center;
+	padding: var(--spacing--xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+	gap: var(--spacing--4xs);
+	line-height: var(--line-height--md);
+	word-break: break-word;
+	border-top: var(--border);
+}
+</style>

@@ -1,0 +1,38 @@
+{
+	"name": "Webhook publish local conflict",
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "f22164a7-1057-4d85-8559-9be630d831f0",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"position": [0, 0],
+			"id": "c55ef745-c8b5-42d8-bb84-716356a89202",
+			"name": "Webhook",
+			"webhookId": "b118414c-bfa0-48a9-b083-1c4d515db1fd"
+		},
+		{
+			"parameters": {
+				"formTitle": "test",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.formTrigger",
+			"typeVersion": 2.5,
+			"position": [0, 208],
+			"id": "7f30363f-823e-434b-99e9-69d8cdff8906",
+			"name": "On form submission",
+			"webhookId": "f22164a7-1057-4d85-8559-9be630d831f0"
+		}
+	],
+	"connections": {},
+	"pinData": {},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "1b5d2b15-f24c-4674-9dc3-de22e4e839a5",
+	"meta": {}
+}

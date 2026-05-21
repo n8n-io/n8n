@@ -66,7 +66,7 @@ body:
     id: nodejs-version
     attributes:
       label: Node.js Version
-      placeholder: ex. 22.16.0
+      placeholder: ex. 24.0.0
     validations:
       required: true
   - type: dropdown
@@ -76,8 +76,6 @@ body:
       options:
         - SQLite (default)
         - PostgreSQL
-        - MySQL
-        - MariaDB
       default: 0
     validations:
       required: true
@@ -85,7 +83,7 @@ body:
     id: execution-mode
     attributes:
       label: Execution mode
-      description: '[Info](https://docs.n8n.io/hosting/scaling/execution-modes-processes/)'
+      description: '[Info](https://docs.n8n.io/hosting/scaling/queue-mode/)'
       options:
         - main (default)
         - queue

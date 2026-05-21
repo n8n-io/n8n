@@ -1,18 +1,18 @@
 import set from 'lodash/set';
 import {
 	ApplicationError,
+	NodeConnectionTypes,
 	NodeOperationError,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
-	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { getTypeValidationParameter, getTypeValidationStrictness } from './utils';
 import { ENABLE_LESS_STRICT_TYPE_VALIDATION } from '../../../utils/constants';
 import { looseTypeValidationProperty } from '../../../utils/descriptions';
+import { getTypeValidationParameter, getTypeValidationStrictness } from './utils';
 
 export class IfV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -20,7 +20,7 @@ export class IfV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2],
+			version: [2, 2.1, 2.2, 2.3],
 			defaults: {
 				name: 'If',
 				color: '#408000',
@@ -29,6 +29,10 @@ export class IfV2 implements INodeType {
 			outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 			outputNames: ['true', 'false'],
 			parameterPane: 'wide',
+			builderHint: {
+				searchHint:
+					'After configuring, confirm the workflow wires both `.onTrue()` and `.onFalse()` (or only the relevant one) to the correct downstream node — IF has two named outputs and silently drops items routed to an unwired branch.',
+			},
 			properties: [
 				{
 					displayName: 'Conditions',
@@ -40,8 +44,15 @@ export class IfV2 implements INodeType {
 						filter: {
 							caseSensitive: '={{!$parameter.options.ignoreCase}}',
 							typeValidation: getTypeValidationStrictness(2.1),
-							version: '={{ $nodeVersion >= 2.2 ? 2 : 1 }}',
+							version: '={{ $nodeVersion >= 2.3 ? 3 : $nodeVersion >= 2.2 ? 2 : 1 }}',
 						},
+					},
+					builderHint: {
+						propertyHint: `Must always contain these three sibling keys:
+- combinator: 'and' or 'or', default to 'and'
+- conditions: [ a list of condition objects ]
+- options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 1 }
+e.g.: { combinator: 'and', options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 }, conditions: [{ leftValue: expr('{{ $json.field }}'), rightValue: 'value', operator: { type: 'string', operation: 'equals' } }] }`,
 					},
 				},
 				{

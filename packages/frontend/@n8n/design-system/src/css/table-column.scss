@@ -13,7 +13,7 @@
 }
 
 @include mixins.b(table-filter) {
-	border: solid 1px var(--border-color-light);
+	border: solid 1px var(--border-color--light);
 	border-radius: 2px;
 	background-color: var.$color-white;
 	box-shadow: var.$dropdown-menu-box-shadow;
@@ -40,7 +40,7 @@
 		}
 
 		@include mixins.when(active) {
-			background-color: var(--color-primary);
+			background-color: var(--color--primary);
 			color: var.$color-white;
 		}
 	}
@@ -50,19 +50,19 @@
 	}
 
 	@include mixins.e(bottom) {
-		border-top: 1px solid var(--border-color-light);
+		border-top: 1px solid var(--border-color--light);
 		padding: 8px;
 
 		button {
 			background: transparent;
 			border: none;
-			color: var(--color-text-dark);
+			color: var(--color--text--shade-1);
 			cursor: pointer;
 			font-size: var.$font-size-small;
 			padding: 0 3px;
 
 			&:hover {
-				color: var(--color-primary);
+				color: var(--color--primary);
 			}
 
 			&:focus {

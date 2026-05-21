@@ -1,3 +1,5 @@
+import { ExecutionsConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { sendAt } from 'cron';
 import moment from 'moment-timezone';
 import type {
@@ -5,26 +7,32 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	Cron,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { intervalToRecurrence, recurrenceCheck, toCronExpression } from './GenericFunctions';
+import {
+	intervalToRecurrence,
+	recurrenceCheck,
+	toCronExpression,
+	validateInterval,
+} from './GenericFunctions';
 import type { IRecurrenceRule, Rule } from './SchedulerInterface';
 
 export class ScheduleTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Schedule Trigger',
 		name: 'scheduleTrigger',
-		icon: 'fa:clock',
+		icon: 'node:schedule-trigger',
+		iconColor: 'black',
 		group: ['trigger', 'schedule'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Triggers the workflow on a given schedule',
 		eventTriggerDescription: '',
 		activationMessage:
 			'Your schedule trigger will now trigger executions on the schedule you have defined.',
 		defaults: {
 			name: 'Schedule Trigger',
-			color: '#31C49F',
 		},
 
 		inputs: [],
@@ -32,7 +40,7 @@ export class ScheduleTrigger implements INodeType {
 		properties: [
 			{
 				displayName:
-					'This workflow will run on the schedule you define here once you <a data-key="activate">activate</a> it.<br><br>For testing, you can also trigger it manually: by going back to the canvas and clicking \'execute workflow\'',
+					"This workflow will run on the schedule you define here once you publish it.<br><br>For testing, you can also trigger it manually: by going back to the canvas and clicking 'execute workflow'",
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -56,6 +64,10 @@ export class ScheduleTrigger implements INodeType {
 					{
 						name: 'interval',
 						displayName: 'Trigger Interval',
+						builderHint: {
+							propertyHint:
+								'You can add multiple intervals to trigger at different times. Use "Custom (Cron)" for more specific scheduling patterns.',
+						},
 						values: [
 							{
 								displayName: 'Trigger Interval',
@@ -105,6 +117,7 @@ export class ScheduleTrigger implements INodeType {
 									},
 								},
 								description: 'Number of seconds between each workflow trigger',
+								hint: 'Must be in range 1-59',
 							},
 							{
 								displayName: 'Minutes Between Triggers',
@@ -117,6 +130,7 @@ export class ScheduleTrigger implements INodeType {
 									},
 								},
 								description: 'Number of minutes between each workflow trigger',
+								hint: 'Must be in range 1-59',
 							},
 							{
 								displayName: 'Hours Between Triggers',
@@ -129,6 +143,7 @@ export class ScheduleTrigger implements INodeType {
 								},
 								default: 1,
 								description: 'Number of hours between each workflow trigger',
+								hint: 'Must be in range 1-23',
 							},
 							{
 								displayName: 'Days Between Triggers',
@@ -141,6 +156,7 @@ export class ScheduleTrigger implements INodeType {
 								},
 								default: 1,
 								description: 'Number of days between each workflow trigger',
+								hint: 'Must be in range 1-31',
 							},
 							{
 								displayName: 'Weeks Between Triggers',
@@ -411,6 +427,7 @@ export class ScheduleTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		const version = this.getNode().typeVersion;
 		const { interval: intervals } = this.getNodeParameter('rule', []) as Rule;
 		const timezone = this.getTimezone();
 		const staticData = this.getWorkflowStaticData('node') as {
@@ -420,9 +437,30 @@ export class ScheduleTrigger implements INodeType {
 			staticData.recurrenceRules = [];
 		}
 
-		const executeTrigger = (recurrence: IRecurrenceRule) => {
-			const shouldTrigger = recurrenceCheck(recurrence, staticData.recurrenceRules, timezone);
-			if (!shouldTrigger) return;
+		if (version >= 1.3) {
+			for (let i = 0; i < intervals.length; i++) {
+				validateInterval(this.getNode(), i, intervals[i]);
+			}
+		}
+
+		const workflowId = this.getWorkflow().id;
+		const nodeId = this.getNode().id;
+
+		const configDedupEnabled =
+			Container.get(ExecutionsConfig).scheduledExecutionDeduplicationEnabled;
+		// The workflowId should always be defined, but if it isn't we skip
+		// the deduplication key.
+		const dedupEnabled = configDedupEnabled && Boolean(workflowId);
+
+		const executeTrigger = (
+			recurrence: IRecurrenceRule,
+			skipRecurrenceCheck = false,
+			scheduledTime?: Date,
+		) => {
+			if (!skipRecurrenceCheck) {
+				const shouldTrigger = recurrenceCheck(recurrence, staticData.recurrenceRules, timezone);
+				if (!shouldTrigger) return;
+			}
 
 			const momentTz = moment.tz(timezone);
 			const resultData = {
@@ -439,20 +477,36 @@ export class ScheduleTrigger implements INodeType {
 				Timezone: `${timezone} (UTC${momentTz.format('Z')})`,
 			};
 
-			this.emit([this.helpers.returnJsonArray([resultData])]);
+			const deduplicationKey =
+				dedupEnabled && scheduledTime
+					? `${workflowId}:${nodeId}:${scheduledTime.toISOString()}`
+					: undefined;
+
+			this.emit(
+				[this.helpers.returnJsonArray([resultData])],
+				/* responsePromise= */ undefined,
+				/* donePromise= */ undefined,
+				deduplicationKey,
+			);
 		};
 
+		const nodeKey = `${workflowId ?? ''}:${nodeId}`;
 		const rules = intervals.map((interval, i) => ({
 			interval,
-			cronExpression: toCronExpression(interval),
+			cronExpression: toCronExpression(interval, nodeKey),
 			recurrence: intervalToRecurrence(interval, i),
 		}));
 
 		if (this.getMode() !== 'manual') {
 			for (const { interval, cronExpression, recurrence } of rules) {
 				try {
-					const cron = { expression: cronExpression, recurrence };
-					this.helpers.registerCron(cron, () => executeTrigger(recurrence));
+					const cron: Cron = {
+						expression: cronExpression,
+						recurrence,
+					};
+					this.helpers.registerCron(cron, (scheduledTime: Date) =>
+						executeTrigger(recurrence, /* skipRecurrenceCheck= */ false, scheduledTime),
+					);
 				} catch (error) {
 					if (interval.field === 'cronExpression') {
 						throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
@@ -476,7 +530,7 @@ export class ScheduleTrigger implements INodeType {
 						});
 					}
 				}
-				executeTrigger(recurrence);
+				executeTrigger(recurrence, true);
 			};
 
 			return { manualTriggerFunction };

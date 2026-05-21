@@ -82,12 +82,9 @@
         "$state": {
             "type": "string"
         },
-        "Created_By": {
+        "Account_Name": {
             "type": "object",
             "properties": {
-                "email": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "string"
                 },
@@ -95,9 +92,6 @@
                     "type": "string"
                 }
             }
-        },
-        "Created_Time": {
-            "type": "string"
         },
         "Email_Opt_Out": {
             "type": "boolean"
@@ -113,23 +107,6 @@
         },
         "Locked__s": {
             "type": "boolean"
-        },
-        "Modified_By": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "Modified_Time": {
-            "type": "string"
         },
         "Owner": {
             "type": "object",
@@ -158,7 +135,13 @@
                     }
                 }
             }
+        },
+        "Unsubscribed_Mode": {
+            "type": "null"
+        },
+        "Unsubscribed_Time": {
+            "type": "null"
         }
     },
-    "version": 5
+    "version": 8
 }

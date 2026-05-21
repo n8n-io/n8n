@@ -1,0 +1,78 @@
+{
+	"name": "AWS ELB Create Load Balancer Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "loadBalancer",
+				"operation": "create",
+				"ipAddressType": "ipv4",
+				"name": "test-lb",
+				"schema": "internet-facing",
+				"type": "application",
+				"subnets": ["subnet-12345", "subnet-67890"],
+				"additionalFields": {
+					"securityGroups": ["sg-12345"],
+					"tagsUi": {
+						"tagValues": [
+							{
+								"key": "Environment",
+								"value": "test"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.awsElb",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "node-id",
+			"name": "Create Load Balancer",
+			"credentials": {
+				"aws": {
+					"id": "credential-id",
+					"name": "Test AWS Credentials"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Load Balancer": [
+			{
+				"json": {
+					"LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/test-lb/1234567890123456",
+					"LoadBalancerName": "test-lb",
+					"Scheme": "internet-facing",
+					"Type": "application",
+					"State": {
+						"Code": "provisioning"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Create Load Balancer",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

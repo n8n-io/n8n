@@ -23,4 +23,10 @@ export class MyFeatureModule implements ModuleInterface {
 		
 		return [MyFeatureEntity];
 	}
+
+	async context() {
+		const { MyFeatureService } = await import('./my-feature.service');
+		
+		return { myFeatureProxy: Container.get(MyFeatureService) };
+	}
 }

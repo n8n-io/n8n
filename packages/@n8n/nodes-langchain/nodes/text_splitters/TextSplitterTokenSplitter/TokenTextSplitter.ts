@@ -1,8 +1,10 @@
 import type { TokenTextSplitterParams } from '@langchain/textsplitters';
 import { TextSplitter } from '@langchain/textsplitters';
-import { hasLongSequentialRepeat } from '@utils/helpers';
-import { getEncoding } from '@utils/tokenizer/tiktoken';
-import { estimateTextSplitsByTokens } from '@utils/tokenizer/token-estimator';
+import {
+	hasLongSequentialRepeat,
+	getEncoding,
+	estimateTextSplitsByTokens,
+} from '@n8n/ai-utilities';
 import type * as tiktoken from 'js-tiktoken';
 
 /**
@@ -51,7 +53,7 @@ export class TokenTextSplitter extends TextSplitter implements TokenTextSplitter
 
 			// Use tiktoken for normal text
 			try {
-				this.tokenizer ??= getEncoding(this.encodingName);
+				this.tokenizer ??= await getEncoding(this.encodingName);
 
 				const splits: string[] = [];
 				const input_ids = this.tokenizer.encode(text, this.allowedSpecial, this.disallowedSpecial);

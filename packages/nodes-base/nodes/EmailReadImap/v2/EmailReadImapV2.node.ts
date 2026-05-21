@@ -46,14 +46,13 @@ const versionDescription: INodeTypeDescription = {
 		header: '',
 		executionsHelp: {
 			inactive:
-				"<b>While building your workflow</b>, click the 'execute step' button, then send an email to make an event happen. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, <a data-key='activate'>activate</a> it. Then every time an email is received, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+				"<b>While building your workflow</b>, click the 'execute step' button, then send an email to make an event happen. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, publish it. Then every time an email is received, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
 			active:
 				"<b>While building your workflow</b>, click the 'execute step' button, then send an email to make an event happen. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time an email is received, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
 		},
 		activationHint:
-			"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
+			'Once you’ve finished building your workflow, publish it to have it also listen continuously (you just won’t see those executions here).',
 	},
-	usableAsTool: true,
 	inputs: [],
 	outputs: [NodeConnectionTypes.Main],
 	credentials: [
@@ -177,6 +176,19 @@ const versionDescription: INodeTypeDescription = {
 					default: 60,
 					description: 'Sets an interval (in minutes) to force a reconnection',
 				},
+				{
+					displayName: 'Fetch Only New Emails',
+					name: 'trackLastMessageId',
+					type: 'boolean',
+					default: true,
+					description:
+						'Whether to fetch only new emails since the last run, or all emails that match the "Custom Email Rules" (["UNSEEN"] by default)',
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 2.1 } }],
+						},
+					},
+				},
 			],
 		},
 	],
@@ -247,6 +259,7 @@ export class EmailReadImapV2 implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		const node = this.getNode();
 		const credentialsObject = await this.getCredentials('imap');
 		const credentials = isCredentialsDataImap(credentialsObject) ? credentialsObject : undefined;
 		if (!credentials) {
@@ -258,6 +271,15 @@ export class EmailReadImapV2 implements INodeType {
 		const activatedAt = DateTime.now();
 
 		const staticData = this.getWorkflowStaticData('node');
+		if (node.typeVersion <= 2) {
+			// before v 2.1 staticData.lastMessageUid was never set, preserve that behavior
+			staticData.lastMessageUid = undefined;
+		}
+
+		if (options.trackLastMessageId === false) {
+			staticData.lastMessageUid = undefined;
+		}
+
 		this.logger.debug('Loaded static data for node "EmailReadImap"', { staticData });
 
 		let connection: ImapSimple;
@@ -365,6 +387,9 @@ export class EmailReadImapV2 implements INodeType {
 					});
 
 					if (connection) {
+						// Create a fresh copy to avoid accumulating filters across calls
+						const currentSearchCriteria = [...searchCriteria];
+
 						/**
 						 * Only process new emails:
 						 * - If we've seen emails before (lastMessageUid is set), fetch messages higher UID.
@@ -386,19 +411,19 @@ export class EmailReadImapV2 implements INodeType {
 							 * - You can check if UIDs changed in the above example
 							 * by checking UIDValidity.
 							 */
-							searchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
-						} else {
-							searchCriteria.push(['SINCE', activatedAt.toFormat('dd-LLL-yyyy')]);
+							currentSearchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
+						} else if (node.typeVersion > 2 && options.trackLastMessageId !== false) {
+							currentSearchCriteria.push(['SINCE', activatedAt.toFormat('dd-LLL-yyyy')]);
 						}
 
 						this.logger.debug('Querying for new messages on node "EmailReadImap"', {
-							searchCriteria,
+							searchCriteria: currentSearchCriteria,
 						});
 
 						try {
 							await getNewEmails.call(this, {
 								imapConnection: connection,
-								searchCriteria,
+								searchCriteria: currentSearchCriteria,
 								postProcessAction,
 								getText,
 								getAttachment,
@@ -442,21 +467,26 @@ export class EmailReadImapV2 implements INodeType {
 			// Connect to the IMAP server and open the mailbox
 			// that we get informed whenever a new email arrives
 			return await imapConnect(config).then((conn) => {
+				let errorReported = false;
+
 				conn.on('close', (_hadError: boolean) => {
 					if (isCurrentlyReconnecting) {
 						this.logger.debug('Email Read Imap: Connected closed for forced reconnecting');
 					} else if (closeFunctionWasCalled) {
 						this.logger.debug('Email Read Imap: Shutting down workflow - connected closed');
-					} else {
+					} else if (!errorReported) {
 						this.logger.error('Email Read Imap: Connected closed unexpectedly');
 						this.emitError(new Error('Imap connection closed unexpectedly'));
 					}
+					conn.removeAllListeners();
 				});
 				conn.on('error', (error) => {
-					const errorCode = ((error as JsonObject).code as string).toUpperCase();
+					const errorCode =
+						((error as JsonObject).code as string | undefined)?.toUpperCase() ?? 'UNKNOWN';
 					this.logger.debug(`IMAP connection experienced an error: (${errorCode})`, {
 						error: error as Error,
 					});
+					errorReported = true;
 					this.emitError(error as Error);
 				});
 				return conn;

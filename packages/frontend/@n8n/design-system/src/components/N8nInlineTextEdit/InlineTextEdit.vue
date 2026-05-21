@@ -7,7 +7,7 @@ type Props = {
 	modelValue: string;
 	readOnly?: boolean;
 	maxLength?: number;
-	maxWidth?: number;
+	maxWidth?: number | string;
 	minWidth?: number;
 	placeholder?: string;
 	disabled?: boolean;
@@ -41,18 +41,32 @@ watchEffect(() => {
 
 // Resize logic
 const { width: measuredWidth } = useElementSize(measureSpan);
-const inputWidth = computed(() =>
-	Math.max(props.minWidth, Math.min(measuredWidth.value + 1, props.maxWidth)),
+const maxWidth = computed(() =>
+	typeof props.maxWidth === 'number' ? `${props.maxWidth}px` : props.maxWidth,
 );
+const inputWidth = computed(() => {
+	const measuredContentWidth = `${measuredWidth.value + 1}px`;
+
+	if (typeof props.maxWidth === 'number') {
+		return `${Math.max(props.minWidth, Math.min(measuredWidth.value + 1, props.maxWidth))}px`;
+	}
+
+	return `clamp(${props.minWidth}px, ${measuredContentWidth}, ${props.maxWidth})`;
+});
 
 const computedInlineStyles = computed(() => ({
-	width: `${inputWidth.value}px`,
-	maxWidth: `${props.maxWidth}px`,
+	width: inputWidth.value,
+	maxWidth: maxWidth.value,
 	zIndex: 1,
 }));
+const computedContentStyles = {
+	width: '100%',
+	maxWidth: '100%',
+	zIndex: 1,
+};
 
 function forceFocus() {
-	if (editableRoot.value && !props.readOnly) {
+	if (editableRoot.value && !props.readOnly && !props.disabled) {
 		editableRoot.value.edit();
 	}
 }
@@ -101,6 +115,7 @@ defineExpose({ forceFocus, forceCancel });
 		:readonly="readOnly"
 		select-on-focus
 		auto-resize
+		@click="forceFocus"
 		@submit="onSubmit"
 		@update:model-value="onInput"
 		@update:state="onStateChange"
@@ -116,14 +131,17 @@ defineExpose({ forceFocus, forceCancel });
 			<EditablePreview
 				data-test-id="inline-edit-preview"
 				:class="$style.inlineRenamePreview"
-				:style="computedInlineStyles"
+				:style="computedContentStyles"
 			/>
+			<!-- Stop propagation for space key to prevent VueFlow from intercepting it -->
+			<!-- when modifier keys (like Shift) are pressed. See: https://github.com/bcakmakoglu/vue-flow/issues/1999 -->
 			<EditableInput
 				ref="input"
 				:class="$style.inlineRenameInput"
 				data-test-id="inline-edit-input"
-				:style="computedInlineStyles"
+				:style="computedContentStyles"
 				@input="onInput($event.target.value)"
+				@keydown.space.stop
 			/>
 		</EditableArea>
 	</EditableRoot>
@@ -138,12 +156,12 @@ defineExpose({ forceFocus, forceCancel });
 	&::after {
 		content: '';
 		position: absolute;
-		top: calc(var(--spacing-4xs) * -1);
-		left: calc(var(--spacing-3xs) * -1);
-		width: calc(100% + var(--spacing-xs));
-		height: calc(100% + var(--spacing-2xs));
-		border-radius: var(--border-radius-base);
-		background-color: var(--color-foreground-xlight);
+		top: calc(var(--spacing--4xs) * -1);
+		left: calc(var(--spacing--3xs) * -1);
+		width: calc(100% + var(--spacing--xs));
+		height: calc(100% + var(--spacing--2xs));
+		border-radius: var(--radius);
+		background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
 		opacity: 0;
 		z-index: 0;
 		transition: all 0.1s ease-in-out;
@@ -152,7 +170,7 @@ defineExpose({ forceFocus, forceCancel });
 	&[data-focused],
 	&:hover {
 		&::after {
-			border: 1px solid var(--color-foreground-base);
+			border: 1px solid var(--color--foreground);
 			opacity: 1;
 		}
 	}
@@ -160,7 +178,7 @@ defineExpose({ forceFocus, forceCancel });
 	&[data-focused] {
 		cursor: text;
 		&::after {
-			border: 1px solid var(--color-secondary);
+			border: 1px solid var(--color--secondary);
 		}
 	}
 }

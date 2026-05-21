@@ -1,0 +1,109 @@
+{
+	"description": "Manually committed test workflows (not downloaded from API)",
+	"workflows": [
+		{
+			"id": 0,
+			"name": "Multi-Agent Research Report",
+			"success": true
+		},
+		{
+			"id": 1,
+			"name": "Split in batches - complex patterns",
+			"success": true
+		},
+		{
+			"id": 2,
+			"name": "Merge node patterns",
+			"success": true,
+			"expectedWarnings": [
+				{ "code": "DISCONNECTED_NODE", "nodeName": "Switch5" },
+				{ "code": "DISCONNECTED_NODE", "nodeName": "If" },
+				{ "code": "DISCONNECTED_NODE", "nodeName": "If1" },
+				{ "code": "DISCONNECTED_NODE", "nodeName": "Edit Fields1" },
+				{ "code": "DISCONNECTED_NODE", "nodeName": "Edit Fields2" },
+				{ "code": "DISCONNECTED_NODE", "nodeName": "Edit Fields3" },
+				{ "code": "DISCONNECTED_NODE", "nodeName": "Edit Fields4" },
+				{ "code": "DISCONNECTED_NODE", "nodeName": "Edit Fields5" },
+				{ "code": "DISCONNECTED_NODE", "nodeName": "Edit Fields6" },
+				{ "code": "MERGE_SINGLE_INPUT", "nodeName": "Merge7" },
+				{ "code": "MERGE_SINGLE_INPUT", "nodeName": "Merge6" },
+				{ "code": "MERGE_SINGLE_INPUT", "nodeName": "Merge10" },
+				{ "code": "MERGE_SINGLE_INPUT", "nodeName": "Merge12" }
+			]
+		},
+		{
+			"id": 3,
+			"name": "if node",
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "If1"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "If3"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "If4"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "If5"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "If6"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Switch2"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Switch3"
+				}
+			]
+		},
+		{
+			"id": 4,
+			"name": "Unknown nodes with connections",
+			"success": true
+		},
+		{
+			"id": 5,
+			"name": "Chat trigger with loadPreviousSession=memory but no memory subnode (INS-136)",
+			"success": true,
+			"expectedErrors": [
+				{ "code": "MISSING_REQUIRED_INPUT", "nodeName": "Chat Trigger" },
+				{ "code": "MISSING_REQUIRED_INPUT", "nodeName": "Agent" }
+			]
+		},
+		{
+			"id": 6,
+			"name": "Vector store in retrieve mode wired via main edges (real eval failure)",
+			"success": true,
+			"expectedValidationWarnings": [
+				{ "code": "INVALID_OUTPUT_FOR_MODE", "nodeName": "Retrieve Relevant Regulations" }
+			]
+		},
+		{
+			"id": 7,
+			"name": "Set node with invalid mode (keepAllExistingFields)",
+			"success": true,
+			"expectedBuilderErrors": [{ "code": "SET_INVALID_MODE", "nodeName": "Edit Fields" }]
+		},
+		{
+			"id": 8,
+			"name": "Set node v3.4 assignment missing id field",
+			"success": true,
+			"expectedBuilderErrors": [{ "code": "SET_INVALID_ASSIGNMENT", "nodeName": "Edit Fields" }]
+		},
+		{
+			"id": 9,
+			"name": "If/Switch branch wired directly to multi-input merge",
+			"success": true
+		}
+	]
+}

@@ -1,16 +1,17 @@
 import type { ProjectRelation } from '@n8n/api-types';
-import type { DatabaseConfig } from '@n8n/config';
-import type {
-	Project,
-	ProjectRepository,
-	SharedCredentialsRepository,
-	ProjectRelationRepository,
-	SharedCredentials,
+import type { ModuleRegistry } from '@n8n/backend-common';
+import {
+	type Project,
+	type ProjectRepository,
+	type SharedCredentialsRepository,
+	type ProjectRelationRepository,
+	type SharedCredentials,
+	PROJECT_ADMIN_ROLE,
 } from '@n8n/db';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
-import type { CacheService } from '../cache/cache.service';
 import { ProjectService } from '../project.service.ee';
 import type { RoleService } from '../role.service';
 
@@ -20,17 +21,57 @@ describe('ProjectService', () => {
 	const projectRelationRepository = mock<ProjectRelationRepository>({ manager });
 	const roleService = mock<RoleService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
-	const cacheService = mock<CacheService>();
+	const moduleRegistry = mock<ModuleRegistry>({ entities: [] });
 	const projectService = new ProjectService(
 		mock(),
 		projectRepository,
 		projectRelationRepository,
 		roleService,
 		sharedCredentialsRepository,
-		cacheService,
 		mock(),
-		mock<DatabaseConfig>({ type: 'postgresdb' }),
+		moduleRegistry,
 	);
+
+	describe('getAccessibleProjectsAndCount', () => {
+		const options = { skip: 0, take: 10, search: 'test' };
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should call findAllProjectsAndCount for admin users', async () => {
+			const adminUser = {
+				id: 'admin-user',
+				role: { scopes: [{ slug: 'project:read' }] },
+			} as any;
+
+			const expected: [Project[], number] = [[mock<Project>({ id: 'p1', name: 'Project 1' })], 1];
+			projectRepository.findAllProjectsAndCount.mockResolvedValueOnce(expected);
+
+			const result = await projectService.getAccessibleProjectsAndCount(adminUser, options);
+
+			expect(projectRepository.findAllProjectsAndCount).toHaveBeenCalledWith(options);
+			expect(result).toEqual(expected);
+		});
+
+		it('should call getAccessibleProjectsAndCount for non-admin users', async () => {
+			const memberUser = {
+				id: 'member-user',
+				role: { scopes: [] },
+			} as any;
+
+			const expected: [Project[], number] = [[mock<Project>({ id: 'p2', name: 'Project 2' })], 1];
+			projectRepository.getAccessibleProjectsAndCount.mockResolvedValueOnce(expected);
+
+			const result = await projectService.getAccessibleProjectsAndCount(memberUser, options);
+
+			expect(projectRepository.getAccessibleProjectsAndCount).toHaveBeenCalledWith(
+				'member-user',
+				options,
+			);
+			expect(result).toEqual(expected);
+		});
+	});
 
 	describe('addUsersToProject', () => {
 		it('throws if called with a personal project', async () => {
@@ -58,7 +99,7 @@ describe('ProjectService', () => {
 			// ACT & ASSERT
 			await expect(
 				projectService.addUsersToProject(projectId, [
-					{ userId: '1234', role: 'project:personalOwner' },
+					{ userId: '1234', role: PROJECT_OWNER_ROLE_SLUG },
 				]),
 			).rejects.toThrowError("Can't add a personalOwner to a team project.");
 		});
@@ -100,15 +141,11 @@ describe('ProjectService', () => {
 
 			expect(projectRepository.findOne).toHaveBeenCalledWith({
 				where: { id: projectId, type: 'team' },
-				relations: { projectRelations: true },
+				relations: { projectRelations: { role: true } },
 			});
 
 			expect(manager.delete).toHaveBeenCalled();
 			expect(manager.insert).toHaveBeenCalled();
-			expect(cacheService.deleteMany).toHaveBeenCalledWith([
-				'credential-can-use-secrets:cred1',
-				'credential-can-use-secrets:cred2',
-			]);
 		});
 
 		it('should throw error if project not found', async () => {
@@ -139,7 +176,7 @@ describe('ProjectService', () => {
 				mock<Project>({
 					id: projectId,
 					type: 'team',
-					projectRelations: [{ userId: 'user1', role: 'project:admin' }],
+					projectRelations: [{ userId: 'user1', role: PROJECT_ADMIN_ROLE }],
 				}),
 			);
 			roleService.isRoleLicensed.mockReturnValue(false);
@@ -156,9 +193,9 @@ describe('ProjectService', () => {
 
 	describe('changeUserRoleInProject', () => {
 		const projectId = '12345';
-		const mockRelations: ProjectRelation[] = [
-			{ userId: 'user1', role: 'project:admin' },
-			{ userId: 'user2', role: 'project:viewer' },
+		const mockRelations = [
+			{ userId: 'user1', role: { slug: 'project:admin' } },
+			{ userId: 'user2', role: { slug: 'project:viewer' } },
 		];
 
 		beforeEach(() => {
@@ -185,12 +222,12 @@ describe('ProjectService', () => {
 
 			expect(projectRepository.findOne).toHaveBeenCalledWith({
 				where: { id: projectId, type: 'team' },
-				relations: { projectRelations: true },
+				relations: { projectRelations: { role: true } },
 			});
 
 			expect(projectRelationRepository.update).toHaveBeenCalledWith(
 				{ projectId, userId: 'user2' },
-				{ role: 'project:admin' },
+				{ role: { slug: 'project:admin' } },
 			);
 		});
 
@@ -210,13 +247,13 @@ describe('ProjectService', () => {
 
 			expect(projectRepository.findOne).toHaveBeenCalledWith({
 				where: { id: projectId, type: 'team' },
-				relations: { projectRelations: true },
+				relations: { projectRelations: { role: true } },
 			});
 		});
 
 		it('should throw if the role to be set is `project:personalOwner`', async () => {
 			await expect(
-				projectService.changeUserRoleInProject(projectId, 'user2', 'project:personalOwner'),
+				projectService.changeUserRoleInProject(projectId, 'user2', PROJECT_OWNER_ROLE_SLUG),
 			).rejects.toThrow('Personal owner cannot be added to a team project.');
 		});
 
@@ -230,7 +267,7 @@ describe('ProjectService', () => {
 
 			expect(projectRepository.findOne).toHaveBeenCalledWith({
 				where: { id: projectId, type: 'team' },
-				relations: { projectRelations: true },
+				relations: { projectRelations: { role: true } },
 			});
 		});
 	});

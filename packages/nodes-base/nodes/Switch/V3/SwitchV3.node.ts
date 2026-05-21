@@ -52,13 +52,63 @@ export class SwitchV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: `=mode: {{(${capitalize})($parameter["mode"])}}`,
-			version: [3, 3.1, 3.2],
+			version: [3, 3.1, 3.2, 3.3, 3.4],
 			defaults: {
 				name: 'Switch',
 				color: '#506000',
 			},
 			inputs: [NodeConnectionTypes.Main],
 			outputs: `={{(${configuredOutputs})($parameter)}}`,
+			builderHint: {
+				extraTypeDefContent: [
+					{
+						displayOptions: { show: { mode: ['rules'] } },
+						content: `<patterns>
+<pattern title="Switch with two cases plus a default branch">
+const routeByPriority = switchCase({
+  version: 3.2,
+  config: {
+    name: 'Route by Priority',
+    parameters: {
+      rules: {
+        values: [
+          {
+            outputKey: 'urgent',
+            conditions: {
+              options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
+              conditions: [{ leftValue: expr('{{ $json.priority }}'), operator: { type: 'string', operation: 'equals' }, rightValue: 'urgent' }],
+              combinator: 'and'
+            }
+          },
+          {
+            outputKey: 'normal',
+            conditions: {
+              options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
+              conditions: [{ leftValue: expr('{{ $json.priority }}'), operator: { type: 'string', operation: 'equals' }, rightValue: 'normal' }],
+              combinator: 'and'
+            }
+          }
+        ]
+      },
+      options: {
+        fallbackOutput: 'extra',
+        renameFallbackOutput: 'Fallback'
+      }
+    }
+  }
+});
+
+export default workflow('id', 'name')
+  .add(startTrigger)
+  .to(routeByPriority
+    .onCase(0, processUrgent.to(notifyTeam))
+    .onCase(1, processNormal)
+    .onCase(2, archive));
+</pattern>
+</patterns>`,
+					},
+				],
+			},
 			properties: [
 				{
 					displayName: 'Mode',
@@ -84,9 +134,24 @@ export class SwitchV3 implements INodeType {
 					displayName: 'Number of Outputs',
 					name: 'numberOutputs',
 					type: 'number',
+					noDataExpression: true,
 					displayOptions: {
 						show: {
 							mode: ['expression'],
+							'@version': [{ _cnd: { gte: 3.3 } }],
+						},
+					},
+					default: 4,
+					description: 'How many outputs to create',
+				},
+				{
+					displayName: 'Number of Outputs',
+					name: 'numberOutputs',
+					type: 'number',
+					displayOptions: {
+						show: {
+							mode: ['expression'],
+							'@version': [{ _cnd: { lt: 3.3 } }],
 						},
 					},
 					default: 4,
@@ -113,6 +178,10 @@ export class SwitchV3 implements INodeType {
 					name: 'rules',
 					placeholder: 'Add Routing Rule',
 					type: 'fixedCollection',
+					builderHint: {
+						propertyHint:
+							"Use `rules.values` (NOT `rules.rules`). Each rule needs `outputKey` and a complete `conditions` object with these three sibling keys: `combinator` ('and' | 'or'), `conditions` (array of condition objects), `options` (`{ caseSensitive, leftValue, typeValidation }`). Same shape as IF. Wire rule outputs by zero-based index with `.onCase(index, target)`; `outputKey` is the visible output label, not the `.onCase()` argument. Unwired cases silently drop their items.",
+					},
 					typeOptions: {
 						multipleValues: true,
 						sortable: true,
@@ -149,7 +218,7 @@ export class SwitchV3 implements INodeType {
 					options: [
 						{
 							name: 'values',
-							displayName: 'Values',
+							displayName: 'Routing Rule',
 							values: [
 								{
 									displayName: 'Conditions',
@@ -162,7 +231,7 @@ export class SwitchV3 implements INodeType {
 										filter: {
 											caseSensitive: '={{!$parameter.options.ignoreCase}}',
 											typeValidation: getTypeValidationStrictness(3.1),
-											version: '={{ $nodeVersion >= 3.2 ? 2 : 1 }}',
+											version: '={{ $nodeVersion >=3.4 ? 3 : $nodeVersion >= 3.2 ? 2 : 1 }}',
 										},
 									},
 								},
@@ -218,6 +287,10 @@ export class SwitchV3 implements INodeType {
 								loadOptionsDependsOn: ['rules.values', '/rules', '/rules.values'],
 								loadOptionsMethod: 'getFallbackOutputOptions',
 							},
+							builderHint: {
+								propertyHint:
+									"Set this to `'extra'` before wiring a catch-all/default branch. In rules mode, `'extra'` creates a fallback output at index `rules.values.length`; default `'none'` creates no fallback output and drops unmatched items. Numeric values route unmatched items to an existing rule output and do not create a new port.",
+							},
 							default: 'none',
 							// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 							description:
@@ -244,6 +317,10 @@ export class SwitchV3 implements INodeType {
 							type: 'string',
 							placeholder: 'e.g. Fallback',
 							default: '',
+							builderHint: {
+								propertyHint:
+									"Only labels the extra fallback output. Use it together with `fallbackOutput: 'extra'`; it does not create a fallback output by itself.",
+							},
 							displayOptions: {
 								show: {
 									fallbackOutput: ['extra'],

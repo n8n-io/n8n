@@ -1,11 +1,11 @@
-import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
+import { action } from 'storybook/actions';
 
 import N8nIconPicker from './IconPicker.vue';
 import { type IconOrEmoji } from './types';
 
 export default {
-	title: 'Atoms/Icon Picker',
+	title: 'Core/Icon Picker',
 	component: N8nIconPicker,
 	argTypes: {
 		buttonTooltip: {
@@ -14,6 +14,12 @@ export default {
 		buttonSize: {
 			type: 'select',
 			options: ['small', 'large'],
+		},
+	},
+
+	parameters: {
+		docs: {
+			description: { component: 'A searchable selector for browsing and choosing icons.' },
 		},
 	},
 };

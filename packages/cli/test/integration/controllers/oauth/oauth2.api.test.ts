@@ -1,13 +1,19 @@
-import { testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { response as Response } from 'express';
 import nock from 'nock';
 import { parse as parseQs } from 'querystring';
 
-import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
 import { CredentialsHelper } from '@/credentials-helper';
-import { saveCredential } from '@test-integration/db/credentials';
+import { ExternalHooks } from '@/external-hooks';
+import { OauthService } from '@/oauth/oauth.service';
+import {
+	decryptCredentialData,
+	getCredentialById,
+	saveCredential,
+	shareCredentialWithUsers,
+} from '@test-integration/db/credentials';
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import { setupTestServer } from '@test-integration/utils';
@@ -51,10 +57,11 @@ describe('OAuth2 API', () => {
 		);
 	});
 
-	it('should return a valid auth URL when the auth flow is initiated', async () => {
-		const controller = Container.get(OAuth2CredentialController);
-		const csrfSpy = jest.spyOn(controller, 'createCsrfState').mockClear();
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
 
+	it('should return a valid auth URL when the auth flow is initiated', async () => {
 		const response = await ownerAgent
 			.get('/oauth2-credential/auth')
 			.query({ id: credential.id })
@@ -63,28 +70,84 @@ describe('OAuth2 API', () => {
 		expect(authUrl.hostname).toBe('test.domain');
 		expect(authUrl.pathname).toBe('/oauth2/auth');
 
-		expect(csrfSpy).toHaveBeenCalled();
-		const [_, state] = csrfSpy.mock.results[0].value;
-		expect(parseQs(authUrl.search.slice(1))).toEqual({
+		const queryParams = parseQs(authUrl.search.slice(1));
+		expect(queryParams).toMatchObject({
 			access_type: 'offline',
 			client_id: 'client_id',
 			redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
 			response_type: 'code',
-			state,
 			scope: 'openid',
+		});
+
+		// Verify state is base64-encoded and contains expected structure
+		expect(queryParams.state).toBeDefined();
+		const decodedState = JSON.parse(Buffer.from(queryParams.state as string, 'base64').toString());
+		expect(decodedState).toMatchObject({
+			token: expect.any(String),
+			createdAt: expect.any(Number),
+			data: expect.any(String), // Encrypted CSRF data
 		});
 	});
 
+	it('should allow external hook to modify oAuthOptions and state', async () => {
+		const externalHooks = Container.get(ExternalHooks);
+		const oauthService = Container.get(OauthService);
+
+		// Mock the external hook to modify both redirectUri and state
+		const hookSpy = jest.fn(async function (oAuthOptions) {
+			// Modify redirectUri directly in oAuthOptions
+			oAuthOptions.redirectUri = 'https://custom.domain/callback';
+
+			// Decode base64 state, add host property, and re-encode
+			const stateJson = JSON.parse(Buffer.from(oAuthOptions.state, 'base64').toString());
+			stateJson.host = 'custom.host.com';
+			oAuthOptions.state = Buffer.from(JSON.stringify(stateJson)).toString('base64');
+		});
+
+		externalHooks['registered']['oauth2.authenticate'] = [hookSpy];
+
+		const response = await ownerAgent
+			.get('/oauth2-credential/auth')
+			.query({ id: credential.id })
+			.expect(200);
+
+		const authUrl = new URL(response.body.data);
+		const queryParams = parseQs(authUrl.search.slice(1));
+
+		// Verify the hook was called
+		expect(hookSpy).toHaveBeenCalledTimes(1);
+
+		// Verify redirectUri was modified
+		expect(queryParams.redirect_uri).toBe('https://custom.domain/callback');
+
+		// Verify the state is base64-encoded
+		expect(queryParams.state).toBeDefined();
+		expect(typeof queryParams.state).toBe('string');
+
+		// Decode and verify the state contains the host property (plaintext in base64)
+		const decodedState = JSON.parse(Buffer.from(queryParams.state as string, 'base64').toString());
+		expect(decodedState.host).toBe('custom.host.com');
+		expect(decodedState.token).toBeDefined();
+		expect(decodedState.createdAt).toBeDefined();
+		expect(decodedState.data).toBeDefined();
+
+		// Decrypt the data field and verify original CSRF data is preserved
+		const decryptedData = JSON.parse(oauthService['cipher'].decrypt(decodedState.data));
+		expect(decryptedData.cid).toBe(credential.id);
+		expect(decryptedData.userId).toBe(owner.id);
+	});
+
 	it('should fail on auth when callback is called as another user', async () => {
-		const controller = Container.get(OAuth2CredentialController);
-		const csrfSpy = jest.spyOn(controller, 'createCsrfState').mockClear();
-		const renderSpy = (Response.render = jest.fn(function () {
+		const oauthService = Container.get(OauthService);
+		const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+		const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
 			this.end();
-		}));
+			return this;
+		});
 
 		await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
 
-		const [_, state] = csrfSpy.mock.results[0].value;
+		const [_, state] = await csrfSpy.mock.results[0].value;
 
 		await testServer
 			.authAgentFor(anotherUser)
@@ -98,15 +161,16 @@ describe('OAuth2 API', () => {
 	});
 
 	it('should handle a valid callback without auth', async () => {
-		const controller = Container.get(OAuth2CredentialController);
-		const csrfSpy = jest.spyOn(controller, 'createCsrfState').mockClear();
-		const renderSpy = (Response.render = jest.fn(function () {
+		const oauthService = Container.get(OauthService);
+		const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+		const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
 			this.end();
-		}));
+			return this;
+		});
 
 		await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
 
-		const [_, state] = csrfSpy.mock.results[0].value;
+		const [_, state] = await csrfSpy.mock.results[0].value;
 
 		nock('https://test.domain').post('/oauth2/token').reply(200, { access_token: 'updated_token' });
 
@@ -121,9 +185,129 @@ describe('OAuth2 API', () => {
 			credential,
 			credential.type,
 		);
-		expect(updatedCredential.getData()).toEqual({
+		expect(await updatedCredential.getData()).toEqual({
 			...credentialData,
 			oauthTokenData: { access_token: 'updated_token' },
+		});
+	});
+
+	describe('OAuth reconnect authorization', () => {
+		const sharedCredentialPayload = {
+			name: 'Shared OAuth2 credential',
+			type: 'testOAuth2Api',
+			data: credentialData,
+		};
+
+		const expectNoCsrfStateOnCredential = async (credentialId: string) => {
+			const stored = await getCredentialById(credentialId);
+			expect(stored).not.toBeNull();
+			const decrypted = (await decryptCredentialData(stored!)) as Record<string, unknown>;
+			expect(decrypted).not.toHaveProperty('csrfSecret');
+			expect(decrypted).not.toHaveProperty('codeVerifier');
+		};
+
+		it('should reject auth start for a sharee with credential:user role', async () => {
+			const sharee = await createMember();
+			await shareCredentialWithUsers(credential, [sharee]);
+
+			const response = await testServer
+				.authAgentFor(sharee)
+				.get('/oauth2-credential/auth')
+				.query({ id: credential.id });
+
+			expect(response.statusCode).toBe(404);
+			await expectNoCsrfStateOnCredential(credential.id);
+		});
+
+		it('should reject auth start for a project viewer on a project-shared credential', async () => {
+			const projectViewer = await createMember();
+			const teamProject = await createTeamProject(undefined, owner);
+			await linkUserToProject(projectViewer, teamProject, 'project:viewer');
+
+			const projectCredential = await saveCredential(sharedCredentialPayload, {
+				project: teamProject,
+				role: 'credential:owner',
+			});
+
+			const response = await testServer
+				.authAgentFor(projectViewer)
+				.get('/oauth2-credential/auth')
+				.query({ id: projectCredential.id });
+
+			expect(response.statusCode).toBe(404);
+			await expectNoCsrfStateOnCredential(projectCredential.id);
+		});
+
+		it('should allow auth start for a project editor on a project-shared credential', async () => {
+			const projectEditor = await createMember();
+			const teamProject = await createTeamProject(undefined, owner);
+			await linkUserToProject(projectEditor, teamProject, 'project:editor');
+
+			const projectCredential = await saveCredential(sharedCredentialPayload, {
+				project: teamProject,
+				role: 'credential:owner',
+			});
+
+			const response = await testServer
+				.authAgentFor(projectEditor)
+				.get('/oauth2-credential/auth')
+				.query({ id: projectCredential.id });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toContain('https://test.domain/oauth2/auth');
+		});
+
+		it('should reject callback when requester lacks credential:update on the target credential', async () => {
+			const sharee = await createMember();
+			await shareCredentialWithUsers(credential, [sharee]);
+
+			const oauthService = Container.get(OauthService);
+			const renderSpy = (Response.render = jest.fn(function () {
+				this.end();
+			}));
+
+			// Build a callback state whose decrypted userId equals the requesting member,
+			// so the userId equality check inside decodeCsrfState passes and the credential
+			// scope check is the only remaining gate. The owner-initiated /auth call below
+			// produces a valid encrypted state; we then re-encrypt its contents with the
+			// member's userId before driving the callback as the member.
+			const ownerAgentForSetup = testServer.authAgentFor(owner);
+			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			await ownerAgentForSetup
+				.get('/oauth2-credential/auth')
+				.query({ id: credential.id })
+				.expect(200);
+			const [, ownerState] = await csrfSpy.mock.results[0].value;
+
+			const decoded = JSON.parse(Buffer.from(ownerState, 'base64').toString());
+			const decryptedData = JSON.parse(oauthService['cipher'].decrypt(decoded.data)) as Record<
+				string,
+				unknown
+			>;
+			decryptedData.userId = sharee.id;
+			decoded.data = oauthService['cipher'].encrypt(JSON.stringify(decryptedData));
+			const reencodedState = Buffer.from(JSON.stringify(decoded)).toString('base64');
+
+			nock('https://test.domain')
+				.post('/oauth2/token')
+				.reply(200, { access_token: 'member_token' });
+
+			await testServer
+				.authAgentFor(sharee)
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state: reencodedState })
+				.expect(200);
+
+			expect(renderSpy).toHaveBeenCalledWith('oauth-error-callback', {
+				error: { message: 'Credential not found' },
+			});
+
+			const updatedCredential = await Container.get(CredentialsHelper).getCredentials(
+				credential,
+				credential.type,
+			);
+			const credentials = await updatedCredential.getData();
+			expect(credentials.oauthTokenData).toBeUndefined();
 		});
 	});
 });

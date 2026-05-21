@@ -16,6 +16,9 @@
                 "canChangeCopyRequiresWriterPermission": {
                     "type": "boolean"
                 },
+                "canChangeItemDownloadRestriction": {
+                    "type": "boolean"
+                },
                 "canChangeSecurityUpdateEnabled": {
                     "type": "boolean"
                 },
@@ -108,6 +111,33 @@
         "createdTime": {
             "type": "string"
         },
+        "downloadRestrictions": {
+            "type": "object",
+            "properties": {
+                "effectiveDownloadRestrictionWithContext": {
+                    "type": "object",
+                    "properties": {
+                        "restrictedForReaders": {
+                            "type": "boolean"
+                        },
+                        "restrictedForWriters": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "itemDownloadRestriction": {
+                    "type": "object",
+                    "properties": {
+                        "restrictedForReaders": {
+                            "type": "boolean"
+                        },
+                        "restrictedForWriters": {
+                            "type": "boolean"
+                        }
+                    }
+                }
+            }
+        },
         "explicitlyTrashed": {
             "type": "boolean"
         },
@@ -128,6 +158,20 @@
         },
         "id": {
             "type": "string"
+        },
+        "imageMediaMetadata": {
+            "type": "object",
+            "properties": {
+                "height": {
+                    "type": "integer"
+                },
+                "rotation": {
+                    "type": "integer"
+                },
+                "width": {
+                    "type": "integer"
+                }
+            }
         },
         "inheritedPermissionsDisabled": {
             "type": "boolean"
@@ -290,6 +334,9 @@
         "starred": {
             "type": "boolean"
         },
+        "thumbnailLink": {
+            "type": "string"
+        },
         "thumbnailVersion": {
             "type": "string"
         },
@@ -315,5 +362,5 @@
             "type": "boolean"
         }
     },
-    "version": 3
+    "version": 6
 }

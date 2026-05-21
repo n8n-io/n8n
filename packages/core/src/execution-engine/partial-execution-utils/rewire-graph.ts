@@ -16,7 +16,7 @@ export function rewireGraph(
 		return graph;
 	}
 
-	const rootNode = [...children][0];
+	const rootNode = [...children][children.size - 1];
 
 	a.ok(rootNode);
 
@@ -30,8 +30,9 @@ export function rewireGraph(
 		disabled: false,
 		type: '@n8n/n8n-nodes-langchain.toolExecutor',
 		parameters: {
-			query: agentRequest?.query ?? {},
+			query: JSON.stringify(agentRequest?.query ?? {}),
 			toolName: agentRequest?.tool?.name ?? '',
+			node: tool.name,
 		},
 		id: rootNode.id,
 		typeVersion: 0,

@@ -1,0 +1,75 @@
+{
+	"name": "Microsoft Outlook Message Get Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "e524f588-b6a3-4849-8777-b32a8a755ae5",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "get",
+				"messageId": {
+					"__rl": true,
+					"value": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAA=",
+					"mode": "id"
+				},
+				"output": "simple"
+			},
+			"id": "baff6798-0304-4255-bdb0-dd3f2659373b",
+			"name": "Microsoft Outlook",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 2,
+			"position": [1040, 360],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "iXJCki7i5Vz0bdks",
+					"name": "Microsoft Outlook OAuth2 Test"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Microsoft Outlook": [
+			{
+				"json": {
+					"id": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAA=",
+					"conversationId": "AAQkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgAQALc9G-OGBp9Hshu8JZGiSFs=",
+					"subject": "Test Email Subject",
+					"bodyPreview": "This is a test email body preview for the get operation",
+					"from": "john.doe@example.com",
+					"to": ["jane.smith@example.com", "bob.wilson@example.com"],
+					"categories": ["Blue category", "Important"],
+					"hasAttachments": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "fed8ec2e-8663-4dfc-8234-33eb83257260",
+	"id": "1CYHzBXQw1nfPGtB",
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}

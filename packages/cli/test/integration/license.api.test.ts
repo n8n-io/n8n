@@ -1,17 +1,14 @@
 import { testDb } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import nock from 'nock';
-
-import config from '@/config';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import type { ILicensePostResponse, ILicenseReadResponse } from '@/interfaces';
-import { License } from '@/license';
 
 import { createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
-const MOCK_SERVER_URL = 'https://server.com/v1';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import type { ILicensePostResponse, ILicenseReadResponse } from '@/interfaces';
+import { License } from '@/license';
 
 let owner: User;
 let member: User;
@@ -21,14 +18,11 @@ let authMemberAgent: SuperAgentTest;
 const testServer = utils.setupTestServer({ endpointGroups: ['license'] });
 
 beforeAll(async () => {
-	owner = await createUserShell('global:owner');
-	member = await createUserShell('global:member');
+	owner = await createUserShell(GLOBAL_OWNER_ROLE);
+	member = await createUserShell(GLOBAL_MEMBER_ROLE);
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);
-
-	config.set('license.serverUrl', MOCK_SERVER_URL);
-	config.set('license.autoRenewEnabled', true);
 });
 
 afterEach(async () => {

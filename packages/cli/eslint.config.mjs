@@ -1,8 +1,23 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
 import { nodeConfig } from '@n8n/eslint-config/node';
 
+const INSTANCE_AI_LAZY_IMPORT_MESSAGE =
+	'Use an existing lazy loader, or add one near first use. Static runtime imports of this dependency undo the Instance AI idle-memory guardrail.';
+
+const instanceAiLazyRuntimeImports = [
+	'@joplin/turndown-plugin-gfm',
+	'@mozilla/readability',
+	'linkedom',
+	'pdf-parse',
+	'turndown',
+].map((name) => ({
+	name,
+	allowTypeImports: true,
+	message: INSTANCE_AI_LAZY_IMPORT_MESSAGE,
+}));
+
 export default defineConfig(
-	globalIgnores(['scripts/**/*.mjs']),
+	globalIgnores(['scripts/**/*.mjs', 'jest.config*.js', 'test/*-testcontainers.js', 'coverage/**']),
 	nodeConfig,
 	{
 		rules: {
@@ -11,6 +26,8 @@ export default defineConfig(
 			'n8n-local-rules/no-dynamic-import-template': 'error',
 			'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'error',
+			// Disabled until we have a plan on how to fix these issues long term
+			'n8n-local-rules/no-import-enterprise-edition': 'off',
 
 			// TODO: Remove this
 			'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
@@ -46,6 +63,16 @@ export default defineConfig(
 			'no-useless-escape': 'warn',
 			'@typescript-eslint/prefer-optional-chain': 'warn',
 			'@typescript-eslint/no-duplicate-type-constituents': 'warn',
+		},
+	},
+	{
+		files: ['./src/modules/instance-ai/**/*.ts'],
+		ignores: ['./src/modules/instance-ai/**/__tests__/**/*.ts'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ paths: instanceAiLazyRuntimeImports },
+			],
 		},
 	},
 	{

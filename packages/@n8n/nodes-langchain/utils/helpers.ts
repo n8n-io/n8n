@@ -1,77 +1,18 @@
-import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { BaseLLM } from '@langchain/core/language_models/llms';
 import type { BaseMessage } from '@langchain/core/messages';
-import type { Tool } from '@langchain/core/tools';
-import { Toolkit } from 'langchain/agents';
-import type { BaseChatMemory } from 'langchain/memory';
-import { NodeConnectionTypes, NodeOperationError, jsonStringify } from 'n8n-workflow';
+import { type DynamicStructuredTool, type StructuredTool, Tool } from '@langchain/core/tools';
+import type { JSONSchema7 } from 'json-schema';
+import { StructuredToolkit, type SupplyDataToolResponse } from 'n8n-core';
 import type {
-	AiEvent,
-	IDataObject,
+	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	ISupplyDataFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { ZodType } from 'zod';
 
 import { N8nTool } from './N8nTool';
-
-function hasMethods<T>(obj: unknown, ...methodNames: Array<string | symbol>): obj is T {
-	return methodNames.every(
-		(methodName) =>
-			typeof obj === 'object' &&
-			obj !== null &&
-			methodName in obj &&
-			typeof (obj as Record<string | symbol, unknown>)[methodName] === 'function',
-	);
-}
-
-export function getMetadataFiltersValues(
-	ctx: IExecuteFunctions | ISupplyDataFunctions,
-	itemIndex: number,
-): Record<string, never> | undefined {
-	const options = ctx.getNodeParameter('options', itemIndex, {});
-
-	if (options.metadata) {
-		const { metadataValues: metadata } = options.metadata as {
-			metadataValues: Array<{
-				name: string;
-				value: string;
-			}>;
-		};
-		if (metadata.length > 0) {
-			return metadata.reduce((acc, { name, value }) => ({ ...acc, [name]: value }), {});
-		}
-	}
-
-	if (options.searchFilterJson) {
-		return ctx.getNodeParameter('options.searchFilterJson', itemIndex, '', {
-			ensureType: 'object',
-		}) as Record<string, never>;
-	}
-
-	return undefined;
-}
-
-export function isBaseChatMemory(obj: unknown) {
-	return hasMethods<BaseChatMemory>(obj, 'loadMemoryVariables', 'saveContext');
-}
-
-export function isBaseChatMessageHistory(obj: unknown) {
-	return hasMethods<BaseChatMessageHistory>(obj, 'getMessages', 'addMessage');
-}
-
-export function isChatInstance(model: unknown): model is BaseChatModel {
-	const namespace = (model as BaseLLM)?.lc_namespace ?? [];
-
-	return namespace.includes('chat_models');
-}
-
-export function isToolsInstance(model: unknown): model is Tool {
-	const namespace = (model as Tool)?.lc_namespace ?? [];
-
-	return namespace.includes('tools');
-}
+import { convertJsonSchemaToZod } from './schemaParsing';
 
 export function getPromptInputByType(options: {
 	ctx: IExecuteFunctions | ISupplyDataFunctions;
@@ -85,18 +26,56 @@ export function getPromptInputByType(options: {
 	let input;
 	if (promptType === 'auto') {
 		input = ctx.evaluateExpression('{{ $json["chatInput"] }}', i) as string;
+	} else if (promptType === 'guardrails') {
+		input = ctx.evaluateExpression('{{ $json["guardrailsInput"] }}', i) as string;
 	} else {
 		input = ctx.getNodeParameter(inputKey, i) as string;
 	}
 
 	if (input === undefined) {
-		throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
-			description:
-				"Expected to find the prompt in an input field called 'chatInput' (this is what the chat trigger node outputs). To use something else, change the 'Prompt' parameter",
-		});
+		if (promptType === 'auto' || promptType === 'guardrails') {
+			const key = promptType === 'auto' ? 'chatInput' : 'guardrailsInput';
+			throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
+				description: `Expected to find the prompt in an input field called '${key}' (this is what the ${promptType === 'auto' ? 'chat trigger node' : 'guardrails node'} node outputs). To use something else, change the 'Prompt' parameter`,
+			});
+		} else {
+			throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
+				description:
+					'The prompt field is empty or the expression used could not be resolved. Please check the configured prompt value.',
+			});
+		}
 	}
 
 	return input;
+}
+
+// Minimum version at which a memory node scopes its session id
+// to the node's own name
+const SESSION_KEY_SCOPING_MIN_VERSION: Record<string, number> = {
+	'@n8n/n8n-nodes-langchain.memoryBufferWindow': 1.4,
+	'@n8n/n8n-nodes-langchain.memoryPostgresChat': 1.4,
+	'@n8n/n8n-nodes-langchain.memoryRedisChat': 1.6,
+	'@n8n/n8n-nodes-langchain.memoryMongoDbChat': 1.1,
+	'@n8n/n8n-nodes-langchain.memoryMotorhead': 1.4,
+	'@n8n/n8n-nodes-langchain.memoryXata': 1.5,
+	'@n8n/n8n-nodes-langchain.memoryZep': 1.4,
+};
+
+function shouldScopeSessionKey(ctx: ISupplyDataFunctions | IWebhookFunctions): boolean {
+	const node = ctx.getNode();
+	if (!node) return false;
+	const minVersion = SESSION_KEY_SCOPING_MIN_VERSION[node.type];
+	// if the node is not in SESSION_KEY_SCOPING_MIN_VERSION, it should
+	// scope by default the session key with no retrocompatibility issues
+	if (minVersion === undefined) return true;
+	return (node.typeVersion ?? 0) >= minVersion;
+}
+
+// Some memory backends (Motorhead URL paths, Xata/Zep record IDs) reject
+// characters outside [A-Za-z0-9_-]. Node names in n8n allow spaces, emoji,
+// and punctuation, so sanitize before using the name as part of a session key.
+function sanitizeForSessionKey(name: string): string {
+	return name.replace(/[^A-Za-z0-9_-]/g, '_');
 }
 
 export function getSessionId(
@@ -151,19 +130,16 @@ export function getSessionId(
 		}
 	}
 
-	return sessionId;
-}
-
-export function logAiEvent(
-	executeFunctions: IExecuteFunctions | ISupplyDataFunctions,
-	event: AiEvent,
-	data?: IDataObject,
-) {
-	try {
-		executeFunctions.logAiEvent(event, data ? jsonStringify(data) : undefined);
-	} catch (error) {
-		executeFunctions.logger.debug(`Error logging AI event: ${event}`);
+	// Scoping uses the memory node's own name, so connecting a single memory
+	// node to multiple callers (e.g. an agent and a sub-agent) will still
+	// produce the same session key for all of them and they will share the
+	// same memory bucket. To isolate memory per caller, duplicate the memory
+	// node instead of reusing one.
+	if (selectorType === autoSelect && shouldScopeSessionKey(ctx)) {
+		sessionId = `${sessionId}__${sanitizeForSessionKey(ctx.getNode().name)}`;
 	}
+
+	return sessionId;
 }
 
 export function serializeChatHistory(chatHistory: BaseMessage[]): string {
@@ -198,22 +174,68 @@ export function escapeSingleCurlyBrackets(text?: string): string | undefined {
 	return result;
 }
 
+/* Convert tools with json schema to tools with zod schema and type Tool
+ * Most nodes expect tools to have a Zod schema and have Tool type, do this conversion to make sure all tools are compatible
+ */
+const normalizeToolSchema = (tool: Tool | DynamicStructuredTool | StructuredTool) => {
+	if (tool instanceof Tool) {
+		return tool;
+	}
+	const isZodObject = tool.schema instanceof ZodType;
+	if (tool.schema && !isZodObject) {
+		tool.schema = convertJsonSchemaToZod(tool.schema as JSONSchema7);
+	}
+
+	return tool as Tool;
+};
+
 export const getConnectedTools = async (
 	ctx: IExecuteFunctions | IWebhookFunctions | ISupplyDataFunctions,
 	enforceUniqueNames: boolean,
 	convertStructuredTool: boolean = true,
 	escapeCurlyBrackets: boolean = false,
-) => {
-	const connectedTools = (
-		((await ctx.getInputConnectionData(NodeConnectionTypes.AiTool, 0)) as Array<Toolkit | Tool>) ??
-		[]
-	).flatMap((toolOrToolkit) => {
-		if (toolOrToolkit instanceof Toolkit) {
-			return toolOrToolkit.getTools() as Tool[];
-		}
+): Promise<Tool[]> => {
+	const toolkitConnections = (await ctx.getInputConnectionData(
+		NodeConnectionTypes.AiTool,
+		0,
+	)) as SupplyDataToolResponse[];
 
-		return toolOrToolkit;
-	});
+	// Get parent nodes to map toolkits to their source nodes.
+	// getInputConnectionData filters out disabled nodes, so parents must be filtered
+	// the same way to keep the index alignment between toolkitConnections and parentNodes.
+	const parentNodes =
+		'getParentNodes' in ctx
+			? ctx
+					.getParentNodes(ctx.getNode().name, {
+						connectionType: NodeConnectionTypes.AiTool,
+						depth: 1,
+					})
+					.filter((node) => !node.disabled)
+			: [];
+
+	const connectedTools = (toolkitConnections ?? [])
+		.flatMap((toolOrToolkit, index) => {
+			if (toolOrToolkit instanceof StructuredToolkit) {
+				const tools = toolOrToolkit.tools;
+				// Add metadata to each tool from the toolkit
+				return tools.map((tool) => {
+					const sourceNode = parentNodes[index] ?? tool.name;
+
+					tool.metadata ??= {};
+					tool.metadata.isFromToolkit = true;
+					tool.metadata.sourceNodeName = sourceNode?.name;
+					return tool;
+				});
+			} else {
+				const sourceNode = parentNodes[index] ?? toolOrToolkit.name;
+				toolOrToolkit.metadata ??= {};
+				toolOrToolkit.metadata.isFromToolkit = false;
+				toolOrToolkit.metadata.sourceNodeName = sourceNode?.name;
+			}
+
+			return toolOrToolkit;
+		})
+		.map(normalizeToolSchema);
 
 	if (!enforceUniqueNames) return connectedTools;
 
@@ -246,6 +268,28 @@ export const getConnectedTools = async (
 };
 
 /**
+ * Merges custom credential headers into an existing defaultHeaders object.
+ * Used by OpenAI and other LangChain nodes that pass `configuration.defaultHeaders`.
+ */
+export function mergeCustomHeaders(
+	credentials: ICredentialDataDecryptedObject,
+	defaultHeaders: Record<string, string>,
+): Record<string, string> {
+	if (
+		credentials.header &&
+		typeof credentials.headerName === 'string' &&
+		credentials.headerName &&
+		typeof credentials.headerValue === 'string'
+	) {
+		return {
+			...defaultHeaders,
+			[credentials.headerName]: credentials.headerValue,
+		};
+	}
+	return defaultHeaders;
+}
+
+/**
  * Sometimes model output is wrapped in an additional object property.
  * This function unwraps the output if it is in the format { output: { output: { ... } } }
  */
@@ -262,51 +306,4 @@ export function unwrapNestedOutput(output: Record<string, unknown>): Record<stri
 	}
 
 	return output;
-}
-
-/**
- * Detects if a text contains a character that repeats sequentially for a specified threshold.
- * This is used to prevent performance issues with tiktoken on highly repetitive content.
- * @param text The text to check
- * @param threshold The minimum number of sequential repeats to detect (default: 1000)
- * @returns true if a character repeats sequentially for at least the threshold amount
- */
-export function hasLongSequentialRepeat(text: string, threshold = 1000): boolean {
-	try {
-		// Validate inputs
-		if (
-			text === null ||
-			typeof text !== 'string' ||
-			text.length === 0 ||
-			threshold <= 0 ||
-			text.length < threshold
-		) {
-			return false;
-		}
-		// Use string iterator to avoid creating array copy (memory efficient)
-		const iterator = text[Symbol.iterator]();
-		let prev = iterator.next();
-
-		if (prev.done) {
-			return false;
-		}
-
-		let count = 1;
-		for (const char of iterator) {
-			if (char === prev.value) {
-				count++;
-				if (count >= threshold) {
-					return true;
-				}
-			} else {
-				count = 1;
-				prev = { value: char, done: false };
-			}
-		}
-
-		return false;
-	} catch (error) {
-		// On any error, return false to allow normal processing
-		return false;
-	}
 }

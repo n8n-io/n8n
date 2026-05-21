@@ -11,19 +11,12 @@
 		},
 		{
 			"parameters": {
-				"url": "https://ontheline.trincoll.edu/images/bookdown/sample-local-pdf.pdf",
-				"options": {
-					"response": {
-						"response": {
-							"responseFormat": "file"
-						}
-					}
-				}
+				"jsCode": "// Minimal valid PDF with extractable text \"Hello World\"\nconst pdfBase64 = 'JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCA2MTIgNzkyXSAvQ29udGVudHMgNCAwIFIgL1Jlc291cmNlcyA8PCAvRm9udCA8PCAvRjEgNSAwIFIgPj4gPj4gPj4KZW5kb2JqCjQgMCBvYmoKPDwgL0xlbmd0aCA0NCA+PgpzdHJlYW0KQlQKL0YxIDEyIFRmCjEwMCA3MDAgVGQKKEhlbGxvIFdvcmxkKSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCjUgMCBvYmoKPDwgL1R5cGUgL0ZvbnQgL1N1YnR5cGUgL1R5cGUxIC9CYXNlRm9udCAvSGVsdmV0aWNhID4+CmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMDkgMDAwMDAgbiAKMDAwMDAwMDA1OCAwMDAwMCBuIAowMDAwMDAwMTE1IDAwMDAwIG4gCjAwMDAwMDAyNjYgMDAwMDAgbiAKMDAwMDAwMDM1OSAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXplIDYgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjQ0MQolJUVPRgo=';\n\nconst pdfBuffer = Buffer.from(pdfBase64, 'base64');\nconst data = await this.helpers.prepareBinaryData(pdfBuffer, 'sample.pdf', 'application/pdf');\n\nreturn [{\n  json: {},\n  binary: {\n    data\n  }\n}];"
 			},
 			"id": "9c8b960d-e7c8-4116-97d4-4f5ca9872898",
-			"name": "Download PDF",
-			"type": "n8n-nodes-base.httpRequest",
-			"typeVersion": 4.2,
+			"name": "Create PDF",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [680, -120]
 		},
 		{
@@ -67,14 +60,14 @@
 			"main": [
 				[
 					{
-						"node": "Download PDF",
+						"node": "Create PDF",
 						"type": "main",
 						"index": 0
 					}
 				]
 			]
 		},
-		"Download PDF": {
+		"Create PDF": {
 			"main": [
 				[
 					{

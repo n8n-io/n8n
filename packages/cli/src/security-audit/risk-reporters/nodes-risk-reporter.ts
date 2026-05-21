@@ -1,5 +1,6 @@
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 import glob from 'fast-glob';
+import { CUSTOM_NODES_PACKAGE_NAME } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import * as path from 'path';
 
@@ -13,14 +14,14 @@ import {
 } from '@/security-audit/constants';
 import type { Risk, RiskReporter } from '@/security-audit/types';
 import { getNodeTypes } from '@/security-audit/utils';
-import { CommunityPackagesService } from '@/community-packages/community-packages.service';
-import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
+
+import { PackagesRepository } from '../security-audit.repository';
 
 @Service()
 export class NodesRiskReporter implements RiskReporter {
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-		private readonly communityPackagesService: CommunityPackagesService,
+		private readonly packagesRepository: PackagesRepository,
 	) {}
 
 	async report(workflows: IWorkflowBase[]) {
@@ -86,9 +87,7 @@ export class NodesRiskReporter implements RiskReporter {
 	}
 
 	private async getCommunityNodeDetails() {
-		if (!Container.get(CommunityPackagesConfig).enabled) return [];
-
-		const installedPackages = await this.communityPackagesService.getAllInstalledPackages();
+		const installedPackages = await this.packagesRepository.find({ relations: ['installedNodes'] });
 
 		return installedPackages.reduce<Risk.CommunityNodeDetails[]>((acc, pkg) => {
 			pkg.installedNodes.forEach((node) =>
@@ -113,7 +112,7 @@ export class NodesRiskReporter implements RiskReporter {
 				const [fileName] = path.parse(nodeFile).name.split('.');
 				customNodeTypes.push({
 					kind: 'custom',
-					nodeType: ['CUSTOM', fileName].join('.'),
+					nodeType: [CUSTOM_NODES_PACKAGE_NAME, fileName].join('.'),
 					filePath: nodeFile,
 				});
 			}

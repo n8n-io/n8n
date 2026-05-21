@@ -97,4 +97,4 @@ export function getParts(
 
 export * from './imap-simple';
 export * from './errors';
-export * from './types';
+export type * from './types';

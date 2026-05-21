@@ -3,43 +3,47 @@ import { useCssModule } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
+import N8nCanvasPill from '../CanvasPill';
+import N8nButton from '../N8nButton';
 
 defineOptions({
-	name: 'CanvasThinkingPill',
+	name: 'N8nCanvasThinkingPill',
 });
+
+defineProps<{
+	showStop?: boolean;
+}>();
+
+const emit = defineEmits<{
+	stop: [];
+}>();
 
 const { t } = useI18n();
 const $style = useCssModule();
 </script>
 
 <template>
-	<div :class="$style.thinkingPill">
-		<div :class="$style.iconWrapper">
-			<AssistantIcon theme="blank" />
+	<N8nCanvasPill>
+		<template #icon>
+			<div :class="$style.iconWrapper">
+				<AssistantIcon theme="blank" />
+			</div>
+		</template>
+		<div :class="$style.wrapper">
+			{{ t('aiAssistant.builder.canvas.thinking') }}
+			<N8nButton
+				v-if="showStop"
+				:class="$style.stopButton"
+				:label="'Stop'"
+				variant="ghost"
+				size="xsmall"
+				@click="emit('stop')"
+			/>
 		</div>
-		<span :class="$style.text">{{ t('aiAssistant.builder.canvas.thinking') }}</span>
-	</div>
+	</N8nCanvasPill>
 </template>
 
 <style lang="scss" module>
-.thinkingPill {
-	display: flex;
-	height: 40px;
-	padding: 0 var(--spacing-s) 0 var(--spacing-xs);
-	justify-content: center;
-	align-items: center;
-	gap: var(--spacing-3xs);
-	border-radius: 22px;
-	border: 1px solid var(--prim-gray-740);
-	background: rgba(65, 66, 68, 0.92);
-	cursor: default;
-
-	// Disable text selection
-	-moz-user-select: none;
-	-webkit-user-select: none;
-	user-select: none;
-}
-
 .iconWrapper {
 	width: 20px;
 	height: 20px;
@@ -51,10 +55,14 @@ const $style = useCssModule();
 	justify-content: center;
 }
 
-.text {
-	color: white;
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-medium);
-	white-space: nowrap;
+.wrapper {
+	display: flex;
+	align-items: center;
+}
+
+.stopButton {
+	margin-left: var(--spacing--xs);
+	margin-right: calc(var(--spacing--2xs) * -1);
+	color: var(--color--neutral-white);
 }
 </style>

@@ -1,8 +1,6 @@
-import * as a from 'node:assert';
-
 import type { ClientOAuth2, ClientOAuth2Options, ClientOAuth2RequestObject } from './client-oauth2';
 import { DEFAULT_HEADERS } from './constants';
-import { auth, expects, getRequestOptions } from './utils';
+import { auth, getRequestOptions } from './utils';
 
 export interface ClientOAuth2TokenData extends Record<string, string | undefined> {
 	token_type?: string | undefined;
@@ -69,12 +67,16 @@ export class ClientOAuth2Token {
 	/**
 	 * Refresh a user access token with the refresh token.
 	 * As in RFC 6749 Section 6: https://www.rfc-editor.org/rfc/rfc6749.html#section-6
+	 * Supports PKCE flows (RFC 7636) for public clients without client secret
 	 */
 	async refresh(opts?: ClientOAuth2Options): Promise<ClientOAuth2Token> {
 		const options = { ...this.client.options, ...opts };
 
-		expects(options, 'clientSecret');
-		a.ok(this.refreshToken, 'refreshToken is required');
+		if (!this.refreshToken) {
+			throw new Error(
+				'OAuth access token expired and no refresh token is available. Please reconnect the credentials.',
+			);
+		}
 
 		const { clientId, clientSecret } = options;
 		const headers = { ...DEFAULT_HEADERS };
@@ -83,11 +85,19 @@ export class ClientOAuth2Token {
 			grant_type: 'refresh_token',
 		};
 
-		if (options.authentication === 'body') {
-			body.client_id = clientId;
-			body.client_secret = clientSecret;
+		// Handle different authentication methods
+		if (clientSecret) {
+			// Confidential client (traditional OAuth2 or PKCE with client secret)
+			if (options.authentication === 'body') {
+				body.client_id = clientId;
+				body.client_secret = clientSecret;
+			} else {
+				headers.Authorization = auth(clientId, clientSecret);
+			}
 		} else {
-			headers.Authorization = auth(clientId, clientSecret);
+			// Public client (PKCE without client secret per RFC 7636)
+			// Always include client_id in body for public clients
+			body.client_id = clientId;
 		}
 
 		const requestOptions = getRequestOptions(

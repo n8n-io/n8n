@@ -20,7 +20,7 @@ describe('N8nSelectableList', () => {
 				inputs: [{ name: 'propA', initialValue: '' }],
 			},
 			global: {
-				stubs: ['n8n-icon'],
+				stubs: ['N8nIcon'],
 			},
 		});
 
@@ -53,7 +53,7 @@ describe('N8nSelectableList', () => {
 				],
 			},
 			global: {
-				stubs: ['n8n-icon'],
+				stubs: ['N8nIcon'],
 			},
 		});
 
@@ -94,7 +94,7 @@ describe('N8nSelectableList', () => {
 				],
 			},
 			global: {
-				stubs: ['n8n-icon'],
+				stubs: ['N8nIcon'],
 			},
 		});
 

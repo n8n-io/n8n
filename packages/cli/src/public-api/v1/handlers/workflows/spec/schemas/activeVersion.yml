@@ -1,0 +1,37 @@
+type: object
+readOnly: true
+nullable: true
+additionalProperties: false
+properties:
+  versionId:
+    type: string
+    readOnly: true
+    description: Unique identifier for this workflow version
+    example: 7c6b9e3f-8d4a-4b2c-9f1e-6a5d3b8c7e4f
+  workflowId:
+    type: string
+    readOnly: true
+    description: The workflow this version belongs to
+    example: 2tUt1wbLX592XDdX
+  nodes:
+    type: array
+    readOnly: true
+    items:
+      $ref: './node.yml'
+  connections:
+    type: object
+    readOnly: true
+    example: { Jira: { main: [[{ node: 'Jira', type: 'main', index: 0 }]] } }
+  authors:
+    type: string
+    readOnly: true
+    description: Comma-separated list of author IDs who contributed to this version
+    example: 1,2,3
+  createdAt:
+    type: string
+    format: date-time
+    readOnly: true
+  updatedAt:
+    type: string
+    format: date-time
+    readOnly: true

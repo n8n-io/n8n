@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
-import { processAirtableError, removeIgnored } from '../../helpers/utils';
+import { coerceArrayTypeFields, processAirtableError, removeIgnored } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 import { insertUpdateOptions } from '../common.descriptions';
 
@@ -63,18 +63,21 @@ export async function execute(
 	for (let i = 0; i < items.length; i++) {
 		try {
 			const options = this.getNodeParameter('options', i, {});
+			const typecast = Boolean(options.typecast);
 
-			const body: IDataObject = {
-				typecast: options.typecast ? true : false,
-			};
+			const body: IDataObject = { typecast };
 
 			if (dataMode === 'autoMapInputData') {
 				body.fields = removeIgnored(items[i].json, options.ignoreFields as string);
 			}
 
 			if (dataMode === 'defineBelow') {
-				const fields = this.getNodeParameter('columns.value', i, []) as IDataObject;
-
+				const fields = this.getNodeParameter('columns.value', i, [], {
+					skipValidation: typecast,
+				}) as IDataObject;
+				if (typecast) {
+					coerceArrayTypeFields(fields, this.getNode().parameters.columns);
+				}
 				body.fields = fields;
 			}
 
@@ -85,7 +88,7 @@ export async function execute(
 				{ itemData: { item: i } },
 			);
 
-			returnData.push(...executionData);
+			returnData.push.apply(returnData, executionData);
 		} catch (error) {
 			error = processAirtableError(error as NodeApiError, undefined, i);
 			if (this.continueOnFail()) {

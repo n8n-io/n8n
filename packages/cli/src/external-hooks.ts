@@ -17,6 +17,7 @@ import type clientOAuth1 from 'oauth-1.0a';
 
 import type { AbstractServer } from '@/abstract-server';
 import type { Config } from '@/config';
+import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 type Repositories = {
 	User: UserRepository;
@@ -46,6 +47,7 @@ type ExternalHooksMap = {
 	];
 	'oauth2.authenticate': [oAuthOptions: ClientOAuth2Options];
 	'oauth2.callback': [oAuthOptions: ClientOAuth2Options];
+	'oauth2.dynamicClientRegistration': [registerPayload: { redirect_uris: string[] }];
 
 	'tag.beforeCreate': [tag: TagEntity];
 	'tag.afterCreate': [tag: TagEntity];
@@ -74,7 +76,11 @@ type ExternalHooksMap = {
 	'workflow.afterArchive': [workflowId: string];
 	'workflow.afterUnarchive': [workflowId: string];
 
-	'workflow.preExecute': [workflow: Workflow, mode: WorkflowExecuteMode];
+	'workflow.preExecute': [
+		workflow: Workflow,
+		mode: WorkflowExecuteMode,
+		workflowContext: WorkflowHookContextService,
+	];
 	'workflow.postExecute': [
 		fullRunData: IRun | undefined,
 		workflowData: IWorkflowBase,
@@ -146,6 +152,10 @@ export class ExternalHooks {
 		}
 	}
 
+	hasHook<HookName extends HookNames>(hookName: HookName): boolean {
+		return !!this.registered[hookName]?.length;
+	}
+
 	async run<HookName extends HookNames>(
 		hookName: HookName,
 		hookParameters?: ExternalHooksMap[HookName],
@@ -158,7 +168,7 @@ export class ExternalHooks {
 
 		for (const hookFunction of hookFunctions) {
 			try {
-				await hookFunction.apply(context, hookParameters);
+				await hookFunction.apply(context, hookParameters!);
 			} catch (cause) {
 				this.logger.error(`There was a problem running hook "${hookName}"`);
 

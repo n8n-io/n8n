@@ -1,0 +1,57 @@
+# Poutine Security Scanner Configuration
+# https://github.com/boostsecurityio/poutine
+#
+# This file defines skip rules for known-safe patterns.
+# Add new entries only after security review.
+
+# Custom rules for additional security checks
+include:
+  - path: .github/poutine-rules
+
+skip:
+  # === SELF-HOSTED RUNNERS ===
+  # We use Blacksmith (trusted CI provider) for self-hosted runners.
+  # The ubuntu-slim runner is also a trusted provider.
+  - rule: pr_runs_on_self_hosted
+
+  # === UNVERIFIED ACTIONS ===
+  # Third-party actions from non-verified GitHub Marketplace creators.
+  # These have been reviewed and approved for use.
+  # Add new actions here only after security review.
+  - rule: github_action_from_unverified_creator_used
+    purl:
+      - pkg:githubactions/act10ns/slack
+      - pkg:githubactions/anthropics/claude-code-action
+      - pkg:githubactions/astral-sh/setup-uv
+      - pkg:githubactions/chromaui/action
+      - pkg:githubactions/dorny/paths-filter
+      - pkg:githubactions/extractions/setup-just
+      - pkg:githubactions/fjogeleit/http-request-action
+      - pkg:githubactions/isbang/compose-action
+      - pkg:githubactions/lironer/bundlemon-action
+      - pkg:githubactions/ncipollo/release-action
+      - pkg:githubactions/peter-evans/create-or-update-comment
+      - pkg:githubactions/peter-evans/create-pull-request
+      - pkg:githubactions/pnpm/action-setup
+      - pkg:githubactions/rharkor/caching-for-turbo
+      - pkg:githubactions/tomi/paths-filter-action
+      - pkg:githubactions/useblacksmith/setup-docker-builder
+
+  # === UNTRUSTED CHECKOUT EXECUTION (DOCUMENTED FALSE POSITIVES) ===
+  # These workflows check out code and run local actions/package managers.
+  # Poutine flags them as potential risks, but they are safe due to their
+  # invocation context.
+  - rule: untrusted_checkout_exec
+    path:
+      # Only called from release-publish.yml with release tag refs (e.g., n8n@1.2.3),
+      # never PR code. The checked out code is already-released, trusted code.
+      - .github/workflows/sbom-generation-callable.yml
+      # Uses merge commit SHA from GitHub - the code has already been reviewed
+      # and merged, not arbitrary PR code.
+      - .github/workflows/test-linting-reusable.yml
+      # Uses merge commit SHA from GitHub - the code has already been reviewed
+      # and merged, not arbitrary PR code.
+      - .github/workflows/test-unit-reusable.yml
+      # Permission-gated: only maintainers (admin/write/maintain) can trigger
+      # via /test-workflows comment. Verified in test-workflows-pr-comment.yml.
+      - .github/workflows/test-workflows-callable.yml

@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import { type INodeTypeBaseDescription, type ITriggerFunctions } from 'n8n-workflow';
+import type { INode, INodeTypeBaseDescription, ITriggerFunctions } from 'n8n-workflow';
 
 import { type ICredentialsDataImap } from '@credentials/Imap.credentials';
 
@@ -42,6 +42,7 @@ describe('Test IMap V2', () => {
 	};
 
 	triggerFunctions.getCredentials.calledWith('imap').mockResolvedValue(credentials);
+	triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
 	triggerFunctions.logger.debug = jest.fn();
 	triggerFunctions.getNodeParameter.calledWith('options').mockReturnValue({
 		name: 'Mark as Read',
@@ -51,7 +52,7 @@ describe('Test IMap V2', () => {
 	const baseDescription: INodeTypeBaseDescription = {
 		displayName: 'EmailReadImapV2',
 		name: 'emailReadImapV2',
-		icon: 'file:removeDuplicates.svg',
+		icon: 'node:remove-duplicates',
 		group: ['transform'],
 		description: 'Delete items with matching field values',
 	};

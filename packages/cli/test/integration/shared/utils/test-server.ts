@@ -1,5 +1,6 @@
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance, mockLogger, testModules, testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { APIRequest, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import cookieParser from 'cookie-parser';
@@ -8,15 +9,19 @@ import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
 
+import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { License } from '@/license';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
+import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
+import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { Telemetry } from '@/telemetry';
+import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
+
 import { LicenseMocker } from '@test-integration/license';
 
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
@@ -127,8 +132,7 @@ export const setupTestServer = ({
 		if (modules) await testModules.loadModules(modules);
 		await testDb.init();
 
-		config.set('userManagement.jwtSecret', 'My JWT secret');
-		config.set('userManagement.isInstanceOwnerSetUp', true);
+		Container.get(GlobalConfig).userManagement.jwtSecret = 'My JWT secret';
 
 		testServer.license.mock(Container.get(License));
 		testServer.license.mockLicenseState(Container.get(LicenseState));
@@ -138,11 +142,21 @@ export const setupTestServer = ({
 				features: enabledFeatures,
 				quotas,
 			});
+			// Apply defaults before ModuleRegistry.initModules so licensed modules register routes.
+			testServer.license.reset();
 		}
 
 		if (!endpointGroups) return;
 
 		app.use(bodyParser);
+
+		// Register auth strategies in priority order. The registry evaluates them
+		// sequentially — the first strategy that returns a non-null result wins.
+		// API key auth is registered first so existing behavior is preserved.
+		// Additional strategies (e.g. scoped JWT from the token-exchange module)
+		// can be appended later during their own module initialization.
+		const registry = Container.get(AuthStrategyRegistry);
+		registry.register(Container.get(ApiKeyAuthStrategy));
 
 		const enablePublicAPI = endpointGroups?.includes('publicApi');
 		if (enablePublicAPI) {
@@ -152,7 +166,11 @@ export const setupTestServer = ({
 		}
 
 		if (endpointGroups?.includes('health')) {
-			app.get('/healthz/readiness', async (_req, res) => {
+			const globalConfig = Container.get(GlobalConfig);
+			const healthPath = resolveBackendHealthEndpointPath(globalConfig);
+			const readinessPath = `${healthPath}/readiness`;
+
+			app.get(readinessPath, async (_req, res) => {
 				testDb.isReady()
 					? res.status(200).send({ status: 'ok' })
 					: res.status(503).send({ status: 'error' });
@@ -173,6 +191,10 @@ export const setupTestServer = ({
 						await import('@/workflows/workflows.controller');
 						break;
 
+					case 'workflowDependencies':
+						await import('@/modules/workflow-index/workflow-dependency.controller');
+						break;
+
 					case 'executions':
 						await import('@/executions/executions.controller');
 						break;
@@ -185,19 +207,24 @@ export const setupTestServer = ({
 						await import('@/license/license.controller');
 						break;
 
-					case 'metrics':
+					case 'metrics': {
 						const { PrometheusMetricsService } = await import(
 							'@/metrics/prometheus-metrics.service'
 						);
 						await Container.get(PrometheusMetricsService).init(app);
 						break;
+					}
 
 					case 'eventBus':
-						await import('@/eventbus/event-bus.controller');
+						await import('@/modules/log-streaming.ee/log-streaming.controller');
 						break;
 
 					case 'auth':
 						await import('@/controllers/auth.controller');
+						break;
+
+					case 'oauth1':
+						await import('@/controllers/oauth/oauth1-credential.controller');
 						break;
 
 					case 'oauth2':
@@ -208,27 +235,29 @@ export const setupTestServer = ({
 						await import('@/controllers/mfa.controller');
 						break;
 
-					case 'ldap':
-						const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
-						await import('@/ldap.ee/ldap.controller.ee');
+					case 'ldap': {
+						const { LdapService } = await import('@/modules/ldap.ee/ldap.service.ee');
+						await import('@/modules/ldap.ee/ldap.controller.ee');
 						testServer.license.enable('feat:ldap');
 						await Container.get(LdapService).init();
 						break;
+					}
 
-					case 'saml':
-						const { SamlService } = await import('@/sso.ee/saml/saml.service.ee');
+					case 'saml': {
+						const { SamlService } = await import('@/modules/sso-saml/saml.service.ee');
 						await Container.get(SamlService).init();
-						await import('@/sso.ee/saml/routes/saml.controller.ee');
-						const { setSamlLoginEnabled } = await import('@/sso.ee/saml/saml-helpers');
+						await import('@/modules/sso-saml/saml.controller.ee');
+						const { setSamlLoginEnabled } = await import('@/modules/sso-saml/saml-helpers');
 						await setSamlLoginEnabled(true);
 						break;
+					}
 
 					case 'sourceControl':
-						await import('@/environments.ee/source-control/source-control.controller.ee');
+						await import('@/modules/source-control.ee/source-control.controller.ee');
 						break;
 
 					case 'community-packages':
-						await import('@/community-packages/community-packages.controller');
+						await import('@/modules/community-packages/community-packages.controller');
 						break;
 
 					case 'me':
@@ -256,7 +285,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'workflowHistory':
-						await import('@/workflows/workflow-history.ee/workflow-history.controller.ee');
+						await import('@/workflows/workflow-history/workflow-history.controller');
 						break;
 
 					case 'binaryData':
@@ -275,6 +304,10 @@ export const setupTestServer = ({
 						await import('@/controllers/role.controller');
 						break;
 
+					case 'roleMappingRule':
+						await import('@/modules/provisioning.ee/role-mapping-rule.controller.ee');
+						break;
+
 					case 'dynamic-node-parameters':
 						await import('@/controllers/dynamic-node-parameters.controller');
 						break;
@@ -289,20 +322,49 @@ export const setupTestServer = ({
 
 					case 'ai':
 						await import('@/controllers/ai.controller');
-
+						break;
 					case 'folder':
 						await import('@/controllers/folder.controller');
+						break;
 
 					case 'externalSecrets':
 						await import('@/modules/external-secrets.ee/external-secrets.module');
+						break;
 
 					case 'insights':
 						await import('@/modules/insights/insights.module');
+						break;
+
+					case 'data-table':
+						await import('@/modules/data-table/data-table.module');
+						break;
+
+					case 'mcp':
+						await import('@/modules/mcp/mcp.module');
+						break;
+
+					case 'module-settings':
+						await import('@/controllers/module-settings.controller');
+						break;
+
+					case 'security-settings':
+						await import('@/controllers/security-settings.controller');
+						break;
+
+					case 'third-party-licenses':
+						await import('@/controllers/third-party-licenses.controller');
+						break;
+
+					case 'encryption-keys':
+						await import('@/modules/encryption-key-manager/encryption-key.controller');
+						break;
 				}
 			}
 
-			await Container.get(ModuleRegistry).initModules();
+			await Container.get(ModuleRegistry).initModules('main');
 			Container.get(ControllerRegistry).activate(app);
+
+			await Container.get(AuthHandlerRegistry).init();
 		}
 	});
 

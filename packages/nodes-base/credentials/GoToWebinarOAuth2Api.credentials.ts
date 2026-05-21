@@ -7,7 +7,7 @@ export class GoToWebinarOAuth2Api implements ICredentialType {
 
 	displayName = 'GoToWebinar OAuth2 API';
 
-	documentationUrl = 'goToWebinar';
+	documentationUrl = 'gotowebinar';
 
 	properties: INodeProperties[] = [
 		{

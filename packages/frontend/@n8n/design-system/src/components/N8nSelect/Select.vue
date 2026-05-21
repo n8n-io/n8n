@@ -3,8 +3,7 @@ import { ElSelect } from 'element-plus';
 import type { PropType } from 'vue';
 import { computed, ref, useAttrs } from 'vue';
 
-import type { SelectSize } from '@n8n/design-system/types';
-
+import type { SelectSize } from '../../types';
 import { isEventBindingElementAttribute } from '../../utils';
 
 type InnerSelectRef = InstanceType<typeof ElSelect>;
@@ -152,7 +151,7 @@ defineExpose({
 
 <style lang="scss" module>
 .xlarge {
-	--input-font-size: var(--font-size-m);
+	--input--font-size: var(--font-size--md);
 	input {
 		height: 48px;
 	}
@@ -161,6 +160,7 @@ defineExpose({
 .container {
 	display: inline-flex;
 	width: 100%;
+	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
 }
 
 .withPrepend {
@@ -168,22 +168,22 @@ defineExpose({
 		border-top-left-radius: 0;
 		border-bottom-left-radius: 0;
 		@-moz-document url-prefix() {
-			padding: 0 var(--spacing-3xs);
+			padding: 0 var(--spacing--3xs);
 		}
 	}
 }
 
 .prepend {
-	font-size: var(--font-size-2xs);
-	border: var(--border-base);
+	font-size: var(--font-size--2xs);
+	border: var(--border);
 	border-right: none;
 	display: flex;
 	align-items: center;
-	padding: 0 var(--spacing-3xs);
-	background-color: var(--color-background-light);
-	border-bottom-left-radius: var(--input-border-radius, var(--border-radius-base));
-	border-top-left-radius: var(--input-border-radius, var(--border-radius-base));
-	color: var(--color-text-base);
+	padding: 0 var(--spacing--3xs);
+	background-color: var(--input--color--background);
+	border-bottom-left-radius: var(--input--radius, var(--radius));
+	border-top-left-radius: var(--input--radius, var(--radius));
+	color: var(--color--text);
 	white-space: nowrap;
 }
 </style>

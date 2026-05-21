@@ -10,7 +10,7 @@ export class HighLevelApi implements ICredentialType {
 
 	displayName = 'HighLevel API';
 
-	documentationUrl = 'highLevel';
+	documentationUrl = 'highlevel';
 
 	properties: INodeProperties[] = [
 		{
