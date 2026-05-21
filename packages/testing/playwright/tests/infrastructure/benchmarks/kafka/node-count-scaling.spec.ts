@@ -11,6 +11,7 @@ test.use({ capability: benchConfig('node-count-scaling', { kafka: true, workers:
 test.describe(
 	'How does throughput scale with workflow complexity?',
 	{
+		tag: '@bench:kafka',
 		annotation: [
 			{ type: 'owner', description: 'Catalysts' },
 			{ type: 'question', description: 'node-count-scaling' },

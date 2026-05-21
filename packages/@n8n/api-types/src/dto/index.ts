@@ -44,6 +44,7 @@ export { EmbedLoginBodyDto } from './auth/embed-login-body.dto';
 
 export { CreateCredentialResolverDto } from './credential-resolver/create-credential-resolver.dto';
 export { UpdateCredentialResolverDto } from './credential-resolver/update-credential-resolver.dto';
+export { ListCredentialResolversQueryDto } from './credential-resolver/list-credential-resolvers-query.dto';
 
 export { OptionsRequestDto } from './dynamic-node-parameters/options-request.dto';
 export { ResourceLocatorRequestDto } from './dynamic-node-parameters/resource-locator-request.dto';
@@ -219,6 +220,13 @@ export {
 	UpdateSecuritySettingsDto,
 } from './security-settings/security-settings.dto';
 
+export {
+	RedactionEnforcementDto,
+	UpdateRedactionEnforcementDto,
+	redactionScopeSchema,
+	type RedactionScope,
+} from './redaction-enforcement/redaction-enforcement.dto';
+
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';
 
@@ -237,20 +245,6 @@ export {
 
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
-
-export { CreateAgentDto } from './agents/create-agent.dto';
-export { UpdateAgentDto } from './agents/update-agent.dto';
-export { UpdateAgentConfigDto } from './agents/update-agent-config.dto';
-export { UpdateAgentScheduleDto } from './agents/update-agent-schedule.dto';
-export {
-	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
-	CreateAgentSkillDto,
-	agentSkillSchema,
-} from './agents/create-agent-skill.dto';
-export { UpdateAgentSkillDto } from './agents/update-agent-skill.dto';
-export { AgentIntegrationDto } from './agents/agent-integration.dto';
-export { AgentChatMessageDto } from './agents/agent-chat-message.dto';
-export { AgentBuildResumeDto } from './agents/agent-build-resume.dto';
 
 export { CreateEncryptionKeyDto } from './encryption/create-encryption-key.dto';
 export {

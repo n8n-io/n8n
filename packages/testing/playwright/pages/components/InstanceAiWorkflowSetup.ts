@@ -31,6 +31,10 @@ export class InstanceAiWorkflowSetup {
 		return this.root.page().getByRole('option', { name: credentialName });
 	}
 
+	getCredentialOptionById(credentialId: string): Locator {
+		return this.root.page().getByTestId(`node-credentials-select-item-${credentialId}`);
+	}
+
 	getApplyButton(): Locator {
 		return this.root.getByRole('button', { name: /^(Apply|Continue)$/ });
 	}
@@ -106,8 +110,28 @@ export class InstanceAiWorkflowSetup {
 	}
 
 	async selectCredential(credentialName: string): Promise<void> {
+		await this.selectCredentialOption(this.getCredentialOption(credentialName));
+	}
+
+	async selectCredentialById(credentialId: string): Promise<void> {
+		await this.selectCredentialOption(this.getCredentialOptionById(credentialId));
+	}
+
+	async getSelectedCredentialLabel(): Promise<string> {
+		return await this.getCredentialSelect().evaluate((element) => {
+			if (element instanceof HTMLInputElement) {
+				return element.value || element.placeholder;
+			}
+
+			return element.textContent?.trim() ?? '';
+		});
+	}
+
+	private async selectCredentialOption(option: Locator): Promise<void> {
 		await this.getCredentialSelect().click();
-		await this.getCredentialOption(credentialName).click();
+		await option.waitFor({ state: 'attached' });
+		await option.dispatchEvent('click');
+		await this.getCredentialSelect().press('Escape');
 	}
 
 	async fillParameter(parameterName: string, value: string): Promise<void> {

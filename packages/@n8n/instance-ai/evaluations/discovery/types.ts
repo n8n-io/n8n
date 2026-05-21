@@ -17,13 +17,23 @@ import type { LocalGatewayStatus } from '../../src/types';
  *   (top-level orchestrator call, or via a spawned sub-agent's tool list).
  * - `noneOf` — pass only if NONE of the listed tool names was invoked.
  *   Used for negative scenarios that guard against over-eager invocation.
+ * - `noneOfToolCalls` — pass only if NONE of the listed tool calls happened.
+ *   Unlike `noneOf`, this checks actual tool calls only; a spawned sub-agent
+ *   having the tool available does not count as a violation.
  *
  * Both forms accept a sub-agent role prefix `spawn_sub_agent:<role>` to match
  * an `agent-spawned` event whose role equals `<role>`.
  */
+export interface ForbiddenToolCall {
+	toolName: string;
+	/** Optional case-insensitive substrings to match against the serialized tool args. */
+	argsContainAny?: string[];
+}
+
 export interface ExpectedToolInvocations {
 	anyOf?: string[];
 	noneOf?: string[];
+	noneOfToolCalls?: ForbiddenToolCall[];
 }
 
 /**
@@ -43,7 +53,7 @@ export interface DiscoveryTestCase {
 	userMessage: string;
 	/** Optional instance state overrides applied when constructing the agent. */
 	instanceState?: DiscoveryInstanceState;
-	/** Pass condition. Exactly one of the form keys (`anyOf` / `noneOf`) is required. */
+	/** Pass condition. At least one expectation key is required. */
 	expectedToolInvocations: ExpectedToolInvocations;
 	/** Free-form note explaining what regression this scenario protects against. */
 	rationale?: string;
