@@ -8,11 +8,12 @@
  * - Local mode: per-builder subdirectory with full setup (development only)
  */
 
-import { Daytona } from '@daytonaio/sdk';
+import type { Daytona } from '@daytonaio/sdk';
 import { Workspace } from '@n8n/agents';
 import assert from 'node:assert/strict';
 import { join as posixJoin } from 'node:path/posix';
 
+import { loadDaytona } from './lazy-daytona';
 import type { ErrorReporter, Logger } from '../logger';
 import type { SandboxConfig } from './create-workspace';
 import { DaytonaFilesystem } from './daytona-filesystem';
@@ -145,6 +146,7 @@ export class BuilderSandboxFactory {
 
 	private async getDaytona(): Promise<Daytona> {
 		const config = this.assertIsDaytona();
+		const { Daytona } = loadDaytona();
 		if (config.getAuthToken) {
 			// Proxy mode: create a fresh client with a fresh JWT each time
 			const apiKey = await config.getAuthToken();
