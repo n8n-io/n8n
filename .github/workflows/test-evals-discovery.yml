@@ -82,7 +82,9 @@ jobs:
           pnpm eval:discovery "${EVAL_ARGS[@]}" 2>&1 | tee discovery-eval-output.txt
 
       - name: Post eval results to PR
-        if: ${{ always() && github.event_name == 'pull_request' && hashFiles('packages/@n8n/instance-ai/discovery-eval-output.txt') != '' }}
+        # Eval may be triggered by pull_request or pull_request_review; both
+        # expose github.event.pull_request.*, so the comment lookup works.
+        if: ${{ always() && github.event.pull_request.number && hashFiles('packages/@n8n/instance-ai/discovery-eval-output.txt') != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EVAL_OUTCOME: ${{ steps.eval.outcome }}

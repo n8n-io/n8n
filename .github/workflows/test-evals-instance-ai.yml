@@ -257,7 +257,10 @@ jobs:
           fi
 
       - name: Post eval results to PR
-        if: ${{ always() && github.event_name == 'pull_request' }}
+        # Eval now fires on pull_request_review (see ci-instance-ai-evals.yml),
+        # which also exposes github.event.pull_request.*, so the comment lookup
+        # still works.
+        if: ${{ always() && github.event.pull_request.number }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
