@@ -240,7 +240,11 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 		// Step 2: Start n8n (main 1 first for DB setup, then rest in parallel)
 		const lbResult = serviceResults.loadBalancer as LoadBalancerResult | undefined;
-		const baseUrl = lbResult?.meta.baseUrl ?? `http://localhost:${allocatedMainPort}`;
+		// When n8n is hosted under a base path, expose it as part of `baseUrl`
+		// so Playwright's `request.newContext({ baseURL })`, page navigations
+		// and helpers all resolve relative paths against the prefixed origin.
+		const basePath = env.N8N_BASE_PATH ?? '';
+		const baseUrl = (lbResult?.meta.baseUrl ?? `http://localhost:${allocatedMainPort}`) + basePath;
 
 		const filesToMount: FileToMount[] = Object.values(serviceResults).flatMap((result) => {
 			const meta = result.meta as { n8nFilesToMount?: FileToMount[] } | undefined;
@@ -311,8 +315,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			const mainContainer = containers.find((c) => c.getName().endsWith(mainNameSuffix));
 			if (mainContainer) {
 				const mainPort = mainContainer.getMappedPort(5678);
-				mainUrls.push(`http://localhost:${mainPort}`);
-				internalMainUrls.push(`http://${uniqueProjectName}${mainNameSuffix}:5678`);
+				mainUrls.push(`http://localhost:${mainPort}${basePath}`);
+				internalMainUrls.push(`http://${uniqueProjectName}${mainNameSuffix}:5678${basePath}`);
 			}
 		}
 		log(`Direct main URLs: ${mainUrls.join(', ')}`);
