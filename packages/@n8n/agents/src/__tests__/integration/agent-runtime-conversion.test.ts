@@ -63,6 +63,92 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect(toolResultPart.output.value).toEqual({ result: 3 });
 	});
 
+	it('preserves content tool outputs when building tool ModelMessages', () => {
+		const contentOutput = {
+			type: 'content' as const,
+			value: [
+				{ type: 'text' as const, text: 'current browser screenshot' },
+				{ type: 'image-data' as const, data: 'base64-screenshot', mediaType: 'image/png' },
+			],
+		};
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'screen_screenshot',
+						input: {},
+						state: 'resolved',
+						output: contentOutput,
+					},
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input);
+		const toolResultPart = (
+			aiMessages[1] as {
+				role: string;
+				content: Array<{ output: unknown }>;
+			}
+		).content[0];
+
+		expect(toolResultPart.output).toEqual(contentOutput);
+	});
+
+	it('round-trips content tool outputs from AI SDK tool messages', () => {
+		const contentOutput = {
+			type: 'content' as const,
+			value: [
+				{ type: 'text' as const, text: 'current browser screenshot' },
+				{ type: 'image-data' as const, data: 'base64-screenshot', mediaType: 'image/png' },
+			],
+		};
+
+		const messages = fromAiMessages([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'screen_screenshot',
+						input: {},
+					},
+				],
+			},
+			{
+				role: 'tool',
+				content: [
+					{
+						type: 'tool-result',
+						toolCallId: 'tc-1',
+						toolName: 'screen_screenshot',
+						output: contentOutput,
+					},
+				],
+			},
+		]);
+
+		expect(messages).toEqual([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'screen_screenshot',
+						input: {},
+						state: 'resolved',
+						output: contentOutput,
+					},
+				],
+			},
+		]);
+	});
+
 	it('encodes rejected tool-call as error-text in the tool ModelMessage', () => {
 		const input: Message[] = [
 			{

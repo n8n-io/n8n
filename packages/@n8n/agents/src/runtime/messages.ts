@@ -68,6 +68,29 @@ function parseJsonValue(value: JSONValue): unknown {
 	return value;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isToolResultOutput(value: JSONValue): value is ToolResultPart['output'] {
+	if (!isRecord(value) || typeof value.type !== 'string') return false;
+
+	switch (value.type) {
+		case 'text':
+		case 'error-text':
+			return typeof value.value === 'string';
+		case 'json':
+		case 'error-json':
+			return 'value' in value;
+		case 'execution-denied':
+			return !('reason' in value) || typeof value.reason === 'string';
+		case 'content':
+			return Array.isArray(value.value);
+		default:
+			return false;
+	}
+}
+
 /** Convert a single n8n MessageContent block to an AI SDK content part. */
 function toAiContent(block: MessageContent): AiContentPart | undefined {
 	let base: AiContentPart | undefined;
@@ -106,7 +129,9 @@ function toolCallToResultPart(
 			type: 'tool-result',
 			toolCallId: block.toolCallId,
 			toolName: block.toolName,
-			output: { type: 'json', value: block.output },
+			output: isToolResultOutput(block.output)
+				? block.output
+				: { type: 'json', value: block.output },
 		};
 	}
 	// rejected
@@ -301,6 +326,10 @@ export function fromAiMessages(messages: ModelMessage[]): AgentMessage[] {
 					const mutableBlock = block as Extract<ContentToolCall, { state: 'resolved' }>;
 					mutableBlock.state = 'resolved';
 					mutableBlock.output = output.value as JSONValue;
+				} else if (output.type === 'content') {
+					const mutableBlock = block as Extract<ContentToolCall, { state: 'resolved' }>;
+					mutableBlock.state = 'resolved';
+					mutableBlock.output = output as JSONValue;
 				} else if (output.type === 'error-json') {
 					const mutableBlock = block as Extract<ContentToolCall, { state: 'rejected' }>;
 					mutableBlock.state = 'rejected';
