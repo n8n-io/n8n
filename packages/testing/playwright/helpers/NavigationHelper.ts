@@ -20,9 +20,16 @@ export class NavigationHelper {
 
 	private readonly secretsProviderSettings: SecretsProviderSettingsPage;
 
-	constructor(private page: Page) {
+	constructor(
+		private page: Page,
+		private basePath: string = '',
+	) {
 		this.instanceAi = new InstanceAiPage(page);
 		this.secretsProviderSettings = new SecretsProviderSettingsPage(page);
+	}
+
+	private async goto(path: string): Promise<void> {
+		await this.page.goto(this.basePath ? `${this.basePath}${path}` : path);
 	}
 
 	/**
@@ -30,7 +37,7 @@ export class NavigationHelper {
 	 * URL: /home
 	 */
 	async toHome(): Promise<void> {
-		await this.page.goto('/home');
+		await this.goto('/home');
 	}
 
 	/**
@@ -41,7 +48,7 @@ export class NavigationHelper {
 	 */
 	async toWorkflows(projectId?: string): Promise<void> {
 		const url = projectId ? `/projects/${projectId}/workflows` : '/home/workflows';
-		await this.page.goto(url);
+		await this.goto(url);
 	}
 
 	/**
@@ -52,12 +59,12 @@ export class NavigationHelper {
 	 */
 	async toCredentials(projectId?: string): Promise<void> {
 		const url = projectId ? `/projects/${projectId}/credentials` : '/home/credentials';
-		await this.page.goto(url);
+		await this.goto(url);
 	}
 
 	async toDatatables(projectId?: string): Promise<void> {
 		const url = projectId ? `/projects/${projectId}/datatables` : '/home/datatables';
-		await this.page.goto(url);
+		await this.goto(url);
 	}
 
 	/**
@@ -66,7 +73,7 @@ export class NavigationHelper {
 	 * Note: Variables are global and don't have project-specific scoping
 	 */
 	async toVariables(): Promise<void> {
-		await this.page.goto('/variables');
+		await this.goto('/variables');
 	}
 
 	/**
@@ -74,7 +81,7 @@ export class NavigationHelper {
 	 * URL: /settings/personal
 	 */
 	async toPersonalSettings(): Promise<void> {
-		await this.page.goto('/settings/personal');
+		await this.goto('/settings/personal');
 	}
 
 	/**
@@ -82,7 +89,7 @@ export class NavigationHelper {
 	 * URL: /projects/{projectId}
 	 */
 	async toProject(projectId: string): Promise<void> {
-		await this.page.goto(`/projects/${projectId}`);
+		await this.goto(`/projects/${projectId}`);
 	}
 
 	/**
@@ -90,7 +97,7 @@ export class NavigationHelper {
 	 * URL: /projects/{projectId}/settings
 	 */
 	async toProjectSettings(projectId: string): Promise<void> {
-		await this.page.goto(`/projects/${projectId}/settings`);
+		await this.goto(`/projects/${projectId}/settings`);
 	}
 
 	/**
@@ -102,7 +109,7 @@ export class NavigationHelper {
 	 */
 	async toWorkflow(workflowId: string = 'new'): Promise<void> {
 		const url = `/workflow/${workflowId}`;
-		await this.page.goto(url);
+		await this.goto(url);
 	}
 
 	/**
@@ -113,7 +120,7 @@ export class NavigationHelper {
 		const url = projectId
 			? `/projects/${projectId}/folders/${folderId}/workflows`
 			: `/home/folders/${folderId}/workflows`;
-		await this.page.goto(url);
+		await this.goto(url);
 	}
 
 	/**
@@ -128,7 +135,7 @@ export class NavigationHelper {
 	 * URL: /templates
 	 */
 	async toTemplates(): Promise<void> {
-		await this.page.goto('/templates');
+		await this.goto('/templates');
 	}
 
 	/**
@@ -136,7 +143,7 @@ export class NavigationHelper {
 	 * URL: /templates/{templateId}
 	 */
 	async toTemplate(templateId: string): Promise<void> {
-		await this.page.goto(`/templates/${templateId}`);
+		await this.goto(`/templates/${templateId}`);
 	}
 
 	/**
@@ -144,7 +151,7 @@ export class NavigationHelper {
 	 * URL: /workflows/onboarding/{templateId}
 	 */
 	async toOnboardingTemplate(templateId: string): Promise<void> {
-		await this.page.goto(`/workflows/onboarding/${templateId}`);
+		await this.goto(`/workflows/onboarding/${templateId}`);
 	}
 
 	/**
@@ -152,7 +159,7 @@ export class NavigationHelper {
 	 * URL: /workflows/templates/{templateId}
 	 */
 	async toTemplateImport(templateId: string): Promise<void> {
-		await this.page.goto(`/workflows/templates/${templateId}`);
+		await this.goto(`/workflows/templates/${templateId}`);
 	}
 
 	/**
@@ -160,7 +167,7 @@ export class NavigationHelper {
 	 * URL: /collections/{collectionId}
 	 */
 	async toTemplateCollection(collectionId: number): Promise<void> {
-		await this.page.goto(`/collections/${collectionId}`);
+		await this.goto(`/collections/${collectionId}`);
 	}
 
 	/**
@@ -168,7 +175,7 @@ export class NavigationHelper {
 	 * URL: /templates/{templateId}/setup
 	 */
 	async toTemplateCredentialSetup(templateId: number): Promise<void> {
-		await this.page.goto(`/templates/${templateId}/setup`);
+		await this.goto(`/templates/${templateId}/setup`);
 	}
 
 	/**
@@ -176,7 +183,7 @@ export class NavigationHelper {
 	 * URL: /settings/community-nodes
 	 */
 	async toCommunityNodes(): Promise<void> {
-		await this.page.goto('/settings/community-nodes');
+		await this.goto('/settings/community-nodes');
 	}
 
 	/**
@@ -184,7 +191,7 @@ export class NavigationHelper {
 	 * URL: /settings/log-streaming
 	 */
 	async toLogStreaming(): Promise<void> {
-		await this.page.goto('/settings/log-streaming');
+		await this.goto('/settings/log-streaming');
 	}
 
 	/**
@@ -192,7 +199,7 @@ export class NavigationHelper {
 	 * URL: /settings/users
 	 */
 	async toUsers(): Promise<void> {
-		await this.page.goto('/settings/users');
+		await this.goto('/settings/users');
 	}
 
 	/**
@@ -200,7 +207,7 @@ export class NavigationHelper {
 	 * URL: /settings/api
 	 */
 	async toApiSettings(): Promise<void> {
-		await this.page.goto('/settings/api');
+		await this.goto('/settings/api');
 	}
 
 	/**
@@ -208,7 +215,7 @@ export class NavigationHelper {
 	 * URL: /settings/environments
 	 */
 	async toEnvironments(): Promise<void> {
-		await this.page.goto('/settings/environments');
+		await this.goto('/settings/environments');
 	}
 
 	/**
@@ -216,7 +223,7 @@ export class NavigationHelper {
 	 * URL: /settings/chat
 	 */
 	async toChatHubSettings(): Promise<void> {
-		await this.page.goto('/settings/chat');
+		await this.goto('/settings/chat');
 	}
 
 	/**
@@ -224,7 +231,7 @@ export class NavigationHelper {
 	 * URL: /instance-ai
 	 */
 	async toInstanceAi() {
-		await this.page.goto('/instance-ai');
+		await this.goto('/instance-ai');
 		await this.instanceAi.enableInstanceAiIfPrompted();
 	}
 
@@ -233,7 +240,7 @@ export class NavigationHelper {
 	 * URL: /home/chat
 	 */
 	async toChatHub() {
-		await this.page.goto('/home/chat');
+		await this.goto('/home/chat');
 	}
 
 	/**
@@ -241,7 +248,7 @@ export class NavigationHelper {
 	 * URL: /home/chat/personal-agents
 	 */
 	async toChatHubPersonalAgents() {
-		await this.page.goto('/home/chat/personal-agents');
+		await this.goto('/home/chat/personal-agents');
 	}
 
 	/**
@@ -249,7 +256,7 @@ export class NavigationHelper {
 	 * URL: /home/chat/workflow-agents
 	 */
 	async toChatHubWorkflowAgents() {
-		await this.page.goto('/home/chat/workflow-agents');
+		await this.goto('/home/chat/workflow-agents');
 	}
 
 	/**
