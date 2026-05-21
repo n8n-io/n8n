@@ -892,7 +892,7 @@ export class OauthService {
 				) {
 					const resource =
 						typeof data.resource === 'string'
-							? this.normalizeResourceUrl(data.resource)
+							? this.validateResourceUrlOrThrow(data.resource)
 							: undefined;
 					return {
 						authorization_servers: data.authorization_servers,

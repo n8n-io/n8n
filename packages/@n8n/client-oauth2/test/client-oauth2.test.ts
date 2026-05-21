@@ -214,7 +214,7 @@ describe('ClientOAuth2', () => {
 				accessTokenUri: config.accessTokenUri,
 				authorizationUri: config.authorizationUri,
 				redirectUri: config.redirectUri,
-				authentication: 'heade	r',
+				authentication: 'header',
 				state: config.state,
 				...overrides,
 			});

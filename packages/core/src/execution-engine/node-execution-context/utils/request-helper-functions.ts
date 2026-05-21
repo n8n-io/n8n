@@ -799,8 +799,9 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Revalidating.`,
 	);
 
-	if (credentials.oauthTokenData?.resource) {
-		tokenRefreshOptions.resource = credentials.oauthTokenData.resource;
+	const refreshResource = credentials.oauthTokenData?.resource;
+	if (typeof refreshResource === 'string' && refreshResource.length > 0) {
+		tokenRefreshOptions.resource = refreshResource;
 	}
 
 	let newToken;
