@@ -1045,7 +1045,10 @@ export async function startBuildWorkflowAgentTask(
 								workspace = activeBuilderSession.workspace;
 								root = activeBuilderSession.root;
 							} else {
-								builderWs = await factory.create(subAgentId, domainContext);
+								builderWs = await factory.create(subAgentId, domainContext, {
+									runId: context.runId,
+									threadId: context.threadId,
+								});
 								workspace = builderWs.workspace;
 								root = await getWorkspaceRoot(workspace);
 							}
