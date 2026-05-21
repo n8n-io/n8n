@@ -19,10 +19,17 @@ export interface OAuth2CredentialData {
 	oauthTokenData?: {
 		access_token: string;
 		refresh_token?: string;
+		resource?: string;
 	};
 	useDynamicClientRegistration?: boolean;
 	serverUrl?: string;
+	resourceUrl?: string;
 	jweEnabled?: boolean;
+	/**
+	 * The resolved RFC 8707 resource indicator, set after discovery/validation.
+	 * Populated from either the discovered metadata or the user's resourceUrl override.
+	 */
+	resource?: string;
 }
 
 /**

@@ -34,6 +34,7 @@ export interface ClientOAuth2Options {
 	additionalBodyProperties?: Record<string, any>;
 	body?: Record<string, any>;
 	query?: qs.ParsedUrlQuery;
+	resource?: string;
 	ignoreSSLIssues?: boolean;
 }
 

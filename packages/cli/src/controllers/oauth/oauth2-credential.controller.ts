@@ -52,6 +52,10 @@ export class OAuth2CredentialController {
 			const [credential, decryptedDataOriginal, oauthCredentials, state] =
 				await this.oauthService.resolveCredential<OAuth2CredentialData>(req);
 
+			if (typeof state.resource === 'string') {
+				oauthCredentials.resource = state.resource;
+			}
+
 			const oAuthOptions = this.convertCredentialToOptions(oauthCredentials);
 
 			const isPkce = oauthCredentials.grantType === 'pkce';
@@ -107,6 +111,10 @@ export class OAuth2CredentialController {
 				...tokenResponse,
 			} as ICredentialDataDecryptedObject;
 
+			if (typeof state.resource === 'string') {
+				oauthTokenData.resource = state.resource;
+			}
+
 			if (!state.origin || state.origin === 'static-credential') {
 				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
 
@@ -159,6 +167,7 @@ export class OAuth2CredentialController {
 			redirectUri: `${this.oauthService.getBaseUrl(OauthVersion.V2)}/callback`,
 			scopes: split(credential.scope ?? 'openid', ','),
 			scopesSeparator: credential.scope?.includes(',') ? ',' : ' ',
+			resource: credential.resource,
 			ignoreSSLIssues: credential.ignoreSSLIssues ?? false,
 		};
 

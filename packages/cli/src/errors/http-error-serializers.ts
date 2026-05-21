@@ -3,7 +3,7 @@ import { HttpErrorKind, type HttpErrorDescriptor } from '@/errors/http-error-cla
 const GENERIC_PUBLIC_MESSAGE = 'Internal server error';
 
 export type InternalRestErrorBody = {
-	code: number;
+	code: number | string;
 	message: string;
 	hint?: string;
 	stacktrace?: string;

@@ -16,7 +16,7 @@ export type HttpErrorDescriptor =
 			kind: HttpErrorKind.responseError;
 			status: number;
 			message: string;
-			code: number;
+			code: number | string;
 			hint?: string;
 			meta?: Record<string, unknown>;
 	  }
@@ -48,7 +48,7 @@ export function isResponseError(error: Error): error is ResponseError {
 			'httpStatusCode' in error &&
 			typeof error.httpStatusCode === 'number' &&
 			'errorCode' in error &&
-			typeof error.errorCode === 'number'
+			(typeof error.errorCode === 'number' || typeof error.errorCode === 'string')
 		);
 	}
 
