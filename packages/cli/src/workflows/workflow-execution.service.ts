@@ -4,7 +4,12 @@ import type { Project, User, CreateExecutionPayload } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
-import { DirectedGraph, ErrorReporter, anyReachableRootHasRunData } from 'n8n-core';
+import {
+	DirectedGraph,
+	ErrorReporter,
+	ExecutionContextService,
+	anyReachableRootHasRunData,
+} from 'n8n-core';
 import type {
 	IDeferredPromise,
 	IExecuteData,
@@ -52,6 +57,7 @@ export class WorkflowExecutionService {
 		private readonly failedRunFactory: FailedRunFactory,
 		private readonly eventService: EventService,
 		private readonly ownershipService: OwnershipService,
+		private readonly executionContextService: ExecutionContextService,
 	) {}
 
 	async runWorkflow(
@@ -219,7 +225,10 @@ export class WorkflowExecutionService {
 			const project = await this.ownershipService.getWorkflowProjectCached(workflowData.id);
 			data.projectId = project.id;
 			data.projectName = project.name;
-			data.n8nAuthCookie = n8nAuthCookie;
+
+			data.encryptedRunnerIdentity = n8nAuthCookie
+				? await this.executionContextService.buildManualExecutionCredentials(n8nAuthCookie)
+				: undefined;
 
 			const offloadingManualExecutionsInQueueMode =
 				this.globalConfig.executions.mode === 'queue' &&

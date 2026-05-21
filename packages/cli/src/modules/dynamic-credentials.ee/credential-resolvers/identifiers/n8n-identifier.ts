@@ -9,14 +9,17 @@ const ManualExecutionMetadataSchema = z.object({
 	source: z.literal('manual-execution'),
 });
 
-const ChatHubMetadataSchema = z.object({
-	source: z.enum(['chat-hub-injected', 'cookie-source']).optional(),
+const RequestBoundMetadataSchema = z.object({
+	source: z.enum(['chat-hub-injected', 'cookie-source']),
 	method: z.string(),
 	endpoint: z.string(),
 	browserId: z.string().optional(),
 });
 
-const N8NIdentifierMetadataSchema = z.union([ManualExecutionMetadataSchema, ChatHubMetadataSchema]);
+const N8NIdentifierMetadataSchema = z.discriminatedUnion('source', [
+	ManualExecutionMetadataSchema,
+	RequestBoundMetadataSchema,
+]);
 
 /**
  * N8N JWT token identifier.
@@ -24,11 +27,13 @@ const N8NIdentifierMetadataSchema = z.union([ManualExecutionMetadataSchema, Chat
  * Used by the N8N credential resolver to authenticate users via n8n's
  * built-in JWT authentication and store credentials per user.
  *
- * Supports two metadata sources:
+ * Supports two metadata shapes, discriminated by `source`:
  * - `manual-execution`: editor-triggered run; identity is the n8n auth cookie (JWT).
  *   Validated cryptographically without request-bound checks (browserId / endpoint).
- * - `chat-hub-injected` (or no source): chat-hub / webhook run; identity is the
- *   n8n auth cookie captured from the HTTP request, validated with full request context.
+ * - `chat-hub-injected` / `cookie-source`: request-bound run (chat-hub or
+ *   web/cookie-based dynamic-credential resolution); identity is the n8n auth
+ *   cookie captured from the HTTP request, validated with full request context
+ *   (method, endpoint, browserId).
  */
 @Service()
 export class N8NIdentifier implements ITokenIdentifier {

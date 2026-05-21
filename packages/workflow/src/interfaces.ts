@@ -3142,8 +3142,8 @@ export interface IWorkflowExecutionDataProcess {
 	deduplicationKey?: string;
 	/** W3C trace context extracted from inbound webhook headers. */
 	tracingContext?: { traceparent: string; tracestate?: string };
-	/** n8n auth JWT of the user who triggered this manual execution. */
-	n8nAuthCookie?: string;
+	/** Encrypted credential context for a manual editor-triggered execution. */
+	encryptedRunnerIdentity?: string;
 }
 
 export interface ExecuteWorkflowOptions {

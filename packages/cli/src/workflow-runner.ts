@@ -21,7 +21,6 @@ import type {
 	INode,
 	IPinData,
 	IRun,
-	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
@@ -221,7 +220,7 @@ export class WorkflowRunner {
 				await establishExecutionContext(
 					contextWorkflow,
 					data.executionData,
-					{ n8nAuthCookie: data.n8nAuthCookie } as IWorkflowExecuteAdditionalData,
+					{ encryptedRunnerIdentity: data.encryptedRunnerIdentity },
 					data.executionMode,
 				);
 			} catch (error) {
@@ -374,7 +373,7 @@ export class WorkflowRunner {
 		});
 		additionalData.restartExecutionId = restartExecutionId;
 		additionalData.streamingEnabled = data.streamingEnabled;
-		additionalData.n8nAuthCookie = data.n8nAuthCookie;
+		additionalData.encryptedRunnerIdentity = data.encryptedRunnerIdentity;
 
 		additionalData.executionId = executionId;
 

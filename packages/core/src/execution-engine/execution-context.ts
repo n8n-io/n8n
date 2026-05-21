@@ -1,13 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import {
-	type IWorkflowExecuteAdditionalData,
-	type WorkflowExecuteMode,
-	type IRunExecutionData,
-	type Workflow,
-} from 'n8n-workflow';
+import { type WorkflowExecuteMode, type IRunExecutionData, type Workflow } from 'n8n-workflow';
 
-import { assertExecutionDataExists } from '@/utils/assertions';
+import { assertExecutionDataExists, type PreExecutionAdditionalData } from '@/utils/assertions';
 
 import { ExecutionContextService } from './execution-context.service';
 
@@ -109,7 +104,7 @@ import { ExecutionContextService } from './execution-context.service';
 export const establishExecutionContext = async (
 	workflow: Workflow,
 	runExecutionData: IRunExecutionData,
-	additionalData: IWorkflowExecuteAdditionalData | undefined,
+	additionalData: PreExecutionAdditionalData | undefined,
 	mode: WorkflowExecuteMode,
 ): Promise<void> => {
 	assertExecutionDataExists(runExecutionData.executionData, workflow, additionalData, mode);
@@ -135,12 +130,8 @@ export const establishExecutionContext = async (
 		},
 	};
 
-	// Manual runs have no live request at credential-resolution time; encrypt the JWT now.
-	const n8nAuthCookie = additionalData?.n8nAuthCookie;
-	if (mode === 'manual' && n8nAuthCookie) {
-		const executionContextService = Container.get(ExecutionContextService);
-		executionData.runtimeData.credentials =
-			await executionContextService.buildManualExecutionCredentials(n8nAuthCookie);
+	if (mode === 'manual' && additionalData?.encryptedRunnerIdentity) {
+		executionData.runtimeData.credentials = additionalData.encryptedRunnerIdentity;
 	}
 
 	if (runExecutionData.parentExecution) {

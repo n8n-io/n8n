@@ -39,6 +39,7 @@ describe('N8NIdentifier', () => {
 					identity: 'valid-jwt-token',
 					version: 1 as const,
 					metadata: {
+						source: 'chat-hub-injected' as const,
 						method: 'GET',
 						endpoint: '/api/users',
 						browserId: 'browser-abc',
@@ -63,6 +64,7 @@ describe('N8NIdentifier', () => {
 					identity: 'valid-jwt-token',
 					version: 1 as const,
 					metadata: {
+						source: 'chat-hub-injected' as const,
 						method: 'POST',
 						endpoint: '/api/workflows',
 						browserId: undefined,
@@ -87,6 +89,7 @@ describe('N8NIdentifier', () => {
 					identity: 'valid-jwt-token',
 					version: 1 as const,
 					metadata: {
+						source: 'chat-hub-injected' as const,
 						method: 'DELETE',
 						endpoint: '/api/credentials',
 					},
@@ -123,6 +126,7 @@ describe('N8NIdentifier', () => {
 					identity: 'valid-jwt-token',
 					version: 1 as const,
 					metadata: {
+						source: 'chat-hub-injected' as const,
 						method: 'GET',
 						endpoint: '/api/users',
 						browserId: 123, // Number instead of string
@@ -148,6 +152,7 @@ describe('N8NIdentifier', () => {
 					identity: 'invalid-token',
 					version: 1 as const,
 					metadata: {
+						source: 'chat-hub-injected' as const,
 						method: 'GET',
 						endpoint: '/api/users',
 						browserId: 'browser-abc',
@@ -165,6 +170,7 @@ describe('N8NIdentifier', () => {
 					identity: 'valid-token',
 					version: 1 as const,
 					metadata: {
+						source: 'chat-hub-injected' as const,
 						method: 'POST',
 						endpoint: '/api/workflows',
 					},
@@ -198,6 +204,68 @@ describe('N8NIdentifier', () => {
 					'/chat',
 					'browser-abc',
 				);
+				expect(mockAuthService.authenticateUserByCookie).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('cookie-source branch', () => {
+			it('should call authenticateUserBasedOnToken when source is cookie-source', async () => {
+				mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockUser);
+
+				const context = {
+					identity: 'cookie-jwt',
+					version: 1 as const,
+					metadata: {
+						source: 'cookie-source' as const,
+						method: 'GET',
+						endpoint: '/api/data',
+						browserId: 'browser-xyz',
+					},
+				};
+
+				const result = await identifier.resolve(context, {});
+
+				expect(result).toBe('user-123');
+				expect(mockAuthService.authenticateUserBasedOnToken).toHaveBeenCalledWith(
+					'cookie-jwt',
+					'GET',
+					'/api/data',
+					'browser-xyz',
+				);
+				expect(mockAuthService.authenticateUserByCookie).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('discriminator validation', () => {
+			it('should reject metadata without a source field', async () => {
+				const context = {
+					identity: 'valid-jwt-token',
+					version: 1 as const,
+					metadata: {
+						method: 'GET',
+						endpoint: '/api/users',
+						browserId: 'browser-abc',
+					},
+				};
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow(CredentialResolverError);
+				expect(mockAuthService.authenticateUserBasedOnToken).not.toHaveBeenCalled();
+				expect(mockAuthService.authenticateUserByCookie).not.toHaveBeenCalled();
+			});
+
+			it('should reject metadata with an unknown source value', async () => {
+				const context = {
+					identity: 'valid-jwt-token',
+					version: 1 as const,
+					metadata: {
+						source: 'unknown-source',
+						method: 'GET',
+						endpoint: '/api/users',
+					},
+				};
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow(CredentialResolverError);
+				expect(mockAuthService.authenticateUserBasedOnToken).not.toHaveBeenCalled();
 				expect(mockAuthService.authenticateUserByCookie).not.toHaveBeenCalled();
 			});
 		});

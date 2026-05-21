@@ -20,6 +20,7 @@ describe('establishExecutionContext', () => {
 	const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>({
 		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
 		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+		encryptedRunnerIdentity: undefined,
 	});
 	const mockMode: WorkflowExecuteMode = 'manual';
 
@@ -1233,9 +1234,6 @@ describe('establishExecutionContext', () => {
 
 		beforeEach(() => {
 			mockExecutionContextService = mock<ExecutionContextService>();
-			mockExecutionContextService.buildManualExecutionCredentials.mockResolvedValue(
-				'encrypted-credential-blob',
-			);
 			// The end of establishExecutionContext calls augmentExecutionContextWithHooks for any
 			// start item that isn't gated by an early return. Stub it to a no-op pass-through so the
 			// tests below only assert the manual-injection branch.
@@ -1252,26 +1250,24 @@ describe('establishExecutionContext', () => {
 			Container.reset();
 		});
 
-		it('should encrypt the n8nAuthCookie into credentials for manual runs', async () => {
+		it('should assign the pre-built encryptedRunnerIdentity to credentials for manual runs', async () => {
 			const runExecutionData = buildRunDataWithManualTrigger();
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({
-				n8nAuthCookie: 'cookie-jwt',
+				encryptedRunnerIdentity: 'encrypted-credential-blob',
 			});
 
 			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'manual');
 
-			expect(mockExecutionContextService.buildManualExecutionCredentials).toHaveBeenCalledWith(
-				'cookie-jwt',
-			);
+			expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
 			expect(runExecutionData.executionData!.runtimeData!.credentials).toBe(
 				'encrypted-credential-blob',
 			);
 		});
 
-		it('should NOT inject credentials when n8nAuthCookie is missing', async () => {
+		it('should NOT inject credentials when encryptedRunnerIdentity is missing', async () => {
 			const runExecutionData = buildRunDataWithManualTrigger();
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({
-				n8nAuthCookie: undefined,
+				encryptedRunnerIdentity: undefined,
 			});
 
 			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'manual');
@@ -1289,10 +1285,10 @@ describe('establishExecutionContext', () => {
 			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
 		});
 
-		it('should NOT inject credentials for webhook mode even when cookie is present', async () => {
+		it('should NOT inject credentials for webhook mode even when ciphertext is present', async () => {
 			const runExecutionData = buildRunDataWithManualTrigger();
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({
-				n8nAuthCookie: 'cookie-jwt',
+				encryptedRunnerIdentity: 'encrypted-credential-blob',
 			});
 
 			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'webhook');
@@ -1301,10 +1297,10 @@ describe('establishExecutionContext', () => {
 			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
 		});
 
-		it('should NOT inject credentials for trigger mode even when cookie is present', async () => {
+		it('should NOT inject credentials for trigger mode even when ciphertext is present', async () => {
 			const runExecutionData = buildRunDataWithManualTrigger();
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({
-				n8nAuthCookie: 'cookie-jwt',
+				encryptedRunnerIdentity: 'encrypted-credential-blob',
 			});
 
 			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'trigger');
@@ -1323,7 +1319,7 @@ describe('establishExecutionContext', () => {
 			};
 			runExecutionData.executionData!.runtimeData = existingContext;
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({
-				n8nAuthCookie: 'cookie-jwt',
+				encryptedRunnerIdentity: 'encrypted-credential-blob',
 			});
 
 			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'manual');
