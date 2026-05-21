@@ -6,11 +6,7 @@ import type { PushMessage } from '@n8n/api-types';
 import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { IWorkflowDb } from '@/Interface';
-import {
-	isFixWithAiError,
-	type FixWithAiError,
-	type FixWithAiOfferState,
-} from '../useFixWithAiOffer';
+import { isFixWithAiError, type FixWithAiError } from '../fixWithAi';
 
 const props = withDefaults(
 	defineProps<{
@@ -21,7 +17,11 @@ const props = withDefaults(
 	{ refreshKey: 0 },
 );
 
-export type WorkflowFailuresReport = FixWithAiOfferState;
+export interface WorkflowFailuresReport {
+	workflowId: string;
+	executionId: string;
+	errors: FixWithAiError[];
+}
 
 const emit = defineEmits<{
 	'iframe-ready': [];
@@ -49,11 +49,6 @@ function getPreviewIframe(): HTMLIFrameElement | null {
 	);
 }
 
-function parseWorkflowFailureErrors(errors: unknown): FixWithAiError[] {
-	if (!Array.isArray(errors)) return [];
-	return errors.filter(isFixWithAiError);
-}
-
 function isMessageFromPreviewIframe(event: MessageEvent): boolean {
 	if (event.origin !== window.location.origin) return false;
 
@@ -61,6 +56,11 @@ function isMessageFromPreviewIframe(event: MessageEvent): boolean {
 	if (!iframeWindow) return false;
 
 	return event.source === iframeWindow;
+}
+
+function parseWorkflowFailureErrors(errors: unknown): FixWithAiError[] {
+	if (!Array.isArray(errors)) return [];
+	return errors.filter(isFixWithAiError);
 }
 
 function handleIframeMessage(event: MessageEvent) {
@@ -81,7 +81,6 @@ function handleIframeMessage(event: MessageEvent) {
 			}
 			emit('workflow-failures', {
 				workflowId: json.workflowId,
-				workflowName: typeof json.workflowName === 'string' ? json.workflowName : undefined,
 				executionId: json.executionId,
 				errors,
 			});

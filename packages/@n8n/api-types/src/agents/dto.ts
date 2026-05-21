@@ -59,3 +59,7 @@ export class AgentDisconnectIntegrationDto extends Z.class({
 export class PublishAgentDto extends Z.class({
 	versionId: z.string().min(1).optional(),
 }) {}
+
+export class CreateSlackAgentAppDto extends Z.class({
+	appConfigurationToken: z.string().min(1),
+}) {}

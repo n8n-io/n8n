@@ -27,6 +27,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
+import { isPendingItemFloating } from './confirmationKinds';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useEventRelay } from './useEventRelay';
 import { useExecutionPushEvents } from './useExecutionPushEvents';
@@ -49,7 +50,7 @@ import CreditWarningBanner from '@/features/ai/assistant/components/Agent/Credit
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
-import { buildFixWithAiPrompt, useFixWithAiOffer } from './useFixWithAiOffer';
+import { buildFixWithAiPrompt } from './fixWithAi';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import { TabsRoot } from 'reka-ui';
 
@@ -79,40 +80,33 @@ const builderAgents = computed(() => collectActiveBuilderAgents(thread.messages)
 // otherwise leave an empty wrapper in the list — filter them out.
 const displayedMessages = computed(() => thread.messages.filter(messageHasVisibleContent));
 
-// --- Execution tracking via push events ---
+// True when at least one pending confirmation should occupy the chat-input
+// slot (generic approvals + domain/web-search access). Drives the swap
+// between the input and the floating confirmation panel.
+const hasFloatingConfirmation = computed(() =>
+	thread.pendingConfirmations.some(isPendingItemFloating),
+);
+
+// --- Execution tracking via push events (drives canvas relay) ---
 const executionTracking = useExecutionPushEvents();
-const fixWithAiOffer = useFixWithAiOffer();
+
+// --- Fix-with-AI offer (failure data sent by the iframe via postMessage) ---
+const failedRun = ref<WorkflowFailuresReport | null>(null);
+const dismissedExecutionId = ref<string | null>(null);
 
 const isChatInProgress = computed(
 	() => thread.isStreaming || thread.isSendingMessage || thread.isAwaitingConfirmation,
 );
 
-function findReadyFixWithAiOffer(workflowId?: string | null) {
-	const offers = fixWithAiOffer.offersByWorkflow.value;
-
-	if (workflowId) {
-		const preferred = offers.get(workflowId);
-		if (
-			preferred &&
-			preferred.errors.length > 0 &&
-			!fixWithAiOffer.isDismissed(preferred.executionId)
-		) {
-			return preferred;
-		}
-	}
-
-	for (const offer of offers.values()) {
-		if (offer.errors.length === 0) continue;
-		if (fixWithAiOffer.isDismissed(offer.executionId)) continue;
-		return offer;
-	}
-
-	return null;
-}
-
 const activeFixWithAiOffer = computed(() => {
+	const run = failedRun.value;
+	if (!run) return null;
+	if (run.executionId === dismissedExecutionId.value) return null;
 	if (isChatInProgress.value) return null;
-	return findReadyFixWithAiOffer(preview.activeWorkflowId.value);
+	return {
+		...run,
+		workflowName: thread.producedArtifacts.get(run.workflowId)?.name,
+	};
 });
 
 // --- Header title ---
@@ -491,7 +485,6 @@ onUnmounted(() => {
 	contentResizeObserver?.disconnect();
 	resizeObserver?.disconnect();
 	executionTracking.cleanup();
-	fixWithAiOffer.cleanup();
 });
 
 // --- Workflow preview ref for iframe relay ---
@@ -521,7 +514,7 @@ function handleFixWithAiFromOffer() {
 	const offer = activeFixWithAiOffer.value;
 	if (!offer) return;
 
-	fixWithAiOffer.dismiss(offer.executionId);
+	dismissedExecutionId.value = offer.executionId;
 	userScrolledUp.value = false;
 	void thread.sendMessage(
 		buildFixWithAiPrompt({ workflowName: offer.workflowName, errors: offer.errors }),
@@ -533,11 +526,11 @@ function handleFixWithAiFromOffer() {
 function dismissFixWithAiOffer() {
 	const offer = activeFixWithAiOffer.value;
 	if (!offer) return;
-	fixWithAiOffer.dismiss(offer.executionId);
+	dismissedExecutionId.value = offer.executionId;
 }
 
 function handleWorkflowFailures(report: WorkflowFailuresReport) {
-	fixWithAiOffer.registerOffer(report);
+	failedRun.value = report;
 }
 </script>
 
@@ -631,7 +624,11 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 									:agent-node="builder"
 								/>
 							</div>
-							<InstanceAiConfirmationPanel />
+							<!-- Inline confirmations (questions, plan review, text, setup,
+								 credential, gateway resource-decision, continue) render in
+								 the chat flow. Floating-eligible items take over the chat
+								 input slot below instead — see `hasFloatingConfirmation`. -->
+							<InstanceAiConfirmationPanel kind="inline" />
 							<Transition name="confirmation-slide">
 								<InstanceAiFixWithAiPanel
 									v-if="activeFixWithAiOffer"
@@ -664,7 +661,12 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 						</Transition>
 					</div>
 
-					<!-- Floating input -->
+					<!-- Floating input — replaced by the confirmation panel while a
+						 floating-eligible approval is pending. StatusBar and credit
+						 banner stay anchored above the slot in both states. The
+						 leaving child is positioned absolutely during the cross-fade
+						 so the in-flow child can size the slot to its natural
+						 height. -->
 					<div ref="inputContainer" :class="$style.inputContainer">
 						<div :class="$style.inputConstraint">
 							<InstanceAiStatusBar />
@@ -675,17 +677,28 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 								@dismiss="creditBanner.dismiss()"
 							/>
-							<InstanceAiInput
-								ref="chatInputRef"
-								:is-streaming="thread.isStreaming"
-								:is-submitting="thread.isSendingMessage"
-								:is-awaiting-confirmation="thread.isAwaitingConfirmation"
-								:current-thread-id="thread.id"
-								:amend-context="thread.amendContext"
-								:contextual-suggestion="thread.contextualSuggestion"
-								@submit="handleSubmit"
-								@stop="handleStop"
-							/>
+							<div :class="$style.inputSwap">
+								<Transition name="input-swap">
+									<InstanceAiConfirmationPanel
+										v-if="hasFloatingConfirmation"
+										key="floating-confirmation"
+										kind="floating"
+									/>
+									<InstanceAiInput
+										v-else
+										ref="chatInputRef"
+										key="chat-input"
+										:is-streaming="thread.isStreaming"
+										:is-submitting="thread.isSendingMessage"
+										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
+										:current-thread-id="thread.id"
+										:amend-context="thread.amendContext"
+										:contextual-suggestion="thread.contextualSuggestion"
+										@submit="handleSubmit"
+										@stop="handleStop"
+									/>
+								</Transition>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -1031,6 +1044,13 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	}
 }
 
+// The leaving child is detached from layout (see `.input-swap-leave-active`
+// below) so the slot follows the entering child's intrinsic height during
+// the cross-fade.
+.inputSwap {
+	position: relative;
+}
+
 .previewPanel {
 	display: flex;
 	flex-direction: column;
@@ -1196,5 +1216,24 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 
 .artifacts-panel-preview-leave-active {
 	pointer-events: none;
+}
+
+// Cross-fade between the chat input and the floating confirmation panel.
+// Default-mode cross-fade: both children co-exist briefly, the leaving one
+// is absolute-positioned so it doesn't push the entering one down, and the
+// slot sizes to the in-flow (entering) child.
+.input-swap-enter-from,
+.input-swap-leave-to {
+	opacity: 0;
+}
+
+.input-swap-enter-active,
+.input-swap-leave-active {
+	transition: opacity 120ms ease;
+}
+
+.input-swap-leave-active {
+	position: absolute;
+	inset: 0;
 }
 </style>

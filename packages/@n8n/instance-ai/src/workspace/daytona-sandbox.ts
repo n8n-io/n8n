@@ -1,21 +1,30 @@
-import { Daytona, DaytonaError, DaytonaNotFoundError, SandboxState } from '@daytonaio/sdk';
 import type {
 	CreateSandboxBaseParams,
 	CreateSandboxFromImageParams,
 	CreateSandboxFromSnapshotParams,
+	Daytona,
 	DaytonaConfig,
 	Resources,
 	Sandbox,
+	SandboxState,
 	VolumeMount,
 } from '@daytonaio/sdk';
-import type {
-	CommandResult,
-	ExecuteCommandOptions,
-	ProviderStatus,
-	SandboxInfo,
+import {
+	BaseSandbox,
+	type CommandResult,
+	type ExecuteCommandOptions,
+	type ProviderStatus,
+	type SandboxInfo,
 } from '@n8n/agents';
-import { BaseSandbox } from '@n8n/agents';
 import { randomUUID } from 'node:crypto';
+
+import { loadDaytona } from './lazy-daytona';
+
+const SANDBOX_STATE_STARTED = 'started';
+const SANDBOX_STATE_DESTROYED = 'destroyed';
+const SANDBOX_STATE_DESTROYING = 'destroying';
+const SANDBOX_STATE_ERROR = 'error';
+const SANDBOX_STATE_BUILD_FAILED = 'build_failed';
 
 export interface DaytonaSandboxOptions {
 	id?: string;
@@ -51,16 +60,17 @@ function toShellCommand(command: string, args: string[]): string {
 }
 
 function isAuthError(error: unknown): boolean {
+	const { DaytonaError } = loadDaytona();
 	return error instanceof DaytonaError && (error.statusCode === 401 || error.statusCode === 403);
 }
 
 export class DaytonaSandbox extends BaseSandbox {
-	private static readonly DEAD_STATES = new Set<SandboxState>([
-		SandboxState.DESTROYED,
-		SandboxState.DESTROYING,
-		SandboxState.ERROR,
-		SandboxState.BUILD_FAILED,
-	]);
+	private static readonly DEAD_STATES: ReadonlySet<SandboxState> = new Set([
+		SANDBOX_STATE_DESTROYED,
+		SANDBOX_STATE_DESTROYING,
+		SANDBOX_STATE_ERROR,
+		SANDBOX_STATE_BUILD_FAILED,
+	]) as ReadonlySet<SandboxState>;
 
 	readonly id: string;
 	readonly name = 'DaytonaSandbox';
@@ -127,6 +137,7 @@ export class DaytonaSandbox extends BaseSandbox {
 			const existing = await this.getDaytona().get(this.sandboxName);
 			await existing.delete(Math.ceil(this.timeout / 1000));
 		} catch (error) {
+			const { DaytonaNotFoundError } = loadDaytona();
 			if (error instanceof DaytonaNotFoundError) return;
 			throw error;
 		}
@@ -192,7 +203,10 @@ export class DaytonaSandbox extends BaseSandbox {
 	}
 
 	private getDaytona(): Daytona {
-		this.daytonaClient ??= new Daytona(this.connection);
+		if (!this.daytonaClient) {
+			const { Daytona } = loadDaytona();
+			this.daytonaClient = new Daytona(this.connection);
+		}
 		return this.daytonaClient;
 	}
 
@@ -203,11 +217,12 @@ export class DaytonaSandbox extends BaseSandbox {
 				await sandbox.delete(Math.ceil(this.timeout / 1000));
 				return null;
 			}
-			if (sandbox.state !== SandboxState.STARTED) {
+			if (sandbox.state !== SANDBOX_STATE_STARTED) {
 				await sandbox.start(Math.ceil(this.timeout / 1000));
 			}
 			return sandbox;
 		} catch (error) {
+			const { DaytonaNotFoundError } = loadDaytona();
 			if (error instanceof DaytonaNotFoundError) return null;
 			if (isAuthError(error)) throw error;
 			return null;

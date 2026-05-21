@@ -6,9 +6,12 @@ import type {
 	AgentActivity,
 	CapturedEvent,
 	CapturedToolCall,
+	ConversationMetrics,
 	EventOutcome,
 	InstanceAiMetrics,
+	TurnCounter,
 } from '../types';
+import { getNestedRecord as getRecord, getString, isRecord } from '../utils/safe-extract';
 
 // ---------------------------------------------------------------------------
 // Tool names whose results contain resource IDs we need to track
@@ -23,24 +26,6 @@ const WORKFLOW_TOOLS = new Set([
 
 const EXECUTION_TOOL = 'run-workflow';
 const DATA_TABLE_TOOL = 'create-data-table';
-
-// ---------------------------------------------------------------------------
-// Type guards for event payloads
-// ---------------------------------------------------------------------------
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function getString(obj: Record<string, unknown>, key: string): string | undefined {
-	const value = obj[key];
-	return typeof value === 'string' ? value : undefined;
-}
-
-function getRecord(obj: Record<string, unknown>, key: string): Record<string, unknown> | undefined {
-	const value = obj[key];
-	return isRecord(value) ? value : undefined;
-}
 
 // ---------------------------------------------------------------------------
 // extractOutcomeFromEvents
@@ -319,6 +304,129 @@ export function buildMetrics(events: CapturedEvent[], startTime: number): Instan
 		agentActivities,
 		events,
 	};
+}
+
+// ---------------------------------------------------------------------------
+// Per-turn conversation metrics
+// ---------------------------------------------------------------------------
+
+const PLAN_RECOVERY_TOOL_NAMES = new Set(['plan', 'planWithAgent', 'plan-with-agent']);
+
+export function buildConversationMetrics(events: CapturedEvent[]): ConversationMetrics {
+	const turns = splitEventsIntoTurns(events);
+	const perTurn: TurnCounter[] = [];
+	const seenRequestIds = new Set<string>();
+	const aggregateByKind: Record<string, number> = {};
+	let aggregateTotal = 0;
+
+	for (let i = 0; i < turns.length; i++) {
+		const turnEvents = turns[i];
+		const counter: TurnCounter = {
+			turn: i + 1,
+			toolCallCount: 0,
+			toolErrorCount: 0,
+			confirmationAskedTotal: 0,
+			confirmationAskedByKind: {},
+			replanAfterErrorCount: 0,
+			repeatQuestionCount: 0,
+		};
+
+		const errorPositions: number[] = [];
+		const planRecoveryPositions: number[] = [];
+
+		for (let j = 0; j < turnEvents.length; j++) {
+			const event = turnEvents[j];
+			const payload = getRecord(event.data, 'payload') ?? event.data;
+
+			switch (event.type) {
+				case 'tool-call': {
+					counter.toolCallCount++;
+					const toolName = getString(payload, 'toolName');
+					if (toolName && PLAN_RECOVERY_TOOL_NAMES.has(toolName)) {
+						planRecoveryPositions.push(j);
+					}
+					break;
+				}
+				case 'tool-error': {
+					counter.toolErrorCount++;
+					errorPositions.push(j);
+					break;
+				}
+				case 'tasks-update': {
+					planRecoveryPositions.push(j);
+					break;
+				}
+				case 'confirmation-request': {
+					counter.confirmationAskedTotal++;
+					aggregateTotal++;
+					const inputType = getString(payload, 'inputType') ?? 'approval';
+					counter.confirmationAskedByKind[inputType] =
+						(counter.confirmationAskedByKind[inputType] ?? 0) + 1;
+					aggregateByKind[inputType] = (aggregateByKind[inputType] ?? 0) + 1;
+					const requestId = getString(payload, 'requestId');
+					if (requestId) {
+						if (seenRequestIds.has(requestId)) {
+							counter.repeatQuestionCount++;
+						} else {
+							seenRequestIds.add(requestId);
+						}
+					}
+					break;
+				}
+				case 'run-finish': {
+					counter.runFinishStatus = getString(payload, 'status') ?? counter.runFinishStatus;
+					break;
+				}
+				default:
+					break;
+			}
+		}
+
+		for (const errPos of errorPositions) {
+			if (planRecoveryPositions.some((recPos) => recPos > errPos)) {
+				counter.replanAfterErrorCount++;
+			}
+		}
+
+		perTurn.push(counter);
+	}
+
+	const turnCount = countEvents(events, 'run-finish');
+	const lastTurn = perTurn[perTurn.length - 1];
+	const reachedRunFinishCleanly = lastTurn?.runFinishStatus === 'completed';
+
+	return {
+		turnCount,
+		perTurn,
+		confirmationAskedTotal: aggregateTotal,
+		confirmationAskedByKind: aggregateByKind,
+		reachedRunFinishCleanly,
+	};
+}
+
+/** Split events into turns. Each turn begins at a `run-start` event; events
+ *  before the first `run-start` form a leading pseudo-turn (unusual but handled). */
+export function splitEventsIntoTurns(events: CapturedEvent[]): CapturedEvent[][] {
+	const turns: CapturedEvent[][] = [];
+	let current: CapturedEvent[] = [];
+	for (const event of events) {
+		if (event.type === 'run-start' && current.length > 0) {
+			turns.push(current);
+			current = [event];
+		} else if (event.type === 'run-start') {
+			current = [event];
+		} else {
+			current.push(event);
+		}
+	}
+	if (current.length > 0) turns.push(current);
+	return turns;
+}
+
+function countEvents(events: CapturedEvent[], type: string): number {
+	let n = 0;
+	for (const event of events) if (event.type === type) n++;
+	return n;
 }
 
 // ---------------------------------------------------------------------------
