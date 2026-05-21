@@ -337,6 +337,48 @@ describe('integration tools', () => {
 		expect(tool.description).toContain('send_channel_message: input.channelId');
 	});
 
+	it('action tool schema accepts Linear issue and comment creation actions', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([linear], 'agent-1', () => ({
+				actions: ['respond', 'create_issue', 'create_comment'],
+			}))[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(
+			schema.safeParse({
+				action: 'create_issue',
+				input: {
+					teamId: 'team-1',
+					title: 'Fix signup',
+					description: 'Signup fails for invited users',
+					assigneeId: 'user-1',
+					projectId: 'project-1',
+					labelIds: ['label-1'],
+					priority: 2,
+					stateId: 'state-1',
+					parentId: 'parent-issue-1',
+				},
+			}).success,
+		).toBe(true);
+		expect(
+			schema.safeParse({ action: 'create_issue', input: { title: 'Missing team' } }).success,
+		).toBe(false);
+		expect(
+			schema.safeParse({
+				action: 'create_comment',
+				input: { issueId: 'issue-1', body: 'I can reproduce this.', parentCommentId: 'comment-1' },
+			}).success,
+		).toBe(true);
+		expect(
+			schema.safeParse({ action: 'create_comment', input: { issueId: 'issue-1' } }).success,
+		).toBe(false);
+		expect(tool.description).toContain('create_issue: input.teamId and input.title');
+		expect(tool.description).toContain('create_comment: input.issueId and input.body');
+	});
+
 	it('interactive action sends first, updates message context, then suspends', async () => {
 		const messageContextStore = mock<IntegrationMessageContextStore>();
 		const actionExecutor = mock<IntegrationActionExecutor>();

@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 
 import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
 import { loadLinearAdapter } from '../esm-loader';
-import type { IntegrationContextQuery } from '../integration-tools';
+import type { IntegrationAction, IntegrationContextQuery } from '../integration-tools';
 
 /**
  * Linear platform integration.
@@ -36,6 +36,8 @@ export class LinearIntegration extends AgentChatIntegration {
 		'get_issue',
 		'search_issues',
 	];
+
+	readonly actions: IntegrationAction[] = ['respond', 'create_issue', 'create_comment'];
 
 	constructor(private readonly logger: Logger) {
 		super();

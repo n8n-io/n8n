@@ -61,6 +61,10 @@ describe('LinearIntegration', () => {
 		]);
 	});
 
+	it('advertises Linear issue and comment actions', () => {
+		expect(integration.actions).toEqual(['respond', 'create_issue', 'create_comment']);
+	});
+
 	it('rejects Linear API token credentials', async () => {
 		await expect(
 			integration.createAdapter(ctx({ apiKey: 'lin_api_xyz', signingSecret: 'sec' })),

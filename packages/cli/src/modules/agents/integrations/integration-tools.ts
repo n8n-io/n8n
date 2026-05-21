@@ -100,7 +100,12 @@ export type IntegrationContextQuery =
 	| 'get_issue'
 	| 'search_issues';
 
-export type IntegrationAction = 'respond' | 'send_dm' | 'send_channel_message';
+export type IntegrationAction =
+	| 'respond'
+	| 'send_dm'
+	| 'send_channel_message'
+	| 'create_issue'
+	| 'create_comment';
 
 export type IntegrationActionResult =
 	| {
@@ -377,15 +382,51 @@ const sendChannelMessageActionInputSchema = z.object({
 		.strict(),
 });
 
+const createIssueActionInputSchema = z.object({
+	action: z.literal('create_issue'),
+	input: z
+		.object({
+			teamId: z.string().min(1).describe('Linear team ID where the issue should be created.'),
+			title: z.string().min(1).describe('Linear issue title.'),
+			description: z.string().min(1).optional().describe('Optional Linear issue description.'),
+			assigneeId: z.string().min(1).optional().describe('Optional Linear assignee user ID.'),
+			projectId: z.string().min(1).optional().describe('Optional Linear project ID.'),
+			labelIds: z.array(z.string().min(1)).optional().describe('Optional Linear label IDs.'),
+			priority: z.number().int().optional().describe('Optional Linear priority value.'),
+			stateId: z.string().min(1).optional().describe('Optional Linear workflow state ID.'),
+			parentId: z.string().min(1).optional().describe('Optional parent Linear issue ID.'),
+		})
+		.strict(),
+});
+
+const createCommentActionInputSchema = z.object({
+	action: z.literal('create_comment'),
+	input: z
+		.object({
+			issueId: z.string().min(1).describe('Linear issue UUID where the comment should be added.'),
+			body: z.string().min(1).describe('Linear comment body.'),
+			parentCommentId: z
+				.string()
+				.min(1)
+				.optional()
+				.describe('Optional parent Linear comment ID for threaded replies.'),
+		})
+		.strict(),
+});
+
 type IntegrationActionToolInput =
 	| z.infer<typeof respondActionInputSchema>
 	| z.infer<typeof sendDmActionInputSchema>
-	| z.infer<typeof sendChannelMessageActionInputSchema>;
+	| z.infer<typeof sendChannelMessageActionInputSchema>
+	| z.infer<typeof createIssueActionInputSchema>
+	| z.infer<typeof createCommentActionInputSchema>;
 
 const ACTION_INPUT_SCHEMAS: Record<IntegrationAction, z.ZodType<IntegrationActionToolInput>> = {
 	respond: respondActionInputSchema,
 	send_dm: sendDmActionInputSchema,
 	send_channel_message: sendChannelMessageActionInputSchema,
+	create_issue: createIssueActionInputSchema,
+	create_comment: createCommentActionInputSchema,
 };
 
 function buildActionInputSchema(actions: IntegrationAction[]) {
@@ -432,11 +473,15 @@ const ACTION_DESCRIPTIONS = {
 		'send_dm: input.userId and input.message are required. userId must be a platform user ID, not a name, handle, or email.',
 	send_channel_message:
 		'send_channel_message: input.channelId and input.message are required. channelId must be a platform channel ID, not a channel name.',
+	create_issue:
+		'create_issue: input.teamId and input.title are required. For Linear, optional input.description, input.assigneeId, input.projectId, input.labelIds, input.priority, input.stateId, and input.parentId configure the issue.',
+	create_comment:
+		'create_comment: input.issueId and input.body are required. For Linear, optional input.parentCommentId creates a threaded reply.',
 } satisfies Record<IntegrationAction, string>;
 
 const actionSuspendSchema = z.object({
 	type: z.literal('integration_action'),
-	action: z.enum(['respond', 'send_dm', 'send_channel_message']),
+	action: z.enum(['respond', 'send_dm', 'send_channel_message', 'create_issue', 'create_comment']),
 	integrationConnectionId: z.string(),
 	messageContext: z.unknown(),
 });

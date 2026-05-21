@@ -412,7 +412,7 @@ function buildLinearUserSearchTermFilter(input: SearchUsersInput): Record<string
 	};
 }
 
-async function normalizeLinearIssue(
+export async function normalizeLinearIssue(
 	value: unknown,
 	options: { includeComments?: boolean; commentsLimit?: number } = {},
 ): Promise<Record<string, unknown>> {
@@ -463,7 +463,7 @@ async function normalizeLinearComments(
 	);
 }
 
-async function normalizeLinearComment(value: unknown): Promise<Record<string, unknown>> {
+export async function normalizeLinearComment(value: unknown): Promise<Record<string, unknown>> {
 	const comment = isRecord(value) ? value : {};
 	const author = await awaitableProperty(comment, 'user');
 	return removeUndefinedValues({

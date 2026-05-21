@@ -9,8 +9,10 @@ import type {
 	IntegrationActionExecutor,
 	IntegrationActionResult,
 	IntegrationMessageContext,
+	IntegrationMessageSubject,
 	IntegrationToolConnectionDescriptor,
 } from './integration-tools';
+import { normalizeLinearComment, normalizeLinearIssue } from './integration-context-query-executor';
 
 const messageSchema = z.object({
 	text: z.string().optional(),
@@ -36,6 +38,24 @@ const sendDmInputSchema = z.object({
 const sendChannelMessageInputSchema = z.object({
 	channelId: z.string().min(1),
 	message: messageSchema,
+});
+
+const createIssueInputSchema = z.object({
+	teamId: z.string().min(1),
+	title: z.string().min(1),
+	description: z.string().min(1).optional(),
+	assigneeId: z.string().min(1).optional(),
+	projectId: z.string().min(1).optional(),
+	labelIds: z.array(z.string().min(1)).optional(),
+	priority: z.number().int().optional(),
+	stateId: z.string().min(1).optional(),
+	parentId: z.string().min(1).optional(),
+});
+
+const createCommentInputSchema = z.object({
+	issueId: z.string().min(1),
+	body: z.string().min(1),
+	parentCommentId: z.string().min(1).optional(),
 });
 
 const integrationActionResumeSchema = {
@@ -114,6 +134,16 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 						target: { type: 'dm', userId: input.userId, threadId: thread.id },
 					}),
 				};
+			}
+
+			if (params.descriptor.integration.type === 'linear') {
+				const result = await executeLinearAction({
+					chat,
+					descriptor: params.descriptor,
+					action: params.action,
+					input: params.input,
+				});
+				if (result !== undefined) return result;
 			}
 
 			const input = sendChannelMessageInputSchema.parse(params.input);
@@ -198,4 +228,229 @@ function buildMessageContextFromSentMessage(params: {
 		messageId: params.sent.id,
 		updatedAt: new Date().toISOString(),
 	};
+}
+
+type CreateIssueInput = z.infer<typeof createIssueInputSchema>;
+type CreateCommentInput = z.infer<typeof createCommentInputSchema>;
+
+interface LinearAdapter {
+	client: Record<string, unknown>;
+}
+
+interface LinearClientWithCreateIssue {
+	createIssue(input: Record<string, unknown>): Promise<unknown>;
+}
+
+interface LinearClientWithCreateComment {
+	createComment(input: Record<string, unknown>): Promise<unknown>;
+}
+
+async function executeLinearAction(params: {
+	chat: { getAdapter(name: string): unknown };
+	descriptor: IntegrationToolConnectionDescriptor;
+	action: IntegrationAction;
+	input: Record<string, unknown>;
+}): Promise<IntegrationActionResult | undefined> {
+	if (params.action === 'create_issue') {
+		return await createLinearIssue(
+			params.chat,
+			params.descriptor,
+			createIssueInputSchema.parse(params.input),
+		);
+	}
+
+	if (params.action === 'create_comment') {
+		return await createLinearComment(
+			params.chat,
+			params.descriptor,
+			createCommentInputSchema.parse(params.input),
+		);
+	}
+
+	return undefined;
+}
+
+async function createLinearIssue(
+	chat: { getAdapter(name: string): unknown },
+	descriptor: IntegrationToolConnectionDescriptor,
+	input: CreateIssueInput,
+): Promise<IntegrationActionResult> {
+	const adapter = getLinearAdapter(chat);
+	if (!adapter || !hasLinearCreateIssueClient(adapter.client)) {
+		return unsupportedLinearAction('create_issue');
+	}
+
+	const payload = await adapter.client.createIssue(removeUndefinedValues({ ...input }));
+	const rawIssue = await awaitablePayloadProperty(payload, 'issue');
+	const normalizedIssue = await normalizeLinearIssue(rawIssue ?? payload);
+	const issueId =
+		stringRecordProperty(normalizedIssue, 'issueId') ??
+		stringPayloadProperty(payload, 'issueId') ??
+		stringRecordProperty(normalizedIssue, 'identifier');
+
+	if (!issueId) {
+		return {
+			ok: false,
+			error: {
+				code: 'ACTION_FAILED',
+				message: 'Linear did not return an issue ID for the created issue.',
+			},
+		};
+	}
+
+	return {
+		ok: true,
+		issue: normalizedIssue,
+		messageContext: {
+			integrationConnectionId: descriptor.integrationConnectionId,
+			platform: descriptor.integration.type,
+			target: { type: 'thread', threadId: `linear:${issueId}` },
+			subject: buildLinearIssueSubject(normalizedIssue, issueId),
+			updatedAt: new Date().toISOString(),
+		},
+	};
+}
+
+async function createLinearComment(
+	chat: { getAdapter(name: string): unknown },
+	descriptor: IntegrationToolConnectionDescriptor,
+	input: CreateCommentInput,
+): Promise<IntegrationActionResult> {
+	const adapter = getLinearAdapter(chat);
+	if (!adapter || !hasLinearCreateCommentClient(adapter.client)) {
+		return unsupportedLinearAction('create_comment');
+	}
+
+	const payload = await adapter.client.createComment(
+		removeUndefinedValues({
+			issueId: input.issueId,
+			body: input.body,
+			parentId: input.parentCommentId,
+		}),
+	);
+	const rawComment = await awaitablePayloadProperty(payload, 'comment');
+	const normalizedComment = await normalizeLinearComment(rawComment ?? payload);
+	const commentId =
+		stringRecordProperty(normalizedComment, 'commentId') ??
+		stringPayloadProperty(payload, 'commentId');
+
+	return {
+		ok: true,
+		comment: normalizedComment,
+		messageContext: {
+			integrationConnectionId: descriptor.integrationConnectionId,
+			platform: descriptor.integration.type,
+			target: {
+				type: 'thread',
+				threadId: input.parentCommentId
+					? `linear:${input.issueId}:c:${input.parentCommentId}`
+					: `linear:${input.issueId}`,
+			},
+			...(commentId ? { messageId: commentId } : {}),
+			subject: { type: 'issue', id: input.issueId },
+			updatedAt: new Date().toISOString(),
+		},
+	};
+}
+
+function getLinearAdapter(chat: { getAdapter(name: string): unknown }): LinearAdapter | undefined {
+	const adapter = chat.getAdapter('linear');
+	if (!isRecord(adapter) || !isRecord(adapter.client)) return undefined;
+	return { client: adapter.client };
+}
+
+function hasLinearCreateIssueClient(
+	client: Record<string, unknown>,
+): client is Record<string, unknown> & LinearClientWithCreateIssue {
+	return typeof client.createIssue === 'function';
+}
+
+function hasLinearCreateCommentClient(
+	client: Record<string, unknown>,
+): client is Record<string, unknown> & LinearClientWithCreateComment {
+	return typeof client.createComment === 'function';
+}
+
+function unsupportedLinearAction(
+	action: 'create_issue' | 'create_comment',
+): IntegrationActionResult {
+	return {
+		ok: false,
+		error: {
+			code: 'UNSUPPORTED_ACTION',
+			message: `The active Linear connection does not support ${action}.`,
+		},
+	};
+}
+
+function buildLinearIssueSubject(
+	issue: Record<string, unknown>,
+	fallbackIssueId: string,
+): IntegrationMessageSubject {
+	const identifier = stringRecordProperty(issue, 'identifier');
+	const title = stringRecordProperty(issue, 'title');
+	const description = stringRecordProperty(issue, 'description');
+	const url = stringRecordProperty(issue, 'url');
+	const status = stringRecordProperty(recordProperty(issue, 'state'), 'name');
+	const labels = linearLabelNames(issue);
+	const assignee = linearSubjectPerson(recordProperty(issue, 'assignee'));
+
+	return {
+		type: 'issue',
+		id: identifier ?? fallbackIssueId,
+		...(title ? { title } : {}),
+		...(description ? { description } : {}),
+		...(url ? { url } : {}),
+		...(status ? { status } : {}),
+		...(labels.length > 0 ? { labels } : {}),
+		...(assignee ? { assignee } : {}),
+	};
+}
+
+function linearLabelNames(issue: Record<string, unknown>): string[] {
+	const labels = issue.labels;
+	if (!Array.isArray(labels)) return [];
+	return labels
+		.map((label) => stringRecordProperty(label, 'name'))
+		.filter((label): label is string => label !== undefined);
+}
+
+function linearSubjectPerson(value: unknown): IntegrationMessageSubject['assignee'] {
+	if (!isRecord(value)) return undefined;
+	const id = stringRecordProperty(value, 'userId') ?? stringRecordProperty(value, 'id');
+	const name = stringRecordProperty(value, 'name') ?? stringRecordProperty(value, 'displayName');
+	if (!id || !name) return undefined;
+	return { id, name };
+}
+
+async function awaitablePayloadProperty(
+	payload: unknown,
+	key: string,
+): Promise<unknown | undefined> {
+	if (!isRecord(payload)) return undefined;
+	return await Promise.resolve(payload[key]);
+}
+
+function stringPayloadProperty(payload: unknown, key: string): string | undefined {
+	return stringRecordProperty(payload, key);
+}
+
+function recordProperty(record: Record<string, unknown>, key: string): unknown {
+	return record[key];
+}
+
+function stringRecordProperty(value: unknown, key: string): string | undefined {
+	if (!isRecord(value)) return undefined;
+	const property = value[key];
+	return typeof property === 'string' && property.length > 0 ? property : undefined;
+}
+
+function removeUndefinedValues<T extends Record<string, unknown>>(
+	value: T,
+): Record<string, unknown> {
+	return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
 }
