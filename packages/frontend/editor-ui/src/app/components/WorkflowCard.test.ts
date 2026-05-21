@@ -691,13 +691,18 @@ describe('WorkflowCard', () => {
 		await userEvent.click(mcpToggle);
 
 		expect(mcpStore.toggleWorkflowMcpAccess).not.toHaveBeenCalled();
-		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
-			name: SURFACE_MCP_ONBOARDING_MODAL_KEY,
-			data: { surface: 'workflow_card' },
-		});
+		expect(uiStore.openModalWithData).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: SURFACE_MCP_ONBOARDING_MODAL_KEY,
+				data: expect.objectContaining({
+					surface: 'workflow_card',
+					onMcpAccessEnabled: expect.any(Function),
+				}),
+			}),
+		);
 	});
 
-	it('should enable workflow MCP access if the user turns on the instance module inside the modal', async () => {
+	it('should enable workflow MCP access when the modal callback fires', async () => {
 		const data = createWorkflow({
 			scopes: ['workflow:update'],
 			settings: {
@@ -705,7 +710,6 @@ describe('WorkflowCard', () => {
 			},
 		});
 
-		mcpStore.mcpAccessEnabled = false;
 		mcpStore.toggleWorkflowMcpAccess.mockResolvedValue({
 			updatedCount: 1,
 			skippedCount: 0,
@@ -722,21 +726,49 @@ describe('WorkflowCard', () => {
 
 		await userEvent.click(getByTestId('workflow-card-mcp-toggle'));
 
-		mcpStore.mcpAccessEnabled = true;
+		const openCall = vi.mocked(uiStore.openModalWithData).mock.calls.at(-1)?.[0];
+		const callback = (openCall?.data as { onMcpAccessEnabled?: () => void } | undefined)
+			?.onMcpAccessEnabled;
+		callback?.();
+
 		await waitFor(() => {
 			expect(mcpStore.toggleWorkflowMcpAccess).toHaveBeenCalledWith(data.id, true);
 		});
 	});
 
-	it('should leave workflow MCP off if the instance module stays disabled after opening the modal', async () => {
+	it('should not re-toggle when the modal callback fires and the workflow is already available', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: false,
+				isMcpModuleActive: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('workflow-card-mcp-toggle'));
+
+		const openCall = vi.mocked(uiStore.openModalWithData).mock.calls.at(-1)?.[0];
+		const callback = (openCall?.data as { onMcpAccessEnabled?: () => void } | undefined)
+			?.onMcpAccessEnabled;
+		callback?.();
+
+		expect(mcpStore.toggleWorkflowMcpAccess).not.toHaveBeenCalled();
+	});
+
+	it('should leave workflow MCP off if the modal callback never fires', async () => {
 		const data = createWorkflow({
 			scopes: ['workflow:update'],
 			settings: {
 				availableInMCP: false,
 			},
 		});
-
-		mcpStore.mcpAccessEnabled = false;
 
 		const { getByTestId } = renderComponent({
 			props: {

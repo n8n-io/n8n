@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import {
 	DUPLICATE_MODAL_KEY,
 	MODAL_CONFIRM,
@@ -453,28 +453,15 @@ async function onMcpToggleClick(nextValue: boolean) {
 		return;
 	}
 
-	const stopEnableWatch = watch(
-		() => mcpStore.mcpAccessEnabled,
-		(enabled) => {
-			if (!enabled) return;
-			stopEnableWatch();
-			stopCloseWatch();
-			void toggleMCPAccess(true);
-		},
-	);
-	const stopCloseWatch = watch(
-		() => uiStore.modalsById[SURFACE_MCP_ONBOARDING_MODAL_KEY]?.open,
-		(isOpen, wasOpen) => {
-			if (wasOpen && !isOpen) {
-				stopEnableWatch();
-				stopCloseWatch();
-			}
-		},
-	);
-
 	uiStore.openModalWithData({
 		name: SURFACE_MCP_ONBOARDING_MODAL_KEY,
-		data: { surface: 'workflow_card' },
+		data: {
+			surface: 'workflow_card',
+			onMcpAccessEnabled: () => {
+				if (isAvailableInMCP.value) return;
+				void toggleMCPAccess(true);
+			},
+		},
 	});
 }
 

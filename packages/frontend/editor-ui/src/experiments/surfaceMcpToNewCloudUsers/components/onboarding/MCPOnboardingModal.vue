@@ -29,6 +29,7 @@ const MCP_ONBOARDING_DOCS_URL = 'https://docs.n8n.io/advanced-ai/mcp/accessing-n
 const props = defineProps<{
 	data?: {
 		surface?: MCPOnboardingSurface;
+		onMcpAccessEnabled?: () => void | Promise<void>;
 	};
 }>();
 
@@ -167,6 +168,7 @@ async function handleToggleMcpAccess() {
 			enabledDuringThisOpen.value = true;
 			experimentStore.trackEnabled(surface.value);
 			trackCurrentSetupShown();
+			void props.data?.onMcpAccessEnabled?.();
 			return;
 		}
 
