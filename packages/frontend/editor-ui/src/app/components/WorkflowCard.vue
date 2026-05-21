@@ -40,14 +40,11 @@ import {
 	N8nBreadcrumbs,
 	N8nCard,
 	N8nIcon,
-	N8nSwitch2,
 	N8nTags,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
-import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
+import WorkflowCardMcpToggle from '@/features/ai/mcpAccess/components/WorkflowCardMcpToggle.vue';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
@@ -112,7 +109,6 @@ const locale = useI18n();
 const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
-const mcp = useMcp();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 const { hasDependencies } = useDependencies();
 
@@ -122,16 +118,10 @@ const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
-const mcpStore = useMCPStore();
 const favoritesStore = useFavoritesStore();
 const workflowActivate = useWorkflowActivate();
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
-
-// We use this to optimistically update the MCP status in the UI
-// without needing to modify the workflow prop directly.
-// null means we haven't changed it yet
-const mcpToggleStatus = ref<boolean | null>(null);
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
@@ -271,29 +261,9 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
-const isAvailableInMCP = computed(() => {
-	if (mcpToggleStatus.value === null) {
-		return props.data.settings?.availableInMCP ?? false;
-	}
-	return mcpToggleStatus.value;
-});
-
-const canToggleMcp = computed(
-	() => workflowPermissions.value.update && !props.readOnly && !props.data.isArchived,
+const canEditMcp = computed(
+	() => Boolean(workflowPermissions.value.update) && !props.readOnly && !props.data.isArchived,
 );
-
-const showMcpToggle = computed(
-	() => props.isMcpModuleActive && (canToggleMcp.value || isAvailableInMCP.value),
-);
-
-const mcpTooltipContent = computed(() => {
-	if (!canToggleMcp.value) {
-		return locale.baseText('workflows.item.availableInMCP');
-	}
-	return isAvailableInMCP.value
-		? locale.baseText('workflows.item.disableMCPAccess')
-		: locale.baseText('workflows.item.enableMCPAccess');
-});
 
 const isSomeoneElsesWorkflow = computed(
 	() =>
@@ -432,35 +402,6 @@ async function unpublishWorkflow() {
 		data: {
 			versionName: props.data.name,
 			eventBus: unpublishEventBus,
-		},
-	});
-}
-
-async function toggleMCPAccess(enabled: boolean) {
-	try {
-		await mcpStore.toggleWorkflowMcpAccess(props.data.id, enabled);
-		mcpToggleStatus.value = enabled;
-		mcp.trackMcpAccessEnabledForWorkflow(props.data.id);
-	} catch (error) {
-		toast.showError(error, locale.baseText('workflowSettings.toggleMCP.error.title'));
-		return;
-	}
-}
-
-async function onMcpToggleClick(nextValue: boolean) {
-	if (props.isMcpEnabled) {
-		await toggleMCPAccess(nextValue);
-		return;
-	}
-
-	uiStore.openModalWithData({
-		name: SURFACE_MCP_ONBOARDING_MODAL_KEY,
-		data: {
-			surface: 'workflow_card',
-			onMcpAccessEnabled: () => {
-				if (isAvailableInMCP.value) return;
-				void toggleMCPAccess(true);
-			},
 		},
 	});
 }
@@ -734,20 +675,13 @@ const tags = computed(
 						locale.baseText('workflows.published')
 					}}</N8nText>
 				</div>
-				<N8nTooltip v-if="showMcpToggle" placement="top" :content="mcpTooltipContent">
-					<span :class="$style.mcpToggle">
-						<N8nIcon :class="$style.mcpIcon" icon="mcp" size="medium" />
-						<N8nSwitch2
-							:model-value="props.isMcpEnabled && isAvailableInMCP"
-							:disabled="!canToggleMcp"
-							size="small"
-							:aria-label="mcpTooltipContent"
-							data-test-id="workflow-card-mcp-toggle"
-							@update:model-value="onMcpToggleClick"
-							@click.stop
-						/>
-					</span>
-				</N8nTooltip>
+				<WorkflowCardMcpToggle
+					:workflow-id="data.id"
+					:available-in-mcp="data.settings?.availableInMCP ?? false"
+					:can-edit="canEditMcp"
+					:is-mcp-enabled="props.isMcpEnabled"
+					:is-mcp-module-active="props.isMcpModuleActive"
+				/>
 				<N8nActionToggle
 					:actions="actions"
 					placement="bottom-end"
@@ -830,16 +764,6 @@ const tags = computed(
 .cardArchived {
 	background-color: var(--color--background--light-2);
 	border-color: var(--color--foreground--tint-1);
-	color: var(--color--text);
-}
-
-.mcpToggle {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
-.mcpIcon {
 	color: var(--color--text);
 }
 
