@@ -176,7 +176,7 @@ describe('PostHog', () => {
 			});
 
 			it('force-enables the eval-collections flag when N8N_EVAL_COLLECTIONS_ENABLED is set', async () => {
-				(PostHog.prototype.getAllFlags as jest.Mock).mockResolvedValue({});
+				(PostHog.prototype.evaluateFlags as jest.Mock).mockResolvedValue(mockEvaluatedFlags({}));
 				globalConfig.evaluation.collectionsEnabled = true;
 
 				const ph = new PostHogClient(instanceSettings, globalConfig);
@@ -188,7 +188,9 @@ describe('PostHog', () => {
 			});
 
 			it('leaves flags untouched when no override is configured', async () => {
-				(PostHog.prototype.getAllFlags as jest.Mock).mockResolvedValue({ 'some-other-flag': true });
+				(PostHog.prototype.evaluateFlags as jest.Mock).mockResolvedValue(
+					mockEvaluatedFlags({ 'some-other-flag': true }),
+				);
 
 				const ph = new PostHogClient(instanceSettings, globalConfig);
 				await ph.init();
@@ -199,7 +201,7 @@ describe('PostHog', () => {
 			});
 
 			it('falls back to env overrides when PostHog throws', async () => {
-				(PostHog.prototype.getAllFlags as jest.Mock).mockRejectedValue(new Error('posthog down'));
+				(PostHog.prototype.evaluateFlags as jest.Mock).mockRejectedValue(new Error('posthog down'));
 				globalConfig.evaluation.collectionsEnabled = true;
 
 				const ph = new PostHogClient(instanceSettings, globalConfig);
