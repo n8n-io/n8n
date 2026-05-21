@@ -1,4 +1,3 @@
-import { generateObject } from 'ai';
 import { z } from 'zod';
 
 import { createModel } from './model-factory';
@@ -536,6 +535,7 @@ export function createEpisodicMemoryExtractFn(
 	options: CreateEpisodicMemoryExtractFnOptions = {},
 ): EpisodicMemoryExtractFn {
 	return async (input): Promise<EpisodicMemoryExtraction> => {
+		const { generateObject } = await import('ai');
 		const { object } = await generateObject({
 			model: createModel(model),
 			system: options.extractionPrompt ?? DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
@@ -561,6 +561,7 @@ export function createEpisodicMemoryReflectFn(
 	options: CreateEpisodicMemoryReflectFnOptions = {},
 ): EpisodicMemoryReflectFn {
 	return async (input): Promise<EpisodicMemoryReflection> => {
+		const { generateObject } = await import('ai');
 		const { object } = await generateObject({
 			model: createModel(model),
 			system: options.reflectionPrompt ?? DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,

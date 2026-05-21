@@ -1,4 +1,3 @@
-import { embed, embedMany } from 'ai';
 import { createHash } from 'crypto';
 import { z } from 'zod';
 
@@ -148,6 +147,7 @@ export async function runEpisodicMemoryIndexer(
 
 	const savedEntries: EpisodicMemoryEntry[] = [];
 	if (candidates.length > 0) {
+		const { embedMany } = await import('ai');
 		const { embeddings } = await embedMany({
 			model: normalized.embedder,
 			values: candidates.map((entry) => entry.content),
@@ -184,6 +184,7 @@ export function createRecallMemoryTool(opts: {
 		.input(RecallMemoryInputSchema)
 		.output(RecallMemoryOutputSchema)
 		.handler(async ({ query }): Promise<RecallMemoryOutput> => {
+			const { embed } = await import('ai');
 			const { embedding: queryEmbedding } = await embed({
 				model: normalized.embedder,
 				value: query,
@@ -378,15 +379,16 @@ async function runEpisodicMemoryReflection(
 	if (reflection.drop.length === 0 && reflection.merge.length === 0) return;
 
 	const mergeContents = reflection.merge.map((entry) => entry.content);
-	const mergeEmbeddings =
-		mergeContents.length > 0
-			? (
-					await embedMany({
-						model: config.embedder,
-						values: mergeContents,
-					})
-				).embeddings
-			: [];
+	let mergeEmbeddings: number[][] = [];
+	if (mergeContents.length > 0) {
+		const { embedMany } = await import('ai');
+		mergeEmbeddings = (
+			await embedMany({
+				model: config.embedder,
+				values: mergeContents,
+			})
+		).embeddings;
+	}
 	await opts.memory.episodic.applyReflection(opts.scope, {
 		drop: reflection.drop,
 		merge: reflection.merge.map((merge, index) => ({
