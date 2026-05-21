@@ -31,7 +31,7 @@ Bold, creative personal brand website built with Next.js 14, Framer Motion, and 
 - Text reveal animations (line-mask + word-stagger)
 - Scroll-driven nav hide/show
 
-## Getting started
+## Getting started (local)
 
 ```bash
 cd personal-brand-site
@@ -40,6 +40,20 @@ npm run dev
 ```
 
 Then open http://localhost:3000.
+
+## Deploy to Vercel (phone-friendly)
+
+This folder ships with a `vercel.json` that pre-configures framework, build & install commands, and security headers — so you only need to do one thing on first import.
+
+1. On your phone, open **vercel.com/new** and sign in with GitHub.
+2. Import the repo `nhinhtt/n8n`.
+3. On the configuration screen:
+   - **Root Directory** → click **Edit** and select `personal-brand-site` _(this is the only manual step)_
+   - **Branch** → `claude/personal-brand-motion-website-zSyiL`
+   - Everything else (framework, build command, install command) is read from `vercel.json` automatically.
+4. Hit **Deploy**. ~60 seconds later you get a URL like `personal-brand-site-xxx.vercel.app`.
+
+After that first import, **every push to the branch auto-builds and gives you a fresh preview URL** — perfect for iterating from a phone.
 
 ## Customize
 
