@@ -12,11 +12,21 @@ import {
 	type GatewayConfirmationRequiredPayload,
 	type McpToolCallResult,
 } from '@n8n/api-types';
-import { browserCreateCredentialSchema } from '@n8n/mcp-browser/dist/tools/credential';
+import type * as McpBrowserCredentialMod from '@n8n/mcp-browser/dist/tools/credential';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { convertJsonSchemaToZod } from 'zod-from-json-schema-v3';
 import type { JSONSchema } from 'zod-from-json-schema-v3';
+
+let _mcpBrowserCredentialMod: typeof McpBrowserCredentialMod | undefined;
+function loadMcpBrowserCredential(): typeof McpBrowserCredentialMod {
+	if (!_mcpBrowserCredentialMod) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		const mod = require('@n8n/mcp-browser/dist/tools/credential') as typeof McpBrowserCredentialMod;
+		_mcpBrowserCredentialMod = mod;
+	}
+	return _mcpBrowserCredentialMod;
+}
 
 import {
 	addSafeMcpTools,
@@ -265,7 +275,7 @@ export function createToolsFromLocalMcpServer(
 				// somewhere in mastra core the inputSchema is converted multiple times back and forth and
 				// gets transformed to jsonSchema with `additionalProperties=false`
 				// this does not happen when passing the schema directly
-				inputSchema = browserCreateCredentialSchema;
+				inputSchema = loadMcpBrowserCredential().browserCreateCredentialSchema;
 			} else {
 				// Convert JSON Schema → Zod (v3) so the LLM sees the actual parameter shapes.
 				// McpTool.inputSchema properties are typed as Record<string, unknown> to
