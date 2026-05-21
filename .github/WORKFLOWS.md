@@ -184,11 +184,20 @@ These only run if specific files changed:
 
 ### On PR Review
 
-| Event                      | Workflow                    | Condition                    |
-|----------------------------|-----------------------------|------------------------------|
-| Review approved            | `test-visual-chromatic.yml` | + design files changed       |
-| Comment with `@claude`     | `util-claude.yml`           | mention in any comment       |
-| Any review                 | `util-notify-pr-status.yml` | not community-labeled        |
+| Event                      | Workflow                    | Condition                                            |
+|----------------------------|-----------------------------|------------------------------------------------------|
+| Review approved            | `test-visual-chromatic.yml` | + design files changed                               |
+| Review approved            | `ci-instance-ai-evals.yml`  | + Instance AI source/eval paths changed (see below)  |
+| Comment with `@claude`     | `util-claude.yml`           | mention in any comment                               |
+| Any review                 | `util-notify-pr-status.yml` | not community-labeled                                |
+
+**Why Instance AI evals fire on approval, not push:** the workflow eval is the most
+expensive job in PR CI (LLM-bound builds against ~70 unique scenarios). Running it
+on every push made cost untenable. With approval-only triggering, the eval acts as
+a merge gate — fires when the reviewer approves; if it fails, branch protection blocks
+the merge. `dismiss_stale_reviews_on_push: true` on master forces re-approval (and a
+fresh eval) if the author pushes between approval and merge, so the gate stays honest.
+The lighter `test-evals-discovery.yml` still runs on every push as part of ci-pull-requests.yml.
 
 ### On PR Close/Merge
 
