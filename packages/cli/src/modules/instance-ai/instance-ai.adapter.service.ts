@@ -526,6 +526,11 @@ export class InstanceAiAdapterService {
 						source: 'n8n-ai',
 					});
 				} catch (error) {
+					logger.warn('AI-builder workflow save failed', {
+						threadId,
+						workflowId: saved.id,
+						error: error instanceof Error ? error.message : String(error),
+					});
 					try {
 						const archived = await workflowService.archive(user, saved.id, { skipArchived: true });
 						if (archived && options?.markAsAiTemporary) {
@@ -580,19 +585,29 @@ export class InstanceAiAdapterService {
 					pinData: sdkPinDataToRuntime(json.pinData),
 				} as Partial<WorkflowEntity>);
 
-				// Enforce credential tamper protection — same guard as the
-				// REST controller (workflows.controller PATCH /:workflowId).
-				if (license.isSharingEnabled()) {
-					updateData = await enterpriseWorkflowService.preventTampering(
-						updateData,
-						workflowId,
-						user,
-					);
-				}
+				let updated: WorkflowEntity;
+				try {
+					// Enforce credential tamper protection — same guard as the
+					// REST controller (workflows.controller PATCH /:workflowId).
+					if (license.isSharingEnabled()) {
+						updateData = await enterpriseWorkflowService.preventTampering(
+							updateData,
+							workflowId,
+							user,
+						);
+					}
 
-				const updated = await workflowService.update(user, updateData, workflowId, {
-					source: 'n8n-ai',
-				});
+					updated = await workflowService.update(user, updateData, workflowId, {
+						source: 'n8n-ai',
+					});
+				} catch (error) {
+					logger.warn('AI-builder workflow save failed', {
+						threadId,
+						workflowId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+					throw error;
+				}
 
 				if (threadId) {
 					telemetry.track('Builder modified workflow', {
@@ -3012,9 +3027,9 @@ export async function extractExecutionDebugInfo(
  * Convert SDK pinData (Record<string, IDataObject[]>) to runtime format (IPinData).
  * SDK stores plain objects; runtime wraps each item in { json: item }.
  */
-function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IPinData | undefined {
-	if (!pinData || Object.keys(pinData).length === 0) return undefined;
+function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IPinData {
 	const result: IPinData = {};
+	if (!pinData) return result;
 	for (const [nodeName, items] of Object.entries(pinData)) {
 		result[nodeName] = items.map((item) => ({ json: (item ?? {}) as IDataObject }));
 	}

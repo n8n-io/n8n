@@ -1,5 +1,4 @@
-import { generateText } from 'ai';
-
+import { loadAi } from './lazy-ai';
 import { createModel } from './model-factory';
 import type {
 	ObservationLogObserveFn,
@@ -304,7 +303,7 @@ export function createObservationLogObserveFn(
 	options: CreateObservationLogObserveFnOptions = {},
 ): ObservationLogObserveFn {
 	return async (input) => {
-		const { text } = await generateText({
+		const { text } = await loadAi().generateText({
 			model: createModel(model),
 			system: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 			prompt: buildObservationLogObserverPrompt(input),
@@ -542,7 +541,7 @@ export function createObservationLogReflectFn(
 	options: CreateObservationLogReflectFnOptions = {},
 ): ObservationLogReflectFn {
 	return async (input) => {
-		const { text } = await generateText({
+		const { text } = await loadAi().generateText({
 			model: createModel(model),
 			system: options.reflectorPrompt ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 			prompt: buildObservationLogReflectorPrompt(input),
