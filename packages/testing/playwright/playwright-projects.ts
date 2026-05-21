@@ -294,5 +294,25 @@ export function getProjects(): Project[] {
 		},
 	});
 
+	projects.push({
+		name: 'eval',
+		testDir: './tests/evals',
+		testIgnore: '**/_smoke/**',
+		fullyParallel: true,
+		timeout: 300_000,
+		retries: 0,
+		use: { containerConfig: {} },
+	});
+
+	projects.push({
+		name: 'eval:smoke',
+		testDir: './tests/evals/_smoke',
+		workers: 1,
+		fullyParallel: false,
+		timeout: 60_000,
+		retries: 0,
+		use: { containerConfig: {} },
+	});
+
 	return projects;
 }

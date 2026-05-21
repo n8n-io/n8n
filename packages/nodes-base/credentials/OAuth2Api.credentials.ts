@@ -235,5 +235,23 @@ export class OAuth2Api implements ICredentialType {
 			},
 			doNotInherit: true,
 		},
+		{
+			// Transitively gated by `envFeatureFlag: 'OAUTH2_JWE'` on
+			// `jweEnabled`: when the flag is off, `jweEnabled` is hidden, so this
+			// toggle's `displayOptions.show: jweEnabled: [true]` can never match.
+			displayName: 'Inline JWKS in Client Registration',
+			name: 'inlineJwks',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether to send the public keys directly in the dynamic client registration payload instead of advertising a JWKS URI. Enable this when the IdP cannot reach this instance (e.g. when self-hosted behind a firewall).',
+			displayOptions: {
+				show: {
+					jweEnabled: [true],
+					useDynamicClientRegistration: [true],
+				},
+			},
+			doNotInherit: true,
+		},
 	];
 }
