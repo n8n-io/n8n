@@ -142,11 +142,20 @@ function serializeNode(
 	if (config.retryOnFail) {
 		n8nNode.retryOnFail = config.retryOnFail;
 	}
+	if (typeof config.maxTries === 'number') {
+		n8nNode.maxTries = config.maxTries;
+	}
+	if (typeof config.waitBetweenTries === 'number') {
+		n8nNode.waitBetweenTries = config.waitBetweenTries;
+	}
 	if (config.alwaysOutputData) {
 		n8nNode.alwaysOutputData = config.alwaysOutputData;
 	}
 	if (config.onError) {
 		n8nNode.onError = config.onError;
+	}
+	if (config.extendsCredential) {
+		n8nNode.extendsCredential = config.extendsCredential;
 	}
 
 	return n8nNode;
