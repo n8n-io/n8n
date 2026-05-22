@@ -27,7 +27,7 @@ const baseConfig: ResolvedMcpConfig = {
 	transport: 'httpStreamable',
 	endpointUrl: 'https://mcp.example.com/mcp',
 	timeout: 60000,
-	toolFilter: { mode: 'all', includeTools: [], excludeTools: [] },
+	toolFilter: { mode: 'all', includeTools: [], excludeTools: [], hints: [] },
 };
 
 const baseConnectionConfig: McpConnectionConfig = {
@@ -135,7 +135,12 @@ describe('runtime', () => {
 
 			const result = await buildMcpToolkit(ctx, 0, {
 				...baseConfig,
-				toolFilter: { mode: 'selected', includeTools: ['search'], excludeTools: [] },
+				toolFilter: {
+					mode: 'selected',
+					includeTools: ['search'],
+					excludeTools: [],
+					hints: [],
+				},
 			});
 
 			const tools = (result.response as StructuredToolkit).getTools();

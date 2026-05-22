@@ -1,6 +1,19 @@
 import type { JSONSchema7 } from 'json-schema';
 
-export type McpTool = { name: string; description?: string; inputSchema: JSONSchema7 };
+export type McpToolAnnotations = {
+	title?: string;
+	readOnlyHint?: boolean;
+	destructiveHint?: boolean;
+	idempotentHint?: boolean;
+	openWorldHint?: boolean;
+};
+
+export type McpTool = {
+	name: string;
+	description?: string;
+	inputSchema: JSONSchema7;
+	annotations?: McpToolAnnotations;
+};
 
 export type McpServerTransport = 'sse' | 'httpStreamable';
 

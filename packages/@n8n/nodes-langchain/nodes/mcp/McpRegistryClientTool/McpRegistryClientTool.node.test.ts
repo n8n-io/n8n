@@ -166,6 +166,7 @@ describe('McpRegistryClientTool', () => {
 					mode: 'selected',
 					includeTools: ['notion-search'],
 					excludeTools: [],
+					hints: [],
 				},
 			};
 			expect(buildMcpToolkitMock).toHaveBeenCalledWith(ctx, 0, expectedConfig);
@@ -188,7 +189,7 @@ describe('McpRegistryClientTool', () => {
 				0,
 				expect.objectContaining({
 					timeout: 60000,
-					toolFilter: { mode: 'all', includeTools: [], excludeTools: [] },
+					toolFilter: { mode: 'all', includeTools: [], excludeTools: [], hints: [] },
 				}),
 			);
 		});
@@ -236,7 +237,7 @@ describe('McpRegistryClientTool', () => {
 				transport: 'httpStreamable',
 				endpointUrl: 'https://mcp.notion.com/mcp',
 				timeout: 60000,
-				toolFilter: { mode: 'all', includeTools: [], excludeTools: [] },
+				toolFilter: { mode: 'all', includeTools: [], excludeTools: [], hints: [] },
 			});
 		});
 

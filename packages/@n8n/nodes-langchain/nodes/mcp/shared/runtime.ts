@@ -22,7 +22,7 @@ import {
 	getSelectedTools,
 	mcpToolToDynamicTool,
 } from '../McpClientTool/utils';
-import type { McpToolIncludeMode } from '../McpClientTool/types';
+import type { McpToolHint, McpToolIncludeMode } from '../McpClientTool/types';
 import type { McpAuthenticationOption, McpServerTransport } from './types';
 import {
 	connectMcpClient,
@@ -55,6 +55,7 @@ export type ResolvedMcpConfig = McpConnectionConfig & {
 		mode: McpToolIncludeMode;
 		includeTools: string[];
 		excludeTools: string[];
+		hints: McpToolHint[];
 	};
 };
 
@@ -85,6 +86,7 @@ async function connectAndGetTools(
 			mode: config.toolFilter.mode,
 			includeTools: config.toolFilter.includeTools,
 			excludeTools: config.toolFilter.excludeTools,
+			hints: config.toolFilter.hints,
 		});
 		return { client: client.result, mcpTools, error: null };
 	} catch (error) {

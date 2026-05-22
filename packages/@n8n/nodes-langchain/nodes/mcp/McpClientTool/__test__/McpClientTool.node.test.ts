@@ -260,6 +260,63 @@ describe('McpClientTool', () => {
 			expect(tools[0].name).toBe(buildMcpToolName('MCP Client', 'MyTool1'));
 		});
 
+		it('should support filtering tools by hint annotations', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'ReadTool',
+						description: 'Reads things',
+						inputSchema: { type: 'object', properties: {} },
+						annotations: { readOnlyHint: true },
+					},
+					{
+						name: 'DestructiveTool',
+						description: 'Wipes things',
+						inputSchema: { type: 'object', properties: {} },
+						annotations: { destructiveHint: true },
+					},
+					{
+						name: 'WriteTool',
+						description: 'Writes things',
+						inputSchema: { type: 'object', properties: {} },
+						annotations: { readOnlyHint: false },
+					},
+					{
+						name: 'UnannotatedTool',
+						description: 'No annotations',
+						inputSchema: { type: 'object', properties: {} },
+					},
+				],
+			});
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+					getNodeParameter: vi.fn((key, _index) => {
+						const parameters: Record<string, any> = {
+							include: 'hints',
+							hints: ['readOnlyHint', 'destructiveHint'],
+							authentication: 'none',
+						};
+						return parameters[key];
+					}),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
+				}),
+				0,
+			);
+
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
+			const toolNames = tools.map((t) => t.name).sort();
+			expect(toolNames).toEqual(
+				[
+					buildMcpToolName('MCP Client', 'DestructiveTool'),
+					buildMcpToolName('MCP Client', 'ReadTool'),
+				].sort(),
+			);
+		});
+
 		it('should support header auth', async () => {
 			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({

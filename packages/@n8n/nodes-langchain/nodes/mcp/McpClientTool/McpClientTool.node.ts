@@ -10,7 +10,7 @@ import {
 } from 'n8n-workflow';
 
 import { getTools } from './loadOptions';
-import type { McpToolIncludeMode } from './types';
+import type { McpToolHint, McpToolIncludeMode } from './types';
 import { credentials, transportSelect } from '../shared/descriptions';
 import { buildMcpToolkit, executeMcpTool, type ResolvedMcpConfig } from '../shared/runtime';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
@@ -45,6 +45,7 @@ function resolveConfigFromNodeParameters(
 			mode: ctx.getNodeParameter('include', itemIndex) as McpToolIncludeMode,
 			includeTools: ctx.getNodeParameter('includeTools', itemIndex, []) as string[],
 			excludeTools: ctx.getNodeParameter('excludeTools', itemIndex, []) as string[],
+			hints: ctx.getNodeParameter('hints', itemIndex, []) as McpToolHint[],
 		},
 	};
 }
@@ -220,6 +221,12 @@ export class McpClientTool implements INodeType {
 						value: 'except',
 						description: 'Exclude the tools listed in the parameter "Tools to Exclude"',
 					},
+					{
+						name: 'With Hints',
+						value: 'hints',
+						description:
+							'Only expose tools whose MCP annotations declare any of the selected hints as true',
+					},
 				],
 			},
 			{
@@ -252,6 +259,41 @@ export class McpClientTool implements INodeType {
 				displayOptions: {
 					show: {
 						include: ['except'],
+					},
+				},
+			},
+			{
+				displayName: 'Tool Hints',
+				name: 'hints',
+				type: 'multiOptions',
+				default: [],
+				description:
+					'Expose tools whose <a href="https://modelcontextprotocol.io/specification/2025-06-18/server/tools#tool-annotations">MCP annotations</a> declare any of the selected hints as true',
+				options: [
+					{
+						name: 'Read-Only',
+						value: 'readOnlyHint',
+						description: 'The tool does not modify its environment',
+					},
+					{
+						name: 'Destructive',
+						value: 'destructiveHint',
+						description: 'The tool may perform destructive updates',
+					},
+					{
+						name: 'Idempotent',
+						value: 'idempotentHint',
+						description: 'Repeated calls with the same arguments have no additional effect',
+					},
+					{
+						name: 'Open-World',
+						value: 'openWorldHint',
+						description: 'The tool interacts with an open world of external entities',
+					},
+				],
+				displayOptions: {
+					show: {
+						include: ['hints'],
 					},
 				},
 			},
