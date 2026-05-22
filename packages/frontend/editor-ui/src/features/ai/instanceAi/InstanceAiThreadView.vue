@@ -645,13 +645,15 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 					<!-- Scroll to bottom button -->
 					<div
 						:class="$style.scrollButtonContainer"
-						:style="{ bottom: `${inputAreaHeight + 8}px` }"
+						:style="{ bottom: `${inputAreaHeight + 24}px` }"
 					>
 						<Transition name="fade">
 							<N8nIconButton
 								v-if="userScrolledUp && thread.hasMessages"
 								variant="outline"
 								icon="arrow-down"
+								size="large"
+								icon-size="large"
 								:class="$style.scrollToBottomButton"
 								@click="
 									scrollToBottom(true);
@@ -1002,14 +1004,34 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 }
 
 .scrollToBottomButton {
-	pointer-events: auto;
-	background: var(--color--background--light-2);
-	border: var(--border);
-	border-radius: var(--radius);
-	color: var(--color--text--tint-1);
+	--button--color: var(--icon-color--strong);
+	--button--color--background: var(--background--surface);
+	--button--color--background-hover: var(--color--foreground--tint-2);
+	--button--color--background-active: var(--color--foreground--tint-2);
+	--button--shadow: var(--shadow--xs);
+	--button--shadow--hover: var(--shadow--xs);
+	--button--shadow--active: var(--shadow--xs);
+	--button--border-color: var(--border-color);
+	--button--border-color--hover: var(--border-color);
+	--button--border-color--active: var(--border-color);
+	--button--border--shadow: 0 0 0 1px var(--button--border-color);
+	--button--border--shadow--hover: 0 0 0 1px var(--button--border-color--hover);
+	--button--border--shadow--active: 0 0 0 1px var(--button--border-color--active);
+	--button--radius: var(--radius--full);
 
-	&:hover {
-		background: var(--color--foreground--tint-2);
+	pointer-events: auto;
+
+	&.scrollToBottomButton {
+		background-color: var(--background--surface);
+		border: var(--border);
+		border-radius: var(--radius--full);
+		box-shadow: var(--shadow--xs);
+		color: var(--icon-color--strong);
+
+		&:hover {
+			background-color: var(--color--foreground--tint-2);
+			box-shadow: var(--shadow--xs);
+		}
 	}
 }
 
