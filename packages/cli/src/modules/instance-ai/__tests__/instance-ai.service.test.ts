@@ -1004,9 +1004,15 @@ describe('InstanceAiService — shutdown', () => {
 		};
 		service.backgroundTasks = { cancelAll: jest.fn(() => []) };
 		service.traceContextsByRunId = new Map();
-		service.finalizeRunTracing = jest.fn(async () => {});
-		service.finalizeBackgroundTaskTracing = jest.fn(async () => {});
-		service.finalizeRemainingMessageTraceRoots = jest.fn(async () => {});
+		service.finalizeRunTracing = jest.fn(
+			async (_runId: string, _tracing: InstanceAiTraceContext | undefined, _options: unknown) => {},
+		);
+		service.finalizeBackgroundTaskTracing = jest.fn(
+			async (_task: ManagedBackgroundTask, _status: 'cancelled') => {},
+		);
+		service.finalizeRemainingMessageTraceRoots = jest.fn(
+			async (_threadId: string, _options: unknown) => {},
+		);
 		service.gatewayRegistry = { disconnectAll: jest.fn() };
 		service.sandboxes = new Map([['thread-a', { sandbox: { id: 'sandbox-a' }, workspace }]]);
 		service.domainAccessTrackersByThread = new Map();
