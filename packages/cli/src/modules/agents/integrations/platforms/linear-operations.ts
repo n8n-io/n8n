@@ -53,6 +53,44 @@ const searchIssuesSchema = z.object({
 	includeArchived: z.boolean().default(false),
 });
 
+const getTeamSchema = z.object({
+	teamId: z.string().min(1),
+});
+
+const searchTeamsSchema = z.object({
+	query: z.string().min(1).optional(),
+	limit: z.number().int().min(1).max(50).default(10),
+	cursor: z.string().min(1).optional(),
+	includeArchived: z.boolean().default(false),
+});
+
+const getProjectSchema = z.object({
+	projectId: z.string().min(1),
+});
+
+const searchProjectsSchema = z.object({
+	query: z.string().min(1).optional(),
+	limit: z.number().int().min(1).max(50).default(10),
+	cursor: z.string().min(1).optional(),
+	teamId: z.string().min(1).optional(),
+	includeArchived: z.boolean().default(false),
+});
+
+const searchLabelsSchema = z.object({
+	query: z.string().min(1).optional(),
+	limit: z.number().int().min(1).max(50).default(10),
+	cursor: z.string().min(1).optional(),
+	teamId: z.string().min(1).optional(),
+});
+
+const searchIssueStatesSchema = z.object({
+	query: z.string().min(1).optional(),
+	limit: z.number().int().min(1).max(50).default(10),
+	cursor: z.string().min(1).optional(),
+	teamId: z.string().min(1).optional(),
+	type: z.enum(['backlog', 'unstarted', 'started', 'completed', 'canceled']).optional(),
+});
+
 const createIssueSchema = z.object({
 	teamId: z.string().min(1),
 	title: z.string().min(1),
@@ -64,6 +102,25 @@ const createIssueSchema = z.object({
 	stateId: z.string().min(1).optional(),
 	parentId: z.string().min(1).optional(),
 });
+
+const nullableLinearIdSchema = z.string().min(1).nullable();
+
+const updateIssueSchema = z
+	.object({
+		issueId: z.string().min(1),
+		teamId: nullableLinearIdSchema.optional(),
+		title: z.string().min(1).optional(),
+		description: z.string().min(1).nullable().optional(),
+		assigneeId: nullableLinearIdSchema.optional(),
+		projectId: nullableLinearIdSchema.optional(),
+		labelIds: z.array(z.string().min(1)).optional(),
+		priority: z.number().int().nullable().optional(),
+		stateId: nullableLinearIdSchema.optional(),
+		parentId: nullableLinearIdSchema.optional(),
+	})
+	.refine(hasUpdateIssueField, {
+		message: 'Provide at least one issue field to update.',
+	});
 
 const createCommentSchema = z.object({
 	issueId: z.string().min(1),
@@ -91,8 +148,40 @@ interface LinearClientIssueSearch {
 	searchIssues(query: string, options: Record<string, unknown>): Promise<unknown>;
 }
 
+interface LinearClientTeam {
+	team(teamId: string): Promise<unknown>;
+}
+
+interface LinearClientTeams {
+	teams(options: Record<string, unknown>): Promise<unknown>;
+}
+
+interface LinearClientProject {
+	project(projectId: string): Promise<unknown>;
+}
+
+interface LinearClientProjects {
+	projects(options: Record<string, unknown>): Promise<unknown>;
+}
+
+interface LinearClientProjectSearch {
+	searchProjects(query: string, options: Record<string, unknown>): Promise<unknown>;
+}
+
+interface LinearClientIssueLabels {
+	issueLabels(options: Record<string, unknown>): Promise<unknown>;
+}
+
+interface LinearClientWorkflowStates {
+	workflowStates(options: Record<string, unknown>): Promise<unknown>;
+}
+
 interface LinearClientCreateIssue {
 	createIssue(input: Record<string, unknown>): Promise<unknown>;
+}
+
+interface LinearClientUpdateIssue {
+	updateIssue(issueId: string, input: Record<string, unknown>): Promise<unknown>;
 }
 
 interface LinearClientCreateComment {
@@ -100,9 +189,14 @@ interface LinearClientCreateComment {
 }
 
 type SearchUsersInput = z.infer<typeof searchUsersSchema>;
+type SearchTeamsInput = z.infer<typeof searchTeamsSchema>;
+type SearchProjectsInput = z.infer<typeof searchProjectsSchema>;
+type SearchLabelsInput = z.infer<typeof searchLabelsSchema>;
+type SearchIssueStatesInput = z.infer<typeof searchIssueStatesSchema>;
 type GetIssueInput = z.infer<typeof getIssueSchema>;
 type SearchIssuesInput = z.infer<typeof searchIssuesSchema>;
 type CreateIssueInput = z.infer<typeof createIssueSchema>;
+type UpdateIssueInput = z.infer<typeof updateIssueSchema>;
 type CreateCommentInput = z.infer<typeof createCommentSchema>;
 
 export async function executeLinearContextQuery(params: {
@@ -118,6 +212,24 @@ export async function executeLinearContextQuery(params: {
 	}
 	if (params.query === 'search_users') {
 		return await searchLinearUsers(adapter, searchUsersSchema.parse(params.input));
+	}
+	if (params.query === 'get_team') {
+		return await getLinearTeam(adapter, getTeamSchema.parse(params.input));
+	}
+	if (params.query === 'search_teams') {
+		return await searchLinearTeams(adapter, searchTeamsSchema.parse(params.input));
+	}
+	if (params.query === 'get_project') {
+		return await getLinearProject(adapter, getProjectSchema.parse(params.input));
+	}
+	if (params.query === 'search_projects') {
+		return await searchLinearProjects(adapter, searchProjectsSchema.parse(params.input));
+	}
+	if (params.query === 'search_labels') {
+		return await searchLinearLabels(adapter, searchLabelsSchema.parse(params.input));
+	}
+	if (params.query === 'search_issue_states') {
+		return await searchLinearIssueStates(adapter, searchIssueStatesSchema.parse(params.input));
 	}
 	if (params.query === 'get_issue') {
 		return await getLinearIssue(adapter, getIssueSchema.parse(params.input));
@@ -140,6 +252,13 @@ export async function executeLinearAction(params: {
 			params.chat,
 			params.descriptor,
 			createIssueSchema.parse(params.input),
+		);
+	}
+	if (params.action === 'update_issue') {
+		return await updateLinearIssue(
+			params.chat,
+			params.descriptor,
+			updateIssueSchema.parse(params.input),
 		);
 	}
 	if (params.action === 'create_comment') {
@@ -184,6 +303,104 @@ async function searchLinearUsers(
 		resultCount: users.length,
 		...(nextCursor ? { nextCursor } : {}),
 	};
+}
+
+async function getLinearTeam(adapter: LinearAdapter, input: { teamId: string }): Promise<unknown> {
+	if (!hasMethod<LinearClientTeam>(adapter.client, 'team')) {
+		return unsupportedQuery(PLATFORM, 'get_team');
+	}
+	const team = await adapter.client.team(input.teamId);
+	return { ok: true, team: normalizeLinearTeam(team) ?? null };
+}
+
+async function searchLinearTeams(
+	adapter: LinearAdapter,
+	input: SearchTeamsInput,
+): Promise<unknown> {
+	if (!hasMethod<LinearClientTeams>(adapter.client, 'teams')) {
+		return unsupportedQuery(PLATFORM, 'search_teams');
+	}
+
+	const response = await adapter.client.teams(
+		buildLinearConnectionOptions(input, { includeArchived: true }),
+	);
+	const teams = filterLinearRecords(
+		linearNodes(response).map(normalizeLinearTeam).filter(isDefined),
+		input.query,
+		['teamId', 'key', 'name', 'description', 'url'],
+	);
+
+	return linearSearchResult('teams', teams, response);
+}
+
+async function getLinearProject(
+	adapter: LinearAdapter,
+	input: { projectId: string },
+): Promise<unknown> {
+	if (!hasMethod<LinearClientProject>(adapter.client, 'project')) {
+		return unsupportedQuery(PLATFORM, 'get_project');
+	}
+	const project = await adapter.client.project(input.projectId);
+	return { ok: true, project: normalizeLinearProject(project) ?? null };
+}
+
+async function searchLinearProjects(
+	adapter: LinearAdapter,
+	input: SearchProjectsInput,
+): Promise<unknown> {
+	const options = buildLinearConnectionOptions(input, { includeArchived: true });
+	const response = input.teamId
+		? await callLinearTeamConnection(adapter, input.teamId, ['projects'], options)
+		: await callLinearProjectSearch(adapter, input, options);
+
+	if (!response) return unsupportedQuery(PLATFORM, 'search_projects');
+
+	const projects = filterLinearRecords(
+		linearNodes(response).map(normalizeLinearProject).filter(isDefined),
+		input.query,
+		['projectId', 'name', 'description', 'url', 'state'],
+	);
+
+	return linearSearchResult('projects', projects, response);
+}
+
+async function searchLinearLabels(
+	adapter: LinearAdapter,
+	input: SearchLabelsInput,
+): Promise<unknown> {
+	const options = buildLinearConnectionOptions(input);
+	const response = input.teamId
+		? await callLinearTeamConnection(adapter, input.teamId, ['labels'], options)
+		: await callLinearIssueLabels(adapter, options);
+
+	if (!response) return unsupportedQuery(PLATFORM, 'search_labels');
+
+	const labels = filterLinearRecords(
+		linearNodes(response).map(normalizeLinearLabel).filter(isDefined),
+		input.query,
+		['labelId', 'name', 'description', 'color'],
+	);
+
+	return linearSearchResult('labels', labels, response);
+}
+
+async function searchLinearIssueStates(
+	adapter: LinearAdapter,
+	input: SearchIssueStatesInput,
+): Promise<unknown> {
+	const options = buildLinearConnectionOptions(input);
+	const response = input.teamId
+		? await callLinearTeamConnection(adapter, input.teamId, ['states', 'workflowStates'], options)
+		: await callLinearWorkflowStates(adapter, options);
+
+	if (!response) return unsupportedQuery(PLATFORM, 'search_issue_states');
+
+	const states = filterLinearIssueStates(
+		linearNodes(response).map(normalizeLinearWorkflowState).filter(isDefined),
+		input,
+	);
+
+	return linearSearchResult('states', states, response);
 }
 
 async function getLinearIssue(adapter: LinearAdapter, input: GetIssueInput): Promise<unknown> {
@@ -246,6 +463,111 @@ function extractLinearNextCursor(response: unknown): string | undefined {
 	return stringProperty(pageInfo, 'endCursor');
 }
 
+function buildLinearConnectionOptions(
+	input: { limit: number; cursor?: string; includeArchived?: boolean },
+	options: { includeArchived?: boolean } = {},
+): Record<string, unknown> {
+	return removeUndefinedValues({
+		first: input.limit,
+		...(input.cursor ? { after: input.cursor } : {}),
+		...(options.includeArchived ? { includeArchived: input.includeArchived ?? false } : {}),
+	});
+}
+
+async function callLinearProjectSearch(
+	adapter: LinearAdapter,
+	input: SearchProjectsInput,
+	options: Record<string, unknown>,
+): Promise<unknown | undefined> {
+	if (input.query && hasMethod<LinearClientProjectSearch>(adapter.client, 'searchProjects')) {
+		return await adapter.client.searchProjects(input.query, options);
+	}
+	if (hasMethod<LinearClientProjects>(adapter.client, 'projects')) {
+		return await adapter.client.projects(options);
+	}
+	return undefined;
+}
+
+async function callLinearIssueLabels(
+	adapter: LinearAdapter,
+	options: Record<string, unknown>,
+): Promise<unknown | undefined> {
+	if (!hasMethod<LinearClientIssueLabels>(adapter.client, 'issueLabels')) return undefined;
+	return await adapter.client.issueLabels(options);
+}
+
+async function callLinearWorkflowStates(
+	adapter: LinearAdapter,
+	options: Record<string, unknown>,
+): Promise<unknown | undefined> {
+	if (!hasMethod<LinearClientWorkflowStates>(adapter.client, 'workflowStates')) return undefined;
+	return await adapter.client.workflowStates(options);
+}
+
+async function callLinearTeamConnection(
+	adapter: LinearAdapter,
+	teamId: string,
+	keys: string[],
+	options: Record<string, unknown>,
+): Promise<unknown | undefined> {
+	if (!hasMethod<LinearClientTeam>(adapter.client, 'team')) return undefined;
+	const team = await adapter.client.team(teamId);
+	if (!isRecord(team)) return undefined;
+
+	for (const key of keys) {
+		const response = await callLinearConnection(team, key, options);
+		if (response !== undefined) return response;
+	}
+
+	return undefined;
+}
+
+function linearSearchResult(
+	key: string,
+	records: Array<Record<string, unknown>>,
+	response: unknown,
+): Record<string, unknown> {
+	const nextCursor = extractLinearNextCursor(response);
+	const totalCount = numberProperty(response, 'totalCount');
+	return {
+		ok: true,
+		[key]: records,
+		resultCount: records.length,
+		...(totalCount !== undefined ? { totalCount } : {}),
+		...(nextCursor ? { nextCursor } : {}),
+	};
+}
+
+function filterLinearRecords(
+	records: Array<Record<string, unknown>>,
+	query: string | undefined,
+	keys: string[],
+): Array<Record<string, unknown>> {
+	const term = query?.trim().toLowerCase();
+	if (!term) return records;
+
+	return records.filter((record) =>
+		keys.some((key) => {
+			const value = stringProperty(record, key);
+			return value !== undefined && value.toLowerCase().includes(term);
+		}),
+	);
+}
+
+function filterLinearIssueStates(
+	states: Array<Record<string, unknown>>,
+	input: SearchIssueStatesInput,
+): Array<Record<string, unknown>> {
+	const queryFilteredStates = filterLinearRecords(states, input.query, [
+		'stateId',
+		'name',
+		'type',
+		'color',
+	]);
+	if (!input.type) return queryFilteredStates;
+	return queryFilteredStates.filter((state) => stringProperty(state, 'type') === input.type);
+}
+
 async function createLinearIssue(
 	chat: ChatInstance,
 	descriptor: IntegrationToolConnectionDescriptor,
@@ -270,6 +592,37 @@ async function createLinearIssue(
 			'Linear did not return an issue ID for the created issue.',
 		);
 	}
+
+	return {
+		ok: true,
+		issue: normalizedIssue,
+		messageContext: {
+			integrationConnectionId: descriptor.integrationConnectionId,
+			platform: descriptor.integration.type,
+			target: { type: 'thread', threadId: `linear:${issueId}` },
+			subject: buildLinearIssueSubject(normalizedIssue, issueId),
+			updatedAt: new Date().toISOString(),
+		},
+	};
+}
+
+async function updateLinearIssue(
+	chat: ChatInstance,
+	descriptor: IntegrationToolConnectionDescriptor,
+	input: UpdateIssueInput,
+): Promise<IntegrationActionResult> {
+	const adapter = getLinearAdapter(chat);
+	if (!adapter || !hasMethod<LinearClientUpdateIssue>(adapter.client, 'updateIssue')) {
+		return unsupportedAction(PLATFORM, 'update_issue');
+	}
+
+	const payload = await adapter.client.updateIssue(
+		input.issueId,
+		buildLinearIssueUpdatePayload(input),
+	);
+	const rawIssue = await awaitableProperty(payload, 'issue');
+	const normalizedIssue = await normalizeLinearIssue(rawIssue ?? payload);
+	const issueId = stringProperty(normalizedIssue, 'issueId') ?? input.issueId;
 
 	return {
 		ok: true,
@@ -325,6 +678,20 @@ async function createLinearComment(
 	};
 }
 
+function buildLinearIssueUpdatePayload(input: UpdateIssueInput): Record<string, unknown> {
+	return removeUndefinedValues({
+		teamId: input.teamId,
+		title: input.title,
+		description: input.description,
+		assigneeId: input.assigneeId,
+		projectId: input.projectId,
+		labelIds: input.labelIds,
+		priority: input.priority,
+		stateId: input.stateId,
+		parentId: input.parentId,
+	});
+}
+
 function getLinearAdapter(chat: ChatInstance): LinearAdapter | undefined {
 	const adapter = chat.getAdapter('linear');
 	if (!isRecord(adapter) || !isRecord(adapter.client)) return undefined;
@@ -356,6 +723,31 @@ function buildLinearUserSearchTermFilter(input: SearchUsersInput): Record<string
 			{ email: { containsIgnoreCase: query } },
 		],
 	};
+}
+
+function hasUpdateIssueField(input: {
+	issueId: string;
+	teamId?: string | null;
+	title?: string;
+	description?: string | null;
+	assigneeId?: string | null;
+	projectId?: string | null;
+	labelIds?: string[];
+	priority?: number | null;
+	stateId?: string | null;
+	parentId?: string | null;
+}): boolean {
+	return (
+		input.teamId !== undefined ||
+		input.title !== undefined ||
+		input.description !== undefined ||
+		input.assigneeId !== undefined ||
+		input.projectId !== undefined ||
+		input.labelIds !== undefined ||
+		input.priority !== undefined ||
+		input.stateId !== undefined ||
+		input.parentId !== undefined
+	);
 }
 
 /**
@@ -477,6 +869,12 @@ function normalizeLinearTeam(value: unknown): Record<string, unknown> | undefine
 		teamId: stringProperty(value, 'id'),
 		key: stringProperty(value, 'key'),
 		name: stringProperty(value, 'name'),
+		description: stringProperty(value, 'description'),
+		url: stringProperty(value, 'url'),
+		isPrivate: booleanProperty(value, 'private'),
+		isArchived:
+			booleanProperty(value, 'archived') ??
+			(stringProperty(value, 'archivedAt') ? true : undefined),
 	});
 }
 
@@ -485,7 +883,10 @@ function normalizeLinearProject(value: unknown): Record<string, unknown> | undef
 	return removeUndefinedValues({
 		projectId: stringProperty(value, 'id'),
 		name: stringProperty(value, 'name'),
+		description: stringProperty(value, 'description'),
 		url: stringProperty(value, 'url'),
+		state: stringProperty(value, 'state'),
+		color: stringProperty(value, 'color'),
 	});
 }
 
@@ -494,7 +895,26 @@ function normalizeLinearLabel(value: unknown): Record<string, unknown> | undefin
 	const labelId = stringProperty(value, 'id');
 	const name = stringProperty(value, 'name');
 	if (!labelId || !name) return undefined;
-	return { labelId, name };
+	return removeUndefinedValues({
+		labelId,
+		name,
+		color: stringProperty(value, 'color'),
+		description: stringProperty(value, 'description'),
+	});
+}
+
+function normalizeLinearWorkflowState(value: unknown): Record<string, unknown> | undefined {
+	if (!isRecord(value)) return undefined;
+	const stateId = stringProperty(value, 'id');
+	if (!stateId) return undefined;
+
+	return removeUndefinedValues({
+		stateId,
+		name: stringProperty(value, 'name'),
+		type: stringProperty(value, 'type'),
+		color: stringProperty(value, 'color'),
+		position: numberProperty(value, 'position'),
+	});
 }
 
 function normalizeLinearPriority(

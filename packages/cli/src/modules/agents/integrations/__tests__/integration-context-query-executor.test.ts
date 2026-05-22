@@ -286,6 +286,221 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		});
 	});
 
+	it('gets Linear teams and projects through the selected integration connection', async () => {
+		const linearClient = {
+			team: jest.fn().mockResolvedValue({
+				id: 'team-1',
+				key: 'ENG',
+				name: 'Engineering',
+				description: 'Product engineering',
+				url: 'https://linear.app/n8n/team/ENG',
+				private: false,
+			}),
+			project: jest.fn().mockResolvedValue({
+				id: 'project-1',
+				name: 'Signup',
+				description: 'Signup improvements',
+				url: 'https://linear.app/n8n/project/signup',
+				state: 'started',
+			}),
+		};
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ client: linearClient });
+
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const executor = new ChatIntegrationContextQueryExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
+
+		await expect(
+			executor.execute({ descriptor, query: 'get_team', input: { teamId: 'team-1' } }),
+		).resolves.toEqual({
+			ok: true,
+			team: {
+				teamId: 'team-1',
+				key: 'ENG',
+				name: 'Engineering',
+				description: 'Product engineering',
+				url: 'https://linear.app/n8n/team/ENG',
+				isPrivate: false,
+			},
+		});
+		await expect(
+			executor.execute({
+				descriptor,
+				query: 'get_project',
+				input: { projectId: 'project-1' },
+			}),
+		).resolves.toEqual({
+			ok: true,
+			project: {
+				projectId: 'project-1',
+				name: 'Signup',
+				description: 'Signup improvements',
+				url: 'https://linear.app/n8n/project/signup',
+				state: 'started',
+			},
+		});
+
+		expect(linearClient.team).toHaveBeenCalledWith('team-1');
+		expect(linearClient.project).toHaveBeenCalledWith('project-1');
+	});
+
+	it('searches Linear teams, projects, labels, and issue states for setup context', async () => {
+		const team = {
+			projects: jest.fn().mockResolvedValue({
+				nodes: [
+					{
+						id: 'project-1',
+						name: 'Shopping List',
+						description: 'Grocery errands',
+						url: 'https://linear.app/n8n/project/shopping',
+						state: 'started',
+					},
+					{
+						id: 'project-2',
+						name: 'Billing',
+					},
+				],
+				pageInfo: { hasNextPage: true, endCursor: 'project-cursor' },
+			}),
+			labels: jest.fn().mockResolvedValue({
+				nodes: [
+					{ id: 'label-1', name: 'Shopping', color: '#00ff00', description: 'Grocery work' },
+					{ id: 'label-2', name: 'Bug', color: '#ff0000' },
+				],
+			}),
+			states: jest.fn().mockResolvedValue({
+				nodes: [
+					{ id: 'state-1', name: 'Todo', type: 'unstarted', color: '#cccccc', position: 1 },
+					{
+						id: 'state-2',
+						name: 'In Progress',
+						type: 'started',
+						color: '#0000ff',
+						position: 2,
+					},
+				],
+			}),
+		};
+		const linearClient = {
+			team: jest.fn().mockResolvedValue(team),
+			teams: jest.fn().mockResolvedValue({
+				nodes: [
+					{
+						id: 'team-1',
+						key: 'SHOP',
+						name: 'Shopping',
+						description: 'Personal errands',
+						url: 'https://linear.app/n8n/team/SHOP',
+					},
+					{ id: 'team-2', key: 'ENG', name: 'Engineering' },
+				],
+			}),
+		};
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ client: linearClient });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const executor = new ChatIntegrationContextQueryExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
+
+		await expect(
+			executor.execute({
+				descriptor,
+				query: 'search_teams',
+				input: { query: 'shop', limit: 5, includeArchived: true },
+			}),
+		).resolves.toEqual({
+			ok: true,
+			teams: [
+				{
+					teamId: 'team-1',
+					key: 'SHOP',
+					name: 'Shopping',
+					description: 'Personal errands',
+					url: 'https://linear.app/n8n/team/SHOP',
+				},
+			],
+			resultCount: 1,
+		});
+
+		await expect(
+			executor.execute({
+				descriptor,
+				query: 'search_projects',
+				input: { teamId: 'team-1', query: 'shopping', limit: 5 },
+			}),
+		).resolves.toMatchObject({
+			ok: true,
+			projects: [
+				{
+					projectId: 'project-1',
+					name: 'Shopping List',
+					description: 'Grocery errands',
+					url: 'https://linear.app/n8n/project/shopping',
+					state: 'started',
+				},
+			],
+			resultCount: 1,
+			nextCursor: 'project-cursor',
+		});
+
+		await expect(
+			executor.execute({
+				descriptor,
+				query: 'search_labels',
+				input: { teamId: 'team-1', query: 'shop' },
+			}),
+		).resolves.toEqual({
+			ok: true,
+			labels: [
+				{
+					labelId: 'label-1',
+					name: 'Shopping',
+					color: '#00ff00',
+					description: 'Grocery work',
+				},
+			],
+			resultCount: 1,
+		});
+
+		await expect(
+			executor.execute({
+				descriptor,
+				query: 'search_issue_states',
+				input: { teamId: 'team-1', type: 'started' },
+			}),
+		).resolves.toEqual({
+			ok: true,
+			states: [
+				{
+					stateId: 'state-2',
+					name: 'In Progress',
+					type: 'started',
+					color: '#0000ff',
+					position: 2,
+				},
+			],
+			resultCount: 1,
+		});
+
+		expect(linearClient.teams).toHaveBeenCalledWith({
+			first: 5,
+			includeArchived: true,
+		});
+		expect(linearClient.team).toHaveBeenCalledWith('team-1');
+		expect(team.projects).toHaveBeenCalledWith({ first: 5, includeArchived: false });
+		expect(team.labels).toHaveBeenCalledWith({ first: 10 });
+		expect(team.states).toHaveBeenCalledWith({ first: 10 });
+	});
+
 	it('gets Linear issues with optional recent comments', async () => {
 		const createdAt = new Date('2026-05-18T10:00:00.000Z');
 		const updatedAt = new Date('2026-05-18T11:00:00.000Z');

@@ -49,20 +49,31 @@ describe('LinearIntegration', () => {
 		expect(integration.credentialTypes).toEqual(['linearOAuth2Api']);
 	});
 
-	it('advertises Linear issue and user context queries', () => {
+	it('advertises Linear issue, user, and workspace context queries', () => {
 		expect(integration.contextQueries).toEqual([
 			'get_current_message_context',
 			'get_current_subject',
 			'get_current_user',
 			'get_user',
 			'search_users',
+			'get_team',
+			'search_teams',
+			'get_project',
+			'search_projects',
+			'search_labels',
+			'search_issue_states',
 			'get_issue',
 			'search_issues',
 		]);
 	});
 
 	it('advertises Linear issue and comment actions', () => {
-		expect(integration.actions).toEqual(['respond', 'create_issue', 'create_comment']);
+		expect(integration.actions).toEqual([
+			'respond',
+			'create_issue',
+			'update_issue',
+			'create_comment',
+		]);
 	});
 
 	it('rejects Linear API token credentials', async () => {
