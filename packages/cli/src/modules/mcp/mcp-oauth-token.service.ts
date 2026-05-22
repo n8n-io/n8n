@@ -16,6 +16,7 @@ import { AccessTokenNotFoundError, JWTVerificationError } from './mcp.errors';
 import { UserWithContext } from './mcp.types';
 
 import { JwtService } from '@/services/jwt.service';
+import { UrlService } from '@/services/url.service';
 
 /**
  * Manages OAuth 2.1 token lifecycle for MCP server
@@ -30,7 +31,8 @@ export class McpOAuthTokenService {
 	 * before the migration rely on this exact audience value. Changing it will immediately
 	 * invalidate those tokens and force users to re-authenticate.
 	 */
-	private readonly MCP_AUDIENCE = 'mcp-server-api';
+	private readonly LEGACY_MCP_AUDIENCE = 'mcp-server-api';
+	private readonly MCP_RESOURCE_PATH = '/mcp-server/http';
 	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 1 * Time.hours.toSeconds;
 	private readonly REFRESH_TOKEN_EXPIRY_MS = 30 * Time.days.toMilliseconds;
 
@@ -40,7 +42,12 @@ export class McpOAuthTokenService {
 		private readonly userRepository: UserRepository,
 		private readonly accessTokenRepository: AccessTokenRepository,
 		private readonly refreshTokenRepository: RefreshTokenRepository,
+		private readonly urlService: UrlService,
 	) {}
+
+	private getResourceUrl(): string {
+		return `${this.urlService.getInstanceBaseUrl()}${this.MCP_RESOURCE_PATH}`;
+	}
 
 	getAccessTokenExpirySeconds(): number {
 		return this.ACCESS_TOKEN_EXPIRY_SECONDS;
@@ -51,7 +58,7 @@ export class McpOAuthTokenService {
 		clientId: string,
 		resource?: string,
 	): { accessToken: string; refreshToken: string } {
-		const audience = resource ?? this.MCP_AUDIENCE;
+		const audience = resource ?? this.getResourceUrl();
 
 		const accessToken = this.jwtService.sign({
 			sub: userId,
@@ -261,11 +268,11 @@ export class McpOAuthTokenService {
 	}
 
 	private getAllowedAudiences(expectedAudience?: string): string[] {
-		if (expectedAudience && expectedAudience !== this.MCP_AUDIENCE) {
-			return [expectedAudience, this.MCP_AUDIENCE];
+		if (expectedAudience && expectedAudience !== this.LEGACY_MCP_AUDIENCE) {
+			return [expectedAudience, this.LEGACY_MCP_AUDIENCE];
 		}
 
-		return [this.MCP_AUDIENCE];
+		return [this.LEGACY_MCP_AUDIENCE];
 	}
 
 	/**

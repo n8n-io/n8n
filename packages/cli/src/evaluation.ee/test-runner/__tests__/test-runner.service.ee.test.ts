@@ -1,6 +1,7 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig } from '@n8n/config';
 import type {
+	EvaluationCollectionRepository,
 	TestRun,
 	TestCaseExecutionRepository,
 	TestRunRepository,
@@ -24,11 +25,26 @@ import { TestRunnerService } from '../test-runner.service.ee';
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
+import type { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+
+// Tier high enough that the resolver's tier-default branch lifts the cap to
+// 5, which is greater than every concurrency value used in these tests.
+// Tests that need a tighter cap mock the env var explicitly.
+// `getValue` is wired so callers asking for the eval-concurrency license
+// quota get `undefined` — the resolver then falls through to the tier
+// default, which is the path the surrounding tests assume.
+const buildLicenseMock = (planName = 'Enterprise', concurrencyQuota?: number) =>
+	mock<License>({
+		getPlanName: jest.fn().mockReturnValue(planName),
+		getValue: jest.fn((feature: string) =>
+			feature === 'quota:evaluations:concurrencyLimit' ? concurrencyQuota : undefined,
+		) as never,
+	});
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
@@ -49,6 +65,7 @@ describe('TestRunnerService', () => {
 	const instanceSettings = mock<InstanceSettings>({ hostId: 'test-host-id', isMultiMain: false });
 	const concurrencyControlService = mock<ConcurrencyControlService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
+	const evaluationCollectionRepository = mock<EvaluationCollectionRepository>();
 	let testRunnerService: TestRunnerService;
 
 	mockInstance(LoadNodesAndCredentials, {
@@ -70,7 +87,9 @@ describe('TestRunnerService', () => {
 			publisher,
 			instanceSettings,
 			concurrencyControlService,
+			buildLicenseMock(),
 			workflowHistoryService,
+			evaluationCollectionRepository,
 		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
@@ -514,7 +533,9 @@ describe('TestRunnerService', () => {
 				publisher,
 				instanceSettings,
 				concurrencyControlService,
+				buildLicenseMock(),
 				workflowHistoryService,
+				evaluationCollectionRepository,
 			);
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
@@ -833,7 +854,9 @@ describe('TestRunnerService', () => {
 					publisher,
 					instanceSettings,
 					concurrencyControlService,
+					buildLicenseMock(),
 					workflowHistoryService,
+					evaluationCollectionRepository,
 				);
 			});
 
@@ -2236,10 +2259,10 @@ describe('TestRunnerService', () => {
 			expect(concurrencyControlService.release).toHaveBeenCalledTimes(3);
 		});
 
-		test('telemetry payload includes concurrency, parallel_enabled, concurrency_limited_by_config, flag_enabled_for_user', async () => {
+		test('telemetry payload includes concurrency, parallel_enabled, concurrency_limited_by_config, concurrency_limit_source', async () => {
 			setupHappyPathMocks(2);
 
-			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 4, true);
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 4);
 
 			const trackCalls = telemetry.track.mock.calls.filter(
 				([eventName]) => eventName === 'Test run finished',
@@ -2251,20 +2274,68 @@ describe('TestRunnerService', () => {
 					concurrency: 4,
 					parallel_enabled: true,
 					concurrency_limited_by_config: false,
-					flag_enabled_for_user: true,
+					// Env var not set in this test, so the resolver falls through
+					// to the license-tier default — tagged as `tier`.
+					concurrency_limit_source: 'tier',
 				}),
 			);
 		});
 
-		test('flag_enabled_for_user defaults to false when not passed', async () => {
+		test('concurrency_limit_source reports `env` when N8N_CONCURRENCY_EVALUATION_LIMIT is set', async () => {
 			setupHappyPathMocks(2);
+			const originalEnv = process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+			process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = '5';
+			try {
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 2);
+				const payload = telemetry.track.mock.calls.find(
+					([eventName]) => eventName === 'Test run finished',
+				)?.[1] as Record<string, unknown>;
+				expect(payload.concurrency_limit_source).toBe('env');
+			} finally {
+				if (originalEnv === undefined) delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+				else process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = originalEnv;
+			}
+		});
 
-			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
-
-			const payload = telemetry.track.mock.calls.find(
-				([eventName]) => eventName === 'Test run finished',
-			)?.[1] as Record<string, unknown>;
-			expect(payload.flag_enabled_for_user).toBe(false);
+		test('concurrency_limit_source reports `license` when env is unset and the license issues a quota', async () => {
+			// Swap in a license that carries the per-customer quota
+			// `quota:evaluations:concurrencyLimit`. Env is unset, so the
+			// resolver's middle precedence branch fires.
+			const licensedRunner = new TestRunnerService(
+				logger,
+				telemetry,
+				workflowRepository,
+				workflowRunner,
+				activeExecutions,
+				testRunRepository,
+				testCaseExecutionRepository,
+				errorReporter,
+				executionsConfig,
+				mock(),
+				publisher,
+				instanceSettings,
+				concurrencyControlService,
+				buildLicenseMock('Community', 4),
+				workflowHistoryService,
+				evaluationCollectionRepository,
+			);
+			setupHappyPathMocks(2);
+			const originalEnv = process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+			delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+			try {
+				await licensedRunner.runTest(USER as never, WORKFLOW_ID, 2);
+				const payload = telemetry.track.mock.calls.find(
+					([eventName]) => eventName === 'Test run finished',
+				)?.[1] as Record<string, unknown>;
+				expect(payload.concurrency_limit_source).toBe('license');
+				// Community tier would otherwise have clamped requested
+				// concurrency=2 to 1; the license-issued cap of 4 lets it
+				// flow through unchanged.
+				expect(payload.concurrency).toBe(2);
+			} finally {
+				if (originalEnv === undefined) delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+				else process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = originalEnv;
+			}
 		});
 
 		test('telemetry parallel_enabled is false for sequential runs', async () => {
@@ -2289,7 +2360,7 @@ describe('TestRunnerService', () => {
 		test('telemetry payload reports realised fan-out (cases_started, peak_in_flight)', async () => {
 			const { inFlightTracker } = setupHappyPathMocks(6);
 
-			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 3, true);
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 3);
 
 			const payload = telemetry.track.mock.calls.find(
 				([eventName]) => eventName === 'Test run finished',
@@ -2321,24 +2392,36 @@ describe('TestRunnerService', () => {
 				publisher,
 				instanceSettings,
 				concurrencyControlService,
+				buildLicenseMock(),
 				workflowHistoryService,
+				evaluationCollectionRepository,
 			);
 
 			const { inFlightTracker } = setupHappyPathMocks(6);
 
-			await cappedService.runTest(USER as never, WORKFLOW_ID, 5);
+			// Env var explicitly set → resolver returns the parsed config value
+			// (2) and ignores the tier default.
+			const originalEnv = process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+			process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = '2';
+			try {
+				await cappedService.runTest(USER as never, WORKFLOW_ID, 5);
 
-			expect(inFlightTracker.max).toBeLessThanOrEqual(2);
-			const payload = telemetry.track.mock.calls.find(
-				([eventName]) => eventName === 'Test run finished',
-			)?.[1] as Record<string, unknown>;
-			expect(payload).toEqual(
-				expect.objectContaining({
-					concurrency: 2,
-					parallel_enabled: true,
-					concurrency_limited_by_config: true,
-				}),
-			);
+				expect(inFlightTracker.max).toBeLessThanOrEqual(2);
+				const payload = telemetry.track.mock.calls.find(
+					([eventName]) => eventName === 'Test run finished',
+				)?.[1] as Record<string, unknown>;
+				expect(payload).toEqual(
+					expect.objectContaining({
+						concurrency: 2,
+						parallel_enabled: true,
+						concurrency_limited_by_config: true,
+						concurrency_limit_source: 'env',
+					}),
+				);
+			} finally {
+				if (originalEnv === undefined) delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
+				else process.env.N8N_CONCURRENCY_EVALUATION_LIMIT = originalEnv;
+			}
 		});
 
 		test('abort during throttle wait evicts the queue entry and short-circuits without an UNKNOWN_ERROR row', async () => {
@@ -2406,7 +2489,9 @@ describe('TestRunnerService', () => {
 				publisher,
 				multiMainInstance,
 				concurrencyControlService,
+				buildLicenseMock(),
 				workflowHistoryService,
+				evaluationCollectionRepository,
 			);
 
 			setupHappyPathMocks(4);
@@ -2423,6 +2508,80 @@ describe('TestRunnerService', () => {
 			expect(testRunRepository.isCancellationRequested).toHaveBeenCalled();
 			expect(testRunRepository.markAsCancelled).toHaveBeenCalled();
 			expect(testRunRepository.markAsCompleted).not.toHaveBeenCalled();
+		});
+
+		// Cache-invalidation hook (TRUST-80). When a run that belongs to an
+		// eval collection finishes successfully, the collection's cached
+		// AI-insights envelope is now stale — the freshly-completed run can
+		// flip the winner / produce new regressions. Bust the cache so the
+		// next `EvalInsightsService.generateInsights` call regenerates.
+		// Skipping `markAsError` / `markAsCancelled` on purpose: those
+		// terminal states still satisfy the service's filter
+		// (`status === 'completed' && metrics`) as false, so a previously
+		// running run that ends in error never contributed to the cache.
+		describe('runTest - collection insights cache invalidation (TRUST-80)', () => {
+			test('busts the insights cache after a collection-tagged run completes', async () => {
+				setupHappyPathMocks(2);
+				// Override the outer beforeEach so the run row carries a
+				// non-null `collectionId`.
+				testRunRepository.createTestRun.mockResolvedValueOnce(
+					mock<TestRun>({ id: 'tr-coll', collectionId: 'col-x' }),
+				);
+				evaluationCollectionRepository.updateInsightsCache.mockResolvedValue(undefined as never);
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+				expect(evaluationCollectionRepository.updateInsightsCache).toHaveBeenCalledWith(
+					'col-x',
+					null,
+				);
+			});
+
+			test('does not call updateInsightsCache when the completed run has no collectionId', async () => {
+				setupHappyPathMocks(2);
+				// `mock<TestRun>(...)` returns a deep-mocked proxy where
+				// unset fields evaluate truthy, so we have to spell out the
+				// nullish `collectionId` explicitly to exercise the
+				// non-collection branch of the runner.
+				testRunRepository.createTestRun.mockResolvedValueOnce(
+					mock<TestRun>({ id: 'tr-solo', collectionId: null }),
+				);
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+				expect(evaluationCollectionRepository.updateInsightsCache).not.toHaveBeenCalled();
+			});
+
+			test('keeps the run marked completed when the cache bust fails', async () => {
+				// Failure-isolation guarantee: if `updateInsightsCache` throws
+				// the exception must not escape into the outer try/catch in
+				// `runTest`, which would re-mark the (already-persisted)
+				// completed run as `error`. Worst case on cache-bust failure
+				// is a stale envelope on the next insights request, which the
+				// user can resolve with `forceRegenerate: true`.
+				setupHappyPathMocks(2);
+				testRunRepository.createTestRun.mockResolvedValueOnce(
+					mock<TestRun>({ id: 'tr-cache-fail', collectionId: 'col-y' }),
+				);
+				evaluationCollectionRepository.updateInsightsCache.mockRejectedValueOnce(
+					new Error('db transient failure'),
+				);
+
+				await expect(
+					testRunnerService.runTest(USER as never, WORKFLOW_ID, 1),
+				).resolves.toBeUndefined();
+
+				expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+				// Crucial: the failure path must not have flipped the row
+				// back to `error` via the outer catch block.
+				expect(testRunRepository.markAsError).not.toHaveBeenCalled();
+				expect(evaluationCollectionRepository.updateInsightsCache).toHaveBeenCalledWith(
+					'col-y',
+					null,
+				);
+			});
 		});
 	});
 
@@ -2446,7 +2605,7 @@ describe('TestRunnerService', () => {
 			// Short-circuit the execution loop so we only assert the lookup side
 			// effects — the runner's own logic is exercised by other tests.
 			workflowRepository.findById.mockClear();
-			const { finished } = await testRunnerService.startTestRun(USER as never, 'wf-1', 1, false, {
+			const { finished } = await testRunnerService.startTestRun(USER as never, 'wf-1', 1, {
 				collectionId: 'col-1',
 				workflowVersionId: 'wfv-pinned',
 				evaluationConfigId: 'cfg-1',
@@ -2505,7 +2664,7 @@ describe('TestRunnerService', () => {
 					throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
 				});
 
-			const { finished } = await testRunnerService.startTestRun(USER as never, 'wf-1', 1, false, {
+			const { finished } = await testRunnerService.startTestRun(USER as never, 'wf-1', 1, {
 				collectionId: 'col-1',
 				workflowVersionId: 'wfv-pinned',
 				evaluationConfigId: 'cfg-1',
@@ -2529,7 +2688,7 @@ describe('TestRunnerService', () => {
 			} as never);
 			testRunRepository.createTestRun.mockResolvedValueOnce(mock<TestRun>({ id: 'tr-no-pin' }));
 
-			const { finished } = await testRunnerService.startTestRun(USER as never, 'wf-1', 1, false);
+			const { finished } = await testRunnerService.startTestRun(USER as never, 'wf-1', 1);
 			await finished.catch(() => undefined);
 
 			expect(workflowHistoryService.findVersion).not.toHaveBeenCalled();
@@ -2558,7 +2717,9 @@ describe('TestRunnerService', () => {
 				publisher,
 				multiMain,
 				concurrencyControlService,
+				buildLicenseMock(),
 				workflowHistoryService,
+				evaluationCollectionRepository,
 			);
 
 			testRunRepository.find.mockResolvedValue([{ id: 'tr-running' } as never]);

@@ -8,6 +8,8 @@ import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 
+type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
+
 function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecutionThread {
 	return {
 		id: 'thread-1',
@@ -32,6 +34,7 @@ describe('AgentExecutionService', () => {
 	let agentExecutionRepository: jest.Mocked<AgentExecutionRepository>;
 	let agentExecutionThreadRepository: jest.Mocked<AgentExecutionThreadRepository>;
 	let n8nMemory: jest.Mocked<N8nMemory>;
+	let memoryBackend: jest.Mocked<N8nMemoryImplementation>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -39,6 +42,8 @@ describe('AgentExecutionService', () => {
 		agentExecutionRepository = mock<AgentExecutionRepository>();
 		agentExecutionThreadRepository = mock<AgentExecutionThreadRepository>();
 		n8nMemory = mock<N8nMemory>();
+		memoryBackend = mock<N8nMemoryImplementation>();
+		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
 
 		service = new AgentExecutionService(
 			mockLogger(),
@@ -58,10 +63,9 @@ describe('AgentExecutionService', () => {
 			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1');
 
 			expect(result).toEqual({ thread, executions });
-			expect(n8nMemory.getWorkingMemory).not.toHaveBeenCalled();
 		});
 
-		it('does not read working memory for a thread outside the requested scope', async () => {
+		it('does not read executions for a thread outside the requested scope', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(
 				makeThread({ projectId: 'other-project' }),
 			);
@@ -69,7 +73,6 @@ describe('AgentExecutionService', () => {
 			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1');
 
 			expect(result).toBeNull();
-			expect(n8nMemory.getWorkingMemory).not.toHaveBeenCalled();
 			expect(agentExecutionRepository.findByThreadIdOrdered).not.toHaveBeenCalled();
 		});
 	});
@@ -78,13 +81,15 @@ describe('AgentExecutionService', () => {
 		it('cleans SDK memory before deleting the execution thread', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue({
 				id: 'thread-1',
+				agentId: 'agent-1',
 				projectId: 'project-1',
 			} as AgentExecutionThread);
 
 			const result = await service.deleteThread('project-1', 'thread-1');
 
 			expect(result).toBe(true);
-			expect(n8nMemory.deleteThread).toHaveBeenCalledWith('thread-1');
+			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-1');
+			expect(memoryBackend.deleteThread).toHaveBeenCalledWith('thread-1');
 			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
 		});
 
@@ -94,7 +99,8 @@ describe('AgentExecutionService', () => {
 			const result = await service.deleteThread('project-1', 'thread-1');
 
 			expect(result).toBe(false);
-			expect(n8nMemory.deleteThread).not.toHaveBeenCalled();
+			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
+			expect(memoryBackend.deleteThread).not.toHaveBeenCalled();
 			expect(agentExecutionThreadRepository.delete).not.toHaveBeenCalled();
 		});
 	});

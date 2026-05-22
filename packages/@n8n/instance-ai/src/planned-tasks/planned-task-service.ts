@@ -8,13 +8,27 @@ import type {
 	PlannedTaskService,
 } from '../types';
 
+/**
+ * Thrown when a submitted task graph fails structural validation (duplicate
+ * IDs, unknown deps, missing checkpoint deps, dependency cycles, etc.).
+ * Callers — notably `plan.tool.ts` — should catch this specifically and surface
+ * the message back to the LLM so it can retry with a corrected graph. Storage,
+ * abort, or programming errors are NOT this class and must propagate.
+ */
+export class PlanValidationError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'PlanValidationError';
+	}
+}
+
 function hasDuplicateIds(tasks: PlannedTask[]): boolean {
 	return new Set(tasks.map((task) => task.id)).size !== tasks.length;
 }
 
 function validateDependencies(tasks: PlannedTask[]): void {
 	if (hasDuplicateIds(tasks)) {
-		throw new Error('Plan contains duplicate task IDs');
+		throw new PlanValidationError('Plan contains duplicate task IDs');
 	}
 
 	const knownIds = new Set(tasks.map((task) => task.id));
@@ -22,15 +36,15 @@ function validateDependencies(tasks: PlannedTask[]): void {
 	for (const task of tasks) {
 		for (const depId of task.deps) {
 			if (!knownIds.has(depId)) {
-				throw new Error(`Task "${task.id}" depends on unknown task "${depId}"`);
+				throw new PlanValidationError(`Task "${task.id}" depends on unknown task "${depId}"`);
 			}
 		}
 		if (task.kind === 'delegate' && (!task.tools || task.tools.length === 0)) {
-			throw new Error(`Delegate task "${task.id}" must include at least one tool`);
+			throw new PlanValidationError(`Delegate task "${task.id}" must include at least one tool`);
 		}
 		if (task.kind === 'checkpoint') {
 			if (task.deps.length === 0) {
-				throw new Error(
+				throw new PlanValidationError(
 					`Checkpoint task "${task.id}" must depend on at least one build-workflow task`,
 				);
 			}
@@ -38,7 +52,7 @@ function validateDependencies(tasks: PlannedTask[]): void {
 				(depId) => byId.get(depId)?.kind === 'build-workflow',
 			);
 			if (!dependsOnBuildWorkflow) {
-				throw new Error(
+				throw new PlanValidationError(
 					`Checkpoint task "${task.id}" must depend on at least one build-workflow task`,
 				);
 			}
@@ -51,7 +65,7 @@ function validateDependencies(tasks: PlannedTask[]): void {
 	const visit = (taskId: string) => {
 		if (visited.has(taskId)) return;
 		if (visiting.has(taskId)) {
-			throw new Error(`Plan contains a dependency cycle involving "${taskId}"`);
+			throw new PlanValidationError(`Plan contains a dependency cycle involving "${taskId}"`);
 		}
 
 		visiting.add(taskId);

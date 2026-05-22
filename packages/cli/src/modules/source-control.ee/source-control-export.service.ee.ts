@@ -255,7 +255,7 @@ export class SourceControlExportService {
 
 	async exportDataTablesToWorkFolder(
 		candidates: SourceControlledFile[],
-		_context: SourceControlContext,
+		context: SourceControlContext,
 	): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder, this.dataTableExportFolder]);
@@ -275,6 +275,7 @@ export class SourceControlExportService {
 			const dataTables = await this.dataTableRepository.find({
 				where: {
 					id: In(candidateIds),
+					...this.sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter(context),
 				},
 				relations: [
 					'columns',

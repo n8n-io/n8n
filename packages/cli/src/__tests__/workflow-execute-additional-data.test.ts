@@ -31,6 +31,7 @@ import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.ser
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { Telemetry } from '@/telemetry';
 import {
 	executeAgent,
@@ -112,6 +113,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	mockInstance(WorkflowStatisticsService);
 	mockInstance(WorkflowPublishHistoryRepository);
 	mockInstance(DataTableProxyService);
+	mockInstance(WorkflowHookContextService);
 
 	const urlService = mockInstance(UrlService);
 	Container.set(UrlService, urlService);
