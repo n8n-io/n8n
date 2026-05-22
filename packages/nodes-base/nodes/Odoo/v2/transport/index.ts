@@ -62,7 +62,7 @@ async function callJson2(
 export function bodyToRpcArgs(method: string, body: IDataObject): unknown[] {
 	switch (method) {
 		case 'create':
-			// body.vals_list is [{...fields}]; legacy execute expects the vals dict directly
+			// body.vals_list is [{...fields}]; legacy execute expects the vals dict directly.
 			return [(body.vals_list as IDataObject[])?.[0] ?? body];
 		case 'read':
 			return [body.ids, (body.fields as string[]) ?? []];
@@ -177,7 +177,7 @@ async function rpcRequest(
  * the body is internally converted to positional args for `/jsonrpc`.
  *
  * Body conventions:
- * - create:      body = { name, email, ... }        (ORM method kwargs)
+ * - create:      body = { vals_list: [{ name, email, ... }] }
  * - read:        body = { ids: [N], fields: [...] }
  * - search_read: body = { domain: [...], fields, limit, offset }
  * - write:       body = { ids: [N], name: '...', email: '...' }

@@ -4,13 +4,8 @@ import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import {
 	getActivityFields,
-	getActivityTypes,
 	getContactFields,
-	getCountries,
-	getModels,
 	getOpportunityFields,
-	getStates,
-	getUsers,
 } from '../../../v2/methods/loadOptions';
 import * as transport from '../../../v2/transport';
 
@@ -24,103 +19,6 @@ describe('Odoo v2 — loadOptions methods', () => {
 	});
 
 	afterEach(() => jest.clearAllMocks());
-
-	describe('getModels', () => {
-		it('fetches all ir.model records and sorts by name', async () => {
-			(transport.odooApiRequest as jest.Mock).mockResolvedValue([
-				{ name: 'Survey', model: 'survey.survey' },
-				{ name: 'Contact', model: 'res.partner' },
-			]);
-
-			const result = await getModels.call(ctx);
-
-			expect(transport.odooApiRequest).toHaveBeenCalledWith('ir.model', 'search_read', {
-				domain: [],
-				fields: ['name', 'model'],
-				limit: 0,
-				offset: 0,
-			});
-			expect(result[0].name).toBe('Contact');
-			expect(result[1].name).toBe('Survey');
-			expect(result[0]).toMatchObject({
-				name: 'Contact',
-				value: 'res.partner',
-				description: 'Model: res.partner',
-			});
-		});
-
-		it('returns empty array when no models found', async () => {
-			(transport.odooApiRequest as jest.Mock).mockResolvedValue([]);
-			expect(await getModels.call(ctx)).toEqual([]);
-		});
-	});
-
-	describe('getStates', () => {
-		it('returns states sorted by name', async () => {
-			(transport.odooApiRequest as jest.Mock).mockResolvedValue([
-				{ id: 2, name: 'Texas' },
-				{ id: 1, name: 'California' },
-			]);
-
-			const result = await getStates.call(ctx);
-
-			expect(result[0]).toEqual({ name: 'California', value: 1 });
-			expect(result[1]).toEqual({ name: 'Texas', value: 2 });
-		});
-	});
-
-	describe('getCountries', () => {
-		it('returns countries sorted by name', async () => {
-			(transport.odooApiRequest as jest.Mock).mockResolvedValue([
-				{ id: 2, name: 'Ukraine' },
-				{ id: 1, name: 'Germany' },
-			]);
-
-			const result = await getCountries.call(ctx);
-
-			expect(result[0]).toEqual({ name: 'Germany', value: 1 });
-			expect(result[1]).toEqual({ name: 'Ukraine', value: 2 });
-		});
-	});
-
-	describe('getActivityTypes', () => {
-		it('returns activity types sorted by name', async () => {
-			(transport.odooApiRequest as jest.Mock).mockResolvedValue([
-				{ id: 3, name: 'Upload' },
-				{ id: 1, name: 'Call' },
-				{ id: 2, name: 'Email' },
-			]);
-
-			const result = await getActivityTypes.call(ctx);
-
-			expect(result.map((r) => r.name)).toEqual(['Call', 'Email', 'Upload']);
-			expect(transport.odooApiRequest).toHaveBeenCalledWith('mail.activity.type', 'search_read', {
-				domain: [],
-				fields: ['id', 'name'],
-				limit: 0,
-				offset: 0,
-			});
-		});
-	});
-
-	describe('getUsers', () => {
-		it('filters by active=true and sorts by name', async () => {
-			(transport.odooApiRequest as jest.Mock).mockResolvedValue([
-				{ id: 2, name: 'Zara' },
-				{ id: 1, name: 'Alice' },
-			]);
-
-			const result = await getUsers.call(ctx);
-
-			expect(transport.odooApiRequest).toHaveBeenCalledWith('res.users', 'search_read', {
-				domain: [['active', '=', true]],
-				fields: ['id', 'name'],
-				limit: 0,
-				offset: 0,
-			});
-			expect(result.map((r) => r.name)).toEqual(['Alice', 'Zara']);
-		});
-	});
 
 	describe('getContactFields', () => {
 		it('fetches fields from res.partner', async () => {

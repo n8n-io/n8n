@@ -138,6 +138,20 @@ describe('odooApiRequest', () => {
 			expect(result).toEqual([{ id: 1, name: 'Test' }]);
 		});
 
+		it('sends create body as vals_list', async () => {
+			await odooApiRequest.call(ctx, 'res.partner', 'create', {
+				vals_list: [{ name: 'Jane Doe', email: 'jane@example.com' }],
+			});
+
+			expect(ctx.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'odooApiKeyApi',
+				expect.objectContaining({
+					url: 'https://myorg.odoo.com/json/2/res.partner/create',
+					body: { vals_list: [{ name: 'Jane Doe', email: 'jane@example.com' }] },
+				}),
+			);
+		});
+
 		it('strips trailing slash from URL', async () => {
 			ctx.getCredentials.mockResolvedValue({ url: 'https://myorg.odoo.com/', db: '' });
 			await odooApiRequest.call(ctx, 'res.partner', 'read', { ids: [1], fields: [] });

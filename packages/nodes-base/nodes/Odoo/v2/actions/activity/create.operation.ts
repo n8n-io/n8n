@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { recordRLC } from '../../helpers/utils';
 import { odooApiRequest } from '../../transport';
@@ -116,6 +117,15 @@ export async function execute(
 				offset: 0,
 			})) as Array<{ id: number }>;
 			const res_model_id = modelRecords[0]?.id;
+			if (res_model_id === undefined) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Linked document model "${res_model}" was not found`,
+					{
+						itemIndex: i,
+					},
+				);
+			}
 
 			// Explicit RLC fields take precedence over anything set via the RMC
 			const fields: IDataObject = { ...additionalFlat, res_model_id, res_id, activity_type_id };

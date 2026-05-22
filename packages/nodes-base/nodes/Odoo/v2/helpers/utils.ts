@@ -1,4 +1,4 @@
-import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export function recordRLC(
 	displayName: string,
@@ -40,12 +40,6 @@ export function recordRLC(
 	}
 	return prop;
 }
-
-export const mapOdooResources: Record<string, string> = {
-	contact: 'res.partner',
-	opportunity: 'crm.lead',
-	activity: 'mail.activity',
-};
 
 export const mapFilterOperators: Record<string, string> = {
 	equal: '=',
@@ -99,17 +93,4 @@ export function buildDomain(filters: IOdooFilters | undefined): unknown[][] {
 		}
 		return [fieldName, mapFilterOperators[operator] ?? operator, resolvedValue];
 	});
-}
-
-/**
- * Flattens the nested address fixedCollection from additionalFields / updateFields
- * into root-level Odoo field keys.
- */
-export function flattenAddressFields(fields: IDataObject): IDataObject {
-	if (!fields.address) return fields;
-
-	const addressFields = (fields.address as IDataObject).value as IDataObject | undefined;
-	const { address: _removed, ...rest } = fields;
-
-	return addressFields ? { ...rest, ...addressFields } : rest;
 }
