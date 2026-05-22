@@ -17,6 +17,7 @@ import {
 	validatePinDataSize,
 	validateWorkflowNodeGroups,
 } from '@/workflow-helpers';
+import { mock } from 'jest-mock-extended';
 
 describe('workflow-helpers', () => {
 	beforeAll(() => {
@@ -580,9 +581,9 @@ describe('getLastExecutedNodeRuns', () => {
 
 	it('returns every recorded run of the last executed node, in order', () => {
 		const runs = [
-			{ executionIndex: 0, data: { main: [[{ json: { value: 0 } }]] } } as unknown as ITaskData,
-			{ executionIndex: 1, data: { main: [[{ json: { value: 1 } }]] } } as unknown as ITaskData,
-			{ executionIndex: 2, data: { main: [[{ json: { value: 2 } }]] } } as unknown as ITaskData,
+			mock<ITaskData>({ executionIndex: 0, data: { main: [[{ json: { value: 0 } }]] } }),
+			mock<ITaskData>({ executionIndex: 1, data: { main: [[{ json: { value: 1 } }]] } }),
+			mock<ITaskData>({ executionIndex: 2, data: { main: [[{ json: { value: 2 } }]] } }),
 		];
 		expect(
 			getLastExecutedNodeRuns(buildRun('Last executed node', { 'Last executed node': runs })),
@@ -590,27 +591,21 @@ describe('getLastExecutedNodeRuns', () => {
 	});
 
 	it('sorts runs by executionIndex when recorded out of order', () => {
-		const outOfOrderRuns = [
-			{ executionIndex: 2, data: { main: [[{ json: { value: 2 } }]] } } as unknown as ITaskData,
-			{ executionIndex: 0, data: { main: [[{ json: { value: 0 } }]] } } as unknown as ITaskData,
-			{ executionIndex: 1, data: { main: [[{ json: { value: 1 } }]] } } as unknown as ITaskData,
-		];
-		const expectedInExecutionOrder = [
-			{ executionIndex: 0, data: { main: [[{ json: { value: 0 } }]] } },
-			{ executionIndex: 1, data: { main: [[{ json: { value: 1 } }]] } },
-			{ executionIndex: 2, data: { main: [[{ json: { value: 2 } }]] } },
-		];
+		const run0 = mock<ITaskData>({ executionIndex: 0, data: { main: [[{ json: { value: 0 } }]] } });
+		const run1 = mock<ITaskData>({ executionIndex: 1, data: { main: [[{ json: { value: 1 } }]] } });
+		const run2 = mock<ITaskData>({ executionIndex: 2, data: { main: [[{ json: { value: 2 } }]] } });
+		const outOfOrderRuns = [run2, run0, run1];
 		expect(
 			getLastExecutedNodeRuns(
 				buildRun('Last executed node', { 'Last executed node': outOfOrderRuns }),
 			),
-		).toEqual(expectedInExecutionOrder);
+		).toEqual([run0, run1, run2]);
 	});
 
 	it('does not mutate the original runData array', () => {
 		const runs = [
-			{ executionIndex: 2, data: { main: [[{ json: { value: 2 } }]] } } as unknown as ITaskData,
-			{ executionIndex: 0, data: { main: [[{ json: { value: 0 } }]] } } as unknown as ITaskData,
+			mock<ITaskData>({ executionIndex: 2, data: { main: [[{ json: { value: 2 } }]] } }),
+			mock<ITaskData>({ executionIndex: 0, data: { main: [[{ json: { value: 0 } }]] } }),
 		];
 		const snapshot = [...runs];
 		getLastExecutedNodeRuns(buildRun('Last executed node', { 'Last executed node': runs }));

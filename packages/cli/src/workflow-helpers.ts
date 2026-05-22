@@ -63,7 +63,7 @@ export function getLastExecutedNodeRuns(inputData: IRun): ITaskData[] {
 		return [];
 	}
 	const runs = runData[lastNodeExecuted];
-	return runs ? [...runs].sort((a, b) => (a.executionIndex ?? 0) - (b.executionIndex ?? 0)) : [];
+	return runs?.toSorted((a, b) => (a.executionIndex ?? 0) - (b.executionIndex ?? 0)) ?? [];
 }
 
 /**

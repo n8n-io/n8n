@@ -330,9 +330,8 @@ async function listAgents(userId: string): Promise<Array<{ id: string; name: str
  */
 export function triggerReturnsLastRunOnly(nodes: INode[]): boolean {
 	const trigger = nodes.find((node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger');
-	return (
-		!trigger || ((trigger.typeVersion ?? 1) < 1.2 && trigger.parameters?.returnOutput !== 'allRuns')
-	);
+	const triggerVersion = trigger?.typeVersion ?? 1;
+	return triggerVersion < 1.2 && trigger?.parameters?.returnOutput !== 'allRuns';
 }
 
 /**

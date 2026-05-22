@@ -192,8 +192,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				],
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				displayName: 'Items to return',
+				displayName: 'Items to Return',
 				name: 'returnOutput',
 				type: 'options',
 				noDataExpression: true,
@@ -202,14 +201,12 @@ export class ExecuteWorkflowTrigger implements INodeType {
 					'Choose what to send back when the last node ran multiple times (for example, after a Loop Over Items)',
 				options: [
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'All items from every run',
+						name: 'All Items From Every Run',
 						value: 'allRuns',
 						description: 'Send every item the last node produced, across all its runs',
 					},
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Items from the last run only',
+						name: 'Items From the Last Run Only',
 						value: 'lastRunOnly',
 						description: "Send only the items from the last node's final run",
 					},
