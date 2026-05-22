@@ -16,7 +16,6 @@ import { logWrapper, N8nBinaryLoader, N8nJsonLoader, metadataFilterField } from 
 // import 'd3-dsv'; // for csv
 import 'mammoth'; // for docx
 import 'epub2'; // for epub
-// pdf-parse is owned by @n8n/ai-utilities via N8nPdfLoader; no marker import needed.
 
 /* istanbul ignore next */
 function getInputs(parameters: IDataObject) {

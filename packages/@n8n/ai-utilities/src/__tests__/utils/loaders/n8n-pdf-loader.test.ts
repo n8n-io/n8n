@@ -1,9 +1,12 @@
+import { LoggerProxy } from 'n8n-workflow';
+
 import { N8nPdfLoader } from 'src/utils/loaders/n8n-pdf-loader';
 
 const mockGetText = jest.fn();
 const mockGetInfo = jest.fn();
 const mockDestroy = jest.fn();
 const mockConstructor = jest.fn();
+const mockLoggerDebug = jest.fn();
 
 jest.mock('pdf-parse', () => ({
 	__esModule: true,
@@ -17,6 +20,13 @@ jest.mock('pdf-parse', () => ({
 	}),
 }));
 
+LoggerProxy.init({
+	debug: mockLoggerDebug,
+	info: jest.fn(),
+	warn: jest.fn(),
+	error: jest.fn(),
+});
+
 function makeBlob(content = 'fake-pdf-bytes'): Blob {
 	return new Blob([Buffer.from(content)], { type: 'application/pdf' });
 }
@@ -27,6 +37,7 @@ describe('N8nPdfLoader', () => {
 		mockGetInfo.mockReset().mockResolvedValue({ info: undefined, metadata: undefined });
 		mockDestroy.mockReset().mockResolvedValue(undefined);
 		mockConstructor.mockReset();
+		mockLoggerDebug.mockReset();
 	});
 
 	it('produces one Document per page with loc.pageNumber and pdf.totalPages when splitPages is true', async () => {
@@ -161,13 +172,14 @@ describe('N8nPdfLoader', () => {
 		expect(mockDestroy).toHaveBeenCalledTimes(1);
 	});
 
-	it('tolerates getInfo() failure and still returns documents with structural metadata', async () => {
+	it('tolerates getInfo() failure, logs at debug, and still returns documents with structural metadata', async () => {
 		mockGetText.mockResolvedValue({
 			pages: [{ num: 1, text: 'page' }],
 			text: 'page',
 			total: 1,
 		});
-		mockGetInfo.mockRejectedValue(new Error('info unavailable'));
+		const infoError = new Error('info unavailable');
+		mockGetInfo.mockRejectedValue(infoError);
 
 		const loader = new N8nPdfLoader(makeBlob());
 		const docs = await loader.load();
@@ -178,6 +190,21 @@ describe('N8nPdfLoader', () => {
 			metadata: undefined,
 			totalPages: 1,
 		});
+		expect(mockDestroy).toHaveBeenCalledTimes(1);
+		expect(mockLoggerDebug).toHaveBeenCalledWith(expect.stringContaining('getInfo() failed'), {
+			error: infoError,
+		});
+	});
+
+	it('preserves the parse error when destroy() rejects on the error path', async () => {
+		const parseError = new Error('Invalid PDF structure');
+		mockGetText.mockRejectedValue(parseError);
+		mockDestroy.mockRejectedValue(new Error('worker hang on shutdown'));
+
+		const loader = new N8nPdfLoader(makeBlob());
+
+		// The original parse error must surface — destroy()'s rejection is swallowed.
+		await expect(loader.load()).rejects.toBe(parseError);
 		expect(mockDestroy).toHaveBeenCalledTimes(1);
 	});
 

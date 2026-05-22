@@ -1,34 +1,10 @@
 import { BufferLoader } from '@langchain/classic/document_loaders/fs/buffer';
 import { Document } from '@langchain/core/documents';
+import { LoggerProxy as Logger } from 'n8n-workflow';
+import type { PDFParse as PDFParseClass } from 'pdf-parse';
 
 export interface N8nPdfLoaderOptions {
 	splitPages?: boolean;
-}
-
-interface PdfParseInfoResult {
-	info?: unknown;
-	metadata?: unknown;
-}
-
-interface PdfParsePageTextResult {
-	num: number;
-	text: string;
-}
-
-interface PdfParseTextResult {
-	pages: PdfParsePageTextResult[];
-	text: string;
-	total: number;
-}
-
-interface PdfParseInstance {
-	getText(params?: { pageJoiner?: string }): Promise<PdfParseTextResult>;
-	getInfo(): Promise<PdfParseInfoResult>;
-	destroy(): Promise<void>;
-}
-
-interface PdfParseModule {
-	PDFParse: new (options: { data: Uint8Array }) => PdfParseInstance;
 }
 
 /**
@@ -49,15 +25,21 @@ export class N8nPdfLoader extends BufferLoader {
 	}
 
 	protected async parse(raw: Buffer, metadata: Record<string, unknown>): Promise<Document[]> {
-		const { PDFParse } = (await import('pdf-parse')) as unknown as PdfParseModule;
+		const { PDFParse } = await import('pdf-parse');
 
-		const parser = new PDFParse({ data: new Uint8Array(raw) });
+		// Buffer extends Uint8Array; PDFParse accepts it directly.
+		const parser: PDFParseClass = new PDFParse({ data: raw });
 
 		try {
 			// pageJoiner default ('-- page X of Y --') would pollute the extracted
 			// text — disable it so each page's `text` is purely its content.
 			const result = await parser.getText({ pageJoiner: '' });
-			const info = await parser.getInfo().catch(() => null);
+			const info = await parser.getInfo().catch((error: unknown) => {
+				Logger.debug('N8nPdfLoader: getInfo() failed; continuing without pdf.info metadata', {
+					error,
+				});
+				return null;
+			});
 
 			const pdfMeta = {
 				info: info?.info,
@@ -90,7 +72,8 @@ export class N8nPdfLoader extends BufferLoader {
 				}),
 			];
 		} finally {
-			await parser.destroy();
+			// Best-effort cleanup — never let destroy() shadow a parse error.
+			await parser.destroy().catch(() => undefined);
 		}
 	}
 }
