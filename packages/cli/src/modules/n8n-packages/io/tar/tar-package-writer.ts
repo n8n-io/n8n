@@ -4,6 +4,8 @@ import { Header, Pack, ReadEntry } from 'tar';
 import type { PackageWriter } from '../package-writer';
 
 const FIXED_MTIME = new Date(0);
+const FILE_MODE = 0o644;
+const DIRECTORY_MODE = 0o755;
 const MANIFEST_PATH = 'manifest.json';
 
 type Entry = { kind: 'file'; path: string; content: Buffer } | { kind: 'directory'; path: string };
@@ -14,7 +16,13 @@ function normaliseEntryPath(path: string): string {
 
 function fileEntry(path: string, content: Buffer): ReadEntry {
 	const entry = new ReadEntry(
-		new Header({ path, size: content.length, mtime: FIXED_MTIME, type: 'File' }),
+		new Header({
+			path,
+			size: content.length,
+			mode: FILE_MODE,
+			mtime: FIXED_MTIME,
+			type: 'File',
+		}),
 	);
 	entry.end(content);
 	return entry;
@@ -23,7 +31,13 @@ function fileEntry(path: string, content: Buffer): ReadEntry {
 function directoryEntry(path: string): ReadEntry {
 	const normalised = path.endsWith('/') ? path : `${path}/`;
 	const entry = new ReadEntry(
-		new Header({ path: normalised, size: 0, mtime: FIXED_MTIME, type: 'Directory' }),
+		new Header({
+			path: normalised,
+			size: 0,
+			mode: DIRECTORY_MODE,
+			mtime: FIXED_MTIME,
+			type: 'Directory',
+		}),
 	);
 	entry.end();
 	return entry;
