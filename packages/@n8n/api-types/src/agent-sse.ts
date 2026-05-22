@@ -79,7 +79,6 @@ export type AgentSseEvent =
 	  }
 	| { type: 'tool-call-suspended'; payload: ToolSuspendedPayload }
 	| { type: 'message'; message: AgentSseMessage }
-	| { type: 'working-memory-update'; toolName: string }
 	| { type: 'code-delta'; delta: string }
 	| { type: 'config-updated' }
 	| { type: 'tool-updated' }

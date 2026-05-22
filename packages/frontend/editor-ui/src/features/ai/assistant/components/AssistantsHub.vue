@@ -13,11 +13,15 @@ import { useAskModeCoachmark } from '../composables/useAskModeCoachmark';
 
 import { N8nResizeWrapper } from '@n8n/design-system';
 import HubSwitcher from '@/features/ai/assistant/components/HubSwitcher.vue';
+import { useRoute } from 'vue-router';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const builderStore = useBuilderStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const settingsStore = useSettingsStore();
+const route = useRoute();
+const workflowId = useWorkflowId();
 
 const {
 	isBuildMode,
@@ -103,6 +107,17 @@ const unsubscribeBuilderStore = builderStore.$onAction(({ name }) => {
 	if (['sendChatMessage'].includes(name)) {
 		chatPanelStore.switchMode('builder');
 	}
+});
+
+watch(route, () => {
+	if (
+		!assistantStore.currentSessionId ||
+		!assistantStore.currentSessionWorkflowId ||
+		assistantStore.currentSessionWorkflowId === workflowId.value
+	) {
+		return;
+	}
+	assistantStore.resetAssistantChat(workflowId.value);
 });
 
 // Set default mode based on which flags are enabled

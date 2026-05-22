@@ -288,6 +288,7 @@ describe('GlobalConfig', () => {
 			n8nSandboxServiceUrl: '',
 			n8nSandboxServiceApiKey: '',
 			sandboxTimeout: 300000,
+			sandboxNamePrefix: '',
 			builderSandboxTtlMs: 600_000,
 			braveSearchApiKey: '',
 			searxngUrl: '',
@@ -295,7 +296,7 @@ describe('GlobalConfig', () => {
 			threadTtlDays: 90,
 			snapshotPruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
-			confirmationTimeout: 600_000,
+			confirmationTimeout: 86_400_000,
 		},
 		queue: {
 			health: {
@@ -374,7 +375,9 @@ describe('GlobalConfig', () => {
 			enabled: false,
 			ttl: 10,
 			interval: 3,
-			newLeaderElection: false,
+		},
+		evaluation: {
+			collectionsEnabled: false,
 		},
 		generic: {
 			timezone: 'America/New_York',
@@ -423,6 +426,10 @@ describe('GlobalConfig', () => {
 			queueRecovery: {
 				interval: 180,
 				batchSize: 100,
+			},
+			queueRetention: {
+				keepLastCompleted: 0,
+				keepLastFailed: 0,
 			},
 			recovery: {
 				maxLastExecutions: 3,

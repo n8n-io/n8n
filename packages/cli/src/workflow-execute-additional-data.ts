@@ -55,6 +55,7 @@ import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
 
 export function getRunData(
 	workflowData: IWorkflowBase,
@@ -566,6 +567,12 @@ export async function getBase({
 		setExecutionStatus,
 		variables,
 		workflowSettings,
+		async getRuntimeCredential(runExecutionData, alias) {
+			return await Container.get(RuntimeCredentialProxyService).getRuntimeCredential(
+				runExecutionData,
+				alias,
+			);
+		},
 		async getRunExecutionData(executionId) {
 			const executionRepository = Container.get(ExecutionRepository);
 			const executionData = await executionRepository.findSingleExecution(executionId, {
