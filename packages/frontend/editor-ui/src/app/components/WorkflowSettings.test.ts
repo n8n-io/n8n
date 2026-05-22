@@ -94,8 +94,21 @@ const createComponent = createComponentRenderer(WorkflowSettingsVue, {
 			// during mouse path traversal, toggling executionTimeout and breaking save.
 			ElSwitch: {
 				props: ['modelValue', 'disabled'],
+				emits: ['update:modelValue'],
 				template:
-					'<span :data-test-id="$attrs[\'data-test-id\']" :aria-checked="!!modelValue" role="switch" />',
+					'<button type="button" :data-test-id="$attrs[\'data-test-id\']" :aria-checked="!!modelValue" role="switch" :disabled="disabled" @click="$emit(\'update:modelValue\', !modelValue)" />',
+			},
+			ParameterInputFull: {
+				props: ['value', 'isReadOnly'],
+				emits: ['update'],
+				template: `
+					<input
+						:data-test-id="$attrs['data-test-id']"
+						:value="value"
+						:disabled="isReadOnly"
+						@input="$emit('update', { name: '', value: $event.target.value })"
+					/>
+				`,
 			},
 		},
 	},
@@ -176,6 +189,224 @@ describe('WorkflowSettingsVue', () => {
 		await flushPromises();
 
 		expect(getByTestId('workflow-caller-policy')).toBeVisible();
+	});
+
+	describe('Custom telemetry tags', () => {
+		beforeEach(() => {
+			settingsStore.settings.activeModules = ['dynamic-credentials', 'otel'];
+			settingsStore.moduleSettings = { otel: { enabled: true } };
+		});
+
+		it('should show custom telemetry tag settings when OTel is enabled', async () => {
+			const { getByTestId } = createComponent({ pinia });
+
+			await flushPromises();
+
+			expect(getByTestId('workflow-settings-custom-telemetry-tags')).toBeVisible();
+			expect(getByTestId('workflow-settings-custom-telemetry-tags-empty')).toBeVisible();
+			expect(getByTestId('add-custom-telemetry-tag')).toBeVisible();
+		});
+
+		it('should hide custom telemetry tag settings when OTel is disabled', async () => {
+			settingsStore.moduleSettings = { otel: { enabled: false } };
+			const { queryByTestId } = createComponent({ pinia });
+
+			await flushPromises();
+
+			expect(queryByTestId('workflow-settings-custom-telemetry-tags')).not.toBeInTheDocument();
+		});
+
+		it('should render existing custom telemetry tags', async () => {
+			workflowDocumentStore.setSettings({
+				customTelemetryTags: {
+					tag: [{ key: 'team', value: 'platform' }],
+				},
+			});
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			await waitFor(() => {
+				expect(getByTestId('custom-telemetry-tags-key-input')).toHaveValue('team');
+				expect(getByTestId('custom-telemetry-tags-value-input')).toHaveValue('platform');
+			});
+		});
+
+		it('should add and save custom telemetry tag edits', async () => {
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await flushPromises();
+			const dialog = within(getByTestId('workflow-settings-dialog'));
+
+			expect(dialog.getByTestId('add-custom-telemetry-tag')).not.toBeDisabled();
+			await userEvent.click(dialog.getByTestId('add-custom-telemetry-tag'));
+			await flushPromises();
+			await waitFor(() => {
+				expect(dialog.getByTestId('custom-telemetry-tags-key-input')).toBeVisible();
+				expect(dialog.getByTestId('custom-telemetry-tags-value-input')).toBeVisible();
+			});
+			await userEvent.type(dialog.getByTestId('custom-telemetry-tags-key-input'), 'env');
+			await fireEvent.update(dialog.getByTestId('custom-telemetry-tags-value-input'), 'production');
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({
+						customTelemetryTags: {
+							tag: [{ key: 'env', value: 'production' }],
+						},
+					}),
+				}),
+			);
+		});
+
+		it('should preserve custom telemetry tag expression values', async () => {
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await flushPromises();
+			const dialog = within(getByTestId('workflow-settings-dialog'));
+
+			expect(dialog.getByTestId('add-custom-telemetry-tag')).not.toBeDisabled();
+			await userEvent.click(dialog.getByTestId('add-custom-telemetry-tag'));
+			await flushPromises();
+			await waitFor(() => {
+				expect(dialog.getByTestId('custom-telemetry-tags-key-input')).toBeVisible();
+				expect(dialog.getByTestId('custom-telemetry-tags-value-input')).toBeVisible();
+			});
+			await userEvent.type(dialog.getByTestId('custom-telemetry-tags-key-input'), 'workflowName');
+			await fireEvent.update(
+				dialog.getByTestId('custom-telemetry-tags-value-input'),
+				'={{ $workflow.name }}',
+			);
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({
+						customTelemetryTags: {
+							tag: [{ key: 'workflowName', value: '={{ $workflow.name }}' }],
+						},
+					}),
+				}),
+			);
+		});
+
+		it('should delete custom telemetry tag rows', async () => {
+			workflowDocumentStore.setSettings({
+				customTelemetryTags: {
+					tag: [
+						{ key: 'team', value: 'platform' },
+						{ key: 'env', value: 'production' },
+					],
+				},
+			});
+
+			const { getAllByTestId, getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			await waitFor(() => {
+				expect(getAllByTestId('delete-custom-telemetry-tag')).toHaveLength(2);
+			});
+
+			await userEvent.click(getAllByTestId('delete-custom-telemetry-tag')[0]);
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({
+						customTelemetryTags: {
+							tag: [{ key: 'env', value: 'production' }],
+						},
+					}),
+				}),
+			);
+		});
+
+		it('should default node span propagation toggle to enabled without saving the setting', async () => {
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(
+				getByTestId('workflow-settings-custom-telemetry-tags-apply-to-node-spans'),
+			).toHaveAttribute('aria-checked', 'true');
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			const [, updatePayload] = workflowsStore.updateWorkflow.mock.calls[0];
+			expect(updatePayload.settings).not.toHaveProperty('customTelemetryTagsApplyToNodeSpans');
+		});
+
+		it('should save disabled node span propagation toggle', async () => {
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(
+				getByTestId('workflow-settings-custom-telemetry-tags-apply-to-node-spans'),
+			);
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({
+						customTelemetryTagsApplyToNodeSpans: false,
+					}),
+				}),
+			);
+		});
+
+		it('should save enabled node span propagation toggle', async () => {
+			workflowDocumentStore.setSettings({
+				customTelemetryTagsApplyToNodeSpans: false,
+			});
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(
+				getByTestId('workflow-settings-custom-telemetry-tags-apply-to-node-spans'),
+			);
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({
+						customTelemetryTagsApplyToNodeSpans: true,
+					}),
+				}),
+			);
+		});
+
+		it('should disable custom telemetry tag controls when user cannot update workflow', async () => {
+			workflowDocumentStore.setSettings({
+				customTelemetryTags: {
+					tag: [{ key: 'team', value: 'platform' }],
+				},
+			});
+			const readOnlyWorkflow = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:read'],
+			});
+			workflowsListStore.workflowsById = { '1': readOnlyWorkflow };
+			workflowsListStore.getWorkflowById.mockImplementation(() => readOnlyWorkflow);
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			await waitFor(() => {
+				expect(getByTestId('custom-telemetry-tags-key-input')).toBeDisabled();
+				expect(getByTestId('custom-telemetry-tags-value-input')).toBeDisabled();
+			});
+			expect(getByTestId('add-custom-telemetry-tag')).toBeDisabled();
+			expect(getByTestId('delete-custom-telemetry-tag')).toBeDisabled();
+			expect(
+				getByTestId('workflow-settings-custom-telemetry-tags-apply-to-node-spans'),
+			).toBeDisabled();
+		});
 	});
 
 	it('should render list of workflows field when policy is set to workflowsFromAList', async () => {

@@ -1366,8 +1366,13 @@ export interface INodeCredentials {
 	[key: string]: INodeCredentialsDetails;
 }
 
-export interface ICustomTelemetryTags {
-	tag?: Array<{ key: string; value: string }>;
+export interface ICustomTelemetryTag extends INodeParameters {
+	key: string;
+	value: string;
+}
+
+export interface ICustomTelemetryTags extends INodeParameters {
+	tag?: ICustomTelemetryTag[];
 }
 
 export type OnError = 'continueErrorOutput' | 'continueRegularOutput' | 'stopWorkflow';
