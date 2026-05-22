@@ -207,7 +207,7 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.tools.some((t) => t.name === 'my_search')).toBe(true);
 	});
 
-	it('injects attached skill names, descriptions, and ids into instructions, but not bodies', async () => {
+	it('wires attached skills through the shared runtime skill loader without inlining bodies', async () => {
 		const config = makeConfig({
 			skills: [{ type: 'skill', id: 'skill_0Ab9ZkLm3Pq7Xy2N' }],
 		});
@@ -230,16 +230,10 @@ describe('buildFromJson()', () => {
 		);
 
 		const instructions = agent.snapshot.instructions ?? '';
-		expect(instructions).toContain('Skill loading protocol:');
-		expect(instructions).toContain('Skills are optional instruction packs, not execution tools');
-		expect(instructions).toContain('Available skills:');
-		expect(instructions).toContain('name: Summarize notes');
-		expect(instructions).toContain('description: Use for meeting notes and transcripts');
-		expect(instructions).toContain('id: skill_0Ab9ZkLm3Pq7Xy2N');
-		expect(instructions).toContain("call load_skill once with that skill's id");
-		expect(instructions).toContain('do not call load_skill again');
-		expect(instructions).toContain('Do not load a skill just because it is listed here');
+		expect(instructions).toBe('You are a test agent.');
 		expect(instructions).not.toContain('Extract decisions and action items.');
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(true);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
 	});
 
 	it('wires load_skill for attached skills and returns the selected skill body on demand', async () => {
@@ -276,12 +270,16 @@ describe('buildFromJson()', () => {
 
 		await expect(loadSkill!.handler?.({ skillId: 'summarize_notes' }, {})).resolves.toMatchObject({
 			ok: true,
+			success: true,
 			skillId: 'summarize_notes',
+			name: 'Summarize notes',
+			content: 'Extract decisions and action items.',
 			instructions: 'Extract decisions and action items.',
 		});
 
 		await expect(loadSkill!.handler?.({ skillId: 'unused_skill' }, {})).resolves.toMatchObject({
 			ok: false,
+			success: false,
 		});
 	});
 
@@ -302,6 +300,33 @@ describe('buildFromJson()', () => {
 				},
 			),
 		).rejects.toThrow('Skill "missing_skill" not found in stored skill bodies');
+	});
+
+	it('rejects custom tools that reuse runtime skill tool names', async () => {
+		const descriptor = makeToolDescriptor({ name: 'load_skill' });
+		const config = makeConfig({
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
+			tools: [{ type: 'custom', id: 'reserved_tool' }],
+		});
+
+		await expect(
+			buildFromJson(
+				config,
+				{ reserved_tool: descriptor },
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					skills: {
+						summarize_notes: {
+							name: 'Summarize notes',
+							description: 'Use for meeting notes and transcripts',
+							instructions: 'Extract decisions and action items.',
+						},
+					},
+				},
+			),
+		).rejects.toThrow('Tool name "load_skill" is reserved for runtime skills');
 	});
 
 	it('throws when custom tool id is not found in descriptors', async () => {
