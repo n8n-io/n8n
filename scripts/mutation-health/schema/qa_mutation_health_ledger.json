@@ -1,15 +1,9 @@
 [
 	{
-		"name": "test_file_path",
-		"type": "STRING",
-		"mode": "REQUIRED",
-		"description": "Test file path relative to repo root, e.g. packages/workflow/test/cron.test.ts. Forms part of the composite primary key."
-	},
-	{
 		"name": "source_file_path",
 		"type": "STRING",
 		"mode": "REQUIRED",
-		"description": "Source file Stryker mutates, relative to repo root, e.g. packages/workflow/src/cron.ts. Forms part of the composite primary key."
+		"description": "Source file Stryker mutates, relative to repo root, e.g. packages/workflow/src/cron.ts. Primary key — one row per source file."
 	},
 	{
 		"name": "package",
@@ -21,7 +15,7 @@
 		"name": "last_score",
 		"type": "FLOAT64",
 		"mode": "NULLABLE",
-		"description": "Most recent mutation score as a percentage 0-100. NULL for status=new rows that have not yet been scored."
+		"description": "Most recent mutation score as a percentage 0-100. NULL for status=new rows. Measures how well the test suite catches bugs in this source — not how much of it is executed."
 	},
 	{
 		"name": "threshold_at_run",
@@ -48,16 +42,10 @@
 		"description": "Worklist state: new | green | red | stale. See README for state transitions."
 	},
 	{
-		"name": "origin",
-		"type": "STRING",
-		"mode": "REQUIRED",
-		"description": "How the test file was authored: ai-generated | human-written. AI-generated rows let us track quality drift of generated tests over time."
-	},
-	{
 		"name": "attempts",
 		"type": "INT64",
 		"mode": "NULLABLE",
-		"description": "Number of AI refinement iterations on the most recent run (Phase 3). 0 or NULL for human-written rows."
+		"description": "Number of AI refinement iterations on the most recent run (Phase 3). 0 or NULL outside Phase 3."
 	},
 	{
 		"name": "mutants_killed",

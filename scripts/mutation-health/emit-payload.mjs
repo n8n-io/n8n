@@ -11,14 +11,12 @@
  * BQ credentials and the MERGE statement for the ledger upsert.
  *
  * Usage:
- *   node src/emit-payload.mjs \
+ *   node scripts/mutation-health/emit-payload.mjs \
  *     --summary packages/workflow/reports/mutation/summary.json \
  *     --package n8n-workflow \
- *     --test-file packages/workflow/test/cron.test.ts \
- *     [--sha <sha>]                    # default: git rev-parse HEAD
- *     [--origin human-written|ai-generated]   # default: human-written
- *     [--out <path>]                   # default: <pkg>/reports/mutation/bq-payload.json
- *     [--format json|ndjson]           # default: json
+ *     [--sha <sha>]                  # default: git rev-parse HEAD
+ *     [--out <path>]                 # default: <pkg>/reports/mutation/bq-payload.json
+ *     [--format json|ndjson]         # default: json
  */
 
 import { execFileSync } from 'node:child_process';
@@ -26,7 +24,6 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 
-const VALID_ORIGINS = new Set(['human-written', 'ai-generated']);
 const VALID_FORMATS = new Set(['json', 'ndjson']);
 
 function die(code, msg) {
@@ -55,18 +52,15 @@ const args = parseArgs(process.argv.slice(2));
 
 const summaryPath = args.summary;
 const pkg = args.package;
-const testFile = args['test-file'];
-const origin = args.origin ?? 'human-written';
 const format = args.format ?? 'json';
 
 if (!summaryPath) die(2, 'Missing required --summary <path>');
 if (!pkg) die(2, 'Missing required --package <name>');
-if (!testFile) die(2, 'Missing required --test-file <path>');
-if (!VALID_ORIGINS.has(origin)) die(2, `Invalid --origin: ${origin}. Must be one of: ${[...VALID_ORIGINS].join(', ')}`);
-if (!VALID_FORMATS.has(format)) die(2, `Invalid --format: ${format}. Must be one of: ${[...VALID_FORMATS].join(', ')}`);
+if (!VALID_FORMATS.has(format))
+	die(2, `Invalid --format: ${format}. Must be one of: ${[...VALID_FORMATS].join(', ')}`);
 if (!existsSync(summaryPath)) die(2, `Summary not found: ${summaryPath}`);
 
-const sha = (args.sha ?? execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim());
+const sha = args.sha ?? execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 
 const summary = JSON.parse(await readFile(summaryPath, 'utf8'));
 
@@ -76,7 +70,9 @@ if (!summary.files || summary.files.length === 0) {
 
 // pkg-root = two dirs up from the summary (reports/mutation/summary.json)
 const pkgRoot = path.resolve(path.dirname(summaryPath), '../..');
-const repoRoot = path.resolve(execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim());
+const repoRoot = path.resolve(
+	execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim(),
+);
 const pkgRelToRepo = path.relative(repoRoot, pkgRoot);
 
 const threshold = Number(summary.threshold);
@@ -90,7 +86,6 @@ for (const f of summary.files) {
 	const status = f.thresholdMet ? 'green' : 'red';
 
 	ledger.push({
-		test_file_path: testFile,
 		source_file_path: sourceRel,
 		package: pkg,
 		last_score: f.score,
@@ -98,7 +93,6 @@ for (const f of summary.files) {
 		last_checked_at: timestamp,
 		last_checked_sha: sha,
 		status,
-		origin,
 		attempts: 0,
 		mutants_killed: f.counts.killed,
 		mutants_survived: f.counts.survived,
@@ -112,7 +106,6 @@ for (const f of summary.files) {
 		timestamp,
 		dimensions: {
 			package: pkg,
-			test_file: testFile,
 			source_file: sourceRel,
 			sha,
 			status_after: status,
@@ -121,7 +114,6 @@ for (const f of summary.files) {
 			mutants_survived: f.counts.survived,
 			mutants_no_coverage: f.counts.noCoverage,
 			mutants_timeout: f.counts.timeout,
-			origin,
 		},
 	});
 }

@@ -110,7 +110,7 @@ const MAX_AGE_MS = MAX_AGE_WEEKS * 7 * 24 * 60 * 60 * 1000;
 
 function computeEffectiveStatus(row) {
 	if (row.status === 'new') return 'new';
-	const edited = fileEditedSince(row.last_checked_sha, [row.test_file_path, row.source_file_path]);
+	const edited = fileEditedSince(row.last_checked_sha, [row.source_file_path]);
 	if (edited) return 'stale';
 	if (row.last_checked_at) {
 		const age = NOW - Date.parse(row.last_checked_at);
@@ -129,7 +129,7 @@ annotated.sort((a, b) => {
 	if (pa !== pb) return pa - pb;
 	// tiebreak
 	if (a.effective_status === 'new') {
-		return a.test_file_path.localeCompare(b.test_file_path);
+		return a.source_file_path.localeCompare(b.source_file_path);
 	}
 	// oldest last_checked_at first
 	const ta = a.last_checked_at ? Date.parse(a.last_checked_at) : 0;
@@ -153,13 +153,12 @@ process.stderr.write(
 		`new=${counts.new ?? 0} red=${counts.red ?? 0} stale=${counts.stale ?? 0} green=${counts.green ?? 0}\n`,
 );
 process.stderr.write(
-	`Picked: ${top.test_file_path} → ${top.source_file_path}\n` +
+	`Picked: ${top.source_file_path}\n` +
 		`        priority=${top.effective_status}  ` +
 		`(was ${top.status}, last_checked_at=${top.last_checked_at ?? 'never'})\n`,
 );
 
 const picked = {
-	test_file_path: top.test_file_path,
 	source_file_path: top.source_file_path,
 	package: top.package,
 	prior_status: top.status,

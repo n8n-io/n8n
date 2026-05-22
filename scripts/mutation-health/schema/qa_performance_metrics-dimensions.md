@@ -19,7 +19,6 @@ The table's existing columns are reused:
 | Field | Type | Notes |
 | --- | --- | --- |
 | `package` | string | pnpm workspace package name, e.g. `"n8n-workflow"`. |
-| `test_file` | string | Test file path relative to repo root. |
 | `source_file` | string | Source file path relative to repo root (the file Stryker mutated). |
 | `sha` | string | Git SHA at run time. |
 | `status_after` | string | The ledger status the row transitions to: `"green"` or `"red"`. (`"new"`/`"stale"` are only set by the picker, not by run emission.) |
@@ -28,13 +27,12 @@ The table's existing columns are reused:
 | `mutants_survived` | integer | |
 | `mutants_no_coverage` | integer | |
 | `mutants_timeout` | integer | |
-| `origin` | string | `"ai-generated"` or `"human-written"`. |
 
 ## Optional `dimensions` fields
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `attempts` | integer | AI refinement iterations on this run (Phase 3). Omit for Phase 1 / human-written. |
+| `attempts` | integer | AI refinement iterations on this run (Phase 3). Omit for Phase 1. |
 | `duration_ms` | integer | Wall-clock time of the Stryker invocation, if captured. |
 | `runner` | string | GHA runner label that executed this run. |
 
@@ -47,7 +45,6 @@ The table's existing columns are reused:
   "timestamp": "2026-05-21T20:45:07.263Z",
   "dimensions": {
     "package": "n8n-workflow",
-    "test_file": "packages/workflow/test/cron.test.ts",
     "source_file": "packages/workflow/src/cron.ts",
     "sha": "095239e175",
     "status_after": "green",
@@ -55,8 +52,7 @@ The table's existing columns are reused:
     "mutants_killed": 39,
     "mutants_survived": 2,
     "mutants_no_coverage": 0,
-    "mutants_timeout": 0,
-    "origin": "human-written"
+    "mutants_timeout": 0
   }
 }
 ```
@@ -67,4 +63,4 @@ The QA Data Reconciliation work (2026-05-20) is reducing the `qa_*` table count 
 
 ## Why a dedicated ledger table
 
-The ledger (`qa_mutation_health_ledger`) is **state**, not events. It is upserted, not appended. Its composite primary key (`test_file_path`, `source_file_path`) means events-table aggregates can't substitute — a single state row per pair is required so the worklist picker can read "what is the current status of every known pair" in one scan. That's why it gets its own table while the time-series rides on the existing events table.
+The ledger (`qa_mutation_health_ledger`) is **state**, not events. It is upserted, not appended. The picker needs to read "what is the current status of every known source file" in one scan; an events-table aggregate over per-source latest rows would work but adds query cost to the hottest read path. A separate state table is the standard shape for this — events go to `qa_performance_metrics`, state lives in `qa_mutation_health_ledger`.
