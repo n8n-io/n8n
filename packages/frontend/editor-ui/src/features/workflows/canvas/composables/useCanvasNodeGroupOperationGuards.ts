@@ -1,4 +1,4 @@
-import type { IConnection, IConnections } from 'n8n-workflow';
+import type { IConnection, IConnections, IWorkflowGroup } from 'n8n-workflow';
 import { computed, h } from 'vue';
 import type { NotificationHandle } from 'element-plus';
 import cloneDeep from 'lodash/cloneDeep';
@@ -15,14 +15,10 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useCanvasNodeGroupsStore,
-	type CanvasNodeGroup,
-} from '@/features/workflows/canvas/stores/canvasNodeGroups.store';
 
 type ConnectionChangeAction = 'add' | 'remove';
 type InvalidGroupValidationResult = Extract<GroupValidationResult, { valid: false }>;
-type InvalidAffectedGroup = { group: CanvasNodeGroup; result: InvalidGroupValidationResult };
+type InvalidAffectedGroup = { group: IWorkflowGroup; result: InvalidGroupValidationResult };
 type ExtractableErrorCode = NonNullable<
 	Extract<
 		InvalidGroupValidationResult,
@@ -55,7 +51,6 @@ const FALLBACK_MESSAGE_KEY: BaseTextKey = 'canvas.nodeGroup.connectionChangeBloc
 
 export function useCanvasNodeGroupOperationGuards() {
 	const workflowsStore = useWorkflowsStore();
-	const canvasNodeGroupsStore = useCanvasNodeGroupsStore();
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
@@ -123,10 +118,10 @@ export function useCanvasNodeGroupOperationGuards() {
 		return candidateConnections;
 	}
 
-	function getAffectedNodeGroups(nodeIds: string[]): CanvasNodeGroup[] {
-		const affectedGroups = new Map<string, CanvasNodeGroup>();
+	function getAffectedNodeGroups(nodeIds: string[]): IWorkflowGroup[] {
+		const affectedGroups = new Map<string, IWorkflowGroup>();
 		for (const nodeId of nodeIds) {
-			const group = canvasNodeGroupsStore.getGroupForNode(nodeId);
+			const group = workflowDocumentStore.value.getGroupForNode(nodeId);
 			if (group) {
 				affectedGroups.set(group.id, group);
 			}
@@ -136,22 +131,24 @@ export function useCanvasNodeGroupOperationGuards() {
 	}
 
 	function findInvalidGroup(
-		affectedGroups: CanvasNodeGroup[],
+		affectedGroups: IWorkflowGroup[],
 		connectionsBySourceNode: IConnections,
-		getNodeIdsForGroup: (group: CanvasNodeGroup) => string[] = (group) => group.nodeIds,
-	): { group: CanvasNodeGroup; result: InvalidGroupValidationResult } | undefined {
+		getNodeIdsForGroup: (group: IWorkflowGroup) => string[] = (group) => group.nodeIds,
+	): { group: IWorkflowGroup; result: InvalidGroupValidationResult } | undefined {
 		for (const group of affectedGroups) {
-			const result = isSelectionGroupable(getNodeIdsForGroup(group), connectionsBySourceNode);
+			const result = isSelectionGroupable(getNodeIdsForGroup(group), connectionsBySourceNode, {
+				ignoredNodeGroupIds: [group.id],
+			});
 			if (!result.valid) return { group, result };
 		}
 		return undefined;
 	}
 
 	function getConnectionChangeBlockedMessage(
-		group: CanvasNodeGroup,
+		group: IWorkflowGroup,
 		result: InvalidGroupValidationResult,
 	): string {
-		const groupInterpolation = { group: group.title };
+		const groupInterpolation = { group: group.name };
 
 		if (result.reason === 'non-main-boundary') {
 			return i18n.baseText('canvas.nodeGroup.connectionChangeBlocked.nonMainBoundary', {
@@ -174,7 +171,7 @@ export function useCanvasNodeGroupOperationGuards() {
 	}
 
 	function getConnectionChangeBlockedMessageWithAction(
-		group: CanvasNodeGroup,
+		group: IWorkflowGroup,
 		result: InvalidGroupValidationResult,
 	) {
 		let notification: NotificationHandle | undefined;
@@ -187,7 +184,7 @@ export function useCanvasNodeGroupOperationGuards() {
 				onClick: (event: MouseEvent) => {
 					event.preventDefault();
 					event.stopPropagation();
-					canvasNodeGroupsStore.deleteGroup(group.id);
+					workflowDocumentStore.value.deleteGroup(group.id);
 					notification?.close();
 				},
 			},
@@ -225,7 +222,7 @@ export function useCanvasNodeGroupOperationGuards() {
 		endpointIds,
 		connectionsBySourceNode,
 	}: {
-		failingGroup: CanvasNodeGroup;
+		failingGroup: IWorkflowGroup;
 		endpointIds: string[];
 		connectionsBySourceNode: IConnections;
 	}): string | undefined {
@@ -234,28 +231,29 @@ export function useCanvasNodeGroupOperationGuards() {
 		if (offGroupEndpoints.length !== 1) return undefined;
 
 		const [candidateId] = offGroupEndpoints;
-		if (canvasNodeGroupsStore.getGroupForNode(candidateId)) return undefined;
+		if (workflowDocumentStore.value.getGroupForNode(candidateId)) return undefined;
 
 		const result = isSelectionGroupable(
 			[...failingGroup.nodeIds, candidateId],
 			connectionsBySourceNode,
+			{ ignoredNodeGroupIds: [failingGroup.id] },
 		);
 		if (!result.valid) return undefined;
 
 		return candidateId;
 	}
 
-	function showAutoExtendedToast(group: CanvasNodeGroup, candidateId: string) {
+	function showAutoExtendedToast(group: IWorkflowGroup, candidateId: string) {
 		const candidateName = workflowDocumentStore.value.getNodeById(candidateId)?.name ?? candidateId;
 
 		toast.showToast({
 			title: i18n.baseText('canvas.nodeGroup.autoExtended.title', {
-				interpolate: { group: group.title },
+				interpolate: { group: group.name },
 			}),
 			message: i18n.baseText('canvas.nodeGroup.autoExtended.message', {
 				interpolate: {
 					node: candidateName,
-					group: group.title,
+					group: group.name,
 				},
 			}),
 			type: 'info',
@@ -280,7 +278,7 @@ export function useCanvasNodeGroupOperationGuards() {
 
 		if (candidateId === undefined) return false;
 
-		canvasNodeGroupsStore.addNodesToGroup(invalidAffectedGroup.group.id, [candidateId]);
+		workflowDocumentStore.value.addNodesToGroup(invalidAffectedGroup.group.id, [candidateId]);
 		showAutoExtendedToast(invalidAffectedGroup.group, candidateId);
 
 		return true;
@@ -365,10 +363,10 @@ export function useCanvasNodeGroupOperationGuards() {
 		connectionsToAdd: Array<[IConnection, IConnection]>;
 		connectionsBySourceNode: IConnections;
 	}): boolean {
-		const previousGroup = canvasNodeGroupsStore.getGroupForNode(previousNodeId);
+		const previousGroup = workflowDocumentStore.value.getGroupForNode(previousNodeId);
 		if (!previousGroup) return true;
 
-		const newNodeGroup = canvasNodeGroupsStore.getGroupForNode(newNodeId);
+		const newNodeGroup = workflowDocumentStore.value.getGroupForNode(newNodeId);
 		if (newNodeGroup && newNodeGroup.id !== previousGroup.id) {
 			showConnectionChangeBlockedToast(BLOCKED_TITLE_KEY.add, {
 				group: previousGroup,
@@ -392,7 +390,7 @@ export function useCanvasNodeGroupOperationGuards() {
 		const swappedPreviousGroupNodeIds = uniq(
 			previousGroup.nodeIds.map((nodeId) => (nodeId === previousNodeId ? newNodeId : nodeId)),
 		);
-		const getNodeIdsForGroup = (group: CanvasNodeGroup) =>
+		const getNodeIdsForGroup = (group: IWorkflowGroup) =>
 			group.id === previousGroup.id ? swappedPreviousGroupNodeIds : group.nodeIds;
 
 		const invalidAffectedGroup = findInvalidGroup(

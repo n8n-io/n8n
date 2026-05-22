@@ -138,7 +138,6 @@ import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useCanvasNodeGroupOperationGuards } from '@/features/workflows/canvas/composables/useCanvasNodeGroupOperationGuards';
-import { useCanvasNodeGroupsStore } from '@/features/workflows/canvas/stores/canvasNodeGroups.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/app/types/telemetry';
 import { useRoute, useRouter } from 'vue-router';
@@ -217,7 +216,6 @@ export function useCanvasOperations() {
 		isConnectionReplacementAllowedForNodeGroups,
 		isNodeReplacementAllowedForNodeGroups,
 	} = useCanvasNodeGroupOperationGuards();
-	const canvasNodeGroupsStore = useCanvasNodeGroupsStore();
 
 	const router = useRouter();
 	const route = useRoute();
@@ -685,7 +683,7 @@ export function useCanvasOperations() {
 		newNode: INodeUi,
 		{ trackHistory = false } = {},
 	): boolean {
-		const group = canvasNodeGroupsStore.getGroupForNode(previousNode.id);
+		const group = workflowDocumentStore.value.getGroupForNode(previousNode.id);
 		if (!group) return false;
 
 		const replacement = getNodeConnectionReplacements({
@@ -722,7 +720,7 @@ export function useCanvasOperations() {
 		});
 		if (!isReplacementAllowed) return false;
 
-		canvasNodeGroupsStore.replaceNodeInGroup(group.id, previousNode.id, newNode.id);
+		workflowDocumentStore.value.replaceNodeInGroup(group.id, previousNode.id, newNode.id);
 
 		for (const connection of replacement.connectionsToRemove) {
 			deleteConnection(connection, {
@@ -3271,7 +3269,7 @@ export function useCanvasOperations() {
 			updateNodePosition(newId, { x, y }, { trackHistory });
 		};
 
-		const previousGroup = canvasNodeGroupsStore.getGroupForNode(previousId);
+		const previousGroup = workflowDocumentStore.value.getGroupForNode(previousId);
 		if (previousGroup) {
 			const didReplaceConnections = replaceGroupedNodeConnections(previousNode, newNode, {
 				trackHistory,

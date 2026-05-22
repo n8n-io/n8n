@@ -8,6 +8,7 @@ import type {
 	INodeConnections,
 	WorkflowExecuteMode,
 	Workflow,
+	IWorkflowGroup,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, UserError, TelemetryHelpers } from 'n8n-workflow';
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
@@ -68,10 +69,6 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import {
-	useCanvasNodeGroupsStore,
-	type CanvasNodeGroup,
-} from '@/features/workflows/canvas/stores/canvasNodeGroups.store';
 
 import { useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -2164,12 +2161,11 @@ describe('useCanvasOperations', () => {
 		nodes: TestNode[];
 		lookupNodes?: TestNode[];
 		connections?: IConnections;
-		groups?: CanvasNodeGroup[];
+		groups?: IWorkflowGroup[];
 		nodeTypeDescription?: INodeTypeDescription;
 		mockWorkflowObject?: boolean;
 	}) {
 		const nodeTypesStore = mockedStore(useNodeTypesStore);
-		const canvasNodeGroupsStore = useCanvasNodeGroupsStore();
 		const nodesById = new Map(lookupNodes.map((node) => [node.id, node]));
 		const nodesByName = new Map(lookupNodes.map((node) => [node.name, node]));
 
@@ -2183,7 +2179,8 @@ describe('useCanvasOperations', () => {
 		vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockImplementation(
 			(name) => nodesByName.get(name) ?? null,
 		);
-		vi.spyOn(canvasNodeGroupsStore, 'getGroupForNode').mockImplementation((nodeId) =>
+		vi.spyOn(workflowDocumentStoreInstance, 'allGroups', 'get').mockReturnValue(groups);
+		vi.spyOn(workflowDocumentStoreInstance, 'getGroupForNode').mockImplementation((nodeId) =>
 			groups.find((group) => group.nodeIds.includes(nodeId)),
 		);
 
@@ -2191,7 +2188,7 @@ describe('useCanvasOperations', () => {
 			mockWorkflowObjectAccessors(nodes, connections);
 		}
 
-		return { canvasNodeGroupsStore };
+		return { workflowDocumentStore: workflowDocumentStoreInstance };
 	}
 
 	function expectConnectionAdded(
@@ -2362,8 +2359,8 @@ describe('useCanvasOperations', () => {
 			const nodeB = createGroupedNode('b', 'B');
 			const nodeC = createGroupedNode('c', 'C');
 			const nodeD = createGroupedNode('d', 'D');
-			const group = { id: 'group', nodeIds: [nodeB.id, nodeC.id], title: 'Group 1' };
-			const { canvasNodeGroupsStore } = setupGroupedCanvas({
+			const group = { id: 'group', nodeIds: [nodeB.id, nodeC.id], name: 'Group 1' };
+			const { workflowDocumentStore } = setupGroupedCanvas({
 				nodes: [nodeA, nodeB, nodeC, nodeD],
 				connections: createConnectionsBySource(
 					workflowConnection(nodeA, nodeB),
@@ -2372,7 +2369,7 @@ describe('useCanvasOperations', () => {
 				),
 				groups: [group],
 			});
-			const addNodesToGroupSpy = vi.spyOn(canvasNodeGroupsStore, 'addNodesToGroup');
+			const addNodesToGroupSpy = vi.spyOn(workflowDocumentStore, 'addNodesToGroup');
 
 			const { createConnection } = useCanvasOperations();
 			createConnection(canvasConnection(nodeA, nodeC));
@@ -2393,7 +2390,7 @@ describe('useCanvasOperations', () => {
 			const nodeA = createGroupedNode('a', 'A');
 			const nodeB = createGroupedNode('b', 'B');
 			const nodeC = createGroupedNode('c', 'C');
-			const group = { id: 'group', nodeIds: [nodeA.id, nodeB.id], title: 'Group' };
+			const group = { id: 'group', nodeIds: [nodeA.id, nodeB.id], name: 'Group' };
 			setupGroupedCanvas({
 				nodes: [nodeA, nodeB, nodeC],
 				connections: createConnectionsBySource(
@@ -2414,8 +2411,8 @@ describe('useCanvasOperations', () => {
 			const nodeA = createGroupedNode('a', 'A');
 			const nodeB = createGroupedNode('b', 'B');
 			const nodeC = createGroupedNode('c', 'C');
-			const group = { id: 'group', nodeIds: [nodeA.id, nodeB.id], title: 'Group 1' };
-			const { canvasNodeGroupsStore } = setupGroupedCanvas({
+			const group = { id: 'group', nodeIds: [nodeA.id, nodeB.id], name: 'Group 1' };
+			const { workflowDocumentStore } = setupGroupedCanvas({
 				nodes: [nodeA, nodeB, nodeC],
 				connections: createConnectionsBySource(workflowConnection(nodeA, nodeB)),
 				groups: [group],
@@ -2424,7 +2421,7 @@ describe('useCanvasOperations', () => {
 					NodeConnectionTypes.AiTool,
 				]),
 			});
-			const addNodesToGroupSpy = vi.spyOn(canvasNodeGroupsStore, 'addNodesToGroup');
+			const addNodesToGroupSpy = vi.spyOn(workflowDocumentStore, 'addNodesToGroup');
 
 			const { createConnection } = useCanvasOperations();
 			createConnection(canvasConnection(nodeC, nodeB, { sourceType: NodeConnectionTypes.AiTool }));
@@ -2444,7 +2441,7 @@ describe('useCanvasOperations', () => {
 			const nodeA = createGroupedNode('a', 'A');
 			const nodeB = createGroupedNode('b', 'B');
 			const nodeC = createGroupedNode('c', 'C');
-			const group = { id: 'group', nodeIds: [nodeA.id, nodeB.id, nodeC.id], title: 'Group' };
+			const group = { id: 'group', nodeIds: [nodeA.id, nodeB.id, nodeC.id], name: 'Group' };
 			setupGroupedCanvas({
 				nodes: [nodeA, nodeB, nodeC],
 				connections: createConnectionsBySource(workflowConnection(nodeA, nodeB)),
@@ -2467,9 +2464,9 @@ describe('useCanvasOperations', () => {
 			const nodeB = createGroupedNode('b', 'B');
 			const nodeC = createGroupedNode('c', 'C');
 			const nodeD = createGroupedNode('d', 'D');
-			const groupOne = { id: 'one', nodeIds: [nodeA.id], title: 'Group 1' };
-			const groupTwo = { id: 'two', nodeIds: [nodeB.id, nodeC.id], title: 'Group 2' };
-			const { canvasNodeGroupsStore } = setupGroupedCanvas({
+			const groupOne = { id: 'one', nodeIds: [nodeA.id], name: 'Group 1' };
+			const groupTwo = { id: 'two', nodeIds: [nodeB.id, nodeC.id], name: 'Group 2' };
+			const { workflowDocumentStore } = setupGroupedCanvas({
 				nodes: [nodeA, nodeB, nodeC, nodeD],
 				connections: createConnectionsBySource(
 					workflowConnection(nodeA, nodeB),
@@ -2478,7 +2475,7 @@ describe('useCanvasOperations', () => {
 				),
 				groups: [groupOne, groupTwo],
 			});
-			const addNodesToGroupSpy = vi.spyOn(canvasNodeGroupsStore, 'addNodesToGroup');
+			const addNodesToGroupSpy = vi.spyOn(workflowDocumentStore, 'addNodesToGroup');
 
 			const { createConnection } = useCanvasOperations();
 			createConnection(canvasConnection(nodeA, nodeC));
@@ -2511,7 +2508,7 @@ describe('useCanvasOperations', () => {
 			const nodeA = createGroupedNode('a', 'A');
 			const nodeB = createGroupedNode('b', 'B');
 			const nodeC = createGroupedNode('c', 'C');
-			const group = { id: 'group', nodeIds: [nodeA.id, nodeB.id, nodeC.id], title: 'Group 1' };
+			const group = { id: 'group', nodeIds: [nodeA.id, nodeB.id, nodeC.id], name: 'Group 1' };
 			const connection = workflowConnection(nodeA, nodeC);
 
 			setupGroupedCanvas({
@@ -3356,13 +3353,13 @@ describe('useCanvasOperations', () => {
 			const toast = useToast();
 			const nodeA = createGroupedNode('a', 'A');
 			const nodeB = createGroupedNode('b', 'B');
-			const group = { id: 'group', nodeIds: [nodeA.id, nodeB.id], title: 'Group' };
-			const { canvasNodeGroupsStore } = setupGroupedCanvas({
+			const group = { id: 'group', nodeIds: [nodeA.id, nodeB.id], name: 'Group' };
+			const { workflowDocumentStore } = setupGroupedCanvas({
 				nodes: [nodeA, nodeB],
 				connections: createConnectionsBySource(workflowConnection(nodeA, nodeB)),
 				groups: [group],
 			});
-			const deleteGroupSpy = vi.spyOn(canvasNodeGroupsStore, 'deleteGroup');
+			const deleteGroupSpy = vi.spyOn(workflowDocumentStore, 'deleteGroup');
 
 			const { deleteConnection } = useCanvasOperations();
 			deleteConnection(canvasConnection(nodeA, nodeB));
@@ -3506,9 +3503,9 @@ describe('useCanvasOperations', () => {
 			const nodeB = createGroupedNode('b', 'B');
 			const nodeC = createGroupedNode('c', 'C');
 			const nodeD = createGroupedNode('d', 'D');
-			const group = { id: 'group', nodeIds: [nodeB.id, nodeC.id], title: 'Group 1' };
+			const group = { id: 'group', nodeIds: [nodeB.id, nodeC.id], name: 'Group 1' };
 			const connection = workflowConnection(nodeA, nodeC);
-			const { canvasNodeGroupsStore } = setupGroupedCanvas({
+			const { workflowDocumentStore } = setupGroupedCanvas({
 				nodes: [nodeA, nodeB, nodeC, nodeD],
 				connections: createConnectionsBySource(
 					workflowConnection(nodeA, nodeB),
@@ -3517,7 +3514,7 @@ describe('useCanvasOperations', () => {
 				),
 				groups: [group],
 			});
-			const addNodesToGroupSpy = vi.spyOn(canvasNodeGroupsStore, 'addNodesToGroup');
+			const addNodesToGroupSpy = vi.spyOn(workflowDocumentStore, 'addNodesToGroup');
 
 			const { revertDeleteConnection } = useCanvasOperations();
 			revertDeleteConnection(connection);
@@ -6283,7 +6280,7 @@ describe('useCanvasOperations', () => {
 			const group = {
 				id: 'group',
 				nodeIds: [firstNode.id, selectedStartNode.id, selectedEndNode.id, lastNode.id],
-				title: 'Group 1',
+				name: 'Group 1',
 			};
 
 			beforeEach(() => {
@@ -6517,7 +6514,7 @@ describe('useCanvasOperations', () => {
 				const group = {
 					id: 'group',
 					nodeIds: [sourceNode.id, targetNode.id, nextNode.id],
-					title: 'Group 1',
+					name: 'Group 1',
 				};
 				const connections: IConnections = {
 					[sourceNode.name]: {
@@ -6529,7 +6526,7 @@ describe('useCanvasOperations', () => {
 				};
 				const nodes = [sourceNode, targetNode, replacementNode, nextNode];
 
-				const { canvasNodeGroupsStore } = setupGroupedCanvas({
+				const { workflowDocumentStore } = setupGroupedCanvas({
 					nodes,
 					connections,
 					groups: [group],
@@ -6540,7 +6537,7 @@ describe('useCanvasOperations', () => {
 					mockWorkflowObject: true,
 				});
 				const replaceNodeInGroupSpy = vi
-					.spyOn(canvasNodeGroupsStore, 'replaceNodeInGroup')
+					.spyOn(workflowDocumentStore, 'replaceNodeInGroup')
 					.mockImplementation((id, previousNodeId, newNodeId) => {
 						if (id !== group.id) return;
 						group.nodeIds = group.nodeIds.map((nodeId) =>
@@ -7420,17 +7417,17 @@ describe('useCanvasOperations', () => {
 			const group = {
 				id: 'group',
 				nodeIds: [sourceNode.id, targetNode.id],
-				title: 'Group 1',
+				name: 'Group 1',
 			};
 
-			const { canvasNodeGroupsStore } = setupGroupedCanvas({
+			const { workflowDocumentStore } = setupGroupedCanvas({
 				nodes: [sourceNode, targetNode],
 				lookupNodes: [sourceNode, targetNode, insertedNode],
 				connections: createConnectionsBySource(workflowConnection(sourceNode, targetNode)),
 				groups: [group],
 				nodeTypeDescription,
 			});
-			const addNodesToGroupSpy = vi.spyOn(canvasNodeGroupsStore, 'addNodesToGroup');
+			const addNodesToGroupSpy = vi.spyOn(workflowDocumentStore, 'addNodesToGroup');
 
 			uiStore.lastInteractedWithNode = sourceNode;
 			uiStore.lastInteractedWithNodeConnection = canvasConnection(sourceNode, targetNode);
