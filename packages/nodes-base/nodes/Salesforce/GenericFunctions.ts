@@ -180,10 +180,17 @@ export function sortOptions(options: INodePropertyOptions[]): void {
 }
 
 export function getValue(value: any) {
-	if (moment(value as string).isValid()) {
-		return value;
-	} else if (typeof value === 'string') {
+	if (typeof value === 'string') {
+		// Use strict ISO 8601 parsing so purely numeric strings (e.g. custom ID
+		// fields like "307795203") are not misclassified as date literals by
+		// moment's permissive default parser and left unquoted in the SOQL WHERE
+		// clause.  Only strings that are genuinely ISO 8601 dates bypass quoting.
+		if (moment(value, moment.ISO_8601, true).isValid()) {
+			return value;
+		}
 		return `'${value}'`;
+	} else if (moment(value).isValid()) {
+		return value;
 	} else {
 		return value;
 	}
