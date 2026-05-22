@@ -8,6 +8,8 @@ import {
 	buildOpenAiErrorEnvelope,
 	extractRequestModel,
 	forwardTranslateToChatCompletion,
+	forwardTranslateToSseChunks,
+	isStreamRequested,
 	reverseTranslateOpenAiRequest,
 } from './openai-envelope';
 
@@ -20,6 +22,8 @@ export interface InterceptedTurn {
 	nodeType: string;
 	requestBody: unknown;
 	mockResponse: unknown;
+	/** True when the SDK requested SSE — useful for downstream diagnostics. */
+	stream: boolean;
 }
 
 export interface LlmWireServerOptions {
@@ -88,33 +92,42 @@ export class LlmWireServer {
 		// Express decodes route params; a second decode would mangle literal `%`.
 		const rootName = req.params.root;
 		const model = extractRequestModel(req.body);
+		const stream = isStreamRequested(req.body);
 		const subNode = this.resolveSubNode(rootName);
 
 		if (!this.options.mockHandler) {
-			const envelope = forwardTranslateToChatCompletion(
-				{
-					body: { content: '[eval wire server stub] — no mock handler attached' },
-					headers: { 'content-type': 'application/json' },
-					statusCode: 200,
-				},
-				model,
-			);
-			res.status(200).json(envelope);
+			this.respondWithStub(res, model, stream);
 			return;
 		}
 
 		let synthetic: ReturnType<typeof reverseTranslateOpenAiRequest>;
 		let mockResponse: Awaited<ReturnType<typeof this.options.mockHandler>>;
-		let envelope: Record<string, unknown>;
 		try {
 			synthetic = reverseTranslateOpenAiRequest(req.body);
 			mockResponse = await this.options.mockHandler(synthetic, subNode);
-			envelope = forwardTranslateToChatCompletion(mockResponse, model);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			this.options.logger?.error(`[EvalMock] Wire-server mock generation failed: ${message}`);
-			res.status(500).json(buildOpenAiErrorEnvelope(`Mock generation failed: ${message}`));
+			this.respondWithError(res, message);
 			return;
+		}
+
+		try {
+			if (stream) {
+				this.writeSseEnvelope(res, mockResponse, model);
+			} else {
+				const envelope = forwardTranslateToChatCompletion(mockResponse, model);
+				res.status(200).json(envelope);
+			}
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.options.logger?.error(`[EvalMock] Wire-server response write failed: ${message}`);
+			// At this point headers may be sent; fall through to ledger best-effort.
+			if (!res.headersSent) {
+				this.respondWithError(res, message);
+			} else {
+				res.end();
+			}
 		}
 
 		// Best-effort ledger write — never let it taint the 200 the SDK sees.
@@ -127,14 +140,56 @@ export class LlmWireServer {
 				// Deep-clone so the ledger entry can't be mutated by later code.
 				requestBody: this.cloneRequestBody(req.body),
 				mockResponse: mockResponse?.body,
+				stream,
 			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			this.options.logger?.warn(`[EvalMock] Wire-server ledger write failed: ${message}`);
 		}
-
-		res.status(200).json(envelope);
 	};
+
+	/** Stream the mock response as SSE chunks terminated with `data: [DONE]\n\n`. */
+	private writeSseEnvelope(
+		res: Response,
+		mockResponse: Awaited<ReturnType<EvalLlmMockHandler>>,
+		model: string,
+	): void {
+		res.status(200);
+		res.setHeader('Content-Type', 'text/event-stream');
+		res.setHeader('Cache-Control', 'no-cache, no-transform');
+		res.setHeader('Connection', 'keep-alive');
+		// Forces immediate flush in proxied setups (Nginx etc.) — harmless here.
+		res.setHeader('X-Accel-Buffering', 'no');
+
+		const chunks = forwardTranslateToSseChunks(mockResponse, model);
+		for (const chunk of chunks) {
+			res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+		}
+		// Terminator per OpenAI SSE spec — SDKs stop reading on this sentinel.
+		res.write('data: [DONE]\n\n');
+		res.end();
+	}
+
+	private respondWithStub(res: Response, model: string, stream: boolean): void {
+		const stubBody: Awaited<ReturnType<EvalLlmMockHandler>> = {
+			body: { content: '[eval wire server stub] — no mock handler attached' },
+			headers: { 'content-type': 'application/json' },
+			statusCode: 200,
+		};
+		if (stream) {
+			this.writeSseEnvelope(res, stubBody, model);
+			return;
+		}
+		const envelope = forwardTranslateToChatCompletion(stubBody, model);
+		res.status(200).json(envelope);
+	}
+
+	private respondWithError(res: Response, message: string): void {
+		// Streaming clients still parse a JSON error envelope (the SDK throws an
+		// APIError before iterating chunks). Sending a 500 + JSON keeps both
+		// streaming and non-streaming SDK paths happy — no SSE branch needed.
+		res.status(500).json(buildOpenAiErrorEnvelope(`Mock generation failed: ${message}`));
+	}
 
 	private handleUnroutedChatCompletion = (_req: Request, res: Response): void => {
 		res

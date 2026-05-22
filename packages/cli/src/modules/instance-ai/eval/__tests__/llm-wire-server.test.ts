@@ -388,4 +388,250 @@ describe('LlmWireServer', () => {
 			expect(body.error.message).toContain('/eval/<root>/');
 		});
 	});
+
+	// SSE branch — switches when the inbound body has `stream: true`. The spec
+	// is strict on chunk semantics; the openai SDK throws opaque `BadStream`
+	// errors when the envelope is malformed, so the assertions here mirror
+	// what the SDK validates internally.
+	describe('POST /eval/:root/v1/chat/completions — SSE branch (stream: true)', () => {
+		const subNode = makeSubNode({ name: 'OpenAI Chat Model' });
+
+		async function readSseChunks(url: string, path: string, body: unknown) {
+			const response = await fetch(`${url}${path}`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+				body: JSON.stringify(body),
+			});
+			const text = await response.text();
+			const frames = text
+				.split('\n\n')
+				.map((f) => f.trim())
+				.filter((f) => f.startsWith('data: '))
+				.map((f) => f.slice('data: '.length));
+			return { response, frames };
+		}
+
+		it('returns Content-Type: text/event-stream and a [DONE] terminator', async () => {
+			const mockHandler = jest.fn().mockResolvedValue({
+				body: { content: 'streamed reply' },
+				headers: {},
+				statusCode: 200,
+			}) as unknown as EvalLlmMockHandler;
+			server = new LlmWireServer({
+				mockHandler,
+				rootToSubNode: new Map([['Agent', subNode]]),
+			});
+			const url = await server.start();
+
+			const { response, frames } = await readSseChunks(url, '/eval/Agent/v1/chat/completions', {
+				model: 'gpt-4o',
+				stream: true,
+				messages: [{ role: 'user', content: 'hi' }],
+			});
+
+			expect(response.status).toBe(200);
+			expect(response.headers.get('content-type')).toMatch(/text\/event-stream/);
+			expect(frames[frames.length - 1]).toBe('[DONE]');
+		});
+
+		it('emits chat.completion.chunk frames terminated with a stop finish_reason', async () => {
+			const mockHandler = jest.fn().mockResolvedValue({
+				body: { content: 'hello via SSE' },
+				headers: {},
+				statusCode: 200,
+			}) as unknown as EvalLlmMockHandler;
+			server = new LlmWireServer({
+				mockHandler,
+				rootToSubNode: new Map([['Agent', subNode]]),
+			});
+			const url = await server.start();
+
+			const { frames } = await readSseChunks(url, '/eval/Agent/v1/chat/completions', {
+				model: 'gpt-4o',
+				stream: true,
+				messages: [{ role: 'user', content: 'hi' }],
+			});
+
+			const dataFrames = frames.filter((f) => f !== '[DONE]').map((f) => JSON.parse(f));
+			expect(dataFrames.every((f) => f.object === 'chat.completion.chunk')).toBe(true);
+
+			const ids = new Set(dataFrames.map((f) => f.id));
+			expect(ids.size).toBe(1);
+
+			const contentChunk = dataFrames.find((f) => f.choices[0].delta.content === 'hello via SSE');
+			expect(contentChunk).toBeDefined();
+
+			const terminal = dataFrames[dataFrames.length - 1];
+			expect(terminal.choices[0].finish_reason).toBe('stop');
+		});
+
+		it('streams tool_calls with first-chunk id+name and a terminal tool_calls finish_reason', async () => {
+			const mockHandler = jest.fn().mockResolvedValue({
+				body: {
+					tool_calls: [
+						{ id: 'call_1', function: { name: 'get_weather', arguments: '{"city":"NYC"}' } },
+					],
+				},
+				headers: {},
+				statusCode: 200,
+			}) as unknown as EvalLlmMockHandler;
+			server = new LlmWireServer({
+				mockHandler,
+				rootToSubNode: new Map([['Agent', subNode]]),
+			});
+			const url = await server.start();
+
+			const { frames } = await readSseChunks(url, '/eval/Agent/v1/chat/completions', {
+				model: 'gpt-4o',
+				stream: true,
+				messages: [{ role: 'user', content: 'weather in NYC?' }],
+				tools: [
+					{
+						type: 'function',
+						function: { name: 'get_weather', parameters: { type: 'object' } },
+					},
+				],
+			});
+
+			const dataFrames = frames.filter((f) => f !== '[DONE]').map((f) => JSON.parse(f));
+
+			const firstToolFrame = dataFrames.find(
+				(f) => f.choices[0].delta.tool_calls?.[0]?.id === 'call_1',
+			);
+			expect(firstToolFrame).toBeDefined();
+			expect(firstToolFrame.choices[0].delta.tool_calls[0].function.name).toBe('get_weather');
+
+			const argsFrame = dataFrames.find(
+				(f) => f.choices[0].delta.tool_calls?.[0]?.function?.arguments === '{"city":"NYC"}',
+			);
+			expect(argsFrame).toBeDefined();
+			// Args frame MUST NOT repeat id or name.
+			expect(argsFrame.choices[0].delta.tool_calls[0].id).toBeUndefined();
+			expect(argsFrame.choices[0].delta.tool_calls[0].function.name).toBeUndefined();
+
+			const terminal = dataFrames[dataFrames.length - 1];
+			expect(terminal.choices[0].finish_reason).toBe('tool_calls');
+		});
+
+		it('attributes the streamed turn against the requested root in onIntercept', async () => {
+			const intercepts: InterceptedTurn[] = [];
+			const mockHandler = jest.fn().mockResolvedValue({
+				body: { content: 'streamed' },
+				headers: {},
+				statusCode: 200,
+			}) as unknown as EvalLlmMockHandler;
+			server = new LlmWireServer({
+				mockHandler,
+				rootToSubNode: new Map([['Agent', subNode]]),
+				onIntercept: (t) => intercepts.push(t),
+			});
+			const url = await server.start();
+
+			await readSseChunks(url, '/eval/Agent/v1/chat/completions', {
+				model: 'gpt-4o',
+				stream: true,
+				messages: [],
+			});
+
+			expect(intercepts).toHaveLength(1);
+			expect(intercepts[0].rootName).toBe('Agent');
+			expect(intercepts[0].stream).toBe(true);
+		});
+
+		it('uses the no-handler stub for streaming when no mock handler is attached', async () => {
+			server = new LlmWireServer();
+			const url = await server.start();
+
+			const { response, frames } = await readSseChunks(url, '/eval/Agent/v1/chat/completions', {
+				model: 'gpt-4o',
+				stream: true,
+				messages: [],
+			});
+
+			expect(response.headers.get('content-type')).toMatch(/text\/event-stream/);
+			const dataFrames = frames.filter((f) => f !== '[DONE]').map((f) => JSON.parse(f));
+			const stubFrame = dataFrames.find(
+				(f) =>
+					typeof f.choices[0].delta.content === 'string' &&
+					f.choices[0].delta.content.includes('eval wire server stub'),
+			);
+			expect(stubFrame).toBeDefined();
+		});
+
+		it('returns a JSON error envelope (not SSE) when the mock handler throws on a streaming request', async () => {
+			const mockHandler = jest
+				.fn()
+				.mockRejectedValue(new Error('LLM offline')) as unknown as EvalLlmMockHandler;
+			server = new LlmWireServer({
+				mockHandler,
+				rootToSubNode: new Map([['Agent', subNode]]),
+			});
+			const url = await server.start();
+
+			const response = await fetch(`${url}/eval/Agent/v1/chat/completions`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ model: 'gpt-4o', stream: true, messages: [] }),
+			});
+			// SDK clients on a 500 short-circuit before iterating the stream, so
+			// returning a JSON error envelope here keeps both streaming and
+			// non-streaming code paths happy.
+			expect(response.status).toBe(500);
+			const body = (await response.json()) as { error: { message: string } };
+			expect(body.error.message).toContain('LLM offline');
+		});
+	});
+
+	// Non-streaming tool_calls: the same envelope shape the agent-side SDK
+	// expects when stream:false. SDKs use `finish_reason: 'tool_calls'` to
+	// branch into tool-execution; we must set it whenever tool_calls is present.
+	describe('POST /eval/:root/v1/chat/completions — tool_calls (non-streaming)', () => {
+		const subNode = makeSubNode({ name: 'OpenAI Chat Model' });
+
+		it('emits tool_calls + content:null + finish_reason: tool_calls on the message', async () => {
+			const mockHandler = jest.fn().mockResolvedValue({
+				body: {
+					tool_calls: [{ id: 'call_1', function: { name: 'lookup', arguments: '{"q":"hi"}' } }],
+				},
+				headers: {},
+				statusCode: 200,
+			}) as unknown as EvalLlmMockHandler;
+			server = new LlmWireServer({
+				mockHandler,
+				rootToSubNode: new Map([['Agent', subNode]]),
+			});
+			const url = await server.start();
+
+			const response = await postChatCompletion(url, '/eval/Agent/v1/chat/completions', {
+				model: 'gpt-4o',
+				messages: [{ role: 'user', content: 'lookup hi' }],
+				tools: [{ type: 'function', function: { name: 'lookup', parameters: { type: 'object' } } }],
+			});
+
+			expect(response.status).toBe(200);
+			const body = (await response.json()) as {
+				choices: Array<{
+					message: {
+						role: string;
+						content: string | null;
+						tool_calls: Array<{
+							id: string;
+							type: string;
+							function: { name: string; arguments: string };
+						}>;
+					};
+					finish_reason: string;
+				}>;
+			};
+			const choice = body.choices[0];
+			expect(choice.message.role).toBe('assistant');
+			expect(choice.message.content).toBeNull();
+			expect(choice.message.tool_calls[0]).toMatchObject({
+				id: 'call_1',
+				type: 'function',
+				function: { name: 'lookup', arguments: '{"q":"hi"}' },
+			});
+			expect(choice.finish_reason).toBe('tool_calls');
+		});
+	});
 });

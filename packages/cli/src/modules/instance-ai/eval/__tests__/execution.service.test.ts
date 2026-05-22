@@ -1,6 +1,6 @@
-import { mock } from 'jest-mock-extended';
-import type { User } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
+import { mock } from 'jest-mock-extended';
 import type {
 	INode,
 	IRunExecutionData,
@@ -8,10 +8,11 @@ import type {
 	IWorkflowBase,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 // ---------------------------------------------------------------------------
 // Mocks — must be before the import of the class under test
@@ -96,15 +97,14 @@ jest.mock('n8n-workflow', () => {
 // ---------------------------------------------------------------------------
 
 import { EvalExecutionService } from '../execution.service';
+import { createLlmMockHandler } from '../mock-handler';
 import {
 	assertUnpinCompatibility,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 } from '../workflow-analysis';
-import { createLlmMockHandler } from '../mock-handler';
 import type { MockHints } from '../workflow-analysis';
-import { UserError } from 'n8n-workflow';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -560,6 +560,91 @@ describe('EvalExecutionService', () => {
 				expect(result.nodeResults['Agent'].executionMode).toBe('pinned');
 				// The turn is still recorded against the same entry.
 				expect(result.nodeResults['Agent'].interceptedRequests).toHaveLength(1);
+			});
+
+			// Headline ledger-attribution rule for M3: a single eval run produces
+			// two kinds of traffic — vendor-SDK model turns (attributed to the AI
+			// root via the wire server's URL path) and tool HTTP traffic
+			// (attributed to the tool node via the existing helpers.httpRequest
+			// interceptor in `request-helper-functions.ts:1147`). The two must
+			// land in separate `nodeResults` entries; tools whose HTTP traffic
+			// gets folded into the Agent's ledger would mask real bugs.
+			it('splits the ledger: model turns to the Agent root, tool HTTP to the tool node', async () => {
+				const innerMockHandler = jest.fn().mockResolvedValue({
+					body: { content: 'tool result' },
+					headers: { 'content-type': 'application/json' },
+					statusCode: 200,
+				});
+				createLlmMockHandlerMock.mockReturnValue(innerMockHandler);
+
+				mockProcessRunExecutionData.mockImplementation(async () => {
+					const opts = capturedWireServerOptions.last as {
+						onIntercept?: (turn: unknown) => void;
+					};
+					// Model turn — wire server's onIntercept fires with the root name.
+					opts.onIntercept?.({
+						rootName: 'Agent',
+						url: 'https://api.openai.com/v1/chat/completions',
+						method: 'POST',
+						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						requestBody: { model: 'gpt-4o', messages: [] },
+						mockResponse: {
+							tool_calls: [{ id: 'c1', function: { name: 'getOrder', arguments: '{}' } }],
+						},
+					});
+
+					// Tool HTTP — `evalLlmMockHandler` is invoked from
+					// `request-helper-functions.ts` with the tool node's identity.
+					// `WorkflowExecute` constructor was called with additionalData
+					// in arg 0; grab the wrapped handler from there.
+					const wfExecuteCtor = jest.mocked(
+						(await import('n8n-core')).WorkflowExecute,
+					) as unknown as jest.Mock;
+					const additionalData = wfExecuteCtor.mock.calls[0][0] as {
+						evalLlmMockHandler: (req: unknown, node: unknown) => Promise<unknown>;
+					};
+					await additionalData.evalLlmMockHandler(
+						{ url: 'https://orders.example.com/v1/orders/42', method: 'GET' },
+						{
+							id: 'tool-node',
+							name: 'Get Order Tool',
+							type: 'n8n-nodes-base.httpRequestTool',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					);
+
+					return makeIRun();
+				});
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['Agent'],
+				});
+
+				// Model turn attributed to Agent only.
+				expect(result.nodeResults['Agent']).toBeDefined();
+				expect(result.nodeResults['Agent'].interceptedRequests).toHaveLength(1);
+				expect(result.nodeResults['Agent'].interceptedRequests[0].nodeType).toBe(
+					'@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				);
+
+				// Tool HTTP attributed to the tool node, NOT to the Agent.
+				expect(result.nodeResults['Get Order Tool']).toBeDefined();
+				expect(result.nodeResults['Get Order Tool'].interceptedRequests).toHaveLength(1);
+				expect(result.nodeResults['Get Order Tool'].interceptedRequests[0].url).toBe(
+					'https://orders.example.com/v1/orders/42',
+				);
+				expect(result.nodeResults['Get Order Tool'].interceptedRequests[0].nodeType).toBe(
+					'n8n-nodes-base.httpRequestTool',
+				);
+				expect(result.nodeResults['Get Order Tool'].executionMode).toBe('mocked');
+
+				// Cross-check: neither side's ledger contains the other side's URL.
+				const agentUrls = result.nodeResults['Agent'].interceptedRequests.map((r) => r.url);
+				const toolUrls = result.nodeResults['Get Order Tool'].interceptedRequests.map((r) => r.url);
+				expect(agentUrls).not.toContain('https://orders.example.com/v1/orders/42');
+				expect(toolUrls).not.toContain('https://api.openai.com/v1/chat/completions');
 			});
 
 			it('upgrades a pre-marked "real" entry to "mocked" when a wire-server turn fires', async () => {
