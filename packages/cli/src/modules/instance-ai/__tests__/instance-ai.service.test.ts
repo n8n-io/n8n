@@ -1490,10 +1490,12 @@ type ResolveConfirmationServiceInternals = {
 	resumeSuspendedRun: jest.Mock;
 	dropPendingConfirmation: jest.Mock;
 	pendingConfirmationRepo: { claim: jest.Mock };
+	tryResumeFromOrphan: jest.Mock;
+	finalizeUnresumableOrphan: jest.Mock;
 	publishRunFinish: jest.Mock;
 	saveAgentTreeSnapshot: jest.Mock;
 	dbSnapshotStorage: unknown;
-	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
+	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock; info: jest.Mock };
 };
 
 function createResolveConfirmationService(): ResolveConfirmationServiceInternals {
@@ -1510,10 +1512,17 @@ function createResolveConfirmationService(): ResolveConfirmationServiceInternals
 	service.resumeSuspendedRun = jest.fn(async () => false);
 	service.dropPendingConfirmation = jest.fn(async () => {});
 	service.pendingConfirmationRepo = { claim: jest.fn(async () => undefined) };
+	service.tryResumeFromOrphan = jest.fn(async () => false);
+	service.finalizeUnresumableOrphan = jest.fn();
 	service.publishRunFinish = jest.fn();
 	service.saveAgentTreeSnapshot = jest.fn(async () => {});
 	service.dbSnapshotStorage = {};
-	service.logger = { debug: jest.fn(), warn: jest.fn(), error: jest.fn() };
+	service.logger = {
+		debug: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
+		info: jest.fn(),
+	};
 	return service;
 }
 
@@ -1686,7 +1695,34 @@ describe('InstanceAiService — resolveConfirmation', () => {
 		expect(service.dropPendingConfirmation).toHaveBeenCalledWith('req-1');
 	});
 
-	it('throws a UserError when an orphaned DB row is claimed after a restart', async () => {
+	it('throws a UserError when an inline orphan is reclaimed after a restart (no checkpoint to resume)', async () => {
+		// Inline confirmations were held by an in-process Promise that died
+		// with the previous main; there's nothing to load from the checkpoint
+		// store, so the only honest answer is the terminal UserError.
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.resolvePendingConfirmation.mockReturnValue(false);
+		service.resumeSuspendedRun.mockResolvedValue(false);
+		service.pendingConfirmationRepo.claim.mockResolvedValue({
+			requestId: 'req-1',
+			threadId: 'thread-1',
+			userId: 'user-1',
+			kind: 'inline',
+			runId: 'run-1',
+			messageGroupId: 'group-1',
+		});
+
+		await expect(service.resolveConfirmation('user-1', 'req-1', approval)).rejects.toThrow(
+			/lost when the assistant restarted/,
+		);
+
+		expect(service.tryResumeFromOrphan).not.toHaveBeenCalled();
+		expect(service.finalizeUnresumableOrphan).toHaveBeenCalledWith(
+			expect.objectContaining({ requestId: 'req-1', kind: 'inline' }),
+		);
+	});
+
+	it('falls back to UserError when a suspended orphan lacks the fields needed to resume', async () => {
 		const service = createResolveConfirmationService();
 		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
 		service.runState.resolvePendingConfirmation.mockReturnValue(false);
@@ -1698,26 +1734,68 @@ describe('InstanceAiService — resolveConfirmation', () => {
 			kind: 'suspended',
 			runId: 'run-1',
 			messageGroupId: 'group-1',
+			// no agentRunId / toolCallId / checkpointKey -> can't resume
 		});
 
 		await expect(service.resolveConfirmation('user-1', 'req-1', approval)).rejects.toThrow(
 			/lost when the assistant restarted/,
 		);
 
-		expect(service.pendingConfirmationRepo.claim).toHaveBeenCalledWith('req-1', 'user-1');
-		expect(service.publishRunFinish).toHaveBeenCalledWith(
-			'thread-1',
-			'run-1',
-			'cancelled',
-			'restart_lost_confirmation',
+		expect(service.tryResumeFromOrphan).not.toHaveBeenCalled();
+		expect(service.finalizeUnresumableOrphan).toHaveBeenCalledWith(
+			expect.objectContaining({ requestId: 'req-1', kind: 'suspended' }),
 		);
-		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith(
-			'thread-1',
-			'run-1',
-			service.dbSnapshotStorage,
-			true,
-			'group-1',
+	});
+
+	it('reclaims and resumes a suspended orphan when the checkpoint is still loadable', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.resolvePendingConfirmation.mockReturnValue(false);
+		service.resumeSuspendedRun.mockResolvedValue(false);
+		const orphan = {
+			requestId: 'req-1',
+			threadId: 'thread-1',
+			userId: 'user-1',
+			kind: 'suspended',
+			runId: 'run-1',
+			messageGroupId: 'group-1',
+			toolCallId: 'tool-call-1',
+			checkpointKey: 'agent-run-1',
+		};
+		service.pendingConfirmationRepo.claim.mockResolvedValue(orphan);
+		service.tryResumeFromOrphan.mockResolvedValue(true);
+
+		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
+
+		expect(result).toBe(true);
+		expect(service.tryResumeFromOrphan).toHaveBeenCalledWith(orphan, expect.anything());
+		expect(service.finalizeUnresumableOrphan).not.toHaveBeenCalled();
+	});
+
+	it('falls back to UserError when the resume attempt itself fails', async () => {
+		// e.g. checkpoint expired between claim and load, or env build fails
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.resolvePendingConfirmation.mockReturnValue(false);
+		service.resumeSuspendedRun.mockResolvedValue(false);
+		service.pendingConfirmationRepo.claim.mockResolvedValue({
+			requestId: 'req-1',
+			threadId: 'thread-1',
+			userId: 'user-1',
+			kind: 'suspended',
+			runId: 'run-1',
+			messageGroupId: 'group-1',
+			toolCallId: 'tool-call-1',
+			checkpointKey: 'agent-run-1',
+		});
+		service.tryResumeFromOrphan.mockResolvedValue(false);
+
+		await expect(service.resolveConfirmation('user-1', 'req-1', approval)).rejects.toThrow(
+			/lost when the assistant restarted/,
 		);
+
+		expect(service.tryResumeFromOrphan).toHaveBeenCalled();
+		expect(service.finalizeUnresumableOrphan).toHaveBeenCalled();
 	});
 
 	it('returns false silently when no DB row is claimable for an unknown confirmation', async () => {
@@ -1730,8 +1808,8 @@ describe('InstanceAiService — resolveConfirmation', () => {
 		const result = await service.resolveConfirmation('user-1', 'req-missing', approval);
 
 		expect(result).toBe(false);
-		expect(service.publishRunFinish).not.toHaveBeenCalled();
-		expect(service.saveAgentTreeSnapshot).not.toHaveBeenCalled();
+		expect(service.tryResumeFromOrphan).not.toHaveBeenCalled();
+		expect(service.finalizeUnresumableOrphan).not.toHaveBeenCalled();
 	});
 });
 

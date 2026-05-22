@@ -4025,14 +4025,21 @@ export class InstanceAiService {
 		}
 
 		// Last resort: the in-memory state is gone, but a persisted index row
-		// may still exist from before a process restart. Surface that as a
-		// clear UserError to the client instead of an opaque 404.
-		await this.handleOrphanedConfirmation(requestingUserId, requestId);
-		return false;
+		// may still exist from before a process restart. For `suspended`-kind
+		// rows we try to rebuild the agent from the DB-backed checkpoint and
+		// resume; for `inline`-kind (no checkpoint, just an in-process Promise
+		// that died with the previous process) or any rebuild failure we
+		// publish a terminal `run-finish` and surface a clear UserError so the
+		// client doesn't sit on a stale confirmation card.
+		return await this.resolveOrphanedConfirmation(requestingUserId, requestId, data);
 	}
 
-	private async handleOrphanedConfirmation(userId: string, requestId: string): Promise<void> {
-		let orphan;
+	private async resolveOrphanedConfirmation(
+		userId: string,
+		requestId: string,
+		data: ConfirmationData,
+	): Promise<boolean> {
+		let orphan: Awaited<ReturnType<typeof this.pendingConfirmationRepo.claim>>;
 		try {
 			orphan = await this.pendingConfirmationRepo.claim(requestId, userId);
 		} catch (error: unknown) {
@@ -4040,17 +4047,41 @@ export class InstanceAiService {
 				requestId,
 				error: getErrorMessage(error),
 			});
-			return;
+			return false;
 		}
-		if (!orphan) return;
+		if (!orphan) return false;
 
-		this.logger.warn('Pending confirmation orphaned by a process restart', {
+		this.logger.info('Reclaiming pending confirmation orphaned by a process restart', {
 			requestId,
 			threadId: orphan.threadId,
 			runId: orphan.runId,
 			kind: orphan.kind,
+			hasCheckpoint: Boolean(orphan.checkpointKey),
 		});
 
+		if (orphan.kind === 'suspended' && this.canResumeOrphan(orphan)) {
+			const resumed = await this.tryResumeFromOrphan(orphan, data);
+			if (resumed) return true;
+		}
+
+		this.finalizeUnresumableOrphan(orphan);
+		throw new UserError(
+			'This confirmation was lost when the assistant restarted. Please refresh the page and start a new turn.',
+		);
+	}
+
+	private canResumeOrphan(
+		orphan: NonNullable<Awaited<ReturnType<typeof this.pendingConfirmationRepo.claim>>>,
+	): orphan is typeof orphan & {
+		toolCallId: string;
+		checkpointKey: string;
+	} {
+		return Boolean(orphan.toolCallId && orphan.checkpointKey);
+	}
+
+	private finalizeUnresumableOrphan(
+		orphan: NonNullable<Awaited<ReturnType<typeof this.pendingConfirmationRepo.claim>>>,
+	): void {
 		try {
 			this.publishRunFinish(
 				orphan.threadId,
@@ -4058,7 +4089,7 @@ export class InstanceAiService {
 				'cancelled',
 				'restart_lost_confirmation',
 			);
-			await this.saveAgentTreeSnapshot(
+			void this.saveAgentTreeSnapshot(
 				orphan.threadId,
 				orphan.runId,
 				this.dbSnapshotStorage,
@@ -4067,14 +4098,125 @@ export class InstanceAiService {
 			);
 		} catch (error: unknown) {
 			this.logger.warn('Failed to finalize orphaned confirmation snapshot', {
-				requestId,
+				requestId: orphan.requestId,
 				error: getErrorMessage(error),
 			});
 		}
+	}
 
-		throw new UserError(
-			'This confirmation was lost when the assistant restarted. Please refresh the page and start a new turn.',
-		);
+	/**
+	 * Rebuild the orchestration environment + agent for a checkpoint-backed
+	 * suspended run that survived a process restart, register it as a
+	 * `SuspendedRunState` in the in-memory registry, and hand off to the
+	 * existing `resumeSuspendedRun` path. The original `runId` /
+	 * `messageGroupId` are reused so the frontend's SSE correlation
+	 * (`groupIdByRunId`) keeps working.
+	 */
+	private async tryResumeFromOrphan(
+		orphan: NonNullable<Awaited<ReturnType<typeof this.pendingConfirmationRepo.claim>>> & {
+			toolCallId: string;
+			checkpointKey: string;
+		},
+		data: ConfirmationData,
+	): Promise<boolean> {
+		const user = await this.revalidateActiveUser(orphan.userId);
+		if (!user) {
+			this.logger.warn('Cannot resume orphaned run: user no longer authorized', {
+				requestId: orphan.requestId,
+				userId: orphan.userId,
+			});
+			return false;
+		}
+
+		// Bail early if the checkpoint store doesn't have a usable snapshot —
+		// `load()` throws UserError for expired tombstones and returns
+		// undefined when the row is gone entirely. Either way there's nothing
+		// to resume.
+		try {
+			const state = await this.checkpointStore.load(orphan.checkpointKey);
+			if (!state) {
+				this.logger.warn('Cannot resume orphaned run: checkpoint missing', {
+					requestId: orphan.requestId,
+					checkpointKey: orphan.checkpointKey,
+				});
+				return false;
+			}
+		} catch (error: unknown) {
+			this.logger.warn('Cannot resume orphaned run: checkpoint unavailable', {
+				requestId: orphan.requestId,
+				checkpointKey: orphan.checkpointKey,
+				error: getErrorMessage(error),
+			});
+			return false;
+		}
+
+		const abortController = new AbortController();
+		let environment;
+		try {
+			environment = await this.createExecutionEnvironment(
+				user,
+				orphan.threadId,
+				orphan.runId,
+				abortController.signal,
+				orphan.messageGroupId ?? undefined,
+				this.threadPushRef.get(orphan.threadId),
+			);
+		} catch (error: unknown) {
+			this.logger.warn('Cannot resume orphaned run: failed to build execution environment', {
+				requestId: orphan.requestId,
+				threadId: orphan.threadId,
+				error: getErrorMessage(error),
+			});
+			return false;
+		}
+
+		const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
+		let agent;
+		try {
+			agent = await createInstanceAgent({
+				modelId: environment.modelId,
+				context: environment.context,
+				orchestrationContext: environment.orchestrationContext,
+				mcpServers,
+				mcpManager: this.mcpClientManager,
+				memoryConfig: this.createAgentMemoryOptions(),
+				memory: environment.memory,
+				checkpointStore: this.checkpointStore,
+				timeZone: this.runState.getTimeZone(orphan.threadId) ?? this.defaultTimeZone,
+			});
+		} catch (error: unknown) {
+			this.logger.warn('Cannot resume orphaned run: failed to build agent', {
+				requestId: orphan.requestId,
+				threadId: orphan.threadId,
+				error: getErrorMessage(error),
+			});
+			return false;
+		}
+
+		// Re-seed the in-memory runState so `resumeSuspendedRun` can find this
+		// confirmation by requestId and the rest of the cancel / liveness /
+		// shutdown paths see the run as live. We deliberately do NOT call
+		// `persistPendingConfirmation` again — the DB row was already
+		// consumed by `claim()` above.
+		this.runState.suspendRun(orphan.threadId, {
+			runId: orphan.runId,
+			agentRunId: orphan.checkpointKey,
+			agent,
+			threadId: orphan.threadId,
+			user,
+			toolCallId: orphan.toolCallId,
+			requestId: orphan.requestId,
+			abortController,
+			messageGroupId: orphan.messageGroupId ?? undefined,
+			createdAt: Date.now(),
+			tracing: undefined,
+			modelId: environment.modelId,
+			checkpoint: orphan.checkpointTaskId
+				? { isCheckpointFollowUp: true, checkpointTaskId: orphan.checkpointTaskId }
+				: undefined,
+		});
+
+		return await this.resumeSuspendedRun(orphan.userId, orphan.requestId, data);
 	}
 
 	private async revalidateActiveUser(userId: string): Promise<User | null> {
