@@ -126,8 +126,20 @@ describe('create-workflow-from-code MCP tool', () => {
 	const credentialsService = mockInstance(CredentialsService, {
 		getCredentialsAUserCanUseInAWorkflow: jest.fn().mockResolvedValue([]),
 	});
+	const personalProjectEntity = {
+		id: 'personal-project-1',
+		name: 'Ricardo Espinoza',
+		type: 'personal' as const,
+	};
 	const projectRepository = mockInstance(ProjectRepository, {
-		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue({ id: 'personal-project-1' }),
+		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue(personalProjectEntity),
+		findOneBy: jest.fn().mockImplementation(async ({ id }: { id: string }) => {
+			if (id === 'personal-project-1') return personalProjectEntity;
+			if (id === 'custom-project-id') {
+				return { id: 'custom-project-id', name: 'Marketing', type: 'team' as const };
+			}
+			return null;
+		}),
 	});
 	const workflowFinderService = mockInstance(WorkflowFinderService, {
 		findWorkflowForUser: jest.fn().mockResolvedValue(null),
@@ -262,13 +274,13 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(createWorkflowMock.mock.calls[0][1].description).toBeUndefined();
 		});
 
-		test('passes undefined projectId to service when not provided', async () => {
+		test('resolves the personal project id and passes it to the service when projectId is not provided', async () => {
 			await callHandler({ code: 'const wf = ...' });
 
 			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
 				user,
 				expect.any(WorkflowEntity),
-				{ projectId: undefined, source: 'n8n-mcp' },
+				{ projectId: 'personal-project-1', source: 'n8n-mcp' },
 			);
 		});
 
@@ -280,6 +292,70 @@ describe('create-workflow-from-code MCP tool', () => {
 				expect.any(WorkflowEntity),
 				{ projectId: 'custom-project-id', source: 'n8n-mcp' },
 			);
+		});
+
+		test('reports targetProject as the personal project when projectId is omitted', async () => {
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			expect(response.targetProject).toEqual({
+				id: 'personal-project-1',
+				name: 'Ricardo Espinoza',
+				type: 'personal',
+			});
+		});
+
+		test('reports targetProject as the requested project when projectId is provided', async () => {
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'custom-project-id',
+			});
+
+			const response = parseResult(result);
+			expect(response.targetProject).toEqual({
+				id: 'custom-project-id',
+				name: 'Marketing',
+				type: 'team',
+			});
+		});
+
+		test('returns a clear error when the provided projectId does not exist', async () => {
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'missing-project-id',
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toContain('missing-project-id');
+			expect(response.error).toContain('search_projects');
+			expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
+		});
+
+		test('includes targetProject in recovery output when post-save errors but workflow persists', async () => {
+			createWorkflowMock.mockImplementation(async (_user, workflow: WorkflowEntity) => {
+				workflow.id = 'wf-recovery-1';
+				throw new Error('Post-save hook failed');
+			});
+			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValueOnce({
+				id: 'wf-recovery-1',
+				name: 'Recovered',
+				nodes: mockNodes,
+			});
+
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'custom-project-id',
+			});
+
+			const response = parseResult(result);
+			expect(response.workflowId).toBe('wf-recovery-1');
+			expect(response.targetProject).toEqual({
+				id: 'custom-project-id',
+				name: 'Marketing',
+				type: 'team',
+			});
+			expect(response.note).toContain('post-save operation failed');
 		});
 
 		test('returns error when service throws permission error', async () => {
