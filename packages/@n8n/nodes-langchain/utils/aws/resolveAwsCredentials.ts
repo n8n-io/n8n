@@ -8,7 +8,7 @@ import type {
 	AWSRegion,
 } from 'n8n-nodes-base/dist/credentials/common/aws/types';
 import { getSystemCredentials } from 'n8n-nodes-base/dist/credentials/common/aws/system-credentials-utils';
-import { ApplicationError, type ISupplyDataFunctions } from 'n8n-workflow';
+import { UserError, type ISupplyDataFunctions } from 'n8n-workflow';
 
 export type ResolvedAwsCredentials = {
 	region: AWSRegion;
@@ -17,8 +17,9 @@ export type ResolvedAwsCredentials = {
 
 export async function resolveAwsCredentials(
 	context: ISupplyDataFunctions,
+	itemIndex = 0,
 ): Promise<ResolvedAwsCredentials> {
-	const authentication = context.getNodeParameter('authentication', 0, 'iam') as
+	const authentication = context.getNodeParameter('authentication', itemIndex, 'iam') as
 		| 'iam'
 		| 'assumeRole';
 
@@ -37,13 +38,13 @@ export async function resolveAwsCredentials(
 	const creds = (await context.getCredentials('awsAssumeRole')) as AwsAssumeRoleCredentialsType;
 
 	if (!creds.roleArn || creds.roleArn.trim() === '') {
-		throw new ApplicationError('Role ARN is required when assuming a role.');
+		throw new UserError('Role ARN is required when assuming a role.');
 	}
 	if (!creds.externalId || creds.externalId.trim() === '') {
-		throw new ApplicationError('External ID is required when assuming a role.');
+		throw new UserError('External ID is required when assuming a role.');
 	}
 	if (!creds.roleSessionName || creds.roleSessionName.trim() === '') {
-		throw new ApplicationError('Role Session Name is required when assuming a role.');
+		throw new UserError('Role Session Name is required when assuming a role.');
 	}
 
 	let masterCredentials: AwsCredentialIdentity | AwsCredentialIdentityProvider;
@@ -51,7 +52,7 @@ export async function resolveAwsCredentials(
 		masterCredentials = async () => {
 			const sys = await getSystemCredentials();
 			if (!sys) {
-				throw new ApplicationError(
+				throw new UserError(
 					'System AWS credentials are required for role assumption. Please ensure AWS credentials are available via environment variables, instance metadata, or container role.',
 				);
 			}
@@ -63,14 +64,10 @@ export async function resolveAwsCredentials(
 		};
 	} else {
 		if (!creds.stsAccessKeyId || creds.stsAccessKeyId.trim() === '') {
-			throw new ApplicationError(
-				'STS Access Key ID is required when not using system credentials.',
-			);
+			throw new UserError('STS Access Key ID is required when not using system credentials.');
 		}
 		if (!creds.stsSecretAccessKey || creds.stsSecretAccessKey.trim() === '') {
-			throw new ApplicationError(
-				'STS Secret Access Key is required when not using system credentials.',
-			);
+			throw new UserError('STS Secret Access Key is required when not using system credentials.');
 		}
 		masterCredentials = {
 			accessKeyId: creds.stsAccessKeyId.trim(),

@@ -1,4 +1,4 @@
-import type { ISupplyDataFunctions, INode } from 'n8n-workflow';
+import { UserError, type ISupplyDataFunctions, type INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 // Mock the SDK provider factory. Each call returns a function identity we can inspect.
@@ -111,6 +111,20 @@ describe('resolveAwsCredentials — IAM path', () => {
 			secretAccessKey: 'SECRET2',
 		});
 	});
+
+	it('reads authentication from the supplied item index', async () => {
+		const context = makeContext({
+			authentication: 'iam',
+			awsCredential: {
+				region: 'us-east-1',
+				accessKeyId: 'AKIATEST',
+				secretAccessKey: 'SECRET',
+				temporaryCredentials: false,
+			},
+		});
+		await resolveAwsCredentials(context, 3);
+		expect(context.getNodeParameter).toHaveBeenCalledWith('authentication', 3, 'iam');
+	});
 });
 
 describe('resolveAwsCredentials — AssumeRole path', () => {
@@ -167,6 +181,7 @@ describe('resolveAwsCredentials — AssumeRole validation', () => {
 			authentication: 'assumeRole',
 			awsAssumeRoleCredential: { ...baseAssumeRoleCreds, roleArn: '' },
 		});
+		await expect(resolveAwsCredentials(context)).rejects.toThrow(UserError);
 		await expect(resolveAwsCredentials(context)).rejects.toThrow(
 			'Role ARN is required when assuming a role.',
 		);
@@ -177,6 +192,7 @@ describe('resolveAwsCredentials — AssumeRole validation', () => {
 			authentication: 'assumeRole',
 			awsAssumeRoleCredential: { ...baseAssumeRoleCreds, externalId: '' },
 		});
+		await expect(resolveAwsCredentials(context)).rejects.toThrow(UserError);
 		await expect(resolveAwsCredentials(context)).rejects.toThrow(
 			'External ID is required when assuming a role.',
 		);
@@ -187,6 +203,7 @@ describe('resolveAwsCredentials — AssumeRole validation', () => {
 			authentication: 'assumeRole',
 			awsAssumeRoleCredential: { ...baseAssumeRoleCreds, roleSessionName: '' },
 		});
+		await expect(resolveAwsCredentials(context)).rejects.toThrow(UserError);
 		await expect(resolveAwsCredentials(context)).rejects.toThrow(
 			'Role Session Name is required when assuming a role.',
 		);

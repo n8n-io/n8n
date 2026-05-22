@@ -969,7 +969,7 @@
     "ssh2-sftp-client": "12.1.0",
     "tmp-promise": "3.0.3",
     "ts-ics": "1.2.2",
-    "undici": "^6.21.0",
+    "undici": "^6.24.0",
     "uuid": "catalog:",
     "vm2": "catalog:",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",

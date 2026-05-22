@@ -7,6 +7,7 @@ import {
 	type IDataObject,
 	type IHttpRequestOptions,
 	type IRequestOptions,
+	UserError,
 } from 'n8n-workflow';
 import { parseString } from 'xml2js';
 import type { Request } from 'aws4';
@@ -245,13 +246,13 @@ export async function assumeRole(
 	sessionToken: string;
 }> {
 	if (!credentials.roleArn || credentials.roleArn.trim() === '') {
-		throw new ApplicationError('Role ARN is required when assuming a role.');
+		throw new UserError('Role ARN is required when assuming a role.');
 	}
 	if (!credentials.externalId || credentials.externalId.trim() === '') {
-		throw new ApplicationError('External ID is required when assuming a role.');
+		throw new UserError('External ID is required when assuming a role.');
 	}
 	if (!credentials.roleSessionName || credentials.roleSessionName.trim() === '') {
-		throw new ApplicationError('Role Session Name is required when assuming a role.');
+		throw new UserError('Role Session Name is required when assuming a role.');
 	}
 
 	let stsCallCredentials: { accessKeyId: string; secretAccessKey: string; sessionToken?: string };
@@ -330,13 +331,13 @@ export async function assumeRole(
 
 	const proxyUrl = getProxyForUrl(stsEndpoint);
 	const dispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
-	const response = await fetch(stsEndpoint, {
+	const requestInit: RequestInit & { dispatcher?: unknown } = {
 		method: 'POST',
 		headers: signOpts.headers as Record<string, string>,
 		body: bodyContent,
-		// @ts-expect-error undici dispatcher option is not in standard fetch types
-		dispatcher,
-	});
+		...(dispatcher ? { dispatcher } : {}),
+	};
+	const response = await fetch(stsEndpoint, requestInit);
 
 	if (!response.ok) {
 		const errorText = await response.text();

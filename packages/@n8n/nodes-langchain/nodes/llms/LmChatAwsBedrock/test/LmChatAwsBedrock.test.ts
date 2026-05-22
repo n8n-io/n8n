@@ -210,6 +210,19 @@ describe('LmChatAwsBedrock', () => {
 				expect(lastConfig?.region).toBe('us-east-1');
 			});
 
+			it('passes the supply item index to resolveAwsCredentials', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'anthropic.claude-3-sonnet-20240229-v1:0';
+					if (paramName === 'options') return {};
+					return undefined;
+				});
+
+				await node.supplyData.call(ctx, 4);
+
+				expect(mockedResolveAwsCredentials).toHaveBeenCalledWith(ctx, 4);
+			});
+
 			it('wires the concrete Bedrock endpoint into getNodeProxyAgent', async () => {
 				const ctx = setupMockContext();
 				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {

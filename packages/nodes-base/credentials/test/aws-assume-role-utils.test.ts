@@ -1,5 +1,6 @@
 import { assumeRole } from '@credentials/common/aws/utils';
 import type { AwsAssumeRoleCredentialsType } from '@credentials/common/aws/types';
+import { UserError } from 'n8n-workflow';
 
 function baseCredentials(
 	overrides: Partial<AwsAssumeRoleCredentialsType> = {},
@@ -20,11 +21,17 @@ function baseCredentials(
 describe('assumeRole() — centralized validation', () => {
 	it('throws when roleArn is missing', async () => {
 		await expect(assumeRole(baseCredentials({ roleArn: '' }), 'us-east-1')).rejects.toThrow(
+			UserError,
+		);
+		await expect(assumeRole(baseCredentials({ roleArn: '' }), 'us-east-1')).rejects.toThrow(
 			'Role ARN is required when assuming a role.',
 		);
 	});
 
 	it('throws when roleArn is whitespace-only', async () => {
+		await expect(assumeRole(baseCredentials({ roleArn: '   ' }), 'us-east-1')).rejects.toThrow(
+			UserError,
+		);
 		await expect(assumeRole(baseCredentials({ roleArn: '   ' }), 'us-east-1')).rejects.toThrow(
 			'Role ARN is required when assuming a role.',
 		);
@@ -32,11 +39,17 @@ describe('assumeRole() — centralized validation', () => {
 
 	it('throws when externalId is missing', async () => {
 		await expect(assumeRole(baseCredentials({ externalId: '' }), 'us-east-1')).rejects.toThrow(
+			UserError,
+		);
+		await expect(assumeRole(baseCredentials({ externalId: '' }), 'us-east-1')).rejects.toThrow(
 			'External ID is required when assuming a role.',
 		);
 	});
 
 	it('throws when roleSessionName is missing', async () => {
+		await expect(assumeRole(baseCredentials({ roleSessionName: '' }), 'us-east-1')).rejects.toThrow(
+			UserError,
+		);
 		await expect(assumeRole(baseCredentials({ roleSessionName: '' }), 'us-east-1')).rejects.toThrow(
 			'Role Session Name is required when assuming a role.',
 		);

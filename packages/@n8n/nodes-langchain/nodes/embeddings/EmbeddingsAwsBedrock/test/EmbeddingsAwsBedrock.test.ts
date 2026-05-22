@@ -80,6 +80,19 @@ describe('EmbeddingsAwsBedrock', () => {
 		expect(lastConfig?.region).toBe('us-east-1');
 	});
 
+	it('passes the supply item index to resolveAwsCredentials', async () => {
+		mockedResolveAwsCredentials.mockResolvedValue({
+			region: 'us-east-1',
+			credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
+		});
+		const node = new EmbeddingsAwsBedrock();
+		const ctx = mockContext('amazon.titan-embed-text-v1');
+
+		await node.supplyData.call(ctx, 3);
+
+		expect(mockedResolveAwsCredentials).toHaveBeenCalledWith(ctx, 3);
+	});
+
 	it('calls getNodeProxyAgent with the concrete Bedrock endpoint URL', async () => {
 		mockedGetNodeProxyAgent.mockReturnValue(undefined);
 		mockedResolveAwsCredentials.mockResolvedValue({

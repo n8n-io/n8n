@@ -106,7 +106,7 @@ export class EmbeddingsAwsBedrock implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const { region, credentials } = await resolveAwsCredentials(this);
+		const { region, credentials } = await resolveAwsCredentials(this, itemIndex);
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
 		const bedrockEndpoint = `https://bedrock-runtime.${region}.amazonaws.com`;
