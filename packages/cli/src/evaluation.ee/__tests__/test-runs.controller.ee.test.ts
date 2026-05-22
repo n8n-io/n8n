@@ -1,4 +1,3 @@
-import type { Logger } from '@n8n/backend-common';
 import type { TestCaseExecutionRepository, TestRun, TestRunRepository, User } from '@n8n/db';
 import type express from 'express';
 
@@ -7,7 +6,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { TestRunsController } from '@/evaluation.ee/test-runs.controller.ee';
 import type { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
-import type { PostHogClient } from '@/posthog';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -20,8 +18,6 @@ describe('TestRunsController', () => {
 	let mockTestCaseExecutionRepository: jest.Mocked<TestCaseExecutionRepository>;
 	let mockTestRunnerService: jest.Mocked<TestRunnerService>;
 	let mockTelemetry: jest.Mocked<Telemetry>;
-	let mockPostHogClient: jest.Mocked<PostHogClient>;
-	let mockLogger: jest.Mocked<Logger>;
 	let mockUser: User;
 	let mockWorkflowId: string;
 	let mockTestRunId: string;
@@ -61,25 +57,12 @@ describe('TestRunsController', () => {
 			track: jest.fn(),
 		} as unknown as jest.Mocked<Telemetry>;
 
-		mockPostHogClient = {
-			getFeatureFlags: jest.fn().mockResolvedValue({}),
-		} as unknown as jest.Mocked<PostHogClient>;
-
-		mockLogger = {
-			warn: jest.fn(),
-			debug: jest.fn(),
-			error: jest.fn(),
-			info: jest.fn(),
-		} as unknown as jest.Mocked<Logger>;
-
 		testRunsController = new TestRunsController(
 			mockTestRunRepository,
 			mockWorkflowFinderService,
 			mockTestCaseExecutionRepository,
 			mockTestRunnerService,
 			mockTelemetry,
-			mockPostHogClient,
-			mockLogger,
 		);
 
 		mockUser = { id: 'user123', createdAt: new Date('2024-01-01T00:00:00Z') } as User;
@@ -278,70 +261,23 @@ describe('TestRunsController', () => {
 			return res;
 		};
 
-		it('flag-on user with concurrency=5 → service called with concurrency=5 and flagEnabledForUser=true', async () => {
-			mockPostHogClient.getFeatureFlags.mockResolvedValue({ '080_eval_parallel_execution': true });
-
+		it('forwards the requested concurrency to the service unchanged', async () => {
 			await testRunsController.create(
 				buildCreateRequest(),
 				mockResponse() as any,
 				{ concurrency: 5 } as any,
 			);
 
-			expect(mockPostHogClient.getFeatureFlags).toHaveBeenCalledWith(mockUser);
-			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(
-				mockUser,
-				mockWorkflowId,
-				5,
-				true,
-			);
+			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(mockUser, mockWorkflowId, 5);
 		});
 
-		it('flag-off user with concurrency=5 → service called with concurrency=1 and flagEnabledForUser=false (cohort wall)', async () => {
-			mockPostHogClient.getFeatureFlags.mockResolvedValue({});
-
-			await testRunsController.create(
-				buildCreateRequest(),
-				mockResponse() as any,
-				{ concurrency: 5 } as any,
-			);
-
-			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(
-				mockUser,
-				mockWorkflowId,
-				1,
-				false,
-			);
-		});
-
-		it('flag-on user with no concurrency body → service called with concurrency=1', async () => {
-			mockPostHogClient.getFeatureFlags.mockResolvedValue({ '080_eval_parallel_execution': true });
-
+		it('omitted concurrency body → service called with concurrency=1 (sequential default)', async () => {
 			await testRunsController.create(buildCreateRequest(), mockResponse() as any, {} as any);
 
-			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(
-				mockUser,
-				mockWorkflowId,
-				1,
-				true,
-			);
+			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(mockUser, mockWorkflowId, 1);
 		});
 
-		it('flag-off user with no concurrency body → service called with concurrency=1', async () => {
-			mockPostHogClient.getFeatureFlags.mockResolvedValue({});
-
-			await testRunsController.create(buildCreateRequest(), mockResponse() as any, {} as any);
-
-			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(
-				mockUser,
-				mockWorkflowId,
-				1,
-				false,
-			);
-		});
-
-		it('always returns 202 success with the new testRunId regardless of flag state (no flag-id leak)', async () => {
-			mockPostHogClient.getFeatureFlags.mockResolvedValue({});
-
+		it('returns 202 with the new testRunId', async () => {
 			const res = mockResponse();
 			await testRunsController.create(buildCreateRequest(), res as any, { concurrency: 7 } as any);
 
@@ -351,37 +287,6 @@ describe('TestRunsController', () => {
 			// fire-and-forget create returned before `createTestRun` had
 			// committed and the FE refetch picked up no new row.
 			expect(res.json).toHaveBeenCalledWith({ success: true, testRunId: 'testrun123' });
-		});
-
-		it('resolves the feature flag exactly once per request', async () => {
-			mockPostHogClient.getFeatureFlags.mockResolvedValue({ '080_eval_parallel_execution': true });
-
-			await testRunsController.create(
-				buildCreateRequest(),
-				mockResponse() as any,
-				{ concurrency: 3 } as any,
-			);
-
-			expect(mockPostHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
-		});
-
-		it('fails open to sequential when PostHog throws (rollout gate is non-critical)', async () => {
-			mockPostHogClient.getFeatureFlags.mockRejectedValue(new Error('posthog timeout'));
-
-			const res = mockResponse();
-			await testRunsController.create(buildCreateRequest(), res as any, { concurrency: 5 } as any);
-
-			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(
-				mockUser,
-				mockWorkflowId,
-				1,
-				false,
-			);
-			expect(res.status).toHaveBeenCalledWith(202);
-			expect(mockLogger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('Failed to resolve eval parallel-execution flag'),
-				expect.any(Object),
-			);
 		});
 	});
 });

@@ -27,10 +27,12 @@ import { N8nSuggestedActions } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { useWorkflowEvaluationState } from '@/features/ai/evaluation.ee/composables/useWorkflowEvaluationState';
 
 const i18n = useI18n();
 const router = useRouter();
 const evaluationStore = useEvaluationStore();
+const evaluationState = useWorkflowEvaluationState();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsCache = useWorkflowSettingsCache();
 const uiStore = useUIStore();
@@ -53,7 +55,7 @@ const hasAINode = computed(() => {
 });
 
 const hasEvaluationSetOutputsNode = computed((): boolean => {
-	return evaluationStore.evaluationSetOutputsNodeExist;
+	return evaluationState.evaluationSetOutputsNodeExist.value;
 });
 
 const hasErrorWorkflow = computed(() => {

@@ -41,7 +41,7 @@ function slugs(filter?: string, exclude?: string): string[] {
 }
 
 describe('loadWorkflowTestCasesWithFiles', () => {
-	it('returns every .json slug when no filter or exclude is given', () => {
+	it('returns every .json slug from workflows/ when no filter or exclude is given', () => {
 		expect(slugs()).toEqual([
 			'contact-form-automation',
 			'cross-team-linear-report',

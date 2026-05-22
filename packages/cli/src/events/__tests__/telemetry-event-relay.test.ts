@@ -25,6 +25,7 @@ import {
 } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
+import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { TelemetryEventRelay, getSemanticVersioning } from '@/events/relays/telemetry.event-relay';
@@ -111,6 +112,7 @@ describe('TelemetryEventRelay', () => {
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
+	const dynamicCredentialsProxy = mock<DynamicCredentialsProxy>();
 	const eventService = new EventService();
 
 	let telemetryEventRelay: TelemetryEventRelay;
@@ -129,6 +131,7 @@ describe('TelemetryEventRelay', () => {
 			sharedWorkflowRepository,
 			projectRelationRepository,
 			credentialsRepository,
+			dynamicCredentialsProxy,
 		);
 
 		await telemetryEventRelay.init();
@@ -155,6 +158,7 @@ describe('TelemetryEventRelay', () => {
 				sharedWorkflowRepository,
 				projectRelationRepository,
 				credentialsRepository,
+				dynamicCredentialsProxy,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = jest.spyOn(telemetryEventRelay, 'setupListeners');
@@ -180,6 +184,7 @@ describe('TelemetryEventRelay', () => {
 				sharedWorkflowRepository,
 				projectRelationRepository,
 				credentialsRepository,
+				dynamicCredentialsProxy,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = jest.spyOn(telemetryEventRelay, 'setupListeners');
@@ -1458,6 +1463,44 @@ describe('TelemetryEventRelay', () => {
 				redaction_policy: undefined,
 				source: 'ui',
 			});
+		});
+
+		it('should emit the system resolver id when credentialResolverId is cleared', async () => {
+			dynamicCredentialsProxy.getSystemResolverId.mockReturnValue('system-resolver');
+
+			const event: RelayEventMap['workflow-saved'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					settings: { credentialResolverId: undefined, redactionPolicy: undefined },
+				}),
+				publicApi: false,
+				settingsChanged: {
+					credentialResolverId: {
+						from: 'resolver-123',
+						to: null,
+					},
+				},
+			};
+
+			eventService.emit('workflow-saved', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User saved workflow',
+				expect.objectContaining({
+					credential_resolver_id: 'system-resolver',
+				}),
+			);
 		});
 
 		it('should track redaction policy when it changes', async () => {

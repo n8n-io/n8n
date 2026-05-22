@@ -6,9 +6,10 @@ import type {
 	ModelConfig,
 	ToolDescriptor,
 	JSONObject,
+	RuntimeSkill,
+	Agent as RuntimeAgent,
 } from '@n8n/agents';
-import { Agent, Memory, Tool, wrapToolForApproval } from '@n8n/agents';
-import { z } from 'zod';
+import { wrapToolForApproval } from '@n8n/agents/tool';
 import type {
 	AgentSkill,
 	AgentJsonConfig,
@@ -31,26 +32,6 @@ export interface ToolExecutor {
 
 /** Factory function that reconstructs a BuiltMemory backend from serialized params. */
 export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Promise<BuiltMemory>;
-
-const DEFAULT_WORKING_MEMORY_TEMPLATE = `# Thread memory
-- User facts:
-- User preferences/instructions:
-- Current goal/task:
-- Current state:
-- Key active items:
-- Decisions made:
-- Open follow-ups:
-- Resolved or superseded:`;
-
-const DEFAULT_WORKING_MEMORY_INSTRUCTION = [
-	'Thread working memory is maintained automatically after turns by an out-of-band observer.',
-	'Thread working memory applies only to this same session/thread.',
-	'Do not claim it is available in a different session, new thread, or cross-thread profile unless the product explicitly provides that context.',
-	'Use it silently as private read-only context for this session.',
-	'Treat working memory as internal context; do not reveal, quote, append, or reproduce the raw working-memory document in user-visible replies.',
-	'If the user asks what you remember, answer conversationally from relevant memory instead of dumping the document.',
-	'Do not try to edit, summarize, refresh, or maintain working memory directly.',
-].join(' ');
 
 export interface BuildFromJsonOptions {
 	/** Executes custom tool handlers inside isolates. */
@@ -75,25 +56,15 @@ export async function buildFromJson(
 	config: AgentJsonConfig,
 	toolDescriptors: Record<string, ToolDescriptor>,
 	options: BuildFromJsonOptions,
-): Promise<Agent> {
+): Promise<RuntimeAgent> {
+	const { Agent } = await import('@n8n/agents');
 	const agent = new Agent(config.name);
 
-	// Derive the provider prefix for credential field remapping.
-	const slashIdx = config.model.indexOf('/');
-	const providerPrefix = slashIdx !== -1 ? config.model.slice(0, slashIdx) : '';
-
-	// Resolve credentials upfront and embed them directly in the model config
-	// object so createModel() receives the full set of fields it needs.
-	if (config.credential) {
-		const raw = await options.credentialProvider.resolve(config.credential);
-		const mapped = mapCredentialForProvider(providerPrefix, raw);
-		agent.model({ id: config.model, ...mapped } as ModelConfig);
-	} else {
-		agent.model(config.model);
-	}
+	const resolvedModelConfig = await resolveModelConfig(config, options.credentialProvider);
+	agent.model(resolvedModelConfig);
 
 	const configuredSkills = getConfiguredSkills(config.skills ?? [], options.skills ?? {});
-	agent.instructions(withSkillCatalog(config.instructions, configuredSkills));
+	agent.instructions(config.instructions);
 
 	// Tools
 	if (config.tools) {
@@ -104,9 +75,7 @@ export async function buildFromJson(
 			}
 		}
 	}
-	if (configuredSkills.length > 0) {
-		agent.tool(createLoadSkillTool(configuredSkills));
-	}
+	agent.skills(configuredSkills);
 
 	// Provider tools
 	if (config.providerTools) {
@@ -118,7 +87,12 @@ export async function buildFromJson(
 
 	// Memory
 	if (config.memory?.enabled) {
-		await applyMemoryFromConfig(agent, config.memory, options.memoryFactory);
+		await applyMemoryFromConfig(
+			agent,
+			config.memory,
+			options.memoryFactory,
+			options.credentialProvider,
+		);
 	}
 
 	// Config options
@@ -135,84 +109,27 @@ export async function buildFromJson(
 	return agent;
 }
 
-type ConfiguredSkill = { id: string; skill: AgentSkill };
-
 function getConfiguredSkills(
 	refs: AgentJsonSkillConfig[],
 	skills: Record<string, AgentSkill>,
-): ConfiguredSkill[] {
+): RuntimeSkill[] {
 	const seen = new Set<string>();
-	const configured: ConfiguredSkill[] = [];
+	const configured: RuntimeSkill[] = [];
 
 	for (const ref of refs) {
 		if (seen.has(ref.id)) continue;
 		seen.add(ref.id);
 		const skill = skills[ref.id];
 		if (!skill) throw new Error(`Skill "${ref.id}" not found in stored skill bodies`);
-		configured.push({ id: ref.id, skill });
+		configured.push({
+			id: ref.id,
+			name: skill.name,
+			description: skill.description,
+			instructions: skill.instructions,
+		});
 	}
 
 	return configured;
-}
-
-function withSkillCatalog(instructions: string, skills: ConfiguredSkill[]): string {
-	if (skills.length === 0) return instructions;
-
-	const catalog = formatSkillCatalog(skills);
-	const baseInstructions = instructions.trimEnd();
-
-	return `Skill loading protocol:
-Skills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.
-
-Available skills:
-${catalog}
-
-When deciding whether to load a skill:
-- Match the user's request against the skill name and description.
-- If one skill clearly matches, call load_skill once with that skill's id, then follow the returned instructions.
-- If the relevant skill was already loaded for this request, do not call load_skill again.
-- If no skill clearly matches, do not call load_skill.
-- Do not load a skill just because it is listed here.${baseInstructions ? `\n\n${baseInstructions}` : ''}`;
-}
-
-function createLoadSkillTool(skills: ConfiguredSkill[]): BuiltTool {
-	const skillsById = new Map(skills.map(({ id, skill }) => [id, skill]));
-
-	return new Tool('load_skill')
-		.description(
-			'Load the full instructions for an attached skill. Use the skill id listed in the system instructions.',
-		)
-		.input(
-			z.object({
-				skillId: z.string().describe('The skill id from the Available skills list'),
-			}),
-		)
-		.handler(async ({ skillId }: { skillId: string }) => {
-			const skill = skillsById.get(skillId);
-			if (!skill) {
-				return {
-					ok: false,
-					error: `Skill "${skillId}" is not attached to this agent.`,
-				};
-			}
-
-			return {
-				ok: true,
-				skillId,
-				name: skill.name,
-				description: skill.description,
-				instructions: skill.instructions,
-			};
-		})
-		.build();
-}
-
-function formatSkillCatalog(skills: ConfiguredSkill[]): string {
-	return skills
-		.map(
-			({ id, skill }) => `- name: ${skill.name}\n  description: ${skill.description}\n  id: ${id}`,
-		)
-		.join('\n');
 }
 
 async function resolveToolRef(
@@ -285,15 +202,13 @@ async function applyMemoryFromConfig(
 	agent: AgentBuilder,
 	memoryConfig: AgentJsonMemoryConfig,
 	memoryFactory: MemoryFactory,
+	credentialProvider: CredentialProvider,
 ) {
+	const { Memory } = await import('@n8n/agents');
 	const memory = new Memory();
 
 	const builtMemory = memoryFactory(memoryConfig);
 	memory.storage(await Promise.resolve(builtMemory));
-	memory
-		.freeform(DEFAULT_WORKING_MEMORY_TEMPLATE)
-		.scope('thread')
-		.instruction(DEFAULT_WORKING_MEMORY_INSTRUCTION);
 
 	if (memoryConfig.lastMessages) {
 		memory.lastMessages(memoryConfig.lastMessages);
@@ -303,7 +218,74 @@ async function applyMemoryFromConfig(
 		memory.semanticRecall(memoryConfig.semanticRecall);
 	}
 
+	if (memoryConfig.episodicMemory?.enabled === true) {
+		memory.episodicMemory(
+			await resolveEpisodicMemoryJsonConfig(memoryConfig.episodicMemory, credentialProvider),
+		);
+	}
+
+	if (memoryConfig.observationalMemory?.enabled !== false) {
+		const observationalMemory = memoryConfig.observationalMemory;
+
+		memory.observationalMemory({
+			...(observationalMemory?.observerThresholdTokens !== undefined && {
+				observerThresholdTokens: observationalMemory.observerThresholdTokens,
+			}),
+			...(observationalMemory?.reflectorThresholdTokens !== undefined && {
+				reflectorThresholdTokens: observationalMemory.reflectorThresholdTokens,
+			}),
+			...(observationalMemory?.renderTokenBudget !== undefined && {
+				renderTokenBudget: observationalMemory.renderTokenBudget,
+			}),
+			...(observationalMemory?.observationLogTailLimit !== undefined && {
+				observationLogTailLimit: observationalMemory.observationLogTailLimit,
+			}),
+			...(observationalMemory?.lockTtlMs !== undefined && {
+				lockTtlMs: observationalMemory.lockTtlMs,
+			}),
+		});
+	}
+
 	memory.titleGeneration({ sync: true });
 
 	agent.memory(memory);
+}
+
+async function resolveEpisodicMemoryJsonConfig(
+	config: Extract<NonNullable<AgentJsonMemoryConfig['episodicMemory']>, { enabled: true }>,
+	credentialProvider: CredentialProvider,
+) {
+	const { DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL } = await import('@n8n/agents');
+	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
+	const raw = await credentialProvider.resolve(config.credential);
+	const mapped = mapCredentialForProvider(getProviderPrefix(embeddingModel), raw);
+	const embeddingProviderOptions = {
+		...(typeof mapped.apiKey === 'string' && { apiKey: mapped.apiKey }),
+		...(typeof mapped.baseURL === 'string' && { baseURL: mapped.baseURL }),
+	};
+
+	return {
+		enabled: true,
+		...(config.topK !== undefined && { topK: config.topK }),
+		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
+		embeddingProviderOptions,
+	};
+}
+
+async function resolveModelConfig(
+	config: AgentJsonConfig,
+	credentialProvider: CredentialProvider,
+): Promise<ModelConfig> {
+	if (!config.credential) return config.model;
+
+	const slashIdx = config.model.indexOf('/');
+	const providerPrefix = slashIdx !== -1 ? config.model.slice(0, slashIdx) : '';
+	const raw = await credentialProvider.resolve(config.credential);
+	const mapped = mapCredentialForProvider(providerPrefix, raw);
+	return { id: config.model, ...mapped } as ModelConfig;
+}
+
+function getProviderPrefix(modelId: string): string {
+	const slashIdx = modelId.indexOf('/');
+	return slashIdx !== -1 ? modelId.slice(0, slashIdx) : '';
 }

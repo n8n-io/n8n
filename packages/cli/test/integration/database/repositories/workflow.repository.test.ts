@@ -330,6 +330,94 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
+	describe('versionCounter trigger', () => {
+		it('should bump versionCounter when nodes change', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflow();
+			const initialVersion = workflow.versionCounter;
+
+			await workflowRepository.update(workflow.id, {
+				nodes: [
+					{
+						id: 'new-node',
+						name: 'New Node',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+			});
+
+			const updated = await getWorkflowById(workflow.id);
+			expect(updated?.versionCounter).toBe(initialVersion + 1);
+		});
+
+		it('should bump versionCounter when settings change', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflow();
+			const initialVersion = workflow.versionCounter;
+
+			await workflowRepository.update(workflow.id, {
+				settings: { errorWorkflow: 'some-other-workflow' },
+			});
+
+			const updated = await getWorkflowById(workflow.id);
+			expect(updated?.versionCounter).toBe(initialVersion + 1);
+		});
+
+		it('should not bump versionCounter when triggerCount changes', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflow();
+			const initialVersion = workflow.versionCounter;
+
+			await workflowRepository.updateWorkflowTriggerCount(workflow.id, 42);
+
+			const updated = await getWorkflowById(workflow.id);
+			expect(updated?.versionCounter).toBe(initialVersion);
+			expect(updated?.triggerCount).toBe(42);
+		});
+
+		it('should not bump versionCounter when active state changes', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflowWithHistory();
+			const initialVersion = workflow.versionCounter;
+
+			await workflowRepository.update(workflow.id, {
+				active: true,
+				activeVersionId: workflow.versionId,
+			});
+
+			const updated = await getWorkflowById(workflow.id);
+			expect(updated?.versionCounter).toBe(initialVersion);
+		});
+
+		it('should not bump versionCounter when name or description changes', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflow();
+			const initialVersion = workflow.versionCounter;
+
+			await workflowRepository.update(workflow.id, {
+				name: 'Renamed Workflow',
+				description: 'Something new',
+			});
+
+			const updated = await getWorkflowById(workflow.id);
+			expect(updated?.versionCounter).toBe(initialVersion);
+		});
+
+		it('should not bump versionCounter when isArchived changes', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflow();
+			const initialVersion = workflow.versionCounter;
+
+			await workflowRepository.update(workflow.id, { isArchived: true });
+
+			const updated = await getWorkflowById(workflow.id);
+			expect(updated?.versionCounter).toBe(initialVersion);
+		});
+	});
+
 	describe('isActive()', () => {
 		it('should return `true` for active workflow in storage', async () => {
 			const workflowRepository = Container.get(WorkflowRepository);

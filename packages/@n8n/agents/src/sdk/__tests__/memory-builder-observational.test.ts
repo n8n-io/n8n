@@ -1,91 +1,166 @@
-import type { BuiltMemory } from '../../types';
-import type { CompactFn, ObserveFn } from '../../types/sdk/observation';
+import type { AgentRuntime } from '../../runtime/agent-runtime';
+import { InMemoryMemory } from '../../runtime/memory-store';
+import type { BuiltMemory, MemoryConfig, ObservationalMemoryConfig } from '../../types';
 import { Agent } from '../agent';
-import { Memory } from '../memory';
+import {
+	DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
+	DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
+	Memory,
+	resolveMemoryConfigDefaults,
+	resolveObservationalMemoryConfig,
+} from '../memory';
 
-describe('Memory builder — observational memory', () => {
-	const observe = jest.fn().mockResolvedValue([]) as unknown as ObserveFn;
-
+describe('Memory builder — observation log memory', () => {
 	it('omits observationalMemory when not configured', () => {
 		const config = new Memory().build();
 		expect(config.observationalMemory).toBeUndefined();
+		expect(config.observationLog).toBeUndefined();
 	});
 
-	it('applies lockTtlMs default', () => {
+	it('configures observation-log memory', () => {
 		const config = new Memory()
-			.freeform('# Notes')
-			.scope('thread')
-			.observationalMemory({ observe })
-			.build();
-		expect(config.observationalMemory?.lockTtlMs).toBe(30_000);
-	});
-
-	it('applies trigger, compaction, and gap defaults', () => {
-		const config = new Memory()
-			.freeform('# Notes')
-			.scope('thread')
-			.observationalMemory({ observe })
+			.observationalMemory({
+				observerThresholdTokens: 8_000,
+				reflectorThresholdTokens: 24_000,
+				renderTokenBudget: 8_000,
+				observationLogTailLimit: 20,
+				lockTtlMs: 30_000,
+			})
 			.build();
 
-		expect(config.observationalMemory?.trigger).toEqual({ type: 'per-turn' });
-		expect(config.observationalMemory?.compactionThreshold).toBe(5);
-		expect(config.observationalMemory?.gapThresholdMs).toBe(60 * 60_000);
+		expect(config.observationLog).toEqual({ renderTokenBudget: 8_000 });
+		expect(config.observationalMemory).toMatchObject({
+			observerThresholdTokens: 8_000,
+			reflectorThresholdTokens: 24_000,
+			observationLogTailLimit: 20,
+			lockTtlMs: 30_000,
+		});
 	});
 
-	it('respects consumer overrides for lockTtlMs', () => {
+	it('allows observer callbacks to use SDK default thresholds', () => {
+		const observe = async () => await Promise.resolve('');
 		const config = new Memory()
-			.freeform('# Notes')
-			.scope('thread')
-			.observationalMemory({ observe, lockTtlMs: 5_000 })
-			.build();
-		expect(config.observationalMemory?.lockTtlMs).toBe(5_000);
-	});
-
-	it('forwards optional fields untouched', () => {
-		const compact = jest.fn().mockResolvedValue({ content: '# Notes' }) as unknown as CompactFn;
-		const config = new Memory()
-			.freeform('# Notes')
-			.scope('thread')
 			.observationalMemory({
 				observe,
-				compact,
-				trigger: { type: 'idle-timer', idleMs: 5 * 60 * 1000, gapThresholdMs: 3600_000 },
-				compactionThreshold: 25,
-				gapThresholdMs: 30 * 60_000,
-				observerPrompt: 'Observe.',
-				compactorPrompt: 'Compact.',
-				sync: true,
 			})
 			.build();
 
 		expect(config.observationalMemory?.observe).toBe(observe);
-		expect(config.observationalMemory?.compact).toBe(compact);
-		expect(config.observationalMemory?.compactionThreshold).toBe(25);
-		expect(config.observationalMemory?.trigger).toEqual({
-			type: 'idle-timer',
-			idleMs: 5 * 60 * 1000,
-			gapThresholdMs: 3600_000,
-		});
-		expect(config.observationalMemory?.gapThresholdMs).toBe(30 * 60_000);
-		expect(config.observationalMemory?.observerPrompt).toBe('Observe.');
-		expect(config.observationalMemory?.compactorPrompt).toBe('Compact.');
-		expect(config.observationalMemory?.sync).toBe(true);
+		expect(config.observationalMemory?.observerThresholdTokens).toBeUndefined();
 	});
 
-	it('uses idle-timer trigger gapThresholdMs when no top-level override is set', () => {
+	it('allows reflector callbacks to use SDK default thresholds', () => {
+		const reflect = async () => await Promise.resolve('{"drop":[],"merge":[]}');
 		const config = new Memory()
-			.freeform('# Notes')
-			.scope('thread')
 			.observationalMemory({
-				observe,
-				trigger: { type: 'idle-timer', idleMs: 5 * 60 * 1000, gapThresholdMs: 45 * 60_000 },
+				reflect,
 			})
 			.build();
 
-		expect(config.observationalMemory?.gapThresholdMs).toBe(45 * 60_000);
+		expect(config.observationalMemory?.reflect).toBe(reflect);
+		expect(config.observationalMemory?.reflectorThresholdTokens).toBeUndefined();
 	});
 
-	it('rejects backends that do not implement BuiltObservationStore', () => {
+	it('resolves observational memory defaults from the agent model', () => {
+		const resolved = resolveObservationalMemoryConfig({}, { defaultModel: 'openai/gpt-4o-mini' });
+
+		expect(resolved).toMatchObject({
+			observerThresholdTokens: 500,
+			reflectorThresholdTokens: 4_000,
+			renderTokenBudget: DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
+			observationLogTailLimit: 20,
+			lockTtlMs: DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
+		});
+		expect(typeof resolved.observe).toBe('function');
+		expect(typeof resolved.reflect).toBe('function');
+	});
+
+	it('preserves observational memory overrides when resolving defaults', () => {
+		const observe = async () => await Promise.resolve('');
+		const reflect = async () => await Promise.resolve('{"drop":[],"merge":[]}');
+		const resolved = resolveObservationalMemoryConfig(
+			{
+				observerThresholdTokens: 123,
+				reflectorThresholdTokens: 456,
+				renderTokenBudget: 789,
+				observationLogTailLimit: 3,
+				lockTtlMs: 1_000,
+				observe,
+				reflect,
+			},
+			{ defaultModel: 'openai/gpt-4o-mini' },
+		);
+
+		expect(resolved).toMatchObject({
+			observerThresholdTokens: 123,
+			reflectorThresholdTokens: 456,
+			renderTokenBudget: 789,
+			observationLogTailLimit: 3,
+			lockTtlMs: 1_000,
+		});
+		expect(resolved.observe).toBe(observe);
+		expect(resolved.reflect).toBe(reflect);
+	});
+
+	it('preserves explicit observation-log render budget when resolving defaults', () => {
+		const resolved = resolveMemoryConfigDefaults(
+			{
+				memory: new InMemoryMemory(),
+				lastMessages: 10,
+				observationLog: { renderTokenBudget: 123 },
+				observationalMemory: {},
+			} as MemoryConfig,
+			{ defaultModel: 'openai/gpt-4o-mini' },
+		);
+
+		expect(resolved.observationLog).toEqual({ renderTokenBudget: 123 });
+		expect(resolved.observationalMemory?.renderTokenBudget).toBe(123);
+	});
+
+	it('lets explicit observational render budget override observation-log render budget', () => {
+		const resolved = resolveMemoryConfigDefaults(
+			{
+				memory: new InMemoryMemory(),
+				lastMessages: 10,
+				observationLog: { renderTokenBudget: 123 },
+				observationalMemory: { renderTokenBudget: 456 },
+			} as MemoryConfig,
+			{ defaultModel: 'openai/gpt-4o-mini' },
+		);
+
+		expect(resolved.observationLog).toEqual({ renderTokenBudget: 456 });
+		expect(resolved.observationalMemory?.renderTokenBudget).toBe(456);
+	});
+
+	it('passes resolved observational memory config into the runtime', async () => {
+		const memory = new Memory().storage(new InMemoryMemory()).observationalMemory();
+		const agent = new Agent('a')
+			.model('openai/gpt-4o-mini')
+			.instructions('You are a test assistant.')
+			.memory(memory);
+
+		const runtime = await (agent as unknown as { build(): Promise<AgentRuntime> }).build();
+		const runtimeConfig = (
+			runtime as unknown as {
+				config: {
+					observationLog?: { renderTokenBudget?: number };
+					observationalMemory?: ObservationalMemoryConfig;
+				};
+			}
+		).config;
+
+		expect(runtimeConfig.observationLog).toEqual({
+			renderTokenBudget: DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
+		});
+		expect(runtimeConfig.observationalMemory).toMatchObject({
+			observerThresholdTokens: 500,
+			reflectorThresholdTokens: 4_000,
+		});
+		expect(typeof runtimeConfig.observationalMemory?.observe).toBe('function');
+		expect(typeof runtimeConfig.observationalMemory?.reflect).toBe('function');
+	});
+
+	it('rejects backends that do not implement the observation-log store', () => {
 		const minimalBackend = {
 			getThread: jest.fn().mockResolvedValue(null),
 			saveThread: jest.fn().mockResolvedValue({}),
@@ -100,63 +175,9 @@ describe('Memory builder — observational memory', () => {
 			}),
 		} as unknown as BuiltMemory;
 
-		expect(() =>
-			new Memory()
-				.storage(minimalBackend)
-				.freeform('# Notes')
-				.scope('thread')
-				.observationalMemory({ observe })
-				.build(),
-		).toThrow(/BuiltObservationStore/);
-	});
-
-	it('rejects partial observation backends before runtime cycles can use them', () => {
-		const partialObservationBackend = {
-			getThread: jest.fn().mockResolvedValue(null),
-			saveThread: jest.fn().mockResolvedValue({}),
-			deleteThread: jest.fn().mockResolvedValue(undefined),
-			getMessages: jest.fn().mockResolvedValue([]),
-			saveMessages: jest.fn().mockResolvedValue(undefined),
-			deleteMessages: jest.fn().mockResolvedValue(undefined),
-			saveWorkingMemory: jest.fn().mockResolvedValue(undefined),
-			appendObservations: jest.fn().mockResolvedValue([]),
-			describe: () => ({
-				name: 'partial-observation',
-				constructorName: 'PartialObservationMemory',
-				connectionParams: null,
-			}),
-		} as unknown as BuiltMemory;
-
-		expect(() =>
-			new Memory()
-				.storage(partialObservationBackend)
-				.freeform('# Notes')
-				.scope('thread')
-				.observationalMemory({ observe })
-				.build(),
-		).toThrow(/BuiltObservationStore/);
-	});
-
-	it('requires workingMemory', () => {
-		expect(() => new Memory().observationalMemory({ observe }).build()).toThrow(/working memory/);
-	});
-
-	it('requires thread-scoped working memory', () => {
-		expect(() =>
-			new Memory().freeform('# Notes').scope('resource').observationalMemory({ observe }).build(),
-		).toThrow(/thread-scoped working memory/);
-	});
-
-	it('coexists with workingMemory', () => {
-		const config = new Memory()
-			.freeform('# Notes')
-			.scope('thread')
-			.observationalMemory({ observe })
-			.build();
-
-		expect(config.workingMemory).toBeDefined();
-		expect(config.workingMemory?.scope).toBe('thread');
-		expect(config.observationalMemory).toBeDefined();
+		expect(() => new Memory().storage(minimalBackend).observationalMemory().build()).toThrow(
+			/BuiltObservationLogStore/,
+		);
 	});
 
 	describe('agent.snapshot.hasObservationalMemory', () => {
@@ -171,11 +192,8 @@ describe('Memory builder — observational memory', () => {
 			expect(agent.snapshot.hasObservationalMemory).toBe(false);
 		});
 
-		it('is true when observationalMemory is configured', () => {
-			const memory = new Memory()
-				.freeform('# Notes')
-				.scope('thread')
-				.observationalMemory({ observe });
+		it('is true when observation-log memory is configured', () => {
+			const memory = new Memory().observationalMemory();
 			const agent = new Agent('a').model('openai/gpt-4o-mini').memory(memory);
 			expect(agent.snapshot.hasObservationalMemory).toBe(true);
 		});
