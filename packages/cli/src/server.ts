@@ -157,6 +157,9 @@ export class Server extends AbstractServer {
 	}
 
 	async configure(): Promise<void> {
+		const { app, pathResolvingService } = this;
+		const basePath = pathResolvingService.getBasePath();
+
 		if (this.globalConfig.endpoints.metrics.enable) {
 			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
 			await Container.get(PrometheusMetricsService).init(this.app);
@@ -169,7 +172,7 @@ export class Server extends AbstractServer {
 
 		await this.postHogClient.init();
 
-		const publicApiEndpoint = this.globalConfig.publicApi.path;
+		const publicApiEndpoint = pathResolvingService.resolvePublicApiEndpoint();
 
 		// Register auth strategies in priority order. The registry evaluates them
 		// sequentially — the first strategy that returns a non-null result wins.
@@ -184,7 +187,11 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		if (isApiEnabled()) {
-			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
+			// `loadPublicApiVersions` expects the path without a leading slash.
+			const publicApiPath = publicApiEndpoint.startsWith('/')
+				? publicApiEndpoint.slice(1)
+				: publicApiEndpoint;
+			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiPath);
 			this.app.use(...apiRouters);
 			if (frontendService) {
 				(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
@@ -200,10 +207,8 @@ export class Server extends AbstractServer {
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
 
-		const { restEndpoint, app } = this;
-
 		const push = Container.get(Push);
-		push.setupPushHandler(restEndpoint, app);
+		push.setupPushHandler(pathResolvingService, app);
 
 		if (push.isBidirectional) {
 			const { CollaborationService } = await import('@/collaboration/collaboration.service');
@@ -237,7 +242,7 @@ export class Server extends AbstractServer {
 
 		// Returns all the available timezones
 		const tzDataFile = resolve(CLI_DIR, 'dist/timezones.json');
-		this.app.get(`/${this.restEndpoint}/options/timezones`, (_, res) =>
+		this.app.get(pathResolvingService.resolveRestEndpoint('options/timezones'), (_, res) =>
 			res.sendFile(tzDataFile, { dotfiles: 'allow' }),
 		);
 
@@ -266,7 +271,7 @@ export class Server extends AbstractServer {
 
 			const authenticationEnforced = overwriteEndpointMiddleware !== null;
 			this.app.post(
-				`/${this.endpointPresetCredentials}`,
+				pathResolvingService.resolveEndpoint(this.endpointPresetCredentials),
 				async (req: express.Request, res: express.Response) => {
 					try {
 						// If authentication is enforced we can allow multiple overwrites
@@ -317,17 +322,23 @@ export class Server extends AbstractServer {
 		// Protect type files with authentication regardless of UI availability
 		const authService = Container.get(AuthService);
 		const protectedTypeFiles = [
-			'/types/nodes.json',
-			'/types/credentials.json',
-			'/types/node-versions.json',
+			{ path: pathResolvingService.resolveTypesEndpoint('nodes.json'), file: 'types/nodes.json' },
+			{
+				path: pathResolvingService.resolveTypesEndpoint('credentials.json'),
+				file: 'types/credentials.json',
+			},
+			{
+				path: pathResolvingService.resolveTypesEndpoint('node-versions.json'),
+				file: 'types/node-versions.json',
+			},
 		];
-		protectedTypeFiles.forEach((path) => {
+		protectedTypeFiles.forEach(({ path, file }) => {
 			this.app.get(
 				path,
 				authService.createAuthMiddleware({ allowSkipMFA: true, allowSkipPreviewAuth: true }),
 				async (_, res: express.Response) => {
 					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-					res.sendFile(path.substring(1), {
+					res.sendFile(file, {
 						root: staticCacheDir,
 					});
 				},
@@ -335,16 +346,21 @@ export class Server extends AbstractServer {
 		});
 
 		if (frontendService) {
+			const iconsEndpoint = pathResolvingService.resolveIconsEndpoint();
 			this.app.use(
 				[
-					'/icons/{@:scope/}:packageName/*path/*file.svg',
-					'/icons/{@:scope/}:packageName/*path/*file.png',
+					`${iconsEndpoint}/{@:scope/}:packageName/*path/*file.svg`,
+					`${iconsEndpoint}/{@:scope/}:packageName/*path/*file.png`,
 				],
 				async (req, res) => {
 					// eslint-disable-next-line prefer-const
 					let { scope, packageName } = req.params;
 					if (scope) packageName = `@${scope}/${packageName}`;
-					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
+					const filePath = this.loadNodesAndCredentials.resolveIcon(
+						basePath,
+						packageName,
+						req.originalUrl,
+					);
 					if (filePath) {
 						try {
 							await fsAccess(filePath);
@@ -372,7 +388,10 @@ export class Server extends AbstractServer {
 				}
 				res.sendStatus(404);
 			};
-			this.app.use('/schemas/:node/:version{/:resource}{/:operation}.json', serveSchemas);
+			this.app.use(
+				`${pathResolvingService.resolveSchemasEndpoint()}/:node/:version{/:resource}{/:operation}.json`,
+				serveSchemas,
+			);
 
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
@@ -416,18 +435,23 @@ export class Server extends AbstractServer {
 				},
 			});
 
-			// Route all UI urls to index.html to support history-api
+			// Route all UI urls to index.html to support history-api.
+			// Entries are matched against the path *relative* to `basePath`
+			// because the static middleware below is mounted at `basePath`.
+			// When the public API is disabled we still want to exclude its
+			// path from the SPA fallback, so HTML requests to `/api/*` do
+			// not silently serve `index.html`.
 			const nonUIRoutes: readonly string[] = [
 				'favicon.ico',
 				'assets',
 				'static',
 				'types',
-				this.endpointHealth,
+				this.globalConfig.endpoints.health,
 				'metrics',
 				'e2e',
-				this.restEndpoint,
+				this.globalConfig.endpoints.rest,
 				this.endpointPresetCredentials,
-				isApiEnabled() ? '' : publicApiEndpoint,
+				isApiEnabled() ? '' : this.globalConfig.publicApi.path,
 				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
 			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
@@ -436,6 +460,7 @@ export class Server extends AbstractServer {
 					method,
 					headers: { accept },
 				} = req;
+
 				if (
 					method === 'GET' &&
 					accept &&
@@ -458,7 +483,7 @@ export class Server extends AbstractServer {
 			};
 
 			this.app.use(
-				'/',
+				basePath,
 				historyApiHandler,
 				express.static(staticCacheDir, {
 					...cacheOptions,
@@ -467,20 +492,20 @@ export class Server extends AbstractServer {
 				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 			);
 		} else {
-			this.app.use('/', express.static(staticCacheDir, cacheOptions));
+			this.app.use(basePath, express.static(staticCacheDir, cacheOptions));
 		}
 
 		installGlobalProxyAgent();
 	}
 
 	private configureSettingsRoute() {
-		const { frontendService } = this;
+		const { frontendService, pathResolvingService } = this;
 		const authService = Container.get(AuthService);
 
 		if (frontendService) {
 			// Returns the current settings for the UI
 			this.app.get(
-				`/${this.restEndpoint}/settings`,
+				pathResolvingService.resolveRestEndpoint('settings'),
 				authService.createAuthMiddleware({ allowSkipMFA: false, allowUnauthenticated: true }),
 				ResponseHelper.send(async (req: AuthenticatedRequest) => {
 					return req.user
@@ -501,8 +526,8 @@ export class Server extends AbstractServer {
 	}
 
 	protected setupPushServer(): void {
-		const { restEndpoint, server, app } = this;
-		Container.get(Push).setupPushServer(restEndpoint, server, app);
+		const { server, app, pathResolvingService } = this;
+		Container.get(Push).setupPushServer(pathResolvingService, server, app);
 		Container.get(ChatServer).setup(server, app);
 	}
 }

@@ -34,10 +34,13 @@ const BASE_ENV: Record<string, string> = {
 // withReadTimeout doubles as the poll interval (testcontainers IntervalRetry); the default of 1000ms
 // means we sit on a stale poll for up to a second after the process is actually ready. 250ms is
 // tight enough to reclaim that latency without firing too many requests.
-const N8N_WAIT_STRATEGY = Wait.forHttp('/healthz/readiness', 5678)
-	.forStatusCode(200)
-	.withStartupTimeout(60_000)
-	.withReadTimeout(250);
+function buildWaitStrategy(environment: Record<string, string>) {
+	const basePath = (environment.N8N_BASE_PATH ?? '').replace(/\/+$/, '');
+	return Wait.forHttp(`${basePath}/healthz/readiness`, 5678)
+		.forStatusCode(200)
+		.withStartupTimeout(60_000)
+		.withReadTimeout(250);
+}
 
 export interface N8NInstancesOptions {
 	mains: number;
@@ -159,7 +162,7 @@ async function createContainer(
 		ports.push(5679);
 	}
 
-	container = container.withExposedPorts(...ports).withWaitStrategy(N8N_WAIT_STRATEGY);
+	container = container.withExposedPorts(...ports).withWaitStrategy(buildWaitStrategy(environment));
 
 	if (isWorker) {
 		container = container.withCommand(['worker']);

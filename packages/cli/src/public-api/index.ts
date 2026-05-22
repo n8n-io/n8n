@@ -18,11 +18,7 @@ import { UrlService } from '@/services/url.service';
 
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
-function createLazySwaggerMiddleware(
-	openApiSpecPath: string,
-	publicApiEndpoint: string,
-	version: string,
-): RequestHandler {
+function createLazySwaggerMiddleware(openApiSpecPath: string, version: string): RequestHandler {
 	let cachedRouter: Router | undefined;
 
 	return async (req, res, next) => {
@@ -34,10 +30,13 @@ function createLazySwaggerMiddleware(
 			const spec = await fs.readFile(openApiSpecPath, 'utf-8');
 			const swaggerDocument = YAML.parse(spec) as JsonObject;
 			// add the server depending on the config so the user can interact with the API
-			// from the Swagger UI
+			// from the Swagger UI.
+			// `getInstanceBaseUrl()` already includes the configured base path, so we must
+			// combine it with the *bare* public API endpoint name to avoid double-prefixing.
+			const bareApiEndpoint = globalConfig.publicApi.path;
 			swaggerDocument.server = [
 				{
-					url: `${Container.get(UrlService).getInstanceBaseUrl()}/${publicApiEndpoint}/${version}}`,
+					url: `${Container.get(UrlService).getInstanceBaseUrl()}/${bareApiEndpoint}/${version}`,
 				},
 			];
 
@@ -161,7 +160,7 @@ function createApiRouter(
 	if (!globalConfig.publicApi.swaggerUiDisabled) {
 		apiController.use(
 			`/${publicApiEndpoint}/${version}/docs`,
-			createLazySwaggerMiddleware(openApiSpecPath, publicApiEndpoint, version),
+			createLazySwaggerMiddleware(openApiSpecPath, version),
 		);
 	}
 

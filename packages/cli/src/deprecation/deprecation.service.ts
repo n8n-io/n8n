@@ -73,6 +73,12 @@ export class DeprecationService {
 				'n8n does not support `own` mode since May 2023. Please remove this environment variable to allow n8n to start. If you need the isolation and performance gains, please consider queue mode: https://docs.n8n.io/hosting/scaling/queue-mode/',
 			checkValue: (value: string | undefined): value is 'own' => value === 'own',
 		},
+		{
+			envVar: 'N8N_PATH',
+			message:
+				'N8N_PATH is deprecated and will be removed in a future version. Please use N8N_BASE_PATH instead for hosting n8n under a subpath. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/',
+			checkValue: (value?: string) => value !== undefined && value !== '/',
+		},
 	];
 
 	/** Runtime state of deprecation-related env vars. */

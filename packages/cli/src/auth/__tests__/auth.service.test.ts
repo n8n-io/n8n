@@ -16,6 +16,7 @@ import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
+import type { PathResolvingService } from '@/services/path-resolving.service';
 import type { UrlService } from '@/services/url.service';
 import type { License } from '@/license';
 
@@ -41,6 +42,9 @@ describe('AuthService', () => {
 	const mfaService = mock<MfaService>();
 	const license = mock<License>();
 	const logger = mock<Logger>();
+	const pathResolvingService = mock<PathResolvingService>({
+		getBasePath: () => '/',
+	});
 	const authService = new AuthService(
 		globalConfig,
 		logger,
@@ -50,6 +54,7 @@ describe('AuthService', () => {
 		userRepository,
 		invalidAuthTokenRepository,
 		mfaService,
+		pathResolvingService,
 	);
 
 	const now = new Date('2024-02-01T01:23:45.678Z');

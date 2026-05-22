@@ -5,6 +5,7 @@ import { mock } from 'jest-mock-extended';
 import { AuthService } from '@/auth/auth.service';
 import type { MfaService } from '@/mfa/mfa.service';
 import type { JwtService } from '@/services/jwt.service';
+import type { PathResolvingService } from '@/services/path-resolving.service';
 import type { UrlService } from '@/services/url.service';
 
 describe('AuthService Browser ID Whitelist', () => {
@@ -19,6 +20,9 @@ describe('AuthService Browser ID Whitelist', () => {
 		const userRepository = mock<UserRepository>();
 		const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
 		const mfaService = mock<MfaService>();
+		const pathResolvingService = mock<PathResolvingService>({
+			getBasePath: () => '/',
+		});
 
 		authService = new AuthService(
 			globalConfig,
@@ -29,6 +33,7 @@ describe('AuthService Browser ID Whitelist', () => {
 			userRepository,
 			invalidAuthTokenRepository,
 			mfaService,
+			pathResolvingService,
 		);
 	});
 

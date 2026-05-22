@@ -14,6 +14,7 @@ import { Server as WSServer } from 'ws';
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { PathResolvingService } from '@/services/path-resolving.service';
 import { TypedEmitter } from '@/typed-emitter';
 
 import { validateOriginHeaders } from './origin-validator';
@@ -73,11 +74,13 @@ export class Push extends TypedEmitter<PushEvents> {
 	}
 
 	/** Sets up the main express app to upgrade websocket connections */
-	setupPushServer(restEndpoint: string, server: Server, app: Application) {
+	setupPushServer(pathResolvingService: PathResolvingService, server: Server, app: Application) {
 		if (this.useWebSockets) {
 			const wsServer = new WSServer({ noServer: true });
+			const pushEndpoint = pathResolvingService.resolveRestEndpoint('push');
+
 			server.on('upgrade', (request: WebSocketPushRequest, socket, upgradeHead) => {
-				if (parseUrl(request.url).pathname === `/${restEndpoint}/push`) {
+				if (parseUrl(request.url).pathname === pushEndpoint) {
 					wsServer.handleUpgrade(request, socket, upgradeHead, (ws) => {
 						request.ws = ws;
 
@@ -97,9 +100,9 @@ export class Push extends TypedEmitter<PushEvents> {
 	}
 
 	/** Sets up the push endpoint that the frontend connects to. */
-	setupPushHandler(restEndpoint: string, app: Application) {
+	setupPushHandler(pathResolvingService: PathResolvingService, app: Application) {
 		app.use(
-			`/${restEndpoint}/push`,
+			pathResolvingService.resolveRestEndpoint('push'),
 
 			this.authService.createAuthMiddleware({ allowSkipMFA: false }),
 			(req, res) => {
