@@ -19,7 +19,7 @@
 		"moduleResolution": "node",
 		"noImplicitReturns": false,
 		"useUnknownInCatchVariables": false,
-		"isolatedModules": true,
+		"isolatedModules": false,
 		"verbatimModuleSyntax": false,
 		"noUncheckedIndexedAccess": false,
 		"noImplicitOverride": false,

@@ -2,13 +2,15 @@ const { pathsToModuleNameMapper } = require('ts-jest');
 const { compilerOptions } = require('get-tsconfig').getTsconfig().config;
 const { resolve } = require('path');
 
-/** @type {import('ts-jest').TsJestGlobalOptions} */
+/** @type {import('ts-jest').TsJestTransformerOptions} */
 const tsJestOptions = {
+	isolatedModules: true,
 	tsconfig: {
 		...compilerOptions,
 		declaration: false,
 		sourceMap: true,
 		rootDir: '.',
+		transpi
 	},
 };
 
