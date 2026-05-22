@@ -617,7 +617,7 @@ describe('EvalExecutionService', () => {
 			expect(result.nodeResults['HTTP Request'].startTime).toBe(1710000000);
 		});
 
-		it('captures output limited to MAX_OUTPUT_ITEMS_PER_NODE and reports full outputCount', async () => {
+		it('truncates per-branch items to MAX_OUTPUT_ITEMS_PER_BRANCH and reports full outputCount', async () => {
 			const items = Array.from({ length: 15 }, (_, i) => ({ json: { idx: i } }));
 			mockProcessRunExecutionData.mockResolvedValue(
 				makeIRun({
@@ -641,8 +641,121 @@ describe('EvalExecutionService', () => {
 
 			const result = await service.executeWithLlmMock('wf-1', makeUser());
 
-			expect(result.nodeResults['HTTP Request'].output).toHaveLength(10);
-			expect(result.nodeResults['HTTP Request'].outputCount).toBe(15);
+			const entry = result.nodeResults['HTTP Request'];
+			expect(entry.outputs.main[0]).toHaveLength(10);
+			expect(entry.outputCount).toBe(15);
+			expect(entry.truncated).toBe(true);
+			expect(entry.iterationCount).toBe(1);
+		});
+
+		it('preserves per-branch structure for Filter/IF/Switch nodes', async () => {
+			mockProcessRunExecutionData.mockResolvedValue(
+				makeIRun({
+					data: {
+						resultData: {
+							runData: {
+								Filter: [
+									{
+										startTime: 1000,
+										executionTime: 200,
+										executionIndex: 0,
+										source: [],
+										data: {
+											main: [
+												[{ json: { id: 1, kept: true } }, { json: { id: 2, kept: true } }],
+												[{ json: { id: 3, dropped: true } }],
+											],
+										},
+									},
+								],
+							},
+						},
+					} as unknown as IRunExecutionData,
+				}),
+			);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			const entry = result.nodeResults['Filter'];
+			expect(entry.outputs.main).toHaveLength(2);
+			expect(entry.outputs.main[0]).toHaveLength(2);
+			expect(entry.outputs.main[1]).toHaveLength(1);
+			expect(entry.outputCount).toBe(3);
+		});
+
+		it('captures non-main connection outputs (AI sub-nodes)', async () => {
+			mockProcessRunExecutionData.mockResolvedValue(
+				makeIRun({
+					data: {
+						resultData: {
+							runData: {
+								'OpenAI Chat Model': [
+									{
+										startTime: 1000,
+										executionTime: 200,
+										executionIndex: 0,
+										source: [],
+										data: {
+											ai_languageModel: [[{ json: { response: 'hi' } }]],
+										},
+									},
+								],
+							},
+						},
+					} as unknown as IRunExecutionData,
+				}),
+			);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			const entry = result.nodeResults['OpenAI Chat Model'];
+			expect(entry.outputs.ai_languageModel).toBeDefined();
+			expect(entry.outputs.ai_languageModel[0]).toHaveLength(1);
+			expect(entry.outputs.main).toBeUndefined();
+			expect(entry.outputCount).toBe(1);
+		});
+
+		it('records iterationCount and firstErrorIteration for nodes that ran multiple times', async () => {
+			mockProcessRunExecutionData.mockResolvedValue(
+				makeIRun({
+					data: {
+						resultData: {
+							runData: {
+								'Code (in loop)': [
+									{
+										startTime: 1000,
+										executionTime: 50,
+										executionIndex: 0,
+										source: [],
+										data: { main: [[{ json: { iter: 0 } }]] },
+									},
+									{
+										startTime: 1100,
+										executionTime: 50,
+										executionIndex: 1,
+										source: [],
+										data: { main: [[{ json: { iter: 1 } }]] },
+										error: { message: 'boom' } as unknown as Error,
+									},
+									{
+										startTime: 1200,
+										executionTime: 50,
+										executionIndex: 2,
+										source: [],
+										data: { main: [[{ json: { iter: 2 } }]] },
+									},
+								],
+							},
+						},
+					} as unknown as IRunExecutionData,
+				}),
+			);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			const entry = result.nodeResults['Code (in loop)'];
+			expect(entry.iterationCount).toBe(3);
+			expect(entry.firstErrorIteration).toBe(1);
 		});
 	});
 

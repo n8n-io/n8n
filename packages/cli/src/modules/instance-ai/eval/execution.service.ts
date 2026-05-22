@@ -55,8 +55,8 @@ import { patchNoProxyForLoopback } from './proxy-loopback';
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Max output items per node kept in the artifact. The full count lives in `outputCount`. */
-const MAX_OUTPUT_ITEMS_PER_NODE = 10;
+/** Max output items per branch kept in the artifact. The full count lives in `outputCount`. */
+const MAX_OUTPUT_ITEMS_PER_BRANCH = 10;
 
 // ---------------------------------------------------------------------------
 // Service
@@ -302,7 +302,9 @@ export class EvalExecutionService {
 			if (Object.keys(triggerPinData).length > 0) {
 				const existing = nodeResults[startNode.name];
 				nodeResults[startNode.name] = {
-					output: null,
+					outputs: {},
+					outputCount: 0,
+					iterationCount: 0,
 					interceptedRequests: [],
 					executionMode: 'pinned',
 					...(existing?.configIssues ? { configIssues: existing.configIssues } : {}),
@@ -313,7 +315,9 @@ export class EvalExecutionService {
 			for (const nodeName of Object.keys(hints.bypassPinData)) {
 				const existing = nodeResults[nodeName];
 				nodeResults[nodeName] = {
-					output: null,
+					outputs: {},
+					outputCount: 0,
+					iterationCount: 0,
 					interceptedRequests: [],
 					executionMode: 'pinned',
 					...(existing?.configIssues ? { configIssues: existing.configIssues } : {}),
@@ -404,7 +408,9 @@ export class EvalExecutionService {
 
 			if (issues?.parameters && Object.keys(issues.parameters).length > 0) {
 				const entry = (nodeResults[node.name] ??= {
-					output: null,
+					outputs: {},
+					outputCount: 0,
+					iterationCount: 0,
 					interceptedRequests: [],
 					executionMode: 'real',
 				});
@@ -477,7 +483,9 @@ export class EvalExecutionService {
 			// A node may make multiple HTTP requests — ensure it's marked as mocked.
 			// checkNodeConfig may have pre-created the entry as 'real', so always override.
 			const entry = (nodeResults[node.name] ??= {
-				output: null,
+				outputs: {},
+				outputCount: 0,
+				iterationCount: 0,
 				interceptedRequests: [],
 				executionMode: 'mocked',
 			});
@@ -516,22 +524,43 @@ export class EvalExecutionService {
 			// Nodes already in nodeResults were intercepted (mocked) or pinned.
 			// Nodes appearing here for the first time executed for real (logic nodes).
 			const entry = (nodeResults[nodeName] ??= {
-				output: null,
+				outputs: {},
+				outputCount: 0,
+				iterationCount: 0,
 				interceptedRequests: [],
 				executionMode: 'real',
 			});
+			entry.iterationCount = nodeRuns.length;
+			const firstErrorIdx = nodeRuns.findIndex((run) => run?.error !== undefined);
+			if (firstErrorIdx !== -1) {
+				entry.firstErrorIteration = firstErrorIdx;
+			}
+
 			const lastRun = nodeRuns[nodeRuns.length - 1];
 			if (lastRun?.startTime) {
 				entry.startTime = lastRun.startTime;
 			}
-			if (lastRun?.data?.main) {
-				// Capture output from all branches (Switch/IF nodes have multiple outputs)
-				const flattened = lastRun.data.main.flat().filter(Boolean);
-				entry.outputCount = flattened.length;
-				const allOutputs = flattened.slice(0, MAX_OUTPUT_ITEMS_PER_NODE);
-				if (allOutputs.length > 0) {
-					entry.output = allOutputs;
+			if (lastRun?.data) {
+				// Preserve per-connection-type, per-output-port structure so verifiers can
+				// distinguish Filter/IF/Switch branches and AI sub-node outputs.
+				let totalCount = 0;
+				let truncated = false;
+				const outputs: Record<string, unknown[][]> = {};
+				for (const [connectionType, branches] of Object.entries(lastRun.data)) {
+					if (!Array.isArray(branches)) continue;
+					outputs[connectionType] = branches.map((branch) => {
+						if (!Array.isArray(branch)) return [];
+						totalCount += branch.length;
+						if (branch.length > MAX_OUTPUT_ITEMS_PER_BRANCH) {
+							truncated = true;
+							return branch.slice(0, MAX_OUTPUT_ITEMS_PER_BRANCH);
+						}
+						return branch;
+					});
 				}
+				entry.outputs = outputs;
+				entry.outputCount = totalCount;
+				if (truncated) entry.truncated = true;
 			}
 			if (lastRun?.error) {
 				errors.push(`Node "${nodeName}": ${lastRun.error.message}`);
