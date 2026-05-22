@@ -8,6 +8,7 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
+	BinaryDataService,
 	type EvalLlmMockHandler,
 	type EvalMockHttpResponse,
 	ExecutionLifecycleHooks,
@@ -87,6 +88,7 @@ export class EvalExecutionService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly logger: Logger,
 		private readonly postHogClient: PostHogClient,
+		private readonly binaryDataService: BinaryDataService,
 	) {}
 
 	async executeWithLlmMock(
@@ -332,7 +334,7 @@ export class EvalExecutionService {
 			}
 
 			const result = await this.runWorkflow(workflow, additionalData, executionData);
-			return this.buildResult(executionId, result, nodeResults, hints, credentialsHelper);
+			return await this.buildResult(executionId, result, nodeResults, hints, credentialsHelper);
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : String(error);
 			this.logger.error(`[EvalMock] Workflow execution failed: ${message}`);
@@ -552,13 +554,43 @@ export class EvalExecutionService {
 
 	// ── Result extraction ─────────────────────────────────────────────────
 
-	private buildResult(
+	/**
+	 * When binary data storage is filesystem/s3/db, `binary.<key>.data` is the
+	 * mode marker (e.g. `'filesystem-v2'`) and the actual bytes live behind
+	 * `binary.<key>.id`. Verifiers compare against the base64 payload, so read
+	 * the stored bytes back and inline them on a shallow copy.
+	 */
+	private async hydrateBinaryData(items: INodeExecutionData[]): Promise<INodeExecutionData[]> {
+		return await Promise.all(
+			items.map(async (item) => {
+				if (!item.binary) return item;
+				const hydratedBinary: IBinaryKeyData = {};
+				for (const [key, entry] of Object.entries(item.binary)) {
+					if (entry.id) {
+						try {
+							const buffer = await this.binaryDataService.getAsBuffer(entry);
+							hydratedBinary[key] = { ...entry, data: buffer.toString('base64') };
+							continue;
+						} catch (error) {
+							this.logger.warn(
+								`[EvalMock] Failed to hydrate binary "${key}" (${entry.id}): ${error instanceof Error ? error.message : String(error)}`,
+							);
+						}
+					}
+					hydratedBinary[key] = entry;
+				}
+				return { ...item, binary: hydratedBinary };
+			}),
+		);
+	}
+
+	private async buildResult(
 		executionId: string,
 		result: IRun,
 		nodeResults: Record<string, InstanceAiEvalNodeResult>,
 		hints: MockHints,
 		credentialsHelper: EvalMockedCredentialsHelper,
-	): InstanceAiEvalExecutionResult {
+	): Promise<InstanceAiEvalExecutionResult> {
 		const errors: string[] = [];
 
 		const runData = result.data?.resultData?.runData ?? {};
@@ -576,11 +608,13 @@ export class EvalExecutionService {
 			}
 			if (lastRun?.data?.main) {
 				// Capture output from all branches (Switch/IF nodes have multiple outputs)
-				const flattened = lastRun.data.main.flat().filter(Boolean);
+				const flattened = lastRun.data.main
+					.flat()
+					.filter((item): item is INodeExecutionData => item != null);
 				entry.outputCount = flattened.length;
 				const allOutputs = flattened.slice(0, MAX_OUTPUT_ITEMS_PER_NODE);
 				if (allOutputs.length > 0) {
-					entry.output = allOutputs;
+					entry.output = await this.hydrateBinaryData(allOutputs);
 				}
 			}
 			if (lastRun?.error) {

@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type { User } from '@n8n/db';
+import type { BinaryDataService } from 'n8n-core';
 import type { Logger } from '@n8n/backend-common';
 import type {
 	INode,
@@ -188,11 +189,18 @@ describe('EvalExecutionService', () => {
 	const nodeTypes = mock<NodeTypes>();
 	const logger = mock<Logger>();
 	const postHogClient = mock<PostHogClient>();
+	const binaryDataService = mock<BinaryDataService>();
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 
-		service = new EvalExecutionService(workflowFinderService, nodeTypes, logger, postHogClient);
+		service = new EvalExecutionService(
+			workflowFinderService,
+			nodeTypes,
+			logger,
+			postHogClient,
+			binaryDataService,
+		);
 
 		// Default mock returns — happy path
 		identifyNodesForHintsMock.mockReturnValue([]);
