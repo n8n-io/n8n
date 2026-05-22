@@ -1,5 +1,6 @@
 import type { Daytona, DaytonaConfig } from '@daytonaio/sdk';
-import assert from 'node:assert/strict';
+import { getJwtExpiry } from '@n8n/utils';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { loadDaytona } from './lazy-daytona';
 import type { Logger } from '../logger';
@@ -28,32 +29,6 @@ export interface DaytonaAuthManagerOptions {
 	now?: () => number;
 }
 
-interface JwtPayload {
-	exp: number;
-}
-
-function hasNumericExp(value: unknown): value is JwtPayload {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'exp' in value &&
-		typeof (value as { exp: unknown }).exp === 'number'
-	);
-}
-
-/** Decode a JWT's `exp` claim (ms epoch). Returns `undefined` for opaque tokens or malformed JWTs. */
-export function decodeJwtExp(token: string): number | undefined {
-	const parts = token.split('.');
-	if (parts.length !== 3) return undefined;
-	try {
-		const json = Buffer.from(parts[1], 'base64url').toString('utf8');
-		const payload: unknown = JSON.parse(json);
-		return hasNumericExp(payload) ? payload.exp * 1000 : undefined;
-	} catch {
-		return undefined;
-	}
-}
-
 /**
  * Owns the Daytona client and its (possibly short-lived) auth token.
  *
@@ -80,10 +55,11 @@ export class DaytonaAuthManager {
 	constructor(options: DaytonaAuthManagerOptions) {
 		const hasStatic = options.staticApiKey !== undefined;
 		const hasCallback = options.getAuthToken !== undefined;
-		assert(
-			hasStatic !== hasCallback,
-			'DaytonaAuthManager requires exactly one of staticApiKey or getAuthToken',
-		);
+		if (hasStatic === hasCallback) {
+			throw new UnexpectedError(
+				'DaytonaAuthManager requires exactly one of staticApiKey or getAuthToken',
+			);
+		}
 		this.options = options;
 		this.now = options.now ?? Date.now;
 		this.refreshSkewMs =
@@ -100,7 +76,9 @@ export class DaytonaAuthManager {
 			return this.client;
 		}
 		await this.refresh();
-		assert(this.client, 'DaytonaAuthManager.refresh did not set a client');
+		if (!this.client) {
+			throw new UnexpectedError('DaytonaAuthManager.refresh did not set a client');
+		}
 		return this.client;
 	}
 
@@ -129,9 +107,10 @@ export class DaytonaAuthManager {
 		if (this.options.getAuthToken) {
 			const token = await this.options.getAuthToken();
 			connection.apiKey = token;
-			const exp = decodeJwtExp(token);
-			decodedFromJwt = exp !== undefined;
-			this.expiresAt = exp ?? this.now() + DECODE_FALLBACK_TTL_MS;
+			const expSeconds = getJwtExpiry(token);
+			decodedFromJwt = expSeconds !== undefined;
+			this.expiresAt =
+				expSeconds !== undefined ? expSeconds * 1000 : this.now() + DECODE_FALLBACK_TTL_MS;
 		} else {
 			connection.apiKey = this.options.staticApiKey;
 			this.expiresAt = Number.POSITIVE_INFINITY;

@@ -9,7 +9,7 @@ jest.mock('@daytonaio/sdk', () => {
 	return { Daytona };
 });
 
-import { DaytonaAuthManager, decodeJwtExp } from '../daytona-auth-manager';
+import { DaytonaAuthManager } from '../daytona-auth-manager';
 
 function base64url(input: string): string {
 	return Buffer.from(input, 'utf8').toString('base64url');
@@ -24,33 +24,6 @@ function makeJwt(expMsFromEpoch: number): string {
 const HOUR_MS = 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
 const SKEW_MS = 5 * MINUTE_MS;
-
-describe('decodeJwtExp', () => {
-	it('returns ms epoch for a valid JWT', () => {
-		const expSeconds = 1_700_000_000;
-		expect(decodeJwtExp(makeJwt(expSeconds * 1000))).toBe(expSeconds * 1000);
-	});
-
-	it('returns undefined for an opaque (non-JWT) token', () => {
-		expect(decodeJwtExp('opaque-token')).toBeUndefined();
-	});
-
-	it('returns undefined when exp is missing', () => {
-		const header = base64url(JSON.stringify({ alg: 'HS256' }));
-		const payload = base64url(JSON.stringify({ sub: 'user' }));
-		expect(decodeJwtExp(`${header}.${payload}.sig`)).toBeUndefined();
-	});
-
-	it('returns undefined when exp is not a number', () => {
-		const header = base64url(JSON.stringify({ alg: 'HS256' }));
-		const payload = base64url(JSON.stringify({ exp: 'soon' }));
-		expect(decodeJwtExp(`${header}.${payload}.sig`)).toBeUndefined();
-	});
-
-	it('returns undefined for malformed base64', () => {
-		expect(decodeJwtExp('not.valid-base64!!.sig')).toBeUndefined();
-	});
-});
 
 describe('DaytonaAuthManager (direct mode)', () => {
 	beforeEach(() => {
