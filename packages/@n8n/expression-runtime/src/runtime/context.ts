@@ -22,11 +22,19 @@ const SafeRangeError = createSafeErrorSubclass(RangeError);
 const SafeReferenceError = createSafeErrorSubclass(ReferenceError);
 const SafeURIError = createSafeErrorSubclass(URIError);
 
+/**
+ * Maps proxy property names on `$('NodeName')` to the typed-RPC discriminator
+ * the bridge dispatches on. Single source of truth for the synthetic proxy's
+ * `get`/`has` traps and the `sendNodeMethod` envelope builder. Adding a new
+ * `getNode*` schema to `BridgeMessage` lets you wire a new method here in
+ * one place; `satisfies` catches typos in the discriminator string.
+ */
 const NODE_RPC_TYPES = {
 	first: 'getNodeFirst',
 	last: 'getNodeLast',
 	all: 'getNodeAll',
 } as const satisfies Record<string, BridgeMessage['type']>;
+type NodeRpcType = (typeof NODE_RPC_TYPES)[keyof typeof NODE_RPC_TYPES];
 
 // ============================================================================
 // Build Context Function
@@ -182,7 +190,7 @@ export function buildContext(
 	// the inner target is empty.
 	target.$ = function (nodeName: string) {
 		const lazyProxy = createDeepLazyProxy(['$', nodeName], undefined, callbacks);
-		const sendNodeMethod = (type: 'getNodeFirst' | 'getNodeLast' | 'getNodeAll') => {
+		const sendNodeMethod = (type: NodeRpcType) => {
 			return (branchIndex?: number, runIndex?: number) => {
 				const result = callbacks.callHost.applySync(
 					null,
