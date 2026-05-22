@@ -1728,77 +1728,88 @@ onBeforeUnmount(() => {
 					:class="$style['custom-telemetry-tags']"
 					data-test-id="workflow-settings-custom-telemetry-tags"
 				>
-					<div :class="$style['custom-telemetry-tags-header']">
-						<div>
-							<N8nText tag="h3" size="medium" bold :class="$style['custom-telemetry-tags-title']">
+					<ElRow :class="$style['custom-telemetry-tags-header']">
+						<ElCol :span="10" :class="$style['setting-name']">
+							<label>
 								{{ i18n.baseText('workflowSettings.customTelemetryTags.displayName') }}
-							</N8nText>
-							<N8nText tag="div" size="small" color="text-base">
-								{{ i18n.baseText('workflowSettings.customTelemetryTags.description') }}
-							</N8nText>
-						</div>
-						<N8nButton
-							size="small"
-							variant="subtle"
-							icon="plus"
-							:label="i18n.baseText('workflowSettings.customTelemetryTags.placeholder')"
-							:disabled="isWorkflowSettingsReadOnly"
-							data-test-id="add-custom-telemetry-tag"
-							@click="addCustomTelemetryTag"
-						/>
-					</div>
-					<div
-						v-if="customTelemetryTagRows.length === 0"
-						:class="$style['custom-telemetry-tags-empty']"
-						data-test-id="workflow-settings-custom-telemetry-tags-empty"
-					>
-						<N8nText size="small" color="text-base">
-							{{ i18n.baseText('workflowSettings.customTelemetryTags.empty') }}
-						</N8nText>
-					</div>
-					<div
-						v-else
-						:class="$style['custom-telemetry-tags-editor']"
-						data-test-id="workflow-settings-custom-telemetry-tags-editor"
-					>
-						<div :class="$style['custom-telemetry-tags-label']">
-							{{ i18n.baseText('workflowSettings.customTelemetryTags.tag.key.displayName') }}
-						</div>
-						<div :class="$style['custom-telemetry-tags-label']">
-							{{ i18n.baseText('workflowSettings.customTelemetryTags.tag.value.displayName') }}
-						</div>
-						<div></div>
-						<template v-for="(tag, index) in customTelemetryTagRows" :key="index">
-							<N8nInput
-								:model-value="tag.key"
-								:disabled="isWorkflowSettingsReadOnly"
-								type="text"
-								data-test-id="custom-telemetry-tags-key-input"
-								@update:model-value="(value: string) => updateCustomTelemetryTagKey(index, value)"
-							/>
-							<ParameterInputFull
-								:parameter="getCustomTelemetryTagValueParameter()"
-								:value="tag.value"
-								:path="`customTelemetryTags.tag[${index}].value`"
-								:is-read-only="isWorkflowSettingsReadOnly"
-								:hide-label="true"
-								:rows="1"
-								options-position="top-absolute"
-								data-test-id="custom-telemetry-tags-value-input"
-								@update="(update) => updateCustomTelemetryTagValue(index, update)"
-							/>
-							<N8nIconButton
-								icon="trash-2"
-								variant="ghost"
-								size="small"
-								:class="$style['custom-telemetry-tags-delete']"
-								:disabled="isWorkflowSettingsReadOnly"
-								:title="i18n.baseText('workflowSettings.customTelemetryTags.delete')"
-								data-test-id="delete-custom-telemetry-tag"
-								@click="deleteCustomTelemetryTag(index)"
-							/>
-						</template>
-					</div>
+								<N8nTooltip placement="top">
+									<template #content>
+										{{ i18n.baseText('workflowSettings.customTelemetryTags.description') }}
+									</template>
+									<N8nIcon icon="circle-help" />
+								</N8nTooltip>
+							</label>
+						</ElCol>
+						<ElCol :span="14">
+							<div :class="$style['custom-telemetry-tags-actions']">
+								<N8nButton
+									size="small"
+									variant="subtle"
+									icon="plus"
+									:label="i18n.baseText('workflowSettings.customTelemetryTags.placeholder')"
+									:disabled="isWorkflowSettingsReadOnly"
+									data-test-id="add-custom-telemetry-tag"
+									@click="addCustomTelemetryTag"
+								/>
+							</div>
+						</ElCol>
+					</ElRow>
+					<ElRow>
+						<ElCol :span="14" :offset="10">
+							<div
+								v-if="customTelemetryTagRows.length === 0"
+								:class="$style['custom-telemetry-tags-empty']"
+								data-test-id="workflow-settings-custom-telemetry-tags-empty"
+							>
+								<N8nText size="small" color="text-base">
+									{{ i18n.baseText('workflowSettings.customTelemetryTags.empty') }}
+								</N8nText>
+							</div>
+							<div
+								v-else
+								:class="$style['custom-telemetry-tags-editor']"
+								data-test-id="workflow-settings-custom-telemetry-tags-editor"
+							>
+								<div :class="$style['custom-telemetry-tags-label']">
+									{{ i18n.baseText('workflowSettings.customTelemetryTags.tag.key.displayName') }}
+								</div>
+								<div :class="$style['custom-telemetry-tags-label']">
+									{{ i18n.baseText('workflowSettings.customTelemetryTags.tag.value.displayName') }}
+								</div>
+								<div></div>
+								<template v-for="(tag, index) in customTelemetryTagRows" :key="index">
+									<N8nInput
+										:model-value="tag.key"
+										:disabled="isWorkflowSettingsReadOnly"
+										type="text"
+										data-test-id="custom-telemetry-tags-key-input"
+										@update:model-value="(value: string) => updateCustomTelemetryTagKey(index, value)"
+									/>
+									<ParameterInputFull
+										:parameter="getCustomTelemetryTagValueParameter()"
+										:value="tag.value"
+										:path="`customTelemetryTags.tag[${index}].value`"
+										:is-read-only="isWorkflowSettingsReadOnly"
+										:hide-label="true"
+										:rows="1"
+										options-position="top-absolute"
+										data-test-id="custom-telemetry-tags-value-input"
+										@update="(update) => updateCustomTelemetryTagValue(index, update)"
+									/>
+									<N8nIconButton
+										icon="trash-2"
+										variant="ghost"
+										size="small"
+										:class="$style['custom-telemetry-tags-delete']"
+										:disabled="isWorkflowSettingsReadOnly"
+										:title="i18n.baseText('workflowSettings.customTelemetryTags.delete')"
+										data-test-id="delete-custom-telemetry-tag"
+										@click="deleteCustomTelemetryTag(index)"
+									/>
+								</template>
+							</div>
+						</ElCol>
+					</ElRow>
 				</div>
 			</div>
 		</template>
@@ -1913,30 +1924,24 @@ onBeforeUnmount(() => {
 .custom-telemetry-tags {
 	margin-top: var(--spacing--md);
 	padding-top: var(--spacing--md);
-	border-top: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
 .custom-telemetry-tags-header {
-	display: flex;
 	align-items: flex-start;
-	justify-content: space-between;
-	gap: var(--spacing--md);
-	margin-bottom: var(--spacing--sm);
 }
 
-.custom-telemetry-tags-title {
-	margin: 0 0 var(--spacing--5xs);
+.custom-telemetry-tags-actions {
+	display: flex;
+	align-items: center;
 }
 
 .custom-telemetry-tags-empty {
-	padding: var(--spacing--xs) 0 var(--spacing--sm);
+	padding: var(--spacing--2xs) 0 var(--spacing--sm);
 }
 
 .custom-telemetry-tags-editor {
 	display: grid;
-	grid-template-columns:
-		minmax(0, calc(var(--spacing--xl) * 8)) minmax(0, calc(var(--spacing--xl) * 12))
-		var(--spacing--xl);
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) var(--spacing--xl);
 	gap: var(--spacing--2xs) var(--spacing--xs);
 	align-items: center;
 	max-width: 100%;
