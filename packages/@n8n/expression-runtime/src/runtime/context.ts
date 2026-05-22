@@ -22,11 +22,30 @@ const SafeRangeError = createSafeErrorSubclass(RangeError);
 const SafeReferenceError = createSafeErrorSubclass(ReferenceError);
 const SafeURIError = createSafeErrorSubclass(URIError);
 
+/**
+ * Maps proxy property names on `$('NodeName')` to the typed-RPC discriminator
+ * the bridge dispatches on. Single source of truth for the synthetic proxy's
+ * `get`/`has` traps and the `sendNodeMethod` envelope builder. Adding a new
+ * `getNode*` schema to `BridgeMessage` lets you wire a new method here in
+ * one place; `satisfies` catches typos in the discriminator string.
+ */
 const NODE_RPC_TYPES = {
 	first: 'getNodeFirst',
 	last: 'getNodeLast',
 	all: 'getNodeAll',
 } as const satisfies Record<string, BridgeMessage['type']>;
+type NodeRpcType = (typeof NODE_RPC_TYPES)[keyof typeof NODE_RPC_TYPES];
+
+/**
+ * Same shape as `NODE_RPC_TYPES`, for the current node's `$input` proxy.
+ * Discriminators are `getInput*` and the host enforces zero-arg invocation.
+ */
+const INPUT_RPC_TYPES = {
+	first: 'getInputFirst',
+	last: 'getInputLast',
+	all: 'getInputAll',
+} as const satisfies Record<string, BridgeMessage['type']>;
+type InputRpcType = (typeof INPUT_RPC_TYPES)[keyof typeof INPUT_RPC_TYPES];
 
 // ============================================================================
 // Build Context Function
@@ -182,7 +201,7 @@ export function buildContext(
 	// the inner target is empty.
 	target.$ = function (nodeName: string) {
 		const lazyProxy = createDeepLazyProxy(['$', nodeName], undefined, callbacks);
-		const sendNodeMethod = (type: 'getNodeFirst' | 'getNodeLast' | 'getNodeAll') => {
+		const sendNodeMethod = (type: NodeRpcType) => {
 			return (branchIndex?: number, runIndex?: number) => {
 				const result = callbacks.callHost.applySync(
 					null,
@@ -216,7 +235,7 @@ export function buildContext(
 	// everything else (notably the `.item` getter and `.params` / `.context`
 	// properties) to a lazy proxy on `$input`.
 	const lazyInputProxy = createDeepLazyProxy(['$input'], undefined, callbacks);
-	const sendInputMethod = (type: 'getInputFirst' | 'getInputLast' | 'getInputAll') => {
+	const sendInputMethod = (type: InputRpcType) => {
 		return () => {
 			const result = callbacks.callHost.applySync(null, [{ type }], {
 				arguments: { copy: true },
@@ -228,14 +247,14 @@ export function buildContext(
 	};
 	target.$input = new Proxy({} as Record<string, unknown>, {
 		get(_emptyTarget, prop) {
-			if (prop === 'first') return sendInputMethod('getInputFirst');
-			if (prop === 'last') return sendInputMethod('getInputLast');
-			if (prop === 'all') return sendInputMethod('getInputAll');
+			if (isKeyOf(INPUT_RPC_TYPES, prop)) return sendInputMethod(INPUT_RPC_TYPES[prop]);
 			return (lazyInputProxy as Record<string | symbol, unknown>)[prop];
 		},
 		has(_emptyTarget, prop) {
-			if (prop === 'first' || prop === 'last' || prop === 'all') return true;
-			return prop in (lazyInputProxy as Record<string | symbol, unknown>);
+			return (
+				isKeyOf(INPUT_RPC_TYPES, prop) ||
+				prop in (lazyInputProxy as Record<string | symbol, unknown>)
+			);
 		},
 	});
 
