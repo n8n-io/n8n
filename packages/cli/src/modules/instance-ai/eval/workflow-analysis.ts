@@ -130,7 +130,11 @@ type UnpinRefusal = {
 	root: string;
 	subNode: string;
 	subNodeType: string;
-	reason: 'protocol_binary' | 'unsupported_vendor_llm' | 'unsafe_baseurl_override';
+	reason:
+		| 'protocol_binary'
+		| 'unsupported_vendor_llm'
+		| 'unsafe_baseurl_override'
+		| 'shared_vendor_llm_subnode';
 };
 
 /**
@@ -138,9 +142,11 @@ type UnpinRefusal = {
  * helper embed the calling sub-node's root in the rewritten URL; `rootToSubNode`
  * lets the wire server fetch the sub-node `INode` for the mock handler.
  *
- * Known limitation: when a single vendor LLM sub-node feeds multiple unpinned
- * roots, the first root in `unpinNodes` wins. See the "first wins" test in
- * `workflow-analysis.test.ts` for the contract.
+ * Invariant: by the time this runs, `assertUnpinCompatibility` has already
+ * refused shared-vendor-LLM topologies — so each supported vendor LLM
+ * sub-node maps to exactly one unpinned root. The `!has(...)` check below
+ * is defensive (in case a caller bypasses the guard) but never branches
+ * during normal eval flow.
  */
 export interface VendorLlmRouting {
 	subNodeToRoot: Map<string, string>;
@@ -218,6 +224,12 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 	}
 
 	const refusals: UnpinRefusal[] = [];
+	// Track which unpinned roots each supported vendor LLM sub-node feeds.
+	// A sub-node feeding ≥2 unpinned roots can't be attributed correctly —
+	// the wire server's path-based root token is baked into the credential
+	// URL at resolution time (first-wins), so later turns from the same
+	// sub-node would mis-attribute to the first root.
+	const sharedSupportedSubNodes = new Map<string, { type: string; roots: Set<string> }>();
 
 	for (const rootName of unpinNodes) {
 		const inbound = connectionsByDestination[rootName];
@@ -230,6 +242,16 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 				for (const conn of group) {
 					const sourceNode = nodesByName.get(conn.node);
 					if (!sourceNode || sourceNode.disabled) continue;
+
+					if (SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)) {
+						const tracked = sharedSupportedSubNodes.get(sourceNode.name) ?? {
+							type: sourceNode.type,
+							roots: new Set<string>(),
+						};
+						tracked.roots.add(rootName);
+						sharedSupportedSubNodes.set(sourceNode.name, tracked);
+					}
+
 					const reason = categorizeSubNodeRefusal(sourceNode);
 					if (reason === null) continue;
 					refusals.push({
@@ -240,6 +262,21 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 					});
 				}
 			}
+		}
+	}
+
+	// Emit a `shared_vendor_llm_subnode` refusal for every sub-node feeding
+	// more than one unpinned root. One entry per offending (root, sub-node)
+	// pair so the error message lists every conflict.
+	for (const [subNodeName, { type, roots }] of sharedSupportedSubNodes) {
+		if (roots.size < 2) continue;
+		for (const rootName of roots) {
+			refusals.push({
+				root: rootName,
+				subNode: subNodeName,
+				subNodeType: type,
+				reason: 'shared_vendor_llm_subnode',
+			});
 		}
 	}
 
@@ -260,6 +297,11 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 			refusals,
 			'unsafe_baseurl_override',
 			'vendor LLM sub-nodes with a configured options.baseURL that bypasses the credential rewrite',
+		),
+		formatRefusalSegment(
+			refusals,
+			'shared_vendor_llm_subnode',
+			'vendor LLM sub-nodes shared by multiple unpinned roots (attribution would be ambiguous)',
 		),
 	].filter((s): s is string => s !== undefined);
 

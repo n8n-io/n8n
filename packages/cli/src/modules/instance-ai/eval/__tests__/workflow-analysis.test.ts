@@ -574,6 +574,92 @@ describe('assertUnpinCompatibility', () => {
 				).not.toThrow();
 			});
 		});
+
+		describe('shared vendor LLM sub-node across multiple unpinned roots', () => {
+			it('refuses unpinning both roots when one OpenAI sub-node feeds both', () => {
+				const nodes = [
+					makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+					makeNode({ name: 'AgentA', type: '@n8n/n8n-nodes-langchain.agent' }),
+					makeNode({ name: 'AgentB', type: '@n8n/n8n-nodes-langchain.agent' }),
+				];
+				const connections: IConnections = {
+					OpenAI: {
+						ai_languageModel: [
+							[
+								{ node: 'AgentA', type: 'ai_languageModel', index: 0 },
+								{ node: 'AgentB', type: 'ai_languageModel', index: 0 },
+							],
+						],
+					},
+				};
+
+				let thrown: unknown;
+				try {
+					assertUnpinCompatibility(makeWorkflow(nodes, connections), ['AgentA', 'AgentB']);
+				} catch (e) {
+					thrown = e;
+				}
+
+				expect(thrown).toBeInstanceOf(UserError);
+				const message = (thrown as UserError).message;
+				expect(message).toContain('shared by multiple unpinned roots');
+				expect(message).toContain('"OpenAI"');
+				// Both root attributions listed in the error so the user can see
+				// exactly which conflict to resolve.
+				expect(message).toContain('AgentA');
+				expect(message).toContain('AgentB');
+			});
+
+			it('allows unpinning when only one root references the shared OpenAI sub-node', () => {
+				const nodes = [
+					makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+					makeNode({ name: 'AgentA', type: '@n8n/n8n-nodes-langchain.agent' }),
+					makeNode({ name: 'AgentB', type: '@n8n/n8n-nodes-langchain.agent' }),
+				];
+				const connections: IConnections = {
+					OpenAI: {
+						ai_languageModel: [
+							[
+								{ node: 'AgentA', type: 'ai_languageModel', index: 0 },
+								{ node: 'AgentB', type: 'ai_languageModel', index: 0 },
+							],
+						],
+					},
+				};
+
+				// Only AgentA is being unpinned — AgentB stays pinned so there's
+				// no attribution conflict at the wire-server layer.
+				expect(() =>
+					assertUnpinCompatibility(makeWorkflow(nodes, connections), ['AgentA']),
+				).not.toThrow();
+			});
+
+			it('ignores a disabled sub-node when counting shared references', () => {
+				const nodes = [
+					makeNode({
+						name: 'OpenAI',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						disabled: true,
+					}),
+					makeNode({ name: 'AgentA', type: '@n8n/n8n-nodes-langchain.agent' }),
+					makeNode({ name: 'AgentB', type: '@n8n/n8n-nodes-langchain.agent' }),
+				];
+				const connections: IConnections = {
+					OpenAI: {
+						ai_languageModel: [
+							[
+								{ node: 'AgentA', type: 'ai_languageModel', index: 0 },
+								{ node: 'AgentB', type: 'ai_languageModel', index: 0 },
+							],
+						],
+					},
+				};
+
+				expect(() =>
+					assertUnpinCompatibility(makeWorkflow(nodes, connections), ['AgentA', 'AgentB']),
+				).not.toThrow();
+			});
+		});
 	});
 });
 
@@ -685,12 +771,13 @@ describe('buildVendorLlmRouting', () => {
 		expect(routing.rootToSubNode.size).toBe(0);
 	});
 
-	it('first-wins when a single sub-node feeds multiple unpinned roots (documented limitation)', () => {
-		// Documented in the buildVendorLlmRouting doc-comment. n8n's UI doesn't
-		// usually encourage shared chat-model sub-nodes, but the data model
-		// allows it. Until `assertUnpinCompatibility` refuses this topology, the
-		// first root to appear in `unpinNodes` wins the sub-node mapping — the
-		// other root's interceptedRequests ledger will be empty for those turns.
+	it('defensive: maps a shared sub-node to the first root (topology refused by guard upstream)', () => {
+		// `assertUnpinCompatibility` refuses this topology before
+		// `buildVendorLlmRouting` is reached. This test exercises the
+		// defensive `!has(...)` check directly in case a caller ever bypasses
+		// the guard — the routing must remain deterministic (first root wins,
+		// no overwrite mid-build) so the wire server doesn't see a
+		// half-mutated state.
 		const nodes = [
 			makeNode({ name: 'Shared OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
 			makeNode({ name: 'Agent A', type: '@n8n/n8n-nodes-langchain.agent' }),
@@ -709,11 +796,8 @@ describe('buildVendorLlmRouting', () => {
 
 		const routing = buildVendorLlmRouting(makeWorkflow(nodes, connections), ['Agent A', 'Agent B']);
 
-		// Sub-node maps to whichever root appears first in unpinNodes.
+		// First root in unpinNodes wins; second is dropped (defensive).
 		expect(routing.subNodeToRoot.get('Shared OpenAI')).toBe('Agent A');
-		// Both roots get the sub-node back from rootToSubNode (used by the wire
-		// server to find the mock-handler node context), but credential
-		// rewrites attribute everything to Agent A.
 		expect(routing.rootToSubNode.get('Agent A')?.name).toBe('Shared OpenAI');
 		expect(routing.rootToSubNode.get('Agent B')?.name).toBe('Shared OpenAI');
 	});

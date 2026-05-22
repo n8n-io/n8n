@@ -338,6 +338,36 @@ describe('LlmWireServer', () => {
 			expect(response.status).toBe(200);
 			expect((mockHandler as unknown as jest.Mock).mock.calls[0][1]).toBe(subNode);
 		});
+
+		it.each([
+			['literal % in the root name', '100% Off Agent'],
+			['encoded % sequence in the root name', '50%25 cohort'],
+			['only-special-chars root', '%&?#='],
+		])('handles %s without a double-decode (no URIError)', async (_label, rootName) => {
+			const mockHandler = jest.fn().mockResolvedValue({
+				body: { content: 'reply' },
+				headers: {},
+				statusCode: 200,
+			}) as unknown as EvalLlmMockHandler;
+			server = new LlmWireServer({
+				mockHandler,
+				rootToSubNode: new Map([[rootName, subNode]]),
+			});
+			const url = await server.start();
+
+			const response = await postChatCompletion(
+				url,
+				`/eval/${encodeURIComponent(rootName)}/v1/chat/completions`,
+				{ model: 'gpt-4o', messages: [] },
+			);
+
+			// Pre-fix, a literal `%` after Express's single decode would have
+			// triggered URIError in the wire-server's own decodeURIComponent
+			// and the response would have surfaced as 500 (or worse, a 404 if
+			// the route never matched).
+			expect(response.status).toBe(200);
+			expect((mockHandler as unknown as jest.Mock).mock.calls[0][1]).toBe(subNode);
+		});
 	});
 
 	describe('POST /v1/chat/completions — unrouted prefix', () => {

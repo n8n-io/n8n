@@ -86,7 +86,9 @@ export class LlmWireServer {
 	}
 
 	private handleChatCompletion = async (req: Request, res: Response): Promise<void> => {
-		const rootName = decodeURIComponent(req.params.root);
+		// Express decodes route params once; double-decoding here would mangle
+		// names with a literal `%` and throw URIError on partial sequences.
+		const rootName = req.params.root;
 		const model = extractRequestModel(req.body);
 		const subNode = this.resolveSubNode(rootName);
 

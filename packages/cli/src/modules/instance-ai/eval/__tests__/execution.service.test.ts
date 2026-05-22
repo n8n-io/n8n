@@ -556,10 +556,54 @@ describe('EvalExecutionService', () => {
 					unpinNodes: ['Agent'],
 				});
 
-				// 'pinned' from the bypass pass survives — `??=` left it alone.
+				// 'pinned' from the bypass pass survives — preservation rule.
 				expect(result.nodeResults['Agent'].executionMode).toBe('pinned');
 				// The turn is still recorded against the same entry.
 				expect(result.nodeResults['Agent'].interceptedRequests).toHaveLength(1);
+			});
+
+			it('upgrades a pre-marked "real" entry to "mocked" when a wire-server turn fires', async () => {
+				// checkNodeConfig() pre-marks any node with a config-issue as
+				// `executionMode: 'real'` BEFORE runWorkflow runs. If a wire-
+				// server turn later arrives for that node, the turn IS mocked
+				// and should be classified as such — 'real' must not stick.
+				// Reproduce by making the node's config check fail.
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: {
+						properties: [
+							{
+								name: 'requiredField',
+								type: 'string',
+								required: true,
+								default: '',
+								displayName: 'Required Field',
+							},
+						],
+					} as unknown as INodeTypeDescription,
+				} as never);
+
+				mockProcessRunExecutionData.mockImplementation(async () => {
+					const opts = capturedWireServerOptions.last as {
+						onIntercept?: (turn: unknown) => void;
+					};
+					opts.onIntercept?.({
+						rootName: 'HTTP Request',
+						url: 'https://api.openai.com/v1/chat/completions',
+						method: 'POST',
+						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						requestBody: { model: 'gpt-4o', messages: [] },
+						mockResponse: { content: 'reply' },
+					});
+					return makeIRun();
+				});
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['Agent'],
+				});
+
+				// 'real' (from config-issue pre-marking) gets upgraded to 'mocked'.
+				expect(result.nodeResults['HTTP Request']).toBeDefined();
+				expect(result.nodeResults['HTTP Request'].executionMode).toBe('mocked');
 			});
 		});
 	});

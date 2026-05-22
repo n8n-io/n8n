@@ -470,8 +470,12 @@ export class EvalExecutionService {
 			interceptedRequests: [],
 			executionMode: 'mocked',
 		});
-		// Entry pre-existed → keep its mode (e.g. 'pinned' from the bypass pass).
-		entry.executionMode ??= 'mocked';
+		// Preserve a pre-set 'pinned' (bypass pass owns that classification);
+		// otherwise the turn IS mocked, so upgrade from any other prior value
+		// (e.g. 'real' from checkNodeConfig() pre-marking config-issue nodes).
+		if (entry.executionMode !== 'pinned') {
+			entry.executionMode = 'mocked';
+		}
 		entry.interceptedRequests.push({
 			url: turn.url,
 			method: turn.method,
