@@ -1,4 +1,4 @@
-// cspell:ignore langchain vectorstores vectorstore oracledb XEPDB Demis Hassabis
+// cspell:ignore langchain vectorstores vectorstore oracledb XEPDB
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
