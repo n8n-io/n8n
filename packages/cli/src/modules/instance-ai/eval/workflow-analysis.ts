@@ -31,6 +31,23 @@ function findAiRootNodeNames(workflow: IWorkflowBase): Set<string> {
 	return roots;
 }
 
+/**
+ * Node types known to be AI root nodes (Agent / Chain variants). Used by the
+ * typo guard to validate `unpinNodes` entries even when the root has no
+ * inbound `ai_*` connections yet — a no-sub-node Agent is still a valid
+ * unpin target, just one that has no effect until a sub-node is wired in.
+ */
+const AI_ROOT_NODE_TYPES = new Set<string>([
+	'@n8n/n8n-nodes-langchain.agent',
+	'@n8n/n8n-nodes-langchain.chainLlm',
+	'@n8n/n8n-nodes-langchain.chainRetrievalQa',
+	'@n8n/n8n-nodes-langchain.chainSummarization',
+]);
+
+function isAiRootNodeType(nodeType: string): boolean {
+	return AI_ROOT_NODE_TYPES.has(nodeType);
+}
+
 /** Sources of `ai_*` connections — LLM/tool/memory sub-nodes. Handled via their root, never pinned individually. */
 function findAiSubNodeNames(workflow: IWorkflowBase): Set<string> {
 	const subNodes = new Set<string>();
@@ -172,18 +189,43 @@ export function buildVendorLlmRouting(
 	return { subNodeToRoot, rootToSubNode };
 }
 
-/** Throws if any unpinned AI root has a sub-node we can't intercept: protocol-binary, unmapped vendor LLM, or unsafe baseURL override. */
+/** Throws if any unpinned AI root has a sub-node we can't intercept: protocol-binary, unmapped vendor LLM, or unsafe baseURL override. Also refuses entries that don't resolve to an enabled AI root (typo guard). */
 export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: string[]): void {
 	if (unpinNodes.length === 0) return;
 
 	const nodesByName = new Map(workflow.nodes.map((n) => [n.name, n]));
 	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
+	const aiRootNodes = findAiRootNodeNames(workflow);
+
+	// Refuse typos / disabled targets / non-AI-root references up front. Silent
+	// skip would let an eval that the caller thought was unpinning a root pass
+	// as a normal pinned run, masking the intent. An AI root counts if it
+	// either has inbound `ai_*` connections OR its node type is on
+	// `AI_ROOT_NODE_TYPES` — an Agent with no sub-nodes yet is still a valid
+	// (no-op) target rather than a typo.
+	const unknownRoots: string[] = [];
+	const disabledRoots: string[] = [];
+	const nonAiRoots: string[] = [];
+	for (const rootName of unpinNodes) {
+		const node = nodesByName.get(rootName);
+		if (!node) unknownRoots.push(rootName);
+		else if (node.disabled) disabledRoots.push(rootName);
+		else if (!aiRootNodes.has(rootName) && !isAiRootNodeType(node.type)) {
+			nonAiRoots.push(rootName);
+		}
+	}
+	if (unknownRoots.length || disabledRoots.length || nonAiRoots.length) {
+		const formatNames = (names: string[]) => names.map((n) => `"${n}"`).join(', ');
+		const parts: string[] = [];
+		if (unknownRoots.length) parts.push(`not found in workflow: ${formatNames(unknownRoots)}`);
+		if (disabledRoots.length) parts.push(`disabled: ${formatNames(disabledRoots)}`);
+		if (nonAiRoots.length) parts.push(`not AI root nodes: ${formatNames(nonAiRoots)}`);
+		throw new UserError(`Cannot unpin — ${parts.join('; ')}.`);
+	}
 
 	const refusals: UnpinRefusal[] = [];
 
 	for (const rootName of unpinNodes) {
-		const rootNode = nodesByName.get(rootName);
-		if (!rootNode || rootNode.disabled) continue;
 		const inbound = connectionsByDestination[rootName];
 		if (!inbound) continue;
 

@@ -253,12 +253,22 @@ describe('assertUnpinCompatibility', () => {
 		).not.toThrow();
 	});
 
-	it('ignores roots that do not exist in the workflow', () => {
+	it('refuses unknown root names rather than silently skipping (typo guard)', () => {
 		const workflow = agentWithMemory('@n8n/n8n-nodes-langchain.memoryBufferWindow');
-		expect(() => assertUnpinCompatibility(workflow, ['Ghost'])).not.toThrow();
+
+		let thrown: unknown;
+		try {
+			assertUnpinCompatibility(workflow, ['Ghost']);
+		} catch (e) {
+			thrown = e;
+		}
+
+		expect(thrown).toBeInstanceOf(UserError);
+		expect((thrown as UserError).message).toContain('not found in workflow');
+		expect((thrown as UserError).message).toContain('"Ghost"');
 	});
 
-	it('ignores disabled roots even when their sub-nodes would otherwise be refused', () => {
+	it('refuses disabled roots rather than silently skipping (typo guard)', () => {
 		const nodes = [
 			makeNode({ name: 'PgMem', type: '@n8n/n8n-nodes-langchain.memoryPostgresChat' }),
 			makeNode({
@@ -270,9 +280,44 @@ describe('assertUnpinCompatibility', () => {
 		const connections: IConnections = {
 			PgMem: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
 		};
-		expect(() =>
-			assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']),
-		).not.toThrow();
+
+		let thrown: unknown;
+		try {
+			assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']);
+		} catch (e) {
+			thrown = e;
+		}
+
+		expect(thrown).toBeInstanceOf(UserError);
+		expect((thrown as UserError).message).toContain('disabled');
+		expect((thrown as UserError).message).toContain('"Agent"');
+	});
+
+	it('refuses non-AI-root nodes (e.g. a regular Set node in unpinNodes is a caller mistake)', () => {
+		const nodes = [
+			makeNode({ name: 'Set', type: 'n8n-nodes-base.set' }),
+			makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+		];
+
+		let thrown: unknown;
+		try {
+			assertUnpinCompatibility(makeWorkflow(nodes), ['Set']);
+		} catch (e) {
+			thrown = e;
+		}
+
+		expect(thrown).toBeInstanceOf(UserError);
+		expect((thrown as UserError).message).toContain('not AI root nodes');
+		expect((thrown as UserError).message).toContain('"Set"');
+	});
+
+	it.each([
+		'@n8n/n8n-nodes-langchain.chainLlm',
+		'@n8n/n8n-nodes-langchain.chainRetrievalQa',
+		'@n8n/n8n-nodes-langchain.chainSummarization',
+	])('recognises %s by type even when it has no inbound ai_* connections', (chainType) => {
+		const nodes = [makeNode({ name: 'Chain', type: chainType })];
+		expect(() => assertUnpinCompatibility(makeWorkflow(nodes), ['Chain'])).not.toThrow();
 	});
 
 	it.each([
