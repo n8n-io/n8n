@@ -20,7 +20,6 @@ env:
   PACKAGE_NAME: ${{ github.event.inputs.package || 'n8n-workflow' }}
   PKG_DIR: packages/workflow # mapping is 1-to-1 for Phase 1; expand when Phase 2 rolls out
   REPORTS_DIR: packages/workflow/reports/mutation
-  MUTATION_HEALTH_WEBHOOK: ${{ secrets.MUTATION_HEALTH_WEBHOOK }}
 
 jobs:
   run:
@@ -30,17 +29,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # Full history so pick-next.mjs can git-log against last_checked_sha
+          # of every red/stale row — otherwise the unreachable-SHA fallback
+          # keeps rows at their current status (no false stale flips).
+          fetch-depth: 0
 
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
-        # Default build-command (pnpm build = turbo run build) is the safe
-        # choice. Bypassing turbo with pnpm-filter syntax routes --summarize
-        # to raw tsc in workspace deps that don't use tsc --build.
 
       - name: Seed ledger
         run: node scripts/mutation-health/seed-ledger.mjs --package-dir "$PKG_DIR"
 
       - name: POST seed payload
+        env:
+          MUTATION_HEALTH_WEBHOOK: ${{ secrets.MUTATION_HEALTH_WEBHOOK }}
         run: node scripts/mutation-health/post-payload.mjs "$REPORTS_DIR/ledger-seed.json"
 
       - name: Fetch live ledger from BigQuery
@@ -49,32 +52,47 @@ jobs:
       - name: Pick next source file
         id: pick
         run: |
-          picked=$(node scripts/mutation-health/pick-next.mjs --ledger-file "$REPORTS_DIR/live-ledger.json")
-          echo "$picked"
-          src_rel=$(echo "$picked" | jq -r --arg dir "$PKG_DIR" '.source_file_path | sub("^" + $dir + "/"; "")')
+          picked_json=$(node scripts/mutation-health/pick-next.mjs --ledger-file "$REPORTS_DIR/live-ledger.json")
+          echo "$picked_json"
+          src_repo=$(echo "$picked_json" | jq -r '.picked.source_file_path // ""')
+          if [ -z "$src_repo" ]; then
+            echo "::notice::Picker returned no work (all-green / empty ledger). Exiting cleanly."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          src_rel="${src_repo#"$PKG_DIR"/}"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
           echo "source-rel=$src_rel" >> "$GITHUB_OUTPUT"
 
       - name: Mutate the picked source file
-        # Exit 1 (below threshold) is a valid outcome — emit step still runs.
-        # Only Stryker hard failures (exit 3) leave summary.json absent.
-        continue-on-error: true
-        run: pnpm --filter "$PACKAGE_NAME" mutate ${{ steps.pick.outputs.source-rel }}
+        if: steps.pick.outputs.skip != 'true'
+        # Exit code semantics from mutate.mjs:
+        #   0 — score >= threshold (green)
+        #   1 — score < threshold (red) — emit step still runs, this is normal
+        #   2 — usage error
+        #   3 — Stryker hard failure (no summary.json) — must fail the job
+        # We capture rc explicitly so we can distinguish "below threshold" from
+        # "Stryker crashed." continue-on-error: true would collapse them.
+        run: |
+          set +e
+          pnpm --filter "$PACKAGE_NAME" mutate ${{ steps.pick.outputs.source-rel }}
+          rc=$?
+          set -e
+          if [ "$rc" -gt 1 ]; then
+            echo "::error::Stryker hard-failed with exit code $rc."
+            exit "$rc"
+          fi
+          echo "Mutate exit $rc ($([ "$rc" = "0" ] && echo green || echo red))."
 
       - name: Emit BQ payload
-        run: |
-          if [ -f "$REPORTS_DIR/summary.json" ]; then
-            node scripts/mutation-health/emit-payload.mjs --summary "$REPORTS_DIR/summary.json" --package "$PACKAGE_NAME"
-          else
-            echo "::warning::No summary.json — Stryker did not produce a report. Skipping emit."
-          fi
+        if: steps.pick.outputs.skip != 'true'
+        run: node scripts/mutation-health/emit-payload.mjs --summary "$REPORTS_DIR/summary.json" --package "$PACKAGE_NAME"
 
       - name: POST result payload
-        run: |
-          if [ -f "$REPORTS_DIR/bq-payload.json" ]; then
-            node scripts/mutation-health/post-payload.mjs "$REPORTS_DIR/bq-payload.json"
-          else
-            echo "::warning::No bq-payload.json — nothing to POST."
-          fi
+        if: steps.pick.outputs.skip != 'true'
+        env:
+          MUTATION_HEALTH_WEBHOOK: ${{ secrets.MUTATION_HEALTH_WEBHOOK }}
+        run: node scripts/mutation-health/post-payload.mjs "$REPORTS_DIR/bq-payload.json"
 
       - name: Upload artefacts
         if: always()

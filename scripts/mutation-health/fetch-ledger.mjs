@@ -34,6 +34,12 @@ const LEDGER_COLUMNS = [
 	'mutants_timeout',
 ].join(', ');
 
+// Strict allowlist for the package name. Defence-in-depth — workflow_dispatch
+// already constrains the input, but this script is callable directly so we
+// validate before interpolating into SQL. Matches pnpm-workspace conventions
+// (alphanumerics, dash, underscore, optional @scope/ prefix).
+const PACKAGE_NAME_RE = /^(?:@[a-zA-Z0-9][\w-]*\/)?[a-zA-Z0-9][\w-]*$/;
+
 const args = process.argv.slice(2);
 const pkgIdx = args.indexOf('--package');
 const outIdx = args.indexOf('--out');
@@ -42,6 +48,10 @@ const out = outIdx >= 0 ? args[outIdx + 1] : null;
 
 if (!pkg) {
 	process.stderr.write('Usage: fetch-ledger.mjs --package <pkg-name> [--out <path>]\n');
+	process.exit(2);
+}
+if (!PACKAGE_NAME_RE.test(pkg)) {
+	process.stderr.write(`Invalid --package value: ${JSON.stringify(pkg)}\n`);
 	process.exit(2);
 }
 
@@ -63,7 +73,26 @@ if (!res.ok) {
 }
 
 const rows = await res.json();
-const payload = JSON.stringify({ ledger: Array.isArray(rows) ? rows : [] }, null, 2);
+
+// Validate response shape. The qa-query webhook is shared with QBot et al.
+// — if its response envelope ever changes (e.g. wraps in {data: [...]}) we
+// want to fail loud rather than silently emit an empty ledger.
+if (!Array.isArray(rows)) {
+	process.stderr.write(
+		`Unexpected qa-query response shape (expected array): ${JSON.stringify(rows).slice(0, 200)}\n`,
+	);
+	process.exit(3);
+}
+if (rows.length > 0) {
+	const required = ['source_file_path', 'package', 'status'];
+	const missing = required.filter((k) => !(k in rows[0]));
+	if (missing.length > 0) {
+		process.stderr.write(`qa-query row missing required keys: ${missing.join(', ')}\n`);
+		process.exit(3);
+	}
+}
+
+const payload = JSON.stringify({ ledger: rows }, null, 2);
 
 if (out) {
 	await mkdir(path.dirname(out), { recursive: true });

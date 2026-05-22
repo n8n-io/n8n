@@ -87,8 +87,13 @@ if (ledger.length === 0) {
 }
 
 /**
- * Returns true if `git log <since>..HEAD -- <files...>` is non-empty.
- * If `since` is null/undefined or invalid, treats as "edited" only if file exists.
+ * Returns: true (edited), false (not edited), or null (git couldn't tell).
+ *
+ * "Couldn't tell" usually means the recorded SHA isn't reachable from HEAD
+ * — common on shallow clones (GHA default `actions/checkout@v4` fetch-depth=1).
+ * In that case we keep the row's existing status rather than collapsing
+ * every row to `stale`. If the GHA needs accurate staleness it should
+ * checkout with `fetch-depth: 0`.
  */
 function fileEditedSince(sinceSha, files) {
 	if (!sinceSha) return false;
@@ -100,8 +105,7 @@ function fileEditedSince(sinceSha, files) {
 		);
 		return out.trim().length > 0;
 	} catch {
-		// Bad SHA or git error — treat as "yes, stale-ish, recheck"
-		return true;
+		return null;
 	}
 }
 
@@ -111,7 +115,10 @@ const MAX_AGE_MS = MAX_AGE_WEEKS * 7 * 24 * 60 * 60 * 1000;
 function computeEffectiveStatus(row) {
 	if (row.status === 'new') return 'new';
 	const edited = fileEditedSince(row.last_checked_sha, [row.source_file_path]);
-	if (edited) return 'stale';
+	if (edited === true) return 'stale';
+	// edited === null: git couldn't determine (shallow clone, missing SHA).
+	// Don't flip to stale — keep the row's own status. Picker still progresses
+	// via the new → red → stale priority on rows it CAN read.
 	if (row.last_checked_at) {
 		const age = NOW - Date.parse(row.last_checked_at);
 		if (age > MAX_AGE_MS) return 'stale';
@@ -141,12 +148,6 @@ annotated.sort((a, b) => {
 	return a.source_file_path.localeCompare(b.source_file_path);
 });
 
-const top = annotated[0];
-if (top.effective_status === 'green') {
-	process.stderr.write('All rows are green and unchanged — nothing to do.\n');
-	process.exit(1);
-}
-
 const counts = annotated.reduce((acc, r) => {
 	acc[r.effective_status] = (acc[r.effective_status] ?? 0) + 1;
 	return acc;
@@ -156,6 +157,18 @@ process.stderr.write(
 	`Ledger: ${ledger.length} rows  •  ` +
 		`new=${counts.new ?? 0} red=${counts.red ?? 0} stale=${counts.stale ?? 0} green=${counts.green ?? 0}\n`,
 );
+
+const top = annotated[0];
+
+// "All-green and unchanged" is a healthy state, not a failure. Exit 0 with
+// `picked: null` so the caller can short-circuit cleanly without misreading
+// the run as failed.
+if (top.effective_status === 'green') {
+	process.stderr.write('All rows are green and unchanged — nothing to do.\n');
+	process.stdout.write(JSON.stringify({ picked: null, reason: 'all-green' }) + '\n');
+	process.exit(0);
+}
+
 process.stderr.write(
 	`Picked: ${top.source_file_path}\n` +
 		`        priority=${top.effective_status}  ` +
@@ -169,4 +182,4 @@ const picked = {
 	effective_status: top.effective_status,
 };
 
-process.stdout.write(JSON.stringify(picked) + '\n');
+process.stdout.write(JSON.stringify({ picked }) + '\n');
