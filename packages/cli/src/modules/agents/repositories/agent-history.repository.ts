@@ -51,18 +51,21 @@ export class AgentHistoryRepository extends Repository<AgentHistory> {
 		const author = typeof publishedBy === 'string' ? publishedBy : renderAuthor(publishedBy);
 		const publishedById = typeof publishedBy === 'string' ? null : publishedBy.id;
 		const repo = trx?.getRepository(AgentHistory) ?? this;
-		// TypeORM's QueryDeepPartialEntity cannot represent Zod-inferred types
-		// like AgentJsonConfig. The cast is safe: @JsonColumn serialises the
-		// value at runtime.
+		// TypeORM's QueryDeepPartialEntity can't express our @JsonColumn shapes
+		// (Zod-inferred AgentJsonConfig, the tools `Record<string, …>`, etc.),
+		// so each JSON field is cast individually. The non-JSON fields
+		// (versionId, agentId, author, publishedById) stay type-checked.
+		// The casts are safe at runtime: @JsonColumn serialises the values.
+		type InsertShape = QueryDeepPartialEntity<AgentHistory>;
 		await repo.insert({
 			versionId: data.versionId,
 			agentId: data.agentId,
-			schema: data.schema,
-			tools: data.tools,
-			skills: data.skills,
+			schema: data.schema as InsertShape['schema'],
+			tools: data.tools as InsertShape['tools'],
+			skills: data.skills as InsertShape['skills'],
 			author,
 			publishedById,
-		} as QueryDeepPartialEntity<AgentHistory>);
+		});
 		return await repo.findOneByOrFail({ versionId: data.versionId });
 	}
 

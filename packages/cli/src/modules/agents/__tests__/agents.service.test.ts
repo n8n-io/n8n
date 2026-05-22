@@ -641,6 +641,57 @@ describe('AgentsService', () => {
 			expect(result).toBe(agent);
 		});
 
+		it('publish → unpublish → publish snapshots two distinct versions (regression)', async () => {
+			// Reported as a UNIQUE constraint on agent_history.versionId when
+			// the same agent went through publish/unpublish/publish without an
+			// intervening edit.
+			const agent = makeAgent({ versionId: 'v1' });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentHistoryRepository.saveVersion.mockImplementation(async (data) =>
+				makeAgentHistory({ versionId: data.versionId }),
+			);
+			Container.set(ChatIntegrationService, mock<ChatIntegrationService>());
+			Container.set(AgentScheduleService, scheduleService);
+
+			await service.publishAgent(agentId, projectId, testUser);
+			expect(agent.activeVersionId).toBe('v1');
+
+			await service.unpublishAgent(agentId, projectId);
+			expect(agent.activeVersionId).toBeNull();
+			expect(agent.versionId).not.toBe('v1');
+			const bumpedVersionId = agent.versionId;
+
+			await service.publishAgent(agentId, projectId, testUser);
+			expect(agent.activeVersionId).toBe(bumpedVersionId);
+
+			const savedVersionIds = agentHistoryRepository.saveVersion.mock.calls.map(
+				([data]) => data.versionId,
+			);
+			expect(savedVersionIds).toEqual(['v1', bumpedVersionId]);
+			expect(new Set(savedVersionIds).size).toBe(2);
+		});
+
+		it('is a no-op when the agent is already published at the current versionId', async () => {
+			// Defends against the UNIQUE constraint that would fire on a
+			// re-insert with the same PK. The publish button is gated in the
+			// UI but the endpoint can be hit directly.
+			const agent = makeAgent({
+				versionId: 'v1',
+				activeVersionId: 'v1',
+				activeVersion: makeAgentHistory({ versionId: 'v1' }),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.publishAgent(agentId, projectId, testUser);
+
+			expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
+			expect(agentHistoryRepository.findByVersionAndAgentId).not.toHaveBeenCalled();
+			expect(mockTrx.save).not.toHaveBeenCalled();
+			expect(result).toBe(agent);
+			expect(agent.versionId).toBe('v1');
+			expect(agent.activeVersionId).toBe('v1');
+		});
+
 		describe('with explicit versionId', () => {
 			it('flips activeVersionId to an existing history row without creating a new one', async () => {
 				const agent = makeAgent({ versionId: 'v2' });
@@ -849,6 +900,25 @@ describe('AgentsService', () => {
 			expect(agent.activeVersionId).toBeNull();
 			expect(agent.activeVersion).toBeNull();
 			expect(mockTrx.save).toHaveBeenCalledWith(agent);
+		});
+
+		it('bumps versionId so the next publish gets a fresh history PK', async () => {
+			// Without this bump, the just-released versionId (still occupied
+			// by the snapshot row in agent_history) would collide on the next
+			// publish — see "publish → unpublish → publish" regression.
+			const agent = makeAgent({
+				versionId: 'v1',
+				activeVersionId: 'v1',
+				activeVersion: makeAgentHistory({ versionId: 'v1' }),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.unpublishAgent(agentId, projectId);
+
+			expect(agent.versionId).not.toBe('v1');
+			expect(agent.versionId).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+			);
 		});
 
 		it('deactivates the persisted schedule and stops the local cron job when unpublishing', async () => {

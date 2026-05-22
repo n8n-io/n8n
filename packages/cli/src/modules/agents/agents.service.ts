@@ -429,6 +429,15 @@ export class AgentsService {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
+		// Idempotent fast-path: the agent is already published at this exact
+		// versionId, so there's nothing to snapshot and no pointer to flip.
+		// Without this, re-publishing without an intervening save or unpublish
+		// would attempt to insert a second history row under the same PK and
+		// trip the UNIQUE constraint.
+		if (!versionId && agent.versionId !== null && agent.versionId === agent.activeVersionId) {
+			return agent;
+		}
+
 		await this.agentRepository.manager.transaction(async (trx) => {
 			if (versionId) {
 				const existing = await this.agentHistoryRepository.findByVersionAndAgentId(
@@ -502,6 +511,10 @@ export class AgentsService {
 		await this.agentRepository.manager.transaction(async (trx) => {
 			agent.activeVersionId = null;
 			agent.activeVersion = null;
+			// Bump versionId so the next publish gets a fresh PK. The just-
+			// unpublished snapshot still occupies its versionId in agent_history,
+			// and re-publishing the same id would collide with that row.
+			agent.versionId = uuid();
 
 			const hasActiveSchedule = (agent.integrations ?? []).some(
 				(integration) => isAgentScheduleIntegration(integration) && integration.active,
