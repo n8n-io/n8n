@@ -883,7 +883,8 @@ describe('AgentsService', () => {
 			};
 			const agent = makeAgent({
 				schema,
-				publishedVersion: makePublishedVersion({ schema, publishedById: userId }),
+				activeVersionId: versionId,
+				activeVersion: makeAgentHistory({ schema, publishedById: userId }),
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			Container.set(CredentialsService, mock<CredentialsService>());
