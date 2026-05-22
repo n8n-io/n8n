@@ -77,8 +77,7 @@ export class RefactorAgentObservationScope1784000000010 implements ReversibleMig
 				column('status').varchar(16).notNull.withEnumCheck(OBSERVATION_STATUSES),
 				column('supersededBy').varchar(36),
 			)
-			.withIndexOn(['agentId', 'observationScopeId', 'status', 'createdAt', 'id'])
-			.withIndexOn(['agentId', 'observationScopeId', 'createdAt', 'id'])
+			.withIndexOn(['agentId', 'observationScopeId', 'status'])
 			.withIndexOn('observationScopeId')
 			.withIndexOn('parentId')
 			.withIndexOn('supersededBy')
