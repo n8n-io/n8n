@@ -1,7 +1,7 @@
 import {
 	validateNodeSelectionForExtraction,
 	validateNodeSelectionForGrouping,
-} from '../src/common';
+} from '../src/node-grouping-validation';
 import {
 	NodeConnectionTypes,
 	type IConnections,
@@ -82,7 +82,22 @@ describe('node grouping validation', () => {
 		}
 	});
 
-	it('returns too-few-nodes for a single-node selection', () => {
+	it('returns valid for a single-node extraction selection', () => {
+		const graph = makeLinearGraph();
+
+		const result = validateNodeSelectionForExtraction({
+			nodes: [graph.nodes[0]],
+			connectionsBySourceNode: graph.connections,
+			getNodeType: (node) => makeNodeType({ name: node.type }),
+		});
+
+		expect(result.valid).toBe(true);
+		if (result.valid) {
+			expect(result.subGraph.map((node) => node.name)).toEqual(['A']);
+		}
+	});
+
+	it('returns too-few-nodes for a single-node grouping selection', () => {
 		const graph = makeLinearGraph();
 
 		const result = validateGrouping({
@@ -91,6 +106,39 @@ describe('node grouping validation', () => {
 		});
 
 		expect(result).toEqual({ valid: false, reason: 'too-few-nodes' });
+	});
+
+	it('returns node-already-grouped when a selection id belongs to an existing group', () => {
+		const graph = makeLinearGraph();
+
+		const result = validateNodeSelectionForGrouping({
+			nodes: [graph.nodes[0], graph.nodes[1]],
+			connectionsBySourceNode: graph.connections,
+			getNodeType: (node) => makeNodeType({ name: node.type }),
+			existingNodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'c'] }],
+		});
+
+		expect(result).toEqual({ valid: false, reason: 'node-already-grouped', nodeIds: ['a'] });
+	});
+
+	it('allows grouping when existingNodeGroups is empty or omitted', () => {
+		const graph = makeLinearGraph();
+
+		expect(
+			validateNodeSelectionForGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1]],
+				connectionsBySourceNode: graph.connections,
+				getNodeType: (node) => makeNodeType({ name: node.type }),
+				existingNodeGroups: [],
+			}).valid,
+		).toBe(true);
+
+		expect(
+			validateGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1]],
+				connectionsBySourceNode: graph.connections,
+			}).valid,
+		).toBe(true);
 	});
 
 	it('returns trigger-selected when the selection contains a trigger', () => {

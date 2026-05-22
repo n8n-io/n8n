@@ -8,31 +8,7 @@ export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
-export * from './agents';
-export type { AgentSseEvent, AgentSseMessage, ToolSuspendedPayload } from './agent-sse';
-export {
-	ASK_LLM_TOOL_NAME,
-	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_QUESTION_TOOL_NAME,
-	interactiveToolNameSchema,
-	askLlmInputSchema,
-	askLlmResumeSchema,
-	askCredentialInputSchema,
-	askCredentialResumeSchema,
-	askQuestionOptionSchema,
-	askQuestionInputSchema,
-	askQuestionResumeSchema,
-	interactiveResumeDataSchema,
-	type InteractiveToolName,
-	type AskLlmInput,
-	type AskLlmResume,
-	type AskCredentialInput,
-	type AskCredentialResume,
-	type AskQuestionOption,
-	type AskQuestionInput,
-	type AskQuestionResume,
-	type InteractiveResumeData,
-} from './agent-builder-interactive';
+export * from './agents/index';
 export * from './instance-registry-types';
 export * from './redaction-enforcement';
 export {
@@ -343,6 +319,7 @@ export {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiGatewayCapabilitiesDto,
+	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	applyBranchReadOnlyOverrides,
 } from './schemas/instance-ai.schema';
@@ -418,6 +395,7 @@ export type {
 	InstanceAiEvalNodeResult,
 	InstanceAiEvalMockHints,
 	InstanceAiEvalMockedCredential,
+	InstanceAiEvalRewrittenCredential,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalToolCall,
 	InstanceAiEvalToolResult,
@@ -434,7 +412,6 @@ export {
 export type { AgentRunState, AgentNode } from './schemas/agent-run-reducer';
 
 export {
-	EVAL_PARALLEL_EXECUTION_FLAG,
 	startTestRunPayloadSchema,
 	StartTestRunRequestDto,
 	type StartTestRunPayload,
@@ -461,7 +438,23 @@ export {
 	type EvalVersionsResponse,
 } from './schemas/eval-collections.schema';
 
+export {
+	aiInsightsStatusSchema,
+	aiInsightsPayloadSchema,
+	aiInsightsResponseSchema,
+	generateInsightsSchema,
+	GenerateInsightsDto,
+	type AiInsightsStatus,
+	type AiInsightsWinner,
+	type AiInsightsRegression,
+	type AiInsightsSuggestedNext,
+	type AiInsightsPayload,
+	type AiInsightsResponse,
+	type GenerateInsightsPayload,
+} from './schemas/eval-insights.schema';
+
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
+export { xssCheck } from './utils/xss-check';
 
 export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';
 export {

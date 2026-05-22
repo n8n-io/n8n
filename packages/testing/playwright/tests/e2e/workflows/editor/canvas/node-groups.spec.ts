@@ -4,26 +4,33 @@ import { test, expect } from '../../../../../fixtures/base';
 import type { TestRequirements } from '../../../../../Types';
 
 const FIXTURE = 'Canvas-node-groups-fixture.json';
+const PERSISTED_FIXTURE = 'Canvas-node-groups-persisted-fixture.json';
 const TRIGGER = 'When clicking ‘Execute workflow’';
 const DEFAULT_GROUP_TITLE = 'Group 1';
+const PERSISTED_GROUP_TITLE = 'Persisted group';
+const SET_A_NODE_ID = 'b2e0f1a8-5b8f-4b2b-a0c2-9b3e2d2a0002';
+const SET_B_NODE_ID = 'c3f1a2b8-6c9f-4c2c-b0d2-aa4f3e3b0003';
+
+const requirements: TestRequirements = {
+	storage: {
+		N8N_EXPERIMENT_OVERRIDES: JSON.stringify({
+			'083_canvas_nodes_grouping': true,
+		}),
+	},
+};
 
 test.describe(
 	'Canvas node groups',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Adore' }],
 	},
 	() => {
-		const requirements: TestRequirements = {
-			storage: {
-				N8N_EXPERIMENT_OVERRIDES: JSON.stringify({
-					'083_canvas_nodes_grouping': true,
-				}),
-			},
-		};
+		let workflowId: string;
 
 		test.beforeEach(async ({ n8n, setupRequirements }) => {
 			await setupRequirements(requirements);
-			await n8n.start.fromImportedWorkflow(FIXTURE);
+			const importResult = await n8n.start.fromImportedWorkflow(FIXTURE);
+			workflowId = importResult.workflowId;
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
 			await n8n.canvas.clickZoomToFitButton();
 			await n8n.canvas.deselectAll();
@@ -107,13 +114,25 @@ test.describe(
 			await expect(n8n.canvas.selectionToolbar.root()).toBeHidden();
 		});
 
-		test('removes the group when membership drops below 2', async ({ n8n }) => {
+		test('keeps a single-node group when one of two members is deleted', async ({ n8n }) => {
 			await n8n.canvas.selectNodes(['Set A', 'Set B']);
 			await n8n.canvas.selectionToolbar.groupButton().click();
 			await n8n.canvas.deselectAll();
 			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
 
 			await n8n.canvas.deleteNodeFromContextMenu('Set B');
+			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
+			await expect(n8n.canvas.getNodeGroupTitle(DEFAULT_GROUP_TITLE)).toBeVisible();
+		});
+
+		test('removes the group when the last member is deleted', async ({ n8n }) => {
+			await n8n.canvas.selectNodes(['Set A', 'Set B']);
+			await n8n.canvas.selectionToolbar.groupButton().click();
+			await n8n.canvas.deselectAll();
+			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
+
+			await n8n.canvas.deleteNodeFromContextMenu('Set B');
+			await n8n.canvas.deleteNodeFromContextMenu('Set A');
 			await expect(n8n.canvas.getNodeGroups()).toHaveCount(0);
 		});
 
@@ -127,14 +146,51 @@ test.describe(
 			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
 		});
 
-		test('does not persist groups across navigation (Phase 1: in-memory only)', async ({ n8n }) => {
+		test('includes nodeGroups in the autosave PATCH payload', async ({ n8n }) => {
+			await n8n.canvas.selectNodes(['Set A', 'Set B']);
+
+			const saveResponsePromise = n8n.canvas.waitForSaveWorkflowCompleted();
+			await n8n.canvas.selectionToolbar.groupButton().click();
+			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
+
+			const saveResponse = await saveResponsePromise;
+			expect(saveResponse.request().method()).toBe('PATCH');
+
+			const requestBody = saveResponse.request().postDataJSON() as {
+				nodeGroups?: Array<{ id: string; name: string; nodeIds: string[] }>;
+			};
+
+			expect(requestBody.nodeGroups).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						name: DEFAULT_GROUP_TITLE,
+						nodeIds: [SET_A_NODE_ID, SET_B_NODE_ID],
+					}),
+				]),
+			);
+		});
+
+		test('persists groups after autosave and reload', async ({ n8n }) => {
 			await n8n.canvas.selectNodes(['Set A', 'Set B']);
 			await n8n.canvas.selectionToolbar.groupButton().click();
 			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
 
+			await n8n.canvas.waitForSaveWorkflowCompleted();
+
+			const persisted = await n8n.api.workflows.getWorkflow(workflowId);
+			expect(persisted.nodeGroups).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						name: DEFAULT_GROUP_TITLE,
+						nodeIds: [SET_A_NODE_ID, SET_B_NODE_ID],
+					}),
+				]),
+			);
+
 			await n8n.page.reload();
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
-			await expect(n8n.canvas.getNodeGroups()).toHaveCount(0);
+			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
+			await expect(n8n.canvas.getNodeGroupTitle(DEFAULT_GROUP_TITLE)).toBeVisible();
 		});
 
 		test('blocks Convert to sub-workflow for selections that include a trigger', async ({
@@ -163,6 +219,26 @@ test.describe(
 
 			const after = await n8n.canvas.getNodeGroupBoundingBox(DEFAULT_GROUP_TITLE);
 			expect(after.width).toBeGreaterThan(before.width);
+		});
+	},
+);
+
+test.describe(
+	'Canvas node groups loaded from API',
+	{
+		annotation: [{ type: 'owner', description: 'Adore' }],
+	},
+	() => {
+		test.beforeEach(async ({ n8n, setupRequirements }) => {
+			await setupRequirements(requirements);
+			await n8n.start.fromImportedWorkflow(PERSISTED_FIXTURE);
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
+			await n8n.canvas.clickZoomToFitButton();
+		});
+
+		test('renders groups from nodeGroups without creating them in the UI', async ({ n8n }) => {
+			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
+			await expect(n8n.canvas.getNodeGroupTitle(PERSISTED_GROUP_TITLE)).toBeVisible();
 		});
 	},
 );

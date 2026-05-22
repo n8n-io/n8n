@@ -56,7 +56,6 @@ export interface AgentExecution {
 	timeline: AgentExecutionTimelineEvent[] | null;
 	error: string | null;
 	hitlStatus: AgentExecutionHitlStatus | null;
-	workingMemory: string | null;
 	source: string | null;
 }
 

@@ -48,19 +48,6 @@ export abstract class BaseMemory<TConstructorOptions extends JSONObject = JSONOb
 	): Promise<AgentDbMessage[]> {
 		throw new Error('Method not implemented.');
 	}
-	getWorkingMemory?(_params: {
-		threadId: string;
-		resourceId: string;
-		scope: 'resource' | 'thread';
-	}): Promise<string | null> {
-		throw new Error('Method not implemented.');
-	}
-	saveWorkingMemory?(
-		_params: { threadId: string; resourceId: string; scope: 'resource' | 'thread' },
-		_content: string,
-	): Promise<void> {
-		throw new Error('Method not implemented.');
-	}
 	saveEmbeddings?(_opts: {
 		scope?: 'thread' | 'resource';
 		threadId?: string;

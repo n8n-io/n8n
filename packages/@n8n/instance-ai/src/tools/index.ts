@@ -1,17 +1,20 @@
-import type { ToolsInput } from '@mastra/core/agent';
+import type { BuiltTool } from '@n8n/agents';
 
 import { isParseableAttachment } from '../parsers/structured-file-parser';
-import type { InstanceAiContext, OrchestrationContext } from '../types';
+import { createToolRegistry } from '../tool-registry';
+import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } from '../types';
 import { createParseFileTool } from './attachments/parse-file.tool';
 import { createCredentialsTool } from './credentials.tool';
 import { createDataTablesTool } from './data-tables.tool';
+import { createEvalsTool } from './evals/evals.tool';
 import { createExecutionsTool } from './executions.tool';
-import { createToolsFromLocalMcpServer } from './filesystem/create-tools-from-mcp-server';
 import { createNodesTool } from './nodes.tool';
 import { createBrowserCredentialSetupTool } from './orchestration/browser-credential-setup.tool';
 import { createBuildWorkflowAgentTool } from './orchestration/build-workflow-agent.tool';
 import { createCompleteCheckpointTool } from './orchestration/complete-checkpoint.tool';
 import { createDelegateTool } from './orchestration/delegate.tool';
+import { createEvalDataAgentTool } from './orchestration/eval-data-agent.tool';
+import { createEvalSetupAgentTool } from './orchestration/eval-setup-agent.tool';
 import { createPlanWithAgentTool } from './orchestration/plan-with-agent.tool';
 import { createPlanTool } from './orchestration/plan.tool';
 import { createReportVerificationVerdictTool } from './orchestration/report-verification-verdict.tool';
@@ -19,103 +22,103 @@ import { createVerifyBuiltWorkflowTool } from './orchestration/verify-built-work
 import { createResearchTool } from './research.tool';
 import { createAskUserTool } from './shared/ask-user.tool';
 import { createTaskControlTool } from './task-control.tool';
+import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from './tool-ids';
 import { createApplyWorkflowCredentialsTool } from './workflows/apply-workflow-credentials.tool';
 import { createBuildWorkflowTool } from './workflows/build-workflow.tool';
-import { createWorkflowsTool, type WorkflowAction } from './workflows.tool';
+import { createWorkflowsTool } from './workflows.tool';
 import { createWorkspaceTool } from './workspace.tool';
-
-function hasParseableAttachment(context: InstanceAiContext): boolean {
-	return context.currentUserAttachments?.some(isParseableAttachment) ?? false;
-}
-
-const ORCHESTRATOR_WORKFLOW_ACTIONS = [
-	'list',
-	'get',
-	'delete',
-	'unarchive',
-	'setup',
-	'publish',
-	'unpublish',
-	'list-versions',
-	'get-version',
-	'restore-version',
-	'update-version',
-] as const satisfies readonly WorkflowAction[];
 
 /**
  * Creates all native n8n domain tools with the full action surface.
- * Agents with narrower surfaces pass explicit action lists at their wiring sites.
+ * Used for delegate/builder tool resolution — sub-agents get unrestricted access.
  */
-export function createAllTools(context: InstanceAiContext): ToolsInput {
-	return {
-		workflows: createWorkflowsTool(context),
-		executions: createExecutionsTool(context),
-		credentials: createCredentialsTool(context),
-		'data-tables': createDataTablesTool(context),
-		workspace: createWorkspaceTool(context),
-		research: createResearchTool(context),
-		nodes: createNodesTool(context),
-		'ask-user': createAskUserTool(),
-		'build-workflow': createBuildWorkflowTool(context),
-		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
-		...(hasParseableAttachment(context) ? { 'parse-file': createParseFileTool(context) } : {}),
-	};
+export function createAllTools(context: InstanceAiContext): InstanceAiToolRegistry {
+	const tools: Array<[string, BuiltTool]> = [
+		[DOMAIN_TOOL_IDS.WORKFLOWS, createWorkflowsTool(context)],
+		[DOMAIN_TOOL_IDS.EVALS, createEvalsTool(context)],
+		[DOMAIN_TOOL_IDS.EXECUTIONS, createExecutionsTool(context)],
+		[DOMAIN_TOOL_IDS.CREDENTIALS, createCredentialsTool(context)],
+		[DOMAIN_TOOL_IDS.DATA_TABLES, createDataTablesTool(context)],
+		[DOMAIN_TOOL_IDS.WORKSPACE, createWorkspaceTool(context)],
+		[DOMAIN_TOOL_IDS.RESEARCH, createResearchTool(context)],
+		[DOMAIN_TOOL_IDS.NODES, createNodesTool(context)],
+		[DOMAIN_TOOL_IDS.ASK_USER, createAskUserTool()],
+		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, createBuildWorkflowTool(context)],
+	];
+
+	if (context.currentUserAttachments?.some(isParseableAttachment)) {
+		tools.push([DOMAIN_TOOL_IDS.PARSE_FILE, createParseFileTool(context)]);
+	}
+
+	return createToolRegistry(tools);
 }
 
 /**
  * Creates orchestrator-scoped domain tools — restricted action surfaces
  * for tools where the orchestrator should not have write/builder access.
  */
-export function createOrchestratorDomainTools(context: InstanceAiContext): ToolsInput {
-	return {
-		workflows: createWorkflowsTool(context, {
-			allowedActions: ORCHESTRATOR_WORKFLOW_ACTIONS,
-		}),
-		executions: createExecutionsTool(context),
-		credentials: createCredentialsTool(context),
-		'data-tables': createDataTablesTool(context, 'orchestrator'),
-		workspace: createWorkspaceTool(context),
-		research: createResearchTool(context),
-		nodes: createNodesTool(context, 'orchestrator'),
-		'ask-user': createAskUserTool(),
-		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
-		...(hasParseableAttachment(context) ? { 'parse-file': createParseFileTool(context) } : {}),
-	};
+export function createOrchestratorDomainTools(context: InstanceAiContext): InstanceAiToolRegistry {
+	const tools: Array<[string, BuiltTool]> = [
+		[DOMAIN_TOOL_IDS.WORKFLOWS, createWorkflowsTool(context, 'orchestrator')],
+		[DOMAIN_TOOL_IDS.EVALS, createEvalsTool(context)],
+		[DOMAIN_TOOL_IDS.EXECUTIONS, createExecutionsTool(context)],
+		[DOMAIN_TOOL_IDS.CREDENTIALS, createCredentialsTool(context)],
+		[DOMAIN_TOOL_IDS.DATA_TABLES, createDataTablesTool(context, 'orchestrator')],
+		[DOMAIN_TOOL_IDS.WORKSPACE, createWorkspaceTool(context)],
+		[DOMAIN_TOOL_IDS.RESEARCH, createResearchTool(context)],
+		[DOMAIN_TOOL_IDS.NODES, createNodesTool(context, 'orchestrator')],
+		[DOMAIN_TOOL_IDS.ASK_USER, createAskUserTool()],
+	];
+
+	if (context.currentUserAttachments?.some(isParseableAttachment)) {
+		tools.push([DOMAIN_TOOL_IDS.PARSE_FILE, createParseFileTool(context)]);
+	}
+
+	return createToolRegistry(tools);
 }
 
 /**
  * Creates orchestration-only tools (planner, delegation, task control).
  * These tools are given to the orchestrator agent but never to sub-agents.
  */
-export function createOrchestrationTools(context: OrchestrationContext) {
-	return {
-		plan: createPlanWithAgentTool(context),
-		'create-tasks': createPlanTool(context),
-		'task-control': createTaskControlTool(context),
-		delegate: createDelegateTool(context),
-		'build-workflow-with-agent': createBuildWorkflowAgentTool(context),
-		'complete-checkpoint': createCompleteCheckpointTool(context),
-		...(context.browserMcpConfig || hasGatewayBrowserTools(context)
-			? {
-					'browser-credential-setup': createBrowserCredentialSetupTool(context),
-				}
-			: {}),
-		...(context.workflowTaskService
-			? {
-					'report-verification-verdict': createReportVerificationVerdictTool(context),
-				}
-			: {}),
-		...(context.workflowTaskService && context.domainContext
-			? {
-					'verify-built-workflow': createVerifyBuiltWorkflowTool(context),
-				}
-			: {}),
-		...(context.workflowTaskService && context.domainContext
-			? {
-					'apply-workflow-credentials': createApplyWorkflowCredentialsTool(context),
-				}
-			: {}),
-	};
+export function createOrchestrationTools(context: OrchestrationContext): InstanceAiToolRegistry {
+	const tools: Array<[string, BuiltTool]> = [
+		[ORCHESTRATION_TOOL_IDS.PLAN, createPlanWithAgentTool(context)],
+		[ORCHESTRATION_TOOL_IDS.CREATE_TASKS, createPlanTool(context)],
+		[ORCHESTRATION_TOOL_IDS.TASK_CONTROL, createTaskControlTool(context)],
+		[ORCHESTRATION_TOOL_IDS.DELEGATE, createDelegateTool(context)],
+		[ORCHESTRATION_TOOL_IDS.BUILD_WORKFLOW_WITH_AGENT, createBuildWorkflowAgentTool(context)],
+		[ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT, createCompleteCheckpointTool(context)],
+		[ORCHESTRATION_TOOL_IDS.EVAL_SETUP_WITH_AGENT, createEvalSetupAgentTool(context)],
+		[ORCHESTRATION_TOOL_IDS.EVAL_DATA, createEvalDataAgentTool(context)],
+	];
+
+	if (context.browserMcpConfig || hasGatewayBrowserTools(context)) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.BROWSER_CREDENTIAL_SETUP,
+			createBrowserCredentialSetupTool(context),
+		]);
+	}
+
+	if (context.workflowTaskService) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.REPORT_VERIFICATION_VERDICT,
+			createReportVerificationVerdictTool(context),
+		]);
+	}
+
+	if (context.workflowTaskService && context.domainContext) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
+			createVerifyBuiltWorkflowTool(context),
+		]);
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS,
+			createApplyWorkflowCredentialsTool(context),
+		]);
+	}
+
+	return createToolRegistry(tools);
 }
 
 function hasGatewayBrowserTools(context: OrchestrationContext): boolean {

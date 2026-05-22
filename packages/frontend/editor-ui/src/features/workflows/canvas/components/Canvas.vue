@@ -47,6 +47,8 @@ import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes, type IConnections } from 'n8n-workflow';
+import type { CanvasRenderData } from '../canvas.utils';
+import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
 	computed,
 	nextTick,
@@ -67,7 +69,6 @@ import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
 import CanvasNodeGroupsLayer from './elements/groups/CanvasNodeGroupsLayer.vue';
-import { useCanvasNodeGroupsStore } from '../stores/canvasNodeGroups.store';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
@@ -146,6 +147,7 @@ const props = withDefaults(
 		connections: CanvasConnection[];
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
+		renderData: CanvasRenderData;
 		readOnly?: boolean;
 		canExecute?: boolean;
 		executing?: boolean;
@@ -153,6 +155,7 @@ const props = withDefaults(
 		loading?: boolean;
 		suppressInteraction?: boolean;
 		hideControls?: boolean;
+		showNodeGroups?: boolean;
 		initialViewport?: ViewportTransform | null;
 	}>(),
 	{
@@ -168,17 +171,20 @@ const props = withDefaults(
 		loading: false,
 		suppressInteraction: false,
 		hideControls: false,
+		showNodeGroups: true,
 	},
 );
 
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const usersStore = useUsersStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+
+const renderData = toRef(props, 'renderData');
+provide(CanvasRenderDataKey, renderData);
 const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
 const setupPanelStore = useSetupPanelStore();
-const canvasNodeGroupsStore = useCanvasNodeGroupsStore();
 const posthogStore = usePostHog();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
@@ -224,7 +230,7 @@ const {
 	getDownstreamNodes,
 	getUpstreamNodes,
 } = useCanvasTraversal(vueFlow);
-const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive);
+const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive, toRef(props, 'renderData'));
 
 const isPaneReady = ref(false);
 const nodeGroupIdToAutofocusTitle = ref<string | null>(null);
@@ -1099,14 +1105,6 @@ watch([nodesSelectionActive, userSelectionRect], ([isActive, rect]) =>
 	emit('update:has-range-selection', isActive || (rect?.width ?? 0) > 0 || (rect?.height ?? 0) > 0),
 );
 
-watch(
-	() => props.nodes.length,
-	(length, prev) => {
-		if (length >= prev) return;
-		canvasNodeGroupsStore.pruneNodes(new Set(props.nodes.map((n) => n.id)));
-	},
-);
-
 watch([vueFlow.nodes, () => experimentalNdvStore.nodeNameToBeFocused], ([nodes, toFocusName]) => {
 	const toFocusNode =
 		toFocusName &&
@@ -1243,7 +1241,7 @@ defineExpose({
 		</slot>
 
 		<CanvasNodeGroupsLayer
-			v-if="isCanvasNodeGroupingEnabled"
+			v-if="showNodeGroups && isCanvasNodeGroupingEnabled"
 			:read-only="readOnly || suppressInteraction"
 			:autofocus-group-id="nodeGroupIdToAutofocusTitle"
 			@title:focused="onNodeGroupTitleFocused"
@@ -1251,7 +1249,7 @@ defineExpose({
 		/>
 
 		<CanvasSelectionToolbar
-			v-if="isCanvasNodeGroupingEnabled"
+			v-if="showNodeGroups && isCanvasNodeGroupingEnabled"
 			:selected-nodes="selectedNodes"
 			:read-only="readOnly || suppressInteraction"
 			@group-created="onNodeGroupCreated"
@@ -1304,6 +1302,8 @@ defineExpose({
 	height: 100%;
 	opacity: 0;
 	transition: opacity 300ms ease;
+	-webkit-user-select: none;
+	user-select: none;
 
 	&.ready {
 		opacity: 1;

@@ -6,7 +6,7 @@ import { N8nIconButton, N8nInlineTextEdit } from '@n8n/design-system';
 import { getRectOfNodes } from '@vue-flow/core';
 import type { GraphNode } from '@vue-flow/core';
 
-import type { CanvasNodeGroup } from '../../../stores/canvasNodeGroups.store';
+import type { IWorkflowGroup } from 'n8n-workflow';
 import {
 	GROUP_PADDING_X as PADDING_X,
 	GROUP_PADDING_Y_TOP as PADDING_Y_TOP,
@@ -14,13 +14,11 @@ import {
 	GROUP_HEADER_HEIGHT as HEADER_HEIGHT,
 } from '../../../stores/canvasNodeGroups.constants';
 
-// Matches the `var(--spacing--sm)` horizontal padding on the header (16px each side).
-const HEADER_PADDING_X = 16;
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
 
 const props = withDefaults(
 	defineProps<{
-		group: CanvasNodeGroup;
+		group: IWorkflowGroup;
 		memberNodes: GraphNode[];
 		readOnly?: boolean;
 		autofocusTitle?: boolean;
@@ -32,7 +30,7 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	'update:title': [id: string, title: string];
+	'update:name': [id: string, name: string];
 	'title:focused': [id: string];
 	ungroup: [id: string];
 	'header:dragstart': [id: string, event: MouseEvent];
@@ -60,12 +58,8 @@ const layout = computed(() => {
 	};
 });
 
-const titleMaxWidth = computed(() =>
-	Math.max(0, (layout.value?.width ?? 0) - 2 * HEADER_PADDING_X),
-);
-
 function onTitleUpdate(value: string) {
-	emit('update:title', props.group.id, value);
+	emit('update:name', props.group.id, value);
 }
 
 function onUngroupClick() {
@@ -137,10 +131,10 @@ watch(
 			<div :class="$style.title" data-test-id="canvas-node-group-title">
 				<N8nInlineTextEdit
 					ref="titleEdit"
-					:model-value="group.title"
+					:model-value="group.name"
 					:read-only="readOnly"
 					:min-width="0"
-					:max-width="titleMaxWidth"
+					max-width="100%"
 					:placeholder="i18n.baseText('canvas.nodeGroup.titlePlaceholder')"
 					@update:model-value="onTitleUpdate"
 					@mousedown.stop

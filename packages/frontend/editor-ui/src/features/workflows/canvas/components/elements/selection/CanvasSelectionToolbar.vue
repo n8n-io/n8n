@@ -42,7 +42,9 @@ const canExtractWorkflow = computed(
 	() => !props.readOnly && isSelectionExtractable(selectedNodeIds.value).valid,
 );
 
-const isToolbarVisible = computed(() => canGroup.value || canExtractWorkflow.value);
+const isToolbarVisible = computed(
+	() => (canGroup.value || canExtractWorkflow.value) && selectedNodeIds.value.length > 1,
+);
 
 const extractWorkflowLabel = computed(() =>
 	i18n.baseText('contextMenu.extract', { adjustToNumber: props.selectedNodes.length }),
@@ -114,6 +116,8 @@ function onExtractWorkflowClick() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/common/var';
+
 .toolbar {
 	position: absolute;
 	top: 0;
@@ -121,7 +125,7 @@ function onExtractWorkflowClick() {
 	// Matches the design-system $index-popper tier (var.scss) — sits above
 	// vue-flow's elevated selected nodes so the per-node hover toolbar can't
 	// occlude it.
-	z-index: 2000;
+	z-index: var.$index-popper;
 	display: flex;
 	align-items: center;
 	justify-content: center;

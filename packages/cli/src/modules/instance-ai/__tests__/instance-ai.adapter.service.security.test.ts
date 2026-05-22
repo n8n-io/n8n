@@ -1,4 +1,4 @@
-// Mock the barrel import to avoid pulling in @mastra/core (ESM-only transitive deps)
+// Mock the barrel import so these adapter tests only exercise local formatting helpers.
 jest.mock('@n8n/instance-ai', () => ({
 	wrapUntrustedData(content: string, source: string, label?: string): string {
 		const esc = (s: string) =>

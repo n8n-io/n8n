@@ -226,7 +226,10 @@ export function buildAutoApprovePayload(event: CapturedEvent): InstanceAiConfirm
 			? (resourceDecision.options as unknown[]).filter((o): o is string => typeof o === 'string')
 			: [];
 		const allowOption = options.find((o) => o.toLowerCase().includes('allow')) ?? options[0];
-		return { kind: 'resourceDecision', resourceDecision: allowOption ?? 'allowOnce' };
+		return {
+			kind: 'resourceDecision',
+			resourceDecision: isResourceDecision(allowOption) ? allowOption : 'allowOnce',
+		};
 	}
 
 	if (Array.isArray(payload.setupRequests)) {
@@ -242,6 +245,12 @@ export function buildAutoApprovePayload(event: CapturedEvent): InstanceAiConfirm
 	}
 
 	return { kind: 'approval', approved: true };
+}
+
+function isResourceDecision(
+	value: string | undefined,
+): value is 'denyOnce' | 'allowOnce' | 'allowForSession' {
+	return value === 'denyOnce' || value === 'allowOnce' || value === 'allowForSession';
 }
 
 // ---------------------------------------------------------------------------
