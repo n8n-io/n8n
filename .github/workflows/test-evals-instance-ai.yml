@@ -168,7 +168,7 @@ jobs:
           LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
           LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
           LANGSMITH_REVISION_ID: ${{ github.sha }}
-          LANGSMITH_BRANCH: ${{ github.head_ref || github.ref_name }}
+          LANGSMITH_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
           FILTER: ${{ inputs.filter }}
         run: |
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
@@ -256,7 +256,7 @@ jobs:
           fi
 
       - name: Post eval results to PR
-        if: ${{ always() && github.event_name == 'pull_request' }}
+        if: ${{ always() && github.event.pull_request.number }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
