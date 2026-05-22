@@ -8,7 +8,15 @@ const tsJestOptions = {
 		...compilerOptions,
 		declaration: false,
 		sourceMap: true,
-		rootDir: '.'
+		rootDir: '.',
+		// Relax strictness for cross-package imports. ts-jest applies the host
+		// package's tsconfig to every file it transforms, including imports
+		// from packages like nodes-base that disable these in their own
+		// tsconfig. The host package's own `pnpm typecheck` is unaffected.
+		noImplicitReturns: false,
+		noUncheckedIndexedAccess: false,
+		noImplicitOverride: false,
+		useUnknownInCatchVariables: false,
 	},
 };
 
