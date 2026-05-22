@@ -186,6 +186,84 @@ describe('LlmWireServer', () => {
 			expect(intercepts[0].mockResponse).toEqual({ content: 'reply' });
 		});
 
+		it('still returns 200 with a valid envelope when onIntercept throws (ledger failure is isolated)', async () => {
+			const warn = jest.fn();
+			const mockHandler = jest.fn().mockResolvedValue({
+				body: { content: 'reply' },
+				headers: {},
+				statusCode: 200,
+			}) as unknown as EvalLlmMockHandler;
+
+			server = new LlmWireServer({
+				mockHandler,
+				rootToSubNode: new Map([['Agent', subNode]]),
+				onIntercept: () => {
+					throw new Error('ledger disk full');
+				},
+				logger: { warn } as unknown as Logger,
+			});
+			const url = await server.start();
+
+			const response = await postChatCompletion(url, '/eval/Agent/v1/chat/completions', {
+				model: 'gpt-4o',
+				messages: [{ role: 'user', content: 'ping' }],
+			});
+			const body = (await response.json()) as {
+				object: string;
+				choices: Array<{ message: { content: string } }>;
+			};
+
+			// Envelope is intact — the SDK must not see the ledger failure.
+			expect(response.status).toBe(200);
+			expect(body.object).toBe('chat.completion');
+			expect(body.choices[0].message.content).toBe('reply');
+			// Logger sees the diagnostic warning.
+			expect(warn).toHaveBeenCalledTimes(1);
+			expect(warn.mock.calls[0][0]).toContain('ledger write failed');
+			expect(warn.mock.calls[0][0]).toContain('ledger disk full');
+		});
+
+		it('records an isolated deep copy of the request body in the ledger', async () => {
+			const intercepts: InterceptedTurn[] = [];
+			const mockHandler = jest.fn().mockResolvedValue({
+				body: { content: 'reply' },
+				headers: {},
+				statusCode: 200,
+			}) as unknown as EvalLlmMockHandler;
+
+			server = new LlmWireServer({
+				mockHandler,
+				rootToSubNode: new Map([['Agent', subNode]]),
+				onIntercept: (t) => intercepts.push(t),
+			});
+			const url = await server.start();
+
+			await postChatCompletion(url, '/eval/Agent/v1/chat/completions', {
+				model: 'gpt-4o',
+				messages: [{ role: 'user', content: 'ping' }],
+			});
+
+			expect(intercepts).toHaveLength(1);
+			const recordedBody = intercepts[0].requestBody as {
+				messages: Array<{ content: string }>;
+			};
+			// Mutating the recorded entry must not affect a freshly-served
+			// request — proves the entry is owned by the ledger consumer, not
+			// shared with later route handling.
+			recordedBody.messages[0].content = 'mutated';
+
+			await postChatCompletion(url, '/eval/Agent/v1/chat/completions', {
+				model: 'gpt-4o',
+				messages: [{ role: 'user', content: 'pong' }],
+			});
+
+			expect(intercepts).toHaveLength(2);
+			const secondBody = intercepts[1].requestBody as {
+				messages: Array<{ content: string }>;
+			};
+			expect(secondBody.messages[0].content).toBe('pong');
+		});
+
 		it('returns 500 with an OpenAI error envelope when the mock handler throws', async () => {
 			const error = jest.fn();
 			const mockHandler = jest

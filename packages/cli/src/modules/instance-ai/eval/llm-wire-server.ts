@@ -103,30 +103,37 @@ export class LlmWireServer {
 			return;
 		}
 
+		let synthetic: ReturnType<typeof reverseTranslateOpenAiRequest>;
+		let mockResponse: Awaited<ReturnType<typeof this.options.mockHandler>>;
+		let envelope: Record<string, unknown>;
 		try {
-			const synthetic = reverseTranslateOpenAiRequest(req.body);
-			const mockResponse = await this.options.mockHandler(synthetic, subNode);
-			const envelope = forwardTranslateToChatCompletion(mockResponse, model);
+			synthetic = reverseTranslateOpenAiRequest(req.body);
+			mockResponse = await this.options.mockHandler(synthetic, subNode);
+			envelope = forwardTranslateToChatCompletion(mockResponse, model);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.options.logger?.error(`[EvalMock] Wire-server mock generation failed: ${message}`);
+			res.status(500).json(buildOpenAiErrorEnvelope(`Mock generation failed: ${message}`));
+			return;
+		}
 
-			// Shallow-clone the body before handing it to the ledger so future
-			// middleware that mutates `req.body` post-route can't retroactively
-			// alter recorded turns. The mock response body is owned by the
-			// handler and is safe to pass by reference.
+		// Best-effort ledger write — never let it taint the 200 the SDK sees.
+		try {
 			this.options.onIntercept?.({
 				rootName,
 				url: synthetic.url,
 				method: synthetic.method ?? 'POST',
 				nodeType: subNode.type,
-				requestBody: typeof req.body === 'object' && req.body !== null ? { ...req.body } : req.body,
+				// Deep-clone so the ledger entry can't be mutated by later code.
+				requestBody: this.cloneRequestBody(req.body),
 				mockResponse: mockResponse?.body,
 			});
-
-			res.status(200).json(envelope);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			this.options.logger?.error(`[EvalMock] Wire-server mock generation failed: ${message}`);
-			res.status(500).json(buildOpenAiErrorEnvelope(`Mock generation failed: ${message}`));
+			this.options.logger?.warn(`[EvalMock] Wire-server ledger write failed: ${message}`);
 		}
+
+		res.status(200).json(envelope);
 	};
 
 	private handleUnroutedChatCompletion = (_req: Request, res: Response): void => {
@@ -139,6 +146,15 @@ export class LlmWireServer {
 				),
 			);
 	};
+
+	/** Deep-clone via `structuredClone`; falls back to the original ref if it throws. */
+	private cloneRequestBody(body: unknown): unknown {
+		try {
+			return structuredClone(body);
+		} catch {
+			return body;
+		}
+	}
 
 	private resolveSubNode(rootName: string): INode {
 		const subNode = this.options.rootToSubNode?.get(rootName);

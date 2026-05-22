@@ -113,8 +113,9 @@ function extractAssistantContent(body: unknown): string {
 	if (body === null || body === undefined) return '';
 	if (typeof body === 'string') return body;
 	// At this point `body` is narrowed to a non-string, non-object primitive
-	// (number / boolean / bigint). JSON.parse can't produce symbols or
-	// functions, so the cast covers every realistic input shape.
+	// (number / boolean / bigint). The upstream source is Express's JSON
+	// body parser, which can only produce JSON-compatible values — no
+	// symbols, functions, or other non-stringifiable types reach this branch.
 	if (typeof body !== 'object') return String(body as number | boolean | bigint);
 
 	const obj = body as Record<string, unknown>;

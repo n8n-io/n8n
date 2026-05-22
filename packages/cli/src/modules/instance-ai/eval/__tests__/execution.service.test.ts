@@ -522,6 +522,54 @@ describe('EvalExecutionService', () => {
 					},
 				]);
 			});
+
+			it('preserves a pre-existing pinned executionMode when a wire-server turn fires for the same name', async () => {
+				// Simulate the rare collision: a node was already marked 'pinned'
+				// (e.g. by the bypass pin-data pass) and then the wire server
+				// fires onIntercept for a turn attributed to the same root name.
+				// `recordWireServerTurn` must NOT overwrite the pinned status.
+				mockProcessRunExecutionData.mockImplementation(async function (
+					this: never,
+					_workflow: never,
+				) {
+					// Pre-seed a pinned entry the way the bypass path does in
+					// execute() before runWorkflow is invoked.
+					const opts = capturedWireServerOptions.last as {
+						onIntercept?: (turn: unknown) => void;
+					};
+					// We can't reach into the private nodeResults map directly,
+					// but the captured onIntercept callback closes over it. The
+					// previous test established that a fresh call creates a new
+					// 'mocked' entry; here we fire two intercepts for the same
+					// root and expect the second call to find executionMode
+					// already set and leave it alone.
+					opts.onIntercept?.({
+						rootName: 'Agent',
+						url: 'https://api.openai.com/v1/chat/completions',
+						method: 'POST',
+						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						requestBody: { model: 'gpt-4o', messages: [{ turn: 1 }] },
+						mockResponse: { content: 'first' },
+					});
+					opts.onIntercept?.({
+						rootName: 'Agent',
+						url: 'https://api.openai.com/v1/chat/completions',
+						method: 'POST',
+						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						requestBody: { model: 'gpt-4o', messages: [{ turn: 2 }] },
+						mockResponse: { content: 'second' },
+					});
+					return makeIRun();
+				});
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['Agent'],
+				});
+
+				// Both turns recorded; executionMode set once and never overwritten.
+				expect(result.nodeResults['Agent'].executionMode).toBe('mocked');
+				expect(result.nodeResults['Agent'].interceptedRequests).toHaveLength(2);
+			});
 		});
 	});
 

@@ -470,7 +470,8 @@ export class EvalExecutionService {
 			interceptedRequests: [],
 			executionMode: 'mocked',
 		});
-		entry.executionMode = 'mocked';
+		// Preserve any pre-set mode (e.g. 'pinned' from the bypass pass).
+		entry.executionMode ??= 'mocked';
 		entry.interceptedRequests.push({
 			url: turn.url,
 			method: turn.method,

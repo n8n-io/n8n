@@ -31,12 +31,7 @@ function findAiRootNodeNames(workflow: IWorkflowBase): Set<string> {
 	return roots;
 }
 
-/**
- * Node types known to be AI root nodes (Agent / Chain variants). Used by the
- * typo guard to validate `unpinNodes` entries even when the root has no
- * inbound `ai_*` connections yet — a no-sub-node Agent is still a valid
- * unpin target, just one that has no effect until a sub-node is wired in.
- */
+/** AI root node types — lets the typo guard accept a no-sub-node Agent. */
 const AI_ROOT_NODE_TYPES = new Set<string>([
 	'@n8n/n8n-nodes-langchain.agent',
 	'@n8n/n8n-nodes-langchain.chainLlm',
@@ -197,12 +192,8 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
 	const aiRootNodes = findAiRootNodeNames(workflow);
 
-	// Refuse typos / disabled targets / non-AI-root references up front. Silent
-	// skip would let an eval that the caller thought was unpinning a root pass
-	// as a normal pinned run, masking the intent. An AI root counts if it
-	// either has inbound `ai_*` connections OR its node type is on
-	// `AI_ROOT_NODE_TYPES` — an Agent with no sub-nodes yet is still a valid
-	// (no-op) target rather than a typo.
+	// Refuse typos / disabled / non-AI-root entries up front. A root counts
+	// if it has inbound ai_* connections OR its type is on AI_ROOT_NODE_TYPES.
 	const unknownRoots: string[] = [];
 	const disabledRoots: string[] = [];
 	const nonAiRoots: string[] = [];
