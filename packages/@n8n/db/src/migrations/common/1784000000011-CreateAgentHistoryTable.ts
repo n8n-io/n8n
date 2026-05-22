@@ -22,9 +22,11 @@ export class CreateAgentHistoryTable1784000000011 implements ReversibleMigration
 			.withColumns(
 				column('versionId').varchar(36).primary.notNull,
 				column('agentId').varchar(36).notNull,
-				column('schema').json,
-				column('tools').json,
-				column('skills').json,
+				column('schema').json.comment('Frozen snapshot of the published AgentJsonConfig'),
+				column('tools').json.comment(
+					'Frozen map of `toolId → { code, descriptor }` at publish time',
+				),
+				column('skills').json.comment('Frozen map of `skillId → AgentSkill` at publish time'),
 				column('publishedById').uuid,
 				column('author').varchar(255).notNull,
 			)
@@ -53,6 +55,21 @@ export class CreateAgentHistoryTable1784000000011 implements ReversibleMigration
 		const agentPublishedVersionTable = escape.tableName('agent_published_version');
 		const agentsTable = escape.tableName('agents');
 		const userTable = escape.tableName('user');
+		const versionIdCol = escape.columnName('versionId');
+		const agentIdCol = escape.columnName('agentId');
+		const schemaCol = escape.columnName('schema');
+		const toolsCol = escape.columnName('tools');
+		const skillsCol = escape.columnName('skills');
+		const publishedByIdCol = escape.columnName('publishedById');
+		const authorCol = escape.columnName('author');
+		const createdAtCol = escape.columnName('createdAt');
+		const updatedAtCol = escape.columnName('updatedAt');
+		const publishedFromVersionIdCol = escape.columnName('publishedFromVersionId');
+		const activeVersionIdCol = escape.columnName('activeVersionId');
+		const idCol = escape.columnName('id');
+		const firstNameCol = escape.columnName('firstName');
+		const lastNameCol = escape.columnName('lastName');
+		const countAlias = escape.columnName('count');
 
 		// Per-column COALESCE + TRIM + NULLIF so that a user with only one
 		// half of their name set (e.g. firstName='Foo', lastName=NULL) still
@@ -60,35 +77,35 @@ export class CreateAgentHistoryTable1784000000011 implements ReversibleMigration
 		// `firstName || ' ' || lastName` would null out the whole expression
 		// when either side is NULL on both SQLite and Postgres.
 		await runQuery(
-			`INSERT INTO ${agentHistoryTable} ("versionId", "agentId", "schema", "tools", "skills", "publishedById", "author", "createdAt", "updatedAt")
-			 SELECT apv."publishedFromVersionId", apv."agentId", apv."schema", apv."tools", apv."skills",
-			        apv."publishedById",
+			`INSERT INTO ${agentHistoryTable} (${versionIdCol}, ${agentIdCol}, ${schemaCol}, ${toolsCol}, ${skillsCol}, ${publishedByIdCol}, ${authorCol}, ${createdAtCol}, ${updatedAtCol})
+			 SELECT apv.${publishedFromVersionIdCol}, apv.${agentIdCol}, apv.${schemaCol}, apv.${toolsCol}, apv.${skillsCol},
+			        apv.${publishedByIdCol},
 			        COALESCE(
 			          NULLIF(
-			            TRIM(COALESCE(u."firstName", '') || ' ' || COALESCE(u."lastName", '')),
+			            TRIM(COALESCE(u.${firstNameCol}, '') || ' ' || COALESCE(u.${lastNameCol}, '')),
 			            ''
 			          ),
 			          'Unknown'
 			        ),
-			        apv."createdAt", apv."updatedAt"
+			        apv.${createdAtCol}, apv.${updatedAtCol}
 			 FROM ${agentPublishedVersionTable} apv
-			 LEFT JOIN ${userTable} u ON u."id" = apv."publishedById"`,
+			 LEFT JOIN ${userTable} u ON u.${idCol} = apv.${publishedByIdCol}`,
 		);
 
 		await runQuery(
 			`UPDATE ${agentsTable}
-			 SET "activeVersionId" = (
-			   SELECT "publishedFromVersionId"
+			 SET ${activeVersionIdCol} = (
+			   SELECT ${publishedFromVersionIdCol}
 			   FROM ${agentPublishedVersionTable} apv
-			   WHERE apv."agentId" = ${agentsTable}."id"
+			   WHERE apv.${agentIdCol} = ${agentsTable}.${idCol}
 			 )`,
 		);
 
 		const [historyCountRow] = await runQuery<Array<{ count: string | number }>>(
-			`SELECT COUNT(*) AS "count" FROM ${agentHistoryTable}`,
+			`SELECT COUNT(*) AS ${countAlias} FROM ${agentHistoryTable}`,
 		);
 		const [publishedCountRow] = await runQuery<Array<{ count: string | number }>>(
-			`SELECT COUNT(*) AS "count" FROM ${agentPublishedVersionTable}`,
+			`SELECT COUNT(*) AS ${countAlias} FROM ${agentPublishedVersionTable}`,
 		);
 		if (Number(historyCountRow.count) !== Number(publishedCountRow.count)) {
 			throw new Error(
@@ -137,13 +154,27 @@ export class CreateAgentHistoryTable1784000000011 implements ReversibleMigration
 		const agentHistoryTable = escape.tableName('agent_history');
 		const agentPublishedVersionTable = escape.tableName('agent_published_version');
 		const agentsTable = escape.tableName('agents');
+		const agentIdCol = escape.columnName('agentId');
+		const schemaCol = escape.columnName('schema');
+		const publishedFromVersionIdCol = escape.columnName('publishedFromVersionId');
+		const modelCol = escape.columnName('model');
+		const providerCol = escape.columnName('provider');
+		const credentialIdCol = escape.columnName('credentialId');
+		const publishedByIdCol = escape.columnName('publishedById');
+		const toolsCol = escape.columnName('tools');
+		const skillsCol = escape.columnName('skills');
+		const createdAtCol = escape.columnName('createdAt');
+		const updatedAtCol = escape.columnName('updatedAt');
+		const versionIdCol = escape.columnName('versionId');
+		const activeVersionIdCol = escape.columnName('activeVersionId');
+		const idCol = escape.columnName('id');
 
 		await runQuery(
 			`INSERT INTO ${agentPublishedVersionTable}
-			   ("agentId", "schema", "publishedFromVersionId", "model", "provider", "credentialId", "publishedById", "tools", "skills", "createdAt", "updatedAt")
-			 SELECT a."id", h."schema", h."versionId", NULL, NULL, NULL, h."publishedById", h."tools", h."skills", h."createdAt", h."updatedAt"
+			   (${agentIdCol}, ${schemaCol}, ${publishedFromVersionIdCol}, ${modelCol}, ${providerCol}, ${credentialIdCol}, ${publishedByIdCol}, ${toolsCol}, ${skillsCol}, ${createdAtCol}, ${updatedAtCol})
+			 SELECT a.${idCol}, h.${schemaCol}, h.${versionIdCol}, NULL, NULL, NULL, h.${publishedByIdCol}, h.${toolsCol}, h.${skillsCol}, h.${createdAtCol}, h.${updatedAtCol}
 			 FROM ${agentsTable} a
-			 INNER JOIN ${agentHistoryTable} h ON a."activeVersionId" = h."versionId"`,
+			 INNER JOIN ${agentHistoryTable} h ON a.${activeVersionIdCol} = h.${versionIdCol}`,
 		);
 
 		await dropForeignKey('agents', 'activeVersionId', ['agent_history', 'versionId']);
