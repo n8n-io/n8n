@@ -1782,11 +1782,8 @@ export class InstanceAiService {
 
 		this.gatewayRegistry.disconnectAll();
 
-		// Destroy all active sandboxes
-		const sandboxCleanups = [...this.sandboxes.keys()].map(
-			async (threadId) => await this.destroySandbox(threadId),
-		);
-		await Promise.allSettled(sandboxCleanups);
+		// Thread-scoped sandboxes survive service shutdown so a restarted process
+		// can reuse them. Thread deletion remains the teardown path.
 
 		this.domainAccessTrackersByThread.clear();
 		this.traceContextsByRunId.clear();

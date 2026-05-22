@@ -492,6 +492,43 @@ type WorkspaceServiceInternals = {
 	) => Promise<unknown>;
 };
 
+type ShutdownServiceInternals = {
+	shutdown: () => Promise<void>;
+	stopCheckpointPruning: jest.MockedFunction<() => void>;
+	liveness: { shutdown: jest.MockedFunction<() => void> };
+	runState: {
+		shutdown: jest.MockedFunction<
+			() => {
+				activeRuns: [];
+				suspendedRuns: [];
+			}
+		>;
+	};
+	backgroundTasks: { cancelAll: jest.MockedFunction<() => ManagedBackgroundTask[]> };
+	traceContextsByRunId: Map<string, { threadId: string }>;
+	finalizeRunTracing: jest.MockedFunction<
+		(runId: string, tracing: InstanceAiTraceContext | undefined, options: unknown) => Promise<void>
+	>;
+	finalizeBackgroundTaskTracing: jest.MockedFunction<
+		(task: ManagedBackgroundTask, status: 'cancelled') => Promise<void>
+	>;
+	finalizeRemainingMessageTraceRoots: jest.MockedFunction<
+		(threadId: string, options: unknown) => Promise<void>
+	>;
+	gatewayRegistry: { disconnectAll: jest.MockedFunction<() => void> };
+	sandboxes: Map<
+		string,
+		{
+			sandbox: unknown;
+			workspace: { destroy: jest.MockedFunction<() => Promise<void>> };
+		}
+	>;
+	domainAccessTrackersByThread: Map<string, unknown>;
+	eventBus: { clear: jest.MockedFunction<() => void> };
+	_mcpClientManager?: { disconnect: jest.MockedFunction<() => Promise<void>> };
+	logger: { debug: jest.Mock; warn: jest.Mock };
+};
+
 type TerminalOutcomeServiceInternals = {
 	replayUndeliveredTerminalOutcomes: (
 		threadId: string,
@@ -951,6 +988,36 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createWorkspace).toHaveBeenCalledTimes(1);
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('InstanceAiService — shutdown', () => {
+	it('does not destroy thread-scoped sandboxes on service shutdown', async () => {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as ShutdownServiceInternals;
+		const workspace = { destroy: jest.fn(async () => {}) };
+		service.stopCheckpointPruning = jest.fn();
+		service.liveness = { shutdown: jest.fn() };
+		service.runState = {
+			shutdown: jest.fn(() => ({ activeRuns: [], suspendedRuns: [] })),
+		};
+		service.backgroundTasks = { cancelAll: jest.fn(() => []) };
+		service.traceContextsByRunId = new Map();
+		service.finalizeRunTracing = jest.fn(async () => {});
+		service.finalizeBackgroundTaskTracing = jest.fn(async () => {});
+		service.finalizeRemainingMessageTraceRoots = jest.fn(async () => {});
+		service.gatewayRegistry = { disconnectAll: jest.fn() };
+		service.sandboxes = new Map([['thread-a', { sandbox: { id: 'sandbox-a' }, workspace }]]);
+		service.domainAccessTrackersByThread = new Map();
+		service.eventBus = { clear: jest.fn() };
+		service._mcpClientManager = { disconnect: jest.fn(async () => {}) };
+		service.logger = { debug: jest.fn(), warn: jest.fn() };
+
+		await service.shutdown();
+
+		expect(workspace.destroy).not.toHaveBeenCalled();
+		expect(service.sandboxes.has('thread-a')).toBe(true);
 	});
 });
 
