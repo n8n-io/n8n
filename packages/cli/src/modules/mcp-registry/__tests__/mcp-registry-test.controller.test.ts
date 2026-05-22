@@ -33,7 +33,7 @@ describe('McpRegistryTestController', () => {
 
 			expect(repository.upsert).toHaveBeenCalledWith(
 				[notionMockServer, linearMockServer].map(toEntity),
-				['id'],
+				['slug'],
 			);
 			expect(service.handleReloadMcpRegistry).toHaveBeenCalled();
 			expect(result).toEqual({ ok: true, count: 2 });

@@ -1,10 +1,9 @@
-import { paginatedRequest, buildStrapiUpdateQuery } from '@/utils/strapi-utils';
+import { paginatedRequest } from '@/utils/strapi-utils';
 
 import { McpRegistryApiClient } from '../mcp-registry-api.client';
 
 jest.mock('@/utils/strapi-utils', () => ({
 	paginatedRequest: jest.fn(),
-	buildStrapiUpdateQuery: jest.requireActual('@/utils/strapi-utils').buildStrapiUpdateQuery,
 }));
 
 const mockPaginatedRequest = paginatedRequest as jest.MockedFunction<typeof paginatedRequest>;
@@ -86,10 +85,7 @@ describe('McpRegistryApiClient', () => {
 		});
 
 		it('should return servers from paginatedRequest', async () => {
-			const mockServers = [
-				{ id: 1, name: 'server-a' },
-				{ id: 2, name: 'server-b' },
-			];
+			const mockServers = [{ name: 'server-a' }, { name: 'server-b' }];
 			mockPaginatedRequest.mockResolvedValue(mockServers);
 
 			const result = await client.fetchAllServers();
@@ -99,7 +95,7 @@ describe('McpRegistryApiClient', () => {
 	});
 
 	describe('fetchServersMetadata', () => {
-		it('should request only version and updatedAt fields with pageSize 500', async () => {
+		it('should request only slug, version and updatedAt fields with pageSize 500', async () => {
 			mockPaginatedRequest.mockResolvedValue([]);
 
 			await client.fetchServersMetadata();
@@ -107,7 +103,7 @@ describe('McpRegistryApiClient', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				PRODUCTION_URL,
 				{
-					fields: ['version', 'updatedAt'],
+					fields: ['slug', 'version', 'updatedAt'],
 					pagination: { page: 1, pageSize: 500 },
 				},
 				{ throwOnError: true },
@@ -116,8 +112,8 @@ describe('McpRegistryApiClient', () => {
 
 		it('should return metadata from paginatedRequest', async () => {
 			const mockMetadata = [
-				{ id: 1, version: '1.0.0', updatedAt: '2025-01-01' },
-				{ id: 2, version: '2.0.0', updatedAt: '2025-01-02' },
+				{ slug: 'server-a', version: '1.0.0', updatedAt: '2025-01-01' },
+				{ slug: 'server-b', version: '2.0.0', updatedAt: '2025-01-02' },
 			];
 			mockPaginatedRequest.mockResolvedValue(mockMetadata);
 
@@ -127,16 +123,20 @@ describe('McpRegistryApiClient', () => {
 		});
 	});
 
-	describe('fetchServersByIds', () => {
-		it('should fetch servers using filter query built from ids', async () => {
+	describe('fetchServersBySlugs', () => {
+		it('should fetch servers using filter query built from slugs', async () => {
 			mockPaginatedRequest.mockResolvedValue([]);
 
-			await client.fetchServersByIds([1, 2, 3]);
+			await client.fetchServersBySlugs(['server-a', 'server-b', 'server-c']);
 
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				PRODUCTION_URL,
 				{
-					...buildStrapiUpdateQuery([1, 2, 3]),
+					filters: {
+						slug: {
+							$in: ['server-a', 'server-b', 'server-c'],
+						},
+					},
 					pagination: { page: 1, pageSize: 25 },
 				},
 				{ throwOnError: true },
@@ -144,57 +144,69 @@ describe('McpRegistryApiClient', () => {
 		});
 
 		it('should return fetched servers', async () => {
-			const mockServers = [{ id: 1, name: 'server-a' }];
+			const mockServers = [{ name: 'server-a' }];
 			mockPaginatedRequest.mockResolvedValue(mockServers);
 
-			const result = await client.fetchServersByIds([1]);
+			const result = await client.fetchServersBySlugs(['server-a']);
 
 			expect(result).toEqual(mockServers);
 		});
 
-		it('should return empty array for empty ids', async () => {
-			const result = await client.fetchServersByIds([]);
+		it('should return empty array for empty slugs', async () => {
+			const result = await client.fetchServersBySlugs([]);
 
 			expect(result).toEqual([]);
 			expect(mockPaginatedRequest).not.toHaveBeenCalled();
 		});
 
-		it('should batch ids in chunks of 100', async () => {
-			const ids = Array.from({ length: 250 }, (_, i) => i + 1);
+		it('should batch slugs in chunks of 100', async () => {
+			const slugs = Array.from({ length: 250 }, (_, i) => `server-${i + 1}`);
 			mockPaginatedRequest.mockResolvedValue([]);
 
-			await client.fetchServersByIds(ids);
+			await client.fetchServersBySlugs(slugs);
 
 			expect(mockPaginatedRequest).toHaveBeenCalledTimes(3);
 
-			// First batch: ids 1-100
+			// First batch: slugs 1-100
 			expect(mockPaginatedRequest).toHaveBeenNthCalledWith(
 				1,
 				PRODUCTION_URL,
 				{
-					...buildStrapiUpdateQuery(ids.slice(0, 100)),
+					filters: {
+						slug: {
+							$in: slugs.slice(0, 100),
+						},
+					},
 					pagination: { page: 1, pageSize: 25 },
 				},
 				{ throwOnError: true },
 			);
 
-			// Second batch: ids 101-200
+			// Second batch: slugs 101-200
 			expect(mockPaginatedRequest).toHaveBeenNthCalledWith(
 				2,
 				PRODUCTION_URL,
 				{
-					...buildStrapiUpdateQuery(ids.slice(100, 200)),
+					filters: {
+						slug: {
+							$in: slugs.slice(100, 200),
+						},
+					},
 					pagination: { page: 1, pageSize: 25 },
 				},
 				{ throwOnError: true },
 			);
 
-			// Third batch: ids 201-250
+			// Third batch: slugs 201-250
 			expect(mockPaginatedRequest).toHaveBeenNthCalledWith(
 				3,
 				PRODUCTION_URL,
 				{
-					...buildStrapiUpdateQuery(ids.slice(200, 250)),
+					filters: {
+						slug: {
+							$in: slugs.slice(200, 250),
+						},
+					},
 					pagination: { page: 1, pageSize: 25 },
 				},
 				{ throwOnError: true },
@@ -202,12 +214,12 @@ describe('McpRegistryApiClient', () => {
 		});
 
 		it('should concatenate results from all batches', async () => {
-			const ids = Array.from({ length: 150 }, (_, i) => i + 1);
-			const batch1 = [{ id: 1, name: 'server-1' }];
-			const batch2 = [{ id: 101, name: 'server-101' }];
+			const slugs = Array.from({ length: 150 }, (_, i) => `server-${i + 1}`);
+			const batch1 = [{ name: 'server-1' }];
+			const batch2 = [{ name: 'server-101' }];
 			mockPaginatedRequest.mockResolvedValueOnce(batch1).mockResolvedValueOnce(batch2);
 
-			const result = await client.fetchServersByIds(ids);
+			const result = await client.fetchServersBySlugs(slugs);
 
 			expect(result).toEqual([...batch1, ...batch2]);
 		});

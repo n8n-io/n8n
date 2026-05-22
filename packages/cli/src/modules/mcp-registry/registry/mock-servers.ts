@@ -1,7 +1,6 @@
 import type { McpRegistryServer } from './mcp-registry.types';
 
 export const notionMockServer: McpRegistryServer = {
-	id: 42,
 	name: 'com.notion/mcp',
 	slug: 'notion',
 	title: 'Notion',
@@ -41,7 +40,6 @@ export const notionMockServer: McpRegistryServer = {
 };
 
 export const linearMockServer: McpRegistryServer = {
-	id: 101,
 	name: 'app.linear/linear',
 	slug: 'linear',
 	title: 'Linear',

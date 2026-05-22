@@ -23,7 +23,7 @@ export class McpRegistryTestController {
 		this.assertE2ETestsEnabled();
 
 		const entities = [notionMockServer, linearMockServer].map(toEntity);
-		await this.repository.upsert(entities, ['id']);
+		await this.repository.upsert(entities, ['slug']);
 		await this.service.handleReloadMcpRegistry();
 
 		return { ok: true, count: entities.length };

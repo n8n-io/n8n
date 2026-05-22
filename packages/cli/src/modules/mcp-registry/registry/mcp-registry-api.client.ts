@@ -1,10 +1,10 @@
 import { Service } from '@n8n/di';
 
-import { buildStrapiUpdateQuery, paginatedRequest } from '@/utils/strapi-utils';
+import { paginatedRequest } from '@/utils/strapi-utils';
 
 import type { McpRegistryServer } from './mcp-registry.types';
 
-export type McpRegistryServerMetadata = Pick<McpRegistryServer, 'id' | 'version' | 'updatedAt'>;
+export type McpRegistryServerMetadata = Pick<McpRegistryServer, 'slug' | 'version' | 'updatedAt'>;
 
 const MCP_SERVERS_STAGING_URL = 'https://api-staging.n8n.io/api/mcp-servers';
 const MCP_SERVERS_PRODUCTION_URL = 'https://api.n8n.io/api/mcp-servers';
@@ -30,7 +30,7 @@ export class McpRegistryApiClient {
 		return await paginatedRequest<McpRegistryServerMetadata>(
 			this.getUrl(),
 			{
-				fields: ['version', 'updatedAt'],
+				fields: ['slug', 'version', 'updatedAt'],
 				pagination: { page: 1, pageSize: 500 },
 			},
 			{
@@ -39,15 +39,18 @@ export class McpRegistryApiClient {
 		);
 	}
 
-	async fetchServersByIds(ids: number[]): Promise<McpRegistryServer[]> {
+	async fetchServersBySlugs(slugs: string[]): Promise<McpRegistryServer[]> {
 		const data: McpRegistryServer[] = [];
-		for (let i = 0; i < ids.length; i += STRAPI_ARRAY_LIMIT) {
-			const batch = ids.slice(i, i + STRAPI_ARRAY_LIMIT);
-			const qs = buildStrapiUpdateQuery(batch);
+		for (let i = 0; i < slugs.length; i += STRAPI_ARRAY_LIMIT) {
+			const batch = slugs.slice(i, i + STRAPI_ARRAY_LIMIT);
 			const batchData = await paginatedRequest<McpRegistryServer>(
 				this.getUrl(),
 				{
-					...qs,
+					filters: {
+						slug: {
+							$in: batch,
+						},
+					},
 					pagination: { page: 1, pageSize: 25 },
 				},
 				{

@@ -157,15 +157,15 @@ export class McpRegistryService {
 		existingServers: McpRegistryServer[],
 	): Promise<McpRegistryServer[] | null> {
 		const metadata = await this.apiClient.fetchServersMetadata();
-		const existingById = new Map(existingServers.map((server) => [server.id, server]));
-		const idsToFetch = metadata
-			.filter((entry) => this.shouldFetchFullServer(entry, existingById.get(entry.id)))
-			.map(({ id }) => id);
-		if (idsToFetch.length === 0) {
+		const existingBySlug = new Map(existingServers.map((server) => [server.slug, server]));
+		const slugsToFetch = metadata
+			.filter((entry) => this.shouldFetchFullServer(entry, existingBySlug.get(entry.slug)))
+			.map(({ slug }) => slug);
+		if (slugsToFetch.length === 0) {
 			return null;
 		}
 
-		return await this.apiClient.fetchServersByIds(idsToFetch);
+		return await this.apiClient.fetchServersBySlugs(slugsToFetch);
 	}
 
 	private shouldFetchFullServer(
@@ -186,7 +186,7 @@ export class McpRegistryService {
 		// it will break workflows that use them.
 		// If we want to stop supporting a server,
 		// we will set its status to 'deprecated' instead.
-		await this.repository.upsert(entities, ['id']);
+		await this.repository.upsert(entities, ['slug']);
 	}
 
 	private async refreshRegistryNodeTypes(releaseTypes: boolean): Promise<void> {
