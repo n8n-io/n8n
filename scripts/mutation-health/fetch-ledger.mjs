@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 /**
- * Fetch the live mutation-health ledger from BigQuery via the QA BigQuery
- * API webhook (the canonical read endpoint shared with QBot et al.).
+ * Fetch the live mutation-health ledger via the dedicated read webhook.
  *
- * Output shape matches what pick-next.mjs expects: { ledger: [ ... ] }
+ * The webhook (n8n workflow "QA: Mutation Health Reader") owns the SQL and
+ * BQ credential — this script just makes a GET. No SQL, no allowlist
+ * needed client-side (server validates), no shape construction.
+ *
+ * Output: { ledger: [ ... ] } — the shape pick-next.mjs consumes.
  *
  * Usage:
  *   node scripts/mutation-health/fetch-ledger.mjs --package <pkg-name> [--out <path>]
@@ -11,32 +14,13 @@
  * Exit codes:
  *   0 — success, payload written
  *   2 — usage error
- *   3 — fetch failed (network / non-2xx)
+ *   3 — fetch failed (network, non-2xx, or unexpected shape)
  */
 
 import { writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
-const QA_QUERY_URL = 'https://internal.users.n8n.cloud/webhook/qa-query';
-
-const LEDGER_COLUMNS = [
-	'source_file_path',
-	'package',
-	'last_score',
-	'threshold_at_run',
-	'last_checked_at',
-	'status',
-	'mutants_killed',
-	'mutants_survived',
-	'mutants_no_coverage',
-	'mutants_timeout',
-].join(', ');
-
-// Strict allowlist for the package name. Defence-in-depth — workflow_dispatch
-// already constrains the input, but this script is callable directly so we
-// validate before interpolating into SQL. Matches pnpm-workspace conventions
-// (alphanumerics, dash, underscore, optional @scope/ prefix).
-const PACKAGE_NAME_RE = /^(?:@[a-zA-Z0-9][\w-]*\/)?[a-zA-Z0-9][\w-]*$/;
+const READER_URL = 'https://internal.users.n8n.cloud/webhook/mutation-health-ledger';
 
 const args = process.argv.slice(2);
 const pkgIdx = args.indexOf('--package');
@@ -48,54 +32,31 @@ if (!pkg) {
 	process.stderr.write('Usage: fetch-ledger.mjs --package <pkg-name> [--out <path>]\n');
 	process.exit(2);
 }
-if (!PACKAGE_NAME_RE.test(pkg)) {
-	process.stderr.write(`Invalid --package value: ${JSON.stringify(pkg)}\n`);
-	process.exit(2);
-}
 
-const query =
-	`SELECT ${LEDGER_COLUMNS} ` +
-	`FROM \`n8n-telemetry.imported_n8n.qa_mutation_health_ledger\` ` +
-	`WHERE package = "${pkg}" ` +
-	`ORDER BY source_file_path`;
-
-const res = await fetch(QA_QUERY_URL, {
-	method: 'POST',
-	headers: { 'Content-Type': 'application/json' },
-	body: JSON.stringify({ query }),
-});
+const url = `${READER_URL}?package=${encodeURIComponent(pkg)}`;
+const res = await fetch(url);
 
 if (!res.ok) {
 	process.stderr.write(`Live ledger fetch failed: HTTP ${res.status}\n${await res.text()}\n`);
 	process.exit(3);
 }
 
-const rows = await res.json();
+const payload = await res.json();
 
-// Validate response shape. The qa-query webhook is shared with QBot et al.
-// — if its response envelope ever changes (e.g. wraps in {data: [...]}) we
-// want to fail loud rather than silently emit an empty ledger.
-if (!Array.isArray(rows)) {
+if (!payload || typeof payload !== 'object' || !Array.isArray(payload.ledger)) {
 	process.stderr.write(
-		`Unexpected qa-query response shape (expected array): ${JSON.stringify(rows).slice(0, 200)}\n`,
+		`Unexpected reader response shape (expected { ledger: [...] }): ${JSON.stringify(payload).slice(0, 200)}\n`,
 	);
 	process.exit(3);
 }
-if (rows.length > 0) {
-	const required = ['source_file_path', 'package', 'status'];
-	const missing = required.filter((k) => !(k in rows[0]));
-	if (missing.length > 0) {
-		process.stderr.write(`qa-query row missing required keys: ${missing.join(', ')}\n`);
-		process.exit(3);
-	}
-}
 
-const payload = JSON.stringify({ ledger: rows }, null, 2);
+const rows = payload.ledger;
+const text = JSON.stringify({ ledger: rows }, null, 2);
 
 if (out) {
 	await mkdir(path.dirname(out), { recursive: true });
-	await writeFile(out, payload);
+	await writeFile(out, text);
 	process.stderr.write(`Live ledger: ${rows.length} row(s) → ${out}\n`);
 } else {
-	process.stdout.write(payload);
+	process.stdout.write(text);
 }
