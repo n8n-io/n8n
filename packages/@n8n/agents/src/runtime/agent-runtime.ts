@@ -15,6 +15,8 @@ import type {
 	BuiltTool,
 	CheckpointStore,
 	EpisodicMemoryConfig,
+	EpisodicMemoryTaskLockHandle,
+	EpisodicMemoryTaskLockMethods,
 	FinishReason,
 	GenerateResult,
 	GoogleThinkingConfig,
@@ -206,6 +208,7 @@ export interface AgentRuntimeConfig {
 }
 
 const MAX_LOOP_ITERATIONS = 20;
+const DEFAULT_MEMORY_TASK_LOCK_TTL_MS = 30_000;
 const logger = createFilteredLogger();
 
 function getAiSdk(): ReturnType<typeof loadAi> {
@@ -357,6 +360,8 @@ export class AgentRuntime {
 	private backgroundTasks = new BackgroundTaskTracker();
 
 	private memoryTasks: ScopedMemoryTaskRunner | undefined;
+
+	private episodicMemoryTasksByResource = new Map<string, Promise<unknown>>();
 
 	private deferredToolManager: DeferredToolManager | undefined;
 
@@ -1483,62 +1488,74 @@ export class AgentRuntime {
 			);
 		}
 
-		this.scheduleObservationLogJobs(options.persistence);
-		this.scheduleEpisodicMemoryJob(options.persistence);
+		const observationTasks = this.scheduleObservationLogJobs(options.persistence);
+		this.scheduleEpisodicMemoryJob(options.persistence, observationTasks);
 	}
 
-	private scheduleObservationLogJobs(persistence: AgentPersistenceOptions): void {
+	private scheduleObservationLogJobs(
+		persistence: AgentPersistenceOptions,
+	): Array<Promise<unknown>> {
 		const { memory, observationalMemory } = this.config;
-		if (!memory || !observationalMemory || !hasObservationLogStore(memory)) return;
+		if (!memory || !observationalMemory || !hasObservationLogStore(memory)) return [];
 
 		const scope = this.getObservationLogScope(persistence);
 		const runner = this.getMemoryTaskRunner(memory, observationalMemory.lockTtlMs);
 		const observe = observationalMemory.observe;
 		const observerThresholdTokens = observationalMemory.observerThresholdTokens;
+		const tasks: Array<Promise<unknown>> = [];
 
 		if (
 			observe &&
 			observerThresholdTokens !== undefined &&
 			hasObservationLogObserverMemory(memory)
 		) {
-			this.scheduleMemoryTask(
-				runner,
-				scope,
-				'observer',
-				async () =>
-					await runObservationLogObserver({
-						memory,
-						...scope,
-						observerThresholdTokens,
-						observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
-						observe,
-						messageSource: {
-							threadId: persistence.threadId,
-							resourceId: persistence.resourceId,
-						},
-					}),
+			tasks.push(
+				this.scheduleMemoryTask(
+					runner,
+					scope,
+					'observer',
+					async () =>
+						await runObservationLogObserver({
+							memory,
+							...scope,
+							observerThresholdTokens,
+							observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
+							observe,
+							messageSource: {
+								threadId: persistence.threadId,
+								resourceId: persistence.resourceId,
+							},
+						}),
+				),
 			);
 		}
 
 		const reflect = observationalMemory.reflect;
 		const reflectorThresholdTokens = observationalMemory.reflectorThresholdTokens;
 		if (reflect && reflectorThresholdTokens !== undefined) {
-			this.scheduleMemoryTask(
-				runner,
-				scope,
-				'reflector',
-				async () =>
-					await runObservationLogReflector({
-						memory,
-						...scope,
-						reflectorThresholdTokens,
-						reflect,
-					}),
+			tasks.push(
+				this.scheduleMemoryTask(
+					runner,
+					scope,
+					'reflector',
+					async () =>
+						await runObservationLogReflector({
+							memory,
+							...scope,
+							reflectorThresholdTokens,
+							reflect,
+						}),
+				),
 			);
 		}
+
+		return tasks;
 	}
 
-	private scheduleEpisodicMemoryJob(persistence: AgentPersistenceOptions): void {
+	private scheduleEpisodicMemoryJob(
+		persistence: AgentPersistenceOptions,
+		observationTasks: Array<Promise<unknown>>,
+	): void {
 		const { memory, episodicMemory } = this.config;
 		if (
 			!memory ||
@@ -1554,29 +1571,84 @@ export class AgentRuntime {
 		if (!scope) return;
 
 		const observationScope = this.getObservationLogScope(persistence);
-		const runner = this.getMemoryTaskRunner(memory, this.config.observationalMemory?.lockTtlMs);
-		this.scheduleMemoryTask(
-			runner,
-			observationScope,
-			'episodic-indexer',
-			async () =>
-				await runEpisodicMemoryIndexer({
-					memory,
-					config: episodicMemory,
-					scope,
-					observationScope,
-					threadId: persistence.threadId,
-				}),
-		);
+		this.scheduleEpisodicMemoryTask(memory, scope.resourceId, async () => {
+			await Promise.allSettled(observationTasks);
+			await runEpisodicMemoryIndexer({
+				memory,
+				config: episodicMemory,
+				scope,
+				observationScope,
+				threadId: persistence.threadId,
+			});
+		});
 	}
 
-	private scheduleMemoryTask<T>(
+	private scheduleEpisodicMemoryTask(
+		memory: BuiltMemory,
+		resourceId: string,
+		task: () => Promise<void>,
+	): void {
+		const id = crypto.randomUUID();
+		const previous = this.episodicMemoryTasksByResource.get(resourceId) ?? Promise.resolve();
+		const done = previous
+			.catch(() => undefined)
+			.then(async () => await this.runEpisodicMemoryTask(memory, resourceId, id, task));
+		const queued = done.finally(() => {
+			if (this.episodicMemoryTasksByResource.get(resourceId) === queued) {
+				this.episodicMemoryTasksByResource.delete(resourceId);
+			}
+		});
+		this.episodicMemoryTasksByResource.set(resourceId, queued);
+		this.backgroundTasks.track(queued);
+	}
+
+	private async runEpisodicMemoryTask(
+		memory: BuiltMemory,
+		resourceId: string,
+		holderId: string,
+		task: () => Promise<void>,
+	): Promise<void> {
+		const taskLock = memory.episodic?.taskLock;
+		let lock: EpisodicMemoryTaskLockHandle | null = null;
+		try {
+			if (taskLock) {
+				lock = await taskLock.acquire(resourceId, {
+					holderId,
+					ttlMs: this.config.observationalMemory?.lockTtlMs ?? DEFAULT_MEMORY_TASK_LOCK_TTL_MS,
+				});
+				if (!lock) return;
+			}
+			await task();
+		} catch (error) {
+			const message = 'Episodic memory indexing task failed';
+			logger.warn(message, { error, resourceId });
+			this.eventBus.emit({ type: AgentEvent.Error, message, error, source: 'episodic-memory' });
+		} finally {
+			if (lock) {
+				await this.releaseEpisodicMemoryTaskLock(taskLock, lock, resourceId);
+			}
+		}
+	}
+
+	private async releaseEpisodicMemoryTaskLock(
+		taskLock: EpisodicMemoryTaskLockMethods | undefined,
+		lock: EpisodicMemoryTaskLockHandle,
+		resourceId: string,
+	): Promise<void> {
+		try {
+			await taskLock?.release(lock);
+		} catch (error) {
+			logger.warn('Episodic memory indexing lock release failed', { error, resourceId });
+		}
+	}
+
+	private async scheduleMemoryTask<T>(
 		runner: ScopedMemoryTaskRunner,
 		scope: ObservationLogScope,
 		taskKind: ObservationLogTaskKind,
 		task: () => Promise<T>,
-	): void {
-		runner.schedule({ ...scope, taskKind }, task);
+	): Promise<unknown> {
+		return await runner.schedule({ ...scope, taskKind }, task).done;
 	}
 
 	private getMemoryTaskRunner(memory: BuiltMemory, lockTtlMs?: number): ScopedMemoryTaskRunner {
@@ -1586,12 +1658,8 @@ export class AgentRuntime {
 			lockTtlMs,
 			onEvent: (event) => {
 				if (event.type !== 'failed') return;
-				const source =
-					event.task.taskKind === 'episodic-indexer' ? 'episodic-memory' : event.task.taskKind;
-				const message =
-					event.task.taskKind === 'episodic-indexer'
-						? 'Episodic memory indexing task failed'
-						: `Observation log ${source} task failed`;
+				const source = event.task.taskKind;
+				const message = `Observation log ${source} task failed`;
 				logger.warn(message, {
 					error: event.error,
 					scopeKind: event.task.scopeKind,
