@@ -679,7 +679,6 @@ export class WorkflowRunner {
 		forceFullExecutionData?: boolean,
 	): boolean {
 		if (forceFullExecutionData) return true;
-		if (!process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING) return true;
 
 		return (
 			executionMode === 'integrated' ||
