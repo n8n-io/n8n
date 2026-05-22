@@ -78,6 +78,14 @@ jobs:
           name: playwright-e2e
           fail_ci_if_error: false
 
+      # Codecov needs ~60-90s to finish indexing the fresh upload before its
+      # report API will return the new flag data. Without this wait the
+      # gap-analysis step that follows runs into 503s and bails.
+      - name: Wait for Codecov to index upload
+        if: always()
+        shell: bash
+        run: sleep 60
+
       - name: Analyse Coverage Gaps
         if: always()
         env:

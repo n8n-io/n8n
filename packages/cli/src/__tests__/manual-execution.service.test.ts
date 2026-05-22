@@ -2,7 +2,7 @@ import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { mock } from 'jest-mock-extended';
 import * as core from 'n8n-core';
 import { DirectedGraph, recreateNodeExecutionStack, WorkflowExecute } from 'n8n-core';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, UserError } from 'n8n-workflow';
 import type {
 	Workflow,
 	IWorkflowExecutionDataProcess,
@@ -610,6 +610,20 @@ describe('ManualExecutionService', () => {
 		const mockRewiredWorkflow = mock<Workflow>();
 		const mockGraphFromWorkflow = mock<DirectedGraph>();
 
+		// Mocks workflow.getNode for a workflow as it appears after a successful
+		// rewireGraph — both the original tool and the synthetic Tool Executor resolve.
+		const getNodeForRewiredWorkflow = (toolNode: INode) =>
+			jest.fn((name: string) => {
+				switch (name) {
+					case toolNode.name:
+						return toolNode;
+					case TOOL_EXECUTOR_NODE_NAME:
+						return mock<INode>({ name: TOOL_EXECUTOR_NODE_NAME });
+					default:
+						return null;
+				}
+			});
+
 		beforeEach(() => {
 			jest.spyOn(core, 'rewireGraph').mockReturnValue(mockRewiredGraph);
 			jest.spyOn(DirectedGraph, 'fromWorkflow').mockReturnValue(mockGraphFromWorkflow);
@@ -617,7 +631,7 @@ describe('ManualExecutionService', () => {
 		});
 
 		afterEach(() => {
-			jest.clearAllMocks();
+			jest.resetAllMocks();
 		});
 
 		it('should rewire graph and change destination to ToolExecutor when destination node is a tool', async () => {
@@ -648,10 +662,7 @@ describe('ManualExecutionService', () => {
 			});
 
 			const workflow = mock<Workflow>({
-				getNode: jest.fn((name) => {
-					if (name === toolNodeName) return toolNode;
-					return null;
-				}),
+				getNode: getNodeForRewiredWorkflow(toolNode),
 				nodeTypes: mock({
 					getByNameAndVersion: jest.fn().mockReturnValue(nodeTypeDescription),
 				}),
@@ -736,10 +747,7 @@ describe('ManualExecutionService', () => {
 			});
 
 			const workflow = mock<Workflow>({
-				getNode: jest.fn((name) => {
-					if (name === toolNodeName) return toolNode;
-					return null;
-				}),
+				getNode: getNodeForRewiredWorkflow(toolNode),
 				nodeTypes: mock({
 					getByNameAndVersion: jest.fn().mockReturnValue(nodeTypeDescription),
 				}),
@@ -850,6 +858,46 @@ describe('ManualExecutionService', () => {
 			});
 		});
 
+		it('throws a UserError when executing a tool that has no consumer', async () => {
+			const toolNode = mock<INode>({
+				name: 'leafTool',
+				type: 'n8n-nodes-base.toolTest',
+				typeVersion: 1,
+			});
+
+			const workflow = mock<Workflow>({
+				getNode: jest.fn((name) => (name === toolNode.name ? toolNode : null)),
+				nodeTypes: mock({
+					getByNameAndVersion: jest
+						.fn()
+						.mockReturnValue(mock<INodeTypeDescription>({ outputs: ['ai_tool'] })),
+				}),
+			});
+
+			jest.spyOn(NodeHelpers, 'isTool').mockReturnValue(true);
+
+			// Simulate rewireGraph short-circuiting because the tool has no consumer: it returns the original graph, so the workflow has no Tool Executor.
+			(core.rewireGraph as jest.Mock).mockReturnValue(mockGraphFromWorkflow);
+			mockGraphFromWorkflow.toWorkflow.mockImplementation(() => workflow);
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				executionMode: 'manual',
+				destinationNode: { nodeName: toolNode.name, mode: 'inclusive' },
+				pinData: undefined,
+				runData: undefined,
+			});
+
+			await expect(
+				async () =>
+					await manualExecutionService.runManually(
+						data,
+						workflow,
+						mock<IWorkflowExecuteAdditionalData>(),
+						'test-execution-id',
+					),
+			).rejects.toThrow(UserError);
+		});
+
 		it('should save originalDestinationNode even when executionData.startData is undefined', async () => {
 			const toolNodeName = 'toolNode';
 			const destinationNode: IDestinationNode = {
@@ -876,10 +924,7 @@ describe('ManualExecutionService', () => {
 			});
 
 			const workflow = mock<Workflow>({
-				getNode: jest.fn((name) => {
-					if (name === toolNodeName) return toolNode;
-					return null;
-				}),
+				getNode: getNodeForRewiredWorkflow(toolNode),
 				nodeTypes: mock({
 					getByNameAndVersion: jest.fn().mockReturnValue(nodeTypeDescription),
 				}),

@@ -3,6 +3,7 @@ import type { BuiltEval } from './eval';
 import type { BuiltGuardrail } from './guardrail';
 import type { CheckpointStore } from './memory';
 import type { BuiltProviderTool, BuiltTool } from './tool';
+import type { RuntimeSkill, RuntimeSkillSource } from '../../skills';
 
 /**
  * Interface describing the fluent builder methods used to configure an agent.
@@ -18,6 +19,7 @@ export interface AgentBuilder {
 	instructions(text: string): this;
 	tool(t: BuiltTool | BuiltTool[]): this;
 	deferredTool(t: BuiltTool | BuiltTool[], options?: { search?: { topK?: number } }): this;
+	skills(sourceOrSkills: RuntimeSkillSource | RuntimeSkill[]): this;
 	providerTool(t: BuiltProviderTool): this;
 	thinking(provider: string, config?: Record<string, unknown>): this;
 	toolCallConcurrency(n: number): this;
