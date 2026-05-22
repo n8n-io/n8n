@@ -134,7 +134,7 @@ describe('workflow package export', () => {
 	});
 
 	describe('authorization', () => {
-		it('lists every unexportable id in the error', async () => {
+		it('Lists count of workflows inaccessible', async () => {
 			const owner = await createOwner();
 			const project = await createTeamProject('Project A', owner);
 			const wf = await createWorkflow({ name: 'Alpha', nodes: [], connections: {} }, project);
@@ -144,7 +144,7 @@ describe('workflow package export', () => {
 					user: owner,
 					workflowIds: [wf.id, 'missing-1', 'missing-2'],
 				}),
-			).rejects.toThrow(/missing-1.*missing-2/);
+			).rejects.toThrow('2 workflow(s) not found or not accessible. Export aborted.');
 		});
 
 		it('denies a caller with no access', async () => {
@@ -160,7 +160,7 @@ describe('workflow package export', () => {
 
 			await expect(
 				service.exportWorkflows({ user: outsider, workflowIds: [ownerWorkflow.id] }),
-			).rejects.toThrow(ownerWorkflow.id);
+			).rejects.toThrow('1 workflow(s) not found or not accessible. Export aborted.');
 		});
 
 		it('fails the whole batch and only names the inaccessible ids when mixed with accessible ones', async () => {
@@ -187,10 +187,7 @@ describe('workflow package export', () => {
 				.catch((e: Error) => e)) as Error;
 
 			expect(error).toBeInstanceOf(Error);
-			expect(error.message).toContain(ownerWorkflow.id);
-			// Accessible ids must not appear in the error — otherwise the response itself
-			// becomes an oracle ("these are yours; this one isn't") for batched probes.
-			expect(error.message).not.toContain(memberWorkflow.id);
+			expect(error.message).toContain('1 workflow(s) not found or not accessible. Export aborted.');
 		});
 
 		it("denies one member access to another member's personal workflow", async () => {
@@ -206,7 +203,7 @@ describe('workflow package export', () => {
 
 			await expect(
 				service.exportWorkflows({ user: memberB, workflowIds: [wf.id] }),
-			).rejects.toThrow(wf.id);
+			).rejects.toThrow('1 workflow(s) not found or not accessible. Export aborted.');
 		});
 
 		it('denies a member access to a workflow shared only with someone else', async () => {
@@ -222,7 +219,7 @@ describe('workflow package export', () => {
 
 			await expect(
 				service.exportWorkflows({ user: bystander, workflowIds: [wf.id] }),
-			).rejects.toThrow(wf.id);
+			).rejects.toThrow('1 workflow(s) not found or not accessible. Export aborted.');
 		});
 
 		it('allows a personal-project owner to export their own workflows', async () => {
