@@ -18,6 +18,7 @@ import {
 } from '@n8n/agents';
 import { randomUUID } from 'node:crypto';
 
+import type { ErrorReporter, Logger } from '../logger';
 import { loadDaytona } from './lazy-daytona';
 
 const SANDBOX_STATE_STARTED = 'started';
@@ -38,7 +39,7 @@ export interface DaytonaSandboxOptions {
 	env?: Record<string, string>;
 	labels?: Record<string, string>;
 	snapshot?: string;
-	image?: string;
+	image?: CreateSandboxFromImageParams['image'];
 	ephemeral?: boolean;
 	autoStopInterval?: number;
 	autoArchiveInterval?: number;
@@ -49,6 +50,9 @@ export interface DaytonaSandboxOptions {
 	public?: boolean;
 	networkBlockAll?: boolean;
 	networkAllowList?: string;
+	logger?: Logger;
+	errorReporter?: ErrorReporter;
+	createStrategyMode?: 'direct' | 'proxy';
 }
 
 function shellEscape(value: string): string {
@@ -117,10 +121,7 @@ export class DaytonaSandbox extends BaseSandbox {
 			return;
 		}
 
-		const params = this.createSandboxParams();
-		this.sandbox = this.options.createTimeoutSeconds
-			? await client.create(params, { timeout: this.options.createTimeoutSeconds })
-			: await client.create(params);
+		this.sandbox = await this.createSandbox(client);
 		await this.detectWorkingDirectory();
 	}
 
@@ -233,7 +234,40 @@ export class DaytonaSandbox extends BaseSandbox {
 		}
 	}
 
-	private createSandboxParams(): CreateSandboxFromImageParams | CreateSandboxFromSnapshotParams {
+	private async createSandbox(client: Daytona): Promise<Sandbox> {
+		const candidates = this.createSandboxParams();
+		let lastError: unknown;
+
+		for (const candidate of candidates) {
+			try {
+				return this.options.createTimeoutSeconds
+					? await client.create(candidate.params, { timeout: this.options.createTimeoutSeconds })
+					: await client.create(candidate.params);
+			} catch (error) {
+				lastError = error;
+				this.reportCreateError(error, candidate.strategy);
+				if (
+					candidate.strategy === 'snapshot' &&
+					candidates.some(({ strategy }) => strategy === 'image')
+				) {
+					this.options.logger?.warn('Sandbox create from snapshot failed; falling back to image', {
+						snapshotName: this.options.snapshot,
+						mode: this.options.createStrategyMode,
+						error: error instanceof Error ? error.message : String(error),
+					});
+					continue;
+				}
+				throw error;
+			}
+		}
+
+		throw lastError instanceof Error ? lastError : new Error('Failed to create Daytona sandbox');
+	}
+
+	private createSandboxParams(): Array<{
+		strategy: 'snapshot' | 'image';
+		params: CreateSandboxFromImageParams | CreateSandboxFromSnapshotParams;
+	}> {
 		const base: CreateSandboxBaseParams = {
 			language: this.language,
 			labels: {
@@ -261,18 +295,50 @@ export class DaytonaSandbox extends BaseSandbox {
 		}
 		if (this.options.env !== undefined) base.envVars = this.options.env;
 
-		if (this.options.image && !this.options.snapshot) {
-			return {
-				...base,
-				image: this.options.image,
-				resources: this.options.resources,
-			};
+		const candidates: Array<{
+			strategy: 'snapshot' | 'image';
+			params: CreateSandboxFromImageParams | CreateSandboxFromSnapshotParams;
+		}> = [];
+
+		if (this.options.snapshot) {
+			candidates.push({
+				strategy: 'snapshot',
+				params: {
+					...base,
+					snapshot: this.options.snapshot,
+				},
+			});
 		}
 
-		return {
-			...base,
-			snapshot: this.options.snapshot,
-		};
+		if (this.options.image) {
+			candidates.push({
+				strategy: 'image',
+				params: {
+					...base,
+					image: this.options.image,
+					resources: this.options.resources,
+				},
+			});
+		}
+
+		if (candidates.length > 0) return candidates;
+
+		return [{ strategy: 'snapshot', params: { ...base, snapshot: this.options.snapshot } }];
+	}
+
+	private reportCreateError(error: unknown, strategy: 'snapshot' | 'image'): void {
+		this.options.errorReporter?.error(error, {
+			tags: {
+				component: 'builder-sandbox-factory',
+				strategy,
+				...(this.options.createStrategyMode ? { mode: this.options.createStrategyMode } : {}),
+			},
+			extra: {
+				sandboxId: this.id,
+				sandboxName: this.sandboxName,
+				snapshotName: this.options.snapshot,
+			},
+		});
 	}
 
 	private async detectWorkingDirectory(): Promise<void> {

@@ -16,7 +16,7 @@ import type { Message, Workspace } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
-import { InstanceSettings } from 'n8n-core';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 
 import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
@@ -28,8 +28,10 @@ import {
 	createAllTools,
 	createSandbox,
 	createWorkspace,
+	cleanupWorkspaceProcesses,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
+	getWorkspaceMutationGuardSetter,
 	setupSandboxWorkspace,
 	loadInstanceAiRuntimeSkillSource,
 	createInstanceAiTraceContext,
@@ -65,6 +67,7 @@ import {
 	type ConfirmationData,
 	type BuiltMemory,
 	type DomainAccessTracker,
+	type FilesystemMutationGuardSetter,
 	type InstanceAiContext,
 	type ManagedBackgroundTask,
 	type McpServerConfig,
@@ -151,22 +154,90 @@ const ORCHESTRATOR_AGENT_ID = 'agent-001';
 type RuntimeSandboxEntry = {
 	sandbox: NonNullable<Awaited<ReturnType<typeof createSandbox>>>;
 	workspace: NonNullable<ReturnType<typeof createWorkspace>>;
+	setFilesystemMutationGuard?: ReturnType<typeof getWorkspaceMutationGuardSetter>;
 	setupComplete: boolean;
 	setupPromise: Promise<void> | undefined;
+	expiresAt: number;
+	cleanupTimer?: ReturnType<typeof setTimeout>;
 };
+
+const SANDBOX_NAME_MAX_LEN = 63;
+const SANDBOX_LABEL_MAX_LEN = 63;
+const NAME_PREFIX_SLUG_MAX_LEN = 24;
+const SHORT_RUN_ID_LEN = 8;
+const DEFAULT_SANDBOX_TTL_MS = 10 * 60 * 1000;
+
+function slugifySandboxName(value: string, maxLen: number): string {
+	const slug = value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+	return slug.slice(0, maxLen).replace(/-+$/, '');
+}
+
+function slugifySandboxLabel(value: string, maxLen: number): string {
+	return value
+		.replace(/[^A-Za-z0-9_.-]+/g, '-')
+		.replace(/^[-.]+|[-.]+$/g, '')
+		.slice(0, maxLen)
+		.replace(/[-.]+$/, '');
+}
 
 function getThreadScopedSandboxName(threadId: string): string {
 	return `instance-ai-thread-${threadId}`;
 }
 
-function withThreadScopedSandboxIdentity(config: SandboxConfig, threadId: string): SandboxConfig {
+function buildThreadScopedSandboxName(
+	threadId: string,
+	namePrefix: string | undefined,
+	runId: string | undefined,
+): string {
+	const parts: string[] = [];
+	if (namePrefix) {
+		const prefixSlug = slugifySandboxName(namePrefix, NAME_PREFIX_SLUG_MAX_LEN);
+		if (prefixSlug) parts.push(prefixSlug);
+	}
+	if (runId) {
+		const runSlug = slugifySandboxName(runId, SHORT_RUN_ID_LEN);
+		if (runSlug) parts.push(runSlug);
+	}
+	const threadSlug = slugifySandboxName(getThreadScopedSandboxName(threadId), SANDBOX_NAME_MAX_LEN);
+	if (threadSlug) parts.push(threadSlug);
+	const name = slugifySandboxName(parts.join('-'), SANDBOX_NAME_MAX_LEN);
+	return name || 'instance-ai-thread';
+}
+
+function buildThreadScopedSandboxLabels(
+	threadId: string,
+	namePrefix: string | undefined,
+	runId: string | undefined,
+): Record<string, string> {
+	const baseName = getThreadScopedSandboxName(threadId);
+	const labels: Record<string, string> = {
+		'n8n-builder': slugifySandboxLabel(baseName, SANDBOX_LABEL_MAX_LEN),
+		thread_id: slugifySandboxLabel(threadId, SANDBOX_LABEL_MAX_LEN),
+	};
+	if (namePrefix) labels.name_prefix = slugifySandboxLabel(namePrefix, SANDBOX_LABEL_MAX_LEN);
+	if (runId) labels.run_id = slugifySandboxLabel(runId, SANDBOX_LABEL_MAX_LEN);
+	return labels;
+}
+
+function withThreadScopedSandboxIdentity(
+	config: SandboxConfig,
+	threadId: string,
+	runId?: string,
+): SandboxConfig {
 	if (!config.enabled || config.provider !== 'daytona') return config;
 
-	const name = getThreadScopedSandboxName(threadId);
+	const name = buildThreadScopedSandboxName(threadId, config.namePrefix, runId);
 	return {
 		...config,
 		id: name,
 		name,
+		labels: {
+			...buildThreadScopedSandboxLabels(threadId, config.namePrefix, runId),
+			...config.labels,
+		},
 	};
 }
 
@@ -510,6 +581,7 @@ export class InstanceAiService {
 		private readonly telemetry: Telemetry,
 		private readonly userRepository: UserRepository,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
+		private readonly errorReporter: ErrorReporter,
 		ssrfProtectionConfig: SsrfProtectionConfig,
 		ssrfProtectionService: SsrfProtectionService,
 		private readonly eventService: EventService,
@@ -659,14 +731,22 @@ export class InstanceAiService {
 	private async getOrCreateWorkspaceEntry(
 		threadId: string,
 		user: User,
+		runId?: string,
 	): Promise<RuntimeSandboxEntry | undefined> {
 		const existing = this.sandboxes.get(threadId);
-		if (existing) return existing;
+		if (existing) {
+			if (this.isSandboxEntryExpired(existing) && !this.isSandboxInUse(threadId)) {
+				await this.destroySandbox(threadId, 'expired_on_acquire');
+			} else {
+				this.touchSandboxEntry(threadId, existing);
+				return existing;
+			}
+		}
 
 		const pending = this.sandboxCreations.get(threadId);
 		if (pending) return await pending;
 
-		const creation = this.createWorkspaceEntry(threadId, user);
+		const creation = this.createWorkspaceEntry(threadId, user, runId);
 		this.sandboxCreations.set(threadId, creation);
 		try {
 			return await creation;
@@ -680,8 +760,9 @@ export class InstanceAiService {
 		threadId: string,
 		user: User,
 		context: InstanceAiContext,
+		runId?: string,
 	): Promise<RuntimeSandboxEntry | undefined> {
-		const entry = await this.getOrCreateWorkspaceEntry(threadId, user);
+		const entry = await this.getOrCreateWorkspaceEntry(threadId, user, runId);
 		if (entry) await this.ensureWorkspaceSetup(entry, context);
 		return entry;
 	}
@@ -706,17 +787,27 @@ export class InstanceAiService {
 	private async createWorkspaceEntry(
 		threadId: string,
 		user: User,
+		runId?: string,
 	): Promise<RuntimeSandboxEntry | undefined> {
-		const config = withThreadScopedSandboxIdentity(await this.resolveSandboxConfig(user), threadId);
+		const config = withThreadScopedSandboxIdentity(
+			await this.resolveSandboxConfig(user),
+			threadId,
+			runId,
+		);
 		if (!config.enabled) return undefined;
 
-		const sandbox = await createSandbox(config);
-		const workspace = createWorkspace(sandbox);
+		const sandbox = await createSandbox(config, {
+			logger: this.logger,
+			errorReporter: this.errorReporter,
+			useSnapshotFallback: true,
+		});
+		const workspace = createWorkspace(sandbox, { guardedFilesystem: true });
 		if (!sandbox || !workspace) return undefined;
 		try {
 			await workspace.init();
 		} catch (error) {
 			try {
+				await cleanupWorkspaceProcesses(workspace);
 				await workspace.destroy();
 			} catch {
 				// Best-effort cleanup when the sandbox cannot start
@@ -727,26 +818,86 @@ export class InstanceAiService {
 		const entry: RuntimeSandboxEntry = {
 			sandbox,
 			workspace,
+			setFilesystemMutationGuard: getWorkspaceMutationGuardSetter(workspace),
 			setupComplete: false,
 			setupPromise: undefined,
+			expiresAt: this.nextSandboxExpiry(),
 		};
 		this.sandboxes.set(threadId, entry);
+		this.scheduleSandboxExpiry(threadId, entry);
 		return entry;
 	}
 
 	/** Destroy and remove the shared runtime workspace for a thread. */
-	private async destroySandbox(threadId: string): Promise<void> {
+	private async destroySandbox(threadId: string, reason = 'thread_cleanup'): Promise<void> {
 		const entry = this.sandboxes.get(threadId);
 		if (!entry?.sandbox) return;
 
 		this.sandboxes.delete(threadId);
+		if (entry.cleanupTimer) {
+			clearTimeout(entry.cleanupTimer);
+			entry.cleanupTimer = undefined;
+		}
 		try {
+			await cleanupWorkspaceProcesses(entry.workspace);
 			await entry.workspace?.destroy();
 		} catch (error) {
 			this.logger.warn('Failed to destroy sandbox', {
 				threadId,
+				reason,
 				error: error instanceof Error ? error.message : String(error),
 			});
+		}
+	}
+
+	private get sandboxTtlMs(): number {
+		return this.instanceAiConfig?.builderSandboxTtlMs ?? DEFAULT_SANDBOX_TTL_MS;
+	}
+
+	private nextSandboxExpiry(): number {
+		return Date.now() + this.sandboxTtlMs;
+	}
+
+	private isSandboxEntryExpired(entry: RuntimeSandboxEntry): boolean {
+		return this.sandboxTtlMs > 0 && entry.expiresAt <= Date.now();
+	}
+
+	private touchSandboxEntry(threadId: string, entry: RuntimeSandboxEntry): void {
+		if (this.sandboxTtlMs <= 0) return;
+		entry.expiresAt = this.nextSandboxExpiry();
+		this.scheduleSandboxExpiry(threadId, entry);
+	}
+
+	private isSandboxInUse(threadId: string): boolean {
+		return Boolean(
+			this.runState.getActiveRunId(threadId) ||
+				this.runState.hasSuspendedRun(threadId) ||
+				this.backgroundTasks.getRunningTasks(threadId).length > 0,
+		);
+	}
+
+	private scheduleSandboxExpiry(threadId: string, entry: RuntimeSandboxEntry): void {
+		if (this.sandboxTtlMs <= 0) return;
+		if (entry.cleanupTimer) clearTimeout(entry.cleanupTimer);
+
+		const delay = Math.max(0, entry.expiresAt - Date.now());
+		entry.cleanupTimer = setTimeout(() => {
+			const current = this.sandboxes.get(threadId);
+			if (current !== entry) return;
+			if (this.isSandboxInUse(threadId)) {
+				this.touchSandboxEntry(threadId, entry);
+				return;
+			}
+			void this.destroySandbox(threadId, 'ttl_expired');
+		}, delay);
+		entry.cleanupTimer.unref();
+	}
+
+	private stopSandboxExpiryTimers(): void {
+		for (const entry of this.sandboxes.values()) {
+			if (!entry.cleanupTimer) continue;
+			clearTimeout(entry.cleanupTimer);
+			entry.cleanupTimer = undefined;
 		}
 	}
 
@@ -1783,8 +1934,11 @@ export class InstanceAiService {
 
 		this.gatewayRegistry.disconnectAll();
 
+		this.stopSandboxExpiryTimers();
+
 		// Thread-scoped sandboxes survive service shutdown so a restarted process
-		// can reuse them. Thread deletion remains the teardown path.
+		// can reuse them. Explicit thread cleanup and idle TTL remain the
+		// teardown paths.
 
 		this.domainAccessTrackersByThread.clear();
 		this.traceContextsByRunId.clear();
@@ -2451,20 +2605,33 @@ export class InstanceAiService {
 		const baseRuntimeSkills = loadInstanceAiRuntimeSkillSource();
 		let runtimeSkills = baseRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
+		let setFilesystemMutationGuard: FilesystemMutationGuardSetter | undefined;
 		if (adminSettings.sandboxEnabled) {
 			let sandboxEntryPromise: Promise<RuntimeSandboxEntry | undefined> | undefined;
+			let filesystemMutationGuard: Parameters<FilesystemMutationGuardSetter>[0] | undefined;
+			const applyFilesystemMutationGuard = (entry: RuntimeSandboxEntry | undefined) => {
+				entry?.setFilesystemMutationGuard?.(filesystemMutationGuard);
+			};
+			setFilesystemMutationGuard = (guard) => {
+				filesystemMutationGuard = guard;
+				applyFilesystemMutationGuard(this.sandboxes.get(threadId));
+			};
 			const getSandboxEntry = async () => {
-				sandboxEntryPromise ??= this.getOrCreateWorkspaceEntry(threadId, user).catch(
+				sandboxEntryPromise ??= this.getOrCreateWorkspaceEntry(threadId, user, runId).catch(
 					(error: unknown) => {
 						sandboxEntryPromise = undefined;
 						throw error;
 					},
 				);
 
-				return await sandboxEntryPromise;
+				const entry = await sandboxEntryPromise;
+				applyFilesystemMutationGuard(entry);
+				return entry;
 			};
 			const getSetupSandboxEntry = async () => {
-				return await this.getOrCreateWorkspace(threadId, user, context);
+				const entry = await this.getOrCreateWorkspace(threadId, user, context, runId);
+				applyFilesystemMutationGuard(entry);
+				return entry;
 			};
 
 			runtimeWorkspace = createLazyRuntimeWorkspace({
@@ -2539,6 +2706,7 @@ export class InstanceAiService {
 				this.sendCorrectionToTask(threadId, taskId, correction),
 			workflowTaskService: workflowTasks,
 			workspace: runtimeWorkspace,
+			setFilesystemMutationGuard,
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 			tracingProxyConfig,

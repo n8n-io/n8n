@@ -12,6 +12,8 @@ jest.mock('@n8n/instance-ai', () => {
 		createDomainAccessTracker: jest.fn(),
 		createSandbox: jest.fn(),
 		createWorkspace: jest.fn(),
+		getWorkspaceMutationGuardSetter: jest.fn(),
+		cleanupWorkspaceProcesses: jest.fn().mockResolvedValue(undefined),
 		createLazyRuntimeWorkspace: jest.fn(
 			(args: { id?: string; ensureWorkspace: () => Promise<unknown> }) => ({
 				id: args.id ?? 'lazy-runtime-workspace',
@@ -501,6 +503,7 @@ type WorkspaceServiceInternals = {
 		threadId: string,
 		user: User,
 		context: InstanceAiContext,
+		runId?: string,
 	) => Promise<unknown>;
 };
 
@@ -812,12 +815,59 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			expect.objectContaining({
 				id: 'instance-ai-thread-thread-1',
 				name: 'instance-ai-thread-thread-1',
+				labels: expect.objectContaining({
+					'n8n-builder': 'instance-ai-thread-thread-1',
+					thread_id: 'thread-1',
+				}),
 			}),
+			expect.objectContaining({ useSnapshotFallback: true }),
 		);
 		expect(createWorkspace).toHaveBeenCalledTimes(1);
+		expect(createWorkspace).toHaveBeenCalledWith(sandbox, { guardedFilesystem: true });
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
 		expect(service.sandboxCreations.size).toBe(0);
+	});
+
+	it('threads Daytona name prefixes and labels through sandbox creation', async () => {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as WorkspaceServiceInternals;
+		service.sandboxes = new Map();
+		service.sandboxCreations = new Map();
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => ({
+			...daytonaSandboxConfig,
+			namePrefix: 'Acme Eval',
+		}));
+		const sandbox = { id: 'sandbox-1' };
+		const workspace = {
+			init: jest.fn(async () => {}),
+			destroy: jest.fn(async () => {}),
+		};
+		(createSandbox as jest.Mock).mockResolvedValue(sandbox);
+		(createWorkspace as jest.Mock).mockReturnValue(workspace);
+		(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
+
+		await service.getOrCreateWorkspace(
+			'thread-1',
+			fakeUser,
+			{} as InstanceAiContext,
+			'run_123456789',
+		);
+
+		expect(createSandbox).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'acme-eval-run-1234-instance-ai-thread-thread-1',
+				name: 'acme-eval-run-1234-instance-ai-thread-thread-1',
+				labels: expect.objectContaining({
+					'n8n-builder': 'instance-ai-thread-thread-1',
+					name_prefix: 'Acme-Eval',
+					run_id: 'run_123456789',
+					thread_id: 'thread-1',
+				}),
+			}),
+			expect.objectContaining({ useSnapshotFallback: true }),
+		);
 	});
 
 	it('keeps the sandbox after setup failure and retries setup on the next use', async () => {
@@ -1017,11 +1067,18 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createSandbox).toHaveBeenCalledTimes(1);
 		expect(createSandbox).toHaveBeenCalledWith(
 			expect.objectContaining({
-				id: 'instance-ai-thread-thread-1',
-				name: 'instance-ai-thread-thread-1',
+				id: 'run-1-instance-ai-thread-thread-1',
+				name: 'run-1-instance-ai-thread-thread-1',
+				labels: expect.objectContaining({
+					'n8n-builder': 'instance-ai-thread-thread-1',
+					run_id: 'run-1',
+					thread_id: 'thread-1',
+				}),
 			}),
+			expect.objectContaining({ useSnapshotFallback: true }),
 		);
 		expect(createWorkspace).toHaveBeenCalledTimes(1);
+		expect(createWorkspace).toHaveBeenCalledWith(sandbox, { guardedFilesystem: true });
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
 	});

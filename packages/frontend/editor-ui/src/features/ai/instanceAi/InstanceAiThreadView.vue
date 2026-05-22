@@ -399,7 +399,7 @@ watch(
 	chatArtifacts,
 	(newArtifacts, oldArtifacts) => {
 		if (thread.isHydratingThread) return;
-		if (newArtifacts.length > 0 && newArtifacts.length !== oldArtifacts?.length) {
+		if (newArtifacts.length > (oldArtifacts?.length ?? 0)) {
 			selectedChatArtifactIndex.value = newArtifacts.length - 1;
 			openChatArtifact(newArtifacts[newArtifacts.length - 1]?.title);
 		}
@@ -435,6 +435,7 @@ watch(
 	() => props.threadId,
 	(threadId, previousThreadId) => {
 		if (threadId !== previousThreadId) {
+			selectedChatArtifactIndex.value = 0;
 			suppressPanelTransitionsUntilStableRender();
 		}
 	},

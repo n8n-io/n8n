@@ -122,7 +122,8 @@ describe('builder model recommendations', () => {
 		expect(llmSkillWithRecommendations?.instructions).toContain('## Recommended LLM models');
 		expect(llmSkillWithoutRecommendations?.instructions).not.toContain('## Recommended LLM models');
 		expect(llmSkillWithoutRecommendations?.instructions).toContain('do not recommend or name');
-		expect(buildPrompt(section)).not.toContain('## Recommended LLM models');
+		expect(buildPrompt(section)).toContain('## Recommended LLM models');
+		expect(buildPrompt(section)).toContain('`openai/gpt-5` GPT-5');
 		expect(buildPrompt(null)).not.toContain('## Recommended LLM models');
 	});
 });

@@ -335,7 +335,7 @@ Use the workflow SDK.`,
 		});
 	});
 
-	it('prepares the runtime skill source before load_skill reads the registry', async () => {
+	it('prepares the runtime skill source before list_skills or load_skill reads the registry', async () => {
 		const source = createRuntimeSkillSource([
 			{
 				id: 'summarize_notes',
@@ -361,9 +361,14 @@ Use the workflow SDK.`,
 
 		await expect(listTool.handler?.({}, {})).resolves.toMatchObject({
 			success: true,
-			skills: [expect.not.objectContaining({ directory: '/workspace/skills/summarize_notes' })],
+			skills: [
+				expect.objectContaining({
+					directory: '/workspace/skills/summarize_notes',
+					path: '/workspace/skills/summarize_notes/SKILL.md',
+				}),
+			],
 		});
-		expect(prepare).not.toHaveBeenCalled();
+		expect(prepare).toHaveBeenCalledTimes(1);
 
 		await expect(loadTool.handler?.({ skillId: 'summarize_notes' }, {})).resolves.toMatchObject({
 			ok: true,
@@ -371,7 +376,40 @@ Use the workflow SDK.`,
 			path: '/workspace/skills/summarize_notes/SKILL.md',
 			skillDir: '/workspace/skills/summarize_notes',
 		});
+		expect(prepare).toHaveBeenCalledTimes(2);
+	});
+
+	it('prepares the runtime skill source before injecting the agent skill catalog', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'summarize_notes',
+				name: 'Summarize notes',
+				description: 'Use for meeting notes.',
+				instructions: 'Extract decisions.',
+			},
+		]);
+		const prepare = jest.fn(async () => {
+			await Promise.resolve();
+			source.registry = {
+				...source.registry,
+				skills: source.registry.skills.map((skill) => ({
+					...skill,
+					description: 'Use for materialized meeting notes.',
+				})),
+			};
+		});
+		source.prepare = prepare;
+
+		const agent = new Agent('assistant')
+			.model('anthropic/claude-sonnet-4-5')
+			.instructions('Base instructions.')
+			.skills(source);
+		const runtime = await (agent as unknown as { build(): Promise<unknown> }).build();
+		const instructions = (runtime as { config: { instructions: string } }).config.instructions;
+
 		expect(prepare).toHaveBeenCalledTimes(1);
+		expect(instructions).toContain('description: "Use for materialized meeting notes."');
+		expect(instructions).not.toContain('description: "Use for meeting notes."');
 	});
 
 	it('redacts likely secrets from load_skill content before returning it', async () => {

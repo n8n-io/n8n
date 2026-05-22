@@ -1,11 +1,15 @@
-import { Workspace } from '@n8n/agents';
+import { Workspace, type WorkspaceFilesystem } from '@n8n/agents';
 
+import type { ErrorReporter, Logger } from '../logger';
 import { DaytonaFilesystem } from './daytona-filesystem';
 import { DaytonaSandbox } from './daytona-sandbox';
+import { createGuardedFilesystem, type FilesystemMutationGuardSetter } from './guarded-filesystem';
+import { loadDaytona } from './lazy-daytona';
 import { LocalFilesystem } from './local-filesystem';
 import { LocalSandbox } from './local-sandbox';
 import { N8nSandboxFilesystem } from './n8n-sandbox-filesystem';
 import { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
+import { SnapshotManager } from './snapshot-manager';
 
 export type SandboxProvider = 'daytona' | 'local' | 'n8n-sandbox';
 
@@ -23,6 +27,7 @@ interface DaytonaSandboxConfig extends SandboxConfigBase {
 	provider: 'daytona';
 	id?: string;
 	name?: string;
+	labels?: Record<string, string>;
 	daytonaApiUrl?: string;
 	daytonaApiKey?: string;
 	image?: string;
@@ -59,6 +64,25 @@ export type SandboxConfig =
 	| LocalSandboxConfig
 	| N8nSandboxConfig;
 
+export interface CreateSandboxOptions {
+	logger?: Logger;
+	errorReporter?: ErrorReporter;
+	useSnapshotFallback?: boolean;
+}
+
+export interface CreateWorkspaceOptions {
+	guardedFilesystem?: boolean;
+}
+
+const workspaceMutationGuards = new WeakMap<Workspace, FilesystemMutationGuardSetter>();
+
+const NOOP_LOGGER: Logger = {
+	info: () => {},
+	warn: () => {},
+	error: () => {},
+	debug: () => {},
+};
+
 /**
  * Create a sandbox instance based on config.
  * Returns undefined when sandbox is disabled.
@@ -68,21 +92,45 @@ export type SandboxConfig =
  */
 export async function createSandbox(
 	config: SandboxConfig,
+	options: CreateSandboxOptions = {},
 ): Promise<DaytonaSandbox | LocalSandbox | N8nSandboxServiceSandbox | undefined> {
 	if (!config.enabled) return undefined;
 
 	if (config.provider === 'daytona') {
 		// In proxy mode, resolve a fresh token via getAuthToken; in direct mode use the static key.
 		const apiKey = config.getAuthToken ? await config.getAuthToken() : config.daytonaApiKey;
+		const mode = config.getAuthToken ? 'proxy' : 'direct';
+		const snapshotManager = options.useSnapshotFallback
+			? new SnapshotManager(
+					config.image,
+					options.logger ?? NOOP_LOGGER,
+					config.n8nVersion,
+					options.errorReporter,
+				)
+			: undefined;
+		const snapshot = snapshotManager
+			? await snapshotManager.ensureSnapshot(
+					new (loadDaytona().Daytona)({ apiKey, apiUrl: config.daytonaApiUrl }),
+					mode,
+				)
+			: undefined;
+		const image = snapshotManager ? snapshotManager.ensureImage() : config.image;
+
 		return new DaytonaSandbox({
 			id: config.id,
 			name: config.name,
 			apiKey,
 			apiUrl: config.daytonaApiUrl,
-			...(config.image ? { image: config.image } : {}),
+			labels: config.labels,
+			...(image ? { image } : {}),
+			...(snapshot ? { snapshot } : {}),
+			ephemeral: true,
 			language: 'typescript',
 			timeout: config.timeout ?? 300_000,
-			createTimeoutSeconds: config.createTimeoutSeconds,
+			createTimeoutSeconds: config.createTimeoutSeconds ?? 300,
+			logger: options.logger,
+			errorReporter: options.errorReporter,
+			createStrategyMode: mode,
 		});
 	}
 
@@ -113,25 +161,58 @@ export async function createSandbox(
  */
 export function createWorkspace(
 	sandbox: DaytonaSandbox | LocalSandbox | N8nSandboxServiceSandbox | undefined,
+	options: CreateWorkspaceOptions = {},
 ): Workspace | undefined {
 	if (!sandbox) return undefined;
 
+	const createWorkspaceWithFilesystem = (filesystem: WorkspaceFilesystem) => {
+		if (!options.guardedFilesystem) {
+			return new Workspace({ sandbox, filesystem });
+		}
+
+		const guarded = createGuardedFilesystem(filesystem);
+		const workspace = new Workspace({ sandbox, filesystem: guarded.filesystem });
+		workspaceMutationGuards.set(workspace, guarded.setMutationGuard);
+		return workspace;
+	};
+
 	if (sandbox instanceof LocalSandbox) {
-		return new Workspace({
-			sandbox,
-			filesystem: new LocalFilesystem({ basePath: './workspace' }),
-		});
+		return createWorkspaceWithFilesystem(new LocalFilesystem({ basePath: './workspace' }));
 	}
 
 	if (sandbox instanceof N8nSandboxServiceSandbox) {
-		return new Workspace({
-			sandbox,
-			filesystem: new N8nSandboxFilesystem(sandbox),
-		});
+		return createWorkspaceWithFilesystem(new N8nSandboxFilesystem(sandbox));
 	}
 
-	return new Workspace({
-		sandbox,
-		filesystem: new DaytonaFilesystem(sandbox),
-	});
+	return createWorkspaceWithFilesystem(new DaytonaFilesystem(sandbox));
+}
+
+export function getWorkspaceMutationGuardSetter(
+	workspace: Workspace | undefined,
+): FilesystemMutationGuardSetter | undefined {
+	return workspace ? workspaceMutationGuards.get(workspace) : undefined;
+}
+
+export async function cleanupWorkspaceProcesses(workspace: Workspace | undefined): Promise<void> {
+	const processManager = workspace?.sandbox?.processes;
+	if (!processManager) return;
+
+	let processes: Awaited<ReturnType<typeof processManager.list>>;
+	try {
+		processes = await processManager.list();
+	} catch {
+		return;
+	}
+
+	for (const process of processes) {
+		try {
+			if (process.exitCode === undefined) {
+				await processManager.kill(process.pid);
+			} else {
+				await processManager.get(process.pid);
+			}
+		} catch {
+			// Best-effort cleanup
+		}
+	}
 }

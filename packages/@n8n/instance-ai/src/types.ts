@@ -41,6 +41,7 @@ import type {
 	WorkflowLoopAction,
 	WorkflowLoopState,
 } from './workflow-loop/workflow-loop-state';
+import type { FilesystemMutationGuardSetter } from './workspace/guarded-filesystem';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -1075,6 +1076,8 @@ export interface OrchestrationContext {
 	schedulePlannedTasks?: () => Promise<void>;
 	/** Shared runtime workspace for the current orchestration context. */
 	workspace?: Workspace;
+	/** Optional mutation guard for shared runtime workspace filesystems. */
+	setFilesystemMutationGuard?: FilesystemMutationGuardSetter;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
 	/** Native memory store — used to retrieve thread message history for sub-agents. */
