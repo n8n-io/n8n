@@ -17,6 +17,7 @@ import ProjectMembersTable from '../components/ProjectMembersTable.vue';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { ROLE } from '@n8n/api-types';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import ProjectHeader from '../components/ProjectHeader.vue';
@@ -51,6 +52,7 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
 const cloudPlanStore = useCloudPlanStore();
+const settingsStore = useSettingsStore();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
 const toast = useToast();
 const router = useRouter();
@@ -75,10 +77,11 @@ const resourceCounts = ref<ResourceCounts>({
 	dataTables: -1,
 	workflows: -1,
 });
-const formData = ref<Pick<Project, 'name' | 'description' | 'relations'>>({
+const formData = ref<Pick<Project, 'name' | 'description' | 'relations' | 'customTelemetryTags'>>({
 	name: '',
 	description: '',
 	relations: [],
+	customTelemetryTags: [],
 });
 // Used to skip one watcher sync after targeted server updates (e.g., immediate removal)
 const suppressNextSync = ref(false);
@@ -213,6 +216,21 @@ const onTextInput = () => {
 	isDirty.value = true;
 };
 
+const addTelemetryTag = () => {
+	formData.value.customTelemetryTags = [
+		...(formData.value.customTelemetryTags ?? []),
+		{ key: '', value: '' },
+	];
+	isDirty.value = true;
+};
+
+const removeTelemetryTag = (index: number) => {
+	formData.value.customTelemetryTags = (formData.value.customTelemetryTags ?? []).filter(
+		(_, i) => i !== index,
+	);
+	isDirty.value = true;
+};
+
 async function onRemoveMember(userId: string) {
 	const current = projectsStore.currentProject;
 	if (!current) return;
@@ -262,6 +280,9 @@ const resetFormData = () => {
 		: [];
 	formData.value.name = projectsStore.currentProject?.name ?? '';
 	formData.value.description = projectsStore.currentProject?.description ?? '';
+	formData.value.customTelemetryTags = projectsStore.currentProject?.customTelemetryTags
+		? deepCopy(projectsStore.currentProject.customTelemetryTags)
+		: [];
 };
 
 const onCancel = () => {
@@ -339,6 +360,7 @@ const updateProject = async () => {
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
 			name: formData.value.name ?? '',
 			description: formData.value.description ?? '',
+			customTelemetryTags: formData.value.customTelemetryTags ?? [],
 		});
 		isDirty.value = false;
 	} catch (error) {
@@ -630,6 +652,48 @@ onMounted(async () => {
 						@validate="isValid = $event"
 					/>
 				</fieldset>
+				<fieldset v-if="settingsStore.isOtelEnabled">
+					<label>{{ i18n.baseText('projects.settings.telemetryTags.label') }}</label>
+					<N8nText size="small" color="text-light" class="mb-s" tag="p">
+						{{ i18n.baseText('projects.settings.telemetryTags.description') }}
+					</N8nText>
+					<div
+						v-for="(tag, index) in formData.customTelemetryTags"
+						:key="index"
+						:class="$style.telemetryTagRow"
+					>
+						<N8nInput
+							v-model="tag.key"
+							:placeholder="i18n.baseText('projects.settings.telemetryTags.key.placeholder')"
+							data-test-id="project-telemetry-tag-key"
+							@input="onTextInput"
+						/>
+						<N8nInput
+							v-model="tag.value"
+							:placeholder="i18n.baseText('projects.settings.telemetryTags.value.placeholder')"
+							data-test-id="project-telemetry-tag-value"
+							@input="onTextInput"
+						/>
+						<N8nButton
+							icon="trash-2"
+							variant="ghost"
+							size="small"
+							native-type="button"
+							:title="i18n.baseText('projects.settings.telemetryTags.remove')"
+							data-test-id="project-telemetry-tag-remove"
+							@click.stop.prevent="removeTelemetryTag(index)"
+						/>
+					</div>
+					<N8nButton
+						icon="plus"
+						variant="subtle"
+						native-type="button"
+						class="mt-2xs"
+						data-test-id="project-telemetry-tag-add"
+						@click.stop.prevent="addTelemetryTag"
+						>{{ i18n.baseText('projects.settings.telemetryTags.add') }}</N8nButton
+					>
+				</fieldset>
 			</template>
 
 			<ProjectExternalSecrets :class="$style.externalSecrets" />
@@ -838,5 +902,13 @@ onMounted(async () => {
 .danger {
 	display: block;
 	padding-bottom: var(--spacing--lg);
+}
+
+.telemetryTagRow {
+	display: flex;
+	gap: var(--spacing--2xs);
+	align-items: center;
+	margin-bottom: var(--spacing--2xs);
+	max-width: var(--project-field--width);
 }
 </style>
