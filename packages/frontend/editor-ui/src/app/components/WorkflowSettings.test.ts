@@ -55,11 +55,20 @@ vi.mock('@n8n/rest-api-client', async (importOriginal) => {
 	};
 });
 
-const getRedactionEnforcement = vi.fn();
-vi.mock('@n8n/rest-api-client/api/redaction-enforcement', () => ({
-	getRedactionEnforcement: (...args: unknown[]) => getRedactionEnforcement(...args),
-	updateRedactionEnforcement: vi.fn(),
+const getSecuritySettings = vi.fn();
+vi.mock('@n8n/rest-api-client/api/security-settings', () => ({
+	getSecuritySettings: (...args: unknown[]) => getSecuritySettings(...args),
+	updateSecuritySettings: vi.fn(),
 }));
+
+const DEFAULT_SECURITY_SETTINGS = {
+	personalSpacePublishing: false,
+	personalSpaceSharing: false,
+	publishedPersonalWorkflowsCount: 0,
+	sharedPersonalWorkflowsCount: 0,
+	sharedPersonalCredentialsCount: 0,
+	managedByEnv: false,
+};
 
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
@@ -91,9 +100,9 @@ const createComponent = createComponentRenderer(WorkflowSettingsVue, {
 
 describe('WorkflowSettingsVue', () => {
 	beforeEach(async () => {
-		getRedactionEnforcement.mockResolvedValue({
-			redactionEnforced: false,
-			redactionScope: 'non-manual',
+		getSecuritySettings.mockResolvedValue({
+			...DEFAULT_SECURITY_SETTINGS,
+			redactionEnforcement: { floor: 'off' },
 		});
 		pinia = createTestingPinia({ stubActions: false });
 		workflowsStore = mockedStore(useWorkflowsStore);
@@ -1348,9 +1357,9 @@ describe('WorkflowSettingsVue', () => {
 					...settingsStore.settings.envFeatureFlags,
 					N8N_ENV_FEAT_REDACTION_ENFORCEMENT: params.flagEnabled ? 'true' : 'false',
 				};
-				getRedactionEnforcement.mockResolvedValue({
-					redactionEnforced: params.enforced,
-					redactionScope: 'non-manual',
+				getSecuritySettings.mockResolvedValue({
+					...DEFAULT_SECURITY_SETTINGS,
+					redactionEnforcement: { floor: params.enforced ? 'production' : 'off' },
 				});
 
 				const scopes = (
@@ -1421,7 +1430,7 @@ describe('WorkflowSettingsVue', () => {
 				).getByRole('combobox');
 				expect(productionInput).not.toBeDisabled();
 				expect(queryByTestId('workflow-settings-redaction-enforced-lock')).not.toBeInTheDocument();
-				expect(getRedactionEnforcement).not.toHaveBeenCalled();
+				expect(getSecuritySettings).not.toHaveBeenCalled();
 			});
 
 			it('prefers enforcement copy when both enforcement and missing permission would lock', async () => {
