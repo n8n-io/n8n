@@ -32,7 +32,6 @@ The table's existing columns are reused:
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `attempts` | integer | AI refinement iterations on this run (Phase 3). Omit for Phase 1. |
 | `duration_ms` | integer | Wall-clock time of the Stryker invocation, if captured. |
 | `runner` | string | GHA runner label that executed this run. |
 

@@ -27,25 +27,13 @@
 		"name": "last_checked_at",
 		"type": "TIMESTAMP",
 		"mode": "NULLABLE",
-		"description": "When the most recent Stryker run completed. NULL for status=new rows."
-	},
-	{
-		"name": "last_checked_sha",
-		"type": "STRING",
-		"mode": "NULLABLE",
-		"description": "Git SHA the most recent Stryker run was performed against."
+		"description": "When the most recent Stryker run completed. NULL for status=new rows. Drives the age-based 'stale' computation in the picker."
 	},
 	{
 		"name": "status",
 		"type": "STRING",
 		"mode": "REQUIRED",
-		"description": "Worklist state: new | green | red | stale. See README for state transitions."
-	},
-	{
-		"name": "attempts",
-		"type": "INT64",
-		"mode": "NULLABLE",
-		"description": "Number of AI refinement iterations on the most recent run (Phase 3). 0 or NULL outside Phase 3."
+		"description": "Stored state: new | green | red. The picker computes an effective 'stale' state at runtime from last_checked_at age (no separate column needed)."
 	},
 	{
 		"name": "mutants_killed",

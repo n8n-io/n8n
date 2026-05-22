@@ -97,15 +97,21 @@ The writer workflow lives in n8n's internal Quality project. It's created and ma
 
 ## State transitions
 
-| Trigger | `status` becomes |
+| Trigger | Stored `status` |
 | --- | --- |
 | Source file first observed (seed insert) | `new`, `last_score=NULL` |
-| Source or test file edited since `last_checked_sha` | `stale` (computed at pick time) |
-| > 8 weeks since `last_checked_at`, no edits | `stale` |
 | Last run scored ≥ `threshold_at_run` | `green` |
 | Last run scored < `threshold_at_run` | `red` |
 
-Picker priority: `new` → `red` → `stale` → skip `green`. Within `red`/`stale`, lowest-score-first so the weakest test suites get re-scored first.
+Stored statuses are just three: `new`, `red`, `green`. The picker also computes a transient `stale` state at pick time — any `green` row whose `last_checked_at` is older than 4 weeks is treated as `stale` for that pick. No `last_checked_sha` is needed; no git history is consulted.
+
+Picker priority: `new` → `red` → `stale` → skip fresh `green`.
+
+- Within `new`: alphabetical (rows exit the bucket as they're scored)
+- Within `red`: lowest score first (weakest tests revisited first)
+- Within `stale`: oldest `last_checked_at` first (natural cycling of long-stable files)
+
+If every row is green and fresh, the picker exits 0 with `{"picked": null, "reason": "all-green"}` — a healthy "nothing to do" state, not a failure.
 
 ## Webhook contract
 
@@ -120,9 +126,7 @@ Picker priority: `new` → `red` → `stale` → skip `green`. Within `red`/`sta
       "last_score": 95.12,
       "threshold_at_run": 80,
       "last_checked_at": "2026-05-22T10:03:55.660Z",
-      "last_checked_sha": "095239e175",
       "status": "green",
-      "attempts": 0,
       "mutants_killed": 39,
       "mutants_survived": 2,
       "mutants_no_coverage": 0,

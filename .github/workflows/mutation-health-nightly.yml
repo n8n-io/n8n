@@ -29,11 +29,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          # Full history so pick-next.mjs can git-log against last_checked_sha
-          # of every red/stale row — otherwise the unreachable-SHA fallback
-          # keeps rows at their current status (no false stale flips).
-          fetch-depth: 0
+        # Shallow clone is fine — pick-next no longer reads git history.
+        # Staleness is purely age-based via last_checked_at.
 
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
