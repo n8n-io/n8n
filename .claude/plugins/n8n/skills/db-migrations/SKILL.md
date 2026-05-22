@@ -78,7 +78,6 @@ Run through this before requesting review. Each item is a real, recurring review
 - [ ] **No live-app imports** in the migration body. Duplicate types/utility code locally — the migration must produce the same result a year from now even if app code drifts.
 - [ ] **`async down()` was tested locally**: `pnpm start && pnpm start -- db:revert && pnpm start` on **both** SQLite and Postgres. The revert command lives at `packages/cli/src/commands/db/revert.ts`.
 - [ ] **One logical change per migration**; split unrelated table changes into separate files.
-- [ ] **PR description matches code.** Reviewers catch description-vs-code drift.
 
 If any item fails, fix it before opening review.
 
@@ -88,11 +87,17 @@ If any item fails, fix it before opening review.
 - Use `runInBatches(query, op, limit?)` only when SQL alone cannot express the transformation.
 - **Filter early in SQL** with `LIKE`/`WHERE` to reduce parsing work on the Node side.
 - **Always handle NULL/empty source values** explicitly. If the column being backfilled is nullable, decide what to do for NULL and empty rows.
-- **Don't deactivate previously-active rows.** If the only safe choice is to do so, log a loud warning per row and mark the migration `IrreversibleMigration` (the original active state can't be reconstructed on revert).
 - When two columns are denormalized/duplicated across tables, **keep them in sync** during the backfill or the data goes inconsistent.
 - Verify row counts before swapping/dropping a temp table; throw on mismatch.
-- For deletion-style backfills, **prefer keeping old rows as a fallback** — self-hosted instances may have unexpected data shapes.
 - Avoid `WHERE jsonblob LIKE '%foo%'` scans on hot tables (e.g. `execution_entity`) — add a real marker column or a marker table instead.
+
+## Deletion-style backfills
+
+For deletion-style backfills (move data from old location A to new location B, then delete from A), **don't delete A in the same migration**. Self-hosted instances have data shapes the team never sees, and if the transformation is partial for some user, the old data is the only recovery path. Default to two-release expand-contract:
+- **Release N (this migration):** write the new location, leave the old in place.
+- **Release N+1 (separate follow-up migration, after the new code has been observed in production):** drop the old location.
+
+Exceptions: the old location is genuinely throwaway (e.g. a temp table this same migration created), or compliance requires immediate deletion — in which case mark the migration `IrreversibleMigration` and call out the trade-off in the PR description.
 
 ## Testing
 
@@ -108,7 +113,6 @@ If any item fails, fix it before opening review.
 1. Run `pnpm typecheck` and `pnpm lint` in `packages/@n8n/db` and `packages/cli`.
 2. Run the migration test: `pushd packages/cli && pnpm test test/migration/{your-test}.test.ts && popd`.
 3. Manual smoke test on both DBs: `pnpm start && pnpm start -- db:revert && pnpm start`.
-4. Open PR — `@n8n-io/migrations-review` is the gating team.
 
 ## More
 
