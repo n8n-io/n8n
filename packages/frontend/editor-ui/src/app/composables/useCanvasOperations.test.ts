@@ -2416,12 +2416,13 @@ describe('useCanvasOperations', () => {
 			expect(toast.showToast).not.toHaveBeenCalled();
 		});
 
-		it('should create a connection when affected node groups stay valid', () => {
+		it('allows a main connection across the group boundary when the group stays valid', () => {
+			const toast = useToast();
 			const nodeA = createGroupedNode('a', 'A');
 			const nodeB = createGroupedNode('b', 'B');
 			const nodeC = createGroupedNode('c', 'C');
 			const group = { id: 'group', nodeIds: [nodeA.id, nodeB.id], name: 'Group' };
-			setupGroupedCanvas({
+			const { workflowDocumentStore } = setupGroupedCanvas({
 				nodes: [nodeA, nodeB, nodeC],
 				connections: createConnectionsBySource(
 					workflowConnection(nodeA, nodeB),
@@ -2429,11 +2430,14 @@ describe('useCanvasOperations', () => {
 				),
 				groups: [group],
 			});
+			const addNodesToGroupSpy = vi.spyOn(workflowDocumentStore, 'addNodesToGroup');
 
 			const { createConnection } = useCanvasOperations();
 			createConnection(canvasConnection(nodeC, nodeA));
 
+			expect(addNodesToGroupSpy).not.toHaveBeenCalled();
 			expectConnectionAdded(nodeC, nodeA);
+			expect(toast.showToast).not.toHaveBeenCalled();
 		});
 
 		it('auto-extends the group when a non-main connection brings the sub-node inside', () => {
@@ -2467,12 +2471,13 @@ describe('useCanvasOperations', () => {
 			expect(toast.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 		});
 
-		it('should create a non-main connection inside a node group', () => {
+		it('does not auto-extend when a non-main connection stays inside the group', () => {
+			const toast = useToast();
 			const nodeA = createGroupedNode('a', 'A');
 			const nodeB = createGroupedNode('b', 'B');
 			const nodeC = createGroupedNode('c', 'C');
 			const group = { id: 'group', nodeIds: [nodeA.id, nodeB.id, nodeC.id], name: 'Group' };
-			setupGroupedCanvas({
+			const { workflowDocumentStore } = setupGroupedCanvas({
 				nodes: [nodeA, nodeB, nodeC],
 				connections: createConnectionsBySource(workflowConnection(nodeA, nodeB)),
 				groups: [group],
@@ -2481,11 +2486,14 @@ describe('useCanvasOperations', () => {
 					NodeConnectionTypes.AiTool,
 				]),
 			});
+			const addNodesToGroupSpy = vi.spyOn(workflowDocumentStore, 'addNodesToGroup');
 
 			const { createConnection } = useCanvasOperations();
 			createConnection(canvasConnection(nodeC, nodeB, { sourceType: NodeConnectionTypes.AiTool }));
 
+			expect(addNodesToGroupSpy).not.toHaveBeenCalled();
 			expectConnectionAdded(nodeC, nodeB, { sourceType: NodeConnectionTypes.AiTool });
+			expect(toast.showToast).not.toHaveBeenCalled();
 		});
 
 		it('does not auto-extend when the off-group endpoint already belongs to another group', () => {
