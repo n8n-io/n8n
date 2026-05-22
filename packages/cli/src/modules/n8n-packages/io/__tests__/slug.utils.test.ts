@@ -9,16 +9,12 @@ describe('generateSlug', () => {
 		expect(generateSlug('  Hello,   World!  ')).toBe('hello-world');
 	});
 
-	it('replaces known emojis with their canonical name', () => {
-		expect(generateSlug('💳 Payments')).toBe('credit-card-payments');
+	it('removes emojis', () => {
+		expect(generateSlug('💳 Payments')).toBe('payments');
 	});
 
 	it('falls back to "workflow" when the name yields an empty slug', () => {
-		expect(generateSlug('🤷‍♂️')).toBe('workflow');
-	});
-
-	it("strips unknown emoji's", () => {
-		expect(generateSlug('my-workflow 🤷‍♂️')).toBe('my-workflow');
+		expect(generateSlug('--')).toBe('workflow');
 	});
 
 	it('strips leading and trailing hyphens', () => {
