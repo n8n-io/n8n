@@ -36,6 +36,17 @@ const NODE_RPC_TYPES = {
 } as const satisfies Record<string, BridgeMessage['type']>;
 type NodeRpcType = (typeof NODE_RPC_TYPES)[keyof typeof NODE_RPC_TYPES];
 
+/**
+ * Same shape as `NODE_RPC_TYPES`, for the current node's `$input` proxy.
+ * Discriminators are `getInput*` and the host enforces zero-arg invocation.
+ */
+const INPUT_RPC_TYPES = {
+	first: 'getInputFirst',
+	last: 'getInputLast',
+	all: 'getInputAll',
+} as const satisfies Record<string, BridgeMessage['type']>;
+type InputRpcType = (typeof INPUT_RPC_TYPES)[keyof typeof INPUT_RPC_TYPES];
+
 // ============================================================================
 // Build Context Function
 // ============================================================================
@@ -217,6 +228,35 @@ export function buildContext(
 			},
 		});
 	};
+
+	// $input — current-node input proxy. Same synthetic-Proxy pattern as
+	// `target.$()`: intercept the typed-RPC method names (`first`, `last`,
+	// `all`, all zero-arg per the host's `WorkflowDataProxy`), delegate
+	// everything else (notably the `.item` getter and `.params` / `.context`
+	// properties) to a lazy proxy on `$input`.
+	const lazyInputProxy = createDeepLazyProxy(['$input'], undefined, callbacks);
+	const sendInputMethod = (type: InputRpcType) => {
+		return () => {
+			const result = callbacks.callHost.applySync(null, [{ type }], {
+				arguments: { copy: true },
+				result: { copy: true },
+			});
+			throwIfErrorSentinel(result);
+			return result;
+		};
+	};
+	target.$input = new Proxy({} as Record<string, unknown>, {
+		get(_emptyTarget, prop) {
+			if (isKeyOf(INPUT_RPC_TYPES, prop)) return sendInputMethod(INPUT_RPC_TYPES[prop]);
+			return (lazyInputProxy as Record<string | symbol, unknown>)[prop];
+		},
+		has(_emptyTarget, prop) {
+			return (
+				isKeyOf(INPUT_RPC_TYPES, prop) ||
+				prop in (lazyInputProxy as Record<string | symbol, unknown>)
+			);
+		},
+	});
 
 	// -------------------------------------------------------------------------
 	// Resolve an unknown key from the host. Called by the proxy's has/get traps

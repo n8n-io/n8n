@@ -316,3 +316,121 @@ describe("Typed RPC: $('Foo') proxy fallthrough and `in` checks", () => {
 		expect(evaluator.evaluate("{{ 'all' in $('Foo') }}", data, caller)).toBe(true);
 	});
 });
+
+describe('Typed RPC: $input.{first,last,all} route via getInput*', () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	it('$input.first() returns the value of data.$input.first()', () => {
+		const data: Record<string, unknown> = {
+			$input: {
+				first: () => ({ json: { id: 1, name: 'first-item' } }),
+			},
+		};
+
+		const result = evaluator.evaluate('{{ $input.first() }}', data, caller);
+		expect(result).toEqual({ json: { id: 1, name: 'first-item' } });
+	});
+
+	it('$input.last() returns the value of data.$input.last()', () => {
+		const data: Record<string, unknown> = {
+			$input: {
+				last: () => ({ json: { id: 9, name: 'last-item' } }),
+			},
+		};
+
+		const result = evaluator.evaluate('{{ $input.last() }}', data, caller);
+		expect(result).toEqual({ json: { id: 9, name: 'last-item' } });
+	});
+
+	it('$input.all() returns the array from data.$input.all()', () => {
+		const data: Record<string, unknown> = {
+			$input: {
+				all: () => [{ json: { id: 1 } }, { json: { id: 2 } }],
+			},
+		};
+
+		const result = evaluator.evaluate('{{ $input.all() }}', data, caller);
+		expect(result).toEqual([{ json: { id: 1 } }, { json: { id: 2 } }]);
+	});
+
+	it('handler invokes only the named method on the host proxy', () => {
+		const accessed: string[] = [];
+		const data: Record<string, unknown> = {
+			$input: new Proxy(
+				{},
+				{
+					get(_t, prop) {
+						if (typeof prop === 'symbol') return undefined;
+						accessed.push(prop);
+						if (prop === 'first') return () => ({ json: { ok: true } });
+						if (prop === 'last') return () => ({ json: { ok: true } });
+						if (prop === 'all') return () => [];
+						return () => {
+							throw new Error(`unexpected method invoked: ${prop}`);
+						};
+					},
+				},
+			),
+		};
+
+		evaluator.evaluate('{{ $input.first() }}', data, caller);
+		evaluator.evaluate('{{ $input.last() }}', data, caller);
+		evaluator.evaluate('{{ $input.all() }}', data, caller);
+
+		expect(accessed).toEqual(['first', 'last', 'all']);
+	});
+
+	it('non-RPC properties (`.item`) still delegate to the lazy proxy (host getter)', () => {
+		// `.item` on $input is a host getter, not a typed RPC. The synthetic
+		// proxy should fall through to the lazy proxy which fetches via
+		// getValueAtPath — and the host's `.item` getter must be invoked on
+		// the host side. Defining `.item` as a real getter (instead of a
+		// plain property) proves the getter ran: the bridge can only reach
+		// it via host-side property access, which is what `getValueAtPath`
+		// does. If the routing had wrongly sent a typed RPC, the dispatcher
+		// would reject the unknown `type` and return undefined.
+		let getterInvocations = 0;
+		const data: Record<string, unknown> = {
+			$input: Object.defineProperty({} as Record<string, unknown>, 'item', {
+				get() {
+					getterInvocations += 1;
+					return { id: 42 };
+				},
+				enumerable: true,
+			}),
+		};
+
+		const result = evaluator.evaluate('{{ $input.item.id }}', data, caller);
+		expect(result).toBe(42);
+		expect(getterInvocations).toBeGreaterThan(0);
+	});
+
+	it("'first', 'last', 'all' are reported by $input's `has` trap", () => {
+		const data: Record<string, unknown> = {
+			$input: {
+				first: () => undefined,
+				last: () => undefined,
+				all: () => [],
+			},
+		};
+
+		expect(evaluator.evaluate("{{ 'first' in $input }}", data, caller)).toBe(true);
+		expect(evaluator.evaluate("{{ 'last' in $input }}", data, caller)).toBe(true);
+		expect(evaluator.evaluate("{{ 'all' in $input }}", data, caller)).toBe(true);
+	});
+});
