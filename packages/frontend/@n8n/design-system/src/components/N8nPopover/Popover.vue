@@ -43,10 +43,6 @@ interface Props
 	enableSlideIn?: boolean;
 	/**
 	 * Whether to suppress auto-focus behavior when the popover opens or closes.
-	 * On open, prevents focus from moving into the popover content.
-	 * On close, prevents focus from being restored to the trigger (so an
-	 * externally-driven focus change — e.g. focus moving to a command bar
-	 * input — is not overridden when the popover unmounts).
 	 */
 	suppressAutoFocus?: boolean;
 	/**

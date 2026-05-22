@@ -6,7 +6,7 @@ import { VIEWS } from '@/app/constants';
 import { useStyles } from '@/app/composables/useStyles';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { COMMAND_BAR_OPEN_EVENT } from '@/features/shared/editors/plugins/codemirror/tooltips/closeTooltipsOnCommandBarOpen';
+import { COMMAND_BAR_OPEN_EVENT } from '@/features/shared/commandBar/events';
 
 const route = useRoute();
 const { APP_Z_INDEXES } = useStyles();

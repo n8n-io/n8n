@@ -87,8 +87,6 @@ function onFocus() {
 }
 
 function onFocusOut(event: FocusEvent) {
-	if (!isFocused.value) return;
-
 	const nextFocus = event.relatedTarget;
 	if (isEventTargetContainedBy(nextFocus, container)) return;
 	if (isEventTargetContainedBy(nextFocus, outputPopover.value?.contentRef)) return;
