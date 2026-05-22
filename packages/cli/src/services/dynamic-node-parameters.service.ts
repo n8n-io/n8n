@@ -30,6 +30,7 @@ import { WorkflowLoaderService } from './workflow-loader.service';
 import { SharedWorkflowRepository, User } from '@n8n/db';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Logger } from '@n8n/backend-common';
+import { withExpressionIsolate } from '@/utils';
 
 type LocalResourceMappingMethod = (
 	this: ILocalLoadOptionsFunctions,
@@ -134,7 +135,7 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('loadOptions', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		return await this.withExpressionIsolate(workflow, async () => {
+		return await withExpressionIsolate(workflow, async () => {
 			// Need to use untyped call since `this` usage is widespread and we don't have `strictBindCallApply`
 			// enabled in `tsconfig.json`
 			return await method.call(thisArgs);
@@ -211,7 +212,7 @@ export class DynamicNodeParametersService {
 			[],
 		);
 		const routingNode = new RoutingNode(executeFunctions, tempNodeType);
-		return await this.withExpressionIsolate(workflow, async () => {
+		return await withExpressionIsolate(workflow, async () => {
 			const optionsData = await routingNode.runNode();
 
 			if (optionsData?.length === 0) {
@@ -240,7 +241,7 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('listSearch', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		return await this.withExpressionIsolate(workflow, async () => {
+		return await withExpressionIsolate(workflow, async () => {
 			return await method.call(thisArgs, filter, paginationToken);
 		});
 	}
@@ -258,7 +259,7 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('resourceMapping', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		return await this.withExpressionIsolate(workflow, async () =>
+		return await withExpressionIsolate(workflow, async () =>
 			this.removeDuplicateResourceMappingFields(await method.call(thisArgs)),
 		);
 	}
@@ -290,22 +291,9 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('actionHandler', handler, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		return await this.withExpressionIsolate(workflow, async () => {
+		return await withExpressionIsolate(workflow, async () => {
 			return await method.call(thisArgs, payload);
 		});
-	}
-
-	/**
-	 * When N8N_EXPRESSION_ENGINE=vm, expressions run in an isolate that must be acquired
-	 * for this workflow before any code resolves {{ }} in parameters or credentials.
-	 */
-	private async withExpressionIsolate<T>(workflow: Workflow, fn: () => Promise<T>): Promise<T> {
-		await workflow.expression.acquireIsolate();
-		try {
-			return await fn();
-		} finally {
-			await workflow.expression.releaseIsolate();
-		}
 	}
 
 	private getMethod(

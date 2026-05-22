@@ -1,17 +1,17 @@
 import { Container } from '@n8n/di';
 
-import { InboundSecretsModule } from '../inbound-secrets.module';
+import { RuntimeCredentialsModule } from '../runtime-credentials.module';
 
-describe('InboundSecretsModule', () => {
-	let module: InboundSecretsModule;
+describe('RuntimeCredentialsModule', () => {
+	let module: RuntimeCredentialsModule;
 
 	beforeEach(() => {
 		Container.reset();
-		module = new InboundSecretsModule();
+		module = new RuntimeCredentialsModule();
 	});
 
 	afterEach(() => {
-		delete process.env.N8N_ENV_FEAT_INBOUND_SECRETS;
+		delete process.env.N8N_ENV_FEAT_RUNTIME_CREDENTIALS;
 	});
 
 	describe('init', () => {
@@ -20,7 +20,7 @@ describe('InboundSecretsModule', () => {
 		});
 
 		it('loads without error when the feature flag is on', async () => {
-			process.env.N8N_ENV_FEAT_INBOUND_SECRETS = 'true';
+			process.env.N8N_ENV_FEAT_RUNTIME_CREDENTIALS = 'true';
 			await expect(module.init()).resolves.toBeUndefined();
 		});
 	});
