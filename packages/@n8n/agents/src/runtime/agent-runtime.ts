@@ -1743,10 +1743,7 @@ export class AgentRuntime {
 				}
 
 				if (event.type === 'completed') {
-					logger.info(
-						`[observational-memory] ${source} task completed`,
-						summarizeMemoryTaskResult(event.value, scopeMeta),
-					);
+					logger.info(`[observational-memory] ${source} task completed`);
 				}
 			},
 		});
