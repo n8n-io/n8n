@@ -123,7 +123,12 @@ export declare namespace WorkflowRequest {
 }
 
 export declare namespace PackageRequest {
-	type Import = AuthenticatedRequest<{}, {}, {}, { projectId?: string; folderId?: string }>;
+	type Import = AuthenticatedRequest<
+		{},
+		{},
+		{ projectId?: string; folderId?: string },
+		Record<string, never>
+	>;
 }
 
 export declare namespace UserRequest {
