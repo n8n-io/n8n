@@ -183,6 +183,7 @@ function formatJson(value: unknown): string {
 	display: flex;
 	justify-content: flex-end;
 	width: 100%;
+	margin-block: var(--spacing--md);
 }
 
 .userAttachments {

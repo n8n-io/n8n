@@ -92,7 +92,7 @@ function getAnswers(): DisplayAnswer[] {
 }
 
 .skipped {
-	color: var(--color--text--tint-2);
+	color: var(--text-color);
 	font-style: italic;
 }
 </style>
