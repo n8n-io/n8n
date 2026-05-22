@@ -1366,14 +1366,14 @@ export interface INodeCredentials {
 	[key: string]: INodeCredentialsDetails;
 }
 
-export interface ICustomTelemetryTag extends INodeParameters {
+export type ICustomTelemetryTag = {
 	key: string;
 	value: string;
-}
+};
 
-export interface ICustomTelemetryTags extends INodeParameters {
+export type ICustomTelemetryTags = {
 	tag?: ICustomTelemetryTag[];
-}
+};
 
 export type OnError = 'continueErrorOutput' | 'continueRegularOutput' | 'stopWorkflow';
 export interface INode {
