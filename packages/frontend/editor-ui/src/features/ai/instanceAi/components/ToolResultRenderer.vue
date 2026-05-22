@@ -14,9 +14,54 @@ const props = defineProps<{
 }>();
 
 type ResultType = 'content' | 'code' | 'table' | 'json';
+type McpContentItem = McpToolCallResult['content'][number];
 
 function isAction(family: string, action: string): boolean {
 	return props.toolName === family && props.toolArgs?.action === action;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function normalizeImageContentItem(item: Record<string, unknown>): McpContentItem | null {
+	if (typeof item.data !== 'string') return null;
+
+	switch (item.type) {
+		case 'image':
+			return typeof item.mimeType === 'string'
+				? { type: 'image', data: item.data, mimeType: item.mimeType }
+				: null;
+		case 'image-data':
+			return typeof item.mediaType === 'string'
+				? { type: 'image', data: item.data, mimeType: item.mediaType }
+				: null;
+		case 'media':
+		case 'file-data':
+			return typeof item.mediaType === 'string' && item.mediaType.startsWith('image/')
+				? { type: 'image', data: item.data, mimeType: item.mediaType }
+				: null;
+		default:
+			return null;
+	}
+}
+
+function normalizeContentItem(item: unknown): McpContentItem | null {
+	if (!isRecord(item) || typeof item.type !== 'string') return null;
+
+	if (item.type === 'text' && typeof item.text === 'string') {
+		return { type: 'text', text: item.text };
+	}
+
+	return normalizeImageContentItem(item);
+}
+
+function normalizeContentItems(items: unknown[]): McpContentItem[] | null {
+	const content = items
+		.map(normalizeContentItem)
+		.filter((item): item is McpContentItem => item !== null);
+
+	return content.length > 0 ? content : null;
 }
 
 function isCodeTool(): boolean {
@@ -36,15 +81,18 @@ function isTableTool(): boolean {
 }
 
 function extractMcpContent(result: unknown): McpToolCallResult['content'] | null {
-	if (Array.isArray(result)) return result;
+	if (Array.isArray(result)) return normalizeContentItems(result);
 	if (
-		result !== null &&
-		typeof result === 'object' &&
+		isRecord(result) &&
 		'content' in result &&
 		Array.isArray((result as McpToolCallResult).content)
 	) {
-		return (result as McpToolCallResult).content;
+		return normalizeContentItems((result as McpToolCallResult).content);
 	}
+	if (isRecord(result) && result.type === 'content' && Array.isArray(result.value)) {
+		return normalizeContentItems(result.value);
+	}
+
 	return null;
 }
 

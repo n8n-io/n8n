@@ -126,7 +126,7 @@ export async function executeWorkflow(
 	return await workflowRunner.run(
 		{
 			workflowData: workflow,
-			userId: projectId,
+			projectId,
 			executionMode: mode,
 			executionData,
 			retryOf,

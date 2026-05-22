@@ -11,6 +11,7 @@ export type * from './quick-connect';
 export * from './agents/index';
 export * from './instance-registry-types';
 export * from './redaction-enforcement';
+export * from './redaction-enforcement-floor';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -299,6 +300,7 @@ export {
 	isSafeObjectKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	UNLIMITED_CREDITS,
+	EVAL_VENDOR_SDK_INTERCEPTION_FLAG,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	webSearchMetaSchema,
