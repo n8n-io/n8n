@@ -23,13 +23,11 @@ export class CreateAgentHistoryTable1784000000011 implements ReversibleMigration
 			.withColumns(
 				column('versionId').varchar(36).primary,
 				column('agentId').varchar(36).notNull,
-				column('schema').json.notNull.comment('Frozen snapshot of the published AgentJsonConfig'),
-				column('tools').json.notNull.comment(
+				column('schema').json.comment('Frozen snapshot of the published AgentJsonConfig'),
+				column('tools').json.comment(
 					'Frozen map of `toolId → { code, descriptor }` at publish time',
 				),
-				column('skills').json.notNull.comment(
-					'Frozen map of `skillId → AgentSkill` at publish time',
-				),
+				column('skills').json.comment('Frozen map of `skillId → AgentSkill` at publish time'),
 				column('publishedById').uuid,
 				column('author').varchar(255).notNull,
 			)

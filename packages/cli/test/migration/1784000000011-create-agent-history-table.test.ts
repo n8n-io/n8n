@@ -109,7 +109,9 @@ describe('CreateAgentHistoryTable Migration', () => {
 			agentId: string;
 			publishedFromVersionId: string;
 			publishedById: string | null;
-			schema: Record<string, unknown>;
+			schema: Record<string, unknown> | null;
+			tools?: Record<string, unknown> | null;
+			skills?: Record<string, unknown> | null;
 		},
 	): Promise<void> {
 		const tableName = context.escape.tableName('agent_published_version');
@@ -121,9 +123,15 @@ describe('CreateAgentHistoryTable Migration', () => {
 				agentId: data.agentId,
 				versionId: data.publishedFromVersionId,
 				publishedById: data.publishedById,
-				schema: JSON.stringify(data.schema),
-				tools: '{}',
-				skills: '{}',
+				schema: data.schema === null ? null : JSON.stringify(data.schema),
+				tools:
+					data.tools === undefined ? '{}' : data.tools === null ? null : JSON.stringify(data.tools),
+				skills:
+					data.skills === undefined
+						? '{}'
+						: data.skills === null
+							? null
+							: JSON.stringify(data.skills),
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			},
@@ -243,6 +251,47 @@ describe('CreateAgentHistoryTable Migration', () => {
 				const authorByAgent = new Map(rows.map((r) => [r.agentId, r.author]));
 				expect(authorByAgent.get(firstAgentId)).toBe('Solo');
 				expect(authorByAgent.get(lastAgentId)).toBe('Onlylast');
+			});
+		});
+
+		it('copies rows whose schema/tools/skills are NULL without violating constraints', async () => {
+			// Legacy `agent_published_version` rows can legitimately have NULL
+			// json columns (the source table defines them nullable). Adding
+			// NOT NULL on agent_history.{schema,tools,skills} would break the
+			// data move for those rows.
+			const userId = randomUUID();
+			const projectId = randomUUID();
+			const agentId = randomUUID();
+			const versionId = randomUUID();
+
+			await withContext(async (context) => {
+				await insertUser(context, userId);
+				await insertProject(context, projectId);
+				await insertAgent(context, { id: agentId, projectId, versionId });
+				await insertPublishedVersion(context, {
+					agentId,
+					publishedFromVersionId: versionId,
+					publishedById: userId,
+					schema: null,
+					tools: null,
+					skills: null,
+				});
+			});
+
+			await runSingleMigration(MIGRATION_NAME);
+			dataSource = Container.get(DataSource);
+
+			await withContext(async (context) => {
+				const historyTable = context.escape.tableName('agent_history');
+				const rows = await context.runQuery<
+					Array<{ schema: string | null; tools: string | null; skills: string | null }>
+				>(`SELECT "schema", "tools", "skills" FROM ${historyTable} WHERE "agentId" = :id`, {
+					id: agentId,
+				});
+				expect(rows).toHaveLength(1);
+				expect(rows[0].schema).toBeNull();
+				expect(rows[0].tools).toBeNull();
+				expect(rows[0].skills).toBeNull();
 			});
 		});
 
