@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nButton, N8nText, N8nSwitch } from '@n8n/design-system';
+import { N8nTooltip, N8nIconButton, N8nText, N8nSwitch } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
@@ -98,9 +98,9 @@ function openEpisodicMemoryCredentialModal() {
 			title: i18n.baseText('agents.builder.episodicMemoryCredentialModal.title'),
 			description: i18n.baseText('agents.builder.episodicMemoryCredentialModal.description'),
 			cancelLabel: i18n.baseText('generic.cancel'),
-			confirmLabel: i18n.baseText('agents.builder.episodicMemoryCredentialModal.confirm'),
+			confirmLabel: i18n.baseText('generic.connect'),
 			showDelete: false,
-			hideCreateNew: false,
+			hideCreateNew: true,
 			source: 'agent_episodic_memory',
 			pickerDataTestId: 'agent-episodic-memory-credential-picker',
 			onSelect: (credentialId: string | null) => {
@@ -146,16 +146,21 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 				</N8nText>
 			</div>
 			<div :class="$style.actions">
-				<N8nButton
-					v-if="episodicMemoryEnabled"
-					variant="ghost"
-					size="small"
-					:disabled="props.disabled"
-					data-testid="agent-episodic-memory-change-credential"
-					@click="openEpisodicMemoryCredentialModal"
-				>
-					{{ i18n.baseText('agents.builder.memory.episodicMemory.changeCredential') }}
-				</N8nButton>
+				<N8nTooltip>
+					<template #content>
+						{{ i18n.baseText('agents.builder.memory.episodicMemory.changeCredential') }}
+					</template>
+					<N8nIconButton
+						v-if="episodicMemoryEnabled"
+						variant="ghost"
+						size="small"
+						icon-size="medium"
+						icon="cog"
+						:disabled="props.disabled"
+						data-testid="agent-episodic-memory-change-credential"
+						@click="openEpisodicMemoryCredentialModal"
+					/>
+				</N8nTooltip>
 				<N8nSwitch
 					:model-value="episodicMemoryEnabled"
 					:disabled="props.disabled"
@@ -203,6 +208,10 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+
+	button {
+		color: var(--icon-color);
+	}
 }
 
 .container.disabled {
