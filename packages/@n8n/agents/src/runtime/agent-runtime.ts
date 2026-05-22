@@ -1,4 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import type { TelemetrySettings, ToolCallRepairFunction, ToolSet } from 'ai';
 import type { z } from 'zod';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
@@ -46,6 +47,7 @@ import {
 	runEpisodicMemoryIndexer,
 } from './episodic-memory';
 import { AgentEventBus } from './event-bus';
+import { fixToolCall } from './fix-tool-call';
 import { toJsonValue } from './json-value';
 import { loadAi } from './lazy-ai';
 import { createFilteredLogger } from './logger';
@@ -775,8 +777,30 @@ export class AgentRuntime {
 		await Telemetry.forceFlush(this.resolveTelemetry(options));
 	}
 
+	private buildAiSdkOptions(
+		toolMap: Map<string, BuiltTool>,
+		options?: ExecutionOptions,
+	): {
+		experimental_telemetry?: TelemetrySettings;
+		experimental_repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
+	} {
+		return {
+			...this.buildTelemetryOptions(options),
+			experimental_repairToolCall: async (options) => {
+				return await fixToolCall(
+					{
+						toolCall: options.toolCall,
+						error: options.error,
+					},
+					toolMap,
+				);
+			},
+		};
+	}
 	/** Map resolved telemetry to AI SDK's experimental_telemetry shape. */
-	private buildTelemetryOptions(options?: ExecutionOptions): Record<string, unknown> {
+	private buildTelemetryOptions(options?: ExecutionOptions): {
+		experimental_telemetry?: TelemetrySettings;
+	} {
 		const t = this.resolveTelemetry(options);
 		if (!t?.enabled) return {};
 
@@ -787,7 +811,8 @@ export class AgentRuntime {
 				metadata: t.metadata,
 				recordInputs: t.recordInputs,
 				recordOutputs: t.recordOutputs,
-				tracer: t.tracer,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+				tracer: t.tracer as any,
 				integrations: t.integrations.length > 0 ? t.integrations : undefined,
 			},
 		};
@@ -1024,7 +1049,7 @@ export class AgentRuntime {
 					? { providerOptions: staticLoopContext.providerOptions as Record<string, JSONObject> }
 					: {}),
 				...(staticLoopContext.outputSpec ? { output: staticLoopContext.outputSpec } : {}),
-				...this.buildTelemetryOptions(options),
+				...this.buildAiSdkOptions(toolMap, options),
 			});
 
 			const aiFinishReason = result.finishReason;
@@ -1301,7 +1326,7 @@ export class AgentRuntime {
 					? { providerOptions: staticLoopContext.providerOptions as Record<string, JSONObject> }
 					: {}),
 				...(staticLoopContext.outputSpec ? { output: staticLoopContext.outputSpec } : {}),
-				...this.buildTelemetryOptions(options),
+				...this.buildAiSdkOptions(toolMap, options),
 			});
 
 			// Consume the stream. When the AbortSignal fires mid-stream the
