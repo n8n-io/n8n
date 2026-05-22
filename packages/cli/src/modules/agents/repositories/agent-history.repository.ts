@@ -80,8 +80,7 @@ export class AgentHistoryRepository extends Repository<AgentHistory> {
 
 	/**
 	 * List an agent's publish history, newest first. `schema`/`tools`/`skills`
-	 * are intentionally omitted — the list view only needs metadata. The
-	 * snapshot `author` is read directly, no user join required.
+	 * are intentionally omitted — the list view only needs metadata.
 	 */
 	async findByAgentId(agentId: string, take: number, skip: number): Promise<AgentHistory[]> {
 		return await this.find({
