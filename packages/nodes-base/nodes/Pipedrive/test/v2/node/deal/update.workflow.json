@@ -18,7 +18,8 @@
 				"updateFields": {
 					"title": "Updated Deal",
 					"value": 7500,
-					"user_id": 25455458
+					"user_id": 25455458,
+					"expected_close_date": "2026-04-13T00:00:00.000Z"
 				}
 			},
 			"id": "b8b8b8b8-1111-2222-3333-444444444444",
@@ -68,7 +69,7 @@
 					"local_won_date": null,
 					"local_lost_date": null,
 					"local_close_date": null,
-					"expected_close_date": null,
+					"expected_close_date": "2026-04-13",
 					"custom_fields": {
 						"test_string": null,
 						"test_enum": null,

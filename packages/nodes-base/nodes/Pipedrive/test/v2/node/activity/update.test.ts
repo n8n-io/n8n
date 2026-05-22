@@ -12,6 +12,7 @@ describe('Test PipedriveV2, activity => update', () => {
 			subject: 'Updated call',
 			done: true,
 			owner_id: 25455458,
+			due_date: '2026-04-02',
 		})
 		.reply(200, {
 			success: true,

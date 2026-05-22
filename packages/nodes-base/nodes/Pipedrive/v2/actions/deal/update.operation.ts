@@ -11,7 +11,7 @@ import {
 	encodeCustomFieldsV2,
 	resolveCustomFieldsV2,
 	coerceToNumber,
-	toRfc3339,
+	toDateOnly,
 	addFieldsToBody,
 } from '../../helpers';
 import {
@@ -207,7 +207,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			}
 
 			if (body.expected_close_date) {
-				body.expected_close_date = toRfc3339(body.expected_close_date as string);
+				body.expected_close_date = toDateOnly(body.expected_close_date as string);
 			}
 			if (body.value !== undefined) {
 				body.value = coerceToNumber(body.value);

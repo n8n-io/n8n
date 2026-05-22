@@ -16,6 +16,7 @@ describe('Test PipedriveV2, activity => create', () => {
 			person_id: 10,
 			org_id: 7,
 			owner_id: 25455458,
+			due_date: '2026-04-01',
 		})
 		.reply(200, {
 			success: true,
