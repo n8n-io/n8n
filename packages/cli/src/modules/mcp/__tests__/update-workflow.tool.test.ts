@@ -267,7 +267,6 @@ describe('update-workflow MCP tool', () => {
 			});
 
 			expect(mockAutoPopulateNodeCredentials).not.toHaveBeenCalled();
-			expect(sharedWorkflowRepository.findOneOrFail).not.toHaveBeenCalled();
 		});
 
 		test('reports auto-assigned credentials in the response', async () => {
@@ -744,7 +743,7 @@ describe('update-workflow MCP tool', () => {
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
-			test('skips data-table lookup and project fetch when no touched node references one', async () => {
+			test('skips data-table lookup when no touched node references one', async () => {
 				await callHandler({
 					workflowId: 'wf-1',
 					operations: [
@@ -753,7 +752,6 @@ describe('update-workflow MCP tool', () => {
 				});
 
 				expect(dataTableOps.getManyAndCount).not.toHaveBeenCalled();
-				expect(sharedWorkflowRepository.findOneOrFail).not.toHaveBeenCalled();
 				expect(workflowService.update).toHaveBeenCalled();
 			});
 

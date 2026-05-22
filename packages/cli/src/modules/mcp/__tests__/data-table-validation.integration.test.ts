@@ -186,12 +186,11 @@ describe('data-table validation against a real database', () => {
 	describe('validateDataTableReferencesForUpdate', () => {
 		it('attributes the failure to the touching opIndex', async () => {
 			const touched = new Map<string, number>([['DT', 3]]);
-			const getProjectId = jest.fn<Promise<string>, []>().mockResolvedValue(project.id);
 
 			const result = await validateDataTableReferencesForUpdate(
 				[dataTableNode('DT', { __rl: true, mode: 'id', value: 'never-existed' })],
 				touched,
-				getProjectId,
+				project.id,
 				dataTableOps,
 			);
 
@@ -202,21 +201,18 @@ describe('data-table validation against a real database', () => {
 			expect(result.error).toContain("node 'DT'");
 		});
 
-		it('does not invoke getProjectId when no touched node references a data table', async () => {
-			const getProjectId = jest.fn<Promise<string>, []>().mockResolvedValue(project.id);
-
+		it('skips lookups for nodes outside the touched set', async () => {
 			const result = await validateDataTableReferencesForUpdate(
 				[dataTableNode('UntouchedDT', { __rl: true, mode: 'id', value: 'irrelevant' })],
 				new Map([['SomeOtherNode', 0]]),
-				getProjectId,
+				project.id,
 				dataTableOps,
 			);
 
 			expect(result).toEqual({ ok: true });
-			expect(getProjectId).not.toHaveBeenCalled();
 		});
 
-		it('invokes getProjectId only once across multiple touched references', async () => {
+		it('passes when all touched references resolve in the project', async () => {
 			const t1 = await dataTableService.createDataTable(project.id, {
 				name: 't1',
 				columns: [{ name: 'a', type: 'string' }],
@@ -225,8 +221,6 @@ describe('data-table validation against a real database', () => {
 				name: 't2',
 				columns: [{ name: 'a', type: 'string' }],
 			});
-
-			const getProjectId = jest.fn<Promise<string>, []>().mockResolvedValue(project.id);
 
 			const result = await validateDataTableReferencesForUpdate(
 				[
@@ -237,12 +231,11 @@ describe('data-table validation against a real database', () => {
 					['A', 0],
 					['B', 1],
 				]),
-				getProjectId,
+				project.id,
 				dataTableOps,
 			);
 
 			expect(result).toEqual({ ok: true });
-			expect(getProjectId).toHaveBeenCalledTimes(1);
 		});
 	});
 });

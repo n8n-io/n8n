@@ -177,22 +177,15 @@ export const createUpdateWorkflowTool = (
 				throw new Error(credentialCheck.error);
 			}
 
-			let workflowProjectId: string | undefined;
-			const getWorkflowProjectId = async () => {
-				if (workflowProjectId === undefined) {
-					const sharedWorkflow = await sharedWorkflowRepository.findOneOrFail({
-						where: { workflowId, role: 'workflow:owner' },
-						select: ['projectId'],
-					});
-					workflowProjectId = sharedWorkflow.projectId;
-				}
-				return workflowProjectId;
-			};
+			const { projectId: workflowProjectId } = await sharedWorkflowRepository.findOneOrFail({
+				where: { workflowId, role: 'workflow:owner' },
+				select: ['projectId'],
+			});
 
 			const dataTableCheck = await validateDataTableReferencesForUpdate(
 				result.workflow.nodes,
 				collectTouchedNodes(operations),
-				getWorkflowProjectId,
+				workflowProjectId,
 				dataTableOps,
 			);
 			if (!dataTableCheck.ok) {
@@ -232,7 +225,7 @@ export const createUpdateWorkflowTool = (
 					user,
 					nodeTypes,
 					credentialsService,
-					await getWorkflowProjectId(),
+					workflowProjectId,
 				);
 				credentialAssignments = autoAssign.assignments;
 				skippedHttpNodes = autoAssign.skippedHttpNodes;

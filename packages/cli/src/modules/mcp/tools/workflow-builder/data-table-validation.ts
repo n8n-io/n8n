@@ -107,17 +107,15 @@ export async function validateDataTableReferencesForWorkflow(
 
 // Mirrors `validateCredentialReferences`: only nodes touched by this batch are
 // checked, so a pre-existing dangling reference can't block an unrelated edit.
-// `getProjectId` is lazy so callers skip the DB lookup when nothing matches.
 export async function validateDataTableReferencesForUpdate(
 	nodesAfterApply: INode[],
 	touchedNodes: Map<string, number>,
-	getProjectId: () => Promise<string>,
+	projectId: string,
 	dataTableOps: DataTableUserOperations,
 ): Promise<DataTableValidationResult> {
 	if (touchedNodes.size === 0) return { ok: true };
 
 	const cache = new Map<string, boolean>();
-	let projectId: string | undefined;
 
 	for (const node of nodesAfterApply) {
 		const opIndex = touchedNodes.get(node.name);
@@ -125,8 +123,6 @@ export async function validateDataTableReferencesForUpdate(
 
 		const ref = extractDataTableReference(node);
 		if (!ref) continue;
-
-		projectId ??= await getProjectId();
 
 		const error = await checkDataTableReference(ref, projectId, dataTableOps, cache);
 		if (error) {
