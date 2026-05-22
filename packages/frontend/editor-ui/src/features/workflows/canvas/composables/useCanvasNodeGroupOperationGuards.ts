@@ -4,11 +4,13 @@ import type { NotificationHandle } from 'element-plus';
 import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
 
+import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	useSelectionValidation,
 	type GroupValidationResult,
 } from '@/app/composables/useSelectionValidation';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useToast } from '@/app/composables/useToast';
 import {
 	createWorkflowDocumentId,
@@ -51,8 +53,12 @@ const FALLBACK_MESSAGE_KEY: BaseTextKey = 'canvas.nodeGroup.connectionChangeBloc
 
 export function useCanvasNodeGroupOperationGuards() {
 	const workflowsStore = useWorkflowsStore();
+	const posthogStore = usePostHog();
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
+	const isCanvasNodeGroupingEnabled = computed(() =>
+		posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
 	);
 
 	const i18n = useI18n();
@@ -299,6 +305,8 @@ export function useCanvasNodeGroupOperationGuards() {
 		allowAutoExtend?: boolean;
 		blockedTitleKey?: BaseTextKey;
 	}): boolean {
+		if (!isCanvasNodeGroupingEnabled.value) return true;
+
 		const affectedGroups = getAffectedNodeGroups(nodeIds);
 		if (affectedGroups.length === 0) return true;
 
@@ -363,6 +371,8 @@ export function useCanvasNodeGroupOperationGuards() {
 		connectionsToAdd: Array<[IConnection, IConnection]>;
 		connectionsBySourceNode: IConnections;
 	}): boolean {
+		if (!isCanvasNodeGroupingEnabled.value) return true;
+
 		const previousGroup = workflowDocumentStore.value.getGroupForNode(previousNodeId);
 		if (!previousGroup) return true;
 
