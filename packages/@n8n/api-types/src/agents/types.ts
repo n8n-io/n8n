@@ -118,6 +118,15 @@ export interface AgentVersionDto {
 	author: string;
 }
 
+export interface AgentVersionListItemDto {
+	versionId: string;
+	agentId: string;
+	createdAt: string;
+	updatedAt: string;
+	author: string;
+	isActive: boolean;
+}
+
 export interface AgentPersistedMessageContentPart {
 	type: 'text' | 'reasoning' | 'tool-call' | (string & {});
 	text?: string;

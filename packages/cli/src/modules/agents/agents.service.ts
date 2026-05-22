@@ -23,6 +23,7 @@ import {
 	type AgentJsonToolConfig,
 	type AgentSkill,
 	type AgentSkillMutationResponse,
+	type AgentVersionListItemDto,
 	type ChatIntegrationDescriptor,
 	AgentPersistedMessageDto,
 } from '@n8n/api-types';
@@ -575,6 +576,29 @@ export class AgentsService {
 
 		this.logger.debug('Reverted SDK agent to published version', { agentId, projectId });
 		return agent;
+	}
+
+	async listPublishHistory(
+		agentId: string,
+		projectId: string,
+		take: number,
+		skip: number,
+	): Promise<AgentVersionListItemDto[]> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		const versions = await this.agentHistoryRepository.findByAgentId(agentId, take, skip);
+
+		return versions.map((v) => ({
+			versionId: v.versionId,
+			agentId: v.agentId,
+			createdAt: v.createdAt.toISOString(),
+			updatedAt: v.updatedAt.toISOString(),
+			author: v.author,
+			isActive: v.versionId === agent.activeVersionId,
+		}));
 	}
 
 	async delete(agentId: string, projectId: string): Promise<boolean> {

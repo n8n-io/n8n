@@ -1112,6 +1112,86 @@ describe('AgentsService', () => {
 		});
 	});
 
+	describe('listPublishHistory', () => {
+		it('throws NotFoundError when the agent does not exist in the project', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.listPublishHistory(agentId, projectId, 20, 0)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(agentHistoryRepository.findByAgentId).not.toHaveBeenCalled();
+		});
+
+		it('forwards take and skip to the repository', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ activeVersionId: null }));
+			agentHistoryRepository.findByAgentId.mockResolvedValue([]);
+
+			await service.listPublishHistory(agentId, projectId, 5, 10);
+
+			expect(agentHistoryRepository.findByAgentId).toHaveBeenCalledWith(agentId, 5, 10);
+		});
+
+		it('maps history rows to DTOs and marks the active version', async () => {
+			const createdAt = new Date('2026-01-01T00:00:00.000Z');
+			const updatedAt = new Date('2026-01-02T00:00:00.000Z');
+			const activeRow = {
+				versionId: 'v2',
+				agentId,
+				createdAt,
+				updatedAt,
+				author: 'Ada Lovelace',
+			} as unknown as AgentHistory;
+			const inactiveRow = {
+				versionId: 'v1',
+				agentId,
+				createdAt,
+				updatedAt,
+				author: 'Unknown',
+			} as unknown as AgentHistory;
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ activeVersionId: 'v2' }));
+			agentHistoryRepository.findByAgentId.mockResolvedValue([activeRow, inactiveRow]);
+
+			const result = await service.listPublishHistory(agentId, projectId, 20, 0);
+
+			expect(result).toEqual([
+				{
+					versionId: 'v2',
+					agentId,
+					createdAt: createdAt.toISOString(),
+					updatedAt: updatedAt.toISOString(),
+					author: 'Ada Lovelace',
+					isActive: true,
+				},
+				{
+					versionId: 'v1',
+					agentId,
+					createdAt: createdAt.toISOString(),
+					updatedAt: updatedAt.toISOString(),
+					author: 'Unknown',
+					isActive: false,
+				},
+			]);
+		});
+
+		it('marks every row as inactive when the agent is unpublished', async () => {
+			const createdAt = new Date('2026-01-01T00:00:00.000Z');
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ activeVersionId: null }));
+			agentHistoryRepository.findByAgentId.mockResolvedValue([
+				{
+					versionId: 'v1',
+					agentId,
+					createdAt,
+					updatedAt: createdAt,
+					author: 'Ada Lovelace',
+				} as unknown as AgentHistory,
+			]);
+
+			const result = await service.listPublishHistory(agentId, projectId, 20, 0);
+
+			expect(result[0].isActive).toBe(false);
+		});
+	});
+
 	describe('getConversationHistory', () => {
 		it('returns the user-visible transcript from execution history', async () => {
 			agentExecutionService.getThreadDetail.mockResolvedValue({

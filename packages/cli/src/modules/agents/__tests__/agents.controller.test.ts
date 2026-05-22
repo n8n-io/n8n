@@ -112,8 +112,50 @@ describe('AgentsController route access scopes', () => {
 		['revertToPublished', 'agent:update'],
 		['createSlackApp', 'agent:update'],
 		['getSlackAppManifest', 'agent:read'],
+		['listVersions', 'agent:read'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(metadata.routes.get(handlerName)?.accessScope?.scope).toBe(scope);
+	});
+});
+
+describe('AgentsController publish history', () => {
+	it('lists publish history with pagination forwarded from the query', async () => {
+		const { controller, agentsService } = makeController();
+		agentsService.listPublishHistory.mockResolvedValue([
+			{
+				versionId: 'v2',
+				agentId: 'agent-1',
+				createdAt: '2026-01-02T00:00:00.000Z',
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				author: 'Ada Lovelace',
+				isActive: true,
+			},
+		]);
+
+		const result = await controller.listVersions(
+			{ params: { projectId: 'project-1', agentId: 'agent-1' } } as never,
+			undefined as never,
+			'agent-1',
+			{ take: 5, skip: 10 } as never,
+		);
+
+		expect(agentsService.listPublishHistory).toHaveBeenCalledWith('agent-1', 'project-1', 5, 10);
+		expect(result).toHaveLength(1);
+		expect(result[0].isActive).toBe(true);
+	});
+
+	it('applies the default take/skip when the query is empty', async () => {
+		const { controller, agentsService } = makeController();
+		agentsService.listPublishHistory.mockResolvedValue([]);
+
+		await controller.listVersions(
+			{ params: { projectId: 'project-1', agentId: 'agent-1' } } as never,
+			undefined as never,
+			'agent-1',
+			{} as never,
+		);
+
+		expect(agentsService.listPublishHistory).toHaveBeenCalledWith('agent-1', 'project-1', 20, 0);
 	});
 });
 

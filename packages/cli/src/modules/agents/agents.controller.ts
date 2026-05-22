@@ -9,6 +9,7 @@ import {
 	type AgentScheduleConfig,
 	type AgentSkill,
 	type AgentSseEvent,
+	type AgentVersionListItemDto,
 	type ChatIntegrationDescriptor,
 	CreateSlackAgentAppDto,
 	type CreateSlackAgentAppResponse,
@@ -16,6 +17,7 @@ import {
 	CreateAgentDto,
 	CreateAgentSkillDto,
 	isAgentCredentialIntegration,
+	PaginationDto,
 	UpdateAgentConfigDto,
 	UpdateAgentDto,
 	UpdateAgentScheduleDto,
@@ -33,6 +35,7 @@ import {
 	Post,
 	ProjectScope,
 	Put,
+	Query,
 	RestController,
 } from '@n8n/decorators';
 import { randomUUID } from 'crypto';
@@ -435,6 +438,22 @@ export class AgentsController {
 	) {
 		const agent = await this.agentsService.revertToPublishedAgent(agentId, req.params.projectId);
 		return await this.withRunnableState(agent, req.params.projectId, req.user);
+	}
+
+	@Get('/:agentId/versions')
+	@ProjectScope('agent:read')
+	async listVersions(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Query query: PaginationDto,
+	): Promise<AgentVersionListItemDto[]> {
+		return await this.agentsService.listPublishHistory(
+			agentId,
+			req.params.projectId,
+			query.take ?? 20,
+			query.skip ?? 0,
+		);
 	}
 
 	@Post('/:agentId/chat', { usesTemplates: true })
