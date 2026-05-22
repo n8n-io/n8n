@@ -188,6 +188,36 @@ describe('McpRegistryService', () => {
 			service.shutdown();
 		});
 
+		it('onLeaderTakeover deprecates servers missing from metadata', async () => {
+			const metadata: McpRegistryServerMetadata[] = [
+				{
+					slug: notionMockServer.slug,
+					version: notionMockServer.version,
+					updatedAt: notionMockServer.updatedAt,
+				},
+			];
+			const { service, apiClient, repository, push, publisher } = createService({
+				storedServers: [notionMockServer, linearMockServer],
+			});
+			apiClient.fetchServersMetadata.mockResolvedValue(metadata);
+
+			await service.onLeaderTakeover();
+
+			expect(apiClient.fetchServersBySlugs).not.toHaveBeenCalled();
+			expect(repository.upsert).toHaveBeenCalledTimes(1);
+			const upsertEntities = repository.upsert.mock.calls[0][0];
+			expect(upsertEntities).toEqual([
+				toEntity({
+					...linearMockServer,
+					status: 'deprecated',
+				}),
+			]);
+			expect(push.broadcast).toHaveBeenCalledWith({ type: 'nodeDescriptionUpdated', data: {} });
+			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-registry' });
+
+			service.shutdown();
+		});
+
 		it('onLeaderTakeover fetches only changed servers and publishes reload', async () => {
 			const staleNotion: McpRegistryServer = {
 				...notionMockServer,
