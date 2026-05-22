@@ -234,6 +234,9 @@ defineLazyExport('HAIKU_MODEL', () => loadEvalAgents().HAIKU_MODEL);
 export type { SuspensionInfo, Resumable } from './utils/stream-helpers';
 export { buildAgentTreeFromEvents, findAgentNodeInTree } from './utils/agent-tree';
 export type { SandboxConfig } from './workspace/create-workspace';
+export { createLazyRuntimeWorkspace } from './workspace/lazy-runtime-workspace';
+export type { RuntimeWorkspaceResolver } from './workspace/lazy-runtime-workspace';
+export { getWorkspaceRoot, setupSandboxWorkspace } from './workspace/sandbox-setup';
 export type { BuilderWorkspace } from './workspace/builder-sandbox-factory';
 export type BuilderSandboxFactory = BuilderSandboxFactoryMod.BuilderSandboxFactory;
 export const createSandbox: typeof CreateWorkspaceMod.createSandbox = lazyFunction(
