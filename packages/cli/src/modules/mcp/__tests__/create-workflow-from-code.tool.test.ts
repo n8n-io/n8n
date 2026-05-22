@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRepository, User, WorkflowEntity } from '@n8n/db';
-import type { INode } from 'n8n-workflow';
+import { NodeConnectionTypes, type INode } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/create-workflow-from-code.tool';
@@ -99,6 +99,15 @@ describe('create-workflow-from-code MCP tool', () => {
 			track: jest.fn(),
 		});
 		nodeTypes = mockInstance(NodeTypes);
+		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+			if (type === '@n8n/n8n-nodes-langchain.agent') {
+				return { description: { outputs: [NodeConnectionTypes.Main] } };
+			}
+			if (type === '@n8n/n8n-nodes-langchain.agentTool') {
+				return { description: { outputs: [NodeConnectionTypes.AiTool] } };
+			}
+			return { description: {} };
+		}) as typeof nodeTypes.getByNameAndVersion);
 
 		mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson });
 		mockStripImportStatements.mockImplementation((code: string) => code);
@@ -364,6 +373,47 @@ describe('create-workflow-from-code MCP tool', () => {
 					}),
 				}),
 			);
+		});
+
+		test('refuses to save when an agent is wired as a tool to another agent', async () => {
+			mockParseAndValidate.mockResolvedValue({
+				workflow: {
+					...mockWorkflowJson,
+					nodes: [
+						{
+							id: 'manager',
+							name: 'Manager Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 3,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: 'worker',
+							name: 'Worker Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 3,
+							position: [200, 0],
+							parameters: {},
+						},
+					],
+					connections: {
+						'Worker Agent': {
+							ai_tool: [[{ node: 'Manager Agent', type: 'ai_tool', index: 0 }]],
+						},
+					},
+				},
+				warnings: [],
+			});
+
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			expect(result.isError).toBe(true);
+			expect(createWorkflowMock).not.toHaveBeenCalled();
+			const response = parseResult(result);
+			expect(response.error).toContain('Worker Agent');
+			expect(response.error).toContain('Manager Agent');
+			expect(response.error).toContain('@n8n/n8n-nodes-langchain.agentTool');
 		});
 
 		test('structuredContent conforms to declared outputSchema under strict validation', async () => {

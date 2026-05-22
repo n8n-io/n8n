@@ -7,6 +7,7 @@ export type MemoryEntryStatus = 'active' | 'superseded' | 'dropped';
 @Entity({ name: 'agents_memory_entries' })
 @Index(['agentId', 'resourceId', 'status', 'createdAt', 'id'])
 @Index(['agentId', 'resourceId', 'contentHash'], { unique: true })
+@Index(['resourceId'])
 @Index(['supersededBy'])
 export class AgentMemoryEntryEntity extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 36 })
