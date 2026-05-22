@@ -865,6 +865,8 @@ describe('AgentsService', () => {
 			});
 
 			expect(chunks.every((c) => c.type !== 'text-delta')).toBe(true);
+		});
+	});
 	describe('executeForWorkflow', () => {
 		it('passes execution-scoped persistence for workflow executions', async () => {
 			const schema: AgentJsonConfig = {
