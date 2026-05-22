@@ -264,7 +264,7 @@ describe('createToolsFromLocalMcpServer', () => {
 			expect(tool?.toMessage?.(SUCCESS_RESULT)).toBeUndefined();
 		});
 
-		it('keeps media payloads out of the JSON tool result shown to the model', () => {
+		it('returns AI SDK content output for gateway image results', () => {
 			const server = makeMockServer();
 			const tool = createToolsFromLocalMcpServer(server).get('write_file');
 
@@ -272,7 +272,7 @@ describe('createToolsFromLocalMcpServer', () => {
 				type: 'content',
 				value: [
 					{ type: 'text', text: 'current browser screenshot' },
-					{ type: 'text', text: '[image: image/png]' },
+					{ type: 'image-data', data: 'base64-screenshot', mediaType: 'image/png' },
 				],
 			});
 		});
