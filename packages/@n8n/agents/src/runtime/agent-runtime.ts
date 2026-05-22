@@ -2126,6 +2126,7 @@ export class AgentRuntime {
 				result: settledResult,
 				isError: settledBlock.state === 'rejected',
 			});
+			// the error is written to message list earlier, when processing stream output
 			return { outcome: 'noop' };
 		}
 
