@@ -530,7 +530,7 @@ describe('VectorStoreOracleDB.node', () => {
 		const runtimeFilter: OracleFilter = {
 			$and: [{ language: 'en' }],
 			nested: { rating: { $gte: 4.5 } },
-			author: 'Andrew Ng',
+			author: 'Author1',
 		};
 
 		const vectorStore = await node.getVectorStoreClient(context, baseFilter, embeddings, 0);
@@ -540,7 +540,7 @@ describe('VectorStoreOracleDB.node', () => {
 		expect(similaritySearchSpy).toHaveBeenCalledWith([0.1, 0.2], 3, {
 			$and: [{ project: 'n8n' }, { category: 'movies' }, { language: 'en' }],
 			nested: { flag: true, rating: { $gte: 4.5 } },
-			author: 'Andrew Ng',
+			author: 'Author1',
 		});
 	});
 
