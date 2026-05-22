@@ -2,7 +2,6 @@ import {
 	activeLifecycleState,
 	droppedLifecycleState,
 	normalizeObservationLogReflection,
-	createObservationLogThreadScopePrefix,
 	hashEpisodicMemoryContent,
 	hashEpisodicMemoryEvidence,
 	markLifecycleActive,
@@ -36,7 +35,6 @@ import {
 	type ObservationLogReflection,
 	type ObservationLogReflectionResult,
 	type ObservationLogScope,
-	type ObservationLogScopeKind,
 	type ObservationLogTaskKind,
 	type ObservationLogTaskLockHandle,
 	type RetrievedEpisodicMemoryEntry,
@@ -46,7 +44,6 @@ import { Service } from '@n8n/di';
 import type { EntityManager, FindOperator, FindOptionsWhere } from '@n8n/typeorm';
 import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { isUniqueConstraintError } from '@/response-helper';
 
@@ -190,36 +187,25 @@ export class N8nMemoryImpl
 	async deleteThread(threadId: string): Promise<void> {
 		await this.threadRepository.manager.transaction(async (trx) => {
 			await this.dropEpisodicEntriesWithoutSources(trx, threadId);
-			const legacyScope = { scopeKind: 'thread' as const, scopeId: threadId };
-			const resourceScope = {
-				scopeKind: 'thread' as const,
-				scopeId: Like(`${createObservationLogThreadScopePrefix(threadId)}%`),
-			};
-			for (const scope of [legacyScope, resourceScope]) {
-				await trx.delete(AgentObservationEntity, scope);
-				await trx.delete(AgentObservationCursorEntity, scope);
-				await trx.delete(AgentObservationLockEntity, scope);
-				await trx.delete(AgentMemoryEntryCursorEntity, scope);
-			}
+			const observationScope = { agentId: this.agentId, observationScopeId: threadId };
+			await trx.delete(AgentObservationEntity, observationScope);
+			await trx.delete(AgentObservationCursorEntity, observationScope);
+			await trx.delete(AgentObservationLockEntity, observationScope);
+			await trx.delete(AgentMemoryEntryCursorEntity, observationScope);
 			await trx.delete(AgentThreadEntity, { id: threadId });
 		});
 	}
 
 	async deleteThreadsByPrefix(threadIdPrefix: string): Promise<void> {
-		const scopeId = Like(`${threadIdPrefix}%`);
-		const resourceScopeId = Like(`${createObservationLogThreadScopePrefix(threadIdPrefix)}%`);
+		const observationScopeId = Like(`${threadIdPrefix}%`);
 		await this.threadRepository.manager.transaction(async (trx) => {
-			await this.dropEpisodicEntriesWithoutSources(trx, scopeId);
-			for (const scope of [
-				{ scopeKind: 'thread' as const, scopeId },
-				{ scopeKind: 'thread' as const, scopeId: resourceScopeId },
-			]) {
-				await trx.delete(AgentObservationEntity, scope);
-				await trx.delete(AgentObservationCursorEntity, scope);
-				await trx.delete(AgentObservationLockEntity, scope);
-				await trx.delete(AgentMemoryEntryCursorEntity, scope);
-			}
-			await trx.delete(AgentThreadEntity, { id: scopeId });
+			await this.dropEpisodicEntriesWithoutSources(trx, observationScopeId);
+			const observationScope = { agentId: this.agentId, observationScopeId };
+			await trx.delete(AgentObservationEntity, observationScope);
+			await trx.delete(AgentObservationCursorEntity, observationScope);
+			await trx.delete(AgentObservationLockEntity, observationScope);
+			await trx.delete(AgentMemoryEntryCursorEntity, observationScope);
+			await trx.delete(AgentThreadEntity, { id: observationScopeId });
 		});
 	}
 
@@ -337,8 +323,8 @@ export class N8nMemoryImpl
 
 		const entities: AgentObservationEntity[] = rows.map((row) =>
 			this.observationRepository.create({
-				scopeKind: row.scopeKind,
-				scopeId: row.scopeId,
+				agentId: this.agentId,
+				observationScopeId: row.observationScopeId,
 				marker: row.marker,
 				text: row.text,
 				parentId: row.parentId ?? null,
@@ -360,8 +346,8 @@ export class N8nMemoryImpl
 
 	async getObservationLog(opts: ObservationLogReadOptions): Promise<ObservationLogEntry[]> {
 		const baseWhere: FindOptionsWhere<AgentObservationEntity> = {
-			scopeKind: opts.scopeKind,
-			scopeId: opts.scopeId,
+			agentId: this.agentId,
+			observationScopeId: opts.observationScopeId,
 			...(opts.status !== undefined && { status: opts.status }),
 			...(opts.parentId !== undefined && { parentId: opts.parentId ?? IsNull() }),
 		};
@@ -377,20 +363,12 @@ export class N8nMemoryImpl
 		return entities.map((e) => this.toObservationLogEntry(e));
 	}
 
-	async getMessagesForScope(
-		scopeKind: ObservationLogScopeKind,
-		scopeId: string,
-		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string }; resourceId?: string },
+	async getMessagesForObservationScope(
+		observationScopeId: string,
+		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string } },
 	): Promise<AgentDbMessage[]> {
-		if (scopeKind !== 'thread') {
-			throw new UnexpectedError(
-				`getMessagesForScope: scopeKind='${scopeKind}' is not supported in observational memory v1`,
-			);
-		}
-
 		const baseWhere: FindOptionsWhere<AgentMessageEntity> = {
-			threadId: scopeId,
-			...(opts?.resourceId !== undefined && { resourceId: opts.resourceId }),
+			threadId: observationScopeId,
 		};
 		const where: FindOptionsWhere<AgentMessageEntity>[] = opts?.since
 			? [
@@ -431,8 +409,8 @@ export class N8nMemoryImpl
 			const repo = trx.getRepository(AgentObservationEntity);
 			const activeEntries = await repo.find({
 				where: {
-					scopeKind: scope.scopeKind,
-					scopeId: scope.scopeId,
+					agentId: this.agentId,
+					observationScopeId: scope.observationScopeId,
 					status: 'active',
 				},
 				order: { createdAt: 'ASC', id: 'ASC' },
@@ -445,8 +423,8 @@ export class N8nMemoryImpl
 				? await repo.save(
 						normalized.merge.map((entry) =>
 							repo.create({
-								scopeKind: scope.scopeKind,
-								scopeId: scope.scopeId,
+								agentId: this.agentId,
+								observationScopeId: scope.observationScopeId,
 								marker: entry.marker,
 								text: entry.text,
 								parentId: entry.parentId ?? null,
@@ -460,7 +438,11 @@ export class N8nMemoryImpl
 
 			if (normalized.drop.length > 0) {
 				await repo.update(
-					{ scopeKind: scope.scopeKind, scopeId: scope.scopeId, id: In(normalized.drop) },
+					{
+						agentId: this.agentId,
+						observationScopeId: scope.observationScopeId,
+						id: In(normalized.drop),
+					},
 					droppedLifecycleState(),
 				);
 			}
@@ -469,7 +451,11 @@ export class N8nMemoryImpl
 				const replacement = inserted[index];
 				if (replacement && merge.supersedes.length > 0) {
 					await repo.update(
-						{ scopeKind: scope.scopeKind, scopeId: scope.scopeId, id: In(merge.supersedes) },
+						{
+							agentId: this.agentId,
+							observationScopeId: scope.observationScopeId,
+							id: In(merge.supersedes),
+						},
 						supersededLifecycleState(replacement.id),
 					);
 				}
@@ -485,41 +471,40 @@ export class N8nMemoryImpl
 
 	// ── Observational memory: cursors ────────────────────────────────────
 
-	async getCursor(
-		scopeKind: ObservationLogScopeKind,
-		scopeId: string,
-	): Promise<ObservationCursor | null> {
-		const entity = await this.observationCursorRepository.findOneBy({ scopeKind, scopeId });
+	async getCursor(observationScopeId: string): Promise<ObservationCursor | null> {
+		const entity = await this.observationCursorRepository.findOneBy({
+			agentId: this.agentId,
+			observationScopeId,
+		});
 		if (!entity) return null;
 		return {
-			scopeKind: entity.scopeKind,
-			scopeId: entity.scopeId,
+			observationScopeId: entity.observationScopeId,
 			lastObservedMessageId: entity.lastObservedMessageId,
 			lastObservedAt: entity.lastObservedAt,
 			updatedAt: entity.updatedAt,
 		};
 	}
 
-	async setCursor(
-		cursor: ObservationCursor & { scopeKind: ObservationLogScopeKind },
-	): Promise<void> {
+	async setCursor(cursor: ObservationCursor): Promise<void> {
 		await this.observationCursorRepository.upsert(
 			{
-				scopeKind: cursor.scopeKind,
-				scopeId: cursor.scopeId,
+				agentId: this.agentId,
+				observationScopeId: cursor.observationScopeId,
 				lastObservedMessageId: cursor.lastObservedMessageId,
 				lastObservedAt: cursor.lastObservedAt,
 				updatedAt: cursor.updatedAt,
 			},
-			{ conflictPaths: ['scopeKind', 'scopeId'], skipUpdateIfNoValuesChanged: false },
+			{
+				conflictPaths: ['agentId', 'observationScopeId'],
+				skipUpdateIfNoValuesChanged: false,
+			},
 		);
 	}
 
 	// ── Observation log: locks ───────────────────────────────────────────
 
 	async acquireObservationLogTaskLock(
-		scopeKind: ObservationLogScopeKind,
-		scopeId: string,
+		observationScopeId: string,
 		taskKind: ObservationLogTaskKind,
 		opts: { ttlMs: number; holderId: string },
 	): Promise<ObservationLogTaskLockHandle | null> {
@@ -532,34 +517,46 @@ export class N8nMemoryImpl
 			.createQueryBuilder()
 			.update(AgentObservationLockEntity)
 			.set({ taskKind, holderId: opts.holderId, heldUntil })
-			.where('"scopeKind" = :scopeKind')
-			.andWhere('"scopeId" = :scopeId')
+			.where('"agentId" = :agentId')
+			.andWhere('"observationScopeId" = :observationScopeId')
 			.andWhere('"taskKind" = :taskKind')
 			.andWhere('("holderId" = :holderId OR "heldUntil" <= :now)')
-			.setParameters({ scopeKind, scopeId, taskKind, holderId: opts.holderId, now })
+			.setParameters({
+				agentId: this.agentId,
+				observationScopeId,
+				taskKind,
+				holderId: opts.holderId,
+				now,
+			})
 			.execute();
 
 		if ((updateResult.affected ?? 0) > 0) {
-			return { scopeKind, scopeId, taskKind, holderId: opts.holderId, heldUntil };
+			return { observationScopeId, taskKind, holderId: opts.holderId, heldUntil };
 		}
 
 		await this.observationLockRepository
 			.createQueryBuilder()
 			.insert()
 			.into(AgentObservationLockEntity)
-			.values({ scopeKind, scopeId, taskKind, holderId: opts.holderId, heldUntil })
+			.values({
+				agentId: this.agentId,
+				observationScopeId,
+				taskKind,
+				holderId: opts.holderId,
+				heldUntil,
+			})
 			.orIgnore()
 			.execute();
 
 		const claimed = await this.observationLockRepository.findOneBy({
-			scopeKind,
-			scopeId,
+			agentId: this.agentId,
+			observationScopeId,
 			taskKind,
 			holderId: opts.holderId,
 		});
 		if (!claimed) return null;
 
-		return { scopeKind, scopeId, taskKind, holderId: opts.holderId, heldUntil };
+		return { observationScopeId, taskKind, holderId: opts.holderId, heldUntil };
 	}
 
 	async releaseObservationLogTaskLock(handle: ObservationLogTaskLockHandle): Promise<void> {
@@ -568,8 +565,8 @@ export class N8nMemoryImpl
 
 	private async releaseScopeLock(handle: ObservationLogTaskLockHandle): Promise<void> {
 		await this.observationLockRepository.delete({
-			scopeKind: handle.scopeKind,
-			scopeId: handle.scopeId,
+			agentId: this.agentId,
+			observationScopeId: handle.observationScopeId,
 			taskKind: handle.taskKind,
 			holderId: handle.holderId,
 		});
@@ -915,11 +912,13 @@ export class N8nMemoryImpl
 	private async getEpisodicMemoryCursor(
 		scope: ObservationLogScope,
 	): Promise<EpisodicMemoryCursor | null> {
-		const entity = await this.memoryEntryCursorRepository.findOneBy(scope);
+		const entity = await this.memoryEntryCursorRepository.findOneBy({
+			agentId: this.agentId,
+			observationScopeId: scope.observationScopeId,
+		});
 		if (!entity) return null;
 		return {
-			scopeKind: entity.scopeKind,
-			scopeId: entity.scopeId,
+			observationScopeId: entity.observationScopeId,
 			lastIndexedObservationId: entity.lastIndexedObservationId,
 			lastIndexedObservationCreatedAt: entity.lastIndexedObservationCreatedAt,
 			updatedAt: entity.updatedAt,
@@ -928,8 +927,8 @@ export class N8nMemoryImpl
 
 	private async setEpisodicMemoryCursor(cursor: NewEpisodicMemoryCursor): Promise<void> {
 		const cursorRow: QueryDeepPartialEntity<AgentMemoryEntryCursorEntity> = {
-			scopeKind: cursor.scopeKind,
-			scopeId: cursor.scopeId,
+			agentId: this.agentId,
+			observationScopeId: cursor.observationScopeId,
 			lastIndexedObservationId: cursor.lastIndexedObservationId,
 			lastIndexedObservationCreatedAt: cursor.lastIndexedObservationCreatedAt,
 			updatedAt: cursor.updatedAt ?? new Date(),
@@ -947,14 +946,14 @@ export class N8nMemoryImpl
 			.createQueryBuilder()
 			.update(AgentMemoryEntryCursorEntity)
 			.set(cursorRow)
-			.where('"scopeKind" = :scopeKind')
-			.andWhere('"scopeId" = :scopeId')
+			.where('"agentId" = :agentId')
+			.andWhere('"observationScopeId" = :observationScopeId')
 			.andWhere(
 				'("lastIndexedObservationCreatedAt" < :lastIndexedObservationCreatedAt OR ("lastIndexedObservationCreatedAt" = :lastIndexedObservationCreatedAt AND "lastIndexedObservationId" < :lastIndexedObservationId))',
 			)
 			.setParameters({
-				scopeKind: cursor.scopeKind,
-				scopeId: cursor.scopeId,
+				agentId: this.agentId,
+				observationScopeId: cursor.observationScopeId,
 				lastIndexedObservationId: cursor.lastIndexedObservationId,
 				lastIndexedObservationCreatedAt: cursor.lastIndexedObservationCreatedAt,
 			})
@@ -979,8 +978,7 @@ export class N8nMemoryImpl
 	private toObservationLogEntry(entity: AgentObservationEntity): ObservationLogEntry {
 		return {
 			id: entity.id,
-			scopeKind: entity.scopeKind,
-			scopeId: entity.scopeId,
+			observationScopeId: entity.observationScopeId,
 			marker: entity.marker,
 			text: entity.text,
 			parentId: entity.parentId,
