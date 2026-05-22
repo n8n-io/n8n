@@ -19,6 +19,7 @@ import type {
 	EpisodicMemoryReflectionResult,
 	EpisodicMemoryScope,
 	EpisodicMemorySearchOptions,
+	EpisodicMemoryTaskLockHandle,
 	MemoryDescriptor,
 	NewEpisodicMemoryCursor,
 	NewEpisodicMemoryEntry,
@@ -108,6 +109,8 @@ export class InMemoryMemory
 
 	private episodicMemoryCursorsByScope = new Map<string, EpisodicMemoryCursor>();
 
+	private episodicMemoryLocksByResource = new Map<string, EpisodicMemoryTaskLockHandle>();
+
 	readonly episodic: EpisodicMemoryMethods = {
 		saveEntryWithSources: async (entry, sources) =>
 			await this.saveEpisodicMemoryEntryWithSources(entry, sources),
@@ -118,6 +121,11 @@ export class InMemoryMemory
 			await this.applyEpisodicMemoryReflection(scope, reflection),
 		getCursor: async (scope) => await this.getEpisodicMemoryCursor(scope),
 		setCursor: async (cursor) => await this.setEpisodicMemoryCursor(cursor),
+		taskLock: {
+			acquire: async (resourceId, opts) =>
+				await this.acquireEpisodicMemoryTaskLock(resourceId, opts),
+			release: async (handle) => await this.releaseEpisodicMemoryTaskLock(handle),
+		},
 	};
 
 	// eslint-disable-next-line @typescript-eslint/require-await
@@ -660,6 +668,33 @@ export class InMemoryMemory
 			lastIndexedObservationCreatedAt: new Date(cursor.lastIndexedObservationCreatedAt),
 			updatedAt: cursor.updatedAt ?? now,
 		});
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	private async acquireEpisodicMemoryTaskLock(
+		resourceId: string,
+		opts: { ttlMs: number; holderId: string },
+	): Promise<EpisodicMemoryTaskLockHandle | null> {
+		const existing = this.episodicMemoryLocksByResource.get(resourceId);
+		const now = Date.now();
+		if (existing && existing.holderId !== opts.holderId && existing.heldUntil.getTime() > now) {
+			return null;
+		}
+		const handle: EpisodicMemoryTaskLockHandle = {
+			resourceId,
+			holderId: opts.holderId,
+			heldUntil: new Date(now + opts.ttlMs),
+		};
+		this.episodicMemoryLocksByResource.set(resourceId, handle);
+		return { ...handle };
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	private async releaseEpisodicMemoryTaskLock(handle: EpisodicMemoryTaskLockHandle): Promise<void> {
+		const current = this.episodicMemoryLocksByResource.get(handle.resourceId);
+		if (current && current.holderId === handle.holderId) {
+			this.episodicMemoryLocksByResource.delete(handle.resourceId);
+		}
 	}
 }
 

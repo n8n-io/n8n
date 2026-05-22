@@ -101,12 +101,35 @@ runs:
         rm install-safe-chain.sh
       shell: bash
 
+    # `--reporter=append-only` collapses pnpm output to a single terse line and
+    # drops the ERR_PNPM_* code plus the offending package. Combined with the
+    # `timeout` wrapper, a SIGKILL or a non-pnpm post-install crash surfaces as
+    # bare `ELIFECYCLE` with no actionable diagnostics. We let pnpm pick its own
+    # CI reporter, tee stderr to a file, and re-emit the captured log on
+    # failure so the failure survives even if the live log buffer is cut off
+    # when `timeout` terminates the process group.
     - name: Install Dependencies
       if: ${{ inputs.install-command != '' }}
       env:
         INSTALL_COMMAND: ${{ inputs.install-command }}
+        INSTALL_LOG: ${{ runner.temp }}/pnpm-install.err
       run: |
-        timeout --kill-after=30s 300s $INSTALL_COMMAND --reporter=append-only
+        set +e
+        timeout --kill-after=30s 300s $INSTALL_COMMAND 2> >(tee "$INSTALL_LOG" >&2)
+        rc=$?
+        set -e
+        # Let the backgrounded `tee` flush before we read the file back.
+        wait 2>/dev/null || true
+        if [ $rc -ne 0 ]; then
+          echo "::group::pnpm install stderr (captured)"
+          cat "$INSTALL_LOG" 2>/dev/null || echo "(no captured log)"
+          echo "::endgroup::"
+          case $rc in
+            124) echo "::error::pnpm install timed out after 300s (exit 124)" ;;
+            137) echo "::error::pnpm install received SIGKILL (exit 137 — likely OOM or kill-after timeout)" ;;
+          esac
+        fi
+        exit $rc
       shell: bash
 
     - name: Configure Turborepo Cache

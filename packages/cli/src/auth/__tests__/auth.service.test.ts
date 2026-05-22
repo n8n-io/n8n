@@ -1367,4 +1367,91 @@ describe('AuthService', () => {
 			});
 		});
 	});
+
+	describe('authenticateUserByCookie', () => {
+		beforeEach(() => {
+			jest.resetAllMocks();
+		});
+
+		describe('token validation failures', () => {
+			it('should throw when token is blocklisted', async () => {
+				const token = authService.issueJWT(user, true, browserId);
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(true);
+
+				await expect(authService.authenticateUserByCookie(token)).rejects.toThrow('Unauthorized');
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+			});
+
+			it('should throw when JWT is expired', async () => {
+				const token = authService.issueJWT(user, true, browserId);
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
+
+				await expect(authService.authenticateUserByCookie(token)).rejects.toThrow('jwt expired');
+			});
+
+			it('should throw when JWT is malformed', async () => {
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+
+				await expect(authService.authenticateUserByCookie('not-a-jwt')).rejects.toThrow(
+					'jwt malformed',
+				);
+			});
+
+			it('should throw when user is not found', async () => {
+				const token = authService.issueJWT(user, true, browserId);
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				userRepository.findOne.mockResolvedValue(null);
+
+				await expect(authService.authenticateUserByCookie(token)).rejects.toThrow('Unauthorized');
+			});
+
+			it('should throw when user is disabled', async () => {
+				const token = authService.issueJWT(user, true, browserId);
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				userRepository.findOne.mockResolvedValue(mock<User>({ ...userData, disabled: true }));
+
+				await expect(authService.authenticateUserByCookie(token)).rejects.toThrow('Unauthorized');
+			});
+
+			it('should throw when user password hash changed', async () => {
+				const token = authService.issueJWT(user, true, browserId);
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				userRepository.findOne.mockResolvedValue(
+					mock<User>({ ...userData, password: 'newPasswordHash' }),
+				);
+
+				await expect(authService.authenticateUserByCookie(token)).rejects.toThrow('Unauthorized');
+			});
+		});
+
+		describe('MFA gate', () => {
+			it('should throw when MFA is enforced and token was issued without MFA', async () => {
+				const tokenWithoutMfa = authService.issueJWT(user, false, browserId);
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				userRepository.findOne.mockResolvedValue(user);
+				mfaService.isMFAEnforced.mockResolvedValue(true);
+
+				await expect(authService.authenticateUserByCookie(tokenWithoutMfa)).rejects.toThrow(
+					'Unauthorized',
+				);
+			});
+
+			it('should throw when user has MFA enabled and token was issued without MFA', async () => {
+				const userWithMfa = mock<User>({
+					...userData,
+					mfaEnabled: true,
+					mfaSecret: 'secret',
+				});
+				const tokenForMfaUser = authService.issueJWT(userWithMfa, false, browserId);
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				userRepository.findOne.mockResolvedValue(userWithMfa);
+				mfaService.isMFAEnforced.mockResolvedValue(false);
+
+				await expect(authService.authenticateUserByCookie(tokenForMfaUser)).rejects.toThrow(
+					'Unauthorized',
+				);
+			});
+		});
+	});
 });

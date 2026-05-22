@@ -2621,6 +2621,8 @@ describe('AgentRuntime — observation log jobs', () => {
 		embedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 1 } });
 		const memory = new InMemoryMemory();
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
+		const observationLockSpy = jest.spyOn(memory, 'acquireObservationLogTaskLock');
+		const episodicLockSpy = jest.spyOn(memory.episodic.taskLock!, 'acquire');
 
 		const runtime = new AgentRuntime({
 			name: 'observing-agent',
@@ -2669,6 +2671,63 @@ describe('AgentRuntime — observation log jobs', () => {
 			scopeId: createObservationLogThreadScopeId('thread-1', 'resource-1'),
 		});
 		expect(typeof cursor?.lastIndexedObservationId).toBe('string');
+		const firstLockCall = episodicLockSpy.mock.calls.at(0);
+		if (!firstLockCall) throw new Error('Expected episodic memory lock acquisition');
+		const [lockedResourceId, lockOptions] = firstLockCall;
+		expect(lockedResourceId).toBe('resource-1');
+		expect(typeof lockOptions.holderId).toBe('string');
+		expect(typeof lockOptions.ttlMs).toBe('number');
+		const observationLockTaskKinds = observationLockSpy.mock.calls.map((call) => String(call[2]));
+		expect(observationLockTaskKinds).not.toContain('episodic-indexer');
+	});
+
+	it('skips episodic indexing when the episodic task lock is held', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
+		const memory = new InMemoryMemory();
+		const observationScope = {
+			scopeKind: 'thread' as const,
+			scopeId: createObservationLogThreadScopeId('thread-1', 'resource-1'),
+		};
+		const [observation] = await memory.appendObservationLogEntries([
+			{
+				...observationScope,
+				marker: 'critical',
+				text: 'User chose Postgres for memory storage.',
+				createdAt: new Date('2026-05-20T12:00:00Z'),
+			},
+		]);
+		const extract = jest.fn(async () => {
+			await Promise.resolve();
+
+			return {
+				entries: [
+					{
+						content: 'User chose Postgres for memory storage.',
+						sources: [{ observationId: observation.id, evidence: 'User chose Postgres' }],
+					},
+				],
+			};
+		});
+		jest.spyOn(memory.episodic.taskLock!, 'acquire').mockResolvedValue(null);
+
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			episodicMemory: {
+				embedder: { specificationVersion: 'v2' } as never,
+				extract,
+			},
+		});
+
+		await runtime.generate('Please remember this.', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+
+		expect(extract).not.toHaveBeenCalled();
+		await expect(memory.episodic.getCursor(observationScope)).resolves.toBeNull();
 	});
 
 	it('does not inject episodic memory and exposes recall_memory for explicit recall', async () => {
