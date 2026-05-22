@@ -12,6 +12,7 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
+import type { OwnershipService } from '../ownership.service';
 import { ProjectService } from '../project.service.ee';
 import type { RoleService } from '../role.service';
 
@@ -22,6 +23,7 @@ describe('ProjectService', () => {
 	const roleService = mock<RoleService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const moduleRegistry = mock<ModuleRegistry>({ entities: [] });
+	const ownershipService = mock<OwnershipService>();
 	const projectService = new ProjectService(
 		mock(),
 		projectRepository,
@@ -30,6 +32,7 @@ describe('ProjectService', () => {
 		sharedCredentialsRepository,
 		mock(),
 		moduleRegistry,
+		ownershipService,
 	);
 
 	describe('getAccessibleProjectsAndCount', () => {
@@ -188,6 +191,83 @@ describe('ProjectService', () => {
 					{ userId: 'user1', role: 'project:admin' },
 				]),
 			).resolves.not.toThrow();
+		});
+	});
+
+	describe('updateProject', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+			ownershipService.invalidateWorkflowProjectCacheForProject.mockResolvedValue(undefined);
+		});
+
+		it('should trim whitespace from tag keys on save', async () => {
+			projectRepository.update.mockResolvedValueOnce({ affected: 1 } as never);
+
+			await projectService.updateProject('proj-1', {
+				name: 'My Project',
+				customTelemetryTags: [
+					{ key: '  env  ', value: 'production' },
+					{ key: 'team ', value: 'backend' },
+				],
+			});
+
+			expect(projectRepository.update).toHaveBeenCalledWith(
+				{ id: 'proj-1', type: 'team' },
+				expect.objectContaining({
+					customTelemetryTags: [
+						{ key: 'env', value: 'production' },
+						{ key: 'team', value: 'backend' },
+					],
+				}),
+			);
+		});
+
+		it('should filter out tags with empty keys after trimming', async () => {
+			projectRepository.update.mockResolvedValueOnce({ affected: 1 } as never);
+
+			await projectService.updateProject('proj-1', {
+				name: 'My Project',
+				customTelemetryTags: [
+					{ key: '   ', value: 'ignored' },
+					{ key: 'region', value: 'us-east' },
+				],
+			});
+
+			expect(projectRepository.update).toHaveBeenCalledWith(
+				{ id: 'proj-1', type: 'team' },
+				expect.objectContaining({
+					customTelemetryTags: [{ key: 'region', value: 'us-east' }],
+				}),
+			);
+		});
+
+		it('should save undefined customTelemetryTags when not provided', async () => {
+			projectRepository.update.mockResolvedValueOnce({ affected: 1 } as never);
+
+			await projectService.updateProject('proj-1', { name: 'My Project' });
+
+			expect(projectRepository.update).toHaveBeenCalledWith(
+				{ id: 'proj-1', type: 'team' },
+				expect.objectContaining({ customTelemetryTags: undefined }),
+			);
+		});
+
+		it('should invalidate workflow project cache after a successful update', async () => {
+			projectRepository.update.mockResolvedValueOnce({ affected: 1 } as never);
+
+			await projectService.updateProject('proj-1', { name: 'Updated' });
+
+			expect(ownershipService.invalidateWorkflowProjectCacheForProject).toHaveBeenCalledWith(
+				'proj-1',
+			);
+		});
+
+		it('should throw NotFoundError when project is not found', async () => {
+			projectRepository.update.mockResolvedValueOnce({ affected: 0 } as never);
+
+			await expect(projectService.updateProject('missing-proj', { name: 'Ghost' })).rejects.toThrow(
+				'Could not find project with ID: missing-proj',
+			);
 		});
 	});
 

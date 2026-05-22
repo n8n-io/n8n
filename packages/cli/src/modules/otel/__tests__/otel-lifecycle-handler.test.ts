@@ -80,6 +80,44 @@ describe('OtelLifecycleHandler', () => {
 			);
 		});
 
+		it('should pass project customAttributes to the tracer when project has telemetry tags', async () => {
+			traceContextService.get.mockResolvedValueOnce(undefined);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce({
+				id: 'proj-1',
+				customTelemetryTags: [
+					{ key: 'env', value: 'production' },
+					{ key: 'team', value: 'platform' },
+				],
+			} as never);
+
+			await handler.onWorkflowStart(baseCtx);
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					project: {
+						id: 'proj-1',
+						customAttributes: { env: 'production', team: 'platform' },
+					},
+				}),
+			);
+		});
+
+		it('should pass undefined customAttributes when project has no telemetry tags', async () => {
+			traceContextService.get.mockResolvedValueOnce(undefined);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce({
+				id: 'proj-empty',
+				customTelemetryTags: null,
+			} as never);
+
+			await handler.onWorkflowStart(baseCtx);
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					project: { id: 'proj-empty', customAttributes: undefined },
+				}),
+			);
+		});
+
 		it('should start workflow span without project if project lookup fails', async () => {
 			traceContextService.get.mockResolvedValueOnce(undefined);
 			ownershipService.getWorkflowProjectCached.mockRejectedValueOnce(new Error('DB error'));
@@ -202,6 +240,31 @@ describe('OtelLifecycleHandler', () => {
 			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('wf-1');
 			expect(tracer.startWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({ project: { id: 'resume-proj' } }),
+			);
+		});
+
+		it('should pass project customAttributes on resume when project has telemetry tags', async () => {
+			traceContextService.get.mockResolvedValueOnce(undefined);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce({
+				id: 'resume-proj-tags',
+				customTelemetryTags: [{ key: 'env', value: 'staging' }],
+			} as never);
+
+			await handler.onWorkflowResume({
+				type: 'workflowExecuteResume',
+				workflow: { id: 'wf-1', name: 'Test', versionId: 'v1', nodes: [], connections: {} },
+				workflowInstance: undefined as never,
+				executionData: undefined as never,
+				executionId: 'exec-resume-tags',
+			} as never);
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					project: {
+						id: 'resume-proj-tags',
+						customAttributes: { env: 'staging' },
+					},
+				}),
 			);
 		});
 
