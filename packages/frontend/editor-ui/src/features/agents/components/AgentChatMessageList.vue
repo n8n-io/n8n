@@ -197,7 +197,7 @@ watch(
 watch(
 	() => speech.status.value,
 	(status) => {
-		if (status === 'end' || status === 'error') {
+		if (status === 'end') {
 			spokenMessageId.value = null;
 		}
 	},
