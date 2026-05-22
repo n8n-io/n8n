@@ -1,4 +1,7 @@
 import type { RedactionEnforcementSettings, RedactionFloor } from '@n8n/api-types';
+import { UnexpectedError } from 'n8n-workflow';
+
+import { assertNever } from '@/utils';
 
 export function floorToSettings(floor: RedactionFloor): RedactionEnforcementSettings {
 	switch (floor) {
@@ -8,6 +11,9 @@ export function floorToSettings(floor: RedactionFloor): RedactionEnforcementSett
 			return { enforced: true, manual: false, production: true };
 		case 'all':
 			return { enforced: true, manual: true, production: true };
+		default:
+			assertNever(floor);
+			throw new UnexpectedError(`Unknown redaction floor: ${String(floor)}`);
 	}
 }
 
