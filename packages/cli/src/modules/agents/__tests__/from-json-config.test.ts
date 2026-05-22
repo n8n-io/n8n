@@ -9,6 +9,33 @@ import {
 import { buildFromJson } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
 
+type EmbeddingProviderOpts = {
+	apiKey?: string;
+	baseURL?: string;
+};
+
+jest.mock('@ai-sdk/openai', () => ({
+	createOpenAI: (opts?: EmbeddingProviderOpts) =>
+		Object.assign(
+			(model: string) => ({
+				provider: 'openai',
+				modelId: model,
+				apiKey: opts?.apiKey,
+				baseURL: opts?.baseURL,
+				specificationVersion: 'v3',
+			}),
+			{
+				embeddingModel: (model: string) => ({
+					provider: 'openai',
+					modelId: model,
+					apiKey: opts?.apiKey,
+					baseURL: opts?.baseURL,
+					specificationVersion: 'v2',
+				}),
+			},
+		),
+}));
+
 // ---------------------------------------------------------------------------
 // buildFromJson() tests
 // ---------------------------------------------------------------------------
@@ -61,6 +88,18 @@ describe('buildFromJson()', () => {
 						observe?: unknown;
 						reflect?: unknown;
 					};
+					episodicMemory?: {
+						topK?: number;
+						maxEntriesPerRun?: number;
+						embedder?: unknown;
+						embeddingModel?: string;
+						embeddingProviderOptions?: {
+							apiKey?: string;
+							baseURL?: string;
+						};
+						extract?: unknown;
+						reflect?: unknown;
+					};
 				};
 			}
 		).memoryConfig;
@@ -85,6 +124,14 @@ describe('buildFromJson()', () => {
 		setCursor: jest.fn(),
 		acquireObservationLogTaskLock: jest.fn(),
 		releaseObservationLogTaskLock: jest.fn(),
+		episodic: {
+			saveEntryWithSources: jest.fn(),
+			searchEntries: jest.fn(),
+			getEntrySources: jest.fn(),
+			applyReflection: jest.fn(),
+			getCursor: jest.fn(),
+			setCursor: jest.fn(),
+		},
 		describe: jest
 			.fn()
 			.mockReturnValue({ name: 'n8n', constructorName: 'N8nMemory', connectionParams: null }),
@@ -532,6 +579,50 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.hasObservationalMemory).toBe(true);
 		expect(getMemoryConfig(agent)?.observationalMemory).toEqual({});
 		expect(getMemoryConfig(agent)?.observationLog).toEqual({});
+	});
+
+	it('configures episodic memory with the OpenAI embedding credential', async () => {
+		const credentialProvider = {
+			resolve: jest.fn().mockResolvedValue({
+				apiKey: 'test-api-key',
+				url: 'https://custom.example/v1',
+			}),
+			list: jest.fn().mockResolvedValue([]),
+		};
+		const config = makeConfig({
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				episodicMemory: {
+					enabled: true,
+					credential: 'openai-key',
+					topK: 7,
+				},
+			},
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider,
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
+		);
+
+		expect(credentialProvider.resolve).toHaveBeenCalledWith('openai-key');
+		expect(agent.snapshot.hasEpisodicMemory).toBe(true);
+		expect(getMemoryConfig(agent)?.episodicMemory).toMatchObject({
+			topK: 7,
+			embeddingProviderOptions: {
+				apiKey: 'test-api-key',
+				baseURL: 'https://custom.example/v1',
+			},
+		});
+		expect(getMemoryConfig(agent)?.episodicMemory?.embedder).toBeUndefined();
+		expect(getMemoryConfig(agent)?.episodicMemory?.extract).toBeUndefined();
+		expect(getMemoryConfig(agent)?.episodicMemory?.reflect).toBeUndefined();
 	});
 
 	it('can disable observational memory while keeping message memory', async () => {

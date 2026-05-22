@@ -332,6 +332,7 @@ function initializeRoute() {
 		);
 	} else if (route.query.action === 'addEvaluationNode') {
 		nodeCreatorStore.openNodeCreatorForActions(
+			workflowId.value,
 			EVALUATION_NODE_TYPE,
 			NODE_CREATOR_OPEN_SOURCES.ADD_EVALUATION_NODE_BUTTON,
 		);
@@ -1257,7 +1258,7 @@ const isOnlyChatTriggerNodeActive = computed(() => {
 const chatTriggerNodePinnedData = computed(() => {
 	if (!chatTriggerNode.value) return null;
 
-	return workflowDocumentStore?.value?.pinData?.[chatTriggerNode.value.name];
+	return workflowDocumentStore?.value?.pinnedDataByNodeName?.[chatTriggerNode.value.name];
 });
 
 const isChatHubAvailable = computed(() => {

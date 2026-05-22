@@ -176,3 +176,19 @@ describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
 		expect(parsed.success).toBe(true);
 	});
 });
+
+describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
+	const memoryBase = { enabled: true, storage: 'n8n' as const };
+
+	it('rejects enabled episodic memory with a blank credential', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				episodicMemory: { enabled: true, credential: '   ' },
+			},
+		});
+
+		expect(parsed.success).toBe(false);
+	});
+});
