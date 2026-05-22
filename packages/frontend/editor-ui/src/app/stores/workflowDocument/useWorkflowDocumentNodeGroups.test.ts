@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 
 import { useWorkflowDocumentNodeGroups } from './useWorkflowDocumentNodeGroups';
 
@@ -23,6 +23,16 @@ describe('useWorkflowDocumentNodeGroups', () => {
 			const a = nodeGroups.createGroup(['a', 'b'], 'A');
 			const b = nodeGroups.createGroup(['c', 'd'], 'B');
 			expect(a.id).not.toBe(b.id);
+		});
+
+		it('does not mark state dirty when requested', () => {
+			const dirtySpy = vi.fn();
+			nodeGroups.onStateDirty(dirtySpy);
+
+			nodeGroups.createGroup(['a', 'b'], 'A', { markDirty: false });
+
+			expect(dirtySpy).not.toHaveBeenCalled();
+			expect(nodeGroups.allGroups.value).toHaveLength(1);
 		});
 	});
 

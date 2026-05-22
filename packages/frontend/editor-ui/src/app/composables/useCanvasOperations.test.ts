@@ -5102,7 +5102,9 @@ describe('useCanvasOperations', () => {
 				{ id: 'group-1', name: 'My Group', nodeIds: [newId1, newId2] },
 			]);
 
-			expect(createGroupSpy).toHaveBeenCalledWith([newId1, newId2], 'My Group');
+			expect(createGroupSpy).toHaveBeenCalledWith([newId1, newId2], 'My Group', {
+				markDirty: true,
+			});
 			expect(workflowDocumentStoreInstance.getNextDefaultName).not.toHaveBeenCalled();
 		});
 
@@ -5158,7 +5160,62 @@ describe('useCanvasOperations', () => {
 			});
 
 			expect(workflowDocumentStoreInstance.getNextDefaultName).toHaveBeenCalledWith('My Group');
-			expect(createGroupSpy).toHaveBeenCalledWith(expect.any(Array), 'My Group 2');
+			expect(createGroupSpy).toHaveBeenCalledWith(expect.any(Array), 'My Group 2', {
+				markDirty: true,
+			});
+		});
+
+		it('should keep imported node groups pristine when requested', async () => {
+			const oldId1 = 'old-node-id-1';
+			const oldId2 = 'old-node-id-2';
+
+			const workflowDataWithGroups = {
+				nodes: [
+					{
+						id: oldId1,
+						name: 'Node 1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: oldId2,
+						name: 'Node 2',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+				nodeGroups: [{ id: 'group-1', name: 'My Group', nodeIds: [oldId1, oldId2] }],
+			};
+
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(nodes, connections) =>
+					createTestWorkflowObject({
+						nodes,
+						connections,
+					}),
+			);
+			const createGroupSpy = vi
+				.mocked(workflowDocumentStoreInstance.createGroup)
+				.mockImplementation((nodeIds, name) => ({
+					id: 'imported-group-id',
+					nodeIds,
+					name,
+				}));
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData(workflowDataWithGroups, 'paste', {
+				regenerateIds: true,
+				setStateDirty: false,
+			});
+
+			expect(createGroupSpy).toHaveBeenCalledWith(result.nodeGroups?.[0].nodeIds, 'My Group', {
+				markDirty: false,
+			});
 		});
 	});
 

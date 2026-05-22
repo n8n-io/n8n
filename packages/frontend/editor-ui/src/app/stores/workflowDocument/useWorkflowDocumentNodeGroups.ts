@@ -22,6 +22,10 @@ export type NodeGroupChangeEvent =
 	| ChangeEvent<NodeGroupRemovedPayload>
 	| ChangeEvent<NodeGroupsSetPayload>;
 
+type NodeGroupMutationOptions = {
+	markDirty?: boolean;
+};
+
 export function useWorkflowDocumentNodeGroups() {
 	const groups = ref<Map<string, IWorkflowGroup>>(new Map());
 
@@ -49,10 +53,16 @@ export function useWorkflowDocumentNodeGroups() {
 		});
 	}
 
-	function applyUpsertGroup(group: IWorkflowGroup, action: ChangeAction) {
+	function applyUpsertGroup(
+		group: IWorkflowGroup,
+		action: ChangeAction,
+		{ markDirty = true }: NodeGroupMutationOptions = {},
+	) {
 		groups.value.set(group.id, group);
 		void onNodeGroupsChange.trigger({ action, payload: { group } });
-		void onStateDirty.trigger();
+		if (markDirty) {
+			void onStateDirty.trigger();
+		}
 	}
 
 	function applyDeleteGroup(id: string) {
@@ -68,13 +78,17 @@ export function useWorkflowDocumentNodeGroups() {
 		applySetNodeGroups(nextGroups);
 	}
 
-	function createGroup(nodeIds: string[], name: string): IWorkflowGroup {
+	function createGroup(
+		nodeIds: string[],
+		name: string,
+		options: NodeGroupMutationOptions = {},
+	): IWorkflowGroup {
 		const group: IWorkflowGroup = {
 			id: window.crypto.randomUUID(),
 			nodeIds: [...nodeIds],
 			name,
 		};
-		applyUpsertGroup(group, CHANGE_ACTION.ADD);
+		applyUpsertGroup(group, CHANGE_ACTION.ADD, options);
 		return group;
 	}
 

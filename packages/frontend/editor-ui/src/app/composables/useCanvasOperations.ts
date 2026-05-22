@@ -2780,6 +2780,7 @@ export function useCanvasOperations() {
 			applyImportedNodeGroups(
 				workflowData.nodeGroups,
 				new Set(importResult.nodes?.map((node) => node.id).filter(isPresent) ?? []),
+				{ setStateDirty },
 			);
 
 			if (importTags && settingsStore.areTagsEnabled && Array.isArray(workflowData.tags)) {
@@ -2872,6 +2873,7 @@ export function useCanvasOperations() {
 	function applyImportedNodeGroups(
 		nodeGroups: IWorkflowGroup[] | undefined,
 		importedNodeIds: Set<string>,
+		{ setStateDirty = true }: { setStateDirty?: boolean } = {},
 	) {
 		if (!nodeGroups?.length || importedNodeIds.size === 0 || !workflowDocumentStore.value) {
 			return;
@@ -2887,7 +2889,7 @@ export function useCanvasOperations() {
 				? workflowDocumentStore.value.getNextDefaultName(group.name)
 				: group.name;
 
-			workflowDocumentStore.value.createGroup(group.nodeIds, name);
+			workflowDocumentStore.value.createGroup(group.nodeIds, name, { markDirty: setStateDirty });
 			existingGroupNames.add(name);
 		}
 	}
