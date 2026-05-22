@@ -3,7 +3,6 @@ import type {
 	CreateSandboxFromImageParams,
 	CreateSandboxFromSnapshotParams,
 	Daytona,
-	DaytonaConfig,
 	Resources,
 	Sandbox,
 	SandboxState,
@@ -18,7 +17,9 @@ import {
 } from '@n8n/agents';
 import { randomUUID } from 'node:crypto';
 
+import { DaytonaAuthManager } from './daytona-auth-manager';
 import { loadDaytona } from './lazy-daytona';
+import type { Logger } from '../logger';
 
 const SANDBOX_STATE_STARTED = 'started';
 const SANDBOX_STATE_DESTROYED = 'destroyed';
@@ -28,7 +29,21 @@ const SANDBOX_STATE_BUILD_FAILED = 'build_failed';
 
 export interface DaytonaSandboxOptions {
 	id?: string;
+	/** Static Daytona API key (direct mode). Mutually exclusive with `getAuthToken`. */
 	apiKey?: string;
+	/**
+	 * Per-call token resolver for proxy mode (short-lived JWT).
+	 * Called proactively before token expiry to mint a fresh client.
+	 * Mutually exclusive with `apiKey`.
+	 */
+	getAuthToken?: () => Promise<string>;
+	/**
+	 * Skew (ms) applied to JWT expiry. Overrides the default 5-minute refresh
+	 * window. Only meaningful in proxy mode (with `getAuthToken`).
+	 */
+	refreshSkewMs?: number;
+	/** Optional logger — token-refresh events are emitted at debug level. */
+	logger?: Logger;
 	apiUrl?: string;
 	target?: string;
 	timeout?: number;
@@ -59,7 +74,7 @@ function toShellCommand(command: string, args: string[]): string {
 	return [command, ...args.map((arg) => shellEscape(arg))].join(' ');
 }
 
-function isAuthError(error: unknown): boolean {
+function isDaytonaAuthError(error: unknown): boolean {
 	const { DaytonaError } = loadDaytona();
 	return error instanceof DaytonaError && (error.statusCode === 401 || error.statusCode === 403);
 }
@@ -80,9 +95,9 @@ export class DaytonaSandbox extends BaseSandbox {
 	private readonly timeout: number;
 	private readonly language: 'typescript' | 'javascript' | 'python';
 	private readonly createdAt = new Date();
-	private readonly connection: DaytonaConfig;
+	private readonly auth: DaytonaAuthManager;
 	private readonly sandboxName: string;
-	private daytonaClient?: Daytona;
+	private lastClientGeneration = -1;
 	private sandbox?: Sandbox;
 	private workingDirectory?: string;
 
@@ -92,10 +107,15 @@ export class DaytonaSandbox extends BaseSandbox {
 		this.timeout = options.timeout ?? 300_000;
 		this.language = options.language ?? 'typescript';
 		this.sandboxName = options.name ?? this.id;
-		this.connection = {};
-		if (options.apiKey !== undefined) this.connection.apiKey = options.apiKey;
-		if (options.apiUrl !== undefined) this.connection.apiUrl = options.apiUrl;
-		if (options.target !== undefined) this.connection.target = options.target;
+		this.auth = new DaytonaAuthManager({
+			apiUrl: options.apiUrl,
+			target: options.target,
+			staticApiKey: options.apiKey,
+			getAuthToken: options.getAuthToken,
+			refreshSkewMs: options.refreshSkewMs,
+			logger: options.logger,
+			sandboxName: this.sandboxName,
+		});
 	}
 
 	get instance(): Sandbox {
@@ -108,7 +128,7 @@ export class DaytonaSandbox extends BaseSandbox {
 	override async start(): Promise<void> {
 		if (this.sandbox) return;
 
-		const client = this.getDaytona();
+		const client = await this.getDaytona();
 		const existing = await this.findExistingSandbox(client);
 		if (existing) {
 			this.sandbox = existing;
@@ -122,19 +142,22 @@ export class DaytonaSandbox extends BaseSandbox {
 
 	override async stop(): Promise<void> {
 		if (!this.sandbox) return;
+		await this.ensureAuthFresh();
 		await this.sandbox.stop(Math.ceil(this.timeout / 1000));
 		this.sandbox = undefined;
 	}
 
 	override async destroy(): Promise<void> {
 		if (this.sandbox) {
+			await this.ensureAuthFresh();
 			await this.sandbox.delete(Math.ceil(this.timeout / 1000));
 			this.sandbox = undefined;
 			return;
 		}
 
 		try {
-			const existing = await this.getDaytona().get(this.sandboxName);
+			const client = await this.getDaytona();
+			const existing = await client.get(this.sandboxName);
 			await existing.delete(Math.ceil(this.timeout / 1000));
 		} catch (error) {
 			const { DaytonaNotFoundError } = loadDaytona();
@@ -149,6 +172,7 @@ export class DaytonaSandbox extends BaseSandbox {
 		options?: ExecuteCommandOptions,
 	): Promise<CommandResult> {
 		await this.ensureRunning();
+		await this.ensureAuthFresh();
 		const startedAt = Date.now();
 		const fullCommand = toShellCommand(command, args);
 		const result = await this.instance.process.executeCommand(
@@ -169,6 +193,16 @@ export class DaytonaSandbox extends BaseSandbox {
 			stderr: '',
 			executionTimeMs: Date.now() - startedAt,
 		};
+	}
+
+	/**
+	 * Ensure the cached Daytona client + bound `Sandbox` object hold a fresh
+	 * auth token. Callers that touch `this.sandbox.instance.fs`/`.process`
+	 * directly (e.g. `DaytonaFilesystem`) should await this first so the bound
+	 * accessors aren't stale.
+	 */
+	async ensureAuthFresh(): Promise<void> {
+		await this.getDaytona();
 	}
 
 	getInfo(): SandboxInfo {
@@ -202,12 +236,30 @@ export class DaytonaSandbox extends BaseSandbox {
 		return parts.join(' ');
 	}
 
-	private getDaytona(): Daytona {
-		if (!this.daytonaClient) {
-			const { Daytona } = loadDaytona();
-			this.daytonaClient = new Daytona(this.connection);
+	/**
+	 * Returns the current Daytona client, refreshing the JWT proactively if needed.
+	 *
+	 * When the auth manager rotates the underlying client (token refresh), the cached
+	 * `Sandbox` object's `.fs` / `.process` accessors are still bound to the OLD
+	 * client. Refetch via `client.get()` so subsequent operations use fresh auth.
+	 */
+	private async getDaytona(): Promise<Daytona> {
+		const client = await this.auth.getClient();
+		const generation = this.auth.getGeneration();
+		if (this.sandbox && generation !== this.lastClientGeneration) {
+			try {
+				this.sandbox = await client.get(this.sandboxName);
+			} catch (error) {
+				const { DaytonaNotFoundError } = loadDaytona();
+				if (error instanceof DaytonaNotFoundError) {
+					this.sandbox = undefined;
+				} else {
+					throw error;
+				}
+			}
 		}
-		return this.daytonaClient;
+		this.lastClientGeneration = generation;
+		return client;
 	}
 
 	private async findExistingSandbox(client: Daytona): Promise<Sandbox | null> {
@@ -224,7 +276,7 @@ export class DaytonaSandbox extends BaseSandbox {
 		} catch (error) {
 			const { DaytonaNotFoundError } = loadDaytona();
 			if (error instanceof DaytonaNotFoundError) return null;
-			if (isAuthError(error)) throw error;
+			if (isDaytonaAuthError(error)) throw error;
 			return null;
 		}
 	}

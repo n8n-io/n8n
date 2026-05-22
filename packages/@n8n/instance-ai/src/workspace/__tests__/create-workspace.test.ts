@@ -57,7 +57,7 @@ describe('createSandbox', () => {
 		);
 	});
 
-	it('should resolve apiKey via getAuthToken in proxy mode', async () => {
+	it('should pass getAuthToken through to DaytonaSandbox in proxy mode (lazy resolution)', async () => {
 		const getAuthToken = jest.fn().mockResolvedValue('jwt-token-123');
 		const config: SandboxConfig = {
 			enabled: true,
@@ -69,11 +69,12 @@ describe('createSandbox', () => {
 
 		const result = await createSandbox(config);
 
-		expect(getAuthToken).toHaveBeenCalledTimes(1);
+		expect(getAuthToken).not.toHaveBeenCalled();
 		expect(result).toBeInstanceOf(DaytonaSandbox);
 		expect(getPrivateOptions(result)).toEqual(
 			expect.objectContaining({
-				apiKey: 'jwt-token-123',
+				apiKey: undefined,
+				getAuthToken,
 				apiUrl: 'https://proxy.example.com',
 			}),
 		);
@@ -83,6 +84,7 @@ describe('createSandbox', () => {
 		const config: SandboxConfig = {
 			enabled: true,
 			provider: 'daytona',
+			daytonaApiKey: 'test-key',
 		};
 
 		const result = await createSandbox(config);
@@ -95,6 +97,7 @@ describe('createSandbox', () => {
 		const config: SandboxConfig = {
 			enabled: true,
 			provider: 'daytona',
+			daytonaApiKey: 'test-key',
 		};
 
 		const result = await createSandbox(config);

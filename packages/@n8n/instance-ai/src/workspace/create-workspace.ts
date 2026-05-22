@@ -6,6 +6,7 @@ import { LocalFilesystem } from './local-filesystem';
 import { LocalSandbox } from './local-sandbox';
 import { N8nSandboxFilesystem } from './n8n-sandbox-filesystem';
 import { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
+import type { Logger } from '../logger';
 
 export type SandboxProvider = 'daytona' | 'local' | 'n8n-sandbox';
 
@@ -39,6 +40,10 @@ interface DaytonaSandboxConfig extends SandboxConfigBase {
 	createTimeoutSeconds?: number;
 	/** When provided, called before each Daytona interaction to get a fresh auth token (e.g. a short-lived JWT for proxy mode). */
 	getAuthToken?: () => Promise<string>;
+	/** Optional override (ms) for the JWT refresh skew window. Only used in proxy mode. */
+	refreshSkewMs?: number;
+	/** Optional logger forwarded to the auth manager for refresh-event logging. */
+	logger?: Logger;
 }
 
 interface LocalSandboxConfig extends SandboxConfigBase {
@@ -66,18 +71,22 @@ export type SandboxConfig =
  * - 'daytona': Isolated Docker container via Daytona API (production)
  * - 'local': Direct host execution via LocalSandbox (development only, no isolation)
  */
+// eslint-disable-next-line @typescript-eslint/require-await -- kept async so callers can stay on `await createSandbox(...)`; future token-resolution work may re-introduce awaits.
 export async function createSandbox(
 	config: SandboxConfig,
 ): Promise<DaytonaSandbox | LocalSandbox | N8nSandboxServiceSandbox | undefined> {
 	if (!config.enabled) return undefined;
 
 	if (config.provider === 'daytona') {
-		// In proxy mode, resolve a fresh token via getAuthToken; in direct mode use the static key.
-		const apiKey = config.getAuthToken ? await config.getAuthToken() : config.daytonaApiKey;
+		// Pass the auth source through to the sandbox so it owns the JWT lifecycle:
+		// proxy mode mints fresh tokens on demand via `getAuthToken`; direct mode uses the static key.
 		return new DaytonaSandbox({
 			id: config.id,
 			name: config.name,
-			apiKey,
+			apiKey: config.getAuthToken ? undefined : config.daytonaApiKey,
+			getAuthToken: config.getAuthToken,
+			refreshSkewMs: config.refreshSkewMs,
+			logger: config.logger,
 			apiUrl: config.daytonaApiUrl,
 			...(config.image ? { image: config.image } : {}),
 			language: 'typescript',
