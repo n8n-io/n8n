@@ -2,7 +2,7 @@ import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 import type { IRunExecutionData } from 'n8n-workflow';
 
-import { InboundSecretsAccessService } from '../inbound-secrets-access.service';
+import { RuntimeCredentialsAccessService } from '../runtime-credentials-access.service';
 
 const ENCRYPTED_BLOB = 'encrypted-blob-placeholder';
 
@@ -13,9 +13,9 @@ const buildRunExecutionData = (secureArtifacts: unknown): IRunExecutionData =>
 		},
 	}) as unknown as IRunExecutionData;
 
-describe('InboundSecretsAccessService', () => {
+describe('RuntimeCredentialsAccessService', () => {
 	const cipher = mock<Cipher>();
-	const service = new InboundSecretsAccessService(cipher);
+	const service = new RuntimeCredentialsAccessService(cipher);
 
 	const plaintextArtifacts = JSON.stringify({
 		version: 1,

@@ -33,12 +33,42 @@ export const getNodeFirstMessage = z
 	.strict();
 
 /**
+ * `$('NodeName').last(branchIndex?, runIndex?)` — fetch the last item of
+ * a named node's most recent execution data.
+ */
+export const getNodeLastMessage = z
+	.object({
+		type: z.literal('getNodeLast'),
+		nodeName: z.string(),
+		branchIndex: z.number().int().nonnegative().optional(),
+		runIndex: z.number().int().nonnegative().optional(),
+	})
+	.strict();
+
+/**
+ * `$('NodeName').all(branchIndex?, runIndex?)` — fetch every item of a
+ * named node's most recent execution data as an array.
+ */
+export const getNodeAllMessage = z
+	.object({
+		type: z.literal('getNodeAll'),
+		nodeName: z.string(),
+		branchIndex: z.number().int().nonnegative().optional(),
+		runIndex: z.number().int().nonnegative().optional(),
+	})
+	.strict();
+
+/**
  * The full set of messages the bridge will accept. Discriminator is `type`.
  *
  * Use `.strict()` on each member so unknown fields are rejected rather than
  * silently ignored — this catches typos in the runtime stubs and keeps the
  * protocol surface tight.
  */
-export const bridgeMessageSchema = z.discriminatedUnion('type', [getNodeFirstMessage]);
+export const bridgeMessageSchema = z.discriminatedUnion('type', [
+	getNodeFirstMessage,
+	getNodeLastMessage,
+	getNodeAllMessage,
+]);
 
 export type BridgeMessage = z.infer<typeof bridgeMessageSchema>;

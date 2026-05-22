@@ -46,9 +46,9 @@ describe('summariseInteractiveOutput', () => {
 		expect(
 			summariseInteractiveOutput(ASK_CREDENTIAL_TOOL_NAME, {
 				credentialId: 'c1',
-				credentialName: 'My Slack OAuth',
+				credentialName: 'My Slack',
 			}),
-		).toBe('My Slack OAuth');
+		).toBe('My Slack');
 	});
 
 	it('renders ask_credential skip', () => {
