@@ -9,7 +9,6 @@ import {
 	type EndWorkflowParams,
 	type StartNodeParams,
 	type EndNodeParams,
-	type CustomAttributes,
 	isEndNodeError,
 } from './execution-level-tracer.types';
 import { OtelConfig } from './otel.config';
@@ -23,8 +22,6 @@ function isError(status: ExecutionStatus): boolean {
 
 type TrackedWorkflowSpan = {
 	span: Span;
-	customAttributes?: CustomAttributes;
-	customAttributesApplyToNodeSpans: boolean;
 };
 
 type TrackedNodeSpan = { span: Span };
@@ -67,8 +64,6 @@ export class ExecutionLevelTracer {
 
 			this.activeWorkflowSpans.set(params.executionId, {
 				span,
-				customAttributes: params.customAttributes,
-				customAttributesApplyToNodeSpans: params.customAttributesApplyToNodeSpans ?? true,
 			});
 			return toTracingParentContext(span);
 		} catch (error) {
@@ -139,7 +134,6 @@ export class ExecutionLevelTracer {
 						[ATTR.NODE_NAME]: params.node.name,
 						[ATTR.NODE_TYPE]: params.node.type,
 						[ATTR.NODE_TYPE_VERSION]: params.node.typeVersion,
-						...buildWorkflowCustomAttributesForNode(trackedWorkflowSpan),
 					},
 				},
 				parentCtx,
@@ -262,14 +256,6 @@ function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | 
 		[ATTR.NODE_ITEMS_OUTPUT]: params.outputItemCount,
 		...buildCustomAttributes(ATTR.NODE_CUSTOM_PREFIX, params.customAttributes),
 	};
-}
-
-function buildWorkflowCustomAttributesForNode(
-	trackedWorkflowSpan: TrackedWorkflowSpan | undefined,
-): Record<string, string | number | boolean> {
-	if (!trackedWorkflowSpan?.customAttributesApplyToNodeSpans) return {};
-
-	return buildCustomAttributes(ATTR.WORKFLOW_CUSTOM_PREFIX, trackedWorkflowSpan.customAttributes);
 }
 
 function buildCustomAttributes(

@@ -3879,8 +3879,6 @@
 	"workflowSettings.customTelemetryTags.tag.key.displayName": "Key",
 	"workflowSettings.customTelemetryTags.tag.value.displayName": "Value",
 	"workflowSettings.customTelemetryTags.delete": "Delete tag",
-	"workflowSettings.customTelemetryTagsApplyToNodeSpans": "Also apply to node spans",
-	"workflowSettings.customTelemetryTagsApplyToNodeSpans.help": "Send these workflow tags to node spans as well.",
 	"workflowSettings.defaultTimezone": "Default - {defaultTimezoneValue}",
 	"workflowSettings.defaultTimezoneNotValid": "Default Timezone not valid",
 	"workflowSettings.errorWorkflow": "Error Workflow (to notify when this one errors)",

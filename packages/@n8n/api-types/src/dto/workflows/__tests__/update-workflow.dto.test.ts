@@ -93,7 +93,6 @@ describe('UpdateWorkflowDto', () => {
 						{ key: 'workflow_name', value: '={{ $workflow.name }}' },
 					],
 				},
-				customTelemetryTagsApplyToNodeSpans: true,
 			};
 
 			const result = UpdateWorkflowDto.safeParse({ settings });

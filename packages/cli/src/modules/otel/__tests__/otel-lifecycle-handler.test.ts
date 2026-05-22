@@ -206,45 +206,6 @@ describe('OtelLifecycleHandler', () => {
 			);
 		});
 
-		it('should enable workflow custom telemetry tags on node spans by default', async () => {
-			await handler.onWorkflowStart({
-				...baseCtx,
-				workflow: {
-					...baseCtx.workflow,
-					settings: {
-						customTelemetryTags: {
-							tag: [{ key: 'env', value: 'production' }],
-						},
-					},
-				},
-				workflowInstance: createWorkflowInstance(),
-			});
-
-			expect(tracer.startWorkflow).toHaveBeenCalledWith(
-				expect.objectContaining({ customAttributesApplyToNodeSpans: true }),
-			);
-		});
-
-		it('should pass disabled workflow custom telemetry tag node propagation to the tracer', async () => {
-			await handler.onWorkflowStart({
-				...baseCtx,
-				workflow: {
-					...baseCtx.workflow,
-					settings: {
-						customTelemetryTags: {
-							tag: [{ key: 'env', value: 'production' }],
-						},
-						customTelemetryTagsApplyToNodeSpans: false,
-					},
-				},
-				workflowInstance: createWorkflowInstance(),
-			});
-
-			expect(tracer.startWorkflow).toHaveBeenCalledWith(
-				expect.objectContaining({ customAttributesApplyToNodeSpans: false }),
-			);
-		});
-
 		it('should skip invalid workflow custom telemetry tags and warn for unsafe values', async () => {
 			await handler.onWorkflowStart({
 				...baseCtx,

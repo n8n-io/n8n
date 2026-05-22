@@ -323,62 +323,6 @@ describe('WorkflowSettingsVue', () => {
 			);
 		});
 
-		it('should default node span propagation toggle to enabled without saving the setting', async () => {
-			const { getByTestId, getByRole } = createComponent({ pinia });
-			await flushPromises();
-
-			expect(
-				getByTestId('workflow-settings-custom-telemetry-tags-apply-to-node-spans'),
-			).toHaveAttribute('aria-checked', 'true');
-
-			await userEvent.click(getByRole('button', { name: 'Save' }));
-
-			const [, updatePayload] = workflowsStore.updateWorkflow.mock.calls[0];
-			expect(updatePayload.settings).not.toHaveProperty('customTelemetryTagsApplyToNodeSpans');
-		});
-
-		it('should save disabled node span propagation toggle', async () => {
-			const { getByTestId, getByRole } = createComponent({ pinia });
-			await flushPromises();
-
-			await userEvent.click(
-				getByTestId('workflow-settings-custom-telemetry-tags-apply-to-node-spans'),
-			);
-			await userEvent.click(getByRole('button', { name: 'Save' }));
-
-			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
-				expect.any(String),
-				expect.objectContaining({
-					settings: expect.objectContaining({
-						customTelemetryTagsApplyToNodeSpans: false,
-					}),
-				}),
-			);
-		});
-
-		it('should save enabled node span propagation toggle', async () => {
-			workflowDocumentStore.setSettings({
-				customTelemetryTagsApplyToNodeSpans: false,
-			});
-
-			const { getByTestId, getByRole } = createComponent({ pinia });
-			await flushPromises();
-
-			await userEvent.click(
-				getByTestId('workflow-settings-custom-telemetry-tags-apply-to-node-spans'),
-			);
-			await userEvent.click(getByRole('button', { name: 'Save' }));
-
-			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
-				expect.any(String),
-				expect.objectContaining({
-					settings: expect.objectContaining({
-						customTelemetryTagsApplyToNodeSpans: true,
-					}),
-				}),
-			);
-		});
-
 		it('should disable custom telemetry tag controls when user cannot update workflow', async () => {
 			workflowDocumentStore.setSettings({
 				customTelemetryTags: {
@@ -403,9 +347,6 @@ describe('WorkflowSettingsVue', () => {
 			});
 			expect(getByTestId('add-custom-telemetry-tag')).toBeDisabled();
 			expect(getByTestId('delete-custom-telemetry-tag')).toBeDisabled();
-			expect(
-				getByTestId('workflow-settings-custom-telemetry-tags-apply-to-node-spans'),
-			).toBeDisabled();
 		});
 	});
 

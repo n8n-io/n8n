@@ -307,15 +307,6 @@ const ensureCustomTelemetryTags = (): ICustomTelemetryTags => {
 	return customTelemetryTags;
 };
 
-const customTelemetryTagsApplyToNodeSpans = computed({
-	get() {
-		return workflowSettings.value.customTelemetryTagsApplyToNodeSpans !== false;
-	},
-	set(value: boolean) {
-		workflowSettings.value.customTelemetryTagsApplyToNodeSpans = value;
-	},
-});
-
 const addCustomTelemetryTag = () => {
 	ensureCustomTelemetryTags().tag?.push({ key: '', value: '' });
 };
@@ -1808,23 +1799,6 @@ onBeforeUnmount(() => {
 							/>
 						</template>
 					</div>
-					<div :class="$style['custom-telemetry-tags-toggle']">
-						<div :class="$style['custom-telemetry-tags-toggle-copy']">
-							<N8nText tag="div" size="small">
-								{{ i18n.baseText('workflowSettings.customTelemetryTagsApplyToNodeSpans') }}
-							</N8nText>
-							<N8nText tag="div" size="small" color="text-base">
-								{{ i18n.baseText('workflowSettings.customTelemetryTagsApplyToNodeSpans.help') }}
-							</N8nText>
-						</div>
-						<div>
-							<ElSwitch
-								v-model="customTelemetryTagsApplyToNodeSpans"
-								:disabled="isWorkflowSettingsReadOnly"
-								data-test-id="workflow-settings-custom-telemetry-tags-apply-to-node-spans"
-							/>
-						</div>
-					</div>
 				</div>
 			</div>
 		</template>
@@ -1977,17 +1951,6 @@ onBeforeUnmount(() => {
 
 .custom-telemetry-tags-delete {
 	justify-self: end;
-}
-
-.custom-telemetry-tags-toggle {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--sm);
-	padding-top: var(--spacing--sm);
-}
-
-.custom-telemetry-tags-toggle-copy {
-	min-width: 0;
 }
 
 .time-saved-tabs {

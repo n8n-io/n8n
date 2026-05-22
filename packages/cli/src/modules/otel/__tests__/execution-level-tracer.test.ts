@@ -383,7 +383,7 @@ describe('ExecutionLevelTracer', () => {
 			expect(nodeSpan.attributes['n8n.node.custom.llm.tokens']).toBe('500');
 		});
 
-		it('should apply workflow custom attributes to node spans by default', () => {
+		it('should not apply workflow custom attributes to node spans', () => {
 			tracer.startWorkflow({
 				executionId: 'exec-workflow-tags-on-node',
 				tracingContext: inboundTracingContext,
@@ -409,42 +409,9 @@ describe('ExecutionLevelTracer', () => {
 			});
 
 			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
-			expect(nodeSpan.attributes['n8n.workflow.custom.env']).toBe('prod');
-			expect(nodeSpan.attributes['n8n.workflow.custom.retryCount']).toBe(3);
-			expect(nodeSpan.attributes['n8n.workflow.custom.isCritical']).toBe(true);
-		});
-
-		it('should not apply workflow custom attributes to node spans when disabled', () => {
-			tracer.startWorkflow({
-				executionId: 'exec-workflow-tags-disabled',
-				tracingContext: inboundTracingContext,
-				workflow: defaultWorkflow,
-				customAttributes: { env: 'prod' },
-				customAttributesApplyToNodeSpans: false,
-			});
-			const node = { id: 'n1', name: 'Node1', type: 'test', typeVersion: 1 };
-			tracer.startNode({
-				executionId: 'exec-workflow-tags-disabled',
-				node,
-			});
-			tracer.endNode({
-				executionId: 'exec-workflow-tags-disabled',
-				node,
-				inputItemCount: 1,
-				outputItemCount: 1,
-			});
-			tracer.endWorkflow({
-				executionId: 'exec-workflow-tags-disabled',
-				status: 'success',
-				mode: 'manual',
-				isRetry: false,
-			});
-
-			const spans = otel.getFinishedSpans();
-			const workflowSpan = spans.find((s) => s.name === 'workflow.execute')!;
-			const nodeSpan = spans.find((s) => s.name === 'node.execute')!;
-			expect(workflowSpan.attributes['n8n.workflow.custom.env']).toBe('prod');
 			expect(nodeSpan.attributes['n8n.workflow.custom.env']).toBeUndefined();
+			expect(nodeSpan.attributes['n8n.workflow.custom.retryCount']).toBeUndefined();
+			expect(nodeSpan.attributes['n8n.workflow.custom.isCritical']).toBeUndefined();
 		});
 
 		it('should keep workflow and node custom attributes under separate prefixes', () => {
@@ -474,7 +441,7 @@ describe('ExecutionLevelTracer', () => {
 			});
 
 			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
-			expect(nodeSpan.attributes['n8n.workflow.custom.env']).toBe('workflow');
+			expect(nodeSpan.attributes['n8n.workflow.custom.env']).toBeUndefined();
 			expect(nodeSpan.attributes['n8n.node.custom.env']).toBe('node');
 		});
 
