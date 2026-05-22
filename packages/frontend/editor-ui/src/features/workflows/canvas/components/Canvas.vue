@@ -46,7 +46,7 @@ import type {
 import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
-import { NodeConnectionTypes, type IConnections } from 'n8n-workflow';
+import { deepCopy, NodeConnectionTypes, type IConnections } from 'n8n-workflow';
 import type { CanvasRenderData } from '../canvas.utils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
@@ -70,6 +70,8 @@ import Node from './elements/nodes/CanvasNode.vue';
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
 import CanvasNodeGroupsLayer from './elements/groups/CanvasNodeGroupsLayer.vue';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
+import { useHistoryStore } from '@/app/stores/history.store';
+import { UpdateGroupCommand } from '@/app/models/history';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -186,6 +188,7 @@ const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
 const setupPanelStore = useSetupPanelStore();
 const posthogStore = usePostHog();
+const historyStore = useHistoryStore();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
@@ -368,6 +371,7 @@ function onNodeGroupTitleFocused(groupId: string) {
 const {
 	canGroup: canGroupSelection,
 	canUngroup: canUngroupSelection,
+	selectedGroupIds,
 	groupSelection,
 	ungroupSelection,
 } = useCanvasNodeGroupActions(selectedNodes, {
@@ -376,7 +380,12 @@ const {
 
 function onKeyboardGroup() {
 	const group = groupSelection();
-	if (group) nodeGroupIdToAutofocusTitle.value = group.id;
+	if (group) {
+		nodeGroupIdToAutofocusTitle.value = group.id;
+		historyStore.pushCommandToUndo(
+			new UpdateGroupCommand(group.id, null, deepCopy(group), Date.now()),
+		);
+	}
 }
 
 const keyMap = computed(() => {
@@ -449,7 +458,20 @@ const keyMap = computed(() => {
 		fullKeymap.ctrl_shift_g = {
 			disabled: () => !canUngroupSelection.value,
 			run: () => {
+				const ids = selectedGroupIds.value;
+				const snapshots = ids
+					.map((id) => workflowDocumentStore?.value?.getGroupById(id))
+					.filter((g): g is NonNullable<typeof g> => !!g)
+					.map((g) => deepCopy(g));
+
+				if (snapshots.length > 1) historyStore.startRecordingUndo();
 				ungroupSelection();
+				for (const snapshot of snapshots) {
+					historyStore.pushCommandToUndo(
+						new UpdateGroupCommand(snapshot.id, snapshot, null, Date.now()),
+					);
+				}
+				if (snapshots.length > 1) historyStore.stopRecordingUndo();
 			},
 		};
 	}

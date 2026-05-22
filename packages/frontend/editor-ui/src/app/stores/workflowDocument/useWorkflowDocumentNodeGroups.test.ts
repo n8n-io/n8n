@@ -190,6 +190,25 @@ describe('useWorkflowDocumentNodeGroups', () => {
 		});
 	});
 
+	describe('restoreGroup', () => {
+		it('creates a group with the exact id provided', () => {
+			nodeGroups.restoreGroup({ id: 'custom-id', name: 'Restored', nodeIds: ['a', 'b'] });
+			const group = nodeGroups.getGroupById('custom-id');
+			expect(group).toBeDefined();
+			expect(group?.name).toBe('Restored');
+			expect(group?.nodeIds).toEqual(['a', 'b']);
+		});
+
+		it('overwrites an existing group with the same id', () => {
+			const original = nodeGroups.createGroup(['a', 'b'], 'Original');
+			nodeGroups.restoreGroup({ id: original.id, name: 'Updated', nodeIds: ['c', 'd'] });
+			const group = nodeGroups.getGroupById(original.id);
+			expect(group?.name).toBe('Updated');
+			expect(group?.nodeIds).toEqual(['c', 'd']);
+			expect(nodeGroups.allGroups.value).toHaveLength(1);
+		});
+	});
+
 	describe('setNodeGroups', () => {
 		it('stores groups as provided', () => {
 			const groups = [

@@ -82,6 +82,7 @@ import type {
 	ExecutionSummary,
 	IConnection,
 	INodeParameters,
+	IWorkflowGroup,
 } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -1298,6 +1299,20 @@ const evaluationTriggerNode = computed(() => {
  * History events
  */
 
+function onRevertUpdateGroup({
+	groupId,
+	state,
+}: {
+	groupId: string;
+	state: IWorkflowGroup | null;
+}) {
+	if (state === null) {
+		workflowDocumentStore?.value?.deleteGroup(groupId);
+	} else {
+		workflowDocumentStore?.value?.restoreGroup(state);
+	}
+}
+
 function addUndoRedoEventBindings() {
 	historyBus.on('nodeMove', onRevertNodePosition);
 	historyBus.on('revertAddNode', onRevertAddNode);
@@ -1307,6 +1322,7 @@ function addUndoRedoEventBindings() {
 	historyBus.on('revertRenameNode', onRevertRenameNode);
 	historyBus.on('revertReplaceNodeParameters', onRevertReplaceNodeParameters);
 	historyBus.on('enableNodeToggle', onRevertToggleNodeDisabled);
+	historyBus.on('revertUpdateGroup', onRevertUpdateGroup);
 }
 
 function removeUndoRedoEventBindings() {
@@ -1318,6 +1334,7 @@ function removeUndoRedoEventBindings() {
 	historyBus.off('revertRenameNode', onRevertRenameNode);
 	historyBus.off('revertReplaceNodeParameters', onRevertReplaceNodeParameters);
 	historyBus.off('enableNodeToggle', onRevertToggleNodeDisabled);
+	historyBus.off('revertUpdateGroup', onRevertUpdateGroup);
 }
 
 /**

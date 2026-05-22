@@ -1,5 +1,5 @@
 import type { INodeUi, XYPosition } from '@/Interface';
-import type { IConnection, INodeParameters } from 'n8n-workflow';
+import type { IConnection, INodeParameters, IWorkflowGroup } from 'n8n-workflow';
 import { createEventBus } from '@n8n/utils/event-bus';
 
 // Command names don't serve any particular purpose in the app
@@ -14,6 +14,7 @@ export const enum COMMANDS {
 	ENABLE_NODE_TOGGLE = 'enableNodeToggle',
 	RENAME_NODE = 'renameNode',
 	REPLACE_NODE_PARAMETERS = 'replaceNodeParameters',
+	UPDATE_GROUP = 'updateGroup',
 }
 
 // Triggering multiple canvas actions in sequence leaves
@@ -317,6 +318,42 @@ export class ReplaceNodeParametersCommand extends Command {
 				nodeId: this.nodeId,
 				currentProperties: this.currentParameters,
 				newProperties: this.newParameters,
+			});
+			resolve();
+		});
+	}
+}
+
+export class UpdateGroupCommand extends Command {
+	constructor(
+		private groupId: string,
+		private oldState: IWorkflowGroup | null,
+		private newState: IWorkflowGroup | null,
+		timestamp: number,
+	) {
+		super(COMMANDS.UPDATE_GROUP, timestamp);
+	}
+
+	getReverseCommand(timestamp: number): Command {
+		return new UpdateGroupCommand(this.groupId, this.newState, this.oldState, timestamp);
+	}
+
+	isEqualTo(other: Command): boolean {
+		if (!(other instanceof UpdateGroupCommand)) return false;
+		return (
+			other.groupId === this.groupId &&
+			JSON.stringify(other.oldState?.nodeIds) === JSON.stringify(this.oldState?.nodeIds) &&
+			JSON.stringify(other.newState?.nodeIds) === JSON.stringify(this.newState?.nodeIds) &&
+			other.oldState?.name === this.oldState?.name &&
+			other.newState?.name === this.newState?.name
+		);
+	}
+
+	async revert(): Promise<void> {
+		return await new Promise<void>((resolve) => {
+			historyBus.emit('revertUpdateGroup', {
+				groupId: this.groupId,
+				state: this.oldState,
 			});
 			resolve();
 		});

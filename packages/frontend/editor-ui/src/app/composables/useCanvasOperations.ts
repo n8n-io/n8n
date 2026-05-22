@@ -43,6 +43,7 @@ import {
 	RemoveNodeCommand,
 	RenameNodeCommand,
 	ReplaceNodeParametersCommand,
+	UpdateGroupCommand,
 } from '@/app/models/history';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -477,6 +478,10 @@ export function useCanvasOperations() {
 			return;
 		}
 
+		const groupBefore = trackHistory
+			? deepCopy(workflowDocumentStore.value.getGroupForNode(id))
+			: undefined;
+
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
@@ -493,6 +498,14 @@ export function useCanvasOperations() {
 
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(new RemoveNodeCommand(node, Date.now()));
+
+			if (groupBefore) {
+				const afterGroup =
+					deepCopy(workflowDocumentStore.value.getGroupById(groupBefore.id)) ?? null;
+				historyStore.pushCommandToUndo(
+					new UpdateGroupCommand(groupBefore.id, groupBefore, afterGroup, Date.now()),
+				);
+			}
 
 			if (trackBulk) {
 				historyStore.stopRecordingUndo();

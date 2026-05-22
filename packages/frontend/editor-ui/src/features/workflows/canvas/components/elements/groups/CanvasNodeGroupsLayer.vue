@@ -2,11 +2,13 @@
 import { computed, onBeforeUnmount } from 'vue';
 import { useVueFlow, type GraphNode } from '@vue-flow/core';
 import { useEventListener } from '@vueuse/core';
-import type { IWorkflowGroup } from 'n8n-workflow';
+import { deepCopy, type IWorkflowGroup } from 'n8n-workflow';
 
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useVueFlowTransformPaneTeleport } from '../../../composables/useVueFlowTransformPaneTeleport';
 import { snapPositionToGrid } from '@/app/utils/nodeViewUtils';
+import { useHistoryStore } from '@/app/stores/history.store';
+import { UpdateGroupCommand } from '@/app/models/history';
 import CanvasNodeGroupOverlay from './CanvasNodeGroupOverlay.vue';
 
 const props = withDefaults(
@@ -26,6 +28,7 @@ const emit = defineEmits<{
 }>();
 
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const historyStore = useHistoryStore();
 const { findNode, updateNode, viewport } = useVueFlow();
 const { teleportTarget } = useVueFlowTransformPaneTeleport();
 
@@ -40,6 +43,29 @@ function getMembers(group: IWorkflowGroup): GraphNode[] {
 
 function onTitleFocused(id: string) {
 	emit('title:focused', id);
+}
+
+function onUngroup(groupId: string) {
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return;
+	const snapshot = deepCopy(group);
+	workflowDocumentStore.value.deleteGroup(groupId);
+	historyStore.pushCommandToUndo(new UpdateGroupCommand(groupId, snapshot, null, Date.now()));
+}
+
+function onUpdateName(groupId: string, newName: string) {
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group || group.name === newName) return;
+
+	const oldSnapshot = deepCopy(group);
+	workflowDocumentStore.value.updateName(groupId, newName);
+	const updated = workflowDocumentStore.value.getGroupById(groupId);
+
+	if (updated) {
+		historyStore.pushCommandToUndo(
+			new UpdateGroupCommand(groupId, oldSnapshot, deepCopy(updated), Date.now()),
+		);
+	}
 }
 
 const visibleGroups = computed(() =>
@@ -131,9 +157,9 @@ function onHeaderDragStart(groupId: string, event: MouseEvent) {
 			:member-nodes="members"
 			:read-only="readOnly"
 			:autofocus-title="group.id === autofocusGroupId"
-			@update:name="workflowDocumentStore.updateName"
+			@update:name="onUpdateName"
 			@title:focused="onTitleFocused"
-			@ungroup="workflowDocumentStore.deleteGroup"
+			@ungroup="onUngroup"
 			@header:dragstart="onHeaderDragStart"
 		/>
 	</Teleport>

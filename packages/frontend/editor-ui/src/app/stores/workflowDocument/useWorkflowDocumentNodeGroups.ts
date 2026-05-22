@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import uniq from 'lodash/uniq';
-import type { IWorkflowGroup } from 'n8n-workflow';
+import { deepCopy, type IWorkflowGroup } from 'n8n-workflow';
 import { CHANGE_ACTION } from './types';
 import type { ChangeAction, ChangeEvent } from './types';
 
@@ -153,6 +153,10 @@ export function useWorkflowDocumentNodeGroups() {
 		);
 	}
 
+	function restoreGroup(group: IWorkflowGroup) {
+		applyUpsertGroup(deepCopy(group), CHANGE_ACTION.ADD);
+	}
+
 	function getGroupById(id: string): IWorkflowGroup | undefined {
 		return groups.value.get(id);
 	}
@@ -189,6 +193,7 @@ export function useWorkflowDocumentNodeGroups() {
 		deleteGroup,
 		addNodesToGroup,
 		replaceNodeInGroup,
+		restoreGroup,
 		getGroupById,
 		getGroupForNode,
 		removeNodeFromGroups,

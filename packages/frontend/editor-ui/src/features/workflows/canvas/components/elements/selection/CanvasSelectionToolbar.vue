@@ -9,6 +9,9 @@ import type { GraphNode } from '@vue-flow/core';
 import { useVueFlowTransformPaneTeleport } from '../../../composables/useVueFlowTransformPaneTeleport';
 import { useCanvasNodeGroupActions } from '../../../composables/useCanvasNodeGroupActions';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
+import { useHistoryStore } from '@/app/stores/history.store';
+import { UpdateGroupCommand } from '@/app/models/history';
+import { deepCopy } from 'n8n-workflow';
 
 const TOOLBAR_OFFSET_PX = 12;
 const GROUP_NODES_SHORTCUT = { metaKey: true, keys: ['G'] };
@@ -25,6 +28,7 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
+const historyStore = useHistoryStore();
 const { teleportTarget } = useVueFlowTransformPaneTeleport();
 const { isSelectionExtractable } = useSelectionValidation();
 const { canGroup, groupSelection } = useCanvasNodeGroupActions(() => props.selectedNodes, {
@@ -60,7 +64,12 @@ const position = computed(() => {
 
 function onGroupClick() {
 	const group = groupSelection();
-	if (group) emit('group-created', group.id);
+	if (group) {
+		historyStore.pushCommandToUndo(
+			new UpdateGroupCommand(group.id, null, deepCopy(group), Date.now()),
+		);
+		emit('group-created', group.id);
+	}
 }
 
 function onExtractWorkflowClick() {
