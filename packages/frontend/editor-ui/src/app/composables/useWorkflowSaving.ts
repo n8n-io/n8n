@@ -161,7 +161,14 @@ export function useWorkflowSaving({
 		}
 
 		const isLoading = useCanvasStore().isLoading;
-		const currentWorkflow = id ?? getQueryParam(router.currentRoute.value.params, 'workflowId');
+		// Fall back to the workflows store when the route doesn't carry a
+		// `workflowId` param. The main editor's route has it; embedded
+		// mounts (e.g. AI artifact host) don't, but the store has been
+		// populated by the init flow.
+		const currentWorkflow =
+			id ??
+			getQueryParam(router.currentRoute.value.params, 'workflowId') ??
+			workflowsStore.workflowId;
 		const parentFolderId = getQueryParam(router.currentRoute.value.query, 'parentFolderId');
 		const uiContext = getQueryParam(router.currentRoute.value.query, 'uiContext');
 
