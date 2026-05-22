@@ -1061,11 +1061,6 @@ export class CanvasPage extends BasePage {
 		return this.getNodeGroupByTitle(title).getByTestId('canvas-node-group-ungroup');
 	}
 
-	async ungroupGroup(title: string): Promise<void> {
-		await this.getNodeGroupHeader(title).hover();
-		await this.groupUngroupButton(title).click();
-	}
-
 	getNodeGroups(): Locator {
 		return this.page.getByTestId('canvas-node-group');
 	}
