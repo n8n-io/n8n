@@ -11,6 +11,7 @@ import { useApiKeysStore } from '../apiKeys.store';
 import { DateTime } from 'luxon';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useRBACStore } from '@/app/stores/rbac.store';
 import type { ApiKey, ApiKeyOwner } from '@n8n/api-types';
 
 setActivePinia(createTestingPinia());
@@ -20,6 +21,7 @@ const cloudStore = mockedStore(useCloudPlanStore);
 const apiKeysStore = mockedStore(useApiKeysStore);
 const rootStore = mockedStore(useRootStore);
 const usersStore = mockedStore(useUsersStore);
+const rbacStore = mockedStore(useRBACStore);
 
 const ownerFixture: ApiKeyOwner = {
 	id: 'u1',
@@ -63,6 +65,10 @@ describe('SettingsApiView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		usersStore.currentUserId = 'u1';
+		// mockedStore lets us override computed properties.
+		// @ts-expect-error: replacing a computed for the test
+		usersStore.currentUser = { id: 'u1' };
+		rbacStore.hasScope.mockReturnValue(false);
 	});
 
 	it('if user public api is not enabled and user is trialing it should show upgrade call to action', () => {
@@ -174,5 +180,48 @@ describe('SettingsApiView', () => {
 		await fireEvent.click(revokeButton);
 
 		expect(screen.getByText(/Revoke "test-key-1" API key/)).toBeInTheDocument();
+	});
+
+	describe('admin tabs', () => {
+		beforeEach(() => {
+			rbacStore.hasScope.mockImplementation(
+				(scope: string | string[]) =>
+					scope === 'apiKey:manage' || (Array.isArray(scope) && scope.includes('apiKey:manage')),
+			);
+		});
+
+		it("doesn't render tabs for non-admins", () => {
+			rbacStore.hasScope.mockReturnValue(false);
+			settingsStore.isPublicApiEnabled = true;
+			apiKeysStore.apiKeys = [makeKey()];
+
+			renderComponent(SettingsApiView);
+
+			expect(screen.queryByTestId('api-keys-tabs')).toBeNull();
+		});
+
+		it('renders Mine/All tabs for admins and filters by tab', async () => {
+			settingsStore.isPublicApiEnabled = true;
+			apiKeysStore.apiKeys = [
+				makeKey({ id: '1', label: 'admin-own', owner: ownerFixture }),
+				makeKey({
+					id: '2',
+					label: 'members-key',
+					owner: { id: 'u2', firstName: 'M', lastName: '', email: 'm@n8n.io' },
+				}),
+			];
+
+			renderComponent(SettingsApiView);
+
+			expect(screen.getByTestId('api-keys-tabs')).toBeInTheDocument();
+			// Default is the "Mine" tab — only the admin's own key is visible.
+			expect(screen.getByText('admin-own')).toBeInTheDocument();
+			expect(screen.queryByText('members-key')).toBeNull();
+
+			// Switch to All.
+			await fireEvent.click(screen.getByText('All (2)'));
+			expect(screen.getByText('admin-own')).toBeInTheDocument();
+			expect(screen.getByText('members-key')).toBeInTheDocument();
+		});
 	});
 });

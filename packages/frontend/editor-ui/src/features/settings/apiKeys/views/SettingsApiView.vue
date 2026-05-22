@@ -1,11 +1,12 @@
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useRBACStore } from '@/app/stores/rbac.store';
 import { DOCS_DOMAIN } from '@/app/constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { useI18n } from '@n8n/i18n';
@@ -23,6 +24,7 @@ import {
 	N8nHeading,
 	N8nLink,
 	N8nPagination,
+	N8nTabs,
 	N8nText,
 } from '@n8n/design-system';
 import { I18nT } from 'vue-i18n';
@@ -35,6 +37,7 @@ const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const cloudPlanStore = useCloudPlanStore();
 const usersStore = useUsersStore();
+const rbacStore = useRBACStore();
 
 const { showError, showMessage } = useToast();
 const documentTitle = useDocumentTitle();
@@ -56,6 +59,32 @@ const apiDocsURL = ref('');
 const scopesModalApiKey = ref<ApiKey | null>(null);
 const revokeApiKey = ref<ApiKey | null>(null);
 const revoking = ref(false);
+
+const canManageAllKeys = computed(() => rbacStore.hasScope('apiKey:manage'));
+
+const currentTab = ref<'mine' | 'all'>('mine');
+
+const ownApiKeys = computed(() =>
+	apiKeys.value.filter(
+		(key) => !key.owner || key.owner.id === usersStore.currentUser?.id,
+	),
+);
+
+const visibleApiKeys = computed(() => {
+	if (!canManageAllKeys.value) return ownApiKeys.value;
+	return currentTab.value === 'all' ? apiKeys.value : ownApiKeys.value;
+});
+
+const tabOptions = computed(() => [
+	{
+		label: `${i18n.baseText('settings.api.tabs.mine')} (${ownApiKeys.value.length})`,
+		value: 'mine' as const,
+	},
+	{
+		label: `${i18n.baseText('settings.api.tabs.all')} (${apiKeys.value.length})`,
+		value: 'all' as const,
+	},
+]);
 
 const onCreateApiKey = () => {
 	telemetry.track('User clicked create API key button');
@@ -170,9 +199,17 @@ function onOpenScopes(apiKey: ApiKey) {
 			</N8nText>
 		</p>
 
+		<N8nTabs
+			v-if="isPublicApiEnabled && canManageAllKeys && apiKeys.length"
+			v-model="currentTab"
+			:options="tabOptions"
+			data-test-id="api-keys-tabs"
+			:class="$style.tabs"
+		/>
+
 		<ApiKeyTable
-			v-if="isPublicApiEnabled && apiKeys.length"
-			:api-keys="apiKeys"
+			v-if="isPublicApiEnabled && visibleApiKeys.length"
+			:api-keys="visibleApiKeys"
 			:current-user-id="usersStore.currentUser?.id"
 			@edit="onEdit"
 			@revoke="onRevokeRequest"
@@ -298,5 +335,9 @@ function onOpenScopes(apiKey: ApiKey) {
 	align-items: center;
 	flex-wrap: wrap;
 	gap: var(--spacing--5xs);
+}
+
+.tabs {
+	margin-bottom: var(--spacing--sm);
 }
 </style>
