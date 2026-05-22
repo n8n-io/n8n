@@ -106,7 +106,7 @@ Exceptions: the old location is genuinely throwaway (e.g. a temp table this same
 - Insert fixtures via **raw SQL** with `context.escape.tableName(...)` and `context.runQuery(sql, namedParams)`. **Never** through TypeORM repositories — they evolve with the schema and break old tests over time.
 - Assert via raw SQL too. Branch on `context.isPostgres` / `context.isSqlite` for DB-specific assertions (e.g. `PRAGMA table_info` vs `information_schema`).
 - Cover the data-migration edge cases: NULLs, duplicates, invalid rows, rows already in target shape.
-- See examples in `examples.md`.
+- Read a recent test file from `packages/cli/test/migration/` for the full shape.
 
 ## After authoring
 
@@ -117,8 +117,7 @@ Exceptions: the old location is genuinely throwaway (e.g. a temp table this same
 ## More
 
 - **Full rule catalogue** (sections A–N): [reference.md](reference.md)
-
-- **Copy-pasteable migration templates** (create table, add column with partial index, backfill, FK change, SQLite override, test): [examples.md](examples.md)
+- **Real migrations to read for patterns**: browse `packages/@n8n/db/src/migrations/common/` (sort by timestamp for recent examples) — far more useful than synthetic templates.
 - **UUID PK guidance**: `packages/@n8n/db/AGENTS.md` (don't use `autoGenerate2` on UUID PKs — generate at app level with `randomUUID()`)
 - **Test API**: `packages/@n8n/backend-test-utils/MIGRATION_TESTING.md`
 - **Source of truth for `MigrationContext`**: `packages/@n8n/db/src/migrations/migration-types.ts`
