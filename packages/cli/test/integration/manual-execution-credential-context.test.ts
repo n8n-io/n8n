@@ -195,7 +195,7 @@ describe('Manual execution credential context (integration)', () => {
 			// Simulate the user logging out between execution start and resolver invocation.
 			await invalidAuthTokenRepository.insert({
 				token: cookie,
-				expiresAt: Math.floor(Date.now() / 1000) + 60 * 60,
+				expiresAt: new Date(Date.now() + 60 * 60 * 1000),
 			});
 
 			const credentialContext = toCredentialContext(await cipher.decryptV2(ctx.credentials!));
