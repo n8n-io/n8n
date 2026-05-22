@@ -130,6 +130,14 @@ describe('LoadNodesAndCredentials', () => {
 		});
 
 		describe('N8N_CUSTOM_EXTENSIONS', () => {
+			it('should return file path if url contains a relative custom file path', () => {
+				const result = instanceCustom.resolveIcon(
+					packageNameCustom,
+					`${pathPrefixCustom}/node_modules/custom-node/icon.png`,
+				);
+				expect(result).toBe(`${dirCustom}/node_modules/custom-node/icon.png`);
+			});
+
 			it('should return file path if url contains "//" with absolute custom file path', () => {
 				const result = instanceCustom.resolveIcon(
 					packageNameCustom,
