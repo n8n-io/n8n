@@ -9,6 +9,17 @@ const serverStatuses = ['active', 'deprecated'] as const;
 
 type McpRegistryServerStatus = (typeof serverStatuses)[number];
 
+export const mcpRegistryServerSupportedCredentialTypes = [
+	'googleCalendarOAuth2Api',
+	'googleDriveOAuth2Api',
+	'gmailOAuth2',
+	'jiraSoftwareCloudOAuth2Api',
+] as const;
+
+export type McpRegistryServerAuthType =
+	| 'oauth2'
+	| (typeof mcpRegistryServerSupportedCredentialTypes)[number];
+
 /**
  * The shape of an entry returned by the MCP server registry.
  */
@@ -23,7 +34,7 @@ export type McpRegistryServer = {
 	updatedAt: string;
 	icons: McpRegistryIcon[];
 	websiteUrl?: string;
-	authType: 'oauth2';
+	authType: McpRegistryServerAuthType;
 	remotes: McpRegistryRemote[];
 	tools: McpRegistryTool[];
 	isOfficial: boolean;

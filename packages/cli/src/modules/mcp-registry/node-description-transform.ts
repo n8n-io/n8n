@@ -7,7 +7,11 @@ import type {
 	Themed,
 } from 'n8n-workflow';
 
-import type { McpRegistryIcon, McpRegistryServer } from './registry/mcp-registry.types';
+import {
+	mcpRegistryServerSupportedCredentialTypes,
+	type McpRegistryIcon,
+	type McpRegistryServer,
+} from './registry/mcp-registry.types';
 
 export const MCP_REGISTRY_PACKAGE_NAME = '@n8n/mcp-registry';
 export const LANGCHAIN_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
@@ -78,10 +82,17 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 	};
 }
 
+function isSupportedExistingCredential(authType: McpRegistryServer['authType']) {
+	return (mcpRegistryServerSupportedCredentialTypes as readonly string[]).includes(authType);
+}
+
 /**
  * Get the `credentials` property for node description based on the server's auth type
  */
 function getNodeDescriptionCredentials(server: McpRegistryServer): INodeCredentialDescription[] {
+	if (isSupportedExistingCredential(server.authType)) {
+		return [{ name: server.authType, required: true }];
+	}
 	switch (server.authType) {
 		case 'oauth2':
 			return [{ name: getMcpRegistryCredentialTypeName(server), required: true }];
@@ -173,7 +184,7 @@ export function serverToNodeDescription(
 	server: McpRegistryServer,
 	baseDescription: INodeTypeDescription,
 ): INodeTypeDescription | null {
-	if (server.authType !== 'oauth2') return null;
+	if (server.authType !== 'oauth2' && !isSupportedExistingCredential(server.authType)) return null;
 
 	const remote = pickRemote(server);
 	if (!remote) return null;

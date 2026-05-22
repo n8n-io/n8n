@@ -206,6 +206,36 @@ describe('McpRegistryNodeLoader', () => {
 			expect(loader.types.credentials).toHaveLength(1);
 		});
 
+		it('loads servers using an existing credential type without registering a synthetic credential', async () => {
+			const { loadNodesAndCredentials, sourcePath } = createLoadNodesAndCredentials();
+			const serverWithExistingCredential: McpRegistryServer = {
+				...notionMockServer,
+				slug: 'gcal',
+				title: 'Google Calendar',
+				authType: 'googleCalendarOAuth2Api',
+			};
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([serverWithExistingCredential]);
+
+			await loader.loadAll();
+
+			expect(loader.types.nodes).toHaveLength(1);
+			expect(loader.types.nodes[0]).toMatchObject({
+				name: 'gcal',
+				displayName: 'Google Calendar MCP',
+				credentials: [{ name: 'googleCalendarOAuth2Api', required: true }],
+			});
+
+			expect(loader.types.credentials).toHaveLength(0);
+			expect(loader.known.credentials).toEqual({});
+			expect(() => loader.getCredential('googleCalendarOAuth2Api')).toThrow(
+				UnrecognizedCredentialTypeError,
+			);
+
+			const loadedNode = loader.getNode('gcal');
+			expect(loadedNode.sourcePath).toBe(sourcePath);
+		});
+
 		it('loads deprecated servers when passed through setServers', async () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
 			const deprecatedServer: McpRegistryServer = {

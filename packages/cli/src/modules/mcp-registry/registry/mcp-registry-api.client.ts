@@ -6,6 +6,7 @@ import type { McpRegistryServer } from './mcp-registry.types';
 
 export type McpRegistryServerMetadata = Pick<McpRegistryServer, 'id' | 'version' | 'updatedAt'>;
 
+const MCP_SERVERS_DEV_URL = 'http://127.0.0.1:1337/api/mcp-servers';
 const MCP_SERVERS_STAGING_URL = 'https://api-staging.n8n.io/api/mcp-servers';
 const MCP_SERVERS_PRODUCTION_URL = 'https://api.n8n.io/api/mcp-servers';
 
@@ -61,11 +62,13 @@ export class McpRegistryApiClient {
 	}
 
 	private getUrl(): string {
-		const environment = process.env.ENVIRONMENT;
-		if (environment === 'staging') {
-			return MCP_SERVERS_STAGING_URL;
+		switch (process.env.ENVIRONMENT) {
+			case 'dev':
+				return process.env.N8N_MCP_SERVERS_DEV_URL || MCP_SERVERS_DEV_URL;
+			case 'staging':
+				return MCP_SERVERS_STAGING_URL;
+			default:
+				return MCP_SERVERS_PRODUCTION_URL;
 		}
-
-		return MCP_SERVERS_PRODUCTION_URL;
 	}
 }

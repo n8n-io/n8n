@@ -280,6 +280,25 @@ describe('serverToNodeDescription', () => {
 	});
 });
 
+describe('serverToNodeDescription with supported native credential types', () => {
+	it.each([
+		'googleCalendarOAuth2Api',
+		'googleDriveOAuth2Api',
+		'gmailOAuth2',
+		'jiraSoftwareCloudOAuth2Api',
+	] as const)(
+		'wires up the %s credential directly on the synthetic node description',
+		(authType) => {
+			const server: McpRegistryServer = { ...notionMockServer, authType };
+
+			const description = serverToNodeDescription(server, baseDescription);
+
+			expect(description).not.toBeNull();
+			expect(description?.credentials).toEqual([{ name: authType, required: true }]);
+		},
+	);
+});
+
 describe('serverToCredentialDescription', () => {
 	it('returns a description for servers with OAuth2 auth type', () => {
 		const description = serverToCredentialDescription(notionMockServer);

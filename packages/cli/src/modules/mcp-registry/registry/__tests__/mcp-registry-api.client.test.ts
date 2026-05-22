@@ -11,14 +11,17 @@ const mockPaginatedRequest = paginatedRequest as jest.MockedFunction<typeof pagi
 
 const PRODUCTION_URL = 'https://api.n8n.io/api/mcp-servers';
 const STAGING_URL = 'https://api-staging.n8n.io/api/mcp-servers';
+const DEV_DEFAULT_URL = 'http://127.0.0.1:1337/api/mcp-servers';
 
 describe('McpRegistryApiClient', () => {
 	let client: McpRegistryApiClient;
 	const originalEnv = process.env.ENVIRONMENT;
+	const originalDevUrl = process.env.N8N_MCP_SERVERS_DEV_URL;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		delete process.env.ENVIRONMENT;
+		delete process.env.N8N_MCP_SERVERS_DEV_URL;
 		client = new McpRegistryApiClient();
 	});
 
@@ -27,6 +30,11 @@ describe('McpRegistryApiClient', () => {
 			process.env.ENVIRONMENT = originalEnv;
 		} else {
 			delete process.env.ENVIRONMENT;
+		}
+		if (originalDevUrl !== undefined) {
+			process.env.N8N_MCP_SERVERS_DEV_URL = originalDevUrl;
+		} else {
+			delete process.env.N8N_MCP_SERVERS_DEV_URL;
 		}
 	});
 
@@ -58,6 +66,46 @@ describe('McpRegistryApiClient', () => {
 
 		it('should use production URL when ENVIRONMENT is production', async () => {
 			process.env.ENVIRONMENT = 'production';
+			mockPaginatedRequest.mockResolvedValue([]);
+
+			await client.fetchAllServers();
+
+			expect(mockPaginatedRequest).toHaveBeenCalledWith(
+				PRODUCTION_URL,
+				expect.any(Object),
+				expect.any(Object),
+			);
+		});
+
+		it('should use the default dev URL when ENVIRONMENT is dev', async () => {
+			process.env.ENVIRONMENT = 'dev';
+			mockPaginatedRequest.mockResolvedValue([]);
+
+			await client.fetchAllServers();
+
+			expect(mockPaginatedRequest).toHaveBeenCalledWith(
+				DEV_DEFAULT_URL,
+				expect.any(Object),
+				expect.any(Object),
+			);
+		});
+
+		it('should use N8N_MCP_SERVERS_DEV_URL override when ENVIRONMENT is dev', async () => {
+			process.env.ENVIRONMENT = 'dev';
+			process.env.N8N_MCP_SERVERS_DEV_URL = 'http://localhost:9999/api/mcp-servers';
+			mockPaginatedRequest.mockResolvedValue([]);
+
+			await client.fetchAllServers();
+
+			expect(mockPaginatedRequest).toHaveBeenCalledWith(
+				'http://localhost:9999/api/mcp-servers',
+				expect.any(Object),
+				expect.any(Object),
+			);
+		});
+
+		it('should ignore N8N_MCP_SERVERS_DEV_URL when ENVIRONMENT is not dev', async () => {
+			process.env.N8N_MCP_SERVERS_DEV_URL = 'http://localhost:9999/api/mcp-servers';
 			mockPaginatedRequest.mockResolvedValue([]);
 
 			await client.fetchAllServers();
