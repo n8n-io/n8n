@@ -9,7 +9,7 @@ function normalizePathSegment(segment: string): string {
 	if (!segment || segment === '/') return '';
 	let normalized = segment;
 	if (!normalized.startsWith('/')) normalized = '/' + normalized;
-	if (normalized.endsWith('/')) normalized = normalized.slice(0, -1);
+	while (normalized.endsWith('/')) normalized = normalized.slice(0, -1);
 	return normalized;
 }
 
