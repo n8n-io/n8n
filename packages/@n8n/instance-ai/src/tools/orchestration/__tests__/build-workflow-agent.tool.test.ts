@@ -2,6 +2,7 @@ import type { BuiltTool } from '@n8n/agents';
 import {
 	applyBranchReadOnlyOverrides,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	type InstanceAiEvent,
 	type InstanceAiPermissions,
 } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
@@ -1535,6 +1536,47 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		expect(context.logger.warn).not.toHaveBeenCalledWith(
 			'build-workflow-with-agent called outside plan/replan context — rejecting',
 			expect.anything(),
+		);
+	});
+
+	it('passes parse-file to the builder when attachments registered it', async () => {
+		const publish = jest.fn<undefined, [string, InstanceAiEvent]>();
+		const context = createMockContext({
+			isReplanFollowUp: true,
+			eventBus: {
+				publish,
+				subscribe: jest.fn(),
+				getEventsAfter: jest.fn(),
+				getNextEventId: jest.fn(),
+				getEventsForRun: jest.fn().mockReturnValue([]),
+				getEventsForRuns: jest.fn().mockReturnValue([]),
+			},
+			domainContext: createMockDomainContext(),
+			domainTools: mockToolRegistry({
+				'build-workflow': mockBuiltTool('build-workflow'),
+				nodes: mockBuiltTool('nodes'),
+				workflows: mockBuiltTool('workflows'),
+				'data-tables': mockBuiltTool('data-tables'),
+				'parse-file': mockBuiltTool('parse-file'),
+				'ask-user': mockBuiltTool('ask-user'),
+				research: mockBuiltTool('research'),
+			}),
+			spawnBackgroundTask: jest.fn().mockReturnValue({
+				status: 'started',
+				taskId: 'build-task',
+				agentId: 'agent-builder',
+			}),
+		});
+		const tool = createBuildWorkflowAgentTool(context);
+
+		await executeTool(tool, { task: 'Build a workflow that imports the attached CSV' });
+
+		const publishedEvent = publish.mock.calls[0]?.[1];
+		if (publishedEvent?.type !== 'agent-spawned') {
+			throw new Error('Expected builder to publish an agent-spawned event');
+		}
+		expect(publishedEvent.payload.tools).toEqual(
+			expect.arrayContaining(['data-tables', 'parse-file']),
 		);
 	});
 

@@ -214,6 +214,7 @@ const BUILDER_SANDBOX_TOOL_NAMES = [
 	'nodes',
 	'executions',
 	DATA_TABLES_TOOL_ID,
+	'parse-file',
 	ASK_USER_TOOL_ID,
 	'research',
 ] as const;
@@ -223,6 +224,7 @@ const BUILDER_TOOL_MODE_TOOL_NAMES = [
 	'nodes',
 	'workflows',
 	DATA_TABLES_TOOL_ID,
+	'parse-file',
 	ASK_USER_TOOL_ID,
 	'research',
 ] as const;

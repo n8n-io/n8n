@@ -98,26 +98,27 @@ describe('PlannedTaskStorage', () => {
 			expect(loaded).toBeNull();
 		});
 
-		it('keeps legacy manage-data-tables tasks readable', async () => {
-			const graph = makeGraph({
-				tasks: [
-					{
-						id: 'tables-1',
-						title: 'Manage data tables',
-						kind: 'manage-data-tables',
-						spec: 'Import rows',
-						deps: [],
-						status: 'planned',
-					},
-				],
-			});
+		it('returns null for legacy manage-data-tables graphs', async () => {
 			memory.getThread.mockResolvedValue({
-				metadata: { instanceAiPlannedTasks: graph },
+				metadata: {
+					instanceAiPlannedTasks: {
+						...makeGraph(),
+						tasks: [
+							{
+								id: 'tables-1',
+								title: 'Manage data tables',
+								kind: 'manage-data-tables',
+								spec: 'Import rows',
+								deps: [],
+								status: 'planned',
+							},
+						],
+					},
+				},
 			});
 
 			const loaded = await storage.get('thread-1');
-
-			expect(loaded?.tasks[0]?.kind).toBe('manage-data-tables');
+			expect(loaded).toBeNull();
 		});
 	});
 

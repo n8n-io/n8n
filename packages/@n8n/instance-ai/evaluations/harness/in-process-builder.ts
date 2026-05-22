@@ -25,7 +25,7 @@
 // resumable-stream control contract even though the auto-approve path has
 // nothing to await.
 
-import { Agent, type Workspace } from '@n8n/agents';
+import { Agent, type RuntimeSkillSource, type Workspace } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { createWriteStream, type WriteStream } from 'node:fs';
@@ -40,6 +40,7 @@ import {
 	type InMemoryWorkflowTaskService,
 } from './stub-workflow-task-service';
 import type { SimpleWorkflow } from '../../../ai-workflow-builder.ee/src/types/workflow';
+import { attachRuntimeWorkspaceCapabilities } from '../../src/agent/runtime-workspace';
 import { MAX_STEPS } from '../../src/constants/max-steps';
 import type { InstanceAiEventBus, StoredEvent } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
@@ -47,6 +48,8 @@ import {
 	executeResumableStream,
 	normalizeStreamSource,
 } from '../../src/runtime/resumable-stream-executor';
+import { materializeRuntimeSkillsIntoWorkspace } from '../../src/skills/materialize-runtime-skills';
+import { loadInstanceAiRuntimeSkillSource } from '../../src/skills/runtime-skills';
 import { createToolRegistry, toolRegistryValues } from '../../src/tool-registry';
 import { createAllTools } from '../../src/tools';
 import { createSandboxBuilderAgentPrompt } from '../../src/tools/orchestration/build-workflow-agent.prompt';
@@ -175,6 +178,7 @@ export async function buildInProcess(
 	};
 
 	const traceCollector = createToolTraceCollector();
+	const logger = silentLogger();
 
 	const chunkLog = options.logPath ? await openChunkLog(options.logPath) : null;
 	chunkLog?.writeHeader(options.prompt, { modelId, maxSteps, timeoutMs });
@@ -230,6 +234,7 @@ export async function buildInProcess(
 		);
 	}
 	let root: string;
+	let runtimeSkills: RuntimeSkillSource | undefined;
 	try {
 		root = path.posix.join(
 			await getWorkspaceRoot(workspace),
@@ -237,7 +242,15 @@ export async function buildInProcess(
 			`eval-builder-${nanoid(6)}`,
 		);
 		await setupSandboxWorkspace(workspace, services.context, { root });
-		workspace = createScopedWorkspace(workspace, root);
+		const runtimeSkillSource = loadInstanceAiRuntimeSkillSource();
+		const materializedRuntimeSkills = await materializeRuntimeSkillsIntoWorkspace({
+			source: runtimeSkillSource,
+			workspace,
+			root,
+			logger,
+		});
+		runtimeSkills = materializedRuntimeSkills?.source ?? runtimeSkillSource;
+		workspace = createScopedWorkspace(workspace, root, materializedRuntimeSkills?.env);
 	} catch (error) {
 		chunkLog?.write({
 			kind: 'error',
@@ -274,7 +287,6 @@ export async function buildInProcess(
 	const threadId = 'eval-thread-' + nanoid(6);
 	const runId = 'eval-run-' + nanoid(6);
 	const agentId = 'eval-builder-' + nanoid(6);
-	const logger = silentLogger();
 
 	// In-memory build-outcome / verification store. Lives for the duration
 	// of this single build; never shared. The workflowTaskService interface
@@ -333,8 +345,8 @@ export async function buildInProcess(
 				anthropic: { cacheControl: { type: 'ephemeral' as const } },
 			},
 		})
-		.tool(toolRegistryValues(builderTools))
-		.workspace(workspace);
+		.tool(toolRegistryValues(builderTools));
+	attachRuntimeWorkspaceCapabilities(agent, { workspace, runtimeSkills });
 
 	const abortController = new AbortController();
 	const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs);

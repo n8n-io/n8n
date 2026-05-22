@@ -23,7 +23,7 @@ import {
 import { useElementSize, useScroll, useSessionStorage, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type { ChatArtifact, InstanceAiAttachment } from '@n8n/api-types';
-import { collectChatArtifacts, parseMessage } from '@n8n/chat-hub';
+import { collectChatArtifacts } from '@n8n/chat-hub';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
@@ -52,6 +52,7 @@ import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
 import { buildFixWithAiPrompt } from './fixWithAi';
+import { collectInstanceAiChatArtifactChunks } from './chatArtifacts';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import { TabsRoot } from 'reka-ui';
 import ChatArtifactViewer from '@/features/ai/chatHub/components/ChatArtifactViewer.vue';
@@ -138,12 +139,7 @@ const preview = useCanvasPreview({
 // <command:artifact-create> share the preview surface with workflow and
 // data-table artifacts, so report-style skill output never needs a sandbox path.
 const chatArtifacts = computed<ChatArtifact[]>(() =>
-	collectChatArtifacts(
-		thread.messages.flatMap((message) => {
-			if (message.role !== 'assistant' || !message.content) return [];
-			return parseMessage({ type: 'ai', content: message.content });
-		}),
-	),
+	collectChatArtifacts(collectInstanceAiChatArtifactChunks(thread.messages)),
 );
 const isChatArtifactViewerCollapsed = ref(true);
 const selectedChatArtifactIndex = ref(0);
