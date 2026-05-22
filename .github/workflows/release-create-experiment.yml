@@ -1,0 +1,62 @@
+name: 'Release: Create Experiment PR'
+run-name: 'Release: Create Experiment Release PR for track ${{ inputs.track }}'
+
+on:
+  workflow_call:
+    inputs:
+      base-branch:
+        description: 'The branch, tag, or commit to create this release PR from.'
+        required: true
+        type: string
+      track:
+        description: 'Release Track'
+        required: true
+        type: string
+
+  workflow_dispatch:
+    inputs:
+      base-branch:
+        description: 'The branch, tag, or commit to create this release PR from.'
+        required: true
+        type: string
+      track:
+        description: 'Release Track'
+        required: true
+        type: choice
+        options: [stable, beta, v1]
+
+jobs:
+  determine-version-info:
+    name: Determine publishing track
+    runs-on: ubuntu-latest
+    outputs:
+      release_candidate_branch: ${{ steps.determine-branch.outputs.release_candidate_branch }}
+      should_update: ${{ steps.determine-branch.outputs.should_update }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+
+      - name: Determine release candidate branch from track
+        id: determine-branch
+        env:
+          TRACK: ${{ inputs.track }}
+        run: node .github/scripts/determine-release-candidate-branch-for-track.mjs
+
+  create-release-pr:
+    name: Create release PR
+    needs: [determine-version-info]
+    uses: ./.github/workflows/release-create-pr.yml
+    secrets: inherit
+    with:
+      base-branch: ${{ needs.determine-version-info.outputs.release_candidate_branch }}
+      release-type: experimental
+
