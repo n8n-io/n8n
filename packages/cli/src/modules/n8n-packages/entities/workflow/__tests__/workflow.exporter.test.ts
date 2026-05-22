@@ -77,7 +77,7 @@ describe('WorkflowExporter', () => {
 				workflowIds: ['present-1', 'missing-or-denied'],
 				writer,
 			}),
-		).rejects.toThrow(/missing-or-denied/);
+		).rejects.toThrow('1 workflow(s) not found or not accessible. Export aborted.');
 	});
 
 	it('writes one entry per finder-returned workflow, even if the request repeats an id', async () => {
