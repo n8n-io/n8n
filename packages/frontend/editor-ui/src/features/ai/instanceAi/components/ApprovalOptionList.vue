@@ -61,7 +61,7 @@ function onKeydown(event: KeyboardEvent) {
 </script>
 
 <template>
-	<ConfirmationFooter layout="column">
+	<ConfirmationFooter layout="column" :class="$style.footer">
 		<div
 			ref="container"
 			:class="$style.list"
@@ -89,16 +89,16 @@ function onKeydown(event: KeyboardEvent) {
 				@click="emit('select', option.key)"
 				@mouseenter="highlightedIndex = idx"
 			>
-				<N8nIcon :class="$style.leadingIcon" :icon="option.icon" size="small" />
+				<N8nIcon :class="$style.leadingIcon" :icon="option.icon" size="large" />
 				<span :class="$style.label">
-					<span :class="option.suffix ? $style.labelStrong : undefined">{{ option.label }}</span>
+					<span :class="$style.labelStrong">{{ option.label }}</span>
 					<span v-if="option.suffix" :class="$style.labelMuted">{{ option.suffix }}</span>
 				</span>
 				<N8nIcon
 					v-if="option.withArrow !== false"
 					:class="$style.trailingIcon"
 					icon="arrow-right"
-					size="small"
+					size="large"
 				/>
 			</button>
 		</div>
@@ -112,20 +112,24 @@ function onKeydown(event: KeyboardEvent) {
 	outline: none;
 }
 
+.footer {
+	padding: 0;
+}
+
 .row {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	width: 100%;
-	padding: var(--spacing--3xs) var(--spacing--2xs);
+	height: 36px;
+	padding: var(--spacing--3xs) var(--spacing--2xs) var(--spacing--3xs) var(--spacing--xs);
 	border: none;
 	border-radius: var(--radius--lg);
 	background: none;
 	cursor: pointer;
 	text-align: left;
 	font-size: var(--font-size--sm);
-	color: var(--color--text);
-	transition: background-color 0.15s ease;
+	color: var(--text-color);
 }
 
 // Highlight: applied when the row is the current selection (keyboard or
@@ -135,24 +139,29 @@ function onKeydown(event: KeyboardEvent) {
 	background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 
 	.trailingIcon {
-		opacity: 1;
+		visibility: visible;
 	}
 }
 
 // Destructive variant only changes the highlight colour, so the cost of
 // confirming becomes obvious the moment the user lands on the row.
 .rowDestructive.highlighted {
-	background-color: var(--callout--color--background--danger);
-	color: var(--callout--color--text--danger);
+	background-color: light-dark(var(--color--red-100), var(--callout--color--background--danger));
+	color: light-dark(var(--color--red-800), var(--color--red-250));
 
 	.leadingIcon {
-		color: var(--callout--color--text--danger);
+		color: light-dark(var(--color--red-800), var(--color--red-250));
+	}
+
+	.trailingIcon {
+		color: light-dark(var(--color--red-800), var(--color--red-250));
+		opacity: 0.6;
 	}
 }
 
 .leadingIcon {
 	flex-shrink: 0;
-	color: var(--color--text--tint-1);
+	color: var(--icon-color--strong);
 }
 
 .label {
@@ -165,19 +174,19 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 .labelStrong {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .labelMuted {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	font-weight: var(--font-weight--regular);
 }
 
 .trailingIcon {
 	margin-left: auto;
-	opacity: 0;
-	color: var(--color--text--tint-1);
+	visibility: hidden;
+	color: var(--icon--color);
+	opacity: 0.7;
 	flex-shrink: 0;
-	transition: opacity 0.15s ease;
 }
 </style>

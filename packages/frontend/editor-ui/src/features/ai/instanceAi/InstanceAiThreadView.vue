@@ -428,20 +428,52 @@ watch(
 
 // --- Floating input dynamic padding ---
 const inputContainerRef = useTemplateRef<HTMLElement>('inputContainer');
+const inputSwapRef = useTemplateRef<HTMLElement>('inputSwap');
 const inputAreaHeight = ref(120);
-let resizeObserver: ResizeObserver | null = null;
+const scrollButtonBottomOffset = ref(144);
+let inputContainerResizeObserver: ResizeObserver | null = null;
+let inputSwapResizeObserver: ResizeObserver | null = null;
+
+function updateScrollButtonBottomOffset() {
+	const container = inputContainerRef.value;
+	const inputSwap = inputSwapRef.value;
+	if (!container || !inputSwap) {
+		scrollButtonBottomOffset.value = inputAreaHeight.value + 24;
+		return;
+	}
+
+	const containerBottom = container.getBoundingClientRect().bottom;
+	const inputSwapTop = inputSwap.getBoundingClientRect().top;
+	scrollButtonBottomOffset.value = Math.max(24, containerBottom - inputSwapTop + 24);
+}
 
 watch(
 	inputContainerRef,
 	(el) => {
-		resizeObserver?.disconnect();
+		inputContainerResizeObserver?.disconnect();
 		if (el) {
-			resizeObserver = new ResizeObserver((entries) => {
+			inputContainerResizeObserver = new ResizeObserver((entries) => {
 				for (const entry of entries) {
 					inputAreaHeight.value = entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height;
 				}
+				updateScrollButtonBottomOffset();
 			});
-			resizeObserver.observe(el);
+			inputContainerResizeObserver.observe(el);
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
+	inputSwapRef,
+	(el) => {
+		inputSwapResizeObserver?.disconnect();
+		if (el) {
+			inputSwapResizeObserver = new ResizeObserver(() => {
+				updateScrollButtonBottomOffset();
+			});
+			inputSwapResizeObserver.observe(el);
+			updateScrollButtonBottomOffset();
 		}
 	},
 	{ immediate: true },
@@ -483,7 +515,8 @@ onMounted(() => {
 onUnmounted(() => {
 	thread.closeSSE();
 	contentResizeObserver?.disconnect();
-	resizeObserver?.disconnect();
+	inputContainerResizeObserver?.disconnect();
+	inputSwapResizeObserver?.disconnect();
 	executionTracking.cleanup();
 });
 
@@ -645,9 +678,9 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 					<!-- Scroll to bottom button -->
 					<div
 						:class="$style.scrollButtonContainer"
-						:style="{ bottom: `${inputAreaHeight + 24}px` }"
+						:style="{ bottom: `${scrollButtonBottomOffset}px` }"
 					>
-						<Transition name="fade">
+						<Transition name="scroll-button-fade">
 							<N8nIconButton
 								v-if="userScrolledUp && thread.hasMessages"
 								variant="outline"
@@ -679,7 +712,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 								@dismiss="creditBanner.dismiss()"
 							/>
-							<div :class="$style.inputSwap">
+							<div ref="inputSwap" :class="$style.inputSwap">
 								<Transition name="input-swap">
 									<InstanceAiConfirmationPanel
 										v-if="hasFloatingConfirmation"
@@ -1116,6 +1149,16 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 .fade-enter-active,
 .fade-leave-active {
 	transition: opacity 0.2s ease;
+}
+
+.scroll-button-fade-enter-from,
+.scroll-button-fade-leave-to {
+	opacity: 0;
+}
+
+.scroll-button-fade-enter-active,
+.scroll-button-fade-leave-active {
+	transition: opacity 0.12s ease;
 }
 
 .preview-panel-slide-enter-active,

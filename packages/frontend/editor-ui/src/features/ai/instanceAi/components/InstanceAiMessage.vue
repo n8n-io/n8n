@@ -193,7 +193,7 @@ function formatJson(value: unknown): string {
 }
 
 .userBubble {
-	background: light-dark(var(--color--neutral-200), var(--color--background));
+	background: var(--assistant--color--background--user-bubble);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
 	white-space: pre-wrap;
