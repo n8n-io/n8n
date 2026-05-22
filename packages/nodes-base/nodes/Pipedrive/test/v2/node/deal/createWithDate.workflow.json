@@ -1,9 +1,9 @@
 {
-	"name": "Pipedrive v2 deal update test",
+	"name": "Pipedrive v2 deal create with date test",
 	"nodes": [
 		{
 			"parameters": {},
-			"id": "a7a7a7a7-1111-2222-3333-444444444444",
+			"id": "aa111111-bb22-cc33-dd44-ee5555555555",
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
@@ -13,15 +13,15 @@
 			"parameters": {
 				"authentication": "apiToken",
 				"resource": "deal",
-				"operation": "update",
-				"dealId": 10,
-				"updateFields": {
-					"title": "Updated Deal",
-					"value": 7500,
+				"operation": "create",
+				"title": "Test Deal",
+				"associateWith": "organization",
+				"org_id": 7,
+				"additionalFields": {
 					"expected_close_date": "2026-04-13T00:00:00.000Z"
 				}
 			},
-			"id": "b8b8b8b8-1111-2222-3333-444444444444",
+			"id": "bb222222-cc33-dd44-ee55-ff6666666666",
 			"name": "Pipedrive",
 			"type": "n8n-nodes-base.pipedrive",
 			"typeVersion": 2,
@@ -35,7 +35,7 @@
 		},
 		{
 			"parameters": {},
-			"id": "c9c9c9c9-1111-2222-3333-444444444444",
+			"id": "cc333333-dd44-ee55-ff66-aa7777777777",
 			"name": "No Operation, do nothing",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
@@ -46,16 +46,16 @@
 		"No Operation, do nothing": [
 			{
 				"json": {
-					"id": 10,
-					"title": "Updated Deal",
+					"id": 9,
+					"title": "Test Deal",
 					"creator_user_id": 25455458,
-					"value": 7500.0,
+					"value": null,
 					"person_id": null,
-					"org_id": 8,
+					"org_id": 7,
 					"stage_id": 6,
 					"currency": "USD",
-					"add_time": "2026-04-01T22:04:20Z",
-					"update_time": "2026-04-01T22:04:20Z",
+					"add_time": "2026-04-01T22:03:27Z",
+					"update_time": null,
 					"status": "open",
 					"probability": null,
 					"lost_reason": null,
