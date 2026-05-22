@@ -16,15 +16,12 @@
  *     --package n8n-workflow \
  *     [--sha <sha>]                  # default: git rev-parse HEAD
  *     [--out <path>]                 # default: <pkg>/reports/mutation/bq-payload.json
- *     [--format json|ndjson]         # default: json
  */
 
 import { execFileSync } from 'node:child_process';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-
-const VALID_FORMATS = new Set(['json', 'ndjson']);
 
 function die(code, msg) {
 	process.stderr.write(`${msg}\n`);
@@ -52,12 +49,9 @@ const args = parseArgs(process.argv.slice(2));
 
 const summaryPath = args.summary;
 const pkg = args.package;
-const format = args.format ?? 'json';
 
 if (!summaryPath) die(2, 'Missing required --summary <path>');
 if (!pkg) die(2, 'Missing required --package <name>');
-if (!VALID_FORMATS.has(format))
-	die(2, `Invalid --format: ${format}. Must be one of: ${[...VALID_FORMATS].join(', ')}`);
 if (!existsSync(summaryPath)) die(2, `Summary not found: ${summaryPath}`);
 
 const sha = args.sha ?? execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
@@ -120,16 +114,7 @@ for (const f of summary.files) {
 
 const outPath = args.out ?? path.join(pkgRoot, 'reports/mutation/bq-payload.json');
 await mkdir(path.dirname(outPath), { recursive: true });
-
-if (format === 'ndjson') {
-	const lines = [
-		...ledger.map((row) => JSON.stringify({ table: 'qa_mutation_health_ledger', row })),
-		...events.map((row) => JSON.stringify({ table: 'qa_performance_metrics', row })),
-	];
-	await writeFile(outPath, lines.join('\n') + '\n');
-} else {
-	await writeFile(outPath, JSON.stringify({ ledger, events }, null, 2));
-}
+await writeFile(outPath, JSON.stringify({ ledger, events }, null, 2));
 
 process.stderr.write(
 	`Emitted ${ledger.length} ledger row(s) + ${events.length} event row(s) → ${outPath}\n`,
