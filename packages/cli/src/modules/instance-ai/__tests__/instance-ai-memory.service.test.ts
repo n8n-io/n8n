@@ -19,6 +19,7 @@ const mockAgentMemory = {
 
 // Mock GlobalConfig
 const mockDbSnapshotStorage = { getAll: jest.fn().mockResolvedValue([]) };
+const mockCheckpointRepository = { findActiveByThreadId: jest.fn().mockResolvedValue([]) };
 
 function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemoryService {
 	const mockConfig = {
@@ -43,6 +44,7 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 		mockConfig as never,
 		mockAgentMemory as never,
 		mockDbSnapshotStorage as never,
+		mockCheckpointRepository as never,
 	);
 }
 
@@ -171,6 +173,113 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
 		expect(result.messages).toEqual([]);
+	});
+
+	it('surfaces in-flight user message from a suspended checkpoint when memory is empty', async () => {
+		// A turn that suspended at HITL never gets `saveToMemory` called by the
+		// SDK, so the user prompt + intermediate assistant messages live only
+		// in `state.messageList.messages`. The /messages endpoint should
+		// surface them so a page reload doesn't drop the original user message.
+		mockListMessages.mockResolvedValue({ messages: [] });
+		mockCheckpointRepository.findActiveByThreadId.mockResolvedValueOnce([
+			{
+				key: 'run_abc',
+				runId: 'run_abc',
+				threadId: 'thread-1',
+				expiredAt: null,
+				state: {
+					messageList: {
+						messages: [
+							{
+								id: 'cp-user-1',
+								role: 'user',
+								content: [{ type: 'text', text: 'execute my workflow' }],
+								createdAt: '2026-01-01T00:00:00.000Z',
+							},
+							{
+								id: 'cp-assistant-1',
+								role: 'assistant',
+								content: [{ type: 'text', text: 'On it!' }],
+								createdAt: '2026-01-01T00:00:01.000Z',
+							},
+						],
+					},
+				},
+				createdAt: new Date('2026-01-01T00:00:01.000Z'),
+				updatedAt: new Date('2026-01-01T00:00:01.000Z'),
+			},
+		]);
+
+		const service = createService();
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		expect(result.messages).toHaveLength(2);
+		expect(result.messages[0]).toMatchObject({ id: 'cp-user-1', role: 'user' });
+		expect(result.messages[0].content).toBe('execute my workflow');
+		expect(result.messages[1]).toMatchObject({ id: 'cp-assistant-1', role: 'assistant' });
+	});
+
+	it('prefers stored messages over checkpoint duplicates with the same id', async () => {
+		// When a previously suspended turn resumes and commits its messages to
+		// memory, the same IDs appear in both places. The stored row wins so
+		// any post-suspension edits the SDK made (e.g. final tool outcomes)
+		// are not regressed by the stale checkpoint copy.
+		mockListMessages.mockResolvedValue({
+			messages: [
+				{
+					id: 'msg-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'final version' }],
+					createdAt: new Date('2026-01-01T00:00:00.000Z'),
+				},
+			],
+		});
+		mockCheckpointRepository.findActiveByThreadId.mockResolvedValueOnce([
+			{
+				key: 'run_abc',
+				expiredAt: null,
+				state: {
+					messageList: {
+						messages: [
+							{
+								id: 'msg-1',
+								role: 'user',
+								content: [{ type: 'text', text: 'stale checkpoint copy' }],
+								createdAt: '2026-01-01T00:00:00.000Z',
+							},
+						],
+					},
+				},
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			},
+		]);
+
+		const service = createService();
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		expect(result.messages).toHaveLength(1);
+		expect(result.messages[0].content).toBe('final version');
+	});
+
+	it('tolerates a missing or unreadable checkpoint store', async () => {
+		mockListMessages.mockResolvedValue({
+			messages: [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Hello',
+					createdAt: new Date('2026-01-01T00:00:00.000Z'),
+				},
+			],
+		});
+		mockCheckpointRepository.findActiveByThreadId.mockRejectedValueOnce(new Error('db down'));
+
+		const service = createService();
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		expect(result.messages).toHaveLength(1);
+		expect(result.messages[0].role).toBe('user');
 	});
 });
 
