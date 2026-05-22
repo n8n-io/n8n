@@ -62,14 +62,14 @@ describe('workflowDocument.store orchestration', () => {
 		// Verify all are populated
 		expect(workflowDocumentStore.allNodes).toHaveLength(2);
 		expect(workflowDocumentStore.connectionsBySourceNode).toHaveProperty('A');
-		expect(workflowDocumentStore.pinData).toHaveProperty('A');
+		expect(workflowDocumentStore.pinnedDataByNodeName).toHaveProperty('A');
 
 		// removeAllNodes should clear all three
 		workflowDocumentStore.removeAllNodes();
 
 		expect(workflowDocumentStore.allNodes).toHaveLength(0);
 		expect(workflowDocumentStore.connectionsBySourceNode).toEqual({});
-		expect(workflowDocumentStore.pinData).toEqual({});
+		expect(workflowDocumentStore.pinnedDataByNodeName).toEqual({});
 	});
 
 	it('disposeWorkflowDocumentStore disposes the instance and clears scoped state', () => {
@@ -370,7 +370,7 @@ describe('workflowDocument.store orchestration', () => {
 			});
 			expect(store.allNodes).toHaveLength(2);
 			expect(store.connectionsBySourceNode).toHaveProperty('A');
-			expect(store.pinData).toEqual({ A: [{ json: { foo: 'bar' } }] });
+			expect(store.pinnedDataByNodeName).toEqual({ A: [{ json: { foo: 'bar' } }] });
 		});
 
 		it('applies safe defaults for missing optional fields', () => {
@@ -411,7 +411,7 @@ describe('workflowDocument.store orchestration', () => {
 			});
 			expect(store.allNodes).toHaveLength(0);
 			expect(store.connectionsBySourceNode).toEqual({});
-			expect(store.pinData).toEqual({});
+			expect(store.pinnedDataByNodeName).toEqual({});
 		});
 
 		it('normalizes ITag[] tags to string[]', () => {
@@ -451,7 +451,7 @@ describe('workflowDocument.store orchestration', () => {
 				tags: [...store.tags],
 				checksum: store.checksum,
 				allNodes: store.allNodes.map((n) => n.name),
-				pinData: { ...store.pinData },
+				pinData: { ...store.pinnedDataByNodeName },
 			};
 
 			store.hydrate(workflow);
@@ -463,7 +463,7 @@ describe('workflowDocument.store orchestration', () => {
 			expect([...store.tags]).toEqual(firstSnapshot.tags);
 			expect(store.checksum).toBe(firstSnapshot.checksum);
 			expect(store.allNodes.map((n) => n.name)).toEqual(firstSnapshot.allNodes);
-			expect({ ...store.pinData }).toEqual(firstSnapshot.pinData);
+			expect({ ...store.pinnedDataByNodeName }).toEqual(firstSnapshot.pinData);
 		});
 
 		describe('identity guards', () => {
@@ -579,11 +579,11 @@ describe('workflowDocument.store orchestration', () => {
 			const node = createNode({ name: 'A' });
 			store.setNodes([node]);
 			store.setPinData({ A: [{ json: { value: 1 } }] });
-			expect(store.pinData).toHaveProperty('A');
+			expect(store.pinnedDataByNodeName).toHaveProperty('A');
 
 			store.removeNode(node);
 
-			expect(store.pinData).not.toHaveProperty('A');
+			expect(store.pinnedDataByNodeName).not.toHaveProperty('A');
 		});
 
 		it('removeNodeById unpins node data', () => {
@@ -591,11 +591,11 @@ describe('workflowDocument.store orchestration', () => {
 			const node = createNode({ name: 'A' });
 			store.setNodes([node]);
 			store.setPinData({ A: [{ json: { value: 1 } }] });
-			expect(store.pinData).toHaveProperty('A');
+			expect(store.pinnedDataByNodeName).toHaveProperty('A');
 
 			store.removeNodeById(node.id);
 
-			expect(store.pinData).not.toHaveProperty('A');
+			expect(store.pinnedDataByNodeName).not.toHaveProperty('A');
 		});
 	});
 
@@ -661,7 +661,7 @@ describe('workflowDocument.store orchestration', () => {
 			expect(store.versionData).toEqual({ versionId: '', name: null, description: null });
 			expect(store.allNodes).toHaveLength(0);
 			expect(store.connectionsBySourceNode).toEqual({});
-			expect(store.pinData).toEqual({});
+			expect(store.pinnedDataByNodeName).toEqual({});
 			expect(store.viewport).toBeNull();
 		});
 	});
