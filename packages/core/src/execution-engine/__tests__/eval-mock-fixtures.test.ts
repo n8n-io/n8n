@@ -198,7 +198,7 @@ describe('eval-mock-fixtures', () => {
 				expect(buf.length).toBeGreaterThanOrEqual(256);
 			});
 
-			it('should treat OOXML formats as ZIP for now (TRUST-100 follow-up)', async () => {
+			it('should treat OOXML formats as ZIP for now', async () => {
 				const buf = synthesizeBinaryFixture(
 					'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 					'doc.docx',

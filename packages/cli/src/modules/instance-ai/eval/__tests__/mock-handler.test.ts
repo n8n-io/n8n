@@ -285,48 +285,6 @@ describe('createLlmMockHandler', () => {
 		expect(extractNodeConfig).toHaveBeenCalledTimes(1);
 	});
 
-	it('should short-circuit to a scenario-pinned fixture without calling the LLM', async () => {
-		const pinnedBytes = Buffer.from('pinned-pdf-bytes');
-		const handler = createLlmMockHandler({
-			mockFixtures: [
-				{
-					match: { nodeName: 'Slack', url: 'https://api.slack.com/**', method: 'POST' },
-					contentType: 'application/pdf',
-					filename: 'pinned.pdf',
-					bytes: pinnedBytes,
-				},
-			],
-		});
-
-		const result = await callHandler(handler);
-
-		expect(result.body).toBe(pinnedBytes);
-		expect(result.headers['content-type']).toBe('application/pdf');
-		expect(result.headers['content-disposition']).toBe('attachment; filename="pinned.pdf"');
-		expect(result.headers['content-length']).toBe(String(pinnedBytes.length));
-		// LLM is never invoked.
-		expect(mockGenerate).not.toHaveBeenCalled();
-	});
-
-	it('should fall through to the LLM when no fixture matches the request', async () => {
-		llmSubmits({ type: 'json', body: { ok: true } });
-		const handler = createLlmMockHandler({
-			mockFixtures: [
-				{
-					match: { nodeName: 'OtherNode' },
-					contentType: 'application/pdf',
-					filename: 'unmatched.pdf',
-					bytes: Buffer.from('x'),
-				},
-			],
-		});
-
-		const result = await callHandler(handler);
-
-		expect(result.body).toEqual({ ok: true });
-		expect(mockGenerate).toHaveBeenCalledTimes(1);
-	});
-
 	it('should extract config separately for different node names', async () => {
 		const { extractNodeConfig } = require('../node-config') as {
 			extractNodeConfig: jest.Mock;

@@ -20,7 +20,6 @@ import { findMockQuirks } from './mock-quirks';
 import { extractNodeConfig } from './node-config';
 import { redactBinaryBody } from './request-binary-redactor';
 import { redactSecretKeys, truncateForLlm } from './request-sanitizer';
-import { resolveScenarioFixture, type ScenarioMockFixture } from './scenario-fixtures';
 
 // ---------------------------------------------------------------------------
 // System prompt
@@ -70,12 +69,6 @@ interface MockHandlerOptions {
 	globalContext?: string;
 	/** Per-node data hints from Phase 1, keyed by node name. */
 	nodeHints?: Record<string, string>;
-	/**
-	 * Scenario-pinned fixtures that bypass the LLM for specific requests
-	 * (TRUST-100 Step 4). First-match wins; resolved bytes go straight back
-	 * to the calling node as the response body.
-	 */
-	mockFixtures?: ScenarioMockFixture[];
 	maxRetries?: number;
 }
 
@@ -96,14 +89,6 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 	const nodeConfigCache = new Map<string, string>();
 
 	return async (requestOptions, node) => {
-		// Scenario fixture short-circuit — never calls the LLM.
-		const pinned = resolveScenarioFixture(options?.mockFixtures, {
-			nodeName: node.name,
-			url: requestOptions.url,
-			method: requestOptions.method ?? 'GET',
-		});
-		if (pinned) return materializeFixture(pinned);
-
 		if (!nodeConfigCache.has(node.name)) {
 			nodeConfigCache.set(node.name, extractNodeConfig(node));
 		}
@@ -115,18 +100,6 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 			nodeConfig: nodeConfigCache.get(node.name) ?? '',
 			maxRetries: options?.maxRetries ?? DEFAULT_MAX_RETRIES,
 		});
-	};
-}
-
-function materializeFixture(fixture: ScenarioMockFixture): EvalMockHttpResponse {
-	return {
-		body: fixture.bytes,
-		headers: {
-			'content-type': fixture.contentType,
-			'content-disposition': `attachment; filename="${fixture.filename}"`,
-			'content-length': String(fixture.bytes.length),
-		},
-		statusCode: fixture.statusCode ?? 200,
 	};
 }
 

@@ -48,18 +48,6 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 		addedAt: '2026-05-19',
 	},
 	{
-		service: 'Openai',
-		guidance:
-			'OpenAI endpoints commonly seen in workflows:\n' +
-			'  * `POST /v1/audio/transcriptions` and `POST /v1/audio/translations` → JSON `{ "text": "<plausible transcript>", ... }`. The request multipart body has been redacted (you will see `__redacted: "multipart"`); derive the transcript from scenario/node hints when present, otherwise return a short generic English sentence.\n' +
-			'  * `POST /v1/images/generations` → JSON `{ "created": <unix>, "data": [{ "url": "https://example.invalid/img.png", "revised_prompt": "..." }] }`. If the request body has `response_format: "b64_json"`, replace `url` with `b64_json` containing a tiny base64 PNG-like blob (literal value `iVBORw0KGgo` is fine — the eval harness does not decode it).\n' +
-			'  * `GET /v1/files/{file_id}/content` → BINARY (`type: "binary"`). Use `contentType` matching the file MIME if known, else `application/octet-stream`. The metadata sibling `GET /v1/files/{file_id}` is JSON.\n' +
-			'  * Chat completions, embeddings, moderations, files-list, models-list → JSON only.',
-		rationale:
-			'OpenAI mixes JSON, binary, and base64-in-JSON across endpoints, and AI workflow scenarios depend on the transcript text being plausibly downstream-matchable.',
-		addedAt: '2026-05-19',
-	},
-	{
 		service: 'Googleapis',
 		guidance:
 			'Google Drive on www.googleapis.com routes both JSON and binary on the same host. Pick by path + query:\n' +

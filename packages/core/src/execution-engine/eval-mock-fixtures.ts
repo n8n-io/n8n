@@ -1,5 +1,5 @@
 /**
- * Minimal-valid binary fixtures for the eval mock layer (TRUST-100).
+ * Minimal-valid binary fixtures for the eval mock layer.
  *
  * Each fixture is the smallest byte sequence that `FileType.fromBuffer`
  * recognizes as its declared MIME, so downstream node logic that derives
@@ -232,10 +232,9 @@ function pickBinaryFixture(mime: string, filename: string): Buffer | undefined {
 	}
 	if (mime === 'video/mp4' || mime === 'audio/mp4' || mime === 'application/mp4') return MP4_FTYP;
 
-	// OOXML and other ZIP-based formats — TRUST-100 follow-up will ship proper
-	// per-format minimal fixtures with valid `[Content_Types].xml`. For now they
-	// mime-sniff as `application/zip`, which is acceptable for the eval mock layer
-	// since the structural decoder downstream is what mattered.
+	// OOXML and other ZIP-based formats mime-sniff as `application/zip` for now —
+	// acceptable for the eval mock layer since the structural decoder downstream
+	// is what matters.
 	if (
 		mime === 'application/zip' ||
 		mime === 'application/epub+zip' ||

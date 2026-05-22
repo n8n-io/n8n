@@ -112,7 +112,7 @@ export function identifyNodesForPinData(
 }
 
 // ---------------------------------------------------------------------------
-// Binary dependency detection (TRUST-100, Step 5)
+// Binary dependency detection
 // ---------------------------------------------------------------------------
 
 /**

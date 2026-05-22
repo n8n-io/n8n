@@ -68,20 +68,13 @@ describe('findMockQuirks (real registry)', () => {
 		expect(findMockQuirks('Stripe', 'POST', '/v1/charges')).toEqual([]);
 	});
 
-	describe('binary / file quirks (TRUST-100)', () => {
+	describe('binary / file quirks', () => {
 		it('returns Telegram guidance that documents both bot-API and file-CDN shapes', () => {
 			const guidance = findMockQuirks('Telegram', 'GET', '/bot123/getFile');
 			expect(guidance.length).toBeGreaterThan(0);
 			expect(guidance.join('\n')).toMatch(/\/bot\{token\}/);
 			expect(guidance.join('\n')).toMatch(/\/file\/bot/);
 			expect(guidance.join('\n')).toMatch(/\.ogg/);
-		});
-
-		it('returns Openai guidance that mentions transcriptions and image generations', () => {
-			const guidance = findMockQuirks('Openai', 'POST', '/v1/audio/transcriptions');
-			expect(guidance.length).toBeGreaterThan(0);
-			expect(guidance.join('\n')).toMatch(/transcriptions/);
-			expect(guidance.join('\n')).toMatch(/images\/generations/);
 		});
 
 		it('returns Googleapis guidance that names alt=media as the binary marker', () => {
