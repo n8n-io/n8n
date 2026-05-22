@@ -335,7 +335,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	const getWorkflowsUsingCredential = async (
 		credentialId: string,
-	): Promise<credentialsApi.CredentialUsageWorkflow[]> => {
+	): Promise<credentialsApi.CredentialUsageResponse> => {
 		return await credentialsApi.getWorkflowsUsingCredential(rootStore.restApiContext, credentialId);
 	};
 

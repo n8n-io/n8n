@@ -21,15 +21,19 @@ const credentialsStore = useCredentialsStore();
 const toast = useToast();
 
 const workflows = ref<CredentialUsageWorkflow[]>([]);
+const inaccessibleCount = ref(0);
 const isLoadingWorkflows = ref(false);
 
 async function loadWorkflows(credentialId: string) {
 	isLoadingWorkflows.value = true;
 	try {
-		workflows.value = await credentialsStore.getWorkflowsUsingCredential(credentialId);
+		const response = await credentialsStore.getWorkflowsUsingCredential(credentialId);
+		workflows.value = response.workflows;
+		inaccessibleCount.value = response.inaccessibleCount;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('credentialEdit.credentialInfo.usedIn.loadError'));
 		workflows.value = [];
+		inaccessibleCount.value = 0;
 	} finally {
 		isLoadingWorkflows.value = false;
 	}
@@ -44,8 +48,12 @@ onMounted(() => {
 watch(
 	() => props.currentCredential?.id,
 	(id) => {
-		if (id) void loadWorkflows(id);
-		else workflows.value = [];
+		if (id) {
+			void loadWorkflows(id);
+		} else {
+			workflows.value = [];
+			inaccessibleCount.value = 0;
+		}
 	},
 );
 </script>
@@ -99,34 +107,54 @@ watch(
 						{{ i18n.baseText('credentialEdit.credentialInfo.usedIn.loading') }}
 					</N8nText>
 				</div>
-				<N8nText
-					v-else-if="workflows.length === 0"
-					:compact="true"
-					color="text-light"
-					data-test-id="credential-usage-empty"
-					:class="$style.preserveLines"
-				>
-					{{ i18n.baseText('credentialEdit.credentialInfo.usedIn.empty') }}
-				</N8nText>
-				<ul v-else :class="$style.workflowList" data-test-id="credential-usage-list">
-					<li
-						v-for="workflow in workflows"
-						:key="workflow.id"
-						:class="$style.workflowItem"
-						data-test-id="credential-usage-item"
+				<template v-else>
+					<N8nText
+						v-if="workflows.length === 0 && inaccessibleCount === 0"
+						:compact="true"
+						color="text-light"
+						data-test-id="credential-usage-empty"
 					>
-						<N8nLink
-							:to="{ name: VIEWS.WORKFLOW, params: { workflowId: workflow.id } }"
-							:new-window="true"
-							theme="primary"
+						{{ i18n.baseText('credentialEdit.credentialInfo.usedIn.empty') }}
+					</N8nText>
+					<ul
+						v-else-if="workflows.length > 0"
+						:class="$style.workflowList"
+						data-test-id="credential-usage-list"
+					>
+						<li
+							v-for="workflow in workflows"
+							:key="workflow.id"
+							:class="$style.workflowItem"
+							data-test-id="credential-usage-item"
 						>
-							<span :class="$style.workflowLinkContent">
-								<span :class="$style.workflowName">{{ workflow.name }}</span>
-								<N8nIcon icon="external-link" size="xsmall" />
-							</span>
-						</N8nLink>
-					</li>
-				</ul>
+							<N8nLink
+								:to="{ name: VIEWS.WORKFLOW, params: { workflowId: workflow.id } }"
+								:new-window="true"
+								theme="primary"
+							>
+								<span :class="$style.workflowLinkContent">
+									<span :class="$style.workflowName">{{ workflow.name }}</span>
+									<N8nIcon icon="external-link" size="xsmall" />
+								</span>
+							</N8nLink>
+						</li>
+					</ul>
+					<N8nText
+						v-if="inaccessibleCount > 0"
+						:compact="true"
+						color="text-light"
+						size="small"
+						:class="$style.inaccessibleNote"
+						data-test-id="credential-usage-inaccessible"
+					>
+						{{
+							i18n.baseText('credentialEdit.credentialInfo.usedIn.inaccessible', {
+								adjustToNumber: inaccessibleCount,
+								interpolate: { count: String(inaccessibleCount) },
+							})
+						}}
+					</N8nText>
+				</template>
 			</ElCol>
 		</ElRow>
 	</div>
@@ -189,7 +217,8 @@ watch(
 	gap: var(--spacing--3xs);
 }
 
-.preserveLines {
-	white-space: pre-line;
+.inaccessibleNote {
+	display: block;
+	margin-top: var(--spacing--3xs);
 }
 </style>

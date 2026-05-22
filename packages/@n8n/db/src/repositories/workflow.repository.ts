@@ -1392,6 +1392,19 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return await qb.getMany();
 	}
 
+	/**
+	 * Count all workflows referencing the given credential ID, ignoring user
+	 * access. Used to surface how many workflows the caller cannot see.
+	 */
+	async countWorkflowsUsingCredential(credentialId: string): Promise<number> {
+		const { whereClause, parameters } = buildWorkflowsByCredentialIdQuery(
+			credentialId,
+			this.globalConfig.database.type,
+		);
+
+		return await this.createQueryBuilder('workflow').where(whereClause, parameters).getCount();
+	}
+
 	async findWorkflowsWithNodeType(nodeTypes: string[], includeNodes: boolean = false) {
 		if (!nodeTypes?.length) return [];
 

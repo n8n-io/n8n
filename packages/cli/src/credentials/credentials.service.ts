@@ -570,15 +570,26 @@ export class CredentialsService {
 					scopes: ['workflow:read'],
 				});
 
-		const workflows = await this.workflowRepository.findWorkflowsUsingCredential(credentialId, {
-			workflowIds: accessibleWorkflowIds,
-		});
+		const [workflows, totalCount] = await Promise.all([
+			this.workflowRepository.findWorkflowsUsingCredential(credentialId, {
+				workflowIds: accessibleWorkflowIds,
+			}),
+			canReadAll
+				? // Admins see everything, so skip the extra COUNT round-trip
+					Promise.resolve(undefined)
+				: this.workflowRepository.countWorkflowsUsingCredential(credentialId),
+		]);
 
-		return workflows.map((w) => ({
+		const accessible = workflows.map((w) => ({
 			id: w.id,
 			name: w.name,
 			active: w.active,
 		}));
+
+		const inaccessibleCount =
+			totalCount === undefined ? 0 : Math.max(totalCount - accessible.length, 0);
+
+		return { workflows: accessible, inaccessibleCount };
 	}
 
 	async findAllGlobalCredentialIds(includeData: boolean = false): Promise<CredentialsEntity[]> {
