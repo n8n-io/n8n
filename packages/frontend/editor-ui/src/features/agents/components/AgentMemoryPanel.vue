@@ -21,43 +21,21 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 
 const i18n = useI18n();
 const uiStore = useUIStore();
-const memory = computed(() => (props.config?.memory?.enabled ? props.config.memory : null));
 const episodicMemory = computed(() => props.config?.memory?.episodicMemory ?? null);
-const episodicMemoryEnabled = computed(
-	() => memory.value !== null && episodicMemory.value?.enabled === true,
-);
+const episodicMemoryEnabled = computed(() => episodicMemory.value?.enabled === true);
 const episodicMemoryCredential = computed(() =>
 	episodicMemory.value?.enabled === true ? episodicMemory.value.credential : null,
 );
 
-function onEnableMemory() {
+function buildEnabledMemoryConfig() {
 	const existingMemory = props.config?.memory;
-	emit('update:config', {
-		memory: {
-			...existingMemory,
-			enabled: true,
-			storage: 'n8n',
-			lastMessages: existingMemory?.lastMessages ?? DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
-		},
-	});
-}
 
-function onDisableMemory() {
-	emit('update:config', {
-		memory: {
-			...(props.config?.memory ?? { storage: 'n8n' as const }),
-			enabled: false,
-			episodicMemory: { enabled: false },
-		},
-	});
-}
-
-function onMemoryToggle(enabled: boolean) {
-	if (enabled) {
-		onEnableMemory();
-	} else {
-		onDisableMemory();
-	}
+	return {
+		...existingMemory,
+		enabled: true,
+		storage: 'n8n' as const,
+		lastMessages: existingMemory?.lastMessages ?? DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
+	};
 }
 
 function enableEpisodicMemory(credentialId: string) {
@@ -65,10 +43,7 @@ function enableEpisodicMemory(credentialId: string) {
 	const existingEpisodicMemory = existingMemory?.episodicMemory;
 	emit('update:config', {
 		memory: {
-			...existingMemory,
-			enabled: true,
-			storage: 'n8n',
-			lastMessages: existingMemory?.lastMessages ?? DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
+			...buildEnabledMemoryConfig(),
 			episodicMemory: {
 				...(existingEpisodicMemory?.enabled === true ? existingEpisodicMemory : {}),
 				enabled: true,
@@ -81,8 +56,7 @@ function enableEpisodicMemory(credentialId: string) {
 function disableEpisodicMemory() {
 	emit('update:config', {
 		memory: {
-			...(props.config?.memory ?? { storage: 'n8n' as const }),
-			enabled: props.config?.memory?.enabled ?? false,
+			...buildEnabledMemoryConfig(),
 			episodicMemory: { enabled: false },
 		},
 	});
@@ -122,20 +96,6 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 
 <template>
 	<div :class="[$style.container, props.disabled && $style.disabled]">
-		<div :class="$style.titleGroup">
-			<div :class="$style.header">
-				<N8nText tag="h3" :bold="true">{{ i18n.baseText('agents.builder.memory.title') }}</N8nText>
-				<N8nSwitch
-					:model-value="memory !== null"
-					:disabled="props.disabled"
-					data-testid="agent-memory-toggle"
-					@update:model-value="onMemoryToggle"
-				/>
-			</div>
-			<N8nText size="small" color="text-light">
-				{{ i18n.baseText('agents.builder.memory.description') }}
-			</N8nText>
-		</div>
 		<div :class="$style.row">
 			<div :class="$style.titleGroup">
 				<N8nText :bold="true">

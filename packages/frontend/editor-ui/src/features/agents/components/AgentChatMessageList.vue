@@ -66,59 +66,37 @@ function getAssistantRunContent(groupId: string): string {
 	return lines.join('\n\n');
 }
 
-function toEvidenceList(value: unknown): string[] {
-	if (!Array.isArray(value)) return [];
+interface RecallMemoryOutputEntry {
+	id: string;
+	content: string;
+}
 
-	return value
-		.flatMap((item) => {
-			if (typeof item === 'string') return [item.trim()];
-			if (!item || typeof item !== 'object') return [];
+function getRecallMemoryEntries(output: unknown): RecallMemoryOutputEntry[] {
+	if (!output || typeof output !== 'object') return [];
+	if (!('entries' in output) || !Array.isArray(output.entries)) return [];
 
-			const evidence =
-				('evidence' in item && typeof item.evidence === 'string' && item.evidence) ||
-				('evidenceText' in item && typeof item.evidenceText === 'string' && item.evidenceText) ||
-				('text' in item && typeof item.text === 'string' && item.text) ||
-				('content' in item && typeof item.content === 'string' && item.content) ||
-				'';
+	const entries: RecallMemoryOutputEntry[] = [];
 
-			return evidence ? [evidence.trim()] : [];
-		})
-		.filter((item) => item.length > 0);
+	for (const entry of output.entries) {
+		if (!entry || typeof entry !== 'object') continue;
+		if (!('id' in entry) || typeof entry.id !== 'string') continue;
+		if (!('content' in entry) || typeof entry.content !== 'string') continue;
+
+		entries.push({ id: entry.id, content: entry.content });
+	}
+
+	return entries;
 }
 
 function parseMemoryOutput(
 	output: unknown,
 ): Array<{ id: string; keyMemory: string; evidence: string[] }> {
-	if (
-		!output ||
-		typeof output !== 'object' ||
-		!('entries' in output) ||
-		!Array.isArray(output.entries)
-	) {
-		return [];
-	}
-
-	return output.entries
-		.flatMap((entry, index) => {
-			if (!entry || typeof entry !== 'object') return [];
-			const keyMemory =
-				'content' in entry && typeof entry.content === 'string' ? entry.content.trim() : '';
-			if (!keyMemory) return [];
-
-			const evidence = [
-				...('sources' in entry ? toEvidenceList(entry.sources) : []),
-				...('evidence' in entry ? toEvidenceList(entry.evidence) : []),
-			];
-
-			return [
-				{
-					id:
-						('id' in entry && typeof entry.id === 'string' && entry.id) || `${keyMemory}-${index}`,
-					keyMemory,
-					evidence,
-				},
-			];
-		})
+	return getRecallMemoryEntries(output)
+		.map((entry) => ({
+			id: entry.id,
+			keyMemory: entry.content.trim(),
+			evidence: [],
+		}))
 		.filter((memory) => memory.keyMemory.length > 0);
 }
 
