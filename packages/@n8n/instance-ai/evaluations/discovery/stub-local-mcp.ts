@@ -60,7 +60,7 @@ export function createStubLocalMcpServer(options: CreateStubLocalMcpServerOption
 			}),
 		// eslint-disable-next-line @typescript-eslint/require-await
 		callTool: async (req: McpToolCallRequest): Promise<McpToolCallResult> => {
-			// Return a normal tool-error result rather than throwing. Mastra logs an
+			// Return a normal tool-error result rather than throwing. native agent logs an
 			// error stack trace for thrown tool errors; an `isError: true` result is
 			// treated as expected and surfaced as a `tool-error` event without spam.
 			// The discovery check still records the underlying `tool-call` event, so

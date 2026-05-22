@@ -12,6 +12,7 @@ import { mock } from 'jest-mock-extended';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Telemetry } from '@/telemetry';
 
+import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -36,6 +37,7 @@ const agentId = 'agent-1';
 const projectId = 'project-1';
 const userId = 'user-1';
 const versionId = 'v1';
+type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
@@ -76,6 +78,7 @@ describe('AgentsService', () => {
 	let agentRepository: jest.Mocked<AgentRepository>;
 	let agentPublishedVersionRepository: jest.Mocked<AgentPublishedVersionRepository>;
 	let n8nMemory: jest.Mocked<N8nMemory>;
+	let memoryBackend: jest.Mocked<N8nMemoryImplementation>;
 	let n8nCheckpointStorage: jest.Mocked<N8NCheckpointStorage>;
 	let agentExecutionService: jest.Mocked<AgentExecutionService>;
 	let scheduleService: jest.Mocked<AgentScheduleService>;
@@ -90,6 +93,8 @@ describe('AgentsService', () => {
 		agentRepository = mock<AgentRepository>();
 		agentPublishedVersionRepository = mock<AgentPublishedVersionRepository>();
 		n8nMemory = mock<N8nMemory>();
+		memoryBackend = mock<N8nMemoryImplementation>();
+		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
 		n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 		agentExecutionService = mock<AgentExecutionService>();
 		agentExecutionService.recordMessage.mockResolvedValue('exec-id');
@@ -785,6 +790,61 @@ describe('AgentsService', () => {
 		});
 	});
 
+	describe('executeForWorkflow', () => {
+		it('passes execution-scoped persistence for workflow executions', async () => {
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				memory: {
+					enabled: true,
+					storage: 'n8n',
+					episodicMemory: {
+						enabled: true,
+						credential: 'cred-1',
+					},
+				},
+			};
+			const agent = makeAgent({
+				schema,
+				publishedVersion: makePublishedVersion({ schema, publishedById: userId }),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			Container.set(CredentialsService, mock<CredentialsService>());
+
+			const releaseLock = jest.fn();
+			const stream = jest.fn().mockResolvedValue({
+				stream: {
+					getReader: () => ({
+						read: jest.fn().mockResolvedValue({ done: true, value: undefined }),
+						releaseLock,
+					}),
+				},
+			});
+			jest.spyOn(service as never, 'compileIsolated').mockResolvedValue({
+				ok: true,
+				agent: { name: 'Test Agent', stream },
+			} as never);
+
+			await service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				userId,
+				projectId,
+			);
+
+			expect(stream).toHaveBeenCalledWith(
+				'hello',
+				expect.objectContaining({
+					persistence: { resourceId: 'execution-1', threadId: 'thread-1' },
+				}),
+			);
+			expect(releaseLock).toHaveBeenCalled();
+		});
+	});
+
 	describe('unpublishAgent', () => {
 		let mockTrx: { save: jest.Mock };
 		let mockTransaction: jest.Mock;
@@ -986,7 +1046,7 @@ describe('AgentsService', () => {
 				projectId,
 				agentId,
 			);
-			expect(n8nMemory.getMessages).not.toHaveBeenCalled();
+			expect(memoryBackend.getMessages).not.toHaveBeenCalled();
 			expect(result).toEqual([
 				{
 					id: 'execution-1:user',
@@ -1022,18 +1082,18 @@ describe('AgentsService', () => {
 		});
 
 		it('scopes the memory lookup to the caller via resourceId', async () => {
-			n8nMemory.getMessages.mockResolvedValue([]);
+			memoryBackend.getMessages.mockResolvedValue([]);
 
 			await service.getTestChatMessages(agentId, userId);
 
-			expect(n8nMemory.getMessages).toHaveBeenCalledWith(chatThreadId(agentId, userId), {
-				resourceId: userId,
+			expect(memoryBackend.getMessages).toHaveBeenCalledWith(chatThreadId(agentId, userId), {
+				resourceId: `draft-chat:${userId}`,
 			});
 		});
 
 		it('returns whatever memory returns for this user', async () => {
 			const persisted = [{ id: 'm1' }, { id: 'm2' }];
-			n8nMemory.getMessages.mockResolvedValue(persisted as never);
+			memoryBackend.getMessages.mockResolvedValue(persisted as never);
 
 			const result = await service.getTestChatMessages(agentId, userId);
 
@@ -1042,14 +1102,11 @@ describe('AgentsService', () => {
 	});
 
 	describe('clearTestChatMessages', () => {
-		it('deletes only the caller’s messages on their test-chat thread', async () => {
+		it('deletes the caller’s test-chat thread so derived memory is cleaned too', async () => {
 			await service.clearTestChatMessages(agentId, userId);
 
-			expect(n8nMemory.deleteMessagesByThread).toHaveBeenCalledWith(
-				chatThreadId(agentId, userId),
-				userId,
-			);
-			expect(n8nMemory.deleteThread).not.toHaveBeenCalled();
+			expect(memoryBackend.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId, userId));
+			expect(memoryBackend.deleteMessagesByThread).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1057,11 +1114,11 @@ describe('AgentsService', () => {
 		it('deletes every message and the thread row itself', async () => {
 			await service.clearAllTestChatMessages(agentId);
 
-			expect(n8nMemory.deleteThreadsByPrefix).toHaveBeenCalledWith(chatThreadId(agentId));
-			expect(n8nMemory.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId));
+			expect(memoryBackend.deleteThreadsByPrefix).toHaveBeenCalledWith(chatThreadId(agentId));
+			expect(memoryBackend.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId));
 			// Second arg must be absent — undefined means "all users".
-			expect(n8nMemory.deleteMessagesByThread.mock.calls[0]).toHaveLength(1);
-			expect(n8nMemory.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
+			expect(memoryBackend.deleteMessagesByThread.mock.calls[0]).toHaveLength(1);
+			expect(memoryBackend.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
 		});
 	});
 
@@ -1161,6 +1218,66 @@ describe('AgentsService', () => {
 			);
 
 			expect(result.missing).toContain('credential');
+		});
+
+		it('flags missing episodic memory credential when Episodic Memory is enabled', async () => {
+			credentialProvider.list.mockResolvedValue([{ id: 'main-cred' }]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						episodicMemory: {
+							enabled: true,
+							credential: 'missing-embedding-cred',
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).not.toContain('credential');
+			expect(result.missing).toContain('episodicMemory.credential');
+		});
+
+		it('accepts episodic memory credential when Episodic Memory credential exists', async () => {
+			credentialProvider.list.mockResolvedValue([{ id: 'main-cred' }, { id: 'embedding-cred' }]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						episodicMemory: {
+							enabled: true,
+							credential: 'embedding-cred',
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).not.toContain('credential');
+			expect(result.missing).not.toContain('episodicMemory.credential');
 		});
 
 		it('flags config skill refs that have no stored body', async () => {
@@ -1295,9 +1412,9 @@ describe('AgentsService', () => {
 			await service.delete(agentId, projectId);
 
 			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
-			expect(n8nMemory.deleteThreadsByPrefix).toHaveBeenCalledWith(chatThreadId(agentId));
-			expect(n8nMemory.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId));
-			expect(n8nMemory.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
+			expect(memoryBackend.deleteThreadsByPrefix).toHaveBeenCalledWith(chatThreadId(agentId));
+			expect(memoryBackend.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId));
+			expect(memoryBackend.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
 		});
 
 		it('stops the local schedule when deleting the agent', async () => {
@@ -1312,7 +1429,7 @@ describe('AgentsService', () => {
 		it('still returns true when chat cleanup fails — agent removal is the primary intent', async () => {
 			const agent = makeAgent();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-			n8nMemory.deleteThreadsByPrefix.mockRejectedValueOnce(new Error('db down'));
+			memoryBackend.deleteThreadsByPrefix.mockRejectedValueOnce(new Error('db down'));
 
 			await expect(service.delete(agentId, projectId)).resolves.toBe(true);
 		});

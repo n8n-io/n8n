@@ -44,6 +44,7 @@ export { EmbedLoginBodyDto } from './auth/embed-login-body.dto';
 
 export { CreateCredentialResolverDto } from './credential-resolver/create-credential-resolver.dto';
 export { UpdateCredentialResolverDto } from './credential-resolver/update-credential-resolver.dto';
+export { ListCredentialResolversQueryDto } from './credential-resolver/list-credential-resolvers-query.dto';
 
 export { OptionsRequestDto } from './dynamic-node-parameters/options-request.dto';
 export { ResourceLocatorRequestDto } from './dynamic-node-parameters/resource-locator-request.dto';
@@ -218,13 +219,6 @@ export {
 	SecuritySettingsDto,
 	UpdateSecuritySettingsDto,
 } from './security-settings/security-settings.dto';
-
-export {
-	RedactionEnforcementDto,
-	UpdateRedactionEnforcementDto,
-	redactionScopeSchema,
-	type RedactionScope,
-} from './redaction-enforcement/redaction-enforcement.dto';
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';

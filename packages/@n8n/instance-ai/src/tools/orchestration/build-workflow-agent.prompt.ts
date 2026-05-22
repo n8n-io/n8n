@@ -35,7 +35,7 @@ BAD (do not write anything like this):
 GOOD (one-line, only on completion or block):
   - "Family AI assistant workflow ready — uses Telegram, OpenAI, and your shopping list data table."
   - "Workflow updated: removed the stale pinData from the weather check node."
-  - "Blocked: the Linear API credential is missing and the setup wizard is needed before I can continue."`;
+  - "Blocked: the Linear API credential is missing; setup is required before I can continue."`;
 
 // ── Shared SDK reference sections ────────────────────────────────────────────
 
@@ -54,6 +54,15 @@ const NODE_CONFIGURATION_SAFETY_RULES = `## Node Configuration Safety Rules
 - Fetch \`nodes(action="type-definition")\` before configuring nodes. Generated definitions and \`@builderHint\` annotations are the source of truth.
 - Use live \`nodes(action="explore-resources")\` for resource locator, list, and model fields when credentials are available.
 - If a configuration is unclear after reading the definition, ask for clarification or use placeholders — do not guess.`;
+
+const TOOL_NAMING_RULES = `## Tool Naming Rules
+
+- Name tools by the action they perform, not by repeating the integration or tool family name.
+- Always set an explicit \`config.name\` on every \`tool(...)\` node you create. Do not rely on auto-generated names for tools.
+- Do NOT prefix a tool name with the service name when the tool already belongs to that service.
+- Prefer concise snake_case action names like \`get_email\`, \`add_labels\`, or \`mark_as_read\`.
+- Avoid redundant names like \`gmail_get_email\`, \`slack_send_message\`, or \`notion_create_page\` unless the user explicitly asked for that exact name.
+- Keep names specific enough to distinguish sibling tools, but remove repeated vendor/type prefixes first.`;
 
 // Node-specific configuration examples used to live here. They have moved
 // onto the nodes themselves as `@builderHint` annotations and `<patterns>...</patterns>`
@@ -100,6 +109,7 @@ function composeSdkRulesAndPatterns(mode: 'tool' | 'sandbox'): string {
 	return [
 		SDK_CODE_RULES,
 		mode === 'sandbox' ? SANDBOX_WORKFLOW_RULES : WORKFLOW_RULES,
+		TOOL_NAMING_RULES,
 		'## SDK Patterns Reference\n\n' + WORKFLOW_SDK_PATTERNS,
 		'## Expression Reference\n\n' + EXPRESSION_REFERENCE,
 		'## Additional Functions\n\n' + ADDITIONAL_FUNCTIONS,
@@ -414,7 +424,7 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
    - **LLM models in particular** (OpenAI, Anthropic, Groq, etc.): always call \`explore-resources\` with the node's \`@searchListMethod\` when a credential for that provider is attached. The live list reflects what the credential can actually access — free/cheap tiers are often limited (e.g. an OpenAI free-tier key may only return \`gpt-5-mini\`). Picking a model ID that the credential can't access produces a broken workflow. The list is sorted newest-first; use the \`@builderHint\` as selection guidance (e.g. "prefer the GPT-5.4 family") over the live results, not as a hard-coded pick.
    - Example: Google Calendar's \`calendar\` parameter uses \`searchListMethod: getCalendars\`. Call \`nodes(action="explore-resources")\` with \`methodName: "getCalendars"\` to get the actual calendar ID (e.g., "user@example.com"), not "primary".
    - **Never use fake IDs for discoverable resources.** Use \`placeholder()\` when the user needs to choose or create the resource after the build. For user-provided values, follow the placeholder rules in "SDK Code Rules".
-   - **If \`explore-resources\` returns more than one match and the user did not name a specific one, use \`placeholder('Select <resource>')\` for that parameter** (e.g. \`placeholder('Select a calendar')\`, \`placeholder('Select a Slack channel')\`). Picking one silently is a guess; the setup wizard surfaces placeholders so the user can choose after the build. Only pick a single match without prompting.
+   - **If \`explore-resources\` returns more than one match and the user did not name a specific one, use \`placeholder('Select <resource>')\` for that parameter** (e.g. \`placeholder('Select a calendar')\`, \`placeholder('Select a Slack channel')\`). Picking one silently is a guess; after the build, the inline setup card in the AI Assistant panel surfaces placeholders so the user can choose. Only pick a single match without prompting.
    - If the resource can't be created via n8n (e.g., Slack channels), explain clearly in your summary what the user needs to set up.
 
 5. **Write workflow code** to \`${workspaceRoot}/src/workflow.ts\`.

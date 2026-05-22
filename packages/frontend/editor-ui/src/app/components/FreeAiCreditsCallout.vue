@@ -2,15 +2,20 @@
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
 
 type Props = {
 	credentialTypeName?: string;
+	telemetrySource?: 'freeAiCreditsCallout' | 'instanceAiWorkflowSetup';
 };
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	telemetrySource: 'freeAiCreditsCallout',
+});
+
+const emit = defineEmits<{ claimed: [] }>();
 
 const LANGCHAIN_NODES_PREFIX = '@n8n/n8n-nodes-langchain.';
 const N8N_NODES_PREFIX = '@n8n/n8n-nodes.';
@@ -22,13 +27,16 @@ const NODES_WITH_OPEN_AI_API_CREDENTIAL = [
 	`${N8N_NODES_PREFIX}openAi`,
 ];
 
-const showSuccessCallout = ref(false);
-
 const ndvStore = useNDVStore();
 const i18n = useI18n();
 
-const { aiCreditsQuota, userCanClaimOpenAiCredits, claimingCredits, claimCredits } =
-	useFreeAiCredits();
+const {
+	aiCreditsQuota,
+	userCanClaimOpenAiCredits,
+	claimingCredits,
+	showSuccessCallout,
+	claimCredits,
+} = useFreeAiCredits();
 
 const isEditingOpenAiCredential = computed(
 	() => props.credentialTypeName && props.credentialTypeName === OPEN_AI_API_CREDENTIAL_TYPE,
@@ -40,23 +48,24 @@ const activeNodeHasOpenAiApiCredential = computed(
 		NODES_WITH_OPEN_AI_API_CREDENTIAL.includes(ndvStore.activeNode.type),
 );
 
-const showCallout = computed(() => {
-	return (
-		userCanClaimOpenAiCredits.value &&
-		(activeNodeHasOpenAiApiCredential.value || isEditingOpenAiCredential.value)
-	);
-});
+const isRelevantContext = computed(
+	() => activeNodeHasOpenAiApiCredential.value || isEditingOpenAiCredential.value,
+);
+
+const showCallout = computed(() => userCanClaimOpenAiCredits.value && isRelevantContext.value);
+
+const showSuccess = computed(() => showSuccessCallout.value && isRelevantContext.value);
 
 const onClaimCreditsClicked = async () => {
-	const success = await claimCredits('freeAiCreditsCallout');
+	const success = await claimCredits(props.telemetrySource);
 	if (success) {
-		showSuccessCallout.value = true;
+		emit('claimed');
 	}
 };
 </script>
 <template>
 	<N8nCallout
-		v-if="showCallout && !showSuccessCallout"
+		v-if="showCallout && !showSuccess"
 		theme="secondary"
 		icon="circle-alert"
 		class="mt-xs"
@@ -76,7 +85,7 @@ const onClaimCreditsClicked = async () => {
 			/>
 		</template>
 	</N8nCallout>
-	<N8nCallout v-else-if="showSuccessCallout" theme="success" icon="circle-check" class="mt-xs">
+	<N8nCallout v-else-if="showSuccess" theme="success" icon="circle-check" class="mt-xs">
 		<N8nText size="small">
 			{{
 				i18n.baseText('freeAi.credits.callout.success.title.part1', {

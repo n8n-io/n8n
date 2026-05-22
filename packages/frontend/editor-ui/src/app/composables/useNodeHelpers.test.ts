@@ -26,7 +26,7 @@ const mockDocumentStoreUsedCredentials: Record<string, IUsedCredential> = {};
 const mockDocumentStore = {
 	name: '',
 	settings: {},
-	pinData: {},
+	pinnedDataByNodeName: {},
 	usedCredentials: mockDocumentStoreUsedCredentials,
 	allNodes: [],
 	workflowTriggerNodes: [],

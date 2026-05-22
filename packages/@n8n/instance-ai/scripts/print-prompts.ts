@@ -72,7 +72,6 @@ function collectAgents(): AgentEntry[] {
 					label:
 						'all features enabled (research, filesystem, gateway connected, tool-search, browser, sample license hint)',
 					body: getSystemPrompt({
-						researchMode: true,
 						webhookBaseUrl: 'https://your-instance.example.com',
 						filesystemAccess: true,
 						localGateway: { status: 'connected', capabilities: ['filesystem', 'browser'] },
