@@ -192,7 +192,16 @@ describe('SourceControlImportService', () => {
 				id: '1',
 				name: 'Workflow 1',
 				active: false,
-				nodes: [],
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Node 1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
 				connections: {},
 				versionId: 'v1',
 				owner: {
@@ -200,6 +209,7 @@ describe('SourceControlImportService', () => {
 					personalEmail: 'user@example.com',
 				},
 				parentFolderId: null,
+				nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }],
 			};
 			const mockWorkflowData2 = {
 				id: '2',
@@ -213,6 +223,7 @@ describe('SourceControlImportService', () => {
 					personalEmail: 'user@example.com',
 				},
 				parentFolderId: null,
+				nodeGroups: [],
 			};
 			const candidates = [
 				mock<SourceControlledFile>({ file: mockWorkflowFile1, id: mockWorkflowData1.id }),
@@ -242,6 +253,9 @@ describe('SourceControlImportService', () => {
 				expect.objectContaining({
 					id: mockWorkflowData1.id,
 					name: mockWorkflowData1.name,
+					nodes: mockWorkflowData1.nodes,
+					connections: mockWorkflowData1.connections,
+					nodeGroups: mockWorkflowData1.nodeGroups,
 				}),
 				['id'],
 			);
@@ -249,6 +263,9 @@ describe('SourceControlImportService', () => {
 				expect.objectContaining({
 					id: mockWorkflowData2.id,
 					name: mockWorkflowData2.name,
+					nodes: mockWorkflowData2.nodes,
+					connections: mockWorkflowData2.connections,
+					nodeGroups: mockWorkflowData2.nodeGroups,
 				}),
 				['id'],
 			);
