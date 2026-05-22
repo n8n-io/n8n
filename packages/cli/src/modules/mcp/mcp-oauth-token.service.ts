@@ -268,11 +268,10 @@ export class McpOAuthTokenService {
 	}
 
 	private getAllowedAudiences(expectedAudience?: string): string[] {
-		if (expectedAudience && expectedAudience !== this.LEGACY_MCP_AUDIENCE) {
-			return [expectedAudience, this.LEGACY_MCP_AUDIENCE];
+		if (expectedAudience && expectedAudience !== this.getResourceUrl()) {
+			return [expectedAudience, this.getResourceUrl(), this.LEGACY_MCP_AUDIENCE];
 		}
-
-		return [this.LEGACY_MCP_AUDIENCE];
+		return [this.getResourceUrl(), this.LEGACY_MCP_AUDIENCE];
 	}
 
 	/**
