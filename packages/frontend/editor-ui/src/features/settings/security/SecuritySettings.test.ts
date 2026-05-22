@@ -693,6 +693,8 @@ describe('SecuritySettings', () => {
 			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
 			// One badge on the toggle row, one on the scope row.
 			expect(getAllByText('Upgrade').length).toBeGreaterThanOrEqual(2);
+			// Summary reflects stored floor='off' while the disabled dropdown previews 'production'.
+			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('No executions');
 		});
 
 		it('should not call updateSecuritySettings when clicking disabled scope dropdown', async () => {
