@@ -51,6 +51,68 @@ export interface BuilderWorkspace {
 	setFilesystemMutationGuard?: FilesystemMutationGuardSetter;
 }
 
+interface BuilderSandboxNamingHints {
+	runId?: string;
+	threadId?: string;
+}
+
+const SANDBOX_NAME_MAX_LEN = 63;
+const SANDBOX_LABEL_MAX_LEN = 63;
+const NAME_PREFIX_SLUG_MAX_LEN = 24;
+// 8 chars of nanoid alphabet (~1 in 218T collision); enough for a transient sandbox.
+const SHORT_RUN_ID_LEN = 8;
+
+// Daytona names must be DNS-label-ish (a-z, 0-9, hyphens).
+function slugifyName(value: string, maxLen: number): string {
+	const slug = value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+	return slug.slice(0, maxLen).replace(/-+$/, '');
+}
+
+// Daytona labels accept letters, digits, '_', '.', '-' — keep originals where possible
+// so values like `run_id=abc_xyz` are preserved.
+function slugifyLabel(value: string, maxLen: number): string {
+	return value
+		.replace(/[^A-Za-z0-9_.-]+/g, '-')
+		.replace(/^[-.]+|[-.]+$/g, '')
+		.slice(0, maxLen)
+		.replace(/[-.]+$/, '');
+}
+
+function buildSandboxName(
+	builderId: string,
+	namePrefix: string | undefined,
+	runId: string | undefined,
+): string {
+	const parts: string[] = [];
+	if (namePrefix) {
+		const prefixSlug = slugifyName(namePrefix, NAME_PREFIX_SLUG_MAX_LEN);
+		if (prefixSlug) parts.push(prefixSlug);
+	}
+	if (runId) {
+		const runSlug = slugifyName(runId, SHORT_RUN_ID_LEN);
+		if (runSlug) parts.push(runSlug);
+	}
+	const builderSlug = slugifyName(builderId, SANDBOX_NAME_MAX_LEN);
+	if (builderSlug) parts.push(builderSlug);
+	const joined = slugifyName(parts.join('-'), SANDBOX_NAME_MAX_LEN);
+	return joined || 'n8n-builder';
+}
+
+function buildSandboxLabels(
+	builderId: string,
+	namePrefix: string | undefined,
+	naming: BuilderSandboxNamingHints | undefined,
+): Record<string, string> {
+	const labels: Record<string, string> = { 'n8n-builder': builderId };
+	if (namePrefix) labels.name_prefix = slugifyLabel(namePrefix, SANDBOX_LABEL_MAX_LEN);
+	if (naming?.runId) labels.run_id = slugifyLabel(naming.runId, SANDBOX_LABEL_MAX_LEN);
+	if (naming?.threadId) labels.thread_id = slugifyLabel(naming.threadId, SANDBOX_LABEL_MAX_LEN);
+	return labels;
+}
+
 async function cleanupTrackedSandboxProcesses(workspace: Workspace): Promise<void> {
 	const processManager = workspace.sandbox?.processes;
 	if (!processManager) return;
@@ -134,14 +196,18 @@ export class BuilderSandboxFactory {
 		});
 	}
 
-	async create(builderId: string, context: InstanceAiContext): Promise<BuilderWorkspace> {
+	async create(
+		builderId: string,
+		context: InstanceAiContext,
+		naming?: BuilderSandboxNamingHints,
+	): Promise<BuilderWorkspace> {
 		if (this.config.provider === 'local') {
 			return await this.createLocal(builderId, context);
 		}
 		if (this.config.provider === 'n8n-sandbox') {
 			return await this.createN8nSandbox(builderId, context);
 		}
-		return await this.createDaytona(builderId, context);
+		return await this.createDaytona(builderId, context, naming);
 	}
 
 	private async getDaytona(): Promise<Daytona> {
@@ -173,6 +239,7 @@ export class BuilderSandboxFactory {
 	private async createDaytona(
 		builderId: string,
 		context: InstanceAiContext,
+		naming: BuilderSandboxNamingHints | undefined,
 	): Promise<BuilderWorkspace> {
 		const config = this.assertIsDaytona();
 		assert(this.imageManager, 'Daytona snapshot manager required');
@@ -186,14 +253,17 @@ export class BuilderSandboxFactory {
 		// are loud and trackable in Sentry, regardless of which path
 		// ultimately succeeds.
 		const createTimeoutSeconds = config.createTimeoutSeconds ?? 300;
+		const sandboxName = buildSandboxName(builderId, config.namePrefix, naming?.runId);
+		const sandboxLabels = buildSandboxLabels(builderId, config.namePrefix, naming);
 		const createSandboxFn = async () => {
 			const daytona = await this.getDaytona();
 			const snapshotName = await snapshotManager.ensureSnapshot(daytona, mode);
 			const baseParams = {
-				language: 'typescript',
+				language: 'typescript' as const,
 				ephemeral: true,
-				labels: { 'n8n-builder': builderId },
-			} as const;
+				name: sandboxName,
+				labels: sandboxLabels,
+			};
 
 			if (snapshotName) {
 				try {
@@ -297,7 +367,7 @@ export class BuilderSandboxFactory {
 	}
 
 	private async createN8nSandbox(
-		_builderId: string,
+		builderId: string,
 		context: InstanceAiContext,
 	): Promise<BuilderWorkspace> {
 		const config = this.assertIsN8nSandbox();
@@ -349,6 +419,13 @@ export class BuilderSandboxFactory {
 		} catch (error) {
 			// If any step after sandbox creation throws (workspace init, catalog
 			// write, SDK link), destroy the remote sandbox so it isn't orphaned.
+			this.errorReporter?.error(error, {
+				tags: {
+					component: 'builder-sandbox-factory',
+					provider: 'n8n-sandbox',
+				},
+				extra: { builderId },
+			});
 			await destroySandbox();
 			throw error;
 		}

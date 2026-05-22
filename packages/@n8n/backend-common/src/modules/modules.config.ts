@@ -30,7 +30,7 @@ export const MODULE_NAMES = [
 	'instance-version-history',
 	'encryption-key-manager',
 	'oauth-jwe',
-	'inbound-secrets',
+	'runtime-credentials',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

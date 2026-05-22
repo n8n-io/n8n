@@ -6,25 +6,36 @@
 // LLM-mocked HTTP, checklist verification, and result aggregation.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type { InstanceAiConfirmRequest, InstanceAiEvalExecutionResult } from '@n8n/api-types';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { SSE_SETTLE_DELAY_MS, startSseConnection, waitForAllActivity } from './chat-loop';
+import {
+	SSE_SETTLE_DELAY_MS,
+	startSseConnection,
+	waitForAllActivity,
+	runMultiTurnConversation,
+	type ConfirmationStrategy,
+} from './chat-loop';
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
 import { verifyChecklist } from '../checklist/verifier';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
-import { extractOutcomeFromEvents } from '../outcome/event-parser';
+import { buildConversationMetrics, extractOutcomeFromEvents } from '../outcome/event-parser';
+import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
 import type {
 	ChecklistItem,
 	CapturedEvent,
-	ScenarioResult,
-	TestScenario,
+	ConversationMetrics,
+	ConversationTurn,
+	ExecutionScenarioResult,
+	ExecutionScenario,
+	TranscriptTurn,
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
+import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -69,20 +80,31 @@ export async function runWorkflowTestCase(
 	const result: WorkflowTestCaseResult = {
 		testCase,
 		workflowBuildSuccess: false,
-		scenarioResults: [],
+		executionScenarioResults: [],
 	};
 
 	const build = config.prebuiltWorkflowId
 		? await fetchPrebuiltBuild(client, config.prebuiltWorkflowId, logger)
 		: await buildWorkflow({
 				client,
-				prompt: testCase.prompt,
+				conversation: testCase.conversation,
+				messageBudget: testCase.messageBudget,
 				timeoutMs,
 				preRunWorkflowIds: config.preRunWorkflowIds,
 				claimedWorkflowIds: config.claimedWorkflowIds,
 				logger,
 				laneTag: config.laneTag,
 			});
+
+	if (build.conversationMetrics) {
+		result.conversationMetrics = build.conversationMetrics;
+	}
+	if (build.threadId) {
+		result.threadId = build.threadId;
+	}
+	if (build.transcript) {
+		result.transcript = build.transcript;
+	}
 
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;
@@ -94,8 +116,8 @@ export async function runWorkflowTestCase(
 	result.workflowJson = build.workflowJsons[0];
 
 	const scenarioStart = Date.now();
-	result.scenarioResults = await runWithConcurrency(
-		testCase.scenarios,
+	result.executionScenarioResults = await runWithConcurrency(
+		testCase.executionScenarios,
 		async (scenario) => {
 			try {
 				return await executeScenario(
@@ -114,7 +136,7 @@ export async function runWorkflowTestCase(
 					success: false,
 					score: 0,
 					reasoning: `Error: ${errorMessage}`,
-				} satisfies ScenarioResult;
+				} satisfies ExecutionScenarioResult;
 			}
 		},
 		MAX_CONCURRENT_SCENARIOS,
@@ -122,7 +144,7 @@ export async function runWorkflowTestCase(
 
 	const scenarioMs = Date.now() - scenarioStart;
 	logger.info(
-		`  Scenarios done: ${String(result.scenarioResults.length)} scenarios [${String(Math.round(scenarioMs / 1000))}s]${config.laneTag ?? ''}`,
+		`  Scenarios done: ${String(result.executionScenarioResults.length)} scenarios [${String(Math.round(scenarioMs / 1000))}s]${config.laneTag ?? ''}`,
 	);
 
 	if (!config.keepWorkflows) {
@@ -130,6 +152,64 @@ export async function runWorkflowTestCase(
 	}
 
 	return result;
+}
+
+// ---------------------------------------------------------------------------
+// Multi-turn driver — wires UserProxyLlm into runMultiTurnConversation
+// ---------------------------------------------------------------------------
+
+interface MultiTurnDriverConfig {
+	client: N8nClient;
+	threadId: string;
+	conversation: ConversationTurn[];
+	messageBudget?: number;
+	events: CapturedEvent[];
+	approvedRequests: Set<string>;
+	startTime: number;
+	timeoutMs: number;
+	logger: EvalLogger;
+	proxyResponses?: Map<string, InstanceAiConfirmRequest>;
+	followUpMessagesOut?: string[];
+}
+
+async function driveMultiTurnConversation(
+	config: MultiTurnDriverConfig,
+): Promise<ProxyDecisionStats> {
+	const openingMessage = config.conversation[0]?.text ?? '';
+
+	const proxy = new UserProxyLlm({
+		conversation: config.conversation,
+		messageBudget: config.messageBudget,
+		logger: config.logger,
+	});
+
+	const confirmationStrategy: ConfirmationStrategy = proxy.respondToConfirmation.bind(proxy);
+
+	const nextMessageDecider = async () => {
+		proxy.ingestEvents(config.events);
+		const decision = await proxy.decideFollowUp();
+		if (decision.kind === 'followUp') {
+			config.followUpMessagesOut?.push(decision.message);
+		}
+		return decision;
+	};
+
+	await config.client.sendMessage(config.threadId, openingMessage);
+
+	await runMultiTurnConversation({
+		client: config.client,
+		threadId: config.threadId,
+		events: config.events,
+		approvedRequests: config.approvedRequests,
+		startTime: config.startTime,
+		timeoutMs: config.timeoutMs,
+		logger: config.logger,
+		confirmationStrategy,
+		nextMessageDecider,
+		proxyResponses: config.proxyResponses,
+	});
+
+	return { ...proxy.getDecisionStats() };
 }
 
 // ---------------------------------------------------------------------------
@@ -144,11 +224,27 @@ export interface BuildResult {
 	/** IDs to pass to cleanupBuild() */
 	createdWorkflowIds: string[];
 	createdDataTableIds: string[];
+	/** Per-turn deterministic counters extracted from the captured event stream. */
+	conversationMetrics?: ConversationMetrics;
+	/** The thread id used during the build — keys the LangSmith trace lookup. */
+	threadId?: string;
+	/** Counts of UserProxyLlm decisions by category (multi-turn builds only). */
+	proxyDecisionStats?: ProxyDecisionStats;
+	/** Chat-style transcript built from the SSE event stream + proxy responses. */
+	transcript?: TranscriptTurn[];
 }
 
 export interface BuildWorkflowConfig {
 	client: N8nClient;
-	prompt: string;
+	/**
+	 * Hand-authored conversation. ≥1 turn, first turn must be `user`.
+	 *
+	 * - One user turn, no assistant turns → auto-approve all confirmations.
+	 * - Anything else → UserProxyLlm engages.
+	 */
+	conversation: ConversationTurn[];
+	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
+	messageBudget?: number;
 	timeoutMs?: number;
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
@@ -157,12 +253,21 @@ export interface BuildWorkflowConfig {
 	laneTag?: string;
 }
 
+/** A conversation is multi-turn if it has more than one turn, or if the only
+ *  turn is from the assistant. Empty conversations are treated as single-turn. */
+function isMultiTurnConversation(conversation: ConversationTurn[]): boolean {
+	if (conversation.length === 0) return false;
+	if (conversation.length > 1) return true;
+	return conversation[0].role !== 'user';
+}
+
 /**
  * Build a workflow via Instance AI. Returns the workflow ID for use with
  * executeScenario(). Call cleanupBuild() when done.
  */
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
-	const { client, prompt, logger } = config;
+	const { client, conversation, logger } = config;
+	const openingMessage = conversation[0]?.text ?? '';
 	const threadId = `eval-${crypto.randomUUID()}`;
 	const startTime = Date.now();
 	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -170,30 +275,61 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	const abortController = new AbortController();
 	const events: CapturedEvent[] = [];
 	const approvedRequests = new Set<string>();
+	const proxyResponses = new Map<string, InstanceAiConfirmRequest>();
+	const followUpMessages: string[] = [];
 
 	try {
 		const buildStart = Date.now();
-		logger.info(`  Building workflow: "${truncate(prompt, 60)}"${config.laneTag ?? ''}`);
+		const isMultiTurn = isMultiTurnConversation(conversation);
+		logger.info(
+			`  Building workflow${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
+		);
 
 		const ssePromise = startSseConnection(client, threadId, events, abortController.signal).catch(
 			() => {},
 		);
 
 		await delay(SSE_SETTLE_DELAY_MS);
-		await client.sendMessage(threadId, prompt);
 
-		await waitForAllActivity({
-			client,
-			threadId,
-			events,
-			approvedRequests,
-			startTime,
-			timeoutMs,
-			logger,
-		});
+		let proxyDecisionStats: ProxyDecisionStats | undefined;
+		if (isMultiTurn) {
+			proxyDecisionStats = await driveMultiTurnConversation({
+				client,
+				threadId,
+				conversation,
+				messageBudget: config.messageBudget,
+				events,
+				approvedRequests,
+				startTime,
+				timeoutMs,
+				logger,
+				proxyResponses,
+				followUpMessagesOut: followUpMessages,
+			});
+		} else {
+			await client.sendMessage(threadId, openingMessage);
+			await waitForAllActivity({
+				client,
+				threadId,
+				events,
+				approvedRequests,
+				startTime,
+				timeoutMs,
+				logger,
+				proxyResponses,
+			});
+		}
 
 		abortController.abort();
 		await ssePromise.catch(() => {});
+
+		const conversationMetrics = buildConversationMetrics(events);
+		const transcript = buildTranscriptFromEvents({
+			events,
+			openingMessage,
+			followUpMessages,
+			proxyResponses,
+		});
 
 		let threadMessages;
 		try {
@@ -259,12 +395,17 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				workflowJsons: [],
 				createdWorkflowIds: [],
 				createdDataTableIds: outcome.dataTablesCreated,
+				conversationMetrics,
+				threadId,
+				proxyDecisionStats,
+				transcript,
 			};
 		}
 
 		const buildMs = Date.now() - buildStart;
+		const proxySuffix = formatProxyStatsSuffix(proxyDecisionStats);
 		logger.info(
-			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes) [${String(Math.round(buildMs / 1000))}s]`,
+			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes) [${String(Math.round(buildMs / 1000))}s]${isMultiTurn ? ` (${String(conversationMetrics.turnCount)} turn${conversationMetrics.turnCount === 1 ? '' : 's'})` : ''}${proxySuffix}`,
 		);
 
 		return {
@@ -273,17 +414,32 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			workflowJsons: outcome.workflowJsons,
 			createdWorkflowIds: outcome.workflowsCreated.map((wf) => wf.id),
 			createdDataTableIds: outcome.dataTablesCreated,
+			conversationMetrics,
+			threadId,
+			proxyDecisionStats,
+			transcript,
 		};
 	} catch (error: unknown) {
 		abortController.abort();
+		// Try to surface partial metrics so timeouts still produce a per-turn report.
+		const conversationMetrics = events.length > 0 ? buildConversationMetrics(events) : undefined;
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : String(error),
 			workflowJsons: [],
 			createdWorkflowIds: [],
 			createdDataTableIds: [],
+			conversationMetrics,
+			threadId,
 		};
 	}
+}
+
+function formatProxyStatsSuffix(stats: ProxyDecisionStats | undefined): string {
+	if (!stats) return '';
+	const entries = Object.entries(stats).sort(([, a], [, b]) => b - a);
+	if (entries.length === 0) return '';
+	return ` [proxy: ${entries.map(([k, v]) => `${k}=${String(v)}`).join(', ')}]`;
 }
 
 /**
@@ -292,11 +448,11 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 export async function executeScenario(
 	client: N8nClient,
 	workflowId: string,
-	scenario: TestScenario,
+	scenario: ExecutionScenario,
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
 	timeoutMs?: number,
-): Promise<ScenarioResult> {
+): Promise<ExecutionScenarioResult> {
 	return await runScenario(client, scenario, workflowId, workflowJsons, logger, timeoutMs);
 }
 
@@ -339,12 +495,12 @@ export async function cleanupBuild(
 
 async function runScenario(
 	client: N8nClient,
-	scenario: TestScenario,
+	scenario: ExecutionScenario,
 	workflowId: string,
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
 	timeoutMs?: number,
-): Promise<ScenarioResult> {
+): Promise<ExecutionScenarioResult> {
 	const execStart = Date.now();
 	const evalResult = await client.executeWithLlmMock(workflowId, scenario.dataSetup, timeoutMs);
 	const execMs = Date.now() - execStart;
@@ -407,7 +563,7 @@ async function runScenario(
  * and pre-analysis flags so the verifier can diagnose root causes.
  */
 function buildVerificationArtifact(
-	scenario: TestScenario,
+	scenario: ExecutionScenario,
 	evalResult: InstanceAiEvalExecutionResult,
 	workflowJsons: WorkflowResponse[],
 ): string {
