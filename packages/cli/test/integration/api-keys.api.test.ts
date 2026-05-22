@@ -11,7 +11,13 @@ import {
 } from '@n8n/permissions';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
-import { createOwnerWithApiKey, createUser, createUserShell } from './shared/db/users';
+import {
+	createAdmin,
+	createMemberWithApiKey,
+	createOwnerWithApiKey,
+	createUser,
+	createUserShell,
+} from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
@@ -266,6 +272,13 @@ describe('Owner shell', () => {
 
 		expect(retrieveAllApiKeysResponse.statusCode).toBe(200);
 
+		const expectedOwner = {
+			id: ownerShell.id,
+			firstName: ownerShell.firstName ?? null,
+			lastName: ownerShell.lastName ?? null,
+			email: ownerShell.email,
+		};
+
 		expect(retrieveAllApiKeysResponse.body.data[1]).toEqual({
 			id: apiKeyWithExpiration.body.data.id,
 			label: 'My API Key 2',
@@ -277,6 +290,7 @@ describe('Owner shell', () => {
 			scopes: ['workflow:create'],
 			audience: 'public-api',
 			lastUsedAt: null,
+			owner: expectedOwner,
 		});
 
 		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
@@ -290,6 +304,7 @@ describe('Owner shell', () => {
 			scopes: ['workflow:create'],
 			audience: 'public-api',
 			lastUsedAt: null,
+			owner: expectedOwner,
 		});
 	});
 
@@ -461,6 +476,13 @@ describe('Member', () => {
 
 		expect(retrieveAllApiKeysResponse.statusCode).toBe(200);
 
+		const expectedOwner = {
+			id: member.id,
+			firstName: member.firstName ?? null,
+			lastName: member.lastName ?? null,
+			email: member.email,
+		};
+
 		expect(retrieveAllApiKeysResponse.body.data[1]).toEqual({
 			id: apiKeyWithExpiration.body.data.id,
 			label: 'My API Key 2',
@@ -472,6 +494,7 @@ describe('Member', () => {
 			scopes: ['workflow:create'],
 			audience: 'public-api',
 			lastUsedAt: null,
+			owner: expectedOwner,
 		});
 
 		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
@@ -485,6 +508,7 @@ describe('Member', () => {
 			scopes: ['workflow:create'],
 			audience: 'public-api',
 			lastUsedAt: null,
+			owner: expectedOwner,
 		});
 	});
 
@@ -512,5 +536,57 @@ describe('Member', () => {
 		const scopesForRole = getApiKeyScopesForRole(member);
 
 		expect(scopes.sort()).toEqual(scopesForRole.sort());
+	});
+});
+
+describe('Cross-user behavior (admin scope)', () => {
+	test("GET /api-keys returns every user's keys for an owner", async () => {
+		const ownerWithKey = await createOwnerWithApiKey();
+		const memberWithKey = await createMemberWithApiKey();
+
+		const response = await testServer.authAgentFor(ownerWithKey).get('/api-keys').expect(200);
+
+		const ids = (response.body.data as Array<{ id: string }>).map((k) => k.id);
+		expect(ids).toEqual(
+			expect.arrayContaining([ownerWithKey.apiKeys[0].id, memberWithKey.apiKeys[0].id]),
+		);
+		expect(ids).toHaveLength(2);
+	});
+
+	test('GET /api-keys returns only the caller’s keys for a member', async () => {
+		const memberWithKey = await createMemberWithApiKey();
+		await createOwnerWithApiKey();
+
+		const response = await testServer.authAgentFor(memberWithKey).get('/api-keys').expect(200);
+
+		const ids = (response.body.data as Array<{ id: string }>).map((k) => k.id);
+		expect(ids).toEqual([memberWithKey.apiKeys[0].id]);
+	});
+
+	test('DELETE /api-keys/:id forbids a member from revoking another user’s key', async () => {
+		const ownerWithKey = await createOwnerWithApiKey();
+		const member = await createUser({ role: GLOBAL_MEMBER_ROLE });
+
+		await testServer
+			.authAgentFor(member)
+			.delete(`/api-keys/${ownerWithKey.apiKeys[0].id}`)
+			.expect(403);
+
+		// Owner's key still exists.
+		const ownerKeys = await Container.get(ApiKeyRepository).findBy({ userId: ownerWithKey.id });
+		expect(ownerKeys).toHaveLength(1);
+	});
+
+	test('DELETE /api-keys/:id lets an admin revoke another user’s key', async () => {
+		const admin = await createAdmin();
+		const memberWithKey = await createMemberWithApiKey();
+
+		await testServer
+			.authAgentFor(admin)
+			.delete(`/api-keys/${memberWithKey.apiKeys[0].id}`)
+			.expect(200);
+
+		const memberKeys = await Container.get(ApiKeyRepository).findBy({ userId: memberWithKey.id });
+		expect(memberKeys).toHaveLength(0);
 	});
 });

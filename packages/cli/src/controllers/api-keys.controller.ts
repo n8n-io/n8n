@@ -10,7 +10,7 @@ import {
 	Post,
 	RestController,
 } from '@n8n/decorators';
-import { getApiKeyScopesForRole } from '@n8n/permissions';
+import { getApiKeyScopesForRole, hasGlobalScope } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -36,7 +36,7 @@ export class ApiKeysController {
 	/**
 	 * Create an API Key
 	 */
-	@GlobalScope('apiKey:manage')
+	@GlobalScope('apiKey:create')
 	@Post('/', { middlewares: [isApiEnabledMiddleware] })
 	async createApiKey(
 		req: AuthenticatedRequest,
@@ -60,22 +60,26 @@ export class ApiKeysController {
 	}
 
 	/**
-	 * Get API keys
+	 * Get API keys. Holders of `apiKey:manage` (owners and admins) see every
+	 * key on the instance; everyone else sees only their own.
 	 */
-	@GlobalScope('apiKey:manage')
+	@GlobalScope('apiKey:list')
 	@Get('/', { middlewares: [isApiEnabledMiddleware] })
 	async getApiKeys(req: AuthenticatedRequest) {
-		const apiKeys = await this.publicApiKeyService.getRedactedApiKeysForUser(req.user);
-		return apiKeys;
+		if (hasGlobalScope(req.user, 'apiKey:manage')) {
+			return await this.publicApiKeyService.getAllRedactedApiKeys();
+		}
+		return await this.publicApiKeyService.getRedactedApiKeysForUser(req.user);
 	}
 
 	/**
-	 * Delete an API Key
+	 * Delete an API Key. Callers can always delete their own keys; admins
+	 * (holders of `apiKey:manage`) can also revoke other users' keys.
 	 */
-	@GlobalScope('apiKey:manage')
+	@GlobalScope('apiKey:delete')
 	@Delete('/:id', { middlewares: [isApiEnabledMiddleware] })
 	async deleteApiKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
-		await this.publicApiKeyService.deleteApiKeyForUser(req.user, apiKeyId);
+		await this.publicApiKeyService.deleteApiKey(req.user, apiKeyId);
 
 		this.eventService.emit('public-api-key-deleted', { user: req.user, publicApi: false });
 
@@ -83,9 +87,10 @@ export class ApiKeysController {
 	}
 
 	/**
-	 * Patch an API Key
+	 * Patch an API Key. Owner-only — admins cannot edit another user's
+	 * label or scopes.
 	 */
-	@GlobalScope('apiKey:manage')
+	@GlobalScope('apiKey:update')
 	@Patch('/:id', { middlewares: [isApiEnabledMiddleware] })
 	async updateApiKey(
 		req: AuthenticatedRequest,
@@ -102,7 +107,7 @@ export class ApiKeysController {
 		return { success: true };
 	}
 
-	@GlobalScope('apiKey:manage')
+	@GlobalScope('apiKey:list')
 	@Get('/scopes', { middlewares: [isApiEnabledMiddleware] })
 	async getApiKeyScopes(req: AuthenticatedRequest, _res: Response) {
 		const scopes = getApiKeyScopesForRole(req.user);
