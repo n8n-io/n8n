@@ -10,22 +10,15 @@ const exec = promisify(child_process.exec);
 
 /**
  * @param {string | semver.SemVer} currentVersion
+ * @param {string} sha first 8 chars of the commit SHA being released
  */
-export function generateExperimentalVersion(currentVersion) {
+export function generateExperimentalVersion(currentVersion, sha) {
 	const parsed = semver.parse(currentVersion);
 	if (!parsed) throw new Error(`Invalid version: ${currentVersion}`);
+	if (!sha) throw new Error('sha is required to generate an experimental version');
 
-	// Check if it's already an experimental version
-	if (parsed.prerelease.length > 0 && parsed.prerelease[0] === 'exp') {
-		const minor = parsed.prerelease[1] || 0;
-		const minorInt = typeof minor === 'string' ? parseInt(minor) : minor;
-		// Increment the experimental minor version
-		const expMinor = minorInt + 1;
-		return `${parsed.major}.${parsed.minor}.${parsed.patch}-exp.${expMinor}`;
-	}
-
-	// Create new experimental version: <major>.<minor>.<patch>-exp.0
-	return `${parsed.major}.${parsed.minor}.${parsed.patch}-exp.0`;
+	// Prefix the exp sha with a g to prevent invalid semver from a leading 0 (e.g. -exp.01234567)
+	return `${parsed.major}.${parsed.minor}.${parsed.patch}-exp.g${sha}`;
 }
 
 /**
@@ -155,12 +148,13 @@ export function propagateDirtyTransitively(packageMap, depsByPackage) {
 /**
  * @param {string} version
  * @param {import('semver').ReleaseType | 'experimental'} releaseType
+ * @param {string} [sha] required when releaseType is 'experimental'
  * @returns {string}
  */
-export function computeNewVersion(version, releaseType) {
+export function computeNewVersion(version, releaseType, sha) {
 	switch (releaseType) {
 		case 'experimental':
-			return generateExperimentalVersion(version);
+			return generateExperimentalVersion(version, /** @type {string} */ (sha));
 		case 'premajor':
 			return /** @type {string} */ (
 				semver.inc(
@@ -186,6 +180,10 @@ async function bumpVersions() {
 	// TODO: if releaseType is `auto` determine release type based on the changelog
 
 	const lastTag = (await exec('git describe --tags --match "n8n@*" --abbrev=0')).stdout.trim();
+	const sha =
+		releaseType === 'experimental'
+			? (await exec('git rev-parse --short=8 HEAD')).stdout.trim()
+			: undefined;
 	const packages = JSON.parse(
 		(
 			await exec(
@@ -277,7 +275,7 @@ async function bumpVersions() {
 		let newVersion = version;
 
 		if (isDirty || dependencyIsDirty) {
-			newVersion = computeNewVersion(version, releaseType);
+			newVersion = computeNewVersion(version, releaseType, sha);
 		}
 
 		packageJson.version = packageMap[packageName].nextVersion = newVersion;

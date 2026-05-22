@@ -19,28 +19,32 @@ import {
 } from './bump-versions.mjs';
 
 describe('generateExperimentalVersion', () => {
-	it('creates -exp.0 from a stable version', () => {
-		assert.equal(generateExperimentalVersion('1.2.3'), '1.2.3-exp.0');
+	it('appends -exp.g<sha> to a stable version', () => {
+		assert.equal(generateExperimentalVersion('1.2.3', 'abcd1234'), '1.2.3-exp.gabcd1234');
 	});
 
-	it('increments exp minor when already at exp.0', () => {
-		assert.equal(generateExperimentalVersion('1.2.3-exp.0'), '1.2.3-exp.1');
+	it('replaces an existing exp.g<sha> with the new sha', () => {
+		assert.equal(
+			generateExperimentalVersion('1.2.3-exp.deadbeef', 'abcd1234'),
+			'1.2.3-exp.gabcd1234',
+		);
 	});
 
-	it('increments exp minor when already at exp.5', () => {
-		assert.equal(generateExperimentalVersion('1.2.3-exp.5'), '1.2.3-exp.6');
-	});
-
-	it('creates -exp.0 from a version with a different pre-release tag', () => {
-		assert.equal(generateExperimentalVersion('1.2.3-beta.1'), '1.2.3-exp.0');
+	it('replaces a different pre-release tag with -exp.g<sha>', () => {
+		assert.equal(generateExperimentalVersion('1.2.3-beta.1', 'abcd1234'), '1.2.3-exp.gabcd1234');
 	});
 
 	it('handles multi-digit version numbers', () => {
-		assert.equal(generateExperimentalVersion('10.20.30'), '10.20.30-exp.0');
+		assert.equal(generateExperimentalVersion('10.20.30', 'abcd1234'), '10.20.30-exp.gabcd1234');
 	});
 
 	it('throws on an invalid version string', () => {
-		assert.throws(() => generateExperimentalVersion('not-a-version'), /Invalid version/);
+		assert.throws(() => generateExperimentalVersion('not-a-version', 'abcd1234'), /Invalid version/);
+	});
+
+	it('throws when sha is missing', () => {
+		// @ts-expect-error - intentionally calling without sha to verify the guard
+		assert.throws(() => generateExperimentalVersion('1.2.3'), /sha is required/);
 	});
 });
 
@@ -358,12 +362,15 @@ describe('computeNewVersion', () => {
 		assert.equal(computeNewVersion('1.2.3', 'major'), '2.0.0');
 	});
 
-	it('creates -exp.0 from a stable version for experimental', () => {
-		assert.equal(computeNewVersion('1.2.3', 'experimental'), '1.2.3-exp.0');
+	it('appends -exp.g<sha> to a stable version for experimental', () => {
+		assert.equal(computeNewVersion('1.2.3', 'experimental', 'abcd1234'), '1.2.3-exp.gabcd1234');
 	});
 
-	it('increments exp minor for experimental when already an exp version', () => {
-		assert.equal(computeNewVersion('1.2.3-exp.0', 'experimental'), '1.2.3-exp.1');
+	it('replaces an existing exp.g<sha> with the new sha for experimental', () => {
+		assert.equal(
+			computeNewVersion('1.2.3-exp.deadbeef', 'experimental', 'abcd1234'),
+			'1.2.3-exp.gabcd1234',
+		);
 	});
 
 	it('creates a premajor rc version from a stable version', () => {

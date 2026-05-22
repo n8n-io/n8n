@@ -46,6 +46,7 @@ export class ExecutionLevelTracer {
 						[ATTR.WORKFLOW_VERSION_ID]: params.workflow.versionId ?? '',
 						[ATTR.WORKFLOW_NODE_COUNT]: params.workflow.nodeCount,
 						[ATTR.EXECUTION_ID]: params.executionId,
+						...(params.project?.id && { [ATTR.PROJECT_ID]: params.project.id }),
 					},
 					links,
 				},

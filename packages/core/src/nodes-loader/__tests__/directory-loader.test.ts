@@ -694,6 +694,42 @@ describe('DirectoryLoader', () => {
 			});
 			expect(loader.types.credentials).toEqual([]);
 		});
+
+		it('should preserve known supportedNodes when nodesByCredential has no entry yet', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			const filePath = 'dist/Credential1.js';
+
+			loader.known.credentials.credential1 = {
+				className: 'Credential1',
+				sourcePath: filePath,
+				extends: undefined,
+				supportedNodes: ['node1', 'nodeTrigger1'],
+			};
+
+			loader.loadCredentialFromFile(filePath);
+
+			expect(loader.known.credentials.credential1.supportedNodes).toEqual([
+				'node1',
+				'nodeTrigger1',
+			]);
+		});
+
+		it('should prefer nodesByCredential over previously-known supportedNodes', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			const filePath = 'dist/Credential1.js';
+
+			loader.known.credentials.credential1 = {
+				className: 'Credential1',
+				sourcePath: filePath,
+				extends: undefined,
+				supportedNodes: ['stale'],
+			};
+			loader.nodesByCredential.credential1 = ['node1'];
+
+			loader.loadCredentialFromFile(filePath);
+
+			expect(loader.known.credentials.credential1.supportedNodes).toEqual(['node1']);
+		});
 	});
 
 	describe('getCredential', () => {
