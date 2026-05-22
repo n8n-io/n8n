@@ -120,6 +120,10 @@ Run through this before requesting review. Each item is a real, recurring review
 - [ ] **No live-app value imports** in the migration body. Inline types/utility code locally. — [Never import entities as values](#never-import-entities-as-values)
 - [ ] **`async down()` was tested locally**: `pnpm start && pnpm start -- db:revert && pnpm start` on **both** SQLite and Postgres. — [Reversibility](#reversibility)
 - [ ] **One logical change per migration**; split unrelated table changes into separate files. — [Don't combine independent schema changes](#dont-combine-independent-schema-changes)
+- [ ] **`up()` / `down()` reads as a list of intentions.** If either body grows past a screen or mixes schema operations with a multi-statement raw-SQL data move, extract the data move into a `private async` method on the same class (e.g. `private async backfillFromX(ctx)`). The top-level should orchestrate, not implement.
+- [ ] **Precedent is the bar to fix, not perpetuate.** When the checklist conflicts with what an older migration does (e.g. redundant `.primary.notNull`, hand-quoted identifiers, missing `.comment()`), the checklist wins for new code — don't copy the violation forward. Note the old occurrences in the PR if you spotted them.
+
+Treat the checklist as a floor, not a ceiling. Before working it, read the file once cold and ask: would I want to maintain this in six months? Then run the checklist for rule compliance. Issues like long methods, unclear ordering, or smell tend to escape rule-shaped checks.
 
 If any item fails, fix it before opening review.
 
@@ -326,7 +330,7 @@ export class CreateMyTable1234567890000 implements ReversibleMigration {
   async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
     await createTable('my_table')
       .withColumns(
-        column('id').int.notNull.primary.autoGenerate2,   // Use autoGenerate2, not autoGenerate
+        column('id').int.primary.autoGenerate2,   // Use autoGenerate2, not autoGenerate
         column('name').varchar(255).notNull,
         column('workflowId').varchar(36).notNull,
         column('config').json,                             // Maps to json (PG) / text (SQLite)
@@ -398,7 +402,7 @@ Every table needs a primary key. Choose the type in this order:
 **Keep ID-column types consistent across related tables.** Mixing `uuid` and `varchar(36)` for what is "the same kind of ID" creates JOIN footguns.
 
 **DSL behavior to know:**
-- `.primary` already implies `notNull`. Don't chain `.notNull` after `.primary` — it's redundant.
+- `.primary` already implies `notNull`. Don't chain `.notNull` together with `.primary` — it's redundant.
 - `.primary` already creates the primary-key index. Don't add a separate `.withIndexOn(['id'])` for it.
 
 **Composite primary keys are first-class** — chain `.primary` on each participating column. Skip the surrogate `id` when natural keys work.
