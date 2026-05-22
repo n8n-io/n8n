@@ -70,7 +70,7 @@ Run through this before requesting review. Each item is a real, recurring review
 - [ ] **Pick the narrowest sane type within that category:** `int`/`smallint` not `bigint` when range allows; `text` not `varchar(255)` for unbounded strings; never `double` for version numbers (floating-point precision).
 - [ ] **Default `notNull`**, relax only when justified. PK is implicitly NOT NULL — don't repeat. Migration's `notNull` matches the entity's nullability.
 - [ ] **Enum-like columns** carry `.withEnumCheck([...])` AND `.comment('explains values')`. Opaque IDs / unix timestamps / JSON shapes also get `.comment()`.
-- [ ] **Every reference column has an explicit FK** with deliberate `onDelete`. Name FKs explicitly when SQLite recreate cycles risk duplicating them. (For broader design guidance on polymorphic `(typeCol, idCol)` patterns, see `reference.md` section O.)
+- [ ] **Every reference column has an explicit FK** with deliberate `onDelete`. Name FKs explicitly when SQLite recreate cycles risk duplicating them. (For broader design guidance on polymorphic `(typeCol, idCol)` patterns, see `reference.md` section N.)
 - [ ] **Indexes match real query patterns.** Don't add indexes "in case." A unique constraint already creates an index; a composite PK indexes its prefix columns. Mirror `withIndexOn(...)` to entity `@Index(...)`.
 - [ ] **Sparse-unique columns:** use a partial index `WHERE col IS NOT NULL` to exclude NULL rows. Smaller index and no uniqueness checks against the NULL bucket.
 - [ ] **Composite index column order** matches your actual `WHERE` / `ORDER BY` usage; an index on `(A, B)` serves `WHERE A` and `WHERE A AND B`, not `WHERE B` alone.
@@ -117,6 +117,7 @@ Exceptions: the old location is genuinely throwaway (e.g. a temp table this same
 ## More
 
 - **Full rule catalogue** (sections A–N): [reference.md](reference.md)
+
 - **Copy-pasteable migration templates** (create table, add column with partial index, backfill, FK change, SQLite override, test): [examples.md](examples.md)
 - **UUID PK guidance**: `packages/@n8n/db/AGENTS.md` (don't use `autoGenerate2` on UUID PKs — generate at app level with `randomUUID()`)
 - **Test API**: `packages/@n8n/backend-test-utils/MIGRATION_TESTING.md`

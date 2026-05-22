@@ -39,7 +39,7 @@ guidance the migrations-review team enforces on PRs.
 ## B. Indexes — the most-flagged area
 
 **B1. Don't add an index without a query for it.**
-- Reviewer gold standard: "Way too many indexes. Think about the query patterns and only add indexes to support those."
+- Think about the query patterns and only add indexes to support those.
 - Justify each index in the PR description with the target query.
 
 **B2. A unique constraint already creates an index — don't double up.**
@@ -65,7 +65,6 @@ guidance the migrations-review team enforces on PRs.
 ## C. Foreign keys, ON DELETE
 
 **C1. FKs are the default; opting out needs justification.**
-- Reviewers will ask "why no foreign key constraint on X?". If the answer is "the column points at different tables depending on a sibling type column," see section O.
 
 **C2. Pick `ON DELETE` / `ON UPDATE` deliberately.**
 - `RESTRICT` to forbid deleting the parent.
@@ -127,8 +126,7 @@ guidance the migrations-review team enforces on PRs.
 **F1. Default to writing a working `async down()` and test it.**
 - The pattern: `pnpm start && pnpm start -- db:revert && pnpm start` on every supported DB. The revert command is `packages/cli/src/commands/db/revert.ts`. Down failures often surface as FK-protected indexes blocking column drops.
 
-**F2. `IrreversibleMigration` only when reversal would lose data unrecoverably.**
-- E.g. a backfill that erases information about which workflows were active.
+**F2. Use `IrreversibleMigration` only when the `up()` destroys information a faithful `down()` would need — not as an escape hatch for tedious `down()` code.**
 
 **F3. `down()` must restore the previous schema, not just drop new objects.**
 - The down's effect should let `up()` be re-run cleanly afterwards.
@@ -140,11 +138,11 @@ guidance the migrations-review team enforces on PRs.
 
 ## G. Performance / large-instance safety
 
-**G1. Push work into SQL.**
-- "This can all be done in a single insert statement without loading everything into memory first." Same lesson applies to UPDATEs, DELETEs.
+**G1. Do the transformation in SQL, not Node.**
+- Prefer `INSERT … SELECT`, `UPDATE … FROM`, `DELETE … WHERE` over fetching rows to Node and writing them back. Loading whole tables into JS memory is slow and OOM-prone on large instances; the database can do the same work in place much faster.
 
 **G2. Filter early with `LIKE`/`WHERE`.**
-- Reduce the row count before parsing on the Node side: `AND (nodes LIKE '%n8n-nodes-base.executeWorkflowTrigger%' OR nodes LIKE '%n8n-nodes-base.errorTrigger%')`.
+- Reduce the row count before parsing on the Node side.
 
 **G3. Use `runInBatches()` for backfills that don't fit one statement.**
 - Default limit is 100. A sequential scan on the entire table is very slow on larger instances.
@@ -165,16 +163,14 @@ guidance the migrations-review team enforces on PRs.
 **H1. Always handle `NULL` in source columns.**
 - A backfill that reads a nullable column must specify the policy for NULL rows, and ideally for empty strings too.
 
-**H2. Don't import live application code; duplicate (snapshot) helpers.**
-- "It's good that migrations don't import code but rather duplicate it. I wouldn't want the behaviour of the migration to change if we change the util implementation in the future." A migration ships frozen — the code in app/ evolves.
+**H2. Migrations are frozen artifacts; don't import live app code or types into them.**
+- Copy any helper functions, parsers, and type definitions into the migration file. A migration must produce the same result a year after it shipped, even when the original helper has been refactored, renamed, removed, or had its signature changed. Imports are live links to evolving code; local copies preserve the snapshot.
 
 **H3. For deletions, prefer keeping old rows as a fallback.**
-- Self-hosted instances may have unexpected data shapes. If the migration results in missing or inconsistent data, the old row provides recoverability.
+- Self-hosted instances may have unexpected data shapes. If the migration results in missing or inconsistent data, the old row is the only recovery path.
+- Default to two-release expand-contract: **Release N** writes the new location and leaves the old in place; **Release N+1** ships a separate follow-up migration that drops the old location, once the new code has been observed in production. Skip the gap only when the old location is genuinely throwaway, or when compliance forces immediate deletion (in which case mark the migration `IrreversibleMigration` and call out the trade-off in the PR description).
 
-**H4. Don't unilaterally deactivate previously active rows.**
-- If you must, log loudly per row and mark the migration `IrreversibleMigration`.
-
-**H5. Keep denormalized columns in sync.**
+**H4. Keep denormalized columns in sync.**
 - Where data is duplicated across two tables (e.g. `workflow_entity.nodes` vs `workflow_history.nodes`), the backfill must update both copies.
 
 ---
@@ -183,9 +179,9 @@ guidance the migrations-review team enforces on PRs.
 
 **I1. Constants are camelCase, not SCREAMING_CASE.**
 
-**I2. No `_entity` suffix on new tables.** Old convention only.
+**I2. No `_entity` suffix on new tables.** This is an old convention.
 
-**I3. Column names are camelCase in code.** Even when reviewers wish otherwise; this is the established convention.
+**I3. Column names are camelCase in code.**
 
 **I4. Don't repeat the table name in column names.**
 
@@ -242,55 +238,18 @@ guidance the migrations-review team enforces on PRs.
 **L1. Schema, entity, and OpenAPI types must agree.**
 - Caught regularly: `notNull` lost on entity, entity says `string` but column is something else, `@Index` mirrors don't exist.
 
-**L2. PR description must match the code.**
-- A reviewer will catch "Description says 'Changed ON DELETE CASCADE → SET NULL' but we're actually dropping the FK."
-
-**L3. `up` and entity must agree on defaults / constraints.**
+**L2. `up` and entity must agree on defaults / constraints.**
 - If a new column is required for data integrity (e.g. `activeVersionId` should be set whenever `active` is TRUE), enforce it via a CHECK constraint in the migration AND a runtime invariant in app code.
 
-**L4. Deprecate columns, then drop in a follow-up.**
+**L3. Deprecate columns, then drop in a follow-up.**
 - Don't drop a column the same release you stop writing to it. Wait one release, then drop.
 
 ---
 
-## M. PR hygiene
+## M. Cross-row data integrity
 
-**M1. `@n8n-io/migrations-review` team must approve.**
-- Migration PRs explicitly halt for migrations-review even after non-migration approval.
+**M1. Order backfill inserts deliberately.**
+- When the migration writes rows whose order is observable downstream (auto-increment IDs, default sort order, "most recent first" UI lists), add explicit `ORDER BY` to the source `SELECT` — typically `updatedAt` or `createdAt`. Without one the database picks any order and the chronology that was implicit in the old schema is lost.
 
-**M2. PR description describes the schema/behavior change accurately.**
-
-**M3. Test the migration manually on every supported DB before review.**
-- Spin up Postgres + SQLite locally, run the migration, then `db:revert`, then re-run.
-
-**M4. For features only meant for new versions, skip the backfill.**
-- "I don't think we need this if the marker hasn't been released to anyone yet." Ask whether existing rows actually need the new state.
-
----
-
-## N. Cross-row data integrity
-
-**N1. Don't break denormalized data.**
-- If `workflow_entity.nodes` and `workflow_history.nodes` are both maintained, the migration must update both.
-
-**N2. Backfills respect ordering when ordering is meaningful.**
-- "Sort workflows by `updatedAt` to try to restore the order" — when the new schema implies chronology, preserve it.
-
-**N3. Atomic SQL within the migration's transaction.**
+**M2. Atomic SQL within the migration's transaction.**
 - Some migrations override with `transaction = false as const` for big DDL on engines that disallow it inside a transaction. The DSL/wrapper sets `transaction = false` automatically when `withFKsDisabled = true`.
-
----
-
-## O. General design guidance (not enforced by a specific reviewer quote)
-
-These are widely-applicable database design principles. They aren't tied to a single recurring PR comment, but they're worth keeping in mind because the *cost* of getting them wrong shows up in the codebase (manual orchestration where the DB could have done the work for free).
-
-**O1. Avoid polymorphic `(typeCol, idCol)` pairs.**
-- An "polymorphic" column pair is one column that points at different tables depending on a sibling type column — e.g. `dependencyType: 'externalSecretProvider' | ...` plus `dependencyId: string`. SQL FKs target exactly one table, so polymorphic `idCol`s cannot have an FK declaration. Consequences:
-  - No insert validation (you can insert a `dependencyId` that doesn't match any row).
-  - No cascade/restrict on parent delete — application code has to manually walk every table that might point at the deleted row and delete dependents inside a transaction (see `credential_dependency` + `secrets_provider_connection` deletion paths for a real example of this cost).
-  - Orphan rows are possible by construction.
-- Alternatives:
-  - **Separate join tables per relation type** (`credential_external_secret_dependency`, `credential_node_dependency`, …). Each has a real FK. Queries that need "all dependencies" become a UNION.
-  - **One nullable FK per possible target** with a CHECK constraint that exactly one is set. Each column is a real FK.
-  - **Supertype table**: hoist parents into a single `dependency_target` with its own type column, then have one FK to that table.

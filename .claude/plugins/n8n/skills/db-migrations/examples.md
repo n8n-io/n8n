@@ -2,7 +2,8 @@
 
 Six copy-pasteable shapes covering ~95% of new migrations. Each is sourced
 from a real merged migration in the repo. **Do not** copy timestamps —
-generate fresh ones with `Date.now()` at author time.
+scaffold the migration with `pnpm --filter=@n8n/db migration:new <Name>` and
+let the generator pick a safe one (see `packages/@n8n/db/AGENTS.md`).
 
 ---
 
