@@ -214,7 +214,7 @@ description: Has no instructions.
 	it('loads filesystem-backed skills and linked files from a directory', async () => {
 		const root = mkdtempSync(join(tmpdir(), 'runtime-skills-'));
 		try {
-			const skillDir = join(root, 'workflows', 'builder');
+			const skillDir = join(root, 'workflows', 'builder').replace(/\\/g, '/');
 			mkdirSync(join(skillDir, 'references'), { recursive: true });
 			mkdirSync(join(skillDir, 'examples'), { recursive: true });
 			writeFileSync(
