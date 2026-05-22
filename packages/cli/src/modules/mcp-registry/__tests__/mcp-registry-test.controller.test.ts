@@ -26,6 +26,7 @@ describe('McpRegistryTestController', () => {
 
 	describe('seed', () => {
 		it('should upsert mock servers and trigger registry reload', async () => {
+			repository.findBy.mockResolvedValue([]);
 			repository.upsert.mockResolvedValue({} as never);
 			service.handleReloadMcpRegistry.mockResolvedValue();
 

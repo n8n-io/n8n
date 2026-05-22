@@ -1,4 +1,5 @@
 import { Post, RestController } from '@n8n/decorators';
+import { In } from '@n8n/typeorm';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
@@ -22,7 +23,23 @@ export class McpRegistryTestController {
 	async seed() {
 		this.assertE2ETestsEnabled();
 
-		const entities = [notionMockServer, linearMockServer].map(toEntity);
+		const servers = [notionMockServer, linearMockServer];
+		const existingBySlug = new Map(
+			(
+				await this.repository.findBy({
+					slug: In(servers.map(({ slug }) => slug)),
+				})
+			).map((entity) => [entity.slug, entity.id]),
+		);
+		const entities = servers.map((server) => {
+			const entity = toEntity(server);
+			const existingId = existingBySlug.get(server.slug);
+			if (existingId !== undefined) {
+				entity.id = existingId;
+			}
+
+			return entity;
+		});
 		await this.repository.upsert(entities, ['slug']);
 		await this.service.handleReloadMcpRegistry();
 
