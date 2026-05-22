@@ -123,8 +123,7 @@ Run through this before requesting review. Each item is a real, recurring review
 - [ ] **`up()` / `down()` reads as a list of intentions.** If either body grows past a screen or mixes schema operations with a multi-statement raw-SQL data move, extract the data move into a `private async` method on the same class (e.g. `private async backfillFromX(ctx)`). The top-level should orchestrate, not implement.
 - [ ] **Precedent is the bar to fix, not perpetuate.** When the checklist conflicts with what an older migration does (e.g. redundant `.primary.notNull`, hand-quoted identifiers, missing `.comment()`), the checklist wins for new code — don't copy the violation forward. Note the old occurrences in the PR if you spotted them.
 
-Treat the checklist as a floor, not a ceiling. Before working it, read the file once cold and ask: would I want to maintain this in six months? Then run the checklist for rule compliance. Issues like long methods, unclear ordering, or smell tend to escape rule-shaped checks.
-
+Treat the checklist as a floor, not a ceiling.
 If any item fails, fix it before opening review.
 
 ---
