@@ -107,7 +107,6 @@
       "vue-tsc": "^2.2.8",
       "gaxios": ">=7.1.1",
       "google-gax": "^4.3.7",
-      "ws": ">=8.17.1",
       "date-fns": "2.30.0",
       "date-fns-tz": "2.0.0",
       "form-data": "4.0.4",
@@ -149,7 +148,6 @@
       "yaml@<=2.8.3": "2.8.3",
       "undici@<=7.24.1": "7.24.1",
       "picomatch@<=4.0.4": "4.0.4",
-      "axios": "1.16.0",
       "zod": "3.25.67",
       "fast-xml-parser": "5.7.2",
       "openai": "6.21.0",
@@ -157,8 +155,11 @@
       "uuid@<=11.1.1": "11.1.1",
       "langsmith@<=0.6.0": "0.6.0",
       "protobufjs@<=7.5.8": "7.5.8",
+      "brace-expansion@<=2.1.0": "2.1.0",
+      "ws": "8.20.1",
+      "axios": "1.16.1",
       "vue-i18n@<=11.4.4": "11.4.4",
-      "brace-expansion@<3.0.0": "2.0.3"
+      "@tootallnate/once@<=2.0.1": "2.0.1"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
