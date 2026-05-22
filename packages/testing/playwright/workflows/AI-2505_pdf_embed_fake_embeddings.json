@@ -1,0 +1,88 @@
+{
+	"name": "AI-2505 PDF embed (fake embeddings)",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "f3f2c2a0-2505-4000-8000-000000000001",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [240, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Minimal valid PDF with extractable text 'Hello World'\nconst pdfBase64 = 'JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCA2MTIgNzkyXSAvQ29udGVudHMgNCAwIFIgL1Jlc291cmNlcyA8PCAvRm9udCA8PCAvRjEgNSAwIFIgPj4gPj4gPj4KZW5kb2JqCjQgMCBvYmoKPDwgL0xlbmd0aCA0NCA+PgpzdHJlYW0KQlQKL0YxIDEyIFRmCjEwMCA3MDAgVGQKKEhlbGxvIFdvcmxkKSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCjUgMCBvYmoKPDwgL1R5cGUgL0ZvbnQgL1N1YnR5cGUgL1R5cGUxIC9CYXNlRm9udCAvSGVsdmV0aWNhID4+CmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMDkgMDAwMDAgbiAKMDAwMDAwMDA1OCAwMDAwMCBuIAowMDAwMDAwMTE1IDAwMDAwIG4gCjAwMDAwMDAyNjYgMDAwMDAgbiAKMDAwMDAwMDM1OSAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXplIDYgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjQ0MQolJUVPRgo=';\n\nconst pdfBuffer = Buffer.from(pdfBase64, 'base64');\nconst data = await this.helpers.prepareBinaryData(pdfBuffer, 'sample.pdf', 'application/pdf');\n\nreturn [{ json: {}, binary: { data } }];"
+			},
+			"id": "f3f2c2a0-2505-4000-8000-000000000002",
+			"name": "Create PDF",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [460, 300]
+		},
+		{
+			"parameters": {
+				"mode": "insert",
+				"memoryKey": { "mode": "list", "value": "ai_2505_pdf" },
+				"embeddingBatchSize": 200,
+				"options": {}
+			},
+			"id": "f3f2c2a0-2505-4000-8000-000000000003",
+			"name": "Simple Vector Store",
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+			"typeVersion": 1.3,
+			"position": [800, 300]
+		},
+		{
+			"parameters": {
+				"dataType": "binary",
+				"binaryMode": "allInputData",
+				"loader": "pdfLoader",
+				"textSplittingMode": "simple",
+				"options": {}
+			},
+			"id": "f3f2c2a0-2505-4000-8000-000000000004",
+			"name": "Default Data Loader",
+			"type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+			"typeVersion": 1.1,
+			"position": [820, 520]
+		},
+		{
+			"parameters": {
+				"code": {
+					"supplyData": {
+						"code": "const { FakeEmbeddings } = require('@langchain/core/utils/testing');\n\nreturn new FakeEmbeddings();"
+					}
+				},
+				"outputs": {
+					"output": [{ "type": "ai_embedding" }]
+				}
+			},
+			"id": "f3f2c2a0-2505-4000-8000-000000000005",
+			"name": "Fake Embeddings",
+			"type": "@n8n/n8n-nodes-langchain.code",
+			"typeVersion": 1,
+			"position": [580, 520]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Manual Trigger": {
+			"main": [[{ "node": "Create PDF", "type": "main", "index": 0 }]]
+		},
+		"Create PDF": {
+			"main": [[{ "node": "Simple Vector Store", "type": "main", "index": 0 }]]
+		},
+		"Default Data Loader": {
+			"ai_document": [[{ "node": "Simple Vector Store", "type": "ai_document", "index": 0 }]]
+		},
+		"Fake Embeddings": {
+			"ai_embedding": [[{ "node": "Simple Vector Store", "type": "ai_embedding", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" },
+	"versionId": "ai-2505-pdf-embed-v1",
+	"meta": { "instanceId": "ai-2505-regression-fixture" },
+	"id": "AI2505PDFEmbed",
+	"tags": []
+}

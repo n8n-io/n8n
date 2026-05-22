@@ -293,7 +293,6 @@
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*",
     "openai": "^6.34.0",
-    "pdf-parse": "1.1.1",
     "pg": "catalog:",
     "redis": "4.6.14",
     "sanitize-html": "2.12.1",

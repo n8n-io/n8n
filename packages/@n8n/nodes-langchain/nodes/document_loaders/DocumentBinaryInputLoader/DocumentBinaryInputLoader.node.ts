@@ -19,7 +19,7 @@ import {
 // import 'd3-dsv'; // for csv
 import 'mammoth'; // for docx
 import 'epub2'; // for epub
-import 'pdf-parse'; // for pdf
+// pdf-parse is owned by @n8n/ai-utilities via N8nPdfLoader; no marker import needed.
 
 export class DocumentBinaryInputLoader implements INodeType {
 	description: INodeTypeDescription = {
