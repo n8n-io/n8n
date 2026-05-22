@@ -51,7 +51,7 @@ jobs:
           fi
 
           STABLE_VERSION="${STABLE_TAG#n8n@}"
-          EXP_BRANCH="exp/${STABLE_VERSION}-${GITHUB_RUN_ID}"
+          EXP_BRANCH="exp/${STABLE_VERSION}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
           echo "Stable tag: $STABLE_TAG"
           echo "Experiment branch: $EXP_BRANCH"
