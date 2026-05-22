@@ -39,6 +39,7 @@ describe('createSandbox', () => {
 			daytonaApiKey: 'test-key',
 			image: 'node:20',
 			timeout: 60_000,
+			createTimeoutSeconds: 900,
 		};
 
 		const result = await createSandbox(config);
@@ -53,6 +54,7 @@ describe('createSandbox', () => {
 				image: 'node:20',
 				language: 'typescript',
 				timeout: 60_000,
+				createTimeoutSeconds: 900,
 			}),
 		);
 	});

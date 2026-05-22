@@ -5,7 +5,7 @@ orchestration tools (used by the orchestrator for loop control) and domain tools
 (used by the orchestrator directly or delegated to sub-agents). Each tool defines
 its input/output schema via Zod.
 
-## Orchestration Tools (up to 10)
+## Orchestration Tools
 
 These tools are exclusive to the orchestrator agent. Sub-agents do not receive
 them. Some are conditional on context availability.
@@ -26,7 +26,7 @@ for approval before execution starts.
 {
   id: string;          // Stable identifier used by dependency edges
   title: string;       // Short user-facing task title
-  kind: 'delegate' | 'build-workflow' | 'manage-data-tables' | 'research';
+  kind: 'delegate' | 'build-workflow' | 'research' | 'checkpoint';
   spec: string;        // Detailed executor briefing for this task
   deps: string[];      // Task IDs that must succeed before this task can start
   tools?: string[];    // Required tool subset for delegate tasks
@@ -42,11 +42,14 @@ for approval before execution starts.
 - On approval: calls `schedulePlannedTasks()` to start detached execution
 - On denial: returns feedback for the LLM to revise the plan
 
-**Task kinds** map to preconfigured sub-agents:
+**Task kinds** map to executors:
 - `build-workflow` → workflow builder agent (sandbox or tool mode)
-- `manage-data-tables` → data table agent (all `*-data-table*` tools)
 - `research` → research agent (web-search + fetch-url)
 - `delegate` → custom sub-agent with orchestrator-specified tool subset
+- `checkpoint` → orchestrator-executed verification step
+
+Standalone data-table work is handled directly by the orchestrator with the
+`data-table-manager` skill and the `data-tables` / `parse-file` tools.
 
 ### `delegate`
 
@@ -707,8 +710,7 @@ everything; sub-agents receive only what they need.
 | Execution tools | ✅ (direct use) | ✅ (via delegate) | ❌ |
 | Credential tools | ✅ | ✅ (via delegate) | ✅ (builder — setup only) |
 | Node discovery tools | ✅ | ✅ (via delegate) | ✅ (builder) |
-| Data table read tools | ✅ (direct) | ✅ (via delegate) | ✅ (data table agent) |
-| Data table write tools | ❌ (via plan) | ❌ | ✅ (data table agent) |
+| Data table tools | ✅ (direct, via `data-table-manager` skill) | ✅ (via delegate) | ❌ |
 | Workspace tools | ✅ | ✅ (via delegate) | ❌ |
 | Filesystem tools | ✅ (conditional) | ✅ (via delegate) | ❌ |
 | Web research tools | ✅ | ✅ (via delegate) | ✅ (research agent) |

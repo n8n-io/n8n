@@ -7,7 +7,7 @@
  * - Tool mode (fallback): agent uses build-workflow tool with string-based code
  */
 
-import { Agent, Tool, type BuiltTool } from '@n8n/agents';
+import { Agent, Tool, type BuiltTool, type RuntimeSkillSource, type Workspace } from '@n8n/agents';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -27,9 +27,12 @@ import {
 	withTraceContextActor,
 } from './tracing-utils';
 import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
+import { attachRuntimeWorkspaceCapabilities } from '../../agent/runtime-workspace';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
 import type { Logger } from '../../logger';
+import { materializeRuntimeSkillsIntoWorkspace } from '../../skills/materialize-runtime-skills';
+import { hasRuntimeSkills } from '../../skills/runtime-skills';
 import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/consume-with-hitl';
 import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
@@ -55,6 +58,7 @@ import {
 	type SandboxWorkspace,
 } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
+import { createScopedWorkspace } from '../../workspace/scoped-workspace';
 import {
 	CREDENTIALS_TOOL_ID,
 	createCredentialsTool,
@@ -156,6 +160,31 @@ async function writeBuilderWorkspaceFile(
 	}
 
 	await writeFileViaSandbox(workspace, filePath, content);
+}
+
+async function materializeBuilderRuntimeSkills(
+	context: OrchestrationContext,
+	workspace: Workspace,
+	root: string,
+): Promise<{ workspace: Workspace; source?: RuntimeSkillSource }> {
+	const source = context.runtimeSkills;
+	if (!hasRuntimeSkills(source)) {
+		return { workspace, source };
+	}
+
+	const materialized = await materializeRuntimeSkillsIntoWorkspace({
+		source,
+		workspace,
+		root,
+		logger: context.logger,
+	});
+
+	if (!materialized) return { workspace, source };
+
+	return {
+		workspace: createScopedWorkspace(workspace, root, materialized.env),
+		source: materialized.source,
+	};
 }
 
 function toToolRegistry(tools: readonly BuiltTool[]): InstanceAiToolRegistry {
@@ -1365,8 +1394,15 @@ export async function startBuildWorkflowAgentTask(
 				// cannot mask an earlier successful submit during post-error recovery.
 				const submitAttemptHistory: SubmitWorkflowAttempt[] = [];
 				if (useSandbox && sharedWorkspace && domainContext) {
-					const workspace = sharedWorkspace;
+					let workspace = sharedWorkspace;
 					const root = await getWorkspaceRoot(workspace);
+					const materializedRuntimeSkills = await materializeBuilderRuntimeSkills(
+						context,
+						workspace,
+						root,
+					);
+					workspace = materializedRuntimeSkills.workspace;
+					const runtimeSkills = materializedRuntimeSkills.source;
 					const builderLayout = builderWorkflowWorkspaceLayout(root, workItemId);
 
 					prompt = createSandboxBuilderAgentPrompt(root, {
@@ -1462,8 +1498,8 @@ export async function startBuildWorkflowAgentTask(
 							},
 						})
 						.tool(toolRegistryValues(tracedBuilderTools))
-						.workspace(workspace)
 						.checkpoint(context.checkpointStore ?? 'memory');
+					attachRuntimeWorkspaceCapabilities(subAgent, { workspace, runtimeSkills });
 					if (builderMemory) {
 						subAgent.memory(builderMemory);
 					}
@@ -1482,6 +1518,7 @@ export async function startBuildWorkflowAgentTask(
 							systemPrompt: prompt,
 							tools: tracedBuilderTools,
 							runtimeTools: runtimeWorkspaceTools,
+							runtimeSkills: runtimeSkills?.registry,
 							modelId: context.modelId,
 						}),
 					);
@@ -1737,6 +1774,7 @@ export async function startBuildWorkflowAgentTask(
 				});
 
 				const tracedBuilderTools = traceSubAgentTools(context, builderTools, 'workflow-builder');
+				const runtimeSkills = context.runtimeSkills;
 
 				const subAgent = new Agent('Workflow Builder Agent')
 					.model(context.modelId)
@@ -1747,6 +1785,7 @@ export async function startBuildWorkflowAgentTask(
 					})
 					.tool(toolRegistryValues(tracedBuilderTools))
 					.checkpoint(context.checkpointStore ?? 'memory');
+				attachRuntimeWorkspaceCapabilities(subAgent, { runtimeSkills });
 				const telemetry = traceContext?.getTelemetry?.({
 					agentRole: 'workflow-builder',
 					functionId: 'instance-ai.subagent.workflow-builder',
@@ -1761,6 +1800,7 @@ export async function startBuildWorkflowAgentTask(
 					buildAgentTraceInputs({
 						systemPrompt: prompt,
 						tools: tracedBuilderTools,
+						runtimeSkills: runtimeSkills?.registry,
 						modelId: context.modelId,
 					}),
 				);

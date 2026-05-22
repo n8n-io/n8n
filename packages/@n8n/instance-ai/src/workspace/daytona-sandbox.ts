@@ -32,6 +32,7 @@ export interface DaytonaSandboxOptions {
 	apiUrl?: string;
 	target?: string;
 	timeout?: number;
+	createTimeoutSeconds?: number;
 	language?: 'typescript' | 'javascript' | 'python';
 	resources?: Resources;
 	env?: Record<string, string>;
@@ -116,7 +117,10 @@ export class DaytonaSandbox extends BaseSandbox {
 			return;
 		}
 
-		this.sandbox = await client.create(this.createSandboxParams());
+		const params = this.createSandboxParams();
+		this.sandbox = this.options.createTimeoutSeconds
+			? await client.create(params, { timeout: this.options.createTimeoutSeconds })
+			: await client.create(params);
 		await this.detectWorkingDirectory();
 	}
 

@@ -97,6 +97,28 @@ describe('PlannedTaskStorage', () => {
 			const loaded = await storage.get('thread-1');
 			expect(loaded).toBeNull();
 		});
+
+		it('keeps legacy manage-data-tables tasks readable', async () => {
+			const graph = makeGraph({
+				tasks: [
+					{
+						id: 'tables-1',
+						title: 'Manage data tables',
+						kind: 'manage-data-tables',
+						spec: 'Import rows',
+						deps: [],
+						status: 'planned',
+					},
+				],
+			});
+			memory.getThread.mockResolvedValue({
+				metadata: { instanceAiPlannedTasks: graph },
+			});
+
+			const loaded = await storage.get('thread-1');
+
+			expect(loaded?.tasks[0]?.kind).toBe('manage-data-tables');
+		});
 	});
 
 	describe('update() kind parsing', () => {

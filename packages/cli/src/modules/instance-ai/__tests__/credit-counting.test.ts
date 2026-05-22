@@ -14,6 +14,10 @@ jest.mock('@n8n/instance-ai', () => {
 		createWorkspace: jest.fn(),
 		createLazyRuntimeWorkspace: jest.fn(),
 		setupSandboxWorkspace: jest.fn(),
+		loadInstanceAiRuntimeSkillSource: jest.fn(() => ({
+			registry: { skillsHash: 'runtime-skills-hash', skills: [] },
+			loadSkill: jest.fn(),
+		})),
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: jest.fn(),
 		handleVerificationVerdict: jest.fn(),

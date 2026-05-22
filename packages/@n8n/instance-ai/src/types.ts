@@ -5,6 +5,7 @@ import type {
 	BuiltMemory,
 	BuiltTool,
 	CheckpointStore,
+	RuntimeSkillSource,
 	Telemetry,
 	Workspace,
 } from '@n8n/agents';
@@ -671,12 +672,9 @@ export interface TaskStorage {
 
 // ── Planned task graphs ─────────────────────────────────────────────────────
 
-export type PlannedTaskKind =
-	| 'delegate'
-	| 'build-workflow'
-	| 'manage-data-tables'
-	| 'research'
-	| 'checkpoint';
+export const PLANNED_TASK_KINDS = ['delegate', 'build-workflow', 'research', 'checkpoint'] as const;
+export const STORED_PLANNED_TASK_KINDS = [...PLANNED_TASK_KINDS, 'manage-data-tables'] as const;
+export type PlannedTaskKind = (typeof STORED_PLANNED_TASK_KINDS)[number];
 
 export interface PlannedTask {
 	id: string;
@@ -1056,6 +1054,11 @@ export interface OrchestrationContext {
 	localMcpServer?: LocalMcpServer;
 	/** MCP tools loaded from external servers — available for delegation to sub-agents */
 	mcpTools?: InstanceAiToolRegistry;
+	/**
+	 * Runtime-loadable skills available to the agent. Workspace-backed agents may
+	 * replace this with a workspace-materialized source before attaching it.
+	 */
+	runtimeSkills?: RuntimeSkillSource;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
 	oauth2CallbackUrl?: string;
 	/** Webhook base URL for the n8n instance (e.g. http://localhost:5678/webhook) — used to construct webhook URLs for created workflows */

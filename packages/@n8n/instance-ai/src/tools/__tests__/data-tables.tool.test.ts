@@ -50,32 +50,10 @@ function noSuspendCtx() {
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('data-tables tool', () => {
-	// ── Surface filtering ──────────────────────────────────────────────────
+	// ── Tool construction ──────────────────────────────────────────────────
 
-	describe('surface filtering', () => {
-		it('should support read-only actions on orchestrator surface', async () => {
-			const context = createMockContext();
-			const tables = [{ id: 'dt-1', name: 'Users', columns: [] }];
-			context.dataTableService.list = jest.fn().mockResolvedValue(tables);
-			const tool = createDataTablesTool(context, 'orchestrator');
-
-			const result = await executeTool(
-				tool,
-				{ action: 'list', projectId: 'p1' } as never,
-				{} as never,
-			);
-
-			expect(result).toEqual({ tables });
-		});
-
-		it('should have a concise description for full surface', () => {
-			const context = createMockContext();
-			const tool = createDataTablesTool(context, 'full');
-
-			expect(tool.description).toContain('data tables');
-		});
-
-		it('should default to full surface when not specified', () => {
+	describe('tool construction', () => {
+		it('should have a concise description', () => {
 			const context = createMockContext();
 			const tool = createDataTablesTool(context);
 
@@ -114,17 +92,6 @@ describe('data-tables tool', () => {
 			await executeTool(tool, { action: 'list' as const, projectId: 'proj-1' }, noSuspendCtx());
 
 			expect(context.dataTableService.list).toHaveBeenCalledWith({ projectId: 'proj-1' });
-		});
-
-		it('should work on orchestrator surface', async () => {
-			const tables = [{ id: 'dt-1', name: 'Users' }];
-			const context = createMockContext();
-			(context.dataTableService.list as jest.Mock).mockResolvedValue(tables);
-
-			const tool = createDataTablesTool(context, 'orchestrator');
-			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
-
-			expect(result).toEqual({ tables });
 		});
 	});
 
@@ -196,7 +163,7 @@ describe('data-tables tool', () => {
 
 			expect(result).toEqual({
 				...queryResult,
-				hint: '50 more rows available. Use plan with a manage-data-tables task for bulk operations.',
+				hint: '50 more rows available. Use additional paginated data-tables queries for bulk operations.',
 			});
 		});
 
@@ -214,7 +181,7 @@ describe('data-tables tool', () => {
 
 			expect(result).toEqual({
 				...queryResult,
-				hint: '70 more rows available. Use plan with a manage-data-tables task for bulk operations.',
+				hint: '70 more rows available. Use additional paginated data-tables queries for bulk operations.',
 			});
 		});
 

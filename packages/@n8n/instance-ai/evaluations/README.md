@@ -290,10 +290,10 @@ pnpm eval:pairwise:langsmith \
 ### Sandbox
 
 Pairwise evals always run inside a sandbox — the same path production uses.
-The agent writes TypeScript to `~/workspace/src/workflow.ts` inside the
-sandbox, runs `tsc` to validate, and calls `submit-workflow` to save the
-parsed `WorkflowJSON`. This exercises the production builder agent
-end-to-end (sandbox prompt, file I/O, real type checking).
+The agent writes TypeScript to a builder root under the shared sandbox
+workspace, runs `tsc` to validate, and calls `submit-workflow` to save the
+parsed `WorkflowJSON`. This exercises the production builder agent end-to-end
+(sandbox prompt, file I/O, real type checking).
 
 Required env vars (Daytona provider — the default):
 

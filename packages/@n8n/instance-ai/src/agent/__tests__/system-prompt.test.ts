@@ -11,6 +11,14 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('Never let an empty assistant message');
 			expect(prompt).toContain('[Calling tools: ...]');
 		});
+
+		it('instructs the agent to surface generated documents as artifacts instead of sandbox paths', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('Do not show sandbox or workspace file paths');
+			expect(prompt).toContain('/home/daytona/workspace');
+			expect(prompt).toContain('<command:artifact-create>');
+		});
 	});
 
 	describe('license hints', () => {
@@ -102,12 +110,20 @@ describe('getSystemPrompt', () => {
 	});
 
 	describe('When to Plan — what-am-I-touching axis', () => {
-		it('routes new/multi-workflow/data-table work through plan', () => {
+		it('routes new and multi-workflow work through plan', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('## When to Plan');
-			expect(prompt).toMatch(/New workflow \(no `workflowId`\), multi-workflow build/);
-			expect(prompt).toMatch(/data tables created or schemas changed/);
+			expect(prompt).toMatch(/New workflow \(no `workflowId`\) or multi-workflow build/);
+			expect(prompt).toContain('workflow tasks include any data table names');
+		});
+
+		it('routes standalone data-table work through direct tools and the skill', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toMatch(/Standalone data-table work/);
+			expect(prompt).toContain('`data-table-manager` skill');
+			expect(prompt).toContain('Do not call `plan`, `create-tasks`, or `delegate`');
 		});
 
 		it('routes existing-workflow edits through bypassPlan', () => {

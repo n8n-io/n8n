@@ -8,7 +8,8 @@ import type { ResourceEntry } from '../useResourceRegistry';
 // Stub ChatMarkdownChunk to expose the processed content as plain text
 vi.mock('@/features/ai/chatHub/components/ChatMarkdownChunk.vue', () => ({
 	default: {
-		template: '<div data-test-id="markdown-output">{{ source.content }}</div>',
+		template:
+			'<div data-test-id="markdown-output" :data-source-type="source.type">{{ source.type === "text" ? source.content : source.command?.title }}</div>',
 		props: ['source'],
 	},
 }));
@@ -46,6 +47,52 @@ describe('InstanceAiMarkdown', () => {
 	it('should return content unchanged when registry is empty', () => {
 		const result = getProcessedContent('Hello world');
 		expect(result).toBe('Hello world');
+	});
+
+	it('should parse artifact commands instead of exposing raw command markup', () => {
+		const { getAllByTestId } = renderComponent({
+			props: {
+				content: `Summary first.
+<command:artifact-create>
+<title>Workflow audit</title>
+<type>md</type>
+<content># Full audit</content>
+</command:artifact-create>`,
+			},
+		});
+		const chunks = getAllByTestId('markdown-output');
+
+		expect(chunks.map((chunk) => chunk.getAttribute('data-source-type'))).toEqual([
+			'text',
+			'artifact-create',
+		]);
+		expect(chunks[0]).toHaveTextContent('Summary first.');
+		expect(chunks[1]).toHaveTextContent('Workflow audit');
+		expect(chunks.map((chunk) => chunk.textContent).join('')).not.toContain(
+			'<command:artifact-create>',
+		);
+	});
+
+	it('should only decorate parsed text chunks, not artifact command content', () => {
+		thread.resourceNameIndex = makeRegistry([
+			{ type: 'workflow', id: 'wf-1', name: 'My Workflow' },
+		]);
+
+		const { getAllByTestId } = renderComponent({
+			props: {
+				content: `See My Workflow.
+<command:artifact-create>
+<title>My Workflow audit</title>
+<type>md</type>
+<content># My Workflow</content>
+</command:artifact-create>`,
+			},
+		});
+		const chunks = getAllByTestId('markdown-output');
+
+		expect(chunks[0]).toHaveTextContent('[My Workflow](n8n-resource://workflow/wf-1)');
+		expect(chunks[1]).toHaveTextContent('My Workflow audit');
+		expect(chunks[1]).not.toHaveTextContent('n8n-resource://workflow/wf-1');
 	});
 
 	it('should replace resource name with n8n-resource link', () => {
@@ -89,6 +136,12 @@ describe('InstanceAiMarkdown', () => {
 		expect(result).toContain('[Test (v2.0)](n8n-resource://workflow/wf-1)');
 	});
 
+	it('should escape markdown link text and encode resource ids', () => {
+		const registry = makeRegistry([{ type: 'workflow', id: 'wf/1', name: 'Name [prod]' }]);
+		const result = getProcessedContent('Open Name [prod] now', registry);
+		expect(result).toContain('[Name \\[prod\\]](n8n-resource://workflow/wf%2F1)');
+	});
+
 	it('should replace resource name appearing multiple times', () => {
 		const registry = makeRegistry([{ type: 'workflow', id: 'wf-1', name: 'My Workflow' }]);
 		const result = getProcessedContent('Open My Workflow and then close My Workflow', registry);
@@ -112,7 +165,16 @@ describe('InstanceAiMarkdown', () => {
 			'See [My Workflow](https://example.com) for details',
 			registry,
 		);
-		// The name inside [...] is preceded by [ — lookbehind should block replacement
+		expect(result).not.toContain('n8n-resource://');
+	});
+
+	it('should NOT replace names inside longer existing markdown link text', () => {
+		const registry = makeRegistry([{ type: 'workflow', id: 'wf-1', name: 'My Workflow' }]);
+		const result = getProcessedContent(
+			'See [the My Workflow docs](https://example.com) for details',
+			registry,
+		);
+		expect(result).toContain('[the My Workflow docs](https://example.com)');
 		expect(result).not.toContain('n8n-resource://');
 	});
 });

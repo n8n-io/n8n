@@ -6,14 +6,14 @@ import type * as SubAgentFactoryMod from './agent/sub-agent-factory';
 import type * as CompactionMod from './compaction';
 import type * as McpClientManagerMod from './mcp/mcp-client-manager';
 import type * as TitleUtilsMod from './memory/title-utils';
+import type * as MaterializeRuntimeSkillsMod from './skills/materialize-runtime-skills';
+import type * as RuntimeSkillsMod from './skills/runtime-skills';
 import type * as BuildWorkflowAgentPromptMod from './tools/orchestration/build-workflow-agent.prompt';
 import type * as BuildWorkflowAgentToolMod from './tools/orchestration/build-workflow-agent.tool';
-import type * as DataTableAgentToolMod from './tools/orchestration/data-table-agent.tool';
 import type * as DelegateToolMod from './tools/orchestration/delegate.tool';
 import type * as ResearchWithAgentToolMod from './tools/orchestration/research-with-agent.tool';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as EvalAgentsMod from './utils/eval-agents';
-import type * as BuilderSandboxFactoryMod from './workspace/builder-sandbox-factory';
 import type * as CreateWorkspaceMod from './workspace/create-workspace';
 
 type LazyFunction = (...args: never[]) => unknown;
@@ -75,9 +75,6 @@ const loadBuildWorkflowAgentTool = lazyModule(
 	() =>
 		require('./tools/orchestration/build-workflow-agent.tool') as typeof BuildWorkflowAgentToolMod,
 );
-const loadDataTableAgentTool = lazyModule(
-	() => require('./tools/orchestration/data-table-agent.tool') as typeof DataTableAgentToolMod,
-);
 const loadDelegateTool = lazyModule(
 	() => require('./tools/orchestration/delegate.tool') as typeof DelegateToolMod,
 );
@@ -89,12 +86,15 @@ const loadTitleUtils = lazyModule(() => require('./memory/title-utils') as typeo
 const loadMcpClientManager = lazyModule(
 	() => require('./mcp/mcp-client-manager') as typeof McpClientManagerMod,
 );
+const loadRuntimeSkills = lazyModule(
+	() => require('./skills/runtime-skills') as typeof RuntimeSkillsMod,
+);
+const loadMaterializeRuntimeSkills = lazyModule(
+	() => require('./skills/materialize-runtime-skills') as typeof MaterializeRuntimeSkillsMod,
+);
 const loadEvalAgents = lazyModule(() => require('./utils/eval-agents') as typeof EvalAgentsMod);
 const loadCreateWorkspace = lazyModule(
 	() => require('./workspace/create-workspace') as typeof CreateWorkspaceMod,
-);
-const loadBuilderSandboxFactory = lazyModule(
-	() => require('./workspace/builder-sandbox-factory') as typeof BuilderSandboxFactoryMod,
 );
 
 export { MAX_STEPS } from './constants/max-steps';
@@ -159,6 +159,23 @@ export type {
 	TraceToolResume,
 } from './tracing/trace-replay';
 export type { SubAgentOptions } from './agent/sub-agent-factory';
+export declare const INSTANCE_AI_SKILLS_DIR: typeof RuntimeSkillsMod.INSTANCE_AI_SKILLS_DIR;
+export const hasRuntimeSkills: typeof RuntimeSkillsMod.hasRuntimeSkills = lazyFunction(
+	() => loadRuntimeSkills().hasRuntimeSkills,
+);
+export const loadInstanceAiRuntimeSkillSource: typeof RuntimeSkillsMod.loadInstanceAiRuntimeSkillSource =
+	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSource);
+export const materializeRuntimeSkillsIntoWorkspace: typeof MaterializeRuntimeSkillsMod.materializeRuntimeSkillsIntoWorkspace =
+	lazyFunction(() => loadMaterializeRuntimeSkills().materializeRuntimeSkillsIntoWorkspace);
+export declare const SANDBOX_RUNTIME_SKILLS_DIR: typeof MaterializeRuntimeSkillsMod.SANDBOX_RUNTIME_SKILLS_DIR;
+export declare const SANDBOX_RUNTIME_SKILL_REGISTRY_FILE: typeof MaterializeRuntimeSkillsMod.SANDBOX_RUNTIME_SKILL_REGISTRY_FILE;
+export declare const N8N_SKILLS_DIR_ENV: typeof MaterializeRuntimeSkillsMod.N8N_SKILLS_DIR_ENV;
+export declare const N8N_SKILL_DIR_ENV: typeof MaterializeRuntimeSkillsMod.N8N_SKILL_DIR_ENV;
+export declare const N8N_WORKSPACE_DIR_ENV: typeof MaterializeRuntimeSkillsMod.N8N_WORKSPACE_DIR_ENV;
+export type {
+	MaterializedRuntimeSkill,
+	MaterializedRuntimeSkills,
+} from './skills/materialize-runtime-skills';
 
 export const createInstanceAgent: typeof InstanceAgentMod.createInstanceAgent = lazyFunction(
 	() => loadInstanceAgent().createInstanceAgent,
@@ -177,9 +194,6 @@ export declare const BUILDER_AGENT_PROMPT: typeof BuildWorkflowAgentPromptMod.BU
 
 export const startBuildWorkflowAgentTask: typeof BuildWorkflowAgentToolMod.startBuildWorkflowAgentTask =
 	lazyFunction(() => loadBuildWorkflowAgentTool().startBuildWorkflowAgentTask);
-
-export const startDataTableAgentTask: typeof DataTableAgentToolMod.startDataTableAgentTask =
-	lazyFunction(() => loadDataTableAgentTool().startDataTableAgentTask);
 
 export const startDetachedDelegateTask: typeof DelegateToolMod.startDetachedDelegateTask =
 	lazyFunction(() => loadDelegateTool().startDetachedDelegateTask);
@@ -231,22 +245,33 @@ export declare const HAIKU_MODEL: typeof EvalAgentsMod.HAIKU_MODEL;
 defineLazyExport('BUILDER_AGENT_PROMPT', () => loadBuildWorkflowAgentPrompt().BUILDER_AGENT_PROMPT);
 defineLazyExport('SONNET_MODEL', () => loadEvalAgents().SONNET_MODEL);
 defineLazyExport('HAIKU_MODEL', () => loadEvalAgents().HAIKU_MODEL);
+defineLazyExport('INSTANCE_AI_SKILLS_DIR', () => loadRuntimeSkills().INSTANCE_AI_SKILLS_DIR);
+defineLazyExport(
+	'SANDBOX_RUNTIME_SKILLS_DIR',
+	() => loadMaterializeRuntimeSkills().SANDBOX_RUNTIME_SKILLS_DIR,
+);
+defineLazyExport(
+	'SANDBOX_RUNTIME_SKILL_REGISTRY_FILE',
+	() => loadMaterializeRuntimeSkills().SANDBOX_RUNTIME_SKILL_REGISTRY_FILE,
+);
+defineLazyExport('N8N_SKILLS_DIR_ENV', () => loadMaterializeRuntimeSkills().N8N_SKILLS_DIR_ENV);
+defineLazyExport('N8N_SKILL_DIR_ENV', () => loadMaterializeRuntimeSkills().N8N_SKILL_DIR_ENV);
+defineLazyExport(
+	'N8N_WORKSPACE_DIR_ENV',
+	() => loadMaterializeRuntimeSkills().N8N_WORKSPACE_DIR_ENV,
+);
 export type { SuspensionInfo, Resumable } from './utils/stream-helpers';
 export { buildAgentTreeFromEvents, findAgentNodeInTree } from './utils/agent-tree';
 export type { SandboxConfig } from './workspace/create-workspace';
 export { createLazyRuntimeWorkspace } from './workspace/lazy-runtime-workspace';
 export type { RuntimeWorkspaceResolver } from './workspace/lazy-runtime-workspace';
 export { getWorkspaceRoot, setupSandboxWorkspace } from './workspace/sandbox-setup';
-export type { BuilderWorkspace } from './workspace/builder-sandbox-factory';
-export type BuilderSandboxFactory = BuilderSandboxFactoryMod.BuilderSandboxFactory;
 export const createSandbox: typeof CreateWorkspaceMod.createSandbox = lazyFunction(
 	() => loadCreateWorkspace().createSandbox,
 );
 export const createWorkspace: typeof CreateWorkspaceMod.createWorkspace = lazyFunction(
 	() => loadCreateWorkspace().createWorkspace,
 );
-export const BuilderSandboxFactory: typeof BuilderSandboxFactoryMod.BuilderSandboxFactory =
-	lazyClass(() => loadBuilderSandboxFactory().BuilderSandboxFactory);
 export { SnapshotManager } from './workspace/snapshot-manager';
 export type { InstanceAiEventBus, StoredEvent } from './event-bus';
 export {
@@ -259,8 +284,6 @@ export type {
 	ManagedBackgroundTask,
 	SpawnManagedBackgroundTaskOptions,
 } from './runtime/background-task-manager';
-export { BuilderSandboxSessionRegistry } from './runtime/builder-sandbox-session-registry';
-export type { BuilderSandboxSession } from './runtime/builder-sandbox-session-registry';
 export { RunStateRegistry } from './runtime/run-state-registry';
 export type {
 	ActiveRunState,
@@ -390,7 +413,6 @@ export type {
 	ServiceProxyConfig,
 } from './types';
 export type { StartedWorkflowBuildTask } from './tools/orchestration/build-workflow-agent.tool';
-export type { StartedBackgroundAgentTask } from './tools/orchestration/data-table-agent.tool';
 export type { DetachedDelegateTaskResult } from './tools/orchestration/delegate.tool';
 export type { StartedResearchAgentTask } from './tools/orchestration/research-with-agent.tool';
 export {

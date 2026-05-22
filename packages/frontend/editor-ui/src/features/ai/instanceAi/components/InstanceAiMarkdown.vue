@@ -1,6 +1,7 @@
 <script lang="ts" setup>
+import { parseMessage } from '@n8n/chat-hub';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
-import type { ComponentPublicInstance } from 'vue';
+import type { ChatMessageContentChunk } from '@n8n/api-types';
 import { computed, inject, onBeforeUnmount, onMounted, onUpdated, ref, useCssModule } from 'vue';
 import { useThread } from '../instanceAi.store';
 
@@ -10,7 +11,11 @@ const props = defineProps<{
 
 const thread = useThread();
 const styles = useCssModule();
-const wrapperRef = ref<ComponentPublicInstance | null>(null);
+const wrapperRef = ref<HTMLElement | null>(null);
+const openChatArtifact = inject<((title?: string) => void) | undefined>(
+	'openChatArtifact',
+	undefined,
+);
 
 /**
  * Preview openers — return true when they switched the preview tab, false
@@ -54,63 +59,117 @@ const URL_BUILDERS: Record<string, (id: string) => string> = {
 const INTERNAL_BLOCK_PATTERN =
 	/<(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)[\s\S]*?<\/(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)>/g;
 
-const processedContent = computed(() => {
+const rawContent = computed(() => props.content.replace(INTERNAL_BLOCK_PATTERN, '').trim());
+
+function escapeMarkdownLinkText(value: string): string {
+	return value.replace(/\\/g, '\\\\').replace(/\[/g, '\\[').replace(/\]/g, '\\]');
+}
+
+function replaceUnprotectedMarkdownText(
+	content: string,
+	replaceSegment: (segment: string) => string,
+): string {
+	const protectedMarkdownPattern = /(`+)([\s\S]*?)\1|\[[^\]]+\]\([^)]+\)/g;
+	let result = '';
+	let lastIndex = 0;
+
+	for (const match of content.matchAll(protectedMarkdownPattern)) {
+		const index = match.index ?? 0;
+		result += replaceSegment(content.slice(lastIndex, index));
+		result += match[0];
+		lastIndex = index + match[0].length;
+	}
+
+	return result + replaceSegment(content.slice(lastIndex));
+}
+
+function decorateResourceNames(content: string): string {
 	const registry = thread.resourceNameIndex;
-
-	// Strip internal protocol blocks the LLM may have echoed
-	let result = props.content.replace(INTERNAL_BLOCK_PATTERN, '').trim();
-
-	if (registry.size === 0) return result;
+	if (registry.size === 0) return content;
 
 	// Build entries sorted longest-name-first to avoid partial-match conflicts
 	const entries = [...registry.values()]
 		.filter((entry) => entry.name.length >= 3)
 		.sort((a, b) => b.name.length - a.name.length);
 
+	let result = content;
 	for (const entry of entries) {
-		// Escape special regex characters in the resource name
-		const escaped = entry.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		result = replaceUnprotectedMarkdownText(result, (segment) => {
+			// Escape special regex characters in the resource name
+			const escaped = entry.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-		// Match the resource name as a standalone token, but NOT if it is:
-		// - Inside backticks (inline code)
-		// - Already inside a markdown link [...](...) or the link URL part
-		// - Preceded by [ or followed by ]( (link text boundaries)
-		//
-		// Use \b when the name edge is a word character; use a whitespace/
-		// punctuation boundary otherwise (handles names like "Test (v2.0)").
-		const startBoundary = /\w/.test(entry.name[0]) ? '\\b' : '(?<=^|[\\s,;:!?])';
-		const endBoundary = /\w/.test(entry.name[entry.name.length - 1]) ? '\\b' : '(?=$|[\\s,;:!?.])';
+			// Use \b when the name edge is a word character; use a whitespace/
+			// punctuation boundary otherwise (handles names like "Test (v2.0)").
+			const startBoundary = /\w/.test(entry.name[0]) ? '\\b' : '(?<=^|[\\s,;:!?])';
+			const endBoundary = /\w/.test(entry.name[entry.name.length - 1])
+				? '\\b'
+				: '(?=$|[\\s,;:!?.])';
 
-		const pattern = new RegExp(
-			// Negative lookbehind: not preceded by [ or ` or /
-			'(?<![\\[`\\/])' +
-				// The name with appropriate boundaries
-				`${startBoundary}(${escaped})${endBoundary}` +
-				// Negative lookahead: not followed by ]( or ` or ://
-				'(?![\\]`]|\\(|://)',
-			'g',
-		);
+			const pattern = new RegExp(
+				// Negative lookbehind: not preceded by / so URL paths are not mutated.
+				'(?<!\\/)' +
+					// The name with appropriate boundaries
+					`${startBoundary}(${escaped})${endBoundary}` +
+					// Negative lookahead: not followed by :// so URLs are not mutated.
+					'(?!://)',
+				'g',
+			);
 
-		result = result.replace(pattern, (_match, name: string) => {
-			const url = `n8n-resource://${entry.type}/${entry.id}`;
-			return `[${name}](${url})`;
+			return segment.replace(pattern, (_match, name: string) => {
+				const url = `n8n-resource://${entry.type}/${encodeURIComponent(entry.id)}`;
+				return `[${escapeMarkdownLinkText(name)}](${url})`;
+			});
 		});
 	}
 
 	return result;
-});
+}
 
-const source = computed(() => ({
-	type: 'text' as const,
-	content: processedContent.value,
-}));
+const sources = computed<ChatMessageContentChunk[]>(() =>
+	parseMessage({ type: 'ai', content: rawContent.value }).map((source) => {
+		if (source.type === 'text' || source.type === 'with-buttons') {
+			return { ...source, content: decorateResourceNames(source.content) };
+		}
+
+		return source;
+	}),
+);
+
+function handleOpenArtifact(title: string): void {
+	openChatArtifact?.(title);
+}
 
 /** Route patterns that map internal n8n URLs to resource types. */
 const INTERNAL_ROUTE_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
-	{ pattern: /^(?:https?:\/\/[^/]+)?\/workflow\/([a-zA-Z0-9]+)/, type: 'workflow' },
-	{ pattern: /^(?:https?:\/\/[^/]+)?\/credentials(?:\/|$)/, type: 'credential' },
-	{ pattern: /^(?:https?:\/\/[^/]+)?\/data-tables(?:\/|$)/, type: 'data-table' },
+	{ pattern: /^\/workflow\/([a-zA-Z0-9]+)/, type: 'workflow' },
+	{ pattern: /^\/(?:home\/)?credentials(?:\/|$)/, type: 'credential' },
+	{ pattern: /^\/(?:home\/)?data-?tables(?:\/|$)/, type: 'data-table' },
+	{ pattern: /^\/projects\/[^/]+\/credentials(?:\/|$)/, type: 'credential' },
+	{ pattern: /^\/projects\/[^/]+\/datatables(?:\/|$)/, type: 'data-table' },
 ];
+
+const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
+
+function getSameOriginPathname(href: string): string | undefined {
+	const isRootRelative = href.startsWith('/') && !href.startsWith('//');
+	const isAbsolute = ABSOLUTE_URL_PATTERN.test(href);
+	if (!isRootRelative && !isAbsolute) return undefined;
+
+	try {
+		const url = new URL(href, window.location.origin);
+		return url.origin === window.location.origin ? url.pathname : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+function decodeResourceId(value: string): string {
+	try {
+		return decodeURIComponent(value);
+	} catch {
+		return value;
+	}
+}
 
 /**
  * Apply resource chip styling (icon + class) to an anchor element.
@@ -161,7 +220,7 @@ const linkHandlers = new WeakMap<HTMLAnchorElement, (e: MouseEvent) => void>();
 function enhanceResourceLinks(): void {
 	if (!wrapperRef.value) return;
 
-	const allLinks = (wrapperRef.value.$el as HTMLElement).querySelectorAll<HTMLAnchorElement>('a');
+	const allLinks = wrapperRef.value.querySelectorAll<HTMLAnchorElement>('a');
 
 	for (const link of allLinks) {
 		// Already enhanced — skip
@@ -172,7 +231,8 @@ function enhanceResourceLinks(): void {
 		// 1. Handle n8n-resource:// custom scheme links
 		const resourceMatch = /^n8n-resource:\/\/(workflow|credential|data-table)\/(.+)$/.exec(href);
 		if (resourceMatch) {
-			const [, type, id] = resourceMatch;
+			const [, type, encodedId] = resourceMatch;
+			const id = decodeResourceId(encodedId);
 
 			// Look up registry entry to find projectId for project-scoped routes.
 			// Search the name index because it contains both produced and listed
@@ -211,8 +271,11 @@ function enhanceResourceLinks(): void {
 		}
 
 		// 2. Handle standard links pointing to internal n8n routes
+		const internalPathname = getSameOriginPathname(href);
+		if (!internalPathname) continue;
+
 		for (const { pattern, type } of INTERNAL_ROUTE_PATTERNS) {
-			if (pattern.test(href)) {
+			if (pattern.test(internalPathname)) {
 				link.target = '_blank';
 				link.rel = 'noopener noreferrer';
 				applyResourceChip(link, type);
@@ -225,7 +288,7 @@ function enhanceResourceLinks(): void {
 /** Remove click handlers from all enhanced links. */
 function cleanupLinkHandlers(): void {
 	if (!wrapperRef.value) return;
-	const allLinks = (wrapperRef.value.$el as HTMLElement).querySelectorAll<HTMLAnchorElement>('a');
+	const allLinks = wrapperRef.value.querySelectorAll<HTMLAnchorElement>('a');
 	for (const link of allLinks) {
 		const handler = linkHandlers.get(link);
 		if (handler) {
@@ -244,7 +307,14 @@ onBeforeUnmount(cleanupLinkHandlers);
 </script>
 
 <template>
-	<ChatMarkdownChunk ref="wrapperRef" :source="source" />
+	<div ref="wrapperRef">
+		<ChatMarkdownChunk
+			v-for="(source, index) in sources"
+			:key="index"
+			:source="source"
+			@open-artifact="handleOpenArtifact"
+		/>
+	</div>
 </template>
 
 <style lang="scss" module>

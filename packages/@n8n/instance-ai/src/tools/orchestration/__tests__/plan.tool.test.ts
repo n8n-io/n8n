@@ -99,7 +99,7 @@ describe('createPlanTool — replan-only guard', () => {
 			{
 				tasks: validTasks(),
 				skipPlannerDiscovery: true,
-				reason: 'Single simple data-table task — planner discovery would be wasted.',
+				reason: 'Single simple follow-up task — planner discovery would be wasted.',
 			},
 			{ suspend },
 		);
