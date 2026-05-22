@@ -42,12 +42,10 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
-        with:
-          # Build only the target package and its workspace deps. Stryker
-          # imports n8n-workflow at runtime via Vitest, which can transpile
-          # src/ on the fly, but workspace deps (e.g. @n8n/errors) need
-          # their dist/ present.
-          build-command: 'pnpm --filter ${{ github.event.inputs.package || ''n8n-workflow'' }}... build'
+        # Default build-command (pnpm build = turbo run build) is the safe
+        # choice. Earlier attempts with pnpm filter syntax routed --summarize
+        # (appended by the composite action) directly to tsc -p in workspace
+        # deps that don't use tsc --build, causing failures.
 
       - name: Determine package dir
         id: pkg
