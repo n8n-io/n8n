@@ -272,4 +272,37 @@ describe('Custom Telemetry Tags', () => {
 		expect(helperB.attributes['n8n.node.custom.tier']).toBe('premium');
 		expect(helperB.attributes['n8n.node.custom.service']).toBeUndefined();
 	});
+
+	it('should attach workflow custom telemetry tags only to the workflow span', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(
+			{
+				...createMultiNodeWorkflowFixture(),
+				settings: {
+					customTelemetryTags: {
+						tag: [
+							{ key: 'environment', value: 'production' },
+							{ key: 'workflowName', value: '={{ $workflow.name }}' },
+							{ key: 'retryCount', value: '={{ 3 }}' },
+							{ key: 'isCritical', value: '={{ true }}' },
+						],
+					},
+				},
+			},
+			project,
+		);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
+		await waitForExecution(executionRepository, executionId);
+
+		const spans = otel.getFinishedSpans();
+		const workflowSpan = spans.find((s) => s.name === 'workflow.execute')!;
+		const nodeSpan = spans.find((s) => s.name === 'node.execute')!;
+
+		expect(workflowSpan.attributes['n8n.workflow.custom.environment']).toBe('production');
+		expect(workflowSpan.attributes['n8n.workflow.custom.workflowName']).toBe(workflow.name);
+		expect(workflowSpan.attributes['n8n.workflow.custom.retryCount']).toBe(3);
+		expect(workflowSpan.attributes['n8n.workflow.custom.isCritical']).toBe(true);
+		expect(nodeSpan.attributes['n8n.workflow.custom.environment']).toBeUndefined();
+		expect(nodeSpan.attributes['n8n.workflow.custom.workflowName']).toBeUndefined();
+	});
 });

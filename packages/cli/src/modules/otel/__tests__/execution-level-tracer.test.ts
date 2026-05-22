@@ -119,6 +119,30 @@ describe('ExecutionLevelTracer', () => {
 			expect(span.attributes['n8n.execution.retry_of']).toBe('exec-original');
 		});
 
+		it('should add custom workflow attributes preserving primitive values', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-workflow-custom',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+				customAttributes: {
+					environment: 'production',
+					retryCount: 3,
+					isCritical: true,
+				},
+			});
+			tracer.endWorkflow({
+				executionId: 'exec-workflow-custom',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			const span = otel.getFinishedSpans()[0];
+			expect(span.attributes['n8n.workflow.custom.environment']).toBe('production');
+			expect(span.attributes['n8n.workflow.custom.retryCount']).toBe(3);
+			expect(span.attributes['n8n.workflow.custom.isCritical']).toBe(true);
+		});
+
 		it('should use inbound traceparent as parent context', () => {
 			tracer.startWorkflow({
 				executionId: 'exec-4',

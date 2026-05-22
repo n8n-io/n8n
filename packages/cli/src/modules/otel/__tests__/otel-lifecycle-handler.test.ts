@@ -6,7 +6,8 @@ import type {
 	WorkflowExecuteBeforeContext,
 } from '@n8n/decorators';
 import { mock } from 'jest-mock-extended';
-import type { IRun, IRunExecutionData } from 'n8n-workflow';
+import { Workflow } from 'n8n-workflow';
+import type { INodeTypes, IRun, IRunExecutionData } from 'n8n-workflow';
 
 import type { OwnershipService } from '@/services/ownership.service';
 
@@ -19,6 +20,20 @@ const emptyExecutionData = {
 	resultData: { runData: {}, pinData: {} },
 	executionData: undefined,
 } as unknown as IRunExecutionData;
+const logger = mock<Logger>();
+
+const nodeTypes = mock<INodeTypes>();
+
+function createWorkflowInstance(name = 'Test') {
+	return new Workflow({
+		id: 'wf-1',
+		name,
+		active: false,
+		nodes: [],
+		connections: {},
+		nodeTypes,
+	});
+}
 
 function makeOtelConfig(overrides: Partial<OtelConfig> = {}): OtelConfig {
 	return Object.assign(new OtelConfig(), overrides);
@@ -55,8 +70,9 @@ describe('OtelLifecycleHandler', () => {
 				updatedAt: new Date(),
 				activeVersionId: null,
 			},
-			workflowInstance: undefined as never,
+			workflowInstance: createWorkflowInstance(),
 			executionId: 'exec-sub',
+			mode: 'manual',
 		};
 
 		beforeEach(() => {
@@ -160,6 +176,76 @@ describe('OtelLifecycleHandler', () => {
 
 			expect(traceContextService.persist).toHaveBeenCalledWith('exec-sub', generatedSpanContext);
 		});
+
+		it('should pass evaluated workflow custom telemetry tags to the tracer', async () => {
+			await handler.onWorkflowStart({
+				...baseCtx,
+				workflow: {
+					...baseCtx.workflow,
+					settings: {
+						customTelemetryTags: {
+							tag: [
+								{ key: ' environment ', value: 'production' },
+								{ key: 'workflowName', value: '={{ $workflow.name }}' },
+								{ key: 'mode', value: '={{ $mode }}' },
+							],
+						},
+					},
+				},
+				workflowInstance: createWorkflowInstance('Workflow Tags'),
+				mode: 'webhook',
+			});
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					customAttributes: {
+						environment: 'production',
+						workflowName: 'Workflow Tags',
+						mode: 'webhook',
+					},
+				}),
+			);
+		});
+
+		it('should skip invalid workflow custom telemetry tags and warn for unsafe values', async () => {
+			await handler.onWorkflowStart({
+				...baseCtx,
+				workflow: {
+					...baseCtx.workflow,
+					settings: {
+						customTelemetryTags: {
+							tag: [
+								{ key: ' ', value: 'empty-key' },
+								{ key: 'nullish', value: '={{ undefined }}' },
+								{ key: 'objectValue', value: '={{ ({ nested: true }) }}' },
+								{ key: 'failed', value: '={{ $json.missing.value }}' },
+							],
+						},
+					},
+				},
+				workflowInstance: createWorkflowInstance(),
+			});
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ customAttributes: undefined }),
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'customTelemetryTags expression resolved to a non-primitive value; skipping',
+				expect.objectContaining({ workflowId: 'wf-1', tagKey: 'objectValue' }),
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to evaluate customTelemetryTags expression',
+				expect.objectContaining({ workflowId: 'wf-1', tagKey: 'failed' }),
+			);
+		});
+
+		it('should omit customAttributes when workflow custom telemetry tags are absent', async () => {
+			await handler.onWorkflowStart(baseCtx);
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ customAttributes: undefined }),
+			);
+		});
 	});
 
 	describe('onWorkflowResume', () => {
@@ -239,9 +325,10 @@ describe('OtelLifecycleHandler', () => {
 			await handler.onWorkflowResume({
 				type: 'workflowExecuteResume',
 				workflow: { id: 'wf-1', name: 'Test', versionId: 'v1', nodes: [], connections: {} },
-				workflowInstance: undefined as never,
+				workflowInstance: createWorkflowInstance(),
 				executionData: undefined as never,
 				executionId: 'exec-resume',
+				mode: 'manual',
 			} as never);
 
 			expect(traceContextService.get).toHaveBeenCalledWith('exec-resume');
