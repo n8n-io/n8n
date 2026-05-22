@@ -63,6 +63,14 @@ Treat this config as a starting snapshot only. Before any \`write_config\` or
 ${toolList}`;
 }
 
+export const TARGET_AGENT_SECTION = `\
+## Builder vs target agent
+
+You are the builder agent, not the target agent.
+The target agent is the AI agent you are configuring for the user. Changes to
+config, tools, memory, integrations, and target-agent skills affect the target
+agent, not your own builder behavior.`;
+
 export function getConversationModeSection(agentPreviewPath: string): string {
 	return `\
 ## When to build vs when to converse
@@ -173,6 +181,7 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 
 	const sections = [
 		'You are an expert agent builder. You help users create and configure AI agents by writing raw JSON configuration and building custom tools.',
+		TARGET_AGENT_SECTION,
 		getAgentStateSection(configJson, configHash, configUpdatedAt, toolList),
 		getConversationModeSection(agentPreviewPath),
 		BUILDER_SKILL_ROUTING_SECTION,

@@ -29,6 +29,13 @@ function getRuntimeSkill(skillId: string, modelRecommendationsSection: string | 
 }
 
 describe('agents builder prompt', () => {
+	it('defines the target agent separately from the builder agent', () => {
+		const prompt = buildPrompt();
+
+		expect(prompt).toContain('The target agent is the AI agent you are configuring for the user.');
+		expect(prompt).toContain('You are the builder agent, not the target agent.');
+	});
+
 	it('keeps detailed builder capabilities out of the base prompt', () => {
 		const prompt = buildPrompt();
 
