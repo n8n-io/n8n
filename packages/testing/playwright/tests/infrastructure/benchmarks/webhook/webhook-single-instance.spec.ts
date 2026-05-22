@@ -18,6 +18,7 @@ test.use({ capability: benchConfig('webhook-single-instance') });
 test.describe(
 	'What is the single-instance webhook ingestion ceiling?',
 	{
+		tag: '@bench:webhook',
 		annotation: [
 			{ type: 'owner', description: 'Catalysts' },
 			{ type: 'question', description: 'webhook-single-instance' },

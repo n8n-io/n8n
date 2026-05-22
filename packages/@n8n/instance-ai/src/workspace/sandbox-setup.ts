@@ -21,7 +21,6 @@
  *       *.ts                          # reusable node/workflow modules
  */
 
-import type { Workspace } from '@mastra/core/workspace';
 import { getExampleFiles, type ExampleFile } from '@n8n/workflow-sdk/examples-loader';
 import { createRequire } from 'node:module';
 
@@ -32,6 +31,7 @@ import {
 	runInSandbox,
 	readFileViaSandbox,
 	escapeSingleQuotes,
+	type SandboxWorkspace,
 	writeFileViaSandbox,
 } from './sandbox-fs';
 
@@ -232,7 +232,7 @@ export function formatNodeCatalogLine(node: SearchableNodeDescription): string {
 const ALWAYS_PRESENT_DIRS: readonly string[] = ['src', 'chunks', 'workflows'];
 
 async function writeWorkspaceFiles(
-	workspace: Workspace,
+	workspace: SandboxWorkspace,
 	root: string,
 	files: Map<string, string>,
 ): Promise<void> {
@@ -269,9 +269,9 @@ async function writeWorkspaceFiles(
  * Resolve the absolute workspace root by querying $HOME from the sandbox.
  * Caches per workspace instance (WeakMap) so parallel sandboxes don't collide.
  */
-const workspaceRootCache = new WeakMap<Workspace, string>();
+const workspaceRootCache = new WeakMap<SandboxWorkspace, string>();
 
-function getLocalFilesystemRoot(workspace: Workspace): string | null {
+function getLocalFilesystemRoot(workspace: SandboxWorkspace): string | null {
 	const filesystem = workspace.filesystem;
 	if (!filesystem || filesystem.provider !== 'local') return null;
 
@@ -279,7 +279,7 @@ function getLocalFilesystemRoot(workspace: Workspace): string | null {
 	return typeof basePath === 'string' && basePath.length > 0 ? basePath : null;
 }
 
-export async function getWorkspaceRoot(workspace: Workspace): Promise<string> {
+export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<string> {
 	const cached = workspaceRootCache.get(workspace);
 	if (cached) return cached;
 
@@ -306,7 +306,10 @@ export async function getWorkspaceRoot(workspace: Workspace): Promise<string> {
  * No-op when the loader returns an empty bundle (e.g. running against a
  * workspace where the manifest hasn't been fetched).
  */
-export async function writeCuratedExamples(workspace: Workspace, logger?: Logger): Promise<void> {
+export async function writeCuratedExamples(
+	workspace: SandboxWorkspace,
+	logger?: Logger,
+): Promise<void> {
 	const start = Date.now();
 	// Examples are nice-to-have — never block the build when loading them fails.
 	let exampleFiles: ExampleFile[];
@@ -344,7 +347,7 @@ export async function writeCuratedExamples(workspace: Workspace, logger?: Logger
  * @returns true if initialization ran, false if already initialized
  */
 export async function setupSandboxWorkspace(
-	workspace: Workspace,
+	workspace: SandboxWorkspace,
 	context: InstanceAiContext,
 ): Promise<boolean> {
 	const root = await getWorkspaceRoot(workspace);

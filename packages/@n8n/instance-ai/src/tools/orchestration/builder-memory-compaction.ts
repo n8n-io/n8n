@@ -1,8 +1,6 @@
-import type { MastraDBMessage } from '@mastra/core/agent';
-import type { MastraCompositeStore, MemoryStorage } from '@mastra/core/storage';
+import type { AgentDbMessage, BuiltMemory } from '@n8n/agents';
 import { randomUUID } from 'node:crypto';
 
-import type { OrchestrationContext } from '../../types';
 import type { WorkflowBuildOutcome } from '../../workflow-loop';
 
 const BUILDER_MEMORY_SUMMARY_TYPE = 'builder-memory-summary';
@@ -12,8 +10,13 @@ interface BuilderMemoryBinding {
 	thread: string;
 }
 
+interface BuilderMemoryCompactionContext {
+	memory?: BuiltMemory;
+	messageGroupId?: string;
+}
+
 interface BuilderMemoryCompactionInput {
-	context: Pick<OrchestrationContext, 'storage' | 'threadId' | 'runId' | 'messageGroupId'>;
+	context: BuilderMemoryCompactionContext;
 	binding: BuilderMemoryBinding;
 	sessionId?: string;
 	workflowId?: string;
@@ -38,12 +41,6 @@ export interface BuilderMemoryCompactionResult {
 	compactedTokenEstimate: number;
 }
 
-interface BuilderMemoryStore {
-	listMessages: MemoryStorage['listMessages'];
-	saveMessages: MemoryStorage['saveMessages'];
-	deleteMessages: MemoryStorage['deleteMessages'];
-}
-
 function estimateTokens(value: string): number {
 	return Math.ceil(value.length / 4);
 }
@@ -57,21 +54,8 @@ function stringifyForTokens(value: unknown): string {
 	}
 }
 
-function hasBuilderMemoryStore(value: unknown): value is BuilderMemoryStore {
-	if (!value || typeof value !== 'object') return false;
-	const candidate = value as Record<string, unknown>;
-	return (
-		typeof candidate.listMessages === 'function' &&
-		typeof candidate.saveMessages === 'function' &&
-		typeof candidate.deleteMessages === 'function'
-	);
-}
-
-async function getBuilderMemoryStore(
-	storage: MastraCompositeStore,
-): Promise<BuilderMemoryStore | undefined> {
-	const store = await storage.getStore('memory');
-	return hasBuilderMemoryStore(store) ? store : undefined;
+function stringifyMessageForTokens(message: AgentDbMessage): string {
+	return stringifyForTokens('content' in message ? message.content : message.data);
 }
 
 function formatList(label: string, values: string[] | undefined): string {
@@ -151,22 +135,27 @@ function buildSummaryContent(input: BuilderMemoryCompactionInput): string {
 	return lines.join('\n');
 }
 
-function buildSummaryMessage(
-	input: BuilderMemoryCompactionInput,
-	content: string,
-): MastraDBMessage {
+function buildSummaryMessage(input: BuilderMemoryCompactionInput, content: string): AgentDbMessage {
 	return {
 		id: `${BUILDER_MEMORY_SUMMARY_TYPE}-${randomUUID()}`,
-		role: 'assistant',
-		type: BUILDER_MEMORY_SUMMARY_TYPE,
-		threadId: input.binding.thread,
-		resourceId: input.binding.resource,
 		createdAt: new Date(),
-		content: {
-			format: 2,
-			parts: [{ type: 'text', text: content }],
-			content,
-			metadata: {
+		role: 'assistant',
+		type: 'llm',
+		content: [
+			{
+				type: 'text',
+				text: content,
+				providerMetadata: {
+					instanceAi: {
+						messageType: BUILDER_MEMORY_SUMMARY_TYPE,
+						sessionId: input.sessionId,
+						messageGroupId: input.context.messageGroupId,
+					},
+				},
+			},
+		],
+		providerOptions: {
+			instanceAi: {
 				instanceAiBuilderMemorySummary: true,
 				workflowId: input.workflowId,
 				workItemId: input.workItemId,
@@ -179,10 +168,8 @@ function buildSummaryMessage(
 export async function compactBuilderMemoryThread(
 	input: BuilderMemoryCompactionInput,
 ): Promise<BuilderMemoryCompactionResult> {
-	let store: BuilderMemoryStore | undefined;
-	try {
-		store = await getBuilderMemoryStore(input.context.storage);
-	} catch {
+	const { memory } = input.context;
+	if (!memory) {
 		return {
 			compacted: false,
 			skippedReason: 'store_unavailable',
@@ -193,38 +180,27 @@ export async function compactBuilderMemoryThread(
 		};
 	}
 
-	if (!store) {
-		return {
-			compacted: false,
-			skippedReason: 'mutation_methods_unavailable',
-			rawMessageCount: 0,
-			compactedMessageCount: 0,
-			rawTokenEstimate: 0,
-			compactedTokenEstimate: 0,
-		};
-	}
-
-	const loaded = await store.listMessages({
-		threadId: input.binding.thread,
-		resourceId: input.binding.resource,
-		perPage: false,
-		orderBy: { field: 'createdAt', direction: 'ASC' },
-	});
-	const rawTokenEstimate = loaded.messages.reduce(
-		(total, message) => total + estimateTokens(stringifyForTokens(message.content)),
+	const messages = await memory.getMessages(input.binding.thread);
+	const rawTokenEstimate = messages.reduce(
+		(total, message) => total + estimateTokens(stringifyMessageForTokens(message)),
 		0,
 	);
 	const summary = buildSummaryContent(input);
 	const compactedTokenEstimate = estimateTokens(summary);
 
-	const oldMessageIds = loaded.messages.map((message) => message.id);
+	const oldMessageIds = messages.map((message) => message.id);
 	const summaryMessage = buildSummaryMessage(input, summary);
-	await store.saveMessages({ messages: [summaryMessage] });
-	await store.deleteMessages(oldMessageIds);
+	await memory.saveThread({ id: input.binding.thread, resourceId: input.binding.resource });
+	await memory.saveMessages({
+		threadId: input.binding.thread,
+		resourceId: input.binding.resource,
+		messages: [summaryMessage],
+	});
+	await memory.deleteMessages(oldMessageIds);
 
 	return {
 		compacted: true,
-		rawMessageCount: loaded.messages.length,
+		rawMessageCount: messages.length,
 		compactedMessageCount: 1,
 		rawTokenEstimate,
 		compactedTokenEstimate,

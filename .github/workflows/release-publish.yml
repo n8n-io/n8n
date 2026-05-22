@@ -24,13 +24,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          fetch-depth: 0
+          fetch-depth: 1
+          fetch-tags: true
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Determine track from package version number
         id: determine-info
@@ -217,3 +219,38 @@ jobs:
       new_stable_version: ${{ needs.determine-version-info.outputs.new_stable_version }}
       release_type: ${{ needs.determine-version-info.outputs.release_type }}
     secrets: inherit
+
+  notify-on-failure:
+    name: Notify Slack on failure
+    needs:
+      [
+        determine-version-info,
+        publish-to-npm,
+        publish-to-docker-hub,
+        build-daytona-snapshot,
+        create-github-release,
+        move-track-tag,
+        promote-stable-tag,
+        generate-and-attach-sbom,
+        merge-release-tag-to-master,
+        merge-release-tag-to-rc-branch,
+        post-release,
+      ]
+    if: |
+      always() &&
+      github.event.pull_request.merged == true &&
+      (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: master
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.RELEASE_HELPER_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel C036AELNMV0 \
+            --text '<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Release publish failed for n8n@${{ needs.determine-version-info.outputs.version }}>. Please Go to the actions page and retry failed runs to recover a flake in the release pipeline.'

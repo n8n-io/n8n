@@ -11,6 +11,7 @@ import type {
 
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { NodeTypes } from '@/node-types';
+import type { PostHogClient } from '@/posthog';
 
 // ---------------------------------------------------------------------------
 // Mocks — must be before the import of the class under test
@@ -27,10 +28,24 @@ jest.mock('../mock-handler', () => ({
 	createLlmMockHandler: jest.fn(),
 }));
 jest.mock('../workflow-analysis', () => ({
+	assertUnpinCompatibility: jest.fn(),
 	generateMockHints: jest.fn(),
 	identifyNodesForHints: jest.fn(),
 	identifyNodesForPinData: jest.fn(),
 	detectBinaryDependencies: jest.fn(),
+}));
+const mockWireServerStart = jest.fn();
+const mockWireServerStop = jest.fn();
+jest.mock('../llm-wire-server', () => ({
+	LlmWireServer: jest.fn().mockImplementation(() => ({
+		start: mockWireServerStart,
+		stop: mockWireServerStop,
+		url: 'http://127.0.0.1:54321',
+	})),
+}));
+const mockRestoreNoProxy = jest.fn();
+jest.mock('../proxy-loopback', () => ({
+	patchNoProxyForLoopback: jest.fn(() => mockRestoreNoProxy),
 }));
 jest.mock('@n8n/workflow-sdk', () => ({
 	normalizePinData: jest.fn((pd: unknown) => pd),
@@ -75,12 +90,14 @@ jest.mock('n8n-workflow', () => {
 
 import { EvalExecutionService } from '../execution.service';
 import {
+	assertUnpinCompatibility,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 } from '../workflow-analysis';
 import { createLlmMockHandler } from '../mock-handler';
 import type { MockHints } from '../workflow-analysis';
+import { UserError } from 'n8n-workflow';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -89,6 +106,7 @@ import type { MockHints } from '../workflow-analysis';
 const generateMockHintsMock = jest.mocked(generateMockHints);
 const identifyNodesForHintsMock = jest.mocked(identifyNodesForHints);
 const identifyNodesForPinDataMock = jest.mocked(identifyNodesForPinData);
+const assertUnpinCompatibilityMock = jest.mocked(assertUnpinCompatibility);
 const createLlmMockHandlerMock = jest.mocked(createLlmMockHandler);
 
 function makeWorkflowEntity(overrides: Partial<IWorkflowBase> = {}) {
@@ -169,19 +187,25 @@ describe('EvalExecutionService', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const nodeTypes = mock<NodeTypes>();
 	const logger = mock<Logger>();
+	const postHogClient = mock<PostHogClient>();
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 
-		service = new EvalExecutionService(workflowFinderService, nodeTypes, logger);
+		service = new EvalExecutionService(workflowFinderService, nodeTypes, logger, postHogClient);
 
 		// Default mock returns — happy path
 		identifyNodesForHintsMock.mockReturnValue([]);
 		identifyNodesForPinDataMock.mockReturnValue([]);
+		assertUnpinCompatibilityMock.mockImplementation(() => undefined);
 		generateMockHintsMock.mockResolvedValue(makeEmptyHints());
 		createLlmMockHandlerMock.mockReturnValue(jest.fn());
 		mockGetStartNode.mockReturnValue(makeStartNode());
 		mockProcessRunExecutionData.mockResolvedValue(makeIRun());
+		mockWireServerStart.mockResolvedValue('http://127.0.0.1:54321');
+		mockWireServerStop.mockResolvedValue(undefined);
+		// Default: kill-switch enabled. Tests that need it off flip this.
+		postHogClient.getFeatureFlags.mockResolvedValue({});
 
 		// NodeTypes.getByNameAndVersion returns a minimal node type with no webhook
 		nodeTypes.getByNameAndVersion.mockReturnValue({
@@ -277,6 +301,183 @@ describe('EvalExecutionService', () => {
 			expect(result.executionId).toBeDefined();
 			expect(typeof result.executionId).toBe('string');
 			expect(result.executionId.length).toBeGreaterThan(0);
+		});
+	});
+
+	// ── unpinNodes handling ──────────────────────────────────────────
+
+	describe('unpinNodes', () => {
+		beforeEach(() => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+		});
+
+		it('calls assertUnpinCompatibility with an empty list when unpinNodes is omitted', async () => {
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(assertUnpinCompatibilityMock).toHaveBeenCalledWith(expect.anything(), []);
+		});
+
+		it('omits the exclusion set when unpinNodes is empty', async () => {
+			await service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: [] });
+
+			expect(identifyNodesForPinDataMock).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				undefined,
+			);
+		});
+
+		// PostHog kill-switch: non-empty unpinNodes only runs when the flag
+		// resolves to ON. Flag OFF refuses the request before any other work
+		// so vendor traffic can never reach the real provider.
+		describe('PostHog kill-switch (flag off)', () => {
+			beforeEach(() => {
+				postHogClient.getFeatureFlags.mockResolvedValue({
+					'085_eval_vendor_sdk_interception': false,
+				});
+			});
+
+			it('runs the compatibility guard first, then refuses with the gate error when the guard passes', async () => {
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['Agent'],
+				});
+
+				expect(result.success).toBe(false);
+				expect(result.errors).toEqual([expect.stringContaining('currently disabled')]);
+				// Guard runs first so the user gets actionable diagnostics when their
+				// workflow has a permanent compatibility issue. When the guard passes,
+				// the gate fires with the generic "currently disabled" message.
+				expect(assertUnpinCompatibilityMock).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'wf-1' }),
+					['Agent'],
+				);
+				expect(generateMockHintsMock).not.toHaveBeenCalled();
+				expect(mockProcessRunExecutionData).not.toHaveBeenCalled();
+			});
+
+			it("surfaces the guard's error when the workflow has a permanent compatibility issue", async () => {
+				assertUnpinCompatibilityMock.mockImplementation(() => {
+					throw new UserError(
+						'Cannot unpin AI root nodes — protocol-binary sub-nodes ' +
+							'(cannot be intercepted via HTTP): "Mem" (memoryPostgresChat) → "Agent"',
+					);
+				});
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['Agent'],
+				});
+
+				expect(result.success).toBe(false);
+				// Guard's protocol-binary message wins over the generic gate message —
+				// the user needs to fix the workflow regardless of when the feature ships.
+				expect(result.errors).toEqual([expect.stringContaining('memoryPostgresChat')]);
+				expect(result.errors[0]).not.toContain('currently disabled');
+				// Guard refused before the PostHog check fires.
+				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
+			});
+
+			it('still runs the normal pinned path when unpinNodes is omitted (no flag check)', async () => {
+				await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
+				expect(generateMockHintsMock).toHaveBeenCalled();
+				expect(mockProcessRunExecutionData).toHaveBeenCalled();
+			});
+		});
+
+		// Flag ON (or unset — fail-open default): non-empty unpinNodes proceeds
+		// into the rewrite path and boots the wire server.
+		describe('PostHog kill-switch (flag on)', () => {
+			it('forwards unpinNodes to assertUnpinCompatibility', async () => {
+				await service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: ['Agent'] });
+
+				expect(assertUnpinCompatibilityMock).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'wf-1' }),
+					['Agent'],
+				);
+			});
+
+			it('forwards the exclusion set to identifyNodesForPinData', async () => {
+				await service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: ['Agent'] });
+
+				expect(identifyNodesForPinDataMock).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'wf-1' }),
+					new Set(['Agent']),
+				);
+			});
+
+			it('boots and tears down the wire server around the workflow run', async () => {
+				await service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: ['Agent'] });
+
+				expect(mockWireServerStart).toHaveBeenCalledTimes(1);
+				expect(mockProcessRunExecutionData).toHaveBeenCalledTimes(1);
+				expect(mockWireServerStop).toHaveBeenCalledTimes(1);
+				expect(mockRestoreNoProxy).toHaveBeenCalledTimes(1);
+			});
+
+			it('tears down the wire server even if the workflow run throws', async () => {
+				mockProcessRunExecutionData.mockRejectedValue(new Error('explode'));
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['Agent'],
+				});
+
+				expect(result.success).toBe(false);
+				expect(mockWireServerStop).toHaveBeenCalledTimes(1);
+				expect(mockRestoreNoProxy).toHaveBeenCalledTimes(1);
+			});
+
+			it('does not boot the wire server when unpinNodes is empty', async () => {
+				await service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: [] });
+
+				expect(mockWireServerStart).not.toHaveBeenCalled();
+				expect(mockWireServerStop).not.toHaveBeenCalled();
+			});
+
+			it('fails closed when PostHog rejects (treats flag as off and refuses the request)', async () => {
+				postHogClient.getFeatureFlags.mockRejectedValue(new Error('PostHog down'));
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['Agent'],
+				});
+
+				expect(result.success).toBe(false);
+				expect(result.errors).toEqual([expect.stringContaining('currently disabled')]);
+				expect(mockWireServerStart).not.toHaveBeenCalled();
+			});
+
+			it('tears down the wire server when NO_PROXY patching throws after boot', async () => {
+				const proxyLoopback = require('../proxy-loopback');
+				proxyLoopback.patchNoProxyForLoopback.mockImplementationOnce(() => {
+					throw new Error('env mutation blocked');
+				});
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['Agent'],
+				});
+
+				expect(result.success).toBe(false);
+				expect(result.errors).toEqual([expect.stringContaining('env mutation blocked')]);
+				expect(mockWireServerStart).toHaveBeenCalledTimes(1);
+				expect(mockWireServerStop).toHaveBeenCalledTimes(1);
+			});
+
+			it('returns an error result and skips workflow execution when the compatibility guard refuses', async () => {
+				assertUnpinCompatibilityMock.mockImplementation(() => {
+					throw new (require('n8n-workflow').UserError)(
+						'Cannot unpin "Agent" — incompatible memory backend',
+					);
+				});
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['Agent'],
+				});
+
+				expect(result.success).toBe(false);
+				expect(result.errors).toEqual([expect.stringContaining('Cannot unpin "Agent"')]);
+				expect(mockProcessRunExecutionData).not.toHaveBeenCalled();
+				// Server was never started — guard runs before boot.
+				expect(mockWireServerStart).not.toHaveBeenCalled();
+			});
 		});
 	});
 

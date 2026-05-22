@@ -41,6 +41,35 @@ describe('Image Generate Operation', () => {
 		vi.resetAllMocks();
 	});
 
+	describe('empty prompt validation', () => {
+		beforeEach(() => {
+			mockNode = makeNode(2.2);
+			mockExecuteFunctions.getNode.mockReturnValue(mockNode);
+		});
+
+		it('should throw error for empty prompt', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params = { model: 'dall-e-3', prompt: '', options: {} };
+				return params[paramName as keyof typeof params];
+			});
+
+			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should throw error for whitespace-only prompt', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params = { model: 'dall-e-3', prompt: '   ', options: {} };
+				return params[paramName as keyof typeof params];
+			});
+
+			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+	});
+
 	describe('v2.1 (static model field)', () => {
 		beforeEach(() => {
 			mockNode = makeNode(2.1);

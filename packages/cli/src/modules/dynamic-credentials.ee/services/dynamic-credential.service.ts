@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, toCredentialContext } from 'n8n-workflow';
 
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { StaticAuthService } from '@/services/static-auth-service';
 
@@ -21,6 +22,7 @@ import type {
 	CredentialResolveMetadata,
 	ICredentialResolutionProvider,
 } from '../../../credentials/credential-resolution-provider.interface';
+import { SYSTEM_RESOLVER_ID } from '../constants';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 import { DynamicCredentialsConfig } from '../dynamic-credentials.config';
 import { CredentialResolutionError } from '../errors/credential-resolution.error';
@@ -43,6 +45,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
 		private readonly expressionService: ResolverConfigExpressionService,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {}
 
 	/**
@@ -62,8 +65,10 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		workflowSettings?: IWorkflowSettings,
 	): Promise<CredentialResolutionResult> {
 		// Determine which resolver ID to use: credential's own resolver or workflow's fallback
+		// (explicit workflow override, or the seeded system resolver looked up via the proxy).
 		const resolverId =
-			credentialsResolveMetadata.resolverId ?? workflowSettings?.credentialResolverId;
+			credentialsResolveMetadata.resolverId ??
+			this.dynamicCredentialsProxy.getEffectiveResolverId(workflowSettings);
 
 		// Not resolvable - return static credentials
 		if (!credentialsResolveMetadata.isResolvable) {
@@ -141,6 +146,10 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		} catch (error) {
 			return this.handleResolutionError(credentialsResolveMetadata, error, resolverId);
 		}
+	}
+
+	getSystemResolverId(): string {
+		return SYSTEM_RESOLVER_ID;
 	}
 
 	/**

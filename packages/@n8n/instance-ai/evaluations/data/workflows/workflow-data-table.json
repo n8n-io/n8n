@@ -1,9 +1,31 @@
 {
-	"prompt": "I want you to build a workflow that will read n8n workflow databases and extract certain information and then populate that information in a data table called 'workflows'.\n\nThe schema of the data table should be as follows:\n- instanceId\n- workflowId\n- workflowName\n- tags\n\nIf the workflow is run multiple times it should update the current rows rather than creating dupes.\n\nThe instance with the workflows is https://wonderman.users.n8n.cloud/. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I'd like to pull workflow metadata from another n8n instance into a data table on this one. Mostly for reporting."
+		},
+		{
+			"role": "assistant",
+			"text": "Which instance, and what columns should the data table have?"
+		},
+		{
+			"role": "user",
+			"text": "Source instance is https://wonderman.users.n8n.cloud/. The data table is called 'workflows' and should have instanceId, workflowId, workflowName, tags."
+		},
+		{
+			"role": "assistant",
+			"text": "Got it. Should it re-fetch on a schedule? And how should it handle workflows that already exist in the table — re-insert, or update in place?"
+		},
+		{
+			"role": "user",
+			"text": "Yes, run on a schedule. And it must update in place — no duplicate rows when the same workflow comes through twice. Use upsert."
+		}
+	],
+	"messageBudget": 6,
 	"complexity": "complex",
 	"tags": ["build", "schedule", "data-table", "n8n-api"],
 	"triggerType": "schedule",
-	"scenarios": [
+	"executionScenarios": [
 		{
 			"name": "happy-path",
 			"description": "Data table is populated",

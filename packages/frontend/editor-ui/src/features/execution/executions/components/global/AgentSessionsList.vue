@@ -189,9 +189,6 @@ async function loadMore() {
 									@click="loadMore()"
 								/>
 							</template>
-							<template v-else-if="sessionsStore.threads.length">
-								{{ i18n.baseText('agentSessions.loadedAll') }}
-							</template>
 						</td>
 					</tr>
 				</tbody>

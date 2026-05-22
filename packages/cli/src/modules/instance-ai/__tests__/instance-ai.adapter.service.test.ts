@@ -1,4 +1,4 @@
-// Mock the barrel import to avoid pulling in @mastra/core (ESM-only transitive deps)
+// Mock the barrel import so these adapter tests only exercise local formatting helpers.
 jest.mock('@n8n/instance-ai', () => ({
 	wrapUntrustedData(content: string, source: string, label?: string): string {
 		const esc = (s: string) =>
@@ -1655,6 +1655,22 @@ describe('createWorkflowAdapter', () => {
 
 		expect(mockWorkflowRepository.create).toHaveBeenCalledWith(
 			expect.not.objectContaining({ meta: expect.anything() }),
+		);
+	});
+
+	it('persists pinData as an empty object (not undefined) when the SDK workflow has no pinData', async () => {
+		// Regression: explicit `pinData: undefined` round-tripped as SQL NULL,
+		// which then crashed `getDataLastExecutedNodeData` on test-webhook runs.
+		// Match the manual UI path, which stores `{}`.
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ pinData: {} }),
+			expect.anything(),
+			expect.anything(),
 		);
 	});
 
