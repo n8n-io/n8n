@@ -4,28 +4,28 @@ import nock from 'nock';
 import { credentials } from '../credentials';
 import { mockFieldsApi } from '../fieldsApiMock';
 
-describe('Test PipedriveV2, deal => update', () => {
+describe('Test PipedriveV2, deal => create (date-only normalisation)', () => {
 	mockFieldsApi('deal');
 
 	nock('https://api.pipedrive.com/api/v2')
-		.patch('/deals/10', {
-			title: 'Updated Deal',
-			value: 7500,
+		.post('/deals', {
+			title: 'Test Deal',
+			org_id: 7,
 			expected_close_date: '2026-04-13',
 		})
 		.reply(200, {
 			success: true,
 			data: {
-				id: 10,
-				title: 'Updated Deal',
+				id: 9,
+				title: 'Test Deal',
 				creator_user_id: 25455458,
-				value: 7500.0,
+				value: null,
 				person_id: null,
-				org_id: 8,
+				org_id: 7,
 				stage_id: 6,
 				currency: 'USD',
-				add_time: '2026-04-01T22:04:20Z',
-				update_time: '2026-04-01T22:04:20Z',
+				add_time: '2026-04-01T22:03:27Z',
+				update_time: null,
 				status: 'open',
 				probability: null,
 				lost_reason: null,
@@ -40,9 +40,9 @@ describe('Test PipedriveV2, deal => update', () => {
 				local_close_date: null,
 				expected_close_date: '2026-04-13',
 				custom_fields: {
-					f5ed368466cf0477371c6ee076252f49a188848e: null,
-					'48233ee3e9d505bbcca8e7e05d9b8df4231021bc': null,
-					febf5dbb0f1e95d60876abc4638483291b8ef18b: null,
+					test_string: null,
+					test_enum: null,
+					test_multi: null,
 				},
 				owner_id: 25455458,
 				label_ids: [],
@@ -61,6 +61,6 @@ describe('Test PipedriveV2, deal => update', () => {
 
 	new NodeTestHarness().setupTests({
 		credentials,
-		workflowFiles: ['update.workflow.json'],
+		workflowFiles: ['createWithDate.workflow.json'],
 	});
 });
