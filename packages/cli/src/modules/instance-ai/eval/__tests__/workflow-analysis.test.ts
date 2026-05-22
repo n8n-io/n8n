@@ -8,7 +8,7 @@ jest.mock('../node-config', () => ({
 }));
 
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
-import type { IConnections, INode, IWorkflowBase } from 'n8n-workflow';
+import type { IConnections, INode, INodeParameters, IWorkflowBase } from 'n8n-workflow';
 
 import {
 	assertUnpinCompatibility,
@@ -257,6 +257,23 @@ describe('assertUnpinCompatibility', () => {
 		expect(() => assertUnpinCompatibility(workflow, ['Ghost'])).not.toThrow();
 	});
 
+	it('ignores disabled roots even when their sub-nodes would otherwise be refused', () => {
+		const nodes = [
+			makeNode({ name: 'PgMem', type: '@n8n/n8n-nodes-langchain.memoryPostgresChat' }),
+			makeNode({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				disabled: true,
+			}),
+		];
+		const connections: IConnections = {
+			PgMem: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
+		};
+		expect(() =>
+			assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']),
+		).not.toThrow();
+	});
+
 	it.each([
 		['Postgres memory', '@n8n/n8n-nodes-langchain.memoryPostgresChat'],
 		['Redis memory', '@n8n/n8n-nodes-langchain.memoryRedisChat'],
@@ -296,6 +313,7 @@ describe('assertUnpinCompatibility', () => {
 			makeNode({ name: 'AgentB', type: '@n8n/n8n-nodes-langchain.agent' }),
 		];
 		const connections: IConnections = {
+			OpenAI: { ai_languageModel: [[{ node: 'AgentB', type: 'ai_languageModel', index: 0 }]] },
 			PgMem: { ai_memory: [[{ node: 'AgentA', type: 'ai_memory', index: 0 }]] },
 			BufMem: { ai_memory: [[{ node: 'AgentB', type: 'ai_memory', index: 0 }]] },
 		};
@@ -313,6 +331,203 @@ describe('assertUnpinCompatibility', () => {
 		expect(message).toContain('PgMem');
 		expect(message).not.toContain('AgentB');
 		expect(message).not.toContain('BufMem');
+	});
+
+	describe('vendor LLM mapping', () => {
+		function agentWithLlm(llmType: string) {
+			const nodes = [
+				makeNode({ name: 'Llm', type: llmType }),
+				makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+			];
+			const connections: IConnections = {
+				Llm: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+			};
+			return makeWorkflow(nodes, connections);
+		}
+
+		it('allows unpinning an Agent backed by lmChatOpenAi (the only mapped vendor for M1)', () => {
+			const workflow = agentWithLlm('@n8n/n8n-nodes-langchain.lmChatOpenAi');
+			expect(() => assertUnpinCompatibility(workflow, ['Agent'])).not.toThrow();
+		});
+
+		it.each([
+			'@n8n/n8n-nodes-langchain.lmChatAnthropic',
+			'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+			'@n8n/n8n-nodes-langchain.lmChatCohere',
+			'@n8n/n8n-nodes-langchain.lmChatGroq',
+			'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+			'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+			'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+			'@n8n/n8n-nodes-langchain.lmChatXAiGrok',
+			'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
+			'@n8n/n8n-nodes-langchain.lmChatOllama',
+			'@n8n/n8n-nodes-langchain.lmOpenAi',
+		])('refuses unpinning an Agent backed by unmapped vendor LLM %s', (llmType) => {
+			const workflow = agentWithLlm(llmType);
+
+			let thrown: unknown;
+			try {
+				assertUnpinCompatibility(workflow, ['Agent']);
+			} catch (e) {
+				thrown = e;
+			}
+
+			expect(thrown).toBeInstanceOf(UserError);
+			const message = (thrown as UserError).message;
+			expect(message).toContain('unsupported vendor LLM');
+			expect(message).toContain(llmType);
+		});
+
+		it('groups protocol-binary and unsupported-vendor refusals into the same error', () => {
+			const nodes = [
+				makeNode({ name: 'Anthropic', type: '@n8n/n8n-nodes-langchain.lmChatAnthropic' }),
+				makeNode({ name: 'PgMem', type: '@n8n/n8n-nodes-langchain.memoryPostgresChat' }),
+				makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+			];
+			const connections: IConnections = {
+				Anthropic: {
+					ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+				PgMem: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
+			};
+
+			let thrown: unknown;
+			try {
+				assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']);
+			} catch (e) {
+				thrown = e;
+			}
+
+			expect(thrown).toBeInstanceOf(UserError);
+			const message = (thrown as UserError).message;
+			expect(message).toContain('protocol-binary');
+			expect(message).toContain('PgMem');
+			expect(message).toContain('unsupported vendor LLM');
+			expect(message).toContain('Anthropic');
+		});
+
+		it('ignores disabled vendor LLM sub-nodes when checking compatibility', () => {
+			const nodes = [
+				makeNode({
+					name: 'Anthropic',
+					type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+					disabled: true,
+				}),
+				makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+			];
+			const connections: IConnections = {
+				Anthropic: {
+					ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+			};
+
+			expect(() =>
+				assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']),
+			).not.toThrow();
+		});
+
+		describe('lmChatOpenAi options.baseURL override', () => {
+			function agentWithOpenAi(parameters: INodeParameters) {
+				const nodes = [
+					makeNode({
+						name: 'OpenAI',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						parameters,
+					}),
+					makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+				];
+				const connections: IConnections = {
+					OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+				};
+				return makeWorkflow(nodes, connections);
+			}
+
+			it('allows lmChatOpenAi with no options', () => {
+				const workflow = agentWithOpenAi({});
+				expect(() => assertUnpinCompatibility(workflow, ['Agent'])).not.toThrow();
+			});
+
+			it('allows lmChatOpenAi with empty options.baseURL', () => {
+				const workflow = agentWithOpenAi({ options: { baseURL: '' } });
+				expect(() => assertUnpinCompatibility(workflow, ['Agent'])).not.toThrow();
+			});
+
+			it('allows lmChatOpenAi when options.baseURL is whitespace-only', () => {
+				const workflow = agentWithOpenAi({ options: { baseURL: '   ' } });
+				expect(() => assertUnpinCompatibility(workflow, ['Agent'])).not.toThrow();
+			});
+
+			it('refuses lmChatOpenAi when options.baseURL is set — credential rewrite would be bypassed', () => {
+				const workflow = agentWithOpenAi({
+					options: { baseURL: 'https://my-proxy.example.com/v1' },
+				});
+
+				let thrown: unknown;
+				try {
+					assertUnpinCompatibility(workflow, ['Agent']);
+				} catch (e) {
+					thrown = e;
+				}
+
+				expect(thrown).toBeInstanceOf(UserError);
+				const message = (thrown as UserError).message;
+				expect(message).toContain('options.baseURL');
+				expect(message).toContain('"OpenAI"');
+				expect(message).not.toContain('unsupported vendor LLM');
+			});
+
+			it('groups baseURL-override refusals alongside protocol-binary refusals', () => {
+				const nodes = [
+					makeNode({
+						name: 'OpenAI',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						parameters: { options: { baseURL: 'https://my-proxy.example.com/v1' } },
+					}),
+					makeNode({
+						name: 'PgMem',
+						type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
+					}),
+					makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+				];
+				const connections: IConnections = {
+					OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+					PgMem: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
+				};
+
+				let thrown: unknown;
+				try {
+					assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']);
+				} catch (e) {
+					thrown = e;
+				}
+
+				expect(thrown).toBeInstanceOf(UserError);
+				const message = (thrown as UserError).message;
+				expect(message).toContain('protocol-binary');
+				expect(message).toContain('PgMem');
+				expect(message).toContain('options.baseURL');
+				expect(message).toContain('OpenAI');
+			});
+
+			it('skips the baseURL check when the OpenAI sub-node is disabled', () => {
+				const nodes = [
+					makeNode({
+						name: 'OpenAI',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						parameters: { options: { baseURL: 'https://my-proxy.example.com/v1' } },
+						disabled: true,
+					}),
+					makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+				];
+				const connections: IConnections = {
+					OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+				};
+
+				expect(() =>
+					assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']),
+				).not.toThrow();
+			});
+		});
 	});
 });
 
