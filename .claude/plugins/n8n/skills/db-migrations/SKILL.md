@@ -15,7 +15,7 @@ Use the generator — it picks a safe timestamp (strictly greater than every exi
 pnpm --filter=@n8n/db migration:new <PascalCaseName> [--folder=common|postgresdb|sqlite]
 ```
 
-`--folder` defaults to `common`; use `postgresdb` or `sqlite` only for dialect-specific migrations. See `packages/@n8n/db/AGENTS.md` for the full rationale (timestamp invariants, the `migration-timestamp` lint rule that enforces them, and the do-not-use-`autoGenerate2`-on-UUIDs rule).
+`--folder` defaults to `common`; use `postgresdb` or `sqlite` only for dialect-specific migrations. Don't compute timestamps by hand — the head is currently future-dated (≈ 2026-07-14), so `Date.now()` would sort *before* the head and run out of order on already-deployed databases. The generator handles this; the `migration-timestamp` lint rule in `@n8n/code-health` is the safety net. (Full rationale: reference.md E1.)
 
 ```
 packages/@n8n/db/src/migrations/
@@ -25,7 +25,7 @@ packages/@n8n/db/src/migrations/
 └── mysqldb/       # do NOT add new files here (MySQL/MariaDB support is deprecated)
 ```
 
-After a rebase, re-run the generator's logic to bump the timestamp so the migration stays the newest; the lint rule will flag any drift.
+After a rebase, re-run the generator (or manually bump the timestamp) so the migration stays the newest; the lint rule will flag any drift.
 
 ## Which directory?
 
@@ -58,7 +58,7 @@ export class AddFooBar1700000000000 implements ReversibleMigration {
 - `ReversibleMigration` (default) requires both `up` and `down`.
 - `IrreversibleMigration` only when `down()` would lose data unrecoverably. Don't use it to skip writing `down()`.
 - `withFKsDisabled = true as const` only in `sqlite/` subclasses that recreate FK-referenced tables (otherwise SQLite's CASCADE eats data).
-- Use the schema builder DSL — see `MigrationContext` in `packages/@n8n/db/src/migrations/migration-types.ts`. Drop to `runQuery` only for DB-specific features the DSL can't express.
+- Use the schema builder DSL — see Appendix 1 (`MigrationContext` API) and Appendix 2 (DSL type mapping) in reference.md. Drop to `runQuery` only for DB-specific features the DSL can't express.
 
 ## Pre-flight checklist
 
@@ -117,8 +117,12 @@ Exceptions: the old location is genuinely throwaway (e.g. a temp table this same
 ## More
 
 - **Full rule catalogue** (sections A–N): [reference.md](reference.md)
-- **Real migrations to read for patterns**: browse `packages/@n8n/db/src/migrations/common/` (sort by timestamp for recent examples) — far more useful than synthetic templates.
-- **UUID PK guidance**: `packages/@n8n/db/AGENTS.md` (don't use `autoGenerate2` on UUID PKs — generate at app level with `randomUUID()`)
-- **Test API**: `packages/@n8n/backend-test-utils/MIGRATION_TESTING.md`
-- **Source of truth for `MigrationContext`**: `packages/@n8n/db/src/migrations/migration-types.ts`
-- **Schema DSL**: `packages/@n8n/db/src/migrations/dsl/`
+- **Quick references** at the end of reference.md:
+  - Appendix 1: `MigrationContext` API
+  - Appendix 2: DSL type mapping (Postgres ↔ SQLite)
+  - Appendix 3: Foreign key `onDelete` decision table
+- **Real migrations to read for patterns**: browse `packages/@n8n/db/src/migrations/common/` (sort by timestamp for recent examples).
+- **Test API reference**: `packages/@n8n/backend-test-utils/MIGRATION_TESTING.md`
+- **Source files** the skill defers to:
+  - `packages/@n8n/db/src/migrations/migration-types.ts` — `MigrationContext`, `ReversibleMigration`, `IrreversibleMigration`
+  - `packages/@n8n/db/src/migrations/dsl/` — schema builder DSL
