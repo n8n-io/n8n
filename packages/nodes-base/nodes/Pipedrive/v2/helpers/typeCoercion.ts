@@ -45,13 +45,17 @@ export function toRfc3339(value: string): string {
  * `expected_close_date`, activity `due_date`). The dateTime widget emits
  * ISO 8601 strings with a time component, which Pipedrive rejects for
  * these fields.
+ *
+ * Inputs that don't match the expected shapes are returned verbatim so
+ * Pipedrive can surface the real validation error — we deliberately avoid
+ * `new Date(value).toISOString()` here because that converts through UTC
+ * and can shift the calendar day for timezone-less inputs parsed in a
+ * non-UTC server timezone.
  */
 export function toDateOnly(value: string): string {
 	if (!value) return value;
 	if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
 	const datePart = value.split('T')[0].split(' ')[0];
 	if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return datePart;
-	const date = new Date(value);
-	if (Number.isNaN(date.getTime())) return value;
-	return date.toISOString().slice(0, 10);
+	return value;
 }
