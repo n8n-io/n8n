@@ -7,7 +7,10 @@ import { parseMessage } from '@n8n/chat-hub';
 
 function parseAiText(content: string): ChatMessageContentChunk[] {
 	if (!content) return [];
-	return parseMessage({ type: 'ai', content });
+	return parseMessage({ type: 'ai', content }).filter(
+		(chunk) =>
+			(chunk.type !== 'artifact-create' && chunk.type !== 'artifact-edit') || !chunk.isIncomplete,
+	);
 }
 
 function collectAgentTreeChunks(

@@ -45,6 +45,17 @@ describe('collectInstanceAiChatArtifactChunks', () => {
 		]);
 	});
 
+	it('does not collect incomplete artifact commands while streaming', () => {
+		const chunks = collectInstanceAiChatArtifactChunks([
+			makeAssistantMessage({
+				content:
+					'<command:artifact-create><title>Root report</title><type>md</type><content># Root',
+			}),
+		]);
+
+		expect(collectChatArtifacts(chunks)).toEqual([]);
+	});
+
 	it('collects agent-tree child artifacts in timeline order without duplicating root content', () => {
 		const rootContent = artifactCommand('Root report', '# Root');
 		const childContent = artifactCommand('Builder report', '# Builder');

@@ -142,6 +142,20 @@ describe('InstanceAiMarkdown', () => {
 		expect(result).toContain('[Name \\[prod\\]](n8n-resource://workflow/wf%2F1)');
 	});
 
+	it('should not replace overlapping names inside generated links with escaped link text', () => {
+		const registry = makeRegistry([
+			{ type: 'workflow', id: 'wf-full', name: 'Name [prod]' },
+			{ type: 'workflow', id: 'wf-name', name: 'Name' },
+			{ type: 'workflow', id: 'wf-prod', name: 'prod' },
+		]);
+
+		const result = getProcessedContent('Open Name [prod] now', registry);
+
+		expect(result).toBe('Open [Name \\[prod\\]](n8n-resource://workflow/wf-full) now');
+		expect(result).not.toContain('wf-name');
+		expect(result).not.toContain('wf-prod');
+	});
+
 	it('should replace resource name appearing multiple times', () => {
 		const registry = makeRegistry([{ type: 'workflow', id: 'wf-1', name: 'My Workflow' }]);
 		const result = getProcessedContent('Open My Workflow and then close My Workflow', registry);
