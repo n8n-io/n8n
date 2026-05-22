@@ -1,9 +1,14 @@
 {
-	"prompt": "Build a workflow that handles a Telegram voice message. The trigger is a Telegram Trigger node configured for `message` updates. When a voice message arrives, use the Telegram node's `file:get` operation with `download = true`, reading the file id from `={{ $json.message.voice.file_id }}` — this single operation handles both getFile and the binary download internally using the node's credentials, so you do NOT need a separate HTTP Request node and you do NOT reference `$credentials` anywhere. Then call the OpenAI node (the Core `n8n-nodes-base.openAi` node, NOT the LangChain one): resource = `audio`, operation = `transcribe`, with the binary input read from the default binary property `data` (set `binaryPropertyName: \"data\"`). Finally, reply to the original chat with the transcribed text via the Telegram `message:sendMessage` operation, using `chatId = ={{ $('Telegram Trigger').item.json.message.chat.id }}` and `text` from the OpenAI transcription output. No `$credentials` access in URLs or expressions.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build a workflow that handles a Telegram voice message. The trigger is a Telegram Trigger node configured for `message` updates. When a voice message arrives, use the Telegram node's `file:get` operation with `download = true`, reading the file id from `={{ $json.message.voice.file_id }}` — this single operation handles both getFile and the binary download internally using the node's credentials, so you do NOT need a separate HTTP Request node and you do NOT reference `$credentials` anywhere. Then call the OpenAI node (the Core `n8n-nodes-base.openAi` node, NOT the LangChain one): resource = `audio`, operation = `transcribe`, with the binary input read from the default binary property `data` (set `binaryPropertyName: \"data\"`). Finally, reply to the original chat with the transcribed text via the Telegram `message:sendMessage` operation, using `chatId = ={{ $('Telegram Trigger').item.json.message.chat.id }}` and `text` from the OpenAI transcription output. No `$credentials` access in URLs or expressions."
+		}
+	],
 	"complexity": "complex",
 	"tags": ["telegram", "binary", "audio", "openai", "whisper", "webhook"],
 	"triggerType": "webhook",
-	"scenarios": [
+	"executionScenarios": [
 		{
 			"name": "happy-path",
 			"description": "Voice message arrives; Telegram file:get downloads OGG bytes; Whisper returns a transcript; bot replies",

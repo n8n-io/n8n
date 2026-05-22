@@ -77,6 +77,13 @@ describe('findMockQuirks (real registry)', () => {
 			expect(guidance.join('\n')).toMatch(/\.ogg/);
 		});
 
+		it('returns Openai guidance that mentions transcriptions and image generations', () => {
+			const guidance = findMockQuirks('Openai', 'POST', '/v1/audio/transcriptions');
+			expect(guidance.length).toBeGreaterThan(0);
+			expect(guidance.join('\n')).toMatch(/transcriptions/);
+			expect(guidance.join('\n')).toMatch(/images\/generations/);
+		});
+
 		it('returns Googleapis guidance that names alt=media as the binary marker', () => {
 			const guidance = findMockQuirks('Googleapis', 'GET', '/drive/v3/files/abc');
 			expect(guidance.length).toBeGreaterThan(0);

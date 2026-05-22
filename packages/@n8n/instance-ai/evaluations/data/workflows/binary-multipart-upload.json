@@ -1,9 +1,14 @@
 {
-	"prompt": "Create a webhook trigger that accepts a POST request containing a multipart/form-data body with two fields: `caption` (a short text caption) and `image` (a PNG file). When the webhook fires, forward the upload to a Slack channel using the Slack node's `files.upload` operation — pass the binary attachment via `={{ $binary.image }}` and use the caption as the comment. Reply to the webhook with `{ ok: true, slackFileId }` containing the file ID Slack returned.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create a webhook trigger that accepts a POST request containing a multipart/form-data body with two fields: `caption` (a short text caption) and `image` (a PNG file). When the webhook fires, forward the upload to a Slack channel using the Slack node's `files.upload` operation — pass the binary attachment via `={{ $binary.image }}` and use the caption as the comment. Reply to the webhook with `{ ok: true, slackFileId }` containing the file ID Slack returned."
+		}
+	],
 	"complexity": "medium",
 	"tags": ["webhook", "binary", "multipart", "slack", "upload"],
 	"triggerType": "webhook",
-	"scenarios": [
+	"executionScenarios": [
 		{
 			"name": "happy-path",
 			"description": "Webhook receives a PNG attachment; workflow forwards it to Slack; webhook reply contains the Slack file ID",
