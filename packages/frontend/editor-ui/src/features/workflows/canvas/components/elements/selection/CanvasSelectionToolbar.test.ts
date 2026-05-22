@@ -51,14 +51,25 @@ function makeNode(id: string, x = 0, y = 0): GraphNode {
 	return { id, position: { x, y } } as unknown as GraphNode;
 }
 
+function getDefaultGroupableResult(nodeIds: string[]) {
+	const groupedNodeIds = new Set(workflowDocumentStore.allGroups.flatMap((group) => group.nodeIds));
+	const alreadyGroupedNodeIds = nodeIds.filter((nodeId) => groupedNodeIds.has(nodeId));
+
+	if (alreadyGroupedNodeIds.length > 0) {
+		return { valid: false, reason: 'node-already-grouped', nodeIds: alreadyGroupedNodeIds };
+	}
+
+	return {
+		valid: true,
+		subGraphData: { start: 'A', end: 'B' },
+	};
+}
+
 describe('CanvasSelectionToolbar', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-test'));
-		isSelectionGroupableMock.mockReturnValue({
-			valid: true,
-			subGraphData: { start: 'A', end: 'B' },
-		});
+		isSelectionGroupableMock.mockImplementation(getDefaultGroupableResult);
 		isSelectionExtractableMock.mockImplementation((nodeIds: string[]) =>
 			nodeIds.length < 2
 				? { valid: false, reason: 'too-few-nodes' }

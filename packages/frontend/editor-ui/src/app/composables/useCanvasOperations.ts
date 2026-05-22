@@ -2897,11 +2897,12 @@ export function useCanvasOperations() {
 			throw new Error('Cannot serialize nodes: workflow document store is unavailable');
 		}
 
-		const data = {
+		const exportedPinData: IPinData = {};
+		const data: WorkflowData = {
 			nodes: [] as INodeUi[],
 			connections: {} as IConnections,
-			pinData: {} as IPinData,
-		} satisfies WorkflowData;
+			pinData: exportedPinData,
+		};
 
 		const exportedNodeIds = new Set(nodes.map((node) => node.id));
 		const exportedNodeNames = new Set<string>();
@@ -2911,7 +2912,7 @@ export function useCanvasOperations() {
 			const pinDataForNode = pinDataToExecutionData(workflowDocumentStore.value.pinData)[node.name];
 
 			if (pinDataForNode) {
-				data.pinData[node.name] = pinDataForNode as IPinData[string];
+				exportedPinData[node.name] = pinDataForNode as IPinData[string];
 			}
 
 			if (
