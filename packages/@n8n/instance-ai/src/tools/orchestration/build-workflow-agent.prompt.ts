@@ -55,6 +55,15 @@ const NODE_CONFIGURATION_SAFETY_RULES = `## Node Configuration Safety Rules
 - Use live \`nodes(action="explore-resources")\` for resource locator, list, and model fields when credentials are available.
 - If a configuration is unclear after reading the definition, ask for clarification or use placeholders — do not guess.`;
 
+const TOOL_NAMING_RULES = `## Tool Naming Rules
+
+- Name tools by the action they perform, not by repeating the integration or tool family name.
+- Always set an explicit \`config.name\` on every \`tool(...)\` node you create. Do not rely on auto-generated names for tools.
+- Do NOT prefix a tool name with the service name when the tool already belongs to that service.
+- Prefer concise snake_case action names like \`get_email\`, \`add_labels\`, or \`mark_as_read\`.
+- Avoid redundant names like \`gmail_get_email\`, \`slack_send_message\`, or \`notion_create_page\` unless the user explicitly asked for that exact name.
+- Keep names specific enough to distinguish sibling tools, but remove repeated vendor/type prefixes first.`;
+
 // Node-specific configuration examples used to live here. They have moved
 // onto the nodes themselves as `@builderHint` annotations and `<patterns>...</patterns>`
 // blocks in the generated `.d.ts` — fetch them on-demand via `nodes(action="type-definition")`.
@@ -100,6 +109,7 @@ function composeSdkRulesAndPatterns(mode: 'tool' | 'sandbox'): string {
 	return [
 		SDK_CODE_RULES,
 		mode === 'sandbox' ? SANDBOX_WORKFLOW_RULES : WORKFLOW_RULES,
+		TOOL_NAMING_RULES,
 		'## SDK Patterns Reference\n\n' + WORKFLOW_SDK_PATTERNS,
 		'## Expression Reference\n\n' + EXPRESSION_REFERENCE,
 		'## Additional Functions\n\n' + ADDITIONAL_FUNCTIONS,

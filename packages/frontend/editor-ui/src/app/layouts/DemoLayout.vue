@@ -43,7 +43,7 @@ const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessag
 	currentNDVStore,
 });
 
-useReportWorkflowFailuresToParent(() => currentWorkflowDocumentStore.value?.name ?? undefined);
+useReportWorkflowFailuresToParent();
 
 // Initialize push event handlers so relayed execution events (via postMessage
 // from the parent) are processed for node highlighting, execution state, etc.

@@ -3,7 +3,7 @@
   "version": "2.22.0",
   "private": true,
   "engines": {
-    "node": ">=22.16",
+    "node": ">=22.22",
     "pnpm": ">=10.22.0"
   },
   "packageManager": "pnpm@10.32.1",
@@ -179,7 +179,6 @@
       "pkce-challenge@5.0.0": "patches/pkce-challenge@5.0.0.patch",
       "@types/express-serve-static-core@5.0.6": "patches/@types__express-serve-static-core@5.0.6.patch",
       "@types/ws@8.18.1": "patches/@types__ws@8.18.1.patch",
-      "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch",
       "vue-tsc@2.2.8": "patches/vue-tsc@2.2.8.patch",
       "element-plus@2.4.3": "patches/element-plus@2.4.3.patch",
       "ics": "patches/ics.patch",
