@@ -26,6 +26,11 @@ function createMockWorkspace() {
 		name: 'Filesystem',
 		provider: 'test',
 		status: 'ready',
+		destroy: jest.fn(async () => {
+			filesystem.status = 'destroyed';
+			await Promise.resolve();
+		}),
+		getInstructions: jest.fn(() => 'Real filesystem instructions.'),
 		readFile: jest.fn(async () => await Promise.resolve('hello')),
 		writeFile: jest.fn(async () => await Promise.resolve()),
 		appendFile: jest.fn(async () => await Promise.resolve()),
@@ -53,6 +58,15 @@ function createMockWorkspace() {
 		name: 'Sandbox',
 		provider: 'test',
 		status: 'running',
+		stop: jest.fn(async () => {
+			sandbox.status = 'stopped';
+			await Promise.resolve();
+		}),
+		destroy: jest.fn(async () => {
+			sandbox.status = 'destroyed';
+			await Promise.resolve();
+		}),
+		getInstructions: jest.fn(() => 'Real sandbox instructions.'),
 		getDefaultCommandEnv: jest.fn(() => ({ CUSTOM_ENV: 'enabled' })),
 		executeCommand,
 	};
@@ -138,5 +152,36 @@ describe('createLazyRuntimeWorkspace', () => {
 		});
 
 		expect(ensureWorkspace).toHaveBeenCalledTimes(2);
+	});
+
+	it('reflects resolved provider statuses and instructions', async () => {
+		const { workspace } = createMockWorkspace();
+		const ensureWorkspace = jest.fn(async () => await Promise.resolve(workspace));
+		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
+
+		expect(lazyWorkspace.filesystem?.status).toBe('pending');
+		expect(lazyWorkspace.sandbox?.status).toBe('pending');
+		expect(lazyWorkspace.getInstructions()).toContain('create the runtime workspace on first use');
+
+		await lazyWorkspace.filesystem?.readFile('/workspace/report.md');
+
+		expect(lazyWorkspace.filesystem?.status).toBe('ready');
+		expect(lazyWorkspace.sandbox?.status).toBe('running');
+		expect(lazyWorkspace.getInstructions()).toContain('Real sandbox instructions.');
+		expect(lazyWorkspace.getInstructions()).toContain('Real filesystem instructions.');
+	});
+
+	it('destroys the resolved workspace when the lazy workspace is destroyed', async () => {
+		const { workspace, filesystem, sandbox } = createMockWorkspace();
+		const ensureWorkspace = jest.fn(async () => await Promise.resolve(workspace));
+		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
+
+		await lazyWorkspace.filesystem?.readFile('/workspace/report.md');
+		await lazyWorkspace.destroy();
+
+		expect(sandbox.destroy).toHaveBeenCalledTimes(1);
+		expect(filesystem.destroy).toHaveBeenCalledTimes(1);
+		expect(lazyWorkspace.filesystem?.status).toBe('destroyed');
+		expect(lazyWorkspace.sandbox?.status).toBe('destroyed');
 	});
 });

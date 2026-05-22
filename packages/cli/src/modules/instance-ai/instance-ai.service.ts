@@ -438,7 +438,11 @@ export class InstanceAiService {
 			traceSlug?: string;
 		}
 	>();
-	/** Shared runtime workspaces keyed by thread ID. Used by the active run and its sub-agents. */
+	/**
+	 * Shared runtime workspaces keyed by thread ID. This is only an in-process
+	 * cache; deterministic sandbox names let providers reconnect after restart
+	 * or from another main when the thread uses the workspace again.
+	 */
 	private readonly sandboxes = new Map<string, RuntimeSandboxEntry>();
 
 	/** In-flight runtime workspace creations keyed by thread ID. */

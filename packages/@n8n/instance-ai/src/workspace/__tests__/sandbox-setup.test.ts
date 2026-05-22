@@ -24,6 +24,7 @@ function createSetupContext(): InstanceAiContext {
 		},
 		workflowService: {
 			list: jest.fn().mockResolvedValue([]),
+			get: jest.fn(),
 		},
 	} as unknown as InstanceAiContext;
 }
@@ -238,6 +239,37 @@ describe('setupSandboxWorkspace', () => {
 		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
 		expect(writtenPaths).toContain('/sandbox/examples/index.txt');
 		expect(writtenPaths.some((p) => /^\/sandbox\/examples\/.+\.ts$/.test(p))).toBe(true);
+	});
+
+	it('rejects setup file paths that escape the workspace root', async () => {
+		const runInSandbox: RunInSandboxMock = jest.fn<
+			Promise<{ exitCode: number; stdout: string; stderr: string }>,
+			[SandboxWorkspace, string, string?]
+		>();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock = jest.fn<
+			Promise<string | null>,
+			[SandboxWorkspace, string]
+		>();
+		readFileViaSandbox.mockResolvedValue(null);
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
+			runInSandbox,
+			readFileViaSandbox,
+		);
+		const writeFile = jest.fn<Promise<void>, [string, string | Buffer, { recursive?: boolean }?]>(
+			async () => {},
+		);
+		const context = createSetupContext();
+		const workflowService = context.workflowService as unknown as {
+			list: jest.Mock<Promise<Array<{ id: string }>>, [{ limit: number }]>;
+			get: jest.Mock<Promise<Record<string, unknown>>, [string]>;
+		};
+		workflowService.list.mockResolvedValue([{ id: '../escape' }]);
+		workflowService.get.mockResolvedValue({ id: '../escape' });
+
+		await expect(setupSandboxWorkspace(createLocalWorkspace(writeFile), context)).rejects.toThrow(
+			'Sandbox workspace setup failed during write-workspace-files',
+		);
 	});
 
 	it('does not write the initialized marker when npm install fails', async () => {

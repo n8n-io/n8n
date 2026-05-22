@@ -1133,8 +1133,6 @@ export interface CreateInstanceAgentOptions {
 	 * Intended for tests and fallback paths that need the full toolset visible immediately.
 	 */
 	disableDeferredTools?: boolean;
-	/** @deprecated Use `orchestrationContext.workspace` for the shared runtime workspace. */
-	workspace?: Workspace;
 	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Falls back to instance default. */
 	timeZone?: string;
 }

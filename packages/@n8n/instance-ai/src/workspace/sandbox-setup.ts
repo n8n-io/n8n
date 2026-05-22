@@ -141,6 +141,35 @@ const SANDBOX_TSX_VERSION = resolveHostDepVersion('tsx');
  */
 const SANDBOX_TYPES_NODE_VERSION = '24.10.1';
 
+function assertSafeWorkspaceRelativePath(path: string): void {
+	const segments = path.split('/');
+	if (
+		path.length === 0 ||
+		path.startsWith('/') ||
+		path.includes('\\') ||
+		path.includes('\0') ||
+		segments.some((segment) => segment === '..')
+	) {
+		throw new Error(`Sandbox workspace path must stay within the workspace root: ${path}`);
+	}
+}
+
+function joinWorkspacePath(root: string, path: string): string {
+	assertSafeWorkspaceRelativePath(path);
+
+	const normalizedRoot = root.replace(/\/+$/, '') || '/';
+	const normalizedPath = path
+		.split('/')
+		.filter((segment) => segment.length > 0 && segment !== '.')
+		.join('/');
+
+	if (normalizedPath.length === 0) {
+		throw new Error(`Sandbox workspace path must stay within the workspace root: ${path}`);
+	}
+
+	return normalizedRoot === '/' ? `/${normalizedPath}` : `${normalizedRoot}/${normalizedPath}`;
+}
+
 function buildPackageJson(sdkSpecifier: string | null): string {
 	const dependencies: Record<string, string> = {
 		tsx: SANDBOX_TSX_VERSION,
@@ -234,7 +263,7 @@ export async function linkWorkspaceSdkIfEnabled(
 		);
 	}
 
-	const remotePath = `${root}/${packed.filename}`;
+	const remotePath = joinWorkspacePath(root, packed.filename);
 	if (workspace.filesystem) {
 		await writeWorkspaceFile(workspace, workspace.filesystem, remotePath, packed.tarball);
 	} else {
@@ -338,20 +367,21 @@ async function writeWorkspaceFiles(
 		// `writeFile` only creates parent dirs as a side-effect of writing a file.
 		await Promise.all(
 			ALWAYS_PRESENT_DIRS.map(
-				async (dir) => await createWorkspaceDirectory(workspace, filesystem, `${root}/${dir}`),
+				async (dir) =>
+					await createWorkspaceDirectory(workspace, filesystem, joinWorkspacePath(root, dir)),
 			),
 		);
 		await Promise.all(
 			[...files].map(
 				async ([path, content]) =>
-					await writeWorkspaceFile(workspace, filesystem, `${root}/${path}`, content),
+					await writeWorkspaceFile(workspace, filesystem, joinWorkspacePath(root, path), content),
 			),
 		);
 		return;
 	}
 
 	const dirList = ALWAYS_PRESENT_DIRS.map(
-		(dir) => `'${escapeSingleQuotes(`${root}/${dir}`)}'`,
+		(dir) => `'${escapeSingleQuotes(joinWorkspacePath(root, dir))}'`,
 	).join(' ');
 	const result = await runInSandbox(workspace, `mkdir -p ${dirList}`);
 	if (result.exitCode !== 0) {
@@ -359,7 +389,7 @@ async function writeWorkspaceFiles(
 	}
 
 	for (const [path, content] of files) {
-		await writeFileViaSandbox(workspace, `${root}/${path}`, content);
+		await writeFileViaSandbox(workspace, joinWorkspacePath(root, path), content);
 	}
 }
 
@@ -511,7 +541,7 @@ export async function setupSandboxWorkspace(
 		'resolve-workspace-root',
 		async () => await getWorkspaceRoot(workspace),
 	);
-	const markerFile = `${root}/.sandbox-initialized`;
+	const markerFile = joinWorkspacePath(root, '.sandbox-initialized');
 
 	// Check marker file for idempotency
 	const marker = await setupStep(
