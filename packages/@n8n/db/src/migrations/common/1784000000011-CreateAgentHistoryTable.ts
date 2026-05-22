@@ -111,9 +111,7 @@ export class CreateAgentHistoryTable1784000000011 implements ReversibleMigration
 	 *
 	 * Per-column COALESCE + TRIM + NULLIF so that a user with only one half of
 	 * their name set (e.g. firstName='Foo', lastName=NULL) still produces
-	 * 'Foo' rather than collapsing to 'Unknown'. Plain
-	 * `firstName || ' ' || lastName` would null out the whole expression when
-	 * either side is NULL on both SQLite and Postgres.
+	 * 'Foo' rather than collapsing to 'Unknown'.
 	 */
 	private async copyAgentPublishedVersionToHistory({ escape, runQuery }: MigrationContext) {
 		const agentHistoryTable = escape.tableName('agent_history');
@@ -181,13 +179,12 @@ export class CreateAgentHistoryTable1784000000011 implements ReversibleMigration
 	private async assertHistoryMatchesPublishedVersion({ escape, runQuery }: MigrationContext) {
 		const agentHistoryTable = escape.tableName('agent_history');
 		const agentPublishedVersionTable = escape.tableName('agent_published_version');
-		const countAlias = escape.columnName('count');
 
 		const [historyCountRow] = await runQuery<Array<{ count: string | number }>>(
-			`SELECT COUNT(*) AS ${countAlias} FROM ${agentHistoryTable}`,
+			`SELECT COUNT(*) AS count FROM ${agentHistoryTable}`,
 		);
 		const [publishedCountRow] = await runQuery<Array<{ count: string | number }>>(
-			`SELECT COUNT(*) AS ${countAlias} FROM ${agentPublishedVersionTable}`,
+			`SELECT COUNT(*) AS count FROM ${agentPublishedVersionTable}`,
 		);
 		if (Number(historyCountRow.count) !== Number(publishedCountRow.count)) {
 			throw new Error(
