@@ -242,15 +242,22 @@ export class ExecutionLevelTracer {
 }
 
 function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | number> {
-	const attrs: Record<string, string | number> = {
+	return {
 		[ATTR.NODE_ITEMS_INPUT]: params.inputItemCount,
 		[ATTR.NODE_ITEMS_OUTPUT]: params.outputItemCount,
+		...buildCustomAttributes(ATTR.NODE_CUSTOM_PREFIX, params.customAttributes),
 	};
+}
 
-	if (params.customAttributes) {
-		for (const [key, value] of Object.entries(params.customAttributes)) {
-			attrs[`${ATTR.NODE_CUSTOM_PREFIX}${key}`] = value;
-		}
+function buildCustomAttributes(
+	prefix: string,
+	customAttributes?: Record<string, string | number | boolean>,
+): Record<string, string | number | boolean> {
+	if (!customAttributes) return {};
+
+	const attrs: Record<string, string | number | boolean> = {};
+	for (const [key, value] of Object.entries(customAttributes)) {
+		attrs[`${prefix}${key}`] = value;
 	}
 
 	return attrs;
