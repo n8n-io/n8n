@@ -1,8 +1,11 @@
 import { createLlmCheck } from './create-llm-check';
 
+// TODO: HOW-side misfit — scores agent communication honesty, not workflow craft.
+// Reassign when HOW dimensions land. See https://linear.app/n8n/issue/TRUST-119
 export const responseMatchesWorkflowChanges = createLlmCheck({
 	name: 'response_matches_workflow_changes',
 	description: "Agent's text response accurately describes the actual workflow changes",
+	dimension: 'nodes_craftsmanship',
 	systemPrompt: `You are a strict evaluator checking whether an AI assistant's text response accurately describes the changes it made to an n8n workflow.
 
 You are given:

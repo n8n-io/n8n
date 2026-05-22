@@ -19,6 +19,9 @@ import {
 } from './chat-loop';
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
+import { SONNET_MODEL } from '../../src/utils/eval-agents';
+import { runBinaryChecks } from '../binaryChecks/index';
+import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
 import { verifyChecklist } from '../checklist/verifier';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import { buildConversationMetrics, extractOutcomeFromEvents } from '../outcome/event-parser';
@@ -35,6 +38,7 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
+import { userTurnsAsText } from '../utils/conversation-text';
 import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 
 // ---------------------------------------------------------------------------
@@ -96,6 +100,18 @@ export async function runWorkflowTestCase(
 				laneTag: config.laneTag,
 			});
 
+	if (config.prebuiltWorkflowId && build.success && !build.workflowChecks) {
+		// No SSE transcript in prebuilt mode — checks run with empty prompt
+		// context. When TRUST-104 lands a LangSmith trace adapter, replace
+		// this with `userTurnsAsText(<adapter>(workflowId))`.
+		build.workflowChecks = await runWorkflowChecks({
+			workflow: build.workflowJsons[0],
+			prompt: '',
+			agentText: undefined,
+			logger,
+		});
+	}
+
 	if (build.conversationMetrics) {
 		result.conversationMetrics = build.conversationMetrics;
 	}
@@ -104,6 +120,9 @@ export async function runWorkflowTestCase(
 	}
 	if (build.transcript) {
 		result.transcript = build.transcript;
+	}
+	if (build.workflowChecks) {
+		result.workflowChecks = build.workflowChecks;
 	}
 
 	if (!build.success || !build.workflowId) {
@@ -232,6 +251,7 @@ export interface BuildResult {
 	proxyDecisionStats?: ProxyDecisionStats;
 	/** Chat-style transcript built from the SSE event stream + proxy responses. */
 	transcript?: TranscriptTurn[];
+	workflowChecks?: CheckOutcome[];
 }
 
 export interface BuildWorkflowConfig {
@@ -408,6 +428,13 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes) [${String(Math.round(buildMs / 1000))}s]${isMultiTurn ? ` (${String(conversationMetrics.turnCount)} turn${conversationMetrics.turnCount === 1 ? '' : 's'})` : ''}${proxySuffix}`,
 		);
 
+		const workflowChecks = await runWorkflowChecks({
+			workflow: outcome.workflowJsons[0],
+			prompt: userTurnsAsText(transcript),
+			agentText: outcome.finalText,
+			logger,
+		});
+
 		return {
 			success: true,
 			workflowId: outcome.workflowsCreated[0].id,
@@ -418,6 +445,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			threadId,
 			proxyDecisionStats,
 			transcript,
+			workflowChecks,
 		};
 	} catch (error: unknown) {
 		abortController.abort();
@@ -762,6 +790,45 @@ export async function runWithConcurrency<T, R>(
 	const workers = Array.from({ length: Math.min(limit, items.length) }, async () => await worker());
 	await Promise.all(workers);
 	return results;
+}
+
+export async function runWorkflowChecks(args: {
+	workflow: WorkflowResponse | undefined;
+	prompt: string;
+	agentText: string | undefined;
+	logger: EvalLogger;
+}): Promise<CheckOutcome[] | undefined> {
+	if (!args.workflow) return undefined;
+
+	const modelId = hasAnthropicKey() ? SONNET_MODEL : undefined;
+	const ctx: BinaryCheckContext = {
+		prompt: args.prompt,
+		...(modelId ? { modelId } : {}),
+		...(args.agentText ? { agentTextResponse: args.agentText } : {}),
+	};
+
+	try {
+		const { outcomes } = await runBinaryChecks(args.workflow, ctx);
+		const failed = outcomes.filter((o) => o.status === 'fail');
+		if (failed.length > 0) {
+			args.logger.info(
+				`  Workflow checks: ${String(failed.length)} failing (${failed.map((o) => o.name).join(', ')})`,
+			);
+		}
+		return outcomes;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		args.logger.warn(`  Workflow checks errored: ${message}`);
+		return undefined;
+	}
+}
+
+function hasAnthropicKey(): boolean {
+	return Boolean(
+		process.env.N8N_INSTANCE_AI_MODEL_API_KEY ??
+			process.env.N8N_AI_ANTHROPIC_KEY ??
+			process.env.ANTHROPIC_API_KEY,
+	);
 }
 
 // ---------------------------------------------------------------------------
