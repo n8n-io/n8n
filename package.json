@@ -98,6 +98,7 @@
       "@browserbasehq/stagehand": "npm:empty-npm-package@1.0.0",
       "sharp": "npm:empty-npm-package@1.0.0",
       "ast-types": "0.16.1",
+      "baseline-browser-mapping": "^2.10.31",
       "@azure/identity": "4.13.0",
       "@lezer/common": "^1.2.0",
       "@mistralai/mistralai": "^1.10.0",
