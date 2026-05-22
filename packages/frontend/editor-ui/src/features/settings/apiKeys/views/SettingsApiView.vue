@@ -18,7 +18,15 @@ import { storeToRefs } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { ApiKey } from '@n8n/api-types';
 
-import { N8nActionBox, N8nButton, N8nHeading, N8nLink, N8nTabs, N8nText } from '@n8n/design-system';
+import {
+	N8nActionBox,
+	N8nButton,
+	N8nHeading,
+	N8nIcon,
+	N8nInput,
+	N8nTabs,
+	N8nText,
+} from '@n8n/design-system';
 import { I18nT } from 'vue-i18n';
 
 import ApiKeyTable from '../components/ApiKeyTable.vue';
@@ -55,6 +63,7 @@ const revoking = ref(false);
 const canManageAllKeys = computed(() => rbacStore.hasScope('apiKey:manage'));
 
 const currentTab = ref<'mine' | 'all'>('mine');
+const searchQuery = ref('');
 
 const ownApiKeys = computed(() =>
 	apiKeysSortByCreationDate.value.filter(
@@ -62,9 +71,31 @@ const ownApiKeys = computed(() =>
 	),
 );
 
+const otherUsersApiKeys = computed(() =>
+	apiKeysSortByCreationDate.value.filter(
+		(key) => !!key.owner && key.owner.id !== usersStore.currentUser?.id,
+	),
+);
+
+function matchesQuery(apiKey: ApiKey, query: string): boolean {
+	if (!query) return true;
+	const needle = query.trim().toLowerCase();
+	const haystacks = [
+		apiKey.label,
+		apiKey.owner?.email,
+		apiKey.owner?.firstName,
+		apiKey.owner?.lastName,
+	].filter(Boolean) as string[];
+	return haystacks.some((value) => value.toLowerCase().includes(needle));
+}
+
 const visibleApiKeys = computed(() => {
-	if (!canManageAllKeys.value) return ownApiKeys.value;
-	return currentTab.value === 'all' ? apiKeysSortByCreationDate.value : ownApiKeys.value;
+	const base = !canManageAllKeys.value
+		? ownApiKeys.value
+		: currentTab.value === 'all'
+			? otherUsersApiKeys.value
+			: ownApiKeys.value;
+	return base.filter((key) => matchesQuery(key, searchQuery.value));
 });
 
 const tabOptions = computed(() => [
@@ -73,7 +104,7 @@ const tabOptions = computed(() => [
 		value: 'mine' as const,
 	},
 	{
-		label: `${i18n.baseText('settings.api.tabs.all')} (${apiKeysSortByCreationDate.value.length})`,
+		label: `${i18n.baseText('settings.api.tabs.all')} (${otherUsersApiKeys.value.length})`,
 		value: 'all' as const,
 	},
 ]);
@@ -148,40 +179,42 @@ function onOpenScopes(apiKey: ApiKey) {
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style.header">
+		<div :class="$style.heading">
 			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.api') }}
 			</N8nHeading>
-			<N8nButton
-				v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length"
-				size="large"
-				@click="onCreateApiKey"
-			>
-				{{ i18n.baseText('settings.api.create.button') }}
-			</N8nButton>
 		</div>
 
-		<p v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length" :class="$style.topHint">
-			<N8nText>
-				<I18nT keypath="settings.api.view.info" tag="span" scope="global">
-					<template #apiAction>
-						<a
-							data-test-id="api-docs-link"
-							href="https://docs.n8n.io/api"
-							target="_blank"
-							v-text="i18n.baseText('settings.api.view.info.api')"
-						/>
-					</template>
-					<template #webhookAction>
-						<a
-							data-test-id="webhook-docs-link"
-							href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
-							target="_blank"
-							v-text="i18n.baseText('settings.api.view.info.webhook')"
-						/>
-					</template>
-				</I18nT>
-			</N8nText>
+		<p v-if="isPublicApiEnabled" :class="$style.description">
+			<I18nT keypath="settings.api.view.info" tag="span" scope="global">
+				<template #apiAction>
+					<a
+						data-test-id="api-playground-link"
+						:class="$style.docLink"
+						:href="apiDocsURL"
+						target="_blank"
+						v-text="i18n.baseText('settings.api.view.info.api')"
+					/>
+				</template>
+				<template #webhookAction>
+					<a
+						data-test-id="webhook-docs-link"
+						:class="$style.docLink"
+						href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+						target="_blank"
+						v-text="i18n.baseText('settings.api.view.info.webhook')"
+					/>
+				</template>
+				<template #documentationAction>
+					<a
+						data-test-id="api-docs-link"
+						:class="$style.docLink"
+						href="https://docs.n8n.io/api"
+						target="_blank"
+						v-text="i18n.baseText('settings.api.view.info.documentation')"
+					/>
+				</template>
+			</I18nT>
 		</p>
 
 		<N8nTabs
@@ -192,43 +225,41 @@ function onOpenScopes(apiKey: ApiKey) {
 			:class="$style.tabs"
 		/>
 
+		<div v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length" :class="$style.toolbar">
+			<N8nInput
+				v-model="searchQuery"
+				size="medium"
+				:placeholder="i18n.baseText('settings.api.search.placeholder')"
+				:class="$style.search"
+				data-test-id="api-keys-search"
+			>
+				<template #prefix>
+					<N8nIcon icon="search" />
+				</template>
+			</N8nInput>
+			<N8nButton size="medium" @click="onCreateApiKey">
+				{{ i18n.baseText('settings.api.create.button') }}
+			</N8nButton>
+		</div>
+
 		<ApiKeyTable
 			v-if="isPublicApiEnabled && visibleApiKeys.length"
 			:api-keys="visibleApiKeys"
 			:current-user-id="usersStore.currentUser?.id"
+			:hide-owner="!canManageAllKeys || currentTab === 'mine'"
 			@edit="onEdit"
 			@revoke="onRevokeRequest"
 			@open-scopes="onOpenScopes"
 		/>
 
-		<div v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length" :class="$style.BottomHint">
-			<N8nText size="small" color="text-light">
-				{{
-					i18n.baseText(
-						`settings.api.view.${settingsStore.isSwaggerUIEnabled ? 'tryapi' : 'more-details'}`,
-					)
-				}}
-			</N8nText>
-			{{ ' ' }}
-			<N8nLink
-				v-if="isSwaggerUIEnabled"
-				data-test-id="api-playground-link"
-				:to="apiDocsURL"
-				:new-window="true"
-				size="small"
-			>
-				{{ i18n.baseText('settings.api.view.apiPlayground') }}
-			</N8nLink>
-			<N8nLink
-				v-else
-				data-test-id="api-endpoint-docs-link"
-				:to="apiDocsURL"
-				:new-window="true"
-				size="small"
-			>
-				{{ i18n.baseText(`settings.api.view.external-docs`) }}
-			</N8nLink>
-		</div>
+		<N8nText
+			v-else-if="isPublicApiEnabled && apiKeysSortByCreationDate.length && searchQuery"
+			color="text-light"
+			size="small"
+			:class="$style.emptySearch"
+		>
+			{{ i18n.baseText('settings.api.search.empty') }}
+		</N8nText>
 
 		<N8nActionBox
 			v-if="!isPublicApiEnabled && cloudPlanStore.userIsTrialing"
@@ -269,30 +300,25 @@ function onOpenScopes(apiKey: ApiKey) {
 </template>
 
 <style lang="scss" module>
-.header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	white-space: nowrap;
-	margin-bottom: var(--spacing--xl);
-	gap: var(--spacing--sm);
+.heading {
+	margin-bottom: var(--spacing--2xs);
 }
 
-.topHint {
-	margin-top: 0;
-	margin-bottom: var(--spacing--sm);
+.description {
+	font-size: var(--font-size--sm);
 	color: var(--color--text--tint-1);
-
-	span {
-		font-size: var(--font-size--sm);
-		line-height: var(--line-height--lg);
-		font-weight: var(--font-weight--regular);
-	}
+	line-height: var(--line-height--xl);
+	margin: 0 0 var(--spacing--lg);
 }
 
-.BottomHint {
-	margin-bottom: var(--spacing--sm);
-	margin-top: var(--spacing--sm);
+.docLink {
+	color: var(--color--text);
+	text-decoration: underline;
+
+	&::after {
+		content: '↗';
+		margin-left: 2px;
+	}
 }
 
 .container {
@@ -302,5 +328,21 @@ function onOpenScopes(apiKey: ApiKey) {
 
 .tabs {
 	margin-bottom: var(--spacing--sm);
+}
+
+.toolbar {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--sm);
+}
+
+.search {
+	flex: 0 1 360px;
+	margin-right: auto;
+}
+
+.emptySearch {
+	padding: var(--spacing--sm) 0;
 }
 </style>

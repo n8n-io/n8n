@@ -188,9 +188,9 @@ describe('SettingsApiView', () => {
 			expect(screen.getByText('admin-own')).toBeInTheDocument();
 			expect(screen.queryByText('members-key')).toBeNull();
 
-			// Switch to All.
-			await fireEvent.click(screen.getByText('All (2)'));
-			expect(screen.getByText('admin-own')).toBeInTheDocument();
+			// Switch to All — excludes admin's own keys, shows other users' keys only.
+			await fireEvent.click(screen.getByText('All (1)'));
+			expect(screen.queryByText('admin-own')).toBeNull();
 			expect(screen.getByText('members-key')).toBeInTheDocument();
 		});
 	});

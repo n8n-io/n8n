@@ -1,8 +1,10 @@
 <script lang="ts" setup>
+import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { DateTime } from 'luxon';
 import type { ApiKey } from '@n8n/api-types';
-import { N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nDataTableServer, N8nText } from '@n8n/design-system';
+import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import ApiKeyOwnerCell from './ApiKeyOwnerCell.vue';
 import ApiKeyScopesCell from './ApiKeyScopesCell.vue';
 
@@ -10,6 +12,8 @@ const props = defineProps<{
 	apiKeys: ApiKey[];
 	/** When set, Edit is only offered for keys owned by this user. */
 	currentUserId?: string;
+	/** Hide the Owner column (e.g. on the "Mine" tab where every row is the user). */
+	hideOwner?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -19,6 +23,90 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+
+const page = ref(0);
+const itemsPerPage = ref(10);
+const sortBy = ref<Array<{ id: string; desc: boolean }>>([]);
+
+const sortedApiKeys = computed(() => {
+	const sort = sortBy.value[0];
+	if (!sort) return props.apiKeys;
+	const dir = sort.desc ? -1 : 1;
+	return [...props.apiKeys].sort((a, b) => {
+		const aValue = (a as unknown as Record<string, unknown>)[sort.id] ?? '';
+		const bValue = (b as unknown as Record<string, unknown>)[sort.id] ?? '';
+		if (aValue === bValue) return 0;
+		return aValue > bValue ? dir : -dir;
+	});
+});
+
+const pagedApiKeys = computed(() => {
+	const start = page.value * itemsPerPage.value;
+	return sortedApiKeys.value.slice(start, start + itemsPerPage.value);
+});
+
+watch(
+	() => props.apiKeys.length,
+	() => {
+		page.value = 0;
+	},
+);
+
+const headers = computed<Array<TableHeader<ApiKey>>>(() => {
+	const cols: Array<TableHeader<ApiKey>> = [
+		{
+			key: 'label',
+			title: i18n.baseText('settings.api.columns.name'),
+			disableSort: true,
+			width: 260,
+			value: (row) => row.label,
+		},
+	];
+
+	if (!props.hideOwner) {
+		cols.push({
+			key: 'owner',
+			title: i18n.baseText('settings.api.columns.owner'),
+			disableSort: true,
+			width: 220,
+			value: (row) => row.owner?.email ?? '',
+		});
+	}
+
+	cols.push(
+		{
+			key: 'scopes',
+			title: i18n.baseText('settings.api.columns.scopes'),
+			disableSort: true,
+			width: 90,
+			value: (row) => row.scopes.length,
+		},
+		{
+			key: 'createdAt',
+			title: i18n.baseText('settings.api.columns.created'),
+			width: 130,
+			value: (row) => row.createdAt,
+		},
+		{
+			key: 'lastUsedAt',
+			title: i18n.baseText('settings.api.columns.lastUsed'),
+			width: 130,
+			value: (row) => row.lastUsedAt ?? '',
+		},
+		{
+			key: 'actions',
+			title: '',
+			disableSort: true,
+			align: 'end',
+			width: 150,
+			value() {
+				return;
+			},
+		},
+	);
+
+	return cols;
+});
 
 function formatCreated(iso: string): string {
 	return DateTime.fromISO(iso).toFormat('d LLL yyyy');
@@ -36,120 +124,68 @@ function isOwn(apiKey: ApiKey): boolean {
 </script>
 
 <template>
-	<div :class="$style.wrapper" data-test-id="api-key-table">
-		<table :class="$style.table">
-			<thead>
-				<tr>
-					<th>{{ i18n.baseText('settings.api.columns.name') }}</th>
-					<th>{{ i18n.baseText('settings.api.columns.owner') }}</th>
-					<th :class="$style.center">{{ i18n.baseText('settings.api.columns.scopes') }}</th>
-					<th>{{ i18n.baseText('settings.api.columns.created') }}</th>
-					<th>{{ i18n.baseText('settings.api.columns.lastUsed') }}</th>
-					<th :class="$style.actions"></th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr
-					v-for="apiKey in apiKeys"
-					:key="apiKey.id"
-					data-test-id="api-key-row"
-					:data-key-id="apiKey.id"
-				>
-					<td>
-						<div :class="$style.name">
-							<N8nText bold size="small">{{ apiKey.label }}</N8nText>
-							<N8nText size="xsmall" color="text-light" :class="$style.redacted">
-								{{ apiKey.apiKey }}
-							</N8nText>
-						</div>
-					</td>
-					<td>
-						<ApiKeyOwnerCell v-if="apiKey.owner" :owner="apiKey.owner" />
-					</td>
-					<td :class="$style.center">
-						<ApiKeyScopesCell :api-key="apiKey" @open="emit('open-scopes', $event)" />
-					</td>
-					<td>
-						<N8nText size="small">{{ formatCreated(apiKey.createdAt) }}</N8nText>
-					</td>
-					<td>
-						<N8nText size="small" :color="apiKey.lastUsedAt ? undefined : 'text-light'">
-							{{ formatLastUsed(apiKey.lastUsedAt) }}
-						</N8nText>
-					</td>
-					<td :class="$style.actions">
-						<div :class="$style.rowActions">
-							<N8nIconButton
-								v-if="isOwn(apiKey)"
-								icon="pencil"
-								type="tertiary"
-								size="small"
-								:title="i18n.baseText('settings.api.actions.edit')"
-								data-test-id="api-key-edit-action"
-								@click.stop="emit('edit', apiKey)"
-							/>
-							<N8nIconButton
-								icon="trash-2"
-								type="tertiary"
-								size="small"
-								:title="i18n.baseText('settings.api.actions.revoke')"
-								data-test-id="api-key-revoke-action"
-								@click.stop="emit('revoke', apiKey)"
-							/>
-						</div>
-					</td>
-				</tr>
-			</tbody>
-		</table>
+	<div data-test-id="api-key-table">
+		<N8nDataTableServer
+			:key="hideOwner ? 'no-owner' : 'with-owner'"
+			v-model:sort-by="sortBy"
+			v-model:page="page"
+			v-model:items-per-page="itemsPerPage"
+			:headers="headers"
+			:items="pagedApiKeys"
+			:items-length="apiKeys.length"
+			:page-sizes="[10, 25, 50]"
+		>
+			<template #[`item.label`]="{ item }">
+				<div :class="$style.name">
+					<N8nText bold size="small">{{ item.label }}</N8nText>
+					<N8nText size="xsmall" color="text-light" :class="$style.redacted">
+						{{ item.apiKey }}
+					</N8nText>
+				</div>
+			</template>
+
+			<template #[`item.owner`]="{ item }">
+				<ApiKeyOwnerCell v-if="item.owner" :owner="item.owner" />
+			</template>
+
+			<template #[`item.scopes`]="{ item }">
+				<ApiKeyScopesCell :api-key="item" @open="emit('open-scopes', $event)" />
+			</template>
+
+			<template #[`item.createdAt`]="{ item }">
+				<N8nText size="small">{{ formatCreated(item.createdAt) }}</N8nText>
+			</template>
+
+			<template #[`item.lastUsedAt`]="{ item }">
+				<N8nText size="small" :color="item.lastUsedAt ? undefined : 'text-light'">
+					{{ formatLastUsed(item.lastUsedAt) }}
+				</N8nText>
+			</template>
+
+			<template #[`item.actions`]="{ item }">
+				<div :class="$style.rowActions">
+					<N8nButton
+						v-if="isOwn(item)"
+						variant="outline"
+						size="mini"
+						:label="i18n.baseText('settings.api.actions.edit')"
+						data-test-id="api-key-edit-action"
+						@click.stop="emit('edit', item)"
+					/>
+					<N8nButton
+						variant="outline"
+						size="mini"
+						:label="i18n.baseText('settings.api.actions.revoke')"
+						data-test-id="api-key-revoke-action"
+						@click.stop="emit('revoke', item)"
+					/>
+				</div>
+			</template>
+		</N8nDataTableServer>
 	</div>
 </template>
 
 <style lang="scss" module>
-.wrapper {
-	border: 1px solid var(--color--foreground);
-	border-radius: var(--radius);
-	overflow: hidden;
-	background-color: var(--color--background--light-3);
-}
-
-.table {
-	width: 100%;
-	border-collapse: separate;
-	border-spacing: 0;
-	font-size: var(--font-size--sm);
-
-	thead {
-		background-color: var(--color--background--light-1);
-		border-bottom: 1px solid var(--color--foreground);
-
-		th {
-			text-align: left;
-			padding: var(--spacing--2xs) var(--spacing--sm);
-			font-weight: var(--font-weight--bold);
-			font-size: var(--font-size--2xs);
-			color: var(--color--text--shade-1);
-			border-bottom: 1px solid var(--color--foreground);
-		}
-	}
-
-	tbody tr {
-		background-color: var(--color--background--light-3);
-
-		&:not(:last-child) td {
-			border-bottom: 1px solid var(--color--foreground);
-		}
-
-		&:hover {
-			background-color: var(--color--background--light-2);
-		}
-	}
-
-	td {
-		padding: var(--spacing--2xs) var(--spacing--sm);
-		vertical-align: middle;
-	}
-}
-
 .name {
 	display: flex;
 	flex-direction: column;
@@ -161,18 +197,9 @@ function isOwn(apiKey: ApiKey): boolean {
 	font-family: var(--font-family--monospace);
 }
 
-.center {
-	text-align: center;
-}
-
-.actions {
-	width: 92px;
-	text-align: right;
-}
-
 .rowActions {
-	display: flex;
-	gap: var(--spacing--3xs);
+	display: inline-flex;
+	gap: var(--spacing--2xs);
 	justify-content: flex-end;
 }
 </style>
