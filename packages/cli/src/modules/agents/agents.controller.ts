@@ -451,8 +451,8 @@ export class AgentsController {
 		return await this.agentsService.listPublishHistory(
 			agentId,
 			req.params.projectId,
-			query.take ?? 20,
-			query.skip ?? 0,
+			query.take,
+			query.skip,
 		);
 	}
 

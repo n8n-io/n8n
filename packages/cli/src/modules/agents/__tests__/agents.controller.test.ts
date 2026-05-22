@@ -143,20 +143,6 @@ describe('AgentsController publish history', () => {
 		expect(result).toHaveLength(1);
 		expect(result[0].isActive).toBe(true);
 	});
-
-	it('applies the default take/skip when the query is empty', async () => {
-		const { controller, agentsService } = makeController();
-		agentsService.listPublishHistory.mockResolvedValue([]);
-
-		await controller.listVersions(
-			{ params: { projectId: 'project-1', agentId: 'agent-1' } } as never,
-			undefined as never,
-			'agent-1',
-			{} as never,
-		);
-
-		expect(agentsService.listPublishHistory).toHaveBeenCalledWith('agent-1', 'project-1', 20, 0);
-	});
 });
 
 describe('AgentsController integration credentials', () => {
