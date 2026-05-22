@@ -3,10 +3,17 @@ import { Service } from '@n8n/di';
 import {
 	AgentChatIntegration,
 	type AgentChatIntegrationContext,
+	type PlatformActionParams,
+	type PlatformContextQueryParams,
 	type UnauthenticatedWebhookResponse,
 } from '../agent-chat-integration';
 import { loadSlackAdapter } from '../esm-loader';
-import type { IntegrationAction, IntegrationContextQuery } from '../integration-tools';
+import type {
+	IntegrationAction,
+	IntegrationActionResult,
+	IntegrationContextQuery,
+} from '../integration-tools';
+import { executeSlackAction, executeSlackContextQuery } from './slack-operations';
 
 /**
  * Slack platform integration.
@@ -52,6 +59,24 @@ export class SlackIntegration extends AgentChatIntegration {
 		'send_channel_message',
 		'add_reaction',
 	];
+
+	async executeContextQuery(params: PlatformContextQueryParams): Promise<unknown> {
+		return await executeSlackContextQuery({
+			chat: params.chat,
+			query: params.query,
+			input: params.input,
+		});
+	}
+
+	async executeAction(params: PlatformActionParams): Promise<IntegrationActionResult | undefined> {
+		return await executeSlackAction({
+			chat: params.chat,
+			descriptor: params.descriptor,
+			action: params.action,
+			input: params.input,
+			currentMessageContext: params.currentMessageContext,
+		});
+	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const botToken = this.extractBotToken(ctx.credential);
