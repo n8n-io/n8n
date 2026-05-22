@@ -33,8 +33,9 @@ export async function binaryToBuffer(body: Buffer | Readable) {
 
 /**
  * A `Transform` that re-emits its input as chunks of exactly `chunkSize` bytes, with a possibly smaller final chunk.
+ * `chunkSize` must be a positive integer: values `<= 0` throws an `UnexpectedError`.
  *
- * Memory use is bounded by `chunkSize` (one queued part at a time), so it is safe to wrap unbounded streams.
+ * Between transforms the internal queue carries at most one partial chunk (< `chunkSize` bytes).
  *
  * Wire the upstream source into the chunker with `node:stream.pipeline()`, not plain `.pipe()`.
  * `pipeline()` propagates errors from upstream to the chunker
@@ -43,6 +44,10 @@ export async function binaryToBuffer(body: Buffer | Readable) {
  * `.pipe()` does neither.
  */
 export function createFixedSizeChunker(chunkSize: number): Transform {
+	if (chunkSize <= 0) {
+		throw new UnexpectedError(`createFixedSizeChunker requires chunkSize > 0, got ${chunkSize}`);
+	}
+
 	const queue: Buffer[] = [];
 	let queued = 0;
 

@@ -183,9 +183,8 @@ export class ObjectStoreService {
 					const rechunker = createFixedSizeChunker(chunkSize);
 					pipeline(wrapper, rechunker, () => {}); // Error/destroy propagation is handled via stream events on `rechunker`
 					return rechunker;
-				} else {
-					return wrapper;
 				}
+				return wrapper;
 			}
 
 			const { Body: body } = await this.s3Client.send(command);

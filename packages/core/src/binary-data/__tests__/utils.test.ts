@@ -80,5 +80,9 @@ describe('BinaryData/utils', () => {
 
 			expect(chunks).toEqual([]);
 		});
+
+		it.each([0, -1])('should throw when chunkSize is %s', (chunkSize) => {
+			expect(() => createFixedSizeChunker(chunkSize)).toThrow(UnexpectedError);
+		});
 	});
 });
