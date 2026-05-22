@@ -95,6 +95,10 @@
 		"PUT /tags/{id}": {
 			"status": "gap"
 		},
+		"POST /query": {
+			"status": "covered",
+			"nodeOperation": "workflow:query"
+		},
 		"POST /workflows": {
 			"status": "covered",
 			"nodeOperation": "workflow:create"

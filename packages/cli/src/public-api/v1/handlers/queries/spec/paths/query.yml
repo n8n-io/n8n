@@ -1,0 +1,72 @@
+post:
+  x-eov-operation-id: runQuery
+  x-eov-operation-handler: v1/handlers/queries/queries.handler
+  tags:
+    - Query
+  summary: Run a query
+  description: |
+    Executes a read-only SQL query against this n8n instance's execution and
+    workflow data. See the query module README for the supported grammar.
+
+    The result is scoped by the calling user's `workflow:read` access — only
+    rows from workflows the user can read are returned.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - query
+          properties:
+            query:
+              type: string
+              minLength: 1
+              description: SQL text to execute. Only `SELECT` is supported.
+              example: SELECT id, name FROM workflows LIMIT 5
+            timeoutMs:
+              type: integer
+              minimum: 1
+              description: Per-request statement timeout. Defaults to 10000.
+              example: 5000
+  responses:
+    '200':
+      description: Query result.
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - columns
+              - rows
+              - durationMs
+              - truncated
+            properties:
+              columns:
+                type: array
+                description: Ordered result column names.
+                items:
+                  type: string
+              rows:
+                type: array
+                description: Each row keyed by column name. Values pass through from the driver.
+                items:
+                  type: object
+                  additionalProperties: true
+              durationMs:
+                type: integer
+                description: Server-side query execution time in milliseconds.
+              truncated:
+                type: boolean
+                description: True when the result was capped by `LIMIT`.
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+      description: |
+        Bad request. Common engine codes encoded in the message:
+        `PARSE_ERROR`, `JOINS_NOT_SUPPORTED`, `ALIASES_NOT_SUPPORTED`,
+        `UNKNOWN_FIELD`, `UNKNOWN_SOURCE`, `UNKNOWN_WORKFLOW`,
+        `AGGREGATE_IN_WHERE`, `INVALID_WINDOW`.
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      description: Forbidden — typically `FORBIDDEN_WORKFLOW`.

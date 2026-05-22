@@ -63,6 +63,10 @@ const getRouteConfigs = () => {
 				name: VIEWS.PROJECTS_VARIABLES,
 				params: { projectId: projectId.value },
 			},
+			dashboards: {
+				name: VIEWS.PROJECTS_DASHBOARDS,
+				params: { projectId: projectId.value },
+			},
 		};
 	}
 
@@ -73,6 +77,7 @@ const getRouteConfigs = () => {
 			credentials: { name: VIEWS.SHARED_CREDENTIALS },
 			executions: { name: VIEWS.NOT_FOUND },
 			variables: { name: VIEWS.NOT_FOUND },
+			dashboards: { name: VIEWS.NOT_FOUND },
 		};
 	}
 
@@ -82,6 +87,7 @@ const getRouteConfigs = () => {
 		credentials: { name: VIEWS.CREDENTIALS },
 		executions: { name: VIEWS.EXECUTIONS },
 		variables: { name: VIEWS.HOME_VARIABLES },
+		dashboards: { name: VIEWS.HOME_DASHBOARDS },
 	};
 };
 
@@ -113,6 +119,8 @@ const options = computed<Array<TabOptions<string>>>(() => {
 	if (props.pageType === 'overview' || isTeamProject.value) {
 		tabs.push(createTab('mainSidebar.variables', 'variables', routes));
 	}
+
+	tabs.push(createTab('mainSidebar.dashboards', 'dashboards', routes));
 
 	if (props.additionalTabs?.length) {
 		const processedAdditionalTabs = processDynamicTabs(props.additionalTabs, projectId.value);

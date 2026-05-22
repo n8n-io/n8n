@@ -44,6 +44,8 @@ tags:
     description: Operations about insights
   - name: Folders
     description: Operations about folders
+  - name: Query
+    description: Run SQL queries against execution and workflow data
 
 paths:
   /audit:
@@ -74,6 +76,8 @@ paths:
     $ref: './handlers/tags/spec/paths/tags.yml'
   /tags/{id}:
     $ref: './handlers/tags/spec/paths/tags.id.yml'
+  /query:
+    $ref: './handlers/queries/spec/paths/query.yml'
   /workflows:
     $ref: './handlers/workflows/spec/paths/workflows.yml'
   /workflows/{id}:

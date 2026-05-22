@@ -1,0 +1,68 @@
+{
+	"name": "n8n node — Query operation (full response)",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "798b312a-c922-4f11-8b96-496802bd327c",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [640, 360]
+		},
+		{
+			"parameters": {
+				"resource": "workflow",
+				"operation": "query",
+				"sql": "SELECT id, name FROM workflows LIMIT 2",
+				"simple": false
+			},
+			"id": "22222222-2222-3333-4444-555555555555",
+			"name": "n8n",
+			"type": "n8n-nodes-base.n8n",
+			"typeVersion": 1,
+			"position": [900, 360],
+			"credentials": {
+				"n8nApi": {
+					"id": "7",
+					"name": "n8n account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"n8n": [
+			{
+				"json": {
+					"columns": ["id", "name"],
+					"rows": [
+						{ "id": "wf-1", "name": "First workflow" },
+						{ "id": "wf-2", "name": "Second workflow" }
+					],
+					"durationMs": 1,
+					"truncated": false
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "n8n",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "22222222-2222-3333-4444-555555555555",
+	"id": "5",
+	"meta": {
+		"instanceId": "c9d4cba5f22cf38c90f74ed94dd16cea1f9b65fbb0fc58c6df51b44b4ca7d75d"
+	},
+	"tags": []
+}

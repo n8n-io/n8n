@@ -1,0 +1,1337 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`workflows compiler (postgresdb) GROUP BY + HAVING GROUP BY single column 1`] = `
+{
+  "columns": [
+    "active",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."active" AS "active", COUNT(*) AS "count"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2)
+GROUP BY w."active"
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) GROUP BY + HAVING HAVING aggregate compare 1`] = `
+{
+  "columns": [
+    "active",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    5,
+  ],
+  "sql": "SELECT w."active" AS "active", COUNT(*) AS "count"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2)
+GROUP BY w."active"
+HAVING COUNT(*) > $3
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) LIMIT default LIMIT applied when omitted 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) LIMIT explicit LIMIT 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 10,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2)
+LIMIT 10",
+}
+`;
+
+exports[`workflows compiler (postgresdb) ORDER BY ASC default 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2)
+ORDER BY w."name" ASC
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) ORDER BY DESC explicit 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2)
+ORDER BY w."createdAt" DESC
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) ORDER BY by aggregate 1`] = `
+{
+  "columns": [
+    "active",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."active" AS "active", COUNT(*) AS "count"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2)
+GROUP BY w."active"
+ORDER BY COUNT(*) DESC
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) ORDER BY multiple items 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2)
+ORDER BY w."active" DESC, w."name" ASC
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) SELECT projection COUNT(*) 1`] = `
+{
+  "columns": [
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT COUNT(*) AS "count"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) SELECT projection SELECT * 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) SELECT projection explicit columns 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "createdAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."createdAt" AS "createdAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) SELECT projection mixed projection with GROUP BY 1`] = `
+{
+  "columns": [
+    "active",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."active" AS "active", COUNT(*) AS "count"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2)
+GROUP BY w."active"
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) WHERE comparisons operator != 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2) AND w."createdAt" != $3
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) WHERE comparisons operator < 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2) AND w."createdAt" < $3
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) WHERE comparisons operator <= 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2) AND w."createdAt" <= $3
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) WHERE comparisons operator <> 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2) AND w."createdAt" <> $3
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) WHERE comparisons operator = 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2) AND w."createdAt" = $3
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) WHERE comparisons operator > 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2) AND w."createdAt" > $3
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) WHERE comparisons operator >= 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2) AND w."createdAt" >= $3
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) WHERE composition AND 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "crm%",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2) AND (w."name" LIKE $3 AND w."createdAt" > $4)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) WHERE composition NOT 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "archive%",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2) AND NOT (w."name" LIKE $3)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) WHERE composition OR 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "crm%",
+    "sales%",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2) AND (w."name" LIKE $3 OR w."name" LIKE $4)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) WHERE composition nested parens 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "crm%",
+    "sales%",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2) AND ((w."name" LIKE $3 OR w."name" LIKE $4) AND w."createdAt" > $5)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) WHERE special predicates IN 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "wf-1",
+    "wf-2",
+    "wf-3",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2) AND w."id" IN ($3, $4, $5)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) WHERE special predicates IS NOT NULL 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2) AND w."updatedAt" IS NOT NULL
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) WHERE special predicates IS NULL 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2) AND w."updatedAt" IS NULL
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) WHERE special predicates LIKE 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "crm%",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2) AND w."name" LIKE $3
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) full integration realistic query 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+  ],
+  "kind": "sql-only",
+  "limit": 10,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "crm%",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name"
+FROM "workflow_entity" AS w
+WHERE w."id" IN ($1, $2) AND (w."name" LIKE $3 AND w."createdAt" > $4)
+ORDER BY w."createdAt" DESC
+LIMIT 10",
+}
+`;
+
+exports[`workflows compiler (postgresdb) permission scope emits 1=0 when accessible list is empty 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE 1=0
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (postgresdb) permission scope respects non-empty tablePrefix 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "n8n_workflow_entity" AS w
+WHERE w."id" IN ($1, $2)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) GROUP BY + HAVING GROUP BY single column 1`] = `
+{
+  "columns": [
+    "active",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."active" AS "active", COUNT(*) AS "count"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?)
+GROUP BY w."active"
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) GROUP BY + HAVING HAVING aggregate compare 1`] = `
+{
+  "columns": [
+    "active",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    5,
+  ],
+  "sql": "SELECT w."active" AS "active", COUNT(*) AS "count"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?)
+GROUP BY w."active"
+HAVING COUNT(*) > ?
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) LIMIT default LIMIT applied when omitted 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) LIMIT explicit LIMIT 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 10,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?)
+LIMIT 10",
+}
+`;
+
+exports[`workflows compiler (sqlite) ORDER BY ASC default 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?)
+ORDER BY w."name" ASC
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) ORDER BY DESC explicit 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?)
+ORDER BY w."createdAt" DESC
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) ORDER BY by aggregate 1`] = `
+{
+  "columns": [
+    "active",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."active" AS "active", COUNT(*) AS "count"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?)
+GROUP BY w."active"
+ORDER BY COUNT(*) DESC
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) ORDER BY multiple items 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?)
+ORDER BY w."active" DESC, w."name" ASC
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) SELECT projection COUNT(*) 1`] = `
+{
+  "columns": [
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT COUNT(*) AS "count"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) SELECT projection SELECT * 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) SELECT projection explicit columns 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "createdAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."createdAt" AS "createdAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) SELECT projection mixed projection with GROUP BY 1`] = `
+{
+  "columns": [
+    "active",
+    "count",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."active" AS "active", COUNT(*) AS "count"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?)
+GROUP BY w."active"
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) WHERE comparisons operator != 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?) AND w."createdAt" != ?
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) WHERE comparisons operator < 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?) AND w."createdAt" < ?
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) WHERE comparisons operator <= 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?) AND w."createdAt" <= ?
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) WHERE comparisons operator <> 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?) AND w."createdAt" <> ?
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) WHERE comparisons operator = 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?) AND w."createdAt" = ?
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) WHERE comparisons operator > 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?) AND w."createdAt" > ?
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) WHERE comparisons operator >= 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?) AND w."createdAt" >= ?
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) WHERE composition AND 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "crm%",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?) AND (w."name" LIKE ? AND w."createdAt" > ?)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) WHERE composition NOT 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "archive%",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?) AND NOT (w."name" LIKE ?)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) WHERE composition OR 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "crm%",
+    "sales%",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?) AND (w."name" LIKE ? OR w."name" LIKE ?)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) WHERE composition nested parens 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "crm%",
+    "sales%",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?) AND ((w."name" LIKE ? OR w."name" LIKE ?) AND w."createdAt" > ?)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) WHERE special predicates IN 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "wf-1",
+    "wf-2",
+    "wf-3",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?) AND w."id" IN (?, ?, ?)
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) WHERE special predicates IS NOT NULL 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?) AND w."updatedAt" IS NOT NULL
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) WHERE special predicates IS NULL 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?) AND w."updatedAt" IS NULL
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) WHERE special predicates LIKE 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "crm%",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?) AND w."name" LIKE ?
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) full integration realistic query 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+  ],
+  "kind": "sql-only",
+  "limit": 10,
+  "params": [
+    "wf-1",
+    "wf-2",
+    "crm%",
+    "2024-01-01",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name"
+FROM "workflow_entity" AS w
+WHERE w."id" IN (?, ?) AND (w."name" LIKE ? AND w."createdAt" > ?)
+ORDER BY w."createdAt" DESC
+LIMIT 10",
+}
+`;
+
+exports[`workflows compiler (sqlite) permission scope emits 1=0 when accessible list is empty 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "workflow_entity" AS w
+WHERE 1=0
+LIMIT 1000",
+}
+`;
+
+exports[`workflows compiler (sqlite) permission scope respects non-empty tablePrefix 1`] = `
+{
+  "columns": [
+    "id",
+    "name",
+    "active",
+    "createdAt",
+    "updatedAt",
+  ],
+  "kind": "sql-only",
+  "limit": 1000,
+  "params": [
+    "wf-1",
+    "wf-2",
+  ],
+  "sql": "SELECT w."id" AS "id", w."name" AS "name", w."active" AS "active", w."createdAt" AS "createdAt", w."updatedAt" AS "updatedAt"
+FROM "n8n_workflow_entity" AS w
+WHERE w."id" IN (?, ?)
+LIMIT 1000",
+}
+`;
