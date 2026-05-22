@@ -3017,6 +3017,9 @@ importers:
       swagger-ui-express:
         specifier: 5.0.1
         version: 5.0.1(express@5.1.0)
+      tar:
+        specifier: ^7.5.11
+        version: 7.5.11
       undici:
         specifier: ^7.24.0
         version: 7.24.6
