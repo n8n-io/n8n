@@ -48,7 +48,12 @@ export class OtelLifecycleHandler {
 		const spanContext = this.tracer.startWorkflow({
 			executionId: ctx.executionId,
 			tracingContext,
-			project: project ? { id: project.id } : undefined,
+			project: project
+				? {
+						id: project.id,
+						customAttributes: buildProjectCustomAttributes(project.customTelemetryTags),
+					}
+				: undefined,
 			workflow: {
 				id: ctx.workflow.id,
 				name: ctx.workflow.name,
@@ -80,7 +85,12 @@ export class OtelLifecycleHandler {
 		this.tracer.startWorkflow({
 			executionId: ctx.executionId,
 			linkTo: previousWorkflowExecution,
-			project: project ? { id: project.id } : undefined,
+			project: project
+				? {
+						id: project.id,
+						customAttributes: buildProjectCustomAttributes(project.customTelemetryTags),
+					}
+				: undefined,
 			workflow: {
 				id: ctx.workflow.id,
 				name: ctx.workflow.name,
@@ -137,6 +147,17 @@ export class OtelLifecycleHandler {
 			customAttributes,
 		});
 	}
+}
+
+function buildProjectCustomAttributes(
+	tags: Array<{ key: string; value: string }> | null | undefined,
+): Record<string, string> | undefined {
+	if (!tags?.length) return undefined;
+	const attrs: Record<string, string> = {};
+	for (const { key, value } of tags) {
+		attrs[key] = value;
+	}
+	return attrs;
 }
 
 export function countOutputItems(data: NodeExecuteAfterContext['taskData']['data']): number {

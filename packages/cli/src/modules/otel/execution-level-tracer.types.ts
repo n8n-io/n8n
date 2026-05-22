@@ -2,7 +2,10 @@ import type { ExecutionStatus, WorkflowExecuteMode, INode } from 'n8n-workflow';
 
 import type { TracingContext } from './tracing-context';
 
-type ProjectContext = { id: string };
+type ProjectContext = {
+	id: string;
+	customAttributes?: Record<string, string>;
+};
 type WorkflowContext = { id: string; name: string; versionId?: string; nodeCount: number };
 
 export type StartWorkflowParams = {
