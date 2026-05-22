@@ -15,7 +15,7 @@
 		"strict": true,
 		"strictFunctionTypes": false,
 		"strictPropertyInitialization": false,
-		"isolatedModules": true,
+		"isolatedModules": false,
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},
