@@ -483,19 +483,26 @@ function hookFunctionsPushSubExecution(
 	parentExecution: RelatedExecution,
 	parentNode: INode,
 ) {
-	const pushInstance = Container.get(Push);
 	const totalNodes = workflowData.nodes.length;
 
-	// Resolved lazily on first emit: ActiveExecutions may not yet have the
-	// sub-execution registered at hook-registration time on some code paths,
-	// and we want the freshest ancestor state.
-	let cachedPushRef: string | undefined;
-	let pushRefResolved = false;
-	const resolvePushRef = (): string | undefined => {
-		if (pushRefResolved) return cachedPushRef;
-		pushRefResolved = true;
-		cachedPushRef = findRootPushRef(parentExecution.executionId);
-		return cachedPushRef;
+	// Push + pushRef are resolved lazily on first emit. This keeps hook
+	// registration free of DI side effects (cli tests globally `jest.mock`
+	// `@/push`, which strips its `@Service` metadata) and lets the freshest
+	// ancestor state determine the target pushRef.
+	let resolved = false;
+	let cached: { pushInstance: Push; pushRef: string } | undefined;
+	const resolveTarget = (): typeof cached => {
+		if (resolved) return cached;
+		resolved = true;
+		const pushRef = findRootPushRef(parentExecution.executionId);
+		if (!pushRef) return undefined;
+		try {
+			const pushInstance = Container.get(Push);
+			cached = { pushInstance, pushRef };
+		} catch {
+			cached = undefined;
+		}
+		return cached;
 	};
 
 	let nodeIndex = 0;
@@ -508,9 +515,9 @@ function hookFunctionsPushSubExecution(
 	let lastEmittedPhase: 'running' | 'success' | 'error' | undefined;
 
 	hooks.addHandler('workflowExecuteBefore', function () {
-		const pushRef = resolvePushRef();
-		if (!pushRef) return;
-		pushInstance.send(
+		const target = resolveTarget();
+		if (!target) return;
+		target.pushInstance.send(
 			{
 				type: 'subworkflowExecutionStarted',
 				data: {
@@ -520,13 +527,13 @@ function hookFunctionsPushSubExecution(
 					totalNodes,
 				},
 			},
-			pushRef,
+			target.pushRef,
 		);
 	});
 
 	hooks.addHandler('nodeExecuteBefore', function (nodeName) {
-		const pushRef = resolvePushRef();
-		if (!pushRef) return;
+		const target = resolveTarget();
+		if (!target) return;
 		nodeIndex += 1;
 		const now = Date.now();
 		const isNewNode = nodeName !== lastEmittedNodeName;
@@ -536,7 +543,7 @@ function hookFunctionsPushSubExecution(
 		lastEmitAt = now;
 		lastEmittedNodeName = nodeName;
 		lastEmittedPhase = 'running';
-		pushInstance.send(
+		target.pushInstance.send(
 			{
 				type: 'subworkflowNodeProgress',
 				data: {
@@ -549,18 +556,18 @@ function hookFunctionsPushSubExecution(
 					phase: 'running',
 				},
 			},
-			pushRef,
+			target.pushRef,
 		);
 	});
 
 	hooks.addHandler('nodeExecuteAfter', function (nodeName, data) {
-		const pushRef = resolvePushRef();
-		if (!pushRef) return;
+		const target = resolveTarget();
+		if (!target) return;
 		const phase: 'success' | 'error' = data?.error ? 'error' : 'success';
 		lastEmitAt = Date.now();
 		lastEmittedNodeName = nodeName;
 		lastEmittedPhase = phase;
-		pushInstance.send(
+		target.pushInstance.send(
 			{
 				type: 'subworkflowNodeProgress',
 				data: {
@@ -573,14 +580,14 @@ function hookFunctionsPushSubExecution(
 					phase,
 				},
 			},
-			pushRef,
+			target.pushRef,
 		);
 	});
 
 	hooks.addHandler('workflowExecuteAfter', function (fullRunData) {
-		const pushRef = resolvePushRef();
-		if (!pushRef) return;
-		pushInstance.send(
+		const target = resolveTarget();
+		if (!target) return;
+		target.pushInstance.send(
 			{
 				type: 'subworkflowExecutionFinished',
 				data: {
@@ -590,7 +597,7 @@ function hookFunctionsPushSubExecution(
 					status: fullRunData.status,
 				},
 			},
-			pushRef,
+			target.pushRef,
 		);
 	});
 }
