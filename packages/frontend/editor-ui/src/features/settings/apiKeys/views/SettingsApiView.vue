@@ -65,16 +65,13 @@ const canManageAllKeys = computed(() => rbacStore.hasScope('apiKey:manage'));
 const currentTab = ref<'mine' | 'all'>('mine');
 const searchQuery = ref('');
 
-const ownApiKeys = computed(() =>
-	apiKeysSortByCreationDate.value.filter(
-		(key) => !key.owner || key.owner.id === usersStore.currentUser?.id,
-	),
-);
+function isOwn(apiKey: ApiKey): boolean {
+	return !apiKey.owner || apiKey.owner.id === usersStore.currentUser?.id;
+}
 
+const ownApiKeys = computed(() => apiKeysSortByCreationDate.value.filter(isOwn));
 const otherUsersApiKeys = computed(() =>
-	apiKeysSortByCreationDate.value.filter(
-		(key) => !!key.owner && key.owner.id !== usersStore.currentUser?.id,
-	),
+	apiKeysSortByCreationDate.value.filter((key) => !isOwn(key)),
 );
 
 function matchesQuery(apiKey: ApiKey, query: string): boolean {
@@ -90,11 +87,8 @@ function matchesQuery(apiKey: ApiKey, query: string): boolean {
 }
 
 const visibleApiKeys = computed(() => {
-	const base = !canManageAllKeys.value
-		? ownApiKeys.value
-		: currentTab.value === 'all'
-			? otherUsersApiKeys.value
-			: ownApiKeys.value;
+	const showAll = canManageAllKeys.value && currentTab.value === 'all';
+	const base = showAll ? otherUsersApiKeys.value : ownApiKeys.value;
 	return base.filter((key) => matchesQuery(key, searchQuery.value));
 });
 

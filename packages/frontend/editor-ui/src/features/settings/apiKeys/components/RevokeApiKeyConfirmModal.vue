@@ -8,7 +8,6 @@ const props = defineProps<{
 	apiKey: ApiKey | null;
 	open: boolean;
 	loading?: boolean;
-	/** When the caller is not the key owner — admin revoking another user's key. */
 	revokingForOther?: boolean;
 }>();
 

@@ -45,20 +45,14 @@ function makeKey(overrides: Partial<ApiKey> = {}): ApiKey {
 	};
 }
 
-const assertHintsAreShown = ({ isSwaggerUIEnabled }: { isSwaggerUIEnabled: boolean }) => {
+const assertHintsAreShown = () => {
 	const apiDocsLink = screen.getByTestId('api-docs-link');
 	expect(apiDocsLink).toBeInTheDocument();
 	expect(apiDocsLink).toHaveAttribute('href', 'https://docs.n8n.io/api');
 	expect(apiDocsLink).toHaveAttribute('target', '_blank');
 
-	const webhookDocsLink = screen.getByTestId('webhook-docs-link');
-	expect(webhookDocsLink).toBeInTheDocument();
-
-	if (isSwaggerUIEnabled) {
-		expect(screen.getByText('API Playground')).toBeInTheDocument();
-	} else {
-		expect(screen.getByText('the API documentation')).toBeInTheDocument();
-	}
+	expect(screen.getByTestId('webhook-docs-link')).toBeInTheDocument();
+	expect(screen.getByTestId('api-playground-link')).toBeInTheDocument();
 };
 
 describe('SettingsApiView', () => {
@@ -121,7 +115,7 @@ describe('SettingsApiView', () => {
 		// "Last used" is "Never" until populated.
 		expect(screen.getAllByText('Never').length).toBeGreaterThan(0);
 
-		assertHintsAreShown({ isSwaggerUIEnabled: true });
+		assertHintsAreShown();
 	});
 
 	it('renders the table when keys exist, without swagger', () => {
@@ -136,7 +130,7 @@ describe('SettingsApiView', () => {
 		renderComponent(SettingsApiView);
 
 		expect(screen.getByText('test-key-1')).toBeInTheDocument();
-		assertHintsAreShown({ isSwaggerUIEnabled: false });
+		assertHintsAreShown();
 	});
 
 	it('shows the revoke confirm dialog when the revoke action is clicked', async () => {

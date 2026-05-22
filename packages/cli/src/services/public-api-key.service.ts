@@ -49,26 +49,26 @@ export class PublicApiKeyService {
 	}
 
 	/**
-	 * Retrieves and redacts API keys for a given user.
-	 * @param user - The user for whom to retrieve and redact API keys.
+	 * Retrieves and redacts API keys with owner info attached. Scoped to
+	 * `userId` when provided; otherwise returns every key on the instance —
+	 * gate that variant with `apiKey:manage` at the controller layer.
 	 */
-	async getRedactedApiKeysForUser(user: User) {
+	async getRedactedApiKeys(userId?: string) {
 		const apiKeys = await this.apiKeyRepository.find({
-			where: { userId: user.id, audience: API_KEY_AUDIENCE },
+			where: { audience: API_KEY_AUDIENCE, ...(userId ? { userId } : {}) },
 			relations: { user: true },
-		});
-		return apiKeys.map((apiKeyRecord) => this.toRedactedApiKey(apiKeyRecord));
-	}
-
-	/**
-	 * Retrieves every public API key on the instance, redacted, with the
-	 * owner attached. Gate callers with `apiKey:manage` at the controller
-	 * layer — this method does not enforce authorization.
-	 */
-	async getAllRedactedApiKeys() {
-		const apiKeys = await this.apiKeyRepository.find({
-			where: { audience: API_KEY_AUDIENCE },
-			relations: { user: true },
+			select: {
+				id: true,
+				userId: true,
+				label: true,
+				apiKey: true,
+				scopes: true,
+				audience: true,
+				createdAt: true,
+				updatedAt: true,
+				lastUsedAt: true,
+				user: { id: true, firstName: true, lastName: true, email: true },
+			},
 		});
 		return apiKeys.map((apiKeyRecord) => this.toRedactedApiKey(apiKeyRecord));
 	}

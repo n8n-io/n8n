@@ -88,8 +88,7 @@ describe('ApiKeysController', () => {
 
 	describe('getAPIKeys', () => {
 		beforeEach(() => {
-			publicApiKeyService.getRedactedApiKeysForUser.mockReset();
-			publicApiKeyService.getAllRedactedApiKeys.mockReset();
+			publicApiKeyService.getRedactedApiKeys.mockReset();
 		});
 
 		const reqFor = (scopes: string[], id = '123'): AuthenticatedRequest =>
@@ -100,22 +99,20 @@ describe('ApiKeysController', () => {
 				},
 			}) as unknown as AuthenticatedRequest;
 
-		it("returns the caller's own api keys when caller lacks apiKey:manage", async () => {
-			publicApiKeyService.getRedactedApiKeysForUser.mockResolvedValue([]);
+		it("requests only the caller's keys when the caller lacks apiKey:manage", async () => {
+			publicApiKeyService.getRedactedApiKeys.mockResolvedValue([]);
 
 			await controller.getApiKeys(reqFor(['apiKey:list']));
 
-			expect(publicApiKeyService.getRedactedApiKeysForUser).toHaveBeenCalledTimes(1);
-			expect(publicApiKeyService.getAllRedactedApiKeys).not.toHaveBeenCalled();
+			expect(publicApiKeyService.getRedactedApiKeys).toHaveBeenCalledWith('123');
 		});
 
-		it('returns every api key when caller has apiKey:manage', async () => {
-			publicApiKeyService.getAllRedactedApiKeys.mockResolvedValue([]);
+		it('requests every key when the caller has apiKey:manage', async () => {
+			publicApiKeyService.getRedactedApiKeys.mockResolvedValue([]);
 
 			await controller.getApiKeys(reqFor(['apiKey:list', 'apiKey:manage']));
 
-			expect(publicApiKeyService.getAllRedactedApiKeys).toHaveBeenCalledTimes(1);
-			expect(publicApiKeyService.getRedactedApiKeysForUser).not.toHaveBeenCalled();
+			expect(publicApiKeyService.getRedactedApiKeys).toHaveBeenCalledWith(undefined);
 		});
 	});
 

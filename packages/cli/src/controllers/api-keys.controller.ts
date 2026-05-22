@@ -66,10 +66,8 @@ export class ApiKeysController {
 	@GlobalScope('apiKey:list')
 	@Get('/', { middlewares: [isApiEnabledMiddleware] })
 	async getApiKeys(req: AuthenticatedRequest) {
-		if (hasGlobalScope(req.user, 'apiKey:manage')) {
-			return await this.publicApiKeyService.getAllRedactedApiKeys();
-		}
-		return await this.publicApiKeyService.getRedactedApiKeysForUser(req.user);
+		const userId = hasGlobalScope(req.user, 'apiKey:manage') ? undefined : req.user.id;
+		return await this.publicApiKeyService.getRedactedApiKeys(userId);
 	}
 
 	/**
