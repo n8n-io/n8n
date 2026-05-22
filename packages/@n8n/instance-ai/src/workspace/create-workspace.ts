@@ -71,10 +71,9 @@ export type SandboxConfig =
  * - 'daytona': Isolated Docker container via Daytona API (production)
  * - 'local': Direct host execution via LocalSandbox (development only, no isolation)
  */
-// eslint-disable-next-line @typescript-eslint/require-await -- kept async so callers can stay on `await createSandbox(...)`; future token-resolution work may re-introduce awaits.
-export async function createSandbox(
+export function createSandbox(
 	config: SandboxConfig,
-): Promise<DaytonaSandbox | LocalSandbox | N8nSandboxServiceSandbox | undefined> {
+): DaytonaSandbox | LocalSandbox | N8nSandboxServiceSandbox | undefined {
 	if (!config.enabled) return undefined;
 
 	if (config.provider === 'daytona') {

@@ -21,15 +21,15 @@ describe('createSandbox', () => {
 		process.env.NODE_ENV = originalEnv;
 	});
 
-	it('should return undefined when sandbox is disabled', async () => {
+	it('should return undefined when sandbox is disabled', () => {
 		const config: SandboxConfig = { enabled: false, provider: 'local' };
 
-		const result = await createSandbox(config);
+		const result = createSandbox(config);
 
 		expect(result).toBeUndefined();
 	});
 
-	it('should return a DaytonaSandbox for "daytona" provider', async () => {
+	it('should return a DaytonaSandbox for "daytona" provider', () => {
 		const config: SandboxConfig = {
 			enabled: true,
 			provider: 'daytona',
@@ -41,7 +41,7 @@ describe('createSandbox', () => {
 			timeout: 60_000,
 		};
 
-		const result = await createSandbox(config);
+		const result = createSandbox(config);
 
 		expect(result).toBeInstanceOf(DaytonaSandbox);
 		expect(getPrivateOptions(result)).toEqual(
@@ -57,7 +57,7 @@ describe('createSandbox', () => {
 		);
 	});
 
-	it('should pass getAuthToken through to DaytonaSandbox in proxy mode (lazy resolution)', async () => {
+	it('should pass getAuthToken through to DaytonaSandbox in proxy mode (lazy resolution)', () => {
 		const getAuthToken = jest.fn().mockResolvedValue('jwt-token-123');
 		const config: SandboxConfig = {
 			enabled: true,
@@ -67,7 +67,7 @@ describe('createSandbox', () => {
 			timeout: 60_000,
 		};
 
-		const result = await createSandbox(config);
+		const result = createSandbox(config);
 
 		expect(getAuthToken).not.toHaveBeenCalled();
 		expect(result).toBeInstanceOf(DaytonaSandbox);
@@ -80,53 +80,53 @@ describe('createSandbox', () => {
 		);
 	});
 
-	it('should use default timeout of 300_000 for "daytona" provider when not specified', async () => {
+	it('should use default timeout of 300_000 for "daytona" provider when not specified', () => {
 		const config: SandboxConfig = {
 			enabled: true,
 			provider: 'daytona',
 			daytonaApiKey: 'test-key',
 		};
 
-		const result = await createSandbox(config);
+		const result = createSandbox(config);
 
 		expect(result).toBeInstanceOf(DaytonaSandbox);
 		expect(getPrivateOptions(result).timeout).toBe(300_000);
 	});
 
-	it('should not include image in DaytonaSandbox config when not specified', async () => {
+	it('should not include image in DaytonaSandbox config when not specified', () => {
 		const config: SandboxConfig = {
 			enabled: true,
 			provider: 'daytona',
 			daytonaApiKey: 'test-key',
 		};
 
-		const result = await createSandbox(config);
+		const result = createSandbox(config);
 
 		expect(result).toBeInstanceOf(DaytonaSandbox);
 		expect(getPrivateOptions(result)).not.toHaveProperty('image');
 	});
 
-	it('should return a LocalSandbox for "local" provider in non-production', async () => {
+	it('should return a LocalSandbox for "local" provider in non-production', () => {
 		process.env.NODE_ENV = 'development';
 		const config: SandboxConfig = { enabled: true, provider: 'local' };
 
-		const result = await createSandbox(config);
+		const result = createSandbox(config);
 
 		expect(result).toBeInstanceOf(LocalSandbox);
 		if (!(result instanceof LocalSandbox)) throw new Error('Expected LocalSandbox');
 		expect(result.workingDirectory).toMatch(/workspace$/);
 	});
 
-	it('should throw in production when provider is "local"', async () => {
+	it('should throw in production when provider is "local"', () => {
 		process.env.NODE_ENV = 'production';
 		const config: SandboxConfig = { enabled: true, provider: 'local' };
 
-		await expect(createSandbox(config)).rejects.toThrow(
+		expect(() => createSandbox(config)).toThrow(
 			'LocalSandbox (provider: "local") is not allowed in production. Use "daytona" provider for isolated sandbox execution.',
 		);
 	});
 
-	it('should return an N8nSandboxServiceSandbox for "n8n-sandbox" provider', async () => {
+	it('should return an N8nSandboxServiceSandbox for "n8n-sandbox" provider', () => {
 		const config: SandboxConfig = {
 			enabled: true,
 			provider: 'n8n-sandbox',
@@ -135,7 +135,7 @@ describe('createSandbox', () => {
 			timeout: 45_000,
 		};
 
-		const result = await createSandbox(config);
+		const result = createSandbox(config);
 
 		expect(result).toBeInstanceOf(N8nSandboxServiceSandbox);
 		expect(getPrivateOptions(result)).toEqual({

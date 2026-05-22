@@ -712,7 +712,7 @@ export class InstanceAiService {
 		const config = withThreadScopedSandboxIdentity(await this.resolveSandboxConfig(user), threadId);
 		if (!config.enabled) return undefined;
 
-		const sandbox = await createSandbox(config);
+		const sandbox = createSandbox(config);
 		const workspace = createWorkspace(sandbox);
 		if (!sandbox || !workspace) return undefined;
 		try {
