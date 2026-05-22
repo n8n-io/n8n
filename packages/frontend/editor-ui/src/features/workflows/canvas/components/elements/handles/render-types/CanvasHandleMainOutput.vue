@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { useCanvasNodeHandle } from '../../../../composables/useCanvasNodeHandle';
-import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import { computed, ref, useCssModule } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import CanvasHandleDot from './parts/CanvasHandleDot.vue';
@@ -10,6 +9,10 @@ import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedVa
 import { getMaxNodePortsLabelSize } from '../../../../canvas.utils';
 import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 
+const props = defineProps<{
+	nodeId: string;
+}>();
+
 const emit = defineEmits<{
 	add: [];
 }>();
@@ -17,9 +20,8 @@ const emit = defineEmits<{
 const $style = useCssModule();
 
 const i18n = useI18n();
-const { id } = useCanvasNode();
 const renderData = injectCanvasRenderData();
-const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
+const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(props.nodeId)?.value ?? []);
 const { label, isConnected, isConnecting, isReadOnly, isRequired, runData } = useCanvasNodeHandle();
 const { viewport } = useCanvas();
 const { calculateHandleLightness } = useZoomAdjustedValues(viewport);

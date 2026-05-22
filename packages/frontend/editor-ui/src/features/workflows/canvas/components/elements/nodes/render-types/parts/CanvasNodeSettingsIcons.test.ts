@@ -1,7 +1,4 @@
-import {
-	createCanvasNodeProvide,
-	createCanvasProvide,
-} from '@/features/workflows/canvas/__tests__/utils';
+import { createCanvasProvide } from '@/features/workflows/canvas/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -82,11 +79,9 @@ describe('CanvasNodeSettingsIcons', () => {
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue({ isResolvable: true });
 
 			const { queryByTestId } = renderComponent({
+				props: { name: 'Test Node' },
 				global: {
-					provide: {
-						...createCanvasProvide(),
-						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
-					},
+					provide: createCanvasProvide(),
 				},
 			});
 
@@ -103,11 +98,9 @@ describe('CanvasNodeSettingsIcons', () => {
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue({ isResolvable: true });
 
 			const { getByTestId } = renderComponent({
+				props: { name: 'Test Node' },
 				global: {
-					provide: {
-						...createCanvasProvide(),
-						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
-					},
+					provide: createCanvasProvide(),
 				},
 			});
 
@@ -124,11 +117,9 @@ describe('CanvasNodeSettingsIcons', () => {
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue({ isResolvable: false });
 
 			const { queryByTestId } = renderComponent({
+				props: { name: 'Test Node' },
 				global: {
-					provide: {
-						...createCanvasProvide(),
-						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
-					},
+					provide: createCanvasProvide(),
 				},
 			});
 
@@ -146,11 +137,9 @@ describe('CanvasNodeSettingsIcons', () => {
 			vi.mocked(workflowDocumentStore.getNodeByName).mockReturnValue(node);
 
 			const { getByTestId } = renderComponent({
+				props: { name: 'Test Node' },
 				global: {
-					provide: {
-						...createCanvasProvide(),
-						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
-					},
+					provide: createCanvasProvide(),
 				},
 			});
 
@@ -168,11 +157,9 @@ describe('CanvasNodeSettingsIcons', () => {
 			vi.mocked(workflowDocumentStore.getNodeByName).mockReturnValue(node);
 
 			const { queryByTestId } = renderComponent({
+				props: { name: 'Test Node' },
 				global: {
-					provide: {
-						...createCanvasProvide(),
-						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
-					},
+					provide: createCanvasProvide(),
 				},
 			});
 
@@ -186,11 +173,9 @@ describe('CanvasNodeSettingsIcons', () => {
 			vi.mocked(workflowDocumentStore.getNodeByName).mockReturnValue(node);
 
 			const { queryByTestId } = renderComponent({
+				props: { name: 'Test Node' },
 				global: {
-					provide: {
-						...createCanvasProvide(),
-						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
-					},
+					provide: createCanvasProvide(),
 				},
 			});
 
@@ -207,11 +192,9 @@ describe('CanvasNodeSettingsIcons', () => {
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue({ isResolvable: true });
 
 			const { queryByTestId } = renderComponent({
+				props: { name: 'Test Node' },
 				global: {
-					provide: {
-						...createCanvasProvide(),
-						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
-					},
+					provide: createCanvasProvide(),
 				},
 			});
 
@@ -228,11 +211,9 @@ describe('CanvasNodeSettingsIcons', () => {
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
 
 			const { queryByTestId } = renderComponent({
+				props: { name: 'Test Node' },
 				global: {
-					provide: {
-						...createCanvasProvide(),
-						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
-					},
+					provide: createCanvasProvide(),
 				},
 			});
 
@@ -250,11 +231,9 @@ describe('CanvasNodeSettingsIcons', () => {
 			vi.mocked(workflowDocumentStore.getNodeByName).mockReturnValue(node);
 
 			const { queryByTestId } = renderComponent({
+				props: { name: 'Test Node' },
 				global: {
-					provide: {
-						...createCanvasProvide(),
-						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
-					},
+					provide: createCanvasProvide(),
 				},
 			});
 
@@ -272,11 +251,9 @@ describe('CanvasNodeSettingsIcons', () => {
 			vi.mocked(workflowDocumentStore.getNodeByName).mockReturnValue(node);
 
 			const { queryByTestId } = renderComponent({
+				props: { name: 'Test Node' },
 				global: {
-					provide: {
-						...createCanvasProvide(),
-						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
-					},
+					provide: createCanvasProvide(),
 				},
 			});
 
@@ -294,11 +271,9 @@ describe('CanvasNodeSettingsIcons', () => {
 			vi.mocked(workflowDocumentStore.getNodeByName).mockReturnValue(node);
 
 			const { queryByTestId } = renderComponent({
+				props: { name: 'Test Node' },
 				global: {
-					provide: {
-						...createCanvasProvide(),
-						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
-					},
+					provide: createCanvasProvide(),
 				},
 			});
 
@@ -316,11 +291,9 @@ describe('CanvasNodeSettingsIcons', () => {
 			vi.mocked(workflowDocumentStore.getNodeByName).mockReturnValue(node);
 
 			const { getByTestId } = renderComponent({
+				props: { name: 'Test Node' },
 				global: {
-					provide: {
-						...createCanvasProvide(),
-						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
-					},
+					provide: createCanvasProvide(),
 				},
 			});
 
@@ -332,11 +305,9 @@ describe('CanvasNodeSettingsIcons', () => {
 			vi.mocked(workflowDocumentStore.getNodeByName).mockReturnValue(node);
 
 			const { getByTestId } = renderComponent({
+				props: { name: 'Test Node' },
 				global: {
-					provide: {
-						...createCanvasProvide(),
-						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
-					},
+					provide: createCanvasProvide(),
 				},
 			});
 
@@ -348,11 +319,9 @@ describe('CanvasNodeSettingsIcons', () => {
 			vi.mocked(workflowDocumentStore.getNodeByName).mockReturnValue(node);
 
 			const { getByTestId } = renderComponent({
+				props: { name: 'Test Node' },
 				global: {
-					provide: {
-						...createCanvasProvide(),
-						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
-					},
+					provide: createCanvasProvide(),
 				},
 			});
 
@@ -364,11 +333,9 @@ describe('CanvasNodeSettingsIcons', () => {
 			vi.mocked(workflowDocumentStore.getNodeByName).mockReturnValue(node);
 
 			const { getByTestId } = renderComponent({
+				props: { name: 'Test Node' },
 				global: {
-					provide: {
-						...createCanvasProvide(),
-						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
-					},
+					provide: createCanvasProvide(),
 				},
 			});
 
@@ -380,11 +347,9 @@ describe('CanvasNodeSettingsIcons', () => {
 			vi.mocked(workflowDocumentStore.getNodeByName).mockReturnValue(node);
 
 			const { getByTestId } = renderComponent({
+				props: { name: 'Test Node' },
 				global: {
-					provide: {
-						...createCanvasProvide(),
-						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
-					},
+					provide: createCanvasProvide(),
 				},
 			});
 

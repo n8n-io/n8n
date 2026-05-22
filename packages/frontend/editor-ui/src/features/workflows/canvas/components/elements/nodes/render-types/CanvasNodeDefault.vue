@@ -1,9 +1,15 @@
 <script lang="ts" setup>
-import { computed, ref, useCssModule, watch } from 'vue';
+import { computed, ref, toRef, useCssModule, watch } from 'vue';
 import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { useI18n } from '@n8n/i18n';
-import { useCanvasNode } from '../../../../composables/useCanvasNode';
-import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
+import { isCommunityPackageName } from 'n8n-workflow';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	CanvasNodeRenderType,
+	type CanvasNodeData,
+	type CanvasNodeDefaultRender,
+} from '../../../../canvas.types';
+import type { NodeProps } from '@vue-flow/core';
 import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
@@ -19,6 +25,24 @@ import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { getNodeIconSize, type NodeIconSource } from '@/app/utils/nodeIcon';
 
+const props = defineProps<{
+	id: string;
+	name: string;
+	label: NodeProps['label'];
+	subtitle: string;
+	type: string;
+	disabled: boolean;
+	readOnly: boolean;
+	selected: boolean;
+	connections: CanvasNodeData['connections'];
+	execution: CanvasNodeData['execution'];
+	runData: CanvasNodeData['runData'];
+	issues: CanvasNodeData['issues'];
+	render: CanvasNodeData['render'];
+}>();
+
+const nodeTypesStore = useNodeTypesStore();
+
 const $style = useCssModule();
 const i18n = useI18n();
 
@@ -31,59 +55,54 @@ const emit = defineEmits<{
 const { initialized, viewport, isExperimentalNdvActive } = useCanvas();
 const { calculateNodeBorderOpacity } = useZoomAdjustedValues(viewport);
 const route = useRoute();
-const {
-	id,
-	name,
-	label,
-	subtitle,
-	connections,
-	isDisabled,
-	isReadOnly,
-	isSelected,
-	executionStatus,
-	executionWaiting,
-	executionWaitingForNext,
-	executionRunning,
-	hasRunData,
-	render,
-	isNotInstalledCommunityNode,
-} = useCanvasNode();
-const renderData = injectCanvasRenderData();
-const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(id.value)?.value ?? []);
-const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
-const hasExecutionErrors = computed(
-	() => (renderData.value.executionIssuesByNodeName.get(name.value)?.value?.length ?? 0) > 0,
+
+const isNotInstalledCommunityNode = computed(
+	() => isCommunityPackageName(props.type) && !nodeTypesStore.getIsNodeInstalled(props.type),
 );
-const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
+
+const renderData = injectCanvasRenderData();
+const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(props.id)?.value ?? []);
+const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(props.id)?.value ?? []);
+const hasExecutionErrors = computed(
+	() => (renderData.value.executionIssuesByNodeName.get(props.name)?.value?.length ?? 0) > 0,
+);
+const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[props.name]);
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
 	useNodeConnections({
 		inputs,
 		outputs,
-		connections,
+		connections: toRef(props, 'connections'),
 	});
 
 const nodeHelpers = useNodeHelpers();
-const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
+const renderOptions = computed(() => props.render.options as CanvasNodeDefaultRender['options']);
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
+const dirtiness = computed(() =>
+	props.render.type === CanvasNodeRenderType.Default ? props.render.options.dirtiness : undefined,
+);
 
 const classes = computed(() => {
+	const opts = renderOptions.value;
+	const execution = props.execution;
+	const status = execution.status;
+	const waiting = execution.waiting || status === 'waiting';
+	const running = execution.running || execution.waitingForNext;
 	return {
 		[$style.node]: true,
-		[$style.selected]: isSelected.value,
-		[$style.disabled]:
-			isDisabled.value || (isNotInstalledCommunityNode.value && !isDemoRoute.value),
-		[$style.success]: hasRunData.value && executionStatus.value === 'success',
+		[$style.selected]: props.selected,
+		[$style.disabled]: props.disabled || (isNotInstalledCommunityNode.value && !isDemoRoute.value),
+		[$style.success]: props.runData.visible && status === 'success',
 		[$style.error]: hasExecutionErrors.value,
 		[$style.pinned]: hasPinnedData.value,
-		[$style.waiting]: executionWaiting.value || executionStatus.value === 'waiting',
-		[$style.running]: executionRunning.value || executionWaitingForNext.value,
-		[$style.configurable]: renderOptions.value.configurable,
-		[$style.configuration]: renderOptions.value.configuration,
-		[$style.trigger]: renderOptions.value.trigger,
-		[$style.warning]: renderOptions.value.dirtiness !== undefined,
-		[$style.placeholder]: renderOptions.value.placeholder,
-		waiting: executionWaiting.value || executionStatus.value === 'waiting',
-		running: executionRunning.value || executionWaitingForNext.value,
+		[$style.waiting]: waiting,
+		[$style.running]: running,
+		[$style.configurable]: opts.configurable,
+		[$style.configuration]: opts.configuration,
+		[$style.trigger]: opts.trigger,
+		[$style.warning]: opts.dirtiness !== undefined,
+		[$style.placeholder]: opts.placeholder,
+		waiting,
+		running,
 	};
 });
 
@@ -133,7 +152,7 @@ const isStrikethroughVisible = computed(() => {
 	const isSingleMainOutputNode =
 		mainOutputs.value.length === 1 && mainOutputConnections.value.length <= 1;
 
-	return isDisabled.value && isSingleMainInputNode && isSingleMainOutputNode;
+	return props.disabled && isSingleMainInputNode && isSingleMainOutputNode;
 });
 
 const iconSource = computed(() => {
@@ -167,11 +186,11 @@ function openContextMenu(event: MouseEvent) {
 
 function onActivate(event: MouseEvent) {
 	if (renderOptions.value.placeholder) {
-		emit('replace:node', id.value);
+		emit('replace:node', props.id);
 		return;
 	}
 
-	emit('activate', id.value, event);
+	emit('activate', props.id, event);
 }
 </script>
 
@@ -181,7 +200,7 @@ function onActivate(event: MouseEvent) {
 		:node-id="id"
 		:class="classes"
 		:style="styles"
-		:is-read-only="isReadOnly"
+		:is-read-only="readOnly"
 		:is-configurable="renderOptions.configurable ?? false"
 	/>
 	<div
@@ -192,34 +211,54 @@ function onActivate(event: MouseEvent) {
 		@contextmenu="openContextMenu"
 		@dblclick.stop="onActivate"
 	>
-		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
+		<CanvasNodeTooltip
+			v-if="renderOptions.tooltip"
+			:visible="showTooltip"
+			:tooltip="renderOptions.tooltip"
+		/>
 		<NodeIcon
 			:icon-source="iconSource"
 			:size="iconSize"
 			:shrink="false"
-			:disabled="isDisabled"
+			:disabled="disabled"
 			:class="$style.icon"
 		/>
 		<CanvasNodeSettingsIcons
 			v-if="
 				!renderOptions.configuration &&
-				!isDisabled &&
+				!disabled &&
 				!(hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value)
 			"
+			:name="name"
 		/>
-		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
+		<CanvasNodeDisabledStrikeThrough
+			v-if="isStrikethroughVisible"
+			:has-run-data="runData.visible"
+			:render="render"
+		/>
 		<div :class="$style.description">
 			<div v-if="label" :class="$style.label">
 				{{ label }}
 			</div>
-			<div v-if="isDisabled" :class="$style.disabledLabel">
+			<div v-if="disabled" :class="$style.disabledLabel">
 				({{ i18n.baseText('node.disabled') }})
 			</div>
 			<div v-if="subtitle && !isNotInstalledCommunityNode" :class="$style.subtitle">
 				{{ subtitle }}
 			</div>
 		</div>
-		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+		<CanvasNodeStatusIcons
+			v-if="!disabled"
+			:class="$style.statusIcons"
+			:name="name"
+			:type="type"
+			:disabled="disabled"
+			:validation-errors="issues.validation"
+			:execution-status="execution.status"
+			:has-run-data="runData.visible"
+			:run-data-iterations="runData.iterations"
+			:dirtiness="dirtiness"
+		/>
 	</div>
 </template>
 

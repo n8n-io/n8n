@@ -1,16 +1,28 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-multiple-template-root */
-import { useCanvasNode } from '../../../../composables/useCanvasNode';
-import type { CanvasNodeStickyNoteRender } from '../../../../canvas.types';
+import type {
+	CanvasNodeData,
+	CanvasNodeEventBusEvents,
+	CanvasNodeStickyNoteRender,
+} from '../../../../canvas.types';
 import { ref, computed, useCssModule, onMounted, onBeforeUnmount } from 'vue';
 import { NodeResizer } from '@vue-flow/node-resizer';
 import type { OnResize } from '@vue-flow/node-resizer';
 import type { XYPosition } from '@vue-flow/core';
+import type { EventBus } from '@n8n/utils/event-bus';
 
 import { N8nSticky } from '@n8n/design-system';
 defineOptions({
 	inheritAttrs: false,
 });
+
+const props = defineProps<{
+	id: string;
+	selected: boolean;
+	readOnly: boolean;
+	render: CanvasNodeData['render'];
+	eventBus: EventBus<CanvasNodeEventBusEvents>;
+}>();
 
 const emit = defineEmits<{
 	update: [parameters: Record<string, unknown>];
@@ -22,13 +34,11 @@ const emit = defineEmits<{
 
 const $style = useCssModule();
 
-const { id, isSelected, isReadOnly, render, eventBus } = useCanvasNode();
-
-const renderOptions = computed(() => render.value.options as CanvasNodeStickyNoteRender['options']);
+const renderOptions = computed(() => props.render.options as CanvasNodeStickyNoteRender['options']);
 
 const classes = computed(() => ({
 	[$style.sticky]: true,
-	[$style.selected]: isSelected.value,
+	[$style.selected]: props.selected,
 	['sticky--active']: isActive.value, // Used to increase the z-index of the sticky note when editing
 }));
 
@@ -66,9 +76,9 @@ function onSetActive(value: boolean) {
 	isActive.value = value;
 
 	if (value) {
-		emit('activate', id.value);
+		emit('activate', props.id);
 	} else {
-		emit('deactivate', id.value);
+		emit('deactivate', props.id);
 	}
 }
 
@@ -89,11 +99,11 @@ function openContextMenu(event: MouseEvent) {
  */
 
 onMounted(() => {
-	eventBus.value?.on('update:node:activated', onActivate);
+	props.eventBus.on('update:node:activated', onActivate);
 });
 
 onBeforeUnmount(() => {
-	eventBus.value?.off('update:node:activated', onActivate);
+	props.eventBus.off('update:node:activated', onActivate);
 });
 </script>
 <template>
@@ -102,7 +112,7 @@ onBeforeUnmount(() => {
 		:min-width="150"
 		:height="renderOptions.height"
 		:width="renderOptions.width"
-		:is-visible="!isReadOnly"
+		:is-visible="!readOnly"
 		@resize="onResize"
 	/>
 	<N8nSticky
@@ -115,7 +125,7 @@ onBeforeUnmount(() => {
 		:model-value="renderOptions.content"
 		:background-color="renderOptions.color"
 		:edit-mode="isActive"
-		:read-only="isReadOnly"
+		:read-only="readOnly"
 		@edit="onSetActive"
 		@dblclick.stop="onActivate"
 		@update:model-value="onInputChange"

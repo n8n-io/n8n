@@ -2,7 +2,6 @@ import CanvasHandleMainOutput from './CanvasHandleMainOutput.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import {
 	createCanvasHandleProvide,
-	createCanvasNodeProvide,
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
 import type { ComputedRef } from 'vue';
@@ -27,8 +26,10 @@ const renderComponent = createComponentRenderer(CanvasHandleMainOutput, {
 	global: {
 		provide: {
 			...createCanvasProvide(),
-			...createCanvasNodeProvide(),
 		},
+	},
+	props: {
+		nodeId: 'node',
 	},
 });
 

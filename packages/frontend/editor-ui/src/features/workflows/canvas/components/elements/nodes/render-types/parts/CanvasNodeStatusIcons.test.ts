@@ -1,12 +1,9 @@
-import {
-	createCanvasNodeProvide,
-	createCanvasProvide,
-} from '@/features/workflows/canvas/__tests__/utils';
+import { createCanvasProvide } from '@/features/workflows/canvas/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
+import { CanvasNodeDirtiness } from '../../../../../canvas.types';
 import { createTestingPinia } from '@pinia/testing';
 import type { IPinData } from 'n8n-workflow';
 import type * as actualVueRouter from 'vue-router';
@@ -37,6 +34,10 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
 
 const renderComponent = createComponentRenderer(CanvasNodeStatusIcons, {
 	pinia: createTestingPinia(),
+	props: {
+		name: 'Test Node',
+		type: 'test',
+	},
 });
 
 const mockedUseRoute = vi.mocked(useRoute);
@@ -57,10 +58,7 @@ describe('CanvasNodeStatusIcons', () => {
 
 		const { getByTestId } = renderComponent({
 			global: {
-				provide: {
-					...createCanvasProvide(),
-					...createCanvasNodeProvide(),
-				},
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -71,13 +69,9 @@ describe('CanvasNodeStatusIcons', () => {
 		pinnedDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
 
 		const { queryByTestId } = renderComponent({
+			props: { name: 'Test Node', type: 'test', disabled: true },
 			global: {
-				provide: {
-					...createCanvasProvide(),
-					...createCanvasNodeProvide({
-						data: { disabled: true },
-					}),
-				},
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -86,16 +80,15 @@ describe('CanvasNodeStatusIcons', () => {
 
 	it('should render correctly for a node that ran successfully', () => {
 		const { getByTestId } = renderComponent({
+			props: {
+				name: 'Test Node',
+				type: 'test',
+				executionStatus: 'success',
+				hasRunData: true,
+				runDataIterations: 15,
+			},
 			global: {
-				provide: {
-					...createCanvasProvide(),
-					...createCanvasNodeProvide({
-						data: {
-							execution: { status: 'success', running: false },
-							runData: { outputMap: {}, iterations: 15, visible: true },
-						},
-					}),
-				},
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -104,16 +97,15 @@ describe('CanvasNodeStatusIcons', () => {
 
 	it('should not render success icon for a node that was canceled', () => {
 		const { queryByTestId } = renderComponent({
+			props: {
+				name: 'Test Node',
+				type: 'test',
+				executionStatus: 'canceled',
+				hasRunData: true,
+				runDataIterations: 15,
+			},
 			global: {
-				provide: {
-					...createCanvasProvide(),
-					...createCanvasNodeProvide({
-						data: {
-							execution: { status: 'canceled', running: false },
-							runData: { outputMap: {}, iterations: 15, visible: true },
-						},
-					}),
-				},
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -122,19 +114,15 @@ describe('CanvasNodeStatusIcons', () => {
 
 	it('should render correctly for a dirty node that has run successfully', () => {
 		const { getByTestId } = renderComponent({
+			props: {
+				name: 'Test Node',
+				type: 'test',
+				hasRunData: true,
+				runDataIterations: 15,
+				dirtiness: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			},
 			global: {
-				provide: {
-					...createCanvasProvide(),
-					...createCanvasNodeProvide({
-						data: {
-							runData: { outputMap: {}, iterations: 15, visible: true },
-							render: {
-								type: CanvasNodeRenderType.Default,
-								options: { dirtiness: CanvasNodeDirtiness.PARAMETERS_UPDATED },
-							},
-						},
-					}),
-				},
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -144,11 +132,9 @@ describe('CanvasNodeStatusIcons', () => {
 	it('should render warning icon when node is not installed', () => {
 		nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(false);
 		const { queryByTestId } = renderComponent({
+			props: { name: 'Test Node', type: 'n8n-nodes-test.testNode' },
 			global: {
-				provide: {
-					...createCanvasProvide(),
-					...createCanvasNodeProvide({ data: { type: 'n8n-nodes-test.testNode' } }),
-				},
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -160,11 +146,9 @@ describe('CanvasNodeStatusIcons', () => {
 		} as RouteLocationNormalizedLoadedGeneric);
 		nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(false);
 		const { queryByTestId } = renderComponent({
+			props: { name: 'Test Node', type: 'n8n-nodes-test.testNode' },
 			global: {
-				provide: {
-					...createCanvasProvide(),
-					...createCanvasNodeProvide({ data: { type: 'n8n-nodes-test.testNode' } }),
-				},
+				provide: createCanvasProvide(),
 			},
 		});
 

@@ -1,14 +1,5 @@
 <script lang="ts" setup>
-import {
-	computed,
-	onBeforeUnmount,
-	onMounted,
-	provide,
-	ref,
-	toRef,
-	useCssModule,
-	watch,
-} from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
 import type {
 	CanvasConnectionPort,
 	CanvasElementPortWithRenderData,
@@ -21,7 +12,6 @@ import CanvasNodeToolbar from './CanvasNodeToolbar.vue';
 import CanvasNodeRenderer from './CanvasNodeRenderer.vue';
 import CanvasHandleRenderer from '../handles/CanvasHandleRenderer.vue';
 import { useNodeConnections } from '@/app/composables/useNodeConnections';
-import { CanvasNodeKey } from '@/app/constants';
 import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
 import type { NodeProps, XYPosition } from '@vue-flow/core';
@@ -304,25 +294,6 @@ function onUpdateClass({ className, add = true }: CanvasNodeEventBusEvents['upda
 		: nodeClasses.value.filter((c) => c !== className);
 }
 
-/**
- * Provide
- */
-
-const id = toRef(props, 'id');
-const data = toRef(props, 'data');
-const label = toRef(props, 'label');
-const selected = toRef(props, 'selected');
-const readOnly = toRef(props, 'readOnly');
-
-provide(CanvasNodeKey, {
-	id,
-	data,
-	label,
-	selected,
-	readOnly,
-	eventBus: canvasNodeEventBus,
-});
-
 const hasToolbar = computed(
 	() =>
 		![CanvasNodeRenderType.AddNodes, CanvasNodeRenderType.ChoicePrompt].includes(renderType.value),
@@ -330,7 +301,7 @@ const hasToolbar = computed(
 
 const showToolbar = computed(() => {
 	const target = contextMenu.target.value;
-	return contextMenu.isOpen && target?.source === 'node-button' && target.nodeId === id.value;
+	return contextMenu.isOpen && target?.source === 'node-button' && target.nodeId === props.id;
 });
 
 /**
@@ -380,6 +351,8 @@ onBeforeUnmount(() => {
 		>
 			<CanvasHandleRenderer
 				v-bind="source"
+				:node-id="id"
+				:run-data-output-map="data.runData.outputMap"
 				:mode="CanvasConnectionMode.Output"
 				:is-read-only="readOnly"
 				:is-valid-connection="isValidConnection"
@@ -397,6 +370,8 @@ onBeforeUnmount(() => {
 		>
 			<CanvasHandleRenderer
 				v-bind="target"
+				:node-id="id"
+				:run-data-output-map="data.runData.outputMap"
 				:mode="CanvasConnectionMode.Input"
 				:is-read-only="readOnly"
 				:is-valid-connection="isValidConnection"
@@ -415,11 +390,19 @@ onBeforeUnmount(() => {
 		<CanvasNodeToolbar
 			v-else-if="hasToolbar"
 			data-test-id="canvas-node-toolbar"
-			:read-only="readOnly"
+			:read-only="readOnly ?? false"
 			:can-execute="canExecute"
 			:class="$style.canvasNodeToolbar"
 			:show-status-icons="isExperimentalNdvActive"
 			:items-class="$style.canvasNodeToolbarItems"
+			:name="data.name"
+			:type="data.type"
+			:disabled="data.disabled ?? false"
+			:render="data.render"
+			:issues="data.issues"
+			:execution="data.execution"
+			:run-data="data.runData"
+			:event-bus="canvasNodeEventBus"
 			@delete="onDelete"
 			@toggle="onDisabledToggle"
 			@run="onRun"
@@ -430,6 +413,20 @@ onBeforeUnmount(() => {
 		/>
 
 		<CanvasNodeRenderer
+			:id="id"
+			:label="label"
+			:selected="selected"
+			:read-only="readOnly ?? false"
+			:name="data.name"
+			:type="data.type"
+			:subtitle="data.subtitle"
+			:disabled="data.disabled ?? false"
+			:connections="data.connections"
+			:execution="data.execution"
+			:run-data="data.runData"
+			:issues="data.issues"
+			:render="data.render"
+			:event-bus="canvasNodeEventBus"
 			@activate="onActivate"
 			@deactivate="onDeactivate"
 			@move="onMove"

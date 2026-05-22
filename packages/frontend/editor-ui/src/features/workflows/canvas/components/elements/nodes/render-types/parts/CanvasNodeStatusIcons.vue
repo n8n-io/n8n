@@ -2,57 +2,61 @@
 import { computed, useCssModule } from 'vue';
 import TitledList from '@/app/components/TitledList.vue';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { useCanvasNode } from '../../../../../composables/useCanvasNode';
 import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import { useI18n } from '@n8n/i18n';
-import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
+import { CanvasNodeDirtiness, type CanvasNodeDirtinessType } from '../../../../../canvas.types';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
+import { isCommunityPackageName } from 'n8n-workflow';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
-const {
-	size = 'large',
-	spinnerScrim = false,
-	spinnerLayout = 'absolute',
-} = defineProps<{
-	size?: 'small' | 'medium' | 'large';
-	spinnerScrim?: boolean;
-	spinnerLayout?: 'absolute' | 'static';
-}>();
+const props = withDefaults(
+	defineProps<{
+		size?: 'small' | 'medium' | 'large';
+		spinnerScrim?: boolean;
+		spinnerLayout?: 'absolute' | 'static';
+		name: string;
+		type: string;
+		disabled?: boolean;
+		validationErrors?: string[];
+		executionStatus?: string;
+		hasRunData?: boolean;
+		runDataIterations?: number;
+		dirtiness?: CanvasNodeDirtinessType;
+	}>(),
+	{
+		size: 'large',
+		spinnerScrim: false,
+		spinnerLayout: 'absolute',
+		validationErrors: () => [],
+		hasRunData: false,
+		runDataIterations: 0,
+		disabled: false,
+	},
+);
 
 const nodeHelpers = useNodeHelpers();
 const i18n = useI18n();
 const $style = useCssModule();
+const nodeTypesStore = useNodeTypesStore();
 
-const {
-	name,
-	validationErrors,
-	hasValidationErrors,
-	executionStatus,
-	hasRunData,
-	runDataIterations,
-	isDisabled,
-	render,
-	isNotInstalledCommunityNode,
-} = useCanvasNode();
+const isNotInstalledCommunityNode = computed(
+	() => isCommunityPackageName(props.type) && !nodeTypesStore.getIsNodeInstalled(props.type),
+);
+
 const renderData = injectCanvasRenderData();
 const executionErrors = computed(
-	() => renderData.value.executionIssuesByNodeName.get(name.value)?.value ?? [],
+	() => renderData.value.executionIssuesByNodeName.get(props.name)?.value ?? [],
 );
-const hasExecutionErrors = computed(() => executionErrors.value.length > 0);
-const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
 const route = useRoute();
 
-const hideNodeIssues = computed(() => false); // @TODO Implement this
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
-const dirtiness = computed(() =>
-	render.value.type === CanvasNodeRenderType.Default ? render.value.options.dirtiness : undefined,
-);
 
 const commonClasses = computed(() => [
 	$style.status,
-	spinnerScrim ? $style.spinnerScrim : '',
-	spinnerLayout === 'absolute' ? $style.absoluteSpinner : '',
+	props.spinnerScrim ? $style.spinnerScrim : '',
+	props.spinnerLayout === 'absolute' ? $style.absoluteSpinner : '',
 ]);
 
 const groupedExecutionErrors = computed(() => {
@@ -68,6 +72,11 @@ const groupedExecutionErrors = computed(() => {
 		count > 1 ? `${error} (x${count})` : error,
 	);
 });
+
+const hasValidationErrors = computed(() => props.validationErrors.length > 0);
+const hasExecutionErrors = computed(() => executionErrors.value.length > 0);
+const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[props.name]);
+const hideNodeIssues = false; // @TODO Implement this
 </script>
 
 <template>
@@ -81,7 +90,7 @@ const groupedExecutionErrors = computed(() => {
 			<N8nIcon icon="hard-drive-download" :size="size" />
 		</N8nTooltip>
 	</div>
-	<div v-else-if="isDisabled" :class="[...commonClasses, $style.disabled]">
+	<div v-else-if="disabled" :class="[...commonClasses, $style.disabled]">
 		<N8nIcon icon="power" :size="size" />
 	</div>
 	<div

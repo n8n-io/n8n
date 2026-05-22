@@ -9,10 +9,7 @@ import {
 	type CanvasElementPortWithRenderData,
 } from '../../../canvas.types';
 import { Position } from '@vue-flow/core';
-import {
-	createCanvasNodeProvide,
-	createCanvasProvide,
-} from '@/features/workflows/canvas/__tests__/utils';
+import { createCanvasProvide } from '@/features/workflows/canvas/__tests__/utils';
 
 const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
@@ -33,8 +30,11 @@ const renderComponent = createComponentRenderer(CanvasHandleRenderer, {
 	global: {
 		provide: {
 			...createCanvasProvide(),
-			...createCanvasNodeProvide(),
 		},
+	},
+	props: {
+		nodeId: 'node',
+		runDataOutputMap: {},
 	},
 });
 

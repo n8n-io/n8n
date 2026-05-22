@@ -1,7 +1,7 @@
 import CanvasNodeRenderer from './CanvasNodeRenderer.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import {
-	createCanvasNodeProvide,
+	createCanvasNodeDefaultProps,
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
@@ -30,11 +30,9 @@ beforeEach(() => {
 describe('CanvasNodeRenderer', () => {
 	it('should render default node correctly', async () => {
 		const { getByTestId } = renderComponent({
+			props: createCanvasNodeDefaultProps(),
 			global: {
-				provide: {
-					...createCanvasProvide(),
-					...createCanvasNodeProvide(),
-				},
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -43,18 +41,16 @@ describe('CanvasNodeRenderer', () => {
 
 	it('should render configuration node correctly', async () => {
 		const { getByTestId } = renderComponent({
-			global: {
-				provide: {
-					...createCanvasProvide(),
-					...createCanvasNodeProvide({
-						data: {
-							render: {
-								type: CanvasNodeRenderType.Default,
-								options: { configuration: true },
-							},
-						},
-					}),
+			props: createCanvasNodeDefaultProps({
+				data: {
+					render: {
+						type: CanvasNodeRenderType.Default,
+						options: { configuration: true },
+					},
 				},
+			}),
+			global: {
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -63,18 +59,16 @@ describe('CanvasNodeRenderer', () => {
 
 	it('should render configurable node correctly', async () => {
 		const { getByTestId } = renderComponent({
-			global: {
-				provide: {
-					...createCanvasProvide(),
-					...createCanvasNodeProvide({
-						data: {
-							render: {
-								type: CanvasNodeRenderType.Default,
-								options: { configurable: true },
-							},
-						},
-					}),
+			props: createCanvasNodeDefaultProps({
+				data: {
+					render: {
+						type: CanvasNodeRenderType.Default,
+						options: { configurable: true },
+					},
 				},
+			}),
+			global: {
+				provide: createCanvasProvide(),
 			},
 		});
 

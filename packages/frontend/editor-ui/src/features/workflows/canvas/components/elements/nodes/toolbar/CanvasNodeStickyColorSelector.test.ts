@@ -2,32 +2,36 @@ import { fireEvent, screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import CanvasNodeStickyColorSelector from './CanvasNodeStickyColorSelector.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { createCanvasNodeProvide } from '@/features/workflows/canvas/__tests__/utils';
-import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
+import {
+	CanvasNodeRenderType,
+	type CanvasNodeEventBusEvents,
+	type CanvasNodeStickyNoteRender,
+} from '@/features/workflows/canvas/canvas.types';
+import { createEventBus } from '@n8n/utils/event-bus';
 
 const renderComponent = createComponentRenderer(CanvasNodeStickyColorSelector);
 
+function defaultProps(
+	render: CanvasNodeStickyNoteRender = {
+		type: CanvasNodeRenderType.StickyNote,
+		options: {},
+	},
+) {
+	return {
+		render,
+		eventBus: createEventBus<CanvasNodeEventBusEvents>(),
+	};
+}
+
 describe('CanvasNodeStickyColorSelector', () => {
 	it('should render trigger correctly', () => {
-		const { getByTestId } = renderComponent({
-			global: {
-				provide: {
-					...createCanvasNodeProvide(),
-				},
-			},
-		});
+		const { getByTestId } = renderComponent({ props: defaultProps() });
 		const colorSelector = getByTestId('change-sticky-color');
 		expect(colorSelector).toBeVisible();
 	});
 
 	it('should render all colors and apply selected color correctly', async () => {
-		const { getByTestId, emitted } = renderComponent({
-			global: {
-				provide: {
-					...createCanvasNodeProvide(),
-				},
-			},
-		});
+		const { getByTestId, emitted } = renderComponent({ props: defaultProps() });
 
 		await userEvent.click(getByTestId('change-sticky-color'));
 
@@ -44,13 +48,7 @@ describe('CanvasNodeStickyColorSelector', () => {
 
 	describe('custom color picker', () => {
 		it('should render custom color button (8th option)', async () => {
-			const { getByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasNodeProvide(),
-					},
-				},
-			});
+			const { getByTestId } = renderComponent({ props: defaultProps() });
 
 			await userEvent.click(getByTestId('change-sticky-color'));
 
@@ -60,13 +58,7 @@ describe('CanvasNodeStickyColorSelector', () => {
 		});
 
 		it('should render 7 preset colors + 1 custom color button', async () => {
-			const { getByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasNodeProvide(),
-					},
-				},
-			});
+			const { getByTestId } = renderComponent({ props: defaultProps() });
 
 			await userEvent.click(getByTestId('change-sticky-color'));
 
@@ -79,20 +71,10 @@ describe('CanvasNodeStickyColorSelector', () => {
 		it('should show selected state for custom hex color', async () => {
 			const customColor = '#FF5733';
 			const { getByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								render: {
-									type: CanvasNodeRenderType.StickyNote,
-									options: {
-										color: customColor,
-									},
-								},
-							},
-						}),
-					},
-				},
+				props: defaultProps({
+					type: CanvasNodeRenderType.StickyNote,
+					options: { color: customColor },
+				}),
 			});
 
 			await userEvent.click(getByTestId('change-sticky-color'));
@@ -106,20 +88,10 @@ describe('CanvasNodeStickyColorSelector', () => {
 		it('should show no selected state on presets when custom color is active', async () => {
 			const customColor = '#FF5733';
 			const { getByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								render: {
-									type: CanvasNodeRenderType.StickyNote,
-									options: {
-										color: customColor,
-									},
-								},
-							},
-						}),
-					},
-				},
+				props: defaultProps({
+					type: CanvasNodeRenderType.StickyNote,
+					options: { color: customColor },
+				}),
 			});
 
 			await userEvent.click(getByTestId('change-sticky-color'));
@@ -133,13 +105,7 @@ describe('CanvasNodeStickyColorSelector', () => {
 		});
 
 		it('should emit uppercase hex string when native color input changes', async () => {
-			const { getByTestId, emitted } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasNodeProvide(),
-					},
-				},
-			});
+			const { getByTestId, emitted } = renderComponent({ props: defaultProps() });
 
 			const nativeInput = getByTestId('native-color-input') as HTMLInputElement;
 			await fireEvent.update(nativeInput, '#ff5733');
@@ -151,20 +117,10 @@ describe('CanvasNodeStickyColorSelector', () => {
 
 		it('should show preset selected state for number colors', async () => {
 			const { getByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								render: {
-									type: CanvasNodeRenderType.StickyNote,
-									options: {
-										color: 3,
-									},
-								},
-							},
-						}),
-					},
-				},
+				props: defaultProps({
+					type: CanvasNodeRenderType.StickyNote,
+					options: { color: 3 },
+				}),
 			});
 
 			await userEvent.click(getByTestId('change-sticky-color'));

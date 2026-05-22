@@ -4,7 +4,7 @@ import CanvasNodeToolbar from './CanvasNodeToolbar.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import {
-	createCanvasNodeProvide,
+	createCanvasNodeToolbarProps,
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
 import { CanvasNodeRenderType } from '../../../canvas.types';
@@ -35,11 +35,9 @@ describe('CanvasNodeToolbar', () => {
 	it('should render execute node button when renderType is not configuration', async () => {
 		const { getByTestId } = renderComponent({
 			pinia,
+			props: createCanvasNodeToolbarProps(),
 			global: {
-				provide: {
-					...createCanvasNodeProvide(),
-					...createCanvasProvide(),
-				},
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -49,13 +47,9 @@ describe('CanvasNodeToolbar', () => {
 	it('should render disabled execute node button when canvas is executing', () => {
 		const { getByTestId } = renderComponent({
 			pinia,
+			props: createCanvasNodeToolbarProps(),
 			global: {
-				provide: {
-					...createCanvasNodeProvide(),
-					...createCanvasProvide({
-						isExecuting: true,
-					}),
-				},
+				provide: createCanvasProvide({ isExecuting: true }),
 			},
 		});
 
@@ -65,15 +59,9 @@ describe('CanvasNodeToolbar', () => {
 	it('should render disabled execute node button when node is deactivated', async () => {
 		const { getByTestId } = renderComponent({
 			pinia,
+			props: createCanvasNodeToolbarProps({ data: { disabled: true } }),
 			global: {
-				provide: {
-					...createCanvasNodeProvide({
-						data: {
-							disabled: true,
-						},
-					}),
-					...createCanvasProvide(),
-				},
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -87,18 +75,16 @@ describe('CanvasNodeToolbar', () => {
 
 	it('should not render execute node button when renderType is configuration', async () => {
 		const { queryByTestId } = renderComponent({
-			global: {
-				provide: {
-					...createCanvasNodeProvide({
-						data: {
-							render: {
-								type: CanvasNodeRenderType.Default,
-								options: { configuration: true },
-							},
-						},
-					}),
-					...createCanvasProvide(),
+			props: createCanvasNodeToolbarProps({
+				data: {
+					render: {
+						type: CanvasNodeRenderType.Default,
+						options: { configuration: true },
+					},
 				},
+			}),
+			global: {
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -107,11 +93,9 @@ describe('CanvasNodeToolbar', () => {
 
 	it('should emit "run" when execute node button is clicked', async () => {
 		const { getByTestId, emitted } = renderComponent({
+			props: createCanvasNodeToolbarProps(),
 			global: {
-				provide: {
-					...createCanvasNodeProvide(),
-					...createCanvasProvide(),
-				},
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -123,11 +107,9 @@ describe('CanvasNodeToolbar', () => {
 	it('should emit "toggle" when disable node button is clicked', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			pinia,
+			props: createCanvasNodeToolbarProps(),
 			global: {
-				provide: {
-					...createCanvasNodeProvide(),
-					...createCanvasProvide(),
-				},
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -139,11 +121,9 @@ describe('CanvasNodeToolbar', () => {
 	it('should emit "delete" when delete node button is clicked', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			pinia,
+			props: createCanvasNodeToolbarProps(),
 			global: {
-				provide: {
-					...createCanvasNodeProvide(),
-					...createCanvasProvide(),
-				},
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -155,11 +135,9 @@ describe('CanvasNodeToolbar', () => {
 	it('should emit "open:contextmenu" when overflow node button is clicked', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			pinia,
+			props: createCanvasNodeToolbarProps(),
 			global: {
-				provide: {
-					...createCanvasNodeProvide(),
-					...createCanvasProvide(),
-				},
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -171,18 +149,16 @@ describe('CanvasNodeToolbar', () => {
 	it('should emit "update" when sticky note color is changed', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			pinia,
-			global: {
-				provide: {
-					...createCanvasNodeProvide({
-						data: {
-							render: {
-								type: CanvasNodeRenderType.StickyNote,
-								options: { color: 3 },
-							},
-						},
-					}),
-					...createCanvasProvide(),
+			props: createCanvasNodeToolbarProps({
+				data: {
+					render: {
+						type: CanvasNodeRenderType.StickyNote,
+						options: { color: 3 },
+					},
 				},
+			}),
+			global: {
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -201,17 +177,9 @@ describe('CanvasNodeToolbar', () => {
 	it('should show execute button when readOnly is true and canExecute is true', () => {
 		const { getByTestId } = renderComponent({
 			pinia,
-			props: {
-				readOnly: true,
-				canExecute: true,
-				showStatusIcons: false,
-				itemsClass: '',
-			},
+			props: createCanvasNodeToolbarProps({ readOnly: true, canExecute: true }),
 			global: {
-				provide: {
-					...createCanvasNodeProvide(),
-					...createCanvasProvide(),
-				},
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -221,17 +189,9 @@ describe('CanvasNodeToolbar', () => {
 	it('should hide execute button when readOnly is true and canExecute is false', () => {
 		const { queryByTestId } = renderComponent({
 			pinia,
-			props: {
-				readOnly: true,
-				canExecute: false,
-				showStatusIcons: false,
-				itemsClass: '',
-			},
+			props: createCanvasNodeToolbarProps({ readOnly: true, canExecute: false }),
 			global: {
-				provide: {
-					...createCanvasNodeProvide(),
-					...createCanvasProvide(),
-				},
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -241,17 +201,9 @@ describe('CanvasNodeToolbar', () => {
 	it('should hide delete and disable buttons when readOnly is true regardless of canExecute', () => {
 		const { queryByTestId } = renderComponent({
 			pinia,
-			props: {
-				readOnly: true,
-				canExecute: true,
-				showStatusIcons: false,
-				itemsClass: '',
-			},
+			props: createCanvasNodeToolbarProps({ readOnly: true, canExecute: true }),
 			global: {
-				provide: {
-					...createCanvasNodeProvide(),
-					...createCanvasProvide(),
-				},
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -262,11 +214,9 @@ describe('CanvasNodeToolbar', () => {
 	it('should have "forceVisible" class when hovered', async () => {
 		const { getByTestId } = renderComponent({
 			pinia,
+			props: createCanvasNodeToolbarProps(),
 			global: {
-				provide: {
-					...createCanvasNodeProvide(),
-					...createCanvasProvide(),
-				},
+				provide: createCanvasProvide(),
 			},
 		});
 
@@ -280,18 +230,16 @@ describe('CanvasNodeToolbar', () => {
 	it('should have "forceVisible" class when sticky color picker is visible', async () => {
 		const { getByTestId } = renderComponent({
 			pinia,
-			global: {
-				provide: {
-					...createCanvasNodeProvide({
-						data: {
-							render: {
-								type: CanvasNodeRenderType.StickyNote,
-								options: { color: 3 },
-							},
-						},
-					}),
-					...createCanvasProvide(),
+			props: createCanvasNodeToolbarProps({
+				data: {
+					render: {
+						type: CanvasNodeRenderType.StickyNote,
+						options: { color: 3 },
+					},
 				},
+			}),
+			global: {
+				provide: createCanvasProvide(),
 			},
 		});
 

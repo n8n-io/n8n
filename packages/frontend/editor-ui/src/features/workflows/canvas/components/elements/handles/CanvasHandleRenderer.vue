@@ -1,6 +1,10 @@
 <script lang="ts" setup>
 import { computed, h, provide, toRef, useCssModule } from 'vue';
-import type { CanvasConnectionPort, CanvasElementPortWithRenderData } from '../../../canvas.types';
+import type {
+	CanvasConnectionPort,
+	CanvasElementPortWithRenderData,
+	CanvasNodeData,
+} from '../../../canvas.types';
 import { CanvasConnectionMode } from '../../../canvas.types';
 import type { ValidConnectionFunc } from '@vue-flow/core';
 import { Handle } from '@vue-flow/core';
@@ -10,7 +14,6 @@ import CanvasHandleMainOutput from './render-types/CanvasHandleMainOutput.vue';
 import CanvasHandleNonMainInput from './render-types/CanvasHandleNonMainInput.vue';
 import CanvasHandleNonMainOutput from './render-types/CanvasHandleNonMainOutput.vue';
 import { CanvasNodeHandleKey } from '@/app/constants';
-import { useCanvasNode } from '../../../composables/useCanvasNode';
 
 const props = defineProps<
 	CanvasElementPortWithRenderData & {
@@ -27,6 +30,8 @@ const props = defineProps<
 		mode: CanvasConnectionMode;
 		isReadOnly?: boolean;
 		isValidConnection: ValidConnectionFunc;
+		nodeId: string;
+		runDataOutputMap: CanvasNodeData['runData']['outputMap'];
 	}
 >();
 
@@ -72,11 +77,9 @@ const isConnected = computed(() => props.connectionsCount > 0);
  * Run data
  */
 
-const { runDataOutputMap } = useCanvasNode();
-
 const runData = computed(() =>
 	props.mode === CanvasConnectionMode.Output
-		? runDataOutputMap.value?.[props.type]?.[props.index]
+		? props.runDataOutputMap?.[props.type]?.[props.index]
 		: undefined,
 );
 
@@ -87,23 +90,16 @@ const runData = computed(() =>
 const renderTypeClasses = computed(() => [style.renderType, style[props.position]]);
 
 const RenderType = () => {
-	let Component;
-
 	if (props.mode === CanvasConnectionMode.Output) {
 		if (props.type === NodeConnectionTypes.Main) {
-			Component = CanvasHandleMainOutput;
-		} else {
-			Component = CanvasHandleNonMainOutput;
+			return h(CanvasHandleMainOutput, { nodeId: props.nodeId });
 		}
-	} else {
-		if (props.type === NodeConnectionTypes.Main) {
-			Component = CanvasHandleMainInput;
-		} else {
-			Component = CanvasHandleNonMainInput;
-		}
+		return h(CanvasHandleNonMainOutput);
 	}
-
-	return Component ? h(Component) : null;
+	if (props.type === NodeConnectionTypes.Main) {
+		return h(CanvasHandleMainInput);
+	}
+	return h(CanvasHandleNonMainInput);
 };
 
 /**

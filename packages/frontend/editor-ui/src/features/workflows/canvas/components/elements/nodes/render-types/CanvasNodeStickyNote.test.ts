@@ -1,9 +1,10 @@
 import CanvasNodeStickyNote from './CanvasNodeStickyNote.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { createCanvasNodeProvide } from '@/features/workflows/canvas/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent } from '@testing-library/vue';
+import { createEventBus } from '@n8n/utils/event-bus';
+import { CanvasNodeRenderType, type CanvasNodeEventBusEvents } from '../../../../canvas.types';
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
@@ -19,6 +20,19 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
 
 const renderComponent = createComponentRenderer(CanvasNodeStickyNote);
 
+function defaultProps(overrides: { id?: string; readOnly?: boolean; selected?: boolean } = {}) {
+	return {
+		id: overrides.id ?? 'sticky',
+		selected: overrides.selected ?? false,
+		readOnly: overrides.readOnly ?? false,
+		render: {
+			type: CanvasNodeRenderType.StickyNote as const,
+			options: {},
+		},
+		eventBus: createEventBus<CanvasNodeEventBusEvents>(),
+	};
+}
+
 beforeEach(() => {
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
@@ -27,13 +41,7 @@ beforeEach(() => {
 describe('CanvasNodeStickyNote', () => {
 	it('should render node correctly', () => {
 		const { html } = renderComponent({
-			global: {
-				provide: {
-					...createCanvasNodeProvide({
-						id: 'sticky',
-					}),
-				},
-			},
+			props: defaultProps(),
 		});
 
 		expect(html()).toMatchSnapshot();
@@ -41,14 +49,7 @@ describe('CanvasNodeStickyNote', () => {
 
 	it('should disable resizing when node is readonly', () => {
 		const { container } = renderComponent({
-			global: {
-				provide: {
-					...createCanvasNodeProvide({
-						id: 'sticky',
-						readOnly: true,
-					}),
-				},
-			},
+			props: defaultProps({ readOnly: true }),
 		});
 
 		const resizeControls = container.querySelectorAll('.vue-flow__resize-control');
@@ -58,14 +59,7 @@ describe('CanvasNodeStickyNote', () => {
 
 	it('should disable sticky options when in edit mode', async () => {
 		const { container } = renderComponent({
-			global: {
-				provide: {
-					...createCanvasNodeProvide({
-						id: 'sticky',
-						readOnly: false,
-					}),
-				},
-			},
+			props: defaultProps({ readOnly: false }),
 		});
 
 		const stickyTextarea = container.querySelector('.sticky-textarea');
@@ -83,13 +77,7 @@ describe('CanvasNodeStickyNote', () => {
 
 	it('should emit "activate" on double click', async () => {
 		const { container, emitted } = renderComponent({
-			global: {
-				provide: {
-					...createCanvasNodeProvide({
-						id: 'sticky',
-					}),
-				},
-			},
+			props: defaultProps(),
 		});
 
 		const sticky = container.querySelector('.sticky-textarea');
@@ -102,13 +90,7 @@ describe('CanvasNodeStickyNote', () => {
 
 	it('should emit "deactivate" on blur', async () => {
 		const { container, emitted } = renderComponent({
-			global: {
-				provide: {
-					...createCanvasNodeProvide({
-						id: 'sticky',
-					}),
-				},
-			},
+			props: defaultProps(),
 		});
 
 		const sticky = container.querySelector('.sticky-textarea');

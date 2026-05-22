@@ -172,6 +172,69 @@ export function createCanvasNodeProvide({
 	};
 }
 
+export function createCanvasNodeDefaultProps({
+	id = 'node',
+	label = 'Test Node',
+	selected = false,
+	readOnly = false,
+	data = {},
+}: {
+	id?: string;
+	label?: string;
+	selected?: boolean;
+	readOnly?: boolean;
+	data?: Partial<CanvasNodeData>;
+} = {}) {
+	const merged = createCanvasNodeData({ id, ...data });
+	return {
+		id,
+		label,
+		selected,
+		readOnly,
+		name: merged.name,
+		type: merged.type,
+		subtitle: merged.subtitle,
+		disabled: merged.disabled ?? false,
+		connections: merged.connections,
+		execution: merged.execution,
+		runData: merged.runData,
+		issues: merged.issues,
+		render: merged.render,
+	};
+}
+
+export function createCanvasNodeToolbarProps({
+	readOnly = false,
+	canExecute = false,
+	showStatusIcons = false,
+	itemsClass = '',
+	data = {},
+	eventBus = createEventBus<CanvasNodeEventBusEvents>(),
+}: {
+	readOnly?: boolean;
+	canExecute?: boolean;
+	showStatusIcons?: boolean;
+	itemsClass?: string;
+	data?: Partial<CanvasNodeData>;
+	eventBus?: EventBus<CanvasNodeEventBusEvents>;
+} = {}) {
+	const merged = createCanvasNodeData(data);
+	return {
+		readOnly,
+		canExecute,
+		showStatusIcons,
+		itemsClass,
+		name: merged.name,
+		type: merged.type,
+		disabled: merged.disabled ?? false,
+		render: merged.render,
+		issues: merged.issues,
+		execution: merged.execution,
+		runData: merged.runData,
+		eventBus,
+	};
+}
+
 export function createCanvasHandleProvide({
 	label = 'Handle',
 	mode = CanvasConnectionMode.Input,

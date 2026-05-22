@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useCanvasNode } from '../../../../../composables/useCanvasNode';
 import { useI18n } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-const { name } = useCanvasNode();
+
+const props = defineProps<{
+	name: string;
+}>();
+
 const i18n = useI18n();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
-const node = computed(() => workflowDocumentStore.value.getNodeByName(name.value));
+const node = computed(() => workflowDocumentStore.value.getNodeByName(props.name));
 const size = 'small';
 
 const hasResolvableCredential = computed(() => {

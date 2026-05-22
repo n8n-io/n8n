@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
 import {
-	createCanvasNodeProvide,
+	createCanvasNodeDefaultProps,
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -76,12 +76,7 @@ beforeEach(() => {
 describe('CanvasNodeDefault', () => {
 	it('should render node correctly', () => {
 		const { getByTestId } = renderComponent({
-			global: {
-				provide: {
-					...createCanvasNodeProvide(),
-				},
-				stubs,
-			},
+			props: createCanvasNodeDefaultProps(),
 		});
 
 		expect(getByTestId('canvas-default-node')).toMatchSnapshot();
@@ -118,12 +113,7 @@ describe('CanvasNodeDefault', () => {
 				);
 
 				const { getByText } = renderComponent({
-					global: {
-						stubs,
-						provide: {
-							...createCanvasNodeProvide(),
-						},
-					},
+					props: createCanvasNodeDefaultProps(),
 				});
 
 				const nodeElement = getByText('Test Node').closest('.node');
@@ -135,24 +125,14 @@ describe('CanvasNodeDefault', () => {
 	describe('selected', () => {
 		it('should apply selected class when node is selected', () => {
 			const { getByText } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide({ selected: true }),
-					},
-				},
+				props: createCanvasNodeDefaultProps({ selected: true }),
 			});
 			expect(getByText('Test Node').closest('.node')).toHaveClass('selected');
 		});
 
 		it('should not apply selected class when node is not selected', () => {
 			const { getByText } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide(),
-					},
-				},
+				props: createCanvasNodeDefaultProps(),
 			});
 			expect(getByText('Test Node').closest('.node')).not.toHaveClass('selected');
 		});
@@ -161,16 +141,7 @@ describe('CanvasNodeDefault', () => {
 	describe('disabled', () => {
 		it('should apply disabled class when node is disabled', () => {
 			const { getByText } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								disabled: true,
-							},
-						}),
-					},
-				},
+				props: createCanvasNodeDefaultProps({ data: { disabled: true } }),
 			});
 
 			expect(getByText('Test Node').closest('.node')).toHaveClass('disabled');
@@ -180,11 +151,7 @@ describe('CanvasNodeDefault', () => {
 		it('should apply disabled class when node is not installed', () => {
 			nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(false);
 			const { getByText } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasNodeProvide({ data: { type: 'n8n-nodes-test.testNode' } }),
-					},
-				},
+				props: createCanvasNodeDefaultProps({ data: { type: 'n8n-nodes-test.testNode' } }),
 			});
 			expect(getByText('Test Node').closest('.node')).toHaveClass('disabled');
 		});
@@ -195,23 +162,14 @@ describe('CanvasNodeDefault', () => {
 			} as RouteLocationNormalizedLoadedGeneric);
 			nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(false);
 			const { getByText } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasNodeProvide({ data: { type: 'n8n-nodes-test.testNode' } }),
-					},
-				},
+				props: createCanvasNodeDefaultProps({ data: { type: 'n8n-nodes-test.testNode' } }),
 			});
 			expect(getByText('Test Node').closest('.node')).not.toHaveClass('disabled');
 		});
 
 		it('should not apply disabled class when node is enabled', () => {
 			const { getByText } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide(),
-					},
-				},
+				props: createCanvasNodeDefaultProps(),
 			});
 			expect(getByText('Test Node').closest('.node')).not.toHaveClass('disabled');
 		});
@@ -227,28 +185,23 @@ describe('CanvasNodeDefault', () => {
 			);
 
 			const { container } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								disabled: true,
-								connections: {
-									[CanvasConnectionMode.Input]: {
-										[NodeConnectionTypes.Main]: [
-											[{ node: 'node', type: NodeConnectionTypes.Main, index: 0 }],
-										],
-									},
-									[CanvasConnectionMode.Output]: {
-										[NodeConnectionTypes.Main]: [
-											[{ node: 'node', type: NodeConnectionTypes.Main, index: 0 }],
-										],
-									},
-								},
+				props: createCanvasNodeDefaultProps({
+					data: {
+						disabled: true,
+						connections: {
+							[CanvasConnectionMode.Input]: {
+								[NodeConnectionTypes.Main]: [
+									[{ node: 'node', type: NodeConnectionTypes.Main, index: 0 }],
+								],
 							},
-						}),
+							[CanvasConnectionMode.Output]: {
+								[NodeConnectionTypes.Main]: [
+									[{ node: 'node', type: NodeConnectionTypes.Main, index: 0 }],
+								],
+							},
+						},
 					},
-				},
+				}),
 			});
 
 			expect(container.querySelector('.disabledStrikeThrough')).toBeVisible();
@@ -258,12 +211,9 @@ describe('CanvasNodeDefault', () => {
 	describe('waiting', () => {
 		it('should apply waiting class when node is waiting', () => {
 			const { getByText } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide({ data: { execution: { running: true, waiting: '123' } } }),
-					},
-				},
+				props: createCanvasNodeDefaultProps({
+					data: { execution: { running: true, waiting: '123' } },
+				}),
 			});
 			expect(getByText('Test Node').closest('.node')).toHaveClass('waiting');
 		});
@@ -272,12 +222,7 @@ describe('CanvasNodeDefault', () => {
 	describe('running', () => {
 		it('should apply running class when node is running', () => {
 			const { getByText } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide({ data: { execution: { running: true } } }),
-					},
-				},
+				props: createCanvasNodeDefaultProps({ data: { execution: { running: true } } }),
 			});
 			expect(getByText('Test Node').closest('.node')).toHaveClass('running');
 		});
@@ -286,19 +231,14 @@ describe('CanvasNodeDefault', () => {
 	describe('configurable', () => {
 		it('should render configurable node correctly', () => {
 			const { getByTestId } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								render: {
-									type: CanvasNodeRenderType.Default,
-									options: { configurable: true },
-								},
-							},
-						}),
+				props: createCanvasNodeDefaultProps({
+					data: {
+						render: {
+							type: CanvasNodeRenderType.Default,
+							options: { configurable: true },
+						},
 					},
-				},
+				}),
 			});
 
 			expect(getByTestId('canvas-configurable-node')).toMatchSnapshot();
@@ -353,21 +293,14 @@ describe('CanvasNodeDefault', () => {
 					);
 
 					const { getByText } = renderComponent({
-						global: {
-							stubs,
-							provide: {
-								...createCanvasNodeProvide({
-									data: {
-										render: {
-											type: CanvasNodeRenderType.Default,
-											options: {
-												configurable: true,
-											},
-										},
-									},
-								}),
+						props: createCanvasNodeDefaultProps({
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { configurable: true },
+								},
 							},
-						},
+						}),
 					});
 
 					const nodeElement = getByText('Test Node').closest('.node');
@@ -380,19 +313,14 @@ describe('CanvasNodeDefault', () => {
 	describe('configuration', () => {
 		it('should render configuration node correctly', () => {
 			const { getByTestId } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								render: {
-									type: CanvasNodeRenderType.Default,
-									options: { configuration: true },
-								},
-							},
-						}),
+				props: createCanvasNodeDefaultProps({
+					data: {
+						render: {
+							type: CanvasNodeRenderType.Default,
+							options: { configuration: true },
+						},
 					},
-				},
+				}),
 			});
 
 			expect(getByTestId('canvas-configuration-node')).toMatchSnapshot();
@@ -400,19 +328,14 @@ describe('CanvasNodeDefault', () => {
 
 		it('should render configurable configuration node correctly', () => {
 			const { getByTestId } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								render: {
-									type: CanvasNodeRenderType.Default,
-									options: { configurable: true, configuration: true },
-								},
-							},
-						}),
+				props: createCanvasNodeDefaultProps({
+					data: {
+						render: {
+							type: CanvasNodeRenderType.Default,
+							options: { configurable: true, configuration: true },
+						},
 					},
-				},
+				}),
 			});
 
 			expect(getByTestId('canvas-configurable-node')).toMatchSnapshot();
@@ -422,19 +345,14 @@ describe('CanvasNodeDefault', () => {
 	describe('trigger', () => {
 		it('should render trigger node correctly', () => {
 			const { getByTestId } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								render: {
-									type: CanvasNodeRenderType.Default,
-									options: { trigger: true },
-								},
-							},
-						}),
+				props: createCanvasNodeDefaultProps({
+					data: {
+						render: {
+							type: CanvasNodeRenderType.Default,
+							options: { trigger: true },
+						},
 					},
-				},
+				}),
 			});
 
 			expect(getByTestId('canvas-trigger-node')).toMatchSnapshot();
@@ -443,12 +361,7 @@ describe('CanvasNodeDefault', () => {
 
 	it('should emit "activate" on double click', async () => {
 		const { getByText, emitted } = renderComponent({
-			global: {
-				stubs,
-				provide: {
-					...createCanvasNodeProvide(),
-				},
-			},
+			props: createCanvasNodeDefaultProps(),
 		});
 
 		await fireEvent.dblClick(getByText('Test Node'));
@@ -460,20 +373,15 @@ describe('CanvasNodeDefault', () => {
 		it('should emit "replace:node" event when placeholder node is double-clicked', async () => {
 			const nodeId = 'placeholder-node-id';
 			const { getByText, emitted } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide({
-							id: nodeId,
-							data: {
-								render: {
-									type: CanvasNodeRenderType.Default,
-									options: { placeholder: true },
-								},
-							},
-						}),
+				props: createCanvasNodeDefaultProps({
+					id: nodeId,
+					data: {
+						render: {
+							type: CanvasNodeRenderType.Default,
+							options: { placeholder: true },
+						},
 					},
-				},
+				}),
 			});
 
 			await fireEvent.dblClick(getByText('Test Node'));
@@ -485,20 +393,15 @@ describe('CanvasNodeDefault', () => {
 		it('should emit "replace:node" instead of "activate" when placeholder node is double-clicked', async () => {
 			const nodeId = 'placeholder-node-id-2';
 			const { getByText, emitted } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide({
-							id: nodeId,
-							data: {
-								render: {
-									type: CanvasNodeRenderType.Default,
-									options: { placeholder: true },
-								},
-							},
-						}),
+				props: createCanvasNodeDefaultProps({
+					id: nodeId,
+					data: {
+						render: {
+							type: CanvasNodeRenderType.Default,
+							options: { placeholder: true },
+						},
 					},
-				},
+				}),
 			});
 
 			await fireEvent.dblClick(getByText('Test Node'));
@@ -511,19 +414,14 @@ describe('CanvasNodeDefault', () => {
 
 		it('should not emit "replace:node" when non-placeholder node is clicked', async () => {
 			const { getByText, emitted } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								render: {
-									type: CanvasNodeRenderType.Default,
-									options: { placeholder: false },
-								},
-							},
-						}),
+				props: createCanvasNodeDefaultProps({
+					data: {
+						render: {
+							type: CanvasNodeRenderType.Default,
+							options: { placeholder: false },
+						},
 					},
-				},
+				}),
 			});
 
 			await fireEvent.click(getByText('Test Node'));

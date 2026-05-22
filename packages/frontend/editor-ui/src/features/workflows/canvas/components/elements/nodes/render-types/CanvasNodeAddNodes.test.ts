@@ -1,7 +1,4 @@
-import {
-	createCanvasNodeProvide,
-	createCanvasProvide,
-} from '@/features/workflows/canvas/__tests__/utils';
+import { createCanvasProvide } from '@/features/workflows/canvas/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { TEMPLATES_URLS, VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -84,13 +81,7 @@ describe('CanvasNodeAddNodes', () => {
 	});
 
 	it('should render node correctly', () => {
-		const { getByTestId } = renderComponent({
-			global: {
-				provide: {
-					...createCanvasNodeProvide(),
-				},
-			},
-		});
+		const { getByTestId } = renderComponent();
 
 		expect(getByTestId('canvas-add-button')).toMatchSnapshot();
 	});
@@ -108,13 +99,7 @@ describe('CanvasNodeAddNodes', () => {
 		])('should render with $type template store', ({ host }) => {
 			settingsStore.settings.templates = { enabled: true, host };
 
-			const { getByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasNodeProvide(),
-					},
-				},
-			});
+			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('canvas-template-link')).toBeDefined();
 		});
@@ -125,13 +110,7 @@ describe('CanvasNodeAddNodes', () => {
 				get: vi.fn(() => false),
 			});
 
-			const { getByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasNodeProvide(),
-					},
-				},
-			});
+			const { getByTestId } = renderComponent();
 
 			const link = getByTestId('canvas-template-link');
 			await userEvent.click(link);
@@ -145,13 +124,7 @@ describe('CanvasNodeAddNodes', () => {
 				get: vi.fn(() => true),
 			});
 
-			const { getByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasNodeProvide(),
-					},
-				},
-			});
+			const { getByTestId } = renderComponent();
 
 			const link = getByTestId('canvas-template-link');
 			await userEvent.click(link);
@@ -171,13 +144,7 @@ describe('CanvasNodeAddNodes', () => {
 				get: vi.fn(() => 'https://n8n.io/workflows'),
 			});
 
-			const { getByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasNodeProvide(),
-					},
-				},
-			});
+			const { getByTestId } = renderComponent();
 
 			const link = getByTestId('canvas-template-link');
 			await userEvent.click(link);

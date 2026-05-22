@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, useCssModule } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { useCanvasNode } from '../../../composables/useCanvasNode';
+import type { EventBus } from '@n8n/utils/event-bus';
+import type { CanvasNodeData, CanvasNodeEventBusEvents } from '../../../canvas.types';
 import { CanvasNodeRenderType } from '../../../canvas.types';
 import { useCanvas } from '../../../composables/useCanvas';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -29,6 +30,14 @@ const props = withDefaults(
 		canExecute?: boolean;
 		showStatusIcons: boolean;
 		itemsClass: string;
+		name: string;
+		type: string;
+		disabled: boolean;
+		render: CanvasNodeData['render'];
+		issues: CanvasNodeData['issues'];
+		execution: CanvasNodeData['execution'];
+		runData: CanvasNodeData['runData'];
+		eventBus: EventBus<CanvasNodeEventBusEvents>;
 	}>(),
 	{
 		canExecute: false,
@@ -39,7 +48,6 @@ const $style = useCssModule();
 const i18n = useI18n();
 
 const { isExecuting, isExperimentalNdvActive } = useCanvas();
-const { isDisabled, render, name } = useCanvasNode();
 
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -47,13 +55,17 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 
 const node = computed(() =>
-	name.value ? workflowDocumentStore?.value?.getNodeByName(name.value) : null,
+	props.name ? workflowDocumentStore?.value?.getNodeByName(props.name) : null,
 );
 const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
 
 const nodeDisabledTitle = computed(() => {
-	return isDisabled.value ? i18n.baseText('node.enable') : i18n.baseText('node.disable');
+	return props.disabled ? i18n.baseText('node.enable') : i18n.baseText('node.disable');
 });
+
+const dirtiness = computed(() =>
+	props.render.type === CanvasNodeRenderType.Default ? props.render.options.dirtiness : undefined,
+);
 
 const isStickyColorSelectorOpen = ref(false);
 const isHovered = ref(false);
@@ -68,14 +80,14 @@ const classes = computed(() => ({
 const isExecuteNodeVisible = computed(() => {
 	return (
 		(!props.readOnly || props.canExecute) &&
-		render.value.type === CanvasNodeRenderType.Default &&
-		'configuration' in render.value.options &&
-		(!render.value.options.configuration || isToolNode.value)
+		props.render.type === CanvasNodeRenderType.Default &&
+		'configuration' in props.render.options &&
+		(!props.render.options.configuration || isToolNode.value)
 	);
 });
 
 const isDisableNodeVisible = computed(() => {
-	return !props.readOnly && render.value.type === CanvasNodeRenderType.Default;
+	return !props.readOnly && props.render.type === CanvasNodeRenderType.Default;
 });
 
 const isDeleteNodeVisible = computed(() => !props.readOnly);
@@ -85,7 +97,7 @@ const isFocusNodeVisible = computed(() => experimentalNdvStore.isZoomedViewEnabl
 const isAddToAiVisible = computed(() => !props.readOnly && focusedNodesStore.isFeatureEnabled);
 
 const isStickyNoteChangeColorVisible = computed(
-	() => !props.readOnly && render.value.type === CanvasNodeRenderType.StickyNote,
+	() => !props.readOnly && props.render.type === CanvasNodeRenderType.StickyNote,
 );
 
 function executeNode() {
@@ -144,7 +156,7 @@ function onAddToAi() {
 			<N8nTooltip
 				v-if="isExecuteNodeVisible"
 				placement="top"
-				:disabled="!isDisabled"
+				:disabled="!disabled"
 				:content="i18n.baseText('ndv.execute.deactivated')"
 			>
 				<N8nIconButton
@@ -152,7 +164,7 @@ function onAddToAi() {
 					data-test-id="execute-node-button"
 					size="small"
 					icon="node-play"
-					:disabled="isExecuting || isDisabled"
+					:disabled="isExecuting || disabled"
 					:title="i18n.baseText('node.testStep')"
 					@click.stop="executeNode"
 				/>
@@ -186,6 +198,8 @@ function onAddToAi() {
 			<CanvasNodeStickyColorSelector
 				v-if="isStickyNoteChangeColorVisible"
 				v-model:visible="isStickyColorSelectorOpen"
+				:render="render"
+				:event-bus="eventBus"
 				@update="onChangeStickyColor"
 			/>
 			<N8nTooltip v-if="isAddToAiVisible" placement="top" :content="i18n.baseText('node.addToAi')">
@@ -212,6 +226,14 @@ function onAddToAi() {
 			v-if="showStatusIcons"
 			:class="$style.statusIcons"
 			spinner-layout="static"
+			:name="name"
+			:type="type"
+			:disabled="disabled"
+			:validation-errors="issues.validation"
+			:execution-status="execution.status"
+			:has-run-data="runData.visible"
+			:run-data-iterations="runData.iterations"
+			:dirtiness="dirtiness"
 		/>
 	</div>
 </template>

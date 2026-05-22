@@ -2,8 +2,12 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useThrottleFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import { useCanvasNode } from '../../../../composables/useCanvasNode';
-import type { CanvasNodeStickyNoteRender } from '../../../../canvas.types';
+import type { EventBus } from '@n8n/utils/event-bus';
+import type {
+	CanvasNodeData,
+	CanvasNodeEventBusEvents,
+	CanvasNodeStickyNoteRender,
+} from '../../../../canvas.types';
 
 import { N8nIcon, N8nPopover } from '@n8n/design-system';
 
@@ -13,8 +17,12 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const { render, eventBus } = useCanvasNode();
-const renderOptions = computed(() => render.value.options as CanvasNodeStickyNoteRender['options']);
+const props = defineProps<{
+	render: CanvasNodeData['render'];
+	eventBus: EventBus<CanvasNodeEventBusEvents>;
+}>();
+
+const renderOptions = computed(() => props.render.options as CanvasNodeStickyNoteRender['options']);
 
 const autoHideTimeout = ref<NodeJS.Timeout | null>(null);
 
@@ -64,11 +72,11 @@ function onMouseLeave() {
 }
 
 onMounted(() => {
-	eventBus.value?.on('update:sticky:color', showPopover);
+	props.eventBus.on('update:sticky:color', showPopover);
 });
 
 onBeforeUnmount(() => {
-	eventBus.value?.off('update:sticky:color', showPopover);
+	props.eventBus.off('update:sticky:color', showPopover);
 });
 </script>
 

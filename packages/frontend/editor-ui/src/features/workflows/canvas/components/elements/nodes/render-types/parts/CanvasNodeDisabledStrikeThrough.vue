@@ -1,21 +1,22 @@
 <script setup lang="ts">
 import { computed, useCssModule } from 'vue';
-import { useCanvasNode } from '../../../../../composables/useCanvasNode';
+import type { CanvasNodeData } from '../../../../../canvas.types';
 import { CanvasNodeRenderType } from '../../../../../canvas.types';
 
 const $style = useCssModule();
 
-const { hasRunData, render } = useCanvasNode();
+const props = defineProps<{
+	hasRunData: boolean;
+	render: CanvasNodeData['render'];
+}>();
 
-const classes = computed(() => {
-	return {
-		[$style.disabledStrikeThrough]: true,
-		[$style.success]: hasRunData.value,
-		[$style.warning]:
-			render.value.type === CanvasNodeRenderType.Default &&
-			render.value.options.dirtiness !== undefined,
-	};
-});
+const classes = computed(() => ({
+	[$style.disabledStrikeThrough]: true,
+	[$style.success]: props.hasRunData,
+	[$style.warning]:
+		props.render.type === CanvasNodeRenderType.Default &&
+		props.render.options.dirtiness !== undefined,
+}));
 </script>
 
 <template>

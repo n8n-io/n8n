@@ -1,8 +1,6 @@
 import CanvasNodeTooltip from './CanvasNodeTooltip.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { queryTooltip } from '@/__tests__/utils';
-import type { CanvasNodeDefaultRender } from '../../../../../canvas.types';
-import { createCanvasNodeProvide } from '@/features/workflows/canvas/__tests__/utils';
 import { waitFor } from '@testing-library/vue';
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
@@ -25,17 +23,7 @@ describe('CanvasNodeTooltip', () => {
 			renderComponent({
 				props: {
 					visible: true,
-				},
-				global: {
-					provide: createCanvasNodeProvide({
-						data: {
-							render: {
-								options: {
-									tooltip: 'Test tooltip text',
-								},
-							} as CanvasNodeDefaultRender,
-						},
-					}),
+					tooltip: 'Test tooltip text',
 				},
 			});
 
@@ -46,21 +34,11 @@ describe('CanvasNodeTooltip', () => {
 			});
 		});
 
-		it('should not render tooltip when tooltip option is not provided', () => {
+		it('should not render tooltip when not visible', () => {
 			renderComponent({
 				props: {
 					visible: false,
-				},
-				global: {
-					provide: createCanvasNodeProvide({
-						data: {
-							render: {
-								options: {
-									tooltip: 'Test tooltip text',
-								},
-							} as CanvasNodeDefaultRender,
-						},
-					}),
+					tooltip: 'Test tooltip text',
 				},
 			});
 
