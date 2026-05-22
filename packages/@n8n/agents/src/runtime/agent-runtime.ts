@@ -93,7 +93,6 @@ import type {
 	ToolResultEntry,
 } from '../types/sdk/agent';
 import type { AgentDbMessage, AgentMessage, ContentToolCall, Message } from '../types/sdk/message';
-import { createObservationLogThreadScopeId } from '../types/sdk/observation-log';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../types/sdk/observation-log';
 import type { JSONObject, JSONValue } from '../types/utils/json';
 import { parseWithSchema } from '../utils/parse';
@@ -236,7 +235,7 @@ function hasObservationLogObserverMemory(
 ): memory is ObservationLogObserverMemory {
 	return (
 		hasObservationLogStore(memory) &&
-		hasFunctionProperty(memory, 'getMessagesForScope') &&
+		hasFunctionProperty(memory, 'getMessagesForObservationScope') &&
 		hasFunctionProperty(memory, 'getCursor') &&
 		hasFunctionProperty(memory, 'setCursor')
 	);
@@ -1546,10 +1545,6 @@ export class AgentRuntime {
 							observerThresholdTokens,
 							observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
 							observe,
-							messageSource: {
-								threadId: persistence.threadId,
-								resourceId: persistence.resourceId,
-							},
 						}),
 				),
 			);
@@ -1687,8 +1682,7 @@ export class AgentRuntime {
 				const message = `Observation log ${source} task failed`;
 				logger.warn(message, {
 					error: event.error,
-					scopeKind: event.task.scopeKind,
-					scopeId: event.task.scopeId,
+					observationScopeId: event.task.observationScopeId,
 				});
 				this.eventBus.emit({ type: AgentEvent.Error, message, error: event.error, source });
 			},
@@ -1698,8 +1692,7 @@ export class AgentRuntime {
 
 	private getObservationLogScope(persistence: AgentPersistenceOptions): ObservationLogScope {
 		return {
-			scopeKind: 'thread',
-			scopeId: createObservationLogThreadScopeId(persistence.threadId, persistence.resourceId),
+			observationScopeId: persistence.threadId,
 		};
 	}
 

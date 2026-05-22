@@ -33,6 +33,8 @@ describe('createSandbox', () => {
 		const config: SandboxConfig = {
 			enabled: true,
 			provider: 'daytona',
+			id: 'instance-ai-thread-thread-1',
+			name: 'instance-ai-thread-thread-1',
 			daytonaApiUrl: 'https://api.daytona.io',
 			daytonaApiKey: 'test-key',
 			image: 'node:20',
@@ -44,6 +46,8 @@ describe('createSandbox', () => {
 		expect(result).toBeInstanceOf(DaytonaSandbox);
 		expect(getPrivateOptions(result)).toEqual(
 			expect.objectContaining({
+				id: 'instance-ai-thread-thread-1',
+				name: 'instance-ai-thread-thread-1',
 				apiKey: 'test-key',
 				apiUrl: 'https://api.daytona.io',
 				image: 'node:20',
