@@ -88,4 +88,23 @@ describe('WorkflowHasIssuesError', () => {
 			'\'A\': Parameter "x" is required. | \'B\': Parameter "y" is required.',
 		);
 	});
+
+	it('caps at 4 nodes and appends a hint for the rest', () => {
+		const issues: IWorkflowIssues = {
+			A: { parameters: { p: ['Parameter "p" is required.'] } },
+			B: { parameters: { p: ['Parameter "p" is required.'] } },
+			C: { parameters: { p: ['Parameter "p" is required.'] } },
+			D: { parameters: { p: ['Parameter "p" is required.'] } },
+			E: { parameters: { p: ['Parameter "p" is required.'] } },
+			F: { parameters: { p: ['Parameter "p" is required.'] } },
+		};
+
+		const message = new WorkflowHasIssuesError(issues).message;
+
+		expect(message).toContain("'A':");
+		expect(message).toContain("'D':");
+		expect(message).not.toContain("'E':");
+		expect(message).not.toContain("'F':");
+		expect(message).toContain('(2 other issues)');
+	});
 });

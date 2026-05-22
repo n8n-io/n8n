@@ -6,6 +6,8 @@ const BASE_MESSAGE =
 
 const OBJECT_ISSUE_PROPERTIES = ['parameters', 'credentials', 'input'] as const;
 
+const MAX_NODES_IN_MESSAGE = 4;
+
 function nodeIssuesToMessages(issues: INodeIssues, node: INode | undefined): string[] {
 	const messages: string[] = [];
 
@@ -37,12 +39,18 @@ function formatWorkflowIssues(
 	workflowIssues: IWorkflowIssues,
 	nodes: Record<string, INode> | undefined,
 ): string {
-	return Object.entries(workflowIssues)
-		.map(([nodeName, nodeIssues]) => {
-			const messages = nodeIssuesToMessages(nodeIssues, nodes?.[nodeName]);
-			return `'${nodeName}': ${messages.join('; ')}`;
-		})
-		.join(' | ');
+	const entries = Object.entries(workflowIssues);
+	const shown = entries.slice(0, MAX_NODES_IN_MESSAGE).map(([nodeName, nodeIssues]) => {
+		const messages = nodeIssuesToMessages(nodeIssues, nodes?.[nodeName]);
+		return `'${nodeName}': ${messages.join('; ')}`;
+	});
+
+	const remaining = entries.length - shown.length;
+	if (remaining > 0) {
+		shown.push(`(${remaining} other issues)`);
+	}
+
+	return shown.join(' | ');
 }
 
 export class WorkflowHasIssuesError extends WorkflowOperationError {
