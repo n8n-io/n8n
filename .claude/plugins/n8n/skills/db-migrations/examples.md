@@ -51,36 +51,36 @@ If the table needs created/updated timestamps, append `.withTimestamps;` after t
 
 ## 2. Add a column with a partial unique index
 
-Use case: adding an optional, unique-when-set column. Reference: `packages/@n8n/db/src/migrations/common/1778000000000-AddExecutionDeduplicationKey.ts`.
+Use case: adding an optional, unique-when-set column.
 
 ```ts
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddExecutionDeduplicationKey1700000000000 implements ReversibleMigration {
+export class AddExternalRefToMyTable1700000000000 implements ReversibleMigration {
   async up({ schemaBuilder: { addColumns, column, createIndex } }: MigrationContext) {
-    await addColumns('execution_entity', [column('deduplicationKey').varchar(255)]);
+    await addColumns('my_table', [column('externalRef').varchar(255)]);
 
     await createIndex(
-      'execution_entity',
-      ['deduplicationKey'],
+      'my_table',
+      ['externalRef'],
       /*isUnique=*/ true,
       /*customIndexName=*/ undefined,
-      /*whereClause=*/ '"deduplicationKey" IS NOT NULL',
+      /*whereClause=*/ '"externalRef" IS NOT NULL',
     );
   }
 
   async down({ schemaBuilder: { dropIndex, dropColumns } }: MigrationContext) {
-    await dropIndex('execution_entity', ['deduplicationKey']);
-    await dropColumns('execution_entity', ['deduplicationKey']);
+    await dropIndex('my_table', ['externalRef']);
+    await dropColumns('my_table', ['externalRef']);
   }
 }
 ```
 
 What this embodies:
-- **Partial unique index** excluding NULL rows — sparse-unique pattern. On a deduplication-key column this can roughly halve index size and avoid uniqueness checks against the NULL bucket.
+- **Partial unique index** excluding NULL rows — sparse-unique pattern. Smaller index and no uniqueness checks against the NULL bucket.
 - The double-quotes in the `whereClause` are Postgres identifier quoting — the DSL preserves them for SQLite too.
 - `down()` drops index then column in reverse order.
-- Update the entity: nullable `deduplicationKey: string | null;` plus `@Index(['deduplicationKey'], { unique: true, where: '"deduplicationKey" IS NOT NULL' })`.
+- Update the entity: nullable `externalRef: string | null;` plus `@Index(['externalRef'], { unique: true, where: '"externalRef" IS NOT NULL' })`.
 
 ---
 
@@ -263,7 +263,7 @@ What this embodies:
 Use case: integration test for any new migration. Reference: `packages/cli/test/migration/1770000000000-create-chat-hub-tools-table.test.ts`.
 
 ```ts
-// packages/cli/test/migration/1700000000000-add-execution-deduplication-key.test.ts
+// packages/cli/test/migration/1700000000000-add-external-ref-to-my-table.test.ts
 import {
   createTestMigrationContext,
   initDbUpToMigration,
@@ -275,7 +275,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AddExecutionDeduplicationKey1700000000000';
+const MIGRATION_NAME = 'AddExternalRefToMyTable1700000000000';
 
 describe(`${MIGRATION_NAME} Migration`, () => {
   let dataSource: DataSource;
@@ -298,22 +298,12 @@ describe(`${MIGRATION_NAME} Migration`, () => {
     await dbConnection.close();
   });
 
-  async function insertExecution(
-    context: TestMigrationContext,
-    overrides: Partial<{ id: string; workflowId: string }> = {},
-  ): Promise<string> {
-    const id = overrides.id ?? randomUUID();
-    const tableName = context.escape.tableName('execution_entity');
+  async function insertRow(context: TestMigrationContext): Promise<string> {
+    const id = randomUUID();
+    const tableName = context.escape.tableName('my_table');
     await context.runQuery(
-      `INSERT INTO ${tableName} ("id", "workflowId", "finished", "mode", "status", "startedAt") VALUES (:id, :workflowId, :finished, :mode, :status, :startedAt)`,
-      {
-        id,
-        workflowId: overrides.workflowId ?? 'wf-1',
-        finished: false,
-        mode: 'manual',
-        status: 'success',
-        startedAt: new Date(),
-      },
+      `INSERT INTO ${tableName} ("id", "name") VALUES (:id, :name)`,
+      { id, name: `row-${id}` },
     );
     return id;
   }
@@ -323,52 +313,52 @@ describe(`${MIGRATION_NAME} Migration`, () => {
       await runSingleMigration(MIGRATION_NAME);
     });
 
-    it('adds the deduplicationKey column', async () => {
+    it('adds the externalRef column', async () => {
       const context = createTestMigrationContext(dataSource);
-      const tableName = context.escape.tableName('execution_entity');
+      const tableName = context.escape.tableName('my_table');
 
-      const id = await insertExecution(context);
+      const id = await insertRow(context);
       await context.runQuery(
-        `UPDATE ${tableName} SET "deduplicationKey" = :key WHERE "id" = :id`,
-        { key: 'cron-2026-01-01T00:00', id },
+        `UPDATE ${tableName} SET "externalRef" = :ref WHERE "id" = :id`,
+        { ref: 'ext-123', id },
       );
 
-      const rows = await context.runQuery<Array<{ deduplicationKey: string | null }>>(
-        `SELECT "deduplicationKey" FROM ${tableName} WHERE "id" = :id`,
+      const rows = await context.runQuery<Array<{ externalRef: string | null }>>(
+        `SELECT "externalRef" FROM ${tableName} WHERE "id" = :id`,
         { id },
       );
-      expect(rows[0].deduplicationKey).toBe('cron-2026-01-01T00:00');
+      expect(rows[0].externalRef).toBe('ext-123');
 
       await context.queryRunner.release();
     });
 
-    it('rejects duplicate non-null deduplicationKey', async () => {
+    it('rejects duplicate non-null externalRef', async () => {
       const context = createTestMigrationContext(dataSource);
-      const tableName = context.escape.tableName('execution_entity');
+      const tableName = context.escape.tableName('my_table');
 
-      const id1 = await insertExecution(context);
-      const id2 = await insertExecution(context);
-      const dupKey = 'cron-dup';
+      const id1 = await insertRow(context);
+      const id2 = await insertRow(context);
+      const dupRef = 'ext-dup';
 
       await context.runQuery(
-        `UPDATE ${tableName} SET "deduplicationKey" = :key WHERE "id" = :id`,
-        { key: dupKey, id: id1 },
+        `UPDATE ${tableName} SET "externalRef" = :ref WHERE "id" = :id`,
+        { ref: dupRef, id: id1 },
       );
       await expect(
         context.runQuery(
-          `UPDATE ${tableName} SET "deduplicationKey" = :key WHERE "id" = :id`,
-          { key: dupKey, id: id2 },
+          `UPDATE ${tableName} SET "externalRef" = :ref WHERE "id" = :id`,
+          { ref: dupRef, id: id2 },
         ),
       ).rejects.toThrow();
 
       await context.queryRunner.release();
     });
 
-    it('allows multiple NULL deduplicationKey rows', async () => {
+    it('allows multiple NULL externalRef rows', async () => {
       const context = createTestMigrationContext(dataSource);
-      // Two executions with default NULL key — should not violate the partial unique index
-      await insertExecution(context);
-      await insertExecution(context);
+      // Two rows with default NULL ref — should not violate the partial unique index
+      await insertRow(context);
+      await insertRow(context);
       await context.queryRunner.release();
     });
   });
@@ -386,7 +376,7 @@ What this embodies:
 Run the test:
 
 ```bash
-pushd packages/cli && pnpm test test/migration/1700000000000-add-execution-deduplication-key.test.ts && popd
+pushd packages/cli && pnpm test test/migration/1700000000000-add-external-ref-to-my-table.test.ts && popd
 ```
 
 The runner is configured to execute against both SQLite (default) and Postgres in CI.

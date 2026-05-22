@@ -10,7 +10,7 @@ guidance the migrations-review team enforces on PRs.
 **A1. Pick the narrowest sane type.**
 - `DATE` not `timestamp` when only the date matters.
 - `smallint` for small bounded counters/enums; `int` over `bigint` unless overflow is plausible.
-- `numeric`/`bigint` for byte counts; never `varchar`.
+- A numeric column type (`bigint` for byte counts and similar measurements) — never `varchar`. Storing numbers as strings loses sort order, range queries, and SUM/AVG aggregations.
 - Native `uuid` over `varchar(36)` — half the storage on Postgres.
 - Use `bigint` proactively for monotonically-growing counters that can overflow `int` (insights/usage counters).
 - Don't use `double` for version-like fields; floating-point precision bites. Use a string or split major/minor.
@@ -50,7 +50,7 @@ guidance the migrations-review team enforces on PRs.
 - ORDER BY direction in the index must match the query's `ORDER BY` (e.g. `(sessionId, createdAt ASC, id DESC)`).
 
 **B4. Partial unique indexes for sparse-unique columns.**
-- Add `WHERE col IS NOT NULL` to exclude NULL rows. On a deduplication-key column this can roughly halve index size and avoid uniqueness checks against the NULL bucket. Use the `whereClause` parameter on `createIndex(table, cols, isUnique, customName, whereClause)`.
+- Add `WHERE col IS NOT NULL` to exclude NULL rows. Smaller index and no uniqueness checks against the NULL bucket. Use the `whereClause` parameter on `createIndex(table, cols, isUnique, customName, whereClause)`.
 
 **B5. Composite PKs can replace dedicated indexes.**
 - Consider whether a surrogate `id` column is needed at all when `(slugA, slugB)` would be a perfectly good PK.
@@ -62,10 +62,10 @@ guidance the migrations-review team enforces on PRs.
 
 ---
 
-## C. Foreign keys, ON DELETE, polymorphic refs
+## C. Foreign keys, ON DELETE
 
 **C1. FKs are the default; opting out needs justification.**
-- Reviewers will ask "why no foreign key constraint on X?". Polymorphic columns `(typeCol, idCol)` cannot have FKs and lose cascade-delete safety — push back on the design.
+- Reviewers will ask "why no foreign key constraint on X?". If the answer is "the column points at different tables depending on a sibling type column," see section O.
 
 **C2. Pick `ON DELETE` / `ON UPDATE` deliberately.**
 - `RESTRICT` to forbid deleting the parent.
@@ -278,3 +278,19 @@ guidance the migrations-review team enforces on PRs.
 
 **N3. Atomic SQL within the migration's transaction.**
 - Some migrations override with `transaction = false as const` for big DDL on engines that disallow it inside a transaction. The DSL/wrapper sets `transaction = false` automatically when `withFKsDisabled = true`.
+
+---
+
+## O. General design guidance (not enforced by a specific reviewer quote)
+
+These are widely-applicable database design principles. They aren't tied to a single recurring PR comment, but they're worth keeping in mind because the *cost* of getting them wrong shows up in the codebase (manual orchestration where the DB could have done the work for free).
+
+**O1. Avoid polymorphic `(typeCol, idCol)` pairs.**
+- An "polymorphic" column pair is one column that points at different tables depending on a sibling type column — e.g. `dependencyType: 'externalSecretProvider' | ...` plus `dependencyId: string`. SQL FKs target exactly one table, so polymorphic `idCol`s cannot have an FK declaration. Consequences:
+  - No insert validation (you can insert a `dependencyId` that doesn't match any row).
+  - No cascade/restrict on parent delete — application code has to manually walk every table that might point at the deleted row and delete dependents inside a transaction (see `credential_dependency` + `secrets_provider_connection` deletion paths for a real example of this cost).
+  - Orphan rows are possible by construction.
+- Alternatives:
+  - **Separate join tables per relation type** (`credential_external_secret_dependency`, `credential_node_dependency`, …). Each has a real FK. Queries that need "all dependencies" become a UNION.
+  - **One nullable FK per possible target** with a CHECK constraint that exactly one is set. Each column is a real FK.
+  - **Supertype table**: hoist parents into a single `dependency_target` with its own type column, then have one FK to that table.

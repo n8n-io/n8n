@@ -1,6 +1,6 @@
 ---
 name: n8n:db-migrations
-description: Authors n8n database migrations that pass migrations-review on the first pass. Use when creating or modifying files under packages/@n8n/db/src/migrations/, when the user asks to add a column, table, index, foreign key, or backfill, or when the user mentions DB migrations, TypeORM migrations, MigrationContext, or db:revert.
+description: Authors n8n database migrations. Use when creating or modifying files under packages/@n8n/db/src/migrations/, when the user asks to add a column, table, index, foreign key, or backfill, or when the user mentions DB migrations or TypeORM migrations.
 ---
 
 # Write n8n DB migrations
@@ -22,10 +22,10 @@ packages/@n8n/db/src/migrations/
 ├── common/        # default — DSL handles SQLite + Postgres
 ├── postgresdb/    # Postgres-only behavior (e.g. ALTER COLUMN TYPE)
 ├── sqlite/        # SQLite-only override (subclass + withFKsDisabled)
-└── mysqldb/       # do NOT add new files here (MySQL/MariaDB unsupported)
+└── mysqldb/       # do NOT add new files here (MySQL/MariaDB support is deprecated)
 ```
 
-After a rebase, re-run the generator's logic by bumping the timestamp so the migration stays the newest; the lint rule will flag any drift.
+After a rebase, re-run the generator's logic to bump the timestamp so the migration stays the newest; the lint rule will flag any drift.
 
 ## Which directory?
 
@@ -66,12 +66,13 @@ Run through this before requesting review. Each item is a real, recurring review
 
 - [ ] Migration was scaffolded with `pnpm --filter=@n8n/db migration:new` (timestamp + registration are then automatic; the `migration-timestamp` lint rule catches drift).
 - [ ] Identifiers go through **`escape.tableName(...)` / `escape.columnName(...)`**. Never hand-write `n8n_table` prefixes.
-- [ ] **Column types are narrow:** `uuid` not `varchar(36)`; `int`/`smallint` not `bigint`; `text` for unbounded strings; `numeric` for byte counts; never `double` for version numbers.
+- [ ] **Match column type to value semantics.** Native `uuid` for UUIDs, `timestampTimezone()` for timestamps, a numeric type (`int`/`bigint`/etc.) for numbers, `bool` for booleans, `json` for structured data. Never `varchar` as a catch-all for non-string values — it loses sort order, range queries, and aggregations.
+- [ ] **Pick the narrowest sane type within that category:** `int`/`smallint` not `bigint` when range allows; `text` not `varchar(255)` for unbounded strings; never `double` for version numbers (floating-point precision).
 - [ ] **Default `notNull`**, relax only when justified. PK is implicitly NOT NULL — don't repeat. Migration's `notNull` matches the entity's nullability.
 - [ ] **Enum-like columns** carry `.withEnumCheck([...])` AND `.comment('explains values')`. Opaque IDs / unix timestamps / JSON shapes also get `.comment()`.
-- [ ] **Every reference column has an explicit FK** with deliberate `onDelete`. Avoid polymorphic `(typeCol, idCol)` pairs — they kill referential integrity. Name FKs explicitly when SQLite recreate cycles risk duplicating them.
+- [ ] **Every reference column has an explicit FK** with deliberate `onDelete`. Name FKs explicitly when SQLite recreate cycles risk duplicating them. (For broader design guidance on polymorphic `(typeCol, idCol)` patterns, see `reference.md` section O.)
 - [ ] **Indexes match real query patterns.** Don't add indexes "in case." A unique constraint already creates an index; a composite PK indexes its prefix columns. Mirror `withIndexOn(...)` to entity `@Index(...)`.
-- [ ] **Sparse-unique columns:** use a partial index `WHERE col IS NOT NULL` to exclude NULL rows. On a deduplication-key column this can roughly halve index size.
+- [ ] **Sparse-unique columns:** use a partial index `WHERE col IS NOT NULL` to exclude NULL rows. Smaller index and no uniqueness checks against the NULL bucket.
 - [ ] **Composite index column order** matches your actual `WHERE` / `ORDER BY` usage; an index on `(A, B)` serves `WHERE A` and `WHERE A AND B`, not `WHERE B` alone.
 - [ ] **Entity ↔ migration parity**: column types, `notNull`, defaults, FKs, `@Index` decorators all match. Drift here causes silent runtime bugs.
 - [ ] **No live-app imports** in the migration body. Duplicate types/utility code locally — the migration must produce the same result a year from now even if app code drifts.
