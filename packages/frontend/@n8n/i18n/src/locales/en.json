@@ -3296,6 +3296,8 @@
 	"settings.api.revoke.button": "Revoke",
 	"settings.api.revoke.toast": "API key revoked",
 	"settings.api.empty.title": "No API keys yet",
+	"settings.api.tabs.mine": "Mine",
+	"settings.api.tabs.all": "All",
 	"settings.version": "Version",
 	"settings.usageAndPlan.title": "Usage and plan",
 	"settings.usageAndPlan.description": "You’re on the {name} {type}",
