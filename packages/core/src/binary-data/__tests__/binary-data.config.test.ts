@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
-import type { Mock } from 'vitest';
 import { existsSync } from 'node:fs';
+import type { Mock } from 'vitest';
 
 import { InstanceSettings } from '@/instance-settings';
 import { mockInstance } from '@test/utils';

@@ -1,5 +1,5 @@
-import { mock } from 'vitest-mock-extended';
 import type { IDataObject, IRunExecutionData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
 import type { ExternalSecretsProxy } from '@/execution-engine/external-secrets-proxy';

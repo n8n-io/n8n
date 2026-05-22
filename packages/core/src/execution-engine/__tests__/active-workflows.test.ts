@@ -1,5 +1,3 @@
-import type { Mock } from 'vitest';
-import { mock } from 'vitest-mock-extended';
 import type {
 	INode,
 	ITriggerResponse,
@@ -11,6 +9,8 @@ import type {
 	CronExpression,
 } from 'n8n-workflow';
 import { LoggerProxy, TriggerCloseError, WorkflowActivationError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { ErrorReporter } from '@/errors/error-reporter';
 import { Tracing } from '@/observability';

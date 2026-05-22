@@ -2,9 +2,9 @@ import type { Logger } from '@n8n/backend-common';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { ErrorEvent } from '@sentry/core';
 import { AxiosError } from 'axios';
+import { ApplicationError, BaseError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { ApplicationError, BaseError } from 'n8n-workflow';
 
 import { ErrorReporter } from '../error-reporter';
 
@@ -82,17 +82,21 @@ describe('ErrorReporter', () => {
 
 		it('should handle Promise rejections', async () => {
 			const originalException = Promise.reject(new Error());
+			originalException.catch(() => {});
 
 			const result = await errorReporter.beforeSend(event, { originalException });
 
 			expect(result).toEqual(event);
 		});
 
+		const rejectedAxiosPromise = Promise.reject(new AxiosError());
+		rejectedAxiosPromise.catch(() => {});
+
 		test.each([
 			['undefined', undefined],
 			['null', null],
 			['an AxiosError', new AxiosError()],
-			['a rejected Promise with AxiosError', Promise.reject(new AxiosError())],
+			['a rejected Promise with AxiosError', rejectedAxiosPromise],
 			[
 				'a QueryFailedError with SQLITE_FULL',
 				new QueryFailedError('', [], new Error('SQLITE_FULL')),

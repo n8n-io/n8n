@@ -1,4 +1,3 @@
-import { mock } from 'vitest-mock-extended';
 import type {
 	INode,
 	IWorkflowExecuteAdditionalData,
@@ -12,13 +11,10 @@ import type {
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
+	WorkflowExpression,
 } from 'n8n-workflow';
-import {
-	ApplicationError,
-	ExpressionError,
-	NodeConnectionTypes,
-	type WorkflowExpression,
-} from 'n8n-workflow';
+import { ApplicationError, ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 

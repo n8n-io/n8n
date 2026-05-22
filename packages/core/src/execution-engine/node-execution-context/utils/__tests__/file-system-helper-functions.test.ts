@@ -1,6 +1,5 @@
 import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import type { Mock } from 'vitest';
 import type { INode } from 'n8n-workflow';
 import { constants } from 'node:fs';
 import {
@@ -10,6 +9,7 @@ import {
 	open as fsOpen,
 } from 'node:fs/promises';
 import { join } from 'node:path';
+import type { Mock } from 'vitest';
 
 import {
 	BINARY_DATA_STORAGE_PATH,

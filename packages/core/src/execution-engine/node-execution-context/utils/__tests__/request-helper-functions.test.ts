@@ -2,7 +2,6 @@ import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import FormData from 'form-data';
 import type { Agent as HttpsAgent } from 'https';
-import { mock, mockDeep } from 'vitest-mock-extended';
 import type {
 	IAllExecuteFunctions,
 	IHttpRequestMethods,
@@ -16,6 +15,7 @@ import type {
 import { UserError } from 'n8n-workflow';
 import nock from 'nock';
 import type { SecureContextOptions } from 'tls';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import type { SsrfBridge } from '@/execution-engine';
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';

@@ -11,8 +11,6 @@
 // PD denotes that the node has pinned data
 
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
-import type { MockInstance } from 'vitest';
-import { mock } from 'vitest-mock-extended';
 import pick from 'lodash/pick';
 import type {
 	ExecutionBaseError,
@@ -46,6 +44,8 @@ import {
 	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import assert from 'node:assert';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import * as Helpers from '@test/helpers';
 import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from '@test/helpers/constants';
@@ -1028,6 +1028,8 @@ describe('WorkflowExecute', () => {
 			const waitPromise = createDeferredPromise<IRun>();
 			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			additionalData.hooks = mock<ExecutionLifecycleHooks>();
+			// Touch the proxy property so vi.spyOn can find it.
+			void additionalData.hooks.runHook;
 			vi.spyOn(additionalData.hooks, 'runHook');
 
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
@@ -1076,6 +1078,8 @@ describe('WorkflowExecute', () => {
 			const waitPromise = createDeferredPromise<IRun>();
 			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			additionalData.hooks = mock<ExecutionLifecycleHooks>();
+			// Touch the proxy property so vi.spyOn can find it.
+			void additionalData.hooks.runHook;
 			vi.spyOn(additionalData.hooks, 'runHook');
 
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
@@ -1597,7 +1601,7 @@ describe('WorkflowExecute', () => {
 				[undefined as unknown as INodeExecutionData],
 			];
 			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
-			expect(nodeSuccessData[0]).toEqual([undefined]);
+			expect(nodeSuccessData[0]).toEqual([]);
 			expect(nodeSuccessData[1]).toEqual([]);
 		});
 
@@ -2146,6 +2150,8 @@ describe('WorkflowExecute', () => {
 
 			workflowExecute = new WorkflowExecute(additionalData, 'manual', runExecutionData);
 
+			// Touch the proxy property so vi.spyOn can find it.
+			void additionalData.hooks.runHook;
 			vi.spyOn(additionalData.hooks, 'runHook').mockResolvedValue(undefined);
 			vi.spyOn(workflowExecute, 'moveNodeMetadata').mockImplementation(() => {});
 		});
@@ -2640,6 +2646,8 @@ describe('WorkflowExecute', () => {
 
 			workflowExecute = new WorkflowExecute(additionalData, 'manual', runExecutionData);
 
+			// Touch the proxy property so vi.spyOn can find it.
+			void mockHooks.runHook;
 			vi.spyOn(mockHooks, 'runHook').mockResolvedValue(undefined);
 		});
 

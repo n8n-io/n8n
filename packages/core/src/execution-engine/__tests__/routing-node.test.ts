@@ -1,4 +1,3 @@
-import { mock } from 'vitest-mock-extended';
 import get from 'lodash/get';
 import type {
 	DeclarativeRestApiSettings,
@@ -22,6 +21,7 @@ import type {
 } from 'n8n-workflow';
 import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
 import type { ICredentialsDecrypted } from 'n8n-workflow/src';
+import { mock } from 'vitest-mock-extended';
 
 import * as executionContexts from '@/execution-engine/node-execution-context';
 import { DirectoryLoader } from '@/nodes-loader';
@@ -2251,7 +2251,11 @@ describe('RoutingNode', () => {
 					itemIndex,
 				);
 
-				vi.spyOn(executionContexts, 'ExecuteSingleContext').mockReturnValue(executeSingleFunctions);
+				vi.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(function (
+					this: executionContexts.ExecuteSingleContext,
+				) {
+					return executeSingleFunctions as never;
+				} as never);
 
 				const numberOfItems = testData.input.specialTestOptions?.numberOfItems ?? 1;
 				if (!inputData.main[0] || inputData.main[0].length !== numberOfItems) {
@@ -2424,7 +2428,11 @@ describe('RoutingNode', () => {
 						node,
 						itemIndex + iteration,
 					);
-					vi.spyOn(executionContexts, 'ExecuteSingleContext').mockReturnValue(context);
+					vi.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(function (
+						this: executionContexts.ExecuteSingleContext,
+					) {
+						return context as never;
+					} as never);
 					currentItemIndex = context.getItemIndex();
 				}
 
@@ -2508,7 +2516,11 @@ describe('RoutingNode', () => {
 			// @ts-expect-error overwriting a method
 			executeSingleFunctions.getNodeParameter = (parameterName: string) =>
 				originalGetNodeParameter(parameterName) ?? {};
-			vi.spyOn(executionContexts, 'ExecuteSingleContext').mockReturnValue(executeSingleFunctions);
+			vi.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(function (
+				this: executionContexts.ExecuteSingleContext,
+			) {
+				return executeSingleFunctions as never;
+			} as never);
 
 			const mockCredentials = mock<ICredentialsDecrypted>({
 				id: 'cred-1',

@@ -1,3 +1,4 @@
+// eslint-disable-next-line import-x/order
 import { mock } from 'vitest-mock-extended';
 import type {
 	IconFile,
@@ -7,22 +8,22 @@ import type {
 	IVersionedNodeType,
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import fs from 'node:fs';
-import fsPromises from 'node:fs/promises';
+import * as fs from 'node:fs';
+import * as fsPromises from 'node:fs/promises';
 
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-const mockFs = mock<typeof fs>();
-const mockFsPromises = mock<typeof fsPromises>();
-fs.realpathSync = mockFs.realpathSync;
-fs.readFileSync = mockFs.readFileSync;
-fsPromises.readFile = mockFsPromises.readFile;
+vi.mock('node:fs', () => mock<typeof fs>());
+vi.mock('node:fs/promises', () => mock<typeof fsPromises>());
 
-vi.mock('fast-glob', () => async (pattern: string) => {
-	return pattern.endsWith('.node.js')
-		? ['dist/Node1/Node1.node.js', 'dist/Node2/Node2.node.js']
-		: ['dist/Credential1.js'];
-});
+const mockFs = mock(fs);
+const mockFsPromises = mock(fsPromises);
+
+vi.mock('fast-glob', () => ({
+	default: async (pattern: string) => {
+		return pattern.endsWith('.node.js')
+			? ['dist/Node1/Node1.node.js', 'dist/Node2/Node2.node.js']
+			: ['dist/Credential1.js'];
+	},
+}));
 
 import { NodeTypes } from '@test/helpers';
 
@@ -67,19 +68,19 @@ describe('DirectoryLoader', () => {
 	let mockCredential1: ICredentialType, mockNode1: INodeType, mockNode2: INodeType;
 
 	beforeEach(() => {
+		vi.clearAllMocks();
 		mockFs.realpathSync.mockImplementation((path) => String(path));
 		mockCredential1 = createCredential('credential1');
 		mockNode1 = createNode('node1', 'credential1');
 		mockNode2 = createNode('node2');
-		vi.clearAllMocks();
-	});
-
-	//@ts-expect-error overwrite a readonly property
-	classLoader.loadClassInIsolation = vi.fn((_: string, className: string) => {
-		if (className === 'Node1') return mockNode1;
-		if (className === 'Node2') return mockNode2;
-		if (className === 'Credential1') return mockCredential1;
-		throw new Error(`${className} is invalid`);
+		vi.spyOn(classLoader, 'loadClassInIsolation').mockImplementation(
+			(_: string, className: string) => {
+				if (className === 'Node1') return mockNode1;
+				if (className === 'Node2') return mockNode2;
+				if (className === 'Credential1') return mockCredential1;
+				throw new Error(`${className} is invalid`);
+			},
+		);
 	});
 
 	describe('CustomDirectoryLoader', () => {

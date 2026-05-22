@@ -1,4 +1,3 @@
-import { mock } from 'vitest-mock-extended';
 import {
 	createEmptyRunExecutionData,
 	createRunExecutionData,
@@ -10,6 +9,7 @@ import {
 	type Workflow,
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { establishExecutionContext } from '../execution-context';
 

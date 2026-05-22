@@ -1,6 +1,6 @@
-import { mock } from 'vitest-mock-extended';
 import { ExpressionError } from 'n8n-workflow';
 import type { IDataObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ExternalSecretsProxy } from '@/execution-engine/external-secrets-proxy';
 

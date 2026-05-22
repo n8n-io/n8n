@@ -1,4 +1,3 @@
-import { mock } from 'vitest-mock-extended';
 import type {
 	INode,
 	INodeTypes,
@@ -7,6 +6,7 @@ import type {
 	IWorkflowLoader,
 } from 'n8n-workflow';
 import { ApplicationError, Workflow } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { LocalLoadOptionsContext } from '../local-load-options-context';
 import { LoadWorkflowNodeContext } from '../workflow-node-context';

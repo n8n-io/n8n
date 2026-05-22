@@ -1,7 +1,5 @@
 import type { Tool } from '@langchain/core/tools';
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import type { Mock } from 'vitest';
-import { mock } from 'vitest-mock-extended';
 import type {
 	INode,
 	ITaskDataConnections,
@@ -20,11 +18,15 @@ import type {
 	CloseFunction,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import * as n8nWorkflow from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { ExecuteContext } from '../../execute-context';
 import { SupplyDataContext } from '../../supply-data-context';
 import { StructuredToolkit } from '../ai-tool-types';
+import { getSchema } from '../create-node-as-tool';
 import {
 	createHitlToolkit,
 	createHitlToolSupplyData,
@@ -37,6 +39,16 @@ vi.mock('../create-node-as-tool', async (importActual) => ({
 	...(await importActual<typeof import('../create-node-as-tool')>()),
 	getSchema: vi.fn(),
 }));
+
+// n8n-workflow is externalized (see vite.config.ts), so its CJS exports are
+// getter-only and Vite SSR wraps the namespace separately from `require`.
+// Replace the namespace's `sleepWithAbort` so both source code (via Vite SSR
+// `import`) and tests see the mock.
+const sleepWithAbort = vi.fn();
+Object.defineProperty(n8nWorkflow, 'sleepWithAbort', {
+	configurable: true,
+	get: () => sleepWithAbort,
+});
 
 describe('getInputConnectionData', () => {
 	const agentNode = mock<INode>({
@@ -878,9 +890,7 @@ describe('makeHandleToolInvocation', () => {
 		});
 
 		it('should respect waitBetweenTries limits (0-5000ms)', async () => {
-			const sleepWithAbortSpy = vi
-				.spyOn(require('n8n-workflow'), 'sleepWithAbort')
-				.mockResolvedValue(undefined);
+			const sleepWithAbortSpy = (sleepWithAbort as Mock).mockResolvedValue(undefined);
 
 			const connectedNode = mock<INode>({
 				name: 'Test Tool',
@@ -955,9 +965,9 @@ describe('makeHandleToolInvocation', () => {
 		});
 
 		it('should handle abort signal during retry wait', async () => {
-			const sleepWithAbortSpy = vi
-				.spyOn(require('n8n-workflow'), 'sleepWithAbort')
-				.mockRejectedValue(new Error('Execution was cancelled'));
+			const sleepWithAbortSpy = (sleepWithAbort as Mock).mockRejectedValue(
+				new Error('Execution was cancelled'),
+			);
 
 			const connectedNode = mock<INode>({
 				name: 'Test Tool',
@@ -1030,9 +1040,7 @@ describe('makeHandleToolInvocation', () => {
 					.mockResolvedValueOnce([[{ json: { result: 'success' } }]]),
 			});
 
-			const sleepWithAbortSpy = vi
-				.spyOn(require('n8n-workflow'), 'sleepWithAbort')
-				.mockResolvedValue(undefined);
+			const sleepWithAbortSpy = (sleepWithAbort as Mock).mockResolvedValue(undefined);
 
 			handleToolInvocation = makeHandleToolInvocation(
 				contextFactory,
@@ -1072,9 +1080,7 @@ describe('makeHandleToolInvocation', () => {
 					.mockResolvedValueOnce([[{ json: { result: 'success' } }]]),
 			});
 
-			const sleepWithAbortSpy = vi
-				.spyOn(require('n8n-workflow'), 'sleepWithAbort')
-				.mockResolvedValue(undefined);
+			const sleepWithAbortSpy = (sleepWithAbort as Mock).mockResolvedValue(undefined);
 
 			handleToolInvocation = makeHandleToolInvocation(
 				contextFactory,
@@ -1314,7 +1320,6 @@ describe('HITL Tool handling', () => {
 });
 
 describe('createHitlToolkit', () => {
-	const { getSchema } = require('../create-node-as-tool');
 	const hitlNode = mock<INode>({
 		name: 'HITL Node',
 		type: 'test.HitlTool',
@@ -1327,7 +1332,7 @@ describe('createHitlToolkit', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		getSchema.mockReturnValue(mockHitlSchema);
+		(getSchema as Mock).mockReturnValue(mockHitlSchema);
 	});
 
 	it('should return empty toolkit when input is undefined', () => {
@@ -1537,7 +1542,6 @@ describe('createHitlToolkit', () => {
 });
 
 describe('createHitlToolSupplyData', () => {
-	const { getSchema } = require('../create-node-as-tool');
 	const hitlNode = mock<INode>({
 		name: 'HITL Node',
 		type: 'test.HitlTool',
@@ -1572,7 +1576,7 @@ describe('createHitlToolSupplyData', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		getSchema.mockReturnValue(mockHitlSchema);
+		(getSchema as Mock).mockReturnValue(mockHitlSchema);
 		vi.spyOn(SupplyDataContext.prototype, 'getInputConnectionData');
 	});
 

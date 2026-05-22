@@ -9,8 +9,8 @@ import {
 	PutObjectCommand,
 	type S3Client,
 } from '@aws-sdk/client-s3';
-import { captor, mock } from 'vitest-mock-extended';
 import { PassThrough, Readable } from 'stream';
+import { captor, mock } from 'vitest-mock-extended';
 
 import type { ObjectStoreConfig } from '../object-store.config';
 import { ObjectStoreService } from '../object-store.service.ee';

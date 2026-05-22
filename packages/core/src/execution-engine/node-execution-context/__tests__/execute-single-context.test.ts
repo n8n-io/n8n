@@ -1,4 +1,3 @@
-import { mock } from 'vitest-mock-extended';
 import type {
 	INode,
 	IWorkflowExecuteAdditionalData,
@@ -12,8 +11,10 @@ import type {
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
+	WorkflowExpression,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionTypes, type WorkflowExpression } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { describeCommonTests } from './shared-tests';
 import { ExecuteSingleContext } from '../execute-single-context';

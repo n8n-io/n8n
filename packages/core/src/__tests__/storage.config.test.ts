@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { existsSync, renameSync } from 'node:fs';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { existsSync, renameSync } from 'node:fs';
 
 import { InstanceSettings } from '@/instance-settings';
 import { mockInstance } from '@test/utils';

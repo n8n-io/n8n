@@ -1,6 +1,6 @@
+import type { CronContext, Workflow } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import type { CronContext, Workflow } from 'n8n-workflow';
 
 import { mockInstance } from '@test/utils';
 

@@ -1,5 +1,4 @@
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import type {
 	INode,
 	INodeType,
@@ -12,6 +11,7 @@ import type {
 	WorkflowExpression,
 } from 'n8n-workflow';
 import { CHAT_TRIGGER_NODE_TYPE, createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { InstanceSettings } from '@/instance-settings';
 

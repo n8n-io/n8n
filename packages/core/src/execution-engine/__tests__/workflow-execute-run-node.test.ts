@@ -6,6 +6,14 @@
  * via test coverage reports and mutation testing.
  */
 
+// Vitest mocks invoked via `new` reject arrow functions ("is not a constructor").
+// Wrap arrow implementations so the mock returns the same instance the test built.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ctor = <T extends object, A extends any[]>(impl: (...args: A) => T) =>
+	function (this: T, ...args: A) {
+		return impl(...args);
+	};
+
 // Mock all external dependencies first, before any imports
 vi.mock('@n8n/config', async (importActual) => ({
 	...(await importActual<typeof import('@n8n/config')>()),
@@ -33,10 +41,10 @@ vi.mock('../node-execution-context', async (importActual) => {
 	const actual = await importActual<typeof import('../node-execution-context')>();
 	return {
 		...actual,
-		ExecuteContext: vi.fn().mockImplementation(() => ({
-			hints: [],
-		})),
-		PollContext: vi.fn().mockImplementation(() => ({})),
+		ExecuteContext: vi.fn().mockImplementation(function (this: { hints: unknown[] }) {
+			this.hints = [];
+		}),
+		PollContext: vi.fn().mockImplementation(function () {}),
 	};
 });
 
@@ -45,9 +53,9 @@ vi.mock('../triggers-and-pollers', () => ({
 }));
 
 vi.mock('../routing-node', () => ({
-	RoutingNode: vi.fn().mockImplementation(() => ({
-		runNode: vi.fn().mockResolvedValue([[{ json: { routed: 'result' } }]]),
-	})),
+	RoutingNode: vi.fn().mockImplementation(function (this: { runNode: Mock }) {
+		this.runNode = vi.fn().mockResolvedValue([[{ json: { routed: 'result' } }]]);
+	}),
 }));
 
 vi.mock('@/node-execute-functions', () => ({
@@ -61,8 +69,6 @@ vi.mock('../../utils/convert-binary-data.ts', () => ({
 // Now import the real classes
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import type { Mock, Mocked, MockedClass } from 'vitest';
-import { mock } from 'vitest-mock-extended';
 import type {
 	ExecutionBaseError,
 	IExecuteData,
@@ -74,6 +80,8 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, Node, createRunExecutionData } from 'n8n-workflow';
+import type { Mock, Mocked, MockedClass } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { ExecuteContext, PollContext } from '../node-execution-context';
 import { RoutingNode } from '../routing-node';
@@ -373,7 +381,9 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			};
 
 			const mockContextInstance = { hints: [] };
-			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
+			mockExecuteContext.mockImplementation(function () {
+				return mockContextInstance as unknown as ExecuteContext;
+			});
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -396,7 +406,9 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			const mockContextInstance = {
 				hints: mockHints,
 			};
-			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
+			mockExecuteContext.mockImplementation(function () {
+				return mockContextInstance as unknown as ExecuteContext;
+			});
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -432,7 +444,9 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 			const mockContextInstance = { hints: [] };
 			const mockSubNodeExecutionResults = undefined;
-			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
+			mockExecuteContext.mockImplementation(function () {
+				return mockContextInstance as unknown as ExecuteContext;
+			});
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -484,22 +498,24 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 			// Mock ExecuteContext constructor to capture closeFunctions array
 			mockExecuteContext.mockImplementation(
-				(
-					_workflow,
-					_node,
-					_additionalData,
-					_mode,
-					_runExecutionData,
-					_runIndex,
-					_connectionInputData,
-					_inputData,
-					_executionData,
-					closeFunctions,
-				) => {
-					// Add close functions to the array passed in
-					closeFunctions.push(closeFunction1, closeFunction2);
-					return mockContextInstance as unknown as ExecuteContext;
-				},
+				ctor(
+					(
+						_workflow,
+						_node,
+						_additionalData,
+						_mode,
+						_runExecutionData,
+						_runIndex,
+						_connectionInputData,
+						_inputData,
+						_executionData,
+						closeFunctions,
+					) => {
+						// Add close functions to the array passed in
+						closeFunctions.push(closeFunction1, closeFunction2);
+						return mockContextInstance as unknown as ExecuteContext;
+					},
+				),
 			);
 
 			await expect(
@@ -530,22 +546,24 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 			// Mock ExecuteContext constructor to capture closeFunctions array
 			mockExecuteContext.mockImplementation(
-				(
-					_workflow,
-					_node,
-					_additionalData,
-					_mode,
-					_runExecutionData,
-					_runIndex,
-					_connectionInputData,
-					_inputData,
-					_executionData,
-					closeFunctions,
-				) => {
-					// Add close functions to the array passed in
-					closeFunctions.push(closeFunction1, closeFunction2);
-					return mockContextInstance as unknown as ExecuteContext;
-				},
+				ctor(
+					(
+						_workflow,
+						_node,
+						_additionalData,
+						_mode,
+						_runExecutionData,
+						_runIndex,
+						_connectionInputData,
+						_inputData,
+						_executionData,
+						closeFunctions,
+					) => {
+						// Add close functions to the array passed in
+						closeFunctions.push(closeFunction1, closeFunction2);
+						return mockContextInstance as unknown as ExecuteContext;
+					},
+				),
 			);
 
 			await expect(
@@ -575,21 +593,23 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			};
 
 			mockExecuteContext.mockImplementation(
-				(
-					_workflow,
-					_node,
-					_additionalData,
-					_mode,
-					_runExecutionData,
-					_runIndex,
-					_connectionInputData,
-					_inputData,
-					_executionData,
-					closeFunctions,
-				) => {
-					closeFunctions.push(closeFunction1, closeFunction2);
-					return mockContextInstance as unknown as ExecuteContext;
-				},
+				ctor(
+					(
+						_workflow,
+						_node,
+						_additionalData,
+						_mode,
+						_runExecutionData,
+						_runIndex,
+						_connectionInputData,
+						_inputData,
+						_executionData,
+						closeFunctions,
+					) => {
+						closeFunctions.push(closeFunction1, closeFunction2);
+						return mockContextInstance as unknown as ExecuteContext;
+					},
+				),
 			);
 
 			const result = await workflowExecute.runNode(
@@ -617,21 +637,23 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			};
 
 			mockExecuteContext.mockImplementation(
-				(
-					_workflow,
-					_node,
-					_additionalData,
-					_mode,
-					_runExecutionData,
-					_runIndex,
-					_connectionInputData,
-					_inputData,
-					_executionData,
-					closeFunctions,
-				) => {
-					closeFunctions.push(closeFunction1, closeFunction2);
-					return mockContextInstance as unknown as ExecuteContext;
-				},
+				ctor(
+					(
+						_workflow,
+						_node,
+						_additionalData,
+						_mode,
+						_runExecutionData,
+						_runIndex,
+						_connectionInputData,
+						_inputData,
+						_executionData,
+						closeFunctions,
+					) => {
+						closeFunctions.push(closeFunction1, closeFunction2);
+						return mockContextInstance as unknown as ExecuteContext;
+					},
+				),
 			);
 
 			await expect(
@@ -662,21 +684,23 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			};
 
 			mockExecuteContext.mockImplementation(
-				(
-					_workflow,
-					_node,
-					_additionalData,
-					_mode,
-					_runExecutionData,
-					_runIndex,
-					_connectionInputData,
-					_inputData,
-					_executionData,
-					closeFunctions,
-				) => {
-					closeFunctions.push(closeFunction1, closeFunction2, closeFunction3);
-					return mockContextInstance as unknown as ExecuteContext;
-				},
+				ctor(
+					(
+						_workflow,
+						_node,
+						_additionalData,
+						_mode,
+						_runExecutionData,
+						_runIndex,
+						_connectionInputData,
+						_inputData,
+						_executionData,
+						closeFunctions,
+					) => {
+						closeFunctions.push(closeFunction1, closeFunction2, closeFunction3);
+						return mockContextInstance as unknown as ExecuteContext;
+					},
+				),
 			);
 
 			await expect(
@@ -706,21 +730,23 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			};
 
 			mockExecuteContext.mockImplementation(
-				(
-					_workflow,
-					_node,
-					_additionalData,
-					_mode,
-					_runExecutionData,
-					_runIndex,
-					_connectionInputData,
-					_inputData,
-					_executionData,
-					closeFunctions,
-				) => {
-					closeFunctions.push(closeFunction1);
-					return mockContextInstance as unknown as ExecuteContext;
-				},
+				ctor(
+					(
+						_workflow,
+						_node,
+						_additionalData,
+						_mode,
+						_runExecutionData,
+						_runIndex,
+						_connectionInputData,
+						_inputData,
+						_executionData,
+						closeFunctions,
+					) => {
+						closeFunctions.push(closeFunction1);
+						return mockContextInstance as unknown as ExecuteContext;
+					},
+				),
 			);
 
 			await expect(
@@ -770,21 +796,23 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 			const mockContextInstance = { hints: [] };
 			mockExecuteContext.mockImplementation(
-				(
-					_workflow,
-					_node,
-					_additionalData,
-					_mode,
-					_runExecutionData,
-					_runIndex,
-					_connectionInputData,
-					_inputData,
-					_executionData,
-					closeFunctions,
-				) => {
-					closeFunctions.push(closeFunction1, closeFunction2);
-					return mockContextInstance as unknown as ExecuteContext;
-				},
+				ctor(
+					(
+						_workflow,
+						_node,
+						_additionalData,
+						_mode,
+						_runExecutionData,
+						_runIndex,
+						_connectionInputData,
+						_inputData,
+						_executionData,
+						closeFunctions,
+					) => {
+						closeFunctions.push(closeFunction1, closeFunction2);
+						return mockContextInstance as unknown as ExecuteContext;
+					},
+				),
 			);
 
 			const result = await workflowExecute.runNode(
@@ -812,21 +840,23 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			};
 
 			mockExecuteContext.mockImplementation(
-				(
-					_workflow,
-					_node,
-					_additionalData,
-					_mode,
-					_runExecutionData,
-					_runIndex,
-					_connectionInputData,
-					_inputData,
-					_executionData,
-					closeFunctions,
-				) => {
-					closeFunctions.push(closeFunction1);
-					return mockContextInstance as unknown as ExecuteContext;
-				},
+				ctor(
+					(
+						_workflow,
+						_node,
+						_additionalData,
+						_mode,
+						_runExecutionData,
+						_runIndex,
+						_connectionInputData,
+						_inputData,
+						_executionData,
+						closeFunctions,
+					) => {
+						closeFunctions.push(closeFunction1);
+						return mockContextInstance as unknown as ExecuteContext;
+					},
+				),
 			);
 
 			await expect(
@@ -851,7 +881,9 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			mockNodeType.execute = undefined;
 
 			const mockContextInstance = {};
-			mockPollContext.mockImplementation(() => mockContextInstance as unknown as PollContext);
+			mockPollContext.mockImplementation(function () {
+				return mockContextInstance as unknown as PollContext;
+			});
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -1105,10 +1137,14 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			const mockRoutingNodeInstance = {
 				runNode: vi.fn().mockResolvedValue(mockData),
 			};
-			mockRoutingNode.mockImplementation(() => mockRoutingNodeInstance as unknown as RoutingNode);
+			mockRoutingNode.mockImplementation(function () {
+				return mockRoutingNodeInstance as unknown as RoutingNode;
+			});
 
 			const mockContextInstance = {};
-			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
+			mockExecuteContext.mockImplementation(function () {
+				return mockContextInstance as unknown as ExecuteContext;
+			});
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -1138,10 +1174,14 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			const mockRoutingNodeInstance = {
 				runNode: vi.fn().mockResolvedValue(mockData),
 			};
-			mockRoutingNode.mockImplementation(() => mockRoutingNodeInstance as unknown as RoutingNode);
+			mockRoutingNode.mockImplementation(function () {
+				return mockRoutingNodeInstance as unknown as RoutingNode;
+			});
 
 			const mockContextInstance = {};
-			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
+			mockExecuteContext.mockImplementation(function () {
+				return mockContextInstance as unknown as ExecuteContext;
+			});
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -1203,22 +1243,24 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 			const mockContextInstance = { hints: [] };
 			mockExecuteContext.mockImplementation(
-				(
-					_workflow,
-					_node,
-					_additionalData,
-					_mode,
-					_runExecutionData,
-					_runIndex,
-					_connectionInputData,
-					inputData,
-					_executionData,
-					_closeFunctions,
-				) => {
-					// Capture the inputData that was passed to ExecuteContext
-					capturedInputData = inputData;
-					return mockContextInstance as unknown as ExecuteContext;
-				},
+				ctor(
+					(
+						_workflow,
+						_node,
+						_additionalData,
+						_mode,
+						_runExecutionData,
+						_runIndex,
+						_connectionInputData,
+						inputData,
+						_executionData,
+						_closeFunctions,
+					) => {
+						// Capture the inputData that was passed to ExecuteContext
+						capturedInputData = inputData;
+						return mockContextInstance as unknown as ExecuteContext;
+					},
+				),
 			);
 
 			await workflowExecute.runNode(
@@ -1263,7 +1305,9 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			mockNodeType.execute = vi.fn().mockResolvedValue([[{ json: { result: 'test' } }]]);
 
 			const mockContextInstance = { hints: [] };
-			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
+			mockExecuteContext.mockImplementation(function () {
+				return mockContextInstance as unknown as ExecuteContext;
+			});
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -1321,7 +1365,9 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 			mockNodeType.execute = vi.fn().mockResolvedValue([[{ json: {} }]]);
 			const mockContextInstance = { hints: [] };
-			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
+			mockExecuteContext.mockImplementation(function () {
+				return mockContextInstance as unknown as ExecuteContext;
+			});
 		});
 
 		const makeTelemetryExecutionData = (overrides: Partial<IExecuteData> = {}): IExecuteData => ({

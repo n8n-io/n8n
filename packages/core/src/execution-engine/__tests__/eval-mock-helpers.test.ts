@@ -1,6 +1,6 @@
-import { mock } from 'vitest-mock-extended';
 import type { IHttpRequestOptions, INode, INodeProperties, IRequestOptions } from 'n8n-workflow';
 import { Readable } from 'node:stream';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	buildEvalMockCredentials,

@@ -1,17 +1,25 @@
+import type { INodeType, ISupplyDataFunctions, INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import type { INodeType, ISupplyDataFunctions, INode } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { createNodeAsTool } from '../create-node-as-tool';
 
 vi.mock('@langchain/core/tools', () => ({
-	DynamicStructuredTool: vi.fn().mockImplementation((config) => ({
-		name: config.name,
-		description: config.description,
-		schema: config.schema,
-		func: config.func,
-	})),
+	DynamicStructuredTool: vi.fn().mockImplementation(function (
+		this: {
+			name: string;
+			description: string;
+			schema: unknown;
+			func: unknown;
+		},
+		config: { name: string; description: string; schema: unknown; func: unknown },
+	) {
+		this.name = config.name;
+		this.description = config.description;
+		this.schema = config.schema;
+		this.func = config.func;
+	}),
 }));
 
 describe('createNodeAsTool', () => {

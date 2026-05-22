@@ -1,10 +1,12 @@
-import { mockDeep } from 'vitest-mock-extended';
 import type { IAllExecuteFunctions, INode, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
-const mockGetToken = vi.fn();
-const mockSign = vi.fn();
-const mockCreateToken = vi.fn();
-const MockClientOAuth2 = vi.fn();
+const { mockGetToken, mockSign, mockCreateToken, MockClientOAuth2 } = vi.hoisted(() => ({
+	mockGetToken: vi.fn(),
+	mockSign: vi.fn(),
+	mockCreateToken: vi.fn(),
+	MockClientOAuth2: vi.fn(),
+}));
 
 vi.mock('@n8n/client-oauth2', () => ({
 	ClientOAuth2: MockClientOAuth2,
@@ -38,10 +40,13 @@ describe('createOAuth2Client - scope handling', () => {
 		}));
 		mockCreateToken.mockReturnValue({ sign: mockSign, accessToken: 'mock-token' });
 
-		MockClientOAuth2.mockImplementation(() => ({
-			credentials: { getToken: mockGetToken },
-			createToken: mockCreateToken,
-		}));
+		MockClientOAuth2.mockImplementation(function (this: {
+			credentials: { getToken: typeof mockGetToken };
+			createToken: typeof mockCreateToken;
+		}) {
+			this.credentials = { getToken: mockGetToken };
+			this.createToken = mockCreateToken;
+		});
 
 		mockThis.helpers.httpRequest.mockResolvedValue({ success: true });
 	});

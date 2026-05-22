@@ -1,4 +1,3 @@
-import { mock } from 'vitest-mock-extended';
 import type {
 	WebhookType,
 	Workflow,
@@ -9,6 +8,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowExpression,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { getWebhookDescription, getNodeWebhookUrl } from '../webhook-helper-functions';
 

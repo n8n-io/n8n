@@ -1,6 +1,6 @@
-import { mock } from 'vitest-mock-extended';
 import fs from 'node:fs/promises';
 import { Readable } from 'node:stream';
+import { mock } from 'vitest-mock-extended';
 
 import { ObjectStoreService } from '@/binary-data/object-store/object-store.service.ee';
 import type { MetadataResponseHeaders } from '@/binary-data/object-store/types';

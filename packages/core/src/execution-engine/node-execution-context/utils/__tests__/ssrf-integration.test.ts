@@ -1,7 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
 import { SsrfProtectionConfig } from '@n8n/config';
-import type { Mocked } from 'vitest';
-import { mock } from 'vitest-mock-extended';
 import type {
 	INode,
 	IWorkflowExecuteAdditionalData,
@@ -11,6 +9,8 @@ import type {
 import { UserError } from 'n8n-workflow';
 import nock from 'nock';
 import type { LookupAddress, LookupOptions } from 'node:dns';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { SsrfBridge } from '@/execution-engine';
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
@@ -27,10 +27,9 @@ type SsrfProtectionServiceCtor = new (
 	logger: Logger,
 ) => SsrfBridge;
 
-const { SsrfProtectionService } =
-	require('../../../../../../cli/src/services/ssrf/ssrf-protection.service') as {
-		SsrfProtectionService: SsrfProtectionServiceCtor;
-	};
+// Lazy import via `await` inside `beforeAll` since require() can't resolve cross-package TS.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let SsrfProtectionService: SsrfProtectionServiceCtor = null as any;
 
 function createConfig(overrides: Partial<SsrfProtectionConfig> = {}): SsrfProtectionConfig {
 	const config = new SsrfProtectionConfig();
@@ -72,6 +71,13 @@ function createRequestHelpers(ssrfBridge?: SsrfBridge) {
 }
 
 describe('SSRF end-to-end integration', () => {
+	beforeAll(async () => {
+		const mod = (await import(
+			'../../../../../../cli/src/services/ssrf/ssrf-protection.service'
+		)) as unknown as { SsrfProtectionService: SsrfProtectionServiceCtor };
+		SsrfProtectionService = mod.SsrfProtectionService;
+	});
+
 	afterEach(() => {
 		nock.cleanAll();
 		vi.clearAllMocks();

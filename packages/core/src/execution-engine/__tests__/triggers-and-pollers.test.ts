@@ -1,5 +1,4 @@
 import { ApplicationError } from '@n8n/errors';
-import { mock } from 'vitest-mock-extended';
 import type {
 	Workflow,
 	INode,
@@ -11,6 +10,7 @@ import type {
 	ITriggerFunctions,
 	IRun,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ExecutionLifecycleHooks } from '../execution-lifecycle-hooks';
 import { TriggersAndPollers } from '../triggers-and-pollers';

@@ -1,4 +1,3 @@
-import { mock } from 'vitest-mock-extended';
 import type {
 	INode,
 	IWorkflowExecuteAdditionalData,
@@ -22,6 +21,7 @@ import {
 	ManualExecutionCancelledError,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { describeCommonTests } from './shared-tests';
 import { SupplyDataContext } from '../supply-data-context';

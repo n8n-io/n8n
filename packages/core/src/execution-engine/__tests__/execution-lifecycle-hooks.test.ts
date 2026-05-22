@@ -1,4 +1,3 @@
-import { mock } from 'vitest-mock-extended';
 import type {
 	IDataObject,
 	IExecuteResponsePromiseData,
@@ -10,6 +9,7 @@ import type {
 	IWorkflowBase,
 	Workflow,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type {
 	ExecutionLifecycleHookName,

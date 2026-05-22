@@ -1,7 +1,7 @@
 import type { StartSpanOptions } from '@sentry/core';
+import type { INode, Workflow } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import type { INode, Workflow } from 'n8n-workflow';
 
 import { EmptySpan, NoopTracing } from '../noop-tracing';
 import { type Span, Tracing, type Tracer } from '../tracing';

@@ -1,5 +1,5 @@
-import { mock } from 'vitest-mock-extended';
 import type { SSHCredentials } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { mockInstance } from '@test/utils';
 

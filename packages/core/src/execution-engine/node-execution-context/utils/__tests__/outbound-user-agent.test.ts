@@ -1,10 +1,7 @@
-import type * as configModule from '@n8n/config';
 import { HttpRequestConfig } from '@n8n/config';
-import type * as diModule from '@n8n/di';
 import { Container } from '@n8n/di';
 import * as nodePathActual from 'node:path';
 
-import type * as outboundUserAgentModule from '../outbound-user-agent';
 import { buildRfcStyleUserAgent, getDefaultN8nOutboundUserAgent } from '../outbound-user-agent';
 
 describe('outbound-user-agent', () => {
@@ -62,19 +59,17 @@ describe('outbound-user-agent', () => {
 			expect(getDefaultN8nOutboundUserAgent()).toBe('AcmeCorp/1.0');
 		});
 
-		it('falls back to version "0.0.0" when the package.json cannot be resolved', () => {
+		it('falls back to version "0.0.0" when the package.json cannot be resolved', async () => {
 			vi.resetModules();
 			vi.doMock('node:path', () => ({
 				...nodePathActual,
+				default: { ...nodePathActual, join: () => '/definitely/not/a/real/path/package.json' },
 				join: () => '/definitely/not/a/real/path/package.json',
 			}));
 
-			// eslint-disable-next-line @typescript-eslint/no-require-imports
-			const di = require('@n8n/di') as typeof diModule;
-			// eslint-disable-next-line @typescript-eslint/no-require-imports
-			const config = require('@n8n/config') as typeof configModule;
-			// eslint-disable-next-line @typescript-eslint/no-require-imports
-			const mod = require('../outbound-user-agent') as typeof outboundUserAgentModule;
+			const di = await import('@n8n/di');
+			const config = await import('@n8n/config');
+			const mod = await import('../outbound-user-agent');
 
 			di.Container.set(config.HttpRequestConfig, {
 				enforceGlobalUserAgent: true,
