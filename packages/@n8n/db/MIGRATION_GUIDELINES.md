@@ -86,6 +86,8 @@ Rules that apply to every migration — schema or data, common or DB-specific. R
 
 ### Creating Migrations
 
+> **Temporary timestamp workaround:** This repository currently has future-dated migrations, with the head at `1784000000008` (`2026-07-14T03:33:20.008Z`). Until real time passes that timestamp, a migration created with `Date.now()` would sort before the deployed head and can run out of order on databases that already applied later migrations. Use the generator during this window — it picks `max + 1` when needed. See [PR #30511](https://github.com/n8n-io/n8n/pull/30511) for context.
+
 Migration files are named `{TIMESTAMP}-{DescriptiveName}.ts`. The timestamp
 must be strictly greater than every existing migration timestamp in this
 package (across `common/`, `postgresdb/`, and `sqlite/`). TypeORM runs
@@ -108,6 +110,28 @@ greater than the current head, otherwise `max + 1`.
 The `migration-timestamp` rule in `@n8n/code-health` enforces both
 invariants (strict ordering and no far-future fabrication) at lint time;
 the generator is the easy path, the rule is the safety net.
+
+
+### Applying and Reverting Migrations
+
+Pending migrations are applied during normal n8n startup. In a local checkout,
+run `pnpm start` with the target code version to apply them manually.
+
+To revert the most recently applied reversible migration, use the CLI command:
+
+```sh
+n8n db:revert
+```
+
+In a local checkout, run the same command through the package script:
+
+```sh
+pnpm start -- db:revert
+```
+
+Do **not** revert migrations by editing the migrations table or running
+hand-written SQL. `db:revert` runs the migration's `down()` method and
+preserves TypeORM's migration bookkeeping.
 
 
 ### Follow good code hygiene
