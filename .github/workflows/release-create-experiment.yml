@@ -1,62 +1,82 @@
 name: 'Release: Create Experiment PR'
-run-name: 'Release: Create Experiment Release PR for track ${{ inputs.track }}'
+run-name: 'Release: Create Experiment Release PR'
 
 on:
-  workflow_call:
-    inputs:
-      base-branch:
-        description: 'The branch, tag, or commit to create this release PR from.'
-        required: true
-        type: string
-      track:
-        description: 'Release Track'
-        required: true
-        type: string
-
   workflow_dispatch:
     inputs:
-      base-branch:
-        description: 'The branch, tag, or commit to create this release PR from.'
+      commits:
+        description: 'Space-separated list of commit SHAs to cherry-pick onto the new experimental branch.'
         required: true
         type: string
-      track:
-        description: 'Release Track'
-        required: true
-        type: choice
-        options: [stable, beta, v1]
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
-  determine-version-info:
-    name: Determine publishing track
+  prepare-experiment-branch:
+    name: Prepare experiment branch
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
-      release_candidate_branch: ${{ steps.determine-branch.outputs.release_candidate_branch }}
-      should_update: ${{ steps.determine-branch.outputs.should_update }}
+      experiment-branch: ${{ steps.cherry-pick.outputs.experiment-branch }}
     steps:
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          token: ${{ steps.generate_token.outputs.token }}
 
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
-          cache-dependency-path: .github/scripts/pnpm-lock.yaml
-
-      - name: Determine release candidate branch from track
-        id: determine-branch
+      - name: Branch off stable, cherry-pick, and push
+        id: cherry-pick
         env:
-          TRACK: ${{ inputs.track }}
-        run: node .github/scripts/determine-release-candidate-branch-for-track.mjs
+          COMMITS: ${{ inputs.commits }}
+        run: |
+          set -euo pipefail
+
+          # The `stable` ref is a moving git tag pointing at the latest stable release commit.
+          STABLE_COMMIT="$(git rev-parse 'stable^{}')"
+          STABLE_TAG="$(git tag --points-at "$STABLE_COMMIT" | grep '^n8n@' | sort -V | tail -n1)"
+
+          if [ -z "$STABLE_TAG" ]; then
+            echo "Could not resolve stable n8n@... tag at commit $STABLE_COMMIT" >&2
+            exit 1
+          fi
+
+          STABLE_VERSION="${STABLE_TAG#n8n@}"
+          EXP_BRANCH="exp/${STABLE_VERSION}-${GITHUB_RUN_ID}"
+
+          echo "Stable tag: $STABLE_TAG"
+          echo "Experiment branch: $EXP_BRANCH"
+
+          git config user.email "n8n-assistant-bot@users.noreply.github.com"
+          git config user.name "n8n-assistant"
+
+          git switch --detach "$STABLE_TAG"
+          git switch --create "$EXP_BRANCH"
+
+          for sha in $COMMITS; do
+            echo "::group::Cherry-picking $sha"
+            git cherry-pick -X theirs "$sha"
+            echo "::endgroup::"
+          done
+
+          git push origin "$EXP_BRANCH"
+
+          echo "experiment-branch=$EXP_BRANCH" >> "$GITHUB_OUTPUT"
 
   create-release-pr:
     name: Create release PR
-    needs: [determine-version-info]
+    needs: [prepare-experiment-branch]
     uses: ./.github/workflows/release-create-pr.yml
     secrets: inherit
     with:
-      base-branch: ${{ needs.determine-version-info.outputs.release_candidate_branch }}
+      base-branch: ${{ needs.prepare-experiment-branch.outputs.experiment-branch }}
       release-type: experimental
-
