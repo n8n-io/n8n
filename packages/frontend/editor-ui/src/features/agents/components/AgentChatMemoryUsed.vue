@@ -3,7 +3,6 @@ import { computed } from 'vue';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { HoverCardContent, HoverCardPortal, HoverCardRoot, HoverCardTrigger } from 'reka-ui';
 import { N8nIcon, N8nText } from '@n8n/design-system';
-import AgentChipButton from './AgentChipButton.vue';
 
 export interface DisplayMemory {
 	id: string;
@@ -17,8 +16,6 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
-const memoriesUsedLabelKey = 'agents.builder.quickActions.memoriesUsed' as BaseTextKey;
-const memoriesUsedHeaderKey = 'agents.builder.quickActions.memoriesUsed.header' as BaseTextKey;
 const keyMemoryLabelKey = 'agents.builder.quickActions.memoriesUsed.keyMemory' as BaseTextKey;
 
 const memories = computed(() => props.memories);
@@ -38,7 +35,7 @@ function splitKeyMemory(text: string): string[] {
 		</HoverCardTrigger>
 		<HoverCardPortal>
 			<HoverCardContent
-				side="top"
+				side="bottom"
 				align="start"
 				:side-offset="8"
 				:class="[$style.popoverContent, $style.panel]"
