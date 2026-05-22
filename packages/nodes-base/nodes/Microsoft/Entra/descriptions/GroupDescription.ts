@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { ignoreHttpStatusErrorsConfig } from './common';
 import { handleErrorPostReceive, microsoftApiRequest } from '../GenericFunctions';
 
 export const groupOperations: INodeProperties[] = [
@@ -29,7 +30,7 @@ export const groupOperations: INodeProperties[] = [
 				description: 'Create a group',
 				routing: {
 					request: {
-						ignoreHttpStatusErrors: true,
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 						method: 'POST',
 						url: '/groups',
 					},
@@ -45,7 +46,7 @@ export const groupOperations: INodeProperties[] = [
 				description: 'Delete a group',
 				routing: {
 					request: {
-						ignoreHttpStatusErrors: true,
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 						method: 'DELETE',
 						url: '=/groups/{{ $parameter["group"] }}',
 					},
@@ -69,7 +70,7 @@ export const groupOperations: INodeProperties[] = [
 				description: 'Retrieve data for a specific group',
 				routing: {
 					request: {
-						ignoreHttpStatusErrors: true,
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 						method: 'GET',
 						url: '=/groups/{{ $parameter["group"] }}',
 					},
@@ -85,7 +86,7 @@ export const groupOperations: INodeProperties[] = [
 				description: 'Retrieve a list of groups',
 				routing: {
 					request: {
-						ignoreHttpStatusErrors: true,
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 						method: 'GET',
 						url: '/groups',
 					},
@@ -109,7 +110,7 @@ export const groupOperations: INodeProperties[] = [
 				description: 'Update a group',
 				routing: {
 					request: {
-						ignoreHttpStatusErrors: true,
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 						method: 'PATCH',
 						url: '=/groups/{{ $parameter["group"] }}',
 					},
