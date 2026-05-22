@@ -65,13 +65,13 @@ describe('EmbeddingsOracleDB listModels', () => {
 			rows: [['MODEL_A']],
 		});
 
-		const result = await searchModels.call(context, String.raw`model_%\a`);
+		const result = await searchModels.call(context, 'model_%\\a');
 
 		const [sql, binds] = connection.execute.mock.calls[0] as [string, Record<string, string>];
 		expect(normalizeSql(sql)).toBe(
 			'SELECT model_name FROM user_mining_models WHERE INSTR(UPPER(model_name), :modelNameFilter) > 0 ORDER BY model_name',
 		);
-		expect(binds).toEqual({ modelNameFilter: String.raw`MODEL_%\A` });
+		expect(binds).toEqual({ modelNameFilter: 'MODEL_%\\A' });
 		expect(connection.close).toHaveBeenCalledTimes(1);
 		expect(result).toEqual({
 			results: [{ name: 'MODEL_A', value: 'MODEL_A' }],
