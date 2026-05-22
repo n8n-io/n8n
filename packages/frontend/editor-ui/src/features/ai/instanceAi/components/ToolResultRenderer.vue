@@ -24,6 +24,28 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function normalizeImageContentItem(item: Record<string, unknown>): McpContentItem | null {
+	if (typeof item.data !== 'string') return null;
+
+	switch (item.type) {
+		case 'image':
+			return typeof item.mimeType === 'string'
+				? { type: 'image', data: item.data, mimeType: item.mimeType }
+				: null;
+		case 'image-data':
+			return typeof item.mediaType === 'string'
+				? { type: 'image', data: item.data, mimeType: item.mediaType }
+				: null;
+		case 'media':
+		case 'file-data':
+			return typeof item.mediaType === 'string' && item.mediaType.startsWith('image/')
+				? { type: 'image', data: item.data, mimeType: item.mediaType }
+				: null;
+		default:
+			return null;
+	}
+}
+
 function normalizeContentItem(item: unknown): McpContentItem | null {
 	if (!isRecord(item) || typeof item.type !== 'string') return null;
 
@@ -31,28 +53,7 @@ function normalizeContentItem(item: unknown): McpContentItem | null {
 		return { type: 'text', text: item.text };
 	}
 
-	if (item.type === 'image' && typeof item.data === 'string' && typeof item.mimeType === 'string') {
-		return { type: 'image', data: item.data, mimeType: item.mimeType };
-	}
-
-	if (
-		item.type === 'image-data' &&
-		typeof item.data === 'string' &&
-		typeof item.mediaType === 'string'
-	) {
-		return { type: 'image', data: item.data, mimeType: item.mediaType };
-	}
-
-	if (
-		(item.type === 'media' || item.type === 'file-data') &&
-		typeof item.data === 'string' &&
-		typeof item.mediaType === 'string' &&
-		item.mediaType.startsWith('image/')
-	) {
-		return { type: 'image', data: item.data, mimeType: item.mediaType };
-	}
-
-	return null;
+	return normalizeImageContentItem(item);
 }
 
 function normalizeContentItems(items: unknown[]): McpContentItem[] | null {
