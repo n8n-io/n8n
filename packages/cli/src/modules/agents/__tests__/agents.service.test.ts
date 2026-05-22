@@ -12,6 +12,7 @@ import { mock } from 'jest-mock-extended';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Telemetry } from '@/telemetry';
 
+import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -864,6 +865,58 @@ describe('AgentsService', () => {
 			});
 
 			expect(chunks.every((c) => c.type !== 'text-delta')).toBe(true);
+	describe('executeForWorkflow', () => {
+		it('passes execution-scoped persistence for workflow executions', async () => {
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				memory: {
+					enabled: true,
+					storage: 'n8n',
+					episodicMemory: {
+						enabled: true,
+						credential: 'cred-1',
+					},
+				},
+			};
+			const agent = makeAgent({
+				schema,
+				publishedVersion: makePublishedVersion({ schema, publishedById: userId }),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			Container.set(CredentialsService, mock<CredentialsService>());
+
+			const releaseLock = jest.fn();
+			const stream = jest.fn().mockResolvedValue({
+				stream: {
+					getReader: () => ({
+						read: jest.fn().mockResolvedValue({ done: true, value: undefined }),
+						releaseLock,
+					}),
+				},
+			});
+			jest.spyOn(service as never, 'compileIsolated').mockResolvedValue({
+				ok: true,
+				agent: { name: 'Test Agent', stream },
+			} as never);
+
+			await service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				userId,
+				projectId,
+			);
+
+			expect(stream).toHaveBeenCalledWith(
+				'hello',
+				expect.objectContaining({
+					persistence: { resourceId: 'execution-1', threadId: 'thread-1' },
+				}),
+			);
+			expect(releaseLock).toHaveBeenCalled();
 		});
 	});
 
@@ -1109,7 +1162,7 @@ describe('AgentsService', () => {
 			await service.getTestChatMessages(agentId, userId);
 
 			expect(memoryBackend.getMessages).toHaveBeenCalledWith(chatThreadId(agentId, userId), {
-				resourceId: userId,
+				resourceId: `draft-chat:${userId}`,
 			});
 		});
 
@@ -1124,14 +1177,11 @@ describe('AgentsService', () => {
 	});
 
 	describe('clearTestChatMessages', () => {
-		it('deletes only the caller’s messages on their test-chat thread', async () => {
+		it('deletes the caller’s test-chat thread so derived memory is cleaned too', async () => {
 			await service.clearTestChatMessages(agentId, userId);
 
-			expect(memoryBackend.deleteMessagesByThread).toHaveBeenCalledWith(
-				chatThreadId(agentId, userId),
-				userId,
-			);
-			expect(memoryBackend.deleteThread).not.toHaveBeenCalled();
+			expect(memoryBackend.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId, userId));
+			expect(memoryBackend.deleteMessagesByThread).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1243,6 +1293,66 @@ describe('AgentsService', () => {
 			);
 
 			expect(result.missing).toContain('credential');
+		});
+
+		it('flags missing episodic memory credential when Episodic Memory is enabled', async () => {
+			credentialProvider.list.mockResolvedValue([{ id: 'main-cred' }]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						episodicMemory: {
+							enabled: true,
+							credential: 'missing-embedding-cred',
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).not.toContain('credential');
+			expect(result.missing).toContain('episodicMemory.credential');
+		});
+
+		it('accepts episodic memory credential when Episodic Memory credential exists', async () => {
+			credentialProvider.list.mockResolvedValue([{ id: 'main-cred' }, { id: 'embedding-cred' }]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						episodicMemory: {
+							enabled: true,
+							credential: 'embedding-cred',
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).not.toContain('credential');
+			expect(result.missing).not.toContain('episodicMemory.credential');
 		});
 
 		it('flags config skill refs that have no stored body', async () => {

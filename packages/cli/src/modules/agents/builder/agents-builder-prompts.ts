@@ -19,6 +19,17 @@ const BuilderPromptMemoryConfigSchema = z.object({
 			lockTtlMs: z.number().int().min(0).optional(),
 		})
 		.optional(),
+	episodicMemory: z
+		.discriminatedUnion('enabled', [
+			z.object({ enabled: z.literal(false) }),
+			z.object({
+				enabled: z.literal(true),
+				credential: z.string().min(1),
+				topK: z.number().int().min(1).max(100).optional(),
+				maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
+			}),
+		])
+		.optional(),
 });
 
 const BuilderPromptAgentJsonConfigSchema = RunnableAgentJsonConfigSchema.extend({
@@ -179,17 +190,23 @@ After: set \`model = "{provider}/{model}"\` and \`credential = credentialId\`
 via write_config or patch_config.
 
 ### ask_credential
-When: about to add (or change) a node tool whose node requires credentials.
+When: about to add (or change) a node tool whose node requires credentials, or
+when another section explicitly tells you to select a credential before
+writing config.
 Call ONCE per slot, BEFORE write_config / patch_config that introduces the
 tool. Pass \`credentialType\` (a single credential type name picked from the
 slot's accepted types in get_node_types — when the slot accepts multiple,
 choose the most appropriate one, typically OAuth or the first listed) and
 \`purpose\` (one short sentence, e.g. "Slack credential for posting messages").
+For Episodic Memory, pass exactly \`credentialType: "openAiApi"\`.
 Returns: { credentialId, credentialName } or { skipped: true }.
-After (success): set \`tools[i].node.credentials.<slot> = { id: credentialId,
-name: credentialName }\`. After (skipped): DO NOT abort and DO NOT refuse to
-add the tool. Still add the tool, omit that credential slot, and tell the user
-they can configure the credential later.
+After (success): for node tools, set \`tools[i].node.credentials.<slot> = {
+id: credentialId, name: credentialName }\`. For section-specific credential
+flows, follow that section's success instructions. After (skipped): for node
+tools, DO NOT abort and DO NOT refuse to add the node tool. Still add the node
+tool, omit that credential slot, and tell the user they can configure the
+credential later. For section-specific credential flows, follow that section's
+skipped instructions.
 
 ### ask_question
 When: you would otherwise ask a clarifying question whose answer is one (or
@@ -349,9 +366,26 @@ Shape:
 Rules:
 - Set \`storage\` to "n8n".
 - \`lastMessages\` default: 50.
+
+### Observation-log memory
+
 - Observation-log memory is enabled by default when memory is enabled.
 - Keep \`observationalMemory\` optional; use it only for explicit memory tuning.
-- Supported tuning fields: \`enabled\`, \`observerThresholdTokens\`, \`reflectorThresholdTokens\`, \`renderTokenBudget\`, \`observationLogTailLimit\`, and \`lockTtlMs\`.`;
+- Supported observation-log tuning fields: \`enabled\`, \`observerThresholdTokens\`, \`reflectorThresholdTokens\`, \`renderTokenBudget\`, \`observationLogTailLimit\`, and \`lockTtlMs\`.
+
+### Episodic Memory
+
+Episodic Memory stores source-backed memories from previous conversations and
+exposes them through \`recall_memory\`. Use it only when the user wants
+long-term memory across conversations.
+
+- Enable \`memory.episodicMemory\` only when the user asks for Episodic Memory, long-term memory, prior conversations, remembered decisions, exact artifacts, or cross-session memory.
+- Before enabling Episodic Memory, call \`ask_credential({ credentialType: "openAiApi", purpose: "OpenAI credential for Episodic Memory embeddings" })\`.
+- On success, set \`memory.episodicMemory = { "enabled": true, "credential": "<credentialId>" }\`. Preserve existing \`topK\` and \`maxEntriesPerRun\` values if they are already configured.
+- If credential selection is skipped, do not enable \`memory.episodicMemory\`; explain that Episodic Memory needs an OpenAI credential for embeddings.
+- Do not add agent instructions that say the agent should remember, store, save, or decide what context is important from previous interactions. The runtime handles memory extraction and indexing.
+- If agent instructions mention Episodic Memory, phrase it as retrieval/use only, e.g. "Use recalled prior context when relevant to the user's request."
+- Do not invent Episodic Memory credential IDs, copy IDs from \`list_credentials\`, or reuse the main model credential unless it was returned by \`ask_credential\` for this purpose.`;
 
 export const INTEGRATIONS_SECTION = `\
 ## Integrations (triggers)
@@ -603,8 +637,9 @@ export function getConfigRulesSection(): string {
 	- \`memory.observationalMemory\` tunes observation-log memory. It is enabled by default whenever memory is enabled; use \`{ enabled: false }\` only when the user explicitly does not want automatic memory updates.
 	  - Defaults: \`observerThresholdTokens: 500\`, \`reflectorThresholdTokens: 4000\`, \`renderTokenBudget: 4500\`, \`observationLogTailLimit: 20\`.
 	  - Cost: observing and reflecting use background LLM calls on the agent's main model. Mention this if the user asks about cost.
-	- If the agent has no \`model\`/\`credential\` yet, call resolve_llm or ask_llm before writing config. Do not write a placeholder/default model without a credential.
-  - \`config.maxIterations\` caps the number of agent loop iterations per run. Do not set or change this unless the user explicitly asks.`;
+  - \`config.maxIterations\` caps the number of agent loop iterations per run. Do not set or change this unless the user explicitly asks.
+	- \`memory.episodicMemory\` enables Episodic Memory. It requires \`credential\` from \`ask_credential\` with \`credentialType: "openAiApi"\`; never guess or reuse credential IDs.
+	- If the agent has no \`model\`/\`credential\` yet, call resolve_llm or ask_llm before writing config. Do not write a placeholder/default model without a credential.`;
 }
 
 export function getSchemaReferenceSection(): string {
