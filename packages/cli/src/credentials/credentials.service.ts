@@ -8,6 +8,7 @@ import {
 	ProjectRepository,
 	SharedCredentialsRepository,
 	UserRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import type { User, ICredentialsDb, ScopesField } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -57,6 +58,7 @@ import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import {
 	CredentialDependencyService,
@@ -109,6 +111,8 @@ export class CredentialsService {
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowSharingService: WorkflowSharingService,
 	) {}
 
 	private async addGlobalCredentials(
@@ -548,6 +552,33 @@ export class CredentialsService {
 				isGlobal: c.isGlobal,
 				isResolvable: c.isResolvable,
 			}));
+	}
+
+	/**
+	 * Returns workflows that reference the given credential ID in any of their
+	 * nodes, scoped to workflows the user has `workflow:read` access to. The
+	 * caller is expected to have already verified that the user can read the
+	 * credential itself.
+	 * @param user The user making the request
+	 * @param credentialId The credential to fetch the workflows for
+	 */
+	async getWorkflowsUsingCredential(user: User, credentialId: string) {
+		const canReadAll = hasGlobalScope(user, 'workflow:read');
+		const accessibleWorkflowIds = canReadAll
+			? undefined
+			: await this.workflowSharingService.getSharedWorkflowIds(user, {
+					scopes: ['workflow:read'],
+				});
+
+		const workflows = await this.workflowRepository.findWorkflowsUsingCredential(credentialId, {
+			workflowIds: accessibleWorkflowIds,
+		});
+
+		return workflows.map((w) => ({
+			id: w.id,
+			name: w.name,
+			active: w.active,
+		}));
 	}
 
 	async findAllGlobalCredentialIds(includeData: boolean = false): Promise<CredentialsEntity[]> {

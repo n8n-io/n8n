@@ -110,6 +110,16 @@ export class CredentialsController {
 		};
 	}
 
+	@Get('/:credentialId/workflows')
+	@ProjectScope('credential:read')
+	async getWorkflowsUsingCredential(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('credentialId') credentialId: string,
+	) {
+		return await this.credentialsService.getWorkflowsUsingCredential(req.user, credentialId);
+	}
+
 	@Get('/:credentialId')
 	@ProjectScope('credential:read')
 	async getOne(

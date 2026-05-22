@@ -30,6 +30,7 @@ import type {
 	ListQuery,
 } from '../entities/types-db';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
+import { buildWorkflowsByCredentialIdQuery } from '../utils/build-workflows-by-credential-id-query';
 import { buildWorkflowsByNodesQuery } from '../utils/build-workflows-by-nodes-query';
 import { isStringArray } from '../utils/is-string-array';
 import { TimedQuery } from '../utils/timed-query';
@@ -1358,6 +1359,37 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			{ id: In(workflowIds) },
 			{ parentFolder: toFolderId === PROJECT_ROOT ? null : { id: toFolderId } },
 		);
+	}
+
+	/**
+	 * For a given credential find which workflows are using the credential.
+	 * Useful for discovering and cleaning up unused credentials.
+	 *
+	 * The additional workflowIds option can be used to narrow down to only workflow the
+	 * caller is allowed to read.
+	 */
+	async findWorkflowsUsingCredential(
+		credentialId: string,
+		options: { workflowIds?: string[] } = {},
+	): Promise<Array<Pick<WorkflowEntity, 'id' | 'name' | 'active' | 'activeVersionId'>>> {
+		const { workflowIds } = options;
+
+		if (workflowIds !== undefined && workflowIds.length === 0) return [];
+
+		const { whereClause, parameters } = buildWorkflowsByCredentialIdQuery(
+			credentialId,
+			this.globalConfig.database.type,
+		);
+
+		const qb = this.createQueryBuilder('workflow')
+			.select(['workflow.id', 'workflow.name', 'workflow.active', 'workflow.activeVersionId'])
+			.where(whereClause, parameters);
+
+		if (workflowIds !== undefined) {
+			qb.andWhere('workflow.id IN (:...workflowIds)', { workflowIds });
+		}
+
+		return await qb.getMany();
 	}
 
 	async findWorkflowsWithNodeType(nodeTypes: string[], includeNodes: boolean = false) {
