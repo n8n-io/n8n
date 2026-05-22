@@ -174,6 +174,7 @@ export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {
 		.input(skillLoadInputSchema)
 		.output(skillLoadOutputSchema)
 		.handler(async ({ skillId, name, filePath }) => {
+			await source.prepare?.();
 			const skillEntry = findSkillEntry(source.registry, { skillId, name });
 			if (!skillEntry) {
 				return {

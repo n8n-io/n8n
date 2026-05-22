@@ -16,6 +16,7 @@ import { join as posixJoin, normalize as posixNormalize } from 'node:path/posix'
 import { formatErrorForLog } from '../error-formatting';
 import type { Logger } from '../logger';
 import { writeFileViaSandbox } from '../workspace/sandbox-fs';
+import { getWorkspaceRoot } from '../workspace/sandbox-setup';
 
 export const SANDBOX_RUNTIME_SKILLS_DIR = 'skills';
 export const SANDBOX_RUNTIME_SKILL_REGISTRY_FILE = 'registry.json';
@@ -42,6 +43,12 @@ interface MaterializeRuntimeSkillsOptions {
 	source: RuntimeSkillSource;
 	workspace: Workspace;
 	root: string;
+	logger?: Logger;
+}
+
+interface LazyWorkspaceRuntimeSkillSourceOptions {
+	source: RuntimeSkillSource;
+	workspace: Workspace | undefined;
 	logger?: Logger;
 }
 
@@ -419,4 +426,62 @@ export async function materializeRuntimeSkillsIntoWorkspace({
 		env,
 		source: createMaterializedRuntimeSkillSource(source, registry, materialized, root),
 	};
+}
+
+export function createLazyWorkspaceRuntimeSkillSource({
+	source,
+	workspace,
+	logger,
+}: LazyWorkspaceRuntimeSkillSourceOptions): RuntimeSkillSource {
+	if (!workspace || source.registry.skills.length === 0) return source;
+	const runtimeWorkspace = workspace;
+
+	let materialized: MaterializedRuntimeSkills | undefined;
+	let materializePromise: Promise<MaterializedRuntimeSkills | undefined> | undefined;
+
+	const workspaceSource: RuntimeSkillSource = {
+		registry: source.registry,
+		prepare: async () => {
+			await ensureMaterialized();
+		},
+		loadSkill: async (skillId) => await (await ensureSource()).loadSkill(skillId),
+		...(source.loadFile
+			? {
+					loadFile: async (skillId: string, filePath: string) => {
+						const preparedSource = await ensureSource();
+						return (await preparedSource.loadFile?.(skillId, filePath)) ?? null;
+					},
+				}
+			: {}),
+	};
+
+	async function ensureMaterialized(): Promise<MaterializedRuntimeSkills | undefined> {
+		if (materialized) return materialized;
+
+		materializePromise ??= (async () => {
+			const root = await getWorkspaceRoot(runtimeWorkspace);
+			const result = await materializeRuntimeSkillsIntoWorkspace({
+				source,
+				workspace: runtimeWorkspace,
+				root,
+				logger,
+			});
+			if (result) {
+				materialized = result;
+				workspaceSource.registry = result.source.registry;
+			}
+			return result;
+		})().catch((error: unknown) => {
+			materializePromise = undefined;
+			throw error;
+		});
+
+		return await materializePromise;
+	}
+
+	async function ensureSource(): Promise<RuntimeSkillSource> {
+		return (await ensureMaterialized())?.source ?? source;
+	}
+
+	return workspaceSource;
 }

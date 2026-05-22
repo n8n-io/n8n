@@ -14,6 +14,7 @@ import {
 	N8N_WORKSPACE_DIR_ENV,
 	SANDBOX_RUNTIME_SKILLS_DIR,
 	SANDBOX_RUNTIME_SKILL_REGISTRY_FILE,
+	createLazyWorkspaceRuntimeSkillSource,
 	materializeRuntimeSkillsIntoWorkspace,
 } from '../materialize-runtime-skills';
 import { loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
@@ -167,6 +168,34 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 			throw new Error('Expected load_skill to return materialized skill content');
 		}
 		expect(result.content).toContain('references/data-table-playbook.md');
+	});
+
+	it('materializes skills into the workspace before load_skill reads them', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const { workspace, writes, executeCommand } = createMockWorkspace();
+		const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+			source,
+			workspace,
+		});
+		const loadTool = createSkillLoadTool(runtimeSource);
+
+		const result = await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
+		const root = '/home/daytona/workspace';
+		const skillDir = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager`;
+		const skillPath = `${skillDir}/SKILL.md`;
+
+		expect(executeCommand).toHaveBeenCalledTimes(1);
+		expect(writes.get(skillPath)).toContain('data-tables');
+		expect(result).toMatchObject({
+			success: true,
+			skillId: 'data-table-manager',
+			path: skillPath,
+			skillDir,
+		});
+
+		await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
+
+		expect(executeCommand).toHaveBeenCalledTimes(1);
 	});
 
 	it('rejects linked file paths that escape the materialized skill directory', async () => {

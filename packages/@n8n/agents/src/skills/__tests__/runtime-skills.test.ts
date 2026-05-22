@@ -335,6 +335,45 @@ Use the workflow SDK.`,
 		});
 	});
 
+	it('prepares the runtime skill source before load_skill reads the registry', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'summarize_notes',
+				name: 'Summarize notes',
+				description: 'Use for meeting notes.',
+				instructions: 'Extract decisions.',
+			},
+		]);
+		const prepare = jest.fn(async () => {
+			await Promise.resolve();
+			source.registry = {
+				...source.registry,
+				skills: source.registry.skills.map((skill) => ({
+					...skill,
+					path: '/workspace/skills/summarize_notes/SKILL.md',
+					directory: '/workspace/skills/summarize_notes',
+				})),
+			};
+		});
+		source.prepare = prepare;
+		const listTool = createListSkillsTool(source);
+		const loadTool = createSkillLoadTool(source);
+
+		await expect(listTool.handler?.({}, {})).resolves.toMatchObject({
+			success: true,
+			skills: [expect.not.objectContaining({ directory: '/workspace/skills/summarize_notes' })],
+		});
+		expect(prepare).not.toHaveBeenCalled();
+
+		await expect(loadTool.handler?.({ skillId: 'summarize_notes' }, {})).resolves.toMatchObject({
+			ok: true,
+			success: true,
+			path: '/workspace/skills/summarize_notes/SKILL.md',
+			skillDir: '/workspace/skills/summarize_notes',
+		});
+		expect(prepare).toHaveBeenCalledTimes(1);
+	});
+
 	it('redacts likely secrets from load_skill content before returning it', async () => {
 		const secretValue = 'super-secret-value';
 		const longToken = 'x'.repeat(1024);

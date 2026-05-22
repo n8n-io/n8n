@@ -29,6 +29,7 @@ import {
 	createSandbox,
 	createWorkspace,
 	createLazyRuntimeWorkspace,
+	createLazyWorkspaceRuntimeSkillSource,
 	setupSandboxWorkspace,
 	loadInstanceAiRuntimeSkillSource,
 	createInstanceAiTraceContext,
@@ -655,34 +656,34 @@ export class InstanceAiService {
 		return base;
 	}
 
+	private async getOrCreateWorkspaceEntry(
+		threadId: string,
+		user: User,
+	): Promise<RuntimeSandboxEntry | undefined> {
+		const existing = this.sandboxes.get(threadId);
+		if (existing) return existing;
+
+		const pending = this.sandboxCreations.get(threadId);
+		if (pending) return await pending;
+
+		const creation = this.createWorkspaceEntry(threadId, user);
+		this.sandboxCreations.set(threadId, creation);
+		try {
+			return await creation;
+		} finally {
+			this.sandboxCreations.delete(threadId);
+		}
+	}
+
 	/** Get or create the shared runtime sandbox + workspace for a thread. */
 	private async getOrCreateWorkspace(
 		threadId: string,
 		user: User,
 		context: InstanceAiContext,
 	): Promise<RuntimeSandboxEntry | undefined> {
-		const existing = this.sandboxes.get(threadId);
-		if (existing) {
-			await this.ensureWorkspaceSetup(existing, context);
-			return existing;
-		}
-
-		const pending = this.sandboxCreations.get(threadId);
-		if (pending) {
-			const entry = await pending;
-			if (entry) await this.ensureWorkspaceSetup(entry, context);
-			return entry;
-		}
-
-		const creation = this.createWorkspaceEntry(threadId, user);
-		this.sandboxCreations.set(threadId, creation);
-		try {
-			const entry = await creation;
-			if (entry) await this.ensureWorkspaceSetup(entry, context);
-			return entry;
-		} finally {
-			this.sandboxCreations.delete(threadId);
-		}
+		const entry = await this.getOrCreateWorkspaceEntry(threadId, user);
+		if (entry) await this.ensureWorkspaceSetup(entry, context);
+		return entry;
 	}
 
 	private async ensureWorkspaceSetup(
@@ -2447,12 +2448,13 @@ export class InstanceAiService {
 		}
 
 		const domainTools = createAllTools(context);
-		const runtimeSkills = loadInstanceAiRuntimeSkillSource();
+		const baseRuntimeSkills = loadInstanceAiRuntimeSkillSource();
+		let runtimeSkills = baseRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
 		if (adminSettings.sandboxEnabled) {
 			let sandboxEntryPromise: Promise<RuntimeSandboxEntry | undefined> | undefined;
 			const getSandboxEntry = async () => {
-				sandboxEntryPromise ??= this.getOrCreateWorkspace(threadId, user, context).catch(
+				sandboxEntryPromise ??= this.getOrCreateWorkspaceEntry(threadId, user).catch(
 					(error: unknown) => {
 						sandboxEntryPromise = undefined;
 						throw error;
@@ -2461,9 +2463,22 @@ export class InstanceAiService {
 
 				return await sandboxEntryPromise;
 			};
+			const getSetupSandboxEntry = async () => {
+				return await this.getOrCreateWorkspace(threadId, user, context);
+			};
 
 			runtimeWorkspace = createLazyRuntimeWorkspace({
+				ensureWorkspace: async () => (await getSetupSandboxEntry())?.workspace,
+			});
+			const runtimeSkillWorkspace = createLazyRuntimeWorkspace({
+				id: 'instance-ai-runtime-skill-workspace',
+				name: 'Instance AI runtime skill workspace',
 				ensureWorkspace: async () => (await getSandboxEntry())?.workspace,
+			});
+			runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
+				source: baseRuntimeSkills,
+				workspace: runtimeSkillWorkspace,
+				logger: this.logger,
 			});
 		}
 

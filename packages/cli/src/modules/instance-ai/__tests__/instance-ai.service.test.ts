@@ -12,10 +12,13 @@ jest.mock('@n8n/instance-ai', () => {
 		createDomainAccessTracker: jest.fn(),
 		createSandbox: jest.fn(),
 		createWorkspace: jest.fn(),
-		createLazyRuntimeWorkspace: jest.fn((args: { ensureWorkspace: () => Promise<unknown> }) => ({
-			id: 'lazy-runtime-workspace',
-			ensureWorkspace: args.ensureWorkspace,
-		})),
+		createLazyRuntimeWorkspace: jest.fn(
+			(args: { id?: string; ensureWorkspace: () => Promise<unknown> }) => ({
+				id: args.id ?? 'lazy-runtime-workspace',
+				ensureWorkspace: args.ensureWorkspace,
+			}),
+		),
+		createLazyWorkspaceRuntimeSkillSource: jest.fn(({ source }) => source),
 		setupSandboxWorkspace: jest.fn(),
 		loadInstanceAiRuntimeSkillSource: jest.fn(() => ({
 			registry: {
@@ -131,6 +134,7 @@ import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import {
 	createAllTools,
 	createLazyRuntimeWorkspace,
+	createLazyWorkspaceRuntimeSkillSource,
 	createSandbox,
 	createWorkspace,
 	loadInstanceAiRuntimeSkillSource,
@@ -768,11 +772,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		(setupSandboxWorkspace as jest.Mock).mockReset();
 		(createAllTools as jest.Mock).mockReset();
 		(createLazyRuntimeWorkspace as jest.Mock).mockImplementation(
-			(args: { ensureWorkspace: () => Promise<unknown> }) => ({
-				id: 'lazy-runtime-workspace',
+			(args: { id?: string; ensureWorkspace: () => Promise<unknown> }) => ({
+				id: args.id ?? 'lazy-runtime-workspace',
 				ensureWorkspace: args.ensureWorkspace,
 			}),
 		);
+		(createLazyWorkspaceRuntimeSkillSource as jest.Mock).mockImplementation(({ source }) => source);
 	});
 
 	it('serializes workspace creation for concurrent calls on the same thread', async () => {
@@ -983,15 +988,29 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			new AbortController().signal,
 		);
 
-		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(1);
+		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(2);
+		expect(createLazyRuntimeWorkspace).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({ id: 'instance-ai-runtime-skill-workspace' }),
+		);
+		expect(createLazyWorkspaceRuntimeSkillSource).toHaveBeenCalledTimes(1);
 		expect(loadInstanceAiRuntimeSkillSource).toHaveBeenCalledTimes(1);
 		expect(environment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
 		expect(createSandbox).not.toHaveBeenCalled();
+		const skillWorkspace = (createLazyWorkspaceRuntimeSkillSource as jest.Mock).mock.calls[0]?.[0]
+			.workspace as { ensureWorkspace: () => Promise<unknown> };
 		const lazyWorkspace = environment.orchestrationContext.workspace as {
 			ensureWorkspace: () => Promise<unknown>;
 		};
+
+		await skillWorkspace.ensureWorkspace();
+
+		expect(createSandbox).toHaveBeenCalledTimes(1);
+		expect(createWorkspace).toHaveBeenCalledTimes(1);
+		expect(workspace.init).toHaveBeenCalledTimes(1);
+		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
 
 		await lazyWorkspace.ensureWorkspace();
 

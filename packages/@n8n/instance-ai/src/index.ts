@@ -165,6 +165,8 @@ export const hasRuntimeSkills: typeof RuntimeSkillsMod.hasRuntimeSkills = lazyFu
 );
 export const loadInstanceAiRuntimeSkillSource: typeof RuntimeSkillsMod.loadInstanceAiRuntimeSkillSource =
 	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSource);
+export const createLazyWorkspaceRuntimeSkillSource: typeof MaterializeRuntimeSkillsMod.createLazyWorkspaceRuntimeSkillSource =
+	lazyFunction(() => loadMaterializeRuntimeSkills().createLazyWorkspaceRuntimeSkillSource);
 export const materializeRuntimeSkillsIntoWorkspace: typeof MaterializeRuntimeSkillsMod.materializeRuntimeSkillsIntoWorkspace =
 	lazyFunction(() => loadMaterializeRuntimeSkills().materializeRuntimeSkillsIntoWorkspace);
 export declare const SANDBOX_RUNTIME_SKILLS_DIR: typeof MaterializeRuntimeSkillsMod.SANDBOX_RUNTIME_SKILLS_DIR;
