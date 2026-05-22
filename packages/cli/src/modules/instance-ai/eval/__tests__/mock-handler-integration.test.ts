@@ -12,33 +12,12 @@ import type {
 import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper';
 import { type InterceptedTurn, LlmWireServer } from '../llm-wire-server';
 
-/**
- * TRUST-114 M2 acceptance fixture. The full workflow execution path (Basic
- * LLM Chain → OpenAI Chat Model → Set) belongs in TRUST-115 (M3) where we
- * exercise the live LangChain SDK end-to-end against the wire server.
- *
- * This fixture covers the seam M2 actually adds: vendor-SDK traffic enters
- * the wire server through the rewritten credential URL, the wire server
- * calls the supplied `createLlmMockHandler` instance with the inbound
- * messages array, the handler's content reaches the OpenAI envelope, and
- * each turn is attributed to the AI root in the ledger.
- *
- * **Why raw fetch instead of the OpenAI SDK?** TRUST-115 runs the SDK
- * end-to-end. Raw fetch here mirrors the SDK's `baseURL + "/chat/completions"`
- * concatenation pattern, but doesn't cover SDK-side normalization (trailing
- * slashes, header injection, retry behavior). If the SDK ever changes that
- * normalization the M2 raw-fetch tests would still pass while real eval
- * runs would break — M3 closes that gap.
- *
- * Three things must hold for M2 acceptance:
- *   1. The chain output reflects mock-handler-generated content (not the
- *      stub envelope from M1).
- *   2. The mock handler sees the full conversation (`messages` array) on
- *      every turn, so multi-turn coherence is possible.
- *   3. The ledger attributes every turn to the AI root (Basic LLM Chain),
- *      not the sub-node.
- */
-describe('TRUST-114 M2: mock-handler integration', () => {
+// Vendor-SDK traffic enters the wire server through the rewritten URL, the
+// wire server calls the mock handler with the inbound messages array, the
+// handler's content reaches the OpenAI envelope, and each turn is attributed
+// to the AI root in the ledger. Uses raw fetch — live SDK round-trip is the
+// follow-up SDK round-trip fixture's job (catches SDK normalization quirks).
+describe('Mock-handler integration with the LLM wire server', () => {
 	const subNode: INode = {
 		id: 'sub-1',
 		name: 'OpenAI Chat Model',
@@ -91,7 +70,7 @@ describe('TRUST-114 M2: mock-handler integration', () => {
 		return { rewrittenUrl: baseUrl, response, body };
 	}
 
-	it('chain output reflects mock-handler-generated content (not the M1 stub)', async () => {
+	it('chain output reflects mock-handler-generated content (not the no-handler stub)', async () => {
 		const mockHandler = jest
 			.fn<Promise<EvalMockHttpResponse>, Parameters<EvalLlmMockHandler>>()
 			.mockResolvedValue({
@@ -128,8 +107,7 @@ describe('TRUST-114 M2: mock-handler integration', () => {
 
 			const choice = (body.choices as Array<{ message: { content: string } }>)[0];
 			expect(choice.message.content).toBe('Hello, Jane — your order #ORD-42 ships today.');
-			// The M1 stub message must NOT leak through — that string lived on the
-			// canned envelope this PR replaced.
+			// The no-handler stub message must NOT leak through.
 			expect(choice.message.content).not.toContain('[eval wire server stub]');
 
 			expect(mockHandler).toHaveBeenCalledTimes(1);

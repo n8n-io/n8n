@@ -2,40 +2,16 @@ import type { EvalMockHttpResponse } from 'n8n-core';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-/**
- * Translation layer between the OpenAI chat-completions wire format and the
- * shape `createLlmMockHandler` consumes / emits. The wire server uses these
- * helpers on every request:
- *
- *   inbound POST body  →  reverseTranslateOpenAiRequest  →  mock handler
- *   mock handler reply →  forwardTranslateToChatCompletion → response body
- *
- * The translators are deliberately tolerant — the LLM may return a fully
- * shaped chat.completion, a bare `{ content: "..." }` object, or a raw
- * string, and the forward translator coerces all three into the canonical
- * envelope the live `openai` v5 SDK accepts without quirks.
- *
- * SSE / `tool_calls` envelopes land in TRUST-115 (M3) — this file owns the
- * non-streaming, no-tools subset only.
- */
+// Translation between the OpenAI chat-completions wire format and the shape
+// `createLlmMockHandler` consumes/emits. Non-streaming, no-tools subset only.
 
-/**
- * The URL the reverse translator stamps onto the synthetic request. Kept
- * identical to OpenAI's real endpoint so `mock-handler.ts`'s
- * `extractServiceName` / `extractEndpoint` derive the right service +
- * endpoint context for prompt assembly.
- */
+// Kept identical to OpenAI's real URL so mock-handler's service/endpoint
+// extraction derives the right prompt-builder context.
 const OPENAI_SYNTHETIC_URL = 'https://api.openai.com/v1/chat/completions';
 
 const DEFAULT_MODEL = 'gpt-4o-mini';
 
-/**
- * Synthesize an `IHttpRequestOptions` from the inbound OpenAI request body
- * so the mock handler treats vendor SDK traffic identically to traffic that
- * arrives through n8n's HTTP helper. The body is passed through verbatim
- * (messages, tools, temperature, response_format, …) — the LLM-prompt
- * builder relies on seeing the full shape, not a curated subset.
- */
+/** Synthesize an `IHttpRequestOptions` from the inbound body so vendor-SDK traffic looks identical to HTTP-helper traffic. */
 export function reverseTranslateOpenAiRequest(body: unknown): IHttpRequestOptions {
 	return {
 		url: OPENAI_SYNTHETIC_URL,
@@ -44,23 +20,14 @@ export function reverseTranslateOpenAiRequest(body: unknown): IHttpRequestOption
 	};
 }
 
-/**
- * Pull the model name out of an inbound request body, with a fallback for
- * SDK clients that omit it (rare, but Azure-style proxies sometimes do).
- */
+/** Pull `.model` from the body; fall back when Azure-style proxies omit it. */
 export function extractRequestModel(body: unknown): string {
 	if (typeof body !== 'object' || body === null) return DEFAULT_MODEL;
 	const model = (body as { model?: unknown }).model;
 	return typeof model === 'string' && model.length > 0 ? model : DEFAULT_MODEL;
 }
 
-/**
- * Wrap the mock handler's response in a canonical chat.completion envelope.
- * Always re-emits the outer fields (`id`, `created`, `usage`,
- * `system_fingerprint`) — the LLM occasionally omits them when it does
- * produce a chat.completion-shaped body, and the live SDK rejects those
- * with opaque parser errors.
- */
+/** Wrap the mock handler's response in a canonical chat.completion envelope. */
 export function forwardTranslateToChatCompletion(
 	mockResponse: EvalMockHttpResponse | undefined,
 	model: string,
@@ -80,10 +47,8 @@ export function forwardTranslateToChatCompletion(
 				finish_reason: finishReason,
 			},
 		],
-		// Zero counts are a sentinel for "no real metering" — a stubbed
-		// `{ prompt_tokens: 1, completion_tokens: 1 }` would compute as
-		// plausible-but-fictional cost in any downstream cost tracker. The
-		// `openai` v5 SDK accepts zeros without quirks.
+		// Zero counts = "no real metering" — stubbed non-zero would compute
+		// as plausible-but-fictional cost in downstream cost trackers.
 		usage: {
 			prompt_tokens: 0,
 			completion_tokens: 0,
@@ -93,11 +58,7 @@ export function forwardTranslateToChatCompletion(
 	};
 }
 
-/**
- * Build an OpenAI-style error envelope. The wire server returns this with
- * a non-200 status when mock generation fails so the SDK throws a typed
- * APIError instead of choking on a malformed body.
- */
+/** OpenAI-style error envelope — makes the SDK throw a typed APIError instead of choking on a malformed body. */
 export function buildOpenAiErrorEnvelope(message: string): Record<string, unknown> {
 	return {
 		error: {
@@ -112,10 +73,8 @@ export function buildOpenAiErrorEnvelope(message: string): Record<string, unknow
 function extractAssistantContent(body: unknown): string {
 	if (body === null || body === undefined) return '';
 	if (typeof body === 'string') return body;
-	// At this point `body` is narrowed to a non-string, non-object primitive
-	// (number / boolean / bigint). The upstream source is Express's JSON
-	// body parser, which can only produce JSON-compatible values — no
-	// symbols, functions, or other non-stringifiable types reach this branch.
+	// Express body-parser only produces JSON-compatible values, so the only
+	// remaining non-object primitives here are number / boolean / bigint.
 	if (typeof body !== 'object') return String(body as number | boolean | bigint);
 
 	const obj = body as Record<string, unknown>;
@@ -133,14 +92,11 @@ function extractAssistantContent(body: unknown): string {
 		}
 	}
 
-	// `{ content: "..." }` — the common "wrap me" shorthand.
+	// `{ content: "..." }` and `{ message: "..." }` shorthands the LLM sometimes emits.
 	if (typeof obj.content === 'string') return obj.content;
-
-	// `{ message: "..." }` — another shorthand the LLM sometimes emits.
 	if (typeof obj.message === 'string') return obj.message;
 
-	// Stringify the whole body so the consumer sees *something* — silently
-	// emitting an empty assistant turn would mask mock-handler bugs.
+	// Silently emitting an empty assistant turn would mask mock-handler bugs.
 	return JSON.stringify(body);
 }
 

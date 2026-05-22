@@ -62,18 +62,9 @@ const MAX_OUTPUT_ITEMS_PER_NODE = 10;
 // Service
 // ---------------------------------------------------------------------------
 
-/**
- * Executes workflows with LLM-based HTTP mocking for evaluation purposes.
- *
- * Orchestrates two phases:
- *   Phase 1: Analyze the workflow and generate consistent per-node mock hints
- *            (one LLM call, ensures cross-node data consistency)
- *   Phase 2: Execute the workflow with a mock HTTP handler that uses the hints
- *            to generate realistic API responses at interception time
- *
- * Safety: The mock handler is set per-execution on a fresh additionalData instance.
- * No global state is modified. Normal workflow executions are never affected.
- */
+// Executes workflows with LLM-based HTTP mocking. Phase 1 generates per-node
+// mock hints (one LLM call); Phase 2 runs the workflow with a per-execution
+// mock handler — additionalData is fresh, no global state mutated.
 @Service()
 export class EvalExecutionService {
 	constructor(

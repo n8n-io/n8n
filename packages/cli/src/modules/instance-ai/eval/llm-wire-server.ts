@@ -79,15 +79,13 @@ export class LlmWireServer {
 		const app = express();
 		app.use(express.json({ limit: '4mb' }));
 		app.post('/eval/:root/v1/chat/completions', this.handleChatCompletion);
-		// Unrouted prefix — surfaces credential-rewrite misconfiguration loudly
-		// instead of 404'ing with a stack trace from the SDK.
+		// Surfaces credential-rewrite misconfiguration loudly instead of 404'ing.
 		app.post('/v1/chat/completions', this.handleUnroutedChatCompletion);
 		return app;
 	}
 
 	private handleChatCompletion = async (req: Request, res: Response): Promise<void> => {
-		// Express decodes route params once; double-decoding here would mangle
-		// names with a literal `%` and throw URIError on partial sequences.
+		// Express decodes route params; a second decode would mangle literal `%`.
 		const rootName = req.params.root;
 		const model = extractRequestModel(req.body);
 		const subNode = this.resolveSubNode(rootName);
@@ -165,9 +163,7 @@ export class LlmWireServer {
 	private resolveSubNode(rootName: string): INode {
 		const subNode = this.options.rootToSubNode?.get(rootName);
 		if (subNode) return subNode;
-		// Should be unreachable when the credentials helper only embeds roots
-		// for known sub-nodes, but the wire server can't crash on a missing
-		// entry — return a synthetic identity so the mock handler still runs.
+		// Defensive fallback — can't crash on a missing mapping mid-eval.
 		this.options.logger?.warn(
 			`[EvalMock] Wire server has no sub-node mapping for root "${rootName}" — using synthetic identity`,
 		);

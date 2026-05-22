@@ -10,21 +10,9 @@ import type {
 import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper';
 import { LlmWireServer } from '../llm-wire-server';
 
-/**
- * M1 / M2 acceptance fixture (mechanism). Proves end-to-end that:
- *   1. `LlmWireServer` boots on a real loopback port.
- *   2. `EvalMockedCredentialsHelper` rewrites the resolved `openAiApi`
- *      credential's `url` field to a path that includes the AI root name as
- *      a token: `/eval/<root>/v1`. The token survives the OpenAI SDK's
- *      `baseURL + "/chat/completions"` concatenation.
- *   3. A POST against the rewritten URL hits the live server, the wire
- *      server attributes the call back to the correct root via the path
- *      token, and returns a well-formed OpenAI chat-completion envelope.
- *
- * The full LangChain SDK round-trip (vendor SDK as the caller, not raw fetch)
- * lands in TRUST-115's M3 fixture — see the master spec.
- */
-describe('TRUST-114 M2: helper + wire server end-to-end rewrite with root token', () => {
+// End-to-end: boot wire server, rewrite openAiApi.url to /eval/<root>/v1,
+// POST to the rewritten URL, verify root-token attribution + envelope shape.
+describe('Credential rewrite + wire server round-trip with root token', () => {
 	let server: LlmWireServer;
 	const subNode: INode = {
 		id: 'sub-node-1',
@@ -128,7 +116,7 @@ describe('TRUST-114 M2: helper + wire server end-to-end rewrite with root token'
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				model: 'gpt-4o-mini',
-				messages: [{ role: 'user', content: 'M2 mechanism check' }],
+				messages: [{ role: 'user', content: 'roundtrip check' }],
 			}),
 		});
 		const body = (await response.json()) as {

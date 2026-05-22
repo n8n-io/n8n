@@ -152,12 +152,8 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		const rootName = subNodeName ? this.subNodeToRoot?.get(subNodeName) : undefined;
 
 		if (subNodeName && !rootName && this.subNodeToRoot) {
-			// The wire server is up and a routing map exists, but the calling
-			// sub-node isn't in it. `buildVendorLlmRouting` should have included
-			// every supported vendor LLM sub-node feeding an unpinned root, so
-			// reaching here means a workflow shape we didn't anticipate. The
-			// wire server's unrouted-/v1 handler will surface the resulting
-			// misattribution loudly — leave a breadcrumb here too.
+			// Sub-node not in routing map — unexpected topology; wire server's
+			// unrouted-/v1 handler will surface this loudly too.
 			this.logger?.warn(
 				`[EvalMock] No vendor LLM routing entry for sub-node "${subNodeName}" — ` +
 					'wire-server attribution will be unrouted. Check buildVendorLlmRouting coverage.',

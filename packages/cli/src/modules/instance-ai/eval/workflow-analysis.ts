@@ -137,17 +137,8 @@ type UnpinRefusal = {
 		| 'shared_vendor_llm_subnode';
 };
 
-/**
- * Routing maps for vendor SDK interception. `subNodeToRoot` lets the credentials
- * helper embed the calling sub-node's root in the rewritten URL; `rootToSubNode`
- * lets the wire server fetch the sub-node `INode` for the mock handler.
- *
- * Invariant: by the time this runs, `assertUnpinCompatibility` has already
- * refused shared-vendor-LLM topologies — so each supported vendor LLM
- * sub-node maps to exactly one unpinned root. The `!has(...)` check below
- * is defensive (in case a caller bypasses the guard) but never branches
- * during normal eval flow.
- */
+// Routing maps for vendor SDK interception. `assertUnpinCompatibility`
+// refuses shared sub-node topologies, so each sub-node maps to one root.
 export interface VendorLlmRouting {
 	subNodeToRoot: Map<string, string>;
 	rootToSubNode: Map<string, INode>;
