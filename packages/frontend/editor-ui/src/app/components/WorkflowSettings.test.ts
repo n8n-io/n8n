@@ -1319,9 +1319,9 @@ describe('WorkflowSettingsVue', () => {
 					...settingsStore.settings.envFeatureFlags,
 					N8N_ENV_FEAT_REDACTION_ENFORCEMENT: 'true',
 				};
-				getRedactionEnforcement.mockResolvedValue({
-					redactionEnforced: true,
-					redactionScope: 'non-manual',
+				getSecuritySettings.mockResolvedValue({
+					...DEFAULT_SECURITY_SETTINGS,
+					redactionEnforcement: { floor: 'production' },
 				});
 				const workflow = createTestWorkflow({
 					id: '1',
