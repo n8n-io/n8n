@@ -50,6 +50,17 @@ export class DynamicCredentialsProxy
 		return this.resolvingProvider.getSystemResolverId();
 	}
 
+	/**
+	 * Returns the resolver id that should be used for a workflow: the explicit
+	 * `settings.credentialResolverId` override if present, otherwise the seeded
+	 * system resolver id (null when the system resolver isn't available).
+	 */
+	getEffectiveResolverId(
+		settings: Pick<IWorkflowSettings, 'credentialResolverId'> | undefined,
+	): string | null {
+		return settings?.credentialResolverId ?? this.getSystemResolverId();
+	}
+
 	async resolveIfNeeded(
 		credentialsResolveMetadata: CredentialResolveMetadata,
 		staticData: ICredentialDataDecryptedObject,
