@@ -11,6 +11,8 @@ import {
 	throwIfErrorSentinel,
 } from './lazy-proxy';
 import { jmesPath } from './jmespath';
+import { isKeyOf } from './utils';
+import type { BridgeMessage } from '../bridge/bridge-messages';
 
 // Pre-create safe error subclass wrappers (reused across evaluations)
 const SafeTypeError = createSafeErrorSubclass(TypeError);
@@ -19,6 +21,12 @@ const SafeEvalError = createSafeErrorSubclass(EvalError);
 const SafeRangeError = createSafeErrorSubclass(RangeError);
 const SafeReferenceError = createSafeErrorSubclass(ReferenceError);
 const SafeURIError = createSafeErrorSubclass(URIError);
+
+const NODE_RPC_TYPES = {
+	first: 'getNodeFirst',
+	last: 'getNodeLast',
+	all: 'getNodeAll',
+} as const satisfies Record<string, BridgeMessage['type']>;
 
 // ============================================================================
 // Build Context Function
@@ -187,16 +195,17 @@ export function buildContext(
 		};
 		return new Proxy({} as Record<string, unknown>, {
 			get(_emptyTarget, prop) {
-				if (prop === 'first') return sendNodeMethod('getNodeFirst');
-				if (prop === 'last') return sendNodeMethod('getNodeLast');
-				if (prop === 'all') return sendNodeMethod('getNodeAll');
+				if (isKeyOf(NODE_RPC_TYPES, prop)) {
+					return sendNodeMethod(NODE_RPC_TYPES[prop]);
+				}
 				// Everything else: delegate to the lazy proxy. The lazy proxy's
 				// own `get` trap handles caching, host fetching, and metadata.
 				return (lazyProxy as Record<string | symbol, unknown>)[prop];
 			},
 			has(_emptyTarget, prop) {
-				if (prop === 'first' || prop === 'last' || prop === 'all') return true;
-				return prop in (lazyProxy as Record<string | symbol, unknown>);
+				return (
+					isKeyOf(NODE_RPC_TYPES, prop) || prop in (lazyProxy as Record<string | symbol, unknown>)
+				);
 			},
 		});
 	};
