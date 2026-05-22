@@ -33,10 +33,9 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import type {
-	ICustomTelemetryTag,
 	ICustomTelemetryTags,
+	INodeParameters,
 	INodeProperties,
-	NodeParameterValueType,
 	WorkflowSettings,
 	WorkflowSettingsBinaryMode,
 } from 'n8n-workflow';
@@ -68,7 +67,8 @@ import { useDynamicCredentials } from '@/features/resolvers/composables/useDynam
 import { useRedactionEnforcementFeatureFlag } from '@/features/redaction-enforcement/composables/useRedactionEnforcementFeatureFlag';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import ParameterInputFull from '@/features/ndv/parameters/components/ParameterInputFull.vue';
+import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
+import { setValue } from '@/features/ndv/shared/ndv.utils';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
@@ -292,60 +292,86 @@ const isWorkflowSettingsReadOnly = computed(
 	() => readOnlyEnv.value || !workflowPermissions.value.update,
 );
 
-const customTelemetryTagRows = computed<ICustomTelemetryTag[]>(() => {
-	return workflowSettings.value.customTelemetryTags?.tag ?? [];
-});
+const customTelemetryTagsParameters = computed<INodeProperties[]>(() => [
+	{
+		displayName: i18n.baseText('workflowSettings.customTelemetryTags.displayName'),
+		name: 'customTelemetryTags',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+			fixedCollection: {
+				layout: 'inline',
+			},
+		},
+		placeholder: i18n.baseText('workflowSettings.customTelemetryTags.placeholder'),
+		default: {},
+		description: i18n.baseText('workflowSettings.customTelemetryTags.description'),
+		isNodeSetting: true,
+		options: [
+			{
+				name: 'tag',
+				displayName: i18n.baseText('workflowSettings.customTelemetryTags.tag.displayName'),
+				values: [
+					{
+						displayName: i18n.baseText('workflowSettings.customTelemetryTags.tag.key.displayName'),
+						name: 'key',
+						type: 'string',
+						default: '',
+						noDataExpression: true,
+						isNodeSetting: true,
+					},
+					{
+						displayName: i18n.baseText(
+							'workflowSettings.customTelemetryTags.tag.value.displayName',
+						),
+						name: 'value',
+						type: 'string',
+						default: '',
+						isNodeSetting: true,
+					},
+				],
+			},
+		],
+	},
+]);
 
-const ensureCustomTelemetryTags = (): ICustomTelemetryTags => {
-	const customTelemetryTags = workflowSettings.value.customTelemetryTags ?? {};
-	workflowSettings.value.customTelemetryTags = customTelemetryTags;
+const customTelemetryTagsNodeValues = computed<INodeParameters>(() => ({
+	customTelemetryTags: workflowSettings.value.customTelemetryTags ?? {},
+}));
 
-	if (!customTelemetryTags.tag) {
-		customTelemetryTags.tag = [];
-	}
+const isCustomTelemetryTags = (value: unknown): value is ICustomTelemetryTags => {
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+	if (!('tag' in value)) return true;
 
-	return customTelemetryTags;
-};
+	const { tag } = value;
 
-const addCustomTelemetryTag = () => {
-	ensureCustomTelemetryTags().tag?.push({ key: '', value: '' });
-};
-
-const deleteCustomTelemetryTag = (index: number) => {
-	const customTelemetryTags = ensureCustomTelemetryTags();
-	customTelemetryTags.tag = customTelemetryTagRows.value.filter(
-		(_, rowIndex) => rowIndex !== index,
+	return (
+		tag === undefined ||
+		(Array.isArray(tag) &&
+			tag.every(
+				(item) =>
+					typeof item === 'object' &&
+					item !== null &&
+					'key' in item &&
+					'value' in item &&
+					typeof item.key === 'string' &&
+					typeof item.value === 'string',
+			))
 	);
 };
 
-const updateCustomTelemetryTagKey = (index: number, value: string) => {
-	const customTelemetryTags = ensureCustomTelemetryTags();
-	const rows = customTelemetryTags.tag ?? [];
-	const tag = rows[index];
-	if (!tag) return;
+const updateCustomTelemetryTags = (parameterData: IUpdateInformation) => {
+	const nodeValues = ref<INodeParameters>({
+		customTelemetryTags: workflowSettings.value.customTelemetryTags ?? {},
+	});
+	const value = parameterData.value === undefined ? null : parameterData.value;
 
-	rows[index] = { ...tag, key: value };
-};
+	setValue(nodeValues, parameterData.name, value);
 
-const updateCustomTelemetryTagValue = (
-	index: number,
-	parameterData: IUpdateInformation<NodeParameterValueType>,
-) => {
-	const customTelemetryTags = ensureCustomTelemetryTags();
-	const rows = customTelemetryTags.tag ?? [];
-	const tag = rows[index];
-	if (!tag) return;
-
-	rows[index] = { ...tag, value: String(parameterData.value ?? '') };
-};
-
-const getCustomTelemetryTagValueParameter = (): INodeProperties => {
-	return {
-		displayName: i18n.baseText('workflowSettings.customTelemetryTags.tag.value.displayName'),
-		name: 'value',
-		type: 'string',
-		default: '',
-	};
+	const updatedTags = nodeValues.value.customTelemetryTags;
+	workflowSettings.value.customTelemetryTags = isCustomTelemetryTags(updatedTags)
+		? updatedTags
+		: {};
 };
 
 /**
@@ -1723,94 +1749,32 @@ onBeforeUnmount(() => {
 						</div>
 					</ElCol>
 				</ElRow>
-				<div
+				<ElRow
 					v-if="settingsStore.isOtelEnabled"
 					:class="$style['custom-telemetry-tags']"
 					data-test-id="workflow-settings-custom-telemetry-tags"
 				>
-					<ElRow :class="$style['custom-telemetry-tags-header']">
-						<ElCol :span="10" :class="$style['setting-name']">
-							<label>
-								{{ i18n.baseText('workflowSettings.customTelemetryTags.displayName') }}
-								<N8nTooltip placement="top">
-									<template #content>
-										{{ i18n.baseText('workflowSettings.customTelemetryTags.description') }}
-									</template>
-									<N8nIcon icon="circle-help" />
-								</N8nTooltip>
-							</label>
-						</ElCol>
-						<ElCol :span="14">
-							<div :class="$style['custom-telemetry-tags-actions']">
-								<N8nButton
-									size="small"
-									variant="subtle"
-									icon="plus"
-									:label="i18n.baseText('workflowSettings.customTelemetryTags.placeholder')"
-									:disabled="isWorkflowSettingsReadOnly"
-									data-test-id="add-custom-telemetry-tag"
-									@click="addCustomTelemetryTag"
-								/>
-							</div>
-						</ElCol>
-					</ElRow>
-					<ElRow>
-						<ElCol :span="14" :offset="10">
-							<div
-								v-if="customTelemetryTagRows.length === 0"
-								:class="$style['custom-telemetry-tags-empty']"
-								data-test-id="workflow-settings-custom-telemetry-tags-empty"
-							>
-								<N8nText size="small" color="text-base">
-									{{ i18n.baseText('workflowSettings.customTelemetryTags.empty') }}
-								</N8nText>
-							</div>
-							<div
-								v-else
-								:class="$style['custom-telemetry-tags-editor']"
-								data-test-id="workflow-settings-custom-telemetry-tags-editor"
-							>
-								<div :class="$style['custom-telemetry-tags-label']">
-									{{ i18n.baseText('workflowSettings.customTelemetryTags.tag.key.displayName') }}
-								</div>
-								<div :class="$style['custom-telemetry-tags-label']">
-									{{ i18n.baseText('workflowSettings.customTelemetryTags.tag.value.displayName') }}
-								</div>
-								<div></div>
-								<template v-for="(tag, index) in customTelemetryTagRows" :key="index">
-									<N8nInput
-										:model-value="tag.key"
-										:disabled="isWorkflowSettingsReadOnly"
-										type="text"
-										data-test-id="custom-telemetry-tags-key-input"
-										@update:model-value="(value: string) => updateCustomTelemetryTagKey(index, value)"
-									/>
-									<ParameterInputFull
-										:parameter="getCustomTelemetryTagValueParameter()"
-										:value="tag.value"
-										:path="`customTelemetryTags.tag[${index}].value`"
-										:is-read-only="isWorkflowSettingsReadOnly"
-										:hide-label="true"
-										:rows="1"
-										options-position="top-absolute"
-										data-test-id="custom-telemetry-tags-value-input"
-										@update="(update) => updateCustomTelemetryTagValue(index, update)"
-									/>
-									<N8nIconButton
-										icon="trash-2"
-										variant="ghost"
-										size="small"
-										:class="$style['custom-telemetry-tags-delete']"
-										:disabled="isWorkflowSettingsReadOnly"
-										:title="i18n.baseText('workflowSettings.customTelemetryTags.delete')"
-										data-test-id="delete-custom-telemetry-tag"
-										@click="deleteCustomTelemetryTag(index)"
-									/>
+					<ElCol :span="10" :class="$style['setting-name']">
+						<label>
+							{{ i18n.baseText('workflowSettings.customTelemetryTags.displayName') }}
+							<N8nTooltip placement="top">
+								<template #content>
+									{{ i18n.baseText('workflowSettings.customTelemetryTags.description') }}
 								</template>
-							</div>
-						</ElCol>
-					</ElRow>
-				</div>
+								<N8nIcon icon="circle-help" />
+							</N8nTooltip>
+						</label>
+					</ElCol>
+					<ElCol :span="14" :class="$style['custom-telemetry-tags-control']">
+						<ParameterInputList
+							hide-delete
+							:parameters="customTelemetryTagsParameters"
+							:node-values="customTelemetryTagsNodeValues"
+							:is-read-only="isWorkflowSettingsReadOnly"
+							@value-changed="updateCustomTelemetryTags"
+						/>
+					</ElCol>
+				</ElRow>
 			</div>
 		</template>
 		<template #footer>
@@ -1922,40 +1886,26 @@ onBeforeUnmount(() => {
 }
 
 .custom-telemetry-tags {
-	margin-top: var(--spacing--md);
-	padding-top: var(--spacing--md);
-}
-
-.custom-telemetry-tags-header {
+	margin-top: var(--spacing--xs);
 	align-items: flex-start;
 }
 
-.custom-telemetry-tags-actions {
-	display: flex;
-	align-items: center;
-}
+.custom-telemetry-tags-control {
+	:global(.multi-parameter) {
+		margin: 0;
+	}
 
-.custom-telemetry-tags-empty {
-	padding: var(--spacing--2xs) 0 var(--spacing--sm);
-}
+	:global(.multi-parameter > [data-test-id='input-label']) {
+		display: none;
+	}
 
-.custom-telemetry-tags-editor {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) var(--spacing--xl);
-	gap: var(--spacing--2xs) var(--spacing--xs);
-	align-items: center;
-	max-width: 100%;
-	margin-bottom: var(--spacing--sm);
-}
+	:global([data-test-id='section-header-title']) {
+		display: none;
+	}
 
-.custom-telemetry-tags-label {
-	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text--light);
-}
-
-.custom-telemetry-tags-delete {
-	justify-self: end;
+	:global([data-test-id='fixed-collection-customTelemetryTags']) {
+		min-width: 0;
+	}
 }
 
 .time-saved-tabs {
