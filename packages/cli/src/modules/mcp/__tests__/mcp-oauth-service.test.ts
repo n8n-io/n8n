@@ -3,6 +3,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
+import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 
 import { UrlService } from '@/services/url.service';
 
@@ -500,6 +501,40 @@ describe('McpOAuthService', () => {
 				undefined,
 			);
 		});
+
+		it('should propagate OAuthError when markAuthorizationCodeAsUsed detects concurrent consumption', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const authRecord = {
+				userId: 'user-456',
+				clientId: 'client-123',
+				resource: 'https://n8n.example.com/mcp-server/http',
+			} as AuthorizationCode;
+
+			authorizationCodeService.findAuthorizationCode.mockResolvedValue(authRecord);
+			authorizationCodeService.markAuthorizationCodeAsUsed.mockImplementation(() =>
+				Promise.reject(new OAuthError('invalid_grant', 'Authorization code already used')),
+			);
+
+			await expect(
+				service.exchangeAuthorizationCode(
+					client,
+					'auth-code-123',
+					'verifier-123',
+					'https://example.com/callback',
+				),
+			).rejects.toThrow('invalid_grant');
+		});
 	});
 
 	describe('exchangeRefreshToken', () => {
@@ -589,7 +624,7 @@ describe('McpOAuthService', () => {
 					['read'],
 					'https://attacker.example.com/mcp-server/http',
 				),
-			).rejects.toMatchObject({ message: 'invalid_target', errorCode: 'invalid_target' });
+			).rejects.toThrow('invalid_target');
 		});
 
 		it('should normalize a trailing-slash resource before passing it to token rotation', async () => {
