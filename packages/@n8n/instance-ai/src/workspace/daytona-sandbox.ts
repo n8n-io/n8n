@@ -45,7 +45,6 @@ export interface DaytonaSandboxOptions {
 	/** Optional logger — token-refresh events are emitted at debug level. */
 	logger?: Logger;
 	apiUrl?: string;
-	target?: string;
 	timeout?: number;
 	language?: 'typescript' | 'javascript' | 'python';
 	resources?: Resources;
@@ -109,7 +108,6 @@ export class DaytonaSandbox extends BaseSandbox {
 		this.sandboxName = options.name ?? this.id;
 		this.auth = new DaytonaAuthManager({
 			apiUrl: options.apiUrl,
-			target: options.target,
 			staticApiKey: options.apiKey,
 			getAuthToken: options.getAuthToken,
 			refreshSkewMs: options.refreshSkewMs,

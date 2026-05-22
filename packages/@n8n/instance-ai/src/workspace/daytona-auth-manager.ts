@@ -10,7 +10,6 @@ const DECODE_FALLBACK_TTL_MS = 30 * 60 * 1000;
 
 export interface DaytonaAuthManagerOptions {
 	apiUrl?: string;
-	target?: string;
 	/** Static API key for direct mode. Mutually exclusive with `getAuthToken`. */
 	staticApiKey?: string;
 	/** Per-call token resolver for proxy mode (short-lived JWT). Mutually exclusive with `staticApiKey`. */
@@ -99,20 +98,18 @@ export class DaytonaAuthManager {
 
 	private async doRefresh(): Promise<void> {
 		const { Daytona } = loadDaytona();
-		const connection: DaytonaConfig = {};
-		if (this.options.apiUrl !== undefined) connection.apiUrl = this.options.apiUrl;
-		if (this.options.target !== undefined) connection.target = this.options.target;
+		const apiKey = this.options.getAuthToken
+			? await this.options.getAuthToken()
+			: this.options.staticApiKey;
+		const connection: DaytonaConfig = { apiKey, apiUrl: this.options.apiUrl };
 
 		let decodedFromJwt = false;
-		if (this.options.getAuthToken) {
-			const token = await this.options.getAuthToken();
-			connection.apiKey = token;
-			const expSeconds = getJwtExpiry(token);
+		if (this.options.getAuthToken && apiKey) {
+			const expSeconds = getJwtExpiry(apiKey);
 			decodedFromJwt = expSeconds !== undefined;
 			this.expiresAt =
 				expSeconds !== undefined ? expSeconds * 1000 : this.now() + DECODE_FALLBACK_TTL_MS;
 		} else {
-			connection.apiKey = this.options.staticApiKey;
 			this.expiresAt = Number.POSITIVE_INFINITY;
 		}
 

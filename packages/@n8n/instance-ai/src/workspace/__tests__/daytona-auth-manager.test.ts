@@ -185,19 +185,17 @@ describe('DaytonaAuthManager (proxy mode)', () => {
 		expect(getAuthToken).toHaveBeenCalledTimes(1);
 	});
 
-	it('passes apiUrl and target through to the Daytona client', async () => {
+	it('passes apiUrl through to the Daytona client', async () => {
 		const getAuthToken = jest.fn().mockResolvedValue(makeJwt(Date.now() + HOUR_MS));
 		const manager = new DaytonaAuthManager({
 			getAuthToken,
 			apiUrl: 'https://proxy.example.com',
-			target: 'us',
 		});
 
 		await manager.getClient();
 
 		expect(daytonaInstances[0].config).toMatchObject({
 			apiUrl: 'https://proxy.example.com',
-			target: 'us',
 		});
 	});
 });
