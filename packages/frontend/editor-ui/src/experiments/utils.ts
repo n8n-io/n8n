@@ -3,6 +3,27 @@ import { EXTRA_TEMPLATE_LINKS_EXPERIMENT } from '@/app/constants';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
+
+type ExperimentDefinition = {
+	name: string;
+};
+
+export const getExperimentTelemetryPayload = (
+	experiment: ExperimentDefinition,
+	variant: FeatureFlags[keyof FeatureFlags],
+	payload: ITelemetryTrackProperties = {},
+): ITelemetryTrackProperties => {
+	if (typeof variant !== 'string') {
+		return payload;
+	}
+
+	return {
+		...payload,
+		variant,
+		[`$feature/${experiment.name}`]: variant,
+	};
+};
 
 /*
  * Extra template links
