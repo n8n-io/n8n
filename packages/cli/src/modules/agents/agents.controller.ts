@@ -36,7 +36,6 @@ import type { Request, Response } from 'express';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
@@ -700,10 +699,6 @@ export class AgentsController {
 		const { credentialId } = integration;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		if (!agent.publishedVersion)
-			throw new ConflictError(
-				`Agent "${agentId}" must be published before connecting an integration`,
-			);
 
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			req.user,
@@ -711,6 +706,19 @@ export class AgentsController {
 		);
 		const credential = usableCredentials.find((c) => c.id === credentialId);
 		if (!credential) throw new NotFoundError(`Credential "${credentialId}" not found`);
+
+		if (!agent.publishedVersion) {
+			await this.agentsService.saveCredentialIntegration(agent, integration);
+			const publishedAgent = await this.agentsService.publishAgent(
+				agentId,
+				agent.projectId,
+				req.user.id,
+			);
+			return {
+				status: 'connected',
+				agent: await this.withRunnableState(publishedAgent, agent.projectId, req.user),
+			};
+		}
 
 		await this.chatIntegrationService.connect(agentId, integration, req.user.id, agent.projectId);
 
