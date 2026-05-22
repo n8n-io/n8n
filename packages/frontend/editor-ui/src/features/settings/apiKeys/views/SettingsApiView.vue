@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
-import { useMessage } from '@/app/composables/useMessage';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
-import { DOCS_DOMAIN, MODAL_CONFIRM } from '@/app/constants';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { DOCS_DOMAIN } from '@/app/constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -15,18 +15,21 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useApiKeysStore } from '../apiKeys.store';
 import { storeToRefs } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import type { ApiKey } from '@n8n/api-types';
 
-import { ElCol, ElRow } from 'element-plus';
 import { N8nActionBox, N8nButton, N8nHeading, N8nLink, N8nText } from '@n8n/design-system';
 import { I18nT } from 'vue-i18n';
-import ApiKeyCard from '../components/ApiKeyCard.vue';
+
+import ApiKeyTable from '../components/ApiKeyTable.vue';
+import ApiKeyScopesModal from '../components/ApiKeyScopesModal.vue';
+import RevokeApiKeyConfirmModal from '../components/RevokeApiKeyConfirmModal.vue';
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const cloudPlanStore = useCloudPlanStore();
+const usersStore = useUsersStore();
 
 const { showError, showMessage } = useToast();
-const { confirm } = useMessage();
 const documentTitle = useDocumentTitle();
 const i18n = useI18n();
 const { goToUpgrade } = usePageRedirectionHelper();
@@ -43,7 +46,11 @@ const { isPublicApiEnabled } = settingsStore;
 
 const apiDocsURL = ref('');
 
-const onCreateApiKey = async () => {
+const scopesModalApiKey = ref<ApiKey | null>(null);
+const revokeApiKey = ref<ApiKey | null>(null);
+const revoking = ref(false);
+
+const onCreateApiKey = () => {
 	telemetry.track('User clicked create API key button');
 
 	uiStore.openModalWithData({
@@ -79,36 +86,35 @@ async function getApiKeysAndScopes() {
 	}
 }
 
-async function onDelete(id: string) {
-	const confirmed = await confirm(
-		i18n.baseText('settings.api.delete.description'),
-		i18n.baseText('settings.api.delete.title'),
-		{
-			confirmButtonText: i18n.baseText('settings.api.delete.button'),
-			cancelButtonText: i18n.baseText('generic.cancel'),
-		},
-	);
+function onEdit(apiKey: ApiKey) {
+	uiStore.openModalWithData({
+		name: API_KEY_CREATE_OR_EDIT_MODAL_KEY,
+		data: { mode: 'edit', activeId: apiKey.id },
+	});
+}
 
-	if (confirmed === MODAL_CONFIRM) {
-		try {
-			await deleteApiKey(id);
-			showMessage({
-				title: i18n.baseText('settings.api.delete.toast'),
-				type: 'success',
-			});
-		} catch (e) {
-			showError(e, i18n.baseText('settings.api.delete.error'));
-		} finally {
-			telemetry.track('User clicked delete API key button');
-		}
+function onRevokeRequest(apiKey: ApiKey) {
+	revokeApiKey.value = apiKey;
+}
+
+async function onRevokeConfirm() {
+	if (!revokeApiKey.value) return;
+	const apiKey = revokeApiKey.value;
+	revoking.value = true;
+	try {
+		await deleteApiKey(apiKey.id);
+		showMessage({ title: i18n.baseText('settings.api.revoke.toast'), type: 'success' });
+		revokeApiKey.value = null;
+	} catch (e) {
+		showError(e, i18n.baseText('settings.api.delete.error'));
+	} finally {
+		revoking.value = false;
+		telemetry.track('User clicked delete API key button');
 	}
 }
 
-function onEdit(id: string) {
-	uiStore.openModalWithData({
-		name: API_KEY_CREATE_OR_EDIT_MODAL_KEY,
-		data: { mode: 'edit', activeId: id },
-	});
+function onOpenScopes(apiKey: ApiKey) {
+	scopesModalApiKey.value = apiKey;
 }
 </script>
 
@@ -118,7 +124,15 @@ function onEdit(id: string) {
 			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.api') }}
 			</N8nHeading>
+			<N8nButton
+				v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length"
+				size="large"
+				@click="onCreateApiKey"
+			>
+				{{ i18n.baseText('settings.api.create.button') }}
+			</N8nButton>
 		</div>
+
 		<p v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length" :class="$style.topHint">
 			<N8nText>
 				<I18nT keypath="settings.api.view.info" tag="span" scope="global">
@@ -142,20 +156,14 @@ function onEdit(id: string) {
 			</N8nText>
 		</p>
 
-		<div :class="$style.apiKeysContainer">
-			<template v-if="apiKeysSortByCreationDate.length">
-				<ElRow
-					v-for="(apiKey, index) in apiKeysSortByCreationDate"
-					:key="apiKey.id"
-					:gutter="10"
-					:class="[{ [$style.destinationItem]: index !== apiKeysSortByCreationDate.length - 1 }]"
-				>
-					<ElCol>
-						<ApiKeyCard :api-key="apiKey" @delete="onDelete" @edit="onEdit" />
-					</ElCol>
-				</ElRow>
-			</template>
-		</div>
+		<ApiKeyTable
+			v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length"
+			:api-keys="apiKeysSortByCreationDate"
+			:current-user-id="usersStore.currentUser?.id"
+			@edit="onEdit"
+			@revoke="onRevokeRequest"
+			@open-scopes="onOpenScopes"
+		/>
 
 		<div v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length" :class="$style.BottomHint">
 			<N8nText size="small" color="text-light">
@@ -185,15 +193,6 @@ function onEdit(id: string) {
 				{{ i18n.baseText(`settings.api.view.external-docs`) }}
 			</N8nLink>
 		</div>
-		<div class="mt-m text-right">
-			<N8nButton
-				v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length"
-				size="large"
-				@click="onCreateApiKey"
-			>
-				{{ i18n.baseText('settings.api.create.button') }}
-			</N8nButton>
-		</div>
 
 		<N8nActionBox
 			v-if="!isPublicApiEnabled && cloudPlanStore.userIsTrialing"
@@ -212,6 +211,24 @@ function onEdit(id: string) {
 			:description="i18n.baseText('settings.api.create.description')"
 			@click:button="onCreateApiKey"
 		/>
+
+		<ApiKeyScopesModal
+			:api-key="scopesModalApiKey"
+			:open="!!scopesModalApiKey"
+			@update:open="scopesModalApiKey = null"
+		/>
+
+		<RevokeApiKeyConfirmModal
+			:api-key="revokeApiKey"
+			:open="!!revokeApiKey"
+			:loading="revoking"
+			:revoking-for-other="
+				!!revokeApiKey?.owner && revokeApiKey.owner.id !== usersStore.currentUser?.id
+			"
+			@confirm="onRevokeConfirm"
+			@cancel="revokeApiKey = null"
+			@update:open="revokeApiKey = null"
+		/>
 	</div>
 </template>
 
@@ -219,31 +236,14 @@ function onEdit(id: string) {
 .header {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
 	white-space: nowrap;
 	margin-bottom: var(--spacing--xl);
-
-	*:first-child {
-		flex-grow: 1;
-	}
-}
-
-.card {
-	position: relative;
-}
-
-.destinationItem {
-	margin-bottom: var(--spacing--2xs);
-}
-
-.delete {
-	position: absolute;
-	display: inline-block;
-	top: var(--spacing--sm);
-	right: var(--spacing--sm);
+	gap: var(--spacing--sm);
 }
 
 .topHint {
-	margin-top: none;
+	margin-top: 0;
 	margin-bottom: var(--spacing--sm);
 	color: var(--color--text--tint-1);
 
@@ -259,10 +259,8 @@ function onEdit(id: string) {
 	margin-top: var(--spacing--sm);
 }
 
-.apiKeysContainer {
-	max-height: 45vh;
-	overflow-y: auto;
-	overflow-x: hidden;
-	scrollbar-width: none;
+.container {
+	display: flex;
+	flex-direction: column;
 }
 </style>
