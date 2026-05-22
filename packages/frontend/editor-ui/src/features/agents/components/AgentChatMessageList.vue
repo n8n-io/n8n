@@ -255,7 +255,6 @@ onBeforeUnmount(() => {
 					<div v-if="shouldShowAssistantActions(group.id)" :class="$style.messageActions">
 						<AgentChatMessageActions
 							:content="getAssistantRunContent(group.id)"
-							:can-read-aloud="true"
 							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
 							:is-speaking="isSpeakingMessage(group.id)"
 							@read-aloud="toggleReadAloud(group.id)"
@@ -311,7 +310,6 @@ onBeforeUnmount(() => {
 					<div v-if="shouldShowAssistantActions(group.id)" :class="$style.messageActions">
 						<AgentChatMessageActions
 							:content="getAssistantRunContent(group.id)"
-							:can-read-aloud="true"
 							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
 							:is-speaking="isSpeakingMessage(group.id)"
 							@read-aloud="toggleReadAloud(group.id)"

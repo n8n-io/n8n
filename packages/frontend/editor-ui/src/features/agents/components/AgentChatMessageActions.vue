@@ -5,7 +5,6 @@ import { useI18n } from '@n8n/i18n';
 
 defineProps<{
 	content: string;
-	canReadAloud: boolean;
 	isSpeechSynthesisAvailable: boolean;
 	isSpeaking: boolean;
 }>();
@@ -20,11 +19,7 @@ const i18n = useI18n();
 <template>
 	<div :class="$style.actions" data-test-id="agent-chat-message-actions">
 		<CopyButton :content="content" data-test-id="agent-chat-message-copy" />
-		<N8nTooltip
-			v-if="canReadAloud && isSpeechSynthesisAvailable"
-			placement="bottom"
-			:show-after="300"
-		>
+		<N8nTooltip v-if="isSpeechSynthesisAvailable" placement="bottom" :show-after="300">
 			<N8nIconButton
 				variant="ghost"
 				:icon="isSpeaking ? 'volume-x' : 'volume-2'"
