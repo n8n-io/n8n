@@ -13,6 +13,7 @@ import {
 } from 'n8n-core';
 import type {
 	ExecutionStatus,
+	INode,
 	IRun,
 	IRunData,
 	IRunExecutionData,
@@ -22,6 +23,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
+import { ActiveExecutions } from '@/active-executions';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { RedactableExecution } from '@/executions/execution-redaction';
@@ -445,6 +447,154 @@ function hookFunctionsPush(
 	});
 }
 
+/**
+ * Walks up the active-execution chain starting at `executionId` and returns
+ * the pushRef of the root execution that owns the editor UI session. Returns
+ * undefined if no ancestor in the chain has a pushRef (e.g. the root was a
+ * trigger/webhook/API-initiated run, or the root execution has already left
+ * the in-memory ActiveExecutions registry).
+ */
+function findRootPushRef(executionId: string): string | undefined {
+	const activeExecutions = Container.get(ActiveExecutions);
+	const seen = new Set<string>();
+	let currentId: string | undefined = executionId;
+	while (currentId && !seen.has(currentId)) {
+		seen.add(currentId);
+		if (!activeExecutions.has(currentId)) return undefined;
+		const entry = activeExecutions.getExecutionOrFail(currentId);
+		const pushRef = entry.executionData.pushRef;
+		if (pushRef) return pushRef;
+		currentId = entry.executionData.executionData?.parentExecution?.executionId;
+	}
+	return undefined;
+}
+
+/**
+ * Push hooks for a sub-workflow execution. Forwards a lightweight progress
+ * stream up to the root parent's pushRef so the editor can render a live
+ * overlay on the parent's "Execute Sub-workflow" node.
+ *
+ * No-ops when invoked without a parent execution / node, or when no ancestor
+ * in the chain holds a pushRef (e.g. workflow started via the public API).
+ */
+function hookFunctionsPushSubExecution(
+	hooks: ExecutionLifecycleHooks,
+	workflowData: IWorkflowBase,
+	parentExecution: RelatedExecution,
+	parentNode: INode,
+) {
+	const pushInstance = Container.get(Push);
+	const totalNodes = workflowData.nodes.length;
+
+	// Resolved lazily on first emit: ActiveExecutions may not yet have the
+	// sub-execution registered at hook-registration time on some code paths,
+	// and we want the freshest ancestor state.
+	let cachedPushRef: string | undefined;
+	let pushRefResolved = false;
+	const resolvePushRef = (): string | undefined => {
+		if (pushRefResolved) return cachedPushRef;
+		pushRefResolved = true;
+		cachedPushRef = findRootPushRef(parentExecution.executionId);
+		return cachedPushRef;
+	};
+
+	let nodeIndex = 0;
+	// Coalesces high-frequency repeats on the same node. Any phase change
+	// or node-name change always emits, so the UI never lags behind which
+	// node is actually running.
+	const throttleMs = totalNodes >= 50 ? 250 : 100;
+	let lastEmitAt = 0;
+	let lastEmittedNodeName: string | undefined;
+	let lastEmittedPhase: 'running' | 'success' | 'error' | undefined;
+
+	hooks.addHandler('workflowExecuteBefore', function () {
+		const pushRef = resolvePushRef();
+		if (!pushRef) return;
+		pushInstance.send(
+			{
+				type: 'subworkflowExecutionStarted',
+				data: {
+					parentExecutionId: parentExecution.executionId,
+					parentNodeName: parentNode.name,
+					executionId: this.executionId,
+					totalNodes,
+				},
+			},
+			pushRef,
+		);
+	});
+
+	hooks.addHandler('nodeExecuteBefore', function (nodeName) {
+		const pushRef = resolvePushRef();
+		if (!pushRef) return;
+		nodeIndex += 1;
+		const now = Date.now();
+		const isNewNode = nodeName !== lastEmittedNodeName;
+		const isPhaseChange = lastEmittedPhase !== 'running';
+		// Always emit when the displayed state would actually change.
+		if (!isNewNode && !isPhaseChange && now - lastEmitAt < throttleMs) return;
+		lastEmitAt = now;
+		lastEmittedNodeName = nodeName;
+		lastEmittedPhase = 'running';
+		pushInstance.send(
+			{
+				type: 'subworkflowNodeProgress',
+				data: {
+					parentExecutionId: parentExecution.executionId,
+					parentNodeName: parentNode.name,
+					executionId: this.executionId,
+					currentNodeName: nodeName,
+					currentNodeIndex: nodeIndex,
+					totalNodes,
+					phase: 'running',
+				},
+			},
+			pushRef,
+		);
+	});
+
+	hooks.addHandler('nodeExecuteAfter', function (nodeName, data) {
+		const pushRef = resolvePushRef();
+		if (!pushRef) return;
+		const phase: 'success' | 'error' = data?.error ? 'error' : 'success';
+		lastEmitAt = Date.now();
+		lastEmittedNodeName = nodeName;
+		lastEmittedPhase = phase;
+		pushInstance.send(
+			{
+				type: 'subworkflowNodeProgress',
+				data: {
+					parentExecutionId: parentExecution.executionId,
+					parentNodeName: parentNode.name,
+					executionId: this.executionId,
+					currentNodeName: nodeName,
+					currentNodeIndex: nodeIndex,
+					totalNodes,
+					phase,
+				},
+			},
+			pushRef,
+		);
+	});
+
+	hooks.addHandler('workflowExecuteAfter', function (fullRunData) {
+		const pushRef = resolvePushRef();
+		if (!pushRef) return;
+		pushInstance.send(
+			{
+				type: 'subworkflowExecutionFinished',
+				data: {
+					parentExecutionId: parentExecution.executionId,
+					parentNodeName: parentNode.name,
+					executionId: this.executionId,
+					status: fullRunData.status,
+				},
+			},
+			pushRef,
+		);
+	});
+}
+
 function hookFunctionsExternalHooks(hooks: ExecutionLifecycleHooks) {
 	const externalHooks = Container.get(ExternalHooks);
 	const workflowContext = Container.get(WorkflowHookContextService);
@@ -708,6 +858,7 @@ export function getLifecycleHooksForSubExecutions(
 	parentExecution?: RelatedExecution,
 	projectId?: string,
 	projectName?: string,
+	parentNode?: INode,
 ): ExecutionLifecycleHooks {
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
@@ -718,6 +869,9 @@ export function getLifecycleHooksForSubExecutions(
 	hookFunctionsSaveProgress(hooks, { saveSettings });
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);
+	if (parentExecution && parentNode) {
+		hookFunctionsPushSubExecution(hooks, workflowData, parentExecution, parentNode);
+	}
 	Container.get(ModulesHooksRegistry).addHooks(hooks);
 	return hooks;
 }

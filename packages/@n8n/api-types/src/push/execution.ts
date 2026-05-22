@@ -103,6 +103,58 @@ export type NodeExecuteAfterData = {
 	};
 };
 
+/**
+ * Sent once when a sub-workflow execution begins. Lets the editor display a
+ * live progress overlay on the parent's "Execute Sub-workflow" node.
+ */
+export type SubworkflowExecutionStarted = {
+	type: 'subworkflowExecutionStarted';
+	data: {
+		/** Root execution id whose UI session should display the overlay. */
+		parentExecutionId: string;
+		/** Name of the "Execute Sub-workflow" node in the parent workflow. */
+		parentNodeName: string;
+		/** Child sub-execution id. */
+		executionId: string;
+		/** Total nodes in the child workflow — used to render "X / Y". */
+		totalNodes: number;
+	};
+};
+
+/**
+ * Sent on each child node start/finish during a sub-workflow execution.
+ * Lightweight (no item data) so it can fire at high frequency.
+ */
+export type SubworkflowNodeProgress = {
+	type: 'subworkflowNodeProgress';
+	data: {
+		parentExecutionId: string;
+		parentNodeName: string;
+		executionId: string;
+		/** Currently-running node name in the child workflow. */
+		currentNodeName: string;
+		/** 1-based index of the node in the child workflow's execution order. */
+		currentNodeIndex: number;
+		totalNodes: number;
+		/** 'running' on nodeExecuteBefore; 'success' | 'error' on nodeExecuteAfter. */
+		phase: 'running' | 'success' | 'error';
+	};
+};
+
+/**
+ * Sent when a sub-workflow execution reaches a terminal state. The editor uses
+ * this to clear the per-node progress overlay.
+ */
+export type SubworkflowExecutionFinished = {
+	type: 'subworkflowExecutionFinished';
+	data: {
+		parentExecutionId: string;
+		parentNodeName: string;
+		executionId: string;
+		status: ExecutionStatus;
+	};
+};
+
 export type ExecutionPushMessage =
 	| ExecutionStarted
 	| ExecutionWaiting
@@ -110,4 +162,7 @@ export type ExecutionPushMessage =
 	| ExecutionRecovered
 	| NodeExecuteBefore
 	| NodeExecuteAfter
-	| NodeExecuteAfterData;
+	| NodeExecuteAfterData
+	| SubworkflowExecutionStarted
+	| SubworkflowNodeProgress
+	| SubworkflowExecutionFinished;
