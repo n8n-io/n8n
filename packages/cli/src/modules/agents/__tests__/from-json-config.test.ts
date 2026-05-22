@@ -119,7 +119,7 @@ describe('buildFromJson()', () => {
 		dropObservationLogEntries: jest.fn(),
 		supersedeObservationLogEntries: jest.fn(),
 		applyObservationLogReflection: jest.fn(),
-		getMessagesForScope: jest.fn(),
+		getMessagesForObservationScope: jest.fn(),
 		getCursor: jest.fn(),
 		setCursor: jest.fn(),
 		acquireObservationLogTaskLock: jest.fn(),

@@ -524,7 +524,6 @@ export function buildEpisodicMemoryExtractorPrompt(input: EpisodicMemoryExtracto
 	return [
 		`Current timestamp: ${input.now.toISOString()}`,
 		`Scope: resource:${input.scope.resourceId}`,
-		`Observation scope: ${input.observationScope.scopeKind}:${input.observationScope.scopeId}`,
 		`Active observation batch:\n${renderObservationsWithIds(input.observations)}`,
 		`Existing episodic entries for duplicate-awareness context:\n${renderExistingEntries(input.existingEntries)}`,
 	].join('\n\n');
