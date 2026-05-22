@@ -1,8 +1,16 @@
 name: 'Mutation Health (nightly)'
 
 on:
+  # TEMPORARY — remove before merging to master. workflow_dispatch and
+  # schedule only register from the default branch, so this push filter
+  # is the only way to exercise the workflow against the spike branch
+  # before the PR lands.
+  push:
+    branches:
+      - devp-stryker-mvp-spike
   schedule:
-    # 03:30 UTC daily — outside CI rush, before EU morning
+    # 03:30 UTC daily — outside CI rush, before EU morning.
+    # Only fires once this lands on master.
     - cron: '30 3 * * *'
   workflow_dispatch:
     inputs:
