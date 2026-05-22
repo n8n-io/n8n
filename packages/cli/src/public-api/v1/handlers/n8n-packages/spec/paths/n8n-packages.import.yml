@@ -8,36 +8,37 @@ post:
     **Beta — disabled by default.** Set `N8N_PUBLIC_API_PACKAGES_ENABLED=true` on the
     instance to enable this endpoint. While disabled, requests return `404`.
 
-    Imports a gzip-compressed tar package into the target project. The package must
-    declare its manifest at `manifest.json` and include every file referenced by the
-    manifest. The caller is authorised through the `workflow:import` scope. Each
-    imported workflow is created with a fresh local id and arrives inactive.
-  parameters:
-    - in: query
-      name: projectId
-      required: false
-      schema:
-        type: string
-      description: >
-        Target project id. Omit to import into the caller's personal project.
-    - in: query
-      name: folderId
-      required: false
-      schema:
-        type: string
-      description: Optional folder within the target project.
+    Imports a gzip-compressed tar package (`.n8np`) into the target project. Send the
+    archive as the multipart field `package`. Optional routing uses form fields
+    `projectId` and `folderId` (omit or leave empty for defaults). Maximum upload size
+    is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
+
+    The package must declare its manifest at `manifest.json` and include every file
+    referenced by the manifest. The caller is authorised through the `workflow:import`
+    scope. Each imported workflow is created with a fresh local id and arrives inactive.
   requestBody:
-    description: Gzip-compressed tar package (`.n8np`).
     required: true
     content:
-      application/gzip:
+      multipart/form-data:
         schema:
-          type: string
-          format: binary
-      application/octet-stream:
-        schema:
-          type: string
-          format: binary
+          type: object
+          required:
+            - package
+          properties:
+            package:
+              type: string
+              format: binary
+              description: Gzip-compressed tar package (`.n8np`).
+            projectId:
+              type: string
+              description: >
+                Target project id. Omit or send empty to import into the caller's
+                personal project.
+            folderId:
+              type: string
+              description: >
+                Optional folder within the target project. Omit or send empty for
+                project root.
   responses:
     '200':
       description: Import succeeded.
