@@ -460,7 +460,7 @@ describe('VectorStoreOracleDB.node', () => {
 	it('passes array metadata filters without $in operator', async () => {
 		const node = createNode();
 		const filter: OracleFilter = {
-			author: ['Andrew Ng', 'Demis Hassabis'],
+			author: ['Author1', 'Author2'],
 		};
 
 		await node.getVectorStoreClient(context, filter, embeddings, 0);
@@ -476,7 +476,7 @@ describe('VectorStoreOracleDB.node', () => {
 	it('passes metadata filters using $nin operator', async () => {
 		const node = createNode();
 		const filter: OracleFilter = {
-			author: { $nin: ['Andrew Ng', 'Demis Hassabis'] },
+			author: { $nin: ['Author1', 'Author2'] },
 		};
 
 		await node.getVectorStoreClient(context, filter, embeddings, 0);
