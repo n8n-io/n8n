@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { SharedWorkflowRepository, User, WorkflowEntity } from '@n8n/db';
-import type { IConnections, INode } from 'n8n-workflow';
+import { NodeConnectionTypes, type IConnections, type INode } from 'n8n-workflow';
 
 import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
 
@@ -103,6 +103,15 @@ describe('update-workflow MCP tool', () => {
 			findOneOrFail: jest.fn().mockResolvedValue({ projectId: 'project-1' }),
 		});
 		nodeTypes = mockInstance(NodeTypes);
+		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+			if (type === '@n8n/n8n-nodes-langchain.agent') {
+				return { description: { outputs: [NodeConnectionTypes.Main] } };
+			}
+			if (type === '@n8n/n8n-nodes-langchain.agentTool') {
+				return { description: { outputs: [NodeConnectionTypes.AiTool] } };
+			}
+			return { description: {} };
+		}) as typeof nodeTypes.getByNameAndVersion);
 		collaborationService = mockInstance(CollaborationService, {
 			ensureWorkflowEditable: jest.fn().mockResolvedValue(undefined),
 			broadcastWorkflowUpdate: jest.fn().mockResolvedValue(undefined),
@@ -460,6 +469,51 @@ describe('update-workflow MCP tool', () => {
 
 				const response = parseResult(result);
 				expect(response.validationWarnings).toEqual([]);
+			});
+
+			test('refuses to save when an addConnection wires an agent as a tool to another agent', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing',
+						settings: { availableInMCP: true },
+						nodes: [
+							makeNode({
+								id: 'manager',
+								name: 'Manager Agent',
+								type: '@n8n/n8n-nodes-langchain.agent',
+								typeVersion: 3,
+							}),
+							makeNode({
+								id: 'worker',
+								name: 'Worker Agent',
+								type: '@n8n/n8n-nodes-langchain.agent',
+								typeVersion: 3,
+								position: [200, 0],
+							}),
+						],
+						connections: {} as IConnections,
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addConnection',
+							source: 'Worker Agent',
+							target: 'Manager Agent',
+							connectionType: 'ai_tool',
+						},
+					],
+				});
+
+				expect(result.isError).toBe(true);
+				expect(updateMock).not.toHaveBeenCalled();
+				const response = parseResult(result);
+				expect(response.error).toContain('Worker Agent');
+				expect(response.error).toContain('Manager Agent');
+				expect(response.error).toContain('@n8n/n8n-nodes-langchain.agentTool');
 			});
 		});
 
