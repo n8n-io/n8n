@@ -5,7 +5,7 @@ import type {
 	SandboxInfo,
 } from '@n8n/agents';
 import { BaseSandbox } from '@n8n/agents';
-import { SandboxClient } from '@n8n/sandbox-client';
+import { SandboxClient, SandboxServiceError, type SandboxRecord } from '@n8n/sandbox-client';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 
@@ -14,6 +14,7 @@ export interface N8nSandboxServiceSandboxOptions {
 	apiKey?: string;
 	serviceUrl?: string;
 	timeout?: number;
+	env?: Record<string, string>;
 }
 
 function shellEscape(value: string): string {
@@ -37,7 +38,15 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 
 	private readonly client: SandboxClient;
 
+	private readonly timeout: number;
+
+	private static readonly HOME_DIR = '/home/user';
+
+	private static readonly WORKSPACE_DIR = `${N8nSandboxServiceSandbox.HOME_DIR}/workspace`;
+
 	private sandboxId?: string;
+
+	private createdAt?: Date;
 
 	constructor(private readonly options: N8nSandboxServiceSandboxOptions) {
 		super();
@@ -46,6 +55,7 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 			baseUrl: options.serviceUrl,
 		});
 		this.sandboxId = options.id;
+		this.timeout = options.timeout ?? 300_000;
 	}
 
 	get id(): string {
@@ -54,17 +64,26 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 
 	override async start(): Promise<void> {
 		if (this.sandboxId) {
-			await this.client.getSandbox(this.sandboxId);
-			return;
+			const existing = await this.tryGetExistingSandbox(this.sandboxId);
+			if (existing) {
+				this.createdAt = new Date(existing.createdAt * 1000);
+				return;
+			}
 		}
 
 		const sandbox = await this.client.createSandbox();
 		this.sandboxId = sandbox.id;
+		this.createdAt = new Date();
 	}
 
 	override async destroy(): Promise<void> {
 		if (!this.sandboxId) return;
-		await this.client.deleteSandbox(this.sandboxId);
+		try {
+			await this.client.deleteSandbox(this.sandboxId);
+		} catch (error) {
+			if (error instanceof SandboxServiceError && error.status === 404) return;
+			throw error;
+		}
 	}
 
 	override async stop(): Promise<void> {
@@ -80,12 +99,21 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 			name: this.name,
 			provider: this.provider,
 			status: this.status,
-			createdAt: new Date(sandbox.createdAt * 1000),
+			createdAt: this.createdAt ?? new Date(sandbox.createdAt * 1000),
 			metadata: {
 				lastActiveAt: new Date(sandbox.lastActiveAt * 1000).toISOString(),
 				remoteStatus: sandbox.status,
+				workingDirectory: N8nSandboxServiceSandbox.WORKSPACE_DIR,
 			},
 		};
+	}
+
+	override getInstructions(): string {
+		return [
+			'Cloud sandbox with isolated execution (TypeScript runtime).',
+			`Default working directory: ${N8nSandboxServiceSandbox.WORKSPACE_DIR}.`,
+			`Command timeout: ${Math.ceil(this.timeout / 1000)}s.`,
+		].join(' ');
 	}
 
 	override async executeCommand(
@@ -96,9 +124,9 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 		await this.ensureRunning();
 		const result = await this.client.exec(this.requireSandboxId(), {
 			command: toShellCommand(command, args),
-			env: options?.env,
+			env: this.compactEnv(options?.env),
 			workdir: options?.cwd,
-			timeoutMs: options?.timeout ?? this.options.timeout,
+			timeoutMs: options?.timeout ?? this.timeout,
 			abortSignal: options?.abortSignal,
 			onStdout: options?.onStdout,
 			onStderr: options?.onStderr,
@@ -119,6 +147,28 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 
 	getClient(): SandboxClient {
 		return this.client;
+	}
+
+	/** Returns the remote sandbox record, or `null` if it no longer exists (404). */
+	private async tryGetExistingSandbox(sandboxId: string): Promise<SandboxRecord | null> {
+		try {
+			return await this.client.getSandbox(sandboxId);
+		} catch (error) {
+			if (error instanceof SandboxServiceError && error.status === 404) return null;
+			throw error;
+		}
+	}
+
+	/** Merges constructor-level env with per-command env, filtering out undefined values. */
+	private compactEnv(env: NodeJS.ProcessEnv | undefined): Record<string, string> | undefined {
+		const merged = {
+			...this.options.env,
+			...env,
+		};
+		const entries = Object.entries(merged).filter(
+			(entry): entry is [string, string] => typeof entry[1] === 'string',
+		);
+		return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 	}
 
 	private requireSandboxId(): string {

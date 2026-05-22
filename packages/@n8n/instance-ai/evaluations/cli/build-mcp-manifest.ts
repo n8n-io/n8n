@@ -358,7 +358,11 @@ interface BuildOutcome {
 	durationMs: number;
 }
 
-const testCaseSchema = z.object({ prompt: z.string() }).passthrough();
+const testCaseSchema = z
+	.object({
+		conversation: z.array(z.object({ role: z.string(), text: z.string() })).min(1),
+	})
+	.passthrough();
 
 function tailWorkflowId(text: string): string | null {
 	const matches = [...text.matchAll(/WORKFLOW_ID=([A-Za-z0-9_-]+)/g)];
@@ -384,7 +388,7 @@ async function buildOne(
 		? `\n\nWhen calling create_workflow_from_code, pass projectId: '${args.projectId}' so the workflow is created in that n8n project.`
 		: '';
 
-	const userMessage = `${testCase.prompt}${projectInstruction}
+	const userMessage = `${testCase.conversation[0].text}${projectInstruction}
 
 ---
 After you have created the workflow with create_workflow_from_code, print a final line of the exact form:

@@ -10,7 +10,7 @@ import {
 } from './composables/useAgentThreadsApi';
 
 const ITEMS_PER_PAGE = 20;
-const AUTO_REFRESH_INTERVAL_MS = 2_000;
+const AUTO_REFRESH_INTERVAL_MS = 5_000;
 
 export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	const threads = ref<AgentExecutionThread[]>([]);

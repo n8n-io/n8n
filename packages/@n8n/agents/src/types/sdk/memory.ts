@@ -185,6 +185,20 @@ export interface EpisodicMemorySearchOptions {
 	includeStatuses?: EpisodicMemoryStatus[];
 }
 
+export interface EpisodicMemoryTaskLockHandle {
+	resourceId: string;
+	holderId: string;
+	heldUntil: Date;
+}
+
+export interface EpisodicMemoryTaskLockMethods {
+	acquire(
+		resourceId: string,
+		opts: { ttlMs: number; holderId: string },
+	): Promise<EpisodicMemoryTaskLockHandle | null>;
+	release(handle: EpisodicMemoryTaskLockHandle): Promise<void>;
+}
+
 export interface EpisodicMemoryMethods {
 	saveEntryWithSources(
 		entry: NewEpisodicMemoryEntry,
@@ -202,6 +216,7 @@ export interface EpisodicMemoryMethods {
 	): Promise<EpisodicMemoryReflectionResult>;
 	getCursor(scope: ObservationLogScope): Promise<EpisodicMemoryCursor | null>;
 	setCursor(cursor: NewEpisodicMemoryCursor): Promise<void>;
+	taskLock?: EpisodicMemoryTaskLockMethods;
 }
 
 export interface BuiltEpisodicMemoryStore {
