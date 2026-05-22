@@ -16,6 +16,13 @@ on:
 permissions:
   contents: read
 
+# Prevent overlapping scheduled + manual runs from racing on the same
+# ledger row. The writer MERGE is idempotent, but two concurrent runs
+# would emit duplicate event rows for the same picked file.
+concurrency:
+  group: mutation-health-${{ github.event.inputs.package || 'n8n-workflow' }}
+  cancel-in-progress: false
+
 env:
   PACKAGE_NAME: ${{ github.event.inputs.package || 'n8n-workflow' }}
   PKG_DIR: packages/workflow # mapping is 1-to-1 for Phase 1; expand when Phase 2 rolls out
@@ -72,7 +79,7 @@ jobs:
         # "Stryker crashed." continue-on-error: true would collapse them.
         run: |
           set +e
-          pnpm --filter "$PACKAGE_NAME" mutate ${{ steps.pick.outputs.source-rel }}
+          pnpm --filter "$PACKAGE_NAME" mutate "${{ steps.pick.outputs.source-rel }}"
           rc=$?
           set -e
           if [ "$rc" -gt 1 ]; then
