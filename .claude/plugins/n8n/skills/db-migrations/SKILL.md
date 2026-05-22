@@ -29,10 +29,9 @@ description: Authors n8n database migrations. Use when creating or modifying fil
 
 ```
 packages/@n8n/db/src/migrations/
-├── common/           # default — DSL handles SQLite + Postgres
+├── common/           # Default — DSL handles SQLite + Postgres
 ├── postgresdb/       # PostgreSQL-specific migrations
-├── sqlite/           # SQLite-only override (subclass + withFKsDisabled)
-├── mysqldb/          # do NOT add new files here (MySQL/MariaDB support is deprecated)
+├── sqlite/           # SQLite-specific migrations
 ├── dsl/              # Schema builder DSL (table, column, indices)
 ├── __tests__/        # Migration tests
 ├── migration-types.ts
@@ -52,30 +51,30 @@ Source of truth: `packages/@n8n/db/src/migrations/migration-types.ts`. Check the
 
 ```typescript
 interface MigrationContext {
-  // Database info
-  dbType: 'postgresdb' | 'sqlite';
-  isSqlite: boolean;
-  isPostgres: boolean;
-  tablePrefix: string;
-  dbName: string;
-  migrationName: string;
+	// Database info
+	dbType: 'postgresdb' | 'sqlite';
+	isSqlite: boolean;
+	isPostgres: boolean;
+	tablePrefix: string;
+	dbName: string;
 
-  // Schema DSL
-  schemaBuilder: { createTable, dropTable, addColumns, dropColumns, column,
-                   createIndex, dropIndex, addForeignKey, dropForeignKey,
-                   addNotNull, dropNotNull };
+	// Schema DSL
+	schemaBuilder: { createTable, dropTable, addColumns, dropColumns, column,
+		createIndex, dropIndex, addForeignKey, dropForeignKey,
+		addNotNull, dropNotNull };
 
-  // Query execution
-  runQuery<T>(sql: string, namedParameters?: object): Promise<T>;
-  runInBatches<T>(query: string, operation: (rows: T[]) => Promise<void>, limit?: number): Promise<void>;
-  copyTable(from: string, to: string, fromFields?: string[], toFields?: string[], batchSize?: number): Promise<void>;
+	// Query execution
+	runQuery<T>(sql: string, namedParameters?: object): Promise<T>;
+	runInBatches<T>(query: string, operation: (rows: T[]) => Promise<void>, limit?: number): Promise<void>;
+	copyTable(from: string, to: string, fromFields?: string[], toFields?: string[], batchSize?: number): Promise<void>;
 
-  // Utilities
-  escape: { tableName(n: string): string; columnName(n: string): string; indexName(n: string): string };
-  parseJson<T>(data: string | T): T;
-  loadSurveyFromDisk(): string | null;
-  logger: Logger;
-  queryRunner: QueryRunner;  // Avoid direct use — prefer runQuery()
+	// Utilities
+	escape: { tableName(n: string): string; columnName(n: string): string; indexName(n: string): string };
+	parseJson<T>(data: string | T): T;
+	loadSurveyFromDisk(): string | null;
+	logger: Logger;
+	migrationName: string;
+	queryRunner: QueryRunner;  // Avoid direct use — prefer runQuery()
 }
 ```
 
@@ -132,7 +131,7 @@ Rules that apply to every migration — schema or data, common or DB-specific. R
 
 ### Creating Migrations
 
-> **Future-dated head workaround**: the repository currently has migrations stamped at `1784000000008` (≈ 2026-07-14). Until real time passes that, `Date.now()` sorts *before* the head and would run out of order on databases that already applied the later migrations. The generator picks `max + 1` in this window automatically. Don't bypass it. Context: [PR #30511](https://github.com/n8n-io/n8n/pull/30511).
+> **Temporary timestamp workaround:** This repository currently has future-dated migrations, with the head at `1784000000008` (`2026-07-14T03:33:20.008Z`). Until real time passes that timestamp, a migration created with `Date.now()` would sort before the deployed head and can run out of order on databases that already applied later migrations. Use the generator during this window — it picks `max + 1` when needed. See [PR #30511](https://github.com/n8n-io/n8n/pull/30511) for context.
 
 Migration files are named `{TIMESTAMP}-{DescriptiveName}.ts`. The timestamp must be strictly greater than every existing migration timestamp in this package (across `common/`, `postgresdb/`, and `sqlite/`). TypeORM runs unrecorded migrations in timestamp order, so inserting a value below the current max corrupts ordering on databases that have already executed the later migrations.
 
@@ -150,13 +149,21 @@ The `migration-timestamp` rule in `@n8n/code-health` enforces both invariants (s
 
 Pending migrations are applied during normal n8n startup. In a local checkout, run `pnpm start` with the target code version to apply them manually.
 
-To revert the most recently applied reversible migration:
+To revert the most recently applied reversible migration, use the CLI command:
+
+```sh
+n8n db:revert
+```
+
+In a local checkout, run the same command through the package script:
 
 ```sh
 pnpm start -- db:revert
 ```
 
-Do **not** revert migrations by editing the migrations table or running hand-written SQL. `db:revert` runs the migration's `down()` method and preserves TypeORM's migration bookkeeping. The CLI source is `packages/cli/src/commands/db/revert.ts`.
+Do **not** revert migrations by editing the migrations table or running
+hand-written SQL. `db:revert` runs the migration's `down()` method and
+preserves TypeORM's migration bookkeeping.
 
 ### Which directory to choose
 
@@ -235,13 +242,13 @@ export class MigrateThing1234567890000 implements IrreversibleMigration {
 }
 ```
 
-**Why:** a migration is read more often than it's written — during review, during incident response, and years later when someone has to understand why a column exists. Named steps double as documentation. Reversible migrations benefit even more — `down()` can call the same private helpers in reverse.
+**Why:** A migration is read more often than it's written — during review, during incident response, and years later when someone has to understand why a column exists. Named steps double as documentation. They also make it easier to skim a diff: a reviewer can tell at a glance whether the change is "added a new step" or "rewrote an existing one." Reversible migrations benefit even more — `down()` can call the same private helpers in reverse.
 
 ### Prefer `runQuery()` over `queryRunner`
 
 Run SQL through `runQuery()` from `MigrationContext`. Never call `queryRunner.query()` or `queryRunner.manager.*` from a migration.
 
-**Why:** `runQuery()` handles named parameter binding consistently, integrates with the migration's logger and error path, and gives consistent error messages on both engines. `queryRunner.query()` is positional and bypasses the parameter helper. `queryRunner.manager.*` couples the migration to live TypeORM entity classes — a migration that worked at v1.0 can break at v2.0 if the entity shape evolves.
+**Why:** `runQuery()` handles named parameter binding consistently, while identifiers still need `escape.tableName()`, `escape.columnName()`, and `escape.indexName()`. `queryRunner.query()` bypasses the parameter helper. `queryRunner.manager` calls couple the migration to TypeORM entity definitions, which change over time — a migration that worked at v1.0 can break at v2.0 if the entity shape evolves.
 
 ### Never import entities as values
 
@@ -265,7 +272,7 @@ await runQuery(`UPDATE ${table} SET scopes = :scopes WHERE id = :id`, { scopes, 
 
 Use `escape.tableName()`, `escape.columnName()`, and `escape.indexName()` for every identifier. Don't hand-roll `${tablePrefix}my_table` or hardcode quoted names like `"model_tmp"`.
 
-**Why:** The DB type, table prefix, and quoting rules differ between Postgres and SQLite. The `escape.*` helpers apply the right rules; manual interpolation will eventually be wrong on one of them — usually the one you didn't test on locally.
+**Why:** The DB type, table prefix, and quoting rules differ between Postgres and SQLite. The `escape.*` helpers apply the right rules; manual interpolation will eventually be wrong on one of them.
 
 ### Prefer inlining over importing from sibling packages
 
@@ -277,7 +284,7 @@ Acceptable exceptions: utilities whose semantics are stable and whose inline imp
 
 ### Logging
 
-Use the `logger` from `MigrationContext` — never `console.log`. Prefix every line with `[${migrationName}]` so failures are traceable in a boot log that may contain many migrations' output.
+Use the `logger` from `MigrationContext` — never `console.log`.
 
 ```typescript
 logger.info(`[${migrationName}] Processing ${count} workflows`);
@@ -319,18 +326,18 @@ export class CreateMyTable1234567890000 implements ReversibleMigration {
   async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
     await createTable('my_table')
       .withColumns(
-        column('id').int.notNull.primary.autoGenerate2,
+        column('id').int.notNull.primary.autoGenerate2,   // Use autoGenerate2, not autoGenerate
         column('name').varchar(255).notNull,
         column('workflowId').varchar(36).notNull,
-        column('config').json,                             // → json (PG) / text (SQLite)
+        column('config').json,                             // Maps to json (PG) / text (SQLite)
         column('isActive').bool.notNull.default(false),
       )
-      .withTimestamps                                      // adds createdAt + updatedAt
+      .withTimestamps                                      // Adds createdAt + updatedAt
       .withIndexOn(['workflowId'])
       .withForeignKey('workflowId', {
         tableName: 'workflow_entity',
         columnName: 'id',
-        onDelete: 'CASCADE',                               // always explicit
+        onDelete: 'CASCADE',                               // Always explicit
       });
   }
 
@@ -406,7 +413,7 @@ await createTable('membership')
 
 ### Foreign Key Constraints
 
-**FKs are the default; opting out needs justification.** Reviewers will ask "why no foreign key constraint on X?". For polymorphic refs (one column points at different tables based on a sibling type column), see [General Design Guidance](#general-design-guidance).
+**FKs are the default; opting out needs justification.**. For polymorphic refs (one column points at different tables based on a sibling type column), see [General Design Guidance](#general-design-guidance).
 
 **Specify `onDelete` explicitly.** Don't rely on database defaults. Answer "what happens when [parent] is deleted?" in the PR description.
 
@@ -434,11 +441,11 @@ await schemaBuilder.createIndex('my_table', ['email'], true); // unique
 
 // Partial unique index — uniqueness only on non-null rows
 await schemaBuilder.createIndex(
-  'my_table',
-  ['externalRef'],
-  true,                              // isUnique
-  undefined,                         // customIndexName
-  '"externalRef" IS NOT NULL',       // whereClause
+	'my_table',
+	['externalRef'],
+	true,                              // isUnique
+	undefined,                         // customIndexName
+	'"externalRef" IS NOT NULL',       // whereClause
 );
 
 // Dropping indices (defensively)
@@ -500,24 +507,24 @@ This has been the **#1 source of migration bugs**.
 
 ```typescript
 await runInBatches<Row>(selectQuery, async (rows) => {
-  for (const row of rows) {
-    try {
-      const nodes = parseJson(row.nodes);
-      if (!Array.isArray(nodes)) continue;            // guard against unexpected shape
+	for (const row of rows) {
+		try {
+			const nodes = parseJson(row.nodes);
+			if (!Array.isArray(nodes)) continue;            // guard against unexpected shape
 
-      for (const node of nodes) {
-        if (!node.type) continue;                     // skip nodes missing required fields
-        // ... transform ...
-      }
+			for (const node of nodes) {
+				if (!node.type) continue;                     // skip nodes missing required fields
+				// ... transform ...
+			}
 
-      await runQuery(`UPDATE ${table} SET nodes = :nodes WHERE id = :id`, {
-        nodes: JSON.stringify(nodes),
-        id: row.id,
-      });
-    } catch (error) {
-      logger.warn(`[${migrationName}] Failed to process row ${row.id}: ${error.message}. Skipping.`);
-    }
-  }
+			await runQuery(`UPDATE ${table} SET nodes = :nodes WHERE id = :id`, {
+				nodes: JSON.stringify(nodes),
+				id: row.id,
+			});
+		} catch (error) {
+			logger.warn(`[${migrationName}] Failed to process row ${row.id}: ${error.message}. Skipping.`);
+		}
+	}
 });
 ```
 
@@ -534,13 +541,13 @@ When SQL alone can't express the transformation, fall back to `runInBatches`. Fi
 ```typescript
 // ✅: batched processing
 await runInBatches<Workflow>(
-  `SELECT id, nodes FROM ${tableName} WHERE ${condition}`,
-  async (workflows) => {
-    for (const workflow of workflows) {
-      // ... process each workflow ...
-    }
-  },
-  100, // batch size (default: 100, use 100-500)
+	`SELECT id, nodes FROM ${tableName} WHERE ${condition}`,
+	async (workflows) => {
+		for (const workflow of workflows) {
+			// ... process each workflow ...
+		}
+	},
+	100, // batch size (default: 100, use 100-500)
 );
 
 // ✅: batched table copy
@@ -559,26 +566,26 @@ When a migration both adds a column and backfills data, structure it clearly wit
 
 ```typescript
 export class AddAndBackfillColumn1234567890000 implements IrreversibleMigration {
-  async up(ctx: MigrationContext) {
-    await ctx.schemaBuilder.addColumns('my_table', [ctx.schemaBuilder.column('newCol').text]);
-    await this.backfillNewCol(ctx);
-  }
+	async up(ctx: MigrationContext) {
+		await ctx.schemaBuilder.addColumns('my_table', [ctx.schemaBuilder.column('newCol').text]);
+		await this.backfillNewCol(ctx);
+	}
 
-  private async backfillNewCol({ escape, runQuery, runInBatches }: MigrationContext) {
-    const table = escape.tableName('my_table');
-    await runInBatches<{ id: string; oldCol: string }>(
-      `SELECT id, oldCol FROM ${table}`,
-      async (rows) => {
-        for (const row of rows) {
-          const transformed = transform(row.oldCol);
-          await runQuery(`UPDATE ${table} SET newCol = :val WHERE id = :id`, {
-            val: transformed,
-            id: row.id,
-          });
-        }
-      },
-    );
-  }
+	private async backfillNewCol({ escape, runQuery, runInBatches }: MigrationContext) {
+		const table = escape.tableName('my_table');
+		await runInBatches<{ id: string; oldCol: string }>(
+			`SELECT id, oldCol FROM ${table}`,
+			async (rows) => {
+				for (const row of rows) {
+					const transformed = transform(row.oldCol);
+					await runQuery(`UPDATE ${table} SET newCol = :val WHERE id = :id`, {
+						val: transformed,
+						id: row.id,
+					});
+				}
+			},
+		);
+	}
 }
 ```
 
@@ -672,25 +679,25 @@ Full helper API: `packages/@n8n/backend-test-utils/MIGRATION_TESTING.md`.
 import { initDbUpToMigration, runSingleMigration } from '@n8n/backend-test-utils';
 
 describe('AddAndBackfillColumn1234567890000', () => {
-  beforeEach(async () => {
-    await initDbUpToMigration('AddAndBackfillColumn1234567890000');
-  });
+	beforeEach(async () => {
+		await initDbUpToMigration('AddAndBackfillColumn1234567890000');
+	});
 
-  it('backfills newCol from oldCol', async () => {
-    // Seed rows in the pre-migration schema
-    await dataSource.query(`INSERT INTO my_table (id, oldCol) VALUES ('1', 'foo')`);
+	it('backfills newCol from oldCol', async () => {
+		// Seed rows in the pre-migration schema
+		await dataSource.query(`INSERT INTO my_table (id, oldCol) VALUES ('1', 'foo')`);
 
-    await runSingleMigration('AddAndBackfillColumn1234567890000');
+		await runSingleMigration('AddAndBackfillColumn1234567890000');
 
-    const [row] = await dataSource.query(`SELECT newCol FROM my_table WHERE id = '1'`);
-    expect(row.newCol).toBe('transformed-foo');
-  });
+		const [row] = await dataSource.query(`SELECT newCol FROM my_table WHERE id = '1'`);
+		expect(row.newCol).toBe('transformed-foo');
+	});
 
-  it('skips rows with NULL oldCol without crashing', async () => {
-    await dataSource.query(`INSERT INTO my_table (id, oldCol) VALUES ('1', NULL)`);
-    await runSingleMigration('AddAndBackfillColumn1234567890000');
-    // assert no error and row still exists
-  });
+	it('skips rows with NULL oldCol without crashing', async () => {
+		await dataSource.query(`INSERT INTO my_table (id, oldCol) VALUES ('1', NULL)`);
+		await runSingleMigration('AddAndBackfillColumn1234567890000');
+		// assert no error and row still exists
+	});
 });
 ```
 
@@ -723,11 +730,4 @@ A "polymorphic" column pair is one column that points at different tables depend
 - **Separate join tables per relation type** (`credential_external_secret_dependency`, `credential_node_dependency`, …). Each has a real FK. Queries that need "all dependencies" become a UNION.
 - **One nullable FK per possible target** with a CHECK constraint that exactly one is set. Each column is a real FK.
 - **Supertype table**: hoist parents into a single `dependency_target` with its own type column, then have one FK to that table.
-
----
-
-## After authoring
-
-1. Run `pnpm typecheck` and `pnpm lint` in `packages/@n8n/db` and `packages/cli`.
-2. Run the migration test: `pushd packages/cli && pnpm test test/migration/{your-test}.test.ts && popd`.
-3. Manual smoke test on both DBs: `pnpm start && pnpm start -- db:revert && pnpm start`.
+-
