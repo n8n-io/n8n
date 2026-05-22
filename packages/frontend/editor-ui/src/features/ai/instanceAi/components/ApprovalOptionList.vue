@@ -121,7 +121,7 @@ function onKeydown(event: KeyboardEvent) {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	width: 100%;
-	height: 36px;
+	min-height: 36px;
 	padding: var(--spacing--3xs) var(--spacing--2xs) var(--spacing--3xs) var(--spacing--xs);
 	border: none;
 	border-radius: var(--radius--lg);
