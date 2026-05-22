@@ -880,5 +880,65 @@ describe('CredentialEdit', () => {
 			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
 			await retry(() => expect(queryByTestId('oauth-connect-success-banner')).not.toBeVisible());
 		});
+
+		test('shows the not-connected warning banner for resolvable credential when connectedByMe is false', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				isResolvable: true,
+				connectedByMe: false,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).toBeVisible());
+			expect(queryByTestId('oauth-connect-success-banner')).not.toBeVisible();
+		});
+
+		test('hides the not-connected warning banner when the current user is connected', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				isResolvable: true,
+				connectedByMe: true,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).not.toBeVisible());
+		});
+
+		test('does not show the not-connected warning banner for static OAuth credentials', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				isResolvable: false,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).not.toBeVisible());
+		});
 	});
 });

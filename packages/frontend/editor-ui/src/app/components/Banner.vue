@@ -7,7 +7,7 @@ import { ref } from 'vue';
 import { ElTag } from 'element-plus';
 import { N8nButton, N8nIcon, N8nLink } from '@n8n/design-system';
 interface Props {
-	theme: 'success' | 'danger';
+	theme: 'success' | 'danger' | 'warning';
 	message: string;
 	buttonLabel?: string;
 	buttonLoadingLabel?: string;
@@ -44,12 +44,26 @@ const onClick = () => {
 	<ElTag :type="theme" :disable-transitions="true" :class="$style.container">
 		<N8nIcon
 			:icon="theme === 'success' ? 'circle-check' : 'triangle-alert'"
-			:class="theme === 'success' ? $style.icon : $style.dangerIcon"
+			:class="
+				theme === 'success'
+					? $style.icon
+					: theme === 'warning'
+						? $style.warningIcon
+						: $style.dangerIcon
+			"
 		/>
 		<div :class="$style.banner">
 			<div :class="$style.content">
 				<div>
-					<span :class="theme === 'success' ? $style.message : $style.dangerMessage">
+					<span
+						:class="
+							theme === 'success'
+								? $style.message
+								: theme === 'warning'
+									? $style.warningMessage
+									: $style.dangerMessage
+						"
+					>
 						{{ message }}&nbsp;
 					</span>
 					<N8nLink v-if="details && !expanded" :bold="true" size="small" @click="expand">
@@ -90,6 +104,11 @@ const onClick = () => {
 	color: var(--color--danger);
 }
 
+.warningIcon {
+	composes: icon;
+	color: var(--color--warning);
+}
+
 .container {
 	width: 100%;
 	position: relative;
@@ -107,6 +126,11 @@ const onClick = () => {
 .dangerMessage {
 	composes: message;
 	color: var(--callout--color--text--danger);
+}
+
+.warningMessage {
+	composes: message;
+	color: var(--callout--color--text--warning);
 }
 
 .banner {
