@@ -31,6 +31,7 @@ import {
 	executeResumableStream,
 	normalizeStreamSource,
 } from '../../src/runtime/resumable-stream-executor';
+import { loadInstanceAiRuntimeSkillSource } from '../../src/skills/runtime-skills';
 import { createAllTools } from '../../src/tools';
 import type {
 	InstanceAiContext,
@@ -278,6 +279,7 @@ function createStubOrchestrationContext(
 		eventBus: opts.eventBus,
 		logger: silentLogger(),
 		domainTools,
+		runtimeSkills: loadInstanceAiRuntimeSkillSource(),
 		abortSignal: opts.abortSignal,
 		taskStorage,
 		// Discovery evals assert first-dispatch intent only. Production starts a

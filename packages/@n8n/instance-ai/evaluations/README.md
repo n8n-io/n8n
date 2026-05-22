@@ -2,10 +2,11 @@
 
 Tests whether workflows built by Instance AI actually work by executing them with LLM-generated mock HTTP responses. No real credentials or external services are involved.
 
-Three harnesses live here:
+Four harnesses live here:
 
 - **`eval:instance-ai`** — end-to-end build + mocked execution + LLM verification (drives a running n8n instance)
 - **`eval:subagent`** — builder sub-agent against live n8n, scored by binary checks (drives a running n8n instance)
+- **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — builder sub-agent in-process, scored by an LLM judge panel against do/don't lists (no n8n server). Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
 
 Sections:
@@ -13,6 +14,7 @@ Sections:
 - [Running e2e + sub-agent evals](#running-evals)
 - [Regression detection](#regression-detection)
 - [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows)
+- [Running discovery evals](#discovery-evals)
 - [Running pairwise evals](#pairwise-evals)
 - [How the e2e harness works](#how-the-e2e-harness-works)
 - [How the sub-agent harness works](#how-the-sub-agent-harness-works)
@@ -253,6 +255,24 @@ For runs that need to leave the n8n repo (for example, driving the build from a 
 - `--project-id <id>` — instructs the model to pass `projectId` to `create_workflow_from_code` so workflows land in a specific n8n project instead of the user's personal one.
 
 Run `pnpm eval:build-mcp-manifest --help` for the full flag list.
+
+## Discovery evals
+
+Discovery evals run the orchestrator in-process and assert first-hop tool or
+sub-agent routing from captured `tool-call`, `tool-result`, `tool-error`, and
+`agent-spawned` events. Use them when a regression is about which path the
+agent chooses, not whether a generated workflow executes.
+
+To inspect runtime skill loading, run a focused verbose pass:
+
+```bash
+pnpm eval:discovery --filter data-table-skill-loading --trials 3 --verbose --fail-on-zero-pass
+```
+
+Verbose output lists each trial's completed tool calls with argument previews.
+For data-table routing, look for `load_skill(skillId="data-table-manager")`
+and `data-tables(action="list")`, and verify there are no planner,
+workflow-builder, or delegate sub-agent entries in the spawned-agent section.
 
 ## Pairwise evals
 

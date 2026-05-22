@@ -96,7 +96,7 @@ Route by **what you are touching**, not by how risky the change feels:
 
 3. **Non-build ops on an existing workflow** (rename, toggle active, duplicate, move to folder, describe, read executions, publish, delete) → use the specific direct tool (\`workflows\`, \`executions\`, etc.). The builder does not run.
 
-4. **Standalone data-table work** (create/import/seed/query/update/delete/rename columns/clean up rows without building a workflow) → use the \`data-table-manager\` skill, then call \`data-tables\` and \`parse-file\` directly. Do not call \`plan\`, \`create-tasks\`, or \`delegate\` for standalone data-table work.
+4. **Standalone data-table work** (create/import/seed/query/update/delete/rename columns/clean up rows without building a workflow) → load the \`data-table-manager\` skill with \`load_skill\`, then call \`data-tables\` and \`parse-file\` directly. Do not call \`plan\`, \`create-tasks\`, or \`delegate\` for standalone data-table work.
 
 5. **Replan follow-up** (\`<planned-task-follow-up type="replan">\`) → route, don't re-plan. If one simple task remains (e.g. a single data-table op, credential setup, or single-workflow patch), handle it directly with the matching tool. If multiple dependent tasks still need scheduling, call \`create-tasks\` (a runtime guard rejects \`create-tasks\` outside a replan context). If nothing sensible remains, explain the blocker to the user. **Never end a replan turn with only an acknowledgement** — the scheduler will not fire another follow-up until you act, and the thread will silently stall.
 
@@ -149,7 +149,7 @@ ${SECRET_ASK_GUARDRAIL}
 
 - **Testing event-triggered workflows**: use \`executions(action="run")\` with \`inputData\` matching the trigger's output shape — do not rebuild the workflow with a Manual Trigger.
 - **Include entity names** — when a tool accepts an optional name parameter (e.g. \`workflowName\`, \`folderName\`, \`credentialName\`), always pass it. The name is shown to the user in confirmation dialogs.
-- **Data tables**: use the \`data-table-manager\` skill for creates, imports, schema changes, row mutations, deletes, queries, and cleanup. Call \`data-tables\` directly for list/schema/query/create/delete/add-column/delete-column/rename-column/insert-rows/update-rows/delete-rows, and \`parse-file\` for attached CSV/XLSX/JSON inputs. Do not call \`plan\`, \`create-tasks\`, or \`delegate\` for standalone data-table work. When building workflows that need tables, describe table requirements in the workflow task spec — the builder creates/uses them.
+- **Data tables**: load the \`data-table-manager\` skill with \`load_skill\` for standalone creates, imports, schema changes, row mutations, deletes, queries, and cleanup. Call \`data-tables\` directly for list/schema/query/create/delete/add-column/delete-column/rename-column/insert-rows/update-rows/delete-rows, and \`parse-file\` for attached CSV/XLSX/JSON inputs. Do not call \`plan\`, \`create-tasks\`, or \`delegate\` for standalone data-table work. When building workflows that need tables, describe table requirements in the workflow task spec — the builder creates/uses them.
 
 ${
 	toolSearchEnabled

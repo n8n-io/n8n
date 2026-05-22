@@ -234,6 +234,62 @@ describe('runExpectedToolsInvokedCheck', () => {
 		});
 	});
 
+	describe('allOfToolCalls — actual tool-call requirements', () => {
+		const dataTableScenario: DiscoveryTestCase = {
+			id: 'test',
+			userMessage: 'List my n8n Data Tables.',
+			expectedToolInvocations: {
+				allOfToolCalls: [
+					{ toolName: 'load_skill', argsContainAny: ['data-table-manager'] },
+					{ toolName: 'data-tables', argsContainAny: ['list'] },
+				],
+			},
+		};
+
+		it('passes when every expected actual tool call happened with matching args', () => {
+			const result = runExpectedToolsInvokedCheck(
+				dataTableScenario,
+				makeOutcome({
+					toolCalls: [
+						{ toolName: 'load_skill', args: { skillId: 'data-table-manager' } },
+						{ toolName: 'data-tables', args: { action: 'list' } },
+					],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('fails when a tool is only available to a spawned agent but was not called', () => {
+			const result = runExpectedToolsInvokedCheck(
+				dataTableScenario,
+				makeOutcome({
+					toolCalls: [{ toolName: 'load_skill', args: { skillId: 'data-table-manager' } }],
+					agents: [{ role: 'workflow-builder', tools: ['data-tables'] }],
+				}),
+			);
+
+			expect(result.pass).toBe(false);
+			expect(result.comment).toContain('Expected actual tool call matching');
+			expect(result.comment).toContain('data-tables');
+		});
+
+		it('fails when the tool call args do not match the expectation', () => {
+			const result = runExpectedToolsInvokedCheck(
+				dataTableScenario,
+				makeOutcome({
+					toolCalls: [
+						{ toolName: 'load_skill', args: { skillId: 'data-table-manager' } },
+						{ toolName: 'data-tables', args: { action: 'schema' } },
+					],
+				}),
+			);
+
+			expect(result.pass).toBe(false);
+			expect(result.comment).toContain('list');
+		});
+	});
+
 	describe('rule validation', () => {
 		it('throws when neither anyOf nor noneOf is provided', () => {
 			expect(() =>

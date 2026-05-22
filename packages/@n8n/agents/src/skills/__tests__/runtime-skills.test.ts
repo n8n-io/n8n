@@ -268,6 +268,8 @@ Use the workflow SDK.`,
 				id: 'summarize_notes',
 				name: 'Summarize notes',
 				description: 'Use for meeting notes.',
+				category: 'productivity',
+				recommendedTools: ['data-tables'],
 				instructions: 'Extract private decisions.',
 			},
 		]);
@@ -277,6 +279,8 @@ Use the workflow SDK.`,
 		expect(prompt).toContain('Skill loading protocol:');
 		expect(prompt).toContain('name: "Summarize notes"');
 		expect(prompt).toContain('id: "summarize_notes"');
+		expect(prompt).toContain('category: "productivity"');
+		expect(prompt).toContain('recommendedTools: ["data-tables"]');
 		expect(prompt).toContain('load_skill once with `{ "skillId": "<id>" }`');
 		expect(prompt).not.toContain('Extract private decisions.');
 	});
@@ -309,11 +313,16 @@ Use the workflow SDK.`,
 		const listTool = createListSkillsTool(source);
 		const loadTool = createSkillLoadTool(source);
 
-		await expect(listTool.handler?.({}, {})).resolves.toMatchObject({
+		const listOutput = await listTool.handler?.({}, {});
+		expect(listOutput).toMatchObject({
 			success: true,
 			count: 1,
 			skills: [expect.objectContaining({ name: 'Summarize notes' })],
 		});
+		const listedSkill = (listOutput as { skills: Array<Record<string, unknown>> }).skills[0];
+		expect(listedSkill).not.toHaveProperty('content');
+		expect(listedSkill).not.toHaveProperty('instructions');
+
 		await expect(loadTool.handler?.({ skillId: 'summarize_notes' }, {})).resolves.toMatchObject({
 			ok: true,
 			success: true,
@@ -341,7 +350,7 @@ Use the workflow SDK.`,
 				id: 'summarize_notes',
 				name: 'Summarize notes',
 				description: 'Use for meeting notes.',
-				instructions: 'Extract decisions.',
+				instructions: 'Full private skill body: Extract decisions.',
 			},
 		]);
 		const prepare = jest.fn(async () => {
@@ -408,8 +417,11 @@ Use the workflow SDK.`,
 		const instructions = (runtime as { config: { instructions: string } }).config.instructions;
 
 		expect(prepare).toHaveBeenCalledTimes(1);
+		expect(instructions).toContain('name: "Summarize notes"');
+		expect(instructions).toContain('id: "summarize_notes"');
 		expect(instructions).toContain('description: "Use for materialized meeting notes."');
 		expect(instructions).not.toContain('description: "Use for meeting notes."');
+		expect(instructions).not.toContain('Full private skill body');
 	});
 
 	it('redacts likely secrets from load_skill content before returning it', async () => {
