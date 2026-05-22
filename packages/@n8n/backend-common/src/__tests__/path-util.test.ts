@@ -35,6 +35,12 @@ describe('path-util', () => {
 			expect(normalizeBasePath('a/b/', 'c/d/')).toBe('/a/b/c/d');
 		});
 
+		it('should strip multiple trailing slashes', () => {
+			expect(normalizeBasePath('/app//', '')).toBe('/app');
+			expect(normalizeBasePath('', '/app///')).toBe('/app');
+			expect(normalizeBasePath('/prefix//', '/app//')).toBe('/prefix/app');
+		});
+
 		it('should not end with a trailing slash', () => {
 			const result1 = normalizeBasePath('/test', '/');
 			const result2 = normalizeBasePath('/test', '/app');
