@@ -20,7 +20,6 @@ const emptyExecutionData = {
 	resultData: { runData: {}, pinData: {} },
 	executionData: undefined,
 } as unknown as IRunExecutionData;
-const logger = mock<Logger>();
 
 const nodeTypes = mock<INodeTypes>();
 
@@ -204,6 +203,45 @@ describe('OtelLifecycleHandler', () => {
 						mode: 'webhook',
 					},
 				}),
+			);
+		});
+
+		it('should enable workflow custom telemetry tags on node spans by default', async () => {
+			await handler.onWorkflowStart({
+				...baseCtx,
+				workflow: {
+					...baseCtx.workflow,
+					settings: {
+						customTelemetryTags: {
+							tag: [{ key: 'env', value: 'production' }],
+						},
+					},
+				},
+				workflowInstance: createWorkflowInstance(),
+			});
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ customAttributesApplyToNodeSpans: true }),
+			);
+		});
+
+		it('should pass disabled workflow custom telemetry tag node propagation to the tracer', async () => {
+			await handler.onWorkflowStart({
+				...baseCtx,
+				workflow: {
+					...baseCtx.workflow,
+					settings: {
+						customTelemetryTags: {
+							tag: [{ key: 'env', value: 'production' }],
+						},
+						customTelemetryTagsApplyToNodeSpans: false,
+					},
+				},
+				workflowInstance: createWorkflowInstance(),
+			});
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ customAttributesApplyToNodeSpans: false }),
 			);
 		});
 

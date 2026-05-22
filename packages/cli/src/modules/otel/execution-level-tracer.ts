@@ -9,6 +9,7 @@ import {
 	type EndWorkflowParams,
 	type StartNodeParams,
 	type EndNodeParams,
+	type CustomAttributes,
 	isEndNodeError,
 } from './execution-level-tracer.types';
 import { OtelConfig } from './otel.config';
@@ -20,12 +21,18 @@ function isError(status: ExecutionStatus): boolean {
 	return status === 'error' || status === 'crashed';
 }
 
-type TrackedSpan = { span: Span };
+type TrackedWorkflowSpan = {
+	span: Span;
+	customAttributes?: CustomAttributes;
+	customAttributesApplyToNodeSpans: boolean;
+};
+
+type TrackedNodeSpan = { span: Span };
 
 @Service()
 export class ExecutionLevelTracer {
-	private readonly activeWorkflowSpans = new Map<string, TrackedSpan>();
-	private readonly activeNodeSpansByExecutionId = new Map<string, Map<string, TrackedSpan>>();
+	private readonly activeWorkflowSpans = new Map<string, TrackedWorkflowSpan>();
+	private readonly activeNodeSpansByExecutionId = new Map<string, Map<string, TrackedNodeSpan>>();
 	private readonly tracer = trace.getTracer(TRACER_NAME);
 
 	constructor(
@@ -58,7 +65,11 @@ export class ExecutionLevelTracer {
 				parentCtx,
 			);
 
-			this.activeWorkflowSpans.set(params.executionId, { span });
+			this.activeWorkflowSpans.set(params.executionId, {
+				span,
+				customAttributes: params.customAttributes,
+				customAttributesApplyToNodeSpans: params.customAttributesApplyToNodeSpans ?? true,
+			});
 			return toTracingParentContext(span);
 		} catch (error) {
 			this.logger.warn('Failed to start workflow span', {
@@ -107,8 +118,11 @@ export class ExecutionLevelTracer {
 
 	startNode(params: StartNodeParams): void {
 		try {
-			//	We should always have the node running in a workflow so parentCtx shuold never be null
-			const parentCtx = this.findWorkflowSpanContext(params.executionId);
+			//	We should always have the node running in a workflow so parentCtx should never be null
+			const trackedWorkflowSpan = this.activeWorkflowSpans.get(params.executionId);
+			const parentCtx = trackedWorkflowSpan
+				? trace.setSpan(context.active(), trackedWorkflowSpan.span)
+				: undefined;
 
 			if (!parentCtx) {
 				this.logger.warn(
@@ -125,6 +139,7 @@ export class ExecutionLevelTracer {
 						[ATTR.NODE_NAME]: params.node.name,
 						[ATTR.NODE_TYPE]: params.node.type,
 						[ATTR.NODE_TYPE_VERSION]: params.node.typeVersion,
+						...buildWorkflowCustomAttributesForNode(trackedWorkflowSpan),
 					},
 				},
 				parentCtx,
@@ -221,11 +236,6 @@ export class ExecutionLevelTracer {
 		];
 	}
 
-	private findWorkflowSpanContext(executionId: string) {
-		const tracked = this.activeWorkflowSpans.get(executionId);
-		return tracked ? trace.setSpan(context.active(), tracked.span) : undefined;
-	}
-
 	private findMostSpecificSpan(executionId: string, nodeName?: string): Span | undefined {
 		return (
 			(nodeName
@@ -246,12 +256,20 @@ export class ExecutionLevelTracer {
 	}
 }
 
-function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | number> {
+function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | number | boolean> {
 	return {
 		[ATTR.NODE_ITEMS_INPUT]: params.inputItemCount,
 		[ATTR.NODE_ITEMS_OUTPUT]: params.outputItemCount,
 		...buildCustomAttributes(ATTR.NODE_CUSTOM_PREFIX, params.customAttributes),
 	};
+}
+
+function buildWorkflowCustomAttributesForNode(
+	trackedWorkflowSpan: TrackedWorkflowSpan | undefined,
+): Record<string, string | number | boolean> {
+	if (!trackedWorkflowSpan?.customAttributesApplyToNodeSpans) return {};
+
+	return buildCustomAttributes(ATTR.WORKFLOW_CUSTOM_PREFIX, trackedWorkflowSpan.customAttributes);
 }
 
 function buildCustomAttributes(

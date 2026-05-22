@@ -19,6 +19,7 @@ export type StartWorkflowParams = {
 	workflow: WorkflowContext;
 	project?: ProjectContext;
 	customAttributes?: CustomAttributes;
+	customAttributesApplyToNodeSpans?: boolean;
 };
 
 export type EndWorkflowParams = {
