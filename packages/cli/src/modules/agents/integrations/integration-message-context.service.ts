@@ -1,6 +1,8 @@
 import { Service } from '@n8n/di';
+import { jsonParse } from 'n8n-workflow';
 
-import { N8nMemory } from './n8n-memory';
+import { AgentResourceRepository } from '../repositories/agent-resource.repository';
+import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 import type {
 	IntegrationMessageContext,
 	IntegrationMessageSubject,
@@ -13,11 +15,14 @@ const MESSAGE_CONTEXT_METADATA_KEY = 'currentMessageContext';
 
 @Service()
 export class IntegrationMessageContextService implements IntegrationMessageContextStore {
-	constructor(private readonly n8nMemory: N8nMemory) {}
+	constructor(
+		private readonly threadRepository: AgentThreadRepository,
+		private readonly resourceRepository: AgentResourceRepository,
+	) {}
 
 	async getLatest(threadId: string): Promise<IntegrationMessageContext | null> {
-		const thread = await this.n8nMemory.getThread(threadId);
-		const value = thread?.metadata?.[MESSAGE_CONTEXT_METADATA_KEY];
+		const thread = await this.threadRepository.findOneBy({ id: threadId });
+		const value = this.parseMetadata(thread?.metadata)[MESSAGE_CONTEXT_METADATA_KEY];
 		return isIntegrationMessageContext(value) ? value : null;
 	}
 
@@ -26,19 +31,51 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		resourceId: string,
 		context: IntegrationMessageContext,
 	): Promise<void> {
-		const existing = await this.n8nMemory.getThread(threadId);
+		const existing = await this.threadRepository.findOneBy({ id: threadId });
 		const metadata = {
-			...(existing?.metadata ?? {}),
+			...this.parseMetadata(existing?.metadata),
 			[MESSAGE_CONTEXT_METADATA_KEY]: context,
 		};
 
-		await this.n8nMemory.saveThread({
-			id: threadId,
-			resourceId: existing?.resourceId ?? resourceId,
-			title: existing?.title,
-			metadata,
-		});
+		if (existing) {
+			existing.metadata = JSON.stringify(metadata);
+			await this.threadRepository.save(existing);
+			return;
+		}
+
+		await this.ensureResource(resourceId);
+		await this.threadRepository.save(
+			this.threadRepository.create({
+				id: threadId,
+				resourceId,
+				title: null,
+				metadata: JSON.stringify(metadata),
+			}),
+		);
 	}
+
+	private async ensureResource(resourceId: string): Promise<void> {
+		const exists = await this.resourceRepository.existsBy({ id: resourceId });
+		if (!exists) {
+			await this.resourceRepository.save(
+				this.resourceRepository.create({ id: resourceId, metadata: null }),
+			);
+		}
+	}
+
+	private parseMetadata(value: string | null | undefined): Record<string, unknown> {
+		if (!value) return {};
+		try {
+			const parsed = jsonParse<unknown>(value);
+			return isRecord(parsed) ? parsed : {};
+		} catch {
+			return {};
+		}
+	}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 export function isIntegrationMessageContext(value: unknown): value is IntegrationMessageContext {
@@ -50,6 +87,7 @@ export function isIntegrationMessageContext(value: unknown): value is Integratio
 		isIntegrationMessageTarget(context.target) &&
 		(context.messageId === undefined || typeof context.messageId === 'string') &&
 		(context.interactingUserId === undefined || typeof context.interactingUserId === 'string') &&
+		(context.agentUserId === undefined || typeof context.agentUserId === 'string') &&
 		(context.subject === undefined || isIntegrationMessageSubject(context.subject)) &&
 		typeof context.updatedAt === 'string'
 	);

@@ -129,7 +129,7 @@ describe('SlackAppSetupService', () => {
 		const createParams = fetchParams(fetchMock, 0);
 		expect(createParams.get('token')).toBe('xoxe-config');
 		const manifest = JSON.parse(createParams.get('manifest') ?? '') as {
-			oauth_config: { redirect_urls: string[] };
+			oauth_config: { redirect_urls: string[]; scopes: { bot: string[] } };
 			settings: {
 				event_subscriptions: { request_url: string; bot_events: string[] };
 				interactivity: { is_enabled: boolean; request_url: string };
@@ -142,11 +142,18 @@ describe('SlackAppSetupService', () => {
 		const callbackUrl =
 			'https://hooks.example/rest/projects/project-1/agents/v2/agent-1/integrations/slack/oauth/callback';
 		expect(manifest.oauth_config.redirect_urls).toEqual([callbackUrl]);
+		expect(manifest.oauth_config.scopes.bot).toEqual(
+			expect.arrayContaining(['channels:history', 'groups:history', 'im:history', 'mpim:history']),
+		);
 		expect(manifest.settings.event_subscriptions.request_url).toBe(webhookUrl);
 		expect(manifest.settings.event_subscriptions.bot_events).toEqual([
 			'app_mention',
+			'assistant_thread_started',
 			'assistant_thread_context_changed',
+			'message.channels',
+			'message.groups',
 			'message.im',
+			'message.mpim',
 		]);
 		expect(manifest.settings.interactivity).toEqual({
 			is_enabled: true,

@@ -31,8 +31,12 @@ const SLACK_CREDENTIAL_TYPE = 'slackApi';
 
 const REQUIRED_BOT_EVENTS = [
 	'app_mention',
+	'assistant_thread_started',
 	'assistant_thread_context_changed',
+	'message.channels',
+	'message.groups',
 	'message.im',
+	'message.mpim',
 ] as const;
 
 const REQUIRED_BOT_SCOPES = [
@@ -46,10 +50,12 @@ const REQUIRED_BOT_SCOPES = [
 	'chat:write.customize',
 	'files:read',
 	'files:write',
+	'groups:history',
 	'groups:read',
 	'im:history',
 	'im:read',
 	'im:write',
+	'mpim:history',
 	'mpim:read',
 	'mpim:write',
 	'search:read.public',

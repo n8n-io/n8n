@@ -686,6 +686,7 @@ describe('integration tools', () => {
 			platform: 'slack',
 			target: { type: 'thread', threadId: 'slack:C123:123.456', channelId: 'slack:C123' },
 			messageId: '123.456',
+			agentUserId: 'U_BOT',
 			subject: {
 				type: 'issue',
 				id: 'ENG-123',
@@ -726,6 +727,7 @@ describe('integration tools', () => {
 					id: 'ENG-123',
 					title: 'Fix signup',
 				},
+				agentUserId: 'U_BOT',
 			}),
 		);
 		expect(result).toEqual(
@@ -737,6 +739,7 @@ describe('integration tools', () => {
 						id: 'ENG-123',
 						title: 'Fix signup',
 					},
+					agentUserId: 'U_BOT',
 				}),
 			}),
 		);
