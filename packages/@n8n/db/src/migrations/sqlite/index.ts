@@ -179,6 +179,7 @@ import { AddNodeGroupsColumnToWorkflowAndHistory1784000000006 } from '../common/
 import { CreateInstanceAiCheckpointTable1784000000007 } from '../common/1784000000007-CreateInstanceAiCheckpointTable';
 import { ResetInstanceAiNativePersistence1784000000008 } from '../common/1784000000008-ResetInstanceAiNativePersistence';
 import { CreateAgentMemoryEntryTables1784000000009 } from '../common/1784000000009-CreateAgentMemoryEntryTables';
+import { RefactorAgentObservationScope1784000000010 } from '../common/1784000000010-RefactorAgentObservationScope';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -363,6 +364,7 @@ const sqliteMigrations: Migration[] = [
 	CreateInstanceAiCheckpointTable1784000000007,
 	ResetInstanceAiNativePersistence1784000000008,
 	CreateAgentMemoryEntryTables1784000000009,
+	RefactorAgentObservationScope1784000000010,
 ];
 
 export { sqliteMigrations };
