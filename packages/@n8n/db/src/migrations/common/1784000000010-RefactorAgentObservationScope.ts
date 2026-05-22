@@ -15,7 +15,8 @@ export class RefactorAgentObservationScope1784000000010 implements ReversibleMig
 	}: MigrationContext) {
 		await this.dropDerivedMemoryTables(runQuery, escape, isPostgres);
 		await this.createObservationLogTables(createTable, column);
-		await this.createEpisodicMemoryTables(createTable, column, 'agent-bound');
+		await this.createEpisodicMemoryTables(createTable, column);
+		await this.createAgentBoundMemoryEntryCursorTable(createTable, column);
 	}
 
 	async down({
@@ -26,7 +27,8 @@ export class RefactorAgentObservationScope1784000000010 implements ReversibleMig
 	}: MigrationContext) {
 		await this.dropDerivedMemoryTables(runQuery, escape, isPostgres);
 		await this.createLegacyObservationLogTables(createTable, column);
-		await this.createEpisodicMemoryTables(createTable, column, 'legacy-observation-scope');
+		await this.createEpisodicMemoryTables(createTable, column);
+		await this.createLegacyMemoryEntryCursorTable(createTable, column);
 	}
 
 	private async dropDerivedMemoryTables(
@@ -173,7 +175,6 @@ export class RefactorAgentObservationScope1784000000010 implements ReversibleMig
 	private async createEpisodicMemoryTables(
 		createTable: MigrationContext['schemaBuilder']['createTable'],
 		column: MigrationContext['schemaBuilder']['column'],
-		cursorScope: 'agent-bound' | 'legacy-observation-scope',
 	) {
 		await createTable('agents_memory_entries')
 			.withColumns(
@@ -276,29 +277,36 @@ export class RefactorAgentObservationScope1784000000010 implements ReversibleMig
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			}).withTimestamps;
+	}
 
-		if (cursorScope === 'agent-bound') {
-			await createTable('agents_memory_entry_cursors')
-				.withColumns(
-					column('agentId').varchar(36).notNull.primary,
-					column('observationScopeId')
-						.varchar(255)
-						.notNull.primary.comment('Source observation stream indexed into episodic memory'),
-					column('lastIndexedObservationId')
-						.varchar(36)
-						.notNull.comment('Last observation-log row indexed into episodic memory'),
-					column('lastIndexedObservationCreatedAt')
-						.timestampTimezone(3)
-						.notNull.comment('Creation timestamp for the last indexed observation-log row'),
-				)
-				.withForeignKey('agentId', {
-					tableName: 'agents',
-					columnName: 'id',
-					onDelete: 'CASCADE',
-				}).withTimestamps;
-			return;
-		}
+	private async createAgentBoundMemoryEntryCursorTable(
+		createTable: MigrationContext['schemaBuilder']['createTable'],
+		column: MigrationContext['schemaBuilder']['column'],
+	) {
+		await createTable('agents_memory_entry_cursors')
+			.withColumns(
+				column('agentId').varchar(36).notNull.primary,
+				column('observationScopeId')
+					.varchar(255)
+					.notNull.primary.comment('Source observation stream indexed into episodic memory'),
+				column('lastIndexedObservationId')
+					.varchar(36)
+					.notNull.comment('Last observation-log row indexed into episodic memory'),
+				column('lastIndexedObservationCreatedAt')
+					.timestampTimezone(3)
+					.notNull.comment('Creation timestamp for the last indexed observation-log row'),
+			)
+			.withForeignKey('agentId', {
+				tableName: 'agents',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			}).withTimestamps;
+	}
 
+	private async createLegacyMemoryEntryCursorTable(
+		createTable: MigrationContext['schemaBuilder']['createTable'],
+		column: MigrationContext['schemaBuilder']['column'],
+	) {
 		await createTable('agents_memory_entry_cursors').withColumns(
 			column('scopeKind')
 				.varchar(20)
