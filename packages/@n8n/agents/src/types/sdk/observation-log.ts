@@ -10,7 +10,7 @@ export type ObservationLogStatus = (typeof OBSERVATION_LOG_STATUSES)[number];
 
 export type ObservationLogScopeKind = 'thread' | 'resource';
 
-export type ObservationLogTaskKind = 'observer' | 'reflector' | 'episodic-indexer';
+export type ObservationLogTaskKind = 'observer' | 'reflector';
 
 const OBSERVATION_LOG_THREAD_SCOPE_PREFIX = 'thread';
 

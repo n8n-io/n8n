@@ -83,6 +83,8 @@ export type {
 	EpisodicMemoryScope,
 	EpisodicMemorySearchOptions,
 	EpisodicMemoryStatus,
+	EpisodicMemoryTaskLockHandle,
+	EpisodicMemoryTaskLockMethods,
 	NewEpisodicMemoryCursor,
 	NewEpisodicMemoryEntry,
 	NewEpisodicMemoryEntrySource,
