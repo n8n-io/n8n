@@ -57,7 +57,7 @@ That divergence is exactly why this project exists.
 | `schema/qa_performance_metrics-dimensions.md` | Dimensions JSON contract for the events table |
 | `seed-ledger.mjs` | Enumerate `<pkg>/src/`, emit one ledger row per source file (status=new) |
 | `pick-next.mjs` | Read a ledger snapshot, return the next source file to mutate |
-| `fetch-ledger.mjs` | Pull the live ledger from BQ via the QA BigQuery API webhook |
+| `fetch-ledger.mjs` | Pull the live ledger via the dedicated reader webhook (GET, no client-side SQL) |
 | `emit-payload.mjs` | Turn a Stryker `summary.json` into a BQ-ready payload |
 | `post-payload.mjs` | POST a payload to the writer webhook (skips cleanly if env unset) |
 
@@ -73,6 +73,8 @@ The Stryker run itself lives in `packages/workflow/scripts/mutate.mjs` and is in
        ├─► post-payload.mjs                 → POST seed; writer MERGEs (idempotent — never clobbers existing scores)
        │
        ├─► fetch-ledger.mjs                 → live-ledger.json (current BQ state)
+       │       │
+       │       └─► GET reader webhook ──► [n8n: QA Mutation Health Reader] ──► SELECT from BQ ledger
        │
        ├─► pick-next.mjs                    → one source file
        │     priority: new → red → stale → skip green
@@ -113,7 +115,16 @@ Picker priority: `new` → `red` → `stale` → skip fresh `green`.
 
 If every row is green and fresh, the picker exits 0 with `{"picked": null, "reason": "all-green"}` — a healthy "nothing to do" state, not a failure.
 
-## Webhook contract
+## Webhook contracts
+
+Two n8n workflows back the pipeline. Both live in the internal Quality project (`L8csxtEbFpFOWlf8`) and are created/maintained outside this repo. Both run unauthenticated (URL-as-secret pattern, matching existing `qa_*` workers).
+
+| Endpoint | Method | Workflow | Purpose |
+| --- | --- | --- | --- |
+| `https://internal.users.n8n.cloud/webhook/mutation-health-writer` | POST | `QA: Mutation Health Writer` (`iYEBmBat8OscRTVq`) | INSERT events + MERGE ledger |
+| `https://internal.users.n8n.cloud/webhook/mutation-health-ledger?package=<name>` | GET | `QA: Mutation Health Reader` (`ZmRsNUwvgfCSq0JI`) | Read current ledger state |
+
+### Writer webhook
 
 `POST https://internal.users.n8n.cloud/webhook/mutation-health-writer` with `Content-Type: application/json`:
 
@@ -162,6 +173,33 @@ The writer:
 2. For each `ledger[]` row → `MERGE` into `qa_mutation_health_ledger` on `source_file_path`. The MERGE skips updates when the incoming `status` is `new`, so seed payloads are idempotent (never clobber a real score back to `new`).
 
 The webhook URL is delivered to GHA via the `MUTATION_HEALTH_WEBHOOK` repo secret. The secret URL itself is the only auth (matches existing `qa_*` writer pattern); rotate the secret if leaked.
+
+### Reader webhook
+
+`GET https://internal.users.n8n.cloud/webhook/mutation-health-ledger?package=<pkg>`:
+
+```json
+{
+  "ledger": [
+    {
+      "source_file_path": "packages/workflow/src/cron.ts",
+      "package": "n8n-workflow",
+      "last_score": 95.12,
+      "threshold_at_run": 80,
+      "last_checked_at": "2026-05-22T10:03:55.660Z",
+      "status": "green",
+      "mutants_killed": 39,
+      "mutants_survived": 2,
+      "mutants_no_coverage": 0,
+      "mutants_timeout": 0
+    }
+  ]
+}
+```
+
+The `package` query param is validated server-side against the same pnpm-workspace allowlist regex used elsewhere in the pipeline; invalid input returns 500. No SQL is constructed or accepted on the client side — the SELECT is hardcoded in the workflow.
+
+Unauthenticated — the URL is not a secret. The data isn't sensitive (file paths + integer scores), but treat the URL as low-trust: anyone with it can read all current ledger state for the queried package.
 
 ## Threshold (provisional)
 
