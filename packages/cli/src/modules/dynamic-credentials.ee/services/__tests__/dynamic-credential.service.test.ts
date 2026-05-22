@@ -101,10 +101,12 @@ describe('DynamicCredentialService', () => {
 		credentials,
 	});
 
-	const createMockCredentialContext = (): ICredentialContext => ({
+	const createMockCredentialContext = (
+		metadata: Record<string, unknown> = {},
+	): ICredentialContext => ({
 		version: 1,
 		identity: 'user-123',
-		metadata: {},
+		metadata,
 	});
 
 	const createMockAdditionalData = (
@@ -432,6 +434,60 @@ describe('DynamicCredentialService', () => {
 				const mockResolver = createMockResolver(false, true); // Throws CredentialResolverDataNotFoundError
 				const executionContext = createMockExecutionContext('encrypted-credentials');
 				const credentialContext = createMockCredentialContext();
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
+
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+				mockCipher.decryptV2
+					.mockResolvedValueOnce(JSON.stringify(credentialContext))
+					.mockResolvedValueOnce(JSON.stringify({ prefix: 'test' }));
+
+				await expect(
+					service.resolveIfNeeded(
+						credentialsEntity,
+						staticData,
+						additionalData.executionContext,
+						undefined,
+					),
+				).rejects.toThrow(
+					'Failed to resolve dynamic credentials for "Test Credential": No data found available for the requested credential and context combination.',
+				);
+			});
+
+			it('resolver throws CredentialResolverDataNotFoundError from a manual editor-triggered run', async () => {
+				const credentialsEntity = createMockCredentialsMetadata();
+				const resolverEntity = createMockResolverEntity();
+				const mockResolver = createMockResolver(false, true);
+				const executionContext = createMockExecutionContext('encrypted-credentials');
+				const credentialContext = createMockCredentialContext({ source: 'manual-execution' });
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
+
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+				mockCipher.decryptV2
+					.mockResolvedValueOnce(JSON.stringify(credentialContext))
+					.mockResolvedValueOnce(JSON.stringify({ prefix: 'test' }));
+
+				await expect(
+					service.resolveIfNeeded(
+						credentialsEntity,
+						staticData,
+						additionalData.executionContext,
+						undefined,
+					),
+				).rejects.toThrow(
+					"You haven't connected the credential 'Test Credential' yet. Open it and connect to run this workflow.",
+				);
+			});
+
+			it('resolver throws CredentialResolverDataNotFoundError from a chat-hub-injected run keeps the generic message', async () => {
+				const credentialsEntity = createMockCredentialsMetadata();
+				const resolverEntity = createMockResolverEntity();
+				const mockResolver = createMockResolver(false, true);
+				const executionContext = createMockExecutionContext('encrypted-credentials');
+				const credentialContext = createMockCredentialContext({
+					source: 'chat-hub-injected',
+				});
 				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);

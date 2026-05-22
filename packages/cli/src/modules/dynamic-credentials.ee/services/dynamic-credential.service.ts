@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { CredentialResolverError } from '@n8n/decorators';
+import { CredentialResolverDataNotFoundError, CredentialResolverError } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { NextFunction, Response } from 'express';
 import { Cipher } from 'n8n-core';
@@ -144,7 +144,11 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			// Adds and override static data with dynamically resolved data
 			return { data: { ...staticData, ...dynamicData }, isDynamic: true };
 		} catch (error) {
-			return this.handleResolutionError(credentialsResolveMetadata, error, resolverId);
+			const source =
+				typeof credentialContext.metadata?.source === 'string'
+					? credentialContext.metadata.source
+					: undefined;
+			return this.handleResolutionError(credentialsResolveMetadata, error, resolverId, source);
 		}
 	}
 
@@ -174,15 +178,20 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 
 	/**
 	 * Throws when resolution fails inside getSecret().
+	 * - CredentialResolverDataNotFoundError from a manual editor-triggered run
+	 *   → user-facing "you haven't connected" message (the current user has no
+	 *     stored credential row for this resolver yet)
 	 * - CredentialResolutionError subtypes (e.g. IdentifierValidationError)
 	 *   → rethrown with credential name prepended to the message
-	 * - CredentialResolverDataNotFoundError → rethrown with credential name prepended to the message
+	 * - CredentialResolverDataNotFoundError from other sources → rethrown with
+	 *   credential name prepended (generic message preserved for chat-hub etc.)
 	 * - Anything else → generic CredentialResolutionError (no internal detail surfaced)
 	 */
 	private handleResolutionError(
 		credentialsResolveMetadata: CredentialResolveMetadata,
 		error: unknown,
 		resolverId: string,
+		source?: string,
 	): never {
 		this.logger.debug('Dynamic credential resolution failed', {
 			credentialId: credentialsResolveMetadata.id,
@@ -191,6 +200,15 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			resolverSource: credentialsResolveMetadata.resolverId ? 'credential' : 'workflow',
 			error: error instanceof Error ? error.message : String(error),
 		});
+
+		if (error instanceof CredentialResolverDataNotFoundError && source === 'manual-execution') {
+			// TODO(M14): emit `private_credential.resolution_failed_missing_connection`
+			// via EventService once the relay event is defined in RelayEventMap.
+			throw new CredentialResolutionError(
+				`You haven't connected the credential '${credentialsResolveMetadata.name}' yet. Open it and connect to run this workflow.`,
+				{ cause: error },
+			);
+		}
 
 		// Known errors from both the CLI and resolver SDK layers.
 		// User-facing, safe to propagate details.
