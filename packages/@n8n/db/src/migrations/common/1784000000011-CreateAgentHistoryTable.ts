@@ -13,7 +13,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * `model`) that were superseded by `agents.schema.model` and never read at
  * runtime. They're not carried over into `agent_history` either.
  */
-export class CreateAgentHistoryTable1784000000010 implements ReversibleMigration {
+export class CreateAgentHistoryTable1784000000011 implements ReversibleMigration {
 	async up({ schemaBuilder, escape, runQuery }: MigrationContext) {
 		const { createTable, addColumns, addForeignKey, column, dropTable, dropColumns } =
 			schemaBuilder;

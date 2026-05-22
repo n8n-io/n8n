@@ -44,6 +44,9 @@ import { createToolRegistry } from '../../tool-registry';
 import type { InstanceAiToolRegistry, LocalMcpServer } from '../../types';
 
 type McpContentBlock = McpToolCallResult['content'][number];
+type ModelContentPart =
+	| { type: 'text'; text: string }
+	| { type: 'image-data'; data: string; mediaType: string };
 
 // ---------------------------------------------------------------------------
 // Schemas shared across all gateway-gated tools
@@ -162,12 +165,20 @@ function mcpBlockToMessagePart(block: McpContentBlock): ContentText | ContentFil
 	return undefined;
 }
 
-function mcpBlockToModelTextPart(block: McpContentBlock): { type: 'text'; text: string } {
-	if (block.type === 'text') {
+function mcpBlockToModelContentPart(block: McpContentBlock): ModelContentPart | undefined {
+	if (block.type === 'text' && block.text) {
 		return { type: 'text', text: block.text };
 	}
 
-	return { type: 'text', text: `[image: ${block.mimeType || 'image/png'}]` };
+	if (block.type === 'image' && block.data) {
+		return {
+			type: 'image-data',
+			data: block.data,
+			mediaType: block.mimeType || 'image/png',
+		};
+	}
+
+	return undefined;
 }
 
 function buildNativeMcpMediaMessage(result: unknown): AgentMessage | undefined {
@@ -227,8 +238,8 @@ function warnSkippedLocalMcpTool(logger: Logger | undefined) {
  * server restarts. On resume, the tool re-calls the daemon with the selected
  * decision token.
  *
- * The `toMessage` callback converts MCP image blocks into native file parts
- * so the LLM receives gateway screenshots as real multimodal input.
+ * The `toModelOutput` callback converts MCP image blocks into AI SDK content
+ * output parts so the LLM receives gateway screenshots as real multimodal input.
  */
 export function createToolsFromLocalMcpServer(
 	server: LocalMcpServer,
@@ -350,7 +361,9 @@ export function createToolsFromLocalMcpServer(
 					};
 				}
 
-				const value = raw.content.map(mcpBlockToModelTextPart);
+				const value = raw.content
+					.map(mcpBlockToModelContentPart)
+					.filter((part): part is ModelContentPart => part !== undefined);
 				return { type: 'content', value };
 			})
 			.build();
