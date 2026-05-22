@@ -5,6 +5,7 @@ import type { Logger } from 'n8n-workflow';
 
 import type { AgentsService } from '../agents.service';
 import type { RichSuspendPayload } from '../types';
+import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentChatIntegration } from './agent-chat-integration';
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { CallbackStore } from './callback-store';
@@ -166,7 +167,13 @@ export class AgentChatBridge {
 					agentId: aid,
 					projectId: n8nProjectId,
 					message,
-					memory: { threadId: memory.threadId.id, resourceId: memory.resourceId },
+					memory: {
+						threadId: memory.threadId.id,
+						resourceId: memory.resourceId,
+						...(memory.resourceId !== undefined && {
+							resourceId: memory.resourceId,
+						}),
+					},
 					integrationType,
 				});
 			},
@@ -284,14 +291,17 @@ export class AgentChatBridge {
 			subject,
 		});
 		// threadId.id already encodes platform + user identity (e.g. Telegram:
-		// "chat:botId-userId") so it serves as a per-chat-user resourceId that
-		// scopes memory correctly without leaking the n8n user identity.
+		// "chat:botId-userId") so it partitions Episodic Memory for this
+		// integration context without leaking the n8n user identity.
 		// Always run the published snapshot — integrations are production traffic.
 		const stream = this.agentService.executeForChatPublished({
 			agentId: this.agentId,
 			projectId: this.n8nProjectId,
 			message: text,
-			memory: { threadId, resourceId: message.author.userId },
+			memory: {
+				threadId,
+				resourceId: integrationMemoryResourceId(this.integration.type, threadId.id),
+			},
 			integrationType: this.integration.type,
 		});
 

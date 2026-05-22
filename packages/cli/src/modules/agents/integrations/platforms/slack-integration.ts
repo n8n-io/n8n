@@ -26,7 +26,7 @@ import { executeSlackAction, executeSlackContextQuery } from './slack-operations
 export class SlackIntegration extends AgentChatIntegration {
 	readonly type = 'slack';
 
-	readonly credentialTypes = ['slackApi', 'slackOAuth2Api'];
+	readonly credentialTypes = ['slackApi'];
 
 	readonly displayLabel = 'Slack';
 
@@ -102,24 +102,9 @@ export class SlackIntegration extends AgentChatIntegration {
 
 	/**
 	 * Extract the bot token from a decrypted Slack credential.
-	 *
-	 * - `slackApi` stores the token as `accessToken`.
-	 * - `slackOAuth2Api` stores the token inside `oauthTokenData.access_token`.
 	 */
 	private extractBotToken(credential: Record<string, unknown>): string {
-		let token: string | undefined;
-
-		if (typeof credential.accessToken === 'string' && credential.accessToken) {
-			token = credential.accessToken;
-		}
-
-		if (!token) {
-			const tokenData = credential.oauthTokenData as Record<string, unknown> | undefined;
-			const oauthToken = tokenData?.access_token ?? tokenData?.accessToken;
-			if (typeof oauthToken === 'string' && oauthToken) {
-				token = oauthToken;
-			}
-		}
+		const token = typeof credential.accessToken === 'string' ? credential.accessToken : undefined;
 
 		if (!token) {
 			throw new Error(

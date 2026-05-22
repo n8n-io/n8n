@@ -1,186 +1,267 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { ref, watch } from 'vue';
+import { N8nButton, N8nCollapsiblePanel, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { getSlackAgentAppManifest } from '../composables/useAgentApi';
 
 const props = defineProps<{
 	agentName: string;
 	projectId: string;
 	agentId: string;
 	connected?: boolean;
+	disabled?: boolean;
+	setupSlackApp?: (appConfigurationToken: string) => Promise<boolean>;
 }>();
 
 const i18n = useI18n();
 const rootStore = useRootStore();
 
 const manifestCopied = ref(false);
-
-const DEFAULT_SLACK_APP_NAME = 'n8n Agent';
-
-// Slack app names accept letters, digits, spaces, periods, hyphens and
-// underscores (max 35 chars per Slack's submission guidelines). Strip anything
-// else and fall back to a sensible default if the agent name is empty after
-// sanitisation, so the manifest always validates on Slack's side.
-function sanitiseSlackAppName(raw: string): string {
-	const cleaned = raw
-		.replace(/[^a-zA-Z0-9 ._-]/g, '')
-		.replace(/\s+/g, ' ')
-		.trim()
-		.slice(0, 35);
-	return cleaned.length > 0 ? cleaned : DEFAULT_SLACK_APP_NAME;
-}
-
-function slackWebhookUrl(): string {
-	const base = rootStore.urlBaseWebhook.replace(/\/$/, '');
-	return `${base}/rest/projects/${props.projectId}/agents/v2/${props.agentId}/webhooks/slack`;
-}
-
-const oauthCallbackUrl = computed(() => {
-	const configured = (rootStore.OAuthCallbackUrls as { oauth2?: string }).oauth2 ?? '';
-	if (!configured) return '';
-	try {
-		// Preserve the configured path (which may include a custom rest endpoint
-		// or base path) but rebase onto `urlBaseWebhook` so the callback uses
-		// the publicly reachable host from `WEBHOOK_URL` instead of the local
-		// browser origin (which is `http://localhost:5678` in dev).
-		const parsed = new URL(configured);
-		const base = rootStore.urlBaseWebhook.replace(/\/$/, '');
-		return `${base}${parsed.pathname}${parsed.search}`;
-	} catch {
-		return configured;
-	}
-});
-
-const slackAppManifest = computed(() => {
-	const agentName = sanitiseSlackAppName(props.agentName);
-	const webhookUrl = slackWebhookUrl();
-	return JSON.stringify(
-		{
-			display_information: {
-				name: agentName,
-			},
-			features: {
-				app_home: {
-					home_tab_enabled: true,
-					messages_tab_enabled: false,
-					messages_tab_read_only_enabled: false,
-				},
-				bot_user: {
-					display_name: agentName,
-					always_online: true,
-				},
-			},
-			oauth_config: {
-				redirect_urls: [oauthCallbackUrl.value],
-				scopes: {
-					bot: [
-						'app_mentions:read',
-						'assistant:write',
-						'channels:history',
-						'channels:join',
-						'channels:manage',
-						'channels:read',
-						'chat:write',
-						'chat:write.customize',
-						'files:read',
-						'files:write',
-						'groups:read',
-						'groups:history',
-						'im:history',
-						'im:read',
-						'im:write',
-						'mpim:history',
-						'mpim:read',
-						'mpim:write',
-						'reactions:read',
-						'reactions:write',
-						'search:read.public',
-						'users:read',
-						'users:read.email',
-					],
-				},
-				pkce_enabled: false,
-			},
-			settings: {
-				event_subscriptions: {
-					request_url: webhookUrl,
-					bot_events: [
-						'app_mention',
-						'assistant_thread_started',
-						'assistant_thread_context_changed',
-						'message.channels',
-						'message.groups',
-						'message.im',
-						'message.mpim',
-					],
-				},
-				interactivity: {
-					is_enabled: true,
-					request_url: webhookUrl,
-				},
-				org_deploy_enabled: false,
-				socket_mode_enabled: false,
-				token_rotation_enabled: false,
-			},
-		},
-		null,
-		2,
-	);
-});
+const appConfigurationToken = ref('');
+const setupLoading = ref(false);
+const setupError = ref(false);
+const manualConfigurationOpen = ref(false);
+const slackAppManifest = ref('');
+const manifestLoading = ref(false);
+const manifestError = ref(false);
 
 async function copyManifest() {
+	if (!slackAppManifest.value) return;
+
 	await navigator.clipboard.writeText(slackAppManifest.value);
 	manifestCopied.value = true;
 	setTimeout(() => {
 		manifestCopied.value = false;
 	}, 2000);
 }
+
+async function loadSlackAppManifest() {
+	manifestLoading.value = true;
+	manifestError.value = false;
+	try {
+		const { manifest } = await getSlackAgentAppManifest(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+		);
+		slackAppManifest.value = JSON.stringify(manifest, null, 2);
+	} catch {
+		slackAppManifest.value = '';
+		manifestError.value = true;
+	} finally {
+		manifestLoading.value = false;
+	}
+}
+
+async function createSlackApp() {
+	const token = appConfigurationToken.value.trim();
+	if (!token || !props.setupSlackApp || props.disabled || props.connected) return;
+
+	setupLoading.value = true;
+	setupError.value = false;
+	try {
+		const completed = await props.setupSlackApp(token);
+		if (completed) {
+			appConfigurationToken.value = '';
+		}
+	} catch {
+		setupError.value = true;
+	} finally {
+		setupLoading.value = false;
+	}
+}
+
+watch(
+	() => [props.projectId, props.agentId, props.connected] as const,
+	() => {
+		if (!props.connected) {
+			void loadSlackAppManifest();
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
-	<div :class="$style.manifestSection">
-		<N8nText size="small" bold>
-			{{ i18n.baseText('agents.builder.addTrigger.slack.manifestTitle') }}
-		</N8nText>
-		<N8nText :class="$style.manifestHint" size="small">
-			{{ i18n.baseText('agents.builder.addTrigger.slack.manifestHint') }}
-			<a
-				href="https://docs.slack.dev/app-manifests/configuring-apps-with-app-manifests"
-				target="_blank"
-				rel="noopener noreferrer"
-				:class="$style.docsLink"
-			>
-				{{ i18n.baseText('agents.builder.addTrigger.slack.docsCalloutLink') }}
-			</a>
-		</N8nText>
-		<div :class="$style.codeBlock">
-			<N8nButton
-				variant="outline"
+	<div :class="$style.slackSettings">
+		<div v-if="!connected" :class="$style.setupSection">
+			<N8nText size="small" bold>
+				{{ i18n.baseText('agents.builder.addTrigger.slack.setup.title') }}
+			</N8nText>
+			<N8nText :class="$style.setupHint" size="small">
+				{{ i18n.baseText('agents.builder.addTrigger.slack.setup.hint') }}
+				<a
+					href="https://api.slack.com/apps"
+					target="_blank"
+					rel="noopener noreferrer"
+					:class="$style.docsLink"
+					data-testid="slack-app-configuration-token-link"
+				>
+					{{ i18n.baseText('agents.builder.addTrigger.slack.setup.tokenLink') }}
+				</a>
+			</N8nText>
+			<div :class="$style.setupInputRow">
+				<N8nInput
+					v-model="appConfigurationToken"
+					:class="$style.setupInput"
+					type="password"
+					size="medium"
+					:placeholder="i18n.baseText('agents.builder.addTrigger.slack.setup.tokenPlaceholder')"
+					data-testid="slack-app-configuration-token"
+					:disabled="disabled || setupLoading"
+					@keydown.enter.prevent="createSlackApp"
+				/>
+				<N8nButton
+					variant="solid"
+					size="small"
+					:loading="setupLoading"
+					:disabled="!appConfigurationToken.trim() || disabled || setupLoading || !setupSlackApp"
+					data-testid="slack-create-app"
+					@click="createSlackApp"
+				>
+					<template #prefix>
+						<N8nIcon icon="plus" size="xsmall" />
+					</template>
+					{{ i18n.baseText('agents.builder.addTrigger.slack.setup.button') }}
+				</N8nButton>
+			</div>
+			<N8nText
+				v-if="setupError"
+				:class="$style.setupError"
 				size="small"
-				:class="$style.codeBlockCopy"
-				data-testid="slack-copy-manifest"
-				@click="copyManifest"
+				data-testid="slack-app-setup-error"
 			>
-				<template #prefix>
-					<N8nIcon :icon="manifestCopied ? 'check' : 'copy'" size="xsmall" />
-				</template>
-				{{
-					manifestCopied
-						? i18n.baseText('agents.builder.addTrigger.copied')
-						: i18n.baseText('agents.builder.addTrigger.copy')
-				}}
-			</N8nButton>
-			<pre :class="$style.manifestCode">{{ slackAppManifest }}</pre>
+				{{ i18n.baseText('agents.builder.addTrigger.slack.setup.error') }}
+			</N8nText>
 		</div>
+
+		<N8nCollapsiblePanel
+			v-if="!connected"
+			v-model="manualConfigurationOpen"
+			:class="$style.manualPanel"
+			:title="i18n.baseText('agents.builder.addTrigger.slack.manual.title')"
+			:show-actions-on-hover="false"
+			:disable-animation="true"
+			data-testid="slack-manual-configuration"
+		>
+			<div :class="$style.manualConfiguration">
+				<N8nText :class="$style.manualDescription" size="small">
+					{{ i18n.baseText('agents.builder.addTrigger.slack.manual.description') }}
+				</N8nText>
+
+				<div :class="$style.manifestSection">
+					<N8nText size="small" bold>
+						{{ i18n.baseText('agents.builder.addTrigger.slack.manifestTitle') }}
+					</N8nText>
+					<N8nText :class="$style.manifestHint" size="small">
+						{{ i18n.baseText('agents.builder.addTrigger.slack.manifestHint') }}
+						<a
+							href="https://docs.slack.dev/app-manifests/configuring-apps-with-app-manifests"
+							target="_blank"
+							rel="noopener noreferrer"
+							:class="$style.docsLink"
+						>
+							{{ i18n.baseText('agents.builder.addTrigger.slack.docsCalloutLink') }}
+						</a>
+					</N8nText>
+					<N8nText
+						v-if="manifestLoading"
+						:class="$style.manifestHint"
+						size="small"
+						data-testid="slack-manifest-loading"
+					>
+						{{ i18n.baseText('agents.builder.addTrigger.slack.manifestLoading') }}
+					</N8nText>
+					<N8nText
+						v-else-if="manifestError"
+						:class="$style.setupError"
+						size="small"
+						data-testid="slack-manifest-error"
+					>
+						{{ i18n.baseText('agents.builder.addTrigger.slack.manifestError') }}
+					</N8nText>
+					<div v-else :class="$style.codeBlock">
+						<N8nButton
+							variant="outline"
+							size="small"
+							:class="$style.codeBlockCopy"
+							:disabled="!slackAppManifest"
+							data-testid="slack-copy-manifest"
+							@click="copyManifest"
+						>
+							<template #prefix>
+								<N8nIcon :icon="manifestCopied ? 'check' : 'copy'" size="xsmall" />
+							</template>
+							{{
+								manifestCopied
+									? i18n.baseText('agents.builder.addTrigger.copied')
+									: i18n.baseText('agents.builder.addTrigger.copy')
+							}}
+						</N8nButton>
+						<pre :class="$style.manifestCode">{{ slackAppManifest }}</pre>
+					</div>
+				</div>
+
+				<slot name="manualConfiguration" />
+			</div>
+		</N8nCollapsiblePanel>
 	</div>
 </template>
 
 <style module lang="scss">
+.slackSettings {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+}
+
+.setupSection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding-bottom: var(--spacing--xs);
+}
+
+.manualConfiguration {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	padding: 0 var(--spacing--xs) var(--spacing--xs);
+}
+
+.manualPanel {
+	background-color: transparent;
+}
+
+.manualDescription {
+	color: var(--color--text--tint-1);
+}
+
 .manifestSection {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+}
+
+.setupHint {
+	color: var(--color--text--tint-1);
+}
+
+.setupInputRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex-wrap: wrap;
+}
+
+.setupInput {
+	flex: 1 1 16rem;
+	min-width: 0;
+}
+
+.setupError {
+	color: var(--color--danger);
 }
 
 .docsCallout {

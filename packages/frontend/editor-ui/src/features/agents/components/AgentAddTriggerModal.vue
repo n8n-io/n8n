@@ -22,9 +22,11 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
+import { createSlackAgentApp, publishAgent } from '../composables/useAgentApi';
 import type { AgentResource } from '../types';
 import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
-import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
+import type { AgentCredentialOption } from './AgentCredentialSelect.vue';
+import AgentIntegrationCredentialConnection from './AgentIntegrationCredentialConnection.vue';
 import AgentIntegrationSettingsForm from './AgentIntegrationSettingsForm.vue';
 
 const props = defineProps<{
@@ -77,6 +79,7 @@ const {
 const selectedCredentials = ref<Record<string, string>>({});
 const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
 const credentialsLoading = ref(false);
+const publishing = ref(false);
 const settingsFormRef = ref<InstanceType<typeof AgentIntegrationSettingsForm>>();
 
 // Track credentials that existed before the user opened the "new credential"
@@ -89,6 +92,8 @@ const linearCopiedField = ref<'oauthCallback' | 'webhook' | null>(null);
 
 const SCHEDULE_ICON: IconName = 'clock';
 const LINEAR_APP_SETUP_URL = 'https://linear.app/settings/api/applications/new';
+const SLACK_APP_SETUP_POLL_INTERVAL_MS = 2000;
+const SLACK_APP_SETUP_TIMEOUT_MS = 2 * 60 * 1000;
 
 const currentIntegration = computed<ChatIntegrationDescriptor | null>(
 	() => integrations.value.find((i) => i.type === selectedTriggerType.value) ?? null,
@@ -150,7 +155,7 @@ function webhookUrlFor(platform: string): string {
 }
 
 function oauthCallbackUrl(): string {
-	return (rootStore.OAuthCallbackUrls as { oauth2?: string }).oauth2 ?? '';
+	return (rootStore.OAuthCallbackUrls as { oauth2?: string } | undefined)?.oauth2 ?? '';
 }
 
 function linearUrlFor(field: 'oauthCallback' | 'webhook'): string {
@@ -251,6 +256,22 @@ async function confirmPublishIfNeeded(): Promise<boolean> {
 	return confirmed === MODAL_CONFIRM;
 }
 
+async function ensurePublished(): Promise<boolean> {
+	if (isPublishedLocal.value) return true;
+	const confirmed = await confirmPublishIfNeeded();
+	if (!confirmed) return false;
+
+	publishing.value = true;
+	try {
+		const updated = await publishAgent(rootStore.restApiContext, props.data.projectId, props.data.agentId);
+		publishedDuringSession.value = true;
+		props.data.onAgentPublished?.(updated);
+		return true;
+	} finally {
+		publishing.value = false;
+	}
+}
+
 async function onConnect(type: string) {
 	const credId = selectedCredentials.value[type];
 	if (!credId) return;
@@ -274,6 +295,91 @@ async function onConnect(type: string) {
 		// Error details already surfaced in the shared state by `connect()`.
 	}
 	if (connected) await props.data.onAgentChanged?.();
+}
+
+function openSlackAppAuthorizationPopup(installUrl: string): Window | null {
+	const parsedUrl = new URL(installUrl);
+	if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+		throw new Error('Invalid Slack installation URL');
+	}
+
+	const params =
+		'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700,noopener';
+	return window.open(parsedUrl.toString(), 'Slack App Authorization', params);
+}
+
+async function waitForSlackAppSetupCompletion(popup: Window | null): Promise<boolean> {
+	return await new Promise((resolve) => {
+		const oauthChannel = new BroadcastChannel('oauth-callback');
+		let pollInFlight = false;
+		let settled = false;
+
+		const closePopup = () => {
+			if (!popup) return;
+			try {
+				popup.close();
+			} catch {
+				// Some cross-origin popup transitions can block close(); the callback result is still valid.
+			}
+		};
+
+		const settle = (success: boolean) => {
+			if (settled) return;
+			settled = true;
+			window.clearInterval(pollInterval);
+			window.clearTimeout(timeout);
+			oauthChannel.close();
+			if (success) closePopup();
+			resolve(success);
+		};
+
+		const pollStatus = async () => {
+			if (pollInFlight || settled) return;
+			pollInFlight = true;
+			try {
+				await fetchStatus();
+				if (isConnected('slack')) settle(true);
+			} finally {
+				pollInFlight = false;
+			}
+		};
+
+		const pollInterval = window.setInterval(
+			() => void pollStatus(),
+			SLACK_APP_SETUP_POLL_INTERVAL_MS,
+		);
+		const timeout = window.setTimeout(() => settle(false), SLACK_APP_SETUP_TIMEOUT_MS);
+
+		oauthChannel.addEventListener('message', (event: MessageEvent) => {
+			settle(event.data === 'success');
+		});
+
+		void pollStatus();
+	});
+}
+
+async function onSetupSlackApp(appConfigurationToken: string): Promise<boolean> {
+	const published = await ensurePublished();
+	if (!published) return false;
+
+	const { installUrl } = await createSlackAgentApp(
+		rootStore.restApiContext,
+		props.data.projectId,
+		props.data.agentId,
+		appConfigurationToken,
+	);
+	const popup = openSlackAppAuthorizationPopup(installUrl);
+	const connected = await waitForSlackAppSetupCompletion(popup);
+	if (!connected) {
+		throw new Error('Slack app installation was not completed');
+	}
+
+	await Promise.all([fetchStatus(), fetchCredentials()]);
+	props.data.onTriggerAdded({
+		triggerType: 'slack',
+		triggers: computeConnectedTriggers(),
+	});
+	return true;
 }
 
 async function onDisconnect(type: string) {
@@ -505,44 +611,47 @@ onMounted(async () => {
 						</div>
 					</div>
 
-					<div v-if="!isConnected(currentIntegration.type)" :class="$style.connectForm">
-						<label :class="$style.label">
-							<N8nText size="small" bold>
-								{{ currentIntegration.label }}
-								{{ i18n.baseText('agents.builder.addTrigger.credential') }}
-							</N8nText>
-						</label>
-						<div :class="$style.selectRow">
-							<AgentCredentialSelect
-								v-model="selectedCredentials[currentIntegration.type]"
-								:class="$style.select"
-								:placeholder="i18n.baseText('agents.builder.addTrigger.selectCredential')"
-								:credentials="credentialsByType[currentIntegration.type] ?? []"
-								:credential-permissions="credentialPermissions"
-								:loading="credentialsLoading"
-								:disabled="isLoading(currentIntegration.type)"
-								:data-test-id="`${currentIntegration.type}-credential-select`"
-								@create="onCreateCredential(currentIntegration)"
-							/>
-							<N8nButton
-								v-if="selectedCredentials[currentIntegration.type]"
-								variant="outline"
-								size="small"
-								icon="pen"
-								:aria-label="i18n.baseText('agents.builder.addTrigger.editCredential')"
-								:data-testid="`${currentIntegration.type}-edit-credential`"
-								@click="onEditCredential(currentIntegration.type)"
-							/>
-						</div>
-					</div>
+					<AgentIntegrationCredentialConnection
+						v-if="!isConnected(currentIntegration.type) && currentIntegration.type !== 'slack'"
+						v-model="selectedCredentials[currentIntegration.type]"
+						:integration-type="currentIntegration.type"
+						:integration-label="currentIntegration.label"
+						:credentials="credentialsByType[currentIntegration.type] ?? []"
+						:credential-permissions="credentialPermissions"
+						:credentials-loading="credentialsLoading"
+						:disabled="isLoading(currentIntegration.type)"
+						@create="onCreateCredential(currentIntegration)"
+						@edit="onEditCredential(currentIntegration.type)"
+					/>
 
-					<div v-else :class="$style.connectedSection">
+					<AgentIntegrationCredentialConnection
+						v-else-if="isConnected(currentIntegration.type) && currentIntegration.type === 'slack'"
+						:model-value="connectedCredentials[currentIntegration.type]"
+						:integration-type="currentIntegration.type"
+						:integration-label="currentIntegration.label"
+						:credentials="credentialsByType[currentIntegration.type] ?? []"
+						:credential-permissions="credentialPermissions"
+						:credentials-loading="credentialsLoading"
+						:disabled="true"
+						:connected="true"
+						:connected-description="integrationConnectedText(currentIntegration.type)"
+						:show-disconnect-button="true"
+						:loading="isLoading(currentIntegration.type)"
+						@create="onCreateCredential(currentIntegration)"
+						@disconnect="onDisconnect(currentIntegration.type)"
+					/>
+
+					<div
+						v-else-if="isConnected(currentIntegration.type) && currentIntegration.type !== 'slack'"
+						:class="$style.connectedSection"
+					>
 						<N8nText size="small">
 							{{ integrationConnectedText(currentIntegration.type) }}
 						</N8nText>
 					</div>
 
 					<AgentIntegrationSettingsForm
+						v-if="currentIntegration.type !== 'slack' || !isConnected(currentIntegration.type)"
 						ref="settingsFormRef"
 						:type="currentIntegration.type"
 						:disabled="isConnected(currentIntegration.type) || isLoading(currentIntegration.type)"
@@ -551,10 +660,48 @@ onMounted(async () => {
 						:agent-name="data.agentName"
 						:project-id="data.projectId"
 						:agent-id="data.agentId"
-					/>
+						:setup-slack-app="onSetupSlackApp"
+					>
+						<template v-if="currentIntegration.type === 'slack'" #manualConfiguration>
+							<AgentIntegrationCredentialConnection
+								:model-value="
+									selectedCredentials[currentIntegration.type] ||
+									connectedCredentials[currentIntegration.type]
+								"
+								:integration-type="currentIntegration.type"
+								:integration-label="currentIntegration.label"
+								:credentials="credentialsByType[currentIntegration.type] ?? []"
+								:credential-permissions="credentialPermissions"
+								:credentials-loading="credentialsLoading"
+								:disabled="
+									isConnected(currentIntegration.type) || isLoading(currentIntegration.type)
+								"
+								:connected="isConnected(currentIntegration.type)"
+								:show-connect-button="!isConnected(currentIntegration.type)"
+								:show-disconnect-button="isConnected(currentIntegration.type)"
+								:loading="isLoading(currentIntegration.type)"
+								:publishing="publishing"
+								:error-message="
+									!isConnected(currentIntegration.type) && hasError(currentIntegration.type)
+										? errorMessages[currentIntegration.type]
+										: ''
+								"
+								:error-is-conflict="errorIsConflict[currentIntegration.type]"
+								@update:model-value="selectedCredentials[currentIntegration.type] = $event"
+								@create="onCreateCredential(currentIntegration)"
+								@edit="onEditCredential(currentIntegration.type)"
+								@connect="onConnect(currentIntegration.type)"
+								@disconnect="onDisconnect(currentIntegration.type)"
+							/>
+						</template>
+					</AgentIntegrationSettingsForm>
 
 					<N8nText
-						v-if="!isConnected(currentIntegration.type) && hasError(currentIntegration.type)"
+						v-if="
+							currentIntegration.type !== 'slack' &&
+							!isConnected(currentIntegration.type) &&
+							hasError(currentIntegration.type)
+						"
 						:class="$style.errorText"
 						size="small"
 					>
@@ -574,7 +721,7 @@ onMounted(async () => {
 			</div>
 		</template>
 
-		<template v-if="currentIntegration" #footer>
+		<template v-if="currentIntegration && currentIntegration.type !== 'slack'" #footer>
 			<div :class="$style.footer">
 				<div :class="$style.footerActions">
 					<template v-if="!isConnected(currentIntegration.type)">
@@ -672,27 +819,6 @@ onMounted(async () => {
 
 .modalDescription {
 	color: var(--color--text--tint-1);
-}
-
-.connectForm {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-}
-
-.label {
-	display: block;
-}
-
-.selectRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
-.select {
-	flex: 1;
-	min-width: 0;
 }
 
 .footer {
