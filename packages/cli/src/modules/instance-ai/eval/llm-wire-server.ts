@@ -147,11 +147,15 @@ export class LlmWireServer {
 			);
 	};
 
-	/** Deep-clone via `structuredClone`; falls back to the original ref if it throws. */
+	/** Deep-clone via `structuredClone`; logs and falls back to the original ref if it throws. */
 	private cloneRequestBody(body: unknown): unknown {
 		try {
 			return structuredClone(body);
-		} catch {
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.options.logger?.warn(
+				`[EvalMock] Wire-server ledger entry not isolated — clone failed: ${message}`,
+			);
 			return body;
 		}
 	}

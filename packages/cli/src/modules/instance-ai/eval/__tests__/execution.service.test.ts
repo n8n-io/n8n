@@ -524,40 +524,30 @@ describe('EvalExecutionService', () => {
 			});
 
 			it('preserves a pre-existing pinned executionMode when a wire-server turn fires for the same name', async () => {
-				// Simulate the rare collision: a node was already marked 'pinned'
-				// (e.g. by the bypass pin-data pass) and then the wire server
-				// fires onIntercept for a turn attributed to the same root name.
-				// `recordWireServerTurn` must NOT overwrite the pinned status.
-				mockProcessRunExecutionData.mockImplementation(async function (
-					this: never,
-					_workflow: never,
-				) {
-					// Pre-seed a pinned entry the way the bypass path does in
-					// execute() before runWorkflow is invoked.
+				// Force a name collision between the bypass-pin path and the
+				// wire-server interception path. The bypass-pin loop in
+				// execute() pre-marks `bypassPinData` keys as 'pinned' BEFORE
+				// runWorkflow fires, so injecting 'Agent' into bypassPinData
+				// (and then firing onIntercept for the same name during the
+				// mocked run) exercises the genuine collision case.
+				generateMockHintsMock.mockResolvedValue({
+					...makeEmptyHints(),
+					bypassPinData: {
+						Agent: [{ json: { triggered: 'pre-pin' } }],
+					},
+				});
+
+				mockProcessRunExecutionData.mockImplementation(async () => {
 					const opts = capturedWireServerOptions.last as {
 						onIntercept?: (turn: unknown) => void;
 					};
-					// We can't reach into the private nodeResults map directly,
-					// but the captured onIntercept callback closes over it. The
-					// previous test established that a fresh call creates a new
-					// 'mocked' entry; here we fire two intercepts for the same
-					// root and expect the second call to find executionMode
-					// already set and leave it alone.
 					opts.onIntercept?.({
 						rootName: 'Agent',
 						url: 'https://api.openai.com/v1/chat/completions',
 						method: 'POST',
 						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						requestBody: { model: 'gpt-4o', messages: [{ turn: 1 }] },
-						mockResponse: { content: 'first' },
-					});
-					opts.onIntercept?.({
-						rootName: 'Agent',
-						url: 'https://api.openai.com/v1/chat/completions',
-						method: 'POST',
-						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						requestBody: { model: 'gpt-4o', messages: [{ turn: 2 }] },
-						mockResponse: { content: 'second' },
+						requestBody: { model: 'gpt-4o', messages: [] },
+						mockResponse: { content: 'reply' },
 					});
 					return makeIRun();
 				});
@@ -566,9 +556,10 @@ describe('EvalExecutionService', () => {
 					unpinNodes: ['Agent'],
 				});
 
-				// Both turns recorded; executionMode set once and never overwritten.
-				expect(result.nodeResults['Agent'].executionMode).toBe('mocked');
-				expect(result.nodeResults['Agent'].interceptedRequests).toHaveLength(2);
+				// 'pinned' from the bypass pass survives — `??=` left it alone.
+				expect(result.nodeResults['Agent'].executionMode).toBe('pinned');
+				// The turn is still recorded against the same entry.
+				expect(result.nodeResults['Agent'].interceptedRequests).toHaveLength(1);
 			});
 		});
 	});

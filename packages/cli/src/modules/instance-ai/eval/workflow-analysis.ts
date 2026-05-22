@@ -31,7 +31,10 @@ function findAiRootNodeNames(workflow: IWorkflowBase): Set<string> {
 	return roots;
 }
 
-/** AI root node types — lets the typo guard accept a no-sub-node Agent. */
+/**
+ * AI root node types — lets the typo guard accept a no-sub-node Agent.
+ * Keep in sync with new agent/chain types in `@n8n/n8n-nodes-langchain`.
+ */
 const AI_ROOT_NODE_TYPES = new Set<string>([
 	'@n8n/n8n-nodes-langchain.agent',
 	'@n8n/n8n-nodes-langchain.chainLlm',
