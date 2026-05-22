@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.test.ts
+  s_0a2f18fab1b733::t_bf3ff8eeae5c89 696-697
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "346e139b79d1074b6c50894dd7ecd6a391138dc6",
+  "prompts": {},
+  "sessions": {
+    "s_0a2f18fab1b733": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8fcdcc74-a8fa-48f1-b9cb-99a393455208",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
