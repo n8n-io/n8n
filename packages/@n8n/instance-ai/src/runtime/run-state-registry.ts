@@ -10,6 +10,7 @@ import type {
 
 export interface ActiveRunState {
 	runId: string;
+	threadId: string;
 	abortController: AbortController;
 	messageGroupId?: string;
 	tracing?: InstanceAiTraceContext;
@@ -121,6 +122,7 @@ export class RunStateRegistry<TUser = unknown> {
 
 		this.activeRuns.set(options.threadId, {
 			runId,
+			threadId: options.threadId,
 			abortController,
 			messageGroupId,
 			startedAt: now,
@@ -144,7 +146,7 @@ export class RunStateRegistry<TUser = unknown> {
 		const groupRunIds = this.runIdsByMessageGroup.get(messageGroupId);
 		if (groupRunIds) groupRunIds.push(runId);
 
-		return { runId, abortController, messageGroupId };
+		return { runId, threadId: options.threadId, abortController, messageGroupId };
 	}
 
 	getThreadStatus(
@@ -221,6 +223,7 @@ export class RunStateRegistry<TUser = unknown> {
 
 		this.activeRuns.set(threadId, {
 			...activeRun,
+			threadId,
 			tracing,
 		});
 	}
@@ -268,6 +271,7 @@ export class RunStateRegistry<TUser = unknown> {
 		const now = Date.now();
 		this.activeRuns.set(threadId, {
 			runId: suspended.runId,
+			threadId,
 			abortController: suspended.abortController,
 			messageGroupId: suspended.messageGroupId,
 			tracing: suspended.tracing,

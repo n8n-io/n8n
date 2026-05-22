@@ -109,6 +109,7 @@ import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import { TraceReplayState } from './trace-replay-state';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
@@ -566,6 +567,7 @@ export class InstanceAiService {
 		private readonly aiService: AiService,
 		private readonly push: Push,
 		private readonly threadRepo: InstanceAiThreadRepository,
+		private readonly pendingConfirmationRepo: InstanceAiPendingConfirmationRepository,
 		private readonly urlService: UrlService,
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
@@ -592,6 +594,9 @@ export class InstanceAiService {
 			logger: this.logger,
 			finalizeCancelledSuspendedRun: (suspended, reason) => {
 				void this.finalizeCancelledSuspendedRun(suspended, reason);
+			},
+			onPendingConfirmationRejected: (requestId) => {
+				void this.dropPendingConfirmation(requestId);
 			},
 		});
 		this.defaultTimeZone = globalConfig.generic.timezone;
@@ -1563,6 +1568,10 @@ export class InstanceAiService {
 		if (active) {
 			if (reason === INSTANCE_AI_RUN_TIMEOUT_REASON) this.liveness.markRunTimedOut(active.runId);
 			active.abortController.abort();
+			// inline-kind rows are dropped via the resolve-callback fired by
+			// runState.cancelThread; suspended-kind rows (no in-memory
+			// resolver) get cleaned up here so the index never outlives the run.
+			void this.dropPendingConfirmationsForThread(threadId);
 			return;
 		}
 
@@ -1571,6 +1580,8 @@ export class InstanceAiService {
 			suspended.abortController.abort();
 			void this.finalizeCancelledSuspendedRun(suspended, reason);
 		}
+
+		void this.dropPendingConfirmationsForThread(threadId);
 	}
 
 	/** Send a correction message to a running background task. */
@@ -1895,6 +1906,7 @@ export class InstanceAiService {
 		this.deleteTraceContextsForThread(threadId);
 		await this.destroySandbox(threadId);
 		await this.reapAiTemporaryForThreadCleanup(threadId);
+		await this.dropPendingConfirmationsForThread(threadId);
 		this.eventBus.clearThread(threadId);
 	}
 
@@ -1904,18 +1916,28 @@ export class InstanceAiService {
 
 		const { activeRuns, suspendedRuns } = this.runState.shutdown();
 		for (const run of activeRuns) {
-			run.abortController.abort();
+			// Publish run-finish first so the terminal event lands in the event
+			// bus before the snapshot reads it; saveAgentTreeSnapshot rebuilds
+			// the tree from the bus, so without this order the persisted tree
+			// would still look mid-stream after the process is gone.
+			this.publishRunFinish(run.threadId, run.runId, 'cancelled', 'service_shutdown');
+			await this.persistShutdownSnapshot(run.threadId, run.runId, run.messageGroupId);
 			await this.finalizeRunTracing(run.runId, run.tracing, {
 				status: 'cancelled',
 				reason: 'service_shutdown',
 			});
+			run.abortController.abort();
 		}
 		for (const run of suspendedRuns) {
-			run.abortController.abort();
+			// Suspended runs are recoverable from the checkpoint store + pending
+			// confirmation index, so leave the run-finish unpublished and the
+			// snapshot untouched. We only need to abort the in-process stream;
+			// the DB rows are intentionally preserved across restart.
 			await this.finalizeRunTracing(run.runId, run.tracing, {
 				status: 'cancelled',
 				reason: 'service_shutdown',
 			});
+			run.abortController.abort();
 		}
 		for (const task of this.backgroundTasks.cancelAll()) {
 			task.abortController.abort();
@@ -1974,18 +1996,142 @@ export class InstanceAiService {
 		const olderThan = new Date(now - this.instanceAiConfig.snapshotRetention);
 
 		try {
-			const count = await this.checkpointStore.deleteOlderThan(olderThan);
+			const count = await this.checkpointStore.markExpiredOlderThan(olderThan);
 			if (count > 0) {
-				this.logger.info('Deleted stale Instance AI checkpoints', { count });
+				this.logger.info('Expired stale Instance AI checkpoints', { count });
 			} else {
-				this.logger.debug('No stale Instance AI checkpoints to delete');
+				this.logger.debug('No stale Instance AI checkpoints to expire');
 			}
+			await this.pruneStalePendingConfirmations(now);
 			this.scheduleCheckpointPrune();
 		} catch (error: unknown) {
-			this.logger.warn('Failed to delete stale Instance AI checkpoints', {
+			this.logger.warn('Failed to expire stale Instance AI checkpoints', {
 				error: getErrorMessage(error),
 			});
 			this.scheduleCheckpointPrune(INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS);
+		}
+	}
+
+	private async pruneStalePendingConfirmations(now: number): Promise<void> {
+		try {
+			const expired = await this.pendingConfirmationRepo.findExpired(new Date(now));
+			if (expired.length === 0) {
+				this.logger.debug('No stale Instance AI pending confirmations to drop');
+				return;
+			}
+			for (const row of expired) {
+				try {
+					await this.pendingConfirmationRepo.deleteByRequestId(row.requestId);
+				} catch (error: unknown) {
+					this.logger.warn('Failed to drop expired pending confirmation', {
+						requestId: row.requestId,
+						error: getErrorMessage(error),
+					});
+				}
+			}
+			this.logger.info('Dropped stale Instance AI pending confirmations', {
+				count: expired.length,
+			});
+		} catch (error: unknown) {
+			this.logger.warn('Failed to scan stale Instance AI pending confirmations', {
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	private computePendingConfirmationExpiresAt(): Date | null {
+		const timeoutMs = this.instanceAiConfig.confirmationTimeout;
+		return timeoutMs > 0 ? new Date(Date.now() + timeoutMs) : null;
+	}
+
+	/**
+	 * Persist the index for a HITL confirmation so a fresh process can find it
+	 * after the in-memory `pendingConfirmations` / `suspendedRuns` maps are gone.
+	 * Fire-and-forget: a DB write failure must not block the agent flow, which
+	 * still operates correctly via the in-memory state on this main.
+	 */
+	private async persistPendingConfirmation(params: {
+		requestId: string;
+		threadId: string;
+		userId: string;
+		runId: string;
+		messageGroupId?: string;
+		kind: 'inline' | 'suspended';
+		toolCallId?: string;
+		checkpointKey?: string;
+		checkpointTaskId?: string;
+	}): Promise<void> {
+		try {
+			await this.pendingConfirmationRepo.save(
+				this.pendingConfirmationRepo.create({
+					requestId: params.requestId,
+					threadId: params.threadId,
+					userId: params.userId,
+					kind: params.kind,
+					runId: params.runId,
+					messageGroupId: params.messageGroupId ?? null,
+					toolCallId: params.toolCallId ?? null,
+					checkpointKey: params.checkpointKey ?? null,
+					checkpointTaskId: params.checkpointTaskId ?? null,
+					expiresAt: this.computePendingConfirmationExpiresAt(),
+				}),
+			);
+		} catch (error: unknown) {
+			this.logger.warn('Failed to persist pending confirmation', {
+				requestId: params.requestId,
+				threadId: params.threadId,
+				kind: params.kind,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	private async dropPendingConfirmation(requestId: string): Promise<void> {
+		try {
+			await this.pendingConfirmationRepo.deleteByRequestId(requestId);
+		} catch (error: unknown) {
+			this.logger.warn('Failed to drop pending confirmation', {
+				requestId,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	private async dropPendingConfirmationsForThread(threadId: string): Promise<void> {
+		try {
+			await this.pendingConfirmationRepo.deleteByThreadId(threadId);
+		} catch (error: unknown) {
+			this.logger.warn('Failed to drop pending confirmations for thread', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	/**
+	 * Save the in-flight agent tree as a terminal snapshot so the UI doesn't
+	 * sit on a half-rendered turn after the process restarts. Best-effort: a
+	 * DB write failure here must not block the rest of shutdown.
+	 */
+	private async persistShutdownSnapshot(
+		threadId: string,
+		runId: string,
+		messageGroupId: string | undefined,
+	): Promise<void> {
+		try {
+			await this.saveAgentTreeSnapshot(
+				threadId,
+				runId,
+				this.dbSnapshotStorage,
+				true,
+				messageGroupId,
+			);
+		} catch (error: unknown) {
+			this.logger.warn('Failed to persist shutdown snapshot', {
+				threadId,
+				runId,
+				error: getErrorMessage(error),
+			});
 		}
 	}
 
@@ -2201,6 +2347,7 @@ export class InstanceAiService {
 		tracing?: InstanceAiTraceContext;
 	}): Promise<MessageTraceFinalization> {
 		this.runState.cancelThread(args.threadId);
+		void this.dropPendingConfirmationsForThread(args.threadId);
 		args.abortController.abort();
 		await this.finalizeRunTracing(args.runId, args.tracing, {
 			status: 'error',
@@ -2673,6 +2820,15 @@ export class InstanceAiService {
 						threadId,
 						userId: user.id,
 						createdAt: Date.now(),
+					});
+
+					void this.persistPendingConfirmation({
+						requestId,
+						threadId,
+						userId: user.id,
+						runId,
+						messageGroupId,
+						kind: 'inline',
 					});
 
 					// Inline HITL (planner questions / plan approval / sub-agent asks)
@@ -3390,6 +3546,17 @@ export class InstanceAiService {
 						modelId,
 						checkpoint,
 					});
+					void this.persistPendingConfirmation({
+						requestId: result.suspension.requestId,
+						threadId,
+						userId: user.id,
+						runId,
+						messageGroupId,
+						kind: 'suspended',
+						toolCallId: result.suspension.toolCallId,
+						checkpointKey: result.agentRunId,
+						checkpointTaskId: checkpoint?.checkpointTaskId,
+					});
 				}
 
 				// Track intermediate message (text streamed before suspension)
@@ -3840,6 +4007,7 @@ export class InstanceAiService {
 		}
 
 		if (this.runState.resolvePendingConfirmation(freshUser.id, requestId, data)) {
+			void this.dropPendingConfirmation(requestId);
 			this.logger.debug('Resolved pending confirmation (sub-agent HITL)', {
 				requestId,
 				approved: data.approved,
@@ -3852,7 +4020,61 @@ export class InstanceAiService {
 			approved: data.approved,
 		});
 
-		return await this.resumeSuspendedRun(requestingUserId, requestId, data);
+		if (await this.resumeSuspendedRun(requestingUserId, requestId, data)) {
+			return true;
+		}
+
+		// Last resort: the in-memory state is gone, but a persisted index row
+		// may still exist from before a process restart. Surface that as a
+		// clear UserError to the client instead of an opaque 404.
+		await this.handleOrphanedConfirmation(requestingUserId, requestId);
+		return false;
+	}
+
+	private async handleOrphanedConfirmation(userId: string, requestId: string): Promise<void> {
+		let orphan;
+		try {
+			orphan = await this.pendingConfirmationRepo.claim(requestId, userId);
+		} catch (error: unknown) {
+			this.logger.warn('Failed to claim orphaned pending confirmation', {
+				requestId,
+				error: getErrorMessage(error),
+			});
+			return;
+		}
+		if (!orphan) return;
+
+		this.logger.warn('Pending confirmation orphaned by a process restart', {
+			requestId,
+			threadId: orphan.threadId,
+			runId: orphan.runId,
+			kind: orphan.kind,
+		});
+
+		try {
+			this.publishRunFinish(
+				orphan.threadId,
+				orphan.runId,
+				'cancelled',
+				'restart_lost_confirmation',
+			);
+			await this.saveAgentTreeSnapshot(
+				orphan.threadId,
+				orphan.runId,
+				this.dbSnapshotStorage,
+				true,
+				orphan.messageGroupId ?? undefined,
+			);
+		} catch (error: unknown) {
+			this.logger.warn('Failed to finalize orphaned confirmation snapshot', {
+				requestId,
+				error: getErrorMessage(error),
+			});
+		}
+
+		throw new UserError(
+			'This confirmation was lost when the assistant restarted. Please refresh the page and start a new turn.',
+		);
 	}
 
 	private async revalidateActiveUser(userId: string): Promise<User | null> {
@@ -3915,6 +4137,13 @@ export class InstanceAiService {
 		}
 
 		this.runState.activateSuspendedRun(threadId);
+
+		// The in-memory `suspendedRuns` map carries no resolver callback, so
+		// the suspended-kind DB row has to be dropped explicitly here. The
+		// inline-kind drop is wired into the Promise resolver in
+		// `waitForConfirmation` and fires whether the resolution came from the
+		// user, from `cancelThread`, or from a liveness timeout.
+		void this.dropPendingConfirmation(requestId);
 
 		// setup-workflow uses nodeCredentials (per-node) format for its credentials field;
 		// other tools use the flat credentials map. Prefer nodeCredentials when present.
@@ -4055,6 +4284,7 @@ export class InstanceAiService {
 
 			if (result.status === 'suspended') {
 				if (result.suspension) {
+					const resumeMessageGroupId = this.traceContextsByRunId.get(opts.runId)?.messageGroupId;
 					this.runState.suspendRun(opts.threadId, {
 						runId: opts.runId,
 						agentRunId: result.agentRunId,
@@ -4064,11 +4294,22 @@ export class InstanceAiService {
 						toolCallId: result.suspension.toolCallId,
 						requestId: result.suspension.requestId,
 						abortController: opts.abortController,
-						messageGroupId: this.traceContextsByRunId.get(opts.runId)?.messageGroupId,
+						messageGroupId: resumeMessageGroupId,
 						createdAt: Date.now(),
 						tracing: opts.tracing,
 						...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 						checkpoint: opts.checkpoint,
+					});
+					void this.persistPendingConfirmation({
+						requestId: result.suspension.requestId,
+						threadId: opts.threadId,
+						userId: opts.user.id,
+						runId: opts.runId,
+						messageGroupId: resumeMessageGroupId,
+						kind: 'suspended',
+						toolCallId: result.suspension.toolCallId,
+						checkpointKey: result.agentRunId,
+						checkpointTaskId: opts.checkpoint?.checkpointTaskId,
 					});
 				}
 
@@ -4663,6 +4904,8 @@ export class InstanceAiService {
 				...(runTimeout ? { runTimeout } : {}),
 			}),
 		});
+
+		void this.dropPendingConfirmation(suspended.requestId);
 	}
 
 	private async reapAiTemporaryForThreadCleanup(threadId: string): Promise<void> {
