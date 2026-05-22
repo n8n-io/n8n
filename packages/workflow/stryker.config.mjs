@@ -3,6 +3,11 @@ export default {
 	packageManager: 'pnpm',
 	testRunner: 'vitest',
 	plugins: ['@stryker-mutator/vitest-runner'],
+	// Use the Stryker-specific vitest config (vm-engine only) — see
+	// vitest.stryker.config.ts for the rationale.
+	vitest: {
+		configFile: 'vitest.stryker.config.ts',
+	},
 	reporters: ['progress', 'clear-text', 'html', 'json'],
 	coverageAnalysis: 'perTest',
 	// Default empty — the `mutate` npm script always passes --mutate <file>.
