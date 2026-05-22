@@ -547,19 +547,32 @@ export class Expression {
 
 		Expression.initializeGlobalContext(data);
 
+		const usingVm = Expression.shouldUseVm();
+
 		// Expression extensions — only attached for the legacy engine.
 		//
 		// In the VM engine, every host function reachable from `data` becomes
 		// a callable target the isolate can reach via `callFunctionAtPath`.
-		// To minimise that attack surface we keep the VM-path data object as
-		// small as possible and let the in-isolate runtime resolve helpers
-		// itself (see packages/@n8n/expression-runtime/src/runtime/context.ts,
-		// where Tournament's polyfill rewrites bare `extend(...)` calls to the
-		// in-isolate copy on `target.extend`). Setting them here in VM mode
-		// would be dead code AND an unnecessary host-callable.
-		if (!Expression.shouldUseVm()) {
+		// To minimise that surface we keep the VM-path data object as small as
+		// possible and let the in-isolate runtime resolve helpers itself
+		// (see packages/@n8n/expression-runtime/src/runtime/context.ts, where
+		// Tournament's polyfill rewrites bare `extend(...)` calls to the
+		// in-isolate copy on `target.extend`). Setting them on `data` in VM
+		// mode would be dead code AND an unnecessary host-callable.
+		if (!usingVm) {
 			data.extend = extend;
 			data.extendOptional = extendOptional;
+		}
+
+		// In VM mode, strip `$jmesPath` / `$jmespath` from the data proxy.
+		// WorkflowDataProxy adds them, but the in-isolate `target.$jmespath`
+		// shadows them via Tournament's polyfill (see
+		// packages/@n8n/expression-runtime/src/runtime/context.ts). The delete
+		// makes them unreachable via direct path lookup through the bridge
+		// too, so the bridge can never invoke the host-side copies.
+		if (usingVm) {
+			delete data.$jmesPath;
+			delete data.$jmespath;
 		}
 
 		Object.defineProperty(data, sanitizerName, {

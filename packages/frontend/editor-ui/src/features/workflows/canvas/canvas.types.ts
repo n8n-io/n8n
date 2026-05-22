@@ -113,10 +113,6 @@ export interface CanvasNodeData {
 		validation: string[];
 		visible: boolean;
 	};
-	pinnedData: {
-		count: number;
-		visible: boolean;
-	};
 	execution: {
 		status?: ExecutionStatus;
 		waiting?: string;
