@@ -1,3 +1,13 @@
+## [2.22.2](https://github.com/n8n-io/n8n/compare/n8n@2.22.1...n8n@2.22.2) (2026-05-22)
+
+
+### Bug Fixes
+
+* **core:** Acquire expression isolate for scheduled polls ([#30741](https://github.com/n8n-io/n8n/issues/30741)) ([27ae0d7](https://github.com/n8n-io/n8n/commit/27ae0d7eb83b8e46935569e8694c536a03aeb4e6))
+* **core:** Report scheduled-poll isolate acquisition failures via __emitError ([#30791](https://github.com/n8n-io/n8n/issues/30791)) ([61597f0](https://github.com/n8n-io/n8n/commit/61597f03addb4d613e9016a8b08ee24bce09c1c9))
+* Fixes PostHog group identify call site after init ([#30800](https://github.com/n8n-io/n8n/issues/30800)) ([c9b1220](https://github.com/n8n-io/n8n/commit/c9b1220726bf5857b91bdfd29dc3001866716647))
+
+
 ## [2.22.1](https://github.com/n8n-io/n8n/compare/n8n@2.22.0...n8n@2.22.1) (2026-05-21)
 
 
