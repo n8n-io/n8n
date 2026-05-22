@@ -3,7 +3,6 @@ import type { TranscriptTurn } from '../types';
 /**
  * User-side turns from a captured transcript, flattened as a text block for
  * prompt-aware checks. Single-turn → plain text; multi-turn → numbered prefix.
- * Trace-mode (TRUST-104) will plug in a LangSmith adapter emitting the same shape.
  */
 export function userTurnsAsText(transcript: TranscriptTurn[]): string {
 	const turns = transcript

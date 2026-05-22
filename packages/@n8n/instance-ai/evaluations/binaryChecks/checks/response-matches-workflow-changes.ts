@@ -1,7 +1,7 @@
 import { createLlmCheck } from './create-llm-check';
 
-// TODO: HOW-side misfit — scores agent communication honesty, not workflow craft.
-// Reassign when HOW dimensions land. See https://linear.app/n8n/issue/TRUST-119
+// Scores agent communication honesty rather than workflow craft; revisit
+// its dimension when conversation-side rubric checks land.
 export const responseMatchesWorkflowChanges = createLlmCheck({
 	name: 'response_matches_workflow_changes',
 	description: "Agent's text response accurately describes the actual workflow changes",

@@ -403,9 +403,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
 				if (build.success && !build.workflowChecks) {
-					// No SSE transcript in prebuilt mode — checks run with empty prompt
-					// context. When TRUST-104 lands a LangSmith trace adapter, replace
-					// this with `userTurnsAsText(<adapter>(workflowId))`.
+					// No transcript in prebuilt mode — checks run with empty prompt context.
 					build.workflowChecks = await runWorkflowChecks({
 						workflow: build.workflowJsons[0],
 						prompt: '',

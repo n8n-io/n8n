@@ -168,7 +168,7 @@ The signal surfaces in:
 Operational details:
 
 - Checks run **once per built workflow**, not per scenario — every scenario row in LangSmith carries the same outcomes for its build.
-- Failures don't flip `scenario_pass`; they're independent signals per the rubric spec in `.claude/specs/how-axes-investigation.md`.
+- Failures don't flip `scenario_pass`; they're independent signals per the rubric design.
 - LLM checks (`fulfills_user_request`, `valid_data_flow`, `correct_node_operations`, `handles_multiple_items`, `descriptive_node_names`, `response_matches_workflow_changes`) reuse the same Sonnet model as the verifier — auto-skipped (N/A) when no Anthropic key is set.
 
 ## Environment variables

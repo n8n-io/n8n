@@ -41,9 +41,9 @@ export interface BinaryCheckContext {
 }
 
 /**
- * WHAT-side rubric dimensions per `.claude/specs/how-axes-investigation.md` §4.
- * The order here drives sort order in reports.
- * 8th dimension `execution_outcome` is served by the existing execution verifier.
+ * WHAT-side rubric dimensions for the workflow artifact. The order here
+ * drives sort order in reports. The execution verifier covers a separate
+ * `execution_outcome` dimension that lives outside this binary-check suite.
  */
 export const CHECK_DIMENSIONS = [
 	'structure',
