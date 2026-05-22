@@ -17,6 +17,13 @@ jest.mock('@n8n/instance-ai', () => {
 			ensureWorkspace: args.ensureWorkspace,
 		})),
 		setupSandboxWorkspace: jest.fn(),
+		loadInstanceAiRuntimeSkillSource: jest.fn(() => ({
+			registry: {
+				skillsHash: 'runtime-skills-hash',
+				skills: [{ id: 'data-table-manager' }],
+			},
+			loadSkill: jest.fn(),
+		})),
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: jest.fn(),
 		handleVerificationVerdict: jest.fn(),
@@ -126,6 +133,7 @@ import {
 	createLazyRuntimeWorkspace,
 	createSandbox,
 	createWorkspace,
+	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
 	setupSandboxWorkspace,
 	type InstanceAiContext,
@@ -874,7 +882,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				threadId: string,
 				runId: string,
 				abortSignal: AbortSignal,
-			) => Promise<{ orchestrationContext: { workspace?: unknown } }>;
+			) => Promise<{
+				orchestrationContext: {
+					workspace?: unknown;
+					runtimeSkills?: { registry: { skills: Array<{ id: string }> } };
+				};
+			}>;
 			settingsService: {
 				getAdminSettings: jest.Mock;
 				isLocalGatewayDisabledForUser: jest.Mock;
@@ -971,6 +984,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		);
 
 		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(1);
+		expect(loadInstanceAiRuntimeSkillSource).toHaveBeenCalledTimes(1);
+		expect(environment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
+			{ id: 'data-table-manager' },
+		]);
 		expect(createSandbox).not.toHaveBeenCalled();
 		const lazyWorkspace = environment.orchestrationContext.workspace as {
 			ensureWorkspace: () => Promise<unknown>;

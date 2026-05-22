@@ -230,8 +230,6 @@ const deleteRowsAction = z.object({
 	filter: filterSchemaWithMinOne.describe('Row filter conditions'),
 });
 
-const readOnlyActions = [listAction, schemaAction, queryAction] as const;
-
 const allActions = [
 	listAction,
 	schemaAction,
@@ -246,7 +244,6 @@ const allActions = [
 	deleteRowsAction,
 ] as const;
 
-type ReadOnlyInput = z.infer<z.ZodDiscriminatedUnion<'action', typeof readOnlyActions>>;
 type FullInput = z.infer<z.ZodDiscriminatedUnion<'action', typeof allActions>>;
 
 // ── Handlers ───────────────────────────────────────────────────────────────
@@ -286,7 +283,7 @@ async function handleQuery(
 	if (remaining > 0) {
 		return {
 			...result,
-			hint: `${remaining} more rows available. Use plan with a manage-data-tables task for bulk operations.`,
+			hint: `${remaining} more rows available. Use additional paginated data-tables queries for bulk operations.`,
 		};
 	}
 
@@ -338,7 +335,7 @@ async function handleCreate(
 		if (isNameConflictError(error)) {
 			return {
 				denied: true,
-				reason: `Table "${input.name}" already exists. Use list-data-tables to find it and get-data-table-schema to check its columns.`,
+				reason: `Table "${input.name}" already exists. Use data-tables(action="list") to find it and data-tables(action="schema") to check its columns.`,
 			};
 		}
 		throw error;
@@ -598,29 +595,7 @@ async function handleDeleteRows(
 
 // ── Tool factory ───────────────────────────────────────────────────────────
 
-export function createDataTablesTool(
-	context: InstanceAiContext,
-	surface: 'full' | 'orchestrator' = 'full',
-) {
-	if (surface === 'orchestrator') {
-		const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...readOnlyActions]));
-
-		return new Tool(DATA_TABLES_TOOL_ID)
-			.description('Manage data tables — list, get schema, and query rows.')
-			.input(inputSchema)
-			.handler(async (input: ReadOnlyInput) => {
-				switch (input.action) {
-					case 'list':
-						return await handleList(context, input);
-					case 'schema':
-						return await handleSchema(context, input);
-					case 'query':
-						return await handleQuery(context, input);
-				}
-			})
-			.build();
-	}
-
+export function createDataTablesTool(context: InstanceAiContext) {
 	const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...allActions]));
 
 	return new Tool(DATA_TABLES_TOOL_ID)

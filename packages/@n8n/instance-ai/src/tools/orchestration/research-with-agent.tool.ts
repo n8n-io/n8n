@@ -17,6 +17,7 @@ import {
 	traceSubAgentTools,
 	withTraceContextActor,
 } from './tracing-utils';
+import { attachRuntimeWorkspaceCapabilities } from '../../agent/runtime-workspace';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/consume-with-hitl';
@@ -101,6 +102,9 @@ export async function startResearchAgentTask(
 					})
 					.tool(toolRegistryValues(tracedResearchTools))
 					.checkpoint(context.checkpointStore ?? 'memory');
+				attachRuntimeWorkspaceCapabilities(subAgent, {
+					runtimeSkills: context.runtimeSkills,
+				});
 				const telemetry = traceContext?.getTelemetry?.({
 					agentRole: 'web-researcher',
 					functionId: 'instance-ai.subagent.web-researcher',

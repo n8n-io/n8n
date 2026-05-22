@@ -746,6 +746,7 @@ export interface InstanceAiToolCallState {
 		| 'researcher'
 		| 'planner'
 		| 'eval-setup'
+		| 'skill'
 		| 'default';
 	confirmation?: InstanceAiConfirmation;
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
@@ -762,9 +763,9 @@ export interface InstanceAiAgentNode {
 	agentId: string;
 	role: string;
 	tools?: string[];
-	/** Background task ID — present only for background agents (workflow-builder, data-table-manager). */
+	/** Background task ID — present only for background agents. */
 	taskId?: string;
-	/** Agent kind for card dispatch (builder, data-table, researcher, delegate,
+	/** Agent kind for card dispatch (builder, researcher, delegate,
 	 * browser-setup, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Short display title, e.g. "Building workflow". */
@@ -1061,10 +1062,10 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
 	if (toolName === 'build-workflow-with-agent') return 'builder';
-	if (toolName === 'manage-data-tables-with-agent') return 'data-table';
 	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'plan') return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
+	if (toolName === 'list_skills' || toolName === 'load_skill') return 'skill';
 	return 'default';
 }
 

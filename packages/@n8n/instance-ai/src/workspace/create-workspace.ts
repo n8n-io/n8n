@@ -82,6 +82,7 @@ export async function createSandbox(
 			...(config.image ? { image: config.image } : {}),
 			language: 'typescript',
 			timeout: config.timeout ?? 300_000,
+			createTimeoutSeconds: config.createTimeoutSeconds,
 		});
 	}
 

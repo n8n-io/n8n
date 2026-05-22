@@ -138,23 +138,22 @@ graph TD
     O -->|direct| T2[run-workflow]
     O -->|direct| T3[get-execution]
     O -->|direct| T4[plan]
+    O -->|direct| T5[data-tables]
 
     S3 -->|kind: build-workflow| S4[Builder Agent]
-    S3 -->|kind: manage-data-tables| S5[Data Table Agent]
     S3 -->|kind: research| S6[Research Agent]
     S3 -->|kind: delegate| S7[Custom Sub-Agent]
 
-    S1 -->|tools| T5[get-execution]
-    S1 -->|tools| T6[get-workflow]
-    S2 -->|tools| T7[search-nodes]
-    S2 -->|tools| T8[build-workflow]
+    S1 -->|tools| T6[get-execution]
+    S1 -->|tools| T7[get-workflow]
+    S2 -->|tools| T8[search-nodes]
+    S2 -->|tools| T9[build-workflow]
 
     style O fill:#f9f,stroke:#333
     style S1 fill:#bbf,stroke:#333
     style S2 fill:#bbf,stroke:#333
     style S3 fill:#ffa,stroke:#333
     style S4 fill:#bbf,stroke:#333
-    style S5 fill:#bbf,stroke:#333
     style S6 fill:#bbf,stroke:#333
     style S7 fill:#bbf,stroke:#333
 ```
@@ -343,13 +342,18 @@ task has a `kind` that determines its executor:
 | Kind | Executor | Tools |
 |------|----------|-------|
 | `build-workflow` | Builder agent | search-nodes, build-workflow, get-node-type-definition, etc. |
-| `manage-data-tables` | Data table agent | All `*-data-table*` tools |
 | `research` | Research agent | web-search, fetch-url |
 | `delegate` | Custom sub-agent | Orchestrator-specified subset |
+| `checkpoint` | Orchestrator follow-up | verify-built-workflow, executions |
 
-Tasks run detached as background agents. Dependencies are respected — a task
-only starts when all its `deps` have succeeded. The plan is shown to the user
-for approval before execution begins.
+Standalone data-table work bypasses planned tasks: the orchestrator loads the
+`data-table-manager` skill and uses `data-tables` / `parse-file` directly.
+
+Build, research, and delegate tasks run detached as background agents. Checkpoint
+tasks run as orchestrator follow-ups so they can inspect the latest workflow
+state before verifying. Dependencies are respected — a task only starts when all
+its `deps` have succeeded. The plan is shown to the user for approval before
+execution begins.
 
 ### Workflow Loop State Machine
 

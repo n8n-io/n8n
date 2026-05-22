@@ -22,7 +22,8 @@ import {
 } from '@n8n/design-system';
 import { useElementSize, useScroll, useSessionStorage, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAttachment } from '@n8n/api-types';
+import type { ChatArtifact, InstanceAiAttachment } from '@n8n/api-types';
+import { collectChatArtifacts, parseMessage } from '@n8n/chat-hub';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
@@ -53,6 +54,7 @@ import InstanceAiWorkflowPreview, {
 import { buildFixWithAiPrompt } from './fixWithAi';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import { TabsRoot } from 'reka-ui';
+import ChatArtifactViewer from '@/features/ai/chatHub/components/ChatArtifactViewer.vue';
 
 const props = defineProps<{
 	threadId: string;
@@ -132,13 +134,80 @@ const preview = useCanvasPreview({
 	threadId: () => props.threadId,
 });
 
-provide('openWorkflowPreview', preview.openWorkflowPreview);
-provide('openDataTablePreview', preview.openDataTablePreview);
+// Markdown/document artifacts emitted by the assistant with
+// <command:artifact-create> share the preview surface with workflow and
+// data-table artifacts, so report-style skill output never needs a sandbox path.
+const chatArtifacts = computed<ChatArtifact[]>(() =>
+	collectChatArtifacts(
+		thread.messages.flatMap((message) => {
+			if (message.role !== 'assistant' || !message.content) return [];
+			return parseMessage({ type: 'ai', content: message.content });
+		}),
+	),
+);
+const isChatArtifactViewerCollapsed = ref(true);
+const selectedChatArtifactIndex = ref(0);
+const isChatArtifactViewerVisible = computed(
+	() => chatArtifacts.value.length > 0 && !isChatArtifactViewerCollapsed.value,
+);
+
+function closeChatArtifactViewer() {
+	isChatArtifactViewerCollapsed.value = true;
+}
+
+function openChatArtifact(title?: string) {
+	if (title) {
+		const index = chatArtifacts.value.findLastIndex((artifact) => artifact.title === title);
+		if (index !== -1) selectedChatArtifactIndex.value = index;
+	} else if (chatArtifacts.value.length > 0) {
+		selectedChatArtifactIndex.value = chatArtifacts.value.length - 1;
+	}
+
+	if (chatArtifacts.value.length === 0) return;
+	preview.closePreview();
+	isChatArtifactViewerCollapsed.value = false;
+}
+
+function handleSelectChatArtifact(index: number) {
+	selectedChatArtifactIndex.value = index;
+}
+
+function handleDownloadChatArtifact() {
+	const artifact = chatArtifacts.value[selectedChatArtifactIndex.value];
+	if (!artifact) return;
+
+	const blob = new Blob([artifact.content], { type: 'text/plain' });
+	const url = URL.createObjectURL(blob);
+	const link = document.createElement('a');
+	link.href = url;
+	link.download = `${artifact.title}.${artifact.type}`;
+	link.click();
+	URL.revokeObjectURL(url);
+}
+
+function openWorkflowPreview(id: string) {
+	closeChatArtifactViewer();
+	return preview.openWorkflowPreview(id);
+}
+
+function openDataTablePreview(id: string, projectId: string) {
+	closeChatArtifactViewer();
+	return preview.openDataTablePreview(id, projectId);
+}
+
+provide('openWorkflowPreview', openWorkflowPreview);
+provide('openDataTablePreview', openDataTablePreview);
+provide('openChatArtifact', openChatArtifact);
 
 // --- Side panels ---
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
-const hasPreviewTabs = computed(() => preview.allArtifactTabs.value.length > 0);
+const hasPreviewTabs = computed(
+	() => preview.allArtifactTabs.value.length > 0 || chatArtifacts.value.length > 0,
+);
+const isAnyPreviewVisible = computed(
+	() => preview.isPreviewVisible.value || isChatArtifactViewerVisible.value,
+);
 const isArtifactsPanelPinned = useSessionStorage('instanceAi.artifactsPanelPinned', true);
 const isArtifactsPanelRevealed = ref(false);
 const DEFAULT_INSTANCE_AI_SIDEBAR_WIDTH = 260;
@@ -154,7 +223,7 @@ const isPreviewPanelTransitionEnabled = previewPanelTransitionGate.isEnabled;
 const isPreviewPanelTransitioning = ref(false);
 const artifactsPreviewToggleLabel = computed(() =>
 	i18n.baseText(
-		preview.isPreviewVisible.value
+		isAnyPreviewVisible.value
 			? 'instanceAi.artifactsPanel.hidePreview'
 			: 'instanceAi.artifactsPanel.showPreview',
 	),
@@ -164,22 +233,26 @@ const artifactsPanelTransitionName = computed(() =>
 );
 
 function toggleArtifactsPreview() {
-	if (preview.isPreviewVisible.value) {
+	if (isAnyPreviewVisible.value) {
 		preview.closePreview();
+		closeChatArtifactViewer();
 		return;
 	}
 
 	const firstTab = preview.allArtifactTabs.value[0];
 	if (firstTab) {
 		preview.selectTab(firstTab.id);
+		return;
 	}
+
+	openChatArtifact();
 }
 
 function revealArtifactsPanel() {
 	if (
 		!canShowArtifactsPanel.value ||
 		isArtifactsPanelEffectivelyPinned.value ||
-		preview.isPreviewVisible.value
+		isAnyPreviewVisible.value
 	) {
 		return;
 	}
@@ -243,13 +316,13 @@ const canShowArtifactsPanel = computed(
 const showArtifactsPanelEdge = computed(
 	() =>
 		canShowArtifactsPanel.value &&
-		!preview.isPreviewVisible.value &&
+		!isAnyPreviewVisible.value &&
 		!isArtifactsPanelEffectivelyPinned.value,
 );
 const showArtifactsPanel = computed(
 	() =>
 		canShowArtifactsPanel.value &&
-		!preview.isPreviewVisible.value &&
+		!isAnyPreviewVisible.value &&
 		(isArtifactsPanelEffectivelyPinned.value || isArtifactsPanelRevealed.value),
 );
 const reserveArtifactsPanelLayout = computed(
@@ -303,8 +376,36 @@ watch(
 		}
 
 		if (visible) {
+			closeChatArtifactViewer();
 			isArtifactsPanelRevealed.value = false;
 			previewPanelWidth.value = Math.round(threadAreaWidth.value / 2);
+		}
+	},
+	{ flush: 'sync' },
+);
+
+watch(
+	isChatArtifactViewerVisible,
+	(visible, wasVisible) => {
+		if (visible !== wasVisible) {
+			isPreviewPanelTransitioning.value = isPreviewPanelTransitionEnabled.value;
+		}
+
+		if (visible) {
+			isArtifactsPanelRevealed.value = false;
+			previewPanelWidth.value = Math.round(threadAreaWidth.value / 2);
+		}
+	},
+	{ flush: 'sync' },
+);
+
+watch(
+	chatArtifacts,
+	(newArtifacts, oldArtifacts) => {
+		if (thread.isHydratingThread) return;
+		if (newArtifacts.length > 0 && newArtifacts.length !== oldArtifacts?.length) {
+			selectedChatArtifactIndex.value = newArtifacts.length - 1;
+			openChatArtifact(newArtifacts[newArtifacts.length - 1]?.title);
 		}
 	},
 	{ flush: 'sync' },
@@ -313,7 +414,11 @@ watch(
 // Late-initialize if the panel became visible before the ResizeObserver
 // reported the container size (otherwise the panel would render at 0px).
 watch(threadAreaWidth, (width) => {
-	if (width > 0 && previewPanelWidth.value === 0 && preview.isPreviewVisible.value) {
+	if (
+		width > 0 &&
+		previewPanelWidth.value === 0 &&
+		(preview.isPreviewVisible.value || isChatArtifactViewerVisible.value)
+	) {
 		previewPanelWidth.value = Math.round(width / 2);
 	}
 });
@@ -809,6 +914,43 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 							/>
 						</div>
 					</TabsRoot>
+				</N8nResizeWrapper>
+			</div>
+		</Transition>
+
+		<!-- Resizable preview panel for markdown/document artifacts -->
+		<Transition
+			name="preview-panel-slide"
+			:css="isPreviewPanelTransitionEnabled"
+			@after-enter="handlePreviewPanelAfterEnter"
+			@after-leave="handlePreviewPanelAfterLeave"
+		>
+			<div
+				v-show="isChatArtifactViewerVisible"
+				:class="[$style.canvasArea, { [$style.canvasAreaExpanded]: isPreviewExpanded }]"
+				:style="previewPanelStyle"
+				:data-expanded="isPreviewExpanded"
+				data-test-id="instance-ai-chat-artifact-preview-panel"
+			>
+				<N8nResizeWrapper
+					:width="previewPanelWidth"
+					:min-width="400"
+					:max-width="previewMaxWidth"
+					:supported-directions="['left']"
+					:is-resizing-enabled="!isPreviewExpanded"
+					:grid-size="8"
+					:outset="true"
+					@resize="handlePreviewResize"
+					@resizestart="isResizingPreview = true"
+					@resizeend="isResizingPreview = false"
+				>
+					<ChatArtifactViewer
+						:artifacts="chatArtifacts"
+						:selected-index="selectedChatArtifactIndex"
+						@close="closeChatArtifactViewer"
+						@select-artifact="handleSelectChatArtifact"
+						@download="handleDownloadChatArtifact"
+					/>
 				</N8nResizeWrapper>
 			</div>
 		</Transition>

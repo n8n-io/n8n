@@ -415,7 +415,7 @@ describe('parseStoredMessages', () => {
 						{
 							type: 'tool-result',
 							toolCallId: 'tc-3',
-							toolName: 'manage-data-tables-with-agent',
+							toolName: 'research-with-agent',
 							result: 'ok',
 						},
 					],
@@ -428,7 +428,7 @@ describe('parseStoredMessages', () => {
 			const toolCalls = result[1].agentTree?.toolCalls ?? [];
 			expect(toolCalls[0].renderHint).toBe('delegate');
 			expect(toolCalls[1].renderHint).toBe('builder');
-			expect(toolCalls[2].renderHint).toBe('data-table');
+			expect(toolCalls[2].renderHint).toBe('researcher');
 		});
 	});
 

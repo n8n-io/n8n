@@ -30,6 +30,7 @@ import {
 	createWorkspace,
 	createLazyRuntimeWorkspace,
 	setupSandboxWorkspace,
+	loadInstanceAiRuntimeSkillSource,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
 	continueInstanceAiTraceContext,
@@ -54,7 +55,6 @@ import {
 	resumeAgentRun,
 	RunStateRegistry,
 	startBuildWorkflowAgentTask,
-	startDataTableAgentTask,
 	startDetachedDelegateTask,
 	startResearchAgentTask,
 	streamAgentRun,
@@ -2447,6 +2447,7 @@ export class InstanceAiService {
 		}
 
 		const domainTools = createAllTools(context);
+		const runtimeSkills = loadInstanceAiRuntimeSkillSource();
 		let runtimeWorkspace: Workspace | undefined;
 		if (adminSettings.sandboxEnabled) {
 			let sandboxEntryPromise: Promise<RuntimeSandboxEntry | undefined> | undefined;
@@ -2488,6 +2489,7 @@ export class InstanceAiService {
 				? { name: 'chrome-devtools', command: 'npx', args: ['-y', 'chrome-devtools-mcp@latest'] }
 				: undefined,
 			localMcpServer: context.localMcpServer,
+			runtimeSkills,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			webhookBaseUrl: this.webhookBaseUrl,
 			formBaseUrl: this.formBaseUrl,
@@ -2558,13 +2560,6 @@ export class InstanceAiService {
 				started = await startBuildWorkflowAgentTask(taskContext, {
 					task: task.spec,
 					workflowId: task.workflowId,
-					plannedTaskId: task.id,
-					conversationContext,
-				});
-				break;
-			case 'manage-data-tables':
-				started = startDataTableAgentTask(taskContext, {
-					task: task.spec,
 					plannedTaskId: task.id,
 					conversationContext,
 				});

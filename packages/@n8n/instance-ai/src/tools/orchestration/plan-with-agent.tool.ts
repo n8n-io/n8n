@@ -31,6 +31,7 @@ import {
 	traceSubAgentTools,
 	withTraceRun,
 } from './tracing-utils';
+import { attachRuntimeWorkspaceCapabilities } from '../../agent/runtime-workspace';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/consume-with-hitl';
 import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
@@ -722,6 +723,9 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					})
 					.tool(toolRegistryValues(tracedPlannerTools))
 					.checkpoint(context.checkpointStore ?? 'memory');
+				attachRuntimeWorkspaceCapabilities(subAgent, {
+					runtimeSkills: context.runtimeSkills,
+				});
 				const telemetry = context.tracing?.getTelemetry?.({
 					agentRole: 'planner',
 					functionId: 'instance-ai.subagent.planner',

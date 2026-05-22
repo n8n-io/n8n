@@ -3,9 +3,11 @@ const mockAgentInstances: Array<{
 	instructions: jest.Mock;
 	tool: jest.Mock;
 	deferredTool: jest.Mock;
+	skills: jest.Mock;
 	checkpoint: jest.Mock;
 	memory: jest.Mock;
 	telemetry: jest.Mock;
+	workspace: jest.Mock;
 }> = [];
 
 jest.mock('@n8n/agents', () => ({
@@ -14,9 +16,11 @@ jest.mock('@n8n/agents', () => ({
 		this.instructions = jest.fn().mockReturnThis();
 		this.tool = jest.fn().mockReturnThis();
 		this.deferredTool = jest.fn().mockReturnThis();
+		this.skills = jest.fn().mockReturnThis();
 		this.checkpoint = jest.fn().mockReturnThis();
 		this.memory = jest.fn().mockReturnThis();
 		this.telemetry = jest.fn().mockReturnThis();
+		this.workspace = jest.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 }));
@@ -226,20 +230,11 @@ describe('createInstanceAgent', () => {
 			},
 			memoryConfig,
 			mcpManager: createMcpManagerStub(),
-			// Exercise the deprecated field to confirm it is ignored.
 			workspace: fakeWorkspace,
 		} as never);
 
 		expect(Agent).toHaveBeenCalledWith('n8n-instance-agent');
-		expect(mockAgentInstances[0]?.tool).toHaveBeenCalledTimes(1);
-		expect(
-			JSON.stringify([
-				mockAgentInstances[0]?.model.mock.calls,
-				mockAgentInstances[0]?.instructions.mock.calls,
-				mockAgentInstances[0]?.tool.mock.calls,
-				mockAgentInstances[0]?.checkpoint.mock.calls,
-			]),
-		).not.toContain('should-be-ignored');
+		expect(mockAgentInstances[0]?.workspace).not.toHaveBeenCalled();
 	});
 
 	it('attaches native telemetry from the trace context when present', async () => {
@@ -266,6 +261,51 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		expect(mockAgentInstances[0]?.telemetry).toHaveBeenCalledWith(telemetry);
+	});
+
+	it('attaches runtime skills to the orchestrator when provided by the context', async () => {
+		const runtimeSkills = {
+			registry: {
+				schemaVersion: 1,
+				skillsHash: 'skills-hash',
+				skills: [
+					{
+						id: 'data-table-manager',
+						name: 'data-table-manager',
+						description: 'Manage data tables.',
+						hash: 'skill-hash',
+						linkedFiles: {
+							references: [],
+							templates: [],
+							scripts: [],
+							assets: [],
+							examples: [],
+							other: [],
+						},
+					},
+				],
+			},
+			loadSkill: jest.fn(),
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'skills-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'skills-test',
+				browserMcpConfig: undefined,
+				runtimeSkills,
+			},
+			memoryConfig: { lastMessages: 20 },
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockAgentInstances[0]?.skills).toHaveBeenCalledWith(runtimeSkills);
 	});
 
 	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {

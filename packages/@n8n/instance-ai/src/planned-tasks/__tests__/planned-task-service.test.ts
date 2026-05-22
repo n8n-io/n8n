@@ -128,8 +128,8 @@ describe('PlannedTaskCoordinator', () => {
 
 		it('throws when a checkpoint task depends only on non-build-workflow tasks', async () => {
 			const tasks = [
-				makeTask({ id: 'dt-1', kind: 'manage-data-tables' }),
-				makeTask({ id: 'verify-1', kind: 'checkpoint', deps: ['dt-1'] }),
+				makeTask({ id: 'research-1', kind: 'research' }),
+				makeTask({ id: 'verify-1', kind: 'checkpoint', deps: ['research-1'] }),
 			];
 
 			await expect(

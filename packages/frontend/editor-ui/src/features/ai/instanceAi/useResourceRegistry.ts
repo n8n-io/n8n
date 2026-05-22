@@ -91,7 +91,6 @@ const ARTIFACT_TOOLS = new Set([
 	'workflows',
 	'credentials',
 	'data-tables',
-	'data-table-agent',
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
