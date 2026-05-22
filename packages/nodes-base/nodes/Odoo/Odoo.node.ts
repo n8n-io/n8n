@@ -229,6 +229,7 @@ export class Odoo implements INodeType {
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
+				const db = odooGetDBName(credentials?.db as string, credentials?.url as string);
 
 				try {
 					const body = {
@@ -237,11 +238,7 @@ export class Odoo implements INodeType {
 						params: {
 							service: 'common',
 							method: 'login',
-							args: [
-								odooGetDBName(credentials?.db as string, credentials?.url as string),
-								credentials?.username,
-								credentials?.password,
-							],
+							args: [db, credentials?.username, credentials?.password],
 						},
 						id: randomInt(100),
 					};
@@ -251,6 +248,7 @@ export class Odoo implements INodeType {
 							Connection: 'keep-alive',
 							Accept: '*/*',
 							'Content-Type': 'application/json',
+							...(db ? { 'X-Odoo-Database': db } : {}),
 						},
 						method: 'POST',
 						body,
