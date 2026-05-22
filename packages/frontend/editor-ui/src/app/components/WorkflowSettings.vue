@@ -1304,7 +1304,9 @@ onBeforeUnmount(() => {
 								$style['setting-name'],
 								{
 									[$style['setting-name--disabled']]:
-										!isDataRedactionLicensed || isRedactionSettingLocked,
+										!isDataRedactionLicensed ||
+										isRedactionSettingLocked ||
+										isManualRedactionDisabledByProduction,
 								},
 							]"
 						>
@@ -1336,7 +1338,10 @@ onBeforeUnmount(() => {
 						<ElCol
 							:span="14"
 							class="ignore-key-press-canvas"
-							:class="{ [$style['setting-name--disabled']]: isRedactionSettingLocked }"
+							:class="{
+								[$style['setting-name--disabled']]:
+									isRedactionSettingLocked || isManualRedactionDisabledByProduction,
+							}"
 						>
 							<N8nTooltip
 								:disabled="!isRedactionSettingLocked && !isManualRedactionDisabledByProduction"
@@ -1357,7 +1362,7 @@ onBeforeUnmount(() => {
 											}}</span
 										></span
 									>
-									<span v-else>{{
+									<span v-else-if="isManualRedactionDisabledByProduction">{{
 										i18n.baseText('workflowSettings.redactManualData.requiresProductionHint')
 									}}</span>
 								</template>
