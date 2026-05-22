@@ -625,10 +625,6 @@ Some migrations override with `transaction = false as const` for big DDL on engi
 
 ## Cross-database Compatibility
 
-### No new MySQL/MariaDB migrations
-
-MySQL/MariaDB is unsupported. Don't drop existing `mysqldb/` files unless asked, but don't add new ones. v1 backports are the only exception.
-
 ### Single Migration File or Separate for SQLite & Postgres
 
 - **Small differences** (a single statement, a CHECK constraint, slightly different syntax): keep one migration in `common/` and branch on `isSqlite` / `isPostgres`.
