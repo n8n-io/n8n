@@ -202,27 +202,54 @@ function goToUpgrade() {
 				</div>
 			</div>
 			<div
-				v-if="enforced && isLicensed"
+				v-if="!isLicensed || enforced"
 				:class="$style.settingsContainer"
 				data-test-id="redaction-enforcement-scope-row"
 			>
 				<div :class="$style.settingsContainerInfo">
-					<N8nText :bold="true">{{
-						i18n.baseText('settings.security.dataRedaction.scope.title')
-					}}</N8nText>
+					<N8nText :bold="true"
+						>{{ i18n.baseText('settings.security.dataRedaction.scope.title') }}
+						<N8nBadge v-if="!isLicensed" class="ml-4xs">{{
+							i18n.baseText('generic.upgrade')
+						}}</N8nBadge>
+					</N8nText>
 					<N8nText size="small" color="text-light">{{
 						i18n.baseText('settings.security.dataRedaction.scope.description')
 					}}</N8nText>
 				</div>
 				<div :class="$style.settingsContainerAction">
-					<N8nSelect2
-						:model-value="dropdownFloor"
-						:items="floorOptions"
-						size="medium"
-						:disabled="props.managedByEnv || isSaving"
-						data-test-id="redaction-enforcement-scope-select"
-						@update:model-value="onSelectFloor"
-					/>
+					<EnterpriseEdition :features="[EnterpriseEditionFeature.DataRedaction]">
+						<N8nSelect2
+							:model-value="dropdownFloor"
+							:items="floorOptions"
+							size="medium"
+							:disabled="props.managedByEnv || isSaving"
+							data-test-id="redaction-enforcement-scope-select"
+							@update:model-value="onSelectFloor"
+						/>
+						<template #fallback>
+							<N8nTooltip>
+								<N8nSelect2
+									:model-value="dropdownFloor"
+									:items="floorOptions"
+									size="medium"
+									:disabled="true"
+									data-test-id="redaction-enforcement-scope-select"
+								/>
+								<template #content>
+									<I18nT :keypath="TOOLTIP_KEY" tag="span" scope="global">
+										<template #action>
+											<a @click="goToUpgrade">
+												{{
+													i18n.baseText('settings.security.dataRedaction.unlicensed_tooltip.link')
+												}}
+											</a>
+										</template>
+									</I18nT>
+								</template>
+							</N8nTooltip>
+						</template>
+					</EnterpriseEdition>
 				</div>
 			</div>
 			<div :class="$style.settingsCountRow" data-test-id="redaction-enforcement-summary">
