@@ -367,6 +367,20 @@ export function parseStoredMessages(
 		messages.push(buildSnapshotMessage(snapshot));
 	}
 
+	// Propagate messageGroupId across assistant rows in the same conversational
+	// turn so the dedup pass below collapses them into a single rendered message.
+	//
+	// Planned-task follow-ups (build → checkpoint → synthesize) produce one
+	// real user message followed by several orchestrator sub-runs separated by
+	// internal `<planned-task-follow-up>` user messages (filtered out earlier).
+	// `takeSnapshotForAssistant` only pairs the sub-runs whose snapshot
+	// timestamp lines up — the intra-turn text rows ("On it!", "The trigger
+	// is…") stay unpaired and their text is also embedded in the final paired
+	// snapshot's `tree.textContent`. Without this propagation those unpaired
+	// rows survive the dedup loop and render as duplicates after a page
+	// reload (the live SSE path used to merge them via the run-start reducer).
+	propagateMessageGroupIdAcrossTurns(messages);
+
 	// Deduplicate assistant messages by messageGroupId.
 	// Follow-up runs in the same group produce separate DB rows; keep only
 	// the latest (which carries the full runIds array and complete tree).
@@ -382,4 +396,42 @@ export function parseStoredMessages(
 	}
 
 	return messages;
+}
+
+/**
+ * For each conversational turn (delimited by real user messages), find the
+ * latest assistant message that already has a `messageGroupId` (i.e. was
+ * paired with a snapshot) and copy that id onto every unpaired assistant
+ * message in the same turn.
+ */
+function propagateMessageGroupIdAcrossTurns(messages: InstanceAiMessage[]): void {
+	let turnStart = 0;
+	for (let i = 0; i <= messages.length; i++) {
+		const atBoundary = i === messages.length || messages[i].role === 'user';
+		if (!atBoundary) continue;
+		propagateMessageGroupIdWithinRange(messages, turnStart, i);
+		turnStart = i + 1;
+	}
+}
+
+function propagateMessageGroupIdWithinRange(
+	messages: InstanceAiMessage[],
+	start: number,
+	end: number,
+): void {
+	let turnGroupId: string | undefined;
+	for (let i = end - 1; i >= start; i--) {
+		const gid = messages[i].messageGroupId;
+		if (gid) {
+			turnGroupId = gid;
+			break;
+		}
+	}
+	if (!turnGroupId) return;
+	for (let i = start; i < end; i++) {
+		const msg = messages[i];
+		if (msg.role === 'assistant' && !msg.messageGroupId) {
+			msg.messageGroupId = turnGroupId;
+		}
+	}
 }
