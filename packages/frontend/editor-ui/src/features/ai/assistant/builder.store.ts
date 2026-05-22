@@ -1393,7 +1393,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function unpinAllNodes() {
-		const pinData = workflowDocumentStore.value.pinData;
+		const pinData = workflowDocumentStore.value.pinnedDataByNodeName;
 		if (!pinData) return;
 		for (const nodeName of Object.keys(pinData)) {
 			workflowDocumentStore.value.unpinNodeData(nodeName);
