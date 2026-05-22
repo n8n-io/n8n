@@ -108,13 +108,18 @@ describe('POST /n8n-packages/import', () => {
 		expect(response.statusCode).toBe(415);
 	});
 
+	test('rejects multipart request without package file', async () => {
+		const response = await authOwnerAgent.post('/n8n-packages/import').field('projectId', '');
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('imports a package and returns the rich ImportResult', async () => {
 		const tarBuffer = await buildImportPackage();
 
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
-			.set('Content-Type', 'application/gzip')
-			.send(tarBuffer);
+			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual({
