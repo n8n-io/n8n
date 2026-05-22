@@ -127,14 +127,18 @@ annotated.sort((a, b) => {
 	const pa = PRIORITY[a.effective_status] ?? 99;
 	const pb = PRIORITY[b.effective_status] ?? 99;
 	if (pa !== pb) return pa - pb;
-	// tiebreak
+
+	// Within `new`: alphabetical (deterministic; rows exit the bucket as they're scored).
 	if (a.effective_status === 'new') {
 		return a.source_file_path.localeCompare(b.source_file_path);
 	}
-	// oldest last_checked_at first
-	const ta = a.last_checked_at ? Date.parse(a.last_checked_at) : 0;
-	const tb = b.last_checked_at ? Date.parse(b.last_checked_at) : 0;
-	return ta - tb;
+
+	// Within `red`/`stale`: lowest score first — focus on the weakest tests.
+	// Tiebreak by alphabetical so the order is fully deterministic.
+	const sa = a.last_score == null ? Infinity : Number(a.last_score);
+	const sb = b.last_score == null ? Infinity : Number(b.last_score);
+	if (sa !== sb) return sa - sb;
+	return a.source_file_path.localeCompare(b.source_file_path);
 });
 
 const top = annotated[0];

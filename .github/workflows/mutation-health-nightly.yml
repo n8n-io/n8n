@@ -72,15 +72,37 @@ jobs:
             --data @"$SEED" "$WEBHOOK"
           echo "Seed POSTed."
 
+      - name: Fetch live ledger from BigQuery
+        id: ledger
+        if: ${{ ! inputs.seed-only }}
+        env:
+          PKG_DIR: ${{ steps.pkg.outputs.dir }}
+        run: |
+          LIVE="$PKG_DIR/reports/mutation/live-ledger.json"
+          QUERY_FILE="$PKG_DIR/reports/mutation/live-ledger.query.json"
+          # Pull current ledger state from BQ via the QA BigQuery API webhook.
+          # This is what makes the picker progress through files: rows scored on
+          # prior runs come back as green/red, not new, so the picker doesn't
+          # keep choosing the alphabetically-first new file every night.
+          mkdir -p "$(dirname "$LIVE")"
+          jq -n --arg pkg "$PACKAGE_NAME" '{
+            query: ("SELECT source_file_path, package, last_score, threshold_at_run, last_checked_at, last_checked_sha, status, attempts, mutants_killed, mutants_survived, mutants_no_coverage, mutants_timeout FROM `n8n-telemetry.imported_n8n.qa_mutation_health_ledger` WHERE package = \"" + $pkg + "\" ORDER BY source_file_path")
+          }' > "$QUERY_FILE"
+          curl -fsS -X POST -H 'Content-Type: application/json' \
+            --data @"$QUERY_FILE" \
+            'https://internal.users.n8n.cloud/webhook/qa-query' \
+          | jq '{ledger: .}' > "$LIVE"
+          echo "Live ledger: $(jq '.ledger | length' "$LIVE") row(s)"
+          echo "live-path=$LIVE" >> "$GITHUB_OUTPUT"
+
       - name: Pick next source file
         id: pick
         if: ${{ ! inputs.seed-only }}
         run: |
-          SEED=${{ steps.pkg.outputs.dir }}/reports/mutation/ledger-seed.json
-          # Phase 1 MVP: pick from the freshly-seeded ledger snapshot. When
-          # we have a live ledger fetch (QA BQ API webhook + writer workflow),
-          # this step will pipe the live ledger in instead.
-          picked=$(node scripts/mutation-health/pick-next.mjs --ledger-file "$SEED")
+          # Read the live ledger (post-seed-merge). Picker priority:
+          #   new → red → stale → skip green
+          # Within red/stale: lowest score first (worst-tested files revisited first).
+          picked=$(node scripts/mutation-health/pick-next.mjs --ledger-file "${{ steps.ledger.outputs.live-path }}")
           echo "Picked: $picked"
           src_repo=$(echo "$picked" | jq -r .source_file_path)
           src_rel=${src_repo#${{ steps.pkg.outputs.dir }}/}
