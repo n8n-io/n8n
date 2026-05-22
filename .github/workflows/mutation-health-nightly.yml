@@ -1,0 +1,134 @@
+name: 'Mutation Health (nightly)'
+
+on:
+  schedule:
+    # 03:30 UTC daily — outside CI rush, before EU morning
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Workspace package to mutate'
+        type: choice
+        options:
+          - n8n-workflow
+        default: n8n-workflow
+      seed-only:
+        description: 'Only regenerate + POST the ledger seed; skip mutate.'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  PACKAGE_NAME: ${{ github.event.inputs.package || 'n8n-workflow' }}
+
+jobs:
+  run:
+    name: Mutate one file, ledger writeback
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          # Build only the target package and its workspace deps. Stryker
+          # imports n8n-workflow at runtime via Vitest, which can transpile
+          # src/ on the fly, but workspace deps (e.g. @n8n/errors) need
+          # their dist/ present.
+          build-command: 'pnpm --filter ${{ github.event.inputs.package || ''n8n-workflow'' }}... build'
+
+      - name: Determine package dir
+        id: pkg
+        run: |
+          case "$PACKAGE_NAME" in
+            n8n-workflow) echo "dir=packages/workflow" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::Unsupported package: $PACKAGE_NAME"; exit 1 ;;
+          esac
+
+      - name: Seed ledger snapshot
+        run: |
+          node scripts/mutation-health/seed-ledger.mjs --package-dir ${{ steps.pkg.outputs.dir }}
+
+      - name: POST seed payload to writer webhook
+        env:
+          WEBHOOK: ${{ secrets.MUTATION_HEALTH_WEBHOOK }}
+        run: |
+          SEED=${{ steps.pkg.outputs.dir }}/reports/mutation/ledger-seed.json
+          if [ -z "$WEBHOOK" ]; then
+            echo "::notice::MUTATION_HEALTH_WEBHOOK not set — dry-run mode (seed POST skipped, uploaded as artefact)."
+            exit 0
+          fi
+          curl -fsS -X POST -H 'Content-Type: application/json' \
+            --data @"$SEED" "$WEBHOOK"
+          echo "Seed POSTed."
+
+      - name: Pick next source file
+        id: pick
+        if: ${{ ! inputs.seed-only }}
+        run: |
+          SEED=${{ steps.pkg.outputs.dir }}/reports/mutation/ledger-seed.json
+          # Phase 1 MVP: pick from the freshly-seeded ledger snapshot. When
+          # we have a live ledger fetch (QA BQ API webhook + writer workflow),
+          # this step will pipe the live ledger in instead.
+          picked=$(node scripts/mutation-health/pick-next.mjs --ledger-file "$SEED")
+          echo "Picked: $picked"
+          src_repo=$(echo "$picked" | jq -r .source_file_path)
+          src_rel=${src_repo#${{ steps.pkg.outputs.dir }}/}
+          echo "source-rel=$src_rel" >> "$GITHUB_OUTPUT"
+
+      - name: Mutate the picked source file
+        if: ${{ ! inputs.seed-only }}
+        # Exit 1 (below threshold) is a valid outcome — we still want to emit
+        # the payload. Only Stryker hard failures (exit 3) should leave
+        # summary.json absent; the emit step handles that gracefully.
+        continue-on-error: true
+        run: |
+          pnpm --filter "$PACKAGE_NAME" mutate ${{ steps.pick.outputs.source-rel }}
+
+      - name: Emit BQ payload
+        if: ${{ ! inputs.seed-only }}
+        run: |
+          SUMMARY=${{ steps.pkg.outputs.dir }}/reports/mutation/summary.json
+          if [ ! -f "$SUMMARY" ]; then
+            echo "::warning::No summary.json — Stryker did not produce a report. Skipping emit."
+            exit 0
+          fi
+          node scripts/mutation-health/emit-payload.mjs \
+            --summary "$SUMMARY" \
+            --package "$PACKAGE_NAME"
+
+      - name: POST result payload to writer webhook
+        if: ${{ ! inputs.seed-only }}
+        env:
+          WEBHOOK: ${{ secrets.MUTATION_HEALTH_WEBHOOK }}
+        run: |
+          PAYLOAD=${{ steps.pkg.outputs.dir }}/reports/mutation/bq-payload.json
+          if [ -z "$WEBHOOK" ]; then
+            echo "::notice::MUTATION_HEALTH_WEBHOOK not set — dry-run mode (result POST skipped, uploaded as artefact)."
+            exit 0
+          fi
+          if [ ! -f "$PAYLOAD" ]; then
+            echo "::warning::No bq-payload.json — nothing to POST."
+            exit 0
+          fi
+          curl -fsS -X POST -H 'Content-Type: application/json' \
+            --data @"$PAYLOAD" "$WEBHOOK"
+          echo "Result POSTed."
+
+      - name: Upload artefacts
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: mutation-health-${{ env.PACKAGE_NAME }}-${{ github.run_id }}
+          path: |
+            ${{ steps.pkg.outputs.dir }}/reports/mutation/raw.json
+            ${{ steps.pkg.outputs.dir }}/reports/mutation/raw.html
+            ${{ steps.pkg.outputs.dir }}/reports/mutation/summary.json
+            ${{ steps.pkg.outputs.dir }}/reports/mutation/bq-payload.json
+            ${{ steps.pkg.outputs.dir }}/reports/mutation/ledger-seed.json
+          retention-days: 14
+          if-no-files-found: warn
