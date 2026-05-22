@@ -21,6 +21,8 @@ interface DisabledSandboxConfig extends SandboxConfigBase {
 interface DaytonaSandboxConfig extends SandboxConfigBase {
 	enabled: true;
 	provider: 'daytona';
+	id?: string;
+	name?: string;
 	daytonaApiUrl?: string;
 	daytonaApiKey?: string;
 	image?: string;
@@ -73,6 +75,8 @@ export async function createSandbox(
 		// In proxy mode, resolve a fresh token via getAuthToken; in direct mode use the static key.
 		const apiKey = config.getAuthToken ? await config.getAuthToken() : config.daytonaApiKey;
 		return new DaytonaSandbox({
+			id: config.id,
+			name: config.name,
 			apiKey,
 			apiUrl: config.daytonaApiUrl,
 			...(config.image ? { image: config.image } : {}),

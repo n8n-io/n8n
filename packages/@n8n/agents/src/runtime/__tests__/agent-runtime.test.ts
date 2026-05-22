@@ -6,7 +6,6 @@ import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { StreamChunk } from '../../types/sdk/agent';
 import type { ContentToolCall, Message } from '../../types/sdk/message';
-import { createObservationLogThreadScopeId } from '../../types/sdk/observation-log';
 import type { BuiltTool, InterruptibleToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { AgentRuntime } from '../agent-runtime';
@@ -2561,8 +2560,7 @@ describe('AgentRuntime — observation log jobs', () => {
 		await runtime.dispose();
 
 		const observations = await memory.getActiveObservationLog({
-			scopeKind: 'thread',
-			scopeId: createObservationLogThreadScopeId('thread-1', 'resource-1'),
+			observationScopeId: 'thread-1',
 		});
 		expect(observations).toMatchObject([
 			{
@@ -2571,10 +2569,7 @@ describe('AgentRuntime — observation log jobs', () => {
 				parentId: null,
 			},
 		]);
-		const cursor = await memory.getCursor(
-			'thread',
-			createObservationLogThreadScopeId('thread-1', 'resource-1'),
-		);
+		const cursor = await memory.getCursor('thread-1');
 		expect(typeof cursor?.lastObservedMessageId).toBe('string');
 	});
 
@@ -2604,8 +2599,7 @@ describe('AgentRuntime — observation log jobs', () => {
 		await runtime.dispose();
 
 		const observations = await memory.getActiveObservationLog({
-			scopeKind: 'thread',
-			scopeId: createObservationLogThreadScopeId('thread-1', 'resource-1'),
+			observationScopeId: 'thread-1',
 		});
 		expect(observations).toMatchObject([
 			{
@@ -2621,6 +2615,8 @@ describe('AgentRuntime — observation log jobs', () => {
 		embedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 1 } });
 		const memory = new InMemoryMemory();
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
+		const observationLockSpy = jest.spyOn(memory, 'acquireObservationLogTaskLock');
+		const episodicLockSpy = jest.spyOn(memory.episodic.taskLock!, 'acquire');
 
 		const runtime = new AgentRuntime({
 			name: 'observing-agent',
@@ -2665,10 +2661,65 @@ describe('AgentRuntime — observation log jobs', () => {
 		expect(entries).toHaveLength(1);
 		expect(entries[0].content).toBe('User chose Postgres for memory storage.');
 		const cursor = await memory.episodic.getCursor({
-			scopeKind: 'thread',
-			scopeId: createObservationLogThreadScopeId('thread-1', 'resource-1'),
+			observationScopeId: 'thread-1',
 		});
 		expect(typeof cursor?.lastIndexedObservationId).toBe('string');
+		const firstLockCall = episodicLockSpy.mock.calls.at(0);
+		if (!firstLockCall) throw new Error('Expected episodic memory lock acquisition');
+		const [lockedResourceId, lockOptions] = firstLockCall;
+		expect(lockedResourceId).toBe('resource-1');
+		expect(typeof lockOptions.holderId).toBe('string');
+		expect(typeof lockOptions.ttlMs).toBe('number');
+		const observationLockTaskKinds = observationLockSpy.mock.calls.map((call) => String(call[1]));
+		expect(observationLockTaskKinds).not.toContain('episodic-indexer');
+	});
+
+	it('skips episodic indexing when the episodic task lock is held', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
+		const memory = new InMemoryMemory();
+		const observationScope = {
+			observationScopeId: 'thread-1',
+		};
+		const [observation] = await memory.appendObservationLogEntries([
+			{
+				...observationScope,
+				marker: 'critical',
+				text: 'User chose Postgres for memory storage.',
+				createdAt: new Date('2026-05-20T12:00:00Z'),
+			},
+		]);
+		const extract = jest.fn(async () => {
+			await Promise.resolve();
+
+			return {
+				entries: [
+					{
+						content: 'User chose Postgres for memory storage.',
+						sources: [{ observationId: observation.id, evidence: 'User chose Postgres' }],
+					},
+				],
+			};
+		});
+		jest.spyOn(memory.episodic.taskLock!, 'acquire').mockResolvedValue(null);
+
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			episodicMemory: {
+				embedder: { specificationVersion: 'v2' } as never,
+				extract,
+			},
+		});
+
+		await runtime.generate('Please remember this.', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+
+		expect(extract).not.toHaveBeenCalled();
+		await expect(memory.episodic.getCursor(observationScope)).resolves.toBeNull();
 	});
 
 	it('does not inject episodic memory and exposes recall_memory for explicit recall', async () => {
@@ -2752,14 +2803,13 @@ describe('AgentRuntime — observation log jobs', () => {
 
 		expect(
 			await memory.getActiveObservationLog({
-				scopeKind: 'thread',
-				scopeId: 'thread-1',
+				observationScopeId: 'thread-1',
 			}),
 		).toEqual([]);
-		expect(await memory.getCursor('thread', 'thread-1')).toBeNull();
+		expect(await memory.getCursor('thread-1')).toBeNull();
 	});
 
-	it('isolates history and observation-log memory by resource on shared threads', async () => {
+	it('keeps history resource-filtered while observation-log memory is thread-local', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('Remembered response'));
 		const memory = new InMemoryMemory();
 		const runtime = new AgentRuntime({
@@ -2807,8 +2857,8 @@ describe('AgentRuntime — observation log jobs', () => {
 		>;
 		const [{ messages }] = generateTextMock.mock.calls[0];
 		const systemPrompt = messages[0].content;
+		expect(systemPrompt).toContain('Resource one memory.');
 		expect(systemPrompt).toContain('Resource two memory.');
-		expect(systemPrompt).not.toContain('Resource one memory.');
 		expect(JSON.stringify(messages)).toContain('remember resource-two preference');
 		expect(JSON.stringify(messages)).not.toContain('remember resource-one preference');
 

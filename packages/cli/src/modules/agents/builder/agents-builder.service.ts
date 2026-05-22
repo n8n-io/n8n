@@ -26,6 +26,7 @@ import { AGENT_THREAD_PREFIX } from './builder-tool-names';
 import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
 import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
 import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
+import { getBuilderRuntimeSkills } from './skills';
 
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
@@ -54,7 +55,7 @@ export class AgentsBuilderService {
 	 */
 	async getBuilderMessages(agentId: string) {
 		const threadId = builderThreadId(agentId);
-		return await this.n8nMemory.getMessages(threadId);
+		return await this.n8nMemory.getImplementation(agentId).getMessages(threadId);
 	}
 
 	/**
@@ -62,8 +63,9 @@ export class AgentsBuilderService {
 	 */
 	async clearBuilderMessages(agentId: string) {
 		const threadId = builderThreadId(agentId);
-		await this.n8nMemory.deleteMessagesByThread(threadId);
-		await this.n8nMemory.deleteThread(threadId);
+		const memory = this.n8nMemory.getImplementation(agentId);
+		await memory.deleteMessagesByThread(threadId);
+		await memory.deleteThread(threadId);
 	}
 	// ---------------------------------------------------------------------------
 	// Public — streaming
@@ -182,6 +184,7 @@ export class AgentsBuilderService {
 			agentPreviewPath: buildAgentPreviewPath(projectId, agentId),
 			modelRecommendationsSection,
 		});
+		const runtimeSkills = getBuilderRuntimeSkills({ modelRecommendationsSection });
 
 		const tools = this.agentsBuilderToolsService.getTools(
 			agentId,
@@ -192,12 +195,15 @@ export class AgentsBuilderService {
 
 		const { Agent, Memory } = await import('@n8n/agents');
 
-		const builderMemory = new Memory().storage(this.n8nMemory).lastMessages(40);
+		const builderMemory = new Memory()
+			.storage(this.n8nMemory.getImplementation(agentId))
+			.lastMessages(40);
 
 		// Be careful with provider specific options, since user can change model to openai, grok, etc.
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
 			.instructions(instructions)
+			.skills(runtimeSkills)
 			.memory(builderMemory)
 			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
 
