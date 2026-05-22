@@ -450,4 +450,118 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 			totalCount: 1,
 		});
 	});
+
+	it('paginates Linear issue search via cursor', async () => {
+		const linearClient = {
+			searchIssues: jest.fn().mockResolvedValue({
+				totalCount: 120,
+				nodes: [
+					{
+						id: 'issue-uuid',
+						identifier: 'ENG-124',
+						title: 'Add pagination',
+						url: 'https://linear.app/n8n/issue/ENG-124',
+					},
+				],
+				pageInfo: { hasNextPage: true, endCursor: 'cursor-page-2' },
+			}),
+		};
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ client: linearClient });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const executor = new ChatIntegrationContextQueryExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
+
+		const result = await executor.execute({
+			descriptor,
+			query: 'search_issues',
+			input: { query: 'pagination', cursor: 'cursor-page-1', limit: 1 },
+		});
+
+		expect(linearClient.searchIssues).toHaveBeenCalledWith('pagination', {
+			first: 1,
+			after: 'cursor-page-1',
+			includeArchived: false,
+		});
+		expect(result).toMatchObject({
+			ok: true,
+			resultCount: 1,
+			totalCount: 120,
+			nextCursor: 'cursor-page-2',
+		});
+	});
+
+	it('omits nextCursor when Linear reports no more pages', async () => {
+		const linearClient = {
+			searchIssues: jest.fn().mockResolvedValue({
+				totalCount: 1,
+				nodes: [
+					{
+						id: 'issue-uuid',
+						identifier: 'ENG-200',
+						title: 'Last result',
+						url: 'https://linear.app/n8n/issue/ENG-200',
+					},
+				],
+				pageInfo: { hasNextPage: false, endCursor: 'cursor-ignored' },
+			}),
+		};
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ client: linearClient });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const executor = new ChatIntegrationContextQueryExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
+
+		const result = await executor.execute({
+			descriptor,
+			query: 'search_issues',
+			input: { query: 'last' },
+		});
+
+		expect(result).not.toHaveProperty('nextCursor');
+	});
+
+	it('paginates Slack user search via cursor', async () => {
+		const usersList = jest.fn().mockResolvedValue({
+			members: [
+				{
+					id: 'U200',
+					name: 'pageuser',
+					real_name: 'Page User',
+					profile: { display_name: 'Page', email: 'page@example.com' },
+				},
+			],
+			response_metadata: { next_cursor: 'cursor-page-3' },
+		});
+		const slackAdapter = {
+			client: { users: { list: usersList } },
+			withToken: jest.fn(async (options: Record<string, unknown>) => options),
+		};
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue(slackAdapter);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const executor = new ChatIntegrationContextQueryExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+		const result = await executor.execute({
+			descriptor,
+			query: 'search_users',
+			input: { query: 'page', cursor: 'cursor-page-2', limit: 1 },
+		});
+
+		expect(usersList).toHaveBeenCalledWith({ limit: 200, cursor: 'cursor-page-2' });
+		expect(result).toMatchObject({ ok: true, nextCursor: 'cursor-page-3' });
+	});
 });

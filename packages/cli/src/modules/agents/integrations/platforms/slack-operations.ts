@@ -26,6 +26,7 @@ const searchUsersSchema = z
 		query: z.string().min(1).optional(),
 		email: z.string().min(1).optional(),
 		limit: z.number().int().min(1).max(50).default(10),
+		cursor: z.string().min(1).optional(),
 		includeBots: z.boolean().default(false),
 		includeDeleted: z.boolean().default(false),
 	})
@@ -35,6 +36,7 @@ const searchUsersSchema = z
 const searchChannelsSchema = z.object({
 	query: z.string().min(1),
 	limit: z.number().int().min(1).max(50).default(10),
+	cursor: z.string().min(1).optional(),
 	includeArchived: z.boolean().default(false),
 });
 const addReactionSchema = z.object({
@@ -180,7 +182,9 @@ async function searchSlackUsers(chat: ChatInstance, input: SearchUsersInput): Pr
 	const searchTerm = normalizeSearchTerm(input.query ?? input.email ?? '');
 	const email = input.email?.trim();
 
-	if (email && usersApi.lookupByEmail) {
+	// Only try users.lookupByEmail on the first page (cursor=undefined). Email
+	// lookup is a single-result direct API; paging never replays it.
+	if (!input.cursor && email && usersApi.lookupByEmail) {
 		try {
 			const response = await usersApi.lookupByEmail(await withSlackToken(adapter, { email }));
 			const user = normalizeSlackUser(response.user);
@@ -197,7 +201,7 @@ async function searchSlackUsers(chat: ChatInstance, input: SearchUsersInput): Pr
 		}
 	}
 
-	let cursor: string | undefined;
+	let cursor: string | undefined = input.cursor;
 	do {
 		const response = await usersApi.list(
 			await withSlackToken(adapter, { limit: 200, ...(cursor ? { cursor } : {}) }),
@@ -214,7 +218,12 @@ async function searchSlackUsers(chat: ChatInstance, input: SearchUsersInput): Pr
 	} while (cursor && usersById.size < input.limit);
 
 	const users = [...usersById.values()].slice(0, input.limit);
-	return { ok: true, users, resultCount: users.length };
+	return {
+		ok: true,
+		users,
+		resultCount: users.length,
+		...(cursor ? { nextCursor: cursor } : {}),
+	};
 }
 
 async function searchSlackChannels(
@@ -229,7 +238,7 @@ async function searchSlackChannels(
 
 	const channelsById = new Map<string, SlackChannelSearchResult>();
 	const searchTerm = normalizeChannelSearchTerm(input.query);
-	let cursor: string | undefined;
+	let cursor: string | undefined = input.cursor;
 
 	do {
 		const response = await conversationsApi.list(
@@ -252,7 +261,12 @@ async function searchSlackChannels(
 	} while (cursor && channelsById.size < input.limit);
 
 	const channels = [...channelsById.values()].slice(0, input.limit);
-	return { ok: true, channels, resultCount: channels.length };
+	return {
+		ok: true,
+		channels,
+		resultCount: channels.length,
+		...(cursor ? { nextCursor: cursor } : {}),
+	};
 }
 
 async function addSlackReaction(params: {

@@ -200,6 +200,14 @@ const searchLimitSchema = z
 	.optional()
 	.describe('Maximum number of matches to return. Defaults to 10.');
 
+const searchCursorSchema = z
+	.string()
+	.min(1)
+	.optional()
+	.describe(
+		'Opaque pagination cursor returned as `nextCursor` by a previous call. Pass to fetch the next page of matches.',
+	);
+
 const getCurrentMessageContextInputSchema = z.object({
 	query: z.literal('get_current_message_context'),
 	input: noInputSchema,
@@ -249,6 +257,7 @@ const searchUsersInputSchema = z.object({
 				.describe('User name, display name, handle, user ID, or email fragment to search for.'),
 			email: z.string().min(1).optional().describe('Exact email address to look up when known.'),
 			limit: searchLimitSchema,
+			cursor: searchCursorSchema,
 			includeBots: z
 				.boolean()
 				.optional()
@@ -270,6 +279,7 @@ const searchChannelsInputSchema = z.object({
 		.object({
 			query: z.string().min(1).describe('Channel name, channel ID, or #channel search term.'),
 			limit: searchLimitSchema,
+			cursor: searchCursorSchema,
 			includeArchived: z
 				.boolean()
 				.optional()
@@ -304,6 +314,7 @@ const searchIssuesInputSchema = z.object({
 		.object({
 			query: z.string().min(1).describe('Search term for Linear issue title/content.'),
 			limit: searchLimitSchema,
+			cursor: searchCursorSchema,
 			teamId: z.string().min(1).optional().describe('Optional Linear team ID to scope search.'),
 			includeArchived: z
 				.boolean()
@@ -483,13 +494,13 @@ const CONTEXT_QUERY_DESCRIPTIONS = {
 	get_channel_info:
 		'get_channel_info: input.channelId is required. Use a platform channel ID such as a Slack C... ID, not a channel name.',
 	search_users:
-		'search_users: input.query or input.email is required. Returns matching platform user IDs for names, handles, or emails.',
+		'search_users: input.query or input.email is required. Returns matching platform user IDs for names, handles, or emails. When the response includes nextCursor, pass it back as input.cursor to fetch the next page.',
 	search_channels:
-		'search_channels: input.query is required. Returns matching platform channel IDs for channel names or IDs.',
+		'search_channels: input.query is required. Returns matching platform channel IDs for channel names or IDs. When the response includes nextCursor, pass it back as input.cursor to fetch the next page.',
 	get_issue:
 		'get_issue: input.issueId is required. For Linear, use an issue UUID or identifier such as ENG-123. Optional input.includeComments and input.commentsLimit add recent comments.',
 	search_issues:
-		'search_issues: input.query is required. For Linear, returns matching issue IDs/identifiers; optional input.teamId, input.limit, and input.includeArchived narrow results.',
+		'search_issues: input.query is required. For Linear, returns matching issue IDs/identifiers; optional input.teamId, input.limit, and input.includeArchived narrow results. When the response includes nextCursor, pass it back as input.cursor to fetch the next page.',
 } satisfies Record<IntegrationContextQuery, string>;
 
 const ACTION_DESCRIPTIONS = {

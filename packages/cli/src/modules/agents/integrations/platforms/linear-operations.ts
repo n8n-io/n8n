@@ -31,6 +31,7 @@ const searchUsersSchema = z
 		query: z.string().min(1).optional(),
 		email: z.string().min(1).optional(),
 		limit: z.number().int().min(1).max(50).default(10),
+		cursor: z.string().min(1).optional(),
 		includeBots: z.boolean().default(false),
 		includeDeleted: z.boolean().default(false),
 	})
@@ -47,6 +48,7 @@ const getIssueSchema = z.object({
 const searchIssuesSchema = z.object({
 	query: z.string().min(1),
 	limit: z.number().int().min(1).max(50).default(10),
+	cursor: z.string().min(1).optional(),
 	teamId: z.string().min(1).optional(),
 	includeArchived: z.boolean().default(false),
 });
@@ -169,12 +171,19 @@ async function searchLinearUsers(
 	const response = await adapter.client.users({
 		filter: buildLinearUserSearchFilter(input),
 		first: input.limit,
+		...(input.cursor ? { after: input.cursor } : {}),
 		includeArchived: input.includeDeleted,
 		includeDisabled: input.includeDeleted,
 	});
 
 	const users = linearNodes(response).map(normalizeLinearUser).filter(isDefined);
-	return { ok: true, users, resultCount: users.length };
+	const nextCursor = extractLinearNextCursor(response);
+	return {
+		ok: true,
+		users,
+		resultCount: users.length,
+		...(nextCursor ? { nextCursor } : {}),
+	};
 }
 
 async function getLinearIssue(adapter: LinearAdapter, input: GetIssueInput): Promise<unknown> {
@@ -204,6 +213,7 @@ async function searchLinearIssues(
 
 	const response = await adapter.client.searchIssues(input.query, {
 		first: input.limit,
+		...(input.cursor ? { after: input.cursor } : {}),
 		...(input.teamId ? { teamId: input.teamId } : {}),
 		includeArchived: input.includeArchived,
 	});
@@ -212,13 +222,28 @@ async function searchLinearIssues(
 	// would issue 250+ Linear API calls otherwise (5–6 relations per issue).
 	const issues = linearNodes(response).map(summarizeLinearIssue);
 	const totalCount = numberProperty(response, 'totalCount');
+	const nextCursor = extractLinearNextCursor(response);
 
 	return {
 		ok: true,
 		issues,
 		resultCount: issues.length,
 		...(totalCount !== undefined ? { totalCount } : {}),
+		...(nextCursor ? { nextCursor } : {}),
 	};
+}
+
+/**
+ * Linear Connection responses expose `pageInfo: { hasNextPage, endCursor }`.
+ * Return the cursor only when another page exists so callers can omit-check
+ * `nextCursor` to know when to stop paging.
+ */
+function extractLinearNextCursor(response: unknown): string | undefined {
+	if (!isRecord(response)) return undefined;
+	const pageInfo = response.pageInfo;
+	if (!isRecord(pageInfo)) return undefined;
+	if (pageInfo.hasNextPage !== true) return undefined;
+	return stringProperty(pageInfo, 'endCursor');
 }
 
 async function createLinearIssue(
