@@ -56,7 +56,6 @@ export class ModuleRegistry {
 		'encryption-key-manager',
 		'oauth-jwe',
 		'n8n-packages',
-		'inbound-secrets',
 		'runtime-credentials',
 		'mcp-registry',
 	];
