@@ -110,6 +110,7 @@ describe('AgentsController route access scopes', () => {
 		['updateSkill', 'agent:update'],
 		['deleteSkill', 'agent:update'],
 		['revertToPublished', 'agent:update'],
+		['revertToVersion', 'agent:update'],
 		['createSlackApp', 'agent:update'],
 		['getSlackAppManifest', 'agent:read'],
 		['listVersions', 'agent:read'],
@@ -142,6 +143,35 @@ describe('AgentsController publish history', () => {
 		expect(agentsService.listPublishHistory).toHaveBeenCalledWith('agent-1', 'project-1', 5, 10);
 		expect(result).toHaveLength(1);
 		expect(result[0].isActive).toBe(true);
+	});
+});
+
+describe('AgentsController revert to version', () => {
+	it('forwards the parsed versionId to the service and returns the agent with runnable state', async () => {
+		const { controller, agentsService } = makeController();
+		agentsService.revertToVersion.mockResolvedValue({
+			id: 'agent-1',
+			projectId: 'project-1',
+		} as never);
+		agentsService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
+
+		const result = await controller.revertToVersion(
+			{
+				params: { projectId: 'project-1' },
+				user: { id: 'user-1' },
+			} as never,
+			undefined as never,
+			'agent-1',
+			{ versionId: 'v1' } as never,
+		);
+
+		expect(agentsService.revertToVersion).toHaveBeenCalledWith('agent-1', 'project-1', 'v1');
+		expect(result).toEqual(
+			expect.objectContaining({
+				id: 'agent-1',
+				isRunnable: true,
+			}),
+		);
 	});
 });
 

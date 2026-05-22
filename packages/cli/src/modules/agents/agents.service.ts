@@ -578,6 +578,45 @@ export class AgentsService {
 		return agent;
 	}
 
+	async revertToVersion(agentId: string, projectId: string, versionId: string): Promise<Agent> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		await this.agentRepository.manager.transaction(async (trx) => {
+			const target = await this.agentHistoryRepository.findByVersionAndAgentId(
+				versionId,
+				agentId,
+				trx,
+			);
+			if (!target) {
+				throw new NotFoundError(`Version "${versionId}" not found`);
+			}
+
+			agent.schema = target.schema ? deepCopy(target.schema) : null;
+			agent.tools = deepCopy(target.tools ?? {});
+			agent.skills = deepCopy(target.skills ?? {});
+			agent.versionId = target.versionId;
+
+			if (agent.schema) {
+				agent.name = agent.schema.name;
+				agent.description = agent.schema.description ?? null;
+			}
+
+			await trx.save(agent);
+		});
+
+		this.clearRuntimes(agentId);
+
+		this.logger.debug('Reverted SDK agent to a specific version', {
+			agentId,
+			projectId,
+			versionId,
+		});
+		return agent;
+	}
+
 	async listPublishHistory(
 		agentId: string,
 		projectId: string,

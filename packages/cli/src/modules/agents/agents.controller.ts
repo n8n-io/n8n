@@ -24,6 +24,7 @@ import {
 	UpdateAgentSkillDto,
 	AgentDisconnectIntegrationDto,
 	PublishAgentDto,
+	RevertAgentToVersionDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
@@ -437,6 +438,22 @@ export class AgentsController {
 		@Param('agentId') agentId: string,
 	) {
 		const agent = await this.agentsService.revertToPublishedAgent(agentId, req.params.projectId);
+		return await this.withRunnableState(agent, req.params.projectId, req.user);
+	}
+
+	@Post('/:agentId/revert-to-version')
+	@ProjectScope('agent:update')
+	async revertToVersion(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: RevertAgentToVersionDto,
+	) {
+		const agent = await this.agentsService.revertToVersion(
+			agentId,
+			req.params.projectId,
+			payload.versionId,
+		);
 		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 

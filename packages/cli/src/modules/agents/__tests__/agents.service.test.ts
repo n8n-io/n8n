@@ -1112,6 +1112,132 @@ describe('AgentsService', () => {
 		});
 	});
 
+	describe('revertToVersion', () => {
+		let mockTrx: { save: jest.Mock };
+		let mockTransaction: jest.Mock;
+
+		beforeEach(() => {
+			mockTrx = { save: jest.fn() };
+			mockTransaction = jest.fn(
+				async (cb: (trx: typeof mockTrx) => Promise<void>) => await cb(mockTrx),
+			);
+			Object.defineProperty(agentRepository, 'manager', {
+				value: { transaction: mockTransaction },
+				configurable: true,
+			});
+		});
+
+		it('throws NotFoundError when the agent does not exist', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.revertToVersion(agentId, projectId, 'v1')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(agentHistoryRepository.findByVersionAndAgentId).not.toHaveBeenCalled();
+		});
+
+		it('throws NotFoundError when the version does not exist for the agent', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(null);
+
+			await expect(service.revertToVersion(agentId, projectId, 'foreign-version')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledWith(
+				'foreign-version',
+				agentId,
+				mockTrx,
+			);
+			expect(mockTrx.save).not.toHaveBeenCalled();
+		});
+
+		it('restores the draft fields from the targeted snapshot and leaves activeVersionId untouched', async () => {
+			const snapshotSchema: AgentJsonConfig = {
+				name: 'Old Agent',
+				description: 'Old description',
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: 'cred-old',
+				instructions: 'Old instructions',
+				tools: [{ type: 'custom', id: 'old_tool' }],
+				skills: [{ type: 'skill', id: 'old_skill' }],
+			};
+			const snapshotTools = {
+				old_tool: {
+					code: 'return "old";',
+					descriptor: { name: 'old_tool' },
+				},
+			} as unknown as Agent['tools'];
+			const snapshotSkills = {
+				old_skill: {
+					name: 'Old skill',
+					description: 'Old skill description',
+					instructions: 'Old skill instructions',
+				},
+			};
+			const targetVersion = makeAgentHistory({
+				versionId: 'v1',
+				schema: snapshotSchema,
+				tools: snapshotTools,
+				skills: snapshotSkills,
+			});
+			const activeVersion = makeAgentHistory({ versionId: 'v2' });
+			const agent = makeAgent({
+				name: 'Current Agent',
+				description: 'Current description',
+				versionId: 'v3',
+				schema: {
+					name: 'Current Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Current instructions',
+				},
+				tools: {},
+				skills: {},
+				activeVersionId: 'v2',
+				activeVersion,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(targetVersion);
+
+			const result = await service.revertToVersion(agentId, projectId, 'v1');
+
+			expect(agent.schema).toEqual(snapshotSchema);
+			expect(agent.schema).not.toBe(snapshotSchema);
+			expect(agent.tools).toEqual(snapshotTools);
+			expect(agent.skills).toEqual(snapshotSkills);
+			expect(agent.versionId).toBe('v1');
+			expect(agent.name).toBe('Old Agent');
+			expect(agent.description).toBe('Old description');
+			expect(agent.activeVersionId).toBe('v2');
+			expect(agent.activeVersion).toBe(activeVersion);
+			expect(mockTrx.save).toHaveBeenCalledWith(agent);
+			expect(result).toBe(agent);
+		});
+
+		it('reverts successfully when the agent is currently unpublished', async () => {
+			const snapshotSchema: AgentJsonConfig = {
+				name: 'Restored Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Restored instructions',
+			};
+			const targetVersion = makeAgentHistory({
+				versionId: 'v1',
+				schema: snapshotSchema,
+				tools: {},
+				skills: {},
+			});
+			const agent = makeAgent({ activeVersionId: null, activeVersion: null });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(targetVersion);
+
+			await service.revertToVersion(agentId, projectId, 'v1');
+
+			expect(agent.activeVersionId).toBeNull();
+			expect(agent.versionId).toBe('v1');
+			expect(agent.name).toBe('Restored Agent');
+			expect(mockTrx.save).toHaveBeenCalledWith(agent);
+		});
+	});
+
 	describe('listPublishHistory', () => {
 		it('throws NotFoundError when the agent does not exist in the project', async () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
