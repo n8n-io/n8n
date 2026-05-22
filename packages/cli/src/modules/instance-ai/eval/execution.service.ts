@@ -1,7 +1,8 @@
-import type {
-	InstanceAiEvalExecutionRequest,
-	InstanceAiEvalNodeResult,
-	InstanceAiEvalExecutionResult,
+import {
+	EVAL_VENDOR_SDK_INTERCEPTION_FLAG,
+	type InstanceAiEvalExecutionRequest,
+	type InstanceAiEvalNodeResult,
+	type InstanceAiEvalExecutionResult,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
@@ -29,6 +30,7 @@ import {
 import { randomUUID } from 'node:crypto';
 
 import { NodeTypes } from '@/node-types';
+import { PostHogClient } from '@/posthog';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -46,6 +48,8 @@ import {
 } from './workflow-analysis';
 import { createLlmMockHandler } from './mock-handler';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
+import { LlmWireServer } from './llm-wire-server';
+import { patchNoProxyForLoopback } from './proxy-loopback';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -76,6 +80,7 @@ export class EvalExecutionService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly logger: Logger,
+		private readonly postHogClient: PostHogClient,
 	) {}
 
 	async executeWithLlmMock(
@@ -95,11 +100,7 @@ export class EvalExecutionService {
 
 		const unpinNodes = options.unpinNodes ?? [];
 
-		// Run the compatibility guard FIRST — protocol-binary or unmapped-vendor
-		// errors are actionable ("replace this Postgres memory") and the user
-		// needs them whether or not the feature is enabled. The gate below
-		// only kicks in when the workflow IS otherwise compatible, so the guard
-		// never gets shadowed by a more generic refusal.
+		// Compatibility guard runs before the kill-switch so actionable errors aren't shadowed.
 		try {
 			assertUnpinCompatibility(workflowEntity, unpinNodes);
 		} catch (error) {
@@ -109,24 +110,42 @@ export class EvalExecutionService {
 			throw error;
 		}
 
-		// Safety gate: this PR ships only the API surface for `unpinNodes`. The
-		// credential rewrite + eval wire server that route vendor SDK traffic
-		// through localhost land in TRUST-113. Without them, unpinning would let
-		// AI sub-nodes execute their real SDK code against real credentials,
-		// leaking traffic to the actual provider. Refuse the request until the
-		// rewrite path is wired up — TRUST-113 removes this gate.
+		let interceptionEnabled = false;
 		if (unpinNodes.length > 0) {
-			return this.errorResult(
-				executionId,
-				'`unpinNodes` is reserved — vendor SDK interception is not yet enabled in this build. ' +
-					'Submit the request without `unpinNodes` to use the existing pinned path.',
-			);
+			interceptionEnabled = await this.isInterceptionEnabled(user);
+			if (!interceptionEnabled) {
+				return this.errorResult(
+					executionId,
+					'`unpinNodes` is reserved — vendor SDK interception is currently disabled. ' +
+						'Submit the request without `unpinNodes` to use the existing pinned path.',
+				);
+			}
 		}
 
 		const unpinSet = unpinNodes.length > 0 ? new Set(unpinNodes) : undefined;
 		const hints = await this.analyzeWorkflow(workflowEntity, options.scenarioHints, unpinSet);
 
-		return await this.execute(workflowEntity, user, executionId, hints, options.scenarioHints);
+		return await this.execute(
+			workflowEntity,
+			user,
+			executionId,
+			hints,
+			options.scenarioHints,
+			interceptionEnabled,
+		);
+	}
+
+	// Default-on kill-switch: unset → enabled, explicit `false` → disabled, resolution error → disabled.
+	private async isInterceptionEnabled(user: User): Promise<boolean> {
+		try {
+			const flags = await this.postHogClient.getFeatureFlags(user);
+			return flags?.[EVAL_VENDOR_SDK_INTERCEPTION_FLAG] !== false;
+		} catch (error) {
+			this.logger.warn('[EvalMock] Failed to resolve vendor-SDK interception flag', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return false;
+		}
 	}
 
 	// ── Phase 1: Workflow analysis ─────────────────────────────────────────
@@ -225,6 +244,7 @@ export class EvalExecutionService {
 		executionId: string,
 		hints: MockHints,
 		scenarioHints?: string,
+		interceptionEnabled = false,
 	): Promise<InstanceAiEvalExecutionResult> {
 		const nodeResults: Record<string, InstanceAiEvalNodeResult> = {};
 
@@ -246,43 +266,60 @@ export class EvalExecutionService {
 			workflowId: workflowEntity.id,
 			workflowSettings: workflowEntity.settings ?? {},
 		});
-		const credentialsHelper = new EvalMockedCredentialsHelper(additionalData.credentialsHelper);
-		additionalData.credentialsHelper = credentialsHelper;
-		additionalData.evalLlmMockHandler = this.createInterceptingHandler(mockHandler, nodeResults);
-		additionalData.hooks = new ExecutionLifecycleHooks('evaluation', executionId, workflowEntity);
 
-		const triggerPinData = this.buildTriggerPinData(startNode, hints.triggerContent);
-		const pinData: IPinData = { ...triggerPinData, ...hints.bypassPinData };
-		const pinDataNodeNames = Object.keys(pinData);
-
-		// Check config completeness before execution — detect missing required parameters
-		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
-		const executionData = this.buildExecutionData(startNode, pinData);
-
-		// Mark the trigger node as pinned (it gets its output from pin data, not execution)
-		// Preserve any configIssues that checkNodeConfig may have already recorded.
-		if (Object.keys(triggerPinData).length > 0) {
-			const existing = nodeResults[startNode.name];
-			nodeResults[startNode.name] = {
-				output: null,
-				interceptedRequests: [],
-				executionMode: 'pinned',
-				...(existing?.configIssues ? { configIssues: existing.configIssues } : {}),
-			};
-		}
-
-		// Mark bypass nodes as pinned
-		for (const nodeName of Object.keys(hints.bypassPinData)) {
-			const existing = nodeResults[nodeName];
-			nodeResults[nodeName] = {
-				output: null,
-				interceptedRequests: [],
-				executionMode: 'pinned',
-				...(existing?.configIssues ? { configIssues: existing.configIssues } : {}),
-			};
-		}
-
+		// try/finally wraps boot so a throw never leaks the server or NO_PROXY patch.
+		let wireServer: LlmWireServer | undefined;
+		let restoreNoProxy: (() => void) | undefined;
+		let credentialsHelper: EvalMockedCredentialsHelper | undefined;
 		try {
+			let serverUrl: string | undefined;
+			if (interceptionEnabled) {
+				wireServer = new LlmWireServer();
+				serverUrl = await wireServer.start();
+				restoreNoProxy = patchNoProxyForLoopback();
+				this.logger.debug(`[EvalMock] Wire server listening at ${serverUrl}`);
+			}
+
+			credentialsHelper = new EvalMockedCredentialsHelper(
+				additionalData.credentialsHelper,
+				serverUrl,
+				this.logger,
+			);
+			additionalData.credentialsHelper = credentialsHelper;
+			additionalData.evalLlmMockHandler = this.createInterceptingHandler(mockHandler, nodeResults);
+			additionalData.hooks = new ExecutionLifecycleHooks('evaluation', executionId, workflowEntity);
+
+			const triggerPinData = this.buildTriggerPinData(startNode, hints.triggerContent);
+			const pinData: IPinData = { ...triggerPinData, ...hints.bypassPinData };
+			const pinDataNodeNames = Object.keys(pinData);
+
+			// Check config completeness before execution — detect missing required parameters
+			this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
+			const executionData = this.buildExecutionData(startNode, pinData);
+
+			// Mark the trigger node as pinned (it gets its output from pin data, not execution)
+			// Preserve any configIssues that checkNodeConfig may have already recorded.
+			if (Object.keys(triggerPinData).length > 0) {
+				const existing = nodeResults[startNode.name];
+				nodeResults[startNode.name] = {
+					output: null,
+					interceptedRequests: [],
+					executionMode: 'pinned',
+					...(existing?.configIssues ? { configIssues: existing.configIssues } : {}),
+				};
+			}
+
+			// Mark bypass nodes as pinned
+			for (const nodeName of Object.keys(hints.bypassPinData)) {
+				const existing = nodeResults[nodeName];
+				nodeResults[nodeName] = {
+					output: null,
+					interceptedRequests: [],
+					executionMode: 'pinned',
+					...(existing?.configIssues ? { configIssues: existing.configIssues } : {}),
+				};
+			}
+
 			const result = await this.runWorkflow(workflow, additionalData, executionData);
 			return this.buildResult(executionId, result, nodeResults, hints, credentialsHelper);
 		} catch (error: unknown) {
@@ -294,8 +331,20 @@ export class EvalExecutionService {
 				nodeResults,
 				errors: [`Execution failed: ${message}`],
 				hints,
-				mockedCredentials: credentialsHelper.mockedCredentials,
+				mockedCredentials: credentialsHelper?.mockedCredentials ?? [],
+				rewrittenCredentials: credentialsHelper?.rewrittenCredentials ?? [],
 			};
+		} finally {
+			if (restoreNoProxy) restoreNoProxy();
+			if (wireServer) {
+				try {
+					await wireServer.stop();
+				} catch (error) {
+					this.logger.warn('[EvalMock] Wire server teardown failed', {
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
 		}
 	}
 
@@ -501,6 +550,7 @@ export class EvalExecutionService {
 			errors,
 			hints,
 			mockedCredentials: credentialsHelper.mockedCredentials,
+			rewrittenCredentials: credentialsHelper.rewrittenCredentials,
 		};
 	}
 

@@ -98,7 +98,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	};
 
 	const hasPinData = (node: INode): boolean => {
-		return !!workflowDocumentStore?.value?.pinData?.[node.name];
+		return !!workflowDocumentStore?.value?.pinnedDataByNodeName?.[node.name];
 	};
 
 	const isExecutable = (node: INodeUi) => {

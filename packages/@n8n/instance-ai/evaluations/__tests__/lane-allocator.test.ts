@@ -8,7 +8,7 @@ function newLanes(count: number): TestLane[] {
 	return Array.from({ length: count }, (_, i) => ({
 		id: i,
 		activeBuilds: 0,
-		inflightPrompts: new Set<string>(),
+		inflightKeys: new Set<string>(),
 	}));
 }
 
@@ -30,8 +30,8 @@ describe('LaneAllocator', () => {
 		const l2 = await a.acquire('p1');
 		expect(l1.id).toBe(0);
 		expect(l2.id).toBe(1);
-		expect(lanes[0].inflightPrompts.has('p1')).toBe(true);
-		expect(lanes[1].inflightPrompts.has('p1')).toBe(true);
+		expect(lanes[0].inflightKeys.has('p1')).toBe(true);
+		expect(lanes[1].inflightKeys.has('p1')).toBe(true);
 	});
 
 	it('queues acquires when no lane can serve the prompt', async () => {
@@ -48,7 +48,7 @@ describe('LaneAllocator', () => {
 		a.release(lanes[0], 'p1');
 		const lane = await second;
 		expect(lane.id).toBe(0);
-		expect(lanes[0].inflightPrompts.has('p1')).toBe(true);
+		expect(lanes[0].inflightKeys.has('p1')).toBe(true);
 	});
 
 	it('respects maxConcurrentBuilds per lane', async () => {

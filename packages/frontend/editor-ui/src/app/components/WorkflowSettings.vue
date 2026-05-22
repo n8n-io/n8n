@@ -53,7 +53,7 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { useRedactionEnforcementFeatureFlag } from '@/features/redaction-enforcement/composables/useRedactionEnforcementFeatureFlag';
-import * as redactionEnforcementApi from '@n8n/rest-api-client/api/redaction-enforcement';
+import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
@@ -720,10 +720,8 @@ const onExecutionLogicModeChange = (value: string) => {
 onMounted(async () => {
 	if (isRedactionEnforcementFlagEnabled.value) {
 		try {
-			const response = await redactionEnforcementApi.getRedactionEnforcement(
-				rootStore.restApiContext,
-			);
-			isInstanceRedactionEnforced.value = response.redactionEnforced;
+			const response = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
+			isInstanceRedactionEnforced.value = (response.redactionEnforcement?.floor ?? 'off') !== 'off';
 		} catch (error) {
 			console.debug('Failed to fetch redaction enforcement state', error);
 		}
@@ -857,6 +855,7 @@ onMounted(async () => {
 			closeDialog();
 			// Open node creator for regular nodes
 			nodeCreatorStore.openNodeCreatorForRegularNodes(
+				workflowDocumentStore.value.workflowId,
 				NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
 			);
 		},

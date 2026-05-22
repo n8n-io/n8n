@@ -14,6 +14,9 @@ export const AGENT_TOOLS_MODAL_KEY = 'agentToolsModal';
 export const AGENT_TOOL_CONFIG_MODAL_KEY = 'agentToolConfigModal';
 export const AGENT_SKILL_MODAL_KEY = 'agentSkillModal';
 export const AGENT_ADD_TRIGGER_MODAL_KEY = 'agentAddTriggerModal';
+export const AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY = 'agentEpisodicMemoryCredentialModal';
+export const AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE = 'openAiApi';
+export const DEFAULT_AGENT_MEMORY_LAST_MESSAGES = 50;
 
 /** Synthetic tree key for the combined "Agent" panel (name/model/credential/instructions). */
 export const AGENT_SECTION_KEY = '__agent';

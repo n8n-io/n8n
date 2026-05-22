@@ -124,12 +124,10 @@ export async function execute(
 					columns: options.headerRow !== false,
 					relax_quotes: options.relaxQuotes,
 					onRecord: (record) => {
-						if (!options.includeEmptyCells) {
-							record = Object.fromEntries(
-								Object.entries(record).filter(([_key, value]) => value !== ''),
-							);
-						}
-						rows.push(record);
+						const filtered = options.includeEmptyCells
+							? record
+							: Object.fromEntries(Object.entries(record).filter(([_key, value]) => value !== ''));
+						rows.push(filtered);
 					},
 				};
 				const parser = createCSVParser(csvOptions);
