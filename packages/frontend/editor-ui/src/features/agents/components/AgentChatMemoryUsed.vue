@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { HoverCardContent, HoverCardPortal, HoverCardRoot, HoverCardTrigger } from 'reka-ui';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nText } from '@n8n/design-system';
 
 export interface DisplayMemory {
 	id: string;
@@ -14,11 +14,22 @@ const props = defineProps<{
 	memories: DisplayMemory[];
 }>();
 
+const emit = defineEmits<{
+	'update:open': [open: boolean];
+}>();
+
 const i18n = useI18n();
 
+const memoriesCountLabelKey = 'agents.builder.quickActions.memoriesUsed.count' as BaseTextKey;
 const keyMemoryLabelKey = 'agents.builder.quickActions.memoriesUsed.keyMemory' as BaseTextKey;
 
 const memories = computed(() => props.memories);
+const isOpen = ref(false);
+
+function onOpenChange(open: boolean) {
+	isOpen.value = open;
+	emit('update:open', open);
+}
 
 function splitKeyMemory(text: string): string[] {
 	return text.split(/(?<=[.!?])\s+/).filter((part) => part.length > 0);
@@ -26,20 +37,27 @@ function splitKeyMemory(text: string): string[] {
 </script>
 
 <template>
-	<HoverCardRoot v-if="memories.length > 0" :open-delay="0" :close-delay="0">
+	<HoverCardRoot
+		v-if="memories.length > 0"
+		v-model:open="isOpen"
+		:open-delay="400"
+		:close-delay="0"
+		@update:open="onOpenChange"
+	>
 		<HoverCardTrigger as-child>
 			<div :class="$style.trigger">
-				<N8nIcon icon="brain" size="small" />
-				<span>{{ memories.length }}</span>
+				<span>
+					{{
+						i18n.baseText(memoriesCountLabelKey, {
+							adjustToNumber: memories.length,
+							interpolate: { count: String(memories.length) },
+						})
+					}}
+				</span>
 			</div>
 		</HoverCardTrigger>
 		<HoverCardPortal>
-			<HoverCardContent
-				side="bottom"
-				align="start"
-				:side-offset="8"
-				:class="[$style.popoverContent, $style.panel]"
-			>
+			<HoverCardContent side="bottom" align="end" :class="[$style.popoverContent, $style.panel]">
 				<div v-for="memory in memories" :key="memory.id" :class="$style.memorySection">
 					<N8nText step="sm" bold :class="$style.label">
 						{{ i18n.baseText(keyMemoryLabelKey) }}
@@ -143,14 +161,12 @@ function splitKeyMemory(text: string): string[] {
 }
 
 .trigger {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	user-select: none;
-	font-size: var(--font-size--sm);
+	padding: 0 var(--spacing--xs);
+	font-size: var(--font-size--2xs);
+	text-align: right;
 	font-weight: var(--font-weight--medium);
-	color: var(--text-color--subtle);
+	color: var(--text-color--subtler);
+	user-select: none;
 }
 
 .keyMemoryList {

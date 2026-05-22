@@ -169,6 +169,16 @@ function getMemoriesUsedInAssistantRun(groupId: string) {
 	return [];
 }
 
+const openMemoryFooterGroupId = ref<string | null>(null);
+
+function setMemoryFooterOpen(groupId: string, open: boolean): void {
+	openMemoryFooterGroupId.value = open
+		? groupId
+		: openMemoryFooterGroupId.value === groupId
+			? null
+			: openMemoryFooterGroupId.value;
+}
+
 const spokenMessageId = ref<string | null>(null);
 const spokenText = computed(() => {
 	if (!spokenMessageId.value) return '';
@@ -318,8 +328,17 @@ onBeforeUnmount(() => {
 							/>
 						</div>
 					</div>
-					<div v-if="shouldShowAssistantFooter(group.id)" :class="$style.messageFooter">
-						<AgentChatMemoryUsed :memories="getMemoriesUsedInAssistantRun(group.id)" />
+					<div
+						v-if="shouldShowAssistantFooter(group.id)"
+						:class="[
+							$style.messageFooter,
+							{ [$style.messageFooterVisible]: openMemoryFooterGroupId === group.id },
+						]"
+					>
+						<AgentChatMemoryUsed
+							:memories="getMemoriesUsedInAssistantRun(group.id)"
+							@update:open="setMemoryFooterOpen(group.id, $event)"
+						/>
 						<AgentChatMessageActions
 							v-if="getAssistantRunContent(group.id)"
 							:content="getAssistantRunContent(group.id)"
@@ -375,14 +394,23 @@ onBeforeUnmount(() => {
 							/>
 						</div>
 					</div>
-					<div v-if="shouldShowAssistantFooter(group.id)" :class="$style.messageFooter">
-						<AgentChatMemoryUsed :memories="getMemoriesUsedInAssistantRun(group.id)" />
+					<div
+						v-if="shouldShowAssistantFooter(group.id)"
+						:class="[
+							$style.messageFooter,
+							{ [$style.messageFooterVisible]: openMemoryFooterGroupId === group.id },
+						]"
+					>
 						<AgentChatMessageActions
 							v-if="getAssistantRunContent(group.id)"
 							:content="getAssistantRunContent(group.id)"
 							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
 							:is-speaking="isSpeakingMessage(group.id)"
 							@read-aloud="toggleReadAloud(group.id)"
+						/>
+						<AgentChatMemoryUsed
+							:memories="getMemoriesUsedInAssistantRun(group.id)"
+							@update:open="setMemoryFooterOpen(group.id, $event)"
 						/>
 					</div>
 
@@ -453,6 +481,15 @@ onBeforeUnmount(() => {
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--4xs);
+	opacity: 0;
+}
+
+.message.assistant:hover .messageFooter,
+.message.assistant:focus-within .messageFooter,
+.messageFooter:hover,
+.messageFooter:focus-within,
+.messageFooterVisible {
+	opacity: 1;
 }
 
 .message.user .content {
