@@ -28,11 +28,12 @@ import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
+import { OwnershipService } from './ownership.service';
+import { RoleService } from './role.service';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
-import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -73,6 +74,7 @@ export class ProjectService {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	private get workflowService() {
@@ -342,6 +344,8 @@ export class ProjectService {
 		if (!result.affected) {
 			throw new ProjectNotFoundError(projectId);
 		}
+
+		await this.ownershipService.invalidateWorkflowProjectCacheForProject(projectId);
 	}
 
 	async getPersonalProject(user: User): Promise<Project | null> {
