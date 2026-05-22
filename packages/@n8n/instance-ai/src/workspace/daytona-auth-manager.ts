@@ -116,7 +116,6 @@ export class DaytonaAuthManager {
 		this.client = new Daytona(connection);
 		this.generation += 1;
 
-		// Static mode runs once and isn't worth logging.
 		if (this.options.getAuthToken) {
 			const ttlMs = this.expiresAt - this.now();
 			this.options.logger?.debug('Daytona auth token refreshed', {
