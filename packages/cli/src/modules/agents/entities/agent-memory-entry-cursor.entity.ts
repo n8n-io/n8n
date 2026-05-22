@@ -1,7 +1,8 @@
 import { DateTimeColumn, WithTimestamps } from '@n8n/db';
-import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
+import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
 @Entity({ name: 'agents_memory_entry_cursors' })
+@Index(['observationScopeId'])
 export class AgentMemoryEntryCursorEntity extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	agentId: string;

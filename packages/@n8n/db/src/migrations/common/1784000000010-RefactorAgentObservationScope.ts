@@ -66,8 +66,10 @@ export class RefactorAgentObservationScope1784000000010 implements ReversibleMig
 				column('id')
 					.varchar(36)
 					.primary.notNull.comment('Application-generated n8n string ID, not a database UUID'),
-				column('agentId').varchar(36).notNull,
-				column('observationScopeId').varchar(255).notNull,
+				column('agentId').varchar(36).notNull.comment('Agent that owns this observation row'),
+				column('observationScopeId')
+					.varchar(255)
+					.notNull.comment('agents_threads.id source stream for this observation log'),
 				column('marker').varchar(16).notNull.withEnumCheck(OBSERVATION_MARKERS),
 				column('text').text.notNull,
 				column('parentId').varchar(36),
@@ -77,10 +79,16 @@ export class RefactorAgentObservationScope1784000000010 implements ReversibleMig
 			)
 			.withIndexOn(['agentId', 'observationScopeId', 'status', 'createdAt', 'id'])
 			.withIndexOn(['agentId', 'observationScopeId', 'createdAt', 'id'])
+			.withIndexOn('observationScopeId')
 			.withIndexOn('parentId')
 			.withIndexOn('supersededBy')
 			.withForeignKey('agentId', {
 				tableName: 'agents',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withForeignKey('observationScopeId', {
+				tableName: 'agents_threads',
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
@@ -95,29 +103,45 @@ export class RefactorAgentObservationScope1784000000010 implements ReversibleMig
 
 		await createTable('agents_observation_cursors')
 			.withColumns(
-				column('agentId').varchar(36).notNull.primary,
-				column('observationScopeId').varchar(255).notNull.primary,
+				column('agentId').varchar(36).notNull.primary.comment('Agent that owns this cursor'),
+				column('observationScopeId')
+					.varchar(255)
+					.notNull.primary.comment('agents_threads.id source stream checkpointed by this cursor'),
 				column('lastObservedMessageId').varchar(36).notNull,
 				column('lastObservedAt').timestampTimezone(3).notNull,
 			)
+			.withIndexOn('observationScopeId')
 			.withForeignKey('agentId', {
 				tableName: 'agents',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withForeignKey('observationScopeId', {
+				tableName: 'agents_threads',
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			}).withTimestamps;
 
 		await createTable('agents_observation_locks')
 			.withColumns(
-				column('agentId').varchar(36).notNull.primary,
-				column('observationScopeId').varchar(255).notNull.primary,
+				column('agentId').varchar(36).notNull.primary.comment('Agent that owns this lock'),
+				column('observationScopeId')
+					.varchar(255)
+					.notNull.primary.comment('agents_threads.id source stream locked for observation tasks'),
 				column('taskKind').varchar(20).notNull.primary.withEnumCheck(OBSERVATION_TASK_KINDS),
 				column('holderId')
 					.varchar(64)
 					.notNull.comment('Ephemeral background-task lock owner token, not a user ID'),
 				column('heldUntil').timestampTimezone(3).notNull,
 			)
+			.withIndexOn('observationScopeId')
 			.withForeignKey('agentId', {
 				tableName: 'agents',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withForeignKey('observationScopeId', {
+				tableName: 'agents_threads',
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			}).withTimestamps;
@@ -179,7 +203,7 @@ export class RefactorAgentObservationScope1784000000010 implements ReversibleMig
 		await createTable('agents_memory_entries')
 			.withColumns(
 				column('id').varchar(36).primary.notNull,
-				column('agentId').varchar(36).notNull,
+				column('agentId').varchar(36).notNull.comment('Agent that owns this episodic memory entry'),
 				column('resourceId')
 					.varchar(255)
 					.notNull.comment('agents_resources.id partition used for episodic recall scope'),
@@ -198,6 +222,7 @@ export class RefactorAgentObservationScope1784000000010 implements ReversibleMig
 			)
 			.withIndexOn(['agentId', 'resourceId', 'status', 'createdAt', 'id'])
 			.withIndexOn(['agentId', 'resourceId', 'contentHash'], true)
+			.withIndexOn('resourceId')
 			.withIndexOn('supersededBy')
 			.withForeignKey('agentId', {
 				tableName: 'agents',
@@ -216,7 +241,7 @@ export class RefactorAgentObservationScope1784000000010 implements ReversibleMig
 
 		await createTable('agents_memory_entry_locks')
 			.withColumns(
-				column('agentId').varchar(36).notNull.primary,
+				column('agentId').varchar(36).notNull.primary.comment('Agent that owns this lock'),
 				column('resourceId')
 					.varchar(255)
 					.notNull.primary.comment('agents_resources.id partition locked for episodic indexing'),
@@ -225,6 +250,7 @@ export class RefactorAgentObservationScope1784000000010 implements ReversibleMig
 					.notNull.comment('Ephemeral background-task lock owner token'),
 				column('heldUntil').timestampTimezone(3).notNull,
 			)
+			.withIndexOn('resourceId')
 			.withForeignKey('agentId', {
 				tableName: 'agents',
 				columnName: 'id',
@@ -242,8 +268,12 @@ export class RefactorAgentObservationScope1784000000010 implements ReversibleMig
 				column('agentId')
 					.varchar(36)
 					.notNull.comment('Agent that owns the linked episodic memory entry source'),
-				column('memoryEntryId').varchar(36).notNull,
-				column('observationId').varchar(36).notNull,
+				column('memoryEntryId')
+					.varchar(36)
+					.notNull.comment('Episodic memory entry linked to this source evidence'),
+				column('observationId')
+					.varchar(36)
+					.notNull.comment('Observation-log row used as source evidence'),
 				column('threadId')
 					.varchar(255)
 					.notNull.comment('Source conversation thread that produced the linked observation'),
@@ -257,6 +287,7 @@ export class RefactorAgentObservationScope1784000000010 implements ReversibleMig
 			.withIndexOn(['memoryEntryId', 'observationId', 'evidenceHash'], true)
 			.withIndexOn('observationId')
 			.withIndexOn(['agentId', 'threadId'])
+			.withIndexOn('threadId')
 			.withForeignKey('agentId', {
 				tableName: 'agents',
 				columnName: 'id',
@@ -285,10 +316,10 @@ export class RefactorAgentObservationScope1784000000010 implements ReversibleMig
 	) {
 		await createTable('agents_memory_entry_cursors')
 			.withColumns(
-				column('agentId').varchar(36).notNull.primary,
+				column('agentId').varchar(36).notNull.primary.comment('Agent that owns this cursor'),
 				column('observationScopeId')
 					.varchar(255)
-					.notNull.primary.comment('Source observation stream indexed into episodic memory'),
+					.notNull.primary.comment('agents_threads.id source stream indexed into episodic memory'),
 				column('lastIndexedObservationId')
 					.varchar(36)
 					.notNull.comment('Last observation-log row indexed into episodic memory'),
@@ -296,8 +327,14 @@ export class RefactorAgentObservationScope1784000000010 implements ReversibleMig
 					.timestampTimezone(3)
 					.notNull.comment('Creation timestamp for the last indexed observation-log row'),
 			)
+			.withIndexOn('observationScopeId')
 			.withForeignKey('agentId', {
 				tableName: 'agents',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withForeignKey('observationScopeId', {
+				tableName: 'agents_threads',
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			}).withTimestamps;

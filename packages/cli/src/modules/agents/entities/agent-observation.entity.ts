@@ -7,6 +7,7 @@ export type ObservationStatus = 'active' | 'superseded' | 'dropped';
 @Entity({ name: 'agents_observations' })
 @Index(['agentId', 'observationScopeId', 'status', 'createdAt', 'id'])
 @Index(['agentId', 'observationScopeId', 'createdAt', 'id'])
+@Index(['observationScopeId'])
 @Index(['parentId'])
 @Index(['supersededBy'])
 export class AgentObservationEntity extends WithTimestampsAndStringId {
