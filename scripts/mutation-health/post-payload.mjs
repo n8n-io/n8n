@@ -2,12 +2,12 @@
 /**
  * POST a JSON payload to the mutation-health writer webhook.
  *
- * Skips with a notice if the webhook env var is empty — that's the
- * dry-run mode the GHA falls back to when MUTATION_HEALTH_WEBHOOK
- * isn't configured yet.
+ * Reads MUTATION_HEALTH_WEBHOOK from the environment. Skips with a notice
+ * if it's empty — that's the dry-run mode the GHA falls back to when the
+ * secret isn't configured yet.
  *
  * Usage:
- *   node scripts/mutation-health/post-payload.mjs <payload-file> [--env <var-name>]
+ *   node scripts/mutation-health/post-payload.mjs <payload-file>
  *
  * Exit codes:
  *   0 — POST succeeded, OR env var empty (dry-run skip)
@@ -18,13 +18,9 @@
 import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 
-const args = process.argv.slice(2);
-const payloadPath = args[0];
-const envIdx = args.indexOf('--env');
-const envName = envIdx >= 0 ? args[envIdx + 1] : 'MUTATION_HEALTH_WEBHOOK';
-
+const payloadPath = process.argv[2];
 if (!payloadPath) {
-	process.stderr.write('Usage: post-payload.mjs <payload-file> [--env <var-name>]\n');
+	process.stderr.write('Usage: post-payload.mjs <payload-file>\n');
 	process.exit(2);
 }
 if (!existsSync(payloadPath)) {
@@ -32,9 +28,9 @@ if (!existsSync(payloadPath)) {
 	process.exit(2);
 }
 
-const webhook = process.env[envName] ?? '';
+const webhook = process.env.MUTATION_HEALTH_WEBHOOK ?? '';
 if (!webhook) {
-	process.stderr.write(`::notice::${envName} not set — dry-run, POST skipped (${payloadPath} uploaded as artefact).\n`);
+	process.stderr.write(`::notice::MUTATION_HEALTH_WEBHOOK not set — dry-run, POST skipped (${payloadPath} uploaded as artefact).\n`);
 	process.exit(0);
 }
 

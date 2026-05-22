@@ -14,7 +14,6 @@
  *   node scripts/mutation-health/emit-payload.mjs \
  *     --summary packages/workflow/reports/mutation/summary.json \
  *     --package n8n-workflow \
- *     [--sha <sha>]                  # default: git rev-parse HEAD
  *     [--out <path>]                 # default: <pkg>/reports/mutation/bq-payload.json
  */
 
@@ -54,7 +53,7 @@ if (!summaryPath) die(2, 'Missing required --summary <path>');
 if (!pkg) die(2, 'Missing required --package <name>');
 if (!existsSync(summaryPath)) die(2, `Summary not found: ${summaryPath}`);
 
-const sha = args.sha ?? execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+const sha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 
 const summary = JSON.parse(await readFile(summaryPath, 'utf8'));
 

@@ -41,16 +41,7 @@ if (!res.ok) {
 	process.exit(3);
 }
 
-const payload = await res.json();
-
-if (!payload || typeof payload !== 'object' || !Array.isArray(payload.ledger)) {
-	process.stderr.write(
-		`Unexpected reader response shape (expected { ledger: [...] }): ${JSON.stringify(payload).slice(0, 200)}\n`,
-	);
-	process.exit(3);
-}
-
-const rows = payload.ledger;
+const { ledger: rows } = await res.json();
 const text = JSON.stringify({ ledger: rows }, null, 2);
 
 if (out) {
