@@ -3883,6 +3883,7 @@
 	"workflowSettings.redactProductionData": "Redact production execution data",
 	"workflowSettings.redactProductionData.dynamicCredentialsHint": "Prod. execution data is always redacted in workflows that use dynamic credentials.",
 	"workflowSettings.redactManualData": "Redact manual execution data",
+	"workflowSettings.redactManualData.requiresProductionHint": "Manual execution data can only be redacted when production execution data is also redacted.",
 	"workflowSettings.redactionOptions.default": "Default - Do not redact",
 	"workflowSettings.redactionOptions.redact": "Redact",
 	"workflowSettings.helpTexts.redactProductionData": "Controls whether execution data from production (non-manually triggered) executions is redacted.",

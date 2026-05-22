@@ -204,7 +204,6 @@ describe('GlobalConfig', () => {
 			defaultName: 'My workflow',
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
-			indexingEnabled: true,
 			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
 			autosaveDisabled: false,
