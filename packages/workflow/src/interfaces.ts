@@ -1111,6 +1111,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getInputData(inputIndex?: number, connectionType?: NodeConnectionType): INodeExecutionData[];
 		getNodeInputs(): INodeInputConfiguration[];
 		getNodeOutputs(): INodeOutputConfiguration[];
+		getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined>;
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
@@ -1177,6 +1178,7 @@ export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
+	getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined>;
 
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
@@ -3140,6 +3142,8 @@ export interface IWorkflowExecutionDataProcess {
 	deduplicationKey?: string;
 	/** W3C trace context extracted from inbound webhook headers. */
 	tracingContext?: { traceparent: string; tracestate?: string };
+	/** Encrypted credential context for a manual editor-triggered execution. */
+	encryptedRunnerIdentity?: string;
 }
 
 export interface ExecuteWorkflowOptions {
@@ -3208,6 +3212,10 @@ export interface IWorkflowExecuteAdditionalData {
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
 	executionId?: string;
 	restartExecutionId?: string;
+	getRuntimeCredential(
+		runExecutionData: IRunExecutionData,
+		alias: string,
+	): Promise<IDataObject[string] | undefined>;
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
