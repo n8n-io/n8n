@@ -594,15 +594,25 @@ describe('EvalExecutionService', () => {
 					});
 
 					// Tool HTTP — `evalLlmMockHandler` is invoked from
-					// `request-helper-functions.ts` with the tool node's identity.
-					// `WorkflowExecute` constructor was called with additionalData
-					// in arg 0; grab the wrapped handler from there.
+					// `request-helper-functions.ts` with the tool node's
+					// identity. The SUT passes `additionalData` as the first
+					// positional argument to the `WorkflowExecute` constructor
+					// (see `runWorkflow()` in `execution.service.ts`). If that
+					// contract ever changes, the explicit guard below fails
+					// loudly with an actionable message instead of silently
+					// reading the wrong argument slot.
 					const wfExecuteCtor = jest.mocked(
 						(await import('n8n-core')).WorkflowExecute,
 					) as unknown as jest.Mock;
 					const additionalData = wfExecuteCtor.mock.calls[0][0] as {
-						evalLlmMockHandler: (req: unknown, node: unknown) => Promise<unknown>;
+						evalLlmMockHandler?: (req: unknown, node: unknown) => Promise<unknown>;
 					};
+					if (!additionalData?.evalLlmMockHandler) {
+						throw new Error(
+							'WorkflowExecute(additionalData, ...) contract changed — ' +
+								'arg 0 no longer carries evalLlmMockHandler. Update the ledger-split test.',
+						);
+					}
 					await additionalData.evalLlmMockHandler(
 						{ url: 'https://orders.example.com/v1/orders/42', method: 'GET' },
 						{

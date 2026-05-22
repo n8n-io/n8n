@@ -359,12 +359,16 @@ describe('M3 fixtures — Agent + Chat Model + HTTP tool + MemoryBufferWindow', 
 	// ── M3 value (regression-catch fixture) ─────────────────────────────
 
 	describe('value / regression-catch (tool disconnected from Agent)', () => {
-		// Tool-shape grader: the eval is supposed to fail when the Agent
-		// cannot produce a tool-shaped answer. We model this with a simple
-		// schema check the grader would apply downstream — the answer must
-		// include the order id AND a status field derived from the tool's
-		// HTTP response. Plain-text content (what the Agent produces without
-		// the tool) cannot satisfy this check.
+		// Substring grader — a deliberately lightweight stand-in for whatever
+		// the real eval grader does downstream. It looks for `ORD-42` AND
+		// `shipped` in the final answer; both substrings together can only
+		// appear when the Agent (a) saw the user's order id AND (b) saw the
+		// tool's HTTP response (`{ status: 'shipped' }`). Plain-text content
+		// without the tool result fails. The substring shape is intentionally
+		// simple — a more structural schema check would be a Tier 5 follow-up
+		// (`MockHints.toolHints` quality work); the contract this fixture
+		// proves is "the spike makes the grader fail when pinning would have
+		// hidden the regression", not "this is a production-grade grader".
 		function graderCheck(finalAnswer: unknown): { passed: boolean; reason?: string } {
 			if (typeof finalAnswer !== 'string') {
 				return { passed: false, reason: 'final answer was not a string' };
@@ -374,7 +378,7 @@ describe('M3 fixtures — Agent + Chat Model + HTTP tool + MemoryBufferWindow', 
 			if (hasOrderId && hasShipped) return { passed: true };
 			return {
 				passed: false,
-				reason: `grader expected a tool-derived answer with order id + status; got: ${JSON.stringify(finalAnswer)}`,
+				reason: `grader expected order id + status substrings; got: ${JSON.stringify(finalAnswer)}`,
 			};
 		}
 
@@ -412,9 +416,11 @@ describe('M3 fixtures — Agent + Chat Model + HTTP tool + MemoryBufferWindow', 
 				const verdict = graderCheck(choice.message.content);
 				// This is the M3 value assertion — pinning today would pass;
 				// the spike must fail because the Agent's mocked output can't
-				// produce the tool-shaped answer the grader expects.
+				// produce the substrings the grader expects (which only
+				// appear once the tool's HTTP response threads back through
+				// turn 2 — see the counterfactual test below).
 				expect(verdict.passed).toBe(false);
-				expect(verdict.reason).toContain('tool-derived');
+				expect(verdict.reason).toContain('order id + status');
 
 				// No tool HTTP fired — confirms the tool was actually disconnected.
 				expect(harness.toolHttpCalls).toHaveLength(0);

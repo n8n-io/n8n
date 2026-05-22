@@ -535,7 +535,6 @@ describe('LlmWireServer', () => {
 
 			expect(intercepts).toHaveLength(1);
 			expect(intercepts[0].rootName).toBe('Agent');
-			expect(intercepts[0].stream).toBe(true);
 		});
 
 		it('uses the no-handler stub for streaming when no mock handler is attached', async () => {

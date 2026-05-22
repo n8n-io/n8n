@@ -22,8 +22,6 @@ export interface InterceptedTurn {
 	nodeType: string;
 	requestBody: unknown;
 	mockResponse: unknown;
-	/** True when the SDK requested SSE — useful for downstream diagnostics. */
-	stream: boolean;
 }
 
 export interface LlmWireServerOptions {
@@ -140,7 +138,6 @@ export class LlmWireServer {
 				// Deep-clone so the ledger entry can't be mutated by later code.
 				requestBody: this.cloneRequestBody(req.body),
 				mockResponse: mockResponse?.body,
-				stream,
 			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
