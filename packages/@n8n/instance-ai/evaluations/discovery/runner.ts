@@ -280,6 +280,10 @@ function createStubOrchestrationContext(
 		domainTools,
 		abortSignal: opts.abortSignal,
 		taskStorage,
+		// Discovery evals assert first-dispatch intent only. Production starts a
+		// detached background task here; the harness accepts the spawn so the tool
+		// can publish its `agent-spawned` event without executing the sub-agent.
+		spawnBackgroundTask: ({ taskId, agentId }) => ({ status: 'started', taskId, agentId }),
 		// Surface the localMcpServer to orchestration tools so `browser-credential-setup`
 		// is loaded (its presence is gated on `localMcpServer` having browser tools, see
 		// src/tools/index.ts:82-86).
