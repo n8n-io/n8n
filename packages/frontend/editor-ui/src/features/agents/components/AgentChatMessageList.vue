@@ -6,10 +6,11 @@ import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChun
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 import {
 	buildDisplayGroups,
-	type DisplayGroup,
 	type ChatMessage,
+	type DisplayGroup,
 	type InteractivePayload,
 } from '../composables/agentChatMessages';
+import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
 import { CHAT_MESSAGE_STATUS } from '../constants';
@@ -27,8 +28,6 @@ const emit = defineEmits<{
 }>();
 
 function onInteractiveSubmit(payload: InteractivePayload, resumeData: unknown) {
-	// Cards without a runId are disabled at the card level (see InteractiveCard).
-	// This guard is a defensive belt-and-braces for the type narrowing.
 	if (!payload.runId) return;
 	emit('resume', { runId: payload.runId, toolCallId: payload.toolCallId, resumeData });
 }
@@ -46,8 +45,7 @@ function getAssistantGroupContent(group: DisplayGroup): string {
 }
 
 function isAssistantGroup(group: DisplayGroup): boolean {
-	if (group.kind === 'toolRun') return true;
-	return group.message.role === 'assistant';
+	return group.kind === 'toolRun' || group.message.role === 'assistant';
 }
 
 function getAssistantRunContent(groupId: string): string {
@@ -66,16 +64,109 @@ function getAssistantRunContent(groupId: string): string {
 	return lines.join('\n\n');
 }
 
-function shouldShowAssistantActions(groupId: string): boolean {
+function toEvidenceList(value: unknown): string[] {
+	if (!Array.isArray(value)) return [];
+
+	return value
+		.flatMap((item) => {
+			if (typeof item === 'string') return [item.trim()];
+			if (!item || typeof item !== 'object') return [];
+
+			const evidence =
+				('evidence' in item && typeof item.evidence === 'string' && item.evidence) ||
+				('evidenceText' in item && typeof item.evidenceText === 'string' && item.evidenceText) ||
+				('text' in item && typeof item.text === 'string' && item.text) ||
+				('content' in item && typeof item.content === 'string' && item.content) ||
+				'';
+
+			return evidence ? [evidence.trim()] : [];
+		})
+		.filter((item) => item.length > 0);
+}
+
+function parseMemoryOutput(
+	output: unknown,
+): Array<{ id: string; keyMemory: string; evidence: string[] }> {
+	if (
+		!output ||
+		typeof output !== 'object' ||
+		!('entries' in output) ||
+		!Array.isArray(output.entries)
+	) {
+		return [];
+	}
+
+	return output.entries
+		.flatMap((entry, index) => {
+			if (!entry || typeof entry !== 'object') return [];
+			const keyMemory =
+				'content' in entry && typeof entry.content === 'string' ? entry.content.trim() : '';
+			if (!keyMemory) return [];
+
+			const evidence = [
+				...('sources' in entry ? toEvidenceList(entry.sources) : []),
+				...('evidence' in entry ? toEvidenceList(entry.evidence) : []),
+			];
+
+			return [
+				{
+					id:
+						('id' in entry && typeof entry.id === 'string' && entry.id) || `${keyMemory}-${index}`,
+					keyMemory,
+					evidence,
+				},
+			];
+		})
+		.filter((memory) => memory.keyMemory.length > 0);
+}
+
+function isCompletedAssistantGroup(group: DisplayGroup): boolean {
+	if (group.kind === 'toolRun') {
+		return (
+			group.finalMessage !== undefined &&
+			group.finalMessage.status !== CHAT_MESSAGE_STATUS.STREAMING &&
+			group.finalMessage.status !== CHAT_MESSAGE_STATUS.AWAITING_USER
+		);
+	}
+
+	return (
+		group.message.role === 'assistant' &&
+		group.message.status !== CHAT_MESSAGE_STATUS.STREAMING &&
+		group.message.status !== CHAT_MESSAGE_STATUS.AWAITING_USER
+	);
+}
+
+function shouldShowAssistantFooter(groupId: string): boolean {
+	if (props.messagingState !== 'idle') return false;
+
 	const index = displayGroups.value.findIndex((group) => group.id === groupId);
 	if (index === -1) return false;
 
 	const group = displayGroups.value[index];
-	if (!isAssistantGroup(group)) return false;
-	if (!getAssistantRunContent(groupId)) return false;
+	if (!isAssistantGroup(group) || !isCompletedAssistantGroup(group)) return false;
 
 	const nextGroup = displayGroups.value[index + 1];
 	return !nextGroup || !isAssistantGroup(nextGroup);
+}
+
+function getMemoriesUsedInAssistantRun(groupId: string) {
+	const index = displayGroups.value.findIndex((group) => group.id === groupId);
+	if (index === -1) return [];
+
+	for (let i = index; i >= 0; i--) {
+		const group = displayGroups.value[i];
+		if (!isAssistantGroup(group)) break;
+
+		const toolCalls = group.kind === 'toolRun' ? group.toolCalls : (group.message.toolCalls ?? []);
+		for (let j = toolCalls.length - 1; j >= 0; j--) {
+			const toolCall = toolCalls[j];
+			if (toolCall.tool !== 'recall_memory') continue;
+			const memories = parseMemoryOutput(toolCall.output);
+			if (memories.length > 0) return memories;
+		}
+	}
+
+	return [];
 }
 
 const spokenMessageId = ref<string | null>(null);
@@ -90,18 +181,7 @@ const speech = useSpeechSynthesis(spokenText, {
 });
 const isSpeechSynthesisAvailable = computed(() => speech.isSupported.value);
 
-// How close to the bottom the user has to be for incoming chunks to keep
-// following them. Small enough that a deliberate scroll-up breaks the lock,
-// large enough that sub-pixel DOM growth during markdown rendering doesn't
-// falsely count as "scrolled up".
 const SCROLL_STICK_THRESHOLD_PX = 80;
-
-/**
- * True when the user is (or was last) near the bottom of the chat and wants
- * incoming stream chunks to keep scrolling into view. Flipped to false when
- * the user scrolls up away from the bottom, and back to true when they
- * scroll back down or send a new message.
- */
 const isStickToBottom = ref(true);
 
 function isNearBottom(): boolean {
@@ -116,8 +196,6 @@ function onScroll(): void {
 
 function scrollToBottom(): void {
 	void nextTick(() => {
-		// Double rAF — async children (markdown, highlighters) can grow content
-		// after the first frame, so we measure on the second one.
 		requestAnimationFrame(() => {
 			requestAnimationFrame(() => {
 				if (scrollRef.value) {
@@ -151,19 +229,10 @@ function toggleReadAloud(messageId: string): void {
 	speech.speak();
 }
 
-// Snap to the bottom on initial render with a preloaded history. Two hooks on
-// purpose: the watcher with `immediate: true` fires after setup / initial
-// render, and `onMounted` covers cases where the post-flush scroll measured an
-// incomplete height because async content (markdown, highlighters) was still
-// expanding.
 onMounted(() => {
 	if (props.messages.length > 0) scrollToBottom();
 });
 
-// New message appended. If it's the user's own message we always follow to
-// the bottom (they just sent — they want to see the response). For
-// assistant messages and state transitions, follow only if the user is
-// sticking to the bottom.
 watch(
 	() => props.messages.length,
 	(newLen, oldLen) => {
@@ -181,9 +250,6 @@ watch(
 
 watch(() => props.messagingState, autoScrollIfSticky, { flush: 'post' });
 
-// Content within the last message grew (streaming text, tool calls, thinking).
-// Only follow the stream down if the user is still near the bottom — otherwise
-// we yank them away from whatever they scrolled up to read.
 watch(
 	() => {
 		const last = props.messages[props.messages.length - 1];
@@ -252,8 +318,10 @@ onBeforeUnmount(() => {
 							/>
 						</div>
 					</div>
-					<div v-if="shouldShowAssistantActions(group.id)" :class="$style.messageActions">
+					<div v-if="shouldShowAssistantFooter(group.id)" :class="$style.messageFooter">
+						<AgentChatMemoryUsed :memories="getMemoriesUsedInAssistantRun(group.id)" />
 						<AgentChatMessageActions
+							v-if="getAssistantRunContent(group.id)"
 							:content="getAssistantRunContent(group.id)"
 							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
 							:is-speaking="isSpeakingMessage(group.id)"
@@ -307,8 +375,10 @@ onBeforeUnmount(() => {
 							/>
 						</div>
 					</div>
-					<div v-if="shouldShowAssistantActions(group.id)" :class="$style.messageActions">
+					<div v-if="shouldShowAssistantFooter(group.id)" :class="$style.messageFooter">
+						<AgentChatMemoryUsed :memories="getMemoriesUsedInAssistantRun(group.id)" />
 						<AgentChatMessageActions
+							v-if="getAssistantRunContent(group.id)"
 							:content="getAssistantRunContent(group.id)"
 							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
 							:is-speaking="isSpeakingMessage(group.id)"
@@ -377,27 +447,18 @@ onBeforeUnmount(() => {
 	align-items: stretch;
 }
 
-.messageActions {
-	opacity: 0;
-	pointer-events: none;
-	transition: opacity 0.15s ease;
-}
-
-.message.assistant:hover .messageActions,
-.message.assistant:focus-within .messageActions {
-	opacity: 1;
-	pointer-events: auto;
+.messageFooter {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--4xs);
 }
 
 .message.user .content {
 	align-items: flex-end;
 }
 
-/**
- * Vertical stack for one or more interactive cards inside an assistant message.
- * Adds a small gap between adjacent cards (when a tool run produced several)
- * and a top margin so the cards don't sit flush against the tool-step list.
- */
 .interactives {
 	display: flex;
 	flex-direction: column;
