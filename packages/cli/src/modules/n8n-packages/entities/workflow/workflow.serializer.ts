@@ -39,14 +39,14 @@ export class WorkflowSerializer {
 	 * archived state the source had it in.
 	 */
 	deserialize(wire: SerializedWorkflow): WorkflowPackageContent {
-		// Package JSON uses a looser shape than our runtime types (e.g. connection type is a
-		// plain string). Zod already checked the shape and content; these casts are safe type conversions.
+		const parsed = serializedWorkflowSchema.parse(wire);
+
 		return {
-			name: wire.name,
-			nodes: wire.nodes as INode[],
-			connections: wire.connections as IConnections,
-			isArchived: wire.isArchived,
-			...(wire.settings !== undefined ? { settings: wire.settings } : {}),
+			name: parsed.name,
+			nodes: parsed.nodes as INode[],
+			connections: parsed.connections as IConnections,
+			isArchived: parsed.isArchived,
+			...(parsed.settings !== undefined ? { settings: parsed.settings } : {}),
 		};
 	}
 }
