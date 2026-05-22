@@ -258,7 +258,8 @@ export class FacebookGraphApi implements INodeType {
 				},
 				default: false,
 				required: true,
-				description: 'Whether binary data should be sent as body',
+				hint: 'Page <code>/photos</code> and <code>/videos</code> edges accept binary uploads. Instagram container endpoints (e.g. <code>/media</code>) require <code>image_url</code> or <code>video_url</code> as Query Parameters instead.',
+				description: 'Whether to upload binary data as multipart/form-data',
 			},
 			{
 				displayName: 'Input Binary Field',
@@ -276,7 +277,7 @@ export class FacebookGraphApi implements INodeType {
 				},
 				hint: 'The name of the input binary field containing the file to be uploaded',
 				description:
-					'For Form-Data Multipart, they can be provided in the format: <code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>',
+					'For Form-Data Multipart, multiple files can be provided in the format: <code>sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>',
 			},
 			{
 				displayName: 'Options',
