@@ -28,6 +28,7 @@ const props = withDefaults(defineProps<CommandBarProps>(), {
 const emit = defineEmits<{
 	inputChange: [value: string];
 	navigateTo: [parentId: string | null];
+	'update:open': [open: boolean];
 }>();
 
 const NUM_LOADING_ITEMS_FULL = 8;
@@ -260,6 +261,10 @@ const handleClickOutside = (event: MouseEvent) => {
 watch(inputValue, (newValue) => {
 	emit('inputChange', newValue);
 	selectedIndex.value = 0;
+});
+
+watch(isOpen, (newValue) => {
+	emit('update:open', newValue);
 });
 
 onMounted(() => {

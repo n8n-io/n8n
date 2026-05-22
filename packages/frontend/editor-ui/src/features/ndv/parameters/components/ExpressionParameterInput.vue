@@ -86,6 +86,16 @@ function onFocus() {
 	emit('focus');
 }
 
+function onFocusOut(event: FocusEvent) {
+	if (!isFocused.value) return;
+
+	const nextFocus = event.relatedTarget;
+	if (isEventTargetContainedBy(nextFocus, container)) return;
+	if (isEventTargetContainedBy(nextFocus, outputPopover.value?.contentRef)) return;
+
+	onBlur(event);
+}
+
 function onBlur(event?: FocusEvent | KeyboardEvent) {
 	if (
 		event?.target instanceof Element &&
@@ -191,7 +201,12 @@ defineExpose({ focus, select });
 </script>
 
 <template>
-	<div ref="container" :class="$style['expression-parameter-input']" @keydown.tab="onBlur">
+	<div
+		ref="container"
+		:class="$style['expression-parameter-input']"
+		@keydown.tab="onBlur"
+		@focusout="onFocusOut"
+	>
 		<div
 			:class="[
 				$style['all-sections'],

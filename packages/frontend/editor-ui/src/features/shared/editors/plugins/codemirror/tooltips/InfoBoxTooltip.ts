@@ -20,6 +20,7 @@ import {
 } from '@codemirror/view';
 import type { SyntaxNode } from '@lezer/common';
 import type { createInfoBoxRenderer } from '../completions/infoBoxRenderer';
+import { closeTooltipsOnCommandBarOpen } from './closeTooltipsOnCommandBarOpen';
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID } from '@/app/constants';
 
 const findNearestParentOfType =
@@ -405,6 +406,7 @@ export const infoBoxTooltips = (): Extension[] => {
 		cursorInfoBoxTooltip,
 		asyncTooltipLoader,
 		hoverInfoBoxTooltip,
+		closeTooltipsOnCommandBarOpen,
 		keymap.of([
 			{
 				key: 'Escape',

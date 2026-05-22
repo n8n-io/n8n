@@ -6,6 +6,7 @@ import { VIEWS } from '@/app/constants';
 import { useStyles } from '@/app/composables/useStyles';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { COMMAND_BAR_OPEN_EVENT } from '@/features/shared/editors/plugins/codemirror/tooltips/closeTooltipsOnCommandBarOpen';
 
 const route = useRoute();
 const { APP_Z_INDEXES } = useStyles();
@@ -29,6 +30,12 @@ watch(showCommandBar, (newVal) => {
 		void initializeCommandBar();
 	}
 });
+
+function onCommandBarOpenChange(open: boolean) {
+	if (open) {
+		window.dispatchEvent(new CustomEvent(COMMAND_BAR_OPEN_EVENT));
+	}
+}
 </script>
 
 <template>
@@ -41,5 +48,6 @@ watch(showCommandBar, (newVal) => {
 		:z-index="APP_Z_INDEXES.COMMAND_BAR"
 		@input-change="onCommandBarChange"
 		@navigate-to="onCommandBarNavigateTo"
+		@update:open="onCommandBarOpenChange"
 	/>
 </template>
