@@ -9,6 +9,12 @@
 export { createN8NStack } from './stack';
 export type { N8NConfig, N8NStack } from './stack';
 
+// Startup failure diagnostics — consumed by the playwright observability fixture
+// to attach n8n container logs / readiness payloads when n8nContainer is undefined
+// because createN8NStack threw before returning.
+export { consumeStartupFailure } from './startup-diagnostics';
+export type { N8NStartupDiagnostics } from './services/n8n';
+
 // K3s + Helm chart stack - for Kubernetes deployment validation
 export { createHelmStack } from './helm-stack';
 export type { HelmStack, HelmStackConfig, HelmStackMode } from './helm-stack';

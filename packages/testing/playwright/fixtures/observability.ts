@@ -1,4 +1,6 @@
 import type { Fixtures, TestInfo } from '@playwright/test';
+import type { N8NStartupDiagnostics } from 'n8n-containers';
+import { consumeStartupFailure } from 'n8n-containers';
 import type { N8NStack } from 'n8n-containers/stack';
 
 export type ObservabilityTestFixtures = {
@@ -20,6 +22,53 @@ function tryGetObservability(stack: N8NStack | undefined) {
 		return stack.services?.observability;
 	} catch {
 		return undefined;
+	}
+}
+
+const STARTUP_PROFILE_TAG = '@startup-profile';
+
+function shouldAlwaysAttachStartup(testInfo: TestInfo): boolean {
+	if (process.env.CONTAINER_TELEMETRY_VERBOSE === '1') return true;
+	return testInfo.tags.includes(STARTUP_PROFILE_TAG);
+}
+
+function formatStartupLogs(diagnostics: N8NStartupDiagnostics): string {
+	const entries = Object.entries(diagnostics.logs).sort(([a], [b]) => a.localeCompare(b));
+	if (entries.length === 0) return '';
+	return entries.map(([name, body]) => `=== ${name} ===\n${body}`).join('\n\n');
+}
+
+function formatReadinessPayloads(diagnostics: N8NStartupDiagnostics): string {
+	const entries = Object.entries(diagnostics.readinessPayloads).sort(([a], [b]) =>
+		a.localeCompare(b),
+	);
+	if (entries.length === 0) return '';
+	return entries
+		.map(
+			([name, body]) =>
+				`=== ${name} ===\n${body ?? '(no /healthz/readiness response observed before timeout)'}`,
+		)
+		.join('\n\n');
+}
+
+async function attachStartupDiagnostics(
+	diagnostics: N8NStartupDiagnostics,
+	testInfo: TestInfo,
+): Promise<void> {
+	const startupLogs = formatStartupLogs(diagnostics);
+	if (startupLogs) {
+		await testInfo.attach('n8n-startup-logs.txt', {
+			body: startupLogs,
+			contentType: 'text/plain',
+		});
+	}
+
+	const readinessPayloads = formatReadinessPayloads(diagnostics);
+	if (readinessPayloads) {
+		await testInfo.attach('n8n-readiness-payload.txt', {
+			body: readinessPayloads,
+			contentType: 'text/plain',
+		});
 	}
 }
 
@@ -105,10 +154,35 @@ export const observabilityFixtures: Fixtures<
 		async ({ n8nContainer }, use, testInfo) => {
 			await use(undefined);
 
-			// n8nContainer is undefined when fixture setup failed (e.g. postgres timeout);
-			// observability may be unconfigured for this project (sqlite:e2e).
-			// Both cases must be handled gracefully so teardown never masks the real failure.
-			if (testInfo.status === testInfo.expectedStatus) return;
+			const isFailure = testInfo.status !== testInfo.expectedStatus;
+			const alwaysAttach = shouldAlwaysAttachStartup(testInfo);
+
+			// Startup-failure path: createN8NStack threw before returning a stack,
+			// so observability / metrics aren't queryable. The container log
+			// consumer and last readiness payload were captured before the throw
+			// and stashed in n8n-containers' worker-local startup-failure
+			// registry — drain it here.
+			if (!n8nContainer) {
+				if (!isFailure) return;
+				const failure = consumeStartupFailure();
+				if (!failure) return;
+				try {
+					await attachStartupDiagnostics(failure.diagnostics, testInfo);
+				} catch (error) {
+					console.warn('Failed to attach n8n startup diagnostics:', error);
+				}
+				return;
+			}
+
+			if (alwaysAttach) {
+				try {
+					await attachStartupDiagnostics(n8nContainer.startupDiagnostics, testInfo);
+				} catch (error) {
+					console.warn('Failed to attach n8n startup diagnostics:', error);
+				}
+			}
+
+			if (!isFailure) return;
 			if (!tryGetObservability(n8nContainer)) return;
 
 			await Promise.all([

@@ -1,6 +1,7 @@
 import { setTimeout as wait } from 'node:timers/promises';
 import type { Readable } from 'stream';
 import type { StartedTestContainer } from 'testcontainers';
+import { Wait } from 'testcontainers';
 
 /**
  * Create a logger that prefixes messages with elapsed time since creation.
@@ -39,7 +40,42 @@ export function createSilentLogConsumer() {
 		throw error;
 	};
 
-	return { consumer, throwWithLogs };
+	const getLogs = (): string => logs.join('\n');
+
+	return { consumer, throwWithLogs, getLogs };
+}
+
+/**
+ * Build a readiness HTTP wait strategy that also records the last response body
+ * observed before success or timeout. The buffer is the substrate-status payload
+ * n8n returns from /healthz/readiness, so callers can attach it for diagnosis
+ * when the wait strategy times out without n8n ever returning a 200.
+ */
+export function createReadinessProbe(
+	path: string,
+	port: number,
+	options: { startupTimeoutMs: number; readTimeoutMs: number },
+) {
+	let lastBody: string | null = null;
+
+	// Order matters: testcontainers' HttpWaitStrategy short-circuits the predicate
+	// loop on the first `false`. If `forStatusCode(200)` ran first, the body
+	// predicate would never fire for non-200 responses — exactly the case we want
+	// to capture (n8n returns a substrate-status payload on 5xx while booting).
+	// Register the body predicate first so it always observes the response.
+	const strategy = Wait.forHttp(path, port)
+		.forResponsePredicate((body) => {
+			lastBody = body;
+			return true;
+		})
+		.forStatusCode(200)
+		.withStartupTimeout(options.startupTimeoutMs)
+		.withReadTimeout(options.readTimeoutMs);
+
+	return {
+		strategy,
+		getLastBody: (): string | null => lastBody,
+	};
 }
 
 /**
