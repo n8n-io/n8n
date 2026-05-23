@@ -163,8 +163,11 @@ export function getConfigRulesSection(): string {
 - \`memory.episodicMemory\` requires \`ask_credential\` with
   \`credentialType: "openAiApi"\`.
 - Web search lives under \`config.webSearch\`; follow the Config schema reference
-  for the exact shape. For fallback search credentials, use these exact
-  \`ask_credential\` credential type names only: Brave uses
+  for the exact shape. Anthropic and OpenAI use native web search. Every other
+  provider must use fallback search with \`provider: "brave"\` or
+  \`provider: "searxng"\`; do not write \`{ "enabled": true }\` alone for those
+  providers. For fallback search credentials, use these exact \`ask_credential\`
+  credential type names only: Brave uses
   \`credentialType: "braveSearchApi"\` with \`provider: "brave"\`; SearXNG uses
   \`credentialType: "searXngApi"\` with \`provider: "searxng"\`.
 - Fresh agents need a real model, credential, and instructions before config

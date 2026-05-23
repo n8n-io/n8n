@@ -14,14 +14,22 @@ describe('provider-capabilities', () => {
 		expect(PROVIDER_CAPABILITIES.openai.thinking).toBe('reasoningEffort');
 	});
 
-	it('enables native web search for Anthropic, OpenAI, and Google', () => {
+	it('enables native web search for Anthropic and OpenAI', () => {
 		expect(PROVIDER_CAPABILITIES.anthropic.webSearch).toBe('anthropic.web_search');
 		expect(PROVIDER_CAPABILITIES.openai.webSearch).toBe('openai.web_search');
-		expect(PROVIDER_CAPABILITIES.google.webSearch).toBe('google.google_search');
 	});
 
 	it('marks providers without native web search support as `false`', () => {
-		const noWebSearch = ['xai', 'groq', 'deepseek', 'mistral', 'openrouter', 'cohere', 'ollama'];
+		const noWebSearch = [
+			'google',
+			'xai',
+			'groq',
+			'deepseek',
+			'mistral',
+			'openrouter',
+			'cohere',
+			'ollama',
+		];
 		for (const provider of noWebSearch) {
 			expect(PROVIDER_CAPABILITIES[provider]?.webSearch).toBe(false);
 		}

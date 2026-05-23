@@ -41,7 +41,6 @@ Provider tools:
 - Valid keys are exactly: ${formatValidProviderToolNames()}.
 - \`providerTools\` keys must be complete provider tool IDs from the valid key list.
 - Anthropic: \`providerTools["anthropic.web_search"]\`.
-- OpenAI: \`providerTools["openai.web_search"]\` or \`providerTools["openai.image_generation"]\`, only for compatible OpenAI models.
-- Google: \`providerTools["google.google_search"]\`, only for compatible Gemini models.`,
+- OpenAI: \`providerTools["openai.web_search"]\` or \`providerTools["openai.image_generation"]\`, only for compatible OpenAI models.`,
 	};
 }

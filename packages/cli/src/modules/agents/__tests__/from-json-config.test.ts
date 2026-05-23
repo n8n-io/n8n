@@ -526,7 +526,6 @@ describe('buildFromJson()', () => {
 	it.each([
 		['anthropic/claude-sonnet-4-5', 'anthropic.web_search_20250305'],
 		['openai/gpt-4o', 'openai.web_search'],
-		['google/gemini-2.5-flash', 'google.google_search'],
 	])('enables native web search when explicitly enabled for %s', async (model, expectedTool) => {
 		const agent = await buildFromJson(
 			makeConfig({ model, config: { webSearch: { enabled: true } } }),
@@ -539,6 +538,24 @@ describe('buildFromJson()', () => {
 		);
 
 		expect(getProviderToolNames(agent)).toContain(expectedTool);
+	});
+
+	it('treats Google web search config as fallback web search', async () => {
+		await expect(
+			buildFromJson(
+				makeConfig({
+					model: 'google/gemini-2.5-flash',
+					config: { webSearch: { enabled: true } },
+					providerTools: { 'google.google_search': {} },
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			),
+		).rejects.toThrow('Web search is enabled but no fallback search provider is configured.');
 	});
 
 	it('does not enable native web search when config is sparse', async () => {

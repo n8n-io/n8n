@@ -30,10 +30,6 @@ describe('formatToolNameForDisplay', () => {
 		);
 		expect(getToolNameTranslationKey('openai.web_search')).toBe(WEB_SEARCH_TOOL_NAME_KEY);
 		expect(getToolNameTranslationKey('openai.web_search_20270101')).toBe(WEB_SEARCH_TOOL_NAME_KEY);
-		expect(getToolNameTranslationKey('google.google_search')).toBe(WEB_SEARCH_TOOL_NAME_KEY);
-		expect(getToolNameTranslationKey('google.google_search_20270101')).toBe(
-			WEB_SEARCH_TOOL_NAME_KEY,
-		);
 		expect(getToolNameTranslationKey('custom_web_search')).toBeUndefined();
 	});
 

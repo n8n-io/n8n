@@ -5,13 +5,11 @@ const NATIVE_WEB_SEARCH_PROVIDER_TOOLS = [
 	'anthropic.web_search_20250305',
 	'anthropic.web_search_20260209',
 	'openai.web_search',
-	'google.google_search',
 ] as const;
 
 const NATIVE_WEB_SEARCH_TOOL_BY_PROVIDER: Record<string, string> = {
 	anthropic: 'anthropic.web_search',
 	openai: 'openai.web_search',
-	google: 'google.google_search',
 };
 
 const NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL: Record<string, string> = {
@@ -19,7 +17,6 @@ const NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL: Record<string, string> = {
 	'anthropic.web_search_20250305': 'anthropic',
 	'anthropic.web_search_20260209': 'anthropic',
 	'openai.web_search': 'openai',
-	'google.google_search': 'google',
 };
 
 const NATIVE_WEB_SEARCH_DEFAULTS_BY_PROVIDER: Record<
@@ -31,7 +28,6 @@ const NATIVE_WEB_SEARCH_DEFAULTS_BY_PROVIDER: Record<
 		toolName: 'openai.web_search',
 		args: { externalWebAccess: true, searchContextSize: 'medium' },
 	},
-	google: { toolName: 'google.google_search', args: {} },
 };
 
 export function getProviderPrefix(modelId: string): string {

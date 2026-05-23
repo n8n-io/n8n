@@ -6,7 +6,6 @@ export const NATIVE_WEB_SEARCH_PROVIDER_TOOLS = [
 	'anthropic.web_search_20250305',
 	'anthropic.web_search_20260209',
 	'openai.web_search',
-	'google.google_search',
 ] as const;
 
 export type NativeWebSearchProviderTool = Exclude<ProviderCapabilities['webSearch'], false>;

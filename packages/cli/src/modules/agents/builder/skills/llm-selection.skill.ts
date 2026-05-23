@@ -18,9 +18,12 @@ Rules:
 - Explicit provider/model requests go to \`resolve_llm\` first.
 - If the user asks to pick, change, confirm, or configure a model or main credential, call \`ask_llm\`; do not ask in prose.
 - If \`resolve_llm\` succeeds, persist \`model = "{provider}/{model}"\` and \`credential = credentialId\`.
-- For Anthropic, OpenAI, and Google models, native web search is enabled by default:
-  persist \`config.webSearch.enabled = true\` and the matching \`providerTools\`
-  entry unless the user asks to disable web search.
+- For Anthropic and OpenAI models, native web search is enabled by default:
+  persist \`config.webSearch.enabled = true\` unless the user asks to disable
+  web search. Do not write native \`providerTools\`; the write path derives them.
+- For every other provider, web search requires fallback search:
+  use \`provider: "brave"\` or \`provider: "searxng"\` under \`config.webSearch\`
+  and call \`ask_credential\` for the matching search credential before writing it.
 - If \`resolve_llm\` reports missing or ambiguous credentials/provider, call \`ask_llm\`.
 - If it reports \`unknown_model\`, retry with a plausible returned model value or call \`ask_llm\`.
 - For "Anthropic via OpenRouter", pass \`provider: "openrouter"\`; if the user names a routed model, pass the routed id without adding another provider prefix.

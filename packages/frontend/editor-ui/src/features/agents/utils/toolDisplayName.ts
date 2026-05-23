@@ -2,8 +2,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 
 export const WEB_SEARCH_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.webSearch';
 
-const WEB_SEARCH_TOOL_NAME_PATTERN =
-	/^(?:web_search|(?:anthropic|openai)\.web_search(?:_\d{8})?|google\.google_search(?:_\d{8})?)$/;
+const WEB_SEARCH_TOOL_NAME_PATTERN = /^(?:web_search|(?:anthropic|openai)\.web_search(?:_\d{8})?)$/;
 
 export function getToolNameTranslationKey(toolName: string | undefined): BaseTextKey | undefined {
 	const trimmed = toolName?.trim();

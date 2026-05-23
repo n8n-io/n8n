@@ -41,7 +41,7 @@ Rules:
 - Never write placeholder instructions.
 - Never copy credential IDs from \`list_credentials\`; use \`resolve_llm\`, \`ask_llm\`, or \`ask_credential\`.
 - Valid provider tool keys are exactly: ${formatValidProviderToolNames()}.
-- Never use provider namespace keys such as \`anthropic\`, \`openai\`, or \`google\` in \`providerTools\`.
+- \`providerTools\` keys must be complete provider tool IDs from the valid key list.
 
 ## Common recipes
 
@@ -100,7 +100,12 @@ For Episodic Memory, call \`ask_credential\` with \`credentialType: "openAiApi"\
 
 - Thinking lives under \`config.thinking\`.
 - Web search lives under \`config.webSearch\`.
-- For Anthropic, OpenAI, or Google models, set \`config.webSearch.enabled = true\` unless the user asks to disable web search.
+- For Anthropic and OpenAI models, set \`config.webSearch.enabled = true\` unless the user asks to disable web search.
+- For every other provider, web search must use fallback search: set
+  \`config.webSearch = { "enabled": true, "provider": "brave" | "searxng", "credential": "<credentialId>" }\`
+  after calling \`ask_credential\` for the matching search credential.
+- Do not write \`{ "enabled": true }\` alone for non-Anthropic/OpenAI providers;
+  the write path treats that as unsupported native web search and removes it.
 - The write path fills native provider tool defaults. Do not invent provider tool keys.
 
 ### Configure fallback services

@@ -31,17 +31,9 @@ const ANTHROPIC_TOOL_ALIASES: Record<string, string> = {
 // is left as a marker so future OpenAI additions live alongside Anthropic.
 const OPENAI_TOOL_ALIASES: Record<string, string> = {};
 
-// Google (https://ai-sdk.dev/providers/ai-sdk-providers/google-generative-ai)
-//
-// Google Search grounding uses the stable provider tool id `google.google_search`,
-// so no aliasing is needed today. This marker keeps native web-search aliases
-// grouped in one place as more providers are added.
-const GOOGLE_TOOL_ALIASES: Record<string, string> = {};
-
 const PROVIDER_TOOL_ALIASES: Record<string, string> = {
 	...ANTHROPIC_TOOL_ALIASES,
 	...OPENAI_TOOL_ALIASES,
-	...GOOGLE_TOOL_ALIASES,
 };
 
 /**

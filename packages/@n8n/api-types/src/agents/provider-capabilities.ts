@@ -3,12 +3,9 @@
  */
 export interface ProviderCapabilities {
 	thinking: false | 'budgetTokens' | 'reasoningEffort';
-	webSearch: false | 'anthropic.web_search' | 'openai.web_search' | 'google.google_search';
+	webSearch: false | 'anthropic.web_search' | 'openai.web_search';
 	providerTools: ReadonlyArray<
-		| 'anthropic.web_search'
-		| 'openai.web_search'
-		| 'openai.image_generation'
-		| 'google.google_search'
+		'anthropic.web_search' | 'openai.web_search' | 'openai.image_generation'
 	>;
 }
 
@@ -25,8 +22,8 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	},
 	google: {
 		thinking: false,
-		webSearch: 'google.google_search',
-		providerTools: ['google.google_search'],
+		webSearch: false,
+		providerTools: [],
 	},
 	xai: { thinking: false, webSearch: false, providerTools: [] },
 	groq: { thinking: false, webSearch: false, providerTools: [] },
