@@ -41,6 +41,26 @@ const STALE_CONFIG_ERROR: ConfigValidationError = {
 		'Agent config changed since you last read it. Call read_config and retry with the returned configHash.',
 };
 
+const NATIVE_WEB_SEARCH_PROVIDER_TOOLS = [
+	'anthropic.web_search',
+	'anthropic.web_search_20250305',
+	'anthropic.web_search_20260209',
+	'openai.web_search',
+	'google.google_search',
+] as const;
+
+const NATIVE_WEB_SEARCH_DEFAULTS_BY_PROVIDER: Record<
+	string,
+	{ toolName: string; args: Record<string, unknown> }
+> = {
+	anthropic: { toolName: 'anthropic.web_search', args: { maxUses: 5 } },
+	openai: {
+		toolName: 'openai.web_search',
+		args: { externalWebAccess: true, searchContextSize: 'medium' },
+	},
+	google: { toolName: 'google.google_search', args: {} },
+};
+
 export interface AgentConfigSnapshot {
 	config: AgentJsonConfig | null;
 	configHash: string | null;
@@ -92,6 +112,47 @@ function snapshotFromConfig(
 		configHash: getAgentConfigHash(config),
 		updatedAt,
 		versionId,
+	};
+}
+
+function getProviderPrefix(modelId: string): string {
+	const slashIdx = modelId.indexOf('/');
+	return slashIdx !== -1 ? modelId.slice(0, slashIdx) : '';
+}
+
+function applyNativeWebSearchBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
+	const providerPrefix = getProviderPrefix(config.model);
+	const nativeWebSearch = NATIVE_WEB_SEARCH_DEFAULTS_BY_PROVIDER[providerPrefix];
+	const providerTools = { ...(config.providerTools ?? {}) };
+	const explicitDisabled = config.config?.webSearch?.enabled === false;
+
+	for (const toolName of NATIVE_WEB_SEARCH_PROVIDER_TOOLS) {
+		delete providerTools[toolName];
+	}
+
+	if (!nativeWebSearch || explicitDisabled) {
+		const { webSearch: _webSearch, ...restConfig } = config.config ?? {};
+		const { config: _config, providerTools: _providerTools, ...restAgentConfig } = config;
+		return {
+			...restAgentConfig,
+			...(Object.keys(restConfig).length > 0 ? { config: restConfig } : {}),
+			...(Object.keys(providerTools).length > 0 ? { providerTools } : {}),
+		};
+	}
+
+	return {
+		...config,
+		config: {
+			...(config.config ?? {}),
+			webSearch: { enabled: true },
+		},
+		providerTools: {
+			...providerTools,
+			[nativeWebSearch.toolName]: {
+				...nativeWebSearch.args,
+				...(config.providerTools?.[nativeWebSearch.toolName] ?? {}),
+			},
+		},
 	};
 }
 
@@ -193,11 +254,12 @@ export class AgentsBuilderToolsService {
 					if (emptyInstructions) {
 						return { ok: false, errors: emptyInstructions.errors };
 					}
+					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
 					try {
 						const result = await this.agentsService.updateConfig(
 							agentId,
 							projectId,
-							zodResult.data,
+							normalizedConfig,
 						);
 						return {
 							ok: true,
@@ -294,12 +356,13 @@ export class AgentsBuilderToolsService {
 					if (emptyInstructions) {
 						return { ok: false, stage: 'schema', errors: emptyInstructions.errors };
 					}
+					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
 
 					try {
 						const result = await this.agentsService.updateConfig(
 							agentId,
 							projectId,
-							zodResult.data,
+							normalizedConfig,
 						);
 						return {
 							ok: true,

@@ -1,6 +1,7 @@
 export * from './agent-integration.schema';
 export * from './agent-json-config.schema';
 export * from './dto';
+export * from './provider-capabilities';
 export * from './types';
 export type { AgentSseEvent, AgentSseMessage, ToolSuspendedPayload } from '../agent-sse';
 export {
