@@ -36,6 +36,7 @@ import type { NodeTypes } from '@/node-types';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { TagService } from '@/services/tag.service';
@@ -96,6 +97,14 @@ const roleService = mock<RoleService>();
 const telemetry = mock<Telemetry>();
 const aiBuilderTemporaryWorkflowRepository = mock<AiBuilderTemporaryWorkflowRepository>();
 
+const nodeResourceExplorerService = new NodeResourceExplorerService(
+	logger,
+	dynamicNodeParametersService,
+	credentialsFinderService,
+	projectRepository,
+	nodeTypes,
+);
+
 const service = new InstanceAiAdapterService(
 	logger,
 	globalConfig,
@@ -114,7 +123,7 @@ const service = new InstanceAiAdapterService(
 	mock<InstanceSettings>({ staticCacheDir: '/tmp/test-cache' }),
 	dataTableService,
 	dataTableRepository,
-	dynamicNodeParametersService,
+	nodeResourceExplorerService,
 	folderService,
 	projectService,
 	tagService,
