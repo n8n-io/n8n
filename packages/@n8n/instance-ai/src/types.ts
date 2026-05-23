@@ -1217,6 +1217,34 @@ export interface OrchestrationContext {
 		taskId: string,
 		correction: string,
 	) => 'queued' | 'task-completed' | 'task-not-found';
+	/**
+	 * Resume info for a suspended sub-agent of this thread, looked up from the
+	 * persisted checkpoint store by the deterministic sub-agent resourceId
+	 * (`instance-ai-subagent:{threadId}:{agentKind}`). Used by the cascading
+	 * suspend path: when the orchestrator's `plan` tool resumes, it calls
+	 * this to find the planner sub-agent's `runId` + suspended `toolCallId`
+	 * + the persistence the planner was running under, so the resume path
+	 * can rebuild the sub-agent with the same persistence and call
+	 * `plannerAgent.resume('stream', resumeData, { runId, toolCallId })`
+	 * without stashing anything across its own suspend/resume cycle.
+	 */
+	findSubAgentResumeInfo?: (agentKind: string) => Promise<
+		| {
+				runId: string;
+				toolCallId: string;
+				persistence: { threadId: string; resourceId: string };
+		  }
+		| undefined
+	>;
+	/**
+	 * Persist the current user message to thread memory immediately, so it
+	 * survives a restart that happens while the orchestrator is suspended on
+	 * an inline HITL tool call. The SDK only flushes the turn delta on a clean
+	 * loop completion, which a suspended run never reaches — without this the
+	 * user's bubble is invisible on reload until the turn eventually completes.
+	 * Idempotent: safe to call multiple times within a run.
+	 */
+	persistInFlightUserMessage?: () => Promise<void>;
 	/** Mark the current orchestrator run as making progress. */
 	touchRun?: () => boolean;
 	/** Mark a running background task as making progress. */

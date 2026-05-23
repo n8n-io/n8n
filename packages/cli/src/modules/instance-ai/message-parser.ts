@@ -5,7 +5,7 @@ import type {
 	InstanceAiToolCallState,
 	InstanceAiTimelineEntry,
 } from '@n8n/api-types';
-import type { AgentDbMessage, AgentTreeSnapshot } from '@n8n/instance-ai';
+import type { AgentDbMessage, AgentTreeSnapshot, MessageContent } from '@n8n/instance-ai';
 
 import { cleanStoredUserMessage } from './internal-messages';
 
@@ -23,14 +23,13 @@ interface StoredToolInvocation {
 	result?: unknown;
 }
 
-interface StoredContentPart {
-	type: string;
-	text?: string;
-	toolCallId?: string;
-	toolName?: string;
-	input?: Record<string, unknown>;
-	result?: unknown;
-}
+/**
+ * Persisted content parts in `instance_ai_messages.content` are JSON-encoded
+ * `MessageContent` objects produced by the @n8n/agents SDK. We narrow against
+ * that canonical type so downstream readers fail at compile time if the SDK
+ * shape (e.g. the `'tool-call' state: 'resolved' + output` union) changes.
+ */
+type StoredContentPart = MessageContent;
 
 export interface StoredAgentMessage {
 	id: string;
@@ -98,29 +97,61 @@ function extractParts(content: unknown): StoredContentPart[] | undefined {
 	return undefined;
 }
 
+const KNOWN_CONTENT_PART_TYPES = new Set<MessageContent['type']>([
+	'text',
+	'tool-call',
+	'invalid-tool-call',
+	'reasoning',
+	'file',
+	'citation',
+	'provider',
+]);
+
 function isStoredContentPart(value: unknown): value is StoredContentPart {
-	return typeof value === 'object' && value !== null && 'type' in value;
+	if (typeof value !== 'object' || value === null) return false;
+	const type = (value as { type?: unknown }).type;
+	return typeof type === 'string' && KNOWN_CONTENT_PART_TYPES.has(type as MessageContent['type']);
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: {};
 }
 
 function nativeToolPartToInvocation(part: StoredContentPart): StoredToolInvocation | undefined {
-	if (part.type === 'tool-call' && part.toolCallId && part.toolName) {
-		return {
-			state: 'call',
-			toolCallId: part.toolCallId,
-			toolName: part.toolName,
-			args: part.input ?? {},
-		};
-	}
-	if (part.type === 'tool-result' && part.toolCallId && part.toolName) {
+	if (part.type !== 'tool-call') return undefined;
+	// `ContentToolCall` is a discriminated union on `state`:
+	//   'pending'  — call in flight, no result yet
+	//   'resolved' — completed with `output`
+	//   'rejected' — failed with `error`
+	// The output/error live on the SAME part as the call; there is no separate
+	// `tool-result` content part in the persisted shape.
+	const args = toRecord(part.input);
+	if (part.state === 'resolved') {
 		return {
 			state: 'result',
 			toolCallId: part.toolCallId,
 			toolName: part.toolName,
-			args: part.input ?? {},
-			result: part.result,
+			args,
+			result: part.output,
 		};
 	}
-	return undefined;
+	if (part.state === 'rejected') {
+		return {
+			state: 'result',
+			toolCallId: part.toolCallId,
+			toolName: part.toolName,
+			args,
+			result: { error: part.error },
+		};
+	}
+	return {
+		state: 'call',
+		toolCallId: part.toolCallId,
+		toolName: part.toolName,
+		args,
+	};
 }
 
 function extractToolInvocations(content: unknown): StoredToolInvocation[] {
@@ -160,7 +191,7 @@ function buildTimeline(
 		for (const part of parts) {
 			if (part.type === 'text' && part.text) {
 				timeline.push({ type: 'text', content: part.text });
-			} else if ((part.type === 'tool-call' || part.type === 'tool-result') && part.toolCallId) {
+			} else if (part.type === 'tool-call' && part.toolCallId) {
 				timeline.push({ type: 'tool-call', toolCallId: part.toolCallId });
 			}
 		}

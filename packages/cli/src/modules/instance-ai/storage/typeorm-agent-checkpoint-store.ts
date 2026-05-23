@@ -79,6 +79,36 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 		return await this.markExpiredOlderThan(olderThan);
 	}
 
+	/**
+	 * Look up the most recent suspended sub-agent run for a given resourceId
+	 * and pull the info needed to resume it. Used by the orchestrator's
+	 * cascade-suspend path: when the `plan` tool resumes, it needs the
+	 * planner sub-agent's `runId` + `toolCallId` (to call `subAgent.resume`)
+	 * + its `persistence` (so the resumed call reuses the same sub-agent
+	 * thread and resourceId the original used). The sub-agent's resourceId
+	 * is deterministically derived from the parent thread + agent kind, so
+	 * the caller can compute the lookup key without stashing anything.
+	 */
+	async findSuspendedSubAgentResumeInfo(resourceId: string): Promise<
+		| {
+				runId: string;
+				toolCallId: string;
+				persistence: { threadId: string; resourceId: string };
+		  }
+		| undefined
+	> {
+		const row = await this.checkpointRepo.findActiveByResourceId(resourceId);
+		if (!row?.state) return undefined;
+		const [toolCallId] = Object.keys(row.state.pendingToolCalls ?? {});
+		const persistence = row.state.persistence;
+		if (!toolCallId || !persistence?.threadId || !persistence.resourceId) return undefined;
+		return {
+			runId: row.key,
+			toolCallId,
+			persistence: { threadId: persistence.threadId, resourceId: persistence.resourceId },
+		};
+	}
+
 	/** Drop expired tombstones outright once they're past the GC horizon. */
 	async hardDeleteExpiredOlderThan(olderThan: Date): Promise<number> {
 		const result = await this.checkpointRepo.delete({
