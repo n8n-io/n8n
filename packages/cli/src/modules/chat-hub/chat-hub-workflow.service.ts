@@ -3,9 +3,16 @@ import {
 	ChatSessionId,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubBaseLLMModel,
+	type ChatProviderSettingsDto,
 	type ChatHubAgentKnowledgeItem,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import {
+	DEFAULT_CONTEXT_WINDOW_LENGTH,
+	EMBEDDINGS_NODE_TYPE_MAP,
+	parseMessage,
+	collectChatArtifacts,
+} from '@n8n/chat-hub';
 import {
 	SharedWorkflow,
 	SharedWorkflowRepository,
@@ -23,6 +30,8 @@ import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	createRunExecutionData,
+	getHighlightedInputKey,
+	HIGHLIGHTED_SESSION_KEY,
 	DOCUMENT_DEFAULT_DATA_LOADER_NODE_TYPE,
 	IConnections,
 	IExecuteData,
@@ -43,10 +52,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
-import { ChatHubToolService } from './chat-hub-tool.service';
 import { CHATHUB_EXTRACTOR_NAME, ChatHubAuthenticationMetadata } from './chat-hub-extractor';
 import { ChatHubMessage } from './chat-hub-message.entity';
+import { ChatHubToolService } from './chat-hub-tool.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import {
 	CHAT_TRIGGER_NODE_MIN_VERSION,
@@ -69,8 +79,6 @@ import {
 } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 import { inE2ETests } from '../../constants';
-import { EMBEDDINGS_NODE_TYPE_MAP, parseMessage, collectChatArtifacts } from '@n8n/chat-hub';
-import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 
 @Service()
 export class ChatHubWorkflowService {
@@ -110,6 +118,7 @@ export class ChatHubWorkflowService {
 		vectorStoreSearch: { agentId: string; options: SemanticSearchOptions } | null,
 		executionMetadata: ChatHubAuthenticationMetadata,
 		trx?: EntityManager,
+		providerSettings?: ChatProviderSettingsDto,
 	): Promise<{
 		workflowData: IWorkflowBase;
 		executionData: IRunExecutionData;
@@ -132,6 +141,7 @@ export class ChatHubWorkflowService {
 				tools,
 				vectorStoreSearch,
 				executionMetadata,
+				providerSettings,
 			});
 
 			const newWorkflow = new WorkflowEntity();
@@ -177,6 +187,7 @@ export class ChatHubWorkflowService {
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
 		trx?: EntityManager,
+		providerSettings?: ChatProviderSettingsDto,
 	): Promise<{ workflowData: IWorkflowBase; executionData: IRunExecutionData }> {
 		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
 			this.logger.debug(
@@ -190,6 +201,7 @@ export class ChatHubWorkflowService {
 				model,
 				humanMessage,
 				attachments,
+				providerSettings,
 			);
 
 			const newWorkflow = new WorkflowEntity();
@@ -371,6 +383,7 @@ export class ChatHubWorkflowService {
 		tools,
 		vectorStoreSearch,
 		executionMetadata,
+		providerSettings,
 	}: {
 		userId: string;
 		sessionId: ChatSessionId;
@@ -383,11 +396,14 @@ export class ChatHubWorkflowService {
 		tools: INode[];
 		vectorStoreSearch: { agentId: string; options: SemanticSearchOptions } | null;
 		executionMetadata: ChatHubAuthenticationMetadata;
+		providerSettings?: ChatProviderSettingsDto;
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
 		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
-		const modelNode = this.buildModelNode(credentials, model);
-		const memoryNode = this.buildMemoryNode(20);
+		const modelNode = this.buildModelNode(credentials, model, providerSettings);
+		const memoryNode = this.buildMemoryNode(
+			providerSettings?.contextWindowLength ?? DEFAULT_CONTEXT_WINDOW_LENGTH,
+		);
 		const restoreMemoryNode = await this.buildRestoreMemoryNode(history, model);
 		const clearMemoryNode = this.buildClearMemoryNode();
 		const mergeNode = this.buildMergeNode();
@@ -408,7 +424,7 @@ export class ChatHubWorkflowService {
 		const nodeNames = new Set(nodes.map((node) => node.name));
 		const distinctTools = tools.map((tool, i) => {
 			// Spread out the tool nodes so that they don't overlap on the canvas
-			const position = [
+			const position: [number, number] = [
 				700 + Math.floor(i / 3) * 60 + (i % 3) * 120,
 				300 + Math.floor(i / 3) * 120 - (i % 3) * 30,
 			];
@@ -512,7 +528,7 @@ export class ChatHubWorkflowService {
 				: {}),
 		};
 
-		const nodeExecutionStack = this.prepareExecutionData(
+		const nodeExecutionStack = await this.prepareExecutionData(
 			chatTriggerNode,
 			sessionId,
 			humanMessage,
@@ -523,6 +539,13 @@ export class ChatHubWorkflowService {
 		const executionData = createRunExecutionData({
 			executionData: {
 				nodeExecutionStack,
+			},
+			resultData: {
+				metadata: ChatHubWorkflowService.buildHighlightedDataMetadata(
+					chatTriggerNode.name,
+					humanMessage,
+					sessionId,
+				),
 			},
 			manualData: {
 				userId,
@@ -539,10 +562,11 @@ export class ChatHubWorkflowService {
 		model: ChatHubConversationModel,
 		humanMessage: string,
 		attachments: IBinaryData[],
+		providerSettings?: ChatProviderSettingsDto,
 	) {
 		const chatTriggerNode = this.buildChatTriggerNode();
 		const titleGeneratorAgentNode = this.buildTitleGeneratorAgentNode(humanMessage, attachments);
-		const modelNode = this.buildModelNode(credentials, model);
+		const modelNode = this.buildModelNode(credentials, model, providerSettings);
 
 		const nodes: INode[] = [chatTriggerNode, titleGeneratorAgentNode, modelNode];
 
@@ -726,6 +750,7 @@ ${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
 	private buildModelNode(
 		credentials: INodeCredentials,
 		conversationModel: ChatHubConversationModel,
+		providerSettings?: ChatProviderSettingsDto,
 	): INode {
 		if (conversationModel.provider === 'n8n' || conversationModel.provider === 'custom-agent') {
 			throw new OperationalError('Custom agent workflows do not require a model node');
@@ -754,6 +779,9 @@ ${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
 								},
 							},
 						},
+						...(providerSettings?.responsesApiEnabled === false
+							? { responsesApiEnabled: false }
+							: {}),
 					},
 				};
 			case 'anthropic':
@@ -859,6 +887,15 @@ ${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
 				};
 			}
 			case 'mistralCloud': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'nvidia': {
 				return {
 					...common,
 					parameters: {
@@ -1126,14 +1163,14 @@ Respond the title only:`,
 		return 'file';
 	}
 
-	prepareExecutionData(
+	async prepareExecutionData(
 		triggerNode: INode,
 		sessionId: string,
 		message: string,
 		attachments: IBinaryData[],
 		executionMetadata: ChatHubAuthenticationMetadata,
-	): IExecuteData[] {
-		const encryptedMetadata = this.cipher.encrypt(executionMetadata);
+	): Promise<IExecuteData[]> {
+		const encryptedMetadata = await this.cipher.encryptV2(executionMetadata);
 		// Attachments are already processed (id field populated) by the caller
 		return [
 			{
@@ -1173,6 +1210,17 @@ Respond the title only:`,
 				source: null,
 			},
 		];
+	}
+
+	private static buildHighlightedDataMetadata(
+		triggerNodeName: string,
+		message: string,
+		sessionId: string,
+	): Record<string, string> {
+		return {
+			[getHighlightedInputKey(triggerNodeName)]: message,
+			[HIGHLIGHTED_SESSION_KEY]: sessionId,
+		};
 	}
 
 	async prepareReplyWorkflow(
@@ -1251,6 +1299,10 @@ Respond the title only:`,
 		await this.chatHubSettingsService.ensureModelIsAllowed(model, trx);
 		this.chatHubCredentialsService.findProviderCredential(model.provider, credentials);
 		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
+		const providerSettings = await this.chatHubSettingsService.getProviderSettings(
+			model.provider,
+			trx,
+		);
 
 		return await this.createChatWorkflow(
 			user.id,
@@ -1267,6 +1319,7 @@ Respond the title only:`,
 			vectorStoreSearch,
 			executionMetadata,
 			trx,
+			providerSettings,
 		);
 	}
 
@@ -1417,7 +1470,7 @@ Respond the title only:`,
 			);
 		}
 
-		const nodeExecutionStack = this.prepareExecutionData(
+		const nodeExecutionStack = await this.prepareExecutionData(
 			chatTrigger,
 			sessionId,
 			message,
@@ -1425,10 +1478,21 @@ Respond the title only:`,
 			executionMetadata,
 		);
 
+		const autoSaveHighlightedData = chatTriggerParams.options?.autoSaveHighlightedData !== false;
+
 		const executionData = createRunExecutionData({
 			executionData: {
 				nodeExecutionStack,
 			},
+			resultData: autoSaveHighlightedData
+				? {
+						metadata: ChatHubWorkflowService.buildHighlightedDataMetadata(
+							chatTrigger.name,
+							message,
+							sessionId,
+						),
+					}
+				: undefined,
 			manualData: {
 				userId: user.id,
 			},

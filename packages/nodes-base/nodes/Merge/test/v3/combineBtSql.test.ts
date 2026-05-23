@@ -111,6 +111,41 @@ describe('combineBySql sandbox (isolated-vm)', () => {
 			).rejects.toThrow();
 		});
 
+		it('should block SOURCE statement from reading files', async () => {
+			const context = await loadAlaSqlSandbox();
+			await expect(
+				runAlaSqlInSandbox(context, [[{ id: 1 }]], "SOURCE '/etc/passwd'"),
+			).rejects.toThrow(/disabled/i);
+		});
+
+		it('should block REQUIRE statement from loading files', async () => {
+			const context = await loadAlaSqlSandbox();
+			await expect(
+				runAlaSqlInSandbox(context, [[{ id: 1 }]], "REQUIRE '/tmp/malicious.js'"),
+			).rejects.toThrow(/disabled/i);
+		});
+
+		it('should block SELECT INTO FILE from writing files', async () => {
+			const context = await loadAlaSqlSandbox();
+			await expect(
+				runAlaSqlInSandbox(
+					context,
+					[[{ id: 1 }]],
+					"SELECT * INTO FILE('/tmp/exfil.txt') FROM input1",
+				),
+			).rejects.toThrow();
+		});
+
+		it('should keep fetch and XMLHttpRequest stubs after alasql initialisation', async () => {
+			const context = await loadAlaSqlSandbox();
+			await expect(context.eval("fetch('file:///etc/passwd')", { copy: true })).rejects.toThrow(
+				/disabled/i,
+			);
+			await expect(context.eval('new XMLHttpRequest()', { copy: true })).rejects.toThrow(
+				/disabled/i,
+			);
+		});
+
 		// ── Code evaluation / function injection ───────────────────────────────
 
 		it('should block CREATE FUNCTION from accessing host APIs', async () => {
@@ -317,6 +352,28 @@ describe('combineBySql sandbox (isolated-vm)', () => {
 
 			// Database count must not grow – each invocation cleans up after itself
 			expect(countAfter).toBe(countBefore);
+		});
+
+		it('should handle a large dataset (25k rows) without exhausting the sandbox', async () => {
+			const context = await loadAlaSqlSandbox();
+			const rows = Array.from({ length: 25_000 }, (_, i) => ({
+				id: i,
+				a: `v${i}`,
+				b: i * 2,
+				c: i % 7,
+				d: `tag-${i % 100}`,
+				e: i % 2 === 0,
+				f: i / 3,
+				g: `group-${i % 50}`,
+				h: i,
+				j: `x${i}`,
+			}));
+			const result = await runAlaSqlInSandbox(
+				context,
+				[rows],
+				'SELECT COUNT(*) AS n FROM input1 WHERE b > 10000',
+			);
+			expect(result[0]).toEqual({ n: 19999 });
 		});
 	});
 });

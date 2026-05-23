@@ -1,14 +1,22 @@
+import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { Project, Variables } from '@n8n/db';
-import type { ITaskData, IWorkflowSettings } from 'n8n-workflow';
+import type { CredentialsEntity, Project, Variables } from '@n8n/db';
+import { CredentialsRepository } from '@n8n/db';
+import type { ITaskData, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
+
+import type { IRun } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import {
+	getDataLastExecutedNodeData,
 	getVariables,
 	preserveInputOverride,
 	removeDefaultValues,
+	replaceInvalidCredentials,
 	shouldRestartParentExecution,
+	validatePinDataSize,
+	validateWorkflowNodeGroups,
 } from '@/workflow-helpers';
 
 describe('workflow-helpers', () => {
@@ -176,6 +184,94 @@ describe('preserveInputOverride', () => {
 	});
 });
 
+describe('replaceInvalidCredentials', () => {
+	const credentialsRepository = mockInstance(CredentialsRepository);
+
+	afterEach(() => jest.clearAllMocks());
+
+	function makeWorkflow(credentials: Record<string, { id: string | null; name: string }>) {
+		return {
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [0, 0] as [number, number],
+					parameters: {},
+					credentials,
+				},
+			],
+			connections: {},
+		} as unknown as IWorkflowBase;
+	}
+
+	it('should resolve credentials by name scoped to the given project', async () => {
+		const cred = { id: 'cred-1', name: 'My Cred' } as CredentialsEntity;
+		credentialsRepository.findByNameAndTypeInProject.mockResolvedValueOnce([cred]);
+
+		const workflow = makeWorkflow({ httpHeaderAuth: { id: null, name: 'My Cred' } });
+		await replaceInvalidCredentials(workflow, 'project-1');
+
+		expect(credentialsRepository.findByNameAndTypeInProject).toHaveBeenCalledWith(
+			'My Cred',
+			'httpHeaderAuth',
+			'project-1',
+		);
+		expect(workflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: 'cred-1',
+			name: 'My Cred',
+		});
+	});
+
+	it('should not resolve when no matching credential exists in the project', async () => {
+		credentialsRepository.findByNameAndTypeInProject.mockResolvedValueOnce([]);
+
+		const workflow = makeWorkflow({ httpHeaderAuth: { id: null, name: 'Unknown' } });
+		await replaceInvalidCredentials(workflow, 'project-1');
+
+		expect(workflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: null,
+			name: 'Unknown',
+		});
+	});
+
+	it('should not resolve when multiple credentials match in the project', async () => {
+		const cred1 = { id: 'cred-1', name: 'Dup' } as CredentialsEntity;
+		const cred2 = { id: 'cred-2', name: 'Dup' } as CredentialsEntity;
+		credentialsRepository.findByNameAndTypeInProject.mockResolvedValueOnce([cred1, cred2]);
+
+		const workflow = makeWorkflow({ httpHeaderAuth: { id: null, name: 'Dup' } });
+		await replaceInvalidCredentials(workflow, 'project-1');
+
+		expect(workflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: null,
+			name: 'Dup',
+		});
+	});
+
+	it('should fall back to name lookup within project when credential ID is not found', async () => {
+		const cred = { id: 'cred-new', name: 'My Cred' } as CredentialsEntity;
+		credentialsRepository.findOneBy.mockResolvedValueOnce(null);
+		credentialsRepository.findByNameAndTypeInProject.mockResolvedValueOnce([cred]);
+
+		const workflow = makeWorkflow({
+			httpHeaderAuth: { id: 'cred-deleted', name: 'My Cred' },
+		});
+		await replaceInvalidCredentials(workflow, 'project-1');
+
+		expect(credentialsRepository.findByNameAndTypeInProject).toHaveBeenCalledWith(
+			'My Cred',
+			'httpHeaderAuth',
+			'project-1',
+		);
+		expect(workflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: 'cred-new',
+			name: 'My Cred',
+		});
+	});
+});
+
 describe('removeDefaultValues', () => {
 	const DEFAULT_EXECUTION_TIMEOUT = 3600;
 	const DEFAULT = 'DEFAULT';
@@ -285,5 +381,174 @@ describe('removeDefaultValues', () => {
 		const originalSettings = { ...settings };
 		removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
 		expect(settings).toEqual(originalSettings);
+	});
+});
+
+describe('validateWorkflowNodeGroups', () => {
+	const makeNode = (id: string) =>
+		({ id, name: `Node ${id}`, type: 'test', position: [0, 0], parameters: {} }) as never;
+
+	it('should pass when nodeGroups is undefined', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: undefined }),
+		).not.toThrow();
+	});
+
+	it('should pass when nodeGroups is empty', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: [] }),
+		).not.toThrow();
+	});
+
+	it('should pass when all nodeIds reference existing nodes', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({
+				nodes: [makeNode('n1'), makeNode('n2')],
+				nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['n1', 'n2'] }],
+			}),
+		).not.toThrow();
+	});
+
+	it('should throw when a nodeId does not reference an existing node', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({
+				nodes: [makeNode('n1')],
+				nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: ['n1', 'n999'] }],
+			}),
+		).toThrow('Group "My Group" references node ID "n999" that does not exist in the workflow.');
+	});
+
+	it('should throw for the first invalid nodeId found', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({
+				nodes: [],
+				nodeGroups: [{ id: 'g1', name: 'Empty Group', nodeIds: ['bad1', 'bad2'] }],
+			}),
+		).toThrow('Group "Empty Group" references node ID "bad1"');
+	});
+
+	it('should throw when a node belongs to multiple groups', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({
+				nodes: [makeNode('n1'), makeNode('n2')],
+				nodeGroups: [
+					{ id: 'g1', name: 'Group A', nodeIds: ['n1'] },
+					{ id: 'g2', name: 'Group B', nodeIds: ['n1', 'n2'] },
+				],
+			}),
+		).toThrow('Node "n1" belongs to multiple groups: "Group A" and "Group B".');
+	});
+
+	it('should throw when group names are not unique', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({
+				nodes: [makeNode('n1')],
+				nodeGroups: [
+					{ id: 'g1', name: 'Duplicate', nodeIds: ['n1'] },
+					{ id: 'g2', name: 'Duplicate', nodeIds: [] },
+				],
+			}),
+		).toThrow('Duplicate node group name "Duplicate".');
+	});
+});
+
+describe('validatePinDataSize', () => {
+	const baseWorkflow: IWorkflowBase = {
+		id: '1',
+		name: 'Test',
+		nodes: [],
+		connections: {},
+		active: false,
+		isArchived: false,
+		activeVersionId: null,
+		createdAt: new Date(),
+		updatedAt: new Date(),
+	};
+
+	it('should pass when pinData is undefined', () => {
+		expect(() => validatePinDataSize(baseWorkflow)).not.toThrow();
+	});
+
+	it('should pass when pinData is not set', () => {
+		expect(() => validatePinDataSize({ ...baseWorkflow, pinData: undefined })).not.toThrow();
+	});
+
+	it('should pass when pinData is small', () => {
+		expect(() =>
+			validatePinDataSize({
+				...baseWorkflow,
+				pinData: { myNode: [{ json: { key: 'value' } }] },
+			}),
+		).not.toThrow();
+	});
+
+	it('should throw when pinData exceeds MAX_PINNED_DATA_SIZE', () => {
+		const largeValue = 'x'.repeat(MAX_PINNED_DATA_SIZE + 1);
+		expect(() =>
+			validatePinDataSize({
+				...baseWorkflow,
+				pinData: { myNode: [{ json: { data: largeValue } }] },
+			}),
+		).toThrow(
+			`Pinned data exceeds the maximum allowed size of ${MAX_PINNED_DATA_SIZE / (1024 * 1024)} MB`,
+		);
+	});
+
+	it('should throw when workflow + pinData exceeds total size limit', () => {
+		const limit = MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE;
+		// Make pinData ~10 MB (under 12 MB limit)
+		const pinDataSize = 10 * 1024 * 1024;
+		const largeValue = 'x'.repeat(pinDataSize);
+		// Make the workflow itself large enough so that workflow + pinData > limit
+		const largeNodes = 'y'.repeat(limit - pinDataSize);
+		expect(() =>
+			validatePinDataSize({
+				...baseWorkflow,
+				staticData: { filler: largeNodes },
+				pinData: { myNode: [{ json: { data: largeValue } }] },
+			}),
+		).toThrow(
+			`Workflow with pinned data exceeds the maximum allowed size of ${Math.floor(limit / (1024 * 1024))} MB`,
+		);
+	});
+});
+
+describe('getDataLastExecutedNodeData', () => {
+	const lastNodeTaskData: ITaskData = {
+		startTime: 0,
+		executionIndex: 0,
+		executionTime: 0,
+		executionStatus: 'success',
+		source: [],
+		data: { main: [[{ json: { ok: true } }]] },
+	};
+
+	function buildRun(pinData: unknown): IRun {
+		return {
+			mode: 'webhook',
+			startedAt: new Date(),
+			status: 'success',
+			storedAt: 'db',
+			data: {
+				resultData: {
+					runData: { 'Log Assistant Message': [lastNodeTaskData] },
+					lastNodeExecuted: 'Log Assistant Message',
+					// Persisted execution data can contain `pinData: null` for workflows
+					// created without a pinData column (e.g. older AI-built workflows).
+					pinData,
+				},
+			},
+		} as unknown as IRun;
+	}
+
+	it('returns last node run data when pinData is null', () => {
+		// Regression: destructure default `pinData = {}` only applies to undefined,
+		// so a null value used to throw `Cannot read properties of null`.
+		expect(() => getDataLastExecutedNodeData(buildRun(null))).not.toThrow();
+		expect(getDataLastExecutedNodeData(buildRun(null))).toBe(lastNodeTaskData);
+	});
+
+	it('returns last node run data when pinData is undefined', () => {
+		expect(getDataLastExecutedNodeData(buildRun(undefined))).toBe(lastNodeTaskData);
 	});
 });

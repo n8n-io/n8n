@@ -14,6 +14,14 @@ jest.mock('@sentry/node', () => ({
 	Integrations: {},
 }));
 
+const eventLoopBlockIntegrationMock = jest.fn((opts: unknown) => ({
+	name: 'EventLoopBlock',
+	opts,
+}));
+jest.mock('@sentry/node-native', () => ({
+	eventLoopBlockIntegration: (opts: unknown) => eventLoopBlockIntegrationMock(opts),
+}));
+
 jest.spyOn(process, 'on');
 
 describe('ErrorReporter', () => {
@@ -171,6 +179,42 @@ describe('ErrorReporter', () => {
 		});
 	});
 
+	describe('getEventLoopBlockIntegration', () => {
+		const tags = { server_name: 'test', server_type: 'main' as const };
+
+		beforeEach(() => {
+			eventLoopBlockIntegrationMock.mockClear();
+		});
+
+		it('passes threshold and maxEventsPerHour through to the Sentry integration', async () => {
+			// @ts-expect-error - private method
+			await errorReporter.getEventLoopBlockIntegration(tags, 750, 3);
+
+			expect(eventLoopBlockIntegrationMock).toHaveBeenCalledWith({
+				threshold: 750,
+				maxEventsPerHour: 3,
+				staticTags: tags,
+			});
+		});
+
+		it('omits maxEventsPerHour when not provided (back-compat)', async () => {
+			// @ts-expect-error - private method
+			await errorReporter.getEventLoopBlockIntegration(tags, 500);
+
+			expect(eventLoopBlockIntegrationMock).toHaveBeenCalledWith({
+				threshold: 500,
+				staticTags: tags,
+			});
+		});
+
+		it('omits both options when neither is provided', async () => {
+			// @ts-expect-error - private method
+			await errorReporter.getEventLoopBlockIntegration(tags);
+
+			expect(eventLoopBlockIntegrationMock).toHaveBeenCalledWith({ staticTags: tags });
+		});
+	});
+
 	describe('error', () => {
 		let error: ApplicationError;
 		let logger: Logger;
@@ -208,6 +252,24 @@ describe('ErrorReporter', () => {
 			error.level = 'error';
 			errorReporter.error(error, { shouldBeLogged: false });
 			expect(logger.error).toHaveBeenCalledTimes(0);
+		});
+
+		it('should include stack trace for generic `Error`', () => {
+			const genericError = new Error('Something broke');
+			errorReporter.error(genericError);
+			expect(logger.error).toHaveBeenCalledWith(
+				`Something broke\n${genericError.stack}\n`,
+				undefined,
+			);
+		});
+
+		it('should include stack trace for generic error cause chain', () => {
+			const cause = new Error('root cause');
+			const outer = new Error('outer', { cause });
+			errorReporter.error(outer);
+			expect(logger.error).toHaveBeenCalledTimes(2);
+			expect(logger.error).toHaveBeenNthCalledWith(1, `outer\n${outer.stack}\n`, undefined);
+			expect(logger.error).toHaveBeenNthCalledWith(2, `root cause\n${cause.stack}\n`, undefined);
 		});
 	});
 });

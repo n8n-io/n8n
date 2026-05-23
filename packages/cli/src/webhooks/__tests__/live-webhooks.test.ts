@@ -13,6 +13,7 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 
+import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import type { NodeTypes } from '@/node-types';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
@@ -23,6 +24,10 @@ import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data
 
 jest.mock('@/webhooks/webhook-helpers');
 jest.mock('@/workflow-execute-additional-data');
+
+const WORKFLOW_ID = 'workflow-1';
+const NODE_NAME = 'Webhook';
+const WEBHOOK_PATH = 'test-webhook';
 
 describe('LiveWebhooks', () => {
 	const workflowRepository = mock<WorkflowRepository>();
@@ -48,20 +53,83 @@ describe('LiveWebhooks', () => {
 		);
 	});
 
+	/**
+	 * Wires up the standard `executeWebhook` mock setup (`findWebhook`,
+	 * `getWebhookMethods`, `findOne`, `getByNameAndVersion`, `getNodeWebhooks`,
+	 * and the `WebhookHelpers.executeWebhook` shim that drives the callback).
+	 *
+	 * Callers supply the `workflowEntity` for the case they're exercising and
+	 * optionally an `onExecuteWebhook` hook to capture what the shim sees.
+	 */
+	function setupExecuteWebhookMocks(
+		workflowEntity: WorkflowEntity,
+		{
+			httpMethod = 'GET',
+			onExecuteWebhook,
+		}: {
+			httpMethod?: IHttpRequestMethods;
+			onExecuteWebhook?: (args: {
+				workflow: Workflow;
+				webhookData: IWebhookData;
+				workflowData: IWorkflowBase;
+			}) => void;
+		} = {},
+	): WebhookRequest {
+		const webhookEntity = mock<WebhookEntity>({
+			workflowId: WORKFLOW_ID,
+			node: NODE_NAME,
+			webhookPath: WEBHOOK_PATH,
+			method: httpMethod,
+			isDynamic: false,
+		});
+
+		const webhookNodeType = mock<INodeType>({
+			description: { name: NODE_NAME, properties: [] },
+			webhook: jest.fn(),
+		});
+
+		const webhookData = mock<IWebhookData>({
+			httpMethod,
+			path: WEBHOOK_PATH,
+			node: NODE_NAME,
+			webhookDescription: { nodeType: undefined } as never,
+			workflowId: WORKFLOW_ID,
+		});
+
+		webhookService.findWebhook.mockResolvedValue(webhookEntity);
+		webhookService.getWebhookMethods.mockResolvedValue([httpMethod]);
+		workflowRepository.findOne.mockResolvedValue(workflowEntity);
+		nodeTypes.getByNameAndVersion.mockReturnValue(webhookNodeType);
+		webhookService.getNodeWebhooks.mockReturnValue([webhookData]);
+
+		(WebhookHelpers.executeWebhook as jest.Mock).mockImplementation(
+			(workflow: Workflow, wd: IWebhookData, workflowData: IWorkflowBase, ...args: unknown[]) => {
+				onExecuteWebhook?.({ workflow, webhookData: wd, workflowData });
+				const webhookCallback = args[args.length - 1] as (
+					error: Error | null,
+					data: object,
+				) => void;
+				void webhookCallback(null, {});
+			},
+		);
+
+		return mock<WebhookRequest>({
+			method: httpMethod,
+			params: { path: WEBHOOK_PATH },
+		});
+	}
+
 	describe('executeWebhook', () => {
 		it('should use active version nodes when executing webhook', async () => {
-			const workflowId = 'workflow-1';
-			const nodeName = 'Webhook';
-			const webhookPath = 'test-webhook';
 			const httpMethod: IHttpRequestMethods = 'GET';
 
 			const createWebhookNode = (id: string, position: [number, number]): INode => ({
 				id,
-				name: nodeName,
+				name: NODE_NAME,
 				type: 'n8n-nodes-base.webhook',
 				typeVersion: 1,
 				position,
-				parameters: { path: webhookPath, httpMethod },
+				parameters: { path: WEBHOOK_PATH, httpMethod },
 			});
 
 			const draftNodes = [createWebhookNode('webhook-node-draft', [0, 0])];
@@ -69,7 +137,7 @@ describe('LiveWebhooks', () => {
 
 			const activeVersion = mock<WorkflowHistory>({
 				versionId: 'v1',
-				workflowId,
+				workflowId: WORKFLOW_ID,
 				nodes: activeNodes,
 				connections: {},
 				authors: 'test-user',
@@ -78,7 +146,7 @@ describe('LiveWebhooks', () => {
 			});
 
 			const workflowEntity = mock<WorkflowEntity>({
-				id: workflowId,
+				id: WORKFLOW_ID,
 				name: 'Test Workflow',
 				active: true,
 				activeVersionId: activeVersion.versionId,
@@ -88,46 +156,13 @@ describe('LiveWebhooks', () => {
 				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
 			});
 
-			const webhookEntity = mock<WebhookEntity>({
-				workflowId,
-				node: nodeName,
-				webhookPath,
-				method: httpMethod,
-				isDynamic: false,
-			});
-
-			const webhookNodeType = mock<INodeType>({
-				description: { name: nodeName, properties: [] },
-				webhook: jest.fn(),
-			});
-
-			const webhookData = mock<IWebhookData>({
-				httpMethod,
-				path: webhookPath,
-				node: nodeName,
-				webhookDescription: {},
-				workflowId,
-			});
-
-			webhookService.findWebhook.mockResolvedValue(webhookEntity);
-			webhookService.getWebhookMethods.mockResolvedValue([httpMethod]);
-			workflowRepository.findOne.mockResolvedValue(workflowEntity);
-			nodeTypes.getByNameAndVersion.mockReturnValue(webhookNodeType);
-			webhookService.getNodeWebhooks.mockReturnValue([webhookData]);
-
 			let capturedNodes: INode[] = [];
-			(WebhookHelpers.executeWebhook as jest.Mock).mockImplementation(
-				(workflow: Workflow, ...args: unknown[]) => {
+			const request = setupExecuteWebhookMocks(workflowEntity, {
+				httpMethod,
+				onExecuteWebhook: ({ workflow }) => {
 					capturedNodes = Object.values(workflow.nodes);
-					const webhookCallback = args[args.length - 1] as (
-						error: Error | null,
-						data: object,
-					) => void;
-					void webhookCallback(null, {});
 				},
-			);
-
-			const request = mock<WebhookRequest>({ method: httpMethod, params: { path: webhookPath } });
+			});
 
 			await liveWebhooks.executeWebhook(request, mock<Response>());
 
@@ -135,9 +170,6 @@ describe('LiveWebhooks', () => {
 		});
 
 		it('should pass workflowData with activeVersion nodes/connections to executeWebhook', async () => {
-			const workflowId = 'workflow-1';
-			const nodeName = 'Webhook';
-			const webhookPath = 'test-webhook';
 			const httpMethod: IHttpRequestMethods = 'POST';
 
 			const createWebhookNode = (id: string, name: string): INode => ({
@@ -146,7 +178,7 @@ describe('LiveWebhooks', () => {
 				type: 'n8n-nodes-base.webhook',
 				typeVersion: 1,
 				position: [0, 0],
-				parameters: { path: webhookPath, httpMethod },
+				parameters: { path: WEBHOOK_PATH, httpMethod },
 			});
 
 			const createSetNode = (id: string, name: string, value: string): INode => ({
@@ -182,7 +214,7 @@ describe('LiveWebhooks', () => {
 
 			const activeVersion = mock<WorkflowHistory>({
 				versionId: 'v1',
-				workflowId,
+				workflowId: WORKFLOW_ID,
 				nodes: activeNodes,
 				connections: activeConnections,
 				authors: 'test-user',
@@ -191,7 +223,7 @@ describe('LiveWebhooks', () => {
 			});
 
 			const workflowEntity = mock<WorkflowEntity>({
-				id: workflowId,
+				id: WORKFLOW_ID,
 				name: 'Test Workflow',
 				active: true,
 				activeVersionId: 'v1',
@@ -201,51 +233,13 @@ describe('LiveWebhooks', () => {
 				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
 			});
 
-			const webhookEntity = mock<WebhookEntity>({
-				workflowId,
-				node: nodeName,
-				webhookPath,
-				method: httpMethod,
-				isDynamic: false,
-			});
-
-			const webhookNodeType = mock<INodeType>({
-				description: { name: nodeName, properties: [] },
-				webhook: jest.fn(),
-			});
-
-			const webhookData = mock<IWebhookData>({
-				httpMethod,
-				path: webhookPath,
-				node: nodeName,
-				webhookDescription: {},
-				workflowId,
-			});
-
-			webhookService.findWebhook.mockResolvedValue(webhookEntity);
-			webhookService.getWebhookMethods.mockResolvedValue([httpMethod]);
-			workflowRepository.findOne.mockResolvedValue(workflowEntity as WorkflowEntity);
-			nodeTypes.getByNameAndVersion.mockReturnValue(webhookNodeType);
-			webhookService.getNodeWebhooks.mockReturnValue([webhookData]);
-
 			let capturedWorkflowData: IWorkflowBase | undefined;
-			(WebhookHelpers.executeWebhook as jest.Mock).mockImplementation(
-				(
-					_workflow: Workflow,
-					_webhookData: IWebhookData,
-					workflowData: IWorkflowBase,
-					...args: unknown[]
-				) => {
+			const request = setupExecuteWebhookMocks(workflowEntity, {
+				httpMethod,
+				onExecuteWebhook: ({ workflowData }) => {
 					capturedWorkflowData = workflowData;
-					const webhookCallback = args[args.length - 1] as (
-						error: Error | null,
-						data: object,
-					) => void;
-					void webhookCallback(null, {});
 				},
-			);
-
-			const request = mock<WebhookRequest>({ method: httpMethod, params: { path: webhookPath } });
+			});
 
 			await liveWebhooks.executeWebhook(request, mock<Response>());
 
@@ -259,6 +253,143 @@ describe('LiveWebhooks', () => {
 			// Verify it does NOT have draft nodes
 			expect(capturedWorkflowData!.nodes[0].id).not.toBe('webhook-node-draft');
 			expect(capturedWorkflowData!.nodes[1].id).not.toBe('set-node-draft');
+		});
+	});
+
+	describe('route family scoping', () => {
+		const workflowId = 'workflow-1';
+		const nodeName = 'Trigger';
+		const webhookPath = 'my-path';
+		const httpMethod: IHttpRequestMethods = 'GET';
+
+		const setupMocks = (
+			declaredNodeType: 'form' | 'webhook' | 'mcp' | undefined,
+			nodeTypeName = 'n8n-nodes-base.webhook',
+		) => {
+			const node: INode = {
+				id: 'trigger-node',
+				name: nodeName,
+				type: nodeTypeName,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { path: webhookPath, httpMethod },
+			};
+
+			const activeVersion = mock<WorkflowHistory>({
+				versionId: 'v1',
+				workflowId,
+				nodes: [node],
+				connections: {},
+			});
+
+			const workflowEntity = mock<WorkflowEntity>({
+				id: workflowId,
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: 'v1',
+				nodes: [node],
+				connections: {},
+				activeVersion,
+				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
+			});
+
+			const webhookEntity = mock<WebhookEntity>({
+				workflowId,
+				node: nodeName,
+				webhookPath,
+				method: httpMethod,
+				isDynamic: false,
+			});
+
+			const webhookNodeType = mock<INodeType>({
+				description: {
+					name: nodeTypeName,
+					properties: [],
+					webhooks: [{ nodeType: declaredNodeType, name: 'default' } as never],
+				},
+				webhook: jest.fn(),
+			});
+
+			const webhookData = mock<IWebhookData>({
+				httpMethod,
+				path: webhookPath,
+				node: nodeName,
+				webhookDescription: { nodeType: declaredNodeType } as never,
+				workflowId,
+			});
+
+			webhookService.findWebhook.mockResolvedValue(webhookEntity);
+			webhookService.getWebhookMethods.mockResolvedValue([httpMethod]);
+			workflowRepository.findOne.mockResolvedValue(workflowEntity);
+			nodeTypes.getByNameAndVersion.mockReturnValue(webhookNodeType);
+			webhookService.getNodeWebhooks.mockReturnValue([webhookData]);
+
+			(WebhookHelpers.executeWebhook as jest.Mock).mockImplementation((...args: unknown[]) => {
+				const webhookCallback = args[args.length - 1] as (
+					error: Error | null,
+					data: object,
+				) => void;
+				void webhookCallback(null, {});
+			});
+		};
+
+		const buildRequest = () =>
+			mock<WebhookRequest>({ method: httpMethod, params: { path: webhookPath } });
+
+		it('executes a form trigger on the form route family', async () => {
+			setupMocks('form', 'n8n-nodes-base.formTrigger');
+
+			await expect(
+				liveWebhooks.executeWebhook(buildRequest(), mock<Response>(), 'form'),
+			).resolves.toBeDefined();
+		});
+
+		it('returns a not-found error when a form trigger is requested on the webhook route family', async () => {
+			setupMocks('form', 'n8n-nodes-base.formTrigger');
+
+			await expect(
+				liveWebhooks.executeWebhook(buildRequest(), mock<Response>(), 'webhook'),
+			).rejects.toBeInstanceOf(WebhookNotFoundError);
+		});
+
+		it('executes a regular webhook on the webhook route family', async () => {
+			setupMocks(undefined);
+
+			await expect(
+				liveWebhooks.executeWebhook(buildRequest(), mock<Response>(), 'webhook'),
+			).resolves.toBeDefined();
+		});
+
+		it('returns a not-found error when a regular webhook is requested on the form route family', async () => {
+			setupMocks(undefined);
+
+			await expect(
+				liveWebhooks.executeWebhook(buildRequest(), mock<Response>(), 'form'),
+			).rejects.toBeInstanceOf(WebhookNotFoundError);
+		});
+
+		it('executes an mcp trigger on the mcp route family', async () => {
+			setupMocks('mcp', '@n8n/n8n-nodes-langchain.mcpTrigger');
+
+			await expect(
+				liveWebhooks.executeWebhook(buildRequest(), mock<Response>(), 'mcp'),
+			).resolves.toBeDefined();
+		});
+
+		it('returns a not-found error when an mcp trigger is requested on the form route family', async () => {
+			setupMocks('mcp', '@n8n/n8n-nodes-langchain.mcpTrigger');
+
+			await expect(
+				liveWebhooks.executeWebhook(buildRequest(), mock<Response>(), 'form'),
+			).rejects.toBeInstanceOf(WebhookNotFoundError);
+		});
+
+		it('executes without family scoping when expectedNodeType is not provided', async () => {
+			setupMocks('form', 'n8n-nodes-base.formTrigger');
+
+			await expect(
+				liveWebhooks.executeWebhook(buildRequest(), mock<Response>()),
+			).resolves.toBeDefined();
 		});
 	});
 });

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
-import { computedAsync, useDebounceFn } from '@vueuse/core';
+import { computedAsync, useDebounceFn, useElementSize } from '@vueuse/core';
 
 import get from 'lodash/get';
 
@@ -17,7 +17,6 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
-	CREDENTIAL_BLANKING_VALUE,
 	CREDENTIAL_EMPTY_VALUE,
 	IconOrEmojiSchema,
 	isResourceLocatorValue,
@@ -74,15 +73,13 @@ import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { htmlEditorEventBus } from '@/app/event-bus';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useElementSize } from '@vueuse/core';
 import { captureMessage } from '@sentry/vue';
 import { isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
 import {
@@ -103,18 +100,20 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
 import {
-	N8nButton,
 	N8nIcon,
 	N8nIconPicker,
 	N8nInput,
 	N8nInputNumber,
 	N8nOption,
 	N8nSelect,
-	N8nSwitch2,
+	N8nSwitch,
 } from '@n8n/design-system';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-import { isPlaceholderValue } from '@/features/ai/assistant/composables/useBuilderTodos';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	isPlaceholderValue,
+	extractPlaceholderLabels,
+} from '@/features/ai/assistant/composables/useBuilderTodos';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -173,10 +172,9 @@ const nodeSettingsParameters = useNodeSettingsParameters();
 const telemetry = useTelemetry();
 
 const credentialsStore = useCredentialsStore();
-const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
+const ndvStore = injectNDVStore();
 const workflowsListStore = useWorkflowsListStore();
-const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -188,8 +186,6 @@ const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
-// ESLint: false positive
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
 
@@ -238,9 +234,9 @@ const isFocused = ref(false);
 const isSwitchingMode = ref(false);
 
 const node = computed(() => {
-	const contextNode = expressionLocalResolveCtx?.value?.workflow.getNode(
-		expressionLocalResolveCtx.value.nodeName,
-	);
+	const contextNode =
+		expressionLocalResolveCtx?.value &&
+		workflowDocumentStore.value.getNodeByName(expressionLocalResolveCtx.value.nodeName);
 	return contextNode ?? ndvStore.activeNode ?? undefined;
 });
 const nodeType = computed(
@@ -271,23 +267,41 @@ const isJsonPasswordField = computed<boolean>(() => {
 	return props.parameter.type === 'json' && isSecretParameter.value;
 });
 
+function hasRedactedLeaf(obj: unknown): boolean {
+	if (obj === '***') return true;
+	if (Array.isArray(obj)) return obj.some(hasRedactedLeaf);
+	if (typeof obj === 'object' && obj !== null) {
+		return Object.values(obj as Record<string, unknown>).some(hasRedactedLeaf);
+	}
+	return false;
+}
+
 // Custom Auth: only credential with top-level "json" field; mask after save (backend redacts by type, not secret flag)
 const isCustomAuthJsonField = computed<boolean>(() => {
 	return props.eventSource === 'credentials' && props.parameter.name === 'json';
 });
 const isCredentialJsonValueRedacted = computed<boolean>(() => {
-	return (
-		props.modelValue === CREDENTIAL_BLANKING_VALUE || props.modelValue === CREDENTIAL_EMPTY_VALUE
-	);
-});
-const showCredentialJsonOverlay = computed<boolean>(() => {
-	return isCustomAuthJsonField.value && isCredentialJsonValueRedacted.value;
-});
-// In dialog, when Custom Auth json is redacted show blank (never show placeholder)
-const credentialJsonEditorValue = computed<string>(() => {
-	if (isCustomAuthJsonField.value && isCredentialJsonValueRedacted.value) {
-		return '';
+	const val = props.modelValue;
+	if (val === CREDENTIAL_EMPTY_VALUE) return true;
+	// New: detect shaped-redacted JSON (backend replaces leaf values with ***)
+	if (isCustomAuthJsonField.value) {
+		try {
+			return hasRedactedLeaf(JSON.parse(String(val)));
+		} catch {
+			return false;
+		}
 	}
+	return false;
+});
+const isRedactedCustomAuthJson = computed<boolean>(
+	() => isCustomAuthJsonField.value && isCredentialJsonValueRedacted.value,
+);
+
+const credentialJsonEditorValue = computed<string>(() => {
+	if (!isRedactedCustomAuthJson.value) return modelValueString.value;
+	// Empty json field — show empty editor so the user knows to fill it in
+	if (props.modelValue === CREDENTIAL_EMPTY_VALUE) return '';
+	// Shaped-redacted JSON: backend already formatted with *** leaves — show as-is
 	return modelValueString.value;
 });
 
@@ -339,7 +353,19 @@ const iconPickerValue = computed<DesignSystemIconOrEmoji | undefined>({
 	},
 });
 
-const editorRows = computed(() => getTypeOption('rows'));
+const editorRows = computed(() => {
+	const configuredRows = getTypeOption('rows') as number | undefined;
+	if (configuredRows !== undefined) return configuredRows;
+
+	// Auto-detect: when the stored value contains newlines, use a textarea
+	// so newlines are preserved natively without pipe substitution
+	const value = props.modelValue;
+	if (props.parameter.type === 'string' && typeof value === 'string' && value.includes('\n')) {
+		return Math.max(2, value.split('\n').length);
+	}
+
+	return undefined;
+});
 
 const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor' | undefined>(() => {
 	return getTypeOption('editor');
@@ -427,11 +453,8 @@ const displayValue = computed(() => {
 		returnValue = 'rgba(' + h.join() + ')';
 	}
 
-	if (returnValue !== undefined && returnValue !== null && props.parameter.type === 'string') {
-		const rows = editorRows.value;
-		if (rows === undefined || rows === 1) {
-			returnValue = (returnValue as string).toString().replace(/\n/g, '|');
-		}
+	if (typeof returnValue === 'string' && isPlaceholderValue(returnValue)) {
+		return '';
 	}
 
 	return returnValue as string;
@@ -467,7 +490,10 @@ const dependentParametersValues = computedAsync(async () => {
 	// Get the resolved parameter values of the current node
 	const currentNodeParameters = node.value?.parameters;
 	try {
-		const resolvedNodeParameters = await workflowHelpers.resolveParameter(currentNodeParameters);
+		const resolvedNodeParameters = await workflowHelpers.resolveParameter(
+			currentNodeParameters,
+			workflowDocumentStore.value.documentId,
+		);
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {
@@ -726,9 +752,9 @@ function isRemoteParameterOption(option: INodePropertyOptions) {
 
 function credentialSelected(updateInformation: INodeUpdatePropertiesInformation) {
 	// Update the values on the node
-	workflowState.updateNodeProperties(updateInformation);
+	workflowDocumentStore?.value?.updateNodeProperties(updateInformation);
 
-	const updateNode = workflowsStore.getNodeByName(updateInformation.name);
+	const updateNode = workflowDocumentStore?.value?.getNodeByName(updateInformation.name) ?? null;
 
 	if (updateNode) {
 		// Update the issues
@@ -739,6 +765,14 @@ function credentialSelected(updateInformation: INodeUpdatePropertiesInformation)
 }
 
 function getPlaceholder(): string {
+	const rawValue = isResourceLocatorValue(props.modelValue)
+		? props.modelValue.value
+		: props.modelValue;
+	if (typeof rawValue === 'string') {
+		const labels = extractPlaceholderLabels(rawValue);
+		if (labels.length > 0) return labels[0];
+	}
+
 	return props.isForCredential
 		? i18n.credText(uiStore.activeCredentialType).placeholder(props.parameter)
 		: i18n.nodeText(ndvStore.activeNode?.type).placeholder(props.parameter, props.path);
@@ -780,6 +814,8 @@ async function loadRemoteParameterOptions() {
 		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			currentNodeParameters,
+			workflowDocumentStore.value.documentId,
+			expressionLocalResolveCtx?.value ?? {},
 		)) as INodeParameters;
 		const loadOptionsMethod = getTypeOption('loadOptionsMethod');
 		const loadOptions = getTypeOption('loadOptions');
@@ -795,7 +831,7 @@ async function loadRemoteParameterOptions() {
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: node.value.credentials,
 			projectId: projectsStore.currentProjectId,
-			workflowId: workflowsStore.workflowId,
+			workflowId: workflowDocumentStore.value.workflowId,
 		});
 
 		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
@@ -835,7 +871,7 @@ function trackExpressionEditOpen() {
 			parameter_name: props.parameter.displayName,
 			parameter_field_type: props.parameter.type,
 			new_expression: !isModelValueExpression.value,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 			push_ref: ndvStore.pushRef,
 			source: props.eventSource ?? 'ndv',
 		});
@@ -968,7 +1004,7 @@ function trackWorkflowInputModeEvent(value: string) {
 	};
 	telemetry.track('User chose input data mode', {
 		option: telemetryValuesMap[value],
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 		node_id: node.value?.id,
 	});
 }
@@ -1041,7 +1077,7 @@ function valueChanged(untypedValue: unknown) {
 
 	if (props.parameter.name === 'operation' || props.parameter.name === 'mode') {
 		telemetry.track('User set node operation or mode', {
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 			node_type: node.value?.type,
 			resource: node.value?.parameters.resource,
 			is_custom: value === CUSTOM_API_CALL_KEY,
@@ -1116,7 +1152,7 @@ function validateJsonPassword(value: string) {
 		return;
 	}
 
-	if (!value || !value.trim()) {
+	if (!value?.trim()) {
 		jsonValidationError.value = null;
 		return;
 	}
@@ -1135,12 +1171,6 @@ function onJsonPasswordFieldChange(value: string) {
 }
 
 function onUpdateTextInput(value: string) {
-	if (
-		props.parameter.type === 'string' &&
-		(editorRows.value === undefined || editorRows.value === 1)
-	) {
-		value = value.replace(/\|/g, '\n');
-	}
 	valueChanged(value);
 	onTextInputChange(value);
 }
@@ -1254,7 +1284,7 @@ onMounted(() => {
 
 	void externalHooks.run('parameterInput.mount', {
 		parameter: props.parameter,
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unnecessary-type-assertion
+
 		inputFieldRef: inputField.value as InstanceType<typeof N8nInput>,
 	});
 });
@@ -1298,9 +1328,18 @@ onBeforeUnmount(() => {
 
 watch(
 	() => node.value?.credentials,
-	() => {
+	(_newCredentials, oldCredentials) => {
 		if (hasRemoteMethod.value && node.value) {
 			void loadRemoteParameterOptions();
+			// Reset options value when credentials change (not on initial load or first assignment)
+			const hadCredentials = oldCredentials !== undefined && Object.keys(oldCredentials).length > 0;
+			if (hadCredentials && props.parameter.type === 'options') {
+				emit('update', {
+					node: node.value.name,
+					name: props.path,
+					value: props.parameter.default ?? '',
+				});
+			}
 		}
 	},
 	{ immediate: true },
@@ -1394,7 +1433,6 @@ onUpdated(async () => {
 
 		<ExperimentalEmbeddedNdvMapper
 			v-if="wrapper && isMapperAvailable && node && expressionLocalResolveCtx?.inputNode"
-			:workflow="expressionLocalResolveCtx.workflow"
 			:node="node"
 			:input-node-name="expressionLocalResolveCtx.inputNode.name"
 			:reference="wrapper"
@@ -1693,38 +1731,9 @@ onUpdated(async () => {
 					</template>
 				</JsEditor>
 
-				<div
-					v-else-if="showCredentialJsonOverlay"
-					:class="$style.credentialJsonOverlay"
-					data-test-id="credential-json-overlay"
-				>
-					<JsonEditor
-						:model-value="'***\n***\n***'"
-						:is-read-only="true"
-						:rows="editorRows"
-						:class="$style.credentialJsonEditor"
-					/>
-					<div :class="$style.credentialJsonOverlayButton">
-						<N8nButton
-							size="small"
-							secondary
-							icon="pencil"
-							data-test-id="credential-json-edit-button"
-							@click="valueChanged('')"
-						>
-							{{ i18n.baseText('parameterInput.edit') }}
-						</N8nButton>
-					</div>
-				</div>
-
 				<JsonEditor
-					v-else-if="
-						parameter.type === 'json' &&
-						!codeEditDialogVisible &&
-						!showCredentialJsonOverlay &&
-						!isSecretParameter
-					"
-					:model-value="modelValueString"
+					v-else-if="parameter.type === 'json' && !codeEditDialogVisible && !isSecretParameter"
+					:model-value="credentialJsonEditorValue"
 					:is-read-only="isReadOnly"
 					:rows="editorRows"
 					@update:model-value="valueChangedDebounced"
@@ -1978,7 +1987,7 @@ onUpdated(async () => {
 				class="switch-droppable-input"
 			>
 				<template #prefix>
-					<N8nSwitch2
+					<N8nSwitch
 						:model-value="Boolean(displayValue)"
 						:label="switchLabel"
 						:disabled="true"
@@ -1995,7 +2004,7 @@ onUpdated(async () => {
 				:title="displayTitle"
 			/>
 
-			<N8nSwitch2
+			<N8nSwitch
 				v-else-if="parameter.type === 'boolean' && isCollectionOverhaulEnabled"
 				ref="inputField"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
@@ -2207,6 +2216,26 @@ onUpdated(async () => {
 	}
 }
 
+.input-with-opener .textarea-modal-opener {
+	top: 1px;
+	bottom: auto;
+	border-top: none;
+	border-bottom: var(--border);
+	border-top-left-radius: 0;
+	border-bottom-right-radius: 0;
+	border-top-right-radius: var(--radius);
+	border-bottom-left-radius: var(--radius);
+}
+
+.input-with-opener textarea {
+	resize: both;
+	max-width: 100%;
+}
+
+.input-with-opener .n8n-input__wrapper {
+	gap: 0;
+}
+
 .focused {
 	border-color: var(--color--secondary);
 }
@@ -2287,31 +2316,5 @@ onUpdated(async () => {
 		border-top-left-radius: 0;
 		border-bottom-left-radius: 0;
 	}
-}
-
-.credentialJsonOverlay {
-	position: relative;
-}
-
-.credentialJsonTextarea {
-	pointer-events: none;
-}
-
-.credentialJsonTextarea :global(.input) {
-	color: var(--color--text--tint-2);
-	letter-spacing: 0.05em;
-}
-
-.credentialJsonOverlayButton {
-	position: absolute;
-	inset: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	pointer-events: none;
-}
-
-.credentialJsonOverlayButton > * {
-	pointer-events: auto;
 }
 </style>

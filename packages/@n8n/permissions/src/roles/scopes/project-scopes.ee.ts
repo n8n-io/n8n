@@ -7,8 +7,17 @@ import type { Scope } from '../../types.ee';
  */
 
 export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
+	'agent:create',
+	'agent:read',
+	'agent:update',
+	'agent:delete',
+	'agent:list',
+	'agent:execute',
+	'agent:publish',
+	'agent:unpublish',
 	'workflow:create',
 	'workflow:read',
+	'workflow:export',
 	'workflow:update',
 	'workflow:publish',
 	'workflow:unpublish',
@@ -45,6 +54,8 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'dataTable:listProject',
 	'dataTable:readRow',
 	'dataTable:writeRow',
+	'dataTable:readColumn',
+	'dataTable:writeColumn',
 	'projectVariable:list',
 	'projectVariable:read',
 	'projectVariable:create',
@@ -53,8 +64,16 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
+	'agent:create',
+	'agent:read',
+	'agent:update',
+	'agent:delete',
+	'agent:list',
+	'agent:execute',
+	'agent:unpublish',
 	'workflow:create',
 	'workflow:read',
+	'workflow:export',
 	'workflow:update',
 	'workflow:delete',
 	'workflow:list',
@@ -87,11 +106,22 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'dataTable:listProject',
 	'dataTable:readRow',
 	'dataTable:writeRow',
+	'dataTable:readColumn',
+	'dataTable:writeColumn',
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
+	'agent:create',
+	'agent:read',
+	'agent:update',
+	'agent:delete',
+	'agent:list',
+	'agent:execute',
+	'agent:publish',
+	'agent:unpublish',
 	'workflow:create',
 	'workflow:read',
+	'workflow:export',
 	'workflow:update',
 	'workflow:publish',
 	'workflow:unpublish',
@@ -118,6 +148,8 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'dataTable:listProject',
 	'dataTable:readRow',
 	'dataTable:writeRow',
+	'dataTable:readColumn',
+	'dataTable:writeColumn',
 	'projectVariable:list',
 	'projectVariable:read',
 	'projectVariable:create',
@@ -126,20 +158,25 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
+	'agent:read',
+	'agent:list',
+	'agent:execute',
 	'credential:list',
 	'credential:read',
 	'project:list',
 	'project:read',
 	'workflow:list',
 	'workflow:read',
+	'workflow:export',
 	'workflow:execute-chat',
 	'folder:read',
 	'folder:list',
 	'dataTable:listProject',
 	'dataTable:read',
 	'dataTable:readRow',
+	'dataTable:readColumn',
 	'projectVariable:list',
 	'projectVariable:read',
 ];
 
-export const PROJECT_CHAT_USER_SCOPES: Scope[] = ['workflow:execute-chat'];
+export const PROJECT_CHAT_USER_SCOPES: Scope[] = ['agent:execute', 'workflow:execute-chat'];

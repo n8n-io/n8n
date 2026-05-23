@@ -14,6 +14,8 @@ export const COMPILER_OPTIONS: ts.CompilerOptions = {
 	skipDefaultLibCheck: true,
 	noEmit: true,
 	noImplicitAny: false,
+	// Suppress TS 6.0 deprecation diagnostic for moduleResolution=node10 set by @typescript/vfs
+	ignoreDeprecations: '6.0',
 };
 export const TYPESCRIPT_AUTOCOMPLETE_THRESHOLD = '15';
 export const TYPESCRIPT_FILES = {

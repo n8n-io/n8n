@@ -1,5 +1,5 @@
 import type { ChatUI } from '@n8n/design-system/types/assistant';
-import type { ChatRequest, PlanMode } from '../assistant.types';
+import type { ChatRequest, PlanMode, WebFetchApproval } from '../assistant.types';
 import { useI18n } from '@n8n/i18n';
 import {
 	isTextMessage,
@@ -14,7 +14,6 @@ import {
 	isAgentSuggestionMessage,
 	isWebFetchApprovalMessage,
 } from '../assistant.types';
-import type { WebFetchApproval } from '../assistant.types';
 import { generateShortId } from '../builder.utils';
 
 export interface MessageProcessingResult {

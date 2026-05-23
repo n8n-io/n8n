@@ -6,13 +6,20 @@ export type DynamicTabOptions = TabOptions<string> & {
 		name: string;
 		includeProjectId?: boolean;
 	};
+	/**
+	 * Insert this tab immediately after the tab whose `value` matches.
+	 * If unset (or no match is found at render time), the tab is appended at the end.
+	 */
+	insertAfter?: string;
 };
+
+export type ProcessedDynamicTab = TabOptions<string> & { insertAfter?: string };
 
 /**
  * Process dynamic route configuration for tabs
  * Resolves dynamic routes with project IDs and other parameters
  */
-export function processDynamicTab(tab: DynamicTabOptions, projectId?: string): TabOptions<string> {
+export function processDynamicTab(tab: DynamicTabOptions, projectId?: string): ProcessedDynamicTab {
 	if (!tab.dynamicRoute) {
 		return tab;
 	}
@@ -38,6 +45,6 @@ export function processDynamicTab(tab: DynamicTabOptions, projectId?: string): T
 export function processDynamicTabs(
 	tabs: DynamicTabOptions[],
 	projectId?: string,
-): Array<TabOptions<string>> {
+): ProcessedDynamicTab[] {
 	return tabs.map((tab) => processDynamicTab(tab, projectId));
 }

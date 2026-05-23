@@ -15,11 +15,21 @@ import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow
 import { logAiEvent } from './log-ai-event';
 import { estimateTokensFromStringList } from './tokenizer/token-estimator';
 
-type TokensUsageParser = (result: LLMResult) => {
+/** Normalized token usage returned by TokensUsageParser. */
+type TokenUsageResult = {
 	completionTokens: number;
 	promptTokens: number;
 	totalTokens: number;
+	/** Cost may be undefined when the provider returns token counts but no pricing fields. */
+	cost?: number;
 };
+
+/** Raw provider tokenUsage payload. Some providers report `totalCost` instead of `cost`. */
+type ProviderTokenUsageResult = TokenUsageResult & {
+	totalCost?: number;
+};
+
+type TokensUsageParser = (result: LLMResult) => TokenUsageResult;
 
 type RunDetail = {
 	index: number;
@@ -28,6 +38,29 @@ type RunDetail = {
 };
 
 const TIKTOKEN_ESTIMATE_MODEL = 'gpt-4o';
+
+type TracingWriter = {
+	setMetadata: (metadata: { tracing: LlmTokenTracingMetadata }) => void;
+};
+
+/** Keys written by `applyTracingTokenMetadata` into execution tracing metadata. */
+type LlmTokenTracingMetadata = {
+	'llm.tokens.in': number;
+	'llm.tokens.out': number;
+	'llm.tokens.total': number;
+	'llm.tokens.estimated': boolean;
+	'llm.cost.total'?: number;
+};
+
+function canWriteTracingMetadata(context: unknown): context is TracingWriter {
+	return (
+		typeof context === 'object' &&
+		context !== null &&
+		'setMetadata' in context &&
+		typeof context.setMetadata === 'function'
+	);
+}
+
 export class N8nLlmTracing extends BaseCallbackHandler {
 	name = 'N8nLlmTracing';
 
@@ -51,16 +84,24 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	 */
 	runsMap: Record<string, RunDetail> = {};
 
-	options = {
+	options: {
+		tokensUsageParser: TokensUsageParser;
+		errorDescriptionMapper: (error: NodeError) => string | null | undefined;
+	} = {
 		// Default(OpenAI format) parser
 		tokensUsageParser: (result: LLMResult) => {
-			const completionTokens = (result?.llmOutput?.tokenUsage?.completionTokens as number) ?? 0;
-			const promptTokens = (result?.llmOutput?.tokenUsage?.promptTokens as number) ?? 0;
+			const tokenUsage = result?.llmOutput?.tokenUsage as
+				| Partial<ProviderTokenUsageResult>
+				| undefined;
+			const completionTokens = tokenUsage?.completionTokens ?? 0;
+			const promptTokens = tokenUsage?.promptTokens ?? 0;
+			const cost = tokenUsage?.cost ?? tokenUsage?.totalCost;
 
 			return {
 				completionTokens,
 				promptTokens,
 				totalTokens: completionTokens + promptTokens,
+				cost,
 			};
 		},
 		errorDescriptionMapper: (error: NodeError) => error.description,
@@ -123,8 +164,21 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		// If the LLM response contains actual tokens usage, otherwise fallback to the estimate
 		if (tokenUsage.completionTokens > 0) {
 			response.tokenUsage = tokenUsage;
+			this.applyTracingTokenMetadata({
+				promptTokens: tokenUsage.promptTokens,
+				completionTokens: tokenUsage.completionTokens,
+				totalTokens: tokenUsage.totalTokens,
+				isEstimated: false,
+				cost: tokenUsage.cost,
+			});
 		} else {
 			response.tokenUsageEstimate = tokenUsageEstimate;
+			this.applyTracingTokenMetadata({
+				promptTokens: tokenUsageEstimate.promptTokens,
+				completionTokens: tokenUsageEstimate.completionTokens,
+				totalTokens: tokenUsageEstimate.totalTokens,
+				isEstimated: true,
+			});
 		}
 
 		const parsedMessages =
@@ -231,5 +285,27 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	// Used to associate subsequent runs with the correct parent run in subnodes of subnodes
 	setParentRunIndex(runIndex: number) {
 		this.#parentRunIndex = runIndex;
+	}
+
+	private applyTracingTokenMetadata(params: {
+		promptTokens: number;
+		completionTokens: number;
+		totalTokens: number;
+		isEstimated: boolean;
+		cost?: number;
+	}) {
+		if (!canWriteTracingMetadata(this.executionFunctions)) return;
+
+		const tracing: LlmTokenTracingMetadata = {
+			'llm.tokens.in': params.promptTokens,
+			'llm.tokens.out': params.completionTokens,
+			'llm.tokens.total': params.totalTokens,
+			'llm.tokens.estimated': params.isEstimated,
+		};
+		if (typeof params.cost === 'number' && Number.isFinite(params.cost)) {
+			tracing['llm.cost.total'] = params.cost;
+		}
+
+		this.executionFunctions.setMetadata({ tracing });
 	}
 }

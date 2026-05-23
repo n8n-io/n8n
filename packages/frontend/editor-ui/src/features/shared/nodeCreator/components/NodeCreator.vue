@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch, reactive, toRefs, computed, onBeforeUnmount } from 'vue';
+import { watch, reactive, toRefs, computed, onBeforeUnmount, onMounted } from 'vue';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -14,6 +14,8 @@ import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { DRAG_EVENT_DATA_KEY } from '@/app/constants';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useAiGateway } from '@/app/composables/useAiGateway';
 import type { NodeTypeSelectedPayload } from '@/Interface';
 import { onClickOutside } from '@vueuse/core';
 
@@ -39,8 +41,9 @@ const emit = defineEmits<{
 const uiStore = useUIStore();
 const bannersStore = useBannersStore();
 const chatPanelStore = useChatPanelStore();
+const settingsStore = useSettingsStore();
 
-const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
+const { setActions, setMergeNodes } = useNodeCreatorStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
 
 const state = reactive({
@@ -48,14 +51,12 @@ const state = reactive({
 	mousedownInsideEvent: null as MouseEvent | null,
 });
 
-const showScrim = computed(() => useNodeCreatorStore().showScrim);
-
 const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
 
 const nodeCreatorInlineStyle = computed(() => {
 	const rightPosition = getRightOffset();
 	return {
-		top: `${bannersStore.bannersHeight + uiStore.headerHeight}px`,
+		top: `${settingsStore.isCanvasOnly ? 0 : bannersStore.bannersHeight + uiStore.headerHeight}px`,
 		right: `${rightPosition}px`,
 	};
 });
@@ -113,11 +114,16 @@ function onDrop(event: DragEvent) {
 	}
 }
 
+const { fetchConfig: fetchAiGatewayConfig } = useAiGateway();
+
+onMounted(() => {
+	void fetchAiGatewayConfig();
+});
+
 watch(
 	() => props.active,
 	(isActive) => {
 		if (!isActive) {
-			setShowScrim(false);
 			resetViewStacks();
 		}
 	},
@@ -127,7 +133,6 @@ watch(
 watch(viewStacksLength, (value) => {
 	if (value === 0) {
 		emit('closeNodeCreator');
-		setShowScrim(false);
 	}
 });
 
@@ -166,12 +171,7 @@ onClickOutside(
 
 <template>
 	<div>
-		<aside
-			:class="{
-				[$style.nodeCreatorScrim]: true,
-				[$style.active]: showScrim,
-			}"
-		/>
+		<aside :class="$style.nodeCreatorScrim" />
 		<N8nIconButton
 			variant="subtle"
 			v-if="active"

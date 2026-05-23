@@ -4,7 +4,13 @@ import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
-import { DATA_TABLE_NODE_TYPES, ensureError, INode, IWorkflowBase } from 'n8n-workflow';
+import {
+	DATA_TABLE_NODE_TYPES,
+	ensureError,
+	INode,
+	IWorkflowBase,
+	IWorkflowSettings,
+} from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 
@@ -140,7 +146,12 @@ export class WorkflowIndexService {
 			workflow.versionCounter,
 			/*publishedVersionId=*/ null,
 		);
-		return await this.updateIndexInternal(dependencyUpdates, workflow.nodes, workflow.name);
+		return await this.updateIndexInternal(
+			dependencyUpdates,
+			workflow.nodes,
+			workflow.name,
+			workflow.settings,
+		);
 	}
 
 	async updateIndexForPublished(
@@ -153,7 +164,12 @@ export class WorkflowIndexService {
 			workflow.versionCounter,
 			publishedVersionId,
 		);
-		return await this.updateIndexInternal(dependencyUpdates, publishedNodes, workflow.name);
+		return await this.updateIndexInternal(
+			dependencyUpdates,
+			publishedNodes,
+			workflow.name,
+			workflow.settings,
+		);
 	}
 
 	async removeDependenciesForWorkflow(workflowId: string) {
@@ -176,11 +192,20 @@ export class WorkflowIndexService {
 	 * NOTE: this should generally be handled via events, rather than called directly.
 	 * The exception is during workflow imports where it's simpler to call directly.
 	 *
+	 * IMPORTANT: The indexer's input set (`nodes` and `settings`) is mirrored by
+	 * the `workflow_version_increment` DB trigger, which only bumps
+	 * `versionCounter` when one of those columns changes. If you add code that
+	 * indexes any other column on `workflow_entity`, then update the trigger's gate
+	 * condition too. Otherwise the staleness check in `findWorkflowsNeedingIndexing`
+	 * will miss reindex work. See
+	 * `packages/@n8n/db/src/migrations/sqlite/1784000000003-LimitWorkflowVersionTriggerToContent.ts`
+	 * (and the postgres equivalent) for the gate condition to extend.
 	 */
 	private async updateIndexInternal(
 		dependencyUpdates: WorkflowDependencies,
 		nodes: INode[],
 		workflowName?: string,
+		settings?: IWorkflowSettings,
 	) {
 		const indexType = dependencyUpdates.publishedVersionId ? 'published' : 'draft';
 		const workflowId = dependencyUpdates.workflowId;
@@ -202,6 +227,8 @@ export class WorkflowIndexService {
 					this.addWorkflowCallDependencies(node, dependencyUpdates);
 					this.addWebhookPathDependencies(node, dependencyUpdates);
 				});
+
+				this.addErrorWorkflowDependency(settings, dependencyUpdates);
 
 				// If no dependencies were extracted, add a placeholder to mark the workflow as indexed
 				if (dependencyUpdates.dependencies.length === 0) {
@@ -311,6 +338,21 @@ export class WorkflowIndexService {
 				dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
 			});
 		}
+	}
+
+	private addErrorWorkflowDependency(
+		settings: IWorkflowSettings | undefined,
+		dependencyUpdates: WorkflowDependencies,
+	): void {
+		const errorWorkflowId = settings?.errorWorkflow;
+		if (!errorWorkflowId || errorWorkflowId === 'DEFAULT') {
+			return;
+		}
+		dependencyUpdates.add({
+			dependencyType: 'errorWorkflow',
+			dependencyKey: errorWorkflowId,
+			dependencyInfo: null,
+		});
 	}
 
 	private getCalledWorkflowIdFrom(node: INode): string | undefined {

@@ -21,6 +21,39 @@ import {
 import type { SemanticGraph, SemanticNode, AiConnectionType } from './types';
 
 /**
+ * Format a credentials object using newCredential() calls.
+ * Emits `newCredential('name', 'id')` for credentials with an id,
+ * or `newCredential('name')` for placeholder credentials.
+ */
+export function formatCredentials(
+	credentials: Record<string, { id?: string; name?: string }>,
+): string {
+	// Guard: some workflows have credentials as a string (e.g. "[REDACTED]")
+	// instead of the expected Record<string, {id?, name?}>.
+	if (typeof credentials === 'string') {
+		return `'${escapeString(credentials)}'`;
+	}
+	const entries = Object.entries(credentials).map(([key, value]) => {
+		// If credential has a name, use newCredential() call
+		if (value.name !== undefined || value.id !== undefined) {
+			if (value.name !== undefined) {
+				if (value.id !== undefined) {
+					return `${formatKey(key)}: newCredential('${escapeString(value.name)}', '${escapeString(value.id)}')`;
+				}
+				return `${formatKey(key)}: newCredential('${escapeString(value.name)}')`;
+			}
+			// id-only credential (no name property) — emit raw object to preserve shape
+			if (value.id !== undefined) {
+				return `${formatKey(key)}: { id: '${escapeString(value.id)}' }`;
+			}
+		}
+		// Empty credential object — preserve as-is
+		return `${formatKey(key)}: ${formatValue(value)}`;
+	});
+	return `{ ${entries.join(', ')} }`;
+}
+
+/**
  * Options for subnode generation
  */
 export interface SubnodeGeneratorOptions {
@@ -188,8 +221,8 @@ function generateSubnodeConfigParts(
 		configParts.push(`parameters: ${formatValue(node.json.parameters, ctx)}`);
 	}
 
-	if (node.json.credentials) {
-		configParts.push(`credentials: ${formatValue(node.json.credentials, ctx)}`);
+	if (node.json.credentials && Object.keys(node.json.credentials).length > 0) {
+		configParts.push(`credentials: ${formatCredentials(node.json.credentials)}`);
 	}
 
 	const pos = node.json.position;

@@ -2,6 +2,7 @@ import type { CredentialsRepository, WorkflowRepository } from '@n8n/db';
 import type { INode, IConnections, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 
+import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 
@@ -9,11 +10,22 @@ describe('WorkflowValidationService', () => {
 	let service: WorkflowValidationService;
 	let mockWorkflowRepository: ReturnType<typeof mock<WorkflowRepository>>;
 	let mockCredentialsRepository: ReturnType<typeof mock<CredentialsRepository>>;
+	let mockDynamicCredentialsProxy: ReturnType<typeof mock<DynamicCredentialsProxy>>;
 
 	beforeEach(() => {
 		mockWorkflowRepository = mock<WorkflowRepository>();
 		mockCredentialsRepository = mock<CredentialsRepository>();
-		service = new WorkflowValidationService(mockWorkflowRepository, mockCredentialsRepository);
+		mockDynamicCredentialsProxy = mock<DynamicCredentialsProxy>();
+		// Default to the real semantics with no system resolver seeded:
+		// pass through the workflow override if any, otherwise null.
+		mockDynamicCredentialsProxy.getEffectiveResolverId.mockImplementation(
+			(settings) => settings?.credentialResolverId ?? null,
+		);
+		service = new WorkflowValidationService(
+			mockWorkflowRepository,
+			mockCredentialsRepository,
+			mockDynamicCredentialsProxy,
+		);
 	});
 
 	describe('validateSubWorkflowReferences', () => {
@@ -708,6 +720,32 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain('resolver');
 		});
 
+		it('should return valid when credential has no resolver but the proxy provides a system resolver', async () => {
+			const nodes: INode[] = [
+				createNode('Webhook', 'n8n-nodes-base.webhook', {
+					parameters: hooksParameters,
+				}),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					credentials: { oAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'My OAuth2', resolverId: null } as any,
+			]);
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.webhook') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			mockDynamicCredentialsProxy.getEffectiveResolverId.mockReturnValue('system-resolver');
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
 		it('should return valid when credential has no resolver but workflow settings provide one', async () => {
 			const nodes: INode[] = [
 				createNode('Webhook', 'n8n-nodes-base.webhook', {
@@ -804,6 +842,53 @@ describe('WorkflowValidationService', () => {
 
 			expect(result.isValid).toBe(false);
 			expect(result.error).toContain('dynamic credentials');
+			expect(result.error).toContain('identity extractor');
+		});
+
+		it('should return valid when Chat Trigger with availableInChat is the trigger', async () => {
+			const nodes: INode[] = [
+				createNode('Chat Trigger', '@n8n/n8n-nodes-langchain.chatTrigger', {
+					parameters: { availableInChat: true },
+				}),
+				createNode('Google Calendar', 'n8n-nodes-base.googleCalendar', {
+					credentials: { googleCalendarOAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'Google Calendar account 56', resolverId: 'resolver-1' } as any,
+			]);
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.chatTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should return invalid when Chat Trigger does not have availableInChat set', async () => {
+			const nodes: INode[] = [
+				createNode('Chat Trigger', '@n8n/n8n-nodes-langchain.chatTrigger'),
+				createNode('Google Calendar', 'n8n-nodes-base.googleCalendar', {
+					credentials: { googleCalendarOAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'Google Calendar account 56', resolverId: 'resolver-1' } as any,
+			]);
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.chatTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
 			expect(result.error).toContain('identity extractor');
 		});
 

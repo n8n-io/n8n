@@ -1,20 +1,16 @@
-import { computed, ref } from 'vue';
-import { useLocalStorage } from '@vueuse/core';
+import { computed, ref, toRef } from 'vue';
 import { useUIStore } from '../stores/ui.store';
-import { LOCAL_STORAGE_SIDEBAR_WIDTH } from '../constants';
+
+// Matches `$sidebar-width` in `app/css/_variables.scss`.
+export const COLLAPSED_MAIN_SIDEBAR_WIDTH = 42;
 
 export function useSidebarLayout() {
 	const uiStore = useUIStore();
 	const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed ?? false);
-	const sidebarWidth = useLocalStorage(LOCAL_STORAGE_SIDEBAR_WIDTH, isCollapsed.value ? 42 : 300);
+	const sidebarWidth = toRef(uiStore, 'sidebarWidth');
 
 	const toggleCollapse = () => {
 		uiStore.toggleSidebarMenuCollapse();
-		if (!isCollapsed.value) {
-			sidebarWidth.value = 200;
-		} else {
-			sidebarWidth.value = 42;
-		}
 	};
 
 	const isResizing = ref(false);

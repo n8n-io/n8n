@@ -23,6 +23,9 @@ export default {
 	},
 	parameters: {
 		docs: {
+			description: {
+				component: 'A draggable and resizable floating panel with header and content regions.',
+			},
 			story: {
 				inline: false,
 				iframeHeight: 500,

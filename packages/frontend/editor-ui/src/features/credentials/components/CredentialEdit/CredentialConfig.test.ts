@@ -48,7 +48,7 @@ const defaultRenderOptions: RenderOptions<typeof CredentialConfig> = {
 	props: {
 		isManaged: true,
 		mode: 'edit',
-		credentialType: {} as ICredentialType,
+		credentialType: mockCredentialType,
 		credentialProperties: [],
 		credentialData: {} as ICredentialDataDecryptedObject,
 		credentialPermissions: {
@@ -606,6 +606,39 @@ describe('CredentialConfig', () => {
 			});
 
 			expect(screen.queryByTestId('credential-mode-selector')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Docs callout visibility', () => {
+		const credentialTypeWithDocs: ICredentialType = {
+			name: 'testCredential',
+			displayName: 'Test Credential',
+			documentationUrl: 'https://example.com/docs',
+			properties: [{ displayName: 'Key', name: 'key', type: 'string', default: '' }],
+		};
+
+		it('should not show docs callout when user lacks write permission', () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialId: 'existing-cred-123',
+					credentialType: credentialTypeWithDocs,
+					credentialProperties: credentialTypeWithDocs.properties,
+					credentialData: {} as ICredentialDataDecryptedObject,
+					credentialPermissions: {
+						create: false,
+						update: false,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.queryByText('Need help filling out these fields?')).not.toBeInTheDocument();
 		});
 	});
 });

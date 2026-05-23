@@ -3,6 +3,7 @@ import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
 import { UnknownModuleError } from './errors/unknown-module.error';
 
 export const MODULE_NAMES = [
+	'agents',
 	'insights',
 	'external-secrets',
 	'community-packages',
@@ -19,8 +20,18 @@ export const MODULE_NAMES = [
 	'ldap',
 	'quick-connect',
 	'workflow-builder',
+	'favorites',
 	'redaction',
 	'instance-registry',
+	'instance-ai',
+	'mcp-registry',
+	'otel',
+	'token-exchange',
+	'instance-version-history',
+	'encryption-key-manager',
+	'oauth-jwe',
+	'runtime-credentials',
+	'n8n-packages',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

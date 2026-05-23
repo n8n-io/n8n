@@ -8,6 +8,9 @@ export default {
 	component: N8nUserSelect,
 	argTypes: {},
 	parameters: {
+		docs: {
+			description: { component: 'A user picker for selecting one or more users from a list.' },
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };

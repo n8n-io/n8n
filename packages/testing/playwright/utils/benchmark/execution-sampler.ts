@@ -82,20 +82,20 @@ export function buildMetrics(
 
 export async function attachLoadTestResults(
 	testInfo: TestInfo,
-	label: string,
+	dimensions: Record<string, string | number>,
 	metrics: ExecutionMetrics,
 ): Promise<void> {
-	await attachMetric(testInfo, `${label}-executions-completed`, metrics.totalCompleted, 'count');
-	await attachMetric(testInfo, `${label}-executions-errors`, metrics.totalErrors, 'count');
-	await attachMetric(testInfo, `${label}-throughput`, metrics.throughputPerSecond, 'exec/s');
-	await attachMetric(testInfo, `${label}-total-duration`, metrics.durationMs, 'ms');
+	await attachMetric(testInfo, 'executions-completed', metrics.totalCompleted, 'count', dimensions);
+	await attachMetric(testInfo, 'executions-errors', metrics.totalErrors, 'count', dimensions);
+	await attachMetric(testInfo, 'throughput', metrics.throughputPerSecond, 'exec/s', dimensions);
+	await attachMetric(testInfo, 'total-duration', metrics.durationMs, 'ms', dimensions);
 
 	// Only attach duration percentiles when we have sampled data — otherwise the
 	// reporter would show misleading "0ms" values (e.g. when EXECUTIONS_DATA_SAVE_ON_SUCCESS=none)
 	if (metrics.executionDurations.length > 0) {
-		await attachMetric(testInfo, `${label}-duration-avg`, metrics.avgDurationMs, 'ms');
-		await attachMetric(testInfo, `${label}-duration-p50`, metrics.p50DurationMs, 'ms');
-		await attachMetric(testInfo, `${label}-duration-p95`, metrics.p95DurationMs, 'ms');
-		await attachMetric(testInfo, `${label}-duration-p99`, metrics.p99DurationMs, 'ms');
+		await attachMetric(testInfo, 'duration-avg', metrics.avgDurationMs, 'ms', dimensions);
+		await attachMetric(testInfo, 'duration-p50', metrics.p50DurationMs, 'ms', dimensions);
+		await attachMetric(testInfo, 'duration-p95', metrics.p95DurationMs, 'ms', dimensions);
+		await attachMetric(testInfo, 'duration-p99', metrics.p99DurationMs, 'ms', dimensions);
 	}
 }

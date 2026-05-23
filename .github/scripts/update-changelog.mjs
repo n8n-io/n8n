@@ -1,5 +1,5 @@
 import createTempFile from 'tempfile';
-import { ConventionalChangelog, packagePrefix } from 'conventional-changelog';
+import { ConventionalChangelog } from 'conventional-changelog';
 import { resolve } from 'path';
 import { createReadStream, createWriteStream } from 'fs';
 import { dirname } from 'path';
@@ -9,7 +9,7 @@ import packageJson from '../../package.json' with { type: 'json' };
 
 const baseDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const fullChangelogFile = resolve(baseDir, 'CHANGELOG.md');
-// Version includes experimental versions (e.g., 1.2.3-exp.0)
+// Version includes experimental versions (e.g., 1.2.3-exp.g123abcgg)
 const versionChangelogFile = resolve(baseDir, `CHANGELOG-${packageJson.version}.md`);
 
 const changelogStream = new ConventionalChangelog()
@@ -30,7 +30,23 @@ const changelogStream = new ConventionalChangelog()
 			const isBenchmarkScope = commit.scope === 'benchmark';
 
 			// Ignore commits that have 'benchmark' scope or '(no-changelog)' in the header
-			return hasNoChangelogInHeader || isBenchmarkScope ? null : commit;
+			if (hasNoChangelogInHeader || isBenchmarkScope) return null;
+
+			// Strip backport information from commit subject, e.g.:
+			// "Fix something (backport to release-candidate/2.12.x) (#123)" → "Fix something (#123)"
+			if (commit.subject) {
+				// The commit.subject is immutable so we need to recreate the commit object
+
+				/** @type { import("conventional-changelog").Commit } */
+				let newCommit = /** @type { any } */ ({
+					...commit,
+					subject: commit.subject.replace(/\s*\(backport to [^)]+\)/g, ''),
+				});
+
+				return newCommit;
+			}
+
+			return commit;
 		},
 	})
 	.writeStream()

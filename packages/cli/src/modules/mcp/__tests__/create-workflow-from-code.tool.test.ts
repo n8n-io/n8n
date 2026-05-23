@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRepository, User, WorkflowEntity } from '@n8n/db';
-import type { INode } from 'n8n-workflow';
+import { NodeConnectionTypes, type INode } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/create-workflow-from-code.tool';
 
@@ -9,6 +10,15 @@ import { NodeTypes } from '@/node-types';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+// Mock credentials auto-assign
+const mockAutoPopulateNodeCredentials = jest.fn();
+jest.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
+	autoPopulateNodeCredentials: (...args: unknown[]) =>
+		mockAutoPopulateNodeCredentials(...args) as unknown,
+	stripNullCredentialStubs: jest.fn(),
+}));
 
 // Mock dynamic imports
 const mockParseAndValidate = jest.fn();
@@ -89,22 +99,48 @@ describe('create-workflow-from-code MCP tool', () => {
 			track: jest.fn(),
 		});
 		nodeTypes = mockInstance(NodeTypes);
+		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+			if (type === '@n8n/n8n-nodes-langchain.agent') {
+				return { description: { outputs: [NodeConnectionTypes.Main] } };
+			}
+			if (type === '@n8n/n8n-nodes-langchain.agentTool') {
+				return { description: { outputs: [NodeConnectionTypes.AiTool] } };
+			}
+			return { description: {} };
+		}) as typeof nodeTypes.getByNameAndVersion);
 
 		mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson });
 		mockStripImportStatements.mockImplementation((code: string) => code);
+		mockAutoPopulateNodeCredentials.mockResolvedValue({ assignments: [], skippedHttpNodes: [] });
 	});
 
 	const credentialsService = mockInstance(CredentialsService, {
 		getCredentialsAUserCanUseInAWorkflow: jest.fn().mockResolvedValue([]),
 	});
+	const personalProjectEntity = {
+		id: 'personal-project-1',
+		name: 'Ricardo Espinoza',
+		type: 'personal' as const,
+	};
 	const projectRepository = mockInstance(ProjectRepository, {
-		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue({ id: 'personal-project-1' }),
+		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue(personalProjectEntity),
+		findOneBy: jest.fn().mockImplementation(async ({ id }: { id: string }) => {
+			if (id === 'personal-project-1') return personalProjectEntity;
+			if (id === 'custom-project-id') {
+				return { id: 'custom-project-id', name: 'Marketing', type: 'team' as const };
+			}
+			return null;
+		}),
+	});
+	const workflowFinderService = mockInstance(WorkflowFinderService, {
+		findWorkflowForUser: jest.fn().mockResolvedValue(null),
 	});
 
 	const createTool = () =>
 		createCreateWorkflowFromCodeTool(
 			user,
 			workflowCreationService,
+			workflowFinderService,
 			urlService,
 			telemetry,
 			nodeTypes,
@@ -119,6 +155,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			name?: string;
 			description?: string;
 			projectId?: string;
+			folderId?: string;
 		},
 		tool = createTool(),
 	) =>
@@ -128,6 +165,7 @@ describe('create-workflow-from-code MCP tool', () => {
 				name: input.name as string,
 				description: input.description as string,
 				projectId: input.projectId as string,
+				folderId: input.folderId as string,
 			},
 			{} as never,
 		);
@@ -149,6 +187,16 @@ describe('create-workflow-from-code MCP tool', () => {
 				}),
 			);
 			expect(typeof tool.handler).toBe('function');
+		});
+	});
+
+	describe('validation', () => {
+		test('returns error when folderId is provided without projectId', async () => {
+			const result = await callHandler({ code: 'const wf = ...', folderId: 'folder-1' });
+
+			expect(result.isError).toBe(true);
+			const response = parseResult(result);
+			expect(response.error).toBe('projectId is required when folderId is provided');
 		});
 	});
 
@@ -216,13 +264,13 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(createWorkflowMock.mock.calls[0][1].description).toBeUndefined();
 		});
 
-		test('passes undefined projectId to service when not provided', async () => {
+		test('resolves the personal project id and passes it to the service when projectId is not provided', async () => {
 			await callHandler({ code: 'const wf = ...' });
 
 			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
 				user,
 				expect.any(WorkflowEntity),
-				{ projectId: undefined },
+				{ projectId: 'personal-project-1', source: 'n8n-mcp' },
 			);
 		});
 
@@ -232,8 +280,72 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
 				user,
 				expect.any(WorkflowEntity),
-				{ projectId: 'custom-project-id' },
+				{ projectId: 'custom-project-id', source: 'n8n-mcp' },
 			);
+		});
+
+		test('reports targetProject as the personal project when projectId is omitted', async () => {
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			expect(response.targetProject).toEqual({
+				id: 'personal-project-1',
+				name: 'Ricardo Espinoza',
+				type: 'personal',
+			});
+		});
+
+		test('reports targetProject as the requested project when projectId is provided', async () => {
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'custom-project-id',
+			});
+
+			const response = parseResult(result);
+			expect(response.targetProject).toEqual({
+				id: 'custom-project-id',
+				name: 'Marketing',
+				type: 'team',
+			});
+		});
+
+		test('returns a clear error when the provided projectId does not exist', async () => {
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'missing-project-id',
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toContain('missing-project-id');
+			expect(response.error).toContain('search_projects');
+			expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
+		});
+
+		test('includes targetProject in recovery output when post-save errors but workflow persists', async () => {
+			createWorkflowMock.mockImplementation(async (_user, workflow: WorkflowEntity) => {
+				workflow.id = 'wf-recovery-1';
+				throw new Error('Post-save hook failed');
+			});
+			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValueOnce({
+				id: 'wf-recovery-1',
+				name: 'Recovered',
+				nodes: mockNodes,
+			});
+
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'custom-project-id',
+			});
+
+			const response = parseResult(result);
+			expect(response.workflowId).toBe('wf-recovery-1');
+			expect(response.targetProject).toEqual({
+				id: 'custom-project-id',
+				name: 'Marketing',
+				type: 'team',
+			});
+			expect(response.note).toContain('post-save operation failed');
 		});
 
 		test('returns error when service throws permission error', async () => {
@@ -256,6 +368,29 @@ describe('create-workflow-from-code MCP tool', () => {
 			const response = parseResult(result);
 			expect(result.isError).toBe(true);
 			expect(response.error).toBe('Invalid syntax at line 5');
+		});
+
+		test('includes SDK reference hint only for parse errors', async () => {
+			const parseError = new Error('Failed to parse generated workflow code: unexpected token');
+			parseError.name = 'WorkflowCodeParseError';
+			mockParseAndValidate.mockRejectedValue(parseError);
+
+			const result = await callHandler({ code: 'bad code' });
+
+			const response = parseResult(result);
+			expect(response.hint).toContain('sdk_ref');
+			expect(response.hint).toContain('Workflow SDK reference');
+			expect(response.hint).toContain('validate_workflow_code until it returns valid=true');
+			expect(response.hint).toContain('create_workflow_from_code again');
+		});
+
+		test('does not include SDK reference hint for non-parse errors', async () => {
+			mockParseAndValidate.mockRejectedValue(new Error('Permission denied'));
+
+			const result = await callHandler({ code: 'bad code' });
+
+			const response = parseResult(result);
+			expect(response.hint).toBeUndefined();
 		});
 
 		test('tracks telemetry on success', async () => {
@@ -314,6 +449,76 @@ describe('create-workflow-from-code MCP tool', () => {
 					}),
 				}),
 			);
+		});
+
+		test('refuses to save when an agent is wired as a tool to another agent', async () => {
+			mockParseAndValidate.mockResolvedValue({
+				workflow: {
+					...mockWorkflowJson,
+					nodes: [
+						{
+							id: 'manager',
+							name: 'Manager Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 3,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: 'worker',
+							name: 'Worker Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 3,
+							position: [200, 0],
+							parameters: {},
+						},
+					],
+					connections: {
+						'Worker Agent': {
+							ai_tool: [[{ node: 'Manager Agent', type: 'ai_tool', index: 0 }]],
+						},
+					},
+				},
+				warnings: [],
+			});
+
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			expect(result.isError).toBe(true);
+			expect(createWorkflowMock).not.toHaveBeenCalled();
+			const response = parseResult(result);
+			expect(response.error).toContain('Worker Agent');
+			expect(response.error).toContain('Manager Agent');
+			expect(response.error).toContain('@n8n/n8n-nodes-langchain.agentTool');
+		});
+
+		test('structuredContent conforms to declared outputSchema under strict validation', async () => {
+			// Regression for #28274: MCP publishes outputSchema with additionalProperties: false,
+			// so any field returned by the handler but missing from the schema breaks strict clients.
+			mockAutoPopulateNodeCredentials.mockResolvedValue({
+				assignments: [
+					{ nodeName: 'Webhook', credentialName: 'My Cred', credentialType: 'webhookAuth' },
+				],
+				skippedHttpNodes: [],
+			});
+
+			const tool = createTool();
+			const result = (await tool.handler({ code: 'const wf = ...' } as never, {} as never)) as {
+				structuredContent: unknown;
+			};
+
+			const envelopeShape = tool.config.outputSchema as z.ZodRawShape;
+			const itemsField = envelopeShape.autoAssignedCredentials as z.ZodArray<
+				z.ZodObject<z.ZodRawShape>
+			>;
+			const strictSchema = z
+				.object({
+					...envelopeShape,
+					autoAssignedCredentials: z.array(itemsField.element.strict()),
+				})
+				.strict();
+
+			expect(() => strictSchema.parse(result.structuredContent)).not.toThrow();
 		});
 	});
 });

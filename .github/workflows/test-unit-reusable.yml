@@ -12,25 +12,11 @@ on:
         description: Version of node to use.
         required: false
         type: string
-        default: 24.13.1
+        default: 24.15.0
       collectCoverage:
         required: false
         default: false
         type: boolean
-    secrets:
-      CODECOV_TOKEN:
-        description: 'Codecov upload token.'
-        required: false
-      BUILD_STATS_WEBHOOK_URL:
-        description: 'Webhook URL for test stats.'
-        required: false
-      BUILD_STATS_WEBHOOK_USER:
-        description: 'Basic auth username for test stats webhook.'
-        required: false
-      BUILD_STATS_WEBHOOK_PASSWORD:
-        description: 'Basic auth password for test stats webhook.'
-        required: false
-
 env:
   NODE_OPTIONS: --max-old-space-size=7168
 
@@ -57,17 +43,17 @@ jobs:
         if: ${{ !cancelled() }}
         run: node .github/scripts/send-build-stats.mjs || true
         env:
-          BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
-          BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
-          BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          report-type: test_results
-          name: backend-unit
+          report_type: test_results
+          name: backend-unit-tests
 
       - name: Upload coverage to Codecov
         if: env.COVERAGE_ENABLED == 'true'
@@ -76,6 +62,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: backend-unit
           name: backend-unit
+          files: ./packages/**/coverage/cobertura-coverage.xml,./coverage/cobertura-coverage.xml
 
   integration-test-backend:
     name: Backend Integration Tests
@@ -99,16 +86,17 @@ jobs:
         if: ${{ !cancelled() }}
         run: node .github/scripts/send-build-stats.mjs || true
         env:
-          BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
-          BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
-          BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1.2.1
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          name: backend-integration
+          report_type: test_results
+          name: backend-integration-tests
 
       - name: Upload coverage to Codecov
         if: env.COVERAGE_ENABLED == 'true'
@@ -117,6 +105,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: backend-integration
           name: backend-integration
+          files: ./packages/**/coverage/cobertura-coverage.xml,./coverage/cobertura-coverage.xml
 
   unit-test-nodes:
     name: Nodes Unit Tests
@@ -140,16 +129,17 @@ jobs:
         if: ${{ !cancelled() }}
         run: node .github/scripts/send-build-stats.mjs || true
         env:
-          BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
-          BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
-          BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1.2.1
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          name: nodes-unit
+          report_type: test_results
+          name: nodes-unit-tests
 
       - name: Upload coverage to Codecov
         if: env.COVERAGE_ENABLED == 'true'
@@ -158,6 +148,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: nodes-unit
           name: nodes-unit
+          files: ./packages/**/coverage/cobertura-coverage.xml,./coverage/cobertura-coverage.xml
 
   unit-test-frontend:
     name: Frontend (${{ matrix.shard }}/2)
@@ -187,16 +178,17 @@ jobs:
         if: ${{ !cancelled() }}
         run: node .github/scripts/send-build-stats.mjs || true
         env:
-          BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
-          BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
-          BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1.2.1
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          name: frontend-shard-${{ matrix.shard }}
+          report_type: test_results
+          name: frontend-shard-${{ matrix.shard }}-tests
 
       - name: Upload coverage to Codecov
         if: env.COVERAGE_ENABLED == 'true'
@@ -205,6 +197,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: frontend
           name: frontend-shard-${{ matrix.shard }}
+          files: ./packages/**/coverage/cobertura-coverage.xml,./coverage/cobertura-coverage.xml
 
   unit-test:
     name: Unit tests

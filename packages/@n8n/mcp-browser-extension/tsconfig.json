@@ -1,0 +1,14 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"compilerOptions": {
+		"rootDir": "src",
+		"outDir": "dist",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"target": "ES2022",
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"types": ["chrome", "vitest/globals", "vite/client"],
+		"skipLibCheck": true
+	},
+	"include": ["src/**/*.ts", "src/**/*.vue"]
+}

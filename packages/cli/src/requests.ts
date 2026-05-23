@@ -15,6 +15,7 @@ import type {
 	ProjectRole,
 	Scope,
 } from '@n8n/permissions';
+import type { Request } from 'express';
 import type {
 	ICredentialDataDecryptedObject,
 	INodeCredentialTestRequest,
@@ -48,6 +49,11 @@ export namespace ListQuery {
 		take?: number;
 		sortBy?: string;
 	};
+}
+
+export function appendListQueryOptions(req: Request, options: ListQuery.Options) {
+	const listReq = req as ListQuery.Request;
+	listReq.listQueryOptions = { ...listReq.listQueryOptions, ...options };
 }
 
 // ----------------------------------
@@ -263,7 +269,7 @@ export declare namespace VariablesRequest {
 export declare namespace WorkflowHistoryRequest {
 	type GetList = AuthenticatedRequest<
 		{ workflowId: string },
-		Array<Omit<WorkflowHistory, 'nodes' | 'connections'>>,
+		Array<Omit<WorkflowHistory, 'nodes' | 'connections' | 'nodeGroups'>>,
 		{},
 		ListQuery.Options
 	>;

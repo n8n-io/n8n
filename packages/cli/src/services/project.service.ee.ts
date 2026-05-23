@@ -13,6 +13,8 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
+	combineScopes,
+	getAuthPrincipalScopes,
 	hasGlobalScope,
 	type Scope,
 	AssignableProjectRole,
@@ -219,6 +221,45 @@ export class ProjectService {
 		return await this.sharedWorkflowRepository.findProjectIds(workflowId);
 	}
 
+	/**
+	 * Enrich projects with the requesting user's role and scopes.
+	 * Mirrors the logic in getMyProjects controller: for each project,
+	 * find the user's ProjectRelation and combine global + project scopes.
+	 */
+	async addUserScopes(
+		user: User,
+		projects: Project[],
+	): Promise<Array<Project & { role: string; scopes: Scope[] }>> {
+		if (projects.length === 0) return [];
+
+		const relations = await this.projectRelationRepository.find({
+			where: {
+				userId: user.id,
+				projectId: In(projects.map((p) => p.id)),
+			},
+			relations: ['role'],
+		});
+		const relationsByProject = new Map(relations.map((r) => [r.projectId, r]));
+		const globalScopes = getAuthPrincipalScopes(user);
+
+		return projects.map((project) => {
+			const relation = relationsByProject.get(project.id);
+			const projectScopes = relation?.role?.scopes?.map((s) => s.slug) ?? [];
+			return {
+				...project,
+				role: relation?.role?.slug ?? user.role.slug,
+				scopes: [
+					...new Set(
+						combineScopes({
+							global: globalScopes,
+							...(projectScopes.length ? { project: projectScopes } : {}),
+						}),
+					),
+				].sort(),
+			};
+		});
+	}
+
 	async getAccessibleProjects(user: User): Promise<Project[]> {
 		// This user is probably an admin, show them everything
 		if (hasGlobalScope(user, 'project:read')) {
@@ -235,6 +276,20 @@ export class ProjectService {
 			return await this.projectRepository.findAllProjectsAndCount(options);
 		}
 		return await this.projectRepository.getAccessibleProjectsAndCount(user.id, options);
+	}
+
+	// Returns the projects a caller can pick as share targets, including peer
+	// personal projects. Admins (project:read) still see everything; non-admin
+	// callers also see all personal projects so the share dropdown can surface
+	// other users. See `ProjectRepository.getShareableProjectsAndCount`.
+	async getShareableProjectsAndCount(
+		user: User,
+		options: ProjectListOptions,
+	): Promise<[Project[], number]> {
+		if (hasGlobalScope(user, 'project:read')) {
+			return await this.projectRepository.findAllProjectsAndCount(options);
+		}
+		return await this.projectRepository.getShareableProjectsAndCount(user.id, options);
 	}
 
 	async getPersonalProjectOwners(projectIds: string[]): Promise<ProjectRelation[]> {
@@ -523,7 +578,10 @@ export class ProjectService {
 		};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
+			// Use the same EntityManager as the project lookup (including when callers pass a
+			// transaction manager). Otherwise role resolution can open a second pooled connection
+			// while a transaction already holds a connection
+			const projectRoles = await this.roleService.rolesWithScope('project', scopes, em);
 
 			where = {
 				...where,
@@ -547,7 +605,10 @@ export class ProjectService {
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
 			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
-			where.type = 'team';
+			// if we're not checking specific projects, restrict to team projects
+			if (!projectIds) {
+				where.type = 'team';
+			}
 			where.projectRelations = {
 				role: In(projectRoles),
 				userId: user.id,

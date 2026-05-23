@@ -1,6 +1,5 @@
 import type { Schema } from '@/Interface';
 import { ApplicationError, type INodeExecutionData } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useDataSchema } from '@/app/composables/useDataSchema';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
@@ -11,29 +10,33 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { format } from 'prettier';
 import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
+import {
+	useWorkflowDocumentStore,
+	type WorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 export type TextareaRowData = {
 	rows: string[];
 	linesToRowsMap: number[][];
 };
 
-export function getParentNodes() {
+export function getParentNodes(workflowDocumentId: WorkflowDocumentId) {
+	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 	const activeNode = useNDVStore().activeNode;
-	const { workflowObject, getNodeByName } = useWorkflowsStore();
 
-	if (!activeNode || !workflowObject) return [];
+	if (!activeNode) return [];
 
-	return workflowObject
+	return workflowDocumentStore
 		.getParentNodesByDepth(activeNode?.name)
 		.filter(({ name }, i, nodes) => {
 			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
 		})
-		.map((n) => getNodeByName(n.name))
+		.map((n) => workflowDocumentStore.getNodeByName(n.name))
 		.filter((n) => n !== null);
 }
 
-export function getSchemas() {
-	const parentNodes = getParentNodes();
+export function getSchemas(workflowDocumentId: WorkflowDocumentId) {
+	const parentNodes = getParentNodes(workflowDocumentId);
 	const parentNodesNames = parentNodes.map((node) => node?.name);
 	const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
 	const parentNodesSchemas: Array<{ nodeName: string; schema: Schema }> = parentNodes
@@ -180,8 +183,13 @@ export function reducePayloadSizeOrThrow(
 	if (remainingTokensToReduce > 0) throw error;
 }
 
-export async function generateCodeForAiTransform(prompt: string, path: string, retries = 1) {
-	const schemas = getSchemas();
+export async function generateCodeForAiTransform(
+	prompt: string,
+	path: string,
+	workflowDocumentId: WorkflowDocumentId,
+	retries = 1,
+) {
+	const schemas = getSchemas(workflowDocumentId);
 
 	const payload: AskAiRequest.RequestPayload = {
 		question: prompt,

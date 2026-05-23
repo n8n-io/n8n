@@ -52,7 +52,7 @@ describe('ChatHubWorkflowService', () => {
 		logger.scoped.mockReturnValue(logger);
 
 		// Mock cipher encrypt to return a simple string
-		mockCipher.encrypt.mockReturnValue('encrypted-metadata');
+		mockCipher.encryptV2.mockResolvedValue('encrypted-metadata');
 
 		// Create real ChatHubAttachmentService with mocked dependencies
 		chatHubAttachmentService = new ChatHubAttachmentService(binaryDataService, messageRepository);
@@ -89,6 +89,152 @@ describe('ChatHubWorkflowService', () => {
 	});
 
 	describe('createChatWorkflow', () => {
+		describe('provider settings', () => {
+			it('should set responsesApiEnabled to false on OpenAI model node when provider settings disable it', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+					undefined,
+					{
+						provider: 'openai',
+						enabled: true,
+						credentialId: 'cred-123',
+						allowedModels: [],
+						responsesApiEnabled: false,
+						createdAt: new Date().toISOString(),
+						updatedAt: null,
+					},
+				);
+
+				const modelNode = result.workflowData.nodes.find((node) => node.name === 'Chat Model');
+				expect(modelNode?.parameters).toHaveProperty('responsesApiEnabled', false);
+			});
+
+			it('should not set responsesApiEnabled when provider settings do not explicitly disable it', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+					undefined,
+					{
+						provider: 'openai',
+						enabled: true,
+						credentialId: 'cred-123',
+						allowedModels: [],
+						createdAt: new Date().toISOString(),
+						updatedAt: null,
+					},
+				);
+
+				const modelNode = result.workflowData.nodes.find((node) => node.name === 'Chat Model');
+				expect(modelNode?.parameters).not.toHaveProperty('responsesApiEnabled');
+			});
+
+			it('should not set responsesApiEnabled when provider settings explicitly enable it', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+					undefined,
+					{
+						provider: 'openai',
+						enabled: true,
+						credentialId: 'cred-123',
+						allowedModels: [],
+						responsesApiEnabled: true,
+						createdAt: new Date().toISOString(),
+						updatedAt: null,
+					},
+				);
+
+				const modelNode = result.workflowData.nodes.find((node) => node.name === 'Chat Model');
+				expect(modelNode?.parameters).not.toHaveProperty('responsesApiEnabled');
+			});
+
+			it('should use custom contextWindowLength from provider settings', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+					undefined,
+					{
+						provider: 'openai',
+						enabled: true,
+						credentialId: 'cred-123',
+						allowedModels: [],
+						contextWindowLength: 50,
+						createdAt: new Date().toISOString(),
+						updatedAt: null,
+					},
+				);
+
+				const memoryNode = result.workflowData.nodes.find((node) => node.name === 'Memory');
+				expect(memoryNode?.parameters).toHaveProperty('contextWindowLength', 50);
+			});
+
+			it('should default contextWindowLength to 20 when not set in provider settings', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+				);
+
+				const memoryNode = result.workflowData.nodes.find((node) => node.name === 'Memory');
+				expect(memoryNode?.parameters).toHaveProperty('contextWindowLength', 20);
+			});
+		});
+
 		describe('vector store nodes', () => {
 			const VECTOR_STORE_SEARCH = {
 				agentId: 'agent-1',
@@ -883,7 +1029,7 @@ describe('ChatHubWorkflowService', () => {
 	});
 
 	describe('prepareExecutionData', () => {
-		it('should encrypt executionMetadata before adding to trigger item', () => {
+		it('should encrypt executionMetadata before adding to trigger item', async () => {
 			const triggerNode = {
 				name: 'Chat Trigger',
 				type: 'n8n-nodes-base.chatTrigger',
@@ -896,7 +1042,7 @@ describe('ChatHubWorkflowService', () => {
 				endpoint: '/api/chat/message',
 			};
 
-			const result = service.prepareExecutionData(
+			const result = await service.prepareExecutionData(
 				triggerNode,
 				'session-123',
 				'Hello',
@@ -904,7 +1050,7 @@ describe('ChatHubWorkflowService', () => {
 				executionMetadata,
 			);
 
-			expect(mockCipher.encrypt).toHaveBeenCalledWith(executionMetadata);
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith(executionMetadata);
 			expect(result[0].data.main[0]![0]).toMatchObject({
 				encryptedMetadata: 'encrypted-metadata',
 				json: {
@@ -915,9 +1061,9 @@ describe('ChatHubWorkflowService', () => {
 			});
 		});
 
-		it('should configure context establishment hook', () => {
+		it('should configure context establishment hook', async () => {
 			const triggerNode = { name: 'Chat Trigger', parameters: {} } as any;
-			const result = service.prepareExecutionData(triggerNode, 'session-123', 'Hello', [], {
+			const result = await service.prepareExecutionData(triggerNode, 'session-123', 'Hello', [], {
 				authToken: 'token',
 				browserId: undefined,
 				method: 'POST',
@@ -937,7 +1083,7 @@ describe('ChatHubWorkflowService', () => {
 			});
 		});
 
-		it('should preserve existing node parameters', () => {
+		it('should preserve existing node parameters', async () => {
 			const triggerNode = {
 				name: 'Chat Trigger',
 				parameters: {
@@ -946,7 +1092,7 @@ describe('ChatHubWorkflowService', () => {
 				},
 			} as any;
 
-			const result = service.prepareExecutionData(triggerNode, 'session-123', 'Hello', [], {
+			const result = await service.prepareExecutionData(triggerNode, 'session-123', 'Hello', [], {
 				authToken: 'token',
 				browserId: 'browser',
 				method: 'POST',
@@ -960,7 +1106,7 @@ describe('ChatHubWorkflowService', () => {
 			});
 		});
 
-		it('should handle attachments correctly', () => {
+		it('should handle attachments correctly', async () => {
 			const triggerNode = { name: 'Chat Trigger', parameters: {} } as any;
 			const attachments = [
 				{
@@ -972,7 +1118,7 @@ describe('ChatHubWorkflowService', () => {
 				},
 			];
 
-			const result = service.prepareExecutionData(
+			const result = await service.prepareExecutionData(
 				triggerNode,
 				'session-123',
 				'Hello',

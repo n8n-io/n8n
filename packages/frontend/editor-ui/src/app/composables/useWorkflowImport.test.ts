@@ -8,7 +8,9 @@ import { VIEWS } from '@/app/constants';
 
 const mockResetWorkspace = vi.hoisted(() => vi.fn());
 const mockInitializeWorkspace = vi.hoisted(() =>
-	vi.fn().mockResolvedValue({ workflowDocumentStore: { id: 'mock-store' } }),
+	vi
+		.fn()
+		.mockResolvedValue({ workflowDocumentStore: { id: 'mock-store', setConnections: vi.fn() } }),
 );
 const mockFitView = vi.hoisted(() => vi.fn());
 
@@ -50,7 +52,8 @@ describe('useWorkflowImport', () => {
 
 	it('should throw if workflow has no nodes', async () => {
 		const storeRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef);
+		const ndvStoreRef = shallowRef(null);
+		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
 
 		await expect(
 			importWorkflowExact({ workflow: { connections: {} } as WorkflowDataUpdate }),
@@ -59,7 +62,8 @@ describe('useWorkflowImport', () => {
 
 	it('should throw if workflow has no connections', async () => {
 		const storeRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef);
+		const ndvStoreRef = shallowRef(null);
+		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
 
 		await expect(
 			importWorkflowExact({ workflow: { nodes: [] } as unknown as WorkflowDataUpdate }),
@@ -68,7 +72,8 @@ describe('useWorkflowImport', () => {
 
 	it('should reset workspace, initialize, and fit view', async () => {
 		const storeRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef);
+		const ndvStoreRef = shallowRef(null);
+		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
 
 		await importWorkflowExact({ workflow: createWorkflowData() });
 
@@ -82,11 +87,12 @@ describe('useWorkflowImport', () => {
 		mockResetWorkspace.mockImplementation(() => callOrder.push('reset'));
 		mockInitializeWorkspace.mockImplementation(async () => {
 			callOrder.push('initialize');
-			return { workflowDocumentStore: { id: 'mock-store' } };
+			return { workflowDocumentStore: { id: 'mock-store', setConnections: vi.fn() } };
 		});
 
 		const storeRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef);
+		const ndvStoreRef = shallowRef(null);
+		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
 
 		await importWorkflowExact({ workflow: createWorkflowData() });
 
@@ -94,11 +100,12 @@ describe('useWorkflowImport', () => {
 	});
 
 	it('should update currentWorkflowDocumentStore with the new store', async () => {
-		const mockStore = { id: 'new-store' };
+		const mockStore = { id: 'new-store', setConnections: vi.fn() };
 		mockInitializeWorkspace.mockResolvedValue({ workflowDocumentStore: mockStore });
 
 		const storeRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef);
+		const ndvStoreRef = shallowRef(null);
+		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
 
 		await importWorkflowExact({ workflow: createWorkflowData() });
 
@@ -109,7 +116,8 @@ describe('useWorkflowImport', () => {
 		mockRoute.name = VIEWS.WORKFLOW;
 
 		const storeRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef);
+		const ndvStoreRef = shallowRef(null);
+		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
 
 		await importWorkflowExact({ workflow: createWorkflowData({ id: 'my-workflow-id' }) });
 
@@ -118,14 +126,17 @@ describe('useWorkflowImport', () => {
 		);
 	});
 
-	it('should use "demo" id on demo routes', async () => {
+	it('should pass through workflow id as-is on demo routes', async () => {
 		mockRoute.name = VIEWS.DEMO;
 
 		const storeRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef);
+		const ndvStoreRef = shallowRef(null);
+		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
 
-		await importWorkflowExact({ workflow: createWorkflowData({ id: 'ignored-id' }) });
+		await importWorkflowExact({ workflow: createWorkflowData({ id: 'real-workflow-id' }) });
 
-		expect(mockInitializeWorkspace).toHaveBeenCalledWith(expect.objectContaining({ id: 'demo' }));
+		expect(mockInitializeWorkspace).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'real-workflow-id' }),
+		);
 	});
 });

@@ -18,9 +18,13 @@ const i18n = useI18n();
 const isOpen = ref(false);
 const dropdownRef = ref<HTMLElement>();
 
-onClickOutside(dropdownRef, () => {
-	isOpen.value = false;
-});
+onClickOutside(
+	dropdownRef,
+	() => {
+		isOpen.value = false;
+	},
+	{ ignore: ['.n8n-tooltip'] },
+);
 
 const hasCredits = computed(() => {
 	return props.creditsQuota !== undefined && props.creditsRemaining !== undefined;
@@ -71,16 +75,16 @@ function onGetMoreCredits() {
 <template>
 	<div ref="dropdownRef" :class="$style.wrapper">
 		<N8nButton
-			icon="settings2"
+			icon="circle-dollar-sign"
 			variant="ghost"
 			size="large"
 			icon-only
 			:class="{ [$style.active]: isOpen }"
-			data-test-id="credits-settings-button"
+			data-test-id="credits-dropdown-button"
 			@click="toggleDropdown"
 		/>
 		<Transition name="dropdown">
-			<div v-if="isOpen" :class="$style.dropdown" data-test-id="credits-settings-dropdown">
+			<div v-if="isOpen" :class="$style.dropdown" data-test-id="credits-dropdown">
 				<div v-if="hasCredits" :class="$style.creditsSection">
 					<div :class="$style.creditsHeader">
 						<div :class="$style.creditsLabel">

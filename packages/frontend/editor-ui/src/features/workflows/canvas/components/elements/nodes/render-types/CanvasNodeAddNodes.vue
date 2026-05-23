@@ -13,12 +13,15 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nIcon, N8nLink, N8nTooltip } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
+
 const nodeCreatorStore = useNodeCreatorStore();
 const i18n = useI18n();
 const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
 const router = useRouter();
 const isTooltipVisible = ref(false);
+const workflowId = useWorkflowId();
 
 const templatesLinkEnabled = computed(() => {
 	return isExtraTemplateLinksExperimentEnabled() && settingsStore.isTemplatesEnabled;
@@ -44,6 +47,7 @@ function onHideTooltip() {
 
 function onClick() {
 	nodeCreatorStore.openNodeCreatorForTriggerNodes(
+		workflowId.value,
 		NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON,
 	);
 }
@@ -60,12 +64,7 @@ async function onClickTemplatesLink() {
 </script>
 <template>
 	<div ref="container" :class="$style.addNodes" data-test-id="canvas-add-button">
-		<N8nTooltip
-			placement="top"
-			:visible="isTooltipVisible"
-			:disabled="nodeCreatorStore.showScrim"
-			:show-after="700"
-		>
+		<N8nTooltip placement="top" :visible="isTooltipVisible" :show-after="700">
 			<button :class="$style.button" data-test-id="canvas-plus-button" @click.stop="onClick">
 				<N8nIcon icon="plus" color="foreground-xdark" :size="40" />
 			</button>

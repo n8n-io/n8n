@@ -20,10 +20,11 @@ import {
 	type AssignableGlobalRole,
 } from '@n8n/permissions';
 import type { IUserSettings } from 'n8n-workflow';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { Invitation } from '@/interfaces';
 import { PostHogClient } from '@/posthog';
@@ -33,10 +34,9 @@ import { UserManagementMailer } from '@/user-management/email';
 
 import { JwtService } from './jwt.service';
 import { OwnershipService } from './ownership.service';
+import { ProjectService } from './project.service.ee';
 import { PublicApiKeyService } from './public-api-key.service';
 import { RoleService } from './role.service';
-
-const TAMPER_PROOF_INVITE_LINKS_EXPERIMENT = '061_tamper_proof_invite_links';
 
 @Service()
 export class UserService {
@@ -52,7 +52,7 @@ export class UserService {
 		private readonly roleService: RoleService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly jwtService: JwtService,
-		private readonly postHog: PostHogClient,
+		private readonly projectService: ProjectService,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -67,6 +67,18 @@ export class UserService {
 
 	getManager() {
 		return this.userRepository.manager;
+	}
+
+	async assertGetUsersAccess(user: User, projectId?: string): Promise<void> {
+		if (projectId) {
+			const project = await this.projectService.getProjectWithScope(user, projectId, [
+				'project:list',
+			]);
+			if (!project) {
+				throw new NotFoundError('Project not found');
+			}
+			return;
+		}
 	}
 
 	async updateSettings(userId: string, newSettings: Partial<IUserSettings>) {
@@ -106,8 +118,6 @@ export class UserService {
 	async toPublic(
 		user: User,
 		options?: {
-			withInviteUrl?: boolean;
-			inviterId?: string;
 			posthog?: PostHogClient;
 			withScopes?: boolean;
 			mfaAuthenticated?: boolean;
@@ -125,21 +135,6 @@ export class UserService {
 			isOwner: user.role.slug === 'global:owner',
 		};
 
-		if (options?.withInviteUrl && !options?.inviterId) {
-			throw new UnexpectedError('Inviter ID is required to generate invite URL');
-		}
-
-		const inviteLinksEmailOnly = this.globalConfig.userManagement.inviteLinksEmailOnly;
-
-		if (
-			!inviteLinksEmailOnly &&
-			options?.withInviteUrl &&
-			options?.inviterId &&
-			publicUser.isPending
-		) {
-			publicUser = this.addInviteUrl(options.inviterId, publicUser);
-		}
-
 		if (options?.posthog) {
 			publicUser = await this.addFeatureFlags(publicUser, options.posthog);
 		}
@@ -151,18 +146,16 @@ export class UserService {
 
 		publicUser.mfaAuthenticated = options?.mfaAuthenticated ?? false;
 
+		const { instanceSettingsLoader } = this.globalConfig;
+		if (
+			instanceSettingsLoader.ownerManagedByEnv &&
+			!!user.email &&
+			user.email.toLowerCase() === instanceSettingsLoader.ownerEmail.toLowerCase()
+		) {
+			publicUser.isManagedByEnv = true;
+		}
+
 		return publicUser;
-	}
-
-	private addInviteUrl(inviterId: string, invitee: PublicUser) {
-		const url = new URL(this.urlService.getInstanceBaseUrl());
-		url.pathname = '/signup';
-		url.searchParams.set('inviterId', inviterId);
-		url.searchParams.set('inviteeId', invitee.id);
-
-		invitee.inviteAcceptUrl = url.toString();
-
-		return invitee;
 	}
 
 	private async addFeatureFlags(publicUser: PublicUser, posthog: PostHogClient) {
@@ -191,38 +184,19 @@ export class UserService {
 
 		const inviteLinksEmailOnly = this.globalConfig.userManagement.inviteLinksEmailOnly;
 
-		// Check if tamper-proof invite links feature flag is enabled for the owner
-		let useTamperProofLinks = false;
-		try {
-			const featureFlags = await this.postHog.getFeatureFlags({
-				id: owner.id,
-				createdAt: owner.createdAt,
-			});
-			useTamperProofLinks = featureFlags[TAMPER_PROOF_INVITE_LINKS_EXPERIMENT] === true;
-		} catch (error) {
-			// If feature flag check fails, fall back to old mechanism
-			this.logger.debug('Failed to check feature flags for tamper-proof invite links', { error });
-		}
-
 		return await Promise.all(
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
-				let inviteAcceptUrl: string;
-				if (useTamperProofLinks) {
-					// Use JWT-based tamper-proof invite links when feature flag is enabled
-					const token = this.jwtService.sign(
-						{
-							inviterId: owner.id,
-							inviteeId: id,
-						},
-						{
-							expiresIn: '90d',
-						},
-					);
-					inviteAcceptUrl = `${domain}/signup?token=${token}`;
-				} else {
-					// Use legacy invite links when feature flag is disabled
-					inviteAcceptUrl = `${domain}/signup?inviterId=${owner.id}&inviteeId=${id}`;
-				}
+				// Always use JWT-based tamper-proof invite links
+				const token = this.jwtService.sign(
+					{
+						inviterId: owner.id,
+						inviteeId: id,
+					},
+					{
+						expiresIn: '90d',
+					},
+				);
+				const inviteAcceptUrl = `${domain}/signup?token=${token}`;
 				const invitedUser: UserRequest.InviteResponse = {
 					user: {
 						id,
@@ -269,9 +243,9 @@ export class UserService {
 							messageType: 'New user invite',
 							publicApi: false,
 						});
+						// Do not log inviteAcceptUrl: it contains a live JWT that must not appear in logs
 						this.logger.error('Failed to send email', {
 							userId: owner.id,
-							inviteAcceptUrl,
 							email,
 						});
 						invitedUser.error = e.message;
@@ -435,11 +409,10 @@ export class UserService {
 	}
 
 	/**
-	 * Extract inviterId and inviteeId from either JWT token or legacy query parameters
-	 * Validates the format based on the feature flag for the inviter
-	 * @param payload - ResolveSignupTokenQueryDto containing either token or inviterId/inviteeId
+	 * Extract inviterId and inviteeId from JWT token
+	 * @param token - JWT token containing inviterId and inviteeId
 	 * @returns Object with inviterId and inviteeId
-	 * @throws BadRequestError if format doesn't match feature flag, JWT is invalid, or required parameters are missing
+	 * @throws BadRequestError if JWT is invalid or required parameters are missing
 	 */
 	private async processTokenBasedInvite(
 		token: string,
@@ -461,23 +434,15 @@ export class UserService {
 		}
 	}
 
-	private async processInviteeIdInviterIdBasedInvite(
-		inviterId: string,
-		inviteeId: string,
+	/**
+	 * Extract inviterId and inviteeId from JWT token
+	 * @param token - JWT token containing inviterId and inviteeId
+	 * @returns Object with inviterId and inviteeId
+	 * @throws BadRequestError if JWT is invalid or required parameters are missing
+	 */
+	async getInvitationIdsFromPayload(
+		token: string,
 	): Promise<{ inviterId: string; inviteeId: string }> {
-		return { inviterId, inviteeId };
-	}
-
-	async getInvitationIdsFromPayload(payload: {
-		token?: string;
-		inviterId?: string;
-		inviteeId?: string;
-	}): Promise<{ inviterId: string; inviteeId: string }> {
-		if (payload.token && (payload.inviteeId || payload.inviterId)) {
-			this.logger.error('Invalid invite url containing both token and inviterId / inviteeId');
-			throw new BadRequestError('Invalid invite URL');
-		}
-
 		const instanceOwner = await this.userRepository.findOne({
 			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
 		});
@@ -486,25 +451,7 @@ export class UserService {
 			throw new BadRequestError('Instance owner not found');
 		}
 
-		let isTamperProofLinksEnabled = false;
-		try {
-			const featureFlags = await this.postHog.getFeatureFlags({
-				id: instanceOwner.id,
-				createdAt: instanceOwner.createdAt,
-			});
-			isTamperProofLinksEnabled = featureFlags[TAMPER_PROOF_INVITE_LINKS_EXPERIMENT] === true;
-		} catch (error) {
-			this.logger.debug('Failed to check feature flags for tamper-proof invite links', { error });
-		}
-
-		if (isTamperProofLinksEnabled && payload.token) {
-			return await this.processTokenBasedInvite(payload.token);
-		}
-
-		if (payload.inviterId && payload.inviteeId) {
-			return await this.processInviteeIdInviterIdBasedInvite(payload.inviterId, payload.inviteeId);
-		}
-
-		throw new BadRequestError('Invalid invite URL');
+		// Only support token-based invites (tamper-proof)
+		return await this.processTokenBasedInvite(token);
 	}
 }

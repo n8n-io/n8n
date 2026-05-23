@@ -170,6 +170,8 @@ describe('ProjectSettings', () => {
 		createTestingPinia();
 
 		projectsStore = mockedStore(useProjectsStore);
+		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
+		projectsStore.globalProjectPermissions = { list: true };
 		usersStore = mockedStore(useUsersStore);
 		settingsStore = mockedStore(useSettingsStore);
 		rolesStore = mockedStore(useRolesStore);
@@ -681,6 +683,27 @@ describe('ProjectSettings', () => {
 			// Members table should show all 9 members (not filtered by "User1")
 			expect(wrapper.getByTestId('members-count').textContent).toBe('9');
 			expect(removeSpy).toHaveBeenCalledWith('123', '10');
+		});
+	});
+
+	describe('User search for member invitation', () => {
+		it('preloads all users without projectId filter on mount when user has project:update scope', async () => {
+			renderComponent();
+			await nextTick();
+
+			expect(usersStore.fetchUsers).toHaveBeenCalledWith({ take: 50, filter: {} });
+		});
+
+		it('skips user preloading on mount when user cannot update the project', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read'],
+			};
+
+			renderComponent();
+			await nextTick();
+
+			expect(usersStore.fetchUsers).not.toHaveBeenCalled();
 		});
 	});
 

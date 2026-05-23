@@ -96,6 +96,7 @@ declare global {
 				userPropertiesOnce?: Record<string, string>,
 			): void;
 			reset?(resetDeviceId?: boolean): void;
+			group?(groupType: string, groupKey: string, groupPropertiesToSet?: IDataObject): void;
 			onFeatureFlags?(callback: (keys: string[], map: FeatureFlags) => void): void;
 			reloadFeatureFlags?(): void;
 			capture?(event: string, properties: IDataObject): void;
@@ -344,7 +345,7 @@ export type WorkflowListItem = Omit<
 	IWorkflowDb,
 	'nodes' | 'connections' | 'pinData' | 'usedCredentials' | 'meta'
 > & {
-	resource: 'workflow';
+	resource?: 'workflow'; // only included if list may contain folders
 	description?: string;
 	hasResolvableCredentials?: boolean;
 };
@@ -455,6 +456,7 @@ export type SimplifiedNodeType = Pick<
 	| 'outputs'
 > & {
 	tag?: NodeCreatorTag;
+	isNew?: boolean;
 };
 export interface SubcategoryItemProps {
 	description?: string;
@@ -464,6 +466,7 @@ export interface SubcategoryItemProps {
 		color?: string;
 	};
 	panelClass?: string;
+	connectionType?: NodeConnectionType;
 	title?: string;
 	subcategory?: string;
 	defaults?: INodeParameters;
@@ -552,6 +555,10 @@ export interface SectionCreateElement extends CreateElementBase {
 	 * Whether to show a separator at the bottom of the expanded section
 	 */
 	showSeparator?: boolean;
+	/**
+	 * Whether to render the section without its category header
+	 */
+	hideHeader?: boolean;
 }
 
 export interface ViewCreateElement extends CreateElementBase {
@@ -640,6 +647,11 @@ export type ModalState = {
 export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;
+	projectId?: string;
+	suggestedName?: string;
+	nodeName?: string;
+	contextNode?: INodeUi;
+	hideAskAssistant?: boolean;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
@@ -688,7 +700,6 @@ export type NodeCreatorOpenSource =
 
 export interface INodeCreatorState {
 	itemsFilter: string;
-	showScrim: boolean;
 	rootViewHistory: NodeFilterType[];
 	selectedView: NodeFilterType;
 	openSource: NodeCreatorOpenSource;
@@ -873,7 +884,9 @@ export type CloudUpdateLinkSourceType =
 	| 'custom-roles-list'
 	| 'main-sidebar'
 	| 'chat-hub'
-	| 'empty-state-builder-prompt';
+	| 'empty-state-builder-prompt'
+	| 'instance-ai'
+	| 'workflow-settings';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -901,7 +914,9 @@ export type UTMCampaign =
 	| 'upgrade-builder'
 	| 'upgrade-custom-roles'
 	| 'upgrade-canvas-nav'
-	| 'upgrade-main-sidebar';
+	| 'upgrade-main-sidebar'
+	| 'upgrade-instance-ai'
+	| 'upgrade-data-redaction';
 
 export type AddedNode = {
 	type: string;
@@ -946,12 +961,12 @@ export type EnterpriseEditionFeatureKey =
 	| 'DebugInEditor'
 	| 'WorkerView'
 	| 'AdvancedPermissions'
-	| 'ApiKeyScopes'
 	| 'EnforceMFA'
 	| 'NamedVersions'
 	| 'Provisioning'
 	| 'PersonalSpacePolicy'
-	| 'CustomRoles';
+	| 'CustomRoles'
+	| 'DataRedaction';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 

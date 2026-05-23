@@ -5,9 +5,6 @@
 	"description": "Static analysis and architecture enforcement for Playwright test suites",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
-	"bin": {
-		"playwright-janitor": "dist/cli.js"
-	},
 	"files": [
 		"dist"
 	],
@@ -32,13 +29,14 @@
 	],
 	"license": "MIT",
 	"dependencies": {
+		"@n8n/rules-engine": "workspace:*",
 		"glob": "^10.0.0"
 	},
 	"peerDependencies": {
-		"ts-morph": ">=20.0.0"
+		"ts-morph": "catalog:"
 	},
 	"devDependencies": {
-		"@types/node": "^20.0.0",
+		"@types/node": "catalog:",
 		"@vitest/coverage-v8": "catalog:",
 		"ts-morph": "catalog:",
 		"tsx": "catalog:",

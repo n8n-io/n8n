@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import {
 	createEmptyRunExecutionData,
@@ -12,10 +13,15 @@ import {
 } from 'n8n-workflow';
 
 import { establishExecutionContext } from '../execution-context';
+import { ExecutionContextService } from '../execution-context.service';
 
 describe('establishExecutionContext', () => {
 	const mockWorkflow = mock<Workflow>({ id: 'test-workflow-id' });
-	const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+	const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+		encryptedRunnerIdentity: undefined,
+	});
 	const mockMode: WorkflowExecuteMode = 'manual';
 
 	describe('successful context establishment', () => {
@@ -452,6 +458,73 @@ describe('establishExecutionContext', () => {
 			expect(runExecutionData.executionData!.runtimeData!.parentExecutionId).toBe(
 				'parent-exec-123',
 			);
+		});
+
+		it('should skip hook augmentation when runtimeData is already set (queue-mode worker resume)', async () => {
+			// When the main process established the context before persisting,
+			// the worker fetches the execution with runtimeData already populated.
+			// The function must return immediately without re-running hook augmentation.
+			const existingContext: IExecutionContext = {
+				version: 1,
+				establishedAt: 1234567890,
+				source: 'webhook',
+				credentials: 'encrypted-credentials-blob',
+			};
+
+			const webhookNode = mock<INode>({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				parameters: {},
+			});
+
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: webhookNode,
+							data: {
+								main: [
+									[
+										{
+											json: {
+												headers: { authorization: 'original-header-value' },
+											},
+										},
+									],
+								],
+							},
+							source: null,
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+					runtimeData: existingContext,
+				},
+			});
+
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData,
+				mockAdditionalData,
+				'webhook',
+			);
+
+			// runtimeData reference is preserved — same object, same values
+			expect(runExecutionData.executionData!.runtimeData).toBe(existingContext);
+			expect(runExecutionData.executionData!.runtimeData!.credentials).toBe(
+				'encrypted-credentials-blob',
+			);
+
+			// Trigger items are left untouched (hook augmentation was skipped).
+			// The main process already applied any transformations before persisting;
+			// this assertion just verifies the worker-side call is a no-op.
+			const headers = runExecutionData.executionData!.nodeExecutionStack[0].data.main[0]![0].json
+				.headers as Record<string, string>;
+			expect(headers.authorization).toBe('original-header-value');
 		});
 	});
 
@@ -1134,6 +1207,125 @@ describe('establishExecutionContext', () => {
 				version: 1,
 				policy: 'all',
 			});
+		});
+	});
+
+	describe('manual execution credential context', () => {
+		let mockExecutionContextService: jest.Mocked<ExecutionContextService>;
+
+		const buildRunDataWithManualTrigger = () =>
+			createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: mock<INode>({ name: 'Manual', type: 'n8n-nodes-base.manualTrigger' }),
+							data: { main: [[{ json: {} }]] },
+							source: null,
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			});
+
+		beforeEach(() => {
+			mockExecutionContextService = mock<ExecutionContextService>();
+			// The end of establishExecutionContext calls augmentExecutionContextWithHooks for any
+			// start item that isn't gated by an early return. Stub it to a no-op pass-through so the
+			// tests below only assert the manual-injection branch.
+			mockExecutionContextService.augmentExecutionContextWithHooks.mockImplementation(
+				async (_workflow, _startItem, context) => ({
+					context,
+					triggerItems: null,
+				}),
+			);
+			Container.set(ExecutionContextService, mockExecutionContextService);
+		});
+
+		afterEach(() => {
+			Container.reset();
+		});
+
+		it('should assign the pre-built encryptedRunnerIdentity to credentials for manual runs', async () => {
+			const runExecutionData = buildRunDataWithManualTrigger();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				encryptedRunnerIdentity: 'encrypted-credential-blob',
+			});
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'manual');
+
+			expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
+			expect(runExecutionData.executionData!.runtimeData!.credentials).toBe(
+				'encrypted-credential-blob',
+			);
+		});
+
+		it('should NOT inject credentials when encryptedRunnerIdentity is missing', async () => {
+			const runExecutionData = buildRunDataWithManualTrigger();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				encryptedRunnerIdentity: undefined,
+			});
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'manual');
+
+			expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
+			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
+		});
+
+		it('should NOT inject credentials when additionalData is undefined', async () => {
+			const runExecutionData = buildRunDataWithManualTrigger();
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, undefined, 'manual');
+
+			expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
+			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
+		});
+
+		it('should NOT inject credentials for webhook mode even when ciphertext is present', async () => {
+			const runExecutionData = buildRunDataWithManualTrigger();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				encryptedRunnerIdentity: 'encrypted-credential-blob',
+			});
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'webhook');
+
+			expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
+			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
+		});
+
+		it('should NOT inject credentials for trigger mode even when ciphertext is present', async () => {
+			const runExecutionData = buildRunDataWithManualTrigger();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				encryptedRunnerIdentity: 'encrypted-credential-blob',
+			});
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'trigger');
+
+			expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
+			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
+		});
+
+		it('should not overwrite existing runtimeData when it is already established', async () => {
+			const runExecutionData = buildRunDataWithManualTrigger();
+			const existingContext: IExecutionContext = {
+				version: 1,
+				establishedAt: 12345,
+				source: 'manual',
+				credentials: 'pre-existing-credentials',
+			};
+			runExecutionData.executionData!.runtimeData = existingContext;
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				encryptedRunnerIdentity: 'encrypted-credential-blob',
+			});
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'manual');
+
+			expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
+			expect(runExecutionData.executionData!.runtimeData).toEqual(existingContext);
 		});
 	});
 });
