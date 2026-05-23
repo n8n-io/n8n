@@ -4,12 +4,12 @@
 export interface ProviderCapabilities {
 	thinking: false | 'budgetTokens' | 'reasoningEffort';
 	webSearch: false | 'anthropic.web_search' | 'openai.web_search' | 'google.google_search';
-	providerTools: readonly (
+	providerTools: ReadonlyArray<
 		| 'anthropic.web_search'
 		| 'openai.web_search'
 		| 'openai.image_generation'
 		| 'google.google_search'
-	)[];
+	>;
 }
 
 export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
