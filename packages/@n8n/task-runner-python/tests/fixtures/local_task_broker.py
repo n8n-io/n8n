@@ -74,7 +74,10 @@ class LocalTaskBroker:
 
             async for message in ws:
                 if message.type == web_ws.WSMsgType.TEXT:
-                    json_message = json.loads(message.data)
+                    try:
+                        json_message = json.loads(message.data)
+                    except json.JSONDecodeError as exc:
+                        raise ValueError(f"Invalid JSON: {exc}") from exc
                     self.received_messages.append(json_message)
                     await self._handle_message(connection_id, json_message)
         finally:

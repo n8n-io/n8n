@@ -119,7 +119,10 @@ class MessageSerde:
 
     @staticmethod
     def deserialize_broker_message(data: str) -> BrokerMessage:
-        message_dict = json.loads(data)
+        try:
+            message_dict = json.loads(data)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON: {exc}") from exc
         message_type = message_dict.get("type")
 
         if message_type not in MESSAGE_TYPE_MAP:
