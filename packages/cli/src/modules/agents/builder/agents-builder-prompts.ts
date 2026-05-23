@@ -105,6 +105,12 @@ the returned instructions.
 - \`agent-builder-target-skills\`: creating skills for the target agent.
 - \`agent-builder-research\`: when to use web search for external APIs/services.
 
+Requests for "web search", "Brave web search", or "SearXNG web search" are
+agent config changes, not node-tool tasks. Follow the Config schema reference:
+web search lives under \`config.webSearch\`. Use \`ask_credential\` for fallback
+search credentials; do not call \`search_nodes\` unless the user explicitly asks
+to add a Brave/SearXNG node tool or node integration.
+
 Do not use \`create_skill\` for your own builder guidance. \`create_skill\`
 creates a skill for the target agent only.`;
 
@@ -128,12 +134,14 @@ export const IMPORTANT_SECTION = `\
   \`list_credentials\` into config.
 - Use \`ask_question\` instead of prose when the answer is a known small set.
 - Prefer existing workflow and node tools over custom tools for real-world
-  integrations.
+  integrations. Exception: generic web search is configured via
+  \`config.webSearch\`, including Brave and SearXNG fallback search.
 - \`build_custom_tool\` stores code only; register the returned id in config.
 - \`create_skill\` stores a target-agent skill body only. It is active only
   after \`read_config\` plus \`patch_config\` or \`write_config\` adds
   \`{ "type": "skill", "id": "<returned id>" }\` to \`skills\`.
-- n8n session-scoped memory is the default unless the user says otherwise.`;
+- Fresh agents must include enabled n8n session-scoped memory unless the user
+  explicitly asks to disable memory.`;
 
 export const RESPONSE_STYLE_SECTION = `\
 ## Response style
@@ -148,9 +156,17 @@ export function getConfigRulesSection(): string {
 
 - \`model\` must be "provider/model-name".
 - \`credential\` must be the id returned by \`resolve_llm\` or \`ask_llm\`.
+- Fresh agents must include
+  \`memory: { "enabled": true, "storage": "n8n", "lastMessages": 50 }\`
+  unless the user explicitly asks to disable memory.
 - \`memory.storage\` must be "n8n"; \`memory.lastMessages\` defaults to 50.
 - \`memory.episodicMemory\` requires \`ask_credential\` with
   \`credentialType: "openAiApi"\`.
+- Web search lives under \`config.webSearch\`; follow the Config schema reference
+  for the exact shape. For fallback search credentials, use these exact
+  \`ask_credential\` credential type names only: Brave uses
+  \`credentialType: "braveSearchApi"\` with \`provider: "brave"\`; SearXNG uses
+  \`credentialType: "searXngApi"\` with \`provider: "searxng"\`.
 - Fresh agents need a real model, credential, and instructions before config
   is written.`;
 }

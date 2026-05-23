@@ -25,6 +25,10 @@ Node tools:
 - Wrap expressions in \`={{ }}\`; do not pipe AI-chosen fields through \`$json\`.
 - Do not include \`inputSchema\` or \`toolDescription\` for node tools.
 - For each required credential slot, call \`ask_credential\` once before config mutation. If skipped, still add the tool and omit only that credential slot.
+- "Brave web search" and "SearXNG web search" are fallback web-search config,
+  not node-tool requests. Use \`config.webSearch\` and \`ask_credential\`.
+- Only add Brave or SearXNG node tools when the user explicitly asks for the
+  node tool/integration itself or for node-specific configuration.
 
 Custom tools:
 - Use \`build_custom_tool\` with \`export default new Tool(...)\` and imports only from \`@n8n/agents\` and \`zod\`.

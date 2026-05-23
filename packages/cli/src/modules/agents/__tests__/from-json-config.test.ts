@@ -1,4 +1,4 @@
-import type { AgentSnapshot, BuiltProviderTool, ToolDescriptor } from '@n8n/agents';
+import type { AgentSnapshot, BuiltProviderTool, BuiltTool, ToolDescriptor } from '@n8n/agents';
 import type { JSONSchema7 } from 'json-schema';
 
 import {
@@ -117,6 +117,13 @@ describe('buildFromJson()', () => {
 				providerTools?: BuiltProviderTool[];
 			}
 		).providerTools?.find((tool) => tool.name === name);
+
+	const getLocalToolNames = (agent: unknown): string[] =>
+		(
+			agent as {
+				tools?: BuiltTool[];
+			}
+		).tools?.map((tool) => tool.name) ?? [];
 
 	const makeMockMemoryFactory = () => jest.fn();
 
@@ -608,6 +615,58 @@ describe('buildFromJson()', () => {
 
 		expect(getProviderToolNames(agent)).toContain('anthropic.web_search_20260209');
 		expect(getProviderToolNames(agent)).not.toContain('anthropic.web_search_20250305');
+	});
+
+	it('adds fallback web search tool for providers without native web search', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getProviderToolNames(agent)).toEqual([]);
+		expect(getLocalToolNames(agent)).toContain('web_search');
+	});
+
+	it('prefers native web search over fallback config for native-capable providers', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getProviderToolNames(agent)).toContain('anthropic.web_search_20250305');
+		expect(getLocalToolNames(agent)).not.toContain('web_search');
+	});
+
+	it('requires fallback web search credentials for providers without native web search', async () => {
+		await expect(
+			buildFromJson(
+				makeConfig({
+					model: 'deepseek/deepseek-chat',
+					config: { webSearch: { enabled: true, provider: 'brave' } },
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			),
+		).rejects.toThrow('Web search is enabled but no search credential is configured.');
 	});
 
 	it('sets toolCallConcurrency', async () => {

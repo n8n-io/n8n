@@ -17,6 +17,7 @@ import type {
 	AgentJsonToolConfig,
 	AgentJsonSkillConfig,
 } from '@n8n/api-types';
+import { z } from 'zod';
 
 import { mapCredentialForProvider } from './credential-field-mapping';
 import { resolveProviderToolName } from './provider-tool-aliases';
@@ -42,6 +43,14 @@ const NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL: Record<string, string> = {
 	'openai.web_search': 'openai',
 	'google.google_search': 'google',
 };
+
+const WEB_SEARCH_TOOL_NAME = 'web_search';
+const WEB_SEARCH_INPUT_SCHEMA = z.object({
+	query: z.string().min(1).describe('Search query'),
+	maxResults: z.number().int().min(1).max(10).optional().describe('Maximum number of results'),
+	includeDomains: z.array(z.string()).optional().describe('Only return results from these domains'),
+	excludeDomains: z.array(z.string()).optional().describe('Exclude results from these domains'),
+});
 
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
@@ -107,6 +116,10 @@ export async function buildFromJson(
 			agent.providerTool({ name: resolved as `${string}.${string}`, args });
 		}
 	}
+	const fallbackWebSearchTool = buildFallbackWebSearchTool(config, options.credentialProvider);
+	if (fallbackWebSearchTool) {
+		agent.tool(fallbackWebSearchTool);
+	}
 
 	// Memory
 	if (config.memory?.enabled) {
@@ -157,6 +170,57 @@ function getEffectiveProviderTools(
 	}
 
 	return providerTools;
+}
+
+function buildFallbackWebSearchTool(
+	config: AgentJsonConfig,
+	credentialProvider: CredentialProvider,
+): BuiltTool | null {
+	const providerPrefix = getProviderPrefix(config.model);
+	const hasNativeWebSearch = !!NATIVE_WEB_SEARCH_TOOL_BY_PROVIDER[providerPrefix];
+	const webSearchConfig = config.config?.webSearch;
+
+	if (!webSearchConfig?.enabled || hasNativeWebSearch) return null;
+	if (webSearchConfig.provider !== 'brave' && webSearchConfig.provider !== 'searxng') {
+		throw new Error('Web search is enabled but no fallback search provider is configured.');
+	}
+	if (!webSearchConfig.credential) {
+		throw new Error('Web search is enabled but no search credential is configured.');
+	}
+	const credentialId = webSearchConfig.credential;
+
+	return {
+		name: WEB_SEARCH_TOOL_NAME,
+		description: 'Search the web for current information.',
+		systemInstruction:
+			'Use web_search when current, recent, or externally verifiable information is needed.',
+		inputSchema: WEB_SEARCH_INPUT_SCHEMA,
+		handler: async (input) => {
+			const args = WEB_SEARCH_INPUT_SCHEMA.parse(input);
+			const credential = await credentialProvider.resolve(credentialId);
+			const { braveSearch, searxngSearch } = await import('@n8n/ai-utilities');
+
+			if (webSearchConfig.provider === 'brave') {
+				if (typeof credential.apiKey !== 'string') {
+					throw new Error('Brave Search credential is missing an API key.');
+				}
+				return await braveSearch(credential.apiKey, args.query, {
+					maxResults: args.maxResults,
+					includeDomains: args.includeDomains,
+					excludeDomains: args.excludeDomains,
+				});
+			}
+
+			if (typeof credential.apiUrl !== 'string') {
+				throw new Error('SearXNG credential is missing an API URL.');
+			}
+			return await searxngSearch(credential.apiUrl, args.query, {
+				maxResults: args.maxResults,
+				includeDomains: args.includeDomains,
+				excludeDomains: args.excludeDomains,
+			});
+		},
+	};
 }
 
 function getConfiguredSkills(

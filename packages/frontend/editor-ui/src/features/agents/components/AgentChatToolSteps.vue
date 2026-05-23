@@ -1,11 +1,19 @@
 <script setup lang="ts">
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import type { ToolCall } from '../composables/agentChatMessages';
-import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import { formatToolNameForDisplay, getToolNameTranslationKey } from '../utils/toolDisplayName';
 
 defineProps<{
 	toolCalls: ToolCall[];
 }>();
+
+const i18n = useI18n();
+
+function getToolDisplayName(toolName: string): string {
+	const translationKey = getToolNameTranslationKey(toolName);
+	return translationKey ? i18n.baseText(translationKey) : formatToolNameForDisplay(toolName);
+}
 </script>
 
 <template>
@@ -34,7 +42,7 @@ defineProps<{
 				<N8nIcon v-else icon="spinner" size="large" :spin="true" :class="$style.toolStepLoading" />
 			</div>
 			<span :class="[$style.toolStepLabel, { [$style.shimmer]: tc.state === 'running' }]">
-				{{ formatToolNameForDisplay(tc.tool) }}
+				{{ getToolDisplayName(tc.tool) }}
 			</span>
 			<span
 				v-if="tc.displaySummary"

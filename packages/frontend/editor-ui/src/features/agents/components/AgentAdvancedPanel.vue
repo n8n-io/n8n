@@ -22,6 +22,7 @@ import {
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import { useI18n } from '@n8n/i18n';
 
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { AgentJsonConfig } from '../types';
 import {
 	PROVIDER_CAPABILITIES,
@@ -31,16 +32,18 @@ import {
 import { parseProvider } from '../utils/model-string';
 import {
 	getNativeWebSearchArgs,
-	isNativeWebSearchEnabled,
 	type NativeWebSearchArgs,
 	withNativeWebSearchConfig,
 } from '../utils/nativeWebSearch';
 
 const i18n = useI18n();
-const DEFAULT_CAPABILITIES = { thinking: false, webSearch: false } as const;
+const credentialsStore = useCredentialsStore();
+const DEFAULT_CAPABILITIES = { thinking: false, webSearch: false, providerTools: [] } as const;
 const ANTHROPIC_WEB_SEARCH_DEFAULT_MAX_USES = 5;
 const SEARCH_CONTEXT_SIZE_OPTIONS = ['low', 'medium', 'high'] as const;
+const FALLBACK_WEB_SEARCH_PROVIDERS = ['brave', 'searxng'] as const;
 type SearchContextSize = (typeof SEARCH_CONTEXT_SIZE_OPTIONS)[number];
+type FallbackWebSearchProvider = (typeof FALLBACK_WEB_SEARCH_PROVIDERS)[number];
 
 const props = withDefaults(
 	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; collapsible?: boolean }>(),
@@ -56,13 +59,17 @@ const isExpanded = ref(!props.collapsible);
 const provider = computed(() => parseProvider(props.config?.model));
 const capabilities = computed(() => PROVIDER_CAPABILITIES[provider.value] ?? DEFAULT_CAPABILITIES);
 
-const webSearchEnabled = ref(isNativeWebSearchEnabled(props.config, capabilities.value.webSearch));
+const webSearchEnabled = ref(props.config?.config?.webSearch?.enabled === true);
 const webSearchArgs = ref<NativeWebSearchArgs>(
 	getNativeWebSearchArgs(props.config, capabilities.value.webSearch),
 );
 const webSearchMaxUses = ref('');
 const webSearchExternalAccess = ref(true);
 const webSearchContextSize = ref<SearchContextSize>('medium');
+const fallbackWebSearchProvider = ref<FallbackWebSearchProvider>(
+	props.config?.config?.webSearch?.provider === 'searxng' ? 'searxng' : 'brave',
+);
+const fallbackWebSearchCredential = ref(props.config?.config?.webSearch?.credential ?? '');
 const thinkingCfg = computed(() => props.config?.config?.thinking ?? null);
 const thinkingEnabled = ref(thinkingCfg.value !== null);
 const budgetTokens = ref(thinkingCfg.value?.budgetTokens ?? 1024);
@@ -97,16 +104,48 @@ watch(
 		budgetTokens.value = t?.budgetTokens ?? 1024;
 		reasoningEffort.value = (t?.reasoningEffort as ReasoningEffort) ?? 'medium';
 		toolCallConcurrency.value = cfg.config?.toolCallConcurrency ?? 1;
-		webSearchEnabled.value = isNativeWebSearchEnabled(cfg, capabilities.value.webSearch);
+		webSearchEnabled.value = cfg.config?.webSearch?.enabled === true;
 		webSearchArgs.value = getNativeWebSearchArgs(cfg, capabilities.value.webSearch);
+		fallbackWebSearchProvider.value =
+			cfg.config?.webSearch?.provider === 'searxng' ? 'searxng' : 'brave';
+		fallbackWebSearchCredential.value = cfg.config?.webSearch?.credential ?? '';
 		syncWebSearchOptions(webSearchArgs.value);
 	},
 	{ deep: true },
 );
 
+const fallbackCredentialType = computed(() =>
+	fallbackWebSearchProvider.value === 'brave' ? 'braveSearchApi' : 'searXngApi',
+);
+const fallbackCredentials = computed(() =>
+	credentialsStore.allCredentials.filter(
+		(credential) => credential.type === fallbackCredentialType.value,
+	),
+);
+
+function withFallbackWebSearchConfig(enabled: boolean): Partial<AgentJsonConfig> {
+	return {
+		config: {
+			...(props.config?.config ?? {}),
+			webSearch: enabled
+				? {
+						enabled: true,
+						provider: fallbackWebSearchProvider.value,
+						...(fallbackWebSearchCredential.value && {
+							credential: fallbackWebSearchCredential.value,
+						}),
+					}
+				: { enabled: false },
+		},
+	};
+}
+
 function onWebSearchToggle(value: boolean) {
-	if (!capabilities.value.webSearch) return;
 	webSearchEnabled.value = value;
+	if (!capabilities.value.webSearch) {
+		emit('update:config', withFallbackWebSearchConfig(value));
+		return;
+	}
 	emit(
 		'update:config',
 		withNativeWebSearchConfig(
@@ -154,6 +193,17 @@ const emitWebSearchConfig = useDebounceFn(() => {
 
 function onWebSearchOptionInput() {
 	void emitWebSearchConfig();
+}
+
+function onFallbackProviderChange(value: FallbackWebSearchProvider) {
+	fallbackWebSearchProvider.value = value;
+	fallbackWebSearchCredential.value = '';
+	emit('update:config', withFallbackWebSearchConfig(webSearchEnabled.value));
+}
+
+function onFallbackCredentialChange(value: string) {
+	fallbackWebSearchCredential.value = value;
+	emit('update:config', withFallbackWebSearchConfig(webSearchEnabled.value));
 }
 
 function emitThinking() {
@@ -215,17 +265,7 @@ const thinkingDisabledReason = computed(() =>
 			}),
 );
 
-const webSearchDisabledReason = computed(() =>
-	capabilities.value.webSearch
-		? ''
-		: i18n.baseText('agents.builder.advanced.webSearch.unsupportedTooltip', {
-				interpolate: {
-					provider:
-						provider.value ||
-						i18n.baseText('agents.builder.advanced.webSearch.unsupportedProviderFallback'),
-				},
-			}),
-);
+const webSearchDisabledReason = computed(() => '');
 </script>
 
 <template>
@@ -249,14 +289,11 @@ const webSearchDisabledReason = computed(() =>
 							{{ i18n.baseText('agents.builder.advanced.webSearch.hint') }}
 						</N8nText>
 					</div>
-					<N8nTooltip
-						:content="webSearchDisabledReason"
-						:disabled="!!capabilities.webSearch"
-						placement="top"
-					>
+					<N8nTooltip :content="webSearchDisabledReason" :disabled="true" placement="top">
 						<N8nSwitch2
 							:model-value="webSearchEnabled"
-							:disabled="!capabilities.webSearch || props.disabled"
+							:disabled="props.disabled"
+							:class="$style.switchControl"
 							data-testid="agent-web-search-toggle"
 							@update:model-value="(v) => onWebSearchToggle(Boolean(v))"
 						/>
@@ -264,7 +301,7 @@ const webSearchDisabledReason = computed(() =>
 				</div>
 
 				<div
-					v-if="webSearchEnabled && capabilities.webSearch"
+					v-if="webSearchEnabled"
 					:class="$style.subSettings"
 					data-testid="agent-web-search-settings"
 				>
@@ -304,6 +341,7 @@ const webSearchDisabledReason = computed(() =>
 						<N8nSwitch2
 							:model-value="webSearchExternalAccess"
 							:disabled="props.disabled"
+							:class="$style.switchControl"
 							data-testid="agent-web-search-external-access"
 							@update:model-value="
 								(v) => {
@@ -339,6 +377,55 @@ const webSearchDisabledReason = computed(() =>
 							/>
 						</N8nSelect>
 					</div>
+
+					<div v-if="!capabilities.webSearch" :class="$style.row">
+						<N8nText size="small" :bold="true">{{
+							i18n.baseText('agents.builder.advanced.webSearch.fallbackProvider.label')
+						}}</N8nText>
+						<N8nSelect
+							:model-value="fallbackWebSearchProvider"
+							size="small"
+							:disabled="props.disabled"
+							:class="$style.shortInput"
+							data-testid="agent-web-search-fallback-provider"
+							@update:model-value="(v) => onFallbackProviderChange(v as FallbackWebSearchProvider)"
+						>
+							<N8nOption
+								value="brave"
+								:label="i18n.baseText('agents.builder.advanced.webSearch.fallbackProvider.brave')"
+							/>
+							<N8nOption
+								value="searxng"
+								:label="i18n.baseText('agents.builder.advanced.webSearch.fallbackProvider.searxng')"
+							/>
+						</N8nSelect>
+					</div>
+
+					<div v-if="!capabilities.webSearch" :class="$style.row">
+						<div :class="$style.rowLabel">
+							<N8nText size="small" :bold="true">{{
+								i18n.baseText('agents.builder.advanced.webSearch.credential.label')
+							}}</N8nText>
+							<N8nText size="xsmall" color="text-light">
+								{{ i18n.baseText('agents.builder.advanced.webSearch.credential.hint') }}
+							</N8nText>
+						</div>
+						<N8nSelect
+							:model-value="fallbackWebSearchCredential"
+							size="small"
+							:disabled="props.disabled"
+							:class="$style.credentialSelect"
+							data-testid="agent-web-search-fallback-credential"
+							@update:model-value="(v) => onFallbackCredentialChange(String(v))"
+						>
+							<N8nOption
+								v-for="credential in fallbackCredentials"
+								:key="credential.id"
+								:value="credential.id"
+								:label="credential.name"
+							/>
+						</N8nSelect>
+					</div>
 				</div>
 			</div>
 
@@ -360,6 +447,7 @@ const webSearchDisabledReason = computed(() =>
 						<N8nSwitch2
 							:model-value="thinkingEnabled"
 							:disabled="!capabilities.thinking || props.disabled"
+							:class="$style.switchControl"
 							data-testid="agent-thinking-toggle"
 							@update:model-value="(v) => onThinkingToggle(Boolean(v))"
 						/>
@@ -500,5 +588,14 @@ const webSearchDisabledReason = computed(() =>
 .shortInput {
 	width: 140px;
 	flex-shrink: 0;
+}
+
+.credentialSelect {
+	width: 220px;
+	flex-shrink: 0;
+}
+
+.switchControl:not([data-disabled]) {
+	cursor: pointer;
 }
 </style>

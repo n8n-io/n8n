@@ -52,6 +52,8 @@ const ThinkingConfigSchema = z.object({
 
 const WebSearchConfigSchema = z.object({
 	enabled: z.boolean(),
+	provider: z.enum(['auto', 'native', 'brave', 'searxng']).optional(),
+	credential: z.string().optional(),
 });
 
 const NodeToolCredentialSchema = z.object({

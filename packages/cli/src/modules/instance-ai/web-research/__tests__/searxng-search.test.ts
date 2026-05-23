@@ -1,4 +1,4 @@
-import { searxngSearch } from '../searxng-search';
+import { searxngSearch } from '@n8n/ai-utilities';
 
 // ---------------------------------------------------------------------------
 // Mock fetch

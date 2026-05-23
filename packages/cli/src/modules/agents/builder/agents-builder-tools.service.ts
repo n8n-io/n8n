@@ -15,6 +15,7 @@ import type { Operation } from 'fast-json-patch';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
+import { CredentialTypes } from '@/credential-types';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
@@ -131,11 +132,18 @@ function applyNativeWebSearchBuilderDefaults(config: AgentJsonConfig): AgentJson
 	}
 
 	if (!nativeWebSearch || explicitDisabled) {
-		const { webSearch: _webSearch, ...restConfig } = config.config ?? {};
+		const { webSearch, ...restConfig } = config.config ?? {};
 		const { config: _config, providerTools: _providerTools, ...restAgentConfig } = config;
+		const keepFallbackWebSearch =
+			webSearch?.enabled === true &&
+			(webSearch.provider === 'brave' || webSearch.provider === 'searxng');
+		const normalizedConfig = {
+			...restConfig,
+			...(keepFallbackWebSearch ? { webSearch } : {}),
+		};
 		return {
 			...restAgentConfig,
-			...(Object.keys(restConfig).length > 0 ? { config: restConfig } : {}),
+			...(Object.keys(normalizedConfig).length > 0 ? { config: normalizedConfig } : {}),
 			...(Object.keys(providerTools).length > 0 ? { providerTools } : {}),
 		};
 	}
@@ -169,6 +177,7 @@ export class AgentsBuilderToolsService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly agentsToolsService: AgentsToolsService,
 		private readonly builderModelLookupService: BuilderModelLookupService,
+		private readonly credentialTypes: CredentialTypes,
 	) {}
 
 	getTools(
@@ -409,7 +418,10 @@ export class AgentsBuilderToolsService {
 			patchConfigTool,
 			listIntegrationTypesTool,
 			buildResolveLlmTool({ credentialProvider, modelLookup }),
-			buildAskCredentialTool({ credentialProvider }),
+			buildAskCredentialTool({
+				credentialProvider,
+				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+			}),
 			buildAskLlmTool(),
 			buildAskQuestionTool(),
 		];

@@ -5,6 +5,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
+import type { CredentialTypes } from '@/credential-types';
 import {
 	AgentsBuilderToolsService,
 	getAgentConfigHash,
@@ -26,7 +27,9 @@ function makeService() {
 	const workflowRepository = mock<WorkflowRepository>();
 	const agentsToolsService = mock<AgentsToolsService>();
 	const builderModelLookupService = mock<BuilderModelLookupService>();
+	const credentialTypes = mock<CredentialTypes>();
 	agentsToolsService.getSharedTools.mockReturnValue([]);
+	credentialTypes.recognizes.mockReturnValue(true);
 
 	const service = new AgentsBuilderToolsService(
 		agentsService,
@@ -34,6 +37,7 @@ function makeService() {
 		workflowRepository,
 		agentsToolsService,
 		builderModelLookupService,
+		credentialTypes,
 	);
 
 	return { service, agentsService, secureRuntime };
@@ -306,6 +310,40 @@ describe('AgentsBuilderToolsService', () => {
 				...updatedConfig,
 				config: { toolCallConcurrency: 2 },
 				providerTools: { 'openai.image_generation': {} },
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: normalizedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
+		});
+
+		it('write_config preserves fallback web search config for unsupported providers', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const updatedConfig: AgentJsonConfig = {
+				...currentConfig,
+				model: 'xai/grok-4',
+				config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' } },
+				providerTools: {
+					'anthropic.web_search': { maxUses: 5 },
+				},
+			};
+			const normalizedConfig: AgentJsonConfig = {
+				...currentConfig,
+				model: 'xai/grok-4',
+				config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 			agentsService.updateConfig.mockResolvedValue({

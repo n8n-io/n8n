@@ -52,6 +52,35 @@ describe('ask_credential tool', () => {
 		expect(ctx.suspend).toHaveBeenCalledTimes(1);
 	});
 
+	it('fails fast when the requested credential type is unknown', async () => {
+		const credentialProvider = makeProvider([{ id: 'c2', name: 'OpenAI', type: 'openAiApi' }]);
+		const tool = buildAskCredentialTool({
+			credentialProvider,
+			isCredentialTypeKnown: (credentialType) => credentialType === 'openAiApi',
+		});
+		const ctx = makeCtx();
+
+		await expect(
+			tool.handler!({ purpose: 'Brave search', credentialType: 'braveSearch' }, ctx as never),
+		).rejects.toThrow('Unknown credential type "braveSearch"');
+		expect(ctx.suspend).not.toHaveBeenCalled();
+	});
+
+	it('still suspends when the requested credential type is known but has no credentials', async () => {
+		const credentialProvider = makeProvider([{ id: 'c2', name: 'OpenAI', type: 'openAiApi' }]);
+		const tool = buildAskCredentialTool({
+			credentialProvider,
+			isCredentialTypeKnown: (credentialType) => credentialType === 'braveSearchApi',
+		});
+		const ctx = makeCtx();
+
+		await tool.handler!(
+			{ purpose: 'Brave search', credentialType: 'braveSearchApi' },
+			ctx as never,
+		);
+		expect(ctx.suspend).toHaveBeenCalledTimes(1);
+	});
+
 	it('returns resumeData verbatim after resume without consulting the provider', async () => {
 		const credentialProvider = makeProvider([]);
 		const tool = buildAskCredentialTool({ credentialProvider });

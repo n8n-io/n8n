@@ -11,6 +11,15 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (k: string) => k }),
 }));
 
+vi.mock('@/features/credentials/credentials.store', () => ({
+	useCredentialsStore: () => ({
+		allCredentials: [
+			{ id: 'brave-1', name: 'Brave Key', type: 'braveSearchApi' },
+			{ id: 'searxng-1', name: 'SearXNG', type: 'searXngApi' },
+		],
+	}),
+}));
+
 // Sub-control flips depend on debouncing — execute synchronously in the test.
 vi.mock('@vueuse/core', async (importOriginal) => {
 	const actual = await importOriginal<typeof VueUse>();
@@ -127,7 +136,7 @@ describe('AgentAdvancedPanel', () => {
 		expect(last.providerTools).toEqual({ 'openai.image_generation': {} });
 	});
 
-	it('disables native web search for unsupported providers', () => {
+	it('enables fallback web search for providers without native web search', async () => {
 		const config = makeConfig({ model: 'deepseek/deepseek-chat' });
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
@@ -136,7 +145,13 @@ describe('AgentAdvancedPanel', () => {
 
 		const toggle = wrapper.find('[data-testid="agent-web-search-toggle"]');
 		expect(toggle.exists()).toBe(true);
-		expect(toggle.attributes('disabled')).toBeDefined();
+		expect(toggle.attributes('disabled')).toBeUndefined();
+
+		await toggle.trigger('click');
+
+		const events = wrapper.emitted('update:config') ?? [];
+		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
+		expect(last.config?.webSearch).toEqual({ enabled: true, provider: 'brave' });
 	});
 
 	it('shows the budget-tokens sub-control for Anthropic when thinking is on', async () => {

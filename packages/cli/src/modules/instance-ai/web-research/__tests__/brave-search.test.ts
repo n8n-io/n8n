@@ -1,4 +1,4 @@
-import { braveSearch } from '../brave-search';
+import { braveSearch } from '@n8n/ai-utilities';
 
 // ---------------------------------------------------------------------------
 // Mock fetch
