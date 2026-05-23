@@ -44,6 +44,7 @@ describe('eligibleModules', () => {
 			'instance-version-history',
 			'encryption-key-manager',
 			'oauth-jwe',
+			'n8n-packages',
 			'runtime-credentials',
 			'mcp-registry',
 		]);
@@ -76,6 +77,7 @@ describe('eligibleModules', () => {
 			'instance-version-history',
 			'encryption-key-manager',
 			'oauth-jwe',
+			'n8n-packages',
 			'runtime-credentials',
 			'mcp-registry',
 			'instance-ai',
