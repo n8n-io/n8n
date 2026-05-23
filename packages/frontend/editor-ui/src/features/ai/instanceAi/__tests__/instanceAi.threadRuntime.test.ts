@@ -12,9 +12,10 @@ import { createThreadRuntime, type ThreadRuntime } from '../instanceAi.threadRun
 // Mocks
 // ---------------------------------------------------------------------------
 
+const { mockShowError } = vi.hoisted(() => ({ mockShowError: vi.fn() }));
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
-		showError: vi.fn(),
+		showError: mockShowError,
 	}),
 }));
 
@@ -983,6 +984,41 @@ describe('createThreadRuntime - gateway resource-decision confirmation', () => {
 
 		// postConfirmation was called once (inside confirmAction) but threw
 		expect(mockPostConfirmation).toHaveBeenCalledOnce();
+	});
+
+	it('confirmAction surfaces the server UserError message on a 400 response', async () => {
+		const { ResponseError } = await import('@n8n/rest-api-client');
+		const serverError = new ResponseError(
+			'This confirmation was lost when the assistant restarted. Send a new message to continue.',
+		);
+		(serverError as { httpStatusCode?: number }).httpStatusCode = 400;
+		mockPostConfirmation.mockRejectedValueOnce(serverError);
+		mockShowError.mockClear();
+
+		const ok = await activeRuntime(registry).confirmAction('req-lost', {
+			kind: 'approval',
+			approved: true,
+		});
+
+		expect(ok).toBe(false);
+		expect(mockShowError).toHaveBeenCalledTimes(1);
+		const [errorArg, titleArg] = mockShowError.mock.calls[0];
+		expect((errorArg as Error).message).toContain('lost when the assistant restarted');
+		expect(titleArg).toBe('Confirmation failed');
+	});
+
+	it('confirmAction falls back to a generic message on non-400 errors', async () => {
+		mockPostConfirmation.mockRejectedValueOnce(new Error('network error'));
+		mockShowError.mockClear();
+
+		await activeRuntime(registry).confirmAction('req-network', {
+			kind: 'approval',
+			approved: true,
+		});
+
+		expect(mockShowError).toHaveBeenCalledTimes(1);
+		const [errorArg] = mockShowError.mock.calls[0];
+		expect((errorArg as Error).message).toBe('Failed to send confirmation. Try again.');
 	});
 });
 

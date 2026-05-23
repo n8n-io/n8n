@@ -856,8 +856,25 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		try {
 			await postConfirmation(rootStore.restApiContext, requestId, payload);
 			return true;
-		} catch {
-			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');
+		} catch (error: unknown) {
+			// Surface the server's UserError text when present (e.g. "This
+			// confirmation was lost when the assistant restarted") so the user
+			// sees the actual reason instead of a generic "Try again". UserError
+			// from `n8n-workflow` is mapped to a 400 with the message in the
+			// response body — `ResponseError.message` exposes that here.
+			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
+			if (status === 400) {
+				const serverMessage = error instanceof ResponseError && error.message ? error.message : '';
+				toast.showError(
+					new Error(serverMessage || 'The confirmation could not be processed.'),
+					'Confirmation failed',
+				);
+			} else {
+				toast.showError(
+					new Error('Failed to send confirmation. Try again.'),
+					'Confirmation failed',
+				);
+			}
 			return false;
 		}
 	}
