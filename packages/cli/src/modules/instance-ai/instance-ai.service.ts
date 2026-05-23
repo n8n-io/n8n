@@ -1514,6 +1514,13 @@ export class InstanceAiService {
 			this.threadPushRef.set(threadId, pushRef);
 		}
 
+		// Stable id for the user-typed message. Coordinated with the SDK's
+		// end-of-turn save (see executeRun's streamInput construction) so we
+		// end up with exactly one user-message row per turn — and so a save
+		// triggered by `waitForConfirmation` on a suspended HITL turn uses the
+		// same id the SDK would have used for completion.
+		const userMessageId = nanoid();
+
 		this.trackInFlightExecution(
 			this.executeRun(
 				user,
@@ -1524,6 +1531,10 @@ export class InstanceAiService {
 				attachments,
 				messageGroupId,
 				timeZone,
+				false,
+				undefined,
+				undefined,
+				{ id: userMessageId, text: message },
 			),
 		);
 
@@ -2209,6 +2220,41 @@ export class InstanceAiService {
 	}
 
 	/**
+	 * Persist the original user-typed message to thread memory the first time
+	 * a run hits an inline HITL confirmation, so the message bubble survives
+	 * a restart that happens while the run is suspended. The `id` matches the
+	 * one we pass to the SDK's streamInput, so the SDK's eventual end-of-turn
+	 * save (if the run does resume and complete) upserts the same row instead
+	 * of creating a duplicate.
+	 */
+	private async persistUserMessageOnSuspend(
+		threadId: string,
+		userId: string,
+		message: { id: string; text: string },
+	): Promise<void> {
+		try {
+			await this.agentMemory.saveMessages({
+				threadId,
+				resourceId: userId,
+				messages: [
+					{
+						id: message.id,
+						role: 'user',
+						content: [{ type: 'text', text: message.text }],
+						createdAt: new Date(),
+					},
+				],
+			});
+		} catch (error: unknown) {
+			this.logger.warn('Failed to persist user message on HITL suspend', {
+				threadId,
+				userId,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	/**
 	 * Save the in-flight agent tree as a terminal snapshot so the UI doesn't
 	 * sit on a half-rendered turn after the process restarts. Best-effort: a
 	 * DB write failure here must not block the rest of shutdown.
@@ -2748,7 +2794,12 @@ export class InstanceAiService {
 		abortSignal: AbortSignal,
 		messageGroupId?: string,
 		pushRef?: string,
+		userMessagePersistence?: { id: string; text: string },
 	) {
+		// Closure flag so `waitForConfirmation` only writes the user-message
+		// row once even if the run hits multiple HITL points (planner
+		// submit-plan + a later sub-agent ask-user, say).
+		let userMessageSaved = false;
 		const adminSettings = this.settingsService.getAdminSettings();
 		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
 		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
@@ -2914,6 +2965,17 @@ export class InstanceAiService {
 			formBaseUrl: this.formBaseUrl,
 			waitForConfirmation: async (requestId: string) => {
 				this.runState.touchActiveRun(threadId);
+				// First HITL on this run: persist the original user message to
+				// memory so it survives a restart-while-suspended. The SDK only
+				// commits the turn delta on a clean loop completion, and inline
+				// HITL never reaches that point. Doing this *now* (rather than
+				// at executeRun start) avoids polluting the agent's prompt —
+				// the SDK has already loaded its memory snapshot for this run.
+				if (!userMessageSaved && userMessagePersistence) {
+					userMessageSaved = true;
+					void this.persistUserMessageOnSuspend(threadId, user.id, userMessagePersistence);
+				}
+
 				return await new Promise<ConfirmationData>((resolve) => {
 					this.runState.registerPendingConfirmation(requestId, {
 						resolve,
@@ -3315,6 +3377,7 @@ export class InstanceAiService {
 		isReplanFollowUp: boolean = false,
 		checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
 		resumeReason?: OrchestratorResumeReason,
+		userMessagePersistence?: { id: string; text: string },
 	): Promise<void> {
 		const signal = abortController.signal;
 		let tracing: InstanceAiTraceContext | undefined;
@@ -3360,6 +3423,7 @@ export class InstanceAiService {
 				signal,
 				messageGroupId,
 				executionPushRef,
+				userMessagePersistence,
 			);
 			activeSnapshotStorage = environment.snapshotStorage;
 			const { context, memory, taskStorage, snapshotStorage, modelId, orchestrationContext } =
@@ -3508,19 +3572,25 @@ export class InstanceAiService {
 				: undefined;
 			let streamInput: string | Message[];
 			try {
-				// Only include non-structured attachments as raw multimodal content
-				if (nonStructuredAttachments.length > 0) {
+				// When this is a user-initiated turn, build the input as an
+				// explicit message object carrying our chosen id. The SDK
+				// preserves the id on its end-of-turn save so the row matches
+				// any user-message row we may have written from inside
+				// `waitForConfirmation`.
+				if (nonStructuredAttachments.length > 0 || userMessagePersistence) {
+					const baseContent = [
+						{ type: 'text' as const, text: fullMessage },
+						...nonStructuredAttachments.map((attachment) => ({
+							type: 'file' as const,
+							data: attachment.data,
+							mediaType: attachment.mimeType,
+						})),
+					];
 					streamInput = [
 						{
+							...(userMessagePersistence ? { id: userMessagePersistence.id } : {}),
 							role: 'user' as const,
-							content: [
-								{ type: 'text' as const, text: fullMessage },
-								...nonStructuredAttachments.map((attachment) => ({
-									type: 'file' as const,
-									data: attachment.data,
-									mediaType: attachment.mimeType,
-								})),
-							],
+							content: baseContent,
 						},
 					];
 				} else {
