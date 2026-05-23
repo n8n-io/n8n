@@ -55,8 +55,8 @@ export class McpServerMiddlewareService {
 			//   - New tokens (aud = canonical URL) to be verified immediately
 			//   - Legacy tokens (aud = 'mcp-server-api') to be accepted through our fallback logic
 			// This facilitates a smooth gradual migration without forcing active sessions to re-authenticate.
-			const expectedAudience = new URL('/mcp-server/http', this.urlService.getInstanceBaseUrl())
-				.href;
+			const baseUrl = this.urlService.getInstanceBaseUrl().replace(/\/$/, '');
+			const expectedAudience = `${baseUrl}/mcp-server/http`;
 			return await this.mcpAuthTokenService.verifyOAuthAccessToken(token, expectedAudience);
 		}
 

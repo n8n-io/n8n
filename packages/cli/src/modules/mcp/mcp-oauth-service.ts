@@ -320,7 +320,8 @@ export class McpOAuthService implements OAuthServerProvider {
 	}
 
 	private getCanonicalMcpResourceUrl(): string {
-		return new URL('/mcp-server/http', this.urlService.getInstanceBaseUrl()).href;
+		const baseUrl = this.urlService.getInstanceBaseUrl().replace(/\/$/, '');
+		return `${baseUrl}/mcp-server/http`;
 	}
 
 	/**
