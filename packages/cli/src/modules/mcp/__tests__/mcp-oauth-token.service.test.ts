@@ -320,6 +320,8 @@ describe('McpOAuthTokenService', () => {
 					clientId: 'client-456',
 				},
 			);
+		});
+
 		it('should accept token whose aud is the legacy literal (backward compat)', async () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
@@ -466,6 +468,21 @@ describe('McpOAuthTokenService', () => {
 			const result = await service.revokeRefreshToken('nonexistent-token', 'client-456');
 
 			expect(result).toBe(false);
+		});
+	});
+
+	describe('getAllowedAudiences', () => {
+		it('should return canonical URL and legacy audience when expectedAudience is the canonical URL', () => {
+			const audiences = (service as any).getAllowedAudiences(
+				'https://n8n.example.com/mcp-server/http',
+			);
+			expect(audiences).toEqual(['https://n8n.example.com/mcp-server/http', 'mcp-server-api']);
+		});
+
+		it('should return only canonical URL and legacy audience when expectedAudience is undefined', () => {
+			const audiences = (service as any).getAllowedAudiences(undefined);
+			// Should still return the canonical resource URL (from getResourceUrl) and legacy
+			expect(audiences).toEqual(['https://n8n.example.com/mcp-server/http', 'mcp-server-api']);
 		});
 	});
 });
