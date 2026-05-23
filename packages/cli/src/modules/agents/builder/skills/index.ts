@@ -23,5 +23,6 @@ export function getBuilderRuntimeSkills({
 		// while provider tools from the runtime use the AI SDK v3 shape. Re-enable this
 		// skill only when the builder can actually perform web research instead of
 		// merely loading instructions that tell it to research.
+		// researchSkill(),
 	];
 }
