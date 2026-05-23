@@ -71,6 +71,8 @@ const testRenderData = shallowRef<CanvasRenderData>({
 	nodeInputsByNodeId: renderNodeInputsMap,
 	nodeOutputsByNodeId: renderNodeOutputsMap,
 	pinnedDataByNodeName: {},
+	connectionsBySourceNode: {},
+	connectionsByDestinationNode: {},
 	executionIssuesByNodeName: new Map(),
 });
 
@@ -78,6 +80,8 @@ const emptyRenderData = shallowRef<CanvasRenderData>({
 	nodeInputsByNodeId: new Map(),
 	nodeOutputsByNodeId: new Map(),
 	pinnedDataByNodeName: {},
+	connectionsBySourceNode: {},
+	connectionsByDestinationNode: {},
 	executionIssuesByNodeName: new Map(),
 });
 
@@ -95,6 +99,8 @@ function createRenderDataWithExecutionIssuesByNodeName(
 		nodeInputsByNodeId: new Map(),
 		nodeOutputsByNodeId: new Map(),
 		pinnedDataByNodeName: {},
+		connectionsBySourceNode: {},
+		connectionsByDestinationNode: {},
 		executionIssuesByNodeName,
 	});
 }
@@ -259,10 +265,6 @@ describe('useCanvasMapping', () => {
 							outputMap: {},
 							visible: false,
 						},
-						connections: {
-							[CanvasConnectionMode.Input]: {},
-							[CanvasConnectionMode.Output]: {},
-						},
 						render: {
 							type: CanvasNodeRenderType.Default,
 							options: {
@@ -330,67 +332,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			expect(mappedNodes.value[0]?.data?.execution.running).toEqual(true);
-		});
-
-		it('should handle input and output connections', () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
-
-			const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
-			const nodes = [manualTriggerNode, setNode];
-			const connections = {
-				[manualTriggerNode.name]: {
-					[NodeConnectionTypes.Main]: [
-						[{ node: setNode.name, type: NodeConnectionTypes.Main, index: 0 }],
-					],
-				},
-			};
-
-			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflowId),
-			);
-			workflowDocumentStore.setConnections(connections);
-
-			const workflowObject = createTestWorkflowObject({
-				nodes,
-				connections,
-			});
-
-			const { nodes: mappedNodes } = useCanvasMapping({
-				nodes: ref(nodes),
-				connections: ref(connections),
-				workflowObject: ref(workflowObject) as Ref<Workflow>,
-				renderData: emptyRenderData,
-			});
-
-			expect(mappedNodes.value[0]?.data?.connections[CanvasConnectionMode.Output]).toHaveProperty(
-				NodeConnectionTypes.Main,
-			);
-			expect(
-				mappedNodes.value[0]?.data?.connections[CanvasConnectionMode.Output][
-					NodeConnectionTypes.Main
-				][0]?.[0],
-			).toEqual(
-				expect.objectContaining({
-					node: setNode.name,
-					type: NodeConnectionTypes.Main,
-					index: 0,
-				}),
-			);
-
-			expect(mappedNodes.value[1]?.data?.connections[CanvasConnectionMode.Input]).toHaveProperty(
-				NodeConnectionTypes.Main,
-			);
-			expect(
-				mappedNodes.value[1]?.data?.connections[CanvasConnectionMode.Input][
-					NodeConnectionTypes.Main
-				][0]?.[0],
-			).toEqual(
-				expect.objectContaining({
-					node: manualTriggerNode.name,
-					type: NodeConnectionTypes.Main,
-					index: 0,
-				}),
-			);
 		});
 	});
 

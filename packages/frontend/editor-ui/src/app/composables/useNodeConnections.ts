@@ -1,6 +1,6 @@
 import type {
 	CanvasConnectionPort,
-	CanvasNodeData,
+	CanvasNodeConnections,
 } from '@/features/workflows/canvas/canvas.types';
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import type { MaybeRef } from 'vue';
@@ -16,7 +16,7 @@ export function useNodeConnections({
 }: {
 	inputs: MaybeRef<CanvasConnectionPort[]>;
 	outputs: MaybeRef<CanvasConnectionPort[]>;
-	connections: MaybeRef<CanvasNodeData['connections']>;
+	connections: MaybeRef<CanvasNodeConnections>;
 }) {
 	/**
 	 * Inputs

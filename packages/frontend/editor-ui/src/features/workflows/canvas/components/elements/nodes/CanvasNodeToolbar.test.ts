@@ -17,6 +17,8 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
 			nodeInputsByNodeId: new Map(),
 			nodeOutputsByNodeId: new Map(),
 			pinnedDataByNodeName: {},
+			connectionsBySourceNode: {},
+			connectionsByDestinationNode: {},
 			executionIssuesByNodeName: new Map(),
 		},
 	})),

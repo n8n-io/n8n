@@ -1,7 +1,7 @@
 import { useCanvasNode } from './useCanvasNode';
 import { inject, ref } from 'vue';
 import type { CanvasNodeData, CanvasNodeInjectionData } from '../canvas.types';
-import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
+import { CanvasNodeRenderType } from '../canvas.types';
 import { createPinia, setActivePinia } from 'pinia';
 
 vi.mock('vue', async () => {
@@ -21,10 +21,6 @@ describe('useCanvasNode', () => {
 		const result = useCanvasNode();
 
 		expect(result.label.value).toBe('');
-		expect(result.connections.value).toEqual({
-			[CanvasConnectionMode.Input]: {},
-			[CanvasConnectionMode.Output]: {},
-		});
 		expect(result.isDisabled.value).toBe(false);
 		expect(result.isSelected.value).toBeUndefined();
 		expect(result.runDataOutputMap.value).toEqual({});
@@ -46,10 +42,6 @@ describe('useCanvasNode', () => {
 				type: 'nodeType1',
 				typeVersion: 1,
 				disabled: true,
-				connections: {
-					[CanvasConnectionMode.Input]: { '0': [] },
-					[CanvasConnectionMode.Output]: {},
-				},
 				issues: {
 					validation: ['validation_error1'],
 					visible: true,
@@ -76,10 +68,6 @@ describe('useCanvasNode', () => {
 
 		expect(result.label.value).toBe('Node 1');
 		expect(result.name.value).toBe('Node 1');
-		expect(result.connections.value).toEqual({
-			[CanvasConnectionMode.Input]: { '0': [] },
-			[CanvasConnectionMode.Output]: {},
-		});
 		expect(result.isDisabled.value).toBe(true);
 		expect(result.isSelected.value).toBe(true);
 		expect(result.runDataOutputMap.value).toEqual({});

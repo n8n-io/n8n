@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { shallowReactive, type ComputedRef } from 'vue';
 import { setActivePinia, createPinia } from 'pinia';
-import type { IPinData } from 'n8n-workflow';
+import type { IConnections, IPinData } from 'n8n-workflow';
 import type { CanvasConnectionPort } from '@/features/workflows/canvas/canvas.types';
 import {
 	useWorkflowDocumentStore,
@@ -12,6 +12,8 @@ import { useWorkflowDocumentRenderData } from './useWorkflowDocumentRenderData';
 const nodeInputsByNodeId = shallowReactive(new Map<string, ComputedRef<CanvasConnectionPort[]>>());
 const nodeOutputsByNodeId = shallowReactive(new Map<string, ComputedRef<CanvasConnectionPort[]>>());
 const pinnedDataByNodeName = shallowReactive<IPinData>({});
+const connectionsBySourceNode: IConnections = {};
+const connectionsByDestinationNode: IConnections = {};
 const executionIssuesByNodeName = new Map<string, ComputedRef<string[]>>();
 
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => {
@@ -23,6 +25,8 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => {
 			nodeInputsByNodeId,
 			nodeOutputsByNodeId,
 			pinnedDataByNodeName,
+			connectionsBySourceNode,
+			connectionsByDestinationNode,
 		})),
 	};
 });
@@ -51,6 +55,13 @@ describe('useWorkflowDocumentRenderData', () => {
 		const renderData = useWorkflowDocumentRenderData(createWorkflowDocumentId('wf-1'));
 
 		expect(renderData.pinnedDataByNodeName).toBe(pinnedDataByNodeName);
+	});
+
+	it('passes through connectionsBySourceNode and connectionsByDestinationNode by reference', () => {
+		const renderData = useWorkflowDocumentRenderData(createWorkflowDocumentId('wf-1'));
+
+		expect(renderData.connectionsBySourceNode).toBe(connectionsBySourceNode);
+		expect(renderData.connectionsByDestinationNode).toBe(connectionsByDestinationNode);
 	});
 
 	it('exposes executionIssuesByNodeName resolved via the workflow execution state store', () => {

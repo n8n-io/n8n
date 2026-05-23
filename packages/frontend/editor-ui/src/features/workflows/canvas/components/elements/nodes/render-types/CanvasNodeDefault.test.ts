@@ -13,11 +13,8 @@ import { computed, type ComputedRef } from 'vue';
 import { setActivePinia } from 'pinia';
 import type * as actualVueRouter from 'vue-router';
 import { type RouteLocationNormalizedLoadedGeneric, useRoute } from 'vue-router';
-import {
-	CanvasConnectionMode,
-	CanvasNodeRenderType,
-	type CanvasConnectionPort,
-} from '../../../../canvas.types';
+import type { IConnections } from 'n8n-workflow';
+import { CanvasNodeRenderType, type CanvasConnectionPort } from '../../../../canvas.types';
 import CanvasNodeDefault from './CanvasNodeDefault.vue';
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -30,6 +27,8 @@ vi.mock('vue-router', async (importOriginal) => {
 
 const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
+const connectionsBySourceNode: IConnections = {};
+const connectionsByDestinationNode: IConnections = {};
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
@@ -38,6 +37,8 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
 			nodeInputsByNodeId: renderNodeInputsMap,
 			nodeOutputsByNodeId: renderNodeOutputsMap,
 			pinnedDataByNodeName: {},
+			connectionsBySourceNode,
+			connectionsByDestinationNode,
 			executionIssuesByNodeName: new Map(),
 		},
 	})),
@@ -67,6 +68,12 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	renderNodeInputsMap.clear();
 	renderNodeOutputsMap.clear();
+	for (const key of Object.keys(connectionsBySourceNode)) {
+		delete connectionsBySourceNode[key];
+	}
+	for (const key of Object.keys(connectionsByDestinationNode)) {
+		delete connectionsByDestinationNode[key];
+	}
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -225,6 +232,12 @@ describe('CanvasNodeDefault', () => {
 				'node',
 				computed(() => [{ type: NodeConnectionTypes.Main, index: 0 }]),
 			);
+			connectionsByDestinationNode['Test Node'] = {
+				[NodeConnectionTypes.Main]: [[{ node: 'node', type: NodeConnectionTypes.Main, index: 0 }]],
+			};
+			connectionsBySourceNode['Test Node'] = {
+				[NodeConnectionTypes.Main]: [[{ node: 'node', type: NodeConnectionTypes.Main, index: 0 }]],
+			};
 
 			const { container } = renderComponent({
 				global: {
@@ -233,18 +246,6 @@ describe('CanvasNodeDefault', () => {
 						...createCanvasNodeProvide({
 							data: {
 								disabled: true,
-								connections: {
-									[CanvasConnectionMode.Input]: {
-										[NodeConnectionTypes.Main]: [
-											[{ node: 'node', type: NodeConnectionTypes.Main, index: 0 }],
-										],
-									},
-									[CanvasConnectionMode.Output]: {
-										[NodeConnectionTypes.Main]: [
-											[{ node: 'node', type: NodeConnectionTypes.Main, index: 0 }],
-										],
-									},
-								},
 							},
 						}),
 					},

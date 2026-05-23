@@ -27,7 +27,6 @@ export function createCanvasNodeData({
 	type = 'test',
 	typeVersion = 1,
 	disabled = false,
-	connections = { [CanvasConnectionMode.Input]: {}, [CanvasConnectionMode.Output]: {} },
 	execution = { running: false },
 	issues = { validation: [], visible: false },
 	runData = { outputMap: {}, iterations: 0, visible: false },
@@ -46,7 +45,6 @@ export function createCanvasNodeData({
 		issues,
 		runData,
 		disabled,
-		connections,
 		render,
 	};
 }

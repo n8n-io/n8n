@@ -28,6 +28,8 @@ const mockDocumentStore = vi.hoisted(() => ({
 		nodeInputsByNodeId: new Map(),
 		nodeOutputsByNodeId: new Map(),
 		pinnedDataByNodeName: {},
+		connectionsBySourceNode: {},
+		connectionsByDestinationNode: {},
 		executionIssuesByNodeName: new Map(),
 	},
 	$id: 'test-store',

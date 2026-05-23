@@ -47,6 +47,8 @@ describe('useCanvasLayout', () => {
 				nodeInputsByNodeId: new Map(),
 				nodeOutputsByNodeId: new Map(),
 				pinnedDataByNodeName: {},
+				connectionsBySourceNode: {},
+				connectionsByDestinationNode: {},
 				executionIssuesByNodeName: new Map(),
 			}),
 		);

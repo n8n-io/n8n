@@ -116,6 +116,8 @@ function createDiffRenderData(workflowRef: ComputedRef<IWorkflowDb | undefined>,
 		nodeInputsByNodeId: new Map(),
 		nodeOutputsByNodeId: new Map(),
 		pinnedDataByNodeName: {},
+		connectionsBySourceNode: {},
+		connectionsByDestinationNode: {},
 		executionIssuesByNodeName: new Map(),
 	});
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore> | null = null;

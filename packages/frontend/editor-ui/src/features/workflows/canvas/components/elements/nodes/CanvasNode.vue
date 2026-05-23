@@ -88,7 +88,11 @@ const renderData = injectCanvasRenderData();
 const nodeClasses = ref<string[]>([]);
 const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(props.id)?.value ?? []);
 const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(props.id)?.value ?? []);
-const connections = computed(() => props.data.connections);
+const connections = computed(() => ({
+	[CanvasConnectionMode.Input]:
+		renderData.value.connectionsByDestinationNode[props.data.name] ?? {},
+	[CanvasConnectionMode.Output]: renderData.value.connectionsBySourceNode[props.data.name] ?? {},
+}));
 const {
 	mainInputs,
 	nonMainInputs,

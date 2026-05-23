@@ -3,7 +3,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import type {
 	CanvasConnectionPort,
-	CanvasNodeData,
+	CanvasNodeConnections,
 } from '@/features/workflows/canvas/canvas.types';
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
@@ -78,7 +78,7 @@ describe('useNodeConnections', () => {
 		it('should return main input connections when provided with main input connections', () => {
 			const inputs = ref<CanvasConnectionPort[]>([]);
 			const outputs = ref<CanvasConnectionPort[]>([]);
-			const connections = ref<CanvasNodeData['connections']>({
+			const connections = ref<CanvasNodeConnections>({
 				[CanvasConnectionMode.Input]: {
 					[NodeConnectionTypes.Main]: [
 						[{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 }],
@@ -146,7 +146,7 @@ describe('useNodeConnections', () => {
 		it('should return main output connections when provided with main output connections', () => {
 			const inputs = ref<CanvasConnectionPort[]>([]);
 			const outputs = ref<CanvasConnectionPort[]>([]);
-			const connections = ref<CanvasNodeData['connections']>({
+			const connections = ref<CanvasNodeConnections>({
 				[CanvasConnectionMode.Input]: {},
 				[CanvasConnectionMode.Output]: {
 					[NodeConnectionTypes.Main]: [

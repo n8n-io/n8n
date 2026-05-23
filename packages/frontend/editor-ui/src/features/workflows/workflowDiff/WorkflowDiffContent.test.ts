@@ -106,12 +106,16 @@ describe('WorkflowDiffContent', () => {
 			nodeInputsByNodeId: new Map(),
 			nodeOutputsByNodeId: new Map(),
 			pinnedDataByNodeName: {},
+			connectionsBySourceNode: {},
+			connectionsByDestinationNode: {},
 			executionIssuesByNodeName: new Map(),
 		},
 		targetRenderData: {
 			nodeInputsByNodeId: new Map(),
 			nodeOutputsByNodeId: new Map(),
 			pinnedDataByNodeName: {},
+			connectionsBySourceNode: {},
+			connectionsByDestinationNode: {},
 			executionIssuesByNodeName: new Map(),
 		},
 	};

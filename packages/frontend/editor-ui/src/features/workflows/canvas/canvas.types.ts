@@ -29,6 +29,11 @@ export const canvasConnectionModes = [
 	CanvasConnectionMode.Output,
 ] as const;
 
+export type CanvasNodeConnections = {
+	[CanvasConnectionMode.Input]: INodeConnections;
+	[CanvasConnectionMode.Output]: INodeConnections;
+};
+
 export type CanvasConnectionPort = {
 	node?: string;
 	type: NodeConnectionType;
@@ -105,10 +110,6 @@ export interface CanvasNodeData {
 	type: INodeUi['type'];
 	typeVersion: INodeUi['typeVersion'];
 	disabled: INodeUi['disabled'];
-	connections: {
-		[CanvasConnectionMode.Input]: INodeConnections;
-		[CanvasConnectionMode.Output]: INodeConnections;
-	};
 	issues: {
 		validation: string[];
 		visible: boolean;

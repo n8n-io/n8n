@@ -22,7 +22,7 @@ import type {
 	CanvasNodeStickyNoteRender,
 	ExecutionOutputMap,
 } from '../canvas.types';
-import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
+import { CanvasNodeRenderType } from '../canvas.types';
 import {
 	checkOverlap,
 	mapLegacyConnectionsToCanvasConnections,
@@ -52,7 +52,6 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
-import * as workflowUtils from 'n8n-workflow/common';
 import { throttledWatch } from '@vueuse/core';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import type { WorkflowObjectAccessors } from '@/app/types';
@@ -563,15 +562,8 @@ export function useCanvasMapping({
 	}
 
 	const mappedNodes = computed<CanvasNode[]>(() => {
-		const connectionsBySourceNode = connections.value;
-		const connectionsByDestinationNode =
-			workflowUtils.mapConnectionsByDestination(connectionsBySourceNode);
-
 		return [
 			...nodes.value.map<CanvasNode>((node) => {
-				const outputConnections = connectionsBySourceNode[node.name] ?? {};
-				const inputConnections = connectionsByDestinationNode[node.name] ?? {};
-
 				const data: CanvasNodeData = {
 					id: node.id,
 					name: node.name,
@@ -579,10 +571,6 @@ export function useCanvasMapping({
 					type: node.type,
 					typeVersion: node.typeVersion,
 					disabled: node.disabled,
-					connections: {
-						[CanvasConnectionMode.Input]: inputConnections,
-						[CanvasConnectionMode.Output]: outputConnections,
-					},
 					issues: {
 						validation: nodeValidationErrorsById.value[node.id],
 						visible: nodeHasIssuesById.value[node.id],

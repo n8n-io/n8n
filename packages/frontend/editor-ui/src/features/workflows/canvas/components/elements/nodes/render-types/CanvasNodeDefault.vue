@@ -4,6 +4,7 @@ import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
+import { CanvasConnectionMode } from '../../../../canvas.types';
 import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
@@ -36,7 +37,6 @@ const {
 	name,
 	label,
 	subtitle,
-	connections,
 	isDisabled,
 	isReadOnly,
 	isSelected,
@@ -51,6 +51,10 @@ const {
 const renderData = injectCanvasRenderData();
 const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(id.value)?.value ?? []);
 const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
+const connections = computed(() => ({
+	[CanvasConnectionMode.Input]: renderData.value.connectionsByDestinationNode[name.value] ?? {},
+	[CanvasConnectionMode.Output]: renderData.value.connectionsBySourceNode[name.value] ?? {},
+}));
 const hasExecutionErrors = computed(
 	() => (renderData.value.executionIssuesByNodeName.get(name.value)?.value?.length ?? 0) > 0,
 );

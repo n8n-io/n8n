@@ -2,7 +2,7 @@ import { CanvasNodeKey } from '@/app/constants';
 import { computed, inject } from 'vue';
 import { isCommunityPackageName } from 'n8n-workflow';
 import type { CanvasNodeData } from '../canvas.types';
-import { CanvasNodeRenderType, CanvasConnectionMode } from '../canvas.types';
+import { CanvasNodeRenderType } from '../canvas.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 export function useCanvasNode() {
@@ -17,7 +17,6 @@ export function useCanvasNode() {
 				type: '',
 				typeVersion: 1,
 				disabled: false,
-				connections: { [CanvasConnectionMode.Input]: {}, [CanvasConnectionMode.Output]: {} },
 				issues: { validation: [], visible: false },
 				execution: {
 					running: false,
@@ -35,7 +34,6 @@ export function useCanvasNode() {
 
 	const subtitle = computed(() => data.value.subtitle);
 	const name = computed(() => data.value.name);
-	const connections = computed(() => data.value.connections);
 
 	const isDisabled = computed(() => data.value.disabled);
 	const isReadOnly = computed(() => node?.readOnly.value);
@@ -72,7 +70,6 @@ export function useCanvasNode() {
 		name,
 		label,
 		subtitle,
-		connections,
 		isDisabled,
 		isReadOnly,
 		isSelected,

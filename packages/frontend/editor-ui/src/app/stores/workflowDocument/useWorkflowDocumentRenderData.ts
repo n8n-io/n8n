@@ -14,14 +14,19 @@ import {
  * - the per-node port maps (`nodeInputsByNodeId`, `nodeOutputsByNodeId`)
  *   owned by `useWorkflowDocumentNodes`,
  * - the pin data map (`pinnedDataByNodeName`) owned by
- *   `useWorkflowDocumentPinData`, and
+ *   `useWorkflowDocumentPinData`,
+ * - the connection maps (`connectionsBySourceNode`,
+ *   `connectionsByDestinationNode`) owned by
+ *   `useWorkflowDocumentConnections`, and
  * - the active execution's `executionIssuesByNodeName` map.
  *
  * Reactivity is owned by the underlying stores: the port maps are stable
  * references on the workflow document store, `pinnedDataByNodeName` is a
- * `shallowReactive` with per-key reactivity, and `executionIssuesByNodeName`
- * resolves through a `computed` on the workflow execution state store that
- * swaps between the active and displayed execution's per-execution maps.
+ * `shallowReactive` with per-key reactivity, `connectionsBySourceNode`
+ * mirrors the connections ref and `connectionsByDestinationNode` is a
+ * `computed` inversion of it, and `executionIssuesByNodeName` resolves
+ * through a `computed` on the workflow execution state store that swaps
+ * between the active and displayed execution's per-execution maps.
  */
 export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocumentId) {
 	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
@@ -33,6 +38,8 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		nodeInputsByNodeId: workflowDocumentStore.nodeInputsByNodeId,
 		nodeOutputsByNodeId: workflowDocumentStore.nodeOutputsByNodeId,
 		pinnedDataByNodeName: workflowDocumentStore.pinnedDataByNodeName,
+		connectionsBySourceNode: workflowDocumentStore.connectionsBySourceNode,
+		connectionsByDestinationNode: workflowDocumentStore.connectionsByDestinationNode,
 		executionIssuesByNodeName: executionStateStore.activeExecutionIssuesByNodeName,
 	};
 }
