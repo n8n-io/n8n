@@ -75,6 +75,7 @@ const {
 	isReadOnly: computed(() => props.isReadOnly),
 	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
 	additionalData: props.additionalData,
+	initialCursorPosition: 'lastExpression',
 });
 
 watch(segments.display, (newSegments) => {
@@ -102,8 +103,10 @@ defineExpose({
 	setCursorPosition,
 	focus: () => {
 		if (!hasFocus.value) {
-			setCursorPosition('lastExpression');
 			focus();
+			requestAnimationFrame(() => {
+				setCursorPosition('lastExpression');
+			});
 		}
 	},
 	selectAll: () => {

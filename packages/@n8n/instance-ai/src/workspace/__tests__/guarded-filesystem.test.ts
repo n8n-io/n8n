@@ -1,4 +1,4 @@
-import type { WorkspaceFilesystem } from '@mastra/core/workspace';
+import type { WorkspaceFilesystem } from '@n8n/agents';
 
 import { createGuardedFilesystem } from '../guarded-filesystem';
 

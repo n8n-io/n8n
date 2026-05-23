@@ -219,10 +219,12 @@ export class ScalingService {
 	async addJob(jobData: JobData, { priority }: { priority: number }) {
 		strict(priority > 0 && priority <= Number.MAX_SAFE_INTEGER);
 
+		const { keepLastCompleted, keepLastFailed } = this.globalConfig.executions.queueRetention;
+
 		const jobOptions: JobOptions = {
 			priority,
-			removeOnComplete: true,
-			removeOnFail: true,
+			removeOnComplete: keepLastCompleted,
+			removeOnFail: keepLastFailed,
 		};
 
 		const job = await this.queue.add(JOB_TYPE_NAME, jobData, jobOptions);

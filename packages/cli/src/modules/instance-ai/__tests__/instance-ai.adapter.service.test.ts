@@ -1,4 +1,4 @@
-// Mock the barrel import to avoid pulling in @mastra/core (ESM-only transitive deps)
+// Mock the barrel import so these adapter tests only exercise local formatting helpers.
 jest.mock('@n8n/instance-ai', () => ({
 	wrapUntrustedData(content: string, source: string, label?: string): string {
 		const esc = (s: string) =>
@@ -1456,6 +1456,51 @@ describe('createWorkflowAdapter', () => {
 		mockedUserHasScopes.mockResolvedValue(true);
 	});
 
+	it('preserves node-level execution options when returning WorkflowJSON', async () => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			id: 'wf-settings',
+			name: 'Debug Workflow',
+			active: false,
+			versionId: 'version-id',
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date('2026-01-01'),
+			updatedAt: new Date('2026-01-01'),
+			nodes: [
+				{
+					id: 'debug-id',
+					name: 'DebugHelper',
+					type: 'n8n-nodes-base.debugHelper',
+					typeVersion: 1,
+					position: [208, 0],
+					parameters: { category: 'randomData' },
+					notes: 'Keep execution settings',
+					notesInFlow: true,
+					executeOnce: true,
+					retryOnFail: true,
+					alwaysOutputData: true,
+					onError: 'continueErrorOutput',
+				},
+			],
+			connections: {},
+			settings: {},
+		});
+
+		const result = await adapter.getAsWorkflowJSON('wf-settings');
+
+		expect(result.nodes[0]).toEqual(
+			expect.objectContaining({
+				notes: 'Keep execution settings',
+				notesInFlow: true,
+				executeOnce: true,
+				retryOnFail: true,
+				alwaysOutputData: true,
+				onError: 'continueErrorOutput',
+			}),
+		);
+	});
+
 	it('lists active workflows by default', async () => {
 		const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests();
 
@@ -1655,6 +1700,22 @@ describe('createWorkflowAdapter', () => {
 
 		expect(mockWorkflowRepository.create).toHaveBeenCalledWith(
 			expect.not.objectContaining({ meta: expect.anything() }),
+		);
+	});
+
+	it('persists pinData as an empty object (not undefined) when the SDK workflow has no pinData', async () => {
+		// Regression: explicit `pinData: undefined` round-tripped as SQL NULL,
+		// which then crashed `getDataLastExecutedNodeData` on test-webhook runs.
+		// Match the manual UI path, which stores `{}`.
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ pinData: {} }),
+			expect.anything(),
+			expect.anything(),
 		);
 	});
 

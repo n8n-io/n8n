@@ -6,7 +6,7 @@
  * Each call publishes a `tasks-update` event so the UI updates in real time.
  */
 
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import type { BlueprintAccumulator } from './blueprint-accumulator';
@@ -61,17 +61,17 @@ export function createAddPlanItemTool(
 	accumulator: BlueprintAccumulator,
 	context: OrchestrationContext,
 ) {
-	return createTool({
-		id: 'add-plan-item',
-		description:
+	return new Tool('add-plan-item')
+		.description(
 			'Add a single plan item (data table, workflow, research, delegate, or checkpoint task). ' +
-			'Call once per item as you design it — each call makes the item visible to the user immediately. ' +
-			'Emit data tables FIRST. Add workflow items only if the request requires automation. ' +
-			'Add a checkpoint item AFTER its target workflow(s) so the orchestrator can verify the result end-to-end. ' +
-			'Set summary and assumptions on your first call.',
-		inputSchema: addPlanItemInputSchema,
-		outputSchema: z.object({ result: z.string() }),
-		execute: async (input: z.infer<typeof addPlanItemInputSchema>) => {
+				'Call once per item as you design it — each call makes the item visible to the user immediately. ' +
+				'Emit data tables FIRST. Add workflow items only if the request requires automation. ' +
+				'Add a checkpoint item AFTER its target workflow(s) so the orchestrator can verify the result end-to-end. ' +
+				'Set summary and assumptions on your first call.',
+		)
+		.input(addPlanItemInputSchema)
+		.output(z.object({ result: z.string() }))
+		.handler(async (input: z.infer<typeof addPlanItemInputSchema>) => {
 			if (input.summary !== undefined || input.assumptions !== undefined) {
 				accumulator.updateMeta(input.summary, input.assumptions);
 			}
@@ -87,23 +87,25 @@ export function createAddPlanItemTool(
 			return {
 				result: `Added: ${task.title} (${totalCount} item${totalCount === 1 ? '' : 's'} total)`,
 			};
-		},
-	});
+		})
+		.build();
 }
 
 export function createRemovePlanItemTool(
 	accumulator: BlueprintAccumulator,
 	context: OrchestrationContext,
 ) {
-	return createTool({
-		id: 'remove-plan-item',
-		description:
+	return new Tool('remove-plan-item')
+		.description(
 			'Remove a plan item by ID. Use during plan revision to drop items the user no longer wants.',
-		inputSchema: z.object({
-			id: z.string().describe('ID of the plan item to remove'),
-		}),
-		outputSchema: z.object({ result: z.string() }),
-		execute: async (input: { id: string }) => {
+		)
+		.input(
+			z.object({
+				id: z.string().describe('ID of the plan item to remove'),
+			}),
+		)
+		.output(z.object({ result: z.string() }))
+		.handler(async (input: { id: string }) => {
 			const removed = accumulator.removeItem(input.id);
 
 			await context.taskStorage.save(context.threadId, {
@@ -120,6 +122,6 @@ export function createRemovePlanItemTool(
 			return {
 				result: `Item ${input.id} not found. ${totalCount} item${totalCount === 1 ? '' : 's'} in plan.`,
 			};
-		},
-	});
+		})
+		.build();
 }

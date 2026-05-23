@@ -210,6 +210,37 @@ describe('AgentChatPanel', () => {
 		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
 	});
 
+	it('does not consume a seeded initial message in a read-only build chat', async () => {
+		const beforeSend = vi.fn();
+
+		const wrapper = mount(AgentChatPanel, {
+			props: {
+				projectId: 'p1',
+				agentId: 'a1',
+				endpoint: 'build',
+				canEditAgent: false,
+				initialMessage: 'seed build prompt',
+				agentConfig: {
+					name: 'Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Help.',
+				},
+				agentStatus: 'draft',
+				connectedTriggers: [],
+				beforeSend,
+			},
+		});
+
+		await flushPromises();
+
+		expect(beforeSend).not.toHaveBeenCalled();
+		expect(sendMessageMock).not.toHaveBeenCalled();
+		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
+		// History is loaded instead so any existing thread renders, rather than
+		// the misleading "describe your agent" empty state.
+		expect(loadHistoryMock).toHaveBeenCalledTimes(1);
+	});
+
 	it('disables chat and blocks sending while an interactive question is unresolved', async () => {
 		messagesMock.value = [openInteractiveMessage()];
 
