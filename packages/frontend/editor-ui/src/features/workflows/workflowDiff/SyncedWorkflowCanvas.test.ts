@@ -95,6 +95,7 @@ describe('SyncedWorkflowCanvas', () => {
 				renderData: {
 					nodeInputsByNodeId: new Map(),
 					nodeOutputsByNodeId: new Map(),
+					pinnedDataByNodeName: {},
 					executionIssuesByNodeName: new Map(),
 				},
 			},
@@ -113,6 +114,7 @@ describe('SyncedWorkflowCanvas', () => {
 					renderData: {
 						nodeInputsByNodeId: new Map(),
 						nodeOutputsByNodeId: new Map(),
+						pinnedDataByNodeName: {},
 						executionIssuesByNodeName: new Map(),
 					},
 				},
@@ -140,6 +142,7 @@ describe('SyncedWorkflowCanvas', () => {
 					renderData: {
 						nodeInputsByNodeId: new Map(),
 						nodeOutputsByNodeId: new Map(),
+						pinnedDataByNodeName: {},
 						executionIssuesByNodeName: new Map(),
 					},
 				},
@@ -163,6 +166,7 @@ describe('SyncedWorkflowCanvas', () => {
 					renderData: {
 						nodeInputsByNodeId: new Map(),
 						nodeOutputsByNodeId: new Map(),
+						pinnedDataByNodeName: {},
 						executionIssuesByNodeName: new Map(),
 					},
 				},
@@ -187,6 +191,7 @@ describe('SyncedWorkflowCanvas', () => {
 					renderData: {
 						nodeInputsByNodeId: new Map(),
 						nodeOutputsByNodeId: new Map(),
+						pinnedDataByNodeName: {},
 						executionIssuesByNodeName: new Map(),
 					},
 				},

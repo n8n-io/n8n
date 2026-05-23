@@ -1,10 +1,5 @@
-import type { ObservationLogScopeKind } from './observation-log';
-
-export type ScopeKind = ObservationLogScopeKind;
-
 export interface ObservationCursor {
-	scopeKind: ObservationLogScopeKind;
-	scopeId: string;
+	observationScopeId: string;
 	lastObservedMessageId: string;
 	lastObservedAt: Date;
 	updatedAt: Date;

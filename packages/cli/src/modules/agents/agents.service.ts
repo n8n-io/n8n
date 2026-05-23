@@ -64,6 +64,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 import { AgentExecutionService } from './agent-execution.service';
@@ -605,8 +606,8 @@ export class AgentsService {
 		return executionsToMessagesDto(detail.executions);
 	}
 
-	private getMemoryFactory(): MemoryFactory {
-		return (_params: AgentJsonMemoryConfig) => this.n8nMemory;
+	private getMemoryFactory(agentId: string): MemoryFactory {
+		return (_params: AgentJsonMemoryConfig) => this.n8nMemory.getImplementation(agentId);
 	}
 
 	/** Create a credential provider scoped to a project. */
@@ -869,6 +870,8 @@ export class AgentsService {
 	 *   - "model":        missing model or one that fails the provider/model regex
 	 *   - "credential":   credential name is set in config but doesn't resolve to
 	 *                     a real credential in the project
+	 *   - "episodicMemory.credential": configured Episodic Memory credential
+	 *                     does not resolve to a real credential in the project
 	 *   - "skill:<id>":   config references a skill id with no stored body
 	 */
 	async validateAgentIsRunnable(
@@ -896,17 +899,33 @@ export class AgentsService {
 			missing.push('model');
 		}
 
+		let credentialList: Awaited<ReturnType<CredentialProvider['list']>> | undefined;
+		const credentialExists = async (credentialId: string) => {
+			credentialList ??= await credentialProvider.list();
+			return credentialList.some((credential) => credential.id === credentialId);
+		};
+
 		if (!config.credential?.trim()) {
 			missing.push('credential');
 		} else {
 			try {
 				const credentialId = config.credential.trim();
-				const creds = await credentialProvider.list();
-				const exists = creds.some((c) => c.id === credentialId);
-				if (!exists) missing.push('credential');
+				if (!(await credentialExists(credentialId))) missing.push('credential');
 			} catch {
 				// If listing fails (e.g. permissions), don't flag as misconfigured —
 				// the runtime will surface the real error path on execute.
+			}
+		}
+
+		const episodicMemory = config.memory?.episodicMemory;
+		if (config.memory?.enabled && episodicMemory?.enabled === true) {
+			try {
+				if (!(await credentialExists(episodicMemory.credential.trim()))) {
+					missing.push('episodicMemory.credential');
+				}
+			} catch {
+				// Same behavior as the main model credential: runtime reconstruction
+				// surfaces permission/listing failures with the concrete error.
 			}
 		}
 
@@ -947,24 +966,27 @@ export class AgentsService {
 	 * user. Test-chat threads are keyed by agent and user so memory stays isolated.
 	 */
 	async getTestChatMessages(agentId: string, userId: string) {
-		return await this.n8nMemory.getMessages(chatThreadId(agentId, userId), {
-			resourceId: userId,
-		});
+		return await this.n8nMemory
+			.getImplementation(agentId)
+			.getMessages(chatThreadId(agentId, userId), {
+				resourceId: draftChatMemoryResourceId(userId),
+			});
 	}
 
 	/**
 	 * Clear the current user's test-chat messages for an agent.
 	 */
 	async clearTestChatMessages(agentId: string, userId: string) {
-		await this.n8nMemory.deleteMessagesByThread(chatThreadId(agentId, userId), userId);
+		await this.n8nMemory.getImplementation(agentId).deleteThread(chatThreadId(agentId, userId));
 	}
 
 	/** Delete all test-chat messages + the thread row — used when the agent itself is deleted. */
 	async clearAllTestChatMessages(agentId: string) {
 		const threadId = chatThreadId(agentId);
-		await this.n8nMemory.deleteThreadsByPrefix(threadId);
-		await this.n8nMemory.deleteMessagesByThread(threadId);
-		await this.n8nMemory.deleteThread(threadId);
+		const memory = this.n8nMemory.getImplementation(agentId);
+		await memory.deleteThreadsByPrefix(threadId);
+		await memory.deleteMessagesByThread(threadId);
+		await memory.deleteThread(threadId);
 	}
 
 	/**
@@ -1760,7 +1782,7 @@ export class AgentsService {
 				return resolved;
 			},
 			skills: agentEntity.skills ?? {},
-			memoryFactory: this.getMemoryFactory(),
+			memoryFactory: this.getMemoryFactory(agentEntity.id),
 		});
 
 		await this.injectRuntimeDependencies({

@@ -250,6 +250,34 @@ describe('createWorkspaceTools', () => {
 			expect(result).toEqual({ success: true });
 		});
 
+		it('execute_command handler includes sandbox default command environment', async () => {
+			const executeCommand = jest.fn().mockResolvedValue({
+				success: true,
+				exitCode: 0,
+				stdout: 'ok',
+				stderr: '',
+				executionTimeMs: 5,
+			});
+			const sandbox = makeFakeSandbox({
+				executeCommand,
+				getDefaultCommandEnv: () => ({ CUSTOM_ENV: 'enabled' }),
+			});
+			const tools = createWorkspaceTools({ sandbox });
+			const commandTool = tools.find((t) => t.name === 'workspace_execute_command')!;
+
+			const result = await commandTool.handler!(
+				{ command: 'node script.mjs', cwd: '/home/daytona/workspace' },
+				{} as never,
+			);
+
+			expect(executeCommand).toHaveBeenCalledWith('node script.mjs', undefined, {
+				cwd: '/home/daytona/workspace',
+				env: { CUSTOM_ENV: 'enabled' },
+				timeout: undefined,
+			});
+			expect(result).toMatchObject({ success: true, stdout: 'ok' });
+		});
+
 		it('list_files handler calls filesystem.readdir', async () => {
 			const fs = makeFakeFilesystem();
 			const tools = createWorkspaceTools({ filesystem: fs });

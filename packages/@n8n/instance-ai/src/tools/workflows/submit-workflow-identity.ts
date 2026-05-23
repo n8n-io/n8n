@@ -238,6 +238,13 @@ export function wrapSubmitExecuteWithIdentity(
 	};
 }
 
+export function withDefaultWorkflowFilePath(
+	input: SubmitWorkflowInput,
+	defaultFilePath: string | undefined,
+): SubmitWorkflowInput {
+	return defaultFilePath && !input.filePath ? { ...input, filePath: defaultFilePath } : input;
+}
+
 /**
  * Build a submit-workflow tool wired with identity enforcement.
  * Convenience factory used at the builder-agent callsite.
@@ -248,6 +255,7 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 	credentialMap?: CredentialMap;
 	onAttempt: (attempt: SubmitWorkflowAttempt) => Promise<void> | void;
 	root: string;
+	defaultFilePath?: string;
 	currentRunId?: string;
 	getWorkflowLoopState?: () => Promise<WorkflowLoopState | undefined>;
 	onGuardFired?: SubmitGuardOptions['onGuardFired'];
@@ -269,7 +277,10 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 
 	const wrappedExecute = wrapSubmitExecuteWithIdentity(
 		underlyingExecute,
-		(rawFilePath) => resolveSandboxWorkflowFilePath(rawFilePath, args.root),
+		(rawFilePath) =>
+			rawFilePath
+				? resolveSandboxWorkflowFilePath(rawFilePath, args.root)
+				: (args.defaultFilePath ?? resolveSandboxWorkflowFilePath(rawFilePath, args.root)),
 		{
 			budgetTracker,
 			currentRunId: args.currentRunId,
@@ -282,6 +293,9 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 		.description(underlying.description)
 		.input(submitWorkflowInputSchema)
 		.output(submitWorkflowOutputSchema)
-		.handler(wrappedExecute)
+		.handler(
+			async (input) =>
+				await wrappedExecute(withDefaultWorkflowFilePath(input, args.defaultFilePath)),
+		)
 		.build();
 }
