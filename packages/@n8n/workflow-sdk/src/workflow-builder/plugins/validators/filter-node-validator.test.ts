@@ -297,4 +297,143 @@ describe('filterNodeValidator', () => {
 			expect(optionsIssue?.parameterPath).toBe('rules.values[1].conditions.options');
 		});
 	});
+
+	describe('case-sensitivity warning', () => {
+		function withCondition(
+			rightValue: unknown,
+			overrides: {
+				caseSensitive?: boolean;
+				operatorType?: string;
+				operation?: string;
+			} = {},
+		) {
+			return {
+				options: {
+					caseSensitive: overrides.caseSensitive ?? true,
+					leftValue: '',
+					typeValidation: 'strict',
+				},
+				conditions: [
+					{
+						leftValue: '={{ $json.level }}',
+						operator: {
+							type: overrides.operatorType ?? 'string',
+							operation: overrides.operation ?? 'equals',
+						},
+						rightValue,
+					},
+				],
+				combinator: 'and',
+			};
+		}
+
+		function getIssues(parameters: Record<string, unknown>, type = 'n8n-nodes-base.if') {
+			const node = createMockNode(type, 'Check', parameters);
+			const graphNode = createGraphNode(node);
+			const nodes = new Map([['Check', graphNode]]);
+			return filterNodeValidator.validateNode(node, graphNode, createCtx(nodes));
+		}
+
+		it('warns on caseSensitive: true with mixed-case literal', () => {
+			const issues = getIssues({ conditions: withCondition('High') });
+			expect(issues).toContainEqual(
+				expect.objectContaining({
+					code: 'FILTER_AMBIGUOUS_CASE_SENSITIVITY',
+					severity: 'warning',
+				}),
+			);
+		});
+
+		it('does not warn when caseSensitive: false', () => {
+			const issues = getIssues({
+				conditions: withCondition('High', { caseSensitive: false }),
+			});
+			expect(issues.some((i) => i.code === 'FILTER_AMBIGUOUS_CASE_SENSITIVITY')).toBe(false);
+		});
+
+		it('does not warn on all-lowercase literal', () => {
+			const issues = getIssues({ conditions: withCondition('high') });
+			expect(issues.some((i) => i.code === 'FILTER_AMBIGUOUS_CASE_SENSITIVITY')).toBe(false);
+		});
+
+		it('does not warn on all-uppercase literal (e.g. HTTP method)', () => {
+			const issues = getIssues({ conditions: withCondition('GET') });
+			expect(issues.some((i) => i.code === 'FILTER_AMBIGUOUS_CASE_SENSITIVITY')).toBe(false);
+		});
+
+		it('does not warn on constant-style identifier (ACTIVE_STATUS)', () => {
+			const issues = getIssues({ conditions: withCondition('ACTIVE_STATUS') });
+			expect(issues.some((i) => i.code === 'FILTER_AMBIGUOUS_CASE_SENSITIVITY')).toBe(false);
+		});
+
+		it('does not warn on expression rightValue', () => {
+			const issues = getIssues({ conditions: withCondition('={{ $json.expected }}') });
+			expect(issues.some((i) => i.code === 'FILTER_AMBIGUOUS_CASE_SENSITIVITY')).toBe(false);
+		});
+
+		it('does not warn on numeric rightValue', () => {
+			const issues = getIssues({ conditions: withCondition(42) });
+			expect(issues.some((i) => i.code === 'FILTER_AMBIGUOUS_CASE_SENSITIVITY')).toBe(false);
+		});
+
+		it('does not warn on contains operator (case-insensitive intent is less obvious)', () => {
+			const issues = getIssues({
+				conditions: withCondition('High', { operation: 'contains' }),
+			});
+			expect(issues.some((i) => i.code === 'FILTER_AMBIGUOUS_CASE_SENSITIVITY')).toBe(false);
+		});
+
+		it('does not warn on number-typed operator (caseSensitive irrelevant)', () => {
+			const issues = getIssues({
+				conditions: withCondition('100', { operatorType: 'number' }),
+			});
+			expect(issues.some((i) => i.code === 'FILTER_AMBIGUOUS_CASE_SENSITIVITY')).toBe(false);
+		});
+
+		it('fires once per ambiguous condition', () => {
+			const conditions = {
+				options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
+				conditions: [
+					{
+						leftValue: '={{ $json.level }}',
+						operator: { type: 'string', operation: 'equals' },
+						rightValue: 'High',
+					},
+					{
+						leftValue: '={{ $json.level }}',
+						operator: { type: 'string', operation: 'equals' },
+						rightValue: 'Medium',
+					},
+				],
+				combinator: 'or',
+			};
+			const issues = getIssues({ conditions });
+			const caseIssues = issues.filter((i) => i.code === 'FILTER_AMBIGUOUS_CASE_SENSITIVITY');
+			expect(caseIssues).toHaveLength(2);
+		});
+
+		it('fires per Switch rule on caseSensitive: true with mixed-case literals', () => {
+			const issues = getIssues(
+				{
+					rules: {
+						values: [
+							{ outputKey: 'a', conditions: withCondition('High') },
+							{ outputKey: 'b', conditions: withCondition('Medium') },
+							{ outputKey: 'c', conditions: withCondition('Low') },
+						],
+					},
+				},
+				'n8n-nodes-base.switch',
+			);
+			const caseIssues = issues.filter((i) => i.code === 'FILTER_AMBIGUOUS_CASE_SENSITIVITY');
+			expect(caseIssues).toHaveLength(3);
+			expect(caseIssues[0].parameterPath).toBe('rules.values[0].conditions.options.caseSensitive');
+		});
+
+		it('points to the correct parameterPath on IF', () => {
+			const issues = getIssues({ conditions: withCondition('High') });
+			const caseIssue = issues.find((i) => i.code === 'FILTER_AMBIGUOUS_CASE_SENSITIVITY');
+			expect(caseIssue?.parameterPath).toBe('conditions.options.caseSensitive');
+		});
+	});
 });
