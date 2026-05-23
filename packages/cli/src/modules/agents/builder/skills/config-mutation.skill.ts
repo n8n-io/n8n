@@ -14,11 +14,20 @@ export function configMutationSkill(): RuntimeSkill {
 		id: 'agent-builder-config-mutation',
 		name: 'Agent builder config mutation',
 		description:
-			'Use before reading, writing, replacing, or patching the target agent JSON config.',
+			'Use when reading, writing, replacing, or patching the target-agent JSON config with read_config, write_config, or patch_config; covers schema paths, JSON Patch, stale retries, config preservation, credentials, and web-search config validation.',
 		instructions: `\
-Use this skill whenever you call \`read_config\`, \`write_config\`, or \`patch_config\`.
+## Purpose
 
-## Required flow
+Use this after deciding a config change is needed and before calling
+\`read_config\`, \`write_config\`, or \`patch_config\`.
+
+## Boundaries
+
+- The user is only chatting or asking how the builder works.
+- Choose model, memory, integration, tool, and research details before writing config.
+- Do not use web results, prompt snapshots, or remembered config as a write base.
+
+## Workflow
 
 1. Call \`read_config\` immediately before every \`write_config\` or \`patch_config\`.
 2. Use only the \`config\` and \`configHash\` returned by that same \`read_config\`.
@@ -26,15 +35,15 @@ Use this skill whenever you call \`read_config\`, \`write_config\`, or \`patch_c
 4. For \`patch_config\`, send RFC 6902 operations as a JSON string plus \`baseConfigHash\`.
 5. Use JSON Pointer paths like \`/field\`, \`/nested/field\`, \`/array/0\`, and \`/array/-\`.
 6. On \`stage: "stale"\`, retry once from the returned \`config\` and \`configHash\`.
-7. On parse, patch, or schema errors, fix the payload before trying again.
+7. On parse, patch, or schema errors, fix the payload, call \`read_config\`
+   again, and retry from the fresh \`configHash\`.
 
-## Schema source of truth
+## Rules
 
 ${getConfigRulesSection()}
 
 ${getSchemaReferenceSection()}
 
-Rules:
 - Follow the Config schema reference exactly; do not invent top-level fields.
 - Keep each feature in the schema path where it belongs.
 - Preserve unrelated existing config unless the user asked to change it.
@@ -43,7 +52,7 @@ Rules:
 - Valid provider tool keys are exactly: ${formatValidProviderToolNames()}.
 - Never use provider namespace keys such as \`anthropic\`, \`openai\`, or \`google\` in \`providerTools\`.
 
-## Common recipes
+## Recipes
 
 ### Create or replace a fresh runnable agent
 
@@ -102,6 +111,7 @@ For Episodic Memory, call \`ask_credential\` with \`credentialType: "openAiApi"\
 - Web search lives under \`config.webSearch\`.
 - For Anthropic, OpenAI, or Google models, set \`config.webSearch.enabled = true\` unless the user asks to disable web search.
 - The write path fills native provider tool defaults. Do not invent provider tool keys.
+- If the model provider does not support native web search, only keep web search enabled when a fallback provider and credential are configured.
 
 ### Configure fallback services
 
@@ -138,12 +148,27 @@ Bad: replacing \`config\` while dropping unrelated settings
 { "config": { "webSearch": { "enabled": true } } }
 \`\`\`
 
+## Gotchas
+
+- \`write_config\` replaces the full config; include every field that should survive.
+- \`patch_config\` cannot create a config when none exists; use \`write_config\` first.
+- \`/array/-\` appends to an array; \`/array/0\` inserts before the current first item.
+- Empty, placeholder, or guessed \`instructions\` are rejected; ask for details instead.
+- Native web search provider tools are normalized from \`config.webSearch\` and the selected model provider.
+
+## Verify
+
+- The final payload validates against the Config schema reference.
+- Existing unrelated config, tools, skills, integrations, and memory remain present unless intentionally changed.
+- Credential fields use ids returned by the correct interactive credential tools.
+- Provider tool keys are valid and match the selected model provider.
+
 ## Error recovery
 
 - \`stage: "stale"\`: retry once from the returned \`config\` and \`configHash\`.
-- \`stage: "parse"\`: fix JSON syntax.
-- \`stage: "patch"\`: fix JSON Pointer paths or operation shape.
-- \`stage: "schema"\`: compare the payload against the Config schema reference.
+- \`stage: "parse"\`: fix JSON syntax, then call \`read_config\` before retrying.
+- \`stage: "patch"\`: fix JSON Pointer paths or operation shape, then call \`read_config\` before retrying.
+- \`stage: "schema"\`: compare the payload against the Config schema reference, then call \`read_config\` before retrying.
 - \`ask_credential\` skipped: omit or disable the feature that required it.`,
 	};
 }
