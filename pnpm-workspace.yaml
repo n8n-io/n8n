@@ -14,6 +14,7 @@ catalog:
   '@ai-sdk/groq': ^3.0.35
   '@ai-sdk/mistral': ^3.0.30
   '@azure/identity': 4.13.0
+  '@bilig/workpaper': ^0.39.0
   '@codemirror/autocomplete': 6.20.0
   '@codemirror/commands': 6.10.1
   '@codemirror/lang-css': 6.3.1
