@@ -89,12 +89,15 @@ export async function execute(
 					const resolvables = getResolvables(rawValues);
 					if (resolvables.length) {
 						for (const resolvable of resolvables) {
-							const evaluatedExpression = evaluateExpression(
-								this.evaluateExpression(`${resolvable}`, index),
-							);
-							const evaluatedValues = isJSON(evaluatedExpression)
-								? [evaluatedExpression]
-								: stringToArray(evaluatedExpression);
+							const rawEvaluated = this.evaluateExpression(`${resolvable}`, index);
+							const evaluatedValues = Array.isArray(rawEvaluated)
+								? rawEvaluated.map(String)
+								: (() => {
+									const evaluatedExpression = evaluateExpression(rawEvaluated);
+									return isJSON(evaluatedExpression)
+										? [evaluatedExpression]
+										: stringToArray(evaluatedExpression);
+								})();
 
 							if (evaluatedValues.length) values.push(...evaluatedValues);
 						}
