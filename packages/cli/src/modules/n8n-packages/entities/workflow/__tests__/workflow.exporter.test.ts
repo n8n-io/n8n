@@ -116,4 +116,40 @@ describe('WorkflowExporter', () => {
 		expect(writtenPaths).toContain('workflows/same-name/workflow.json');
 		expect(writtenPaths).toContain('workflows/same-name-2/workflow.json');
 	});
+
+	it('exports AI Gateway-managed credentials with null ids', async () => {
+		const workflow = makeWorkflow({
+			name: 'Gateway Flow',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Google AI',
+					type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+					credentials: {
+						googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
+					},
+				},
+			],
+		});
+		const { exporter } = makeExporter([workflow]);
+		const writer = new CapturingWriter();
+
+		await expect(exporter.export({ user, workflowIds: [workflow.id], writer })).resolves.toEqual([
+			{ id: workflow.id, name: workflow.name, target: 'workflows/gateway-flow' },
+		]);
+
+		const exportedWorkflow = JSON.parse(
+			writer.files.find((file) => file.path === 'workflows/gateway-flow/workflow.json')?.content ??
+				'',
+		);
+
+		expect(exportedWorkflow.nodes[0].credentials.googlePalmApi).toEqual({
+			id: null,
+			name: '',
+			__aiGatewayManaged: true,
+		});
+	});
 });

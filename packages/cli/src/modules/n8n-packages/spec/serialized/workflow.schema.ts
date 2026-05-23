@@ -4,8 +4,9 @@ import { z } from 'zod';
 // validate the envelope and treat `parameters` as opaque — schema-validating
 // parameters per node type would be impossibly maintenance-heavy.
 const credentialReferenceSchema = z.object({
-	id: z.string(),
+	id: z.string().nullable(),
 	name: z.string(),
+	__aiGatewayManaged: z.boolean().optional(),
 });
 
 const nodeSchema = z.object({
