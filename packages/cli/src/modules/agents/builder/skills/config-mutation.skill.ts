@@ -110,18 +110,15 @@ For Episodic Memory, call \`ask_credential\` with \`credentialType: "openAiApi"\
 - Thinking lives under \`config.thinking\`.
 - Web search lives under \`config.webSearch\`.
 - For Anthropic and OpenAI models, set \`config.webSearch.enabled = true\` unless the user asks to disable web search.
-- For every other provider, web search must use fallback search: set
-  \`config.webSearch = { "enabled": true, "provider": "brave" | "searxng", "credential": "<credentialId>" }\`
-  after calling \`ask_credential\` for the matching search credential.
-- Do not write \`{ "enabled": true }\` alone for non-Anthropic/OpenAI providers;
-  the write path treats that as unsupported native web search and removes it.
+- Every other provider needs fallback search: call \`ask_credential\`, then set
+  \`config.webSearch = { "enabled": true, "provider": "brave" | "searxng", "credential": "<credentialId>" }\`.
+- Never write \`{ "enabled": true }\` alone for non-Anthropic/OpenAI providers.
 - The write path fills native provider tool defaults. Do not invent provider tool keys.
 - If the model provider does not support native web search, only keep web search enabled when a fallback provider and credential are configured.
 
 ### Configure fallback services
 
-- Services that require credentials must call \`ask_credential\` first.
-- Persist only the credential id returned by \`ask_credential\`.
+- Services that require credentials must call \`ask_credential\` first and persist only its returned credential id.
 - If credential selection is skipped, do not enable the feature unless it supports missing credentials.
 - For fallback web search, use exact credential type names: \`braveSearchApi\` for \`provider: "brave"\`, and \`searXngApi\` for \`provider: "searxng"\`.
 

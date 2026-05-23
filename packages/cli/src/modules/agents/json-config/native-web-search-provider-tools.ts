@@ -7,11 +7,6 @@ const NATIVE_WEB_SEARCH_PROVIDER_TOOLS = [
 	'openai.web_search',
 ] as const;
 
-const NATIVE_WEB_SEARCH_TOOL_BY_PROVIDER: Record<string, string> = {
-	anthropic: 'anthropic.web_search',
-	openai: 'openai.web_search',
-};
-
 const NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL: Record<string, string> = {
 	'anthropic.web_search': 'anthropic',
 	'anthropic.web_search_20250305': 'anthropic',
@@ -36,7 +31,7 @@ export function getProviderPrefix(modelId: string): string {
 }
 
 export function hasNativeWebSearchProvider(modelId: string): boolean {
-	return getProviderPrefix(modelId) in NATIVE_WEB_SEARCH_TOOL_BY_PROVIDER;
+	return getProviderPrefix(modelId) in NATIVE_WEB_SEARCH_DEFAULTS_BY_PROVIDER;
 }
 
 /**
@@ -65,20 +60,20 @@ export function getNativeWebSearchProviderTools(
 	}
 
 	if (isEnabled) {
-		const hasProviderWebSearchTool = Object.entries(NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL).some(
-			([toolName, toolProvider]) => toolProvider === providerPrefix && toolName in providerTools,
+		const providerWebSearchTools = Object.entries(NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL).filter(
+			([, toolProvider]) => toolProvider === providerPrefix,
+		);
+		const hasProviderWebSearchTool = providerWebSearchTools.some(
+			([toolName]) => toolName in providerTools,
 		);
 		if (!hasProviderWebSearchTool) {
 			providerTools[nativeWebSearch.toolName] = {};
 		}
 
 		if (options.includeDefaultArgs) {
-			for (const [toolName, toolProvider] of Object.entries(NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL)) {
-				if (toolProvider === providerPrefix && toolName in providerTools) {
-					providerTools[toolName] = {
-						...nativeWebSearch.args,
-						...providerTools[toolName],
-					};
+			for (const [toolName] of providerWebSearchTools) {
+				if (toolName in providerTools) {
+					providerTools[toolName] = { ...nativeWebSearch.args, ...providerTools[toolName] };
 				}
 			}
 		}

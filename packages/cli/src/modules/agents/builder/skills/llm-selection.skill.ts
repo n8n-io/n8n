@@ -39,9 +39,8 @@ Provider-native features such as web search may also depend on this choice.
 - For Anthropic and OpenAI models, native web search is enabled by default:
   persist \`config.webSearch.enabled = true\` unless the user asks to disable
   web search. Do not write native \`providerTools\`; the write path derives them.
-- For every other provider, web search requires fallback search:
-  use \`provider: "brave"\` or \`provider: "searxng"\` under \`config.webSearch\`
-  and call \`ask_credential\` for the matching search credential before writing it.
+- For every other provider, web search requires fallback search: call
+  \`ask_credential\`, then use \`provider: "brave"\` or \`provider: "searxng"\`.
 - If \`resolve_llm\` reports missing or ambiguous credentials/provider, call \`ask_llm\`.
 - If it reports \`unknown_model\`, retry with a plausible returned model value or call \`ask_llm\`.
 - For "Anthropic via OpenRouter", pass \`provider: "openrouter"\`; if the user names a routed model, pass the routed id without adding another provider prefix.
