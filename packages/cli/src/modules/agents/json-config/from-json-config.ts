@@ -20,29 +20,11 @@ import type {
 import { z } from 'zod';
 
 import { mapCredentialForProvider } from './credential-field-mapping';
+import {
+	getNativeWebSearchProviderTools,
+	hasNativeWebSearchProvider,
+} from './native-web-search-provider-tools';
 import { resolveProviderToolName } from './provider-tool-aliases';
-
-const NATIVE_WEB_SEARCH_PROVIDER_TOOLS = [
-	'anthropic.web_search',
-	'anthropic.web_search_20250305',
-	'anthropic.web_search_20260209',
-	'openai.web_search',
-	'google.google_search',
-] as const;
-
-const NATIVE_WEB_SEARCH_TOOL_BY_PROVIDER: Record<string, string> = {
-	anthropic: 'anthropic.web_search',
-	openai: 'openai.web_search',
-	google: 'google.google_search',
-};
-
-const NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL: Record<string, string> = {
-	'anthropic.web_search': 'anthropic',
-	'anthropic.web_search_20250305': 'anthropic',
-	'anthropic.web_search_20260209': 'anthropic',
-	'openai.web_search': 'openai',
-	'google.google_search': 'google',
-};
 
 const WEB_SEARCH_TOOL_NAME = 'web_search';
 const WEB_SEARCH_INPUT_SCHEMA = z.object({
@@ -145,39 +127,22 @@ export async function buildFromJson(
 	return agent;
 }
 
+/**
+ * Runtime reconstruction still normalizes provider tools because configs can
+ * come from the UI, imports, old saves, or manual edits. This derives the
+ * effective native web-search tools without rewriting the persisted config.
+ */
 function getEffectiveProviderTools(
 	config: AgentJsonConfig,
 ): Record<string, Record<string, unknown>> {
-	const providerTools = { ...(config.providerTools ?? {}) };
-	const providerPrefix = getProviderPrefix(config.model);
-	const nativeWebSearchTool = NATIVE_WEB_SEARCH_TOOL_BY_PROVIDER[providerPrefix];
-	const isEnabled = !!nativeWebSearchTool && config.config?.webSearch?.enabled === true;
-
-	for (const key of NATIVE_WEB_SEARCH_PROVIDER_TOOLS) {
-		const toolProvider = NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL[key];
-		if (!isEnabled || toolProvider !== providerPrefix) {
-			delete providerTools[key];
-		}
-	}
-
-	if (isEnabled) {
-		const hasProviderWebSearchTool = Object.entries(NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL).some(
-			([toolName, toolProvider]) => toolProvider === providerPrefix && toolName in providerTools,
-		);
-		if (!hasProviderWebSearchTool) {
-			providerTools[nativeWebSearchTool] = {};
-		}
-	}
-
-	return providerTools;
+	return getNativeWebSearchProviderTools(config, { includeDefaultArgs: false });
 }
 
 function buildFallbackWebSearchTool(
 	config: AgentJsonConfig,
 	credentialProvider: CredentialProvider,
 ): BuiltTool | null {
-	const providerPrefix = getProviderPrefix(config.model);
-	const hasNativeWebSearch = !!NATIVE_WEB_SEARCH_TOOL_BY_PROVIDER[providerPrefix];
+	const hasNativeWebSearch = hasNativeWebSearchProvider(config.model);
 	const webSearchConfig = config.config?.webSearch;
 
 	if (!webSearchConfig?.enabled || hasNativeWebSearch) return null;
