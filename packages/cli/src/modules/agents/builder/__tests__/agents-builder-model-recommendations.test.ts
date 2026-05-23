@@ -2,7 +2,6 @@ import type { ProviderCatalog } from '@n8n/agents';
 
 import { buildBuilderPrompt } from '../agents-builder-prompts';
 import { buildModelRecommendationsSection } from '../agents-builder-model-recommendations';
-import { getBuilderRuntimeSkills } from '../skills';
 
 const catalog: ProviderCatalog = {
 	anthropic: {
@@ -110,18 +109,9 @@ describe('builder model recommendations', () => {
 		expect(section).not.toContain('text-embedding-3-large');
 	});
 
-	it('injects the recommendation section only when catalog recommendations are available', () => {
+	it('does not inject the recommendation section into the base builder prompt', () => {
 		const section = buildModelRecommendationsSection(catalog);
-		const llmSkillWithRecommendations = getBuilderRuntimeSkills({
-			modelRecommendationsSection: section,
-		}).find((skill) => skill.id === 'agent-builder-llm-selection');
-		const llmSkillWithoutRecommendations = getBuilderRuntimeSkills({
-			modelRecommendationsSection: null,
-		}).find((skill) => skill.id === 'agent-builder-llm-selection');
 
-		expect(llmSkillWithRecommendations?.instructions).toContain('## Recommended LLM models');
-		expect(llmSkillWithoutRecommendations?.instructions).not.toContain('## Recommended LLM models');
-		expect(llmSkillWithoutRecommendations?.instructions).toContain('do not recommend or name');
 		expect(buildPrompt(section)).not.toContain('## Recommended LLM models');
 		expect(buildPrompt(null)).not.toContain('## Recommended LLM models');
 	});
