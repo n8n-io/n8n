@@ -3,12 +3,12 @@ import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { INode, INodeExecutionData } from 'n8n-workflow';
 
-import { InboundSecretContextHook } from '../inbound-secrets-context-hook';
-import type { InboundSecretsService, StripResult } from '../inbound-secrets.service';
+import { RuntimeCredentialsContextHook } from '../runtime-credentials-context-hook';
+import type { RuntimeCredentialsService, StripResult } from '../runtime-credentials.service';
 
-describe('InboundSecretContextHook', () => {
-	let service: MockProxy<InboundSecretsService>;
-	let hook: InboundSecretContextHook;
+describe('RuntimeCredentialsContextHook', () => {
+	let service: MockProxy<RuntimeCredentialsService>;
+	let hook: RuntimeCredentialsContextHook;
 
 	const buildOptions = (triggerItems: INodeExecutionData[] | null): ContextEstablishmentOptions =>
 		({
@@ -28,8 +28,8 @@ describe('InboundSecretContextHook', () => {
 	): StripResult => ({ triggerItems, artifactsByAlias }) as StripResult;
 
 	beforeEach(() => {
-		service = mock<InboundSecretsService>();
-		hook = new InboundSecretContextHook(service);
+		service = mock<RuntimeCredentialsService>();
+		hook = new RuntimeCredentialsContextHook(service);
 	});
 
 	it('forwards items and trigger type to service.strip and emits the alias-keyed contextUpdate', async () => {
