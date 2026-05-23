@@ -94,8 +94,10 @@ catalog:
   picocolors: 1.0.1
   playwright-core: 1.58.0
   posthog-node: 5.33.4
+  qs: 6.15.2
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
+  samlify: 2.13.0
   sass-embedded: ^1.98.0
   simple-git: 3.36.0
   stream-json: 1.9.1
@@ -110,6 +112,7 @@ catalog:
   vitest: ^4.1.1
   vitest-mock-extended: ^3.1.0
   vm2: 3.11.5
+  ws: 8.20.1
   xml2js: 0.6.2
   xss: 1.0.15
   yaml: 2.8.3
