@@ -332,6 +332,9 @@ export class McpOAuthService implements OAuthServerProvider {
 	 * we use Reflect to safely check and probe for it. This allows us to access the field
 	 * dynamically without relying on type assertions or introducing prototype pollution risks.
 	 *
+	 * TODO: Replace with typed property access when
+	 * @modelcontextprotocol/sdk exposes `resource` on AuthorizationParams.
+	 *
 	 * Returns undefined if the 'resource' parameter is missing, null, or undefined.
 	 * Throws InvalidResourceIndicatorError if a resource is present but is not a string or URL.
 	 *
