@@ -158,13 +158,13 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		branchReadOnly: context.branchReadOnly,
 	});
 
-	// The orchestrator intentionally does not receive a workspace. Sandbox access
-	// is scoped to the workflow-builder subagent via `builderSandboxFactory`.
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
 		agentRole: 'orchestrator',
 		functionId: 'instance-ai.orchestrator',
 		executionMode: 'foreground',
 	});
+	// The orchestrator agent itself does not receive workspace tools. Sandbox access
+	// stays scoped to tools and sub-agents that request orchestrationContext.workspace.
 	const agent = new Agent('n8n-instance-agent')
 		.model(modelId)
 		.instructions(systemPrompt, {
@@ -195,7 +195,6 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 				: {}),
 		});
 	}
-
 	mergeTraceRunInputs(
 		orchestrationContext?.tracing?.actorRun,
 		buildAgentTraceInputs({

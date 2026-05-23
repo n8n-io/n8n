@@ -74,7 +74,6 @@ export type {
 	AttributeValue,
 	ObservationCursor,
 	ObservationalMemoryConfig,
-	ScopeKind,
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
 	NewObservationLogEntry,
@@ -85,7 +84,6 @@ export type {
 	ObservationLogReflection,
 	ObservationLogReflectionResult,
 	ObservationLogScope,
-	ObservationLogScopeKind,
 	ObservationLogStatus,
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
@@ -95,8 +93,6 @@ export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
 export type { AgentEventData, AgentEventHandler } from './types';
 export {
-	createObservationLogThreadScopeId,
-	createObservationLogThreadScopePrefix,
 	estimateObservationTokens,
 	OBSERVATION_LOG_MARKERS,
 	OBSERVATION_LOG_STATUSES,

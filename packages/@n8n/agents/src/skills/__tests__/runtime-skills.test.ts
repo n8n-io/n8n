@@ -277,6 +277,7 @@ Use the workflow SDK.`,
 		expect(prompt).toContain('Skill loading protocol:');
 		expect(prompt).toContain('name: "Summarize notes"');
 		expect(prompt).toContain('id: "summarize_notes"');
+		expect(prompt).toContain('load_skill once with `{ "skillId": "<id>" }`');
 		expect(prompt).not.toContain('Extract private decisions.');
 	});
 
