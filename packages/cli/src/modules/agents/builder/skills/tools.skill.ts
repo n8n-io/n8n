@@ -39,8 +39,7 @@ Custom tools:
 Provider tools:
 - Match provider tools to the configured model provider.
 - Valid keys are exactly: ${formatValidProviderToolNames()}.
-- Never use provider namespace keys such as \`anthropic\`, \`openai\`, or
-  \`google\` in \`providerTools\`.
+- \`providerTools\` keys must be complete provider tool IDs from the valid key list.
 - Anthropic: \`providerTools["anthropic.web_search"]\`.
 - OpenAI: \`providerTools["openai.web_search"]\` or \`providerTools["openai.image_generation"]\`, only for compatible OpenAI models.
 - Google: \`providerTools["google.google_search"]\`, only for compatible Gemini models.`,
