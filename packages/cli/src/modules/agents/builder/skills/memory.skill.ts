@@ -7,14 +7,12 @@ export function memorySkill(): RuntimeSkill {
 		description:
 			'Use when configuring target agent memory, observation-log memory, or Episodic Memory.',
 		instructions: `\
-Fresh agents must include enabled n8n session-scoped memory unless the user
-explicitly asks to disable memory:
+Use n8n session-scoped memory by default:
 \`\`\`json
 { "enabled": true, "storage": "n8n", "lastMessages": 50 }
 \`\`\`
 
 Rules:
-- When creating a new agent, always write the \`memory\` object above.
 - Set \`storage\` to "n8n".
 - \`lastMessages\` defaults to 50.
 - Observation-log memory is enabled by default when memory is enabled.
