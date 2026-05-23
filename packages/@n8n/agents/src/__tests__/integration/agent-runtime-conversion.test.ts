@@ -63,6 +63,36 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect(toolResultPart.output.value).toEqual({ result: 3 });
 	});
 
+	it('preserves provider metadata on replayed assistant tool-call parts', () => {
+		const providerMetadata = { google: { thoughtSignature: 'gemini-signature' } };
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'load_skill',
+						input: { skillId: 'agent-builder-tools' },
+						providerMetadata,
+						state: 'resolved',
+						output: { ok: true },
+					},
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input);
+		const toolCallPart = (
+			aiMessages[0] as {
+				role: string;
+				content: Array<{ type: string; providerMetadata?: unknown }>;
+			}
+		).content[0];
+
+		expect(toolCallPart.providerMetadata).toEqual(providerMetadata);
+	});
+
 	it('preserves content tool outputs when building tool ModelMessages', () => {
 		const contentOutput = {
 			type: 'content' as const,
