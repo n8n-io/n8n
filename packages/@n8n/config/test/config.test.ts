@@ -96,6 +96,9 @@ describe('GlobalConfig', () => {
 				connectionTimeoutMs: 20_000,
 				idleTimeoutMs: 30_000,
 				statementTimeoutMs: 5 * 60 * 1000,
+				maxConnectionLifetimeMs: 60 * 60 * 1000,
+				keepAlive: true,
+				keepAliveInitialDelayMs: 10_000,
 				ssl: {
 					ca: '',
 					cert: '',
@@ -113,6 +116,7 @@ describe('GlobalConfig', () => {
 			tablePrefix: '',
 			type: 'sqlite',
 			pingIntervalSeconds: 2,
+			pingTimeoutMs: 5_000,
 		} as DatabaseConfig,
 		credentials: {
 			defaultName: 'My credentials',
@@ -606,6 +610,7 @@ describe('GlobalConfig', () => {
 				tablePrefix: 'test_',
 				type: 'sqlite',
 				pingIntervalSeconds: 2,
+				pingTimeoutMs: 5_000,
 			},
 			endpoints: {
 				...defaultConfig.endpoints,
