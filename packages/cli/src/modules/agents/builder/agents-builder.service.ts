@@ -26,6 +26,7 @@ import { AGENT_THREAD_PREFIX } from './builder-tool-names';
 import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
 import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
 import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
+import { getBuilderRuntimeSkills } from './skills';
 
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
@@ -183,6 +184,7 @@ export class AgentsBuilderService {
 			agentPreviewPath: buildAgentPreviewPath(projectId, agentId),
 			modelRecommendationsSection,
 		});
+		const runtimeSkills = getBuilderRuntimeSkills({ modelRecommendationsSection });
 
 		const tools = this.agentsBuilderToolsService.getTools(
 			agentId,
@@ -201,6 +203,7 @@ export class AgentsBuilderService {
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
 			.instructions(instructions)
+			.skills(runtimeSkills)
 			.memory(builderMemory)
 			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
 

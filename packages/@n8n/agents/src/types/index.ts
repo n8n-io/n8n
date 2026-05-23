@@ -100,10 +100,7 @@ export type {
 	TitleGenerationConfig,
 } from './sdk/memory';
 
-export type {
-	ObservationCursor,
-	ScopeKind,
-} from './sdk/observation';
+export type { ObservationCursor } from './sdk/observation';
 
 export type {
 	BuiltObservationLogStore,
@@ -120,15 +117,12 @@ export type {
 	ObservationLogReflection,
 	ObservationLogReflectionResult,
 	ObservationLogScope,
-	ObservationLogScopeKind,
 	ObservationLogStatus,
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
 	TokenCounter,
 } from './sdk/observation-log';
 export {
-	createObservationLogThreadScopeId,
-	createObservationLogThreadScopePrefix,
 	estimateObservationTokens,
 	OBSERVATION_LOG_MARKERS,
 	OBSERVATION_LOG_STATUSES,
