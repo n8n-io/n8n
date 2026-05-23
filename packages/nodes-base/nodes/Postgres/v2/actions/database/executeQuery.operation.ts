@@ -91,7 +91,7 @@ export async function execute(
 						for (const resolvable of resolvables) {
 							const rawEvaluated = this.evaluateExpression(`${resolvable}`, index);
 							const evaluatedValues = Array.isArray(rawEvaluated)
-								? rawEvaluated.map(String)
+								? rawEvaluated.map((v: any) => typeof v === 'object' ? JSON.stringify(v) : String(v))
 								: (() => {
 									const evaluatedExpression = evaluateExpression(rawEvaluated);
 									return isJSON(evaluatedExpression)
