@@ -848,4 +848,19 @@ describe('McpOAuthService', () => {
 			});
 		});
 	});
+
+	describe('getCanonicalMcpResourceUrl', () => {
+		it('should preserve subpath in canonical resource URL', () => {
+			urlService.getInstanceBaseUrl.mockReturnValue('https://example.com/n8n');
+			// Access the private method via bracket notation
+			const canonical = (service as any).getCanonicalMcpResourceUrl();
+			expect(canonical).toBe('https://example.com/n8n/mcp-server/http');
+		});
+
+		it('should strip trailing slash from base URL', () => {
+			urlService.getInstanceBaseUrl.mockReturnValue('https://example.com/n8n/');
+			const canonical = (service as any).getCanonicalMcpResourceUrl();
+			expect(canonical).toBe('https://example.com/n8n/mcp-server/http');
+		});
+	});
 });
