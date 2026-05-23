@@ -378,7 +378,9 @@ async function waitForConfirmation(
 	confirmationPromise: Promise<Record<string, unknown>>,
 ): Promise<Record<string, unknown>> {
 	if (signal.aborted) {
-		throw new Error('Run cancelled while waiting for confirmation');
+		throw new Error(
+			'The assistant was interrupted while waiting for your response. Send a new message to continue.',
+		);
 	}
 
 	let abortHandler: (() => void) | undefined;
@@ -387,7 +389,12 @@ async function waitForConfirmation(
 		return await Promise.race([
 			confirmationPromise,
 			new Promise<never>((_, reject) => {
-				abortHandler = () => reject(new Error('Run cancelled while waiting for confirmation'));
+				abortHandler = () =>
+					reject(
+						new Error(
+							'The assistant was interrupted while waiting for your response. Send a new message to continue.',
+						),
+					);
 				signal.addEventListener('abort', abortHandler, { once: true });
 			}),
 		]);

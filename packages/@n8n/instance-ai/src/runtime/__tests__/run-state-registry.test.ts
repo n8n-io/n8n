@@ -962,7 +962,11 @@ describe('RunStateRegistry', () => {
 			expect(result.suspendedRuns[0].runId).toBe('run_suspended');
 		});
 
-		it('resolves all pending confirmations', () => {
+		it('leaves pending confirmation resolvers untouched and returns their thread ids', () => {
+			// Auto-resolving inline confirmations on shutdown causes the awaiting
+			// tool to run to completion as "denied" and mutate the snapshot
+			// mid-shutdown; we intentionally let them dangle so the user sees
+			// the original confirmation card on reload.
 			const resolve1 = jest.fn();
 			const resolve2 = jest.fn();
 
@@ -979,25 +983,30 @@ describe('RunStateRegistry', () => {
 				createdAt: Date.now(),
 			});
 
-			registry.shutdown();
+			const result = registry.shutdown();
 
-			expect(resolve1).toHaveBeenCalledWith({ approved: false });
-			expect(resolve2).toHaveBeenCalledWith({ approved: false });
+			expect(resolve1).not.toHaveBeenCalled();
+			expect(resolve2).not.toHaveBeenCalled();
+			expect(result.pendingThreadIds).toEqual(expect.arrayContaining(['thread-1', 'thread-2']));
 		});
 
-		it('uses custom cancellation data when provided', () => {
-			const resolve = jest.fn();
+		it('deduplicates pendingThreadIds when one thread has multiple confirmations', () => {
 			registry.registerPendingConfirmation('req-1', {
-				resolve,
-				threadId: 'thread-1',
+				resolve: jest.fn(),
+				threadId: 'thread-shared',
+				userId: 'user-1',
+				createdAt: Date.now(),
+			});
+			registry.registerPendingConfirmation('req-2', {
+				resolve: jest.fn(),
+				threadId: 'thread-shared',
 				userId: 'user-1',
 				createdAt: Date.now(),
 			});
 
-			const customData: ConfirmationData = { approved: false, userInput: 'shutdown' };
-			registry.shutdown(customData);
+			const result = registry.shutdown();
 
-			expect(resolve).toHaveBeenCalledWith(customData);
+			expect(result.pendingThreadIds).toEqual(['thread-shared']);
 		});
 
 		it('leaves registry fully empty after shutdown', () => {

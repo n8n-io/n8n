@@ -340,6 +340,7 @@ type StartRunServiceInternals = {
 	};
 	threadPushRef: Map<string, string>;
 	executeRun: jest.Mock;
+	trackInFlightExecution: jest.Mock;
 };
 
 function createStartRunService(): StartRunServiceInternals {
@@ -357,6 +358,7 @@ function createStartRunService(): StartRunServiceInternals {
 	};
 	service.threadPushRef = new Map();
 	service.executeRun = jest.fn();
+	service.trackInFlightExecution = jest.fn();
 	return service;
 }
 
@@ -565,6 +567,7 @@ type ShutdownServiceInternals = {
 	domainAccessTrackersByThread: Map<string, unknown>;
 	eventBus: { clear: jest.MockedFunction<() => void> };
 	_mcpClientManager?: { disconnect: jest.MockedFunction<() => Promise<void>> };
+	inFlightExecutions: Set<Promise<unknown>>;
 	logger: { debug: jest.Mock; warn: jest.Mock };
 };
 
@@ -1178,6 +1181,7 @@ describe('InstanceAiService — shutdown', () => {
 		service.domainAccessTrackersByThread = new Map();
 		service.eventBus = { clear: jest.fn() };
 		service._mcpClientManager = { disconnect: jest.fn(async () => {}) };
+		service.inFlightExecutions = new Set();
 		service.logger = { debug: jest.fn(), warn: jest.fn() };
 
 		await service.shutdown();
@@ -1597,6 +1601,8 @@ type SuspendedRunResumeServiceInternals = {
 	dbSnapshotStorage: unknown;
 	createOrchestratorResumeTraceContext: jest.Mock;
 	processResumedStream: jest.Mock;
+	dropPendingConfirmation: jest.Mock;
+	trackInFlightExecution: jest.Mock;
 };
 
 function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
@@ -1605,6 +1611,8 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 	) as unknown as SuspendedRunResumeServiceInternals;
 	service.revalidateActiveUser = jest.fn();
 	service.cancelRun = jest.fn();
+	service.dropPendingConfirmation = jest.fn(async () => {});
+	service.trackInFlightExecution = jest.fn();
 	service.runState = {
 		findSuspendedByRequestId: jest.fn(() => ({
 			agent: {},
