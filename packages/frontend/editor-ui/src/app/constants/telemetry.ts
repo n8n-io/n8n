@@ -1,0 +1,4 @@
+export const TELEMETRY_EVENTS = {
+	IS_PART_OF_EXPERIMENT: 'User is part of experiment',
+};
+export const POSTHOG_EVENTS_BLACKLIST = [TELEMETRY_EVENTS.IS_PART_OF_EXPERIMENT];

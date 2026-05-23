@@ -8,29 +8,17 @@ jest.mock('@n8n/instance-ai', () => {
 			disconnect = jest.fn();
 		},
 		createDomainAccessTracker: jest.fn(),
-		BuilderSandboxFactory: class {},
-		SnapshotManager: class {},
 		createSandbox: jest.fn(),
 		createWorkspace: jest.fn(),
+		createLazyRuntimeWorkspace: jest.fn(),
+		setupSandboxWorkspace: jest.fn(),
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: jest.fn(),
 		handleVerificationVerdict: jest.fn(),
 		createInstanceAgent: jest.fn(),
 		createAllTools: jest.fn(),
-		createMemory: jest.fn(),
-		mapMastraChunkToEvent: jest.fn(),
 	};
 });
-jest.mock('@mastra/core/agent', () => ({}));
-jest.mock('@mastra/core/storage', () => ({
-	MemoryStorage: class {},
-	MastraCompositeStore: class {},
-	WorkflowsStorage: class {},
-}));
-jest.mock('@mastra/memory', () => ({
-	Memory: class {},
-}));
-jest.mock('@mastra/core/workflows', () => ({}));
 
 import { InstanceAiService } from '../instance-ai.service';
 
@@ -82,7 +70,6 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			eventBus: { clearThread: jest.Mock };
 			finalizeRemainingMessageTraceRoots: jest.Mock;
 			deleteTraceContextsForThread: jest.Mock;
-			builderSandboxSessions: { cleanupThread: jest.Mock };
 			destroySandbox: jest.Mock;
 			reapAiTemporaryForThreadCleanup: jest.Mock;
 			clearThreadState: (threadId: string) => Promise<void>;
@@ -101,7 +88,6 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		service.eventBus = { clearThread: jest.fn() };
 		service.finalizeRemainingMessageTraceRoots = jest.fn(async () => {});
 		service.deleteTraceContextsForThread = jest.fn();
-		service.builderSandboxSessions = { cleanupThread: jest.fn(async () => {}) };
 		service.destroySandbox = jest.fn(async () => {});
 		service.reapAiTemporaryForThreadCleanup = jest.fn(async () => {});
 

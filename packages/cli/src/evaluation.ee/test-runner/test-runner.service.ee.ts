@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
+	EvaluationCollectionRepository,
 	TestCaseExecutionRepository,
 	TestRun,
 	TestRunRepository,
@@ -41,11 +42,16 @@ import pLimit from 'p-limit';
 
 import { ActiveExecutions } from '@/active-executions';
 import { EventService } from '@/events/event.service';
+import {
+	getEvaluationConcurrencyLimitSource,
+	resolveEvaluationConcurrencyLimit,
+} from '@/evaluation.ee/evaluation-concurrency.helper';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import {
 	checkNodeParameterNotEmpty,
 	extractTokenUsage,
 } from '@/evaluation.ee/test-runner/utils.ee';
+import { License } from '@/license';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 
@@ -88,7 +94,9 @@ export class TestRunnerService {
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly concurrencyControlService: ConcurrencyControlService,
+		private readonly license: License,
 		private readonly workflowHistoryService: WorkflowHistoryService,
+		private readonly evaluationCollectionRepository: EvaluationCollectionRepository,
 	) {}
 
 	/**
@@ -519,9 +527,10 @@ export class TestRunnerService {
 	 *   - Clamped 1–10 as a defensive UX guardrail (the controller already
 	 *     validates this via zod, but direct service callers must not exceed
 	 *     it either).
-	 *   - Further clamped to `evaluationLimit` (`N8N_CONCURRENCY_EVALUATION_LIMIT`)
-	 *     when an admin has set a positive cap. `concurrency_limited_by_config`
-	 *     is recorded in telemetry when this kicks in.
+	 *   - Further clamped to the effective evaluation limit resolved by
+	 *     {@link resolveEvaluationConcurrencyLimit} (env override → tier
+	 *     default). `concurrency_limited_by_config` is recorded in telemetry
+	 *     when this kicks in.
 	 *
 	 * `concurrency = 1` reproduces the legacy sequential behaviour exactly.
 	 */
@@ -532,13 +541,8 @@ export class TestRunnerService {
 	 * {@link startTestRun} directly so it can return the new `testRun.id`
 	 * before cases finish.
 	 */
-	async runTest(
-		user: User,
-		workflowId: string,
-		concurrency: number = 1,
-		flagEnabledForUser: boolean = false,
-	): Promise<void> {
-		const { finished } = await this.startTestRun(user, workflowId, concurrency, flagEnabledForUser);
+	async runTest(user: User, workflowId: string, concurrency: number = 1): Promise<void> {
+		const { finished } = await this.startTestRun(user, workflowId, concurrency);
 		await finished;
 	}
 
@@ -559,7 +563,6 @@ export class TestRunnerService {
 		user: User,
 		workflowId: string,
 		concurrency: number = 1,
-		flagEnabledForUser: boolean = false,
 		options?: {
 			collectionId?: string;
 			workflowVersionId?: string;
@@ -568,7 +571,7 @@ export class TestRunnerService {
 		},
 	): Promise<{ testRun: TestRun; finished: Promise<void> }> {
 		const requestedConcurrency = Math.max(1, Math.min(10, Math.floor(concurrency)));
-		const evaluationLimit = this.executionsConfig.concurrency.evaluationLimit;
+		const evaluationLimit = resolveEvaluationConcurrencyLimit(this.executionsConfig, this.license);
 		const concurrencyLimitedByConfig =
 			evaluationLimit > 0 && requestedConcurrency > evaluationLimit;
 		const effectiveConcurrency = concurrencyLimitedByConfig
@@ -576,7 +579,7 @@ export class TestRunnerService {
 			: requestedConcurrency;
 
 		this.logger.debug(
-			`[Eval] runTest called: requestedConcurrency=${requestedConcurrency} effectiveConcurrency=${effectiveConcurrency} evaluationLimit=${evaluationLimit} flagEnabledForUser=${flagEnabledForUser}`,
+			`[Eval] runTest called: requestedConcurrency=${requestedConcurrency} effectiveConcurrency=${effectiveConcurrency} evaluationLimit=${evaluationLimit}`,
 			{
 				workflowId,
 				collectionId: options?.collectionId,
@@ -635,7 +638,6 @@ export class TestRunnerService {
 			testRun,
 			effectiveConcurrency,
 			concurrencyLimitedByConfig,
-			flagEnabledForUser,
 		});
 
 		return { testRun, finished };
@@ -648,7 +650,6 @@ export class TestRunnerService {
 		testRun,
 		effectiveConcurrency,
 		concurrencyLimitedByConfig,
-		flagEnabledForUser,
 	}: {
 		user: User;
 		workflowId: string;
@@ -656,7 +657,6 @@ export class TestRunnerService {
 		testRun: TestRun;
 		effectiveConcurrency: number;
 		concurrencyLimitedByConfig: boolean;
-		flagEnabledForUser: boolean;
 	}): Promise<void> {
 		// Initialize telemetry metadata
 		const telemetryMeta = {
@@ -673,7 +673,7 @@ export class TestRunnerService {
 			concurrency: effectiveConcurrency,
 			parallel_enabled: effectiveConcurrency > 1,
 			concurrency_limited_by_config: concurrencyLimitedByConfig,
-			flag_enabled_for_user: flagEnabledForUser,
+			concurrency_limit_source: getEvaluationConcurrencyLimitSource(this.license),
 			// Realised parallelism observed at runtime — `cases_started` counts
 			// callbacks that actually began (post-throttle, pre-abort), and
 			// `peak_in_flight` is the high-water mark for in-flight cases.
@@ -809,10 +809,10 @@ export class TestRunnerService {
 
 							// Layer onto the existing instance-wide concurrency control. The
 							// service is a no-op in queue mode (BullMQ governs there) and when
-							// `evaluationLimit` is unset (-1). pLimit and the eval queue cap
-							// the in-flight count at *the same number* by design — pLimit is
-							// per-run, the queue is shared across all test runs from all users
-							// on the instance, so they're complementary, not redundant.
+							// the configured limit is -1 ("unlimited"). pLimit and the eval
+							// queue cap the in-flight count complementarily: pLimit is
+							// per-run, the queue is shared across all test runs from all
+							// users on the instance.
 							//
 							// Abort-aware acquisition: if Stop is clicked while we're queued
 							// behind another evaluation's capacity, we evict ourselves from the
@@ -1068,6 +1068,38 @@ export class TestRunnerService {
 				this.logger.debug('Aggregated metrics', aggregatedMetrics);
 
 				await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
+
+				// If this run belongs to an eval collection, a fresh
+				// `completed` status with new metrics can flip the
+				// winner / produce new regressions in the insights
+				// envelope. Bust any cached envelope so the next
+				// `EvalInsightsService.generateInsights` call regenerates
+				// against the up-to-date set. Cache busts happen here (not
+				// in the repository) because terminal-state setters live
+				// in this service; centralising the bust avoids spreading
+				// the dependency across every call site.
+				//
+				// Failure isolation: an exception from `updateInsightsCache`
+				// must NOT propagate. The run is already persisted as
+				// `completed` with its metrics; if the outer catch sees an
+				// error here it would re-mark the run as `error` and we'd
+				// lose a successful run. Worst case on cache-bust failure
+				// is a stale envelope on the next insights request, which
+				// the user can resolve with `forceRegenerate: true`.
+				if (testRun.collectionId) {
+					try {
+						await this.evaluationCollectionRepository.updateInsightsCache(
+							testRun.collectionId,
+							null,
+						);
+					} catch (cacheError) {
+						this.logger.warn('Failed to bust eval-collection insights cache', {
+							testRunId: testRun.id,
+							collectionId: testRun.collectionId,
+							error: cacheError instanceof Error ? cacheError.message : String(cacheError),
+						});
+					}
+				}
 
 				this.logger.debug('Test run finished', { workflowId, testRunId: testRun.id });
 			}

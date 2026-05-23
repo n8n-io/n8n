@@ -115,17 +115,16 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string>>>(() =>
 	})),
 );
 
-const executionsCount = computed(() => sessionsStore.threads.length);
-const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
-	executionsCount,
-});
-
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const isChatFullWidth = ref(false);
+const executionsCount = computed(() => sessionsStore.threads.length);
+const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
+	executionsCount,
+});
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
 
@@ -366,7 +365,6 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void> {
 const configAutosave = useAgentConfigAutosave<ConfigAutosaveSnapshot>({
 	save: saveConfig,
 	onSaved: () => {
-		telemetry.track('User saved agent settings', { agent_id: agentId.value });
 		builderTelemetry.flushConfigEdits();
 		// Diff the saved tool/skill lists against the last baseline. No-op when
 		// nothing new landed, so calling on every save also handles the build-chat
@@ -638,6 +636,7 @@ function onOpenToolFromList(index: number) {
 	const tools = localConfig.value?.tools ?? [];
 	const tool = tools[index];
 	if (!tool) return;
+	builderTelemetry.trackOpenedToolFromList(tool.type);
 	const customTool = tool.type === 'custom' && tool.id ? agent.value?.tools?.[tool.id] : undefined;
 	uiStore.openModalWithData({
 		name: AGENT_TOOL_CONFIG_MODAL_KEY,
@@ -683,6 +682,7 @@ const appliedSkills = computed<Array<{ id: string; skill: AgentSkill }>>(() => {
 function onOpenSkillFromList(id: string) {
 	const skill = appliedSkills.value.find((s) => s.id === id)?.skill;
 	if (!skill) return;
+	builderTelemetry.trackOpenedSkillFromList(id);
 	uiStore.openModalWithData({
 		name: AGENT_SKILL_MODAL_KEY,
 		data: {
@@ -726,6 +726,7 @@ function onRemoveSkill(id: string) {
 }
 
 function onOpenAddSkillModal() {
+	builderTelemetry.trackOpenedAddSkillModal();
 	uiStore.openModalWithData({
 		name: AGENT_SKILL_MODAL_KEY,
 		data: {

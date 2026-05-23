@@ -1,4 +1,6 @@
 import type {
+	Agent as RuntimeAgent,
+	AgentExecutionCounter,
 	BuiltAgent,
 	BuiltTool,
 	CredentialProvider,
@@ -24,8 +26,7 @@ import {
 	type ChatIntegrationDescriptor,
 	AgentPersistedMessageDto,
 } from '@n8n/api-types';
-import * as agents from '@n8n/agents';
-import { extractFromAIParameters } from '@n8n/ai-utilities';
+import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -63,6 +64,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 import { AgentExecutionService } from './agent-execution.service';
@@ -90,7 +92,7 @@ import { ChatIntegrationService } from './integrations/chat-integration.service'
 type AgentToolEntries = Agent['tools'];
 
 interface InjectRuntimeDependenciesParams {
-	agent: agents.Agent;
+	agent: RuntimeAgent;
 	agentId: string;
 	projectId: string;
 	credentialProvider: CredentialProvider;
@@ -154,7 +156,7 @@ export interface ExecuteForSchedulePublishedConfig {
 }
 
 interface StreamChatResponseConfig {
-	agentInstance: agents.Agent;
+	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
 	agentId: string;
 	message: string;
@@ -187,7 +189,7 @@ export class AgentsService {
 	 */
 	private readonly runtimes = new TtlMap<
 		string,
-		{ agent: agents.Agent; agentId: string; toolRegistry: ToolRegistry; projectId: string }
+		{ agent: RuntimeAgent; agentId: string; toolRegistry: ToolRegistry; projectId: string }
 	>(30 * Time.minutes.toMilliseconds);
 
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
@@ -273,7 +275,7 @@ export class AgentsService {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
 	}
 
-	private createAgentExecutionCounter(agentId: string): agents.AgentExecutionCounter {
+	private createAgentExecutionCounter(agentId: string): AgentExecutionCounter {
 		return {
 			incrementMessageCount: () =>
 				this.telemetry.trackAgentExecution({ agent_id: agentId, message_count: 1 }),
@@ -604,16 +606,8 @@ export class AgentsService {
 		return executionsToMessagesDto(detail.executions);
 	}
 
-	private getMemoryFactory(): MemoryFactory {
-		return (params: AgentJsonMemoryConfig) => {
-			if (params.storage === 'n8n') {
-				return this.n8nMemory;
-			}
-			if (params.storage === 'sqlite') {
-				return new agents.SqliteMemory(agents.SqliteMemoryConfigSchema.parse(params));
-			}
-			throw new Error(`Unsupported memory storage: ${params.storage}`);
-		};
+	private getMemoryFactory(agentId: string): MemoryFactory {
+		return (_params: AgentJsonMemoryConfig) => this.n8nMemory.getImplementation(agentId);
 	}
 
 	/** Create a credential provider scoped to a project. */
@@ -625,7 +619,7 @@ export class AgentsService {
 	 * Return a cached runtime, or reconstruct one from the DB.
 	 */
 	private async getRuntime(params: GetRuntimeParams): Promise<{
-		agent: agents.Agent;
+		agent: RuntimeAgent;
 		agentId: string;
 		toolRegistry: ToolRegistry;
 		projectId: string;
@@ -786,7 +780,7 @@ export class AgentsService {
 	 * turn delegates to `NodeCatalogService`.
 	 */
 	private attachNodeToolChain(
-		agent: agents.Agent,
+		agent: RuntimeAgent,
 		credentialProvider: CredentialProvider,
 		projectId: string,
 	): void {
@@ -876,6 +870,8 @@ export class AgentsService {
 	 *   - "model":        missing model or one that fails the provider/model regex
 	 *   - "credential":   credential name is set in config but doesn't resolve to
 	 *                     a real credential in the project
+	 *   - "episodicMemory.credential": configured Episodic Memory credential
+	 *                     does not resolve to a real credential in the project
 	 *   - "skill:<id>":   config references a skill id with no stored body
 	 */
 	async validateAgentIsRunnable(
@@ -903,17 +899,33 @@ export class AgentsService {
 			missing.push('model');
 		}
 
+		let credentialList: Awaited<ReturnType<CredentialProvider['list']>> | undefined;
+		const credentialExists = async (credentialId: string) => {
+			credentialList ??= await credentialProvider.list();
+			return credentialList.some((credential) => credential.id === credentialId);
+		};
+
 		if (!config.credential?.trim()) {
 			missing.push('credential');
 		} else {
 			try {
 				const credentialId = config.credential.trim();
-				const creds = await credentialProvider.list();
-				const exists = creds.some((c) => c.id === credentialId);
-				if (!exists) missing.push('credential');
+				if (!(await credentialExists(credentialId))) missing.push('credential');
 			} catch {
 				// If listing fails (e.g. permissions), don't flag as misconfigured —
 				// the runtime will surface the real error path on execute.
+			}
+		}
+
+		const episodicMemory = config.memory?.episodicMemory;
+		if (config.memory?.enabled && episodicMemory?.enabled === true) {
+			try {
+				if (!(await credentialExists(episodicMemory.credential.trim()))) {
+					missing.push('episodicMemory.credential');
+				}
+			} catch {
+				// Same behavior as the main model credential: runtime reconstruction
+				// surfaces permission/listing failures with the concrete error.
 			}
 		}
 
@@ -951,28 +963,30 @@ export class AgentsService {
 
 	/**
 	 * Return persisted test-chat messages for an agent scoped to the current
-	 * user. Test-chat threads are keyed by agent and user so thread-scoped
-	 * working memory stays isolated.
+	 * user. Test-chat threads are keyed by agent and user so memory stays isolated.
 	 */
 	async getTestChatMessages(agentId: string, userId: string) {
-		return await this.n8nMemory.getMessages(chatThreadId(agentId, userId), {
-			resourceId: userId,
-		});
+		return await this.n8nMemory
+			.getImplementation(agentId)
+			.getMessages(chatThreadId(agentId, userId), {
+				resourceId: draftChatMemoryResourceId(userId),
+			});
 	}
 
 	/**
 	 * Clear the current user's test-chat messages for an agent.
 	 */
 	async clearTestChatMessages(agentId: string, userId: string) {
-		await this.n8nMemory.deleteMessagesByThread(chatThreadId(agentId, userId), userId);
+		await this.n8nMemory.getImplementation(agentId).deleteThread(chatThreadId(agentId, userId));
 	}
 
 	/** Delete all test-chat messages + the thread row — used when the agent itself is deleted. */
 	async clearAllTestChatMessages(agentId: string) {
 		const threadId = chatThreadId(agentId);
-		await this.n8nMemory.deleteThreadsByPrefix(threadId);
-		await this.n8nMemory.deleteMessagesByThread(threadId);
-		await this.n8nMemory.deleteThread(threadId);
+		const memory = this.n8nMemory.getImplementation(agentId);
+		await memory.deleteThreadsByPrefix(threadId);
+		await memory.deleteMessagesByThread(threadId);
+		await memory.deleteThread(threadId);
 	}
 
 	/**
@@ -1735,7 +1749,7 @@ export class AgentsService {
 		credentialProvider: CredentialProvider,
 		userId: string,
 		integrationType?: string,
-	): Promise<{ agent: agents.Agent; toolRegistry: ToolRegistry }> {
+	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		const config = agentEntity.schema;
 		if (!config) {
 			throw new UserError('Agent has no JSON config.');
@@ -1768,7 +1782,7 @@ export class AgentsService {
 				return resolved;
 			},
 			skills: agentEntity.skills ?? {},
-			memoryFactory: this.getMemoryFactory(),
+			memoryFactory: this.getMemoryFactory(agentEntity.id),
 		});
 
 		await this.injectRuntimeDependencies({
