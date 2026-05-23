@@ -962,9 +962,9 @@ describe('useWorkflowsStore', () => {
 				},
 			});
 
-			expect(workflowDocumentStore.pinData?.[nodeName]).not.toBeDefined();
-			expect(workflowDocumentStore.pinData?.[newName]).toBeDefined();
-			expect(workflowDocumentStore.pinData?.['Edit Fields'][0].pairedItem).toEqual([
+			expect(workflowDocumentStore.pinnedDataByNodeName?.[nodeName]).not.toBeDefined();
+			expect(workflowDocumentStore.pinnedDataByNodeName?.[newName]).toBeDefined();
+			expect(workflowDocumentStore.pinnedDataByNodeName?.['Edit Fields'][0].pairedItem).toEqual([
 				{
 					item: 3,
 					sourceOverwrite: {

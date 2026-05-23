@@ -11,7 +11,7 @@ import {
 	encodeCustomFieldsV2,
 	resolveCustomFieldsV2,
 	coerceToBoolean,
-	toRfc3339,
+	toDateOnly,
 	addFieldsToBody,
 } from '../../helpers';
 import { customFieldsCollection, rawCustomFieldKeysOption } from '../common.description';
@@ -161,7 +161,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			}
 
 			if (body.due_date) {
-				body.due_date = toRfc3339(body.due_date as string);
+				body.due_date = toDateOnly(body.due_date as string);
 			}
 
 			if (customProperties) {

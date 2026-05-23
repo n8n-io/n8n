@@ -1,4 +1,5 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only Vue mounting */
+import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 
@@ -46,6 +47,7 @@ async function mountColumn() {
 			executionsDescription: '',
 		},
 		global: {
+			plugins: [createTestingPinia({ createSpy: vi.fn })],
 			stubs: {
 				AgentCapabilitiesSection: true,
 				AgentIdentityHeader: true,
