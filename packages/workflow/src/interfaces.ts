@@ -1094,6 +1094,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				doNotWaitToFinish?: boolean;
 				parentExecution?: RelatedExecution;
 				executionMode?: WorkflowExecuteMode;
+				returnLastRunOnly?: boolean; // Forces the caller to receive only the items from the terminal node's final run.
 			},
 		): Promise<ExecuteWorkflowData>;
 		executeAgent(
@@ -1963,6 +1964,7 @@ export interface ITriggerResponse {
 
 export interface ExecuteWorkflowData {
 	executionId: string;
+	/** Terminal node output: items from every run concatenated per output branch, unless the caller sets `returnLastRunOnly`. */
 	data: Array<INodeExecutionData[] | null>;
 	waitTill?: Date | null;
 }
@@ -3156,6 +3158,7 @@ export interface ExecuteWorkflowOptions {
 	doNotWaitToFinish?: boolean;
 	parentExecution?: RelatedExecution;
 	executionMode?: WorkflowExecuteMode;
+	returnLastRunOnly?: boolean; // Forces the caller to receive only the items from the terminal node's final run.
 }
 
 export type AiEvent =

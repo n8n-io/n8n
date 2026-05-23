@@ -53,11 +53,17 @@ jobs:
               **
               !packages/@n8n/task-runner-python/**
               !.github/**
+              !**/*.md
+              !**/LICENSE
+              !**/CHANGELOG.md
             unit:
               **
               !packages/@n8n/task-runner-python/**
               !packages/testing/playwright/**
               !.github/**
+              !**/*.md
+              !**/LICENSE
+              !**/CHANGELOG.md
             e2e:
               .github/workflows/test-e2e-*.yml
               .github/workflows/prepare-docker-reusable.yml
