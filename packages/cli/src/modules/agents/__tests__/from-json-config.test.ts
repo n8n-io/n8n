@@ -1,4 +1,4 @@
-import type { AgentSnapshot, ToolDescriptor } from '@n8n/agents';
+import type { AgentSnapshot, BuiltProviderTool, ToolDescriptor } from '@n8n/agents';
 import type { JSONSchema7 } from 'json-schema';
 
 import {
@@ -103,6 +103,20 @@ describe('buildFromJson()', () => {
 				};
 			}
 		).memoryConfig;
+
+	const getProviderToolNames = (agent: unknown): string[] =>
+		(
+			agent as {
+				providerTools?: BuiltProviderTool[];
+			}
+		).providerTools?.map((tool) => tool.name) ?? [];
+
+	const getProviderTool = (agent: unknown, name: string): BuiltProviderTool | undefined =>
+		(
+			agent as {
+				providerTools?: BuiltProviderTool[];
+			}
+		).providerTools?.find((tool) => tool.name === name);
 
 	const makeMockMemoryFactory = () => jest.fn();
 
@@ -500,6 +514,100 @@ describe('buildFromJson()', () => {
 
 		expect(snap.thinking).not.toBeNull();
 		expect(snap.thinking).toMatchObject({ budgetTokens: 5000 });
+	});
+
+	it.each([
+		['anthropic/claude-sonnet-4-5', 'anthropic.web_search_20250305'],
+		['openai/gpt-4o', 'openai.web_search'],
+		['google/gemini-2.5-flash', 'google.google_search'],
+	])('enables native web search when explicitly enabled for %s', async (model, expectedTool) => {
+		const agent = await buildFromJson(
+			makeConfig({ model, config: { webSearch: { enabled: true } } }),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getProviderToolNames(agent)).toContain(expectedTool);
+	});
+
+	it('does not enable native web search when config is sparse', async () => {
+		const agent = await buildFromJson(
+			makeConfig(),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getProviderToolNames(agent)).not.toContain('anthropic.web_search_20250305');
+	});
+
+	it('does not enable native web search when explicitly disabled', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				config: { webSearch: { enabled: false } },
+				providerTools: {
+					'anthropic.web_search': { maxUses: 5 },
+					'openai.image_generation': {},
+				},
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getProviderToolNames(agent)).not.toContain('anthropic.web_search_20250305');
+		expect(getProviderToolNames(agent)).toContain('openai.image_generation');
+	});
+
+	it('preserves native web search args when explicitly enabled', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				config: { webSearch: { enabled: true } },
+				providerTools: {
+					'anthropic.web_search': { maxUses: 3 },
+				},
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getProviderTool(agent, 'anthropic.web_search_20250305')?.args).toEqual({
+			maxUses: 3,
+		});
+	});
+
+	it('preserves explicitly configured native web search versions for the selected provider', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				config: { webSearch: { enabled: true } },
+				providerTools: {
+					'anthropic.web_search_20260209': {},
+				},
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getProviderToolNames(agent)).toContain('anthropic.web_search_20260209');
+		expect(getProviderToolNames(agent)).not.toContain('anthropic.web_search_20250305');
 	});
 
 	it('sets toolCallConcurrency', async () => {

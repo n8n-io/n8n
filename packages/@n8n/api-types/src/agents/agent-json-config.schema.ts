@@ -50,6 +50,10 @@ const ThinkingConfigSchema = z.object({
 	reasoningEffort: z.string().optional(),
 });
 
+const WebSearchConfigSchema = z.object({
+	enabled: z.boolean(),
+});
+
 const NodeToolCredentialSchema = z.object({
 	id: z.string(),
 	name: z.string(),
@@ -132,6 +136,7 @@ export const AgentJsonConfigSchema = z.object({
 	config: z
 		.object({
 			thinking: ThinkingConfigSchema.optional(),
+			webSearch: WebSearchConfigSchema.optional(),
 			toolCallConcurrency: z.number().int().min(1).max(20).optional(),
 			nodeTools: z
 				.object({

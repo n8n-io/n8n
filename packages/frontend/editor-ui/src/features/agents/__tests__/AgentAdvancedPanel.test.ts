@@ -66,6 +66,79 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 }
 
 describe('AgentAdvancedPanel', () => {
+	it('treats sparse native web search config as disabled', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig() },
+			global: { stubs: globalStubs },
+		});
+
+		const toggle = wrapper.find('[data-testid="agent-web-search-toggle"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.attributes('disabled')).toBeUndefined();
+
+		await toggle.trigger('click');
+		const events = wrapper.emitted('update:config') ?? [];
+		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
+		expect(last.config?.webSearch).toEqual({ enabled: true });
+		expect(last.providerTools).toEqual({ 'anthropic.web_search': { maxUses: 5 } });
+	});
+
+	it('emits provider-specific web search options', async () => {
+		const config = makeConfig({
+			model: 'openai/gpt-5',
+			config: { webSearch: { enabled: true } },
+			providerTools: { 'openai.web_search': {} },
+		} as Partial<AgentJsonConfig>);
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+
+		await wrapper.find('[data-testid="agent-web-search-external-access"]').trigger('click');
+
+		const events = wrapper.emitted('update:config') ?? [];
+		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
+		expect(last.providerTools).toEqual({
+			'openai.web_search': {
+				externalWebAccess: false,
+				searchContextSize: 'medium',
+			},
+		});
+	});
+
+	it('strips native web search provider tools when native web search is disabled', async () => {
+		const config = makeConfig({
+			config: { webSearch: { enabled: true } },
+			providerTools: {
+				'anthropic.web_search': { maxUses: 5 },
+				'openai.image_generation': {},
+			},
+		} as Partial<AgentJsonConfig>);
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+
+		await wrapper.find('[data-testid="agent-web-search-toggle"]').trigger('click');
+
+		const events = wrapper.emitted('update:config') ?? [];
+		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
+		expect(last.config?.webSearch).toEqual({ enabled: false });
+		expect(last.providerTools).toEqual({ 'openai.image_generation': {} });
+	});
+
+	it('disables native web search for unsupported providers', () => {
+		const config = makeConfig({ model: 'deepseek/deepseek-chat' });
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+
+		const toggle = wrapper.find('[data-testid="agent-web-search-toggle"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.attributes('disabled')).toBeDefined();
+	});
+
 	it('shows the budget-tokens sub-control for Anthropic when thinking is on', async () => {
 		const config = makeConfig({
 			config: { thinking: { provider: 'anthropic', budgetTokens: 1024 } },
@@ -123,6 +196,8 @@ describe('AgentAdvancedPanel', () => {
 			props: { config, disabled: true },
 			global: { stubs: globalStubs },
 		});
+		const webSearchToggle = wrapper.find('[data-testid="agent-web-search-toggle"]');
+		expect(webSearchToggle.attributes('disabled')).toBeDefined();
 		const toggle = wrapper.find('[data-testid="agent-thinking-toggle"]');
 		expect(toggle.attributes('disabled')).toBeDefined();
 		const concurrency = wrapper.find('[data-testid="agent-concurrency-input"]');

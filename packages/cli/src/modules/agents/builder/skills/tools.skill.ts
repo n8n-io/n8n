@@ -28,6 +28,7 @@ Custom tools:
 Provider tools:
 - Match provider tools to the configured model provider.
 - Anthropic: \`providerTools["anthropic.web_search"]\`.
-- OpenAI: \`providerTools["openai.web_search"]\` or \`providerTools["openai.image_generation"]\`, only for compatible OpenAI models.`,
+- OpenAI: \`providerTools["openai.web_search"]\` or \`providerTools["openai.image_generation"]\`, only for compatible OpenAI models.
+- Google: \`providerTools["google.google_search"]\`, only for compatible Gemini models.`,
 	};
 }

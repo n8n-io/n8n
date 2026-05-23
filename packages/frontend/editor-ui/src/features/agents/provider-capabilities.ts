@@ -6,19 +6,20 @@
  */
 export interface ProviderCapabilities {
 	thinking: false | 'budgetTokens' | 'reasoningEffort';
+	webSearch: false | 'anthropic.web_search' | 'openai.web_search' | 'google.google_search';
 }
 
 export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
-	anthropic: { thinking: 'budgetTokens' },
-	openai: { thinking: 'reasoningEffort' },
-	google: { thinking: false },
-	xai: { thinking: false },
-	groq: { thinking: false },
-	deepseek: { thinking: false },
-	mistral: { thinking: false },
-	openrouter: { thinking: false },
-	cohere: { thinking: false },
-	ollama: { thinking: false },
+	anthropic: { thinking: 'budgetTokens', webSearch: 'anthropic.web_search' },
+	openai: { thinking: 'reasoningEffort', webSearch: 'openai.web_search' },
+	google: { thinking: false, webSearch: 'google.google_search' },
+	xai: { thinking: false, webSearch: false },
+	groq: { thinking: false, webSearch: false },
+	deepseek: { thinking: false, webSearch: false },
+	mistral: { thinking: false, webSearch: false },
+	openrouter: { thinking: false, webSearch: false },
+	cohere: { thinking: false, webSearch: false },
+	ollama: { thinking: false, webSearch: false },
 };
 
 export const REASONING_EFFORT_OPTIONS = ['low', 'medium', 'high'] as const;

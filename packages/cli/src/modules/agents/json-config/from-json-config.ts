@@ -21,6 +21,28 @@ import type {
 import { mapCredentialForProvider } from './credential-field-mapping';
 import { resolveProviderToolName } from './provider-tool-aliases';
 
+const NATIVE_WEB_SEARCH_PROVIDER_TOOLS = [
+	'anthropic.web_search',
+	'anthropic.web_search_20250305',
+	'anthropic.web_search_20260209',
+	'openai.web_search',
+	'google.google_search',
+] as const;
+
+const NATIVE_WEB_SEARCH_TOOL_BY_PROVIDER: Record<string, string> = {
+	anthropic: 'anthropic.web_search',
+	openai: 'openai.web_search',
+	google: 'google.google_search',
+};
+
+const NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL: Record<string, string> = {
+	'anthropic.web_search': 'anthropic',
+	'anthropic.web_search_20250305': 'anthropic',
+	'anthropic.web_search_20260209': 'anthropic',
+	'openai.web_search': 'openai',
+	'google.google_search': 'google',
+};
+
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
 ) => Promise<BuiltTool | null | undefined>;
@@ -78,8 +100,9 @@ export async function buildFromJson(
 	agent.skills(configuredSkills);
 
 	// Provider tools
-	if (config.providerTools) {
-		for (const [name, args] of Object.entries(config.providerTools)) {
+	const providerTools = getEffectiveProviderTools(config);
+	if (providerTools) {
+		for (const [name, args] of Object.entries(providerTools)) {
 			const resolved = resolveProviderToolName(name);
 			agent.providerTool({ name: resolved as `${string}.${string}`, args });
 		}
@@ -107,6 +130,33 @@ export async function buildFromJson(
 	}
 
 	return agent;
+}
+
+function getEffectiveProviderTools(
+	config: AgentJsonConfig,
+): Record<string, Record<string, unknown>> {
+	const providerTools = { ...(config.providerTools ?? {}) };
+	const providerPrefix = getProviderPrefix(config.model);
+	const nativeWebSearchTool = NATIVE_WEB_SEARCH_TOOL_BY_PROVIDER[providerPrefix];
+	const isEnabled = !!nativeWebSearchTool && config.config?.webSearch?.enabled === true;
+
+	for (const key of NATIVE_WEB_SEARCH_PROVIDER_TOOLS) {
+		const toolProvider = NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL[key];
+		if (!isEnabled || toolProvider !== providerPrefix) {
+			delete providerTools[key];
+		}
+	}
+
+	if (isEnabled) {
+		const hasProviderWebSearchTool = Object.entries(NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL).some(
+			([toolName, toolProvider]) => toolProvider === providerPrefix && toolName in providerTools,
+		);
+		if (!hasProviderWebSearchTool) {
+			providerTools[nativeWebSearchTool] = {};
+		}
+	}
+
+	return providerTools;
 }
 
 function getConfiguredSkills(
