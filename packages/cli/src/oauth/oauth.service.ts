@@ -532,6 +532,7 @@ export class OauthService {
 		let authorizationServerUrl = oauthCredentials.serverUrl;
 		let discoveredResource: string | undefined;
 		let suppliedResourceUrl: string | undefined;
+		let resolvedResource: string | undefined;
 
 		if (oauthCredentials.serverUrl) {
 			// Validate serverUrl to prevent SSRF attacks before any HTTP requests
@@ -583,15 +584,11 @@ export class OauthService {
 				);
 			}
 
-			const resolvedResource = this.resolveResourceUrl(
+			resolvedResource = this.resolveResourceUrl(
 				suppliedResourceUrl,
 				discoveredResource,
 				oauthCredentials.serverUrl,
 			);
-			if (resolvedResource) {
-				oauthCredentials.resource = resolvedResource;
-				csrfData.resource = resolvedResource;
-			}
 		}
 
 		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
@@ -718,6 +715,14 @@ export class OauthService {
 				oauthCredentials.clientSecret = client_secret;
 				toUpdate.clientSecret = client_secret;
 			}
+		}
+
+		// RFC 8707: Resource resolution is shared between DCR and static credential paths.
+		// The resource parameter must be included in the authorize URL and token exchange
+		// regardless of whether dynamic client registration is used.
+		if (resolvedResource) {
+			oauthCredentials.resource = resolvedResource;
+			csrfData.resource = resolvedResource;
 		}
 
 		this.validateOAuthUrlOrThrow(oauthCredentials.authUrl ?? '');
