@@ -15,8 +15,9 @@ export function buildWorkflowsByCredentialIdQuery(
 			whereClause = `EXISTS (
 					SELECT 1
 					FROM jsonb_array_elements(workflow.nodes::jsonb) AS node,
-						jsonb_each(COALESCE(node->'credentials', '{}'::jsonb)) AS cred
-					WHERE cred.value->>'id' = :credentialId
+						LATERAL jsonb_each(node->'credentials') AS cred
+					WHERE jsonb_typeof(node->'credentials') = 'object'
+						AND cred.value->>'id' = :credentialId
 				)`;
 			break;
 		case 'sqlite':

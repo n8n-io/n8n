@@ -13,7 +13,8 @@ describe('buildWorkflowsByCredentialIdQuery', () => {
 		const { whereClause, parameters } = buildWorkflowsByCredentialIdQuery('cred-123', 'postgresdb');
 
 		expect(whereClause).toContain('jsonb_array_elements(workflow.nodes::jsonb)');
-		expect(whereClause).toContain("jsonb_each(COALESCE(node->'credentials'");
+		expect(whereClause).toContain("LATERAL jsonb_each(node->'credentials')");
+		expect(whereClause).toContain("jsonb_typeof(node->'credentials') = 'object'");
 		expect(whereClause).toContain("cred.value->>'id' = :credentialId");
 		expect(parameters).toEqual({ credentialId: 'cred-123' });
 	});
