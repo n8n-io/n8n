@@ -1035,10 +1035,7 @@ export class CanvasPage extends BasePage {
 			nodes: [{ type: nodeType, openDetail: false }],
 			connections: [],
 		});
-		await this.canvasPane().drop({
-			position,
-			dataTransfer: { nodesAndConnections: payload },
-		});
+		await this.canvasPane().drop({ data: { nodesAndConnections: payload } }, { position });
 	}
 
 	getConnectionLabelBetweenNodes(sourceNode: string, targetNode: string): Locator {

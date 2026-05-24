@@ -49,9 +49,7 @@ test.describe(
 			await expect(n8n.canvas.nodeConnections()).toHaveCount(1);
 		});
 
-		test('should add a node by dropping a DataTransfer payload on the canvas', async ({
-			n8n,
-		}) => {
+		test('should add a node by dropping a DataTransfer payload on the canvas', async ({ n8n }) => {
 			await n8n.canvas.dropNodeOnCanvas('n8n-nodes-base.code');
 
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(1);
