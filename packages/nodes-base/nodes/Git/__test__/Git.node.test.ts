@@ -39,6 +39,7 @@ describe('Git Node', () => {
 			getInputData: jest.fn().mockReturnValue([{ json: {} }]),
 			getNodeParameter: jest.fn(),
 			helpers: {
+				isFilePathBlocked: jest.fn(),
 				returnJsonArray: jest
 					.fn()
 					.mockImplementation((data: unknown[]) => data.map((item: unknown) => ({ json: item }))),
@@ -129,6 +130,18 @@ describe('Git Node', () => {
 			);
 		});
 
+		it('should opt into allowUnsafeHooksPath when enableGitNodeHooks is false', async () => {
+			securityConfig.enableGitNodeHooks = false;
+
+			await gitNode.execute.call(executeFunctions);
+
+			expect(mockSimpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					unsafe: { allowUnsafeHooksPath: true },
+				}),
+			);
+		});
+
 		it('should not add core.hooksPath=/dev/null when enableGitNodeHooks is true', async () => {
 			securityConfig.enableGitNodeHooks = true;
 
@@ -137,6 +150,56 @@ describe('Git Node', () => {
 			expect(mockSimpleGit).toHaveBeenCalledWith(
 				expect.objectContaining({
 					config: [],
+				}),
+			);
+		});
+
+		it('should not opt into allowUnsafeHooksPath when enableGitNodeHooks is true', async () => {
+			securityConfig.enableGitNodeHooks = true;
+
+			await gitNode.execute.call(executeFunctions);
+
+			const options = mockSimpleGit.mock.calls[0][0] as { unsafe?: unknown };
+			expect(options.unsafe).toBeUndefined();
+		});
+	});
+
+	describe('Restricted file paths', () => {
+		it('should throw an error if the repository path is blocked', async () => {
+			(executeFunctions.helpers.isFilePathBlocked as jest.Mock).mockReturnValue(true);
+			(executeFunctions.helpers.resolvePath as jest.Mock).mockResolvedValue('/tmp/test-repo');
+
+			await expect(gitNode.execute.call(executeFunctions)).rejects.toThrow(
+				'Access to the repository path is not allowed',
+			);
+		});
+
+		it('should use the resolved repository path for git operations', async () => {
+			const originalPath = '/tmp/link-to-repo';
+			const resolvedPath = '/tmp/actual-repo';
+
+			executeFunctions.getNodeParameter.mockImplementation((name: string) => {
+				switch (name) {
+					case 'operation':
+						return 'log';
+					case 'repositoryPath':
+						return originalPath;
+					case 'options':
+						return {};
+					default:
+						return '';
+				}
+			});
+
+			(executeFunctions.helpers.resolvePath as jest.Mock).mockResolvedValue(resolvedPath);
+			(executeFunctions.helpers.isFilePathBlocked as jest.Mock).mockReturnValue(false);
+
+			await gitNode.execute.call(executeFunctions);
+
+			// Verify git is initialized with the resolved path, not the original
+			expect(mockSimpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseDir: resolvedPath,
 				}),
 			);
 		});

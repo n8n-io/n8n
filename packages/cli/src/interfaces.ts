@@ -1,4 +1,10 @@
-import type { ICredentialsBase, IExecutionBase, IExecutionDb, ITagBase } from '@n8n/db';
+import type {
+	ICredentialsBase,
+	IExecutionBase,
+	IExecutionDb,
+	ITagBase,
+	IWorkflowDb,
+} from '@n8n/db';
 import type { AssignableGlobalRole } from '@n8n/permissions';
 import type { Application, Response } from 'express';
 import type {
@@ -47,8 +53,19 @@ export interface IWorkflowResponse extends IWorkflowBase {
 	id: string;
 }
 
+export interface IWorkflowVersionMetadata {
+	versionMetadata?: {
+		name: string | null;
+		description: string | null;
+	} | null;
+}
+
 export interface IWorkflowToImport
-	extends Omit<IWorkflowBase, 'staticData' | 'pinData' | 'createdAt' | 'updatedAt'> {
+	extends Omit<
+			IWorkflowBase,
+			'staticData' | 'pinData' | 'createdAt' | 'updatedAt' | 'activeVersion'
+		>,
+		IWorkflowVersionMetadata {
 	owner?:
 		| {
 				type: 'personal';
@@ -62,6 +79,8 @@ export interface IWorkflowToImport
 	parentFolderId: string | null;
 }
 
+export type IWorkflowWithVersionMetadata = IWorkflowDb & IWorkflowVersionMetadata;
+
 // ----------------------------------
 //            credentials
 // ----------------------------------
@@ -73,7 +92,7 @@ export type ICredentialsDecryptedResponse = ICredentialsDecryptedDb;
 export type SaveExecutionDataType = 'all' | 'none';
 
 /** Payload for updating an execution. */
-export type UpdateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt'>;
+export type UpdateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt' | 'storedAt'>;
 
 // Flatted data to save memory when saving in database or transferring
 // via REST API
@@ -165,6 +184,14 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	error_node_type?: string;
 	is_manual: boolean;
 	crashed?: boolean;
+	used_dynamic_credentials?: boolean;
+}
+
+export interface IAgentExecutionTrackProperties extends ITelemetryTrackProperties {
+	agent_id: string;
+	message_count?: number;
+	token_count?: number;
+	tool_call_count?: number;
 }
 
 // ----------------------------------

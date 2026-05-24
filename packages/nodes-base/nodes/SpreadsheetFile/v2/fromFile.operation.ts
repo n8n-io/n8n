@@ -120,15 +120,14 @@ export async function execute(
 					bom: options.enableBOM,
 					to: maxRowCount > -1 ? maxRowCount : undefined,
 					skip_records_with_error: skipRecordsWithErrors,
+					skip_empty_lines: true,
 					columns: options.headerRow !== false,
 					relax_quotes: options.relaxQuotes,
 					onRecord: (record) => {
-						if (!options.includeEmptyCells) {
-							record = Object.fromEntries(
-								Object.entries(record).filter(([_key, value]) => value !== ''),
-							);
-						}
-						rows.push(record);
+						const filtered = options.includeEmptyCells
+							? record
+							: Object.fromEntries(Object.entries(record).filter(([_key, value]) => value !== ''));
+						rows.push(filtered);
 					},
 				};
 				const parser = createCSVParser(csvOptions);
@@ -138,15 +137,14 @@ export async function execute(
 					skippedRecords += 1;
 				});
 
+				parser.resume();
+
 				if (binaryData.id) {
 					const stream = await this.helpers.getBinaryStream(binaryData.id);
 					await new Promise<void>((resolve, reject) => {
+						stream.on('error', reject);
 						parser.on('error', reject);
-						parser.on('readable', () => {
-							stream.unpipe(parser);
-							stream.destroy();
-							resolve();
-						});
+						parser.on('end', resolve);
 						stream.pipe(parser);
 					});
 				} else {
@@ -155,9 +153,7 @@ export async function execute(
 					if (failOnCsvBufferError) {
 						await new Promise<void>((resolve, reject) => {
 							parser.on('error', reject);
-							parser.on('readable', () => {
-								resolve();
-							});
+							parser.on('end', resolve);
 							parser.end();
 						});
 					} else {

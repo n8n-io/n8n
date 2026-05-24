@@ -9,6 +9,7 @@ const tsJestOptions = {
 		...compilerOptions,
 		declaration: false,
 		sourceMap: true,
+		rootDir: '.',
 	},
 };
 
@@ -19,6 +20,9 @@ const esmDependencies = [
 	'openid-client',
 	'oauth4webapi',
 	'jose',
+	'p-retry',
+	'is-network-error',
+	'uuid',
 	// Add other ESM dependencies that need to be transformed here
 ];
 
@@ -27,7 +31,7 @@ const esmDependenciesRegex = `node_modules/(${esmDependenciesPattern})/.+\\.m?js
 
 /** @type {import('jest').Config} */
 const config = {
-	verbose: true,
+	verbose: false,
 	testEnvironment: 'node',
 	testRegex: '\\.(test|spec)\\.(js|ts)$',
 	testPathIgnorePatterns: ['/dist/', '/node_modules/'],
@@ -45,6 +49,8 @@ const config = {
 	// This resolve the path mappings from the tsconfig relative to each jest.config.js
 	moduleNameMapper: {
 		'^@n8n/utils$': resolve(__dirname, 'packages/@n8n/utils/dist/index.cjs'),
+		// jest-resolve@29 doesn't honor `./lib/*` subpath patterns in @anthropic-ai/sdk's exports map
+		'^@anthropic-ai/sdk/lib/(.*)$': '@anthropic-ai/sdk/lib/$1.js',
 		...(compilerOptions?.paths
 			? pathsToModuleNameMapper(compilerOptions.paths, {
 					prefix: `<rootDir>${compilerOptions.baseUrl ? `/${compilerOptions.baseUrl.replace(/^\.\//, '')}` : ''}`,

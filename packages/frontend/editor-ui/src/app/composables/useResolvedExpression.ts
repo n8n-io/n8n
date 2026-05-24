@@ -18,6 +18,7 @@ import {
 	watch,
 } from 'vue';
 import { useWorkflowHelpers, type ResolveParameterOptions } from './useWorkflowHelpers';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 
@@ -36,6 +37,7 @@ export function useResolvedExpression({
 }) {
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const { resolveExpression } = useWorkflowHelpers();
 
@@ -56,7 +58,7 @@ export function useResolvedExpression({
 	);
 	const isExpression = computed(() => isExpressionUtil(toValue(expression)));
 
-	function resolve(ctx?: ExpressionLocalResolveContext): Result<unknown, Error> {
+	async function resolve(ctx?: ExpressionLocalResolveContext): Promise<Result<unknown, Error>> {
 		const expressionString = toValue(expression);
 
 		if (!isExpression.value || typeof expressionString !== 'string') {
@@ -78,12 +80,12 @@ export function useResolvedExpression({
 		};
 
 		try {
-			const resolvedValue = resolveExpression(
+			const resolvedValue = (await resolveExpression(
 				expressionString,
 				undefined,
 				options,
 				toValue(stringifyObject) ?? true,
-			) as unknown;
+			)) as unknown;
 
 			return createResultOk(resolvedValue);
 		} catch (error) {
@@ -93,11 +95,23 @@ export function useResolvedExpression({
 
 	const debouncedUpdateExpression = debounce(updateExpression, 200);
 
-	function updateExpression() {
+	let updateExpressionInvocation = 0;
+
+	async function updateExpression() {
+		const currentInvocation = ++updateExpressionInvocation;
+
 		if (isExpression.value) {
-			const resolved = resolve(expressionLocalResolveCtx.value);
+			const resolved = await resolve(expressionLocalResolveCtx.value);
+
+			// Discard stale results if a newer invocation has started
+			if (currentInvocation !== updateExpressionInvocation) return;
+
 			resolvedExpression.value = resolved.ok ? resolved.result : null;
-			resolvedExpressionString.value = stringifyExpressionResult(resolved, hasRunData.value);
+			resolvedExpressionString.value = stringifyExpressionResult(
+				resolved,
+				workflowDocumentStore.value.getPinDataSnapshot(),
+				hasRunData.value,
+			);
 		} else {
 			resolvedExpression.value = null;
 			resolvedExpressionString.value = '';
@@ -108,9 +122,10 @@ export function useResolvedExpression({
 		[
 			expressionLocalResolveCtx,
 			toRef(expression),
+			toRef(additionalData),
 			() => workflowsStore.getWorkflowExecution,
 			() => workflowsStore.getWorkflowRunData,
-			() => workflowsStore.workflow.name,
+			() => workflowDocumentStore.value.name,
 			targetItem,
 		],
 		debouncedUpdateExpression,

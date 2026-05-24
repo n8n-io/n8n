@@ -1,6 +1,7 @@
 import type {
 	AssignmentCollectionValue,
 	FilterValue,
+	IconOrEmoji,
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeParameterResourceLocator,
@@ -302,6 +303,7 @@ export const IDisplayOptionsSchema: z.ZodType<IDisplayOptions> = z.object({
 	show: z
 		.object({
 			'@version': z.array(z.union([z.number(), DisplayConditionSchema])).optional(),
+			'@feature': z.array(z.union([z.string(), DisplayConditionSchema])).optional(),
 			'@tool': z.array(z.boolean()).optional(),
 		})
 		.catchall(
@@ -371,7 +373,7 @@ export const FilterOptionsValueSchema: z.ZodType<FilterOptionsValue> = z.object(
 	caseSensitive: z.boolean(),
 	leftValue: z.string(),
 	typeValidation: z.enum(['strict', 'loose']),
-	version: z.union([z.literal(1), z.literal(2)]),
+	version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
 });
 
 export const FilterOperatorTypeSchema: z.ZodType<FilterOperatorType> = z.enum([
@@ -420,6 +422,11 @@ export const AssignmentCollectionValueSchema: z.ZodType<AssignmentCollectionValu
 	assignments: z.array(AssignmentValueSchema),
 });
 
+export const IconOrEmojiSchema: z.ZodType<IconOrEmoji> = z.discriminatedUnion('type', [
+	z.object({ type: z.literal('icon'), value: z.string() }),
+	z.object({ type: z.literal('emoji'), value: z.string() }),
+]);
+
 export const NodeParameterValueTypeSchema: z.ZodType<NodeParameterValueType> = z.lazy(() =>
 	z.union([
 		NodeParameterValueSchema,
@@ -427,6 +434,7 @@ export const NodeParameterValueTypeSchema: z.ZodType<NodeParameterValueType> = z
 		ResourceMapperValueSchema,
 		FilterValueSchema,
 		AssignmentCollectionValueSchema,
+		IconOrEmojiSchema,
 
 		INodeParametersSchema,
 

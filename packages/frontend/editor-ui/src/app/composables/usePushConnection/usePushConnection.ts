@@ -20,6 +20,8 @@ import {
 	executionRecovered,
 	workflowActivated,
 	workflowDeactivated,
+	workflowAutoDeactivated,
+	workflowSettingsUpdated,
 } from '@/app/composables/usePushConnection/handlers';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { createEventQueue } from '@n8n/utils/event-queue';
@@ -76,13 +78,13 @@ export function usePushConnection({
 			case 'nodeExecuteAfterData':
 				return await nodeExecuteAfterData(event);
 			case 'executionStarted':
-				return await executionStarted(event, options);
+				return await executionStarted(event);
 			case 'sendWorkerStatusMessage':
 				return await sendWorkerStatusMessage(event);
 			case 'sendConsoleMessage':
 				return await sendConsoleMessage(event);
 			case 'workflowFailedToActivate':
-				return await workflowFailedToActivate(event, options);
+				return await workflowFailedToActivate(event);
 			case 'executionFinished':
 				return await executionFinished(event, options);
 			case 'executionRecovered':
@@ -91,6 +93,10 @@ export function usePushConnection({
 				return await workflowActivated(event);
 			case 'workflowDeactivated':
 				return await workflowDeactivated(event);
+			case 'workflowAutoDeactivated':
+				return await workflowAutoDeactivated(event);
+			case 'workflowSettingsUpdated':
+				return await workflowSettingsUpdated(event);
 			case 'updateBuilderCredits':
 				return await builderCreditsUpdated(event);
 		}

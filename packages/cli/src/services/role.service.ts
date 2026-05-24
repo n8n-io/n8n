@@ -1,5 +1,6 @@
+import type { RoleAssignmentsResponse, RoleProjectMembersResponse } from '@n8n/api-types';
 import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	CredentialsEntity,
 	SharedCredentials,
@@ -14,6 +15,7 @@ import {
 	ScopeRepository,
 	GLOBAL_ADMIN_ROLE,
 } from '@n8n/db';
+import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	Scope,
@@ -34,8 +36,9 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { RoleCacheService } from './role-cache.service';
 import { isUniqueConstraintError } from '@/response-helper';
+
+import { RoleCacheService } from './role-cache.service';
 
 @Service()
 export class RoleService {
@@ -44,14 +47,16 @@ export class RoleService {
 		private readonly roleRepository: RoleRepository,
 		private readonly scopeRepository: ScopeRepository,
 		private readonly roleCacheService: RoleCacheService,
+		private readonly logger: Logger,
 	) {}
 
-	private dbRoleToRoleDTO(role: Role, usedByUsers?: number): RoleDTO {
+	private dbRoleToRoleDTO(role: Role, usedByUsers?: number, usedByProjects?: number): RoleDTO {
 		return {
 			...role,
 			scopes: role.scopes.map((s) => s.slug),
 			licensed: this.isRoleLicensed(role.slug),
 			usedByUsers,
+			usedByProjects,
 		};
 	}
 
@@ -62,23 +67,60 @@ export class RoleService {
 			return roles.map((r) => this.dbRoleToRoleDTO(r));
 		}
 
-		const roleCounts = await this.roleRepository.findAllRoleCounts();
+		const [roleCounts, projectCounts] = await Promise.all([
+			this.roleRepository.findAllRoleCounts(),
+			this.roleRepository.findAllProjectCounts(),
+		]);
 
 		return roles.map((role) => {
 			const usedByUsers = roleCounts[role.slug] ?? 0;
-			return this.dbRoleToRoleDTO(role, usedByUsers);
+			const usedByProjects = projectCounts[role.slug] ?? 0;
+			return this.dbRoleToRoleDTO(role, usedByUsers, usedByProjects);
 		});
 	}
 
 	async getRole(slug: string, withCount: boolean = false): Promise<RoleDTO> {
 		const role = await this.roleRepository.findBySlug(slug);
 		if (role) {
-			const usedByUsers = withCount
-				? await this.roleRepository.countUsersWithRole(role)
-				: undefined;
-			return this.dbRoleToRoleDTO(role, usedByUsers);
+			let usedByUsers: number | undefined;
+			let usedByProjects: number | undefined;
+			if (withCount) {
+				const [userCount, projectCounts] = await Promise.all([
+					this.roleRepository.countUsersWithRole(role),
+					this.roleRepository.findAllProjectCounts(),
+				]);
+				usedByUsers = userCount;
+				usedByProjects = projectCounts[role.slug] ?? 0;
+			}
+			return this.dbRoleToRoleDTO(role, usedByUsers, usedByProjects);
 		}
 		throw new NotFoundError('Role not found');
+	}
+
+	async getRoleAssignments(slug: string): Promise<RoleAssignmentsResponse> {
+		const role = await this.roleRepository.findBySlug(slug);
+		if (!role) {
+			throw new NotFoundError('Role not found');
+		}
+
+		const projects = await this.roleRepository.findProjectAssignments(role.slug);
+		return {
+			projects,
+			totalProjects: projects.length,
+		};
+	}
+
+	async getRoleProjectMembers(
+		slug: string,
+		projectId: string,
+	): Promise<RoleProjectMembersResponse> {
+		const role = await this.roleRepository.findBySlug(slug);
+		if (!role) {
+			throw new NotFoundError('Role not found');
+		}
+
+		const members = await this.roleRepository.findAllProjectMembers(projectId, role.slug);
+		return { members };
 	}
 
 	async removeCustomRole(slug: string) {
@@ -242,11 +284,15 @@ export class RoleService {
 			return entity;
 		}
 
-		if (!('active' in entity) && !('type' in entity)) {
+		const isWorkflow =
+			'versionId' in entity || 'activeVersionId' in entity || 'triggerCount' in entity;
+		const isCredential = 'type' in entity;
+
+		if (!isWorkflow && !isCredential) {
 			throw new UnexpectedError('Cannot detect if entity is a workflow or credential.');
 		}
 
-		const entityType = 'active' in entity ? 'workflow' : 'credential';
+		const entityType = isWorkflow ? 'workflow' : 'credential';
 		entity.scopes = this.combineResourceScopes(entityType, user, shared, userProjectRelations);
 
 		if (
@@ -294,12 +340,16 @@ export class RoleService {
 	 * Enhanced rolesWithScope function that combines static roles with database roles
 	 * This replaces the original rolesWithScope function from @n8n/permissions
 	 */
-	async rolesWithScope(namespace: RoleNamespace, scopes: Scope | Scope[]): Promise<string[]> {
+	async rolesWithScope(
+		namespace: RoleNamespace,
+		scopes: Scope | Scope[],
+		trx?: EntityManager,
+	): Promise<string[]> {
 		if (!Array.isArray(scopes)) {
 			scopes = [scopes];
 		}
 		// Get database roles from cache
-		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes);
+		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes, trx);
 	}
 
 	isRoleLicensed(role: AssignableProjectRole) {
@@ -324,5 +374,60 @@ export class RoleService {
 				// TODO: handle custom roles licensing
 				return true;
 		}
+	}
+
+	async addScopesToRole(roleSlug: Role['slug'], scopeSlugs: string[]): Promise<void> {
+		const role = await this.roleRepository.findBySlug(roleSlug);
+		if (!role) {
+			this.logger.error(
+				`Role ${roleSlug} not found - unable to add scopes ${scopeSlugs.join(', ')}`,
+			);
+			throw new NotFoundError(`Role ${roleSlug} not found`);
+		}
+
+		const scopes = await this.scopeRepository.findByListOrFail(scopeSlugs);
+
+		const alreadyAssignedSlugs = new Set(role.scopes.map((s) => s.slug));
+		const scopesToAdd = scopes.filter((s) => !alreadyAssignedSlugs.has(s.slug));
+
+		if (scopesToAdd.length === 0) {
+			this.logger.debug(
+				`All requested scopes ${scopeSlugs.join(', ')} are already assigned on role ${roleSlug}`,
+			);
+			return;
+		}
+
+		if (scopesToAdd.length < scopes.length) {
+			const alreadyAssigned = scopes.filter((s) => alreadyAssignedSlugs.has(s.slug));
+			this.logger.debug(
+				`Scopes ${alreadyAssigned.map((s) => s.slug).join(', ')} are already assigned on role ${roleSlug}`,
+			);
+		}
+
+		this.logger.debug(
+			`Adding scopes ${scopesToAdd.map((s) => s.slug).join(', ')} to role ${roleSlug}`,
+		);
+		role.scopes.push(...scopesToAdd);
+		await this.roleRepository.save(role);
+		await this.roleCacheService.refreshCache();
+		this.logger.debug(
+			`Added scopes ${scopesToAdd.map((s) => s.slug).join(', ')} to role ${roleSlug}`,
+		);
+	}
+
+	async removeScopesFromRole(roleSlug: string, scopeSlugs: string[]): Promise<void> {
+		const role = await this.roleRepository.findBySlug(roleSlug);
+		if (!role) {
+			this.logger.error(
+				`Role ${roleSlug} not found - unable to remove scopes ${scopeSlugs.join(', ')}`,
+			);
+			throw new NotFoundError(`Role ${roleSlug} not found`);
+		}
+
+		this.logger.debug(`Removing scopes ${scopeSlugs.join(', ')} from role ${roleSlug}`);
+		role.scopes = role.scopes.filter((s) => !scopeSlugs.includes(s.slug));
+		await this.roleRepository.save(role);
+		await this.roleCacheService.refreshCache();
+		this.logger.debug(`Removed scopes ${scopeSlugs.join(', ')} from role ${roleSlug}`);
 	}
 }

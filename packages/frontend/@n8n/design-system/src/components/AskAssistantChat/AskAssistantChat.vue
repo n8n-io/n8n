@@ -1,22 +1,29 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, useCssModule, watch } from 'vue';
 
+import MessageRating from './messages/MessageRating.vue';
 import MessageWrapper from './messages/MessageWrapper.vue';
+import ThinkingMessage from './messages/ThinkingMessage.vue';
 import { useI18n } from '../../composables/useI18n';
 import type { ChatUI, RatingFeedback, WorkflowSuggestion } from '../../types/assistant';
-import { isTaskAbortedMessage, isToolMessage } from '../../types/assistant';
+import {
+	isTaskAbortedMessage,
+	isToolMessage,
+	isThinkingGroupMessage,
+	isWorkflowUpdatedMessage,
+} from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
-import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import N8nButton from '../N8nButton';
-import N8nIcon from '../N8nIcon';
+import N8nIconButton from '../N8nIconButton';
 import N8nPromptInput from '../N8nPromptInput';
 import N8nPromptInputSuggestions from '../N8nPromptInputSuggestions';
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import { getSupportedMessageComponent } from './messages/helpers';
 
 const { t } = useI18n();
+const $style = useCssModule();
 
 interface Props {
 	user?: {
@@ -26,6 +33,7 @@ interface Props {
 	messages?: ChatUI.AssistantMessage[];
 	streaming?: boolean;
 	disabled?: boolean;
+	disabledTooltip?: string;
 	loadingMessage?: string;
 	sessionId?: string;
 	inputPlaceholder?: string;
@@ -36,6 +44,9 @@ interface Props {
 	showAskOwnerTooltip?: boolean;
 	maxCharacterLength?: number;
 	suggestions?: WorkflowSuggestion[];
+	workflowId?: string;
+	/** Custom message to show when all tools complete (instead of default "Workflow generated") */
+	thinkingCompletionMessage?: string;
 }
 
 const emit = defineEmits<{
@@ -78,79 +89,198 @@ function filterOutHiddenMessages(messages: ChatUI.AssistantMessage[]): ChatUI.As
 	);
 }
 
-function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
+/**
+ * Build a Set of tool message IDs whose "region" in the original (unfiltered) messages
+ * contained a workflow-updated message. A region is a contiguous run of tool +
+ * workflow-updated messages (any other type breaks the region).
+ * This is needed because workflow-updated messages are filtered before grouping,
+ * so the grouping function can't see them directly.
+ */
+function getToolIdsWithWorkflowUpdate(
+	messages: ChatUI.AssistantMessage[],
+): Set<string | undefined> {
+	const result = new Set<string | undefined>();
+	let currentGroupToolIds: Array<string | undefined> = [];
+	let hasWorkflowUpdate = false;
+
+	for (const msg of messages) {
+		if (msg.type === 'tool') {
+			currentGroupToolIds.push(msg.id);
+		} else if (msg.type === 'workflow-updated') {
+			// Only count as a workflow update if tools already exist in this region.
+			// This prevents naming-only updates (which arrive before tools) from
+			// causing discovery tool groups to show "Workflow generated".
+			if (currentGroupToolIds.length > 0) {
+				hasWorkflowUpdate = true;
+			}
+		} else {
+			// Group boundary — flush
+			if (hasWorkflowUpdate) {
+				for (const id of currentGroupToolIds) result.add(id);
+			}
+			currentGroupToolIds = [];
+			hasWorkflowUpdate = false;
+		}
+	}
+	// Flush final group
+	if (hasWorkflowUpdate) {
+		for (const id of currentGroupToolIds) result.add(id);
+	}
+
+	return result;
+}
+
+function groupToolMessagesIntoThinking(
+	messages: ChatUI.AssistantMessage[],
+	options: {
+		streaming?: boolean;
+		loadingMessage?: string;
+		thinkingCompletionMessage?: string;
+		toolIdsWithWorkflowUpdate?: Set<string | undefined>;
+		t: (key: string) => string;
+	},
+): ChatUI.AssistantMessage[] {
 	const result: ChatUI.AssistantMessage[] = [];
 	let i = 0;
 
 	while (i < messages.length) {
 		const currentMsg = messages[i];
 
-		// If it's not a tool message, add it as-is and continue
+		// If it's not a tool message, add it as-is
 		if (!isToolMessage(currentMsg)) {
 			result.push(currentMsg);
 			i++;
 			continue;
 		}
 
-		// Collect consecutive tool messages with the same toolName
-		const toolMessagesGroup = [currentMsg];
+		// Collect ALL consecutive tool messages
+		const toolGroup: ChatUI.ToolMessage[] = [currentMsg];
 		let j = i + 1;
 
 		while (j < messages.length) {
-			const nextMsg = messages[j];
-			if (isToolMessage(nextMsg) && nextMsg.toolName === currentMsg.toolName) {
-				toolMessagesGroup.push(nextMsg);
-				j++;
-			} else {
+			const msg = messages[j];
+			if (!isToolMessage(msg)) break;
+			toolGroup.push(msg);
+			j++;
+		}
+
+		// Deduplicate tool messages by toolName, keeping the latest status for each unique tool type
+		// This matches the original behavior where multiple calls to the same tool (e.g., get_node_details)
+		// are collapsed into a single entry showing the most recent status
+		const uniqueToolsMap = new Map<string, ChatUI.ToolMessage>();
+		for (const tool of toolGroup) {
+			// Group by toolName so multiple calls to the same tool are collapsed
+			const key = tool.toolName;
+			// Later messages in the array have the most recent status, so they overwrite earlier ones
+			uniqueToolsMap.set(key, tool);
+		}
+		const uniqueTools = Array.from(uniqueToolsMap.values());
+
+		// Check if there are any more tool messages after this group
+		let hasMoreToolsAfter = false;
+		for (let k = j; k < messages.length; k++) {
+			if (isToolMessage(messages[k])) {
+				hasMoreToolsAfter = true;
 				break;
 			}
 		}
+		const isLastToolGroup = !hasMoreToolsAfter;
+		const allToolsCompleted = uniqueTools.every((m) => m.status === 'completed');
+		const hasRunningTool = uniqueTools.some((m) => m.status === 'running');
 
-		// If we have multiple tool messages with the same toolName, collapse them
-		if (toolMessagesGroup.length > 1) {
-			// Determine the status to show based on priority rules
-			const lastMessage = toolMessagesGroup[toolMessagesGroup.length - 1];
-			let titleSource = lastMessage;
+		// A group is "active" (still receiving stream data) only if it's the last tool group
+		// AND there are no messages after it. If there are messages after it (text response,
+		// user message for next turn), this group is completed — even if streaming is active
+		// for a newer turn.
+		const isActiveGroup = isLastToolGroup && j >= messages.length;
 
-			// Check if we have running messages - if so, show the last running one and use its titles
-			const runningMessages = toolMessagesGroup.filter((msg) => msg.status === 'running');
-			const errorMessage = toolMessagesGroup.find((msg) => msg.status === 'error');
-			if (runningMessages.length > 0) {
-				const lastRunning = runningMessages[runningMessages.length - 1];
-				titleSource = lastRunning;
-			} else if (errorMessage) {
-				titleSource = errorMessage;
-			}
+		// Build the items array - use toolName as id since we dedupe by toolName
+		const items: ChatUI.ThinkingItem[] = uniqueTools.map((m) => ({
+			id: `tool-${m.toolName}`,
+			displayTitle:
+				m.customDisplayTitle ||
+				m.displayTitle ||
+				m.toolName
+					.split('_')
+					.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+					.join(' '),
+			status: m.status,
+		}));
 
-			// Combine all updates from all messages in the group
-			const combinedUpdates = toolMessagesGroup.flatMap((msg) => msg.updates || []);
-
-			// Create collapsed message using last message as base, but with titles from titleSource
-			const collapsedMessage: ChatUI.ToolMessage = {
-				...lastMessage,
-				displayTitle: titleSource.displayTitle,
-				customDisplayTitle:
-					titleSource.status === 'running' ? titleSource.customDisplayTitle : undefined,
-				status: titleSource.status,
-				updates: combinedUpdates,
-			};
-
-			result.push(collapsedMessage);
-		} else {
-			// Single tool message, add as-is
-			result.push(currentMsg);
+		// Only add "Thinking" spinner if this group is actively streaming (no response yet).
+		// Don't add it to old completed groups when a new turn starts streaming.
+		if (isActiveGroup && allToolsCompleted && options.streaming && options.loadingMessage) {
+			items.push({
+				id: 'thinking-item',
+				displayTitle: options.loadingMessage,
+				status: 'running',
+			});
 		}
 
+		// Determine the latest status text per-group:
+		// - Running tools: show tool name (dynamic)
+		// - Active group + streaming: show loading message (dynamic)
+		// - Completed group: "Workflow generated" if workflow-updated, else "Thinking"
+		const runningTool = uniqueTools.find((m) => m.status === 'running');
+		let latestStatus: string;
+
+		// Check if this specific group generated a workflow by looking up tool IDs
+		// in the pre-computed set (built from unfiltered messages before workflow-updated was removed)
+		const groupGeneratedWorkflow =
+			options.toolIdsWithWorkflowUpdate?.size &&
+			toolGroup.some((tool) => options.toolIdsWithWorkflowUpdate?.has(tool.id));
+
+		if (hasRunningTool) {
+			latestStatus =
+				runningTool?.customDisplayTitle ||
+				runningTool?.displayTitle ||
+				runningTool?.toolName
+					.split('_')
+					.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+					.join(' ') ||
+				options.t('assistantChat.thinking.processing');
+		} else if (!allToolsCompleted) {
+			latestStatus = options.t('assistantChat.thinking.thinking');
+		} else if (isActiveGroup && options.streaming) {
+			latestStatus = options.loadingMessage ?? options.t('assistantChat.thinking.processing');
+		} else if (groupGeneratedWorkflow) {
+			latestStatus =
+				options.thinkingCompletionMessage ?? options.t('assistantChat.thinking.workflowGenerated');
+		} else {
+			latestStatus = options.t('assistantChat.thinking.thinking');
+		}
+
+		// Create a ThinkingGroup message with deduplicated items
+		// Use a stable per-group ID so Vue correctly diffs multiple thinking blocks
+		const thinkingGroup: ChatUI.ThinkingGroupMessage = {
+			id: `thinking-group-${i}`,
+			role: 'assistant',
+			type: 'thinking-group',
+			items,
+			latestStatusText: latestStatus,
+		};
+
+		result.push(thinkingGroup);
 		i = j;
 	}
 
 	return result;
 }
 
-// Ensure all messages have required id and read properties, and collapse tool messages
+// Pre-compute which tool IDs belong to groups that had workflow-updated messages.
+// This uses the original unfiltered messages because workflow-updated is filtered before grouping.
+const toolIdsWithWorkflowUpdate = computed(() => getToolIdsWithWorkflowUpdate(props.messages));
+
+// Ensure all messages have required id and read properties, and group tool messages into thinking blocks
 const normalizedMessages = computed(() => {
 	const normalized = normalizeMessages(props.messages);
-	return collapseToolMessages(filterOutHiddenMessages(normalized));
+	return groupToolMessagesIntoThinking(filterOutHiddenMessages(normalized), {
+		streaming: props.streaming,
+		loadingMessage: props.loadingMessage,
+		thinkingCompletionMessage: props.thinkingCompletionMessage,
+		toolIdsWithWorkflowUpdate: toolIdsWithWorkflowUpdate.value,
+		t,
+	});
 });
 
 // Get quickReplies from the last message in the original messages (before filtering)
@@ -166,8 +296,8 @@ const lastMessageQuickReplies = computed(() => {
 const textInputValue = ref<string>('');
 const promptInputRef = ref<InstanceType<typeof N8nPromptInput>>();
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
+const suggestionsInputFocusFn = ref<(() => void) | null>(null);
 
-const messagesRef = ref<HTMLDivElement | null>(null);
 const inputWrapperRef = ref<HTMLDivElement | null>(null);
 
 const sessionEnded = computed(() => {
@@ -186,9 +316,45 @@ const showSuggestions = computed(() => {
 	return showPlaceholder.value && props.suggestions && props.suggestions.length > 0;
 });
 
+// Show placeholder when streaming with loading message but no active tool group for the current turn.
+// Check the last message — if it's not a thinking-group, the current turn has no tools yet.
+const showThinkingPlaceholder = computed(() => {
+	if (!props.streaming || !props.loadingMessage) return false;
+	const lastMsg = normalizedMessages.value[normalizedMessages.value.length - 1];
+	return !lastMsg || lastMsg.type !== 'thinking-group';
+});
+
 const showBottomInput = computed(() => {
 	// Hide bottom input when showing suggestions (blank state with suggestions)
 	return !showSuggestions.value;
+});
+
+const showFooterRating = computed(() => {
+	if (props.streaming || !props.messages?.length) {
+		return false;
+	}
+
+	// Find the last workflow-updated message index.
+	// (workflow-updated is filtered out of normalizedMessages since it's not rendered visually)
+	const lastWorkflowUpdateIdx = props.messages.findLastIndex(isWorkflowUpdatedMessage);
+	if (lastWorkflowUpdateIdx === -1 || !normalizedMessages.value.length) {
+		return false;
+	}
+
+	// Don't show rating if the user has responded since the last workflow update
+	const hasUserAfterWorkflowUpdate = props.messages.some(
+		(msg, i) => i > lastWorkflowUpdateIdx && msg.role === 'user',
+	);
+	if (hasUserAfterWorkflowUpdate) {
+		return false;
+	}
+
+	// Show rating when the last visible message is from the assistant.
+	// This handles both the multi-agent builder (last visible message is a text response after
+	// workflow-updated) and the code builder (workflow-updated is the last real message and gets
+	// filtered from normalizedMessages, leaving a thinking-group with role 'assistant' as last).
+	const lastMsg = normalizedMessages.value[normalizedMessages.value.length - 1];
+	return lastMsg.role !== 'user';
 });
 
 function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
@@ -202,8 +368,11 @@ async function onSuggestionClick(suggestion: WorkflowSuggestion) {
 	await nextTick();
 	// Wait one more frame to ensure DOM is fully updated
 	await new Promise(requestAnimationFrame);
-	// Focus the input so user can edit it
-	promptInputRef.value?.focusInput();
+	if (suggestionsInputFocusFn.value) {
+		suggestionsInputFocusFn.value();
+	} else {
+		promptInputRef.value?.focusInput();
+	}
 }
 
 function onQuickReply(opt: ChatUI.QuickReply) {
@@ -272,16 +441,15 @@ onUnmounted(() => {
 });
 
 function getMessageStyles(message: ChatUI.AssistantMessage, messageCount: number) {
-	const $style = useCssModule();
+	const isToolOrThinking = message.type === 'tool' || message.type === 'thinking-group';
+	const nextMsg = normalizedMessages.value[messageCount + 1];
+	const nextIsToolOrThinking = nextMsg?.type === 'tool' || nextMsg?.type === 'thinking-group';
+
 	return {
-		[$style.firstToolMessage]:
-			message.type === 'tool' &&
-			(messageCount === 0 || normalizedMessages.value[messageCount - 1].type !== 'tool'),
 		[$style.lastToolMessage]:
-			message.type === 'tool' &&
+			isToolOrThinking &&
 			((messageCount === normalizedMessages.value.length - 1 && !props.loadingMessage) ||
-				(messageCount < normalizedMessages.value.length - 1 &&
-					normalizedMessages.value[messageCount + 1]?.type !== 'tool')),
+				(messageCount < normalizedMessages.value.length - 1 && !nextIsToolOrThinking)),
 	};
 }
 
@@ -296,6 +464,7 @@ defineExpose({
 	focusInput: () => {
 		promptInputRef.value?.focusInput();
 	},
+	scrollToBottom,
 });
 </script>
 
@@ -308,13 +477,18 @@ defineExpose({
 						<AssistantIcon size="large" />
 						<AssistantText size="large" :text="t('assistantChat.aiAssistantLabel')" />
 					</div>
-					<span :class="$style.betaTag">{{ t('assistantChat.aiAssistantBetaLabel') }}</span>
 				</div>
 				<slot name="header" />
 			</div>
-			<div :class="$style.back" data-test-id="close-chat-button" @click="onClose">
-				<N8nIcon icon="arrow-right" color="text-base" />
-			</div>
+			<slot name="headerActions" />
+			<N8nIconButton
+				icon="x"
+				variant="ghost"
+				size="large"
+				:aria-label="t('askAssistantChat.close')"
+				data-test-id="close-chat-button"
+				@click="onClose"
+			/>
 		</div>
 		<div :class="$style.body">
 			<div v-if="normalizedMessages?.length || loadingMessage" :class="$style.messages">
@@ -324,7 +498,10 @@ defineExpose({
 					:enable-vertical-scroll="true"
 					:enable-horizontal-scroll="false"
 				>
-					<div ref="messagesRef" :class="$style.messagesContent">
+					<div
+						ref="messagesRef"
+						:class="[$style.messagesContent, showFooterRating && $style.messagesContentWithRating]"
+					>
 						<div v-if="normalizedMessages?.length">
 							<data
 								v-for="(message, i) in normalizedMessages"
@@ -333,7 +510,19 @@ defineExpose({
 									message.role === 'assistant' ? 'chat-message-assistant' : 'chat-message-user'
 								"
 							>
+								<!-- Handle ThinkingGroup messages -->
+								<ThinkingMessage
+									v-if="isThinkingGroupMessage(message)"
+									:items="message.items"
+									:default-expanded="streaming"
+									:latest-status-text="message.latestStatusText"
+									:is-streaming="streaming"
+									:class="getMessageStyles(message, i)"
+								/>
+
+								<!-- Handle regular messages -->
 								<MessageWrapper
+									v-else
 									:message="message"
 									:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
 									:user="user"
@@ -341,12 +530,16 @@ defineExpose({
 									:is-last-message="i === normalizedMessages.length - 1"
 									:class="getMessageStyles(message, i)"
 									:color="getMessageColor(message)"
+									:workflow-id="workflowId"
 									@code-replace="() => emit('codeReplace', i)"
 									@code-undo="() => emit('codeUndo', i)"
 									@feedback="onRateMessage"
 								>
 									<template v-if="$slots['custom-message']" #custom-message="customMessageProps">
 										<slot name="custom-message" v-bind="customMessageProps" />
+									</template>
+									<template v-if="$slots['focused-nodes-chips']" #focused-nodes-chips="chipProps">
+										<slot name="focused-nodes-chips" v-bind="chipProps" />
 									</template>
 								</MessageWrapper>
 
@@ -364,8 +557,8 @@ defineExpose({
 									>
 										<N8nButton
 											v-if="opt.text"
-											type="secondary"
-											size="mini"
+											variant="subtle"
+											size="xsmall"
 											@click="() => onQuickReply(opt)"
 										>
 											{{ opt.text }}
@@ -375,19 +568,17 @@ defineExpose({
 							</data>
 							<slot name="messagesFooter" />
 						</div>
-						<div
-							v-if="loadingMessage"
-							:class="{
-								[$style.message]: true,
-								[$style.loading]: normalizedMessages?.length,
-								[$style.firstToolMessage]:
-									normalizedMessages?.length === 0 ||
-									normalizedMessages[normalizedMessages.length - 1].type !== 'tool',
-								[$style.lastToolMessage]: true,
-							}"
-						>
-							<AssistantLoadingMessage :message="loadingMessage" />
-						</div>
+						<!-- Placeholder thinking message when there are no tools yet called -->
+						<ThinkingMessage
+							v-if="showThinkingPlaceholder"
+							:items="[
+								{ id: 'thinking-placeholder', displayTitle: loadingMessage!, status: 'running' },
+							]"
+							:latest-status-text="loadingMessage!"
+							:default-expanded="true"
+							:is-streaming="true"
+							:class="$style.lastToolMessage"
+						/>
 					</div>
 				</N8nScrollArea>
 			</div>
@@ -404,11 +595,31 @@ defineExpose({
 						@suggestion-click="onSuggestionClick"
 					>
 						<template #prompt-input>
+							<slot
+								v-if="$slots['suggestions-input']"
+								name="suggestions-input"
+								:model-value="textInputValue"
+								:on-update-model-value="(val: string) => (textInputValue = val)"
+								:placeholder="t('assistantChat.blankStateInputPlaceholder')"
+								:disabled="disabled"
+								:disabled-tooltip="disabledTooltip"
+								:streaming="streaming"
+								:credits-quota="creditsQuota"
+								:credits-remaining="creditsRemaining"
+								:show-ask-owner-tooltip="showAskOwnerTooltip"
+								:max-length="maxCharacterLength"
+								:on-submit="onSendMessage"
+								:on-stop="() => emit('stop')"
+								:on-upgrade-click="() => emit('upgrade-click')"
+								:register-focus="(fn: () => void) => (suggestionsInputFocusFn = fn)"
+							/>
 							<N8nPromptInput
+								v-else
 								ref="promptInputRef"
 								v-model="textInputValue"
 								:placeholder="t('assistantChat.blankStateInputPlaceholder')"
 								:disabled="disabled"
+								:disabled-tooltip="disabledTooltip"
 								:streaming="streaming"
 								:credits-quota="creditsQuota"
 								:credits-remaining="creditsRemaining"
@@ -416,10 +627,15 @@ defineExpose({
 								:max-length="maxCharacterLength"
 								:min-lines="2"
 								data-test-id="chat-suggestions-input"
+								autofocus
 								@upgrade-click="emit('upgrade-click')"
 								@submit="onSendMessage"
 								@stop="emit('stop')"
-							/>
+							>
+								<template v-if="$slots['extra-actions']" #extra-actions>
+									<slot name="extra-actions" />
+								</template>
+							</N8nPromptInput>
 						</template>
 					</N8nPromptInputSuggestions>
 				</div>
@@ -443,11 +659,24 @@ defineExpose({
 					</div>
 				</template>
 			</div>
+			<div v-if="showFooterRating" :class="$style.feedbackWrapper" data-test-id="footer-rating">
+				<MessageRating minimal @feedback="onRateMessage" />
+			</div>
+		</div>
+		<div
+			v-if="$slots.inputHeader && (showBottomInput || showSuggestions)"
+			:class="$style.inputHeaderWrapper"
+		>
+			<slot name="inputHeader" />
 		</div>
 		<div
 			v-if="showBottomInput"
 			ref="inputWrapperRef"
-			:class="{ [$style.inputWrapper]: true, [$style.disabledInput]: sessionEnded }"
+			:class="{
+				[$style.inputWrapper]: true,
+				[$style.inputWrapperWithHeader]: $slots.inputHeader,
+				[$style.disabledInput]: sessionEnded,
+			}"
 			data-test-id="chat-input-wrapper"
 		>
 			<div v-if="$slots.inputPlaceholder" :class="$style.inputPlaceholder">
@@ -459,6 +688,7 @@ defineExpose({
 				v-model="textInputValue"
 				:placeholder="inputPlaceholder || t('assistantChat.inputPlaceholder')"
 				:disabled="sessionEnded || disabled"
+				:disabled-tooltip="disabledTooltip"
 				:streaming="streaming"
 				:credits-quota="creditsQuota"
 				:credits-remaining="creditsRemaining"
@@ -466,10 +696,15 @@ defineExpose({
 				:max-length="maxCharacterLength"
 				:refocus-after-send="true"
 				data-test-id="chat-input"
+				autofocus
 				@upgrade-click="emit('upgrade-click')"
 				@submit="onSendMessage"
 				@stop="emit('stop')"
-			/>
+			>
+				<template v-if="$slots['extra-actions']" #extra-actions>
+					<slot name="extra-actions" />
+				</template>
+			</N8nPromptInput>
 		</div>
 	</div>
 </template>
@@ -480,16 +715,16 @@ defineExpose({
 	position: relative;
 	display: grid;
 	grid-template-rows: auto 1fr auto;
-	background-color: var(--color--background--light-2);
 }
 
 .header {
 	height: 65px; // same as header height in editor
-	padding: 0 var(--spacing--lg);
+	padding: 0 var(--spacing--sm) 0 var(--spacing--lg);
 	background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-top: 0;
 	display: flex;
+	align-items: center;
 
 	div {
 		display: flex;
@@ -501,18 +736,14 @@ defineExpose({
 	}
 }
 
-.betaTag {
-	color: var(--color--text);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-}
-
 .body {
 	background-color: var(--color--background--light-2);
 	border: var(--border);
 	border-top: 0;
 	border-bottom: 0;
 	position: relative;
+	overflow: hidden;
+	line-height: var(--line-height--xl);
 
 	pre,
 	code {
@@ -547,21 +778,26 @@ defineExpose({
 
 .messagesContent {
 	padding: var(--spacing--xs);
-	padding-bottom: var(--spacing--xl); // Extra padding for fade area
+
+	// Override p line-height from reset.scss (1.8) to use chat standard (1.5)
+	:global(p) {
+		line-height: var(--line-height--xl);
+	}
+}
+
+.messagesContentWithRating {
+	// Extra bottom padding so scroll-to-bottom clears the feedback-wrapper overlay
+	padding-bottom: var(--spacing--3xl);
 }
 
 .message {
 	margin-bottom: var(--spacing--sm);
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 }
 
-.firstToolMessage {
-	margin-top: var(--spacing--md);
-}
-
 .lastToolMessage {
-	margin-bottom: var(--spacing--lg);
+	margin-bottom: var(--spacing--sm);
 }
 
 .chatTitle {
@@ -592,10 +828,6 @@ defineExpose({
 	}
 }
 
-.back:hover {
-	cursor: pointer;
-}
-
 .quickReplies {
 	margin-top: var(--spacing--sm);
 
@@ -609,26 +841,46 @@ defineExpose({
 	color: var(--color--text);
 }
 
+.feedbackWrapper {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	display: flex;
+	justify-content: start;
+	padding: var(--spacing--2xs);
+	z-index: 1;
+
+	&:has([data-feedback-expanded]) {
+		right: 0;
+		padding-top: 0;
+		background-color: var(--color--background--light-2);
+	}
+}
+
+.inputHeaderWrapper {
+	display: flex;
+	justify-content: center;
+	width: 100%;
+	border-left: var(--border);
+	border-right: var(--border);
+	background-color: var(--color--background--light-2);
+
+	> :first-child {
+		width: 90%;
+	}
+}
+
 .inputWrapper {
 	padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--xs);
-	background-color: transparent;
+	background-color: var(--color--background--light-2);
 	width: 100%;
 	position: relative;
 	border-left: var(--border);
 	border-right: var(--border);
+}
 
-	// Add a gradient fade from the chat to the input
-	&::before {
-		content: '';
-		position: absolute;
-		top: calc(-1 * var(--spacing--md));
-		left: 0;
-		right: var(--spacing--xs);
-		height: var(--spacing--md);
-		background: linear-gradient(to bottom, transparent 0%, var(--color--background--light-2) 100%);
-		pointer-events: none;
-		z-index: 1;
-	}
+.inputWrapperWithHeader {
+	padding-top: 0;
 }
 
 .disabledInput {

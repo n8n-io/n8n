@@ -8,21 +8,26 @@ import type {
 	WorkflowVersion,
 	WorkflowHistoryRequestParams,
 	WorkflowVersionId,
+	UpdateWorkflowHistoryVersion,
+	PublishTimelineEvent,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import * as whApi from '@n8n/rest-api-client/api/workflowHistory';
+import { getFirstAdoptionDate } from '@n8n/rest-api-client/api/instance-version-history';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getNewWorkflow } from '@/app/api/workflows';
 
 export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 
-	const licensePruneTime = computed(() => settingsStore.settings.workflowHistory.licensePruneTime);
+	const licensePruneTime = computed(() => settingsStore.settings.workflowHistory?.licensePruneTime);
 	// pruneTime is already evaluated by backend (getWorkflowHistoryPruneTime)
-	const evaluatedPruneTime = computed(() => settingsStore.settings.workflowHistory.pruneTime);
+	const evaluatedPruneTime = computed(() => settingsStore.settings.workflowHistory?.pruneTime);
 
 	// Show retention message with upgrade link when license is the limiting factor
 	// (Don't show if user explicitly configured a shorter retention via config)
@@ -48,7 +53,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		data: { formattedCreatedAt: string },
 	) => {
 		const [workflow, workflowVersion] = await Promise.all([
-			workflowsStore.fetchWorkflow(workflowId),
+			workflowsListStore.fetchWorkflow(workflowId),
 			getWorkflowVersion(workflowId, workflowVersionId),
 		]);
 		const { connections, nodes } = workflowVersion;
@@ -64,7 +69,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		data: { formattedCreatedAt: string },
 	): Promise<IWorkflowDb> => {
 		const [workflow, workflowVersion] = await Promise.all([
-			workflowsStore.fetchWorkflow(workflowId),
+			workflowsListStore.fetchWorkflow(workflowId),
 			getWorkflowVersion(workflowId, workflowVersionId),
 		]);
 		const { connections, nodes } = workflowVersion;
@@ -83,15 +88,10 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const restoreWorkflow = async (
 		workflowId: string,
 		workflowVersionId: string,
-		shouldDeactivate: boolean,
 	): Promise<IWorkflowDb> => {
 		const workflowVersion = await getWorkflowVersion(workflowId, workflowVersionId);
 		const { connections, nodes } = workflowVersion;
 		const updateData: WorkflowDataUpdate = { connections, nodes };
-
-		if (shouldDeactivate) {
-			updateData.active = false;
-		}
 
 		return await workflowsStore
 			.updateWorkflow(workflowId, updateData, true)
@@ -101,12 +101,29 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 					typeof error.message === 'string' &&
 					error.message.includes('can not be activated')
 				) {
-					return await workflowsStore.fetchWorkflow(workflowId);
+					return await workflowsListStore.fetchWorkflow(workflowId);
 				} else {
 					throw new Error(error);
 				}
 			});
 	};
+
+	const updateWorkflowHistoryVersion = async (
+		workflowId: string,
+		versionId: string,
+		data: UpdateWorkflowHistoryVersion,
+	): Promise<void> => {
+		await whApi.updateWorkflowHistoryVersion(rootStore.restApiContext, workflowId, versionId, data);
+	};
+
+	const getPublishTimeline = async (workflowId: string): Promise<PublishTimelineEvent[]> =>
+		await whApi.getPublishTimeline(rootStore.restApiContext, workflowId);
+
+	const getVersionFirstAdoptionDate = async (version: {
+		major: number;
+		minor: number;
+		patch: number;
+	}): Promise<string | null> => await getFirstAdoptionDate(rootStore.restApiContext, version);
 
 	return {
 		getWorkflowHistory,
@@ -114,6 +131,9 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		downloadVersion,
 		cloneIntoNewWorkflow,
 		restoreWorkflow,
+		updateWorkflowHistoryVersion,
+		getPublishTimeline,
+		getVersionFirstAdoptionDate,
 		evaluatedPruneTime,
 		shouldUpgrade,
 	};

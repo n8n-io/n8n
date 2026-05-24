@@ -11,9 +11,14 @@ import type {
 } from 'n8n-workflow';
 import { createResultError, createResultOk, NodeOperationError } from 'n8n-workflow';
 
-import { proxyFetch } from '@utils/httpProxyAgent';
+import { proxyFetch } from '@n8n/ai-utilities';
 
-import type { McpAuthenticationOption, McpServerTransport, McpTool } from './types';
+import {
+	isMcpOAuth2Authentication,
+	type McpAuthenticationOption,
+	type McpServerTransport,
+	type McpTool,
+} from './types';
 
 export async function getAllTools(client: Client, cursor?: string): Promise<McpTool[]> {
 	const { tools, nextCursor } = await client.listTools({ cursor });
@@ -84,11 +89,13 @@ export function mapToNodeOperationError(
 		case 'auth':
 			return new NodeOperationError(node, error.error, {
 				message: 'Could not connect to your MCP server. Authentication failed.',
+				description: error.error.message,
 			});
 		case 'connection':
 		default:
 			return new NodeOperationError(node, error.error, {
 				message: 'Could not connect to your MCP server',
+				description: error.error.message,
 			});
 	}
 }
@@ -114,31 +121,17 @@ export async function connectMcpClient({
 		return createResultError({ type: 'invalid_url', error: endpoint.error });
 	}
 
-	const client = new Client({ name, version: version.toString() }, { capabilities: { tools: {} } });
+	const authFetch = createAuthFetch(headers, onUnauthorized);
+	const client = new Client({ name, version: version.toString() }, { capabilities: {} });
 
 	if (serverTransport === 'httpStreamable') {
 		try {
 			const transport = new StreamableHTTPClientTransport(endpoint.result, {
-				requestInit: { headers },
-				fetch: proxyFetch,
+				fetch: authFetch,
 			});
 			await client.connect(transport);
 			return createResultOk(client);
 		} catch (error) {
-			if (onUnauthorized && isUnauthorizedError(error)) {
-				const newHeaders = await onUnauthorized(headers);
-				if (newHeaders) {
-					// Don't pass `onUnauthorized` to avoid possible infinite recursion
-					return await connectMcpClient({
-						headers: newHeaders,
-						serverTransport,
-						endpointUrl,
-						name,
-						version,
-					});
-				}
-			}
-
 			if (isUnauthorizedError(error) || isForbiddenError(error)) {
 				return createResultError({ type: 'auth', error: error as Error });
 			} else {
@@ -151,34 +144,19 @@ export async function connectMcpClient({
 		const sseTransport = new SSEClientTransport(endpoint.result, {
 			eventSourceInit: {
 				fetch: async (url, init) =>
-					await proxyFetch(url, {
+					await authFetch(url, {
 						...init,
 						headers: {
-							...headers,
+							...headersToRecord(init?.headers),
 							Accept: 'text/event-stream',
 						},
 					}),
 			},
-			fetch: proxyFetch,
-			requestInit: { headers },
+			fetch: authFetch,
 		});
 		await client.connect(sseTransport);
 		return createResultOk(client);
 	} catch (error) {
-		if (onUnauthorized && isUnauthorizedError(error)) {
-			const newHeaders = await onUnauthorized(headers);
-			if (newHeaders) {
-				// Don't pass `onUnauthorized` to avoid possible infinite recursion
-				return await connectMcpClient({
-					headers: newHeaders,
-					serverTransport,
-					endpointUrl,
-					name,
-					version,
-				});
-			}
-		}
-
 		if (isUnauthorizedError(error) || isForbiddenError(error)) {
 			return createResultError({ type: 'auth', error: error as Error });
 		} else {
@@ -187,10 +165,69 @@ export async function connectMcpClient({
 	}
 }
 
+/** Safely converts any HeadersInit value to a plain Record<string, string>. */
+function headersToRecord(headers: HeadersInit | undefined): Record<string, string> {
+	if (!headers) return {};
+	if (headers instanceof Headers) return Object.fromEntries(headers.entries());
+	if (Array.isArray(headers)) return Object.fromEntries(headers);
+	return headers;
+}
+
+/**
+ * Creates a fetch wrapper that injects auth headers into every request
+ * and retries once on 401 after refreshing the token via onUnauthorized.
+ */
+function createAuthFetch(
+	initialHeaders: Record<string, string> | undefined,
+	onUnauthorized?: OnUnauthorizedHandler,
+): typeof fetch {
+	let headers = initialHeaders;
+
+	return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+		const response = await proxyFetch(input, {
+			...init,
+			headers: {
+				...headersToRecord(init?.headers),
+				...headers,
+			},
+		});
+
+		// Early return if not 401 or no handler
+		if (response.status !== 401 || !onUnauthorized) {
+			return response;
+		}
+
+		// Try to refresh and retry
+		const refreshedHeaders = await onUnauthorized(headers);
+		if (!refreshedHeaders) {
+			return response;
+		}
+
+		headers = refreshedHeaders;
+		return await proxyFetch(input, {
+			...init,
+			headers: {
+				...headersToRecord(init?.headers),
+				...headers,
+			},
+		});
+	};
+}
+
 export async function getAuthHeaders(
 	ctx: Pick<IExecuteFunctions, 'getCredentials'>,
 	authentication: McpAuthenticationOption,
 ): Promise<{ headers?: Record<string, string> }> {
+	if (isMcpOAuth2Authentication(authentication)) {
+		const result = await ctx
+			.getCredentials<{ oauthTokenData: { access_token: string } }>(authentication)
+			.catch(() => null);
+
+		if (!result) return {};
+
+		return { headers: { Authorization: `Bearer ${result.oauthTokenData.access_token}` } };
+	}
+
 	switch (authentication) {
 		case 'headerAuth': {
 			const header = await ctx
@@ -209,15 +246,6 @@ export async function getAuthHeaders(
 			if (!result) return {};
 
 			return { headers: { Authorization: `Bearer ${result.token}` } };
-		}
-		case 'mcpOAuth2Api': {
-			const result = await ctx
-				.getCredentials<{ oauthTokenData: { access_token: string } }>('mcpOAuth2Api')
-				.catch(() => null);
-
-			if (!result) return {};
-
-			return { headers: { Authorization: `Bearer ${result.oauthTokenData.access_token}` } };
 		}
 		case 'multipleHeadersAuth': {
 			const result = await ctx
@@ -250,14 +278,14 @@ export async function getAuthHeaders(
  * @param ctx - The execution context
  * @param authentication - The authentication method
  * @param headers - The headers to refresh
- * @returns The refreshed headers or null if the authentication method is not oAuth2Api or has failed
+ * @returns The refreshed headers or null if authentication is not an MCP OAuth2 credential type or has failed
  */
 export async function tryRefreshOAuth2Token(
 	ctx: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
 	authentication: McpAuthenticationOption,
 	headers?: Record<string, string>,
 ) {
-	if (authentication !== 'mcpOAuth2Api') {
+	if (!isMcpOAuth2Authentication(authentication)) {
 		return null;
 	}
 
@@ -265,7 +293,7 @@ export async function tryRefreshOAuth2Token(
 	try {
 		const result = (await ctx.helpers.refreshOAuth2Token.call(
 			ctx,
-			'mcpOAuth2Api',
+			authentication,
 		)) as ClientOAuth2TokenData;
 		access_token = result?.access_token;
 	} catch (error) {
@@ -286,4 +314,10 @@ export async function tryRefreshOAuth2Token(
 		...headers,
 		Authorization: `Bearer ${access_token}`,
 	};
+}
+
+export function isStructuredContent(value: unknown): value is Record<string, unknown> {
+	return (
+		value !== undefined && value !== null && typeof value === 'object' && !Array.isArray(value)
+	);
 }

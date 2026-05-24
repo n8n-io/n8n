@@ -4,6 +4,12 @@
         "adminCreated": {
             "type": "boolean"
         },
+        "aliases": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "description": {
             "type": "string"
         },
@@ -32,5 +38,5 @@
             }
         }
     },
-    "version": 2
+    "version": 3
 }

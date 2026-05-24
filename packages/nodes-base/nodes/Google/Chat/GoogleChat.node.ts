@@ -12,6 +12,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IRequestOptions,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
@@ -54,6 +55,7 @@ export class GoogleChat implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Chat API',
+		schemaPath: 'Google/Chat',
 		defaults: {
 			name: 'Google Chat',
 		},
@@ -255,7 +257,14 @@ export class GoogleChat implements INodeType {
 			const spaceId = this.getNodeParameter('spaceId', 0) as string;
 			const body = createSendAndWaitMessageBody(this);
 
-			await googleApiRequest.call(this, 'POST', `/v1/${spaceId}/messages`, body);
+			try {
+				await googleApiRequest.call(this, 'POST', `/v1/${spaceId}/messages`, body);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					return [[{ json: { error: (error as JsonObject).message } }]];
+				}
+				throw error;
+			}
 
 			const waitTill = configureWaitTillDate(this);
 

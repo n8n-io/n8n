@@ -9,6 +9,7 @@ import type {
 } from '@/features/ai/assistant/assistant.types';
 import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import { getObjectSizeInKB } from '@/app/utils/objectUtils';
+import type { AiGatewayConfigDto, AiGatewayUsageResponse } from '@n8n/api-types';
 import type { IDataObject } from 'n8n-workflow';
 
 export function chatWithBuilder(
@@ -17,6 +18,7 @@ export function chatWithBuilder(
 	onMessageUpdated: (data: ChatRequest.ResponsePayload) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
+	versionId?: string,
 	abortSignal?: AbortSignal,
 ): void {
 	void streamRequest<ChatRequest.ResponsePayload>(
@@ -26,6 +28,7 @@ export function chatWithBuilder(
 			...payload,
 			payload: {
 				...payload.payload,
+				versionId,
 			},
 		},
 		onMessageUpdated,
@@ -42,6 +45,7 @@ export function chatWithAssistant(
 	onMessageUpdated: (data: ChatRequest.ResponsePayload) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
+	abortSignal?: AbortSignal,
 ): void {
 	try {
 		const payloadSize = getObjectSizeInKB(payload.payload);
@@ -59,6 +63,8 @@ export function chatWithAssistant(
 		onMessageUpdated,
 		onDone,
 		onError,
+		undefined,
+		abortSignal,
 	);
 }
 
@@ -99,29 +105,21 @@ export async function claimFreeAiCredits(
 export async function getAiSessions(
 	ctx: IRestApiContext,
 	workflowId?: string,
+	codeBuilder?: boolean,
 ): Promise<{
 	sessions: Array<{
 		sessionId: string;
 		messages: ChatRequest.MessageResponse[];
 		lastUpdated: string;
+		activeVersionCardId?: string | null;
+		resumeAfterRestoreMessageId?: string | null;
 	}>;
 }> {
 	const body: IDataObject = {
 		workflowId,
+		codeBuilder,
 	};
 	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions', body);
-}
-
-export async function getSessionsMetadata(
-	ctx: IRestApiContext,
-	workflowId?: string,
-): Promise<{
-	hasMessages: boolean;
-}> {
-	const body: IDataObject = {
-		workflowId,
-	};
-	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions/metadata', body);
 }
 
 export async function getBuilderCredits(ctx: IRestApiContext): Promise<{
@@ -129,4 +127,47 @@ export async function getBuilderCredits(ctx: IRestApiContext): Promise<{
 	creditsClaimed: number;
 }> {
 	return await makeRestApiRequest(ctx, 'GET', '/ai/build/credits');
+}
+
+export async function getGatewayConfig(ctx: IRestApiContext): Promise<AiGatewayConfigDto> {
+	return await makeRestApiRequest(ctx, 'GET', '/ai/gateway/config');
+}
+
+export async function getGatewayWallet(ctx: IRestApiContext): Promise<{
+	budget: number;
+	balance: number;
+}> {
+	return await makeRestApiRequest(ctx, 'GET', '/ai/gateway/wallet');
+}
+
+export async function getGatewayUsage(
+	ctx: IRestApiContext,
+	offset = 0,
+	limit = 50,
+): Promise<AiGatewayUsageResponse> {
+	return await makeRestApiRequest(ctx, 'GET', `/ai/gateway/usage?offset=${offset}&limit=${limit}`);
+}
+
+export async function clearBuilderSession(
+	ctx: IRestApiContext,
+	workflowId: string,
+): Promise<{ success: boolean }> {
+	return await makeRestApiRequest(ctx, 'POST', '/ai/build/clear-session', {
+		workflowId,
+	});
+}
+
+export async function truncateBuilderMessages(
+	ctx: IRestApiContext,
+	workflowId: string,
+	messageId: string,
+	versionCardId?: string,
+	codeBuilder?: boolean,
+): Promise<{ success: boolean }> {
+	return await makeRestApiRequest(ctx, 'POST', '/ai/build/truncate-messages', {
+		workflowId,
+		messageId,
+		versionCardId,
+		codeBuilder,
+	});
 }

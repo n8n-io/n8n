@@ -1,21 +1,20 @@
 import type { ImportWorkflowFromUrlDto } from '@n8n/api-types';
-import type { AuthenticatedRequest, IExecutionResponse, CredentialsEntity, User } from '@n8n/db';
-import { WorkflowEntity } from '@n8n/db';
+import type { Logger } from '@n8n/backend-common';
+import type { SsrfProtectionConfig } from '@n8n/config';
+import type { AuthenticatedRequest, IExecutionResponse } from '@n8n/db';
 import axios from 'axios';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
+import { createResultError, createResultOk } from 'n8n-workflow';
+
+import { WorkflowsController } from '../workflows.controller';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ExecutionService } from '@/executions/execution.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
-import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
-import type { License } from '@/license';
-import type { WorkflowRequest } from '../workflow.request';
 import type { ProjectService } from '@/services/project.service.ee';
-
-import { WorkflowsController } from '../workflows.controller';
+import { SsrfBlockedIpError } from '@/services/ssrf/ssrf-blocked-ip.error';
+import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 
 jest.mock('axios');
 
@@ -25,9 +24,16 @@ describe('WorkflowsController', () => {
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
 	const projectService = mock<ProjectService>();
+	const logger = mock<Logger>();
+	const ssrfConfig = { enabled: false } as SsrfProtectionConfig;
+	const ssrfProtectionService = mock<SsrfProtectionService>();
 
 	beforeEach(() => {
 		controller.projectService = projectService;
+		controller.logger = logger;
+		controller.ssrfConfig = ssrfConfig;
+		controller.ssrfProtectionService = ssrfProtectionService;
+		ssrfConfig.enabled = false;
 		jest.clearAllMocks();
 	});
 
@@ -126,6 +132,85 @@ describe('WorkflowsController', () => {
 				expect(axiosMock).toHaveBeenCalledWith(query.url);
 			});
 		});
+
+		describe('when URL protection is enabled', () => {
+			const mockLookup = jest.fn();
+
+			beforeEach(() => {
+				ssrfConfig.enabled = true;
+				projectService.getProjectWithScope.mockResolvedValue({} as any);
+				ssrfProtectionService.validateUrl.mockResolvedValue(createResultOk(undefined));
+				ssrfProtectionService.createSecureLookup.mockReturnValue(mockLookup);
+			});
+
+			it('should validate URL before fetching', async () => {
+				const mockWorkflowData = { nodes: [], connections: {} };
+				axiosMock.mockResolvedValue({ data: mockWorkflowData });
+
+				const query: ImportWorkflowFromUrlDto = {
+					url: 'https://example.com/workflow.json',
+					projectId,
+				};
+				await controller.getFromUrl(req, res, query);
+
+				expect(ssrfProtectionService.validateUrl).toHaveBeenCalledWith(query.url);
+				expect(ssrfProtectionService.createSecureLookup).toHaveBeenCalled();
+				expect(axiosMock).toHaveBeenCalledWith(
+					query.url,
+					expect.objectContaining({
+						lookup: mockLookup,
+						beforeRedirect: expect.any(Function),
+					}),
+				);
+			});
+
+			it('should reject requests to restricted addresses', async () => {
+				ssrfProtectionService.validateUrl.mockResolvedValue(
+					createResultError(new SsrfBlockedIpError('127.0.0.1')),
+				);
+
+				const query: ImportWorkflowFromUrlDto = {
+					url: 'http://127.0.0.1/workflow.json',
+					projectId,
+				};
+
+				await expect(controller.getFromUrl(req, res, query)).rejects.toThrow(SsrfBlockedIpError);
+				expect(axiosMock).not.toHaveBeenCalled();
+			});
+
+			it('should propagate blocked errors from redirects', async () => {
+				const ssrfError = new SsrfBlockedIpError('10.0.0.1');
+				const axiosError = new Error('Request failed', {
+					cause: new Error('Redirected request failed', { cause: ssrfError }),
+				});
+				axiosMock.mockRejectedValue(axiosError);
+
+				const query: ImportWorkflowFromUrlDto = {
+					url: 'https://example.com/workflow.json',
+					projectId,
+				};
+
+				await expect(controller.getFromUrl(req, res, query)).rejects.toThrow(SsrfBlockedIpError);
+			});
+		});
+
+		describe('when URL protection is disabled', () => {
+			it('should not validate URL', async () => {
+				ssrfConfig.enabled = false;
+				projectService.getProjectWithScope.mockResolvedValue({} as any);
+				const mockWorkflowData = { nodes: [], connections: {} };
+				axiosMock.mockResolvedValue({ data: mockWorkflowData });
+
+				const query: ImportWorkflowFromUrlDto = {
+					url: 'https://example.com/workflow.json',
+					projectId,
+				};
+				await controller.getFromUrl(req, res, query);
+
+				expect(ssrfProtectionService.validateUrl).not.toHaveBeenCalled();
+				expect(ssrfProtectionService.createSecureLookup).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('getLastSuccessfulExecution', () => {
@@ -155,10 +240,14 @@ describe('WorkflowsController', () => {
 			 * Assert
 			 */
 			expect(result).toEqual(mockExecution);
-			expect(executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(workflowId);
+			expect(executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(
+				workflowId,
+				req.user,
+				undefined,
+			);
 		});
 
-		it('should throw NotFoundError when no successful execution exists', async () => {
+		it('should return null when no successful execution exists', async () => {
 			/**
 			 * Arrange
 			 */
@@ -168,136 +257,19 @@ describe('WorkflowsController', () => {
 			controller.executionService = executionService;
 
 			/**
-			 * Act & Assert
+			 * Act
 			 */
-			await expect(controller.getLastSuccessfulExecution(req, res, workflowId)).rejects.toThrow(
-				NotFoundError,
+			const result = await controller.getLastSuccessfulExecution(req, res, workflowId);
+
+			/**
+			 * Assert
+			 */
+			expect(result).toBeNull();
+			expect(executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(
+				workflowId,
+				req.user,
+				undefined,
 			);
-			expect(executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(workflowId);
-		});
-	});
-
-	describe('create', () => {
-		describe('credential retrieval for workflow creation', () => {
-			it('should include global credentials when checking credential permissions', async () => {
-				/**
-				 * Arrange
-				 */
-				const mockUser = mock<User>({ id: 'user-123' });
-				const mockRequest = mock<WorkflowRequest.Create>({
-					user: mockUser,
-					body: {
-						name: 'Test Workflow',
-						nodes: [],
-						connections: {},
-					},
-				});
-
-				const mockGlobalCredential = mock<CredentialsEntity>({
-					id: 'global-cred-123',
-					name: 'Global Credential',
-					type: 'httpBasicAuth',
-					isGlobal: true,
-				});
-
-				const mockPersonalCredential = mock<CredentialsEntity>({
-					id: 'personal-cred-456',
-					name: 'Personal Credential',
-					type: 'httpBasicAuth',
-					isGlobal: false,
-				});
-
-				const credentialsService = mock<CredentialsService>();
-				const enterpriseWorkflowService = mock<EnterpriseWorkflowService>();
-				const license = mock<License>();
-
-				credentialsService.getMany.mockResolvedValue([
-					mockGlobalCredential,
-					mockPersonalCredential,
-				]);
-				license.isSharingEnabled.mockReturnValue(true);
-
-				// Stop execution after credential validation
-				enterpriseWorkflowService.validateCredentialPermissionsToUser.mockImplementation(() => {
-					throw new BadRequestError('Stopping execution for test');
-				});
-
-				controller.credentialsService = credentialsService;
-				controller.enterpriseWorkflowService = enterpriseWorkflowService;
-				controller.license = license;
-				controller.externalHooks = mock();
-				controller.externalHooks.run = jest.fn().mockResolvedValue(undefined);
-				controller.tagRepository = mock();
-				controller.globalConfig = { tags: { disabled: true } };
-
-				/**
-				 * Act & Assert
-				 */
-				await expect(controller.create(mockRequest)).rejects.toThrow(BadRequestError);
-
-				/**
-				 * Assert - Verify credentials were fetched with includeGlobal: true
-				 */
-				expect(credentialsService.getMany).toHaveBeenCalledWith(mockUser, {
-					includeGlobal: true,
-				});
-				expect(enterpriseWorkflowService.validateCredentialPermissionsToUser).toHaveBeenCalledWith(
-					expect.any(WorkflowEntity),
-					[mockGlobalCredential, mockPersonalCredential],
-				);
-			});
-
-			it('should throw BadRequestError when user lacks access to credentials in workflow', async () => {
-				/**
-				 * Arrange
-				 */
-				const mockUser = mock<User>({ id: 'user-123' });
-				const mockRequest = mock<WorkflowRequest.Create>({
-					user: mockUser,
-					body: {
-						name: 'Test Workflow',
-						nodes: [],
-						connections: {},
-					},
-				});
-
-				const mockGlobalCredential = mock<CredentialsEntity>({
-					id: 'global-cred-123',
-					name: 'Global Credential',
-					type: 'httpBasicAuth',
-					isGlobal: true,
-				});
-
-				const credentialsService = mock<CredentialsService>();
-				const enterpriseWorkflowService = mock<EnterpriseWorkflowService>();
-				const license = mock<License>();
-
-				credentialsService.getMany.mockResolvedValue([mockGlobalCredential]);
-				license.isSharingEnabled.mockReturnValue(true);
-				enterpriseWorkflowService.validateCredentialPermissionsToUser.mockImplementation(() => {
-					throw new Error('User does not have access');
-				});
-
-				controller.credentialsService = credentialsService;
-				controller.enterpriseWorkflowService = enterpriseWorkflowService;
-				controller.license = license;
-				controller.externalHooks = mock();
-				controller.externalHooks.run = jest.fn().mockResolvedValue(undefined);
-				controller.tagRepository = mock();
-				controller.globalConfig = { tags: { disabled: true } };
-
-				/**
-				 * Act & Assert
-				 */
-				await expect(controller.create(mockRequest)).rejects.toThrow(BadRequestError);
-				await expect(controller.create(mockRequest)).rejects.toThrow(
-					'The workflow you are trying to save contains credentials that are not shared with you',
-				);
-
-				expect(credentialsService.getMany).toHaveBeenCalledWith(mockUser, {
-					includeGlobal: true,
-				});
-			});
 		});
 	});
 });

@@ -1,0 +1,381 @@
+import { getComputerUsePrompt } from '../computer-use-prompt';
+
+describe('getComputerUsePrompt', () => {
+	describe('when localGateway is undefined', () => {
+		it('returns an empty string', () => {
+			expect(getComputerUsePrompt({ browserAvailable: undefined, localGateway: undefined })).toBe(
+				'',
+			);
+		});
+	});
+
+	describe('when Computer Use is disabled globally', () => {
+		it('returns an empty string', () => {
+			expect(
+				getComputerUsePrompt({
+					browserAvailable: undefined,
+					localGateway: { status: 'disabledGlobally' },
+				}),
+			).toBe('');
+		});
+	});
+
+	describe('when Computer Use has not been set up (disabled)', () => {
+		it('includes the Computer Use intro section', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: undefined,
+				localGateway: { status: 'disabled' },
+			});
+
+			expect(result).toContain('## Computer Use');
+		});
+
+		it('tells the agent not to use Computer Use tools', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: undefined,
+				localGateway: { status: 'disabled' },
+			});
+
+			expect(result).toContain('Do NOT attempt to use Computer Use tools');
+		});
+
+		it('provides UI setup instructions', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: undefined,
+				localGateway: { status: 'disabled' },
+			});
+
+			expect(result).toContain('Setup computer use');
+		});
+	});
+
+	describe('when Computer Use is disconnected', () => {
+		it('includes the Computer Use intro section', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: undefined,
+				localGateway: { status: 'disconnected' },
+			});
+
+			expect(result).toContain('## Computer Use');
+		});
+
+		it('tells the agent not to use Computer Use tools', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: undefined,
+				localGateway: { status: 'disconnected' },
+			});
+
+			expect(result).toContain('Do NOT attempt to use Computer Use tools');
+		});
+
+		it('provides UI connection instructions', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: undefined,
+				localGateway: { status: 'disconnected' },
+			});
+
+			expect(result).toContain('"Connect"');
+		});
+	});
+
+	describe('when Computer Use is connected with no capabilities enabled', () => {
+		it('reports that no capabilities are enabled', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: undefined,
+				localGateway: { status: 'connected', capabilities: [] },
+			});
+
+			expect(result).toContain('did not enable any capabilities');
+		});
+
+		it('does not include the filesystem exploration section', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: undefined,
+				localGateway: { status: 'connected', capabilities: [] },
+			});
+
+			expect(result).not.toContain('Filesystem Exploration');
+		});
+	});
+
+	describe('when Computer Use is connected with filesystem capability', () => {
+		it('includes the filesystem exploration guidance', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: undefined,
+				localGateway: { status: 'connected', capabilities: ['filesystem'] },
+			});
+
+			expect(result).toContain('### Computer Use - Filesystem Exploration');
+			expect(result).toContain('start at depth 1');
+			expect(result).toContain('prefer `search` over browsing');
+			expect(result).toContain('read specific files rather than whole directories');
+		});
+	});
+
+	describe('when Computer Use is connected without filesystem capability', () => {
+		it('does not include the filesystem exploration section', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+			expect(result).not.toContain('Filesystem Exploration');
+		});
+	});
+
+	describe('when Computer Use is connected with browser available', () => {
+		it('includes the browser automation rules', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+			expect(result).toContain('### Computer Use - Browser Automation rules');
+		});
+
+		it('includes handoff instructions', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+			expect(result).toContain('end your turn');
+			expect(result).toContain('Authentication');
+			expect(result).toContain('CAPTCHAs');
+		});
+
+		it('includes the secrets guardrail', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+			expect(result).toContain('NEVER include passwords, API keys');
+		});
+	});
+
+	describe('when Computer Use is connected but browser is not available', () => {
+		it('includes the browser-disabled notice', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: false,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+			expect(result).toContain('Browser Automation (Disabled in Computer Use)');
+		});
+
+		it('does not include the full browser automation rules', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: false,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+			expect(result).not.toContain('end your turn');
+		});
+	});
+
+	describe('when Computer Use is connected with both filesystem and browser', () => {
+		it('includes both the filesystem exploration section and browser rules', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['filesystem', 'browser'] },
+			});
+
+			expect(result).toContain('Filesystem Exploration');
+			expect(result).toContain('Browser Automation rules');
+		});
+	});
+
+	describe('proactive suggestion guidance', () => {
+		it('is included for a connected gateway', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+			expect(result).toContain('When to suggest or use Computer Use');
+		});
+
+		it('is included for a disconnected gateway', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: undefined,
+				localGateway: { status: 'disconnected' },
+			});
+
+			expect(result).toContain('When to suggest or use Computer Use');
+		});
+
+		it('is included for a disabled (not set up) gateway', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: undefined,
+				localGateway: { status: 'disabled' },
+			});
+
+			expect(result).toContain('When to suggest or use Computer Use');
+		});
+
+		it('is absent when localGateway is undefined', () => {
+			const result = getComputerUsePrompt({ browserAvailable: undefined, localGateway: undefined });
+
+			expect(result).not.toContain('When to suggest or use Computer Use');
+		});
+
+		it('is absent when Computer Use is disabled globally', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: undefined,
+				localGateway: { status: 'disabledGlobally' },
+			});
+
+			expect(result).not.toContain('When to suggest or use Computer Use');
+		});
+
+		it('lists all 7 use-case categories', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: undefined,
+				localGateway: { status: 'disconnected' },
+			});
+
+			expect(result).toContain('Credential / OAuth setup');
+			expect(result).toContain('Local file as context');
+			expect(result).toContain('Documentation / output to files');
+			expect(result).toContain('Authenticated web research');
+			expect(result).toContain('Form / frontend testing');
+			expect(result).toContain('Shell / environment');
+			expect(result).toContain('Platform migration');
+		});
+	});
+
+	describe('signal → tool pairings', () => {
+		// The label tests above only check that each signal *appears*. These tests pin
+		// each signal to its tool on the same line, so a copy edit that drops the
+		// "→ *browser*" / "→ *filesystem*" mapping fails loudly even if the label survives.
+		const findSignalLine = (prompt: string, signal: string): string => {
+			const line = prompt.split('\n').find((l) => l.includes(signal));
+			if (!line) throw new Error(`Signal "${signal}" not found`);
+			return line;
+		};
+
+		const promptWithBrowser = (): string =>
+			getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser', 'filesystem'] },
+			});
+
+		it('pairs Credential / OAuth setup with browser', () => {
+			expect(findSignalLine(promptWithBrowser(), 'Credential / OAuth setup')).toContain('browser');
+		});
+
+		it('pairs Local file as context with filesystem', () => {
+			expect(findSignalLine(promptWithBrowser(), 'Local file as context')).toContain('filesystem');
+		});
+
+		it('pairs Documentation / output to files with filesystem', () => {
+			expect(findSignalLine(promptWithBrowser(), 'Documentation / output to files')).toContain(
+				'filesystem',
+			);
+		});
+
+		it('pairs Authenticated web research with browser', () => {
+			expect(findSignalLine(promptWithBrowser(), 'Authenticated web research')).toContain(
+				'browser',
+			);
+		});
+
+		it('pairs Form / frontend testing with browser', () => {
+			expect(findSignalLine(promptWithBrowser(), 'Form / frontend testing')).toContain('browser');
+		});
+
+		it('pairs Shell / environment with shell', () => {
+			expect(findSignalLine(promptWithBrowser(), 'Shell / environment')).toContain('shell');
+		});
+
+		it('pairs Platform migration with both browser and filesystem', () => {
+			const line = findSignalLine(promptWithBrowser(), 'Platform migration');
+			expect(line).toContain('browser');
+			expect(line).toContain('filesystem');
+		});
+	});
+
+	describe('credential creation guidance', () => {
+		const browserPrompt = (): string =>
+			getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+		it('includes the credential-creation section', () => {
+			expect(browserPrompt()).toContain('#### Creating credentials from the browser');
+		});
+
+		it('names both credential-flow tools', () => {
+			const result = browserPrompt();
+			expect(result).toContain('browser_capture_secret');
+			expect(result).toContain('browser_create_credential');
+		});
+
+		it('documents both element union shapes (redactedKey and ref)', () => {
+			const result = browserPrompt();
+			expect(result).toContain('"redactedKey"');
+			expect(result).toContain('"ref"');
+		});
+
+		it('points to non-interactive snapshots for plain-text secrets', () => {
+			expect(browserPrompt()).toContain('interactive: false');
+		});
+
+		it('distinguishes data (literal fields) from resolveData (buffer field names)', () => {
+			const result = browserPrompt();
+			expect(result).toContain('`data`');
+			expect(result).toContain('`resolveData`');
+		});
+
+		it('warns about reusing the same credentialsKey across calls', () => {
+			expect(browserPrompt()).toContain('same `credentialsKey`');
+		});
+
+		it('tells the agent to capture by ref instead of clicking a "show" reveal button', () => {
+			expect(browserPrompt()).toContain(
+				'directly capture the secret with the ref and don\'t click the "show" button',
+			);
+		});
+
+		it('is absent when browser is not available', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: false,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+			expect(result).not.toContain('Creating credentials from the browser');
+		});
+	});
+
+	describe('redaction marker guidance', () => {
+		const browserPrompt = (): string =>
+			getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+		it('mentions the [REDACTED:...] marker format', () => {
+			expect(browserPrompt()).toContain('[REDACTED:');
+		});
+
+		it('tells the agent to switch to browser_snapshot when visual tools refuse with sensitive_context', () => {
+			const result = browserPrompt();
+			expect(result).toContain('sensitive_context');
+			expect(result).toContain('browser_snapshot');
+		});
+	});
+
+	describe('handoff triggers', () => {
+		// Regression: redaction replaces visible secrets with opaque markers, so
+		// "Sensitive content on screen" is no longer a reason to hand off control.
+		it('does not list visible secrets as a handoff trigger', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+			expect(result).not.toContain('Sensitive content on screen');
+		});
+	});
+});

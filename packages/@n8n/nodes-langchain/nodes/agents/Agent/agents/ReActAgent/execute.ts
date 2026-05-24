@@ -1,7 +1,7 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { PromptTemplate } from '@langchain/core/prompts';
-import { AgentExecutor, ChatAgent, ZeroShotAgent } from 'langchain/agents';
+import { AgentExecutor, ChatAgent, ZeroShotAgent } from '@langchain/classic/agents';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -9,10 +9,11 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { getConnectedTools, getPromptInputByType, isChatInstance } from '@utils/helpers';
+import { isChatInstance } from '@n8n/ai-utilities';
+import { getConnectedTools, getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '@utils/schemaParsing';
-import { getTracingConfig } from '@utils/tracing';
+import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 
 import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
@@ -39,7 +40,13 @@ export async function reActAgentAgentExecute(
 		maxIterations?: number;
 		humanMessageTemplate?: string;
 		returnIntermediateSteps?: boolean;
+		tracingMetadata?: { values?: Array<{ key: string; value: unknown }> };
 	};
+	const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, this.logger);
+	if (Object.keys(additionalMetadata).length > 0) {
+		this.logger.debug('Tracing metadata', { additionalMetadata });
+	}
+	const tracingConfig = getTracingConfig(this, { additionalMetadata });
 	let agent: ChatAgent | ZeroShotAgent;
 
 	if (isChatInstance(model)) {
@@ -100,7 +107,7 @@ export async function reActAgentAgentExecute(
 			}
 
 			const response = await agentExecutor
-				.withConfig(getTracingConfig(this))
+				.withConfig(tracingConfig)
 				.invoke({ input, outputParser });
 
 			if (outputParser) {

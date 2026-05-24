@@ -7,6 +7,7 @@ export const ROLE = {
 	Owner: 'global:owner',
 	Member: 'global:member',
 	Admin: 'global:admin',
+	ChatUser: 'global:chatUser',
 	Default: 'default', // default user with no email when setting up instance
 } as const;
 
@@ -40,6 +41,7 @@ export const userDetailSchema = userBaseSchema.extend({
 	mfaEnabled: z.boolean().optional(),
 	lastActiveAt: z.string().nullable().optional(),
 	inviteAcceptUrl: z.string().optional(),
+	isManagedByEnv: z.boolean().optional(),
 });
 
 export const usersListSchema = z.object({

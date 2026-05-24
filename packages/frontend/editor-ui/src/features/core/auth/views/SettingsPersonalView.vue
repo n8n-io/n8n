@@ -91,12 +91,18 @@ const currentUser = computed((): IUser | null => {
 	return usersStore.currentUser;
 });
 
+const isManagedByEnv = computed((): boolean => {
+	return currentUser.value?.isManagedByEnv ?? false;
+});
+
 const isExternalAuthEnabled = computed((): boolean => {
 	const isLdapEnabled =
 		ssoStore.isEnterpriseLdapEnabled && currentUser.value?.signInType === 'ldap';
 	const isSamlEnabled = ssoStore.isSamlLoginEnabled && ssoStore.isDefaultAuthenticationSaml;
 	const isOidcEnabled =
-		ssoStore.isEnterpriseOidcEnabled && currentUser.value?.signInType === 'oidc';
+		ssoStore.isEnterpriseOidcEnabled &&
+		ssoStore.isOidcLoginEnabled &&
+		currentUser.value?.signInType === 'oidc';
 	return isLdapEnabled || isSamlEnabled || isOidcEnabled;
 });
 
@@ -131,6 +137,10 @@ const roles = computed<Record<Role, RoleContent>>(() => ({
 		name: i18n.baseText('auth.roles.member'),
 		description: i18n.baseText('settings.personal.role.tooltip.member'),
 	},
+	[ROLE.ChatUser]: {
+		name: i18n.baseText('auth.roles.chatUser'),
+		description: i18n.baseText('settings.personal.role.tooltip.chatUser'),
+	},
 	[ROLE.Admin]: {
 		name: i18n.baseText('auth.roles.admin'),
 		description: i18n.baseText('settings.personal.role.tooltip.admin'),
@@ -161,7 +171,7 @@ onMounted(() => {
 				required: true,
 				autocomplete: 'given-name',
 				capitalize: true,
-				disabled: isExternalAuthEnabled.value,
+				disabled: isManagedByEnv.value || isExternalAuthEnabled.value,
 			},
 		},
 		{
@@ -173,7 +183,7 @@ onMounted(() => {
 				required: true,
 				autocomplete: 'family-name',
 				capitalize: true,
-				disabled: isExternalAuthEnabled.value,
+				disabled: isManagedByEnv.value || isExternalAuthEnabled.value,
 			},
 		},
 		{
@@ -186,7 +196,7 @@ onMounted(() => {
 				validationRules: [{ name: 'VALID_EMAIL' }],
 				autocomplete: 'email',
 				capitalize: true,
-				disabled: !isPersonalSecurityEnabled.value,
+				disabled: isManagedByEnv.value || !isPersonalSecurityEnabled.value,
 			},
 		},
 	];
@@ -364,6 +374,11 @@ onBeforeUnmount(() => {
 					i18n.baseText('settings.personal.basicInformation')
 				}}</N8nHeading>
 			</div>
+			<N8nNotice
+				v-if="isManagedByEnv"
+				:content="i18n.baseText('settings.personal.managedByEnv')"
+				data-test-id="managed-by-env-notice"
+			/>
 			<div data-test-id="personal-data-form">
 				<N8nFormInputs
 					v-if="formInputs"
@@ -375,7 +390,7 @@ onBeforeUnmount(() => {
 				/>
 			</div>
 		</div>
-		<div v-if="isPersonalSecurityEnabled">
+		<div v-if="isPersonalSecurityEnabled && !isManagedByEnv">
 			<div class="mb-s">
 				<N8nHeading size="large">{{ i18n.baseText('settings.personal.security') }}</N8nHeading>
 			</div>
@@ -406,17 +421,17 @@ onBeforeUnmount(() => {
 				/>
 
 				<N8nButton
+					variant="subtle"
 					v-if="mfaDisabled"
 					:class="$style.button"
-					type="tertiary"
 					:label="i18n.baseText('settings.personal.mfa.button.enabled')"
 					data-test-id="enable-mfa-button"
 					@click="onMfaEnableClick"
 				/>
 				<N8nButton
+					variant="subtle"
 					v-else
 					:class="$style.disableMfaButton"
-					type="tertiary"
 					:label="i18n.baseText('settings.personal.mfa.button.disabled')"
 					data-test-id="disable-mfa-button"
 					@click="onMfaDisableClick"

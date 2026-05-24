@@ -1,11 +1,21 @@
 import { z } from 'zod';
 
-import { PROJECT_OWNER_ROLE_SLUG } from './constants.ee';
 import { ALL_SCOPES } from './scope-information';
 
-export const roleNamespaceSchema = z.enum(['global', 'project', 'credential', 'workflow']);
+export const roleNamespaceSchema = z.enum([
+	'global',
+	'project',
+	'credential',
+	'workflow',
+	'secretsProviderConnection',
+]);
 
-export const globalRoleSchema = z.enum(['global:owner', 'global:admin', 'global:member']);
+export const globalRoleSchema = z.enum([
+	'global:owner',
+	'global:admin',
+	'global:member',
+	'global:chatUser',
+]);
 
 const customGlobalRoleSchema = z
 	.string()
@@ -26,13 +36,18 @@ export const personalRoleSchema = z.enum([
 ]);
 
 // Those are the system roles for projects assignable to a user
-export const teamRoleSchema = z.enum(['project:admin', 'project:editor', 'project:viewer']);
+export const teamRoleSchema = z.enum([
+	'project:admin',
+	'project:editor',
+	'project:viewer',
+	'project:chatUser',
+]);
 
 // Custom project role can be anything but the system roles
 export const customProjectRoleSchema = z
 	.string()
 	.nonempty()
-	.refine((val) => val !== PROJECT_OWNER_ROLE_SLUG && !teamRoleSchema.safeParse(val).success, {
+	.refine((val) => !systemProjectRoleSchema.safeParse(val).success, {
 		message: 'This global role value is not assignable',
 	});
 
@@ -47,6 +62,11 @@ export const projectRoleSchema = z.union([systemProjectRoleSchema, customProject
 export const credentialSharingRoleSchema = z.enum(['credential:owner', 'credential:user']);
 
 export const workflowSharingRoleSchema = z.enum(['workflow:owner', 'workflow:editor']);
+
+export const secretsProviderConnectionSharingRoleSchema = z.enum([
+	'secretsProviderConnection:owner',
+	'secretsProviderConnection:user',
+]);
 
 const ALL_SCOPES_LOOKUP_SET = new Set(ALL_SCOPES as string[]);
 
@@ -65,6 +85,7 @@ export const roleSchema = z.object({
 	createdAt: z.date().optional(),
 	updatedAt: z.date().optional(),
 	usedByUsers: z.number().optional(),
+	usedByProjects: z.number().optional(),
 });
 
 export type Role = z.infer<typeof roleSchema>;

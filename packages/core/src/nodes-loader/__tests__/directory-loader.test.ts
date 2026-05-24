@@ -26,6 +26,7 @@ jest.mock('fast-glob', () => async (pattern: string) => {
 
 import { NodeTypes } from '@test/helpers';
 
+import { CUSTOM_NODES_PACKAGE_NAME } from '../constants';
 import { CustomDirectoryLoader } from '../custom-directory-loader';
 import { DirectoryLoader } from '../directory-loader';
 import { LazyPackageDirectoryLoader } from '../lazy-package-directory-loader';
@@ -84,7 +85,7 @@ describe('DirectoryLoader', () => {
 	describe('CustomDirectoryLoader', () => {
 		it('should load custom nodes and credentials', async () => {
 			const loader = new CustomDirectoryLoader(directory);
-			expect(loader.packageName).toEqual('CUSTOM');
+			expect(loader.packageName).toEqual(CUSTOM_NODES_PACKAGE_NAME);
 
 			await loader.loadAll();
 
@@ -692,6 +693,42 @@ describe('DirectoryLoader', () => {
 				credential1: { sourcePath: 'dist/Credential1.js', type: mockCredential1 },
 			});
 			expect(loader.types.credentials).toEqual([]);
+		});
+
+		it('should preserve known supportedNodes when nodesByCredential has no entry yet', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			const filePath = 'dist/Credential1.js';
+
+			loader.known.credentials.credential1 = {
+				className: 'Credential1',
+				sourcePath: filePath,
+				extends: undefined,
+				supportedNodes: ['node1', 'nodeTrigger1'],
+			};
+
+			loader.loadCredentialFromFile(filePath);
+
+			expect(loader.known.credentials.credential1.supportedNodes).toEqual([
+				'node1',
+				'nodeTrigger1',
+			]);
+		});
+
+		it('should prefer nodesByCredential over previously-known supportedNodes', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			const filePath = 'dist/Credential1.js';
+
+			loader.known.credentials.credential1 = {
+				className: 'Credential1',
+				sourcePath: filePath,
+				extends: undefined,
+				supportedNodes: ['stale'],
+			};
+			loader.nodesByCredential.credential1 = ['node1'];
+
+			loader.loadCredentialFromFile(filePath);
+
+			expect(loader.known.credentials.credential1.supportedNodes).toEqual(['node1']);
 		});
 	});
 

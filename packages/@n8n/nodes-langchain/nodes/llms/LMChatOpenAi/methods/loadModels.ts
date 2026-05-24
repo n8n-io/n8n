@@ -1,8 +1,11 @@
+import { getProxyAgent } from '@n8n/ai-utilities';
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 import OpenAI from 'openai';
 
+import { mergeCustomHeaders } from '../../../../utils/helpers';
 import { shouldIncludeModel } from '../../../vendors/OpenAi/helpers/modelFiltering';
-import { getProxyAgent } from '@utils/httpProxyAgent';
 
 export async function searchModels(
 	this: ILoadOptionsFunctions,
@@ -13,6 +16,8 @@ export async function searchModels(
 		(this.getNodeParameter('options.baseURL', '') as string) ||
 		(credentials.url as string) ||
 		'https://api.openai.com/v1';
+	const { openAiDefaultHeaders } = Container.get(AiConfig);
+	const defaultHeaders = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 
 	const openai = new OpenAI({
 		baseURL,
@@ -20,6 +25,7 @@ export async function searchModels(
 		fetchOptions: {
 			dispatcher: getProxyAgent(baseURL),
 		},
+		defaultHeaders,
 	});
 	const { data: models = [] } = await openai.models.list();
 

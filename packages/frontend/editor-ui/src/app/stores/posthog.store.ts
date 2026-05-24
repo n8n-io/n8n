@@ -6,13 +6,13 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { FeatureFlags, IDataObject } from 'n8n-workflow';
-import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/app/constants';
+import {
+	EXPERIMENTS_TO_TRACK,
+	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
+	TELEMETRY_EVENTS,
+} from '@/app/constants';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-
-const EVENTS = {
-	IS_PART_OF_EXPERIMENT: 'User is part of experiment',
-};
 
 export type PosthogStore = ReturnType<typeof usePostHog>;
 
@@ -25,13 +25,33 @@ export const usePostHog = defineStore('posthog', () => {
 
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
+	const pendingFeatureFlagsEvaluation = ref(false);
 
 	const overrides: Ref<Record<string, string | boolean>> = ref({});
+	let featureFlagsWaitPromise: Promise<FeatureFlags | null> | null = null;
+	let resolveFeatureFlagsWait: ((flags: FeatureFlags | null) => void) | null = null;
+
+	const clearFeatureFlagsWait = () => {
+		featureFlagsWaitPromise = null;
+		resolveFeatureFlagsWait = null;
+	};
+
+	const resolveFeatureFlagsWaiters = (flags: FeatureFlags | null) => {
+		pendingFeatureFlagsEvaluation.value = false;
+
+		if (resolveFeatureFlagsWait) {
+			resolveFeatureFlagsWait(flags);
+		}
+
+		clearFeatureFlagsWait();
+	};
 
 	const reset = () => {
 		window.posthog?.reset?.();
 		featureFlags.value = null;
 		trackedDemoExp.value = {};
+		pendingFeatureFlagsEvaluation.value = false;
+		clearFeatureFlagsWait();
 	};
 
 	const getVariant = (experiment: keyof FeatureFlags): FeatureFlags[keyof FeatureFlags] => {
@@ -47,6 +67,22 @@ export const usePostHog = defineStore('posthog', () => {
 	 */
 	const isFeatureEnabled = (experiment: keyof FeatureFlags) => {
 		return getVariant(experiment) === true;
+	};
+
+	const hasPendingFeatureFlags = () => pendingFeatureFlagsEvaluation.value;
+
+	const waitForFeatureFlags = async () => {
+		if (!pendingFeatureFlagsEvaluation.value) {
+			return featureFlags.value;
+		}
+
+		if (!featureFlagsWaitPromise) {
+			featureFlagsWaitPromise = new Promise((resolve) => {
+				resolveFeatureFlagsWait = resolve;
+			});
+		}
+
+		return await featureFlagsWaitPromise;
 	};
 
 	if (!window.featureFlags) {
@@ -78,6 +114,10 @@ export const usePostHog = defineStore('posthog', () => {
 		};
 	}
 
+	const groupIdentify = (groupKey: string, instanceId: string) => {
+		window.posthog?.group?.(groupKey, instanceId);
+	};
+
 	const identify = () => {
 		const instanceId = rootStore.instanceId;
 		const user = usersStore.currentUser;
@@ -102,7 +142,7 @@ export const usePostHog = defineStore('posthog', () => {
 			return;
 		}
 
-		telemetry.track(EVENTS.IS_PART_OF_EXPERIMENT, {
+		telemetry.track(TELEMETRY_EVENTS.IS_PART_OF_EXPERIMENT, {
 			name,
 			variant,
 		});
@@ -139,7 +179,7 @@ export const usePostHog = defineStore('posthog', () => {
 			api_host: settingsStore.settings.posthog.proxy,
 			autocapture: config.autocapture,
 			disable_session_recording: config.disableSessionRecording,
-			debug: config.debug,
+			debug: false, // Enables console logs for debugging reasons
 			session_recording: {
 				maskAllInputs: false,
 			},
@@ -147,9 +187,11 @@ export const usePostHog = defineStore('posthog', () => {
 
 		window.posthog?.init(config.apiKey, options);
 		identify();
+		groupIdentify('company', instanceId);
 
 		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
 			featureFlags.value = evaluatedFeatureFlags;
+			resolveFeatureFlagsWaiters(featureFlags.value);
 			options.bootstrap = {
 				distinctId,
 				featureFlags: evaluatedFeatureFlags,
@@ -159,8 +201,10 @@ export const usePostHog = defineStore('posthog', () => {
 			trackExperimentsDebounced(featureFlags.value);
 		} else {
 			// depend on client side evaluation if serverside evaluation fails
+			pendingFeatureFlagsEvaluation.value = true;
 			window.posthog?.onFeatureFlags?.((_, map: FeatureFlags) => {
 				featureFlags.value = map;
+				resolveFeatureFlagsWaiters(featureFlags.value);
 
 				// must be debounced because it is called multiple times by posthog
 				trackExperimentsDebounced(featureFlags.value);
@@ -190,8 +234,11 @@ export const usePostHog = defineStore('posthog', () => {
 		isFeatureEnabled,
 		isVariantEnabled,
 		getVariant,
+		hasPendingFeatureFlags,
+		waitForFeatureFlags,
 		reset,
 		identify,
+		groupIdentify,
 		setMetadata,
 		capture,
 		overrides,

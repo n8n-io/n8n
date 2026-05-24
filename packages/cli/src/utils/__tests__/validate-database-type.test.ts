@@ -15,9 +15,6 @@ describe('validateDbTypeForExportEntities', () => {
 	it('should not throw an error if the database type is supported', () => {
 		expect(() => validateDbTypeForExportEntities('sqlite')).not.toThrow();
 		expect(() => validateDbTypeForExportEntities('postgres')).not.toThrow();
-		expect(() => validateDbTypeForExportEntities('mysql')).not.toThrow();
-		expect(() => validateDbTypeForExportEntities('mariadb')).not.toThrow();
-		expect(() => validateDbTypeForExportEntities('mysqldb')).not.toThrow();
 		expect(() => validateDbTypeForExportEntities('sqlite-pooled')).not.toThrow();
 		expect(() => validateDbTypeForExportEntities('sqlite-memory')).not.toThrow();
 		expect(() => validateDbTypeForExportEntities('postgresql')).not.toThrow();
@@ -29,12 +26,6 @@ describe('validateDbTypeForImportEntities', () => {
 		expect(() => validateDbTypeForImportEntities('invalid')).toThrow(
 			'Unsupported database type: invalid. Supported types: ' + supportedTypesForImport.join(', '),
 		);
-	});
-
-	it('should throw an error for MySQL/MariaDB (not supported for imports)', () => {
-		expect(() => validateDbTypeForImportEntities('mysql')).toThrow();
-		expect(() => validateDbTypeForImportEntities('mariadb')).toThrow();
-		expect(() => validateDbTypeForImportEntities('mysqldb')).toThrow();
 	});
 
 	it('should not throw an error if the database type is supported', () => {

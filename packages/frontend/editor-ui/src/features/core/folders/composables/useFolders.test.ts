@@ -4,23 +4,28 @@ import { FOLDER_NAME_MAX_LENGTH } from '../folders.constants';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
+const mockFoldersStore = {
+	draggedElement: null as { type: string; id: string; name: string } | null,
+	activeDropTarget: null as { type: string; id: string; name: string } | null,
+};
+
 vi.mock('@/features/core/folders/folders.store', () => ({
-	useFoldersStore: vi.fn(() => ({
-		draggedElement: null,
-		activeDropTarget: null,
-	})),
+	useFoldersStore: vi.fn(() => mockFoldersStore),
 }));
 
 describe('useFolders', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
+		mockFoldersStore.draggedElement = null;
+		mockFoldersStore.activeDropTarget = null;
+		document.body.classList.remove('dragging-resource');
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
 
-	const { validateFolderName } = useFolders();
+	const { validateFolderName, onDragStart, onDragEnd } = useFolders();
 
 	describe('validateFolderName', () => {
 		describe('Valid folder names', () => {
@@ -134,6 +139,71 @@ describe('useFolders', () => {
 				const result = validateFolderName('...');
 				expect(result).toBe('Folder name cannot contain only dots');
 			});
+		});
+	});
+
+	describe('onDragStart', () => {
+		it('should add dragging-resource class to body when dragging a folder', () => {
+			const element = document.createElement('div');
+			element.setAttribute('data-target', 'folder');
+			element.setAttribute('data-resourceid', 'folder-123');
+			element.setAttribute('data-resourcename', 'Test Folder');
+			document.body.appendChild(element);
+
+			onDragStart(element);
+
+			expect(document.body.classList.contains('dragging-resource')).toBe(true);
+			expect(mockFoldersStore.draggedElement).toEqual({
+				type: 'folder',
+				id: 'folder-123',
+				name: 'Test Folder',
+			});
+
+			document.body.removeChild(element);
+		});
+
+		it('should add dragging-resource class to body when dragging a workflow', () => {
+			const element = document.createElement('div');
+			element.setAttribute('data-target', 'workflow');
+			element.setAttribute('data-resourceid', 'workflow-456');
+			element.setAttribute('data-resourcename', 'Test Workflow');
+			document.body.appendChild(element);
+
+			onDragStart(element);
+
+			expect(document.body.classList.contains('dragging-resource')).toBe(true);
+			expect(mockFoldersStore.draggedElement).toEqual({
+				type: 'workflow',
+				id: 'workflow-456',
+				name: 'Test Workflow',
+			});
+
+			document.body.removeChild(element);
+		});
+
+		it('should not add class when element has no data-target attribute', () => {
+			const element = document.createElement('div');
+			document.body.appendChild(element);
+
+			onDragStart(element);
+
+			expect(document.body.classList.contains('dragging-resource')).toBe(false);
+
+			document.body.removeChild(element);
+		});
+	});
+
+	describe('onDragEnd', () => {
+		it('should remove dragging-resource class from body', () => {
+			document.body.classList.add('dragging-resource');
+			mockFoldersStore.draggedElement = { type: 'folder', id: '123', name: 'Test' };
+			mockFoldersStore.activeDropTarget = { type: 'folder', id: '456', name: 'Target' };
+
+			onDragEnd();
+
+			expect(document.body.classList.contains('dragging-resource')).toBe(false);
+			expect(mockFoldersStore.draggedElement).toBeNull();
+			expect(mockFoldersStore.activeDropTarget).toBeNull();
 		});
 	});
 });

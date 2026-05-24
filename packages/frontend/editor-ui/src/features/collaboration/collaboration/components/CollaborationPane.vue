@@ -6,8 +6,11 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useCollaborationStore } from '../collaboration.store';
 
 import { N8nUserStack } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
+
 const collaborationStore = useCollaborationStore();
 const usersStore = useUsersStore();
+const workflowId = useWorkflowId();
 
 const visibility = useDocumentVisibility();
 watch(visibility, (visibilityState) => {
@@ -32,7 +35,7 @@ const collaboratorsSorted = computed(() => {
 const currentUserEmail = computed(() => usersStore.currentUser?.email);
 
 onMounted(() => {
-	collaborationStore.initialize();
+	void collaborationStore.initialize(workflowId.value);
 });
 
 onBeforeUnmount(() => {
@@ -42,14 +45,11 @@ onBeforeUnmount(() => {
 
 <template>
 	<div
+		v-if="showUserStack"
 		:class="`collaboration-pane-container ${$style.container}`"
 		data-test-id="collaboration-pane"
 	>
-		<N8nUserStack
-			v-if="showUserStack"
-			:users="collaboratorsSorted"
-			:current-user-email="currentUserEmail"
-		/>
+		<N8nUserStack :users="collaboratorsSorted" :current-user-email="currentUserEmail" />
 	</div>
 </template>
 

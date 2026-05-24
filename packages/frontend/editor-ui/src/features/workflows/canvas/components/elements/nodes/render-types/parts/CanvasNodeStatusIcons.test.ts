@@ -8,6 +8,7 @@ import { VIEWS } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
 import { createTestingPinia } from '@pinia/testing';
+import type { IPinData } from 'n8n-workflow';
 import type * as actualVueRouter from 'vue-router';
 import { type RouteLocationNormalizedLoadedGeneric, useRoute } from 'vue-router';
 import CanvasNodeStatusIcons from './CanvasNodeStatusIcons.vue';
@@ -19,6 +20,20 @@ vi.mock('vue-router', async (importOriginal) => {
 		useRoute: vi.fn(),
 	};
 });
+
+const pinnedDataByNodeName: IPinData = {};
+
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
+	injectCanvasRenderData: vi.fn(() => ({
+		value: {
+			nodeInputsByNodeId: new Map(),
+			nodeOutputsByNodeId: new Map(),
+			pinnedDataByNodeName,
+			executionIssuesByNodeName: new Map(),
+		},
+	})),
+}));
 
 const renderComponent = createComponentRenderer(CanvasNodeStatusIcons, {
 	pinia: createTestingPinia(),
@@ -32,14 +47,19 @@ describe('CanvasNodeStatusIcons', () => {
 	beforeEach(() => {
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
+		for (const key of Object.keys(pinnedDataByNodeName)) {
+			delete pinnedDataByNodeName[key];
+		}
 	});
 
 	it('should render correctly for a pinned node', () => {
+		pinnedDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
+
 		const { getByTestId } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasProvide(),
-					...createCanvasNodeProvide({ data: { pinnedData: { count: 5, visible: true } } }),
+					...createCanvasNodeProvide(),
 				},
 			},
 		});
@@ -48,50 +68,20 @@ describe('CanvasNodeStatusIcons', () => {
 	});
 
 	it('should not render pinned icon when disabled', () => {
+		pinnedDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
+
 		const { queryByTestId } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasProvide(),
 					...createCanvasNodeProvide({
-						data: { disabled: true, pinnedData: { count: 5, visible: true } },
+						data: { disabled: true },
 					}),
 				},
 			},
 		});
 
 		expect(queryByTestId('canvas-node-status-pinned')).not.toBeInTheDocument();
-	});
-
-	describe('executing', () => {
-		it('should not show node as executing if workflow is not executing', () => {
-			const { getByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasProvide({
-							isExecuting: false,
-						}),
-						...createCanvasNodeProvide({ data: { execution: { running: true } } }),
-					},
-				},
-			});
-
-			expect(() => getByTestId('canvas-node-status-running')).toThrow();
-		});
-
-		it('should render running node correctly', () => {
-			const { getByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasProvide({
-							isExecuting: true,
-						}),
-						...createCanvasNodeProvide({ data: { execution: { running: true } } }),
-					},
-				},
-			});
-
-			expect(getByTestId('canvas-node-status-running')).toBeVisible();
-		});
 	});
 
 	it('should render correctly for a node that ran successfully', () => {
@@ -179,58 +169,5 @@ describe('CanvasNodeStatusIcons', () => {
 		});
 
 		expect(queryByTestId('node-not-installed')).not.toBeInTheDocument();
-	});
-
-	describe('status precedence', () => {
-		it('should render executing status even if node is invalid', () => {
-			const { getByTestId, queryByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasProvide({
-							isExecuting: true,
-						}),
-						...createCanvasNodeProvide({
-							data: {
-								execution: { running: true },
-								runData: { outputMap: {}, iterations: 15, visible: true },
-								render: {
-									type: CanvasNodeRenderType.Default,
-									options: { dirtiness: CanvasNodeDirtiness.PARAMETERS_UPDATED },
-								},
-							},
-						}),
-					},
-				},
-			});
-
-			expect(getByTestId('canvas-node-status-running')).toBeVisible();
-			expect(queryByTestId('canvas-node-status-warning')).not.toBeInTheDocument();
-		});
-
-		it('should render executing status even if node is disabled', () => {
-			const { getByTestId, queryByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasProvide({
-							isExecuting: true,
-						}),
-						...createCanvasNodeProvide({
-							data: {
-								disabled: true,
-								execution: { running: true },
-								runData: { outputMap: {}, iterations: 15, visible: true },
-								render: {
-									type: CanvasNodeRenderType.Default,
-									options: { dirtiness: CanvasNodeDirtiness.PARAMETERS_UPDATED },
-								},
-							},
-						}),
-					},
-				},
-			});
-
-			expect(getByTestId('canvas-node-status-running')).toBeVisible();
-			expect(queryByTestId('canvas-node-status-warning')).not.toBeInTheDocument();
-		});
 	});
 });

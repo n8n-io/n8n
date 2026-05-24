@@ -1,22 +1,20 @@
 <script lang="ts" setup>
 import type { SamlPreferences } from '@n8n/api-types';
-import CopyInput from '@/app/components/CopyInput.vue';
 import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { captureMessage } from '@sentry/vue';
 
-import { ElCheckbox } from 'element-plus';
-import { N8nButton, N8nInput, N8nRadioButtons } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nOption, N8nRadioButtons, N8nSelect } from '@n8n/design-system';
+import { useClipboard } from '@/app/composables/useClipboard';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { computed, onMounted, ref } from 'vue';
-import UserRoleProvisioningDropdown, {
-	type UserRoleProvisioningSetting,
-} from '../provisioning/components/UserRoleProvisioningDropdown.vue';
+import UserRoleProvisioningDropdown from '../provisioning/components/UserRoleProvisioningDropdown.vue';
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
+import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
 
 const i18n = useI18n();
@@ -24,9 +22,25 @@ const ssoStore = useSSOStore();
 const telemetry = useTelemetry();
 const toast = useToast();
 const message = useMessage();
-const instanceId = useRootStore().instanceId;
+const clipboard = useClipboard();
+const redirectUrlCopied = ref(false);
+const entityIdCopied = ref(false);
+
+async function handleCopy(value: string, field: string) {
+	await clipboard.copy(value);
+	if (field === 'redirectUrl') {
+		redirectUrlCopied.value = true;
+		setTimeout(() => (redirectUrlCopied.value = false), 2000);
+	} else if (field === 'entityId') {
+		entityIdCopied.value = true;
+		setTimeout(() => (entityIdCopied.value = false), 2000);
+	}
+}
+
+const isSsoManagedByEnv = computed(() => ssoStore.ssoManagedByEnv);
 
 const savingForm = ref<boolean>(false);
+const roleMappingRuleEditorRef = ref<InstanceType<typeof RoleMappingRuleEditor> | null>(null);
 
 const redirectUrl = ref();
 const samlLoginEnabled = ref<boolean>(false);
@@ -55,10 +69,17 @@ const entityId = ref();
 
 const showUserRoleProvisioningDialog = ref(false);
 
-const userRoleProvisioning = ref<UserRoleProvisioningSetting>('disabled');
-
-const { isUserRoleProvisioningChanged, saveProvisioningConfig } =
-	useUserRoleProvisioningForm(userRoleProvisioning);
+const {
+	roleAssignment,
+	mappingMethod,
+	isUserRoleProvisioningChanged,
+	saveProvisioningConfig,
+	trackProvisioningChange,
+	roleAssignmentTransition,
+	storedHasProjectRoles,
+	isDroppingProjectRules,
+	revertRoleAssignment,
+} = useUserRoleProvisioningForm(SupportedProtocols.SAML);
 
 async function loadSamlConfig() {
 	if (!ssoStore.isEnterpriseSamlEnabled) {
@@ -101,8 +122,12 @@ const isSaveEnabled = computed(() => {
 		return false;
 	};
 	const isSamlLoginEnabledChanged = ssoStore.isSamlLoginEnabled !== samlLoginEnabled.value;
+	const isRuleMappingDirty = roleMappingRuleEditorRef.value?.isDirty ?? false;
 	return (
-		isUserRoleProvisioningChanged() || isIdentityProviderChanged() || isSamlLoginEnabledChanged
+		isUserRoleProvisioningChanged.value ||
+		isIdentityProviderChanged() ||
+		isSamlLoginEnabledChanged ||
+		isRuleMappingDirty
 	);
 });
 
@@ -121,20 +146,12 @@ const sendTrackingEvent = (config?: SamlPreferences) => {
 		return;
 	}
 	const trackingMetadata = {
-		instance_id: instanceId,
+		instance_id: useRootStore().instanceId,
 		authentication_method: SupportedProtocols.SAML,
 		identity_provider: config.metadataUrl ? 'metadata' : 'xml',
 		is_active: config.loginEnabled ?? false,
 	};
 	telemetry.track('User updated single sign on settings', trackingMetadata);
-};
-
-const sendTrackingEventForUserProvisioning = () => {
-	telemetry.track('User updated provisioning settings', {
-		instance_id: instanceId,
-		authentication_method: SupportedProtocols.SAML,
-		updated_setting: userRoleProvisioning.value,
-	});
 };
 
 const promptConfirmDisablingSamlLogin = async () => {
@@ -185,24 +202,26 @@ const prompTestSamlConnectionBeforeActivating = async () => {
 	return promptOpeningTestConnectionPage;
 };
 
-const onSave = async (provisioningChangesConfirmed: boolean = false) => {
+const onSave = async (provisioningChangesConfirmed: boolean = false): Promise<boolean> => {
 	try {
 		savingForm.value = true;
 		validateSamlInput();
 
-		const isDisablingSamlLogin = ssoStore.isSamlLoginEnabled && !samlLoginEnabled.value;
+		const loginEnabledChanged = samlLoginEnabled.value !== ssoStore.isSamlLoginEnabled;
+		const isDisablingSamlLogin = loginEnabledChanged && ssoStore.isSamlLoginEnabled === true;
 
 		if (isDisablingSamlLogin) {
 			const confirmDisablingSaml = await promptConfirmDisablingSamlLogin();
 			if (confirmDisablingSaml !== MODAL_CONFIRM) {
-				return;
+				return false;
 			}
 		}
 
-		if (!isDisablingSamlLogin && isUserRoleProvisioningChanged() && !provisioningChangesConfirmed) {
+		if (!provisioningChangesConfirmed && roleAssignmentTransition.value !== 'none') {
 			showUserRoleProvisioningDialog.value = true;
-			return;
+			return false;
 		}
+		showUserRoleProvisioningDialog.value = false;
 
 		const metaDataConfig: Partial<SamlPreferences> =
 			ipsType.value === IdentityProviderSettingsType.URL
@@ -217,7 +236,7 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 
 			const confirmTest = await prompTestSamlConnectionBeforeActivating();
 			if (confirmTest !== MODAL_CONFIRM) {
-				return;
+				return false;
 			}
 		}
 
@@ -226,20 +245,38 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 			loginEnabled: samlLoginEnabled.value,
 		});
 
-		if (isUserRoleProvisioningChanged()) {
-			await saveProvisioningConfig();
-			sendTrackingEventForUserProvisioning();
-			showUserRoleProvisioningDialog.value = false;
+		const provisioningResult = await saveProvisioningConfig(isDisablingSamlLogin);
+
+		// If the user's effective role assignment doesn't include project roles,
+		// discard any project-rule state in the editor (both locally-added and
+		// server-backed entries) so editor.save() doesn't try to POST/PATCH rules
+		// that shouldn't exist. Checking the current dropdown at save-time is
+		// robust against storedHasProjectRules drift.
+		const effectiveRoleAssignment = isDisablingSamlLogin ? 'manual' : roleAssignment.value;
+		if (effectiveRoleAssignment !== 'instance_and_project') {
+			roleMappingRuleEditorRef.value?.discardProjectRules();
 		}
+
+		const ruleSaveResult =
+			mappingMethod.value === 'rules_in_n8n'
+				? await roleMappingRuleEditorRef.value?.save()
+				: undefined;
+
+		trackProvisioningChange(provisioningResult, ruleSaveResult);
 
 		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = SupportedProtocols.SAML;
 
 		await getSamlConfig();
 		sendTrackingEvent(configResponse);
+		toast.showMessage({
+			title: i18n.baseText('settings.sso.settings.save.success'),
+			type: 'success',
+		});
+		return true;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
-		return;
+		return false;
 	} finally {
 		savingForm.value = false;
 	}
@@ -247,7 +284,11 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 
 const onTest = async () => {
 	try {
-		const url = await ssoStore.testSamlConfig();
+		const metaDataConfig: Partial<SamlPreferences> =
+			ipsType.value === IdentityProviderSettingsType.URL
+				? { metadataUrl: metadataUrl.value }
+				: { metadata: metadata.value };
+		const url = await ssoStore.testSamlConfig(metaDataConfig);
 
 		if (typeof window !== 'undefined') {
 			window.open(url, '_blank');
@@ -276,72 +317,158 @@ const validateSamlInput = () => {
 	}
 };
 
+const hasUnsavedChanges = computed(() => isSaveEnabled.value && !isSsoManagedByEnv.value);
+
+defineExpose({ hasUnsavedChanges, onSave });
+
 onMounted(async () => {
 	await loadSamlConfig();
 });
 </script>
 <template>
 	<div>
-		<div :class="$style.group">
-			<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
-			<CopyInput
-				:value="redirectUrl"
-				:copy-button-text="i18n.baseText('generic.clickToCopy')"
-				:toast-title="i18n.baseText('settings.sso.settings.redirectUrl.copied')"
-			/>
-			<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
+		<div :class="[$style.card, $style.firstCard]">
+			<slot name="protocol-select" />
+			<div :class="$style.settingsItem">
+				<div :class="$style.settingsItemLabel">
+					<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
+					<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
+				</div>
+				<div :class="$style.settingsItemControl">
+					<div :class="$style.copyInputGroup" data-test-id="copy-input">
+						<div :class="$style.copyInputField">
+							<N8nInput :model-value="redirectUrl" type="text" :readonly="true" />
+						</div>
+						<div :class="$style.copyButtonWrapper">
+							<N8nButton
+								variant="subtle"
+								icon-only
+								:icon="redirectUrlCopied ? 'check' : 'copy'"
+								@click="handleCopy(redirectUrl, 'redirectUrl')"
+							/>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div :class="$style.settingsItem">
+				<div :class="$style.settingsItemLabel">
+					<label>{{ i18n.baseText('settings.sso.settings.entityId.label') }}</label>
+					<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
+				</div>
+				<div :class="$style.settingsItemControl">
+					<div :class="$style.copyInputGroup" data-test-id="copy-input">
+						<div :class="$style.copyInputField">
+							<N8nInput :model-value="entityId" type="text" :readonly="true" />
+						</div>
+						<div :class="$style.copyButtonWrapper">
+							<N8nButton
+								variant="subtle"
+								icon-only
+								:icon="entityIdCopied ? 'check' : 'copy'"
+								@click="handleCopy(entityId, 'entityId')"
+							/>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div :class="$style.ipsBlock">
+				<div :class="[$style.settingsItem, $style.settingsItemNoBorder]">
+					<div :class="$style.settingsItemLabel">
+						<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
+					</div>
+					<div :class="$style.settingsItemControl">
+						<N8nRadioButtons
+							v-model="ipsType"
+							:disabled="isSsoManagedByEnv"
+							:options="ipsOptions"
+						/>
+					</div>
+				</div>
+				<div v-if="ipsType === IdentityProviderSettingsType.URL">
+					<N8nInput
+						v-model="metadataUrl"
+						:disabled="isSsoManagedByEnv"
+						type="text"
+						name="metadataUrl"
+						size="large"
+						:placeholder="i18n.baseText('settings.sso.settings.ips.url.placeholder')"
+						data-test-id="sso-provider-url"
+					/>
+					<small>{{ i18n.baseText('settings.sso.settings.ips.url.help') }}</small>
+				</div>
+				<div v-if="ipsType === IdentityProviderSettingsType.XML">
+					<N8nInput
+						v-model="metadata"
+						:disabled="isSsoManagedByEnv"
+						type="textarea"
+						name="metadata"
+						:rows="4"
+						data-test-id="sso-provider-xml"
+					/>
+					<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
+				</div>
+			</div>
 		</div>
-		<div :class="$style.group">
-			<label>{{ i18n.baseText('settings.sso.settings.entityId.label') }}</label>
-			<CopyInput
-				:value="entityId"
-				:copy-button-text="i18n.baseText('generic.clickToCopy')"
-				:toast-title="i18n.baseText('settings.sso.settings.entityId.copied')"
+
+		<div :class="$style.card">
+			<UserRoleProvisioningDropdown
+				v-model:role-assignment="roleAssignment"
+				v-model:mapping-method="mappingMethod"
+				:disabled="isSsoManagedByEnv"
+				auth-protocol="saml"
 			/>
-			<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
-		</div>
-		<div :class="$style.group">
-			<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
-			<div class="mt-2xs mb-s">
-				<N8nRadioButtons v-model="ipsType" :options="ipsOptions" />
-			</div>
-			<div v-if="ipsType === IdentityProviderSettingsType.URL">
-				<N8nInput
-					v-model="metadataUrl"
-					type="text"
-					name="metadataUrl"
-					size="large"
-					:placeholder="i18n.baseText('settings.sso.settings.ips.url.placeholder')"
-					data-test-id="sso-provider-url"
-				/>
-				<small>{{ i18n.baseText('settings.sso.settings.ips.url.help') }}</small>
-			</div>
-			<div v-if="ipsType === IdentityProviderSettingsType.XML">
-				<N8nInput
-					v-model="metadata"
-					type="textarea"
-					name="metadata"
-					:rows="4"
-					data-test-id="sso-provider-xml"
-				/>
-				<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
-			</div>
-			<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="saml" />
+			<RoleMappingRuleEditor
+				v-if="mappingMethod === 'rules_in_n8n'"
+				ref="roleMappingRuleEditorRef"
+				:show-project-rules="roleAssignment === 'instance_and_project'"
+			/>
 			<ConfirmProvisioningDialog
 				v-model="showUserRoleProvisioningDialog"
-				:new-provisioning-setting="userRoleProvisioning"
+				:transition-type="roleAssignmentTransition"
+				:show-project-roles-csv="storedHasProjectRoles || roleAssignment === 'instance_and_project'"
+				:will-delete-project-rules="isDroppingProjectRules"
 				auth-protocol="saml"
 				@confirm-provisioning="onSave(true)"
-				@cancel="showUserRoleProvisioningDialog = false"
+				@cancel="
+					revertRoleAssignment();
+					showUserRoleProvisioningDialog = false;
+				"
 			/>
-			<div :class="[$style.group, $style.checkboxGroup]">
-				<ElCheckbox v-model="samlLoginEnabled" data-test-id="sso-toggle">{{
-					i18n.baseText('settings.sso.activated')
-				}}</ElCheckbox>
+		</div>
+
+		<div :class="$style.card">
+			<div :class="[$style.settingsItem, $style.settingsItemNoBorder]">
+				<div :class="$style.settingsItemLabel">
+					<label>{{ i18n.baseText('settings.sso.settings.ssoToggle.label') }}</label>
+					<small>{{ i18n.baseText('settings.sso.settings.ssoToggle.description') }}</small>
+				</div>
+				<div :class="$style.settingsItemControl">
+					<N8nSelect
+						:model-value="samlLoginEnabled ? 'enabled' : 'disabled'"
+						size="medium"
+						:disabled="isSsoManagedByEnv"
+						data-test-id="sso-toggle"
+						@update:model-value="samlLoginEnabled = $event === 'enabled'"
+					>
+						<template #prefix>
+							<span v-if="samlLoginEnabled" :class="$style.greenDot" />
+						</template>
+						<N8nOption
+							value="enabled"
+							:label="i18n.baseText('settings.sso.settings.ssoToggle.enabled')"
+						/>
+						<N8nOption
+							value="disabled"
+							:label="i18n.baseText('settings.sso.settings.ssoToggle.disabled')"
+						/>
+					</N8nSelect>
+				</div>
 			</div>
 		</div>
+
 		<div :class="$style.buttons">
 			<N8nButton
+				v-if="!isSsoManagedByEnv"
 				:disabled="!isSaveEnabled"
 				:loading="savingForm"
 				size="large"
@@ -351,9 +478,9 @@ onMounted(async () => {
 				{{ i18n.baseText('settings.sso.settings.save') }}
 			</N8nButton>
 			<N8nButton
+				variant="subtle"
 				:disabled="!isTestEnabled"
 				size="large"
-				type="tertiary"
 				data-test-id="sso-test"
 				@click="onTest"
 			>

@@ -121,16 +121,23 @@ export function createHttpsProxyAgent(
 }
 
 function hasProxyEnvironmentVariables(): boolean {
-	return Boolean(process.env.HTTP_PROXY ?? process.env.HTTPS_PROXY ?? process.env.ALL_PROXY);
+	return Boolean(
+		process.env.HTTP_PROXY ??
+			process.env.http_proxy ??
+			process.env.HTTPS_PROXY ??
+			process.env.https_proxy ??
+			process.env.ALL_PROXY ??
+			process.env.all_proxy,
+	);
 }
 
 export function installGlobalProxyAgent(): void {
 	if (hasProxyEnvironmentVariables()) {
 		LoggerProxy.debug('Installing global HTTP proxy agents', {
-			HTTP_PROXY: process.env.HTTP_PROXY,
-			HTTPS_PROXY: process.env.HTTPS_PROXY,
-			NO_PROXY: process.env.NO_PROXY,
-			ALL_PROXY: process.env.ALL_PROXY,
+			HTTP_PROXY: process.env.HTTP_PROXY ?? process.env.http_proxy,
+			HTTPS_PROXY: process.env.HTTPS_PROXY ?? process.env.https_proxy,
+			NO_PROXY: process.env.NO_PROXY ?? process.env.no_proxy,
+			ALL_PROXY: process.env.ALL_PROXY ?? process.env.all_proxy,
 		});
 
 		http.globalAgent = new HttpProxyManager();

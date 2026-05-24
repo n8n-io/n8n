@@ -64,6 +64,8 @@ describe('Resource Access Control Matrix Tests', () => {
 		ownerAgent = testServer.authAgentFor(owner);
 		testUserAgent = testServer.authAgentFor(testUser);
 
+		await utils.initCredentialsTypes();
+
 		// Create custom roles with specific scopes
 		workflowReadOnlyRole = await createCustomRoleWithScopeSlugs(
 			['workflow:read', 'workflow:list'],
@@ -174,7 +176,7 @@ describe('Resource Access Control Matrix Tests', () => {
 							id: 'uuid-1234',
 							parameters: {},
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							typeVersion: 1,
 							position: [240, 300],
 						},
@@ -256,7 +258,7 @@ describe('Resource Access Control Matrix Tests', () => {
 							id: 'uuid-1234',
 							parameters: {},
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							typeVersion: 1,
 							position: [240, 300],
 						},
@@ -339,12 +341,12 @@ describe('Resource Access Control Matrix Tests', () => {
 				expect(response.body.data).toBeDefined();
 			});
 
-			test('POST /credentials should return 400', async () => {
+			test('POST /credentials should return 403', async () => {
 				const credentialPayload = randomCredentialPayload();
 				await testUserAgent
 					.post('/credentials')
 					.send({ ...credentialPayload, projectId: teamProject.id })
-					.expect(400);
+					.expect(403);
 			});
 
 			test('PATCH /credentials/:id should return 403', async () => {

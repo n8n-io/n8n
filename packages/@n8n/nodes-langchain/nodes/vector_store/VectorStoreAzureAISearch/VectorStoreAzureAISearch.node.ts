@@ -1,18 +1,20 @@
-import type { EmbeddingsInterface } from '@langchain/core/embeddings';
+import { AzureKeyCredential, SearchIndexClient } from '@azure/search-documents';
 import {
 	AzureAISearchVectorStore,
 	AzureAISearchQueryType,
 } from '@langchain/community/vectorstores/azure_aisearch';
-import { AzureKeyCredential } from '@azure/search-documents';
+import type { Document } from '@langchain/core/documents';
+import type { EmbeddingsInterface } from '@langchain/core/embeddings';
 import {
+	NodeOperationError,
 	type IDataObject,
 	type ILoadOptionsFunctions,
-	NodeOperationError,
 	type INodeProperties,
 	type IExecuteFunctions,
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
+
+import { createVectorStoreNode } from '@n8n/ai-utilities';
 
 // User agent for usage tracking
 const USER_AGENT_PREFIX = 'n8n-azure-ai-search';
@@ -94,7 +96,34 @@ const retrieveFields: INodeProperties[] = [
 	},
 ];
 
-const insertFields: INodeProperties[] = [];
+const insertFields: INodeProperties[] = [
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Clear Index',
+				name: 'clearIndex',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to delete and recreate the index before inserting new data. Warning: This will reset any custom index configuration (semantic ranking, analyzers, etc.) to defaults.',
+			},
+			{
+				displayName: 'Metadata Keys to Insert',
+				name: 'metadataKeysToInsert',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g., source,author,category',
+				description:
+					'Comma-separated list of metadata keys to store in Azure AI Search. Leave empty to include all metadata. Azure AI Search stores metadata in an "attributes" array format.',
+			},
+		],
+	},
+];
 
 type IFunctionsContext = IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions;
 
@@ -135,38 +164,88 @@ function getOptionValue<T>(
 	return options[name] !== undefined ? (options[name] as T) : defaultValue;
 }
 
+interface ValidatedCredentials {
+	endpoint: string;
+	apiKey: string;
+}
+
+async function getValidatedCredentials(
+	context: IFunctionsContext,
+	itemIndex: number,
+): Promise<ValidatedCredentials> {
+	const credentials = await context.getCredentials(AZURE_AI_SEARCH_CREDENTIALS);
+
+	if (!credentials.endpoint || typeof credentials.endpoint !== 'string') {
+		throw new NodeOperationError(
+			context.getNode(),
+			'Azure AI Search endpoint is missing or invalid',
+			{ itemIndex },
+		);
+	}
+
+	if (!credentials.apiKey || typeof credentials.apiKey !== 'string') {
+		throw new NodeOperationError(context.getNode(), 'API Key is required for authentication', {
+			itemIndex,
+		});
+	}
+
+	return {
+		endpoint: credentials.endpoint,
+		apiKey: credentials.apiKey,
+	};
+}
+
+/**
+ * Deletes an Azure AI Search index if clearIndex option is enabled.
+ * Exported for testing purposes.
+ */
+export async function clearAzureSearchIndex(
+	context: IFunctionsContext,
+	itemIndex: number,
+): Promise<boolean> {
+	const options = context.getNodeParameter('options', itemIndex, {}) as {
+		clearIndex?: boolean;
+	};
+
+	if (!options.clearIndex) {
+		return false;
+	}
+
+	const credentials = await getValidatedCredentials(context, itemIndex);
+	const indexName = getIndexName(context, itemIndex);
+
+	try {
+		const indexClient = new SearchIndexClient(
+			credentials.endpoint,
+			new AzureKeyCredential(credentials.apiKey),
+		);
+		await indexClient.deleteIndex(indexName);
+		context.logger.debug(`Deleted Azure AI Search index: ${indexName}`);
+		return true;
+	} catch (deleteError) {
+		// Log the error but don't fail - index might not exist yet
+		context.logger.debug('Error deleting index (may not exist):', {
+			message: deleteError instanceof Error ? deleteError.message : String(deleteError),
+		});
+		return false;
+	}
+}
+
 async function getAzureAISearchClient(
 	context: IFunctionsContext,
 	embeddings: EmbeddingsInterface,
 	itemIndex: number,
 ): Promise<AzureAISearchVectorStore> {
-	const credentials = await context.getCredentials(AZURE_AI_SEARCH_CREDENTIALS);
+	const credentials = await getValidatedCredentials(context, itemIndex);
 
 	try {
 		const indexName = getIndexName(context, itemIndex);
-
-		if (!credentials.endpoint || typeof credentials.endpoint !== 'string') {
-			throw new NodeOperationError(
-				context.getNode(),
-				'Azure AI Search endpoint is missing or invalid',
-				{ itemIndex },
-			);
-		}
-		const endpoint = credentials.endpoint;
-
-		// Validate API Key
-		if (!credentials.apiKey || typeof credentials.apiKey !== 'string') {
-			throw new NodeOperationError(context.getNode(), 'API Key is required for authentication', {
-				itemIndex,
-			});
-		}
-
 		const azureCredentials = new AzureKeyCredential(credentials.apiKey);
 
 		// Pass endpoint, indexName, and credentials to enable automatic index creation
 		// LangChain will create the index automatically if it doesn't exist
 		const config: any = {
-			endpoint,
+			endpoint: credentials.endpoint,
 			indexName,
 			credentials: azureCredentials,
 			search: {},
@@ -267,6 +346,52 @@ function getQueryType(
 	}
 }
 
+interface AzureMetadataAttribute {
+	key: string;
+	value: string;
+}
+
+/**
+ * Transforms document metadata into Azure AI Search's expected format.
+ * Azure AI Search requires metadata to be stored in an 'attributes' array
+ * with {key, value} pairs where values are strings.
+ *
+ * @param documents - Array of documents to transform
+ * @param metadataKeysToInclude - Optional array of specific keys to include. If empty, includes all keys.
+ * @returns Documents with transformed metadata
+ */
+export function transformDocumentsForAzure(
+	documents: Array<Document<Record<string, unknown>>>,
+	metadataKeysToInclude: string[],
+): Array<Document<Record<string, unknown>>> {
+	return documents.map((doc) => {
+		const originalMetadata = doc.metadata;
+
+		const keysToProcess =
+			metadataKeysToInclude.length > 0 ? metadataKeysToInclude : Object.keys(originalMetadata);
+
+		const attributes: AzureMetadataAttribute[] = keysToProcess
+			.filter(
+				(key) =>
+					Object.prototype.hasOwnProperty.call(originalMetadata, key) &&
+					originalMetadata[key] !== null &&
+					originalMetadata[key] !== undefined,
+			)
+			.map((key) => ({
+				key,
+				value: String(originalMetadata[key]),
+			}));
+
+		return {
+			...doc,
+			metadata: {
+				...originalMetadata,
+				attributes,
+			},
+		};
+	});
+}
+
 export class VectorStoreAzureAISearch extends createVectorStoreNode({
 	meta: {
 		displayName: 'Azure AI Search Vector Store',
@@ -287,6 +412,9 @@ export class VectorStoreAzureAISearch extends createVectorStoreNode({
 	retrieveFields,
 	loadFields: retrieveFields,
 	insertFields,
+	async beforeInsert(context, _embeddings, itemIndex) {
+		await clearAzureSearchIndex(context, itemIndex);
+	},
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
 		const vectorStore = await getAzureAISearchClient(context, embeddings, itemIndex);
 
@@ -340,10 +468,25 @@ export class VectorStoreAzureAISearch extends createVectorStoreNode({
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		try {
+			const metadataKeysToInsertRaw = getOptionValue<string>(
+				'metadataKeysToInsert',
+				context,
+				itemIndex,
+			);
+			const metadataKeysToInsert = metadataKeysToInsertRaw
+				? metadataKeysToInsertRaw
+						.split(',')
+						.map((k) => k.trim())
+						.filter((k) => k.length > 0)
+				: [];
+
+			const transformedDocuments = transformDocumentsForAzure(documents, metadataKeysToInsert);
+
+			// Get vector store client (will auto-create index if it doesn't exist)
 			const vectorStore = await getAzureAISearchClient(context, embeddings, itemIndex);
 
 			// Add documents to Azure AI Search (framework handles batching)
-			await vectorStore.addDocuments(documents);
+			await vectorStore.addDocuments(transformedDocuments);
 		} catch (error) {
 			// Log the full error for debugging
 			context.logger.debug('Azure AI Search error details:', {

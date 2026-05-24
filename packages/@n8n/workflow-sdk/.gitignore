@@ -1,0 +1,22 @@
+# Individual workflow JSON files (extracted from zip at test time)
+# Run `pnpm fetch-workflows` to download, `pnpm create-workflows-zip` to package
+test-fixtures/real-workflows/*.json
+
+# Commit the zip file containing all workflows
+!test-fixtures/real-workflows/public_published_templates.zip
+
+# Generated TypeScript files from test runs
+test-fixtures/real-workflows/*.generated.ts
+
+# Compiled JS files from scripts (should use tsx to run directly)
+scripts/*.js
+scripts/*.js.map
+scripts/*.d.ts
+
+# Curation pipeline intermediates (committed: manifest.json, templates.zip, _calibration.json, _coverage-report.json)
+examples/_raw/
+examples/_failures.log
+examples/_catalog-snapshot.json
+
+# Workflow JSONs are extracted from templates.zip at runtime — only the zip is committed
+examples/workflows/

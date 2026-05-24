@@ -3,23 +3,32 @@ import type {
 	AiApplySuggestionRequestDto,
 	AiChatRequestDto,
 	AiBuilderChatRequestDto,
-	AiSessionRetrievalRequestDto,
-	AiSessionMetadataResponseDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'jest-mock-extended';
 
+import { AiController, type FlushableResponse } from '../ai.controller';
+
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
+import type { AiUsageService } from '@/services/ai-usage.service';
 import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { AiService } from '@/services/ai.service';
-
-import { AiController, type FlushableResponse } from '../ai.controller';
 
 describe('AiController', () => {
 	const aiService = mock<AiService>();
 	const workflowBuilderService = mock<WorkflowBuilderService>();
-	const controller = new AiController(aiService, workflowBuilderService, mock(), mock());
+	const aiUsageService = mock<AiUsageService>();
+	const aiGatewayService = mock<AiGatewayService>();
+	const controller = new AiController(
+		aiService,
+		workflowBuilderService,
+		mock(),
+		mock(),
+		aiUsageService,
+		aiGatewayService,
+	);
 
 	const request = mock<AuthenticatedRequest>({
 		user: { id: 'user123' },
@@ -66,6 +75,69 @@ describe('AiController', () => {
 			await expect(controller.chat(request, response, payload)).rejects.toThrow(
 				InternalServerError,
 			);
+		});
+
+		it('should register a close handler on the response for abort', async () => {
+			aiService.chat.mockResolvedValue(
+				mock<Response>({
+					body: mock({
+						pipeTo: jest.fn().mockResolvedValue(undefined),
+					}),
+				}),
+			);
+
+			await controller.chat(request, response, payload);
+
+			expect(response.on).toHaveBeenCalledWith('close', expect.any(Function));
+		});
+
+		it('should remove close handler after streaming completes', async () => {
+			aiService.chat.mockResolvedValue(
+				mock<Response>({
+					body: mock({
+						pipeTo: jest.fn().mockResolvedValue(undefined),
+					}),
+				}),
+			);
+
+			await controller.chat(request, response, payload);
+
+			expect(response.off).toHaveBeenCalledWith('close', expect.any(Function));
+		});
+
+		it('should silently return when pipeTo throws an AbortError', async () => {
+			const abortError = new DOMException('The operation was aborted', 'AbortError');
+
+			aiService.chat.mockResolvedValue(
+				mock<Response>({
+					body: mock({
+						pipeTo: jest.fn().mockRejectedValue(abortError),
+					}),
+				}),
+			);
+
+			// Should not throw
+			await controller.chat(request, response, payload);
+
+			expect(response.end).not.toHaveBeenCalled();
+		});
+
+		it('should pass abort signal to pipeTo', async () => {
+			const pipeToMock = jest.fn().mockResolvedValue(undefined);
+
+			aiService.chat.mockResolvedValue(
+				mock<Response>({
+					body: mock({
+						pipeTo: pipeToMock,
+					}),
+				}),
+			);
+
+			await controller.chat(request, response, payload);
+
+			expect(pipeToMock).toHaveBeenCalledWith(expect.any(WritableStream), {
+				signal: expect.any(AbortSignal),
+			});
 		});
 	});
 
@@ -118,6 +190,7 @@ describe('AiController', () => {
 	describe('build', () => {
 		const payload: AiBuilderChatRequestDto = {
 			payload: {
+				id: '12345',
 				text: 'Create a workflow',
 				type: 'message',
 				role: 'user',
@@ -146,6 +219,8 @@ describe('AiController', () => {
 
 			expect(workflowBuilderService.chat).toHaveBeenCalledWith(
 				{
+					id: '12345',
+					featureFlags: undefined,
 					message: 'Create a workflow',
 					workflowContext: {
 						currentWorkflow: { id: 'workflow123' },
@@ -251,7 +326,7 @@ describe('AiController', () => {
 				let abortSignalPassed: AbortSignal | undefined;
 
 				// Mock response.on to capture the close handler
-				response.on.mockImplementation((event: string, handler: () => void) => {
+				response.on.mockImplementation((event: string | symbol, handler: () => void) => {
 					if (event === 'close') {
 						abortHandler = handler;
 					}
@@ -331,7 +406,7 @@ describe('AiController', () => {
 				let abortHandler: (() => void) | undefined;
 				let abortSignalPassed: AbortSignal | undefined;
 
-				response.on.mockImplementation((event: string, handler: () => void) => {
+				response.on.mockImplementation((event: string | symbol, handler: () => void) => {
 					if (event === 'close') {
 						abortHandler = handler;
 					}
@@ -424,54 +499,120 @@ describe('AiController', () => {
 		});
 	});
 
-	describe('getSessionsMetadata', () => {
-		const payload: AiSessionRetrievalRequestDto = {
-			workflowId: 'workflow123',
-		};
-
-		it('should return sessions metadata successfully when messages exist', async () => {
-			const expectedMetadata: AiSessionMetadataResponseDto = {
-				hasMessages: true,
+	describe('clearSession', () => {
+		it('should call workflowBuilderService.clearSession with correct parameters', async () => {
+			const payload = {
+				workflowId: 'workflow123',
 			};
 
-			workflowBuilderService.getSessionsMetadata.mockResolvedValue(expectedMetadata);
+			workflowBuilderService.clearSession.mockResolvedValue(undefined);
 
-			const result = await controller.getSessionsMetadata(request, response, payload);
+			const result = await controller.clearSession(request, response, payload);
 
-			expect(workflowBuilderService.getSessionsMetadata).toHaveBeenCalledWith(
+			expect(workflowBuilderService.clearSession).toHaveBeenCalledWith(
 				payload.workflowId,
 				request.user,
 			);
-			expect(result).toEqual(expectedMetadata);
+			expect(result).toEqual({ success: true });
 		});
 
-		it('should return sessions metadata successfully when no messages exist', async () => {
-			const expectedMetadata: AiSessionMetadataResponseDto = {
-				hasMessages: false,
+		it('should throw InternalServerError when service throws an error', async () => {
+			const payload = {
+				workflowId: 'workflow123',
 			};
 
-			workflowBuilderService.getSessionsMetadata.mockResolvedValue(expectedMetadata);
+			const mockError = new Error('Database error');
+			workflowBuilderService.clearSession.mockRejectedValue(mockError);
 
-			const result = await controller.getSessionsMetadata(request, response, payload);
-
-			expect(workflowBuilderService.getSessionsMetadata).toHaveBeenCalledWith(
-				payload.workflowId,
-				request.user,
-			);
-			expect(result).toEqual(expectedMetadata);
-		});
-
-		it('should throw InternalServerError if getting sessions metadata fails', async () => {
-			const mockError = new Error('Failed to get sessions metadata');
-			workflowBuilderService.getSessionsMetadata.mockRejectedValue(mockError);
-
-			await expect(controller.getSessionsMetadata(request, response, payload)).rejects.toThrow(
+			await expect(controller.clearSession(request, response, payload)).rejects.toThrow(
 				InternalServerError,
 			);
-			expect(workflowBuilderService.getSessionsMetadata).toHaveBeenCalledWith(
+		});
+	});
+
+	describe('truncateMessages', () => {
+		it('should call workflowBuilderService.truncateMessagesAfter with correct parameters', async () => {
+			const payload = {
+				workflowId: 'workflow123',
+				messageId: 'message456',
+				codeBuilder: true,
+			};
+
+			workflowBuilderService.truncateMessagesAfter.mockResolvedValue(true);
+
+			const result = await controller.truncateMessages(request, response, payload);
+
+			expect(workflowBuilderService.truncateMessagesAfter).toHaveBeenCalledWith(
 				payload.workflowId,
 				request.user,
+				payload.messageId,
+				undefined,
 			);
+			expect(result).toEqual({ success: true });
+		});
+
+		it('should return success: true when truncation succeeds', async () => {
+			const payload = {
+				workflowId: 'workflow123',
+				messageId: 'message456',
+			};
+
+			workflowBuilderService.truncateMessagesAfter.mockResolvedValue(true);
+
+			const result = await controller.truncateMessages(request, response, payload);
+
+			expect(result).toEqual({ success: true });
+		});
+
+		it('should return success: false when truncation fails', async () => {
+			const payload = {
+				workflowId: 'workflow123',
+				messageId: 'message456',
+			};
+
+			workflowBuilderService.truncateMessagesAfter.mockResolvedValue(false);
+
+			const result = await controller.truncateMessages(request, response, payload);
+
+			expect(result).toEqual({ success: false });
+		});
+
+		it('should throw InternalServerError when service throws an error', async () => {
+			const payload = {
+				workflowId: 'workflow123',
+				messageId: 'message456',
+			};
+
+			const mockError = new Error('Database error');
+			workflowBuilderService.truncateMessagesAfter.mockRejectedValue(mockError);
+
+			await expect(controller.truncateMessages(request, response, payload)).rejects.toThrow(
+				InternalServerError,
+			);
+			expect(workflowBuilderService.truncateMessagesAfter).toHaveBeenCalledWith(
+				payload.workflowId,
+				request.user,
+				payload.messageId,
+				undefined,
+			);
+		});
+	});
+
+	describe('getGatewayWallet', () => {
+		it('should return wallet from aiGatewayService', async () => {
+			const walletData = { budget: 10, balance: 7 };
+			aiGatewayService.getWallet.mockResolvedValue(walletData);
+
+			const result = await controller.getGatewayWallet(request);
+
+			expect(aiGatewayService.getWallet).toHaveBeenCalledWith(request.user.id);
+			expect(result).toEqual(walletData);
+		});
+
+		it('should throw InternalServerError when aiGatewayService throws', async () => {
+			aiGatewayService.getWallet.mockRejectedValue(new Error('Gateway unreachable'));
+
+			await expect(controller.getGatewayWallet(request)).rejects.toThrow(InternalServerError);
 		});
 	});
 });

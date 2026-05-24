@@ -1,23 +1,29 @@
 import { renderComponent } from '@/__tests__/render';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { mockedStore } from '@/__tests__/utils';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { computed, h, nextTick, ref } from 'vue';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { computed, h, nextTick, ref, shallowRef } from 'vue';
 import {
 	aiAgentNode,
 	aiChatExecutionResponse as aiChatExecutionResponseTemplate,
 	aiChatWorkflow,
 	aiManualExecutionResponse,
 	aiManualWorkflow,
-	chatTriggerNode,
 	nodeTypes,
 } from '../__test__/data';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { IN_PROGRESS_EXECUTION_ID, WorkflowStateKey } from '@/app/constants';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { createRunExecutionData, deepCopy } from 'n8n-workflow';
@@ -29,9 +35,9 @@ import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import { userEvent } from '@testing-library/user-event';
 import type { ChatMessage } from '@n8n/chat/types';
 import * as useChatMessaging from '@/features/execution/logs/composables/useChatMessaging';
-import { chatEventBus } from '@n8n/chat/event-buses';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
+import type { IWorkflowDb } from '@/Interface';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showMessage = vi.fn();
@@ -47,7 +53,20 @@ vi.mock('@/app/composables/useToast', () => {
 	};
 });
 
-vi.mock('@/app/stores/pushConnection.store', () => ({
+const mockCopy = vi.fn();
+vi.mock('@vueuse/core', async () => {
+	const actual = await vi.importActual('@vueuse/core');
+	return {
+		...actual,
+		useClipboard: () => {
+			return {
+				copy: mockCopy,
+			};
+		},
+	};
+});
+
+vi.mock('@/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn().mockReturnValue({
 		isConnected: true,
 	}),
@@ -66,13 +85,24 @@ describe('LogsPanel', () => {
 
 	let aiChatExecutionResponse: typeof aiChatExecutionResponseTemplate;
 
+	function setWorkflow(workflow: IWorkflowDb) {
+		workflowsStore.setWorkflowId(workflow.id);
+		const store = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+		store.hydrate(workflow);
+	}
+
 	function render() {
+		const wfId = workflowsStore.workflowId;
 		const wrapper = renderComponent(LogsPanel, {
 			global: {
 				provide: {
 					[ChatSymbol as symbol]: {},
 					[ChatOptionsSymbol as symbol]: {},
 					[WorkflowStateKey as symbol]: workflowState,
+					[WorkflowIdKey as unknown as string]: computed(() => wfId),
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(
+						useWorkflowDocumentStore(createWorkflowDocumentId(wfId)),
+					),
 				},
 				plugins: [
 					createRouter({
@@ -126,8 +156,9 @@ describe('LogsPanel', () => {
 		aiChatExecutionResponse = deepCopy(aiChatExecutionResponseTemplate);
 	});
 
-	afterEach(() => {
-		vi.clearAllMocks();
+	afterEach(async () => {
+		await flushPromises();
+		await vi.runOnlyPendingTimersAsync();
 	});
 
 	it('should render collapsed panel by default', async () => {
@@ -138,7 +169,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should only render logs panel if the workflow has no chat trigger', async () => {
-		workflowsStore.setWorkflow(aiManualWorkflow);
+		setWorkflow(aiManualWorkflow);
 
 		const rendered = render();
 
@@ -147,7 +178,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should render chat panel and logs panel if the workflow has chat trigger', async () => {
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		setWorkflow(aiChatWorkflow);
 
 		const rendered = render();
 
@@ -157,7 +188,7 @@ describe('LogsPanel', () => {
 
 	it('should render only output panel of selected node by default', async () => {
 		logsStore.toggleOpen(true);
-		workflowsStore.setWorkflow(aiManualWorkflow);
+		setWorkflow(aiManualWorkflow);
 		workflowState.setWorkflowExecutionData(aiManualExecutionResponse);
 
 		const rendered = render();
@@ -171,7 +202,7 @@ describe('LogsPanel', () => {
 
 	it('should render both input and output panel of selected node by default if it is sub node', async () => {
 		logsStore.toggleOpen(true);
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		setWorkflow(aiChatWorkflow);
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -184,7 +215,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('toggles panel when header is clicked', async () => {
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		setWorkflow(aiChatWorkflow);
 
 		const rendered = render();
 
@@ -200,7 +231,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should toggle panel when chevron icon button in the overview panel is clicked', async () => {
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		setWorkflow(aiChatWorkflow);
 
 		const rendered = render();
 
@@ -214,7 +245,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should open log details panel when a log entry is clicked in the logs overview panel', async () => {
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		setWorkflow(aiChatWorkflow);
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -231,7 +262,7 @@ describe('LogsPanel', () => {
 	});
 
 	it("should show the button to toggle panel in the header of log details panel when it's opened", async () => {
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		setWorkflow(aiChatWorkflow);
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -243,14 +274,12 @@ describe('LogsPanel', () => {
 		await fireEvent.click(
 			within(rendered.getByTestId('log-details')).getByLabelText('Collapse panel'),
 		);
-		expect(rendered.queryByTestId('chat-messages-empty')).not.toBeInTheDocument();
 		expect(rendered.queryByTestId('logs-overview-body')).not.toBeInTheDocument();
 
 		// Click again to open the panel
 		await fireEvent.click(
 			within(rendered.getByTestId('logs-overview')).getByLabelText('Open panel'),
 		);
-		expect(await rendered.findByTestId('chat-messages-empty')).toBeInTheDocument();
 		expect(await rendered.findByTestId('logs-overview-body')).toBeInTheDocument();
 	});
 
@@ -298,7 +327,7 @@ describe('LogsPanel', () => {
 
 	it('should reflect changes to execution data in workflow store if execution is in progress', async () => {
 		logsStore.toggleOpen(true);
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		setWorkflow(aiChatWorkflow);
 		workflowState.setWorkflowExecutionData({
 			...aiChatExecutionResponse,
 			id: IN_PROGRESS_EXECUTION_ID,
@@ -337,7 +366,9 @@ describe('LogsPanel', () => {
 		expect(lastTreeItem.getByText('AI Agent')).toBeInTheDocument();
 		expect(lastTreeItem.getByText(/Running/)).toBeInTheDocument();
 
-		workflowsStore.updateNodeExecutionStatus({
+		useExecutionDataStore(
+			createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
+		).updateNodeExecutionStatus({
 			nodeName: 'AI Agent',
 			executionId: '567',
 			itemCountByConnectionType: { ai_agent: [1] },
@@ -374,7 +405,8 @@ describe('LogsPanel', () => {
 	it('should still show logs for a removed node', async () => {
 		const operations = useCanvasOperations();
 
-		workflowsStore.setWorkflow(deepCopy(aiChatWorkflow));
+		const workflow = deepCopy(aiChatWorkflow);
+		setWorkflow(workflow);
 		logsStore.toggleOpen(true);
 		workflowState.setWorkflowExecutionData({
 			...aiChatExecutionResponse,
@@ -393,13 +425,14 @@ describe('LogsPanel', () => {
 
 		await nextTick();
 
-		expect(workflowsStore.nodesByName['AI Agent']).toBeUndefined();
+		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+		expect(docStore.allNodes.find((n) => n.name === 'AI Agent')).toBeUndefined();
 		expect(rendered.queryByText('AI Agent')).toBeInTheDocument();
 	});
 
 	it('should open NDV if the button is clicked', async () => {
 		logsStore.toggleOpen(true);
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		setWorkflow(aiChatWorkflow);
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -418,7 +451,7 @@ describe('LogsPanel', () => {
 
 	it('should toggle subtree when chevron icon button is pressed', async () => {
 		logsStore.toggleOpen(true);
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		setWorkflow(aiChatWorkflow);
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -445,7 +478,7 @@ describe('LogsPanel', () => {
 
 	it('should toggle input and output panel when the button is clicked', async () => {
 		logsStore.toggleOpen(true);
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		setWorkflow(aiChatWorkflow);
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -473,7 +506,9 @@ describe('LogsPanel', () => {
 		logsStore.toggleOpen(true);
 
 		// Create deep copy so that renaming doesn't affect other test cases
-		workflowsStore.setWorkflow(deepCopy(aiChatWorkflow));
+		const workflow = deepCopy(aiChatWorkflow);
+		workflow.id = 'test-workflow-id';
+		setWorkflow(workflow);
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -488,17 +523,17 @@ describe('LogsPanel', () => {
 		await canvasOperations.renameNode('AI Model', 'Renamed!!');
 
 		await waitFor(() => {
+			expect(rendered.getByTestId('log-details-header')).toHaveTextContent('Renamed!!');
 			expect(
-				within(rendered.getByTestId('log-details-header')).getByText('Renamed!!'),
-			).toBeInTheDocument();
-			expect(within(rendered.getByRole('tree')).getByText('Renamed!!')).toBeInTheDocument();
+				within(rendered.getByRole('tree')).getAllByText('Renamed!!').length,
+			).toBeGreaterThanOrEqual(1);
 		});
 	});
 
 	describe('selection', () => {
 		beforeEach(() => {
 			logsStore.toggleOpen(true);
-			workflowsStore.setWorkflow(aiChatWorkflow);
+			setWorkflow(aiChatWorkflow);
 			workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 		});
 
@@ -555,7 +590,9 @@ describe('LogsPanel', () => {
 		it("should automatically select a log for the selected node on canvas even after it's renamed", async () => {
 			const canvasOperations = useCanvasOperations();
 
-			workflowsStore.setWorkflow(deepCopy(aiChatWorkflow));
+			const workflow = deepCopy(aiChatWorkflow);
+			workflow.id = 'test-workflow-id';
+			setWorkflow(workflow);
 			workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 			logsStore.toggleLogSelectionSync(true);
@@ -577,7 +614,7 @@ describe('LogsPanel', () => {
 	describe('chat', () => {
 		beforeEach(() => {
 			logsStore.toggleOpen(true);
-			workflowsStore.setWorkflow(aiChatWorkflow);
+			setWorkflow(aiChatWorkflow);
 		});
 
 		describe('rendering', () => {
@@ -589,96 +626,12 @@ describe('LogsPanel', () => {
 			it('should not render chat when panel is closed', async () => {
 				const { queryByTestId } = render();
 				logsStore.toggleOpen(false);
-				await waitFor(() => expect(queryByTestId('canvas-chat-body')).not.toBeInTheDocument());
+				await waitFor(() => expect(queryByTestId('canvas-chat-body')).not.toBeVisible());
 			});
 
 			it('should show correct input placeholder', async () => {
 				const { findByTestId } = render();
 				expect(await findByTestId('chat-input')).toBeInTheDocument();
-			});
-		});
-
-		describe('message handling', () => {
-			beforeEach(() => {
-				vi.spyOn(chatEventBus, 'emit');
-				workflowsStore.runWorkflow.mockResolvedValue({ executionId: 'test-execution-id' });
-			});
-
-			it('should send message and show response', async () => {
-				const { findByTestId, findByText, getByText } = render();
-
-				// Send message
-				const input = await findByTestId('chat-input');
-				await userEvent.type(input, 'Hello AI!');
-
-				await userEvent.keyboard('{Enter}');
-
-				// Verify message and response
-				expect(await findByText('Hello AI!')).toBeInTheDocument();
-				workflowState.setWorkflowExecutionData({
-					...aiChatExecutionResponse,
-					status: 'success',
-				});
-				await waitFor(() => expect(getByText('AI response message')).toBeInTheDocument());
-
-				// Verify workflow execution
-				expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
-					expect.objectContaining({
-						runData: undefined,
-						triggerToStartFrom: {
-							name: 'Chat',
-							data: {
-								data: {
-									main: [
-										[
-											{
-												json: {
-													action: 'sendMessage',
-													chatInput: 'Hello AI!',
-													sessionId: expect.any(String),
-												},
-											},
-										],
-									],
-								},
-								executionIndex: 0,
-								executionStatus: 'success',
-								executionTime: 0,
-								source: [null],
-								startTime: expect.any(Number),
-							},
-						},
-					}),
-				);
-			});
-
-			it('should show loading state during message processing', async () => {
-				const { findByTestId, queryByTestId } = render();
-
-				// Send message
-				const input = await findByTestId('chat-input');
-				await userEvent.type(input, 'Test message');
-				await userEvent.keyboard('{Enter}');
-
-				await waitFor(() => expect(queryByTestId('chat-message-typing')).toBeInTheDocument());
-
-				workflowState.setActiveExecutionId(undefined);
-				workflowState.setWorkflowExecutionData({ ...aiChatExecutionResponse, status: 'success' });
-
-				await waitFor(() => expect(queryByTestId('chat-message-typing')).not.toBeInTheDocument());
-			});
-
-			it('should handle workflow execution errors', async () => {
-				workflowsStore.runWorkflow.mockRejectedValueOnce(new Error());
-
-				const { findByTestId } = render();
-
-				const input = await findByTestId('chat-input');
-				await userEvent.type(input, 'Hello AI!');
-				await userEvent.keyboard('{Enter}');
-
-				const toast = useToast();
-				expect(toast.showError).toHaveBeenCalledWith(new Error(), 'Problem running workflow');
 			});
 		});
 
@@ -707,13 +660,19 @@ describe('LogsPanel', () => {
 			});
 
 			it('should allow copying session ID', async () => {
-				const clipboardSpy = vi.fn();
-				document.execCommand = clipboardSpy;
 				const { getByTestId } = render();
 
-				await userEvent.click(getByTestId('chat-session-id'));
+				const sessionIdElement = getByTestId('chat-session-id');
+
+				await userEvent.click(sessionIdElement);
+
+				// Verify clipboard was called with the full session ID
+				expect(mockCopy).toHaveBeenCalledTimes(1);
+				const copiedSessionId = mockCopy.mock.calls[0][0];
+				expect(typeof copiedSessionId).toBe('string');
+
+				// Verify toast was shown
 				const toast = useToast();
-				expect(clipboardSpy).toHaveBeenCalledWith('copy');
 				expect(toast.showMessage).toHaveBeenCalledWith({
 					message: '',
 					title: 'Copied to clipboard',
@@ -728,206 +687,6 @@ describe('LogsPanel', () => {
 				await userEvent.click(getByTestId('refresh-session-button'));
 
 				expect(getByTestId('chat-session-id').textContent).not.toEqual(originalSessionId);
-			});
-		});
-
-		describe('file handling', () => {
-			beforeEach(() => {
-				vi.spyOn(useChatMessaging, 'useChatMessaging').mockReturnValue({
-					sendMessage: vi.fn(),
-					previousMessageIndex: ref(0),
-					isLoading: computed(() => false),
-					setLoadingState: vi.fn(),
-				});
-
-				logsStore.state = LOGS_PANEL_STATE.ATTACHED;
-				workflowsStore.allowFileUploads = true;
-			});
-
-			it('should enable file uploads when allowed by chat trigger node', async () => {
-				workflowsStore.setNodes(aiChatWorkflow.nodes);
-				workflowState.setNodeParameters({
-					name: chatTriggerNode.name,
-					value: { options: { allowFileUploads: true } },
-				});
-
-				const { getByTestId, queryByTestId } = render();
-
-				expect(getByTestId('canvas-chat')).toBeInTheDocument();
-				expect(queryByTestId('chat-attach-file-button')).toBeInTheDocument();
-
-				// workflowsStore.setNodeParameters({
-				// 	name: chatTriggerNode.name,
-				// 	value: { options: { allowFileUploads: false } },
-				// });
-				// await waitFor(() =>
-				// 	expect(queryByTestId('chat-attach-file-button')).not.toBeInTheDocument(),
-				// );
-			});
-		});
-
-		describe('message history handling', () => {
-			it('should properly navigate through message history without wrap-around', async () => {
-				workflowsStore.resetChatMessages();
-				workflowsStore.appendChatMessage('Message 1');
-				workflowsStore.appendChatMessage('Message 2');
-				workflowsStore.appendChatMessage('Message 3');
-
-				const { findByTestId } = render();
-				const input = await findByTestId('chat-input');
-
-				chatEventBus.emit('focusInput');
-
-				// First up should show most recent message
-				await userEvent.keyboard('{ArrowUp}');
-				expect(input).toHaveValue('Message 3');
-
-				// Second up should show second most recent
-				await userEvent.keyboard('{ArrowUp}');
-				expect(input).toHaveValue('Message 2');
-
-				// Third up should show oldest message
-				await userEvent.keyboard('{ArrowUp}');
-				expect(input).toHaveValue('Message 1');
-
-				// Fourth up should stay at oldest message (no wrap-around)
-				await userEvent.keyboard('{ArrowUp}');
-				expect(input).toHaveValue('Message 1');
-
-				// Down arrow should move forward through history
-				await userEvent.keyboard('{ArrowDown}');
-				expect(input).toHaveValue('Message 2');
-
-				// Continue forward
-				await userEvent.keyboard('{ArrowDown}');
-				expect(input).toHaveValue('Message 3');
-
-				// Down at the end should clear input
-				await userEvent.keyboard('{ArrowDown}');
-				expect(input).toHaveValue('');
-			});
-
-			it('should reset message history navigation when message is sent', async () => {
-				workflowsStore.resetChatMessages();
-				workflowsStore.appendChatMessage('Message 1');
-				workflowsStore.appendChatMessage('Message 2');
-
-				const { findByTestId } = render();
-				const input = await findByTestId('chat-input');
-
-				chatEventBus.emit('focusInput');
-
-				// Navigate to oldest message
-				await userEvent.keyboard('{ArrowUp}'); // Most recent (Message 2)
-				await userEvent.keyboard('{ArrowUp}'); // Oldest (Message 1)
-				expect(input).toHaveValue('Message 1');
-
-				// Clear and type new message
-				await userEvent.clear(input);
-				await userEvent.type(input, 'New message');
-				await userEvent.keyboard('{Enter}');
-
-				// After sending, pressing up should show most recent message
-				await userEvent.keyboard('{ArrowUp}');
-				expect(input).toHaveValue('Message 2');
-			});
-
-			it('should exit history mode and restore input on escape key', async () => {
-				workflowsStore.resetChatMessages();
-				workflowsStore.appendChatMessage('Message 1');
-				workflowsStore.appendChatMessage('Message 2');
-
-				const { findByTestId } = render();
-				const input = await findByTestId('chat-input');
-
-				chatEventBus.emit('focusInput');
-
-				// Type some text first
-				await userEvent.type(input, 'Current input');
-
-				// Navigate to a history message
-				await userEvent.keyboard('{ArrowUp}');
-				expect(input).toHaveValue('Message 2');
-
-				// Press escape to restore original input
-				await userEvent.keyboard('{Escape}');
-				expect(input).toHaveValue('Current input');
-			});
-		});
-
-		describe('message reuse and repost', () => {
-			const sendMessageSpy = vi.fn();
-
-			beforeEach(() => {
-				const mockMessages: ChatMessage[] = [
-					{
-						id: '1',
-						text: 'Original message',
-						sender: 'user',
-					},
-					{
-						id: '2',
-						text: 'AI response',
-						sender: 'bot',
-					},
-				];
-				vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(
-					({ onNewMessage: addChatMessage }) => {
-						addChatMessage(mockMessages[0]);
-						addChatMessage(mockMessages[1]);
-
-						return {
-							sendMessage: sendMessageSpy,
-							previousMessageIndex: ref(0),
-							isLoading: computed(() => false),
-							setLoadingState: vi.fn(),
-						};
-					},
-				);
-			});
-
-			it('should repost user message with new execution', async () => {
-				const { findByTestId } = render();
-				const repostButton = await findByTestId('repost-message-button');
-
-				await userEvent.click(repostButton);
-
-				expect(sendMessageSpy).toHaveBeenCalledWith('Original message');
-			});
-
-			it('should show message options only for appropriate messages', async () => {
-				const { findByText, container } = render();
-
-				await findByText('Original message');
-				const userMessage = container.querySelector('.chat-message-from-user');
-				expect(
-					userMessage?.querySelector('[data-test-id="repost-message-button"]'),
-				).toBeInTheDocument();
-				expect(
-					userMessage?.querySelector('[data-test-id="reuse-message-button"]'),
-				).toBeInTheDocument();
-
-				await findByText('AI response');
-				const botMessage = container.querySelector('.chat-message-from-bot');
-				expect(
-					botMessage?.querySelector('[data-test-id="repost-message-button"]'),
-				).not.toBeInTheDocument();
-				expect(
-					botMessage?.querySelector('[data-test-id="reuse-message-button"]'),
-				).not.toBeInTheDocument();
-			});
-		});
-
-		describe('keyboard shortcuts', () => {
-			it('should handle Enter key with modifier to start new line', async () => {
-				const { findByTestId } = render();
-
-				const input = await findByTestId('chat-input');
-				await userEvent.type(input, 'Line 1');
-				await userEvent.keyboard('{Shift>}{Enter}{/Shift}');
-				await userEvent.type(input, 'Line 2');
-
-				expect(input).toHaveValue('Line 1\nLine 2');
 			});
 		});
 	});

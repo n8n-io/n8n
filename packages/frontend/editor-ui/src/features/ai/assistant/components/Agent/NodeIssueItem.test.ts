@@ -17,7 +17,7 @@ vi.mock('@/app/components/NodeIcon.vue', () => ({
 
 const renderComponent = createComponentRenderer(NodeIssueItem);
 
-function formatIssueMessage(value: string | string[]) {
+function formatNodeIssueMessage(value: string | string[]) {
 	return Array.isArray(value) ? value.join(', ') : value;
 }
 
@@ -38,7 +38,7 @@ describe('NodeIssueItem', () => {
 			props: {
 				issue: { node: 'Linear', type: 'parameters', value: 'Missing API key' },
 				getNodeType: vi.fn(),
-				formatIssueMessage,
+				formatNodeIssueMessage,
 			},
 		});
 
@@ -56,11 +56,30 @@ describe('NodeIssueItem', () => {
 			props: {
 				issue: { node: 'Linear', type: 'parameters', value: 'Missing API key' },
 				getNodeType: vi.fn(() => nodeType),
-				formatIssueMessage,
+				formatNodeIssueMessage,
 			},
 		});
 
 		await fireEvent.click(getByLabelText('Edit Linear node'));
 		expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith('Linear', 'other');
+	});
+
+	it('emits click event when item is clicked', async () => {
+		const nodeType = {
+			name: 'n8n-nodes-base.linear',
+			displayName: 'Linear',
+		} as INodeTypeDescription;
+		const { getByLabelText, emitted } = renderComponent({
+			pinia,
+			props: {
+				issue: { node: 'Linear', type: 'parameters', value: 'Missing API key' },
+				getNodeType: vi.fn(() => nodeType),
+				formatNodeIssueMessage,
+			},
+		});
+
+		await fireEvent.click(getByLabelText('Edit Linear node'));
+
+		expect(emitted().click).toHaveLength(1);
 	});
 });

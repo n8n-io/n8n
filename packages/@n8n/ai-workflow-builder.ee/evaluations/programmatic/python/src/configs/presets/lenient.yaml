@@ -19,7 +19,7 @@ costs:
     substitution: 2.0
 
   parameters:
-    mismatch_weight: 0.2  # Low weight for parameter differences
+    mismatch_weight: 0.3
     nested_weight: 0.1
 
 # Node type similarity groups (same as standard)
@@ -77,7 +77,7 @@ parameter_comparison:
 
 # Output configuration
 output:
-  max_edits: 10  # Show fewer edits since many are ignored
+  max_edits: 20
   group_by: "priority"
   include_explanations: true
   include_suggestions: true

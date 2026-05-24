@@ -33,6 +33,11 @@ import type { Ref } from 'vue';
 import { omitKey } from '@/app/utils/objectUtils';
 import type { BaseTextKey } from '@n8n/i18n';
 
+export interface ParameterOptionsOverrides {
+	hideExpressionSelector?: boolean;
+	hideFocusPanelButton?: boolean;
+}
+
 export function getNodeSettingsInitialValues(): INodeParameters {
 	return {
 		color: '#ff0000',
@@ -44,6 +49,7 @@ export function getNodeSettingsInitialValues(): INodeParameters {
 		maxTries: 3,
 		waitBetweenTries: 1000,
 		notes: '',
+		customTelemetryTags: {},
 		parameters: {},
 	};
 }
@@ -86,12 +92,14 @@ export function setValue(
 		// Data is on lower level
 		if (value === null) {
 			// Property should be deleted
-			let tempValue = get(nodeValues.value, nameParts.join('.')) as
-				| INodeParameters
-				| INodeParameters[];
+			const path = nameParts.join('.');
+			let tempValue = get(nodeValues.value, path) as INodeParameters | INodeParameters[];
 
-			if (lastNamePart && !Array.isArray(tempValue)) {
-				tempValue = omitKey(tempValue, lastNamePart);
+			if (isArray && Array.isArray(tempValue) && lastNamePart !== undefined) {
+				tempValue.splice(parseInt(lastNamePart, 10), 1);
+				set(nodeValues.value, path, tempValue);
+			} else if (lastNamePart && tempValue && !Array.isArray(tempValue)) {
+				set(nodeValues.value, path, omitKey(tempValue, lastNamePart));
 			}
 
 			if (isArray && Array.isArray(tempValue) && tempValue.length === 0) {
@@ -100,7 +108,11 @@ export function setValue(
 				lastNamePart = nameParts.pop();
 				tempValue = get(nodeValues.value, nameParts.join('.')) as INodeParameters;
 				if (lastNamePart) {
-					tempValue = omitKey(tempValue, lastNamePart);
+					if (nameParts.length === 0) {
+						nodeValues.value = omitKey(nodeValues.value, lastNamePart);
+					} else {
+						set(nodeValues.value, nameParts.join('.'), omitKey(tempValue, lastNamePart));
+					}
 				}
 			}
 		} else {
@@ -444,13 +456,13 @@ export function shouldSkipParamValidation(
 }
 
 export function createCommonNodeSettings(
-	isExecutable: boolean,
-	isTriggerNode: boolean,
+	isToolOrModelNode: boolean,
 	t: (key: BaseTextKey) => string,
+	isOtelEnabled = false,
 ) {
 	const ret: INodeProperties[] = [];
 
-	if (isExecutable && !isTriggerNode) {
+	if (!isToolOrModelNode) {
 		ret.push(
 			{
 				displayName: t('nodeSettings.alwaysOutputData.displayName'),
@@ -568,6 +580,42 @@ export function createCommonNodeSettings(
 		},
 	);
 
+	if (isOtelEnabled) {
+		ret.push({
+			displayName: t('nodeSettings.customTelemetryTags.displayName'),
+			name: 'customTelemetryTags',
+			type: 'fixedCollection',
+			typeOptions: { multipleValues: true, sortable: true },
+			placeholder: t('nodeSettings.customTelemetryTags.placeholder'),
+			default: {},
+			description: t('nodeSettings.customTelemetryTags.description'),
+			isNodeSetting: true,
+			options: [
+				{
+					name: 'tag',
+					displayName: t('nodeSettings.customTelemetryTags.tag.displayName'),
+					values: [
+						{
+							displayName: t('nodeSettings.customTelemetryTags.tag.key.displayName'),
+							name: 'key',
+							type: 'string',
+							default: '',
+							noDataExpression: true,
+							isNodeSetting: true,
+						},
+						{
+							displayName: t('nodeSettings.customTelemetryTags.tag.value.displayName'),
+							name: 'value',
+							type: 'string',
+							default: '',
+							isNodeSetting: true,
+						},
+					],
+				},
+			],
+		});
+	}
+
 	return ret;
 }
 
@@ -653,6 +701,14 @@ export function collectSettings(node: INodeUi, nodeSettings: INodeProperties[]):
 		ret = {
 			...ret,
 			waitBetweenTries: node.waitBetweenTries,
+		};
+	}
+
+	if (node.customTelemetryTags) {
+		foundNodeSettings.push('customTelemetryTags');
+		ret = {
+			...ret,
+			customTelemetryTags: deepCopy(node.customTelemetryTags),
 		};
 	}
 

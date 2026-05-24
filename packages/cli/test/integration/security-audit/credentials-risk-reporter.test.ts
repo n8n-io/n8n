@@ -30,7 +30,13 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['WorkflowEntity', 'CredentialsEntity', 'ExecutionEntity']);
+	await testDb.truncate([
+		'WorkflowEntity',
+		'CredentialsEntity',
+		'ExecutionEntity',
+		'WorkflowHistory',
+		'WorkflowPublishHistory',
+	]);
 });
 
 afterAll(async () => {

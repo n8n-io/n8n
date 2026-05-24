@@ -61,13 +61,11 @@ export class WebhookService {
 		const dbStaticWebhook = await this.findStaticWebhook(method, path);
 
 		if (dbStaticWebhook) {
-			try {
-				await this.cacheService.set(cacheKey, dbStaticWebhook);
-			} catch (error) {
+			void this.cacheService.set(cacheKey, dbStaticWebhook).catch((error) => {
 				this.logger.warn('Failed to cache webhook', {
 					error: ensureError(error).message,
 				});
-			}
+			});
 			return dbStaticWebhook;
 		}
 
@@ -177,6 +175,12 @@ export class WebhookService {
 		if (path === '' || path === ':' || path === '/:') return false;
 
 		return path.startsWith(':') || path.includes('/:');
+	}
+
+	getWebhookPath(webhook: IWebhookData): string {
+		return [webhook.path.includes(':') ? webhook.webhookId : undefined, webhook.path]
+			.filter((part) => !!part)
+			.join('/');
 	}
 
 	/**
@@ -296,6 +300,80 @@ export class WebhookService {
 		return returnData;
 	}
 
+	private async _findWebhookConflicts(
+		workflow: Workflow,
+		checkEntries: Array<{
+			node: INode;
+			webhooks: IWebhookData[];
+		}>,
+	) {
+		const conflicts: Array<{
+			trigger: INode;
+			conflict: Partial<WebhookEntity>;
+		}> = [];
+
+		// store processed webhooks in a map -> O(1) remaining webhooks local conflict checks
+		const processedWebhooks: Map<string, IWebhookData> = new Map();
+		const webhookToKey = (webhook: IWebhookData) =>
+			`${webhook.httpMethod} ${this.getWebhookPath(webhook)}`;
+
+		for (const { node, webhooks } of checkEntries) {
+			for (const webhook of webhooks) {
+				const webhookKey = webhookToKey(webhook);
+				const conflict = processedWebhooks.get(webhookKey)!;
+				if (conflict) {
+					// another node with the same webhook was already processed
+					conflicts.push({
+						trigger: node,
+						conflict: {
+							workflowId: workflow.id,
+							webhookPath: conflict.path,
+							method: conflict.httpMethod,
+							node: conflict.node,
+							webhookId: conflict.webhookId,
+						},
+					});
+					continue;
+				}
+
+				const potentialConflict = await this.findWebhook(
+					webhook.httpMethod,
+					this.getWebhookPath(webhook),
+				);
+
+				if (potentialConflict && potentialConflict.workflowId !== workflow.id) {
+					conflicts.push({
+						trigger: node,
+						conflict: potentialConflict,
+					});
+					continue;
+				}
+
+				processedWebhooks.set(webhookKey, webhook);
+			}
+		}
+
+		return conflicts;
+	}
+
+	/**
+	 * Analyzes all webhooks within the provided workflow. Returns all nodes that have a webhook conflict either
+	 * within the same workflow or with other published workflows.
+	 * @param workflow Workflow
+	 * @param additionalData Workflow execution data
+	 * @returns list of all nodes with existing webhook conflicts
+	 */
+	async findWebhookConflicts(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData) {
+		const checkEntries = Object.values(workflow.nodes)
+			.map((node) => ({
+				node,
+				webhooks: this.getNodeWebhooks(workflow, node, additionalData, true),
+			}))
+			.filter(({ webhooks }) => webhooks.length !== 0);
+
+		return await this._findWebhookConflicts(workflow, checkEntries);
+	}
+
 	async createWebhookIfNotExists(
 		workflow: Workflow,
 		webhookData: IWebhookData,
@@ -349,7 +427,7 @@ export class WebhookService {
 			webhookData,
 		);
 
-		return (await webhookFn.call(context)) as boolean;
+		return await webhookFn.call(context);
 	}
 
 	/**
@@ -371,18 +449,32 @@ export class WebhookService {
 			});
 		}
 
+		const closeFunctions: Array<() => Promise<void>> = [];
 		const context = new WebhookContext(
 			workflow,
 			node,
 			additionalData,
 			mode,
 			webhookData,
-			[],
+			closeFunctions,
 			runExecutionData ?? null,
 		);
 
-		return nodeType instanceof Node
-			? await nodeType.webhook(context)
-			: ((await nodeType.webhook.call(context)) as IWebhookResponseData);
+		try {
+			return nodeType instanceof Node
+				? await nodeType.webhook(context)
+				: await nodeType.webhook.call(context);
+		} finally {
+			const settledResults = await Promise.allSettled(closeFunctions.map(async (fn) => await fn()));
+			for (const result of settledResults) {
+				if (result.status === 'rejected') {
+					this.logger.error('Failed to run webhook close function', {
+						error: ensureError(result.reason),
+						nodeName: node.name,
+						nodeType: node.type,
+					});
+				}
+			}
+		}
 	}
 }

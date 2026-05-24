@@ -1,13 +1,26 @@
-import { waitFor } from '@testing-library/vue';
+import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import CanvasNodeToolbar from './CanvasNodeToolbar.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import {
 	createCanvasNodeProvide,
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
 import { CanvasNodeRenderType } from '../../../canvas.types';
 import { createPinia, setActivePinia, type Pinia } from 'pinia';
+
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
+	injectCanvasRenderData: vi.fn(() => ({
+		value: {
+			nodeInputsByNodeId: new Map(),
+			nodeOutputsByNodeId: new Map(),
+			pinnedDataByNodeName: {},
+			executionIssuesByNodeName: new Map(),
+		},
+	})),
+}));
 
 const renderComponent = createComponentRenderer(CanvasNodeToolbar);
 
@@ -50,7 +63,7 @@ describe('CanvasNodeToolbar', () => {
 	});
 
 	it('should render disabled execute node button when node is deactivated', async () => {
-		const { getByTestId, getByRole } = renderComponent({
+		const { getByTestId } = renderComponent({
 			pinia,
 			global: {
 				provide: {
@@ -67,10 +80,9 @@ describe('CanvasNodeToolbar', () => {
 		const button = getByTestId('execute-node-button');
 		expect(button).toBeDisabled();
 
-		await userEvent.hover(button);
-
-		expect(getByRole('tooltip')).toBeVisible();
-		expect(getByRole('tooltip')).toHaveTextContent("This node is deactivated and can't be run");
+		// Verify tooltip shows deactivated message on hover
+		await hoverTooltipTrigger(button);
+		await waitFor(() => expect(getTooltip()).toHaveTextContent('deactivated'));
 	});
 
 	it('should not render execute node button when renderType is configuration', async () => {
@@ -157,7 +169,7 @@ describe('CanvasNodeToolbar', () => {
 	});
 
 	it('should emit "update" when sticky note color is changed', async () => {
-		const { getAllByTestId, getByTestId, emitted } = renderComponent({
+		const { getByTestId, emitted } = renderComponent({
 			pinia,
 			global: {
 				provide: {
@@ -175,9 +187,76 @@ describe('CanvasNodeToolbar', () => {
 		});
 
 		await userEvent.click(getByTestId('change-sticky-color'));
-		await userEvent.click(getAllByTestId('color')[0]);
+
+		// Use screen queries for teleported popover content
+		await waitFor(() => {
+			expect(screen.getAllByTestId('color')).toHaveLength(7);
+		});
+
+		await userEvent.click(screen.getAllByTestId('color')[0]);
 
 		expect(emitted('update')[0]).toEqual([{ color: 1 }]);
+	});
+
+	it('should show execute button when readOnly is true and canExecute is true', () => {
+		const { getByTestId } = renderComponent({
+			pinia,
+			props: {
+				readOnly: true,
+				canExecute: true,
+				showStatusIcons: false,
+				itemsClass: '',
+			},
+			global: {
+				provide: {
+					...createCanvasNodeProvide(),
+					...createCanvasProvide(),
+				},
+			},
+		});
+
+		expect(getByTestId('execute-node-button')).toBeInTheDocument();
+	});
+
+	it('should hide execute button when readOnly is true and canExecute is false', () => {
+		const { queryByTestId } = renderComponent({
+			pinia,
+			props: {
+				readOnly: true,
+				canExecute: false,
+				showStatusIcons: false,
+				itemsClass: '',
+			},
+			global: {
+				provide: {
+					...createCanvasNodeProvide(),
+					...createCanvasProvide(),
+				},
+			},
+		});
+
+		expect(queryByTestId('execute-node-button')).not.toBeInTheDocument();
+	});
+
+	it('should hide delete and disable buttons when readOnly is true regardless of canExecute', () => {
+		const { queryByTestId } = renderComponent({
+			pinia,
+			props: {
+				readOnly: true,
+				canExecute: true,
+				showStatusIcons: false,
+				itemsClass: '',
+			},
+			global: {
+				provide: {
+					...createCanvasNodeProvide(),
+					...createCanvasProvide(),
+				},
+			},
+		});
+
+		expect(queryByTestId('delete-node-button')).not.toBeInTheDocument();
+		expect(queryByTestId('disable-node-button')).not.toBeInTheDocument();
 	});
 
 	it('should have "forceVisible" class when hovered', async () => {

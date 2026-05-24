@@ -3,7 +3,10 @@
     "properties": {
         "id": {
             "type": "integer"
+        },
+        "name": {
+            "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }

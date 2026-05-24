@@ -16,6 +16,14 @@ const flagsSchema = z.object({
 		.string()
 		.describe('Optional path to a file containing a custom encryption key')
 		.optional(),
+	skipMigrationChecks: z.coerce
+		.boolean()
+		.describe('Skip migration validation checks')
+		.default(false),
+	skipTogglingForeignKeyConstraints: z.coerce
+		.boolean()
+		.describe('Skip disabling foreign key constraints')
+		.default(false),
 });
 
 @Command({
@@ -29,6 +37,8 @@ const flagsSchema = z.object({
 		'--inputDir=./exports --truncateTables',
 		'--keyFile=/path/to/key.txt',
 		'--inputDir=./exports --keyFile=/path/to/key.txt',
+		'--skipMigrationChecks',
+		'--inputDir=./exports --skipMigrationChecks',
 	],
 	flagsSchema,
 })
@@ -37,13 +47,27 @@ export class ImportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 		const inputDir = this.flags.inputDir;
 		const truncateTables = this.flags.truncateTables;
 		const keyFilePath = this.flags.keyFile ? safeJoinPath(this.flags.keyFile) : undefined;
+		const skipMigrationChecks = this.flags.skipMigrationChecks ?? false;
+		const skipTogglingForeignKeyConstraints = this.flags.skipTogglingForeignKeyConstraints ?? false;
 
 		this.logger.info('\n⚠️⚠️ This feature is currently under development. ⚠️⚠️');
 		this.logger.info('\n🚀 Starting entity import...');
 		this.logger.info(`📁 Input directory: ${inputDir}`);
 		this.logger.info(`🗑️  Truncate tables: ${truncateTables}`);
+		if (skipMigrationChecks) {
+			this.logger.info('⏭️  Skipping migration checks');
+		}
+		if (skipTogglingForeignKeyConstraints) {
+			this.logger.info('⏭️  Skipping disabling foreign key constraints');
+		}
 
-		await Container.get(ImportService).importEntities(inputDir, truncateTables, keyFilePath);
+		await Container.get(ImportService).importEntities(
+			inputDir,
+			truncateTables,
+			keyFilePath,
+			skipMigrationChecks,
+			skipTogglingForeignKeyConstraints,
+		);
 	}
 
 	catch(error: Error) {

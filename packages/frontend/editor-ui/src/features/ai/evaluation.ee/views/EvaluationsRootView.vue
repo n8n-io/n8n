@@ -1,35 +1,32 @@
 <script setup lang="ts">
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useAsyncState } from '@vueuse/core';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, EVALUATIONS_DOCS_URL } from '@/app/constants';
-import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { EVALUATIONS_DOCS_URL } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useEvaluationStore } from '../evaluation.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 import { computed, watch } from 'vue';
 import EvaluationsPaywall from '../components/Paywall/EvaluationsPaywall.vue';
 import SetupWizard from '../components/SetupWizard/SetupWizard.vue';
 
 import { N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
+import { useWorkflowEvaluationState } from '../composables/useWorkflowEvaluationState';
 const props = defineProps<{
-	name: string;
+	workflowId: string;
 }>();
 
-const workflowsStore = useWorkflowsStore();
 const usageStore = useUsageStore();
 const evaluationStore = useEvaluationStore();
-const nodeTypesStore = useNodeTypesStore();
+const evaluationState = useWorkflowEvaluationState();
+const workflowsStore = useWorkflowsStore();
 const telemetry = useTelemetry();
 const toast = useToast();
 const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
-
-const { initializeWorkspace } = useCanvasOperations();
 
 const evaluationsLicensed = computed(() => {
 	return usageStore.workflowsWithEvaluationsLimit !== 0;
@@ -39,9 +36,11 @@ const isProtectedEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
 
+const workflowIsSaved = computed(() => workflowsStore.isWorkflowSaved[props.workflowId] === true);
+
 const runs = computed(() => {
 	return Object.values(evaluationStore.testRunsById ?? {}).filter(
-		({ workflowId }) => workflowId === props.name,
+		({ workflowId }) => workflowId === props.workflowId,
 	);
 });
 
@@ -53,14 +52,16 @@ const showWizard = computed(() => !hasRuns.value);
 
 // Method to run a test - will be used by the SetupWizard component
 async function runTest() {
+	if (!workflowIsSaved.value) return;
+
 	try {
-		await evaluationStore.startTestRun(props.name);
+		await evaluationStore.startTestRun(props.workflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantStartTestRun'));
 		return;
 	}
 	try {
-		await evaluationStore.fetchTestRuns(props.name);
+		await evaluationStore.fetchTestRuns(props.workflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
 	}
@@ -74,35 +75,31 @@ const evaluationsQuotaExceeded = computed(() => {
 	);
 });
 
-const { isReady } = useAsyncState(async () => {
+async function fetchTestRuns() {
+	if (!workflowIsSaved.value) return;
+
 	try {
-		await usageStore.getLicenseInfo();
-		await evaluationStore.fetchTestRuns(props.name);
+		await evaluationStore.fetchTestRuns(props.workflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
 	}
-	const workflowId = props.name;
-	const isAlreadyInitialized = workflowsStore.workflow.id === workflowId;
-	if (isAlreadyInitialized) return;
+}
 
-	if (workflowId && workflowId !== 'new') {
-		// Check if we are loading the Evaluation tab directly, without having loaded the workflow
-		if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-			try {
-				const data = await workflowsStore.fetchWorkflow(workflowId);
-
-				// We need to check for the evaluation node with setMetrics operation, so we need to initialize the nodeTypesStore to have node properties initialized
-				if (nodeTypesStore.allNodeTypes.length === 0) {
-					await nodeTypesStore.getNodeTypes();
-				}
-
-				initializeWorkspace(data);
-			} catch (error) {
-				toast.showError(error, locale.baseText('nodeView.showError.openWorkflow.title'));
-			}
-		}
+const { isReady } = useAsyncState(async () => {
+	try {
+		await usageStore.getLicenseInfo();
+	} catch (error) {
+		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
 	}
+
+	await fetchTestRuns();
 }, undefined);
+
+watch(workflowIsSaved, async (isSaved) => {
+	if (isSaved) {
+		await fetchTestRuns();
+	}
+});
 
 watch(
 	isReady,
@@ -110,17 +107,17 @@ watch(
 		if (ready) {
 			if (showWizard.value) {
 				telemetry.track('User viewed tests tab', {
-					workflow_id: props.name,
+					workflow_id: props.workflowId,
 					test_type: 'evaluation',
 					view: 'setup',
-					trigger_set_up: evaluationStore.evaluationTriggerExists,
-					output_set_up: evaluationStore.evaluationSetOutputsNodeExist,
-					metrics_set_up: evaluationStore.evaluationSetMetricsNodeExist,
+					trigger_set_up: evaluationState.evaluationTriggerExists.value,
+					output_set_up: evaluationState.evaluationSetOutputsNodeExist.value,
+					metrics_set_up: evaluationState.evaluationSetMetricsNodeExist.value,
 					quota_reached: evaluationsQuotaExceeded.value,
 				});
 			} else {
 				telemetry.track('User viewed tests tab', {
-					workflow_id: props.name,
+					workflow_id: props.workflowId,
 					test_type: 'evaluation',
 					view: 'overview',
 					run_count: runs.value.length,

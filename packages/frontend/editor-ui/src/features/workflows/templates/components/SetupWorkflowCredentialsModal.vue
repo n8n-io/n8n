@@ -1,24 +1,37 @@
 <script lang="ts" setup>
 import Modal from '@/app/components/Modal.vue';
 import { useSetupWorkflowCredentialsModalState } from '../composables/useSetupWorkflowCredentialsModalState';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import AppsRequiringCredsNotice from './AppsRequiringCredsNotice.vue';
 import SetupTemplateFormStep from './SetupTemplateFormStep.vue';
-import { onMounted, onUnmounted } from 'vue';
+import { computed, onMounted, onUnmounted } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 
 import { N8nButton, N8nHeading } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const workflowStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const uiStore = useUIStore();
+
+export type SetupCredentialsModalSource = 'template' | 'builder';
+
+interface ModalData {
+	source?: SetupCredentialsModalSource;
+}
 
 const props = defineProps<{
 	modalName: string;
-	data: {};
+	data: ModalData;
 }>();
+
+const modalTitle = computed(() => {
+	if (props.data?.source === 'builder') {
+		return i18n.baseText('setupCredentialsModal.title.builder' as BaseTextKey);
+	}
+	return i18n.baseText('setupCredentialsModal.title');
+});
 
 const {
 	appCredentials,
@@ -33,7 +46,7 @@ const {
 onMounted(() => {
 	setInitialCredentialSelection();
 
-	telemetry.track('User opened cred setup', { source: 'canvas' });
+	telemetry.track('User opened cred setup', { source: props.data?.source ?? 'canvas' });
 });
 
 onUnmounted(() => {
@@ -41,7 +54,8 @@ onUnmounted(() => {
 		completed: numFilledCredentials.value === credentialUsages.value.length,
 		creds_filled: numFilledCredentials.value,
 		creds_needed: credentialUsages.value.length,
-		workflow_id: workflowStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
+		source: props.data?.source ?? 'canvas',
 	});
 });
 </script>
@@ -50,14 +64,17 @@ onUnmounted(() => {
 	<Modal width="700px" max-height="90%" :name="props.modalName">
 		<template #header>
 			<N8nHeading tag="h2" size="xlarge">
-				{{ i18n.baseText('setupCredentialsModal.title') }}
+				{{ modalTitle }}
 			</N8nHeading>
 		</template>
 
 		<template #content>
 			<div :class="$style.grid">
 				<div :class="$style.notice" data-test-id="info-callout">
-					<AppsRequiringCredsNotice :app-credentials="appCredentials" />
+					<AppsRequiringCredsNotice
+						:app-credentials="appCredentials"
+						:source="props.data?.source"
+					/>
 				</div>
 
 				<div>
@@ -69,6 +86,7 @@ onUnmounted(() => {
 							:order="index + 1"
 							:credentials="credentials"
 							:selected-credential-id="selectedCredentialIdByKey[credentials.key]"
+							:source="props.data?.source"
 							@credential-selected="setCredential($event.credentialUsageKey, $event.credentialId)"
 							@credential-deselected="unsetCredential($event.credentialUsageKey)"
 						/>

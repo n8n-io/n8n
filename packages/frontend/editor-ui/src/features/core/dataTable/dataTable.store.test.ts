@@ -52,14 +52,15 @@ describe('dataTable.store', () => {
 	});
 
 	describe('fetchDataTables', () => {
+		const mockResponse = {
+			count: 50,
+			data: [
+				createTable({ id: 'dt-1', name: 'Table 1' }),
+				createTable({ id: 'dt-2', name: 'Table 2' }),
+			],
+		};
+
 		it('should fetch data tables with pagination', async () => {
-			const mockResponse = {
-				count: 50,
-				data: [
-					createTable({ id: 'dt-1', name: 'Table 1' }),
-					createTable({ id: 'dt-2', name: 'Table 2' }),
-				],
-			};
 			vi.spyOn(dataTableApi, 'fetchDataTablesApi').mockResolvedValue(mockResponse);
 
 			await dataTableStore.fetchDataTables('project-1', 2, 10);
@@ -68,6 +69,52 @@ describe('dataTable.store', () => {
 				rootStore.restApiContext,
 				'project-1',
 				{ skip: 10, take: 10 },
+				undefined,
+				undefined,
+			);
+			expect(dataTableStore.dataTables).toEqual(mockResponse.data);
+			expect(dataTableStore.totalCount).toBe(50);
+		});
+
+		it('should pass name filter to the API', async () => {
+			vi.spyOn(dataTableApi, 'fetchDataTablesApi').mockResolvedValue(mockResponse);
+
+			await dataTableStore.fetchDataTables('project-1', 1, 10, { name: 'my table' });
+
+			expect(dataTableApi.fetchDataTablesApi).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'project-1',
+				{ skip: 0, take: 10 },
+				{ name: 'my table' },
+				undefined,
+			);
+		});
+
+		it('should pass sortBy to the API', async () => {
+			vi.spyOn(dataTableApi, 'fetchDataTablesApi').mockResolvedValue(mockResponse);
+
+			await dataTableStore.fetchDataTables('project-1', 1, 10, undefined, 'size:desc');
+
+			expect(dataTableApi.fetchDataTablesApi).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'project-1',
+				{ skip: 0, take: 10 },
+				undefined,
+				'size:desc',
+			);
+		});
+
+		it('should pass both filter and sortBy to the API', async () => {
+			vi.spyOn(dataTableApi, 'fetchDataTablesApi').mockResolvedValue(mockResponse);
+
+			await dataTableStore.fetchDataTables('project-1', 1, 20, { name: 'sales' }, 'name:asc');
+
+			expect(dataTableApi.fetchDataTablesApi).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'project-1',
+				{ skip: 0, take: 20 },
+				{ name: 'sales' },
+				'name:asc',
 			);
 			expect(dataTableStore.dataTables).toEqual(mockResponse.data);
 			expect(dataTableStore.totalCount).toBe(50);
@@ -337,6 +384,256 @@ describe('dataTable.store', () => {
 			expect(dataTableStore.dataTables[0].columns.find((c) => c.id === columnId)?.index).toBe(
 				targetIndex,
 			);
+		});
+	});
+
+	describe('renameDataTableColumn', () => {
+		it('should rename column in data table', async () => {
+			const dataTableId = faker.string.alphanumeric(10);
+			const columnId = 'col-1';
+			const projectId = 'p1';
+			const newName = 'renamedColumn';
+
+			dataTableStore.$patch({
+				dataTables: [
+					{
+						id: dataTableId,
+						name: 'Test Table',
+						sizeBytes: 0,
+						createdAt: '2024-01-01T00:00:00.000Z',
+						updatedAt: '2024-01-01T00:00:00.000Z',
+						projectId,
+						columns: [
+							{ id: columnId, index: 0, name: 'oldName', type: 'string' },
+							{ id: 'col-2', index: 1, name: 'otherColumn', type: 'number' },
+						],
+					},
+				],
+			});
+
+			vi.spyOn(dataTableApi, 'renameDataTableColumnApi').mockResolvedValue({
+				id: columnId,
+				index: 0,
+				name: newName,
+				type: 'string',
+			});
+
+			await dataTableStore.renameDataTableColumn(dataTableId, projectId, columnId, newName);
+
+			expect(dataTableApi.renameDataTableColumnApi).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				dataTableId,
+				projectId,
+				columnId,
+				newName,
+			);
+
+			const updatedColumn = dataTableStore.dataTables[0].columns.find((c) => c.id === columnId);
+			expect(updatedColumn?.name).toBe(newName);
+		});
+
+		it('should not update state when data table is not found', async () => {
+			const dataTableId = 'non-existent-table';
+			const columnId = 'col-1';
+			const projectId = 'p1';
+			const newName = 'newName';
+
+			dataTableStore.$patch({
+				dataTables: [
+					{
+						id: 'other-table',
+						name: 'Other Table',
+						sizeBytes: 0,
+						createdAt: '2024-01-01T00:00:00.000Z',
+						updatedAt: '2024-01-01T00:00:00.000Z',
+						projectId,
+						columns: [{ id: 'col-x', index: 0, name: 'column', type: 'string' }],
+					},
+				],
+			});
+
+			vi.spyOn(dataTableApi, 'renameDataTableColumnApi').mockResolvedValue({
+				id: columnId,
+				index: 0,
+				name: newName,
+				type: 'string',
+			});
+
+			await dataTableStore.renameDataTableColumn(dataTableId, projectId, columnId, newName);
+
+			expect(dataTableApi.renameDataTableColumnApi).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				dataTableId,
+				projectId,
+				columnId,
+				newName,
+			);
+
+			// Verify other table's columns remain unchanged
+			expect(dataTableStore.dataTables[0].columns[0].name).toBe('column');
+		});
+
+		it('should not update state when column is not found in table', async () => {
+			const dataTableId = faker.string.alphanumeric(10);
+			const columnId = 'non-existent-column';
+			const projectId = 'p1';
+			const newName = 'newName';
+
+			dataTableStore.$patch({
+				dataTables: [
+					{
+						id: dataTableId,
+						name: 'Test Table',
+						sizeBytes: 0,
+						createdAt: '2024-01-01T00:00:00.000Z',
+						updatedAt: '2024-01-01T00:00:00.000Z',
+						projectId,
+						columns: [
+							{ id: 'col-1', index: 0, name: 'column1', type: 'string' },
+							{ id: 'col-2', index: 1, name: 'column2', type: 'number' },
+						],
+					},
+				],
+			});
+
+			vi.spyOn(dataTableApi, 'renameDataTableColumnApi').mockResolvedValue({
+				id: columnId,
+				index: 0,
+				name: newName,
+				type: 'string',
+			});
+
+			await dataTableStore.renameDataTableColumn(dataTableId, projectId, columnId, newName);
+
+			expect(dataTableApi.renameDataTableColumnApi).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				dataTableId,
+				projectId,
+				columnId,
+				newName,
+			);
+
+			// Verify all columns remain unchanged
+			expect(dataTableStore.dataTables[0].columns[0].name).toBe('column1');
+			expect(dataTableStore.dataTables[0].columns[1].name).toBe('column2');
+		});
+
+		it('should handle API errors', async () => {
+			const dataTableId = faker.string.alphanumeric(10);
+			const columnId = 'col-1';
+			const projectId = 'p1';
+			const newName = 'newName';
+
+			dataTableStore.$patch({
+				dataTables: [
+					{
+						id: dataTableId,
+						name: 'Test Table',
+						sizeBytes: 0,
+						createdAt: '2024-01-01T00:00:00.000Z',
+						updatedAt: '2024-01-01T00:00:00.000Z',
+						projectId,
+						columns: [{ id: columnId, index: 0, name: 'oldName', type: 'string' }],
+					},
+				],
+			});
+
+			const error = new Error('API Error');
+			vi.spyOn(dataTableApi, 'renameDataTableColumnApi').mockRejectedValue(error);
+
+			await expect(
+				dataTableStore.renameDataTableColumn(dataTableId, projectId, columnId, newName),
+			).rejects.toThrow('API Error');
+
+			// Verify column name remains unchanged after error
+			expect(dataTableStore.dataTables[0].columns[0].name).toBe('oldName');
+		});
+
+		it('should rename correct column when multiple columns exist', async () => {
+			const dataTableId = faker.string.alphanumeric(10);
+			const columnId = 'col-2';
+			const projectId = 'p1';
+			const newName = 'renamedMiddleColumn';
+
+			dataTableStore.$patch({
+				dataTables: [
+					{
+						id: dataTableId,
+						name: 'Test Table',
+						sizeBytes: 0,
+						createdAt: '2024-01-01T00:00:00.000Z',
+						updatedAt: '2024-01-01T00:00:00.000Z',
+						projectId,
+						columns: [
+							{ id: 'col-1', index: 0, name: 'firstColumn', type: 'string' },
+							{ id: 'col-2', index: 1, name: 'secondColumn', type: 'number' },
+							{ id: 'col-3', index: 2, name: 'thirdColumn', type: 'boolean' },
+						],
+					},
+				],
+			});
+
+			vi.spyOn(dataTableApi, 'renameDataTableColumnApi').mockResolvedValue({
+				id: columnId,
+				index: 0,
+				name: newName,
+				type: 'string',
+			});
+
+			await dataTableStore.renameDataTableColumn(dataTableId, projectId, columnId, newName);
+
+			expect(dataTableApi.renameDataTableColumnApi).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				dataTableId,
+				projectId,
+				columnId,
+				newName,
+			);
+
+			const columns = dataTableStore.dataTables[0].columns;
+			expect(columns[0].name).toBe('firstColumn');
+			expect(columns[1].name).toBe(newName);
+			expect(columns[2].name).toBe('thirdColumn');
+		});
+
+		it('should handle empty columns array', async () => {
+			const dataTableId = faker.string.alphanumeric(10);
+			const columnId = 'col-1';
+			const projectId = 'p1';
+			const newName = 'newName';
+
+			dataTableStore.$patch({
+				dataTables: [
+					{
+						id: dataTableId,
+						name: 'Test Table',
+						sizeBytes: 0,
+						createdAt: '2024-01-01T00:00:00.000Z',
+						updatedAt: '2024-01-01T00:00:00.000Z',
+						projectId,
+						columns: [],
+					},
+				],
+			});
+
+			vi.spyOn(dataTableApi, 'renameDataTableColumnApi').mockResolvedValue({
+				id: columnId,
+				index: 0,
+				name: newName,
+				type: 'string',
+			});
+
+			await dataTableStore.renameDataTableColumn(dataTableId, projectId, columnId, newName);
+
+			expect(dataTableApi.renameDataTableColumnApi).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				dataTableId,
+				projectId,
+				columnId,
+				newName,
+			);
+
+			expect(dataTableStore.dataTables[0].columns).toHaveLength(0);
 		});
 	});
 

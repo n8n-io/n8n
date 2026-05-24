@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropdown.vue';
-import { VIEWS } from '@/app/constants';
+import { DEBOUNCE_TIME, getDebounceTime, VIEWS } from '@/app/constants';
 import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
 import {
 	N8nButton,
@@ -60,7 +60,7 @@ const tableHeaders = ref<Array<TableHeader<AffectedWorkflow>>>([
 		width: 200,
 	},
 	{
-		title: i18n.baseText('settings.migrationReport.detail.table.issue'),
+		title: i18n.baseText('settings.migrationReport.detail.table.status'),
 		key: 'active',
 		value: (row: AffectedWorkflow) =>
 			row.active
@@ -69,7 +69,7 @@ const tableHeaders = ref<Array<TableHeader<AffectedWorkflow>>>([
 		width: 40,
 	},
 	{
-		title: i18n.baseText('settings.migrationReport.detail.table.nodeAffected'),
+		title: i18n.baseText('settings.migrationReport.detail.table.nodesAffected'),
 		key: 'issues',
 	},
 	{
@@ -93,7 +93,7 @@ function handleRowClick(_event: MouseEvent, { item }: { item: AffectedWorkflow }
 	window.open(
 		router.resolve({
 			name: VIEWS.WORKFLOW,
-			params: { name: item.id },
+			params: { workflowId: item.id },
 		}).href,
 		'_blank',
 	);
@@ -109,7 +109,7 @@ const statusFilter = ref<'' | 'active' | 'deactivated'>('');
 // Debounced search to avoid excessive filtering
 const debouncedSearch = useDebounceFn((value: string) => {
 	searchQuery.value = value;
-}, 300);
+}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 const onSearchInput = (value: string) => {
 	searchInput.value = value; // Update input immediately
@@ -189,9 +189,8 @@ const sortedWorkflows = computed(() => {
 <template>
 	<div>
 		<N8nButton
+			variant="ghost"
 			:class="$style.backButton"
-			type="secondary"
-			text
 			icon="arrow-left"
 			:label="i18n.baseText('generic.back')"
 			class="mb-xs"

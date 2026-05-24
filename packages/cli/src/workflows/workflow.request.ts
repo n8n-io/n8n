@@ -4,10 +4,9 @@ import type {
 	IConnections,
 	IWorkflowSettings,
 	IRunData,
-	StartNodeData,
 	ITaskData,
-	IWorkflowBase,
 	AiAgentRequest,
+	IDestinationNode,
 } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
@@ -27,20 +26,40 @@ export declare namespace WorkflowRequest {
 		projectId: string;
 		parentFolderId?: string;
 		uiContext?: string;
+		expectedChecksum?: string;
+		aiBuilderAssisted?: boolean;
+		autosaved?: boolean;
 	}>;
 
-	type ManualRunPayload = {
-		workflowData: IWorkflowBase;
-		runData?: IRunData;
-		startNodes?: StartNodeData[];
-		destinationNode?: string;
-		dirtyNodeNames?: string[];
-		triggerToStartFrom?: {
-			name: string;
-			data?: ITaskData;
-		};
+	// TODO: Use a discriminator when CAT-1809 lands
+	//
+	// 1. Full Manual Execution from Known Trigger
+	type FullManualExecutionFromKnownTriggerPayload = {
 		agentRequest?: AiAgentRequest;
+		chatSessionId?: string;
+		destinationNode?: IDestinationNode;
+		triggerToStartFrom: { name: string; data?: ITaskData };
 	};
+	// 2. Full Manual Execution from Unknown Trigger
+	type FullManualExecutionFromUnknownTriggerPayload = {
+		agentRequest?: AiAgentRequest;
+
+		destinationNode: IDestinationNode;
+	};
+
+	// 3. Partial Manual Execution to Destination
+	type PartialManualExecutionToDestinationPayload = {
+		agentRequest?: AiAgentRequest;
+
+		runData: IRunData;
+		destinationNode: IDestinationNode;
+		dirtyNodeNames: string[];
+	};
+
+	type ManualRunPayload =
+		| FullManualExecutionFromKnownTriggerPayload
+		| FullManualExecutionFromUnknownTriggerPayload
+		| PartialManualExecutionToDestinationPayload;
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
 
@@ -76,7 +95,7 @@ export declare namespace WorkflowRequest {
 	type Activate = AuthenticatedRequest<
 		{ workflowId: string },
 		{},
-		{ versionId: string; name?: string; description?: string }
+		{ versionId: string; name?: string; description?: string; expectedChecksum?: string }
 	>;
 
 	type Deactivate = AuthenticatedRequest<{ workflowId: string }>;

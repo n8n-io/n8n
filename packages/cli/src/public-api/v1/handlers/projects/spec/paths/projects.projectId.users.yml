@@ -1,3 +1,32 @@
+get:
+  x-eov-operation-id: getProjectUsers
+  x-eov-operation-handler: v1/handlers/projects/projects.handler
+  tags:
+    - Projects
+  summary: List project members
+  description: Returns a list of all members of a project including their role. Requires user:list scope.
+  parameters:
+    - name: projectId
+      in: path
+      description: The ID of the project.
+      required: true
+      schema:
+        type: string
+    - $ref: '../../../../shared/spec/parameters/limit.yml'
+    - $ref: '../../../../shared/spec/parameters/cursor.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/projectMemberList.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
 post:
   x-eov-operation-id: addUsersToProject
   x-eov-operation-handler: v1/handlers/projects/projects.handler

@@ -10,20 +10,21 @@ export class TimeSaved implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Track Time Saved',
 		name: 'timeSaved',
-		icon: 'fa:timer',
+		icon: 'node:track-time-saved',
+		iconColor: 'black',
 		group: ['organization'],
 		version: 1,
-		description: 'Track dynamic time savings for this workflow execution',
+		description:
+			'Dynamically track time saved based on the workflow’s execution path and the number of items processed',
 		defaults: {
 			name: 'Time Saved',
-			color: '#1E90FF',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName:
-					'Calculate time saved dynamically based on execution data. This allows you to track variable time savings (e.g., 5 minutes per item processed) instead of using a fixed value in workflow settings.',
+					'For each run, time saved is the sum of all Time Saved nodes that execute. Use this when different execution paths or items save different amounts of time.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -52,8 +53,10 @@ export class TimeSaved implements INodeType {
 				name: 'minutesSaved',
 				type: 'number',
 				default: 0,
+				noDataExpression: true,
 				typeOptions: {
 					minValue: 0,
+					numberPrecision: 0,
 				},
 				description: 'Number of minutes saved by this workflow execution',
 			},
@@ -68,8 +71,6 @@ export class TimeSaved implements INodeType {
 				location: 'outputPane',
 			},
 		],
-		// TODO: see if we can use posthog here
-		hidden: true,
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

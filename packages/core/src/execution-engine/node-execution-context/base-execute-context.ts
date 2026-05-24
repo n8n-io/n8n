@@ -1,4 +1,3 @@
-import { Container } from '@n8n/di';
 import get from 'lodash/get';
 import type {
 	Workflow,
@@ -14,6 +13,8 @@ import type {
 	IExecuteWorkflowInfo,
 	RelatedExecution,
 	ExecuteWorkflowData,
+	ExecuteAgentInfo,
+	ExecuteAgentData,
 	ITaskMetadata,
 	ContextType,
 	IContextObject,
@@ -26,6 +27,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	ApplicationError,
+	OperationalError,
 	NodeHelpers,
 	NodeConnectionTypes,
 	WAIT_INDEFINITELY,
@@ -33,14 +35,9 @@ import {
 	createEnvProviderState,
 } from 'n8n-workflow';
 
-import { BinaryDataService } from '@/binary-data/binary-data.service';
-import { FileLocation } from '@/binary-data/utils';
-
 import { NodeExecutionContext } from './node-execution-context';
 
 export class BaseExecuteContext extends NodeExecutionContext {
-	protected readonly binaryDataService = Container.get(BinaryDataService);
-
 	constructor(
 		workflow: Workflow,
 		node: INode,
@@ -124,6 +121,8 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		options?: {
 			doNotWaitToFinish?: boolean;
 			parentExecution?: RelatedExecution;
+			executionMode?: WorkflowExecuteMode;
+			returnLastRunOnly?: boolean;
 		},
 	): Promise<ExecuteWorkflowData> {
 		if (options?.parentExecution) {
@@ -155,11 +154,28 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			await this.putExecutionToWait(WAIT_INDEFINITELY);
 		}
 
-		const data = await this.binaryDataService.duplicateBinaryData(
-			FileLocation.ofExecution(this.workflow.id, this.additionalData.executionId!),
-			result.data,
+		return result;
+	}
+
+	async executeAgent(
+		agentInfo: ExecuteAgentInfo,
+		message: string,
+		executionId: string,
+		itemIndex: number,
+	): Promise<ExecuteAgentData> {
+		if (!this.additionalData.executeAgent) {
+			throw new OperationalError('Agent execution is not available in this context');
+		}
+
+		const threadId = agentInfo.sessionId?.trim() || `${executionId}-${itemIndex}`;
+
+		return await this.additionalData.executeAgent(
+			agentInfo.agentId,
+			message,
+			executionId,
+			threadId,
+			this.additionalData,
 		);
-		return { ...result, data };
 	}
 
 	async getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined> {
@@ -273,5 +289,9 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			createEnvProviderState(),
 			this.executeData,
 		);
+	}
+
+	getRunnerStatus(taskType: string): { available: true } | { available: false; reason?: string } {
+		return this.additionalData.getRunnerStatus?.(taskType) ?? { available: true };
 	}
 }

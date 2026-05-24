@@ -4,25 +4,28 @@ import {
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_CHAINS,
 	AI_TRANSFORM_NODE_TYPE,
-	PRE_BUILT_AGENTS_EXPERIMENT,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 } from '@/app/constants';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { START_NODE_TYPE } from 'n8n-workflow';
+import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { AIView } from './viewsData';
+import { AIView, HitlToolView } from './viewsData';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import { usePostHog } from '@/app/stores/posthog.store';
-
-let posthogStore: ReturnType<typeof usePostHog>;
+import type { SimplifiedNodeType } from '@/Interface';
 
 const getNodeType = vi.fn();
 
 const aiTransformNode = mockNodeTypeDescription({ name: AI_TRANSFORM_NODE_TYPE });
+const messageAnAgentNode = mockNodeTypeDescription({
+	name: MESSAGE_AN_AGENT_NODE_TYPE,
+	displayName: 'Message an Agent',
+	hidden: true,
+});
 
 const otherNodes = (
 	[
-		{ name: START_NODE_TYPE },
+		{ name: MANUAL_TRIGGER_NODE_TYPE },
 		{
 			name: 'agentHidden',
 			description: 'example mock agent node',
@@ -52,22 +55,17 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
 		allLatestNodeTypes: [aiTransformNode, ...otherNodes],
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	})),
 }));
 
 describe('viewsData', () => {
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
-
-		posthogStore = usePostHog();
-
-		vi.spyOn(posthogStore, 'isVariantEnabled').mockImplementation((experiment) => {
-			if (experiment === PRE_BUILT_AGENTS_EXPERIMENT.name) {
-				return false;
-			}
-
-			return true;
-		});
 
 		const templatesStore = useTemplatesStore();
 
@@ -80,6 +78,9 @@ describe('viewsData', () => {
 		getNodeType.mockImplementation((nodeName: string) => {
 			if (nodeName === AI_TRANSFORM_NODE_TYPE) {
 				return aiTransformNode;
+			}
+			if (nodeName === MESSAGE_AN_AGENT_NODE_TYPE) {
+				return messageAnAgentNode;
 			}
 
 			return null;
@@ -106,12 +107,110 @@ describe('viewsData', () => {
 		});
 
 		test('should return ai view without ai transform node if ask ai is not enabled and node is not in the list', () => {
-			vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(false);
-
 			const settingsStore = useSettingsStore();
 			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
 
 			expect(AIView([])).toMatchSnapshot();
+		});
+
+		test('should include Message an Agent node with preview tag when agents module is active', () => {
+			const settingsStore = useSettingsStore();
+			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
+			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
+				(name: string) => name === 'agents',
+			);
+
+			const result = AIView([]);
+			const messageAgentItem = result.items.find((item) => item.key === MESSAGE_AN_AGENT_NODE_TYPE);
+
+			expect(messageAgentItem).toBeDefined();
+			expect(messageAgentItem?.properties.tag).toEqual({
+				preview: true,
+			});
+
+			const agentItem = result.items.find((item) => item.key === 'agent');
+			const messageIdx = result.items.indexOf(messageAgentItem!);
+			const agentIdx = result.items.indexOf(agentItem!);
+			expect(messageIdx).toBeLessThan(agentIdx);
+		});
+
+		test('should not include Message an Agent node when agents module is inactive', () => {
+			const settingsStore = useSettingsStore();
+			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(false);
+
+			const result = AIView([]);
+			const messageAgentItem = result.items.find((item) => item.key === MESSAGE_AN_AGENT_NODE_TYPE);
+
+			expect(messageAgentItem).toBeUndefined();
+		});
+	});
+
+	describe('HitlToolView', () => {
+		test('should filter and return only HITL tool nodes', () => {
+			const hitlToolNode = mockNodeTypeDescription({
+				name: 'slackHitlTool',
+				displayName: 'Slack',
+			});
+			const regularNode = mockNodeTypeDescription({
+				name: 'regularNode',
+				displayName: 'Regular Node',
+			});
+
+			const nodes: SimplifiedNodeType[] = [hitlToolNode, regularNode] as SimplifiedNodeType[];
+
+			const result = HitlToolView(nodes);
+
+			expect(result.items).toHaveLength(1);
+			expect(result.items[0].properties.name).toBe('slackHitlTool');
+			expect(result.items[0].properties.displayName).toBe('Slack');
+		});
+
+		test('should sort HITL tool nodes by displayName alphabetically', () => {
+			const emailNode = mockNodeTypeDescription({
+				name: 'emailSendHitlTool',
+				displayName: 'Email',
+			});
+			const slackNode = mockNodeTypeDescription({
+				name: 'slackHitlTool',
+				displayName: 'Slack',
+			});
+			const discordNode = mockNodeTypeDescription({
+				name: 'discordHitlTool',
+				displayName: 'Discord',
+			});
+
+			const nodes: SimplifiedNodeType[] = [
+				emailNode,
+				slackNode,
+				discordNode,
+			] as SimplifiedNodeType[];
+
+			const result = HitlToolView(nodes);
+
+			expect(result.items).toHaveLength(3);
+			expect(result.items[0].properties.displayName).toBe('Discord');
+			expect(result.items[1].properties.displayName).toBe('Email');
+			expect(result.items[2].properties.displayName).toBe('Slack');
+		});
+
+		test('should return correct view structure with title and nodeIcon', () => {
+			const hitlToolNode = mockNodeTypeDescription({
+				name: 'testHitlTool',
+				displayName: 'Test',
+			});
+
+			const nodes: SimplifiedNodeType[] = [hitlToolNode] as SimplifiedNodeType[];
+
+			const result = HitlToolView(nodes);
+
+			expect(result.value).toBe('HITL');
+			expect(result.title).toBeDefined();
+			expect(result.nodeIcon).toEqual({
+				type: 'icon',
+				name: 'badge-check',
+			});
+			expect(result.items).toHaveLength(1);
 		});
 	});
 });

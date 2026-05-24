@@ -14,7 +14,6 @@ import type {
 	IConnections,
 	INode,
 	INodeExecutionData,
-	INodes,
 	INodeTypeDescription,
 	NodeHint,
 } from 'n8n-workflow';
@@ -125,7 +124,7 @@ export const getNodesGroupSize = (nodes: INodeUi[]): [number, number] => {
 /**
  * Checks if the given position is available for a new node
  */
-const canUsePosition = (
+export const canUsePosition = (
 	position1: XYPosition,
 	position2: XYPosition,
 	size: [number, number] = DEFAULT_NODE_SIZE,
@@ -137,6 +136,21 @@ const canUsePosition = (
 	}
 
 	return true;
+};
+
+/**
+ * Check if two rectangles overlap
+ */
+export const doRectsOverlap = (
+	rect1: { x: number; y: number; width: number; height: number },
+	rect2: { x: number; y: number; width: number; height: number },
+): boolean => {
+	return !(
+		rect1.x + rect1.width <= rect2.x ||
+		rect2.x + rect2.width <= rect1.x ||
+		rect1.y + rect1.height <= rect2.y ||
+		rect2.y + rect2.height <= rect1.y
+	);
 };
 
 /**
@@ -373,7 +387,7 @@ export function getGenericHints({
 	nodeType,
 	nodeOutputData,
 	hasMultipleInputItems,
-	nodes,
+	getNodeByName,
 	connections,
 	hasNodeRun,
 }: {
@@ -382,7 +396,7 @@ export function getGenericHints({
 	nodeType: INodeTypeDescription;
 	nodeOutputData: INodeExecutionData[];
 	hasMultipleInputItems: boolean;
-	nodes: INodes;
+	getNodeByName: (name: string) => INode | null;
 	connections: IConnections;
 	hasNodeRun: boolean;
 }) {
@@ -421,7 +435,7 @@ export function getGenericHints({
 		hasMultipleInputItems &&
 		LIST_LIKE_NODE_OPERATIONS.includes((workflowNode.parameters.operation as string) || '')
 	) {
-		const executeOnce = workflowUtils.getNodeByName(nodes, node.name)?.executeOnce;
+		const executeOnce = getNodeByName(node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({
 				message:
@@ -433,7 +447,7 @@ export function getGenericHints({
 
 	// add sendAndWait hint
 	if (hasMultipleInputItems && workflowNode.parameters.operation === SEND_AND_WAIT_OPERATION) {
-		const executeOnce = workflowUtils.getNodeByName(nodes, node.name)?.executeOnce;
+		const executeOnce = getNodeByName(node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({
 				message: 'This action will run only once, for the first input item',
@@ -544,6 +558,10 @@ export const getNodeViewTab = (route: RouteLocation): string | null => {
 			.includes(String(route.name))
 	) {
 		return MAIN_HEADER_TABS.EXECUTIONS;
+	} else if (
+		[VIEWS.EVALUATION_EDIT, VIEWS.EVALUATION_RUNS_DETAIL].map(String).includes(String(route.name))
+	) {
+		return MAIN_HEADER_TABS.EVALUATION;
 	}
 	return null;
 };

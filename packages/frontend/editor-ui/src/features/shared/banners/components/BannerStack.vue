@@ -8,6 +8,7 @@ import V1Banner from './banners/V1Banner.vue';
 import EmailConfirmationBanner from './banners/EmailConfirmationBanner.vue';
 import DataTableStorageLimitWarningBanner from './banners/DataTableStorageLimitWarningBanner.vue';
 import DataTableStorageLimitErrorBanner from './banners/DataTableStorageLimitErrorBanner.vue';
+import WorkflowAutoDeactivatedBanner from './banners/WorkflowAutoDeactivatedBanner.vue';
 import type { Component } from 'vue';
 import type { N8nBanners } from '../banners.types';
 
@@ -17,6 +18,10 @@ import type { N8nBanners } from '../banners.types';
 // https://www.notion.so/n8n/Banner-stack-60948c4167c743718fde80d6745258d5
 export const N8N_BANNERS: N8nBanners = {
 	V1: { priority: 350, component: V1Banner as Component },
+	WORKFLOW_AUTO_DEACTIVATED: {
+		priority: 340,
+		component: WorkflowAutoDeactivatedBanner as Component,
+	},
 	TRIAL_OVER: { priority: 260, component: TrialOverBanner as Component },
 	EMAIL_CONFIRMATION: { priority: 250, component: EmailConfirmationBanner as Component },
 	TRIAL: { priority: 150, component: TrialBanner as Component },

@@ -3,7 +3,10 @@ import { ElTag } from 'element-plus';
 
 import { useI18n } from '../../composables/useI18n';
 import type { NodeCreatorTag } from '../../types/node-creator-node';
+import N8nActionPill from '../N8nActionPill/ActionPill.vue';
+import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
+import PreviewTag from '../PreviewTag/PreviewTag.vue';
 
 export interface Props {
 	active?: boolean;
@@ -15,6 +18,7 @@ export interface Props {
 	showActionArrow?: boolean;
 	isOfficial?: boolean;
 	hideNodeIcon?: boolean;
+	isNew?: boolean;
 }
 
 defineProps<Props>();
@@ -42,8 +46,10 @@ const { t } = useI18n();
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
+				<PreviewTag v-if="tag?.preview" size="small" />
+				<N8nActionPill v-else-if="tag?.pill" size="small" :text="tag.text" />
 				<ElTag
-					v-if="tag"
+					v-else-if="tag"
 					:class="$style.tag"
 					disable-transitions
 					size="small"
@@ -52,6 +58,7 @@ const { t } = useI18n();
 				>
 					{{ tag.text }}
 				</ElTag>
+				<N8nBadge v-if="isNew" theme="success">{{ t('nodeCreatorNode.new') }}</N8nBadge>
 				<N8nIcon
 					v-if="isTrigger"
 					icon="bolt-filled"

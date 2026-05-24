@@ -1,11 +1,11 @@
 <script lang="ts" setup>
-import jp from 'jsonpath';
+import { JSONPath } from 'jsonpath-plus';
 import type { INodeUi } from '@/Interface';
-import type { IDataObject } from 'n8n-workflow';
+import { NodeConnectionTypes, type IDataObject, type IRunExecutionData } from 'n8n-workflow';
 import { clearJsonKey, convertPath } from '@/app/utils/typesUtils';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -32,6 +32,7 @@ const props = withDefaults(
 		jsonData: IDataObject[];
 		outputIndex: number | undefined;
 		runIndex: number | undefined;
+		execution?: IRunExecutionData;
 	}>(),
 	{
 		selectedJsonPath: nonExistingJsonPath,
@@ -41,8 +42,8 @@ const props = withDefaults(
 const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
 const isInPopOutWindow = computed(() => popOutWindow?.value !== undefined);
 
-const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
+const workflowId = useInjectWorkflowId();
+const ndvStore = injectNDVStore();
 
 const clipboard = useClipboard();
 
@@ -76,14 +77,21 @@ function getJsonValue(): string {
 			selectedValue = clearJsonKey(pinnedData.data.value as object);
 		} else {
 			selectedValue = executionDataToJson(
-				nodeHelpers.getNodeInputData(props.node, props.runIndex, props.outputIndex),
+				nodeHelpers.getNodeInputData(
+					props.node,
+					props.runIndex,
+					props.outputIndex,
+					'output',
+					NodeConnectionTypes.Main,
+					props.execution,
+				),
 			);
 		}
 	} else {
 		const jsonPath = normalisedJsonPath.value.startsWith('$')
 			? normalisedJsonPath.value
 			: `$${normalisedJsonPath.value}`;
-		selectedValue = jp.query(props.jsonData, jsonPath)[0];
+		selectedValue = JSONPath({ path: jsonPath, json: props.jsonData })[0];
 	}
 
 	let value = '';
@@ -176,7 +184,7 @@ function handleCopyClick(commandData: { command: string }) {
 		run_index: props.runIndex,
 		view: 'json',
 		copy_type: copyType,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		pane: props.paneType,
 		in_execution_log: isReadOnlyRoute.value,
 	});
@@ -188,10 +196,10 @@ function handleCopyClick(commandData: { command: string }) {
 <template>
 	<div :class="$style.actionsGroup" data-test-id="ndv-json-actions">
 		<N8nIconButton
+			variant="subtle"
 			v-if="noSelection"
 			:title="i18n.baseText('runData.copyToClipboard')"
 			icon="files"
-			type="tertiary"
 			:circle="false"
 			@click="handleCopyClick({ command: 'value' })"
 		/>
@@ -205,9 +213,9 @@ function handleCopyClick(commandData: { command: string }) {
 		>
 			<span class="el-dropdown-link">
 				<N8nIconButton
+					variant="subtle"
 					:title="i18n.baseText('runData.copyToClipboard')"
 					icon="files"
-					type="tertiary"
 					:circle="false"
 				/>
 			</span>

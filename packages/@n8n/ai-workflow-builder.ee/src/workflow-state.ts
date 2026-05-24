@@ -1,8 +1,8 @@
 import type { BaseMessage } from '@langchain/core/messages';
-import { HumanMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
-import type { SimpleWorkflow, WorkflowOperation } from './types';
+import type { SimpleWorkflow, WorkflowMetadata, WorkflowOperation } from './types';
+import { appendArrayReducer, cachedTemplatesReducer } from './utils/state-reducers';
 import type { ProgrammaticEvaluationResult, TelemetryValidationStatus } from './validation/types';
 import type { ChatPayload } from './workflow-builder-agent';
 
@@ -32,31 +32,6 @@ function operationsReducer(
 	}
 	// Otherwise, append new operations
 	return [...(current ?? []), ...update];
-}
-
-// Creates a reducer that trims the message history to keep only the last `maxUserMessages` HumanMessage instances
-export function createTrimMessagesReducer(maxUserMessages: number) {
-	return (current: BaseMessage[]): BaseMessage[] => {
-		// Count HumanMessage instances and remember their indices
-		const humanMessageIndices: number[] = [];
-		current.forEach((msg, index) => {
-			if (msg instanceof HumanMessage) {
-				humanMessageIndices.push(index);
-			}
-		});
-
-		// If we have fewer than or equal to maxUserMessages, return as is
-		if (humanMessageIndices.length <= maxUserMessages) {
-			return current;
-		}
-
-		// Find the index of the first HumanMessage that we want to keep
-		const startHumanMessageIndex =
-			humanMessageIndices[humanMessageIndices.length - maxUserMessages];
-
-		// Slice from that HumanMessage onwards
-		return current.slice(startHumanMessageIndex);
-	};
 }
 
 export const WorkflowState = Annotation.Root({
@@ -90,7 +65,7 @@ export const WorkflowState = Annotation.Root({
 		reducer: (x, y) => (y && y.length > 0 ? [...x, ...y] : x),
 		default: () => [],
 	}),
-	// Technique categories identified from categorize_prompt tool for telemetry
+	// Technique categories identified from get_best_practices tool for telemetry
 	techniqueCategories: Annotation<string[]>({
 		reducer: (x, y) => (y && y.length > 0 ? [...x, ...y] : x),
 		default: () => [],
@@ -100,5 +75,18 @@ export const WorkflowState = Annotation.Root({
 	previousSummary: Annotation<string>({
 		reducer: (x, y) => y ?? x, // Overwrite with the latest summary
 		default: () => 'EMPTY',
+	}),
+
+	// Template IDs fetched from workflow examples for telemetry
+	templateIds: Annotation<number[]>({
+		reducer: appendArrayReducer,
+		default: () => [],
+	}),
+
+	// Cached workflow templates from template API
+	// Shared across tools to reduce API calls
+	cachedTemplates: Annotation<WorkflowMetadata[]>({
+		reducer: cachedTemplatesReducer,
+		default: () => [],
 	}),
 });

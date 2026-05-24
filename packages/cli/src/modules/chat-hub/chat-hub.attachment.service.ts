@@ -1,13 +1,16 @@
+import type { ChatMessageId, ChatSessionId, ChatAttachment } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { BINARY_ENCODING, type IBinaryData } from 'n8n-workflow';
+import { Not, IsNull } from '@n8n/typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 import { sanitizeFilename } from '@n8n/utils';
 import { BinaryDataService, FileLocation } from 'n8n-core';
-import { Not, IsNull } from '@n8n/typeorm';
-import { ChatHubMessageRepository } from './chat-message.repository';
-import type { ChatMessageId, ChatSessionId, ChatAttachment } from '@n8n/api-types';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BINARY_ENCODING, type IBinaryData } from 'n8n-workflow';
 import type Stream from 'node:stream';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import { ChatHubMessageRepository } from './chat-message.repository';
 
 @Service()
 export class ChatHubAttachmentService {
@@ -17,6 +20,32 @@ export class ChatHubAttachmentService {
 		private readonly binaryDataService: BinaryDataService,
 		private readonly messageRepository: ChatHubMessageRepository,
 	) {}
+
+	/**
+	 * Validates that attachments conform to the model's upload policy.
+	 * Throws BadRequestError if uploads are disallowed or a MIME type is rejected.
+	 */
+	validateAttachments(
+		attachments: ChatAttachment[],
+		allowFileUploads: boolean,
+		allowedFilesMimeTypes: string,
+	): void {
+		if (attachments.length === 0) return;
+
+		if (!allowFileUploads) {
+			throw new BadRequestError('File uploads are not allowed for this model');
+		}
+
+		if (allowedFilesMimeTypes === '*/*' || allowedFilesMimeTypes === '') return;
+
+		for (const attachment of attachments) {
+			if (!this.isAllowedMimeType(attachment.mimeType, allowedFilesMimeTypes)) {
+				throw new BadRequestError(
+					`File type "${attachment.mimeType}" is not allowed. Allowed types: ${allowedFilesMimeTypes}`,
+				);
+			}
+		}
+	}
 
 	/**
 	 * Stores attachments through BinaryDataService.
@@ -97,9 +126,9 @@ export class ChatHubAttachmentService {
 	/**
 	 * Deletes all files attached to messages in the session
 	 */
-	async deleteAllBySessionId(sessionId: string): Promise<void> {
-		const messages = await this.messageRepository.getManyBySessionId(sessionId);
-
+	async deleteAllBySessionId(sessionId: string, trx?: EntityManager): Promise<void> {
+		const messages = await this.messageRepository.getManyBySessionId(sessionId, trx);
+		// Attachment deletion cannot be rolled back, and the transaction doesn't cover it.
 		await this.deleteAttachments(messages.flatMap((message) => message.attachments ?? []));
 	}
 
@@ -126,6 +155,56 @@ export class ChatHubAttachmentService {
 		);
 	}
 
+	async getDataUrl(binaryData: IBinaryData): Promise<string> {
+		if (binaryData.data.startsWith('data:')) {
+			return binaryData.data;
+		}
+
+		const buffer = await this.binaryDataService.getAsBuffer(binaryData);
+		const base64Data = buffer.toString(BINARY_ENCODING);
+		const mimeType = binaryData.mimeType || 'application/octet-stream';
+
+		return `data:${mimeType};base64,${base64Data}`;
+	}
+
+	async getAsBuffer(binaryData: IBinaryData): Promise<Buffer<ArrayBufferLike>> {
+		return await this.binaryDataService.getAsBuffer(binaryData);
+	}
+
+	async storeTemporaryExecutionFile(
+		workflowId: string,
+		buffer: Buffer,
+		mimeType: string,
+		fileName: string,
+	): Promise<IBinaryData> {
+		const sanitizedFileName = sanitizeFilename(fileName);
+		const binaryData: IBinaryData = {
+			data: buffer.toString(BINARY_ENCODING),
+			mimeType,
+			fileName: sanitizedFileName,
+			fileSize: `${buffer.length}`,
+			fileExtension: sanitizedFileName?.split('.').pop(),
+		};
+
+		return await this.binaryDataService.store(
+			FileLocation.ofExecution(workflowId, 'temp'),
+			buffer,
+			binaryData,
+		);
+	}
+
+	private isAllowedMimeType(mimeType: string, allowedMimeTypes: string): boolean {
+		const patterns = allowedMimeTypes.split(',').map((p) => p.trim());
+		for (const pattern of patterns) {
+			if (pattern === mimeType) return true;
+			if (pattern.endsWith('/*')) {
+				const category = pattern.slice(0, pattern.indexOf('/'));
+				if (mimeType.startsWith(`${category}/`)) return true;
+			}
+		}
+		return false;
+	}
+
 	/**
 	 * Processes a single attachment by populating metadata and storing it.
 	 */
@@ -147,7 +226,11 @@ export class ChatHubAttachmentService {
 		};
 
 		return await this.binaryDataService.store(
-			FileLocation.ofCustom(['chat-hub', 'sessions', sessionId, 'messages', messageId]),
+			FileLocation.ofCustom({
+				sourceType: 'chat_message_attachment',
+				pathSegments: ['chat-hub', 'sessions', sessionId, 'messages', messageId],
+				sourceId: messageId,
+			}),
 			buffer,
 			binaryData,
 		);

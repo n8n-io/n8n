@@ -4,8 +4,10 @@ import type {
 	ChatMessageId,
 	ChatSessionId,
 	ChatAttachment,
+	ChatHubLLMProvider,
 } from '@n8n/api-types';
-import type { INode, INodeCredentials } from 'n8n-workflow';
+import type { INodeCredentials, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
+import { IconOrEmojiSchema } from 'n8n-workflow';
 import { z } from 'zod';
 
 export interface ModelWithCredentials {
@@ -22,6 +24,7 @@ export interface BaseMessagePayload {
 	sessionId: ChatSessionId;
 	model: ChatHubConversationModel;
 	credentials: INodeCredentials;
+	timeZone?: string;
 }
 
 export interface HumanMessagePayload extends BaseMessagePayload {
@@ -29,7 +32,7 @@ export interface HumanMessagePayload extends BaseMessagePayload {
 	message: string;
 	previousMessageId: ChatMessageId | null;
 	attachments: ChatAttachment[];
-	tools: INode[];
+	agentName?: string;
 }
 export interface RegenerateMessagePayload extends BaseMessagePayload {
 	retryId: ChatMessageId;
@@ -39,23 +42,79 @@ export interface EditMessagePayload extends BaseMessagePayload {
 	editId: ChatMessageId;
 	messageId: ChatMessageId;
 	message: string;
+	newAttachments: ChatAttachment[];
+	keepAttachmentIndices: number[];
 }
+
+// From @langchain/core
+export type ContentBlock =
+	| { type: 'text'; text: string }
+	| { type: 'image_url'; image_url: string };
 
 // From packages/@n8n/nodes-langchain/nodes/memory/MemoryManager/MemoryManager.node.ts
 export type MessageRole = 'ai' | 'system' | 'user';
+
 export interface MessageRecord {
 	type: MessageRole;
-	message: string;
+	message: string | ContentBlock[];
 	hideFromUI: boolean;
 }
 
-export const validChatTriggerParamsShape = z.object({
-	availableInChat: z.literal(true),
+const ChatTriggerResponseModeSchema = z.enum([
+	'streaming',
+	'lastNode',
+	'responseNode',
+	'responseNodes',
+]);
+export type ChatTriggerResponseMode = z.infer<typeof ChatTriggerResponseModeSchema>;
+export type NonStreamingResponseMode = Exclude<
+	ChatTriggerResponseMode,
+	'streaming' | 'responseNode'
+>;
+
+export const chatTriggerParamsShape = z.object({
+	availableInChat: z.boolean().optional().default(false),
 	agentName: z.string().min(1).optional(),
 	agentDescription: z.string().min(1).optional(),
+	agentIcon: IconOrEmojiSchema.optional(),
+	suggestedPrompts: z
+		.object({
+			prompts: z
+				.array(
+					z.object({
+						text: z.string().min(1),
+						icon: IconOrEmojiSchema.optional(),
+					}),
+				)
+				.optional(),
+		})
+		.optional(),
 	options: z
 		.object({
 			allowFileUploads: z.boolean().optional(),
+			allowedFilesMimeTypes: z.string().optional(),
+			responseMode: ChatTriggerResponseModeSchema.optional(),
+			autoSaveHighlightedData: z.boolean().optional(),
 		})
 		.optional(),
 });
+
+export type ChatTriggerParams = z.infer<typeof chatTriggerParamsShape>;
+
+export type PreparedChatWorkflow = {
+	workflowData: IWorkflowBase;
+	executionData: IRunExecutionData;
+	responseMode: ChatTriggerResponseMode;
+};
+
+export interface SemanticSearchOptions {
+	embeddingModel: {
+		provider: ChatHubLLMProvider;
+		credentialId: string;
+	};
+	vectorStore: {
+		nodeType: string;
+		credentialType: string;
+		credentialId: string;
+	};
+}

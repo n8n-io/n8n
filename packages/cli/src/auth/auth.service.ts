@@ -6,11 +6,10 @@ import type { AuthenticatedRequest, User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
-import type { NextFunction, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
 
-import config from '@/config';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
@@ -27,6 +26,8 @@ interface AuthJwtPayload {
 	browserId?: string;
 	/** This indicates if mfa was used during the creation of this token */
 	usedMfa?: boolean;
+	/** This indicates if the session originated from an embed login (cross-site cookie required) */
+	isEmbed?: boolean;
 }
 
 interface IssuedJWT extends AuthJwtPayload {
@@ -86,10 +87,14 @@ export class AuthService {
 			// Skip browser ID check for type files
 			'/types/nodes.json',
 			'/types/credentials.json',
+			'/types/node-versions.json',
 			'/mcp-oauth/authorize/',
 
 			// Skip browser ID check for chat hub attachments
 			`/${restEndpoint}/chat/conversations/:sessionId/messages/:messageId/attachments/:index`,
+
+			// Skip browser ID check for Instance AI SSE endpoint — EventSource can't send custom headers
+			`/${restEndpoint}/instance-ai/events/:threadId`,
 		];
 	}
 
@@ -107,7 +112,7 @@ export class AuthService {
 					if (isInvalid) throw new AuthError('Unauthorized');
 
 					const [user, { usedMfa }] = await this.resolveJwt(token, req, res);
-					const mfaEnforced = this.mfaService.isMFAEnforced();
+					const mfaEnforced = await this.mfaService.isMFAEnforced();
 
 					if (mfaEnforced && !usedMfa && !allowSkipMFA) {
 						// If MFA is enforced, we need to check if the user has MFA enabled and used it during authentication
@@ -115,7 +120,16 @@ export class AuthService {
 							// If the user has MFA enforced, but did not use it during authentication, we need to throw an error
 							throw new AuthError('MFA not used during authentication');
 						} else {
+							// User doesn't have MFA enabled, but MFA is enforced
+							// They need to set up MFA before accessing most endpoints
 							if (allowUnauthenticated) {
+								// Don't set req.user to avoid giving full access to semi-authenticated users
+								// Instead, set a flag in authInfo to indicate MFA enrollment is required
+								// This allows endpoints to handle this state appropriately (e.g., return public settings)
+								req.authInfo = {
+									usedMfa,
+									mfaEnrollmentRequired: true,
+								};
 								return next();
 							}
 
@@ -147,6 +161,31 @@ export class AuthService {
 		};
 	}
 
+	getCookieToken(req: Request) {
+		// This models the behavior of an AuthenticatedRequest type having an optional cookies property of type Record<string, string>
+		if (typeof req.cookies === 'object' && req.cookies !== null) {
+			const cookies = req.cookies as Record<string, string | undefined>;
+			return cookies[AUTH_COOKIE_NAME];
+		}
+		return undefined;
+	}
+
+	getBrowserId(req: Request) {
+		// This models the behavior of APIRequest type having an optional browserId property of type string
+		if ('browserId' in req && typeof req.browserId === 'string') {
+			return req.browserId;
+		}
+		return undefined;
+	}
+
+	getMethod(req: Request) {
+		return req.method;
+	}
+
+	getEndpoint(req: Request) {
+		return req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
+	}
+
 	clearCookie(res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);
 	}
@@ -167,45 +206,128 @@ export class AuthService {
 		}
 	}
 
-	issueCookie(res: Response, user: User, usedMfa: boolean, browserId?: string) {
+	issueCookie(
+		res: Response,
+		user: User,
+		usedMfa: boolean,
+		browserId?: string,
+		isEmbed?: boolean,
+		cookieOverrides?: { sameSite?: 'strict' | 'lax' | 'none'; secure?: boolean },
+	) {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
-		if (
-			config.getEnv('userManagement.isInstanceOwnerSetUp') &&
-			user.role.slug !== GLOBAL_OWNER_ROLE.slug &&
-			!isWithinUsersLimit
-		) {
+		if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !isWithinUsersLimit) {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		const token = this.issueJWT(user, usedMfa, browserId);
+		const token = this.issueJWT(user, usedMfa, browserId, isEmbed);
 		const { samesite, secure } = this.globalConfig.auth.cookie;
 		res.cookie(AUTH_COOKIE_NAME, token, {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
 			httpOnly: true,
-			sameSite: samesite,
-			secure,
+			sameSite: cookieOverrides?.sameSite ?? samesite,
+			secure: cookieOverrides?.secure ?? secure,
 		});
 	}
 
-	issueJWT(user: User, usedMfa: boolean = false, browserId?: string) {
+	issueJWT(user: User, usedMfa: boolean = false, browserId?: string, isEmbed?: boolean) {
 		const payload: AuthJwtPayload = {
 			id: user.id,
 			hash: this.createJWTHash(user),
 			browserId: browserId && this.hash(browserId),
 			usedMfa,
+			...(isEmbed && { isEmbed }),
 		};
 		return this.jwtService.sign(payload, {
 			expiresIn: this.jwtExpiration,
 		});
 	}
 
-	async resolveJwt(
+	/**
+	 * Validate a cookie auth token: checks revocation, JWT signature/expiry,
+	 * user existence, and hash consistency. Skips browser-id and MFA checks
+	 * since those are not applicable to webhook cookie validation.
+	 */
+	async validateCookieToken(token: string): Promise<void> {
+		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
+		if (isInvalid) throw new AuthError('Unauthorized');
+		await this.validateToken(token);
+	}
+
+	async authenticateUserBasedOnToken(
 		token: string,
-		req: AuthenticatedRequest,
-		res: Response,
-	): Promise<[User, { usedMfa: boolean }]> {
+		method: string,
+		endpoint: string,
+		browserId: string | undefined,
+	): Promise<User> {
+		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
+		if (isInvalid) throw new AuthError('Unauthorized');
+
+		const { user, jwtPayload } = await this.validateToken(token);
+
+		this.validateBrowserId(jwtPayload, browserId, endpoint, method);
+
+		await this.checkMfaGate(user, jwtPayload);
+
+		return user;
+	}
+
+	/**
+	 * Validates an n8n auth cookie (JWT) without request-bound checks (browserId / endpoint / method).
+	 *
+	 * Use when the cookie was captured at the controller boundary and must be re-validated
+	 * later in the execution lifecycle, after the original HTTP request is no longer available.
+	 *
+	 * @param cookie - The JWT string extracted from the `n8n-auth` browser cookie.
+	 */
+	async authenticateUserByCookie(cookie: string): Promise<User> {
+		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token: cookie });
+		if (isInvalid) throw new AuthError('Unauthorized');
+
+		const { user, jwtPayload } = await this.validateToken(cookie);
+
+		await this.checkMfaGate(user, jwtPayload);
+		return user;
+	}
+
+	private async checkMfaGate(user: User, jwtPayload: IssuedJWT): Promise<void> {
+		if (jwtPayload.usedMfa ?? false) {
+			return;
+		}
+
+		const mfaEnforced = await this.mfaService.isMFAEnforced();
+		if (!mfaEnforced && !user.mfaEnabled) {
+			// MFA is not enforced and the user has MFA not enabled
+			// we are good
+			return;
+		}
+
+		// either MFA is enforced or user has MFA enabled
+		throw new AuthError('Unauthorized');
+	}
+
+	private validateBrowserId(
+		jwtPayload: IssuedJWT,
+		browserId: string | undefined,
+		endpoint: string,
+		method: string,
+	) {
+		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
+			this.logger.debug(`Skipped browserId check on ${endpoint}`);
+		} else if (
+			jwtPayload.browserId &&
+			(!browserId || jwtPayload.browserId !== this.hash(browserId))
+		) {
+			this.logger.warn(`browserId check failed on ${endpoint}`);
+			throw new AuthError('Unauthorized');
+		}
+	}
+
+	private async validateToken(token: string): Promise<{
+		user: User;
+		jwtPayload: IssuedJWT;
+	}> {
 		const jwtPayload: IssuedJWT = this.jwtService.verify(token, {
 			algorithms: ['HS256'],
 		});
@@ -227,21 +349,37 @@ export class AuthService {
 			throw new AuthError('Unauthorized');
 		}
 
-		// Check if the token was issued for another browser session, ignoring the endpoints that can't send custom headers
-		const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
-		if (req.method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
-			this.logger.debug(`Skipped browserId check on ${endpoint}`);
-		} else if (
-			jwtPayload.browserId &&
-			(!req.browserId || jwtPayload.browserId !== this.hash(req.browserId))
-		) {
-			this.logger.warn(`browserId check failed on ${endpoint}`);
-			throw new AuthError('Unauthorized');
-		}
+		return {
+			user,
+			jwtPayload,
+		};
+	}
+
+	async resolveJwt(
+		token: string,
+		req: AuthenticatedRequest,
+		res: Response,
+	): Promise<[User, { usedMfa: boolean }]> {
+		const { user, jwtPayload } = await this.validateToken(token);
+
+		const browserId = this.getBrowserId(req);
+		const endpoint = this.getEndpoint(req);
+		const method = this.getMethod(req);
+		this.validateBrowserId(jwtPayload, browserId, endpoint, method);
 
 		if (jwtPayload.exp * 1000 - Date.now() < this.jwtRefreshTimeout) {
 			this.logger.debug('JWT about to expire. Will be refreshed');
-			this.issueCookie(res, user, jwtPayload.usedMfa ?? false, req.browserId);
+			const embedCookieOverrides = jwtPayload.isEmbed
+				? ({ sameSite: 'none' as const, secure: true } as const)
+				: undefined;
+			this.issueCookie(
+				res,
+				user,
+				jwtPayload.usedMfa ?? false,
+				browserId,
+				jwtPayload.isEmbed,
+				embedCookieOverrides,
+			);
 		}
 
 		return [user, { usedMfa: jwtPayload.usedMfa ?? false }];
@@ -268,9 +406,9 @@ export class AuthService {
 			decodedToken = this.jwtService.verify(token);
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {
-				this.logger.debug('Reset password token expired', { token });
+				this.logger.debug('Reset password token expired');
 			} else {
-				this.logger.debug('Error verifying token', { token });
+				this.logger.debug('Error verifying token');
 			}
 			return;
 		}
@@ -283,7 +421,7 @@ export class AuthService {
 		if (!user) {
 			this.logger.debug(
 				'Request to resolve password token failed because no user was found for the provided user ID',
-				{ userId: decodedToken.sub, token },
+				{ userId: decodedToken.sub },
 			);
 			return;
 		}

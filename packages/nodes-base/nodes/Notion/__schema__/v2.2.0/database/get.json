@@ -92,12 +92,18 @@
         "last_edited_time": {
             "type": "string"
         },
+        "name": {
+            "type": "string"
+        },
         "object": {
             "type": "string"
         },
         "parent": {
             "type": "object",
             "properties": {
+                "page_id": {
+                    "type": "string"
+                },
                 "type": {
                     "type": "string"
                 },
@@ -219,6 +225,48 @@
                         }
                     }
                 },
+                "Name": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "null"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "Produkt-ID": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "null"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "number": {
+                            "type": "object",
+                            "properties": {
+                                "format": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "type": {
+                            "type": "string"
+                        }
+                    }
+                },
                 "question": {
                     "type": "object",
                     "properties": {
@@ -227,6 +275,48 @@
                         },
                         "id": {
                             "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "Tag": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "null"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "multi_select": {
+                            "type": "object",
+                            "properties": {
+                                "options": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "color": {
+                                                "type": "string"
+                                            },
+                                            "description": {
+                                                "type": "null"
+                                            },
+                                            "id": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         },
                         "name": {
                             "type": "string"
@@ -279,6 +369,23 @@
                     }
                 },
                 "updated_at": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "null"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "Zuletzt aktualisiert": {
                     "type": "object",
                     "properties": {
                         "description": {
@@ -358,5 +465,5 @@
             "type": "string"
         }
     },
-    "version": 4
+    "version": 6
 }

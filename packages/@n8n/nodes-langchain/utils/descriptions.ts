@@ -100,7 +100,7 @@ export const buildInputSchemaField = (props?: {
 
 export const inputSchemaField = buildInputSchemaField();
 
-export const promptTypeOptions: INodeProperties = {
+export const promptTypeOptionsDeprecated: INodeProperties = {
 	displayName: 'Source for Prompt (User Message)',
 	name: 'promptType',
 	type: 'options',
@@ -126,6 +126,29 @@ export const promptTypeOptions: INodeProperties = {
 	default: 'auto',
 };
 
+export const promptTypeOptions: INodeProperties = {
+	displayName: 'Source for Prompt (User Message)',
+	name: 'promptType',
+	type: 'options',
+	options: [
+		{
+			name: 'Connected Chat Trigger Node',
+			value: 'auto',
+			description:
+				"Looks for an input field called 'chatInput' that is coming from a directly connected Chat Trigger",
+		},
+		{
+			name: 'Define below',
+			value: 'define',
+			description: 'Use an expression to reference data in previous nodes or enter static text',
+		},
+	],
+	default: 'auto',
+	builderHint: {
+		propertyHint: "Use 'auto' when following a chat trigger, 'define' when custom prompt needed",
+	},
+};
+
 export const textInput: INodeProperties = {
 	displayName: 'Prompt (User Message)',
 	name: 'text',
@@ -135,6 +158,11 @@ export const textInput: INodeProperties = {
 	placeholder: 'e.g. Hello, how can you help me?',
 	typeOptions: {
 		rows: 2,
+	},
+	builderHint: {
+		placeholderSupported: false,
+		propertyHint:
+			"Use expressions to include dynamic data from previous nodes (e.g., expr('{{ $json.input }}')). Static text prompts ignore incoming data.",
 	},
 };
 

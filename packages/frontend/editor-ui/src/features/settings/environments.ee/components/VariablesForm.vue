@@ -92,14 +92,14 @@ const handleSubmit = () => {
 		<td><VariablesUsageBadge v-if="formValidation.key" :name="form.key" /></td>
 		<td align="right">
 			<N8nButton
+				variant="subtle"
 				data-test-id="variable-row-cancel-button"
-				type="tertiary"
 				class="mr-xs"
 				@click="handleCancel"
 			>
 				{{ i18n.baseText('variables.row.button.cancel') }}
 			</N8nButton>
-			<N8nButton data-test-id="variable-row-save-button" type="primary" @click="handleSubmit">
+			<N8nButton variant="solid" data-test-id="variable-row-save-button" @click="handleSubmit">
 				{{ i18n.baseText('variables.row.button.save') }}
 			</N8nButton>
 		</td>

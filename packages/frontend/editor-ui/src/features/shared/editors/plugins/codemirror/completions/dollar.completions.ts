@@ -19,20 +19,23 @@ import {
 	RECOMMENDED_SECTION,
 	ROOT_DOLLAR_COMPLETIONS,
 	TARGET_NODE_PARAMETER_FACET,
+	WORKFLOW_DOCUMENT_FACET,
 } from './constants';
 import { createInfoBoxRenderer } from './infoBoxRenderer';
 
 /**
  * Completions offered at the dollar position: `$|`
  */
-export function dollarCompletions(context: CompletionContext): CompletionResult | null {
+export async function dollarCompletions(
+	context: CompletionContext,
+): Promise<CompletionResult | null> {
 	const word = context.matchBefore(/\$[^$]*/);
 
 	if (!word) return null;
 
 	if (word.from === word.to && !context.explicit) return null;
 
-	let options = dollarOptions(context).map(stripExcessParens(context));
+	let options = (await dollarOptions(context)).map(stripExcessParens(context));
 
 	const userInput = word.text;
 
@@ -54,7 +57,7 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 	};
 }
 
-export function dollarOptions(context: CompletionContext): Completion[] {
+export async function dollarOptions(context: CompletionContext): Promise<Completion[]> {
 	const SKIP = new Set();
 	let recommendedCompletions: Completion[] = [];
 
@@ -119,27 +122,30 @@ export function dollarOptions(context: CompletionContext): Completion[] {
 	}
 
 	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
+	const workflowDocumentId = context.state.facet(WORKFLOW_DOCUMENT_FACET);
 
-	if (!hasActiveNode(targetNodeParameterContext)) {
+	if (!hasActiveNode(workflowDocumentId, targetNodeParameterContext)) {
 		return [];
 	}
 
-	if (receivesNoBinaryData(targetNodeParameterContext?.nodeName)) SKIP.add('$binary');
+	if (await receivesNoBinaryData(workflowDocumentId, targetNodeParameterContext?.nodeName))
+		SKIP.add('$binary');
 
-	const previousNodesCompletions = autocompletableNodeNames(targetNodeParameterContext).map(
-		(nodeName) => {
-			const label = `$('${escapeMappingString(nodeName)}')`;
-			return {
-				label,
-				info: createInfoBoxRenderer({
-					name: label,
-					returnType: 'Object',
-					description: i18n.baseText('codeNodeEditor.completer.$()', { interpolate: { nodeName } }),
-				}),
-				section: PREVIOUS_NODES_SECTION,
-			};
-		},
-	);
+	const previousNodesCompletions = autocompletableNodeNames(
+		workflowDocumentId,
+		targetNodeParameterContext,
+	).map((nodeName) => {
+		const label = `$('${escapeMappingString(nodeName)}')`;
+		return {
+			label,
+			info: createInfoBoxRenderer({
+				name: label,
+				returnType: 'Object',
+				description: i18n.baseText('codeNodeEditor.completer.$()', { interpolate: { nodeName } }),
+			}),
+			section: PREVIOUS_NODES_SECTION,
+		};
+	});
 
 	return recommendedCompletions
 		.concat(ROOT_DOLLAR_COMPLETIONS)

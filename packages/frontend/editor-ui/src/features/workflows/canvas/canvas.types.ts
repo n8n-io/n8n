@@ -1,4 +1,9 @@
-import type { ExecutionStatus, INodeConnections, NodeConnectionType } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	IConnections,
+	INodeConnections,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import type {
 	DefaultEdge,
 	Node,
@@ -66,15 +71,10 @@ export type CanvasNodeDefaultRender = {
 		configurable: boolean;
 		configuration: boolean;
 		trigger: boolean;
-		inputs: {
-			labelSize: CanvasNodeDefaultRenderLabelSize;
-		};
-		outputs: {
-			labelSize: CanvasNodeDefaultRenderLabelSize;
-		};
 		tooltip?: string;
 		dirtiness?: CanvasNodeDirtinessType;
 		icon?: NodeIconSource;
+		placeholder?: boolean;
 	}>;
 };
 
@@ -93,7 +93,7 @@ export type CanvasNodeStickyNoteRender = {
 	options: Partial<{
 		width: number;
 		height: number;
-		color: number;
+		color: number | string; // 1-7 for presets, hex string for custom colors
 		content: string;
 	}>;
 };
@@ -105,19 +105,12 @@ export interface CanvasNodeData {
 	type: INodeUi['type'];
 	typeVersion: INodeUi['typeVersion'];
 	disabled: INodeUi['disabled'];
-	inputs: CanvasConnectionPort[];
-	outputs: CanvasConnectionPort[];
 	connections: {
 		[CanvasConnectionMode.Input]: INodeConnections;
 		[CanvasConnectionMode.Output]: INodeConnections;
 	};
 	issues: {
-		execution: string[];
 		validation: string[];
-		visible: boolean;
-	};
-	pinnedData: {
-		count: number;
 		visible: boolean;
 	};
 	execution: {
@@ -177,7 +170,11 @@ export type CanvasNodeEventBusEvents = {
 
 export type CanvasEventBusEvents = {
 	fitView: never;
-	'saved:workflow': never;
+	/** Deferred fitView — waits for VueFlow's onNodesInitialized before fitting. */
+	'fitView:onNodesInit': never;
+	/** Deferred setConnections — waits for VueFlow's onNodesInitialized so handles exist. */
+	'setConnections:onNodesInit': IConnections;
+	'saved:workflow': { isFirstSave: boolean };
 	'open:execution': IExecutionResponse;
 	'nodes:select': { ids: string[]; panIntoView?: boolean };
 	'nodes:selectAll': never;
@@ -186,8 +183,15 @@ export type CanvasEventBusEvents = {
 		action: keyof CanvasNodeEventBusEvents;
 		payload?: CanvasNodeEventBusEvents[keyof CanvasNodeEventBusEvents];
 	};
-	tidyUp: { source: CanvasLayoutSource; nodeIdsFilter?: string[]; trackEvents?: boolean };
+	tidyUp: {
+		source: CanvasLayoutSource;
+		nodeIdsFilter?: string[];
+		trackEvents?: boolean;
+		trackHistory?: boolean;
+		trackBulk?: boolean;
+	};
 	'create:sticky': never;
+	'deprecated:tab-shortcut': never;
 };
 
 export interface CanvasNodeInjectionData {

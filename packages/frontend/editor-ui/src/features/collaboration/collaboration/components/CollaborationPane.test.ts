@@ -3,6 +3,17 @@ import { mock } from 'vitest-mock-extended';
 
 import { STORES } from '@n8n/stores';
 import CollaborationPane from './CollaborationPane.vue';
+
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('vue-router')>();
+	return {
+		...actual,
+		useRoute: () => ({
+			name: 'NodeView',
+			params: { workflowId: 'test-workflow-id' },
+		}),
+	};
+});
 import type { IUser } from '@n8n/rest-api-client/api/users';
 
 import type { RenderOptions } from '@/__tests__/render';
@@ -59,7 +70,7 @@ describe('CollaborationPane', () => {
 	});
 
 	it('should not render the user-stack if there is only one user', async () => {
-		const { getByTestId } = renderComponent({
+		const { queryByTestId } = renderComponent({
 			pinia: createTestingPinia({
 				initialState: {
 					...initialState,
@@ -71,8 +82,7 @@ describe('CollaborationPane', () => {
 		});
 		await waitAllPromises();
 
-		const collaborationPane = getByTestId('collaboration-pane');
-		expect(collaborationPane).toBeInTheDocument();
-		expect(collaborationPane.querySelector('[data-test-id=user-stack-avatars]')).toBeNull();
+		const collaborationPane = queryByTestId('collaboration-pane');
+		expect(collaborationPane).not.toBeInTheDocument();
 	});
 });

@@ -1,11 +1,12 @@
 import vue from '@vitejs/plugin-vue';
-import { posix as pathPosix, resolve, sep as pathSep } from 'path';
+import { resolve } from 'path';
 import { defineConfig, mergeConfig, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgLoader from 'vite-svg-loader';
 import istanbul from 'vite-plugin-istanbul';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
+import { codecovVitePlugin } from '@codecov/vite-plugin';
 
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import icons from 'unplugin-icons/vite';
@@ -26,11 +27,22 @@ const packagesDir = resolve(__dirname, '..', '..');
 const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
 	{ find: 'stream', replacement: 'stream-browserify' },
+	// Stub out @n8n/expression-runtime for browser build (it pulls in isolated-vm, a Node.js-only native module)
+	{
+		find: '@n8n/expression-runtime',
+		replacement: resolve(__dirname, 'vite/expression-runtime-stub.ts'),
+	},
 	// Ensure bare imports resolve to sources (not dist)
 	{ find: '@n8n/i18n', replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src') },
+	{ find: '@n8n/chat-hub', replacement: resolve(packagesDir, '@n8n', 'chat-hub', 'src') },
+	{ find: '@n8n/tournament', replacement: resolve(packagesDir, '@n8n', 'tournament', 'src') },
 	{
 		find: /^@n8n\/chat(.+)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'chat', 'src$1'),
+	},
+	{
+		find: /^@n8n\/chat-hub(.+)$/,
+		replacement: resolve(packagesDir, '@n8n', 'chat-hub', 'src$1'),
 	},
 	{
 		find: /^@n8n\/api-requests(.+)$/,
@@ -81,7 +93,7 @@ const plugins: UserConfig['plugins'] = [
 	nodePopularityPlugin(),
 	icons({
 		compiler: 'vue3',
-		autoInstall: true,
+		autoInstall: NODE_ENV === 'development',
 	}),
 	// Add istanbul coverage plugin for E2E tests
 	...(process.env.BUILD_WITH_COVERAGE === 'true'
@@ -98,12 +110,23 @@ const plugins: UserConfig['plugins'] = [
 	viteStaticCopy({
 		targets: [
 			{
-				src: pathPosix.resolve('node_modules/web-tree-sitter/tree-sitter.wasm'),
-				dest: resolve(__dirname, 'dist'),
+				src: 'node_modules/web-tree-sitter/tree-sitter.wasm',
+				dest: '.',
+				rename: { stripBase: true },
 			},
 			{
-				src: pathPosix.resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'),
-				dest: resolve(__dirname, 'dist'),
+				src: 'node_modules/curlconverter/dist/tree-sitter-bash.wasm',
+				dest: '.',
+				rename: { stripBase: true },
+			},
+			// wa-sqlite WASM files for OPFS database support (no cross-origin isolation needed)
+			{
+				src: 'node_modules/wa-sqlite/dist/wa-sqlite.wasm',
+				dest: 'assets',
+			},
+			{
+				src: 'node_modules/wa-sqlite/dist/wa-sqlite-async.wasm',
+				dest: 'assets',
 			},
 		],
 	}),
@@ -125,9 +148,13 @@ const plugins: UserConfig['plugins'] = [
 			],
 		},
 	}),
-	legacy({
-		modernTargets: browsers,
-	}),
+	...(release
+		? [
+				legacy({
+					modernTargets: browsers,
+				}),
+			]
+		: []),
 	{
 		name: 'Insert config script',
 		transformIndexHtml: (html, ctx) => {
@@ -179,6 +206,17 @@ const plugins: UserConfig['plugins'] = [
 				}),
 			]
 		: []),
+	// Only run on non-release builds to prevent double upload from @vitejs/plugin-legacy
+	...(process.env.CODECOV_TOKEN && !release
+		? [
+				codecovVitePlugin({
+					enableBundleAnalysis: true,
+					bundleName: 'editor-ui',
+					uploadToken: process.env.CODECOV_TOKEN,
+					debug: true,
+				}),
+			]
+		: []),
 ];
 
 const target = browserslistToEsbuild(browsers);
@@ -196,6 +234,7 @@ export default mergeConfig(
 		base: publicPath,
 		envPrefix: ['VUE', 'N8N_ENV_FEAT'],
 		css: {
+			preprocessorMaxWorkers: true,
 			preprocessorOptions: {
 				scss: {
 					additionalData: [
@@ -212,9 +251,8 @@ export default mergeConfig(
 			target,
 		},
 		optimizeDeps: {
-			esbuildOptions: {
-				target,
-			},
+			exclude: ['wa-sqlite'],
+			rolldownOptions: {},
 		},
 		worker: {
 			format: 'es',

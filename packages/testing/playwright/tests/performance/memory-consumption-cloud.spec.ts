@@ -1,38 +1,12 @@
-import { test, expect } from '../../fixtures/base';
-import { attachMetric, pollMemoryMetric } from '../../utils/performance-helper';
+import { runMemoryBaseline } from './memory-baseline';
+import { test } from '../../fixtures/base';
 
+// Emits `memory-*-baseline` series consumed by .github/workflows/ci-pull-requests.yml — do not rename without updating that workflow.
 test.use({
-	addContainerCapability: {
-		resourceQuota: {
-			memory: 0.75,
-			cpu: 0.5,
-		},
+	capability: {
+		resourceQuota: { memory: 0.75, cpu: 0.5 },
+		services: ['victoriaLogs', 'victoriaMetrics', 'vector'],
 	},
 });
 
-test.describe('Memory Consumption', () => {
-	const CONTAINER_STABILIZATION_TIME = 20000;
-	const POLL_MEMORY_DURATION = 30000;
-	const STARTER_PLAN_MEMORY_LIMIT = 768;
-
-	test('Memory consumption baseline with starter plan resources', async ({
-		n8nContainer,
-	}, testInfo) => {
-		// Wait for container to stabilize
-		await new Promise((resolve) => setTimeout(resolve, CONTAINER_STABILIZATION_TIME));
-
-		// Poll memory metric for 30 seconds to get baseline
-		const averageMemoryBytes = await pollMemoryMetric(
-			n8nContainer.baseUrl,
-			POLL_MEMORY_DURATION,
-			1000,
-		);
-		const averageMemoryMB = averageMemoryBytes / 1024 / 1024;
-
-		await attachMetric(testInfo, 'memory-consumption-baseline', averageMemoryMB, 'MB');
-
-		// Verify memory is within starter plan limits (768MB)
-		expect(averageMemoryMB).toBeLessThan(STARTER_PLAN_MEMORY_LIMIT);
-		expect(averageMemoryMB).toBeGreaterThan(100);
-	});
-});
+runMemoryBaseline({ name: 'memory', owner: 'Catalysts' });

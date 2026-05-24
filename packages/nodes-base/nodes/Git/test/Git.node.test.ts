@@ -1,9 +1,12 @@
 import * as fsPromises from 'fs/promises';
 import { mock } from 'jest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, ResolvedFilePath } from 'n8n-workflow';
 import type { SimpleGit } from 'simple-git';
+import { Container } from '@n8n/di';
+import { SecurityConfig } from '@n8n/config';
 
 import { Git } from '../Git.node';
+import { ALLOWED_CONFIG_KEYS } from '../descriptions';
 
 // Mock simple-git
 const mockGit = {
@@ -22,13 +25,16 @@ const mockGit = {
 	listConfig: jest.fn(),
 	status: jest.fn(),
 	addTag: jest.fn(),
+	raw: jest.fn(),
 	env: jest.fn().mockReturnThis(),
 } as unknown as jest.Mocked<SimpleGit>;
 
 jest.mock('simple-git', () => ({
 	__esModule: true,
-	default: () => mockGit,
+	default: jest.fn(() => mockGit),
 }));
+
+const mockSimpleGit = jest.requireMock<{ default: jest.Mock }>('simple-git').default;
 
 // Mock filesystem operations
 jest.mock('fs/promises', () => ({
@@ -50,12 +56,78 @@ describe('Git Node', () => {
 			continueOnFail: jest.fn(() => false),
 			helpers: {
 				returnJsonArray: jest.fn((data: any[]) => data.map((item: any) => ({ json: item }))),
+				resolvePath: jest.fn(async (path: string) => path as any),
+				isFilePathBlocked: jest.fn(() => false),
 			},
 		});
 		jest.clearAllMocks();
 	});
 
+	describe('Environment validation', () => {
+		it('should not include invalid inherited environment keys in simple-git env', async () => {
+			const inheritedEnvKey = 'N8N_TEST_INVALID_ENV_KEY';
+			(Object.prototype as Record<string, unknown>)[inheritedEnvKey] = 'ignored';
+
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('log')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({});
+
+			mockGit.log.mockResolvedValueOnce({ all: [] } as any);
+
+			try {
+				await gitNode.execute.call(mockExecuteFunctions);
+			} finally {
+				delete (Object.prototype as Record<string, unknown>)[inheritedEnvKey];
+			}
+
+			expect(mockGit.env).toHaveBeenCalledTimes(1);
+			const envArg = mockGit.env.mock.calls[0][0] as Record<string, string>;
+			expect(Object.prototype.hasOwnProperty.call(envArg, inheritedEnvKey)).toBe(false);
+			expect(envArg[inheritedEnvKey]).toBeUndefined();
+			expect(envArg.GIT_TERMINAL_PROMPT).toBe('0');
+		});
+	});
+
 	describe('Branch switching', () => {
+		const mockNodeParameters = (params: Record<string, unknown>) => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(name: string, _itemIndex: number, fallbackValue?: unknown) =>
+					(name in params ? params[name] : fallbackValue) as any,
+			);
+		};
+
+		it('should reject commit operation when branch starts with hyphen', async () => {
+			mockNodeParameters({
+				operation: 'commit',
+				repositoryPath: '/repo',
+				options: { branch: '-main' },
+				message: 'test commit',
+			});
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Reference cannot start with a hyphen',
+			);
+
+			expect(mockGit.checkout).not.toHaveBeenCalled();
+			expect(mockGit.commit).not.toHaveBeenCalled();
+		});
+
+		it('should reject push operation when branch starts with hyphen', async () => {
+			mockNodeParameters({
+				operation: 'push',
+				repositoryPath: '/repo',
+				options: { branch: '--pathspec-from-file' },
+			});
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Reference cannot start with a hyphen',
+			);
+
+			expect(mockGit.checkout).not.toHaveBeenCalled();
+			expect(mockGit.push).not.toHaveBeenCalled();
+		});
+
 		it('should switch to existing branch for commit operation', async () => {
 			mockExecuteFunctions.getNodeParameter
 				.mockReturnValueOnce('commit')
@@ -66,7 +138,7 @@ describe('Git Node', () => {
 			await gitNode.execute.call(mockExecuteFunctions);
 
 			expect(mockGit.checkout).toHaveBeenCalledWith('feature');
-			expect(mockGit.commit).toHaveBeenCalledWith('test commit', undefined);
+			expect(mockGit.commit).toHaveBeenCalledWith('test commit');
 		});
 
 		it('should commit specific files when pathsToAdd is provided', async () => {
@@ -85,7 +157,9 @@ describe('Git Node', () => {
 			const result = await gitNode.execute.call(mockExecuteFunctions);
 
 			expect(mockGit.checkout).toHaveBeenCalledWith('feature-branch');
+			// Uses -- separator to prevent argument injection
 			expect(mockGit.commit).toHaveBeenCalledWith('Add specific files', [
+				'--',
 				'src/file1.js',
 				'src/file2.js',
 				'README.md',
@@ -128,7 +202,7 @@ describe('Git Node', () => {
 				'branch.feature-branch.merge',
 				'refs/heads/feature-branch',
 			);
-			expect(mockGit.commit).toHaveBeenCalledWith('commit message', undefined);
+			expect(mockGit.commit).toHaveBeenCalledWith('commit message');
 		});
 
 		it('should set upstream when switching to existing branch for push operation', async () => {
@@ -341,7 +415,7 @@ describe('Git Node', () => {
 			await gitNode.execute.call(mockExecuteFunctions);
 
 			expect(mockGit.checkout).not.toHaveBeenCalled();
-			expect(mockGit.commit).toHaveBeenCalledWith('test commit', undefined);
+			expect(mockGit.commit).toHaveBeenCalledWith('test commit');
 		});
 
 		it('should not switch branch when empty string is provided', async () => {
@@ -354,7 +428,22 @@ describe('Git Node', () => {
 			await gitNode.execute.call(mockExecuteFunctions);
 
 			expect(mockGit.checkout).not.toHaveBeenCalled();
-			expect(mockGit.commit).toHaveBeenCalledWith('test commit', undefined);
+			expect(mockGit.commit).toHaveBeenCalledWith('test commit');
+		});
+
+		it('should reject switchBranch operation when branchName starts with hyphen', async () => {
+			mockNodeParameters({
+				operation: 'switchBranch',
+				repositoryPath: '/repo',
+				options: {},
+				branchName: '-main',
+			});
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Reference cannot start with a hyphen',
+			);
+
+			expect(mockGit.checkout).not.toHaveBeenCalled();
 		});
 	});
 
@@ -368,8 +457,81 @@ describe('Git Node', () => {
 
 			const result = await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockGit.add).toHaveBeenCalledWith(['file.txt']);
+			// Should use -- separator to prevent argument injection
+			expect(mockGit.add).toHaveBeenCalledWith(['--', 'file.txt']);
 			expect(result[0]).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
+		});
+
+		ALLOWED_CONFIG_KEYS.forEach((key) => {
+			it(`should handle addConfig with key '${key}' operation`, async () => {
+				mockExecuteFunctions.getNodeParameter
+					.mockReturnValueOnce('addConfig')
+					.mockReturnValueOnce('/repo')
+					.mockReturnValueOnce({})
+					.mockReturnValueOnce(key)
+					.mockReturnValueOnce('test value');
+
+				await gitNode.execute.call(mockExecuteFunctions);
+
+				expect(mockGit.addConfig).toHaveBeenCalledWith(key, 'test value', false);
+			});
+		});
+
+		describe('enableGitNodeAllConfigKeys is false (default value)', () => {
+			[
+				'core.sshCommand',
+				'core.hooksPath',
+				'credential.helper',
+				'remote.origin.uploadpack',
+				'remote.origin.receivepack',
+				'url.xxx.insteadOf',
+				'user.name,core.sshCommand',
+			].forEach((key) => {
+				it(`should reject addConfig with key '${key}'`, async () => {
+					mockExecuteFunctions.getNodeParameter
+						.mockReturnValueOnce('addConfig')
+						.mockReturnValueOnce('/repo')
+						.mockReturnValueOnce({})
+						.mockReturnValueOnce(key)
+						.mockReturnValueOnce('test value');
+
+					await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+						`The provided git config key '${key}' is not allowed`,
+					);
+				});
+			});
+		});
+
+		describe('enableGitNodeAllConfigKeys is true', () => {
+			beforeEach(() => {
+				const securityConfig = mock<SecurityConfig>({
+					enableGitNodeAllConfigKeys: true,
+				});
+				Container.set(SecurityConfig, securityConfig);
+			});
+
+			[
+				'core.sshCommand',
+				'core.hooksPath',
+				'credential.helper',
+				'remote.origin.uploadpack',
+				'remote.origin.receivepack',
+				'url.xxx.insteadOf',
+				'user.name,core.sshCommand',
+			].forEach((key) => {
+				it(`should handle addConfig with key '${key}'`, async () => {
+					mockExecuteFunctions.getNodeParameter
+						.mockReturnValueOnce('addConfig')
+						.mockReturnValueOnce('/repo')
+						.mockReturnValueOnce({})
+						.mockReturnValueOnce(key)
+						.mockReturnValueOnce('test value');
+
+					await gitNode.execute.call(mockExecuteFunctions);
+
+					expect(mockGit.addConfig).toHaveBeenCalledWith(key, 'test value', false);
+				});
+			});
 		});
 
 		it('should handle addConfig operation', async () => {
@@ -385,40 +547,69 @@ describe('Git Node', () => {
 			expect(mockGit.addConfig).toHaveBeenCalledWith('user.name', 'test user', false);
 		});
 
-		it('should handle clone operation and create directory when it does not exist', async () => {
+		it('should handle clone operation and create the parent directory', async () => {
+			const missingParentError = Object.assign(new Error('Directory does not exist'), {
+				code: 'ENOENT',
+			});
+
 			mockExecuteFunctions.getNodeParameter
 				.mockReturnValueOnce('clone')
-				.mockReturnValueOnce('/new-repo')
+				.mockReturnValueOnce('/git/new-repo')
 				.mockReturnValueOnce({})
 				.mockReturnValueOnce('https://github.com/test/repo.git');
 
-			// Simulate directory not existing - access() throws
-			mockFsPromises.access.mockRejectedValueOnce(new Error('Directory does not exist'));
+			mockExecuteFunctions.helpers.resolvePath = jest
+				.fn()
+				.mockRejectedValueOnce(missingParentError)
+				.mockResolvedValueOnce('/git' as ResolvedFilePath);
 			mockFsPromises.mkdir.mockResolvedValueOnce(undefined);
 
 			const result = await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockFsPromises.access).toHaveBeenCalledWith('/new-repo');
-			expect(mockFsPromises.mkdir).toHaveBeenCalledWith('/new-repo');
-			expect(mockGit.clone).toHaveBeenCalledWith('https://github.com/test/repo.git', '.');
+			expect(mockFsPromises.access).not.toHaveBeenCalled();
+			expect(mockExecuteFunctions.helpers.resolvePath).toHaveBeenCalledWith('/git/new-repo');
+			expect(mockExecuteFunctions.helpers.resolvePath).toHaveBeenCalledWith('/git');
+			expect(mockFsPromises.mkdir).toHaveBeenCalledWith('/git', { recursive: true });
+			expect(mockSimpleGit).toHaveBeenCalledWith(expect.objectContaining({ baseDir: '/git' }));
+			expect(mockGit.clone).toHaveBeenCalledWith(
+				'https://github.com/test/repo.git',
+				'/git/new-repo',
+			);
 			expect(result[0]).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 		});
 
-		it('should handle clone operation when directory already exists', async () => {
+		it('should not create the parent directory when clone path is blocked', async () => {
 			mockExecuteFunctions.getNodeParameter
 				.mockReturnValueOnce('clone')
-				.mockReturnValueOnce('/existing-repo')
+				.mockReturnValueOnce('/blocked/repo')
+				.mockReturnValueOnce({});
+			mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(() => true);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Access to the repository path is not allowed',
+			);
+
+			expect(mockFsPromises.mkdir).not.toHaveBeenCalled();
+			expect(mockSimpleGit).not.toHaveBeenCalled();
+			expect(mockGit.clone).not.toHaveBeenCalled();
+		});
+
+		it('should pass the resolved repository path as the clone destination', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/existing-repo')
 				.mockReturnValueOnce({})
 				.mockReturnValueOnce('https://github.com/test/repo.git');
 
-			// Simulate directory already exists - access() succeeds
-			mockFsPromises.access.mockResolvedValueOnce(undefined);
-
 			await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockFsPromises.access).toHaveBeenCalledWith('/existing-repo');
-			expect(mockFsPromises.mkdir).not.toHaveBeenCalled();
-			expect(mockGit.clone).toHaveBeenCalledWith('https://github.com/test/repo.git', '.');
+			expect(mockFsPromises.access).not.toHaveBeenCalled();
+			expect(mockFsPromises.mkdir).toHaveBeenCalledWith('/git', { recursive: true });
+			expect(mockSimpleGit).toHaveBeenCalledWith(expect.objectContaining({ baseDir: '/git' }));
+			expect(mockGit.clone).toHaveBeenCalledWith(
+				'https://github.com/test/repo.git',
+				'/git/existing-repo',
+			);
 		});
 
 		it('should handle fetch operation', async () => {
@@ -522,6 +713,129 @@ describe('Git Node', () => {
 			await gitNode.execute.call(mockExecuteFunctions);
 
 			expect(mockGit.addTag).toHaveBeenCalledWith('v1.0.0');
+		});
+
+		it('should handle reflog operation with default HEAD reference', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('reflog')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({}) // options - no custom reference
+				.mockReturnValueOnce(false) // returnAll
+				.mockReturnValueOnce(10); // limit
+
+			const mockReflogOutput = `abc123 HEAD@{0}: commit: Update README
+def456 HEAD@{1}: pull: Fast-forward
+789xyz HEAD@{2}: checkout: moving from main to feature`;
+
+			mockGit.raw.mockResolvedValueOnce(mockReflogOutput);
+
+			const result = await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGit.raw).toHaveBeenCalledWith(['reflog', 'HEAD']);
+			expect(result[0]).toHaveLength(3);
+			expect(result[0][0]).toEqual({
+				json: {
+					hash: 'abc123',
+					ref: 'HEAD@{0}',
+					action: 'commit',
+					message: 'Update README',
+					raw: 'abc123 HEAD@{0}: commit: Update README',
+				},
+				pairedItem: { item: 0 },
+			});
+		});
+
+		it('should handle reflog operation with custom reference', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('reflog')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({ reference: 'main' }) // custom reference
+				.mockReturnValueOnce(false) // returnAll
+				.mockReturnValueOnce(10); // limit
+
+			const mockReflogOutput = `abc123 main@{0}: commit: Feature complete
+def456 main@{1}: commit: Initial commit`;
+
+			mockGit.raw.mockResolvedValueOnce(mockReflogOutput);
+
+			const result = await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGit.raw).toHaveBeenCalledWith(['reflog', 'main']);
+			expect(result[0]).toHaveLength(2);
+		});
+
+		it('should reject reflog with invalid reference to prevent argument injection', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('reflog')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({ reference: '-n' })
+				.mockReturnValueOnce(false);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Reference cannot start with a hyphen',
+			);
+
+			expect(mockGit.raw).not.toHaveBeenCalled();
+		});
+
+		it('should handle reflog operation with limit', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('reflog')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce(false) // returnAll = false
+				.mockReturnValueOnce(2); // limit = 2
+
+			const mockReflogOutput = `abc123 HEAD@{0}: commit: First
+def456 HEAD@{1}: commit: Second
+789xyz HEAD@{2}: commit: Third
+012abc HEAD@{3}: commit: Fourth`;
+
+			mockGit.raw.mockResolvedValueOnce(mockReflogOutput);
+
+			const result = await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(result[0]).toHaveLength(2); // Should only return 2 entries
+			expect(result[0][0].json.hash).toBe('abc123');
+			expect(result[0][1].json.hash).toBe('def456');
+		});
+
+		it('should handle reflog operation with returnAll option', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('reflog')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce(true); // returnAll = true
+
+			const mockReflogOutput = `abc123 HEAD@{0}: commit: First
+def456 HEAD@{1}: commit: Second
+789xyz HEAD@{2}: commit: Third
+012abc HEAD@{3}: commit: Fourth`;
+
+			mockGit.raw.mockResolvedValueOnce(mockReflogOutput);
+
+			const result = await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(result[0]).toHaveLength(4); // Should return all entries
+		});
+
+		it('should handle reflog with unparseable lines', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('reflog')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce(true); // returnAll
+
+			const mockReflogOutput = `abc123 HEAD@{0}: commit: Valid entry
+invalid line without proper format`;
+
+			mockGit.raw.mockResolvedValueOnce(mockReflogOutput);
+
+			const result = await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(result[0]).toHaveLength(2);
+			expect(result[0][0].json).toHaveProperty('hash');
+			expect(result[0][1].json).toEqual({ raw: 'invalid line without proper format' });
 		});
 	});
 

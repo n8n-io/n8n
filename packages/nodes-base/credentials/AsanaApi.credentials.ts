@@ -1,4 +1,9 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class AsanaApi implements ICredentialType {
 	name = 'asanaApi';
@@ -23,6 +28,13 @@ export class AsanaApi implements ICredentialType {
 			headers: {
 				Authorization: '=Bearer {{$credentials.accessToken}}',
 			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://app.asana.com/api/1.0',
+			url: '/users/me',
 		},
 	};
 }

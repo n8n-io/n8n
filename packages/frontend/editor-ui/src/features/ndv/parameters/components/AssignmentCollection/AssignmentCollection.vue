@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import isEqual from 'lodash/isEqual';
 import type {
 	AssignmentCollectionValue,
 	AssignmentValue,
@@ -21,6 +22,7 @@ import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
 import { N8nInputLabel } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 interface Props {
 	parameter: INodeProperties;
 	value: AssignmentCollectionValue;
@@ -45,17 +47,22 @@ const i18n = useI18n();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 const dropAreaContainer = useTemplateRef('dropArea');
 
-const state = reactive<{ paramValue: AssignmentCollectionValue }>({
-	paramValue: {
+function createParamValue(value: AssignmentCollectionValue): AssignmentCollectionValue {
+	return {
 		assignments:
-			props.value.assignments?.map((assignment) => {
+			value.assignments?.map((assignment) => {
 				if (!assignment.id) assignment.id = crypto.randomUUID();
 				return assignment;
 			}) ?? [],
-	},
+	};
+}
+
+const state = reactive<{ paramValue: AssignmentCollectionValue }>({
+	paramValue: createParamValue(props.value),
 });
 
-const ndvStore = useNDVStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const ndvStore = injectNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const { callDebounced } = useDebounce();
 
@@ -82,14 +89,27 @@ const actions = computed(() => {
 	];
 });
 
-watch(state.paramValue, (value) => {
-	void callDebounced(
-		() => {
-			emit('valueChanged', { name: props.path, value, node: props.node?.name as string });
-		},
-		{ debounceTime: 1000 },
-	);
-});
+watch(
+	() => props.node,
+	() => {
+		const newParamValue = createParamValue(props.value);
+		if (isEqual(state.paramValue, newParamValue)) return;
+		state.paramValue = newParamValue;
+	},
+);
+
+watch(
+	() => state.paramValue,
+	(value) => {
+		void callDebounced(
+			() => {
+				emit('valueChanged', { name: props.path, value, node: props.node?.name as string });
+			},
+			{ debounceTime: 1000 },
+		);
+	},
+	{ deep: true },
+);
 
 function addAssignment(): void {
 	state.paramValue.assignments.push({
@@ -100,12 +120,15 @@ function addAssignment(): void {
 	});
 }
 
-function dropAssignment(expression: string): void {
+async function dropAssignment(expression: string): Promise<void> {
+	const type =
+		props.defaultType ??
+		(await typeFromExpression(expression, workflowDocumentStore.value.documentId));
 	state.paramValue.assignments.push({
 		id: crypto.randomUUID(),
 		name: propertyNameFromExpression(expression),
 		value: `=${expression}`,
-		type: props.defaultType ?? typeFromExpression(expression),
+		type,
 	});
 }
 
@@ -162,7 +185,6 @@ function optionSelected(action: string) {
 				node &&
 				expressionLocalResolveCtx?.inputNode
 			"
-			:workflow="expressionLocalResolveCtx.workflow"
 			:node="node"
 			:input-node-name="expressionLocalResolveCtx.inputNode.name"
 			:reference="dropAreaContainer?.$el"

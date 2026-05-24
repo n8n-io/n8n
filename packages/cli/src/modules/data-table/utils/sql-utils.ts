@@ -1,5 +1,6 @@
 import {
 	dataTableColumnNameSchema,
+	dataTableIdSchema,
 	DATA_TABLE_COLUMN_ERROR_MESSAGE,
 	type DataTableCreateColumnSchema,
 } from '@n8n/api-types';
@@ -51,9 +52,6 @@ function dataTableColumnTypeToSql(
 			switch (dbType) {
 				case 'postgres':
 					return 'DOUBLE PRECISION';
-				case 'mysql':
-				case 'mariadb':
-					return 'DOUBLE';
 				case 'sqlite':
 					return 'REAL';
 				default:
@@ -82,6 +80,10 @@ export function isValidColumnName(name: string) {
 	return dataTableColumnNameSchema.safeParse(name).success;
 }
 
+export function isValidDataTableId(id: string) {
+	return dataTableIdSchema.safeParse(id).success;
+}
+
 export function addColumnQuery(
 	tableName: DataTableUserTableName,
 	column: DataTableCreateColumnSchema,
@@ -106,19 +108,31 @@ export function deleteColumnQuery(
 	return `ALTER TABLE ${quotedTableName} DROP COLUMN ${quoteIdentifier(column, dbType)}`;
 }
 
+export function renameColumnQuery(
+	tableName: DataTableUserTableName,
+	oldColumnName: string,
+	newColumnName: string,
+	dbType: DataSourceOptions['type'],
+): string {
+	if (!isValidColumnName(oldColumnName) || !isValidColumnName(newColumnName)) {
+		throw new UnexpectedError(DATA_TABLE_COLUMN_ERROR_MESSAGE);
+	}
+
+	const quotedTableName = quoteIdentifier(tableName, dbType);
+	const quotedOldName = quoteIdentifier(oldColumnName, dbType);
+	const quotedNewName = quoteIdentifier(newColumnName, dbType);
+
+	return `ALTER TABLE ${quotedTableName} RENAME COLUMN ${quotedOldName} TO ${quotedNewName}`;
+}
+
 export function quoteIdentifier(name: string, dbType: DataSourceOptions['type']): string {
 	switch (dbType) {
-		case 'mysql':
-		case 'mariadb':
-			return `\`${name}\``;
 		case 'postgres':
 		case 'sqlite':
 		default:
-			return `"${name}"`;
+			return `"${name.replace(/"/g, '""')}"`;
 	}
 }
-
-type WithInsertId = { insertId: number };
 
 const isArrayOf = <T>(data: unknown, itemGuard: (x: unknown) => x is T): data is T[] =>
 	Array.isArray(data) && data.every(itemGuard);
@@ -130,10 +144,6 @@ const isNumber = (value: unknown): value is number => {
 const isDate = (value: unknown): value is Date => {
 	return value instanceof Date;
 };
-
-function hasInsertId(data: unknown): data is WithInsertId {
-	return typeof data === 'object' && data !== null && 'insertId' in data && isNumber(data.insertId);
-}
 
 function hasRowReturnData(data: unknown): data is DataTableRowReturn {
 	return (
@@ -155,7 +165,7 @@ function hasRowId(data: unknown): data is Pick<DataTableRowReturn, 'id'> {
 export function extractReturningData(raw: unknown): DataTableRowReturn[] {
 	if (!isArrayOf(raw, hasRowReturnData)) {
 		throw new UnexpectedError(
-			`Expected INSERT INTO raw to be { id: number; createdAt: string; updatedAt: string }[] on Postgres or MariaDB. Is '${JSON.stringify(raw)}'`,
+			`Expected INSERT INTO raw to be { id: number; createdAt: string; updatedAt: string }[] on Postgres. Is '${JSON.stringify(raw)}'`,
 		);
 	}
 
@@ -164,20 +174,13 @@ export function extractReturningData(raw: unknown): DataTableRowReturn[] {
 
 export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type']): number[] {
 	switch (dbType) {
-		case 'postgres':
-		case 'mariadb': {
+		case 'postgres': {
 			if (!isArrayOf(raw, hasRowId)) {
 				throw new UnexpectedError(
-					`Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB. Is '${JSON.stringify(raw)}'`,
+					`Expected INSERT INTO raw to be { id: number }[] on Postgres. Is '${JSON.stringify(raw)}'`,
 				);
 			}
 			return raw.map((r) => r.id);
-		}
-		case 'mysql': {
-			if (!hasInsertId(raw)) {
-				throw new UnexpectedError('Expected INSERT INTO raw.insertId: number for MySQL');
-			}
-			return [raw.insertId];
 		}
 		case 'sqlite':
 		default: {
@@ -189,8 +192,16 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 	}
 }
 
+// Convert 0/1 or '0'/'1' to booleans, leaving other values unchanged
+function normalizeBoolean<T>(value: T): T | boolean {
+	if (typeof value === 'boolean') return value;
+	if (value === 1 || value === '1') return true;
+	if (value === 0 || value === '0') return false;
+	return value;
+}
+
 // Convert date objects or strings to dates in UTC
-function normalizeDate(value: DataTableColumnJsType): Date | null {
+export function normalizeDate(value: unknown): Date | null {
 	if (value instanceof Date) return value;
 
 	if (typeof value === 'string') {
@@ -231,14 +242,7 @@ export function normalizeRows(
 			const type = typeMap[key];
 
 			if (type === 'boolean') {
-				// Convert boolean values to true/false
-				if (typeof value === 'boolean') {
-					normalized[key] = value;
-				} else if (value === 1 || value === '1') {
-					normalized[key] = true;
-				} else if (value === 0 || value === '0') {
-					normalized[key] = false;
-				}
+				normalized[key] = normalizeBoolean(value);
 			}
 
 			if (type === 'date' && value !== null && value !== undefined) {
@@ -274,7 +278,7 @@ function formatDateForDatabase(
 	}
 
 	// These dbs use DATETIME format without 'T' and 'Z'
-	if (dbType && ['sqlite', 'sqlite-pooled', 'mysql', 'mariadb'].includes(dbType)) {
+	if (dbType && ['sqlite', 'sqlite-pooled'].includes(dbType)) {
 		return date.toISOString().replace('T', ' ').replace('Z', '');
 	}
 
@@ -293,6 +297,32 @@ export function normalizeValueForDatabase(
 ): DataTableColumnJsType {
 	if (columnType === 'date' && value !== null) {
 		return formatDateForDatabase(value, dbType);
+	}
+
+	return value;
+}
+
+/**
+ * Normalize a raw value coming from a cross-database data-table export so it can
+ * be inserted into the destination database. Differs from `normalizeValueForDatabase`
+ * by also handling booleans (SQLite stores them as 0/1 INTEGER, Postgres as BOOLEAN)
+ * and SQLite-style date strings without timezone info (treated as UTC).
+ */
+export function normalizeUserRowValueForDatabase(
+	value: unknown,
+	columnType: string | undefined,
+	dbType?: DataSourceOptions['type'],
+): unknown {
+	if (value === null || value === undefined) return null;
+
+	if (columnType === 'boolean') {
+		return normalizeBoolean(value);
+	}
+
+	if (columnType === 'date') {
+		const date = normalizeDate(value);
+		if (date === null) return value;
+		return normalizeValueForDatabase(date, columnType, dbType);
 	}
 
 	return value;

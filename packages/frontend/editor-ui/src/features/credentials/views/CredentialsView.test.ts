@@ -13,11 +13,21 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { createRouter, createWebHistory } from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
+import * as projectsApi from '@/features/collaboration/projects/projects.api';
 
 vi.mock('@/app/composables/useGlobalEntityCreation', () => ({
 	useGlobalEntityCreation: () => ({
 		menu: [],
 	}),
+}));
+
+vi.mock('@/features/collaboration/projects/projects.api', () => ({
+	getProject: vi.fn(),
+}));
+
+vi.mock('@/app/api/workflow-dependencies', () => ({
+	getResourceDependencyCounts: vi.fn().mockResolvedValue({}),
+	getResourceDependencies: vi.fn().mockResolvedValue({}),
 }));
 
 const router = createRouter({
@@ -29,7 +39,7 @@ const router = createRouter({
 			component: { template: '<div></div>' },
 		},
 		{
-			path: '/:credentialId?',
+			path: '/:projectId?/credentials/:credentialId?',
 			name: VIEWS.CREDENTIALS,
 			component: { template: '<div></div>' },
 		},
@@ -56,11 +66,16 @@ const renderComponent = createComponentRenderer(CredentialsView, {
 	global: { stubs: { ProjectHeader: true }, plugins: [router] },
 });
 
+const mockedProjectsApi = vi.mocked(projectsApi);
+
 describe('CredentialsView', () => {
 	beforeEach(async () => {
 		createTestingPinia({ initialState });
 		await router.push('/');
 		await router.isReady();
+
+		// Mock getProject to prevent actual API calls when routes with projectId are navigated to
+		mockedProjectsApi.getProject.mockResolvedValue(createTestProject({}));
 	});
 
 	afterEach(() => {
@@ -299,6 +314,8 @@ describe('CredentialsView', () => {
 			await flushPromises();
 			expect(getAllByTestId('resources-list-item').length).toBe(1);
 
+			// Open filter popover first
+			await fireEvent.click(getByTestId('resources-list-filters-trigger'));
 			await fireEvent.click(getByTestId('credential-filter-setup-needed'));
 			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
 		});
@@ -333,6 +350,8 @@ describe('CredentialsView', () => {
 			expect(getAllByTestId('resources-list-item').length).toBe(1);
 			expect(getByTestId('resources-list-item').textContent).toContain('credential needs setup');
 
+			// Open filter popover first
+			await fireEvent.click(getByTestId('resources-list-filters-trigger'));
 			await fireEvent.click(getByTestId('credential-filter-setup-needed'));
 			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
 		});
@@ -367,6 +386,8 @@ describe('CredentialsView', () => {
 			expect(getAllByTestId('resources-list-item').length).toBe(1);
 			expect(getByTestId('resources-list-item').textContent).toContain('credential needs setup');
 
+			// Open filter popover first
+			await fireEvent.click(getByTestId('resources-list-filters-trigger'));
 			await fireEvent.click(getByTestId('credential-filter-setup-needed'));
 			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
 		});

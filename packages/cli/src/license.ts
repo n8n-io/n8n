@@ -30,11 +30,15 @@ export type FeatureReturnType = Partial<
 	} & { [K in NumericLicenseFeature]: number } & { [K in BooleanLicenseFeature]: boolean }
 >;
 
+type LicenseRefreshCallback = (cert: string) => void;
+
 @Service()
 export class License implements LicenseProvider {
 	private manager: LicenseManager | undefined;
 
 	private isShuttingDown = false;
+
+	private refreshCallbacks: LicenseRefreshCallback[] = [];
 
 	constructor(
 		private readonly logger: Logger,
@@ -141,10 +145,12 @@ export class License implements LicenseProvider {
 
 	private async onFeatureChange() {
 		void this.broadcastReloadLicenseCommand();
+		await this.notifyRefreshCallbacks();
 	}
 
 	private async onLicenseRenewed() {
 		void this.broadcastReloadLicenseCommand();
+		await this.notifyRefreshCallbacks();
 	}
 
 	private async broadcastReloadLicenseCommand() {
@@ -167,12 +173,39 @@ export class License implements LicenseProvider {
 		);
 	}
 
-	async activate(activationKey: string, eulaUri?: string): Promise<void> {
+	/**
+	 * Register a callback to be notified when license certificate is refreshed.
+	 * Returns an unsubscribe function.
+	 */
+	onCertRefresh(refreshCallback: LicenseRefreshCallback): () => void {
+		this.refreshCallbacks.push(refreshCallback);
+		return () => {
+			const index = this.refreshCallbacks.indexOf(refreshCallback);
+			if (index > -1) {
+				this.refreshCallbacks.splice(index, 1);
+			}
+		};
+	}
+
+	private async notifyRefreshCallbacks(): Promise<void> {
+		const cert = await this.loadCertStr();
+		for (const refreshCallback of this.refreshCallbacks) {
+			try {
+				refreshCallback(cert);
+			} catch (error) {
+				this.logger.error('Error in license refresh callback', { error });
+			}
+		}
+	}
+
+	async activate(activationKey: string): Promise<void>;
+	async activate(activationKey: string, eulaUri: string, userEmail: string): Promise<void>;
+	async activate(activationKey: string, eulaUri?: string, userEmail?: string): Promise<void> {
 		if (!this.manager) {
 			return;
 		}
 
-		await this.manager.activate(activationKey, eulaUri);
+		await this.manager.activate(activationKey, { eulaUri, email: userEmail });
 		this.logger.debug('License activated');
 	}
 
@@ -182,6 +215,7 @@ export class License implements LicenseProvider {
 			return;
 		}
 		await this.manager.reload();
+		await this.notifyRefreshCallbacks();
 		this.logger.debug('License reloaded');
 	}
 
@@ -221,6 +255,19 @@ export class License implements LicenseProvider {
 		return this.manager?.hasFeatureEnabled(feature) ?? false;
 	}
 
+	isCertValid(): boolean {
+		return this.manager?.isValid(false /* useLogger */) ?? false;
+	}
+
+	hasFeatureInCert(feature: BooleanLicenseFeature): boolean {
+		return this.manager?.hasFeatureEnabled(feature, false) ?? false;
+	}
+
+	/** @deprecated Use `LicenseState.isDynamicCredentialsLicensed` instead. */
+	isDynamicCredentialsEnabled() {
+		return this.isLicensed(LICENSE_FEATURES.DYNAMIC_CREDENTIALS);
+	}
+
 	/** @deprecated Use `LicenseState.isSharingLicensed` instead. */
 	isSharingEnabled() {
 		return this.isLicensed(LICENSE_FEATURES.SHARING);
@@ -239,11 +286,6 @@ export class License implements LicenseProvider {
 	/** @deprecated Use `LicenseState.isSamlLicensed` instead. */
 	isSamlEnabled() {
 		return this.isLicensed(LICENSE_FEATURES.SAML);
-	}
-
-	/** @deprecated Use `LicenseState.isApiKeyScopesLicensed` instead. */
-	isApiKeyScopesEnabled() {
-		return this.isLicensed(LICENSE_FEATURES.API_KEY_SCOPES);
 	}
 
 	/** @deprecated Use `LicenseState.isAiAssistantLicensed` instead. */
@@ -412,6 +454,52 @@ export class License implements LicenseProvider {
 
 	getPlanName(): string {
 		return this.getValue('planName') ?? 'Community';
+	}
+
+	getExpiryDate(): Date | null {
+		try {
+			return this.manager?.getExpiryDate() ?? null;
+		} catch {
+			return null;
+		}
+	}
+
+	getTerminationDate(): Date | null {
+		try {
+			return this.manager?.getTerminationDate() ?? null;
+		} catch {
+			return null;
+		}
+	}
+
+	getExpiringInDays(): number | undefined {
+		const expiryDate = this.getExpiryDate();
+		if (!expiryDate) return undefined;
+
+		const expiryTime = expiryDate.getTime();
+		if (Number.isNaN(expiryTime)) return undefined;
+
+		const now = new Date();
+		const diffMs = expiryTime - now.getTime();
+		const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+		// Return 0 for already expired licenses instead of negative values
+		return Math.max(0, diffDays);
+	}
+
+	getTerminatingInDays(): number | undefined {
+		const terminationDate = this.getTerminationDate();
+		if (!terminationDate) return undefined;
+
+		const terminationTime = terminationDate.getTime();
+		if (Number.isNaN(terminationTime)) return undefined;
+
+		const now = new Date();
+		const diffMs = terminationTime - now.getTime();
+		const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+		// Return 0 for already terminated licenses instead of negative values
+		return Math.max(0, diffDays);
 	}
 
 	getInfo(): string {

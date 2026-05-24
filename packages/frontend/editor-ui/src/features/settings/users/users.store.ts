@@ -3,6 +3,7 @@ import {
 	type LoginRequestDto,
 	type PasswordUpdateRequestDto,
 	type SettingsUpdateRequestDto,
+	type UserSelfSettingsUpdateRequestDto,
 	type UserUpdateRequestDto,
 	type User,
 	ROLE,
@@ -30,7 +31,7 @@ import * as invitationsApi from './invitation.api';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import * as onboardingApi from '@/app/api/workflow-webhooks';
-import * as promptsApi from '@n8n/rest-api-client/api/prompts';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
@@ -71,6 +72,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const isInstanceOwner = computed(() => _isInstanceOwner(currentUser.value));
 
 	const isAdmin = computed(() => _isAdmin(currentUser.value));
+
+	const isAdminOrOwner = computed(() => isInstanceOwner.value || isAdmin.value);
 
 	const mfaEnabled = computed(() => currentUser.value?.mfaEnabled ?? false);
 
@@ -249,13 +252,12 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
-	const validateSignupToken = async (params: { inviteeId: string; inviterId: string }) => {
+	const validateSignupToken = async (params: { token: string }) => {
 		return await usersApi.validateSignupToken(rootStore.restApiContext, params);
 	};
 
 	const acceptInvitation = async (params: {
-		inviteeId: string;
-		inviterId: string;
+		token: string;
 		firstName: string;
 		lastName: string;
 		password: string;
@@ -295,7 +297,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		});
 	};
 
-	const updateUserSettings = async (settings: SettingsUpdateRequestDto) => {
+	const updateUserSettings = async (settings: UserSelfSettingsUpdateRequestDto) => {
 		const updatedSettings = await usersApi.updateCurrentUserSettings(
 			rootStore.restApiContext,
 			settings,
@@ -319,8 +321,20 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		deleteUserById(params.id);
 	};
 
-	const fetchUsers = async () => {
-		const { items } = await usersApi.getUsers(rootStore.restApiContext, { take: -1, skip: 0 });
+	const fetchUsers = async ({
+		take,
+		skip,
+		filter,
+	}: { take?: number; skip?: number; filter?: UsersListFilterDto['filter'] } = {}) => {
+		if (!hasPermission(['rbac'], { rbac: { scope: 'user:list' } })) {
+			return;
+		}
+
+		const { items } = await usersApi.getUsers(rootStore.restApiContext, {
+			take: take ?? 50,
+			skip: skip ?? 0,
+			filter,
+		});
 		addUsers(items);
 	};
 
@@ -346,6 +360,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	const getUserPasswordResetLink = async (params: { id: string }) => {
 		return await usersApi.getPasswordResetLink(rootStore.restApiContext, params);
+	};
+
+	const generateInviteLink = async (params: { id: string }) => {
+		return await usersApi.generateInviteLink(rootStore.restApiContext, params);
 	};
 
 	const submitPersonalizationSurvey = async (results: IPersonalizationLatestVersion) => {
@@ -398,7 +416,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	const updateGlobalRole = async ({ id, newRoleName }: UpdateGlobalRolePayload) => {
 		await usersApi.updateGlobalRole(rootStore.restApiContext, { id, newRoleName });
-		await fetchUsers();
+		await fetchUsers({ filter: { ids: [id] } });
 	};
 
 	const submitContactEmail = async (email: string, agree: boolean) => {
@@ -411,18 +429,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 			);
 		}
 		return null;
-	};
-
-	const submitContactInfo = async (email: string) => {
-		try {
-			return await promptsApi.submitContactInfo(
-				rootStore.instanceId,
-				currentUserId.value ?? '',
-				email,
-			);
-		} catch (error) {
-			return;
-		}
 	};
 
 	const usersList = useAsyncState(
@@ -451,6 +457,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		isDefaultUser,
 		isInstanceOwner,
 		isAdmin,
+		isAdminOrOwner,
 		mfaEnabled,
 		globalRoleName,
 		personalizedNodeTypes,
@@ -482,6 +489,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		inviteUsers,
 		reinviteUser,
 		getUserPasswordResetLink,
+		generateInviteLink,
 		submitPersonalizationSurvey,
 		showPersonalizationSurvey,
 		fetchMfaQR,
@@ -496,7 +504,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		isCalloutDismissed,
 		setCalloutDismissed,
 		submitContactEmail,
-		submitContactInfo,
 		setUserQuota,
 		usersList,
 	};

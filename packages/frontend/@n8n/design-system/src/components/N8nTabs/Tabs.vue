@@ -6,6 +6,7 @@ import type { TabOptions } from '../../types';
 import N8nIcon from '../N8nIcon';
 import Tag from '../N8nTag/Tag.vue';
 import N8nTooltip from '../N8nTooltip';
+import PreviewTag from '../PreviewTag/PreviewTag.vue';
 
 interface TabsProps {
 	modelValue?: Value;
@@ -81,10 +82,10 @@ const scrollRight = () => scroll(50);
 		]"
 	>
 		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
-			<N8nIcon icon="chevron-left" size="small" />
+			<N8nIcon :class="$style.positionIcon" icon="chevron-left" size="small" />
 		</div>
 		<div v-if="canScrollRight" :class="$style.next" @click="scrollRight">
-			<N8nIcon icon="chevron-right" size="small" />
+			<N8nIcon :class="$style.positionIcon" icon="chevron-right" size="small" />
 		</div>
 		<div ref="tabs" :class="$style.tabs">
 			<div
@@ -106,13 +107,15 @@ const scrollRight = () => scroll(50);
 						:class="[$style.link, $style.tab, option.label ? '' : $style.noText]"
 						@click="() => handleTabClick(option.value)"
 					>
-						<div>
+						<div :class="$style.externalLinkContent">
 							{{ option.label }}
 							<N8nIcon
 								:class="$style.external"
 								:icon="option.icon ?? 'external-link'"
 								size="small"
 							/>
+							<PreviewTag v-if="option.preview" />
+							<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 						</div>
 					</a>
 					<RouterLink
@@ -125,6 +128,7 @@ const scrollRight = () => scroll(50);
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
+						<PreviewTag v-if="option.preview" />
 						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 					</RouterLink>
 					<div
@@ -153,6 +157,7 @@ const scrollRight = () => scroll(50);
 							:class="$style.icon"
 							size="small"
 						/>
+						<PreviewTag v-if="option.preview" />
 						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 					</div>
 				</N8nTooltip>
@@ -265,6 +270,16 @@ const scrollRight = () => scroll(50);
 	}
 }
 
+.externalLinkContent {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+
+	.external {
+		margin-left: 0;
+	}
+}
+
 .noText .icon {
 	display: block;
 }
@@ -279,7 +294,7 @@ const scrollRight = () => scroll(50);
 
 .button {
 	position: absolute;
-	background-color: var(--tabs--arrow-buttons--color, var(--color--background));
+	background-color: var(--tabs--arrow-buttons--color, var(--color--foreground--tint-2));
 	z-index: 1;
 	height: 24px;
 	width: 10px;
@@ -320,5 +335,9 @@ const scrollRight = () => scroll(50);
 	composes: tab;
 	composes: button;
 	right: 0;
+}
+
+.positionIcon {
+	flex-shrink: 0;
 }
 </style>
