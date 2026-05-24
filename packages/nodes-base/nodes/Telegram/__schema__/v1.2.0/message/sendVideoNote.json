@@ -77,7 +77,7 @@
 									"type": "integer"
 								}
 							},
-							"required": ["file_id", "file_unique_id", "file_size", "width", "height"]
+							"required": ["file_id", "file_unique_id", "width", "height"]
 						},
 						"file_id": {
 							"type": "string"
@@ -89,7 +89,7 @@
 							"type": "integer"
 						}
 					},
-					"required": ["duration", "length", "file_id", "file_unique_id", "file_size"]
+					"required": ["duration", "length", "file_id", "file_unique_id"]
 				}
 			},
 			"required": ["message_id", "chat", "date"]
