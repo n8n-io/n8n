@@ -35,7 +35,7 @@ describe('processItem', () => {
 	it('should throw error when text parameter is empty', async () => {
 		vi.spyOn(helpers, 'getPromptInputByType').mockReturnValue(undefined as any);
 
-		await expect(prepareItemContext(mockContext, 0)).rejects.toThrow(
+		await expect(prepareItemContext(mockContext, 0, false)).rejects.toThrow(
 			'The "text" parameter is empty.',
 		);
 	});
@@ -62,7 +62,7 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		const result = await prepareItemContext(mockContext, 0);
+		const result = await prepareItemContext(mockContext, 0, false);
 
 		expect(result).not.toBeNull();
 		expect(result?.itemIndex).toBe(0);
@@ -92,7 +92,7 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		const result = await prepareItemContext(mockContext, 0);
+		const result = await prepareItemContext(mockContext, 0, false);
 
 		expect(result?.options.enableStreaming).toBe(true);
 	});
@@ -117,7 +117,7 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		const result = await prepareItemContext(mockContext, 0);
+		const result = await prepareItemContext(mockContext, 0, false);
 
 		expect(result?.options.enableStreaming).toBe(false);
 	});
@@ -142,7 +142,7 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		const result = await prepareItemContext(mockContext, 0);
+		const result = await prepareItemContext(mockContext, 0, false);
 
 		expect(result?.outputParser).toBe(mockOutputParser);
 	});
@@ -168,7 +168,7 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		await prepareItemContext(mockContext, 0);
+		await prepareItemContext(mockContext, 0, false);
 
 		expect(commonHelpers.prepareMessages).toHaveBeenCalledWith(mockContext, 0, {
 			systemMessage: 'Test system message',
@@ -197,7 +197,7 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		await prepareItemContext(mockContext, 0);
+		await prepareItemContext(mockContext, 0, false);
 
 		expect(commonHelpers.prepareMessages).toHaveBeenCalledWith(
 			mockContext,

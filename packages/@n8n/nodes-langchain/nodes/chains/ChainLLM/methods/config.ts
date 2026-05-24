@@ -321,6 +321,19 @@ export const nodeProperties: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Use Native Structured Output',
+		name: 'useNativeStructuredOutput',
+		type: 'boolean',
+		default: false,
+		description:
+			"Whether to bind the connected parser's schema directly to the chat model via provider-native constrained decoding (Anthropic <code>output_config.format</code>, OpenAI <code>response_format: json_schema</code>) instead of injecting format instructions into the prompt. When enabled and the model is supported, the response is guaranteed to be schema-conformant JSON. Falls back to the legacy prompt-based path if the connected model isn't supported.",
+		displayOptions: {
+			show: {
+				hasOutputParser: [true],
+			},
+		},
+	},
+	{
 		displayName:
 			'Connect an additional language model on the canvas to use it as a fallback if the main model fails',
 		name: 'fallbackNotice',

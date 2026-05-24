@@ -293,8 +293,20 @@ export const getAgentStepsParser =
 
 			if (finalResponse instanceof Object) {
 				if ('output' in finalResponse) {
+					// Anthropic and OpenAI's Responses API deliver the final
+					// assistant turn as an array of content blocks rather than
+					// a single string. Collapse it to the joined text before
+					// JSON-parsing — otherwise `jsonParse(<array>)` would fail
+					// and we'd hand the parser a non-string value.
+					const rawOutput = Array.isArray(finalResponse.output)
+						? (finalResponse.output as Array<{ type?: string; text?: string }>)
+								.filter((c) => c?.type === 'text' && typeof c.text === 'string')
+								.map((c) => c.text)
+								.join('\n')
+								.trim()
+						: (finalResponse.output as string);
 					try {
-						const parsedOutput = jsonParse<Record<string, unknown>>(finalResponse.output);
+						const parsedOutput = jsonParse<Record<string, unknown>>(rawOutput);
 						// Check if the parsed output already has the expected structure
 						// If it already has { output: ... }, use it as-is to avoid double wrapping
 						// Otherwise, wrap it in { output: ... } as expected by the parser
@@ -312,7 +324,7 @@ export const getAgentStepsParser =
 						}
 					} catch (error) {
 						// Fallback to the raw output if parsing fails.
-						parserInput = finalResponse.output;
+						parserInput = rawOutput;
 					}
 				} else {
 					// If the output is not an object, we will stringify it as it is
