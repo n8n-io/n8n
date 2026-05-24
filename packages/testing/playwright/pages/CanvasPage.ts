@@ -1019,6 +1019,28 @@ export class CanvasPage extends BasePage {
 		await outputHandle.dragTo(inputHandle);
 	}
 
+	/**
+	 * Drop a node onto the canvas using Playwright's `locator.drop()` API.
+	 *
+	 * Dispatches a synthetic drop with a real DataTransfer carrying the
+	 * `nodesAndConnections` payload that `NodeView.onDragAndDrop` consumes.
+	 * Skips the NodeCreator dragstart path entirely, so tests that only care
+	 * about the resulting canvas state stay fast and deterministic.
+	 */
+	async dropNodeOnCanvas(
+		nodeType: string,
+		position: { x: number; y: number } = { x: 400, y: 400 },
+	): Promise<void> {
+		const payload = JSON.stringify({
+			nodes: [{ type: nodeType, openDetail: false }],
+			connections: [],
+		});
+		await this.canvasPane().drop({
+			position,
+			dataTransfer: { nodesAndConnections: payload },
+		});
+	}
+
 	getConnectionLabelBetweenNodes(sourceNode: string, targetNode: string): Locator {
 		return this.page.locator(
 			`[data-test-id="edge-label"][data-source-node-name="${sourceNode}"][data-target-node-name="${targetNode}"]`,

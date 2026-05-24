@@ -102,7 +102,7 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 
 	use: {
 		baseURL: WEB_SERVER_URL,
-		trace: 'on',
+		trace: 'retain-on-failure-and-retries',
 		video: 'on',
 		screenshot: 'on',
 		testIdAttribute: 'data-test-id',
