@@ -1035,7 +1035,9 @@ export class CanvasPage extends BasePage {
 			nodes: [{ type: nodeType, openDetail: false }],
 			connections: [],
 		});
-		await this.canvasPane().drop({ data: { nodesAndConnections: payload } }, { position });
+		await this.canvasPane()
+			.locator('.vue-flow')
+			.drop({ data: { nodesAndConnections: payload } }, { position });
 	}
 
 	getConnectionLabelBetweenNodes(sourceNode: string, targetNode: string): Locator {
