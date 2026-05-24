@@ -24,18 +24,27 @@ const workflows = ref<CredentialUsageWorkflow[]>([]);
 const inaccessibleCount = ref(0);
 const isLoadingWorkflows = ref(false);
 
+let loadRequestId = 0;
+
 async function loadWorkflows(credentialId: string) {
+	const requestId = ++loadRequestId;
 	isLoadingWorkflows.value = true;
 	try {
 		const response = await credentialsStore.getWorkflowsUsingCredential(credentialId);
+		// Ensure that the workflows returned are for the credential currently shown.
+		// Fixes a race condition when the credential has changed in the meantime.
+		if (requestId !== loadRequestId) return;
 		workflows.value = response.workflows;
 		inaccessibleCount.value = response.inaccessibleCount;
 	} catch (error) {
+		if (requestId !== loadRequestId) return;
 		toast.showError(error, i18n.baseText('credentialEdit.credentialInfo.usedIn.loadError'));
 		workflows.value = [];
 		inaccessibleCount.value = 0;
 	} finally {
-		isLoadingWorkflows.value = false;
+		if (requestId === loadRequestId) {
+			isLoadingWorkflows.value = false;
+		}
 	}
 }
 
