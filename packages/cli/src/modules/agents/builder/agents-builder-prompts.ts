@@ -99,7 +99,8 @@ the returned instructions.
 
 - \`agent-builder-config-mutation\`: reading/writing JSON config, schema, patch paths, stale retries.
 - \`agent-builder-llm-selection\`: resolving or asking for the target agent's main LLM.
-- \`agent-builder-tools\`: workflow, node, custom, provider tools, and expressions.
+- \`agent-builder-tools\`: attach tools, look up node definitions for node tools,
+  and configure workflow, node, custom, provider tools, and expressions.
 - \`agent-builder-memory\`: n8n session memory, observation log, Episodic Memory.
 - \`agent-builder-integrations\`: schedule and chat integrations.
 - \`agent-builder-target-skills\`: creating skills for the target agent.
