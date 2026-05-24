@@ -4,17 +4,25 @@
  *   # Local directory of downloaded reports
  *   npx tsx packages/testing/playwright/scripts/sizing-matrix-aggregate.ts \
  *     --input <dir> [--mapping <file>] [--out <file>] \
- *     [--n8n-version <ver>] [--commit-sha <sha>]
+ *     [--n8n-version <ver>] [--commit-sha <sha>] \
+ *     [--hardware-runner <name>] [--hardware-vcpu <n>] [--hardware-ram-gb <n>]
  *
  *   # Or pull straight from a Currents run (requires CURRENTS_API_KEY env)
  *   CURRENTS_API_KEY=… npx tsx packages/testing/playwright/scripts/sizing-matrix-aggregate.ts \
  *     --currents-run <runId> [--out <file>]
  *
+ *   # Hardware can also be set via env: SIZING_MATRIX_RUNNER, SIZING_MATRIX_VCPU,
+ *   # SIZING_MATRIX_RAM_GB. Local-dev runs that don't override produce metadata
+ *   # claiming the Blacksmith CI runner — wrong number is silently misleading,
+ *   # so override when running outside CI.
+ *
  * Default mapping is inlined below — moves to JSON once stable.
  *
- * Hardware baseline: blacksmith-8vcpu-ubuntu-2204 (8 vCPU / 16 GB), the
- * runner that hosts `benchmarking:infrastructure` jobs. Cell topologies
- * are containers-on-that-host with the CPU/memory caps each spec sets.
+ * Hardware default: blacksmith-8vcpu-ubuntu-2204 (8 vCPU / 16 GB), the runner
+ * that hosts `benchmarking:infrastructure` jobs. Cell topologies are
+ * containers-on-that-host with the CPU/memory caps each spec sets. Local
+ * Mac runs MUST override via `--hardware-runner my-mac --hardware-vcpu 12
+ * --hardware-ram-gb 32` or the matrix will mis-attribute the source.
  */
 
 import { readdirSync, readFileSync, writeFileSync, statSync, mkdirSync } from 'node:fs';
@@ -145,6 +153,7 @@ interface CliArgs {
 	markdownOut?: string;
 	n8nVersion: string;
 	commitSha: string;
+	hardware: HardwareInfo;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -172,7 +181,36 @@ function parseArgs(argv: string[]): CliArgs {
 		markdownOut: args['markdown-out'] ? resolve(args['markdown-out']) : undefined,
 		n8nVersion: args['n8n-version'] ?? readN8nVersion(),
 		commitSha: args['commit-sha'] ?? readGitSha(),
+		hardware: resolveHardware(args),
 	};
+}
+
+/**
+ * Hardware metadata stamped into the matrix output. Defaults to the Blacksmith
+ * CI runner but can be overridden via CLI for local development or alternative
+ * runners. Setting the wrong runner here silently produces a misleading matrix —
+ * the absolute exec/sec numbers are tied to the host that ran the bench.
+ */
+function resolveHardware(args: Record<string, string>): HardwareInfo {
+	const runner =
+		args['hardware-runner'] ?? process.env.SIZING_MATRIX_RUNNER ?? DEFAULT_HARDWARE.runner;
+	const vcpu = args['hardware-vcpu']
+		? Number(args['hardware-vcpu'])
+		: process.env.SIZING_MATRIX_VCPU
+			? Number(process.env.SIZING_MATRIX_VCPU)
+			: DEFAULT_HARDWARE.vcpu;
+	const ramGb = args['hardware-ram-gb']
+		? Number(args['hardware-ram-gb'])
+		: process.env.SIZING_MATRIX_RAM_GB
+			? Number(process.env.SIZING_MATRIX_RAM_GB)
+			: DEFAULT_HARDWARE.ramGb;
+	if (!Number.isFinite(vcpu) || vcpu <= 0) {
+		throw new Error(`--hardware-vcpu must be a positive number, got ${args['hardware-vcpu']}`);
+	}
+	if (!Number.isFinite(ramGb) || ramGb <= 0) {
+		throw new Error(`--hardware-ram-gb must be a positive number, got ${args['hardware-ram-gb']}`);
+	}
+	return { runner, vcpu, ramGb };
 }
 
 function readN8nVersion(): string {
@@ -354,7 +392,7 @@ async function main(): Promise<void> {
 	const input: AggregateInput = {
 		reports,
 		mapping,
-		hardware: DEFAULT_HARDWARE,
+		hardware: args.hardware,
 		n8nVersion: args.n8nVersion,
 		commitSha,
 		runDate: new Date().toISOString(),
