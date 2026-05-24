@@ -1,4 +1,5 @@
 import type { Tool } from '@langchain/classic/tools';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -25,6 +26,7 @@ vi.mock('../../../common', () => ({
 
 const mockContext = mock<IExecuteFunctions>();
 const mockNode = mock<INode>();
+const mockModel = mock<BaseChatModel>();
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -35,7 +37,7 @@ describe('processItem', () => {
 	it('should throw error when text parameter is empty', async () => {
 		vi.spyOn(helpers, 'getPromptInputByType').mockReturnValue(undefined as any);
 
-		await expect(prepareItemContext(mockContext, 0)).rejects.toThrow(
+		await expect(prepareItemContext(mockContext, 0, undefined, mockModel, false)).rejects.toThrow(
 			'The "text" parameter is empty.',
 		);
 	});
@@ -62,7 +64,7 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		const result = await prepareItemContext(mockContext, 0);
+		const result = await prepareItemContext(mockContext, 0, undefined, mockModel, false);
 
 		expect(result).not.toBeNull();
 		expect(result?.itemIndex).toBe(0);
@@ -92,7 +94,7 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		const result = await prepareItemContext(mockContext, 0);
+		const result = await prepareItemContext(mockContext, 0, undefined, mockModel, false);
 
 		expect(result?.options.enableStreaming).toBe(true);
 	});
@@ -117,7 +119,7 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		const result = await prepareItemContext(mockContext, 0);
+		const result = await prepareItemContext(mockContext, 0, undefined, mockModel, false);
 
 		expect(result?.options.enableStreaming).toBe(false);
 	});
@@ -142,7 +144,7 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		const result = await prepareItemContext(mockContext, 0);
+		const result = await prepareItemContext(mockContext, 0, undefined, mockModel, false);
 
 		expect(result?.outputParser).toBe(mockOutputParser);
 	});
@@ -168,13 +170,14 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		await prepareItemContext(mockContext, 0);
+		await prepareItemContext(mockContext, 0, undefined, mockModel, false);
 
 		expect(commonHelpers.prepareMessages).toHaveBeenCalledWith(mockContext, 0, {
 			systemMessage: 'Test system message',
 			passthroughBinaryImages: false,
 			passthroughBinaryPdfs: false,
 			outputParser: mockOutputParser,
+			model: mockModel,
 		});
 	});
 
@@ -198,7 +201,7 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		await prepareItemContext(mockContext, 0);
+		await prepareItemContext(mockContext, 0, undefined, mockModel, false);
 
 		expect(commonHelpers.prepareMessages).toHaveBeenCalledWith(
 			mockContext,

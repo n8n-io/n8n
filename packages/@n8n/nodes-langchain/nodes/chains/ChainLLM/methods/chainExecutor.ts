@@ -8,6 +8,7 @@ import type { Runnable } from '@langchain/core/runnables';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { isChatInstance } from '@n8n/ai-utilities';
+import { tryBindNativeOutputSchema } from '@utils/structured_output/bindNativeOutputSchema';
 import { getTracingConfig } from '@utils/tracing';
 
 import { createPromptTemplate, getAgentStepsParser } from './promptUtils';
@@ -166,7 +167,22 @@ export async function executeChain({
 		});
 	}
 
-	const formatInstructions = outputParser.getFormatInstructions();
+	// When the user opts in and every connected model (primary + fallback)
+	// accepts the parser's schema as native constrained-decoding
+	// configuration, drop the prompt-injected `formatInstructions` — the
+	// model emits schema-conformant JSON by construction and the parser
+	// still validates.
+	const nativeStructuredOutputEnabled = context.getNodeParameter(
+		'useNativeStructuredOutput',
+		itemIndex,
+		false,
+	) as boolean;
+	const useNativeStructuredOutput =
+		nativeStructuredOutputEnabled && tryBindNativeOutputSchema([llm, fallbackLlm], outputParser);
+
+	const formatInstructions = useNativeStructuredOutput
+		? undefined
+		: outputParser.getFormatInstructions();
 
 	// Create a prompt template with format instructions
 	const promptWithInstructions = await createPromptTemplate({

@@ -20,6 +20,7 @@ import {
 	type N8nOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
 import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
+import { tryBindNativeOutputSchema } from '@utils/structured_output/bindNativeOutputSchema';
 import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
@@ -292,6 +293,24 @@ export async function toolsAgentExecute(
 		// Check if streaming is enabled
 		enableStreaming = this.getNodeParameter('options.enableStreaming', 0, true) as boolean;
 
+		// When the user opts in and the parser's schema can be bound natively
+		// on every model that could run, use the provider's constrained-
+		// decoding API instead of the legacy synthetic-tool prompt. The
+		// upstream parser is fetched at slot 0 because the bound model
+		// instance is shared across all items in the loop.
+		const nativeStructuredOutputEnabled = this.getNodeParameter(
+			'options.useNativeStructuredOutput',
+			0,
+			false,
+		) as boolean;
+		const upstreamOutputParser = nativeStructuredOutputEnabled
+			? await getOptionalOutputParser(this, 0)
+			: undefined;
+		const useNativeStructuredOutput = tryBindNativeOutputSchema(
+			[model, fallbackModel],
+			upstreamOutputParser,
+		);
+
 		for (let i = 0; i < items.length; i += batchSize) {
 			const batch = items.slice(i, i + batchSize);
 			const batchPromises = batch.map(async (_item, batchItemIndex) => {
@@ -307,7 +326,8 @@ export async function toolsAgentExecute(
 					throw new NodeOperationError(this.getNode(), 'The "text" parameter is empty.');
 				}
 				const outputParser = await getOptionalOutputParser(this, itemIndex);
-				const tools = await getTools(this, outputParser);
+				const promptOutputParser = useNativeStructuredOutput ? undefined : outputParser;
+				const tools = await getTools(this, promptOutputParser);
 				const options = this.getNodeParameter('options', itemIndex, {}) as {
 					systemMessage?: string;
 					maxIterations?: number;
@@ -322,7 +342,7 @@ export async function toolsAgentExecute(
 					systemMessage: options.systemMessage,
 					passthroughBinaryImages: options.passthroughBinaryImages ?? true,
 					passthroughBinaryPdfs: options.passthroughBinaryPdfs ?? false,
-					outputParser,
+					outputParser: promptOutputParser,
 				});
 				const prompt: ChatPromptTemplate = preparePrompt(messages);
 
