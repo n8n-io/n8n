@@ -106,6 +106,9 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 	}
 
 	if (base) {
+		// Provider metadata can be required for replay. Gemini attaches
+		// `google.thoughtSignature` to function-call parts, and the next request
+		// is rejected if that signature is dropped from conversation history.
 		return {
 			...base,
 			...(block.providerMetadata && { providerMetadata: block.providerMetadata }),
@@ -194,6 +197,8 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
 	}
 
 	if (base) {
+		// Keep provider metadata on persisted content parts so provider-specific
+		// replay data, such as Gemini thought signatures, survives memory/checkpoints.
 		if (providerMetadata) base.providerMetadata = providerMetadata;
 		if (providerOptions) base.providerOptions = providerOptions;
 	}
@@ -251,6 +256,9 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 						input: parseJsonValue(block.input),
 						providerExecuted: block.providerExecuted,
 					};
+					// Replayed settled tool calls still need their original provider
+					// metadata. Gemini validates thought signatures on historical
+					// function-call parts, even after the tool result is available.
 					assistantParts.push({
 						...toolCallPart,
 						...(block.providerMetadata && { providerMetadata: block.providerMetadata }),
