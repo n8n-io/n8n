@@ -183,6 +183,7 @@ describe('GlobalConfig', () => {
 			disabled: false,
 			path: 'api',
 			swaggerUiDisabled: false,
+			packagesEnabled: false,
 		},
 		templates: {
 			enabled: true,
