@@ -3125,7 +3125,7 @@ describe('OauthService', () => {
 
 				expect(error.name).toBe('InvalidTargetError');
 				expect(error.errorCode).toBe('invalid_target');
-				expect(error.httpStatusCode).toBe(401);
+				expect(error.httpStatusCode).toBe(400);
 			});
 		});
 
@@ -3189,6 +3189,19 @@ describe('OauthService', () => {
 
 				await expect(
 					(service as any).discoverProtectedResourceMetadata('https://mcp.example.com/mcp'),
+				).rejects.toThrow('Failed to discover protected resource metadata');
+			});
+
+			it('should throw when authorization_servers is empty (regression guard)', async () => {
+				jest.mocked(axios.get).mockResolvedValueOnce({
+					data: {
+						authorization_servers: [],
+						resource: 'https://mcp.example.com',
+					},
+				});
+
+				await expect(
+					(service as any).discoverProtectedResourceMetadata('https://mcp.example.com'),
 				).rejects.toThrow('Failed to discover protected resource metadata');
 			});
 		});

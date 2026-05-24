@@ -1,3 +1,4 @@
+import { HttpErrorKind, type HttpErrorDescriptor } from '@/errors/http-error-classifier';
 import { classifyHttpError } from '@/errors/http-error-classifier';
 import {
 	serializeInternalRestError,
@@ -47,6 +48,25 @@ describe('http-error-serializers', () => {
 		expect(serializeInternalRestError(descriptor)).toEqual({
 			status: 500,
 			body: { code: 0, message: 'secret' },
+		});
+	});
+
+	it('should serialize a string errorCode correctly (RFC 8707 invalid_target)', () => {
+		const descriptor: HttpErrorDescriptor = {
+			kind: HttpErrorKind.responseError,
+			status: 400,
+			message: 'Invalid resource',
+			code: 'invalid_target',
+		};
+
+		const result = serializeInternalRestError(descriptor);
+
+		expect(result).toEqual({
+			status: 400,
+			body: {
+				code: 'invalid_target',
+				message: 'Invalid resource',
+			},
 		});
 	});
 });
