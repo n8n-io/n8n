@@ -155,26 +155,29 @@ async function loadMore() {
 							</td>
 						</tr>
 					</template>
-					<tr>
-						<td colspan="6" style="text-align: center">
+					<tr
+						v-if="!sessionsStore.loading && !sessionsStore.threads.length"
+						:class="$style.lastRow"
+					>
+						<td :colspan="6" style="text-align: center; padding: var(--spacing--lg)">
 							<template v-if="!sessionsStore.threads.length && !sessionsStore.loading">
 								<span data-test-id="agent-sessions-empty">
 									{{ i18n.baseText('agentSessions.empty') }}
 								</span>
 							</template>
-							<template v-else-if="sessionsStore.nextCursor">
-								<N8nButton
-									icon="refresh-cw"
-									:title="i18n.baseText('agentSessions.loadMore')"
-									:label="i18n.baseText('agentSessions.loadMore')"
-									:loading="sessionsStore.loading"
-									data-test-id="agent-sessions-load-more"
-									@click="loadMore()"
-								/>
-							</template>
-							<template v-else-if="sessionsStore.threads.length">
-								{{ i18n.baseText('agentSessions.loadedAll') }}
-							</template>
+						</td>
+					</tr>
+					<tr :class="$style.lastRow" v-if="sessionsStore.nextCursor">
+						<td colspan="6">
+							<N8nButton
+								icon="refresh-cw"
+								variant="ghost"
+								:title="i18n.baseText('agentSessions.loadMore')"
+								:label="i18n.baseText('agentSessions.loadMore')"
+								:loading="sessionsStore.loading"
+								data-test-id="agent-sessions-load-more"
+								@click="loadMore()"
+							/>
 						</td>
 					</tr>
 				</tbody>
@@ -208,6 +211,20 @@ async function loadMore() {
 
 	&:hover {
 		background-color: var(--background--hover);
+	}
+}
+
+.lastRow {
+	td {
+		text-align: center;
+	}
+
+	td button {
+		margin: 0 auto;
+	}
+
+	&:hover {
+		background-color: var(--background--surface) !important;
 	}
 }
 </style>

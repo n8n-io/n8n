@@ -177,7 +177,6 @@ export type TimelineEvent =
 			 */
 			nodeParameters?: Record<string, unknown>;
 	  }
-	| { type: 'working-memory'; content: string; timestamp: number }
 	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -199,7 +198,6 @@ export interface MessageRecord {
 	startTime: number;
 	duration: number;
 	error: string | null;
-	workingMemory: string | null;
 }
 
 export class ExecutionRecorder {
@@ -232,8 +230,6 @@ export class ExecutionRecorder {
 	private _suspended = false;
 
 	private error: string | null = null;
-
-	private workingMemory: string | null = null;
 
 	private readonly startTime = Date.now();
 
@@ -306,7 +302,6 @@ export class ExecutionRecorder {
 			startTime: this.startTime,
 			duration: Date.now() - this.startTime,
 			error: this.error,
-			workingMemory: this.workingMemory,
 		};
 	}
 
