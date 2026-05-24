@@ -64,10 +64,17 @@ export const skipAuthOnOAuthCallback = shouldSkipAuthOnOAuthCallback();
 
 export { OauthVersion, type OAuth1CredentialData, type CreateCsrfStateData, type CsrfState };
 
-export class InvalidTargetError extends AuthError {
+export class InvalidTargetError extends BadRequestError {
 	constructor(message: string) {
 		super(message, 'invalid_target');
 		this.name = 'InvalidTargetError';
+	}
+}
+
+export class InvalidOAuthUrlError extends BadRequestError {
+	constructor(message: string) {
+		super(message);
+		this.name = 'InvalidOAuthUrlError';
 	}
 }
 
@@ -93,6 +100,17 @@ export class OauthService {
 		} catch (e) {
 			this.logger.error('Invalid OAuth URL', { url, error: e });
 			throw e;
+		}
+	}
+
+	private validateAuthServerUrlOrThrow(url: string): void {
+		try {
+			this.validateOAuthUrlOrThrow(url);
+		} catch (error) {
+			if (error instanceof BadRequestError) {
+				throw new InvalidOAuthUrlError(error.message);
+			}
+			throw error;
 		}
 	}
 
@@ -520,6 +538,7 @@ export class OauthService {
 		}
 	}
 
+	// eslint-disable-next-line complexity
 	async generateAOauth2AuthUri(
 		credential: CredentialsEntity,
 		csrfData: CreateCsrfStateData,
@@ -557,7 +576,7 @@ export class OauthService {
 					authorizationServerUrl = protectedResourceMetadata.authorization_servers[0];
 
 					// Validate authorization server URL to prevent SSRF attacks
-					this.validateOAuthUrlOrThrow(authorizationServerUrl);
+					this.validateAuthServerUrlOrThrow(authorizationServerUrl);
 				}
 
 				this.logger.debug('Protected resource discovery succeeded', {
@@ -567,7 +586,7 @@ export class OauthService {
 				});
 			} catch (error) {
 				// Re-throw security validation errors immediately (don't fall back)
-				if (error instanceof BadRequestError && (error as Error).message.includes('OAuth url')) {
+				if (error instanceof InvalidOAuthUrlError) {
 					throw error;
 				}
 
