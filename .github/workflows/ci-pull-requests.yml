@@ -153,6 +153,7 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       collectCoverage: ${{ github.event_name != 'merge_group' }}
+      merge_base: ${{ needs.install-and-build.outputs.merge_base }}
     secrets: inherit
 
   typecheck:

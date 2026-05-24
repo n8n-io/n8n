@@ -17,6 +17,11 @@ on:
         required: false
         default: false
         type: boolean
+      merge_base:
+        description: Merge-base SHA for diff-scoped test runs. Empty disables scoping.
+        required: false
+        type: string
+        default: ''
 env:
   NODE_OPTIONS: --max-old-space-size=7168
 
@@ -112,10 +117,15 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
+      MERGE_BASE: ${{ inputs.merge_base }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.ref }}
+          # Full history when scoping, so $MERGE_BASE...HEAD diff and turbo
+          # --affected comparisons in the test:changed wrapper resolve
+          # reliably. String form avoids the && / || zero-is-falsy footgun.
+          fetch-depth: ${{ inputs.merge_base != '' && '0' || '1' }}
 
       - name: Build
         uses: ./.github/actions/setup-nodejs
@@ -123,7 +133,18 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Nodes
-        run: pnpm turbo test --filter=n8n-nodes-base --summarize
+        env:
+          # Align turbo --affected with the wrapper's diff base.
+          TURBO_SCM_BASE: ${{ inputs.merge_base }}
+        run: |
+          if [ -n "${MERGE_BASE:-}" ]; then
+            # PR / merge-queue: turbo gates by affected packages, wrapper
+            # scopes by file-level diff via jest --changedSince.
+            pnpm turbo test:changed --filter=n8n-nodes-base --affected --summarize
+          else
+            # Master / nightly / release: canonical full run.
+            pnpm turbo test --filter=n8n-nodes-base --summarize
+          fi
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
