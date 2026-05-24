@@ -185,14 +185,6 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		agent.memory({
 			memory: options.memory,
 			lastMessages: memoryConfig.lastMessages ?? 20,
-			...(memoryConfig.embedderModel && memoryConfig.semanticRecallTopK
-				? {
-						semanticRecall: {
-							topK: memoryConfig.semanticRecallTopK,
-							embedder: memoryConfig.embedderModel,
-						},
-					}
-				: {}),
 		});
 	}
 	mergeTraceRunInputs(
@@ -205,7 +197,6 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 			memory: options.memory
 				? {
 						lastMessages: memoryConfig.lastMessages ?? 20,
-						semanticRecallTopK: memoryConfig.semanticRecallTopK,
 					}
 				: undefined,
 			toolSearchEnabled: hasDeferrableTools,

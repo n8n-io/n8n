@@ -55,7 +55,7 @@ const formattedTechnicalDetails = computed(() => {
 
 const attachments = computed(() => props.message.attachments ?? []);
 
-/** Transient status message from the backend (e.g. "Recalling conversation..."). */
+/** Transient status message from the backend (e.g. "Processing..."). */
 const statusMessage = computed(() => {
 	if (!isStreaming.value || !props.message.agentTree) return '';
 	return props.message.agentTree.statusMessage ?? '';

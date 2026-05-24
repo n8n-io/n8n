@@ -11,7 +11,6 @@ All Instance AI configuration is done via environment variables.
 | `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-7` | LLM model in `provider/model` format. Must be set for the module to enable. |
 | `N8N_INSTANCE_AI_MODEL_URL` | string | `''` | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:1234/v1` for LM Studio). When set, model requests go to this URL instead of the built-in provider. |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | string | `''` | API key for the custom model endpoint. Optional — some local servers don't require one. |
-| `N8N_INSTANCE_AI_MAX_CONTEXT_WINDOW_TOKENS` | number | `500000` | Hard cap on the context window size (in tokens). The effective window is the lesser of this value and the model's native capability. `0` = use the model's full context window. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
 | `N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS` | number | `100` | Maximum LLM reasoning steps for sub-agents spawned via delegate tool |
 | `N8N_INSTANCE_AI_BROWSER_MCP` | boolean | `false` | Enable Chrome DevTools MCP for browser-assisted credential setup |
@@ -31,8 +30,6 @@ All Instance AI configuration is done via environment variables.
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `N8N_INSTANCE_AI_LAST_MESSAGES` | number | `20` | Number of recent messages to include in context |
-| `N8N_INSTANCE_AI_EMBEDDER_MODEL` | string | `''` | Embedder model for semantic recall. Empty disables semantic memory. |
-| `N8N_INSTANCE_AI_SEMANTIC_RECALL_TOP_K` | number | `5` | Number of semantically similar messages to retrieve |
 
 ### Filesystem
 
@@ -163,10 +160,6 @@ N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7
 N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7
 N8N_INSTANCE_AI_MCP_SERVERS="my-tools=https://mcp.example.com/sse"
 
-# With semantic memory
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7
-N8N_INSTANCE_AI_EMBEDDER_MODEL=openai/text-embedding-3-small
-
 # With SearXNG (free, self-hosted search)
 N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7
 N8N_INSTANCE_AI_SEARXNG_URL=http://searxng:8080
@@ -206,7 +199,6 @@ N8N_INSTANCE_AI_MODEL_URL=http://localhost:1234/v1
 # Full configuration with observational memory tuning
 N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7
 N8N_INSTANCE_AI_MCP_SERVERS="github=https://mcp.github.com/sse"
-N8N_INSTANCE_AI_EMBEDDER_MODEL=openai/text-embedding-3-small
 N8N_INSTANCE_AI_MAX_STEPS=50
 N8N_INSTANCE_AI_MAX_LOOP_ITERATIONS=10
 N8N_INSTANCE_AI_OBSERVER_MODEL=google/gemini-2.5-flash

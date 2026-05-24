@@ -14,14 +14,6 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MODEL_API_KEY')
 	modelApiKey: string = '';
 
-	/**
-	 * Hard cap on the context window size (in tokens). When set, the effective
-	 * context window is the lesser of this value and the model's native capability.
-	 * 0 = use the model's full context window.
-	 */
-	@Env('N8N_INSTANCE_AI_MAX_CONTEXT_WINDOW_TOKENS')
-	maxContextWindowTokens: number = 500_000;
-
 	/** Comma-separated name=url pairs for MCP servers (e.g. "github=https://mcp.github.com/sse"). */
 	@Env('N8N_INSTANCE_AI_MCP_SERVERS')
 	mcpServers: string = '';
@@ -29,14 +21,6 @@ export class InstanceAiConfig {
 	/** Number of recent messages to include in context. */
 	@Env('N8N_INSTANCE_AI_LAST_MESSAGES')
 	lastMessages: number = 20;
-
-	/** Embedder model for semantic recall (empty = disabled). */
-	@Env('N8N_INSTANCE_AI_EMBEDDER_MODEL')
-	embedderModel: string = '';
-
-	/** Number of semantically similar messages to retrieve. */
-	@Env('N8N_INSTANCE_AI_SEMANTIC_RECALL_TOP_K')
-	semanticRecallTopK: number = 5;
 
 	/** Maximum LLM reasoning steps for sub-agents spawned via delegate tool. */
 	@Env('N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS')

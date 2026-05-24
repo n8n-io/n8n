@@ -775,7 +775,7 @@ export interface InstanceAiAgentNode {
 	goal?: string;
 	/** Resource this agent works on. */
 	targetResource?: InstanceAiTargetResource;
-	/** Transient status message (e.g. "Recalling conversation..."). Cleared when empty. */
+	/** Transient status message (e.g. "Processing request..."). Cleared when empty. */
 	statusMessage?: string;
 	status: InstanceAiAgentStatus;
 	textContent: string;
@@ -997,8 +997,6 @@ export function applyBranchReadOnlyOverrides(
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
 	lastMessages: number;
-	embedderModel: string;
-	semanticRecallTopK: number;
 	subAgentMaxSteps: number;
 	browserMcp: boolean;
 	permissions: InstanceAiPermissions;
@@ -1016,8 +1014,6 @@ export interface InstanceAiAdminSettingsResponse {
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
 	lastMessages: z.number().int().positive().optional(),
-	embedderModel: z.string().optional(),
-	semanticRecallTopK: z.number().int().positive().optional(),
 	subAgentMaxSteps: z.number().int().positive().optional(),
 	browserMcp: z.boolean().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),

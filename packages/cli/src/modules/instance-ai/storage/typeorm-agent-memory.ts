@@ -74,7 +74,6 @@ function workingMemoryKey(params: {
 }
 
 const PATCH_ONLY_METADATA_KEYS = new Set([
-	'instanceAiConversationSummary',
 	'instanceAiIterationLog',
 	'instanceAiPlannedTasks',
 	'instanceAiTasks',

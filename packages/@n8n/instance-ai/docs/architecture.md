@@ -194,7 +194,6 @@ The agent package — framework-agnostic business logic.
 - **Workflow builder** (`workflow-builder/`) — TypeScript SDK code parsing, validation, patching, and prompt sections
 - **Workspace** (`workspace/`) — sandbox provisioning (Daytona / local), filesystem abstraction, snapshot management
 - **Memory** (`memory/`) — title generation, memory configuration
-- **Compaction** (`compaction/`) — LLM-based message history summarization for long conversations
 - **Storage** (`storage/`) — iteration logs, task storage, planned task storage, workflow loop storage, agent tree snapshots
 - **MCP client** (`mcp/`) — manages connections to external MCP servers, schema sanitization for Anthropic compatibility
 - **Domain access** (`domain-access/`) — domain gating and access tracking for external URL approval
@@ -412,13 +411,6 @@ LangSmith integration provides step-level observability:
 - **Sub-agent traces** — child spans under parent agent runs
 - **Synthetic tool traces** — internal tools tracked separately from
   LLM-invoked tools
-
-## Message Compaction
-
-For conversations that exceed the context window, `generateCompactionSummary()`
-creates an LLM-generated summary of the conversation history. The summary uses
-a structured format (Goal, Important facts, Current state, Open issues, Next
-step) and is included as a `<conversation-summary>` block in subsequent requests.
 
 ## Domain Access Gating
 

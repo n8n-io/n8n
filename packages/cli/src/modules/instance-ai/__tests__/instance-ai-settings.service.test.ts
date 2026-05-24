@@ -21,8 +21,6 @@ describe('InstanceAiSettingsService', () => {
 			model: 'openai/gpt-4',
 			modelUrl: '',
 			modelApiKey: '',
-			embedderModel: '',
-			semanticRecallTopK: 5,
 			subAgentMaxSteps: 10,
 			browserMcp: false,
 			mcpServers: '',
