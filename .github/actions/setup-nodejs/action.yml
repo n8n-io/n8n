@@ -101,27 +101,30 @@ runs:
         rm install-safe-chain.sh
       shell: bash
 
-    # `--reporter=append-only` collapses pnpm output to a single terse line and
-    # drops the ERR_PNPM_* code plus the offending package. Combined with the
-    # `timeout` wrapper, a SIGKILL or a non-pnpm post-install crash surfaces as
-    # bare `ELIFECYCLE` with no actionable diagnostics. We let pnpm pick its own
-    # CI reporter, tee stderr to a file, and re-emit the captured log on
-    # failure so the failure survives even if the live log buffer is cut off
-    # when `timeout` terminates the process group.
+    # Capture pnpm's combined stdout+stderr through `tee` so the ERR_PNPM_* code
+    # and offending package survive even when `timeout` terminates the process
+    # group. Stderr-only capture misses the failure footer because pnpm's
+    # default reporter routes it through stdout; `--reporter=append-only` is
+    # set explicitly so we don't drift if pnpm changes its CI default again.
+    # `--loglevel=debug` and `DEBUG=pnpm:*` add registry/store/fetch traces.
+    # `SAFE_CHAIN_LOGGING=verbose` surfaces safe-chain's proxy decisions, which
+    # are otherwise buffered (and lost on failure) while pnpm is in flight.
+    # `${PIPESTATUS[0]}` preserves pnpm's real exit code through the pipe.
     - name: Install Dependencies
       if: ${{ inputs.install-command != '' }}
       env:
         INSTALL_COMMAND: ${{ inputs.install-command }}
-        INSTALL_LOG: ${{ runner.temp }}/pnpm-install.err
+        INSTALL_LOG: ${{ runner.temp }}/pnpm-install.log
+        SAFE_CHAIN_LOGGING: verbose
+        DEBUG: pnpm:*
       run: |
-        set +e
-        timeout --kill-after=30s 300s $INSTALL_COMMAND 2> >(tee "$INSTALL_LOG" >&2)
-        rc=$?
-        set -e
-        # Let the backgrounded `tee` flush before we read the file back.
-        wait 2>/dev/null || true
+        set +o pipefail
+        timeout --kill-after=30s 300s $INSTALL_COMMAND \
+          --reporter=append-only --loglevel=debug 2>&1 | tee "$INSTALL_LOG"
+        rc=${PIPESTATUS[0]}
+        set -o pipefail
         if [ $rc -ne 0 ]; then
-          echo "::group::pnpm install stderr (captured)"
+          echo "::group::pnpm install full output (captured)"
           cat "$INSTALL_LOG" 2>/dev/null || echo "(no captured log)"
           echo "::endgroup::"
           case $rc in
