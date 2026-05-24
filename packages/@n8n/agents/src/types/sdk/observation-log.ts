@@ -8,23 +8,10 @@ export const OBSERVATION_LOG_STATUSES = ['active', 'superseded', 'dropped'] as c
 
 export type ObservationLogStatus = (typeof OBSERVATION_LOG_STATUSES)[number];
 
-export type ObservationLogScopeKind = 'thread' | 'resource';
-
-export type ObservationLogTaskKind = 'observer' | 'reflector' | 'episodic-indexer';
-
-const OBSERVATION_LOG_THREAD_SCOPE_PREFIX = 'thread';
-
-export function createObservationLogThreadScopeId(threadId: string, resourceId: string): string {
-	return `${OBSERVATION_LOG_THREAD_SCOPE_PREFIX}:${encodeURIComponent(threadId)}:resource:${encodeURIComponent(resourceId)}`;
-}
-
-export function createObservationLogThreadScopePrefix(threadId: string): string {
-	return `${OBSERVATION_LOG_THREAD_SCOPE_PREFIX}:${encodeURIComponent(threadId)}:resource:`;
-}
+export type ObservationLogTaskKind = 'observer' | 'reflector';
 
 export interface ObservationLogScope {
-	scopeKind: ObservationLogScopeKind;
-	scopeId: string;
+	observationScopeId: string;
 }
 
 export interface ObservationLogTaskLockHandle extends ObservationLogScope {
@@ -84,8 +71,7 @@ export type TokenCounter = (text: string) => number;
 export const estimateObservationTokens: TokenCounter = (text) => Math.ceil(text.length / 4);
 
 export interface ObservationLogObserverInput {
-	scopeKind: ObservationLogScopeKind;
-	scopeId: string;
+	observationScopeId: string;
 	now: Date;
 	deltaMessages: AgentDbMessage[];
 	transcript: string;
@@ -97,8 +83,7 @@ export interface ObservationLogObserverInput {
 export type ObservationLogObserveFn = (input: ObservationLogObserverInput) => Promise<string>;
 
 export interface ObservationLogReflectorInput {
-	scopeKind: ObservationLogScopeKind;
-	scopeId: string;
+	observationScopeId: string;
 	now: Date;
 	activeObservationLog: ObservationLogEntry[];
 	renderedObservationLog: string;
@@ -124,8 +109,7 @@ export interface BuiltObservationLogStore {
 
 export interface BuiltObservationLogTaskLockStore {
 	acquireObservationLogTaskLock(
-		scopeKind: ObservationLogScopeKind,
-		scopeId: string,
+		observationScopeId: string,
 		taskKind: ObservationLogTaskKind,
 		opts: { ttlMs: number; holderId: string },
 	): Promise<ObservationLogTaskLockHandle | null>;

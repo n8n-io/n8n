@@ -1094,6 +1094,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				doNotWaitToFinish?: boolean;
 				parentExecution?: RelatedExecution;
 				executionMode?: WorkflowExecuteMode;
+				returnLastRunOnly?: boolean; // Forces the caller to receive only the items from the terminal node's final run.
 			},
 		): Promise<ExecuteWorkflowData>;
 		executeAgent(
@@ -1390,7 +1391,6 @@ export interface INode {
 	webhookId?: string;
 	extendsCredential?: string;
 	rewireOutputLogTo?: NodeConnectionType;
-
 	// forces the node to execute a particular custom operation
 	// based on resource and operation
 	// instead of calling default execute function
@@ -1964,6 +1964,7 @@ export interface ITriggerResponse {
 
 export interface ExecuteWorkflowData {
 	executionId: string;
+	/** Terminal node output: items from every run concatenated per output branch, unless the caller sets `returnLastRunOnly`. */
 	data: Array<INodeExecutionData[] | null>;
 	waitTill?: Date | null;
 }
@@ -3142,6 +3143,8 @@ export interface IWorkflowExecutionDataProcess {
 	deduplicationKey?: string;
 	/** W3C trace context extracted from inbound webhook headers. */
 	tracingContext?: { traceparent: string; tracestate?: string };
+	/** Encrypted credential context for a manual editor-triggered execution. */
+	encryptedRunnerIdentity?: string;
 }
 
 export interface ExecuteWorkflowOptions {
@@ -3155,6 +3158,7 @@ export interface ExecuteWorkflowOptions {
 	doNotWaitToFinish?: boolean;
 	parentExecution?: RelatedExecution;
 	executionMode?: WorkflowExecuteMode;
+	returnLastRunOnly?: boolean; // Forces the caller to receive only the items from the terminal node's final run.
 }
 
 export type AiEvent =
