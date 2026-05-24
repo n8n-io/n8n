@@ -136,11 +136,12 @@ function updateEntryValue(key: string, value: string) {
 }
 
 .description {
-	margin-bottom: var(--spacing--s);
+	margin-bottom: var(--spacing--xs);
 }
 
 .entries {
-	margin-bottom: var(--spacing--xs);
+	margin-top: var(--spacing--2xs);
+	margin-bottom: var(--spacing--2xs);
 }
 
 .entryRow {
@@ -148,6 +149,6 @@ function updateEntryValue(key: string, value: string) {
 }
 
 .addRow {
-	margin-top: var(--spacing--xs);
+	margin-top: var(--spacing--2xs);
 }
 </style>
