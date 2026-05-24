@@ -104,6 +104,9 @@ export class OauthService {
 	}
 
 	private validateAuthServerUrlOrThrow(url: string): void {
+		// NOTE: validateOAuthUrl silently passes undefined/empty strings,
+		// but we only call this with a non-empty string from a length‑guarded
+		// authorization_servers array. This call is defense‑in‑depth.
 		try {
 			this.validateOAuthUrlOrThrow(url);
 		} catch (error) {
@@ -117,7 +120,7 @@ export class OauthService {
 	/**
 	 * Normalizes a resource URL by removing trailing slashes.
 	 *
-	 * RFC 8707 treats the resource indicator as an opaque identifier, and in
+	 * RFC 8707 treats the resource indicator as an opaque identifier, and in
 	 * theory servers could differentiate between https://example.com and
 	 * https://example.com/. In practice, MCP servers consistently treat them as
 	 * equivalent, and the n8n server‑side OAuth fix (PR #30558) already applies
@@ -556,10 +559,10 @@ export class OauthService {
 		if (oauthCredentials.serverUrl) {
 			// Validate serverUrl to prevent SSRF attacks before any HTTP requests
 			this.validateOAuthUrlOrThrow(oauthCredentials.serverUrl);
-		}
 
-		if (oauthCredentials.resourceUrl) {
-			suppliedResourceUrl = this.validateResourceUrlOrThrow(oauthCredentials.resourceUrl);
+			if (oauthCredentials.resourceUrl) {
+				suppliedResourceUrl = this.validateResourceUrlOrThrow(oauthCredentials.resourceUrl);
+			}
 		}
 
 		if (oauthCredentials.serverUrl) {
