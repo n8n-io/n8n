@@ -11,8 +11,9 @@ import {
 } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
-import type { ExecutionSummary } from 'n8n-workflow';
+import type { ExecutionStatus, ExecutionSummary, ITaskData } from 'n8n-workflow';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import type { ExecutionOutputMap } from './executionData.types';
 import { WorkflowExecutionStateStoreKey } from '@/app/constants/injectionKeys';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 import { useExecutingNode } from '@/app/composables/useExecutingNode';
@@ -32,6 +33,10 @@ import type {
 } from './workflowDocument/useWorkflowDocumentNodes';
 
 const EMPTY_EXECUTION_ISSUES_BY_NODE_NAME = new Map<string, ComputedRef<string[]>>();
+const EMPTY_EXECUTION_STATUS_BY_NODE_ID = new Map<string, ComputedRef<ExecutionStatus>>();
+const EMPTY_EXECUTION_RUN_DATA_BY_NODE_ID = new Map<string, ComputedRef<ITaskData[] | null>>();
+const EMPTY_EXECUTION_RUN_DATA_OUTPUT_MAP_BY_NODE_ID = new Map<string, ExecutionOutputMap>();
+const EMPTY_EXECUTION_WAITING_BY_NODE_ID = new Map<string, ComputedRef<string | undefined>>();
 
 export type WorkflowExecutionStateId = string;
 
@@ -213,6 +218,59 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 					.executionIssuesByNodeName;
 			}
 			return EMPTY_EXECUTION_ISSUES_BY_NODE_NAME;
+		});
+
+		// Active/displayed fallback for the per-node-id execution data projections.
+		// Same shape as `activeExecutionIssuesByNodeName`: resolve the relevant
+		// per-execution data store and re-expose its by-id map; fall back to an
+		// empty Map sentinel when no execution is being tracked.
+
+		const activeExecutionStatusByNodeId = computed(() => {
+			if (typeof activeExecutionId.value === 'string') {
+				return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
+					.executionStatusByNodeId;
+			}
+			if (typeof displayedExecutionId.value === 'string') {
+				return useExecutionDataStore(createExecutionDataId(displayedExecutionId.value))
+					.executionStatusByNodeId;
+			}
+			return EMPTY_EXECUTION_STATUS_BY_NODE_ID;
+		});
+
+		const activeExecutionRunDataByNodeId = computed(() => {
+			if (typeof activeExecutionId.value === 'string') {
+				return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
+					.executionRunDataByNodeId;
+			}
+			if (typeof displayedExecutionId.value === 'string') {
+				return useExecutionDataStore(createExecutionDataId(displayedExecutionId.value))
+					.executionRunDataByNodeId;
+			}
+			return EMPTY_EXECUTION_RUN_DATA_BY_NODE_ID;
+		});
+
+		const activeExecutionRunDataOutputMapByNodeId = computed(() => {
+			if (typeof activeExecutionId.value === 'string') {
+				return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
+					.executionRunDataOutputMapByNodeId;
+			}
+			if (typeof displayedExecutionId.value === 'string') {
+				return useExecutionDataStore(createExecutionDataId(displayedExecutionId.value))
+					.executionRunDataOutputMapByNodeId;
+			}
+			return EMPTY_EXECUTION_RUN_DATA_OUTPUT_MAP_BY_NODE_ID;
+		});
+
+		const activeExecutionWaitingByNodeId = computed(() => {
+			if (typeof activeExecutionId.value === 'string') {
+				return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
+					.executionWaitingByNodeId;
+			}
+			if (typeof displayedExecutionId.value === 'string') {
+				return useExecutionDataStore(createExecutionDataId(displayedExecutionId.value))
+					.executionWaitingByNodeId;
+			}
+			return EMPTY_EXECUTION_WAITING_BY_NODE_ID;
 		});
 
 		const lastSuccessfulExecution = computed(() => {
@@ -627,6 +685,10 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 			getPastChatMessages,
 			getActiveExecutionRunDataByNodeName,
 			activeExecutionIssuesByNodeName,
+			activeExecutionStatusByNodeId,
+			activeExecutionRunDataByNodeId,
+			activeExecutionRunDataOutputMapByNodeId,
+			activeExecutionWaitingByNodeId,
 			executionRunningByNodeId,
 			executionWaitingForNextByNodeId,
 			resolveExecutionTriggerNodeName,

@@ -3,6 +3,7 @@ import { defineComponent, h, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { render, screen } from '@testing-library/vue';
 import type { INodeUi } from '@/Interface';
+import { createEmptyCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 
 interface CapturedCanvasProps {
 	id: string;
@@ -102,18 +103,8 @@ describe('WorkflowDiffContent', () => {
 		isSourceWorkflowNew: false,
 		nodesDiff: new Map(),
 		connectionsDiff: new Map(),
-		sourceRenderData: {
-			nodeInputsByNodeId: new Map(),
-			nodeOutputsByNodeId: new Map(),
-			pinnedDataByNodeName: {},
-			executionIssuesByNodeName: new Map(),
-		},
-		targetRenderData: {
-			nodeInputsByNodeId: new Map(),
-			nodeOutputsByNodeId: new Map(),
-			pinnedDataByNodeName: {},
-			executionIssuesByNodeName: new Map(),
-		},
+		sourceRenderData: createEmptyCanvasRenderData(),
+		targetRenderData: createEmptyCanvasRenderData(),
 	};
 
 	describe('panels', () => {

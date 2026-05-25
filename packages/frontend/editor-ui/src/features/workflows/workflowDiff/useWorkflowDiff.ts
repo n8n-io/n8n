@@ -13,7 +13,10 @@ import {
 	disposeWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
-import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
+import {
+	createEmptyCanvasRenderData,
+	type CanvasRenderData,
+} from '@/features/workflows/canvas/canvas.utils';
 
 export function mapConnections(connections: CanvasConnection[]) {
 	return connections.reduce(
@@ -112,12 +115,7 @@ function createWorkflowDiff(
 }
 
 function createDiffRenderData(workflowRef: ComputedRef<IWorkflowDb | undefined>, side: string) {
-	const renderData = shallowRef<CanvasRenderData>({
-		nodeInputsByNodeId: new Map(),
-		nodeOutputsByNodeId: new Map(),
-		pinnedDataByNodeName: {},
-		executionIssuesByNodeName: new Map(),
-	});
+	const renderData = shallowRef<CanvasRenderData>(createEmptyCanvasRenderData());
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore> | null = null;
 
 	watchEffect(() => {

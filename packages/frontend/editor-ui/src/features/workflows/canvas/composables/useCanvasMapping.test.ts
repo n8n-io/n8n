@@ -3,7 +3,10 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import type { ComputedRef, Ref } from 'vue';
 import { computed, ref, shallowRef } from 'vue';
-import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
+import {
+	createEmptyCanvasRenderData,
+	type CanvasRenderData,
+} from '@/features/workflows/canvas/canvas.utils';
 
 import {
 	createTestNode,
@@ -67,19 +70,14 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 
-const testRenderData = shallowRef<CanvasRenderData>({
-	nodeInputsByNodeId: renderNodeInputsMap,
-	nodeOutputsByNodeId: renderNodeOutputsMap,
-	pinnedDataByNodeName: {},
-	executionIssuesByNodeName: new Map(),
-});
+const testRenderData = shallowRef<CanvasRenderData>(
+	createEmptyCanvasRenderData({
+		nodeInputsByNodeId: renderNodeInputsMap,
+		nodeOutputsByNodeId: renderNodeOutputsMap,
+	}),
+);
 
-const emptyRenderData = shallowRef<CanvasRenderData>({
-	nodeInputsByNodeId: new Map(),
-	nodeOutputsByNodeId: new Map(),
-	pinnedDataByNodeName: {},
-	executionIssuesByNodeName: new Map(),
-});
+const emptyRenderData = shallowRef<CanvasRenderData>(createEmptyCanvasRenderData());
 
 function createRenderDataWithExecutionIssuesByNodeName(
 	issuesByNodeName: Record<string, string[]> = {},
@@ -91,12 +89,7 @@ function createRenderDataWithExecutionIssuesByNodeName(
 			computed(() => issues),
 		);
 	}
-	return shallowRef({
-		nodeInputsByNodeId: new Map(),
-		nodeOutputsByNodeId: new Map(),
-		pinnedDataByNodeName: {},
-		executionIssuesByNodeName,
-	});
+	return shallowRef(createEmptyCanvasRenderData({ executionIssuesByNodeName }));
 }
 
 vi.mock('@/app/composables/useWorkflowState', async () => {
