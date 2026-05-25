@@ -1358,6 +1358,55 @@ describe('Request Helper Functions', () => {
 			);
 		});
 
+		test('should preserve resource in oauthTokenData when server does not echo it on refresh', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				...mockCredentialData,
+				oauthTokenData: {
+					...mockCredentialData.oauthTokenData,
+					resource: 'https://mcp.example.com/mcp',
+				},
+			});
+			nock(baseUrl)
+				.post('/token', {
+					client_id: 'test-client-id',
+					client_secret: 'test-client-secret',
+					grant_type: 'refresh_token',
+					refresh_token: 'old-refresh-token',
+					resource: 'https://mcp.example.com/mcp',
+				})
+				.reply(200, {
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
+				});
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual({
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+				resource: 'https://mcp.example.com/mcp',
+			});
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledWith(
+				mockNode.credentials!['test-credentials-type'],
+				'test-credentials-type',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({
+						access_token: 'new-token',
+						refresh_token: 'new-refresh-token',
+						resource: 'https://mcp.example.com/mcp',
+					}),
+				}),
+				mockAdditionalData,
+			);
+		});
+
 		test('should throw an error if the OAuth2 token is not connected', async () => {
 			mockThis.getCredentials.mockResolvedValue({
 				...mockCredentialData,

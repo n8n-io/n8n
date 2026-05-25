@@ -820,6 +820,12 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 	// original token response.
 	const newOAuthTokenData = { ...token.data, ...newToken.data };
 
+	// If the server doesn't echo the resource back, restore it from the
+	// previous token data to ensure it's not lost on refresh.
+	if (!newOAuthTokenData.resource && token.data.resource) {
+		newOAuthTokenData.resource = token.data.resource;
+	}
+
 	const refreshedTokenData = await decryptOAuth2TokenDataIfConfigured(
 		additionalData,
 		newOAuthTokenData,
