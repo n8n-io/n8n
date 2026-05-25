@@ -317,6 +317,21 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		if (mode === 'evaluation' && additionalData.evalLlmMockHandler && !node.credentials?.[type]) {
 			const hasOtherCreds = !!node.credentials && Object.keys(node.credentials).length > 0;
 			if (!hasOtherCreds) {
+				// Duck-typed hook: when the credentials helper provides
+				// `synthesizeAndDecrypt` (e.g. `EvalMockedCredentialsHelper` in
+				// the cli's eval module), defer to it so post-resolve rewrites
+				// — like the wire-server URL injection for unpinned vendor SDK
+				// nodes — still apply. Falls back to the bare synthetic path
+				// for callers that don't register a helper override.
+				const helper = additionalData.credentialsHelper as unknown as {
+					synthesizeAndDecrypt?: (
+						credentialType: string,
+						executeData?: IExecuteData,
+					) => Promise<ICredentialDataDecryptedObject>;
+				};
+				if (typeof helper.synthesizeAndDecrypt === 'function') {
+					return (await helper.synthesizeAndDecrypt(type, executeData)) as T;
+				}
 				const { buildEvalMockCredentials } = await import('../eval-mock-helpers');
 				return buildEvalMockCredentials(
 					additionalData.credentialsHelper.getCredentialsProperties(type),

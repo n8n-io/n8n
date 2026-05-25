@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EvalLlmMockHandler } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
+import OpenAI from 'openai';
 
 import { type InterceptedTurn, LlmWireServer } from '../llm-wire-server';
 
@@ -555,6 +556,148 @@ describe('LlmWireServer', () => {
 					f.choices[0].delta.content.includes('eval wire server stub'),
 			);
 			expect(stubFrame).toBeDefined();
+		});
+
+		// Live SDK round-trip — the master spec mandates this: "Test against
+		// the live `openai` v5 SDK — do not hand-roll envelope shape against
+		// documentation alone." The hand-rolled `readSseChunks` frame splitter
+		// above proves our wire shape against the spec; this test proves it
+		// against the *actual SDK parser*. If our `delta.tool_calls` chunks
+		// drift from what `openai`'s reducer expects, this test will throw a
+		// typed BadStream error before any of the per-frame asserts above
+		// would notice.
+		describe('live `openai` SDK round-trip (catches SDK-strict envelope drift)', () => {
+			function makeClient(serverUrl: string, rootName: string) {
+				return new OpenAI({
+					apiKey: 'sk-eval-test',
+					baseURL: `${serverUrl}/eval/${encodeURIComponent(rootName)}/v1`,
+					// Disable retries — a failed parse should surface immediately,
+					// not loop the test through the default 2x retry budget.
+					maxRetries: 0,
+				});
+			}
+
+			it('non-streaming chat completion parses through the SDK reducer', async () => {
+				const mockHandler = jest.fn().mockResolvedValue({
+					body: { content: 'hello via SDK' },
+					headers: {},
+					statusCode: 200,
+				}) as unknown as EvalLlmMockHandler;
+				server = new LlmWireServer({
+					mockHandler,
+					rootToSubNode: new Map([['Agent', subNode]]),
+				});
+				const url = await server.start();
+				const client = makeClient(url, 'Agent');
+
+				const completion = await client.chat.completions.create({
+					model: 'gpt-4o',
+					messages: [{ role: 'user', content: 'hi' }],
+				});
+
+				expect(completion.object).toBe('chat.completion');
+				expect(completion.choices[0].message.content).toBe('hello via SDK');
+				expect(completion.choices[0].finish_reason).toBe('stop');
+			});
+
+			it('streaming content yields chunks through the SDK async iterator', async () => {
+				const mockHandler = jest.fn().mockResolvedValue({
+					body: { content: 'streamed via SDK' },
+					headers: {},
+					statusCode: 200,
+				}) as unknown as EvalLlmMockHandler;
+				server = new LlmWireServer({
+					mockHandler,
+					rootToSubNode: new Map([['Agent', subNode]]),
+				});
+				const url = await server.start();
+				const client = makeClient(url, 'Agent');
+
+				const stream = await client.chat.completions.create({
+					model: 'gpt-4o',
+					stream: true,
+					messages: [{ role: 'user', content: 'hi' }],
+				});
+
+				let assembled = '';
+				let lastFinishReason: string | null | undefined;
+				for await (const chunk of stream) {
+					expect(chunk.object).toBe('chat.completion.chunk');
+					const delta = chunk.choices[0]?.delta;
+					if (typeof delta?.content === 'string') {
+						assembled += delta.content;
+					}
+					if (chunk.choices[0]?.finish_reason !== undefined) {
+						lastFinishReason = chunk.choices[0].finish_reason;
+					}
+				}
+
+				expect(assembled).toBe('streamed via SDK');
+				expect(lastFinishReason).toBe('stop');
+			});
+
+			it('streaming tool_calls accumulate through the SDK reducer with the correct final shape', async () => {
+				// The strictest test of the wire format. The SDK accumulates
+				// `delta.tool_calls` slices into a single tool call — first chunk
+				// owns `id` + `function.name`, later chunks contribute
+				// `function.arguments`. A drift here (e.g. repeating `id` on
+				// later chunks) throws a `BadStream` error, not a soft skip.
+				const mockHandler = jest.fn().mockResolvedValue({
+					body: {
+						tool_calls: [
+							{
+								id: 'call_live',
+								function: { name: 'get_weather', arguments: '{"city":"NYC"}' },
+							},
+						],
+					},
+					headers: {},
+					statusCode: 200,
+				}) as unknown as EvalLlmMockHandler;
+				server = new LlmWireServer({
+					mockHandler,
+					rootToSubNode: new Map([['Agent', subNode]]),
+				});
+				const url = await server.start();
+				const client = makeClient(url, 'Agent');
+
+				const stream = await client.chat.completions.create({
+					model: 'gpt-4o',
+					stream: true,
+					messages: [{ role: 'user', content: 'weather' }],
+					tools: [
+						{
+							type: 'function',
+							function: { name: 'get_weather', parameters: { type: 'object' } },
+						},
+					],
+				});
+
+				const accumulated: Record<number, { id?: string; name?: string; args: string }> = {};
+				let lastFinishReason: string | null | undefined;
+				for await (const chunk of stream) {
+					const toolDeltas = chunk.choices[0]?.delta?.tool_calls ?? [];
+					for (const td of toolDeltas) {
+						const slot = (accumulated[td.index] ??= { args: '' });
+						if (td.id) slot.id = td.id;
+						if (td.function?.name) slot.name = td.function.name;
+						if (typeof td.function?.arguments === 'string') {
+							slot.args += td.function.arguments;
+						}
+					}
+					if (chunk.choices[0]?.finish_reason !== undefined) {
+						lastFinishReason = chunk.choices[0].finish_reason;
+					}
+				}
+
+				// SDK reducer reassembled the full call.
+				expect(accumulated[0]).toEqual({
+					id: 'call_live',
+					name: 'get_weather',
+					args: '{"city":"NYC"}',
+				});
+				expect(lastFinishReason).toBe('tool_calls');
+			});
 		});
 
 		it('returns a JSON error envelope (not SSE) when the mock handler throws on a streaming request', async () => {

@@ -3,6 +3,7 @@ import type {
 	InstanceAiEvalRewrittenCredential,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import { buildEvalMockCredentials } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentials,
@@ -127,6 +128,45 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		}
 
 		return this.applyServerUrlRewrite(credentials, type, nodeCredentials, executeData);
+	}
+
+	/**
+	 * Synthesize a credential from its schema and apply the URL rewrite.
+	 *
+	 * Hook the n8n-core eval-mode bypass calls when a node has no credentials
+	 * configured at all. The bypass exists so HTTP-helper-mocked workflows can
+	 * run without real keys, but without this hook the bypass would short-
+	 * circuit `getDecrypted` and skip our path-based URL rewrite — vendor SDK
+	 * traffic would then escape to the real provider with placeholder values
+	 * and 401 at the wire layer.
+	 *
+	 * `n8n-core` invokes this via duck-typing (`'synthesizeAndDecrypt' in
+	 * additionalData.credentialsHelper`); see `_getCredentials` in
+	 * `node-execution-context.ts`.
+	 */
+	async synthesizeAndDecrypt(
+		type: string,
+		executeData?: IExecuteData,
+	): Promise<ICredentialDataDecryptedObject> {
+		const schema = this.inner.getCredentialsProperties(type);
+		// `buildEvalMockCredentials` is typed `Record<string, unknown>` because
+		// schema defaults can be richer than `CredentialInformation` (e.g.
+		// `INodeParameterResourceLocator`). At runtime the values it emits
+		// are all string / boolean / number / JSON-shaped objects — fine for
+		// the rewrite path, which only reads + augments the `url` field.
+		const synthetic = buildEvalMockCredentials(schema) as ICredentialDataDecryptedObject;
+
+		this.mockedCredentials.push({
+			nodeName: executeData?.node?.name ?? 'unknown',
+			credentialType: type,
+			credentialId: undefined,
+		});
+
+		// No `nodeCredentials.id` exists for a synthesized credential — pass
+		// a stub `INodeCredentialsDetails` shape so the existing rewrite
+		// branch logs and returns identically to the "real creds resolved" path.
+		const syntheticNodeCredentials: INodeCredentialsDetails = { id: null, name: type };
+		return this.applyServerUrlRewrite(synthetic, type, syntheticNodeCredentials, executeData);
 	}
 
 	private applyServerUrlRewrite(

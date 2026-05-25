@@ -97,3 +97,8 @@ export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-s
 export { ExecutionContextService } from './execution-context.service';
 export { establishExecutionContext } from './execution-context';
 export { isEngineRequest } from './requests-response';
+// Exposed so callers that override `additionalData.credentialsHelper` can
+// reuse the same schema-driven cred synthesizer the eval-mode bypass uses
+// (see `_getCredentials` in node-execution-context.ts). The eval module's
+// `EvalMockedCredentialsHelper.synthesizeAndDecrypt` is the first consumer.
+export { buildEvalMockCredentials } from './eval-mock-helpers';

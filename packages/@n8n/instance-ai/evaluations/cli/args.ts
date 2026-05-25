@@ -47,6 +47,12 @@ export interface CliArgs {
 	/** Number of iterations to run each test case (default: 1). Each iteration
 	 *  gets a fresh build so pass@k / pass^k capture real builder variance. */
 	iterations: number;
+	/** When true, the harness auto-detects each built workflow's AI root nodes
+	 *  (Agent, Chain, etc.) and passes them as `unpinNodes` to the eval endpoint
+	 *  so they run through the wire-server interception path instead of being
+	 *  short-circuited by pin data. Disabled by default — keeps today's pinned
+	 *  baseline behaviour for runs that don't opt in. */
+	unpinAiRoots: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -68,6 +74,7 @@ const cliArgsSchema = z.object({
 	concurrency: z.number().int().positive().default(16),
 	experimentName: z.string().optional(),
 	iterations: z.number().int().positive().default(1),
+	unpinAiRoots: z.boolean().default(false),
 });
 
 // ---------------------------------------------------------------------------
@@ -93,6 +100,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		concurrency: validated.concurrency,
 		experimentName: validated.experimentName,
 		iterations: validated.iterations,
+		unpinAiRoots: validated.unpinAiRoots,
 	};
 }
 
@@ -115,6 +123,7 @@ interface RawArgs {
 	concurrency: number;
 	experimentName?: string;
 	iterations: number;
+	unpinAiRoots: boolean;
 }
 
 function parseRawArgs(argv: string[]): RawArgs {
@@ -128,6 +137,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 		concurrency: 16,
 		experimentName: undefined,
 		iterations: 1,
+		unpinAiRoots: false,
 	};
 
 	for (let i = 0; i < argv.length; i++) {
@@ -205,6 +215,10 @@ function parseRawArgs(argv: string[]): RawArgs {
 			case '--experiment-name':
 				result.experimentName = nextArg(argv, i, '--experiment-name');
 				i++;
+				break;
+
+			case '--unpin-ai-roots':
+				result.unpinAiRoots = true;
 				break;
 
 			default:

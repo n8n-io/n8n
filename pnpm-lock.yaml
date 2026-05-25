@@ -210,6 +210,9 @@ catalogs:
     nanoid:
       specifier: 3.3.8
       version: 3.3.8
+    openai:
+      specifier: 6.19.0
+      version: 6.19.0
     oxlint:
       specifier: ^1.61.0
       version: 1.61.0
@@ -288,7 +291,7 @@ catalogs:
   e2e:
     '@currents/playwright':
       specifier: ^2.0.0
-      version: 2.0.0
+      version: 2.1.0
     '@playwright/cli':
       specifier: 0.1.0
       version: 0.1.0
@@ -2912,7 +2915,7 @@ importers:
         version: 9.0.3
       langsmith:
         specifier: 0.6.0
-        version: 0.6.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+        version: 0.6.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       ldapts:
         specifier: 4.2.6
         version: 4.2.6
@@ -3151,6 +3154,9 @@ importers:
       n8n-containers:
         specifier: workspace:*
         version: link:../testing/containers
+      openai:
+        specifier: 'catalog:'
+        version: 6.19.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)
       openapi-types:
         specifier: ^12.1.3
         version: 12.1.3
@@ -4728,7 +4734,7 @@ importers:
         version: 0.91.1(zod@3.25.67)
       '@currents/playwright':
         specifier: catalog:e2e
-        version: 2.0.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+        version: 2.1.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       '@memlab/api':
         specifier: 2.0.0
         version: 2.0.0(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)
@@ -5681,6 +5687,10 @@ packages:
   '@azure/storage-blob@12.26.0':
     resolution: {integrity: sha512-SriLPKezypIsiZ+TtlFfE46uuBIap2HeaQVS78e1P7rz5OSbq0rsd52WE1mC5f7vAeLiXqv7I7oRhL3WFZEw3Q==}
     engines: {node: '>=18.0.0'}
+
+  '@babel/code-frame@7.27.1':
+    resolution: {integrity: sha512-cjQ7ZlQ0Mv3b47hABuTevyTuYN4i+loJKGeV9flcCgIK37cCXRh+L1bd3iBHlynerhQ7BhCkn2BPbQUL+rGqFg==}
+    engines: {node: '>=6.9.0'}
 
   '@babel/code-frame@7.29.0':
     resolution: {integrity: sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw==}
@@ -6745,8 +6755,8 @@ packages:
     resolution: {integrity: sha512-gkn8E3UC+F4/fCla7QAGMGgGPzxZUL9bU9+4I+KZf9PtCU3DdQCdy7a+er2eg4ewfUzZ2Ic1HcfnHuPkuLPKIw==}
     engines: {node: '>=6'}
 
-  '@currents/playwright@2.0.0':
-    resolution: {integrity: sha512-ai/qoXb0i0WU0tO6JJWwEJvPcC72Ldl7sRlkgbHiEiHTiaDBt1d09rdDBvwcS3p/TtqSZ4C3GDsk9dovLd5hZg==}
+  '@currents/playwright@2.1.0':
+    resolution: {integrity: sha512-276Qyxf699V1yCclO1eMMXRRyfcdsmsZF+f4rsGyQmz2KmVEBPCbPti6LaXpdmuXf9wifkJsUCuv6QsBzWCTPA==}
     hasBin: true
 
   '@dabh/diagnostics@2.0.3':
@@ -18377,6 +18387,18 @@ packages:
     resolution: {integrity: sha512-MVHddDVweXZF3awtlAS+6pgKLlm/JgxZ90+/NBurBoQctVOOB/zDdVjcyPzQ+0laDGbsWgrRkflI65sQeOgT9Q==}
     engines: {node: '>=8'}
 
+  openai@6.19.0:
+    resolution: {integrity: sha512-5uGrF82Ql7TKgIWUnuxh+OyzYbPRPwYDSgGc05JowbXRFsOkuj0dJuCdPCTBZT4mcmp2NEvj/URwDzW+lYgmVw==}
+    hasBin: true
+    peerDependencies:
+      ws: '>=8.20.1'
+      zod: 3.25.67
+    peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
+
   openai@6.34.0:
     resolution: {integrity: sha512-yEr2jdGf4tVFYG6ohmr3pF6VJuveP0EA/sS8TBx+4Eq5NT10alu5zg2dmxMXMgqpihRDQlFGpRt2XwsGj+Fyxw==}
     hasBin: true
@@ -24182,6 +24204,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@babel/code-frame@7.27.1':
+    dependencies:
+      '@babel/helper-validator-identifier': 7.28.5
+      js-tokens: 4.0.0
+      picocolors: 1.1.1
+    optional: true
+
   '@babel/code-frame@7.29.0':
     dependencies:
       '@babel/helper-validator-identifier': 7.28.5
@@ -25692,7 +25721,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@currents/playwright@2.0.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)':
+  '@currents/playwright@2.1.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)':
     dependencies:
       '@babel/code-frame': 7.29.0
       '@commander-js/extra-typings': 13.1.0(commander@13.1.0)
@@ -37975,6 +38004,16 @@ snapshots:
       openai: 6.34.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)
       ws: 8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
 
+  langsmith@0.6.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)):
+    dependencies:
+      p-queue: 6.6.2
+    optionalDependencies:
+      '@opentelemetry/api': 1.9.0
+      '@opentelemetry/exporter-trace-otlp-proto': 0.217.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-base': 2.7.1(@opentelemetry/api@1.9.0)
+      openai: 6.19.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)
+      ws: 8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+
   langsmith@0.6.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)):
     dependencies:
       p-queue: 6.6.2
@@ -40007,6 +40046,11 @@ snapshots:
       is-docker: 2.2.1
       is-wsl: 2.2.0
 
+  openai@6.19.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67):
+    optionalDependencies:
+      ws: 8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      zod: 3.25.67
+
   openai@6.34.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67):
     optionalDependencies:
       ws: 8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -41549,7 +41593,7 @@ snapshots:
       rollup: 2.79.2
       typescript: 6.0.2
     optionalDependencies:
-      '@babel/code-frame': 7.29.0
+      '@babel/code-frame': 7.27.1
 
   rollup@2.79.2:
     optionalDependencies:

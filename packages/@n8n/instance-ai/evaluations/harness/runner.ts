@@ -43,6 +43,33 @@ import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 
 const DEFAULT_TIMEOUT_MS = 900_000;
 
+/**
+ * Names of all AI root nodes (Agent, Chain) in the workflow.
+ *
+ * Mirrors `findAiRootNodeNames` in `cli/src/modules/instance-ai/eval/workflow-analysis.ts`:
+ * a root is the target node of any `ai_*` connection. The server enforces the
+ * same definition when validating the `unpinNodes` request param, so we'd
+ * rather both sides agree here than have the server reject a name we picked.
+ */
+export function findAiRootNodeNames(workflow: WorkflowResponse): string[] {
+	const roots = new Set<string>();
+	for (const nodeConns of Object.values(workflow.connections)) {
+		if (typeof nodeConns !== 'object' || nodeConns === null) continue;
+		for (const [connType, outputs] of Object.entries(nodeConns)) {
+			if (!connType.startsWith('ai_') || !Array.isArray(outputs)) continue;
+			for (const group of outputs) {
+				if (!Array.isArray(group)) continue;
+				for (const conn of group) {
+					if (typeof conn === 'object' && conn !== null && 'node' in conn) {
+						roots.add((conn as { node: string }).node);
+					}
+				}
+			}
+		}
+	}
+	return Array.from(roots);
+}
+
 /** Max concurrent scenario executions per test case */
 const MAX_CONCURRENT_SCENARIOS = 99;
 
@@ -64,6 +91,11 @@ interface WorkflowTestCaseConfig {
 	/** When set, skip the orchestrator build and verify this existing workflow
 	 *  instead. The harness leaves it in place — caller owns its lifecycle. */
 	prebuiltWorkflowId?: string;
+	/** When true, the harness auto-detects AI root nodes (Agent, Chain) in the
+	 *  built workflow and opts them into the wire-server interception path via
+	 *  the eval endpoint's `unpinNodes` field. Server-side gated by the
+	 *  `085_eval_vendor_sdk_interception` PostHog flag. */
+	unpinAiRoots?: boolean;
 }
 
 /**
@@ -127,6 +159,7 @@ export async function runWorkflowTestCase(
 					build.workflowJsons,
 					logger,
 					timeoutMs,
+					config.unpinAiRoots,
 				);
 			} catch (error: unknown) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
@@ -452,8 +485,17 @@ export async function executeScenario(
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
 	timeoutMs?: number,
+	unpinAiRoots?: boolean,
 ): Promise<ExecutionScenarioResult> {
-	return await runScenario(client, scenario, workflowId, workflowJsons, logger, timeoutMs);
+	return await runScenario(
+		client,
+		scenario,
+		workflowId,
+		workflowJsons,
+		logger,
+		timeoutMs,
+		unpinAiRoots,
+	);
 }
 
 /**
@@ -500,13 +542,27 @@ async function runScenario(
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
 	timeoutMs?: number,
+	unpinAiRoots?: boolean,
 ): Promise<ExecutionScenarioResult> {
+	const unpinNodes = unpinAiRoots && workflowJsons[0] ? findAiRootNodeNames(workflowJsons[0]) : [];
+	if (unpinAiRoots && unpinNodes.length === 0) {
+		logger.info(
+			`    [${scenario.name}] --unpin-ai-roots was set, but workflow has no AI root nodes — running with default pinning`,
+		);
+	}
+
 	const execStart = Date.now();
-	const evalResult = await client.executeWithLlmMock(workflowId, scenario.dataSetup, timeoutMs);
+	const evalResult = await client.executeWithLlmMock(
+		workflowId,
+		scenario.dataSetup,
+		timeoutMs,
+		unpinNodes,
+	);
 	const execMs = Date.now() - execStart;
 
+	const unpinTag = unpinNodes.length > 0 ? ` unpinned=${unpinNodes.join(',')}` : '';
 	logger.info(
-		`    [${scenario.name}] exec=${String(Math.round(execMs / 1000))}s (${Object.keys(evalResult.nodeResults).length} nodes)`,
+		`    [${scenario.name}] exec=${String(Math.round(execMs / 1000))}s (${Object.keys(evalResult.nodeResults).length} nodes)${unpinTag}`,
 	);
 
 	const verifyStart = Date.now();
