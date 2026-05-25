@@ -10,6 +10,7 @@ import { getToolParameters } from '../resourceMapping';
 describe('McpClient', () => {
 	const getAuthHeaders = vi.spyOn(sharedUtils, 'getAuthHeaders');
 	const connectMcpClient = vi.spyOn(sharedUtils, 'connectMcpClient');
+	const mapToNodeOperationError = vi.spyOn(sharedUtils, 'mapToNodeOperationError');
 	const executeFunctions = mockDeep<IExecuteFunctions>();
 	const client = mockDeep<Client>();
 	const defaultParams = {
@@ -39,6 +40,46 @@ describe('McpClient', () => {
 			ok: true,
 			result: client,
 		});
+	});
+
+	it('should pass the execution cancel signal to connectMcpClient', async () => {
+		const abort = new AbortController();
+		executeFunctions.getExecutionCancelSignal.mockReturnValue(abort.signal);
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		client.callTool.mockResolvedValue({
+			content: [{ type: 'text', text: 'Weather in Berlin is sunny' }],
+		});
+
+		await new McpClient().execute.call(executeFunctions);
+
+		expect(connectMcpClient).toHaveBeenCalledWith(
+			expect.objectContaining({
+				signal: abort.signal,
+			}),
+		);
+	});
+
+	it('should map and throw cancelled connection results', async () => {
+		const abortError = new Error('aborted');
+		abortError.name = 'AbortError';
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		connectMcpClient.mockResolvedValue({
+			ok: false,
+			error: { type: 'cancelled', error: abortError },
+		});
+
+		await expect(new McpClient().execute.call(executeFunctions)).rejects.toThrow(
+			'Execution was cancelled',
+		);
+
+		expect(mapToNodeOperationError).toHaveBeenCalledWith(
+			executeFunctions.getNode(),
+			expect.objectContaining({ type: 'cancelled', error: abortError }),
+		);
 	});
 
 	it('should handle json input mode', async () => {
