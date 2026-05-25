@@ -6,6 +6,7 @@ import {
 	DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
 } from './episodic-memory-defaults';
+import { incrementTokenCountFromUsage } from './execution-counter';
 import { normalizeFlatReflectionActions } from './memory-lifecycle';
 import { renderObservationLog } from './observation-log-renderer';
 import { Tool } from '../sdk/tool';
@@ -150,10 +151,11 @@ export async function runEpisodicMemoryIndexer(
 	const savedEntries: EpisodicMemoryEntry[] = [];
 	if (candidates.length > 0) {
 		const { embedMany } = await import('ai');
-		const { embeddings } = await embedMany({
+		const { embeddings, usage } = await embedMany({
 			model: normalized.embedder,
 			values: candidates.map((entry) => entry.content),
 		});
+		incrementTokenCountFromUsage(opts.executionCounter, usage);
 		for (const [index, candidate] of candidates.entries()) {
 			const saved = await saveCandidate(opts, normalized, candidate, embeddings[index]);
 			if (saved) savedEntries.push(saved);
@@ -175,6 +177,7 @@ export function createRecallMemoryTool(opts: {
 	memory: BuiltMemory & BuiltEpisodicMemoryStore;
 	config: EpisodicMemoryConfig;
 	scope: EpisodicMemoryScope;
+	executionCounter?: AgentExecutionCounter;
 }) {
 	const normalized = withEpisodicMemoryDefaults(opts.config);
 
@@ -187,10 +190,11 @@ export function createRecallMemoryTool(opts: {
 		.output(RecallMemoryOutputSchema)
 		.handler(async ({ query }): Promise<RecallMemoryOutput> => {
 			const { embed } = await import('ai');
-			const { embedding: queryEmbedding } = await embed({
+			const { embedding: queryEmbedding, usage } = await embed({
 				model: normalized.embedder,
 				value: query,
 			});
+			incrementTokenCountFromUsage(opts.executionCounter, usage);
 			const entries = await opts.memory.episodic.searchEntries(opts.scope, query, {
 				topK: normalized.topK,
 				queryEmbedding,
@@ -385,12 +389,12 @@ async function runEpisodicMemoryReflection(
 	let mergeEmbeddings: number[][] = [];
 	if (mergeContents.length > 0) {
 		const { embedMany } = await import('ai');
-		mergeEmbeddings = (
-			await embedMany({
-				model: config.embedder,
-				values: mergeContents,
-			})
-		).embeddings;
+		const { embeddings, usage } = await embedMany({
+			model: config.embedder,
+			values: mergeContents,
+		});
+		mergeEmbeddings = embeddings;
+		incrementTokenCountFromUsage(opts.executionCounter, usage);
 	}
 	await opts.memory.episodic.applyReflection(opts.scope, {
 		drop: reflection.drop,

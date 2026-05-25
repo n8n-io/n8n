@@ -1,6 +1,6 @@
+import { incrementTokenCountFromUsage } from './execution-counter';
 import { loadAi } from './lazy-ai';
 import { createModel } from './model-factory';
-import { incrementTokenCountFromUsage } from './execution-counter';
 import type {
 	ObservationLogObserveFn,
 	ObservationLogObserverInput,

@@ -1,5 +1,5 @@
-import type { AgentDbMessage } from './message';
 import type { AgentExecutionCounter } from './agent';
+import type { AgentDbMessage } from './message';
 
 export const OBSERVATION_LOG_MARKERS = ['critical', 'important', 'info', 'completion'] as const;
 

@@ -4,6 +4,7 @@ interface TokenUsageLike {
 	totalTokens?: number;
 	inputTokens?: number;
 	outputTokens?: number;
+	tokens?: number;
 }
 
 export function incrementTokenCountFromUsage(
@@ -11,7 +12,8 @@ export function incrementTokenCountFromUsage(
 	usage: TokenUsageLike | undefined,
 ): void {
 	if (!counter || !usage) return;
-	const tokenCount = usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
+	const tokenCount =
+		usage.totalTokens ?? usage.tokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
 	if (tokenCount <= 0) return;
 
 	try {

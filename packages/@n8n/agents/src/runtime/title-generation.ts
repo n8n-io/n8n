@@ -1,12 +1,12 @@
 import type { LanguageModel } from 'ai';
 
+import { incrementTokenCountFromUsage } from './execution-counter';
 import { loadAi } from './lazy-ai';
 import type { BuiltMemory, BuiltTelemetry, TitleGenerationConfig } from '../types';
 import { createFilteredLogger } from './logger';
 import { createModel } from './model-factory';
 import type { AgentExecutionCounter, ModelConfig } from '../types/sdk/agent';
 import type { AgentDbMessage } from '../types/sdk/message';
-import { incrementTokenCountFromUsage } from './execution-counter';
 
 const logger = createFilteredLogger();
 
