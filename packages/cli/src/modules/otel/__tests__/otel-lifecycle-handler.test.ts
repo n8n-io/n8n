@@ -106,7 +106,7 @@ describe('OtelLifecycleHandler', () => {
 			traceContextService.get.mockResolvedValueOnce(undefined);
 			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce({
 				id: 'proj-empty',
-				customTelemetryTags: null,
+				customTelemetryTags: [],
 			} as never);
 
 			await handler.onWorkflowStart(baseCtx);

@@ -32,7 +32,7 @@ export type ProjectSharingData = {
 export type Project = ProjectSharingData & {
 	relations: ProjectRelation[];
 	scopes: Scope[];
-	customTelemetryTags?: Array<{ key: string; value: string }> | null;
+	customTelemetryTags?: Array<{ key: string; value: string }>;
 };
 export type ProjectListItem = ProjectSharingData & {
 	role: Role['slug'];

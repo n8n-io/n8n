@@ -237,7 +237,7 @@ export class ProjectController {
 			icon,
 			type,
 			description,
-			customTelemetryTags: customTelemetryTags ?? null,
+			customTelemetryTags,
 			relations: relations.map((r) => ({
 				id: r.user.id,
 				email: r.user.email,

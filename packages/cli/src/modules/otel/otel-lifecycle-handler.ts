@@ -9,11 +9,10 @@ import type {
 } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
-import { OwnershipService } from '@/services/ownership.service';
-
 import { ExecutionLevelTracer } from './execution-level-tracer';
 import { OtelConfig } from './otel.config';
 import { TraceContextService } from './tracing-context';
+import { OwnershipService } from '../../services/ownership.service';
 
 @Service()
 export class OtelLifecycleHandler {
@@ -150,7 +149,7 @@ export class OtelLifecycleHandler {
 }
 
 function buildProjectCustomAttributes(
-	tags: Array<{ key: string; value: string }> | null | undefined,
+	tags: Array<{ key: string; value: string }>,
 ): Record<string, string> | undefined {
 	if (!tags?.length) return undefined;
 	const attrs: Record<string, string> = {};
