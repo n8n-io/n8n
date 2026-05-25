@@ -198,6 +198,7 @@ export class AgentsBuilderService {
 			projectId,
 			credentialProvider,
 			user,
+			enabledModules,
 		);
 
 		const { Agent, Memory } = await import('@n8n/agents');

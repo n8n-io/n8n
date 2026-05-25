@@ -1,4 +1,5 @@
 import type { RuntimeSkill } from '@n8n/agents';
+import { ASK_QUESTION_TOOL_NAME } from '@n8n/api-types';
 
 export function mcpSkill(): RuntimeSkill {
 	return {
@@ -39,6 +40,19 @@ Credential flow:
 - For \`mcpOAuth2Api\` -> \`ask_credential\` with \`credentialType: "mcpOAuth2Api"\`.
 - Never invent credential IDs. If the user declines, omit the server entirely
   rather than persisting a stub.
+
+Testing the connection:
+Before writing to config, call \`verify_mcp_server\` with the server name, URL,
+transport, and (if applicable) the credential id from \`ask_credential\`. On
+success it returns \`{ ok: true, tools: [{ name, description }] }\` — the tool
+list can be used to populate \`toolFilter.tools\` or \`approval.tools\` without
+the user having to type tool names by hand. On failure it returns
+\`{ ok: false, error: "..." }\`. If verification fails, explain the error and
+ask the user to check the URL or credentials before proceeding.
+
+Selecting credentials:
+When connection test without credentials fails and you don't know which credential to use, ask the user which credential type to use: OAuth2, Bearer Token, Header Auth, Multiple Headers Auth, or None. 
+Use \`${ASK_QUESTION_TOOL_NAME}\` for asking the question. Based on response, call \`ask_credential\` with the appropriate credential type.
 
 Patch pattern (two-step):
 1. Initialize the array if missing:

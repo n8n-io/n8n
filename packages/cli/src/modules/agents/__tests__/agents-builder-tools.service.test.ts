@@ -34,6 +34,7 @@ function makeService() {
 		workflowRepository,
 		agentsToolsService,
 		builderModelLookupService,
+		mock(),
 	);
 
 	return { service, agentsService, secureRuntime };

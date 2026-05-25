@@ -10,6 +10,7 @@ export const BUILDER_TOOLS = {
 	CREATE_SKILL: 'create_skill',
 	LIST_INTEGRATION_TYPES: 'list_integration_types',
 	RESOLVE_LLM: 'resolve_llm',
+	VERIFY_MCP_SERVER: 'verify_mcp_server',
 } as const;
 
 export type BuilderToolName = (typeof BUILDER_TOOLS)[keyof typeof BUILDER_TOOLS];
