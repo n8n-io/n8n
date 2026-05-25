@@ -12,7 +12,7 @@ import { mock } from 'vitest-mock-extended';
 import type { RequestResponseMetadata, ToolMetadata } from '@utils/agent-execution';
 
 import { getTools } from '../../../common';
-import { resolveSubAgentRequest } from '../resolveSubAgentRequest';
+import { resolveSubAgentRequest, type ResolveSubAgentRequestDeps } from '../resolveSubAgentRequest';
 
 vi.mock('../../../common', () => ({
 	getTools: vi.fn(),
@@ -320,7 +320,9 @@ describe('resolveSubAgentRequest', () => {
 		mockedGetTools.mockResolvedValue([innerSubAgentTool]);
 
 		const outerFinal: INodeExecutionData[][] = [[{ json: { output: 'outer final' } }]];
-		const outerRunAgentBatch = vi.fn(async () => outerFinal);
+		const outerRunAgentBatch: ResolveSubAgentRequestDeps['runAgentBatch'] = vi.fn(
+			async () => outerFinal,
+		);
 
 		const outerRequest = makeRequest([
 			makeAction({ id: 'outer_call_1', nodeName: 'InnerSubAgentNode' }),
@@ -335,8 +337,7 @@ describe('resolveSubAgentRequest', () => {
 		// output, then ran a single finalize pass.
 		expect(innerSubAgentTool.invoke).toHaveBeenCalledTimes(1);
 		expect(outerRunAgentBatch).toHaveBeenCalledTimes(1);
-		const outerResponse = outerRunAgentBatch.mock
-			.calls[0][0] as EngineResponse<RequestResponseMetadata>;
+		const outerResponse = vi.mocked(outerRunAgentBatch).mock.calls[0]![0];
 		expect(outerResponse.actionResponses[0].data?.data?.ai_tool?.[0]?.[0]?.json).toEqual({
 			output: '{"output":"inner answer 42"}',
 		});

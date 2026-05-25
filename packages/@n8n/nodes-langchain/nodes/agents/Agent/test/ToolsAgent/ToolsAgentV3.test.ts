@@ -5,7 +5,7 @@ import {
 	type EngineRequest,
 	type EngineResponse,
 } from 'n8n-workflow';
-import { mock } from 'vitest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { RequestResponseMetadata } from '@utils/agent-execution';
 
@@ -43,7 +43,7 @@ const emptyMemoryHits = { loads: 0, saves: 0 };
 const mockContext = mock<IExecuteFunctions>();
 const mockNode = mock<INode>();
 
-function withCommonFields(ctx: IExecuteFunctions, node: INode): void {
+function withCommonFields(ctx: MockProxy<IExecuteFunctions>, node: INode): void {
 	ctx.getNode.mockReturnValue(node);
 	ctx.logger = {
 		debug: vi.fn(),
@@ -60,27 +60,14 @@ function withCommonFields(ctx: IExecuteFunctions, node: INode): void {
 }
 
 /**
- * Top-level execution context — `isExecuteFunctions(this)` returns true.
- *
- * vitest-mock-extended proxies property access but does not register own
- * properties, so `'getExecuteData' in mock<IExecuteFunctions>()` is false by
- * default. Stamp `getExecuteData` explicitly so the V3 executor takes the
- * engine-routed branch (`if (isExecuteFunctions(this)) return request`).
- */
-function mockTopLevelContext(): IExecuteFunctions {
-	const ctx = mock<IExecuteFunctions>();
-	withCommonFields(ctx, mockNode);
-	ctx.getExecuteData = vi.fn() as never;
-	return ctx;
-}
-
-/**
  * Sub-agent execution context — `isExecuteFunctions(this)` returns false.
  *
  * Intentionally does NOT set `getExecuteData`, so the V3 executor takes the
  * inline-resolution branch (delegates to `resolveSubAgentRequest`).
+ * The shared top-level `mockContext` defined above gets `getExecuteData`
+ * stamped in `beforeEach`; use this helper to deliberately opt out.
  */
-function mockSubAgentContext(): IExecuteFunctions {
+function mockSubAgentContext(): MockProxy<IExecuteFunctions> {
 	const ctx = mock<IExecuteFunctions>();
 	withCommonFields(ctx, mockNode);
 	return ctx;
@@ -89,8 +76,12 @@ function mockSubAgentContext(): IExecuteFunctions {
 beforeEach(() => {
 	vi.clearAllMocks();
 	withCommonFields(mockContext, mockNode);
-	// Default to top-level path for the shared mockContext used by the bulk of
-	// existing tests. Sub-agent path is covered by the dedicated test below.
+	// `isExecuteFunctions` checks `'getExecuteData' in context`. vitest-mock-extended
+	// proxies property access but does not register own properties, so the `in`
+	// check is false by default. Stamp `getExecuteData` here so the shared
+	// `mockContext` exercises the top-level (engine-routed) request path;
+	// sub-agent inline resolution is covered by `mockSubAgentContext()` below
+	// and by `resolveSubAgentRequest.test.ts`.
 	mockContext.getExecuteData = vi.fn() as never;
 });
 
