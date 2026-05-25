@@ -152,6 +152,8 @@ export type RequestResponseMetadata = {
 	anthropic?: AnthropicThinkingMetadata;
 	/** HITL (Human-in-the-Loop) metadata - presence indicates this is an HITL tool action */
 	hitl?: HitlMetadata;
+	/** LangChain tool name (preserves the LLM's chosen tool for reverse-lookup). */
+	toolName?: string;
 };
 
 /**

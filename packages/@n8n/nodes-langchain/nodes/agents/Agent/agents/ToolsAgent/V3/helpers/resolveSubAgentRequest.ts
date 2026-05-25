@@ -1,5 +1,7 @@
 import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
-import type { RequestResponseMetadata, ToolMetadata } from '@utils/agent-execution';
+import type { RequestResponseMetadata } from '@utils/agent-execution';
+import omit from 'lodash/omit';
+import { isEngineRequest } from 'n8n-core';
 import type {
 	EngineRequest,
 	EngineResponse,
@@ -17,66 +19,42 @@ import { getTools } from '../../common';
 type Action = EngineRequest<RequestResponseMetadata>['actions'][number];
 type ConnectedTool = DynamicStructuredTool | Tool;
 
-function isEngineRequest(
-	value: EngineRequest<RequestResponseMetadata> | INodeExecutionData[][],
-): value is EngineRequest<RequestResponseMetadata> {
-	return !Array.isArray(value) && 'actions' in value;
-}
+const EMPTY_TASK_DATA_SHELL: Pick<
+	ITaskData,
+	'executionTime' | 'startTime' | 'executionIndex' | 'source'
+> = { executionTime: 0, startTime: 0, executionIndex: 0, source: [] };
 
 export type ResolveSubAgentRequestDeps = {
-	/**
-	 * Re-enter the sub-agent with the EngineResponse built from the resolved
-	 * tool invocations. The sub-agent's `maxIterations` is enforced inside this
-	 * callback (via `checkMaxIterations`), so recursion is bounded.
-	 */
 	runAgentBatch: (
 		response: EngineResponse<RequestResponseMetadata>,
 	) => Promise<INodeExecutionData[][] | EngineRequest<RequestResponseMetadata>>;
 };
 
 /**
- * Resolves an `EngineRequest` inline when AgentToolV3 runs as a sub-agent
- * (`ISupplyDataFunctions` context). The parent agent's tool boundary —
- * `makeHandleToolInvocation` in core — cannot fulfil `EngineRequest`s because
- * the workflow engine only schedules nested nodes at the top level. To keep
- * the same observable behaviour the engine would have produced, we:
- *
- *   1. Reject HITL actions upfront (no engine-level suspend/resume here).
- *   2. Invoke the sub-agent's connected LangChain tools in parallel — this
- *      routes execute-only tools through `makeHandleToolInvocation` again
- *      (which preserves canvas observability) and supplyData-resolved tools
- *      through their own `invoke()` paths.
- *   3. Build an `EngineResponse` and re-enter the sub-agent until it produces
- *      plain node output data.
+ * Resolves an `EngineRequest` inline when AgentToolV3 runs as a sub-agent —
+ * `makeHandleToolInvocation` in core can't fulfil engine requests from a tool
+ * callback. HITL is rejected upfront, other tools are invoked in parallel via
+ * `tool.invoke()`, and the loop re-enters until plain node output is produced.
  */
 export async function resolveSubAgentRequest(
 	ctx: ISupplyDataFunctions,
 	request: EngineRequest<RequestResponseMetadata>,
 	deps: ResolveSubAgentRequestDeps,
 ): Promise<INodeExecutionData[][]> {
-	let current: EngineRequest<RequestResponseMetadata> | INodeExecutionData[][] = request;
-
+	let current: INodeExecutionData[][] | EngineRequest<RequestResponseMetadata> = request;
 	const node = ctx.getNode();
-	// Connected tools are stable for the lifetime of a sub-agent run, and
-	// `getConnectedTools` re-resolves every child supply-data tool (MCP,
-	// Vector Store, nested AgentToolV3) — so hoist out of the loop.
+	// Hoisted: tool list is stable for the lifetime of a sub-agent run.
 	const tools = (await getTools(ctx)) as ConnectedTool[];
 
 	while (isEngineRequest(current)) {
 		assertNoHitlActions(node, current.actions);
-
 		ctx.getExecutionCancelSignal?.()?.throwIfAborted?.();
 
 		const actionResponses = await Promise.all(
 			current.actions.map(async (action) => await invokeToolAction(node, action, tools)),
 		);
 
-		const response: EngineResponse<RequestResponseMetadata> = {
-			actionResponses,
-			metadata: current.metadata,
-		};
-
-		current = await deps.runAgentBatch(response);
+		current = await deps.runAgentBatch({ actionResponses, metadata: current.metadata });
 	}
 
 	return current;
@@ -97,42 +75,14 @@ function assertNoHitlActions(node: INode, actions: Action[]): void {
 	}
 }
 
-function findMatchingTool(action: Action, tools: ConnectedTool[]): ConnectedTool | undefined {
-	const toolkitName =
-		typeof action.input?.tool === 'string' ? (action.input.tool as string) : undefined;
-
-	if (toolkitName !== undefined) {
-		const toolkitMatch = tools.find((t) => {
-			const md = t.metadata as ToolMetadata | undefined;
-			return md?.sourceNodeName === action.nodeName && t.name === toolkitName;
-		});
-		if (toolkitMatch) return toolkitMatch;
-	}
-
-	return tools.find(
-		(t) => (t.metadata as ToolMetadata | undefined)?.sourceNodeName === action.nodeName,
-	);
-}
-
-function prepareToolInput(action: Action): IDataObject {
-	// `tool` is an internal marker createEngineRequests adds for toolkit calls
-	// (so the engine knows which toolkit-tool to invoke). The LangChain tool's
-	// own Zod schema doesn't include it, so strip it before invoking.
-	if (typeof action.input?.tool === 'string') {
-		const { tool: _toolName, ...rest } = action.input;
-		return rest;
-	}
-	return action.input;
-}
-
 async function invokeToolAction(
 	node: INode,
 	action: Action,
 	tools: ConnectedTool[],
 ): Promise<ExecuteNodeResult<RequestResponseMetadata>> {
-	const tool = findMatchingTool(action, tools);
+	const tool = tools.find((t) => t.name === action.metadata?.toolName);
 	if (!tool) {
-		return buildErrorResponse(
+		return makeActionError(
 			node,
 			action,
 			`Sub-agent could not find a connected tool for node "${action.nodeName}".`,
@@ -140,54 +90,33 @@ async function invokeToolAction(
 	}
 
 	try {
-		const output = await tool.invoke(prepareToolInput(action));
-		return buildSuccessResponse(action, output);
+		// `input.tool` is a toolkit-dispatch marker added by createEngineRequests;
+		// it isn't part of the LangChain tool's Zod schema, so strip before invoking.
+		const output = await tool.invoke(omit(action.input, 'tool'));
+		return {
+			action,
+			data: {
+				...EMPTY_TASK_DATA_SHELL,
+				executionStatus: 'success',
+				data: { ai_tool: [[{ json: { output } as IDataObject }]] },
+			},
+		};
 	} catch (error) {
-		return buildErrorResponse(node, action, error instanceof Error ? error.message : String(error));
+		return makeActionError(node, action, error instanceof Error ? error.message : String(error));
 	}
 }
 
-function buildTaskDataShell(): Pick<
-	ITaskData,
-	'executionTime' | 'startTime' | 'executionIndex' | 'source'
-> {
-	// Engine-scheduled tool runs record real timings and parent source linkage;
-	// we synthesize zeros here because the consumers in the V3 agent batch
-	// path (`buildSteps`, `processHitlResponses`, and the iteration counters
-	// in `executeBatch`/`execute.ts`) only read `data.ai_tool` and
-	// `executionStatus`/`error`. If a future consumer starts reading these
-	// fields on `actionResponses`, populate them via `Date.now()`.
-	return {
-		executionTime: 0,
-		startTime: 0,
-		executionIndex: 0,
-		source: [],
-	};
-}
-
-function buildSuccessResponse(
-	action: Action,
-	output: unknown,
-): ExecuteNodeResult<RequestResponseMetadata> {
-	const data: ITaskData = {
-		...buildTaskDataShell(),
-		executionStatus: 'success',
-		data: {
-			ai_tool: [[{ json: { output } as IDataObject }]],
-		},
-	};
-	return { action, data };
-}
-
-function buildErrorResponse(
+function makeActionError(
 	node: INode,
 	action: Action,
 	message: string,
 ): ExecuteNodeResult<RequestResponseMetadata> {
-	const data: ITaskData = {
-		...buildTaskDataShell(),
-		executionStatus: 'error',
-		error: new NodeOperationError(node, message),
+	return {
+		action,
+		data: {
+			...EMPTY_TASK_DATA_SHELL,
+			executionStatus: 'error',
+			error: new NodeOperationError(node, message),
+		},
 	};
-	return { action, data };
 }

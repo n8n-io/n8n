@@ -29,7 +29,7 @@ function makeAction(overrides: Partial<MockedAction> = {}): MockedAction {
 		input: { query: 'hello' },
 		type: NodeConnectionTypes.AiTool,
 		id: 'call_1',
-		metadata: { itemIndex: 0 },
+		metadata: { itemIndex: 0, toolName: 'TestTool' },
 		...overrides,
 	};
 }
@@ -111,8 +111,8 @@ describe('resolveSubAgentRequest', () => {
 		mockedGetTools.mockResolvedValue([slowTool, fastTool]);
 
 		const actions: MockedAction[] = [
-			makeAction({ id: 'a', nodeName: 'SlowNode' }),
-			makeAction({ id: 'b', nodeName: 'FastNode' }),
+			makeAction({ id: 'a', nodeName: 'SlowNode', metadata: { itemIndex: 0, toolName: 'Slow' } }),
+			makeAction({ id: 'b', nodeName: 'FastNode', metadata: { itemIndex: 0, toolName: 'Fast' } }),
 		];
 
 		const runAgentBatch = vi.fn(async (response: EngineResponse<RequestResponseMetadata>) => {
@@ -174,7 +174,11 @@ describe('resolveSubAgentRequest', () => {
 			return [[{ json: { output: 'recovered' } }]];
 		});
 
-		await resolveSubAgentRequest(ctx, makeRequest([makeAction()]), { runAgentBatch });
+		await resolveSubAgentRequest(
+			ctx,
+			makeRequest([makeAction({ metadata: { itemIndex: 0, toolName: 'Failing' } })]),
+			{ runAgentBatch },
+		);
 
 		expect(capturedResponse?.actionResponses).toHaveLength(1);
 		const errorResponse = capturedResponse!.actionResponses[0];
@@ -255,6 +259,7 @@ describe('resolveSubAgentRequest', () => {
 				makeAction({
 					nodeName: 'ToolkitNode',
 					input: { tool: 'fetch', url: 'https://example.com' },
+					metadata: { itemIndex: 0, toolName: 'fetch' },
 				}),
 			]),
 			{ runAgentBatch },
@@ -303,7 +308,13 @@ describe('resolveSubAgentRequest', () => {
 			const { ctx: innerCtx } = makeCtx();
 			mockedGetTools.mockResolvedValueOnce([leafTool]);
 
-			const innerRequest = makeRequest([makeAction({ id: 'inner_call_1', nodeName: 'LeafNode' })]);
+			const innerRequest = makeRequest([
+				makeAction({
+					id: 'inner_call_1',
+					nodeName: 'LeafNode',
+					metadata: { itemIndex: 0, toolName: 'LeafTool' },
+				}),
+			]);
 			const innerFinal: INodeExecutionData[][] = [[{ json: { output: 'inner answer 42' } }]];
 			const innerRunAgentBatch = vi.fn(async () => innerFinal);
 
@@ -325,7 +336,11 @@ describe('resolveSubAgentRequest', () => {
 		);
 
 		const outerRequest = makeRequest([
-			makeAction({ id: 'outer_call_1', nodeName: 'InnerSubAgentNode' }),
+			makeAction({
+				id: 'outer_call_1',
+				nodeName: 'InnerSubAgentNode',
+				metadata: { itemIndex: 0, toolName: 'InnerSubAgent' },
+			}),
 		]);
 		const result = await resolveSubAgentRequest(outerCtx, outerRequest, {
 			runAgentBatch: outerRunAgentBatch,

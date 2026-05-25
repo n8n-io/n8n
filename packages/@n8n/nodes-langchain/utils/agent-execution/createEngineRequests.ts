@@ -240,6 +240,7 @@ export function createEngineRequests(
 				metadata: {
 					itemIndex,
 					hitl: hitlMetadata,
+					toolName: toolCall.tool,
 					...extractThinkingMetadata(toolCall, sharedMessageLog, sharedAdditionalKwargs),
 				},
 			};
