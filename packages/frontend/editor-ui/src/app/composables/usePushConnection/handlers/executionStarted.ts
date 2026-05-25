@@ -18,7 +18,7 @@ import type { IRunExecutionData } from 'n8n-workflow';
  */
 export async function executionStarted({ data }: ExecutionStarted) {
 	const workflowsStore = useWorkflowsStore();
-	const stateStore = useWorkflowExecutionStateStore(
+	const executionStateStore = useWorkflowExecutionStateStore(
 		createWorkflowExecutionStateId(workflowsStore.workflowId),
 	);
 	const isIframe = window !== window.parent;
@@ -26,18 +26,18 @@ export async function executionStarted({ data }: ExecutionStarted) {
 	// In non-iframe context, undefined means "not tracking executions" → skip.
 	// In iframe context, executionFinished resets activeExecutionId to undefined,
 	// but we still want to accept new executions (re-execution scenario).
-	if (typeof stateStore.activeExecutionId === 'undefined' && !isIframe) {
+	if (typeof executionStateStore.activeExecutionId === 'undefined' && !isIframe) {
 		return;
 	}
 
 	// Determine if we need to (re)initialize execution tracking state
 	const needsInit =
-		stateStore.activeExecutionId === null ||
-		typeof stateStore.activeExecutionId === 'undefined' ||
-		(isIframe && stateStore.activeExecutionId !== data.executionId);
+		executionStateStore.activeExecutionId === null ||
+		typeof executionStateStore.activeExecutionId === 'undefined' ||
+		(isIframe && executionStateStore.activeExecutionId !== data.executionId);
 
 	if (needsInit) {
-		stateStore.promotePendingExecution(data.executionId);
+		executionStateStore.promotePendingExecution(data.executionId);
 	}
 
 	const executionDataStore = useExecutionDataStore(createExecutionDataId(data.executionId));

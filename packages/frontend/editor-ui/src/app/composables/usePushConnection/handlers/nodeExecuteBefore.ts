@@ -15,13 +15,13 @@ export async function nodeExecuteBefore(
 	{ workflowState }: { workflowState: WorkflowState },
 ) {
 	const workflowsStore = useWorkflowsStore();
-	const stateStore = useWorkflowExecutionStateStore(
+	const executionStateStore = useWorkflowExecutionStateStore(
 		createWorkflowExecutionStateId(workflowsStore.workflowId),
 	);
 
 	workflowState.executingNode.addExecutingNode(data.nodeName);
 
-	const activeExecutionId = stateStore.activeExecutionId;
+	const activeExecutionId = executionStateStore.activeExecutionId;
 	if (typeof activeExecutionId === 'string') {
 		useExecutionDataStore(createExecutionDataId(activeExecutionId)).addNodeExecutionStartedData(
 			data,

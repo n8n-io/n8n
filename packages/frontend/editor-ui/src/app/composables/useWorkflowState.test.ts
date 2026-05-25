@@ -13,7 +13,7 @@ import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 describe('useWorkflowState', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowState: WorkflowState;
-	let stateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
+	let executionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
 
 	beforeEach(() => {
@@ -23,13 +23,13 @@ describe('useWorkflowState', () => {
 		workflowsStore.setWorkflowId('test-wf');
 		workflowState = useWorkflowState();
 
-		stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
+		executionStateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
 	});
 
 	describe('markExecutionAsStopped', () => {
 		beforeEach(() => {
 			// Set up active execution in the facade stores
-			stateStore.setActiveExecutionId('test-exec-id');
+			executionStateStore.setActiveExecutionId('test-exec-id');
 
 			executionDataStore = useExecutionDataStore(createExecutionDataId('test-exec-id'));
 			executionDataStore.setExecution(
@@ -91,15 +91,15 @@ describe('useWorkflowState', () => {
 		describe('when activeExecutionId is null (pending scaffold)', () => {
 			beforeEach(() => {
 				// Reset to pending state instead of the string-id default from outer beforeEach.
-				stateStore.setActiveExecutionId(undefined);
-				stateStore.setPendingExecution(
+				executionStateStore.setActiveExecutionId(undefined);
+				executionStateStore.setPendingExecution(
 					createTestWorkflowExecutionResponse({
 						id: IN_PROGRESS_EXECUTION_ID,
 						status: 'running',
 					}),
 				);
 				// Re-set since promotePendingExecution would have moved it; emulate raw scaffold state.
-				stateStore.setActiveExecutionId(null);
+				executionStateStore.setActiveExecutionId(null);
 
 				useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
 					createTestWorkflowExecutionResponse({
@@ -143,9 +143,13 @@ describe('useWorkflowState', () => {
 					mode: 'manual',
 				});
 
-				expect(stateStore.pendingExecution?.status).toBe('canceled');
-				expect(stateStore.pendingExecution?.startedAt).toEqual(new Date('2023-01-01T10:00:00Z'));
-				expect(stateStore.pendingExecution?.stoppedAt).toEqual(new Date('2023-01-01T10:05:00Z'));
+				expect(executionStateStore.pendingExecution?.status).toBe('canceled');
+				expect(executionStateStore.pendingExecution?.startedAt).toEqual(
+					new Date('2023-01-01T10:00:00Z'),
+				);
+				expect(executionStateStore.pendingExecution?.stoppedAt).toEqual(
+					new Date('2023-01-01T10:05:00Z'),
+				);
 			});
 		});
 
@@ -153,10 +157,10 @@ describe('useWorkflowState', () => {
 			beforeEach(() => {
 				// Simulate post-stop-race: active was just cleared, but displayed still points
 				// at the freshly-fetched finished execution.
-				stateStore.setActiveExecutionId('display-exec');
-				stateStore.setActiveExecutionId(undefined);
-				expect(stateStore.activeExecutionId).toBeUndefined();
-				expect(stateStore.displayedExecutionId).toBe('display-exec');
+				executionStateStore.setActiveExecutionId('display-exec');
+				executionStateStore.setActiveExecutionId(undefined);
+				expect(executionStateStore.activeExecutionId).toBeUndefined();
+				expect(executionStateStore.displayedExecutionId).toBe('display-exec');
 
 				useExecutionDataStore(createExecutionDataId('display-exec')).setExecution(
 					createTestWorkflowExecutionResponse({
@@ -195,15 +199,15 @@ describe('useWorkflowState', () => {
 	describe('resetState', () => {
 		it('disposes every executionData store this workflow ever bound, including rolled-out ids', () => {
 			// Three sequential runs — exec-1 rolls out of previousExecutionId after run 3.
-			stateStore.setActiveExecutionId('exec-1');
+			executionStateStore.setActiveExecutionId('exec-1');
 			useExecutionDataStore(createExecutionDataId('exec-1')).setExecution(
 				createTestWorkflowExecutionResponse({ id: 'exec-1' }),
 			);
-			stateStore.setActiveExecutionId('exec-2');
+			executionStateStore.setActiveExecutionId('exec-2');
 			useExecutionDataStore(createExecutionDataId('exec-2')).setExecution(
 				createTestWorkflowExecutionResponse({ id: 'exec-2' }),
 			);
-			stateStore.setActiveExecutionId('exec-3');
+			executionStateStore.setActiveExecutionId('exec-3');
 			useExecutionDataStore(createExecutionDataId('exec-3')).setExecution(
 				createTestWorkflowExecutionResponse({ id: 'exec-3' }),
 			);
@@ -216,13 +220,13 @@ describe('useWorkflowState', () => {
 		});
 
 		it('clears displayedExecutionId so workflowExecutionData reads as null', () => {
-			stateStore.setActiveExecutionId('exec-A');
+			executionStateStore.setActiveExecutionId('exec-A');
 			useExecutionDataStore(createExecutionDataId('exec-A')).setExecution(
 				createTestWorkflowExecutionResponse({ id: 'exec-A', finished: true, status: 'success' }),
 			);
 			// Simulate post-finish: active cleared, displayed preserved (the deliberate UX behavior).
-			stateStore.setActiveExecutionId(undefined);
-			expect(stateStore.displayedExecutionId).toBe('exec-A');
+			executionStateStore.setActiveExecutionId(undefined);
+			expect(executionStateStore.displayedExecutionId).toBe('exec-A');
 			expect(workflowsStore.workflowExecutionData?.id).toBe('exec-A');
 
 			workflowState.resetState();
@@ -235,7 +239,7 @@ describe('useWorkflowState', () => {
 		});
 
 		it('disposes the IN_PROGRESS placeholder store along with the pending scaffold', () => {
-			stateStore.setPendingExecution(
+			executionStateStore.setPendingExecution(
 				createTestWorkflowExecutionResponse({
 					id: IN_PROGRESS_EXECUTION_ID,
 					status: 'running',
@@ -260,11 +264,11 @@ describe('useWorkflowState', () => {
 
 		it('reopening the same workflow id after resetWorkspace order surfaces no stale state', () => {
 			// Stage execution on test-wf
-			stateStore.setActiveExecutionId('exec-A');
+			executionStateStore.setActiveExecutionId('exec-A');
 			useExecutionDataStore(createExecutionDataId('exec-A')).setExecution(
 				createTestWorkflowExecutionResponse({ id: 'exec-A', finished: true, status: 'success' }),
 			);
-			stateStore.setActiveExecutionId(undefined);
+			executionStateStore.setActiveExecutionId(undefined);
 			expect(workflowsStore.workflowExecutionData?.id).toBe('exec-A');
 
 			// Mirror resetWorkspace ordering: resetState first (while workflowId is still set),

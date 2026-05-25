@@ -31,7 +31,7 @@ import { openFormPopupWindow } from '@/features/execution/executions/executions.
 describe('nodeExecuteAfter', () => {
 	let mockOptions: { workflowState: Mocked<WorkflowState> };
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
-	let stateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
+	let executionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
 
 	beforeEach(() => {
@@ -41,7 +41,7 @@ describe('nodeExecuteAfter', () => {
 		workflowsStore = useWorkflowsStore();
 		workflowsStore.setWorkflowId('test-wf');
 
-		stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
+		executionStateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
 
 		executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
 		executionDataStore.setExecution(
@@ -53,7 +53,7 @@ describe('nodeExecuteAfter', () => {
 			}),
 		);
 
-		stateStore.setActiveExecutionId('exec-1');
+		executionStateStore.setActiveExecutionId('exec-1');
 
 		mockOptions = {
 			workflowState: mock<WorkflowState>({
