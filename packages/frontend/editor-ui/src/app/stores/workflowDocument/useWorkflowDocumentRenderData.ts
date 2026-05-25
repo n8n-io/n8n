@@ -322,7 +322,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		const stickyZIndexBase = -100;
 
 		const stickyBoxes: StickyBox[] = [];
-		for (const node of workflowDocumentStore.nodesById.values()) {
+		for (const node of workflowDocumentStore.allNodes) {
 			if (node.type !== STICKY_NODE_TYPE) continue;
 			const width = node.parameters.width as number;
 			const height = node.parameters.height as number;

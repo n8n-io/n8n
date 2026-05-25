@@ -12,6 +12,7 @@ import type {
 } from './useWorkflowDocumentNodes';
 
 export type WorkflowDocumentNodesIssuesDeps = {
+	allNodes: ComputedRef<INodeUi[]>;
 	outgoingConnectionsByNodeName: (nodeName: string) => INodeConnections;
 	incomingConnectionsByNodeName: (nodeName: string) => INodeConnections;
 	nodesById: ShallowRef<Map<string, INodeUi>>;
@@ -20,15 +21,8 @@ export type WorkflowDocumentNodesIssuesDeps = {
 };
 
 export function useWorkflowDocumentNodesIssues(deps: WorkflowDocumentNodesIssuesDeps) {
-	// Array view derived from the id-keyed Map. Same reactive node proxies as
-	// `nodesById`, so property reads inside filters (`node.issues`, etc.) still
-	// track per-node. The derived array reference is fresh on each `nodesById`
-	// rebuild (add/remove/set), which is the same invalidation cadence the
-	// upstream `allNodes` computed has.
-	const allNodes = computed<INodeUi[]>(() => Array.from(deps.nodesById.value.values()));
-
 	const nodesWithValidationIssues = computed<INodeUi[]>(() =>
-		allNodes.value.filter((node) => {
+		deps.allNodes.value.filter((node) => {
 			const nodeHasIssues = Object.keys(node.issues ?? {}).length > 0;
 			const isConnected =
 				Object.keys(deps.outgoingConnectionsByNodeName(node.name)).length > 0 ||
@@ -45,7 +39,7 @@ export function useWorkflowDocumentNodesIssues(deps: WorkflowDocumentNodesIssues
 	/** Whether any connected node has issues that should block publishing.
 	 *  Execution issues are excluded — they are runtime errors, not configuration problems. */
 	const hasPublishBlockingIssues = computed(() =>
-		allNodes.value.some((node) => {
+		deps.allNodes.value.some((node) => {
 			const { execution: _, ...configIssues } = node.issues ?? {};
 			if (Object.keys(configIssues).length === 0) return false;
 
@@ -63,7 +57,7 @@ export function useWorkflowDocumentNodesIssues(deps: WorkflowDocumentNodesIssues
 		const isStringOrStringArray = (value: unknown): value is string | string[] =>
 			typeof value === 'string' || Array.isArray(value);
 
-		allNodes.value.forEach((node) => {
+		deps.allNodes.value.forEach((node) => {
 			if (!node.issues || node.disabled) return;
 
 			const isConnected =

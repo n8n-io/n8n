@@ -200,6 +200,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentWorkflowObject.workflowObject,
 		);
 		const workflowDocumentNodesIssues = useWorkflowDocumentNodesIssues({
+			allNodes: workflowDocumentNodes.allNodes,
 			outgoingConnectionsByNodeName: workflowDocumentConnections.outgoingConnectionsByNodeName,
 			incomingConnectionsByNodeName: workflowDocumentConnections.incomingConnectionsByNodeName,
 			nodesById: workflowDocumentNodes.nodesById,
