@@ -211,12 +211,7 @@ export class McpRegistryService {
 		// we will set its status to 'deprecated' instead.
 		// If a server is removed from the remote API,
 		// it will be marked as deprecated as well.
-		const toUpdate = entities.filter((entity) => entity.id !== undefined);
-		const toInsert = entities.filter((entity) => entity.id === undefined);
-		const updatePromises = toUpdate.map(
-			async (entity) => await this.repository.update(entity.id!, entity),
-		);
-		await Promise.all([...updatePromises, this.repository.insert(toInsert)]);
+		await this.repository.upsertServers(entities);
 	}
 
 	private async refreshRegistryNodeTypes(releaseTypes: boolean): Promise<void> {
