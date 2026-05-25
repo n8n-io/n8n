@@ -18,10 +18,7 @@ import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import DelegateCard from './DelegateCard.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import PlanReviewPanel, {
-	type PlannedTaskArg,
-	type PlanReviewDecision,
-} from './PlanReviewPanel.vue';
+import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import ToolCallStep from './ToolCallStep.vue';
 
