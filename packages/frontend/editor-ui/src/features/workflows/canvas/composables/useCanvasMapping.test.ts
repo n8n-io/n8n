@@ -195,6 +195,46 @@ describe('useCanvasMapping — mapped nodes', () => {
 		expect(nodes.value[0].data?.render.type).toBe(CanvasNodeRenderType.Default);
 	});
 
+	it('falls back to AddNodes render type for placeholder nodes not in the document', () => {
+		// The "+ Add nodes" button is injected via the canvas's `nodes` prop, not
+		// the workflow document, so renderData never has an entry for it.
+		const node = createTestNode({
+			id: 'add-nodes',
+			name: 'AddNodes',
+			type: CanvasNodeRenderType.AddNodes,
+		}) as INodeUi;
+
+		const { nodes } = useCanvasMapping({
+			nodes: ref([node]),
+			connections: ref({}),
+			renderData: shallowRef(createEmptyCanvasRenderData()),
+		});
+
+		expect(nodes.value[0].data?.render.type).toBe(CanvasNodeRenderType.AddNodes);
+	});
+
+	it('falls back to StickyNote render type when not in renderData', () => {
+		const node = createTestNode({
+			id: 's',
+			name: 'Sticky',
+			type: CanvasNodeRenderType.StickyNote,
+		}) as INodeUi;
+		node.parameters = { width: 300, height: 200, color: 1, content: 'Hello' };
+
+		const { nodes } = useCanvasMapping({
+			nodes: ref([node]),
+			connections: ref({}),
+			renderData: shallowRef(createEmptyCanvasRenderData()),
+		});
+
+		const render = nodes.value[0].data?.render;
+		expect(render?.type).toBe(CanvasNodeRenderType.StickyNote);
+		if (render?.type === CanvasNodeRenderType.StickyNote) {
+			expect(render.options.width).toBe(300);
+			expect(render.options.content).toBe('Hello');
+		}
+	});
+
 	it('passes through render type from renderData.renderTypeByNodeId', () => {
 		const node = createTestNode({ id: 's', name: 'Sticky' }) as INodeUi;
 		const rd = createEmptyCanvasRenderData();

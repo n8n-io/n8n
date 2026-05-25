@@ -49,6 +49,35 @@ export function useCanvasMapping({
 		return tasks.filter((task) => task.executionStatus !== 'canceled');
 	}
 
+	/**
+	 * Render-type fallback for nodes that aren't in the workflow document
+	 * (fallback nodes injected by the canvas — e.g. the "+ Add nodes" button).
+	 * renderData's `renderTypeByNodeId` is keyed off the document store, so
+	 * these placeholder nodes have no entry there. Match by `node.type` to
+	 * dispatch the right special-case render; everything else gets the
+	 * default unknown-node render.
+	 */
+	function fallbackRenderType(node: INodeUi): CanvasNodeData['render'] {
+		switch (node.type) {
+			case `${CanvasNodeRenderType.AddNodes}`:
+				return { type: CanvasNodeRenderType.AddNodes, options: {} };
+			case `${CanvasNodeRenderType.ChoicePrompt}`:
+				return { type: CanvasNodeRenderType.ChoicePrompt, options: {} };
+			case `${CanvasNodeRenderType.StickyNote}`:
+				return {
+					type: CanvasNodeRenderType.StickyNote,
+					options: {
+						width: node.parameters.width as number,
+						height: node.parameters.height as number,
+						color: node.parameters.color as number,
+						content: node.parameters.content as string,
+					},
+				};
+			default:
+				return { type: CanvasNodeRenderType.Default, options: {} };
+		}
+	}
+
 	const mappedNodes = computed<CanvasNode[]>(() => {
 		const connectionsBySourceNode = connections.value;
 		const connectionsByDestinationNode =
@@ -88,9 +117,7 @@ export function useCanvasMapping({
 					iterations: filterOutCanceled(runData)?.length ?? 0,
 					visible: !!runData,
 				},
-				render:
-					rd.renderTypeByNodeId.get(node.id)?.value ??
-					({ type: CanvasNodeRenderType.Default, options: {} } as CanvasNodeData['render']),
+				render: rd.renderTypeByNodeId.get(node.id)?.value ?? fallbackRenderType(node),
 			};
 
 			return {
