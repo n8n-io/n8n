@@ -178,6 +178,10 @@ export class ExecutionPersistence {
 				if ((result.affected ?? 0) === 0) return false;
 			}
 
+			// TODO: callers may supply only `data` or only `workflowData`, so we read the existing
+			// bundle to merge the unchanged half back in. Most callers in practice overwrite both
+			// fields, in which case the read is wasted work. We should split the API into an
+			// overwrite path (no read) and an explicit partial-update path.
 			const existing = await store.read(ref, tx);
 			if (!existing) throw new MissingExecutionDataError(ref);
 
@@ -236,6 +240,10 @@ export class ExecutionPersistence {
 		// TODO: `ExecutionEntity.finished` is deprecated and we should only rely on statuses here,
 		// but for now we still use it to filter out finished executions for parity with ExecutionRepository.
 		if (conditions?.requireNotFinished) where.finished = false;
+		// TODO: `requireStatus` and `requireNotCanceled` both write to `where.status`, so if both are
+		// supplied the `Not('canceled')` clause silently overwrites the specific status check. In
+		// practice callers never combine them, so once we drop strict parity with ExecutionRepository
+		// we should assert their mutual exclusivity (or combine them somehow) instead.
 		if (conditions?.requireNotCanceled) where.status = Not('canceled');
 		return where;
 	}
