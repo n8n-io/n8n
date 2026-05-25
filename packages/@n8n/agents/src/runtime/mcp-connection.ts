@@ -216,10 +216,17 @@ export class McpConnection {
 				: undefined;
 
 			if (config.transport === 'streamableHttp') {
-				return new sdk.StreamableHTTPClientTransport(url, { requestInit });
+				return new sdk.StreamableHTTPClientTransport(url, {
+					requestInit,
+					fetch: config.fetch,
+				});
 			}
 
-			return new sdk.SSEClientTransport(url, { requestInit });
+			return new sdk.SSEClientTransport(url, {
+				requestInit,
+				fetch: config.fetch,
+				eventSourceInit: config.fetch ? { fetch: config.fetch } : undefined,
+			});
 		}
 		throw new Error(`MCP server "${config.name}": provide either "url" or "command"`);
 	}

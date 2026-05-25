@@ -226,6 +226,18 @@ export interface BuiltAgent {
 	/** Cancel the currently running agent. Synchronous — sets an abort flag that the agentic loop checks asynchronously. */
 	abort(): void;
 
+	/**
+	 * Close the agent and release all held resources.
+	 *
+	 * - Waits for any in-flight background tasks (title generation, observer
+	 *   cycles) to settle via the runtime's `dispose()`.
+	 * - Disconnects every MCP client that was attached via `.mcp()`.
+	 *
+	 * Safe to call multiple times. Should be called when the agent is no
+	 * longer needed so MCP transports are not left open indefinitely.
+	 */
+	close(): Promise<void>;
+
 	/** Resume a tool with custom resume data */
 	resume(
 		method: 'generate',

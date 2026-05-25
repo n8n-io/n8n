@@ -3,6 +3,7 @@ import type { RuntimeSkill } from '@n8n/agents';
 import { configMutationSkill } from './config-mutation.skill';
 import { integrationsSkill } from './integrations.skill';
 import { llmSelectionSkill } from './llm-selection.skill';
+import { mcpSkill } from './mcp.skill';
 import { memorySkill } from './memory.skill';
 import { researchSkill } from './research.skill';
 import { targetSkillsSkill } from './target-skills.skill';
@@ -11,8 +12,9 @@ import type { BuilderRuntimeSkillsOptions } from './types';
 
 export function getBuilderRuntimeSkills({
 	modelRecommendationsSection,
+	enabledModules,
 }: BuilderRuntimeSkillsOptions): RuntimeSkill[] {
-	return [
+	const skills: RuntimeSkill[] = [
 		configMutationSkill(),
 		llmSelectionSkill(modelRecommendationsSection),
 		toolsSkill(),
@@ -21,4 +23,10 @@ export function getBuilderRuntimeSkills({
 		targetSkillsSkill(),
 		researchSkill(),
 	];
+
+	if (enabledModules?.includes('mcp')) {
+		skills.push(mcpSkill());
+	}
+
+	return skills;
 }

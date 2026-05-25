@@ -6,6 +6,7 @@ import type {
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
@@ -44,6 +45,7 @@ export class AgentsBuilderService {
 		private readonly builderSettings: AgentsBuilderSettingsService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly agentCheckpointRepository: AgentCheckpointRepository,
+		private readonly agentsConfig: AgentsConfig,
 	) {}
 
 	// ---------------------------------------------------------------------------
@@ -176,6 +178,7 @@ export class AgentsBuilderService {
 
 		const configJson = currentConfig ? JSON.stringify(currentConfig, null, 2) : '(no config yet)';
 		const modelRecommendationsSection = await getModelRecommendationsSection();
+		const enabledModules = this.agentsConfig.modules;
 		const instructions = buildBuilderPrompt({
 			configJson,
 			configHash: getAgentConfigHash(currentConfig),
@@ -183,8 +186,12 @@ export class AgentsBuilderService {
 			toolList,
 			agentPreviewPath: buildAgentPreviewPath(projectId, agentId),
 			modelRecommendationsSection,
+			enabledModules,
 		});
-		const runtimeSkills = getBuilderRuntimeSkills({ modelRecommendationsSection });
+		const runtimeSkills = getBuilderRuntimeSkills({
+			modelRecommendationsSection,
+			enabledModules,
+		});
 
 		const tools = this.agentsBuilderToolsService.getTools(
 			agentId,

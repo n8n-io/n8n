@@ -3,6 +3,7 @@ import type {
 	BuiltMemory,
 	BuiltTool,
 	CredentialProvider,
+	McpClient,
 	ModelConfig,
 	ToolDescriptor,
 	JSONObject,
@@ -13,6 +14,7 @@ import { wrapToolForApproval } from '@n8n/agents/tool';
 import type {
 	AgentSkill,
 	AgentJsonConfig,
+	AgentJsonMcpServerConfig,
 	AgentJsonMemoryConfig,
 	AgentJsonToolConfig,
 	AgentJsonSkillConfig,
@@ -33,6 +35,14 @@ export interface ToolExecutor {
 /** Factory function that reconstructs a BuiltMemory backend from serialized params. */
 export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Promise<BuiltMemory>;
 
+/**
+ * Build an SDK `McpClient` from a single JSON-config MCP server entry. The
+ * platform layer owns this factory because it needs access to the credential
+ * store and OAuth2 refresh infrastructure, both of which are out of scope for
+ * `buildFromJson`.
+ */
+export type McpClientBuilder = (server: AgentJsonMcpServerConfig) => Promise<McpClient>;
+
 export interface BuildFromJsonOptions {
 	/** Executes custom tool handlers inside isolates. */
 	toolExecutor: ToolExecutor;
@@ -43,6 +53,14 @@ export interface BuildFromJsonOptions {
 	skills?: Record<string, AgentSkill>;
 	/** Memory backend factories keyed by storage preset name. */
 	memoryFactory: MemoryFactory;
+	/**
+	 * When provided, each entry in `config.mcpServers` is built into an
+	 * `McpClient` and attached to the agent via `agent.mcp(client)`. The
+	 * platform layer is responsible for tracking returned clients for
+	 * teardown when the runtime is evicted.
+	 *
+	 */
+	buildMcpClient?: McpClientBuilder;
 }
 
 /**
@@ -75,6 +93,14 @@ export async function buildFromJson(
 			}
 		}
 	}
+
+	if (config.mcpServers?.length && options.buildMcpClient) {
+		for (const server of config.mcpServers) {
+			const client = await options.buildMcpClient(server);
+			agent.mcp(client);
+		}
+	}
+
 	agent.skills(configuredSkills);
 
 	// Provider tools

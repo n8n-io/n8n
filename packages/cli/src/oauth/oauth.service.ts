@@ -26,6 +26,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import {
 	ClientOAuth2,
 	type ClientOAuth2Options,
+	type ClientOAuth2TokenData,
 	type OAuth2AuthenticationMethod,
 	type OAuth2CredentialData,
 	type OAuth2GrantType,
@@ -415,6 +416,84 @@ export class OauthService {
 		);
 
 		return oauthCredentials;
+	}
+
+	/**
+	 * Refresh the OAuth2 token stored on a credential by id (without an
+	 * `IExecuteFunctions` workflow runtime), persist the refreshed token data,
+	 * and return the new auth headers to inject into outbound requests.
+	 *
+	 * Use case: agents-module MCP clients need to recover from a 401 by
+	 * refreshing the credential's stored token before retrying the request.
+	 * They run outside the workflow runtime, so the existing
+	 * `refreshOAuth2Token` helper (which is bound to `IAllExecuteFunctions`)
+	 * is not available — this method provides an equivalent code path using
+	 * the credential repo + helper directly.
+	 *
+	 * Returns `null` when:
+	 * - the credential does not exist
+	 * - the credential is not an OAuth2 credential or has no token data
+	 * - the refresh call itself fails
+	 *
+	 * Errors are intentionally swallowed and surfaced as `null` so callers
+	 * (e.g. an `authFetch` wrapper) can decide whether to retry, surface a
+	 * 401 to the caller, or fall back to the original headers.
+	 */
+	async refreshOAuth2CredentialById(credentialId: string): Promise<Record<string, string> | null> {
+		const credential = await this.getCredentialWithoutUser(credentialId);
+		if (!credential) return null;
+
+		const oauthCredentials = await this.getOAuthCredentials<OAuth2CredentialData>(credential);
+		const oauthTokenData = oauthCredentials.oauthTokenData as ClientOAuth2TokenData | undefined;
+		if (!oauthTokenData) return null;
+
+		const scopes = oauthCredentials.scope
+			?.split(' ')
+			.map((s) => s.trim())
+			.filter(Boolean);
+
+		const oAuthClient = new ClientOAuth2({
+			clientId: oauthCredentials.clientId,
+			clientSecret: oauthCredentials.clientSecret,
+			accessTokenUri: oauthCredentials.accessTokenUrl,
+			scopes: scopes?.length ? scopes : undefined,
+			ignoreSSLIssues: oauthCredentials.ignoreSSLIssues,
+			authentication: oauthCredentials.authentication ?? 'header',
+		});
+
+		const token = oAuthClient.createToken(
+			{
+				...oauthTokenData,
+				...(oauthTokenData.access_token ? { access_token: oauthTokenData.access_token } : {}),
+				...(oauthTokenData.refresh_token ? { refresh_token: oauthTokenData.refresh_token } : {}),
+			},
+			oauthTokenData.token_type,
+		);
+
+		let refreshed;
+		try {
+			refreshed =
+				oauthCredentials.grantType === 'clientCredentials'
+					? await token.client.credentials.getToken()
+					: await token.refresh();
+		} catch (error) {
+			this.logger.warn('Failed to refresh OAuth2 token for credential', {
+				credentialId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
+
+		try {
+			await this.encryptAndSaveData(credential, { oauthTokenData: refreshed.data });
+		} catch (error) {
+			this.logger.warn('Refreshed OAuth2 token but failed to persist new token data', {
+				credentialId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		return { Authorization: `Bearer ${refreshed.accessToken}` };
 	}
 
 	/**

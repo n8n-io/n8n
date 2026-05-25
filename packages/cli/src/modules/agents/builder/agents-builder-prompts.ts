@@ -90,23 +90,47 @@ Never write empty, placeholder, or guessed \`instructions\`. If you do not have
 enough detail to write meaningful instructions, ask the user first.`;
 }
 
-export const BUILDER_SKILL_ROUTING_SECTION = `\
+/**
+ * Build the routing section that tells the builder LLM which runtime skills
+ * exist and what they cover. Module-gated skills (like `agent-builder-mcp`)
+ * are only listed when their owning module is active so the LLM doesn't try
+ * to load a skill the runtime won't surface.
+ */
+export function getBuilderSkillRoutingSection(enabledModules?: ReadonlyArray<string>): string {
+	const lines: string[] = [
+		'- `agent-builder-config-mutation`: reading/writing JSON config, schema, patch paths, stale retries.',
+		"- `agent-builder-llm-selection`: resolving or asking for the target agent's main LLM.",
+		'- `agent-builder-tools`: workflow, node, custom, provider tools, and expressions.',
+		'- `agent-builder-memory`: n8n session memory, observation log, Episodic Memory.',
+		'- `agent-builder-integrations`: schedule and chat integrations.',
+		'- `agent-builder-target-skills`: creating skills for the target agent.',
+		'- `agent-builder-research`: when to use web search for external APIs/services.',
+	];
+
+	if (enabledModules?.includes('mcp')) {
+		lines.push(
+			'- `agent-builder-mcp`: adding, removing, or updating MCP (Model Context Protocol) servers.',
+		);
+	}
+
+	return `\
 ## Builder runtime skills
 
 Detailed builder guidance is available through runtime skills. Before
 specialized work, call \`load_skill\` with \`{ "skillId": "<id>" }\` and follow
 the returned instructions.
 
-- \`agent-builder-config-mutation\`: reading/writing JSON config, schema, patch paths, stale retries.
-- \`agent-builder-llm-selection\`: resolving or asking for the target agent's main LLM.
-- \`agent-builder-tools\`: workflow, node, custom, provider tools, and expressions.
-- \`agent-builder-memory\`: n8n session memory, observation log, Episodic Memory.
-- \`agent-builder-integrations\`: schedule and chat integrations.
-- \`agent-builder-target-skills\`: creating skills for the target agent.
-- \`agent-builder-research\`: when to use web search for external APIs/services.
+${lines.join('\n')}
 
 Do not use \`create_skill\` for your own builder guidance. \`create_skill\`
 creates a skill for the target agent only.`;
+}
+
+/**
+ * Default skill routing section (no module gating). Kept for backwards
+ * compatibility with any caller that doesn't have access to `AgentsConfig`.
+ */
+export const BUILDER_SKILL_ROUTING_SECTION = getBuilderSkillRoutingSection();
 
 export const READ_CONFIG_FRESHNESS_SECTION = `\
 ## Config freshness
@@ -174,17 +198,19 @@ export interface BuilderPromptContext {
 	toolList: string;
 	agentPreviewPath: string;
 	modelRecommendationsSection: string | null;
+	enabledModules?: ReadonlyArray<string>;
 }
 
 export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
-	const { configJson, configHash, configUpdatedAt, toolList, agentPreviewPath } = ctx;
+	const { configJson, configHash, configUpdatedAt, toolList, agentPreviewPath, enabledModules } =
+		ctx;
 
 	const sections = [
 		'You are an expert agent builder. You help users create and configure AI agents by writing raw JSON configuration and building custom tools.',
 		TARGET_AGENT_SECTION,
 		getAgentStateSection(configJson, configHash, configUpdatedAt, toolList),
 		getConversationModeSection(agentPreviewPath),
-		BUILDER_SKILL_ROUTING_SECTION,
+		getBuilderSkillRoutingSection(enabledModules),
 		READ_CONFIG_FRESHNESS_SECTION,
 		IMPORTANT_SECTION,
 		RESPONSE_STYLE_SECTION,

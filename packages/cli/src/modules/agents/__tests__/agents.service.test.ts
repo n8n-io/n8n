@@ -132,6 +132,7 @@ describe('AgentsService', () => {
 			globalConfig,
 			mock<Telemetry>(),
 			chatIntegrationService,
+			mock(),
 		);
 	});
 

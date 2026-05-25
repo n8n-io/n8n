@@ -592,12 +592,21 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/**
-	 * Wait for any in-flight background tasks (title generation, future
-	 * observer cycles) to settle. Call before letting the agent go out of
-	 * scope to ensure deferred writes land. Safe to call multiple times.
+	 * Close the agent and release all held resources.
+	 *
+	 * - Waits for any in-flight background tasks (title generation, observer
+	 *   cycles) to settle via the runtime's `dispose()`.
+	 * - Disconnects every MCP client attached via `.mcp()`. Errors from
+	 *   individual client disconnects are swallowed so a single misbehaving
+	 *   server does not prevent the others from closing.
+	 *
+	 * Safe to call multiple times.
 	 */
 	async close(): Promise<void> {
-		if (this.runtime) await this.runtime.dispose();
+		const tasks: Array<Promise<unknown>> = [];
+		if (this.runtime) tasks.push(this.runtime.dispose());
+		tasks.push(...this.mcpClients.map(async (c) => await c.close()));
+		await Promise.allSettled(tasks);
 	}
 
 	/** Generate a response (non-streaming). Lazy-builds on first call. */

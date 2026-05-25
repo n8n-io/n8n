@@ -19,6 +19,7 @@ import {
 	type AgentCredentialIntegrationConfig,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
+	type AgentJsonMcpServerConfig,
 	type AgentJsonMemoryConfig,
 	type AgentJsonToolConfig,
 	type AgentSkill,
@@ -54,6 +55,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 import { EphemeralNodeExecutor } from '@/node-execution';
+import { OauthService } from '@/oauth/oauth.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { UrlService } from '@/services/url.service';
@@ -83,6 +85,7 @@ import {
 	type MemoryFactory,
 	type ToolResolver,
 } from './json-config/from-json-config';
+import { buildMcpClientForServer } from './json-config/mcp-client-factory';
 import { AgentPublishedVersionRepository } from './repositories/agent-published-version.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
@@ -214,7 +217,9 @@ export class AgentsService {
 	private clearRuntimes(agentId: string, options: { skipBroadcast?: boolean } = {}): void {
 		for (const key of this.runtimes.keys()) {
 			if (key === agentId || key.startsWith(`${agentId}:`)) {
+				const entry = this.runtimes.get(key);
 				this.runtimes.delete(key);
+				if (entry) this.closeAgentResources(entry.agent, agentId);
 			}
 		}
 
@@ -269,10 +274,29 @@ export class AgentsService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly telemetry: Telemetry,
 		private readonly chatIntegrationService: ChatIntegrationService,
+		private readonly oauthService: OauthService,
 	) {}
 
 	private isNodeToolsModuleEnabled(): boolean {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
+	}
+
+	private isMcpModuleEnabled(): boolean {
+		return this.agentsConfig.modules.includes('mcp');
+	}
+
+	/**
+	 * Best-effort close of an agent instance. Delegates to `agent.close()`
+	 * which disposes the runtime and disconnects any attached MCP clients.
+	 * Errors are logged but never thrown.
+	 */
+	private closeAgentResources(agent: { close(): Promise<void> }, agentId: string): void {
+		agent.close().catch((error) => {
+			this.logger.warn('[AgentsService] Failed to close agent resources on eviction', {
+				agentId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
 	}
 
 	private createAgentExecutionCounter(agentId: string): AgentExecutionCounter {
@@ -1109,6 +1133,42 @@ export class AgentsService {
 			});
 	}
 
+	private async consumeWorkflowStream(
+		stream: ReadableStream<StreamChunk>,
+		recorder: ExecutionRecorder,
+	): Promise<{ structuredOutput: unknown; toolCalls: ExecuteAgentData['toolCalls'] }> {
+		let structuredOutput: unknown = null;
+		const toolCalls: ExecuteAgentData['toolCalls'] = [];
+		const toolInputs = new Map<string, { toolName: string; input: unknown }>();
+
+		const reader = stream.getReader();
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				recorder.record(value);
+
+				if (value.type === 'tool-call') {
+					toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
+				} else if (value.type === 'tool-result') {
+					const pending = toolInputs.get(value.toolCallId);
+					toolCalls.push({
+						toolName: value.toolName,
+						input: pending?.input ?? null,
+						result: value.output,
+					});
+					toolInputs.delete(value.toolCallId);
+				} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
+					structuredOutput = value.structuredOutput;
+				}
+			}
+		} finally {
+			reader.releaseLock();
+		}
+
+		return { structuredOutput, toolCalls };
+	}
+
 	/**
 	 * Compile an agent in isolation without writing to the shared runtime cache.
 	 * Used by executeForWorkflow so that concurrent Slack / chat executions
@@ -1138,18 +1198,6 @@ export class AgentsService {
 		}
 	}
 
-	/**
-	 * Execute an SDK agent within a workflow execution context.
-	 *
-	 * Streams the run rather than calling `.generate()` so the same
-	 * `ExecutionRecorder` used by chat/Slack/schedule paths can collect a full
-	 * `MessageRecord` (timeline, tool calls, usage). Without this, sessions
-	 * triggered from a workflow node never appear in the agent's session list
-	 * because nothing creates the agent execution thread row.
-	 *
-	 * Compiles a fresh isolated agent per call for credential isolation (does
-	 * not use or affect the shared runtime cache).
-	 */
 	async executeForWorkflow(
 		agentId: string,
 		message: string,
@@ -1182,42 +1230,19 @@ export class AgentsService {
 		const agentInstance = compiled.agent;
 		const recorder = new ExecutionRecorder();
 
-		// `structuredOutput` and `toolCalls` aren't surfaced by the recorder —
-		// pull them off the `finish` chunk and the discrete `tool-result` chunks
-		// directly so the workflow node receives the same shape as before.
-		let structuredOutput: unknown | null = null;
-		const toolCalls: ExecuteAgentData['toolCalls'] = [];
-		const toolInputs = new Map<string, { toolName: string; input: unknown }>();
-
-		const resultStream = await agentInstance.stream(message, {
-			persistence: { resourceId: executionId, threadId },
-			executionCounter: this.createAgentExecutionCounter(agentId),
-		});
-
-		const reader = resultStream.stream.getReader();
+		let streamed: { structuredOutput: unknown; toolCalls: ExecuteAgentData['toolCalls'] };
 		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				recorder.record(value);
-
-				if (value.type === 'tool-call') {
-					toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
-				} else if (value.type === 'tool-result') {
-					const pending = toolInputs.get(value.toolCallId);
-					toolCalls.push({
-						toolName: value.toolName,
-						input: pending?.input ?? null,
-						result: value.output,
-					});
-					toolInputs.delete(value.toolCallId);
-				} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
-					structuredOutput = value.structuredOutput;
-				}
-			}
+			const resultStream = await agentInstance.stream(message, {
+				persistence: { resourceId: executionId, threadId },
+				executionCounter: this.createAgentExecutionCounter(agentId),
+			});
+			streamed = await this.consumeWorkflowStream(resultStream.stream, recorder);
 		} finally {
-			reader.releaseLock();
+			// Isolated compile path is one-shot — close the agent (and with it
+			// any attached MCP clients) so transports are not leaked per run.
+			this.closeAgentResources(agentInstance, agentId);
 		}
+		const { structuredOutput, toolCalls } = streamed;
 
 		const messageRecord = recorder.getMessageRecord();
 
@@ -1316,6 +1341,22 @@ export class AgentsService {
 			};
 		}
 
+		const mcpServers = config.mcpServers ?? [];
+		if (mcpServers.length > 0 && !this.isMcpModuleEnabled()) {
+			return {
+				valid: false,
+				error: 'MCP servers require the "mcp" agents module to be enabled.',
+			};
+		}
+		for (const server of mcpServers) {
+			if (server.authentication !== 'none' && !server.credential) {
+				return {
+					valid: false,
+					error: `MCP server "${server.name}" requires a credential when authentication is not "none".`,
+				};
+			}
+		}
+
 		try {
 			this.validateNodeToolExpressions(config);
 		} catch (error) {
@@ -1383,6 +1424,7 @@ export class AgentsService {
 		const memoryProvided = result.config.memory !== undefined;
 		const providerToolsProvided = result.config.providerTools !== undefined;
 		const configBlockProvided = result.config.config !== undefined;
+		const mcpServersProvided = result.config.mcpServers !== undefined;
 
 		const { schemaConfig: decomposedSchema, integrations: decomposedIntegrations } =
 			decomposeJsonConfig(result.config);
@@ -1404,6 +1446,7 @@ export class AgentsService {
 			...(skillsProvided ? { skills: decomposedSchema.skills } : {}),
 			...(providerToolsProvided ? { providerTools: decomposedSchema.providerTools } : {}),
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
+			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
 		};
 
 		entity.schema = nextSchema;
@@ -1773,6 +1816,18 @@ export class AgentsService {
 
 		const resolvedTools: BuiltTool[] = [];
 
+		// Only attach MCP clients when the module is enabled. Without the gate
+		// a previously-configured agent would still build live MCP connections
+		// after the operator removes the token from N8N_AGENTS_MODULES, which
+		// undermines the kill-switch.
+		const buildMcpClient = this.isMcpModuleEnabled()
+			? async (server: AgentJsonMcpServerConfig) =>
+					await buildMcpClientForServer(server, {
+						credentialProvider,
+						oauthService: this.oauthService,
+					})
+			: undefined;
+
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
 			toolExecutor,
 			credentialProvider,
@@ -1783,6 +1838,7 @@ export class AgentsService {
 			},
 			skills: agentEntity.skills ?? {},
 			memoryFactory: this.getMemoryFactory(agentEntity.id),
+			buildMcpClient,
 		});
 
 		await this.injectRuntimeDependencies({

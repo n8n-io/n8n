@@ -85,6 +85,82 @@ const AgentJsonSkillConfigSchema = z.object({
 		.regex(/^[A-Za-z0-9_-]+$/),
 });
 
+/**
+ * Configuration for a single MCP (Model Context Protocol) server attached to
+ * an agent. Tool entries from MCP servers are sourced separately from the
+ * `tools[]` array — the SDK's `McpClient` prefixes each tool name with the
+ * server name to avoid collisions.
+ */
+const McpServerConfigSchema = z
+	.object({
+		/**
+		 * Unique-per-agent server name. Also used as the SDK tool-name prefix
+		 * (e.g. a server named `github` exposes its `create_issue` tool as
+		 * `github_create_issue` to the LLM).
+		 */
+		name: z
+			.string()
+			.min(1)
+			.max(64)
+			.regex(/^[a-zA-Z0-9_-]+$/),
+		description: z.string().max(512).optional(),
+		url: z.string().min(1),
+		transport: z.enum(['sse', 'streamableHttp']).default('streamableHttp'),
+		authentication: z
+			.enum(['none', 'bearerAuth', 'headerAuth', 'multipleHeadersAuth', 'mcpOAuth2Api'])
+			.default('none'),
+		/** Credential id required when `authentication` is anything other than `none`. */
+		credential: z.string().optional(),
+		/**
+		 * Restricts which tools from this server are surfaced to the agent.
+		 * Tools are matched by their original (un-prefixed) name.
+		 *
+		 * - `{ mode: 'allow', tools: [...] }` — only the listed tools are surfaced.
+		 * - `{ mode: 'exclude', tools: [...] }` — every tool except the listed ones is surfaced.
+		 * - absent — every tool the server advertises is surfaced.
+		 */
+		toolFilter: z
+			.discriminatedUnion('mode', [
+				z
+					.object({
+						mode: z.literal('allow'),
+						tools: z.array(z.string().min(1)).default([]),
+					})
+					.strict(),
+				z
+					.object({
+						mode: z.literal('exclude'),
+						tools: z.array(z.string().min(1)).default([]),
+					})
+					.strict(),
+			])
+			.optional(),
+		/**
+		 * Human-in-the-loop approval requirements.
+		 *
+		 * - absent — no approval required (default).
+		 * - `{ mode: 'global' }` — every tool from this server requires approval.
+		 * - `{ mode: 'selected', tools: [...] }` — only listed tool names
+		 *   (un-prefixed) require approval; non-empty.
+		 *
+		 * Maps onto the SDK's `McpServerConfig.requireApproval`
+		 * (`true` / `string[]`) at reconstruction time.
+		 */
+		approval: z
+			.discriminatedUnion('mode', [
+				z.object({ mode: z.literal('global') }).strict(),
+				z
+					.object({
+						mode: z.literal('selected'),
+						tools: z.array(z.string().min(1)).min(1),
+					})
+					.strict(),
+			])
+			.optional(),
+		connectionTimeoutMs: z.number().int().min(1).max(120_000).optional(),
+	})
+	.strict();
+
 const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	z.object({
 		type: z.literal('custom'),
@@ -129,6 +205,13 @@ export const AgentJsonConfigSchema = z.object({
 	skills: z.array(AgentJsonSkillConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
 	integrations: z.array(AgentIntegrationSchema).optional(),
+	mcpServers: z
+		.array(McpServerConfigSchema)
+		.max(20)
+		.refine((servers) => new Set(servers.map((s) => s.name)).size === servers.length, {
+			message: 'MCP server names must be unique within an agent',
+		})
+		.optional(),
 	config: z
 		.object({
 			thinking: ThinkingConfigSchema.optional(),
@@ -159,6 +242,7 @@ export type AgentJsonCustomToolConfig = Extract<AgentJsonToolConfig, { type: 'cu
 export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;
 export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
 export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
+export type AgentJsonMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
 
 export interface ConfigValidationError {
 	path: string;
