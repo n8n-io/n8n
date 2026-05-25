@@ -77,6 +77,7 @@ jobs:
         run: |
           TLS_DIR="$RUNNER_TEMP/sandbox-tls"
           mkdir -p "$TLS_DIR"
+          docker pull n8nio/n8n-sandbox-service-api:latest
           docker run --rm \
             --user 0:0 \
             --entrypoint sh \
