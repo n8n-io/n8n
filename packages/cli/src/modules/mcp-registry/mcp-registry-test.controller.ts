@@ -1,5 +1,4 @@
 import { Post, RestController } from '@n8n/decorators';
-import { In } from '@n8n/typeorm';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
