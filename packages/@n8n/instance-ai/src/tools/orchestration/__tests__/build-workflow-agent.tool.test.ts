@@ -7,7 +7,6 @@ import {
 import { UserError } from 'n8n-workflow';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
-import type { BuilderSandboxSession } from '../../../runtime/builder-sandbox-session-registry';
 import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext, InstanceAiContext } from '../../../types';
 import { createRemediation } from '../../../workflow-loop';
@@ -32,6 +31,7 @@ const {
 	determineSetupRequirement,
 	determineVerificationReadiness,
 	getBuilderSessionMemory,
+	builderWorkflowWorkspaceLayout,
 	mergeLatestVerificationIntoOutcome,
 	settleMissingMainWorkflowSubmit,
 	supportingWorkflowIdsFromSubmitAttempts,
@@ -107,6 +107,32 @@ function createSpawnableContext(
 
 const MAIN_PATH = '/home/daytona/workspace/src/workflow.ts';
 
+describe('builderWorkflowWorkspaceLayout', () => {
+	it('gives parallel work items isolated main workflow files in the shared workspace', () => {
+		const root = '/home/daytona/workspace';
+		const first = builderWorkflowWorkspaceLayout(root, 'wi_fetch_customers');
+		const second = builderWorkflowWorkspaceLayout(root, 'wi_send_report');
+
+		expect(first.mainWorkflowPath).toBe(`${first.workItemRoot}/src/workflow.ts`);
+		expect(second.mainWorkflowPath).toBe(`${second.workItemRoot}/src/workflow.ts`);
+		expect(first.mainWorkflowPath).not.toBe(second.mainWorkflowPath);
+		expect(first.chunksDir).not.toBe(second.chunksDir);
+		expect(first.tsconfigPath).toBe(`${first.workItemRoot}/tsconfig.json`);
+		expect(first.relativeMainWorkflowPath).not.toContain('..');
+	});
+
+	it('sanitizes work item ids before using them in workspace paths', () => {
+		const layout = builderWorkflowWorkspaceLayout(
+			'/home/daytona/workspace',
+			'run:one/../../workflow',
+		);
+
+		expect(layout.relativeMainWorkflowPath).toMatch(
+			/^builder-work-items\/run-one-workflow-[a-f0-9]{8}\/src\/workflow\.ts$/,
+		);
+	});
+});
+
 describe('buildWarmBuilderFollowUp', () => {
 	it('keeps the detached builder verification contract in warm follow-ups', () => {
 		const briefing = buildWarmBuilderFollowUp({
@@ -127,22 +153,20 @@ describe('buildWarmBuilderFollowUp', () => {
 });
 
 describe('getBuilderSessionMemory', () => {
-	const session = { sessionId: 'builder-session-1' } as BuilderSandboxSession;
-
-	it('uses memory for retained builder sessions', () => {
+	it('uses memory when the builder runs in the shared workspace', () => {
 		const memory = {} as OrchestrationContext['memory'];
 
-		expect(getBuilderSessionMemory({ memory }, session)).toBe(memory);
+		expect(getBuilderSessionMemory({ memory }, true)).toBe(memory);
 	});
 
-	it('skips memory when there is no retained builder session', () => {
+	it('skips memory when the builder falls back to tool mode', () => {
 		const memory = {} as OrchestrationContext['memory'];
 
-		expect(getBuilderSessionMemory({ memory }, undefined)).toBeUndefined();
+		expect(getBuilderSessionMemory({ memory }, false)).toBeUndefined();
 	});
 
 	it('skips memory when the context has no memory store', () => {
-		expect(getBuilderSessionMemory({}, session)).toBeUndefined();
+		expect(getBuilderSessionMemory({}, true)).toBeUndefined();
 	});
 });
 

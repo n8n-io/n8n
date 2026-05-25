@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { SharedWorkflowRepository, User, WorkflowEntity } from '@n8n/db';
-import type { IConnections, INode } from 'n8n-workflow';
+import { NodeConnectionTypes, type IConnections, type INode } from 'n8n-workflow';
 
 import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
 
@@ -44,6 +44,10 @@ const makeNode = (overrides: Partial<INode> = {}): INode => ({
 	...overrides,
 });
 
+type DataTableOpsMock = {
+	getManyAndCount: jest.Mock;
+};
+
 describe('update-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let workflowFinderService: WorkflowFinderService;
@@ -56,6 +60,7 @@ describe('update-workflow MCP tool', () => {
 	let sharedWorkflowRepository: SharedWorkflowRepository;
 	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
 	let collaborationService: CollaborationService;
+	let dataTableOps: DataTableOpsMock;
 
 	const buildExistingWorkflow = () =>
 		Object.assign(new WorkflowEntity(), {
@@ -98,12 +103,25 @@ describe('update-workflow MCP tool', () => {
 			findOneOrFail: jest.fn().mockResolvedValue({ projectId: 'project-1' }),
 		});
 		nodeTypes = mockInstance(NodeTypes);
+		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+			if (type === '@n8n/n8n-nodes-langchain.agent') {
+				return { description: { outputs: [NodeConnectionTypes.Main] } };
+			}
+			if (type === '@n8n/n8n-nodes-langchain.agentTool') {
+				return { description: { outputs: [NodeConnectionTypes.AiTool] } };
+			}
+			return { description: {} };
+		}) as typeof nodeTypes.getByNameAndVersion);
 		collaborationService = mockInstance(CollaborationService, {
 			ensureWorkflowEditable: jest.fn().mockResolvedValue(undefined),
 			broadcastWorkflowUpdate: jest.fn().mockResolvedValue(undefined),
 		});
 		mockAutoPopulateNodeCredentials.mockResolvedValue({ assignments: [], skippedHttpNodes: [] });
 		mockValidateJSON.mockReturnValue([]);
+
+		dataTableOps = {
+			getManyAndCount: jest.fn().mockResolvedValue({ data: [], count: 0 }),
+		};
 	});
 
 	const createTool = () =>
@@ -117,6 +135,7 @@ describe('update-workflow MCP tool', () => {
 			credentialsService,
 			sharedWorkflowRepository,
 			collaborationService,
+			dataTableOps as never,
 		);
 
 	const callHandler = async (
@@ -257,7 +276,6 @@ describe('update-workflow MCP tool', () => {
 			});
 
 			expect(mockAutoPopulateNodeCredentials).not.toHaveBeenCalled();
-			expect(sharedWorkflowRepository.findOneOrFail).not.toHaveBeenCalled();
 		});
 
 		test('reports auto-assigned credentials in the response', async () => {
@@ -452,6 +470,51 @@ describe('update-workflow MCP tool', () => {
 				const response = parseResult(result);
 				expect(response.validationWarnings).toEqual([]);
 			});
+
+			test('refuses to save when an addConnection wires an agent as a tool to another agent', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing',
+						settings: { availableInMCP: true },
+						nodes: [
+							makeNode({
+								id: 'manager',
+								name: 'Manager Agent',
+								type: '@n8n/n8n-nodes-langchain.agent',
+								typeVersion: 3,
+							}),
+							makeNode({
+								id: 'worker',
+								name: 'Worker Agent',
+								type: '@n8n/n8n-nodes-langchain.agent',
+								typeVersion: 3,
+								position: [200, 0],
+							}),
+						],
+						connections: {} as IConnections,
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addConnection',
+							source: 'Worker Agent',
+							target: 'Manager Agent',
+							connectionType: 'ai_tool',
+						},
+					],
+				});
+
+				expect(result.isError).toBe(true);
+				expect(updateMock).not.toHaveBeenCalled();
+				const response = parseResult(result);
+				expect(response.error).toContain('Worker Agent');
+				expect(response.error).toContain('Manager Agent');
+				expect(response.error).toContain('@n8n/n8n-nodes-langchain.agentTool');
+			});
 		});
 
 		describe('credential validation', () => {
@@ -619,8 +682,172 @@ describe('update-workflow MCP tool', () => {
 						},
 					],
 				});
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+		});
+
+		describe('data table validation', () => {
+			const dataTableLocator = (mode: 'id' | 'name' | 'list', value: string) => ({
+				__rl: true as const,
+				mode,
+				value,
+			});
+
+			const dataTableNode = (name: string, dataTableId: ReturnType<typeof dataTableLocator>) => ({
+				name,
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				parameters: { dataTableId },
+			});
+
+			test('rejects addNode of a data table node whose id does not exist', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addNode',
+							node: dataTableNode('DT', dataTableLocator('id', 'missing')),
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain('Operation 0 failed');
+				expect(response.error).toContain("node 'DT'");
+				expect(response.error).toContain("data table with id 'missing' not found");
+				expect(response.error).toContain('create_data_table');
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('rejects addNode of a data table node whose name does not exist', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addNode',
+							node: dataTableNode('DT', dataTableLocator('name', 'orders')),
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("data table with name 'orders' not found");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('accepts addNode of a data table node whose id exists in the project', async () => {
+				dataTableOps.getManyAndCount.mockResolvedValue({
+					data: [{ id: 'dt-1', name: 'Orders', projectId: 'project-1' }],
+					count: 1,
+				});
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addNode',
+							node: dataTableNode('DT', dataTableLocator('id', 'dt-1')),
+						},
+					],
+				});
 
 				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+				expect(dataTableOps.getManyAndCount).toHaveBeenCalledWith(
+					expect.objectContaining({
+						filter: { id: 'dt-1', projectId: 'project-1' },
+					}),
+				);
+			});
+
+			test('validates after updateNodeParameters changes dataTableId', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 'dt',
+								name: 'DT',
+								type: 'n8n-nodes-base.dataTable',
+								typeVersion: 1,
+								parameters: { dataTableId: dataTableLocator('id', 'dt-1') },
+							}),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'updateNodeParameters',
+							nodeName: 'DT',
+							parameters: { dataTableId: dataTableLocator('id', 'newly-missing') },
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain('Operation 0 failed');
+				expect(response.error).toContain("data table with id 'newly-missing' not found");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('skips data-table lookup when no touched node references one', async () => {
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					],
+				});
+
+				expect(dataTableOps.getManyAndCount).not.toHaveBeenCalled();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('skips data-table lookup when dataTableId is an expression', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addNode',
+							node: dataTableNode('DT', dataTableLocator('id', '={{ $json.tableId }}')),
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(dataTableOps.getManyAndCount).not.toHaveBeenCalled();
+			});
+
+			test('does not flag a pre-existing dangling data table reference on an untouched node', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 'dt',
+								name: 'DT',
+								type: 'n8n-nodes-base.dataTable',
+								typeVersion: 1,
+								parameters: { dataTableId: dataTableLocator('id', 'long-gone') },
+							}),
+							makeNode({ id: 'b', name: 'B' }),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'updateNodeParameters', nodeName: 'B', parameters: { foo: 'bar' } }],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(dataTableOps.getManyAndCount).not.toHaveBeenCalled();
 				expect(workflowService.update).toHaveBeenCalled();
 			});
 		});
