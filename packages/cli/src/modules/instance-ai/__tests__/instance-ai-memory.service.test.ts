@@ -45,8 +45,13 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 		mockAgentMemory as never,
 		mockDbSnapshotStorage as never,
 		mockCheckpointRepository as never,
+		mockPendingConfirmationRepository as never,
 	);
 }
+
+const mockPendingConfirmationRepository = {
+	findLiveRequestIds: jest.fn(async () => new Set<string>()),
+};
 
 function makeTree(overrides?: Partial<InstanceAiAgentNode>): InstanceAiAgentNode {
 	return {

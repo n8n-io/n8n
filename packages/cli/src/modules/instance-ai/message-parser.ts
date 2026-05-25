@@ -466,3 +466,44 @@ function propagateMessageGroupIdWithinRange(
 		}
 	}
 }
+
+/** Pull every confirmation requestId out of the parsed messages' agent trees. */
+export function collectConfirmationRequestIds(messages: InstanceAiMessage[]): string[] {
+	const requestIds: string[] = [];
+	for (const message of messages) {
+		if (!message.agentTree) continue;
+		walkAgentNodes(message.agentTree, (node) => {
+			for (const tc of node.toolCalls) {
+				const requestId = tc.confirmation?.requestId;
+				if (requestId) requestIds.push(requestId);
+			}
+		});
+	}
+	return requestIds;
+}
+
+/** Flip `confirmation.expired = true` on every card whose requestId is not in `liveRequestIds`. */
+export function markExpiredConfirmations(
+	messages: InstanceAiMessage[],
+	liveRequestIds: Set<string>,
+): void {
+	for (const message of messages) {
+		if (!message.agentTree) continue;
+		walkAgentNodes(message.agentTree, (node) => {
+			for (const tc of node.toolCalls) {
+				if (!tc.confirmation) continue;
+				if (!liveRequestIds.has(tc.confirmation.requestId)) {
+					tc.confirmation.expired = true;
+				}
+			}
+		});
+	}
+}
+
+function walkAgentNodes(
+	node: InstanceAiAgentNode,
+	visit: (node: InstanceAiAgentNode) => void,
+): void {
+	visit(node);
+	for (const child of node.children) walkAgentNodes(child, visit);
+}

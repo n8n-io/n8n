@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, LessThan, Repository } from '@n8n/typeorm';
+import { DataSource, In, IsNull, LessThan, MoreThan, Or, Repository } from '@n8n/typeorm';
 
 import { InstanceAiPendingConfirmation } from '../entities/instance-ai-pending-confirmation.entity';
 
@@ -60,5 +60,19 @@ export class InstanceAiPendingConfirmationRepository extends Repository<Instance
 
 	async findByThreadId(threadId: string): Promise<InstanceAiPendingConfirmation[]> {
 		return await this.find({ where: { threadId } });
+	}
+
+	/** Of the given request IDs, return those still actionable (row exists and
+	 *  not past `expiresAt`). The complement is treated as expired by the UI. */
+	async findLiveRequestIds(requestIds: string[], now: Date): Promise<Set<string>> {
+		if (requestIds.length === 0) return new Set();
+		const rows = await this.find({
+			where: {
+				requestId: In(requestIds),
+				expiresAt: Or(IsNull(), MoreThan(now)),
+			},
+			select: ['requestId'],
+		});
+		return new Set(rows.map((row) => row.requestId));
 	}
 }

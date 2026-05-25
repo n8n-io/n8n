@@ -1,6 +1,10 @@
-import type { InstanceAiAgentNode } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
 
-import { parseStoredMessages } from '../message-parser';
+import {
+	collectConfirmationRequestIds,
+	markExpiredConfirmations,
+	parseStoredMessages,
+} from '../message-parser';
 import type { StoredAgentMessage } from '../message-parser';
 
 const BASE_DATE_MS = Date.UTC(2026, 0, 1);
@@ -810,5 +814,93 @@ describe('parseStoredMessages', () => {
 			expect(result[1].agentTree?.toolCalls).toHaveLength(1);
 			expect(result[1].agentTree?.toolCalls[0].toolCallId).toBe('tc-parts');
 		});
+	});
+});
+
+describe('confirmation expiration helpers', () => {
+	function makeMessageWithConfirmations(requestIds: string[]): InstanceAiMessage {
+		return {
+			id: 'msg-a',
+			role: 'assistant',
+			createdAt: makeDate().toISOString(),
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			runId: 'run-1',
+			agentTree: {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: requestIds.map((requestId, idx) => ({
+					toolCallId: `tc-${idx}`,
+					toolName: 'plan',
+					args: {},
+					isLoading: true,
+					confirmation: {
+						requestId,
+						severity: 'info' as const,
+						message: '',
+						inputType: 'plan-review' as const,
+					},
+				})),
+				children: [
+					{
+						agentId: 'agent-planner',
+						role: 'planner',
+						status: 'completed',
+						textContent: '',
+						reasoning: '',
+						toolCalls: [
+							{
+								toolCallId: 'tc-sub',
+								toolName: 'submit-plan',
+								args: {},
+								isLoading: true,
+								confirmation: {
+									requestId: 'req-sub',
+									severity: 'info' as const,
+									message: '',
+									inputType: 'plan-review' as const,
+								},
+							},
+						],
+						children: [],
+						timeline: [],
+					},
+				],
+				timeline: [],
+			},
+		};
+	}
+
+	it('collects request IDs from orchestrator and sub-agent tool calls', () => {
+		const messages = [makeMessageWithConfirmations(['req-1', 'req-2'])];
+		expect(collectConfirmationRequestIds(messages).sort()).toEqual(['req-1', 'req-2', 'req-sub']);
+	});
+
+	it('flips expired flag only on confirmations whose requestId is not in the live set', () => {
+		const messages = [makeMessageWithConfirmations(['req-1'])];
+		markExpiredConfirmations(messages, new Set(['req-1']));
+
+		const node = messages[0].agentTree!;
+		expect(node.toolCalls[0].confirmation?.expired).toBeUndefined();
+		expect(node.children[0].toolCalls[0].confirmation?.expired).toBe(true);
+	});
+
+	it('does nothing for messages without an agent tree', () => {
+		const messages: InstanceAiMessage[] = [
+			{
+				id: 'msg-u',
+				role: 'user',
+				createdAt: makeDate().toISOString(),
+				content: 'hi',
+				reasoning: '',
+				isStreaming: false,
+			},
+		];
+		expect(collectConfirmationRequestIds(messages)).toEqual([]);
+		markExpiredConfirmations(messages, new Set());
 	});
 });
