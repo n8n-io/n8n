@@ -117,6 +117,10 @@ runs:
         INSTALL_LOG: ${{ runner.temp }}/pnpm-install.log
         SAFE_CHAIN_LOGGING: verbose
         DEBUG: pnpm:*
+        # Skip the Electron binary download triggered by @n8n/local-gateway's
+        # postinstall. CI never runs the Electron app, but the ~150MB binary
+        # fetch fires on every install otherwise.
+        ELECTRON_SKIP_BINARY_DOWNLOAD: 1
       run: |
         set +o pipefail
         timeout --kill-after=30s 300s $INSTALL_COMMAND \

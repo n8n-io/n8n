@@ -8,11 +8,6 @@ concurrency:
   group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
   cancel-in-progress: true
 
-env:
-  # Skip Electron binary download in @n8n/local-gateway's postinstall — PR CI
-  # never runs the Electron app, but the ~150MB download fires on every install.
-  ELECTRON_SKIP_BINARY_DOWNLOAD: 1
-
 jobs:
   install-and-build:
     name: Install & Build
