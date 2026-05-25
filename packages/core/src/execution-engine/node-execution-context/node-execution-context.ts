@@ -303,6 +303,36 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.additionalData.credentialsHelper.getCredentialsProperties(type);
 	}
 
+	/**
+	 * Eval-mode credential synthesizer for nodes with no credential of any
+	 * type configured. Defers to the credentials helper's `synthesizeAndDecrypt`
+	 * hook when present (e.g. `EvalMockedCredentialsHelper` in cli) so post-
+	 * resolve rewrites — wire-server URL injection for unpinned vendor SDK
+	 * nodes — still apply. Falls back to a bare synthetic for callers that
+	 * don't register a helper override.
+	 *
+	 * Extracted from `_getCredentials` to keep that method's branch count
+	 * under the linter's complexity cap.
+	 */
+	private async synthesizeEvalCredentials(
+		type: string,
+		executeData?: IExecuteData,
+	): Promise<ICredentialDataDecryptedObject> {
+		const helper = this.additionalData.credentialsHelper as unknown as {
+			synthesizeAndDecrypt?: (
+				credentialType: string,
+				ed?: IExecuteData,
+			) => Promise<ICredentialDataDecryptedObject>;
+		};
+		if (typeof helper.synthesizeAndDecrypt === 'function') {
+			return await helper.synthesizeAndDecrypt(type, executeData);
+		}
+		const { buildEvalMockCredentials } = await import('../eval-mock-helpers');
+		return buildEvalMockCredentials(
+			this.additionalData.credentialsHelper.getCredentialsProperties(type),
+		) as ICredentialDataDecryptedObject;
+	}
+
 	/** Returns the requested decrypted credentials if the node has access to them */
 	protected async _getCredentials<T extends object = ICredentialDataDecryptedObject>(
 		type: string,
@@ -317,25 +347,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		if (mode === 'evaluation' && additionalData.evalLlmMockHandler && !node.credentials?.[type]) {
 			const hasOtherCreds = !!node.credentials && Object.keys(node.credentials).length > 0;
 			if (!hasOtherCreds) {
-				// Duck-typed hook: when the credentials helper provides
-				// `synthesizeAndDecrypt` (e.g. `EvalMockedCredentialsHelper` in
-				// the cli's eval module), defer to it so post-resolve rewrites
-				// — like the wire-server URL injection for unpinned vendor SDK
-				// nodes — still apply. Falls back to the bare synthetic path
-				// for callers that don't register a helper override.
-				const helper = additionalData.credentialsHelper as unknown as {
-					synthesizeAndDecrypt?: (
-						credentialType: string,
-						executeData?: IExecuteData,
-					) => Promise<ICredentialDataDecryptedObject>;
-				};
-				if (typeof helper.synthesizeAndDecrypt === 'function') {
-					return (await helper.synthesizeAndDecrypt(type, executeData)) as T;
-				}
-				const { buildEvalMockCredentials } = await import('../eval-mock-helpers');
-				return buildEvalMockCredentials(
-					additionalData.credentialsHelper.getCredentialsProperties(type),
-				) as T;
+				return (await this.synthesizeEvalCredentials(type, executeData)) as T;
 			}
 		}
 
