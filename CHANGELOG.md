@@ -1,3 +1,12 @@
+## [1.123.47](https://github.com/n8n-io/n8n/compare/n8n@1.123.46...n8n@1.123.47) (2026-05-25)
+
+
+### Bug Fixes
+
+* Fix 16 security issues in vm2, ws, protobufjs and 4 more ([#30852](https://github.com/n8n-io/n8n/issues/30852)) ([0ec59b6](https://github.com/n8n-io/n8n/commit/0ec59b6e43e0411f5af174e8cccd356de7f3be85))
+* Fix security issue in urllib3 via minor version upgrade from 2.6.3 to 2.7.0 in packages ([#31058](https://github.com/n8n-io/n8n/issues/31058)) ([7ac1341](https://github.com/n8n-io/n8n/commit/7ac134188eb3331a348050dcc6ba68d57f155fa4))
+
+
 ## [1.123.46](https://github.com/n8n-io/n8n/compare/n8n@1.123.45...n8n@1.123.46) (2026-05-21)
 
 
