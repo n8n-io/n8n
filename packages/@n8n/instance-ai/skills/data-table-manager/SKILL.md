@@ -4,7 +4,8 @@ description: >-
   Designs and manages n8n Data Tables directly with the data-tables and
   parse-file tools. Use when the user asks to create, inspect, import, seed,
   query, update, clean up, rename columns in, or delete data tables and rows,
-  especially from CSV/XLSX/JSON attachments.
+  especially from CSV/XLSX/JSON attachments, and before planning workflows that
+  create or write to Data Tables.
 recommended_tools:
   - data-tables
   - parse-file
@@ -17,6 +18,10 @@ platforms:
 Use this skill to build and maintain n8n Data Tables in the current turn with
 `data-tables` and, for attachments, `parse-file`. Do not delegate, spawn a
 sub-agent, or create a background plan for data-table-only work.
+
+Also load this skill before planning or building a workflow whose trigger,
+processing steps, or outputs create, inspect, or write Data Table records, then
+pass the relevant schema/row-handling guidance to the planner or builder.
 
 n8n Data Tables are flat, workflow-friendly stores. Design them so future
 workflow expressions can read predictable field names and so updates/deletes

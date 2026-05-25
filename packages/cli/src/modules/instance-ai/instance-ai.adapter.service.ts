@@ -1398,6 +1398,14 @@ export class InstanceAiAdapterService {
 			return { projectId: table.projectId, tableName: table.name, resolvedId: table.id };
 		};
 
+		const referenceScopes = {
+			read: ['dataTable:read'],
+			readRow: ['dataTable:readRow'],
+			writeRow: ['dataTable:writeRow'],
+			update: ['dataTable:update'],
+			delete: ['dataTable:delete'],
+		} satisfies Record<DataTableReferencePermission, Scope[]>;
+
 		return {
 			async list(options) {
 				const projectId = await resolveProjectId(['dataTable:listProject'], options?.projectId);
@@ -1440,6 +1448,15 @@ export class InstanceAiAdapterService {
 					options,
 				);
 				await dataTableService.deleteDataTable(resolvedId, projectId);
+			},
+
+			async resolveTableReference(dataTableId: string, options?: DataTableReferenceOptions) {
+				const { projectId, tableName, resolvedId } = await resolveTableMeta(
+					referenceScopes[options?.permission ?? 'read'],
+					dataTableId,
+					options,
+				);
+				return { id: resolvedId, name: tableName, projectId };
 			},
 
 			async getSchema(dataTableId, options) {
@@ -2447,6 +2464,13 @@ interface DataTableRecord {
 	name: string;
 	projectId: string;
 }
+
+type DataTableReferencePermission = 'read' | 'readRow' | 'writeRow' | 'update' | 'delete';
+
+type DataTableReferenceOptions = {
+	projectId?: string;
+	permission?: DataTableReferencePermission;
+};
 
 interface DataTableIdOrNameRepository {
 	findOneBy: (where: { id: string }) => Promise<DataTableRecord | null>;

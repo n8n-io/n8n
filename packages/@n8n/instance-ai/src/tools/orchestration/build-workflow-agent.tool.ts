@@ -162,12 +162,12 @@ async function writeBuilderWorkspaceFile(
 	await writeFileViaSandbox(workspace, filePath, content);
 }
 
-async function materializeBuilderRuntimeSkills(
+export async function materializeBuilderRuntimeSkills(
 	context: OrchestrationContext,
 	workspace: Workspace,
 	root: string,
 ): Promise<{ workspace: Workspace; source?: RuntimeSkillSource }> {
-	const source = context.runtimeSkills;
+	const source = context.runtimeSkillCatalog ?? context.runtimeSkills;
 	if (!hasRuntimeSkills(source)) {
 		return { workspace, source };
 	}

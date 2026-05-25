@@ -181,12 +181,16 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		}
 	}
 
-	// Data table mutation results (insert/update/delete-data-table-rows):
-	// { dataTableId, projectId, tableName? } — produced. Preserves an
-	// existing name if the mutation result doesn't carry `tableName`.
+	// Data table metadata results (schema/query and row mutations):
+	// { dataTableId, projectId, tableName? | dataTableName? } — produced.
+	// Preserves an existing name if the result doesn't carry a name.
 	if (typeof result.dataTableId === 'string' && typeof result.projectId === 'string') {
 		const existing = col.produced.get(result.dataTableId);
-		const name = optionalString(result.tableName) ?? existing?.name ?? result.dataTableId;
+		const name =
+			optionalString(result.tableName) ??
+			optionalString(result.dataTableName) ??
+			existing?.name ??
+			result.dataTableId;
 		recordProduced(col, {
 			type: 'data-table',
 			id: result.dataTableId,

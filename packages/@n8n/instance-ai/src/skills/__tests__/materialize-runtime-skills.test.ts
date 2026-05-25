@@ -1,5 +1,6 @@
 import {
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
+	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	createSkillLoadTool,
 	type RuntimeSkillLinkedFiles,
 	type RuntimeSkillSource,
@@ -10,7 +11,6 @@ import { jsonParse } from 'n8n-workflow';
 
 import {
 	N8N_SKILLS_DIR_ENV,
-	N8N_SKILL_DIR_ENV,
 	N8N_WORKSPACE_DIR_ENV,
 	SANDBOX_RUNTIME_SKILLS_DIR,
 	SANDBOX_RUNTIME_SKILL_REGISTRY_FILE,
@@ -132,8 +132,8 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		expect(materialized?.env).toMatchObject({
 			[N8N_WORKSPACE_DIR_ENV]: root,
 			[N8N_SKILLS_DIR_ENV]: `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}`,
-			[N8N_SKILL_DIR_ENV]: skillDir,
 		});
+		expect(materialized?.env).not.toHaveProperty('N8N_SKILL_DIR');
 
 		expect(executeCommand).not.toHaveBeenCalled();
 	});
@@ -209,5 +209,48 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 				root: '/home/daytona/workspace',
 			}),
 		).rejects.toThrow('Runtime skill linked file escapes skill directory');
+	});
+
+	it('warns when materialized skill files exceed the load_skill output limit', async () => {
+		const runtimeSkillMaxOutputBytes = RUNTIME_SKILL_MAX_OUTPUT_BYTES as number;
+		const source: RuntimeSkillSource = {
+			registry: {
+				schemaVersion: RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
+				skillsHash: 'hash',
+				skills: [
+					{
+						id: 'large-skill',
+						name: 'large-skill',
+						description: 'Large skill',
+						hash: 'hash',
+						linkedFiles: emptyLinkedFiles(),
+					},
+				],
+			},
+			loadSkill: async () =>
+				await Promise.resolve({
+					id: 'large-skill',
+					name: 'large-skill',
+					description: 'Large skill',
+					instructions: 'x'.repeat(runtimeSkillMaxOutputBytes + 1),
+				}),
+		};
+		const { workspace } = createMockWorkspace();
+		const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+
+		await materializeRuntimeSkillsIntoWorkspace({
+			source,
+			workspace,
+			root: '/home/daytona/workspace',
+			logger,
+		});
+
+		const [[message, meta]] = logger.warn.mock.calls as [
+			[string, { skill?: unknown; bytes?: unknown; maxBytes?: unknown }],
+		];
+		expect(message).toBe('Runtime skill file exceeds load_skill output limit');
+		expect(meta.skill).toBe('large-skill');
+		expect(typeof meta.bytes).toBe('number');
+		expect(meta.maxBytes).toBe(runtimeSkillMaxOutputBytes);
 	});
 });

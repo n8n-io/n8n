@@ -123,6 +123,7 @@ export {
 	loadRuntimeSkillSourceFromDirectory,
 	parseRuntimeSkillMarkdown,
 	renderSkillCatalogPrompt,
+	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	RUNTIME_SKILL_TOOL_NAMES,
 	RUNTIME_SKILL_FILE_NAME,
 	RUNTIME_SKILL_LINKED_FILE_GROUPS,

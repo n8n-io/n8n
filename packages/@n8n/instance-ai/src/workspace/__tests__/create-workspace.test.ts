@@ -1,11 +1,6 @@
 import { Workspace } from '@n8n/agents';
 
-import {
-	type SandboxConfig,
-	createSandbox,
-	createWorkspace,
-	getWorkspaceMutationGuardSetter,
-} from '../create-workspace';
+import { type SandboxConfig, createSandbox, createWorkspace } from '../create-workspace';
 import { DaytonaFilesystem } from '../daytona-filesystem';
 import { DaytonaSandbox } from '../daytona-sandbox';
 import { LocalFilesystem } from '../local-filesystem';
@@ -203,20 +198,6 @@ describe('createWorkspace', () => {
 		expect(result).toBeInstanceOf(Workspace);
 		expect(result?.sandbox).toBe(sandbox);
 		expect(result?.filesystem).toBeInstanceOf(DaytonaFilesystem);
-	});
-
-	it('should expose a mutation guard setter for guarded workspaces', async () => {
-		const sandbox = new DaytonaSandbox({ apiKey: 'key' });
-		const result = createWorkspace(sandbox, { guardedFilesystem: true });
-
-		expect(result).toBeInstanceOf(Workspace);
-		const setMutationGuard = getWorkspaceMutationGuardSetter(result);
-		expect(setMutationGuard).toEqual(expect.any(Function));
-		setMutationGuard?.(() => ({ guidance: 'wait for the active write to finish' }));
-
-		await expect(result?.filesystem?.writeFile('/tmp/file.txt', 'content')).rejects.toThrow(
-			'wait for the active write to finish',
-		);
 	});
 
 	it('should wrap N8nSandboxServiceSandbox with N8nSandboxFilesystem', () => {

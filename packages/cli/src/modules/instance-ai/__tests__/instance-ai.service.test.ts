@@ -12,7 +12,6 @@ jest.mock('@n8n/instance-ai', () => {
 		createDomainAccessTracker: jest.fn(),
 		createSandbox: jest.fn(),
 		createWorkspace: jest.fn(),
-		getWorkspaceMutationGuardSetter: jest.fn(),
 		cleanupWorkspaceProcesses: jest.fn().mockResolvedValue(undefined),
 		createLazyRuntimeWorkspace: jest.fn(
 			(args: { id?: string; ensureWorkspace: () => Promise<unknown> }) => ({
@@ -823,7 +822,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			expect.objectContaining({ useSnapshotFallback: true }),
 		);
 		expect(createWorkspace).toHaveBeenCalledTimes(1);
-		expect(createWorkspace).toHaveBeenCalledWith(sandbox, { guardedFilesystem: true });
+		expect(createWorkspace).toHaveBeenCalledWith(sandbox);
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
 		expect(service.sandboxCreations.size).toBe(0);
@@ -1078,7 +1077,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			expect.objectContaining({ useSnapshotFallback: true }),
 		);
 		expect(createWorkspace).toHaveBeenCalledTimes(1);
-		expect(createWorkspace).toHaveBeenCalledWith(sandbox, { guardedFilesystem: true });
+		expect(createWorkspace).toHaveBeenCalledWith(sandbox);
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
 	});

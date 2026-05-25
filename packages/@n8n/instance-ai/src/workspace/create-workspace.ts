@@ -3,7 +3,6 @@ import { Workspace, type WorkspaceFilesystem } from '@n8n/agents';
 import type { ErrorReporter, Logger } from '../logger';
 import { DaytonaFilesystem } from './daytona-filesystem';
 import { DaytonaSandbox } from './daytona-sandbox';
-import { createGuardedFilesystem, type FilesystemMutationGuardSetter } from './guarded-filesystem';
 import { loadDaytona } from './lazy-daytona';
 import { LocalFilesystem } from './local-filesystem';
 import { LocalSandbox } from './local-sandbox';
@@ -69,12 +68,6 @@ export interface CreateSandboxOptions {
 	errorReporter?: ErrorReporter;
 	useSnapshotFallback?: boolean;
 }
-
-export interface CreateWorkspaceOptions {
-	guardedFilesystem?: boolean;
-}
-
-const workspaceMutationGuards = new WeakMap<Workspace, FilesystemMutationGuardSetter>();
 
 const NOOP_LOGGER: Logger = {
 	info: () => {},
@@ -161,20 +154,11 @@ export async function createSandbox(
  */
 export function createWorkspace(
 	sandbox: DaytonaSandbox | LocalSandbox | N8nSandboxServiceSandbox | undefined,
-	options: CreateWorkspaceOptions = {},
 ): Workspace | undefined {
 	if (!sandbox) return undefined;
 
-	const createWorkspaceWithFilesystem = (filesystem: WorkspaceFilesystem) => {
-		if (!options.guardedFilesystem) {
-			return new Workspace({ sandbox, filesystem });
-		}
-
-		const guarded = createGuardedFilesystem(filesystem);
-		const workspace = new Workspace({ sandbox, filesystem: guarded.filesystem });
-		workspaceMutationGuards.set(workspace, guarded.setMutationGuard);
-		return workspace;
-	};
+	const createWorkspaceWithFilesystem = (filesystem: WorkspaceFilesystem) =>
+		new Workspace({ sandbox, filesystem });
 
 	if (sandbox instanceof LocalSandbox) {
 		return createWorkspaceWithFilesystem(new LocalFilesystem({ basePath: './workspace' }));
@@ -185,12 +169,6 @@ export function createWorkspace(
 	}
 
 	return createWorkspaceWithFilesystem(new DaytonaFilesystem(sandbox));
-}
-
-export function getWorkspaceMutationGuardSetter(
-	workspace: Workspace | undefined,
-): FilesystemMutationGuardSetter | undefined {
-	return workspace ? workspaceMutationGuards.get(workspace) : undefined;
 }
 
 export async function cleanupWorkspaceProcesses(workspace: Workspace | undefined): Promise<void> {

@@ -31,7 +31,6 @@ import {
 	cleanupWorkspaceProcesses,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
-	getWorkspaceMutationGuardSetter,
 	setupSandboxWorkspace,
 	loadInstanceAiRuntimeSkillSource,
 	createInstanceAiTraceContext,
@@ -67,7 +66,6 @@ import {
 	type ConfirmationData,
 	type BuiltMemory,
 	type DomainAccessTracker,
-	type FilesystemMutationGuardSetter,
 	type InstanceAiContext,
 	type ManagedBackgroundTask,
 	type McpServerConfig,
@@ -154,7 +152,6 @@ const ORCHESTRATOR_AGENT_ID = 'agent-001';
 type RuntimeSandboxEntry = {
 	sandbox: NonNullable<Awaited<ReturnType<typeof createSandbox>>>;
 	workspace: NonNullable<ReturnType<typeof createWorkspace>>;
-	setFilesystemMutationGuard?: ReturnType<typeof getWorkspaceMutationGuardSetter>;
 	setupComplete: boolean;
 	setupPromise: Promise<void> | undefined;
 	expiresAt: number;
@@ -801,7 +798,7 @@ export class InstanceAiService {
 			errorReporter: this.errorReporter,
 			useSnapshotFallback: true,
 		});
-		const workspace = createWorkspace(sandbox, { guardedFilesystem: true });
+		const workspace = createWorkspace(sandbox);
 		if (!sandbox || !workspace) return undefined;
 		try {
 			await workspace.init();
@@ -818,7 +815,6 @@ export class InstanceAiService {
 		const entry: RuntimeSandboxEntry = {
 			sandbox,
 			workspace,
-			setFilesystemMutationGuard: getWorkspaceMutationGuardSetter(workspace),
 			setupComplete: false,
 			setupPromise: undefined,
 			expiresAt: this.nextSandboxExpiry(),
@@ -2605,17 +2601,8 @@ export class InstanceAiService {
 		const baseRuntimeSkills = loadInstanceAiRuntimeSkillSource();
 		let runtimeSkills = baseRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
-		let setFilesystemMutationGuard: FilesystemMutationGuardSetter | undefined;
 		if (adminSettings.sandboxEnabled) {
 			let sandboxEntryPromise: Promise<RuntimeSandboxEntry | undefined> | undefined;
-			let filesystemMutationGuard: Parameters<FilesystemMutationGuardSetter>[0] | undefined;
-			const applyFilesystemMutationGuard = (entry: RuntimeSandboxEntry | undefined) => {
-				entry?.setFilesystemMutationGuard?.(filesystemMutationGuard);
-			};
-			setFilesystemMutationGuard = (guard) => {
-				filesystemMutationGuard = guard;
-				applyFilesystemMutationGuard(this.sandboxes.get(threadId));
-			};
 			const getSandboxEntry = async () => {
 				sandboxEntryPromise ??= this.getOrCreateWorkspaceEntry(threadId, user, runId).catch(
 					(error: unknown) => {
@@ -2624,14 +2611,10 @@ export class InstanceAiService {
 					},
 				);
 
-				const entry = await sandboxEntryPromise;
-				applyFilesystemMutationGuard(entry);
-				return entry;
+				return await sandboxEntryPromise;
 			};
 			const getSetupSandboxEntry = async () => {
-				const entry = await this.getOrCreateWorkspace(threadId, user, context, runId);
-				applyFilesystemMutationGuard(entry);
-				return entry;
+				return await this.getOrCreateWorkspace(threadId, user, context, runId);
 			};
 
 			runtimeWorkspace = createLazyRuntimeWorkspace({
@@ -2672,6 +2655,7 @@ export class InstanceAiService {
 				: undefined,
 			localMcpServer: context.localMcpServer,
 			runtimeSkills,
+			runtimeSkillCatalog: baseRuntimeSkills,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			webhookBaseUrl: this.webhookBaseUrl,
 			formBaseUrl: this.formBaseUrl,
@@ -2706,7 +2690,6 @@ export class InstanceAiService {
 				this.sendCorrectionToTask(threadId, taskId, correction),
 			workflowTaskService: workflowTasks,
 			workspace: runtimeWorkspace,
-			setFilesystemMutationGuard,
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 			tracingProxyConfig,

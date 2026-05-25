@@ -1,4 +1,10 @@
-import type { BuiltTool } from '@n8n/agents';
+import {
+	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
+	type BuiltTool,
+	type RuntimeSkillLinkedFiles,
+	type RuntimeSkillSource,
+	type Workspace,
+} from '@n8n/agents';
 import {
 	applyBranchReadOnlyOverrides,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
@@ -8,6 +14,7 @@ import {
 import { UserError } from 'n8n-workflow';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import { materializeRuntimeSkillsIntoWorkspace } from '../../../skills/materialize-runtime-skills';
 import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext, InstanceAiContext } from '../../../types';
 import { createRemediation } from '../../../workflow-loop';
@@ -33,6 +40,7 @@ const {
 	determineVerificationReadiness,
 	getBuilderSessionMemory,
 	builderWorkflowWorkspaceLayout,
+	materializeBuilderRuntimeSkills,
 	mergeLatestVerificationIntoOutcome,
 	settleMissingMainWorkflowSubmit,
 	supportingWorkflowIdsFromSubmitAttempts,
@@ -71,6 +79,60 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		abortSignal: new AbortController().signal,
 		...overrides,
 	} as OrchestrationContext;
+}
+
+function emptyRuntimeSkillLinkedFiles(): RuntimeSkillLinkedFiles {
+	return {
+		references: [],
+		templates: [],
+		scripts: [],
+		assets: [],
+		examples: [],
+		other: [],
+	};
+}
+
+function createPathTemplatedRuntimeSkillSource(): RuntimeSkillSource {
+	const skillDirTemplate = '$' + '{N8N_SKILL_DIR}';
+	const workspaceDirTemplate = '$' + '{N8N_WORKSPACE_DIR}';
+
+	return {
+		registry: {
+			schemaVersion: RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
+			skillsHash: 'hash',
+			skills: [
+				{
+					id: 'path-skill',
+					name: 'path-skill',
+					description: 'Path skill',
+					hash: 'hash',
+					linkedFiles: emptyRuntimeSkillLinkedFiles(),
+				},
+			],
+		},
+		loadSkill: async () =>
+			await Promise.resolve({
+				id: 'path-skill',
+				name: 'path-skill',
+				description: 'Path skill',
+				instructions: `Use ${skillDirTemplate} inside ${workspaceDirTemplate}.`,
+			}),
+	};
+}
+
+function createRuntimeSkillWorkspace() {
+	const writes = new Map<string, string>();
+	const writeFile = jest.fn(async (path: string, content: string | Buffer) => {
+		writes.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
+		await Promise.resolve();
+	});
+
+	return {
+		writes,
+		workspace: {
+			filesystem: { writeFile },
+		} as unknown as Workspace,
+	};
 }
 
 function createMockDomainContext(
@@ -168,6 +230,34 @@ describe('getBuilderSessionMemory', () => {
 
 	it('skips memory when the context has no memory store', () => {
 		expect(getBuilderSessionMemory({}, true)).toBeUndefined();
+	});
+});
+
+describe('materializeBuilderRuntimeSkills', () => {
+	it('materializes from the raw runtime skill catalog, not an already-materialized source', async () => {
+		const rawSource = createPathTemplatedRuntimeSkillSource();
+		const firstTarget = createRuntimeSkillWorkspace();
+		const firstMaterialized = await materializeRuntimeSkillsIntoWorkspace({
+			source: rawSource,
+			workspace: firstTarget.workspace,
+			root: '/home/daytona/first',
+		});
+		if (!firstMaterialized) throw new Error('Expected first materialization');
+
+		const builderTarget = createRuntimeSkillWorkspace();
+		await materializeBuilderRuntimeSkills(
+			createMockContext({
+				runtimeSkillCatalog: rawSource,
+				runtimeSkills: firstMaterialized.source,
+			}),
+			builderTarget.workspace,
+			'/home/daytona/builder',
+		);
+
+		const skillFile = builderTarget.writes.get('/home/daytona/builder/skills/path-skill/SKILL.md');
+		expect(skillFile).toContain('/home/daytona/builder/skills/path-skill');
+		expect(skillFile).toContain('/home/daytona/builder');
+		expect(skillFile).not.toContain('/home/daytona/first');
 	});
 });
 

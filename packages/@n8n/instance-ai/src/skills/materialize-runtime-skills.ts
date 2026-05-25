@@ -1,4 +1,5 @@
 import {
+	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	RUNTIME_SKILL_FILE_NAME,
 	type RuntimeSkillContent,
 	type RuntimeSkillDependenciesContract,
@@ -343,6 +344,23 @@ function linkedFilesFor(entry: RuntimeSkillRegistryEntry): RuntimeSkillLinkedFil
 	return LINKED_FILE_GROUPS.flatMap((group) => entry.linkedFiles[group]);
 }
 
+function warnIfExceedsLoadSkillLimit(
+	logger: Logger | undefined,
+	entry: RuntimeSkillRegistryEntry,
+	filePath: string,
+	content: string,
+): void {
+	const bytes = Buffer.byteLength(content, 'utf8');
+	if (bytes <= RUNTIME_SKILL_MAX_OUTPUT_BYTES) return;
+
+	logger?.warn('Runtime skill file exceeds load_skill output limit', {
+		skill: entry.name,
+		path: filePath,
+		bytes,
+		maxBytes: RUNTIME_SKILL_MAX_OUTPUT_BYTES,
+	});
+}
+
 export async function materializeRuntimeSkillsIntoWorkspace({
 	source,
 	workspace,
@@ -352,47 +370,48 @@ export async function materializeRuntimeSkillsIntoWorkspace({
 	if (source.registry.skills.length === 0) return undefined;
 
 	const rootDir = posixJoin(root, SANDBOX_RUNTIME_SKILLS_DIR);
-	const materialized: MaterializedRuntimeSkill[] = [];
 
-	for (const entry of source.registry.skills) {
-		const skill = await source.loadSkill(entry.id);
-		if (!skill) {
-			throw new Error(`Runtime skill "${entry.name}" is registered but cannot be loaded`);
-		}
-
-		const directory = materializedSkillDirectory(root, entry);
-		const path = posixJoin(directory, RUNTIME_SKILL_FILE_NAME);
-		await writeWorkspaceFile(
-			workspace,
-			path,
-			renderRuntimeSkillMarkdown(skill, entry, directory, root),
-			logger,
-		);
-
-		const linkedFiles = linkedFilesFor(entry);
-		if (linkedFiles.length > 0 && !source.loadFile) {
-			throw new Error(`Runtime skill "${entry.name}" has linked files but no file loader`);
-		}
-
-		for (const linkedFile of linkedFiles) {
-			const { relativePath, materializedPath } = safeLinkedFilePath(directory, entry, linkedFile);
-			const content = await source.loadFile?.(entry.id, relativePath);
-			if (!content) {
-				throw new Error(
-					`Runtime skill "${entry.name}" linked file is registered but cannot be loaded: ${linkedFile.path}`,
-				);
+	const materialized = await Promise.all(
+		source.registry.skills.map(async (entry): Promise<MaterializedRuntimeSkill> => {
+			const skill = await source.loadSkill(entry.id);
+			if (!skill) {
+				throw new Error(`Runtime skill "${entry.name}" is registered but cannot be loaded`);
 			}
 
-			await writeWorkspaceFile(
-				workspace,
-				materializedPath,
-				substituteRuntimeSkillVars(content.content, directory, root),
-				logger,
-			);
-		}
+			const directory = materializedSkillDirectory(root, entry);
+			const path = posixJoin(directory, RUNTIME_SKILL_FILE_NAME);
+			const skillMarkdown = renderRuntimeSkillMarkdown(skill, entry, directory, root);
+			warnIfExceedsLoadSkillLimit(logger, entry, path, skillMarkdown);
+			await writeWorkspaceFile(workspace, path, skillMarkdown, logger);
 
-		materialized.push({ id: entry.id, name: entry.name, path, directory });
-	}
+			const linkedFiles = linkedFilesFor(entry);
+			if (linkedFiles.length > 0 && !source.loadFile) {
+				throw new Error(`Runtime skill "${entry.name}" has linked files but no file loader`);
+			}
+
+			await Promise.all(
+				linkedFiles.map(async (linkedFile) => {
+					const { relativePath, materializedPath } = safeLinkedFilePath(
+						directory,
+						entry,
+						linkedFile,
+					);
+					const content = await source.loadFile?.(entry.id, relativePath);
+					if (!content) {
+						throw new Error(
+							`Runtime skill "${entry.name}" linked file is registered but cannot be loaded: ${linkedFile.path}`,
+						);
+					}
+
+					const materializedContent = substituteRuntimeSkillVars(content.content, directory, root);
+					warnIfExceedsLoadSkillLimit(logger, entry, materializedPath, materializedContent);
+					await writeWorkspaceFile(workspace, materializedPath, materializedContent, logger);
+				}),
+			);
+
+			return { id: entry.id, name: entry.name, path, directory };
+		}),
+	);
 
 	const registry = materializedRegistry(source.registry, materialized);
 	const registryPath = posixJoin(rootDir, SANDBOX_RUNTIME_SKILL_REGISTRY_FILE);
@@ -403,12 +422,9 @@ export async function materializeRuntimeSkillsIntoWorkspace({
 		logger,
 	);
 
-	const defaultSkill =
-		materialized.find((skill) => skill.name === 'data-table-manager') ?? materialized[0];
 	const env: NodeJS.ProcessEnv = {
 		[N8N_WORKSPACE_DIR_ENV]: root,
 		[N8N_SKILLS_DIR_ENV]: rootDir,
-		...(defaultSkill ? { [N8N_SKILL_DIR_ENV]: defaultSkill.directory } : {}),
 	};
 
 	logger?.debug('Materialized runtime skills into workspace', {

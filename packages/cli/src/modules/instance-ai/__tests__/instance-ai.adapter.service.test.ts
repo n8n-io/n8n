@@ -1201,6 +1201,24 @@ describe('createDataTableAdapter', () => {
 
 			await expect(adapter.getSchema('dt-1')).rejects.toThrow('Data table "dt-1" not found');
 		});
+
+		it('resolves table references with the requested permission scope', async () => {
+			const { adapter } = createDataTableAdapterForTests();
+
+			const result = await adapter.resolveTableReference?.('dt-1', { permission: 'readRow' });
+
+			expect(mockedUserHasScopes).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'user-1' }),
+				['dataTable:readRow'],
+				false,
+				{ dataTableId: 'dt-1' },
+			);
+			expect(result).toEqual({
+				id: 'dt-1',
+				name: 'Orders',
+				projectId: 'team-project-id',
+			});
+		});
 	});
 
 	describe('mutation result metadata', () => {

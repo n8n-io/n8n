@@ -41,7 +41,6 @@ import type {
 	WorkflowLoopAction,
 	WorkflowLoopState,
 } from './workflow-loop/workflow-loop-state';
-import type { FilesystemMutationGuardSetter } from './workspace/guarded-filesystem';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -406,6 +405,12 @@ export interface DataTableSummary {
 	updatedAt: string;
 }
 
+export interface DataTableReference {
+	id: string;
+	name: string;
+	projectId: string;
+}
+
 export interface DataTableColumnInfo {
 	id: string;
 	name: string;
@@ -436,6 +441,8 @@ export interface DataTableIdOptions {
 	projectId?: string;
 }
 
+export type DataTableReferencePermission = 'read' | 'readRow' | 'writeRow' | 'update' | 'delete';
+
 export interface InstanceAiDataTableService {
 	list(options?: { projectId?: string }): Promise<DataTableSummary[]>;
 	create(
@@ -444,6 +451,10 @@ export interface InstanceAiDataTableService {
 		options?: { projectId?: string },
 	): Promise<DataTableSummary>;
 	delete(dataTableId: string, options?: DataTableIdOptions): Promise<void>;
+	resolveTableReference?(
+		dataTableId: string,
+		options?: DataTableIdOptions & { permission?: DataTableReferencePermission },
+	): Promise<DataTableReference>;
 	getSchema(dataTableId: string, options?: DataTableIdOptions): Promise<DataTableColumnInfo[]>;
 	addColumn(
 		dataTableId: string,
@@ -1060,6 +1071,11 @@ export interface OrchestrationContext {
 	 * replace this with a workspace-materialized source before attaching it.
 	 */
 	runtimeSkills?: RuntimeSkillSource;
+	/**
+	 * Raw bundled runtime skill source. Use this when materializing skills for a
+	 * concrete workspace target so already-materialized paths are not copied.
+	 */
+	runtimeSkillCatalog?: RuntimeSkillSource;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
 	oauth2CallbackUrl?: string;
 	/** Webhook base URL for the n8n instance (e.g. http://localhost:5678/webhook) — used to construct webhook URLs for created workflows */
@@ -1076,8 +1092,6 @@ export interface OrchestrationContext {
 	schedulePlannedTasks?: () => Promise<void>;
 	/** Shared runtime workspace for the current orchestration context. */
 	workspace?: Workspace;
-	/** Optional mutation guard for shared runtime workspace filesystems. */
-	setFilesystemMutationGuard?: FilesystemMutationGuardSetter;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
 	/** Native memory store — used to retrieve thread message history for sub-agents. */

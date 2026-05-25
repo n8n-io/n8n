@@ -123,7 +123,16 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toMatch(/Standalone data-table work/);
 			expect(prompt).toContain('`data-table-manager` skill');
+			expect(prompt).toContain('Natural requests like "what data tables do I have?"');
 			expect(prompt).toContain('Do not call `plan`, `create-tasks`, or `delegate`');
+		});
+
+		it('loads the data-table skill before planning workflows that use tables', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain(
+				'If the workflow will create, read, update, seed, import, or store records in n8n Data Tables, load the `data-table-manager` skill before `plan`',
+			);
 		});
 
 		it('routes existing-workflow edits through bypassPlan', () => {

@@ -99,6 +99,7 @@ const schemaAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 });
 
@@ -109,6 +110,7 @@ const queryAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	filter: filterSchema.optional().describe('Row filter conditions'),
 	limit: z
@@ -246,6 +248,33 @@ const allActions = [
 
 type FullInput = z.infer<z.ZodDiscriminatedUnion<'action', typeof allActions>>;
 
+type DataTableReferenceInput = {
+	dataTableId: string;
+	dataTableName?: string;
+	projectId?: string;
+};
+
+async function resolveDataTableReference(
+	context: InstanceAiContext,
+	input: DataTableReferenceInput,
+	permission: 'read' | 'readRow',
+): Promise<{ dataTableId: string; dataTableName?: string; projectId?: string }> {
+	const reference = await context.dataTableService.resolveTableReference?.(input.dataTableId, {
+		projectId: input.projectId,
+		permission,
+	});
+
+	const table: { dataTableId: string; dataTableName?: string; projectId?: string } = {
+		dataTableId: reference?.id ?? input.dataTableId,
+	};
+	const dataTableName = reference?.name ?? input.dataTableName;
+	const projectId = reference?.projectId ?? input.projectId;
+	if (dataTableName !== undefined) table.dataTableName = dataTableName;
+	if (projectId !== undefined) table.projectId = projectId;
+
+	return table;
+}
+
 // ── Handlers ───────────────────────────────────────────────────────────────
 
 async function handleList(
@@ -260,16 +289,18 @@ async function handleSchema(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'schema' }>,
 ) {
+	const table = await resolveDataTableReference(context, input, 'read');
 	const columns = await context.dataTableService.getSchema(input.dataTableId, {
 		projectId: input.projectId,
 	});
-	return { columns };
+	return { ...table, columns };
 }
 
 async function handleQuery(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'query' }>,
 ) {
+	const table = await resolveDataTableReference(context, input, 'readRow');
 	const result = await context.dataTableService.queryRows(input.dataTableId, {
 		filter: input.filter,
 		limit: input.limit,
@@ -282,12 +313,13 @@ async function handleQuery(
 
 	if (remaining > 0) {
 		return {
+			...table,
 			...result,
 			hint: `${remaining} more rows available. Use additional paginated data-tables queries for bulk operations.`,
 		};
 	}
 
-	return result;
+	return { ...table, ...result };
 }
 
 async function handleCreate(
