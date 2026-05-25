@@ -414,6 +414,21 @@ Object.defineProperty(window, 'speechSynthesis', {
 
 loadLanguage('en', englishBaseText as unknown as LocaleMessages);
 
+// element-plus ElTable schedules a debounced doLayout that calls
+// requestAnimationFrame on the trailing edge. When the timer fires after the
+// test finishes, jsdom has torn down the window proxy and the bare
+// requestAnimationFrame reference resolves to globalThis, where it is
+// undefined — vitest 4 promotes the resulting ReferenceError to a run-level
+// failure. Defining it on globalThis (not window) keeps it alive past teardown.
+// Unconditional assignment (no ??=): jsdom seeds window.requestAnimationFrame
+// at startup but revokes it during teardown, and consumers like CodeMirror
+// capture the window reference at construction (this.win.requestAnimationFrame),
+// so we need to own the property — not just fill in when absent — to survive
+// teardown. See DEVP-206 (and DEVP-201 for the original bare-global flavour).
+globalThis.requestAnimationFrame = (cb: FrameRequestCallback) =>
+	setTimeout(() => cb(performance.now()), 0) as unknown as number;
+globalThis.cancelAnimationFrame = (id: number) => clearTimeout(id);
+
 // Block jsdom XHRs from making real network requests in tests. Unmocked store
 // actions used to fire real /rest/* calls; on Node 22 the resulting dual-stack
 // DNS AggregateError emits via socketErrorListener AFTER the test has finished,

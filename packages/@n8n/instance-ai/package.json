@@ -48,7 +48,6 @@
     }
   },
   "dependencies": {
-    "@ai-sdk/provider-v5": "npm:@ai-sdk/provider@2.0.0",
     "@daytonaio/sdk": "catalog:",
     "@joplin/turndown-plugin-gfm": "^1.0.12",
     "@mozilla/readability": "^0.6.0",
@@ -77,7 +76,7 @@
     "zod-from-json-schema-v3": "npm:zod-from-json-schema@^0.0.5"
   },
   "devDependencies": {
-    "@ai-sdk/anthropic": "2.0.61",
+    "@ai-sdk/anthropic": "catalog:",
     "@langchain/anthropic": "catalog:",
     "@langchain/core": "catalog:",
     "@n8n/ai-workflow-builder": "workspace:*",
