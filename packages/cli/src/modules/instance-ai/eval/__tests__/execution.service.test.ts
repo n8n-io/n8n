@@ -29,18 +29,26 @@ jest.mock('../mock-handler', () => ({
 }));
 jest.mock('../workflow-analysis', () => ({
 	assertUnpinCompatibility: jest.fn(),
+	buildVendorLlmRouting: jest.fn().mockReturnValue({
+		subNodeToRoot: new Map(),
+		rootToSubNode: new Map(),
+	}),
 	generateMockHints: jest.fn(),
 	identifyNodesForHints: jest.fn(),
 	identifyNodesForPinData: jest.fn(),
 }));
 const mockWireServerStart = jest.fn();
 const mockWireServerStop = jest.fn();
+const capturedWireServerOptions: { last: unknown } = { last: undefined };
 jest.mock('../llm-wire-server', () => ({
-	LlmWireServer: jest.fn().mockImplementation(() => ({
-		start: mockWireServerStart,
-		stop: mockWireServerStop,
-		url: 'http://127.0.0.1:54321',
-	})),
+	LlmWireServer: jest.fn().mockImplementation((options: unknown) => {
+		capturedWireServerOptions.last = options;
+		return {
+			start: mockWireServerStart,
+			stop: mockWireServerStop,
+			url: 'http://127.0.0.1:54321',
+		};
+	}),
 }));
 const mockRestoreNoProxy = jest.fn();
 jest.mock('../proxy-loopback', () => ({
@@ -476,6 +484,126 @@ describe('EvalExecutionService', () => {
 				expect(mockProcessRunExecutionData).not.toHaveBeenCalled();
 				// Server was never started — guard runs before boot.
 				expect(mockWireServerStart).not.toHaveBeenCalled();
+			});
+
+			it('records a wire-server turn against the AI root in nodeResults via onIntercept', async () => {
+				// Simulate the wire server firing onIntercept mid-execution by
+				// invoking the captured callback before processRunExecutionData
+				// resolves. This exercises `recordWireServerTurn` end-to-end
+				// without booting a real Express server.
+				mockProcessRunExecutionData.mockImplementation(async () => {
+					const opts = capturedWireServerOptions.last as {
+						onIntercept?: (turn: unknown) => void;
+					};
+					opts.onIntercept?.({
+						rootName: 'Agent',
+						url: 'https://api.openai.com/v1/chat/completions',
+						method: 'POST',
+						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						requestBody: { model: 'gpt-4o', messages: [] },
+						mockResponse: { content: 'hello from mock' },
+					});
+					return makeIRun();
+				});
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['Agent'],
+				});
+
+				expect(result.nodeResults['Agent']).toBeDefined();
+				expect(result.nodeResults['Agent'].executionMode).toBe('mocked');
+				expect(result.nodeResults['Agent'].interceptedRequests).toEqual([
+					{
+						url: 'https://api.openai.com/v1/chat/completions',
+						method: 'POST',
+						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						requestBody: { model: 'gpt-4o', messages: [] },
+						mockResponse: { content: 'hello from mock' },
+					},
+				]);
+			});
+
+			it('preserves a pre-existing pinned executionMode when a wire-server turn fires for the same name', async () => {
+				// Force a name collision between the bypass-pin path and the
+				// wire-server interception path. The bypass-pin loop in
+				// execute() pre-marks `bypassPinData` keys as 'pinned' BEFORE
+				// runWorkflow fires, so injecting 'Agent' into bypassPinData
+				// (and then firing onIntercept for the same name during the
+				// mocked run) exercises the genuine collision case.
+				generateMockHintsMock.mockResolvedValue({
+					...makeEmptyHints(),
+					bypassPinData: {
+						Agent: [{ json: { triggered: 'pre-pin' } }],
+					},
+				});
+
+				mockProcessRunExecutionData.mockImplementation(async () => {
+					const opts = capturedWireServerOptions.last as {
+						onIntercept?: (turn: unknown) => void;
+					};
+					opts.onIntercept?.({
+						rootName: 'Agent',
+						url: 'https://api.openai.com/v1/chat/completions',
+						method: 'POST',
+						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						requestBody: { model: 'gpt-4o', messages: [] },
+						mockResponse: { content: 'reply' },
+					});
+					return makeIRun();
+				});
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['Agent'],
+				});
+
+				// 'pinned' from the bypass pass survives — preservation rule.
+				expect(result.nodeResults['Agent'].executionMode).toBe('pinned');
+				// The turn is still recorded against the same entry.
+				expect(result.nodeResults['Agent'].interceptedRequests).toHaveLength(1);
+			});
+
+			it('upgrades a pre-marked "real" entry to "mocked" when a wire-server turn fires', async () => {
+				// checkNodeConfig() pre-marks any node with a config-issue as
+				// `executionMode: 'real'` BEFORE runWorkflow runs. If a wire-
+				// server turn later arrives for that node, the turn IS mocked
+				// and should be classified as such — 'real' must not stick.
+				// Reproduce by making the node's config check fail.
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: {
+						properties: [
+							{
+								name: 'requiredField',
+								type: 'string',
+								required: true,
+								default: '',
+								displayName: 'Required Field',
+							},
+						],
+					} as unknown as INodeTypeDescription,
+				} as never);
+
+				mockProcessRunExecutionData.mockImplementation(async () => {
+					const opts = capturedWireServerOptions.last as {
+						onIntercept?: (turn: unknown) => void;
+					};
+					opts.onIntercept?.({
+						rootName: 'HTTP Request',
+						url: 'https://api.openai.com/v1/chat/completions',
+						method: 'POST',
+						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						requestBody: { model: 'gpt-4o', messages: [] },
+						mockResponse: { content: 'reply' },
+					});
+					return makeIRun();
+				});
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+					unpinNodes: ['Agent'],
+				});
+
+				// 'real' (from config-issue pre-marking) gets upgraded to 'mocked'.
+				expect(result.nodeResults['HTTP Request']).toBeDefined();
+				expect(result.nodeResults['HTTP Request'].executionMode).toBe('mocked');
 			});
 		});
 	});

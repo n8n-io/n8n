@@ -3,6 +3,7 @@ import { In } from '@n8n/typeorm';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
+import { McpRegistryServerEntity } from './registry/mcp-registry-server.entity';
 import { McpRegistryServerRepository } from './registry/mcp-registry-server.repository';
 import { McpRegistryService } from './registry/mcp-registry.service';
 import { toEntity } from './registry/mcp-registry.types';
@@ -23,24 +24,13 @@ export class McpRegistryTestController {
 	async seed() {
 		this.assertE2ETestsEnabled();
 
-		const servers = [notionMockServer, linearMockServer];
-		const existingBySlug = new Map(
-			(
-				await this.repository.findBy({
-					slug: In(servers.map(({ slug }) => slug)),
-				})
-			).map((entity) => [entity.slug, entity.id]),
-		);
-		const entities = servers.map((server) => {
-			const entity = toEntity(server);
-			const existingId = existingBySlug.get(server.slug);
-			if (existingId !== undefined) {
-				entity.id = existingId;
-			}
+		const entities = [notionMockServer, linearMockServer].map(toEntity);
 
-			return entity;
+		// Replace rather than upsert: a startup refresh can leave rows whose slug collides with our mocks at a different id, which `ON CONFLICT (id) DO UPDATE` does not cover.
+		await this.repository.manager.transaction(async (manager) => {
+			await manager.createQueryBuilder().delete().from(McpRegistryServerEntity).execute();
+			await manager.insert(McpRegistryServerEntity, entities);
 		});
-		await this.repository.upsert(entities, ['slug']);
 		await this.service.handleReloadMcpRegistry();
 
 		return { ok: true, count: entities.length };
