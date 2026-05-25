@@ -192,7 +192,7 @@ jobs:
             -e SANDBOX_RUNNER_CONTROL_GRPC_LISTEN_ADDR=:9091 \
             -e SANDBOX_RUNNER_CONTROL_GRPC_ADVERTISE_ADDR=sandbox-runner:9091 \
             -e SANDBOX_RUNNER_ID=ci-runner-1 \
-            -e SANDBOX_RUNNER_DOCKER_SANDBOX_IMAGE=n8nio/n8n-sandbox:latest \
+            -e SANDBOX_RUNNER_DOCKER_SANDBOX_IMAGE=n8nio/n8n-sandbox-service-sandbox:latest \
             -e SANDBOX_RUNNER_REGISTRATION_GRPC_CA_FILE=/tls/ca.crt \
             -e SANDBOX_RUNNER_REGISTRATION_GRPC_CERT_FILE=/tls/grpc-client.crt \
             -e SANDBOX_RUNNER_REGISTRATION_GRPC_KEY_FILE=/tls/grpc-client.key \
