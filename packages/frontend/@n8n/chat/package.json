@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test:dev": "vitest",
     "test": "vitest run",
+    "test:changed": "node scripts/test-changed.mjs",
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",

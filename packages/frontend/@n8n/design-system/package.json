@@ -11,6 +11,7 @@
     "typecheck": "vue-tsc --noEmit",
     "typecheck:watch": "vue-tsc --watch --noEmit",
     "test": "vitest run",
+    "test:changed": "node scripts/test-changed.mjs",
     "test:dev": "vitest",
     "chromatic": "chromatic",
     "format": "biome format --write .  && prettier --write . --ignore-path ../../../../.prettierignore",
