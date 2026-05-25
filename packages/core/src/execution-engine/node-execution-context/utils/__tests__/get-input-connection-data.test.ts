@@ -633,7 +633,7 @@ describe('makeHandleToolInvocation', () => {
 		]);
 	});
 
-	it('should handle engine requests and return a warning message', async () => {
+	it('should throw a clear UserError when a tool returns an EngineRequest from inside a parent agent', async () => {
 		const mockContext = mock<IExecuteFunctions>();
 		contextFactory.mockReturnValue(mockContext);
 		const mockResult: EngineRequest = { actions: [], metadata: {} };
@@ -645,21 +645,10 @@ describe('makeHandleToolInvocation', () => {
 			connectedNodeType,
 			runExecutionData,
 		);
-		const result = await handleToolInvocation(toolArgs);
 
-		expect(result).toBe(
-			'"Error: The Tool attempted to return an engine request, which is not supported in Agents"',
+		await expect(handleToolInvocation(toolArgs)).rejects.toThrow(
+			/connected tool returned an engine request/i,
 		);
-		expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
-			[
-				{
-					json: {
-						response:
-							'Error: The Tool attempted to return an engine request, which is not supported in Agents',
-					},
-				},
-			],
-		]);
 	});
 
 	it('should continue if json and binary data exist', async () => {

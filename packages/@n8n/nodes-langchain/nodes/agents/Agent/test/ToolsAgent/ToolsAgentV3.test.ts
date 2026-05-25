@@ -19,6 +19,7 @@ vi.mock('../../agents/ToolsAgent/V3/helpers', () => ({
 	executeBatch: vi.fn(),
 	checkMaxIterations: vi.fn(),
 	buildResponseMetadata: vi.fn(),
+	resolveSubAgentRequest: vi.fn(),
 }));
 
 // Mock langchain modules
@@ -45,6 +46,12 @@ const mockNode = mock<INode>();
 beforeEach(() => {
 	vi.clearAllMocks();
 	mockContext.getNode.mockReturnValue(mockNode);
+	// `isExecuteFunctions` checks `'getExecuteData' in context`. vitest-mock-extended
+	// proxies property access but does not register own properties, so the `in`
+	// check is false by default. Stamp it explicitly so these tests exercise the
+	// top-level (engine-routed) request path; sub-agent inline resolution is
+	// covered separately by resolveSubAgentRequest.test.ts.
+	mockContext.getExecuteData = vi.fn() as never;
 	mockContext.logger = {
 		debug: vi.fn(),
 		info: vi.fn(),
@@ -200,6 +207,68 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 				{ json: { output: 'success 3' }, pairedItem: { item: 2 } },
 			],
 		]);
+	});
+
+	it('should delegate to resolveSubAgentRequest when running as a sub-agent (no getExecuteData)', async () => {
+		const subAgentContext = mock<IExecuteFunctions>();
+		subAgentContext.getNode.mockReturnValue(mockNode);
+		subAgentContext.logger = {
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+		};
+		subAgentContext.customData = {
+			set: vi.fn(),
+			setAll: vi.fn(),
+			get: vi.fn(),
+			getAll: vi.fn(),
+		};
+		// Intentionally do NOT set `getExecuteData`, so `isExecuteFunctions` is false.
+
+		const mockExecutionContext = {
+			items: [{ json: { text: 'test input 1' } }],
+			batchSize: 1,
+			delayBetweenBatches: 0,
+			needsFallback: false,
+			model: {} as any,
+			fallbackModel: null,
+			memory: undefined,
+		};
+
+		const mockRequest: EngineRequest<RequestResponseMetadata> = {
+			actions: [
+				{
+					actionType: 'ExecutionNodeAction' as const,
+					nodeName: 'Test Tool',
+					input: { input: 'test data' },
+					type: 'ai_tool',
+					id: 'call_inline',
+					metadata: { itemIndex: 0 },
+				},
+			],
+			metadata: { previousRequests: [] },
+		};
+
+		const resolvedOutput = [[{ json: { output: 'resolved inline' } }]];
+
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch').mockResolvedValue({
+			returnData: [],
+			request: mockRequest,
+			memoryHits: emptyMemoryHits,
+		});
+		vi.spyOn(helpers, 'resolveSubAgentRequest').mockResolvedValue(resolvedOutput);
+
+		const result = await toolsAgentExecute.call(subAgentContext);
+
+		expect(helpers.resolveSubAgentRequest).toHaveBeenCalledTimes(1);
+		expect(helpers.resolveSubAgentRequest).toHaveBeenCalledWith(
+			subAgentContext,
+			mockRequest,
+			expect.objectContaining({ runAgentBatch: expect.any(Function) }),
+		);
+		expect(result).toBe(resolvedOutput);
 	});
 
 	it('should return request when batch returns tool call request', async () => {
