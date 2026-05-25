@@ -82,7 +82,7 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 300_000;
 
-	/** Operator-set value surfaced as a `tag` label on every Daytona sandbox (e.g. `eval-baseline-daily`). Used for grouping/filtering in the Daytona dashboard. */
+	/** Operator-set value surfaced as a `tag` label on every Daytona sandbox. Use to flag sandboxes for grouping/filtering in the Daytona dashboard (e.g. distinguishing eval-driven sandboxes from production ones). Empty in production. */
 	@Env('N8N_INSTANCE_AI_SANDBOX_TAG')
 	sandboxTag: string = '';
 

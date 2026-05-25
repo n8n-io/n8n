@@ -267,4 +267,4 @@ If any step fails, the agent reads the error output, fixes the code, and retries
 | `N8N_SANDBOX_SERVICE_API_KEY` | — | n8n sandbox service API key (optional when using an `httpHeaderAuth` credential) |
 | `N8N_INSTANCE_AI_SANDBOX_IMAGE` | `daytonaio/sandbox:0.5.0` | Base container image for Daytona |
 | `N8N_INSTANCE_AI_SANDBOX_TIMEOUT` | `300000` | Command timeout in milliseconds |
-| `N8N_INSTANCE_AI_SANDBOX_TAG` | — | Operator-set value added as a `tag` label on every Daytona sandbox (e.g. `eval-baseline-daily`). Used for grouping/filtering in the Daytona dashboard. Empty in production. |
+| `N8N_INSTANCE_AI_SANDBOX_TAG` | — | Operator-set value added as a `tag` label on every Daytona sandbox. Use to flag sandboxes for grouping/filtering in the Daytona dashboard (e.g. distinguishing eval-driven sandboxes from production ones). Empty in production. |
