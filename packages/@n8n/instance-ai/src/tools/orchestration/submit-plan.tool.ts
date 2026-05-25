@@ -61,10 +61,14 @@ export function createSubmitPlanTool(
 					return { approved: true };
 				}
 				if (resumeData.denied) {
-					accumulator.markDenied();
+					// Persist cancellation first, then mark the accumulator. Reverse
+					// order would leave the accumulator denied if denyPlan throws —
+					// the isDenied() short-circuit below would then block a retry
+					// while the persisted graph is still awaiting_approval.
 					if (context.plannedTaskService) {
 						await context.plannedTaskService.denyPlan(context.threadId);
 					}
+					accumulator.markDenied();
 					return {
 						approved: false,
 						denied: true,
