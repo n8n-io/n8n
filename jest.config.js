@@ -2,14 +2,27 @@ const { pathsToModuleNameMapper } = require('ts-jest');
 const { compilerOptions } = require('get-tsconfig').getTsconfig().config;
 const { resolve } = require('path');
 
-/** @type {import('ts-jest').TsJestGlobalOptions} */
+/** @type {import('ts-jest').TsJestTransformerOptions} */
 const tsJestOptions = {
-	isolatedModules: true,
 	tsconfig: {
 		...compilerOptions,
 		declaration: false,
 		sourceMap: true,
 		rootDir: '.',
+		// Force the transpile-only path for tests. Without this, ts-jest runs
+		// the full type-checker on every transformed file, which combined with
+		// aggressive worker recycling (workerIdleMemoryLimit) makes test runs
+		// ~4-5x slower. Package builds and `pnpm typecheck` read the package
+		// tsconfig directly and are unaffected.
+		isolatedModules: true,
+		// Relax strictness for cross-package imports. ts-jest applies the host
+		// package's tsconfig to every file it transforms, including imports
+		// from packages like nodes-base that disable these in their own
+		// tsconfig. The host package's own `pnpm typecheck` is unaffected.
+		noImplicitReturns: false,
+		noUncheckedIndexedAccess: false,
+		noImplicitOverride: false,
+		useUnknownInCatchVariables: false,
 	},
 };
 
