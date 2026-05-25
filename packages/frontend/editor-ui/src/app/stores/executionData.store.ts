@@ -2,18 +2,35 @@ import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
 import { computed, effectScope, inject, readonly, ref, shallowReactive } from 'vue';
 import type { ComputedRef } from 'vue';
-import { createEventHook } from '@vueuse/core';
+import { createEventHook, throttledWatch } from '@vueuse/core';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
 import isEqual from 'lodash/isEqual';
-import type { ExecutionStatus, IRunData, IRunExecutionData, ITaskStartedData } from 'n8n-workflow';
+import { useI18n } from '@n8n/i18n';
+import {
+	NodeConnectionTypes,
+	SEND_AND_WAIT_OPERATION,
+	WAIT_INDEFINITELY,
+	type ExecutionStatus,
+	type INode,
+	type IRunData,
+	type IRunExecutionData,
+	type ITaskData,
+	type ITaskStartedData,
+} from 'n8n-workflow';
 import type { PushPayload } from '@n8n/api-types';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { ExecutionDataStoreKey } from '@/app/constants/injectionKeys';
+import {
+	CANVAS_EXECUTION_DATA_THROTTLE_DURATION,
+	FORM_NODE_TYPE,
+	WAIT_NODE_TYPE,
+} from '@/app/constants';
 import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { CHANGE_ACTION } from './workflowDocument/types';
 import type { ChangeAction, ChangeEvent } from './workflowDocument/types';
+import type { ExecutionOutputMap } from './executionData.types';
 
 export type ExecutionDataId = string;
 
@@ -57,6 +74,7 @@ export function getExecutionDataStoreId(id: ExecutionDataId) {
  */
 export function useExecutionDataStore(id: ExecutionDataId) {
 	return defineStore(getExecutionDataStoreId(id), () => {
+		const i18n = useI18n();
 		const execution = ref<IExecutionResponse | null>(null);
 		const executionResultDataLastUpdate = ref<number>();
 		const executionStartedData = ref<ExecutionStartedDataValue>();
@@ -132,6 +150,248 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		// regardless of reference identity.
 		void onExecutionDataChange.on(reconcileExecutionIssuesFromRunData);
 		reconcileExecutionIssuesFromRunData();
+
+		// ---------------------------------------------------------------------
+		// Per-node-id projections of execution state.
+		//
+		// The store's primary key is node *name* (runData is keyed by name),
+		// but consumers (canvas, NDV) need by-id lookup. The execution payload
+		// embeds a `workflowData.nodes` snapshot, which is the authoritative
+		// source for the name↔id mapping at execution time. `renameExecutionDataNode`
+		// updates that snapshot in place, so renames propagate naturally.
+		//
+		// Each map uses the same shallowReactive<Map<id, ComputedRef<T>>>
+		// pattern as `executionIssuesByNodeName`: per-entry structuralComputed,
+		// reconciled against `workflowData.nodes` via `onExecutionDataChange`.
+		// ---------------------------------------------------------------------
+
+		function getExecutionNodeById(nodeId: string): INode | undefined {
+			return execution.value?.workflowData?.nodes?.find((n) => n.id === nodeId);
+		}
+
+		function getExecutionNodeIds(): string[] {
+			return execution.value?.workflowData?.nodes?.map((n) => n.id) ?? [];
+		}
+
+		const byIdScopes = new Map<string, () => void>();
+		const executionStatusByNodeId = shallowReactive(
+			new Map<string, ComputedRef<ExecutionStatus>>(),
+		);
+		const executionRunDataByNodeId = shallowReactive(
+			new Map<string, ComputedRef<ITaskData[] | null>>(),
+		);
+		const executionWaitingByNodeId = shallowReactive(
+			new Map<string, ComputedRef<string | undefined>>(),
+		);
+
+		function computeExecutionStatus(nodeId: string): ExecutionStatus {
+			const node = getExecutionNodeById(nodeId);
+			if (!node) return 'new';
+			const tasks = executionRunData.value?.[node.name] ?? [];
+			// A canceled top-of-stack tends to mask the prior "real" status — peek
+			// one task back so the UI shows the meaningful state.
+			let status = tasks.at(-1)?.executionStatus;
+			if (tasks.length > 1 && status === 'canceled') {
+				status = tasks.at(-2)?.executionStatus;
+			}
+			return status ?? 'new';
+		}
+
+		function computeExecutionRunData(nodeId: string): ITaskData[] | null {
+			const node = getExecutionNodeById(nodeId);
+			if (!node) return null;
+			const tasks = executionRunData.value?.[node.name];
+			return tasks ?? null;
+		}
+
+		function computeExecutionWaiting(nodeId: string): string | undefined {
+			const node = getExecutionNodeById(nodeId);
+			if (!node) return undefined;
+			const ex = execution.value;
+			if (!ex || ex.finished) return undefined;
+			// `waitTill` exists at runtime on resumed executions but isn't declared
+			// on IExecutionResponse — narrow via the property check.
+			const waitTill = (ex as IExecutionResponse & { waitTill?: Date | string }).waitTill;
+			if (!waitTill) return undefined;
+			const lastNodeExecuted = ex.data?.resultData?.lastNodeExecuted;
+			if (node.name !== lastNodeExecuted) return undefined;
+
+			const resume = node.parameters?.resume as string | undefined;
+			if (node.type === WAIT_NODE_TYPE && (resume === 'webhook' || resume === 'form')) {
+				return resume === 'webhook'
+					? i18n.baseText('node.theNodeIsWaitingWebhookCall')
+					: i18n.baseText('node.theNodeIsWaitingFormCall');
+			}
+			if (node.parameters?.operation === SEND_AND_WAIT_OPERATION) {
+				return i18n.baseText('node.theNodeIsWaitingUserInput');
+			}
+			if (node.type === FORM_NODE_TYPE) {
+				return i18n.baseText('node.theNodeIsWaitingFormCall');
+			}
+			const waitDate = new Date(waitTill);
+			if (waitDate.getTime() === WAIT_INDEFINITELY.getTime()) {
+				return i18n.baseText('node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall');
+			}
+			return i18n.baseText('node.nodeIsWaitingTill', {
+				interpolate: {
+					date: waitDate.toLocaleDateString(),
+					time: waitDate.toLocaleTimeString(),
+				},
+			});
+		}
+
+		function applyAddByIdEntry(nodeId: string) {
+			if (byIdScopes.has(nodeId)) return;
+			const scope = effectScope();
+			scope.run(() => {
+				executionStatusByNodeId.set(
+					nodeId,
+					structuralComputed(() => computeExecutionStatus(nodeId)),
+				);
+				executionRunDataByNodeId.set(
+					nodeId,
+					structuralComputed(() => computeExecutionRunData(nodeId), isEqual),
+				);
+				executionWaitingByNodeId.set(
+					nodeId,
+					structuralComputed(() => computeExecutionWaiting(nodeId)),
+				);
+			});
+			byIdScopes.set(nodeId, () => scope.stop());
+		}
+
+		function applyRemoveByIdEntry(nodeId: string) {
+			byIdScopes.get(nodeId)?.();
+			byIdScopes.delete(nodeId);
+			executionStatusByNodeId.delete(nodeId);
+			executionRunDataByNodeId.delete(nodeId);
+			executionWaitingByNodeId.delete(nodeId);
+		}
+
+		function applyReconcileByIdEntries(nodeIds: string[]) {
+			const next = new Set(nodeIds);
+			for (const old of byIdScopes.keys()) {
+				if (!next.has(old)) applyRemoveByIdEntry(old);
+			}
+			for (const id of nodeIds) applyAddByIdEntry(id);
+		}
+
+		function reconcileByIdEntries() {
+			applyReconcileByIdEntries(getExecutionNodeIds());
+		}
+
+		void onExecutionDataChange.on(reconcileByIdEntries);
+		reconcileByIdEntries();
+
+		// Throttled per-node-id aggregation of run data into `ExecutionOutputMap`.
+		// Aggregation cost scales with task list length and item counts; rebuilding
+		// on every push during a fast execution would be expensive. The throttle
+		// batches updates; consumers (label rendering, item counters) only invalidate
+		// when their specific id slot changes, gated by `isEqual` per node.
+		const executionRunDataOutputMapByNodeId = shallowReactive(
+			new Map<string, ExecutionOutputMap>(),
+		);
+
+		function rebuildExecutionRunDataOutputMap() {
+			const runData = executionRunData.value;
+			const snapshotNodes = execution.value?.workflowData?.nodes ?? [];
+			if (!runData) {
+				for (const k of Array.from(executionRunDataOutputMapByNodeId.keys())) {
+					executionRunDataOutputMapByNodeId.delete(k);
+				}
+				return;
+			}
+
+			const nameToId = new Map(snapshotNodes.map((n) => [n.name, n.id]));
+			const next = new Map<string, ExecutionOutputMap>();
+
+			for (const nodeName of Object.keys(runData)) {
+				const nodeId = nameToId.get(nodeName);
+				if (!nodeId) continue;
+
+				const agg: ExecutionOutputMap = {};
+				const taskList = runData[nodeName] ?? [];
+
+				for (const runIteration of taskList) {
+					const data = runIteration.data ?? {};
+					for (const connectionType of Object.keys(data)) {
+						const connectionTypeData = data[connectionType] ?? {};
+						agg[connectionType] = agg[connectionType] ?? {};
+
+						for (const outputIndex of Object.keys(connectionTypeData)) {
+							const parsedOutputIndex = parseInt(outputIndex, 10);
+							const items = connectionTypeData[parsedOutputIndex] ?? [];
+
+							agg[connectionType][outputIndex] = agg[connectionType][outputIndex] ?? {
+								total: 0,
+								iterations: 0,
+								...(connectionType !== NodeConnectionTypes.Main ? { byTarget: {} } : {}),
+							};
+
+							// Non-main connections (AI tools/memory/embeddings) wrap items
+							// in a `response` array; the apparent itemCount is the length
+							// of that array, not the outer items list. Check only the first
+							// item assuming uniform structure.
+							let itemCount = items.length;
+							if (connectionType !== NodeConnectionTypes.Main && items.length > 0) {
+								const first = items[0];
+								if (
+									first?.json &&
+									typeof first.json === 'object' &&
+									'response' in first.json &&
+									Array.isArray((first.json as { response: unknown[] }).response)
+								) {
+									itemCount = (first.json as { response: unknown[] }).response.length;
+								}
+							}
+
+							if (runIteration.executionStatus !== 'canceled') {
+								agg[connectionType][outputIndex].iterations += 1;
+							}
+							agg[connectionType][outputIndex].total += itemCount;
+
+							if (connectionType !== NodeConnectionTypes.Main) {
+								const callingNodeName = runIteration.source?.[0]?.previousNode;
+								if (callingNodeName) {
+									const targetId = nameToId.get(callingNodeName);
+									if (targetId) {
+										const entry = agg[connectionType][outputIndex];
+										entry.byTarget = entry.byTarget ?? {};
+										entry.byTarget[targetId] = entry.byTarget[targetId] ?? {
+											total: 0,
+											iterations: 0,
+										};
+										if (runIteration.executionStatus !== 'canceled') {
+											entry.byTarget[targetId].iterations += 1;
+										}
+										entry.byTarget[targetId].total += itemCount;
+									}
+								}
+							}
+						}
+					}
+				}
+				next.set(nodeId, agg);
+			}
+
+			// Reconcile to the shallowReactive map for per-id reactivity. isEqual
+			// skips structurally-identical slots so downstream consumers don't
+			// invalidate when their node's aggregation hasn't actually changed.
+			for (const oldId of Array.from(executionRunDataOutputMapByNodeId.keys())) {
+				if (!next.has(oldId)) executionRunDataOutputMapByNodeId.delete(oldId);
+			}
+			for (const [nodeId, value] of next.entries()) {
+				const existing = executionRunDataOutputMapByNodeId.get(nodeId);
+				if (!existing || !isEqual(existing, value)) {
+					executionRunDataOutputMapByNodeId.set(nodeId, value);
+				}
+			}
+		}
+
+		throttledWatch(executionResultDataLastUpdate, rebuildExecutionRunDataOutputMap, {
+			throttle: CANVAS_EXECUTION_DATA_THROTTLE_DURATION,
+			immediate: true,
+		});
 
 		function fireChange(action: ChangeAction, nodeName?: string) {
 			void onExecutionDataChange.trigger({
@@ -411,6 +671,10 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			executionRunData,
 			executedNode,
 			executionIssuesByNodeName,
+			executionStatusByNodeId,
+			executionRunDataByNodeId,
+			executionWaitingByNodeId,
+			executionRunDataOutputMapByNodeId,
 			executionStartedData: readonly(executionStartedData),
 			executionPairedItemMappings: readonly(executionPairedItemMappings),
 			getExecutionRunDataByNodeName,

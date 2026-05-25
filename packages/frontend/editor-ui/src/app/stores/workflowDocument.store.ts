@@ -29,6 +29,7 @@ import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentN
 import { useWorkflowDocumentWorkflowObject } from './workflowDocument/useWorkflowDocumentWorkflowObject';
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
 import { useWorkflowDocumentNodesIssues } from './workflowDocument/useWorkflowDocumentNodesIssues';
+import { useWorkflowDocumentNodeTypeInfo } from './workflowDocument/useWorkflowDocumentNodeTypeInfo';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -78,6 +79,7 @@ type PinDataReturn = ReturnType<typeof useWorkflowDocumentPinData>;
 type SettingsReturn = ReturnType<typeof useWorkflowDocumentSettings>;
 type NodeMetadataReturn = ReturnType<typeof useWorkflowDocumentNodeMetadata>;
 type NodesIssuesReturn = ReturnType<typeof useWorkflowDocumentNodesIssues>;
+type NodeTypeInfoReturn = ReturnType<typeof useWorkflowDocumentNodeTypeInfo>;
 
 // Pairwise collision checks — add new composables here when they are created.
 // If any pair shares a key, the corresponding tuple slot becomes an error type
@@ -103,6 +105,15 @@ void (0 as unknown as [
 	AssertNoOverlap<NodesIssuesReturn, NodesReturn>,
 	AssertNoOverlap<NodesIssuesReturn, ConnectionsReturn>,
 	AssertNoOverlap<NodesIssuesReturn, GraphReturn>,
+	AssertNoOverlap<NodeTypeInfoReturn, NodesReturn>,
+	AssertNoOverlap<NodeTypeInfoReturn, ConnectionsReturn>,
+	AssertNoOverlap<NodeTypeInfoReturn, GraphReturn>,
+	AssertNoOverlap<NodeTypeInfoReturn, ExpressionReturn>,
+	AssertNoOverlap<NodeTypeInfoReturn, PinDataReturn>,
+	AssertNoOverlap<NodeTypeInfoReturn, MetaReturn>,
+	AssertNoOverlap<NodeTypeInfoReturn, SettingsReturn>,
+	AssertNoOverlap<NodeTypeInfoReturn, NodeMetadataReturn>,
+	AssertNoOverlap<NodeTypeInfoReturn, NodesIssuesReturn>,
 ]);
 
 export type WorkflowDocumentId = `${string}@${string}`;
@@ -152,7 +163,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentMeta = useWorkflowDocumentMeta();
 		const workflowDocumentTags = useWorkflowDocumentTags();
 		const workflowDocumentIsArchived = useWorkflowDocumentIsArchived();
-		const workflowDocumentPinData = useWorkflowDocumentPinData();
 		const workflowDocumentScopes = useWorkflowDocumentScopes();
 		const workflowDocumentTimestamps = useWorkflowDocumentTimestamps();
 		const workflowDocumentSettings = useWorkflowDocumentSettings({
@@ -169,8 +179,13 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			nodeMetadata: workflowDocumentNodeMetadata,
 			assignNodeId: (node) => nodeHelpers.assignNodeId(node),
 			syncWorkflowObject: (nodes) => workflowDocumentWorkflowObject.syncWorkflowObjectNodes(nodes),
-			unpinNodeData: (name) => workflowDocumentPinData.unpinNodeData(name),
 			workflowObject: workflowDocumentWorkflowObject.workflowObject,
+		});
+		// pinData subscribes to nodes' `onNodesChange` and clears orphan pin data
+		// on DELETE itself — so nodes doesn't need a reverse dep into pinData.
+		const workflowDocumentPinData = useWorkflowDocumentPinData({
+			nodesById: workflowDocumentNodes.nodesById,
+			onNodesChange: workflowDocumentNodes.onNodesChange,
 		});
 		const { onStateDirty: onConnectionsStateDirty, ...workflowDocumentConnections } =
 			useWorkflowDocumentConnections({
@@ -188,6 +203,19 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			allNodes: workflowDocumentNodes.allNodes,
 			outgoingConnectionsByNodeName: workflowDocumentConnections.outgoingConnectionsByNodeName,
 			incomingConnectionsByNodeName: workflowDocumentConnections.incomingConnectionsByNodeName,
+			nodesById: workflowDocumentNodes.nodesById,
+			onNodesChange: workflowDocumentNodes.onNodesChange,
+			nodeIssuesToString: (issues, node) => nodeHelpers.nodeIssuesToString(issues, node),
+		});
+		const workflowDocumentNodeTypeInfo = useWorkflowDocumentNodeTypeInfo({
+			nodesById: workflowDocumentNodes.nodesById,
+			onNodesChange: workflowDocumentNodes.onNodesChange,
+			workflowObject: workflowDocumentWorkflowObject.workflowObject,
+			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
+			communityNodeType: (typeName) => nodeTypesStore.communityNodeType(typeName),
+			isTriggerNode: (typeName) => nodeTypesStore.isTriggerNode(typeName),
+			getNodeSubtitle: (node, nodeType, workflow) =>
+				nodeHelpers.getNodeSubtitle(node, nodeType, workflow),
 		});
 
 		// --- Cross-cut orchestration ---
@@ -396,6 +424,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentExpression,
 			...workflowDocumentNodeMetadata,
 			...workflowDocumentNodesIssues,
+			...workflowDocumentNodeTypeInfo,
 			removeAllNodes,
 			hydrate,
 			reset,

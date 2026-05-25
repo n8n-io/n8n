@@ -6,7 +6,6 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
 import {
 	createWorkflowExecutionStateId,
 	disposeWorkflowExecutionStateStore,
@@ -29,7 +28,6 @@ import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 
 export function useWorkflowState() {
 	const ws = useWorkflowsStore();
-	const workflowStateStore = useWorkflowStateStore();
 	const rootStore = useRootStore();
 
 	////
@@ -109,7 +107,7 @@ export function useWorkflowState() {
 		const activeExecutionId = stateStore.activeExecutionId;
 
 		stateStore.setActiveExecutionId(undefined);
-		workflowStateStore.executingNode.clearNodeExecutionQueue();
+		stateStore.executingNode.clearNodeExecutionQueue();
 		stateStore.setExecutionWaitingForWebhook(false);
 
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(ws.workflowId));
@@ -149,19 +147,17 @@ export function useWorkflowState() {
 	function resetState() {
 		const wid = ws.workflowId;
 		if (!wid) {
-			workflowStateStore.executingNode.executingNode.length = 0;
 			useBuilderStore().resetManualExecutionStats();
 			return;
 		}
 		const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId(wid));
 		// Disposes every tracked executionData store + IN_PROGRESS placeholder, then clears all
-		// session-level fields.
+		// session-level fields (including the executingNode queue).
 		stateStore.resetExecutionState();
 		// Then dispose the per-workflow state store so pinia state doesn't accumulate one entry
 		// per workflow ever opened in this session.
 		disposeWorkflowExecutionStateStore(stateStore);
 
-		workflowStateStore.executingNode.executingNode.length = 0;
 		useBuilderStore().resetManualExecutionStats();
 	}
 
@@ -175,8 +171,11 @@ export function useWorkflowState() {
 		// Execution
 		markExecutionAsStopped,
 
-		// reexport
-		executingNode: workflowStateStore.executingNode,
+		// re-export from the per-workflow execution-state store
+		get executingNode() {
+			return useWorkflowExecutionStateStore(createWorkflowExecutionStateId(ws.workflowId))
+				.executingNode;
+		},
 	};
 }
 

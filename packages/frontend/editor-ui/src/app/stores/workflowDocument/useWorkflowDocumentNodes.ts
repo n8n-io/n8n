@@ -61,7 +61,6 @@ export interface WorkflowDocumentNodesDeps {
 	getNodeType: (typeName: string, version?: number) => INodeTypeDescription | null;
 	assignNodeId: (node: INodeUi) => string;
 	syncWorkflowObject: (nodes: INodeUi[]) => void;
-	unpinNodeData: (name: string) => void;
 	nodeMetadata: ReturnType<typeof useWorkflowDocumentNodeMetadata>;
 	workflowObject: Ref<Workflow>;
 }
@@ -169,7 +168,6 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 		deps.syncWorkflowObject(nodes.value);
 		deps.nodeMetadata.removeNodeMetadata(node.name);
-		deps.unpinNodeData(node.name);
 		void onNodesChange.trigger({
 			action: CHANGE_ACTION.DELETE,
 			payload: { name: node.name, id: node.id },
@@ -186,7 +184,6 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		deps.syncWorkflowObject(nodes.value);
 		if (node) {
 			deps.nodeMetadata.removeNodeMetadata(node.name);
-			deps.unpinNodeData(node.name);
 		}
 		void onNodesChange.trigger({
 			action: CHANGE_ACTION.DELETE,
