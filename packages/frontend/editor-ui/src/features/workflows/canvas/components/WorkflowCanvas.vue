@@ -47,10 +47,6 @@ const renderData = computed(() =>
 
 const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
 
-const workflowObject = computed(() =>
-	workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
-);
-
 const nodes = computed(() => {
 	return props.showFallbackNodes
 		? [...workflowDocumentStore.value.allNodes, ...props.fallbackNodes]
@@ -61,7 +57,6 @@ const connections = computed(() => workflowDocumentStore.value.connectionsBySour
 const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({
 	nodes,
 	connections,
-	workflowObject,
 	renderData,
 });
 
