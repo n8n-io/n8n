@@ -93,7 +93,7 @@ catalog:
   oxlint-tsgolint: ^0.21.1
   pg: 8.17.0
   picocolors: 1.0.1
-  playwright-core: 1.58.0
+  playwright-core: 1.60.0
   posthog-node: 5.33.4
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
@@ -121,12 +121,12 @@ catalogMode: strict
 
 catalogs:
   e2e:
-    '@currents/playwright': ^1.15.3
+    '@currents/playwright': ^2.0.0
     '@playwright/cli': 0.1.0
-    '@playwright/test': 1.58.0
+    '@playwright/test': 1.60.0
     eslint-plugin-playwright: 2.2.2
-    playwright: 1.58.0
-    playwright-core: 1.58.0
+    playwright: 1.60.0
+    playwright-core: 1.60.0
   frontend:
     '@sentry/vue': ^10.36.0
     '@testing-library/jest-dom': ^6.6.3
