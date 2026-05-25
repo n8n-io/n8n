@@ -95,6 +95,7 @@ catalog:
   picocolors: 1.0.1
   playwright-core: 1.60.0
   posthog-node: 5.33.4
+  qs: 6.15.2
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
   sass-embedded: ^1.98.0

@@ -131,7 +131,6 @@
       "glob@7": "7.2.3",
       "jws@3": "3.2.2",
       "jws@4": "4.0.1",
-      "qs@6": "6.14.2",
       "@smithy/config-resolver": ">=4.4.0",
       "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0",
       "diff": "8.0.3",
@@ -174,7 +173,10 @@
       "brace-expansion@5": "5.0.6",
       "@opentelemetry/exporter-prometheus@<=0.217.0": "0.217.0",
       "@opentelemetry/sdk-node@<=0.217.0": "0.217.0",
-      "langsmith": "0.6.0"
+      "langsmith": "0.6.0",
+      "qs@<=6.15.2": "6.15.2",
+      "vue-i18n@<=11.4.4": "11.4.4",
+      "@tootallnate/once@<=2.0.1": "2.0.1"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
