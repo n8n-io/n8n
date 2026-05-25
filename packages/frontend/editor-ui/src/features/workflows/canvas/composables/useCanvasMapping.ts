@@ -13,7 +13,7 @@ import type {
 	CanvasNode,
 	CanvasNodeData,
 } from '../canvas.types';
-import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
+import { CanvasConnectionMode } from '../canvas.types';
 import {
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
@@ -47,35 +47,6 @@ export function useCanvasMapping({
 	function filterOutCanceled(tasks: ITaskData[] | null): ITaskData[] | null {
 		if (!tasks) return null;
 		return tasks.filter((task) => task.executionStatus !== 'canceled');
-	}
-
-	/**
-	 * Render-type fallback for nodes that aren't in the workflow document
-	 * (fallback nodes injected by the canvas — e.g. the "+ Add nodes" button).
-	 * renderData's `renderTypeByNodeId` is keyed off the document store, so
-	 * these placeholders have no entry there. Sticky notes carry parameter
-	 * values; the other special types share the same `{ type: node.type,
-	 * options: {} }` shape and can be returned directly.
-	 */
-	function fallbackRenderType(node: INodeUi): CanvasNodeData['render'] {
-		if (node.type === CanvasNodeRenderType.StickyNote) {
-			return {
-				type: CanvasNodeRenderType.StickyNote,
-				options: {
-					width: node.parameters.width as number,
-					height: node.parameters.height as number,
-					color: node.parameters.color as number,
-					content: node.parameters.content as string,
-				},
-			};
-		}
-		if (
-			node.type === CanvasNodeRenderType.AddNodes ||
-			node.type === CanvasNodeRenderType.ChoicePrompt
-		) {
-			return { type: node.type, options: {} };
-		}
-		return { type: CanvasNodeRenderType.Default, options: {} };
 	}
 
 	const mappedNodes = computed<CanvasNode[]>(() => {
@@ -117,7 +88,9 @@ export function useCanvasMapping({
 					iterations: filterOutCanceled(runData)?.length ?? 0,
 					visible: !!runData,
 				},
-				render: rd.renderTypeByNodeId.get(node.id)?.value ?? fallbackRenderType(node),
+				render:
+					rd.renderTypeByNodeId.get(node.id)?.value ??
+					({ type: node.type, options: {} } as CanvasNodeData['render']),
 			};
 
 			return {

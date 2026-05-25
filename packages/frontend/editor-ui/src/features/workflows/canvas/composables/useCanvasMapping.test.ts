@@ -183,56 +183,37 @@ describe('useCanvasMapping — mapped nodes', () => {
 		});
 	});
 
-	it('falls back to default render type when renderData has no entry', () => {
-		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
-
-		const { nodes } = useCanvasMapping({
-			nodes: ref([node]),
-			connections: ref({}),
-			renderData: shallowRef(createEmptyCanvasRenderData()),
-		});
-
-		expect(nodes.value[0].data?.render.type).toBe(CanvasNodeRenderType.Default);
-	});
-
-	it('falls back to AddNodes render type for placeholder nodes not in the document', () => {
-		// The "+ Add nodes" button is injected via the canvas's `nodes` prop, not
-		// the workflow document, so renderData never has an entry for it.
-		const node = createTestNode({
+	it('falls back to a render entry derived from node.type when renderData has none', () => {
+		// Placeholder nodes injected via the canvas's `fallbackNodes` prop
+		// (AddNodes, ChoicePrompt — see NodeView.vue) are not in the workflow
+		// document, so renderData's `renderTypeByNodeId` has no entry. Their
+		// `node.type` literally equals the render-type identifier, so
+		// `{ type: node.type, options: {} }` is the correct render entry.
+		const addNodes = createTestNode({
 			id: 'add-nodes',
 			name: 'AddNodes',
 			type: CanvasNodeRenderType.AddNodes,
 		}) as INodeUi;
-
-		const { nodes } = useCanvasMapping({
-			nodes: ref([node]),
-			connections: ref({}),
-			renderData: shallowRef(createEmptyCanvasRenderData()),
-		});
-
-		expect(nodes.value[0].data?.render.type).toBe(CanvasNodeRenderType.AddNodes);
-	});
-
-	it('falls back to StickyNote render type when not in renderData', () => {
-		const node = createTestNode({
-			id: 's',
-			name: 'Sticky',
-			type: CanvasNodeRenderType.StickyNote,
+		const choicePrompt = createTestNode({
+			id: 'choice-prompt',
+			name: 'ChoicePrompt',
+			type: CanvasNodeRenderType.ChoicePrompt,
 		}) as INodeUi;
-		node.parameters = { width: 300, height: 200, color: 1, content: 'Hello' };
 
 		const { nodes } = useCanvasMapping({
-			nodes: ref([node]),
+			nodes: ref([addNodes, choicePrompt]),
 			connections: ref({}),
 			renderData: shallowRef(createEmptyCanvasRenderData()),
 		});
 
-		const render = nodes.value[0].data?.render;
-		expect(render?.type).toBe(CanvasNodeRenderType.StickyNote);
-		if (render?.type === CanvasNodeRenderType.StickyNote) {
-			expect(render.options.width).toBe(300);
-			expect(render.options.content).toBe('Hello');
-		}
+		expect(nodes.value[0].data?.render).toEqual({
+			type: CanvasNodeRenderType.AddNodes,
+			options: {},
+		});
+		expect(nodes.value[1].data?.render).toEqual({
+			type: CanvasNodeRenderType.ChoicePrompt,
+			options: {},
+		});
 	});
 
 	it('passes through render type from renderData.renderTypeByNodeId', () => {
