@@ -605,10 +605,7 @@ export class AgentRuntime {
 		const list = new AgentMessageList();
 
 		if (this.config.memory && options?.persistence?.threadId) {
-			const memMessages = await this.config.memory.getMessages(options.persistence.threadId, {
-				limit: this.config.lastMessages ?? 10,
-				resourceId: options.persistence.resourceId,
-			});
+			const memMessages = await this.loadHistoryMessages(options.persistence);
 			if (memMessages.length > 0) {
 				list.addHistory(stripOrphanedToolMessages(memMessages));
 			}
@@ -628,6 +625,31 @@ export class AgentRuntime {
 
 		list.addInput(input);
 		return list;
+	}
+
+	private async loadHistoryMessages(
+		persistence: AgentPersistenceOptions,
+	): Promise<AgentDbMessage[]> {
+		const memory = this.config.memory;
+		if (!memory) return [];
+
+		const limit = this.config.lastMessages ?? 10;
+		const { threadId } = persistence;
+
+		if (this.config.observationalMemory && hasObservationLogObserverMemory(memory)) {
+			const cursor = await memory.getCursor(threadId);
+			if (cursor) {
+				return await memory.getMessagesForObservationScope(threadId, {
+					since: {
+						sinceCreatedAt: cursor.lastObservedAt,
+						sinceMessageId: cursor.lastObservedMessageId,
+					},
+				});
+			}
+			return await memory.getMessages(threadId, { limit });
+		}
+
+		return await memory.getMessages(threadId, { limit });
 	}
 
 	/**
