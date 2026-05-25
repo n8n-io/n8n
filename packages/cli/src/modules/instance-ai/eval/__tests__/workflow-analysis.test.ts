@@ -694,6 +694,25 @@ describe('buildVendorLlmRouting', () => {
 		expect(routing.rootToSubNode.get('Agent')?.name).toBe('OpenAI');
 	});
 
+	it('also self-maps the root in subNodeToRoot so agent-context credential lookups resolve', () => {
+		// LangChain's Agent invokes the LLM sub-node's `supplyData` with a
+		// context whose `executeData.node` is the Agent itself (observed
+		// empirically). The credential helper looks up `subNodeToRoot` by
+		// that name — without the self-map, the lookup would miss and the
+		// SDK would post to the wire server's loud-fail no-root route.
+		const nodes = [
+			makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+			makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+		];
+		const connections: IConnections = {
+			OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+		};
+
+		const routing = buildVendorLlmRouting(makeWorkflow(nodes, connections), ['Agent']);
+
+		expect(routing.subNodeToRoot.get('Agent')).toBe('Agent');
+	});
+
 	it('does not include sub-nodes feeding roots that are still pinned', () => {
 		const nodes = [
 			makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
@@ -747,7 +766,12 @@ describe('buildVendorLlmRouting', () => {
 
 		const routing = buildVendorLlmRouting(makeWorkflow(nodes, connections), ['Agent']);
 
-		expect(Array.from(routing.subNodeToRoot.keys())).toEqual(['OpenAI']);
+		// `Agent` is also present in subNodeToRoot via the agent-context
+		// self-map (see test above) — assert by lookup so the test isn't
+		// sensitive to insertion order.
+		expect(routing.subNodeToRoot.get('OpenAI')).toBe('Agent');
+		expect(routing.subNodeToRoot.get('Agent')).toBe('Agent');
+		expect(routing.subNodeToRoot.size).toBe(2);
 		expect(Array.from(routing.rootToSubNode.keys())).toEqual(['Agent']);
 	});
 

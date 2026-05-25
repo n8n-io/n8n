@@ -633,4 +633,165 @@ describe('LlmWireServer', () => {
 			expect(choice.finish_reason).toBe('tool_calls');
 		});
 	});
+
+	// `@langchain/openai` v1.3+ auto-routes Agent v3.1+ calls to /v1/responses
+	// instead of /v1/chat/completions. Verified empirically against a real
+	// LangChain Agent — without this route the SDK 404s.
+	describe('POST /eval/:root/v1/responses — Responses API', () => {
+		const subNode = makeSubNode({ name: 'OpenAI Chat Model' });
+
+		it('returns a `response` envelope with annotations:[] on output_text content', async () => {
+			const mockHandler = jest.fn().mockResolvedValue({
+				body: { output_text: 'hello via responses' },
+				headers: {},
+				statusCode: 200,
+			}) as unknown as EvalLlmMockHandler;
+			server = new LlmWireServer({
+				mockHandler,
+				rootToSubNode: new Map([['Agent', subNode]]),
+			});
+			const url = await server.start();
+
+			const response = await postChatCompletion(url, '/eval/Agent/v1/responses', {
+				model: 'gpt-4o',
+				input: [{ role: 'user', content: 'hi' }],
+			});
+
+			expect(response.status).toBe(200);
+			const body = (await response.json()) as {
+				object: string;
+				status: string;
+				output: Array<{
+					type: string;
+					content: Array<{ type: string; text: string; annotations: unknown[] }>;
+				}>;
+			};
+			expect(body.object).toBe('response');
+			expect(body.status).toBe('completed');
+			expect(body.output[0].type).toBe('message');
+			expect(body.output[0].content[0].text).toBe('hello via responses');
+			// Without `annotations: []`, the LangChain extractor throws
+			// "Cannot read properties of undefined (reading 'map')".
+			expect(body.output[0].content[0].annotations).toEqual([]);
+		});
+
+		it('emits a function_call output item when the mock handler returns tool_calls', async () => {
+			const mockHandler = jest.fn().mockResolvedValue({
+				body: {
+					tool_calls: [{ id: 'call_1', function: { name: 'lookup', arguments: '{"q":"x"}' } }],
+				},
+				headers: {},
+				statusCode: 200,
+			}) as unknown as EvalLlmMockHandler;
+			server = new LlmWireServer({
+				mockHandler,
+				rootToSubNode: new Map([['Agent', subNode]]),
+			});
+			const url = await server.start();
+
+			const response = await postChatCompletion(url, '/eval/Agent/v1/responses', {
+				model: 'gpt-4o',
+				input: [{ role: 'user', content: 'x' }],
+				tools: [{ type: 'function', name: 'lookup' }],
+			});
+
+			const body = (await response.json()) as {
+				output: Array<{ type: string; name?: string; call_id?: string; arguments?: string }>;
+			};
+			expect(body.output[0].type).toBe('function_call');
+			expect(body.output[0].name).toBe('lookup');
+			expect(body.output[0].call_id).toBe('call_1');
+			expect(body.output[0].arguments).toBe('{"q":"x"}');
+		});
+
+		it('streams response.* SSE events when stream:true', async () => {
+			const mockHandler = jest.fn().mockResolvedValue({
+				body: { output_text: 'streamed reply' },
+				headers: {},
+				statusCode: 200,
+			}) as unknown as EvalLlmMockHandler;
+			server = new LlmWireServer({
+				mockHandler,
+				rootToSubNode: new Map([['Agent', subNode]]),
+			});
+			const url = await server.start();
+
+			const response = await fetch(`${url}/eval/Agent/v1/responses`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+				body: JSON.stringify({
+					model: 'gpt-4o',
+					stream: true,
+					input: [{ role: 'user', content: 'hi' }],
+				}),
+			});
+
+			expect(response.headers.get('content-type')).toMatch(/text\/event-stream/);
+			const text = await response.text();
+
+			// Responses API doesn't use `data: [DONE]` — the terminal is
+			// `response.completed`. Parse the event frames and assert ordering.
+			const events: string[] = [];
+			for (const block of text.split('\n\n')) {
+				const eventLine = block.split('\n').find((l) => l.startsWith('event: '));
+				if (eventLine) events.push(eventLine.slice('event: '.length));
+			}
+			expect(events[0]).toBe('response.created');
+			expect(events[events.length - 1]).toBe('response.completed');
+			expect(events).toContain('response.output_text.delta');
+		});
+
+		it('attributes the turn via onIntercept with the parsed root', async () => {
+			const intercepts: InterceptedTurn[] = [];
+			const mockHandler = jest.fn().mockResolvedValue({
+				body: { output_text: 'ok' },
+				headers: {},
+				statusCode: 200,
+			}) as unknown as EvalLlmMockHandler;
+			server = new LlmWireServer({
+				mockHandler,
+				rootToSubNode: new Map([['My Agent', subNode]]),
+				onIntercept: (t) => intercepts.push(t),
+			});
+			const url = await server.start();
+
+			await postChatCompletion(url, '/eval/My%20Agent/v1/responses', {
+				model: 'gpt-4o',
+				input: [],
+			});
+
+			expect(intercepts).toHaveLength(1);
+			expect(intercepts[0].rootName).toBe('My Agent');
+			// Reverse translator uses the canonical OpenAI URL so mock-handler's
+			// service/endpoint extraction derives `/v1/responses` correctly.
+			expect(intercepts[0].url).toBe('https://api.openai.com/v1/responses');
+		});
+
+		it('returns the loud-fail error envelope when no /eval/<root>/ prefix is used', async () => {
+			server = new LlmWireServer();
+			const url = await server.start();
+
+			const response = await postChatCompletion(url, '/v1/responses', {
+				model: 'gpt-4o',
+				input: [],
+			});
+			const body = (await response.json()) as { error: { message: string } };
+			expect(response.status).toBe(500);
+			expect(body.error.message).toContain('/eval/<root>/');
+		});
+
+		it('uses the stub envelope when no mock handler is attached', async () => {
+			server = new LlmWireServer();
+			const url = await server.start();
+
+			const response = await postChatCompletion(url, '/eval/Agent/v1/responses', {
+				model: 'gpt-4o',
+				input: [],
+			});
+			const body = (await response.json()) as {
+				output: Array<{ content: Array<{ text: string }> }>;
+			};
+			expect(body.output[0].content[0].text).toContain('eval wire server stub');
+		});
+	});
 });

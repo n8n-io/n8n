@@ -12,6 +12,14 @@ import {
 	isStreamRequested,
 	reverseTranslateOpenAiRequest,
 } from './openai-envelope';
+import {
+	buildResponsesErrorEnvelope,
+	extractResponsesRequestModel,
+	forwardTranslateToResponsesEnvelope,
+	forwardTranslateToResponsesSseEvents,
+	isResponsesStreamRequested,
+	reverseTranslateOpenAiResponsesRequest,
+} from './openai-responses-envelope';
 
 /** Loopback HTTP server that intercepts vendor SDK calls during eval. Binds to an OS-assigned port. */
 export interface InterceptedTurn {
@@ -81,8 +89,13 @@ export class LlmWireServer {
 		const app = express();
 		app.use(express.json({ limit: '4mb' }));
 		app.post('/eval/:root/v1/chat/completions', this.handleChatCompletion);
+		// `@langchain/openai` v1.3+ auto-routes Agent v3.1+ calls to /v1/responses
+		// (the Responses API). Same mock-handler under the hood, different
+		// envelope translator. Without this route the SDK 404s and the eval fails.
+		app.post('/eval/:root/v1/responses', this.handleResponses);
 		// Surfaces credential-rewrite misconfiguration loudly instead of 404'ing.
 		app.post('/v1/chat/completions', this.handleUnroutedChatCompletion);
+		app.post('/v1/responses', this.handleUnroutedChatCompletion);
 		return app;
 	}
 
@@ -172,6 +185,105 @@ export class LlmWireServer {
 		// Terminator per OpenAI SSE spec — SDKs stop reading on this sentinel.
 		res.write('data: [DONE]\n\n');
 		res.end();
+	}
+
+	/**
+	 * Handle a Responses API request. Mirrors `handleChatCompletion`'s shape
+	 * but with the Responses-API envelope translators. The mock handler is
+	 * called identically — only the wire-format adapter layer differs.
+	 */
+	private handleResponses = async (req: Request, res: Response): Promise<void> => {
+		const rootName = req.params.root;
+		const model = extractResponsesRequestModel(req.body);
+		const stream = isResponsesStreamRequested(req.body);
+		const subNode = this.resolveSubNode(rootName);
+
+		if (!this.options.mockHandler) {
+			this.respondWithResponsesStub(res, model, stream);
+			return;
+		}
+
+		let synthetic: ReturnType<typeof reverseTranslateOpenAiResponsesRequest>;
+		let mockResponse: Awaited<ReturnType<typeof this.options.mockHandler>>;
+		try {
+			synthetic = reverseTranslateOpenAiResponsesRequest(req.body);
+			mockResponse = await this.options.mockHandler(synthetic, subNode);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.options.logger?.error(`[EvalMock] Wire-server mock generation failed: ${message}`);
+			this.respondWithResponsesError(res, message);
+			return;
+		}
+
+		try {
+			this.options.onIntercept?.({
+				rootName,
+				url: synthetic.url,
+				method: synthetic.method ?? 'POST',
+				nodeType: subNode.type,
+				requestBody: this.cloneRequestBody(req.body),
+				mockResponse: mockResponse?.body,
+			});
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.options.logger?.warn(`[EvalMock] Wire-server ledger write failed: ${message}`);
+		}
+
+		try {
+			if (stream) {
+				this.writeResponsesSseEnvelope(res, mockResponse, model);
+			} else {
+				const envelope = forwardTranslateToResponsesEnvelope(mockResponse, model);
+				res.status(200).json(envelope);
+			}
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.options.logger?.error(`[EvalMock] Wire-server response write failed: ${message}`);
+			if (!res.headersSent) {
+				this.respondWithResponsesError(res, message);
+			} else {
+				res.end();
+			}
+		}
+	};
+
+	/** SSE writer for `/v1/responses` — emits `event: <name>\ndata: <JSON>\n\n` frames per Responses API spec. */
+	private writeResponsesSseEnvelope(
+		res: Response,
+		mockResponse: Awaited<ReturnType<EvalLlmMockHandler>>,
+		model: string,
+	): void {
+		res.status(200);
+		res.setHeader('Content-Type', 'text/event-stream');
+		res.setHeader('Cache-Control', 'no-cache, no-transform');
+		res.setHeader('Connection', 'keep-alive');
+		res.setHeader('X-Accel-Buffering', 'no');
+
+		const events = forwardTranslateToResponsesSseEvents(mockResponse, model);
+		for (const { event, data } of events) {
+			res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+		}
+		// Responses API uses `response.completed` as the terminal sentinel
+		// (already emitted by the translator). No `[DONE]` line needed.
+		res.end();
+	}
+
+	private respondWithResponsesStub(res: Response, model: string, stream: boolean): void {
+		const stubBody: Awaited<ReturnType<EvalLlmMockHandler>> = {
+			body: { output_text: '[eval wire server stub] — no mock handler attached' },
+			headers: { 'content-type': 'application/json' },
+			statusCode: 200,
+		};
+		if (stream) {
+			this.writeResponsesSseEnvelope(res, stubBody, model);
+			return;
+		}
+		const envelope = forwardTranslateToResponsesEnvelope(stubBody, model);
+		res.status(200).json(envelope);
+	}
+
+	private respondWithResponsesError(res: Response, message: string): void {
+		res.status(500).json(buildResponsesErrorEnvelope(`Mock generation failed: ${message}`));
 	}
 
 	private respondWithStub(res: Response, model: string, stream: boolean): void {

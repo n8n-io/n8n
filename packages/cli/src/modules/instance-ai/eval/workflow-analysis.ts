@@ -175,6 +175,17 @@ export function buildVendorLlmRouting(
 					}
 					if (!rootToSubNode.has(rootName)) {
 						rootToSubNode.set(rootName, subNode);
+						// Self-map the root: `LmChatOpenAi.supplyData()` reads
+						// `getCredentials('openAiApi')` from a context whose
+						// `executeData.node` is sometimes the parent Agent rather
+						// than the LLM sub-node — observed empirically against a
+						// real LangChain Agent. Without this entry the credential
+						// helper's lookup misses, falls back to the no-root URL,
+						// and the wire server's loud-fail handler rejects the
+						// SDK call. Self-mapping the root keeps the lookup honest
+						// regardless of which side of the supplyData boundary
+						// asked for the credential.
+						subNodeToRoot.set(rootName, rootName);
 					}
 				}
 			}
