@@ -73,6 +73,10 @@ const mockWorkflowJson = {
 const parseResult = (result: { content: Array<{ type: string; text?: string }> }) =>
 	JSON.parse((result.content[0] as { type: 'text'; text: string }).text) as Record<string, unknown>;
 
+type DataTableOpsMock = {
+	getManyAndCount: jest.Mock;
+};
+
 describe('create-workflow-from-code MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let workflowCreationService: WorkflowCreationService;
@@ -80,6 +84,7 @@ describe('create-workflow-from-code MCP tool', () => {
 	let urlService: UrlService;
 	let telemetry: Telemetry;
 	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
+	let dataTableOps: DataTableOpsMock;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -112,13 +117,29 @@ describe('create-workflow-from-code MCP tool', () => {
 		mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson });
 		mockStripImportStatements.mockImplementation((code: string) => code);
 		mockAutoPopulateNodeCredentials.mockResolvedValue({ assignments: [], skippedHttpNodes: [] });
+
+		dataTableOps = {
+			getManyAndCount: jest.fn().mockResolvedValue({ data: [], count: 0 }),
+		};
 	});
 
 	const credentialsService = mockInstance(CredentialsService, {
 		getCredentialsAUserCanUseInAWorkflow: jest.fn().mockResolvedValue([]),
 	});
+	const personalProjectEntity = {
+		id: 'personal-project-1',
+		name: 'Ricardo Espinoza',
+		type: 'personal' as const,
+	};
 	const projectRepository = mockInstance(ProjectRepository, {
-		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue({ id: 'personal-project-1' }),
+		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue(personalProjectEntity),
+		findOneBy: jest.fn().mockImplementation(async ({ id }: { id: string }) => {
+			if (id === 'personal-project-1') return personalProjectEntity;
+			if (id === 'custom-project-id') {
+				return { id: 'custom-project-id', name: 'Marketing', type: 'team' as const };
+			}
+			return null;
+		}),
 	});
 	const workflowFinderService = mockInstance(WorkflowFinderService, {
 		findWorkflowForUser: jest.fn().mockResolvedValue(null),
@@ -134,6 +155,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			nodeTypes,
 			credentialsService,
 			projectRepository,
+			dataTableOps as never,
 		);
 
 	// Helper to call handler with proper typing (optional fields default to undefined)
@@ -252,13 +274,13 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(createWorkflowMock.mock.calls[0][1].description).toBeUndefined();
 		});
 
-		test('passes undefined projectId to service when not provided', async () => {
+		test('resolves the personal project id and passes it to the service when projectId is not provided', async () => {
 			await callHandler({ code: 'const wf = ...' });
 
 			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
 				user,
 				expect.any(WorkflowEntity),
-				{ projectId: undefined, source: 'n8n-mcp' },
+				{ projectId: 'personal-project-1', source: 'n8n-mcp' },
 			);
 		});
 
@@ -270,6 +292,70 @@ describe('create-workflow-from-code MCP tool', () => {
 				expect.any(WorkflowEntity),
 				{ projectId: 'custom-project-id', source: 'n8n-mcp' },
 			);
+		});
+
+		test('reports targetProject as the personal project when projectId is omitted', async () => {
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			expect(response.targetProject).toEqual({
+				id: 'personal-project-1',
+				name: 'Ricardo Espinoza',
+				type: 'personal',
+			});
+		});
+
+		test('reports targetProject as the requested project when projectId is provided', async () => {
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'custom-project-id',
+			});
+
+			const response = parseResult(result);
+			expect(response.targetProject).toEqual({
+				id: 'custom-project-id',
+				name: 'Marketing',
+				type: 'team',
+			});
+		});
+
+		test('returns a clear error when the provided projectId does not exist', async () => {
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'missing-project-id',
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toContain('missing-project-id');
+			expect(response.error).toContain('search_projects');
+			expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
+		});
+
+		test('includes targetProject in recovery output when post-save errors but workflow persists', async () => {
+			createWorkflowMock.mockImplementation(async (_user, workflow: WorkflowEntity) => {
+				workflow.id = 'wf-recovery-1';
+				throw new Error('Post-save hook failed');
+			});
+			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValueOnce({
+				id: 'wf-recovery-1',
+				name: 'Recovered',
+				nodes: mockNodes,
+			});
+
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'custom-project-id',
+			});
+
+			const response = parseResult(result);
+			expect(response.workflowId).toBe('wf-recovery-1');
+			expect(response.targetProject).toEqual({
+				id: 'custom-project-id',
+				name: 'Marketing',
+				type: 'team',
+			});
+			expect(response.note).toContain('post-save operation failed');
 		});
 
 		test('returns error when service throws permission error', async () => {
@@ -373,6 +459,122 @@ describe('create-workflow-from-code MCP tool', () => {
 					}),
 				}),
 			);
+		});
+
+		describe('data table validation', () => {
+			const dataTableLocator = (mode: 'id' | 'name' | 'list', value: string) => ({
+				__rl: true as const,
+				mode,
+				value,
+			});
+
+			const dataTableNode = (dataTableId: ReturnType<typeof dataTableLocator>): INode => ({
+				id: 'dt-1',
+				name: 'Data table',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				position: [200, 0],
+				parameters: { dataTableId },
+			});
+
+			test('rejects workflow whose data table id does not exist', async () => {
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						...mockWorkflowJson,
+						nodes: [dataTableNode(dataTableLocator('id', 'missing'))],
+					},
+				});
+
+				const result = await callHandler({ code: 'const wf = ...' });
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("data table with id 'missing' not found");
+				expect(response.error).toContain('create_data_table');
+				expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
+			});
+
+			test('rejects workflow whose data table name does not exist', async () => {
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						...mockWorkflowJson,
+						nodes: [dataTableNode(dataTableLocator('name', 'missing-table'))],
+					},
+				});
+
+				const result = await callHandler({ code: 'const wf = ...' });
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("data table with name 'missing-table' not found");
+				expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
+			});
+
+			test('accepts workflow whose data table id resolves in the project', async () => {
+				dataTableOps.getManyAndCount.mockResolvedValue({
+					data: [{ id: 'dt-existing', name: 'Existing', projectId: 'personal-project-1' }],
+					count: 1,
+				});
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						...mockWorkflowJson,
+						nodes: [dataTableNode(dataTableLocator('id', 'dt-existing'))],
+					},
+				});
+
+				const result = await callHandler({ code: 'const wf = ...' });
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowCreationService.createWorkflow).toHaveBeenCalled();
+				expect(dataTableOps.getManyAndCount).toHaveBeenCalledWith(
+					expect.objectContaining({
+						filter: { id: 'dt-existing', projectId: 'personal-project-1' },
+						take: 1,
+					}),
+				);
+			});
+
+			test('looks up against the explicit projectId when provided', async () => {
+				dataTableOps.getManyAndCount.mockResolvedValue({
+					data: [{ id: 'dt-existing', name: 'Existing', projectId: 'custom-project-id' }],
+					count: 1,
+				});
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						...mockWorkflowJson,
+						nodes: [dataTableNode(dataTableLocator('id', 'dt-existing'))],
+					},
+				});
+
+				await callHandler({ code: 'const wf = ...', projectId: 'custom-project-id' });
+
+				expect(dataTableOps.getManyAndCount).toHaveBeenCalledWith(
+					expect.objectContaining({
+						filter: { id: 'dt-existing', projectId: 'custom-project-id' },
+					}),
+				);
+			});
+
+			test('skips validation for non-data-table nodes', async () => {
+				const result = await callHandler({ code: 'const wf = ...' });
+
+				expect(result.isError).toBeUndefined();
+				expect(dataTableOps.getManyAndCount).not.toHaveBeenCalled();
+			});
+
+			test('skips validation when dataTableId is an expression', async () => {
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						...mockWorkflowJson,
+						nodes: [dataTableNode(dataTableLocator('id', '={{ $json.id }}'))],
+					},
+				});
+
+				const result = await callHandler({ code: 'const wf = ...' });
+
+				expect(result.isError).toBeUndefined();
+				expect(dataTableOps.getManyAndCount).not.toHaveBeenCalled();
+			});
 		});
 
 		test('refuses to save when an agent is wired as a tool to another agent', async () => {
