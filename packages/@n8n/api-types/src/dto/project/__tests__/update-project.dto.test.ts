@@ -69,6 +69,24 @@ describe('UpdateProjectWithRelationsDto', () => {
 					description: 'My Updated Project Description',
 				},
 			},
+			{
+				name: 'valid customTelemetryTags with unique keys',
+				request: {
+					customTelemetryTags: [
+						{ key: 'env', value: 'production' },
+						{ key: 'team', value: 'backend' },
+					],
+				},
+			},
+			{
+				name: 'customTelemetryTags with keys that are unique after trim',
+				request: {
+					customTelemetryTags: [
+						{ key: '  env  ', value: 'production' },
+						{ key: 'team', value: 'backend' },
+					],
+				},
+			},
 		])('should pass validation for $name', ({ request }) => {
 			const result = UpdateProjectWithRelationsDto.safeParse(request);
 			expect(result.success).toBe(true);
@@ -135,6 +153,40 @@ describe('UpdateProjectWithRelationsDto', () => {
 				name: 'description too long',
 				request: { description: 'a'.repeat(513) },
 				expectedErrorPath: ['description'],
+			},
+			{
+				name: 'duplicate keys in customTelemetryTags',
+				request: {
+					customTelemetryTags: [
+						{ key: 'env', value: 'production' },
+						{ key: 'env', value: 'staging' },
+					],
+				},
+				expectedErrorPath: ['customTelemetryTags'],
+			},
+			{
+				name: 'duplicate keys in customTelemetryTags after trim',
+				request: {
+					customTelemetryTags: [
+						{ key: '  env  ', value: 'production' },
+						{ key: 'env', value: 'staging' },
+					],
+				},
+				expectedErrorPath: ['customTelemetryTags'],
+			},
+			{
+				name: 'empty key in customTelemetryTags',
+				request: {
+					customTelemetryTags: [{ key: '', value: 'something' }],
+				},
+				expectedErrorPath: ['customTelemetryTags', 0, 'key'],
+			},
+			{
+				name: 'whitespace-only key in customTelemetryTags',
+				request: {
+					customTelemetryTags: [{ key: '   ', value: 'something' }],
+				},
+				expectedErrorPath: ['customTelemetryTags', 0, 'key'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = UpdateProjectWithRelationsDto.safeParse(request);
