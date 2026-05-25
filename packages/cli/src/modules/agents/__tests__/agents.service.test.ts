@@ -824,7 +824,7 @@ describe('AgentsService', () => {
 			});
 			jest.spyOn(service as never, 'compileIsolated').mockResolvedValue({
 				ok: true,
-				agent: { name: 'Test Agent', stream },
+				agent: { name: 'Test Agent', stream, close: jest.fn().mockResolvedValue(undefined) },
 			} as never);
 
 			await service.executeForWorkflow(
