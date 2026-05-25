@@ -18,7 +18,7 @@ import type { ComputedRef, Ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { CanvasLayoutSource } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
-import type { ExecutionOutputMap, ExecutionOutputMapData } from '@/app/stores/executionData.types';
+import type { ExecutionOutputMap, ExecutionOutputMapData } from '@/app/types/executionData';
 
 export const enum CanvasConnectionMode {
 	Input = 'inputs',
@@ -226,7 +226,7 @@ export type CanvasNodeMoveEvent = { id: string; position: CanvasNode['position']
 // Re-exported from the executionData store, which owns the aggregation.
 // The types are kept in a neutral location so non-canvas consumers (NDV
 // counts, schema view) can import without pulling canvas types in.
-export type { ExecutionOutputMap, ExecutionOutputMapData } from '@/app/stores/executionData.types';
+export type { ExecutionOutputMap, ExecutionOutputMapData } from '@/app/types/executionData';
 
 export type BoundingBox = {
 	x: number;

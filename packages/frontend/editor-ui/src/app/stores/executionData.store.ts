@@ -30,7 +30,7 @@ import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { CHANGE_ACTION } from './workflowDocument/types';
 import type { ChangeAction, ChangeEvent } from './workflowDocument/types';
-import type { ExecutionOutputMap } from './executionData.types';
+import type { ExecutionOutputMap } from '@/app/types/executionData';
 
 export type ExecutionDataId = string;
 

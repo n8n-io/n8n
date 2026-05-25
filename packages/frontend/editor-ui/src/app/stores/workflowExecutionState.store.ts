@@ -13,7 +13,7 @@ import { createEventHook } from '@vueuse/core';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
 import type { ExecutionStatus, ExecutionSummary, ITaskData } from 'n8n-workflow';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import type { ExecutionOutputMap } from './executionData.types';
+import type { ExecutionOutputMap } from '@/app/types/executionData';
 import { WorkflowExecutionStateStoreKey } from '@/app/constants/injectionKeys';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 import { useExecutingNode } from '@/app/composables/useExecutingNode';
