@@ -35,6 +35,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
+import * as redactionFeatureFlag from '@/modules/redaction/redaction-enforcement.feature-flag';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -779,15 +780,17 @@ describe('WorkflowExecuteAdditionalData', () => {
 		});
 
 		describe('redactionContext', () => {
-			it('should not set redactionContext when buildContext returns undefined', async () => {
-				instanceRedactionEnforcementService.buildContext.mockResolvedValue(undefined);
+			it('should not set redactionContext when flag is off', async () => {
+				jest.spyOn(redactionFeatureFlag, 'isRedactionEnforcementEnabled').mockReturnValue(false);
 
 				const additionalData = await getBase();
 
 				expect(additionalData.redactionContext).toBeUndefined();
+				expect(instanceRedactionEnforcementService.buildContext).not.toHaveBeenCalled();
 			});
 
-			it('should populate redactionContext from InstanceRedactionEnforcementService.buildContext', async () => {
+			it('should populate redactionContext from InstanceRedactionEnforcementService.buildContext when flag is on', async () => {
+				jest.spyOn(redactionFeatureFlag, 'isRedactionEnforcementEnabled').mockReturnValue(true);
 				const enforcement = { enforced: true, manual: false, production: true };
 				instanceRedactionEnforcementService.buildContext.mockResolvedValue({ enforcement });
 
@@ -797,6 +800,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 
 			it('should reflect enforcement defaults (enforced:false) when flag is on but enforcement is inactive', async () => {
+				jest.spyOn(redactionFeatureFlag, 'isRedactionEnforcementEnabled').mockReturnValue(true);
 				const enforcement = { enforced: false, manual: false, production: false };
 				instanceRedactionEnforcementService.buildContext.mockResolvedValue({ enforcement });
 

@@ -1380,6 +1380,7 @@ describe('establishExecutionContext', () => {
 		it('should derive "manual-only" when enforced with manual:true production:false', async () => {
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({
 				redactionContext: { enforcement: { enforced: true, manual: true, production: false } },
+				encryptedRunnerIdentity: undefined,
 			});
 			const runExecutionData = makeRunData(startNode);
 

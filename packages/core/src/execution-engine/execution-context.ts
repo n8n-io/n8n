@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import {
-	type IWorkflowExecuteAdditionalData,
 	type WorkflowExecuteMode,
 	type IRunExecutionData,
 	type Workflow,

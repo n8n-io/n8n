@@ -59,6 +59,7 @@ import { UrlService } from '@/services/url.service';
 import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
+import { isRedactionEnforcementEnabled } from '@/modules/redaction/redaction-enforcement.feature-flag';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -683,9 +684,13 @@ export async function getBase({
 		additionalData.ssrfBridge = Container.get(SsrfProtectionService);
 	}
 
-	const redactionContext = await Container.get(InstanceRedactionEnforcementService).buildContext();
-	if (redactionContext) {
-		additionalData.redactionContext = redactionContext;
+	if (isRedactionEnforcementEnabled()) {
+		const redactionContext = await Container.get(
+			InstanceRedactionEnforcementService,
+		).buildContext();
+		if (redactionContext) {
+			additionalData.redactionContext = redactionContext;
+		}
 	}
 
 	for (const [moduleName, moduleContext] of Container.get(ModuleRegistry).context.entries()) {
