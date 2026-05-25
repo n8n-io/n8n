@@ -438,6 +438,7 @@ describe('CredentialsService', () => {
 			mock(), // credentialsHelper
 			mock(), // externalSecretsConfig
 			mock(), // externalSecretsProviderAccessCheckService
+			mock(), // connectionStatusProxy
 		);
 
 		jest.spyOn(credentialsService, 'decrypt');

@@ -183,6 +183,7 @@ describe('GlobalConfig', () => {
 			disabled: false,
 			path: 'api',
 			swaggerUiDisabled: false,
+			packagesEnabled: false,
 		},
 		templates: {
 			enabled: true,
@@ -204,7 +205,6 @@ describe('GlobalConfig', () => {
 			defaultName: 'My workflow',
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
-			indexingEnabled: true,
 			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
 			autosaveDisabled: false,
