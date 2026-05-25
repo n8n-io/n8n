@@ -12,7 +12,7 @@ import {
 	type RuntimeSkillSource,
 } from './types';
 
-export const RUNTIME_SKILL_MAX_OUTPUT_BYTES = 64 * 1024;
+const MAX_OUTPUT_BYTES = 64 * 1024;
 const TRUNCATION_FOOTER = '\n\n[... output truncated to 64 KB ...]';
 const SECRET_REDACTION = '[REDACTED]';
 const LINKED_FILE_GROUPS: Array<keyof RuntimeSkillLinkedFiles> = [
@@ -344,8 +344,8 @@ function envelopeValue(value: string): string {
 function cap(content: string): string {
 	const redacted = redactSecrets(content);
 	const bytes = Buffer.from(redacted, 'utf8');
-	if (bytes.byteLength <= RUNTIME_SKILL_MAX_OUTPUT_BYTES) return redacted;
-	return `${bytes.subarray(0, RUNTIME_SKILL_MAX_OUTPUT_BYTES).toString('utf8')}${TRUNCATION_FOOTER}`;
+	if (bytes.byteLength <= MAX_OUTPUT_BYTES) return redacted;
+	return `${bytes.subarray(0, MAX_OUTPUT_BYTES).toString('utf8')}${TRUNCATION_FOOTER}`;
 }
 
 function redactSecrets(content: string): string {

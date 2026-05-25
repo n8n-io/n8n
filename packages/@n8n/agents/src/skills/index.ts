@@ -47,6 +47,5 @@ export {
 	createListSkillsTool,
 	createSkillLoadTool,
 	createRuntimeSkillTools,
-	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	RUNTIME_SKILL_TOOL_NAMES,
 } from './tools';

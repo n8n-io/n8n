@@ -1,6 +1,5 @@
 import {
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
-	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	createSkillLoadTool,
 	type RuntimeSkillLinkedFiles,
 	type RuntimeSkillSource,
@@ -212,7 +211,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 	});
 
 	it('warns when materialized skill files exceed the load_skill output limit', async () => {
-		const runtimeSkillMaxOutputBytes = RUNTIME_SKILL_MAX_OUTPUT_BYTES as number;
+		const runtimeSkillMaxOutputBytes = 64 * 1024;
 		const source: RuntimeSkillSource = {
 			registry: {
 				schemaVersion: RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
