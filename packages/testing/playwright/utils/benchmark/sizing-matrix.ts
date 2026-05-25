@@ -396,8 +396,13 @@ function derivePerRunIo(report: RunReport): {
 	};
 }
 
-function detectBottleneck(headroom: ShapeResult['headroomAtCeiling'], p99: number): Bottleneck {
-	// Pick the resource closest to or over its red threshold first.
+function detectBottleneck(headroom: ShapeResult['headroomAtCeiling'], _p99: number): Bottleneck {
+	// Pick the saturated *resource*, not the customer-observable latency. p99 was
+	// previously included as a `network` candidate, but for async webhook tests
+	// p99 is dominated by Bull queue wait — not a network or topology resource.
+	// On a noop workflow with backlog, p99 was reliably ~1–2 s and out-ranking PG
+	// CPU at 230 %, which made every async cell read "network" and downgrade red.
+	// Restoring CPU/PG/worker as the classifier inputs surfaces the real bottleneck.
 	const candidates: Array<[Bottleneck, number]> = [
 		['main-cpu', headroom.mainCpuPct / AMBER_THRESHOLDS.mainCpuPct],
 		['pg-cpu', headroom.pgCpuPct / AMBER_THRESHOLDS.pgCpuPct],
@@ -405,28 +410,30 @@ function detectBottleneck(headroom: ShapeResult['headroomAtCeiling'], p99: numbe
 	if (headroom.workerCpuPct !== undefined) {
 		candidates.push(['worker-cpu', headroom.workerCpuPct / AMBER_THRESHOLDS.mainCpuPct]);
 	}
-	candidates.push(['network', p99 / AMBER_THRESHOLDS.httpP99Ms]);
 	candidates.sort((a, b) => b[1] - a[1]);
 	return candidates[0]?.[0] ?? 'main-cpu';
 }
 
 function scoreVerdict(
 	headroom: ShapeResult['headroomAtCeiling'],
-	p99: number,
+	_p99: number,
 	sampleCount: number,
 ): Verdict {
+	// Verdict reflects topology health (CPU/PG/event-loop), not customer-observable
+	// latency. p99 is overloaded across response modes — for async webhooks it
+	// includes Bull queue wait, so a healthy async topology will routinely report
+	// p99 ≈ 1–2 s without any resource being saturated. p99 still surfaces in the
+	// cell display so customers see latency expectations, just not as a verdict gate.
 	if (sampleCount < 3) return 'amber'; // low-confidence regardless of headroom
 	const anyRed =
 		headroom.mainCpuPct > AMBER_THRESHOLDS.mainCpuPct ||
 		headroom.pgCpuPct > AMBER_THRESHOLDS.pgCpuPct ||
-		headroom.eventLoopLagMs > AMBER_THRESHOLDS.eventLoopLagMs ||
-		p99 > AMBER_THRESHOLDS.httpP99Ms;
+		headroom.eventLoopLagMs > AMBER_THRESHOLDS.eventLoopLagMs;
 	if (anyRed) return 'red';
 	const anyAmber =
 		headroom.mainCpuPct > GREEN_THRESHOLDS.mainCpuPct ||
 		headroom.pgCpuPct > GREEN_THRESHOLDS.pgCpuPct ||
-		headroom.eventLoopLagMs > GREEN_THRESHOLDS.eventLoopLagMs ||
-		p99 > GREEN_THRESHOLDS.httpP99Ms;
+		headroom.eventLoopLagMs > GREEN_THRESHOLDS.eventLoopLagMs;
 	return anyAmber ? 'amber' : 'green';
 }
 
@@ -547,7 +554,7 @@ export function renderMarkdown(matrix: SizingMatrix): string {
 
 function renderShapeTable(cells: SizingCell[], shape: Shape): string {
 	const header =
-		'| Scale | Mains | Webhook procs | Workers | PG (vCPU/RAM) | Redis | Ceiling exec/s | Green sustained | Req/s | p99 ms | Verdict |';
+		'| Scale | Mains | Webhook procs | Workers | PG (vCPU/RAM) | Redis | Burst headroom (≤30 s) exec/s | **Green sustained** exec/s | Req/s | p99 ms | Verdict |';
 	const sep = '|---|---:|---:|---:|---|---|---:|---:|---:|---:|---|';
 	const rows: string[] = [header, sep];
 	for (const cell of cells) {
