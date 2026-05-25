@@ -1,0 +1,130 @@
+name: 'CI: Grind changed tests'
+
+on:
+  pull_request:
+    paths:
+      - 'packages/frontend/editor-ui/**/*.test.ts'
+
+concurrency:
+  group: grind-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  grind:
+    name: Grind changed editor-ui tests
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    timeout-minutes: 7
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+
+      - name: Resolve changed editor-ui test files
+        id: changed
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          FILES=$(git diff --name-only --diff-filter=ACMR "origin/${BASE_REF}...HEAD" -- \
+            'packages/frontend/editor-ui/**/*.test.ts' || true)
+          {
+            echo "files<<EOF"
+            echo "$FILES"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "Changed test files:"
+          echo "$FILES"
+
+      - name: Run grind on each changed test
+        id: grind
+        if: steps.changed.outputs.files != ''
+        env:
+          FILES: ${{ steps.changed.outputs.files }}
+        run: |
+          set -u
+          # 5 minute wall-time budget for the whole grind step.
+          DEADLINE=$(( $(date +%s) + 300 ))
+
+          {
+            echo "| File | Passes |"
+            echo "|---|---|"
+          } > grind-table.md
+
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            if [ "$(date +%s)" -ge "$DEADLINE" ]; then
+              echo "| \`$file\` | _skipped due to time budget_ |" >> grind-table.md
+              continue
+            fi
+
+            echo "::group::grind $file"
+            output_file="$(mktemp)"
+            pnpm grind "$file" 10 2>&1 | tee "$output_file" || true
+            summary=$(grep -Eo '[0-9]+/[0-9]+ passed' "$output_file" | tail -n 1 || true)
+            echo "::endgroup::"
+
+            if [ -z "$summary" ]; then
+              echo "| \`$file\` | _no result captured_ ❌ |" >> grind-table.md
+              continue
+            fi
+
+            passes=${summary%% passed}
+            num=${passes%%/*}
+            denom=${passes##*/}
+            if [ "$num" = "$denom" ]; then
+              icon="✅"
+              label=""
+            elif [ "$num" = "0" ]; then
+              icon="❌"
+              label=" broken"
+            else
+              icon="⚠️"
+              label=" flaky"
+            fi
+            echo "| \`$file\` | ${passes} ${icon}${label} |" >> grind-table.md
+          done <<< "$FILES"
+
+          {
+            echo "<!-- grind-results -->"
+            echo "## Grind results — pre-merge flake detection (N=10)"
+            echo ""
+            cat grind-table.md
+            echo ""
+            echo "_Spawn-per-iteration mode. Catches post-teardown async flakes that \`vitest --repeat\` misses. See [DEVP-198](https://linear.app/n8n/issue/DEVP-198) for design notes._"
+          } > grind-comment.md
+
+          echo "comment-file=grind-comment.md" >> "$GITHUB_OUTPUT"
+
+      - name: Post sticky PR comment
+        if: steps.changed.outputs.files != '' && steps.grind.outputs.comment-file != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -u
+          MARKER="<!-- grind-results -->"
+          BODY=$(cat grind-comment.md)
+
+          EXISTING_ID=$(gh api \
+            "/repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --paginate \
+            --jq "[.[] | select(.body | startswith(\"${MARKER}\"))] | first | .id // empty")
+
+          if [ -n "$EXISTING_ID" ]; then
+            echo "Updating existing comment ${EXISTING_ID}"
+            gh api --method PATCH \
+              "/repos/${REPO}/issues/comments/${EXISTING_ID}" \
+              -f body="$BODY" > /dev/null
+          else
+            echo "Creating new sticky comment"
+            gh pr comment "$PR_NUMBER" --body "$BODY"
+          fi
