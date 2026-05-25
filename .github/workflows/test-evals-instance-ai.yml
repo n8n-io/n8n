@@ -102,7 +102,7 @@ jobs:
             -e SANDBOX_API_RUNNER_REGISTRATION_TOKEN=ci-reg-token \
             -e SANDBOX_API_RUNNER_API_KEY=ci-runner-key \
             -e SANDBOX_API_GRPC_TLS_CERT_FILE=/tls/grpc-server.crt \
-            -e SANDBOX_API_GRPC_TLS_KEY_FILE=/tls/grpc-server.keyf \
+            -e SANDBOX_API_GRPC_TLS_KEY_FILE=/tls/grpc-server.key \
             -e SANDBOX_API_GRPC_TLS_CLIENT_CA_FILE=/tls/ca.crt \
             -e SANDBOX_API_RUNNER_CONTROL_GRPC_TLS_CA_FILE=/tls/ca.crt \
             -e SANDBOX_API_RUNNER_CONTROL_GRPC_TLS_CERT_FILE=/tls/control-grpc-api-client.crt \
