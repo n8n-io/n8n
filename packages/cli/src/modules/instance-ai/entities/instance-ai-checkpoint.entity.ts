@@ -25,6 +25,9 @@ export class InstanceAiCheckpoint extends WithTimestamps {
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	resourceId: string | null;
 
-	@JsonColumn()
-	state: SerializableAgentState;
+	@JsonColumn({ nullable: true })
+	state: SerializableAgentState | null;
+
+	@Column({ type: 'boolean', default: false })
+	expired: boolean;
 }

@@ -57,6 +57,9 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiRunSnapshot } = await import('./entities/instance-ai-run-snapshot.entity');
 		const { InstanceAiIterationLog } = await import('./entities/instance-ai-iteration-log.entity');
 		const { InstanceAiCheckpoint } = await import('./entities/instance-ai-checkpoint.entity');
+		const { InstanceAiPendingConfirmation } = await import(
+			'./entities/instance-ai-pending-confirmation.entity'
+		);
 
 		return [
 			InstanceAiThread,
@@ -65,6 +68,7 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiRunSnapshot,
 			InstanceAiIterationLog,
 			InstanceAiCheckpoint,
+			InstanceAiPendingConfirmation,
 		];
 	}
 
