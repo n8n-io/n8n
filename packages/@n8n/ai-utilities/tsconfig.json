@@ -10,7 +10,8 @@
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"emitDecoratorMetadata": true,
-		"experimentalDecorators": true
+		"experimentalDecorators": true,
+		"isolatedModules": true
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts", "integration-tests/**/*.ts"]
 }

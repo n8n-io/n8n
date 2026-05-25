@@ -8,6 +8,7 @@ import {
 	AddNotNull,
 	CreateTable,
 	DropColumns,
+	DropEnumCheck,
 	DropForeignKey,
 	DropNotNull,
 	DropTable,
@@ -93,6 +94,9 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 		new AddNotNull(tableName, columnName, tablePrefix, queryRunner),
 	dropNotNull: (tableName: string, columnName: string) =>
 		new DropNotNull(tableName, columnName, tablePrefix, queryRunner),
+
+	dropEnumCheck: (tableName: string, columnName: string) =>
+		new DropEnumCheck(tableName, columnName, tablePrefix, queryRunner),
 
 	/* eslint-enable */
 });

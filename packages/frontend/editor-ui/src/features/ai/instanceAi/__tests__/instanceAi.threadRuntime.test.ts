@@ -967,3 +967,152 @@ describe('createThreadRuntime - gateway resource-decision confirmation', () => {
 		expect(mockPostConfirmation).toHaveBeenCalledOnce();
 	});
 });
+
+describe('createThreadRuntime - session always-allow', () => {
+	let registry: RuntimeRegistry;
+
+	beforeEach(() => {
+		setupRuntimePinia();
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-always-allow';
+		mockPostConfirmation.mockResolvedValue(undefined);
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	function pushPendingApproval(
+		runtime: ThreadRuntime,
+		opts: {
+			messageId: string;
+			requestId: string;
+			toolName: string;
+			args?: Record<string, unknown>;
+			severity?: 'info' | 'warning' | 'destructive';
+		},
+	): void {
+		runtime.messages.push({
+			id: opts.messageId,
+			role: 'assistant',
+			createdAt: new Date().toISOString(),
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			agentTree: {
+				agentId: 'agent-1',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				timeline: [],
+				children: [],
+				toolCalls: [
+					{
+						toolCallId: `tc-${opts.requestId}`,
+						toolName: opts.toolName,
+						args: opts.args ?? {},
+						isLoading: true,
+						confirmationStatus: 'pending',
+						confirmation: {
+							requestId: opts.requestId,
+							severity: opts.severity ?? 'info',
+							message: 'Approve?',
+						},
+					},
+				],
+			},
+		});
+	}
+
+	it('auto-approves matching generic-eligible confirmations after key is added', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-auto',
+			requestId: 'req-auto',
+			toolName: 'workflows',
+			args: { action: 'run' },
+		});
+
+		await vi.waitFor(() => {
+			expect(runtime.resolvedConfirmationIds.get('req-auto')).toBe('approved');
+		});
+		expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-auto', {
+			kind: 'approval',
+			approved: true,
+		});
+	});
+
+	it('does not auto-approve destructive confirmations even when the key matches', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workflows', { action: 'delete' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-destructive',
+			requestId: 'req-destructive',
+			toolName: 'workflows',
+			args: { action: 'delete' },
+			severity: 'destructive',
+		});
+
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(runtime.resolvedConfirmationIds.has('req-destructive')).toBe(false);
+		expect(mockPostConfirmation).not.toHaveBeenCalled();
+	});
+
+	it('distinguishes submit-workflow create vs update grants by workflowId presence', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('submit-workflow', {});
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-create',
+			requestId: 'req-create',
+			toolName: 'submit-workflow',
+			args: {},
+		});
+		await vi.waitFor(() => {
+			expect(runtime.resolvedConfirmationIds.get('req-create')).toBe('approved');
+		});
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-update',
+			requestId: 'req-update',
+			toolName: 'submit-workflow',
+			args: { workflowId: 'wf-1' },
+		});
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(runtime.resolvedConfirmationIds.has('req-update')).toBe(false);
+	});
+
+	it('clears keys on resetState', () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+		expect(runtime.sessionAlwaysAllowKeys.size).toBe(1);
+
+		runtime.resetState();
+		expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
+	});
+
+	it('keeps the confirmation pending when auto-approve POST fails', async () => {
+		mockPostConfirmation.mockRejectedValueOnce(new Error('network down'));
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-fail',
+			requestId: 'req-fail',
+			toolName: 'workflows',
+			args: { action: 'run' },
+		});
+
+		await vi.waitFor(() => {
+			expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-fail', {
+				kind: 'approval',
+				approved: true,
+			});
+		});
+		expect(runtime.resolvedConfirmationIds.has('req-fail')).toBe(false);
+	});
+});
