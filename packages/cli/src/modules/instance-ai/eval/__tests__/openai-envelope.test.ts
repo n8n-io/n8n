@@ -6,7 +6,6 @@ import {
 	extractToolCalls,
 	forwardTranslateToChatCompletion,
 	forwardTranslateToSseChunks,
-	hasInboundTools,
 	isStreamRequested,
 	reverseTranslateOpenAiRequest,
 } from '../openai-envelope';
@@ -79,20 +78,6 @@ describe('isStreamRequested', () => {
 		expect(isStreamRequested({ stream: 'true' })).toBe(false);
 		expect(isStreamRequested(undefined)).toBe(false);
 		expect(isStreamRequested(null)).toBe(false);
-	});
-});
-
-describe('hasInboundTools', () => {
-	it('returns true for a non-empty tools array', () => {
-		expect(hasInboundTools({ tools: [{ type: 'function' }] })).toBe(true);
-	});
-
-	it('returns false for empty / missing / wrong-shape tools', () => {
-		expect(hasInboundTools({ tools: [] })).toBe(false);
-		expect(hasInboundTools({ tools: 'one' })).toBe(false);
-		expect(hasInboundTools({})).toBe(false);
-		expect(hasInboundTools(undefined)).toBe(false);
-		expect(hasInboundTools(null)).toBe(false);
 	});
 });
 

@@ -15,6 +15,16 @@ import { type InterceptedTurn, LlmWireServer } from '../llm-wire-server';
 /**
  * M3 fixtures — headline proof for the TRUST-101 spike.
  *
+ * **Integration-shaped unit test.** Boots a real Express `LlmWireServer` on
+ * a loopback port, instantiates a real `EvalMockedCredentialsHelper`, scripts
+ * mock-handler responses turn-by-turn, and drives the Agent loop with raw
+ * `fetch`. The cost is real network I/O per test and a soft dependency on
+ * port availability; the payoff is that the credential-rewrite + path-based
+ * root attribution + envelope correctness are exercised end-to-end in one
+ * file. If this fails in CI for a non-deterministic reason, investigate
+ * port binding or scripted-response sequencing before treating it as a
+ * regression — the surface is wide for a "unit" file.
+ *
  * Two scenarios share the same Agent → Chat Model → HTTP Request tool →
  * MemoryBufferWindow shape:
  *

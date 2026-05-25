@@ -110,25 +110,11 @@ export class LlmWireServer {
 			return;
 		}
 
-		try {
-			if (stream) {
-				this.writeSseEnvelope(res, mockResponse, model);
-			} else {
-				const envelope = forwardTranslateToChatCompletion(mockResponse, model);
-				res.status(200).json(envelope);
-			}
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			this.options.logger?.error(`[EvalMock] Wire-server response write failed: ${message}`);
-			// At this point headers may be sent; fall through to ledger best-effort.
-			if (!res.headersSent) {
-				this.respondWithError(res, message);
-			} else {
-				res.end();
-			}
-		}
-
-		// Best-effort ledger write — never let it taint the 200 the SDK sees.
+		// Ledger write BEFORE the response so consumers reading `interceptedRequests`
+		// after `await fetch(...)` see the entry deterministically — the alternative
+		// (write response, then ledger) relies on the libuv flush running after the
+		// current microtask, which is subtle and surprised reviewers. Best-effort:
+		// a thrown `onIntercept` never blocks the response the SDK gets.
 		try {
 			this.options.onIntercept?.({
 				rootName,
@@ -142,6 +128,27 @@ export class LlmWireServer {
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			this.options.logger?.warn(`[EvalMock] Wire-server ledger write failed: ${message}`);
+		}
+
+		try {
+			if (stream) {
+				this.writeSseEnvelope(res, mockResponse, model);
+			} else {
+				const envelope = forwardTranslateToChatCompletion(mockResponse, model);
+				res.status(200).json(envelope);
+			}
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.options.logger?.error(`[EvalMock] Wire-server response write failed: ${message}`);
+			// Send a typed error envelope if nothing has been flushed yet; otherwise
+			// the SSE writer has already partially written, so just close the socket.
+			// The ledger entry above stays — the model turn DID happen, only the
+			// serialization to the SDK failed.
+			if (!res.headersSent) {
+				this.respondWithError(res, message);
+			} else {
+				res.end();
+			}
 		}
 	};
 

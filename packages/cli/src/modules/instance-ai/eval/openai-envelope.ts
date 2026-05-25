@@ -42,13 +42,6 @@ export function isStreamRequested(body: unknown): boolean {
 	return (body as { stream?: unknown }).stream === true;
 }
 
-/** True when the inbound request advertises a non-empty `tools` array. */
-export function hasInboundTools(body: unknown): boolean {
-	if (typeof body !== 'object' || body === null) return false;
-	const tools = (body as { tools?: unknown }).tools;
-	return Array.isArray(tools) && tools.length > 0;
-}
-
 /** Wrap the mock handler's response in a canonical chat.completion envelope. */
 export function forwardTranslateToChatCompletion(
 	mockResponse: EvalMockHttpResponse | undefined,
@@ -91,6 +84,10 @@ export function forwardTranslateToChatCompletion(
 			completion_tokens: 0,
 			total_tokens: 0,
 		},
+		// Deliberately non-conforming with real OpenAI fingerprints (e.g. `fp_2f57f81c11`)
+		// so downstream telemetry can spot eval traffic vs. real provider traffic at a
+		// glance. Productionization: normalize to `fp_eval_<random>` if any consumer
+		// turns out to parse the format.
 		system_fingerprint: 'eval-wire-server',
 	};
 }
