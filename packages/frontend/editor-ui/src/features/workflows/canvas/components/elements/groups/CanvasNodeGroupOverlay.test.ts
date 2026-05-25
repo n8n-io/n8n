@@ -2,25 +2,10 @@ import { renderComponent } from '@/__tests__/render';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { describe, expect, it } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
-import type { GraphNode } from '@vue-flow/core';
 
 import CanvasNodeGroupOverlay from './CanvasNodeGroupOverlay.vue';
 import type { IWorkflowGroup } from 'n8n-workflow';
-import {
-	GROUP_PADDING_X,
-	GROUP_PADDING_Y_TOP,
-	GROUP_PADDING_Y_BOTTOM,
-	GROUP_HEADER_HEIGHT,
-} from '../../../stores/canvasNodeGroups.constants';
-
-function makeMember(id: string, x: number, y: number): GraphNode {
-	return {
-		id,
-		position: { x, y },
-		dimensions: { width: 200, height: 100 },
-		computedPosition: { x, y, z: 0 },
-	} as unknown as GraphNode;
-}
+import type { CanvasNodeGroupLayout } from '../../../composables/useCanvasNodeGroupsLayout';
 
 const baseGroup: IWorkflowGroup = {
 	id: 'g1',
@@ -28,21 +13,32 @@ const baseGroup: IWorkflowGroup = {
 	name: 'My group',
 };
 
+const baseLayout: CanvasNodeGroupLayout = {
+	group: baseGroup,
+	collapsed: false,
+	x: 44,
+	y: 120,
+	width: 560,
+	height: 228,
+	frameTop: 40,
+	frameHeight: 188,
+	status: 'idle',
+};
+
 describe('CanvasNodeGroupOverlay', () => {
 	function render(
 		props: Partial<{
 			group: IWorkflowGroup;
-			memberNodes: GraphNode[];
+			layout: CanvasNodeGroupLayout;
 			readOnly: boolean;
 			autofocusTitle: boolean;
 		}> = {},
 	) {
-		const memberNodes = props.memberNodes ?? [makeMember('a', 0, 0), makeMember('b', 300, 0)];
 		return renderComponent(CanvasNodeGroupOverlay, {
 			pinia: createTestingPinia(),
 			props: {
 				group: props.group ?? baseGroup,
-				memberNodes,
+				layout: props.layout ?? baseLayout,
 				readOnly: props.readOnly ?? false,
 				autofocusTitle: props.autofocusTitle ?? false,
 			},
@@ -59,45 +55,37 @@ describe('CanvasNodeGroupOverlay', () => {
 		expect(wrapper.getByTestId('inline-edit-preview')).toBeTruthy();
 	});
 
-	it('positions the wrapper based on the bounding rect of member nodes', () => {
-		const memberWidth = 200;
-		const memberHeight = 100;
-		const rectX = 100;
-		const rectY = 200;
-		const rectWidth = 500 - 100 + memberWidth;
-		const wrapper = render({
-			memberNodes: [makeMember('a', rectX, rectY), makeMember('b', 500, rectY)],
-		});
-
+	it('positions the wrapper from the provided runtime layout', () => {
+		const wrapper = render();
 		const overlay = wrapper.getByTestId('canvas-node-group') as HTMLElement;
-		expect(overlay.style.left).toBe(`${rectX - GROUP_PADDING_X}px`);
-		expect(overlay.style.top).toBe(`${rectY - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT}px`);
-		expect(overlay.style.width).toBe(`${rectWidth + 2 * GROUP_PADDING_X}px`);
-		expect(overlay.style.height).toBe(
-			`${GROUP_HEADER_HEIGHT + memberHeight + GROUP_PADDING_Y_TOP + GROUP_PADDING_Y_BOTTOM}px`,
-		);
+
+		expect(overlay.style.left).toBe('44px');
+		expect(overlay.style.top).toBe('120px');
+		expect(overlay.style.width).toBe('560px');
+		expect(overlay.style.height).toBe('228px');
 	});
 
-	it('reshapes when member positions change', async () => {
-		const wrapper = render({
-			memberNodes: [makeMember('a', 0, 0), makeMember('b', 300, 0)],
-		});
+	it('reshapes when the runtime layout changes', async () => {
+		const wrapper = render();
 		const initial = wrapper.getByTestId('canvas-node-group') as HTMLElement;
 		const initialWidth = initial.style.width;
 
 		await wrapper.rerender({
 			group: baseGroup,
-			memberNodes: [makeMember('a', 0, 0), makeMember('b', 800, 0)],
+			layout: {
+				...baseLayout,
+				width: 320,
+				height: 96,
+				collapsed: true,
+				frameTop: 0,
+				frameHeight: 96,
+			},
 			readOnly: false,
 		});
 
 		const updated = wrapper.getByTestId('canvas-node-group') as HTMLElement;
 		expect(updated.style.width).not.toBe(initialWidth);
-	});
-
-	it('renders the frame element so clicks fall through to nodes', () => {
-		const wrapper = render();
-		expect(wrapper.getByTestId('canvas-node-group-frame')).toBeTruthy();
+		expect(updated).toHaveAttribute('data-collapsed', 'true');
 	});
 
 	it('commits the title on Enter', async () => {
@@ -148,10 +136,16 @@ describe('CanvasNodeGroupOverlay', () => {
 
 	it('renders the ungroup button and emits the ungroup event when clicked', async () => {
 		const wrapper = render();
-		const ungroupBtn = wrapper.getByTestId('canvas-node-group-ungroup');
-		await fireEvent.click(ungroupBtn);
+		await fireEvent.click(wrapper.getByTestId('canvas-node-group-ungroup'));
 
 		expect(wrapper.emitted().ungroup).toEqual([['g1']]);
+	});
+
+	it('emits collapse toggles', async () => {
+		const wrapper = render();
+		await fireEvent.click(wrapper.getByTestId('canvas-node-group-collapse-toggle'));
+
+		expect(wrapper.emitted()['toggle:collapsed']).toEqual([['g1']]);
 	});
 
 	it('does not render the ungroup button in read-only mode', () => {

@@ -1,17 +1,14 @@
 <script setup lang="ts">
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
-import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, useCssModule, useTemplateRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIconButton, N8nInlineTextEdit } from '@n8n/design-system';
-import { getRectOfNodes } from '@vue-flow/core';
-import type { GraphNode } from '@vue-flow/core';
 
 import type { IWorkflowGroup } from 'n8n-workflow';
+import type { CanvasNodeGroupLayout } from '../../../composables/useCanvasNodeGroupsLayout';
 import {
-	GROUP_PADDING_X as PADDING_X,
-	GROUP_PADDING_Y_TOP as PADDING_Y_TOP,
-	GROUP_PADDING_Y_BOTTOM as PADDING_Y_BOTTOM,
 	GROUP_HEADER_HEIGHT as HEADER_HEIGHT,
+	GROUP_TITLE_WIDTH as TITLE_WIDTH,
 } from '../../../stores/canvasNodeGroups.constants';
 
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
@@ -19,7 +16,7 @@ const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
 const props = withDefaults(
 	defineProps<{
 		group: IWorkflowGroup;
-		memberNodes: GraphNode[];
+		layout: CanvasNodeGroupLayout;
 		readOnly?: boolean;
 		autofocusTitle?: boolean;
 	}>(),
@@ -33,30 +30,24 @@ const emit = defineEmits<{
 	'update:name': [id: string, name: string];
 	'title:focused': [id: string];
 	ungroup: [id: string];
+	'toggle:collapsed': [id: string];
 	'header:dragstart': [id: string, event: MouseEvent];
 }>();
 
 const i18n = useI18n();
+const $style = useCssModule();
 const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleEdit');
 
-const layout = computed(() => {
-	if (props.memberNodes.length === 0) {
-		return null;
-	}
-	const rect = getRectOfNodes(props.memberNodes);
-	const wrapperX = rect.x - PADDING_X;
-	const wrapperY = rect.y - PADDING_Y_TOP - HEADER_HEIGHT;
-	const wrapperWidth = rect.width + 2 * PADDING_X;
-	const wrapperHeight = HEADER_HEIGHT + rect.height + PADDING_Y_TOP + PADDING_Y_BOTTOM;
-	return {
-		x: wrapperX,
-		y: wrapperY,
-		width: wrapperWidth,
-		height: wrapperHeight,
-		frameTop: HEADER_HEIGHT,
-		frameHeight: rect.height + PADDING_Y_TOP + PADDING_Y_BOTTOM,
-	};
-});
+const visualHeight = computed(() => (props.layout.collapsed ? HEADER_HEIGHT : props.layout.height));
+
+const wrapperClasses = computed(() => ({
+	[$style.wrapper]: true,
+	[$style.collapsed]: props.layout.collapsed,
+	[$style.success]: props.layout.status === 'success',
+	[$style.error]: props.layout.status === 'error',
+	[$style.running]: props.layout.status === 'running',
+	[$style.waiting]: props.layout.status === 'waiting',
+}));
 
 function onTitleUpdate(value: string) {
 	emit('update:name', props.group.id, value);
@@ -64,6 +55,10 @@ function onTitleUpdate(value: string) {
 
 function onUngroupClick() {
 	emit('ungroup', props.group.id);
+}
+
+function onToggleCollapsed() {
+	emit('toggle:collapsed', props.group.id);
 }
 
 function onHeaderMouseDown(event: MouseEvent) {
@@ -93,16 +88,16 @@ watch(
 
 <template>
 	<div
-		v-if="layout"
-		:class="$style.wrapper"
+		:class="wrapperClasses"
 		:style="{
 			left: `${layout.x}px`,
 			top: `${layout.y}px`,
 			width: `${layout.width}px`,
-			height: `${layout.height}px`,
+			height: `${visualHeight}px`,
 		}"
 		data-test-id="canvas-node-group"
 		:data-group-id="group.id"
+		:data-collapsed="layout.collapsed"
 	>
 		<div
 			:class="[$style.header, { [$style.headerDraggable]: !readOnly }]"
@@ -128,20 +123,36 @@ watch(
 					</KeyboardShortcutTooltip>
 				</div>
 			</div>
-			<div :class="$style.title" data-test-id="canvas-node-group-title">
-				<N8nInlineTextEdit
-					ref="titleEdit"
-					:model-value="group.name"
-					:read-only="readOnly"
-					:min-width="0"
-					max-width="100%"
-					:placeholder="i18n.baseText('canvas.nodeGroup.titlePlaceholder')"
-					@update:model-value="onTitleUpdate"
+			<div :class="$style.titleRow">
+				<N8nIconButton
+					variant="ghost"
+					size="small"
+					icon="chevrons-down-up"
+					:aria-label="
+						layout.collapsed
+							? i18n.baseText('canvas.nodeGroup.expand')
+							: i18n.baseText('canvas.nodeGroup.collapse')
+					"
+					data-test-id="canvas-node-group-collapse-toggle"
+					@click.stop="onToggleCollapsed"
 					@mousedown.stop
 				/>
+				<div :class="$style.title" data-test-id="canvas-node-group-title">
+					<N8nInlineTextEdit
+						ref="titleEdit"
+						:model-value="group.name"
+						:read-only="readOnly"
+						:min-width="0"
+						:max-width="TITLE_WIDTH"
+						:placeholder="i18n.baseText('canvas.nodeGroup.titlePlaceholder')"
+						@update:model-value="onTitleUpdate"
+						@mousedown.stop
+					/>
+				</div>
 			</div>
 		</div>
 		<div
+			v-if="!layout.collapsed"
 			:class="$style.frame"
 			:style="{
 				top: `${layout.frameTop}px`,
@@ -156,6 +167,7 @@ watch(
 .wrapper {
 	position: absolute;
 	pointer-events: none;
+	--canvas-node-group-border-color: var(--border-color);
 }
 
 .header {
@@ -167,7 +179,7 @@ watch(
 	align-items: center;
 	padding: 0 var(--spacing--sm);
 	background: var(--background--surface);
-	border: var(--border);
+	border: var(--border-width) solid var(--canvas-node-group-border-color);
 	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
 	pointer-events: auto;
 	box-sizing: border-box;
@@ -181,6 +193,25 @@ watch(
 	&:hover .toolbarItems {
 		opacity: 1;
 	}
+}
+
+.collapsed {
+	.header {
+		border-radius: var(--radius--lg);
+	}
+}
+
+.success {
+	--canvas-node-group-border-color: var(--color--success);
+}
+
+.error {
+	--canvas-node-group-border-color: var(--color--danger);
+}
+
+.running,
+.waiting {
+	--canvas-node-group-border-color: var(--color--warning);
 }
 
 .headerDraggable {
@@ -209,12 +240,19 @@ watch(
 	border-radius: var(--radius);
 }
 
+.titleRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
 .frame {
 	position: absolute;
 	left: 0;
 	width: 100%;
 	background: transparent;
-	border: var(--border-width) dashed var(--border-color);
+	border: var(--border-width) dashed var(--canvas-node-group-border-color);
 	border-top: none;
 	border-radius: 0 0 var(--radius--lg) var(--radius--lg);
 	pointer-events: none;
@@ -222,11 +260,17 @@ watch(
 	z-index: -1;
 }
 
+.collapsed .frame {
+	border-top: var(--border-width) solid var(--canvas-node-group-border-color);
+	border-radius: var(--radius--lg);
+}
+
 .title {
 	display: flex;
 	align-items: center;
-	flex: 1;
-	min-width: 0;
+	width: 240px;
+	min-width: 240px;
+	max-width: 240px;
 	height: 100%;
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);

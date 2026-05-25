@@ -38,6 +38,13 @@ export type CanvasConnectionPort = {
 	label?: string;
 };
 
+export type CanvasCollapsedGroupHandle = {
+	id: string;
+	mode: CanvasConnectionMode;
+	type: NodeConnectionType;
+	top: string;
+};
+
 export interface CanvasElementPortWithRenderData extends CanvasConnectionPort {
 	handleId: string;
 	connectionsCount: number;
@@ -51,6 +58,7 @@ export const enum CanvasNodeRenderType {
 	StickyNote = 'n8n-nodes-base.stickyNote',
 	AddNodes = 'n8n-nodes-internal.addNodes',
 	ChoicePrompt = 'n8n-nodes-internal.choicePrompt',
+	GroupCollapsed = 'n8n-nodes-internal.groupCollapsed',
 }
 
 export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
@@ -85,6 +93,11 @@ export type CanvasNodeAddNodesRender = {
 
 export type CanvasNodeChoicePromptRender = {
 	type: CanvasNodeRenderType.ChoicePrompt;
+	options: Record<string, never>;
+};
+
+export type CanvasNodeGroupCollapsedRender = {
+	type: CanvasNodeRenderType.GroupCollapsed;
 	options: Record<string, never>;
 };
 
@@ -128,11 +141,18 @@ export interface CanvasNodeData {
 		iterations: number;
 		visible: boolean;
 	};
+	runtime?: Partial<{
+		group: {
+			id: string;
+			handles: CanvasCollapsedGroupHandle[];
+		};
+	}>;
 	render:
 		| CanvasNodeDefaultRender
 		| CanvasNodeStickyNoteRender
 		| CanvasNodeAddNodesRender
-		| CanvasNodeChoicePromptRender;
+		| CanvasNodeChoicePromptRender
+		| CanvasNodeGroupCollapsedRender;
 }
 
 export type CanvasNode = Node<CanvasNodeData>;
@@ -142,6 +162,9 @@ export interface CanvasConnectionData {
 	target: CanvasConnectionPort;
 	status?: 'success' | 'error' | 'pinned' | 'running';
 	maxConnections?: number;
+	runtime?: Partial<{
+		rerouted: boolean;
+	}>;
 }
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;

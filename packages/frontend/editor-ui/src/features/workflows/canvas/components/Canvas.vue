@@ -61,6 +61,7 @@ import {
 	watch,
 } from 'vue';
 import { useViewportAutoAdjust } from '../composables/useViewportAutoAdjust';
+import { useCanvasNodeGroupsLayout } from '../composables/useCanvasNodeGroupsLayout';
 import CanvasBackground from './elements/background/CanvasBackground.vue';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import CanvasConnectionLine from './elements/edges/CanvasConnectionLine.vue';
@@ -172,6 +173,7 @@ const props = withDefaults(
 		suppressInteraction: false,
 		hideControls: false,
 		showNodeGroups: true,
+		initialViewport: null,
 	},
 );
 
@@ -231,9 +233,31 @@ const {
 	getUpstreamNodes,
 } = useCanvasTraversal(vueFlow);
 const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive, toRef(props, 'renderData'));
+const nodeDimensionsById = ref(new Map<string, { width: number; height: number }>());
+const { displayNodes, displayConnections, groupLayouts } = useCanvasNodeGroupsLayout({
+	nodes: toRef(props, 'nodes'),
+	connections: toRef(props, 'connections'),
+	nodeDimensionsById,
+});
 
 const isPaneReady = ref(false);
 const nodeGroupIdToAutofocusTitle = ref<string | null>(null);
+
+watch(
+	graphNodes,
+	(nodes) => {
+		const next = new Map(nodeDimensionsById.value);
+		for (const node of nodes) {
+			if (!node.dimensions?.width || !node.dimensions?.height) continue;
+			next.set(node.id, {
+				width: node.dimensions.width,
+				height: node.dimensions.height,
+			});
+		}
+		nodeDimensionsById.value = next;
+	},
+	{ immediate: true, deep: true },
+);
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
@@ -387,7 +411,7 @@ const keyMap = computed(() => {
 			run: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
 		},
 		enter: emitWithLastSelectedNode((id) => onSetNodeActivated(id)),
-		ctrl_a: () => addSelectedNodes(graphNodes.value),
+		ctrl_a: () => addSelectedNodes(selectableGraphNodes.value),
 		// Support both key and code for zooming in and out
 		'shift_+|+|=|shift_Equal|Equal': async () => await onZoomIn(),
 		'shift+_|-|_|shift_Minus|Minus': async () => await onZoomOut(),
@@ -465,10 +489,16 @@ useKeybindings(keyMap, { disabled: disableKeyBindings });
 
 const hasSelection = computed(() => selectedNodes.value.length > 0);
 const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
+const selectableGraphNodes = computed(() =>
+	graphNodes.value.filter(
+		(node) =>
+			node.data.render.type !== CanvasNodeRenderType.GroupCollapsed && node.selectable !== false,
+	),
+);
 
 const lastSelectedNode = ref<GraphNode>();
 const triggerNodes = computed(() =>
-	props.nodes.filter(
+	displayNodes.value.filter(
 		(node) =>
 			node.data?.render.type === CanvasNodeRenderType.Default && node.data.render.options.trigger,
 	),
@@ -827,7 +857,7 @@ function onViewportChange() {
 // #AI-716: Due to a bug in vue-flow reactivity, the node data is not updated when the node is added
 // resulting in outdated data. We use this computed property as a workaround to get the latest node data.
 const nodeDataById = computed(() => {
-	return props.nodes.reduce<Record<string, CanvasNodeData>>((acc, node) => {
+	return displayNodes.value.reduce<Record<string, CanvasNodeData>>((acc, node) => {
 		acc[node.id] = node.data as CanvasNodeData;
 		return acc;
 	}, {});
@@ -877,7 +907,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 		case 'delete':
 			return emit('delete:nodes', nodeIds);
 		case 'select_all':
-			return addSelectedNodes(graphNodes.value);
+			return addSelectedNodes(selectableGraphNodes.value);
 		case 'deselect_all':
 			return clearSelectedNodes();
 		case 'duplicate':
@@ -1050,7 +1080,7 @@ onMounted(() => {
 	props.eventBus.on('fitView:onNodesInit', onRequestFitViewOnInit);
 	props.eventBus.on('setConnections:onNodesInit', onRequestSetConnectionsOnInit);
 	props.eventBus.on('nodes:select', onSelectNodes);
-	props.eventBus.on('nodes:selectAll', () => addSelectedNodes(graphNodes.value));
+	props.eventBus.on('nodes:selectAll', () => addSelectedNodes(selectableGraphNodes.value));
 	props.eventBus.on('tidyUp', onTidyUp);
 	window.addEventListener('blur', onWindowBlur);
 	document.addEventListener('visibilitychange', onVisibilityChange);
@@ -1147,8 +1177,8 @@ defineExpose({
 <template>
 	<VueFlow
 		:id="id"
-		:nodes="nodes"
-		:edges="connections"
+		:nodes="displayNodes"
+		:edges="displayConnections"
 		:class="classes"
 		:apply-changes="false"
 		:connection-line-options="{ markerEnd: MarkerType.ArrowClosed }"
@@ -1242,6 +1272,8 @@ defineExpose({
 
 		<CanvasNodeGroupsLayer
 			v-if="showNodeGroups && isCanvasNodeGroupingEnabled"
+			:group-layouts="groupLayouts"
+			:all-nodes="nodes"
 			:read-only="readOnly || suppressInteraction"
 			:autofocus-group-id="nodeGroupIdToAutofocusTitle"
 			@title:focused="onNodeGroupTitleFocused"

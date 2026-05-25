@@ -10,6 +10,7 @@ import {
 	watch,
 } from 'vue';
 import type {
+	CanvasCollapsedGroupHandle,
 	CanvasConnectionPort,
 	CanvasElementPortWithRenderData,
 	CanvasNodeData,
@@ -22,13 +23,13 @@ import CanvasNodeRenderer from './CanvasNodeRenderer.vue';
 import CanvasHandleRenderer from '../handles/CanvasHandleRenderer.vue';
 import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { CanvasNodeKey } from '@/app/constants';
-import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
 import type { NodeProps, XYPosition } from '@vue-flow/core';
-import { Position } from '@vue-flow/core';
+import { Handle, Position } from '@vue-flow/core';
 import { useCanvas } from '../../../composables/useCanvas';
 import {
 	createCanvasConnectionHandleString,
+	injectCanvasRenderData,
 	insertSpacersBetweenEndpoints,
 } from '../../../canvas.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -116,12 +117,19 @@ const classes = computed(() => ({
 }));
 
 const renderType = computed<CanvasNodeRenderType>(() => props.data.render.type);
+const isCollapsedGroupNode = computed(
+	() => renderType.value === CanvasNodeRenderType.GroupCollapsed,
+);
+const groupHandles = computed<CanvasCollapsedGroupHandle[]>(
+	() => props.data.runtime?.group?.handles ?? [],
+);
 
 const dataTestId = computed(() =>
 	[
 		CanvasNodeRenderType.StickyNote,
 		CanvasNodeRenderType.AddNodes,
 		CanvasNodeRenderType.ChoicePrompt,
+		CanvasNodeRenderType.GroupCollapsed,
 	].includes(renderType.value)
 		? undefined
 		: 'canvas-node',
@@ -325,6 +333,7 @@ provide(CanvasNodeKey, {
 
 const hasToolbar = computed(
 	() =>
+		renderType.value !== CanvasNodeRenderType.GroupCollapsed &&
 		![CanvasNodeRenderType.AddNodes, CanvasNodeRenderType.ChoicePrompt].includes(renderType.value),
 );
 
@@ -369,88 +378,105 @@ onBeforeUnmount(() => {
 
 <template>
 	<div
-		:class="classes"
+		:class="[classes, { [$style.collapsedGroupAnchor]: isCollapsedGroupNode }]"
 		:data-test-id="dataTestId"
 		:data-node-name="data.name"
 		:data-node-type="data.type"
 	>
-		<template
-			v-for="source in mappedOutputs"
-			:key="`${source.handleId}(${source.index + 1}/${mappedOutputs.length})`"
-		>
-			<CanvasHandleRenderer
-				v-bind="source"
-				:mode="CanvasConnectionMode.Output"
-				:is-read-only="readOnly"
-				:is-valid-connection="isValidConnection"
-				:data-node-name="data.name"
-				data-test-id="canvas-node-output-handle"
-				:data-index="source.index"
-				:data-connection-type="source.type"
-				@add="onAdd"
+		<template v-if="isCollapsedGroupNode">
+			<Handle
+				v-for="handle in groupHandles"
+				:id="handle.id"
+				:key="handle.id"
+				:type="handle.mode === CanvasConnectionMode.Input ? 'target' : 'source'"
+				:position="handle.mode === CanvasConnectionMode.Input ? Position.Left : Position.Right"
+				:connectable-start="false"
+				:connectable-end="false"
+				:style="{ top: handle.top }"
+				:class="$style.groupHandle"
 			/>
 		</template>
 
-		<template
-			v-for="target in mappedInputs"
-			:key="`${target.handleId}(${target.index + 1}/${mappedInputs.length})`"
-		>
-			<CanvasHandleRenderer
-				v-bind="target"
-				:mode="CanvasConnectionMode.Input"
-				:is-read-only="readOnly"
-				:is-valid-connection="isValidConnection"
-				data-test-id="canvas-node-input-handle"
-				:data-index="target.index"
-				:data-connection-type="target.type"
-				:data-node-name="data.name"
-				@add="onAdd"
+		<template v-else>
+			<template
+				v-for="source in mappedOutputs"
+				:key="`${source.handleId}(${source.index + 1}/${mappedOutputs.length})`"
+			>
+				<CanvasHandleRenderer
+					v-bind="source"
+					:mode="CanvasConnectionMode.Output"
+					:is-read-only="readOnly"
+					:is-valid-connection="isValidConnection"
+					:data-node-name="data.name"
+					data-test-id="canvas-node-output-handle"
+					:data-index="source.index"
+					:data-connection-type="source.type"
+					@add="onAdd"
+				/>
+			</template>
+
+			<template
+				v-for="target in mappedInputs"
+				:key="`${target.handleId}(${target.index + 1}/${mappedInputs.length})`"
+			>
+				<CanvasHandleRenderer
+					v-bind="target"
+					:mode="CanvasConnectionMode.Input"
+					:is-read-only="readOnly"
+					:is-valid-connection="isValidConnection"
+					data-test-id="canvas-node-input-handle"
+					:data-index="target.index"
+					:data-connection-type="target.type"
+					:data-node-name="data.name"
+					@add="onAdd"
+				/>
+			</template>
+
+			<template v-if="slots.toolbar">
+				<slot name="toolbar" :inputs="mainInputs" :outputs="mainOutputs" :data="data" />
+			</template>
+
+			<CanvasNodeToolbar
+				v-else-if="hasToolbar"
+				data-test-id="canvas-node-toolbar"
+				:read-only="readOnly"
+				:can-execute="canExecute"
+				:class="$style.canvasNodeToolbar"
+				:show-status-icons="isExperimentalNdvActive"
+				:items-class="$style.canvasNodeToolbarItems"
+				@delete="onDelete"
+				@toggle="onDisabledToggle"
+				@run="onRun"
+				@update="onUpdate"
+				@open:contextmenu="onOpenContextMenuFromToolbar"
+				@focus="onFocus"
+				@add:ai="onAddToAi"
+			/>
+
+			<CanvasNodeRenderer
+				@activate="onActivate"
+				@deactivate="onDeactivate"
+				@move="onMove"
+				@update="onUpdate"
+				@open:contextmenu="onOpenContextMenuFromNode"
+				@delete="onDelete"
+				@replace:node="onReplaceNode"
+			/>
+
+			<CanvasNodeTrigger
+				v-if="
+					props.data.render.type === CanvasNodeRenderType.Default &&
+					props.data.render.options.trigger
+				"
+				:name="data.name"
+				:type="data.type"
+				:hovered="nearbyHovered"
+				:disabled="isDisabled"
+				:read-only="readOnly"
+				:class="$style.trigger"
+				:is-experimental-ndv-active="isExperimentalNdvActive"
 			/>
 		</template>
-
-		<template v-if="slots.toolbar">
-			<slot name="toolbar" :inputs="mainInputs" :outputs="mainOutputs" :data="data" />
-		</template>
-
-		<CanvasNodeToolbar
-			v-else-if="hasToolbar"
-			data-test-id="canvas-node-toolbar"
-			:read-only="readOnly"
-			:can-execute="canExecute"
-			:class="$style.canvasNodeToolbar"
-			:show-status-icons="isExperimentalNdvActive"
-			:items-class="$style.canvasNodeToolbarItems"
-			@delete="onDelete"
-			@toggle="onDisabledToggle"
-			@run="onRun"
-			@update="onUpdate"
-			@open:contextmenu="onOpenContextMenuFromToolbar"
-			@focus="onFocus"
-			@add:ai="onAddToAi"
-		/>
-
-		<CanvasNodeRenderer
-			@activate="onActivate"
-			@deactivate="onDeactivate"
-			@move="onMove"
-			@update="onUpdate"
-			@open:contextmenu="onOpenContextMenuFromNode"
-			@delete="onDelete"
-			@replace:node="onReplaceNode"
-		/>
-
-		<CanvasNodeTrigger
-			v-if="
-				props.data.render.type === CanvasNodeRenderType.Default && props.data.render.options.trigger
-			"
-			:name="data.name"
-			:type="data.type"
-			:hovered="nearbyHovered"
-			:disabled="isDisabled"
-			:read-only="readOnly"
-			:class="$style.trigger"
-			:is-experimental-ndv-active="isExperimentalNdvActive"
-		/>
 	</div>
 </template>
 
@@ -476,5 +502,19 @@ onBeforeUnmount(() => {
 	left: 50%;
 	transform: translateX(-50%);
 	z-index: 1;
+}
+
+.collapsedGroupAnchor {
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+}
+
+:global(.vue-flow__handle).groupHandle {
+	width: 0;
+	height: 0;
+	border: 0;
+	background: transparent;
+	pointer-events: none;
 }
 </style>

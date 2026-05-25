@@ -33,6 +33,7 @@ import { useWorkflowDocumentWorkflowObject } from './workflowDocument/useWorkflo
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
 import { useWorkflowDocumentNodesIssues } from './workflowDocument/useWorkflowDocumentNodesIssues';
 import { useWorkflowDocumentNodeGroups } from './workflowDocument/useWorkflowDocumentNodeGroups';
+import { useWorkflowDocumentNodeGroupsUi } from './workflowDocument/useWorkflowDocumentNodeGroupsUi';
 import { CHANGE_ACTION } from './workflowDocument/types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -198,6 +199,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		});
 		const { onStateDirty: onNodeGroupsStateDirty, ...workflowDocumentNodeGroups } =
 			useWorkflowDocumentNodeGroups();
+		const workflowDocumentNodeGroupsUi = useWorkflowDocumentNodeGroupsUi();
 
 		// --- Cross-cut orchestration ---
 		// Each composable is self-contained and unaware of its siblings. This
@@ -220,6 +222,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentConnections.removeAllConnections();
 			workflowDocumentPinData.setPinData({});
 			workflowDocumentNodeGroups.clearNodeGroups();
+			workflowDocumentNodeGroupsUi.clearCollapsedGroups();
 		}
 
 		function serialize(): WorkflowData {
@@ -297,6 +300,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentConnections.setConnections(workflow.connections ?? {});
 			workflowDocumentPinData.setPinData(workflow.pinData ?? {});
 			workflowDocumentNodeGroups.setNodeGroups(workflow.nodeGroups ?? []);
+			workflowDocumentNodeGroupsUi.clearCollapsedGroups();
 
 			workflowDocumentWorkflowObject.initWorkflowObject({
 				id: workflow.id,
@@ -333,6 +337,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentConnections.setConnections({});
 			workflowDocumentPinData.setPinData({});
 			workflowDocumentNodeGroups.clearNodeGroups();
+			workflowDocumentNodeGroupsUi.clearCollapsedGroups();
 			workflowDocumentViewport.setViewport(null);
 
 			workflowDocumentWorkflowObject.initWorkflowObject({
@@ -421,6 +426,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentNodeMetadata,
 			...workflowDocumentNodesIssues,
 			...workflowDocumentNodeGroups,
+			...workflowDocumentNodeGroupsUi,
 			removeAllNodes,
 			hydrate,
 			reset,
