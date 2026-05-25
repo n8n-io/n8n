@@ -258,6 +258,34 @@ describe('OwnershipService', () => {
 		});
 	});
 
+	describe('invalidateWorkflowProjectCacheForProject()', () => {
+		test('should delete cache entry for each workflow in the project', async () => {
+			const workflowIds = ['wf1', 'wf2', 'wf3'];
+			sharedWorkflowRepository.find.mockResolvedValueOnce(
+				workflowIds.map((workflowId) => Object.assign(new SharedWorkflow(), { workflowId })),
+			);
+
+			await ownershipService.invalidateWorkflowProjectCacheForProject('project-123');
+
+			expect(sharedWorkflowRepository.find).toHaveBeenCalledWith({
+				where: { projectId: 'project-123', role: 'workflow:owner' },
+				select: ['workflowId'],
+			});
+			for (const workflowId of workflowIds) {
+				expect(cacheService.deleteFromHash).toHaveBeenCalledWith('workflow-project', workflowId);
+			}
+			expect(cacheService.deleteFromHash).toHaveBeenCalledTimes(workflowIds.length);
+		});
+
+		test('should not call deleteFromHash if project has no workflows', async () => {
+			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
+
+			await ownershipService.invalidateWorkflowProjectCacheForProject('empty-project');
+
+			expect(cacheService.deleteFromHash).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getInstanceOwner()', () => {
 		test('should find owner using global owner role ID', async () => {
 			await ownershipService.getInstanceOwner();

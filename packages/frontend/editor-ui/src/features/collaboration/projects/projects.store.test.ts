@@ -81,6 +81,34 @@ describe('useProjectsStore.updateProject (partial payloads)', () => {
 		expect(mockedProjectsApi.getProject).not.toHaveBeenCalled();
 	});
 
+	it('includes customTelemetryTags in payload when provided', async () => {
+		const store = makeStoreWithProject();
+		mockedProjectsApi.updateProject.mockResolvedValue(undefined);
+		const tags = [{ key: 'env', value: 'production' }];
+
+		await store.updateProject('p1', { customTelemetryTags: tags });
+
+		expect(mockedProjectsApi.updateProject).toHaveBeenCalledWith(expect.anything(), 'p1', {
+			customTelemetryTags: tags,
+		});
+	});
+
+	it('omits customTelemetryTags from payload when not provided', async () => {
+		const store = makeStoreWithProject();
+		mockedProjectsApi.updateProject.mockResolvedValue(undefined);
+
+		await store.updateProject('p1', { name: 'B' });
+
+		expect(mockedProjectsApi.updateProject).toHaveBeenCalledWith(expect.anything(), 'p1', {
+			name: 'B',
+		});
+		expect(mockedProjectsApi.updateProject).not.toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.objectContaining({ customTelemetryTags: expect.anything() }),
+		);
+	});
+
 	it('updates description only when provided', async () => {
 		const store = makeStoreWithProject();
 		mockedProjectsApi.updateProject.mockResolvedValue(undefined);
