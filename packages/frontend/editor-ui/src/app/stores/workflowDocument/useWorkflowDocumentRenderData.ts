@@ -72,22 +72,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 	const nodeTypesStore = useNodeTypesStore();
 	const nodeHelpers = useNodeHelpers();
 	const i18n = useI18n();
-
-	// `useNodeDirtiness` reads from Pinia stores; resolve lazily so the
-	// renderData composable can be constructed in contexts where dirtiness
-	// isn't needed (e.g. test setups that tear down Pinia between renders
-	// of the workflow-diff watchEffect).
-	let dirtinessAccessor: ReturnType<typeof useNodeDirtiness> | null = null;
-	function getDirtinessByName(): Record<string, unknown> {
-		if (!dirtinessAccessor) {
-			try {
-				dirtinessAccessor = useNodeDirtiness();
-			} catch {
-				return {};
-			}
-		}
-		return dirtinessAccessor.dirtinessByName.value ?? {};
-	}
+	const { dirtinessByName } = useNodeDirtiness(workflowDocumentId);
 
 	// -------------------------------------------------------------------------
 	// Per-entry maps reconciled off the document store's `onNodesChange`.
@@ -294,9 +279,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 					node.typeVersion,
 				),
 				tooltip,
-				dirtiness: getDirtinessByName()[
-					node.name
-				] as CanvasNodeDefaultRender['options']['dirtiness'],
+				dirtiness: dirtinessByName.value[node.name],
 				icon,
 				placeholder: node.placeholder,
 			},

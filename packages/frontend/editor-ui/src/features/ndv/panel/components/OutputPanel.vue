@@ -86,7 +86,7 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const { activeNode } = storeToRefs(ndvStore);
-const { dirtinessByName } = useNodeDirtiness();
+const { dirtinessByName } = useNodeDirtiness(workflowDocumentStore.value.documentId);
 const uiStore = useUIStore();
 
 // Composables

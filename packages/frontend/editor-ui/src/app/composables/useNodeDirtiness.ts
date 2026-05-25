@@ -9,7 +9,10 @@ import {
 } from '@/app/models/history';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	useWorkflowDocumentStore,
+	type WorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import {
 	CanvasNodeDirtiness,
 	type CanvasNodeDirtinessType,
@@ -116,13 +119,19 @@ function findLoop(
 }
 
 /**
- * Determines the subgraph that is affected by changes made after the last (partial) execution
+ * Determines the subgraph that is affected by changes made after the last (partial) execution.
+ *
+ * Takes the workflow document id explicitly so it can resolve the document
+ * store via the same `computed` accessor pattern used by other off-layout
+ * composables (see MIGRATION_RECIPE.md). This avoids the `inject()` lookup
+ * that only worked inside the WorkflowLayout tree and previously had to be
+ * wrapped in a try/catch in renderData.
  */
-export function useNodeDirtiness() {
+export function useNodeDirtiness(workflowDocumentId: WorkflowDocumentId) {
 	const historyStore = useHistoryStore();
 	const workflowsStore = useWorkflowsStore();
 
-	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowDocumentStore = computed(() => useWorkflowDocumentStore(workflowDocumentId));
 
 	function getIncomingConnections(nodeName: string): INodeConnections {
 		return workflowDocumentStore.value.incomingConnectionsByNodeName(nodeName);
