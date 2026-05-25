@@ -29,7 +29,6 @@ import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentN
 import { useWorkflowDocumentWorkflowObject } from './workflowDocument/useWorkflowDocumentWorkflowObject';
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
 import { useWorkflowDocumentNodesIssues } from './workflowDocument/useWorkflowDocumentNodesIssues';
-import { useWorkflowDocumentNodeTypeInfo } from './workflowDocument/useWorkflowDocumentNodeTypeInfo';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -79,7 +78,6 @@ type PinDataReturn = ReturnType<typeof useWorkflowDocumentPinData>;
 type SettingsReturn = ReturnType<typeof useWorkflowDocumentSettings>;
 type NodeMetadataReturn = ReturnType<typeof useWorkflowDocumentNodeMetadata>;
 type NodesIssuesReturn = ReturnType<typeof useWorkflowDocumentNodesIssues>;
-type NodeTypeInfoReturn = ReturnType<typeof useWorkflowDocumentNodeTypeInfo>;
 
 // Pairwise collision checks — add new composables here when they are created.
 // If any pair shares a key, the corresponding tuple slot becomes an error type
@@ -105,15 +103,6 @@ void (0 as unknown as [
 	AssertNoOverlap<NodesIssuesReturn, NodesReturn>,
 	AssertNoOverlap<NodesIssuesReturn, ConnectionsReturn>,
 	AssertNoOverlap<NodesIssuesReturn, GraphReturn>,
-	AssertNoOverlap<NodeTypeInfoReturn, NodesReturn>,
-	AssertNoOverlap<NodeTypeInfoReturn, ConnectionsReturn>,
-	AssertNoOverlap<NodeTypeInfoReturn, GraphReturn>,
-	AssertNoOverlap<NodeTypeInfoReturn, ExpressionReturn>,
-	AssertNoOverlap<NodeTypeInfoReturn, PinDataReturn>,
-	AssertNoOverlap<NodeTypeInfoReturn, MetaReturn>,
-	AssertNoOverlap<NodeTypeInfoReturn, SettingsReturn>,
-	AssertNoOverlap<NodeTypeInfoReturn, NodeMetadataReturn>,
-	AssertNoOverlap<NodeTypeInfoReturn, NodesIssuesReturn>,
 ]);
 
 export type WorkflowDocumentId = `${string}@${string}`;
@@ -206,16 +195,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			nodesById: workflowDocumentNodes.nodesById,
 			onNodesChange: workflowDocumentNodes.onNodesChange,
 			nodeIssuesToString: (issues, node) => nodeHelpers.nodeIssuesToString(issues, node),
-		});
-		const workflowDocumentNodeTypeInfo = useWorkflowDocumentNodeTypeInfo({
-			nodesById: workflowDocumentNodes.nodesById,
-			onNodesChange: workflowDocumentNodes.onNodesChange,
-			workflowObject: workflowDocumentWorkflowObject.workflowObject,
-			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
-			communityNodeType: (typeName) => nodeTypesStore.communityNodeType(typeName),
-			isTriggerNode: (typeName) => nodeTypesStore.isTriggerNode(typeName),
-			getNodeSubtitle: (node, nodeType, workflow) =>
-				nodeHelpers.getNodeSubtitle(node, nodeType, workflow),
 		});
 
 		// --- Cross-cut orchestration ---
@@ -424,7 +403,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentExpression,
 			...workflowDocumentNodeMetadata,
 			...workflowDocumentNodesIssues,
-			...workflowDocumentNodeTypeInfo,
 			removeAllNodes,
 			hydrate,
 			reset,

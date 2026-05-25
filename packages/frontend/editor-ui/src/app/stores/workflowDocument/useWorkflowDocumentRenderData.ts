@@ -2,6 +2,7 @@ import { computed, effectScope, shallowReactive, type ComputedRef } from 'vue';
 import isEqual from 'lodash/isEqual';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
 import { useI18n } from '@n8n/i18n';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
 	type WorkflowDocumentId,
@@ -11,10 +12,16 @@ import {
 	createWorkflowExecutionStateId,
 } from '@/app/stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
-import { STICKY_NODE_TYPE } from '@/app/constants';
+import {
+	CUSTOM_API_CALL_KEY,
+	SIMULATE_NODE_TYPE,
+	SIMULATE_TRIGGER_NODE_TYPE,
+	STICKY_NODE_TYPE,
+} from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import { checkOverlap } from '@/features/workflows/canvas/canvas.utils';
 import type {
@@ -40,19 +47,22 @@ import type {
  *
  * Provides a single object combining:
  * - by-node-id passthroughs from `workflowDocument` (port maps, pin data,
- *   node type info, validation errors) and `workflowExecutionState`
- *   (status / run data / output map / waiting / running / waiting-for-next /
- *   issues — each with active/displayed-execution fallback);
+ *   validation errors) and `workflowExecutionState` (status / run data /
+ *   output map / waiting / running / waiting-for-next / issues — each with
+ *   active/displayed-execution fallback);
+ * - per-node-id derivations from the workflow document
+ *   (`nodeTypeDescriptionByNodeId`, `isTriggerByNodeId`, `subtitleByNodeId`,
+ *   `simulatedNodeTypeDescriptionByNodeId`);
  * - **fusion projections** that combine state from both stores into the
  *   canvas-shaped outputs the renderer consumes: `tooltipByNodeId`,
  *   `hasIssuesByNodeId`, `additionalPropertiesByNodeId`,
  *   `renderTypeByNodeId`.
  *
- * The fusion projections use the same `shallowReactive<Map<id, ComputedRef<T>>>`
- * pattern as the upstream by-id maps: each entry runs in its own `effectScope`
- * and `structuralComputed` gates downstream propagation. Entry lifecycle is
- * driven by the document store's `onNodesChange` event, so add/remove are
- * O(1) and updates re-evaluate lazily.
+ * Per-entry maps use a `shallowReactive<Map<id, ComputedRef<T>>>` pattern:
+ * each entry runs in its own `effectScope` and `structuralComputed` gates
+ * downstream propagation. Entry lifecycle is driven by the document store's
+ * `onNodesChange` event, so add/remove are O(1) and updates re-evaluate
+ * lazily.
  */
 export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocumentId) {
 	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
@@ -60,6 +70,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		createWorkflowExecutionStateId(workflowDocumentStore.workflowId),
 	);
 	const nodeTypesStore = useNodeTypesStore();
+	const nodeHelpers = useNodeHelpers();
 	const i18n = useI18n();
 
 	// `useNodeDirtiness` reads from Pinia stores; resolve lazily so the
@@ -79,18 +90,80 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 	}
 
 	// -------------------------------------------------------------------------
-	// Fusion projections — per-entry maps reconciled off document `onNodesChange`.
+	// Per-entry maps reconciled off the document store's `onNodesChange`.
 	// -------------------------------------------------------------------------
 
+	const nodeTypeDescriptionByNodeId = shallowReactive(
+		new Map<string, ComputedRef<INodeTypeDescription | null>>(),
+	);
+	const isTriggerByNodeId = shallowReactive(new Map<string, ComputedRef<boolean>>());
+	const subtitleByNodeId = shallowReactive(new Map<string, ComputedRef<string>>());
+	const simulatedNodeTypeDescriptionByNodeId = shallowReactive(
+		new Map<string, ComputedRef<INodeTypeDescription | null>>(),
+	);
 	const tooltipByNodeId = shallowReactive(new Map<string, ComputedRef<string | undefined>>());
 	const hasIssuesByNodeId = shallowReactive(new Map<string, ComputedRef<boolean>>());
 	const renderTypeByNodeId = shallowReactive(
 		new Map<string, ComputedRef<CanvasNodeData['render']>>(),
 	);
-	const fusionScopes = new Map<string, () => void>();
+	const entryScopes = new Map<string, () => void>();
 
 	function getNode(nodeId: string): INodeUi | undefined {
 		return workflowDocumentStore.nodesById.get(nodeId);
+	}
+
+	// --- nodeTypeDescriptionByNodeId / isTriggerByNodeId / subtitleByNodeId / simulated ---
+
+	function computeNodeTypeDescription(nodeId: string): INodeTypeDescription | null {
+		const node = getNode(nodeId);
+		if (!node) return null;
+		return (
+			nodeTypesStore.getNodeType(node.type, node.typeVersion) ??
+			nodeTypesStore.communityNodeType(node.type)?.nodeDescription ??
+			null
+		);
+	}
+
+	function computeIsTrigger(nodeId: string): boolean {
+		const node = getNode(nodeId);
+		if (!node) return false;
+		return nodeTypesStore.isTriggerNode(node.type);
+	}
+
+	function computeSubtitle(nodeId: string): string {
+		const node = getNode(nodeId);
+		if (!node) return '';
+		try {
+			const nodeTypeDescription = computeNodeTypeDescription(nodeId);
+			if (!nodeTypeDescription) return '';
+
+			const subtitle = nodeHelpers.getNodeSubtitle(
+				node,
+				nodeTypeDescription,
+				workflowDocumentStore.getWorkflowObjectAccessorSnapshot(),
+			);
+			if (subtitle === undefined) return '';
+			// Subtitles that resolve to the "custom API call" placeholder are noise — hide them.
+			if (subtitle.includes(CUSTOM_API_CALL_KEY)) return '';
+			return subtitle;
+		} catch {
+			return '';
+		}
+	}
+
+	function computeSimulatedNodeTypeDescription(nodeId: string): INodeTypeDescription | null {
+		const node = getNode(nodeId);
+		if (!node) return null;
+		if (node.type !== SIMULATE_NODE_TYPE && node.type !== SIMULATE_TRIGGER_NODE_TYPE) return null;
+
+		const icon = node.parameters?.icon as string;
+		const iconValue = workflowDocumentStore
+			.getExpressionHandler()
+			.getSimpleParameterValue(node, icon, 'internal', {});
+		if (iconValue && typeof iconValue === 'string') {
+			return nodeTypesStore.getNodeType(iconValue) ?? null;
+		}
+		return null;
 	}
 
 	// --- tooltipByNodeId -----------------------------------------------------
@@ -104,9 +177,8 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		const node = getNode(nodeId);
 		if (!node) return undefined;
 
-		const isTrigger = workflowDocumentStore.isTriggerByNodeId.get(nodeId)?.value ?? false;
-		const nodeTypeDescription =
-			workflowDocumentStore.nodeTypeDescriptionByNodeId.get(nodeId)?.value ?? null;
+		const isTrigger = isTriggerByNodeId.get(nodeId)?.value ?? false;
+		const nodeTypeDescription = nodeTypeDescriptionByNodeId.get(nodeId)?.value ?? null;
 		if (!isTrigger || !nodeTypeDescription) return undefined;
 
 		const triggerNodeName = executionStateStore.activeExecution?.triggerNode;
@@ -114,10 +186,10 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		// trigger isn't named, suppress all tooltips.
 		if (triggerNodeName === undefined) {
 			let activeTriggerCount = 0;
-			for (const [id] of workflowDocumentStore.isTriggerByNodeId) {
+			for (const [id] of isTriggerByNodeId) {
 				const n = workflowDocumentStore.nodesById.get(id);
 				if (!n) continue;
-				if (workflowDocumentStore.isTriggerByNodeId.get(id)?.value && !n.disabled) {
+				if (isTriggerByNodeId.get(id)?.value && !n.disabled) {
 					activeTriggerCount += 1;
 				}
 			}
@@ -196,13 +268,12 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 	}
 
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
-		const nodeType = workflowDocumentStore.nodeTypeDescriptionByNodeId.get(node.id)?.value ?? null;
-		const simulated =
-			workflowDocumentStore.simulatedNodeTypeDescriptionByNodeId.get(node.id)?.value ?? null;
+		const nodeType = nodeTypeDescriptionByNodeId.get(node.id)?.value ?? null;
+		const simulated = simulatedNodeTypeDescriptionByNodeId.get(node.id)?.value ?? null;
 		const iconSource = simulated ?? nodeType ?? node.type;
 		const icon = getNodeIconSource(iconSource, node, workflowDocumentStore.getExpressionHandler());
 
-		const isTrigger = workflowDocumentStore.isTriggerByNodeId.get(node.id)?.value ?? false;
+		const isTrigger = isTriggerByNodeId.get(node.id)?.value ?? false;
 		const tooltip = tooltipByNodeId.get(node.id)?.value;
 
 		// Snapshot the workflow object accessors per-call. Reads inside the
@@ -247,10 +318,26 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		}
 	}
 
-	function applyAddFusionEntry(nodeId: string) {
-		if (fusionScopes.has(nodeId)) return;
+	function applyAddEntry(nodeId: string) {
+		if (entryScopes.has(nodeId)) return;
 		const scope = effectScope();
 		scope.run(() => {
+			nodeTypeDescriptionByNodeId.set(
+				nodeId,
+				structuralComputed(() => computeNodeTypeDescription(nodeId), isEqual),
+			);
+			isTriggerByNodeId.set(
+				nodeId,
+				structuralComputed(() => computeIsTrigger(nodeId)),
+			);
+			subtitleByNodeId.set(
+				nodeId,
+				structuralComputed(() => computeSubtitle(nodeId)),
+			);
+			simulatedNodeTypeDescriptionByNodeId.set(
+				nodeId,
+				structuralComputed(() => computeSimulatedNodeTypeDescription(nodeId), isEqual),
+			);
 			tooltipByNodeId.set(
 				nodeId,
 				structuralComputed(() => computeTooltip(nodeId)),
@@ -264,23 +351,27 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 				structuralComputed(() => computeRenderType(nodeId), isEqual),
 			);
 		});
-		fusionScopes.set(nodeId, () => scope.stop());
+		entryScopes.set(nodeId, () => scope.stop());
 	}
 
-	function applyRemoveFusionEntry(nodeId: string) {
-		fusionScopes.get(nodeId)?.();
-		fusionScopes.delete(nodeId);
+	function applyRemoveEntry(nodeId: string) {
+		entryScopes.get(nodeId)?.();
+		entryScopes.delete(nodeId);
+		nodeTypeDescriptionByNodeId.delete(nodeId);
+		isTriggerByNodeId.delete(nodeId);
+		subtitleByNodeId.delete(nodeId);
+		simulatedNodeTypeDescriptionByNodeId.delete(nodeId);
 		tooltipByNodeId.delete(nodeId);
 		hasIssuesByNodeId.delete(nodeId);
 		renderTypeByNodeId.delete(nodeId);
 	}
 
-	function applyReconcileFusionEntries(nodeIds: string[]) {
+	function applyReconcileEntries(nodeIds: string[]) {
 		const next = new Set(nodeIds);
-		for (const old of fusionScopes.keys()) {
-			if (!next.has(old)) applyRemoveFusionEntry(old);
+		for (const old of entryScopes.keys()) {
+			if (!next.has(old)) applyRemoveEntry(old);
 		}
-		for (const id of nodeIds) applyAddFusionEntry(id);
+		for (const id of nodeIds) applyAddEntry(id);
 	}
 
 	if (typeof workflowDocumentStore.onNodesChange === 'function') {
@@ -288,18 +379,18 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 			switch (event.action) {
 				case CHANGE_ACTION.ADD: {
 					const { node } = event.payload as NodeAddedPayload;
-					applyAddFusionEntry(node.id);
+					applyAddEntry(node.id);
 					break;
 				}
 				case CHANGE_ACTION.DELETE: {
 					const payload = event.payload as NodeRemovedPayload;
-					if (payload.id) applyRemoveFusionEntry(payload.id);
-					else applyReconcileFusionEntries([]);
+					if (payload.id) applyRemoveEntry(payload.id);
+					else applyReconcileEntries([]);
 					break;
 				}
 				case CHANGE_ACTION.SET: {
 					const { nodeIds } = event.payload as NodesSetPayload;
-					applyReconcileFusionEntries(nodeIds);
+					applyReconcileEntries(nodeIds);
 					break;
 				}
 			}
@@ -308,7 +399,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 
 	const initialIds = workflowDocumentStore.nodesById;
 	if (initialIds && typeof initialIds.keys === 'function') {
-		applyReconcileFusionEntries(Array.from(initialIds.keys()));
+		applyReconcileEntries(Array.from(initialIds.keys()));
 	}
 
 	// -------------------------------------------------------------------------
@@ -368,12 +459,13 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		nodeOutputsByNodeId: workflowDocumentStore.nodeOutputsByNodeId,
 		pinnedDataByNodeName: workflowDocumentStore.pinnedDataByNodeName,
 		pinnedDataByNodeId: workflowDocumentStore.pinnedDataByNodeId,
-		nodeTypeDescriptionByNodeId: workflowDocumentStore.nodeTypeDescriptionByNodeId,
-		isTriggerByNodeId: workflowDocumentStore.isTriggerByNodeId,
-		subtitleByNodeId: workflowDocumentStore.subtitleByNodeId,
-		simulatedNodeTypeDescriptionByNodeId:
-			workflowDocumentStore.simulatedNodeTypeDescriptionByNodeId,
 		validationErrorsByNodeId: workflowDocumentStore.validationErrorsByNodeId,
+
+		// --- node-type derivations (inlined) ---
+		nodeTypeDescriptionByNodeId,
+		isTriggerByNodeId,
+		subtitleByNodeId,
+		simulatedNodeTypeDescriptionByNodeId,
 
 		// --- workflowExecutionState projections (active/displayed fallback) ---
 		executionIssuesByNodeName: executionStateStore.activeExecutionIssuesByNodeName,

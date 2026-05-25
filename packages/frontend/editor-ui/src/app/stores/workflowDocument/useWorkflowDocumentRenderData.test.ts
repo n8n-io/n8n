@@ -58,13 +58,17 @@ describe('useWorkflowDocumentRenderData — passthroughs', () => {
 		expect(renderData.nodeOutputsByNodeId).toBe(doc.nodeOutputsByNodeId);
 		expect(renderData.pinnedDataByNodeName).toBe(doc.pinnedDataByNodeName);
 		expect(renderData.pinnedDataByNodeId).toBe(doc.pinnedDataByNodeId);
-		expect(renderData.nodeTypeDescriptionByNodeId).toBe(doc.nodeTypeDescriptionByNodeId);
-		expect(renderData.isTriggerByNodeId).toBe(doc.isTriggerByNodeId);
-		expect(renderData.subtitleByNodeId).toBe(doc.subtitleByNodeId);
-		expect(renderData.simulatedNodeTypeDescriptionByNodeId).toBe(
-			doc.simulatedNodeTypeDescriptionByNodeId,
-		);
 		expect(renderData.validationErrorsByNodeId).toBe(doc.validationErrorsByNodeId);
+	});
+
+	it('owns per-node-id node-type derivation maps locally', () => {
+		const { docId } = setupWorkflow('wf-nodetype-info', [{ id: 'a', name: 'Alpha' }]);
+		const renderData = useWorkflowDocumentRenderData(docId);
+
+		expect(renderData.nodeTypeDescriptionByNodeId.has('a')).toBe(true);
+		expect(renderData.isTriggerByNodeId.has('a')).toBe(true);
+		expect(renderData.subtitleByNodeId.has('a')).toBe(true);
+		expect(renderData.simulatedNodeTypeDescriptionByNodeId.has('a')).toBe(true);
 	});
 });
 

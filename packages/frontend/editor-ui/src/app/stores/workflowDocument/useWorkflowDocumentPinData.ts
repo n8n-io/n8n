@@ -161,7 +161,7 @@ export function useWorkflowDocumentPinData(deps: WorkflowDocumentPinDataDeps) {
 		return pinnedDataByNodeName.value[nodeName];
 	}
 
-	// Per-node-id pin-data lookup. See useWorkflowDocumentNodeTypeInfo for the
+	// Per-node-id pin-data lookup. See useWorkflowDocumentRenderData for the
 	// general shallowReactive + per-entry computed pattern.
 	//
 	// Note: deliberately uses plain `computed` (Object.is gate) rather than
