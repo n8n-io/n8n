@@ -120,6 +120,31 @@ describe('ActiveWorkflowManager', () => {
 					expect(added).toEqual({ triggersAndPollers: false, webhooks: false });
 				},
 			);
+
+			test.each<[WorkflowActivateMode]>([['init'], ['leadershipChange'], ['activate']])(
+				'should skip archived workflow in `%s` activation mode',
+				async (mode) => {
+					const addWebhooksSpy = jest.spyOn(activeWorkflowManager, 'addWebhooks');
+					const addTriggersAndPollersSpy = jest.spyOn(
+						activeWorkflowManager,
+						'addTriggersAndPollers',
+					);
+					workflowRepository.findById.mockResolvedValue(
+						mock<WorkflowEntity>({
+							id: 'archived-id',
+							active: true,
+							activeVersionId: 'v1',
+							isArchived: true,
+						}),
+					);
+
+					const added = await activeWorkflowManager.add('archived-id', mode);
+
+					expect(addWebhooksSpy).not.toHaveBeenCalled();
+					expect(addTriggersAndPollersSpy).not.toHaveBeenCalled();
+					expect(added).toEqual({ triggersAndPollers: false, webhooks: false });
+				},
+			);
 		});
 	});
 

@@ -167,9 +167,6 @@ export class GlobalConfig {
 	multiMainSetup: MultiMainSetupConfig;
 
 	@Nested
-	evaluation: EvaluationConfig;
-
-	@Nested
 	generic: GenericConfig;
 
 	@Nested
@@ -275,6 +272,9 @@ export class GlobalConfig {
 
 	@Nested
 	expressionEngine: ExpressionEngineConfig;
+
+	@Nested
+	evaluation: EvaluationConfig;
 
 	@Nested
 	instanceSettingsLoader: InstanceSettingsLoaderConfig;

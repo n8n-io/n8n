@@ -1,8 +1,7 @@
 /**
  * Consolidated research tool — web-search + fetch-url.
  */
-import { createTool } from '@mastra/core/tools';
-import { get as pslGet } from 'psl';
+import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
@@ -18,7 +17,10 @@ import type { InstanceAiContext } from '../types';
 import { sanitizeWebContent, wrapUntrustedData } from './web-research/sanitize-web-content';
 
 /** True when both URLs share an eTLD+1 (per Public Suffix List) and target is HTTPS. */
-function isSameRegistrableDomainOverHttps(originalUrl: string, redirectUrl: string): boolean {
+async function isSameRegistrableDomainOverHttps(
+	originalUrl: string,
+	redirectUrl: string,
+): Promise<boolean> {
 	let originalHost: string;
 	let redirectUrlObj: URL;
 	try {
@@ -28,6 +30,7 @@ function isSameRegistrableDomainOverHttps(originalUrl: string, redirectUrl: stri
 		return false;
 	}
 	if (redirectUrlObj.protocol !== 'https:') return false;
+	const { get: pslGet } = await import('psl');
 	const originalDomain = pslGet(originalHost);
 	const redirectDomain = pslGet(redirectUrlObj.hostname);
 	return originalDomain !== null && redirectDomain !== null && originalDomain === redirectDomain;
@@ -72,22 +75,25 @@ const inputSchema = sanitizeInputSchema(
 );
 
 type Input = z.infer<typeof inputSchema>;
+type DomainGatingResumeData = z.infer<typeof domainGatingResumeSchema>;
+type DomainGatingSuspendPayload = z.infer<typeof domainGatingSuspendSchema>;
+interface DomainGatingToolContext {
+	resumeData: DomainGatingResumeData | undefined;
+	suspend?: (payload: DomainGatingSuspendPayload) => Promise<never>;
+}
 
 // ── Handlers ────────────────────────────────────────────────────────────────
 
 async function handleWebSearch(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'web-search' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: DomainGatingToolContext,
 ) {
 	if (!context.webResearchService?.search) {
 		return { query: input.query, results: [] };
 	}
 
-	const resumeData = ctx?.agent?.resumeData as z.infer<typeof domainGatingResumeSchema> | undefined;
-	const suspend = ctx?.agent?.suspend as
-		| ((payload: z.infer<typeof domainGatingSuspendSchema>) => Promise<void>)
-		| undefined;
+	const resumeData = ctx.resumeData;
 
 	// ── Resume path: apply user's decision ─────────────────────────
 	if (resumeData !== undefined && resumeData !== null) {
@@ -113,7 +119,7 @@ async function handleWebSearch(
 			if (check.blocked) {
 				return { query: input.query, results: [] };
 			}
-			await suspend?.(check.suspendPayload!);
+			if (ctx.suspend) return await ctx.suspend(check.suspendPayload!);
 			return { query: input.query, results: [] };
 		}
 	}
@@ -135,7 +141,7 @@ async function handleWebSearch(
 async function handleFetchUrl(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'fetch-url' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: DomainGatingToolContext,
 ) {
 	if (!context.webResearchService) {
 		return {
@@ -148,10 +154,7 @@ async function handleFetchUrl(
 		};
 	}
 
-	const resumeData = ctx?.agent?.resumeData as z.infer<typeof domainGatingResumeSchema> | undefined;
-	const suspend = ctx?.agent?.suspend as
-		| ((payload: z.infer<typeof domainGatingSuspendSchema>) => Promise<void>)
-		| undefined;
+	const resumeData = ctx.resumeData;
 
 	// ── Resume path: apply user's domain decision ──────────────────
 	if (resumeData !== undefined && resumeData !== null) {
@@ -198,7 +201,7 @@ async function handleFetchUrl(
 					contentLength: 0,
 				};
 			}
-			await suspend?.(check.suspendPayload!);
+			if (ctx.suspend) return await ctx.suspend(check.suspendPayload!);
 			return {
 				url: input.url,
 				finalUrl: input.url,
@@ -223,7 +226,7 @@ async function handleFetchUrl(
 		if (redirectCheck.blocked) {
 			throw new Error(`Access to ${new URL(targetUrl).hostname} is blocked by admin.`);
 		}
-		if (isSameRegistrableDomainOverHttps(input.url, targetUrl)) return;
+		if (await isSameRegistrableDomainOverHttps(input.url, targetUrl)) return;
 		throw new Error(
 			`Redirect from ${new URL(input.url).hostname} to ${new URL(targetUrl).hostname} is not allowed. ` +
 				'Skip this URL and try a different research strategy — retrying the same URL will not help.',
@@ -241,19 +244,18 @@ async function handleFetchUrl(
 // ── Tool factory ────────────────────────────────────────────────────────────
 
 export function createResearchTool(context: InstanceAiContext) {
-	return createTool({
-		id: 'research',
-		description: 'Search the web or fetch page content.',
-		inputSchema,
-		suspendSchema: domainGatingSuspendSchema,
-		resumeSchema: domainGatingResumeSchema,
-		execute: async (input: Input, ctx) => {
+	return new Tool('research')
+		.description('Search the web or fetch page content.')
+		.input(inputSchema)
+		.suspend(domainGatingSuspendSchema)
+		.resume(domainGatingResumeSchema)
+		.handler(async (input: Input, ctx) => {
 			switch (input.action) {
 				case 'web-search':
 					return await handleWebSearch(context, input, ctx);
 				case 'fetch-url':
 					return await handleFetchUrl(context, input, ctx);
 			}
-		},
-	});
+		})
+		.build();
 }
