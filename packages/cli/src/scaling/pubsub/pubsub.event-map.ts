@@ -56,6 +56,8 @@ export type PubSubCommandMap = {
 	// #region Worker view
 
 	'get-worker-id': never;
+	'drain-worker': never;
+	'resume-worker': never;
 
 	'get-worker-status': {
 		requestingUserId: string;

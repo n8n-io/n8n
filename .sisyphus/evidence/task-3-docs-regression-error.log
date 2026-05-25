@@ -1,0 +1,12 @@
+31:            "${N8N_MAIN_URL}/${N8N_REST_ENDPOINT:-rest}/orchestration/worker/${N8N_WORKER_ID}/drain"
+39:2. The hook calls the main n8n REST API at `POST /rest/orchestration/worker/:workerId/drain`, or the configured `/${N8N_REST_ENDPOINT}` base path, which publishes the targeted drain request to the worker.
+
+COMMANDS: grep -n "/rest/orchestration/worker\|N8N_REST_ENDPOINT" docs/worker-drain.md; if grep -n "127.0.0.1:5678/orchestration/worker" docs/worker-drain.md; then exit 1; fi
+EXIT_CODE: 0
+
+2026-05-09 rerun:
+11:- **Route:** `POST /rest/orchestration/worker/:workerId/drain` by default, or `POST /${N8N_REST_ENDPOINT}/orchestration/worker/:workerId/drain` when a custom REST base path is configured
+31:            "${N8N_MAIN_URL}/${N8N_REST_ENDPOINT:-rest}/orchestration/worker/${N8N_WORKER_ID}/drain"
+39:2. The hook calls the main n8n REST API at `POST /rest/orchestration/worker/:workerId/drain`, or the configured `/${N8N_REST_ENDPOINT}` base path, which publishes the targeted drain request to the worker.
+COMMANDS: grep -n "/rest/orchestration/worker\|N8N_REST_ENDPOINT" docs/worker-drain.md; if grep -n "127.0.0.1:5678/orchestration/worker" docs/worker-drain.md; then exit 1; fi; if grep -n "Route:.*POST /orchestration/worker" docs/worker-drain.md; then exit 1; fi
+EXIT_CODE: 0

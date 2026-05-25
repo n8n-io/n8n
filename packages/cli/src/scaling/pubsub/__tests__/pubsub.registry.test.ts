@@ -37,6 +37,12 @@ describe('PubSubRegistry', () => {
 
 			@OnPubSubEvent('clear-test-webhooks')
 			onAllInstances() {}
+
+			@OnPubSubEvent('drain-worker', { instanceType: 'worker' })
+			onDrainWorker() {}
+
+			@OnPubSubEvent('resume-worker', { instanceType: 'worker' })
+			onResumeWorker() {}
 		}
 
 		return TestService;
@@ -82,6 +88,8 @@ describe('PubSubRegistry', () => {
 		const testService = Container.get(TestService);
 		const onMainInstanceSpy = jest.spyOn(testService, 'onMainInstance');
 		const onWorkerInstanceSpy = jest.spyOn(testService, 'onWorkerInstance');
+		const onDrainWorkerSpy = jest.spyOn(testService, 'onDrainWorker');
+		const onResumeWorkerSpy = jest.spyOn(testService, 'onResumeWorker');
 
 		// Test with main leader instance
 		const mainPubSubRegistry = new PubSubRegistry(
@@ -96,6 +104,10 @@ describe('PubSubRegistry', () => {
 		expect(onMainInstanceSpy).toHaveBeenCalledTimes(1);
 		pubsubEventBus.emit('restart-event-bus');
 		expect(onWorkerInstanceSpy).not.toHaveBeenCalled();
+		pubsubEventBus.emit('drain-worker');
+		expect(onDrainWorkerSpy).not.toHaveBeenCalled();
+		pubsubEventBus.emit('resume-worker');
+		expect(onResumeWorkerSpy).not.toHaveBeenCalled();
 
 		// Test with worker instance
 		jest.clearAllMocks();
@@ -113,6 +125,10 @@ describe('PubSubRegistry', () => {
 		expect(onMainInstanceSpy).not.toHaveBeenCalled();
 		pubsubEventBus.emit('restart-event-bus');
 		expect(onWorkerInstanceSpy).toHaveBeenCalledTimes(1);
+		pubsubEventBus.emit('drain-worker');
+		expect(onDrainWorkerSpy).toHaveBeenCalledTimes(1);
+		pubsubEventBus.emit('resume-worker');
+		expect(onResumeWorkerSpy).toHaveBeenCalledTimes(1);
 	});
 
 	it('should respect instance role filtering when handling events', () => {

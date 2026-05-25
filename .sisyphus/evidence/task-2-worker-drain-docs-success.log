@@ -1,0 +1,4 @@
+31:            "${N8N_MAIN_URL}/${N8N_REST_ENDPOINT:-rest}/orchestration/worker/${N8N_WORKER_ID}/drain"
+39:2. The hook calls the main n8n REST API at `POST /rest/orchestration/worker/:workerId/drain`, or the configured `/${N8N_REST_ENDPOINT}` base path, which publishes the targeted drain request to the worker.
+
+old URL check: no matches

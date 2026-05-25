@@ -1,0 +1,37 @@
+
+> n8n@2.20.0 test:unit /Users/lucascrostarosa/workspace/n8n/packages/cli
+> N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite jest --config=jest.config.unit.js -- src/scaling/__tests__/worker-drain.service.test.ts --runInBand
+
+ts-jest[versions] (WARN) Version 6.0.2 of typescript installed has not been tested with ts-jest. If you're experiencing issues, consider using a supported version (>=4.3.0 <6.0.0-0). Please do not report issues in ts-jest if you are using unsupported versions.
+ts-jest[versions] (WARN) Version 6.0.2 of typescript installed has not been tested with ts-jest. If you're experiencing issues, consider using a supported version (>=4.3.0 <6.0.0-0). Please do not report issues in ts-jest if you are using unsupported versions.
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+PASS src/scaling/__tests__/worker-drain.service.test.ts
+  WorkerDrainService
+    PubSub handlers
+      ✓ delegates drain-worker events to enterDrain() (2 ms)
+      ✓ delegates resume-worker events to exitDrain()
+    enterDrain
+      ✓ pauses the local queue and marks as draining on a worker instance (1 ms)
+      ✓ rejects when pausing the local queue fails and does not start polling (3 ms)
+      ✓ shares one in-flight pause attempt across concurrent calls
+      ✓ logs the drain signal message
+      ✓ is idempotent — second call does not pause queue again (1 ms)
+      ✓ throws UnexpectedError when called on a non-worker instance
+    exitDrain
+      ✓ resumes the local queue and marks as not draining when draining (1 ms)
+      ✓ logs the resume signal message when draining
+      ✓ does not resume the queue when not draining
+      ✓ logs a warning when not draining
+      ✓ throws UnexpectedError when called on a non-worker instance
+    waitForActiveJobsToFinish
+      ✓ resolves immediately when running job count is 0
+      with fake timers
+        ✓ resolves before the deadline when the job count drops to 0 (13 ms)
+        ✓ resolves at the deadline when jobs never finish
+
+Test Suites: 1 passed, 1 total
+Tests:       16 passed, 16 total
+Snapshots:   0 total
+Time:        4.409 s
+Ran all test suites matching /src\/scaling\/__tests__\/worker-drain.service.test.ts|--runInBand/i.
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`

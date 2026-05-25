@@ -17,6 +17,7 @@ import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
+import { WorkerDrainService } from '@/scaling/worker-drain.service';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 import { JwtService } from '@/services/jwt.service';
 
@@ -42,6 +43,8 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	private concurrency: number;
 
 	private scalingService: ScalingService;
+
+	private workerDrainService: WorkerDrainService;
 
 	override needsCommunityPackages = true;
 
@@ -111,6 +114,10 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.initEventBus();
 		this.logger.debug('Event bus init complete');
 		await this.initScalingService();
+
+		this.workerDrainService = Container.get(WorkerDrainService);
+		this.registerWorkerDrainSignalHandlers();
+
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
@@ -131,6 +138,27 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
+	}
+
+	private registerWorkerDrainSignalHandlers() {
+		if (!this.shouldRegisterWorkerDrainSignalHandlers()) return;
+
+		process.on('SIGUSR2', () => {
+			void this.workerDrainService.enterDrain();
+		});
+		process.on('SIGUSR1', () => {
+			void this.workerDrainService.exitDrain();
+		});
+	}
+
+	private shouldRegisterWorkerDrainSignalHandlers({
+		inTestMode = inTest,
+		workerDrainSignalsEnabled = this.globalConfig.queue.bull.workerDrainSignalsEnabled,
+	}: {
+		inTestMode?: boolean;
+		workerDrainSignalsEnabled?: boolean;
+	} = {}) {
+		return !inTestMode && workerDrainSignalsEnabled;
 	}
 
 	async initEventBus() {
@@ -177,6 +205,29 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.scalingService.setupQueue();
 
 		this.scalingService.setupWorker(this.concurrency);
+	}
+
+	protected onTerminationSignal(signal: string) {
+		const baseHandler = super.onTerminationSignal(signal);
+
+		if (signal !== 'SIGTERM' || !this.globalConfig.queue.bull.drainOnSigterm) {
+			return baseHandler;
+		}
+
+		return async () => {
+			if (this.shutdownService.isShuttingDown()) return baseHandler();
+
+			const drainBudgetMs = Math.floor(this.gracefulShutdownTimeoutInS * 1000 * 0.5);
+
+			try {
+				await this.workerDrainService.enterDrain();
+				await this.workerDrainService.waitForActiveJobsToFinish(drainBudgetMs);
+			} catch (error) {
+				this.logger.error('Drain-on-SIGTERM failed; proceeding with regular shutdown', { error });
+			}
+
+			await baseHandler();
+		};
 	}
 
 	async run() {

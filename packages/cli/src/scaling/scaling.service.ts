@@ -166,6 +166,16 @@ export class ScalingService {
 		this.logger.debug('Paused queue');
 	}
 
+	async pauseLocalQueue() {
+		await this.queue.pause(true, true);
+		this.logger.debug('Local worker queue paused');
+	}
+
+	async resumeLocalQueue() {
+		await this.queue.resume(true);
+		this.logger.debug('Local worker queue resumed');
+	}
+
 	private async stopMain() {
 		if (this.instanceSettings.isSingleMain) await this.pauseQueue();
 

@@ -484,6 +484,34 @@ describe('ScalingService', () => {
 		});
 	});
 
+	describe('pauseLocalQueue / resumeLocalQueue', () => {
+		beforeEach(async () => {
+			scalingService = new ScalingService(
+				mockLogger(),
+				mock(),
+				mock(),
+				jobProcessor,
+				globalConfig,
+				executionRepository,
+				instanceSettings,
+				mock(),
+			);
+			await scalingService.setupQueue();
+			// @ts-expect-error readonly property
+			instanceSettings.instanceType = 'worker';
+		});
+
+		it('pauseLocalQueue calls queue.pause(true, true)', async () => {
+			await scalingService.pauseLocalQueue();
+			expect(queue.pause).toHaveBeenCalledWith(true, true);
+		});
+
+		it('resumeLocalQueue calls queue.resume(true)', async () => {
+			await scalingService.resumeLocalQueue();
+			expect(queue.resume).toHaveBeenCalledWith(true);
+		});
+	});
+
 	describe('MCP response handling', () => {
 		it('should process mcp-response messages without throwing', async () => {
 			await scalingService.setupQueue();

@@ -3,6 +3,7 @@ import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Redis as SingleNodeClient } from 'ioredis';
 import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { RedisClientService } from '@/services/redis-client.service';
 
@@ -201,6 +202,33 @@ describe('Subscriber', () => {
 				payload,
 			);
 			expect(pubsubEventBus.emit).toHaveBeenCalledTimes(1);
+		});
+
+		it('should ignore targeted drain-worker commands for a different host', () => {
+			const pubsubEventBus = mock<PubSubEventBus>();
+			new Subscriber(
+				mockLogger(),
+				mock<InstanceSettings>({ hostId: 'worker-host-1' }),
+				pubsubEventBus,
+				redisClientService,
+				executionsConfig,
+				globalConfig,
+			);
+
+			const messageHandler = getMessageHandler();
+
+			messageHandler(
+				'n8n:n8n.commands',
+				JSON.stringify({
+					command: 'drain-worker',
+					senderId: 'main-host-1',
+					targets: ['worker-host-2'],
+					debounce: false,
+					selfSend: false,
+				}),
+			);
+
+			expect(pubsubEventBus.emit).not.toHaveBeenCalled();
 		});
 	});
 

@@ -1,22 +1,27 @@
 import type { WorkerStatus } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { Push } from '@/push';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 
 describe('WorkerStatusService', () => {
 	let workerStatusService: WorkerStatusService;
+	let mockInstanceSettings: InstanceSettings;
+	let mockPublisher: jest.Mocked<Publisher>;
 	let mockPush: jest.Mocked<Push>;
 
 	beforeEach(() => {
-		mockPush = {
-			sendToUsers: jest.fn(),
-		} as any;
+		mockInstanceSettings = { instanceType: 'main' } as InstanceSettings;
+
+		mockPublisher = mock<Publisher>();
+		mockPush = mock<Push>();
 
 		workerStatusService = new WorkerStatusService(
 			mock(), // jobProcessor
-			mock(), // instanceSettings
-			mock(), // publisher
+			mockInstanceSettings,
+			mockPublisher,
 			mockPush,
 		);
 	});
@@ -103,6 +108,19 @@ describe('WorkerStatusService', () => {
 				}),
 				[requestingUserId],
 			);
+		});
+	});
+
+	describe('drainWorker', () => {
+		it('should publish drain-worker to the API workerId target hostId', async () => {
+			const workerId = 'worker-host-1';
+
+			await workerStatusService.drainWorker(workerId);
+
+			expect(mockPublisher.publishCommand).toHaveBeenCalledWith({
+				command: 'drain-worker',
+				targets: [workerId],
+			});
 		});
 	});
 });
