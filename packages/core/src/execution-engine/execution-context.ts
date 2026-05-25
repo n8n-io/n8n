@@ -33,7 +33,7 @@ function deriveEnforcedPolicy(enforcement: RedactionEnforcement): WorkflowSettin
 
 function resolveRedactionPolicy(
 	workflow: Workflow,
-	additionalData: IWorkflowExecuteAdditionalData | undefined,
+	additionalData: PreExecutionAdditionalData | undefined,
 ): WorkflowSettings.RedactionPolicy {
 	const enforcement = additionalData?.redactionContext?.enforcement;
 	if (enforcement?.enforced) {

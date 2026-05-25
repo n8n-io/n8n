@@ -34,6 +34,7 @@ import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
@@ -746,6 +747,42 @@ describe('pre-persist context establishment', () => {
 
 		expect(establishSpy).not.toHaveBeenCalled();
 		expect(callOrder).toEqual(['activeExecutions.add']);
+	});
+
+	it('passes instance redactionContext to establishExecutionContext so enforcement wins over workflow setting', async () => {
+		// Regression test for IAM-427: trigger-started executions used to stamp
+		// runtimeData.redaction.policy = 'none' here because the early call
+		// received only `encryptedRunnerIdentity` and missed the enforcement
+		// context, then the later WorkflowExecute call no-opped via the
+		// runtimeData early-exit guard. The fix plumbs the enforcement context
+		// into this early call so the first (and only meaningful) write to
+		// runtimeData.redaction.policy reflects the override.
+		const enforcement = { enforced: true, manual: false, production: true };
+		jest
+			.spyOn(Container.get(InstanceRedactionEnforcementService), 'buildContext')
+			.mockResolvedValue({ enforcement });
+
+		const data = buildRunData(buildExecutionDataWithHeader());
+
+		await expect(runner.run(data)).rejects.toThrow('short-circuit for test');
+
+		expect(establishSpy).toHaveBeenCalledTimes(1);
+		const passedAdditionalData = establishSpy.mock.calls[0][2] as { redactionContext?: unknown };
+		expect(passedAdditionalData.redactionContext).toEqual({ enforcement });
+	});
+
+	it('omits redactionContext from the early call when enforcement is disabled', async () => {
+		jest
+			.spyOn(Container.get(InstanceRedactionEnforcementService), 'buildContext')
+			.mockResolvedValue(undefined);
+
+		const data = buildRunData(buildExecutionDataWithHeader());
+
+		await expect(runner.run(data)).rejects.toThrow('short-circuit for test');
+
+		expect(establishSpy).toHaveBeenCalledTimes(1);
+		const passedAdditionalData = establishSpy.mock.calls[0][2] as { redactionContext?: unknown };
+		expect(passedAdditionalData.redactionContext).toBeUndefined();
 	});
 
 	it('skips establishExecutionContext when nodeExecutionStack has not been populated yet', async () => {

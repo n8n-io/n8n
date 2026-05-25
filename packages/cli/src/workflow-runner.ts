@@ -46,6 +46,7 @@ import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
+import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
@@ -217,10 +218,16 @@ export class WorkflowRunner {
 				settings: data.workflowData.settings ?? {},
 			});
 			try {
+				const redactionContext = await Container.get(
+					InstanceRedactionEnforcementService,
+				).buildContext();
 				await establishExecutionContext(
 					contextWorkflow,
 					data.executionData,
-					{ encryptedRunnerIdentity: data.encryptedRunnerIdentity },
+					{
+						encryptedRunnerIdentity: data.encryptedRunnerIdentity,
+						...(redactionContext && { redactionContext }),
+					},
 					data.executionMode,
 				);
 			} catch (error) {
