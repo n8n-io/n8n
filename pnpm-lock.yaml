@@ -150,6 +150,9 @@ catalogs:
     cron:
       specifier: 4.4.0
       version: 4.4.0
+    csv-parse:
+      specifier: 6.2.1
+      version: 6.2.1
     eslint:
       specifier: 9.29.0
       version: 9.29.0
@@ -1772,7 +1775,7 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0
       csv-parse:
-        specifier: 6.2.1
+        specifier: 'catalog:'
         version: 6.2.1
       fast-glob:
         specifier: 'catalog:'
@@ -2843,6 +2846,9 @@ importers:
       csrf:
         specifier: 3.1.0
         version: 3.1.0
+      csv-parse:
+        specifier: 'catalog:'
+        version: 6.2.1
       dotenv:
         specifier: 17.2.3
         version: 17.2.3
@@ -4343,7 +4349,7 @@ importers:
         specifier: 'catalog:'
         version: 4.4.0
       csv-parse:
-        specifier: 6.2.1
+        specifier: 'catalog:'
         version: 6.2.1
       currency-codes:
         specifier: 2.1.0

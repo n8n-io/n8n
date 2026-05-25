@@ -63,6 +63,7 @@ catalog:
   callsites: 3.1.0
   chokidar: 4.0.3
   cron: 4.4.0
+  csv-parse: 6.2.1
   eslint: 9.29.0
   eslint-plugin-oxlint: ^1.61.0
   fast-glob: 3.2.12
