@@ -101,6 +101,7 @@ describe('CredentialsService', () => {
 	);
 
 	beforeEach(() => {
+		jest.restoreAllMocks();
 		jest.resetAllMocks();
 		credentialDependencyService.resolveExternalSecretsStoreDependencyFilter.mockResolvedValue(
 			undefined,
