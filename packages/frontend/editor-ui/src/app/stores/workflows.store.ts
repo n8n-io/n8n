@@ -527,8 +527,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		currentState.value.clearActiveNodeExecutionData(nodeName);
 	}
 
+	// TODO(per-workflow-ndv-PR2): remove this shim once consumers (assistant.store)
+	// switch to a hoisted scoped NDV store. External FE-hooks consumers reach this
+	// via `workflowsStore.activeNode()` and will lose this surface.
 	function activeNode(): INodeUi | null {
-		// kept here for FE hooks
 		const ndvStore = useNDVStore();
 		return ndvStore.activeNode;
 	}
