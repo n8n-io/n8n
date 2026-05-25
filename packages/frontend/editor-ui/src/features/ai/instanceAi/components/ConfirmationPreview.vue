@@ -10,8 +10,7 @@
 	font-size: var(--font-size--sm);
 	color: var(--color--text);
 	word-break: break-all;
-	padding: var(--spacing--2xs);
+	padding: var(--spacing--2xs) 0;
 	border-radius: var(--radius);
-	border: var(--border);
 }
 </style>
