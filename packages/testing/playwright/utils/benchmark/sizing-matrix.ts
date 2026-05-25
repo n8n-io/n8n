@@ -535,7 +535,7 @@ export function renderMarkdown(matrix: SizingMatrix): string {
 	lines.push('');
 	lines.push(
 		'Cells are aggregated by the substrate at `packages/testing/playwright/utils/benchmark/sizing-matrix.ts` from per-run `run-report.json` files. ' +
-			"Each cell's **ceiling** is the p50/p95/max of `execPerSec` across cold runs; " +
+			"Each cell's headline **ceiling** is the **max** `execPerSec` observed across cold runs (saturation point); full p50/p95/max distribution is shown in cell detail. " +
 			'**green-sustained** is the ceiling scaled by headroom (main CPU < 75%, PG CPU < 70%, event-loop lag < 25 ms). ' +
 			'**Workload IOPS** is `pg_stat_io` `client backend` reads+writes+extends per second; ' +
 			'**overhead factor** is `(workload + bgwriter + checkpointer + walwriter + autovacuum) / workload`. ' +
@@ -563,7 +563,7 @@ function renderShapeTable(cells: SizingCell[], shape: Shape): string {
 					: '—',
 				`${cell.topology.pgVcpu} vCPU / ${cell.topology.pgRamGb} GB`,
 				`${cell.topology.redisVcpu} vCPU / ${cell.topology.redisRamGb} GB`,
-				result.ceilingExecPerSec.p50.toFixed(1),
+				result.ceilingExecPerSec.max.toFixed(1),
 				result.greenSustainedExecPerSec.toFixed(1),
 				result.reqPerSec ? result.reqPerSec.p50.toFixed(1) : '—',
 				result.latency.p99.toFixed(0),

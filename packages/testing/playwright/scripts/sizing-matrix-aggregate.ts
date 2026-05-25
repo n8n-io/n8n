@@ -120,11 +120,12 @@ const DEFAULT_MAPPING: SpecMapping = {
 		shape: 'D',
 		topology: S1_DEDICATED_PROC_BASELINE,
 	},
-	'webhook/webhook-sync-latency-floor.spec.ts': {
-		scale: 'S1',
-		shape: 'L',
-		topology: S1_QUEUE_BASELINE,
-	},
+	// `webhook-sync-latency-floor` deliberately unmapped — it measures p99 latency
+	// at 1–8 concurrency in sync mode, not throughput saturation. Its tail-exec/s
+	// scales with `concurrency / mean_latency` not topology capacity, so mixing
+	// it into S1-L's ceiling distribution distorts both the percentile spread
+	// (3.7× run-to-run) and the green-sustained projection. Surface its numbers
+	// in a separate "sync latency floor" section of the customer guide instead.
 	// --- kafka-driven (same workflow shape, different trigger) ---
 	'kafka/single-instance-ceiling.spec.ts': {
 		scale: 'S0',
