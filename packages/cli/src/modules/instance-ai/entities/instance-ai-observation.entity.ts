@@ -5,7 +5,7 @@ export type InstanceAiObservationMarker = 'critical' | 'important' | 'info' | 'c
 export type InstanceAiObservationStatus = 'active' | 'superseded' | 'dropped';
 
 @Entity({ name: 'instance_ai_observations' })
-@Index(['observationScopeId', 'status'])
+@Index(['observationScopeId', 'status', 'createdAt', 'id'])
 @Index(['parentId'])
 @Index(['supersededBy'])
 export class InstanceAiObservation extends WithTimestampsAndStringId {

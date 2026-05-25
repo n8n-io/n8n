@@ -27,7 +27,7 @@ export class CreateInstanceAiObservationTables1784000000012 implements Reversibl
 				column('status').varchar(16).notNull.withEnumCheck(OBSERVATION_STATUSES),
 				column('supersededBy').varchar(36),
 			)
-			.withIndexOn(['observationScopeId', 'status'])
+			.withIndexOn(['observationScopeId', 'status', 'createdAt', 'id'])
 			.withIndexOn('parentId')
 			.withIndexOn('supersededBy')
 			.withForeignKey('observationScopeId', {
