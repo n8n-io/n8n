@@ -22,6 +22,7 @@ import { z } from 'zod';
 import { mapCredentialForProvider } from './credential-field-mapping';
 import {
 	getNativeWebSearchProviderTools,
+	hasNativeWebSearchProvider,
 	isNativeWebSearchRequested,
 } from './native-web-search-provider-tools';
 import { resolveProviderToolName } from './provider-tool-aliases';
@@ -134,7 +135,7 @@ function buildFallbackWebSearchTool(
 	const webSearchConfig = config.config?.webSearch;
 
 	if (!webSearchConfig?.enabled) return null;
-	if (isNativeWebSearchRequested(config)) return null;
+	if (isNativeWebSearchRequested(config) && hasNativeWebSearchProvider(config.model)) return null;
 	if (webSearchConfig.provider !== 'brave' && webSearchConfig.provider !== 'searxng') {
 		throw new Error('Web search is enabled but no fallback search provider is configured.');
 	}

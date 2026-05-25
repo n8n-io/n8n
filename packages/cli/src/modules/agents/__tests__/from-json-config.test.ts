@@ -540,23 +540,22 @@ describe('buildFromJson()', () => {
 		expect(getProviderToolNames(agent)).toContain(expectedTool);
 	});
 
-	it('does not attach native web search for unsupported providers', async () => {
-		const agent = await buildFromJson(
-			makeConfig({
-				model: 'google/gemini-2.5-flash',
-				config: { webSearch: { enabled: true } },
-				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
-			}),
-			{},
-			{
-				toolExecutor: makeMockToolExecutor(),
-				credentialProvider: makeMockCredentialProvider(),
-				memoryFactory: makeMockMemoryFactory(),
-			},
-		);
-
-		expect(getProviderToolNames(agent)).toEqual([]);
-		expect(getLocalToolNames(agent)).not.toContain('web_search');
+	it('rejects native web search config for unsupported providers without fallback settings', async () => {
+		await expect(
+			buildFromJson(
+				makeConfig({
+					model: 'google/gemini-2.5-flash',
+					config: { webSearch: { enabled: true } },
+					providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			),
+		).rejects.toThrow('Web search is enabled but no fallback search provider is configured.');
 	});
 
 	it('does not enable native web search when config is sparse', async () => {
