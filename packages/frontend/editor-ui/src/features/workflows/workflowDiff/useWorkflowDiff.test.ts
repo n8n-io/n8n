@@ -1,11 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref, computed } from 'vue';
 import { mapConnections, useWorkflowDiff } from './useWorkflowDiff';
-import type {
-	CanvasConnection,
-	CanvasNode,
-	ExecutionOutputMap,
-} from '@/features/workflows/canvas/canvas.types';
+import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
+import type { ExecutionOutputMap } from '@/app/types/executionData';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { NodeDiffStatus, type IConnections } from 'n8n-workflow';
 import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCanvasMapping';

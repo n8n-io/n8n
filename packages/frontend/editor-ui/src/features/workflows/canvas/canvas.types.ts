@@ -223,11 +223,6 @@ export type ConnectStartEvent = {
 
 export type CanvasNodeMoveEvent = { id: string; position: CanvasNode['position'] };
 
-// Re-exported from the executionData store, which owns the aggregation.
-// The types are kept in a neutral location so non-canvas consumers (NDV
-// counts, schema view) can import without pulling canvas types in.
-export type { ExecutionOutputMap, ExecutionOutputMapData } from '@/app/types/executionData';
-
 export type BoundingBox = {
 	x: number;
 	y: number;
