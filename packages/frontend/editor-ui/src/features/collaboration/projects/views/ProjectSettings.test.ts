@@ -102,9 +102,9 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 		N8nInput: defineComponent({
 			name: 'N8nInputStub',
 			props: { modelValue: { type: String, required: false } },
-			emits: ['update:model-value'],
+			emits: ['update:model-value', 'blur'],
 			template:
-				'<div data-test-id="n8n-input-stub"><input :value="modelValue" @input="$emit(\'update:model-value\', $event.target.value)" /></div>',
+				'<div data-test-id="n8n-input-stub"><input :value="modelValue" @input="$emit(\'update:model-value\', $event.target.value)" @blur="$emit(\'blur\')" /></div>',
 		}),
 		N8nUserSelect: defineComponent({
 			name: 'N8nUserSelectStub',
@@ -738,6 +738,130 @@ describe('ProjectSettings', () => {
 			expect(nameInput).toBeInTheDocument();
 			expect(descInput).toBeInTheDocument();
 			expect(getByTestId('project-members-select')).toBeInTheDocument();
+		});
+	});
+
+	describe('Custom telemetry tags', () => {
+		beforeEach(() => {
+			settingsStore.isOtelEnabled = true;
+			projectsStore.updateProject.mockResolvedValue(undefined);
+		});
+
+		it('should not render telemetry tags section when OTel is disabled', () => {
+			settingsStore.isOtelEnabled = false;
+			const { queryByTestId } = renderComponent();
+			expect(queryByTestId('project-telemetry-tag-add')).not.toBeInTheDocument();
+		});
+
+		it('should render telemetry tags section when OTel is enabled', () => {
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('project-telemetry-tag-add')).toBeInTheDocument();
+		});
+
+		it('should have no tags by default', async () => {
+			const { queryAllByTestId } = renderComponent();
+			expect(queryAllByTestId('project-telemetry-tag-key')).toHaveLength(0);
+		});
+
+		it('should add a new tag row when clicking Add tag', async () => {
+			const { getByTestId, getAllByTestId } = renderComponent();
+			await userEvent.click(getByTestId('project-telemetry-tag-add'));
+			await nextTick();
+			expect(getAllByTestId('project-telemetry-tag-key')).toHaveLength(1);
+		});
+
+		it('should remove a tag row when clicking Remove', async () => {
+			const { getByTestId, queryAllByTestId } = renderComponent();
+			await userEvent.click(getByTestId('project-telemetry-tag-add'));
+			await nextTick();
+			await userEvent.click(getByTestId('project-telemetry-tag-remove'));
+			await nextTick();
+			expect(queryAllByTestId('project-telemetry-tag-key')).toHaveLength(0);
+		});
+
+		it('should show empty key error after blur', async () => {
+			const { getByTestId, queryByTestId } = renderComponent();
+			await userEvent.click(getByTestId('project-telemetry-tag-add'));
+			await nextTick();
+
+			expect(queryByTestId('project-telemetry-tag-key-error')).not.toBeInTheDocument();
+
+			const keyInput = getByTestId('project-telemetry-tag-key').querySelector('input')!;
+			await userEvent.click(keyInput); // focus
+			await userEvent.tab(); // moves focus away, triggering blur
+			await nextTick();
+
+			expect(getByTestId('project-telemetry-tag-key-error')).toBeInTheDocument();
+			expect(getByTestId('project-telemetry-tag-key-error').textContent).toContain(
+				'Key must not be empty',
+			);
+		});
+
+		it('should show duplicate key error after blur', async () => {
+			const { getByTestId, getAllByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('project-telemetry-tag-add'));
+			await userEvent.click(getByTestId('project-telemetry-tag-add'));
+			await nextTick();
+
+			const [firstKeyWrapper, secondKeyWrapper] = getAllByTestId('project-telemetry-tag-key');
+
+			await userEvent.type(firstKeyWrapper.querySelector('input')!, 'env');
+			await userEvent.tab();
+			await userEvent.type(secondKeyWrapper.querySelector('input')!, 'env');
+			await userEvent.tab();
+			await nextTick();
+
+			const errors = getAllByTestId('project-telemetry-tag-key-error');
+			expect(errors[0].textContent).toContain('Duplicate keys are not allowed');
+		});
+
+		it('should disable Save button when a tag has an empty key', async () => {
+			const { getByTestId } = renderComponent();
+			await userEvent.click(getByTestId('project-telemetry-tag-add'));
+			await nextTick();
+
+			expect(getByTestId('project-settings-save-button')).toBeDisabled();
+		});
+
+		it('should not include customTelemetryTags in payload when OTel is disabled', async () => {
+			settingsStore.isOtelEnabled = false;
+			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
+			const { getByTestId } = renderComponent();
+
+			const nameInput = getByTestId('project-settings-name-input');
+			await userEvent.type(getInput(nameInput), ' Updated');
+			await userEvent.click(getByTestId('project-settings-save-button'));
+			await nextTick();
+
+			expect(updateSpy).toHaveBeenCalledWith(
+				'123',
+				expect.not.objectContaining({ customTelemetryTags: expect.anything() }),
+			);
+		});
+
+		it('should submit with customTelemetryTags when tags are valid', async () => {
+			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('project-telemetry-tag-add'));
+			await nextTick();
+
+			const keyInput = getByTestId('project-telemetry-tag-key').querySelector('input')!;
+			const valueInput = getByTestId('project-telemetry-tag-value').querySelector('input')!;
+			await userEvent.type(keyInput, 'env');
+			await userEvent.type(valueInput, 'production');
+			await nextTick();
+
+			await userEvent.click(getByTestId('project-settings-save-button'));
+			await nextTick();
+
+			expect(updateSpy).toHaveBeenCalledWith(
+				'123',
+				expect.objectContaining({
+					customTelemetryTags: [{ key: 'env', value: 'production' }],
+				}),
+			);
 		});
 	});
 

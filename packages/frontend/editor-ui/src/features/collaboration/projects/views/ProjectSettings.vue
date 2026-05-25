@@ -26,11 +26,11 @@ import type { TableOptions } from '@n8n/design-system/components/N8nDataTableSer
 import type { UserAction } from '@n8n/design-system';
 import { isProjectRole } from '@/app/utils/typeGuards';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
-import { N8nAlert } from '@n8n/design-system';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 
 import {
+	N8nAlert,
 	N8nButton,
 	N8nFormInput,
 	N8nIcon,
@@ -216,11 +216,32 @@ const onTextInput = () => {
 	isDirty.value = true;
 };
 
+const tagTouched = ref<boolean[]>([]);
+
+const onTagKeyBlur = (index: number) => {
+	tagTouched.value[index] = true;
+};
+
+const tagErrors = computed(() => {
+	const seen = new Set<string>();
+	return (formData.value.customTelemetryTags ?? []).map((tag) => {
+		const trimmed = tag.key.trim();
+		if (!trimmed) return i18n.baseText('projects.settings.telemetryTags.error.emptyKey');
+		if (seen.has(trimmed))
+			return i18n.baseText('projects.settings.telemetryTags.error.duplicateKey');
+		seen.add(trimmed);
+		return null;
+	});
+});
+
+const hasTagErrors = computed(() => tagErrors.value.some((e) => e !== null));
+
 const addTelemetryTag = () => {
 	formData.value.customTelemetryTags = [
 		...(formData.value.customTelemetryTags ?? []),
 		{ key: '', value: '' },
 	];
+	tagTouched.value.push(false);
 	isDirty.value = true;
 };
 
@@ -228,6 +249,7 @@ const removeTelemetryTag = (index: number) => {
 	formData.value.customTelemetryTags = (formData.value.customTelemetryTags ?? []).filter(
 		(_, i) => i !== index,
 	);
+	tagTouched.value.splice(index, 1);
 	isDirty.value = true;
 };
 
@@ -283,6 +305,7 @@ const resetFormData = () => {
 	formData.value.customTelemetryTags = projectsStore.currentProject?.customTelemetryTags
 		? deepCopy(projectsStore.currentProject.customTelemetryTags)
 		: [];
+	tagTouched.value = (formData.value.customTelemetryTags ?? []).map(() => false);
 };
 
 const onCancel = () => {
@@ -360,7 +383,9 @@ const updateProject = async () => {
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
 			name: formData.value.name ?? '',
 			description: formData.value.description ?? '',
-			customTelemetryTags: formData.value.customTelemetryTags ?? [],
+			...(settingsStore.isOtelEnabled
+				? { customTelemetryTags: formData.value.customTelemetryTags ?? [] }
+				: {}),
 		});
 		isDirty.value = false;
 	} catch (error) {
@@ -598,7 +623,7 @@ onMounted(async () => {
 						>{{ i18n.baseText('projects.settings.button.cancel') }}</N8nButton
 					>
 					<N8nButton
-						:disabled="!isValid || !isDirty"
+						:disabled="!isValid || !isDirty || hasTagErrors"
 						variant="solid"
 						data-test-id="project-settings-save-button"
 						@click.stop.prevent="onSubmit"
@@ -660,29 +685,39 @@ onMounted(async () => {
 					<div
 						v-for="(tag, index) in formData.customTelemetryTags"
 						:key="index"
-						:class="$style.telemetryTagRow"
+						:class="$style.telemetryTagContainer"
 					>
-						<N8nInput
-							v-model="tag.key"
-							:placeholder="i18n.baseText('projects.settings.telemetryTags.key.placeholder')"
-							data-test-id="project-telemetry-tag-key"
-							@input="onTextInput"
-						/>
-						<N8nInput
-							v-model="tag.value"
-							:placeholder="i18n.baseText('projects.settings.telemetryTags.value.placeholder')"
-							data-test-id="project-telemetry-tag-value"
-							@input="onTextInput"
-						/>
-						<N8nButton
-							icon="trash-2"
-							variant="ghost"
-							size="small"
-							native-type="button"
-							:title="i18n.baseText('projects.settings.telemetryTags.remove')"
-							data-test-id="project-telemetry-tag-remove"
-							@click.stop.prevent="removeTelemetryTag(index)"
-						/>
+						<div :class="$style.telemetryTagRow">
+							<N8nInput
+								v-model="tag.key"
+								:placeholder="i18n.baseText('projects.settings.telemetryTags.key.placeholder')"
+								data-test-id="project-telemetry-tag-key"
+								@input="onTextInput"
+								@blur="onTagKeyBlur(index)"
+							/>
+							<N8nInput
+								v-model="tag.value"
+								:placeholder="i18n.baseText('projects.settings.telemetryTags.value.placeholder')"
+								data-test-id="project-telemetry-tag-value"
+								@input="onTextInput"
+							/>
+							<N8nButton
+								icon="trash-2"
+								variant="ghost"
+								size="small"
+								native-type="button"
+								:title="i18n.baseText('projects.settings.telemetryTags.remove')"
+								:aria-label="i18n.baseText('projects.settings.telemetryTags.remove')"
+								data-test-id="project-telemetry-tag-remove"
+								@click.stop.prevent="removeTelemetryTag(index)"
+							/>
+						</div>
+						<span
+							v-if="tagTouched[index] && tagErrors[index]"
+							:class="$style.tagErrorMessage"
+							data-test-id="project-telemetry-tag-key-error"
+							>{{ tagErrors[index] }}</span
+						>
 					</div>
 					<N8nButton
 						icon="plus"
@@ -717,8 +752,8 @@ onMounted(async () => {
 							remote
 							:remote-method="debouncedUserSearch"
 							:loading="isLoadingUsers"
-							@update:model-value="onAddMember"
 							:disabled="isProjectRoleProvisioningEnabled || isExpressionMappingEnabled"
+							@update:model-value="onAddMember"
 						>
 							<template #prefix>
 								<N8nIcon icon="search" />
@@ -904,11 +939,21 @@ onMounted(async () => {
 	padding-bottom: var(--spacing--lg);
 }
 
+.telemetryTagContainer {
+	margin-bottom: var(--spacing--2xs);
+	max-width: var(--project-field--width);
+}
+
 .telemetryTagRow {
 	display: flex;
 	gap: var(--spacing--2xs);
 	align-items: center;
-	margin-bottom: var(--spacing--2xs);
-	max-width: var(--project-field--width);
+}
+
+.tagErrorMessage {
+	font-size: var(--font-size--3xs);
+	color: var(--color--danger);
+	line-height: var(--line-height--sm);
+	margin-top: var(--spacing--4xs);
 }
 </style>

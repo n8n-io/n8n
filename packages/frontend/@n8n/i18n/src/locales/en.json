@@ -4793,6 +4793,8 @@
 	"projects.settings.telemetryTags.value.placeholder": "Value",
 	"projects.settings.telemetryTags.add": "Add tag",
 	"projects.settings.telemetryTags.remove": "Remove tag",
+	"projects.settings.telemetryTags.error.emptyKey": "Key must not be empty",
+	"projects.settings.telemetryTags.error.duplicateKey": "Duplicate keys are not allowed",
 	"projects.settings.projectMembers": "Project members",
 	"projects.settings.danger.message": "When deleting a project, you can also choose to move all workflows and credentials to another project.",
 	"projects.settings.danger.title": "Danger zone",
