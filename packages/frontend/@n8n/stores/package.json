@@ -26,6 +26,7 @@
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
+    "test:changed": "node ../../../../scripts/test-changed.mjs packages/frontend/@n8n/stores --runner=vitest",
     "test:dev": "vitest --silent=false",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
@@ -57,6 +58,13 @@
     "@vueuse/core": "catalog:frontend",
     "pinia": "catalog:frontend",
     "vue": "catalog:frontend"
+  },
+  "n8nTestChanged": {
+    "inPackageBailouts": [
+      "/(vitest|vite)\\.config\\.(ts|mts|js)$",
+      "/(src/__tests__|test)/setup\\.ts$",
+      "/package\\.json$"
+    ]
   },
   "license": "See LICENSE.md file in the root of the repository"
 }

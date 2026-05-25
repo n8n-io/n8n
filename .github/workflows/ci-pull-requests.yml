@@ -32,6 +32,7 @@ jobs:
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
       merge_base: ${{ steps.ci-filter.outputs.merge-base }}
+      changed_files: ${{ steps.ci-filter.outputs.changed-files }}
       matrix: ${{ steps.generate-matrix.outputs.matrix }}
       skip_tests: ${{ steps.generate-matrix.outputs.skip-tests }}
     steps:
@@ -153,6 +154,8 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       collectCoverage: ${{ github.event_name != 'merge_group' }}
+      changed_files: ${{ needs.install-and-build.outputs.changed_files }}
+      merge_base: ${{ needs.install-and-build.outputs.merge_base }}
     secrets: inherit
 
   typecheck:

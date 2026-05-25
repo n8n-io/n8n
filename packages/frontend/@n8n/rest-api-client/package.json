@@ -26,6 +26,7 @@
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
+    "test:changed": "node ../../../../scripts/test-changed.mjs packages/frontend/@n8n/rest-api-client --runner=vitest",
     "test:dev": "vitest --silent=false",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
@@ -53,6 +54,13 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
+  },
+  "n8nTestChanged": {
+    "inPackageBailouts": [
+      "/(vitest|vite)\\.config\\.(ts|mts|js)$",
+      "/(src/__tests__|test)/setup\\.ts$",
+      "/package\\.json$"
+    ]
   },
   "license": "See LICENSE.md file in the root of the repository"
 }

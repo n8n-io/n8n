@@ -11,6 +11,7 @@
     "typecheck": "vue-tsc --noEmit",
     "typecheck:watch": "vue-tsc --watch --noEmit",
     "test": "vitest run",
+    "test:changed": "node ../../../../scripts/test-changed.mjs packages/frontend/@n8n/design-system --runner=vitest",
     "test:dev": "vitest",
     "chromatic": "chromatic",
     "format": "biome format --write .  && prettier --write . --ignore-path ../../../../.prettierignore",
@@ -71,5 +72,12 @@
   },
   "peerDependencies": {
     "@vueuse/core": "*"
+  },
+  "n8nTestChanged": {
+    "inPackageBailouts": [
+      "/(vitest|vite)\\.config\\.(ts|mts|js)$",
+      "/(src/__tests__|test)/setup\\.ts$",
+      "/package\\.json$"
+    ]
   }
 }

@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test:dev": "vitest",
     "test": "vitest run",
+    "test:changed": "node ../../../../scripts/test-changed.mjs packages/frontend/@n8n/chat --runner=vitest",
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
@@ -62,5 +63,12 @@
   "files": [
     "README.md",
     "dist"
-  ]
+  ],
+  "n8nTestChanged": {
+    "inPackageBailouts": [
+      "/(vitest|vite)\\.config\\.(ts|mts|js)$",
+      "/(src/__tests__|test)/setup\\.ts$",
+      "/package\\.json$"
+    ]
+  }
 }

@@ -41,6 +41,48 @@
 			"outputs": ["coverage/**", "*.xml"],
 			"env": ["COVERAGE_ENABLED", "MERGE_BASE"]
 		},
+		"n8n-editor-ui#test:changed": {
+			"dependsOn": ["^build"],
+			"inputs": ["$TURBO_DEFAULT$"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["CHANGED_FILES", "MERGE_BASE", "TURBO_SCM_BASE", "COVERAGE_ENABLED"]
+		},
+		"@n8n/composables#test:changed": {
+			"dependsOn": ["^build"],
+			"inputs": ["$TURBO_DEFAULT$"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["CHANGED_FILES", "MERGE_BASE", "TURBO_SCM_BASE", "COVERAGE_ENABLED"]
+		},
+		"@n8n/stores#test:changed": {
+			"dependsOn": ["^build"],
+			"inputs": ["$TURBO_DEFAULT$"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["CHANGED_FILES", "MERGE_BASE", "TURBO_SCM_BASE", "COVERAGE_ENABLED"]
+		},
+		"@n8n/i18n#test:changed": {
+			"dependsOn": ["^build"],
+			"inputs": ["$TURBO_DEFAULT$"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["CHANGED_FILES", "MERGE_BASE", "TURBO_SCM_BASE", "COVERAGE_ENABLED"]
+		},
+		"@n8n/design-system#test:changed": {
+			"dependsOn": ["^build"],
+			"inputs": ["$TURBO_DEFAULT$"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["CHANGED_FILES", "MERGE_BASE", "TURBO_SCM_BASE", "COVERAGE_ENABLED"]
+		},
+		"@n8n/chat#test:changed": {
+			"dependsOn": ["^build"],
+			"inputs": ["$TURBO_DEFAULT$"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["CHANGED_FILES", "MERGE_BASE", "TURBO_SCM_BASE", "COVERAGE_ENABLED"]
+		},
+		"@n8n/rest-api-client#test:changed": {
+			"dependsOn": ["^build"],
+			"inputs": ["$TURBO_DEFAULT$"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["CHANGED_FILES", "MERGE_BASE", "TURBO_SCM_BASE", "COVERAGE_ENABLED"]
+		},
 		"test:unit": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],

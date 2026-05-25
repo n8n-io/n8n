@@ -17,6 +17,16 @@ on:
         required: false
         default: false
         type: boolean
+      changed_files:
+        description: Newline-separated changed files from ci-filter.
+        required: false
+        type: string
+        default: ''
+      merge_base:
+        description: Merge-base SHA from ci-filter.
+        required: false
+        type: string
+        default: ''
 env:
   NODE_OPTIONS: --max-old-space-size=7168
 
@@ -167,6 +177,9 @@ jobs:
         shard: [1, 2]
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
+      CHANGED_FILES: ${{ inputs.changed_files }}
+      MERGE_BASE: ${{ inputs.merge_base }}
+      TURBO_SCM_BASE: ${{ inputs.merge_base }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -177,7 +190,12 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
 
-      - name: Test
+      - name: Test (scoped)
+        if: inputs.changed_files != ''
+        run: pnpm turbo test:changed --filter='./packages/frontend/**' --affected --summarize
+
+      - name: Test (full sharded)
+        if: inputs.changed_files == ''
         run: pnpm test:ci:frontend --summarize -- --shard=${{ matrix.shard }}/2
         env:
           VITEST_SHARD: ${{ matrix.shard }}/2
