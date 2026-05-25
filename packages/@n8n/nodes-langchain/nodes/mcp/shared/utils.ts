@@ -128,13 +128,6 @@ export async function connectMcpClient({
 		return createResultError({ type: 'invalid_url', error: endpoint.error });
 	}
 
-	if (signal?.aborted) {
-		return createResultError({
-			type: 'cancelled',
-			error: new Error('Execution was cancelled'),
-		});
-	}
-
 	const authFetch = createAuthFetch(headers, onUnauthorized);
 	const client = new Client({ name, version: version.toString() }, { capabilities: {} });
 
@@ -150,6 +143,13 @@ export async function connectMcpClient({
 		);
 	}
 
+	if (signal?.aborted) {
+		return createResultError({
+			type: 'cancelled',
+			error: new Error('Execution was cancelled'),
+		});
+	}
+
 	if (serverTransport === 'httpStreamable') {
 		try {
 			const transport = new StreamableHTTPClientTransport(endpoint.result, {
@@ -160,7 +160,7 @@ export async function connectMcpClient({
 			return createResultOk(client);
 		} catch (error) {
 			const err = error instanceof Error ? error : new Error(String(error));
-			if (err.name === 'AbortError' || signal?.aborted) {
+			if ((signal && err.name === 'AbortError') || signal?.aborted) {
 				return createResultError({ type: 'cancelled', error: err });
 			}
 
@@ -191,7 +191,7 @@ export async function connectMcpClient({
 		return createResultOk(client);
 	} catch (error) {
 		const err = error instanceof Error ? error : new Error(String(error));
-		if (err.name === 'AbortError' || signal?.aborted) {
+		if ((signal && err.name === 'AbortError') || signal?.aborted) {
 			return createResultError({ type: 'cancelled', error: err });
 		}
 
