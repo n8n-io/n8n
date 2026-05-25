@@ -7,6 +7,8 @@ import {
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { normalizePinData } from '@n8n/workflow-sdk';
 import {
 	type EvalLlmMockHandler,
 	type EvalMockHttpResponse,
@@ -34,22 +36,20 @@ import { PostHogClient } from '@/posthog';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { normalizePinData } from '@n8n/workflow-sdk';
-
+import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
+import { type InterceptedTurn, LlmWireServer } from './llm-wire-server';
+import { createLlmMockHandler } from './mock-handler';
 import { generatePinData } from './pin-data-generator';
-
+import { patchNoProxyForLoopback } from './proxy-loopback';
 import {
 	assertUnpinCompatibility,
+	buildVendorLlmRouting,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	type MockHints,
+	type VendorLlmRouting,
 } from './workflow-analysis';
-import { createLlmMockHandler } from './mock-handler';
-import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
-import { LlmWireServer } from './llm-wire-server';
-import { patchNoProxyForLoopback } from './proxy-loopback';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -62,18 +62,9 @@ const MAX_OUTPUT_ITEMS_PER_NODE = 10;
 // Service
 // ---------------------------------------------------------------------------
 
-/**
- * Executes workflows with LLM-based HTTP mocking for evaluation purposes.
- *
- * Orchestrates two phases:
- *   Phase 1: Analyze the workflow and generate consistent per-node mock hints
- *            (one LLM call, ensures cross-node data consistency)
- *   Phase 2: Execute the workflow with a mock HTTP handler that uses the hints
- *            to generate realistic API responses at interception time
- *
- * Safety: The mock handler is set per-execution on a fresh additionalData instance.
- * No global state is modified. Normal workflow executions are never affected.
- */
+// Executes workflows with LLM-based HTTP mocking. Phase 1 generates per-node
+// mock hints (one LLM call); Phase 2 runs the workflow with a per-execution
+// mock handler — additionalData is fresh, no global state mutated.
 @Service()
 export class EvalExecutionService {
 	constructor(
@@ -124,6 +115,9 @@ export class EvalExecutionService {
 
 		const unpinSet = unpinNodes.length > 0 ? new Set(unpinNodes) : undefined;
 		const hints = await this.analyzeWorkflow(workflowEntity, options.scenarioHints, unpinSet);
+		const vendorLlmRouting = interceptionEnabled
+			? buildVendorLlmRouting(workflowEntity, unpinNodes)
+			: undefined;
 
 		return await this.execute(
 			workflowEntity,
@@ -132,6 +126,7 @@ export class EvalExecutionService {
 			hints,
 			options.scenarioHints,
 			interceptionEnabled,
+			vendorLlmRouting,
 		);
 	}
 
@@ -245,6 +240,7 @@ export class EvalExecutionService {
 		hints: MockHints,
 		scenarioHints?: string,
 		interceptionEnabled = false,
+		vendorLlmRouting?: VendorLlmRouting,
 	): Promise<InstanceAiEvalExecutionResult> {
 		const nodeResults: Record<string, InstanceAiEvalNodeResult> = {};
 
@@ -274,7 +270,12 @@ export class EvalExecutionService {
 		try {
 			let serverUrl: string | undefined;
 			if (interceptionEnabled) {
-				wireServer = new LlmWireServer();
+				wireServer = new LlmWireServer({
+					mockHandler,
+					rootToSubNode: vendorLlmRouting?.rootToSubNode,
+					onIntercept: (turn) => this.recordWireServerTurn(turn, nodeResults),
+					logger: this.logger,
+				});
 				serverUrl = await wireServer.start();
 				restoreNoProxy = patchNoProxyForLoopback();
 				this.logger.debug(`[EvalMock] Wire server listening at ${serverUrl}`);
@@ -284,6 +285,7 @@ export class EvalExecutionService {
 				additionalData.credentialsHelper,
 				serverUrl,
 				this.logger,
+				vendorLlmRouting?.subNodeToRoot,
 			);
 			additionalData.credentialsHelper = credentialsHelper;
 			additionalData.evalLlmMockHandler = this.createInterceptingHandler(mockHandler, nodeResults);
@@ -297,43 +299,24 @@ export class EvalExecutionService {
 			this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
 			const executionData = this.buildExecutionData(startNode, pinData);
 
-			// Mark the trigger node as pinned (it gets its output from pin data, not execution)
-			// Preserve any configIssues that checkNodeConfig may have already recorded.
+			// Mark the trigger node as pinned (it gets its output from pin data, not execution).
 			if (Object.keys(triggerPinData).length > 0) {
-				const existing = nodeResults[startNode.name];
-				nodeResults[startNode.name] = {
-					output: null,
-					interceptedRequests: [],
-					executionMode: 'pinned',
-					...(existing?.configIssues ? { configIssues: existing.configIssues } : {}),
-				};
+				this.markNodeAsPinned(startNode.name, nodeResults);
 			}
-
-			// Mark bypass nodes as pinned
 			for (const nodeName of Object.keys(hints.bypassPinData)) {
-				const existing = nodeResults[nodeName];
-				nodeResults[nodeName] = {
-					output: null,
-					interceptedRequests: [],
-					executionMode: 'pinned',
-					...(existing?.configIssues ? { configIssues: existing.configIssues } : {}),
-				};
+				this.markNodeAsPinned(nodeName, nodeResults);
 			}
 
 			const result = await this.runWorkflow(workflow, additionalData, executionData);
 			return this.buildResult(executionId, result, nodeResults, hints, credentialsHelper);
 		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : String(error);
-			this.logger.error(`[EvalMock] Workflow execution failed: ${message}`);
-			return {
+			return this.buildPartialFailureResult(
 				executionId,
-				success: false,
+				error,
 				nodeResults,
-				errors: [`Execution failed: ${message}`],
 				hints,
-				mockedCredentials: credentialsHelper?.mockedCredentials ?? [],
-				rewrittenCredentials: credentialsHelper?.rewrittenCredentials ?? [],
-			};
+				credentialsHelper,
+			);
 		} finally {
 			if (restoreNoProxy) restoreNoProxy();
 			if (wireServer) {
@@ -464,6 +447,40 @@ export class EvalExecutionService {
 	// ── Request interception ─────────────────────────────────────────────
 
 	/**
+	 * Record a wire-server model turn against the AI root in `nodeResults`.
+	 * Attribution mirrors `createInterceptingHandler` so vendor-SDK traffic
+	 * and HTTP-helper traffic land in the same ledger shape — downstream
+	 * consumers (eval UI, graders) don't need to special-case the two.
+	 */
+	private recordWireServerTurn(
+		turn: InterceptedTurn,
+		nodeResults: Record<string, InstanceAiEvalNodeResult>,
+	): void {
+		const entry = (nodeResults[turn.rootName] ??= {
+			output: null,
+			interceptedRequests: [],
+			executionMode: 'mocked',
+		});
+		// Preserve a pre-set 'pinned' (bypass pass owns that classification);
+		// otherwise the turn IS mocked, so upgrade from any other prior value
+		// (e.g. 'real' from checkNodeConfig() pre-marking config-issue nodes).
+		if (entry.executionMode !== 'pinned') {
+			entry.executionMode = 'mocked';
+		}
+		entry.interceptedRequests.push({
+			url: turn.url,
+			method: turn.method,
+			nodeType: turn.nodeType,
+			requestBody: turn.requestBody,
+			mockResponse: turn.mockResponse,
+		});
+
+		this.logger.debug(
+			`[EvalMock] Wire server intercepted ${turn.method} ${turn.url} attributed to root "${turn.rootName}"`,
+		);
+	}
+
+	/**
 	 * Wraps the mock handler to collect intercepted request metadata for diagnostics.
 	 */
 	private createInterceptingHandler(
@@ -497,6 +514,53 @@ export class EvalExecutionService {
 			);
 
 			return response;
+		};
+	}
+
+	/**
+	 * Mark a node entry as pinned, preserving any config issues that
+	 * `checkNodeConfig` may have already recorded on it. Used both for the
+	 * trigger node (which receives its output from `triggerPinData`) and for
+	 * each bypass node — the shape of the entry is identical, just the trigger
+	 * is gated by the trigger-has-content branch above.
+	 */
+	private markNodeAsPinned(
+		nodeName: string,
+		nodeResults: Record<string, InstanceAiEvalNodeResult>,
+	): void {
+		const existing = nodeResults[nodeName];
+		nodeResults[nodeName] = {
+			output: null,
+			interceptedRequests: [],
+			executionMode: 'pinned',
+			...(existing?.configIssues ? { configIssues: existing.configIssues } : {}),
+		};
+	}
+
+	/**
+	 * Build the failure result returned when execution threw partway through —
+	 * preserves the accumulated `nodeResults`, `hints`, and credential
+	 * diagnostics rather than discarding them like `errorResult` does. Lifted
+	 * out of the `execute()` catch block so the inline expression count there
+	 * stays within complexity bounds.
+	 */
+	private buildPartialFailureResult(
+		executionId: string,
+		error: unknown,
+		nodeResults: Record<string, InstanceAiEvalNodeResult>,
+		hints: MockHints,
+		credentialsHelper: EvalMockedCredentialsHelper | undefined,
+	): InstanceAiEvalExecutionResult {
+		const message = error instanceof Error ? error.message : String(error);
+		this.logger.error(`[EvalMock] Workflow execution failed: ${message}`);
+		return {
+			executionId,
+			success: false,
+			nodeResults,
+			errors: [`Execution failed: ${message}`],
+			hints,
+			mockedCredentials: credentialsHelper?.mockedCredentials ?? [],
+			rewrittenCredentials: credentialsHelper?.rewrittenCredentials ?? [],
 		};
 	}
 

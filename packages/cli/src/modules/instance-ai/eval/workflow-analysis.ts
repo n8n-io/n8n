@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import {
 	type INode,
 	type IPinData,
@@ -9,7 +10,6 @@ import {
 	UserError,
 } from 'n8n-workflow';
 
-import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { extractNodeConfig } from './node-config';
 
 /** Targets of `ai_*` connections — Agent/Chain root nodes. Pinning these short-circuits sub-node SDK calls. */
@@ -29,6 +29,21 @@ function findAiRootNodeNames(workflow: IWorkflowBase): Set<string> {
 		}
 	}
 	return roots;
+}
+
+/**
+ * AI root node types — lets the typo guard accept a no-sub-node Agent.
+ * Keep in sync with new agent/chain types in `@n8n/n8n-nodes-langchain`.
+ */
+const AI_ROOT_NODE_TYPES = new Set<string>([
+	'@n8n/n8n-nodes-langchain.agent',
+	'@n8n/n8n-nodes-langchain.chainLlm',
+	'@n8n/n8n-nodes-langchain.chainRetrievalQa',
+	'@n8n/n8n-nodes-langchain.chainSummarization',
+]);
+
+function isAiRootNodeType(nodeType: string): boolean {
+	return AI_ROOT_NODE_TYPES.has(nodeType);
 }
 
 /** Sources of `ai_*` connections — LLM/tool/memory sub-nodes. Handled via their root, never pinned individually. */
@@ -115,21 +130,99 @@ type UnpinRefusal = {
 	root: string;
 	subNode: string;
 	subNodeType: string;
-	reason: 'protocol_binary' | 'unsupported_vendor_llm' | 'unsafe_baseurl_override';
+	reason:
+		| 'protocol_binary'
+		| 'unsupported_vendor_llm'
+		| 'unsafe_baseurl_override'
+		| 'shared_vendor_llm_subnode';
 };
 
-/** Throws if any unpinned AI root has a sub-node we can't intercept: protocol-binary, unmapped vendor LLM, or unsafe baseURL override. */
+// Routing maps for vendor SDK interception. `assertUnpinCompatibility`
+// refuses shared sub-node topologies, so each sub-node maps to one root.
+export interface VendorLlmRouting {
+	subNodeToRoot: Map<string, string>;
+	rootToSubNode: Map<string, INode>;
+}
+
+/** Walk inbound `ai_languageModel` connections per unpinned root and build the routing maps. */
+export function buildVendorLlmRouting(
+	workflow: IWorkflowBase,
+	unpinNodes: string[],
+): VendorLlmRouting {
+	const subNodeToRoot = new Map<string, string>();
+	const rootToSubNode = new Map<string, INode>();
+
+	if (unpinNodes.length === 0) return { subNodeToRoot, rootToSubNode };
+
+	const nodesByName = new Map(workflow.nodes.map((n) => [n.name, n]));
+	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
+
+	for (const rootName of unpinNodes) {
+		const inbound = connectionsByDestination[rootName];
+		if (!inbound) continue;
+
+		for (const [connType, groups] of Object.entries(inbound)) {
+			if (connType !== 'ai_languageModel' || !Array.isArray(groups)) continue;
+			for (const group of groups) {
+				if (!Array.isArray(group)) continue;
+				for (const conn of group) {
+					const subNode = nodesByName.get(conn.node);
+					if (!subNode || subNode.disabled) continue;
+					if (!SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(subNode.type)) continue;
+
+					if (!subNodeToRoot.has(subNode.name)) {
+						subNodeToRoot.set(subNode.name, rootName);
+					}
+					if (!rootToSubNode.has(rootName)) {
+						rootToSubNode.set(rootName, subNode);
+					}
+				}
+			}
+		}
+	}
+
+	return { subNodeToRoot, rootToSubNode };
+}
+
+/** Throws if any unpinned AI root has a sub-node we can't intercept: protocol-binary, unmapped vendor LLM, or unsafe baseURL override. Also refuses entries that don't resolve to an enabled AI root (typo guard). */
 export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: string[]): void {
 	if (unpinNodes.length === 0) return;
 
 	const nodesByName = new Map(workflow.nodes.map((n) => [n.name, n]));
 	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
+	const aiRootNodes = findAiRootNodeNames(workflow);
+
+	// Refuse typos / disabled / non-AI-root entries up front. A root counts
+	// if it has inbound ai_* connections OR its type is on AI_ROOT_NODE_TYPES.
+	const unknownRoots: string[] = [];
+	const disabledRoots: string[] = [];
+	const nonAiRoots: string[] = [];
+	for (const rootName of unpinNodes) {
+		const node = nodesByName.get(rootName);
+		if (!node) unknownRoots.push(rootName);
+		else if (node.disabled) disabledRoots.push(rootName);
+		else if (!aiRootNodes.has(rootName) && !isAiRootNodeType(node.type)) {
+			nonAiRoots.push(rootName);
+		}
+	}
+	if (unknownRoots.length || disabledRoots.length || nonAiRoots.length) {
+		const formatNames = (names: string[]) => names.map((n) => `"${n}"`).join(', ');
+		const parts: string[] = [];
+		if (unknownRoots.length) parts.push(`not found in workflow: ${formatNames(unknownRoots)}`);
+		if (disabledRoots.length) parts.push(`disabled: ${formatNames(disabledRoots)}`);
+		if (nonAiRoots.length) parts.push(`not AI root nodes: ${formatNames(nonAiRoots)}`);
+		throw new UserError(`Cannot unpin — ${parts.join('; ')}.`);
+	}
 
 	const refusals: UnpinRefusal[] = [];
+	// Track which unpinned roots each supported vendor LLM sub-node feeds.
+	// A sub-node feeding ≥2 unpinned roots can't be attributed correctly —
+	// the wire server's path-based root token is baked into the credential
+	// URL at resolution time (first-wins), so later turns from the same
+	// sub-node would mis-attribute to the first root.
+	const sharedSupportedSubNodes = new Map<string, { type: string; roots: Set<string> }>();
 
 	for (const rootName of unpinNodes) {
-		const rootNode = nodesByName.get(rootName);
-		if (!rootNode || rootNode.disabled) continue;
 		const inbound = connectionsByDestination[rootName];
 		if (!inbound) continue;
 
@@ -141,65 +234,94 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 					const sourceNode = nodesByName.get(conn.node);
 					if (!sourceNode || sourceNode.disabled) continue;
 
-					if (PROTOCOL_BINARY_SUB_NODE_TYPES.has(sourceNode.type)) {
-						refusals.push({
-							root: rootName,
-							subNode: sourceNode.name,
-							subNodeType: sourceNode.type,
-							reason: 'protocol_binary',
-						});
-					} else if (SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)) {
-						if (hasUnsafeBaseUrlOverride(sourceNode)) {
-							refusals.push({
-								root: rootName,
-								subNode: sourceNode.name,
-								subNodeType: sourceNode.type,
-								reason: 'unsafe_baseurl_override',
-							});
-						}
-					} else if (isVendorLlmSubNode(sourceNode.type)) {
-						refusals.push({
-							root: rootName,
-							subNode: sourceNode.name,
-							subNodeType: sourceNode.type,
-							reason: 'unsupported_vendor_llm',
-						});
+					if (SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)) {
+						const tracked = sharedSupportedSubNodes.get(sourceNode.name) ?? {
+							type: sourceNode.type,
+							roots: new Set<string>(),
+						};
+						tracked.roots.add(rootName);
+						sharedSupportedSubNodes.set(sourceNode.name, tracked);
 					}
+
+					const reason = categorizeSubNodeRefusal(sourceNode);
+					if (reason === null) continue;
+					refusals.push({
+						root: rootName,
+						subNode: sourceNode.name,
+						subNodeType: sourceNode.type,
+						reason,
+					});
 				}
 			}
 		}
 	}
 
+	// Emit a `shared_vendor_llm_subnode` refusal for every sub-node feeding
+	// more than one unpinned root. One entry per offending (root, sub-node)
+	// pair so the error message lists every conflict.
+	for (const [subNodeName, { type, roots }] of sharedSupportedSubNodes) {
+		if (roots.size < 2) continue;
+		for (const rootName of roots) {
+			refusals.push({
+				root: rootName,
+				subNode: subNodeName,
+				subNodeType: type,
+				reason: 'shared_vendor_llm_subnode',
+			});
+		}
+	}
+
 	if (refusals.length === 0) return;
 
-	const formatPairs = (list: UnpinRefusal[]) =>
-		list.map((r) => `"${r.subNode}" (${r.subNodeType}) → "${r.root}"`).join(', ');
-
-	const protocolBinary = refusals.filter((r) => r.reason === 'protocol_binary');
-	const unsupportedVendor = refusals.filter((r) => r.reason === 'unsupported_vendor_llm');
-	const baseUrlOverride = refusals.filter((r) => r.reason === 'unsafe_baseurl_override');
-
-	const segments: string[] = [];
-	if (protocolBinary.length > 0) {
-		segments.push(
-			`protocol-binary sub-nodes (cannot be intercepted via HTTP): ${formatPairs(protocolBinary)}`,
-		);
-	}
-	if (unsupportedVendor.length > 0) {
-		segments.push(
-			`unsupported vendor LLM sub-nodes (no eval URL-rewrite mapping yet): ${formatPairs(unsupportedVendor)}`,
-		);
-	}
-	if (baseUrlOverride.length > 0) {
-		segments.push(
-			`vendor LLM sub-nodes with a configured options.baseURL that bypasses the credential rewrite: ${formatPairs(baseUrlOverride)}`,
-		);
-	}
+	const segments = [
+		formatRefusalSegment(
+			refusals,
+			'protocol_binary',
+			'protocol-binary sub-nodes (cannot be intercepted via HTTP)',
+		),
+		formatRefusalSegment(
+			refusals,
+			'unsupported_vendor_llm',
+			'unsupported vendor LLM sub-nodes (no eval URL-rewrite mapping yet)',
+		),
+		formatRefusalSegment(
+			refusals,
+			'unsafe_baseurl_override',
+			'vendor LLM sub-nodes with a configured options.baseURL that bypasses the credential rewrite',
+		),
+		formatRefusalSegment(
+			refusals,
+			'shared_vendor_llm_subnode',
+			'vendor LLM sub-nodes shared by multiple unpinned roots (attribution would be ambiguous)',
+		),
+	].filter((s): s is string => s !== undefined);
 
 	throw new UserError(
 		`Cannot unpin AI root nodes — ${segments.join('; ')}. ` +
 			'Leave these roots pinned, remove the parameter override, or replace the sub-node with one that has interception support.',
 	);
+}
+
+/** Classify a sub-node into one of the three refusal reasons, or null if acceptable. Order matters: protocol-binary, then baseURL-override on a supported vendor, then unsupported `lm*`. */
+function categorizeSubNodeRefusal(sourceNode: INode): UnpinRefusal['reason'] | null {
+	if (PROTOCOL_BINARY_SUB_NODE_TYPES.has(sourceNode.type)) return 'protocol_binary';
+	if (SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)) {
+		return hasUnsafeBaseUrlOverride(sourceNode) ? 'unsafe_baseurl_override' : null;
+	}
+	if (isVendorLlmSubNode(sourceNode.type)) return 'unsupported_vendor_llm';
+	return null;
+}
+
+/** One segment of the `assertUnpinCompatibility` error message, or undefined when no refusals match. */
+function formatRefusalSegment(
+	refusals: UnpinRefusal[],
+	reason: UnpinRefusal['reason'],
+	label: string,
+): string | undefined {
+	const matching = refusals.filter((r) => r.reason === reason);
+	if (matching.length === 0) return undefined;
+	const pairs = matching.map((r) => `"${r.subNode}" (${r.subNodeType}) → "${r.root}"`).join(', ');
+	return `${label}: ${pairs}`;
 }
 
 /** Nodes that should receive mock hints — excludes AI sub-nodes (handled via root) and pinned nodes. */
