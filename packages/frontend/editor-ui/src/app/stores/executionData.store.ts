@@ -165,12 +165,23 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		// reconciled against `workflowData.nodes` via `onExecutionDataChange`.
 		// ---------------------------------------------------------------------
 
+		// Lazy index of the embedded workflow snapshot, keyed by node id.
+		// Materializes once per execution.value change and is shared across all
+		// per-entry projections below — collapses id → node resolution from
+		// O(N) per lookup to O(1).
+		const executionNodeById = computed(() => {
+			const map = new Map<string, INode>();
+			const nodes = execution.value?.workflowData?.nodes;
+			if (nodes) for (const n of nodes) map.set(n.id, n);
+			return map;
+		});
+
 		function getExecutionNodeById(nodeId: string): INode | undefined {
-			return execution.value?.workflowData?.nodes?.find((n) => n.id === nodeId);
+			return executionNodeById.value.get(nodeId);
 		}
 
 		function getExecutionNodeIds(): string[] {
-			return execution.value?.workflowData?.nodes?.map((n) => n.id) ?? [];
+			return Array.from(executionNodeById.value.keys());
 		}
 
 		const byIdScopes = new Map<string, () => void>();
