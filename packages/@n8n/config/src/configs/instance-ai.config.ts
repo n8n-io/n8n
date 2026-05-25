@@ -82,10 +82,6 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 300_000;
 
-	/** Prefix prepended to every Daytona sandbox name (e.g. `eval-baseline-daily`); also surfaced as a `name_prefix` label. */
-	@Env('N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX')
-	sandboxNamePrefix: string = '';
-
 	/** How long to keep completed workflow-builder sandboxes warm for follow-up fixes. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS')
 	builderSandboxTtlMs: number = 10 * 60 * 1000;

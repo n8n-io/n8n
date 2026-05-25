@@ -262,13 +262,28 @@ function isMultiTurnConversation(conversation: ConversationTurn[]): boolean {
 }
 
 /**
+ * Build the threadId used by `buildWorkflow`. `EVAL_THREAD_PREFIX` lets CI
+ * (or any operator) embed branch/run context directly into the threadId,
+ * which the runtime path uses verbatim as the thread-scoped sandbox name —
+ * making eval-spawned sandboxes identifiable at a glance in the Daytona
+ * dashboard. Defaults to `eval-<uuid>` when unset.
+ */
+export function makeEvalThreadId(env: NodeJS.ProcessEnv = process.env): string {
+	const trimmed = env.EVAL_THREAD_PREFIX?.trim();
+	// Plain `??` won't do — an empty (or whitespace-only) env var should also
+	// fall back, not just an unset one.
+	const prefix = trimmed && trimmed.length > 0 ? trimmed : 'eval';
+	return `${prefix}-${crypto.randomUUID()}`;
+}
+
+/**
  * Build a workflow via Instance AI. Returns the workflow ID for use with
  * executeScenario(). Call cleanupBuild() when done.
  */
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
 	const { client, conversation, logger } = config;
 	const openingMessage = conversation[0]?.text ?? '';
-	const threadId = `eval-${crypto.randomUUID()}`;
+	const threadId = makeEvalThreadId();
 	const startTime = Date.now();
 	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 

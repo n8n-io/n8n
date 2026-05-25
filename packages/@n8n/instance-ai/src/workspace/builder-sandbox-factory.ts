@@ -58,7 +58,6 @@ interface BuilderSandboxNamingHints {
 
 const SANDBOX_NAME_MAX_LEN = 63;
 const SANDBOX_LABEL_MAX_LEN = 63;
-const NAME_PREFIX_SLUG_MAX_LEN = 24;
 // 8 chars of nanoid alphabet (~1 in 218T collision); enough for a transient sandbox.
 const SHORT_RUN_ID_LEN = 8;
 
@@ -81,16 +80,8 @@ function slugifyLabel(value: string, maxLen: number): string {
 		.replace(/[-.]+$/, '');
 }
 
-function buildSandboxName(
-	builderId: string,
-	namePrefix: string | undefined,
-	runId: string | undefined,
-): string {
+function buildSandboxName(builderId: string, runId: string | undefined): string {
 	const parts: string[] = [];
-	if (namePrefix) {
-		const prefixSlug = slugifyName(namePrefix, NAME_PREFIX_SLUG_MAX_LEN);
-		if (prefixSlug) parts.push(prefixSlug);
-	}
 	if (runId) {
 		const runSlug = slugifyName(runId, SHORT_RUN_ID_LEN);
 		if (runSlug) parts.push(runSlug);
@@ -103,11 +94,9 @@ function buildSandboxName(
 
 function buildSandboxLabels(
 	builderId: string,
-	namePrefix: string | undefined,
 	naming: BuilderSandboxNamingHints | undefined,
 ): Record<string, string> {
 	const labels: Record<string, string> = { 'n8n-builder': builderId };
-	if (namePrefix) labels.name_prefix = slugifyLabel(namePrefix, SANDBOX_LABEL_MAX_LEN);
 	if (naming?.runId) labels.run_id = slugifyLabel(naming.runId, SANDBOX_LABEL_MAX_LEN);
 	if (naming?.threadId) labels.thread_id = slugifyLabel(naming.threadId, SANDBOX_LABEL_MAX_LEN);
 	return labels;
@@ -253,8 +242,8 @@ export class BuilderSandboxFactory {
 		// are loud and trackable in Sentry, regardless of which path
 		// ultimately succeeds.
 		const createTimeoutSeconds = config.createTimeoutSeconds ?? 300;
-		const sandboxName = buildSandboxName(builderId, config.namePrefix, naming?.runId);
-		const sandboxLabels = buildSandboxLabels(builderId, config.namePrefix, naming);
+		const sandboxName = buildSandboxName(builderId, naming?.runId);
+		const sandboxLabels = buildSandboxLabels(builderId, naming);
 		const createSandboxFn = async () => {
 			const daytona = await this.getDaytona();
 			const snapshotName = await snapshotManager.ensureSnapshot(daytona, mode);

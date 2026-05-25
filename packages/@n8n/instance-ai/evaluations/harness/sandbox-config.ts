@@ -45,7 +45,6 @@ export function resolveSandboxConfig(env: NodeJS.ProcessEnv): SandboxConfig {
 			);
 		}
 		const image = env.N8N_INSTANCE_AI_SANDBOX_IMAGE;
-		const namePrefix = env.N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX;
 		const createTimeoutSeconds =
 			parsePositiveInt(
 				env.N8N_INSTANCE_AI_SANDBOX_CREATE_TIMEOUT_SECONDS,
@@ -59,7 +58,6 @@ export function resolveSandboxConfig(env: NodeJS.ProcessEnv): SandboxConfig {
 			timeout,
 			createTimeoutSeconds,
 			...(image ? { image } : {}),
-			...(namePrefix ? { namePrefix } : {}),
 		};
 	}
 
