@@ -27,6 +27,7 @@ import {
 	setNodeValidator,
 	subnodeConnectionValidator,
 	toolNodeValidator,
+	unknownConfigKeysValidator,
 } from './validators';
 
 // Note: Core composite handlers are now imported from ./composite-handlers
@@ -53,6 +54,7 @@ const coreValidators: ValidatorPlugin[] = [
 	toolNodeValidator,
 	fromAiValidator,
 	memorySessionKeyValidator,
+	unknownConfigKeysValidator,
 
 	// Node-type validators (medium priority)
 	setNodeValidator,

@@ -292,8 +292,7 @@ describe('runEpisodicMemoryIndexer', () => {
 		const memory = new InMemoryMemory();
 		const [observation] = await memory.appendObservationLogEntries([
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 				marker: 'important',
 				text: 'User switched memory store to Postgres after ruling out SQLite for enterprise customers.',
 				createdAt: new Date('2026-05-12T10:00:00.000Z'),
@@ -319,7 +318,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			memory,
 			config: { embedder: fakeEmbedder, extract },
 			scope: { resourceId: 'user-1' },
-			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
 			threadId: 'thread-1',
 			now: new Date('2026-05-12T10:01:00.000Z'),
 		});
@@ -337,7 +336,7 @@ describe('runEpisodicMemoryIndexer', () => {
 				memory,
 				config: { embedder: fakeEmbedder, extract },
 				scope: { resourceId: 'user-1' },
-				observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
+				observationScope: { observationScopeId: 'thread-1' },
 				threadId: 'thread-1',
 			}),
 		).resolves.toEqual({ status: 'skipped', reason: 'no-observations' });
@@ -347,8 +346,7 @@ describe('runEpisodicMemoryIndexer', () => {
 		const memory = new InMemoryMemory();
 		const [observation] = await memory.appendObservationLogEntries([
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 				marker: 'important',
 				text: 'User chose Postgres for cross-session memory.',
 				createdAt: new Date('2026-05-12T10:00:00.000Z'),
@@ -371,7 +369,7 @@ describe('runEpisodicMemoryIndexer', () => {
 				memory,
 				config: { embedder: fakeEmbedder, extract },
 				scope: { resourceId: 'user-1' },
-				observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
+				observationScope: { observationScopeId: 'thread-1' },
 				threadId: 'thread-1',
 				now: new Date('2026-05-12T10:01:00.000Z'),
 			}),
@@ -382,8 +380,7 @@ describe('runEpisodicMemoryIndexer', () => {
 		).resolves.toEqual([]);
 		await expect(
 			memory.episodic.getCursor({
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 			}),
 		).resolves.toBeNull();
 	});
@@ -392,14 +389,12 @@ describe('runEpisodicMemoryIndexer', () => {
 		const memory = new InMemoryMemory();
 		const [decision, reason] = await memory.appendObservationLogEntries([
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 				marker: 'critical',
 				text: 'User chose Postgres for the memory store.',
 			},
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 				marker: 'important',
 				text: 'Enterprise customers will not run local storage.',
 			},
@@ -428,7 +423,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			memory,
 			config: { embedder: fakeEmbedder, extract },
 			scope: { resourceId: 'user-1' },
-			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
 			threadId: 'thread-1',
 		});
 
@@ -454,8 +449,7 @@ describe('runEpisodicMemoryIndexer', () => {
 		const memory = new InMemoryMemory();
 		const [observation] = await memory.appendObservationLogEntries([
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 				marker: 'critical',
 				text: 'User settled the Harborlight vendor intake pilot details.',
 			},
@@ -480,7 +474,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			memory,
 			config: { embedder: fakeEmbedder, extract },
 			scope: { resourceId: 'user-1' },
-			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
 			threadId: 'thread-1',
 		});
 
@@ -497,8 +491,7 @@ describe('runEpisodicMemoryIndexer', () => {
 		const memory = new InMemoryMemory();
 		const [observation] = await memory.appendObservationLogEntries([
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 				marker: 'important',
 				text: 'User investigated webhook retries.',
 			},
@@ -517,7 +510,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			memory,
 			config: { embedder: fakeEmbedder, extract },
 			scope: { resourceId: 'user-1' },
-			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
 			threadId: 'thread-1',
 		});
 
@@ -531,20 +524,17 @@ describe('runEpisodicMemoryIndexer', () => {
 		const memory = new InMemoryMemory();
 		const [request, toolResult, reply] = await memory.appendObservationLogEntries([
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 				marker: 'important',
 				text: 'User wants to continue an earlier memory feature discussion and recover prior decisions.',
 			},
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 				marker: 'info',
 				text: 'Agent queried memory; no entries were found.',
 			},
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 				marker: 'completion',
 				text: 'Agent told user it could not reliably recover finalized decisions.',
 			},
@@ -577,7 +567,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			memory,
 			config: { embedder: fakeEmbedder, extract },
 			scope: { resourceId: 'user-1' },
-			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
 			threadId: 'thread-1',
 		});
 
@@ -596,8 +586,7 @@ describe('runEpisodicMemoryIndexer', () => {
 		});
 		const [observation] = await memory.appendObservationLogEntries([
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 				marker: 'critical',
 				text: 'User switched memory store choice to Postgres.',
 			},
@@ -622,7 +611,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			memory,
 			config: { embedder: fakeEmbedder, extract },
 			scope: { resourceId: 'user-1' },
-			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
 			threadId: 'thread-1',
 		});
 
@@ -647,8 +636,7 @@ describe('runEpisodicMemoryIndexer', () => {
 		);
 		const [observation] = await memory.appendObservationLogEntries([
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 				marker: 'critical',
 				text: 'User switched memory store choice to Postgres after enterprise constraints.',
 			},
@@ -692,7 +680,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			memory,
 			config: { embedder: fakeEmbedder, extract, reflect },
 			scope: { resourceId: 'user-1' },
-			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
 			threadId: 'thread-1',
 		});
 
@@ -752,8 +740,7 @@ describe('runEpisodicMemoryIndexer', () => {
 		);
 		const [observation] = await memory.appendObservationLogEntries([
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 				marker: 'critical',
 				text: 'User added final Harborlight ownership details.',
 			},
@@ -788,7 +775,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			memory,
 			config: { embedder: fakeEmbedder, extract, reflect },
 			scope: { resourceId: 'user-1' },
-			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
 			threadId: 'thread-1',
 		});
 
@@ -810,8 +797,7 @@ describe('runEpisodicMemoryIndexer', () => {
 		});
 		const [observation] = await memory.appendObservationLogEntries([
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 				marker: 'important',
 				text: 'User confirmed the Postgres memory store decision.',
 			},
@@ -837,7 +823,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			memory,
 			config: { embedder: fakeEmbedder, extract, reflect },
 			scope: { resourceId: 'user-1' },
-			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
 			threadId: 'thread-1',
 		});
 
@@ -864,8 +850,7 @@ describe('runEpisodicMemoryIndexer', () => {
 		});
 		const [observation] = await memory.appendObservationLogEntries([
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 				marker: 'important',
 				text: 'Southeast invoice requests are delayed before routing starts.',
 			},
@@ -897,7 +882,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			memory,
 			config: { embedder: fakeEmbedder, extract, reflect },
 			scope: { resourceId: 'user-1' },
-			observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
 			threadId: 'thread-1',
 		});
 
@@ -916,8 +901,7 @@ describe('runEpisodicMemoryIndexer', () => {
 		const memory = new InMemoryMemory();
 		const [observation] = await memory.appendObservationLogEntries([
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 				marker: 'important',
 				text: 'User confirmed the Postgres memory store decision.',
 			},
@@ -948,7 +932,7 @@ describe('runEpisodicMemoryIndexer', () => {
 				memory,
 				config: { embedder: fakeEmbedder, extract, reflect },
 				scope: { resourceId: 'user-1' },
-				observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
+				observationScope: { observationScopeId: 'thread-1' },
 				threadId: 'thread-1',
 			}),
 		).rejects.toThrow('reflect failed');
@@ -960,8 +944,7 @@ describe('runEpisodicMemoryIndexer', () => {
 		).resolves.toHaveLength(1);
 		await expect(
 			memory.episodic.getCursor({
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 			}),
 		).resolves.toBeNull();
 
@@ -970,15 +953,14 @@ describe('runEpisodicMemoryIndexer', () => {
 				memory,
 				config: { embedder: fakeEmbedder, extract, reflect },
 				scope: { resourceId: 'user-1' },
-				observationScope: { scopeKind: 'thread', scopeId: 'thread:thread-1:resource:user-1' },
+				observationScope: { observationScopeId: 'thread-1' },
 				threadId: 'thread-1',
 			}),
 		).resolves.toMatchObject({ status: 'ran' });
 
 		await expect(
 			memory.episodic.getCursor({
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 			}),
 		).resolves.toMatchObject({ lastIndexedObservationId: observation.id });
 	});

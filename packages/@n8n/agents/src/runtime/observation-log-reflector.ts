@@ -8,7 +8,6 @@ import type {
 	ObservationLogMerge,
 	ObservationLogReflection,
 	ObservationLogReflectionResult,
-	ObservationLogScopeKind,
 	TokenCounter,
 } from '../types/sdk/observation-log';
 import { estimateObservationTokens } from '../types/sdk/observation-log';
@@ -29,16 +28,14 @@ export type ObservationLogReflectorMemory = BuiltObservationLogStore;
 
 export interface ObservationLogReflectorWarning {
 	message: string;
-	scopeKind: ObservationLogScopeKind;
-	scopeId: string;
+	observationScopeId: string;
 	tokenCount: number;
 	tokenBudget: number;
 }
 
 export interface RunObservationLogReflectorOpts {
 	memory: ObservationLogReflectorMemory;
-	scopeKind: ObservationLogScopeKind;
-	scopeId: string;
+	observationScopeId: string;
 	reflectorThresholdTokens: number;
 	reflect: ObservationLogReflectFn;
 	tokenCounter?: TokenCounter;
@@ -162,11 +159,10 @@ export function normalizeObservationLogReflection(
 export async function runObservationLogReflector(
 	opts: RunObservationLogReflectorOpts,
 ): Promise<RunObservationLogReflectorResult> {
-	const { memory, scopeKind, scopeId, reflectorThresholdTokens } = opts;
+	const { memory, observationScopeId, reflectorThresholdTokens } = opts;
 	const tokenCounter = opts.tokenCounter ?? estimateObservationTokens;
 	const activeObservationLog = await memory.getActiveObservationLog({
-		scopeKind,
-		scopeId,
+		observationScopeId,
 		order: 'asc',
 	});
 	const tokenCount = countObservationTokens(activeObservationLog, tokenCounter);
@@ -177,8 +173,7 @@ export async function runObservationLogReflector(
 	const now = opts.now ?? new Date();
 	const renderedObservationLog = renderObservationLogForReflection(activeObservationLog);
 	const output = await opts.reflect({
-		scopeKind,
-		scopeId,
+		observationScopeId,
 		now,
 		activeObservationLog,
 		renderedObservationLog,
@@ -189,18 +184,17 @@ export async function runObservationLogReflector(
 		activeObservationLog,
 		withCreatedAt(parseObservationLogReflectionJson(output), now),
 	);
-	const result = await memory.applyObservationLogReflection({ scopeKind, scopeId }, reflection);
+	const result = await memory.applyObservationLogReflection({ observationScopeId }, reflection);
 
 	const remainingTokenCount = countObservationTokens(
-		await memory.getActiveObservationLog({ scopeKind, scopeId }),
+		await memory.getActiveObservationLog({ observationScopeId }),
 		tokenCounter,
 	);
 	const overBudgetAfterReflection = remainingTokenCount > reflectorThresholdTokens;
 	if (overBudgetAfterReflection) {
 		opts.onWarning?.({
 			message: REFLECTOR_OVER_BUDGET_WARNING,
-			scopeKind,
-			scopeId,
+			observationScopeId,
 			tokenCount: remainingTokenCount,
 			tokenBudget: reflectorThresholdTokens,
 		});

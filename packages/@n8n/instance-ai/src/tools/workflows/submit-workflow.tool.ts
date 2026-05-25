@@ -168,7 +168,7 @@ export const submitWorkflowInputSchema = z.object({
 	filePath: z
 		.string()
 		.optional()
-		.describe('Path to the TypeScript workflow file (default: ~/workspace/src/workflow.ts)'),
+		.describe('Path to the TypeScript workflow file (defaults to the builder task main file)'),
 	workflowId: z
 		.string()
 		.optional()
