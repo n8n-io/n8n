@@ -8,7 +8,6 @@ import type {
 	ObservationLogMarker,
 	ObservationLogObserveFn,
 	ObservationLogObserverInput,
-	ObservationLogScopeKind,
 	TokenCounter,
 } from '../types/sdk/observation-log';
 import { estimateObservationTokens } from '../types/sdk/observation-log';
@@ -54,25 +53,22 @@ export interface RenderObserverTranscriptOptions {
 }
 
 export interface ObservationLogObserverMemory extends BuiltMemory, BuiltObservationLogStore {
-	getMessagesForScope(
-		scopeKind: ObservationLogScopeKind,
-		scopeId: string,
-		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string }; resourceId?: string },
+	getMessagesForObservationScope(
+		observationScopeId: string,
+		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string } },
 	): Promise<AgentDbMessage[]>;
-	getCursor(scopeKind: ObservationLogScopeKind, scopeId: string): Promise<ObservationCursor | null>;
-	setCursor(cursor: ObservationCursor & { scopeKind: ObservationLogScopeKind }): Promise<void>;
+	getCursor(observationScopeId: string): Promise<ObservationCursor | null>;
+	setCursor(cursor: ObservationCursor): Promise<void>;
 }
 
 export interface RunObservationLogObserverOpts {
 	memory: ObservationLogObserverMemory;
-	scopeKind: ObservationLogScopeKind;
-	scopeId: string;
+	observationScopeId: string;
 	observerThresholdTokens: number;
 	observationLogTailLimit: number;
 	observe: ObservationLogObserveFn;
 	tokenCounter?: TokenCounter;
 	now?: Date;
-	messageSource?: { threadId: string; resourceId?: string };
 	onMalformedLine?: (line: string) => void;
 }
 
@@ -158,26 +154,18 @@ export function renderObserverTranscript(
 export async function runObservationLogObserver(
 	opts: RunObservationLogObserverOpts,
 ): Promise<RunObservationLogObserverResult> {
-	const { memory, scopeKind, scopeId } = opts;
-	const cursor = await memory.getCursor(scopeKind, scopeId);
-	const messageScopeKind = opts.messageSource ? 'thread' : scopeKind;
-	const messageScopeId = opts.messageSource?.threadId ?? scopeId;
-	const deltaMessages = await memory.getMessagesForScope(
-		messageScopeKind,
-		messageScopeId,
+	const { memory, observationScopeId } = opts;
+	const cursor = await memory.getCursor(observationScopeId);
+	const deltaMessages = await memory.getMessagesForObservationScope(
+		observationScopeId,
 		cursor
 			? {
-					...(opts.messageSource?.resourceId !== undefined && {
-						resourceId: opts.messageSource.resourceId,
-					}),
 					since: {
 						sinceCreatedAt: cursor.lastObservedAt,
 						sinceMessageId: cursor.lastObservedMessageId,
 					},
 				}
-			: opts.messageSource?.resourceId !== undefined
-				? { resourceId: opts.messageSource.resourceId }
-				: undefined,
+			: undefined,
 	);
 	if (deltaMessages.length === 0) return { status: 'skipped', reason: 'no-delta' };
 
@@ -190,8 +178,7 @@ export async function runObservationLogObserver(
 
 	const observationLogTail = (
 		await memory.getActiveObservationLog({
-			scopeKind,
-			scopeId,
+			observationScopeId,
 			limit: opts.observationLogTailLimit,
 			order: 'desc',
 		})
@@ -199,8 +186,7 @@ export async function runObservationLogObserver(
 	const now = opts.now ?? new Date();
 	const renderedObservationLogTail = renderObservationLog(observationLogTail);
 	const markdown = await opts.observe({
-		scopeKind,
-		scopeId,
+		observationScopeId,
 		now,
 		deltaMessages,
 		transcript,
@@ -219,8 +205,7 @@ export async function runObservationLogObserver(
 		const parentId = entry.parentIndex === null ? null : (inserted[entry.parentIndex]?.id ?? null);
 		const [row] = await memory.appendObservationLogEntries([
 			{
-				scopeKind,
-				scopeId,
+				observationScopeId,
 				marker: entry.marker,
 				text: entry.text,
 				parentId,
@@ -232,8 +217,7 @@ export async function runObservationLogObserver(
 
 	await advanceObserverCursor(
 		memory,
-		scopeKind,
-		scopeId,
+		observationScopeId,
 		deltaMessages[deltaMessages.length - 1],
 		now,
 	);
@@ -349,14 +333,12 @@ function safeJsonStringify(value: unknown): string {
 
 async function advanceObserverCursor(
 	memory: ObservationLogObserverMemory,
-	scopeKind: ObservationLogScopeKind,
-	scopeId: string,
+	observationScopeId: string,
 	lastMessage: AgentDbMessage,
 	now: Date,
 ): Promise<void> {
 	await memory.setCursor({
-		scopeKind,
-		scopeId,
+		observationScopeId,
 		lastObservedMessageId: lastMessage.id,
 		lastObservedAt: lastMessage.createdAt,
 		updatedAt: now,

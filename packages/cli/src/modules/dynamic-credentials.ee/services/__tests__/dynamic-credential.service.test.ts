@@ -13,6 +13,7 @@ import type {
 	CredentialResolutionResult,
 	CredentialResolveMetadata,
 } from '@/credentials/credential-resolution-provider.interface';
+import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { StaticAuthService } from '@/services/static-auth-service';
 
@@ -37,11 +38,18 @@ describe('DynamicCredentialService', () => {
 	let mockLogger: jest.Mocked<Logger>;
 	let mockExpressionService: jest.Mocked<ResolverConfigExpressionService>;
 	let mockDynamicCredentialConfig: jest.Mocked<DynamicCredentialsConfig>;
+	let mockDynamicCredentialsProxy: jest.Mocked<DynamicCredentialsProxy>;
 
 	beforeEach(() => {
 		mockDynamicCredentialConfig = {
 			endpointAuthToken: 'test-token',
 		} as unknown as jest.Mocked<DynamicCredentialsConfig>;
+		mockDynamicCredentialsProxy = {
+			getSystemResolverId: jest.fn().mockReturnValue(null),
+			// Default to the real semantics with no system resolver seeded:
+			// pass through the workflow override if any, otherwise null.
+			getEffectiveResolverId: jest.fn((settings) => settings?.credentialResolverId ?? null),
+		} as unknown as jest.Mocked<DynamicCredentialsProxy>;
 	});
 
 	const createMockCredentialsMetadata = (overrides: Partial<CredentialResolveMetadata> = {}) =>
@@ -212,6 +220,7 @@ describe('DynamicCredentialService', () => {
 			mockCipher,
 			mockLogger,
 			mockExpressionService,
+			mockDynamicCredentialsProxy,
 		);
 	});
 
@@ -272,6 +281,35 @@ describe('DynamicCredentialService', () => {
 						undefined,
 					),
 				).rejects.toThrow(CredentialResolverNotConfiguredError);
+			});
+
+			it('falls back to the system resolver from the proxy when no override is set', async () => {
+				const credentialsEntity = createMockCredentialsMetadata({
+					resolverId: undefined,
+				});
+				const resolverEntity = createMockResolverEntity({ id: 'system-resolver' });
+				const mockResolver = createMockResolver();
+				const executionContext = createMockExecutionContext('encrypted-credentials');
+				const credentialContext = createMockCredentialContext();
+
+				mockDynamicCredentialsProxy.getEffectiveResolverId.mockReturnValue('system-resolver');
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+				mockCipher.decryptV2
+					.mockResolvedValueOnce(JSON.stringify(credentialContext))
+					.mockResolvedValueOnce(JSON.stringify({ prefix: 'test' }));
+
+				const result = await service.resolveIfNeeded(
+					credentialsEntity,
+					staticData,
+					executionContext,
+					{},
+				);
+
+				expect(mockResolverRepository.findOneBy).toHaveBeenCalledWith({
+					id: 'system-resolver',
+				});
+				expect(result.isDynamic).toBe(true);
 			});
 
 			it('credential has no resolver ID', async () => {
@@ -983,6 +1021,7 @@ describe('DynamicCredentialService', () => {
 					mockCipher,
 					mockLogger,
 					mockExpressionService,
+					mockDynamicCredentialsProxy,
 				);
 				const middleware = service.getDynamicCredentialsEndpointsMiddleware();
 				const mockReq = {
@@ -1014,6 +1053,7 @@ describe('DynamicCredentialService', () => {
 					mockCipher,
 					mockLogger,
 					mockExpressionService,
+					mockDynamicCredentialsProxy,
 				);
 				service.getDynamicCredentialsEndpointsMiddleware();
 				expect(getStaticAuthMiddlewareSpy).toHaveBeenCalledWith('test-token', 'x-authorization');
@@ -1031,6 +1071,7 @@ describe('DynamicCredentialService', () => {
 						mockCipher,
 						mockLogger,
 						mockExpressionService,
+						mockDynamicCredentialsProxy,
 					);
 
 					const middleware = service.getDynamicCredentialsEndpointsMiddleware();
@@ -1066,6 +1107,7 @@ describe('DynamicCredentialService', () => {
 						mockCipher,
 						mockLogger,
 						mockExpressionService,
+						mockDynamicCredentialsProxy,
 					);
 
 					const middleware = service.getDynamicCredentialsEndpointsMiddleware();
@@ -1090,6 +1132,12 @@ describe('DynamicCredentialService', () => {
 					expect(mockRes.status).not.toHaveBeenCalled();
 				});
 			});
+		});
+	});
+
+	describe('getSystemResolverId', () => {
+		it('returns the seeded system resolver id constant', () => {
+			expect(service.getSystemResolverId()).toBe('system-n8n');
 		});
 	});
 });

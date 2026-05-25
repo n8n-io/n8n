@@ -9,8 +9,10 @@ export type EvalCollectionRunStatus = 'new' | 'running' | 'completed' | 'error' 
 // PostHog rollout flag id gating the eval-collections feature surface. All
 // new endpoints + frontend entry points consult this; flag-off cohort sees
 // the legacy single-run flow unchanged. Single source of truth shared
-// between FE and BE so the two cannot drift.
-export const EVAL_COLLECTIONS_FLAG = 'eval_collections';
+// between FE and BE so the two cannot drift. Follows the `NNN_<feature>`
+// numeric-prefix convention used by every other n8n PostHog flag (next
+// available after `083_canvas_nodes_grouping`).
+export const EVAL_COLLECTIONS_FLAG = '084_eval_collections';
 
 // Per-version entry on a create-collection request. Either reference an
 // existing test run (`existingTestRunId`) to reuse it, or omit it and the

@@ -129,6 +129,7 @@ export class E2EController {
 		[LICENSE_FEATURES.PERSONAL_SPACE_POLICY]: false,
 		[LICENSE_FEATURES.TOKEN_EXCHANGE]: false,
 		[LICENSE_FEATURES.DATA_REDACTION]: false,
+		[LICENSE_FEATURES.N8N_PACKAGES]: false,
 	};
 
 	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {
