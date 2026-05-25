@@ -248,9 +248,14 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 					nodeId,
 					structuralComputed(() => computeExecutionStatus(nodeId)),
 				);
+				// Plain `computed` (Object.is) rather than `structuralComputed(..., isEqual)`:
+				// per-task data can be megabytes for nodes with large outputs, and
+				// every push replaces the runData array reference with new content
+				// — so an isEqual gate would deep-compare megabytes and never
+				// short-circuit. Reference identity is the right gate here.
 				executionRunDataByNodeId.set(
 					nodeId,
-					structuralComputed(() => computeExecutionRunData(nodeId), isEqual),
+					computed(() => computeExecutionRunData(nodeId)),
 				);
 				executionWaitingByNodeId.set(
 					nodeId,

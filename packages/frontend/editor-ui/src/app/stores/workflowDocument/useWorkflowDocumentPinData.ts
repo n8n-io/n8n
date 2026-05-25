@@ -1,4 +1,5 @@
 import {
+	computed,
 	effectScope,
 	ref,
 	readonly,
@@ -7,8 +8,6 @@ import {
 	type ShallowRef,
 } from 'vue';
 import { createEventHook } from '@vueuse/core';
-import { structuralComputed } from '@n8n/composables/structuralComputed';
-import isEqual from 'lodash/isEqual';
 import type { INodeExecutionData, IDataObject, IPinData } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { isJsonKeyObject, stringSizeInBytes } from '@/app/utils/typesUtils';
@@ -162,11 +161,16 @@ export function useWorkflowDocumentPinData(deps: WorkflowDocumentPinDataDeps) {
 		return pinnedDataByNodeName.value[nodeName];
 	}
 
-	// Per-node-id pin-data lookup. See useWorkflowDocumentNodeTypeInfo for an
-	// explanation of the shallowReactive + structuralComputed pattern.
-	// The derivation reads pinnedDataByNodeName via node.name, so the entry
-	// invalidates on pin changes (ref replaced) and on node renames (reactive
-	// node proxy's name read changes).
+	// Per-node-id pin-data lookup. See useWorkflowDocumentNodeTypeInfo for the
+	// general shallowReactive + per-entry computed pattern.
+	//
+	// Note: deliberately uses plain `computed` (Object.is gate) rather than
+	// `structuralComputed(..., isEqual)`. Pin data can reach ~10 MB per
+	// workflow, and every mutation replaces the inner array reference — so an
+	// isEqual gate would deep-compare megabytes on every change *and* never
+	// short-circuit (the immutable update pattern means no mutation ever
+	// produces a structurally-identical fresh array). Reference identity is
+	// the right gate here.
 	const pinnedDataByNodeId = shallowReactive(
 		new Map<string, ComputedRef<INodeExecutionData[] | undefined>>(),
 	);
@@ -184,7 +188,7 @@ export function useWorkflowDocumentPinData(deps: WorkflowDocumentPinDataDeps) {
 		scope.run(() => {
 			pinnedDataByNodeId.set(
 				nodeId,
-				structuralComputed(() => computePinnedData(nodeId), isEqual),
+				computed(() => computePinnedData(nodeId)),
 			);
 		});
 		scopes.set(nodeId, () => scope.stop());
