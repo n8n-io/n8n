@@ -83,58 +83,64 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// read-consumer migrations, where the refactor of writers/readers can be
 	// done together to preserve test contracts.
 
-	const currentState = computed(() =>
+	const currentExecutionStateStore = computed(() =>
 		useWorkflowExecutionStateStore(createWorkflowExecutionStateId(workflowId.value)),
 	);
 
 	const currentWorkflowExecutions = computed<ExecutionSummary[]>({
-		get: () => currentState.value.currentWorkflowExecutions as ExecutionSummary[],
-		set: (value) => currentState.value.setCurrentWorkflowExecutions([...value]),
+		get: () => currentExecutionStateStore.value.currentWorkflowExecutions as ExecutionSummary[],
+		set: (value) => currentExecutionStateStore.value.setCurrentWorkflowExecutions([...value]),
 	});
 
 	const workflowExecutionData = computed<IExecutionResponse | null>(() => {
 		// Touch the timestamp so consumers still see updates even when the
 		// underlying execution object reference is preserved across in-place
 		// mutations. The resolved-id timestamp lives on the executionData store.
-		void currentState.value.activeExecutionResultDataLastUpdate;
-		return currentState.value.activeExecution as IExecutionResponse | null;
+		void currentExecutionStateStore.value.activeExecutionResultDataLastUpdate;
+		return currentExecutionStateStore.value.activeExecution as IExecutionResponse | null;
 	});
 	const lastSuccessfulExecution = computed<IExecutionResponse | null>(
-		() => currentState.value.lastSuccessfulExecution as IExecutionResponse | null,
+		() => currentExecutionStateStore.value.lastSuccessfulExecution as IExecutionResponse | null,
 	);
 	const workflowExecutionStartedData = computed(
 		() =>
-			currentState.value.activeExecutionStartedData as
+			currentExecutionStateStore.value.activeExecutionStartedData as
 				| [executionId: string, data: { [nodeName: string]: ITaskStartedData[] }]
 				| undefined,
 	);
 	const workflowExecutionResultDataLastUpdate = computed(
-		() => currentState.value.activeExecutionResultDataLastUpdate,
+		() => currentExecutionStateStore.value.activeExecutionResultDataLastUpdate,
 	);
 	const workflowExecutionPairedItemMappings = computed(
-		() => currentState.value.activeExecutionPairedItemMappings as Record<string, Set<string>>,
+		() =>
+			currentExecutionStateStore.value.activeExecutionPairedItemMappings as Record<
+				string,
+				Set<string>
+			>,
 	);
 
 	const executionWaitingForWebhook = computed<boolean>({
-		get: () => currentState.value.executionWaitingForWebhook,
-		set: (value) => currentState.value.setExecutionWaitingForWebhook(value),
+		get: () => currentExecutionStateStore.value.executionWaitingForWebhook,
+		set: (value) => currentExecutionStateStore.value.setExecutionWaitingForWebhook(value),
 	});
 
 	const isInDebugMode = computed<boolean>({
-		get: () => currentState.value.isInDebugMode,
-		set: (value) => currentState.value.setIsInDebugMode(value),
+		get: () => currentExecutionStateStore.value.isInDebugMode,
+		set: (value) => currentExecutionStateStore.value.setIsInDebugMode(value),
 	});
 
-	const chatMessages = computed<string[]>(() => currentState.value.chatMessages as string[]);
+	const chatMessages = computed<string[]>(
+		() => currentExecutionStateStore.value.chatMessages as string[],
+	);
 
 	const chatPartialExecutionDestinationNode = computed<string | null>({
-		get: () => currentState.value.chatPartialExecutionDestinationNode,
-		set: (value) => currentState.value.setChatPartialExecutionDestinationNode(value),
+		get: () => currentExecutionStateStore.value.chatPartialExecutionDestinationNode,
+		set: (value) => currentExecutionStateStore.value.setChatPartialExecutionDestinationNode(value),
 	});
 
 	const selectedTriggerNodeName = computed<string | undefined>({
-		get: () => currentState.value.selectedTriggerNodeName,
-		set: (value) => currentState.value.setSelectedTriggerNodeName(value),
+		get: () => currentExecutionStateStore.value.selectedTriggerNodeName,
+		set: (value) => currentExecutionStateStore.value.setSelectedTriggerNodeName(value),
 	});
 
 	// A workflow is new if it hasn't been saved to the backend yet.
@@ -211,14 +217,18 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	 * continue to work.
 	 */
 	const activeExecutionId = computed<string | null | undefined>({
-		get: () => currentState.value.activeExecutionId,
-		set: (value) => currentState.value.setActiveExecutionId(value),
+		get: () => currentExecutionStateStore.value.activeExecutionId,
+		set: (value) => currentExecutionStateStore.value.setActiveExecutionId(value),
 	});
-	const readonlyActiveExecutionId = computed(() => currentState.value.activeExecutionId);
-	const readonlyPreviousExecutionId = computed(() => currentState.value.previousExecutionId);
+	const readonlyActiveExecutionId = computed(
+		() => currentExecutionStateStore.value.activeExecutionId,
+	);
+	const readonlyPreviousExecutionId = computed(
+		() => currentExecutionStateStore.value.previousExecutionId,
+	);
 
 	function setActiveExecutionId(id: string | null | undefined) {
-		currentState.value.setActiveExecutionId(id);
+		currentExecutionStateStore.value.setActiveExecutionId(id);
 	}
 
 	function getWorkflowResultDataByNodeName(nodeName: string): ITaskData[] | null {
@@ -298,7 +308,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				return;
 			}
 
-			currentState.value.setLastSuccessfulExecution(
+			currentExecutionStateStore.value.setLastSuccessfulExecution(
 				await workflowsApi.getLastSuccessfulExecution(rootStore.restApiContext, workflowId.value),
 			);
 		} catch (e: unknown) {
@@ -400,51 +410,51 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setWorkflowExecutionRunData(workflowResultData: IRunExecutionData) {
-		currentState.value.setActiveExecutionRunData(workflowResultData);
+		currentExecutionStateStore.value.setActiveExecutionRunData(workflowResultData);
 	}
 
 	function setWorkflowExecutionData(execution: IExecutionResponse | null): void {
-		currentState.value.setActiveExecution(execution);
+		currentExecutionStateStore.value.setActiveExecution(execution);
 	}
 
 	function clearExecutionStartedData(): void {
-		currentState.value.clearActiveExecutionStartedData();
+		currentExecutionStateStore.value.clearActiveExecutionStartedData();
 	}
 
 	function setExecutionWaitingForWebhook(value: boolean): void {
-		currentState.value.setExecutionWaitingForWebhook(value);
+		currentExecutionStateStore.value.setExecutionWaitingForWebhook(value);
 	}
 
 	function setIsInDebugMode(value: boolean): void {
-		currentState.value.setIsInDebugMode(value);
+		currentExecutionStateStore.value.setIsInDebugMode(value);
 	}
 
 	function setChatPartialExecutionDestinationNode(value: string | null): void {
-		currentState.value.setChatPartialExecutionDestinationNode(value);
+		currentExecutionStateStore.value.setChatPartialExecutionDestinationNode(value);
 	}
 
 	function setLastSuccessfulExecution(execution: IExecutionResponse | null): void {
-		currentState.value.setLastSuccessfulExecution(execution);
+		currentExecutionStateStore.value.setLastSuccessfulExecution(execution);
 	}
 
 	function clearCurrentWorkflowExecutions(): void {
-		currentState.value.clearCurrentWorkflowExecutions();
+		currentExecutionStateStore.value.clearCurrentWorkflowExecutions();
 	}
 
 	function setCurrentWorkflowExecutions(executions: ExecutionSummary[]): void {
-		currentState.value.setCurrentWorkflowExecutions(executions);
+		currentExecutionStateStore.value.setCurrentWorkflowExecutions(executions);
 	}
 
 	function renameNodeSelectedAndExecution(nameData: { old: string; new: string }): void {
-		currentState.value.renameActiveExecutionNode(nameData);
+		currentExecutionStateStore.value.renameActiveExecutionNode(nameData);
 	}
 
 	function addNodeExecutionStartedData(data: NodeExecuteBefore['data']): void {
-		currentState.value.addActiveNodeExecutionStartedData(data);
+		currentExecutionStateStore.value.addActiveNodeExecutionStartedData(data);
 	}
 
 	function clearNodeExecutionData(nodeName: string): void {
-		currentState.value.clearActiveNodeExecutionData(nodeName);
+		currentExecutionStateStore.value.clearActiveNodeExecutionData(nodeName);
 	}
 
 	function activeNode(): INodeUi | null {
@@ -705,11 +715,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function deleteExecution(execution: ExecutionSummary): void {
-		currentState.value.deleteExecution(execution);
+		currentExecutionStateStore.value.deleteExecution(execution);
 	}
 
 	function addToCurrentExecutions(executions: ExecutionSummary[]): void {
-		currentState.value.addToCurrentExecutions(executions);
+		currentExecutionStateStore.value.addToCurrentExecutions(executions);
 	}
 
 	function getBinaryUrl(
@@ -729,15 +739,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function resetChatMessages(): void {
-		currentState.value.resetChatMessages();
+		currentExecutionStateStore.value.resetChatMessages();
 	}
 
 	function appendChatMessage(message: string): void {
-		currentState.value.appendChatMessage(message);
+		currentExecutionStateStore.value.appendChatMessage(message);
 	}
 
 	function setSelectedTriggerNodeName(value: string | undefined) {
-		currentState.value.setSelectedTriggerNodeName(value);
+		currentExecutionStateStore.value.setSelectedTriggerNodeName(value);
 	}
 
 	return {
