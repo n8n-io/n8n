@@ -451,6 +451,124 @@ describe('Test EmailSendV2, send operation', () => {
 		});
 	});
 
+	describe('file attachments (non-inline)', () => {
+		it('should attach file attachments without cid', async () => {
+			const items = [
+				{
+					json: { data: 'test' },
+					binary: {
+						file1: {
+							data: 'data1',
+							mimeType: 'application/pdf',
+							fileName: 'doc.pdf',
+						} as IBinaryData,
+						file2: { data: 'data2', mimeType: 'text/csv', fileName: 'data.csv' } as IBinaryData,
+					} as Record<string, IBinaryData>,
+				},
+			];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNode.mockReturnValue({ typeVersion: 2.0 } as any);
+			mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				host: 'smtp.example.com',
+				port: 587,
+			});
+
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('from@example.com')
+				.mockReturnValueOnce('to@example.com')
+				.mockReturnValueOnce('Test Subject')
+				.mockReturnValueOnce('html')
+				.mockReturnValueOnce({ fileAttachments: 'file1, file2', appendAttribution: false })
+				.mockReturnValueOnce('<p>Test HTML</p>');
+
+			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+				(itemIndex: number, propertyName: string) => {
+					return items[itemIndex].binary![propertyName];
+				},
+			);
+
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockImplementation(
+				async (itemIndex: number, propertyName: string) => {
+					return Buffer.from(items[itemIndex].binary![propertyName].data);
+				},
+			);
+
+			transporter.sendMail.mockResolvedValue({ messageId: 'test-id' });
+
+			await sendOperation.execute.call(mockExecuteFunctions);
+
+			const callArg = transporter.sendMail.mock.calls[0][0];
+			expect(callArg.attachments).toEqual([
+				expect.objectContaining({ filename: 'doc.pdf' }),
+				expect.objectContaining({ filename: 'data.csv' }),
+			]);
+			expect(callArg.attachments[0]).not.toHaveProperty('cid');
+			expect(callArg.attachments[1]).not.toHaveProperty('cid');
+		});
+
+		it('should combine inline and file attachments', async () => {
+			const items = [
+				{
+					json: { data: 'test' },
+					binary: {
+						logo: { data: 'data1', mimeType: 'image/png', fileName: 'logo.png' } as IBinaryData,
+						report: {
+							data: 'data2',
+							mimeType: 'application/pdf',
+							fileName: 'report.pdf',
+						} as IBinaryData,
+					} as Record<string, IBinaryData>,
+				},
+			];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNode.mockReturnValue({ typeVersion: 2.0 } as any);
+			mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				host: 'smtp.example.com',
+				port: 587,
+			});
+
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('from@example.com')
+				.mockReturnValueOnce('to@example.com')
+				.mockReturnValueOnce('Test Subject')
+				.mockReturnValueOnce('html')
+				.mockReturnValueOnce({
+					attachments: 'logo',
+					fileAttachments: 'report',
+					appendAttribution: false,
+				})
+				.mockReturnValueOnce('<p><img src="cid:logo"></p>');
+
+			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+				(itemIndex: number, propertyName: string) => {
+					return items[itemIndex].binary![propertyName];
+				},
+			);
+
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockImplementation(
+				async (itemIndex: number, propertyName: string) => {
+					return Buffer.from(items[itemIndex].binary![propertyName].data);
+				},
+			);
+
+			transporter.sendMail.mockResolvedValue({ messageId: 'test-id' });
+
+			await sendOperation.execute.call(mockExecuteFunctions);
+
+			const callArg = transporter.sendMail.mock.calls[0][0];
+			expect(callArg.attachments).toHaveLength(2);
+			expect(callArg.attachments[0]).toEqual(
+				expect.objectContaining({ filename: 'logo.png', cid: 'logo' }),
+			);
+			expect(callArg.attachments[1]).toEqual(expect.objectContaining({ filename: 'report.pdf' }));
+			expect(callArg.attachments[1]).not.toHaveProperty('cid');
+		});
+	});
+
 	describe('emails without attachments', () => {
 		it('should send email when no attachments specified', async () => {
 			const items = [{ json: { data: 'test' } }];
