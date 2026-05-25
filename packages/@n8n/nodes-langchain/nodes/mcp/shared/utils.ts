@@ -78,6 +78,13 @@ type ConnectMcpClientError =
 	| { type: 'auth'; error: Error }
 	| { type: 'cancelled'; error: Error };
 
+/**
+ * Convert a ConnectMcpClientError into a NodeOperationError associated with the provided node.
+ *
+ * @param node - The node instance where the error occurred
+ * @param error - The MCP client error to map
+ * @returns A NodeOperationError containing a user-facing message and, when available, the original error message as the description
+ */
 export function mapToNodeOperationError(
 	node: INode,
 	error: ConnectMcpClientError,
@@ -105,6 +112,22 @@ export function mapToNodeOperationError(
 	}
 }
 
+/**
+ * Establishes and returns a connected MCP Client to the provided endpoint using the selected transport.
+ *
+ * @param serverTransport - Transport to use; `'httpStreamable'` uses the streamable HTTP transport, otherwise SSE is used.
+ * @param endpointUrl - MCP server endpoint URL; missing scheme will be normalized (e.g., `https://` prefixed) and validated.
+ * @param headers - Initial request headers to include with each transport request.
+ * @param name - Client name sent to the MCP server.
+ * @param version - Client version sent to the MCP server.
+ * @param onUnauthorized - Optional handler invoked to refresh/replace headers when a `401` response is encountered.
+ * @param signal - Optional AbortSignal to cooperatively cancel the connection attempt; if aborted, returns a `cancelled` error.
+ * @returns A Result containing a connected `Client` on success. On failure returns a `ConnectMcpClientError` with `type` one of:
+ * - `'invalid_url'` when the endpoint URL could not be parsed,
+ * - `'cancelled'` when the operation was aborted,
+ * - `'auth'` for authentication failures (HTTP 401/403),
+ * - `'connection'` for other connection errors. The returned error includes the underlying `Error`.
+ */
 export async function connectMcpClient({
 	headers,
 	serverTransport,
