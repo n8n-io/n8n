@@ -126,6 +126,29 @@ export function createPlanTool(context: OrchestrationContext) {
 			}
 
 			const resumeData = ctx.resumeData;
+			const isFirstCall = resumeData === undefined || resumeData === null;
+
+			// Same-turn denial guard: if the user denied a plan earlier in this
+			// message group, refuse to start a new one within the same turn.
+			// Only applies on the initial call — resumes are valid continuations
+			// of an already-suspended invocation (including the denial path itself).
+			if (isFirstCall && context.messageGroupId) {
+				const existing = await context.plannedTaskService.getGraph(context.threadId);
+				if (
+					existing?.status === 'cancelled' &&
+					existing.messageGroupId === context.messageGroupId
+				) {
+					context.logger.info('create-tasks blocked: user denied a plan earlier in this turn', {
+						threadId: context.threadId,
+						messageGroupId: context.messageGroupId,
+					});
+					return {
+						result:
+							'The user denied a plan earlier in this turn. Do not invoke create-tasks again — acknowledge briefly and wait for the next user message.',
+						taskCount: 0,
+					};
+				}
+			}
 
 			// Replan-only guard: reject initial-planning misuse on the first call.
 			// Legitimate callers pass the guard when any of these hold:
@@ -133,7 +156,6 @@ export function createPlanTool(context: OrchestrationContext) {
 			//   - the thread already has a planned-task graph (revision loop after a
 			//     user rejection, or replan after a failed background task)
 			//   - the orchestrator opts in with `skipPlannerDiscovery: true` + a `reason`
-			const isFirstCall = resumeData === undefined || resumeData === null;
 			const hasExistingPlan = await threadHasExistingPlan(context);
 			if (isFirstCall && isReplanGuardEnabled() && !isReplanContext(context) && !hasExistingPlan) {
 				if (!input.skipPlannerDiscovery) {

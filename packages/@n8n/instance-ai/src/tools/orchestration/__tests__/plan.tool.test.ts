@@ -339,6 +339,52 @@ describe('createPlanTool — replan-only guard', () => {
 		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
 	});
 
+	it('blocks a fresh initial call when the same turn already had a cancelled (denied) plan', async () => {
+		const context = createMockContext({
+			currentUserMessage: 'try again',
+			messageGroupId: 'mg-1',
+			plannedTaskService: makePlannedTaskService({
+				getGraph: jest.fn().mockResolvedValue({
+					threadId: 'test-thread',
+					status: 'cancelled',
+					planRunId: 'run-prev',
+					messageGroupId: 'mg-1',
+					tasks: [],
+				} as unknown as Awaited<ReturnType<PlannedTaskService['getGraph']>>),
+			}),
+		});
+		const tool = createPlanTool(context);
+
+		const out = await executeTool(tool, { tasks: validTasks() }, { suspend: jest.fn() });
+
+		expect(out.taskCount).toBe(0);
+		expect(out.result).toMatch(/denied a plan earlier in this turn/i);
+		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
+	});
+
+	it('allows a fresh initial call when a cancelled plan is from a previous turn (different messageGroupId)', async () => {
+		const context = createMockContext({
+			currentUserMessage: 'new user message',
+			messageGroupId: 'mg-2',
+			plannedTaskService: makePlannedTaskService({
+				getGraph: jest.fn().mockResolvedValue({
+					threadId: 'test-thread',
+					status: 'cancelled',
+					planRunId: 'run-prev',
+					messageGroupId: 'mg-1',
+					tasks: [],
+				} as unknown as Awaited<ReturnType<PlannedTaskService['getGraph']>>),
+			}),
+			isReplanFollowUp: true,
+		});
+		const tool = createPlanTool(context);
+		const suspend = jest.fn().mockResolvedValue(undefined);
+
+		await executeTool(tool, { tasks: validTasks() }, { suspend });
+
+		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
+	});
+
 	it('rejects a fresh request when an orphan awaiting_approval graph exists from a previous run', async () => {
 		// LLM rejected a prior plan and never revised; the graph orphans in
 		// awaiting_approval with a stale planRunId. A new turn must still go

@@ -643,6 +643,28 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 			}),
 		)
 		.handler(async (input: { guidance?: string }) => {
+			// ── Same-turn denial guard ─────────────────────────────────────
+			// If the user denied a plan earlier in this same message group, the
+			// orchestrator must not silently spawn another planner. Without this
+			// guard the LLM can ignore the "stop on denial" prompt and start a
+			// fresh planner with a new accumulator, defeating the denial.
+			if (context.plannedTaskService && context.messageGroupId) {
+				const existing = await context.plannedTaskService.getGraph(context.threadId);
+				if (
+					existing?.status === 'cancelled' &&
+					existing.messageGroupId === context.messageGroupId
+				) {
+					context.logger.info('plan tool blocked: user denied a plan earlier in this turn', {
+						threadId: context.threadId,
+						messageGroupId: context.messageGroupId,
+					});
+					return {
+						result:
+							'The user denied a plan earlier in this turn. Do not invoke the plan tool again — acknowledge briefly and wait for the next user message.',
+					};
+				}
+			}
+
 			// ── Collect planner tools ──────────────────────────────────────
 			const plannerTools = createToolRegistry();
 

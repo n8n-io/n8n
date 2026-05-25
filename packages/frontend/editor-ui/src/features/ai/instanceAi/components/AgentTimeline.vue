@@ -145,6 +145,18 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	});
 }
 
+/** PlanReviewPanel is read-only when its tool call has settled OR when the
+ *  underlying confirmation has already been resolved client-side. Without the
+ *  resolvedConfirmationIds check, a freshly-loading new plan tool call could
+ *  briefly re-enable the old card's footer (toolCall.isLoading flips back to
+ *  true on tool-call-start before the previous card's read-only catches up). */
+function isPlanCardReadOnly(tc: InstanceAiToolCallState): boolean {
+	if (!tc.isLoading) return true;
+	const requestId = tc.confirmation?.requestId;
+	if (requestId && thread.resolvedConfirmationIds.has(requestId)) return true;
+	return false;
+}
+
 function handlePlanDeny(tc: InstanceAiToolCallState) {
 	const requestId = tc.confirmation?.requestId;
 	if (!requestId) return;
@@ -242,13 +254,14 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				     (no planner child agent), that suppression would otherwise hide it. -->
 				<PlanReviewPanel
 					v-else-if="toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'"
+					:key="toolCallsById[entry.toolCallId].confirmation?.requestId"
 					:planned-tasks="
 						toolCallsById[entry.toolCallId].confirmation?.planItems ??
 						(toolCallsById[entry.toolCallId].args?.tasks as PlannedTaskArg[] | undefined) ??
 						mapTaskItemsToPlannedTasks(toolCallsById[entry.toolCallId].confirmation?.tasks) ??
 						[]
 					"
-					:read-only="!toolCallsById[entry.toolCallId].isLoading"
+					:read-only="isPlanCardReadOnly(toolCallsById[entry.toolCallId])"
 					@approve="handlePlanConfirm(toolCallsById[entry.toolCallId], true)"
 					@request-changes="(fb) => handlePlanConfirm(toolCallsById[entry.toolCallId], false, fb)"
 					@deny="handlePlanDeny(toolCallsById[entry.toolCallId])"
