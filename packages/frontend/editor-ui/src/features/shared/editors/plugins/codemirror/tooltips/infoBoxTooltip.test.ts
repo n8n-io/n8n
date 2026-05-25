@@ -8,7 +8,7 @@ import * as utils from '@/features/shared/editors/plugins/codemirror/completions
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { completionStatus } from '@codemirror/autocomplete';
 import { WORKFLOW_DOCUMENT_FACET } from '@/features/shared/editors/plugins/codemirror/completions/constants';
-import { COMMAND_BAR_OPEN_EVENT } from '@/features/shared/commandBar/events';
+import { commandBarEventBus } from '@/features/shared/commandBar/commandBar.eventBus';
 
 vi.mock('@codemirror/autocomplete', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -30,7 +30,7 @@ describe('Infobox tooltips', () => {
 			const view = await setupEditorWithCursor('{{ $max(|) }}');
 			expect(getCursorTooltips(view).length).toBe(1);
 
-			window.dispatchEvent(new CustomEvent(COMMAND_BAR_OPEN_EVENT));
+			commandBarEventBus.emit('open');
 
 			expect(getCursorTooltips(view).length).toBe(0);
 		});

@@ -22,7 +22,7 @@ import {
 import type { SyntaxNode } from '@lezer/common';
 import type { createInfoBoxRenderer } from '../completions/infoBoxRenderer';
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID } from '@/app/constants';
-import { COMMAND_BAR_OPEN_EVENT } from '@/features/shared/commandBar/events';
+import { commandBarEventBus } from '@/features/shared/commandBar/commandBar.eventBus';
 
 const findNearestParentOfType =
 	(type: string) =>
@@ -408,11 +408,11 @@ const closeTooltipsOnCommandBarOpen = ViewPlugin.fromClass(
 				closeCompletion(view);
 				closeCursorInfoBox(view);
 			};
-			window.addEventListener(COMMAND_BAR_OPEN_EVENT, this.listener);
+			commandBarEventBus.on('open', this.listener);
 		}
 
 		destroy() {
-			window.removeEventListener(COMMAND_BAR_OPEN_EVENT, this.listener);
+			commandBarEventBus.off('open', this.listener);
 		}
 	},
 );

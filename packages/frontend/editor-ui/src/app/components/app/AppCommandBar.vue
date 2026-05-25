@@ -6,7 +6,7 @@ import { VIEWS } from '@/app/constants';
 import { useStyles } from '@/app/composables/useStyles';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { COMMAND_BAR_OPEN_EVENT } from '@/features/shared/commandBar/events';
+import { commandBarEventBus } from '@/features/shared/commandBar/commandBar.eventBus';
 
 const route = useRoute();
 const { APP_Z_INDEXES } = useStyles();
@@ -33,7 +33,7 @@ watch(showCommandBar, (newVal) => {
 
 function onCommandBarOpenChange(open: boolean) {
 	if (open) {
-		window.dispatchEvent(new CustomEvent(COMMAND_BAR_OPEN_EVENT));
+		commandBarEventBus.emit('open');
 	}
 }
 </script>
