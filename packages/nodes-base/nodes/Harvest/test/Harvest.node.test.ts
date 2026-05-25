@@ -1,6 +1,12 @@
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
+	IPairedItemData,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
@@ -32,13 +38,19 @@ describe('Harvest Node', () => {
 		harvest = new Harvest();
 		mockExecuteFunctions = mock<IExecuteFunctions>({
 			helpers: {
-				constructExecutionMetaData: jest.fn((data: any, options: any) =>
-					data.map((item: any) => ({
-						...item,
-						pairedItem: { item: options?.itemData?.item ?? 0 },
-					})),
+				constructExecutionMetaData: jest.fn(
+					(
+						data: INodeExecutionData[],
+						options: { itemData: IPairedItemData | IPairedItemData[] },
+					) => {
+						const itemIndex =
+							(Array.isArray(options?.itemData)
+								? options.itemData[0]?.item
+								: options?.itemData?.item) ?? 0;
+						return data.map((item) => ({ ...item, pairedItem: { item: itemIndex } }));
+					},
 				),
-				returnJsonArray: jest.fn((data: any) =>
+				returnJsonArray: jest.fn((data: IDataObject | IDataObject[]) =>
 					Array.isArray(data) ? data.map((d) => ({ json: d })) : [{ json: data }],
 				),
 			},
@@ -54,7 +66,7 @@ describe('Harvest Node', () => {
 	describe('User resource', () => {
 		it('should return all users on getAll', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: Record<string, any> = {
+				const params: Record<string, string> = {
 					resource: 'user',
 					operation: 'getAll',
 				};
@@ -80,7 +92,7 @@ describe('Harvest Node', () => {
 
 		it('should call the users/{id} endpoint on get', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: Record<string, any> = {
+				const params: Record<string, string> = {
 					resource: 'user',
 					operation: 'get',
 					id: '42',
@@ -101,7 +113,7 @@ describe('Harvest Node', () => {
 	describe('Error handling', () => {
 		it('should propagate a NodeApiError from the API request', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: Record<string, any> = {
+				const params: Record<string, string> = {
 					resource: 'user',
 					operation: 'get',
 					id: '999',
@@ -121,7 +133,7 @@ describe('Harvest Node', () => {
 		it('should surface the error on the item when continueOnFail is true', async () => {
 			mockExecuteFunctions.continueOnFail.mockReturnValue(true);
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: Record<string, any> = {
+				const params: Record<string, string> = {
 					resource: 'user',
 					operation: 'get',
 					id: '999',
@@ -133,9 +145,7 @@ describe('Harvest Node', () => {
 
 			const result = await harvest.execute.call(mockExecuteFunctions);
 
-			expect(result).toEqual([
-				[{ json: { error: 'User not found' }, pairedItem: { item: 0 } }],
-			]);
+			expect(result).toEqual([[{ json: { error: 'User not found' }, pairedItem: { item: 0 } }]]);
 		});
 	});
 });
