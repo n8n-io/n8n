@@ -1,3 +1,11 @@
+## [2.22.3](https://github.com/n8n-io/n8n/compare/n8n@2.22.2...n8n@2.22.3) (2026-05-25)
+
+
+### Bug Fixes
+
+* **core:** Surface SSO claims and role mapping diagnostics ([#30839](https://github.com/n8n-io/n8n/issues/30839)) ([1ffadf5](https://github.com/n8n-io/n8n/commit/1ffadf5bbc3bb0405cc2e39bdd0dcdcec380a638))
+
+
 ## [2.22.2](https://github.com/n8n-io/n8n/compare/n8n@2.22.1...n8n@2.22.2) (2026-05-22)
 
 
