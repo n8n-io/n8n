@@ -21,6 +21,18 @@ import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
 
 type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
 
+type UpdatableEntityColumns = Omit<
+	Partial<IExecutionResponse>,
+	| 'id'
+	| 'data'
+	| 'workflowId'
+	| 'workflowData'
+	| 'workflowVersionId'
+	| 'createdAt'
+	| 'startedAt'
+	| 'customData'
+>;
+
 /**
  * Performs a persistence operation on an execution and its blob of data.
  * Writes per the configured storage mode. Reads per the recorded `storedAt` value.
@@ -142,11 +154,11 @@ export class ExecutionPersistence {
 		execution: Partial<IExecutionResponse>,
 		conditions?: UpdateExecutionConditions,
 	): Promise<boolean> {
-		const executionInformation = this.extractEntityFields(execution);
-		if (Object.keys(executionInformation).length === 0) return true;
+		const updatableColumns = this.pickUpdatableEntityColumns(execution);
+		if (Object.keys(updatableColumns).length === 0) return true;
 
 		const whereCondition = this.buildEntityWhereCondition(executionId, conditions);
-		const result = await this.executionRepository.update(whereCondition, executionInformation);
+		const result = await this.executionRepository.update(whereCondition, updatableColumns);
 		return (result.affected ?? 0) > 0;
 	}
 
@@ -157,12 +169,12 @@ export class ExecutionPersistence {
 		conditions?: UpdateExecutionConditions,
 	): Promise<boolean> {
 		const { data, workflowData } = execution;
-		const executionInformation = this.extractEntityFields(execution);
+		const updatableColumns = this.pickUpdatableEntityColumns(execution);
 
 		return await this.executionRepository.manager.transaction(async (tx) => {
-			if (Object.keys(executionInformation).length > 0) {
+			if (Object.keys(updatableColumns).length > 0) {
 				const whereCondition = this.buildEntityWhereCondition(ref.executionId, conditions);
-				const result = await tx.update(ExecutionEntity, whereCondition, executionInformation);
+				const result = await tx.update(ExecutionEntity, whereCondition, updatableColumns);
 				if ((result.affected ?? 0) === 0) return false;
 			}
 
@@ -185,19 +197,34 @@ export class ExecutionPersistence {
 		});
 	}
 
-	private extractEntityFields(execution: Partial<IExecutionResponse>) {
+	/**
+	 * Narrow an {@link IExecutionResponse} payload to the subset of {@link UpdatableEntityColumns} that
+	 * can be written directly to the `ExecutionEntity` row on update.
+	 *
+	 * Stripped fields fall into three categories:
+	 * - **Identity / routing**: `id`, `workflowId` — never updated here.
+	 * - **Stored elsewhere**: `data`, `workflowData` — persisted via the
+	 *   configured {@link ExecutionDataStore} (DB or filesystem), not as columns
+	 *   on the entity row.
+	 * - **Immutable after creation**: `workflowVersionId`, `createdAt`,
+	 *   `startedAt` — set once at insert time and never overwritten.
+	 * - **Not persisted on the entity**: `customData` — handled separately.
+	 */
+	private pickUpdatableEntityColumns(
+		execution: Partial<IExecutionResponse>,
+	): UpdatableEntityColumns {
 		const {
 			id: _id,
 			data: _data,
 			workflowId: _workflowId,
 			workflowData: _workflowData,
-			workflowVersionId: _workflowVersionId, // immutable, never updated
-			createdAt: _createdAt, // immutable, never updated
-			startedAt: _startedAt, // immutable, never updated
+			workflowVersionId: _workflowVersionId,
+			createdAt: _createdAt,
+			startedAt: _startedAt,
 			customData: _customData,
-			...rest
+			...updatableColumns
 		} = execution;
-		return rest;
+		return updatableColumns;
 	}
 
 	private buildEntityWhereCondition(
