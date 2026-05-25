@@ -51,6 +51,10 @@ export class VectorStoreDb2 extends createVectorStoreNode({
 		],
 	},
 	sharedFields,
+	insertFields: [],
+	loadFields: [],
+	retrieveFields: [],
+	updateFields: [],
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
 		const credentials = await context.getCredentials('db2');
 		const tableName = context.getNodeParameter('tableName', itemIndex) as string;

@@ -252,11 +252,39 @@ export class DB2VectorStore extends VectorStore {
 	}
 
 	/**
+	 * Filter metadata to keep only essential fields
+	 */
+	private filterMetadata(metadata: Record<string, any>): Record<string, any> {
+		// Extract only essential fields for storage
+		const filtered: Record<string, any> = {};
+
+		// Keep source information if available
+		if (metadata.source) {
+			filtered.source = metadata.source;
+		}
+
+		// Keep line number if available (useful for CSV)
+		if (metadata.line !== undefined) {
+			filtered.line = metadata.line;
+		}
+
+		// Keep any custom fields that are simple types (not nested objects)
+		const allowedFields = ['id', 'title', 'author', 'date', 'category', 'tags'];
+		for (const field of allowedFields) {
+			if (metadata[field] !== undefined && typeof metadata[field] !== 'object') {
+				filtered[field] = metadata[field];
+			}
+		}
+
+		return filtered;
+	}
+
+	/**
 	 * Add documents to the vector store
 	 */
 	async addDocuments(documents: Document[], options?: { ids?: string[] }): Promise<string[]> {
 		const texts = documents.map((doc) => doc.pageContent);
-		const metadatas = documents.map((doc) => doc.metadata);
+		const metadatas = documents.map((doc) => this.filterMetadata(doc.metadata || {}));
 		return this.addTexts(texts, metadatas, options);
 	}
 
@@ -288,7 +316,7 @@ export class DB2VectorStore extends VectorStore {
 			const id = ids[i];
 			const embedding = vectors[i];
 			const text = documents[i].pageContent;
-			const metadata = documents[i].metadata || {};
+			const metadata = this.filterMetadata(documents[i].metadata || {});
 
 			const embeddingList = `[${embedding.join(',')}]`;
 			const textSanitized = sanitizeSqlString(text);
@@ -473,12 +501,19 @@ export class DB2VectorStore extends VectorStore {
 
 		const embeddingList = `[${embedding.join(',')}]`;
 		const embeddingSanitized = sanitizeSqlString(embeddingList);
+		const vectorDimension = embedding.length;
 
-		// Use VECTOR_DISTANCE function - DB2 accepts vector string directly
+		// DB2 requires the VECTOR() constructor function to create a vector from string
+		// Format: VECTOR('[1,2,3,...]', dimension, FLOAT32)
+		// Function name is lowercase: vector_distance
 		const query = `
 			SELECT ${this.columnNames.id}, ${this.columnNames.text},
 			       ${this.columnNames.metadata}, ${this.columnNames.embedding},
-			       VECTOR_DISTANCE(${this.columnNames.embedding}, '${embeddingSanitized}', '${distanceFunc}') AS distance
+			       vector_distance(
+			           ${this.columnNames.embedding},
+			           VECTOR('${embeddingSanitized}', ${vectorDimension}, FLOAT32),
+			           ${distanceFunc}
+			       ) AS distance
 			FROM ${quotedTable}
 			ORDER BY distance
 			FETCH FIRST ${k} ROWS ONLY
