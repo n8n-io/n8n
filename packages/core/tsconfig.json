@@ -12,7 +12,6 @@
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"isolatedModules": true,
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},
