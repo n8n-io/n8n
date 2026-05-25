@@ -158,8 +158,20 @@ function getThreadScopedSandboxName(threadId: string): string {
 	return `instance-ai-thread-${threadId}`;
 }
 
-// Daytona label values accept letters, digits, '_', '.', '-' (truncated to 63 chars).
+const SANDBOX_NAME_MAX_LEN = 63;
+const NAME_PREFIX_SLUG_MAX_LEN = 24;
 const SANDBOX_LABEL_MAX_LEN = 63;
+
+// Daytona names must be DNS-label-ish (a-z, 0-9, hyphens).
+function slugifyName(value: string, maxLen: number): string {
+	const slug = value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+	return slug.slice(0, maxLen).replace(/-+$/, '');
+}
+
+// Daytona label values accept letters, digits, '_', '.', '-' (truncated to 63 chars).
 function slugifyLabelValue(value: string): string {
 	return value
 		.replace(/[^A-Za-z0-9_.-]+/g, '-')
@@ -171,13 +183,23 @@ function slugifyLabelValue(value: string): string {
 function withThreadScopedSandboxIdentity(config: SandboxConfig, threadId: string): SandboxConfig {
 	if (!config.enabled || config.provider !== 'daytona') return config;
 
-	const name = getThreadScopedSandboxName(threadId);
-	const tag: string | undefined = config.tag;
+	// The name is both the visible identifier in the Daytona dashboard list view
+	// AND the cache key for `DaytonaSandbox.findExistingSandbox` — so the prefix
+	// flows naturally into both creation and lookup of warm thread sandboxes.
+	const baseName = getThreadScopedSandboxName(threadId);
+	const namePrefix: string | undefined = config.namePrefix;
+	const prefixSlug =
+		namePrefix !== undefined && namePrefix !== ''
+			? slugifyName(namePrefix, NAME_PREFIX_SLUG_MAX_LEN)
+			: '';
+	const name = (prefixSlug ? `${prefixSlug}-${baseName}` : baseName)
+		.slice(0, SANDBOX_NAME_MAX_LEN)
+		.replace(/-+$/, '');
+
 	const labels: Record<string, string> = {
 		...config.labels,
 		thread_id: slugifyLabelValue(threadId),
 	};
-	if (tag !== undefined && tag !== '') labels.tag = slugifyLabelValue(tag);
 	return {
 		...config,
 		id: name,
@@ -585,7 +607,7 @@ export class InstanceAiService {
 			n8nSandboxServiceApiKey,
 			sandboxImage,
 			sandboxTimeout,
-			sandboxTag,
+			sandboxNamePrefix,
 		} = this.instanceAiConfig;
 		if (!sandboxEnabled) {
 			return {
@@ -609,7 +631,7 @@ export class InstanceAiService {
 				image: sandboxImage || undefined,
 				n8nVersion: N8N_VERSION || undefined,
 				timeout: sandboxTimeout,
-				tag: sandboxTag || undefined,
+				namePrefix: sandboxNamePrefix || undefined,
 			};
 		}
 

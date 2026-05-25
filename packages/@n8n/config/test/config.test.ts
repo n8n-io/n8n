@@ -288,7 +288,7 @@ describe('GlobalConfig', () => {
 			n8nSandboxServiceUrl: '',
 			n8nSandboxServiceApiKey: '',
 			sandboxTimeout: 300000,
-			sandboxTag: '',
+			sandboxNamePrefix: '',
 			builderSandboxTtlMs: 600_000,
 			braveSearchApiKey: '',
 			searxngUrl: '',

@@ -82,9 +82,9 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 300_000;
 
-	/** Operator-set value surfaced as a `tag` label on every Daytona sandbox. Use to flag sandboxes for grouping/filtering in the Daytona dashboard (e.g. distinguishing eval-driven sandboxes from production ones). Empty in production. */
-	@Env('N8N_INSTANCE_AI_SANDBOX_TAG')
-	sandboxTag: string = '';
+	/** Prefix prepended to every Daytona sandbox name. Shows up in the Daytona dashboard list view, making sandboxes from a given context (e.g. eval-driven runs) identifiable at a glance. Empty in production. */
+	@Env('N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX')
+	sandboxNamePrefix: string = '';
 
 	/** How long to keep completed workflow-builder sandboxes warm for follow-up fixes. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS')

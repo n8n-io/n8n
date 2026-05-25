@@ -28,9 +28,9 @@ interface DaytonaSandboxConfig extends SandboxConfigBase {
 	image?: string;
 	/** Running n8n version, used to resolve a versioned prebuilt snapshot (`n8n-instance-ai-<version>`). */
 	n8nVersion?: string;
-	/** Operator-set value surfaced as a `tag` label on every Daytona sandbox, for grouping/filtering in the Daytona dashboard. */
-	tag?: string;
-	/** Additional Daytona labels merged onto every sandbox created from this config. Used by consumers to attach lifecycle-specific labels (e.g. `thread_id`, `run_id`). */
+	/** Prefix prepended to the Daytona sandbox name. Visible in the Daytona dashboard list view. */
+	namePrefix?: string;
+	/** Additional Daytona labels merged onto every sandbox created from this config. Used by consumers to attach lifecycle-specific labels (e.g. `thread_id`). */
 	labels?: Record<string, string>;
 	/**
 	 * Seconds to wait for `daytona.create()` (image build + container boot).

@@ -991,7 +991,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
 	});
 
-	it('forwards a config.tag through to the sandbox labels when set', async () => {
+	it('prefixes the thread-scoped sandbox name when config.namePrefix is set', async () => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
 				user: User,
@@ -1070,12 +1070,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.sandboxes = new Map();
 		service.sandboxCreations = new Map();
 		service.domainAccessTrackersByThread = new Map();
-		const taggedConfig = {
+		const prefixedConfig = {
 			enabled: true,
 			provider: 'daytona',
-			tag: 'evals-ci-some-branch!',
+			namePrefix: 'Evals CI #foo',
 		} satisfies SandboxConfig;
-		service.resolveSandboxConfig = jest.fn(async (_user: User) => taggedConfig);
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => prefixedConfig);
 		(createAllTools as jest.Mock).mockReturnValue(new Map());
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = { init: jest.fn(async () => {}), destroy: jest.fn(async () => {}) };
@@ -1096,7 +1096,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 
 		expect(createSandbox).toHaveBeenCalledWith(
 			expect.objectContaining({
-				labels: { thread_id: 'thread.special-id', tag: 'evals-ci-some-branch' },
+				id: 'evals-ci-foo-instance-ai-thread-thread.special:id',
+				name: 'evals-ci-foo-instance-ai-thread-thread.special:id',
+				labels: { thread_id: 'thread.special-id' },
 			}),
 		);
 	});
