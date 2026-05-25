@@ -56,6 +56,12 @@ interface DaytonaClientLog {
 const clientLog: DaytonaClientLog[] = [];
 let nextClientId = 1;
 let nextSandboxId = 1;
+/**
+ * One-shot queue: when set, the next Daytona client's `get()` will throw
+ * the queued error instead of returning a Sandbox. Lets tests pre-arm the
+ * "remote sandbox gone" scenario before triggering a token rotation.
+ */
+const queuedGetErrors: Error[] = [];
 
 // Each client's get() returns a NEW sandbox object so the test can detect
 // refetch (i.e. .process / .fs identity changes after rotation).
@@ -63,9 +69,13 @@ function makeDaytonaClientForLog(config: unknown): DaytonaClientLog {
 	const id = nextClientId++;
 	const get = jest
 		.fn<Promise<MockSandbox>, [string]>()
-		.mockImplementation(
-			async () => await Promise.resolve(makeMockSandbox(`sb-${id}-${nextSandboxId++}`)),
-		);
+		.mockImplementation(async (_name: string) => {
+			const queued = queuedGetErrors.shift();
+			if (queued !== undefined) {
+				return await Promise.reject(queued);
+			}
+			return await Promise.resolve(makeMockSandbox(`sb-${id}-${nextSandboxId++}`));
+		});
 	const create = jest
 		.fn<Promise<MockSandbox>, [unknown]>()
 		.mockImplementation(
@@ -108,6 +118,8 @@ jest.mock('@daytonaio/sdk', () => {
 	return { Daytona, DaytonaError, DaytonaNotFoundError };
 });
 
+import type * as DaytonaSdk from '@daytonaio/sdk';
+
 import { DaytonaSandbox } from '../daytona-sandbox';
 
 function base64url(input: string): string {
@@ -127,6 +139,7 @@ beforeEach(() => {
 	clientLog.length = 0;
 	nextClientId = 1;
 	nextSandboxId = 1;
+	queuedGetErrors.length = 0;
 });
 
 describe('DaytonaSandbox (direct mode)', () => {
@@ -219,5 +232,59 @@ describe('DaytonaSandbox (proxy mode — JWT refresh)', () => {
 		} finally {
 			jest.useRealTimers();
 		}
+	});
+});
+
+describe('DaytonaSandbox (remote sandbox gone during refetch)', () => {
+	// Common setup: start a sandbox in proxy mode, advance into the refresh skew
+	// window, pre-arm the *next* Daytona client's get() to throw NotFound. The
+	// next call into the sandbox triggers a token rotation; the refetch then
+	// surfaces the remote-gone condition.
+	async function startAndStageRemoteGone() {
+		jest.useFakeTimers().setSystemTime(new Date(1_700_000_000_000));
+		const getAuthToken = jest.fn<Promise<string>, []>().mockImplementation(async () => {
+			await Promise.resolve();
+			return makeJwt(Date.now() + HOUR_MS);
+		});
+		const sandbox = new DaytonaSandbox({ name: 'thread-1', getAuthToken });
+
+		await sandbox.start();
+		jest.setSystemTime(new Date(Date.now() + HOUR_MS - SKEW_MS + 1));
+
+		const sdkMock = jest.requireMock<typeof DaytonaSdk>('@daytonaio/sdk');
+		const { DaytonaNotFoundError } = sdkMock;
+		queuedGetErrors.push(new DaytonaNotFoundError('sandbox not found'));
+
+		return sandbox;
+	}
+
+	afterEach(() => {
+		jest.useRealTimers();
+	});
+
+	it('stop() treats remote NotFound as idempotent and clears the cache', async () => {
+		const sandbox = await startAndStageRemoteGone();
+
+		await expect(sandbox.stop()).resolves.toBeUndefined();
+		// Subsequent stop() is a no-op since cache is cleared.
+		await expect(sandbox.stop()).resolves.toBeUndefined();
+	});
+
+	it('destroy() treats remote NotFound as idempotent and clears the cache', async () => {
+		const sandbox = await startAndStageRemoteGone();
+
+		await expect(sandbox.destroy()).resolves.toBeUndefined();
+		// Second destroy goes through the "no local sandbox" branch; tolerate
+		// NotFound there too. Need a fresh queued error since the previous one
+		// was consumed.
+		const sdkMock = jest.requireMock<typeof DaytonaSdk>('@daytonaio/sdk');
+		const { DaytonaNotFoundError } = sdkMock;
+		queuedGetErrors.push(new DaytonaNotFoundError('sandbox not found'));
+		await expect(sandbox.destroy()).resolves.toBeUndefined();
+	});
+
+	it('executeCommand() propagates NotFound rather than NPE-ing on a silently-cleared cache', async () => {
+		const sandbox = await startAndStageRemoteGone();
+		await expect(sandbox.executeCommand('echo', ['hi'])).rejects.toThrow(/not found/i);
 	});
 });

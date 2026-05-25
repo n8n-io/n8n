@@ -78,6 +78,11 @@ function isDaytonaAuthError(error: unknown): boolean {
 	return error instanceof DaytonaError && (error.statusCode === 401 || error.statusCode === 403);
 }
 
+function isSandboxGone(error: unknown): boolean {
+	const { DaytonaNotFoundError } = loadDaytona();
+	return error instanceof DaytonaNotFoundError;
+}
+
 export class DaytonaSandbox extends BaseSandbox {
 	private static readonly DEAD_STATES: ReadonlySet<SandboxState> = new Set([
 		SANDBOX_STATE_DESTROYED,
@@ -140,28 +145,31 @@ export class DaytonaSandbox extends BaseSandbox {
 
 	override async stop(): Promise<void> {
 		if (!this.sandbox) return;
-		await this.ensureAuthFresh();
-		await this.sandbox.stop(Math.ceil(this.timeout / 1000));
+		try {
+			await this.ensureAuthFresh();
+			await this.sandbox.stop(Math.ceil(this.timeout / 1000));
+		} catch (error) {
+			if (!isSandboxGone(error)) throw error;
+			// Remote already gone — stop is idempotent.
+		}
 		this.sandbox = undefined;
 	}
 
 	override async destroy(): Promise<void> {
-		if (this.sandbox) {
-			await this.ensureAuthFresh();
-			await this.sandbox.delete(Math.ceil(this.timeout / 1000));
-			this.sandbox = undefined;
-			return;
-		}
-
 		try {
-			const client = await this.getDaytona();
-			const existing = await client.get(this.sandboxName);
-			await existing.delete(Math.ceil(this.timeout / 1000));
+			if (this.sandbox) {
+				await this.ensureAuthFresh();
+				await this.sandbox.delete(Math.ceil(this.timeout / 1000));
+			} else {
+				const client = await this.getDaytona();
+				const existing = await client.get(this.sandboxName);
+				await existing.delete(Math.ceil(this.timeout / 1000));
+			}
 		} catch (error) {
-			const { DaytonaNotFoundError } = loadDaytona();
-			if (error instanceof DaytonaNotFoundError) return;
-			throw error;
+			if (!isSandboxGone(error)) throw error;
+			// Remote already gone — destroy is idempotent.
 		}
+		this.sandbox = undefined;
 	}
 
 	override async executeCommand(
@@ -240,21 +248,14 @@ export class DaytonaSandbox extends BaseSandbox {
 	 * When the auth manager rotates the underlying client (token refresh), the cached
 	 * `Sandbox` object's `.fs` / `.process` accessors are still bound to the OLD
 	 * client. Refetch via `client.get()` so subsequent operations use fresh auth.
+	 *
+	 * Throws `DaytonaNotFoundError` if the previously cached sandbox is gone from Daytona.
 	 */
 	private async getDaytona(): Promise<Daytona> {
 		const client = await this.auth.getClient();
 		const generation = this.auth.getGeneration();
 		if (this.sandbox && generation !== this.lastClientGeneration) {
-			try {
-				this.sandbox = await client.get(this.sandboxName);
-			} catch (error) {
-				const { DaytonaNotFoundError } = loadDaytona();
-				if (error instanceof DaytonaNotFoundError) {
-					this.sandbox = undefined;
-				} else {
-					throw error;
-				}
-			}
+			this.sandbox = await client.get(this.sandboxName);
 		}
 		this.lastClientGeneration = generation;
 		return client;
