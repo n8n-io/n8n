@@ -2,14 +2,21 @@ const { pathsToModuleNameMapper } = require('ts-jest');
 const { compilerOptions } = require('get-tsconfig').getTsconfig().config;
 const { resolve } = require('path');
 
-/** @type {import('ts-jest').TsJestGlobalOptions} */
+/** @type {import('ts-jest').TsJestTransformerOptions} */
 const tsJestOptions = {
-	isolatedModules: true,
 	tsconfig: {
 		...compilerOptions,
 		declaration: false,
 		sourceMap: true,
 		rootDir: '.',
+		// Relax strictness for cross-package imports. ts-jest applies the host
+		// package's tsconfig to every file it transforms, including imports
+		// from packages like nodes-base that disable these in their own
+		// tsconfig. The host package's own `pnpm typecheck` is unaffected.
+		noImplicitReturns: false,
+		noUncheckedIndexedAccess: false,
+		noImplicitOverride: false,
+		useUnknownInCatchVariables: false,
 	},
 };
 

@@ -176,6 +176,72 @@ describe('evaluateFilter', () => {
 	});
 });
 
+// --- runtime filter (E2E-chain scoping) ---
+
+describe('runtime filter', () => {
+	const runtimePatterns = [
+		'**',
+		'!packages/@n8n/task-runner-python/**',
+		'!.github/**',
+		'!**/*.md',
+		'!**/LICENSE',
+		'!**/CHANGELOG.md',
+		'!**/*.test.ts',
+		'!**/*.spec.ts',
+		'!packages/testing/playwright/**',
+		'!packages/frontend/@n8n/storybook/**',
+	];
+
+	it('triggers on a runtime source file', () => {
+		assert.equal(evaluateFilter(['packages/cli/src/foo.ts'], runtimePatterns), true);
+	});
+
+	it('does not trigger on a unit test file', () => {
+		assert.equal(evaluateFilter(['packages/cli/src/foo.test.ts'], runtimePatterns), false);
+	});
+
+	it('does not trigger on a spec file', () => {
+		assert.equal(evaluateFilter(['packages/cli/src/foo.spec.ts'], runtimePatterns), false);
+	});
+
+	it('does not trigger on playwright tests', () => {
+		assert.equal(
+			evaluateFilter(['packages/testing/playwright/tests/x.spec.ts'], runtimePatterns),
+			false,
+		);
+	});
+
+	it('does not trigger on storybook files', () => {
+		assert.equal(
+			evaluateFilter(['packages/frontend/@n8n/storybook/preview.ts'], runtimePatterns),
+			false,
+		);
+	});
+
+	it('does not trigger on docs or LICENSE', () => {
+		assert.equal(evaluateFilter(['README.md'], runtimePatterns), false);
+		assert.equal(evaluateFilter(['LICENSE'], runtimePatterns), false);
+		assert.equal(evaluateFilter(['packages/cli/LICENSE'], runtimePatterns), false);
+		assert.equal(evaluateFilter(['docs/CHANGELOG.md'], runtimePatterns), false);
+	});
+
+	it('does not trigger on .github workflow changes', () => {
+		assert.equal(evaluateFilter(['.github/workflows/x.yml'], runtimePatterns), false);
+	});
+
+	it('does not trigger on task-runner-python changes', () => {
+		assert.equal(
+			evaluateFilter(['packages/@n8n/task-runner-python/src/main.py'], runtimePatterns),
+			false,
+		);
+	});
+
+	it('mixed PR with source and test file triggers (any positive-match file wins)', () => {
+		const files = ['packages/cli/src/foo.ts', 'packages/cli/src/foo.test.ts'];
+		assert.equal(evaluateFilter(files, runtimePatterns), true);
+	});
+});
+
 // --- getChangedFiles + getMergeBase (integration, exercises real git) ---
 
 describe('getChangedFiles', () => {

@@ -13,6 +13,7 @@ import type {
 	IRun,
 	INodeExecutionData,
 	INode,
+	ITaskData,
 } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
@@ -40,6 +41,8 @@ import {
 	getRunData,
 	getDraftWorkflowData,
 	getPublishedWorkflowData,
+	buildSubWorkflowOutput,
+	triggerReturnsLastRunOnly,
 } from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
@@ -857,6 +860,143 @@ describe('WorkflowExecuteAdditionalData', () => {
 				executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData),
 			).rejects.toThrow('Cannot execute agent without a userId in additional data');
 			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('buildSubWorkflowOutput', () => {
+		const twoRunsOnTerminalNode: Record<string, ITaskData[]> = {
+			[LAST_NODE_EXECUTED]: [
+				{ data: { main: [[{ json: { itemId: 0 } }]] } },
+				{ data: { main: [[{ json: { itemId: 1 } }, { json: { itemId: 2 } }]] } },
+			] as unknown as ITaskData[],
+		};
+
+		function buildRun(overrides: {
+			mode?: IRun['mode'];
+			runData?: Record<string, ITaskData[]>;
+			pinData?: Record<string, unknown>;
+			lastNodeExecuted?: string;
+		}): IRun {
+			return {
+				mode: overrides.mode ?? 'manual',
+				data: {
+					resultData: {
+						runData: overrides.runData ?? twoRunsOnTerminalNode,
+						pinData: overrides.pinData,
+						lastNodeExecuted:
+							overrides.lastNodeExecuted === undefined
+								? LAST_NODE_EXECUTED
+								: overrides.lastNodeExecuted,
+					},
+				},
+				finished: true,
+			} as unknown as IRun;
+		}
+
+		function trigger(typeVersion: number, returnOutput?: string): INode {
+			return mock<INode>({
+				type: 'n8n-nodes-base.executeWorkflowTrigger',
+				typeVersion,
+				parameters: returnOutput === undefined ? {} : { returnOutput },
+			});
+		}
+
+		const expectedItemsFromBothRunsConcatenated = [
+			[{ json: { itemId: 0 } }, { json: { itemId: 1 } }, { json: { itemId: 2 } }],
+		];
+		const expectedItemsFromTheFinalRunOnly = [[{ json: { itemId: 1 } }, { json: { itemId: 2 } }]];
+
+		it('merges every run when the trigger is v1.2+', () => {
+			const output = buildSubWorkflowOutput(buildRun({ mode: 'trigger' }), [trigger(1.2)], false);
+			expect(output).toEqual(expectedItemsFromBothRunsConcatenated);
+		});
+
+		it('falls back to `lastRunOnly` for pre-1.2 triggers by default', () => {
+			const output = buildSubWorkflowOutput(buildRun({ mode: 'trigger' }), [trigger(1.1)], false);
+			expect(output).toEqual(expectedItemsFromTheFinalRunOnly);
+		});
+
+		it('honours a pre-1.2 trigger that opted in via `returnOutput`', () => {
+			const output = buildSubWorkflowOutput(
+				buildRun({ mode: 'trigger' }),
+				[trigger(1.1, 'allRuns')],
+				false,
+			);
+			expect(output).toEqual(expectedItemsFromBothRunsConcatenated);
+		});
+
+		it('caller can force `lastRunOnly` even when the trigger declares `allRuns`', () => {
+			const output = buildSubWorkflowOutput(buildRun({ mode: 'trigger' }), [trigger(1.2)], true);
+			expect(output).toEqual(expectedItemsFromTheFinalRunOnly);
+		});
+
+		describe('pinData substitution', () => {
+			it('ignores pinData when the sub-workflow is not running in manual mode', () => {
+				const output = buildSubWorkflowOutput(
+					buildRun({
+						mode: 'trigger',
+						pinData: { [LAST_NODE_EXECUTED]: [{ pinned: true }] },
+					}),
+					[trigger(1.2)],
+					false,
+				);
+				expect(output).toEqual(expectedItemsFromBothRunsConcatenated);
+			});
+
+			it('substitutes pinData when manual mode, even on the merged-runs path', () => {
+				const output = buildSubWorkflowOutput(
+					buildRun({
+						mode: 'manual',
+						pinData: { [LAST_NODE_EXECUTED]: [{ pinned: true }] },
+					}),
+					[trigger(1.2)],
+					false,
+				);
+
+				const expectedPinnedItems = [[{ json: { pinned: true }, pairedItem: { item: 0 } }]];
+				expect(output).toEqual(expectedPinnedItems);
+			});
+		});
+
+		it('returns `[null]` when the sub-workflow recorded no run data', () => {
+			expect(
+				buildSubWorkflowOutput(
+					buildRun({ mode: 'trigger', runData: {}, lastNodeExecuted: undefined }),
+					[trigger(1.2)],
+					false,
+				),
+			).toEqual([null]);
+		});
+	});
+
+	describe('triggerReturnsLastRunOnly', () => {
+		function trigger(typeVersion: number, returnOutput?: string): INode {
+			return mock<INode>({
+				type: 'n8n-nodes-base.executeWorkflowTrigger',
+				typeVersion,
+				parameters: returnOutput === undefined ? {} : { returnOutput },
+			});
+		}
+
+		it('returns true when there is no Execute Workflow Trigger', () => {
+			expect(triggerReturnsLastRunOnly([])).toBe(true);
+			expect(triggerReturnsLastRunOnly([mock<INode>({ type: 'n8n-nodes-base.set' })])).toBe(true);
+		});
+
+		it('defaults pre-1.2 triggers to `lastRunOnly` (backward compat)', () => {
+			expect(triggerReturnsLastRunOnly([trigger(1)])).toBe(true);
+			expect(triggerReturnsLastRunOnly([trigger(1.1)])).toBe(true);
+		});
+
+		it('honours a pre-1.2 trigger that opted in via `returnOutput`', () => {
+			expect(triggerReturnsLastRunOnly([trigger(1.1, 'allRuns')])).toBe(false);
+			expect(triggerReturnsLastRunOnly([trigger(1.1, 'lastRunOnly')])).toBe(true);
+		});
+
+		it('returns false on v1.2+ triggers (option deprecated, allRuns is the default)', () => {
+			expect(triggerReturnsLastRunOnly([trigger(1.2)])).toBe(false);
+			// Parameters on v1.2+ are ignored: the merged-runs behavior is the default.
+			expect(triggerReturnsLastRunOnly([trigger(1.2, 'lastRunOnly')])).toBe(false);
 		});
 	});
 });
