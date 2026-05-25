@@ -1,6 +1,7 @@
 import { renderObservationLog } from './observation-log-renderer';
 import type { BuiltMemory } from '../types/sdk/memory';
 import type { AgentDbMessage, ContentToolCall, Message } from '../types/sdk/message';
+import type { AgentExecutionCounter } from '../types/sdk/agent';
 import type { ObservationCursor } from '../types/sdk/observation';
 import type {
 	BuiltObservationLogStore,
@@ -70,6 +71,7 @@ export interface RunObservationLogObserverOpts {
 	tokenCounter?: TokenCounter;
 	now?: Date;
 	onMalformedLine?: (line: string) => void;
+	executionCounter?: AgentExecutionCounter;
 }
 
 export type RunObservationLogObserverResult =
@@ -193,6 +195,7 @@ export async function runObservationLogObserver(
 		transcriptTokenCount: tokenCount,
 		observationLogTail,
 		renderedObservationLogTail,
+		executionCounter: opts.executionCounter,
 	});
 
 	const parsed = parseObservationLogMarkdown(markdown);

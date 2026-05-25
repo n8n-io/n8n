@@ -1,5 +1,6 @@
 import { loadAi } from './lazy-ai';
 import { createModel } from './model-factory';
+import { incrementTokenCountFromUsage } from './execution-counter';
 import type {
 	ObservationLogObserveFn,
 	ObservationLogObserverInput,
@@ -302,11 +303,12 @@ export function createObservationLogObserveFn(
 	options: CreateObservationLogObserveFnOptions = {},
 ): ObservationLogObserveFn {
 	return async (input) => {
-		const { text } = await loadAi().generateText({
+		const { text, usage } = await loadAi().generateText({
 			model: createModel(model),
 			system: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 			prompt: buildObservationLogObserverPrompt(input),
 		});
+		incrementTokenCountFromUsage(input.executionCounter, usage);
 
 		return text.trim();
 	};
@@ -539,11 +541,12 @@ export function createObservationLogReflectFn(
 	options: CreateObservationLogReflectFnOptions = {},
 ): ObservationLogReflectFn {
 	return async (input) => {
-		const { text } = await loadAi().generateText({
+		const { text, usage } = await loadAi().generateText({
 			model: createModel(model),
 			system: options.reflectorPrompt ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 			prompt: buildObservationLogReflectorPrompt(input),
 		});
+		incrementTokenCountFromUsage(input.executionCounter, usage);
 
 		return text.trim();
 	};

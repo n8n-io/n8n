@@ -388,6 +388,29 @@ describe('Telemetry', () => {
 			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
 		});
 
+		test('should allow a post-flush window with tokens but no fresh user turn', () => {
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', token_count: 15 });
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentExecutionCounts();
+			spyTrack.mockClear();
+
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', token_count: 20 });
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentExecutionCounts();
+
+			expect(spyTrack).toHaveBeenCalledWith('Agent execution count', {
+				event_version: '1',
+				agent_id: 'agent-1',
+				message_count: 0,
+				token_count: 20,
+				tool_call_count: 0,
+			});
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
+		});
+
 		test('should not buffer when rudderStack is not initialized', () => {
 			// @ts-expect-error Assigning to private property
 			telemetry.rudderStack = undefined;

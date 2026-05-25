@@ -21,7 +21,7 @@ import type {
 	EpisodicMemorySearchOptions,
 	RetrievedEpisodicMemoryEntry,
 } from '../types';
-import type { AgentPersistenceOptions } from '../types/sdk/agent';
+import type { AgentExecutionCounter, AgentPersistenceOptions } from '../types/sdk/agent';
 import type { ObservationLogEntry, ObservationLogScope } from '../types/sdk/observation-log';
 
 export const RECALL_MEMORY_TOOL_NAME = 'recall_memory';
@@ -67,6 +67,7 @@ export interface RunEpisodicMemoryIndexerOpts {
 	observationScope: ObservationLogScope;
 	threadId: string;
 	now?: Date;
+	executionCounter?: AgentExecutionCounter;
 }
 
 export type RunEpisodicMemoryIndexerResult =
@@ -138,6 +139,7 @@ export async function runEpisodicMemoryIndexer(
 		observations,
 		renderedObservations,
 		existingEntries,
+		executionCounter: opts.executionCounter,
 	});
 
 	const candidates = validateCandidates(extraction.entries, observations).slice(
@@ -374,6 +376,7 @@ async function runEpisodicMemoryReflection(
 			seedEntryIds: savedEntries.map((entry) => entry.id),
 			entries: cluster,
 			sources,
+			executionCounter: opts.executionCounter,
 		}),
 	);
 	if (reflection.drop.length === 0 && reflection.merge.length === 0) return;

@@ -718,6 +718,7 @@ describe('AgentRuntime — deferred tool loading', () => {
 			tools: [coreTool],
 			deferredTools: [deferredTool],
 		});
+		const counter = makeExecutionCounter();
 
 		generateText
 			.mockResolvedValueOnce(
@@ -740,9 +741,14 @@ describe('AgentRuntime — deferred tool loading', () => {
 			)
 			.mockResolvedValueOnce(makeGenerateSuccess('ready'));
 
-		const result = await runtime.generate('need the deferred capability');
+		const result = await runtime.generate('need the deferred capability', {
+			executionCounter: counter,
+		});
 
 		expect(generateText).toHaveBeenCalledTimes(3);
+		expect(counter.incrementMessageCount).toHaveBeenCalledTimes(1);
+		expect(counter.incrementToolCallCount).toHaveBeenCalledTimes(2);
+		expect(counter.incrementTokenCount).toHaveBeenCalledTimes(3);
 
 		const searchCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'search_tools');
 		expect(searchCall?.output).toEqual({

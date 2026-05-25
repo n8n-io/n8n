@@ -256,6 +256,8 @@ export class Telemetry {
 		});
 
 		for (const agentId of agentIdsToReport) {
+			// Agent-level aggregate window keyed only by persisted agent ID. A resume-only
+			// window may legitimately report tokens or tools with message_count = 0.
 			this.track('Agent execution count', {
 				event_version: '1',
 				agent_id: agentId,

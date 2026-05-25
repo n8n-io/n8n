@@ -68,6 +68,7 @@ import {
 	makeErrorStream,
 	normalizeInput,
 } from './runtime-helpers';
+import { incrementTokenCountFromUsage } from './execution-counter';
 import { ScopedMemoryTaskRunner } from './scoped-memory-task-runner';
 import { convertChunk } from './stream';
 import { stripOrphanedToolMessages } from './strip-orphaned-tool-messages';
@@ -855,10 +856,7 @@ export class AgentRuntime {
 		counter: AgentExecutionCounter | undefined,
 		usage: RawTokenUsage | undefined,
 	): void {
-		if (!counter || !usage) return;
-		const tokenCount = usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
-		if (tokenCount <= 0) return;
-		this.recordExecutionCounter(() => counter.incrementTokenCount(tokenCount));
+		incrementTokenCountFromUsage(counter, usage);
 	}
 
 	private async withTelemetryRootSpan<T>(
@@ -1103,6 +1101,7 @@ export class AgentRuntime {
 				titleConfig: this.config.titleGeneration,
 				agentModel: this.config.model,
 				turnDelta: list.turnDelta(),
+				executionCounter: options.executionCounter,
 			});
 			this.backgroundTasks.track(titlePromise);
 			if (this.config.titleGeneration.sync) {
@@ -1446,6 +1445,7 @@ export class AgentRuntime {
 					titleConfig: this.config.titleGeneration,
 					agentModel: this.config.model,
 					turnDelta: list.turnDelta(),
+					executionCounter: options.executionCounter,
 				});
 				this.backgroundTasks.track(titlePromise);
 				if (this.config.titleGeneration.sync) {
@@ -1466,7 +1466,7 @@ export class AgentRuntime {
 	/** Persist the current-turn delta to memory. */
 	private async saveToMemory(
 		list: AgentMessageList,
-		options: RunOptions | undefined,
+		options: (RunOptions & ExecutionOptions) | undefined,
 	): Promise<void> {
 		if (!this.config.memory || !options?.persistence) return;
 		const delta = list.turnDelta();
@@ -1478,6 +1478,9 @@ export class AgentRuntime {
 			delta,
 		);
 
+		// Memory generation jobs receive the execution counter so their LLM usage
+		// contributes to token_count. Embedding calls remain excluded.
+
 		// Generate and save embeddings if semantic recall is configured
 		if (this.config.semanticRecall?.embedder && this.config.memory.saveEmbeddings) {
 			await this.saveEmbeddingsForMessages(
@@ -1487,12 +1490,16 @@ export class AgentRuntime {
 			);
 		}
 
-		const observationTasks = this.scheduleObservationLogJobs(options.persistence);
-		this.scheduleEpisodicMemoryJob(options.persistence, observationTasks);
+		const observationTasks = this.scheduleObservationLogJobs(
+			options.persistence,
+			options.executionCounter,
+		);
+		this.scheduleEpisodicMemoryJob(options.persistence, observationTasks, options.executionCounter);
 	}
 
 	private scheduleObservationLogJobs(
 		persistence: AgentPersistenceOptions,
+		executionCounter?: AgentExecutionCounter,
 	): Array<Promise<unknown>> {
 		const { memory, observationalMemory } = this.config;
 		if (!memory || !observationalMemory || !hasObservationLogStore(memory)) return [];
@@ -1520,6 +1527,7 @@ export class AgentRuntime {
 							observerThresholdTokens,
 							observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
 							observe,
+							executionCounter,
 						}),
 				),
 			);
@@ -1539,6 +1547,7 @@ export class AgentRuntime {
 							...scope,
 							reflectorThresholdTokens,
 							reflect,
+							executionCounter,
 						}),
 				),
 			);
@@ -1550,6 +1559,7 @@ export class AgentRuntime {
 	private scheduleEpisodicMemoryJob(
 		persistence: AgentPersistenceOptions,
 		observationTasks: Array<Promise<unknown>>,
+		executionCounter?: AgentExecutionCounter,
 	): void {
 		const { memory, episodicMemory } = this.config;
 		if (
@@ -1574,6 +1584,7 @@ export class AgentRuntime {
 				scope,
 				observationScope,
 				threadId: persistence.threadId,
+				executionCounter,
 			});
 		});
 	}

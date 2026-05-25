@@ -189,8 +189,11 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 
 export interface IAgentExecutionTrackProperties extends ITelemetryTrackProperties {
 	agent_id: string;
+	/** Fresh user turns only. Resume continuations do not increment this count. */
 	message_count?: number;
+	/** Generation usage from agent, title, and memory LLM calls. Embeddings are excluded. */
 	token_count?: number;
+	/** Tool invocations only. Resuming a suspended tool does not double-count it. */
 	tool_call_count?: number;
 }
 
