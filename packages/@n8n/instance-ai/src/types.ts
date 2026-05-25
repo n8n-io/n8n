@@ -822,6 +822,10 @@ export interface InstanceAiMemoryConfig {
 	lastMessages?: number;
 	/** Thread TTL in days. Threads older than this are auto-expired on cleanup. 0 = no expiration. */
 	threadTtlDays?: number;
+	observationalMemory?: {
+		observerThresholdTokens: number;
+		reflectorThresholdTokens: number;
+	};
 }
 
 // ── Model configuration ─────────────────────────────────────────────────────

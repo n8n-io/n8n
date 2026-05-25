@@ -21,6 +21,8 @@ describe('InstanceAiSettingsService', () => {
 			model: 'openai/gpt-4',
 			modelUrl: '',
 			modelApiKey: '',
+			observerMessageTokens: 30_000,
+			reflectorObservationTokens: 40_000,
 			subAgentMaxSteps: 10,
 			browserMcp: false,
 			mcpServers: '',

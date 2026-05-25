@@ -429,9 +429,9 @@ export class InstanceAiSettingsService {
 	}
 
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
-	async resolveModelName(user: User): Promise<string> {
+	resolveModelName(user: User): string {
 		const prefs = this.readUserPreferences(user);
-		return prefs.modelName || this.extractModelName(this.config.model);
+		return prefs.modelName ?? this.extractModelName(this.config.model);
 	}
 
 	/** Resolve the current model configuration for an agent run. */
@@ -463,7 +463,7 @@ export class InstanceAiSettingsService {
 		const urlField = URL_FIELD_MAP[credential.type];
 		const rawUrl = urlField ? data[urlField] : undefined;
 		const baseUrl = typeof rawUrl === 'string' ? rawUrl : '';
-		const modelName = prefs.modelName || this.extractModelName(this.config.model);
+		const modelName = prefs.modelName ?? this.extractModelName(this.config.model);
 		const id: `${string}/${string}` = `${provider}/${modelName}`;
 
 		if (baseUrl) {
@@ -525,7 +525,11 @@ export class InstanceAiSettingsService {
 	}
 
 	private envVarModelConfig(): ModelConfig {
-		const { model, modelUrl, modelApiKey } = this.config;
+		return this.envVarModelConfigForModel(this.config.model);
+	}
+
+	private envVarModelConfigForModel(model: string): ModelConfig {
+		const { modelUrl, modelApiKey } = this.config;
 		const id: `${string}/${string}` = model.includes('/')
 			? (model as `${string}/${string}`)
 			: `custom/${model}`;

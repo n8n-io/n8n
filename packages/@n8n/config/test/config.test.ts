@@ -276,6 +276,8 @@ describe('GlobalConfig', () => {
 			localGatewayDisabled: false,
 			browserMcp: false,
 			lastMessages: 20,
+			observerMessageTokens: 30_000,
+			reflectorObservationTokens: 40_000,
 			subAgentMaxSteps: 100,
 			sandboxEnabled: false,
 			sandboxProvider: 'daytona',

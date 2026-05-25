@@ -77,9 +77,10 @@ Sandbox workspaces persist per thread — the same container is reused across me
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_OBSERVER_MODEL` | string | `google/gemini-2.5-flash` | LLM for Observer/Reflector compression agents |
 | `N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS` | number | `30000` | Token threshold for Observer to trigger compression |
 | `N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS` | number | `40000` | Token threshold for Reflector to condense observations |
+
+Observer and Reflector use the same model as the orchestrator agent (see `@n8n/agents` observational memory defaults).
 
 ### Lifecycle & Housekeeping
 
@@ -118,22 +119,15 @@ native tools specified in the `delegate` call.
 
 ## Storage
 
-The memory storage backend is selected automatically based on n8n's database
-configuration:
-
-- **PostgreSQL**: If n8n uses `postgresdb`, memory uses the same PostgreSQL
-  instance (connection URL built from n8n's DB config)
-- **SQLite**: Otherwise, memory uses a local LibSQL file at
-  `instance-ai-memory.db`
-
-No separate storage configuration is needed.
+Instance AI memory persists in the main n8n database via TypeORM — the same
+PostgreSQL or SQLite instance n8n already uses. No separate memory database or
+LibSQL file is required.
 
 The same storage backend is used for:
 - Message history
-- Observational memory (observations and reflections)
-- Plan storage (thread-scoped)
-- Event persistence (for SSE replay)
-- Vector embeddings (when semantic recall is enabled)
+- Observational memory (observation log, cursors, and task locks)
+- Plan storage (thread-scoped in thread metadata)
+- Run snapshots and checkpoints (separate tables)
 
 ## Event Bus
 
@@ -201,7 +195,6 @@ N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7
 N8N_INSTANCE_AI_MCP_SERVERS="github=https://mcp.github.com/sse"
 N8N_INSTANCE_AI_MAX_STEPS=50
 N8N_INSTANCE_AI_MAX_LOOP_ITERATIONS=10
-N8N_INSTANCE_AI_OBSERVER_MODEL=google/gemini-2.5-flash
 N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS=30000
 ```
 

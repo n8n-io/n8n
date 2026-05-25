@@ -807,7 +807,7 @@ export class InstanceAiService {
 		proxyBaseUrl: string,
 		tokenManager: ProxyTokenManager,
 	): Promise<ModelConfig> {
-		const modelName = await this.settingsService.resolveModelName(user);
+		const modelName = this.settingsService.resolveModelName(user);
 		const { createAnthropic } = await import('@ai-sdk/anthropic');
 		const provider = createAnthropic({
 			baseURL: proxyBaseUrl + '/anthropic/v1',
@@ -1836,6 +1836,10 @@ export class InstanceAiService {
 	private createAgentMemoryOptions() {
 		return {
 			lastMessages: this.instanceAiConfig.lastMessages,
+			observationalMemory: {
+				observerThresholdTokens: this.instanceAiConfig.observerMessageTokens,
+				reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,
+			},
 		};
 	}
 

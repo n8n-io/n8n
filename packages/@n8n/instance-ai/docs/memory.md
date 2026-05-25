@@ -69,8 +69,8 @@ Context window layout during autonomous loop:
   high prompt cache hit rates (4–10x cost reduction)
 - **Async buffering** pre-computes observations in the background — no
   user-visible pause when the threshold is hit
-- Uses a secondary LLM (default: `google/gemini-2.5-flash`) for compression —
-  cheap and has a 1M token context window for the Reflector
+- Uses the orchestrator agent's model for compression — same credentials and
+  provider as the main conversation
 
 Observational memory is **thread-scoped** — it tracks the operational history
 of the current task.
@@ -110,6 +110,7 @@ conversations.
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `N8N_INSTANCE_AI_LAST_MESSAGES` | number | 20 | Recent message window |
-| `N8N_INSTANCE_AI_OBSERVER_MODEL` | string | `google/gemini-2.5-flash` | LLM for Observer/Reflector |
 | `N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS` | number | 30000 | Observer trigger threshold |
 | `N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS` | number | 40000 | Reflector trigger threshold |
+
+Observer and Reflector use the orchestrator agent's model.
