@@ -144,6 +144,9 @@ catalogs:
     agent-browser:
       specifier: 0.26.0
       version: 0.26.0
+    babel-jest:
+      specifier: ^29.7.0
+      version: 29.7.0
     basic-auth:
       specifier: 2.0.1
       version: 2.0.1
@@ -168,6 +171,9 @@ catalogs:
     fastest-levenshtein:
       specifier: 1.0.16
       version: 1.0.16
+    get-tsconfig:
+      specifier: ^4.13.0
+      version: 4.13.0
     http-proxy-agent:
       specifier: 7.0.2
       version: 7.0.2
@@ -541,6 +547,9 @@ importers:
       '@types/supertest':
         specifier: ^6.0.3
         version: 6.0.3
+      babel-jest:
+        specifier: 'catalog:'
+        version: 29.7.0(@babel/core@7.29.0)
       babel-plugin-transform-import-meta:
         specifier: ^2.3.2
         version: 2.3.3(@babel/core@7.29.0)
@@ -550,6 +559,9 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)
+      get-tsconfig:
+        specifier: 'catalog:'
+        version: 4.13.0
       jest:
         specifier: ^29.6.2
         version: 29.7.0(@types/node@20.19.21)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.21)(typescript@6.0.2))
