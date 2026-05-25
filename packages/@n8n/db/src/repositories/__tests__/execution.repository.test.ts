@@ -393,10 +393,6 @@ describe('ExecutionRepository', () => {
 	});
 
 	describe('stopDuringRun', () => {
-		afterEach(() => {
-			jest.restoreAllMocks();
-		});
-
 		test('should update execution with ManualExecutionCancelledError', async () => {
 			const mockExecution = {
 				id: '123',
