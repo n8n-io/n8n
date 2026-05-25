@@ -154,10 +154,6 @@ type RuntimeSandboxEntry = {
 	setupPromise: Promise<void> | undefined;
 };
 
-function getThreadScopedSandboxName(threadId: string): string {
-	return `instance-ai-thread-${threadId}`;
-}
-
 const SANDBOX_NAME_MAX_LEN = 63;
 const NAME_PREFIX_SLUG_MAX_LEN = 24;
 const SANDBOX_LABEL_MAX_LEN = 63;
@@ -180,22 +176,21 @@ function slugifyLabelValue(value: string): string {
 		.replace(/[-.]+$/, '');
 }
 
+// The composed name is both the visible identifier in the Daytona dashboard
+// list view AND the cache key for `DaytonaSandbox.findExistingSandbox` — so
+// the prefix flows naturally into both creation and lookup of warm thread
+// sandboxes.
+function getThreadScopedSandboxName(threadId: string, namePrefix?: string): string {
+	const baseName = `instance-ai-thread-${threadId}`;
+	const prefixSlug = namePrefix ? slugifyName(namePrefix, NAME_PREFIX_SLUG_MAX_LEN) : '';
+	const composed = prefixSlug ? `${prefixSlug}-${baseName}` : baseName;
+	return composed.slice(0, SANDBOX_NAME_MAX_LEN).replace(/-+$/, '');
+}
+
 function withThreadScopedSandboxIdentity(config: SandboxConfig, threadId: string): SandboxConfig {
 	if (!config.enabled || config.provider !== 'daytona') return config;
 
-	// The name is both the visible identifier in the Daytona dashboard list view
-	// AND the cache key for `DaytonaSandbox.findExistingSandbox` — so the prefix
-	// flows naturally into both creation and lookup of warm thread sandboxes.
-	const baseName = getThreadScopedSandboxName(threadId);
-	const namePrefix: string | undefined = config.namePrefix;
-	const prefixSlug =
-		namePrefix !== undefined && namePrefix !== ''
-			? slugifyName(namePrefix, NAME_PREFIX_SLUG_MAX_LEN)
-			: '';
-	const name = (prefixSlug ? `${prefixSlug}-${baseName}` : baseName)
-		.slice(0, SANDBOX_NAME_MAX_LEN)
-		.replace(/-+$/, '');
-
+	const name = getThreadScopedSandboxName(threadId, config.namePrefix);
 	const labels: Record<string, string> = {
 		...config.labels,
 		thread_id: slugifyLabelValue(threadId),
