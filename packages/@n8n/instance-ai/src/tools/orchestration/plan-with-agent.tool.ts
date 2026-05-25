@@ -808,6 +808,15 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					};
 				}
 
+				// User explicitly denied the plan. submit-plan already cancelled the
+				// persisted graph, so the cancelled graph won't be picked up by the
+				// scheduler. Return a terminal result so the orchestrator stops cleanly.
+				if (accumulator.isDenied()) {
+					publishClearingEvent(context);
+					await clearDraftChecklist(context);
+					return { result: 'Plan denied by user. No tasks were dispatched.' };
+				}
+
 				// Planner finished without approval (no submit-plan or user didn't approve)
 				publishClearingEvent(context);
 				await clearDraftChecklist(context);

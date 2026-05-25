@@ -90,6 +90,7 @@ const planOutputSchema = z.object({
 export const planResumeSchema = z.object({
 	approved: z.boolean(),
 	userInput: z.string().optional(),
+	denied: z.boolean().optional(),
 });
 
 export function createPlanTool(context: OrchestrationContext) {
@@ -227,15 +228,9 @@ export function createPlanTool(context: OrchestrationContext) {
 				};
 			}
 
-			// User rejected or requested changes. Reset the UI checklist so the
-			// rejected plan's "todo" items don't linger on screen, but keep the
-			// persisted graph in `awaiting_approval` so the LLM's next
-			// `create-tasks` revision passes the replan guard via
-			// `threadHasExistingPlan` (scoped to the current runId). The
-			// scheduler ignores `awaiting_approval` graphs, so leaving the graph
-			// in place can't dispatch the rejected plan; the next createPlan
-			// call overwrites it with the revised tasks.
-			// Best-effort: a storage failure here must not abort the revision flow.
+			// Reset the UI checklist so the rejected plan's "todo" items don't
+			// linger on screen. Best-effort: a storage failure here must not
+			// abort the rejection / denial flow.
 			try {
 				await context.taskStorage.save(context.threadId, { tasks: [] });
 			} catch (error) {
@@ -247,6 +242,26 @@ export function createPlanTool(context: OrchestrationContext) {
 				agentId: context.orchestratorAgentId,
 				payload: { tasks: { tasks: [] }, planItems: [] },
 			});
+
+			// User denied the plan outright. Cancel the graph so the next
+			// `create-tasks` call goes through the fresh-plan path instead of
+			// being treated as a revision, and tell the LLM to stop.
+			if (resumeData.denied) {
+				await context.plannedTaskService.denyPlan(context.threadId);
+				return {
+					result:
+						'User denied the plan. Do not revise or call create-tasks again — acknowledge and wait for new instructions.',
+					taskCount: 0,
+				};
+			}
+
+			// User requested changes. Keep the persisted graph in
+			// `awaiting_approval` so the LLM's next `create-tasks` revision
+			// passes the replan guard via `threadHasExistingPlan` (scoped to
+			// the current runId). The scheduler ignores `awaiting_approval`
+			// graphs, so leaving the graph in place can't dispatch the
+			// rejected plan; the next createPlan call overwrites it with the
+			// revised tasks.
 			return {
 				result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Revise the tasks and call create-tasks again.`,
 				taskCount: 0,

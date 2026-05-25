@@ -18,7 +18,10 @@ import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import DelegateCard from './DelegateCard.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
+import PlanReviewPanel, {
+	type PlannedTaskArg,
+	type PlanReviewDecision,
+} from './PlanReviewPanel.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import ToolCallStep from './ToolCallStep.vue';
 
@@ -127,7 +130,7 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 		provided_inputs: [
 			{
 				label: 'plan',
-				options: ['approve', 'request-changes'],
+				options: ['approve', 'request-changes', 'deny'],
 				option_chosen: approved ? 'approve' : 'request-changes',
 			},
 		],
@@ -143,6 +146,31 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 		approved,
 		...(feedback ? { userInput: feedback } : {}),
 	});
+}
+
+function handlePlanDeny(tc: InstanceAiToolCallState) {
+	const requestId = tc.confirmation?.requestId;
+	if (!requestId) return;
+
+	const numTasks = ((tc.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length;
+	telemetry.track('User finished providing input', {
+		thread_id: thread.id,
+		input_thread_id: tc.confirmation?.inputThreadId ?? '',
+		instance_id: rootStore.instanceId,
+		type: 'plan-review',
+		provided_inputs: [
+			{
+				label: 'plan',
+				options: ['approve', 'request-changes', 'deny'],
+				option_chosen: 'deny',
+			},
+		],
+		skipped_inputs: [],
+		num_tasks: numTasks,
+	});
+
+	thread.resolveConfirmation(requestId, 'denied');
+	void thread.confirmAction(requestId, { kind: 'planDeny' });
 }
 
 /** Find the latest plan-review confirmation from a planner child's submit-plan tool call.
@@ -226,6 +254,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					:read-only="!toolCallsById[entry.toolCallId].isLoading"
 					@approve="handlePlanConfirm(toolCallsById[entry.toolCallId], true)"
 					@request-changes="(fb) => handlePlanConfirm(toolCallsById[entry.toolCallId], false, fb)"
+					@deny="handlePlanDeny(toolCallsById[entry.toolCallId])"
 				/>
 				<!-- Planner: suppress tool call — PlanReviewPanel renders after the child AgentSection -->
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'planner'" />
@@ -283,6 +312,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					@request-changes="
 						(fb) => plannerConfirmation && handlePlanConfirm(plannerConfirmation, false, fb)
 					"
+					@deny="plannerConfirmation && handlePlanDeny(plannerConfirmation)"
 				/>
 
 				<!-- Artifact cards for completed subagents (skip when inside grouped view) -->

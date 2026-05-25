@@ -31,6 +31,7 @@ export function createSubmitPlanTool(
 			z.object({
 				approved: z.boolean(),
 				feedback: z.string().optional(),
+				denied: z.boolean().optional(),
 			}),
 		)
 		.suspend(
@@ -47,6 +48,7 @@ export function createSubmitPlanTool(
 			z.object({
 				approved: z.boolean(),
 				userInput: z.string().optional(),
+				denied: z.boolean().optional(),
 			}),
 		)
 		.handler(async (_input, ctx) => {
@@ -58,9 +60,30 @@ export function createSubmitPlanTool(
 					accumulator.markApproved();
 					return { approved: true };
 				}
+				if (resumeData.denied) {
+					accumulator.markDenied();
+					if (context.plannedTaskService) {
+						await context.plannedTaskService.denyPlan(context.threadId);
+					}
+					return {
+						approved: false,
+						denied: true,
+						feedback: 'User denied the plan. Do not revise — stop and acknowledge.',
+					};
+				}
 				return {
 					approved: false,
 					feedback: resumeData.userInput ?? 'No specific feedback provided.',
+				};
+			}
+
+			// Already denied — short-circuit any subsequent call so the planner
+			// cannot re-suspend the user with the same plan after a denial.
+			if (accumulator.isDenied()) {
+				return {
+					approved: false,
+					denied: true,
+					feedback: 'Plan already denied by user. Stop and acknowledge.',
 				};
 			}
 

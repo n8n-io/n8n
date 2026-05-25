@@ -12,6 +12,7 @@ function makePlannedTaskService(overrides: Partial<PlannedTaskService> = {}): Pl
 		createPlan: jest.fn().mockResolvedValue(undefined),
 		getGraph: jest.fn().mockResolvedValue(null),
 		approvePlan: jest.fn().mockResolvedValue(undefined),
+		denyPlan: jest.fn().mockResolvedValue(undefined),
 		clear: jest.fn().mockResolvedValue(undefined),
 		...overrides,
 	} as unknown as PlannedTaskService;
@@ -261,6 +262,25 @@ describe('createPlanTool — replan-only guard', () => {
 			'Failed to clear rejected plan checklist',
 			expect.objectContaining({ error: expect.anything() as unknown }),
 		);
+	});
+
+	it('cancels the graph and tells the LLM to stop when the user denies the plan', async () => {
+		const context = createMockContext({ currentUserMessage: 'ordinary message' });
+		const tool = createPlanTool(context);
+
+		const out = await executeTool(
+			tool,
+			{ tasks: validTasks() },
+			{ resumeData: { approved: false, denied: true } },
+		);
+
+		expect(out.taskCount).toBe(0);
+		expect(out.result).toContain('User denied the plan');
+		expect(out.result).toMatch(/do not revise/i);
+		expect(context.plannedTaskService!.denyPlan).toHaveBeenCalledWith('test-thread');
+		expect(context.plannedTaskService!.approvePlan).not.toHaveBeenCalled();
+		expect(context.schedulePlannedTasks).not.toHaveBeenCalled();
+		expect(context.taskStorage.save).toHaveBeenCalledWith('test-thread', { tasks: [] });
 	});
 
 	it('keeps the awaiting_approval graph on rejection so a same-turn revision can pass the guard', async () => {

@@ -360,10 +360,12 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 	void thread.confirmAction(conf.requestId, { kind: 'questions', answers });
 }
 
+const PLAN_REVIEW_OPTIONS = ['approve', 'request-changes', 'deny'] as const;
+
 function handlePlanApprove(conf: InstanceAiConfirmation, numTasks: number) {
 	trackInputCompleted(
 		conf,
-		[{ label: 'plan', options: ['approve', 'request-changes'], option_chosen: 'approve' }],
+		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'approve' }],
 		[],
 		{ num_tasks: numTasks },
 	);
@@ -378,7 +380,7 @@ function handlePlanRequestChanges(
 ) {
 	trackInputCompleted(
 		conf,
-		[{ label: 'plan', options: ['approve', 'request-changes'], option_chosen: 'request-changes' }],
+		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'request-changes' }],
 		[],
 		{ num_tasks: numTasks, feedback },
 	);
@@ -388,6 +390,17 @@ function handlePlanRequestChanges(
 		approved: false,
 		userInput: feedback,
 	});
+}
+
+function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
+	trackInputCompleted(
+		conf,
+		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'deny' }],
+		[],
+		{ num_tasks: numTasks },
+	);
+	thread.resolveConfirmation(conf.requestId, 'denied');
+	void thread.confirmAction(conf.requestId, { kind: 'planDeny' });
 }
 </script>
 
@@ -457,6 +470,12 @@ function handlePlanRequestChanges(
 								feedback,
 								((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
 							)
+					"
+					@deny="
+						handlePlanDeny(
+							chunk.item.toolCall.confirmation,
+							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
+						)
 					"
 				/>
 
