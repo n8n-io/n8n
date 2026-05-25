@@ -6,6 +6,7 @@
 	"compilerOptions": {
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
+		"lib": ["es2023", "dom"],
 		"paths": {
 			"@/*": ["./src/*"],
 			"@test/*": ["./test/shared/*"],
@@ -15,6 +16,7 @@
 		"strict": true,
 		"strictFunctionTypes": false,
 		"strictPropertyInitialization": false,
+		"isolatedModules": false,
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},
