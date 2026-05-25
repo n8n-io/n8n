@@ -23,6 +23,12 @@ export interface OAuth2CredentialData {
 	};
 	useDynamicClientRegistration?: boolean;
 	serverUrl?: string;
+	/*
+	 * Resource indicator lifecycle:
+	 * - `resourceUrl`       – raw user input from the credential form (optional override)
+	 * - `resource`          – resolved value after discovery / validation, ephemeral for auth URI generation
+	 * - `oauthTokenData.resource` – persisted with tokens so it can be re‑sent on refresh
+	 */
 	resourceUrl?: string;
 	jweEnabled?: boolean;
 	/**

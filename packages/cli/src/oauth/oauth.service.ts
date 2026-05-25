@@ -541,7 +541,71 @@ export class OauthService {
 		}
 	}
 
-	// eslint-disable-next-line complexity
+	private async discoverAndResolveResource(
+		oauthCredentials: OAuth2CredentialData,
+		csrfData: CreateCsrfStateData,
+		authorizationServerUrl: string,
+	): Promise<{
+		authorizationServerUrl: string;
+		discoveredResource: string | undefined;
+	}> {
+		let discoveredResource: string | undefined;
+		let suppliedResourceUrl: string | undefined;
+
+		if (oauthCredentials.resourceUrl) {
+			suppliedResourceUrl = this.validateResourceUrlOrThrow(oauthCredentials.resourceUrl);
+		}
+
+		try {
+			const protectedResourceMetadata = await this.discoverProtectedResourceMetadata(
+				oauthCredentials.serverUrl!,
+			);
+
+			if (oauthCredentials.useDynamicClientRegistration) {
+				authorizationServerUrl = protectedResourceMetadata.authorization_servers[0];
+				this.validateAuthServerUrlOrThrow(authorizationServerUrl);
+			}
+
+			discoveredResource = protectedResourceMetadata.resource;
+
+			this.logger.debug('Protected resource discovery succeeded', {
+				resourceUrl: oauthCredentials.serverUrl,
+				...(oauthCredentials.useDynamicClientRegistration ? { authorizationServerUrl } : {}),
+				discoveredResource,
+			});
+		} catch (error) {
+			if (error instanceof InvalidOAuthUrlError) {
+				throw error;
+			}
+
+			this.logger.debug(
+				oauthCredentials.useDynamicClientRegistration
+					? 'Protected resource discovery failed, assuming serverUrl is authorization server'
+					: 'Protected resource discovery failed',
+				{
+					serverUrl: oauthCredentials.serverUrl,
+					error: (error as Error).message,
+				},
+			);
+			if (oauthCredentials.useDynamicClientRegistration) {
+				authorizationServerUrl = oauthCredentials.serverUrl!;
+			}
+		}
+
+		const resolvedResource = this.resolveResourceUrl(
+			suppliedResourceUrl,
+			discoveredResource,
+			oauthCredentials.serverUrl!,
+		);
+
+		if (resolvedResource) {
+			oauthCredentials.resource = resolvedResource;
+			csrfData.resource = resolvedResource;
+		}
+
+		return { authorizationServerUrl, discoveredResource };
+	}
+
 	async generateAOauth2AuthUri(
 		credential: CredentialsEntity,
 		csrfData: CreateCsrfStateData,
@@ -552,65 +616,17 @@ export class OauthService {
 		const toUpdate: ICredentialDataDecryptedObject = {};
 
 		let authorizationServerUrl = oauthCredentials.serverUrl;
-		let discoveredResource: string | undefined;
-		let suppliedResourceUrl: string | undefined;
-		let resolvedResource: string | undefined;
 
 		if (oauthCredentials.serverUrl) {
 			// Validate serverUrl to prevent SSRF attacks before any HTTP requests
 			this.validateOAuthUrlOrThrow(oauthCredentials.serverUrl);
 
-			if (oauthCredentials.resourceUrl) {
-				suppliedResourceUrl = this.validateResourceUrlOrThrow(oauthCredentials.resourceUrl);
-			}
-		}
-
-		if (oauthCredentials.serverUrl) {
-			try {
-				const protectedResourceMetadata = await this.discoverProtectedResourceMetadata(
-					oauthCredentials.serverUrl,
-				);
-
-				discoveredResource = protectedResourceMetadata.resource;
-
-				if (oauthCredentials.useDynamicClientRegistration) {
-					// Use first authorization server from the list
-					// MCP spec allows multiple; we use the first one
-					authorizationServerUrl = protectedResourceMetadata.authorization_servers[0];
-
-					// Validate authorization server URL to prevent SSRF attacks
-					this.validateAuthServerUrlOrThrow(authorizationServerUrl);
-				}
-
-				this.logger.debug('Protected resource discovery succeeded', {
-					resourceUrl: oauthCredentials.serverUrl,
-					...(oauthCredentials.useDynamicClientRegistration ? { authorizationServerUrl } : {}),
-					discoveredResource,
-				});
-			} catch (error) {
-				// Re-throw security validation errors immediately (don't fall back)
-				if (error instanceof InvalidOAuthUrlError) {
-					throw error;
-				}
-
-				// Fallback: If protected resource discovery fails,
-				// assume serverUrl IS the authorization server (backwards compatibility)
-				this.logger.debug(
-					oauthCredentials.useDynamicClientRegistration
-						? 'Protected resource discovery failed, assuming serverUrl is authorization server'
-						: 'Protected resource discovery failed',
-					{
-						serverUrl: oauthCredentials.serverUrl,
-						error: (error as Error).message,
-					},
-				);
-			}
-
-			resolvedResource = this.resolveResourceUrl(
-				suppliedResourceUrl,
-				discoveredResource,
-				oauthCredentials.serverUrl,
+			const { authorizationServerUrl: resolvedAuthUrl } = await this.discoverAndResolveResource(
+				oauthCredentials,
+				csrfData,
+				authorizationServerUrl!,
 			);
+			authorizationServerUrl = resolvedAuthUrl;
 		}
 
 		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
@@ -737,14 +753,6 @@ export class OauthService {
 				oauthCredentials.clientSecret = client_secret;
 				toUpdate.clientSecret = client_secret;
 			}
-		}
-
-		// RFC 8707: Resource resolution is shared between DCR and static credential paths.
-		// The resource parameter must be included in the authorize URL and token exchange
-		// regardless of whether dynamic client registration is used.
-		if (resolvedResource) {
-			oauthCredentials.resource = resolvedResource;
-			csrfData.resource = resolvedResource;
 		}
 
 		this.validateOAuthUrlOrThrow(oauthCredentials.authUrl ?? '');

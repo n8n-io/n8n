@@ -815,9 +815,14 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
 	);
 
+	// Merge old and new token data so fields that the authorization server
+	// does not echo back on refresh (e.g. `resource`) are preserved from the
+	// original token response.
+	const newOAuthTokenData = { ...token.data, ...newToken.data };
+
 	const refreshedTokenData = await decryptOAuth2TokenDataIfConfigured(
 		additionalData,
-		newToken.data,
+		newOAuthTokenData,
 		credentials.jweEnabled === true,
 	);
 
