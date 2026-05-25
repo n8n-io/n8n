@@ -363,6 +363,38 @@ describe('AgentsBuilderToolsService', () => {
 			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
 		});
 
+		it('write_config preserves fallback web search config for native-capable providers', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const updatedConfig: AgentJsonConfig = {
+				...currentConfig,
+				config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' } },
+				providerTools: {
+					'anthropic.web_search': { maxUses: 5 },
+				},
+			};
+			const normalizedConfig: AgentJsonConfig = {
+				...currentConfig,
+				config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' } },
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: normalizedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
+		});
+
 		it('write_config rejects draft LLM config without updating', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };

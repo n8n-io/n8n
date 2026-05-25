@@ -111,18 +111,19 @@ function applyNativeWebSearchBuilderDefaults(config: AgentJsonConfig): AgentJson
 		includeDefaultArgs: true,
 		defaultEnabled: true,
 	});
+	const webSearch = config.config?.webSearch;
+	const fallbackWebSearch =
+		webSearch?.enabled === true &&
+		(webSearch.provider === 'brave' || webSearch.provider === 'searxng');
 	const hasNativeWebSearch =
-		config.config?.webSearch?.enabled !== false && hasNativeWebSearchProvider(config.model);
+		!fallbackWebSearch && webSearch?.enabled !== false && hasNativeWebSearchProvider(config.model);
 
 	if (!hasNativeWebSearch) {
 		const { webSearch, ...restConfig } = config.config ?? {};
 		const { config: _config, providerTools: _providerTools, ...restAgentConfig } = config;
-		const keepFallbackWebSearch =
-			webSearch?.enabled === true &&
-			(webSearch.provider === 'brave' || webSearch.provider === 'searxng');
 		const normalizedConfig = {
 			...restConfig,
-			...(keepFallbackWebSearch ? { webSearch } : {}),
+			...(fallbackWebSearch ? { webSearch } : {}),
 		};
 		return {
 			...restAgentConfig,

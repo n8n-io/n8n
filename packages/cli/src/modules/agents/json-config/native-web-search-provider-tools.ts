@@ -39,6 +39,15 @@ export function hasNativeWebSearchProvider(modelId: string): boolean {
 	return getProviderPrefix(modelId) in NATIVE_WEB_SEARCH_TOOL_BY_PROVIDER;
 }
 
+export function isNativeWebSearchRequested(config: AgentJsonConfig): boolean {
+	const webSearch = config.config?.webSearch;
+	return (
+		webSearch?.provider === undefined ||
+		webSearch.provider === 'auto' ||
+		webSearch.provider === 'native'
+	);
+}
+
 /**
  * Centralizes the policy for native web-search provider tools. `config.webSearch`
  * is the source of truth; provider-tool entries are derived execution details
@@ -54,6 +63,7 @@ export function getNativeWebSearchProviderTools(
 	const explicitDisabled = config.config?.webSearch?.enabled === false;
 	const isEnabled =
 		!!nativeWebSearch &&
+		isNativeWebSearchRequested(config) &&
 		!explicitDisabled &&
 		(options.defaultEnabled === true || config.config?.webSearch?.enabled === true);
 

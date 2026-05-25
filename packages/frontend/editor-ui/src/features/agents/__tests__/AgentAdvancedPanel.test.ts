@@ -53,9 +53,10 @@ const globalStubs = {
 	N8nSelect: {
 		props: ['modelValue', 'disabled'],
 		emits: ['update:modelValue'],
-		template: '<select :disabled="disabled"><slot /></select>',
+		template:
+			'<select :value="modelValue" :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
 	},
-	N8nOption: { template: '<option><slot /></option>' },
+	N8nOption: { props: ['value', 'label'], template: '<option :value="value">{{ label }}</option>' },
 	N8nSwitch2: {
 		props: ['modelValue', 'disabled'],
 		emits: ['update:modelValue'],
@@ -74,6 +75,13 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 	} as AgentJsonConfig;
 }
 
+function emitSelectValue(wrapper: ReturnType<typeof mount>, testId: string, value: string) {
+	const select = wrapper.findComponent(`[data-testid="${testId}"]`) as unknown as {
+		vm: { $emit: (event: 'update:modelValue', value: string) => void };
+	};
+	select.vm.$emit('update:modelValue', value);
+}
+
 describe('AgentAdvancedPanel', () => {
 	it('treats sparse native web search config as disabled', async () => {
 		const wrapper = mount(AgentAdvancedPanel, {
@@ -88,7 +96,7 @@ describe('AgentAdvancedPanel', () => {
 		await toggle.trigger('click');
 		const events = wrapper.emitted('update:config') ?? [];
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect(last.config?.webSearch).toEqual({ enabled: true });
+		expect(last.config?.webSearch).toEqual({ enabled: true, provider: 'native' });
 		expect(last.providerTools).toEqual({ 'anthropic.web_search': { maxUses: 5 } });
 	});
 
@@ -152,6 +160,63 @@ describe('AgentAdvancedPanel', () => {
 		const events = wrapper.emitted('update:config') ?? [];
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
 		expect(last.config?.webSearch).toEqual({ enabled: true, provider: 'brave' });
+	});
+
+	it('keeps fallback controls visible on native-capable models', async () => {
+		const config = makeConfig({
+			config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-1' } },
+			providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+		} as Partial<AgentJsonConfig>);
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+
+		expect(wrapper.find('[data-testid="agent-web-search-method"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-web-search-fallback-credential"]').exists()).toBe(
+			true,
+		);
+		expect(wrapper.find('[data-testid="agent-web-search-max-uses"]').exists()).toBe(false);
+	});
+
+	it('switches fallback web search to native and emits native provider tools', async () => {
+		const config = makeConfig({
+			config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-1' } },
+		} as Partial<AgentJsonConfig>);
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+
+		emitSelectValue(wrapper, 'agent-web-search-method', 'native');
+		await nextTick();
+
+		const events = wrapper.emitted('update:config') ?? [];
+		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
+		expect(last.config?.webSearch).toEqual({ enabled: true, provider: 'native' });
+		expect(last.providerTools).toEqual({ 'anthropic.web_search': { maxUses: 5 } });
+	});
+
+	it('switches native web search to fallback and strips native provider tools', async () => {
+		const config = makeConfig({
+			config: { webSearch: { enabled: true, provider: 'native' } },
+			providerTools: {
+				'anthropic.web_search': { maxUses: 5 },
+				'openai.image_generation': {},
+			},
+		} as Partial<AgentJsonConfig>);
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+
+		emitSelectValue(wrapper, 'agent-web-search-method', 'brave');
+		await nextTick();
+
+		const events = wrapper.emitted('update:config') ?? [];
+		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
+		expect(last.config?.webSearch).toEqual({ enabled: true, provider: 'brave' });
+		expect(last.providerTools).toEqual({ 'openai.image_generation': {} });
 	});
 
 	it('shows the budget-tokens sub-control for Anthropic when thinking is on', async () => {

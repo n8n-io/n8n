@@ -30,7 +30,9 @@ import {
 	CATALOG_TO_CHATHUB,
 	AGENT_UNSUPPORTED_PROVIDERS,
 } from '../provider-mapping';
+import { PROVIDER_CAPABILITIES } from '../provider-capabilities';
 import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
+import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
 import AgentMiniEditor from './AgentMiniEditor.vue';
 import { useToast } from '@/app/composables/useToast';
 
@@ -103,9 +105,12 @@ function onModelChange(selection: ChatHubConversationModel) {
 		showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
 		return;
 	}
+	const model = `${catalogProvider}/${sanitizeModelId(catalogProvider, selection.model)}`;
+	const nextProviderTool = PROVIDER_CAPABILITIES[catalogProvider]?.webSearch ?? false;
 	emit('update:config', {
-		model: `${catalogProvider}/${sanitizeModelId(catalogProvider, selection.model)}`,
+		model,
 		credential: credentialId,
+		...normalizeWebSearchForModelChange(props.config, nextProviderTool),
 	});
 }
 

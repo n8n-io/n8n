@@ -540,22 +540,23 @@ describe('buildFromJson()', () => {
 		expect(getProviderToolNames(agent)).toContain(expectedTool);
 	});
 
-	it('treats Google web search config as fallback web search', async () => {
-		await expect(
-			buildFromJson(
-				makeConfig({
-					model: 'google/gemini-2.5-flash',
-					config: { webSearch: { enabled: true } },
-					providerTools: { 'google.google_search': {} },
-				}),
-				{},
-				{
-					toolExecutor: makeMockToolExecutor(),
-					credentialProvider: makeMockCredentialProvider(),
-					memoryFactory: makeMockMemoryFactory(),
-				},
-			),
-		).rejects.toThrow('Web search is enabled but no fallback search provider is configured.');
+	it('does not attach native web search for unsupported providers', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'google/gemini-2.5-flash',
+				config: { webSearch: { enabled: true } },
+				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getProviderToolNames(agent)).toEqual([]);
+		expect(getLocalToolNames(agent)).not.toContain('web_search');
 	});
 
 	it('does not enable native web search when config is sparse', async () => {
@@ -652,10 +653,27 @@ describe('buildFromJson()', () => {
 		expect(getLocalToolNames(agent)).toContain('web_search');
 	});
 
-	it('prefers native web search over fallback config for native-capable providers', async () => {
+	it('uses fallback web search when configured for native-capable providers', async () => {
 		const agent = await buildFromJson(
 			makeConfig({
 				config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getProviderToolNames(agent)).toEqual([]);
+		expect(getLocalToolNames(agent)).toContain('web_search');
+	});
+
+	it('uses native web search when native provider is explicitly configured', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				config: { webSearch: { enabled: true, provider: 'native' } },
 			}),
 			{},
 			{

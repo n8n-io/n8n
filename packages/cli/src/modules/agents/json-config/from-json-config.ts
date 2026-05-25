@@ -22,7 +22,7 @@ import { z } from 'zod';
 import { mapCredentialForProvider } from './credential-field-mapping';
 import {
 	getNativeWebSearchProviderTools,
-	hasNativeWebSearchProvider,
+	isNativeWebSearchRequested,
 } from './native-web-search-provider-tools';
 import { resolveProviderToolName } from './provider-tool-aliases';
 
@@ -91,7 +91,7 @@ export async function buildFromJson(
 	agent.skills(configuredSkills);
 
 	// Provider tools
-	const providerTools = getEffectiveProviderTools(config);
+	const providerTools = getNativeWebSearchProviderTools(config, { includeDefaultArgs: false });
 	if (providerTools) {
 		for (const [name, args] of Object.entries(providerTools)) {
 			const resolved = resolveProviderToolName(name);
@@ -127,25 +127,14 @@ export async function buildFromJson(
 	return agent;
 }
 
-/**
- * Runtime reconstruction still normalizes provider tools because configs can
- * come from the UI, imports, old saves, or manual edits. This derives the
- * effective native web-search tools without rewriting the persisted config.
- */
-function getEffectiveProviderTools(
-	config: AgentJsonConfig,
-): Record<string, Record<string, unknown>> {
-	return getNativeWebSearchProviderTools(config, { includeDefaultArgs: false });
-}
-
 function buildFallbackWebSearchTool(
 	config: AgentJsonConfig,
 	credentialProvider: CredentialProvider,
 ): BuiltTool | null {
-	const hasNativeWebSearch = hasNativeWebSearchProvider(config.model);
 	const webSearchConfig = config.config?.webSearch;
 
-	if (!webSearchConfig?.enabled || hasNativeWebSearch) return null;
+	if (!webSearchConfig?.enabled) return null;
+	if (isNativeWebSearchRequested(config)) return null;
 	if (webSearchConfig.provider !== 'brave' && webSearchConfig.provider !== 'searxng') {
 		throw new Error('Web search is enabled but no fallback search provider is configured.');
 	}

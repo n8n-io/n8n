@@ -99,11 +99,11 @@ the returned instructions.
 
 - \`agent-builder-config-mutation\`: reading/writing JSON config, schema, patch paths, stale retries.
 - \`agent-builder-llm-selection\`: resolving or asking for the target agent's main LLM.
-- \`agent-builder-tools\`: workflow, node, custom, provider tools, and expressions.
+- \`agent-builder-tools\`: attach tools, look up node definitions for node tools,
+  and configure workflow, node, custom, provider tools, and expressions.
 - \`agent-builder-memory\`: n8n session memory, observation log, Episodic Memory.
 - \`agent-builder-integrations\`: schedule and chat integrations.
 - \`agent-builder-target-skills\`: creating skills for the target agent.
-- \`agent-builder-research\`: when to use web search for external APIs/services.
 
 Requests for "web search", "Brave web search", or "SearXNG web search" are
 agent config changes, not node-tool tasks. Follow the Config schema reference:
@@ -162,14 +162,12 @@ export function getConfigRulesSection(): string {
 - \`memory.storage\` must be "n8n"; \`memory.lastMessages\` defaults to 50.
 - \`memory.episodicMemory\` requires \`ask_credential\` with
   \`credentialType: "openAiApi"\`.
-- Web search lives under \`config.webSearch\`; follow the Config schema reference
-  for the exact shape. Anthropic and OpenAI use native web search. Every other
-  provider must use fallback search with \`provider: "brave"\` or
-  \`provider: "searxng"\`; do not write \`{ "enabled": true }\` alone for those
-  providers. For fallback search credentials, use these exact \`ask_credential\`
-  credential type names only: Brave uses
-  \`credentialType: "braveSearchApi"\` with \`provider: "brave"\`; SearXNG uses
-  \`credentialType: "searXngApi"\` with \`provider: "searxng"\`.
+- Web search lives under \`config.webSearch\`. For Anthropic/OpenAI native search,
+  use \`{ "enabled": true, "provider": "native" }\` or omit \`provider\`. For Brave
+  or SearXNG, use \`provider: "brave"\` or \`provider: "searxng"\` with a credential,
+  even if the model also supports native search. Never write \`{ "enabled": true }\`
+  alone for fallback search. Use exact \`ask_credential\` types:
+  \`braveSearchApi\` for Brave and \`searXngApi\` for SearXNG.
 - Fresh agents need a real model, credential, and instructions before config
   is written.`;
 }

@@ -16,7 +16,8 @@ export function configMutationSkill(): RuntimeSkill {
 		description:
 			'Use before reading, writing, replacing, or patching the target agent JSON config.',
 		instructions: `\
-Use this skill whenever you call \`read_config\`, \`write_config\`, or \`patch_config\`.
+Use this after deciding a config change is needed and before calling
+\`read_config\`, \`write_config\`, or \`patch_config\`.
 
 ## Required flow
 
@@ -26,7 +27,8 @@ Use this skill whenever you call \`read_config\`, \`write_config\`, or \`patch_c
 4. For \`patch_config\`, send RFC 6902 operations as a JSON string plus \`baseConfigHash\`.
 5. Use JSON Pointer paths like \`/field\`, \`/nested/field\`, \`/array/0\`, and \`/array/-\`.
 6. On \`stage: "stale"\`, retry once from the returned \`config\` and \`configHash\`.
-7. On parse, patch, or schema errors, fix the payload before trying again.
+7. On parse, patch, or schema errors, fix the payload, call \`read_config\`
+   again, and retry from the fresh \`configHash\`.
 
 ## Schema source of truth
 
@@ -100,18 +102,18 @@ For Episodic Memory, call \`ask_credential\` with \`credentialType: "openAiApi"\
 
 - Thinking lives under \`config.thinking\`.
 - Web search lives under \`config.webSearch\`.
-- For Anthropic and OpenAI models, set \`config.webSearch.enabled = true\` unless the user asks to disable web search.
-- For every other provider, web search must use fallback search: set
-  \`config.webSearch = { "enabled": true, "provider": "brave" | "searxng", "credential": "<credentialId>" }\`
-  after calling \`ask_credential\` for the matching search credential.
-- Do not write \`{ "enabled": true }\` alone for non-Anthropic/OpenAI providers;
-  the write path treats that as unsupported native web search and removes it.
-- The write path fills native provider tool defaults. Do not invent provider tool keys.
+- For Anthropic and OpenAI native search, set
+  \`config.webSearch = { "enabled": true, "provider": "native" }\` unless the
+  user asks to disable web search. Omitting \`provider\` also means native.
+- For Brave or SearXNG search, call \`ask_credential\`, then set
+  \`config.webSearch = { "enabled": true, "provider": "brave" | "searxng", "credential": "<credentialId>" }\`.
+- Brave and SearXNG remain fallback tools even when the model provider also supports native search.
+- Never write \`{ "enabled": true }\` alone for fallback search.
+- The write path fills native provider tool defaults only for native search. Do not invent provider tool keys.
 
 ### Configure fallback services
 
-- Services that require credentials must call \`ask_credential\` first.
-- Persist only the credential id returned by \`ask_credential\`.
+- Services that require credentials must call \`ask_credential\` first and persist only its returned credential id.
 - If credential selection is skipped, do not enable the feature unless it supports missing credentials.
 - For fallback web search, use exact credential type names: \`braveSearchApi\` for \`provider: "brave"\`, and \`searXngApi\` for \`provider: "searxng"\`.
 
@@ -146,9 +148,9 @@ Bad: replacing \`config\` while dropping unrelated settings
 ## Error recovery
 
 - \`stage: "stale"\`: retry once from the returned \`config\` and \`configHash\`.
-- \`stage: "parse"\`: fix JSON syntax.
-- \`stage: "patch"\`: fix JSON Pointer paths or operation shape.
-- \`stage: "schema"\`: compare the payload against the Config schema reference.
+- \`stage: "parse"\`: fix JSON syntax, then call \`read_config\` before retrying.
+- \`stage: "patch"\`: fix JSON Pointer paths or operation shape, then call \`read_config\` before retrying.
+- \`stage: "schema"\`: compare the payload against the Config schema reference, then call \`read_config\` before retrying.
 - \`ask_credential\` skipped: omit or disable the feature that required it.`,
 	};
 }
