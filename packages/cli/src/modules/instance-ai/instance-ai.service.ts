@@ -162,7 +162,7 @@ const SANDBOX_NAME_MAX_LEN = 63;
 const SANDBOX_LABEL_MAX_LEN = 63;
 const NAME_PREFIX_SLUG_MAX_LEN = 24;
 const SHORT_RUN_ID_LEN = 8;
-const DEFAULT_SANDBOX_TTL_MS = 10 * 60 * 1000;
+const DEFAULT_SANDBOX_TTL_MS = 15 * 60 * 1000;
 
 function slugifySandboxName(value: string, maxLen: number): string {
 	const slug = value
@@ -201,7 +201,8 @@ function buildThreadScopedSandboxName(
 	const threadSlug = slugifySandboxName(getThreadScopedSandboxName(threadId), SANDBOX_NAME_MAX_LEN);
 	if (threadSlug) parts.push(threadSlug);
 	const name = slugifySandboxName(parts.join('-'), SANDBOX_NAME_MAX_LEN);
-	return name || 'instance-ai-thread';
+	if (!name) throw new UnexpectedError('Failed to build thread-scoped sandbox name');
+	return name;
 }
 
 function buildThreadScopedSandboxLabels(
@@ -876,6 +877,8 @@ export class InstanceAiService {
 		if (this.sandboxTtlMs <= 0) return;
 		if (entry.cleanupTimer) clearTimeout(entry.cleanupTimer);
 
+		// Provider auto-stop handles remote Daytona sandboxes, but this process
+		// still needs to drop stale cache entries and local workspace handles.
 		const delay = Math.max(0, entry.expiresAt - Date.now());
 		entry.cleanupTimer = setTimeout(() => {
 			const current = this.sandboxes.get(threadId);

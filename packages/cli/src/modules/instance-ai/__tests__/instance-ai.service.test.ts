@@ -498,6 +498,8 @@ type WorkspaceServiceInternals = {
 	sandboxes: Map<string, unknown>;
 	sandboxCreations: Map<string, Promise<unknown>>;
 	resolveSandboxConfig: jest.MockedFunction<(user: User) => Promise<SandboxConfig>>;
+	instanceAiConfig?: { builderSandboxTtlMs?: number };
+	sandboxTtlMs: number;
 	getOrCreateWorkspace: (
 		threadId: string,
 		user: User,
@@ -826,6 +828,15 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
 		expect(service.sandboxCreations.size).toBe(0);
+	});
+
+	it('keeps the default runtime sandbox TTL aligned with provider auto-stop', () => {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as WorkspaceServiceInternals;
+		service.instanceAiConfig = {};
+
+		expect(service.sandboxTtlMs).toBe(15 * 60 * 1000);
 	});
 
 	it('threads Daytona name prefixes and labels through sandbox creation', async () => {
