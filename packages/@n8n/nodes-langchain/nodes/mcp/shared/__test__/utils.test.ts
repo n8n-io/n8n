@@ -211,7 +211,9 @@ describe('utils', () => {
 				}
 				expect(TransportClass).not.toHaveBeenCalled();
 				expect(mockClient.connect).not.toHaveBeenCalled();
-				expect(addEventListener).not.toHaveBeenCalled();
+				expect(addEventListener).toHaveBeenCalledWith('abort', expect.any(Function), {
+					once: true,
+				});
 			});
 
 			it('should connect successfully and pass a custom fetch', async () => {
