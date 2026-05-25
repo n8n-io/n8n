@@ -140,6 +140,8 @@ jobs:
             -extfile "$TLS_DIR/control-grpc-api-client.ext" -extensions v3_req 2>/dev/null
 
           rm -f "$TLS_DIR"/*.csr "$TLS_DIR"/*.srl "$TLS_DIR"/*.ext
+          # Containers run as non-root; make certs world-readable (ephemeral CI-only keys)
+          chmod 644 "$TLS_DIR"/*
           echo "mTLS certificates generated in $TLS_DIR"
 
       - name: Create Docker network
