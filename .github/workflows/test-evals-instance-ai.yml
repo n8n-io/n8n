@@ -168,9 +168,6 @@ jobs:
           LANGSMITH_REVISION_ID: ${{ github.sha }}
           LANGSMITH_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
           FILTER: ${{ inputs.filter }}
-          # Embedded into the eval-generated threadId, which the runtime path
-          # uses verbatim as the thread-scoped Daytona sandbox name — makes
-          # CI-spawned sandboxes identifiable at a glance in the dashboard.
           EVAL_THREAD_PREFIX: evals-ci
         run: |
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"

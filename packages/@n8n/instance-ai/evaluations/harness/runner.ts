@@ -261,17 +261,9 @@ function isMultiTurnConversation(conversation: ConversationTurn[]): boolean {
 	return conversation[0].role !== 'user';
 }
 
-/**
- * Build the threadId used by `buildWorkflow`. `EVAL_THREAD_PREFIX` lets CI
- * (or any operator) embed branch/run context directly into the threadId,
- * which the runtime path uses verbatim as the thread-scoped sandbox name —
- * making eval-spawned sandboxes identifiable at a glance in the Daytona
- * dashboard. Defaults to `eval-<uuid>` when unset.
- */
 export function makeEvalThreadId(env: NodeJS.ProcessEnv = process.env): string {
 	const trimmed = env.EVAL_THREAD_PREFIX?.trim();
-	// Plain `??` won't do — an empty (or whitespace-only) env var should also
-	// fall back, not just an unset one.
+	// `??` would let empty/whitespace-only env values pass through as the prefix.
 	const prefix = trimmed && trimmed.length > 0 ? trimmed : 'eval';
 	return `${prefix}-${crypto.randomUUID()}`;
 }
