@@ -72,6 +72,7 @@ async function connectAndGetTools(
 		name: node.type,
 		version: node.typeVersion,
 		onUnauthorized: async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h),
+		signal: ctx.getExecutionCancelSignal?.(),
 	});
 
 	if (!client.ok) {

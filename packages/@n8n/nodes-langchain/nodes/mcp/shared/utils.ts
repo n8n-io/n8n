@@ -75,13 +75,18 @@ type OnUnauthorizedHandler = (
 type ConnectMcpClientError =
 	| { type: 'invalid_url'; error: Error }
 	| { type: 'connection'; error: Error }
-	| { type: 'auth'; error: Error };
+	| { type: 'auth'; error: Error }
+	| { type: 'cancelled'; error: Error };
 
 export function mapToNodeOperationError(
 	node: INode,
 	error: ConnectMcpClientError,
 ): NodeOperationError {
 	switch (error.type) {
+		case 'cancelled':
+			return new NodeOperationError(node, error.error, {
+				message: 'Execution was cancelled',
+			});
 		case 'invalid_url':
 			return new NodeOperationError(node, error.error, {
 				message: 'Could not connect to your MCP server. The provided URL is invalid.',
@@ -107,6 +112,7 @@ export async function connectMcpClient({
 	name,
 	version,
 	onUnauthorized,
+	signal,
 }: {
 	serverTransport: McpServerTransport;
 	endpointUrl: string;
@@ -114,6 +120,7 @@ export async function connectMcpClient({
 	name: string;
 	version: number;
 	onUnauthorized?: OnUnauthorizedHandler;
+	signal?: AbortSignal;
 }): Promise<Result<Client, ConnectMcpClientError>> {
 	const endpoint = normalizeAndValidateUrl(endpointUrl);
 
@@ -121,17 +128,42 @@ export async function connectMcpClient({
 		return createResultError({ type: 'invalid_url', error: endpoint.error });
 	}
 
+	if (signal?.aborted) {
+		return createResultError({
+			type: 'cancelled',
+			error: new Error('Execution was cancelled'),
+		});
+	}
+
 	const authFetch = createAuthFetch(headers, onUnauthorized);
 	const client = new Client({ name, version: version.toString() }, { capabilities: {} });
+
+	if (signal) {
+		// client.close() is safe to call before connect() completes or after
+		// it has already been closed -- both are idempotent no-ops in the SDK.
+		signal.addEventListener(
+			'abort',
+			() => {
+				Promise.resolve(client.close()).catch(() => {});
+			},
+			{ once: true },
+		);
+	}
 
 	if (serverTransport === 'httpStreamable') {
 		try {
 			const transport = new StreamableHTTPClientTransport(endpoint.result, {
 				fetch: authFetch,
+				...(signal ? { requestInit: { signal } } : {}),
 			});
 			await client.connect(transport);
 			return createResultOk(client);
 		} catch (error) {
+			const err = error instanceof Error ? error : new Error(String(error));
+			if (err.name === 'AbortError' || signal?.aborted) {
+				return createResultError({ type: 'cancelled', error: err });
+			}
+
 			if (isUnauthorizedError(error) || isForbiddenError(error)) {
 				return createResultError({ type: 'auth', error: error as Error });
 			} else {
@@ -153,10 +185,16 @@ export async function connectMcpClient({
 					}),
 			},
 			fetch: authFetch,
+			...(signal ? { requestInit: { signal } } : {}),
 		});
 		await client.connect(sseTransport);
 		return createResultOk(client);
 	} catch (error) {
+		const err = error instanceof Error ? error : new Error(String(error));
+		if (err.name === 'AbortError' || signal?.aborted) {
+			return createResultError({ type: 'cancelled', error: err });
+		}
+
 		if (isUnauthorizedError(error) || isForbiddenError(error)) {
 			return createResultError({ type: 'auth', error: error as Error });
 		} else {

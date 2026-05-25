@@ -235,6 +235,7 @@ export class McpClient implements INodeType {
 			name: node.type,
 			version: node.typeVersion,
 			onUnauthorized: async (headers) => await tryRefreshOAuth2Token(this, authentication, headers),
+			signal: this.getExecutionCancelSignal(),
 		});
 		if (!client.ok) {
 			throw mapToNodeOperationError(node, client.error);
