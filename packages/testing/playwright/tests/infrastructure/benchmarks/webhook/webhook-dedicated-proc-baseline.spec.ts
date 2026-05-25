@@ -3,33 +3,39 @@ import { benchConfig } from '../../../../playwright-projects';
 import { setupWebhook } from '../../../../utils/benchmark/webhook-driver';
 import { runWebhookThroughputTest } from '../harness/webhook-throughput-harness';
 
-// Queue-mode baseline at 1 main + 1 worker. Pair with `webhook-main-scaling`
-// (2 mains + 2 workers) to read the multi-main scaling factor isolated from
-// the direct→queue architecture change. Without this baseline, comparing
-// `webhook-single-instance` (1m, 0w direct) to `webhook-main-scaling` would
-// conflate "adding mains" with "switching to queue mode".
-//
-// Parameters intentionally match `webhook-main-scaling.spec.ts` (200 × 180s)
-// so the comparison is apples-to-apples.
+// Dedicated `n8n webhook` proc baseline at 1 main + 1 webhook proc + 1 worker.
+// This is the production-canonical topology for queue-mode n8n: Caddy routes
+// `/webhook/*` and `/form/*` to the dedicated webhook proc; everything else
+// (UI, REST, `/webhook-test/*`, `/webhook-waiting/*`, `/form-test/*`) flows
+// to main. Pair with `webhook-dedicated-proc-2wp-1w` and
+// `webhook-dedicated-proc-2wp-2w` to read the proc-axis and worker-axis
+// scaling factors independently.
 
 const MAINS = 1;
+const WEBHOOKS = 1;
 const WORKERS = 1;
 const CONNECTIONS = 200;
 const DURATION_SECONDS = 180;
 
-test.use({ capability: benchConfig('webhook-queue-baseline', { mains: MAINS, workers: WORKERS }) });
+test.use({
+	capability: benchConfig('webhook-dedicated-proc-baseline', {
+		mains: MAINS,
+		webhooks: WEBHOOKS,
+		workers: WORKERS,
+	}),
+});
 
 test.describe(
-	'What is the webhook ingestion ceiling in queue mode at 1 main + 1 worker?',
+	'What is the webhook ingestion ceiling with a dedicated webhook proc?',
 	{
 		tag: '@bench:webhook',
 		annotation: [
 			{ type: 'owner', description: 'Catalysts' },
-			{ type: 'question', description: 'webhook-queue-baseline' },
+			{ type: 'question', description: 'webhook-dedicated-proc-baseline' },
 		],
 	},
 	() => {
-		test(`Async webhook + 1 noop, 1KB payload, ${CONNECTIONS} connections × ${DURATION_SECONDS}s (${MAINS} main + ${WORKERS} worker)`, async ({
+		test(`Async webhook + 1 noop, 1KB payload, ${CONNECTIONS} connections × ${DURATION_SECONDS}s (${MAINS} main + ${WEBHOOKS} webhook + ${WORKERS} worker)`, async ({
 			api,
 			services,
 			backendUrl,

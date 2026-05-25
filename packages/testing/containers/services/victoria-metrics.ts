@@ -65,7 +65,7 @@ export const victoriaMetrics: Service<VictoriaMetricsResult> = {
 	description: 'VictoriaMetrics',
 
 	getOptions(ctx: StartContext): VictoriaMetricsConfig {
-		const { mains, workers, projectName } = ctx;
+		const { mains, workers, webhooks, projectName } = ctx;
 		const scrapeTargets: ScrapeTarget[] = [];
 
 		for (let i = 1; i <= mains; i++) {
@@ -74,6 +74,18 @@ export const victoriaMetrics: Service<VictoriaMetricsResult> = {
 				job: 'n8n-main',
 				instance: `n8n-main-${i}`,
 				host: hostname,
+				port: 5678,
+			});
+		}
+		for (let i = 1; i <= webhooks; i++) {
+			// Dedicated `n8n webhook` procs emit the same `n8n_*` metric family
+			// as main (event-bus counters in particular). Scraping them is what
+			// makes `workflow_success_total` and `workflow_failed_total` visible
+			// to the harness when the webhook proc is in the execution path.
+			scrapeTargets.push({
+				job: 'n8n-webhook',
+				instance: `n8n-webhook-${i}`,
+				host: `${projectName}-n8n-webhook-${i}`,
 				port: 5678,
 			});
 		}

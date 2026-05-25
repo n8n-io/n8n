@@ -50,6 +50,9 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 // postgres/kafka/redis/observability.
 export const BENCHMARK_MAIN_RESOURCES = { memory: 4, cpu: 2 };
 export const BENCHMARK_WORKER_RESOURCES = { memory: 2, cpu: 1 };
+// Webhook procs are CPU-bound on JSON parse + Redis enqueue. 2 vCPU / 4 GB
+// matches main's profile; revisit if `n8n webhook` ends up needing more memory.
+export const BENCHMARK_WEBHOOK_RESOURCES = { memory: 4, cpu: 2 };
 
 export const OBSERVABILITY_SERVICES = ['victoriaLogs', 'victoriaMetrics', 'vector'] as const;
 
@@ -67,9 +70,14 @@ const BENCHMARK_CONFIG: N8NConfig = {
 	postgres: true,
 	resourceQuota: BENCHMARK_MAIN_RESOURCES,
 	workerResourceQuota: BENCHMARK_WORKER_RESOURCES,
-	// Distribute load across all mains. UI tests stick to the default `first`
-	// policy so debugging hits a single predictable backend.
-	lbPolicy: 'round_robin',
+	webhookResourceQuota: BENCHMARK_WEBHOOK_RESOURCES,
+	// `least_conn` routes each request to the upstream with the fewest active
+	// connections — self-correcting against keep-alive connection affinity that
+	// round_robin doesn't compensate for. Critical for 2+ webhook procs where
+	// autocannon's 200 long-lived connections otherwise skew load 50/100%.
+	// UI tests stick to the default `first` policy so debugging hits a single
+	// predictable backend.
+	lbPolicy: 'least_conn',
 	env: {
 		N8N_LOG_LEVEL: 'error',
 		N8N_DIAGNOSTICS_ENABLED: 'false',
@@ -97,6 +105,13 @@ export interface BenchOptions {
 	/** Number of worker pods. Default: 0 (direct mode). */
 	workers?: number;
 	/**
+	 * Number of dedicated `n8n webhook` procs. Default: 0 (webhook ingestion
+	 * stays on main). When > 0, Caddy routes `/webhook/*` and `/form/*` to
+	 * these procs; test-mode paths and everything else continue to flow to
+	 * mains. Forces queue mode.
+	 */
+	webhooks?: number;
+	/**
 	 * Adds the `tracing` service (Jaeger + n8n-tracer) and turns on OTEL emission.
 	 * Adds ~5-10% per-request overhead — opt in only when measuring OTEL cost or
 	 * collecting flamegraph data, not for clean ceiling numbers.
@@ -118,8 +133,11 @@ export interface BenchOptions {
  *   // Queue-mode kafka (1 main + 3 workers)
  *   test.use({ capability: benchConfig('node-count-scaling', { kafka: true, workers: 3 }) });
  *
- *   // Multi-main webhook
- *   test.use({ capability: benchConfig('webhook-main-scaling', { mains: 2, workers: 2 }) });
+ *   // Dedicated webhook proc + worker (Caddy path-routes /webhook/* to the proc)
+ *   test.use({ capability: benchConfig('webhook-dedicated-proc', { webhooks: 1, workers: 1 }) });
+ *
+ *   // Joint scale-up: 2 webhook procs + 2 workers
+ *   test.use({ capability: benchConfig('webhook-2wp-2w', { webhooks: 2, workers: 2 }) });
  */
 export function benchConfig(isolation: string, opts: BenchOptions = {}): N8NConfig {
 	const services = [...(BENCHMARK_CONFIG.services ?? [])];
@@ -144,6 +162,7 @@ export function benchConfig(isolation: string, opts: BenchOptions = {}): N8NConf
 		services,
 		...(opts.mains !== undefined && { mains: opts.mains }),
 		...(opts.workers !== undefined && { workers: opts.workers }),
+		...(opts.webhooks !== undefined && { webhooks: opts.webhooks }),
 		env,
 	};
 }
