@@ -181,6 +181,11 @@ export class ExecutionPersistence {
 				// No entity columns to update, but the caller still requested a guarded write.
 				// Re-verify the conditions inside the transaction so a data-only update can't slip
 				// past a `requireStatus` / `requireNotFinished` / `requireNotCanceled` check.
+				// TODO: In Postgres this COUNT alone does not prevent a concurrent transaction from
+				// changing the row's status between the check and the subsequent data write — a
+				// row-level lock (e.g. `SELECT ... FOR UPDATE`) is required for true race-safety.
+				// SQLite is unaffected because `BEGIN` already takes an exclusive write lock.
+				// The same gap exists in the legacy `ExecutionRepository` path; follow-up ticket.
 				const matchingRows = await tx.count(ExecutionEntity, { where: whereCondition });
 				if (matchingRows === 0) return false;
 			}
