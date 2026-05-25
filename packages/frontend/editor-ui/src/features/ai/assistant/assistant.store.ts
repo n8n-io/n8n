@@ -32,10 +32,10 @@ import { v4 as uuid } from 'uuid';
 export const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
 
-// TODO(per-workflow-ndv-PR2): the `workflowsStore.activeNode()` calls below will
-// switch to a hoisted scoped NDV store (`useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)).activeNode`).
-// Leaving them on the shim in PR1 preserves state consistency with NDV components
-// that still write to the default store; they all flip together in PR2.
+// TODO: the `workflowsStore.activeNode()` calls below will switch to a hoisted
+// scoped NDV store (`useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)).activeNode`).
+// Leaving them on the shim for now preserves state consistency with NDV components
+// that still write to the default store; they need to flip together.
 export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
