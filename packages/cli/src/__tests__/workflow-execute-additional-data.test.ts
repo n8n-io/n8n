@@ -35,7 +35,6 @@ import { ExternalHooks } from '@/external-hooks';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
-import * as redactionFeatureFlag from '@/modules/redaction/redaction-enforcement.feature-flag';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -780,30 +779,26 @@ describe('WorkflowExecuteAdditionalData', () => {
 		});
 
 		describe('redactionContext', () => {
-			it('should not set redactionContext when flag is off', async () => {
-				jest.spyOn(redactionFeatureFlag, 'isRedactionEnforcementEnabled').mockReturnValue(false);
+			it('should not set redactionContext when buildContext returns undefined', async () => {
+				instanceRedactionEnforcementService.buildContext.mockResolvedValue(undefined);
 
 				const additionalData = await getBase();
 
 				expect(additionalData.redactionContext).toBeUndefined();
-				expect(instanceRedactionEnforcementService.get).not.toHaveBeenCalled();
 			});
 
-			it('should populate redactionContext from InstanceRedactionEnforcementService when flag is on', async () => {
-				jest.spyOn(redactionFeatureFlag, 'isRedactionEnforcementEnabled').mockReturnValue(true);
+			it('should populate redactionContext from InstanceRedactionEnforcementService.buildContext', async () => {
 				const enforcement = { enforced: true, manual: false, production: true };
-				instanceRedactionEnforcementService.get.mockResolvedValue(enforcement);
+				instanceRedactionEnforcementService.buildContext.mockResolvedValue({ enforcement });
 
 				const additionalData = await getBase();
 
 				expect(additionalData.redactionContext).toEqual({ enforcement });
-				expect(instanceRedactionEnforcementService.get).toHaveBeenCalledTimes(1);
 			});
 
 			it('should reflect enforcement defaults (enforced:false) when flag is on but enforcement is inactive', async () => {
-				jest.spyOn(redactionFeatureFlag, 'isRedactionEnforcementEnabled').mockReturnValue(true);
 				const enforcement = { enforced: false, manual: false, production: false };
-				instanceRedactionEnforcementService.get.mockResolvedValue(enforcement);
+				instanceRedactionEnforcementService.buildContext.mockResolvedValue({ enforcement });
 
 				const additionalData = await getBase();
 

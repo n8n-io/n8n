@@ -33,6 +33,11 @@ export class InstanceRedactionEnforcementService {
 		return this.parseStoredValue(raw, 'cache') ?? REDACTION_ENFORCEMENT_DEFAULTS;
 	}
 
+	async buildContext(): Promise<{ enforcement: RedactionEnforcementSettings } | undefined> {
+		if (!isRedactionEnforcementEnabled()) return undefined;
+		return { enforcement: await this.get() };
+	}
+
 	async set(next: RedactionEnforcementSettings): Promise<void> {
 		if (!isRedactionEnforcementEnabled()) {
 			throw new OperationalError('Redaction enforcement is not enabled on this instance');
