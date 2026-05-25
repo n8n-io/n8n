@@ -9,6 +9,12 @@ const tsJestOptions = {
 		declaration: false,
 		sourceMap: true,
 		rootDir: '.',
+		// Force the transpile-only path for tests. Without this, ts-jest runs
+		// the full type-checker on every transformed file, which combined with
+		// aggressive worker recycling (workerIdleMemoryLimit) makes test runs
+		// ~4-5x slower. Package builds and `pnpm typecheck` read the package
+		// tsconfig directly and are unaffected.
+		isolatedModules: true,
 		// Relax strictness for cross-package imports. ts-jest applies the host
 		// package's tsconfig to every file it transforms, including imports
 		// from packages like nodes-base that disable these in their own
