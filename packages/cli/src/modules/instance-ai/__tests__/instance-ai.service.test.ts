@@ -983,11 +983,122 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			expect.objectContaining({
 				id: 'instance-ai-thread-thread-1',
 				name: 'instance-ai-thread-thread-1',
+				labels: { thread_id: 'thread-1' },
 			}),
 		);
 		expect(createWorkspace).toHaveBeenCalledTimes(1);
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
+	});
+
+	it('forwards a config.tag through to the sandbox labels when set', async () => {
+		const service = Object.create(InstanceAiService.prototype) as unknown as {
+			createExecutionEnvironment: (
+				user: User,
+				threadId: string,
+				runId: string,
+				abortSignal: AbortSignal,
+			) => Promise<{ orchestrationContext: { workspace?: unknown } }>;
+			settingsService: {
+				getAdminSettings: jest.Mock;
+				isLocalGatewayDisabledForUser: jest.Mock;
+				getPermissions: jest.Mock;
+			};
+			gatewayRegistry: { findGateway: jest.Mock };
+			aiService: { isProxyEnabled: jest.Mock };
+			adapterService: { createContext: jest.Mock; getNodeDefinitionDirs: jest.Mock };
+			sourceControlPreferencesService: { getPreferences: jest.Mock };
+			resolveAgentModelConfig: jest.Mock;
+			ensureThreadExists: jest.Mock;
+			agentMemory: unknown;
+			dbIterationLogStorage: unknown;
+			dbSnapshotStorage: unknown;
+			checkpointStore: unknown;
+			instanceAiConfig: { subAgentMaxSteps: number; browserMcp: boolean };
+			defaultTimeZone: string;
+			eventBus: unknown;
+			logger: unknown;
+			telemetry: { track: jest.Mock };
+			oauth2CallbackUrl: string;
+			webhookBaseUrl: string;
+			formBaseUrl: string;
+			runState: { touchActiveRun: jest.Mock; registerPendingConfirmation: jest.Mock };
+			spawnBackgroundTask: jest.Mock;
+			cancelBackgroundTask: jest.Mock;
+			backgroundTasks: { touchTask: jest.Mock };
+			schedulePlannedTasks: jest.Mock;
+			sendCorrectionToTask: jest.Mock;
+			sandboxes: Map<string, unknown>;
+			sandboxCreations: Map<string, Promise<unknown>>;
+			domainAccessTrackersByThread: Map<string, unknown>;
+			resolveSandboxConfig: jest.Mock;
+		};
+		service.settingsService = {
+			getAdminSettings: jest.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
+			isLocalGatewayDisabledForUser: jest.fn(async () => false),
+			getPermissions: jest.fn(() => ({})),
+		};
+		service.gatewayRegistry = { findGateway: jest.fn(() => undefined) };
+		service.aiService = { isProxyEnabled: jest.fn(() => false) };
+		service.adapterService = {
+			createContext: jest.fn(() => ({})),
+			getNodeDefinitionDirs: jest.fn(() => []),
+		};
+		service.sourceControlPreferencesService = {
+			getPreferences: jest.fn(() => ({ branchReadOnly: false })),
+		};
+		service.resolveAgentModelConfig = jest.fn(async () => 'model-1');
+		service.ensureThreadExists = jest.fn(async () => {});
+		service.agentMemory = {};
+		service.dbIterationLogStorage = {};
+		service.dbSnapshotStorage = {};
+		service.checkpointStore = {};
+		service.instanceAiConfig = { subAgentMaxSteps: 10, browserMcp: false };
+		service.defaultTimeZone = 'UTC';
+		service.eventBus = {};
+		service.logger = {};
+		service.telemetry = { track: jest.fn() };
+		service.oauth2CallbackUrl = 'http://localhost/rest/oauth2-credential/callback';
+		service.webhookBaseUrl = 'http://localhost/webhook';
+		service.formBaseUrl = 'http://localhost/form';
+		service.runState = { touchActiveRun: jest.fn(), registerPendingConfirmation: jest.fn() };
+		service.spawnBackgroundTask = jest.fn();
+		service.cancelBackgroundTask = jest.fn();
+		service.backgroundTasks = { touchTask: jest.fn() };
+		service.schedulePlannedTasks = jest.fn();
+		service.sendCorrectionToTask = jest.fn();
+		service.sandboxes = new Map();
+		service.sandboxCreations = new Map();
+		service.domainAccessTrackersByThread = new Map();
+		const taggedConfig = {
+			enabled: true,
+			provider: 'daytona',
+			tag: 'evals-ci-some-branch!',
+		} satisfies SandboxConfig;
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => taggedConfig);
+		(createAllTools as jest.Mock).mockReturnValue(new Map());
+		const sandbox = { id: 'sandbox-1' };
+		const workspace = { init: jest.fn(async () => {}), destroy: jest.fn(async () => {}) };
+		(createSandbox as jest.Mock).mockResolvedValue(sandbox);
+		(createWorkspace as jest.Mock).mockReturnValue(workspace);
+		(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
+
+		const environment = await service.createExecutionEnvironment(
+			fakeUser,
+			'thread.special:id',
+			'run-1',
+			new AbortController().signal,
+		);
+		const lazyWorkspace = environment.orchestrationContext.workspace as {
+			ensureWorkspace: () => Promise<unknown>;
+		};
+		await lazyWorkspace.ensureWorkspace();
+
+		expect(createSandbox).toHaveBeenCalledWith(
+			expect.objectContaining({
+				labels: { thread_id: 'thread.special-id', tag: 'evals-ci-some-branch' },
+			}),
+		);
 	});
 });
 

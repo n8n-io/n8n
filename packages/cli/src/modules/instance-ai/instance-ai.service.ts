@@ -158,14 +158,31 @@ function getThreadScopedSandboxName(threadId: string): string {
 	return `instance-ai-thread-${threadId}`;
 }
 
+// Daytona label values accept letters, digits, '_', '.', '-' (truncated to 63 chars).
+const SANDBOX_LABEL_MAX_LEN = 63;
+function slugifyLabelValue(value: string): string {
+	return value
+		.replace(/[^A-Za-z0-9_.-]+/g, '-')
+		.replace(/^[-.]+|[-.]+$/g, '')
+		.slice(0, SANDBOX_LABEL_MAX_LEN)
+		.replace(/[-.]+$/, '');
+}
+
 function withThreadScopedSandboxIdentity(config: SandboxConfig, threadId: string): SandboxConfig {
 	if (!config.enabled || config.provider !== 'daytona') return config;
 
 	const name = getThreadScopedSandboxName(threadId);
+	const tag: string | undefined = config.tag;
+	const labels: Record<string, string> = {
+		...config.labels,
+		thread_id: slugifyLabelValue(threadId),
+	};
+	if (tag !== undefined && tag !== '') labels.tag = slugifyLabelValue(tag);
 	return {
 		...config,
 		id: name,
 		name,
+		labels,
 	};
 }
 
@@ -568,7 +585,7 @@ export class InstanceAiService {
 			n8nSandboxServiceApiKey,
 			sandboxImage,
 			sandboxTimeout,
-			sandboxNamePrefix,
+			sandboxTag,
 		} = this.instanceAiConfig;
 		if (!sandboxEnabled) {
 			return {
@@ -592,7 +609,7 @@ export class InstanceAiService {
 				image: sandboxImage || undefined,
 				n8nVersion: N8N_VERSION || undefined,
 				timeout: sandboxTimeout,
-				namePrefix: sandboxNamePrefix || undefined,
+				tag: sandboxTag || undefined,
 			};
 		}
 

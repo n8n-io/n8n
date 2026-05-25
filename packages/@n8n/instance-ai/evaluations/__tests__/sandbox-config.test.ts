@@ -39,25 +39,25 @@ describe('resolveSandboxConfig', () => {
 		expect(config.createTimeoutSeconds).toBe(900);
 	});
 
-	it('forwards N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX as namePrefix', () => {
+	it('forwards N8N_INSTANCE_AI_SANDBOX_TAG as tag', () => {
 		const env = baseEnv({
 			DAYTONA_API_URL: 'https://app.daytona.io/api',
 			DAYTONA_API_KEY: 'dtn_xxx',
-			N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX: 'eval-baseline-daily',
+			N8N_INSTANCE_AI_SANDBOX_TAG: 'eval-baseline-daily',
 		});
 		const config = resolveSandboxConfig(env);
 		if (!config.enabled || config.provider !== 'daytona') throw new Error('expected daytona');
-		expect(config.namePrefix).toBe('eval-baseline-daily');
+		expect(config.tag).toBe('eval-baseline-daily');
 	});
 
-	it('omits namePrefix when N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX is unset', () => {
+	it('omits tag when N8N_INSTANCE_AI_SANDBOX_TAG is unset', () => {
 		const env = baseEnv({
 			DAYTONA_API_URL: 'https://app.daytona.io/api',
 			DAYTONA_API_KEY: 'dtn_xxx',
 		});
 		const config = resolveSandboxConfig(env);
 		if (!config.enabled || config.provider !== 'daytona') throw new Error('expected daytona');
-		expect(config.namePrefix).toBeUndefined();
+		expect(config.tag).toBeUndefined();
 	});
 
 	it('honors a custom createTimeoutSeconds env override', () => {

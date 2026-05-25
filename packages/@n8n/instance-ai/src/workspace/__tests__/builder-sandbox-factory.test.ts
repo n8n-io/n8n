@@ -262,7 +262,7 @@ describe('BuilderSandboxFactory createDaytona naming + labels', () => {
 		return manager;
 	}
 
-	it('sets default name + labels when no namePrefix or naming hints are present', async () => {
+	it('sets default name + labels when no tag or naming hints are present', async () => {
 		const factory = new BuilderSandboxFactory(makeDaytonaConfig(), makeManager(), NOOP_LOGGER);
 		await factory.create('agent-builder-abc123', makeContext());
 
@@ -271,18 +271,18 @@ describe('BuilderSandboxFactory createDaytona naming + labels', () => {
 		expect(params.labels).toEqual({ 'n8n-builder': 'agent-builder-abc123' });
 	});
 
-	it('prefixes the name and adds a name_prefix label when config.namePrefix is set', async () => {
+	it('adds a tag label when config.tag is set without touching the sandbox name', async () => {
 		const config = makeDaytonaConfig({
-			namePrefix: 'eval-baseline-daily',
+			tag: 'eval-baseline-daily',
 		} as Partial<SandboxConfig>);
 		const factory = new BuilderSandboxFactory(config, makeManager(), NOOP_LOGGER);
 		await factory.create('agent-builder-abc123', makeContext());
 
 		const [params] = daytonaCreateMock.mock.calls[0];
-		expect(params.name).toBe('eval-baseline-daily-agent-builder-abc123');
+		expect(params.name).toBe('agent-builder-abc123');
 		expect(params.labels).toMatchObject({
 			'n8n-builder': 'agent-builder-abc123',
-			name_prefix: 'eval-baseline-daily',
+			tag: 'eval-baseline-daily',
 		});
 	});
 
@@ -301,33 +301,23 @@ describe('BuilderSandboxFactory createDaytona naming + labels', () => {
 		});
 	});
 
-	it('slugifies namePrefix values that contain non-DNS characters', async () => {
-		const config = makeDaytonaConfig({ namePrefix: 'Eval PR #12_345' } as Partial<SandboxConfig>);
+	it('slugifies tag values that contain non-label characters', async () => {
+		const config = makeDaytonaConfig({ tag: 'Eval PR #12_345' } as Partial<SandboxConfig>);
 		const factory = new BuilderSandboxFactory(config, makeManager(), NOOP_LOGGER);
 		await factory.create('agent-builder-abc123', makeContext());
 
 		const [params] = daytonaCreateMock.mock.calls[0];
-		expect(params.name?.startsWith('eval-pr-12-345-')).toBe(true);
-		expect(params.labels?.name_prefix).toBe('Eval-PR-12_345');
-	});
-
-	it('combines namePrefix + runId + builderId in the expected order', async () => {
-		const config = makeDaytonaConfig({ namePrefix: 'eval-pr-12345' } as Partial<SandboxConfig>);
-		const factory = new BuilderSandboxFactory(config, makeManager(), NOOP_LOGGER);
-		await factory.create('agent-builder-abc123', makeContext(), { runId: 'run987654321' });
-
-		const [params] = daytonaCreateMock.mock.calls[0];
-		expect(params.name).toBe('eval-pr-12345-run98765-agent-builder-abc123');
+		expect(params.name).toBe('agent-builder-abc123');
+		expect(params.labels?.tag).toBe('Eval-PR-12_345');
 	});
 
 	it('caps the full sandbox name at the Daytona limit', async () => {
-		const config = makeDaytonaConfig({
-			namePrefix: 'a-very-long-deployment-tag-that-exceeds-the-budget',
-		} as Partial<SandboxConfig>);
-		const factory = new BuilderSandboxFactory(config, makeManager(), NOOP_LOGGER);
-		await factory.create('agent-builder-with-a-fairly-long-id', makeContext(), {
-			runId: 'run-abcdef1234567890',
-		});
+		const factory = new BuilderSandboxFactory(makeDaytonaConfig(), makeManager(), NOOP_LOGGER);
+		await factory.create(
+			'agent-builder-with-a-very-very-very-long-id-that-runs-past-the-limit',
+			makeContext(),
+			{ runId: 'run-abcdef1234567890' },
+		);
 
 		const [params] = daytonaCreateMock.mock.calls[0];
 		expect(params.name?.length).toBeLessThanOrEqual(63);

@@ -28,8 +28,10 @@ interface DaytonaSandboxConfig extends SandboxConfigBase {
 	image?: string;
 	/** Running n8n version, used to resolve a versioned prebuilt snapshot (`n8n-instance-ai-<version>`). */
 	n8nVersion?: string;
-	/** Prefix prepended to the Daytona sandbox name; also surfaced as a `name_prefix` label. */
-	namePrefix?: string;
+	/** Operator-set value surfaced as a `tag` label on every Daytona sandbox, for grouping/filtering in the Daytona dashboard. */
+	tag?: string;
+	/** Additional Daytona labels merged onto every sandbox created from this config. Used by consumers to attach lifecycle-specific labels (e.g. `thread_id`, `run_id`). */
+	labels?: Record<string, string>;
 	/**
 	 * Seconds to wait for `daytona.create()` (image build + container boot).
 	 * Cold image builds can exceed the SDK default; bump this in environments
@@ -80,6 +82,7 @@ export async function createSandbox(
 			apiKey,
 			apiUrl: config.daytonaApiUrl,
 			...(config.image ? { image: config.image } : {}),
+			...(config.labels ? { labels: config.labels } : {}),
 			language: 'typescript',
 			timeout: config.timeout ?? 300_000,
 		});

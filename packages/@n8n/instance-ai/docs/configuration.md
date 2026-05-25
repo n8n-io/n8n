@@ -68,7 +68,7 @@ When no search provider is available, `web-search` and `research-with-agent` too
 | `N8N_SANDBOX_SERVICE_API_KEY` | string | `''` | API key for the n8n sandbox service. Optional when an `httpHeaderAuth` credential is selected in admin settings. |
 | `N8N_INSTANCE_AI_SANDBOX_IMAGE` | string | `daytonaio/sandbox:0.5.0` | Docker image for the Daytona sandbox. |
 | `N8N_INSTANCE_AI_SANDBOX_TIMEOUT` | number | `300000` | Default command timeout in the sandbox (milliseconds). |
-| `N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX` | string | `''` | Prefix prepended to every Daytona sandbox name (e.g. `eval-baseline-daily`). Also surfaced as a `name_prefix` label. Empty in production. |
+| `N8N_INSTANCE_AI_SANDBOX_TAG` | string | `''` | Operator-set value surfaced as a `tag` label on every Daytona sandbox (e.g. `eval-baseline-daily`). Used for grouping/filtering in the Daytona dashboard. Empty in production. |
 
 **Modes**: When sandbox is enabled, the builder agent works in two modes:
 - **Sandbox mode** (Daytona/n8n-sandbox/local): agent writes TypeScript to `~/workspace/src/workflow.ts`, runs `tsc` for validation, and uses `submit-workflow` to save. Gets full filesystem access and `execute_command`.
