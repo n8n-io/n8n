@@ -99,7 +99,7 @@ export class ExecutionPersistence {
 		}
 
 		const entity = await this.executionRepository.findOne({
-			where: { id: executionId },
+			where: this.buildEntityWhereCondition(executionId, conditions),
 			select: ['id', 'workflowId', 'storedAt'],
 		});
 
@@ -172,10 +172,17 @@ export class ExecutionPersistence {
 		const updatableColumns = this.pickUpdatableEntityColumns(execution);
 
 		return await this.executionRepository.manager.transaction(async (tx) => {
+			const whereCondition = this.buildEntityWhereCondition(ref.executionId, conditions);
+
 			if (Object.keys(updatableColumns).length > 0) {
-				const whereCondition = this.buildEntityWhereCondition(ref.executionId, conditions);
 				const result = await tx.update(ExecutionEntity, whereCondition, updatableColumns);
 				if ((result.affected ?? 0) === 0) return false;
+			} else if (conditions) {
+				// No entity columns to update, but the caller still requested a guarded write.
+				// Re-verify the conditions inside the transaction so a data-only update can't slip
+				// past a `requireStatus` / `requireNotFinished` / `requireNotCanceled` check.
+				const matchingRows = await tx.count(ExecutionEntity, { where: whereCondition });
+				if (matchingRows === 0) return false;
 			}
 
 			// TODO: callers may supply only `data` or only `workflowData`, so we read the existing

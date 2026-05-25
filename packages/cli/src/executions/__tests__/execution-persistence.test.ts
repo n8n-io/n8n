@@ -501,6 +501,24 @@ describe('ExecutionPersistence', () => {
 				expect(fsStore.read).not.toHaveBeenCalled();
 				expect(fsStore.write).not.toHaveBeenCalled();
 			});
+
+			it('should apply conditions to the outer lookup to fail fast', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.findOne.mockResolvedValue(null);
+
+				const result = await executionPersistence.updateExistingExecution(
+					executionId,
+					{ data: runData },
+					{ requireStatus: 'waiting' },
+				);
+
+				expect(result).toBe(false);
+				expect(executionRepository.findOne).toHaveBeenCalledWith({
+					where: { id: executionId, status: 'waiting' },
+					select: ['id', 'workflowId', 'storedAt'],
+				});
+				expect(executionRepository.manager.transaction).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('data updates on fs-mode executions', () => {
@@ -601,6 +619,49 @@ describe('ExecutionPersistence', () => {
 
 				expect(result).toBe(true);
 				expect(mockTx.update).not.toHaveBeenCalled();
+				expect(fsStore.write).toHaveBeenCalled();
+			});
+
+			it('should skip the fs write on a data-only update when conditions do not match', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+
+				const mockTx = createMockTransaction();
+				mockTx.count.mockResolvedValue(0);
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				const result = await executionPersistence.updateExistingExecution(
+					executionId,
+					{ data: runData },
+					{ requireNotFinished: true },
+				);
+
+				expect(result).toBe(false);
+				expect(mockTx.count).toHaveBeenCalledWith(ExecutionEntity, {
+					where: { id: executionId, finished: false },
+				});
+				expect(mockTx.update).not.toHaveBeenCalled();
+				expect(fsStore.read).not.toHaveBeenCalled();
+				expect(fsStore.write).not.toHaveBeenCalled();
+			});
+
+			it('should perform the fs write on a data-only update when conditions match', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				mockTx.count.mockResolvedValue(1);
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				const result = await executionPersistence.updateExistingExecution(
+					executionId,
+					{ data: runData },
+					{ requireNotFinished: true },
+				);
+
+				expect(result).toBe(true);
+				expect(mockTx.count).toHaveBeenCalled();
 				expect(fsStore.write).toHaveBeenCalled();
 			});
 
