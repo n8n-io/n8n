@@ -283,4 +283,63 @@ describe('resolveSubAgentRequest', () => {
 		expect(errorResponse.data?.executionStatus).toBe('error');
 		expect(errorResponse.data?.error?.message).toMatch(/MissingNode/);
 	});
+
+	it('handles nested sub-agents (A -> B -> tool) by re-entering the inline branch', async () => {
+		// Simulates Parent (A) -> Inner Sub-Agent (B) -> Leaf Tool. When the
+		// outer (A) sub-agent invokes B, B's tool.invoke triggers a nested
+		// resolveSubAgentRequest run that resolves its own EngineRequest before
+		// returning a string to A. This proves the "re-enter the same branch
+		// naturally" claim in the spec is testable end-to-end.
+		const { ctx: outerCtx } = makeCtx();
+
+		// Inner sub-agent's leaf tool — a plain calculator-style tool.
+		const leafTool = makeTool('LeafTool', 'LeafNode', async () => '42');
+
+		// The inner sub-agent appears to the outer agent as a single tool. Its
+		// `invoke` simulates the inner sub-agent's full lifecycle: it kicks off
+		// its own `resolveSubAgentRequest`, which dispatches `LeafTool`, then
+		// produces a final string answer back to the outer agent.
+		const innerSubAgentTool = makeTool('InnerSubAgent', 'InnerSubAgentNode', async () => {
+			const { ctx: innerCtx } = makeCtx();
+			mockedGetTools.mockResolvedValueOnce([leafTool]);
+
+			const innerRequest = makeRequest([makeAction({ id: 'inner_call_1', nodeName: 'LeafNode' })]);
+			const innerFinal: INodeExecutionData[][] = [[{ json: { output: 'inner answer 42' } }]];
+			const innerRunAgentBatch = vi.fn(async () => innerFinal);
+
+			const innerResult = await resolveSubAgentRequest(innerCtx, innerRequest, {
+				runAgentBatch: innerRunAgentBatch,
+			});
+			// Mirror what makeHandleToolInvocation would do in real wiring: flatten
+			// to a string so the outer agent sees a tool result, not a structure.
+			return JSON.stringify(innerResult[0]?.[0]?.json);
+		});
+
+		// Restore the outer mock after the inner test stub above consumes a
+		// single mockResolvedValueOnce.
+		mockedGetTools.mockResolvedValue([innerSubAgentTool]);
+
+		const outerFinal: INodeExecutionData[][] = [[{ json: { output: 'outer final' } }]];
+		const outerRunAgentBatch = vi.fn(async () => outerFinal);
+
+		const outerRequest = makeRequest([
+			makeAction({ id: 'outer_call_1', nodeName: 'InnerSubAgentNode' }),
+		]);
+		const result = await resolveSubAgentRequest(outerCtx, outerRequest, {
+			runAgentBatch: outerRunAgentBatch,
+		});
+
+		// Inner leaf tool was actually invoked through the recursive entry.
+		expect(leafTool.invoke).toHaveBeenCalledTimes(1);
+		// Outer received the inner sub-agent's stringified result as the tool
+		// output, then ran a single finalize pass.
+		expect(innerSubAgentTool.invoke).toHaveBeenCalledTimes(1);
+		expect(outerRunAgentBatch).toHaveBeenCalledTimes(1);
+		const outerResponse = outerRunAgentBatch.mock
+			.calls[0][0] as EngineResponse<RequestResponseMetadata>;
+		expect(outerResponse.actionResponses[0].data?.data?.ai_tool?.[0]?.[0]?.json).toEqual({
+			output: '{"output":"inner answer 42"}',
+		});
+		expect(result).toBe(outerFinal);
+	});
 });

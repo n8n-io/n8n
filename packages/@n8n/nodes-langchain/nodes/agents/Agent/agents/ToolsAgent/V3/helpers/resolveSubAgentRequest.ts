@@ -57,13 +57,15 @@ export async function resolveSubAgentRequest(
 	let current: EngineRequest<RequestResponseMetadata> | INodeExecutionData[][] = request;
 
 	const node = ctx.getNode();
+	// Connected tools are stable for the lifetime of a sub-agent run, and
+	// `getConnectedTools` re-resolves every child supply-data tool (MCP,
+	// Vector Store, nested AgentToolV3) — so hoist out of the loop.
+	const tools = (await getTools(ctx)) as ConnectedTool[];
 
 	while (isEngineRequest(current)) {
 		assertNoHitlActions(node, current.actions);
 
 		ctx.getExecutionCancelSignal?.()?.throwIfAborted?.();
-
-		const tools = (await getTools(ctx)) as ConnectedTool[];
 
 		const actionResponses = await Promise.all(
 			current.actions.map(async (action) => await invokeToolAction(node, action, tools)),
@@ -87,7 +89,7 @@ function assertNoHitlActions(node: INode, actions: Action[]): void {
 				`Human-in-the-Loop nodes cannot be used inside a sub-agent. Move "${action.nodeName}" to the top-level workflow.`,
 				{
 					description:
-						'Engine-level approval flows are not available from within a tool callback. Make the human-in-the-loop step part of the top-level Agent instead of a nested AgentToolV3.',
+						'Engine-level approval flows are not available from within a tool callback, so the whole sub-agent step is aborted (any sibling tool calls in the same batch are not executed). Make the human-in-the-loop step part of the top-level Agent instead of a nested AgentToolV3.',
 					extra: { node: node.name },
 				},
 			);
@@ -149,6 +151,12 @@ function buildTaskDataShell(): Pick<
 	ITaskData,
 	'executionTime' | 'startTime' | 'executionIndex' | 'source'
 > {
+	// Engine-scheduled tool runs record real timings and parent source linkage;
+	// we synthesize zeros here because the consumers in the V3 agent batch
+	// path (`buildSteps`, `processHitlResponses`, and the iteration counters
+	// in `executeBatch`/`execute.ts`) only read `data.ai_tool` and
+	// `executionStatus`/`error`. If a future consumer starts reading these
+	// fields on `actionResponses`, populate them via `Date.now()`.
 	return {
 		executionTime: 0,
 		startTime: 0,
