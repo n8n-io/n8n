@@ -5,6 +5,11 @@
 //
 // Usage: node scripts/test-changed.mjs <pkg-dir> [--runner=jest|vitest]
 //
+// The <pkg-dir> arg is REPO-ROOT-RELATIVE (e.g. packages/frontend/editor-ui)
+// and is used only as a prefix for filtering CHANGED_FILES. Package.json is
+// read from process.cwd() because turbo/pnpm invoke the script with cwd set
+// to the package directory.
+//
 // Per-package config lives in each package.json under `n8nTestChanged`:
 //   - inPackageBailouts: regex strings matched against in-package file paths.
 //     Match → full run (config/setup changes invalidate scoped selection).
@@ -12,7 +17,6 @@
 //     Defaults to lockfile + root package.json. Match → full run.
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 
 const args = process.argv.slice(2);
 const pkgDir = args[0];
@@ -31,7 +35,9 @@ if (runner !== 'jest' && runner !== 'vitest') {
 
 const log = (m) => console.log(`[test-changed] ${m}`);
 
-const pkgJson = JSON.parse(readFileSync(resolve(pkgDir, 'package.json'), 'utf-8'));
+// cwd is the package directory (set by turbo/pnpm). pkgDir is repo-root-
+// relative and used only for CHANGED_FILES filtering — don't combine them.
+const pkgJson = JSON.parse(readFileSync('package.json', 'utf-8'));
 const config = pkgJson.n8nTestChanged ?? {};
 
 const changedFiles = (process.env.CHANGED_FILES || '')
