@@ -10,7 +10,11 @@ import type express from 'express';
 import { createHttpProxyAgent, createHttpsProxyAgent, InstanceSettings } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { type IdentityProviderInstance, type ServiceProviderInstance } from 'samlify';
-import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
+import type {
+	BindingContext,
+	ESamlHttpRequest,
+	PostBindingContext,
+} from 'samlify/types/src/entity';
 
 import { SAML_PREFERENCES_DB_KEY } from './constants';
 import { InvalidSamlMetadataUrlError } from './errors/invalid-saml-metadata-url.error';
@@ -489,10 +493,14 @@ export class SamlService {
 			throw new BadRequestError('Error fetching SAML Attributes, no Attribute mapping set');
 		try {
 			await this.loadSamlify();
+			const samlHttpRequest: ESamlHttpRequest = {
+				query: req.query as ESamlHttpRequest['query'],
+				body: req.body as ESamlHttpRequest['body'],
+			};
 			parsedSamlResponse = await this.getServiceProviderInstance().parseLoginResponse(
 				this.getIdentityProviderInstance(),
 				binding,
-				req,
+				samlHttpRequest,
 			);
 		} catch (error) {
 			// throw error;
