@@ -12,8 +12,7 @@
 			"@/*": ["./src/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
-		"types": ["node", "jest"],
-		"isolatedModules": true
+		"types": ["node", "jest"]
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts", "evaluations/**/*.ts", "scripts/**/*.ts"]
 }
