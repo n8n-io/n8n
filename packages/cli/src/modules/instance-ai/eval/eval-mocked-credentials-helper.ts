@@ -154,7 +154,14 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		// `INodeParameterResourceLocator`). At runtime the values it emits
 		// are all string / boolean / number / JSON-shaped objects — fine for
 		// the rewrite path, which only reads + augments the `url` field.
-		const synthetic = buildEvalMockCredentials(schema) as ICredentialDataDecryptedObject;
+		// Brand it with `MOCK_MARKER` so `authenticate` / `preAuthentication`
+		// / `runPreAuthentication` short-circuit to the marker branch instead
+		// of delegating synthetic credentials through the inner helper's
+		// real-auth flow (OAuth refresh, PreSend hooks, etc.).
+		const synthetic = {
+			...buildEvalMockCredentials(schema),
+			[MOCK_MARKER]: true,
+		} as ICredentialDataDecryptedObject;
 
 		this.mockedCredentials.push({
 			nodeName: executeData?.node?.name ?? 'unknown',

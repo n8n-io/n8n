@@ -122,23 +122,26 @@ export function forwardTranslateToResponsesSseEvents(
 	});
 
 	if (toolCalls.length > 0) {
+		// Pre-build the final output items so the `id` is stable across every
+		// event the SDK reconciles — `output_item.added`, `function_call_-
+		// arguments.delta/done`, `output_item.done`, and the terminal
+		// `response.completed.output[i]` all reference the same `fc_<uuid>`.
+		// Earlier the terminal envelope re-ran the synthesizer and emitted a
+		// different id, breaking SDK consumers that key by `id`.
+		const finalItems = toolCallsToResponsesOutput(toolCalls);
 		toolCalls.forEach((tc, callIndex) => {
-			const item = {
-				id: `fc_${randomUUID().replace(/-/g, '').slice(0, 16)}`,
-				type: 'function_call' as const,
-				call_id: tc.id,
-				name: tc.name,
-				arguments: '',
-			};
+			const finalItem = finalItems[callIndex];
+			const itemId = finalItem.id as string;
+			const initialItem = { ...finalItem, arguments: '' };
 			events.push({
 				event: 'response.output_item.added',
-				data: { output_index: callIndex, item },
+				data: { output_index: callIndex, item: initialItem },
 			});
 			if (tc.arguments.length > 0) {
 				events.push({
 					event: 'response.function_call_arguments.delta',
 					data: {
-						item_id: item.id,
+						item_id: itemId,
 						output_index: callIndex,
 						delta: tc.arguments,
 					},
@@ -147,22 +150,19 @@ export function forwardTranslateToResponsesSseEvents(
 			events.push({
 				event: 'response.function_call_arguments.done',
 				data: {
-					item_id: item.id,
+					item_id: itemId,
 					output_index: callIndex,
 					arguments: tc.arguments,
 				},
 			});
 			events.push({
 				event: 'response.output_item.done',
-				data: {
-					output_index: callIndex,
-					item: { ...item, arguments: tc.arguments },
-				},
+				data: { output_index: callIndex, item: finalItem },
 			});
 		});
 		events.push({
 			event: 'response.completed',
-			data: { response: baseResponse('completed', toolCallsToResponsesOutput(toolCalls)) },
+			data: { response: baseResponse('completed', finalItems) },
 		});
 		return events;
 	}
@@ -170,18 +170,26 @@ export function forwardTranslateToResponsesSseEvents(
 	// Plain message mode.
 	const content = extractResponsesContent(mockResponse?.body);
 	const messageId = `msg_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
+	// `annotations: []` is required by the OpenAI SDK on every output_text
+	// content part — the LangChain extractor calls `.annotations.map(...)`
+	// while pulling citations. Omitting it on the terminal `output_item.done`
+	// or `response.completed.output[]` would crash consumers downstream.
 	const messageItem = {
 		id: messageId,
 		type: 'message' as const,
 		role: 'assistant' as const,
-		content: [{ type: 'output_text' as const, text: content }],
+		content: [{ type: 'output_text' as const, text: content, annotations: [] }],
 		status: 'completed' as const,
 	};
 	events.push({
 		event: 'response.output_item.added',
 		data: {
 			output_index: 0,
-			item: { ...messageItem, content: [{ type: 'output_text', text: '' }], status: 'in_progress' },
+			item: {
+				...messageItem,
+				content: [{ type: 'output_text', text: '', annotations: [] }],
+				status: 'in_progress',
+			},
 		},
 	});
 	events.push({

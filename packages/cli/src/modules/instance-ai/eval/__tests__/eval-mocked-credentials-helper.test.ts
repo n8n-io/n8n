@@ -503,6 +503,38 @@ describe('EvalMockedCredentialsHelper', () => {
 			]);
 		});
 
+		it('brands the synthetic credential with __evalMockedCredential so authenticate short-circuits', async () => {
+			// Regression: without the marker, `authenticate` / `preAuthentication`
+			// / `runPreAuthentication` would delegate the synthetic credential
+			// through the inner helper's real-auth flow (OAuth refresh, PreSend
+			// hooks). Those flows would either crash on placeholder values or
+			// leak real-auth side effects from a fake credential.
+			const inner = makeInner({
+				getCredentialsProperties: jest.fn().mockReturnValue(propsSchema),
+				authenticate: jest.fn().mockResolvedValue({ url: 'http://should-not-be-called' }),
+			});
+			const helper = new EvalMockedCredentialsHelper(inner);
+
+			const synthetic = await helper.synthesizeAndDecrypt('openAiApi', {
+				node: { name: 'OpenAI' } as INode,
+			} as IExecuteData);
+
+			expect(synthetic.__evalMockedCredential).toBe(true);
+
+			// Round-trip through `authenticate` confirms the marker actually
+			// short-circuits — the inner helper must not be invoked.
+			const requestOptions: IHttpRequestOptions = { url: 'http://example.com' };
+			const result = await helper.authenticate(
+				synthetic,
+				'openAiApi',
+				requestOptions,
+				fakeWorkflow,
+				fakeNode,
+			);
+			expect(result).toBe(requestOptions);
+			expect(inner.authenticate).not.toHaveBeenCalled();
+		});
+
 		it('still returns the synthetic credential when no serverUrl is configured', async () => {
 			// The helper may be used in eval mode without the wire server
 			// (e.g. HTTP-helper-only workflows). Without `serverUrl` we just

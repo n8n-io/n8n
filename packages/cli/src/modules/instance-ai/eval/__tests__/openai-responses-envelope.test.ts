@@ -237,6 +237,69 @@ describe('forwardTranslateToResponsesSseEvents', () => {
 		}
 	});
 
+	it('terminal message item (`output_item.done`, `response.completed`) carries `annotations: []`', () => {
+		// Regression: earlier the terminal `messageItem` set `content:
+		// [{ type: 'output_text', text }]` without `annotations: []`. SDK
+		// consumers iterating the completed response would crash on
+		// `.annotations.map(...)` exactly like the non-streaming bug we
+		// already fixed.
+		const events = forwardTranslateToResponsesSseEvents(
+			mockResponse({ output_text: 'hello' }),
+			'gpt-4o',
+		);
+
+		type MsgItem = { content?: Array<{ type?: string; annotations?: unknown }> };
+		const findItem = (eventName: string): MsgItem | undefined => {
+			const e = events.find((ev) => ev.event === eventName);
+			if (eventName === 'response.completed') {
+				return ((e?.data as { response?: { output?: MsgItem[] } }).response?.output ?? [])[0];
+			}
+			return (e?.data as { item?: MsgItem }).item;
+		};
+
+		for (const name of [
+			'response.output_item.added',
+			'response.output_item.done',
+			'response.completed',
+		]) {
+			const item = findItem(name);
+			expect(item?.content?.[0].type).toBe('output_text');
+			expect(item?.content?.[0].annotations).toEqual([]);
+		}
+	});
+
+	it('keeps `id` stable across output_item / arguments / completed events for the same tool call', () => {
+		// Regression: earlier the SSE path generated the tool-call `id` once
+		// for `output_item.added/done` and then re-ran the synthesizer for
+		// `response.completed.output[]`, producing two different `fc_<uuid>`
+		// values for the same `output_index`. SDK consumers that reconcile
+		// state by `id` (e.g. tracing UIs) would fail to match.
+		const events = forwardTranslateToResponsesSseEvents(
+			mockResponse({
+				tool_calls: [
+					{ id: 'call_x', function: { name: 'fn', arguments: '{}' } },
+					{ id: 'call_y', function: { name: 'fn2', arguments: '{}' } },
+				],
+			}),
+			'gpt-4o',
+		);
+
+		const addedItems = events.filter((e) => e.event === 'response.output_item.added');
+		const doneItems = events.filter((e) => e.event === 'response.output_item.done');
+		const completed = events.find((e) => e.event === 'response.completed');
+		const completedOutput = (completed?.data as { response?: { output?: Array<{ id?: string }> } })
+			.response?.output;
+
+		for (let i = 0; i < addedItems.length; i++) {
+			const addedId = (addedItems[i].data as { item?: { id?: string } }).item?.id;
+			const doneId = (doneItems[i].data as { item?: { id?: string } }).item?.id;
+			const completedId = completedOutput?.[i].id;
+			expect(addedId).toBe(doneId);
+			expect(addedId).toBe(completedId);
+			expect(typeof addedId).toBe('string');
+		}
+	});
+
 	it('emits function_call event sequence with delta + done arguments for tool calls', () => {
 		const events = forwardTranslateToResponsesSseEvents(
 			mockResponse({
