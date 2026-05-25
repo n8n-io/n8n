@@ -77,72 +77,13 @@ jobs:
         run: |
           TLS_DIR="$RUNNER_TEMP/sandbox-tls"
           mkdir -p "$TLS_DIR"
-
-          # CA
-          openssl genrsa -out "$TLS_DIR/ca.key" 4096 2>/dev/null
-          openssl req -new -x509 -days 1 -key "$TLS_DIR/ca.key" -out "$TLS_DIR/ca.crt" \
-            -subj "/O=n8n-sandbox-ci/CN=sandbox-mtls-ci-ca" 2>/dev/null
-
-          # Registration gRPC server cert (API listens on :9090)
-          openssl genrsa -out "$TLS_DIR/grpc-server.key" 2048 2>/dev/null
-          openssl req -new -key "$TLS_DIR/grpc-server.key" -out "$TLS_DIR/grpc-server.csr" \
-            -subj "/O=n8n-sandbox-ci/CN=sandbox-api" 2>/dev/null
-          cat > "$TLS_DIR/grpc-server.ext" <<EOF
-          [v3_req]
-          subjectAltName=DNS:sandbox-api,DNS:localhost
-          extendedKeyUsage=serverAuth
-          EOF
-          openssl x509 -req -in "$TLS_DIR/grpc-server.csr" \
-            -CA "$TLS_DIR/ca.crt" -CAkey "$TLS_DIR/ca.key" -CAcreateserial \
-            -out "$TLS_DIR/grpc-server.crt" -days 1 \
-            -extfile "$TLS_DIR/grpc-server.ext" -extensions v3_req 2>/dev/null
-
-          # Registration gRPC client cert (runner dials API)
-          openssl genrsa -out "$TLS_DIR/grpc-client.key" 2048 2>/dev/null
-          openssl req -new -key "$TLS_DIR/grpc-client.key" -out "$TLS_DIR/grpc-client.csr" \
-            -subj "/O=n8n-sandbox-ci/CN=sandbox-runner-mtls-client" 2>/dev/null
-          cat > "$TLS_DIR/grpc-client.ext" <<EOF
-          [v3_req]
-          subjectAltName=DNS:sandbox-runner-mtls-client
-          extendedKeyUsage=clientAuth
-          EOF
-          openssl x509 -req -in "$TLS_DIR/grpc-client.csr" \
-            -CA "$TLS_DIR/ca.crt" -CAkey "$TLS_DIR/ca.key" -CAcreateserial \
-            -out "$TLS_DIR/grpc-client.crt" -days 1 \
-            -extfile "$TLS_DIR/grpc-client.ext" -extensions v3_req 2>/dev/null
-
-          # Control gRPC server cert (runner listens on :9091, API dials)
-          openssl genrsa -out "$TLS_DIR/control-grpc-server.key" 2048 2>/dev/null
-          openssl req -new -key "$TLS_DIR/control-grpc-server.key" -out "$TLS_DIR/control-grpc-server.csr" \
-            -subj "/O=n8n-sandbox-ci/CN=runner-sandbox-control" 2>/dev/null
-          cat > "$TLS_DIR/control-grpc-server.ext" <<EOF
-          [v3_req]
-          subjectAltName=DNS:sandbox-runner,DNS:localhost
-          extendedKeyUsage=serverAuth
-          EOF
-          openssl x509 -req -in "$TLS_DIR/control-grpc-server.csr" \
-            -CA "$TLS_DIR/ca.crt" -CAkey "$TLS_DIR/ca.key" -CAcreateserial \
-            -out "$TLS_DIR/control-grpc-server.crt" -days 1 \
-            -extfile "$TLS_DIR/control-grpc-server.ext" -extensions v3_req 2>/dev/null
-
-          # Control gRPC client cert (API dials runner)
-          openssl genrsa -out "$TLS_DIR/control-grpc-api-client.key" 2048 2>/dev/null
-          openssl req -new -key "$TLS_DIR/control-grpc-api-client.key" -out "$TLS_DIR/control-grpc-api-client.csr" \
-            -subj "/O=n8n-sandbox-ci/CN=sandbox-api-control-mtls-client" 2>/dev/null
-          cat > "$TLS_DIR/control-grpc-api-client.ext" <<EOF
-          [v3_req]
-          subjectAltName=DNS:sandbox-api-control-mtls-client
-          extendedKeyUsage=clientAuth
-          EOF
-          openssl x509 -req -in "$TLS_DIR/control-grpc-api-client.csr" \
-            -CA "$TLS_DIR/ca.crt" -CAkey "$TLS_DIR/ca.key" -CAcreateserial \
-            -out "$TLS_DIR/control-grpc-api-client.crt" -days 1 \
-            -extfile "$TLS_DIR/control-grpc-api-client.ext" -extensions v3_req 2>/dev/null
-
-          rm -f "$TLS_DIR"/*.csr "$TLS_DIR"/*.srl "$TLS_DIR"/*.ext
-          # Containers run as non-root; make certs world-readable (ephemeral CI-only keys)
-          chmod 644 "$TLS_DIR"/*
-          echo "mTLS certificates generated in $TLS_DIR"
+          docker run --rm \
+            --user 0:0 \
+            --entrypoint sh \
+            -v "$TLS_DIR:/tls" \
+            -e NUM_RUNNERS=1 \
+            n8nio/n8n-sandbox-service-api:latest \
+            -c 'bootstrap-mtls.sh --out-dir /tls --api-san sandbox-api --control-san-prefix sandbox-runner --world-readable && chown -R sandbox-api:sandbox-api /tls/api'
 
       - name: Create Docker network
         if: ${{ inputs.sandbox-provider != 'daytona' }}
@@ -156,7 +97,7 @@ jobs:
           # Start sandbox API
           docker run -d --name sandbox-api \
             --network n8n-eval-net \
-            -v "$TLS_DIR:/tls:ro" \
+            -v "$TLS_DIR/api:/tls:ro" \
             -e SANDBOX_API_KEYS=n8n-sandbox-ci-key \
             -e SANDBOX_API_RUNNER_REGISTRATION_TOKEN=ci-reg-token \
             -e SANDBOX_API_RUNNER_API_KEY=ci-runner-key \
@@ -186,7 +127,7 @@ jobs:
           docker run -d --name sandbox-runner \
             --network n8n-eval-net \
             --privileged \
-            -v "$TLS_DIR:/tls:ro" \
+            -v "$TLS_DIR/runner:/tls:ro" \
             -e SANDBOX_RUNNER_API_KEYS=ci-runner-key \
             -e SANDBOX_RUNNER_REGISTRATION_TOKEN=ci-reg-token \
             -e SANDBOX_RUNNER_API_GRPC_ADDR=sandbox-api:9090 \
@@ -195,6 +136,7 @@ jobs:
             -e SANDBOX_RUNNER_CONTROL_GRPC_ADVERTISE_ADDR=sandbox-runner:9091 \
             -e SANDBOX_RUNNER_ID=ci-runner-1 \
             -e SANDBOX_RUNNER_DOCKER_SANDBOX_IMAGE=n8nio/n8n-sandbox-service-sandbox:latest \
+            -e SANDBOX_RUNNER_LOG_LEVEL=warn \
             -e SANDBOX_RUNNER_REGISTRATION_GRPC_CA_FILE=/tls/ca.crt \
             -e SANDBOX_RUNNER_REGISTRATION_GRPC_CERT_FILE=/tls/grpc-client.crt \
             -e SANDBOX_RUNNER_REGISTRATION_GRPC_KEY_FILE=/tls/grpc-client.key \
