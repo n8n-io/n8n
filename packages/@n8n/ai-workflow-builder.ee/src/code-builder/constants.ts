@@ -93,6 +93,11 @@ export const CODE_BUILDER_VALIDATE_TOOL: BuilderToolBase = {
 	displayTitle: 'Validating workflow',
 };
 
+export const CODE_BUILDER_VALIDATE_NODE_TOOL: BuilderToolBase = {
+	toolName: 'validate_node',
+	displayTitle: 'Validating node',
+};
+
 export const CODE_BUILDER_SEARCH_NODES_TOOL: BuilderToolBase = {
 	toolName: 'search_nodes',
 	displayTitle: 'Searching nodes',

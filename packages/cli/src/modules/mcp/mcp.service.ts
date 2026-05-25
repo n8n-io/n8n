@@ -45,6 +45,7 @@ import { createGetWorkflowSdkReferenceTool } from './tools/workflow-builder/get-
 import { getMcpInstructions } from './tools/workflow-builder/mcp-instructions';
 import { createSearchWorkflowNodesTool } from './tools/workflow-builder/search-workflow-nodes.tool';
 import { getSdkReferenceContent } from './tools/workflow-builder/sdk-reference-content';
+import { createValidateNodeTool } from './tools/workflow-builder/validate-node.tool';
 import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validate-workflow-code.tool';
 import { NodeCatalogService } from '@/node-catalog';
 
@@ -349,6 +350,9 @@ export class McpService {
 
 		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);
 		server.registerTool(validateTool.name, validateTool.config, validateTool.handler);
+
+		const validateNodeTool = createValidateNodeTool(user, this.telemetry);
+		server.registerTool(validateNodeTool.name, validateNodeTool.config, validateNodeTool.handler);
 
 		const createTool = createCreateWorkflowFromCodeTool(
 			user,
