@@ -181,18 +181,17 @@ export class ExecutionPersistence {
 				// No entity columns to update, but the caller still requested a guarded write.
 				// Re-verify the conditions inside the transaction so a data-only update can't slip
 				// past a `requireStatus` / `requireNotFinished` / `requireNotCanceled` check.
-				// TODO: In Postgres this COUNT alone does not prevent a concurrent transaction from
-				// changing the row's status between the check and the subsequent data write — a
-				// row-level lock (e.g. `SELECT ... FOR UPDATE`) is required for true race-safety.
+				// TODO(CAT-3212): In Postgres this COUNT alone does not prevent a concurrent
+				// transaction from changing the row's status between the check and the data write —
+				// a row-level lock (e.g. `SELECT ... FOR UPDATE`) is required for true race-safety.
 				// SQLite is unaffected because `BEGIN` already takes an exclusive write lock.
-				// The same gap exists in the legacy `ExecutionRepository` path; follow-up ticket.
 				const matchingRows = await tx.count(ExecutionEntity, { where: whereCondition });
 				if (matchingRows === 0) return false;
 			}
 
-			// TODO: callers may supply only `data` or only `workflowData`, so we read the existing
-			// bundle to merge the unchanged half back in. Most callers in practice overwrite both
-			// fields, in which case the read is wasted work. We should split the API into an
+			// TODO(CAT-3213): callers may supply only `data` or only `workflowData`, so we read
+			// the existing bundle to merge the unchanged half back in. Most callers in practice
+			// overwrite both fields, in which case the read is wasted work. Split the API into an
 			// overwrite path (no read) and an explicit partial-update path.
 			const existing = await store.read(ref, tx);
 			if (!existing) throw new MissingExecutionDataError(ref);
@@ -249,13 +248,14 @@ export class ExecutionPersistence {
 	): FindOptionsWhere<ExecutionEntity> {
 		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 		if (conditions?.requireStatus) where.status = conditions.requireStatus;
-		// TODO: `ExecutionEntity.finished` is deprecated and we should only rely on statuses here,
-		// but for now we still use it to filter out finished executions for parity with ExecutionRepository.
+		// TODO(CAT-3214): `ExecutionEntity.finished` is deprecated and we should rely on statuses
+		// only, but for now we still use it to filter out finished executions for parity with
+		// ExecutionRepository.
 		if (conditions?.requireNotFinished) where.finished = false;
-		// TODO: `requireStatus` and `requireNotCanceled` both write to `where.status`, so if both are
-		// supplied the `Not('canceled')` clause silently overwrites the specific status check. In
-		// practice callers never combine them, so once we drop strict parity with ExecutionRepository
-		// we should assert their mutual exclusivity (or combine them somehow) instead.
+		// TODO(CAT-3215): `requireStatus` and `requireNotCanceled` both write to `where.status`,
+		// so if both are supplied the `Not('canceled')` clause silently overwrites the specific
+		// status check. In practice callers never combine them, so once we drop strict parity with
+		// ExecutionRepository we should assert their mutual exclusivity (or combine them somehow).
 		if (conditions?.requireNotCanceled) where.status = Not('canceled');
 		return where;
 	}
