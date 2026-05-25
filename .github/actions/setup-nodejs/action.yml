@@ -37,12 +37,20 @@ runs:
     # on every subsequent job. First fresh runner pays the download; later jobs
     # (including parallel E2E shards) hit the cache. Blacksmith transparently
     # routes actions/cache through its S3 backend.
+    #
+    # The `x64.complete` sibling marker file must be cached alongside the
+    # toolchain — without it, setup-node's `tc.find` returns empty and the
+    # action re-downloads from nodejs.org. Re-downloads also keep the silent
+    # fall-through window open: errors during download/extract are swallowed,
+    # PATH is left untouched, and the runner image's baked-in Node 20.20.0
+    # quietly takes over. Caching the parent version dir captures the marker
+    # alongside the toolchain. Key bumped to v2 to invalidate stale entries.
     - name: Restore Node.js Toolcache
       if: runner.os == 'Linux' && runner.arch == 'X64'
       uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
-        path: /opt/hostedtoolcache/node/${{ inputs.node-version }}/x64
-        key: node-toolcache-${{ runner.os }}-${{ runner.arch }}-${{ inputs.node-version }}
+        path: /opt/hostedtoolcache/node/${{ inputs.node-version }}
+        key: node-toolcache-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.node-version }}
 
     - name: Setup Node.js
       uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
@@ -93,12 +101,42 @@ runs:
         rm install-safe-chain.sh
       shell: bash
 
+    # Capture pnpm's combined stdout+stderr through `tee` so the ERR_PNPM_* code
+    # and offending package survive even when `timeout` terminates the process
+    # group. Stderr-only capture misses the failure footer because pnpm's
+    # default reporter routes it through stdout; `--reporter=append-only` is
+    # set explicitly so we don't drift if pnpm changes its CI default again.
+    # `--loglevel=debug` and `DEBUG=pnpm:*` add registry/store/fetch traces.
+    # `SAFE_CHAIN_LOGGING=verbose` surfaces safe-chain's proxy decisions, which
+    # are otherwise buffered (and lost on failure) while pnpm is in flight.
+    # `${PIPESTATUS[0]}` preserves pnpm's real exit code through the pipe.
     - name: Install Dependencies
       if: ${{ inputs.install-command != '' }}
       env:
         INSTALL_COMMAND: ${{ inputs.install-command }}
+        INSTALL_LOG: ${{ runner.temp }}/pnpm-install.log
+        SAFE_CHAIN_LOGGING: verbose
+        DEBUG: pnpm:*
+        # Skip the Electron binary download triggered by @n8n/local-gateway's
+        # postinstall. CI never runs the Electron app, but the ~150MB binary
+        # fetch fires on every install otherwise.
+        ELECTRON_SKIP_BINARY_DOWNLOAD: 1
       run: |
-        timeout --kill-after=30s 300s $INSTALL_COMMAND --reporter=append-only
+        set +o pipefail
+        timeout --kill-after=30s 300s $INSTALL_COMMAND \
+          --reporter=append-only --loglevel=debug 2>&1 | tee "$INSTALL_LOG"
+        rc=${PIPESTATUS[0]}
+        set -o pipefail
+        if [ $rc -ne 0 ]; then
+          echo "::group::pnpm install full output (captured)"
+          cat "$INSTALL_LOG" 2>/dev/null || echo "(no captured log)"
+          echo "::endgroup::"
+          case $rc in
+            124) echo "::error::pnpm install timed out after 300s (exit 124)" ;;
+            137) echo "::error::pnpm install received SIGKILL (exit 137 — likely OOM or kill-after timeout)" ;;
+          esac
+        fi
+        exit $rc
       shell: bash
 
     - name: Configure Turborepo Cache

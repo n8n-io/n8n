@@ -1,4 +1,8 @@
-import type { InstanceAiEvalMockedCredential } from '@n8n/api-types';
+import type {
+	InstanceAiEvalMockedCredential,
+	InstanceAiEvalRewrittenCredential,
+} from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentials,
@@ -20,27 +24,23 @@ import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 
 const MOCK_MARKER = '__evalMockedCredential' as const;
 
-/**
- * CredentialsHelper proxy for evaluation runs. Delegates everything to the
- * wrapped real helper, except:
- *
- *   - `getDecrypted`: when a credential ID cannot be resolved, returns a
- *     marker-only payload instead of throwing. This stops the credential
- *     lookup from halting the workflow before the LLM mock layer can run.
- *
- *   - `authenticate` / `preAuthentication` / `runPreAuthentication`: when
- *     called with a marker payload, return the input unchanged so the
- *     unauthed request flows into `helpers.httpRequest`, where the LLM
- *     mock handler intercepts and synthesizes a response.
- *
- * Eval-mode HTTP never reaches real services, so credential data shape is
- * irrelevant — the only contract we preserve is that the auth path doesn't
- * throw on missing data.
- */
+// `pathPrefix` must match what the vendor SDK appends to `baseURL`. OpenAI SDK appends
+// `/chat/completions`, so credentials.url must include `/v1` for the wire server route to match.
+export const EVAL_PROVIDER_URL_FIELD: Record<string, { field: string; pathPrefix: string }> = {
+	openAiApi: { field: 'url', pathPrefix: '/v1' },
+};
+
+/** CredentialsHelper proxy for eval: tolerates missing credentials and (optionally) rewrites vendor URLs to the wire server. */
 export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 	readonly mockedCredentials: InstanceAiEvalMockedCredential[] = [];
+	readonly rewrittenCredentials: InstanceAiEvalRewrittenCredential[] = [];
 
-	constructor(private readonly inner: ICredentialsHelper) {
+	constructor(
+		private readonly inner: ICredentialsHelper,
+		private readonly serverUrl?: string,
+		private readonly logger?: Logger,
+		private readonly subNodeToRoot?: ReadonlyMap<string, string>,
+	) {
 		super();
 	}
 
@@ -103,8 +103,9 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
+		let credentials: ICredentialDataDecryptedObject;
 		try {
-			return await this.inner.getDecrypted(
+			credentials = await this.inner.getDecrypted(
 				additionalData,
 				nodeCredentials,
 				type,
@@ -122,8 +123,55 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 				credentialId: nodeCredentials.id ?? undefined,
 			});
 
-			return { [MOCK_MARKER]: true };
+			credentials = { [MOCK_MARKER]: true };
 		}
+
+		return this.applyServerUrlRewrite(credentials, type, nodeCredentials, executeData);
+	}
+
+	private applyServerUrlRewrite(
+		credentials: ICredentialDataDecryptedObject,
+		type: string,
+		nodeCredentials: INodeCredentialsDetails,
+		executeData: IExecuteData | undefined,
+	): ICredentialDataDecryptedObject {
+		if (!this.serverUrl) return credentials;
+		const mapping = EVAL_PROVIDER_URL_FIELD[type];
+		if (!mapping) {
+			// No rewrite mapping — vendor SDK will hit its default URL. Refused upfront
+			// by assertUnpinCompatibility for LLM sub-nodes; this branch is for non-LLM HTTP creds.
+			this.logger?.warn(
+				`[EvalMock] No URL rewrite mapping for credential type "${type}" — ` +
+					`vendor traffic from "${executeData?.node?.name ?? 'unknown'}" will hit the real provider.`,
+			);
+			return credentials;
+		}
+
+		const { field, pathPrefix } = mapping;
+		const subNodeName = executeData?.node?.name;
+		const rootName = subNodeName ? this.subNodeToRoot?.get(subNodeName) : undefined;
+
+		if (subNodeName && !rootName && this.subNodeToRoot) {
+			// Sub-node not in routing map — unexpected topology; wire server's
+			// unrouted-/v1 handler will surface this loudly too.
+			this.logger?.warn(
+				`[EvalMock] No vendor LLM routing entry for sub-node "${subNodeName}" — ` +
+					'wire-server attribution will be unrouted. Check buildVendorLlmRouting coverage.',
+			);
+		}
+
+		this.rewrittenCredentials.push({
+			nodeName: subNodeName ?? 'unknown',
+			credentialType: type,
+			credentialId: nodeCredentials.id ?? undefined,
+			field,
+		});
+
+		const rewrittenUrl = rootName
+			? `${this.serverUrl}/eval/${encodeURIComponent(rootName)}${pathPrefix}`
+			: `${this.serverUrl}${pathPrefix}`;
+
+		return { ...credentials, [field]: rewrittenUrl };
 	}
 
 	async updateCredentials(

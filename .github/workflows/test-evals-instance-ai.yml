@@ -32,9 +32,9 @@ jobs:
     env:
       # Each port hosts an independent n8n container. The eval CLI's
       # work-stealing allocator dispatches builds across them, capped per-lane.
-      # 9 lanes on 4vcpu — builds are LLM-bound so CPU headroom is sufficient;
+      # 11 lanes on 4vcpu — builds are LLM-bound so CPU headroom is sufficient;
       # bump back to 8vcpu if contention shows up.
-      LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686'
+      LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686,5687,5688'
     permissions:
       contents: read
       pull-requests: write
@@ -70,6 +70,7 @@ jobs:
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
+          SANDBOX_NAME_PREFIX: evals-ci-${{ inputs.branch || github.ref_name }}
         run: |
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
           for i in "${!PORTS[@]}"; do
@@ -82,6 +83,7 @@ jobs:
               -e N8N_AI_ASSISTANT_BASE_URL="" \
               -e N8N_INSTANCE_AI_SANDBOX_ENABLED=true \
               -e N8N_INSTANCE_AI_SANDBOX_PROVIDER=daytona \
+              -e N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX="$SANDBOX_NAME_PREFIX" \
               -e DAYTONA_API_URL=https://app.daytona.io/api \
               -e DAYTONA_API_KEY="$DAYTONA_API_KEY" \
               -e N8N_LICENSE_ACTIVATION_KEY="$N8N_LICENSE_ACTIVATION_KEY" \
@@ -166,7 +168,7 @@ jobs:
           LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
           LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
           LANGSMITH_REVISION_ID: ${{ github.sha }}
-          LANGSMITH_BRANCH: ${{ github.head_ref || github.ref_name }}
+          LANGSMITH_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
           FILTER: ${{ inputs.filter }}
         run: |
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
@@ -254,7 +256,7 @@ jobs:
           fi
 
       - name: Post eval results to PR
-        if: ${{ always() && github.event_name == 'pull_request' }}
+        if: ${{ always() && github.event.pull_request.number }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
