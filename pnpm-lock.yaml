@@ -811,7 +811,7 @@ importers:
         specifier: 'catalog:'
         version: 1.21.0
       csv-parse:
-        specifier: 6.2.1
+        specifier: 'catalog:'
         version: 6.2.1
       jsdom:
         specifier: 23.0.1
