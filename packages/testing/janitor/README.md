@@ -187,6 +187,63 @@ playwright-janitor orchestrate --shards=14 --impact
 
 Discovery detects `test.fixme()` and `test.skip()` via AST and excludes them automatically. Capability tags (`@capability:proxy`) are extracted for grouping.
 
+### Workspace-Wide CI Test Scoping
+
+The `affected-packages`, `scope`, and `test-scoped` subcommands operate at
+the workspace level — they do not require a `janitor.config.js` and can be
+invoked from any package via `pnpm exec janitor ...` (the package's bin is
+named `janitor`). They replace the need for `turbo run --affected`, which
+requires git history on the runner and is incompatible with `fetch-depth: 1`
+checkouts.
+
+**Pipeline:**
+
+```
+ci-filter (in install-and-build)
+  │
+  └─→ CHANGED_FILES (newline-separated)
+        │
+        ├─→ janitor affected-packages    (walks pnpm workspace dep graph)
+        │     │
+        │     └─→ AFFECTED_PACKAGES (space-separated list)
+        │           │
+        │           └─→ passed to test jobs as workflow input
+        │
+        └─→ CHANGED_FILES forwarded to test jobs
+              │
+              └─→ janitor test-scoped --runner=jest|vitest  (per-package)
+                    │
+                    ├─→ SKIP        → exit 0 (no in-package changes)
+                    ├─→ RUN_FULL    → spawn runner with no scope flags
+                    └─→ scoped      → jest --findRelatedTests / vitest related
+```
+
+**Usage:**
+
+```bash
+# Walk the workspace dep graph. Output: one package name per line.
+CHANGED_FILES="packages/workflow/src/x.ts" janitor affected-packages
+
+# As turbo --filter args, ready to interpolate.
+janitor affected-packages --as-filter-args
+
+# Compute scope for one package. Output: SKIP | RUN_FULL | <files>
+janitor scope --runner=vitest --package-dir=$(pwd)
+
+# Compute scope AND spawn the runner. Forwards args after `--` to runner.
+janitor test-scoped --runner=vitest -- --shard=1/2 --coverage
+```
+
+**Bailout triggers (force ALL packages):** `pnpm-lock.yaml`, root `package.json`.
+
+**Per-package bailout (force full suite):** `jest.config.*`, `vitest.config.*`,
+`package.json`, `tsconfig.*`. The scope analyzer detects these and emits
+`RUN_FULL`; `test-scoped` then spawns the runner without scope flags.
+
+**Turbo extra inputs:** `n8n-nodes-base#test`'s declared input
+`../cli/src/public-api/v1/**/*.yml` is honoured — a change to that yml
+marks nodes-base as affected.
+
 ## Rules
 
 ### Architecture Rules

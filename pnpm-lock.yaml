@@ -3376,6 +3376,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../../testing/janitor
       '@n8n/stylelint-config':
         specifier: workspace:*
         version: link:../../../@n8n/stylelint-config
@@ -3415,6 +3418,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../../testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -3527,6 +3533,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../../testing/janitor
       '@n8n/stylelint-config':
         specifier: workspace:*
         version: link:../../../@n8n/stylelint-config
@@ -3612,6 +3621,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../../testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -3688,6 +3700,9 @@ importers:
       '@n8n/i18n':
         specifier: workspace:*
         version: link:../i18n
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../../testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -3722,6 +3737,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../../testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -4153,6 +4171,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../@n8n/eslint-config
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../testing/janitor
       '@n8n/stylelint-config':
         specifier: workspace:*
         version: link:../../@n8n/stylelint-config
@@ -4527,6 +4548,9 @@ importers:
       '@n8n/eslint-plugin-community-nodes':
         specifier: workspace:*
         version: link:../@n8n/eslint-plugin-community-nodes
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
@@ -4686,6 +4710,9 @@ importers:
       glob:
         specifier: 10.5.0
         version: 10.5.0
+      yaml:
+        specifier: 'catalog:'
+        version: 2.8.3
     devDependencies:
       '@types/node':
         specifier: ^20.17.50

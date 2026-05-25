@@ -43,6 +43,7 @@
     "test": "JEST_JUNIT_CLASSNAME={filepath} turbo run test",
     "test:ci": "turbo run test --continue --concurrency=1",
     "test:ci:frontend": "turbo run test --continue --filter='./packages/frontend/**'",
+    "test:ci:frontend:changed": "turbo run test:changed --continue --filter='./packages/frontend/**'",
     "test:ci:backend": "turbo run test --continue --concurrency=1 --filter='!./packages/frontend/**'",
     "test:ci:backend:unit": "turbo run test:unit --continue --filter='!./packages/frontend/**'",
     "test:ci:backend:integration": "turbo run test:integration --continue --concurrency=1 --filter='!./packages/frontend/**'",

@@ -210,6 +210,50 @@ Examples:
 `);
 }
 
+export function showAffectedPackagesHelp(): void {
+	console.log(`
+Affected Packages - List workspace packages affected by changed files
+
+Walks the pnpm workspace dependency graph: directly-affected packages plus
+everything transitively downstream. Outputs one package name per line.
+
+Usage:
+  janitor affected-packages [--changed-files=<list>]
+
+When neither --changed-files nor $CHANGED_FILES is set, returns ALL packages
+(safe default for local dev).
+
+Bailout triggers (return ALL packages): pnpm-lock.yaml, root package.json.
+`);
+}
+
+export function showScopeHelp(): void {
+	console.log(`
+Scope - Per-package jest/vitest scope from changed files
+
+Usage:
+  janitor scope --runner=<jest|vitest> --package-dir=<dir> [--changed-files=<list>]
+
+Output (single line on stdout):
+  SKIP        No in-package files changed
+  RUN_FULL    Config file changed, OR no CHANGED_FILES signal (local dev)
+  <files>     Pass to jest --findRelatedTests / vitest related
+`);
+}
+
+export function showTestScopedHelp(): void {
+	console.log(`
+Test-Scoped - Compute scope and spawn jest/vitest with the right flags
+
+Usage:
+  janitor test-scoped --runner=<jest|vitest> [--package-dir=<dir>] [extra runner args]
+
+Local dev (no $CHANGED_FILES set): runs the full suite.
+CI: scopes via jest --findRelatedTests / vitest related, or skips if the
+package wasn't touched. Unrecognised flags are forwarded to the runner.
+`);
+}
+
 export function showRulesHelp(): void {
 	console.log(`
 Rules - Show detailed information about available rules
