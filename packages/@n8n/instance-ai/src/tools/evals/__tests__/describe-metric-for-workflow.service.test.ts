@@ -1,13 +1,8 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import {
-	describeMetricForWorkflow,
-	recommendedMetricId,
-} from '../describe-metric-for-workflow.service';
-import type { MetricId } from '../metric-catalog';
+import { describeMetricForWorkflow } from '../describe-metric-for-workflow.service';
 
 type TestNode = Partial<WorkflowJSON['nodes'][number]>;
-type RecommendedMetricId = Exclude<MetricId, 'helpfulness'>;
 
 const baseAgent: TestNode = {
 	name: 'Chef Agent',
@@ -75,37 +70,6 @@ describe('describeMetricForWorkflow', () => {
 		});
 	});
 
-	describe('relevance', () => {
-		it('returns the RAG-fallback message when no retriever is present', () => {
-			const result = describeMetricForWorkflow(wf([baseAgent]), 'Chef Agent', 'relevance');
-			expect(result).toMatch(/RAG/);
-		});
-
-		it('lists the retriever name when one is wired to the agent', () => {
-			const workflow = wf(
-				[
-					baseAgent,
-					{
-						name: 'Pinecone Store',
-						type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
-						typeVersion: 1,
-						parameters: {},
-						position: [0, 0],
-						id: 'v',
-					},
-				],
-				{
-					'Pinecone Store': {
-						ai_vectorStore: [[{ node: 'Chef Agent', type: 'ai_vectorStore', index: 0 }]],
-					},
-				},
-			);
-			const result = describeMetricForWorkflow(workflow, 'Chef Agent', 'relevance');
-			expect(result).toMatch(/Pinecone Store/);
-			expect(result).toMatch(/retrieved context/i);
-		});
-	});
-
 	describe('helpfulness', () => {
 		it('returns a generic description', () => {
 			const result = describeMetricForWorkflow(wf([baseAgent]), 'Chef Agent', 'helpfulness');
@@ -117,57 +81,5 @@ describe('describeMetricForWorkflow', () => {
 		it('returns empty string for unknown ids', () => {
 			expect(describeMetricForWorkflow(wf([baseAgent]), 'Chef Agent', 'nope')).toBe('');
 		});
-	});
-});
-
-describe('recommendedMetricId', () => {
-	it('returns tool_use when the agent has tools', () => {
-		const workflow = wf(
-			[
-				baseAgent,
-				{
-					name: 'Calculator',
-					type: '@n8n/n8n-nodes-langchain.toolCalculator',
-					typeVersion: 1,
-					parameters: {},
-					position: [0, 0],
-					id: 'c',
-				},
-			],
-			{ Calculator: { ai_tool: [[{ node: 'Chef Agent', type: 'ai_tool', index: 0 }]] } },
-		);
-		expect(recommendedMetricId(workflow, 'Chef Agent')).toBe('tool_use');
-	});
-
-	it('returns relevance when the agent has a retriever but no tools', () => {
-		const workflowRetrieverOnly = wf(
-			[
-				baseAgent,
-				{
-					name: 'Pinecone',
-					type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
-					typeVersion: 1,
-					parameters: {},
-					position: [0, 0],
-					id: 'v',
-				},
-			],
-			{
-				Pinecone: {
-					ai_vectorStore: [[{ node: 'Chef Agent', type: 'ai_vectorStore', index: 0 }]],
-				},
-			},
-		);
-		expect(recommendedMetricId(workflowRetrieverOnly, 'Chef Agent')).toBe('relevance');
-	});
-
-	it('returns correctness for a plain agent with no tools or retrievers', () => {
-		expect(recommendedMetricId(wf([baseAgent]), 'Chef Agent')).toBe('correctness');
-	});
-
-	it('returns a narrowed metric id type', () => {
-		const metricId: RecommendedMetricId = recommendedMetricId(wf([baseAgent]), 'Chef Agent');
-
-		expect(metricId).toBe('correctness');
 	});
 });

@@ -76,17 +76,22 @@ describe('generateSampleRows', () => {
 		expect(rows[0]).toEqual({ input: 'q1', expected_output: '' });
 	});
 
-	it('returns single fallback row when every batch fails to parse', async () => {
+	it('returns deterministic fallback rows when every batch fails to parse', async () => {
 		setupAgentMock('not json');
 		const rows = await generateSampleRows({
 			workflow: WF,
 			columns: ['input', 'expected_output'],
 			rowCount: 5,
 		});
-		expect(rows).toEqual([{ input: '', expected_output: '' }]);
+		expect(rows).toHaveLength(5);
+		expect(rows[0]).toEqual({
+			input: 'Can you help me with a typical request for Test?',
+			expected_output: '',
+		});
+		expect(rows.every((row) => row.input.length > 0)).toBe(true);
 	});
 
-	it('returns single fallback row when every batch rejects', async () => {
+	it('returns deterministic fallback rows when every batch rejects', async () => {
 		const generate = jest.fn().mockRejectedValue(new Error('API down'));
 		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
 			typeof createEvalAgent
@@ -96,7 +101,23 @@ describe('generateSampleRows', () => {
 			columns: ['input', 'expected_output'],
 			rowCount: 5,
 		});
-		expect(rows).toEqual([{ input: '', expected_output: '' }]);
+		expect(rows).toHaveLength(5);
+		expect(rows.every((row) => row.input.length > 0)).toBe(true);
+		expect(rows.every((row) => row.expected_output === '')).toBe(true);
+	});
+
+	it('falls back when generated rows leave every input column empty', async () => {
+		setupAgentMock(JSON.stringify([{ input: '' }, { input: null }]));
+		const rows = await generateSampleRows({
+			workflow: WF,
+			columns: ['input'],
+			rowCount: 2,
+		});
+
+		expect(rows).toEqual([
+			{ input: 'Can you help me with a typical request for Test?' },
+			{ input: 'I have a few constraints. What would you recommend?' },
+		]);
 	});
 });
 

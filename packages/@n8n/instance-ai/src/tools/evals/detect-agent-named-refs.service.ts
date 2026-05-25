@@ -11,8 +11,8 @@ import {
 export interface NamedRef {
 	/** Source node name extracted from $('NodeName') reference. */
 	nodeName: string;
-	/** Field after .item.json.<field>. */
 	field: string;
+	path: string[];
 	/** Original expression substring, useful for the rewrite step (no $('… surrounding). E.g., "$('Voice or Text').item.json.text". */
 	originalExpression: string;
 	/** Proposed dataset column name. Equals `field` when unique; otherwise `<node_slug>_<field>` to disambiguate. */
@@ -101,6 +101,7 @@ export function detectAgentNamedRefs(workflow: WorkflowJSON, agentNodeName: stri
 			result.push({
 				nodeName: m.nodeName,
 				field: m.field,
+				path: m.path,
 				originalExpression: m.originalExpression,
 				column,
 				targetNodeName: target,

@@ -31,6 +31,8 @@ const displayName = computed(() => {
 	return label;
 });
 
+const usesHumanToolLabelFont = computed(() => props.toolCall.toolName === 'evals');
+
 const showConfirmation = computed(
 	() =>
 		props.toolCall.confirmation &&
@@ -71,7 +73,9 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 					size="small"
 				/>
 				<N8nIcon v-else icon="check" :class="$style.successIcon" size="small" />
-				<span :class="$style.toolName">{{ displayName }}</span>
+				<span :class="[$style.toolName, usesHumanToolLabelFont ? $style.humanToolName : '']">
+					{{ displayName }}
+				</span>
 			</div>
 			<N8nIcon :icon="isOpen ? 'chevron-up' : 'chevron-down'" size="small" />
 		</CollapsibleTrigger>
@@ -180,6 +184,10 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	min-width: 0;
+}
+
+.humanToolName {
+	font-family: var(--font-family);
 }
 
 .spinner {

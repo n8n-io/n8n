@@ -8,6 +8,7 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { buildEvalOfferGatePayload } from './evals/eval-orchestration-payloads';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -37,7 +38,15 @@ const getAction = z.object({
 });
 
 const runAction = z.object({
-	action: z.literal('run').describe('Execute a workflow and wait for completion'),
+	action: z
+		.literal('run')
+		.describe(
+			'Execute a workflow and wait for completion. ' +
+				'When this returns `{ status: "success" }` for a user-initiated run, you MUST call ' +
+				'`evals(action="offer", workflowId)` in the same turn before ending — see ' +
+				'"Eval offer hard gate" in the system prompt. Exceptions: evals already offered for ' +
+				'this workflowId in this conversation, or the user previously declined.',
+		),
 	workflowId: z.string().describe('Workflow ID'),
 	inputData: z
 		.record(z.unknown())
@@ -173,9 +182,25 @@ async function handleRun(
 	}
 
 	// Approved or always_allow — execute
-	return await context.executionService.run(input.workflowId, input.inputData, {
+	const result = await context.executionService.run(input.workflowId, input.inputData, {
 		timeout: input.timeout,
 	});
+
+	if (isLikelyUserInitiatedSuccess(result)) {
+		return {
+			...result,
+			evalOfferGate: buildEvalOfferGatePayload(input.workflowId),
+		};
+	}
+
+	return result;
+}
+
+function isLikelyUserInitiatedSuccess(result: unknown): result is { status: 'success' } {
+	if (typeof result !== 'object' || result === null) return false;
+	const status = (result as { status?: unknown }).status;
+	const denied = (result as { denied?: unknown }).denied;
+	return status === 'success' && denied !== true;
 }
 
 async function handleDebug(context: InstanceAiContext, input: Extract<Input, { action: 'debug' }>) {

@@ -153,17 +153,6 @@ function truncateExampleValue(value: string): string {
 		: value;
 }
 
-/**
- * Render a small block of recent real inputs (filtered to the requested
- * `columns`) as a reference for the LLM. Returns an empty string when no
- * usable examples exist — the caller injects this block only when
- * non-empty, so the generator keeps producing rows from agent context
- * alone when history is missing.
- *
- * The directive is explicit that these are flavour reference, not seed
- * data to copy: the generator must produce NEW inputs in the same domain
- * and tone, not paraphrase the examples.
- */
 function buildRealExamplesBlock(
 	examples: ReadonlyArray<Record<string, unknown>> | undefined,
 	columns: string[],
@@ -290,14 +279,6 @@ export interface GenerateSampleRowsInput {
 	columns: string[];
 	rowCount?: number;
 	targetAgentNodeName?: string;
-	/**
-	 * Recent real input rows extracted from the workflow's execution history.
-	 * When present (typically below the history threshold that would otherwise
-	 * have been used directly), they are passed to the LLM as a flavour
-	 * reference — rows are filtered to the requested `columns`, truncated, and
-	 * accompanied by an explicit "reference, not seed" directive so the
-	 * generator produces new in-domain inputs instead of paraphrasing them.
-	 */
 	realExamples?: ReadonlyArray<Record<string, unknown>>;
 	logger?: Pick<Logger, 'warn'>;
 }
@@ -315,8 +296,74 @@ function resolveAgentContext(
 	return extractAgentContext(workflow, firstAgent);
 }
 
-function emptyRow(columns: string[]): Record<string, string> {
-	return Object.fromEntries(columns.map((c) => [c, '']));
+function workflowLabel(workflow: WorkflowJSON, context: AgentContext | undefined): string {
+	return context?.workflowName ?? workflow.name ?? 'this workflow';
+}
+
+const FALLBACK_REQUESTS = [
+	'Can you help me with a typical request for {workflowName}?',
+	'I have a few constraints. What would you recommend?',
+	'Give me a concise recommendation with the next steps.',
+	'What should I prepare before getting started?',
+	'Suggest a good option and explain the tradeoffs.',
+	'What would you do in this situation?',
+	'Can you compare a simple option with a more advanced one?',
+	'What are the most important things I should know?',
+	'Help me make a decision based on limited time.',
+	'Give me a practical plan I can follow today.',
+];
+
+function humanizeColumn(column: string): string {
+	return column
+		.replace(/([a-z])([A-Z])/g, '$1 $2')
+		.replace(/[._-]+/g, ' ')
+		.trim()
+		.toLowerCase();
+}
+
+function fallbackValueForColumn(column: string, index: number, workflowName: string): string {
+	const lower = column.toLowerCase();
+	if (/email/.test(lower)) return `person${index + 1}@example.com`;
+	if (/phone|mobile/.test(lower)) return `+1555010${String(index + 1).padStart(2, '0')}`;
+	if (/chat.*id|session|conversation|thread/.test(lower)) return `test-session-${index + 1}`;
+	if (/(^|[._-])id$|user.*id|sender.*id/.test(lower)) return `test-id-${index + 1}`;
+	if (/name/.test(lower)) return ['Alex', 'Sam', 'Jordan', 'Taylor', 'Morgan'][index % 5];
+	if (/date|day/.test(lower)) return ['Saturday', 'Sunday', 'next weekend'][index % 3];
+	if (/time/.test(lower)) return ['morning', 'afternoon', 'evening'][index % 3];
+	if (/city|location|place|area/.test(lower))
+		return ['nearby', 'downtown', 'within one hour'][index % 3];
+	if (/message|text|input|query|question|prompt|request/.test(lower)) {
+		return FALLBACK_REQUESTS[index % FALLBACK_REQUESTS.length].replace(
+			'{workflowName}',
+			workflowName,
+		);
+	}
+	return `${humanizeColumn(column) || 'value'} sample ${index + 1}`;
+}
+
+function fallbackRows(
+	workflow: WorkflowJSON,
+	context: AgentContext | undefined,
+	columns: string[],
+	rowCount: number,
+): Array<Record<string, string>> {
+	const count = Math.max(0, Math.floor(rowCount));
+	if (count <= 0) return [];
+	const label = workflowLabel(workflow, context);
+	return Array.from({ length: count }, (_, index) =>
+		Object.fromEntries(
+			columns.map((column) => [
+				column,
+				isExpectedOutputColumn(column) ? '' : fallbackValueForColumn(column, index, label),
+			]),
+		),
+	);
+}
+
+function hasNonEmptyInputValue(row: Record<string, string>, columns: string[]): boolean {
+	const inputColumns = columns.filter((column) => !isExpectedOutputColumn(column));
+	if (inputColumns.length === 0) return Object.values(row).some((value) => value.trim().length > 0);
+	return inputColumns.some((column) => (row[column] ?? '').trim().length > 0);
 }
 
 export async function generateSampleRows(
@@ -344,6 +391,9 @@ export async function generateSampleRows(
 	for (const r of settled) {
 		if (r.status === 'fulfilled') merged.push(...r.value);
 	}
-	if (merged.length === 0) return [emptyRow(input.columns)];
-	return merged;
+	const meaningfulRows = merged.filter((row) => hasNonEmptyInputValue(row, input.columns));
+	if (meaningfulRows.length === 0) {
+		return fallbackRows(input.workflow, context, input.columns, rowCount);
+	}
+	return meaningfulRows;
 }

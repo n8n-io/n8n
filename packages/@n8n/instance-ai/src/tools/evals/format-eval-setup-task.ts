@@ -1,4 +1,6 @@
+import type { DirectJsonRef } from './analyze-agent-input-columns.service';
 import {
+	currentJsonPathExpression,
 	currentJsonExpression,
 	jsonFieldAccessor,
 	nodeItemJsonExpression,
@@ -21,6 +23,7 @@ export interface FormatEvalSetupTaskInput {
 	suggestedInputColumns: string[];
 	suggestedOutputColumns: string[];
 	enabledMetrics: MetricProposal[];
+	directRefs?: DirectJsonRef[];
 	namedRefs?: NamedRef[];
 	targetAgentNodeName?: string;
 }
@@ -33,62 +36,77 @@ function evalTriggerJsonRef(column: string): string {
 	return `={{ $('Eval Trigger').item.json${jsonFieldAccessor(column)} }}`;
 }
 
+type AdapterAssignment = {
+	column: string;
+	valueExpression: string;
+};
+
+type AdapterRewrite = {
+	targetNodeName: string;
+	originalExpression: string;
+	column: string;
+};
+
 function formatProductionAdapter(
+	directRefs: DirectJsonRef[],
 	namedRefs: NamedRef[],
-	agentNodeName: string,
 	columnNameFor: (column: string) => string,
 ): string {
-	if (namedRefs.length === 0) return '';
+	const directRefsNeedingAdapter = directRefs.filter(
+		(ref) => columnNameFor(ref.column) !== ref.field,
+	);
+	if (namedRefs.length === 0 && directRefsNeedingAdapter.length === 0) return '';
 
-	// Set adapter assignments: one per unique column, using canonical single-quote syntax.
-	const assignmentsByColumn = new Map<
-		string,
-		{ column: string; nodeName: string; field: string }
-	>();
+	const assignmentsByColumn = new Map<string, AdapterAssignment>();
+	for (const r of directRefsNeedingAdapter) {
+		const column = columnNameFor(r.column);
+		if (!assignmentsByColumn.has(column)) {
+			assignmentsByColumn.set(column, {
+				column,
+				valueExpression: currentJsonPathExpression(r.path),
+			});
+		}
+	}
 	for (const r of namedRefs) {
 		const column = columnNameFor(r.column);
 		if (!assignmentsByColumn.has(column)) {
 			assignmentsByColumn.set(column, {
 				column,
-				nodeName: r.nodeName,
-				field: r.field,
+				valueExpression: nodeItemJsonExpression(r.nodeName, r.path),
 			});
 		}
 	}
 	const assignments = [...assignmentsByColumn.values()]
 		.map(
 			(a) =>
-				`  - { name: ${taskString(a.column)}, value: ${taskString(`={{ ${nodeItemJsonExpression(a.nodeName, a.field)} }}`)}, type: "string" }`,
+				`  - { name: ${taskString(a.column)}, value: ${taskString(`={{ ${a.valueExpression} }}`)}, type: "string" }`,
 		)
 		.join('\n');
 
-	// Rewrites grouped by target node.
-	//
-	// The replacement expression depends on whether the target IS the agent or
-	// a sub-component (memory, tool, output parser, ...):
-	//   - Agent target: replace with `{{ $json.<col> }}` — the agent receives
-	//     `$json` directly from upstream (Set adapter in prod, EvaluationTrigger
-	//     in eval), so $json.<col> resolves.
-	//   - Sub-component target: replace with `{{ $('<AgentName>').item.json.<col> }}`
-	//     — sub-components have their own runtime context where `$json` may not
-	//     reflect the agent's input row (memory nodes in particular). Referencing
-	//     the agent by name forces n8n to resolve from the agent's last input,
-	//     which works in both eval and prod modes.
-	const byTarget = new Map<string, NamedRef[]>();
-	for (const r of namedRefs) {
+	const rewritesToApply: AdapterRewrite[] = [
+		...directRefsNeedingAdapter.map((r) => ({
+			targetNodeName: r.targetNodeName,
+			originalExpression: r.originalExpression,
+			column: r.column,
+		})),
+		...namedRefs.map((r) => ({
+			targetNodeName: r.targetNodeName,
+			originalExpression: r.originalExpression,
+			column: r.column,
+		})),
+	];
+	const byTarget = new Map<string, AdapterRewrite[]>();
+	for (const r of rewritesToApply) {
 		const arr = byTarget.get(r.targetNodeName) ?? [];
 		arr.push(r);
 		byTarget.set(r.targetNodeName, arr);
 	}
 	const rewriteBlocks: string[] = [];
 	for (const [target, refs] of byTarget) {
-		const isAgent = target === agentNodeName;
 		const lines = refs
 			.map((r) => {
 				const column = columnNameFor(r.column);
-				const replacement = isAgent
-					? `{{ ${currentJsonExpression(column)} }}`
-					: `{{ ${nodeItemJsonExpression(agentNodeName, column)} }}`;
+				const replacement = `{{ ${currentJsonExpression(column)} }}`;
 				return `    - Replace \`${r.originalExpression}\` with \`${replacement}\``;
 			})
 			.join('\n');
@@ -99,19 +117,20 @@ function formatProductionAdapter(
 	const sourceList = [...new Set(namedRefs.map((r) => r.nodeName))]
 		.map((n) => `\`${n}\``)
 		.join(', ');
-	const sourceLabel = assignmentsByColumn.size === 1 ? 'node' : 'nodes';
+	const namedSourceText =
+		sourceList.length > 0 ? `named nodes ${sourceList}` : 'the production input JSON';
 
 	return `
-PRODUCTION ADAPTER (REQUIRED — the agent and/or its connected sub-components currently read input from named ${sourceLabel} ${sourceList}, which won't resolve in eval runs):
+PRODUCTION ADAPTER (REQUIRED — the agent and/or its connected sub-components currently read input from ${namedSourceText} or nested fields that won't resolve from flat test-case table columns):
 
 1. Insert a new \`n8n-nodes-base.set\` node named \`"Eval Production Adapter"\` (\`typeVersion: 3.4\`) immediately upstream of the agent on the PRODUCTION path. The agent's existing \`main\` input parent on the production path becomes the Set adapter's \`main\` input parent. The Set adapter's \`main\` output goes to the agent.
 2. Configure the Set adapter's \`assignments.assignments\` array (one entry per unique dataset column):
 ${assignments}
-3. Rewrite parameter expressions in each affected node — the agent and any sub-components (memory, tools, output parsers) that reference named source nodes. **The replacement form depends on the target:** the agent itself uses \`{{ $json.<col> }}\` (it receives \`$json\` directly), but sub-components must use the exact selected-agent expression listed below because their runtime context does not propagate \`$json\` from the agent's input row.
+3. Rewrite parameter expressions in each affected node — the agent and any sub-components (memory, tools, output parsers) listed below. Use the exact \`{{ $json.<column> }}\` replacement listed below for every target node.
 ${rewrites}
 4. The eval branch wires \`EvaluationTrigger\` directly to the agent's \`main\` input as a SECOND incoming connection (no Set adapter between them — the trigger row already has \`$json.<column>\` shape).
 
-After your edits the agent has TWO incoming \`main\` connections: one from the Eval Production Adapter (production runs) and one from the EvaluationTrigger (eval runs). Both produce \`$json.<column>\` for the agent. Sub-components reference the selected agent node by name, so they resolve to the agent's last input row in both modes.`;
+After your edits the agent has TWO incoming \`main\` connections: one from the Eval Production Adapter (production runs) and one from the EvaluationTrigger (eval runs). Both produce \`$json.<column>\` for the agent and its sub-components.`;
 }
 
 function formatMetric(
@@ -124,6 +143,10 @@ function formatMetric(
 	const expectedOutputColumn = input.suggestedOutputColumns[0]
 		? columnNameFor(input.suggestedOutputColumns[0])
 		: 'expected_output';
+	const expectedToolsColumn =
+		input.suggestedOutputColumns
+			.map((column) => columnNameFor(column))
+			.find((column) => column === 'expected_tools') ?? 'expected_tools';
 	const inputColumn = input.suggestedInputColumns[0]
 		? columnNameFor(input.suggestedInputColumns[0])
 		: 'input';
@@ -137,7 +160,7 @@ function formatMetric(
   Configure Evaluation(setMetrics) with \`metric: 'helpfulness'\`, \`userQuery: ${evalTriggerJsonRef(inputColumn)}\`, \`actualAnswer: ={{ $json.output }}\`, and \`options.metricName: '${m.name}'\`. Connect an \`ai_languageModel\` input.${promptSuffix}`;
 		case 'tool_use':
 			return `- ${m.name} (${m.kind}${cannedSuffix}): ${m.description}
-  Configure Evaluation(setMetrics) with \`metric: 'toolsUsed'\` (not \`'tool_use'\`), \`expectedTools\` from the dataset or the user's selected expected tool list, \`intermediateSteps: ={{ $json.intermediateSteps }}\`, and \`options.metricName: '${m.name}'\`. Enable returning intermediate steps on the agent.`;
+  Configure Evaluation(setMetrics) with \`metric: 'toolsUsed'\` (not \`'tool_use'\`), \`expectedTools: ${evalTriggerJsonRef(expectedToolsColumn)}\`, \`intermediateSteps: ={{ $json.intermediateSteps }}\`, and \`options.metricName: '${m.name}'\`. Enable returning intermediate steps on the agent.`;
 		case 'relevance':
 			return `- ${m.name} (${m.kind}${cannedSuffix}): ${m.description}
   There is no native \`relevance\` metric option. Configure Evaluation(setMetrics) with \`metric: 'helpfulness'\`, \`userQuery: ${evalTriggerJsonRef(inputColumn)}\`, \`actualAnswer\` mapped to the retrieved context or response field being judged, \`options.metricName: '${m.name}'\`, and the relevance prompt below. Connect an \`ai_languageModel\` input.${promptSuffix}`;
@@ -173,6 +196,7 @@ function formatSetOutputsDataTableInstruction(input: FormatEvalSetupTaskInput): 
 export function formatEvalSetupTask(input: FormatEvalSetupTaskInput): string {
 	const rawInputColumns = [
 		...input.suggestedInputColumns,
+		...(input.directRefs ?? []).map((r) => r.column),
 		...(input.namedRefs ?? []).map((r) => r.column),
 	];
 	const rawOutputColumns = input.suggestedOutputColumns;
@@ -192,10 +216,9 @@ export function formatEvalSetupTask(input: FormatEvalSetupTaskInput): string {
 		.join('\n\n');
 	const datasetSection = formatDatasetSection(input, dataTableColumns);
 	const setOutputsDataTableInstruction = formatSetOutputsDataTableInstruction(input);
-	const agentNodeName = input.targetAgentNodeName ?? input.detectedAiNodes[0] ?? '';
 	const adapterSection = formatProductionAdapter(
+		input.directRefs ?? [],
 		input.namedRefs ?? [],
-		agentNodeName,
 		columnNameFor,
 	);
 

@@ -21,7 +21,7 @@ type EvalDataToolResult = {
 
 async function runEvalDataTool(
 	ctx: ReturnType<typeof buildOrchestrationCtx>,
-	input: { workflowId: string; projectId?: string },
+	input: { workflowId: string; projectId?: string; targetAgentNodeName?: string },
 ): Promise<EvalDataToolResult> {
 	const tool = createEvalDataAgentTool(ctx as never);
 	return (await tool.handler!(input, {} as never)) as EvalDataToolResult;
@@ -91,6 +91,158 @@ const evalWfWithMetrics = (): WorkflowJSON =>
 		connections: {
 			EvalTrig: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
 			Agent: { main: [[{ node: 'MetricN', type: 'main', index: 0 }]] },
+		},
+		pinData: {},
+		settings: {},
+	}) as unknown as WorkflowJSON;
+
+const multiAgentEvalWf = (): WorkflowJSON =>
+	({
+		name: 't',
+		nodes: [
+			{
+				name: 'Router Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				parameters: { text: '={{ $json.router_query }}' },
+				position: [0, 0],
+				id: 'router',
+			},
+			{
+				name: 'EvalTrig',
+				type: 'n8n-nodes-base.evaluationTrigger',
+				typeVersion: 1,
+				parameters: { dataTableId: { value: 'dt-1' } },
+				position: [0, 200],
+				id: 't',
+			},
+			{
+				name: 'Answer Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				parameters: { text: '={{ $json.answer_query }}' },
+				position: [200, 200],
+				id: 'answer',
+			},
+		],
+		connections: {
+			EvalTrig: { main: [[{ node: 'Answer Agent', type: 'main', index: 0 }]] },
+		},
+		pinData: {},
+		settings: {},
+	}) as unknown as WorkflowJSON;
+
+const nonAgentAiTargetEvalWf = (): WorkflowJSON =>
+	({
+		name: 't',
+		nodes: [
+			{
+				name: 'EvalTrig',
+				type: 'n8n-nodes-base.evaluationTrigger',
+				typeVersion: 1,
+				parameters: { dataTableId: { value: 'dt-1' } },
+				position: [0, 0],
+				id: 't',
+			},
+			{
+				name: 'LLM Chain',
+				type: '@n8n/n8n-nodes-langchain.chainLlm',
+				typeVersion: 1,
+				parameters: { prompt: '={{ $json.user_query }}' },
+				position: [200, 0],
+				id: 'chain',
+			},
+		],
+		connections: {
+			EvalTrig: { main: [[{ node: 'LLM Chain', type: 'main', index: 0 }]] },
+		},
+		pinData: {},
+		settings: {},
+	}) as unknown as WorkflowJSON;
+
+const ambiguousMultiAgentEvalWf = (): WorkflowJSON =>
+	({
+		name: 't',
+		nodes: [
+			{
+				name: 'EvalTrig',
+				type: 'n8n-nodes-base.evaluationTrigger',
+				typeVersion: 1,
+				parameters: { dataTableId: { value: 'dt-1' } },
+				position: [0, 0],
+				id: 't',
+			},
+			{
+				name: 'Router Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				parameters: { text: '={{ $json.router_query }}' },
+				position: [200, -100],
+				id: 'router',
+			},
+			{
+				name: 'Answer Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				parameters: { text: '={{ $json.answer_query }}' },
+				position: [200, 100],
+				id: 'answer',
+			},
+		],
+		connections: {
+			EvalTrig: {
+				main: [
+					[
+						{ node: 'Router Agent', type: 'main', index: 0 },
+						{ node: 'Answer Agent', type: 'main', index: 0 },
+					],
+				],
+			},
+		},
+		pinData: {},
+		settings: {},
+	}) as unknown as WorkflowJSON;
+
+const multiTargetEvalWf = (): WorkflowJSON =>
+	({
+		name: 't',
+		nodes: [
+			{
+				name: 'EvalTrig1',
+				type: 'n8n-nodes-base.evaluationTrigger',
+				typeVersion: 1,
+				parameters: { dataTableId: { value: 'dt-first' } },
+				position: [0, -100],
+				id: 't1',
+			},
+			{
+				name: 'First Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				parameters: { text: '={{ $json.first_query }}' },
+				position: [200, -100],
+				id: 'a1',
+			},
+			{
+				name: 'EvalTrig2',
+				type: 'n8n-nodes-base.evaluationTrigger',
+				typeVersion: 1,
+				parameters: { dataTableId: { value: 'dt-second' } },
+				position: [0, 100],
+				id: 't2',
+			},
+			{
+				name: 'Second Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				parameters: { text: '={{ $json.second_query }}' },
+				position: [200, 100],
+				id: 'a2',
+			},
+		],
+		connections: {
+			EvalTrig1: { main: [[{ node: 'First Agent', type: 'main', index: 0 }]] },
+			EvalTrig2: { main: [[{ node: 'Second Agent', type: 'main', index: 0 }]] },
 		},
 		pinData: {},
 		settings: {},
@@ -239,6 +391,140 @@ describe('eval-data tool', () => {
 		expect(dataTableService.insertRows).toHaveBeenCalled();
 	});
 
+	it('passes the EvaluationTrigger target agent to synthetic row generation', async () => {
+		const dataTableService = defaultDataTableService({
+			getSchema: jest.fn().mockResolvedValue([{ name: 'answer_query' }]),
+		});
+		const ctx = buildOrchestrationCtx({ workflow: multiAgentEvalWf(), dataTableService });
+		const generateSpy = jest
+			.spyOn(sampleRowsService, 'generateSampleRows')
+			.mockResolvedValue([{ answer_query: 'generated' }]);
+
+		await runEvalDataTool(ctx, { workflowId: 'w1' });
+
+		expect(generateSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				columns: ['answer_query'],
+				targetAgentNodeName: 'Answer Agent',
+			}),
+		);
+		expect(dataTableService.insertRows).toHaveBeenCalledWith(
+			'dt-1',
+			[{ answer_query: 'generated' }],
+			undefined,
+		);
+	});
+
+	it('populates eval data for supported non-agent AI targets', async () => {
+		const dataTableService = defaultDataTableService({
+			getSchema: jest.fn().mockResolvedValue([{ name: 'user_query' }]),
+		});
+		const ctx = buildOrchestrationCtx({ workflow: nonAgentAiTargetEvalWf(), dataTableService });
+		const generateSpy = jest
+			.spyOn(sampleRowsService, 'generateSampleRows')
+			.mockResolvedValue([{ user_query: 'generated' }]);
+
+		const result = await runEvalDataTool(ctx, { workflowId: 'w1' });
+
+		expect(result.status).toBe('generated');
+		expect(generateSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				columns: ['user_query'],
+				targetAgentNodeName: 'LLM Chain',
+			}),
+		);
+		expect(dataTableService.insertRows).toHaveBeenCalledWith(
+			'dt-1',
+			[{ user_query: 'generated' }],
+			undefined,
+		);
+	});
+
+	it('populates eval data when the requested target is a supported non-agent AI node', async () => {
+		const dataTableService = defaultDataTableService({
+			getSchema: jest.fn().mockResolvedValue([{ name: 'user_query' }]),
+		});
+		const ctx = buildOrchestrationCtx({ workflow: nonAgentAiTargetEvalWf(), dataTableService });
+		const generateSpy = jest
+			.spyOn(sampleRowsService, 'generateSampleRows')
+			.mockResolvedValue([{ user_query: 'generated' }]);
+
+		const result = await runEvalDataTool(ctx, {
+			workflowId: 'w1',
+			targetAgentNodeName: 'LLM Chain',
+		});
+
+		expect(result.status).toBe('generated');
+		expect(generateSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				columns: ['user_query'],
+				targetAgentNodeName: 'LLM Chain',
+			}),
+		);
+		expect(dataTableService.insertRows).toHaveBeenCalledWith(
+			'dt-1',
+			[{ user_query: 'generated' }],
+			undefined,
+		);
+	});
+
+	it('passes the requested target agent through requirement analysis', async () => {
+		const dataTableService = defaultDataTableService({
+			getSchema: jest.fn().mockResolvedValue([{ name: 'answer_query' }]),
+		});
+		const ctx = buildOrchestrationCtx({
+			workflow: ambiguousMultiAgentEvalWf(),
+			dataTableService,
+		});
+		const generateSpy = jest
+			.spyOn(sampleRowsService, 'generateSampleRows')
+			.mockResolvedValue([{ answer_query: 'generated' }]);
+
+		await runEvalDataTool(ctx, { workflowId: 'w1', targetAgentNodeName: 'Answer Agent' });
+
+		expect(generateSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				columns: ['answer_query'],
+				targetAgentNodeName: 'Answer Agent',
+			}),
+		);
+		expect(dataTableService.insertRows).toHaveBeenCalledWith(
+			'dt-1',
+			[{ answer_query: 'generated' }],
+			undefined,
+		);
+	});
+
+	it('populates the table for the requested target when multiple eval triggers exist', async () => {
+		const dataTableService = defaultDataTableService({
+			insertRows: jest.fn().mockResolvedValue({
+				...defaultInsertResult,
+				dataTableId: 'dt-second',
+			}),
+			getSchema: jest.fn().mockResolvedValue([{ name: 'second_query' }]),
+		});
+		const ctx = buildOrchestrationCtx({
+			workflow: multiTargetEvalWf(),
+			dataTableService,
+		});
+		jest
+			.spyOn(sampleRowsService, 'generateSampleRows')
+			.mockResolvedValue([{ second_query: 'generated' }]);
+
+		await runEvalDataTool(ctx, { workflowId: 'w1', targetAgentNodeName: 'Second Agent' });
+
+		expect(dataTableService.insertRows).toHaveBeenCalledWith(
+			'dt-second',
+			[{ second_query: 'generated' }],
+			undefined,
+		);
+		expect(dataTableService.insertRows).not.toHaveBeenCalledWith(
+			'dt-first',
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
 	it('returns skipped when no eval target exists', async () => {
 		const wf: WorkflowJSON = {
 			name: 't',
@@ -347,6 +633,11 @@ describe('eval-data tool', () => {
 			expectedOutputsNeedUserReview: true,
 			expectedOutputColumns: ['expected_response'],
 		});
+		expect(dataTableService.insertRows).toHaveBeenCalledWith(
+			'dt-1',
+			[{ user_query: 'q', expected_response: '' }],
+			undefined,
+		);
 	});
 
 	it('does not flag user review on the history path (real outputs are ground truth)', async () => {
@@ -403,6 +694,11 @@ describe('eval-data tool', () => {
 			undefined,
 		);
 		expect(dataTableService.insertRows).toHaveBeenCalled();
+		expect(dataTableService.insertRows).toHaveBeenCalledWith(
+			'dt-1',
+			[{ user_query: 'q', expected_response: '' }],
+			undefined,
+		);
 		expect(dataTableService.addColumn.mock.invocationCallOrder[0]).toBeLessThan(
 			dataTableService.insertRows.mock.invocationCallOrder[0],
 		);

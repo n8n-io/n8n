@@ -19,7 +19,7 @@ export const EVAL_SETUP_AGENT_PROMPT = `You are an eval setup specialist for n8n
 2. **Use the DataTable id from the task.** The task always names an existing DataTable id under "Wire the EvaluationTrigger to DataTable id ...". Use it as-is. Do not create, modify rows, or modify schema. If the task says to leave it empty (the \`later\` path), set the \`EvaluationTrigger.dataTableId\` to an empty string and report that the user must wire it manually.
 3. **Patch the workflow.** Build the eval topology in this order:
    a. Insert \`EvaluationTrigger\` (\`name: "Eval Trigger"\`).
-   b. **If the task contains a \`PRODUCTION ADAPTER\` section, follow it LITERALLY.** Insert the named Set node immediately upstream of the agent on the production path with the exact assignments listed; for each rewrite line under section 3 of the PRODUCTION ADAPTER (which lists target nodes — the agent itself AND any of its connected sub-components like memory, tools, output parsers), substring-replace the listed \`originalExpression\` with the EXACT replacement form shown on that line. **Do not assume the replacement is always \`$json.<column>\`** — the task uses \`$json.<column>\` for the agent target but \`{{ $('<AgentName>').item.json.<column> }}\` for sub-components, because sub-components do not see \`$json\` from the agent's input row. Use what the task says verbatim. Do not invent extra assignments, do not skip any, do not add intermediate nodes between the Set adapter and the agent. Do not skip any target node. After this step the agent has TWO incoming \`main\` connections — one from the Set adapter (production), one from the EvaluationTrigger (eval).
+   b. **If the task contains a \`PRODUCTION ADAPTER\` section, follow it LITERALLY.** Insert the named Set node immediately upstream of the agent on the production path with the exact assignments listed; for each rewrite line under section 3 of the PRODUCTION ADAPTER (which lists target nodes — the agent itself AND any of its connected sub-components like memory, tools, output parsers), substring-replace the listed original expression with the EXACT replacement form shown on that line. The replacement is \`$json.<column>\` for both the agent and its sub-components because both the Set adapter and EvaluationTrigger provide the same flat input row shape. Use what the task says verbatim. Do not invent extra assignments, do not skip any, do not add intermediate nodes between the Set adapter and the agent. Do not skip any target node. After this step the agent has TWO incoming \`main\` connections — one from the Set adapter (production), one from the EvaluationTrigger (eval).
    c. **If the task does NOT contain a \`PRODUCTION ADAPTER\` section**, wire \`EvaluationTrigger\` directly to the agent's \`main\` input — no Set node, no rewrites. The agent's existing parameters reference \`$json.<column>\` already (the orchestrator validated this).
    d. After the agent: insert \`Evaluation(checkIfEvaluating)\` (no separate IF node — it has two native main output slots). Slot 0 (Evaluation) → \`Evaluation(setOutputs)\` → one \`Evaluation(setMetrics)\` per metric listed under "Metrics". Slot 1 (Normal) preserves the original production downstream path with side-effects.
    e. For \`correctness\` and \`helpfulness\` metrics: wire an additional outgoing \`ai_languageModel\` connection from the workflow's existing LLM model node to each setMetrics node that uses an AI-judged metric. The LLM gets reused — same node, additional connection. Without this, AI-judged metrics fail silently.
@@ -134,18 +134,20 @@ Top-level parameter:
   - \`helpfulness\` — AI-judged helpfulness (scale 1-5). Requires \`userQuery\` + \`actualAnswer\`.
   - \`stringSimilarity\` — character-level similarity (edit distance, 0-1). Requires \`expectedAnswer\` + \`actualAnswer\`.
   - \`categorization\` — exact string match (1 or 0). Requires \`expectedAnswer\` + \`actualAnswer\`.
-  - \`toolsUsed\` — whether tools were used (0-1). No ground-truth fields needed.
+  - \`toolsUsed\` — whether the agent used the expected tools (0-1). Requires \`expectedTools\` + \`intermediateSteps\`.
   - \`customMetrics\` — user-defined metrics (advanced, rarely chosen).
 
 How to reference the values (use the EvaluationTrigger's explicit name — see above; "Eval Trigger" if you followed the convention):
 - \`expectedAnswer\` (ground truth) — pulls from the EvaluationTrigger's emitted row. Example: \`={{ $('Eval Trigger').item.json.expected_output }}\`.
 - \`actualAnswer\` (agent's response) — pulls from the AI agent's output JSON, which is still on \`$json\` at the setMetrics stage (setOutputs forwards its input data unchanged). Example: \`={{ $json.output }}\`.
 - \`userQuery\` (for \`helpfulness\`) — pulls from the EvaluationTrigger row, e.g. \`={{ $('Eval Trigger').item.json.input }}\`.
+- \`expectedTools\` (for \`toolsUsed\`) — pulls from the EvaluationTrigger row, e.g. \`={{ $('Eval Trigger').item.json.expected_tools }}\`.
+- \`intermediateSteps\` (for \`toolsUsed\`) — pulls from the AI agent output, e.g. \`={{ $json.intermediateSteps }}\`. Ensure the agent returns intermediate steps before relying on this field.
 
 Required fields per \`metric\`:
 - \`correctness\` / \`stringSimilarity\` / \`categorization\`: \`expectedAnswer\` + \`actualAnswer\`.
 - \`helpfulness\`: \`userQuery\` + \`actualAnswer\`.
-- \`toolsUsed\`: no extra required fields.
+- \`toolsUsed\`: \`expectedTools\` + \`intermediateSteps\`.
 
 **CRITICAL — AI-judged metrics need an \`ai_languageModel\` connection**: when \`metric\` is \`correctness\` or \`helpfulness\` (the LLM-as-judge metrics), the setMetrics node has TWO inputs — the standard \`main\` from the eval branch AND a separate \`ai_languageModel\` slot for the LLM judge. The node will not work without an LLM connected to the \`ai_languageModel\` slot.
 
@@ -171,7 +173,6 @@ Canned metric key mapping from the task's \`canned=<key>\` hints to the \`metric
 - \`canned=correctness\` → \`metric: "correctness"\`
 - \`canned=helpfulness\` → \`metric: "helpfulness"\`
 - \`canned=tool_use\` → \`metric: "toolsUsed"\`
-- \`canned=relevance\` → \`metric: "categorization"\` (closest stock match)
 - If no canned key present → use \`customMetrics\` or pick the most appropriate built-in.
 
 **checkIfEvaluating**: gates the workflow flow based on whether the current run is an eval run. Place it immediately after the AI agent. IMPORTANT: this node has TWO native \`main\` output slots — no separate IF node needed:
@@ -213,7 +214,7 @@ Apply the correct diagram based on whether the task contains a \`PRODUCTION ADAP
 
 Rules:
 - **Direct case**: EvaluationTrigger connects DIRECTLY to the target AI agent node's \`main\` input. NO Set/Code/transform node in between. The trigger emits each dataset row column as \`$json.<column>\`. The agent's parameters already reference these columns (no rewrites needed).
-- **Adapter case**: A Set node (\`"Eval Production Adapter"\`) sits between the production trigger path and the agent. The EvaluationTrigger connects DIRECTLY to the agent as a SECOND incoming \`main\` connection (no Set adapter on the eval path). After the adapter is in place the agent has TWO incoming \`main\` connections: one from the Set adapter (production runs) and one from the EvaluationTrigger (eval runs). Both paths produce \`$json.<column>\` so the rewritten agent parameters resolve in both modes.
+- **Adapter case**: A Set node (\`"Eval Production Adapter"\`) sits between the production trigger path and the agent. It flattens named-node or nested production input fields into the exact dataset columns listed in the task. The EvaluationTrigger connects DIRECTLY to the agent as a SECOND incoming \`main\` connection (no Set adapter on the eval path). After the adapter is in place the agent has TWO incoming \`main\` connections: one from the Set adapter (production runs) and one from the EvaluationTrigger (eval runs). Both paths produce \`$json.<column>\` so the rewritten agent parameters resolve in both modes.
 - Insert \`checkIfEvaluating + setOutputs + setMetrics\` AFTER the AI agent node. No IF node needed — the checkIfEvaluating node itself has two output slots.
 - \`checkIfEvaluating\` slot 0 (Evaluation) routes to setOutputs → setMetrics (eval branch; terminates).
 - \`checkIfEvaluating\` slot 1 (Normal) routes to whatever the AI agent was originally connected to (production path preserved).
@@ -231,7 +232,7 @@ After patching:
    - The named Set adapter node exists with \`typeVersion: 3.4\`.
    - The Set adapter's \`assignments.assignments\` array contains EVERY entry from the task spec.
    - The Set adapter's \`main\` output connects to the agent's \`main\` input.
-   - EACH target node listed under section 3 of the PRODUCTION ADAPTER (agent and all sub-components) no longer contains any of its original \`$('NodeName').item.json.<field>\` expressions. The agent target's parameters now use \`$json.<column>\`; sub-component targets (memory, tools, output parsers) use \`$('<AgentName>').item.json.<column>\` instead — match each line of the task verbatim.
+   - EACH target node listed under section 3 of the PRODUCTION ADAPTER (agent and all sub-components) no longer contains any of its original \`$('NodeName').item.json.<field>\` expressions and now uses the exact \`$json.<column>\` replacement listed in the task.
    - The EvaluationTrigger has a \`main\` connection to the agent's \`main\` input (a SECOND incoming connection).
    When the task did NOT contain an adapter section: assert the agent's parameters reference \`$json.<column>\` for at least one column from the task's INPUT COLUMNS list (existing rule).
 5. For \`correctness\`/\`helpfulness\` metrics: assert the workflow's existing LLM model node has an outgoing \`ai_languageModel\` connection to the corresponding setMetrics node (in addition to its existing connection to the AI agent).

@@ -177,6 +177,44 @@ describe('analyzeEvalDataRequirements', () => {
 		expect(result.targets[0].targetNodeName).toBe('Agent');
 	});
 
+	it('includes input columns read by connected memory nodes', () => {
+		const workflow = wf(
+			[
+				{
+					name: 'EvalTrig',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					typeVersion: 1,
+					parameters: { dataTableId: { value: 'dt-1' } },
+					position: [0, 0],
+					id: 't',
+				},
+				{
+					name: 'Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					parameters: { text: '={{ $json.user_query }}' },
+					position: [200, 0],
+					id: 'a',
+				},
+				{
+					name: 'Memory',
+					type: '@n8n/n8n-nodes-langchain.memoryPostgres',
+					typeVersion: 1,
+					parameters: { sessionIdExpression: '={{ $json.chat_id }}' },
+					position: [200, 100],
+					id: 'm',
+				},
+			],
+			{
+				EvalTrig: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+				Memory: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
+			},
+		);
+
+		const result = analyzeEvalDataRequirements(workflow);
+		expect(result.targets[0].inputColumns.sort()).toEqual(['chat_id', 'user_query']);
+	});
+
 	it('uses reachable root AI nodes as targets even when they are not agents', () => {
 		const workflow = wf(
 			[
@@ -205,6 +243,84 @@ describe('analyzeEvalDataRequirements', () => {
 		const result = analyzeEvalDataRequirements(workflow);
 		expect(result.targets[0].targetNodeName).toBe('LLM Chain');
 		expect(result.targets[0].inputColumns).toEqual(['user_query']);
+	});
+
+	it('uses the requested target when it is a supported non-agent AI node', () => {
+		const workflow = wf(
+			[
+				{
+					name: 'EvalTrig',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					typeVersion: 1,
+					parameters: { dataTableId: { value: 'dt-1' } },
+					position: [0, 0],
+					id: 't',
+				},
+				{
+					name: 'LLM Chain',
+					type: '@n8n/n8n-nodes-langchain.chainLlm',
+					typeVersion: 1,
+					parameters: { prompt: '={{ $json.user_query }}' },
+					position: [200, 0],
+					id: 'c',
+				},
+			],
+			{
+				EvalTrig: { main: [[{ node: 'LLM Chain', type: 'main', index: 0 }]] },
+			},
+		);
+
+		const result = analyzeEvalDataRequirements(workflow, 'LLM Chain');
+
+		expect(result.targets[0].targetNodeName).toBe('LLM Chain');
+		expect(result.targets[0].targetAgentNodeName).toBeUndefined();
+		expect(result.targets[0].inputColumns).toEqual(['user_query']);
+	});
+
+	it('uses the requested target agent when multiple AI agents are reachable', () => {
+		const workflow = wf(
+			[
+				{
+					name: 'EvalTrig',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					typeVersion: 1,
+					parameters: { dataTableId: { value: 'dt-1' } },
+					position: [0, 0],
+					id: 't',
+				},
+				{
+					name: 'First Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					parameters: { text: '={{ $json.first_input }}' },
+					position: [200, -100],
+					id: 'a1',
+				},
+				{
+					name: 'Second Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					parameters: { text: '={{ $json.second_input }}' },
+					position: [200, 100],
+					id: 'a2',
+				},
+			],
+			{
+				EvalTrig: {
+					main: [
+						[
+							{ node: 'First Agent', type: 'main', index: 0 },
+							{ node: 'Second Agent', type: 'main', index: 0 },
+						],
+					],
+				},
+			},
+		);
+
+		const result = analyzeEvalDataRequirements(workflow, 'Second Agent');
+
+		expect(result.targets[0].targetAgentNodeName).toBe('Second Agent');
+		expect(result.targets[0].inputColumns).toEqual(['second_input']);
 	});
 
 	it('extracts expectedToActualPairs from setMetrics nodes', () => {
@@ -336,6 +452,52 @@ describe('analyzeEvalDataRequirements', () => {
 
 		const result = analyzeEvalDataRequirements(workflow);
 		expect(result.targets[0].expectedOutputColumns).toEqual(['expected_response']);
+	});
+
+	it('extracts expected tools columns from the metric expectedTools parameter', () => {
+		const workflow = wf(
+			[
+				{
+					name: 'EvalTrig',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					typeVersion: 1,
+					parameters: { dataTableId: { value: 'dt-1' } },
+					position: [0, 0],
+					id: 't',
+				},
+				{
+					name: 'Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					parameters: { text: '={{ $json.user_query }}' },
+					position: [200, 0],
+					id: 'a',
+				},
+				{
+					name: 'Metric',
+					type: 'n8n-nodes-base.evaluation',
+					typeVersion: 1,
+					parameters: {
+						operation: 'setMetrics',
+						metric: 'toolsUsed',
+						expectedTools: "={{ $('EvalTrig').item.json.expected_tools }}",
+						intermediateSteps: '={{ $json.intermediateSteps }}',
+					},
+					position: [400, 0],
+					id: 'm',
+				},
+			],
+			{
+				EvalTrig: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+				Agent: { main: [[{ node: 'Metric', type: 'main', index: 0 }]] },
+			},
+		);
+
+		const result = analyzeEvalDataRequirements(workflow);
+		expect(result.targets[0].expectedOutputColumns).toEqual(['expected_tools']);
+		expect(result.targets[0].expectedToActualPairs).toEqual([
+			{ expectedColumn: 'expected_tools', actualField: 'intermediateSteps' },
+		]);
 	});
 
 	it('returns empty inputColumns when no root AI node is reachable from the trigger', () => {

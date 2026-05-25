@@ -1,5 +1,6 @@
 import { currentJsonExpression, nodeItemJsonExpression } from '../column-ref-utils';
 import { formatEvalSetupTask } from '../format-eval-setup-task';
+import { METRIC_CATALOG } from '../metric-catalog';
 
 const BASE = {
 	workflowId: 'w1',
@@ -34,6 +35,7 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 				{
 					nodeName: 'Voice or Text',
 					field: 'text',
+					path: ['text'],
 					originalExpression: "$('Voice or Text').item.json.text",
 					column: 'text',
 					targetNodeName: 'General Agent',
@@ -45,6 +47,55 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 		expect(task).toMatch(/name: "text"/);
 	});
 
+	it('emits adapter assignments and rewrites for nested direct refs', () => {
+		const task = formatEvalSetupTask({
+			...BASE,
+			suggestedInputColumns: ['message.text', 'message.chat.id'],
+			directRefs: [
+				{
+					field: 'message.text',
+					path: ['message', 'text'],
+					originalExpression: '$json.message.text',
+					column: 'message.text',
+					targetNodeName: 'General Agent',
+				},
+				{
+					field: 'message.chat.id',
+					path: ['message', 'chat', 'id'],
+					originalExpression: '$json.message.chat.id',
+					column: 'message.chat.id',
+					targetNodeName: 'Postgres Memory',
+				},
+			],
+		});
+
+		expect(task).toMatch(/PRODUCTION ADAPTER/);
+		expect(task).toContain('- message_text');
+		expect(task).toContain('- message_chat_id');
+		expect(task).toContain('value: "={{ $json.message.text }}"');
+		expect(task).toContain('value: "={{ $json.message.chat.id }}"');
+		expect(task).toContain('Replace `$json.message.text` with `{{ $json.message_text }}`');
+		expect(task).toContain('Replace `$json.message.chat.id` with `{{ $json.message_chat_id }}`');
+	});
+
+	it('does not add an adapter for top-level direct refs that already match dataset columns', () => {
+		const task = formatEvalSetupTask({
+			...BASE,
+			suggestedInputColumns: ['user_query'],
+			directRefs: [
+				{
+					field: 'user_query',
+					path: ['user_query'],
+					originalExpression: '$json.user_query',
+					column: 'user_query',
+					targetNodeName: 'General Agent',
+				},
+			],
+		});
+
+		expect(task).not.toMatch(/PRODUCTION ADAPTER/);
+	});
+
 	it('groups rewrites by target node when refs span agent + sub-component', () => {
 		const task = formatEvalSetupTask({
 			...BASE,
@@ -54,6 +105,7 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 				{
 					nodeName: 'Voice or Text',
 					field: 'text',
+					path: ['text'],
 					originalExpression: "$('Voice or Text').item.json.text",
 					column: 'text',
 					targetNodeName: 'Agent',
@@ -61,6 +113,7 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 				{
 					nodeName: 'Sender ID',
 					field: 'id',
+					path: ['id'],
 					originalExpression: "$('Sender ID').item.json.id",
 					column: 'sender_id',
 					targetNodeName: 'Postgres Memory',
@@ -79,6 +132,7 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 				{
 					nodeName: 'Voice or Text',
 					field: 'text',
+					path: ['text'],
 					originalExpression: "$('Voice or Text').item.json.text",
 					column: 'text',
 					targetNodeName: 'Chef Agent',
@@ -90,7 +144,7 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 		);
 	});
 
-	it("sub-component rewrites use $('<AgentName>').item.json.<col> form, not $json", () => {
+	it('sub-component rewrites use the shared $json.<col> input shape', () => {
 		const task = formatEvalSetupTask({
 			...BASE,
 			detectedAiNodes: ['Chef Agent'],
@@ -99,17 +153,15 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 				{
 					nodeName: 'Sender ID',
 					field: 'id',
+					path: ['id'],
 					originalExpression: "$('Sender ID').item.json.id",
 					column: 'sender_id',
 					targetNodeName: 'Postgres Memory',
 				},
 			],
 		});
-		expect(task).toContain(
-			`Replace \`$('Sender ID').item.json.id\` with \`{{ ${nodeItemJsonExpression('Chef Agent', 'sender_id')} }}\``,
-		);
-		// Sub-component must not fall back to plain $json.<col>
-		expect(task).not.toMatch(/In `Postgres Memory`:[\s\S]*\{\{ \$json\.sender_id \}\}/);
+		expect(task).toContain("Replace `$('Sender ID').item.json.id` with `{{ $json.sender_id }}`");
+		expect(task).not.toMatch(/In `Postgres Memory`:[\s\S]*\$\('Chef Agent'\)/);
 	});
 
 	it('escapes generated adapter assignments and rewrite expressions', () => {
@@ -126,6 +178,7 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 				{
 					nodeName: sourceNodeName,
 					field: sourceField,
+					path: [sourceField],
 					originalExpression: '$("Voice \\"or\\" Text").item.json["message-id"]',
 					column,
 					targetNodeName: agentNodeName,
@@ -133,6 +186,7 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 				{
 					nodeName: 'Sender',
 					field: 'sender-id',
+					path: ['sender-id'],
 					originalExpression: '$("Sender").item.json["sender-id"]',
 					column: 'sender-id',
 					targetNodeName: 'Postgres Memory',
@@ -141,10 +195,10 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 		});
 
 		expect(task).toContain(
-			`value: ${JSON.stringify(`={{ ${nodeItemJsonExpression(sourceNodeName, sourceField)} }}`)}`,
+			`value: ${JSON.stringify(`={{ ${nodeItemJsonExpression(sourceNodeName, [sourceField])} }}`)}`,
 		);
 		expect(task).toContain(`with \`{{ ${currentJsonExpression('user_message')} }}\``);
-		expect(task).toContain(`with \`{{ ${nodeItemJsonExpression(agentNodeName, 'sender_id')} }}\``);
+		expect(task).toContain(`with \`{{ ${currentJsonExpression('sender_id')} }}\``);
 	});
 });
 
@@ -169,6 +223,7 @@ describe('formatEvalSetupTask — dataset and setOutputs instructions', () => {
 				{
 					nodeName: 'Webhook',
 					field: 'User Query',
+					path: ['User Query'],
 					originalExpression: '$("Webhook").item.json["User Query"]',
 					column: 'User Query',
 					targetNodeName: 'General Agent',
@@ -179,7 +234,7 @@ describe('formatEvalSetupTask — dataset and setOutputs instructions', () => {
 		expect(task).toContain('Create an empty DataTable named "Telegram AI Q&A Bot — eval samples"');
 		expect(task).toContain('Columns to create as strings:\n- user_query\n- expected_response');
 		expect(task).toContain(
-			`value: ${JSON.stringify(`={{ ${nodeItemJsonExpression('Webhook', 'User Query')} }}`)}`,
+			`value: ${JSON.stringify(`={{ ${nodeItemJsonExpression('Webhook', ['User Query'])} }}`)}`,
 		);
 		expect(task).toContain(
 			'Replace `$("Webhook").item.json["User Query"]` with `{{ $json.user_query }}`',
@@ -243,5 +298,36 @@ describe('formatEvalSetupTask — metric instructions', () => {
 		expect(task).toContain("metric: 'helpfulness'");
 		expect(task).toContain('There is no native `relevance` metric option');
 		expect(task).not.toContain("metric: 'relevance'");
+	});
+});
+
+describe('formatEvalSetupTask — metric setup instructions', () => {
+	it('configures helpfulness with userQuery and actualAnswer', () => {
+		const task = formatEvalSetupTask({
+			...BASE,
+			suggestedInputColumns: ['user_query'],
+			suggestedOutputColumns: [],
+			enabledMetrics: [METRIC_CATALOG.helpfulness],
+		});
+
+		expect(task).toContain("metric: 'helpfulness'");
+		expect(task).toContain('userQuery');
+		expect(task).toContain("{{ $('Eval Trigger').item.json.user_query }}");
+		expect(task).toContain('actualAnswer');
+		expect(task).not.toContain('For each metric, set `expectedAnswer`');
+	});
+
+	it('configures tool use with expectedTools and intermediateSteps', () => {
+		const task = formatEvalSetupTask({
+			...BASE,
+			suggestedOutputColumns: ['expected_tools'],
+			enabledMetrics: [METRIC_CATALOG.tool_use],
+		});
+
+		expect(task).toContain("metric: 'toolsUsed'");
+		expect(task).toContain('expectedTools');
+		expect(task).toContain("{{ $('Eval Trigger').item.json.expected_tools }}");
+		expect(task).toContain('intermediateSteps');
+		expect(task).toMatch(/returning intermediate steps/i);
 	});
 });

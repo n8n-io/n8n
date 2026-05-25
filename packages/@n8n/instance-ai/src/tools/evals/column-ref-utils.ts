@@ -80,14 +80,13 @@ function readQuotedString(
 	return undefined;
 }
 
-function readFieldAccessor(
-	text: string,
-	start: number,
-): { field: string; endIndex: number } | undefined {
+type FieldPathAccessor = { field: string; path: string[]; endIndex: number };
+
+function readFieldAccessor(text: string, start: number): FieldPathAccessor | undefined {
 	if (charAt(text, start) === '.') {
 		const identifier = readIdentifier(text, start + 1);
 		if (!identifier) return undefined;
-		return { field: identifier.value, endIndex: identifier.endIndex };
+		return { field: identifier.value, path: [identifier.value], endIndex: identifier.endIndex };
 	}
 
 	if (charAt(text, start) !== '[') return undefined;
@@ -96,7 +95,28 @@ function readFieldAccessor(
 	if (!quoted) return undefined;
 	const closeBracketIndex = skipWhitespace(text, quoted.endIndex);
 	if (charAt(text, closeBracketIndex) !== ']') return undefined;
-	return { field: quoted.value, endIndex: closeBracketIndex + 1 };
+	return { field: quoted.value, path: [quoted.value], endIndex: closeBracketIndex + 1 };
+}
+
+function readFieldPathAccessor(text: string, start: number): FieldPathAccessor | undefined {
+	const first = readFieldAccessor(text, start);
+	const isMethodCall = (endIndex: number) => charAt(text, skipWhitespace(text, endIndex)) === '(';
+	if (!first) return undefined;
+	if (isMethodCall(first.endIndex)) return undefined;
+
+	const fields = [first.field];
+	const path = [...first.path];
+	let endIndex = first.endIndex;
+	while (true) {
+		const next = readFieldAccessor(text, endIndex);
+		if (!next) break;
+		if (isMethodCall(next.endIndex)) break;
+		fields.push(next.field);
+		path.push(...next.path);
+		endIndex = next.endIndex;
+	}
+
+	return { field: fields.join('.'), path, endIndex };
 }
 
 const ITEM_JSON_ACCESSOR_PATTERNS = [
@@ -106,49 +126,37 @@ const ITEM_JSON_ACCESSOR_PATTERNS = [
 	'.all().json',
 ] as const;
 
-function readItemJsonField(
-	text: string,
-	start: number,
-): { field: string; endIndex: number } | undefined {
+function readItemJsonField(text: string, start: number): FieldPathAccessor | undefined {
 	for (const accessor of ITEM_JSON_ACCESSOR_PATTERNS) {
 		if (!text.startsWith(accessor, start)) continue;
-		return readFieldAccessor(text, start + accessor.length);
+		return readFieldPathAccessor(text, start + accessor.length);
 	}
 
 	const itemMatching = /^\.itemMatching\(\d+\)\.json/.exec(text.slice(start));
 	if (itemMatching) {
-		return readFieldAccessor(text, start + itemMatching[0].length);
+		return readFieldPathAccessor(text, start + itemMatching[0].length);
 	}
 
 	const allItem = /^\.all\(\)\[\d+\]\.json/.exec(text.slice(start));
 	if (allItem) {
-		return readFieldAccessor(text, start + allItem[0].length);
+		return readFieldPathAccessor(text, start + allItem[0].length);
 	}
 
 	return undefined;
 }
 
-function readDirectJsonField(
-	text: string,
-	start: number,
-): { field: string; endIndex: number } | undefined {
+function readDirectJsonField(text: string, start: number): FieldPathAccessor | undefined {
 	if (!text.startsWith('.json', start)) return undefined;
-	return readFieldAccessor(text, start + '.json'.length);
+	return readFieldPathAccessor(text, start + '.json'.length);
 }
 
-function readItemsJsonField(
-	text: string,
-	start: number,
-): { field: string; endIndex: number } | undefined {
+function readItemsJsonField(text: string, start: number): FieldPathAccessor | undefined {
 	const itemIndex = /^\[\d+\]/.exec(text.slice(start));
 	const jsonStart = start + (itemIndex?.[0].length ?? 0);
 	return readDirectJsonField(text, jsonStart);
 }
 
-function readNamedNodeJsonField(
-	text: string,
-	start: number,
-): { field: string; endIndex: number } | undefined {
+function readNamedNodeJsonField(text: string, start: number): FieldPathAccessor | undefined {
 	return readItemJsonField(text, start) ?? readDirectJsonField(text, start);
 }
 
@@ -156,37 +164,89 @@ export function jsonFieldAccessor(field: string): string {
 	return JS_IDENTIFIER.test(field) ? `.${field}` : `[${JSON.stringify(field)}]`;
 }
 
+export function jsonPathAccessor(path: readonly string[]): string {
+	return path.map(jsonFieldAccessor).join('');
+}
+
 export function currentJsonExpression(field: string): string {
 	return `$json${jsonFieldAccessor(field)}`;
 }
 
-export function nodeItemJsonExpression(nodeName: string, field: string): string {
-	return `$(${JSON.stringify(nodeName)}).item.json${jsonFieldAccessor(field)}`;
+export function currentJsonPathExpression(path: readonly string[]): string {
+	return `$json${jsonPathAccessor(path)}`;
+}
+
+export function nodeItemJsonExpression(nodeName: string, path: readonly string[]): string {
+	return `$(${JSON.stringify(nodeName)}).item.json${jsonPathAccessor(path)}`;
+}
+
+export interface DirectJsonRefMatch {
+	field: string;
+	path: string[];
+	originalExpression: string;
+}
+
+function readJsonRefAt(text: string, index: number): FieldPathAccessor | undefined {
+	if (text.startsWith('$json', index) && !isIdentifierPart(charAt(text, index + 5))) {
+		return readFieldPathAccessor(text, index + 5);
+	}
+
+	if (text.startsWith('$input', index) && !isIdentifierPart(charAt(text, index + 6))) {
+		return readItemJsonField(text, index + 6) ?? readItemsJsonField(text, index + 6);
+	}
+
+	return undefined;
+}
+
+function readBareItemJsonRefAt(text: string, index: number): FieldPathAccessor | undefined {
+	if (!text.startsWith('item.json', index)) return undefined;
+	const previous = charAt(text, index - 1);
+	if (previous && (isIdentifierPart(previous) || previous === '.')) return undefined;
+	return readFieldPathAccessor(text, index + 'item.json'.length);
+}
+
+export function extractJsonRefMatches(text: string): DirectJsonRefMatch[] {
+	const matches: DirectJsonRefMatch[] = [];
+
+	for (let index = 0; index < text.length; index++) {
+		const match = readJsonRefAt(text, index);
+		if (!match) continue;
+		matches.push({
+			field: match.field,
+			path: match.path,
+			originalExpression: text.slice(index, match.endIndex),
+		});
+		index = match.endIndex - 1;
+	}
+
+	return matches;
 }
 
 export function extractJsonColumnRefs(text: string): string[] {
-	const refs: string[] = [];
+	return unique(extractJsonRefMatches(text).map((match) => match.field));
+}
+
+export function extractDirectJsonRefMatches(text: string): DirectJsonRefMatch[] {
+	const matches = extractJsonRefMatches(text);
 
 	for (let index = 0; index < text.length; index++) {
-		if (text.startsWith('$json', index) && !isIdentifierPart(charAt(text, index + 5))) {
-			const match = readFieldAccessor(text, index + 5);
-			if (match) {
-				refs.push(match.field);
-				index = match.endIndex - 1;
-			}
-			continue;
-		}
-
-		if (text.startsWith('$input', index) && !isIdentifierPart(charAt(text, index + 6))) {
-			const match = readItemJsonField(text, index + 6) ?? readItemsJsonField(text, index + 6);
-			if (match) {
-				refs.push(match.field);
-				index = match.endIndex - 1;
-			}
-		}
+		const match = readBareItemJsonRefAt(text, index);
+		if (!match) continue;
+		matches.push({
+			field: match.field,
+			path: match.path,
+			originalExpression: text.slice(index, match.endIndex),
+		});
+		index = match.endIndex - 1;
 	}
 
-	return unique(refs);
+	const dedup = new Map<string, DirectJsonRefMatch>();
+	for (const match of matches) dedup.set(match.originalExpression, match);
+	return [...dedup.values()];
+}
+
+export function extractDirectJsonColumnRefs(text: string): string[] {
+	return unique(extractDirectJsonRefMatches(text).map((match) => match.field));
 }
 
 /**
@@ -201,6 +261,7 @@ export function extractJsonColumnRefs(text: string): string[] {
 export interface NamedRefMatch {
 	nodeName: string;
 	field: string;
+	path: string[];
 	originalExpression: string;
 }
 
@@ -215,6 +276,7 @@ function readDollarNodeRef(text: string, start: number): NamedRefMatch | undefin
 	return {
 		nodeName: nodeName.value,
 		field: field.field,
+		path: field.path,
 		originalExpression: text.slice(start, field.endIndex),
 	};
 }
@@ -231,6 +293,7 @@ function readItemsNodeRef(text: string, start: number): NamedRefMatch | undefine
 	return {
 		nodeName: nodeName.value,
 		field: field.field,
+		path: field.path,
 		originalExpression: text.slice(start, field.endIndex),
 	};
 }
@@ -246,6 +309,7 @@ function readNodeBracketRef(text: string, start: number): NamedRefMatch | undefi
 	return {
 		nodeName: nodeName.value,
 		field: field.field,
+		path: field.path,
 		originalExpression: text.slice(start, field.endIndex),
 	};
 }
@@ -258,6 +322,7 @@ function readNodeDotRef(text: string, start: number): NamedRefMatch | undefined 
 	return {
 		nodeName: nodeName.value,
 		field: field.field,
+		path: field.path,
 		originalExpression: text.slice(start, field.endIndex),
 	};
 }

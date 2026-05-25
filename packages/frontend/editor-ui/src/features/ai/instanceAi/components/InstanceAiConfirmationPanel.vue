@@ -17,6 +17,7 @@ import InstanceAiQuestions from './InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
 import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
+import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
 interface Props {
 	/**
@@ -389,6 +390,9 @@ function handlePlanRequestChanges(
 		userInput: feedback,
 	});
 }
+function shouldRenderApprovalAsSpeech(item: PendingConfirmationItem): boolean {
+	return item.toolCall.toolName === 'evals';
+}
 </script>
 
 <template>
@@ -566,7 +570,17 @@ function handlePlanRequestChanges(
 									<N8nText size="medium" bold>
 										{{ buildApprovalTitle(chunk.item) }}
 									</N8nText>
-									<ConfirmationPreview>{{ buildApprovalSubtitle(chunk.item) }}</ConfirmationPreview>
+									<N8nText
+										v-if="shouldRenderApprovalAsSpeech(chunk.item)"
+										tag="div"
+										size="large"
+										data-test-id="instance-ai-panel-confirm-speech"
+									>
+										<InstanceAiMarkdown :content="chunk.item.toolCall.confirmation.message ?? ''" />
+									</N8nText>
+									<ConfirmationPreview v-else>{{
+										buildApprovalSubtitle(chunk.item)
+									}}</ConfirmationPreview>
 								</div>
 
 								<ApprovalOptionList

@@ -48,7 +48,7 @@ describe('createEmptyEvalDataTable', () => {
 		expect(result).toEqual({ id: 'dt-1', name: 'Wf — eval samples' });
 	});
 
-	it('normalizes requested columns to valid DataTable names', async () => {
+	it('normalizes column names to the DataTable schema constraints', async () => {
 		const create = jest
 			.fn<
 				ReturnType<InstanceAiContext['dataTableService']['create']>,
@@ -65,18 +65,25 @@ describe('createEmptyEvalDataTable', () => {
 
 		await createEmptyEvalDataTable(ctx, {
 			workflowName: 'Wf',
-			columns: ['User Query', 'expected-response', '1st result', 'User Query'],
+			columns: ['user-input', '123_id', '  user query!  ', 'a'.repeat(70), 'user input'],
 		});
 
+		const expectedNames = [
+			'user_input',
+			'column_123_id',
+			'user_query',
+			'a'.repeat(63),
+			'user_input_2',
+		];
 		expect(create).toHaveBeenCalledWith(
 			'Wf — eval samples',
-			[
-				{ name: 'user_query', type: 'string' },
-				{ name: 'expected_response', type: 'string' },
-				{ name: 'column_1st_result', type: 'string' },
-			],
+			expectedNames.map((name) => ({ name, type: 'string' })),
 			undefined,
 		);
+		for (const name of expectedNames) {
+			expect(name).toMatch(/^[a-zA-Z][a-zA-Z0-9_]*$/);
+			expect(name.length).toBeLessThanOrEqual(63);
+		}
 	});
 
 	it('retries with a nanoid suffix on name collision', async () => {

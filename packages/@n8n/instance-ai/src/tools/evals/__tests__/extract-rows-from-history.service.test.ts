@@ -68,6 +68,51 @@ const buildWorkflow = (): WorkflowJSON =>
 		settings: {},
 	}) as unknown as WorkflowJSON;
 
+const buildWorkflowWithLegacyMainConnection = (): WorkflowJSON =>
+	({
+		...buildWorkflow(),
+		connections: {
+			Trigger: { main: [[{ node: 'Agent', type: 'main' }]] },
+		},
+	}) as unknown as WorkflowJSON;
+
+const buildWorkflowWithEvalAndProductionParents = (): WorkflowJSON =>
+	({
+		name: 't',
+		nodes: [
+			{
+				name: 'Eval Trigger',
+				type: 'n8n-nodes-base.evaluationTrigger',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, -200],
+				id: 'eval',
+			},
+			{
+				name: 'Eval Production Adapter',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 3.4,
+				parameters: {},
+				position: [0, 0],
+				id: 'adapter',
+			},
+			{
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				parameters: {},
+				position: [200, 0],
+				id: 'a',
+			},
+		],
+		connections: {
+			'Eval Trigger': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+			'Eval Production Adapter': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+		},
+		pinData: {},
+		settings: {},
+	}) as unknown as WorkflowJSON;
+
 describe('extractRowsFromExecutionHistory', () => {
 	it('returns 0 rows when the workflow has no executions', async () => {
 		const ctx = buildContext();
@@ -86,7 +131,8 @@ describe('extractRowsFromExecutionHistory', () => {
 		const ctx = buildContext({
 			list: jest
 				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-				.mockResolvedValueOnce([executionSummary('e1'), executionSummary('e2')]),
+				.mockResolvedValueOnce([executionSummary('e1'), executionSummary('e2')])
+				.mockResolvedValueOnce([]),
 			getNodeOutput: jest
 				.fn<
 					ReturnType<ExecutionService['getNodeOutput']>,
@@ -108,6 +154,31 @@ describe('extractRowsFromExecutionHistory', () => {
 		expect(result.scannedExecutions).toBe(2);
 	});
 
+	it('extracts rows when legacy workflow connections omit the output index', async () => {
+		const ctx = buildContext({
+			list: jest
+				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
+				.mockResolvedValueOnce([executionSummary('e1')])
+				.mockResolvedValueOnce([]),
+			getNodeOutput: jest
+				.fn<
+					ReturnType<ExecutionService['getNodeOutput']>,
+					Parameters<ExecutionService['getNodeOutput']>
+				>()
+				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 'legacy' })),
+		});
+
+		const result = await extractRowsFromExecutionHistory(ctx, {
+			workflow: buildWorkflowWithLegacyMainConnection(),
+			workflowId: 'w1',
+			agentNodeName: 'Agent',
+			inputColumns: ['user_query'],
+			expectedToActualPairs: [],
+		});
+
+		expect(result.rows).toEqual([{ user_query: 'legacy' }]);
+	});
+
 	it('deduplicates exact-match rows from execution history', async () => {
 		const ctx = buildContext({
 			list: jest
@@ -116,7 +187,8 @@ describe('extractRowsFromExecutionHistory', () => {
 					executionSummary('e1'),
 					executionSummary('e2'),
 					executionSummary('e3'),
-				]),
+				])
+				.mockResolvedValueOnce([]),
 			getNodeOutput: jest
 				.fn<
 					ReturnType<ExecutionService['getNodeOutput']>,
@@ -139,11 +211,44 @@ describe('extractRowsFromExecutionHistory', () => {
 		expect(result.scannedExecutions).toBe(3);
 	});
 
+	it('prefers the production parent when eval topology adds an EvaluationTrigger parent', async () => {
+		const getNodeOutput = jest.fn<
+			ReturnType<ExecutionService['getNodeOutput']>,
+			Parameters<ExecutionService['getNodeOutput']>
+		>(async (_id, nodeName) => {
+			if (nodeName === 'Eval Production Adapter') {
+				return await Promise.resolve(
+					nodeOutput('Eval Production Adapter', { user_query: 'production input' }),
+				);
+			}
+			return await Promise.resolve(nodeOutput('Eval Trigger', {}));
+		});
+		const ctx = buildContext({
+			list: jest
+				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
+				.mockResolvedValueOnce([executionSummary('e1')])
+				.mockResolvedValueOnce([]),
+			getNodeOutput,
+		});
+
+		const result = await extractRowsFromExecutionHistory(ctx, {
+			workflow: buildWorkflowWithEvalAndProductionParents(),
+			workflowId: 'w1',
+			agentNodeName: 'Agent',
+			inputColumns: ['user_query'],
+			expectedToActualPairs: [],
+		});
+
+		expect(result.rows).toEqual([{ user_query: 'production input' }]);
+		expect(getNodeOutput).toHaveBeenCalledWith('e1', 'Eval Production Adapter', { maxItems: 1 });
+	});
+
 	it('skips executions where the projected record is missing a required column', async () => {
 		const ctx = buildContext({
 			list: jest
 				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-				.mockResolvedValueOnce([executionSummary('e1'), executionSummary('e2')]),
+				.mockResolvedValueOnce([executionSummary('e1'), executionSummary('e2')])
+				.mockResolvedValueOnce([]),
 			getNodeOutput: jest
 				.fn<
 					ReturnType<ExecutionService['getNodeOutput']>,
@@ -168,7 +273,8 @@ describe('extractRowsFromExecutionHistory', () => {
 		const ctx = buildContext({
 			list: jest
 				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-				.mockResolvedValueOnce([executionSummary('e1')]),
+				.mockResolvedValueOnce([executionSummary('e1')])
+				.mockResolvedValueOnce([]),
 			getNodeOutput: jest
 				.fn<
 					ReturnType<ExecutionService['getNodeOutput']>,
@@ -194,7 +300,8 @@ describe('extractRowsFromExecutionHistory', () => {
 		const ctx = buildContext({
 			list: jest
 				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-				.mockResolvedValueOnce(summaries),
+				.mockResolvedValueOnce(summaries)
+				.mockResolvedValueOnce([]),
 			getNodeOutput: jest.fn<
 				ReturnType<ExecutionService['getNodeOutput']>,
 				Parameters<ExecutionService['getNodeOutput']>
@@ -212,10 +319,11 @@ describe('extractRowsFromExecutionHistory', () => {
 		expect(result.rows).toHaveLength(25);
 	});
 
-	it('lists only successful executions', async () => {
+	it('lists success and error statuses', async () => {
 		const list = jest
 			.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-			.mockResolvedValue([executionSummary('e1')]);
+			.mockResolvedValueOnce([executionSummary('e1')])
+			.mockResolvedValueOnce([executionSummary('e2', 'error')]);
 		const ctx = buildContext({
 			list,
 			getNodeOutput: jest
@@ -223,7 +331,8 @@ describe('extractRowsFromExecutionHistory', () => {
 					ReturnType<ExecutionService['getNodeOutput']>,
 					Parameters<ExecutionService['getNodeOutput']>
 				>()
-				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 's' })),
+				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 's' }))
+				.mockResolvedValueOnce(nodeOutput('Trigger', { user_query: 'e' })),
 		});
 
 		await extractRowsFromExecutionHistory(ctx, {
@@ -234,15 +343,47 @@ describe('extractRowsFromExecutionHistory', () => {
 			expectedToActualPairs: [],
 		});
 
-		expect(list).toHaveBeenCalledTimes(1);
-		expect(list).toHaveBeenCalledWith({ workflowId: 'w1', status: 'success', limit: 100 });
+		expect(list).toHaveBeenNthCalledWith(1, { workflowId: 'w1', status: 'success', limit: 100 });
+		expect(list).toHaveBeenNthCalledWith(2, { workflowId: 'w1', status: 'error', limit: 100 });
+	});
+
+	it('deduplicates exact-match projected rows and keeps distinct rows', async () => {
+		const ctx = buildContext({
+			list: jest
+				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
+				.mockResolvedValueOnce([
+					executionSummary('e1'),
+					executionSummary('e2'),
+					executionSummary('e3'),
+				])
+				.mockResolvedValueOnce([]),
+			getNodeOutput: jest.fn<
+				ReturnType<ExecutionService['getNodeOutput']>,
+				Parameters<ExecutionService['getNodeOutput']>
+			>(async (executionId) => {
+				const value = executionId === 'e3' ? 'different' : 'same';
+				return await Promise.resolve(nodeOutput('Trigger', { user_query: value }));
+			}),
+		});
+
+		const result = await extractRowsFromExecutionHistory(ctx, {
+			workflow: buildWorkflow(),
+			workflowId: 'w1',
+			agentNodeName: 'Agent',
+			inputColumns: ['user_query'],
+			expectedToActualPairs: [],
+		});
+
+		expect(result.rows).toEqual([{ user_query: 'same' }, { user_query: 'different' }]);
+		expect(result.scannedExecutions).toBe(3);
 	});
 
 	it('returns 0 rows and skips silently when getNodeOutput throws for an execution', async () => {
 		const ctx = buildContext({
 			list: jest
 				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-				.mockResolvedValueOnce([executionSummary('e1')]),
+				.mockResolvedValueOnce([executionSummary('e1')])
+				.mockResolvedValueOnce([]),
 			getNodeOutput: jest
 				.fn<
 					ReturnType<ExecutionService['getNodeOutput']>,
@@ -267,7 +408,8 @@ describe('extractRowsFromExecutionHistory', () => {
 		const ctx = buildContext({
 			list: jest
 				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-				.mockResolvedValueOnce([executionSummary('e1')]),
+				.mockResolvedValueOnce([executionSummary('e1')])
+				.mockResolvedValueOnce([]),
 			getNodeOutput: jest.fn<
 				ReturnType<ExecutionService['getNodeOutput']>,
 				Parameters<ExecutionService['getNodeOutput']>
@@ -290,11 +432,48 @@ describe('extractRowsFromExecutionHistory', () => {
 		expect(result.rows).toEqual([{ user_query: 'hi', expected_response: 'hello world' }]);
 	});
 
+	it('extracts expected tools from agent intermediate steps when requested', async () => {
+		const ctx = buildContext({
+			list: jest
+				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
+				.mockResolvedValueOnce([executionSummary('e1')])
+				.mockResolvedValueOnce([]),
+			getNodeOutput: jest.fn<
+				ReturnType<ExecutionService['getNodeOutput']>,
+				Parameters<ExecutionService['getNodeOutput']>
+			>(
+				async (_id, nodeName) =>
+					await Promise.resolve(
+						nodeName === 'Trigger'
+							? nodeOutput('Trigger', { user_query: 'hi' })
+							: nodeOutput('Agent', {
+									intermediateSteps: [
+										{ action: { tool: 'calculator' } },
+										{ action: { tool: 'search' } },
+										{ action: { tool: 'calculator' } },
+									],
+								}),
+					),
+			),
+		});
+		const result = await extractRowsFromExecutionHistory(ctx, {
+			workflow: buildWorkflow(),
+			workflowId: 'w1',
+			agentNodeName: 'Agent',
+			inputColumns: ['user_query'],
+			expectedToActualPairs: [
+				{ expectedColumn: 'expected_tools', actualField: 'intermediateSteps' },
+			],
+		});
+		expect(result.rows).toEqual([{ user_query: 'hi', expected_tools: 'calculator, search' }]);
+	});
+
 	it('skips execution if the agent output is missing the actualField', async () => {
 		const ctx = buildContext({
 			list: jest
 				.fn<ReturnType<ExecutionService['list']>, Parameters<ExecutionService['list']>>()
-				.mockResolvedValueOnce([executionSummary('e1')]),
+				.mockResolvedValueOnce([executionSummary('e1')])
+				.mockResolvedValueOnce([]),
 			getNodeOutput: jest.fn<
 				ReturnType<ExecutionService['getNodeOutput']>,
 				Parameters<ExecutionService['getNodeOutput']>

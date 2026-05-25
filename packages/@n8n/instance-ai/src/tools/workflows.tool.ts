@@ -11,6 +11,8 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { formatTimestamp } from '../utils/format-timestamp';
+import { detectAiNodes } from './evals/detect-ai-nodes';
+import { buildEvalPublishReminderPayload } from './evals/eval-orchestration-payloads';
 import { setupSuspendSchema, setupResumeSchema } from './workflows/setup-workflow.schema';
 import {
 	analyzeWorkflow,
@@ -808,6 +810,8 @@ async function handlePublish(
 			});
 			publishedWorkflowIds.push(input.workflowId);
 
+			const evalRunReminder = await maybeBuildEvalRunReminder(context, input.workflowId);
+
 			return {
 				success: true,
 				activeVersionId: result.activeVersionId,
@@ -815,6 +819,7 @@ async function handlePublish(
 				...(publishedSupportingWorkflowIds.length > 0
 					? { supportingWorkflowIds: publishedSupportingWorkflowIds }
 					: {}),
+				...(evalRunReminder ? { evalRunReminder } : {}),
 			};
 		} catch (error) {
 			const rollback = await rollbackPublishedWorkflows(
@@ -829,6 +834,20 @@ async function handlePublish(
 			success: false,
 			error: error instanceof Error ? error.message : 'Publish failed',
 		};
+	}
+}
+
+async function maybeBuildEvalRunReminder(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<ReturnType<typeof buildEvalPublishReminderPayload> | undefined> {
+	try {
+		const workflow = await context.workflowService.getAsWorkflowJSON(workflowId);
+		const detection = detectAiNodes(workflow);
+		if (!detection.alreadyConfigured) return undefined;
+		return buildEvalPublishReminderPayload(workflowId);
+	} catch {
+		return undefined;
 	}
 }
 
