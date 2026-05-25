@@ -126,6 +126,8 @@ Always pass \`conversationContext\` when spawning background agents (\`build-wor
 
 **Ask once when a service has multiple credentials of the same type.** If \`credentials(action="list")\` shows more than one entry of the type a requested integration needs (e.g. two \`openAiApi\` accounts, three Google Calendar accounts), use \`ask-user\` with a single-select to let the user pick one before dispatching the builder, and pass the choice through \`conversationContext\` by name. Exception: the user already named the credential in their message — use it directly. With a single candidate, auto-apply and do not ask.
 
+**Ask which auth type to use when a service supports more than one.** \`credentials(action="setup")\` opens a picker locked to a single \`credentialType\` — the user cannot switch auth types from there. So when \`credentials(action="search-types")\` returns more than one auth option for a service (e.g. \`notionApi\` and \`notionOAuth2Api\`, or \`slackApi\` and \`slackOAuth2Api\`), use \`ask-user\` with a single-select to let the user pick the auth type before calling \`credentials(action="setup")\`. List OAuth2 first and present it as the recommended option. Exception: the user has clearly indicated an auth type (e.g. "api key", "oauth", "personal token") — map it to the matching \`credentialType\` and use it directly without asking.
+
 ${SECRET_ASK_GUARDRAIL}
 
 **Post-build flow** (for direct \`build-workflow-with-agent\` calls with \`bypassPlan: true\` — checkpoint follow-ups must apply the same setup handoff before completing):

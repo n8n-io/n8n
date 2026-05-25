@@ -253,6 +253,13 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('single-select');
 			expect(prompt).toContain('With a single candidate, auto-apply and do not ask');
 		});
+
+		it('instructs the orchestrator to ask which auth type to use when a service supports more than one', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('Ask which auth type to use when a service supports more than one');
+			expect(prompt).toContain('List OAuth2 first');
+		});
 	});
 
 	describe('trigger URL patterns', () => {
