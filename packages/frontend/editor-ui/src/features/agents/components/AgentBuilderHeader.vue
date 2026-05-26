@@ -135,6 +135,12 @@ function onOpenPreview() {
 	if (isPreviewDisabled.value) return;
 	emit('open-preview');
 }
+
+// Mirrors the publish button's "not yet published" signal. After an unpublish
+// the agent may still have history rows, but the button stays disabled — the
+// user can republish to re-enable the panel. Worth a follow-up if we want
+// a precise "has any history" flag from the backend.
+const isVersionHistoryDisabled = computed(() => !props.agent?.activeVersionId);
 </script>
 
 <template>
@@ -248,21 +254,6 @@ function onOpenPreview() {
 						{{ i18n.baseText('agents.builder.preview.button' as BaseTextKey) }}
 					</N8nButton>
 				</N8nTooltip>
-				<N8nTooltip
-					:content="i18n.baseText('agents.versionHistory.button.tooltip')"
-					placement="bottom"
-				>
-					<N8nButton
-						variant="ghost"
-						size="medium"
-						icon="history"
-						icon-only
-						:active="isVersionHistoryOpen"
-						:aria-label="i18n.baseText('agents.versionHistory.button.ariaLabel')"
-						data-testid="agent-header-version-history-btn"
-						@click="emit('toggle-version-history')"
-					/>
-				</N8nTooltip>
 				<AgentPublishButton
 					:agent="agent"
 					:project-id="projectId"
@@ -273,6 +264,27 @@ function onOpenPreview() {
 					@unpublished="(a: AgentResource) => emit('unpublished', a)"
 					@reverted="(a: AgentResource) => emit('reverted', a)"
 				/>
+				<N8nTooltip placement="bottom">
+					<template #content>
+						<span v-if="isVersionHistoryDisabled">
+							{{ i18n.baseText('agents.versionHistory.button.tooltip.empty') }}
+						</span>
+						<span v-else>
+							{{ i18n.baseText('agents.versionHistory.button.tooltip') }}
+						</span>
+					</template>
+					<N8nButton
+						variant="ghost"
+						size="medium"
+						icon="history"
+						icon-only
+						:active="isVersionHistoryOpen"
+						:disabled="isVersionHistoryDisabled"
+						:aria-label="i18n.baseText('agents.versionHistory.button.ariaLabel')"
+						data-testid="agent-header-version-history-btn"
+						@click="emit('toggle-version-history')"
+					/>
+				</N8nTooltip>
 				<N8nActionDropdown
 					v-if="headerActions.length > 0"
 					:items="headerActions"

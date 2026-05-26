@@ -6060,6 +6060,7 @@
 	"agents.revertToPublished.modal.button.revert": "Revert changes",
 	"agents.versionHistory.title": "Version history",
 	"agents.versionHistory.button.tooltip": "Version history",
+	"agents.versionHistory.button.tooltip.empty": "This agent currently has no history to view. Once you've published it for the first time, you'll be able to view previous versions",
 	"agents.versionHistory.button.ariaLabel": "Open version history",
 	"agents.versionHistory.close": "Close",
 	"agents.versionHistory.empty": "No versions yet. Publish your agent to start a history.",
