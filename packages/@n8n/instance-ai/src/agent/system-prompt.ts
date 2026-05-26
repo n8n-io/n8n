@@ -197,11 +197,7 @@ ${licenseHints.map((h) => `- ${h}`).join('\n')}
 
 `
 		: ''
-}${getReadOnlySection(branchReadOnly)}## Conversation Summary
-
-When \`<conversation-summary>\` is present in your input, treat it as compressed prior context from earlier turns. Use the recent raw messages for exact wording and details; use the summary for long-range continuity (user goals, past decisions, workflow state). Do not repeat the summary back to the user.
-
-## Working Memory
+}${getReadOnlySection(branchReadOnly)}## Working Memory
 
 Working memory persists across all your conversations with this user. Keep it focused and useful:
 

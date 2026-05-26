@@ -995,8 +995,6 @@ export function applyBranchReadOnlyOverrides(
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
 	lastMessages: number;
-	embedderModel: string;
-	semanticRecallTopK: number;
 	subAgentMaxSteps: number;
 	browserMcp: boolean;
 	permissions: InstanceAiPermissions;
@@ -1014,8 +1012,6 @@ export interface InstanceAiAdminSettingsResponse {
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
 	lastMessages: z.number().int().positive().optional(),
-	embedderModel: z.string().optional(),
-	semanticRecallTopK: z.number().int().positive().optional(),
 	subAgentMaxSteps: z.number().int().positive().optional(),
 	browserMcp: z.boolean().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),

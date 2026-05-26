@@ -93,8 +93,6 @@ describe('SettingsInstanceAiView', () => {
 			settings: {
 				enabled: true,
 				lastMessages: 20,
-				embedderModel: '',
-				semanticRecallTopK: 5,
 				subAgentMaxSteps: 10,
 				browserMcp: false,
 				permissions: {},
