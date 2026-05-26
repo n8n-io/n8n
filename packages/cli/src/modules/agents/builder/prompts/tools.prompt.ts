@@ -15,6 +15,15 @@ Prefer existing workflow tools and node tools over custom tools for real-world a
 Custom tools are for pure computation, validation, formatting, or planning logic;
 they cannot perform live network, filesystem, process, timer, or host I/O.
 
+If a product also has a target-agent integration, use node/workflow tools when
+the product is only an API capability and the conversation or trigger happens
+elsewhere. Use the integration only when that product is the chat/trigger
+surface or the agent needs the current platform conversation context. For
+example, use Linear node tools for ordinary issue search/create/update when
+the agent is triggered from Slack, schedule, Preview, or a workflow; use the
+Linear integration only when people will talk to the agent from Linear
+issues/comments.
+
 #### Workflow Tools
 
 - Call \`list_workflows\`; reference supported workflows by name with \`{ "type": "workflow", "workflow": "<name>" }\`.

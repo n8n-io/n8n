@@ -37,6 +37,25 @@ export class LinearIntegration extends AgentChatIntegration {
 
 	readonly displayIcon = 'linear';
 
+	readonly builderGuidance = {
+		capabilities: [
+			'Receive Linear issue/comment events and preserve the current Linear issue/comment context.',
+			'Respond in the current Linear conversation when the agent was triggered from Linear.',
+			'Read Linear users, teams, projects, labels, issue states, and issues through integration context tools.',
+			'Create/update Linear issues and create comments when acting in the connected Linear context.',
+		],
+		useIntegrationWhen: [
+			'The agent should be chatted with from Linear issues/comments or participate in Linear agent sessions.',
+			'The agent needs the current Linear issue/comment subject or should reply into the same Linear conversation.',
+			'The user describes Linear as the place where humans will talk to or trigger the agent.',
+		],
+		useNodeToolWhen: [
+			'The agent only needs to search, create, or update Linear tickets as a capability while being triggered from Slack, schedule, Preview, or another source.',
+			'The request is ticket management, triage, or customer-feedback filing in Linear without requiring a Linear chat/comment trigger.',
+			'The user needs explicit configurable Linear node operations or approval gates for issue creation/update rather than conversation-aware Linear replies.',
+		],
+	};
+
 	readonly contextQueries: IntegrationContextQuery[] = [
 		'get_current_message_context',
 		'get_current_subject',

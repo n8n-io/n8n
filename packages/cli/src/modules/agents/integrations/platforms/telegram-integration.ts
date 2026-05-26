@@ -40,6 +40,23 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	readonly displayIcon = 'telegram';
 
+	readonly builderGuidance = {
+		capabilities: [
+			'Receive Telegram messages as agent triggers.',
+			'Respond in Telegram conversations and send direct Telegram messages.',
+			'Render Telegram-compatible rich interaction cards with buttons.',
+		],
+		useIntegrationWhen: [
+			'The agent should be chatted with from Telegram or act as a Telegram bot.',
+			'The agent needs to reply to Telegram users in the same conversation context.',
+			'The agent should send Telegram messages as the connected Telegram bot.',
+		],
+		useNodeToolWhen: [
+			'Telegram is only a backend API step and the agent does not need to be connected as a Telegram chat surface.',
+			'The request is a one-off Telegram operation from another trigger without ongoing Telegram conversation context.',
+		],
+	};
+
 	readonly supportedComponents = ['section', 'button', 'divider', 'fields'];
 
 	readonly actions: IntegrationAction[] = ['respond', 'send_dm'];

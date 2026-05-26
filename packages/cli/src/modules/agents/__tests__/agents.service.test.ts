@@ -779,7 +779,7 @@ describe('AgentsService', () => {
 		it('marks a published agent dirty when saving a credential integration', async () => {
 			const agent = makeAgent({
 				versionId,
-				publishedVersion: makePublishedVersion({ publishedFromVersionId: versionId }),
+				activeVersionId: versionId,
 				integrations: [],
 			});
 			agentRepository.save.mockResolvedValue(agent);
@@ -793,7 +793,7 @@ describe('AgentsService', () => {
 		it('marks a published agent dirty when removing a credential integration', async () => {
 			const agent = makeAgent({
 				versionId,
-				publishedVersion: makePublishedVersion({ publishedFromVersionId: versionId }),
+				activeVersionId: versionId,
 				integrations: [{ type: 'slack', credentialId: 'cred-slack' }],
 			});
 			agentRepository.save.mockResolvedValue(agent);
@@ -1326,6 +1326,11 @@ describe('AgentsService', () => {
 			readonly credentialTypes = ['testApi'];
 			readonly displayLabel = 'Test Platform';
 			readonly displayIcon = 'circle';
+			readonly builderGuidance = {
+				capabilities: ['Receive messages from Test Platform'],
+				useIntegrationWhen: ['The agent should be chatted with from Test Platform'],
+				useNodeToolWhen: ['Test Platform is only a backend API capability'],
+			};
 			async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 				return {};
 			}
@@ -1344,6 +1349,9 @@ describe('AgentsService', () => {
 				label: 'Test Platform',
 				icon: 'circle',
 				credentialTypes: ['testApi'],
+				capabilities: ['Receive messages from Test Platform'],
+				useIntegrationWhen: ['The agent should be chatted with from Test Platform'],
+				useNodeToolWhen: ['Test Platform is only a backend API capability'],
 			});
 		});
 
