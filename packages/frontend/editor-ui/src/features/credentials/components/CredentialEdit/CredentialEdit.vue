@@ -1335,6 +1335,42 @@ async function oAuthCredentialAuthorize() {
 	oauthChannel.addEventListener('message', receiveMessage);
 }
 
+async function onDisconnectMyConnection(): Promise<void> {
+	if (!credentialId.value) return;
+
+	const confirmed = await message.confirm(
+		i18n.baseText('credentialEdit.credentialEdit.confirmMessage.disconnectCredential.message', {
+			interpolate: { savedCredentialName: credentialName.value },
+		}),
+		i18n.baseText('credentialEdit.credentialEdit.confirmMessage.disconnectCredential.headline'),
+		{
+			confirmButtonText: i18n.baseText(
+				'credentialEdit.credentialEdit.confirmMessage.disconnectCredential.confirmButtonText',
+			),
+		},
+	);
+
+	if (confirmed !== MODAL_CONFIRM) return;
+
+	try {
+		await credentialsStore.disconnectMyConnection({ id: credentialId.value });
+		connectedByMe.value = false;
+		credentialData.value = {
+			...credentialData.value,
+			oauthTokenData: null as unknown as CredentialInformation,
+		};
+		toast.showMessage({
+			title: i18n.baseText('credentialEdit.credentialEdit.showMessage.disconnected.title'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(
+			error,
+			i18n.baseText('credentialEdit.credentialEdit.showError.disconnectCredential.title'),
+		);
+	}
+}
+
 async function onAuthTypeChanged(payload: CredentialModeOption): Promise<void> {
 	if (payload.quickConnectEnabled) {
 		isQuickConnectMode.value = true;
@@ -1535,6 +1571,7 @@ const { width } = useElementSize(credNameRef);
 						:selected-credential="selectedCredential"
 						:is-dynamic-credentials-enabled="isDynamicCredentialsEnabled"
 						:is-resolvable="isResolvable"
+						:connected-by-me="connectedByMe"
 						:is-new-credential="isNewCredential"
 						:managed-oauth-available="managedOAuthAvailable"
 						:use-custom-oauth="useCustomOAuth"
@@ -1543,6 +1580,7 @@ const { width } = useElementSize(credNameRef);
 						:hide-ask-assistant="hideAskAssistant"
 						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
+						@disconnect="onDisconnectMyConnection"
 						@quick-connect="onQuickConnect"
 						@retest="retestCredential"
 						@scroll-to-top="scrollToTop"

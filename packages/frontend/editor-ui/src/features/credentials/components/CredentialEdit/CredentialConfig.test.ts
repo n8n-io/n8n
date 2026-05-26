@@ -336,6 +336,96 @@ describe('CredentialConfig', () => {
 		});
 	});
 
+	describe('Disconnect button on success banner', () => {
+		const writePermissions = {
+			create: true,
+			update: true,
+			read: true,
+			delete: false,
+			share: false,
+			list: true,
+			move: false,
+		};
+
+		const oAuthConnectedProps = {
+			isManaged: false,
+			mode: 'edit' as const,
+			credentialType: mockCredentialType,
+			credentialProperties: [],
+			credentialData: {} as ICredentialDataDecryptedObject,
+			isOAuthType: true,
+			isOAuthConnected: true,
+			requiredPropertiesFilled: true,
+			credentialPermissions: writePermissions,
+		};
+
+		it('renders Disconnect when resolvable, connectedByMe and dynamic credentials enabled', () => {
+			renderComponent({
+				props: {
+					...oAuthConnectedProps,
+					isDynamicCredentialsEnabled: true,
+					isResolvable: true,
+					connectedByMe: true,
+				},
+			});
+
+			expect(screen.getByTestId('oauth-disconnect-button')).toBeInTheDocument();
+		});
+
+		it('hides Disconnect when connectedByMe is false', () => {
+			renderComponent({
+				props: {
+					...oAuthConnectedProps,
+					isDynamicCredentialsEnabled: true,
+					isResolvable: true,
+					connectedByMe: false,
+				},
+			});
+
+			expect(screen.queryByTestId('oauth-disconnect-button')).not.toBeInTheDocument();
+		});
+
+		it('hides Disconnect for static (non-resolvable) credentials', () => {
+			renderComponent({
+				props: {
+					...oAuthConnectedProps,
+					isDynamicCredentialsEnabled: true,
+					isResolvable: false,
+					connectedByMe: true,
+				},
+			});
+
+			expect(screen.queryByTestId('oauth-disconnect-button')).not.toBeInTheDocument();
+		});
+
+		it('hides Disconnect when dynamic credentials are disabled', () => {
+			renderComponent({
+				props: {
+					...oAuthConnectedProps,
+					isDynamicCredentialsEnabled: false,
+					isResolvable: true,
+					connectedByMe: true,
+				},
+			});
+
+			expect(screen.queryByTestId('oauth-disconnect-button')).not.toBeInTheDocument();
+		});
+
+		it('emits disconnect on click', async () => {
+			const { emitted } = renderComponent({
+				props: {
+					...oAuthConnectedProps,
+					isDynamicCredentialsEnabled: true,
+					isResolvable: true,
+					connectedByMe: true,
+				},
+			});
+
+			await screen.getByTestId('oauth-disconnect-button').click();
+			expect(emitted().disconnect).toBeTruthy();
+		});
+	});
+
 	describe('OAuth Redirect URL', () => {
 		const writePermissions = {
 			create: true,
