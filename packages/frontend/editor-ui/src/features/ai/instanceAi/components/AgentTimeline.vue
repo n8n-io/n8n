@@ -105,45 +105,13 @@ const toolCallsById = computed(() => {
 	return map;
 });
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
-
-function isStringArray(value: unknown): value is string[] {
-	return Array.isArray(value) && value.every((item) => typeof item === 'string');
-}
-
-function isPlannedTaskArg(value: unknown): value is PlannedTaskArg {
-	if (!isRecord(value)) return false;
-	return (
-		typeof value.id === 'string' &&
-		typeof value.title === 'string' &&
-		typeof value.kind === 'string' &&
-		typeof value.spec === 'string' &&
-		isStringArray(value.deps) &&
-		(value.tools === undefined || isStringArray(value.tools)) &&
-		(value.workflowId === undefined || typeof value.workflowId === 'string')
-	);
-}
-
-function getPlannedTasksFromArgs(tc: InstanceAiToolCallState): PlannedTaskArg[] | undefined {
-	const tasks = tc.args.tasks;
-	if (!Array.isArray(tasks)) return undefined;
-	const plannedTasks = tasks.filter(isPlannedTaskArg);
-	return plannedTasks.length > 0 ? plannedTasks : undefined;
-}
-
 function getPlanTasks(tc: InstanceAiToolCallState): PlannedTaskArg[] {
 	return (
 		tc.confirmation?.planItems ??
-		getPlannedTasksFromArgs(tc) ??
+		(tc.args?.tasks as PlannedTaskArg[] | undefined) ??
 		mapTaskItemsToPlannedTasks(tc.confirmation?.tasks) ??
 		[]
 	);
-}
-
-function getPlanTaskCount(tc: InstanceAiToolCallState): number {
-	return getPlanTasks(tc).length || tc.confirmation?.tasks?.tasks.length || 0;
 }
 
 function getPlanReviewStatus(tc: InstanceAiToolCallState): PlanReviewStatus {
@@ -158,11 +126,8 @@ function getPlanReviewStatus(tc: InstanceAiToolCallState): PlanReviewStatus {
 
 function isPlanReviewUpdating(tc: InstanceAiToolCallState): boolean {
 	const requestId = tc.confirmation?.requestId;
-	return Boolean(
-		requestId &&
-			getPlanReviewStatus(tc) === 'changes-requested' &&
-			(thread.updatingPlanRequestIds.has(requestId) || thread.isStreaming),
-	);
+	if (!requestId || getPlanReviewStatus(tc) !== 'changes-requested') return false;
+	return thread.updatingPlanRequestIds.has(requestId) || thread.isStreaming;
 }
 
 /** PlanReviewPanel is read-only when its tool call has settled OR when the
@@ -190,7 +155,7 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	const requestId = tc.confirmation?.requestId;
 	if (!requestId) return;
 
-	const numTasks = getPlanTaskCount(tc);
+	const numTasks = getPlanTasks(tc).length;
 	const eventProps = {
 		thread_id: thread.id,
 		input_thread_id: tc.confirmation?.inputThreadId ?? '',
@@ -227,7 +192,7 @@ function handlePlanAskForEdits(tc: InstanceAiToolCallState) {
 	thread.startPlanEdit({
 		requestId,
 		inputThreadId: tc.confirmation?.inputThreadId,
-		taskCount: getPlanTaskCount(tc),
+		taskCount: getPlanTasks(tc).length,
 	});
 }
 
@@ -235,7 +200,7 @@ function handlePlanDeny(tc: InstanceAiToolCallState) {
 	const requestId = tc.confirmation?.requestId;
 	if (!requestId) return;
 
-	const numTasks = getPlanTaskCount(tc);
+	const numTasks = getPlanTasks(tc).length;
 	telemetry.track('User finished providing input', {
 		thread_id: thread.id,
 		input_thread_id: tc.confirmation?.inputThreadId ?? '',
