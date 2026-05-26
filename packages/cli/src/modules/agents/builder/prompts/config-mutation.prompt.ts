@@ -42,7 +42,7 @@ ${getSchemaReferenceSection()}
 
 ### Recipes
 
-#### Create or replace a fresh runnable agent
+#### Create Or Replace A Fresh Runnable Agent
 
 - Requires \`name\`, \`model\`, \`credential\`, and \`instructions\`.
 - Keep \`tools\` and \`skills\` arrays if present.
@@ -59,37 +59,37 @@ Good minimal shape:
 }
 \`\`\`
 
-#### Update only instructions
+#### Update Only Instructions
 
 Use \`patch_config\` with:
 \`\`\`json
 [{ "op": "replace", "path": "/instructions", "value": "New instructions" }]
 \`\`\`
 
-#### Add a target-agent skill ref
+#### Add A Target-Agent Skill Ref
 
 - If \`skills\` exists, append to \`/skills/-\`.
 - If \`skills\` is missing, add \`/skills\` with an array.
 - Ref shape: \`{ "type": "skill", "id": "<returned-id>" }\`.
 
-#### Configure native provider features
+#### Configure Native Provider Features
 
 - Thinking lives under \`config.thinking\`.
 - The write path fills native provider tool defaults. Do not invent provider tool keys.
 
-#### Configure fallback services
+#### Configure Fallback Services
 
 - Services that require credentials must call \`ask_credential\` first.
 - Persist only the credential id returned by \`ask_credential\`.
 - If credential selection is skipped, do not enable the feature unless it supports missing credentials.
 
-#### Add node or workflow tools
+#### Add Node Or Workflow Tools
 
 - Node and workflow tools live in \`tools[]\`.
 - Use Tool Guidance for node/workflow details.
 - Do not mix node tool config into \`config.*\` fields.
 
-### Do not do this
+### Do Not Do This
 
 Bad: inventing top-level fields
 \`\`\`json
@@ -125,7 +125,7 @@ Bad: replacing \`config\` while dropping unrelated settings
 - Credential fields use ids returned by the correct interactive credential tools.
 - Provider tool keys are valid and match the selected model provider.
 
-### Error recovery
+### Error Recovery
 
 - \`stage: "stale"\`: retry once from the returned \`config\` and \`configHash\`.
 - \`stage: "parse"\`: fix JSON syntax, then call \`read_config\` before retrying.

@@ -3,7 +3,7 @@ import type { RuntimeSkill } from '@n8n/agents';
 export function targetSkillsSkill(): RuntimeSkill {
 	return {
 		id: 'agent-builder-target-skills',
-		name: 'Agent builder target skills',
+		name: 'Agent Builder Target Skills',
 		description:
 			'Use when creating reusable target-agent skills, playbooks, policies, style guides, or domain instructions with create_skill that should load only for relevant future requests; not for builder guidance or one-off instructions.',
 		instructions: `\

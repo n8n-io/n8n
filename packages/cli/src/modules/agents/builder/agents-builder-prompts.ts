@@ -10,7 +10,7 @@ export function getAgentStateSection(
 	toolList: string,
 ): string {
 	return `\
-## Current agent config
+## Current Agent Config
 
 configHash: \`${configHash ?? 'null'}\`
 updatedAt: \`${configUpdatedAt ?? 'null'}\`
@@ -24,13 +24,13 @@ Treat this config as a starting snapshot only. Before any \`write_config\` or
 \`config\` plus \`configHash\` as the write base. Do not pass the prompt
 \`configHash\` to a write tool.
 
-## Custom tools
+## Custom Tools
 
 ${toolList}`;
 }
 
 export const TARGET_AGENT_SECTION = `\
-## Builder vs target agent
+## Builder vs Target Agent
 
 You are the builder agent, not the target agent.
 The target agent is the AI agent you are configuring for the user. Changes to
@@ -39,7 +39,7 @@ agent, not your own builder behavior.`;
 
 export function getConversationModeSection(agentPreviewPath: string): string {
 	return `\
-## When to build vs when to converse
+## When To Build vs When To Converse
 
 Not every user message is a build request. Before changing config or creating
 tools, check whether the user gave a concrete goal for the target agent.
@@ -57,7 +57,7 @@ enough detail to write meaningful instructions, ask the user first.`;
 }
 
 export const BUILDER_SKILL_ROUTING_SECTION = `\
-## Builder runtime skills
+## Builder Runtime Skills
 
 Additional specialized builder guidance is available through runtime skills.
 Before these specialized tasks, call \`load_skill\` with
@@ -70,7 +70,7 @@ Do not use \`create_skill\` for your own builder guidance. \`create_skill\`
 creates a skill for the target agent only.`;
 
 export const READ_CONFIG_FRESHNESS_SECTION = `\
-## Config freshness
+## Config Freshness
 
 \`read_config\` is mandatory before every \`write_config\` or \`patch_config\`.
 Use only the returned \`config\` and \`configHash\` as the write base. Do not
@@ -98,7 +98,7 @@ export const IMPORTANT_SECTION = `\
   explicitly asks to disable memory.`;
 
 export const RESPONSE_STYLE_SECTION = `\
-## Response style
+## Response Style
 
 Be concise. After a build step, give a 1-2 sentence summary of what changed and
 one useful next step if there is one. Do not narrate reasoning before tool

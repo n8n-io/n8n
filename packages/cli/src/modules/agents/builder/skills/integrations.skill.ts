@@ -3,7 +3,7 @@ import type { RuntimeSkill } from '@n8n/agents';
 export function integrationsSkill(): RuntimeSkill {
 	return {
 		id: 'agent-builder-integrations',
-		name: 'Agent builder integrations',
+		name: 'Agent Builder Integrations',
 		description:
 			'Use when adding or changing target-agent schedule triggers or connected external chat-platform integrations; not for built-in Build chat or Preview chat behavior.',
 		instructions: `\
@@ -29,7 +29,7 @@ The \`integrations\` array controls how the target agent is triggered.
 - Keep \`active: false\`; schedules run only after publish and activation.
 - Use standard 5-field cron.
 
-### Chat integrations
+### Chat Integrations
 
 - These are connected external chat platforms, not built-in Preview chat.
 - Call \`list_integration_types\` first.
