@@ -1,6 +1,6 @@
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
-import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { EVALUATION_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -11,17 +11,22 @@ import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { renderComponent } from '@/__tests__/render';
 import NodeView from './NodeView.vue';
 import { WorkflowIdKey, WorkflowDocumentStoreKey } from '../constants/injectionKeys';
-import { computed, shallowRef } from 'vue';
+import { computed, defineComponent, shallowRef } from 'vue';
+
+const routerMock = vi.hoisted(() => ({
+	push: vi.fn(),
+	replace: vi.fn(),
+	resolve: vi.fn().mockReturnValue({ href: '' }),
+}));
+
+const routeMock = vi.hoisted(() => ({
+	params: {},
+	query: {} as Record<string, string>,
+}));
 
 vi.mock('vue-router', () => ({
-	useRouter: () => ({
-		push: vi.fn(),
-		resolve: vi.fn().mockReturnValue({ href: '' }),
-	}),
-	useRoute: () => ({
-		params: {},
-		query: {},
-	}),
+	useRouter: () => routerMock,
+	useRoute: () => routeMock,
 	RouterLink: {
 		template: '<a><slot /></a>',
 	},
@@ -31,12 +36,43 @@ vi.mock('vue-router', () => ({
 describe('NodeView', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
+	let ensureNodesAreVisible: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
+		vi.clearAllMocks();
+		vi.stubGlobal('localStorage', {
+			getItem: vi.fn().mockReturnValue(null),
+		});
+		routeMock.params = {};
+		routeMock.query = {};
+		ensureNodesAreVisible = vi.fn();
 		workflowsStore = useWorkflowsStore();
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w0'));
 	});
+
+	function renderNodeView() {
+		const workflowDocStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowDocumentStore.workflowId),
+		);
+
+		return renderComponent(NodeView, {
+			global: {
+				provide: {
+					[WorkflowIdKey as symbol]: computed(() => workflowDocumentStore.workflowId),
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(workflowDocStore),
+				},
+				stubs: {
+					WorkflowCanvas: defineComponent({
+						setup(_, { expose }) {
+							expose({ ensureNodesAreVisible });
+						},
+						template: '<div />',
+					}),
+				},
+			},
+		});
+	}
 
 	describe('Trigger node selection', () => {
 		const n0 = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'n0' });
@@ -54,24 +90,6 @@ describe('NodeView', () => {
 				}),
 			]);
 		});
-
-		function renderNodeView() {
-			const workflowDocStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowDocumentStore.workflowId),
-			);
-
-			return renderComponent(NodeView, {
-				global: {
-					provide: {
-						[WorkflowIdKey as symbol]: computed(() => workflowDocumentStore.workflowId),
-						[WorkflowDocumentStoreKey as symbol]: shallowRef(workflowDocStore),
-					},
-					stubs: {
-						WorkflowCanvas: { template: '<div />' },
-					},
-				},
-			});
-		}
 
 		it('should select newly added trigger node automatically', async () => {
 			renderNodeView();
@@ -95,6 +113,56 @@ describe('NodeView', () => {
 				value: true,
 			});
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe(undefined));
+		});
+	});
+
+	describe('Evaluation trigger route action', () => {
+		beforeEach(() => {
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.setNodeTypes([
+				mockNodeTypeDescription({
+					name: EVALUATION_TRIGGER_NODE_TYPE,
+					group: ['trigger'],
+				}),
+			]);
+		});
+
+		it('should add the evaluation trigger node and show it on the canvas', async () => {
+			routeMock.query = { action: 'addEvaluationTrigger' };
+
+			renderNodeView();
+
+			await waitFor(() => {
+				const evaluationTrigger = workflowDocumentStore.allNodes.find(
+					(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
+				);
+
+				expect(evaluationTrigger).toBeDefined();
+				expect(ensureNodesAreVisible).toHaveBeenCalledWith([evaluationTrigger?.id]);
+			});
+
+			expect(routerMock.replace).toHaveBeenCalledWith({
+				query: { action: undefined },
+			});
+		});
+
+		it('should open the existing evaluation trigger instead of adding another one', async () => {
+			const existingEvaluationTrigger = createTestNode({
+				type: EVALUATION_TRIGGER_NODE_TYPE,
+				name: 'Evaluation',
+			});
+			workflowDocumentStore.setNodes([existingEvaluationTrigger]);
+			routeMock.query = { action: 'addEvaluationTrigger' };
+
+			renderNodeView();
+
+			await waitFor(() => {
+				expect(ensureNodesAreVisible).toHaveBeenCalledWith([existingEvaluationTrigger.id]);
+			});
+
+			expect(
+				workflowDocumentStore.allNodes.filter((node) => node.type === EVALUATION_TRIGGER_NODE_TYPE),
+			).toHaveLength(1);
 		});
 	});
 });

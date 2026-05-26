@@ -326,10 +326,7 @@ const isLogsPanelOpen = computed(() => logsStore.isOpen);
 function initializeRoute() {
 	// Open node panel if the route has a corresponding action
 	if (route.query.action === 'addEvaluationTrigger') {
-		nodeCreatorStore.openNodeCreatorForTriggerNodes(
-			workflowId.value,
-			NODE_CREATOR_OPEN_SOURCES.ADD_EVALUATION_TRIGGER_BUTTON,
-		);
+		void addEvaluationTriggerNodeFromRoute();
 	} else if (route.query.action === 'addEvaluationNode') {
 		nodeCreatorStore.openNodeCreatorForActions(
 			workflowId.value,
@@ -1309,6 +1306,48 @@ const evaluationTriggerNode = computed(() => {
 		(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
 	);
 });
+
+const isHandlingEvaluationTriggerRouteAction = ref(false);
+
+async function addEvaluationTriggerNodeFromRoute() {
+	if (isHandlingEvaluationTriggerRouteAction.value) return;
+
+	isHandlingEvaluationTriggerRouteAction.value = true;
+
+	try {
+		if (!canvasRef.value) await nextTick();
+		if (!canvasRef.value) await nextTick();
+
+		if (!checkIfEditingIsAllowed()) return;
+
+		if (evaluationTriggerNode.value) {
+			setNodeActiveByName(evaluationTriggerNode.value.name, 'other');
+			canvasRef.value?.ensureNodesAreVisible([evaluationTriggerNode.value.id]);
+			return;
+		}
+
+		const { addedNodes } = await addNodesAndConnections(
+			[{ type: EVALUATION_TRIGGER_NODE_TYPE, openDetail: true }],
+			[],
+			{
+				viewport: viewportBoundaries.value,
+				telemetry: true,
+			},
+		);
+
+		if (addedNodes.length > 0) {
+			const addedNode = addedNodes[addedNodes.length - 1];
+			await nextTick();
+			canvasRef.value?.ensureNodesAreVisible([addedNode.id]);
+		}
+	} finally {
+		try {
+			await router.replace({ query: { ...route.query, action: undefined } });
+		} finally {
+			isHandlingEvaluationTriggerRouteAction.value = false;
+		}
+	}
+}
 
 /**
  * History events
