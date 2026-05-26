@@ -7,7 +7,6 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiConfirmRequest, InstanceAiEvalExecutionResult } from '@n8n/api-types';
-import { findAiRootNodeNames as findAiRoots } from 'n8n-workflow';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -48,15 +47,6 @@ import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 
 const DEFAULT_TIMEOUT_MS = 900_000;
 
-/**
- * Names of all AI root nodes (Agent, Chain) in the workflow. Delegates to the
- * shared `findAiRootNodeNames` in `n8n-workflow` so the server's `unpinNodes`
- * validator and this client-side picker agree on what counts as a root.
- */
-export function findAiRootNodeNames(workflow: WorkflowResponse): string[] {
-	return Array.from(findAiRoots(workflow.connections));
-}
-
 /** Max concurrent scenario executions per test case */
 const MAX_CONCURRENT_SCENARIOS = 99;
 
@@ -78,11 +68,11 @@ interface WorkflowTestCaseConfig {
 	/** When set, skip the orchestrator build and verify this existing workflow
 	 *  instead. The harness leaves it in place — caller owns its lifecycle. */
 	prebuiltWorkflowId?: string;
-	/** When true, the harness auto-detects AI root nodes (Agent, Chain) in the
-	 *  built workflow and opts them into the wire-server interception path via
-	 *  the eval endpoint's `unpinNodes` field. Server-side gated by the
+	/** AI root nodes (Agent, Chain) to keep pinned — opt-out from the default-on
+	 *  wire-server interception path. Omit (or pass empty) to intercept every
+	 *  interceptable AI root the workflow contains. Server-side gated by the
 	 *  `085_eval_vendor_sdk_interception` PostHog flag. */
-	unpinAiRoots?: boolean;
+	pinAiRoots?: string[];
 }
 
 /**
@@ -159,7 +149,7 @@ export async function runWorkflowTestCase(
 					build.workflowJsons,
 					logger,
 					timeoutMs,
-					config.unpinAiRoots,
+					config.pinAiRoots,
 				);
 			} catch (error: unknown) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
@@ -494,7 +484,7 @@ export async function executeScenario(
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
 	timeoutMs?: number,
-	unpinAiRoots?: boolean,
+	pinAiRoots?: string[],
 ): Promise<ExecutionScenarioResult> {
 	return await runScenario(
 		client,
@@ -503,7 +493,7 @@ export async function executeScenario(
 		workflowJsons,
 		logger,
 		timeoutMs,
-		unpinAiRoots,
+		pinAiRoots,
 	);
 }
 
@@ -551,27 +541,22 @@ async function runScenario(
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
 	timeoutMs?: number,
-	unpinAiRoots?: boolean,
+	pinAiRoots?: string[],
 ): Promise<ExecutionScenarioResult> {
-	const unpinNodes = unpinAiRoots && workflowJsons[0] ? findAiRootNodeNames(workflowJsons[0]) : [];
-	if (unpinAiRoots && unpinNodes.length === 0) {
-		logger.info(
-			`    [${scenario.name}] --unpin-ai-roots was set, but workflow has no AI root nodes — running with default pinning`,
-		);
-	}
+	const pinNodes = pinAiRoots && pinAiRoots.length > 0 ? pinAiRoots : undefined;
 
 	const execStart = Date.now();
 	const evalResult = await client.executeWithLlmMock(
 		workflowId,
 		scenario.dataSetup,
 		timeoutMs,
-		unpinNodes,
+		pinNodes,
 	);
 	const execMs = Date.now() - execStart;
 
-	const unpinTag = unpinNodes.length > 0 ? ` unpinned=${unpinNodes.join(',')}` : '';
+	const pinTag = pinNodes ? ` pinned=${pinNodes.join(',')}` : '';
 	logger.info(
-		`    [${scenario.name}] exec=${String(Math.round(execMs / 1000))}s (${Object.keys(evalResult.nodeResults).length} nodes)${unpinTag}`,
+		`    [${scenario.name}] exec=${String(Math.round(execMs / 1000))}s (${Object.keys(evalResult.nodeResults).length} nodes)${pinTag}`,
 	);
 
 	const verifyStart = Date.now();

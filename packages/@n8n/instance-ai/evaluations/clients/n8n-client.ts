@@ -496,19 +496,21 @@ export class N8nClient {
 	 * Execute a workflow with LLM-based HTTP mocking.
 	 * The server handles hint generation and mock execution in a single synchronous call.
 	 *
-	 * `unpinNodes` opts AI root nodes (Agent, Chain) into the wire-server interception
-	 * path so their sub-nodes actually run instead of being short-circuited by pin data.
-	 * Gated server-side behind the `085_eval_vendor_sdk_interception` PostHog flag.
+	 * AI root nodes (Agent, Chain) default to wire-server interception so their
+	 * sub-nodes actually run instead of being short-circuited by pin data;
+	 * pass `pinNodes` to keep specific roots on the pinned baseline (e.g. for
+	 * A/B comparison). Gated server-side behind the
+	 * `085_eval_vendor_sdk_interception` PostHog flag.
 	 */
 	async executeWithLlmMock(
 		workflowId: string,
 		scenarioHints?: string,
 		timeoutMs: number = 120_000,
-		unpinNodes?: string[],
+		pinNodes?: string[],
 	): Promise<InstanceAiEvalExecutionResult> {
-		const body: { scenarioHints?: string; unpinNodes?: string[] } = {};
+		const body: { scenarioHints?: string; pinNodes?: string[] } = {};
 		if (scenarioHints) body.scenarioHints = scenarioHints;
-		if (unpinNodes && unpinNodes.length > 0) body.unpinNodes = unpinNodes;
+		if (pinNodes && pinNodes.length > 0) body.pinNodes = pinNodes;
 
 		const result = (await this.fetch(`/rest/instance-ai/eval/execute-with-llm-mock/${workflowId}`, {
 			method: 'POST',

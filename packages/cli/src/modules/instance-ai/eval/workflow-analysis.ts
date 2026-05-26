@@ -108,19 +108,21 @@ export function identifyNodesForPinData(
 	});
 }
 
-type UnpinRefusal = {
+export type AutoPinReason =
+	| 'protocol_binary'
+	| 'unsupported_vendor_llm'
+	| 'unsafe_baseurl_override'
+	| 'shared_vendor_llm_subnode';
+
+export interface AutoPinEntry {
 	root: string;
 	subNode: string;
 	subNodeType: string;
-	reason:
-		| 'protocol_binary'
-		| 'unsupported_vendor_llm'
-		| 'unsafe_baseurl_override'
-		| 'shared_vendor_llm_subnode';
-};
+	reason: AutoPinReason;
+}
 
-// Routing maps for vendor SDK interception. `assertUnpinCompatibility`
-// refuses shared sub-node topologies, so each sub-node maps to one root.
+// Routing maps for vendor SDK interception. `partitionAiRoots` auto-pins
+// shared-sub-node topologies, so each remaining sub-node maps to one root.
 export interface VendorLlmRouting {
 	subNodeToRoot: Map<string, string>;
 	rootToSubNode: Map<string, INode>;
@@ -177,20 +179,102 @@ export function buildVendorLlmRouting(
 	return { subNodeToRoot, rootToSubNode };
 }
 
-/** Throws if any unpinned AI root has a sub-node we can't intercept: protocol-binary, unmapped vendor LLM, or unsafe baseURL override. Also refuses entries that don't resolve to an enabled AI root (typo guard). */
-export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: string[]): void {
-	if (unpinNodes.length === 0) return;
+export interface PartitionedAiRoots {
+	/** Names of AI roots that will run through the wire-server interception path. */
+	unpinNodes: string[];
+	/** Names of AI roots that will remain pinned — explicit `pinNodes` + auto-pinned roots. */
+	pinNodes: string[];
+	/** Per-(root, sub-node) reasons a root was auto-pinned, for diagnostic logging. */
+	autoPinned: AutoPinEntry[];
+}
 
+/**
+ * Default-on partition: every AI root in the workflow runs through the wire
+ * server unless one of these applies:
+ *   - It's in the caller-supplied `explicitPinNodes` list (opt-out for nodes
+ *     the caller wants to keep pinned, e.g. for an A/B comparison).
+ *   - One of its inbound `ai_*` sub-nodes is incompatible (protocol-binary
+ *     memory/vector store, unsupported vendor LLM, configured
+ *     `options.baseURL` that bypasses the credential rewrite).
+ *   - It shares a supported vendor LLM sub-node with another root — wire-
+ *     server attribution is path-based and first-wins, so multiple roots
+ *     fanning into the same sub-node would mis-attribute later turns. Both
+ *     sides get auto-pinned.
+ *
+ * `explicitPinNodes` is validated up front: unknown / disabled / non-AI-root
+ * entries throw a `UserError` to surface typos as actionable errors instead
+ * of being silently ignored.
+ */
+export function partitionAiRoots(
+	workflow: IWorkflowBase,
+	explicitPinNodes: string[] = [],
+): PartitionedAiRoots {
 	const nodesByName = new Map(workflow.nodes.map((n) => [n.name, n]));
 	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
-	const aiRootNodes = findAiRootNodeNames(workflow.connections);
+	const allRoots = findAiRootNodeNames(workflow.connections);
 
-	// Refuse typos / disabled / non-AI-root entries up front. A root counts
-	// if it has inbound ai_* connections OR its type is on AI_ROOT_NODE_TYPES.
+	validateExplicitPinNodes(nodesByName, allRoots, explicitPinNodes);
+
+	const explicitPinSet = new Set(explicitPinNodes);
+	const sharedSupportedSubNodes = trackSharedSupportedSubNodes(
+		connectionsByDestination,
+		nodesByName,
+		allRoots,
+		explicitPinSet,
+	);
+
+	const autoPinned: AutoPinEntry[] = [];
+	const pinSet = new Set<string>(explicitPinNodes);
+
+	for (const rootName of allRoots) {
+		if (explicitPinSet.has(rootName)) continue;
+
+		const inbound = connectionsByDestination[rootName];
+		if (!inbound) continue;
+
+		for (const [connType, groups] of Object.entries(inbound)) {
+			if (!connType.startsWith('ai_') || !Array.isArray(groups)) continue;
+			for (const group of groups) {
+				if (!Array.isArray(group)) continue;
+				for (const conn of group) {
+					const sourceNode = nodesByName.get(conn.node);
+					if (!sourceNode || sourceNode.disabled) continue;
+
+					const reason = categorizeSubNodeIncompatibility(sourceNode, sharedSupportedSubNodes);
+					if (reason === null) continue;
+
+					autoPinned.push({
+						root: rootName,
+						subNode: sourceNode.name,
+						subNodeType: sourceNode.type,
+						reason,
+					});
+					pinSet.add(rootName);
+				}
+			}
+		}
+	}
+
+	const unpinNodes: string[] = [];
+	const pinNodes: string[] = [];
+	for (const rootName of allRoots) {
+		if (pinSet.has(rootName)) pinNodes.push(rootName);
+		else unpinNodes.push(rootName);
+	}
+
+	return { unpinNodes, pinNodes, autoPinned };
+}
+
+/** Throw `UserError` if any explicit pin entry isn't a real, enabled AI root in the workflow. */
+function validateExplicitPinNodes(
+	nodesByName: Map<string, INode>,
+	aiRootNodes: Set<string>,
+	explicitPinNodes: string[],
+): void {
 	const unknownRoots: string[] = [];
 	const disabledRoots: string[] = [];
 	const nonAiRoots: string[] = [];
-	for (const rootName of unpinNodes) {
+	for (const rootName of explicitPinNodes) {
 		const node = nodesByName.get(rootName);
 		if (!node) unknownRoots.push(rootName);
 		else if (node.disabled) disabledRoots.push(rootName);
@@ -204,21 +288,28 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 		if (unknownRoots.length) parts.push(`not found in workflow: ${formatNames(unknownRoots)}`);
 		if (disabledRoots.length) parts.push(`disabled: ${formatNames(disabledRoots)}`);
 		if (nonAiRoots.length) parts.push(`not AI root nodes: ${formatNames(nonAiRoots)}`);
-		throw new UserError(`Cannot unpin — ${parts.join('; ')}.`);
+		throw new UserError(`Cannot pin — ${parts.join('; ')}.`);
 	}
+}
 
-	const refusals: UnpinRefusal[] = [];
-	// Track which unpinned roots each supported vendor LLM sub-node feeds.
-	// A sub-node feeding ≥2 unpinned roots can't be attributed correctly —
-	// the wire server's path-based root token is baked into the credential
-	// URL at resolution time (first-wins), so later turns from the same
-	// sub-node would mis-attribute to the first root.
-	const sharedSupportedSubNodes = new Map<string, { type: string; roots: Set<string> }>();
-
-	for (const rootName of unpinNodes) {
+/**
+ * Walk every AI root in the workflow and record which supported vendor LLM
+ * sub-nodes feed more than one root. Used by `categorizeSubNodeIncompatibility`
+ * so both sides of a shared sub-node get auto-pinned (attribution would be
+ * ambiguous otherwise). Roots in `explicitPinSet` don't contribute — pinning
+ * them removes the ambiguity.
+ */
+function trackSharedSupportedSubNodes(
+	connectionsByDestination: ReturnType<typeof mapConnectionsByDestination>,
+	nodesByName: Map<string, INode>,
+	allRoots: Set<string>,
+	explicitPinSet: Set<string>,
+): Set<string> {
+	const usage = new Map<string, Set<string>>();
+	for (const rootName of allRoots) {
+		if (explicitPinSet.has(rootName)) continue;
 		const inbound = connectionsByDestination[rootName];
 		if (!inbound) continue;
-
 		for (const [connType, groups] of Object.entries(inbound)) {
 			if (!connType.startsWith('ai_') || !Array.isArray(groups)) continue;
 			for (const group of groups) {
@@ -226,95 +317,38 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 				for (const conn of group) {
 					const sourceNode = nodesByName.get(conn.node);
 					if (!sourceNode || sourceNode.disabled) continue;
-
-					if (SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)) {
-						const tracked = sharedSupportedSubNodes.get(sourceNode.name) ?? {
-							type: sourceNode.type,
-							roots: new Set<string>(),
-						};
-						tracked.roots.add(rootName);
-						sharedSupportedSubNodes.set(sourceNode.name, tracked);
-					}
-
-					const reason = categorizeSubNodeRefusal(sourceNode);
-					if (reason === null) continue;
-					refusals.push({
-						root: rootName,
-						subNode: sourceNode.name,
-						subNodeType: sourceNode.type,
-						reason,
-					});
+					if (!SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)) continue;
+					const tracked = usage.get(sourceNode.name) ?? new Set<string>();
+					tracked.add(rootName);
+					usage.set(sourceNode.name, tracked);
 				}
 			}
 		}
 	}
-
-	// Emit a `shared_vendor_llm_subnode` refusal for every sub-node feeding
-	// more than one unpinned root. One entry per offending (root, sub-node)
-	// pair so the error message lists every conflict.
-	for (const [subNodeName, { type, roots }] of sharedSupportedSubNodes) {
-		if (roots.size < 2) continue;
-		for (const rootName of roots) {
-			refusals.push({
-				root: rootName,
-				subNode: subNodeName,
-				subNodeType: type,
-				reason: 'shared_vendor_llm_subnode',
-			});
-		}
+	const shared = new Set<string>();
+	for (const [subNodeName, roots] of usage) {
+		if (roots.size >= 2) shared.add(subNodeName);
 	}
-
-	if (refusals.length === 0) return;
-
-	const segments = [
-		formatRefusalSegment(
-			refusals,
-			'protocol_binary',
-			'protocol-binary sub-nodes (cannot be intercepted via HTTP)',
-		),
-		formatRefusalSegment(
-			refusals,
-			'unsupported_vendor_llm',
-			'unsupported vendor LLM sub-nodes (no eval URL-rewrite mapping yet)',
-		),
-		formatRefusalSegment(
-			refusals,
-			'unsafe_baseurl_override',
-			'vendor LLM sub-nodes with a configured options.baseURL that bypasses the credential rewrite',
-		),
-		formatRefusalSegment(
-			refusals,
-			'shared_vendor_llm_subnode',
-			'vendor LLM sub-nodes shared by multiple unpinned roots (attribution would be ambiguous)',
-		),
-	].filter((s): s is string => s !== undefined);
-
-	throw new UserError(
-		`Cannot unpin AI root nodes — ${segments.join('; ')}. ` +
-			'Leave these roots pinned, remove the parameter override, or replace the sub-node with one that has interception support.',
-	);
+	return shared;
 }
 
-/** Classify a sub-node into one of the three refusal reasons, or null if acceptable. Order matters: protocol-binary, then baseURL-override on a supported vendor, then unsupported `lm*`. */
-function categorizeSubNodeRefusal(sourceNode: INode): UnpinRefusal['reason'] | null {
+/**
+ * Return the auto-pin reason for a sub-node, or null if it's safe to intercept.
+ * Order: protocol-binary (HTTP can't reach it) → shared (attribution ambiguous) →
+ * supported-vendor-with-baseURL-override (SDK bypasses the rewrite) → unsupported
+ * vendor LLM (no URL-rewrite mapping yet).
+ */
+function categorizeSubNodeIncompatibility(
+	sourceNode: INode,
+	sharedSupportedSubNodes: Set<string>,
+): AutoPinReason | null {
 	if (PROTOCOL_BINARY_SUB_NODE_TYPES.has(sourceNode.type)) return 'protocol_binary';
 	if (SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)) {
+		if (sharedSupportedSubNodes.has(sourceNode.name)) return 'shared_vendor_llm_subnode';
 		return hasUnsafeBaseUrlOverride(sourceNode) ? 'unsafe_baseurl_override' : null;
 	}
 	if (isVendorLlmSubNode(sourceNode.type)) return 'unsupported_vendor_llm';
 	return null;
-}
-
-/** One segment of the `assertUnpinCompatibility` error message, or undefined when no refusals match. */
-function formatRefusalSegment(
-	refusals: UnpinRefusal[],
-	reason: UnpinRefusal['reason'],
-	label: string,
-): string | undefined {
-	const matching = refusals.filter((r) => r.reason === reason);
-	if (matching.length === 0) return undefined;
-	const pairs = matching.map((r) => `"${r.subNode}" (${r.subNodeType}) → "${r.root}"`).join(', ');
-	return `${label}: ${pairs}`;
 }
 
 /** Nodes that should receive mock hints — excludes AI sub-nodes (handled via root) and pinned nodes. */

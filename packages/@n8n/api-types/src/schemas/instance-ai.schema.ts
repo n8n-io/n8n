@@ -1131,10 +1131,8 @@ export const EVAL_VENDOR_SDK_INTERCEPTION_FLAG = '085_eval_vendor_sdk_intercepti
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire
- * server) during evaluation. Populated when the caller opts into the unpin
- * path via `InstanceAiEvalExecutionRequest.unpinNodes`. Field added in the
- * foundation PR; the rewrite path itself is wired up in a later PR and stays
- * empty until then.
+ * server) during evaluation. Populated for every AI root the server intercepts;
+ * empty when the kill-switch is off or every root was auto-/explicit-pinned.
  */
 export interface InstanceAiEvalRewrittenCredential {
 	nodeName: string;
@@ -1156,29 +1154,20 @@ export interface InstanceAiEvalExecutionResult {
 export class InstanceAiEvalExecutionRequest extends Z.class({
 	scenarioHints: z.string().max(2000).optional(),
 	/**
-	 * AI root node names (Agent, Chain, etc.) whose sub-nodes should run their
-	 * real vendor SDK code instead of being pinned. The eval pipeline rewrites
-	 * matching credentials so vendor traffic lands on the eval wire server.
+	 * AI root nodes (Agent, Chain) that should stay pinned — opt-out from the
+	 * default-on wire-server interception path. Useful when the caller wants
+	 * to keep a specific root on the pinned baseline (e.g. for A/B comparison)
+	 * even though its sub-nodes are interceptable.
 	 *
-	 * The compatibility guard refuses the request up front (no execution
-	 * attempted) when any inbound `ai_*` sub-node of a requested root falls
-	 * into one of these categories:
-	 *   - **Protocol-binary client**: Postgres/Redis/MongoDB memory, native
-	 *     vector stores (PGVector / Mongo / Redis / Milvus). These don't
-	 *     speak HTTP and can't be intercepted by the wire server.
-	 *   - **Unsupported vendor LLM**: any `@n8n/n8n-nodes-langchain.lm*` node
-	 *     not yet on the supported list (currently `lmChatOpenAi` only).
-	 *     These would call the real provider with real credentials because
-	 *     there's no eval URL-rewrite mapping for them.
-	 *   - **Unsafe `options.baseURL` override**: a supported vendor LLM
-	 *     configured with a non-empty `options.baseURL` parameter. The SDK
-	 *     prefers that over the rewritten credential URL, so the override
-	 *     would bypass the wire server.
+	 * The server auto-pins AI roots whose inbound `ai_*` sub-nodes are
+	 * incompatible (protocol-binary memory/vector store, unsupported vendor
+	 * LLM, configured `options.baseURL` override, shared with another root)
+	 * — callers do not need to list those here.
 	 *
-	 * Refused requests come back as an error-shaped `InstanceAiEvalExecutionResult`
-	 * with the offending root → sub-node pairs listed in `errors`.
+	 * Validated up front: unknown / disabled / non-AI-root names come back
+	 * as an error-shaped `InstanceAiEvalExecutionResult`.
 	 */
-	unpinNodes: z.array(z.string().min(1)).max(50).optional(),
+	pinNodes: z.array(z.string().min(1)).max(50).optional(),
 }) {}
 
 // ---------------------------------------------------------------------------
