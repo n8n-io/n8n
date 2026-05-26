@@ -36,6 +36,7 @@ export class CredentialExporter {
 		}
 
 		const workflowsByCredentialId = this.groupWorkflowIdsByCredentialId(request.references);
+		const referenceLookup = this.indexReferencesByCredentialId(request.references);
 		const entries: ManifestEntry[] = [];
 		const requirements: PackageCredentialRequirement[] = [];
 		const usedTargets = new Set<string>();
@@ -46,29 +47,60 @@ export class CredentialExporter {
 				request.user,
 				['credential:read'],
 			);
-			if (!credential) continue;
 
-			const target = this.allocateUniqueFileName(credential.name, usedTargets);
-			const serialized = this.credentialSerializer.serialize(credential);
+			if (credential) {
+				const target = this.allocateUniqueFileName(credential.name, usedTargets);
+				const serialized = this.credentialSerializer.serialize(credential);
 
-			request.writer.writeDirectory(target);
-			request.writer.writeFile(`${target}/credential.json`, JSON.stringify(serialized, null, '\t'));
+				request.writer.writeDirectory(target);
+				request.writer.writeFile(
+					`${target}/credential.json`,
+					JSON.stringify(serialized, null, '\t'),
+				);
 
-			entries.push({
-				id: credential.id,
-				name: credential.name,
-				target,
-			});
+				entries.push({
+					id: credential.id,
+					name: credential.name,
+					target,
+				});
+
+				requirements.push({
+					id: credential.id,
+					name: credential.name,
+					type: credential.type,
+					usedByWorkflows,
+				});
+				continue;
+			}
+
+			// findCredentialForUser returns null for both orphan (no row) and
+			// forbidden (row exists, caller can't read). The second probe
+			// disambiguates so we can emit a requirements-only entry for orphans.
+			const existsWithoutAccess = await this.credentialsFinder.findCredentialById(credentialId);
+			if (existsWithoutAccess) continue;
+
+			const sample = referenceLookup.get(credentialId);
+			if (!sample) continue;
 
 			requirements.push({
-				id: credential.id,
-				name: credential.name,
-				type: credential.type,
+				id: credentialId,
+				name: sample.credentialName,
+				type: sample.credentialType,
 				usedByWorkflows,
 			});
 		}
 
 		return { entries, requirements };
+	}
+
+	private indexReferencesByCredentialId(
+		references: CredentialReferenceFromWorkflow[],
+	): Map<string, CredentialReferenceFromWorkflow> {
+		const index = new Map<string, CredentialReferenceFromWorkflow>();
+		for (const reference of references) {
+			if (!index.has(reference.credentialId)) index.set(reference.credentialId, reference);
+		}
+		return index;
 	}
 
 	private groupWorkflowIdsByCredentialId(

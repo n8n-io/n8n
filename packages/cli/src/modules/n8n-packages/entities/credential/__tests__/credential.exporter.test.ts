@@ -168,6 +168,82 @@ describe('CredentialExporter', () => {
 			expect(writtenPaths).toContain('credentials/same-name-2/credential.json');
 		});
 
+		it('emits requirements-only entry for an orphan reference (id missing from DB)', async () => {
+			// Orphan = no row at all. findCredentialForUser returns null *and*
+			// findCredentialById returns null → the reference is informational only.
+			const { exporter, finder } = makeExporter();
+			finder.findCredentialForUser.mockResolvedValue(null);
+			finder.findCredentialById.mockResolvedValue(null);
+			const writer = new CapturingWriter();
+
+			const result = await exporter.export({
+				user,
+				references: [
+					makeReference({
+						credentialId: 'cred-orphan',
+						credentialName: 'Stale node name',
+						credentialType: 'httpHeaderAuth',
+						workflowId: 'wf-1',
+					}),
+				],
+				writer,
+			});
+
+			expect(result.entries).toEqual([]);
+			expect(result.requirements).toEqual([
+				{
+					id: 'cred-orphan',
+					name: 'Stale node name',
+					type: 'httpHeaderAuth',
+					usedByWorkflows: ['wf-1'],
+				},
+			]);
+			expect(writer.files).toEqual([]);
+			expect(writer.directories).toEqual([]);
+		});
+
+		it('handles a mix of accessible and orphan references in one call', async () => {
+			const { exporter, finder } = makeExporter();
+			finder.findCredentialForUser.mockImplementation(async (id) =>
+				id === 'cred-1' ? makeCredential() : null,
+			);
+			finder.findCredentialById.mockResolvedValue(null);
+			const writer = new CapturingWriter();
+
+			const result = await exporter.export({
+				user,
+				references: [
+					makeReference({ credentialId: 'cred-1', workflowId: 'wf-1' }),
+					makeReference({
+						credentialId: 'cred-orphan',
+						credentialName: 'Orphan',
+						credentialType: 'slackOAuth2Api',
+						workflowId: 'wf-1',
+					}),
+				],
+				writer,
+			});
+
+			expect(result.entries).toEqual([
+				{ id: 'cred-1', name: 'My Credential', target: 'credentials/my-credential' },
+			]);
+			expect(result.requirements).toEqual([
+				{
+					id: 'cred-1',
+					name: 'My Credential',
+					type: 'httpHeaderAuth',
+					usedByWorkflows: ['wf-1'],
+				},
+				{
+					id: 'cred-orphan',
+					name: 'Orphan',
+					type: 'slackOAuth2Api',
+					usedByWorkflows: ['wf-1'],
+				},
+			]);
+			expect(writer.files).toHaveLength(1);
+		});
+
 		it('strips entity fields beyond id/name/type from the written file', async () => {
 			const { exporter, finder } = makeExporter();
 			// Even if the entity has extra fields, the schema must keep them out.
