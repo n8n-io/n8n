@@ -6,7 +6,6 @@ import type { Readable } from 'node:stream';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
-import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -115,8 +114,8 @@ beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'Folder', 'Project']);
 });
 
-describe('ImportPipeline transactional atomicity', () => {
-	it('persists nothing when prepare-phase validation fails before any create', async () => {
+describe('ImportPipeline batch validation', () => {
+	it('rejects the package before any workflow is persisted when prepare-phase validation fails', async () => {
 		const owner = await createOwner();
 		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 			owner.id,
@@ -146,58 +145,6 @@ describe('ImportPipeline transactional atomicity', () => {
 
 		expect(workflowsAfter).toBe(workflowsBefore);
 		expect(sharedAfter).toBe(sharedBefore);
-	});
-
-	it('rolls back workflows already created in the batch when a later create fails', async () => {
-		const owner = await createOwner();
-		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-			owner.id,
-		);
-
-		const tarBuffer = await buildPackage([
-			validWorkflow('wf-source-1', 'First Saved Then Rolled Back'),
-			validWorkflow('wf-source-2', 'Fails On Create'),
-			validWorkflow('wf-source-3', 'Never Reached'),
-		]);
-
-		const workflowRepo = Container.get(WorkflowRepository);
-		const sharedRepo = Container.get(SharedWorkflowRepository);
-		const workflowCreationService = Container.get(WorkflowCreationService);
-		const originalCreate = workflowCreationService.createWorkflow.bind(workflowCreationService);
-
-		let createCallCount = 0;
-		const createSpy = jest
-			.spyOn(workflowCreationService, 'createWorkflow')
-			.mockImplementation(async (user, workflow, options) => {
-				createCallCount += 1;
-				if (createCallCount === 2) {
-					throw new BadRequestError('Simulated mid-batch create failure');
-				}
-				return await originalCreate(user, workflow, options);
-			});
-
-		const workflowsBefore = await workflowRepo.count();
-		const sharedBefore = await sharedRepo.count({ where: { projectId: personalProject.id } });
-
-		try {
-			await expect(
-				Container.get(N8nPackagesService).importPackage({
-					user: owner,
-					packageBuffer: tarBuffer,
-				}),
-			).rejects.toThrow('Simulated mid-batch create failure');
-
-			expect(createSpy).toHaveBeenCalledTimes(2);
-
-			expect(await workflowRepo.count()).toBe(workflowsBefore);
-			expect(await sharedRepo.count({ where: { projectId: personalProject.id } })).toBe(
-				sharedBefore,
-			);
-			expect(await workflowRepo.countBy({ sourceWorkflowId: 'wf-source-1' })).toBe(0);
-			expect(await workflowRepo.countBy({ sourceWorkflowId: 'wf-source-2' })).toBe(0);
-		} finally {
-			createSpy.mockRestore();
-		}
 	});
 
 	it('persists every workflow when the whole package is valid', async () => {
@@ -471,7 +418,7 @@ describe('ImportPipeline event emission', () => {
 		}
 	});
 
-	it('emits no events when the import rolls back', async () => {
+	it('emits no events when the prepare-phase validation rejects the package', async () => {
 		const owner = await createOwner();
 		const eventService = Container.get(EventService);
 		const emitSpy = jest.spyOn(eventService, 'emit');

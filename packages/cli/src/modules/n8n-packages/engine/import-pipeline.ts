@@ -58,22 +58,17 @@ export class ImportPipeline {
 		// Validates every workflow first so a malformed package aborts before the first DB write.
 		const prepared = await this.prepareWorkflows(manifest.workflows ?? [], reader);
 
-		const { manager: dbManager } = this.projectRepository;
-		const created = await dbManager.transaction(async (transactionManager) => {
-			const savedWorkflows: WorkflowEntity[] = [];
-			for (const { entity, sourceId } of prepared) {
-				const saved = await this.workflowCreationService.createWorkflow(request.user, entity, {
-					projectId: target.projectId,
-					parentFolderId: target.folderId ?? undefined,
-					publicApi: true,
-					source: 'import',
-					sourceWorkflowId: sourceId,
-					transactionManager,
-				});
-				savedWorkflows.push(saved);
-			}
-			return savedWorkflows;
-		});
+		const created: WorkflowEntity[] = [];
+		for (const { entity, sourceId } of prepared) {
+			const saved = await this.workflowCreationService.createWorkflow(request.user, entity, {
+				projectId: target.projectId,
+				parentFolderId: target.folderId ?? undefined,
+				publicApi: true,
+				source: 'import',
+				sourceWorkflowId: sourceId,
+			});
+			created.push(saved);
+		}
 
 		this.eventService.emit('workflows-imported', {
 			user: request.user,

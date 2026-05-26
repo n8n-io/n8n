@@ -1,6 +1,6 @@
 import type { LicenseState } from '@n8n/backend-common';
 import type { User, ProjectRepository } from '@n8n/db';
-import { Project, WorkflowEntity } from '@n8n/db';
+import { WorkflowEntity } from '@n8n/db';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 
@@ -65,18 +65,13 @@ describe('WorkflowCreationService', () => {
 	) {
 		const transactionManager = {
 			save: jest.fn().mockRejectedValue(new Error('Stopping for test')),
-			exists: jest.fn().mockResolvedValue(true),
 		};
-
-		const nestedTransaction = jest.fn(
-			async (cb: (em: unknown) => Promise<void>) => await cb(transactionManager),
-		);
-		const managerExists = jest.fn().mockResolvedValue(true);
 
 		Object.defineProperty(projectRepositoryMock, 'manager', {
 			value: {
-				transaction: nestedTransaction,
-				exists: managerExists,
+				transaction: jest.fn(
+					async (cb: (em: unknown) => Promise<void>) => await cb(transactionManager),
+				),
 			},
 			writable: true,
 		});
@@ -87,7 +82,7 @@ describe('WorkflowCreationService', () => {
 			} as never);
 		}
 
-		return { transactionManager, nestedTransaction, managerExists };
+		return { transactionManager };
 	}
 
 	describe('createWorkflow()', () => {
@@ -300,7 +295,6 @@ describe('WorkflowCreationService', () => {
 			 */
 			expect(projectRepositoryMock.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(
 				'user-456',
-				undefined,
 			);
 			expect(userHasScopesMock).toHaveBeenCalledWith(
 				user,
@@ -337,43 +331,11 @@ describe('WorkflowCreationService', () => {
 		});
 	});
 
-	describe('when transactionManager is supplied', () => {
-		it('uses it for scope checks and persist without opening a nested transaction', async () => {
-			const { transactionManager, nestedTransaction } = setupTransactionMocks();
-			projectServiceMock.getProjectWithScope.mockResolvedValue({
-				id: 'project-1',
-				type: 'personal',
-			} as never);
-			licenseStateMock.isSharingLicensed.mockReturnValue(false);
-
-			const user = mock<User>();
-			const newWorkflow = new WorkflowEntity();
-			newWorkflow.nodes = [];
-			newWorkflow.connections = {};
-
-			await expect(
-				workflowCreationService.createWorkflow(user, newWorkflow, {
-					projectId: 'project-1',
-					transactionManager: transactionManager as never,
-				}),
-			).rejects.toThrow('Stopping for test');
-
-			expect(projectServiceMock.getProjectWithScope).toHaveBeenCalledWith(
-				user,
-				'project-1',
-				['workflow:create'],
-				transactionManager,
-			);
-			expect(nestedTransaction).not.toHaveBeenCalled();
-			expect(transactionManager.save).toHaveBeenCalled();
-		});
-	});
-
 	describe('when user cannot create in the target project', () => {
 		it('throws NotFoundError when the target project does not exist', async () => {
 			projectServiceMock.getProjectWithScope.mockResolvedValue(null);
-			const { nestedTransaction: nestedTransactionSpy, managerExists } = setupTransactionMocks();
-			managerExists.mockResolvedValue(false);
+			projectRepositoryMock.exists.mockResolvedValue(false);
+			setupTransactionMocks();
 
 			const user = mock<User>();
 			const newWorkflow = new WorkflowEntity();
@@ -386,14 +348,14 @@ describe('WorkflowCreationService', () => {
 				}),
 			).rejects.toBeInstanceOf(NotFoundError);
 
-			expect(managerExists).toHaveBeenCalledWith(Project, {
+			expect(projectRepositoryMock.exists).toHaveBeenCalledWith({
 				where: { id: 'missing-project' },
 			});
-			expect(nestedTransactionSpy).not.toHaveBeenCalled();
 		});
 
 		it('throws BadRequestError when the project exists but user lacks workflow:create there', async () => {
 			projectServiceMock.getProjectWithScope.mockResolvedValue(null);
+			projectRepositoryMock.exists.mockResolvedValue(true);
 			setupTransactionMocks();
 
 			const user = mock<User>();
@@ -410,6 +372,7 @@ describe('WorkflowCreationService', () => {
 
 		it('throws ForbiddenError for the same case when publicApi is true', async () => {
 			projectServiceMock.getProjectWithScope.mockResolvedValue(null);
+			projectRepositoryMock.exists.mockResolvedValue(true);
 			setupTransactionMocks();
 
 			const user = mock<User>();
