@@ -62,7 +62,13 @@ export const askCredentialInputSchema = z.object({
 });
 
 export const askCredentialResumeSchema = z.union([
-	z.object({ credentialId: z.string(), credentialName: z.string() }),
+	z.object({
+		credentialId: z.string(),
+		credentialName: z.string(),
+		credentialType: z.string().optional(),
+		slot: z.string().optional(),
+		credentials: z.record(z.object({ id: z.string(), name: z.string() })).optional(),
+	}),
 	z.object({ skipped: z.literal(true) }),
 ]);
 
