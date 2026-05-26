@@ -14,8 +14,23 @@ const SemanticRecallSchema = z.object({
 	embedder: z.string().optional(),
 });
 
+export const AgentModelSchema = z
+	.string()
+	.min(1)
+	.regex(
+		/**
+		 * [a-z0-9-]+: Provider name (e.g. "anthropic")
+		 * (?:[a-z0-9._-]+\/)*: Zero or more sub-providers (e.g. "openrouter/amazon/nova-micro-v1")
+		 * [a-z0-9._-]+: Model name (e.g. "claude-sonnet-4-5")
+		 */
+		/^[a-z0-9-]+\/(?:[a-z0-9._-]+\/)*[a-z0-9._-]+$/i,
+		'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
+	);
+
 const ObservationalMemoryConfigSchema = z.object({
 	enabled: z.boolean().optional(),
+	observerModel: AgentModelSchema.optional(),
+	reflectorModel: AgentModelSchema.optional(),
 	observerThresholdTokens: z.number().int().min(1).optional(),
 	reflectorThresholdTokens: z.number().int().min(1).optional(),
 	renderTokenBudget: z.number().int().min(1).optional(),
@@ -30,6 +45,8 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 	z.object({
 		enabled: z.literal(true),
 		credential: z.string().trim().min(1),
+		extractorModel: AgentModelSchema.optional(),
+		reflectorModel: AgentModelSchema.optional(),
 		topK: z.number().int().min(1).max(100).optional(),
 		maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
 	}),
@@ -54,19 +71,6 @@ const NodeToolCredentialSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 });
-
-export const AgentModelSchema = z
-	.string()
-	.min(1)
-	.regex(
-		/**
-		 * [a-z0-9-]+: Provider name (e.g. "anthropic")
-		 * (?:[a-z0-9._-]+\/)*: Zero or more sub-providers (e.g. "openrouter/amazon/nova-micro-v1")
-		 * [a-z0-9._-]+: Model name (e.g. "claude-sonnet-4-5")
-		 */
-		/^[a-z0-9-]+\/(?:[a-z0-9._-]+\/)*[a-z0-9._-]+$/i,
-		'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
-	);
 
 const DraftAgentModelSchema = z.union([z.literal(''), AgentModelSchema]);
 

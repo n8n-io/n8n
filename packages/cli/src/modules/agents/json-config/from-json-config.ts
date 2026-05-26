@@ -227,7 +227,17 @@ async function applyMemoryFromConfig(
 	if (memoryConfig.observationalMemory?.enabled !== false) {
 		const observationalMemory = memoryConfig.observationalMemory;
 
+		const { createObservationLogObserveFn, createObservationLogReflectFn } = await import(
+			'@n8n/agents'
+		);
+
 		memory.observationalMemory({
+			...(observationalMemory?.observerModel !== undefined && {
+				observe: createObservationLogObserveFn(observationalMemory.observerModel),
+			}),
+			...(observationalMemory?.reflectorModel !== undefined && {
+				reflect: createObservationLogReflectFn(observationalMemory.reflectorModel),
+			}),
 			...(observationalMemory?.observerThresholdTokens !== undefined && {
 				observerThresholdTokens: observationalMemory.observerThresholdTokens,
 			}),
@@ -255,7 +265,11 @@ async function resolveEpisodicMemoryJsonConfig(
 	config: Extract<NonNullable<AgentJsonMemoryConfig['episodicMemory']>, { enabled: true }>,
 	credentialProvider: CredentialProvider,
 ) {
-	const { DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL } = await import('@n8n/agents');
+	const {
+		DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
+		createEpisodicMemoryExtractFn,
+		createEpisodicMemoryReflectFn,
+	} = await import('@n8n/agents');
 	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
 	const raw = await credentialProvider.resolve(config.credential);
 	const mapped = mapCredentialForProvider(getProviderPrefix(embeddingModel), raw);
@@ -266,6 +280,12 @@ async function resolveEpisodicMemoryJsonConfig(
 
 	return {
 		enabled: true,
+		...(config.extractorModel !== undefined && {
+			extract: createEpisodicMemoryExtractFn(config.extractorModel),
+		}),
+		...(config.reflectorModel !== undefined && {
+			reflect: createEpisodicMemoryReflectFn(config.reflectorModel),
+		}),
 		...(config.topK !== undefined && { topK: config.topK }),
 		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
 		embeddingProviderOptions,

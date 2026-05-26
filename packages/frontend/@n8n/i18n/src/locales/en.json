@@ -6130,6 +6130,8 @@
 	"agents.builder.memory.episodicMemory.label": "Episodic Memory",
 	"agents.builder.memory.episodicMemory.hint": "Stores source-backed memories from previous conversations. Requires OpenAI credential.",
 	"agents.builder.memory.episodicMemory.changeCredential": "Change credential",
+	"agents.builder.memory.recallModel.label": "Memory model",
+	"agents.builder.memory.recallModel.hint": "Choose the model that creates, reviews, and retrieves memories. Uses the agent model by default.",
 	"agents.builder.episodicMemoryCredentialModal.title": "Episodic Memory",
 	"agents.builder.episodicMemoryCredentialModal.description": "An OpenAI credential is used to create embeddings for Episodic Memory.",
 

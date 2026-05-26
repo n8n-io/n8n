@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { N8nTooltip, N8nIconButton, N8nText, N8nSwitch } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -8,6 +8,8 @@ import {
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
 	DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
 } from '../constants';
+import AgentModelSelector from './AgentModelSelector.vue';
+import { modelToString } from '../utils/model-string';
 import type { AgentJsonConfig } from '../types';
 
 const props = withDefaults(
@@ -26,6 +28,22 @@ const episodicMemoryEnabled = computed(() => episodicMemory.value?.enabled === t
 const episodicMemoryCredential = computed(() =>
 	episodicMemory.value?.enabled === true ? episodicMemory.value.credential : null,
 );
+const configuredMemoryModel = computed(() => {
+	if (episodicMemory.value?.enabled !== true) return null;
+
+	return (
+		episodicMemory.value.reflectorModel ??
+		episodicMemory.value.extractorModel ??
+		props.config?.memory?.observationalMemory?.reflectorModel ??
+		props.config?.memory?.observationalMemory?.observerModel ??
+		null
+	);
+});
+const selectedMemoryModel = ref<string | null>(configuredMemoryModel.value);
+
+watch(configuredMemoryModel, (model) => {
+	selectedMemoryModel.value = model;
+});
 
 function buildEnabledMemoryConfig() {
 	const existingMemory = props.config?.memory;
@@ -58,6 +76,31 @@ function disableEpisodicMemory() {
 		memory: {
 			...buildEnabledMemoryConfig(),
 			episodicMemory: { enabled: false },
+		},
+	});
+}
+
+function onMemoryRecallModelChange(selection: { model: string }) {
+	selectedMemoryModel.value = selection.model;
+
+	const existingMemory = props.config?.memory;
+	const existingEpisodicMemory = existingMemory?.episodicMemory;
+
+	if (existingEpisodicMemory?.enabled !== true) return;
+
+	emit('update:config', {
+		memory: {
+			...buildEnabledMemoryConfig(),
+			observationalMemory: {
+				...existingMemory?.observationalMemory,
+				observerModel: selection.model,
+				reflectorModel: selection.model,
+			},
+			episodicMemory: {
+				...existingEpisodicMemory,
+				extractorModel: selection.model,
+				reflectorModel: selection.model,
+			},
 		},
 	});
 }
@@ -96,6 +139,25 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 
 <template>
 	<div :class="[$style.container, props.disabled && $style.disabled]">
+		<div v-if="episodicMemoryEnabled" :class="$style.row">
+			<div :class="$style.titleGroup">
+				<N8nText :bold="true">
+					{{ i18n.baseText('agents.builder.memory.recallModel.label') }}
+				</N8nText>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('agents.builder.memory.recallModel.hint') }}
+				</N8nText>
+			</div>
+			<div :class="$style.modelSelector">
+				<AgentModelSelector
+					:model="selectedMemoryModel"
+					:default-model="modelToString(props.config?.model)"
+					data-testid="agent-memory-recall-model-selector"
+					@change="onMemoryRecallModelChange"
+				/>
+			</div>
+		</div>
+
 		<div :class="$style.row">
 			<div :class="$style.titleGroup">
 				<N8nText :bold="true">
@@ -172,6 +234,10 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 	button {
 		color: var(--icon-color);
 	}
+}
+
+.modelSelector {
+	min-width: 280px;
 }
 
 .container.disabled {
