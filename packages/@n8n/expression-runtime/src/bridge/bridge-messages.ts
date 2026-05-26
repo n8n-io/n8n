@@ -121,7 +121,8 @@ export const fromAiMessage = z
 		name: z.string().optional(),
 		description: z.string().optional(),
 		valueType: z.string().optional(),
-		defaultValue: z.unknown().optional(),
+		// `z.unknown()` already accepts `undefined`, so no `.optional()` needed.
+		defaultValue: z.unknown(),
 	})
 	.strict();
 
