@@ -95,7 +95,7 @@ describe('useCanvasNodeGroupActions', () => {
 		});
 
 		it('returns null when canGroup is false', () => {
-			isSelectionGroupableMock.mockReturnValue({ valid: false, reason: 'too-few-nodes' });
+			isSelectionGroupableMock.mockReturnValue({ valid: false, reason: 'invalid-subgraph' });
 			const { groupSelection } = useCanvasNodeGroupActions(computed(() => [makeNode('a')]));
 			expect(groupSelection()).toBeNull();
 		});

@@ -18,9 +18,7 @@ export function useCanvasNodeGroupActions(
 	const isReadOnly = computed(() => toValue(options?.readOnly) ?? false);
 
 	const expandedSelectionIds = computed(() => {
-		const nodes = toValue(selectedNodes);
-		if (isReadOnly.value || nodes.length < 2) return [];
-		return expandSelectionWithSubNodes(nodes.map((n) => n.id));
+		return expandSelectionWithSubNodes(toValue(selectedNodes).map((n) => n.id));
 	});
 
 	const canGroup = computed(() => {

@@ -44,7 +44,6 @@ export type NodeSelectionValidationResult<TNode extends INode = INode> =
 
 export type NodeGroupValidationResult<TNode extends INode = INode> =
 	| NodeSelectionValidationResult<TNode>
-	| { valid: false; reason: 'too-few-nodes' }
 	| { valid: false; reason: 'node-already-grouped'; nodeIds: string[] }
 	| {
 			valid: false;
@@ -110,10 +109,6 @@ export function validateNodeSelectionForExtraction<TNode extends INode>({
 export function validateNodeSelectionForGrouping<TNode extends INode>(
 	input: NodeGroupingValidationInput<TNode>,
 ): NodeGroupValidationResult<TNode> {
-	if (input.nodes.length < 2) {
-		return { valid: false, reason: 'too-few-nodes' };
-	}
-
 	const alreadyGroupedNodeIds = findAlreadyGroupedNodeIds(
 		input.nodes.map((node) => node.id),
 		input.existingNodeGroups ?? [],

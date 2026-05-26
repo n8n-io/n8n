@@ -168,18 +168,6 @@ describe('useSelectionValidation', () => {
 		expect(result.valid).toBe(true);
 	});
 
-	it('returns too-few-nodes for a single-node grouping selection', () => {
-		const graph = makeLinearGraph();
-		setupGraph(graph, {
-			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
-		});
-
-		const { isSelectionGroupable } = useSelectionValidation();
-		const result = isSelectionGroupable(['a']);
-
-		expect(result).toEqual({ valid: false, reason: 'too-few-nodes' });
-	});
-
 	it('returns node-already-grouped when a selection id belongs to an existing group', () => {
 		const graph = makeLinearGraph();
 		const workflowDocumentStore = setupGraph(graph, {

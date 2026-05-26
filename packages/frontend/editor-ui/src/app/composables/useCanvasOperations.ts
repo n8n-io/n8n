@@ -1994,6 +1994,10 @@ export function useCanvasOperations() {
 		}
 	}
 
+	/**
+	 * Connection operations
+	 */
+
 	function createConnection(
 		connection: Connection,
 		{ trackHistory = false, keepPristine = false, validateNodeGroups = true } = {},
