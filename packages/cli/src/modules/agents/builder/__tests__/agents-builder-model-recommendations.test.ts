@@ -124,6 +124,23 @@ describe('builder model recommendations', () => {
 		expect(prompt).not.toContain('agent-builder-tools');
 	});
 
+	it('tells the builder to preserve fallback web search on model switches', () => {
+		const prompt = buildPrompt(null);
+
+		expect(prompt).toContain(
+			'When changing models, preserve existing Brave or SearXNG\n  `config.webSearch` unchanged',
+		);
+		expect(prompt).toContain(
+			'use native web search by default only for\n  fresh agents or agents with no existing `config.webSearch`',
+		);
+		expect(prompt).toContain(
+			'Model-only changes must preserve existing Brave or SearXNG `config.webSearch`.',
+		);
+		expect(prompt).toContain(
+			'Preserve existing Brave/SearXNG `config.webSearch` on model switches unless',
+		);
+	});
+
 	it('injects the recommendation section only into the LLM selection prompt', () => {
 		const section = buildModelRecommendationsSection(catalog);
 

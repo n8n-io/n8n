@@ -55,6 +55,8 @@ export function getConfigRulesSection(): string {
   even if the model also supports native search. Never write \`{ "enabled": true }\`
   alone for fallback search. Use exact \`ask_credential\` types:
   \`braveSearchApi\` for Brave and \`searXngApi\` for SearXNG.
+- Preserve existing Brave/SearXNG \`config.webSearch\` on model switches unless
+  the user explicitly asks to change web-search method.
 - \`config.maxIterations\` caps the number of agent loop iterations per run. Do not set or change this unless the user explicitly asks.
 - Fresh agents need a real model, credential, and instructions before config
   is written.`;
