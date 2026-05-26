@@ -855,6 +855,38 @@ describe('POST /workflows', () => {
 
 			expect(dbWorkflow?.settings).toMatchObject({ redactionPolicy: 'non-manual' });
 		});
+
+		test('should strip redactionPolicy on create when user lacks workflow:enableRedaction scope', async () => {
+			testServer.license.enable('feat:dataRedaction');
+
+			const customRole = await createCustomRoleWithScopeSlugs(
+				['workflow:read', 'workflow:update', 'workflow:create'],
+				{
+					roleType: 'project',
+					displayName: 'Workflow Creator No Redaction',
+					description: 'Can create workflows but not enable redaction',
+				},
+			);
+
+			const teamProject = await createTeamProject('Redaction Test Project', owner);
+			await linkUserToProject(member, teamProject, customRole.slug);
+
+			const payload = {
+				name: 'Stripped Redaction Workflow',
+				nodes: [],
+				connections: {},
+				settings: { redactionPolicy: 'non-manual' },
+				projectId: teamProject.id,
+			};
+
+			const response = await authMemberAgent.post('/workflows').send(payload).expect(200);
+
+			const dbWorkflow = await workflowRepository.findOneBy({
+				id: response.body.data.id,
+			});
+
+			expect(dbWorkflow?.settings?.redactionPolicy).toBeUndefined();
+		});
 	});
 });
 
@@ -1216,6 +1248,8 @@ describe('GET /workflows', () => {
 				[
 					'workflow:create',
 					'workflow:delete',
+					'workflow:disableRedaction',
+					'workflow:enableRedaction',
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:export',
@@ -1227,7 +1261,6 @@ describe('GET /workflows', () => {
 					'workflow:share',
 					'workflow:unshare',
 					'workflow:update',
-					'workflow:updateRedactionSetting',
 				].sort(),
 			);
 
@@ -1237,6 +1270,8 @@ describe('GET /workflows', () => {
 				[
 					'workflow:create',
 					'workflow:delete',
+					'workflow:disableRedaction',
+					'workflow:enableRedaction',
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:export',
@@ -1248,7 +1283,6 @@ describe('GET /workflows', () => {
 					'workflow:share',
 					'workflow:unshare',
 					'workflow:update',
-					'workflow:updateRedactionSetting',
 				].sort(),
 			);
 		}
@@ -2402,6 +2436,8 @@ describe('GET /workflows?includeFolders=true', () => {
 				[
 					'workflow:create',
 					'workflow:delete',
+					'workflow:disableRedaction',
+					'workflow:enableRedaction',
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:export',
@@ -2413,7 +2449,6 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:share',
 					'workflow:unshare',
 					'workflow:update',
-					'workflow:updateRedactionSetting',
 				].sort(),
 			);
 
@@ -2423,6 +2458,8 @@ describe('GET /workflows?includeFolders=true', () => {
 				[
 					'workflow:create',
 					'workflow:delete',
+					'workflow:disableRedaction',
+					'workflow:enableRedaction',
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:export',
@@ -2434,7 +2471,6 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:share',
 					'workflow:unshare',
 					'workflow:update',
-					'workflow:updateRedactionSetting',
 				].sort(),
 			);
 
@@ -3632,6 +3668,70 @@ describe('PATCH /workflows/:workflowId', () => {
 		const dbWorkflow = await workflowRepository.findOneBy({ id: workflow.id });
 
 		expect(dbWorkflow?.settings).toMatchObject({ redactionPolicy: 'all' });
+	});
+
+	test('should strip redactionPolicy on update when user lacks workflow:enableRedaction scope (none → all)', async () => {
+		testServer.license.enable('feat:dataRedaction');
+
+		// Custom role with workflow:update but NOT enableRedaction
+		const customRole = await createCustomRoleWithScopeSlugs(
+			['workflow:read', 'workflow:update', 'workflow:create'],
+			{
+				roleType: 'project',
+				displayName: 'Workflow Updater No Redaction',
+				description: 'Can update workflows but not enable redaction',
+			},
+		);
+
+		const teamProject = await createTeamProject('Redaction Update Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+
+		const workflow = await createWorkflowWithHistory(
+			{ settings: { redactionPolicy: 'none' } },
+			teamProject,
+		);
+
+		const response = await authMemberAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ settings: { redactionPolicy: 'all' } });
+
+		expect(response.statusCode).toBe(200);
+
+		const dbWorkflow = await workflowRepository.findOneBy({ id: workflow.id });
+		// redactionPolicy must remain 'none' — the change was stripped
+		expect(dbWorkflow?.settings?.redactionPolicy).toBe('none');
+	});
+
+	test('should strip redactionPolicy on update when user lacks workflow:disableRedaction scope (all → none)', async () => {
+		testServer.license.enable('feat:dataRedaction');
+
+		// Custom role with enableRedaction but NOT disableRedaction
+		const customRole = await createCustomRoleWithScopeSlugs(
+			['workflow:read', 'workflow:update', 'workflow:create', 'workflow:enableRedaction'],
+			{
+				roleType: 'project',
+				displayName: 'Workflow Updater Enable Redaction Only',
+				description: 'Can enable but not disable redaction',
+			},
+		);
+
+		const teamProject = await createTeamProject('Redaction Disable Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+
+		const workflow = await createWorkflowWithHistory(
+			{ settings: { redactionPolicy: 'all' } },
+			teamProject,
+		);
+
+		const response = await authMemberAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ settings: { redactionPolicy: 'none' } });
+
+		expect(response.statusCode).toBe(200);
+
+		const dbWorkflow = await workflowRepository.findOneBy({ id: workflow.id });
+		// redactionPolicy must remain 'all' — the disabling change was stripped
+		expect(dbWorkflow?.settings?.redactionPolicy).toBe('all');
 	});
 });
 

@@ -117,13 +117,14 @@ describe('Test Discord > checkAccessToGuild', () => {
 });
 
 describe('Test Discord > setupChannelGetter & checkAccessToChannel', () => {
-	const discordApiRequestSpy = jest.spyOn(transport, 'discordApiRequest');
-	discordApiRequestSpy.mockImplementation(async (method: string) => {
-		if (method === 'GET') {
-			return {
-				guild_id: '123456',
-			};
-		}
+	beforeEach(() => {
+		jest.spyOn(transport, 'discordApiRequest').mockImplementation(async (method: string) => {
+			if (method === 'GET') {
+				return {
+					guild_id: '123456',
+				};
+			}
+		});
 	});
 
 	it('should setup channel getter and get channel id', async () => {
