@@ -23,9 +23,7 @@ const mockDbSnapshotStorage = { getAll: jest.fn().mockResolvedValue([]) };
 function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemoryService {
 	const mockConfig = {
 		instanceAi: {
-			embedderModel: '',
 			lastMessages: 40,
-			semanticRecallTopK: 3,
 			threadTtlDays: options.threadTtlDays ?? 0,
 		},
 		database: {

@@ -17,7 +17,8 @@ export type Command =
 	| 'orchestrate'
 	| 'affected-packages'
 	| 'scope'
-	| 'test-scoped';
+	| 'test-scoped'
+	| 'filter-shard';
 
 export interface CliOptions {
 	command: Command;
@@ -59,6 +60,8 @@ export interface CliOptions {
 	packageDir?: string;
 	/** Anything after `--` — forwarded to the test runner by `test-scoped`. */
 	passthroughArgs: string[];
+	// filter-shard-specific options
+	url?: string;
 }
 
 const SUBCOMMANDS: Record<string, Command> = {
@@ -73,6 +76,7 @@ const SUBCOMMANDS: Record<string, Command> = {
 	'affected-packages': 'affected-packages',
 	scope: 'scope',
 	'test-scoped': 'test-scoped',
+	'filter-shard': 'filter-shard',
 };
 
 interface FlagHandler {
@@ -192,6 +196,9 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 	'--package-dir=': (opts, value) => {
 		opts.packageDir = value;
 	},
+	'--url=': (opts, value) => {
+		opts.url = value;
+	},
 };
 
 function createDefaultOptions(): CliOptions {
@@ -226,6 +233,7 @@ function createDefaultOptions(): CliOptions {
 		runner: undefined,
 		packageDir: undefined,
 		passthroughArgs: [],
+		url: undefined,
 	};
 }
 

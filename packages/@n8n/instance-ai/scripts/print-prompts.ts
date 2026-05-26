@@ -21,7 +21,6 @@ import {
 } from '../src/tools/orchestration/build-workflow-agent.prompt';
 import { DATA_TABLE_AGENT_PROMPT } from '../src/tools/orchestration/data-table-agent.prompt';
 import { PLANNER_AGENT_PROMPT } from '../src/tools/orchestration/plan-agent-prompt';
-import { RESEARCH_AGENT_PROMPT } from '../src/tools/orchestration/research-agent-prompt';
 
 interface Variant {
 	/** File name (without extension) inside the agent's folder. */
@@ -139,12 +138,6 @@ function collectAgents(): AgentEntry[] {
 					body: createSandboxBuilderAgentPrompt('/workspace'),
 				},
 			],
-		},
-		{
-			folder: 'researcher',
-			displayName: 'Sub-Agent — Web Researcher',
-			source: 'src/tools/orchestration/research-agent-prompt.ts → RESEARCH_AGENT_PROMPT',
-			variants: [{ file: 'prompt', body: RESEARCH_AGENT_PROMPT }],
 		},
 		{
 			folder: 'data-table',

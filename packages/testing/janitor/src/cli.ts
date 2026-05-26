@@ -73,6 +73,7 @@ import {
 import { orchestrate } from './core/orchestrator.js';
 import { createProject } from './core/project-loader.js';
 import { toJSON, toConsole, printFixResults } from './core/reporter.js';
+import { filterToFailedSpecs } from './core/retry-filter.js';
 import { computeScope, formatScope } from './core/scope-analyzer.js';
 import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
 import { TestDiscoveryAnalyzer } from './core/test-discovery-analyzer.js';
@@ -432,6 +433,71 @@ function runDiscover(): void {
 	console.log(JSON.stringify(report, null, 2));
 }
 
+const DEFAULT_FILTER_SHARD_URL = 'https://internal.users.n8n.cloud/webhook/failed-specs';
+const DEFAULT_FILTER_SHARD_TIMEOUT_MS = 10_000;
+
+async function readStdinLines(): Promise<string[]> {
+	if (process.stdin.isTTY) return [];
+	let raw = '';
+	for await (const chunk of process.stdin) raw += String(chunk);
+	return raw
+		.split(/\s+/)
+		.map((s) => s.trim())
+		.filter((s) => s.length > 0);
+}
+
+async function runFilterShard(options: CliOptions): Promise<void> {
+	const candidates = await readStdinLines();
+	const emit = (specs: string[]) => {
+		for (const s of specs) console.log(s);
+	};
+
+	if (candidates.length === 0) return;
+
+	const attempt = Number(process.env.GITHUB_RUN_ATTEMPT ?? '1');
+	if (!Number.isFinite(attempt) || attempt <= 1) {
+		emit(candidates);
+		return;
+	}
+
+	const firstNonEmpty = (...vals: Array<string | undefined>) =>
+		vals.find((v) => typeof v === 'string' && v.trim().length > 0);
+	const url =
+		firstNonEmpty(options.url, process.env.JANITOR_FILTER_SHARD_URL) ?? DEFAULT_FILTER_SHARD_URL;
+	const runId = process.env.GITHUB_RUN_ID;
+	if (!runId) {
+		console.error('filter-shard: missing GITHUB_RUN_ID, running full shard');
+		emit(candidates);
+		return;
+	}
+
+	try {
+		const response = await filterToFailedSpecs({
+			url,
+			runId,
+			previousAttempt: String(attempt - 1),
+			candidates,
+			timeoutMs: DEFAULT_FILTER_SHARD_TIMEOUT_MS,
+		});
+		if (response.fallback) {
+			console.error(
+				`filter-shard: fallback (${response.fallbackReason ?? 'unknown'}), running ${candidates.length}/${candidates.length} specs`,
+			);
+			emit(candidates);
+			return;
+		}
+		console.error(
+			`filter-shard: attempt ${attempt}, running ${response.intersection.length}/${candidates.length} specs from previous-attempt failures`,
+		);
+		emit(response.intersection);
+	} catch (error) {
+		console.error(
+			`filter-shard: coordinator call failed (${(error as Error).message}), running full shard`,
+		);
+		emit(candidates);
+	}
+}
+
 async function runOrchestrate(options: CliOptions): Promise<void> {
 	const config = getConfig();
 
@@ -680,6 +746,9 @@ async function main(): Promise<void> {
 			break;
 		case 'orchestrate':
 			await runOrchestrate(options);
+			break;
+		case 'filter-shard':
+			await runFilterShard(options);
 			break;
 		default:
 			runAnalyze(options);
