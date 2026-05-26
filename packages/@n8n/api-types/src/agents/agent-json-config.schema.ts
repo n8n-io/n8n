@@ -106,11 +106,30 @@ const McpServerConfigSchema = z
 		description: z.string().max(512).optional(),
 		url: z.string().min(1),
 		transport: z.enum(['sse', 'streamableHttp']).default('streamableHttp'),
+		/**
+		 * Authentication method. In addition to the five named variants, any string
+		 * ending in `McpOAuth2Api` is accepted to accommodate registry-specific
+		 * credential types (e.g. `notionMcpOAuth2Api`, `githubMcpOAuth2Api`).
+		 */
 		authentication: z
-			.enum(['none', 'bearerAuth', 'headerAuth', 'multipleHeadersAuth', 'mcpOAuth2Api'])
+			.union([
+				z.enum(['none', 'bearerAuth', 'headerAuth', 'multipleHeadersAuth', 'mcpOAuth2Api']),
+				z.string().endsWith('McpOAuth2Api'),
+			])
 			.default('none'),
 		/** Credential id required when `authentication` is anything other than `none`. */
 		credential: z.string().optional(),
+		metadata: z
+			.object({
+				/**
+				 * The node-type name this server was created from (e.g. `@n8n/mcp-registry.github`).
+				 * When present the config modal renders with the registry node type's form
+				 * (correct credential selector, preset field visibility) instead of the generic
+				 * MCP Client Tool form.
+				 */
+				nodeTypeName: z.string().optional(),
+			})
+			.optional(),
 		/**
 		 * Restricts which tools from this server are surfaced to the agent.
 		 * Tools are matched by their original (un-prefixed) name.

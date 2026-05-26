@@ -1,6 +1,7 @@
 import { proxyFetch } from '@n8n/ai-utilities';
 import type { CredentialProvider, McpClient, McpServerConfig } from '@n8n/agents';
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
+import { isMcpOAuth2Authentication } from 'n8n-workflow';
 
 import type { OauthService } from '@/oauth/oauth.service';
 
@@ -20,15 +21,24 @@ export function mapApprovalToSdk(
 	return approval.tools;
 }
 
+function isTokenData(tokenData: unknown): tokenData is { access_token: string } {
+	return (
+		typeof tokenData === 'object' &&
+		tokenData !== null &&
+		'access_token' in tokenData &&
+		typeof tokenData.access_token === 'string'
+	);
+}
+
 /**
  * Derive static (non-OAuth2) auth headers from a credential resolved through
  * the agents `CredentialProvider`. Mirrors the shape of `getAuthHeaders` in
  * the langchain MCP node — kept inline here so the agents module does not
  * have to depend on `@n8n/nodes-langchain`.
  *
- * For `mcpOAuth2Api`, the same Bearer header is computed from the
- * already-stored `oauthTokenData.access_token`. Refresh-on-401 is handled by
- * `createAuthFetch` below; this function only computes the initial set.
+ * For any `*McpOAuth2Api` credential type, the Bearer header is computed from
+ * the already-stored `oauthTokenData.access_token`. Refresh-on-401 is handled
+ * by `createAuthFetch` below; this function only computes the initial set.
  */
 async function deriveAuthHeaders(
 	server: AgentJsonMcpServerConfig,
@@ -38,6 +48,14 @@ async function deriveAuthHeaders(
 
 	const resolved = await credentialProvider.resolve(server.credential).catch(() => null);
 	if (!resolved) return {};
+
+	if (isMcpOAuth2Authentication(server.authentication)) {
+		const tokenData = resolved.oauthTokenData as { access_token: string } | null | undefined;
+		if (!isTokenData(tokenData)) return {};
+		return {
+			Authorization: `Bearer ${tokenData.access_token}`,
+		};
+	}
 
 	switch (server.authentication) {
 		case 'bearerAuth': {
@@ -67,20 +85,6 @@ async function deriveAuthHeaders(
 				}
 			}
 			return out;
-		}
-		case 'mcpOAuth2Api': {
-			const tokenData = resolved.oauthTokenData;
-			if (
-				tokenData &&
-				typeof tokenData === 'object' &&
-				'access_token' in tokenData &&
-				typeof (tokenData as { access_token: unknown }).access_token === 'string'
-			) {
-				return {
-					Authorization: `Bearer ${(tokenData as { access_token: string }).access_token}`,
-				};
-			}
-			return {};
 		}
 		default:
 			return {};
@@ -145,7 +149,7 @@ export interface BuildMcpClientDeps {
 	/**
 	 * Used to refresh OAuth2 tokens on a 401 response without an
 	 * `IExecuteFunctions` workflow context. Only invoked when
-	 * `server.authentication === 'mcpOAuth2Api'`.
+	 * `server.authentication` is any `*McpOAuth2Api` credential type.
 	 */
 	oauthService: OauthService;
 }
@@ -168,7 +172,7 @@ export async function buildMcpClientForServer(
 	const initialHeaders = await deriveAuthHeaders(server, credentialProvider);
 
 	const onUnauthorized =
-		server.authentication === 'mcpOAuth2Api' && server.credential
+		isMcpOAuth2Authentication(server.authentication) && server.credential
 			? async () => {
 					const credentialId = server.credential;
 					if (!credentialId) return null;

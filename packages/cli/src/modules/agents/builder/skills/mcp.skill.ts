@@ -23,7 +23,7 @@ Each mcpServers[] entry has the following properties:
 - \`url\` (required)
 - \`transport\`: \`"sse"\` | \`"streamableHttp"\` (default \`"streamableHttp"\`)
 - \`authentication\`: \`"none"\` | \`"bearerAuth"\` | \`"headerAuth"\` |
-  \`"multipleHeadersAuth"\` | \`"mcpOAuth2Api"\` (default \`"none"\`)
+  \`"multipleHeadersAuth"\` | \`"mcpOAuth2Api"\` | string ending in \`"McpOAuth2Api"\` (default \`"none"\`)
 - \`credential\`: required when authentication !== \`"none"\` — the id returned
   by \`ask_credential\`
 - \`toolFilter\` (optional): \`{ mode: "allow" | "exclude", tools: string[] }\`
@@ -31,6 +31,7 @@ Each mcpServers[] entry has the following properties:
 - \`approval\` (optional): \`{ mode: "global" }\` for all tools, or
   \`{ mode: "selected", tools: [...] }\` for specific tools (must be non-empty)
 - \`connectionTimeoutMs\` (optional): 1–120000
+- \`metadata\` (optional): optional server-generated metadata. Don't use this field, unless explicitly instructed to do so by instructions.
 
 Credential flow:
 - For \`bearerAuth\` -> \`ask_credential\` with \`credentialType: "httpBearerAuth"\`.
