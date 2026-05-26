@@ -2184,6 +2184,7 @@ defineExpose({ enterEditMode });
 					:compact="props.compact"
 					:truncate-limit="props.truncateLimit"
 					:preview-execution="workflowsStore.lastSuccessfulExecution"
+					:is-production-execution-preview="isProductionExecutionPreview"
 					@clear:search="onSearchClear"
 					@execute="executeNode"
 				/>

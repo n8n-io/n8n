@@ -1240,6 +1240,28 @@ describe('VirtualSchema.vue', () => {
 			const hasPreviewData = allItems.some((item) => item.textContent?.includes('Preview Data'));
 			expect(hasPreviewData).toBe(false);
 		});
+
+		it('should ignore pinData when viewing a production execution preview', async () => {
+			pinData(mockNode1, [{ json: { pinnedField: 'pinned data' } }]);
+			mockNodeOutputData(mockNode1.name, [{ json: { runtimeField: 'runtime data' } }]);
+
+			const { getAllByTestId, queryAllByTestId } = renderComponent({
+				props: {
+					nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
+					isProductionExecutionPreview: true,
+				},
+			});
+
+			await waitFor(() => {
+				const items = getAllByTestId('run-data-schema-item');
+				expect(items.length).toBeGreaterThan(0);
+				expect(items[0]).toHaveTextContent('runtimeField');
+			});
+
+			const allItems = queryAllByTestId('run-data-schema-item');
+			const hasPinnedField = allItems.some((item) => item.textContent?.includes('pinnedField'));
+			expect(hasPinnedField).toBe(false);
+		});
 	});
 
 	describe('merge node callout', () => {

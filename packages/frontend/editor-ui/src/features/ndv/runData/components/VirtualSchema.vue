@@ -64,6 +64,7 @@ type Props = {
 	outputIndex?: number;
 	previewExecution?: IExecutionResponse | null;
 	truncateLimit?: number;
+	isProductionExecutionPreview?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -78,6 +79,7 @@ const props = withDefaults(defineProps<Props>(), {
 	outputIndex: undefined,
 	truncateLimit: 600,
 	previewExecution: undefined,
+	isProductionExecutionPreview: false,
 });
 
 const telemetry = useTelemetry();
@@ -121,7 +123,9 @@ const toggleNodeExclusiveAndScrollTop = (id: string) => {
 };
 
 const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) => {
-	const rawPinData = workflowDocumentStore?.value?.getNodePinData(connectedNode.name);
+	const rawPinData = props.isProductionExecutionPreview
+		? undefined
+		: workflowDocumentStore?.value?.getNodePinData(connectedNode.name);
 	const pinData = rawPinData ? executionDataToJson(rawPinData) : undefined;
 	const hasPinnedData = pinData ? pinData.length > 0 : false;
 	const isNodeExecuted = hasPinnedData || hasNodeExecuted(connectedNode.name);
