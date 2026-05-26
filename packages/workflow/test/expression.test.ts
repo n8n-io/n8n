@@ -1103,10 +1103,14 @@ describe('Expression', () => {
 		});
 
 		it("should throw 'Missing item index' for $('source').itemMatching() (engine parity)", async () => {
-			// The VM engine throws the friendly error from the in-isolate stub
-			// before sending the typed-RPC envelope; the legacy engine throws
-			// from the host-side `pairedItemMethod`. Both should surface a
-			// workflow `ExpressionError` with the same message.
+			// Both engines surface the host's `ExpressionError("Missing item
+			// index for .itemMatching()")`. The legacy engine throws directly
+			// from `pairedItemMethod` in `WorkflowDataProxy`. The VM engine
+			// sends the `getNodeItemMatching` typed-RPC with `itemIndex:
+			// undefined`; the host's `pairedItemMethod` closure throws because
+			// `property === PAIRED_ITEM_METHOD.ITEM_MATCHING`, and the bridge
+			// round-trips that error through the sentinel back into the
+			// isolate, where tournament's `E()` re-throws it.
 			const testWorkflow = createTestWorkflow(true);
 
 			await testWorkflow.expression.acquireIsolate();
