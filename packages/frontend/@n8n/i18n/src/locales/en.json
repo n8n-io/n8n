@@ -5712,6 +5712,7 @@
 	"instanceAi.planReview.feedbackPlaceholder": "Describe what should change before execution starts.",
 	"instanceAi.planReview.requestChanges": "Request changes",
 	"instanceAi.planReview.approve": "Allow",
+	"instanceAi.planReview.deny": "Deny",
 	"instanceAi.planReview.approved": "Plan approved",
 	"instanceAi.message.retry": "Retry",
 	"instanceAi.input.amendPlaceholder": "Amend the {role} agent...",

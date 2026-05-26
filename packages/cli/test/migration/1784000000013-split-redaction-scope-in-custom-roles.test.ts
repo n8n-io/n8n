@@ -9,7 +9,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'SplitRedactionScopeInCustomRoles1784000000012';
+const MIGRATION_NAME = 'SplitRedactionScopeInCustomRoles1784000000013';
 
 const OLD_SCOPE = 'workflow:updateRedactionSetting';
 const NEW_ENABLE_SCOPE = 'workflow:enableRedaction';
