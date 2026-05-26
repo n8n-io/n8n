@@ -260,25 +260,24 @@ export class ActiveWorkflowManager {
 			});
 		}
 
-		const { name, staticData, settings } = workflowData;
 		const { nodes, connections } = workflowData.activeVersion;
 
 		const workflow = new Workflow({
 			id: workflowId,
-			name,
+			name: workflowData.name,
 			nodes,
 			connections,
 			active: true,
 			nodeTypes: this.nodeTypes,
-			staticData,
-			settings,
+			staticData: workflowData.staticData,
+			settings: workflowData.settings,
 		});
 
 		const mode = 'internal';
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId: workflow.id,
-			workflowSettings: settings,
+			workflowSettings: workflowData.settings,
 		});
 
 		await workflow.expression.acquireIsolate();
@@ -311,7 +310,7 @@ export class ActiveWorkflowManager {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
-		// Temporary: this callback lets us switch between reading from
+		// TODO(CAT-3202): this callback lets us switch between reading from
 		// the in-memory workflowData (flag off) and the workflow published data
 		// service (flag on). Once the feature flag is removed, we'll call the
 		// service directly and this parameter will go away.
@@ -326,7 +325,7 @@ export class ActiveWorkflowManager {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
-				// Temporary indirection: resolves workflow data via callback so we
+				// TODO(CAT-3202): resolves workflow data via callback so we
 				// can feature-flag between in-memory data and the published data
 				// service. Once the flag is removed, we'll call the service directly.
 				const executePromise = resolveWorkflowData().then(
@@ -374,7 +373,7 @@ export class ActiveWorkflowManager {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
-		// Temporary: this callback lets us switch between reading from
+		// TODO(CAT-3202): this callback lets us switch between reading from
 		// the in-memory workflowData (flag off) and the workflow published data
 		// service (flag on). Once the feature flag is removed, we'll call the
 		// service directly and this parameter will go away.
@@ -390,7 +389,7 @@ export class ActiveWorkflowManager {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
-				// Temporary indirection: resolves workflow data via callback so we
+				// TODO(CAT-3202): resolves workflow data via callback so we
 				// can feature-flag between in-memory data and the published data
 				// service. Once the flag is removed, we'll call the service directly.
 				const executePromise = resolveWorkflowData()
@@ -636,11 +635,8 @@ export class ActiveWorkflowManager {
 				});
 			}
 
-			const workflowForError = {
-				...dbWorkflow,
-				nodes: dbWorkflow.activeVersion.nodes,
-				connections: dbWorkflow.activeVersion.connections,
-			};
+			const { nodes, connections } = dbWorkflow.activeVersion;
+			const workflowForError = { ...dbWorkflow, nodes, connections };
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			this.executeErrorWorkflow(error, workflowForError, 'internal');
@@ -734,15 +730,17 @@ export class ActiveWorkflowManager {
 		const shouldAddTriggersAndPollers = this.shouldAddTriggersAndPollers();
 
 		try {
-			if (!dbWorkflow.activeVersion) {
-				if (['init', 'leadershipChange'].includes(activationMode)) {
-					this.logger.debug(
-						`Skipping workflow ${formatWorkflow(dbWorkflow)} as it is no longer active`,
-						{ workflowId: dbWorkflow.id },
-					);
-					return added;
-				}
+			if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.activeVersion) {
+				this.logger.debug(
+					`Skipping workflow ${formatWorkflow(dbWorkflow)} as it is no longer active`,
+					{ workflowId: dbWorkflow.id },
+				);
 
+				return added;
+			}
+
+			// Get workflow data from the active version
+			if (!dbWorkflow.activeVersion) {
 				throw new UnexpectedError('Active version not found for workflow', {
 					extra: { workflowId: dbWorkflow.id },
 				});

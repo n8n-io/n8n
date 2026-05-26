@@ -40,8 +40,7 @@ describe('WorkflowPublishedDataService', () => {
 		const result = await service.getPublishedWorkflowData('wf-1');
 
 		expect(result).not.toBeNull();
-		expect(result!.id).toBe('wf-1');
-		expect(result!.name).toBe('Workflow Name');
+		expect(result!.workflow.name).toBe('Workflow Name');
 		expect(result!.nodes).toBe(nodes);
 		expect(result!.connections).toBe(connections);
 	});

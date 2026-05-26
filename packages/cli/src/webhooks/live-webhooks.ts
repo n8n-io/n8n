@@ -26,6 +26,11 @@ import type {
 	WebhookRequest,
 } from './webhook.types';
 
+/**
+ * The fields {@link LiveWebhooks.executeWebhook} pulls out of either the
+ * published-version-service or the active-version relation in order to build
+ * the runtime {@link Workflow} and invoke {@link WebhookHelpers.executeWebhook}.
+ */
 interface WebhookExecutionData {
 	nodes: INode[];
 	connections: IWorkflowBase['connections'];
@@ -35,12 +40,6 @@ interface WebhookExecutionData {
 	isActive: boolean;
 	ownerProjectId: string | undefined;
 	activeWorkflowData: IWorkflowBase;
-}
-
-function findOwnerProjectId(
-	shared: ReadonlyArray<{ role: string; projectId?: string }> | undefined,
-): string | undefined {
-	return shared?.find((share) => share.role === 'workflow:owner')?.projectId;
 }
 
 /**
@@ -230,13 +229,13 @@ export class LiveWebhooks implements IWebhookManager {
 		return {
 			nodes,
 			connections,
-			workflowName: publishedData.name,
-			staticData: publishedData.staticData,
-			settings: publishedData.settings,
+			workflowName: workflow.name,
+			staticData: workflow.staticData,
+			settings: workflow.settings,
 			// Reading from the published workflow data service implies the workflow
 			// is active -- inactive workflows have no published version record.
 			isActive: true,
-			ownerProjectId: findOwnerProjectId(publishedData.shared),
+			ownerProjectId: workflow.shared?.find((share) => share.role === 'workflow:owner')?.projectId,
 			activeWorkflowData: { ...workflow, nodes, connections },
 		};
 	}
@@ -263,7 +262,8 @@ export class LiveWebhooks implements IWebhookManager {
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
 			isActive: workflowData.activeVersionId !== null,
-			ownerProjectId: findOwnerProjectId(workflowData.shared),
+			ownerProjectId: workflowData.shared.find((share) => share.role === 'workflow:owner')
+				?.projectId,
 			activeWorkflowData: { ...workflowData, nodes, connections },
 		};
 	}

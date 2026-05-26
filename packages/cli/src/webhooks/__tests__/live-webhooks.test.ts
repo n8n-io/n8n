@@ -21,10 +21,7 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WebhookRequest } from '@/webhooks/webhook.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import type {
-	WorkflowPublishedDataService,
-	PublishedWorkflowData,
-} from '@/workflows/workflow-published-data.service';
+import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 jest.mock('@/webhooks/webhook-helpers');
@@ -292,18 +289,12 @@ describe('LiveWebhooks', () => {
 				active: true,
 				activeVersionId: 'v1',
 				isArchived: false,
+				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
 			});
 
 			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
-				id: WORKFLOW_ID,
-				name: 'Test Workflow',
 				nodes: activeNodes,
 				connections: {},
-				staticData: undefined,
-				settings: undefined,
-				shared: [
-					{ role: 'workflow:owner', projectId: 'project-1' } as PublishedWorkflowData['shared'][0],
-				],
 				workflow: workflowEntity,
 			});
 

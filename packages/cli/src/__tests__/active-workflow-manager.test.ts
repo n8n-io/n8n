@@ -388,8 +388,6 @@ describe('ActiveWorkflowManager', () => {
 
 				context.emit(triggerData);
 
-				// Even with the flag off, emit goes through resolveWorkflowData().then(...)
-				// which adds one microtask tick before runWorkflow is called.
 				await new Promise((resolve) => setTimeout(resolve, 0));
 
 				expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
@@ -431,7 +429,6 @@ describe('ActiveWorkflowManager', () => {
 
 				context.emit(triggerData, undefined, undefined, 'wf-1:node-1:1700000000000');
 
-				// resolveWorkflowData().then(...) adds a microtask tick before runWorkflow.
 				await new Promise((resolve) => setTimeout(resolve, 0));
 
 				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(

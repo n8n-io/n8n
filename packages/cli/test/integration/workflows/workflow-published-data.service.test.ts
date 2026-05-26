@@ -43,7 +43,7 @@ describe('WorkflowPublishedDataService', () => {
 		const result = await workflowPublishedDataService.getPublishedWorkflowData(workflow.id);
 
 		expect(result).not.toBeNull();
-		expect(result!.id).toBe(workflow.id);
+		expect(result!.workflow.id).toBe(workflow.id);
 		expect(result!.nodes).toEqual(
 			expect.arrayContaining([expect.objectContaining({ type: 'n8n-nodes-base.scheduleTrigger' })]),
 		);

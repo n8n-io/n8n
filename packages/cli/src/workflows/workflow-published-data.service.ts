@@ -1,47 +1,19 @@
-import {
-	WorkflowPublishedVersionRepository,
-	type SharedWorkflow,
-	type WorkflowEntity,
-} from '@n8n/db';
+import { WorkflowPublishedVersionRepository, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
-import type { IConnections, IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
+import type { IConnections, INode } from 'n8n-workflow';
 
+/**
+ * The published nodes/connections for a workflow, together with the workflow
+ * entity they belong to. Returned by {@link WorkflowPublishedDataService}.
+ */
 export interface PublishedWorkflowData {
-	id: string;
-	name: string;
 	nodes: INode[];
 	connections: IConnections;
-	staticData: IDataObject | undefined;
-	settings: IWorkflowSettings | undefined;
-	shared: SharedWorkflow[];
-	/**
-	 * The underlying workflow entity loaded alongside the published version
-	 * (in the same query, with shared/project relations). Callers that need
-	 * more than the projected fields above should use this instead of
-	 * issuing a separate query.
-	 */
 	workflow: WorkflowEntity;
 }
 
-/**
- * Source of truth for the workflow data that actually executes in production.
- *
- * Reads from the `workflow_published_version` table, which maps each workflow
- * to the specific history version that is currently deployed. Because workflow
- * publication is asynchronous, this may differ briefly from the
- * `workflow_entity` table (which reflects how the user has configured their
- * workflow).
- *
- * Callers should only use this service when the feature flag
- * (`N8N_USE_WORKFLOW_PUBLICATION_SERVICE`) is enabled. When the flag is off,
- * callers should continue using the legacy `activeVersion` relation directly.
- *
- * TODO: Add a caching layer to avoid a DB lookup on every trigger/poll/webhook
- * execution. The cache should be invalidated when the published version changes
- * (e.g. from the outbox consumer).
- */
 @Service()
 export class WorkflowPublishedDataService {
 	constructor(
@@ -68,13 +40,8 @@ export class WorkflowPublishedDataService {
 		const { publishedVersion, workflow } = record;
 
 		return {
-			id: workflowId,
-			name: workflow.name,
 			nodes: publishedVersion.nodes,
 			connections: publishedVersion.connections,
-			staticData: workflow.staticData,
-			settings: workflow.settings,
-			shared: workflow.shared ?? [],
 			workflow,
 		};
 	}
