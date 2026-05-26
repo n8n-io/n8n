@@ -299,12 +299,9 @@ const canEditMcp = computed(
 // 080_workflow_card_mcp_toggle experiment is off).
 const mcpToggleStatus = ref<boolean | null>(null);
 
-const isAvailableInMCP = computed(() => {
-	if (mcpToggleStatus.value === null) {
-		return props.data.settings?.availableInMCP ?? false;
-	}
-	return mcpToggleStatus.value;
-});
+const isAvailableInMCP = computed(
+	() => mcpToggleStatus.value ?? props.data.settings?.availableInMCP ?? false,
+);
 
 const isSomeoneElsesWorkflow = computed(
 	() =>
