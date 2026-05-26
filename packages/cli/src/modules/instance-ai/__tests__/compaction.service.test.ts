@@ -311,5 +311,26 @@ describe('InstanceAiCompactionService', () => {
 			expect(result).toContain('<conversation-summary>');
 			expect(mockGenerateCompactionSummary).toHaveBeenCalledTimes(1);
 		});
+
+		it('should use the Chat Hub context window for Claude Opus 4.7', async () => {
+			// 40 messages * 3000 tokens = 120k + 8k overhead = 128k.
+			// This would compact with the 128k fallback, but not with Opus 4.7's 1M window.
+			const messages = Array.from({ length: 40 }, (_, i) =>
+				createMessage(`msg-${i}`, i % 2 === 0 ? 'user' : 'assistant', `Msg ${i}`, 3000),
+			);
+			const service = createService();
+			const memory = createMockMemory(messages);
+
+			const result = await service.prepareCompactedContext(
+				'thread-1',
+				memory as never,
+				'anthropic/claude-opus-4-7',
+				20,
+				0.8,
+			);
+
+			expect(result).toBeNull();
+			expect(mockGenerateCompactionSummary).not.toHaveBeenCalled();
+		});
 	});
 });
