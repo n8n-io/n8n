@@ -741,6 +741,7 @@ export interface InstanceAiToolCallState {
 		| 'tasks'
 		| 'delegate'
 		| 'builder'
+		| 'researcher'
 		| 'data-table'
 		| 'planner'
 		| 'eval-setup'
@@ -1060,6 +1061,7 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
 	if (toolName === 'build-workflow-with-agent') return 'builder';
+	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'plan') return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
 	if (toolName === 'list_skills' || toolName === 'load_skill') return 'skill';
