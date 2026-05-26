@@ -7,12 +7,14 @@ import { RabbitMQTrigger } from '../RabbitMQTrigger.node';
 describe('RabbitMQTrigger node', () => {
 	const trigger = new RabbitMQTrigger();
 	const mockTriggerFunctions = mockDeep<ITriggerFunctions>();
-	const connectSpy = jest.spyOn(GenericFunctions, 'rabbitmqConnectQueue');
-	const handleMessageSpy = jest.spyOn(GenericFunctions, 'handleMessage');
+	let connectSpy: jest.SpyInstance;
+	let handleMessageSpy: jest.SpyInstance;
 	const mockChannel = mockDeep<Channel>();
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		connectSpy = jest.spyOn(GenericFunctions, 'rabbitmqConnectQueue');
+		handleMessageSpy = jest.spyOn(GenericFunctions, 'handleMessage');
 	});
 
 	describe('manual execution', () => {
