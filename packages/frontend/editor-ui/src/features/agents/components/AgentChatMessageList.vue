@@ -88,9 +88,13 @@ function getRecallMemoryEntries(output: unknown): RecallMemoryOutputEntry[] {
 	return entries;
 }
 
-function parseMemoryOutput(
-	output: unknown,
-): Array<{ id: string; keyMemory: string; evidence: string[] }> {
+interface MemoryUsed {
+	id: string;
+	keyMemory: string;
+	evidence: string[];
+}
+
+function parseMemoryOutput(output: unknown): MemoryUsed[] {
 	return getRecallMemoryEntries(output)
 		.map((entry) => ({
 			id: entry.id,
@@ -117,8 +121,6 @@ function isCompletedAssistantGroup(group: DisplayGroup): boolean {
 }
 
 function shouldShowAssistantFooter(groupId: string): boolean {
-	if (props.messagingState !== 'idle') return false;
-
 	const index = displayGroups.value.findIndex((group) => group.id === groupId);
 	if (index === -1) return false;
 
@@ -129,9 +131,11 @@ function shouldShowAssistantFooter(groupId: string): boolean {
 	return !nextGroup || !isAssistantGroup(nextGroup);
 }
 
-function getMemoriesUsedInAssistantRun(groupId: string) {
+function getMemoriesUsedInAssistantRun(groupId: string): MemoryUsed[] {
 	const index = displayGroups.value.findIndex((group) => group.id === groupId);
 	if (index === -1) return [];
+
+	const memories: MemoryUsed[] = [];
 
 	for (let i = index; i >= 0; i--) {
 		const group = displayGroups.value[i];
@@ -141,12 +145,11 @@ function getMemoriesUsedInAssistantRun(groupId: string) {
 		for (let j = toolCalls.length - 1; j >= 0; j--) {
 			const toolCall = toolCalls[j];
 			if (toolCall.tool !== 'recall_memory') continue;
-			const memories = parseMemoryOutput(toolCall.output);
-			if (memories.length > 0) return memories;
+			memories.unshift(...parseMemoryOutput(toolCall.output));
 		}
 	}
 
-	return [];
+	return memories;
 }
 
 const openMemoryFooterGroupId = ref<string | null>(null);
