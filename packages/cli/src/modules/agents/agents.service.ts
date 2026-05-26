@@ -98,6 +98,7 @@ interface InjectRuntimeDependenciesParams {
 	projectId: string;
 	credentialProvider: CredentialProvider;
 	nodeToolsEnabled: boolean;
+	credentialIntegrations: AgentCredentialIntegrationConfig[];
 	/** Chat platform the runtime is being reconstructed for — drives the rich_interaction tool's capability profile. */
 	integrationType?: string;
 }
@@ -781,8 +782,15 @@ export class AgentsService {
 	 * (opt-in, defaults to false) — see {@link shouldAttachNodeTools}.
 	 */
 	private async injectRuntimeDependencies(params: InjectRuntimeDependenciesParams): Promise<void> {
-		const { agent, agentId, projectId, credentialProvider, nodeToolsEnabled, integrationType } =
-			params;
+		const {
+			agent,
+			agentId,
+			projectId,
+			credentialProvider,
+			nodeToolsEnabled,
+			credentialIntegrations,
+			integrationType,
+		} = params;
 
 		// Inject get_environment unconditionally. It surfaces info the model
 		// can't know on its own (current date, instance timezone, day of week)
@@ -818,6 +826,62 @@ export class AgentsService {
 				agent.tool(createRichInteractionTool(integrationType));
 			} catch (toolError) {
 				this.logger.warn('Failed to inject rich_interaction tool', {
+					agentId,
+					error: toolError instanceof Error ? toolError.message : String(toolError),
+				});
+			}
+		}
+
+		if (credentialIntegrations.length > 0) {
+			try {
+				const {
+					createIntegrationActionTool,
+					createIntegrationContextTool,
+					getIntegrationToolConnectionDescriptors,
+				} = await import('./integrations/integration-tools');
+				const { IntegrationMessageContextService } = await import(
+					'./integrations/integration-message-context.service'
+				);
+				const { ChatIntegrationActionExecutor } = await import(
+					'./integrations/integration-action-executor'
+				);
+				const { ChatIntegrationContextQueryExecutor } = await import(
+					'./integrations/integration-context-query-executor'
+				);
+
+				const messageContextStore = Container.get(IntegrationMessageContextService);
+				const actionExecutor = Container.get(ChatIntegrationActionExecutor);
+				const queryExecutor = Container.get(ChatIntegrationContextQueryExecutor);
+				const integrationRegistry = Container.get(ChatIntegrationRegistry);
+
+				for (const descriptor of getIntegrationToolConnectionDescriptors(
+					credentialIntegrations,
+					agentId,
+					(integrationConfig) => {
+						const integration = integrationRegistry.get(integrationConfig.type);
+						return {
+							contextQueries: integration?.contextQueries,
+							actions: integration?.actions,
+						};
+					},
+				)) {
+					agent.tool(
+						createIntegrationContextTool({
+							descriptor,
+							messageContextStore,
+							queryExecutor,
+						}),
+					);
+					agent.tool(
+						createIntegrationActionTool({
+							descriptor,
+							messageContextStore,
+							actionExecutor,
+						}),
+					);
+				}
+			} catch (toolError) {
+				this.logger.warn('Failed to inject integration context/action tools', {
 					agentId,
 					error: toolError instanceof Error ? toolError.message : String(toolError),
 				});
@@ -1860,6 +1924,7 @@ export class AgentsService {
 			projectId: agentEntity.projectId,
 			credentialProvider,
 			nodeToolsEnabled: this.shouldAttachNodeTools(config.config),
+			credentialIntegrations: (agentEntity.integrations ?? []).filter(isAgentCredentialIntegration),
 			integrationType,
 		});
 

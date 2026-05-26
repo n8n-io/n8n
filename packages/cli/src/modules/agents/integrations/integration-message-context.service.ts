@@ -1,0 +1,109 @@
+import { Service } from '@n8n/di';
+
+import { AgentResourceRepository } from '../repositories/agent-resource.repository';
+import { AgentThreadRepository } from '../repositories/agent-thread.repository';
+import type {
+	IntegrationMessageContext,
+	IntegrationMessageContextStore,
+	IntegrationMessageTarget,
+} from './integration-tools';
+
+const MESSAGE_CONTEXT_METADATA_KEY = 'currentMessageContext';
+
+@Service()
+export class IntegrationMessageContextService implements IntegrationMessageContextStore {
+	constructor(
+		private readonly resourceRepository: AgentResourceRepository,
+		private readonly threadRepository: AgentThreadRepository,
+	) {}
+
+	async getLatest(threadId: string): Promise<IntegrationMessageContext | null> {
+		const thread = await this.threadRepository.findOneBy({ id: threadId });
+		const value = this.parseMetadata(thread?.metadata)?.[MESSAGE_CONTEXT_METADATA_KEY];
+		return isIntegrationMessageContext(value) ? value : null;
+	}
+
+	async setLatest(
+		threadId: string,
+		resourceId: string,
+		context: IntegrationMessageContext,
+	): Promise<void> {
+		const existing = await this.threadRepository.findOneBy({ id: threadId });
+		const metadata = {
+			...this.parseMetadata(existing?.metadata),
+			[MESSAGE_CONTEXT_METADATA_KEY]: context,
+		};
+
+		if (existing) {
+			existing.metadata = JSON.stringify(metadata);
+			await this.threadRepository.save(existing);
+			return;
+		}
+
+		await this.ensureResource(resourceId);
+		await this.threadRepository.save(
+			this.threadRepository.create({
+				id: threadId,
+				resourceId,
+				title: null,
+				metadata: JSON.stringify(metadata),
+			}),
+		);
+	}
+
+	private async ensureResource(resourceId: string): Promise<void> {
+		const exists = await this.resourceRepository.existsBy({ id: resourceId });
+		if (!exists) {
+			await this.resourceRepository.save(
+				this.resourceRepository.create({ id: resourceId, metadata: null }),
+			);
+		}
+	}
+
+	private parseMetadata(value: string | null | undefined): Record<string, unknown> {
+		if (!value) return {};
+		try {
+			return JSON.parse(value) as Record<string, unknown>;
+		} catch {
+			return {};
+		}
+	}
+}
+
+export function isIntegrationMessageContext(value: unknown): value is IntegrationMessageContext {
+	if (!value || typeof value !== 'object') return false;
+	const context = value as Record<string, unknown>;
+	return (
+		typeof context.integrationConnectionId === 'string' &&
+		typeof context.platform === 'string' &&
+		isIntegrationMessageTarget(context.target) &&
+		(context.messageId === undefined || typeof context.messageId === 'string') &&
+		(context.interactingUserId === undefined || typeof context.interactingUserId === 'string') &&
+		typeof context.updatedAt === 'string'
+	);
+}
+
+function isIntegrationMessageTarget(value: unknown): value is IntegrationMessageTarget {
+	if (!value || typeof value !== 'object') return false;
+	const target = value as Record<string, unknown>;
+	if (target.type === 'thread') {
+		return (
+			typeof target.threadId === 'string' &&
+			(target.channelId === undefined || typeof target.channelId === 'string') &&
+			(target.userId === undefined || typeof target.userId === 'string')
+		);
+	}
+	if (target.type === 'channel') {
+		return (
+			typeof target.channelId === 'string' &&
+			(target.threadId === undefined || typeof target.threadId === 'string')
+		);
+	}
+	if (target.type === 'dm') {
+		return (
+			typeof target.userId === 'string' &&
+			(target.threadId === undefined || typeof target.threadId === 'string')
+		);
+	}
+	return false;
+}
