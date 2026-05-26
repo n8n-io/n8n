@@ -41,27 +41,16 @@ export interface LlmWireServerOptions {
 	logger?: Logger;
 }
 
-/**
- * Per-protocol translator + formatter. One instance per wire format
- * (chat-completions, responses). Lets `handleProtocol` stay protocol-agnostic
- * — adding a new vendor envelope means a single new adapter, not a copy of
- * the handler/stub/error/SSE-writer set.
- */
+/** Per-protocol translator + formatter — adding a new vendor envelope is a new adapter, not a new handler. */
 interface ProtocolAdapter {
-	/** Human-readable name for log messages (`chat-completions`, `responses`). */
 	name: string;
 	extractModel(body: unknown): string;
 	isStreamRequested(body: unknown): boolean;
 	reverseTranslate(body: unknown): IHttpRequestOptions;
 	forwardObject(response: EvalMockHttpResponse | undefined, model: string): Record<string, unknown>;
-	/**
-	 * Build the full sequence of SSE frames (pre-formatted as `data: ...\n\n`
-	 * or `event: ...\ndata: ...\n\n`), including any terminator the protocol
-	 * requires. The single SSE writer just iterates and writes.
-	 */
+	/** Pre-formatted SSE frames (`data: ...\n\n` or `event: ...\ndata: ...\n\n`), incl. any terminator. */
 	buildSseFrames(response: EvalMockHttpResponse | undefined, model: string): string[];
 	buildErrorEnvelope(message: string): Record<string, unknown>;
-	/** The "no mock handler attached" placeholder body for stub responses. */
 	stubResponse(): EvalMockHttpResponse;
 }
 
@@ -126,8 +115,7 @@ export class LlmWireServer {
 	async start(): Promise<string> {
 		if (this.server) return this.url;
 
-		// Reset the shutdown latch in case this instance is being restarted
-		// after a prior stop() — without this, every route would return 503.
+		// Reset the shutdown latch in case this instance is restarted after stop().
 		this.stopping = false;
 
 		const app = this.buildApp();
@@ -148,17 +136,13 @@ export class LlmWireServer {
 	async stop(): Promise<void> {
 		const server = this.server;
 		if (!server) return;
-		// Flip stopping FIRST so any request currently waiting on express
-		// routing gets a 503 instead of starting a new handler that races
-		// the teardown below.
+		// Flip stopping FIRST so new requests 503 instead of racing the teardown.
 		this.stopping = true;
 		this.server = undefined;
 		this.resolvedUrl = undefined;
 
-		// Drain in-flight handlers so an ongoing mock-handler resolve doesn't
-		// write to a torn-down socket and `onIntercept` can't fire after
-		// stop() returns. `allSettled` because handler errors are already
-		// logged/swallowed inside the handler itself.
+		// Drain in-flight handlers so the mock-handler resolve can't write to a
+		// torn-down socket and `onIntercept` can't fire after stop().
 		await Promise.allSettled(Array.from(this.inFlight));
 
 		server.closeAllConnections();
@@ -172,9 +156,7 @@ export class LlmWireServer {
 		const app = express();
 		app.use(express.json({ limit: '4mb' }));
 		app.post('/eval/:root/v1/chat/completions', this.routeFor(chatCompletionsAdapter));
-		// `@langchain/openai` v1.3+ auto-routes Agent v3.1+ calls to /v1/responses
-		// (the Responses API). Same mock-handler under the hood, different
-		// envelope translator. Without this route the SDK 404s and the eval fails.
+		// `@langchain/openai` v1.3+ auto-routes Agent v3.1+ calls to /v1/responses.
 		app.post('/eval/:root/v1/responses', this.routeFor(responsesAdapter));
 		// Surfaces credential-rewrite misconfiguration loudly instead of 404'ing.
 		app.post('/v1/chat/completions', this.handleUnrouted);
@@ -227,17 +209,10 @@ export class LlmWireServer {
 			return;
 		}
 
-		// Ledger write BEFORE the response so consumers reading `interceptedRequests`
-		// after `await fetch(...)` see the entry deterministically — the alternative
-		// (write response, then ledger) relies on the libuv flush running after the
-		// current microtask, which is subtle and surprised reviewers. Best-effort:
-		// a thrown `onIntercept` never blocks the response the SDK gets.
-		//
-		// requestBody is stored by reference rather than deep-cloned: express.json
-		// never re-touches the body object after parsing, and structuredClone'ing
-		// it per turn (× many turns × parallel evals × bodies up to the 4MB cap)
-		// burns RSS for protection consumers don't rely on. Callers must not
-		// mutate the entry's requestBody.
+		// Ledger write BEFORE the response so consumers see the entry deterministically
+		// after `await fetch(...)`. `requestBody` is stored by reference (express.json
+		// never re-touches it); callers must not mutate. A thrown `onIntercept` never
+		// blocks the response the SDK gets.
 		try {
 			this.options.onIntercept?.({
 				rootName,
@@ -261,10 +236,7 @@ export class LlmWireServer {
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			this.options.logger?.error(`[EvalMock] Wire-server response write failed: ${message}`);
-			// Send a typed error envelope if nothing has been flushed yet; otherwise
-			// the SSE writer has already partially written, so just close the socket.
-			// The ledger entry above stays — the model turn DID happen, only the
-			// serialization to the SDK failed.
+			// Headers not yet flushed → send a typed error envelope; otherwise close.
 			if (!res.headersSent) {
 				this.respondWithError(adapter, res, message);
 			} else if (!res.writableEnded) {
@@ -281,22 +253,19 @@ export class LlmWireServer {
 		mockResponse: Awaited<ReturnType<EvalLlmMockHandler>>,
 		model: string,
 	): void {
-		// Build frames BEFORE committing response headers — if the translator
-		// throws (e.g. a circular structure in the mock-handler body), we
-		// want `handleProtocol`'s outer catch to fire a 500 error envelope
-		// instead of leaving the client with a 200 + empty body.
+		// Build frames BEFORE setting headers so a translator throw surfaces as a
+		// 500 envelope via `handleProtocol`'s outer catch, not a 200 + empty body.
 		const frames = adapter.buildSseFrames(mockResponse, model);
 
 		res.status(200);
 		res.setHeader('Content-Type', 'text/event-stream');
 		res.setHeader('Cache-Control', 'no-cache, no-transform');
 		res.setHeader('Connection', 'keep-alive');
-		// Forces immediate flush in proxied setups (Nginx etc.) — harmless here.
+		// Forces immediate flush in proxied setups (Nginx etc.).
 		res.setHeader('X-Accel-Buffering', 'no');
 
-		// If the SDK aborts mid-stream (timeout, AbortController), node fires
-		// `close` on req. Without this guard the loop keeps writing to a
-		// destroyed socket and silently throws inside res.write().
+		// Short-circuit on SDK abort (timeout / AbortController) — otherwise the
+		// loop keeps writing to a destroyed socket.
 		let aborted = false;
 		const onClose = () => {
 			aborted = true;

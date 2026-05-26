@@ -77,34 +77,19 @@ export function forwardTranslateToChatCompletion(
 				finish_reason: finishReason,
 			},
 		],
-		// Zero counts = "no real metering" — stubbed non-zero would compute
-		// as plausible-but-fictional cost in downstream cost trackers.
-		usage: {
-			prompt_tokens: 0,
-			completion_tokens: 0,
-			total_tokens: 0,
-		},
-		// Deliberately non-conforming with real OpenAI fingerprints (e.g. `fp_2f57f81c11`)
-		// so downstream telemetry can spot eval traffic vs. real provider traffic at a
-		// glance. Productionization: normalize to `fp_eval_<random>` if any consumer
-		// turns out to parse the format.
+		// Zero counts = "no real metering" — stubbed non-zero would fake plausible cost.
+		usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+		// Non-conforming fingerprint so telemetry can tag eval traffic at a glance.
 		system_fingerprint: 'eval-wire-server',
 	};
 }
 
 /**
- * Stream the mock handler's response as a sequence of `chat.completion.chunk`
- * frames. Output obeys OpenAI's SSE accumulation contract:
- *
- * - `index` is always set on tool-call deltas.
- * - `id` and `function.name` are set only on the FIRST chunk per tool call.
- * - `function.arguments` is streamed as raw JSON characters across chunks.
- * - Content chunks (assistant text) emit `delta.content` slices.
- * - The terminal chunk carries `finish_reason: 'tool_calls'` when any tool
- *   call was emitted, otherwise `finish_reason: 'stop'`.
- *
- * Implemented as an array (not a generator) so callers can iterate
- * deterministically and the test suite can snapshot the full sequence.
+ * Stream the mock handler's response as `chat.completion.chunk` frames per
+ * OpenAI's SSE accumulation contract: `index` on every tool-call delta;
+ * `id`/`function.name` only on the FIRST chunk per call; `function.arguments`
+ * streamed; terminal chunk's `finish_reason` is `tool_calls` when any call
+ * was emitted, otherwise `stop`. Returned as an array so tests can snapshot.
  */
 export function forwardTranslateToSseChunks(
 	mockResponse: EvalMockHttpResponse | undefined,
@@ -130,7 +115,6 @@ export function forwardTranslateToSseChunks(
 	chunks.push(baseChunk({ role: 'assistant', content: toolCalls.length > 0 ? null : '' }));
 
 	if (toolCalls.length > 0) {
-		// Tool-call mode: emit each call as a first-chunk-with-name + arg-stream.
 		toolCalls.forEach((tc, callIndex) => {
 			// First chunk per tool call carries id + name; arguments start empty.
 			chunks.push(
@@ -145,28 +129,19 @@ export function forwardTranslateToSseChunks(
 					],
 				}),
 			);
-			// Stream arguments in slices. Single slice is fine — the SDK
-			// accumulates regardless of chunk size, but emitting at least
-			// one slice exercises the accumulation path.
+			// One arg-slice is enough — the SDK accumulates regardless of chunk size.
 			if (tc.arguments.length > 0) {
 				chunks.push(
 					baseChunk({
-						tool_calls: [
-							{
-								index: callIndex,
-								function: { arguments: tc.arguments },
-							},
-						],
+						tool_calls: [{ index: callIndex, function: { arguments: tc.arguments } }],
 					}),
 				);
 			}
 		});
-		// Terminal chunk: empty delta + finish_reason: 'tool_calls'.
 		chunks.push(baseChunk({}, 'tool_calls'));
 		return chunks;
 	}
 
-	// Content mode: emit the full content as one delta then terminate.
 	const content = extractAssistantContent(mockResponse?.body);
 	if (content.length > 0) {
 		chunks.push(baseChunk({ content }));

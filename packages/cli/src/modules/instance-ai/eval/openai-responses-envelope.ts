@@ -75,25 +75,11 @@ export function forwardTranslateToResponsesEnvelope(
 }
 
 /**
- * Stream the mock response as a sequence of Responses API SSE events.
- * Mirrors what the real API emits for a non-tool-call turn:
- *
- *   response.created
- *   response.in_progress
- *   response.output_item.added (message)
- *   response.content_part.added
- *   response.output_text.delta
- *   response.output_text.done
- *   response.content_part.done
- *   response.output_item.done
- *   response.completed
- *
- * For tool calls the message item is replaced by a `function_call` item with
- * `response.function_call_arguments.delta` / `.done` events. Each event
- * frame is encoded as `event: <name>\ndata: <JSON>\n\n`.
- *
- * Implemented as a flat array of `{ event, data }` pairs so callers can
- * iterate deterministically and tests can snapshot the full sequence.
+ * Stream the mock response as Responses API SSE events. Non-tool-call turn:
+ * created → in_progress → output_item.added → content_part.added →
+ * output_text.delta → output_text.done → content_part.done →
+ * output_item.done → completed. Tool calls swap the message item for a
+ * `function_call` item with `function_call_arguments.delta`/`.done`.
  */
 export function forwardTranslateToResponsesSseEvents(
 	mockResponse: EvalMockHttpResponse | undefined,
@@ -122,12 +108,8 @@ export function forwardTranslateToResponsesSseEvents(
 	});
 
 	if (toolCalls.length > 0) {
-		// Pre-build the final output items so the `id` is stable across every
-		// event the SDK reconciles — `output_item.added`, `function_call_-
-		// arguments.delta/done`, `output_item.done`, and the terminal
-		// `response.completed.output[i]` all reference the same `fc_<uuid>`.
-		// Earlier the terminal envelope re-ran the synthesizer and emitted a
-		// different id, breaking SDK consumers that key by `id`.
+		// Pre-build final items so `id` stays stable across every event the SDK
+		// reconciles (added / delta / done / terminal completed.output[i]).
 		const finalItems = toolCallsToResponsesOutput(toolCalls);
 		toolCalls.forEach((tc, callIndex) => {
 			const finalItem = finalItems[callIndex];
@@ -170,10 +152,7 @@ export function forwardTranslateToResponsesSseEvents(
 	// Plain message mode.
 	const content = extractResponsesContent(mockResponse?.body);
 	const messageId = `msg_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
-	// `annotations: []` is required by the OpenAI SDK on every output_text
-	// content part — the LangChain extractor calls `.annotations.map(...)`
-	// while pulling citations. Omitting it on the terminal `output_item.done`
-	// or `response.completed.output[]` would crash consumers downstream.
+	// `annotations: []` is required — LangChain's extractor calls `.annotations.map(...)`.
 	const messageItem = {
 		id: messageId,
 		type: 'message' as const,
@@ -272,21 +251,12 @@ function buildAssistantMessage(text: string): Record<string, unknown> {
 		type: 'message',
 		role: 'assistant',
 		status: 'completed',
-		// `annotations: []` is required by the OpenAI SDK's `ResponseOutputText` type;
-		// LangChain calls `.annotations.map(...)` while extracting citations, and an
-		// undefined value throws `Cannot read properties of undefined (reading 'map')`.
+		// `annotations: []` is required — LangChain's extractor calls `.annotations.map(...)`.
 		content: [{ type: 'output_text', text, annotations: [] }],
 	};
 }
 
-/**
- * Pull assistant content out of the mock handler's body. Same tolerant shape
- * detection as the chat-completions path, plus Responses-API-native shapes:
- *   - `{ output: [{ content: [{ text: '...' }] }] }` — already-shaped envelope
- *   - `{ output_text: '...' }` — convenience field some SDKs surface
- * Falls back to the chat-completions extractor's logic for `{ content }`,
- * `{ message }`, bare strings, and stringified unknown shapes.
- */
+/** Tolerant content extractor: handles `output[].content[].text`, `output_text`, `{ content }`, `{ message }`, bare strings. */
 function extractResponsesContent(body: unknown): string {
 	if (body === null || body === undefined) return '';
 	if (typeof body === 'string') return body;
