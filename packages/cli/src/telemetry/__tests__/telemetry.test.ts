@@ -358,11 +358,13 @@ describe('Telemetry', () => {
 			expect(spyTrack).toHaveBeenCalledTimes(0);
 			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({
 				'agent-1': {
+					agent_id: 'agent-1',
 					message_count: 1,
 					token_count: 15,
 					tool_call_count: 2,
 				},
 				'agent-2': {
+					agent_id: 'agent-2',
 					message_count: 1,
 					token_count: 0,
 					tool_call_count: 0,
@@ -401,6 +403,62 @@ describe('Telemetry', () => {
 			// @ts-expect-error Calling private method
 			telemetry.flushAgentExecutionCounts();
 
+			expect(spyTrack).toHaveBeenCalledWith('Agent execution count', {
+				event_version: '1',
+				agent_id: 'agent-1',
+				message_count: 0,
+				token_count: 20,
+				tool_call_count: 0,
+			});
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
+		});
+
+		test('should aggregate agent execution counters by agent ID and user ID when present', () => {
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-1', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-1', token_count: 15 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-2', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', tool_call_count: 2 });
+
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({
+				'agent-1:user-1': {
+					agent_id: 'agent-1',
+					user_id: 'user-1',
+					message_count: 1,
+					token_count: 15,
+					tool_call_count: 0,
+				},
+				'agent-1:user-2': {
+					agent_id: 'agent-1',
+					user_id: 'user-2',
+					message_count: 1,
+					token_count: 0,
+					tool_call_count: 0,
+				},
+				'agent-1': {
+					agent_id: 'agent-1',
+					message_count: 0,
+					token_count: 0,
+					tool_call_count: 2,
+				},
+			});
+		});
+
+		test('should flush attributed and unattributed agent execution counters separately', () => {
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-1', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-1', token_count: 15 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', token_count: 20 });
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentExecutionCounts();
+
+			expect(spyTrack).toHaveBeenCalledWith('Agent execution count', {
+				event_version: '1',
+				agent_id: 'agent-1',
+				user_id: 'user-1',
+				message_count: 1,
+				token_count: 15,
+				tool_call_count: 0,
+			});
 			expect(spyTrack).toHaveBeenCalledWith('Agent execution count', {
 				event_version: '1',
 				agent_id: 'agent-1',

@@ -799,6 +799,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				THREAD_ID,
 				'user-1',
 				'project-1',
+				'user-1',
 			);
 		});
 
@@ -826,6 +827,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				THREAD_ID,
 				'owner-1',
 				'project-1',
+				undefined,
 			);
 		});
 
