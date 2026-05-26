@@ -165,9 +165,10 @@ describe('OAuth2 API', () => {
 		// an n8n session (so external/dynamic-credential OAuth flows complete) while the handler
 		// still enforces session-bound validation for static credentials.
 		it('should reach the handler when called without authentication', async () => {
-			const renderSpy = (Response.render = jest.fn(function () {
+			const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
 				this.end();
-			}));
+				return this;
+			});
 
 			await testServer.authlessAgent
 				.get('/oauth2-credential/callback')
@@ -185,9 +186,10 @@ describe('OAuth2 API', () => {
 		it('should reject an unauthenticated callback for a static credential', async () => {
 			const oauthService = Container.get(OauthService);
 			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
-			const renderSpy = (Response.render = jest.fn(function () {
+			const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
 				this.end();
-			}));
+				return this;
+			});
 
 			await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
 
@@ -306,9 +308,10 @@ describe('OAuth2 API', () => {
 			await shareCredentialWithUsers(credential, [sharee]);
 
 			const oauthService = Container.get(OauthService);
-			const renderSpy = (Response.render = jest.fn(function () {
+			const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
 				this.end();
-			}));
+				return this;
+			});
 
 			// Build a callback state whose decrypted userId equals the requesting member,
 			// so the userId equality check inside decodeCsrfState passes and the credential
