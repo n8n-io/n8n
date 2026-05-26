@@ -1,6 +1,6 @@
 import type { McpRegistryServerEntity } from './mcp-registry-server.entity';
 
-export type McpRegistryServerUpsertRow = Pick<
+type McpRegistryServerUpsertRow = Pick<
 	McpRegistryServerEntity,
 	'slug' | 'status' | 'version' | 'registryUpdatedAt' | 'data'
 >;

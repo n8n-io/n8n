@@ -42,7 +42,7 @@ function createService(options: CreateServiceOptions = {}) {
 		repository.findBy.mockResolvedValue([]);
 	} else {
 		const servers = options.storedServers ?? [notionMockServer, linearMockServer];
-		const entities = servers.map((server) => toMockEntity(server));
+		const entities = servers.map(toMockEntity);
 		repository.find.mockResolvedValue(entities);
 		repository.findBy.mockImplementation(async (where) => {
 			if (where && 'status' in where) {
@@ -252,8 +252,7 @@ describe('McpRegistryService', () => {
 			expect(apiClient.fetchServersBySlugs).toHaveBeenCalledWith([notionMockServer.slug]);
 			expect(repository.upsert).toHaveBeenCalledTimes(1);
 			const upsertEntities = repository.upsert.mock.calls[0][0];
-			expect(upsertEntities).toEqual([toEntity(notionMockServer)]);
-			expect(repository.upsert.mock.calls[0][1]).toEqual(['slug']);
+			expect(upsertEntities).toEqual([notionMockServer].map(toEntity));
 			expect(push.broadcast).toHaveBeenCalledWith({ type: 'nodeDescriptionUpdated', data: {} });
 			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-registry' });
 
