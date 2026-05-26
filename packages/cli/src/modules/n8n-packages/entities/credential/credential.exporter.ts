@@ -5,11 +5,11 @@ import { UserError } from 'n8n-workflow';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 
 import { CredentialSerializer } from './credential.serializer';
-import type { CredentialReferenceFromWorkflow } from '../workflow/workflow.types';
 import type { PackageWriter } from '../../io/package-writer';
 import { generateSlug } from '../../io/slug.utils';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
+import type { CredentialReferenceFromWorkflow } from '../workflow/workflow.types';
 
 const CREDENTIAL_SLUG_FALLBACK = 'credential';
 const MAX_DISPLAYED_FORBIDDEN_IDS = 20;

@@ -6,6 +6,7 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { jsonParse } from 'n8n-workflow';
 
 import { saveCredential } from '@test-integration/db/credentials';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -80,7 +81,7 @@ describe('workflow package export — with credentials', () => {
 			{
 				id: credential.id,
 				name: credential.name,
-				target: expect.any(String),
+				target: expect.any(String) as string,
 			},
 		]);
 		expect(manifest.requirements).toEqual({
@@ -98,7 +99,7 @@ describe('workflow package export — with credentials', () => {
 			(e) => e.name === `${manifest.credentials![0].target}/credential.json`,
 		);
 		expect(credentialFile).toBeDefined();
-		const parsed = JSON.parse(credentialFile!.content.toString());
+		const parsed = jsonParse<Record<string, unknown>>(credentialFile!.content.toString());
 		expect(parsed).toEqual({
 			id: credential.id,
 			name: credential.name,

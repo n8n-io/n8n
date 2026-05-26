@@ -1,13 +1,14 @@
 import type { CredentialsEntity, User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
+import { jsonParse } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 
-import { CredentialExporter } from '../credential.exporter';
-import { CredentialSerializer } from '../credential.serializer';
 import type { PackageWriter } from '../../../io/package-writer';
 import type { CredentialReferenceFromWorkflow } from '../../workflow/workflow.types';
+import { CredentialExporter } from '../credential.exporter';
+import { CredentialSerializer } from '../credential.serializer';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -110,7 +111,7 @@ describe('CredentialExporter', () => {
 			expect(writer.files).toHaveLength(1);
 			expect(writer.files[0].path).toBe('credentials/my-credential/credential.json');
 
-			const parsed = JSON.parse(writer.files[0].content);
+			const parsed = jsonParse<Record<string, unknown>>(writer.files[0].content);
 			expect(parsed).toEqual({
 				id: 'cred-1',
 				name: 'My Credential',
@@ -204,9 +205,10 @@ describe('CredentialExporter', () => {
 
 		it('handles a mix of accessible and orphan references in one call', async () => {
 			const { exporter, finder } = makeExporter();
-			finder.findCredentialForUser.mockImplementation(async (id) =>
-				id === 'cred-1' ? makeCredential() : null,
-			);
+			finder.findCredentialForUser.mockImplementation(async (id) => {
+				await Promise.resolve();
+				return id === 'cred-1' ? makeCredential() : null;
+			});
 			finder.findCredentialById.mockResolvedValue(null);
 			const writer = new CapturingWriter();
 
@@ -266,12 +268,14 @@ describe('CredentialExporter', () => {
 
 		it('errors atomically — accessible credentials are not written when a sibling is forbidden', async () => {
 			const { exporter, finder } = makeExporter();
-			finder.findCredentialForUser.mockImplementation(async (id) =>
-				id === 'cred-ok' ? makeCredential({ id: 'cred-ok' }) : null,
-			);
-			finder.findCredentialById.mockImplementation(async (id) =>
-				id === 'cred-secret' ? makeCredential({ id: 'cred-secret' }) : null,
-			);
+			finder.findCredentialForUser.mockImplementation(async (id) => {
+				await Promise.resolve();
+				return id === 'cred-ok' ? makeCredential({ id: 'cred-ok' }) : null;
+			});
+			finder.findCredentialById.mockImplementation(async (id) => {
+				await Promise.resolve();
+				return id === 'cred-secret' ? makeCredential({ id: 'cred-secret' }) : null;
+			});
 			const writer = new CapturingWriter();
 
 			await expect(
@@ -294,7 +298,10 @@ describe('CredentialExporter', () => {
 		it('truncates the forbidden id list at 20 with an "and N more" suffix', async () => {
 			const { exporter, finder } = makeExporter();
 			finder.findCredentialForUser.mockResolvedValue(null);
-			finder.findCredentialById.mockImplementation(async (id) => makeCredential({ id }));
+			finder.findCredentialById.mockImplementation(async (id) => {
+				await Promise.resolve();
+				return makeCredential({ id });
+			});
 			const writer = new CapturingWriter();
 
 			const forbiddenIds = Array.from({ length: 25 }, (_, i) => `forbidden-${i + 1}`);
@@ -327,7 +334,7 @@ describe('CredentialExporter', () => {
 
 			await exporter.export({ user, references: [makeReference()], writer });
 
-			const parsed = JSON.parse(writer.files[0].content);
+			const parsed = jsonParse<Record<string, unknown>>(writer.files[0].content);
 			expect(Object.keys(parsed).sort()).toEqual(['id', 'name', 'type']);
 		});
 	});
