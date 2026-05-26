@@ -1,5 +1,4 @@
 ---
-name: n8n:mutate-changed
 description: Run Stryker mutation testing on the source files changed in the current branch (vs origin/master). One command for "did my work hold up under mutation?" before pushing. Triages on the side which files dropped below threshold and offers to invoke n8n:strengthen-tests on them. Use when the user says /mutate-changed, "mutate what I changed", "check my changes", or has just finished writing a feature and wants pre-merge feedback. Scope: only packages/workflow/src/** changes are mutated today.
 ---
 

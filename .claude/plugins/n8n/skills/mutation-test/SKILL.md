@@ -1,5 +1,4 @@
 ---
-name: n8n:mutation-test
 description: Run Stryker mutation testing on a single source file and return a structured, token-frugal report that's pipeable to a follow-up "strengthen tests" loop. Use when the user says /mutation-test, "mutation test this file", or has just edited tests and wants to verify they actually assert behaviour. Per-file only — full-package mutation runs are out of scope.
 ---
 

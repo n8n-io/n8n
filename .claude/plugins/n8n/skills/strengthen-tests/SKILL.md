@@ -1,5 +1,4 @@
 ---
-name: n8n:strengthen-tests
 description: Take a Stryker summary.json (from n8n:mutation-test), triage the surviving mutants by user-reachable-behaviour risk, write minimal assertion changes to kill the top 3-5 highest-leverage survivors, then verify by re-running n8n:mutation-test. Use when the user has just run mutation testing and wants to strengthen the test suite, or says "kill the survivors / strengthen tests / fix the red." Pairs with n8n:mutation-test as the inner write side of a single iteration.
 ---
 

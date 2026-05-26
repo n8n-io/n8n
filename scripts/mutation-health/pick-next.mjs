@@ -84,7 +84,21 @@ async function walkSources(dir) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const STALE_AFTER_WEEKS = Number(args['stale-after-weeks'] ?? 4);
+
+const STALE_AFTER_WEEKS_DEFAULT = 4;
+const staleArg = args['stale-after-weeks'];
+const parsedStale = Number(staleArg);
+let STALE_AFTER_WEEKS;
+if (staleArg === undefined) {
+	STALE_AFTER_WEEKS = STALE_AFTER_WEEKS_DEFAULT;
+} else if (Number.isFinite(parsedStale) && parsedStale > 0) {
+	STALE_AFTER_WEEKS = parsedStale;
+} else {
+	process.stderr.write(
+		`Invalid --stale-after-weeks=${staleArg}, falling back to ${STALE_AFTER_WEEKS_DEFAULT}.\n`,
+	);
+	STALE_AFTER_WEEKS = STALE_AFTER_WEEKS_DEFAULT;
+}
 
 const pkgDirArg = args['package-dir'];
 const ledgerFile = args['ledger-file'];

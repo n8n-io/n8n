@@ -57,8 +57,8 @@ const sha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).tri
 
 const summary = JSON.parse(await readFile(summaryPath, 'utf8'));
 
-if (!summary.files || summary.files.length === 0) {
-	die(2, 'Summary contains no files; nothing to emit.');
+if (!Array.isArray(summary.files)) {
+	die(2, 'Summary missing `files` array.');
 }
 
 // pkg-root = two dirs up from the summary (reports/mutation/summary.json)
