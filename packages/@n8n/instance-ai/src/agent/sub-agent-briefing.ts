@@ -34,7 +34,7 @@ export interface SubAgentBriefingInput {
 /**
  * Build a structured XML-formatted briefing for a sub-agent.
  *
- * All sub-agent spawn sites (delegate, builder, research, data-table) use this
+ * All sub-agent spawn sites (delegate, builder, data-table) use this
  * instead of ad-hoc string concatenation. The XML structure gives the LLM
  * clear section boundaries and makes the briefing parseable.
  */

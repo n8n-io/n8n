@@ -69,7 +69,6 @@ export type InstanceAiAgentStatus = z.infer<typeof instanceAiAgentStatusSchema>;
 export const instanceAiAgentKindSchema = z.enum([
 	'builder',
 	'data-table',
-	'researcher',
 	'delegate',
 	'browser-setup',
 	'planner',
@@ -743,7 +742,6 @@ export interface InstanceAiToolCallState {
 		| 'delegate'
 		| 'builder'
 		| 'data-table'
-		| 'researcher'
 		| 'planner'
 		| 'eval-setup'
 		| 'default';
@@ -764,7 +762,7 @@ export interface InstanceAiAgentNode {
 	tools?: string[];
 	/** Background task ID — present only for background agents (workflow-builder, data-table-manager). */
 	taskId?: string;
-	/** Agent kind for card dispatch (builder, data-table, researcher, delegate,
+	/** Agent kind for card dispatch (builder, data-table, delegate,
 	 * browser-setup, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Short display title, e.g. "Building workflow". */
@@ -1062,7 +1060,6 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (toolName === 'delegate') return 'delegate';
 	if (toolName === 'build-workflow-with-agent') return 'builder';
 	if (toolName === 'manage-data-tables-with-agent') return 'data-table';
-	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'plan') return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
 	return 'default';
