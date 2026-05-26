@@ -3,8 +3,10 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import Modal from '@/app/components/Modal.vue';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@/app/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getWorkflow } from '@/app/api/workflows';
@@ -30,7 +32,7 @@ import AgentToolItem from './AgentToolItem.vue';
 import WorkflowToolRow from './WorkflowToolRow.vue';
 
 import type { INodeUi, IWorkflowDb } from '@/Interface';
-import type { AgentJsonToolRef, WorkflowToolRef } from '../types';
+import type { AgentJsonMcpServerConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
 import { AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
 import {
 	getExistingToolNames,
@@ -38,22 +40,29 @@ import {
 	toolRefToNode,
 	workflowToNewToolRef,
 } from '../composables/useAgentToolRefAdapter';
+import {
+	isMcpRelatedNodeType,
+	mcpServerToNode,
+	nodeTypeToNewMcpServer,
+} from '../composables/useMcpServerAdapter';
 import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
 
 const props = defineProps<{
 	modalName: string;
 	data: {
 		tools: AgentJsonToolRef[];
+		mcpServers?: AgentJsonMcpServerConfig[];
 		/** Optional — when present, the Available list will include workflows scoped to this project. */
 		projectId?: string;
 		/** Optional — tagged onto telemetry events for correlation with agent analytics. */
 		agentId?: string;
-		onConfirm: (tools: AgentJsonToolRef[]) => void;
+		onConfirm: (tools: AgentJsonToolRef[], mcpServers?: AgentJsonMcpServerConfig[]) => void;
 	};
 }>();
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const settingsStore = useSettingsStore();
 const nodeHelpers = useNodeHelpers();
 const uiStore = useUIStore();
 const workflowsListStore = useWorkflowsListStore();
@@ -72,6 +81,11 @@ interface WorkingToolEntry {
 	ref: AgentJsonToolRef;
 }
 
+interface WorkingMcpServerEntry {
+	localId: string;
+	server: AgentJsonMcpServerConfig;
+}
+
 function toWorkingToolEntries(
 	tools: AgentJsonToolRef[],
 	existingEntries: WorkingToolEntry[] = [],
@@ -79,6 +93,16 @@ function toWorkingToolEntries(
 	return tools.map((ref, index) => ({
 		localId: existingEntries[index]?.localId ?? uuidv4(),
 		ref,
+	}));
+}
+
+function toWorkingMcpServerEntries(
+	servers: AgentJsonMcpServerConfig[],
+	existingEntries: WorkingMcpServerEntry[] = [],
+): WorkingMcpServerEntry[] {
+	return servers.map((server, index) => ({
+		localId: existingEntries[index]?.localId ?? uuidv4(),
+		server,
 	}));
 }
 
@@ -91,7 +115,21 @@ watch(
 	},
 );
 
+const workingMcpServerEntries = ref<WorkingMcpServerEntry[]>(
+	toWorkingMcpServerEntries(props.data.mcpServers ?? []),
+);
+watch(
+	() => props.data.mcpServers ?? [],
+	(servers) => {
+		workingMcpServerEntries.value = toWorkingMcpServerEntries(
+			servers,
+			workingMcpServerEntries.value,
+		);
+	},
+);
+
 const workingTools = computed(() => workingToolEntries.value.map(({ ref }) => ref));
+const workingMcpServers = computed(() => workingMcpServerEntries.value.map(({ server }) => server));
 
 const searchQuery = ref('');
 const debouncedSearchQuery = ref('');
@@ -167,6 +205,16 @@ const availableToolTypes = computed<INodeTypeDescription[]>(() => {
 		});
 });
 
+const availableMcpToolTypes = computed(() =>
+	settingsStore.isAgentsMcpFeatureEnabled
+		? availableToolTypes.value.filter((nodeType) => isMcpRelatedNodeType(nodeType.name))
+		: [],
+);
+
+const availableStandardToolTypes = computed(() =>
+	availableToolTypes.value.filter((nodeType) => !isMcpRelatedNodeType(nodeType.name)),
+);
+
 // --- Workflow catalog -------------------------------------------------------
 
 /**
@@ -234,6 +282,14 @@ interface ConfiguredToolView {
 	missingCredentials: boolean;
 }
 
+interface ConfiguredMcpServerView {
+	localId: string;
+	server: AgentJsonMcpServerConfig;
+	node: INode;
+	nodeType: INodeTypeDescription;
+	missingCredentials: boolean;
+}
+
 const configuredTools = computed<ConfiguredToolView[]>(() => {
 	const out: ConfiguredToolView[] = [];
 	for (const { localId, ref } of workingToolEntries.value) {
@@ -249,6 +305,32 @@ const configuredTools = computed<ConfiguredToolView[]>(() => {
 		out.push({
 			localId,
 			ref,
+			node,
+			nodeType,
+			missingCredentials: !!issues?.credentials && Object.keys(issues.credentials).length > 0,
+		});
+	}
+	return out;
+});
+
+function resolveMcpNodeType(server: AgentJsonMcpServerConfig): INodeTypeDescription | null {
+	const preferredTypeName = server.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE;
+	return (
+		nodeTypesStore.getNodeType(preferredTypeName) ??
+		nodeTypesStore.getNodeType(AI_MCP_TOOL_NODE_TYPE)
+	);
+}
+
+const configuredMcpServers = computed<ConfiguredMcpServerView[]>(() => {
+	const out: ConfiguredMcpServerView[] = [];
+	for (const { localId, server } of workingMcpServerEntries.value) {
+		const nodeType = resolveMcpNodeType(server);
+		if (!nodeType) continue;
+		const node = mcpServerToNode(server, nodeType);
+		const issues = nodeHelpers.getNodeCredentialIssues(node as INodeUi, nodeType);
+		out.push({
+			localId,
+			server,
 			node,
 			nodeType,
 			missingCredentials: !!issues?.credentials && Object.keys(issues.credentials).length > 0,
@@ -292,6 +374,16 @@ const filteredConfiguredTools = computed(() => {
 	);
 });
 
+const filteredConfiguredMcpServers = computed(() => {
+	if (!debouncedSearchQuery.value) return configuredMcpServers.value;
+	const query = debouncedSearchQuery.value.toLowerCase();
+	return configuredMcpServers.value.filter(
+		(server) =>
+			server.server.name.toLowerCase().includes(query) ||
+			server.nodeType.displayName.toLowerCase().includes(query),
+	);
+});
+
 const filteredConfiguredWorkflows = computed(() => {
 	if (!debouncedSearchQuery.value) return configuredWorkflows.value;
 	const query = debouncedSearchQuery.value.toLowerCase();
@@ -305,9 +397,18 @@ const filteredAvailableTools = computed(() => {
 	// Duplicates allowed: already-connected node types stay listed so users can
 	// add a 2nd Slack / Gmail / etc. with a different name + config. The config
 	// modal enforces tool-name uniqueness via `existingToolNames`.
-	if (!debouncedSearchQuery.value) return availableToolTypes.value;
+	if (!debouncedSearchQuery.value) return availableStandardToolTypes.value;
 	const query = debouncedSearchQuery.value.toLowerCase();
-	return availableToolTypes.value.filter(
+	return availableStandardToolTypes.value.filter(
+		(nt) =>
+			nt.displayName.toLowerCase().includes(query) || nt.description?.toLowerCase().includes(query),
+	);
+});
+
+const filteredAvailableMcpTools = computed(() => {
+	if (!debouncedSearchQuery.value) return availableMcpToolTypes.value;
+	const query = debouncedSearchQuery.value.toLowerCase();
+	return availableMcpToolTypes.value.filter(
 		(nt) =>
 			nt.displayName.toLowerCase().includes(query) || nt.description?.toLowerCase().includes(query),
 	);
@@ -335,6 +436,19 @@ function addToolRef(savedRef: AgentJsonToolRef) {
 	});
 }
 
+function addMcpServer(savedServer: AgentJsonMcpServerConfig) {
+	workingMcpServerEntries.value = [
+		...workingMcpServerEntries.value,
+		{ localId: uuidv4(), server: savedServer },
+	];
+	commit();
+	uiStore.closeModal(props.modalName);
+	toast.showMessage({
+		title: i18n.baseText('agents.tools.mcp.added'),
+		type: 'success',
+	});
+}
+
 function openConfigForNewRef(newRef: AgentJsonToolRef) {
 	// Connect → open the config panel first. The ref only enters workingTools
 	// once the user hits Save, so a cancelled config leaves the list untouched.
@@ -352,7 +466,44 @@ function openConfigForNewRef(newRef: AgentJsonToolRef) {
 	});
 }
 
+function getExistingMcpServerNames(
+	servers: AgentJsonMcpServerConfig[],
+	exclude?: AgentJsonMcpServerConfig,
+): string[] {
+	return servers.filter((server) => server !== exclude).map((server) => server.name);
+}
+
+function openConfigForNewMcpServer(
+	server: AgentJsonMcpServerConfig,
+	nodeType: INodeTypeDescription,
+) {
+	uiStore.openModalWithData({
+		name: AGENT_TOOL_CONFIG_MODAL_KEY,
+		data: {
+			kind: 'mcpServer',
+			mcpServer: server,
+			initialNode: mcpServerToNode(server, nodeType),
+			projectId: props.data.projectId,
+			agentId: props.data.agentId,
+			existingToolNames: getExistingMcpServerNames(workingMcpServers.value),
+			onConfirm: (savedServer: AgentJsonMcpServerConfig) => {
+				addMcpServer(savedServer);
+			},
+		},
+	});
+}
+
+function handleAddMcpServer(nodeType: INodeTypeDescription) {
+	const newServer = nodeTypeToNewMcpServer(nodeType);
+	openConfigForNewMcpServer(newServer, nodeType);
+}
+
 function handleAddTool(nodeType: INodeTypeDescription) {
+	if (isMcpRelatedNodeType(nodeType.name)) {
+		handleAddMcpServer(nodeType);
+		return;
+	}
+
 	toolTelemetry.trackAddStarted('node');
 	const newRef = nodeTypeToNewToolRef(nodeType);
 
@@ -433,8 +584,31 @@ function handleConfigureTool(tool: ConfiguredToolView | ConfiguredWorkflowView) 
 	});
 }
 
+function handleConfigureMcpServer(serverView: ConfiguredMcpServerView) {
+	const nodeType = resolveMcpNodeType(serverView.server);
+	if (!nodeType) return;
+
+	uiStore.openModalWithData({
+		name: AGENT_TOOL_CONFIG_MODAL_KEY,
+		data: {
+			kind: 'mcpServer',
+			mcpServer: serverView.server,
+			initialNode: mcpServerToNode(serverView.server, nodeType),
+			projectId: props.data.projectId,
+			agentId: props.data.agentId,
+			existingToolNames: getExistingMcpServerNames(workingMcpServers.value, serverView.server),
+			onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
+				workingMcpServerEntries.value = workingMcpServerEntries.value.map((entry) =>
+					entry.localId === serverView.localId ? { ...entry, server: updatedServer } : entry,
+				);
+				commit();
+			},
+		},
+	});
+}
+
 function commit() {
-	props.data.onConfirm(workingTools.value);
+	props.data.onConfirm(workingTools.value, workingMcpServers.value);
 }
 </script>
 
@@ -466,10 +640,25 @@ function commit() {
 
 			<div :class="$style.listWrapper" data-test-id="agent-tools-list">
 				<div
-					v-if="filteredConfiguredTools.length + filteredConfiguredWorkflows.length > 0"
+					v-if="
+						filteredConfiguredMcpServers.length +
+							filteredConfiguredTools.length +
+							filteredConfiguredWorkflows.length >
+						0
+					"
 					:class="$style.section"
 				>
 					<div :class="$style.toolsList" data-test-id="agent-tools-connected-list">
+						<AgentToolItem
+							v-for="server in filteredConfiguredMcpServers"
+							:key="server.localId"
+							:node-type="server.nodeType"
+							:configured-node="server.node"
+							:missing-credentials="server.missingCredentials"
+							mode="configured"
+							:class="$style.toolsListItem"
+							@configure="handleConfigureMcpServer(server)"
+						/>
 						<AgentToolItem
 							v-for="tool in filteredConfiguredTools"
 							:key="tool.localId"
@@ -489,6 +678,26 @@ function commit() {
 							row-test-id="agent-tools-connected-workflow-row"
 							configure-test-id="agent-tools-connected-workflow-configure"
 							@configure="handleConfigureTool(wf)"
+						/>
+					</div>
+				</div>
+
+				<div v-if="filteredAvailableMcpTools.length > 0" :class="$style.section">
+					<N8nHeading size="small" color="text-light" tag="h3">
+						{{
+							i18n.baseText('agents.tools.availableMcpServers', {
+								interpolate: { count: filteredAvailableMcpTools.length },
+							})
+						}}
+					</N8nHeading>
+					<div :class="$style.toolsList" data-test-id="agent-tools-available-mcp-list">
+						<AgentToolItem
+							v-for="nodeType in filteredAvailableMcpTools"
+							:key="nodeType.name"
+							:node-type="nodeType"
+							mode="available"
+							@add="handleAddTool(nodeType)"
+							:class="$style.toolsListItem"
 						/>
 					</div>
 				</div>
@@ -536,8 +745,10 @@ function commit() {
 
 				<div
 					v-if="
+						filteredConfiguredMcpServers.length === 0 &&
 						filteredConfiguredTools.length === 0 &&
 						filteredConfiguredWorkflows.length === 0 &&
+						filteredAvailableMcpTools.length === 0 &&
 						filteredAvailableTools.length === 0 &&
 						filteredAvailableWorkflows.length === 0
 					"

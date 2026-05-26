@@ -11,7 +11,7 @@ type BaseToolRow = {
 	typeLabel: string;
 	nodeType: ToolRowNodeType;
 	fallbackIcon: IconName;
-	toolType: AgentJsonToolRef['type'];
+	toolType: AgentJsonToolRef['type'] | 'mcpServer';
 };
 
 function toUngroupedToolRow(row: BaseToolRow): ToolRow {

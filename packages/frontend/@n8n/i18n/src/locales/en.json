@@ -6083,6 +6083,8 @@
 	"agents.tools.workflow.incompatible.message": "Workflow \"{name}\" contains nodes that can't be used as an agent tool: {nodes}.",
 	"agents.tools.workflow.fetchFailed.title": "Couldn't check workflow compatibility",
 	"agents.tools.workflow.fetchFailed.message": "Try connecting the workflow again.",
+	"agents.tools.availableMcpServers": "MCP servers ({count})",
+	"agents.tools.mcp.added": "MCP server added",
 	"agents.toolConfig.workflow.description": "Description",
 	"agents.toolConfig.workflow.description.placeholder": "Explain to the agent when to use this workflow and what it does",
 	"agents.toolConfig.workflow.description.hint": "The LLM reads this to decide when to call the workflow.",

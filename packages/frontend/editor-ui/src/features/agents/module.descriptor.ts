@@ -48,6 +48,7 @@ export const AgentsModule: FrontendModuleDescription = {
 				open: false,
 				data: {
 					tools: [],
+					mcpServers: [],
 					onConfirm: () => {},
 				},
 			},
@@ -58,8 +59,8 @@ export const AgentsModule: FrontendModuleDescription = {
 			initialState: {
 				open: false,
 				data: {
+					kind: 'node',
 					toolRef: null,
-					existingToolNames: [],
 					onConfirm: () => {},
 				},
 			},
