@@ -43,7 +43,7 @@ export class ExecutionLevelTracer {
 			const links = this.buildContinuationLinks(params.linkTo);
 			const customAttributes = buildCustomAttributes(
 				ATTR.WORKFLOW_CUSTOM_PREFIX,
-				params.customAttributes,
+				params.workflow.customAttributes,
 			);
 			const span = this.tracer.startSpan(
 				'workflow.execute',

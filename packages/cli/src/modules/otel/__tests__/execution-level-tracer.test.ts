@@ -123,11 +123,13 @@ describe('ExecutionLevelTracer', () => {
 			tracer.startWorkflow({
 				executionId: 'exec-workflow-custom',
 				tracingContext: inboundTracingContext,
-				workflow: defaultWorkflow,
-				customAttributes: {
-					environment: 'production',
-					retryCount: '3',
-					isCritical: 'true',
+				workflow: {
+					...defaultWorkflow,
+					customAttributes: {
+						environment: 'production',
+						retryCount: '3',
+						isCritical: 'true',
+					},
 				},
 			});
 			tracer.endWorkflow({
@@ -387,8 +389,10 @@ describe('ExecutionLevelTracer', () => {
 			tracer.startWorkflow({
 				executionId: 'exec-workflow-tags-on-node',
 				tracingContext: inboundTracingContext,
-				workflow: defaultWorkflow,
-				customAttributes: { env: 'prod', retryCount: '3', isCritical: 'true' },
+				workflow: {
+					...defaultWorkflow,
+					customAttributes: { env: 'prod', retryCount: '3', isCritical: 'true' },
+				},
 			});
 			const node = { id: 'n1', name: 'Node1', type: 'test', typeVersion: 1 };
 			tracer.startNode({
@@ -418,8 +422,10 @@ describe('ExecutionLevelTracer', () => {
 			tracer.startWorkflow({
 				executionId: 'exec-workflow-node-tag-collision',
 				tracingContext: inboundTracingContext,
-				workflow: defaultWorkflow,
-				customAttributes: { env: 'workflow' },
+				workflow: {
+					...defaultWorkflow,
+					customAttributes: { env: 'workflow' },
+				},
 			});
 			const node = { id: 'n1', name: 'Node1', type: 'test', typeVersion: 1 };
 			tracer.startNode({

@@ -3,8 +3,14 @@ import type { ExecutionStatus, WorkflowExecuteMode, INode } from 'n8n-workflow';
 import type { TracingContext } from './tracing-context';
 
 type ProjectContext = { id: string };
-type WorkflowContext = { id: string; name: string; versionId?: string; nodeCount: number };
 export type CustomAttributes = Record<string, string>;
+type WorkflowContext = {
+	id: string;
+	name: string;
+	versionId?: string;
+	nodeCount: number;
+	customAttributes?: CustomAttributes;
+};
 
 export type StartWorkflowParams = {
 	executionId: string;
@@ -17,7 +23,6 @@ export type StartWorkflowParams = {
 	linkTo?: TracingContext;
 	workflow: WorkflowContext;
 	project?: ProjectContext;
-	customAttributes?: CustomAttributes;
 };
 
 export type EndWorkflowParams = {

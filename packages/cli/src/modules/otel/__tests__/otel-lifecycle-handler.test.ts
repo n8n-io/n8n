@@ -194,11 +194,13 @@ describe('OtelLifecycleHandler', () => {
 
 			expect(tracer.startWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({
-					customAttributes: {
-						environment: 'production',
-						workflowName: '={{ $workflow.name }}',
-						mode: '={{ $mode }}',
-					},
+					workflow: expect.objectContaining({
+						customAttributes: {
+							environment: 'production',
+							workflowName: '={{ $workflow.name }}',
+							mode: '={{ $mode }}',
+						},
+					}),
 				}),
 			);
 		});
@@ -223,11 +225,13 @@ describe('OtelLifecycleHandler', () => {
 
 			expect(tracer.startWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({
-					customAttributes: {
-						nullish: '={{ undefined }}',
-						objectValue: '={{ ({ nested: true }) }}',
-						failed: '={{ $json.missing.value }}',
-					},
+					workflow: expect.objectContaining({
+						customAttributes: {
+							nullish: '={{ undefined }}',
+							objectValue: '={{ ({ nested: true }) }}',
+							failed: '={{ $json.missing.value }}',
+						},
+					}),
 				}),
 			);
 			expect(logger.warn).not.toHaveBeenCalled();
@@ -237,7 +241,9 @@ describe('OtelLifecycleHandler', () => {
 			await handler.onWorkflowStart(baseCtx);
 
 			expect(tracer.startWorkflow).toHaveBeenCalledWith(
-				expect.objectContaining({ customAttributes: undefined }),
+				expect.objectContaining({
+					workflow: expect.objectContaining({ customAttributes: undefined }),
+				}),
 			);
 		});
 	});
