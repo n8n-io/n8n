@@ -17,7 +17,7 @@ jobs:
     # signal but never gates merge. Remove `continue-on-error` once we have
     # confidence the grind has a low false-positive rate.
     continue-on-error: true
-    timeout-minutes: 17
+    timeout-minutes: 20
     permissions:
       contents: read
       pull-requests: write
@@ -34,6 +34,9 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
+
+      - name: Install .github/scripts dependencies
+        run: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
       - name: Grind changed test files
         id: grind

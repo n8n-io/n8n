@@ -20,20 +20,7 @@
 import { spawnSync } from 'node:child_process';
 import { writeFileSync, appendFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
-
-/**
- * Minimal glob matcher — handles `*`, `**`, and literal segments.
- * Sufficient for the workflow's path filters, intentionally avoids
- * pulling in a hoisted transitive dep.
- */
-function globToRegex(glob) {
-	const re = glob
-		.replace(/[.+^${}()|[\]\\]/g, '\\$&')
-		.replace(/\*\*\/?/g, '<<<DOUBLESTAR>>>')
-		.replace(/\*/g, '[^/]*')
-		.replace(/<<<DOUBLESTAR>>>/g, '(?:.*/)?');
-	return new RegExp('^' + re + '$');
-}
+import { minimatch } from 'minimatch';
 
 const { values } = parseArgs({
 	options: {
@@ -88,8 +75,7 @@ if (values.files) {
 	}
 
 	const allChanged = diff.stdout.split('\n').map((s) => s.trim()).filter(Boolean);
-	const globRe = globToRegex(values.glob);
-	files = allChanged.filter((p) => globRe.test(p));
+	files = allChanged.filter((p) => minimatch(p, values.glob));
 
 	console.log(`Changed files matching ${values.glob}:`);
 	for (const f of files) console.log(`  ${f}`);
