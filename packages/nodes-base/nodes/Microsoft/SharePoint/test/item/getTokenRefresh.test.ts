@@ -12,12 +12,10 @@ describe('Microsoft SharePoint Node - Token Refresh', () => {
 
 	let updateCredentialsSpy: jest.SpyInstance;
 
-	beforeAll(() => {
+	beforeEach(() => {
 		// Mock the credential helper to return oAuth2Api as parent type
 		jest.spyOn(CredentialsHelper.prototype, 'getParentTypes').mockReturnValue(['oAuth2Api']);
-	});
 
-	beforeEach(() => {
 		// Spy on the updateCredentialsOauthTokenData to verify token refresh
 		updateCredentialsSpy = jest
 			.spyOn(CredentialsHelper.prototype, 'updateCredentialsOauthTokenData')

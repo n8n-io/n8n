@@ -838,6 +838,7 @@ export function useWorkflowHelpers() {
 		initializedWorkflowDocumentStore.setScopes(workflowData.scopes ?? []);
 		initializedWorkflowDocumentStore.setSharedWithProjects(workflowData.sharedWithProjects ?? []);
 		initializedWorkflowDocumentStore.setDescription(workflowData.description);
+		initializedWorkflowDocumentStore.setNodeGroups(workflowData.nodeGroups ?? []);
 		tagsStore.upsertTags(tags);
 
 		return { workflowDocumentStore: initializedWorkflowDocumentStore };
