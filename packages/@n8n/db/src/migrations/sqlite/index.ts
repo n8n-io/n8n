@@ -368,7 +368,6 @@ const sqliteMigrations: Migration[] = [
 	RefactorAgentObservationScope1784000000010,
 	CreateAgentHistoryTable1784000000011,
 	CreateInstanceAiObservationTables1784000000012,
-	CreateInstanceAiObservationTables1784000000012,
 	SplitRedactionScopeInCustomRoles1784000000013,
 ];
 
