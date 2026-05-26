@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import {
+	ICredentialContext,
 	IExecuteData,
 	IExecutionContext,
 	INodeExecutionData,
@@ -36,6 +37,21 @@ export class ExecutionContextService {
 			result.secureArtifacts = toSecureArtifacts(decrypted);
 		}
 		return result;
+	}
+
+	/**
+	 * Builds and encrypts a credential context for a manual editor-triggered execution.
+	 *
+	 * @param n8nAuthCookie - The JWT string extracted from the `n8n-auth` browser cookie.
+	 * @returns Encrypted credential context string for storage in `IExecutionContext.credentials`.
+	 */
+	async buildManualExecutionCredentials(n8nAuthCookie: string): Promise<string> {
+		const payload: ICredentialContext = {
+			version: 1,
+			identity: n8nAuthCookie,
+			metadata: { source: 'manual-execution' },
+		};
+		return await this.cipher.encryptV2(payload);
 	}
 
 	async encryptExecutionContext(context: PlaintextExecutionContext): Promise<IExecutionContext> {

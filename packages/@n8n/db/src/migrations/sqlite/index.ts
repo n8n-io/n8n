@@ -52,6 +52,7 @@ import { AddAgentIdForeignKeys1765886667897 } from './1765886667897-AddAgentIdFo
 import { AddChatMessageIndices1766068346315 } from './1766068346315-AddChatMessageIndices';
 import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './1767018516000-ChangeWorkflowStatisticsFKToNoAction';
 import { LimitWorkflowVersionTriggerToContent1784000000003 } from './1784000000003-LimitWorkflowVersionTriggerToContent';
+import { CreateAgentHistoryTable1784000000011 } from './1784000000011-CreateAgentHistoryTable';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -178,6 +179,8 @@ import { AddNodeGroupsColumnToWorkflowAndHistory1784000000006 } from '../common/
 import { CreateInstanceAiCheckpointTable1784000000007 } from '../common/1784000000007-CreateInstanceAiCheckpointTable';
 import { ResetInstanceAiNativePersistence1784000000008 } from '../common/1784000000008-ResetInstanceAiNativePersistence';
 import { CreateAgentMemoryEntryTables1784000000009 } from '../common/1784000000009-CreateAgentMemoryEntryTables';
+import { RefactorAgentObservationScope1784000000010 } from '../common/1784000000010-RefactorAgentObservationScope';
+import { CreateInstanceAiObservationTables1784000000012 } from '../common/1784000000012-CreateInstanceAiObservationTables';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -361,6 +364,9 @@ const sqliteMigrations: Migration[] = [
 	CreateInstanceAiCheckpointTable1784000000007,
 	ResetInstanceAiNativePersistence1784000000008,
 	CreateAgentMemoryEntryTables1784000000009,
+	RefactorAgentObservationScope1784000000010,
+	CreateAgentHistoryTable1784000000011,
+	CreateInstanceAiObservationTables1784000000012,
 ];
 
 export { sqliteMigrations };

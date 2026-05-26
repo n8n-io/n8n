@@ -737,7 +737,7 @@ export class GoogleSheet {
 				for (rowIndex = dataStartRowIndex; rowIndex < inputData.length; rowIndex++) {
 					if (
 						inputData[rowIndex][returnColumnIndex]?.toString() ===
-						lookupValue.lookupValue.toString()
+						lookupValue.lookupValue?.toString()
 					) {
 						if (addedRows.indexOf(rowIndex) === -1) {
 							returnData.push(inputData[rowIndex]);
@@ -769,7 +769,7 @@ export class GoogleSheet {
 
 					if (
 						inputData[rowIndex][returnColumnIndex]?.toString() !==
-						lookupValue.lookupValue.toString()
+						lookupValue.lookupValue?.toString()
 					) {
 						allMatch = false;
 						break;

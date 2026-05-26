@@ -4,3 +4,6 @@ export { InstanceAiResourceRepository } from './instance-ai-resource.repository'
 export { InstanceAiRunSnapshotRepository } from './instance-ai-run-snapshot.repository';
 export { InstanceAiIterationLogRepository } from './instance-ai-iteration-log.repository';
 export { InstanceAiCheckpointRepository } from './instance-ai-checkpoint.repository';
+export { InstanceAiObservationRepository } from './instance-ai-observation.repository';
+export { InstanceAiObservationCursorRepository } from './instance-ai-observation-cursor.repository';
+export { InstanceAiObservationLockRepository } from './instance-ai-observation-lock.repository';

@@ -91,7 +91,6 @@ import type {
 	ToolResultEntry,
 } from '../types/sdk/agent';
 import type { AgentDbMessage, AgentMessage, ContentToolCall, Message } from '../types/sdk/message';
-import { createObservationLogThreadScopeId } from '../types/sdk/observation-log';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../types/sdk/observation-log';
 import type { JSONObject, JSONValue } from '../types/utils/json';
 import { parseWithSchema } from '../utils/parse';
@@ -207,7 +206,7 @@ export interface AgentRuntimeConfig {
 	telemetry?: BuiltTelemetry;
 }
 
-const MAX_LOOP_ITERATIONS = 20;
+const MAX_LOOP_ITERATIONS = 30;
 const DEFAULT_MEMORY_TASK_LOCK_TTL_MS = 30_000;
 const logger = createFilteredLogger();
 
@@ -234,7 +233,7 @@ function hasObservationLogObserverMemory(
 ): memory is ObservationLogObserverMemory {
 	return (
 		hasObservationLogStore(memory) &&
-		hasFunctionProperty(memory, 'getMessagesForScope') &&
+		hasFunctionProperty(memory, 'getMessagesForObservationScope') &&
 		hasFunctionProperty(memory, 'getCursor') &&
 		hasFunctionProperty(memory, 'setCursor')
 	);
@@ -310,10 +309,12 @@ interface ToolCallBatchResult {
 	pending: Record<string, PendingToolCall>;
 }
 
+type RuntimeExecutionOptions = RunOptions & ExecutionOptions & { iterationCount?: number };
+
 /** Shared input for the private generate/stream loops. */
 interface LoopContext {
 	list: AgentMessageList;
-	options?: RunOptions & ExecutionOptions;
+	options?: RuntimeExecutionOptions;
 	runId: string;
 	pendingResume?: PendingResume;
 }
@@ -501,12 +502,26 @@ export class AgentRuntime {
 			// Merge persisted execution options with fresh caller options
 			const { runId: _rid, toolCallId: _tcid, ...callerExecOptions } = options;
 			const persisted = state.executionOptions ?? {};
-			const mergedExecOptions: ExecutionOptions = {
-				...persisted,
+			const persistedMaxIterations = persisted.maxIterations;
+			const callerMaxIterations = callerExecOptions.maxIterations;
+			if (
+				callerMaxIterations !== undefined &&
+				persistedMaxIterations !== undefined &&
+				callerMaxIterations < persistedMaxIterations
+			) {
+				throw new Error(
+					`Cannot decrease maxIterations when resuming a run. Expected >= ${persistedMaxIterations}, received ${callerMaxIterations}.`,
+				);
+			}
+
+			const mergedMaxIterations = callerMaxIterations ?? persistedMaxIterations;
+			const mergedExecOptions: ExecutionOptions & { iterationCount?: number } = {
 				...callerExecOptions,
+				...(mergedMaxIterations !== undefined ? { maxIterations: mergedMaxIterations } : {}),
+				...(state.iterationCount !== undefined ? { iterationCount: state.iterationCount } : {}),
 			};
 
-			const resumeOptions: RunOptions & ExecutionOptions = {
+			const resumeOptions: RuntimeExecutionOptions = {
 				persistence: state.persistence,
 				...mergedExecOptions,
 			};
@@ -963,6 +978,9 @@ export class AgentRuntime {
 			telemetry: runTelemetry,
 			executionCounter: options?.executionCounter,
 		};
+		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
+		let iterationCount = options?.iterationCount ?? 0;
+		let reachedStopCondition = false;
 
 		if (pendingResume) {
 			const batch = await this.iteratePendingToolCallsConcurrent({
@@ -982,6 +1000,8 @@ export class AgentRuntime {
 					list,
 					totalUsage,
 					runId,
+					maxIterations,
+					iterationCount,
 				);
 				return {
 					runId: suspendRunId,
@@ -1000,9 +1020,8 @@ export class AgentRuntime {
 			}
 		}
 
-		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
-		const { generateText } = getAiSdk();
-		for (let i = 0; i < maxIterations; i++) {
+		const { generateText } = loadAi();
+		for (; iterationCount < maxIterations; iterationCount++) {
 			if (this.eventBus.isAborted) {
 				this.updateState({ status: 'cancelled' });
 				throw new Error('Agent run was aborted');
@@ -1042,6 +1061,7 @@ export class AgentRuntime {
 					structuredOutput = result.output;
 				}
 				this.emitTurnEnd(newMessages, extractSettledToolCalls(newMessages));
+				reachedStopCondition = true;
 				break;
 			}
 
@@ -1066,6 +1086,8 @@ export class AgentRuntime {
 					list,
 					totalUsage,
 					runId,
+					maxIterations,
+					iterationCount + 1,
 				);
 				return {
 					runId: suspendRunId,
@@ -1087,10 +1109,8 @@ export class AgentRuntime {
 			this.emitTurnEnd(newMessages, extractSettledToolCalls(list.responseDelta()));
 		}
 
-		if (lastFinishReason === 'tool-calls') {
-			throw new Error(
-				`Agent loop exceeded ${maxIterations} iterations without reaching a stop condition`,
-			);
+		if (!reachedStopCondition && iterationCount >= maxIterations) {
+			lastFinishReason = 'max-iterations';
 		}
 
 		await this.saveToMemory(list, options);
@@ -1190,7 +1210,9 @@ export class AgentRuntime {
 		let structuredOutput: unknown;
 		const collectedSubAgentUsage: SubAgentUsage[] = [];
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
-		const { streamText } = getAiSdk();
+		let iterationCount = options?.iterationCount ?? 0;
+		let reachedStopCondition = false;
+		const { streamText } = loadAi();
 
 		const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
 			await this.cleanupRun(runId);
@@ -1260,6 +1282,8 @@ export class AgentRuntime {
 						list,
 						totalUsage,
 						runId,
+						maxIterations,
+						iterationCount,
 					);
 					for (const s of batch.suspensions) {
 						await writer.write({
@@ -1283,7 +1307,7 @@ export class AgentRuntime {
 			}
 		}
 
-		for (let i = 0; i < maxIterations; i++) {
+		for (; iterationCount < maxIterations; iterationCount++) {
 			if (await handleAbort()) return;
 
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
@@ -1348,6 +1372,7 @@ export class AgentRuntime {
 					structuredOutput = await result.output;
 				}
 				this.emitTurnEnd(newMessages, extractSettledToolCalls(newMessages));
+				reachedStopCondition = true;
 				break;
 			}
 
@@ -1395,6 +1420,8 @@ export class AgentRuntime {
 						list,
 						totalUsage,
 						runId,
+						maxIterations,
+						iterationCount + 1,
 					);
 					for (const s of batch.suspensions) {
 						await writer.write({
@@ -1419,6 +1446,9 @@ export class AgentRuntime {
 
 			// Emit TurnEnd after all tool calls in this iteration are processed
 			this.emitTurnEnd(newMessages, extractSettledToolCalls(list.responseDelta()));
+		}
+		if (!reachedStopCondition && iterationCount >= maxIterations) {
+			lastFinishReason = 'max-iterations';
 		}
 
 		const costUsage = this.applyCost(totalUsage);
@@ -1521,10 +1551,6 @@ export class AgentRuntime {
 							observerThresholdTokens,
 							observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
 							observe,
-							messageSource: {
-								threadId: persistence.threadId,
-								resourceId: persistence.resourceId,
-							},
 						}),
 				),
 			);
@@ -1662,8 +1688,7 @@ export class AgentRuntime {
 				const message = `Observation log ${source} task failed`;
 				logger.warn(message, {
 					error: event.error,
-					scopeKind: event.task.scopeKind,
-					scopeId: event.task.scopeId,
+					observationScopeId: event.task.observationScopeId,
 				});
 				this.eventBus.emit({ type: AgentEvent.Error, message, error: event.error, source });
 			},
@@ -1673,8 +1698,7 @@ export class AgentRuntime {
 
 	private getObservationLogScope(persistence: AgentPersistenceOptions): ObservationLogScope {
 		return {
-			scopeKind: 'thread',
-			scopeId: createObservationLogThreadScopeId(persistence.threadId, persistence.resourceId),
+			observationScopeId: persistence.threadId,
 		};
 	}
 
@@ -2328,17 +2352,21 @@ export class AgentRuntime {
 	 */
 	private async persistSuspension(
 		pendingToolCalls: Record<string, PendingToolCall>,
-		options: (RunOptions & ExecutionOptions) | undefined,
+		options: RuntimeExecutionOptions | undefined,
 		list: AgentMessageList,
 		totalUsage: TokenUsage | undefined,
 		existingRunId?: string,
+		maxIterations?: number,
+		iterationCount?: number,
 	): Promise<string> {
 		const runId = existingRunId ?? generateRunId();
 
-		// Only persist maxIterations. providerOptions are intentionally excluded
+		// Persist loop controls only. providerOptions are intentionally excluded
 		// because they may contain sensitive data (API keys, auth headers).
+		const resolvedMaxIterations = maxIterations ?? options?.maxIterations;
+		const resolvedIterationCount = iterationCount ?? options?.iterationCount;
 		const executionOptions: PersistedExecutionOptions | undefined =
-			options?.maxIterations !== undefined ? { maxIterations: options.maxIterations } : undefined;
+			resolvedMaxIterations !== undefined ? { maxIterations: resolvedMaxIterations } : undefined;
 
 		const state: SerializableAgentState = {
 			persistence: options?.persistence,
@@ -2347,6 +2375,7 @@ export class AgentRuntime {
 			pendingToolCalls,
 			usage: totalUsage,
 			executionOptions,
+			...(resolvedIterationCount !== undefined ? { iterationCount: resolvedIterationCount } : {}),
 		};
 		await this.runState.suspend(runId, state);
 		this.updateState({ status: 'suspended', pendingToolCalls, messageList: list.serialize() });
@@ -2422,6 +2451,15 @@ export class AgentRuntime {
 			renderObservationLog(observations, {
 				renderTokenBudget: this.config.observationLog?.renderTokenBudget,
 			}) ?? undefined;
+		// Observations are stamped at observer run time, after the messages they
+		// observed are persisted, so the latest observation's createdAt is a safe
+		// upper bound on those messages' createdAt. Seeding the list's clock here
+		// keeps new live messages ordered after the observer cursor's
+		// lastObservedAt even when resource-filtered history did not surface them
+		// (e.g. resources sharing a thread on fast back-to-back runs).
+		if (observations.length > 0) {
+			list.seedLastCreatedAt(observations[observations.length - 1].createdAt.getTime());
+		}
 	}
 
 	/**
