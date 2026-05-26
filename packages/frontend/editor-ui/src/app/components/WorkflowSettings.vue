@@ -29,6 +29,7 @@ import {
 } from '@n8n/design-system';
 import type { WorkflowSettings, WorkflowSettingsBinaryMode } from 'n8n-workflow';
 import { BINARY_MODE_COMBINED, BINARY_MODE_SEPARATE } from 'n8n-workflow';
+import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
@@ -149,6 +150,25 @@ const isSelectedResolverEditable = computed(() => {
 
 	const resolverType = credentialResolverTypes.value.find((t) => t.name === resolver.type);
 	return !!resolverType?.options?.length;
+});
+
+// Display-only binding for the resolver dropdown. Falls back to the seeded n8n system
+// resolver when nothing is explicitly chosen so users see the effective default; writes
+// back `undefined` for the system resolver so we don't persist the implicit default.
+const selectedResolverId = computed({
+	get(): string | undefined {
+		const resolverId = workflowSettings.value.credentialResolverId;
+		if (resolverId) return resolverId;
+		return credentialResolvers.value.some((r) => r.id === SYSTEM_RESOLVER_ID)
+			? SYSTEM_RESOLVER_ID
+			: undefined;
+	},
+	set(value: string | undefined) {
+		// Don't persist when the user (re)selects the system resolver — it's the
+		// implicit fallback already, and storing the id would tie the workflow to
+		// a specific seeded row.
+		workflowSettings.value.credentialResolverId = value === SYSTEM_RESOLVER_ID ? undefined : value;
+	},
 });
 
 const helpTexts = computed(() => ({
@@ -964,7 +984,7 @@ onBeforeUnmount(() => {
 						<div :class="$style['credential-resolver-container']">
 							<N8nSelect
 								ref="credentialResolverSelectRef"
-								v-model="workflowSettings.credentialResolverId"
+								v-model="selectedResolverId"
 								:placeholder="i18n.baseText('workflowSettings.credentialResolver.placeholder')"
 								filterable
 								clearable

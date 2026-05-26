@@ -1,5 +1,12 @@
 import { z } from 'zod';
 
+/**
+ * Stable, well-known id of the system-managed N8N self-connect credential resolver
+ * seeded during module init. Used as the default selection in the workflow-settings
+ * resolver dropdown when no resolver has been chosen.
+ */
+export const SYSTEM_RESOLVER_ID = 'system-n8n';
+
 export const credentialResolverIdSchema = z.string().max(36);
 export const credentialResolverNameSchema = z.string().trim().min(1).max(255);
 export const credentialResolverTypeNameSchema = z.string().trim().min(1).max(255);
