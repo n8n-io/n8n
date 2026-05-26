@@ -1,0 +1,28 @@
+packages/cli/src/public-api/v1/handlers/source-control/spec/schemas/pullResult.yml
+  s_44141d8bd6c445::t_1f4302ff909fdf 1-3
+packages/cli/src/public-api/v1/handlers/source-control/spec/schemas/sourceControlledFile.yml
+  s_44141d8bd6c445::t_2791e7198674bc 2-10,12-59,62-63,65-68,70-80
+packages/cli/src/public-api/v1/shared/spec/schemas/_index.yml
+  s_44141d8bd6c445::t_6da52ea0a7445f 27-30
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/sourceControl.yml
+  s_44141d8bd6c445::t_04db038712d3fa 26
+  s_44141d8bd6c445::t_bdaa6a4961438e 21,27-30
+  s_44141d8bd6c445::t_ea487eaa9e0966 17
+  s_44141d8bd6c445::t_76a61a87df46d4 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "b46af8ce0515fa59bced5fa1fe819a6c6f941409",
+  "prompts": {},
+  "sessions": {
+    "s_44141d8bd6c445": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d88a839d-5616-4684-b72d-34fc58a9c3a3",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Marc Littlemore <marc@n8n.io>"
+    }
+  }
+}
