@@ -20,11 +20,12 @@ const mockFileResponse = {
 
 describe('AWS S3 V2 Node - File Download', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const awsApiRequestRESTSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
+	let awsApiRequestRESTSpy: jest.SpyInstance;
 	let node: AwsS3V2;
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		awsApiRequestRESTSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
 		node = new AwsS3V2({
 			displayName: 'AWS S3',
 			name: 'awsS3',
@@ -355,8 +356,8 @@ describe('AWS S3 V2 Node - File Download', () => {
 
 describe('AWS S3 V2 Node - Bucket Search', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const awsApiRequestRESTSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
-	const awsApiRequestRESTAllItemsSpy = jest.spyOn(GenericFunctions, 'awsApiRequestRESTAllItems');
+	let awsApiRequestRESTSpy: jest.SpyInstance;
+	let awsApiRequestRESTAllItemsSpy: jest.SpyInstance;
 	let node: AwsS3V2;
 
 	const mockContents = [
@@ -373,6 +374,8 @@ describe('AWS S3 V2 Node - Bucket Search', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		awsApiRequestRESTSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
+		awsApiRequestRESTAllItemsSpy = jest.spyOn(GenericFunctions, 'awsApiRequestRESTAllItems');
 		node = new AwsS3V2({
 			displayName: 'AWS S3',
 			name: 'awsS3',

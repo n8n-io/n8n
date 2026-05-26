@@ -269,7 +269,7 @@ describe('GlobalConfig', () => {
 			streamStateTtl: 300,
 		},
 		instanceAi: {
-			model: 'anthropic/claude-sonnet-4-6',
+			model: 'anthropic/claude-opus-4-7',
 			modelUrl: '',
 			modelApiKey: '',
 			maxContextWindowTokens: 500_000,
@@ -289,6 +289,7 @@ describe('GlobalConfig', () => {
 			n8nSandboxServiceApiKey: '',
 			sandboxTimeout: 300000,
 			sandboxNamePrefix: '',
+			daytonaTokenRefreshSkewMs: 300_000,
 			builderSandboxTtlMs: 600_000,
 			braveSearchApiKey: '',
 			searxngUrl: '',

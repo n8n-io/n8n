@@ -11,11 +11,8 @@ import {
 const securityConfig = mock<SecurityConfig>();
 
 describe('isWebhookHtmlSandboxingDisabled', () => {
-	beforeAll(() => {
+	beforeEach(() => {
 		jest.spyOn(Container, 'get').mockReturnValue(securityConfig);
-	});
-	afterAll(() => {
-		jest.restoreAllMocks();
 	});
 
 	it('should return false when sandboxing is enabled', () => {
@@ -30,11 +27,8 @@ describe('isWebhookHtmlSandboxingDisabled', () => {
 });
 
 describe('isFormHtmlSandboxingDisabled', () => {
-	beforeAll(() => {
+	beforeEach(() => {
 		jest.spyOn(Container, 'get').mockReturnValue(securityConfig);
-	});
-	afterAll(() => {
-		jest.restoreAllMocks();
 	});
 
 	it('should return false when sandboxing is enabled', () => {
