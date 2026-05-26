@@ -86,6 +86,7 @@ declare global {
 						maskAllInputs?: boolean;
 						maskInputFn?: ((text: string, element?: HTMLElement) => string) | null;
 					};
+					loaded?: (posthog: typeof window.posthog) => void;
 				},
 			): void;
 			isFeatureEnabled?(flagName: string): boolean;

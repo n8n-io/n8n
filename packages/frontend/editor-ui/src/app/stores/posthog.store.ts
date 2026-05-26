@@ -114,10 +114,6 @@ export const usePostHog = defineStore('posthog', () => {
 		};
 	}
 
-	const groupIdentify = (groupKey: string, instanceId: string) => {
-		window.posthog?.group?.(groupKey, instanceId);
-	};
-
 	const identify = () => {
 		const instanceId = rootStore.instanceId;
 		const user = usersStore.currentUser;
@@ -134,6 +130,11 @@ export const usePostHog = defineStore('posthog', () => {
 		// For PostHog, main ID _cannot_ be `undefined` as done for RudderStack.
 		const id = user ? `${instanceId}#${user.id}` : instanceId;
 		window.posthog?.identify?.(id, traits);
+	};
+
+	const groupIdentify = () => {
+		const instanceId = rootStore.instanceId;
+		window.posthog?.group?.('company', instanceId);
 	};
 
 	const trackExperiment = (featFlags: FeatureFlags, name: string) => {
@@ -185,9 +186,13 @@ export const usePostHog = defineStore('posthog', () => {
 			},
 		};
 
-		window.posthog?.init(config.apiKey, options);
-		identify();
-		groupIdentify('company', instanceId);
+		window.posthog?.init(config.apiKey, {
+			...options,
+			loaded: () => {
+				identify();
+				groupIdentify();
+			},
+		});
 
 		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
 			featureFlags.value = evaluatedFeatureFlags;
@@ -238,7 +243,6 @@ export const usePostHog = defineStore('posthog', () => {
 		waitForFeatureFlags,
 		reset,
 		identify,
-		groupIdentify,
 		setMetadata,
 		capture,
 		overrides,
