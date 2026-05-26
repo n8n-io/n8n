@@ -303,31 +303,6 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.additionalData.credentialsHelper.getCredentialsProperties(type);
 	}
 
-	/**
-	 * Eval-mode credential synthesizer for nodes with no credential of any
-	 * type configured. Defers to the credentials helper's `synthesizeAndDecrypt`
-	 * hook when present (e.g. `EvalMockedCredentialsHelper` in cli) so post-
-	 * resolve rewrites — wire-server URL injection for unpinned vendor SDK
-	 * nodes — still apply. Falls back to a bare synthetic for callers that
-	 * don't register a helper override.
-	 *
-	 * Extracted from `_getCredentials` to keep that method's branch count
-	 * under the linter's complexity cap.
-	 */
-	private async synthesizeEvalCredentials(
-		type: string,
-		executeData?: IExecuteData,
-	): Promise<ICredentialDataDecryptedObject> {
-		const helper = this.additionalData.credentialsHelper;
-		if (typeof helper.synthesizeAndDecrypt === 'function') {
-			return await helper.synthesizeAndDecrypt(type, executeData);
-		}
-		const { buildEvalMockCredentials } = await import('../eval-mock-helpers');
-		return buildEvalMockCredentials(
-			helper.getCredentialsProperties(type),
-		) as ICredentialDataDecryptedObject;
-	}
-
 	/** Returns the requested decrypted credentials if the node has access to them */
 	protected async _getCredentials<T extends object = ICredentialDataDecryptedObject>(
 		type: string,
@@ -339,10 +314,21 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 		// Eval-mode bypass: only mock when the node is fully unconfigured, so
 		// nodes that probe multiple auth types still get production's throw.
+		// Delegates to the credentials helper with a null-id `INodeCredentialsDetails`;
+		// `EvalMockedCredentialsHelper` catches the resulting `CredentialNotFoundError`
+		// and schema-synthesizes (and applies the wire-server URL rewrite). Production
+		// helpers don't catch — but production never reaches this branch because
+		// `evalLlmMockHandler` is only set in eval mode.
 		if (mode === 'evaluation' && additionalData.evalLlmMockHandler && !node.credentials?.[type]) {
 			const hasOtherCreds = !!node.credentials && Object.keys(node.credentials).length > 0;
 			if (!hasOtherCreds) {
-				return (await this.synthesizeEvalCredentials(type, executeData)) as T;
+				return (await additionalData.credentialsHelper.getDecrypted(
+					additionalData,
+					{ id: null, name: type },
+					type,
+					mode,
+					executeData,
+				)) as T;
 			}
 		}
 

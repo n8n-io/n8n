@@ -124,55 +124,25 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 				credentialId: nodeCredentials.id ?? undefined,
 			});
 
-			credentials = { [MOCK_MARKER]: true };
+			// When called with no credential id (eval-mode bypass for nodes
+			// with no credentials of any type configured), schema-synthesize
+			// so the wire-server URL rewrite below has a real `url` field to
+			// augment. Otherwise vendor SDK traffic would escape to the real
+			// provider with placeholder values and 401 at the wire layer.
+			// `buildEvalMockCredentials` is typed `Record<string, unknown>` —
+			// schema defaults can be richer than `CredentialInformation`, but
+			// at runtime emits only JSON-shaped values, which is what the
+			// rewrite path consumes.
+			credentials =
+				nodeCredentials.id === null
+					? ({
+							...buildEvalMockCredentials(this.inner.getCredentialsProperties(type)),
+							[MOCK_MARKER]: true,
+						} as ICredentialDataDecryptedObject)
+					: { [MOCK_MARKER]: true };
 		}
 
 		return this.applyServerUrlRewrite(credentials, type, nodeCredentials, executeData);
-	}
-
-	/**
-	 * Synthesize a credential from its schema and apply the URL rewrite.
-	 *
-	 * Hook the n8n-core eval-mode bypass calls when a node has no credentials
-	 * configured at all. The bypass exists so HTTP-helper-mocked workflows can
-	 * run without real keys, but without this hook the bypass would short-
-	 * circuit `getDecrypted` and skip our path-based URL rewrite — vendor SDK
-	 * traffic would then escape to the real provider with placeholder values
-	 * and 401 at the wire layer.
-	 *
-	 * Declared as an optional method on `ICredentialsHelper`; see
-	 * `_getCredentials` in `node-execution-context.ts`.
-	 */
-	async synthesizeAndDecrypt(
-		type: string,
-		executeData?: IExecuteData,
-	): Promise<ICredentialDataDecryptedObject> {
-		const schema = this.inner.getCredentialsProperties(type);
-		// `buildEvalMockCredentials` is typed `Record<string, unknown>` because
-		// schema defaults can be richer than `CredentialInformation` (e.g.
-		// `INodeParameterResourceLocator`). At runtime the values it emits
-		// are all string / boolean / number / JSON-shaped objects — fine for
-		// the rewrite path, which only reads + augments the `url` field.
-		// Brand it with `MOCK_MARKER` so `authenticate` / `preAuthentication`
-		// / `runPreAuthentication` short-circuit to the marker branch instead
-		// of delegating synthetic credentials through the inner helper's
-		// real-auth flow (OAuth refresh, PreSend hooks, etc.).
-		const synthetic = {
-			...buildEvalMockCredentials(schema),
-			[MOCK_MARKER]: true,
-		} as ICredentialDataDecryptedObject;
-
-		this.mockedCredentials.push({
-			nodeName: executeData?.node?.name ?? 'unknown',
-			credentialType: type,
-			credentialId: undefined,
-		});
-
-		// No `nodeCredentials.id` exists for a synthesized credential — pass
-		// a stub `INodeCredentialsDetails` shape so the existing rewrite
-		// branch logs and returns identically to the "real creds resolved" path.
-		const syntheticNodeCredentials: INodeCredentialsDetails = { id: null, name: type };
-		return this.applyServerUrlRewrite(synthetic, type, syntheticNodeCredentials, executeData);
 	}
 
 	private applyServerUrlRewrite(
