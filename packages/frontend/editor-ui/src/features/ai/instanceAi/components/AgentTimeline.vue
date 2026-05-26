@@ -127,7 +127,7 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 		provided_inputs: [
 			{
 				label: 'plan',
-				options: ['approve', 'request-changes'],
+				options: ['approve', 'request-changes', 'deny'],
 				option_chosen: approved ? 'approve' : 'request-changes',
 			},
 		],
@@ -143,6 +143,43 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 		approved,
 		...(feedback ? { userInput: feedback } : {}),
 	});
+}
+
+/** PlanReviewPanel is read-only when its tool call has settled OR when the
+ *  underlying confirmation has already been resolved client-side. Without the
+ *  resolvedConfirmationIds check, a freshly-loading new plan tool call could
+ *  briefly re-enable the old card's footer (toolCall.isLoading flips back to
+ *  true on tool-call-start before the previous card's read-only catches up). */
+function isPlanCardReadOnly(tc: InstanceAiToolCallState): boolean {
+	if (!tc.isLoading) return true;
+	const requestId = tc.confirmation?.requestId;
+	if (requestId && thread.resolvedConfirmationIds.has(requestId)) return true;
+	return false;
+}
+
+function handlePlanDeny(tc: InstanceAiToolCallState) {
+	const requestId = tc.confirmation?.requestId;
+	if (!requestId) return;
+
+	const numTasks = ((tc.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length;
+	telemetry.track('User finished providing input', {
+		thread_id: thread.id,
+		input_thread_id: tc.confirmation?.inputThreadId ?? '',
+		instance_id: rootStore.instanceId,
+		type: 'plan-review',
+		provided_inputs: [
+			{
+				label: 'plan',
+				options: ['approve', 'request-changes', 'deny'],
+				option_chosen: 'deny',
+			},
+		],
+		skipped_inputs: [],
+		num_tasks: numTasks,
+	});
+
+	thread.resolveConfirmation(requestId, 'denied');
+	void thread.confirmAction(requestId, { kind: 'planDeny' });
 }
 
 /** Find the latest plan-review confirmation from a planner child's submit-plan tool call.
@@ -217,15 +254,17 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				     (no planner child agent), that suppression would otherwise hide it. -->
 				<PlanReviewPanel
 					v-else-if="toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'"
+					:key="toolCallsById[entry.toolCallId].confirmation?.requestId"
 					:planned-tasks="
 						toolCallsById[entry.toolCallId].confirmation?.planItems ??
 						(toolCallsById[entry.toolCallId].args?.tasks as PlannedTaskArg[] | undefined) ??
 						mapTaskItemsToPlannedTasks(toolCallsById[entry.toolCallId].confirmation?.tasks) ??
 						[]
 					"
-					:read-only="!toolCallsById[entry.toolCallId].isLoading"
+					:read-only="isPlanCardReadOnly(toolCallsById[entry.toolCallId])"
 					@approve="handlePlanConfirm(toolCallsById[entry.toolCallId], true)"
 					@request-changes="(fb) => handlePlanConfirm(toolCallsById[entry.toolCallId], false, fb)"
+					@deny="handlePlanDeny(toolCallsById[entry.toolCallId])"
 				/>
 				<!-- Planner: suppress tool call — PlanReviewPanel renders after the child AgentSection -->
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'planner'" />
@@ -283,6 +322,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					@request-changes="
 						(fb) => plannerConfirmation && handlePlanConfirm(plannerConfirmation, false, fb)
 					"
+					@deny="plannerConfirmation && handlePlanDeny(plannerConfirmation)"
 				/>
 
 				<!-- Artifact cards for completed subagents (skip when inside grouped view) -->
