@@ -87,7 +87,7 @@ describe('WorkflowExporter', () => {
 		const { exporter } = makeExporter([workflow]);
 		const writer = new CapturingWriter();
 
-		const entries = await exporter.export({
+		const { entries } = await exporter.export({
 			user,
 			workflowIds: [workflow.id, workflow.id],
 			writer,
@@ -107,7 +107,7 @@ describe('WorkflowExporter', () => {
 		const { exporter } = makeExporter([a, b]);
 		const writer = new CapturingWriter();
 
-		const entries = await exporter.export({ user, workflowIds: [a.id, b.id], writer });
+		const { entries } = await exporter.export({ user, workflowIds: [a.id, b.id], writer });
 
 		const targets = entries.map((e) => e.target);
 		expect(targets).toEqual(['workflows/same-name', 'workflows/same-name-2']);
@@ -115,5 +115,184 @@ describe('WorkflowExporter', () => {
 		const writtenPaths = writer.files.map((f) => f.path);
 		expect(writtenPaths).toContain('workflows/same-name/workflow.json');
 		expect(writtenPaths).toContain('workflows/same-name-2/workflow.json');
+	});
+
+	describe('credential references', () => {
+		it('emits no references for workflows whose nodes have no credentials', async () => {
+			const workflow = makeWorkflow({
+				id: 'wf-no-creds',
+				nodes: [
+					{
+						id: 'n1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+			});
+			const { exporter } = makeExporter([workflow]);
+			const writer = new CapturingWriter();
+
+			const { credentialReferences } = await exporter.export({
+				user,
+				workflowIds: [workflow.id],
+				writer,
+			});
+
+			expect(credentialReferences).toEqual([]);
+		});
+
+		it('emits one reference per node credential slot, keyed by credential type', async () => {
+			// node.credentials is { [credentialTypeKey]: { id, name } } — the
+			// type comes from the map key, not the value.
+			const workflow = makeWorkflow({
+				id: 'wf-creds',
+				nodes: [
+					{
+						id: 'n1',
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+						credentials: {
+							httpHeaderAuth: { id: 'cred-1', name: 'Header credential' },
+							httpBasicAuth: { id: 'cred-2', name: 'Basic credential' },
+						},
+					},
+				],
+			});
+			const { exporter } = makeExporter([workflow]);
+			const writer = new CapturingWriter();
+
+			const { credentialReferences } = await exporter.export({
+				user,
+				workflowIds: [workflow.id],
+				writer,
+			});
+
+			expect(credentialReferences).toEqual(
+				expect.arrayContaining([
+					{
+						workflowId: 'wf-creds',
+						credentialId: 'cred-1',
+						credentialName: 'Header credential',
+						credentialType: 'httpHeaderAuth',
+					},
+					{
+						workflowId: 'wf-creds',
+						credentialId: 'cred-2',
+						credentialName: 'Basic credential',
+						credentialType: 'httpBasicAuth',
+					},
+				]),
+			);
+			expect(credentialReferences).toHaveLength(2);
+		});
+
+		it('dedupes references when the same credential id appears in two nodes of one workflow', async () => {
+			const workflow = makeWorkflow({
+				id: 'wf-dup',
+				nodes: [
+					{
+						id: 'n1',
+						name: 'HTTP A',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+						credentials: {
+							httpHeaderAuth: { id: 'cred-shared', name: 'Shared' },
+						},
+					},
+					{
+						id: 'n2',
+						name: 'HTTP B',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+						credentials: {
+							httpHeaderAuth: { id: 'cred-shared', name: 'Shared' },
+						},
+					},
+				],
+			});
+			const { exporter } = makeExporter([workflow]);
+			const writer = new CapturingWriter();
+
+			const { credentialReferences } = await exporter.export({
+				user,
+				workflowIds: [workflow.id],
+				writer,
+			});
+
+			expect(credentialReferences).toEqual([
+				{
+					workflowId: 'wf-dup',
+					credentialId: 'cred-shared',
+					credentialName: 'Shared',
+					credentialType: 'httpHeaderAuth',
+				},
+			]);
+		});
+
+		it('emits separate references for the same credential id used by two distinct workflows', async () => {
+			const a = makeWorkflow({
+				id: 'wf-a',
+				name: 'A',
+				nodes: [
+					{
+						id: 'n1',
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+						credentials: { httpHeaderAuth: { id: 'cred-x', name: 'X' } },
+					},
+				],
+			});
+			const b = makeWorkflow({
+				id: 'wf-b',
+				name: 'B',
+				nodes: [
+					{
+						id: 'n1',
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+						credentials: { httpHeaderAuth: { id: 'cred-x', name: 'X' } },
+					},
+				],
+			});
+			const { exporter } = makeExporter([a, b]);
+			const writer = new CapturingWriter();
+
+			const { credentialReferences } = await exporter.export({
+				user,
+				workflowIds: [a.id, b.id],
+				writer,
+			});
+
+			expect(credentialReferences).toEqual([
+				{
+					workflowId: 'wf-a',
+					credentialId: 'cred-x',
+					credentialName: 'X',
+					credentialType: 'httpHeaderAuth',
+				},
+				{
+					workflowId: 'wf-b',
+					credentialId: 'cred-x',
+					credentialName: 'X',
+					credentialType: 'httpHeaderAuth',
+				},
+			]);
+		});
 	});
 });

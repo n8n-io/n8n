@@ -26,7 +26,7 @@ export class N8nPackagesService {
 	async exportWorkflows(request: ExportWorkflowsRequest): Promise<Readable> {
 		const writer = new TarPackageWriter();
 
-		const workflowEntries = await this.workflowExporter.export({
+		const { entries: workflowEntries } = await this.workflowExporter.export({
 			user: request.user,
 			workflowIds: request.workflowIds,
 			writer,

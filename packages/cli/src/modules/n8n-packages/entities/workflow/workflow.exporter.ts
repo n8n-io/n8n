@@ -1,10 +1,11 @@
-import type { User } from '@n8n/db';
+import type { User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowSerializer } from './workflow.serializer';
+import type { CredentialReferenceFromWorkflow } from './workflow.types';
 import type { PackageWriter } from '../../io/package-writer';
 import { generateSlug } from '../../io/slug.utils';
 import type { ManifestEntry } from '../../spec/manifest.schema';
@@ -15,6 +16,11 @@ export interface WorkflowExportRequest {
 	writer: PackageWriter;
 }
 
+export interface WorkflowExportResult {
+	entries: ManifestEntry[];
+	credentialReferences: CredentialReferenceFromWorkflow[];
+}
+
 @Service()
 export class WorkflowExporter {
 	constructor(
@@ -22,7 +28,7 @@ export class WorkflowExporter {
 		private readonly workflowSerializer: WorkflowSerializer,
 	) {}
 
-	async export(request: WorkflowExportRequest): Promise<ManifestEntry[]> {
+	async export(request: WorkflowExportRequest): Promise<WorkflowExportResult> {
 		const workflows = await this.workflowFinder.findWorkflowsByIdsForUser(
 			request.workflowIds,
 			request.user,
@@ -33,6 +39,7 @@ export class WorkflowExporter {
 		this.assertAllRequestedWorkflowsFound(request.workflowIds, workflows);
 
 		const entries: ManifestEntry[] = [];
+		const credentialReferences: CredentialReferenceFromWorkflow[] = [];
 		const usedTargets = new Set<string>();
 
 		for (const workflow of workflows) {
@@ -47,9 +54,37 @@ export class WorkflowExporter {
 				name: workflow.name,
 				target,
 			});
+
+			credentialReferences.push(...this.collectCredentialReferences(workflow));
 		}
 
-		return entries;
+		return { entries, credentialReferences };
+	}
+
+	private collectCredentialReferences(workflow: WorkflowEntity): CredentialReferenceFromWorkflow[] {
+		const seen = new Set<string>();
+		const references: CredentialReferenceFromWorkflow[] = [];
+
+		for (const node of workflow.nodes ?? []) {
+			if (!node.credentials) continue;
+
+			for (const [credentialType, details] of Object.entries(node.credentials)) {
+				// `id` is nullable when the user has dropped a credential slot onto a
+				// node without selecting one yet — nothing to export in that case.
+				if (!details?.id) continue;
+				if (seen.has(details.id)) continue;
+				seen.add(details.id);
+
+				references.push({
+					workflowId: workflow.id,
+					credentialId: details.id,
+					credentialName: details.name,
+					credentialType,
+				});
+			}
+		}
+
+		return references;
 	}
 
 	private allocateUniqueFileName(name: string, used: Set<string>): string {
