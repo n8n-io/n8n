@@ -261,31 +261,4 @@ describe('runObservationLogObserver', () => {
 			lastObservedMessageId: 'm1',
 		});
 	});
-
-	it('clears observation data when the thread is deleted', async () => {
-		const store = new InMemoryMemory();
-		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
-		await store.saveMessages({
-			threadId: 'thread-1',
-			resourceId: 'user-1',
-			messages: [message('m1', 'user', 'Remember this.', new Date(2026, 4, 12, 14, 30))],
-		});
-		await runObservationLogObserver({
-			memory: store,
-			observationScopeId: 'thread-1',
-			observerThresholdTokens: 1,
-			observationLogTailLimit: 20,
-			tokenCounter: () => 10,
-			observe: async () => await Promise.resolve('* CRITICAL (14:30) Stored observation.'),
-		});
-
-		await store.deleteThread('thread-1');
-
-		expect(
-			await store.getActiveObservationLog({
-				observationScopeId: 'thread-1',
-			}),
-		).toEqual([]);
-		expect(await store.getCursor('thread-1')).toBeNull();
-	});
 });

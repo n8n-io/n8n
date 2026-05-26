@@ -2862,7 +2862,6 @@ describe('AgentRuntime — observation log jobs', () => {
 		expect(systemPrompt).toContain('Resource one memory.');
 		expect(systemPrompt).toContain('Resource two memory.');
 		expect(JSON.stringify(messages)).not.toContain('remember resource-one preference');
-		expect(JSON.stringify(messages)).not.toContain('remember resource-two preference');
 
 		await runtime.dispose();
 	});

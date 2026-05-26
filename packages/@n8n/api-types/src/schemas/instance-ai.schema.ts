@@ -775,7 +775,7 @@ export interface InstanceAiAgentNode {
 	goal?: string;
 	/** Resource this agent works on. */
 	targetResource?: InstanceAiTargetResource;
-	/** Transient status message (e.g. "Processing request..."). Cleared when empty. */
+	/** Transient status message (e.g. "Recalling conversation..."). Cleared when empty. */
 	statusMessage?: string;
 	status: InstanceAiAgentStatus;
 	textContent: string;
