@@ -111,6 +111,13 @@ function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | 
 	return null;
 }
 
+/**
+ * Workaround: the planner can emit a duplicated todo list after the user
+ * resubmits feedback through the chat-input edit flow. Until that's fixed
+ * upstream, dedupe by description so the UI doesn't render two copies of
+ * the same task. Keys fall back to the task id when the description is
+ * empty.
+ */
 function dedupeTaskList(tasks: TaskList | null): TaskList | null {
 	if (!tasks) return null;
 
