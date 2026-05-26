@@ -111,11 +111,20 @@ onBeforeUnmount(() => {
 
 // === Editing lock ===
 // Lock interaction with the artifact's editor while the agent is actively
-// editing THIS workflow — a workflow-mutating tool call (build-workflow,
-// build-workflow-with-agent, apply-workflow-credentials, setup-workflow) is
-// in flight with args.workflowId matching ours. Without this, the user can
-// drag nodes around concurrently with the agent's mutations, producing
-// mid-stream conflicts.
+// editing THIS workflow. Two signals trigger the lock; either is enough:
+//
+// 1. A workflow-builder sub-agent is running with `targetResource.id`
+//    matching ours. This is the primary signal — it covers the entire build
+//    window (read file → edit file → submit-workflow → verify). The
+//    orchestrator's `build-workflow-with-agent` tool call returns
+//    immediately with a taskId; the actual work happens in the sub-agent.
+//
+// 2. A workflow-mutating tool call is in flight with `args.workflowId`
+//    matching ours. Fallback for direct orchestrator calls that don't
+//    spawn a sub-agent (e.g. apply-workflow-credentials, setup-workflow).
+//
+// Without this, the user can drag nodes around concurrently with the
+// agent's mutations, producing mid-stream conflicts.
 const thread = useThread();
 
 const WORKFLOW_EDITING_TOOLS = new Set([
@@ -125,15 +134,27 @@ const WORKFLOW_EDITING_TOOLS = new Set([
 	'setup-workflow',
 ]);
 
-function nodeHasInFlightEditOfWorkflow(node: InstanceAiAgentNode, workflowId: string): boolean {
+function nodeIsEditingWorkflow(node: InstanceAiAgentNode, workflowId: string): boolean {
+	// Signal 1: workflow-builder sub-agent running with our workflow id
+	if (
+		node.role === 'workflow-builder' &&
+		node.status === 'running' &&
+		node.targetResource?.type === 'workflow' &&
+		node.targetResource.id === workflowId
+	) {
+		return true;
+	}
+
+	// Signal 2: in-flight workflow-editing tool call targeting our workflow id
 	for (const tc of node.toolCalls) {
 		if (!tc.isLoading) continue;
 		if (!WORKFLOW_EDITING_TOOLS.has(tc.toolName)) continue;
 		const args = tc.args as { workflowId?: string } | undefined;
 		if (args?.workflowId === workflowId) return true;
 	}
+
 	for (const child of node.children) {
-		if (nodeHasInFlightEditOfWorkflow(child, workflowId)) return true;
+		if (nodeIsEditingWorkflow(child, workflowId)) return true;
 	}
 	return false;
 }
@@ -141,7 +162,7 @@ function nodeHasInFlightEditOfWorkflow(node: InstanceAiAgentNode, workflowId: st
 const isAgentEditingThisWorkflow = computed(() => {
 	for (const message of thread.messages) {
 		if (!message.agentTree) continue;
-		if (nodeHasInFlightEditOfWorkflow(message.agentTree, props.workflowId)) return true;
+		if (nodeIsEditingWorkflow(message.agentTree, props.workflowId)) return true;
 	}
 	return false;
 });
