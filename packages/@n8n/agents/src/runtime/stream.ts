@@ -75,13 +75,25 @@ export function convertChunk(c: TextStreamPart<ToolSet>): StreamChunk | undefine
 		case 'tool-input-delta':
 			return { type: 'tool-input-delta', toolCallId: c.id, delta: c.delta };
 
-		case 'tool-call':
+		case 'tool-call': {
+			if (c.invalid || c.error) {
+				// usually tool results are sent from agent-runtime
+				// AI SDK handles input parsing and may include errored tool result before runtime gets to process it
+				return {
+					type: 'tool-result',
+					toolCallId: c.toolCallId,
+					toolName: c.toolName ?? '',
+					output: c.error,
+					isError: true,
+				};
+			}
 			return {
 				type: 'tool-call',
 				toolCallId: c.toolCallId,
 				toolName: c.toolName ?? '',
 				input: c.input as JSONValue,
 			};
+		}
 
 		case 'tool-result':
 			return {

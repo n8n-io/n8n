@@ -311,11 +311,12 @@ onMounted(() => {
 	);
 	--resource-center--icon-color--search: var(--color--text--tint-1);
 	--resource-center--color--text--placeholder: var(--color--text--tint-1);
-	--resource-center--shadow--search: 0 1px 2px -1px color-mix(in srgb, var(--color--text--shade-1)
-				10%, transparent);
+	--resource-center--shadow--search: 0 1px 2px -1px
+		color-mix(in srgb, var(--color--text--shade-1) 10%, transparent);
 	--resource-center--color--background--card: white;
 	--resource-center--border-color--card: rgba(0, 0, 0, 0.1);
-	--resource-center--shadow--card: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 1px 3px -1px rgba(0, 0, 0, 0.1);
+	--resource-center--shadow--card:
+		0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 1px 3px -1px rgba(0, 0, 0, 0.1);
 	--resource-center--color--background--card-tag: color-mix(
 		in srgb,
 		var(--color--foreground--tint-2) 9%,
@@ -329,8 +330,8 @@ onMounted(() => {
 	--resource-center--color--text--card-tag: var(--color--text--shade-1);
 	--resource-center--color--background--icon-token: #ebebeb;
 	--resource-center--border-color--icon-token: white;
-	--resource-center--shadow--icon-token: 0 0 0 0.5px rgba(0, 0, 0, 0.04),
-		0 1px 2px rgba(0, 0, 0, 0.04);
+	--resource-center--shadow--icon-token:
+		0 0 0 0.5px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.04);
 	--resource-center--color--background--count-bubble: #e0e0e0;
 	--resource-center--border-color--count-bubble: rgba(0, 0, 0, 0.04);
 	--resource-center--color--text--count-bubble: #444;
@@ -351,8 +352,8 @@ onMounted(() => {
 		--resource-center--shadow--search: none;
 		--resource-center--color--background--card: #262626;
 		--resource-center--border-color--card: rgba(255, 255, 255, 0.1);
-		--resource-center--shadow--card: 0 0 0 0.5px rgba(0, 0, 0, 0.1),
-			0 1px 3px -1px rgba(0, 0, 0, 0.1);
+		--resource-center--shadow--card:
+			0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 1px 3px -1px rgba(0, 0, 0, 0.1);
 		--resource-center--color--background--card-tag: rgba(255, 255, 255, 0.06);
 		--resource-center--border-color--card-tag: rgba(255, 255, 255, 0.08);
 		--resource-center--color--text--card-tag: #f5f5f5;

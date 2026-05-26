@@ -22,6 +22,8 @@ import { parseCliArgs } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { LaneAllocator } from './lane-allocator';
 import { expandWithIterations, partitionRoundRobin } from './lanes';
+import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
+import { CHECK_DIMENSIONS, type CheckOutcome } from '../binaryChecks/types';
 import { N8nClient } from '../clients/n8n-client';
 import {
 	compareBuckets,
@@ -47,6 +49,7 @@ import {
 	buildWorkflow,
 	executeScenario,
 	cleanupBuild,
+	runWorkflowChecks,
 	runWorkflowTestCase,
 	runWithConcurrency,
 	type BuildResult,
@@ -66,6 +69,15 @@ import type {
 // n8n degrades above ~4 concurrent builds.
 const MAX_CONCURRENT_BUILDS = 4;
 
+const checkOutcomeSchema = z.object({
+	name: z.string(),
+	description: z.string(),
+	kind: z.enum(['deterministic', 'llm']),
+	dimension: z.enum(CHECK_DIMENSIONS),
+	status: z.enum(['pass', 'fail', 'n_a']),
+	comment: z.string().optional(),
+});
+
 const targetOutputSchema = z.object({
 	buildSuccess: z.boolean().default(false),
 	passed: z.boolean().default(false),
@@ -82,6 +94,7 @@ const targetOutputSchema = z.object({
 	nodeCount: z.number().default(0),
 	/** The thread id used during the build — keys the LangSmith trace lookup. */
 	threadId: z.string().optional(),
+	workflowChecks: z.array(checkOutcomeSchema).optional(),
 });
 
 type TargetOutput = Omit<z.infer<typeof targetOutputSchema>, 'evalResult'> & {
@@ -390,6 +403,15 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
+				if (build.success && !build.workflowChecks) {
+					// No transcript in prebuilt mode — checks run with empty prompt context.
+					build.workflowChecks = await runWorkflowChecks({
+						workflow: build.workflowJsons[0],
+						prompt: '',
+						agentText: undefined,
+						logger,
+					});
+				}
 				return { build, lane, buildDurationMs };
 			}
 			// Orchestrator path: allocator spreads distinct fileSlugs across lanes;
@@ -448,6 +470,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				execDurationMs: 0,
 				nodeCount: 0,
 				threadId: build.threadId,
+				workflowChecks: build.workflowChecks,
 			};
 		}
 
@@ -478,6 +501,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				buildDurationMs,
 				execDurationMs: Date.now() - execStart,
 				nodeCount,
+				workflowChecks: build.workflowChecks,
 			};
 		}
 		const execDurationMs = Date.now() - execStart;
@@ -501,6 +525,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			execDurationMs,
 			nodeCount,
 			threadId: build.threadId,
+			workflowChecks: build.workflowChecks,
 		};
 	};
 
@@ -531,6 +556,17 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		];
 		if (output.buildDurationMs !== undefined) {
 			feedback.push({ key: 'build_duration_s', score: output.buildDurationMs / 1000 });
+		}
+		// Skip N/A so LangSmith column averages reduce to per-check pass-rate.
+		if (output.workflowChecks) {
+			for (const outcome of output.workflowChecks) {
+				if (outcome.status === 'n_a') continue;
+				feedback.push({
+					key: `evals.workflows.${outcome.dimension}.${outcome.name}`,
+					score: outcome.status === 'pass' ? 1 : 0,
+					comment: outcome.comment ?? undefined,
+				});
+			}
 		}
 		return feedback;
 	};
@@ -806,6 +842,7 @@ function reshapeLangSmithRuns(
 			let workflowId: string | undefined;
 			let buildError: string | undefined;
 			let threadId: string | undefined;
+			let workflowChecks: CheckOutcome[] | undefined;
 
 			for (const scenario of testCase.executionScenarios) {
 				const run = byKey.get(`${String(iter)}/${fileSlug}/${scenario.name}`);
@@ -823,6 +860,7 @@ function reshapeLangSmithRuns(
 				if (output.workflowId) workflowId = output.workflowId;
 				if (output.threadId) threadId = output.threadId;
 				if (!output.buildSuccess && output.reasoning) buildError = output.reasoning;
+				if (output.workflowChecks && !workflowChecks) workflowChecks = output.workflowChecks;
 				executionScenarioResults.push({
 					scenario,
 					success: output.passed,
@@ -843,6 +881,7 @@ function reshapeLangSmithRuns(
 				buildError,
 				threadId,
 				transcript,
+				workflowChecks,
 			});
 		}
 		allRunResults.push(runResults);
@@ -1016,6 +1055,8 @@ function writeEvalResults(
 
 	const result = outcome?.kind === 'ok' ? outcome.result : undefined;
 
+	const checksSummary = aggregateWorkflowChecks(evaluation);
+
 	const report = {
 		timestamp: new Date().toISOString(),
 		duration,
@@ -1028,6 +1069,7 @@ function writeEvalResults(
 			passAtK: metrics.passAtK,
 			passHatK: metrics.passHatK,
 			passRatePerIter: metrics.passRatePerIter,
+			...(checksSummary ? { workflowChecks: checksSummary } : {}),
 		},
 		// Structured comparison payload only — the rendered markdown lives in
 		// the sibling `eval-pr-comment.md` file so consumers can pick the format
@@ -1046,6 +1088,9 @@ function writeEvalResults(
 			name: tc.testCase.conversation[0].text.slice(0, 70),
 			buildSuccessCount: tc.buildSuccessCount,
 			totalRuns,
+			workflowChecksPerRun: tc.runs.map((run) =>
+				run.workflowChecks ? statusMap(run.workflowChecks) : null,
+			),
 			scenarios: tc.executionScenarios.map((sa) => ({
 				name: sa.scenario.name,
 				passCount: sa.passCount,

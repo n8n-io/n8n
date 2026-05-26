@@ -42,8 +42,16 @@ export class DaytonaFilesystem extends BaseFilesystem {
 		return this.sandbox.instance.fs;
 	}
 
-	async readFile(path: string, options?: ReadOptions): Promise<string | Buffer> {
+	private async prepare(): Promise<void> {
+		// `ensureAuthFresh()` triggers a proactive JWT refresh + sandbox refetch if the
+		// cached client is near expiry, so `this.fs` (bound to the underlying Sandbox)
+		// points at a client with valid auth.
 		await this.ensureReady();
+		await this.sandbox.ensureAuthFresh();
+	}
+
+	async readFile(path: string, options?: ReadOptions): Promise<string | Buffer> {
+		await this.prepare();
 		const buffer = await this.fs.downloadFile(path);
 		if (options?.encoding) {
 			return buffer.toString(options.encoding);
@@ -52,7 +60,7 @@ export class DaytonaFilesystem extends BaseFilesystem {
 	}
 
 	async writeFile(path: string, content: FileContent, options?: WriteOptions): Promise<void> {
-		await this.ensureReady();
+		await this.prepare();
 		if (options?.recursive) {
 			const dir = path.substring(0, path.lastIndexOf('/'));
 			if (dir) {
@@ -65,7 +73,7 @@ export class DaytonaFilesystem extends BaseFilesystem {
 	}
 
 	async appendFile(path: string, content: FileContent): Promise<void> {
-		await this.ensureReady();
+		await this.prepare();
 		let existing: Buffer;
 		try {
 			existing = await this.fs.downloadFile(path);
@@ -78,23 +86,23 @@ export class DaytonaFilesystem extends BaseFilesystem {
 	}
 
 	async deleteFile(path: string, options?: RemoveOptions): Promise<void> {
-		await this.ensureReady();
+		await this.prepare();
 		await this.fs.deleteFile(path, options?.recursive);
 	}
 
 	async copyFile(src: string, dest: string, _options?: CopyOptions): Promise<void> {
-		await this.ensureReady();
+		await this.prepare();
 		const content = await this.fs.downloadFile(src);
 		await this.fs.uploadFile(content, dest);
 	}
 
 	async moveFile(src: string, dest: string, _options?: CopyOptions): Promise<void> {
-		await this.ensureReady();
+		await this.prepare();
 		await this.fs.moveFiles(src, dest);
 	}
 
 	async mkdir(path: string, options?: { recursive?: boolean }): Promise<void> {
-		await this.ensureReady();
+		await this.prepare();
 		if (options?.recursive) {
 			// createFolder with mode '755' creates intermediate dirs
 			await this.fs.createFolder(path, '755');
@@ -104,12 +112,12 @@ export class DaytonaFilesystem extends BaseFilesystem {
 	}
 
 	async rmdir(path: string, options?: RemoveOptions): Promise<void> {
-		await this.ensureReady();
+		await this.prepare();
 		await this.fs.deleteFile(path, options?.recursive ?? false);
 	}
 
 	async readdir(path: string, _options?: ListOptions): Promise<FileEntry[]> {
-		await this.ensureReady();
+		await this.prepare();
 		const files = await this.fs.listFiles(path);
 		return files.map((f) => ({
 			name: f.name ?? '',
@@ -119,7 +127,7 @@ export class DaytonaFilesystem extends BaseFilesystem {
 	}
 
 	async exists(path: string): Promise<boolean> {
-		await this.ensureReady();
+		await this.prepare();
 		try {
 			await this.fs.getFileDetails(path);
 			return true;
@@ -129,7 +137,7 @@ export class DaytonaFilesystem extends BaseFilesystem {
 	}
 
 	async stat(path: string): Promise<FileStat> {
-		await this.ensureReady();
+		await this.prepare();
 		let info;
 		try {
 			info = await this.fs.getFileDetails(path);
