@@ -118,6 +118,32 @@ describe('CredentialExporter', () => {
 			});
 		});
 
+		it('dedupes by credential id and aggregates usedByWorkflows when refs come from multiple workflows', async () => {
+			const { exporter, finder } = makeExporter();
+			finder.findCredentialForUser.mockResolvedValue(makeCredential());
+			const writer = new CapturingWriter();
+
+			const result = await exporter.export({
+				user,
+				references: [makeReference({ workflowId: 'wf-a' }), makeReference({ workflowId: 'wf-b' })],
+				writer,
+			});
+
+			expect(finder.findCredentialForUser).toHaveBeenCalledTimes(1);
+			expect(result.entries).toEqual([
+				{ id: 'cred-1', name: 'My Credential', target: 'credentials/my-credential' },
+			]);
+			expect(result.requirements).toEqual([
+				{
+					id: 'cred-1',
+					name: 'My Credential',
+					type: 'httpHeaderAuth',
+					usedByWorkflows: ['wf-a', 'wf-b'],
+				},
+			]);
+			expect(writer.files).toHaveLength(1);
+		});
+
 		it('strips entity fields beyond id/name/type from the written file', async () => {
 			const { exporter, finder } = makeExporter();
 			// Even if the entity has extra fields, the schema must keep them out.

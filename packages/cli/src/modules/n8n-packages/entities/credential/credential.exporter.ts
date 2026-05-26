@@ -35,12 +35,13 @@ export class CredentialExporter {
 			return { entries: [], requirements: [] };
 		}
 
+		const workflowsByCredentialId = this.groupWorkflowIdsByCredentialId(request.references);
 		const entries: ManifestEntry[] = [];
 		const requirements: PackageCredentialRequirement[] = [];
 
-		for (const reference of request.references) {
+		for (const [credentialId, usedByWorkflows] of workflowsByCredentialId) {
 			const credential = await this.credentialsFinder.findCredentialForUser(
-				reference.credentialId,
+				credentialId,
 				request.user,
 				['credential:read'],
 			);
@@ -62,10 +63,25 @@ export class CredentialExporter {
 				id: credential.id,
 				name: credential.name,
 				type: credential.type,
-				usedByWorkflows: [reference.workflowId],
+				usedByWorkflows,
 			});
 		}
 
 		return { entries, requirements };
+	}
+
+	private groupWorkflowIdsByCredentialId(
+		references: CredentialReferenceFromWorkflow[],
+	): Map<string, string[]> {
+		const grouped = new Map<string, string[]>();
+		for (const reference of references) {
+			const existing = grouped.get(reference.credentialId);
+			if (existing) {
+				if (!existing.includes(reference.workflowId)) existing.push(reference.workflowId);
+			} else {
+				grouped.set(reference.credentialId, [reference.workflowId]);
+			}
+		}
+		return grouped;
 	}
 }
