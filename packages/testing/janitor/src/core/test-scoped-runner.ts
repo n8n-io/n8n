@@ -1,8 +1,9 @@
 /** Compute per-package scope and dispatch to jest/vitest with the right flags. */
 
 import { spawnSync } from 'node:child_process';
+import { isAbsolute, resolve } from 'node:path';
 
-import { computeScope, type Runner } from './scope-analyzer.js';
+import { computeScope, type Runner, type ScopeResult } from './scope-analyzer.js';
 
 export interface TestScopedOptions {
 	runner: Runner;
@@ -10,6 +11,28 @@ export interface TestScopedOptions {
 	rootDir: string;
 	changedFiles: string[] | null;
 	passthroughArgs: string[];
+}
+
+/**
+ * Build the runner argv from a scope result. Paths are resolved to absolute
+ * because pnpm/turbo runs `test:changed` with cwd=packageDir, while CHANGED_FILES
+ * is repo-root-relative — handing a relative path to `jest --findRelatedTests` or
+ * `vitest related` from inside the package would silently match zero files and
+ * exit 0 with no tests run.
+ */
+export function buildRunnerArgs(
+	runner: Runner,
+	scope: Extract<ScopeResult, { kind: 'scoped' | 'full' }>,
+	rootDir: string,
+	passthroughArgs: string[],
+): string[] {
+	if (scope.kind === 'full') {
+		return runner === 'vitest' ? ['run', ...passthroughArgs] : [...passthroughArgs];
+	}
+	const absoluteFiles = scope.files.map((f) => (isAbsolute(f) ? f : resolve(rootDir, f)));
+	return runner === 'jest'
+		? ['--findRelatedTests', ...absoluteFiles, ...passthroughArgs]
+		: ['related', ...absoluteFiles, ...passthroughArgs];
 }
 
 export function runTestScoped(options: TestScopedOptions): number {
@@ -25,18 +48,12 @@ export function runTestScoped(options: TestScopedOptions): number {
 		return 0;
 	}
 
-	let args: string[];
 	if (scope.kind === 'full') {
 		console.log(`[janitor:test-scoped] ${scope.reason} → full suite`);
-		args =
-			options.runner === 'vitest' ? ['run', ...options.passthroughArgs] : options.passthroughArgs;
 	} else {
 		console.log(`[janitor:test-scoped] scoping to ${scope.files.length} file(s)`);
-		args =
-			options.runner === 'jest'
-				? ['--findRelatedTests', ...scope.files, ...options.passthroughArgs]
-				: ['related', ...scope.files, ...options.passthroughArgs];
 	}
 
+	const args = buildRunnerArgs(options.runner, scope, options.rootDir, options.passthroughArgs);
 	return spawnSync(options.runner, args, { stdio: 'inherit' }).status ?? 1;
 }
