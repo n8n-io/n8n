@@ -38,6 +38,7 @@ export class CredentialExporter {
 		const workflowsByCredentialId = this.groupWorkflowIdsByCredentialId(request.references);
 		const entries: ManifestEntry[] = [];
 		const requirements: PackageCredentialRequirement[] = [];
+		const usedTargets = new Set<string>();
 
 		for (const [credentialId, usedByWorkflows] of workflowsByCredentialId) {
 			const credential = await this.credentialsFinder.findCredentialForUser(
@@ -47,7 +48,7 @@ export class CredentialExporter {
 			);
 			if (!credential) continue;
 
-			const target = `credentials/${generateSlug(credential.name, CREDENTIAL_SLUG_FALLBACK)}`;
+			const target = this.allocateUniqueFileName(credential.name, usedTargets);
 			const serialized = this.credentialSerializer.serialize(credential);
 
 			request.writer.writeDirectory(target);
@@ -83,5 +84,22 @@ export class CredentialExporter {
 			}
 		}
 		return grouped;
+	}
+
+	private allocateUniqueFileName(name: string, used: Set<string>): string {
+		const base = `credentials/${generateSlug(name, CREDENTIAL_SLUG_FALLBACK)}`;
+
+		if (!used.has(base)) {
+			used.add(base);
+			return base;
+		}
+
+		for (let suffix = 2; ; suffix++) {
+			const candidate = `${base}-${suffix}`;
+			if (!used.has(candidate)) {
+				used.add(candidate);
+				return candidate;
+			}
+		}
 	}
 }

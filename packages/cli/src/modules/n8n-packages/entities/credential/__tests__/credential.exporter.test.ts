@@ -144,6 +144,30 @@ describe('CredentialExporter', () => {
 			expect(writer.files).toHaveLength(1);
 		});
 
+		it('disambiguates targets when two credentials share a name', async () => {
+			const { exporter, finder } = makeExporter();
+			finder.findCredentialForUser
+				.mockResolvedValueOnce(makeCredential({ id: 'cred-a', name: 'Same Name' }))
+				.mockResolvedValueOnce(makeCredential({ id: 'cred-b', name: 'Same Name' }));
+			const writer = new CapturingWriter();
+
+			const result = await exporter.export({
+				user,
+				references: [
+					makeReference({ credentialId: 'cred-a', credentialName: 'Same Name' }),
+					makeReference({ credentialId: 'cred-b', credentialName: 'Same Name' }),
+				],
+				writer,
+			});
+
+			const targets = result.entries.map((e) => e.target);
+			expect(targets).toEqual(['credentials/same-name', 'credentials/same-name-2']);
+
+			const writtenPaths = writer.files.map((f) => f.path);
+			expect(writtenPaths).toContain('credentials/same-name/credential.json');
+			expect(writtenPaths).toContain('credentials/same-name-2/credential.json');
+		});
+
 		it('strips entity fields beyond id/name/type from the written file', async () => {
 			const { exporter, finder } = makeExporter();
 			// Even if the entity has extra fields, the schema must keep them out.
