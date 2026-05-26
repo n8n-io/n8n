@@ -12,7 +12,7 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	ADD_INPUT_ENDPOINT: 'add_input_endpoint',
 	TRIGGER_PLACEHOLDER_BUTTON: 'trigger_placeholder_button',
 	ADD_NODE_BUTTON: 'add_node_button',
-	TAB: 'tab',
+	NODE_SHORTCUT: 'node_shortcut',
 	NODE_CONNECTION_ACTION: 'node_connection_action',
 	REPLACE_NODE_ACTION: 'replace_node_action',
 	NODE_CONNECTION_DROP: 'node_connection_drop',
@@ -63,4 +63,4 @@ export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fB
 export const RECOMMENDED_NODES: string[] = [DATA_TABLE_NODE_TYPE, DATA_TABLE_TOOL_NODE_TYPE];
 export const BETA_NODES: string[] = ['@n8n/n8n-nodes-langchain.microsoftAgent365Trigger'];
 
-export const NEW_TOOL_CATEGORIES: string[] = [AI_CATEGORY_HUMAN_IN_THE_LOOP];
+export const NEW_TOOL_CATEGORIES: string[] = [AI_CATEGORY_MCP_NODES];

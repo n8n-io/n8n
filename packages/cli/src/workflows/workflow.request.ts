@@ -5,7 +5,6 @@ import type {
 	IWorkflowSettings,
 	IRunData,
 	ITaskData,
-	IWorkflowBase,
 	AiAgentRequest,
 	IDestinationNode,
 } from 'n8n-workflow';
@@ -36,7 +35,6 @@ export declare namespace WorkflowRequest {
 	//
 	// 1. Full Manual Execution from Known Trigger
 	type FullManualExecutionFromKnownTriggerPayload = {
-		workflowData: IWorkflowBase;
 		agentRequest?: AiAgentRequest;
 		chatSessionId?: string;
 		destinationNode?: IDestinationNode;
@@ -44,7 +42,6 @@ export declare namespace WorkflowRequest {
 	};
 	// 2. Full Manual Execution from Unknown Trigger
 	type FullManualExecutionFromUnknownTriggerPayload = {
-		workflowData: IWorkflowBase;
 		agentRequest?: AiAgentRequest;
 
 		destinationNode: IDestinationNode;
@@ -52,7 +49,6 @@ export declare namespace WorkflowRequest {
 
 	// 3. Partial Manual Execution to Destination
 	type PartialManualExecutionToDestinationPayload = {
-		workflowData: IWorkflowBase;
 		agentRequest?: AiAgentRequest;
 
 		runData: IRunData;

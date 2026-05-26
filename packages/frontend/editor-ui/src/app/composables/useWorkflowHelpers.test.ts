@@ -6,52 +6,23 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import {
-	createMockNodeTypes,
-	createTestExpressionLocalResolveContext,
-	createTestNode,
-	createTestTaskData,
-	createTestWorkflow,
-	createTestWorkflowExecutionResponse,
-	createTestWorkflowObject,
-	mockLoadedNodeType,
-} from '@/__tests__/mocks';
-import {
-	CHAT_TRIGGER_NODE_TYPE,
-	createRunExecutionData,
-	NodeConnectionTypes,
-	WEBHOOK_NODE_TYPE,
-} from 'n8n-workflow';
+import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import type { AssignmentCollectionValue, IConnections } from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
-import { SLACK_TRIGGER_NODE_TYPE, SET_NODE_TYPE } from '../constants';
-import {
-	injectWorkflowState,
-	useWorkflowState,
-	type WorkflowState,
-} from '@/app/composables/useWorkflowState';
+import { SET_NODE_TYPE, SLACK_TRIGGER_NODE_TYPE } from '../constants';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
-	};
-});
-
 describe('useWorkflowHelpers', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
-	let workflowState: WorkflowState;
-	let workflowsEEStore: ReturnType<typeof useWorkflowsEEStore>;
 	let tagsStore: ReturnType<typeof useTagsStore>;
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 
@@ -60,10 +31,6 @@ describe('useWorkflowHelpers', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 
-		workflowState = useWorkflowState();
-		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
-
-		workflowsEEStore = useWorkflowsEEStore();
 		tagsStore = useTagsStore();
 		uiStore = mockedStore(useUIStore);
 	});
@@ -246,41 +213,23 @@ describe('useWorkflowHelpers', () => {
 				tags: [],
 			});
 			const addWorkflowSpy = vi.spyOn(workflowsListStore, 'addWorkflow');
-			const setActiveSpy = vi.spyOn(workflowState, 'setActive');
-			const setWorkflowIdSpy = vi.spyOn(workflowState, 'setWorkflowId');
-			const setWorkflowNameSpy = vi.spyOn(workflowState, 'setWorkflowName');
-			const setWorkflowSettingsSpy = vi.spyOn(workflowState, 'setWorkflowSettings');
-			const setWorkflowVersionDataSpy = vi.spyOn(workflowsStore, 'setWorkflowVersionData');
-			const setWorkflowMetadataSpy = vi.spyOn(workflowState, 'setWorkflowMetadata');
-			const setWorkflowScopesSpy = vi.spyOn(workflowState, 'setWorkflowScopes');
-			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
-			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
+			const setWorkflowIdSpy = vi.spyOn(workflowsStore, 'setWorkflowId');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
 
-			await initState(workflowData);
+			const { workflowDocumentStore } = await initState(workflowData);
 
 			expect(addWorkflowSpy).toHaveBeenCalledWith(workflowData);
-			expect(setActiveSpy).toHaveBeenCalledWith('v1');
 			expect(setWorkflowIdSpy).toHaveBeenCalledWith('1');
-			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
-				newName: 'Test Workflow',
-				setStateDirty: false,
+			// name is now managed by workflowDocumentStore via setName
+			expect(workflowDocumentStore.setName).toHaveBeenCalledWith('Test Workflow');
+			// versionId is now managed by workflowDocumentStore
+			expect(workflowDocumentStore.setVersionData).toHaveBeenCalledWith({
+				versionId: 'v1',
+				name: null,
+				description: null,
 			});
-			expect(setWorkflowSettingsSpy).toHaveBeenCalledWith({
-				executionOrder: 'v1',
-				timezone: 'DEFAULT',
-			});
-			expect(setWorkflowVersionDataSpy).toHaveBeenCalledWith(
-				{ versionId: 'v1', name: null, description: null },
-				'checksum',
-			);
-			expect(setWorkflowMetadataSpy).toHaveBeenCalledWith({});
-			expect(setWorkflowScopesSpy).toHaveBeenCalledWith(['workflow:create']);
-			expect(setUsedCredentialsSpy).toHaveBeenCalledWith([]);
-			expect(setWorkflowSharedWithSpy).toHaveBeenCalledWith({
-				workflowId: '1',
-				sharedWithProjects: [],
-			});
+			// sharedWithProjects is now managed by workflowDocumentStore
+			expect(workflowDocumentStore.setSharedWithProjects).toHaveBeenCalledWith([]);
 			// Tags are now managed by workflowDocumentStore
 			expect(upsertTagsSpy).toHaveBeenCalledWith([]);
 		});
@@ -297,13 +246,11 @@ describe('useWorkflowHelpers', () => {
 				scopes: [],
 				tags: [],
 			});
-			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
-			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
 
-			await initState(workflowData);
+			const { workflowDocumentStore } = await initState(workflowData);
 
-			expect(setUsedCredentialsSpy).not.toHaveBeenCalled();
-			expect(setWorkflowSharedWithSpy).not.toHaveBeenCalled();
+			// When sharedWithProjects is undefined, it defaults to empty array
+			expect(workflowDocumentStore.setSharedWithProjects).toHaveBeenCalledWith([]);
 		});
 
 		it('should handle missing `tags` gracefully', async () => {
@@ -323,37 +270,6 @@ describe('useWorkflowHelpers', () => {
 
 			// Tags are now managed by workflowDocumentStore
 			expect(upsertTagsSpy).toHaveBeenCalledWith([]);
-		});
-	});
-
-	describe('getWorkflowDataToSave', () => {
-		it('should read tags from workflowDocumentStore', async () => {
-			const workflowId = 'test-workflow-id';
-			const tagIds = ['tag1', 'tag2'];
-
-			workflowsStore.workflowId = workflowId;
-			workflowsStore.workflowName = 'Test Workflow';
-			workflowsStore.allNodes = [];
-			workflowsStore.allConnections = {};
-			workflowsStore.isWorkflowActive = false;
-			workflowsStore.workflow.settings = { executionOrder: 'v1' };
-			workflowsStore.workflow.versionId = 'v1';
-			workflowsStore.workflow.meta = {};
-			workflowsStore.pinnedWorkflowData = {};
-
-			const documentId = createWorkflowDocumentId(workflowId);
-			const workflowDocumentStore = useWorkflowDocumentStore(documentId);
-
-			// Note: createTestingPinia() stubs actions by default, so setTags() won't work
-			Object.defineProperty(workflowDocumentStore, 'tags', {
-				value: tagIds,
-			});
-
-			const { getWorkflowDataToSave } = useWorkflowHelpers();
-			const workflowData = await getWorkflowDataToSave();
-
-			expect(workflowData.tags).toEqual(tagIds);
-			expect(workflowData.id).toBe(workflowId);
 		});
 	});
 
@@ -496,13 +412,16 @@ describe('useWorkflowHelpers', () => {
 			expect(await workflowHelpers.checkConflictingWebhooks('123')).toEqual(null);
 		});
 
-		it('should call getWorkflowDataToSave if state is dirty', async () => {
+		it('should call workflowDocumentStore.serialize if state is dirty', async () => {
+			const workflowId = '12345';
+			workflowsStore.workflowId = workflowId;
 			const workflowHelpers = useWorkflowHelpers();
 			const stateIsDirtySpy = vi.spyOn(uiStore, 'stateIsDirty', 'get').mockReturnValue(true);
-			vi.spyOn(workflowHelpers, 'getWorkflowDataToSave').mockResolvedValue({
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			vi.mocked(workflowDocumentStore.serialize).mockReturnValue({
 				nodes: [],
 			} as unknown as WorkflowData);
-			expect(await workflowHelpers.checkConflictingWebhooks('12345')).toEqual(null);
+			expect(await workflowHelpers.checkConflictingWebhooks(workflowId)).toEqual(null);
 			stateIsDirtySpy.mockRestore();
 		});
 
@@ -1136,97 +1055,174 @@ describe('useWorkflowHelpers', () => {
 			expect(result.source).toBeNull();
 		});
 	});
+
+	describe('getNodeTypes() - getByNameAndVersion', () => {
+		let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+
+		beforeEach(() => {
+			nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getAllNodeTypes = vi.fn().mockImplementation(() => ({
+				nodeTypes: {},
+				init: async () => {},
+				getByNameAndVersion: (nodeType: string, version?: number) => {
+					const nodeTypeDescription =
+						nodeTypesStore.getNodeType(nodeType, version) ??
+						nodeTypesStore.communityNodeType(nodeType)?.nodeDescription ??
+						null;
+					if (nodeTypeDescription === null) {
+						return undefined;
+					}
+					return { description: nodeTypeDescription };
+				},
+			}));
+		});
+
+		it('should return node type for core nodes', () => {
+			const mockNodeType = mockNodeTypeDescription({
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+			});
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(mockNodeType);
+
+			const nodeTypes = useWorkflowHelpers().getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-base.httpRequest', 1);
+
+			expect(result).toBeDefined();
+			expect(result?.description.name).toBe('n8n-nodes-base.httpRequest');
+		});
+
+		it('should fallback to community node type when core node not found', () => {
+			const mockCommunityNodeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-test.test',
+				displayName: 'Test Node',
+			});
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
+
+			nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
+				name: 'n8n-nodes-test.test',
+				packageName: 'n8n-nodes-test',
+				checksum: 'test-checksum',
+				npmVersion: '1.0.0',
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				numberOfStars: 0,
+				numberOfDownloads: 0,
+				authorGithubUrl: '',
+				authorName: '',
+				description: '',
+				displayName: 'Test Node',
+				isOfficialNode: false,
+				nodeDescription: mockCommunityNodeDescription,
+				isInstalled: false,
+			});
+
+			const nodeTypes = useWorkflowHelpers().getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-test.test');
+
+			expect(result).toBeDefined();
+			expect(result?.description.name).toBe('n8n-nodes-test.test');
+		});
+
+		it('should return undefined when node type is not found', () => {
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
+
+			nodeTypesStore.communityNodeType = vi.fn().mockReturnValue(undefined);
+
+			const nodeTypes = useWorkflowHelpers().getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('non-existent-node');
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should use community node description when available and core node is null', () => {
+			const mockCommunityNodeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-community.customNode',
+				displayName: 'Custom Community Node',
+				inputs: ['main'],
+				outputs: ['main'],
+			});
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
+
+			nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
+				name: 'n8n-nodes-community.customNode',
+				packageName: 'n8n-nodes-community',
+				checksum: 'test-checksum',
+				npmVersion: '1.0.0',
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				numberOfStars: 10,
+				numberOfDownloads: 100,
+				authorGithubUrl: '',
+				authorName: '',
+				description: '',
+				displayName: 'Custom Community Node',
+				isOfficialNode: false,
+				nodeDescription: mockCommunityNodeDescription,
+				isInstalled: true,
+			});
+
+			const nodeTypes = useWorkflowHelpers().getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-community.customNode');
+
+			expect(result).toBeDefined();
+			expect(result?.description.name).toBe('n8n-nodes-community.customNode');
+			expect(result?.description.displayName).toBe('Custom Community Node');
+		});
+	});
 });
 
 describe(resolveParameter, () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
+
 	describe('with local resolve context', () => {
 		it('should resolve parameter without execution data', async () => {
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'n0' })],
+			});
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
 			const result = await resolveParameter(
 				{
 					f0: '={{ 2 + 2 }}',
-					f1: '={{ $vars.foo }}',
 					f2: '={{ String($exotic).toUpperCase() }}',
 				},
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
-					envVars: {
-						foo: 'hello!',
-					},
 					additionalKeys: {
 						$exotic: true,
 					},
-					workflow: createTestWorkflowObject({
-						nodes: [createTestNode({ name: 'n0' })],
-					}),
-					execution: null,
 					nodeName: 'n0',
 				},
 			);
 
-			expect(result).toEqual({ f0: 4, f1: 'hello!', f2: 'TRUE' });
-		});
-
-		it('should resolve parameter with execution data', async () => {
-			const workflowData = createTestWorkflow({
-				nodes: [createTestNode({ name: 'n0' }), createTestNode({ name: 'n1' })],
-				connections: {
-					n0: {
-						[NodeConnectionTypes.Main]: [
-							[{ type: NodeConnectionTypes.Main, index: 0, node: 'n1' }],
-						],
-					},
-				},
-			});
-			const result = await resolveParameter(
-				{
-					f0: '={{ $json }}',
-					f1: '={{ $("n0").item.json }}',
-				},
-				createTestExpressionLocalResolveContext({
-					workflow: createTestWorkflowObject(workflowData),
-					execution: createTestWorkflowExecutionResponse({
-						workflowData,
-						data: createRunExecutionData({
-							resultData: {
-								runData: {
-									n0: [
-										createTestTaskData({
-											data: { [NodeConnectionTypes.Main]: [[{ json: { foo: 777 } }]] },
-										}),
-									],
-								},
-							},
-						}),
-					}),
-					nodeName: 'n1',
-					inputNode: { name: 'n0', branchIndex: 0, runIndex: 0 },
-				}),
-			);
-
-			expect(result).toEqual({
-				f0: { foo: 777 },
-				f1: { foo: 777 },
-			});
+			expect(result).toEqual({ f0: 4, f2: 'TRUE' });
 		});
 
 		it('should include $tool in additionalKeys for hitl tool node types', async () => {
 			const toolNodeType = 'n8n-nodes-base.someHitlTool';
-			const toolNodeTypes = createMockNodeTypes({
-				[toolNodeType]: mockLoadedNodeType(toolNodeType),
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'toolNode', type: toolNodeType })],
 			});
-
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
 			const result = await resolveParameter(
 				{
 					toolName: '={{ $tool.name }}',
 					toolParams: '={{ $tool.parameters }}',
 				},
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
-					workflow: createTestWorkflowObject({
-						nodes: [createTestNode({ name: 'toolNode', type: toolNodeType })],
-						nodeTypes: toolNodeTypes,
-					}),
-					execution: null,
 					nodeName: 'toolNode',
 					additionalKeys: {},
 				},
@@ -1237,16 +1233,20 @@ describe(resolveParameter, () => {
 		});
 
 		it('should not include $tool in additionalKeys for non-tool node types', async () => {
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'regularNode', type: SET_NODE_TYPE })],
+			});
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
 			const result = await resolveParameter(
 				{
 					toolCheck: '={{ $tool }}',
 				},
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
-					workflow: createTestWorkflowObject({
-						nodes: [createTestNode({ name: 'regularNode', type: SET_NODE_TYPE })],
-					}),
-					execution: null,
 					nodeName: 'regularNode',
 					additionalKeys: {},
 				},
@@ -1257,21 +1257,21 @@ describe(resolveParameter, () => {
 
 		it('should resolve $tool.name expression for tool nodes', async () => {
 			const toolNodeType = 'n8n-nodes-base.someHitlTool';
-			const toolNodeTypes = createMockNodeTypes({
-				[toolNodeType]: mockLoadedNodeType(toolNodeType),
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'hitlTool', type: toolNodeType })],
 			});
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
 
 			const result = await resolveParameter(
 				{
 					message: '={{ "The agent wants to call " + $tool.name }}',
 				},
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
-					workflow: createTestWorkflowObject({
-						nodes: [createTestNode({ name: 'hitlTool', type: toolNodeType })],
-						nodeTypes: toolNodeTypes,
-					}),
-					execution: null,
 					nodeName: 'hitlTool',
 					additionalKeys: {},
 				},
@@ -1282,21 +1282,21 @@ describe(resolveParameter, () => {
 
 		it('should resolve $tool.parameters expression for hitl tool nodes', async () => {
 			const toolNodeType = 'n8n-nodes-base.someHitlTool';
-			const toolNodeTypes = createMockNodeTypes({
-				[toolNodeType]: mockLoadedNodeType(toolNodeType),
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'someTool', type: toolNodeType })],
 			});
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
 
 			const result = await resolveParameter(
 				{
 					params: '={{ $tool.parameters }}',
 				},
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
-					workflow: createTestWorkflowObject({
-						nodes: [createTestNode({ name: 'someTool', type: toolNodeType })],
-						nodeTypes: toolNodeTypes,
-					}),
-					execution: null,
 					nodeName: 'someTool',
 					additionalKeys: {},
 				},

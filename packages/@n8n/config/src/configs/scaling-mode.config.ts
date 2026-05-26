@@ -3,19 +3,16 @@ import { Config, Env, Nested } from '../decorators';
 @Config
 class HealthConfig {
 	/**
-	 * Whether to enable the worker health check endpoints.
-	 * The endpoint paths are configurable via N8N_ENDPOINT_HEALTH.
-	 * - liveness probe: checks if worker is alive
-	 * - readiness probe: checks if worker is connected to migrated database and Redis
+	 * Whether to enable worker health endpoints: `/healthz` (liveness) and `/healthz/readiness` (DB and Redis ready).
 	 */
 	@Env('QUEUE_HEALTH_CHECK_ACTIVE')
 	active: boolean = false;
 
-	/** Port for worker server to listen on. */
+	/** Port the worker HTTP server listens on for health checks. */
 	@Env('QUEUE_HEALTH_CHECK_PORT')
 	port: number = 5678;
 
-	/** IP address for worker server to listen on. */
+	/** IP address the worker server binds to. Use `::` for all interfaces. */
 	@Env('N8N_WORKER_SERVER_ADDRESS')
 	address: string = '::';
 }

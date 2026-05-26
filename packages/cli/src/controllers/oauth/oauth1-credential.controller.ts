@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Get, RestController } from '@n8n/decorators';
 import axios from 'axios';
 import { Response } from 'express';
@@ -5,12 +6,7 @@ import { ensureError, jsonStringify } from 'n8n-workflow';
 
 import { OAuthRequest } from '@/requests';
 
-import {
-	OauthService,
-	skipAuthOnOAuthCallback,
-	type OAuth1CredentialData,
-} from '@/oauth/oauth.service';
-import { Logger } from '@n8n/backend-common';
+import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
 
 @RestController('/oauth1-credential')
 export class OAuth1CredentialController {
@@ -22,13 +18,9 @@ export class OAuth1CredentialController {
 	/** Get Authorization url */
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth): Promise<string> {
-		const credential = await this.oauthService.getCredential(req);
-
-		const uri = await this.oauthService.generateAOauth1AuthUri(credential, {
-			cid: credential.id,
-			origin: 'static-credential',
-			userId: skipAuthOnOAuthCallback ? undefined : req.user.id,
-		});
+		const credential = await this.oauthService.getCredentialForUpdate(req);
+		const csrfData = await this.oauthService.buildCsrfStateData(credential, req);
+		const uri = await this.oauthService.generateAOauth1AuthUri(credential, csrfData);
 
 		this.logger.debug('OAuth1 authorization successful for new credential', {
 			userId: req.user.id,
@@ -39,7 +31,7 @@ export class OAuth1CredentialController {
 	}
 
 	/** Verify and store app code. Generate access tokens and store for respective credential */
-	@Get('/callback', { usesTemplates: true, skipAuth: skipAuthOnOAuthCallback })
+	@Get('/callback', { usesTemplates: true, allowUnauthenticated: true })
 	async handleCallback(req: OAuthRequest.OAuth1Credential.Callback, res: Response) {
 		try {
 			const { oauth_verifier, oauth_token, state: encodedState } = req.query;
@@ -95,6 +87,7 @@ export class OAuth1CredentialController {
 					oauthTokenData,
 					state.authorizationHeader.split('Bearer ')[1],
 					state.credentialResolverId,
+					(state.authMetadata as Record<string, unknown>) ?? {},
 				);
 				return res.render('oauth-callback');
 			}

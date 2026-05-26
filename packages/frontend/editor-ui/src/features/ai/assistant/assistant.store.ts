@@ -8,6 +8,10 @@ import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
 import type { PushPayload } from '@n8n/api-types';
 import { computed, ref, watch } from 'vue';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRoute } from 'vue-router';
@@ -28,6 +32,10 @@ import { v4 as uuid } from 'uuid';
 export const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
 
+// TODO: the `workflowsStore.activeNode()` calls below will switch to a hoisted
+// scoped NDV store (`useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)).activeNode`).
+// Leaving them on the shim for now preserves state consistency with NDV components
+// that still write to the default store; they need to flip together.
 export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
@@ -110,7 +118,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		() => settings.settings.ai.allowSendingParameterValues,
 	);
 
-	function resetAssistantChat() {
+	function resetAssistantChat(workflowId: string) {
 		clearMessages();
 		currentSessionId.value = undefined;
 		chatSessionError.value = undefined;
@@ -120,7 +128,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		nodeExecutionStatus.value = 'not_executed';
 		chatSessionCredType.value = undefined;
 		chatSessionTask.value = undefined;
-		currentSessionWorkflowId.value = workflowsStore.workflowId;
+		currentSessionWorkflowId.value = workflowId;
 	}
 
 	function addAssistantMessages(newMessages: ChatRequest.MessageResponse[], id: string) {
@@ -298,15 +306,16 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}, 4000);
 	}
 
-	async function initCredHelp(credType: ICredentialType) {
+	async function initCredHelp(workflowId: string, credType: ICredentialType) {
 		const hasExistingSession = !!currentSessionId.value;
 		const question = locale.baseText('aiAssistant.builder.credentialHelpMessage', {
 			interpolate: { credentialName: credType.displayName },
 		});
 
-		await initSupportChat(question, credType);
+		await initSupportChat(workflowId, question, credType);
 
 		trackUserOpenedAssistant({
+			workflowId,
 			source: 'credential',
 			task: 'credentials',
 			has_existing_session: hasExistingSession,
@@ -317,6 +326,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	 * Gets information about the current view and active node to provide context to the assistant
 	 */
 	async function getVisualContext(
+		workflowId: string,
 		nodeInfo?: ChatRequest.NodeInfo,
 	): Promise<ChatRequest.AssistantContext | undefined> {
 		if (chatSessionTask.value === 'error') {
@@ -381,9 +391,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					}
 				: undefined,
 			currentWorkflow: workflowDataStale.value
-				? await assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow, {
-						excludeParameterValues: !allowSendingParameterValues.value,
-					})
+				? await assistantHelpers.simplifyWorkflowForAssistant(
+						useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).getSnapshot(),
+						{
+							excludeParameterValues: !allowSendingParameterValues.value,
+						},
+					)
 				: undefined,
 			executionData:
 				workflowExecutionDataStale.value && executionResult
@@ -394,17 +407,21 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		};
 	}
 
-	async function initSupportChat(userMessage: string, credentialType?: ICredentialType) {
-		resetAssistantChat();
+	async function initSupportChat(
+		workflowId: string,
+		userMessage: string,
+		credentialType?: ICredentialType,
+	) {
+		resetAssistantChat(workflowId);
 		chatSessionTask.value = credentialType ? 'credentials' : 'support';
 		const activeNode = workflowsStore.activeNode() as INode;
-		const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode, {
+		const nodeInfo = assistantHelpers.getNodeInfoForAssistant(workflowId, activeNode, {
 			excludeParameterValues: !allowSendingParameterValues.value,
 		});
 		// For the initial message, only provide visual context if the task is support
 		const visualContext =
 			chatSessionTask.value === 'support'
-				? await getVisualContext(nodeInfo)
+				? await getVisualContext(workflowId, nodeInfo)
 				: {
 						aiUsageSettings: {
 							allowSendingParameterValues: allowSendingParameterValues.value,
@@ -454,12 +471,16 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),
 			(e) =>
-				handleServiceError(e, id, async () => await initSupportChat(userMessage, credentialType)),
+				handleServiceError(
+					e,
+					id,
+					async () => await initSupportChat(workflowId, userMessage, credentialType),
+				),
 			streamingAbortController.value.signal,
 		);
 	}
 
-	async function initErrorHelper(context: ChatRequest.ErrorContext) {
+	async function initErrorHelper(workflowId: string, context: ChatRequest.ErrorContext) {
 		const id = getRandomId();
 		if (chatSessionError.value) {
 			if (isNodeErrorActive(context)) {
@@ -468,16 +489,17 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			}
 		}
 
-		resetAssistantChat();
+		resetAssistantChat(workflowId);
 		chatSessionTask.value = 'error';
 		chatSessionError.value = context;
-		currentSessionWorkflowId.value = workflowsStore.workflowId;
+		currentSessionWorkflowId.value = workflowId;
 
 		if (workflowsStore.activeExecutionId) {
 			currentSessionActiveExecutionId.value = workflowsStore.activeExecutionId;
 		}
 
 		const { authType, nodeInputData, schemas } = assistantHelpers.getNodeInfoForAssistant(
+			workflowId,
 			context.node,
 			{ excludeParameterValues: !allowSendingParameterValues.value },
 		);
@@ -519,7 +541,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			},
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),
-			(e) => handleServiceError(e, id, async () => await initErrorHelper(context)),
+			(e) => handleServiceError(e, id, async () => await initErrorHelper(workflowId, context)),
 			streamingAbortController.value.signal,
 		);
 	}
@@ -592,6 +614,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	async function sendMessage(
+		workflowId: string,
 		chatMessage: Pick<ChatRequest.UserChatMessage, 'text' | 'quickReplyType'>,
 	) {
 		if (isSessionEnded.value || streaming.value) {
@@ -602,7 +625,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 		const retry = async () => {
 			chatMessages.value = chatMessages.value.filter((msg) => msg.id !== id);
-			await sendMessage(chatMessage);
+			await sendMessage(workflowId, chatMessage);
 		};
 
 		try {
@@ -618,10 +641,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				nodeExecutionStatus.value = 'not_executed';
 			}
 			const activeNode = workflowsStore.activeNode() as INode;
-			const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode, {
+			const nodeInfo = assistantHelpers.getNodeInfoForAssistant(workflowId, activeNode, {
 				excludeParameterValues: !allowSendingParameterValues.value,
 			});
-			const userContext = await getVisualContext(nodeInfo);
+			const userContext = await getVisualContext(workflowId, nodeInfo);
 
 			if (streamingAbortController.value) {
 				streamingAbortController.value.abort();
@@ -668,10 +691,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function trackUserOpenedAssistant({
+		workflowId,
 		source,
 		task,
 		has_existing_session,
-	}: { has_existing_session: boolean } & (
+	}: { has_existing_session: boolean; workflowId: string } & (
 		| {
 				source: 'error';
 				task: 'error';
@@ -689,31 +713,22 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				task: 'credentials';
 		  }
 	)) {
-		const canvasStatus = workflowsStore.allNodes.length === 0 ? 'empty' : 'existing_workflow';
+		const canvasStatus =
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).allNodes.length === 0
+				? 'empty'
+				: 'existing_workflow';
 		telemetry.track('User opened assistant', {
 			source,
 			task,
 			has_existing_session,
 			instance_id: rootStore.instanceId,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId,
 			canvas_status: canvasStatus,
 			node_type: chatSessionError.value?.node?.type,
 			error: chatSessionError.value?.error,
 			chat_session_id: currentSessionId.value,
 		});
 	}
-
-	watch(route, () => {
-		const activeWorkflowId = workflowsStore.workflowId;
-		if (
-			!currentSessionId.value ||
-			!currentSessionWorkflowId.value ||
-			currentSessionWorkflowId.value === activeWorkflowId
-		) {
-			return;
-		}
-		resetAssistantChat();
-	});
 
 	watch(
 		() => uiStore.stateIsDirty,
@@ -737,6 +752,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		unreadCount,
 		streaming,
 		currentSessionId,
+		currentSessionWorkflowId,
 		lastUnread,
 		isSessionEnded,
 		isFloatingButtonShown,

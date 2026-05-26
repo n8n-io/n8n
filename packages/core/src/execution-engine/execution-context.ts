@@ -1,13 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import {
-	type IWorkflowExecuteAdditionalData,
-	type WorkflowExecuteMode,
-	type IRunExecutionData,
-	type Workflow,
-} from 'n8n-workflow';
+import { type WorkflowExecuteMode, type IRunExecutionData, type Workflow } from 'n8n-workflow';
 
-import { assertExecutionDataExists } from '@/utils/assertions';
+import { assertExecutionDataExists, type PreExecutionAdditionalData } from '@/utils/assertions';
 
 import { ExecutionContextService } from './execution-context.service';
 
@@ -109,7 +104,7 @@ import { ExecutionContextService } from './execution-context.service';
 export const establishExecutionContext = async (
 	workflow: Workflow,
 	runExecutionData: IRunExecutionData,
-	additionalData: IWorkflowExecuteAdditionalData,
+	additionalData: PreExecutionAdditionalData | undefined,
 	mode: WorkflowExecuteMode,
 ): Promise<void> => {
 	assertExecutionDataExists(runExecutionData.executionData, workflow, additionalData, mode);
@@ -129,7 +124,15 @@ export const establishExecutionContext = async (
 		version: 1,
 		establishedAt: Date.now(),
 		source: mode,
+		redaction: {
+			version: 1,
+			policy: workflow.settings?.redactionPolicy ?? 'none',
+		},
 	};
+
+	if (mode === 'manual' && additionalData?.encryptedRunnerIdentity) {
+		executionData.runtimeData.credentials = additionalData.encryptedRunnerIdentity;
+	}
 
 	if (runExecutionData.parentExecution) {
 		// Create a new context by inheriting everything from the parent execution context,

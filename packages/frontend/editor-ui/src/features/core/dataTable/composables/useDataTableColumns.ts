@@ -10,6 +10,7 @@ import {
 	DATA_TABLE_ID_COLUMN_WIDTH,
 	DEFAULT_COLUMN_WIDTH,
 	DEFAULT_ID_COLUMN_NAME,
+	MIN_ADD_COLUMN_BUTTON_COLUMN_WIDTH,
 } from '@/features/core/dataTable/constants';
 import { useDataTableTypes } from '@/features/core/dataTable/composables/useDataTableTypes';
 import ColumnHeader from '@/features/core/dataTable/components/dataGrid/ColumnHeader.vue';
@@ -201,6 +202,7 @@ export const useDataTableColumns = ({
 					lockPinned: true,
 					lockPosition: 'right',
 					resizable: false,
+					minWidth: MIN_ADD_COLUMN_BUTTON_COLUMN_WIDTH,
 					flex: 1,
 					headerComponent: AddColumnButton,
 					headerComponentParams: { onAddColumn, disabled: readOnly.value },

@@ -1,18 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { useWorkflowDocumentTags, type TagAction } from './useWorkflowDocumentTags';
+import type { ITag } from '@n8n/rest-api-client';
+import { useWorkflowDocumentTags } from './useWorkflowDocumentTags';
 
-/**
- * Creates the composable wired through a spy onChange.
- * The spy calls handleAction, simulating the store's unified dispatcher.
- */
 function createTags() {
-	const onChangeSpy = vi.fn<(action: TagAction) => void>();
-	const composable = useWorkflowDocumentTags(onChangeSpy);
-
-	// Wire the spy to call handleAction, simulating the store's onChange dispatcher
-	onChangeSpy.mockImplementation(composable.handleAction);
-
-	return { ...composable, onChangeSpy };
+	return useWorkflowDocumentTags();
 }
 
 describe('useWorkflowDocumentTags', () => {
@@ -24,16 +15,18 @@ describe('useWorkflowDocumentTags', () => {
 	});
 
 	describe('setTags', () => {
-		it('should set tags via onChange', () => {
-			const { tags, setTags, onChangeSpy } = createTags();
+		it('should set tags and fire event hook', () => {
+			const { tags, setTags, onTagsChange } = createTags();
+			const hookSpy = vi.fn();
+			onTagsChange(hookSpy);
 
 			setTags(['tag1', 'tag2']);
 
-			expect(onChangeSpy).toHaveBeenCalledWith({
-				name: 'setTags',
+			expect(tags.value).toEqual(['tag1', 'tag2']);
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: 'update',
 				payload: { tags: ['tag1', 'tag2'] },
 			});
-			expect(tags.value).toEqual(['tag1', 'tag2']);
 		});
 
 		it('should replace existing tags entirely', () => {
@@ -53,19 +46,41 @@ describe('useWorkflowDocumentTags', () => {
 
 			expect(tags.value).toEqual([]);
 		});
+
+		it('should normalize ITag[] input to id strings', () => {
+			const { tags, setTags } = createTags();
+			const itags: ITag[] = [
+				{ id: 't-1', name: 'alpha' },
+				{ id: 't-2', name: 'beta' },
+			];
+
+			setTags(itags);
+
+			expect(tags.value).toEqual(['t-1', 't-2']);
+		});
+
+		it('should accept mixed ITag and string input', () => {
+			const { tags, setTags } = createTags();
+
+			setTags(['t-raw', { id: 't-obj', name: 'obj' }]);
+
+			expect(tags.value).toEqual(['t-raw', 't-obj']);
+		});
 	});
 
 	describe('addTags', () => {
-		it('should add tags via onChange', () => {
-			const { tags, addTags, onChangeSpy } = createTags();
+		it('should add tags and fire event hook', () => {
+			const { tags, addTags, onTagsChange } = createTags();
+			const hookSpy = vi.fn();
+			onTagsChange(hookSpy);
 
 			addTags(['tag1', 'tag2']);
 
-			expect(onChangeSpy).toHaveBeenCalledWith({
-				name: 'addTags',
+			expect(tags.value).toEqual(['tag1', 'tag2']);
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: 'add',
 				payload: { tags: ['tag1', 'tag2'] },
 			});
-			expect(tags.value).toEqual(['tag1', 'tag2']);
 		});
 
 		it('should append to existing tags', () => {
@@ -85,21 +100,31 @@ describe('useWorkflowDocumentTags', () => {
 
 			expect(tags.value).toEqual(['tag1', 'tag2', 'tag3']);
 		});
+
+		it('should normalize ITag[] input to id strings', () => {
+			const { tags, addTags } = createTags();
+			const itags: ITag[] = [{ id: 't-1', name: 'alpha' }];
+
+			addTags(itags);
+
+			expect(tags.value).toEqual(['t-1']);
+		});
 	});
 
 	describe('removeTag', () => {
-		it('should remove a tag via onChange', () => {
-			const { tags, setTags, removeTag, onChangeSpy } = createTags();
+		it('should remove a tag and fire event hook', () => {
+			const { tags, setTags, removeTag, onTagsChange } = createTags();
 			setTags(['tag1', 'tag2', 'tag3']);
-			onChangeSpy.mockClear();
+			const hookSpy = vi.fn();
+			onTagsChange(hookSpy);
 
 			removeTag('tag2');
 
-			expect(onChangeSpy).toHaveBeenCalledWith({
-				name: 'removeTag',
-				payload: { tagId: 'tag2' },
-			});
 			expect(tags.value).toEqual(['tag1', 'tag3']);
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: 'delete',
+				payload: { tags: ['tag1', 'tag3'] },
+			});
 		});
 
 		it('should handle removing a non-existent tag gracefully', () => {
@@ -117,34 +142,6 @@ describe('useWorkflowDocumentTags', () => {
 			removeTag('tag1');
 
 			expect(tags.value).toEqual([]);
-		});
-	});
-
-	describe('handleAction', () => {
-		it('should apply setTags action directly', () => {
-			const { tags, handleAction } = createTags();
-
-			handleAction({ name: 'setTags', payload: { tags: ['tag1'] } });
-
-			expect(tags.value).toEqual(['tag1']);
-		});
-
-		it('should apply addTags action directly', () => {
-			const { tags, handleAction } = createTags();
-			handleAction({ name: 'setTags', payload: { tags: ['tag1'] } });
-
-			handleAction({ name: 'addTags', payload: { tags: ['tag2'] } });
-
-			expect(tags.value).toEqual(['tag1', 'tag2']);
-		});
-
-		it('should apply removeTag action directly', () => {
-			const { tags, handleAction } = createTags();
-			handleAction({ name: 'setTags', payload: { tags: ['tag1', 'tag2'] } });
-
-			handleAction({ name: 'removeTag', payload: { tagId: 'tag1' } });
-
-			expect(tags.value).toEqual(['tag2']);
 		});
 	});
 });

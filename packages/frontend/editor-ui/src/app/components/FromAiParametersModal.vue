@@ -3,7 +3,7 @@ import Modal from '@/app/components/Modal.vue';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { FROM_AI_PARAMETERS_MODAL_KEY } from '@/app/constants';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { FormFieldValueUpdate } from '@n8n/design-system';
 import { N8nButton, N8nCallout, N8nFormInputs, N8nText } from '@n8n/design-system';
@@ -36,20 +36,20 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const ndvStore = useNDVStore();
 const modalBus = createEventBus();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
 const agentRequestStore = useAgentRequestStore();
 
 const node = computed(() =>
-	props.data.nodeName ? workflowsStore.getNodeByName(props.data.nodeName) : undefined,
+	props.data.nodeName ? workflowDocumentStore.value.getNodeByName(props.data.nodeName) : undefined,
 );
 
 const parentNode = computed(() => {
 	if (!node.value) return undefined;
-	const parentNodes = workflowsStore.workflowObject.getChildNodes(node.value.name, 'ALL', 1);
+	const parentNodes = workflowDocumentStore.value.getChildNodes(node.value.name, 'ALL', 1);
 	if (parentNodes.length === 0) return undefined;
-	return workflowsStore.getNodeByName(parentNodes[0])?.name;
+	return workflowDocumentStore.value.getNodeByName(parentNodes[0])?.name;
 });
 
 const { getToolName, parameters, error, updateSelectedTool } = useToolParameters({ node });
@@ -63,7 +63,7 @@ const onExecute = async () => {
 	const nodeName = node.value.name;
 	const inputValues = Object.values(inputs.value?.getValuesWithMetadata() ?? {});
 
-	agentRequestStore.clearAgentRequests(workflowsStore.workflowId, node.value.id);
+	agentRequestStore.clearAgentRequests(workflowDocumentStore.value.workflowId, node.value.id);
 	// check if there's a selected tool, e.g. HITL/MCP client tool selector
 	// findLast is used to get the last selected tool from the tool chain
 	const selectedToolName = inputValues.findLast((value) => value.metadata?.type === 'selector')
@@ -89,11 +89,15 @@ const onExecute = async () => {
 		}
 	}
 
-	agentRequestStore.setAgentRequestForNode(workflowsStore.workflowId, node.value.id, agentRequest);
+	agentRequestStore.setAgentRequestForNode(
+		workflowDocumentStore.value.workflowId,
+		node.value.id,
+		agentRequest,
+	);
 
 	const telemetryPayload = {
 		node_type: node.value.type,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 		source: 'from-ai-parameters-modal',
 		push_ref: ndvStore.pushRef,
 	};

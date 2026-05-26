@@ -1,4 +1,4 @@
-import { ChatHubProvider } from '@n8n/api-types';
+import { ChatHubProvider, type ChatHubSessionType } from '@n8n/api-types';
 import { WithTimestamps, DateTimeColumn, User, CredentialsEntity, WorkflowEntity } from '@n8n/db';
 import {
 	Column,
@@ -29,6 +29,7 @@ export interface IChatHubSession {
 	workflowId: string | null;
 	agentId: string | null;
 	agentName: string | null;
+	type: ChatHubSessionType;
 }
 
 @Entity({ name: 'chat_hub_sessions' })
@@ -121,6 +122,13 @@ export class ChatHubSession extends WithTimestamps {
 	 */
 	@Column({ type: 'varchar', length: 128, nullable: true })
 	agentName: string | null;
+
+	/**
+	 * Whether this session was created from the Chat Hub ('production')
+	 * or from a manual canvas executions ('manual').
+	 */
+	@Column({ type: 'varchar', length: 16, default: 'production' })
+	type: ChatHubSessionType;
 
 	/**
 	 * All messages that belong to this chat session.

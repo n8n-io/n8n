@@ -27,10 +27,7 @@ import {
 	sleepWithAbort,
 } from 'n8n-workflow';
 
-import {
-	createZodSchemaFromArgs,
-	extractFromAIParameters,
-} from '../../../../../utils/fromAIToolFactory';
+import { createZodSchemaFromArgs, extractFromAIParameters } from '@n8n/ai-utilities';
 
 function isNodeExecutionData(data: unknown): data is INodeExecutionData[] {
 	return isArray(data) && Boolean(data.length) && isObject(data[0]) && 'json' in data[0];
@@ -262,6 +259,7 @@ export class WorkflowToolService {
 					executionId: workflowProxy.$execution.id,
 					workflowId: workflowProxy.$workflow.id,
 				},
+				returnLastRunOnly: true, // The tool's answer is the sub-workflow's final-run output, not its internal multi-run computation.
 			});
 			// Set sub-workflow execution id so it can be used in other places
 			this.subExecutionId = receivedData.executionId;

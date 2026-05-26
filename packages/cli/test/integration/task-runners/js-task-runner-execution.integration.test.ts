@@ -22,7 +22,17 @@ import { LocalTaskRequester } from '@/task-runners/task-managers/local-task-requ
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 
-jest.spyOn(PyTaskRunnerProcess, 'checkRequirements').mockResolvedValue('python');
+// `restoreMocks: true` in the root jest config restores spies between tests,
+// but the Python runtime check is invoked from inner describes' `beforeAll`
+// hooks (which run after the previous test's restore). Patching the static
+// method directly keeps the stub active for the whole test file.
+const originalCheckRequirements = PyTaskRunnerProcess.checkRequirements;
+beforeAll(() => {
+	PyTaskRunnerProcess.checkRequirements = async () => 'python';
+});
+afterAll(() => {
+	PyTaskRunnerProcess.checkRequirements = originalCheckRequirements;
+});
 
 /**
  * Integration tests for the JS TaskRunner execution. Starts the TaskRunner
@@ -31,7 +41,6 @@ jest.spyOn(PyTaskRunnerProcess, 'checkRequirements').mockResolvedValue('python')
 describe('JS TaskRunner execution on internal mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
 	runnerConfig.mode = 'internal';
-	runnerConfig.enabled = true;
 	runnerConfig.port = 45678;
 
 	const taskRunnerModule = Container.get(TaskRunnerModule);
@@ -137,7 +146,10 @@ describe('JS TaskRunner execution on internal mode', () => {
 		});
 
 		return {
-			additionalData: mock<IWorkflowExecuteAdditionalData>(),
+			additionalData: mock<IWorkflowExecuteAdditionalData>({
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+			}),
 			executeFunctions: mock<IExecuteFunctions>(),
 			taskSettings,
 			codeNode,

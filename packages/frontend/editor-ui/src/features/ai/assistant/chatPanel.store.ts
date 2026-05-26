@@ -3,13 +3,18 @@ import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useRoute } from 'vue-router';
-import { ASK_AI_SLIDE_OUT_DURATION_MS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
+import {
+	ASK_AI_SLIDE_IN_DURATION_MS,
+	ASK_AI_SLIDE_OUT_DURATION_MS,
+	EDITABLE_CANVAS_VIEWS,
+} from '@/app/constants';
 import type { VIEWS } from '@/app/constants';
 import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
 import { useChatPanelStateStore, type ChatPanelMode } from './chatPanelState.store';
 import { useAssistantStore } from './assistant.store';
 import { useBuilderStore } from './builder.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { MERGE_ASK_BUILD_EXPERIMENT } from '@/app/constants/experiments';
 import type { ICredentialType } from 'n8n-workflow';
@@ -36,8 +41,11 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	const route = useRoute();
 	const chatPanelStateStore = useChatPanelStateStore();
 	const settingsStore = useSettingsStore();
+	const workflowsStore = useWorkflowsStore();
 	const posthogStore = usePostHog();
 	const locale = useI18n();
+
+	let openTimerId: ReturnType<typeof setTimeout> | null = null;
 
 	const isMergeAskBuildEnabled = computed(
 		() =>
@@ -63,6 +71,8 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 	// Actions
 	async function open(options?: { mode?: ChatPanelMode; showCoachmark?: boolean }) {
+		if (!settingsStore.isAiAssistantOrBuilderEnabled) return;
+
 		const mode = options?.mode ? resolveMode(options.mode) : undefined;
 		const showCoachmark = options?.showCoachmark ?? true;
 
@@ -99,14 +109,22 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 				read: true,
 			}));
 		}
-		// Update UI grid dimensions when opening
-		uiStore.appGridDimensions = {
-			...uiStore.appGridDimensions,
-			width: window.innerWidth - chatPanelStateStore.width,
-		};
+		// Wait for slide animation to finish before updating grid width
+		if (openTimerId) clearTimeout(openTimerId);
+		openTimerId = setTimeout(() => {
+			openTimerId = null;
+			uiStore.appGridDimensions = {
+				...uiStore.appGridDimensions,
+				width: window.innerWidth - chatPanelStateStore.width,
+			};
+		}, ASK_AI_SLIDE_IN_DURATION_MS);
 	}
 
 	function close() {
+		if (openTimerId) {
+			clearTimeout(openTimerId);
+			openTimerId = null;
+		}
 		chatPanelStateStore.isOpen = false;
 		chatPanelStateStore.showCoachmark = false;
 		// Wait for slide animation to finish before updating grid width and resetting
@@ -120,7 +138,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 			// Reset assistant only if session has ended
 			if (assistantStore.isSessionEnded) {
-				assistantStore.resetAssistantChat();
+				assistantStore.resetAssistantChat(workflowsStore.workflowId);
 			}
 		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
 	}
@@ -176,7 +194,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			return;
 		}
 		const assistantStore = useAssistantStore();
-		await assistantStore.initCredHelp(credentialType);
+		await assistantStore.initCredHelp(workflowsStore.workflowId, credentialType);
 		await open({ mode: 'assistant' });
 	}
 
@@ -194,7 +212,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			return;
 		}
 		const assistantStore = useAssistantStore();
-		await assistantStore.initErrorHelper(context);
+		await assistantStore.initErrorHelper(workflowsStore.workflowId, context);
 		await open({ mode: 'assistant' });
 	}
 

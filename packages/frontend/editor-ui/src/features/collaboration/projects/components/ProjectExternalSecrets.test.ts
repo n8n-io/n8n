@@ -124,10 +124,13 @@ vi.mock('@/app/composables/useToast', () => ({
 	})),
 }));
 
-vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
-	useEnvFeatureFlag: vi.fn(() => ({
-		check: {
-			value: vi.fn((flag: string) => flag === 'EXTERNAL_SECRETS_FOR_PROJECTS'),
+vi.mock('@/app/stores/settings.store', () => ({
+	useSettingsStore: vi.fn(() => ({
+		moduleSettings: {
+			'external-secrets': {
+				multipleConnections: true,
+				forProjects: true,
+			},
 		},
 	})),
 }));
@@ -137,9 +140,9 @@ const mockProviders: SecretProviderConnection[] = [
 		id: '1',
 		name: 'aws-prod',
 		type: 'awsSecretsManager',
+		isEnabled: true,
 		projects: [{ id: 'project-1', name: 'Test Project' }],
 		settings: {},
-		isEnabled: true,
 		secretsCount: 3,
 		state: 'connected',
 		secrets: [
@@ -147,21 +150,21 @@ const mockProviders: SecretProviderConnection[] = [
 			{ name: 'DATABASE_PASSWORD', credentialsCount: 1 },
 			{ name: 'SECRET_TOKEN', credentialsCount: 0 },
 		],
-		createdAt: '2024-01-01T00:00:00.000Z',
-		updatedAt: '2024-01-01T00:00:00.000Z',
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
 	},
 	{
 		id: '2',
 		name: 'azure-dev',
 		type: 'azureKeyVault',
+		isEnabled: true,
 		projects: [{ id: 'project-1', name: 'Test Project' }],
 		settings: {},
-		isEnabled: true,
 		secretsCount: 1,
 		state: 'connected',
 		secrets: [{ name: 'DEV_API_KEY', credentialsCount: 1 }],
-		createdAt: '2024-01-01T00:00:00.000Z',
-		updatedAt: '2024-01-01T00:00:00.000Z',
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
 	},
 ];
 
@@ -446,14 +449,15 @@ describe('ProjectExternalSecrets', () => {
 		});
 
 		it('should not fetch data when feature is disabled', async () => {
-			const { useEnvFeatureFlag } = await import(
-				'@/features/shared/envFeatureFlag/useEnvFeatureFlag'
-			);
-			vi.mocked(useEnvFeatureFlag).mockReturnValue({
-				check: {
-					value: vi.fn(() => false),
+			const { useSettingsStore } = await import('@/app/stores/settings.store');
+			vi.mocked(useSettingsStore).mockReturnValue({
+				moduleSettings: {
+					'external-secrets': {
+						multipleConnections: true,
+						forProjects: false,
+					},
 				},
-			} as unknown as ReturnType<typeof useEnvFeatureFlag>);
+			} as unknown as ReturnType<typeof useSettingsStore>);
 
 			const fetchSpy = vi.spyOn(projectsStore, 'getProjectSecretProviders');
 

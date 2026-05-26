@@ -23,6 +23,14 @@ export const CAPABILITIES = {
 		},
 	},
 	kent: { services: ['kent'] },
+	'dynamic-credentials': {
+		services: ['keycloak'],
+		env: {
+			N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: 'true',
+			// Static token required to allow unauthenticated (external) requests to dynamic credential endpoints
+			N8N_DYNAMIC_CREDENTIALS_ENDPOINT_AUTH_TOKEN: 'e2e-test-endpoint-token',
+		},
+	},
 } as const satisfies Record<string, Partial<N8NConfig>>;
 
 export type Capability = keyof typeof CAPABILITIES;

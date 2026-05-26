@@ -1,4 +1,4 @@
-import type { BaseMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, type BaseMessage } from '@langchain/core/messages';
 import { evaluate } from 'langsmith/evaluation';
 import type { Run, Example } from 'langsmith/schemas';
 import { traceable } from 'langsmith/traceable';
@@ -9,6 +9,7 @@ import { runWithOptionalLimiter, withTimeout } from './evaluation-helpers';
 import { toLangsmithEvaluationResult } from './feedback';
 import {
 	isGenerationResult,
+	type DatasetInputContext,
 	type Evaluator,
 	type TestCase,
 	type EvaluationContext,
@@ -34,6 +35,7 @@ import {
 } from './score-calculator';
 import type { IntrospectionEvent } from '../../src/tools/introspect.tool.js';
 import type { SimpleWorkflow } from '../../src/types/workflow';
+import type { ChatPayload } from '../../src/workflow-builder-agent';
 import { extractMessageContent } from '../langsmith/types';
 
 const DEFAULT_PASS_THRESHOLD = 0.7;
@@ -200,10 +202,20 @@ function buildContext(args: {
 	testCaseContext?: TestCaseContext;
 	referenceWorkflows?: SimpleWorkflow[];
 	generatedCode?: string;
+	agentTextResponse?: string;
 	pinData?: IPinData;
+	datasetInputContext?: DatasetInputContext;
 }): EvaluationContext {
-	const { prompt, globalContext, testCaseContext, referenceWorkflows, generatedCode, pinData } =
-		args;
+	const {
+		prompt,
+		globalContext,
+		testCaseContext,
+		referenceWorkflows,
+		generatedCode,
+		agentTextResponse,
+		pinData,
+		datasetInputContext,
+	} = args;
 
 	return {
 		prompt,
@@ -211,7 +223,9 @@ function buildContext(args: {
 		...(testCaseContext ?? {}),
 		...(referenceWorkflows?.length ? { referenceWorkflows } : {}),
 		...(generatedCode ? { generatedCode } : {}),
+		...(agentTextResponse ? { agentTextResponse } : {}),
 		...(pinData ? { pinData } : {}),
+		...(datasetInputContext ? { datasetInputContext } : {}),
 	};
 }
 
@@ -448,6 +462,15 @@ function extractContextFromLangsmithInputs(inputs: unknown): TestCaseContext {
 		context.referenceWorkflows = [record.referenceWorkflow];
 	}
 
+	// Extract annotations for binary-checks evaluator
+	if (
+		record.annotations &&
+		typeof record.annotations === 'object' &&
+		!Array.isArray(record.annotations)
+	) {
+		context.annotations = record.annotations as Record<string, unknown>;
+	}
+
 	return context;
 }
 
@@ -534,6 +557,7 @@ async function runLocalExampleSuccess(args: {
 	testCase: TestCase;
 	generateWorkflow: (
 		prompt: string,
+		datasetInputContext?: DatasetInputContext,
 		collectors?: GenerationCollectors,
 	) => Promise<SimpleWorkflow | GenerationResult>;
 	evaluators: Array<Evaluator<EvaluationContext>>;
@@ -562,7 +586,7 @@ async function runLocalExampleSuccess(args: {
 
 	const genResult = await runWithOptionalLimiter(async () => {
 		return await withTimeout({
-			promise: generateWorkflow(testCase.prompt, collectors),
+			promise: generateWorkflow(testCase.prompt, testCase.context?.datasetInputContext, collectors),
 			timeoutMs,
 			label: 'workflow_generation',
 		});
@@ -572,6 +596,7 @@ async function runLocalExampleSuccess(args: {
 	// Extract workflow and optional generated code
 	const workflow = isGenerationResult(genResult) ? genResult.workflow : genResult;
 	const generatedCode = isGenerationResult(genResult) ? genResult.generatedCode : undefined;
+	const agentTextResponse = isGenerationResult(genResult) ? genResult.agentTextResponse : undefined;
 
 	lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
@@ -594,7 +619,9 @@ async function runLocalExampleSuccess(args: {
 		testCaseContext: testCase.context,
 		referenceWorkflows: testCase.referenceWorkflows,
 		generatedCode,
+		agentTextResponse,
 		pinData,
+		datasetInputContext: testCase.context?.datasetInputContext,
 	});
 
 	// Run evaluators in parallel
@@ -623,6 +650,7 @@ async function runLocalExampleSuccess(args: {
 		introspectionEvents: metrics.introspectionEvents,
 		workflow,
 		generatedCode,
+		agentTextResponse,
 	};
 }
 
@@ -632,6 +660,7 @@ async function runLocalExample(args: {
 	testCase: TestCase;
 	generateWorkflow: (
 		prompt: string,
+		datasetInputContext?: DatasetInputContext,
 		collectors?: GenerationCollectors,
 	) => Promise<SimpleWorkflow | GenerationResult>;
 	evaluators: Array<Evaluator<EvaluationContext>>;
@@ -711,6 +740,7 @@ async function runLocalDataset(params: {
 	testCases: TestCase[];
 	generateWorkflow: (
 		prompt: string,
+		datasetInputContext?: DatasetInputContext,
 		collectors?: GenerationCollectors,
 	) => Promise<SimpleWorkflow | GenerationResult>;
 	evaluators: Array<Evaluator<EvaluationContext>>;
@@ -914,8 +944,11 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 	// Write CSV if requested
 	if (outputCsv) {
 		const { writeResultsCsv } = await import('./csv-writer.js');
-		// Map suite to CSV format (only llm-judge and pairwise are supported)
-		const csvSuite = suite === 'llm-judge' || suite === 'pairwise' ? suite : undefined;
+		// Map suite to CSV format
+		const csvSuite =
+			suite === 'llm-judge' || suite === 'pairwise' || suite === 'binary-checks'
+				? suite
+				: undefined;
 		writeResultsCsv(results, outputCsv, { suite: csvSuite });
 		logger.info(`Results written to: ${outputCsv}`);
 	}
@@ -942,6 +975,12 @@ interface LangsmithDatasetInput {
 	prompt?: string;
 	messages?: BaseMessage[];
 	evals?: Record<string, unknown>;
+	workflowJSON?: unknown;
+	workflowContext?: unknown;
+	workflowOperations?: unknown[];
+	mode?: string;
+	/** Injected by enrichExamplesWithHistory - historical messages from outputs */
+	_historicalMessages?: unknown[];
 	[key: string]: unknown;
 }
 
@@ -961,6 +1000,116 @@ function extractPrompt(inputs: LangsmithDatasetInput): string {
 	}
 
 	throw new Error('No prompt found in inputs - expected "prompt" string or "messages" array');
+}
+
+/**
+ * Pre-process LangSmith examples to extract conversation history from outputs
+ * and inject it into inputs for the target function.
+ *
+ * The dataset format has:
+ * - inputs.messages[0]: The latest user turn
+ * - outputs.messages: The FULL conversation (all prior turns + latest + AI response)
+ *
+ * We find the latest turn in outputs and extract everything before it as historical.
+ */
+function enrichExamplesWithHistory(examples: Example[]): Example[] {
+	return examples.map((example) => {
+		const outputMessages = (example.outputs as Record<string, unknown> | undefined)?.messages;
+		if (!Array.isArray(outputMessages) || outputMessages.length <= 1) {
+			return example; // No history to extract
+		}
+
+		const inputMessages = (example.inputs as Record<string, unknown> | undefined)?.messages;
+		if (!Array.isArray(inputMessages) || inputMessages.length === 0) {
+			return example;
+		}
+
+		// Get the content of the latest turn from inputs
+		const inputMsg = inputMessages[0] as Record<string, unknown> | undefined;
+		const inputContent = (inputMsg?.kwargs as Record<string, unknown> | undefined)?.content;
+		if (typeof inputContent !== 'string') return example;
+
+		// Find the index of the latest turn in output messages by matching content
+		const latestTurnIndex = outputMessages.findIndex((msg: unknown) => {
+			if (!isUnknownRecord(msg)) return false;
+			const kwargs = msg.kwargs;
+			if (!isUnknownRecord(kwargs)) return false;
+			return kwargs.content === inputContent;
+		});
+
+		if (latestTurnIndex <= 0) return example; // No history before the latest turn
+
+		// Extract all messages before the latest turn as historical
+		const historicalMessages = outputMessages.slice(0, latestTurnIndex);
+
+		return {
+			...example,
+			inputs: {
+				...example.inputs,
+				_historicalMessages: historicalMessages,
+			},
+		};
+	});
+}
+
+/**
+ * Deserialize raw LangChain `lc` serialization format messages into BaseMessage instances.
+ * Dataset messages use the format: {id, lc: 1, type: "constructor", kwargs: {content, ...}}
+ * with the class ID in `id` array (e.g. ["langchain_core", "messages", "HumanMessage"]).
+ *
+ * Only keeps HumanMessage and AIMessage — tool calls/results are stripped
+ * to simplify the context passed to the code builder.
+ */
+function deserializeLcMessages(rawMessages: unknown[]): BaseMessage[] {
+	return rawMessages
+		.filter((msg): msg is Record<string, unknown> => {
+			if (!isUnknownRecord(msg)) return false;
+			const id = Array.isArray(msg.id) ? (msg.id as unknown[]) : [];
+			const last: unknown = id[id.length - 1];
+			return last === 'HumanMessage' || last === 'AIMessage';
+		})
+		.map((msg) => {
+			const kwargs = isUnknownRecord(msg.kwargs) ? msg.kwargs : {};
+			const content = typeof kwargs.content === 'string' ? kwargs.content : '';
+			const id = Array.isArray(msg.id) ? (msg.id as unknown[]) : [];
+
+			return id[id.length - 1] === 'HumanMessage'
+				? new HumanMessage(content)
+				: new AIMessage(content);
+		});
+}
+
+/**
+ * Extract DatasetInputContext from LangSmith dataset inputs.
+ * Captures the full agent context (workflowContext, existing workflow, mode)
+ * needed to replay the generation realistically.
+ */
+function extractDatasetInputContext(
+	inputs: LangsmithDatasetInput,
+): DatasetInputContext | undefined {
+	const hasContext =
+		inputs.workflowContext ?? inputs.workflowJSON ?? inputs.mode ?? inputs._historicalMessages;
+	if (!hasContext) return undefined;
+
+	const context: DatasetInputContext = {};
+
+	if (isUnknownRecord(inputs.workflowContext)) {
+		context.workflowContext = inputs.workflowContext as ChatPayload['workflowContext'];
+	}
+
+	if (isSimpleWorkflow(inputs.workflowJSON)) {
+		context.existingWorkflow = inputs.workflowJSON;
+	}
+
+	if (inputs.mode === 'build' || inputs.mode === 'plan') {
+		context.mode = inputs.mode;
+	}
+
+	if (Array.isArray(inputs._historicalMessages) && inputs._historicalMessages.length > 0) {
+		context.historicalMessages = deserializeLcMessages(inputs._historicalMessages);
+	}
+
+	return Object.keys(context).length > 0 ? context : undefined;
 }
 
 function createLangsmithFeedbackExtractor(): (
@@ -1160,6 +1309,35 @@ function updateStats(
 }
 
 /**
+ * Resolve LangSmith dataset examples and enrich them with conversation history.
+ * Handles fallback preloading when filters/maxExamples are requested on a string dataset.
+ */
+async function resolveAndEnrichLangsmithData(params: {
+	dataset: string;
+	langsmithOptions: LangsmithRunConfig['langsmithOptions'];
+	lsClient: LangsmithRunConfig['langsmithClient'];
+	logger: EvalLogger;
+}): Promise<string | Example[]> {
+	const { dataset, langsmithOptions, lsClient, logger } = params;
+	let data = await resolveLangsmithData({ dataset, langsmithOptions, lsClient, logger });
+	// Defensive: if maxExamples/filters were requested but we still got a dataset name,
+	// fall back to preloading so we can honor limits instead of streaming everything.
+	if (
+		typeof data === 'string' &&
+		((langsmithOptions.maxExamples ?? 0) > 0 || langsmithOptions.filters !== undefined)
+	) {
+		data = await loadExamplesFromDataset({
+			lsClient,
+			datasetName: data,
+			maxExamples: langsmithOptions.maxExamples,
+			filters: langsmithOptions.filters,
+		});
+	}
+	// Enrich pre-loaded examples with conversation history from outputs
+	return Array.isArray(data) ? enrichExamplesWithHistory(data) : data;
+}
+
+/**
  * Run evaluation in LangSmith mode.
  */
 async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
@@ -1194,7 +1372,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	const artifactSaver = createArtifactSaverIfRequested({ outputDir, logger });
 	const capturedResults: ExampleResult[] = [];
 
-	// Create traceable wrapper ONCE outside target function to avoid context leaking
+	// Create traceable wrappers ONCE outside target function to avoid context leaking
 	// when running concurrent evaluations. Pass all parameters explicitly (no closures).
 	// IMPORTANT: Get callbacks INSIDE the traceable wrapper where AsyncLocalStorage context
 	// is correctly set, then pass them explicitly to genFn to avoid race conditions.
@@ -1203,15 +1381,17 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			prompt: string;
 			genFn: (
 				prompt: string,
+				datasetInputContext?: DatasetInputContext,
 				collectors?: GenerationCollectors,
 			) => Promise<SimpleWorkflow | GenerationResult>;
 			collectors?: GenerationCollectors;
 			limiter?: LlmCallLimiter;
 			genTimeoutMs?: number;
+			datasetInputContext?: DatasetInputContext;
 		}): Promise<SimpleWorkflow | GenerationResult> => {
 			return await runWithOptionalLimiter(async () => {
 				return await withTimeout({
-					promise: args.genFn(args.prompt, args.collectors),
+					promise: args.genFn(args.prompt, args.datasetInputContext, args.collectors),
 					timeoutMs: args.genTimeoutMs,
 					label: 'workflow_generation',
 				});
@@ -1219,6 +1399,31 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		},
 		{
 			name: 'workflow_generation',
+			run_type: 'chain',
+			client: lsClient,
+		},
+	);
+
+	// Separate traceable wrapper for evaluation so it appears as a sibling to
+	// workflow_generation in LangSmith traces (not nested under it).
+	const traceableEvaluateWorkflow = traceable(
+		async (args: {
+			workflow: SimpleWorkflow;
+			evaluators: Array<Evaluator<EvaluationContext>>;
+			context: EvaluationContext;
+			evalTimeoutMs?: number;
+			evalLifecycle?: Partial<EvaluationLifecycle>;
+		}): Promise<Feedback[]> => {
+			return await evaluateWithPlugins(
+				args.workflow,
+				args.evaluators,
+				args.context,
+				args.evalTimeoutMs,
+				args.evalLifecycle,
+			);
+		},
+		{
+			name: 'workflow_evaluation',
 			run_type: 'chain',
 			client: lsClient,
 		},
@@ -1241,6 +1446,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		const index = targetCallCount;
 		// Extract prompt from inputs (supports both direct prompt and messages array)
 		const prompt = extractPrompt(inputs);
+		const datasetInputContext = extractDatasetInputContext(inputs);
 		const { evals: datasetContext, ...rest } = inputs;
 
 		lifecycle?.onExampleStart?.(index, totalExamples, prompt);
@@ -1255,12 +1461,16 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				collectors,
 				limiter: effectiveGlobalContext.llmCallLimiter,
 				genTimeoutMs: timeoutMs,
+				datasetInputContext,
 			});
 			const genDurationMs = Date.now() - genStart;
 
 			// Extract workflow and optional generated code
 			const workflow = isGenerationResult(genResult) ? genResult.workflow : genResult;
 			const generatedCode = isGenerationResult(genResult) ? genResult.generatedCode : undefined;
+			const agentTextResponse = isGenerationResult(genResult)
+				? genResult.agentTextResponse
+				: undefined;
 
 			lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
@@ -1283,18 +1493,27 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				globalContext: effectiveGlobalContext,
 				testCaseContext: extracted,
 				generatedCode,
+				agentTextResponse,
 				pinData,
+				datasetInputContext,
 			});
 
-			// Run all evaluators in parallel
+			// Run all evaluators in parallel (wrapped in traceable so it appears
+			// as a sibling to workflow_generation in LangSmith traces).
+			// Fall back to direct call if traceable wrapper fails.
 			const evalStart = Date.now();
-			const feedback = await evaluateWithPlugins(
-				workflow,
-				evaluators,
-				context,
-				timeoutMs,
-				lifecycle,
-			);
+			let feedback: Feedback[];
+			try {
+				feedback = await traceableEvaluateWorkflow({
+					workflow,
+					evaluators,
+					context,
+					evalTimeoutMs: timeoutMs,
+					evalLifecycle: lifecycle,
+				});
+			} catch {
+				feedback = await evaluateWithPlugins(workflow, evaluators, context, timeoutMs, lifecycle);
+			}
 			const evalDurationMs = Date.now() - evalStart;
 			const totalDurationMs = Date.now() - startTime;
 
@@ -1321,6 +1540,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				introspectionEvents: metrics.introspectionEvents,
 				workflow,
 				generatedCode,
+				agentTextResponse,
 			};
 
 			artifactSaver?.saveExample(result);
@@ -1367,25 +1587,11 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 
 	const feedbackExtractor = createLangsmithFeedbackExtractor();
 
-	// Load examples if maxExamples is set
 	if (typeof dataset !== 'string') {
 		throw new Error('LangSmith mode requires dataset to be a dataset name string');
 	}
 
-	let data = await resolveLangsmithData({ dataset, langsmithOptions, lsClient, logger });
-	// Defensive: if maxExamples/filters were requested but we still got a dataset name,
-	// fall back to preloading so we can honor limits instead of streaming everything.
-	if (
-		typeof data === 'string' &&
-		((langsmithOptions.maxExamples ?? 0) > 0 || langsmithOptions.filters !== undefined)
-	) {
-		data = await loadExamplesFromDataset({
-			lsClient,
-			datasetName: data,
-			maxExamples: langsmithOptions.maxExamples,
-			filters: langsmithOptions.filters,
-		});
-	}
+	const data = await resolveAndEnrichLangsmithData({ dataset, langsmithOptions, lsClient, logger });
 
 	const effectiveData = applyRepetitions(data, langsmithOptions.repetitions);
 
@@ -1419,8 +1625,11 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	// Write CSV if requested
 	if (outputCsv) {
 		const { writeResultsCsv } = await import('./csv-writer.js');
-		// Map suite to CSV format (only llm-judge and pairwise are supported)
-		const csvSuite = suite === 'llm-judge' || suite === 'pairwise' ? suite : undefined;
+		// Map suite to CSV format
+		const csvSuite =
+			suite === 'llm-judge' || suite === 'pairwise' || suite === 'binary-checks'
+				? suite
+				: undefined;
 		writeResultsCsv(capturedResults, outputCsv, { suite: csvSuite });
 		logger.info(`Results written to: ${outputCsv}`);
 	}

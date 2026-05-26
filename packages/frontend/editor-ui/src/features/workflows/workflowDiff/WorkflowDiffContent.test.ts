@@ -3,7 +3,6 @@ import { defineComponent, h, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { render, screen } from '@testing-library/vue';
 import type { INodeUi } from '@/Interface';
-import type * as I18nModule from '@n8n/i18n';
 
 interface CapturedCanvasProps {
 	id: string;
@@ -71,7 +70,7 @@ vi.mock('@/features/workflows/workflowDiff/useViewportSync', () => ({
 }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
-	const actual = (await importOriginal()) as typeof I18nModule;
+	const actual = (await importOriginal()) as object;
 	return {
 		...actual,
 		useI18n: () => ({
@@ -103,6 +102,18 @@ describe('WorkflowDiffContent', () => {
 		isSourceWorkflowNew: false,
 		nodesDiff: new Map(),
 		connectionsDiff: new Map(),
+		sourceRenderData: {
+			nodeInputsByNodeId: new Map(),
+			nodeOutputsByNodeId: new Map(),
+			pinnedDataByNodeName: {},
+			executionIssuesByNodeName: new Map(),
+		},
+		targetRenderData: {
+			nodeInputsByNodeId: new Map(),
+			nodeOutputsByNodeId: new Map(),
+			pinnedDataByNodeName: {},
+			executionIssuesByNodeName: new Map(),
+		},
 	};
 
 	describe('panels', () => {

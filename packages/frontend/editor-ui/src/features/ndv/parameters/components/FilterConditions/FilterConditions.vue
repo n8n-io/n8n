@@ -11,7 +11,7 @@ import {
 	type NodeParameterValue,
 } from 'n8n-workflow';
 import { computed, reactive, watch, watchEffect } from 'vue';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	DEFAULT_FILTER_OPTIONS,
 	DEFAULT_MAX_CONDITIONS,
@@ -25,6 +25,7 @@ import { resolveParameter } from '@/app/composables/useWorkflowHelpers';
 import Draggable from 'vuedraggable';
 
 import { N8nButton, N8nInputLabel } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 interface Props {
 	parameter: INodeProperties;
 	value: FilterValue;
@@ -52,7 +53,8 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const { debounce } = useDebounce();
 
 const debouncedEmitChange = debounce(emitChange, { debounceTime: 1000 });
@@ -114,7 +116,10 @@ watchEffect(async () => {
 	try {
 		newOptions = {
 			...DEFAULT_FILTER_OPTIONS,
-			...(await resolveParameter(typeOptions as unknown as NodeParameterValue)),
+			...(await resolveParameter(
+				typeOptions as unknown as NodeParameterValue,
+				workflowDocumentStore.value.documentId,
+			)),
 		};
 	} catch {
 		// Keep default options

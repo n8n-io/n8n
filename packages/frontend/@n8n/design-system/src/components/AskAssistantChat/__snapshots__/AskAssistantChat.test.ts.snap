@@ -30,7 +30,10 @@ exports[`AskAssistantChat > limits maximum input length when maxCharacterLength 
         
         
       </div>
+      
+      
       <n8n-icon-button-stub
+        aria-label="askAssistantChat.close"
         class=""
         data-test-id="close-chat-button"
         disabled="false"
@@ -75,8 +78,8 @@ exports[`AskAssistantChat > limits maximum input length when maxCharacterLength 
         </div>
         
       </div>
+      <!--v-if-->
     </div>
-    <!--v-if-->
     <!--v-if-->
     <div
       class="inputWrapper"
@@ -130,7 +133,10 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
         
         
       </div>
+      
+      
       <n8n-icon-button-stub
+        aria-label="askAssistantChat.close"
         class=""
         data-test-id="close-chat-button"
         disabled="false"
@@ -318,8 +324,8 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
           
         </div>
       </div>
+      <!--v-if-->
     </div>
-    <!--v-if-->
     <!--v-if-->
     <div
       class="inputWrapper"
@@ -373,7 +379,10 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         
         
       </div>
+      
+      
       <n8n-icon-button-stub
+        aria-label="askAssistantChat.close"
         class=""
         data-test-id="close-chat-button"
         disabled="false"
@@ -418,8 +427,8 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         </div>
         
       </div>
+      <!--v-if-->
     </div>
-    <!--v-if-->
     <!--v-if-->
     <div
       class="inputWrapper"
@@ -473,7 +482,10 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
         
         
       </div>
+      
+      
       <n8n-icon-button-stub
+        aria-label="askAssistantChat.close"
         class=""
         data-test-id="close-chat-button"
         disabled="false"
@@ -570,8 +582,8 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
           
         </div>
       </div>
+      <!--v-if-->
     </div>
-    <!--v-if-->
     <!--v-if-->
     <div
       class="inputWrapper disabledInput"
@@ -625,7 +637,10 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
         
         
       </div>
+      
+      
       <n8n-icon-button-stub
+        aria-label="askAssistantChat.close"
         class=""
         data-test-id="close-chat-button"
         disabled="false"
@@ -703,8 +718,8 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
           
         </div>
       </div>
+      <!--v-if-->
     </div>
-    <!--v-if-->
     <!--v-if-->
     <div
       class="inputWrapper"
@@ -758,7 +773,10 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
         
         
       </div>
+      
+      
       <n8n-icon-button-stub
+        aria-label="askAssistantChat.close"
         class=""
         data-test-id="close-chat-button"
         disabled="false"
@@ -836,8 +854,8 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
           
         </div>
       </div>
+      <!--v-if-->
     </div>
-    <!--v-if-->
     <!--v-if-->
     <div
       class="inputWrapper"
@@ -891,7 +909,10 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
         
         
       </div>
+      
+      
       <n8n-icon-button-stub
+        aria-label="askAssistantChat.close"
         class=""
         data-test-id="close-chat-button"
         disabled="false"
@@ -969,8 +990,8 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
           
         </div>
       </div>
+      <!--v-if-->
     </div>
-    <!--v-if-->
     <!--v-if-->
     <div
       class="inputWrapper"

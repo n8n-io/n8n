@@ -1,17 +1,20 @@
 import { CredentialsEntity, CredentialsRepository, In, WorkflowRepository } from '@n8n/db';
-import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
-import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
-import { Cipher } from 'n8n-core';
-import { ICredentialContext, jsonParse } from 'n8n-workflow';
 import { ICredentialResolver } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { Cipher } from 'n8n-core';
+import { ICredentialContext, jsonParse } from 'n8n-workflow';
+
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+
+import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
+import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 
 type CredentialStatus = {
 	credentialId: string;
 	credentialName: string;
-	resolverId: string;
+	resolverId?: string;
 	credentialType: string;
-	status: 'missing' | 'configured';
+	status: 'missing' | 'configured' | 'resolver_missing';
 };
 
 function isCredentialStatus(obj: unknown): obj is CredentialStatus {
@@ -21,12 +24,10 @@ function isCredentialStatus(obj: unknown): obj is CredentialStatus {
 	return (
 		'credentialId' in obj &&
 		typeof obj.credentialId === 'string' &&
-		'resolverId' in obj &&
-		typeof obj.resolverId === 'string' &&
 		'credentialType' in obj &&
 		typeof obj.credentialType === 'string' &&
 		'status' in obj &&
-		(obj.status === 'missing' || obj.status === 'configured')
+		(obj.status === 'missing' || obj.status === 'configured' || obj.status === 'resolver_missing')
 	);
 }
 
@@ -38,6 +39,7 @@ export class CredentialResolverWorkflowService {
 		private readonly resolverRegistry: DynamicCredentialResolverRegistry,
 		private readonly resolverRepository: DynamicCredentialResolverRepository,
 		private readonly cipher: Cipher,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {}
 
 	private async getResolver(resolverId: string): Promise<{
@@ -53,7 +55,7 @@ export class CredentialResolverWorkflowService {
 			throw new Error('Credential resolver implementation not found');
 		}
 		try {
-			const decryptedConfig = this.cipher.decrypt(resolver.config);
+			const decryptedConfig = await this.cipher.decryptV2(resolver.config);
 			const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
 
 			return {
@@ -86,7 +88,7 @@ export class CredentialResolverWorkflowService {
 			throw new Error('Workflow not found');
 		}
 
-		const resolverId = workflow.settings?.credentialResolverId;
+		const resolverId = this.dynamicCredentialsProxy.getEffectiveResolverId(workflow.settings);
 
 		let workflowResolverInstance: ICredentialResolver | null = null;
 		let workflowResolverConfig: Record<string, unknown> | null = null;
@@ -138,7 +140,7 @@ export class CredentialResolverWorkflowService {
 		options: {
 			workflowResolverInstance: ICredentialResolver | null;
 			workflowResolverConfig: Record<string, unknown> | null;
-			resolverId: string | undefined;
+			resolverId: string | null;
 			credentialContext: ICredentialContext;
 		},
 	): Promise<CredentialStatus | null> {
@@ -146,7 +148,12 @@ export class CredentialResolverWorkflowService {
 		let resolverConfig: Record<string, unknown> | null = options.workflowResolverConfig;
 		const credentialResolverId = credential.resolverId ?? options.resolverId;
 		if (!credentialResolverId) {
-			return null;
+			return {
+				credentialId: credential.id,
+				credentialName: credential.name,
+				status: 'resolver_missing' as const,
+				credentialType: credential.type,
+			};
 		}
 		if (credentialResolverId !== options.resolverId) {
 			const {

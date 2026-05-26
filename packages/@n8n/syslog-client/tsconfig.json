@@ -1,12 +1,10 @@
 {
 	"extends": "@n8n/typescript-config/tsconfig.common.json",
 	"compilerOptions": {
-		"rootDir": ".",
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"strictPropertyInitialization": false,
-		"types": ["node", "jest"],
-		"baseUrl": "src",
+		"types": ["node", "vitest/globals"],
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"],

@@ -9,11 +9,10 @@ import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	getAppNameFromNodeName,
 	getMainAuthField,
@@ -55,8 +54,9 @@ import {
 	type FromAIOverride,
 } from '../../utils/fromAIOverride.utils';
 import { completeExpressionSyntax } from '@/app/utils/expressions';
-import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import { DEBOUNCE_TIME, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import FromAiOverrideButton from '../ParameterInputOverrides/FromAiOverrideButton.vue';
 import FromAiOverrideField from '../ParameterInputOverrides/FromAiOverrideField.vue';
 import ParameterOverrideSelectableList from '../ParameterInputOverrides/ParameterOverrideSelectableList.vue';
@@ -156,11 +156,11 @@ const showSlowLoadNotice = ref(false);
 const longLoadingTimer = ref<NodeJS.Timeout | null>(null);
 
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
 const appName = computed(() => {
@@ -293,6 +293,7 @@ const currentRequestParams = computed(() => {
 		credentials: props.node?.credentials ?? {},
 		filter: searchFilter.value,
 		projectId: projectsStore.currentProjectId,
+		workflowId: workflowDocumentStore.value.workflowId,
 	};
 });
 
@@ -411,13 +412,16 @@ const handleAddResourceClick = async () => {
 		let resolvedUrl = redirectUrl;
 
 		if (resolvedUrl.includes('{{$projectId}}')) {
-			resolvedUrl = resolvedUrl.replace(
-				/\{\{\$projectId\}\}/g,
-				projectsStore.currentProjectId ?? '',
-			);
+			const projectId =
+				projectsStore.currentProjectId ??
+				workflowDocumentStore?.value?.homeProject?.id ??
+				projectsStore.personalProject?.id ??
+				'';
+			resolvedUrl = resolvedUrl.replace(/\{\{\$projectId\}\}/g, projectId);
 		}
 
 		hideResourceDropdown();
+		refreshList();
 		openResource(resolvedUrl);
 		return;
 	}
@@ -425,6 +429,7 @@ const handleAddResourceClick = async () => {
 	const resolvedNodeParameters = await workflowHelpers.resolveRequiredParameters(
 		props.parameter,
 		currentRequestParams.value.parameters,
+		workflowDocumentStore.value.documentId,
 		expressionLocalResolveCtx?.value ?? {},
 	);
 
@@ -535,11 +540,33 @@ watch(
 	},
 );
 
+watch(
+	() => stringify(props.node?.credentials ?? {}),
+	(currentValue, oldValue) => {
+		const emptyCredentials = stringify({});
+		const isUpdated =
+			oldValue !== undefined && oldValue !== emptyCredentials && currentValue !== oldValue;
+		if (
+			isUpdated &&
+			props.modelValue &&
+			isResourceLocatorValue(props.modelValue) &&
+			props.modelValue.value !== ''
+		) {
+			emit('update:modelValue', {
+				...props.modelValue,
+				cachedResultName: '',
+				cachedResultUrl: '',
+				value: '',
+			});
+		}
+	},
+);
+
 onMounted(() => {
 	props.eventBus.on('refreshList', refreshList);
 	window.addEventListener('resize', setWidth);
 
-	useNDVStore().$subscribe(() => {
+	ndvStore.$subscribe(() => {
 		// Update the width when main panel dimension change
 		setWidth();
 	});
@@ -701,7 +728,7 @@ function onModeSelected(value: string): void {
 function trackEvent(event: string, params?: { [key: string]: string }): void {
 	telemetry.track(event, {
 		instance_id: rootStore.instanceId,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 		node_type: props.node?.type,
 		resource: props.node?.parameters.resource,
 		operation: props.node?.parameters.operation,
@@ -727,14 +754,14 @@ async function loadInitialResources(): Promise<void> {
 	}
 }
 
-function loadResourcesDebounced() {
+function loadResourcesDebounced(debounceTime: number = DEBOUNCE_TIME.INPUT.SEARCH) {
 	if (currentResponse.value?.error) {
 		// Clear error response immediately when retrying to show loading state
 		delete cachedResponses.value[currentRequestKey.value];
 	}
 
 	void callDebounced(loadResources, {
-		debounceTime: 1000,
+		debounceTime,
 		trailing: true,
 	});
 }
@@ -793,6 +820,7 @@ async function loadResources() {
 		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			params.parameters,
+			workflowDocumentStore.value.documentId,
 			expressionLocalResolveCtx?.value ?? {},
 		)) as INodeParameters;
 		const loadOptionsMethod = getPropertyArgument(currentMode.value, 'searchListMethod') as string;
@@ -807,6 +835,7 @@ async function loadResources() {
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: props.node.credentials,
 			projectId: projectsStore.currentProjectId,
+			workflowId: workflowDocumentStore.value.workflowId,
 		};
 
 		if (params.filter) {
@@ -829,10 +858,10 @@ async function loadResources() {
 		// Store response under the original key to prevent cache pollution
 		setResponse(paramsKey, responseData);
 
-		// If the key changed during the request, also store under current key to prevent infinite loading
-		const currentKey = currentRequestKey.value;
-		if (currentKey !== paramsKey) {
-			setResponse(currentKey, responseData);
+		// Restart if the key changed during the request
+		if (currentRequestKey.value !== paramsKey) {
+			loadResourcesDebounced(0);
+			return;
 		}
 
 		if (params.filter && !hasCompletedASearch.value) {
@@ -854,10 +883,9 @@ async function loadResources() {
 		// Store error under the original key
 		setResponse(paramsKey, errorData);
 
-		// If the key changed during the request, also store under current key to prevent infinite loading
-		const currentKey = currentRequestKey.value;
-		if (currentKey !== paramsKey) {
-			setResponse(currentKey, errorData);
+		// Restart if the key changed during the request
+		if (currentRequestKey.value !== paramsKey) {
+			loadResourcesDebounced(0);
 		}
 	}
 }

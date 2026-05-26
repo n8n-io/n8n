@@ -41,9 +41,7 @@ async function getCheckpointMessages(
 	checkpointer: MemorySaver,
 	threadId: string,
 ): Promise<BaseMessage[]> {
-	const tuple = await checkpointer.getTuple({
-		configurable: { thread_id: threadId },
-	});
+	const tuple = await checkpointer.getTuple({ configurable: { thread_id: threadId } });
 	const messages = tuple?.checkpoint?.channel_values?.messages;
 	return Array.isArray(messages) ? (messages as BaseMessage[]) : [];
 }
@@ -162,6 +160,7 @@ describe('LangGraph Checkpoint Message Persistence', () => {
 			}),
 			config,
 		);
+
 		let messages = await getCheckpointMessages(checkpointer, 'test-sequential-interrupts');
 		expect(messages.map((m) => m.content)).toEqual(
 			expect.arrayContaining(['request', 'q1-data', 'a1-data']),

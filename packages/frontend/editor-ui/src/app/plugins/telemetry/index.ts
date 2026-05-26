@@ -10,12 +10,20 @@ import {
 	MICROSOFT_TEAMS_NODE_TYPE,
 	SLACK_NODE_TYPE,
 	TELEGRAM_NODE_TYPE,
+	POSTHOG_EVENTS_BLACKLIST,
 } from '@/app/constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { usePostHog } from '@/app/stores/posthog.store';
+
+export type TelemetryIdentifyOptions = {
+	instanceId: string;
+	userId?: string;
+	projectId?: string;
+	versionCli?: string;
+	userRole?: string;
+};
 
 export class Telemetry {
 	private pageEventQueue: Array<{ route: RouteLocation }>;
@@ -38,12 +46,8 @@ export class Telemetry {
 			userId,
 			projectId,
 			versionCli,
-		}: {
-			instanceId: string;
-			userId?: string;
-			projectId?: string;
-			versionCli: string;
-		},
+			userRole,
+		}: TelemetryIdentifyOptions & { versionCli: string },
 	) {
 		if (!telemetrySettings.enabled || !telemetrySettings.config || this.rudderStack) return;
 
@@ -59,17 +63,23 @@ export class Telemetry {
 			configUrl: sourceConfig,
 		});
 
-		this.identify(instanceId, userId, versionCli, projectId);
+		this.identify({ instanceId, userId, versionCli, projectId, userRole });
 
 		this.flushPageEvents();
 		this.track('Session started', { session_id: rootStore.pushRef });
 	}
 
-	identify(instanceId: string, userId?: string, versionCli?: string, projectId?: string) {
+	identify({ instanceId, userId, versionCli, projectId, userRole }: TelemetryIdentifyOptions) {
 		const settingsStore = useSettingsStore();
-		const traits: { instance_id: string; version_cli?: string; user_cloud_id?: string } = {
+		const traits: {
+			instance_id: string;
+			version_cli?: string;
+			user_cloud_id?: string;
+			user_role?: string;
+		} = {
 			instance_id: instanceId,
 			version_cli: versionCli,
+			user_role: userRole,
 		};
 
 		if (settingsStore.isCloudDeployment) {
@@ -109,7 +119,9 @@ export class Telemetry {
 			},
 		});
 
-		usePostHog().capture(event, updatedProperties);
+		if (!POSTHOG_EVENTS_BLACKLIST.includes(event)) {
+			usePostHog().capture(event, updatedProperties);
+		}
 	}
 
 	page(route: RouteLocation) {
@@ -154,10 +166,10 @@ export class Telemetry {
 		});
 	}
 
-	trackAskAI(event: string, properties: IDataObject = {}) {
+	trackAskAI(event: string, ndvPushRef: string, properties: IDataObject = {}) {
 		if (this.rudderStack) {
 			properties.session_id = useRootStore().pushRef;
-			properties.ndv_session_id = useNDVStore().pushRef;
+			properties.ndv_session_id = ndvPushRef;
 
 			switch (event) {
 				case 'askAi.generationFinished':
@@ -168,10 +180,10 @@ export class Telemetry {
 		}
 	}
 
-	trackAiTransform(event: string, properties: IDataObject = {}) {
+	trackAiTransform(event: string, ndvPushRef: string, properties: IDataObject = {}) {
 		if (this.rudderStack) {
 			properties.session_id = useRootStore().pushRef;
-			properties.ndv_session_id = useNDVStore().pushRef;
+			properties.ndv_session_id = ndvPushRef;
 
 			switch (event) {
 				case 'generationFinished':

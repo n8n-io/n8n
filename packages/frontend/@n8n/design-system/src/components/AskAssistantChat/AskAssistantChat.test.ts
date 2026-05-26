@@ -1399,6 +1399,64 @@ describe('AskAssistantChat', () => {
 			expect(wrapper.queryByTestId('footer-rating')).toBeFalsy();
 		});
 
+		it('should show footer rating for code builder when workflow-updated is last message (no text response)', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'user',
+					type: 'text',
+					content: 'Build me a workflow',
+				},
+				{
+					id: '2',
+					role: 'assistant',
+					type: 'tool',
+					toolName: 'build_workflow',
+					toolCallId: 'tc-1',
+					displayTitle: 'Building workflow',
+					status: 'completed',
+					updates: [],
+				},
+				{
+					id: '3',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{}',
+				},
+			];
+
+			const wrapper = renderWithFooterRating(messages, false);
+
+			expect(wrapper.queryByTestId('footer-rating')).toBeTruthy();
+		});
+
+		it('should NOT show footer rating for code builder when user has responded after workflow-updated', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'user',
+					type: 'text',
+					content: 'Build me a workflow',
+				},
+				{
+					id: '2',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{}',
+				},
+				{
+					id: '3',
+					role: 'user',
+					type: 'text',
+					content: 'Can you modify this?',
+				},
+			];
+
+			const wrapper = renderWithFooterRating(messages, false);
+
+			expect(wrapper.queryByTestId('footer-rating')).toBeFalsy();
+		});
+
 		it('should emit feedback event when rating is submitted', async () => {
 			const messages: ChatUI.AssistantMessage[] = [
 				{

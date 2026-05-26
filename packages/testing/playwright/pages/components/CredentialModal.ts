@@ -47,6 +47,34 @@ export class CredentialModal extends BaseModal {
 		await expect(input).toHaveValue(value);
 	}
 
+	/**
+	 * Switch a credential field to expression mode and fill it with an expression.
+	 *
+	 * Expression mode is activated by clicking the "Expression" radio button that
+	 * appears when hovering over a parameter input.
+	 *
+	 * @example
+	 * await modal.fillExpressionField('value', "{{ $secrets['myVault']['apikey'] }}");
+	 */
+	async fillExpressionField(key: string, expression: string): Promise<void> {
+		const parameterInput = this.root
+			.getByTestId('credential-connection-parameter')
+			.getByTestId(key);
+
+		// Hover to reveal the Fixed / Expression toggle
+		await parameterInput.locator('label').first().hover();
+		await parameterInput.getByTestId('parameter-options-container').waitFor({ state: 'visible' });
+
+		// Click the "Expression" radio option
+		await parameterInput.getByTestId('radio-button-expression').click();
+
+		// After switching modes, the field becomes a CodeMirror editor
+		const cmContent = parameterInput.locator('.cm-content');
+		await cmContent.waitFor({ state: 'visible', timeout: 10_000 });
+		await cmContent.click();
+		await cmContent.fill(expression);
+	}
+
 	async fillAllFields(values: Record<string, string>): Promise<void> {
 		for (const [key, val] of Object.entries(values)) {
 			await this.fillField(key, val);
@@ -57,17 +85,23 @@ export class CredentialModal extends BaseModal {
 		return this.root.getByTestId('credential-save-button');
 	}
 
+	getParameterInputHint(): Locator {
+		return this.container.getByTestId('parameter-input-hint');
+	}
+
 	/**
 	 * Wait for save to fully complete.
-	 * After saving (and optional credential testing), the button becomes
-	 * disabled (no unsaved changes) and is no longer loading
+	 * After saving (and optional credential testing), the button either shows a
+	 * "Saved" label or settles back to a disabled "Save" state.
 	 */
 	async waitForSaveComplete(): Promise<void> {
-		const btn = this.getSaveButton().locator('button');
-		await expect(async () => {
-			await expect(btn).toBeDisabled();
-			await expect(btn).not.toHaveAttribute('aria-busy', 'true');
-		}).toPass({ timeout: 10000 });
+		const saveCompleted = this.root.getByText('Saved', { exact: true }).or(
+			this.getSaveButton()
+				.locator('button[disabled]')
+				.filter({ hasText: /^Save$/ }),
+		);
+
+		await expect(saveCompleted).toBeVisible({ timeout: 20_000 });
 	}
 
 	async save(): Promise<void> {
@@ -96,10 +130,14 @@ export class CredentialModal extends BaseModal {
 		await this.fillAllFields(fields);
 		if (options?.name) {
 			await this.getCredentialName().click();
-			await this.getNameInput().fill(options.name);
+			const nameInput = this.getNameInput();
+			await nameInput.fill(options.name);
+			await nameInput.press('Enter');
+			await expect(this.getCredentialName()).toContainText(options.name);
 		}
 
 		if (!options?.skipSave) {
+			await expect(this.getSaveButton()).toBeEnabled();
 			await this.save();
 		}
 
@@ -110,7 +148,7 @@ export class CredentialModal extends BaseModal {
 	}
 
 	get oauthConnectButton() {
-		return this.root.getByTestId('oauth-connect-button');
+		return this.root.getByTestId('quick-connect-button');
 	}
 
 	get oauthConnectSuccessBanner() {
@@ -135,24 +173,12 @@ export class CredentialModal extends BaseModal {
 		await this.getNameInput().press('Enter');
 	}
 
-	getAuthMethodSelector() {
-		return this.root.getByTestId('credential-mode-selector');
-	}
-
 	getOAuthRedirectUrl() {
 		return this.root.page().getByTestId('oauth-redirect-url');
 	}
 
-	getAuthTypeRadioButtons() {
-		return this.root.page().locator('label.el-radio');
-	}
-
 	getModeSelector() {
 		return this.root.getByTestId('credential-mode-selector');
-	}
-
-	getModeSwitchLink() {
-		return this.root.getByTestId('credential-mode-switch-link');
 	}
 
 	getModeDropdownTrigger() {

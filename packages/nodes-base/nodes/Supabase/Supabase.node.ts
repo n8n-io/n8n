@@ -113,8 +113,11 @@ export class Supabase implements INodeType {
 					header,
 				);
 				for (const path of Object.keys(paths as IDataObject)) {
-					//omit introspection path
-					if (path === '/') continue;
+					// omit introspection path and skip RPCs, leaving only tables
+					if (path === '/' || path.startsWith('/rpc/')) {
+						continue;
+					}
+
 					returnData.push({
 						name: path.replace('/', ''),
 						value: path.replace('/', ''),
@@ -135,9 +138,17 @@ export class Supabase implements INodeType {
 					undefined,
 					header,
 				);
-				for (const column of Object.keys(definitions[tableName].properties as IDataObject)) {
+
+				const properties = definitions[tableName]?.properties as
+					| { [column: string]: { type: string } }
+					| undefined;
+				if (!properties) {
+					return returnData;
+				}
+
+				for (const column of Object.keys(properties)) {
 					returnData.push({
-						name: `${column} - (${definitions[tableName].properties[column].type})`,
+						name: `${column} - (${properties[column].type})`,
 						value: column,
 					});
 				}
@@ -371,15 +382,23 @@ export class Supabase implements INodeType {
 						endpoint = `${endpoint}?${encodeURI(filterString)}`;
 					}
 
-					if (!returnAll) {
-						qs.limit = this.getNodeParameter('limit', 0);
-					}
+					const requestedLimit = !returnAll
+						? (this.getNodeParameter('limit', 0) as number)
+						: undefined;
+
+					const orderBy = this.getNodeParameter('orderBy', i, '') as string;
 
 					let rows: IDataObject[] = [];
 
 					try {
 						let responseLength = 0;
 						do {
+							if (requestedLimit !== undefined) {
+								qs.limit = Math.min(requestedLimit - rows.length, 1000);
+							}
+							if (orderBy) {
+								qs.order = orderBy;
+							}
 							const newRows = await supabaseApiRequest.call(
 								this,
 								'GET',
@@ -392,7 +411,10 @@ export class Supabase implements INodeType {
 							responseLength = newRows.length;
 							rows = rows.concat(newRows);
 							qs.offset = rows.length;
-						} while (responseLength >= 1000);
+						} while (
+							responseLength >= 1000 &&
+							(requestedLimit === undefined || rows.length < requestedLimit)
+						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(rows),
 							{ itemData: { item: i } },

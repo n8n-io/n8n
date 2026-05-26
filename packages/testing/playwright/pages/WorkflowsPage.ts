@@ -5,8 +5,16 @@ import { AddResource } from './components/AddResource';
 import { ResourceCards } from './components/ResourceCards';
 
 export class WorkflowsPage extends BasePage {
+	async goto() {
+		await this.page.goto('/home/workflows');
+	}
+
 	readonly addResource = new AddResource(this.page);
 	readonly cards = new ResourceCards(this.page);
+
+	private async openWorkflowCardActions(workflowItem: Locator) {
+		await workflowItem.getByTestId('workflow-card-actions').getByRole('button').click();
+	}
 
 	/**
 	 * This is the new workflow button on the workflows page, visible when there are no workflows.
@@ -20,8 +28,8 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	async clearSearch() {
-		await this.clickByTestId('resources-list-search');
-		await this.page.getByTestId('resources-list-search').clear();
+		await this.getSearchBar().click();
+		await this.getSearchBar().clear();
 	}
 
 	getProjectName() {
@@ -33,12 +41,12 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	async unarchiveWorkflow(workflowItem: Locator) {
-		await workflowItem.getByTestId('workflow-card-actions').click();
+		await this.openWorkflowCardActions(workflowItem);
 		await this.page.getByRole('menuitem', { name: 'Unarchive' }).click();
 	}
 
 	async deleteWorkflow(workflowItem: Locator) {
-		await workflowItem.getByTestId('workflow-card-actions').click();
+		await this.openWorkflowCardActions(workflowItem);
 		await this.page.getByTestId('action-delete').click();
 		await this.page.getByRole('button', { name: 'delete' }).click();
 	}
@@ -54,7 +62,7 @@ export class WorkflowsPage extends BasePage {
 
 	async shareWorkflow(workflowName: string) {
 		const workflow = this.cards.getWorkflow(workflowName);
-		await workflow.getByTestId('workflow-card-actions').click();
+		await this.openWorkflowCardActions(workflow);
 		await this.page.getByRole('menuitem', { name: 'Share...' }).click();
 	}
 
@@ -63,12 +71,12 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	async archiveWorkflow(workflowItem: Locator) {
-		await workflowItem.getByTestId('workflow-card-actions').click();
+		await this.openWorkflowCardActions(workflowItem);
 		await this.getArchiveMenuItem().click();
 	}
 
 	async unpublishWorkflow(workflowItem: Locator) {
-		await workflowItem.getByTestId('workflow-card-actions').click();
+		await this.openWorkflowCardActions(workflowItem);
 		await this.page.getByRole('menuitem', { name: 'Unpublish' }).click();
 		await this.page.getByRole('button', { name: 'Unpublish' }).click();
 	}

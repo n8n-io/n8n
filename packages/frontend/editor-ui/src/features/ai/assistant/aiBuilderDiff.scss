@@ -1,0 +1,61 @@
+/* Canvas node highlight styles for AI builder review changes.
+ * Applied via canvasEventBus 'nodes:action' → 'update:node:class'.
+ * Must be global (not CSS modules) because nodeClasses are raw strings. */
+
+.ai-diff-added,
+.ai-diff-modified {
+	position: relative;
+
+	&::before {
+		position: absolute;
+		top: 0;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		border-radius: 4px;
+		color: var(--color--text--tint-3);
+		font-family: Inter, var(--font-family);
+		font-size: 10px;
+		font-weight: 700;
+		z-index: 1;
+		width: 16px;
+		height: 16px;
+		display: inline-flex;
+		justify-content: center;
+		align-items: center;
+	}
+
+	/* Hide the badge on configuration (subnode/circular) nodes — it overlaps the connection handle */
+	&:has([data-test-id='canvas-configuration-node']) {
+		&::before {
+			display: none;
+		}
+	}
+}
+
+.ai-diff-added {
+	--canvas-node--border-color: var(--diff--color--new);
+	--canvas-node--color--background: var(--diff--color--new--faint);
+
+	> div {
+		--canvas-node--border-width: 2px;
+	}
+
+	&::before {
+		content: 'N';
+		background-color: var(--diff--color--new);
+	}
+}
+
+.ai-diff-modified {
+	--canvas-node--border-color: var(--diff--color--modified);
+	--canvas-node--color--background: var(--diff--color--modified--faint);
+
+	> div {
+		--canvas-node--border-width: 2px;
+	}
+
+	&::before {
+		content: 'M';
+		background-color: var(--diff--color--modified);
+	}
+}

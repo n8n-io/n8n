@@ -1,0 +1,20 @@
+{
+	"id": "screenshot-dashboard",
+	"userMessage": "Take a screenshot of the Stripe dashboard I have open in my browser so I can attach it to this workflow.",
+	"instanceState": {
+		"localGateway": { "status": "connected", "capabilities": ["browser"] },
+		"browserAvailable": true
+	},
+	"expectedToolInvocations": {
+		"anyOf": [
+			"browser_screenshot",
+			"browser_snapshot",
+			"browser_navigate",
+			"take_screenshot",
+			"take_snapshot",
+			"navigate_page",
+			"spawn_sub_agent:browser-credential-setup"
+		]
+	},
+	"rationale": "Direct browser-tool discovery — the user names a browser action verbatim. The orchestrator must reach for any browser tool (snapshot/screenshot/navigate are all valid first moves to inspect the page) rather than falling back to research."
+}

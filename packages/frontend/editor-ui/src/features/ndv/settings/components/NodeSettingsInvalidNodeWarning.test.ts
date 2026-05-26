@@ -22,6 +22,16 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 		track: vi.fn(),
 	}),
 }));
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('vue-router')>();
+	return {
+		...actual,
+		useRoute: () => ({
+			name: 'NodeView',
+			params: { workflowId: 'test-workflow-id' },
+		}),
+	};
+});
 
 const mockInstallNode = vi.fn();
 const mockUseInstallNode = useInstallNode as MockedFunction<typeof useInstallNode>;
@@ -55,8 +65,12 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 	});
 
 	describe('Owner permissions', () => {
-		it('should show install button when user is owner', async () => {
-			mockUseUsersStore.isInstanceOwner = true;
+		it.each([
+			{ isAdmin: true, isInstanceOwner: false, label: 'admin' },
+			{ isAdmin: false, isInstanceOwner: true, label: 'instance owner' },
+		])('should show install button when user is $label', ({ isAdmin, isInstanceOwner }) => {
+			mockUseUsersStore.isAdmin = isAdmin;
+			mockUseUsersStore.isInstanceOwner = isInstanceOwner;
 			const node = mockNode({ name: 'Test Node', type: 'n8n-nodes-test.testNode' });
 			const { getByTestId } = renderComponent(NodeSettingsInvalidNodeWarning, {
 				props: {
@@ -68,7 +82,8 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 			expect(getByTestId('install-community-node-button')).toBeInTheDocument();
 		});
 
-		it('should show ContactAdministratorToInstall when user is not owner', async () => {
+		it('should show ContactAdministratorToInstall when user is not owner or admin', async () => {
+			mockUseUsersStore.isAdmin = false;
 			mockUseUsersStore.isInstanceOwner = false;
 			const node = mockNode({ name: 'Test Node', type: 'n8n-nodes-test.testNode' });
 			const { getByText } = renderComponent(NodeSettingsInvalidNodeWarning, {
@@ -86,7 +101,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 
 	describe('View Details button', () => {
 		it('should open node creator when node is verified community node', async () => {
-			mockUseUsersStore.isInstanceOwner = true;
+			mockUseUsersStore.isAdmin = true;
 			mockUseNodeTypesStore.communityNodeType = () =>
 				({
 					isOfficialNode: true,
@@ -105,11 +120,11 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 			const viewDetailsButton = getByRole('button', { name: 'View details' });
 			viewDetailsButton.click();
 
-			expect(mockOpenNodeCreatorWithNode).toHaveBeenCalledWith('Test Node');
+			expect(mockOpenNodeCreatorWithNode).toHaveBeenCalledWith('test-workflow-id', 'Test Node');
 		});
 
 		it('should open NPM page when node is not verified community node', async () => {
-			mockUseUsersStore.isInstanceOwner = true;
+			mockUseUsersStore.isAdmin = true;
 			mockUseNodeTypesStore.communityNodeType = () =>
 				({
 					isOfficialNode: false,
@@ -135,7 +150,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 
 	describe('Install button logic', () => {
 		it('should call installNode directly for verified community node', async () => {
-			mockUseUsersStore.isInstanceOwner = true;
+			mockUseUsersStore.isAdmin = true;
 			mockUseNodeTypesStore.communityNodeType = () =>
 				({
 					isOfficialNode: true,
@@ -165,7 +180,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 		});
 
 		it('should call installNode without preview token directly for verified community node', async () => {
-			mockUseUsersStore.isInstanceOwner = true;
+			mockUseUsersStore.isAdmin = true;
 			mockUseNodeTypesStore.communityNodeType = () =>
 				({
 					isOfficialNode: true,
@@ -195,7 +210,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 		});
 
 		it('should open modal for non-verified community node', async () => {
-			mockUseUsersStore.isInstanceOwner = true;
+			mockUseUsersStore.isAdmin = true;
 			mockUseNodeTypesStore.communityNodeType = () =>
 				({
 					isOfficialNode: false,
@@ -228,7 +243,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 
 	describe('Node installation watcher', () => {
 		it('should call unsetActiveNodeName when node is defined', async () => {
-			mockUseUsersStore.isInstanceOwner = true;
+			mockUseUsersStore.isAdmin = true;
 			mockUseNodeTypesStore.communityNodeType = () =>
 				({
 					isOfficialNode: true,
@@ -260,7 +275,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 		});
 
 		it('should not call unsetActiveNodeName when node is not defined', () => {
-			mockUseUsersStore.isInstanceOwner = true;
+			mockUseUsersStore.isAdmin = true;
 			mockUseNodeTypesStore.communityNodeType = () =>
 				({
 					isOfficialNode: true,
@@ -282,7 +297,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 
 	describe('Non-community nodes', () => {
 		it('should show custom node documentation link for non-community nodes', () => {
-			mockUseUsersStore.isInstanceOwner = true;
+			mockUseUsersStore.isAdmin = true;
 			const node = mockNode({ name: 'Custom Node', type: 'custom-node' });
 
 			const { getByText } = renderComponent(NodeSettingsInvalidNodeWarning, {

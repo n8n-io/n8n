@@ -1,5 +1,6 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import pick from 'lodash/pick';
+import { autoSaveHighlightedDataProperty } from 'n8n-nodes-base/dist/utils/highlightedData';
 import {
 	Node,
 	NodeConnectionTypes,
@@ -7,6 +8,8 @@ import {
 	assertParamIsBoolean,
 	validateNodeParameters,
 	assertParamIsString,
+	getHighlightedInputKey,
+	HIGHLIGHTED_SESSION_KEY,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -19,6 +22,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
+import { ChatTriggerConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 
 import { cssVariables } from './constants';
 import { validateAuth } from './GenericFunctions';
@@ -26,6 +31,8 @@ import { createPage } from './templates';
 import { assertValidLoadPreviousSessionOption } from './types';
 
 const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
+
+const isPublicChatTriggerDisabled = () => Container.get(ChatTriggerConfig).disablePublicChat;
 const allowFileUploadsOption: INodeProperties = {
 	displayName: 'Allow File Uploads',
 	name: 'allowFileUploads',
@@ -66,6 +73,9 @@ const respondNodesResponseMode = {
 	value: 'responseNodes',
 	description: 'Send responses to the chat by using one or more Chat nodes',
 };
+
+const responseModeBuilderHint =
+	"'streaming' (preferred for Agent-backed chats): the connected Agent streams its reply to the widget directly — no extra wiring. Place logging or side-effects on a PARALLEL branch off the trigger or Agent, never inline after the Agent. 'lastNode': the last-executed node's output is sent to the widget — that node MUST emit `{ output: '<reply text>' }` (typically the Agent itself, or a Set node re-shaping data). NEVER terminate the chain with a Data Table insert, HTTP Request, or other side-effect node — their output is not a chat reply and the widget will error. 'responseNodes' / 'responseNode': requires explicit response nodes inside the flow (`@n8n/n8n-nodes-langchain.chat` for chat-hub mode, `n8n-nodes-base.respondToWebhook` for webhook mode).";
 
 const commonOptionsFields: INodeProperties[] = [
 	// CORS parameters are only valid for when chat is used in hosted or webhook mode
@@ -134,7 +144,10 @@ const commonOptionsFields: INodeProperties[] = [
 		],
 		default: 'notSupported',
 		description: 'If loading messages of a previous session should be enabled',
-		builderHint: { message: "Set to 'memory' to persist conversation history across sessions" },
+		builderHint: {
+			propertyHint:
+				"This ONLY rehydrates the chat widget UI when the user reopens it — it does NOT give the Agent memory. The Agent gets memory from its own memory subnode regardless of this setting. Only set to 'memory' if the user wants the widget to restore visible history on reload; if so, you MUST also attach a memory subnode to this trigger (use the same memory node as the Agent so widget history matches what the Agent remembers). Otherwise leave as 'notSupported'.",
+		},
 	},
 	{
 		displayName: 'Require Button Click to Start Chat',
@@ -217,7 +230,7 @@ export class ChatTrigger extends Node {
 	description: INodeTypeDescription = {
 		displayName: 'Chat Trigger',
 		name: 'chatTrigger',
-		icon: 'fa:comments',
+		icon: 'node:chat-trigger',
 		iconColor: 'black',
 		group: ['trigger'],
 		version: [1, 1.1, 1.2, 1.3, 1.4],
@@ -256,6 +269,25 @@ export class ChatTrigger extends Node {
 		 })() }}`,
 		outputs: [NodeConnectionTypes.Main],
 		builderHint: {
+			searchHint:
+				"Pair with `@n8n/n8n-nodes-langchain.agent` for chatbot workflows. Reply delivery is controlled by `options.responseMode` — `streaming` (Agent streams directly to widget) is simplest and preferred. For `lastNode` mode, the workflow's last-executed node MUST output `{ output: '<reply>' }` — typically the Agent itself or a Set node re-shaping data; ending the chain with a Data Table insert, HTTP Request, or other side-effect node will fail. Put logging or persistence on a parallel branch, not inline after the Agent.",
+			relatedNodes: [
+				{
+					nodeType: '@n8n/n8n-nodes-langchain.agent',
+					relationHint:
+						"Main reply producer; use `responseMode: 'streaming'` so the Agent streams directly to the widget.",
+				},
+				{
+					nodeType: 'n8n-nodes-base.set',
+					relationHint:
+						"Append at the end of a `responseMode: 'lastNode'` chain to re-shape the last node's output into `{ output: '<reply text>' }` when the natural last step (e.g. a Data Table insert) doesn't produce chat-shaped data.",
+				},
+				{
+					nodeType: '@n8n/n8n-nodes-langchain.chat',
+					relationHint:
+						"Required for `responseMode: 'responseNodes'`. Place inside the flow wherever you want to emit a reply chunk.",
+				},
+			],
 			inputs: {
 				ai_memory: {
 					required: true,
@@ -295,11 +327,13 @@ export class ChatTrigger extends Node {
 					'={{$parameter.options?.["responseMode"] ?? ($parameter.availableInChat ? "streaming" : "lastNode") }}',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
 				ndvHideMethod: true,
-				ndvHideUrl: '={{ !$parameter.public }}',
+				ndvHideUrl: isPublicChatTriggerDisabled() ? true : '={{ !$parameter.public }}',
 			},
 		],
 		eventTriggerDescription: 'Waiting for you to submit the chat',
-		activationMessage: 'You can now make calls to your production chat URL.',
+		activationMessage: isPublicChatTriggerDisabled()
+			? 'Public chat is disabled by instance policy.'
+			: 'You can now make calls to your production chat URL.',
 		triggerPanel: false,
 		properties: [
 			/**
@@ -390,6 +424,10 @@ export class ChatTrigger extends Node {
 				],
 				default: 'none',
 				description: 'The way to authenticate',
+				builderHint: {
+					propertyHint:
+						"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
+				},
 			},
 			{
 				displayName: 'Initial Message(s)',
@@ -490,6 +528,46 @@ export class ChatTrigger extends Node {
 				},
 			},
 			{
+				displayName: 'Suggestions',
+				name: 'suggestedPrompts',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true, fixedCollection: { layout: 'inline' } },
+				default: {},
+				noDataExpression: true,
+				placeholder: 'Add Prompt',
+				description:
+					'Suggested prompts shown to users in n8n Chat Hub to start a conversation with the agent',
+				displayOptions: {
+					show: {
+						availableInChat: [true],
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+				options: [
+					{
+						name: 'prompts',
+						displayName: 'Prompts',
+						values: [
+							{
+								displayName: 'Icon',
+								name: 'icon',
+								type: 'icon',
+								noDataExpression: true,
+								default: { type: 'icon', value: 'comment' },
+							},
+							{
+								displayName: 'Prompt Text',
+								name: 'text',
+								type: 'string',
+								default: '',
+								noDataExpression: true,
+								required: true,
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -526,7 +604,9 @@ export class ChatTrigger extends Node {
 						options: [lastNodeResponseMode, respondToWebhookResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the webhook',
+						builderHint: { propertyHint: responseModeBuilderHint },
 					},
+					autoSaveHighlightedDataProperty,
 				],
 			},
 			// Options for version 1.2 (with streaming)
@@ -553,6 +633,7 @@ export class ChatTrigger extends Node {
 						default: 'lastNode',
 						description: 'When and how to respond to the webhook',
 						displayOptions: { show: { '/availableInChat': [false] } },
+						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					{
 						displayName: 'Response Mode',
@@ -562,7 +643,9 @@ export class ChatTrigger extends Node {
 						default: 'streaming',
 						description: 'When and how to respond to the webhook',
 						displayOptions: { show: { '/availableInChat': [true] } },
+						builderHint: { propertyHint: responseModeBuilderHint },
 					},
+					autoSaveHighlightedDataProperty,
 				],
 			},
 			{
@@ -588,6 +671,7 @@ export class ChatTrigger extends Node {
 						default: 'lastNode',
 						description: 'When and how to respond to the chat',
 						displayOptions: { show: { '/availableInChat': [false] } },
+						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					{
 						displayName: 'Response Mode',
@@ -597,7 +681,9 @@ export class ChatTrigger extends Node {
 						default: 'streaming',
 						description: 'When and how to respond to the chat',
 						displayOptions: { show: { '/availableInChat': [true] } },
+						builderHint: { propertyHint: responseModeBuilderHint },
 					},
+					autoSaveHighlightedDataProperty,
 				],
 			},
 			{
@@ -623,6 +709,7 @@ export class ChatTrigger extends Node {
 						default: 'lastNode',
 						description: 'When and how to respond to the chat',
 						displayOptions: { show: { '/mode': ['webhook'], '/availableInChat': [false] } },
+						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					{
 						displayName: 'Response Mode',
@@ -632,6 +719,7 @@ export class ChatTrigger extends Node {
 						default: 'streaming',
 						description: 'When and how to respond to the chat',
 						displayOptions: { show: { '/mode': ['webhook'], '/availableInChat': [true] } },
+						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					{
 						displayName: 'Response Mode',
@@ -641,6 +729,7 @@ export class ChatTrigger extends Node {
 						default: 'lastNode',
 						description: 'When and how to respond to the chat',
 						displayOptions: { show: { '/mode': ['hostedChat'], '/availableInChat': [false] } },
+						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					{
 						displayName: 'Response Mode',
@@ -650,7 +739,9 @@ export class ChatTrigger extends Node {
 						default: 'streaming',
 						description: 'When and how to respond to the chat',
 						displayOptions: { show: { '/mode': ['hostedChat'], '/availableInChat': [true] } },
+						builderHint: { propertyHint: responseModeBuilderHint },
 					},
+					autoSaveHighlightedDataProperty,
 				],
 			},
 		],
@@ -722,7 +813,7 @@ export class ChatTrigger extends Node {
 	async webhook(ctx: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const res = ctx.getResponseObject();
 
-		const isPublic = ctx.getNodeParameter('public', false);
+		const isPublic = isPublicChatTriggerDisabled() ? false : ctx.getNodeParameter('public', false);
 		assertParamIsBoolean('public', isPublic, ctx.getNode());
 
 		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat');
@@ -753,6 +844,7 @@ export class ChatTrigger extends Node {
 				allowedFilesMimeTypes: { type: 'string' },
 				customCss: { type: 'string' },
 				responseMode: { type: 'string' },
+				[autoSaveHighlightedDataProperty.name]: { type: 'boolean' },
 			},
 			ctx.getNode(),
 		);
@@ -849,16 +941,34 @@ export class ChatTrigger extends Node {
 			}
 		}
 
+		if (ctx.getNodeParameter('options.autoSaveHighlightedData', true) !== false) {
+			if (typeof bodyData.chatInput === 'string') {
+				ctx.customData.set(getHighlightedInputKey(ctx.getNode().name), bodyData.chatInput);
+			}
+			if (typeof bodyData.sessionId === 'string') {
+				ctx.customData.set(HIGHLIGHTED_SESSION_KEY, bodyData.sessionId);
+			}
+		}
+
 		let returnData: INodeExecutionData[];
 		const webhookResponse: IDataObject = { status: 200 };
 
 		// Handle streaming responses
 		if (enableStreaming) {
-			// Set up streaming response headers
+			// Configure socket for long-lived streaming (matches SSE push pattern).
+			// Prevents reverse proxies (e.g. Cloudflare) from timing out idle connections.
+			req.socket.setTimeout(0);
+			req.socket.setNoDelay(true);
+			req.socket.setKeepAlive(true);
+
+			// Set up streaming response headers.
+			// no-transform prevents the compression middleware from wrapping the
+			// response in zlib, ensuring keepalive heartbeats reach the network
+			// immediately without being buffered by the compressor.
 			res.writeHead(200, {
 				'Content-Type': 'application/json; charset=utf-8',
 				'Transfer-Encoding': 'chunked',
-				'Cache-Control': 'no-cache',
+				'Cache-Control': 'no-cache, no-transform',
 				Connection: 'keep-alive',
 			});
 

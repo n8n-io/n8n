@@ -1,11 +1,16 @@
 {
-	"globalEnv": ["CI", "BUILD_WITH_COVERAGE", "RELEASE"],
+	"globalEnv": ["CI", "BUILD_WITH_COVERAGE"],
 	"globalPassThroughEnv": ["CODECOV_TOKEN", "COVERAGE_ENABLED", "SENTRY_AUTH_TOKEN"],
 	"tasks": {
 		"clean": { "cache": false },
 		"build": {
 			"dependsOn": ["^build"],
 			"outputs": ["dist/**"]
+		},
+		"n8n-editor-ui#build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"],
+			"env": ["RELEASE"]
 		},
 		"typecheck": {
 			"dependsOn": ["^typecheck", "^build"]
@@ -24,15 +29,27 @@
 		},
 		"test": {
 			"dependsOn": ["^build", "build"],
-			"outputs": ["coverage/**", "*.xml"]
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED"]
+		},
+		"n8n-nodes-base#test": {
+			"inputs": ["$TURBO_DEFAULT$", "../cli/src/public-api/v1/**/*.yml"]
+		},
+		"n8n-nodes-base#test:changed": {
+			"dependsOn": ["^build", "build"],
+			"inputs": ["$TURBO_DEFAULT$", "../cli/src/public-api/v1/**/*.yml"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED", "MERGE_BASE"]
 		},
 		"test:unit": {
 			"dependsOn": ["^build", "build"],
-			"outputs": ["coverage/**", "*.xml"]
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED"]
 		},
 		"test:integration": {
 			"dependsOn": ["^build", "build"],
-			"outputs": ["coverage/**", "*.xml"]
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED"]
 		},
 		"watch": { "cache": false, "persistent": true },
 		"dev": { "cache": false, "persistent": true },

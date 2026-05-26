@@ -4,32 +4,24 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
 import { ChatOpenAI } from '@langchain/openai';
+import {
+	getProxyAgent,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+} from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
 
 import { LmChatOpenRouter } from '../LmChatOpenRouter.node';
 
-jest.mock('@langchain/openai');
+vi.mock('@langchain/openai');
+vi.mock('@n8n/ai-utilities');
 
-jest.mock(
-	'@n8n/ai-utilities',
-	() => ({
-		makeN8nLlmFailedAttemptHandler: jest.fn(),
-		N8nLlmTracing: jest.fn(),
-		getProxyAgent: jest.fn(),
-	}),
-	{ virtual: true },
-);
-
-const MockedChatOpenAI = jest.mocked(ChatOpenAI);
-const aiUtilitiesMock = jest.requireMock('@n8n/ai-utilities') as {
-	makeN8nLlmFailedAttemptHandler: jest.Mock;
-	N8nLlmTracing: jest.Mock;
-	getProxyAgent: jest.Mock;
-};
-const mockMakeN8nLlmFailedAttemptHandler = aiUtilitiesMock.makeN8nLlmFailedAttemptHandler;
-const mockN8nLlmTracing = aiUtilitiesMock.N8nLlmTracing;
-const mockGetProxyAgent = aiUtilitiesMock.getProxyAgent;
+const MockedChatOpenAI = vi.mocked(ChatOpenAI);
+const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
+const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
+const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 
 describe('LmChatOpenRouter', () => {
 	let node: LmChatOpenRouter;
@@ -48,29 +40,29 @@ describe('LmChatOpenRouter', () => {
 		const ctx = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			nodeDef,
-		) as jest.Mocked<ISupplyDataFunctions>;
+		) as Mocked<ISupplyDataFunctions>;
 
-		ctx.getCredentials = jest.fn().mockResolvedValue({
+		ctx.getCredentials = vi.fn().mockResolvedValue({
 			apiKey: 'test-key',
 			url: 'https://openrouter.ai/api/v1',
 		});
-		ctx.getNode = jest.fn().mockReturnValue(nodeDef);
-		ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+		ctx.getNode = vi.fn().mockReturnValue(nodeDef);
+		ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 			if (paramName === 'model') return 'openai/gpt-4.1-mini';
 			if (paramName === 'options') return {};
 			return undefined;
 		});
 
-		mockN8nLlmTracing.mockImplementation(() => ({}));
-		mockMakeN8nLlmFailedAttemptHandler.mockReturnValue(jest.fn());
-		mockGetProxyAgent.mockReturnValue({});
+		MockedN8nLlmTracing.mockImplementation(() => ({}) as N8nLlmTracing);
+		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
+		mockedGetProxyAgent.mockReturnValue({} as any);
 
 		return ctx;
 	};
 
 	beforeEach(() => {
 		node = new LmChatOpenRouter();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('node description', () => {
@@ -127,7 +119,7 @@ describe('LmChatOpenRouter', () => {
 
 			it('should use baseURL from credentials', async () => {
 				const ctx = setupMockContext();
-				ctx.getCredentials = jest.fn().mockResolvedValue({
+				ctx.getCredentials = vi.fn().mockResolvedValue({
 					apiKey: 'test-key',
 					url: 'https://custom-openrouter.example.com/v1',
 				});
@@ -148,8 +140,11 @@ describe('LmChatOpenRouter', () => {
 
 				await node.supplyData.call(ctx, 0);
 
-				expect(mockN8nLlmTracing).toHaveBeenCalledWith(ctx);
-				expect(mockMakeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(ctx, expect.any(Function));
+				expect(MockedN8nLlmTracing).toHaveBeenCalledWith(ctx);
+				expect(mockedMakeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(
+					ctx,
+					expect.any(Function),
+				);
 			});
 
 			it('should pass a custom fetch wrapper in configuration', async () => {
@@ -165,7 +160,7 @@ describe('LmChatOpenRouter', () => {
 		describe('standard LLM options', () => {
 			it('should pass all standard options', async () => {
 				const ctx = setupMockContext();
-				ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 					if (paramName === 'model') return 'openai/gpt-4.1-mini';
 					if (paramName === 'options') {
 						return {
@@ -214,7 +209,7 @@ describe('LmChatOpenRouter', () => {
 				'should handle %s response format',
 				async (responseFormat) => {
 					const ctx = setupMockContext();
-					ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+					ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 						if (paramName === 'model') return 'openai/gpt-4.1-mini';
 						if (paramName === 'options') return { responseFormat };
 						return undefined;
@@ -234,7 +229,7 @@ describe('LmChatOpenRouter', () => {
 
 			it('should not set modelKwargs when no responseFormat and no provider routing', async () => {
 				const ctx = setupMockContext();
-				ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 					if (paramName === 'model') return 'openai/gpt-4.1-mini';
 					if (paramName === 'options') return { temperature: 0.7 };
 					return undefined;
@@ -250,7 +245,7 @@ describe('LmChatOpenRouter', () => {
 		describe('provider routing options', () => {
 			it('should handle order option with comma-separated providers and spaces', async () => {
 				const ctx = setupMockContext();
-				ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 					if (paramName === 'model') return 'openai/gpt-4.1-mini';
 					if (paramName === 'options') {
 						return { providerRouting: { order: ' anthropic , openai ,, google ' } };
@@ -273,7 +268,7 @@ describe('LmChatOpenRouter', () => {
 
 			it('should map provider routing fields to OpenRouter payload', async () => {
 				const ctx = setupMockContext();
-				ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 					if (paramName === 'model') return 'openai/gpt-4.1-mini';
 					if (paramName === 'options') {
 						return {
@@ -312,7 +307,7 @@ describe('LmChatOpenRouter', () => {
 
 			it('should include response format and provider routing together', async () => {
 				const ctx = setupMockContext();
-				ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 					if (paramName === 'model') return 'openai/gpt-4.1-mini';
 					if (paramName === 'options') {
 						return {
@@ -343,7 +338,7 @@ describe('LmChatOpenRouter', () => {
 
 			it('should not add provider to modelKwargs when providerRouting is empty', async () => {
 				const ctx = setupMockContext();
-				ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 					if (paramName === 'model') return 'openai/gpt-4.1-mini';
 					if (paramName === 'options') return { providerRouting: {} };
 					return undefined;
@@ -372,7 +367,7 @@ describe('LmChatOpenRouter', () => {
 			});
 		}
 
-		async function setupFetchWrapper(mockFetch: jest.Mock): Promise<typeof globalThis.fetch> {
+		async function setupFetchWrapper(mockFetch: Mock): Promise<typeof globalThis.fetch> {
 			globalThis.fetch = mockFetch;
 			const ctx = setupMockContext();
 			await node.supplyData.call(ctx, 0);
@@ -392,9 +387,9 @@ describe('LmChatOpenRouter', () => {
 				expected: '{"location":"NYC"}',
 				label: 'valid JSON string',
 			},
-			{ input: '{}', expected: '{}', label: 'empty JSON object string' },
-		])('should normalize arguments: $label', async ({ input, expected }) => {
-			const mockFetch = jest.fn().mockResolvedValue(
+			{ input: '{}', expected: '{}', label: 'empty JSON object string (unchanged)' },
+		])('should normalize arguments: $label -> $expected', async ({ input, expected }) => {
+			const mockFetch = vi.fn().mockResolvedValue(
 				jsonResponse({
 					choices: [
 						{
@@ -415,7 +410,7 @@ describe('LmChatOpenRouter', () => {
 
 		it('should pass through non-JSON responses untouched', async () => {
 			const textBody = 'plain text response';
-			const mockFetch = jest.fn().mockResolvedValue(
+			const mockFetch = vi.fn().mockResolvedValue(
 				new Response(textBody, {
 					status: 200,
 					headers: { 'content-type': 'text/plain' },
@@ -430,7 +425,7 @@ describe('LmChatOpenRouter', () => {
 
 		it('should pass through JSON responses without choices', async () => {
 			const body = { models: ['a', 'b'] };
-			const mockFetch = jest.fn().mockResolvedValue(jsonResponse(body));
+			const mockFetch = vi.fn().mockResolvedValue(jsonResponse(body));
 
 			const wrappedFetch = await setupFetchWrapper(mockFetch);
 			const response = await wrappedFetch('https://openrouter.ai/api/v1/models');
@@ -442,7 +437,7 @@ describe('LmChatOpenRouter', () => {
 			const body = {
 				choices: [{ message: { role: 'assistant', content: 'Hello!' } }],
 			};
-			const mockFetch = jest.fn().mockResolvedValue(jsonResponse(body));
+			const mockFetch = vi.fn().mockResolvedValue(jsonResponse(body));
 
 			const wrappedFetch = await setupFetchWrapper(mockFetch);
 			const response = await wrappedFetch('https://openrouter.ai/api/v1/chat/completions');
@@ -451,7 +446,7 @@ describe('LmChatOpenRouter', () => {
 		});
 
 		it('should fix only empty arguments in a mixed set of tool calls', async () => {
-			const mockFetch = jest.fn().mockResolvedValue(
+			const mockFetch = vi.fn().mockResolvedValue(
 				jsonResponse({
 					choices: [
 						{
@@ -478,7 +473,7 @@ describe('LmChatOpenRouter', () => {
 		});
 
 		it('should only carry content-type header on modified responses', async () => {
-			const mockFetch = jest.fn().mockResolvedValue(
+			const mockFetch = vi.fn().mockResolvedValue(
 				jsonResponse({
 					choices: [
 						{

@@ -4,6 +4,8 @@ import type { ICredentialResolver } from '@n8n/decorators';
 import type { Cipher } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 
+import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+
 import { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
@@ -78,6 +80,7 @@ describe('CredentialResolverWorkflowService', () => {
 	let mockResolverRepository: jest.Mocked<DynamicCredentialResolverRepository>;
 	let mockCipher: jest.Mocked<Cipher>;
 	let mockResolverImplementation: jest.Mocked<ICredentialResolver>;
+	let mockDynamicCredentialsProxy: jest.Mocked<DynamicCredentialsProxy>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -99,7 +102,7 @@ describe('CredentialResolverWorkflowService', () => {
 		} as unknown as jest.Mocked<DynamicCredentialResolverRepository>;
 
 		mockCipher = {
-			decrypt: jest.fn(),
+			decryptV2: jest.fn(),
 		} as unknown as jest.Mocked<Cipher>;
 
 		mockResolverImplementation = {
@@ -112,12 +115,20 @@ describe('CredentialResolverWorkflowService', () => {
 			validateOptions: jest.fn(),
 		};
 
+		mockDynamicCredentialsProxy = {
+			getSystemResolverId: jest.fn().mockReturnValue(null),
+			// Default to the real semantics with no system resolver seeded:
+			// pass through the workflow override if any, otherwise null.
+			getEffectiveResolverId: jest.fn((settings) => settings?.credentialResolverId ?? null),
+		} as unknown as jest.Mocked<DynamicCredentialsProxy>;
+
 		service = new CredentialResolverWorkflowService(
 			mockWorkflowRepository,
 			mockCredentialRepository,
 			mockResolverRegistry,
 			mockResolverRepository,
 			mockCipher,
+			mockDynamicCredentialsProxy,
 		);
 	});
 
@@ -194,7 +205,7 @@ describe('CredentialResolverWorkflowService', () => {
 			mockCredentialRepository.find.mockResolvedValue([mockCredential]);
 			mockResolverRepository.findOneBy.mockResolvedValue(mockResolver);
 			mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ prefix: 'test' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ prefix: 'test' }));
 			mockResolverImplementation.getSecret.mockResolvedValue('secret-value' as any);
 
 			const credentialContext = {
@@ -254,7 +265,7 @@ describe('CredentialResolverWorkflowService', () => {
 			mockCredentialRepository.find.mockResolvedValue([mockCredential]);
 			mockResolverRepository.findOneBy.mockResolvedValue(mockResolver);
 			mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ prefix: 'test' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ prefix: 'test' }));
 			mockResolverImplementation.getSecret.mockRejectedValue(new Error('Secret not found'));
 
 			const result = await service.getWorkflowStatus('workflow-1', {
@@ -310,9 +321,9 @@ describe('CredentialResolverWorkflowService', () => {
 				.mockResolvedValueOnce(mockResolver1)
 				.mockResolvedValueOnce(mockResolver2);
 			mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
-			mockCipher.decrypt
-				.mockReturnValueOnce(JSON.stringify({ prefix: 'test-1' }))
-				.mockReturnValueOnce(JSON.stringify({ prefix: 'test-2' }));
+			mockCipher.decryptV2
+				.mockResolvedValueOnce(JSON.stringify({ prefix: 'test-1' }))
+				.mockResolvedValueOnce(JSON.stringify({ prefix: 'test-2' }));
 			mockResolverImplementation.getSecret.mockResolvedValue('secret-value' as any);
 
 			const credentialContext = {
@@ -336,7 +347,7 @@ describe('CredentialResolverWorkflowService', () => {
 			);
 		});
 
-		it('should skip credentials without resolver ID', async () => {
+		it('should return resolver_missing status for credentials without resolver ID', async () => {
 			const mockWorkflow = createMockWorkflow({
 				nodes: [
 					createMockNode({
@@ -351,6 +362,7 @@ describe('CredentialResolverWorkflowService', () => {
 			const mockCredential = createMockCredential({
 				id: 'cred-1',
 				type: 'oauth2Api',
+				name: 'OAuth2 API',
 				isResolvable: true,
 				resolverId: null,
 			});
@@ -364,7 +376,13 @@ describe('CredentialResolverWorkflowService', () => {
 				metadata: {},
 			});
 
-			expect(result).toEqual([]);
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				credentialId: 'cred-1',
+				credentialName: 'OAuth2 API',
+				status: 'resolver_missing',
+				credentialType: 'oauth2Api',
+			});
 			expect(mockResolverImplementation.getSecret).not.toHaveBeenCalled();
 		});
 
@@ -406,7 +424,7 @@ describe('CredentialResolverWorkflowService', () => {
 			mockCredentialRepository.find.mockResolvedValue(mockCredentials);
 			mockResolverRepository.findOneBy.mockResolvedValue(mockResolver);
 			mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ prefix: 'test' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ prefix: 'test' }));
 			mockResolverImplementation.getSecret
 				.mockResolvedValueOnce('secret-1' as any)
 				.mockResolvedValueOnce('secret-2' as any);
@@ -461,7 +479,7 @@ describe('CredentialResolverWorkflowService', () => {
 			mockCredentialRepository.find.mockResolvedValue(mockCredentials);
 			mockResolverRepository.findOneBy.mockResolvedValue(mockResolver);
 			mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ prefix: 'test' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ prefix: 'test' }));
 			mockResolverImplementation.getSecret
 				.mockResolvedValueOnce('secret-1' as any)
 				.mockRejectedValueOnce(new Error('Secret not found'));
