@@ -115,16 +115,17 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string>>>(() =>
 	})),
 );
 
+const executionsCount = computed(() => sessionsStore.threads.length);
+const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
+	executionsCount,
+});
+
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const isChatFullWidth = ref(false);
-const executionsCount = computed(() => sessionsStore.threads.length);
-const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
-	executionsCount,
-});
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
 
@@ -615,12 +616,14 @@ function onOpenAddToolModal() {
 }
 
 function onOpenAddTriggerModal(initialTriggerType?: string) {
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
 	uiStore.openModalWithData({
 		name: AGENT_ADD_TRIGGER_MODAL_KEY,
 		data: {
 			initialTriggerType,
-			projectId: projectId.value,
-			agentId: agentId.value,
+			projectId: targetProjectId,
+			agentId: targetAgentId,
 			agentName: agentName.value,
 			isPublished: Boolean(agent.value?.activeVersionId),
 			connectedTriggers: connectedTriggers.value,
@@ -628,6 +631,7 @@ function onOpenAddTriggerModal(initialTriggerType?: string) {
 			onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) =>
 				onTriggerAdded(payload),
 			onAgentPublished: (updated: AgentResource) => onPublished(updated),
+			onAgentChanged: () => fetchAgent(targetProjectId, targetAgentId),
 		},
 	});
 }
@@ -902,6 +906,7 @@ function onSwitchAgent(nextAgentId: string) {
 					@update:full-width="isChatFullWidth = $event"
 					@trigger-added="onTriggerAdded"
 					@agent-published="onPublished"
+					@agent-changed="fetchAgent"
 				/>
 			</N8nResizeWrapper>
 

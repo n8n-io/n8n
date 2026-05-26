@@ -48,6 +48,7 @@ export interface ChatInstance {
 	onNewMention: (handler: unknown) => void;
 	onSubscribedMessage: (handler: unknown) => void;
 	onAction: (handler: unknown) => void;
+	getAdapter(name: string): unknown;
 	openDM(user: string): Promise<Thread>;
 	thread(threadId: string): Thread;
 	channel(channelId: string): Channel;

@@ -1,4 +1,3 @@
-import { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { Thread, Author } from 'chat';
@@ -9,10 +8,12 @@ import { UnexpectedError } from 'n8n-workflow';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UrlService } from '@/services/url.service';
 
+import { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
 import type { SuspendComponent } from '../component-mapper';
 import { loadTelegramAdapter } from '../esm-loader';
+import type { IntegrationAction, IntegrationContextQuery } from '../integration-tools';
 
 /**
  * Telegram platform integration.
@@ -40,6 +41,10 @@ export class TelegramIntegration extends AgentChatIntegration {
 	readonly displayIcon = 'telegram';
 
 	readonly supportedComponents = ['section', 'button', 'divider', 'fields'];
+
+	readonly contextQueries: IntegrationContextQuery[] = ['get_current_message_context'];
+
+	readonly actions: IntegrationAction[] = ['respond', 'send_dm'];
 
 	readonly needsShortCallbackData = true;
 

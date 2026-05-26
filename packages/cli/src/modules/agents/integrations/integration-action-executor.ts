@@ -39,6 +39,12 @@ const sendChannelMessageInputSchema = z.object({
 	message: messageSchema,
 });
 
+const addReactionInputSchema = z.object({
+	emoji: z.string().min(1),
+	threadId: z.string().min(1).optional(),
+	messageId: z.string().min(1).optional(),
+});
+
 const integrationActionResumeSchema = {
 	type: 'object',
 	properties: {
@@ -88,6 +94,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 					};
 				}
 				const thread = chat.thread(params.currentMessageContext.target.threadId);
+				await subscribeSlackThread(params.descriptor, thread);
 				const sent = await thread.post(
 					await this.toPostableMessage(params.descriptor, input.message, params),
 				);
@@ -104,6 +111,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			if (params.action === 'send_dm') {
 				const input = sendDmInputSchema.parse(params.input);
 				const thread = await chat.openDM(input.userId);
+				await subscribeSlackThread(params.descriptor, thread);
 				const sent = await thread.post(
 					await this.toPostableMessage(params.descriptor, input.message, params),
 				);
@@ -117,12 +125,24 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 				};
 			}
 
+			if (params.descriptor.integration.type === 'slack') {
+				const result = await executeSlackAction({
+					chat,
+					descriptor: params.descriptor,
+					action: params.action,
+					input: params.input,
+					currentMessageContext: params.currentMessageContext,
+				});
+				if (result !== undefined) return result;
+			}
+
 			const input = sendChannelMessageInputSchema.parse(params.input);
 			const channelId = normalizePlatformId(params.descriptor.integration.type, input.channelId);
 			const channel = chat.channel(channelId);
 			const sent = await channel.post(
 				await this.toPostableMessage(params.descriptor, input.message, params),
 			);
+			await subscribeSlackThread(params.descriptor, chat.thread(sent.threadId));
 			return {
 				ok: true,
 				messageContext: buildMessageContextFromSentMessage({
@@ -195,4 +215,116 @@ function buildMessageContextFromSentMessage(params: {
 		messageId: params.sent.id,
 		updatedAt: new Date().toISOString(),
 	};
+}
+
+async function subscribeSlackThread(
+	descriptor: IntegrationToolConnectionDescriptor,
+	thread: { subscribe?: () => Promise<void> },
+): Promise<void> {
+	if (descriptor.integration.type !== 'slack') return;
+	await thread.subscribe?.();
+}
+
+type AddReactionInput = z.infer<typeof addReactionInputSchema>;
+
+interface SlackAdapter {
+	addReaction(threadId: string, messageId: string, emoji: string): Promise<void>;
+}
+
+async function executeSlackAction(params: {
+	chat: { getAdapter(name: string): unknown };
+	descriptor: IntegrationToolConnectionDescriptor;
+	action: IntegrationAction;
+	input: Record<string, unknown>;
+	currentMessageContext?: IntegrationMessageContext;
+}): Promise<IntegrationActionResult | undefined> {
+	if (params.action !== 'add_reaction') return undefined;
+
+	return await addSlackReaction({
+		chat: params.chat,
+		descriptor: params.descriptor,
+		input: addReactionInputSchema.parse(params.input),
+		currentMessageContext: params.currentMessageContext,
+	});
+}
+
+async function addSlackReaction(params: {
+	chat: { getAdapter(name: string): unknown };
+	descriptor: IntegrationToolConnectionDescriptor;
+	input: AddReactionInput;
+	currentMessageContext?: IntegrationMessageContext;
+}): Promise<IntegrationActionResult> {
+	const adapter = getSlackAdapter(params.chat);
+	if (!adapter) {
+		return {
+			ok: false,
+			error: {
+				code: 'UNSUPPORTED_ACTION',
+				message: 'The active Slack connection does not support add_reaction.',
+			},
+		};
+	}
+
+	const threadId = params.input.threadId ?? params.currentMessageContext?.target.threadId;
+	const messageId = params.input.messageId ?? params.currentMessageContext?.messageId;
+	if (!threadId || !messageId) {
+		return {
+			ok: false,
+			error: {
+				code: 'NO_MESSAGE_CONTEXT',
+				message: 'Slack reactions require a messageId and threadId or current message context.',
+			},
+		};
+	}
+
+	await adapter.addReaction(threadId, messageId, params.input.emoji);
+
+	return {
+		ok: true,
+		reaction: {
+			emoji: params.input.emoji,
+			threadId,
+			messageId,
+		},
+		messageContext: {
+			integrationConnectionId: params.descriptor.integrationConnectionId,
+			platform: params.descriptor.integration.type,
+			target: buildSlackReactionTarget(threadId, params.currentMessageContext),
+			messageId,
+			updatedAt: new Date().toISOString(),
+		},
+	};
+}
+
+function getSlackAdapter(chat: { getAdapter(name: string): unknown }): SlackAdapter | undefined {
+	const adapter = chat.getAdapter('slack');
+	return isSlackAdapter(adapter) ? adapter : undefined;
+}
+
+function isSlackAdapter(value: unknown): value is SlackAdapter {
+	return isRecord(value) && typeof value.addReaction === 'function';
+}
+
+function buildSlackReactionTarget(
+	threadId: string,
+	currentMessageContext: IntegrationMessageContext | undefined,
+): IntegrationMessageContext['target'] {
+	if (currentMessageContext?.target.threadId === threadId) return currentMessageContext.target;
+
+	const channelId = parseSlackChannelId(threadId);
+	return {
+		type: 'thread',
+		threadId,
+		...(channelId ? { channelId } : {}),
+	};
+}
+
+function parseSlackChannelId(threadId: string): string | undefined {
+	const [platform, channel] = threadId.split(':');
+	if (platform !== 'slack' || !channel) return undefined;
+	return `${platform}:${channel}`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
 }

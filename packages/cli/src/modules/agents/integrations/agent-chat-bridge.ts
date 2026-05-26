@@ -233,6 +233,7 @@ export class AgentChatBridge {
 
 		const platformThreadId = this.resolvePlatformThreadId(thread);
 		const threadId = this.toAgentThreadId(platformThreadId);
+		await this.startThinkingStatus(thread);
 		await this.updateLatestMessageContext(threadId.id, message.author.userId, thread, {
 			messageId: message.id,
 			interactingUserId: message.author.userId,
@@ -828,6 +829,7 @@ export class AgentChatBridge {
 
 		this.activeResumedRuns.add(runId);
 		try {
+			await this.startThinkingStatus(thread);
 			const stream = this.agentService.resumeForChat({
 				agentId: this.agentId,
 				projectId: this.n8nProjectId,
@@ -839,6 +841,20 @@ export class AgentChatBridge {
 			await this.consumeStream(stream, thread as Thread);
 		} finally {
 			this.activeResumedRuns.delete(runId);
+		}
+	}
+
+	private async startThinkingStatus(thread: Thread<unknown, unknown>): Promise<void> {
+		if (this.integration.type !== 'slack') return;
+
+		try {
+			await thread.startTyping('Thinking...');
+		} catch (error) {
+			this.logger.warn('[AgentChatBridge] Failed to set Slack assistant status', {
+				agentId: this.agentId,
+				threadId: thread.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 

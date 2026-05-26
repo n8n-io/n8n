@@ -130,6 +130,13 @@ describe('SlackAppSetupService', () => {
 		const createParams = fetchParams(fetchMock, 0);
 		expect(createParams.get('token')).toBe('xoxe-config');
 		const manifest = JSON.parse(createParams.get('manifest') ?? '') as {
+			features: {
+				app_home: {
+					home_tab_enabled: boolean;
+					messages_tab_enabled: boolean;
+					messages_tab_read_only_enabled: boolean;
+				};
+			};
 			oauth_config: { redirect_urls: string[] };
 			settings: {
 				event_subscriptions: { request_url: string; bot_events: string[] };
@@ -143,6 +150,11 @@ describe('SlackAppSetupService', () => {
 		const callbackUrl =
 			'https://hooks.example/rest/projects/project-1/agents/v2/agent-1/integrations/slack/oauth/callback';
 		expect(manifest.oauth_config.redirect_urls).toEqual([callbackUrl]);
+		expect(manifest.features.app_home).toEqual({
+			home_tab_enabled: true,
+			messages_tab_enabled: true,
+			messages_tab_read_only_enabled: false,
+		});
 		expect(manifest.settings.event_subscriptions.request_url).toBe(webhookUrl);
 		expect(manifest.settings.event_subscriptions.bot_events).toEqual([
 			'app_mention',
@@ -202,6 +214,11 @@ describe('SlackAppSetupService', () => {
 		});
 
 		expect(result.manifest.display_information.name).toBe('Support Agent');
+		expect(result.manifest.features.app_home).toEqual({
+			home_tab_enabled: true,
+			messages_tab_enabled: true,
+			messages_tab_read_only_enabled: false,
+		});
 		expect(result.manifest.oauth_config).not.toHaveProperty('redirect_urls');
 		expect(result.manifest.oauth_config.scopes.bot).toContain('chat:write');
 		expect(result.manifest.settings.event_subscriptions.request_url).toBe(

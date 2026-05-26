@@ -72,10 +72,14 @@ export interface IntegrationActionExecutor {
 
 export type IntegrationContextQuery =
 	| 'get_current_message_context'
+	| 'get_current_user'
+	| 'get_current_channel_info'
 	| 'get_user'
-	| 'get_channel_info';
+	| 'get_channel_info'
+	| 'search_users'
+	| 'search_channels';
 
-export type IntegrationAction = 'respond' | 'send_dm' | 'send_channel_message';
+export type IntegrationAction = 'respond' | 'send_dm' | 'send_channel_message' | 'add_reaction';
 
 export type IntegrationActionResult =
 	| {
@@ -93,8 +97,12 @@ export type IntegrationActionResult =
 
 export const DEFAULT_INTEGRATION_CONTEXT_QUERIES: IntegrationContextQuery[] = [
 	'get_current_message_context',
+	'get_current_user',
+	'get_current_channel_info',
 	'get_user',
 	'get_channel_info',
+	'search_users',
+	'search_channels',
 ];
 
 export const DEFAULT_INTEGRATION_ACTIONS: IntegrationAction[] = [
@@ -141,23 +149,244 @@ const messageSchema = z.object({
 		.optional(),
 });
 
+const noInputSchema = z.object({}).strict();
+
+const platformUserIdSchema = z
+	.string()
+	.min(1)
+	.describe('Platform user ID, for example a Slack U... user ID. Do not pass a name.');
+
+const platformChannelIdSchema = z
+	.string()
+	.min(1)
+	.describe('Platform channel ID, for example a Slack C... channel ID. Do not pass a name.');
+
+const searchLimitSchema = z
+	.number()
+	.int()
+	.min(1)
+	.max(50)
+	.optional()
+	.describe('Maximum number of matches to return. Defaults to 10.');
+
+const getCurrentMessageContextInputSchema = z.object({
+	query: z.literal('get_current_message_context'),
+	input: noInputSchema,
+});
+
+const getCurrentUserInputSchema = z.object({
+	query: z.literal('get_current_user'),
+	input: noInputSchema,
+});
+
+const getCurrentChannelInfoInputSchema = z.object({
+	query: z.literal('get_current_channel_info'),
+	input: noInputSchema,
+});
+
+const getUserInputSchema = z.object({
+	query: z.literal('get_user'),
+	input: z
+		.object({
+			userId: platformUserIdSchema,
+		})
+		.strict(),
+});
+
+const getChannelInfoInputSchema = z.object({
+	query: z.literal('get_channel_info'),
+	input: z
+		.object({
+			channelId: platformChannelIdSchema,
+		})
+		.strict(),
+});
+
+const searchUsersInputSchema = z.object({
+	query: z.literal('search_users'),
+	input: z
+		.object({
+			query: z
+				.string()
+				.min(1)
+				.optional()
+				.describe('User name, display name, handle, user ID, or email fragment to search for.'),
+			email: z.string().min(1).optional().describe('Exact email address to look up when known.'),
+			limit: searchLimitSchema,
+			includeBots: z
+				.boolean()
+				.optional()
+				.describe('Whether to include bot users. Defaults to false.'),
+			includeDeleted: z
+				.boolean()
+				.optional()
+				.describe('Whether to include deleted/deactivated users. Defaults to false.'),
+		})
+		.strict()
+		.refine((input) => input.query !== undefined || input.email !== undefined, {
+			message: 'Provide query or email.',
+		}),
+});
+
+const searchChannelsInputSchema = z.object({
+	query: z.literal('search_channels'),
+	input: z
+		.object({
+			query: z.string().min(1).describe('Channel name, channel ID, or #channel search term.'),
+			limit: searchLimitSchema,
+			includeArchived: z
+				.boolean()
+				.optional()
+				.describe('Whether to include archived channels. Defaults to false.'),
+		})
+		.strict(),
+});
+
+type IntegrationContextToolInput =
+	| z.infer<typeof getCurrentMessageContextInputSchema>
+	| z.infer<typeof getCurrentUserInputSchema>
+	| z.infer<typeof getCurrentChannelInfoInputSchema>
+	| z.infer<typeof getUserInputSchema>
+	| z.infer<typeof getChannelInfoInputSchema>
+	| z.infer<typeof searchUsersInputSchema>
+	| z.infer<typeof searchChannelsInputSchema>;
+
+const CONTEXT_QUERY_INPUT_SCHEMAS: Record<
+	IntegrationContextQuery,
+	z.ZodType<IntegrationContextToolInput>
+> = {
+	get_current_message_context: getCurrentMessageContextInputSchema,
+	get_current_user: getCurrentUserInputSchema,
+	get_current_channel_info: getCurrentChannelInfoInputSchema,
+	get_user: getUserInputSchema,
+	get_channel_info: getChannelInfoInputSchema,
+	search_users: searchUsersInputSchema,
+	search_channels: searchChannelsInputSchema,
+} satisfies Record<IntegrationContextQuery, z.ZodType<IntegrationContextToolInput>>;
+
 function buildContextInputSchema(queries: IntegrationContextQuery[]) {
-	return z.object({
-		query: z.enum(toZodEnumValues(queries)),
-		input: z.record(z.string(), z.unknown()).default({}),
-	});
+	const querySchema = z.enum(toZodEnumValues(queries));
+	return z
+		.object({
+			query: querySchema,
+			input: z.record(z.string(), z.unknown()),
+		})
+		.superRefine((input, ctx) => {
+			const operationSchema = CONTEXT_QUERY_INPUT_SCHEMAS[input.query];
+			const result = operationSchema.safeParse(input);
+			if (!result.success) addSchemaIssues(ctx, result.error);
+		});
 }
 
+const respondActionInputSchema = z.object({
+	action: z.literal('respond'),
+	input: z
+		.object({
+			message: messageSchema,
+		})
+		.strict(),
+});
+
+const sendDmActionInputSchema = z.object({
+	action: z.literal('send_dm'),
+	input: z
+		.object({
+			userId: platformUserIdSchema,
+			message: messageSchema,
+		})
+		.strict(),
+});
+
+const sendChannelMessageActionInputSchema = z.object({
+	action: z.literal('send_channel_message'),
+	input: z
+		.object({
+			channelId: platformChannelIdSchema,
+			message: messageSchema,
+		})
+		.strict(),
+});
+
+const addReactionActionInputSchema = z.object({
+	action: z.literal('add_reaction'),
+	input: z
+		.object({
+			emoji: z
+				.string()
+				.min(1)
+				.describe('Emoji name or shortcode to add, for example eyes or :white_check_mark:.'),
+			threadId: z
+				.string()
+				.min(1)
+				.optional()
+				.describe('Optional Slack thread ID. Defaults to the latest message context.'),
+			messageId: z
+				.string()
+				.min(1)
+				.optional()
+				.describe('Optional Slack message timestamp. Defaults to the latest message context.'),
+		})
+		.strict(),
+});
+
+type IntegrationActionToolInput =
+	| z.infer<typeof respondActionInputSchema>
+	| z.infer<typeof sendDmActionInputSchema>
+	| z.infer<typeof sendChannelMessageActionInputSchema>
+	| z.infer<typeof addReactionActionInputSchema>;
+
+const ACTION_INPUT_SCHEMAS: Record<IntegrationAction, z.ZodType<IntegrationActionToolInput>> = {
+	respond: respondActionInputSchema,
+	send_dm: sendDmActionInputSchema,
+	send_channel_message: sendChannelMessageActionInputSchema,
+	add_reaction: addReactionActionInputSchema,
+};
+
 function buildActionInputSchema(actions: IntegrationAction[]) {
-	return z.object({
-		action: z.enum(toZodEnumValues(actions)),
-		input: z.record(z.string(), z.unknown()),
-	});
+	const actionSchema = z.enum(toZodEnumValues(actions));
+	return z
+		.object({
+			action: actionSchema,
+			input: z.record(z.string(), z.unknown()),
+		})
+		.superRefine((input, ctx) => {
+			const operationSchema = ACTION_INPUT_SCHEMAS[input.action];
+			const result = operationSchema.safeParse(input);
+			if (!result.success) addSchemaIssues(ctx, result.error);
+		});
 }
+
+const CONTEXT_QUERY_DESCRIPTIONS = {
+	get_current_message_context:
+		'get_current_message_context: no input. Returns the latest place this agent communicated in this thread.',
+	get_current_user:
+		'get_current_user: no input. Returns the latest user who interacted in the current message context.',
+	get_current_channel_info:
+		'get_current_channel_info: no input. Returns metadata for the latest channel in the current message context.',
+	get_user:
+		'get_user: input.userId is required. Use a platform user ID such as a Slack U... ID, not a name, handle, or email.',
+	get_channel_info:
+		'get_channel_info: input.channelId is required. Use a platform channel ID such as a Slack C... ID, not a channel name.',
+	search_users:
+		'search_users: input.query or input.email is required. Returns matching platform user IDs for names, handles, or emails.',
+	search_channels:
+		'search_channels: input.query is required. Returns matching platform channel IDs for channel names or IDs.',
+} satisfies Record<IntegrationContextQuery, string>;
+
+const ACTION_DESCRIPTIONS = {
+	respond:
+		'respond: input.message is required. Responds in the latest message context for this integration connection.',
+	send_dm:
+		'send_dm: input.userId and input.message are required. userId must be a platform user ID, not a name, handle, or email.',
+	send_channel_message:
+		'send_channel_message: input.channelId and input.message are required. channelId must be a platform channel ID, not a channel name.',
+	add_reaction:
+		'add_reaction: input.emoji is required. For Slack, optional input.threadId and input.messageId target a specific message; otherwise the latest message context is used.',
+} satisfies Record<IntegrationAction, string>;
 
 const actionSuspendSchema = z.object({
 	type: z.literal('integration_action'),
-	action: z.enum(['respond', 'send_dm', 'send_channel_message']),
+	action: z.enum(['respond', 'send_dm', 'send_channel_message', 'add_reaction']),
 	integrationConnectionId: z.string(),
 	messageContext: z.unknown(),
 });
@@ -218,7 +447,11 @@ export function createIntegrationContextTool(params: {
 		.input(buildContextInputSchema(descriptor.contextQueries))
 		.handler(async (input, ctx) => {
 			const persistence = ctx.persistence;
-			if (input.query === 'get_current_message_context') {
+			if (
+				input.query === 'get_current_message_context' ||
+				input.query === 'get_current_user' ||
+				input.query === 'get_current_channel_info'
+			) {
 				if (!persistence) {
 					return {
 						ok: false,
@@ -230,9 +463,54 @@ export function createIntegrationContextTool(params: {
 				}
 				const context = await messageContextStore.getLatest(persistence.threadId);
 				if (!context || context.integrationConnectionId !== descriptor.integrationConnectionId) {
-					return { ok: true, context: null };
+					if (input.query === 'get_current_message_context') {
+						return { ok: true, context: null };
+					}
+					return {
+						ok: false,
+						error: {
+							code: 'NO_MESSAGE_CONTEXT',
+							message: 'There is no current message context for this integration connection.',
+						},
+					};
 				}
-				return { ok: true, context };
+				if (input.query === 'get_current_message_context') {
+					return { ok: true, context };
+				}
+				if (input.query === 'get_current_user') {
+					if (!context.interactingUserId) {
+						return {
+							ok: false,
+							error: {
+								code: 'NO_INTERACTING_USER_CONTEXT',
+								message: 'The latest message context does not include an interacting user ID.',
+							},
+						};
+					}
+					return await queryExecutor.execute({
+						descriptor,
+						query: 'get_user',
+						input: { userId: context.interactingUserId },
+						persistence,
+					});
+				}
+
+				const channelId = getTargetChannelId(context.target);
+				if (!channelId) {
+					return {
+						ok: false,
+						error: {
+							code: 'NO_CHANNEL_CONTEXT',
+							message: 'The latest message context does not include a channel ID.',
+						},
+					};
+				}
+				return await queryExecutor.execute({
+					descriptor,
+					query: 'get_channel_info',
+					input: { channelId },
+					persistence,
+				});
 			}
 
 			return await queryExecutor.execute({
@@ -315,6 +593,8 @@ function buildContextToolDescription(descriptor: IntegrationToolConnectionDescri
 	return [
 		`Read context from the ${descriptor.integration.type} integration connection.`,
 		`Available queries: ${descriptor.contextQueries.join(', ')}.`,
+		'Query inputs:',
+		...descriptor.contextQueries.map((query) => `- ${CONTEXT_QUERY_DESCRIPTIONS[query]}`),
 		'Use this tool for read-only lookup before choosing an action target.',
 	].join('\n\n');
 }
@@ -323,10 +603,21 @@ function buildActionToolDescription(descriptor: IntegrationToolConnectionDescrip
 	return [
 		`Take actions in the ${descriptor.integration.type} integration connection.`,
 		`Available actions: ${descriptor.actions.join(', ')}.`,
+		'Action inputs:',
+		...descriptor.actions.map((action) => `- ${ACTION_DESCRIPTIONS[action]}`),
 		'respond uses the latest message context for this integration connection.',
-		'send_dm and send_channel_message require explicit platform target IDs.',
 		'Messages may include richInteraction components. Interactive components suspend the agent until the user responds.',
 	].join('\n\n');
+}
+
+function addSchemaIssues(ctx: z.RefinementCtx, error: z.ZodError): void {
+	for (const issue of error.issues) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: issue.path,
+			message: issue.message,
+		});
+	}
 }
 
 function toZodEnumValues<T extends string>(values: T[]): [T, ...T[]] {
@@ -391,4 +682,11 @@ async function getRespondContext(params: {
 	}
 
 	return { ok: true, context };
+}
+
+function getTargetChannelId(target: IntegrationMessageTarget): string | undefined {
+	if (target.type === 'thread' || target.type === 'channel') {
+		return target.channelId;
+	}
+	return undefined;
 }

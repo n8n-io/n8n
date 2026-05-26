@@ -6,6 +6,7 @@ import {
 	type UnauthenticatedWebhookResponse,
 } from '../agent-chat-integration';
 import { loadSlackAdapter } from '../esm-loader';
+import type { IntegrationAction, IntegrationContextQuery } from '../integration-tools';
 
 /**
  * Slack platform integration.
@@ -34,6 +35,23 @@ export class SlackIntegration extends AgentChatIntegration {
 		'fields',
 	];
 
+	readonly contextQueries: IntegrationContextQuery[] = [
+		'get_current_message_context',
+		'get_current_user',
+		'get_current_channel_info',
+		'get_user',
+		'get_channel_info',
+		'search_users',
+		'search_channels',
+	];
+
+	readonly actions: IntegrationAction[] = [
+		'respond',
+		'send_dm',
+		'send_channel_message',
+		'add_reaction',
+	];
+
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const botToken = this.extractBotToken(ctx.credential);
 		const signingSecret = this.extractSigningSecret(ctx.credential);
@@ -57,10 +75,13 @@ export class SlackIntegration extends AgentChatIntegration {
 	}
 
 	/**
-	 * Extract the bot token from a decrypted Slack credential.
+	 * Extract the bot token from a decrypted Slack bot-token credential.
 	 */
 	private extractBotToken(credential: Record<string, unknown>): string {
-		const token = typeof credential.accessToken === 'string' ? credential.accessToken : undefined;
+		const token =
+			typeof credential.accessToken === 'string' && credential.accessToken
+				? credential.accessToken
+				: undefined;
 
 		if (!token) {
 			throw new Error(
