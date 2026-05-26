@@ -78,7 +78,7 @@ async function buildImportPackage(): Promise<Buffer> {
 			connections: {},
 			versionId: 'wire-version-id',
 			parentFolderId: null,
-			activeVersionId: null,
+			active: false,
 			isArchived: false,
 		}),
 	);

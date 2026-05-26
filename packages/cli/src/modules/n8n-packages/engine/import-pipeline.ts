@@ -117,23 +117,35 @@ export class ImportPipeline {
 		for (const entry of entries) {
 			const path = `${entry.target}/workflow.json`;
 
+			let content: Buffer;
 			try {
-				const content = await reader.readFile(path);
-				const wire = jsonParse<SerializedWorkflow>(content.toString('utf-8'), {
-					errorMessage: `Package workflow file at ${path} is not valid JSON.`,
-				});
-
-				const partial = this.workflowSerializer.deserialize(wire);
-				const entity = Object.assign(new WorkflowEntity(), partial);
-
-				WorkflowHelpers.validateWorkflowStructure(entity);
-
-				prepared.push({ entity, sourceId: entry.id });
+				content = await reader.readFile(path);
 			} catch (cause) {
 				throw new UserError(`Package manifest references a missing workflow file at ${path}.`, {
 					cause,
 				});
 			}
+
+			const wire = jsonParse<SerializedWorkflow>(content.toString('utf-8'), {
+				errorMessage: `Package workflow file at ${path} is not valid JSON.`,
+			});
+
+			let entity: WorkflowEntity;
+			try {
+				const partial = this.workflowSerializer.deserialize(wire);
+				entity = Object.assign(new WorkflowEntity(), partial);
+			} catch (cause) {
+				if (cause instanceof ZodError) {
+					throw new UserError(`Package workflow file at ${path} failed schema validation.`, {
+						cause,
+					});
+				}
+				throw cause;
+			}
+
+			WorkflowHelpers.validateWorkflowStructure(entity);
+
+			prepared.push({ entity, sourceId: entry.id });
 		}
 
 		return prepared;
