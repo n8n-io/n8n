@@ -68,6 +68,16 @@ function parseJsonValue(value: JSONValue): unknown {
 	return value;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
+
+function isContentToolResultOutput(value: JSONValue): value is ContentToolResultOutput {
+	return isRecord(value) && value.type === 'content' && Array.isArray(value.value);
+}
+
 /** Convert a single n8n MessageContent block to an AI SDK content part. */
 function toAiContent(block: MessageContent): AiContentPart | undefined {
 	let base: AiContentPart | undefined;
@@ -106,7 +116,9 @@ function toolCallToResultPart(
 			type: 'tool-result',
 			toolCallId: block.toolCallId,
 			toolName: block.toolName,
-			output: { type: 'json', value: block.output },
+			output: isContentToolResultOutput(block.output)
+				? block.output
+				: { type: 'json', value: block.output },
 		};
 	}
 	// rejected
@@ -301,6 +313,10 @@ export function fromAiMessages(messages: ModelMessage[]): AgentMessage[] {
 					const mutableBlock = block as Extract<ContentToolCall, { state: 'resolved' }>;
 					mutableBlock.state = 'resolved';
 					mutableBlock.output = output.value as JSONValue;
+				} else if (output.type === 'content') {
+					const mutableBlock = block as Extract<ContentToolCall, { state: 'resolved' }>;
+					mutableBlock.state = 'resolved';
+					mutableBlock.output = output as JSONValue;
 				} else if (output.type === 'error-json') {
 					const mutableBlock = block as Extract<ContentToolCall, { state: 'rejected' }>;
 					mutableBlock.state = 'rejected';
