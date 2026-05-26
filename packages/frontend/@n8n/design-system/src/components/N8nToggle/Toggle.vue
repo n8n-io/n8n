@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Toggle, ToggleGroupItem, type AcceptableValue } from 'reka-ui';
-import { computed, ref, useAttrs, useCssModule, watch } from 'vue';
+import { computed, ref, useAttrs, useCssModule } from 'vue';
 
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
@@ -59,27 +59,24 @@ const classes = computed(() =>
 		props.class,
 	),
 );
-const pressed = ref(props.modelValue ?? false);
+const uncontrolledPressed = ref(props.modelValue ?? false);
 
-watch(
-	() => props.modelValue,
-	(value) => {
-		if (value !== undefined) pressed.value = value ?? false;
+const pressed = computed({
+	get: () => props.modelValue ?? uncontrolledPressed.value,
+	set: (value: boolean) => {
+		if (props.modelValue === undefined) uncontrolledPressed.value = value;
+		emit('update:modelValue', value);
 	},
-);
-
-const handleUpdate = (value: boolean) => {
-	pressed.value = value;
-	emit('update:modelValue', value);
-};
+});
 </script>
 
 <template>
-	<N8nTooltip v-if="!disabled" :content="label">
+	<N8nTooltip :content="label" :disabled="disabled">
 		<ToggleGroupItem
 			v-if="value !== undefined"
 			v-bind="attrs"
 			:value="value"
+			:disabled="disabled"
 			:class="classes"
 			:aria-label="label"
 			data-icon-only="true"
@@ -94,12 +91,12 @@ const handleUpdate = (value: boolean) => {
 			v-else
 			v-bind="attrs"
 			v-model="pressed"
+			:disabled="disabled"
 			:name="name"
 			:required="required"
 			:class="classes"
 			:aria-label="label"
 			data-icon-only="true"
-			@update:model-value="handleUpdate"
 		>
 			<span :class="$style['toggle-inner']">
 				<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
@@ -107,39 +104,6 @@ const handleUpdate = (value: boolean) => {
 			</span>
 		</Toggle>
 	</N8nTooltip>
-
-	<ToggleGroupItem
-		v-else-if="value !== undefined"
-		v-bind="attrs"
-		:value="value"
-		disabled
-		:class="classes"
-		:aria-label="label"
-		data-icon-only="true"
-	>
-		<span :class="$style['toggle-inner']">
-			<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
-			<slot />
-		</span>
-	</ToggleGroupItem>
-
-	<Toggle
-		v-else
-		v-bind="attrs"
-		v-model="pressed"
-		disabled
-		:name="name"
-		:required="required"
-		:class="classes"
-		:aria-label="label"
-		data-icon-only="true"
-		@update:model-value="handleUpdate"
-	>
-		<span :class="$style['toggle-inner']">
-			<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
-			<slot />
-		</span>
-	</Toggle>
 </template>
 
 <style lang="scss" module>

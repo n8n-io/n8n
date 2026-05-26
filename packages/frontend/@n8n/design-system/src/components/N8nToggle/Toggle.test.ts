@@ -55,8 +55,11 @@ describe('components/N8nToggle', () => {
 			global: { stubs: { N8nTooltip: tooltipStub, N8nIcon: true } },
 		});
 
-		await userEvent.click(wrapper.getByRole('button', { name: 'Italic' }));
+		const toggle = wrapper.getByRole('button', { name: 'Italic' });
+		await userEvent.click(toggle);
+
 		expect(onUpdate).toHaveBeenCalledWith(true);
+		expect(toggle).toHaveAttribute('data-state', 'off');
 	});
 
 	it('renders pressed state from modelValue', () => {
@@ -136,5 +139,24 @@ describe('components/N8nToggle', () => {
 
 		await userEvent.click(toggle);
 		expect(onUpdate).not.toHaveBeenCalled();
+	});
+
+	it('passes disabled state from N8nToggleGroup slot props to child toggles', () => {
+		const TestComponent = defineComponent({
+			components: { N8nToggleGroup, N8nToggle },
+			template: `
+				<N8nToggleGroup disabled>
+					<template #default="slotProps">
+						<N8nToggle value="left" label="Align left" v-bind="slotProps">L</N8nToggle>
+					</template>
+				</N8nToggleGroup>
+			`,
+		});
+
+		const wrapper = render(TestComponent, {
+			global: { stubs: { N8nTooltip: tooltipStub, N8nIcon: true } },
+		});
+
+		expect(wrapper.getByRole('button', { name: 'Align left' })).toBeDisabled();
 	});
 });

@@ -77,10 +77,10 @@ export const SingleSelection: Story = {
 		template: `
 			<div style="display: grid; place-items: center;">
 				<N8nToggleGroup v-model="value" v-bind="args">
-					<template #default="{ variant, size }">
-						<N8nToggle value="left" label="Align left" icon="align-right" :variant="variant" :size="size" />
-						<N8nToggle value="center" label="Align center" icon="stream" :variant="variant" :size="size" />
-						<N8nToggle value="right" label="Align right" icon="align-right" :variant="variant" :size="size" />
+					<template #default="{ variant, size, disabled }">
+						<N8nToggle value="left" label="Align left" icon="align-right" :variant="variant" :size="size" :disabled="disabled" />
+						<N8nToggle value="center" label="Align center" icon="stream" :variant="variant" :size="size" :disabled="disabled" />
+						<N8nToggle value="right" label="Align right" icon="align-right" :variant="variant" :size="size" :disabled="disabled" />
 					</template>
 				</N8nToggleGroup>
 			</div>
@@ -105,10 +105,10 @@ export const MultipleSelection: Story = {
 		template: `
 			<div style="display: grid; place-items: center;">
 				<N8nToggleGroup v-model="value" v-bind="args">
-					<template #default="{ variant, size }">
-						<N8nToggle value="bold" label="Bold" icon="text" :variant="variant" :size="size" />
-						<N8nToggle value="italic" label="Italic" icon="case-upper" :variant="variant" :size="size" />
-						<N8nToggle value="underline" label="Underline" icon="text" :variant="variant" :size="size" />
+					<template #default="{ variant, size, disabled }">
+						<N8nToggle value="bold" label="Bold" icon="text" :variant="variant" :size="size" :disabled="disabled" />
+						<N8nToggle value="italic" label="Italic" icon="case-upper" :variant="variant" :size="size" :disabled="disabled" />
+						<N8nToggle value="underline" label="Underline" icon="text" :variant="variant" :size="size" :disabled="disabled" />
 					</template>
 				</N8nToggleGroup>
 			</div>

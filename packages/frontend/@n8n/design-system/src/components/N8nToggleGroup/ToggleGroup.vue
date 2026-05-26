@@ -46,7 +46,7 @@ const emit = defineEmits<{
 		:required="required"
 		@update:model-value="emit('update:modelValue', $event)"
 	>
-		<slot :variant="variant" :size="size" />
+		<slot :variant="variant" :size="size" :disabled="disabled" />
 	</ToggleGroupRoot>
 </template>
 
