@@ -207,7 +207,12 @@ export class ScalingService {
 		return result;
 	}
 
-	// Avoid Bull's leaky `job.finished()` listener when completion events are missed.
+	/**
+	 * Polls for the job result in the internal Map.
+	 * On success, the result is **deleted** from the Map and returned.
+	 * On error (timeout / abort), the caller **must** call `popJobResult`
+	 * to clean up any result that might arrive later.
+	 */
 	async waitForJobResult(
 		executionId: string,
 		timeoutMs = JOB_RESULT_WAIT_TIMEOUT_MS,

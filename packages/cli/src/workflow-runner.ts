@@ -570,20 +570,13 @@ export class WorkflowRunner {
 						abortController.signal,
 					);
 				} catch (caught) {
+					this.scalingService.popJobResult(executionId);
 					let error =
 						caught instanceof Error
 							? caught
 							: new Error(`Unknown queue error for execution ${executionId}`);
 
-					if (error.message.includes('job stalled more than maxStalledCount')) {
-						error = new MaxStalledCountError(error);
-						this.eventService.emit('job-stalled', {
-							executionId: job.data.executionId,
-							workflowId: job.data.workflowId,
-							hostId: this.instanceSettings.hostId,
-							jobId: job.id.toString(),
-						});
-					} else if (abortController.signal.aborted) {
+					if (abortController.signal.aborted) {
 						error = new ManualExecutionCancelledError(executionId);
 					} else {
 						error = new Error(
