@@ -199,6 +199,100 @@ test.describe(
 			await n8n.canvas.selectNodes([TRIGGER, 'Set A']);
 			await expect(n8n.canvas.selectionToolbar.root()).toBeHidden();
 		});
+
+		test.describe('collapse / expand', () => {
+			test('collapsing hides member nodes and shows the collapsed box at the header position', async ({
+				n8n,
+			}) => {
+				await n8n.canvas.selectNodes(['Set A', 'Set B']);
+				await n8n.canvas.selectionToolbar.groupButton().click();
+				await n8n.canvas.deselectAll();
+
+				const headerBefore = (await n8n.canvas
+					.getNodeGroupHeader(DEFAULT_GROUP_TITLE)
+					.boundingBox()) as { x: number; y: number; width: number; height: number };
+				expect(headerBefore).not.toBeNull();
+
+				await n8n.canvas.getNodeGroupHeader(DEFAULT_GROUP_TITLE).hover();
+				await n8n.canvas
+					.getNodeGroupByTitle(DEFAULT_GROUP_TITLE)
+					.getByTestId('canvas-node-group-collapse')
+					.click();
+
+				await expect(n8n.canvas.nodeByName('Set A')).toBeHidden();
+				await expect(n8n.canvas.nodeByName('Set B')).toBeHidden();
+				const chip = n8n.page.getByTestId('canvas-collapsed-group');
+				await expect(chip).toBeVisible();
+
+				const chipBox = (await chip.boundingBox()) as {
+					x: number;
+					y: number;
+					width: number;
+					height: number;
+				};
+				expect(chipBox).not.toBeNull();
+				expect(Math.abs(chipBox.x - headerBefore.x)).toBeLessThan(2);
+				expect(Math.abs(chipBox.y - headerBefore.y)).toBeLessThan(2);
+			});
+
+			test('expanding from the chip restores members at their canonical positions', async ({
+				n8n,
+			}) => {
+				const setABefore = await n8n.canvas.nodeByName('Set A').boundingBox();
+				const setBBefore = await n8n.canvas.nodeByName('Set B').boundingBox();
+
+				await n8n.canvas.selectNodes(['Set A', 'Set B']);
+				await n8n.canvas.selectionToolbar.groupButton().click();
+				await n8n.canvas.deselectAll();
+
+				await n8n.canvas.getNodeGroupHeader(DEFAULT_GROUP_TITLE).hover();
+				await n8n.canvas
+					.getNodeGroupByTitle(DEFAULT_GROUP_TITLE)
+					.getByTestId('canvas-node-group-collapse')
+					.click();
+				await expect(n8n.canvas.nodeByName('Set A')).toBeHidden();
+
+				await n8n.page.getByTestId('canvas-collapsed-group-toggle').click();
+
+				await expect(n8n.canvas.nodeByName('Set A')).toBeVisible();
+				await expect(n8n.canvas.nodeByName('Set B')).toBeVisible();
+
+				const setAAfter = await n8n.canvas.nodeByName('Set A').boundingBox();
+				const setBAfter = await n8n.canvas.nodeByName('Set B').boundingBox();
+				expect(setAAfter?.x).toBeCloseTo(setABefore?.x ?? 0, 0);
+				expect(setAAfter?.y).toBeCloseTo(setABefore?.y ?? 0, 0);
+				expect(setBAfter?.x).toBeCloseTo(setBBefore?.x ?? 0, 0);
+				expect(setBAfter?.y).toBeCloseTo(setBBefore?.y ?? 0, 0);
+			});
+
+			test('save and reload keeps member canonical positions across a collapse cycle', async ({
+				n8n,
+			}) => {
+				await n8n.canvas.selectNodes(['Set A', 'Set B']);
+				await n8n.canvas.selectionToolbar.groupButton().click();
+				await n8n.canvas.deselectAll();
+				await n8n.canvas.waitForSaveWorkflowCompleted();
+
+				const before = await n8n.api.workflows.getWorkflow(workflowId);
+				const beforePositions = Object.fromEntries(
+					before.nodes.map((n: { id: string; position: [number, number] }) => [n.id, n.position]),
+				);
+
+				await n8n.canvas.getNodeGroupHeader(DEFAULT_GROUP_TITLE).hover();
+				await n8n.canvas
+					.getNodeGroupByTitle(DEFAULT_GROUP_TITLE)
+					.getByTestId('canvas-node-group-collapse')
+					.click();
+				await expect(n8n.page.getByTestId('canvas-collapsed-group')).toBeVisible();
+				await n8n.page.getByTestId('canvas-collapsed-group-toggle').click();
+				await expect(n8n.canvas.nodeByName('Set A')).toBeVisible();
+
+				const after = await n8n.api.workflows.getWorkflow(workflowId);
+				for (const node of after.nodes as Array<{ id: string; position: [number, number] }>) {
+					expect(node.position).toEqual(beforePositions[node.id]);
+				}
+			});
+		});
 	},
 );
 

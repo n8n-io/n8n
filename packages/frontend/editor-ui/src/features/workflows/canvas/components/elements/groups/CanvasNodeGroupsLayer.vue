@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount } from 'vue';
+import { computed, inject, onBeforeUnmount } from 'vue';
 import { useVueFlow, type GraphNode } from '@vue-flow/core';
 import { useEventListener } from '@vueuse/core';
 import type { IWorkflowGroup } from 'n8n-workflow';
 
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useVueFlowTransformPaneTeleport } from '../../../composables/useVueFlowTransformPaneTeleport';
+import { CanvasGroupCollapseKey } from '../../../composables/useCanvasGroupCollapse.key';
 import { snapPositionToGrid } from '@/app/utils/nodeViewUtils';
 import CanvasNodeGroupOverlay from './CanvasNodeGroupOverlay.vue';
 
@@ -28,6 +29,7 @@ const emit = defineEmits<{
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const { findNode, updateNode, viewport } = useVueFlow();
 const { teleportTarget } = useVueFlowTransformPaneTeleport();
+const groupCollapse = inject(CanvasGroupCollapseKey);
 
 function getMembers(group: IWorkflowGroup): GraphNode[] {
 	const members: GraphNode[] = [];
@@ -43,8 +45,14 @@ function onTitleFocused(id: string) {
 }
 
 const visibleGroups = computed(() =>
-	workflowDocumentStore.value.allGroups.map((group) => ({ group, members: getMembers(group) })),
+	workflowDocumentStore.value.allGroups
+		.filter((group) => !groupCollapse?.isCollapsed(group.id))
+		.map((group) => ({ group, members: getMembers(group) })),
 );
+
+function onToggleCollapse(groupId: string) {
+	groupCollapse?.toggle(groupId);
+}
 
 type DragState = {
 	initialMouseX: number;
@@ -134,6 +142,7 @@ function onHeaderDragStart(groupId: string, event: MouseEvent) {
 			@update:name="workflowDocumentStore.updateName"
 			@title:focused="onTitleFocused"
 			@ungroup="workflowDocumentStore.deleteGroup"
+			@toggle:collapse="onToggleCollapse"
 			@header:dragstart="onHeaderDragStart"
 		/>
 	</Teleport>

@@ -51,6 +51,7 @@ import type { CanvasRenderData } from '../canvas.utils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
 	computed,
+	inject,
 	nextTick,
 	onMounted,
 	onUnmounted,
@@ -70,6 +71,8 @@ import Node from './elements/nodes/CanvasNode.vue';
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
 import CanvasNodeGroupsLayer from './elements/groups/CanvasNodeGroupsLayer.vue';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
+import { CanvasGroupCollapseKey } from '../composables/useCanvasGroupCollapse.key';
+import { COLLAPSED_GROUP_NODE_ID_PREFIX } from '../composables/useCanvasMapping';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -374,9 +377,34 @@ const {
 	readOnly: () => props.readOnly || props.suppressInteraction,
 });
 
+const groupCollapse = inject(CanvasGroupCollapseKey);
+
 function onKeyboardGroup() {
 	const group = groupSelection();
 	if (group) nodeGroupIdToAutofocusTitle.value = group.id;
+}
+
+const selectedGroupIdsForToggle = computed(() => {
+	if (!groupCollapse) return [];
+	const ids = new Set<string>();
+	for (const node of selectedNodes.value) {
+		if (node.id.startsWith(COLLAPSED_GROUP_NODE_ID_PREFIX)) {
+			ids.add(node.id.slice(COLLAPSED_GROUP_NODE_ID_PREFIX.length));
+			continue;
+		}
+		const group = workflowDocumentStore.value.getGroupForNode(node.id);
+		if (group) ids.add(group.id);
+	}
+	return Array.from(ids);
+});
+
+const canToggleCollapseSelection = computed(() => selectedGroupIdsForToggle.value.length > 0);
+
+function onKeyboardToggleCollapse() {
+	if (!groupCollapse) return;
+	for (const groupId of selectedGroupIdsForToggle.value) {
+		groupCollapse.toggle(groupId);
+	}
 }
 
 const keyMap = computed(() => {
@@ -452,6 +480,10 @@ const keyMap = computed(() => {
 				ungroupSelection();
 			},
 		};
+		fullKeymap.ctrl_shift_c = {
+			disabled: () => !canToggleCollapseSelection.value,
+			run: onKeyboardToggleCollapse,
+		};
 	}
 
 	return fullKeymap;
@@ -506,11 +538,58 @@ function onClickNodeAdd(id: string, handle: string) {
 	emit('click:node:add', id, handle);
 }
 
+function adjustMovesForCollapse(events: CanvasNodeMoveEvent[]): CanvasNodeMoveEvent[] {
+	if (!groupCollapse) return events;
+	const adjusted: CanvasNodeMoveEvent[] = [];
+	for (const { id, position } of events) {
+		if (id.startsWith(COLLAPSED_GROUP_NODE_ID_PREFIX)) {
+			const groupId = id.slice(COLLAPSED_GROUP_NODE_ID_PREFIX.length);
+			const chipRect = groupCollapse.getCollapsedBoxRect(groupId);
+			if (!chipRect) continue;
+			const dx = position.x - chipRect.x;
+			const dy = position.y - chipRect.y;
+			if (dx === 0 && dy === 0) continue;
+			const group = workflowDocumentStore.value.allGroups.find((g) => g.id === groupId);
+			if (!group) continue;
+			for (const memberId of group.nodeIds) {
+				const memberNode = workflowDocumentStore.value.allNodes.find((n) => n.id === memberId);
+				if (!memberNode) continue;
+				adjusted.push({
+					id: memberId,
+					position: {
+						x: memberNode.position[0] + dx,
+						y: memberNode.position[1] + dy,
+					},
+				});
+			}
+		} else {
+			const offset = groupCollapse.getRenderedOffset(id);
+			adjusted.push({
+				id,
+				position: { x: position.x - offset.dx, y: position.y - offset.dy },
+			});
+		}
+	}
+	return adjusted;
+}
+
 function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
-	emit('update:nodes:position', events);
+	const adjusted = groupCollapse ? adjustMovesForCollapse(events) : events;
+	if (adjusted.length === 0) return;
+	emit('update:nodes:position', adjusted);
 }
 
 function onUpdateNodePosition(id: string, position: XYPosition) {
+	if (groupCollapse) {
+		const adjusted = adjustMovesForCollapse([{ id, position }]);
+		if (adjusted.length === 0) return;
+		if (adjusted.length === 1) {
+			emit('update:node:position', adjusted[0].id, adjusted[0].position);
+			return;
+		}
+		emit('update:nodes:position', adjusted);
+		return;
+	}
 	emit('update:node:position', id, position);
 }
 

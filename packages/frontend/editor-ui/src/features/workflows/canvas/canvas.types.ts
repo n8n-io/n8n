@@ -51,7 +51,15 @@ export const enum CanvasNodeRenderType {
 	StickyNote = 'n8n-nodes-base.stickyNote',
 	AddNodes = 'n8n-nodes-internal.addNodes',
 	ChoicePrompt = 'n8n-nodes-internal.choicePrompt',
+	CollapsedGroup = 'n8n-nodes-internal.collapsedGroup',
 }
+
+export type CollapsedGroupAnchor = {
+	handle: string;
+	memberNodeId: string;
+	memberHandle: string;
+	connectionType: string;
+};
 
 export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
 
@@ -98,6 +106,18 @@ export type CanvasNodeStickyNoteRender = {
 	}>;
 };
 
+export type CanvasNodeCollapsedGroupRender = {
+	type: CanvasNodeRenderType.CollapsedGroup;
+	options: {
+		groupId: string;
+		title: string;
+		width: number;
+		height: number;
+		inputAnchors: CollapsedGroupAnchor[];
+		outputAnchors: CollapsedGroupAnchor[];
+	};
+};
+
 export interface CanvasNodeData {
 	id: INodeUi['id'];
 	name: INodeUi['name'];
@@ -128,7 +148,8 @@ export interface CanvasNodeData {
 		| CanvasNodeDefaultRender
 		| CanvasNodeStickyNoteRender
 		| CanvasNodeAddNodesRender
-		| CanvasNodeChoicePromptRender;
+		| CanvasNodeChoicePromptRender
+		| CanvasNodeCollapsedGroupRender;
 }
 
 export type CanvasNode = Node<CanvasNodeData>;

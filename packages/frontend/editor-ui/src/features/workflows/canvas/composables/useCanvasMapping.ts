@@ -20,11 +20,13 @@ import type {
 	CanvasNodeData,
 	CanvasNodeDefaultRender,
 	CanvasNodeStickyNoteRender,
+	CollapsedGroupAnchor,
 	ExecutionOutputMap,
 } from '../canvas.types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
 import {
 	checkOverlap,
+	createCanvasConnectionId,
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
@@ -56,17 +58,60 @@ import * as workflowUtils from 'n8n-workflow/common';
 import { throttledWatch } from '@vueuse/core';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import type { WorkflowObjectAccessors } from '@/app/types';
+import type { Offset, Rect } from './computeDisplacements';
+
+const ZERO_OFFSET: Offset = { dx: 0, dy: 0 };
+
+export interface CollapsedGroupBox {
+	id: string;
+	title: string;
+	rect: Rect;
+	memberIds: string[];
+}
+
+export const COLLAPSED_GROUP_NODE_ID_PREFIX = 'collapsed-group:';
+
+export function collapsedHandleId(
+	side: 'in' | 'out',
+	memberNodeId: string,
+	originalHandle: string,
+): string {
+	return `collapsed:${side}:${memberNodeId}:${originalHandle}`;
+}
+
+export function parseCollapsedHandleId(
+	handleId: string,
+): { side: 'in' | 'out'; memberNodeId: string; originalHandle: string } | undefined {
+	if (!handleId.startsWith('collapsed:')) return undefined;
+	const rest = handleId.slice('collapsed:'.length);
+	const firstColon = rest.indexOf(':');
+	if (firstColon < 0) return undefined;
+	const side = rest.slice(0, firstColon);
+	if (side !== 'in' && side !== 'out') return undefined;
+	const afterSide = rest.slice(firstColon + 1);
+	const secondColon = afterSide.indexOf(':');
+	if (secondColon < 0) return undefined;
+	const memberNodeId = afterSide.slice(0, secondColon);
+	const originalHandle = afterSide.slice(secondColon + 1);
+	return { side, memberNodeId, originalHandle };
+}
 
 export function useCanvasMapping({
 	nodes,
 	connections,
 	workflowObject,
 	renderData,
+	getRenderedOffset,
+	isNodeHidden,
+	collapsedBoxes,
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
 	workflowObject: Ref<WorkflowObjectAccessors>;
 	renderData: Ref<CanvasRenderData>;
+	getRenderedOffset?: (nodeId: string) => Offset;
+	isNodeHidden?: (nodeId: string) => boolean;
+	collapsedBoxes?: Ref<CollapsedGroupBox[]>;
 }) {
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
@@ -562,74 +607,287 @@ export function useCanvasMapping({
 		return tasks.filter((task) => task.executionStatus !== 'canceled');
 	}
 
+	const executionOrderByNodeId = computed<Map<string, number>>(() => {
+		const order = new Map<string, number>();
+		const allNodes = nodes.value;
+		if (allNodes.length === 0) return order;
+
+		const incoming = workflowUtils.mapConnectionsByDestination(connections.value);
+		const nodeByName = new Map(allNodes.map((n) => [n.name, n]));
+		const visited = new Set<string>();
+		let counter = 0;
+
+		const roots: string[] = [];
+		for (const node of allNodes) {
+			const inboundMain = incoming[node.name]?.main;
+			const hasIncoming = inboundMain?.some((slot) => (slot?.length ?? 0) > 0);
+			if (!hasIncoming) roots.push(node.name);
+		}
+
+		const queue: string[] = [...roots];
+		while (queue.length > 0) {
+			const name = queue.shift() as string;
+			if (visited.has(name)) continue;
+			visited.add(name);
+			const node = nodeByName.get(name);
+			if (node) order.set(node.id, counter++);
+
+			const out = connections.value[name];
+			if (!out?.main) continue;
+			for (const slot of out.main) {
+				for (const conn of slot ?? []) {
+					if (conn?.node && !visited.has(conn.node)) queue.push(conn.node);
+				}
+			}
+		}
+
+		for (const node of allNodes) {
+			if (!order.has(node.id)) order.set(node.id, counter++);
+		}
+		return order;
+	});
+
+	const collapsedContext = computed(() => {
+		const boxes = collapsedBoxes?.value ?? [];
+		const anchorsByGroup = new Map<
+			string,
+			{ inputAnchors: CollapsedGroupAnchor[]; outputAnchors: CollapsedGroupAnchor[] }
+		>();
+		const memberToGroup = new Map<string, string>();
+		if (boxes.length === 0) {
+			return { anchorsByGroup, memberToGroup };
+		}
+
+		for (const box of boxes) {
+			anchorsByGroup.set(box.id, { inputAnchors: [], outputAnchors: [] });
+			for (const memberId of box.memberIds) {
+				memberToGroup.set(memberId, box.id);
+			}
+		}
+
+		const allCanvasConnections = mapLegacyConnectionsToCanvasConnections(
+			connections.value ?? [],
+			nodes.value ?? [],
+		);
+
+		const seenIn = new Map<string, Set<string>>();
+		const seenOut = new Map<string, Set<string>>();
+		for (const box of boxes) {
+			seenIn.set(box.id, new Set());
+			seenOut.set(box.id, new Set());
+		}
+
+		for (const conn of allCanvasConnections) {
+			const sourceGroup = memberToGroup.get(conn.source);
+			const targetGroup = memberToGroup.get(conn.target);
+			if (!sourceGroup && !targetGroup) continue;
+			if (sourceGroup && targetGroup && sourceGroup === targetGroup) continue;
+
+			if (sourceGroup) {
+				const memberHandle = conn.sourceHandle ?? '';
+				const handle = collapsedHandleId('out', conn.source, memberHandle);
+				const seen = seenOut.get(sourceGroup) as Set<string>;
+				if (!seen.has(handle)) {
+					seen.add(handle);
+					(
+						anchorsByGroup.get(sourceGroup) as { outputAnchors: CollapsedGroupAnchor[] }
+					).outputAnchors.push({
+						handle,
+						memberNodeId: conn.source,
+						memberHandle,
+						connectionType: conn.data?.source?.type ?? NodeConnectionTypes.Main,
+					});
+				}
+			}
+			if (targetGroup) {
+				const memberHandle = conn.targetHandle ?? '';
+				const handle = collapsedHandleId('in', conn.target, memberHandle);
+				const seen = seenIn.get(targetGroup) as Set<string>;
+				if (!seen.has(handle)) {
+					seen.add(handle);
+					(
+						anchorsByGroup.get(targetGroup) as { inputAnchors: CollapsedGroupAnchor[] }
+					).inputAnchors.push({
+						handle,
+						memberNodeId: conn.target,
+						memberHandle,
+						connectionType: conn.data?.target?.type ?? NodeConnectionTypes.Main,
+					});
+				}
+			}
+		}
+
+		const execOrder = executionOrderByNodeId.value;
+		const sortAnchors = (a: CollapsedGroupAnchor, b: CollapsedGroupAnchor) => {
+			const oa = execOrder.get(a.memberNodeId) ?? Number.POSITIVE_INFINITY;
+			const ob = execOrder.get(b.memberNodeId) ?? Number.POSITIVE_INFINITY;
+			if (oa !== ob) return oa - ob;
+			return a.memberHandle.localeCompare(b.memberHandle);
+		};
+
+		for (const a of anchorsByGroup.values()) {
+			a.inputAnchors.sort(sortAnchors);
+			a.outputAnchors.sort(sortAnchors);
+		}
+
+		return { anchorsByGroup, memberToGroup };
+	});
+
 	const mappedNodes = computed<CanvasNode[]>(() => {
 		const connectionsBySourceNode = connections.value;
 		const connectionsByDestinationNode =
 			workflowUtils.mapConnectionsByDestination(connectionsBySourceNode);
 
-		return [
-			...nodes.value.map<CanvasNode>((node) => {
-				const outputConnections = connectionsBySourceNode[node.name] ?? {};
-				const inputConnections = connectionsByDestinationNode[node.name] ?? {};
+		const result: CanvasNode[] = [];
+		for (const node of nodes.value) {
+			if (isNodeHidden?.(node.id)) continue;
 
-				const data: CanvasNodeData = {
-					id: node.id,
-					name: node.name,
-					subtitle: nodeSubtitleById.value[node.id] ?? '',
-					type: node.type,
-					typeVersion: node.typeVersion,
-					disabled: node.disabled,
+			const outputConnections = connectionsBySourceNode[node.name] ?? {};
+			const inputConnections = connectionsByDestinationNode[node.name] ?? {};
+
+			const data: CanvasNodeData = {
+				id: node.id,
+				name: node.name,
+				subtitle: nodeSubtitleById.value[node.id] ?? '',
+				type: node.type,
+				typeVersion: node.typeVersion,
+				disabled: node.disabled,
+				connections: {
+					[CanvasConnectionMode.Input]: inputConnections,
+					[CanvasConnectionMode.Output]: outputConnections,
+				},
+				issues: {
+					validation: nodeValidationErrorsById.value[node.id],
+					visible: nodeHasIssuesById.value[node.id],
+				},
+				pinnedData: {
+					count: nodePinnedDataById.value[node.id]?.length ?? 0,
+					visible: !!nodePinnedDataById.value[node.id],
+				},
+				execution: {
+					status: nodeExecutionStatusById.value[node.id],
+					waiting: nodeExecutionWaitingById.value[node.id],
+					waitingForNext: nodeExecutionWaitingForNextById.value[node.id],
+					running: nodeExecutionRunningById.value[node.id],
+				},
+				runData: {
+					outputMap: nodeExecutionRunDataOutputMapById.value[node.id],
+					iterations: filterOutCanceled(nodeExecutionRunDataById.value[node.id])?.length ?? 0,
+					visible: !!nodeExecutionRunDataById.value[node.id],
+				},
+				render: renderTypeByNodeId.value[node.id] ?? { type: 'default', options: {} },
+			};
+
+			const offset = getRenderedOffset?.(node.id) ?? ZERO_OFFSET;
+			result.push({
+				id: node.id,
+				label: node.name,
+				type: 'canvas-node',
+				position: { x: node.position[0] + offset.dx, y: node.position[1] + offset.dy },
+				data,
+				...additionalNodePropertiesById.value[node.id],
+				draggable: node.draggable,
+			});
+		}
+
+		const ctx = collapsedContext.value;
+		for (const box of collapsedBoxes?.value ?? []) {
+			const anchors = ctx.anchorsByGroup.get(box.id) ?? {
+				inputAnchors: [],
+				outputAnchors: [],
+			};
+			result.push({
+				id: `${COLLAPSED_GROUP_NODE_ID_PREFIX}${box.id}`,
+				label: box.title,
+				type: 'canvas-node',
+				position: { x: box.rect.x, y: box.rect.y },
+				data: {
+					id: `${COLLAPSED_GROUP_NODE_ID_PREFIX}${box.id}`,
+					name: box.title,
+					subtitle: '',
+					type: '',
+					typeVersion: 1,
+					disabled: false,
 					connections: {
-						[CanvasConnectionMode.Input]: inputConnections,
-						[CanvasConnectionMode.Output]: outputConnections,
+						[CanvasConnectionMode.Input]: {},
+						[CanvasConnectionMode.Output]: {},
 					},
-					issues: {
-						validation: nodeValidationErrorsById.value[node.id],
-						visible: nodeHasIssuesById.value[node.id],
+					issues: { validation: [], visible: false },
+					pinnedData: { count: 0, visible: false },
+					execution: { running: false },
+					runData: { iterations: 0, visible: false },
+					render: {
+						type: CanvasNodeRenderType.CollapsedGroup,
+						options: {
+							groupId: box.id,
+							title: box.title,
+							width: box.rect.width,
+							height: box.rect.height,
+							inputAnchors: anchors.inputAnchors,
+							outputAnchors: anchors.outputAnchors,
+						},
 					},
-					execution: {
-						status: nodeExecutionStatusById.value[node.id],
-						waiting: nodeExecutionWaitingById.value[node.id],
-						waitingForNext: nodeExecutionWaitingForNextById.value[node.id],
-						running: nodeExecutionRunningById.value[node.id],
-					},
-					runData: {
-						outputMap: nodeExecutionRunDataOutputMapById.value[node.id],
-						iterations: filterOutCanceled(nodeExecutionRunDataById.value[node.id])?.length ?? 0,
-						visible: !!nodeExecutionRunDataById.value[node.id],
-					},
-					render: renderTypeByNodeId.value[node.id] ?? { type: 'default', options: {} },
-				};
-
-				return {
-					id: node.id,
-					label: node.name,
-					type: 'canvas-node',
-					position: { x: node.position[0], y: node.position[1] },
-					data,
-					...additionalNodePropertiesById.value[node.id],
-					draggable: node.draggable,
-				};
-			}),
-		];
+				},
+				draggable: true,
+			});
+		}
+		return result;
 	});
 
 	const mappedConnections = computed<CanvasConnection[]>(() => {
-		return mapLegacyConnectionsToCanvasConnections(connections.value ?? [], nodes.value ?? []).map(
-			(connection) => {
-				const type = getConnectionType(connection);
-				const label = getConnectionLabel(connection);
-				const data = getConnectionData(connection);
+		const ctx = collapsedContext.value;
+		const out: CanvasConnection[] = [];
+		const raw = mapLegacyConnectionsToCanvasConnections(connections.value ?? [], nodes.value ?? []);
+		for (const original of raw) {
+			const sourceGroup = ctx.memberToGroup.get(original.source);
+			const targetGroup = ctx.memberToGroup.get(original.target);
+			if (sourceGroup && targetGroup && sourceGroup === targetGroup) continue;
 
-				return {
-					...connection,
-					data,
-					type,
-					label,
-					markerEnd: MarkerType.ArrowClosed,
+			let rewritten: CanvasConnection = original;
+			if (sourceGroup) {
+				const source = `${COLLAPSED_GROUP_NODE_ID_PREFIX}${sourceGroup}`;
+				const sourceHandle = collapsedHandleId('out', original.source, original.sourceHandle ?? '');
+				rewritten = {
+					...rewritten,
+					source,
+					sourceHandle,
+					id: createCanvasConnectionId({
+						source,
+						sourceHandle,
+						target: rewritten.target,
+						targetHandle: rewritten.targetHandle ?? '',
+					}),
 				};
-			},
-		);
+			}
+			if (targetGroup) {
+				const target = `${COLLAPSED_GROUP_NODE_ID_PREFIX}${targetGroup}`;
+				const targetHandle = collapsedHandleId('in', original.target, original.targetHandle ?? '');
+				rewritten = {
+					...rewritten,
+					target,
+					targetHandle,
+					id: createCanvasConnectionId({
+						source: rewritten.source,
+						sourceHandle: rewritten.sourceHandle ?? '',
+						target,
+						targetHandle,
+					}),
+				};
+			}
+
+			const type = getConnectionType(original);
+			const label = getConnectionLabel(original);
+			const data = getConnectionData(original);
+
+			out.push({
+				...rewritten,
+				data,
+				type,
+				label,
+				markerEnd: MarkerType.ArrowClosed,
+			});
+		}
+		return out;
 	});
 
 	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {

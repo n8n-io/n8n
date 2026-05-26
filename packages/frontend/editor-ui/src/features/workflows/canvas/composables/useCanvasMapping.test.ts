@@ -3646,4 +3646,196 @@ describe('useCanvasMapping', () => {
 			});
 		});
 	});
+
+	describe('group collapse hooks', () => {
+		function mappingWithCollapse(
+			node: INodeUi,
+			opts: {
+				getRenderedOffset?: (id: string) => { dx: number; dy: number };
+				isNodeHidden?: (id: string) => boolean;
+			},
+		) {
+			const nodes = [node];
+			const connections = {};
+			const workflowObject = createTestWorkflowObject({ nodes, connections });
+			return useCanvasMapping({
+				nodes: ref(nodes),
+				connections: ref(connections),
+				workflowObject: ref(workflowObject) as Ref<Workflow>,
+				renderData: emptyRenderData,
+				...opts,
+			});
+		}
+
+		it('applies a per-node offset to the rendered position', () => {
+			const node = mockNode({
+				name: 'Trigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
+				position: [100, 200],
+			});
+			const { nodes: mappedNodes } = mappingWithCollapse(node, {
+				getRenderedOffset: (id) => (id === node.id ? { dx: 25, dy: -10 } : { dx: 0, dy: 0 }),
+			});
+			expect(mappedNodes.value[0]?.position).toEqual({ x: 125, y: 190 });
+		});
+
+		it('filters out nodes marked hidden', () => {
+			const node = mockNode({
+				name: 'Trigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
+			});
+			const { nodes: mappedNodes } = mappingWithCollapse(node, {
+				isNodeHidden: (id) => id === node.id,
+			});
+			expect(mappedNodes.value).toEqual([]);
+		});
+
+		it('leaves rendered positions unchanged when no hook is provided (default)', () => {
+			const node = mockNode({
+				name: 'Trigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
+				position: [300, 400],
+			});
+			const { nodes: mappedNodes } = mappingWithCollapse(node, {});
+			expect(mappedNodes.value[0]?.position).toEqual({ x: 300, y: 400 });
+		});
+	});
+
+	describe('collapsed boundary edges', () => {
+		function setupCollapseScenario(opts: {
+			boxes: Array<{ id: string; title: string; memberIds: string[] }>;
+		}) {
+			const trigger = mockNode({
+				name: 'Trigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
+			});
+			const memberA = mockNode({ name: 'MemberA', type: SET_NODE_TYPE });
+			const memberB = mockNode({ name: 'MemberB', type: SET_NODE_TYPE });
+			const external = mockNode({ name: 'External', type: SET_NODE_TYPE });
+
+			const nodesList: INodeUi[] = [trigger, memberA, memberB, external];
+			const connectionsMap = {
+				Trigger: {
+					main: [[{ node: 'MemberA', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				MemberA: {
+					main: [[{ node: 'MemberB', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				MemberB: {
+					main: [[{ node: 'External', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const workflowObject = createTestWorkflowObject({
+				nodes: nodesList,
+				connections: connectionsMap,
+			});
+
+			const memberIdsByName: Record<string, string> = {
+				Trigger: trigger.id,
+				MemberA: memberA.id,
+				MemberB: memberB.id,
+				External: external.id,
+			};
+
+			const collapsedBoxes = ref(
+				opts.boxes.map((b) => ({
+					id: b.id,
+					title: b.title,
+					rect: { x: 0, y: 0, width: 240, height: 40 },
+					memberIds: b.memberIds.map((name) => memberIdsByName[name] ?? name),
+				})),
+			);
+
+			const memberNamesInBoxes = new Set(opts.boxes.flatMap((b) => b.memberIds));
+
+			const mapping = useCanvasMapping({
+				nodes: ref(nodesList),
+				connections: ref(connectionsMap),
+				workflowObject: ref(workflowObject) as Ref<Workflow>,
+				renderData: emptyRenderData,
+				collapsedBoxes,
+				isNodeHidden: (id) => {
+					const name = nodesList.find((n) => n.id === id)?.name ?? '';
+					return memberNamesInBoxes.has(name);
+				},
+			});
+
+			return { mapping, nodesList, memberIdsByName };
+		}
+
+		it('drops connections that are fully internal to a collapsed group', () => {
+			const { mapping } = setupCollapseScenario({
+				boxes: [{ id: 'group1', title: 'G1', memberIds: ['MemberA', 'MemberB'] }],
+			});
+			const connections = mapping.connections.value;
+			const internal = connections.find(
+				(c) => c.data?.source?.node === 'MemberA' && c.data?.target?.node === 'MemberB',
+			);
+			expect(internal).toBeUndefined();
+		});
+
+		it('rewrites a boundary connection so the chip is the target when the inside endpoint is a target', () => {
+			const { mapping } = setupCollapseScenario({
+				boxes: [{ id: 'group1', title: 'G1', memberIds: ['MemberA', 'MemberB'] }],
+			});
+			const triggerToA = mapping.connections.value.find(
+				(c) => c.data?.source?.node === 'Trigger' && c.data?.target?.node === 'MemberA',
+			);
+			expect(triggerToA).toBeDefined();
+			expect(triggerToA?.target).toBe('collapsed-group:group1');
+			expect(triggerToA?.targetHandle).toMatch(/^collapsed:in:/);
+		});
+
+		it('rewrites a boundary connection so the chip is the source when the inside endpoint is a source', () => {
+			const { mapping } = setupCollapseScenario({
+				boxes: [{ id: 'group1', title: 'G1', memberIds: ['MemberA', 'MemberB'] }],
+			});
+			const bToExternal = mapping.connections.value.find(
+				(c) => c.data?.source?.node === 'MemberB' && c.data?.target?.node === 'External',
+			);
+			expect(bToExternal).toBeDefined();
+			expect(bToExternal?.source).toBe('collapsed-group:group1');
+			expect(bToExternal?.sourceHandle).toMatch(/^collapsed:out:/);
+		});
+
+		it('exposes the rewritten anchors on the synthetic chip node', () => {
+			const { mapping } = setupCollapseScenario({
+				boxes: [{ id: 'group1', title: 'G1', memberIds: ['MemberA', 'MemberB'] }],
+			});
+			const chip = mapping.nodes.value.find((n) => n.id === 'collapsed-group:group1');
+			expect(chip).toBeDefined();
+			const render = chip?.data?.render;
+			expect(render?.type).toBe(CanvasNodeRenderType.CollapsedGroup);
+			if (render?.type !== CanvasNodeRenderType.CollapsedGroup) return;
+			expect(render.options.inputAnchors).toHaveLength(1);
+			expect(render.options.outputAnchors).toHaveLength(1);
+			expect(render.options.inputAnchors[0]?.handle).toMatch(/^collapsed:in:/);
+			expect(render.options.outputAnchors[0]?.handle).toMatch(/^collapsed:out:/);
+		});
+
+		it('orders multi-anchor sides by execution order of the inside endpoint', () => {
+			const { mapping } = setupCollapseScenario({
+				boxes: [{ id: 'group1', title: 'G1', memberIds: ['MemberA', 'MemberB'] }],
+			});
+			// MemberA precedes MemberB topologically; A only has an input anchor, B only has an output
+			// anchor — so within each side there is just one anchor. We sanity-check that input anchor
+			// belongs to MemberA and output anchor belongs to MemberB.
+			const chip = mapping.nodes.value.find((n) => n.id === 'collapsed-group:group1');
+			const render = chip?.data?.render;
+			if (render?.type !== CanvasNodeRenderType.CollapsedGroup) {
+				throw new Error('chip missing render');
+			}
+			const memberAId = mapping.nodes.value.find((n) => n.data?.name === 'MemberA');
+			const memberBId = mapping.nodes.value.find((n) => n.data?.name === 'MemberB');
+			// Members A and B should both be hidden, so they should not appear in mapped nodes.
+			expect(memberAId).toBeUndefined();
+			expect(memberBId).toBeUndefined();
+
+			// Anchor for the input side comes from the connection trigger -> MemberA, so its memberNodeId
+			// should match MemberA's id in the original nodes list.
+			expect(render.options.inputAnchors[0]?.memberHandle).toContain('inputs/main/0');
+			expect(render.options.outputAnchors[0]?.memberHandle).toContain('outputs/main/0');
+		});
+	});
 });

@@ -6,9 +6,12 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { ViewportTransform } from '@vue-flow/core';
 import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
-import { computed, ref, useCssModule, useTemplateRef } from 'vue';
+import { computed, provide, ref, useCssModule, useTemplateRef } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
+import { useCanvasGroupCollapse } from '../composables/useCanvasGroupCollapse';
+import { CanvasGroupCollapseKey } from '../composables/useCanvasGroupCollapse.key';
+import type { Rect } from '../composables/computeDisplacements';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
@@ -45,7 +48,9 @@ const renderData = computed(() =>
 	useWorkflowDocumentRenderData(workflowDocumentStore.value.documentId),
 );
 
-const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
+const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds, findNode } = useVueFlow(
+	props.id,
+);
 
 const workflowObject = computed(() =>
 	workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
@@ -58,11 +63,37 @@ const nodes = computed(() => {
 });
 const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
+const DEFAULT_NODE_WIDTH = 100;
+const DEFAULT_NODE_HEIGHT = 100;
+
+function getCanonicalNodeRect(nodeId: string): Rect | undefined {
+	const storeNode = workflowDocumentStore.value.allNodes.find((n) => n.id === nodeId);
+	if (!storeNode) return undefined;
+	const graphNode = findNode(nodeId);
+	return {
+		x: storeNode.position[0],
+		y: storeNode.position[1],
+		width: graphNode?.dimensions?.width ?? DEFAULT_NODE_WIDTH,
+		height: graphNode?.dimensions?.height ?? DEFAULT_NODE_HEIGHT,
+	};
+}
+
+const groupCollapse = useCanvasGroupCollapse({
+	allGroups: computed(() => workflowDocumentStore.value.allGroups),
+	allNodeIds: computed(() => workflowDocumentStore.value.allNodes.map((n) => n.id)),
+	getCanonicalNodeRect,
+});
+
+provide(CanvasGroupCollapseKey, groupCollapse);
+
 const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({
 	nodes,
 	connections,
 	workflowObject,
 	renderData,
+	getRenderedOffset: groupCollapse.getRenderedOffset,
+	isNodeHidden: groupCollapse.isNodeHidden,
+	collapsedBoxes: groupCollapse.collapsedBoxes,
 });
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636

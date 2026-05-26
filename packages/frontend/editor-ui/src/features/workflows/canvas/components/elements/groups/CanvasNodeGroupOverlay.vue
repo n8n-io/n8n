@@ -15,6 +15,7 @@ import {
 } from '../../../stores/canvasNodeGroups.constants';
 
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
+const COLLAPSE_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['C'] };
 
 const props = withDefaults(
 	defineProps<{
@@ -33,6 +34,7 @@ const emit = defineEmits<{
 	'update:name': [id: string, name: string];
 	'title:focused': [id: string];
 	ungroup: [id: string];
+	'toggle:collapse': [id: string];
 	'header:dragstart': [id: string, event: MouseEvent];
 }>();
 
@@ -64,6 +66,10 @@ function onTitleUpdate(value: string) {
 
 function onUngroupClick() {
 	emit('ungroup', props.group.id);
+}
+
+function onCollapseClick() {
+	emit('toggle:collapse', props.group.id);
 }
 
 function onHeaderMouseDown(event: MouseEvent) {
@@ -110,6 +116,22 @@ watch(
 			data-test-id="canvas-node-group-header"
 			@mousedown="onHeaderMouseDown"
 		>
+			<KeyboardShortcutTooltip
+				v-if="!readOnly"
+				:label="i18n.baseText('canvas.nodeGroup.collapse')"
+				:shortcut="COLLAPSE_NODES_SHORTCUT"
+			>
+				<N8nIconButton
+					:class="$style.collapseToggle"
+					variant="ghost"
+					size="small"
+					icon="chevrons-up-down"
+					:aria-label="i18n.baseText('canvas.nodeGroup.collapse')"
+					data-test-id="canvas-node-group-collapse"
+					@click.stop="onCollapseClick"
+					@mousedown.stop
+				/>
+			</KeyboardShortcutTooltip>
 			<div v-if="!readOnly" :class="$style.toolbar" data-test-id="canvas-node-group-toolbar">
 				<div :class="$style.toolbarItems">
 					<KeyboardShortcutTooltip
@@ -230,5 +252,11 @@ watch(
 	height: 100%;
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
+}
+
+.collapseToggle {
+	flex-shrink: 0;
+	pointer-events: auto;
+	margin-right: var(--spacing--3xs);
 }
 </style>
