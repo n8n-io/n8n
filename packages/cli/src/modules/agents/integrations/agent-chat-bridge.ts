@@ -262,18 +262,12 @@ export class AgentChatBridge {
 	// Thread ID resolution — single place to apply per-platform formatting
 	// ---------------------------------------------------------------------------
 
-	/**
-	 * Resolve the thread ID to pass to the agents service.
-	 *
-	 * Delegates to `integration.formatThreadId.fromSdk` when the platform
-	 * provides one (e.g. Slack encodes channel + ts), otherwise falls back
-	 * to the raw Chat SDK `thread.id`.
-	 *
-	 * Every call site that hands a threadId to `AgentExecutor` MUST use this
-	 * helper so platform-specific formatting is never accidentally skipped.
-	 */
-	private resolveThreadId(thread: Thread<unknown, unknown>) {
-		return toInternalThreadId(this.integrationImpl?.formatThreadId?.fromSdk(thread) ?? thread.id);
+	private resolvePlatformThreadId(thread: Thread<unknown, unknown>) {
+		return this.integrationImpl?.formatThreadId?.fromSdk(thread) ?? thread.id;
+	}
+
+	private toAgentThreadId(platformThreadId: string) {
+		return toInternalThreadId(`${this.agentId}:${platformThreadId}`);
 	}
 
 	/**
@@ -300,7 +294,8 @@ export class AgentChatBridge {
 		const text = this.prepareInboundText(message.text, platformAgentContext).trim();
 		if (!text) return;
 
-		const threadId = this.resolveThreadId(thread);
+		const platformThreadId = this.resolvePlatformThreadId(thread);
+		const threadId = this.toAgentThreadId(platformThreadId);
 		const slackThreadContext = this.getSlackThreadContext(message);
 		const useNativeSlackThreadFeatures =
 			this.integration.type !== 'slack' || slackThreadContext?.hasRealThreadTs === true;
@@ -318,9 +313,8 @@ export class AgentChatBridge {
 			...platformAgentContext,
 			subject,
 		});
-		// threadId.id already encodes platform + user identity (e.g. Telegram:
-		// "chat:botId-userId") so it partitions Episodic Memory for this
-		// integration context without leaking the n8n user identity.
+		// threadId.id is agent-prefixed for observation storage; resourceId keeps
+		// the platform identity so episodic recall remains agent + resource scoped.
 		// Always run the published snapshot — integrations are production traffic.
 		const stream = this.agentService.executeForChatPublished({
 			agentId: this.agentId,
@@ -328,7 +322,7 @@ export class AgentChatBridge {
 			message: text,
 			memory: {
 				threadId,
-				resourceId: integrationMemoryResourceId(this.integration.type, threadId.id),
+				resourceId: integrationMemoryResourceId(this.integration.type, platformThreadId),
 			},
 			integrationType: this.integration.type,
 		});
@@ -1137,7 +1131,8 @@ export class AgentChatBridge {
 		// Persist the interacting user / messageId into the thread's message
 		// context so tools running on resume can read it via the message
 		// context store — no need to bolt a duplicate copy onto resumeData.
-		const threadId = this.resolveThreadId(thread);
+		const platformThreadId = this.resolvePlatformThreadId(thread);
+		const threadId = this.toAgentThreadId(platformThreadId);
 		await this.updateLatestMessageContext(threadId.id, event.user.userId, thread, {
 			messageId: event.messageId,
 			interactingUserId: event.user.userId,

@@ -16,7 +16,8 @@ const agent = {
 	id: 'agent-1',
 	projectId: 'project-1',
 	name: 'Support Agent',
-	publishedVersion: {},
+	activeVersionId: 'v1',
+	activeVersion: {},
 	integrations: [],
 };
 

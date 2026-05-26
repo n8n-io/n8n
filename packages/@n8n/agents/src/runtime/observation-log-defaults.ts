@@ -291,7 +291,6 @@ export function buildObservationLogObserverPrompt(input: ObservationLogObserverI
 
 	return [
 		`Current timestamp: ${input.now.toISOString()}`,
-		`Scope: ${input.scopeKind}:${input.scopeId}`,
 		`Unobserved transcript tokens: ${input.transcriptTokenCount}`,
 		`Current observation log tail:\n${renderedLogTail}`,
 		`New transcript delta since the last observation:\n${transcript}`,
@@ -529,7 +528,6 @@ export function buildObservationLogReflectorPrompt(input: ObservationLogReflecto
 
 	return [
 		`Current timestamp: ${input.now.toISOString()}`,
-		`Scope: ${input.scopeKind}:${input.scopeId}`,
 		`Active observation log tokens: ${input.tokenCount}`,
 		`Token budget: ${input.tokenBudget}`,
 		`Current active observation log:\n${renderedLog}`,

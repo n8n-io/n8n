@@ -634,7 +634,7 @@ function onOpenAddTriggerModal(initialTriggerType?: string) {
 			projectId: targetProjectId,
 			agentId: targetAgentId,
 			agentName: agentName.value,
-			isPublished: Boolean(agent.value?.publishedVersion),
+			isPublished: Boolean(agent.value?.activeVersionId),
 			connectedTriggers: connectedTriggers.value,
 			onConnectedTriggersChange: (triggers: string[]) => onConnectedTriggersUpdate(triggers),
 			onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) =>
@@ -904,7 +904,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:connected-triggers="connectedTriggers"
 					:initial-prompt="initialPrompt"
 					:is-builder-configured="isBuilderConfigured"
-					:is-published="Boolean(agent?.publishedVersion)"
+					:is-published="Boolean(agent?.activeVersionId)"
 					:is-full-width="isChatFullWidth"
 					:can-edit-agent="canEditAgent"
 					:before-build-send="flushAutosave"

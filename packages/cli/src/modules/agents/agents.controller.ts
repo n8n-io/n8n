@@ -21,6 +21,7 @@ import {
 	UpdateAgentScheduleDto,
 	UpdateAgentSkillDto,
 	AgentDisconnectIntegrationDto,
+	PublishAgentDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
@@ -402,8 +403,14 @@ export class AgentsController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
+		@Body payload: PublishAgentDto,
 	) {
-		const agent = await this.agentsService.publishAgent(agentId, req.params.projectId, req.user.id);
+		const agent = await this.agentsService.publishAgent(
+			agentId,
+			req.params.projectId,
+			req.user,
+			payload?.versionId,
+		);
 		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
@@ -723,12 +730,12 @@ export class AgentsController {
 			);
 		}
 
-		if (!agent.publishedVersion) {
+		if (!agent.activeVersionId) {
 			await this.agentsService.saveCredentialIntegration(agent, integration);
 			const publishedAgent = await this.agentsService.publishAgent(
 				agentId,
 				agent.projectId,
-				req.user.id,
+				req.user,
 			);
 			return {
 				status: 'connected',
