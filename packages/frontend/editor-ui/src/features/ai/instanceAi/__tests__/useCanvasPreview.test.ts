@@ -398,6 +398,129 @@ describe('useCanvasPreview', () => {
 		});
 	});
 
+	describe('auto-open on builder spawn (edit flow)', () => {
+		test('opens canvas as soon as an edit-mode builder spawns with targetResource.id', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-existing', 'Existing WF');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-1',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'active',
+								targetResource: { type: 'workflow', id: 'wf-existing' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-existing');
+			expect(ctx.activeWorkflowId.value).toBe('wf-existing');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('does not open canvas when the builder has no targetResource id (create flow)', async () => {
+			const ctx = setup();
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-1',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'active',
+								targetResource: { type: 'workflow' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('does not open canvas while hydrating historical messages', async () => {
+			const ctx = setup();
+			ctx.thread.isHydratingThread = true;
+			registerWorkflow(ctx.thread, 'wf-historical', 'Past WF');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-historical',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'completed',
+								targetResource: { type: 'workflow', id: 'wf-historical' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('switches to the latest edit target when a new builder spawns', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-a', 'WF A');
+			registerWorkflow(ctx.thread, 'wf-b', 'WF B');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-a',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'completed',
+								targetResource: { type: 'workflow', id: 'wf-a' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+			expect(ctx.activeTabId.value).toBe('wf-a');
+
+			ctx.thread.messages = [
+				...ctx.thread.messages,
+				makeMessage({
+					id: 'msg-2',
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-b',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'active',
+								targetResource: { type: 'workflow', id: 'wf-b' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-b');
+		});
+	});
+
 	describe('auto-open data table preview', () => {
 		test('auto-opens data table preview when streaming', async () => {
 			const ctx = setup();

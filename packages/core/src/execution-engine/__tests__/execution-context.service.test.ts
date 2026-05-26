@@ -305,6 +305,29 @@ describe('ExecutionContextService', () => {
 		});
 	});
 
+	describe('buildManualExecutionCredentials()', () => {
+		it('should encrypt the credential context with the cookie as identity', async () => {
+			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
+
+			const result = await service.buildManualExecutionCredentials('n8n-auth-cookie-jwt');
+
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith({
+				version: 1,
+				identity: 'n8n-auth-cookie-jwt',
+				metadata: { source: 'manual-execution' },
+			});
+			expect(result).toBe('encrypted-credential-blob');
+		});
+
+		it('should propagate errors raised by the cipher', async () => {
+			mockCipher.encryptV2.mockRejectedValue(new Error('encryption key missing'));
+
+			await expect(service.buildManualExecutionCredentials('cookie')).rejects.toThrow(
+				'encryption key missing',
+			);
+		});
+	});
+
 	describe('encrypt → decrypt round-trip', () => {
 		it('should preserve secureArtifacts through a full round-trip', async () => {
 			// JSON-stringify on encrypt, identity on decrypt — simulates a symmetric cipher

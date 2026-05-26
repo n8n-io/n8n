@@ -72,7 +72,22 @@ describe('getAsStream()', () => {
 		const stream = await objectStoreManager.getAsStream(fileId);
 
 		expect(stream).toBeInstanceOf(Readable);
-		expect(objectStoreService.get).toHaveBeenCalledWith(fileId, { mode: 'stream' });
+		expect(objectStoreService.get).toHaveBeenCalledWith(fileId, {
+			mode: 'stream',
+			chunkSize: undefined,
+		});
+	});
+
+	it('should forward chunkSize to the service', async () => {
+		objectStoreService.get.mockResolvedValue(mockStream);
+
+		const providedChunkSize = 5 * 1024 * 1024;
+		await objectStoreManager.getAsStream(fileId, providedChunkSize);
+
+		expect(objectStoreService.get).toHaveBeenCalledWith(fileId, {
+			mode: 'stream',
+			chunkSize: providedChunkSize,
+		});
 	});
 });
 

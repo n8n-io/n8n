@@ -1,10 +1,10 @@
-import type { LanguageModelV2 } from '@ai-sdk/provider-v5';
 import type {
 	AttributeValue,
 	BuiltTelemetry,
 	BuiltMemory,
 	BuiltTool,
 	CheckpointStore,
+	ModelConfig as NativeModelConfig,
 	Telemetry,
 	Workspace,
 } from '@n8n/agents';
@@ -17,7 +17,13 @@ import type {
 	McpToolCallResult,
 } from '@n8n/api-types';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import type { GenericValue, INodeTypes } from 'n8n-workflow';
+import type {
+	GenericValue,
+	INodeInputConfiguration,
+	INodeTypes,
+	ITaskData,
+	NodeConnectionType,
+} from 'n8n-workflow';
 
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
@@ -26,7 +32,6 @@ import type { DomainAccessTracker } from './domain-access/domain-access-tracker'
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { McpClientManager } from './mcp/mcp-client-manager';
-import type { BuilderSandboxSessionRegistry } from './runtime/builder-sandbox-session-registry';
 import type { IterationLog } from './storage/iteration-log';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
@@ -35,7 +40,6 @@ import type {
 	WorkflowLoopAction,
 	WorkflowLoopState,
 } from './workflow-loop/workflow-loop-state';
-import type { BuilderSandboxFactory } from './workspace/builder-sandbox-factory';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -213,6 +217,11 @@ export interface InstanceAiWorkflowService {
 		versionId: string,
 		data: { name?: string | null; description?: string | null },
 	): Promise<void>;
+	/** Per-node `ITaskData[]` of the workflow's most recent execution.
+	 *  Equivalent to `workflowsStore.getWorkflowRunData` on the canvas — used by
+	 *  workflow validation to detect previously-failed nodes. Returns `null`
+	 *  when the workflow has no execution history or the caller has no access. */
+	getLatestRunData?(workflowId: string): Promise<Record<string, ITaskData[]> | null>;
 }
 
 export interface ExecutionSummary {
@@ -356,6 +365,15 @@ export interface InstanceAiNodeService {
 		parameters: Record<string, unknown>,
 		existingCredentials?: Record<string, unknown>,
 	): Promise<string[]>;
+	/** Resolve a node's input definitions in the context of a full workflow so
+	 *  expression-based dynamic inputs evaluate against current parameter values.
+	 *  Mirrors NodeHelpers.getNodeInputs. Returns the same post-evaluation shape
+	 *  as INodeTypeDescription['inputs']. Used by workflow validation to detect
+	 *  required-but-unconnected inputs (e.g. AI Agent missing language model). */
+	getResolvedNodeInputs?(
+		workflow: WorkflowJSON,
+		nodeName: string,
+	): Promise<Array<NodeConnectionType | INodeInputConfiguration>>;
 }
 
 /** Richer node type shape that includes inputs, outputs, codex, and builderHint.
@@ -608,6 +626,10 @@ export interface InstanceAiContext {
 	allowedRunWorkflowIds?: ReadonlySet<string>;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
+	/** When `false`, callers must avoid surfacing node parameter values (or anything derived from them
+	 *  — e.g. raw execution-error text) to the LLM. Defaults to `true` when
+	 *  absent so package-only / test contexts behave unchanged. */
+	allowSendingParameterValues?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance.
 	 *  Injected into the system prompt so the agent can explain why certain capabilities are missing. */
 	licenseHints?: string[];
@@ -796,17 +818,19 @@ export interface InstanceAiMemoryConfig {
 
 // ── Model configuration ─────────────────────────────────────────────────────
 
+type NativeLanguageModelConfig = Extract<NativeModelConfig, { specificationVersion: string }>;
+
 /** Model identifier: plain string for built-in providers, object for OpenAI-compatible endpoints,
- *  or a pre-built LanguageModelV2 instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
+ *  or a pre-built LanguageModel instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
  *
- *  The LanguageModelV2 variant exists for proxy routes that need a provider-native transport.
+ *  The LanguageModel variant exists for proxy routes that need a provider-native transport.
  *  For example, Vertex AI Anthropic routes use the native Messages API at `/v1/messages`, so
  *  we must use `@ai-sdk/anthropic` directly instead of routing through an OpenAI-compatible
  *  `/chat/completions` adapter. */
 export type ModelConfig =
 	| string
 	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> }
-	| LanguageModelV2;
+	| NativeLanguageModelConfig;
 
 /** Configuration for routing requests through an AI service proxy (LangSmith tracing, Brave Search, etc.). */
 export interface ServiceProxyConfig {
@@ -1048,12 +1072,8 @@ export interface OrchestrationContext {
 	plannedTaskService?: PlannedTaskService;
 	/** Run one scheduler pass after plan/task state changes. */
 	schedulePlannedTasks?: () => Promise<void>;
-	/** Sandbox workspace — when present, enables sandbox-based workflow building */
+	/** Shared runtime workspace for the current orchestration context. */
 	workspace?: Workspace;
-	/** Factory for creating per-builder ephemeral sandboxes from a pre-warmed snapshot */
-	builderSandboxFactory?: BuilderSandboxFactory;
-	/** Process-local registry for retaining recently finished builder sandboxes. */
-	builderSandboxSessionRegistry?: BuilderSandboxSessionRegistry;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
 	/** Native memory store — used to retrieve thread message history for sub-agents. */
@@ -1115,13 +1135,6 @@ export interface CreateInstanceAgentOptions {
 	 * Intended for tests and fallback paths that need the full toolset visible immediately.
 	 */
 	disableDeferredTools?: boolean;
-	/**
-	 * @deprecated Ignored by the orchestrator. Passing a workspace here used to auto-register
-	 * workspace tools on the orchestrator, which the LLM abused as a `sleep` primitive
-	 * and mis-routed for build-task polling. Sandbox access is now scoped to the workflow-builder
-	 * subagent via `builderSandboxFactory`; `orchestrationContext.workspace` still flows to it.
-	 */
-	workspace?: Workspace;
 	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Falls back to instance default. */
 	timeZone?: string;
 }

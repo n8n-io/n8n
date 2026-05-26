@@ -183,6 +183,7 @@ function formatJson(value: unknown): string {
 	display: flex;
 	justify-content: flex-end;
 	width: 100%;
+	margin-block: var(--spacing--md);
 }
 
 .userAttachments {
@@ -193,7 +194,7 @@ function formatJson(value: unknown): string {
 }
 
 .userBubble {
-	background: var(--color--background);
+	background: var(--assistant--color--background--user-bubble);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
 	white-space: pre-wrap;

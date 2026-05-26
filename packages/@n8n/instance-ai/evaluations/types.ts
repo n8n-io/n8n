@@ -77,6 +77,30 @@ export interface InstanceAiMetrics {
 }
 
 // ---------------------------------------------------------------------------
+// Per-turn conversation metrics
+// ---------------------------------------------------------------------------
+
+/** Counters for one turn (run-start → run-finish). */
+export interface TurnCounter {
+	turn: number;
+	toolCallCount: number;
+	toolErrorCount: number;
+	confirmationAskedTotal: number;
+	confirmationAskedByKind: Record<string, number>;
+	replanAfterErrorCount: number;
+	repeatQuestionCount: number;
+	runFinishStatus?: string;
+}
+
+export interface ConversationMetrics {
+	turnCount: number;
+	perTurn: TurnCounter[];
+	confirmationAskedTotal: number;
+	confirmationAskedByKind: Record<string, number>;
+	reachedRunFinishCleanly: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Outcome types
 // ---------------------------------------------------------------------------
 
@@ -129,7 +153,7 @@ export interface EventOutcome {
 // Workflow evaluation test cases
 // ---------------------------------------------------------------------------
 
-export interface TestScenario {
+export interface ExecutionScenario {
 	name: string;
 	description: string;
 	/** Instructions for mock data generation — passed as scenario hints to the LLM mock endpoint */
@@ -138,20 +162,35 @@ export interface TestScenario {
 	successCriteria: string;
 }
 
+export interface ConversationTurn {
+	role: 'user' | 'assistant';
+	text: string;
+}
+
 export interface WorkflowTestCase {
-	prompt: string;
+	/**
+	 * Hand-authored conversation that drives the build. Must have ≥1 turn,
+	 * and the first turn must be `user`.
+	 *
+	 * - One user turn, no assistant turns → auto-approve mode (single-prompt build).
+	 * - Anything else → multi-turn UserProxyLlm engages (answers clarifications,
+	 *   sends follow-ups consuming `messageBudget`).
+	 */
+	conversation: ConversationTurn[];
 	complexity: 'simple' | 'medium' | 'complex';
 	tags: string[];
 	triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
-	scenarios: TestScenario[];
+	executionScenarios: ExecutionScenario[];
+	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
+	messageBudget?: number;
 }
 
 // ---------------------------------------------------------------------------
 // Workflow test case results
 // ---------------------------------------------------------------------------
 
-export interface ScenarioResult {
-	scenario: TestScenario;
+export interface ExecutionScenarioResult {
+	scenario: ExecutionScenario;
 	success: boolean;
 	evalResult?: InstanceAiEvalExecutionResult;
 	score: number;
@@ -167,18 +206,71 @@ export interface WorkflowTestCaseResult {
 	workflowId?: string;
 	workflowBuildSuccess: boolean;
 	buildError?: string;
-	scenarioResults: ScenarioResult[];
+	executionScenarioResults: ExecutionScenarioResult[];
 	/** The built workflow JSON — saved for debugging and cross-run comparison */
 	workflowJson?: WorkflowResponse;
+	conversationMetrics?: ConversationMetrics;
+	threadId?: string;
+	transcript?: TranscriptTurn[];
+}
+
+// ---------------------------------------------------------------------------
+// Conversation transcript (synthesized from the SSE event stream)
+// ---------------------------------------------------------------------------
+
+export interface TranscriptTurn {
+	userMessage?: string;
+	agentText: string;
+	toolInteractions: ToolInteraction[];
+}
+
+export type ToolInteraction =
+	| { kind: 'plan'; tasks: PlanTask[] }
+	| { kind: 'ask-user'; questions: AskUserQuestion[]; answers?: AskUserAnswer[] }
+	| {
+			kind: 'setup-wizard';
+			completedNodes: SetupWizardCompletedNode[];
+			skippedNodes: SetupWizardSkippedNode[];
+			reason?: string;
+	  }
+	| { kind: 'confirmation'; toolName: string; resumeReason: string; approved?: boolean }
+	| { kind: 'tool-call'; toolName: string };
+
+export interface PlanTask {
+	title?: string;
+	description?: string;
+}
+
+export interface AskUserQuestion {
+	id: string;
+	question: string;
+	options?: string[];
+}
+
+export interface AskUserAnswer {
+	questionId: string;
+	selectedOptions: string[];
+	customText?: string;
+	skipped?: boolean;
+}
+
+export interface SetupWizardCompletedNode {
+	nodeName: string;
+	parametersSet?: string[];
+}
+
+export interface SetupWizardSkippedNode {
+	nodeName: string;
+	credentialType?: string;
 }
 
 // ---------------------------------------------------------------------------
 // Multi-run aggregation
 // ---------------------------------------------------------------------------
 
-export interface ScenarioAggregation {
-	scenario: TestScenario;
-	runs: ScenarioResult[];
+export interface ExecutionScenarioAggregation {
+	scenario: ExecutionScenario;
+	runs: ExecutionScenarioResult[];
 	passCount: number;
 	passRate: number;
 	/** probability at least 1 of k attempts passes */
@@ -191,7 +283,7 @@ export interface TestCaseAggregation {
 	testCase: WorkflowTestCase;
 	runs: WorkflowTestCaseResult[];
 	buildSuccessCount: number;
-	scenarios: ScenarioAggregation[];
+	executionScenarios: ExecutionScenarioAggregation[];
 }
 
 export interface MultiRunEvaluation {

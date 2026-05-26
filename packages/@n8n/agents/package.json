@@ -5,6 +5,30 @@
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "tool": [
+        "dist/sdk/tool.d.ts"
+      ],
+      "catalog": [
+        "dist/sdk/catalog.d.ts"
+      ]
+    }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./tool": {
+      "types": "./dist/sdk/tool.d.ts",
+      "default": "./dist/sdk/tool.js"
+    },
+    "./catalog": {
+      "types": "./dist/sdk/catalog.d.ts",
+      "default": "./dist/sdk/catalog.js"
+    }
+  },
   "files": [
     "dist/**/*"
   ],
@@ -25,7 +49,7 @@
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "catalog:",
-    "@ai-sdk/anthropic": "^3.0.58",
+    "@ai-sdk/anthropic": "catalog:",
     "@ai-sdk/azure": "catalog:",
     "@ai-sdk/cohere": "catalog:",
     "@ai-sdk/deepseek": "catalog:",
@@ -41,6 +65,7 @@
     "@openrouter/ai-sdk-provider": "catalog:",
     "ai": "^6.0.116",
     "ajv": "^8.18.0",
+    "yaml": "catalog:",
     "zod": "catalog:"
   },
   "peerDependencies": {

@@ -198,4 +198,27 @@ describe('ExecuteSingleContext', () => {
 			]);
 		});
 	});
+
+	describe('getRuntimeCredential', () => {
+		beforeEach(() => {
+			additionalData.getRuntimeCredential.mockReset();
+		});
+
+		it('forwards the alias to the additionalData callback and returns its value', async () => {
+			additionalData.getRuntimeCredential.mockResolvedValue('Bearer xyz');
+
+			const result = await executeSingleContext.getRuntimeCredential('api_key');
+
+			expect(result).toBe('Bearer xyz');
+			expect(additionalData.getRuntimeCredential).toHaveBeenCalledWith(runExecutionData, 'api_key');
+		});
+
+		it('returns undefined when the underlying callback yields undefined', async () => {
+			additionalData.getRuntimeCredential.mockResolvedValue(undefined);
+
+			const result = await executeSingleContext.getRuntimeCredential('missing');
+
+			expect(result).toBeUndefined();
+		});
+	});
 });

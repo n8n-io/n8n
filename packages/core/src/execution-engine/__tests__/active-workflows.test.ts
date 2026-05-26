@@ -277,6 +277,31 @@ describe('ActiveWorkflows', () => {
 				expect(pollFunctions.__emitError).toHaveBeenCalledWith(emitError);
 			});
 
+			it('should route a failed acquireIsolate on a scheduled poll through __emitError', async () => {
+				// Without this routing, the rejection would escape the cron callback
+				// `() => void executeTrigger()` and become an unhandled rejection — the
+				// user would only see a process-level log line, not an error execution.
+				triggersAndPollers.runPoll.mockResolvedValueOnce(null); // initial activation test poll
+
+				await addWorkflow({ pollNodes: [pollNode] });
+
+				const acquireError = new Error('Failed to acquire isolate');
+				acquireIsolate.mockClear();
+				releaseIsolate.mockClear();
+				acquireIsolate.mockRejectedValueOnce(acquireError);
+				triggersAndPollers.runPoll.mockClear();
+
+				const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
+				const executeScheduledPoll = registerCronCall[1] as () => Promise<void>;
+
+				await executeScheduledPoll();
+				await flushPromises();
+
+				expect(acquireIsolate).toHaveBeenCalledTimes(1);
+				expect(triggersAndPollers.runPoll).not.toHaveBeenCalled();
+				expect(pollFunctions.__emitError).toHaveBeenCalledWith(acquireError);
+			});
+
 			it('should release the isolate even when the scheduled poll throws', async () => {
 				const error = new Error('Poll function failed');
 				triggersAndPollers.runPoll

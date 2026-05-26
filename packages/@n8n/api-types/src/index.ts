@@ -11,6 +11,7 @@ export type * from './quick-connect';
 export * from './agents/index';
 export * from './instance-registry-types';
 export * from './redaction-enforcement';
+export * from './redaction-enforcement-floor';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -299,6 +300,7 @@ export {
 	isSafeObjectKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	UNLIMITED_CREDITS,
+	EVAL_VENDOR_SDK_INTERCEPTION_FLAG,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	webSearchMetaSchema,
@@ -395,6 +397,7 @@ export type {
 	InstanceAiEvalNodeResult,
 	InstanceAiEvalMockHints,
 	InstanceAiEvalMockedCredential,
+	InstanceAiEvalRewrittenCredential,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalToolCall,
 	InstanceAiEvalToolResult,
@@ -436,6 +439,21 @@ export {
 	type EvalVersionEntry,
 	type EvalVersionsResponse,
 } from './schemas/eval-collections.schema';
+
+export {
+	aiInsightsStatusSchema,
+	aiInsightsPayloadSchema,
+	aiInsightsResponseSchema,
+	generateInsightsSchema,
+	GenerateInsightsDto,
+	type AiInsightsStatus,
+	type AiInsightsWinner,
+	type AiInsightsRegression,
+	type AiInsightsSuggestedNext,
+	type AiInsightsPayload,
+	type AiInsightsResponse,
+	type GenerateInsightsPayload,
+} from './schemas/eval-insights.schema';
 
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
 export { xssCheck } from './utils/xss-check';

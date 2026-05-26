@@ -2640,6 +2640,7 @@ describe('WorkflowExecute', () => {
 			additionalData = mock<IWorkflowExecuteAdditionalData>({
 				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
 				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+				encryptedRunnerIdentity: undefined,
 			});
 			additionalData.hooks = mockHooks;
 			additionalData.currentNodeExecutionIndex = 0;
