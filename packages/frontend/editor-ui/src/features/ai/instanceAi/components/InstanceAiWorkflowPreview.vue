@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, useTemplateRef } from 'vue';
-import type { PushMessage } from '@n8n/api-types';
+import type { InstanceAiAgentNode, PushMessage } from '@n8n/api-types';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import {
@@ -125,14 +125,23 @@ const WORKFLOW_EDITING_TOOLS = new Set([
 	'setup-workflow',
 ]);
 
+function nodeHasInFlightEditOfWorkflow(node: InstanceAiAgentNode, workflowId: string): boolean {
+	for (const tc of node.toolCalls) {
+		if (!tc.isLoading) continue;
+		if (!WORKFLOW_EDITING_TOOLS.has(tc.toolName)) continue;
+		const args = tc.args as { workflowId?: string } | undefined;
+		if (args?.workflowId === workflowId) return true;
+	}
+	for (const child of node.children) {
+		if (nodeHasInFlightEditOfWorkflow(child, workflowId)) return true;
+	}
+	return false;
+}
+
 const isAgentEditingThisWorkflow = computed(() => {
 	for (const message of thread.messages) {
-		for (const tc of message.toolCalls ?? []) {
-			if (!tc.isLoading) continue;
-			if (!WORKFLOW_EDITING_TOOLS.has(tc.toolName)) continue;
-			const args = tc.args as { workflowId?: string } | undefined;
-			if (args?.workflowId === props.workflowId) return true;
-		}
+		if (!message.agentTree) continue;
+		if (nodeHasInFlightEditOfWorkflow(message.agentTree, props.workflowId)) return true;
 	}
 	return false;
 });
