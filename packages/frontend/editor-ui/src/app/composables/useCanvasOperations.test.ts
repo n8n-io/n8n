@@ -4053,7 +4053,9 @@ describe('useCanvasOperations', () => {
 			executionsStore.activeExecution = null;
 
 			workflowsStore.workflowId = 'workflow-id';
-			const executionStateStore = useWorkflowExecutionStateStore('workflow-id');
+			const executionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId('workflow-id'),
+			);
 			// Spy on the getter — readonly wrapping prevents direct assignment, and
 			// createTestingPinia stubs setExecutionWaitingForWebhook so the action is a no-op.
 			vi.spyOn(executionStateStore, 'executionWaitingForWebhook', 'get').mockReturnValue(true);

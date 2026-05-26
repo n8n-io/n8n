@@ -5,6 +5,7 @@ import type { NodeExecuteAfterData } from '@n8n/api-types/push/execution';
 import { createRunExecutionData } from 'n8n-workflow';
 import { createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 
 describe('nodeExecuteAfterData', () => {
@@ -18,7 +19,7 @@ describe('nodeExecuteAfterData', () => {
 		workflowsStore = useWorkflowsStore();
 		workflowsStore.setWorkflowId('test-wf');
 
-		stateStore = useWorkflowExecutionStateStore('test-wf');
+		stateStore = useWorkflowExecutionStateStore(createWorkflowDocumentId('test-wf'));
 
 		executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
 		executionDataStore.setExecution(

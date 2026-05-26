@@ -76,7 +76,9 @@ export async function executionFinished(
 	options.workflowState.executingNode.lastAddedExecutingNode = null;
 	options.workflowState.executingNode.clearNodeExecutionQueue();
 
-	const workflowExecutionStateStore = useWorkflowExecutionStateStore(workflowsStore.workflowId);
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 
 	// No workflow is actively running, therefore we ignore this event
 	if (typeof workflowExecutionStateStore.activeExecutionId === 'undefined') {
@@ -258,7 +260,9 @@ export function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
 		return i18n.baseText('pushConnection.executionFailed.message');
 	} else if (execution.status === 'canceled') {
 		const workflowsStore = useWorkflowsStore();
-		const workflowExecutionStateStore = useWorkflowExecutionStateStore(workflowsStore.workflowId);
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
 
 		return i18n.baseText('executionsList.showMessage.stopExecution.message', {
 			interpolate: { activeExecutionId: workflowExecutionStateStore.activeExecutionId ?? '' },
@@ -480,7 +484,9 @@ export function setRunExecutionData(
 	workflowState: WorkflowState,
 ) {
 	const workflowsStore = useWorkflowsStore();
-	const stateStore = useWorkflowExecutionStateStore(workflowsStore.workflowId);
+	const stateStore = useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 

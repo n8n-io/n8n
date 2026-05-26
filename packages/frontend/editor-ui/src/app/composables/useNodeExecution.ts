@@ -25,7 +25,10 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
@@ -151,7 +154,7 @@ export function useNodeExecution(
 
 	const isListening = computed(() => {
 		const waitingOnWebhook = useWorkflowExecutionStateStore(
-			workflowsStore.workflowId,
+			createWorkflowDocumentId(workflowsStore.workflowId),
 		).executionWaitingForWebhook;
 		const executedNode = workflowsStore.executedNode;
 

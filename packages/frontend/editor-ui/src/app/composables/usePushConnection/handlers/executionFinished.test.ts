@@ -283,9 +283,11 @@ describe('executionFinished', () => {
 			const readyToRunStore = useReadyToRunStore();
 
 			workflowsStore.workflowId = '1';
-			vi.spyOn(useWorkflowExecutionStateStore('1'), 'activeExecutionId', 'get').mockReturnValue(
-				'123',
-			);
+			vi.spyOn(
+				useWorkflowExecutionStateStore(createWorkflowDocumentId('1')),
+				'activeExecutionId',
+				'get',
+			).mockReturnValue('123');
 			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
@@ -330,9 +332,11 @@ describe('executionFinished', () => {
 			const readyToRunStore = useReadyToRunStore();
 
 			workflowsStore.workflowId = '1';
-			vi.spyOn(useWorkflowExecutionStateStore('1'), 'activeExecutionId', 'get').mockReturnValue(
-				'123',
-			);
+			vi.spyOn(
+				useWorkflowExecutionStateStore(createWorkflowDocumentId('1')),
+				'activeExecutionId',
+				'get',
+			).mockReturnValue('123');
 			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
@@ -374,9 +378,11 @@ describe('executionFinished', () => {
 			const readyToRunStore = useReadyToRunStore();
 
 			workflowsStore.workflowId = '1';
-			vi.spyOn(useWorkflowExecutionStateStore('1'), 'activeExecutionId', 'get').mockReturnValue(
-				'123',
-			);
+			vi.spyOn(
+				useWorkflowExecutionStateStore(createWorkflowDocumentId('1')),
+				'activeExecutionId',
+				'get',
+			).mockReturnValue('123');
 			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
@@ -421,9 +427,11 @@ describe('executionFinished', () => {
 			const readyToRunStore = useReadyToRunStore();
 
 			workflowsStore.workflowId = '1';
-			vi.spyOn(useWorkflowExecutionStateStore('1'), 'activeExecutionId', 'get').mockReturnValue(
-				'123',
-			);
+			vi.spyOn(
+				useWorkflowExecutionStateStore(createWorkflowDocumentId('1')),
+				'activeExecutionId',
+				'get',
+			).mockReturnValue('123');
 			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
@@ -465,9 +473,11 @@ describe('executionFinished', () => {
 			const readyToRunStore = useReadyToRunStore();
 
 			workflowsStore.workflowId = '1';
-			vi.spyOn(useWorkflowExecutionStateStore('1'), 'activeExecutionId', 'get').mockReturnValue(
-				'123',
-			);
+			vi.spyOn(
+				useWorkflowExecutionStateStore(createWorkflowDocumentId('1')),
+				'activeExecutionId',
+				'get',
+			).mockReturnValue('123');
 			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
@@ -523,9 +533,11 @@ describe('executionFinished', () => {
 
 		// Set workflowId + activeExecutionId via the state store
 		workflowsStore.workflowId = '1';
-		vi.spyOn(useWorkflowExecutionStateStore('1'), 'activeExecutionId', 'get').mockReturnValue(
-			'123',
-		);
+		vi.spyOn(
+			useWorkflowExecutionStateStore(createWorkflowDocumentId('1')),
+			'activeExecutionId',
+			'get',
+		).mockReturnValue('123');
 
 		// Mock getWorkflowById to return a workflow
 		vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
@@ -587,9 +599,11 @@ describe('executionFinished', () => {
 		const workflowsListStore = mockedStore(useWorkflowsListStore);
 
 		workflowsStore.workflowId = '1';
-		vi.spyOn(useWorkflowExecutionStateStore('1'), 'activeExecutionId', 'get').mockReturnValue(
-			'123',
-		);
+		vi.spyOn(
+			useWorkflowExecutionStateStore(createWorkflowDocumentId('1')),
+			'activeExecutionId',
+			'get',
+		).mockReturnValue('123');
 
 		vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 			id: '1',

@@ -197,7 +197,9 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value?.name ?? '', 'DEBUG');
 
-		const executionStateStore = useWorkflowExecutionStateStore(workflowsStore.workflowId);
+		const executionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
 		if (!executionStateStore.isInDebugMode) {
 			const executionId = route.params.executionId;
 			if (typeof executionId === 'string') {

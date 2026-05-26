@@ -137,7 +137,9 @@ describe('ExecuteMessage', () => {
 		Object.defineProperty(workflowsStore, 'workflowExecutionData', {
 			get: () => workflowExecutionDataRef,
 		});
-		const workflowExecutionState = useWorkflowExecutionStateStore('test-workflow');
+		const workflowExecutionState = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId('test-workflow'),
+		);
 		Object.defineProperty(workflowExecutionState, 'executionWaitingForWebhook', {
 			get: () => executionWaitingForWebhookRef.value,
 			set: (value: boolean) => {

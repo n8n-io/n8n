@@ -81,7 +81,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// done together to preserve test contracts.
 
 	const currentExecutionStateStore = computed(() =>
-		useWorkflowExecutionStateStore(workflowId.value),
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	const currentWorkflowExecutions = computed<ExecutionSummary[]>({

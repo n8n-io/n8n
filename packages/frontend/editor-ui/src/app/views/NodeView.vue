@@ -135,7 +135,10 @@ import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimenta
 import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 import { useWorkflowHelpers } from '../composables/useWorkflowHelpers';
@@ -183,7 +186,7 @@ const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const workflowExecutionState = computed(() =>
-	useWorkflowExecutionStateStore(workflowsStore.workflowId),
+	useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
 const workflowsListStore = useWorkflowsListStore();
 const sourceControlStore = useSourceControlStore();

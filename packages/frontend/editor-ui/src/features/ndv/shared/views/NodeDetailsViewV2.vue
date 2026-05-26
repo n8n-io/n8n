@@ -34,7 +34,10 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
 import InputPanel from '../../panel/components/InputPanel.vue';
@@ -305,7 +308,9 @@ const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
 const isExecutionWaitingForWebhook = computed(
-	() => useWorkflowExecutionStateStore(workflowsStore.workflowId).executionWaitingForWebhook,
+	() =>
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			.executionWaitingForWebhook,
 );
 
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);

@@ -13,14 +13,14 @@ import {
 	disposeExecutionDataStore,
 	useExecutionDataStore,
 } from './executionData.store';
-import { createWorkflowDocumentId, useWorkflowDocumentStore } from './workflowDocument.store';
+import { useWorkflowDocumentStore, type WorkflowDocumentId } from './workflowDocument.store';
 import { CHANGE_ACTION } from './workflowDocument/types';
 import type { ChangeAction, ChangeEvent } from './workflowDocument/types';
 
 const EMPTY_EXECUTION_ISSUES_BY_NODE_NAME = new Map<string, ComputedRef<string[]>>();
 
 export type WorkflowExecutionStateChangePayload = {
-	workflowId: string;
+	workflowId: WorkflowDocumentId;
 	field: WorkflowExecutionStateField;
 };
 
@@ -43,12 +43,15 @@ export type WorkflowExecutionStateChangeEvent = ChangeEvent<WorkflowExecutionSta
 /**
  * Gets the Pinia store id for a workflow-execution-state store.
  */
-export function getWorkflowExecutionStateStoreId(id: string) {
+export function getWorkflowExecutionStateStoreId(id: WorkflowDocumentId) {
 	return `${STORES.WORKFLOW_EXECUTION_STATES}/${id}`;
 }
 
 /**
- * Creates a workflow-execution-state store keyed by workflow id.
+ * Creates a workflow-execution-state store keyed by the workflow document id.
+ * One execution-state store exists per workflow-document store, so the two
+ * share an identity — pass the same `WorkflowDocumentId` (constructed via
+ * `createWorkflowDocumentId`) to both factories.
  *
  * Owns per-workflow execution UI state — active/displayed/previous
  * execution ids, the pending-execution scaffold, chat, debug, webhook wait,
@@ -56,7 +59,7 @@ export function getWorkflowExecutionStateStoreId(id: string) {
  * reference. Reads route through `useExecutionDataStore` for execution payloads
  * (or fall back to `pendingExecution` while `activeExecutionId === null`).
  */
-export function useWorkflowExecutionStateStore(id: string) {
+export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 	return defineStore(getWorkflowExecutionStateStoreId(id), () => {
 		const workflowId = id;
 
@@ -428,9 +431,12 @@ export function useWorkflowExecutionStateStore(id: string) {
 
 		function addToCurrentExecutions(executions: ExecutionSummary[]) {
 			let added = false;
+			// `execution.workflowId` from the backend is the bare workflow id; strip the
+			// `@version` suffix off the store key for the comparison.
+			const rawWorkflowId = workflowId.split('@')[0];
 			executions.forEach((execution) => {
 				const exists = currentWorkflowExecutions.value.find((ex) => ex.id === execution.id);
-				if (!exists && execution.workflowId === workflowId) {
+				if (!exists && execution.workflowId === rawWorkflowId) {
 					currentWorkflowExecutions.value.push(execution);
 					added = true;
 				}
@@ -554,10 +560,10 @@ export function useWorkflowExecutionStateStore(id: string) {
 				uiStore.lastSelectedNode = nameData.new;
 			}
 
-			if (workflowId) {
-				const workflowDocumentStore = useWorkflowDocumentStore(
-					createWorkflowDocumentId(workflowId),
-				);
+			// `workflowId` is already a `WorkflowDocumentId` (`'<id>@<version>'`); detect
+			// "no workflow" via the raw id portion since `'@latest'` is non-empty/truthy.
+			if (workflowId.split('@')[0]) {
+				const workflowDocumentStore = useWorkflowDocumentStore(workflowId);
 				workflowDocumentStore.renameNodeMetadata(nameData.old, nameData.new);
 				workflowDocumentStore.renamePinDataNode(nameData.old, nameData.new);
 			}

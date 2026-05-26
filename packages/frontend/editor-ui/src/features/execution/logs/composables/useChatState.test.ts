@@ -386,7 +386,9 @@ describe('useChatState', () => {
 		});
 
 		it('should include destinationNode when set in workflowExecutionState', async () => {
-			const executionStateStore = useWorkflowExecutionStateStore('workflow-123');
+			const executionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId('workflow-123'),
+			);
 			executionStateStore.setChatPartialExecutionDestinationNode('DestinationNode');
 
 			const chatState = useChatState(false);
@@ -510,7 +512,9 @@ describe('useChatState', () => {
 		});
 
 		it('should clear partial execution destination node', () => {
-			const executionStateStore = useWorkflowExecutionStateStore('workflow-123');
+			const executionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId('workflow-123'),
+			);
 			executionStateStore.setChatPartialExecutionDestinationNode('SomeNode');
 
 			const chatState = useChatState(false);

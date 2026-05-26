@@ -7,7 +7,10 @@ import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
 
 const { nodeId, isReadOnly, subTitle, isEmbeddedInCanvas } = defineProps<{
@@ -36,7 +39,9 @@ const foreignCredentials = computed(() =>
 );
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 const isExecutionWaitingForWebhook = computed(
-	() => useWorkflowExecutionStateStore(workflowsStore.workflowId).executionWaitingForWebhook,
+	() =>
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			.executionWaitingForWebhook,
 );
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
 

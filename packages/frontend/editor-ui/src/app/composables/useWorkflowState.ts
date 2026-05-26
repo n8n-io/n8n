@@ -36,7 +36,7 @@ export function useWorkflowState() {
 	////
 
 	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
-		const stateStore = useWorkflowExecutionStateStore(ws.workflowId);
+		const stateStore = useWorkflowExecutionStateStore(createWorkflowDocumentId(ws.workflowId));
 		if (workflowResultData === null) {
 			stateStore.setPendingExecution(null);
 			stateStore.clearDisplayedExecution();
@@ -60,7 +60,9 @@ export function useWorkflowState() {
 	}
 
 	function setActiveExecutionId(id: string | null | undefined) {
-		useWorkflowExecutionStateStore(ws.workflowId).setActiveExecutionId(id);
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(ws.workflowId)).setActiveExecutionId(
+			id,
+		);
 	}
 
 	async function getNewWorkflowData(
@@ -98,7 +100,7 @@ export function useWorkflowState() {
 	const documentTitle = useDocumentTitle();
 
 	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
-		const stateStore = useWorkflowExecutionStateStore(ws.workflowId);
+		const stateStore = useWorkflowExecutionStateStore(createWorkflowDocumentId(ws.workflowId));
 		const activeExecutionId = stateStore.activeExecutionId;
 
 		stateStore.setActiveExecutionId(undefined);
@@ -146,7 +148,7 @@ export function useWorkflowState() {
 			useBuilderStore().resetManualExecutionStats();
 			return;
 		}
-		const stateStore = useWorkflowExecutionStateStore(wid);
+		const stateStore = useWorkflowExecutionStateStore(createWorkflowDocumentId(wid));
 		// Disposes every tracked executionData store + IN_PROGRESS placeholder, then clears all
 		// session-level fields.
 		stateStore.resetExecutionState();

@@ -37,7 +37,9 @@ const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 );
-const workflowExecutionState = computed(() => useWorkflowExecutionStateStore(workflowId.value));
+const workflowExecutionState = computed(() =>
+	useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowId.value)),
+);
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const i18n = useI18n();

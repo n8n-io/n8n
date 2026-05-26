@@ -15,7 +15,9 @@ import type { IRunExecutionData } from 'n8n-workflow';
  */
 export async function executionStarted({ data }: ExecutionStarted) {
 	const workflowsStore = useWorkflowsStore();
-	const stateStore = useWorkflowExecutionStateStore(workflowsStore.workflowId);
+	const stateStore = useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 	const isIframe = window !== window.parent;
 
 	// In non-iframe context, undefined means "not tracking executions" → skip.

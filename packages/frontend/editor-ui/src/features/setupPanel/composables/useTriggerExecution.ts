@@ -9,7 +9,10 @@ import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionSt
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useLogsStore } from '@/app/stores/logs.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 /**
  * Wraps `useNodeExecution` with listening-hint logic for setup-panel cards.
@@ -51,7 +54,7 @@ export function useTriggerExecution(
 		return (
 			nodeType.value?.name === CHAT_TRIGGER_NODE_TYPE &&
 			logsStore.isOpen &&
-			useWorkflowExecutionStateStore(workflowsStore.workflowId)
+			useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId))
 				.chatPartialExecutionDestinationNode === nodeValue.value?.name
 		);
 	});

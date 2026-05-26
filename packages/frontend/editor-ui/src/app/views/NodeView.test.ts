@@ -39,7 +39,7 @@ describe('NodeView', () => {
 		workflowsStore = useWorkflowsStore();
 		workflowsStore.setWorkflowId('w0');
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w0'));
-		workflowExecutionState = useWorkflowExecutionStateStore('w0');
+		workflowExecutionState = useWorkflowExecutionStateStore(createWorkflowDocumentId('w0'));
 	});
 
 	describe('Trigger node selection', () => {

@@ -584,7 +584,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		});
 
 		// Signal canvas that an execution is pending (null = waiting for execution ID)
-		useWorkflowExecutionStateStore(workflowsStore.workflowId).setActiveExecutionId(null);
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setActiveExecutionId(null);
 	}
 
 	async function sendMessage(

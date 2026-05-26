@@ -140,6 +140,7 @@ import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
 import { useClipboard } from '@vueuse/core';
 import {
+	createWorkflowDocumentId,
 	pinDataToExecutionData,
 	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
@@ -2312,7 +2313,9 @@ export function useCanvasOperations() {
 		});
 
 		// Make sure that if there is a waiting test-webhook, it gets removed
-		const executionStateStore = useWorkflowExecutionStateStore(workflowsStore.workflowId);
+		const executionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
 		if (executionStateStore.executionWaitingForWebhook) {
 			try {
 				void workflowsStore.removeTestWebhook(workflowsStore.workflowId);

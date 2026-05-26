@@ -200,8 +200,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 		return (
 			chatSessionTask.value === 'error' &&
-			useWorkflowExecutionStateStore(workflowsStore.workflowId).activeExecutionId ===
-				currentSessionActiveExecutionId.value &&
+			useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId))
+				.activeExecutionId === currentSessionActiveExecutionId.value &&
 			targetNode === chatSessionError.value?.node.name
 		);
 	}
@@ -497,7 +497,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		currentSessionWorkflowId.value = workflowId;
 
 		const activeExecutionId = useWorkflowExecutionStateStore(
-			workflowsStore.workflowId,
+			createWorkflowDocumentId(workflowsStore.workflowId),
 		).activeExecutionId;
 		if (activeExecutionId) {
 			currentSessionActiveExecutionId.value = activeExecutionId;

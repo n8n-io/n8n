@@ -26,7 +26,10 @@ import { isTriggerPanelObject } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 import {
 	N8nButton,
@@ -172,7 +175,10 @@ const isListeningForEvents = computed(() => {
 		return false;
 	}
 
-	if (!useWorkflowExecutionStateStore(workflowsStore.workflowId).executionWaitingForWebhook) {
+	if (
+		!useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			.executionWaitingForWebhook
+	) {
 		return false;
 	}
 

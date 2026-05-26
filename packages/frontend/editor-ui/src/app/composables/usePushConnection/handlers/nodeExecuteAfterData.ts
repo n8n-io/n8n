@@ -14,7 +14,9 @@ import {
  */
 export async function nodeExecuteAfterData({ data: pushData }: NodeExecuteAfterData) {
 	const workflowsStore = useWorkflowsStore();
-	const stateStore = useWorkflowExecutionStateStore(workflowsStore.workflowId);
+	const stateStore = useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);

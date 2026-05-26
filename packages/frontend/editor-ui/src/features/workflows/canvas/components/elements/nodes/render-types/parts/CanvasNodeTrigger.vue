@@ -7,7 +7,10 @@ import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { computed, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
@@ -83,7 +86,9 @@ function closeChat() {
 }
 
 async function handleClickExecute() {
-	useWorkflowExecutionStateStore(workflowsStore.workflowId).setSelectedTriggerNodeName(name);
+	useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	).setSelectedTriggerNodeName(name);
 	await runEntireWorkflow('node', name);
 }
 </script>

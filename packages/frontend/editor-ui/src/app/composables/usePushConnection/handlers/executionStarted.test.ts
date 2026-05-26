@@ -29,7 +29,7 @@ describe('executionStarted', () => {
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-123'));
 		workflowDocumentStore.setName('My Workflow');
 
-		stateStore = useWorkflowExecutionStateStore('wf-123');
+		stateStore = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-123'));
 	});
 
 	it('should skip when activeExecutionId is undefined', async () => {

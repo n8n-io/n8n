@@ -225,7 +225,7 @@ describe('NodeExecuteButton', () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 		vi.spyOn(
-			useWorkflowExecutionStateStore('abc123'),
+			useWorkflowExecutionStateStore(createWorkflowDocumentId('abc123')),
 			'executionWaitingForWebhook',
 			'get',
 		).mockReturnValue(true);
@@ -313,7 +313,7 @@ describe('NodeExecuteButton', () => {
 
 	it('stops webhook when clicking button while listening for events', async () => {
 		vi.spyOn(
-			useWorkflowExecutionStateStore('abc123'),
+			useWorkflowExecutionStateStore(createWorkflowDocumentId('abc123')),
 			'executionWaitingForWebhook',
 			'get',
 		).mockReturnValue(true);
