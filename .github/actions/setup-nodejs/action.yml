@@ -101,12 +101,42 @@ runs:
         rm install-safe-chain.sh
       shell: bash
 
+    # Capture pnpm's combined stdout+stderr through `tee` so the ERR_PNPM_* code
+    # and offending package survive even when `timeout` terminates the process
+    # group. Stderr-only capture misses the failure footer because pnpm's
+    # default reporter routes it through stdout; `--reporter=append-only` is
+    # set explicitly so we don't drift if pnpm changes its CI default again.
+    # `--loglevel=debug` and `DEBUG=pnpm:*` add registry/store/fetch traces.
+    # `SAFE_CHAIN_LOGGING=verbose` surfaces safe-chain's proxy decisions, which
+    # are otherwise buffered (and lost on failure) while pnpm is in flight.
+    # `${PIPESTATUS[0]}` preserves pnpm's real exit code through the pipe.
     - name: Install Dependencies
       if: ${{ inputs.install-command != '' }}
       env:
         INSTALL_COMMAND: ${{ inputs.install-command }}
+        INSTALL_LOG: ${{ runner.temp }}/pnpm-install.log
+        SAFE_CHAIN_LOGGING: verbose
+        DEBUG: pnpm:*
+        # Skip the Electron binary download triggered by @n8n/local-gateway's
+        # postinstall. CI never runs the Electron app, but the ~150MB binary
+        # fetch fires on every install otherwise.
+        ELECTRON_SKIP_BINARY_DOWNLOAD: 1
       run: |
-        timeout --kill-after=30s 300s $INSTALL_COMMAND --reporter=append-only
+        set +o pipefail
+        timeout --kill-after=30s 300s $INSTALL_COMMAND \
+          --reporter=append-only --loglevel=debug 2>&1 | tee "$INSTALL_LOG"
+        rc=${PIPESTATUS[0]}
+        set -o pipefail
+        if [ $rc -ne 0 ]; then
+          echo "::group::pnpm install full output (captured)"
+          cat "$INSTALL_LOG" 2>/dev/null || echo "(no captured log)"
+          echo "::endgroup::"
+          case $rc in
+            124) echo "::error::pnpm install timed out after 300s (exit 124)" ;;
+            137) echo "::error::pnpm install received SIGKILL (exit 137 — likely OOM or kill-after timeout)" ;;
+          esac
+        fi
+        exit $rc
       shell: bash
 
     - name: Configure Turborepo Cache

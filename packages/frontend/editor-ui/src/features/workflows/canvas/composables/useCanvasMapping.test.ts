@@ -70,12 +70,14 @@ const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>
 const testRenderData = shallowRef<CanvasRenderData>({
 	nodeInputsByNodeId: renderNodeInputsMap,
 	nodeOutputsByNodeId: renderNodeOutputsMap,
+	pinnedDataByNodeName: {},
 	executionIssuesByNodeName: new Map(),
 });
 
 const emptyRenderData = shallowRef<CanvasRenderData>({
 	nodeInputsByNodeId: new Map(),
 	nodeOutputsByNodeId: new Map(),
+	pinnedDataByNodeName: {},
 	executionIssuesByNodeName: new Map(),
 });
 
@@ -92,6 +94,7 @@ function createRenderDataWithExecutionIssuesByNodeName(
 	return shallowRef({
 		nodeInputsByNodeId: new Map(),
 		nodeOutputsByNodeId: new Map(),
+		pinnedDataByNodeName: {},
 		executionIssuesByNodeName,
 	});
 }
@@ -249,10 +252,6 @@ describe('useCanvasMapping', () => {
 						},
 						issues: {
 							validation: [],
-							visible: false,
-						},
-						pinnedData: {
-							count: 0,
 							visible: false,
 						},
 						runData: {

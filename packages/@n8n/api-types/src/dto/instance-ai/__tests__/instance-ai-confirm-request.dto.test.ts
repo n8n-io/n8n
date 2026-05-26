@@ -26,6 +26,8 @@ describe('InstanceAiConfirmRequestDto', () => {
 				'approval deny with userInput (plan feedback)',
 				{ kind: 'approval', approved: false, userInput: 'please revise step 3' },
 			],
+			// InstanceAiConfirmationPanel: handlePlanDeny (hard-reject the plan)
+			['planDeny', { kind: 'planDeny' }],
 			// InstanceAiConfirmationPanel: handleQuestionsSubmit
 			[
 				'questions with mixed answers',

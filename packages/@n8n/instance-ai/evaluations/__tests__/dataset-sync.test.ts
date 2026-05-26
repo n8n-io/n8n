@@ -14,11 +14,11 @@ const mockedLoad = jest.mocked(loadWorkflowTestCasesWithFiles);
 function scenarioFixture(testCaseFile: string, scenarioName: string) {
 	return {
 		testCase: {
-			prompt: `prompt for ${testCaseFile}`,
+			conversation: [{ role: 'user' as const, text: `prompt for ${testCaseFile}` }],
 			complexity: 'medium' as const,
 			tags: ['test'],
 			triggerType: 'manual' as const,
-			scenarios: [
+			executionScenarios: [
 				{
 					name: scenarioName,
 					description: `desc for ${scenarioName}`,
@@ -38,7 +38,6 @@ function existingExample(id: string, testCaseFile: string, scenarioName: string)
 		created_at: '2024-01-01',
 		modified_at: '2024-01-01',
 		inputs: {
-			prompt: `prompt for ${testCaseFile}`,
 			testCaseFile,
 			scenarioName,
 			scenarioDescription: `desc for ${scenarioName}`,

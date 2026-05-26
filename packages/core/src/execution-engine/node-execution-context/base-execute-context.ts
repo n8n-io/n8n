@@ -122,6 +122,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			doNotWaitToFinish?: boolean;
 			parentExecution?: RelatedExecution;
 			executionMode?: WorkflowExecuteMode;
+			returnLastRunOnly?: boolean;
 		},
 	): Promise<ExecuteWorkflowData> {
 		if (options?.parentExecution) {
