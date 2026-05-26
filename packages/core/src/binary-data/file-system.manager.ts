@@ -132,10 +132,20 @@ export class FileSystemManager implements BinaryData.Manager {
 			fs.rename(`${oldPath}.metadata`, `${newPath}.metadata`),
 		]);
 
-		const [tempDirParent] = oldPath.split('/temp/');
-		const tempDir = path.join(tempDirParent, 'temp');
-
-		await fs.rm(tempDir, { recursive: true });
+		// Clean up empty directories left behind after moving files out of
+		// the temp location.  Use `rmdir` (not `rm -rf`) so the call only
+		// succeeds when the directory is already empty.  This avoids a race
+		// condition where concurrent webhook executions for the same workflow
+		// share the same `temp` directory — a recursive delete would remove
+		// files still being written by another execution.
+		const binaryDataDir = path.dirname(oldPath);
+		try {
+			await fs.rmdir(binaryDataDir);
+			await fs.rmdir(path.dirname(binaryDataDir));
+		} catch {
+			// Expected when other binary data files still exist in the temp
+			// directory (concurrent executions or multiple binary items).
+		}
 	}
 
 	async deleteManyByFileId(ids: string[]): Promise<void> {
