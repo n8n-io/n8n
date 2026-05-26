@@ -10,7 +10,7 @@ import {
 } from './composables/useAgentThreadsApi';
 
 const ITEMS_PER_PAGE = 20;
-const AUTO_REFRESH_INTERVAL_MS = 2_000;
+const AUTO_REFRESH_INTERVAL_MS = 5_000;
 
 export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	const threads = ref<AgentExecutionThread[]>([]);
@@ -21,6 +21,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 	let currentProjectId: string | null = null;
 	let currentAgentId: string | null = null;
+	let autoRefreshActive = false;
 
 	// Tracks the most recently requested (project, agent) pair. Concurrent
 	// `fetchThreads` calls — typically when the user switches agents quickly —
@@ -138,18 +139,26 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		threads.value = threads.value.filter((t) => t.id !== threadId);
 	}
 
-	function startAutoRefresh() {
-		stopAutoRefresh();
-		if (!autoRefresh.value || !currentProjectId) return;
+	function scheduleAutoRefresh() {
+		if (!autoRefreshActive || !autoRefresh.value || !currentProjectId) return;
 		refreshTimer = setTimeout(async () => {
-			if (currentProjectId) {
+			refreshTimer = null;
+			if (currentProjectId && !document.hidden) {
 				await refreshThreads(currentProjectId, currentAgentId ?? undefined);
 			}
-			startAutoRefresh();
+			if (autoRefreshActive) scheduleAutoRefresh();
 		}, AUTO_REFRESH_INTERVAL_MS);
 	}
 
+	function startAutoRefresh() {
+		stopAutoRefresh();
+		if (!autoRefresh.value || !currentProjectId) return;
+		autoRefreshActive = true;
+		scheduleAutoRefresh();
+	}
+
 	function stopAutoRefresh() {
+		autoRefreshActive = false;
 		if (refreshTimer) {
 			clearTimeout(refreshTimer);
 			refreshTimer = null;

@@ -2,6 +2,7 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type {
 	FindOptionsWhere,
+	Folder,
 	Project,
 	TagEntity,
 	User,
@@ -51,6 +52,7 @@ import { RedactionEnforcementService } from '@/modules/redaction/redaction-enfor
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
+import { validateWorkflowNodeGroups } from '@/workflow-helpers';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -415,7 +417,9 @@ export class SourceControlImportService {
 		return await this.variablesService.getAllCached({ globalOnly: true });
 	}
 
-	async getRemoteDataTablesFromFiles(): Promise<ExportableDataTable[]> {
+	async getRemoteDataTablesFromFiles(
+		context: SourceControlContext,
+	): Promise<ExportableDataTable[]> {
 		const dataTableFiles = await glob('*.json', {
 			cwd: this.dataTableExportFolder,
 			absolute: true,
@@ -438,11 +442,27 @@ export class SourceControlImportService {
 			}),
 		);
 
-		// Filter out null/undefined values from failed parses
-		return remoteTables.filter((table): table is ExportableDataTable => !!table);
+		return remoteTables.filter((table): table is ExportableDataTable => {
+			// Filter out null/undefined values from failed parses
+			if (!table) {
+				return false;
+			}
+
+			// Unless data is corrupted, there should always be an owner.
+			// We keep tables without an owner because they can still be imported
+			// and assigned to the pulling user's personal project.
+			if (!table.ownedBy) {
+				return true;
+			}
+
+			const isOwnedByAuthorizedProject = !!context.findAuthorizedProjectByOwner(table.ownedBy);
+			return context.hasAccessToAllProjects() || isOwnedByAuthorizedProject;
+		});
 	}
 
-	async getLocalDataTablesFromDb(): Promise<StatusExportableDataTable[]> {
+	async getLocalDataTablesFromDb(
+		context: SourceControlContext,
+	): Promise<StatusExportableDataTable[]> {
 		try {
 			const dataTables = await this.dataTableRepository.find({
 				relations: [
@@ -451,6 +471,8 @@ export class SourceControlImportService {
 					'project.projectRelations',
 					'project.projectRelations.role',
 				],
+				where:
+					this.sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter(context),
 			});
 			return dataTables.map((table) => {
 				let ownedBy: StatusResourceOwner | null = null;
@@ -683,7 +705,7 @@ export class SourceControlImportService {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await this.workflowRepository.findByIds(candidateIds, {
-			fields: ['id', 'name', 'versionId', 'active', 'activeVersionId'],
+			fields: ['id', 'name', 'versionId', 'active', 'activeVersionId', 'isArchived'],
 		});
 
 		const folders = await this.folderRepository.find({ select: ['id'] });
@@ -729,7 +751,18 @@ export class SourceControlImportService {
 
 		const importedWorkflow = await this.parseWorkflowFromFile(candidate.file);
 
-		const { versionId, nodes, connections, id, owner } = importedWorkflow;
+		importedWorkflow.nodeGroups ??= [];
+
+		try {
+			validateWorkflowNodeGroups(importedWorkflow);
+		} catch {
+			this.logger.warn(
+				`Workflow file ${candidate.file} has invalid nodeGroups, resetting to empty`,
+			);
+			importedWorkflow.nodeGroups = [];
+		}
+
+		const { versionId, nodes, connections, id, owner, nodeGroups } = importedWorkflow;
 
 		if (!id || !versionId || !nodes || !connections) {
 			this.logger.error(
@@ -772,7 +805,10 @@ export class SourceControlImportService {
 		}
 
 		try {
-			await this.saveOrUpdateWorkflowHistory({ id, versionId, nodes, connections }, userId);
+			await this.saveOrUpdateWorkflowHistory(
+				{ id, versionId, nodes, connections, nodeGroups },
+				userId,
+			);
 		} catch (error) {
 			const e = ensureError(error);
 			this.logger.error(`Failed to save or update workflow history for workflow ${id}`, {
@@ -1095,7 +1131,7 @@ export class SourceControlImportService {
 					},
 				});
 
-				await this.folderRepository.upsert(folderCopy, {
+				await this.folderRepository.upsert(folderCopy as QueryDeepPartialEntity<Folder>, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },
 				});
@@ -1685,11 +1721,12 @@ export class SourceControlImportService {
 			versionId: string;
 			nodes: IWorkflowToImport['nodes'];
 			connections: IWorkflowToImport['connections'];
+			nodeGroups: IWorkflowToImport['nodeGroups'];
 			id: string;
 		},
 		userId: string,
 	): Promise<void> {
-		const { versionId, nodes, connections, id } = importedWorkflow;
+		const { versionId, nodes, connections, nodeGroups, id } = importedWorkflow;
 
 		// Fetch user for author info
 		const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -1698,20 +1735,26 @@ export class SourceControlImportService {
 		const existingVersion = await this.workflowHistoryService.findVersion(id, versionId);
 
 		if (existingVersion) {
-			// Check if nodes or connections changed
+			// Check if workflow content changed
 			const nodesChanged = !isEqual(existingVersion.nodes, nodes);
 			const connectionsChanged = !isEqual(existingVersion.connections, connections);
+			const nodeGroupsChanged = !isEqual(existingVersion.nodeGroups, nodeGroups);
 
-			if (nodesChanged || connectionsChanged) {
+			if (nodesChanged || connectionsChanged || nodeGroupsChanged) {
 				await this.workflowHistoryService.updateVersion(id, versionId, {
 					nodes,
 					connections,
+					nodeGroups,
 					authors,
 				});
 			}
 		} else {
 			// Create new version history record
-			await this.workflowHistoryService.saveVersion(authors, { versionId, nodes, connections }, id);
+			await this.workflowHistoryService.saveVersion(
+				authors,
+				{ versionId, nodes, connections, nodeGroups },
+				id,
+			);
 		}
 	}
 
@@ -1761,7 +1804,7 @@ export class SourceControlImportService {
 
 		this.resolvePublishedStatus(
 			importedWorkflow,
-			existingWorkflow?.activeVersionId,
+			existingWorkflow,
 			mustUnpublishLocal,
 			unpublishedLocal,
 		);
@@ -1773,7 +1816,7 @@ export class SourceControlImportService {
 	 * Resolves the publish status for the upsert of the imported workflow.
 	 * We set active to false here and handle publishing after upsert.
 	 * @param importedWorkflow The imported workflow.
-	 * @param existingWorkflowActiveVersionId The existing workflow active version id, if it exists.
+	 * @param existingWorkflow The existing workflow entity, if it exists.
 	 * @param mustUnpublishLocal Whether the local workflow must be unpublished.
 	 * @param unpublishedLocal Whether the local workflow was unpublished.
 	 */
@@ -1781,12 +1824,17 @@ export class SourceControlImportService {
 		// Note: Workflow's active status is not saved in the remote workflow files,
 		// and the field is missing despite IWorkflowToImport having it typed as boolean.
 		importedWorkflow: IWorkflowToImport,
-		existingWorkflowActiveVersionId: string | null | undefined,
+		existingWorkflow: WorkflowEntity | undefined,
 		mustUnpublishLocal: boolean,
 		unpublishedLocal: boolean,
 	) {
+		const existingWorkflowActiveVersionId = existingWorkflow?.activeVersionId;
+		const isExistingArchived = !!existingWorkflow?.isArchived;
+
 		const shouldPreserve =
-			!!existingWorkflowActiveVersionId && (!mustUnpublishLocal || !unpublishedLocal);
+			!isExistingArchived &&
+			!!existingWorkflowActiveVersionId &&
+			(!mustUnpublishLocal || !unpublishedLocal);
 
 		if (shouldPreserve) {
 			importedWorkflow.active = !!existingWorkflowActiveVersionId;

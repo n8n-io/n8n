@@ -66,6 +66,7 @@ describe('ExecutionContextService', () => {
 
 		mockRegistry = {
 			getHookByName: jest.fn(),
+			getGlobalHooks: jest.fn().mockReturnValue([]),
 		} as unknown as jest.Mocked<ExecutionContextHookRegistry>;
 
 		mockCipher = {
@@ -294,6 +295,29 @@ describe('ExecutionContextService', () => {
 				credentials: encryptedCreds,
 				secureArtifacts: encryptedArtifacts,
 			});
+		});
+	});
+
+	describe('buildManualExecutionCredentials()', () => {
+		it('should encrypt the credential context with the cookie as identity', async () => {
+			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
+
+			const result = await service.buildManualExecutionCredentials('n8n-auth-cookie-jwt');
+
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith({
+				version: 1,
+				identity: 'n8n-auth-cookie-jwt',
+				metadata: { source: 'manual-execution' },
+			});
+			expect(result).toBe('encrypted-credential-blob');
+		});
+
+		it('should propagate errors raised by the cipher', async () => {
+			mockCipher.encryptV2.mockRejectedValue(new Error('encryption key missing'));
+
+			await expect(service.buildManualExecutionCredentials('cookie')).rejects.toThrow(
+				'encryption key missing',
+			);
 		});
 	});
 
@@ -802,6 +826,114 @@ describe('ExecutionContextService', () => {
 
 			// Verify encryptV2 was called for return
 			expect(mockCipher.encryptV2).toHaveBeenCalled();
+		});
+
+		describe('global hooks', () => {
+			const baseContext = (): IExecutionContext => ({
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'manual',
+			});
+
+			it('runs global hooks even when no per-node hook parameters are configured', async () => {
+				const startItem = createMockStartItem();
+				const context = baseContext();
+				const mockGlobalHook = mock<IContextEstablishmentHook>();
+				mockGlobalHook.execute.mockResolvedValue({});
+
+				mockRegistry.getGlobalHooks.mockReturnValue([mockGlobalHook]);
+				toExecutionContextEstablishmentHookParameter.mockReturnValue(null);
+
+				await service.augmentExecutionContextWithHooks(mockWorkflow, startItem, context);
+
+				expect(mockGlobalHook.execute).toHaveBeenCalledWith({
+					triggerNode: startItem.node,
+					workflow: mockWorkflow,
+					triggerItems: startItem.data.main[0],
+					context: expect.objectContaining({ version: 1, source: 'manual' }),
+					options: {},
+				});
+			});
+
+			it('propagates global hook triggerItems mutation to the returned result', async () => {
+				const startItem = createMockStartItem();
+				const stripped: INodeExecutionData[] = [{ json: { stripped: true } }];
+				const mockGlobalHook = mock<IContextEstablishmentHook>();
+				mockGlobalHook.execute.mockResolvedValue({ triggerItems: stripped });
+
+				mockRegistry.getGlobalHooks.mockReturnValue([mockGlobalHook]);
+				toExecutionContextEstablishmentHookParameter.mockReturnValue(null);
+
+				const result = await service.augmentExecutionContextWithHooks(
+					mockWorkflow,
+					startItem,
+					baseContext(),
+				);
+
+				expect(result.triggerItems).toEqual(stripped);
+			});
+
+			it('merges global hook contextUpdate into the returned context', async () => {
+				const startItem = createMockStartItem();
+				const mockGlobalHook = mock<IContextEstablishmentHook>();
+				mockGlobalHook.execute.mockResolvedValue({ contextUpdate: { source: 'webhook' } });
+
+				mockRegistry.getGlobalHooks.mockReturnValue([mockGlobalHook]);
+				toExecutionContextEstablishmentHookParameter.mockReturnValue(null);
+
+				const result = await service.augmentExecutionContextWithHooks(
+					mockWorkflow,
+					startItem,
+					baseContext(),
+				);
+
+				expect(result.context).toEqual(expect.objectContaining({ source: 'webhook' }));
+			});
+
+			it('chains multiple global hooks: second hook receives first hook output', async () => {
+				const startItem = createMockStartItem();
+				const fromA: INodeExecutionData[] = [{ json: { fromA: true } }];
+
+				const hookA = mock<IContextEstablishmentHook>();
+				hookA.execute.mockResolvedValue({ triggerItems: fromA });
+				const hookB = mock<IContextEstablishmentHook>();
+				hookB.execute.mockResolvedValue({});
+
+				mockRegistry.getGlobalHooks.mockReturnValue([hookA, hookB]);
+				toExecutionContextEstablishmentHookParameter.mockReturnValue(null);
+
+				await service.augmentExecutionContextWithHooks(mockWorkflow, startItem, baseContext());
+
+				expect(hookB.execute).toHaveBeenCalledWith(
+					expect.objectContaining({ triggerItems: fromA }),
+				);
+			});
+
+			it('leaves trigger items unchanged when no globals and no per-node hooks are registered', async () => {
+				const startItem = createMockStartItem();
+				toExecutionContextEstablishmentHookParameter.mockReturnValue(null);
+
+				const result = await service.augmentExecutionContextWithHooks(
+					mockWorkflow,
+					startItem,
+					baseContext(),
+				);
+
+				expect(result.triggerItems).toEqual(startItem.data.main[0]);
+			});
+
+			it('propagates global hook exceptions without swallowing', async () => {
+				const startItem = createMockStartItem();
+				const mockGlobalHook = mock<IContextEstablishmentHook>();
+				mockGlobalHook.execute.mockRejectedValue(new Error('boom'));
+
+				mockRegistry.getGlobalHooks.mockReturnValue([mockGlobalHook]);
+				toExecutionContextEstablishmentHookParameter.mockReturnValue(null);
+
+				await expect(
+					service.augmentExecutionContextWithHooks(mockWorkflow, startItem, baseContext()),
+				).rejects.toThrow('boom');
+			});
 		});
 	});
 });

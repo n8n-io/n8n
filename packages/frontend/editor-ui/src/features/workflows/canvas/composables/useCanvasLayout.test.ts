@@ -1,5 +1,6 @@
 import { useVueFlow, type GraphNode, type VueFlowStore } from '@vue-flow/core';
-import { computed, ref } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
+import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import {
 	createCanvasGraphEdge,
 	createCanvasGraphNode,
@@ -42,6 +43,12 @@ describe('useCanvasLayout', () => {
 		const { layout } = useCanvasLayout(
 			'test-canvas-id',
 			computed(() => false),
+			shallowRef<CanvasRenderData>({
+				nodeInputsByNodeId: new Map(),
+				nodeOutputsByNodeId: new Map(),
+				pinnedDataByNodeName: {},
+				executionIssuesByNodeName: new Map(),
+			}),
 		);
 
 		return { layout };
@@ -235,12 +242,6 @@ describe('useCanvasLayout', () => {
 						type: CanvasNodeRenderType.Default,
 						options: { configurable: true },
 					},
-					inputs: [
-						{ type: 'main', index: 0 },
-						{ type: 'main', index: 1 },
-						{ type: 'ai_tool', index: 0 },
-					],
-					outputs: [{ type: 'main', index: 0 }],
 				},
 				dimensions: undefined,
 			}),
@@ -251,8 +252,6 @@ describe('useCanvasLayout', () => {
 						type: CanvasNodeRenderType.Default,
 						options: { configuration: true },
 					},
-					inputs: [{ type: 'main', index: 0 }],
-					outputs: [{ type: 'main', index: 0 }],
 				},
 				dimensions: { width: 0, height: 0 },
 			}),

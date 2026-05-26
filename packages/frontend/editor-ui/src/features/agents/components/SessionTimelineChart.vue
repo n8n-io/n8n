@@ -89,8 +89,6 @@ function popoverLabel(item: TimelineItem): string {
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
-		case 'working-memory':
-			return i18n.baseText('agentSessions.timeline.memory');
 		case 'suspension':
 			return i18n.baseText('agentSessions.timeline.suspension');
 		default:
@@ -111,8 +109,6 @@ function popoverName(item: TimelineItem): string {
 			return item.workflowName ?? formatToolNameForDisplay(item.toolName);
 		case 'node':
 			return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
-		case 'working-memory':
-			return i18n.baseText('agentSessions.timeline.memoryUpdated');
 		case 'suspension':
 			return i18n.baseText('agentSessions.timeline.waitingForUser');
 		default:

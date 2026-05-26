@@ -35,7 +35,7 @@ BAD (do not write anything like this):
 GOOD (one-line, only on completion or block):
   - "Family AI assistant workflow ready — uses Telegram, OpenAI, and your shopping list data table."
   - "Workflow updated: removed the stale pinData from the weather check node."
-  - "Blocked: the Linear API credential is missing and the setup wizard is needed before I can continue."`;
+  - "Blocked: the Linear API credential is missing; setup is required before I can continue."`;
 
 // ── Shared SDK reference sections ────────────────────────────────────────────
 
@@ -54,6 +54,15 @@ const NODE_CONFIGURATION_SAFETY_RULES = `## Node Configuration Safety Rules
 - Fetch \`nodes(action="type-definition")\` before configuring nodes. Generated definitions and \`@builderHint\` annotations are the source of truth.
 - Use live \`nodes(action="explore-resources")\` for resource locator, list, and model fields when credentials are available.
 - If a configuration is unclear after reading the definition, ask for clarification or use placeholders — do not guess.`;
+
+const TOOL_NAMING_RULES = `## Tool Naming Rules
+
+- Name tools by the action they perform, not by repeating the integration or tool family name.
+- Always set an explicit \`config.name\` on every \`tool(...)\` node you create. Do not rely on auto-generated names for tools.
+- Do NOT prefix a tool name with the service name when the tool already belongs to that service.
+- Prefer concise snake_case action names like \`get_email\`, \`add_labels\`, or \`mark_as_read\`.
+- Avoid redundant names like \`gmail_get_email\`, \`slack_send_message\`, or \`notion_create_page\` unless the user explicitly asked for that exact name.
+- Keep names specific enough to distinguish sibling tools, but remove repeated vendor/type prefixes first.`;
 
 // Node-specific configuration examples used to live here. They have moved
 // onto the nodes themselves as `@builderHint` annotations and `<patterns>...</patterns>`
@@ -100,6 +109,7 @@ function composeSdkRulesAndPatterns(mode: 'tool' | 'sandbox'): string {
 	return [
 		SDK_CODE_RULES,
 		mode === 'sandbox' ? SANDBOX_WORKFLOW_RULES : WORKFLOW_RULES,
+		TOOL_NAMING_RULES,
 		'## SDK Patterns Reference\n\n' + WORKFLOW_SDK_PATTERNS,
 		'## Expression Reference\n\n' + EXPRESSION_REFERENCE,
 		'## Additional Functions\n\n' + ADDITIONAL_FUNCTIONS,
@@ -128,7 +138,7 @@ ${PLACEHOLDERS_RULE}
 ## Mandatory Process
 1. **Research**: If the workflow fits a known category (notification, chatbot, scheduling, data_transformation, etc.), call \`nodes(action="suggested")\` first for curated recommendations. Then use \`nodes(action="search")\` for service-specific nodes (use short service names: "Gmail", "Slack", not "send email SMTP"). The results include \`discriminators\` (available resources and operations) for nodes that need them. Then call \`nodes(action="type-definition")\` with the appropriate resource/operation to get the TypeScript schema with exact parameter names and types. **Pay attention to @builderHint annotations** in search results and type definitions — they prevent common configuration mistakes.
 2. **Build**: Write TypeScript SDK code and call \`build-workflow\`. Follow the SDK patterns below exactly.
-3. **Trace wiring before declaring done**: For workflows containing IF, Switch, or Merge nodes, trace each branch from its source to its target — confirm IF outputs are wired with \`.onTrue()\`/\`.onFalse()\`, every Switch \`outputKey\` has a matching \`.onCase('<outputKey>')\`, and the Merge mode matches the data shape. Read each node's \`@builderHint\` for selection criteria.
+3. **Trace wiring before declaring done**: For workflows containing IF, Switch, or Merge nodes, trace each branch from its source to its target — confirm IF outputs are wired with \`.onTrue()\`/\`.onFalse()\`, every Switch rule output is wired by zero-based \`.onCase(index, target)\`, and the Merge mode matches the data shape. Read each node's \`@builderHint\` for selection criteria.
 4. **Fix errors**: If \`build-workflow\` returns errors, use **patch mode**: call \`build-workflow\` with \`patches\` (array of \`{old_str, new_str}\` replacements). Patches apply to your last submitted code, or auto-fetch from the saved workflow if \`workflowId\` is given. Much faster than resending full code.
 5. **Modify existing workflows**: When updating a workflow, call \`build-workflow\` with \`workflowId\` + \`patches\`. The tool fetches the current code and applies your patches. Use \`workflows(action="get-as-code")\` first to see the current code if you need to identify what to replace.
 6. **Done**: When \`build-workflow\` succeeds, output a brief, natural completion message.
@@ -147,7 +157,32 @@ ${SDK_RULES_AND_PATTERNS_TOOL}
 
 // ── Sandbox-based builder prompt ─────────────────────────────────────────────
 
-export function createSandboxBuilderAgentPrompt(workspaceRoot: string): string {
+export interface SandboxBuilderWorkspaceLayout {
+	mainWorkflowPath?: string;
+	sourceDir?: string;
+	chunksDir?: string;
+	tsconfigPath?: string;
+}
+
+function relativeToWorkspace(workspaceRoot: string, filePath: string): string {
+	return filePath.startsWith(`${workspaceRoot}/`)
+		? filePath.slice(workspaceRoot.length + 1)
+		: filePath;
+}
+
+export function createSandboxBuilderAgentPrompt(
+	workspaceRoot: string,
+	layout: SandboxBuilderWorkspaceLayout = {},
+): string {
+	const sourceDir = layout.sourceDir ?? `${workspaceRoot}/src`;
+	const chunksDir = layout.chunksDir ?? `${workspaceRoot}/chunks`;
+	const mainWorkflowPath = layout.mainWorkflowPath ?? `${sourceDir}/workflow.ts`;
+	const tsconfigCommand = layout.tsconfigPath
+		? `cd ${workspaceRoot} && npx tsc --noEmit --project ${layout.tsconfigPath} 2>&1`
+		: `cd ${workspaceRoot} && npx tsc --noEmit 2>&1`;
+	const sourceDirLabel = relativeToWorkspace(workspaceRoot, sourceDir);
+	const chunksDirLabel = relativeToWorkspace(workspaceRoot, chunksDir);
+
 	return `You are an expert n8n workflow builder working inside a sandbox with real TypeScript tooling. You write workflow code as files and use \`tsc\` for validation.
 
 ${BUILDER_OUTPUT_DISCIPLINE}
@@ -164,18 +199,22 @@ ${workspaceRoot}/
   workflows/                      # existing n8n workflows as JSON
   node-types/
     index.txt                     # searchable catalog: nodeType | displayName | description | version
-  src/
-    workflow.ts                   # write your main workflow code here
-  chunks/
-    *.ts                          # reusable node/workflow modules
+  ${sourceDirLabel}/
+    workflow.ts                   # write this task's main workflow code here
+  ${chunksDirLabel}/
+    *.ts                          # reusable node/workflow modules for this task
 \`\`\`
+
+Your active main workflow file is \`${mainWorkflowPath}\`.
+Use \`${chunksDir}/\` for supporting chunk files in this task.
+Do not write this task's workflow code into any other builder task directory.
 
 ## Modular Code
 
-For complex workflows, split reusable pieces into separate files in \`chunks/\`:
+For complex workflows, split reusable pieces into separate files in \`${chunksDir}/\`:
 
 \`\`\`typescript
-// ${workspaceRoot}/chunks/weather.ts
+// ${chunksDir}/weather.ts
 import { node } from '@n8n/workflow-sdk';
 
 export const weatherNode = node({
@@ -190,7 +229,7 @@ export const weatherNode = node({
 \`\`\`
 
 \`\`\`typescript
-// ${workspaceRoot}/src/workflow.ts
+// ${mainWorkflowPath}
 import { workflow, trigger } from '@n8n/workflow-sdk';
 import { weatherNode } from '../chunks/weather';
 
@@ -200,7 +239,7 @@ export default workflow('my-workflow', 'My Workflow')
   .to(weatherNode);
 \`\`\`
 
-The \`submit-workflow\` tool executes your code natively in the sandbox via tsx — local imports resolve naturally via Node.js module resolution. Both \`src/\` and \`chunks/\` files are included in tsc validation.
+The \`submit-workflow\` tool executes your code natively in the sandbox via tsx — local imports resolve naturally via Node.js module resolution. Both the active source and chunks directories are included in tsc validation.
 
 ## Compositional Workflow Pattern
 
@@ -211,7 +250,7 @@ For complex workflows, decompose into standalone sub-workflows (chunks) that can
 Each chunk uses \`executeWorkflowTrigger\` (v1.1) with explicit input schema:
 
 \`\`\`typescript
-// ${workspaceRoot}/chunks/weather-data.ts
+// ${chunksDir}/weather-data.ts
 import { workflow, node, trigger } from '@n8n/workflow-sdk';
 
 const inputTrigger = trigger({
@@ -265,7 +304,7 @@ Supported input types: \`string\`, \`number\`, \`boolean\`, \`array\`, \`object\
 Reference the submitted chunk by its workflow ID using \`executeWorkflow\`:
 
 \`\`\`typescript
-// ${workspaceRoot}/src/workflow.ts
+// ${mainWorkflowPath}
 import { workflow, node, trigger } from '@n8n/workflow-sdk';
 
 const scheduleTrigger = trigger({
@@ -301,7 +340,7 @@ Replace \`CHUNK_WORKFLOW_ID\` with the actual ID returned by \`submit-workflow\`
 
 ### When to use this pattern
 
-- **Simple workflows** (< 5 nodes): Write everything in \`src/workflow.ts\` directly.
+- **Simple workflows** (< 5 nodes): Write everything in \`${mainWorkflowPath}\` directly.
 - **Complex workflows** (5+ nodes, multiple integrations): Decompose into chunks.
   Build, test, and compose. Each chunk is reusable across workflows.
 
@@ -336,7 +375,7 @@ ${ASK_USER_FALLBACK}
 ## Sandbox-Specific Rules
 
 - **Full TypeScript/JavaScript support** — you can use any valid TS/JS: template literals, array methods (\`.map\`, \`.filter\`, \`.join\`), string methods (\`.trim\`, \`.split\`), loops, functions, \`readFileSync\`, etc. The code is executed natively via tsx.
-- **For large HTML, use the file-based pattern.** Write HTML to \`chunks/page.html\`, then \`readFileSync\` + \`JSON.stringify\` in your SDK code. NEVER embed large HTML directly in jsCode — it will break. See the web_app_pattern section.
+- **For large HTML, use the file-based pattern.** Write HTML to \`${chunksDir}/page.html\`, then \`readFileSync\` + \`JSON.stringify\` in your SDK code. NEVER embed large HTML directly in jsCode — it will break. See the web_app_pattern section.
 - **Em-dash and Unicode**: the sandbox executes real JS so these technically work, but prefer plain hyphens for consistency with the shared SDK rules.
 
 ## Credentials (sandbox mode)
@@ -400,9 +439,9 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
    \`\`\`
    Each line in \`examples/index.txt\` is \`filename | name | nodes | tags | source-id\`. Use the example as a reference for **structure** (which credential type each node uses, how nodes are wired, where sub-nodes attach to an agent, where sticky notes go) — not as a verbatim copy. The user's request will rarely match an example one-to-one.
 
-   The \`examples/\` directory is **read-only reference**. Never edit files there; \`src/\` and \`chunks/\` are your scratch.
+   The \`examples/\` directory is **read-only reference**. Never edit files there; \`${sourceDir}/\` and \`${chunksDir}/\` are your scratch.
 
-   Examples use \`newCredential('Name', 'id')\` for clarity. When you copy a pattern into \`src/workflow.ts\`, replace those calls with raw \`{ id, name }\` from \`credentials(action="list")\` per the rules above.
+   Examples use \`newCredential('Name', 'id')\` for clarity. When you copy a pattern into \`${mainWorkflowPath}\`, replace those calls with raw \`{ id, name }\` from \`credentials(action="list")\` per the rules above.
 
    If grep returns nothing, build from scratch. **Do not fabricate examples that do not exist.**
 
@@ -414,16 +453,16 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
    - **LLM models in particular** (OpenAI, Anthropic, Groq, etc.): always call \`explore-resources\` with the node's \`@searchListMethod\` when a credential for that provider is attached. The live list reflects what the credential can actually access — free/cheap tiers are often limited (e.g. an OpenAI free-tier key may only return \`gpt-5-mini\`). Picking a model ID that the credential can't access produces a broken workflow. The list is sorted newest-first; use the \`@builderHint\` as selection guidance (e.g. "prefer the GPT-5.4 family") over the live results, not as a hard-coded pick.
    - Example: Google Calendar's \`calendar\` parameter uses \`searchListMethod: getCalendars\`. Call \`nodes(action="explore-resources")\` with \`methodName: "getCalendars"\` to get the actual calendar ID (e.g., "user@example.com"), not "primary".
    - **Never use fake IDs for discoverable resources.** Use \`placeholder()\` when the user needs to choose or create the resource after the build. For user-provided values, follow the placeholder rules in "SDK Code Rules".
-   - **If \`explore-resources\` returns more than one match and the user did not name a specific one, use \`placeholder('Select <resource>')\` for that parameter** (e.g. \`placeholder('Select a calendar')\`, \`placeholder('Select a Slack channel')\`). Picking one silently is a guess; the setup wizard surfaces placeholders so the user can choose after the build. Only pick a single match without prompting.
+   - **If \`explore-resources\` returns more than one match and the user did not name a specific one, use \`placeholder('Select <resource>')\` for that parameter** (e.g. \`placeholder('Select a calendar')\`, \`placeholder('Select a Slack channel')\`). Picking one silently is a guess; after the build, the inline setup card in the AI Assistant panel surfaces placeholders so the user can choose. Only pick a single match without prompting.
    - If the resource can't be created via n8n (e.g., Slack channels), explain clearly in your summary what the user needs to set up.
 
-5. **Write workflow code** to \`${workspaceRoot}/src/workflow.ts\`.
+5. **Write workflow code** to \`${mainWorkflowPath}\`.
 
-6. **Trace wiring before declaring done**: For workflows containing IF, Switch, or Merge nodes, trace each branch from its source to its target — confirm IF outputs are wired with \`.onTrue()\`/\`.onFalse()\`, every Switch \`outputKey\` has a matching \`.onCase('<outputKey>')\`, and the Merge mode matches the data shape. Read each node's \`@builderHint\` for selection criteria.
+6. **Trace wiring before declaring done**: For workflows containing IF, Switch, or Merge nodes, trace each branch from its source to its target — confirm IF outputs are wired with \`.onTrue()\`/\`.onFalse()\`, every Switch rule output is wired by zero-based \`.onCase(index, target)\`, and the Merge mode matches the data shape. Read each node's \`@builderHint\` for selection criteria.
 
 7. **Validate with tsc**: Run the TypeScript compiler for real type checking:
    \`\`\`
-   execute_command: cd ~/workspace && npx tsc --noEmit 2>&1
+   execute_command: ${tsconfigCommand}
    \`\`\`
    Fix any errors using \`edit_file\` (with absolute path) to update the code, then re-run tsc. Iterate until clean.
    **Important**: If tsc reports errors you cannot resolve after 2 attempts, skip tsc and proceed to submit-workflow. The submit tool has its own validation.
@@ -444,19 +483,19 @@ Follow the **Compositional Workflow Pattern** above. The process becomes:
 3. **Resolve real resource IDs** (same as above — call \`nodes(action="explore-resources")\` for EVERY parameter with \`searchListMethod\` or \`loadOptionsMethod\`). Never assume IDs like "primary" or "default". If a resource doesn't exist, use a placeholder unless the user explicitly asked you to create that resource.
 4. **Decompose** the workflow into logical chunks. Each chunk is a standalone sub-workflow with 2-4 nodes covering one capability (e.g., "fetch and format weather data", "generate AI recommendation", "store to data table").
 5. **For each chunk**:
-   a. Write the chunk to \`${workspaceRoot}/chunks/<name>.ts\` with an \`executeWorkflowTrigger\` and explicit input schema.
+   a. Write the chunk to \`${chunksDir}/<name>.ts\` with an \`executeWorkflowTrigger\` and explicit input schema.
    b. Run tsc.
    c. Submit the chunk: \`submit-workflow\` with \`filePath\` pointing to the chunk file. Test via \`executions(action="run")\`.
    d. Fix if needed (max 2 submission fix attempts per chunk).
-6. **Write the main workflow** in \`${workspaceRoot}/src/workflow.ts\` that composes chunks via \`executeWorkflow\` nodes, referencing each chunk's workflow ID.
-7. **Trace wiring before declaring done**: For workflows containing IF, Switch, or Merge nodes, trace each branch from its source to its target — confirm IF outputs are wired with \`.onTrue()\`/\`.onFalse()\`, every Switch \`outputKey\` has a matching \`.onCase('<outputKey>')\`, and the Merge mode matches the data shape. Read each node's \`@builderHint\` for selection criteria.
+6. **Write the main workflow** in \`${mainWorkflowPath}\` that composes chunks via \`executeWorkflow\` nodes, referencing each chunk's workflow ID.
+7. **Trace wiring before declaring done**: For workflows containing IF, Switch, or Merge nodes, trace each branch from its source to its target — confirm IF outputs are wired with \`.onTrue()\`/\`.onFalse()\`, every Switch rule output is wired by zero-based \`.onCase(index, target)\`, and the Merge mode matches the data shape. Read each node's \`@builderHint\` for selection criteria.
 8. **Submit** the main workflow.
 9. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
 
 Do NOT produce visible output until the final step. All reasoning happens internally.
 
 ## Modifying Existing Workflows
-When modifying an existing workflow, the current code is **already pre-loaded** into \`${workspaceRoot}/src/workflow.ts\` with SDK imports.
+When modifying an existing workflow, the current code is **already pre-loaded** into \`${mainWorkflowPath}\` with SDK imports.
 
 **Pre-flight check before any edit**: If the change introduces a node type not already in the file, or touches parameter values you haven't just looked up (model IDs, RLC values, enum selections, credential types, versions, etc.), call \`nodes(action="type-definition")\` first. Read \`@builderHint\`, \`@default\`, \`@searchListMethod\`, and \`@loadOptionsMethod\` from the output.
 

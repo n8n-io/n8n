@@ -1,4 +1,6 @@
 import type {
+	Agent as RuntimeAgent,
+	AgentExecutionCounter,
 	BuiltAgent,
 	BuiltTool,
 	CredentialProvider,
@@ -8,27 +10,35 @@ import type {
 import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
 	AGENT_WORKFLOW_TRIGGER_TYPE,
+	AgentCredentialIntegrationSchema,
+	AgentJsonConfigSchema,
 	isAgentCredentialIntegration,
 	isAgentScheduleIntegration,
+	isNodeToolsEnabled,
+	AgentModelSchema,
+	type AgentCredentialIntegrationConfig,
+	type AgentIntegrationConfig,
+	type AgentJsonConfig,
+	type AgentJsonMemoryConfig,
+	type AgentJsonToolConfig,
 	type AgentSkill,
 	type AgentSkillMutationResponse,
 	type ChatIntegrationDescriptor,
+	AgentPersistedMessageDto,
 } from '@n8n/api-types';
-import * as agents from '@n8n/agents';
-import { extractFromAIParameters } from '@n8n/ai-utilities';
+import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
-	CredentialsRepository,
 	ExecutionRepository,
+	In,
 	ProjectRelationRepository,
 	UserRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { In } from '@n8n/typeorm';
 import {
 	deepCopy,
 	OperationalError,
@@ -47,12 +57,15 @@ import { EphemeralNodeExecutor } from '@/node-execution';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
 import { TtlMap } from '@/utils/ttl-map';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
+import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSkillsService } from './agent-skills.service';
@@ -65,13 +78,6 @@ import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
-import { AgentJsonConfigSchema, isNodeToolsEnabled } from './json-config/agent-json-config';
-import type {
-	AgentJsonConfig,
-	AgentJsonConfigRef,
-	AgentJsonMemoryConfig,
-	AgentJsonToolConfig,
-} from './json-config/agent-json-config';
 import {
 	buildFromJson,
 	type MemoryFactory,
@@ -81,11 +87,12 @@ import { AgentPublishedVersionRepository } from './repositories/agent-published-
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
+import { ChatIntegrationService } from './integrations/chat-integration.service';
 
 type AgentToolEntries = Agent['tools'];
 
 interface InjectRuntimeDependenciesParams {
-	agent: agents.Agent;
+	agent: RuntimeAgent;
 	agentId: string;
 	projectId: string;
 	credentialProvider: CredentialProvider;
@@ -149,7 +156,7 @@ export interface ExecuteForSchedulePublishedConfig {
 }
 
 interface StreamChatResponseConfig {
-	agentInstance: agents.Agent;
+	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
 	agentId: string;
 	message: string;
@@ -182,7 +189,7 @@ export class AgentsService {
 	 */
 	private readonly runtimes = new TtlMap<
 		string,
-		{ agent: agents.Agent; agentId: string; toolRegistry: ToolRegistry; projectId: string }
+		{ agent: RuntimeAgent; agentId: string; toolRegistry: ToolRegistry; projectId: string }
 	>(30 * Time.minutes.toMilliseconds);
 
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
@@ -260,10 +267,23 @@ export class AgentsService {
 		private readonly publisher: Publisher,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly globalConfig: GlobalConfig,
+		private readonly telemetry: Telemetry,
+		private readonly chatIntegrationService: ChatIntegrationService,
 	) {}
 
 	private isNodeToolsModuleEnabled(): boolean {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
+	}
+
+	private createAgentExecutionCounter(agentId: string): AgentExecutionCounter {
+		return {
+			incrementMessageCount: () =>
+				this.telemetry.trackAgentExecution({ agent_id: agentId, message_count: 1 }),
+			incrementTokenCount: (tokenCount) =>
+				this.telemetry.trackAgentExecution({ agent_id: agentId, token_count: tokenCount }),
+			incrementToolCallCount: () =>
+				this.telemetry.trackAgentExecution({ agent_id: agentId, tool_call_count: 1 }),
+		};
 	}
 
 	private shouldAttachNodeTools(config: AgentJsonConfig['config']): boolean {
@@ -288,11 +308,10 @@ export class AgentsService {
 	async create(projectId: string, name: string): Promise<Agent> {
 		// New agents start with no instructions so the home screen routes the
 		// first user message to the builder (/build) instead of to the chat
-		// endpoint. The builder fills in instructions and credentials.
+		// endpoint. The builder or manual model picker fills in the LLM config.
 		const defaultConfig: AgentJsonConfig = {
 			name,
-			model: 'anthropic/claude-sonnet-4-5',
-			credential: '',
+			model: '',
 			instructions: '',
 			tools: [],
 			skills: [],
@@ -569,21 +588,26 @@ export class AgentsService {
 		return true;
 	}
 
-	/** Return persisted chat messages for a given session/thread. */
-	async getChatMessages(threadId: string) {
-		return await this.n8nMemory.getMessages(threadId);
+	/**
+	 * Return user-visible conversation history for a persisted chat thread.
+	 *
+	 * Execution records are the source of truth for the UI transcript. SDK
+	 * memory is runtime context for the agent: it can be disabled, windowed, or
+	 * shaped for model input rather than for user-facing history.
+	 */
+	async getConversationHistory(params: {
+		threadId: string;
+		projectId: string;
+		agentId: string;
+	}): Promise<AgentPersistedMessageDto[] | null> {
+		const { threadId, projectId, agentId } = params;
+		const detail = await this.agentExecutionService.getThreadDetail(threadId, projectId, agentId);
+		if (!detail) return null;
+		return executionsToMessagesDto(detail.executions);
 	}
 
-	private getMemoryFactory(): MemoryFactory {
-		return (params: AgentJsonMemoryConfig) => {
-			if (params.storage === 'n8n') {
-				return this.n8nMemory;
-			}
-			if (params.storage === 'sqlite') {
-				return new agents.SqliteMemory(agents.SqliteMemoryConfigSchema.parse(params));
-			}
-			throw new Error(`Unsupported memory storage: ${params.storage}`);
-		};
+	private getMemoryFactory(agentId: string): MemoryFactory {
+		return (_params: AgentJsonMemoryConfig) => this.n8nMemory.getImplementation(agentId);
 	}
 
 	/** Create a credential provider scoped to a project. */
@@ -595,7 +619,7 @@ export class AgentsService {
 	 * Return a cached runtime, or reconstruct one from the DB.
 	 */
 	private async getRuntime(params: GetRuntimeParams): Promise<{
-		agent: agents.Agent;
+		agent: RuntimeAgent;
 		agentId: string;
 		toolRegistry: ToolRegistry;
 		projectId: string;
@@ -756,7 +780,7 @@ export class AgentsService {
 	 * turn delegates to `NodeCatalogService`.
 	 */
 	private attachNodeToolChain(
-		agent: agents.Agent,
+		agent: RuntimeAgent,
 		credentialProvider: CredentialProvider,
 		projectId: string,
 	): void {
@@ -800,6 +824,7 @@ export class AgentsService {
 		const resultStream = await agentInstance.resume('stream', resumeData, {
 			runId,
 			toolCallId,
+			executionCounter: this.createAgentExecutionCounter(agentId),
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -845,6 +870,8 @@ export class AgentsService {
 	 *   - "model":        missing model or one that fails the provider/model regex
 	 *   - "credential":   credential name is set in config but doesn't resolve to
 	 *                     a real credential in the project
+	 *   - "episodicMemory.credential": configured Episodic Memory credential
+	 *                     does not resolve to a real credential in the project
 	 *   - "skill:<id>":   config references a skill id with no stored body
 	 */
 	async validateAgentIsRunnable(
@@ -861,27 +888,44 @@ export class AgentsService {
 		const missing: string[] = [];
 
 		if (!config) {
-			return { missing: ['instructions', 'model'] };
+			return { missing: ['instructions', 'model', 'credential'] };
 		}
 
 		if (!config.instructions?.trim()) {
 			missing.push('instructions');
 		}
 
-		const modelSchema = AgentJsonConfigSchema.shape.model;
-		if (!config.model || !modelSchema.safeParse(config.model).success) {
+		if (!config.model?.trim() || !AgentModelSchema.safeParse(config.model).success) {
 			missing.push('model');
 		}
 
-		if (config.credential) {
+		let credentialList: Awaited<ReturnType<CredentialProvider['list']>> | undefined;
+		const credentialExists = async (credentialId: string) => {
+			credentialList ??= await credentialProvider.list();
+			return credentialList.some((credential) => credential.id === credentialId);
+		};
+
+		if (!config.credential?.trim()) {
+			missing.push('credential');
+		} else {
 			try {
-				const credentialId = config.credential;
-				const creds = await credentialProvider.list();
-				const exists = creds.some((c) => c.id === credentialId);
-				if (!exists) missing.push('credential');
+				const credentialId = config.credential.trim();
+				if (!(await credentialExists(credentialId))) missing.push('credential');
 			} catch {
 				// If listing fails (e.g. permissions), don't flag as misconfigured —
 				// the runtime will surface the real error path on execute.
+			}
+		}
+
+		const episodicMemory = config.memory?.episodicMemory;
+		if (config.memory?.enabled && episodicMemory?.enabled === true) {
+			try {
+				if (!(await credentialExists(episodicMemory.credential.trim()))) {
+					missing.push('episodicMemory.credential');
+				}
+			} catch {
+				// Same behavior as the main model credential: runtime reconstruction
+				// surfaces permission/listing failures with the concrete error.
 			}
 		}
 
@@ -919,28 +963,30 @@ export class AgentsService {
 
 	/**
 	 * Return persisted test-chat messages for an agent scoped to the current
-	 * user. Test-chat threads are keyed by agent and user so thread-scoped
-	 * working memory stays isolated.
+	 * user. Test-chat threads are keyed by agent and user so memory stays isolated.
 	 */
 	async getTestChatMessages(agentId: string, userId: string) {
-		return await this.n8nMemory.getMessages(chatThreadId(agentId, userId), {
-			resourceId: userId,
-		});
+		return await this.n8nMemory
+			.getImplementation(agentId)
+			.getMessages(chatThreadId(agentId, userId), {
+				resourceId: draftChatMemoryResourceId(userId),
+			});
 	}
 
 	/**
 	 * Clear the current user's test-chat messages for an agent.
 	 */
 	async clearTestChatMessages(agentId: string, userId: string) {
-		await this.n8nMemory.deleteMessagesByThread(chatThreadId(agentId, userId), userId);
+		await this.n8nMemory.getImplementation(agentId).deleteThread(chatThreadId(agentId, userId));
 	}
 
 	/** Delete all test-chat messages + the thread row — used when the agent itself is deleted. */
 	async clearAllTestChatMessages(agentId: string) {
 		const threadId = chatThreadId(agentId);
-		await this.n8nMemory.deleteThreadsByPrefix(threadId);
-		await this.n8nMemory.deleteMessagesByThread(threadId);
-		await this.n8nMemory.deleteThread(threadId);
+		const memory = this.n8nMemory.getImplementation(agentId);
+		await memory.deleteThreadsByPrefix(threadId);
+		await memory.deleteMessagesByThread(threadId);
+		await memory.deleteThread(threadId);
 	}
 
 	/**
@@ -1018,6 +1064,7 @@ export class AgentsService {
 
 		const resultStream = await agentInstance.stream(message, {
 			persistence: { threadId, resourceId },
+			executionCounter: this.createAgentExecutionCounter(agentId),
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -1144,6 +1191,7 @@ export class AgentsService {
 
 		const resultStream = await agentInstance.stream(message, {
 			persistence: { resourceId: executionId, threadId },
+			executionCounter: this.createAgentExecutionCounter(agentId),
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -1295,51 +1343,6 @@ export class AgentsService {
 	}
 
 	/**
-	 * Backfill `credentialName` on credential integrations that were created
-	 * before the field was required. Looks up the name by `credentialId` and
-	 * splices it into the config; integrations that already have a name, or
-	 * aren't credential integrations at all, pass through untouched.
-	 *
-	 * If a credential id no longer resolves, the integration is left as-is —
-	 * validation will then fail with a clear "credentialName required" error
-	 * pointing at the orphaned integration, which is the correct outcome.
-	 */
-	private async healIntegrationCredentialNames(rawConfig: unknown): Promise<unknown> {
-		if (!rawConfig || typeof rawConfig !== 'object') return rawConfig;
-		const cfg = rawConfig as { integrations?: unknown };
-		if (!Array.isArray(cfg.integrations)) return rawConfig;
-
-		const missingIds = new Set<string>();
-		for (const integration of cfg.integrations) {
-			if (!integration || typeof integration !== 'object') continue;
-			const i = integration as { credentialId?: unknown; credentialName?: unknown };
-			if (typeof i.credentialId === 'string' && i.credentialName === undefined) {
-				missingIds.add(i.credentialId);
-			}
-		}
-		if (missingIds.size === 0) return rawConfig;
-
-		const credentials = await Container.get(CredentialsRepository).findBy({
-			id: In(Array.from(missingIds)),
-		});
-		const namesById = new Map(credentials.map((c) => [c.id, c.name]));
-
-		const integrations: unknown[] = cfg.integrations;
-		return {
-			...cfg,
-			integrations: integrations.map((integration: unknown): unknown => {
-				if (!integration || typeof integration !== 'object') return integration;
-				const i = integration as { credentialId?: unknown; credentialName?: unknown };
-				if (typeof i.credentialId !== 'string' || i.credentialName !== undefined) {
-					return integration;
-				}
-				const name = namesById.get(i.credentialId);
-				return name ? { ...integration, credentialName: name } : integration;
-			}),
-		};
-	}
-
-	/**
 	 * Persist a new AgentJsonConfig (full replace).
 	 */
 	async updateConfig(
@@ -1350,14 +1353,7 @@ export class AgentsService {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
-		// Repair integrations missing `credentialName`. Agents created before
-		// the field was added to the schema return integrations of the form
-		// `{ type, credentialId }` from `findById`; the UI sends them back
-		// unchanged on save and validation rejects them as invalid. Look the
-		// names up by id once here so the next save persists the full shape.
-		const healedConfig = await this.healIntegrationCredentialNames(config);
-
-		const result = await this.validateConfig(healedConfig);
+		const result = await this.validateConfig(config);
 		if (!result.valid) {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
@@ -1423,7 +1419,7 @@ export class AgentsService {
 		if (toolsProvided) {
 			const referencedIds = new Set(
 				(result.config.tools ?? [])
-					.filter((t): t is Extract<AgentJsonConfigRef, { type: 'custom' }> => t.type === 'custom')
+					.filter((t): t is Extract<AgentJsonToolConfig, { type: 'custom' }> => t.type === 'custom')
 					.map((t) => t.id),
 			);
 			const orphanIds = Object.keys(entity.tools).filter((id) => !referencedIds.has(id));
@@ -1461,6 +1457,81 @@ export class AgentsService {
 			updatedAt: saved.updatedAt.toISOString(),
 			versionId: saved.versionId,
 		};
+	}
+
+	/**
+	 * Persist a credential integration on the agent after validation.
+	 * Replaces an existing entry with the same type+credentialId or appends a new one.
+	 */
+	async saveCredentialIntegration(
+		agent: Agent,
+		integration: AgentCredentialIntegrationConfig,
+	): Promise<Agent> {
+		const parseResult = AgentCredentialIntegrationSchema.safeParse(integration);
+		if (!parseResult.success) {
+			throw new UserError(`Invalid credential integration: ${parseResult.error.message}`);
+		}
+		const validated = parseResult.data;
+		const { type, credentialId } = validated;
+
+		const existing = agent.integrations ?? [];
+		const alreadyExists = existing.some(
+			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
+		);
+
+		agent.integrations = alreadyExists
+			? existing.map((existingIntegration) =>
+					isAgentCredentialIntegration(existingIntegration) &&
+					existingIntegration.type === type &&
+					existingIntegration.credentialId === credentialId
+						? validated
+						: existingIntegration,
+				)
+			: [...existing, validated];
+
+		const result = await this.agentRepository.save(agent);
+		await this.chatIntegrationService.broadcastIntegrationChange(agent.id, integration, 'connect');
+		return result;
+	}
+
+	/**
+	 * Remove a credential integration from the agent.
+	 */
+	async removeCredentialIntegration(
+		agent: Agent,
+		type: string,
+		credentialId: string,
+	): Promise<Agent> {
+		if (!agent.integrations?.length) return agent;
+		const integration = agent.integrations.find(
+			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
+		);
+		if (!integration) return agent;
+		// filter by ref
+		agent.integrations = agent.integrations.filter((i) => i !== integration);
+
+		const result = await this.agentRepository.save(agent);
+		await this.chatIntegrationService.broadcastIntegrationChange(
+			agent.id,
+			integration as AgentCredentialIntegrationConfig,
+			'disconnect',
+		);
+		return result;
+	}
+
+	/**
+	 * Validate and persist the full integrations array on an agent.
+	 * Used internally by updateConfig and exposed for direct schedule/credential writes.
+	 */
+	private validateIntegrationRefs(integrations: AgentIntegrationConfig[], agent: Agent): void {
+		const activeUnpublishedSchedule = integrations.some(
+			(integration) => isAgentScheduleIntegration(integration) && integration.active,
+		);
+		if (activeUnpublishedSchedule && !agent.publishedVersion) {
+			throw new UserError(
+				'Invalid agent config: schedule integration cannot be active until the agent is published',
+			);
+		}
 	}
 
 	/**
@@ -1550,7 +1621,7 @@ export class AgentsService {
 		// Remove from config tools array
 		if (entity.schema?.tools) {
 			entity.schema.tools = entity.schema.tools.filter(
-				(t: AgentJsonConfigRef) => !(t.type === 'custom' && 'id' in t && t.id === toolId),
+				(t: AgentJsonToolConfig) => !(t.type === 'custom' && 'id' in t && t.id === toolId),
 			);
 		}
 
@@ -1628,18 +1699,7 @@ export class AgentsService {
 			);
 		}
 
-		// Mirror AgentScheduleService.activate(): a schedule integration cannot be
-		// active until the agent has a published version. Otherwise the persisted
-		// config can claim active=true while the cron registration silently
-		// refuses to register.
-		const activeUnpublishedSchedule = (config.integrations ?? []).some(
-			(integration) => isAgentScheduleIntegration(integration) && integration.active,
-		);
-		if (activeUnpublishedSchedule && !entity.publishedVersion) {
-			throw new UserError(
-				'Invalid agent config: schedule integration cannot be active until the agent is published',
-			);
-		}
+		this.validateIntegrationRefs(config.integrations ?? [], entity);
 	}
 
 	private getMissingCustomToolIds(
@@ -1647,7 +1707,7 @@ export class AgentsService {
 		tools: AgentToolEntries,
 	): string[] {
 		const refs = (config?.tools ?? []).filter(
-			(ref): ref is Extract<AgentJsonConfigRef, { type: 'custom' }> => ref.type === 'custom',
+			(ref): ref is Extract<AgentJsonToolConfig, { type: 'custom' }> => ref.type === 'custom',
 		);
 		const seen = new Set<string>();
 		const missing: string[] = [];
@@ -1689,7 +1749,7 @@ export class AgentsService {
 		credentialProvider: CredentialProvider,
 		userId: string,
 		integrationType?: string,
-	): Promise<{ agent: agents.Agent; toolRegistry: ToolRegistry }> {
+	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		const config = agentEntity.schema;
 		if (!config) {
 			throw new UserError('Agent has no JSON config.');
@@ -1722,7 +1782,7 @@ export class AgentsService {
 				return resolved;
 			},
 			skills: agentEntity.skills ?? {},
-			memoryFactory: this.getMemoryFactory(),
+			memoryFactory: this.getMemoryFactory(agentEntity.id),
 		});
 
 		await this.injectRuntimeDependencies({
