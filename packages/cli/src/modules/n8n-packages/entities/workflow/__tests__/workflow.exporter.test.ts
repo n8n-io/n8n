@@ -1,5 +1,6 @@
 import type { User, WorkflowEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
+import { jsonParse } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -99,6 +100,40 @@ describe('WorkflowExporter', () => {
 		expect(writer.files.filter((f) => f.path === 'workflows/repeated/workflow.json')).toHaveLength(
 			1,
 		);
+	});
+
+	it('exports AI Gateway-managed credentials with null ids', async () => {
+		const workflow = makeWorkflow({
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'AI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+					credentials: {
+						googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
+					},
+				},
+			],
+		});
+		const { exporter } = makeExporter([workflow]);
+		const writer = new CapturingWriter();
+
+		await exporter.export({ user, workflowIds: [workflow.id], writer });
+
+		const workflowFile = writer.files.find((f) => f.path === 'workflows/my-workflow/workflow.json');
+		expect(workflowFile).toBeDefined();
+		expect(jsonParse<unknown>(workflowFile!.content)).toMatchObject({
+			nodes: [
+				{
+					credentials: {
+						googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
+					},
+				},
+			],
+		});
 	});
 
 	it('disambiguates targets when two workflows share a name', async () => {
