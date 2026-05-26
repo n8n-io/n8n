@@ -10,6 +10,7 @@ import type { Project } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
+import merge from 'lodash/merge';
 import { BinaryDataService, ErrorReporter, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
 import type {
 	IBinaryData,
@@ -50,20 +51,13 @@ import {
 } from 'n8n-workflow';
 import { finished } from 'stream/promises';
 
-import { WebhookService } from './webhook.service';
-import {
-	WebhookResponseHeaders,
-	type WebhookNodeResponseHeaders,
-} from './webhook-response-headers';
-import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
-
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { EventService } from '@/events/event.service';
 import { parseBody } from '@/middlewares';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -77,7 +71,13 @@ import { createStaticResponse, createStreamResponse } from '@/webhooks/webhook-r
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
-import merge from 'lodash/merge';
+
+import {
+	WebhookResponseHeaders,
+	type WebhookNodeResponseHeaders,
+} from './webhook-response-headers';
+import { WebhookService } from './webhook.service';
+import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
 
 // Type guards for MCP queue mode data validation
 interface McpToolCallPayload {
@@ -938,6 +938,8 @@ export async function executeWebhook(
 					return runData;
 				})
 				.catch((e) => {
+					Container.get(ErrorReporter).error(e, { executionId });
+
 					if (!didSendResponse) {
 						responseCallback(
 							new OperationalError('There was a problem executing the workflow', {
@@ -954,6 +956,9 @@ export async function executeWebhook(
 		}
 		return executionId;
 	} catch (e) {
+		if (!(e instanceof UnprocessableRequestError)) {
+			Container.get(ErrorReporter).error(e, { executionId });
+		}
 		const error =
 			e instanceof UnprocessableRequestError
 				? e

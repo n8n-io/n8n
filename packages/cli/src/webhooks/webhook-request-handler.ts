@@ -84,7 +84,7 @@ class WebhookRequestHandler {
 			} else {
 				logger.error(
 					`Error in handling webhook request ${req.method} ${req.path}: ${error.message}`,
-					{ stacktrace: error.stack },
+					{ error },
 				);
 			}
 
