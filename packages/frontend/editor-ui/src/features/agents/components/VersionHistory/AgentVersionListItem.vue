@@ -84,14 +84,11 @@ function onAction(value: string) {
 	display: flex;
 	position: relative;
 	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--3xs);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs);
 	line-height: var(--line-height--xl);
 	border-radius: var(--radius);
-
-	&:hover {
-		background-color: var(--color--background--light-1);
-	}
+	user-select: none;
 
 	& + & {
 		margin-top: var(--spacing--xs);
@@ -145,5 +142,6 @@ function onAction(value: string) {
 
 .actions {
 	flex-shrink: 0;
+	margin-right: var(--spacing--3xs);
 }
 </style>

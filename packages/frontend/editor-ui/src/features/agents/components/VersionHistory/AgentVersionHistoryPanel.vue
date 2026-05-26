@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, toRef, watch } from 'vue';
 import type { UserAction } from '@n8n/design-system';
-import { N8nHeading, N8nIconButton } from '@n8n/design-system';
+import { N8nHeading, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import type { IUser } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { useAgentVersionHistory } from '../../composables/useAgentVersionHistory';
@@ -100,14 +100,17 @@ defineExpose({
 			<N8nHeading size="small" :bold="true">
 				{{ i18n.baseText('agents.versionHistory.title') }}
 			</N8nHeading>
-			<N8nIconButton
-				icon="x"
-				type="tertiary"
-				size="small"
-				:title="i18n.baseText('agents.versionHistory.close')"
-				data-test-id="agent-version-history-close"
-				@click="onClose"
-			/>
+			<N8nTooltip :content="i18n.baseText('agents.versionHistory.close')">
+				<N8nIconButton
+					icon="x"
+					variant="ghost"
+					size="medium"
+					:class="$style.closeButton"
+					:title="i18n.baseText('agents.versionHistory.close')"
+					data-test-id="agent-version-history-close"
+					@click="onClose"
+				/>
+			</N8nTooltip>
 		</header>
 
 		<AgentVersionList
@@ -129,18 +132,22 @@ defineExpose({
 	width: 330px;
 	min-width: 330px;
 	height: 100%;
-	background-color: var(--color--background);
+	background-color: var(--background--surface);
 	border-left: var(--border);
-	border-color: var(--color--foreground--tint-2);
 }
 
 .header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--spacing--sm) var(--spacing--md);
+	padding: var(--spacing--xs);
 	border-bottom: var(--border);
 	border-color: var(--color--foreground--tint-2);
 	flex-shrink: 0;
+}
+
+.closeButton {
+	flex-shrink: 0;
+	margin-right: var(--spacing--3xs);
 }
 </style>

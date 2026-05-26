@@ -6058,7 +6058,7 @@
 	"agents.revertToPublished.modal.title": "Revert changes?",
 	"agents.revertToPublished.modal.description": "This will permanently remove all changes made since the latest published version.",
 	"agents.revertToPublished.modal.button.revert": "Revert changes",
-	"agents.versionHistory.title": "Version history",
+	"agents.versionHistory.title": "Publish history",
 	"agents.versionHistory.button.tooltip": "Version history",
 	"agents.versionHistory.button.tooltip.empty": "This agent currently has no history to view. Once you've published it for the first time, you'll be able to view previous versions",
 	"agents.versionHistory.button.ariaLabel": "Open version history",

@@ -269,7 +269,7 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 							{{ i18n.baseText('agents.versionHistory.button.tooltip.empty') }}
 						</span>
 						<span v-else>
-							{{ i18n.baseText('agents.versionHistory.button.tooltip') }}
+							{{ i18n.baseText('agents.versionHistory.title') }}
 						</span>
 					</template>
 					<N8nButton
@@ -277,7 +277,7 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 						size="medium"
 						icon="history"
 						icon-only
-						:active="isVersionHistoryOpen"
+						:class="{ [$style.activeButton]: isVersionHistoryOpen }"
 						:disabled="isVersionHistoryDisabled"
 						:aria-label="i18n.baseText('agents.versionHistory.button.ariaLabel')"
 						data-testid="agent-header-version-history-btn"
@@ -376,5 +376,9 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 		calc(var(--spacing--5xl) + var(--spacing--3xl)),
 		calc(100vw - var(--spacing--xl))
 	) !important;
+}
+
+.activeButton {
+	background-color: var(--background--active);
 }
 </style>
