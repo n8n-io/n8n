@@ -5,12 +5,6 @@ export const MEMORY_PROMPT = `\
 
 Use this to configure the target agent's memory behavior.
 
-### Boundaries
-
-- The user wants builder chat history cleared or inspected.
-- The user is asking for ordinary target-agent instructions with no memory change.
-- The change only needs model, tool, integration, or schema guidance.
-
 ### Workflow
 
 Fresh agents must include this default memory config unless the user explicitly asks to disable or change memory:

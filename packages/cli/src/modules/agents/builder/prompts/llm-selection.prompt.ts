@@ -10,12 +10,6 @@ export function getLlmSelectionPrompt(modelRecommendationsSection: string | null
 
 Use this to resolve the target agent's main \`model\` and \`credential\`.
 
-### Boundaries
-
-- You need credentials for node tools, integrations, or Episodic Memory; use \`ask_credential\`.
-- You are only editing tools, memory, integrations, target-agent skills, or instructions without changing the main LLM.
-- The user is making a small-set choice that is not about the main LLM; use \`ask_question\` when appropriate.
-
 ### Workflow
 
 1. Use \`resolve_llm\` before \`ask_llm\` when the request contains enough provider/model detail.

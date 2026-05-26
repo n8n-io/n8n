@@ -6,12 +6,6 @@ export const TOOLS_PROMPT = `\
 Use this to give the target agent callable capabilities through workflows,
 nodes, custom code tools, or provider tools.
 
-### Boundaries
-
-- The request is generic web search, Brave web search, or SearXNG web search; use \`config.webSearch\` unless the user explicitly asks for a node tool.
-- The user only needs model, memory, integration, or target-skill guidance.
-- You are researching an unfamiliar external API before choosing the tool shape.
-
 ### Workflow
 
 Use this guidance before calling \`search_nodes\`, \`get_node_types\`, \`build_custom_tool\`,
