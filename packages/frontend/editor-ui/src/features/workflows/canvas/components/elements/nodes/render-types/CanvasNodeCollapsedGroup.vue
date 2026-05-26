@@ -99,7 +99,7 @@ function handleKey(anchor: CollapsedGroupAnchor, side: 'in' | 'out'): string {
 			:class="$style.toggle"
 			variant="ghost"
 			size="small"
-			icon="chevrons-down-up"
+			icon="chevrons-up-down"
 			:disabled="isReadOnly === true"
 			:aria-label="i18n.baseText('canvas.nodeGroup.expand')"
 			:title="i18n.baseText('canvas.nodeGroup.expand')"
@@ -118,7 +118,7 @@ function handleKey(anchor: CollapsedGroupAnchor, side: 'in' | 'out'): string {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: 0 var(--spacing--xs);
-	border-radius: var(--radius--md);
+	border-radius: var(--radius--lg);
 	background: var(--background--surface);
 	border: var(--border);
 	color: var(--text-color);

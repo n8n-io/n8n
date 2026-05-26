@@ -125,7 +125,7 @@ watch(
 					:class="$style.collapseToggle"
 					variant="ghost"
 					size="small"
-					icon="chevrons-up-down"
+					icon="chevrons-down-up"
 					:aria-label="i18n.baseText('canvas.nodeGroup.collapse')"
 					data-test-id="canvas-node-group-collapse"
 					@click.stop="onCollapseClick"
