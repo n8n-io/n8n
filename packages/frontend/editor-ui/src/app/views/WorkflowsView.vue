@@ -283,7 +283,10 @@ const canManageInstanceMcp = computed(() =>
 );
 
 const isWorkflowCardMcpToggleEnabled = computed(() =>
-	posthogStore.isFeatureEnabled(WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT.name),
+	posthogStore.isVariantEnabled(
+		WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT.name,
+		WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT.variant,
+	),
 );
 
 const showFolders = computed(() => {
