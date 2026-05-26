@@ -144,6 +144,7 @@ function hookFunctionsWorkflowEvents(
 	userId?: string,
 	projectId?: string,
 	projectName?: string,
+	telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'],
 ) {
 	const eventService = Container.get(EventService);
 	hooks.addHandler('workflowExecuteBefore', function () {
@@ -192,6 +193,7 @@ function hookFunctionsWorkflowEvents(
 			userId,
 			projectId,
 			projectName,
+			...(telemetryMetadata ? { telemetryMetadata } : {}),
 		});
 	});
 }
@@ -755,7 +757,16 @@ export function getLifecycleHooksForScalingMain(
 	data: IWorkflowExecutionDataProcess,
 	executionId: string,
 ): ExecutionLifecycleHooks {
-	const { pushRef, retryOf, executionMode, workflowData, userId, projectId, projectName } = data;
+	const {
+		pushRef,
+		retryOf,
+		executionMode,
+		workflowData,
+		userId,
+		projectId,
+		projectName,
+		telemetryMetadata,
+	} = data;
 	const hooks = new ExecutionLifecycleHooks(
 		executionMode,
 		executionId,
@@ -767,7 +778,7 @@ export function getLifecycleHooksForScalingMain(
 	const executionRepository = Container.get(ExecutionRepository);
 	const executionPersistence = Container.get(ExecutionPersistence);
 
-	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
+	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, telemetryMetadata);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsExternalHooks(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
@@ -833,7 +844,16 @@ export function getLifecycleHooksForRegularMain(
 	data: IWorkflowExecutionDataProcess,
 	executionId: string,
 ): ExecutionLifecycleHooks {
-	const { pushRef, retryOf, executionMode, workflowData, userId, projectId, projectName } = data;
+	const {
+		pushRef,
+		retryOf,
+		executionMode,
+		workflowData,
+		userId,
+		projectId,
+		projectName,
+		telemetryMetadata,
+	} = data;
 	const hooks = new ExecutionLifecycleHooks(
 		executionMode,
 		executionId,
@@ -842,7 +862,7 @@ export function getLifecycleHooksForRegularMain(
 	);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
-	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
+	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, telemetryMetadata);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSave(hooks, optionalParameters);

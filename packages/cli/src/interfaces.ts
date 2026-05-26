@@ -22,6 +22,7 @@ import type {
 	ExecutionSummary,
 	IWorkflowExecutionDataProcess,
 	IExecutionContext,
+	WorkflowExecutionInitiator,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -185,6 +186,12 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	is_manual: boolean;
 	crashed?: boolean;
 	used_dynamic_credentials?: boolean;
+	execution_initiator?: WorkflowExecutionInitiator;
+	instance_ai_execution?: boolean;
+	instance_ai_mock_data_used?: boolean;
+	instance_ai_mock_data_sources?: string | null;
+	instance_ai_pinned_node_count?: number;
+	instance_ai_verification_run?: boolean;
 }
 
 export interface IAgentExecutionTrackProperties extends ITelemetryTrackProperties {

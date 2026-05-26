@@ -26,23 +26,21 @@ type ExecutionTrackDataKey =
 	| 'prod_error'
 	| 'prod_success'
 	| 'manual_crashed'
-	| 'prod_crashed';
+	| 'prod_crashed'
+	| `${'user'}_${'manual' | 'prod'}_${'error' | 'success' | 'crashed'}`
+	| `${'instance_ai'}_${'mock' | 'real'}_${'manual' | 'prod'}_${'error' | 'success' | 'crashed'}`;
 
 interface IExecutionTrackData {
 	count: number;
 	first: Date;
 }
 
+type IExecutionsBufferEntry = Partial<Record<ExecutionTrackDataKey, IExecutionTrackData>> & {
+	user_id: string | undefined;
+};
+
 interface IExecutionsBuffer {
-	[workflowId: string]: {
-		manual_error?: IExecutionTrackData;
-		manual_success?: IExecutionTrackData;
-		prod_error?: IExecutionTrackData;
-		prod_success?: IExecutionTrackData;
-		manual_crashed?: IExecutionTrackData;
-		prod_crashed?: IExecutionTrackData;
-		user_id: string | undefined;
-	};
+	[workflowId: string]: IExecutionsBufferEntry;
 }
 
 interface IApiInvocationProperties {
@@ -284,16 +282,21 @@ export class Telemetry {
 				}`;
 			}
 
-			const executionTrackDataKey = this.executionCountsBuffer[workflowId][key];
+			this.addExecutionTrackData(workflowId, key, execTime);
 
-			if (!executionTrackDataKey) {
-				this.executionCountsBuffer[workflowId][key] = {
-					count: 1,
-					first: execTime,
-				};
-			} else {
-				executionTrackDataKey.count++;
-			}
+			const executionStatus = properties.crashed
+				? 'crashed'
+				: properties.success
+					? 'success'
+					: 'error';
+			const executionMode = properties.is_manual ? 'manual' : 'prod';
+			const instanceAiDataType = properties.instance_ai_mock_data_used === true ? 'mock' : 'real';
+			const sourceKey: ExecutionTrackDataKey =
+				properties.instance_ai_execution || properties.execution_initiator === 'instance_ai'
+					? `instance_ai_${instanceAiDataType}_${executionMode}_${executionStatus}`
+					: `user_${executionMode}_${executionStatus}`;
+
+			this.addExecutionTrackData(workflowId, sourceKey, execTime);
 
 			if (properties.used_dynamic_credentials) {
 				this.track('Workflow execution with dynamic credentials', properties);
@@ -306,6 +309,19 @@ export class Telemetry {
 			) {
 				this.track('Workflow execution errored', properties);
 			}
+		}
+	}
+
+	private addExecutionTrackData(workflowId: string, key: ExecutionTrackDataKey, execTime: Date) {
+		const executionTrackData = this.executionCountsBuffer[workflowId][key];
+
+		if (!executionTrackData) {
+			this.executionCountsBuffer[workflowId][key] = {
+				count: 1,
+				first: execTime,
+			};
+		} else {
+			executionTrackData.count++;
 		}
 	}
 

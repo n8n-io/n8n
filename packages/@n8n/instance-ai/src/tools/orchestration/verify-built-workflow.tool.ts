@@ -587,6 +587,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			const result = await context.domainContext.executionService.run(workflowId, input.inputData, {
 				timeout: input.timeout,
 				pinData: buildOutcome.verificationPinData as Record<string, unknown[]> | undefined,
+				isVerificationRun: true,
 			});
 
 			// Treat `waiting` as success when the workflow produced output and recorded

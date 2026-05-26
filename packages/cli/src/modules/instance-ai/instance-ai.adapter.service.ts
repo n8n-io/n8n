@@ -85,6 +85,7 @@ import {
 	type DataTableRow,
 	type DataTableRows,
 	type WorkflowExecuteMode,
+	type WorkflowExecutionMockDataSource,
 	type ExecutionError,
 	NodeHelpers,
 	Workflow,
@@ -880,6 +881,19 @@ export class InstanceAiAdapterService {
 					? (sdkPinDataToRuntime(options.pinData) ?? {})
 					: {};
 				const basePinData = { ...workflowPinData, ...overridePinData };
+				const mockDataSources: WorkflowExecutionMockDataSource[] = [];
+
+				if (inputData && triggerNode) {
+					mockDataSources.push('trigger_input');
+				}
+
+				if (Object.keys(overridePinData).length > 0) {
+					mockDataSources.push('verification_pin_data');
+				}
+
+				if (Object.keys(workflowPinData).length > 0) {
+					mockDataSources.push('workflow_pin_data');
+				}
 
 				if (inputData && triggerNode) {
 					const triggerPinData = getPinDataForTrigger(triggerNode, inputData);
@@ -915,6 +929,14 @@ export class InstanceAiAdapterService {
 				} else if (Object.keys(basePinData).length > 0) {
 					runData.pinData = basePinData;
 				}
+
+				runData.telemetryMetadata = {
+					executionInitiator: 'instance_ai',
+					instanceAiMockDataUsed: mockDataSources.length > 0,
+					instanceAiMockDataSources: mockDataSources,
+					instanceAiPinnedNodeCount: Object.keys(runData.pinData ?? {}).length,
+					instanceAiVerificationRun: options?.isVerificationRun ?? false,
+				};
 
 				const trackBuilderExecutedWorkflow = (status: ExecutionResult['status']) => {
 					if (!threadId) return;

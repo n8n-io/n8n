@@ -1370,7 +1370,13 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith({
+				execution_initiator: 'user',
 				is_manual: false,
+				instance_ai_execution: false,
+				instance_ai_mock_data_sources: null,
+				instance_ai_mock_data_used: false,
+				instance_ai_pinned_node_count: 0,
+				instance_ai_verification_run: false,
 				success: false,
 				user_id: 'user123',
 				version_cli: N8N_VERSION,
@@ -2044,6 +2050,48 @@ describe('TelemetryEventRelay', () => {
 					execution_mode: 'manual',
 				}),
 			);
+		});
+
+		it('should add Instance AI execution metadata to workflow execution telemetry', async () => {
+			const runData = {
+				finished: true,
+				status: 'success',
+				mode: 'manual',
+				data: { resultData: { runData: {} } },
+			} as unknown as IRun;
+
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mockWorkflowBase,
+				executionId: 'execution123',
+				userId: 'user123',
+				runData,
+				telemetryMetadata: {
+					executionInitiator: 'instance_ai',
+					instanceAiMockDataUsed: true,
+					instanceAiMockDataSources: ['trigger_input', 'verification_pin_data'],
+					instanceAiPinnedNodeCount: 2,
+					instanceAiVerificationRun: true,
+				},
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			const expectedProperties = expect.objectContaining({
+				execution_initiator: 'instance_ai',
+				instance_ai_execution: true,
+				instance_ai_mock_data_used: true,
+				instance_ai_mock_data_sources: 'trigger_input,verification_pin_data',
+				instance_ai_pinned_node_count: 2,
+				instance_ai_verification_run: true,
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Manual workflow exec finished',
+				expectedProperties,
+			);
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(expectedProperties);
 		});
 
 		it('should call telemetry.track when manual node execution finished', async () => {

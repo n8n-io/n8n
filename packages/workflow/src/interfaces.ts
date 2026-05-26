@@ -3091,6 +3091,21 @@ export interface IDestinationNode {
 	mode: 'inclusive' | 'exclusive';
 }
 
+export type WorkflowExecutionInitiator = 'user' | 'instance_ai';
+
+export type WorkflowExecutionMockDataSource =
+	| 'trigger_input'
+	| 'verification_pin_data'
+	| 'workflow_pin_data';
+
+export interface IWorkflowExecutionTelemetryMetadata {
+	executionInitiator: WorkflowExecutionInitiator;
+	instanceAiMockDataUsed?: boolean;
+	instanceAiMockDataSources?: WorkflowExecutionMockDataSource[];
+	instanceAiPinnedNodeCount?: number;
+	instanceAiVerificationRun?: boolean;
+}
+
 export interface IWorkflowExecutionDataProcess {
 	destinationNode?: IDestinationNode;
 	restartExecutionId?: string;
@@ -3114,6 +3129,7 @@ export interface IWorkflowExecutionDataProcess {
 	userId?: string;
 	projectId?: string;
 	projectName?: string;
+	telemetryMetadata?: IWorkflowExecutionTelemetryMetadata;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
 		name: string;

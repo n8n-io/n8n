@@ -494,6 +494,30 @@ describe('Execution Lifecycle Hooks', () => {
 		externalHooksTests();
 		statisticsTests();
 
+		it('should include execution telemetry metadata in workflow-post-execute events', async () => {
+			const telemetryMetadata = {
+				executionInitiator: 'instance_ai' as const,
+				instanceAiMockDataUsed: true,
+				instanceAiMockDataSources: ['trigger_input' as const],
+				instanceAiPinnedNodeCount: 1,
+				instanceAiVerificationRun: true,
+			};
+			const lifecycleHooks = getLifecycleHooksForRegularMain(
+				{ executionMode: 'manual', workflowData, pushRef, retryOf, userId, telemetryMetadata },
+				executionId,
+			);
+
+			await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+			expect(eventService.emit).toHaveBeenCalledWith('workflow-post-execute', {
+				executionId,
+				runData: successfulRun,
+				workflow: workflowData,
+				userId,
+				telemetryMetadata,
+			});
+		});
+
 		it('should setup the correct set of hooks', () => {
 			expect(lifecycleHooks).toBeInstanceOf(ExecutionLifecycleHooks);
 			expect(lifecycleHooks.mode).toBe('manual');

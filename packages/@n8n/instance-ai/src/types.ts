@@ -248,6 +248,8 @@ export interface InstanceAiExecutionService {
 			pinData?: Record<string, unknown[]>;
 			/** When set, execute this specific trigger node instead of auto-detecting. */
 			triggerNodeName?: string;
+			/** Marks executions started by verify-built-workflow. */
+			isVerificationRun?: boolean;
 		},
 	): Promise<ExecutionResult>;
 	getStatus(executionId: string): Promise<ExecutionResult>;

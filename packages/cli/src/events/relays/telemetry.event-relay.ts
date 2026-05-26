@@ -49,6 +49,29 @@ function limitNodeGraphStringSize(nodeGraphString: string): string {
 	return nodeGraphString;
 }
 
+function getExecutionTelemetryProperties(
+	telemetryMetadata: RelayEventMap['workflow-post-execute']['telemetryMetadata'],
+): ITelemetryTrackProperties {
+	const executionInitiator = telemetryMetadata?.executionInitiator ?? 'user';
+	const instanceAiExecution = executionInitiator === 'instance_ai';
+	const mockDataSources = telemetryMetadata?.instanceAiMockDataSources?.join(',') || null;
+
+	return {
+		execution_initiator: executionInitiator,
+		instance_ai_execution: instanceAiExecution,
+		instance_ai_mock_data_used: instanceAiExecution
+			? (telemetryMetadata?.instanceAiMockDataUsed ?? false)
+			: false,
+		instance_ai_mock_data_sources: instanceAiExecution ? mockDataSources : null,
+		instance_ai_pinned_node_count: instanceAiExecution
+			? (telemetryMetadata?.instanceAiPinnedNodeCount ?? 0)
+			: 0,
+		instance_ai_verification_run: instanceAiExecution
+			? (telemetryMetadata?.instanceAiVerificationRun ?? false)
+			: false,
+	};
+}
+
 @Service()
 export class TelemetryEventRelay extends EventRelay {
 	constructor(
@@ -884,16 +907,20 @@ export class TelemetryEventRelay extends EventRelay {
 		workflow,
 		runData,
 		userId,
+		telemetryMetadata,
 	}: RelayEventMap['workflow-post-execute']) {
 		if (!workflow.id) {
 			return;
 		}
+
+		const executionTelemetryProperties = getExecutionTelemetryProperties(telemetryMetadata);
 
 		const telemetryProperties: IExecutionTrackProperties = {
 			workflow_id: workflow.id,
 			is_manual: false,
 			version_cli: N8N_VERSION,
 			success: false,
+			...executionTelemetryProperties,
 			used_dynamic_credentials: Object.values(runData?.data?.resultData?.runData ?? {}).some(
 				(taskDataList) => taskDataList.some((taskData) => taskData.usedDynamicCredentials),
 			),
@@ -994,6 +1021,7 @@ export class TelemetryEventRelay extends EventRelay {
 					eval_rows_left: null,
 					meta: JSON.stringify(workflow.meta),
 					used_dynamic_credentials: telemetryProperties.used_dynamic_credentials,
+					...executionTelemetryProperties,
 					...TelemetryHelpers.resolveAIMetrics(workflow.nodes, this.nodeTypes),
 					...TelemetryHelpers.resolveVectorStoreMetrics(workflow.nodes, this.nodeTypes, runData),
 					...TelemetryHelpers.extractLastExecutedNodeStructuredOutputErrorInfo(

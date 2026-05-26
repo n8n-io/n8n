@@ -119,6 +119,52 @@ describe('Telemetry', () => {
 			expect(execBuffer['1'].prod_error?.first).toEqual(execTime4);
 		});
 
+		test('should count execution source buckets alongside existing mode buckets', async () => {
+			const payload: Parameters<Telemetry['trackWorkflowExecution']>[0] = {
+				workflow_id: '1',
+				is_manual: true,
+				success: true,
+				error_node_type: 'custom-nodes-base.node-type',
+				execution_initiator: 'user',
+				instance_ai_execution: false,
+				instance_ai_mock_data_used: false,
+			};
+
+			const userManualExecTime = fakeJestSystemTime('2022-01-01 12:00:00');
+			telemetry.trackWorkflowExecution(payload);
+
+			payload.execution_initiator = 'instance_ai';
+			payload.instance_ai_execution = true;
+			payload.instance_ai_mock_data_used = true;
+
+			const instanceAiMockManualExecTime = fakeJestSystemTime('2022-01-01 13:00:00');
+			telemetry.trackWorkflowExecution(payload);
+
+			payload.is_manual = false;
+			payload.instance_ai_mock_data_used = false;
+
+			const instanceAiRealProdExecTime = fakeJestSystemTime('2022-01-01 14:00:00');
+			telemetry.trackWorkflowExecution(payload);
+
+			const execBuffer = telemetry.getCountsBuffer();
+
+			expect(execBuffer['1'].manual_success?.count).toBe(2);
+			expect(execBuffer['1'].manual_success?.first).toEqual(userManualExecTime);
+			expect(execBuffer['1'].prod_success?.count).toBe(1);
+			expect(execBuffer['1'].prod_success?.first).toEqual(instanceAiRealProdExecTime);
+
+			expect(execBuffer['1'].user_manual_success?.count).toBe(1);
+			expect(execBuffer['1'].user_manual_success?.first).toEqual(userManualExecTime);
+			expect(execBuffer['1'].instance_ai_mock_manual_success?.count).toBe(1);
+			expect(execBuffer['1'].instance_ai_mock_manual_success?.first).toEqual(
+				instanceAiMockManualExecTime,
+			);
+			expect(execBuffer['1'].instance_ai_real_prod_success?.count).toBe(1);
+			expect(execBuffer['1'].instance_ai_real_prod_success?.first).toEqual(
+				instanceAiRealProdExecTime,
+			);
+		});
+
 		test('should fire "Workflow execution errored" event for failed executions', async () => {
 			const payload = {
 				workflow_id: '1',

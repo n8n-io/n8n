@@ -2288,6 +2288,46 @@ describe('createExecutionAdapter run()', () => {
 		});
 	});
 
+	it('attaches Instance AI execution telemetry metadata to workflow runs', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					parameters: {},
+					position: [0, 0],
+				},
+			],
+			pinData: {
+				Existing: [{ json: { id: 'existing' } }],
+			},
+		});
+
+		await adapter.run(
+			'wf-1',
+			{ id: 'input' },
+			{
+				pinData: {
+					Mocked: [{ id: 'mocked' }],
+				},
+				isVerificationRun: true,
+			},
+		);
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+
+		expect(runData.telemetryMetadata).toEqual({
+			executionInitiator: 'instance_ai',
+			instanceAiMockDataUsed: true,
+			instanceAiMockDataSources: ['trigger_input', 'verification_pin_data', 'workflow_pin_data'],
+			instanceAiPinnedNodeCount: 3,
+			instanceAiVerificationRun: true,
+		});
+	});
+
 	it('tracks workflow id and success status when a builder execution finishes', async () => {
 		const { adapter, mockTelemetry } = createRunAdapterForTests(
 			{
