@@ -31,7 +31,11 @@ import { attachRuntimeWorkspaceCapabilities } from '../../agent/runtime-workspac
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
 import type { Logger } from '../../logger';
-import { materializeRuntimeSkillsIntoWorkspace } from '../../skills/materialize-runtime-skills';
+import {
+	createPrebakedRuntimeSkillsFromWorkspace,
+	materializeRuntimeSkillsIntoWorkspace,
+	type MaterializedRuntimeSkills,
+} from '../../skills/materialize-runtime-skills';
 import { hasRuntimeSkills } from '../../skills/runtime-skills';
 import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/consume-with-hitl';
 import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
@@ -179,7 +183,23 @@ export async function materializeBuilderRuntimeSkills(
 		return { workspace, source };
 	}
 
-	const materialized = await materializeRuntimeSkillsIntoWorkspace({
+	let materialized: MaterializedRuntimeSkills | undefined;
+	try {
+		const workspaceRoot = await getWorkspaceRoot(workspace);
+		materialized = await createPrebakedRuntimeSkillsFromWorkspace({
+			source,
+			workspace,
+			root: workspaceRoot,
+			workspaceRoot: root,
+			logger: context.logger,
+		});
+	} catch (error) {
+		context.logger.debug('Could not inspect prebaked runtime skills; materializing live', {
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+
+	materialized ??= await materializeRuntimeSkillsIntoWorkspace({
 		source,
 		workspace,
 		root,

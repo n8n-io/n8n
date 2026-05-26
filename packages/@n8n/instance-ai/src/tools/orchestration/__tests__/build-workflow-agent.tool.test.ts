@@ -14,7 +14,12 @@ import {
 import { UserError } from 'n8n-workflow';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
-import { materializeRuntimeSkillsIntoWorkspace } from '../../../skills/materialize-runtime-skills';
+import {
+	RUNTIME_SKILL_MANIFEST_FILE,
+	SANDBOX_RUNTIME_SKILLS_DIR,
+	buildRuntimeSkillWorkspaceBundle,
+	materializeRuntimeSkillsIntoWorkspace,
+} from '../../../skills/materialize-runtime-skills';
 import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext, InstanceAiContext } from '../../../types';
 import { createRemediation } from '../../../workflow-loop';
@@ -126,11 +131,28 @@ function createRuntimeSkillWorkspace() {
 		writes.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
 		await Promise.resolve();
 	});
+	const readFile = jest.fn(async (path: string) => {
+		const content = writes.get(path);
+		if (content === undefined) throw new Error(`ENOENT: ${path}`);
+		return await Promise.resolve(content);
+	});
+	const executeCommand = jest.fn(async (command: string) => {
+		return await Promise.resolve({
+			success: true,
+			exitCode: 0,
+			stdout: command === 'echo $HOME' ? '/home/daytona\n' : '',
+			stderr: '',
+			executionTimeMs: 0,
+		});
+	});
 
 	return {
+		executeCommand,
+		readFile,
 		writes,
 		workspace: {
-			filesystem: { writeFile },
+			filesystem: { readFile, writeFile },
+			sandbox: { executeCommand },
 		} as unknown as Workspace,
 	};
 }
@@ -258,6 +280,36 @@ describe('materializeBuilderRuntimeSkills', () => {
 		expect(skillFile).toContain('/home/daytona/builder/skills/path-skill');
 		expect(skillFile).toContain('/home/daytona/builder');
 		expect(skillFile).not.toContain('/home/daytona/first');
+	});
+
+	it('uses prebaked skills while preserving the scoped builder workspace root', async () => {
+		const rawSource = createPathTemplatedRuntimeSkillSource();
+		const builderTarget = createRuntimeSkillWorkspace();
+		const bakedRoot = '/home/daytona/workspace';
+		const builderRoot = '/home/daytona/builder';
+		const bundle = await buildRuntimeSkillWorkspaceBundle({
+			source: rawSource,
+			root: bakedRoot,
+		});
+		if (!bundle) throw new Error('Expected runtime skill bundle');
+		builderTarget.writes.set(
+			`${bakedRoot}/${SANDBOX_RUNTIME_SKILLS_DIR}/${RUNTIME_SKILL_MANIFEST_FILE}`,
+			bundle.files.get(bundle.manifestPath) ?? '',
+		);
+
+		const result = await materializeBuilderRuntimeSkills(
+			createMockContext({ runtimeSkillCatalog: rawSource }),
+			builderTarget.workspace,
+			builderRoot,
+		);
+
+		expect(
+			builderTarget.writes.get(`${builderRoot}/${SANDBOX_RUNTIME_SKILLS_DIR}/path-skill/SKILL.md`),
+		).toBeUndefined();
+		const skill = await result.source?.loadSkill('path-skill');
+		expect(skill?.instructions).toContain(`${bakedRoot}/${SANDBOX_RUNTIME_SKILLS_DIR}/path-skill`);
+		expect(skill?.instructions).toContain(builderRoot);
+		expect(skill?.instructions).not.toContain(`${builderRoot}/${SANDBOX_RUNTIME_SKILLS_DIR}`);
 	});
 });
 

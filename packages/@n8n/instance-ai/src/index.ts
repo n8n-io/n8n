@@ -166,16 +166,24 @@ export const loadInstanceAiRuntimeSkillSource: typeof RuntimeSkillsMod.loadInsta
 	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSource);
 export const createLazyWorkspaceRuntimeSkillSource: typeof MaterializeRuntimeSkillsMod.createLazyWorkspaceRuntimeSkillSource =
 	lazyFunction(() => loadMaterializeRuntimeSkills().createLazyWorkspaceRuntimeSkillSource);
+export const buildRuntimeSkillWorkspaceBundle: typeof MaterializeRuntimeSkillsMod.buildRuntimeSkillWorkspaceBundle =
+	lazyFunction(() => loadMaterializeRuntimeSkills().buildRuntimeSkillWorkspaceBundle);
 export const materializeRuntimeSkillsIntoWorkspace: typeof MaterializeRuntimeSkillsMod.materializeRuntimeSkillsIntoWorkspace =
 	lazyFunction(() => loadMaterializeRuntimeSkills().materializeRuntimeSkillsIntoWorkspace);
+export const createPrebakedRuntimeSkillsFromWorkspace: typeof MaterializeRuntimeSkillsMod.createPrebakedRuntimeSkillsFromWorkspace =
+	lazyFunction(() => loadMaterializeRuntimeSkills().createPrebakedRuntimeSkillsFromWorkspace);
 export declare const SANDBOX_RUNTIME_SKILLS_DIR: typeof MaterializeRuntimeSkillsMod.SANDBOX_RUNTIME_SKILLS_DIR;
 export declare const SANDBOX_RUNTIME_SKILL_REGISTRY_FILE: typeof MaterializeRuntimeSkillsMod.SANDBOX_RUNTIME_SKILL_REGISTRY_FILE;
+export declare const RUNTIME_SKILL_MANIFEST_FILE: typeof MaterializeRuntimeSkillsMod.RUNTIME_SKILL_MANIFEST_FILE;
+export declare const RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION: typeof MaterializeRuntimeSkillsMod.RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION;
 export declare const N8N_SKILLS_DIR_ENV: typeof MaterializeRuntimeSkillsMod.N8N_SKILLS_DIR_ENV;
 export declare const N8N_SKILL_DIR_ENV: typeof MaterializeRuntimeSkillsMod.N8N_SKILL_DIR_ENV;
 export declare const N8N_WORKSPACE_DIR_ENV: typeof MaterializeRuntimeSkillsMod.N8N_WORKSPACE_DIR_ENV;
 export type {
 	MaterializedRuntimeSkill,
 	MaterializedRuntimeSkills,
+	RuntimeSkillWorkspaceBundle,
+	RuntimeSkillWorkspaceManifest,
 } from './skills/materialize-runtime-skills';
 
 export const createInstanceAgent: typeof InstanceAgentMod.createInstanceAgent = lazyFunction(
@@ -251,6 +259,14 @@ defineLazyExport(
 defineLazyExport(
 	'SANDBOX_RUNTIME_SKILL_REGISTRY_FILE',
 	() => loadMaterializeRuntimeSkills().SANDBOX_RUNTIME_SKILL_REGISTRY_FILE,
+);
+defineLazyExport(
+	'RUNTIME_SKILL_MANIFEST_FILE',
+	() => loadMaterializeRuntimeSkills().RUNTIME_SKILL_MANIFEST_FILE,
+);
+defineLazyExport(
+	'RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION',
+	() => loadMaterializeRuntimeSkills().RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION,
 );
 defineLazyExport('N8N_SKILLS_DIR_ENV', () => loadMaterializeRuntimeSkills().N8N_SKILLS_DIR_ENV);
 defineLazyExport('N8N_SKILL_DIR_ENV', () => loadMaterializeRuntimeSkills().N8N_SKILL_DIR_ENV);

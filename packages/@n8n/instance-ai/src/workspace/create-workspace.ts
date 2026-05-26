@@ -114,7 +114,7 @@ export async function createSandbox(
 						mode,
 					)
 				: await snapshotManager?.ensureSnapshot(undefined, mode);
-		const image = snapshotManager ? snapshotManager.ensureImage() : config.image;
+		const image = snapshotManager ? await snapshotManager.ensureImage() : config.image;
 
 		// Pass the auth source through to the sandbox so it owns the JWT lifecycle:
 		// proxy mode mints fresh tokens on demand via `getAuthToken`; direct mode uses the static key.

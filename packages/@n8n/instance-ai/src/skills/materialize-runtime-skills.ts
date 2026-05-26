@@ -15,11 +15,13 @@ import { join as posixJoin, normalize as posixNormalize } from 'node:path/posix'
 
 import { formatErrorForLog } from '../error-formatting';
 import type { Logger } from '../logger';
-import { writeFileViaSandbox } from '../workspace/sandbox-fs';
+import { readFileViaSandbox, writeFileViaSandbox } from '../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../workspace/sandbox-setup';
 
 export const SANDBOX_RUNTIME_SKILLS_DIR = 'skills';
 export const SANDBOX_RUNTIME_SKILL_REGISTRY_FILE = 'registry.json';
+export const RUNTIME_SKILL_MANIFEST_FILE = '.manifest.json';
+export const RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION = 1;
 export const N8N_SKILLS_DIR_ENV = 'N8N_SKILLS_DIR';
 export const N8N_SKILL_DIR_ENV = 'N8N_SKILL_DIR';
 export const N8N_WORKSPACE_DIR_ENV = 'N8N_WORKSPACE_DIR';
@@ -39,10 +41,38 @@ export interface MaterializedRuntimeSkills {
 	source: RuntimeSkillSource;
 }
 
+export interface RuntimeSkillWorkspaceManifest {
+	schemaVersion: typeof RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION;
+	skillsHash: string;
+}
+
+export interface RuntimeSkillWorkspaceBundle extends MaterializedRuntimeSkills {
+	files: Map<string, string>;
+	manifest: RuntimeSkillWorkspaceManifest;
+	manifestPath: string;
+	skillsHash: string;
+}
+
+interface BuildRuntimeSkillWorkspaceBundleOptions {
+	source: RuntimeSkillSource;
+	root: string;
+	workspaceRoot?: string;
+	skillsRoot?: string;
+	logger?: Logger;
+}
+
 interface MaterializeRuntimeSkillsOptions {
 	source: RuntimeSkillSource;
 	workspace: Workspace;
 	root: string;
+	logger?: Logger;
+}
+
+interface PrebakedRuntimeSkillsOptions {
+	source: RuntimeSkillSource;
+	workspace: Workspace;
+	root: string;
+	workspaceRoot?: string;
 	logger?: Logger;
 }
 
@@ -73,6 +103,10 @@ function withTrailingNewline(content: string): string {
 	return content.endsWith('\n') ? content : `${content}\n`;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function safeSkillDirectory(entry: RuntimeSkillRegistryEntry): string {
 	const raw = entry.sourceDirectory ?? entry.name;
 	if (!raw || raw.includes('\0') || raw.includes('\\') || raw.startsWith('/')) {
@@ -92,8 +126,8 @@ function safeSkillDirectory(entry: RuntimeSkillRegistryEntry): string {
 	return normalized;
 }
 
-function materializedSkillDirectory(root: string, entry: RuntimeSkillRegistryEntry): string {
-	return posixJoin(root, SANDBOX_RUNTIME_SKILLS_DIR, safeSkillDirectory(entry));
+function materializedSkillDirectory(skillsRoot: string, entry: RuntimeSkillRegistryEntry): string {
+	return posixJoin(skillsRoot, safeSkillDirectory(entry));
 }
 
 function safeLinkedFilePath(
@@ -133,10 +167,11 @@ function substituteRuntimeSkillVars(
 	content: string,
 	skillDir: string,
 	workspaceRoot: string,
+	skillsRoot: string,
 ): string {
 	return content
 		.replaceAll(N8N_SKILL_DIR_TEMPLATE, skillDir)
-		.replaceAll(N8N_SKILLS_DIR_TEMPLATE, posixJoin(workspaceRoot, SANDBOX_RUNTIME_SKILLS_DIR))
+		.replaceAll(N8N_SKILLS_DIR_TEMPLATE, skillsRoot)
 		.replaceAll(N8N_WORKSPACE_DIR_TEMPLATE, workspaceRoot);
 }
 
@@ -207,11 +242,30 @@ function addFrontmatterField(lines: string[], key: string, value: unknown): void
 	}
 }
 
+function parseRuntimeSkillWorkspaceManifest(raw: string): RuntimeSkillWorkspaceManifest | null {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw);
+	} catch {
+		return null;
+	}
+
+	if (!isRecord(parsed)) return null;
+	if (parsed.schemaVersion !== RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION) return null;
+	if (typeof parsed.skillsHash !== 'string' || parsed.skillsHash.length === 0) return null;
+
+	return {
+		schemaVersion: RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION,
+		skillsHash: parsed.skillsHash,
+	};
+}
+
 function renderRuntimeSkillMarkdown(
 	skill: RuntimeSkillContent,
 	entry: RuntimeSkillRegistryEntry,
 	skillDir: string,
 	workspaceRoot: string,
+	skillsRoot: string,
 ): string {
 	const lines = ['---'];
 	addFrontmatterField(lines, 'name', skill.name);
@@ -228,7 +282,12 @@ function renderRuntimeSkillMarkdown(
 	addFrontmatterField(lines, 'metadata', skill.metadata);
 	lines.push('---', '');
 
-	const instructions = substituteRuntimeSkillVars(skill.instructions, skillDir, workspaceRoot);
+	const instructions = substituteRuntimeSkillVars(
+		skill.instructions,
+		skillDir,
+		workspaceRoot,
+		skillsRoot,
+	);
 	const sourceNote =
 		entry.sourceDirectory && entry.sourceDirectory !== entry.name
 			? `<!-- materialized from ${entry.sourceDirectory} -->\n\n`
@@ -262,6 +321,7 @@ function createMaterializedRuntimeSkillSource(
 	registry: RuntimeSkillRegistry,
 	materialized: MaterializedRuntimeSkill[],
 	workspaceRoot: string,
+	skillsRoot: string,
 ): RuntimeSkillSource {
 	const materializedById = new Map(materialized.map((skill) => [skill.id, skill]));
 	const loadFile = source.loadFile;
@@ -281,6 +341,7 @@ function createMaterializedRuntimeSkillSource(
 					skill.instructions,
 					materializedSkill.directory,
 					workspaceRoot,
+					skillsRoot,
 				),
 			};
 		},
@@ -297,6 +358,7 @@ function createMaterializedRuntimeSkillSource(
 								file.content,
 								materializedSkill.directory,
 								workspaceRoot,
+								skillsRoot,
 							),
 						};
 					},
@@ -340,6 +402,37 @@ async function writeWorkspaceFile(
 	}
 }
 
+async function readWorkspaceFile(
+	workspace: Workspace,
+	filePath: string,
+	logger?: Logger,
+): Promise<string | null> {
+	if (workspace.filesystem) {
+		try {
+			const content = await workspace.filesystem.readFile(filePath, { encoding: 'utf-8' });
+			return Buffer.isBuffer(content) ? content.toString('utf-8') : content;
+		} catch (error) {
+			logger?.debug('Sandbox runtime skill manifest filesystem read missed', {
+				path: filePath,
+				error: formatErrorForLog(error),
+			});
+			return null;
+		}
+	}
+
+	if (!workspace.sandbox) return null;
+
+	try {
+		return await readFileViaSandbox(workspace, filePath);
+	} catch (error) {
+		logger?.debug('Sandbox runtime skill manifest command read missed', {
+			path: filePath,
+			error: formatErrorForLog(error),
+		});
+		return null;
+	}
+}
+
 function linkedFilesFor(entry: RuntimeSkillRegistryEntry): RuntimeSkillLinkedFile[] {
 	return LINKED_FILE_GROUPS.flatMap((group) => entry.linkedFiles[group]);
 }
@@ -361,15 +454,16 @@ function warnIfExceedsLoadSkillLimit(
 	});
 }
 
-export async function materializeRuntimeSkillsIntoWorkspace({
+export async function buildRuntimeSkillWorkspaceBundle({
 	source,
-	workspace,
 	root,
+	workspaceRoot = root,
+	skillsRoot = posixJoin(root, SANDBOX_RUNTIME_SKILLS_DIR),
 	logger,
-}: MaterializeRuntimeSkillsOptions): Promise<MaterializedRuntimeSkills | undefined> {
+}: BuildRuntimeSkillWorkspaceBundleOptions): Promise<RuntimeSkillWorkspaceBundle | undefined> {
 	if (source.registry.skills.length === 0) return undefined;
 
-	const rootDir = posixJoin(root, SANDBOX_RUNTIME_SKILLS_DIR);
+	const files = new Map<string, string>();
 
 	const materialized = await Promise.all(
 		source.registry.skills.map(async (entry): Promise<MaterializedRuntimeSkill> => {
@@ -378,11 +472,17 @@ export async function materializeRuntimeSkillsIntoWorkspace({
 				throw new Error(`Runtime skill "${entry.name}" is registered but cannot be loaded`);
 			}
 
-			const directory = materializedSkillDirectory(root, entry);
+			const directory = materializedSkillDirectory(skillsRoot, entry);
 			const path = posixJoin(directory, RUNTIME_SKILL_FILE_NAME);
-			const skillMarkdown = renderRuntimeSkillMarkdown(skill, entry, directory, root);
+			const skillMarkdown = renderRuntimeSkillMarkdown(
+				skill,
+				entry,
+				directory,
+				workspaceRoot,
+				skillsRoot,
+			);
 			warnIfExceedsLoadSkillLimit(logger, entry, path, skillMarkdown);
-			await writeWorkspaceFile(workspace, path, skillMarkdown, logger);
+			files.set(path, skillMarkdown);
 
 			const linkedFiles = linkedFilesFor(entry);
 			if (linkedFiles.length > 0 && !source.loadFile) {
@@ -403,9 +503,14 @@ export async function materializeRuntimeSkillsIntoWorkspace({
 						);
 					}
 
-					const materializedContent = substituteRuntimeSkillVars(content.content, directory, root);
+					const materializedContent = substituteRuntimeSkillVars(
+						content.content,
+						directory,
+						workspaceRoot,
+						skillsRoot,
+					);
 					warnIfExceedsLoadSkillLimit(logger, entry, materializedPath, materializedContent);
-					await writeWorkspaceFile(workspace, materializedPath, materializedContent, logger);
+					files.set(materializedPath, materializedContent);
 				}),
 			);
 
@@ -414,34 +519,114 @@ export async function materializeRuntimeSkillsIntoWorkspace({
 	);
 
 	const registry = materializedRegistry(source.registry, materialized);
-	const registryPath = posixJoin(rootDir, SANDBOX_RUNTIME_SKILL_REGISTRY_FILE);
-	await writeWorkspaceFile(
-		workspace,
-		registryPath,
-		`${JSON.stringify(registry, null, 2)}\n`,
-		logger,
-	);
+	const registryPath = posixJoin(skillsRoot, SANDBOX_RUNTIME_SKILL_REGISTRY_FILE);
+	files.set(registryPath, `${JSON.stringify(registry, null, 2)}\n`);
+
+	const manifest: RuntimeSkillWorkspaceManifest = {
+		schemaVersion: RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION,
+		skillsHash: source.registry.skillsHash,
+	};
+	const manifestPath = posixJoin(skillsRoot, RUNTIME_SKILL_MANIFEST_FILE);
+	files.set(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
 	const env: NodeJS.ProcessEnv = {
-		[N8N_WORKSPACE_DIR_ENV]: root,
-		[N8N_SKILLS_DIR_ENV]: rootDir,
+		[N8N_WORKSPACE_DIR_ENV]: workspaceRoot,
+		[N8N_SKILLS_DIR_ENV]: skillsRoot,
 	};
 
-	logger?.debug('Materialized runtime skills into workspace', {
-		root,
-		skillsRoot: rootDir,
-		registryPath,
-		skillsHash: source.registry.skillsHash,
-		count: materialized.length,
-	});
-
 	return {
-		rootDir,
+		rootDir: skillsRoot,
 		registryPath,
 		skills: materialized,
 		env,
-		source: createMaterializedRuntimeSkillSource(source, registry, materialized, root),
+		source: createMaterializedRuntimeSkillSource(
+			source,
+			registry,
+			materialized,
+			workspaceRoot,
+			skillsRoot,
+		),
+		files,
+		manifest,
+		manifestPath,
+		skillsHash: source.registry.skillsHash,
 	};
+}
+
+export async function materializeRuntimeSkillsIntoWorkspace({
+	source,
+	workspace,
+	root,
+	logger,
+}: MaterializeRuntimeSkillsOptions): Promise<MaterializedRuntimeSkills | undefined> {
+	const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger });
+	if (!bundle) return undefined;
+
+	await Promise.all(
+		[...bundle.files].map(async ([filePath, content]) => {
+			await writeWorkspaceFile(workspace, filePath, content, logger);
+		}),
+	);
+
+	logger?.debug('Materialized runtime skills into workspace', {
+		root,
+		skillsRoot: bundle.rootDir,
+		registryPath: bundle.registryPath,
+		skillsHash: bundle.skillsHash,
+		count: bundle.skills.length,
+	});
+
+	return bundle;
+}
+
+export async function createPrebakedRuntimeSkillsFromWorkspace({
+	source,
+	workspace,
+	root,
+	workspaceRoot = root,
+	logger,
+}: PrebakedRuntimeSkillsOptions): Promise<RuntimeSkillWorkspaceBundle | undefined> {
+	if (source.registry.skills.length === 0) return undefined;
+
+	const skillsRoot = posixJoin(root, SANDBOX_RUNTIME_SKILLS_DIR);
+	const manifestPath = posixJoin(skillsRoot, RUNTIME_SKILL_MANIFEST_FILE);
+	const manifestRaw = await readWorkspaceFile(workspace, manifestPath, logger);
+	if (!manifestRaw) return undefined;
+
+	const manifest = parseRuntimeSkillWorkspaceManifest(manifestRaw);
+	if (!manifest) {
+		logger?.debug('Ignoring invalid prebaked runtime skills manifest', { manifestPath });
+		return undefined;
+	}
+
+	if (manifest.skillsHash !== source.registry.skillsHash) {
+		logger?.debug('Ignoring stale prebaked runtime skills manifest', {
+			manifestPath,
+			expectedSkillsHash: source.registry.skillsHash,
+			actualSkillsHash: manifest.skillsHash,
+		});
+		return undefined;
+	}
+
+	const bundle = await buildRuntimeSkillWorkspaceBundle({
+		source,
+		root,
+		workspaceRoot,
+		skillsRoot,
+		logger,
+	});
+	if (!bundle) return undefined;
+
+	logger?.debug('Using prebaked runtime skills from workspace', {
+		root,
+		workspaceRoot,
+		skillsRoot: bundle.rootDir,
+		registryPath: bundle.registryPath,
+		skillsHash: bundle.skillsHash,
+		count: bundle.skills.length,
+	});
+
+	return bundle;
 }
 
 export function createLazyWorkspaceRuntimeSkillSource({
@@ -476,12 +661,19 @@ export function createLazyWorkspaceRuntimeSkillSource({
 
 		materializePromise ??= (async () => {
 			const root = await getWorkspaceRoot(runtimeWorkspace);
-			const result = await materializeRuntimeSkillsIntoWorkspace({
-				source,
-				workspace: runtimeWorkspace,
-				root,
-				logger,
-			});
+			const result =
+				(await createPrebakedRuntimeSkillsFromWorkspace({
+					source,
+					workspace: runtimeWorkspace,
+					root,
+					logger,
+				})) ??
+				(await materializeRuntimeSkillsIntoWorkspace({
+					source,
+					workspace: runtimeWorkspace,
+					root,
+					logger,
+				}));
 			if (result) {
 				materialized = result;
 				workspaceSource.registry = result.source.registry;
