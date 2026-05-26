@@ -73,7 +73,7 @@ jobs:
           INCLUDE_TEST_CONTROLLER: 'true'
 
       - name: Generate mTLS certificates for sandbox service
-        if: ${{ inputs.sandbox-provider != 'daytona' }}
+        if: ${{ inputs.sandbox-provider == 'n8n-sandbox' }}
         run: |
           TLS_DIR="$RUNNER_TEMP/sandbox-tls"
           mkdir -p "$TLS_DIR"
@@ -86,11 +86,11 @@ jobs:
             -c 'bootstrap-mtls.sh --out-dir /tls --api-san sandbox-api --control-san-prefix sandbox-runner --world-readable && chown -R sandbox-api:sandbox-api /tls/api'
 
       - name: Create Docker network
-        if: ${{ inputs.sandbox-provider != 'daytona' }}
+        if: ${{ inputs.sandbox-provider == 'n8n-sandbox' }}
         run: docker network create n8n-eval-net
 
       - name: Start sandbox service
-        if: ${{ inputs.sandbox-provider != 'daytona' }}
+        if: ${{ inputs.sandbox-provider == 'n8n-sandbox' }}
         run: |
           TLS_DIR="$RUNNER_TEMP/sandbox-tls"
 
