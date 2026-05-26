@@ -57,7 +57,6 @@ import {
 	RunStateRegistry,
 	startBuildWorkflowAgentTask,
 	startDetachedDelegateTask,
-	startResearchAgentTask,
 	streamAgentRun,
 	truncateToTitle,
 	generateTitleForRun,
@@ -2737,14 +2736,6 @@ export class InstanceAiService {
 				started = await startBuildWorkflowAgentTask(taskContext, {
 					task: task.spec,
 					workflowId: task.workflowId,
-					plannedTaskId: task.id,
-					conversationContext,
-				});
-				break;
-			case 'research':
-				started = await startResearchAgentTask(taskContext, {
-					goal: task.title,
-					constraints: task.spec,
 					plannedTaskId: task.id,
 					conversationContext,
 				});

@@ -64,7 +64,6 @@ ${NATIVE_NODE_PREFERENCE}
    - \`integrations\`: service names only (e.g. "Slack", "Google Calendar"), no resource identifiers or qualifiers
    - \`dependsOn\`: **CRITICAL** — set dependencies correctly. Workflows that produce data before workflows that consume it. Independent workflows should NOT depend on each other.
    - \`assumptions\`: design decisions only, no resource identifiers (channels, calendars, etc.)
-   - Use \`research\` kind for tasks requiring web research before other tasks can proceed (e.g. "find the API endpoint format for service X"). Research tasks run a dedicated web research agent.
    - After all items are added, call \`submit-plan\` to request user approval.
 
 4. **Handle approval** — \`submit-plan\` returns the user's decision:
@@ -76,12 +75,12 @@ ${NATIVE_NODE_PREFERENCE}
 
 - **User time zone is in context as \`<current-datetime>\` / \`<user-timezone>\`.** Schedule times, cron expressions, and digest times must be stated in the user's time zone. Never write "instance default timezone" or leave the zone ambiguous — spell it out (e.g. "daily at 08:00 America/New_York").
 - **Dependencies are mandatory.** If workflow C needs data from workflows A and B, it must depend on both. Do not add dependencies for standalone data-table work.
-- **No duplicate items.** Each piece of workflow, research, or delegate work appears exactly once. Use \`workflow\` kind for workflows and \`research\` kind for web research. Use \`delegate\` only for tasks that don't fit the other kinds — never for data table operations.
+- **No duplicate items.** Each piece of workflow or delegate work appears exactly once. Use \`workflow\` kind for workflows. Use \`delegate\` only for tasks that don't fit the other kinds — never for data table operations.
 - **Data-table-only plans are invalid.** Pure data-table requests have no plan item; the orchestrator uses the \`data-table-manager\` skill and direct tools instead. If the user asked for a workflow plus tables, table requirements belong in the workflow \`purpose\`.
 - **Each item's \`purpose\` describes only that item.** Do not reference work handled by other plan items — each agent only sees its own spec, and cross-task context causes scope creep.
 - **Workflow verification is mandatory.** For **every** \`workflow\` item you add, also add a \`checkpoint\` item whose \`dependsOn\` includes that workflow's ID. Checkpoints are orchestrator-executed — the orchestrator runs them itself using its own tools, they are not delegated.
   - \`title\`: a user-readable verification goal, e.g. \`"Verify 'Daily API Email' workflow runs successfully"\`.
   - \`instructions\`: detailed steps the orchestrator must execute. Prefer \`verify-built-workflow\` with the work item ID from the build outcome — it uses pin data captured at build time, so it works even for event-triggered workflows (webhook, form, chat, mcp). For workflows with real credentials and a testable trigger (manual, schedule), \`executions(action="run")\` is acceptable. State the pass condition in plain terms (e.g. "run completes without errors and produces at least one output row").
   - Do NOT list \`tools\` on a checkpoint — it is not a delegate task.
-  - Do NOT emit a checkpoint for a \`research\` or \`delegate\` item. Checkpoints are for workflows only.
+  - Do NOT emit a checkpoint for a \`delegate\` item. Checkpoints are for workflows only.
 - **Always call \`submit-plan\` after the last \`add-plan-item\`.** On rejection, be surgical — change only what the user asked for. Never fabricate node names; search first if unsure.`;

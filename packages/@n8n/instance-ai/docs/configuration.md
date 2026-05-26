@@ -54,7 +54,7 @@ and security model.
 | `N8N_INSTANCE_AI_SEARXNG_URL` | string | `''` | SearXNG instance URL (e.g. `http://searxng:8080`). Empty = disabled. No API key needed. |
 
 **Provider priority**: Brave (if key set) > SearXNG (if URL set) > disabled.
-When no search provider is available, `web-search` and `research-with-agent` tools are disabled. `fetch-url` still works.
+When no search provider is available, the `web-search` action is disabled. `fetch-url` still works.
 
 ### Sandbox (Code Execution)
 

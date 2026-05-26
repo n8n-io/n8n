@@ -26,7 +26,7 @@ for approval before execution starts.
 {
   id: string;          // Stable identifier used by dependency edges
   title: string;       // Short user-facing task title
-  kind: 'delegate' | 'build-workflow' | 'research' | 'checkpoint';
+  kind: 'delegate' | 'build-workflow' | 'checkpoint';
   spec: string;        // Detailed executor briefing for this task
   deps: string[];      // Task IDs that must succeed before this task can start
   tools?: string[];    // Required tool subset for delegate tasks
@@ -44,7 +44,6 @@ for approval before execution starts.
 
 **Task kinds** map to executors:
 - `build-workflow` → workflow builder agent (sandbox or tool mode)
-- `research` → research agent (web-search + fetch-url)
 - `delegate` → custom sub-agent with orchestrator-specified tool subset
 - `checkpoint` → orchestrator-executed verification step
 
@@ -713,7 +712,7 @@ everything; sub-agents receive only what they need.
 | Data table tools | ✅ (direct, via `data-table-manager` skill) | ✅ (via delegate) | ❌ |
 | Workspace tools | ✅ | ✅ (via delegate) | ❌ |
 | Filesystem tools | ✅ (conditional) | ✅ (via delegate) | ❌ |
-| Web research tools | ✅ | ✅ (via delegate) | ✅ (research agent) |
+| Web research tools | ✅ | ✅ (via delegate) | ❌ |
 | Template / best practices | ✅ | ✅ (via delegate) | ✅ (builder) |
 | Sandbox tools (`submit-workflow`, `materialize-node-type`, `write-sandbox-file`) | ❌ | ❌ | ✅ (builder only) |
 | MCP tools | ✅ | ❌ | ❌ |

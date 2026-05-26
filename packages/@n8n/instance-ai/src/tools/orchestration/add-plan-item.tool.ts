@@ -13,7 +13,6 @@ import type { BlueprintAccumulator } from './blueprint-accumulator';
 import {
 	blueprintCheckpointItemSchema,
 	blueprintDelegateItemSchema,
-	blueprintResearchItemSchema,
 	blueprintWorkflowItemSchema,
 } from './blueprint.schema';
 import type { OrchestrationContext } from '../../types';
@@ -49,7 +48,6 @@ const addPlanItemInputSchema = z.object({
 		.describe('Assumptions the plan relies on — set on first call'),
 	item: z.discriminatedUnion('kind', [
 		blueprintWorkflowItemSchema.extend({ kind: z.literal('workflow') }),
-		blueprintResearchItemSchema.extend({ kind: z.literal('research') }),
 		blueprintDelegateItemSchema.extend({ kind: z.literal('delegate') }),
 		blueprintCheckpointItemSchema.extend({ kind: z.literal('checkpoint') }),
 	]),
@@ -61,7 +59,7 @@ export function createAddPlanItemTool(
 ) {
 	return new Tool('add-plan-item')
 		.description(
-			'Add a single plan item (workflow, research, delegate, or checkpoint task). ' +
+			'Add a single plan item (workflow, delegate, or checkpoint task). ' +
 				'Call once per item as you design it — each call makes the item visible to the user immediately. ' +
 				'Add workflow items only if the request requires automation. ' +
 				'Add a checkpoint item AFTER its target workflow(s) so the orchestrator can verify the result end-to-end. ' +

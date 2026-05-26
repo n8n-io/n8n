@@ -691,7 +691,7 @@ export interface TaskStorage {
 
 // ── Planned task graphs ─────────────────────────────────────────────────────
 
-export const PLANNED_TASK_KINDS = ['delegate', 'build-workflow', 'research', 'checkpoint'] as const;
+export const PLANNED_TASK_KINDS = ['delegate', 'build-workflow', 'checkpoint'] as const;
 export const STORED_PLANNED_TASK_KINDS = PLANNED_TASK_KINDS;
 export type PlannedTaskKind = (typeof STORED_PLANNED_TASK_KINDS)[number];
 

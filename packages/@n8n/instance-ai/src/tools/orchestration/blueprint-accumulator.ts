@@ -11,7 +11,6 @@
 import type {
 	BlueprintCheckpointItem,
 	BlueprintDelegateItem,
-	BlueprintResearchItem,
 	BlueprintWorkflowItem,
 } from './blueprint.schema';
 
@@ -35,7 +34,6 @@ export interface PlannedTaskInput {
 
 type BlueprintItem =
 	| (BlueprintWorkflowItem & { kind: 'workflow' })
-	| (BlueprintResearchItem & { kind: 'research' })
 	| (BlueprintDelegateItem & { kind: 'delegate' })
 	| (BlueprintCheckpointItem & { kind: 'checkpoint' });
 
@@ -63,16 +61,6 @@ function workflowItemToTask(wf: BlueprintWorkflowItem, assumptions: string[]): P
 		spec: specParts.join('\n'),
 		deps: wf.dependsOn,
 		workflowId: wf.existingWorkflowId,
-	};
-}
-
-function researchItemToTask(ri: BlueprintResearchItem): PlannedTaskInput {
-	return {
-		id: ri.id,
-		title: ri.question,
-		kind: 'research',
-		spec: ri.constraints ?? ri.question,
-		deps: ri.dependsOn,
 	};
 }
 
@@ -104,8 +92,6 @@ function checkpointItemToTask(c: BlueprintCheckpointItem): PlannedTaskInput {
 export class BlueprintAccumulator {
 	private workflows: BlueprintWorkflowItem[] = [];
 
-	private researchItems: BlueprintResearchItem[] = [];
-
 	private delegateItems: BlueprintDelegateItem[] = [];
 
 	private checkpoints: BlueprintCheckpointItem[] = [];
@@ -129,12 +115,6 @@ export class BlueprintAccumulator {
 				const { kind: _, ...wf } = item;
 				this.upsertArray(this.workflows, wf);
 				task = workflowItemToTask(wf, this.assumptions);
-				break;
-			}
-			case 'research': {
-				const { kind: _, ...ri } = item;
-				this.upsertArray(this.researchItems, ri);
-				task = researchItemToTask(ri);
 				break;
 			}
 			case 'delegate': {
@@ -196,7 +176,6 @@ export class BlueprintAccumulator {
 		this.tasks.splice(taskIdx, 1);
 		// Also remove from the typed item arrays
 		this.removeFromArray(this.workflows, id);
-		this.removeFromArray(this.researchItems, id);
 		this.removeFromArray(this.delegateItems, id);
 		this.removeFromArray(this.checkpoints, id);
 		// Clean up dangling dep references in remaining tasks

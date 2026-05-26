@@ -11,7 +11,6 @@ import type * as RuntimeSkillsMod from './skills/runtime-skills';
 import type * as BuildWorkflowAgentPromptMod from './tools/orchestration/build-workflow-agent.prompt';
 import type * as BuildWorkflowAgentToolMod from './tools/orchestration/build-workflow-agent.tool';
 import type * as DelegateToolMod from './tools/orchestration/delegate.tool';
-import type * as ResearchWithAgentToolMod from './tools/orchestration/research-with-agent.tool';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as EvalAgentsMod from './utils/eval-agents';
 import type * as BuilderTemplatesServiceMod from './workspace/builder-templates-service';
@@ -78,10 +77,6 @@ const loadBuildWorkflowAgentTool = lazyModule(
 );
 const loadDelegateTool = lazyModule(
 	() => require('./tools/orchestration/delegate.tool') as typeof DelegateToolMod,
-);
-const loadResearchWithAgentTool = lazyModule(
-	() =>
-		require('./tools/orchestration/research-with-agent.tool') as typeof ResearchWithAgentToolMod,
 );
 const loadTitleUtils = lazyModule(() => require('./memory/title-utils') as typeof TitleUtilsMod);
 const loadMcpClientManager = lazyModule(
@@ -203,9 +198,6 @@ export const startBuildWorkflowAgentTask: typeof BuildWorkflowAgentToolMod.start
 
 export const startDetachedDelegateTask: typeof DelegateToolMod.startDetachedDelegateTask =
 	lazyFunction(() => loadDelegateTool().startDetachedDelegateTask);
-
-export const startResearchAgentTask: typeof ResearchWithAgentToolMod.startResearchAgentTask =
-	lazyFunction(() => loadResearchWithAgentTool().startResearchAgentTask);
 export {
 	iterationEntrySchema,
 	formatPreviousAttempts,
@@ -428,7 +420,6 @@ export type {
 } from './types';
 export type { StartedWorkflowBuildTask } from './tools/orchestration/build-workflow-agent.tool';
 export type { DetachedDelegateTaskResult } from './tools/orchestration/delegate.tool';
-export type { StartedResearchAgentTask } from './tools/orchestration/research-with-agent.tool';
 export {
 	classifyAttachments,
 	buildAttachmentManifest,
