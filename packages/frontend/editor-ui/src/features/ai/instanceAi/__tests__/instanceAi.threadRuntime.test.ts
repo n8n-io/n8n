@@ -732,6 +732,24 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(mockPostMessage).toHaveBeenCalledTimes(1);
 	});
 
+	test('sendMessage tracks whether this is the first user message in the thread', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+		await runtime.sendMessage('first');
+		await runtime.sendMessage('second');
+
+		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(1, 'User sent builder message', {
+			thread_id: runtime.currentThreadId,
+			instance_id: 'instance-1',
+			is_first_message: true,
+		});
+		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(2, 'User sent builder message', {
+			thread_id: runtime.currentThreadId,
+			instance_id: 'instance-1',
+			is_first_message: false,
+		});
+	});
+
 	test('sendMessage forwards pushRef to postMessage', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 
