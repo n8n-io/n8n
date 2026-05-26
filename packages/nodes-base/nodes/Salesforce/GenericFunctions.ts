@@ -379,15 +379,9 @@ export function getValue(value: any): string | number | boolean {
 			}
 		}
 
-		// Detect numeric strings and return them unquoted (leading zeros are preserved as strings)
-		if (/^-?(0|[1-9]\d*)(\.\d+)?$/.test(value)) {
-			const numericValue = Number(value);
-			if (Number.isFinite(numericValue)) {
-				return numericValue;
-			}
-		}
-
-		// All other strings are escaped and quoted
+		// All strings are escaped and quoted. Numeric string values (e.g. "307795203")
+		// should be treated as strings to avoid generating invalid SOQL for text fields.
+		// Users who need numeric comparison should pass actual number types, not strings.
 		return `'${escapeSoqlString(value)}'`;
 	}
 
