@@ -57,7 +57,7 @@ import { createNodeData, toITaskData } from '../partial-execution-utils/__tests_
 import { WorkflowExecute } from '../workflow-execute';
 
 vi.mock('node:fs', async (importActual) => ({
-	...(await importActual<typeof import('node:fs')>()),
+	...(await importActual()),
 	existsSync: vi.fn().mockReturnValue(false),
 	renameSync: vi.fn(),
 }));

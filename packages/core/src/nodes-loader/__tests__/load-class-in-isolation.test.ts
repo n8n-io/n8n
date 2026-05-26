@@ -18,7 +18,7 @@ vi.mock('vm', () => ({
 
 vi.mock('@n8n/backend-common', async (importActual) => {
 	return {
-		...(await importActual<typeof import('@n8n/backend-common')>()),
+		...(await importActual()),
 		inTest: false,
 	};
 });

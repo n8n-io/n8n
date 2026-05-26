@@ -18,7 +18,7 @@ import { ObjectStoreService } from '../object-store.service.ee';
 const mockS3Send = vi.fn();
 const s3Client = mock<S3Client>({ send: mockS3Send });
 vi.mock('@aws-sdk/client-s3', async (importActual) => ({
-	...(await importActual<typeof import('@aws-sdk/client-s3')>()),
+	...(await importActual()),
 	S3Client: class {
 		constructor() {
 			return s3Client;

@@ -36,7 +36,7 @@ import {
 
 // Mock getSchema
 vi.mock('../create-node-as-tool', async (importActual) => ({
-	...(await importActual<typeof import('../create-node-as-tool')>()),
+	...(await importActual()),
 	getSchema: vi.fn(),
 }));
 

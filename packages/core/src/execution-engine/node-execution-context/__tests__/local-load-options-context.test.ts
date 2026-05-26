@@ -12,7 +12,7 @@ import { LocalLoadOptionsContext } from '../local-load-options-context';
 import { LoadWorkflowNodeContext } from '../workflow-node-context';
 
 vi.mock('n8n-workflow', async (importActual) => ({
-	...(await importActual<typeof import('n8n-workflow')>()),
+	...(await importActual()),
 	Workflow: vi.fn(),
 }));
 

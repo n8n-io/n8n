@@ -16,7 +16,7 @@ const ctor = <T extends object, A extends any[]>(impl: (...args: A) => T) =>
 
 // Mock all external dependencies first, before any imports
 vi.mock('@n8n/config', async (importActual) => ({
-	...(await importActual<typeof import('@n8n/config')>()),
+	...(await importActual()),
 	GlobalConfig: vi.fn().mockImplementation(() => ({
 		sentry: { backendDsn: '' },
 	})),
@@ -38,9 +38,8 @@ vi.mock('@/errors/error-reporter', () => ({
 }));
 
 vi.mock('../node-execution-context', async (importActual) => {
-	const actual = await importActual<typeof import('../node-execution-context')>();
 	return {
-		...actual,
+		...(await importActual()),
 		ExecuteContext: vi.fn().mockImplementation(function (this: { hints: unknown[] }) {
 			this.hints = [];
 		}),

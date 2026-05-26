@@ -14,7 +14,7 @@ import { mock } from 'vitest-mock-extended';
 import { NodeTypes } from '@test/helpers';
 
 vi.mock('node:fs', async (importActual) => ({
-	...(await importActual<typeof import('node:fs')>()),
+	...(await importActual()),
 	existsSync: vi.fn().mockReturnValue(false),
 	renameSync: vi.fn(),
 }));

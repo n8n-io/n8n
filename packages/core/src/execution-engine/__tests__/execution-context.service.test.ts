@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('n8n-workflow', async () => ({
-	...(await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')),
+	...(await vi.importActual('n8n-workflow')),
 	toCredentialContext: mocks.toCredentialContext,
 	toSecureArtifacts: mocks.toSecureArtifacts,
 	toExecutionContextEstablishmentHookParameter: mocks.toExecutionContextEstablishmentHookParameter,
@@ -313,9 +313,8 @@ describe('ExecutionContextService', () => {
 			mockCipher.decryptV2.mockImplementation(async (data: string) => data);
 
 			// Use the real toSecureArtifacts so the round-trip exercises actual schema parsing.
-			const realToSecureArtifacts = (
-				await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')
-			).toSecureArtifacts;
+			const realToSecureArtifacts = (await vi.importActual('n8n-workflow')).toSecureArtifacts;
+			// @ts-expect-error - Mocking
 			toSecureArtifacts.mockImplementation(realToSecureArtifacts);
 
 			const plaintext: PlaintextExecutionContext = {
@@ -458,8 +457,9 @@ describe('ExecutionContextService', () => {
 
 		it('should handle node with contextEstablishmentHooks but undefined hooks array', async () => {
 			// Temporarily use real parsing function
-			const realModule = await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow');
+			const realModule = await vi.importActual('n8n-workflow');
 			toExecutionContextEstablishmentHookParameter.mockImplementationOnce(
+				// @ts-expect-error - Mocking
 				realModule.toExecutionContextEstablishmentHookParameter,
 			);
 
