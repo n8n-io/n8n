@@ -1,13 +1,6 @@
 import type { RuntimeSkill } from '@n8n/agents';
-import { getValidProviderToolNames } from '@n8n/api-types';
 
 import { getConfigRulesSection, getSchemaReferenceSection } from '../agents-builder-prompts';
-
-function formatValidProviderToolNames(): string {
-	return getValidProviderToolNames()
-		.map((toolName) => `\`${toolName}\``)
-		.join(', ');
-}
 
 export function configMutationSkill(): RuntimeSkill {
 	return {
@@ -49,7 +42,7 @@ ${getSchemaReferenceSection()}
 - Preserve unrelated existing config unless the user asked to change it.
 - Never write placeholder instructions.
 - Never copy credential IDs from \`list_credentials\`; use \`resolve_llm\`, \`ask_llm\`, or \`ask_credential\`.
-- Valid provider tool keys are exactly: ${formatValidProviderToolNames()}.
+- Valid provider tool keys are complete provider tool IDs documented in \`agent-builder-tools\`.
 - \`providerTools\` keys must be complete provider tool IDs from the valid key list.
 
 ## Recipes
