@@ -252,6 +252,7 @@ function mergeHistoriesIntoWorkflows(
 					...workflow,
 					nodes: history.nodes,
 					connections: history.connections,
+					nodeGroups: history.nodeGroups,
 					versionId: history.versionId,
 					versionMetadata: {
 						name: history.name,

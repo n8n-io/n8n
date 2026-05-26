@@ -1,9 +1,7 @@
 /**
- * Extract Test Workflows from Zips
+ * Extract Test Workflows from the test-fixtures zip.
  *
- * Extracts workflow JSON files from committed zip files for testing:
- *   - test-fixtures/real-workflows/public_published_templates.zip → test-fixtures/real-workflows/
- *   - examples/templates.zip → examples/workflows/ (used by examples-roundtrip test)
+ * test-fixtures/real-workflows/public_published_templates.zip → test-fixtures/real-workflows/
  *
  * Runs automatically via Jest's globalSetup (see scripts/jest-global-setup.ts).
  *
@@ -17,10 +15,6 @@ import AdmZip from 'adm-zip';
 
 const FIXTURES_DIR = path.resolve(__dirname, '../test-fixtures/real-workflows');
 const FIXTURES_ZIP = path.join(FIXTURES_DIR, 'public_published_templates.zip');
-
-const EXAMPLES_DIR = path.resolve(__dirname, '../examples');
-const EXAMPLES_ZIP = path.join(EXAMPLES_DIR, 'templates.zip');
-const EXAMPLES_WORKFLOWS_DIR = path.join(EXAMPLES_DIR, 'workflows');
 
 function extractZip(zipPath: string, outputDir: string, label: string) {
 	if (!fs.existsSync(zipPath)) {
@@ -58,7 +52,6 @@ function extractZip(zipPath: string, outputDir: string, label: string) {
 
 export function extractAllWorkflows() {
 	extractZip(FIXTURES_ZIP, FIXTURES_DIR, 'test-fixtures workflows');
-	extractZip(EXAMPLES_ZIP, EXAMPLES_WORKFLOWS_DIR, 'examples workflows');
 }
 
 if (require.main === module) {
