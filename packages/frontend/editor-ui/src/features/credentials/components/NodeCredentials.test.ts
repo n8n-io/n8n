@@ -617,6 +617,27 @@ describe('NodeCredentials', () => {
 			expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
 		});
 
+		it('should also show quick-connect-empty-state in standalone mode (NODE-5115)', () => {
+			setupQuickConnectStores();
+
+			ndvStore.activeNode = slackNode;
+
+			renderComponent(
+				{
+					props: {
+						node: slackNode,
+						overrideCredType: 'slackOAuth2Api',
+						standalone: true,
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('quick-connect-empty-state')).toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-empty-state')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
+		});
+
 		it('should derive service name from credential displayName when no quick connect config', () => {
 			setupQuickConnectStores();
 

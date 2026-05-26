@@ -730,7 +730,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				</div>
 				<div
 					v-else-if="
-						!standalone &&
 						options.length === 0 &&
 						showQuickConnectEmptyState(type) &&
 						quickConnectCredentialType &&
