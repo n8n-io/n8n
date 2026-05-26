@@ -303,6 +303,10 @@ const isAvailableInMCP = computed(
 	() => mcpToggleStatus.value ?? props.data.settings?.availableInMCP ?? false,
 );
 
+const showLegacyMcpIndicator = computed(
+	() => !props.isWorkflowCardMcpToggleEnabled && props.isMcpEnabled && isAvailableInMCP.value,
+);
+
 const isSomeoneElsesWorkflow = computed(
 	() =>
 		props.data.homeProject?.type !== ProjectTypes.Team &&
@@ -659,6 +663,16 @@ const tags = computed(
 			</span>
 			<span v-show="data">
 				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
+				<span v-if="showLegacyMcpIndicator">|</span>
+			</span>
+			<span
+				v-show="showLegacyMcpIndicator"
+				:class="$style.legacyMcpIndicator"
+				data-test-id="workflow-card-mcp"
+			>
+				<N8nTooltip placement="right" :content="locale.baseText('workflows.item.availableInMCP')">
+					<N8nIcon icon="mcp" size="medium" />
+				</N8nTooltip>
 			</span>
 			<span
 				v-if="props.areTagsEnabled && data.tags && data.tags.length > 0"
@@ -793,6 +807,11 @@ const tags = computed(
 .cardTags {
 	display: inline-block;
 	margin-top: var(--spacing--4xs);
+}
+
+.legacyMcpIndicator {
+	display: inline-flex;
+	align-items: center;
 }
 
 .cardActions {

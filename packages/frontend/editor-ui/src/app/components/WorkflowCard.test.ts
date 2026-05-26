@@ -925,6 +925,48 @@ describe('WorkflowCard', () => {
 		expect(within(actions).getByTestId('action-enableMCPAccess')).toBeInTheDocument();
 	});
 
+	it('should show the legacy MCP indicator in the card description when the experiment is off and the workflow is available', () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: false,
+			},
+		});
+
+		expect(getByTestId('workflow-card-mcp')).toBeVisible();
+	});
+
+	it('should hide the legacy MCP indicator when the experiment is on (the inline switch replaces it)', () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { queryByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
+			},
+		});
+
+		expect(queryByTestId('workflow-card-mcp')).not.toBeVisible();
+	});
+
 	it('should show Remove MCP access in the menu when the experiment is off and workflow is available', async () => {
 		const data = createWorkflow({
 			scopes: ['workflow:update'],
