@@ -24,7 +24,8 @@ Use this to resolve the target agent's main \`model\` and \`credential\`.
 - Explicit provider/model requests go to \`resolve_llm\` first.
 - If the user asks to pick, change, confirm, or configure a model or main credential, call \`ask_llm\`; do not ask in prose.
 - If \`resolve_llm\` succeeds, persist \`model = "{provider}/{model}"\` and \`credential = credentialId\`.
-- For Anthropic and OpenAI models, use native web search by default only for
+- Only OpenAI and Anthropic models support native web search. Use native web
+  search by default for those providers only, and only for
   fresh agents or agents with no existing \`config.webSearch\`. Persist
   \`config.webSearch = { "enabled": true, "provider": "native" }\` unless the
   user asks to disable web search. Do not write native \`providerTools\`; the
@@ -33,8 +34,9 @@ Use this to resolve the target agent's main \`model\` and \`credential\`.
   \`config.webSearch\` unchanged, including its credential, even if the new
   model supports native search. Switch fallback search to native only when the
   user explicitly asks for native/provider web search.
-- For every other provider, web search requires fallback search: call
-  \`ask_credential\`, then use \`provider: "brave"\` or \`provider: "searxng"\`.
+- For every provider other than OpenAI or Anthropic, web search requires
+  fallback search: call \`ask_credential\`, then use \`provider: "brave"\` or
+  \`provider: "searxng"\`.
 - If the user explicitly asks for Brave or SearXNG, keep that provider even
   when the selected model also supports native search.
 - If \`resolve_llm\` reports missing or ambiguous credentials/provider, call \`ask_llm\`.

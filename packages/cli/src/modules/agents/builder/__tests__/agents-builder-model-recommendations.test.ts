@@ -131,8 +131,9 @@ describe('builder model recommendations', () => {
 			'When changing models, preserve existing Brave or SearXNG\n  `config.webSearch` unchanged',
 		);
 		expect(prompt).toContain(
-			'use native web search by default only for\n  fresh agents or agents with no existing `config.webSearch`',
+			'Only OpenAI and Anthropic models support native web search. Use native web\n  search by default for those providers only',
 		);
+		expect(prompt).toContain('For every provider other than OpenAI or Anthropic');
 		expect(prompt).toContain(
 			'Model-only changes must preserve existing Brave or SearXNG `config.webSearch`.',
 		);

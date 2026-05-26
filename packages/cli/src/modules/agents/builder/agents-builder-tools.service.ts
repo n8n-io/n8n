@@ -62,6 +62,25 @@ function rejectIfEmptyInstructions(
 	return null;
 }
 
+function rejectIfUnsupportedNativeWebSearch(
+	config: AgentJsonConfig,
+): { errors: ConfigValidationError[] } | null {
+	const webSearch = config.config?.webSearch;
+	const requestsNativeWebSearch =
+		webSearch?.enabled === true &&
+		(webSearch.provider === undefined || webSearch.provider === 'native');
+	if (!requestsNativeWebSearch || hasNativeWebSearchProvider(config.model)) return null;
+	return {
+		errors: [
+			{
+				path: '/config/webSearch/provider',
+				message:
+					'Native web search is only supported for Anthropic and OpenAI models. Use Brave or SearXNG fallback web search for this model.',
+			},
+		],
+	};
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -241,6 +260,10 @@ export class AgentsBuilderToolsService {
 					if (emptyInstructions) {
 						return { ok: false, errors: emptyInstructions.errors };
 					}
+					const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
+					if (unsupportedNativeWebSearch) {
+						return { ok: false, errors: unsupportedNativeWebSearch.errors };
+					}
 					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
 					try {
 						const result = await this.agentsService.updateConfig(
@@ -342,6 +365,10 @@ export class AgentsBuilderToolsService {
 					const emptyInstructions = rejectIfEmptyInstructions(zodResult.data);
 					if (emptyInstructions) {
 						return { ok: false, stage: 'schema', errors: emptyInstructions.errors };
+					}
+					const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
+					if (unsupportedNativeWebSearch) {
+						return { ok: false, stage: 'schema', errors: unsupportedNativeWebSearch.errors };
 					}
 					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
 

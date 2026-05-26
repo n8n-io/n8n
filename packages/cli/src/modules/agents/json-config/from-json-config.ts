@@ -151,7 +151,7 @@ function buildFallbackWebSearchTool(
 		name: WEB_SEARCH_TOOL_NAME,
 		description: 'Search the web for current information.',
 		systemInstruction:
-			'Use web_search when current, recent, or externally verifiable information is needed.',
+			'Before using web_search, choose the smallest search plan that can answer the user. Start with one broad, high-signal query. After seeing results, decide whether a narrower follow-up is necessary. Do not launch multiple searches in parallel unless the user asked for deep research or comparison across independent topics.',
 		inputSchema: WEB_SEARCH_INPUT_SCHEMA,
 		handler: async (input) => {
 			const args = WEB_SEARCH_INPUT_SCHEMA.parse(input);

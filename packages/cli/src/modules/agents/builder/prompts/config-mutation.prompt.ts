@@ -70,9 +70,11 @@ Use \`patch_config\` with:
 
 - Thinking lives under \`config.thinking\`.
 - Web search lives under \`config.webSearch\`.
-- For Anthropic and OpenAI native search, set
+- Only OpenAI and Anthropic models support native web search. For those models, set
   \`config.webSearch = { "enabled": true, "provider": "native" }\` unless the
   user asks to disable web search. Omitting \`provider\` also means native.
+- For every other provider, never use \`provider: "native"\` or omit
+  \`provider\` for enabled web search.
 - For Brave or SearXNG search, call \`ask_credential\`, then set
   \`config.webSearch = { "enabled": true, "provider": "brave" | "searxng", "credential": "<credentialId>" }\`.
 - Brave and SearXNG remain fallback tools even when the model provider also supports native search.

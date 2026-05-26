@@ -294,7 +294,7 @@ describe('AgentsBuilderToolsService', () => {
 			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
 		});
 
-		it('write_config removes stale native web search tools for unsupported providers', async () => {
+		it('write_config rejects native web search for unsupported providers', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
 			const updatedConfig: AgentJsonConfig = {
@@ -306,19 +306,9 @@ describe('AgentsBuilderToolsService', () => {
 					'openai.image_generation': {},
 				},
 			};
-			const normalizedConfig = {
-				...updatedConfig,
-				config: { toolCallConcurrency: 2 },
-				providerTools: { 'openai.image_generation': {} },
-			};
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
-			agentsService.updateConfig.mockResolvedValue({
-				config: normalizedConfig,
-				updatedAt: '2026-01-02T00:00:00.000Z',
-				versionId: 'v2',
-			});
 
-			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
 					json: JSON.stringify(updatedConfig),
@@ -326,7 +316,17 @@ describe('AgentsBuilderToolsService', () => {
 				ctx,
 			);
 
-			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
+			expect(result).toEqual({
+				ok: false,
+				errors: [
+					{
+						path: '/config/webSearch/provider',
+						message:
+							'Native web search is only supported for Anthropic and OpenAI models. Use Brave or SearXNG fallback web search for this model.',
+					},
+				],
+			});
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
 		});
 
 		it('write_config preserves fallback web search config for unsupported providers', async () => {

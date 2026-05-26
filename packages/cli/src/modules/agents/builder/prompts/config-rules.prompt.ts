@@ -49,10 +49,11 @@ export function getConfigRulesSection(): string {
 - \`memory.storage\` must be "n8n"; \`memory.lastMessages\` defaults to 50.
 - \`memory.episodicMemory\` requires \`ask_credential\` with
   \`credentialType: "openAiApi"\`.
-- Web search lives under \`config.webSearch\`. For Anthropic/OpenAI native search,
-  use \`{ "enabled": true, "provider": "native" }\` or omit \`provider\`. For Brave
-  or SearXNG, use \`provider: "brave"\` or \`provider: "searxng"\` with a credential,
-  even if the model also supports native search. Never write \`{ "enabled": true }\`
+- Web search lives under \`config.webSearch\`. Only OpenAI and Anthropic models
+  support native web search; for those providers, use
+  \`{ "enabled": true, "provider": "native" }\` or omit \`provider\`. Every
+  other provider requires fallback search with \`provider: "brave"\` or
+  \`provider: "searxng"\` and a credential. Never write \`{ "enabled": true }\`
   alone for fallback search. Use exact \`ask_credential\` types:
   \`braveSearchApi\` for Brave and \`searXngApi\` for SearXNG.
 - Preserve existing Brave/SearXNG \`config.webSearch\` on model switches unless
