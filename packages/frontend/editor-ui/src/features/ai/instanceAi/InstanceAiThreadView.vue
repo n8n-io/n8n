@@ -5,6 +5,7 @@ import {
 	onMounted,
 	onUnmounted,
 	provide,
+	reactive,
 	ref,
 	useTemplateRef,
 	watch,
@@ -140,7 +141,7 @@ provide('openDataTablePreview', preview.openDataTablePreview);
 
 // --- Plan edit mode ---
 const activePlanEdit = ref<PlanEditContext | null>(null);
-const updatingPlanRequestIds = ref(new Set<string>());
+const updatingPlanRequestIds = reactive(new Set<string>());
 
 function startPlanEdit(context: PlanEditContext): void {
 	activePlanEdit.value = context;
@@ -152,16 +153,11 @@ function cancelPlanEdit(): void {
 }
 
 function markPlanUpdatePending(requestId: string): void {
-	const next = new Set(updatingPlanRequestIds.value);
-	next.add(requestId);
-	updatingPlanRequestIds.value = next;
+	updatingPlanRequestIds.add(requestId);
 }
 
 function clearPlanUpdatePending(requestId: string): void {
-	if (!updatingPlanRequestIds.value.has(requestId)) return;
-	const next = new Set(updatingPlanRequestIds.value);
-	next.delete(requestId);
-	updatingPlanRequestIds.value = next;
+	updatingPlanRequestIds.delete(requestId);
 }
 
 provide(PlanEditControllerKey, {
@@ -176,8 +172,8 @@ provide(PlanEditControllerKey, {
 watch(
 	() => thread.isStreaming,
 	(isStreaming) => {
-		if (!isStreaming && updatingPlanRequestIds.value.size > 0) {
-			updatingPlanRequestIds.value = new Set();
+		if (!isStreaming && updatingPlanRequestIds.size > 0) {
+			updatingPlanRequestIds.clear();
 		}
 	},
 );

@@ -163,7 +163,7 @@ function isPlanReviewUpdating(tc: InstanceAiToolCallState): boolean {
 	return Boolean(
 		requestId &&
 			getPlanReviewStatus(tc) === 'changes-requested' &&
-			(planEditController?.updatingPlanRequestIds.value.has(requestId) || thread.isStreaming),
+			(planEditController?.updatingPlanRequestIds.has(requestId) || thread.isStreaming),
 	);
 }
 

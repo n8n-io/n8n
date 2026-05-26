@@ -8,7 +8,7 @@ export interface PlanEditContext {
 
 export interface PlanEditController {
 	activePlanEdit: Ref<PlanEditContext | null>;
-	updatingPlanRequestIds: Ref<Set<string>>;
+	updatingPlanRequestIds: ReadonlySet<string>;
 	startPlanEdit: (context: PlanEditContext) => void;
 	cancelPlanEdit: () => void;
 	markPlanUpdatePending: (requestId: string) => void;
