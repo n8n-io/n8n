@@ -20,16 +20,12 @@ function isError(status: ExecutionStatus): boolean {
 	return status === 'error' || status === 'crashed';
 }
 
-type TrackedWorkflowSpan = {
-	span: Span;
-};
-
-type TrackedNodeSpan = { span: Span };
+type TrackedSpan = { span: Span };
 
 @Service()
 export class ExecutionLevelTracer {
-	private readonly activeWorkflowSpans = new Map<string, TrackedWorkflowSpan>();
-	private readonly activeNodeSpansByExecutionId = new Map<string, Map<string, TrackedNodeSpan>>();
+	private readonly activeWorkflowSpans = new Map<string, TrackedSpan>();
+	private readonly activeNodeSpansByExecutionId = new Map<string, Map<string, TrackedSpan>>();
 	private readonly tracer = trace.getTracer(TRACER_NAME);
 
 	constructor(
