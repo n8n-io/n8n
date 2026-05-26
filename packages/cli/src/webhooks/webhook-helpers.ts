@@ -956,15 +956,13 @@ export async function executeWebhook(
 		}
 		return executionId;
 	} catch (e) {
-		if (!(e instanceof UnprocessableRequestError)) {
+		let error: Error;
+		if (e instanceof UnprocessableRequestError) {
+			error = e;
+		} else {
 			Container.get(ErrorReporter).error(e, { executionId });
+			error = new OperationalError('There was a problem executing the workflow', { cause: e });
 		}
-		const error =
-			e instanceof UnprocessableRequestError
-				? e
-				: new OperationalError('There was a problem executing the workflow', {
-						cause: e,
-					});
 		if (didSendResponse) throw error;
 		responseCallback(error, {});
 		return;
