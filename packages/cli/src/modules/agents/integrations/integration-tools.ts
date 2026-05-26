@@ -28,6 +28,7 @@ export interface IntegrationMessageContext {
 	target: IntegrationMessageTarget;
 	messageId?: string;
 	interactingUserId?: string;
+	agentUserId?: string;
 	subject?: IntegrationMessageSubject;
 	updatedAt: string;
 }
@@ -723,7 +724,7 @@ function buildActionInputSchema(actions: IntegrationAction[]) {
 
 const CONTEXT_QUERY_DESCRIPTIONS = {
 	get_current_message_context:
-		'get_current_message_context: no input. Returns the latest place this agent communicated in this thread.',
+		'get_current_message_context: no input. Returns the latest place this agent communicated in this thread. For Slack, context.agentUserId is the bot user ID for this agent; do not look it up as another user.',
 	get_current_subject:
 		'get_current_subject: no input. Returns the subject of the latest message context, such as a Linear issue, when available.',
 	get_current_user:
@@ -1249,9 +1250,15 @@ function withPreviousSubject(
 	context: IntegrationMessageContext,
 	previousContext: IntegrationMessageContext | undefined,
 ): IntegrationMessageContext {
-	if (context.subject || !previousContext?.subject) return context;
+	if (!previousContext) return context;
 	if (context.integrationConnectionId !== previousContext.integrationConnectionId) return context;
-	return { ...context, subject: previousContext.subject };
+	return {
+		...context,
+		...(!context.subject && previousContext.subject ? { subject: previousContext.subject } : {}),
+		...(!context.agentUserId && previousContext.agentUserId
+			? { agentUserId: previousContext.agentUserId }
+			: {}),
+	};
 }
 
 function extractSuccessfulMessageContext(result: unknown): IntegrationMessageContext | undefined {
@@ -1266,6 +1273,7 @@ function isIntegrationMessageContext(value: unknown): value is IntegrationMessag
 		typeof value.integrationConnectionId === 'string' &&
 		typeof value.platform === 'string' &&
 		isPlainRecord(value.target) &&
+		(value.agentUserId === undefined || typeof value.agentUserId === 'string') &&
 		typeof value.updatedAt === 'string'
 	);
 }

@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import { jsonParse } from 'n8n-workflow';
 
 import { AgentResourceRepository } from '../repositories/agent-resource.repository';
 import { AgentThreadRepository } from '../repositories/agent-thread.repository';
@@ -15,13 +16,13 @@ const MESSAGE_CONTEXT_METADATA_KEY = 'currentMessageContext';
 @Service()
 export class IntegrationMessageContextService implements IntegrationMessageContextStore {
 	constructor(
-		private readonly resourceRepository: AgentResourceRepository,
 		private readonly threadRepository: AgentThreadRepository,
+		private readonly resourceRepository: AgentResourceRepository,
 	) {}
 
 	async getLatest(threadId: string): Promise<IntegrationMessageContext | null> {
 		const thread = await this.threadRepository.findOneBy({ id: threadId });
-		const value = this.parseMetadata(thread?.metadata)?.[MESSAGE_CONTEXT_METADATA_KEY];
+		const value = this.parseMetadata(thread?.metadata)[MESSAGE_CONTEXT_METADATA_KEY];
 		return isIntegrationMessageContext(value) ? value : null;
 	}
 
@@ -65,11 +66,16 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 	private parseMetadata(value: string | null | undefined): Record<string, unknown> {
 		if (!value) return {};
 		try {
-			return JSON.parse(value) as Record<string, unknown>;
+			const parsed = jsonParse<unknown>(value);
+			return isRecord(parsed) ? parsed : {};
 		} catch {
 			return {};
 		}
 	}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 export function isIntegrationMessageContext(value: unknown): value is IntegrationMessageContext {
@@ -81,6 +87,7 @@ export function isIntegrationMessageContext(value: unknown): value is Integratio
 		isIntegrationMessageTarget(context.target) &&
 		(context.messageId === undefined || typeof context.messageId === 'string') &&
 		(context.interactingUserId === undefined || typeof context.interactingUserId === 'string') &&
+		(context.agentUserId === undefined || typeof context.agentUserId === 'string') &&
 		(context.subject === undefined || isIntegrationMessageSubject(context.subject)) &&
 		typeof context.updatedAt === 'string'
 	);

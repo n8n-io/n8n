@@ -137,7 +137,7 @@ describe('SlackAppSetupService', () => {
 					messages_tab_read_only_enabled: boolean;
 				};
 			};
-			oauth_config: { redirect_urls: string[] };
+			oauth_config: { redirect_urls: string[]; scopes: { bot: string[] } };
 			settings: {
 				event_subscriptions: { request_url: string; bot_events: string[] };
 				interactivity: { is_enabled: boolean; request_url: string };
@@ -155,11 +155,18 @@ describe('SlackAppSetupService', () => {
 			messages_tab_enabled: true,
 			messages_tab_read_only_enabled: false,
 		});
+		expect(manifest.oauth_config.scopes.bot).toEqual(
+			expect.arrayContaining(['channels:history', 'groups:history', 'im:history', 'mpim:history']),
+		);
 		expect(manifest.settings.event_subscriptions.request_url).toBe(webhookUrl);
 		expect(manifest.settings.event_subscriptions.bot_events).toEqual([
 			'app_mention',
+			'assistant_thread_started',
 			'assistant_thread_context_changed',
+			'message.channels',
+			'message.groups',
 			'message.im',
+			'message.mpim',
 		]);
 		expect(manifest.settings.interactivity).toEqual({
 			is_enabled: true,

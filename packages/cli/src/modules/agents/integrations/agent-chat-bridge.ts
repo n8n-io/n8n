@@ -19,6 +19,25 @@ import {
 import { type InternalThread, type TextEndFn, type TextYieldFn, toInternalThreadId } from './types';
 import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 
+interface PlatformAgentContext {
+	agentUserId?: string;
+}
+
+interface SlackThreadContext {
+	channelId: string;
+	threadTs: string;
+	hasRealThreadTs: boolean;
+}
+
+interface SlackAssistantStatusAdapter {
+	setAssistantStatus(
+		channelId: string,
+		threadTs: string,
+		status: string,
+		loadingMessages?: string[],
+	): Promise<void>;
+}
+
 interface AgentExecutor {
 	executeForChatPublished(config: {
 		agentId: string;
@@ -37,6 +56,9 @@ interface AgentExecutor {
 		integrationType?: string;
 	}): AsyncGenerator<StreamChunk>;
 }
+
+const SLACK_THINKING_STATUS = 'Thinking...';
+const SLACK_STATUS_RETRY_DELAY_MS = 750;
 
 function isIntegrationActionSuspendPayload(value: unknown): boolean {
 	return (
@@ -268,21 +290,27 @@ export class AgentChatBridge {
 	// ---------------------------------------------------------------------------
 
 	private async executeAndStream(thread: Thread, message: Message): Promise<void> {
-		const text = message.text?.trim();
+		const platformAgentContext = this.getPlatformAgentContext();
+		const text = this.prepareInboundText(message.text, platformAgentContext).trim();
 		if (!text) return;
 
 		const platformThreadId = this.resolvePlatformThreadId(thread);
 		const threadId = this.toAgentThreadId(platformThreadId);
+		const slackThreadContext = this.getSlackThreadContext(message);
+		const useNativeSlackThreadFeatures =
+			this.integration.type !== 'slack' || slackThreadContext?.hasRealThreadTs === true;
+		const statusRetry = new AbortController();
 		// startThinkingStatus (Slack assistant.threads.setStatus) and the lazy
 		// `message.subject` fetch are both remote round-trips on independent
 		// resources — run them concurrently.
 		const [, subject] = await Promise.all([
-			this.startThinkingStatus(thread),
+			this.startThinkingStatus(thread, slackThreadContext, statusRetry.signal),
 			this.resolveMessageSubject(message),
 		]);
 		await this.updateLatestMessageContext(threadId.id, message.author.userId, thread, {
 			messageId: message.id,
 			interactingUserId: message.author.userId,
+			...platformAgentContext,
 			subject,
 		});
 		// threadId.id is agent-prefixed for observation storage; resourceId keeps
@@ -299,7 +327,13 @@ export class AgentChatBridge {
 			integrationType: this.integration.type,
 		});
 
-		await this.consumeStream(stream, thread);
+		try {
+			await this.consumeStream(stream, thread, {
+				forceBuffered: this.integration.type === 'slack' && !useNativeSlackThreadFeatures,
+			});
+		} finally {
+			statusRetry.abort();
+		}
 	}
 
 	// ---------------------------------------------------------------------------
@@ -318,8 +352,12 @@ export class AgentChatBridge {
 	 * In both strategies, non-text chunks (`tool-call-suspended`, `message`,
 	 * `error`) flush any pending text first, then get handled in order.
 	 */
-	private async consumeStream(stream: AsyncGenerator<StreamChunk>, thread: Thread): Promise<void> {
-		if (this.disableStreaming) {
+	private async consumeStream(
+		stream: AsyncGenerator<StreamChunk>,
+		thread: Thread,
+		options: { forceBuffered?: boolean } = {},
+	): Promise<void> {
+		if (this.disableStreaming || options.forceBuffered) {
 			await this.consumeStreamBuffered(stream, thread);
 			return;
 		}
@@ -870,11 +908,20 @@ export class AgentChatBridge {
 		}
 	}
 
-	private async startThinkingStatus(thread: Thread<unknown, unknown>): Promise<void> {
+	private async startThinkingStatus(
+		thread: Thread<unknown, unknown>,
+		slackThreadContext?: SlackThreadContext,
+		statusRetrySignal?: AbortSignal,
+	): Promise<void> {
 		if (this.integration.type !== 'slack') return;
 
+		if (slackThreadContext && !slackThreadContext.hasRealThreadTs) {
+			this.setSlackAssistantStatus(slackThreadContext, statusRetrySignal);
+			return;
+		}
+
 		try {
-			await thread.startTyping('Thinking...');
+			await thread.startTyping(SLACK_THINKING_STATUS);
 		} catch (error) {
 			this.logger.warn('[AgentChatBridge] Failed to set Slack assistant status', {
 				agentId: this.agentId,
@@ -884,6 +931,87 @@ export class AgentChatBridge {
 		}
 	}
 
+	private setSlackAssistantStatus(
+		context: SlackThreadContext,
+		statusRetrySignal?: AbortSignal,
+	): void {
+		const adapter = this.getSlackAssistantStatusAdapter();
+		if (!adapter) return;
+
+		void this.setSlackAssistantStatusWithRetry(adapter, context, statusRetrySignal);
+	}
+
+	private async setSlackAssistantStatusWithRetry(
+		adapter: SlackAssistantStatusAdapter,
+		context: SlackThreadContext,
+		statusRetrySignal?: AbortSignal,
+	): Promise<void> {
+		try {
+			await adapter.setAssistantStatus(context.channelId, context.threadTs, SLACK_THINKING_STATUS, [
+				SLACK_THINKING_STATUS,
+			]);
+			return;
+		} catch (error) {
+			if (getSlackErrorCode(error) !== 'invalid_thread_ts') {
+				this.logger.warn('[AgentChatBridge] Failed to set Slack assistant status', {
+					agentId: this.agentId,
+					channelId: context.channelId,
+					threadTs: context.threadTs,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				return;
+			}
+		}
+
+		if (!(await sleep(SLACK_STATUS_RETRY_DELAY_MS, statusRetrySignal))) return;
+
+		try {
+			await adapter.setAssistantStatus(context.channelId, context.threadTs, SLACK_THINKING_STATUS, [
+				SLACK_THINKING_STATUS,
+			]);
+		} catch (error) {
+			const errorCode = getSlackErrorCode(error);
+			const logPayload = {
+				agentId: this.agentId,
+				channelId: context.channelId,
+				threadTs: context.threadTs,
+				error: error instanceof Error ? error.message : String(error),
+				...(errorCode ? { errorCode } : {}),
+			};
+			if (errorCode === 'invalid_thread_ts') {
+				this.logger.debug(
+					'[AgentChatBridge] Slack assistant status unavailable for thread',
+					logPayload,
+				);
+				return;
+			}
+			this.logger.warn('[AgentChatBridge] Failed to set Slack assistant status', logPayload);
+		}
+	}
+
+	private getSlackThreadContext(message: Message<unknown>): SlackThreadContext | undefined {
+		if (this.integration.type !== 'slack') return undefined;
+
+		const raw = message.raw;
+		if (!isRecord(raw)) return undefined;
+
+		const channelId = stringValue(raw.channel);
+		const realThreadTs = stringValue(raw.thread_ts);
+		const threadTs = realThreadTs ?? stringValue(raw.ts);
+		if (!channelId || !threadTs) return undefined;
+
+		return {
+			channelId,
+			threadTs,
+			hasRealThreadTs: realThreadTs !== undefined,
+		};
+	}
+
+	private getSlackAssistantStatusAdapter(): SlackAssistantStatusAdapter | undefined {
+		const adapter = this.chat.getAdapter('slack');
+		return isSlackAssistantStatusAdapter(adapter) ? adapter : undefined;
+	}
+
 	private async updateLatestMessageContext(
 		threadId: string,
 		resourceId: string,
@@ -891,6 +1019,7 @@ export class AgentChatBridge {
 		options: {
 			messageId?: string;
 			interactingUserId?: string;
+			agentUserId?: string;
 			subject?: IntegrationMessageSubject;
 		} = {},
 	): Promise<IntegrationMessageContext | undefined> {
@@ -898,6 +1027,7 @@ export class AgentChatBridge {
 
 		const integrationConnectionId = buildIntegrationConnectionId(this.integration);
 		const previousContext = await this.getPreviousContext(threadId, integrationConnectionId);
+		const agentUserId = options.agentUserId ?? previousContext?.agentUserId;
 		const context: IntegrationMessageContext = {
 			integrationConnectionId,
 			platform: this.integration.type,
@@ -908,6 +1038,7 @@ export class AgentChatBridge {
 			},
 			...(options.messageId ? { messageId: options.messageId } : {}),
 			...(options.interactingUserId ? { interactingUserId: options.interactingUserId } : {}),
+			...(agentUserId ? { agentUserId } : {}),
 			...(options.subject ? { subject: options.subject } : {}),
 			...(!options.subject && previousContext?.subject ? { subject: previousContext.subject } : {}),
 			updatedAt: new Date().toISOString(),
@@ -924,6 +1055,20 @@ export class AgentChatBridge {
 			});
 			return undefined;
 		}
+	}
+
+	private getPlatformAgentContext(): PlatformAgentContext {
+		if (this.integration.type !== 'slack') return {};
+		const adapter = this.chat.getAdapter(this.integration.type);
+		if (!isRecord(adapter)) return {};
+		const agentUserId = stringValue(adapter.botUserId);
+		return agentUserId ? { agentUserId } : {};
+	}
+
+	private prepareInboundText(text: string | undefined, context: PlatformAgentContext): string {
+		const trimmed = text?.trim() ?? '';
+		if (this.integration.type !== 'slack' || !context.agentUserId) return trimmed;
+		return stripSlackSelfMention(trimmed, context.agentUserId);
 	}
 
 	private async getPreviousContext(
@@ -991,6 +1136,7 @@ export class AgentChatBridge {
 		await this.updateLatestMessageContext(threadId.id, event.user.userId, thread, {
 			messageId: event.messageId,
 			interactingUserId: event.user.userId,
+			...this.getPlatformAgentContext(),
 		});
 
 		await this.cleanUpBeforeResume(event);
@@ -1032,4 +1178,52 @@ export class AgentChatBridge {
 			});
 		}
 	}
+}
+
+function stripSlackSelfMention(text: string, userId: string): string {
+	const escapedUserId = escapeRegExp(userId);
+	return text
+		.replace(new RegExp(`(^|\\s)<@!?${escapedUserId}(?:\\|[^>]+)?>`, 'gi'), '$1')
+		.replace(new RegExp(`(^|\\s)@${escapedUserId}\\b`, 'gi'), '$1')
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isSlackAssistantStatusAdapter(value: unknown): value is SlackAssistantStatusAdapter {
+	return isRecord(value) && typeof value.setAssistantStatus === 'function';
+}
+
+function stringValue(value: unknown): string | undefined {
+	return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function getSlackErrorCode(error: unknown): string | undefined {
+	if (!isRecord(error)) return undefined;
+	const data = error.data;
+	if (!isRecord(data)) return undefined;
+	return stringValue(data.error);
+}
+
+async function sleep(ms: number, signal?: AbortSignal): Promise<boolean> {
+	if (signal?.aborted) return false;
+	return await new Promise((resolve) => {
+		const timeout = setTimeout(() => {
+			signal?.removeEventListener('abort', abort);
+			resolve(true);
+		}, ms);
+		const abort = () => {
+			clearTimeout(timeout);
+			signal?.removeEventListener('abort', abort);
+			resolve(false);
+		};
+		signal?.addEventListener('abort', abort, { once: true });
+	});
 }

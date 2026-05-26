@@ -347,6 +347,13 @@ export class AgentsService {
 				label: i.displayLabel,
 				icon: i.displayIcon,
 				credentialTypes: i.credentialTypes,
+				...(i.builderGuidance
+					? {
+							capabilities: i.builderGuidance.capabilities,
+							useIntegrationWhen: i.builderGuidance.useIntegrationWhen,
+							useNodeToolWhen: i.builderGuidance.useNodeToolWhen,
+						}
+					: {}),
 			}));
 	}
 

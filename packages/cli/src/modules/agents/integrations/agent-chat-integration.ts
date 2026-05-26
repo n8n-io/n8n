@@ -28,6 +28,12 @@ export interface UnauthenticatedWebhookResponse {
 	body: unknown;
 }
 
+export interface AgentChatIntegrationBuilderGuidance {
+	capabilities: string[];
+	useIntegrationWhen: string[];
+	useNodeToolWhen: string[];
+}
+
 /**
  * A chat platform (Slack, Telegram, …) that an agent can be connected to.
  *
@@ -55,6 +61,13 @@ export abstract class AgentChatIntegration {
 
 	/** Lucide icon name (from the shared icon set) for the integration card. */
 	abstract readonly displayIcon: string;
+
+	/**
+	 * Builder-facing guidance returned by `list_integration_types`.
+	 * This helps the builder choose between connecting the agent to a chat
+	 * integration and adding a regular node/workflow tool for the same product.
+	 */
+	readonly builderGuidance?: AgentChatIntegrationBuilderGuidance;
 
 	/**
 	 * Component types this platform supports in rich_interaction cards.

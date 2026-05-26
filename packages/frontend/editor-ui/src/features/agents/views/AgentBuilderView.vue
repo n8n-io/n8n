@@ -115,17 +115,16 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string>>>(() =>
 	})),
 );
 
-const executionsCount = computed(() => sessionsStore.threads.length);
-const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
-	executionsCount,
-});
-
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const isChatFullWidth = ref(false);
+const executionsCount = computed(() => sessionsStore.threads.length);
+const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
+	executionsCount,
+});
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
 
@@ -203,7 +202,10 @@ async function fetchAgent(
 	agentName.value = data.name;
 }
 
-async function refreshAgentAfterIntegrationChange(targetProjectId: string, targetAgentId: string) {
+async function refreshAgentAfterIntegrationChange(
+	targetProjectId: string = projectId.value,
+	targetAgentId: string = agentId.value,
+) {
 	if (projectId.value !== targetProjectId || agentId.value !== targetAgentId) return;
 	await Promise.all([
 		fetchAgent(targetProjectId, targetAgentId),
@@ -914,7 +916,7 @@ function onSwitchAgent(nextAgentId: string) {
 					@update:full-width="isChatFullWidth = $event"
 					@trigger-added="onTriggerAdded"
 					@agent-published="onPublished"
-					@agent-changed="fetchAgent"
+					@agent-changed="refreshAgentAfterIntegrationChange"
 				/>
 			</N8nResizeWrapper>
 

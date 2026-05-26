@@ -23,7 +23,11 @@ function makeRouter(): Router {
 	return createRouter({
 		history: createMemoryHistory(),
 		routes: [
-			{ path: '/workflow/:name', name: 'NodeViewExisting', component: { template: '<div/>' } },
+			{
+				path: '/workflow/:workflowId',
+				name: 'NodeViewExisting',
+				component: { template: '<div/>' },
+			},
 		],
 	});
 }
@@ -66,6 +70,37 @@ describe('SessionTimelineTable', () => {
 			visibleKinds: new Set<string>(),
 		});
 		expect(w.findAll('[data-test-id="timeline-row"]')).toHaveLength(4);
+	});
+
+	it('renders workflow and rich-interaction rows from the same turn', () => {
+		const w = mountTable({
+			items: [
+				{
+					kind: 'workflow',
+					executionId: 'e1',
+					timestamp: 1000,
+					endTimestamp: 1500,
+					toolName: 'giphy-gif-search',
+					workflowId: 'wf-1',
+					workflowName: 'Giphy GIF Search',
+					workflowExecutionId: '234',
+				},
+				{
+					kind: 'tool',
+					executionId: 'e1',
+					timestamp: 2000,
+					endTimestamp: 2050,
+					toolName: 'rich_interaction',
+					toolOutput: { displayOnly: true },
+				},
+			],
+			selectedIndex: null,
+			visibleKinds: new Set<string>(),
+		});
+
+		expect(w.findAll('[data-test-id="timeline-row"]')).toHaveLength(2);
+		expect(w.text()).toContain('Giphy GIF Search');
+		expect(w.text()).toContain('Card sent to user');
 	});
 
 	it('hides items whose filterKey is not in visibleKinds', () => {

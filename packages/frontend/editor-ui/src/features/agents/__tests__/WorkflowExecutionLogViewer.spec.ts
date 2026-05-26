@@ -72,7 +72,7 @@ function makeRouter(): Router {
 		history: createMemoryHistory(),
 		routes: [
 			{
-				path: '/workflow/:name/executions/:executionId',
+				path: '/workflow/:workflowId/executions/:executionId',
 				name: 'ExecutionPreview',
 				component: { template: '<div/>' },
 			},

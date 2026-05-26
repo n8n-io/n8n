@@ -63,7 +63,9 @@ Additional specialized builder guidance is available through runtime skills.
 Before these specialized tasks, call \`load_skill\` with
 \`{ "skillId": "<id>" }\` and follow the returned instructions.
 
-- \`agent-builder-integrations\`: schedule and chat integrations.
+- \`agent-builder-integrations\`: schedule and chat integrations. Use it before
+  deciding whether Slack, Linear, Telegram, or another external product should
+  be a chat integration/trigger or a node/workflow tool.
 - \`agent-builder-target-skills\`: creating skills for the target agent.
 
 Do not use \`create_skill\` for your own builder guidance. \`create_skill\`

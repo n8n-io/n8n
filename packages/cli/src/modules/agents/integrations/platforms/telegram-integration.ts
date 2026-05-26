@@ -1,3 +1,4 @@
+import { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { Thread, Author } from 'chat';
@@ -8,7 +9,6 @@ import { UnexpectedError } from 'n8n-workflow';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UrlService } from '@/services/url.service';
 
-import { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
 import type { SuspendComponent } from '../component-mapper';
@@ -39,6 +39,23 @@ export class TelegramIntegration extends AgentChatIntegration {
 	readonly displayLabel = 'Telegram';
 
 	readonly displayIcon = 'telegram';
+
+	readonly builderGuidance = {
+		capabilities: [
+			'Receive Telegram messages as agent triggers.',
+			'Respond in Telegram conversations and send direct Telegram messages.',
+			'Render Telegram-compatible rich interaction cards with buttons.',
+		],
+		useIntegrationWhen: [
+			'The agent should be chatted with from Telegram or act as a Telegram bot.',
+			'The agent needs to reply to Telegram users in the same conversation context.',
+			'The agent should send Telegram messages as the connected Telegram bot.',
+		],
+		useNodeToolWhen: [
+			'Telegram is only a backend API step and the agent does not need to be connected as a Telegram chat surface.',
+			'The request is a one-off Telegram operation from another trigger without ongoing Telegram conversation context.',
+		],
+	};
 
 	readonly supportedComponents = ['section', 'button', 'divider', 'fields'];
 
