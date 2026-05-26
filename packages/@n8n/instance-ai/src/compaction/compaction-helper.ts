@@ -1,4 +1,4 @@
-import { Agent } from '@mastra/core/agent';
+import { Agent, type AgentMessage, type ModelConfig as NativeModelConfig } from '@n8n/agents';
 
 import type { ModelConfig } from '../types';
 
@@ -38,23 +38,40 @@ export interface CompactionInput {
 	messageBatch: Array<{ role: string; text: string }>;
 }
 
+function extractAssistantText(messages: AgentMessage[]): string {
+	return messages
+		.filter((message) => 'role' in message && message.role === 'assistant')
+		.flatMap((message) => ('content' in message ? message.content : []))
+		.filter((part) => part.type === 'text')
+		.map((part) => part.text)
+		.join('');
+}
+
+function toNativeModelConfig(modelId: ModelConfig): NativeModelConfig {
+	if (typeof modelId === 'string') return modelId;
+
+	if ('id' in modelId && typeof modelId.id === 'string') {
+		const nativeConfig: Extract<NativeModelConfig, { id: string }> = { id: modelId.id };
+		if (modelId.apiKey !== undefined) nativeConfig.apiKey = modelId.apiKey;
+		if (modelId.url !== undefined) nativeConfig.url = modelId.url;
+		if (modelId.headers !== undefined) nativeConfig.headers = modelId.headers;
+		return nativeConfig;
+	}
+
+	throw new Error('Native compaction requires a native agents model config');
+}
+
 /**
  * Generate a compacted summary from a previous summary and a batch of messages.
- * Uses a lightweight Mastra Agent with no tools and no memory.
+ * Uses a lightweight native Agent with no tools and no memory.
  */
 export async function generateCompactionSummary(
 	modelId: ModelConfig,
 	input: CompactionInput,
 ): Promise<string> {
-	const agent = new Agent({
-		id: 'compaction-summarizer',
-		name: 'Compaction Summarizer',
-		instructions: {
-			role: 'system' as const,
-			content: COMPACTION_SYSTEM_PROMPT,
-		},
-		model: modelId,
-	});
+	const agent = new Agent('Compaction Summarizer')
+		.model(toNativeModelConfig(modelId))
+		.instructions(COMPACTION_SYSTEM_PROMPT);
 
 	const parts: string[] = [];
 
@@ -70,6 +87,6 @@ export async function generateCompactionSummary(
 
 	parts.push('Produce the updated summary now. Return only the five sections, nothing else.');
 
-	const result = await agent.generate(parts.join('\n\n'), { maxSteps: 1 });
-	return result.text;
+	const result = await agent.generate(parts.join('\n\n'), { maxIterations: 1 });
+	return extractAssistantText(result.messages);
 }

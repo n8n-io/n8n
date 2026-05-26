@@ -356,6 +356,7 @@ export function prepareExecutionData(
 	destinationNode?: IDestinationNode,
 	executionId?: string,
 	workflowData?: IWorkflowBase,
+	userId?: string,
 ): { runExecutionData: IRunExecutionData; pinData: IPinData | undefined } {
 	// Initialize the data of the webhook node
 	const nodeExecutionStack: IExecuteData[] = [
@@ -381,6 +382,7 @@ export function prepareExecutionData(
 		executionData: {
 			nodeExecutionStack,
 		},
+		...(executionMode === 'manual' && userId ? { manualData: { userId } } : {}),
 	});
 
 	if (destinationNode && runExecutionData.startData) {
@@ -535,6 +537,9 @@ export async function executeWebhook(
 					executionData: {
 						nodeExecutionStack,
 					},
+					...(executionMode === 'manual' && webhookData.userId
+						? { manualData: { userId: webhookData.userId } }
+						: {}),
 				});
 		}
 
@@ -647,6 +652,7 @@ export async function executeWebhook(
 			destinationNode,
 			executionId,
 			workflowData,
+			webhookData.userId,
 		);
 		runExecutionData = preparedRunExecutionData;
 
@@ -865,7 +871,7 @@ export async function executeWebhook(
 						runData.data.resultData.pinData = pinData;
 					}
 
-					const lastNodeTaskData = WorkflowHelpers.getDataLastExecutedNodeData(runData);
+					const lastNodeTaskData = WorkflowHelpers.getLastExecutedNodeData(runData);
 					if (runData.data.resultData.error || lastNodeTaskData?.error !== undefined) {
 						if (!didSendResponse) {
 							responseCallback(null, {

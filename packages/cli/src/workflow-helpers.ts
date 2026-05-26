@@ -55,11 +55,23 @@ export function validatePinDataSize(workflow: IWorkflowBase): void {
 }
 
 /**
- * Returns the data of the last executed node
+ * All runs of the last executed node, ordered by `executionIndex` (raw, no pinData substitution).
  */
-export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
-	const { runData, pinData = {} } = inputData.data.resultData;
-	const { lastNodeExecuted } = inputData.data.resultData;
+export function getLastExecutedNodeRuns(inputData: IRun): ITaskData[] {
+	const { runData, lastNodeExecuted } = inputData.data.resultData;
+	if (lastNodeExecuted === undefined) {
+		return [];
+	}
+	const runs = runData[lastNodeExecuted];
+	return runs?.toSorted((a, b) => (a.executionIndex ?? 0) - (b.executionIndex ?? 0)) ?? [];
+}
+
+/**
+ * Final-run output of the last executed node, with pinData substituted in manual mode.
+ */
+export function getLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
+	const { runData, lastNodeExecuted } = inputData.data.resultData;
+	const pinData = inputData.data.resultData.pinData ?? {};
 
 	if (lastNodeExecuted === undefined) {
 		return undefined;
@@ -121,6 +133,46 @@ export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeT
 			resolveNodeWebhookId(node, nodeType.description);
 		} catch {
 			// node type not found, skip
+		}
+	}
+}
+
+/**
+ * Validates nodeGroups: unique group names, all referenced node IDs exist,
+ * and each node belongs to at most one group.
+ * Note for frontend: Must be called after `addNodeIds` since nodes created via the API
+ * may not have IDs until that step assigns them.
+ */
+export function validateWorkflowNodeGroups(workflow: Pick<IWorkflowBase, 'nodes' | 'nodeGroups'>) {
+	const { nodeGroups, nodes } = workflow;
+	if (!nodeGroups || nodeGroups.length === 0) return;
+
+	const nodeIds = new Set(nodes.map((n) => n.id).filter(Boolean));
+	const seenGroupNames = new Set<string>();
+	const nodeToGroup = new Map<string, string>();
+
+	for (const group of nodeGroups) {
+		// Unique group names
+		if (seenGroupNames.has(group.name)) {
+			throw new BadRequestError(`Duplicate node group name "${group.name}".`);
+		}
+		seenGroupNames.add(group.name);
+
+		for (const nodeId of group.nodeIds) {
+			// All referenced nodes must exist
+			if (!nodeIds.has(nodeId)) {
+				throw new BadRequestError(
+					`Group "${group.name}" references node ID "${nodeId}" that does not exist in the workflow.`,
+				);
+			}
+			// A node can only belong to one group
+			const existingGroup = nodeToGroup.get(nodeId);
+			if (existingGroup) {
+				throw new BadRequestError(
+					`Node "${nodeId}" belongs to multiple groups: "${existingGroup}" and "${group.name}".`,
+				);
+			}
+			nodeToGroup.set(nodeId, group.name);
 		}
 	}
 }
@@ -371,7 +423,7 @@ export async function updateParentExecutionWithChildResults(
 	parentExecutionId: string,
 	subworkflowResults: IRun,
 ): Promise<void> {
-	const lastExecutedNodeData = getDataLastExecutedNodeData(subworkflowResults);
+	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
 	if (!lastExecutedNodeData?.data) return;
 	const parent = await executionRepository.findSingleExecution(parentExecutionId, {
 		includeData: true,

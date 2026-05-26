@@ -22,6 +22,10 @@ inputs:
     description: 'Command to execute for installing project dependencies. Leave empty to skip install step.'
     required: false
     default: 'pnpm install --frozen-lockfile'
+  cache-dependency-path:
+    description: 'Path(s) to the lockfile(s) used to compute the pnpm-store cache key. Scope this down (e.g. to `.github/scripts/pnpm-lock.yaml`) when only installing a subset, to avoid restoring the full workspace store.'
+    required: false
+    default: 'pnpm-lock.yaml'
 
 runs:
   using: 'composite'
@@ -29,11 +33,45 @@ runs:
     - name: Setup pnpm
       uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
 
+    # Cache the Node toolcache so setup-node skips the ~33s nodejs.org download
+    # on every subsequent job. First fresh runner pays the download; later jobs
+    # (including parallel E2E shards) hit the cache. Blacksmith transparently
+    # routes actions/cache through its S3 backend.
+    #
+    # The `x64.complete` sibling marker file must be cached alongside the
+    # toolchain — without it, setup-node's `tc.find` returns empty and the
+    # action re-downloads from nodejs.org. Re-downloads also keep the silent
+    # fall-through window open: errors during download/extract are swallowed,
+    # PATH is left untouched, and the runner image's baked-in Node 20.20.0
+    # quietly takes over. Caching the parent version dir captures the marker
+    # alongside the toolchain. Key bumped to v2 to invalidate stale entries.
+    - name: Restore Node.js Toolcache
+      if: runner.os == 'Linux' && runner.arch == 'X64'
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: /opt/hostedtoolcache/node/${{ inputs.node-version }}
+        key: node-toolcache-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.node-version }}
+
     - name: Setup Node.js
       uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
       with:
         node-version: ${{ inputs.node-version }}
         cache: 'pnpm'
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
+    # Fail fast if setup-node silently fell through to the runner's baked-in
+    # Node instead of activating the requested version.
+    # see: https://github.com/actions/setup-node/issues/1137
+    - name: Verify Node.js Version
+      shell: bash
+      env:
+        EXPECTED_NODE_VERSION: ${{ inputs.node-version }}
+      run: |
+        ACTUAL_NODE_VERSION="$(node --version)"
+        if [ "${ACTUAL_NODE_VERSION#v}" != "${EXPECTED_NODE_VERSION#v}" ]; then
+          echo "::error::setup-node did not activate Node ${EXPECTED_NODE_VERSION} (got ${ACTUAL_NODE_VERSION})"
+          exit 1
+        fi
 
     # To avoid setup-node cache failure.
     # see: https://github.com/actions/setup-node/issues/1137
@@ -54,8 +92,8 @@ runs:
 
     - name: Install Aikido SafeChain
       run: |
-        VERSION="1.5.1"
-        EXPECTED_SHA256="7c910fff717649c86cc8ca960e6c054d3734da2d660050e3bcfc54029e3b485b"
+        VERSION="1.5.3"
+        EXPECTED_SHA256="0107cbbbf90159379756157e902acae512d62ffbd174307e42c5fe9f266792d3"
         node .github/scripts/retry.mjs --attempts 3 --delay 10 -- \
           curl -fsSL -o install-safe-chain.sh "https://github.com/AikidoSec/safe-chain/releases/download/${VERSION}/install-safe-chain.sh"
         echo "${EXPECTED_SHA256}  install-safe-chain.sh" | sha256sum -c -
@@ -63,17 +101,48 @@ runs:
         rm install-safe-chain.sh
       shell: bash
 
+    # Capture pnpm's combined stdout+stderr through `tee` so the ERR_PNPM_* code
+    # and offending package survive even when `timeout` terminates the process
+    # group. Stderr-only capture misses the failure footer because pnpm's
+    # default reporter routes it through stdout; `--reporter=append-only` is
+    # set explicitly so we don't drift if pnpm changes its CI default again.
+    # `--loglevel=debug` and `DEBUG=pnpm:*` add registry/store/fetch traces.
+    # `SAFE_CHAIN_LOGGING=verbose` surfaces safe-chain's proxy decisions, which
+    # are otherwise buffered (and lost on failure) while pnpm is in flight.
+    # `${PIPESTATUS[0]}` preserves pnpm's real exit code through the pipe.
     - name: Install Dependencies
       if: ${{ inputs.install-command != '' }}
       env:
         INSTALL_COMMAND: ${{ inputs.install-command }}
+        INSTALL_LOG: ${{ runner.temp }}/pnpm-install.log
         SAFE_CHAIN_LOGGING: verbose
+        DEBUG: pnpm:*
+        # Skip the Electron binary download triggered by @n8n/local-gateway's
+        # postinstall. CI never runs the Electron app, but the ~150MB binary
+        # fetch fires on every install otherwise.
+        ELECTRON_SKIP_BINARY_DOWNLOAD: 1
       run: |
-        $INSTALL_COMMAND --reporter=append-only
+        set +o pipefail
+        timeout --kill-after=30s 300s $INSTALL_COMMAND \
+          --reporter=append-only --loglevel=debug 2>&1 | tee "$INSTALL_LOG"
+        rc=${PIPESTATUS[0]}
+        set -o pipefail
+        if [ $rc -ne 0 ]; then
+          echo "::group::pnpm install full output (captured)"
+          cat "$INSTALL_LOG" 2>/dev/null || echo "(no captured log)"
+          echo "::endgroup::"
+          case $rc in
+            124) echo "::error::pnpm install timed out after 300s (exit 124)" ;;
+            137) echo "::error::pnpm install received SIGKILL (exit 137 — likely OOM or kill-after timeout)" ;;
+          esac
+        fi
+        exit $rc
       shell: bash
 
     - name: Configure Turborepo Cache
-      uses: rharkor/caching-for-turbo@0abc2381e688c4d2832f0665a68a01c6e82f0d6c # v2.3.11
+      uses: rharkor/caching-for-turbo@5d14fba18e450c09393333cfd4242e8b3cb455a6 # v2.4.2
+      with:
+        server-port: 0
 
     - name: Setup Docker Builder for Docker Cache (Blacksmith)
       if: ${{ inputs.enable-docker-cache == 'true' && contains(runner.name, 'blacksmith') }}

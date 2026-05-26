@@ -197,7 +197,25 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	}
 }
 
+/**
+ * Register the agent's `targetResource` as a produced artifact when it carries
+ * a concrete resource id (e.g. a workflow-builder spawned to edit an existing
+ * workflow). Surfacing this at spawn time — before the first build-workflow
+ * tool result arrives — lets the artifacts panel show the workflow as soon as
+ * the sub-agent starts, instead of waiting for the first edit.
+ */
+function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections): void {
+	const target = node.targetResource;
+	if (!target?.id) return;
+	if (target.type !== 'workflow' && target.type !== 'data-table') return;
+
+	const existing = col.produced.get(target.id);
+	const name = optionalString(target.name) ?? existing?.name ?? 'Untitled';
+	recordProduced(col, { type: target.type, id: target.id, name });
+}
+
 function collectFromAgentNode(node: InstanceAiAgentNode, col: Collections): void {
+	extractFromTargetResource(node, col);
 	for (const tc of node.toolCalls) {
 		extractFromToolCall(tc, col);
 	}
