@@ -50,11 +50,15 @@ export class LiveWebhooks implements IWebhookManager {
 	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
 		const webhook = await this.findWebhook(path, httpMethod);
 
-		const nodes = await this.getWorkflowNodes(webhook.workflowId);
+		const workflowData = await this.workflowRepository.findOne({
+			where: { id: webhook.workflowId },
+			select: ['nodes'],
+		});
 
 		const isChatWebhookNode = (type: string, webhookId?: string) =>
 			type === CHAT_TRIGGER_NODE_TYPE && `${webhookId}/chat` === path;
 
+		const nodes = workflowData?.nodes;
 		const webhookNode = nodes?.find(
 			({ type, parameters, typeVersion, webhookId }) =>
 				(parameters?.path === path &&
@@ -98,27 +102,27 @@ export class LiveWebhooks implements IWebhookManager {
 			});
 		}
 
-		const { workflow: workflowEntity, version } = await this.loadWebhookExecutionData(
+		const { workflow: workflowData, version } = await this.loadWebhookExecutionData(
 			webhook.workflowId,
 		);
 		const { nodes, connections } = version;
 
-		// Use the published nodes/connections instead of the draft on the entity
-		// so any downstream code that spreads this object sees the right version.
-		const activeWorkflowData: IWorkflowBase = { ...workflowEntity, nodes, connections };
+		// Create a clean workflowData object with only activeVersion nodes/connections
+		// This prevents any downstream code from accidentally using the draft nodes
+		const activeWorkflowData: IWorkflowBase = { ...workflowData, nodes, connections };
 
 		const workflow = new Workflow({
 			id: webhook.workflowId,
-			name: workflowEntity.name,
+			name: workflowData.name,
 			nodes,
 			connections,
-			active: workflowEntity.activeVersionId !== null,
+			active: workflowData.activeVersionId !== null,
 			nodeTypes: this.nodeTypes,
-			staticData: workflowEntity.staticData,
-			settings: workflowEntity.settings,
+			staticData: workflowData.staticData,
+			settings: workflowData.settings,
 		});
 
-		const ownerProjectId = workflowEntity.shared?.find(
+		const ownerProjectId = workflowData.shared?.find(
 			(share) => share.role === 'workflow:owner',
 		)?.projectId;
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
@@ -158,7 +162,7 @@ export class LiveWebhooks implements IWebhookManager {
 				void WebhookHelpers.executeWebhook(
 					workflow,
 					webhookData,
-					activeWorkflowData,
+					activeWorkflowData, // Use activeWorkflowData instead of workflowData
 					workflowStartNode,
 					executionMode,
 					undefined,
@@ -178,20 +182,6 @@ export class LiveWebhooks implements IWebhookManager {
 			});
 		} finally {
 			await workflow.expression.releaseIsolate();
-		}
-	}
-
-	private async getWorkflowNodes(workflowId: string): Promise<INode[] | undefined> {
-		if (this.workflowsConfig.useWorkflowPublicationService) {
-			const publishedData =
-				await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
-			return publishedData?.publishedVersion.nodes;
-		} else {
-			const workflowData = await this.workflowRepository.findOne({
-				where: { id: workflowId },
-				select: ['nodes'],
-			});
-			return workflowData?.nodes;
 		}
 	}
 
