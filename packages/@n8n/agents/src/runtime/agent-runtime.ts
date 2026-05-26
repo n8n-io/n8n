@@ -2415,6 +2415,15 @@ export class AgentRuntime {
 			renderObservationLog(observations, {
 				renderTokenBudget: this.config.observationLog?.renderTokenBudget,
 			}) ?? undefined;
+		// Observations are stamped at observer run time, after the messages they
+		// observed are persisted, so the latest observation's createdAt is a safe
+		// upper bound on those messages' createdAt. Seeding the list's clock here
+		// keeps new live messages ordered after the observer cursor's
+		// lastObservedAt even when resource-filtered history did not surface them
+		// (e.g. resources sharing a thread on fast back-to-back runs).
+		if (observations.length > 0) {
+			list.seedLastCreatedAt(observations[observations.length - 1].createdAt.getTime());
+		}
 	}
 
 	/**
