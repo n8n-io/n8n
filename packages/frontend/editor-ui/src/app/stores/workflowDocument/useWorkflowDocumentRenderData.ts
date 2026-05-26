@@ -2,10 +2,7 @@ import {
 	useWorkflowDocumentStore,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import {
-	useWorkflowExecutionStateStore,
-	createWorkflowExecutionStateId,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 /**
  * Canvas render data accessor for a workflow document.
@@ -25,9 +22,7 @@ import {
  */
 export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocumentId) {
 	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
-	const executionStateStore = useWorkflowExecutionStateStore(
-		createWorkflowExecutionStateId(workflowDocumentStore.workflowId),
-	);
+	const executionStateStore = useWorkflowExecutionStateStore(workflowDocumentStore.workflowId);
 
 	return {
 		nodeInputsByNodeId: workflowDocumentStore.nodeInputsByNodeId,

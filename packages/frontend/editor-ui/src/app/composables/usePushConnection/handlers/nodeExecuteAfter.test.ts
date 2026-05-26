@@ -7,10 +7,7 @@ import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import { mock } from 'vitest-mock-extended';
 import type { Mocked } from 'vitest';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { createTestWorkflow, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 
@@ -41,7 +38,7 @@ describe('nodeExecuteAfter', () => {
 		workflowsStore = useWorkflowsStore();
 		workflowsStore.setWorkflowId('test-wf');
 
-		stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
+		stateStore = useWorkflowExecutionStateStore('test-wf');
 
 		executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
 		executionDataStore.setExecution(

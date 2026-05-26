@@ -11,10 +11,7 @@ import type { INodeUi } from '@/Interface';
 import ExecuteMessage from './ExecuteMessage.vue';
 import { CHAT_TRIGGER_NODE_TYPE, SETUP_CREDENTIALS_MODAL_KEY } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -140,9 +137,7 @@ describe('ExecuteMessage', () => {
 		Object.defineProperty(workflowsStore, 'workflowExecutionData', {
 			get: () => workflowExecutionDataRef,
 		});
-		const workflowExecutionState = useWorkflowExecutionStateStore(
-			createWorkflowExecutionStateId('test-workflow'),
-		);
+		const workflowExecutionState = useWorkflowExecutionStateStore('test-workflow');
 		Object.defineProperty(workflowExecutionState, 'executionWaitingForWebhook', {
 			get: () => executionWaitingForWebhookRef.value,
 			set: (value: boolean) => {

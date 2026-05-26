@@ -4,10 +4,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useChatState } from './useChatState';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -389,9 +386,7 @@ describe('useChatState', () => {
 		});
 
 		it('should include destinationNode when set in workflowExecutionState', async () => {
-			const executionStateStore = useWorkflowExecutionStateStore(
-				createWorkflowExecutionStateId('workflow-123'),
-			);
+			const executionStateStore = useWorkflowExecutionStateStore('workflow-123');
 			executionStateStore.setChatPartialExecutionDestinationNode('DestinationNode');
 
 			const chatState = useChatState(false);
@@ -515,9 +510,7 @@ describe('useChatState', () => {
 		});
 
 		it('should clear partial execution destination node', () => {
-			const executionStateStore = useWorkflowExecutionStateStore(
-				createWorkflowExecutionStateId('workflow-123'),
-			);
+			const executionStateStore = useWorkflowExecutionStateStore('workflow-123');
 			executionStateStore.setChatPartialExecutionDestinationNode('SomeNode');
 
 			const chatState = useChatState(false);

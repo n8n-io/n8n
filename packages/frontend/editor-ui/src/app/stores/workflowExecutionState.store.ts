@@ -19,10 +19,8 @@ import type { ChangeAction, ChangeEvent } from './workflowDocument/types';
 
 const EMPTY_EXECUTION_ISSUES_BY_NODE_NAME = new Map<string, ComputedRef<string[]>>();
 
-export type WorkflowExecutionStateId = string;
-
 export type WorkflowExecutionStateChangePayload = {
-	workflowId: WorkflowExecutionStateId;
+	workflowId: string;
 	field: WorkflowExecutionStateField;
 };
 
@@ -42,14 +40,10 @@ export type WorkflowExecutionStateField =
 
 export type WorkflowExecutionStateChangeEvent = ChangeEvent<WorkflowExecutionStateChangePayload>;
 
-export function createWorkflowExecutionStateId(workflowId: string): WorkflowExecutionStateId {
-	return workflowId;
-}
-
 /**
  * Gets the Pinia store id for a workflow-execution-state store.
  */
-export function getWorkflowExecutionStateStoreId(id: WorkflowExecutionStateId) {
+export function getWorkflowExecutionStateStoreId(id: string) {
 	return `${STORES.WORKFLOW_EXECUTION_STATES}/${id}`;
 }
 
@@ -62,7 +56,7 @@ export function getWorkflowExecutionStateStoreId(id: WorkflowExecutionStateId) {
  * reference. Reads route through `useExecutionDataStore` for execution payloads
  * (or fall back to `pendingExecution` while `activeExecutionId === null`).
  */
-export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
+export function useWorkflowExecutionStateStore(id: string) {
 	return defineStore(getWorkflowExecutionStateStoreId(id), () => {
 		const workflowId = id;
 

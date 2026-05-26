@@ -31,7 +31,6 @@ vi.mock('@/app/stores/workflowExecutionState.store', () => ({
 	useWorkflowExecutionStateStore: vi.fn(() => ({
 		activeExecutionIssuesByNodeName: executionIssuesByNodeName,
 	})),
-	createWorkflowExecutionStateId: (id: string) => id,
 }));
 
 describe('useWorkflowDocumentRenderData', () => {

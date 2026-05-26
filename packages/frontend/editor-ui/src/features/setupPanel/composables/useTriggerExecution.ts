@@ -5,10 +5,7 @@ import type { INodeUi } from '@/Interface';
 import { useNodeExecution, type UseNodeExecutionOptions } from '@/app/composables/useNodeExecution';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useLogsStore } from '@/app/stores/logs.store';
@@ -54,7 +51,7 @@ export function useTriggerExecution(
 		return (
 			nodeType.value?.name === CHAT_TRIGGER_NODE_TYPE &&
 			logsStore.isOpen &&
-			useWorkflowExecutionStateStore(createWorkflowExecutionStateId(workflowsStore.workflowId))
+			useWorkflowExecutionStateStore(workflowsStore.workflowId)
 				.chatPartialExecutionDestinationNode === nodeValue.value?.name
 		);
 	});

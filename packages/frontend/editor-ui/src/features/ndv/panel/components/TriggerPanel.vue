@@ -16,10 +16,7 @@ import CopyInput from '@/app/components/CopyInput.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -175,10 +172,7 @@ const isListeningForEvents = computed(() => {
 		return false;
 	}
 
-	if (
-		!useWorkflowExecutionStateStore(createWorkflowExecutionStateId(workflowsStore.workflowId))
-			.executionWaitingForWebhook
-	) {
+	if (!useWorkflowExecutionStateStore(workflowsStore.workflowId).executionWaitingForWebhook) {
 		return false;
 	}
 

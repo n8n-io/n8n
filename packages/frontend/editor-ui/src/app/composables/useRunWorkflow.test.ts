@@ -25,10 +25,7 @@ import type { INodeUi, IStartRunData } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -99,12 +96,12 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 }));
 
 vi.mock('@/app/stores/workflows.store', async () => {
-	const { createWorkflowExecutionStateId, useWorkflowExecutionStateStore } = await vi.importActual<
+	const { useWorkflowExecutionStateStore } = await vi.importActual<
 		typeof import('@/app/stores/workflowExecutionState.store')
 	>('@/app/stores/workflowExecutionState.store');
 
 	function getStateStore() {
-		return useWorkflowExecutionStateStore(createWorkflowExecutionStateId('123'));
+		return useWorkflowExecutionStateStore('123');
 	}
 
 	const storeState: Record<string, unknown> = {
@@ -360,10 +357,7 @@ describe('useRunWorkflow({ router })', () => {
 			expect(response).toEqual(mockResponse);
 			expect(setActiveExecutionId).toHaveBeenNthCalledWith(1, null);
 			expect(setActiveExecutionId).toHaveBeenNthCalledWith(2, '123');
-			expect(
-				useWorkflowExecutionStateStore(createWorkflowExecutionStateId('123'))
-					.executionWaitingForWebhook,
-			).toBe(false);
+			expect(useWorkflowExecutionStateStore('123').executionWaitingForWebhook).toBe(false);
 		});
 
 		it('should not prevent running a webhook-based workflow that has issues', async () => {
@@ -400,10 +394,7 @@ describe('useRunWorkflow({ router })', () => {
 			const response = await runWorkflowApi({} as IStartRunData);
 
 			expect(response).toEqual(mockResponse);
-			expect(
-				useWorkflowExecutionStateStore(createWorkflowExecutionStateId('123'))
-					.executionWaitingForWebhook,
-			).toBe(true);
+			expect(useWorkflowExecutionStateStore('123').executionWaitingForWebhook).toBe(true);
 		});
 	});
 
@@ -1269,9 +1260,7 @@ describe('useRunWorkflow({ router })', () => {
 			const runWorkflowComposable = useRunWorkflow({ router });
 
 			mockDocumentStore.allNodes = [chatTrigger];
-			useWorkflowExecutionStateStore(
-				createWorkflowExecutionStateId('123'),
-			).setSelectedTriggerNodeName(undefined);
+			useWorkflowExecutionStateStore('123').setSelectedTriggerNodeName(undefined);
 			mockDocumentStore.serialize.mockReturnValue({
 				id: 'workflowId',
 				nodes: [],
@@ -1301,9 +1290,7 @@ describe('useRunWorkflow({ router })', () => {
 			const runWorkflowComposable = useRunWorkflow({ router });
 
 			mockDocumentStore.allNodes = [chatTrigger, manualTrigger];
-			useWorkflowExecutionStateStore(
-				createWorkflowExecutionStateId('123'),
-			).setSelectedTriggerNodeName(undefined);
+			useWorkflowExecutionStateStore('123').setSelectedTriggerNodeName(undefined);
 			mockDocumentStore.serialize.mockReturnValue({
 				id: 'workflowId',
 				nodes: [],
@@ -1404,9 +1391,7 @@ describe('useRunWorkflow({ router })', () => {
 				'test-wf-id',
 			);
 			workflowState.setActiveExecutionId('test-exec-id');
-			useWorkflowExecutionStateStore(
-				createWorkflowExecutionStateId('123'),
-			).setExecutionWaitingForWebhook(false);
+			useWorkflowExecutionStateStore('123').setExecutionWaitingForWebhook(false);
 
 			getExecutionSpy.mockResolvedValue(executionData);
 

@@ -7,10 +7,7 @@ import {
 } from '../stores/workflowDocument.store';
 import { createPinia, setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '../stores/workflows.store';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '../stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '../stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { renderComponent } from '@/__tests__/render';
 import NodeView from './NodeView.vue';
@@ -42,7 +39,7 @@ describe('NodeView', () => {
 		workflowsStore = useWorkflowsStore();
 		workflowsStore.setWorkflowId('w0');
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w0'));
-		workflowExecutionState = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('w0'));
+		workflowExecutionState = useWorkflowExecutionStateStore('w0');
 	});
 
 	describe('Trigger node selection', () => {

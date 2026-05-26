@@ -49,10 +49,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
@@ -84,7 +81,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// done together to preserve test contracts.
 
 	const currentExecutionStateStore = computed(() =>
-		useWorkflowExecutionStateStore(createWorkflowExecutionStateId(workflowId.value)),
+		useWorkflowExecutionStateStore(workflowId.value),
 	);
 
 	const currentWorkflowExecutions = computed<ExecutionSummary[]>({

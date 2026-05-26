@@ -52,7 +52,6 @@ vi.mock('@/app/stores/workflowExecutionState.store', () => ({
 	useWorkflowExecutionStateStore: () => ({
 		activeExecutionId: '123',
 	}),
-	createWorkflowExecutionStateId: (id: string) => id,
 }));
 
 vi.mock('@n8n/i18n', () => ({

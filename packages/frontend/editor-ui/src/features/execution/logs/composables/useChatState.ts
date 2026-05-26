@@ -3,10 +3,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { VIEWS } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import MessageWithButtons from '@n8n/chat/components/MessageWithButtons.vue';
@@ -49,7 +46,7 @@ export function useChatState(
 	const locale = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const workflowExecutionState = computed(() =>
-		useWorkflowExecutionStateStore(createWorkflowExecutionStateId(workflowsStore.workflowId)),
+		useWorkflowExecutionStateStore(workflowsStore.workflowId),
 	);
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowState = injectWorkflowState();

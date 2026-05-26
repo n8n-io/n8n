@@ -1,9 +1,6 @@
 <!-- eslint-disable import-x/extensions -->
 <script setup lang="ts">
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -40,9 +37,7 @@ const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 );
-const workflowExecutionState = computed(() =>
-	useWorkflowExecutionStateStore(createWorkflowExecutionStateId(workflowId.value)),
-);
+const workflowExecutionState = computed(() => useWorkflowExecutionStateStore(workflowId.value));
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const i18n = useI18n();

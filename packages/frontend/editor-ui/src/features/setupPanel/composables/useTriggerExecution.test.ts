@@ -5,10 +5,7 @@ import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import type { INodeUi } from '@/Interface';
@@ -133,7 +130,7 @@ describe('useTriggerExecution', () => {
 			);
 			logsStore.isOpen = true;
 			vi.spyOn(
-				useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-workflow-id')),
+				useWorkflowExecutionStateStore('test-workflow-id'),
 				'chatPartialExecutionDestinationNode',
 				'get',
 			).mockReturnValue('When chat message received');
@@ -157,7 +154,7 @@ describe('useTriggerExecution', () => {
 			);
 			logsStore.isOpen = false;
 			vi.spyOn(
-				useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-workflow-id')),
+				useWorkflowExecutionStateStore('test-workflow-id'),
 				'chatPartialExecutionDestinationNode',
 				'get',
 			).mockReturnValue('When chat message received');
@@ -181,7 +178,7 @@ describe('useTriggerExecution', () => {
 			);
 			logsStore.isOpen = true;
 			vi.spyOn(
-				useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-workflow-id')),
+				useWorkflowExecutionStateStore('test-workflow-id'),
 				'chatPartialExecutionDestinationNode',
 				'get',
 			).mockReturnValue('Some Other Node');

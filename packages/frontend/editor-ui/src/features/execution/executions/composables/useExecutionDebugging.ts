@@ -8,10 +8,7 @@ import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants'
 import { DEBUG_PAYWALL_MODAL_KEY } from '../executions.constants';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -179,9 +176,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 			event.stopPropagation();
 			return;
 		}
-		useWorkflowExecutionStateStore(
-			createWorkflowExecutionStateId(workflowsStore.workflowId),
-		).setIsInDebugMode(false);
+		useWorkflowExecutionStateStore(workflowsStore.workflowId).setIsInDebugMode(false);
 	};
 
 	return {

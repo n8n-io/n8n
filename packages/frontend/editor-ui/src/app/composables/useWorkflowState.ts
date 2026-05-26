@@ -8,7 +8,6 @@ import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocum
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
 import {
-	createWorkflowExecutionStateId,
 	disposeWorkflowExecutionStateStore,
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
@@ -37,9 +36,7 @@ export function useWorkflowState() {
 	////
 
 	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
-		const stateStore = useWorkflowExecutionStateStore(
-			createWorkflowExecutionStateId(ws.workflowId),
-		);
+		const stateStore = useWorkflowExecutionStateStore(ws.workflowId);
 		if (workflowResultData === null) {
 			stateStore.setPendingExecution(null);
 			stateStore.clearDisplayedExecution();
@@ -63,9 +60,7 @@ export function useWorkflowState() {
 	}
 
 	function setActiveExecutionId(id: string | null | undefined) {
-		useWorkflowExecutionStateStore(
-			createWorkflowExecutionStateId(ws.workflowId),
-		).setActiveExecutionId(id);
+		useWorkflowExecutionStateStore(ws.workflowId).setActiveExecutionId(id);
 	}
 
 	async function getNewWorkflowData(
@@ -103,9 +98,7 @@ export function useWorkflowState() {
 	const documentTitle = useDocumentTitle();
 
 	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
-		const stateStore = useWorkflowExecutionStateStore(
-			createWorkflowExecutionStateId(ws.workflowId),
-		);
+		const stateStore = useWorkflowExecutionStateStore(ws.workflowId);
 		const activeExecutionId = stateStore.activeExecutionId;
 
 		stateStore.setActiveExecutionId(undefined);
@@ -153,7 +146,7 @@ export function useWorkflowState() {
 			useBuilderStore().resetManualExecutionStats();
 			return;
 		}
-		const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId(wid));
+		const stateStore = useWorkflowExecutionStateStore(wid);
 		// Disposes every tracked executionData store + IN_PROGRESS placeholder, then clears all
 		// session-level fields.
 		stateStore.resetExecutionState();

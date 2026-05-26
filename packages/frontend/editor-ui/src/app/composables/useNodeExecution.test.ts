@@ -104,7 +104,6 @@ vi.mock('@/app/stores/workflows.store', () => ({
 
 vi.mock('@/app/stores/workflowExecutionState.store', () => ({
 	useWorkflowExecutionStateStore: vi.fn().mockReturnValue(mockWorkflowExecutionStateStore),
-	createWorkflowExecutionStateId: vi.fn().mockReturnValue('test-id'),
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({

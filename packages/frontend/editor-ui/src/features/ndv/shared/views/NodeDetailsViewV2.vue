@@ -33,10 +33,7 @@ import { injectNDVStore } from '../ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
@@ -308,9 +305,7 @@ const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
 const isExecutionWaitingForWebhook = computed(
-	() =>
-		useWorkflowExecutionStateStore(createWorkflowExecutionStateId(workflowsStore.workflowId))
-			.executionWaitingForWebhook,
+	() => useWorkflowExecutionStateStore(workflowsStore.workflowId).executionWaitingForWebhook,
 );
 
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
