@@ -18,11 +18,9 @@ export function getBuilderRuntimeSkills({
 		memorySkill(),
 		integrationsSkill(),
 		targetSkillsSkill(),
-		// FIXME: Research is disabled until the builder has a supported web-search tool.
-		// The current builder model path can be backed by AI SDK v2 Anthropic models,
-		// while provider tools from the runtime use the AI SDK v3 shape. Re-enable this
-		// skill only when the builder can actually perform web research instead of
-		// merely loading instructions that tell it to research.
+		// FIXME: Research is disabled until the builder has a supported research tool.
+		// Re-enable this skill only when the builder can actually perform research
+		// instead of merely loading instructions that tell it to research.
 		// researchSkill(),
 	];
 }
