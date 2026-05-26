@@ -39,6 +39,7 @@ const props = defineProps<{
 	currentSessionTitle?: string;
 	sessionOptions?: Array<DropdownMenuItemProps<string>>;
 	beforeRevertToPublished?: () => Promise<void> | void;
+	isVersionHistoryOpen?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -51,6 +52,7 @@ const emit = defineEmits<{
 	unpublished: [agent: AgentResource];
 	reverted: [agent: AgentResource];
 	'switch-agent': [agentId: string];
+	'toggle-version-history': [];
 }>();
 
 const i18n = useI18n();
@@ -245,6 +247,21 @@ function onOpenPreview() {
 					>
 						{{ i18n.baseText('agents.builder.preview.button' as BaseTextKey) }}
 					</N8nButton>
+				</N8nTooltip>
+				<N8nTooltip
+					:content="i18n.baseText('agents.versionHistory.button.tooltip')"
+					placement="bottom"
+				>
+					<N8nButton
+						variant="ghost"
+						size="medium"
+						icon="history"
+						icon-only
+						:active="isVersionHistoryOpen"
+						:aria-label="i18n.baseText('agents.versionHistory.button.ariaLabel')"
+						data-testid="agent-header-version-history-btn"
+						@click="emit('toggle-version-history')"
+					/>
 				</N8nTooltip>
 				<AgentPublishButton
 					:agent="agent"

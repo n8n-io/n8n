@@ -45,6 +45,7 @@ import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderChatColumn from '../components/AgentBuilderChatColumn.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
+import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 
 const AGENT_CHAT_PANEL_MIN_WIDTH = 320;
 const AGENT_CHAT_PANEL_DEFAULT_WIDTH = 460;
@@ -76,6 +77,7 @@ const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissio
 // UI state
 const isBuildChatStreaming = ref(false);
 const initialPrompt = ref<string | undefined>();
+const isVersionHistoryOpen = ref(false);
 
 function onBuildChatStreamingChange(streaming: boolean) {
 	isBuildChatStreaming.value = streaming;
@@ -120,6 +122,7 @@ const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
+const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
 const isChatFullWidth = ref(false);
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
@@ -275,10 +278,26 @@ function startChat(msg: string) {
 
 function onPublished(updated: AgentResource) {
 	agent.value = updated;
+	void versionHistoryPanel.value?.refresh();
 }
 
 function onUnpublished(updated: AgentResource) {
 	agent.value = updated;
+	void versionHistoryPanel.value?.refresh();
+}
+
+function onToggleVersionHistory() {
+	const next = !isVersionHistoryOpen.value;
+	if (next && isChatFullWidth.value) {
+		// Make room for the panel — chat-full-width hides the editor column
+		// and would leave the resizer at 100%, squashing the new panel.
+		isChatFullWidth.value = false;
+	}
+	isVersionHistoryOpen.value = next;
+}
+
+function onCloseVersionHistory() {
+	isVersionHistoryOpen.value = false;
 }
 
 async function onReverted(updated: AgentResource) {
@@ -831,6 +850,7 @@ function onSwitchAgent(nextAgentId: string) {
 			:current-session-title="currentSessionTitle"
 			:session-options="sessionOptions"
 			:before-revert-to-published="settleAutosave"
+			:is-version-history-open="isVersionHistoryOpen"
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"
 			@new-chat="onNewChat"
@@ -840,6 +860,7 @@ function onSwitchAgent(nextAgentId: string) {
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
+			@toggle-version-history="onToggleVersionHistory"
 		/>
 		<div
 			ref="builderContainer"
@@ -930,6 +951,16 @@ function onSwitchAgent(nextAgentId: string) {
 				@remove-skill="onRemoveSkill"
 				@update:connected-triggers="onConnectedTriggersUpdate"
 				@trigger-added="onTriggerAdded"
+			/>
+
+			<AgentVersionHistoryPanel
+				v-if="!isPreviewMode && isVersionHistoryOpen"
+				ref="versionHistoryPanel"
+				:project-id="projectId"
+				:agent-id="agentId"
+				@close="onCloseVersionHistory"
+				@reverted="onReverted"
+				@published="onPublished"
 			/>
 		</div>
 	</div>
