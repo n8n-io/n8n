@@ -6,9 +6,10 @@
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"bin": {
-		"janitor": "dist/cli.js"
+		"janitor": "bin/janitor.mjs"
 	},
 	"files": [
+		"bin",
 		"dist"
 	],
 	"scripts": {
