@@ -153,6 +153,13 @@ export const getNodePairedItemMessage = z
 	})
 	.strict();
 
+/**
+ * `itemIndex` is `.optional()` even though `.itemMatching()` requires it
+ * at the host. The host's `pairedItemMethod` closure throws the friendly
+ * `"Missing item index for .itemMatching()"` error when the field is
+ * absent — keeping the schema permissive lets that host error surface
+ * verbatim instead of being replaced by a generic zod parse failure.
+ */
 export const getNodeItemMatchingMessage = z
 	.object({
 		type: z.literal('getNodeItemMatching'),
