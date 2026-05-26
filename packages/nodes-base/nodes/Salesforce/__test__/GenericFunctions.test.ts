@@ -1371,15 +1371,50 @@ describe('Salesforce -> GenericFunctions', () => {
 					expect(result).toBe("'Bob\\' OR \\'1\\'=\\'1'");
 				});
 
-				it('should return numeric strings as numbers', () => {
-					expect(getValue('0')).toBe(0);
-					expect(getValue('123')).toBe(123);
-					expect(getValue('123.45')).toBe(123.45);
-					expect(getValue('-5')).toBe(-5);
+				describe('typeVersion 1 (legacy: numeric strings are coerced to unquoted SOQL numbers)', () => {
+					it('should return numeric strings as unquoted numbers', () => {
+						expect(getValue('0', 1)).toBe(0);
+						expect(getValue('123', 1)).toBe(123);
+						expect(getValue('123.45', 1)).toBe(123.45);
+						expect(getValue('-5', 1)).toBe(-5);
+					});
+
+					it('should preserve leading zeros as quoted strings', () => {
+						expect(getValue('00123', 1)).toBe("'00123'");
+					});
+
+					it('should default to legacy behavior when nodeVersion is omitted', () => {
+						// Safety net: callers that haven't passed nodeVersion must keep
+						// behaving as v1 so existing workflows are not impacted.
+						expect(getValue('123')).toBe(123);
+					});
 				});
 
-				it('should preserve leading zeros as quoted strings', () => {
-					expect(getValue('00123')).toBe("'00123'");
+				describe('typeVersion 1.1 (numeric strings are quoted — NODE-5116 fix)', () => {
+					it('should quote numeric-looking string values', () => {
+						expect(getValue('0', 1.1)).toBe("'0'");
+						expect(getValue('123', 1.1)).toBe("'123'");
+						expect(getValue('123.45', 1.1)).toBe("'123.45'");
+						expect(getValue('-5', 1.1)).toBe("'-5'");
+					});
+
+					it('should quote numeric strings without leading zero (regression: NODE-5116)', () => {
+						// String-typed Salesforce fields (e.g. external IDs) reject unquoted
+						// numeric literals: "must be of type string and should be enclosed in quotes".
+						expect(getValue('307795203', 1.1)).toBe("'307795203'");
+					});
+
+					it('should preserve leading zeros as quoted strings', () => {
+						expect(getValue('00123', 1.1)).toBe("'00123'");
+						expect(getValue('039381512', 1.1)).toBe("'039381512'");
+					});
+
+					it('should keep number-typed values unquoted', () => {
+						// Users wanting numeric SOQL comparisons pass numbers via expressions.
+						expect(getValue(307795203, 1.1)).toBe(307795203);
+						expect(getValue(0, 1.1)).toBe(0);
+						expect(getValue(-5, 1.1)).toBe(-5);
+					});
 				});
 
 				it('should return ISO datetime strings as-is', () => {
@@ -1558,14 +1593,36 @@ describe('Salesforce -> GenericFunctions', () => {
 					expect(result).toBe("WHERE Name = 'Bob\\'s' AND Email LIKE '%test%'");
 				});
 
-				it('should return numeric string values unquoted', () => {
+				it('should keep numeric string values unquoted on typeVersion 1 (legacy)', () => {
 					const options: IDataObject = {
 						conditionsUi: {
 							conditionValues: [{ field: 'AnnualRevenue', operation: '>', value: '0' }],
 						},
 					};
 
-					const result = getConditions(options);
+					const result = getConditions(options, 1);
+					expect(result).toBe('WHERE AnnualRevenue > 0');
+				});
+
+				it('should quote numeric string values on typeVersion 1.1 (NODE-5116 fix)', () => {
+					const options: IDataObject = {
+						conditionsUi: {
+							conditionValues: [{ field: 'IdNumber__c', operation: 'equal', value: '307795203' }],
+						},
+					};
+
+					const result = getConditions(options, 1.1);
+					expect(result).toBe("WHERE IdNumber__c = '307795203'");
+				});
+
+				it('should keep number-typed values unquoted on typeVersion 1.1', () => {
+					const options: IDataObject = {
+						conditionsUi: {
+							conditionValues: [{ field: 'AnnualRevenue', operation: '>', value: 0 }],
+						},
+					};
+
+					const result = getConditions(options, 1.1);
 					expect(result).toBe('WHERE AnnualRevenue > 0');
 				});
 

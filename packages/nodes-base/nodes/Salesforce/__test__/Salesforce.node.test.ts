@@ -1479,6 +1479,7 @@ describe('Salesforce', () => {
 					'Lead',
 					true,
 					0,
+					1,
 				);
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
@@ -1507,7 +1508,7 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(getQuerySpy).toHaveBeenCalledWith({}, 'Lead', false, 50);
+				expect(getQuerySpy).toHaveBeenCalledWith({}, 'Lead', false, 50, 1);
 			});
 
 			it('should handle lead delete operation', async () => {
@@ -1858,7 +1859,7 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(getQuerySpy).toHaveBeenCalledWith({ fields: 'Id,Subject,Type' }, 'Case', true, 0);
+				expect(getQuerySpy).toHaveBeenCalledWith({ fields: 'Id,Subject,Type' }, 'Case', true, 0, 1);
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
@@ -1886,7 +1887,7 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(getQuerySpy).toHaveBeenCalledWith({}, 'Case', false, 25);
+				expect(getQuerySpy).toHaveBeenCalledWith({}, 'Case', false, 25, 1);
 			});
 
 			it('should handle case getAll operation error handling', async () => {
@@ -2355,6 +2356,7 @@ describe('Salesforce', () => {
 					'Contact',
 					true,
 					0,
+					1,
 				);
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
@@ -2634,7 +2636,7 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(getQuerySpy).toHaveBeenCalledWith({}, 'CustomObject__c', true, 0);
+				expect(getQuerySpy).toHaveBeenCalledWith({}, 'CustomObject__c', true, 0, 1);
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
@@ -3577,6 +3579,7 @@ describe('Salesforce', () => {
 					'Task',
 					false,
 					10,
+					1,
 				);
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
@@ -3898,6 +3901,7 @@ describe('Salesforce', () => {
 					'Attachment',
 					true,
 					0,
+					1,
 				);
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
@@ -3936,7 +3940,7 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(getQuerySpy).toHaveBeenCalledWith({}, 'Attachment', false, 5);
+				expect(getQuerySpy).toHaveBeenCalledWith({}, 'Attachment', false, 5, 1);
 			});
 
 			it('should handle attachment getAll operation error handling', async () => {
