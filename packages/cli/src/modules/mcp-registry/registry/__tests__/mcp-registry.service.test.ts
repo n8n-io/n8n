@@ -19,10 +19,6 @@ function toMockEntity(server: McpRegistryServer): McpRegistryServerEntity {
 	return { ...toEntity(server), createdAt: now, updatedAt: now } as McpRegistryServerEntity;
 }
 
-function withId(server: McpRegistryServer, id: number): McpRegistryServer {
-	return { ...server, id };
-}
-
 type CreateServiceOptions = {
 	storedServers?: McpRegistryServer[] | null;
 	isLeader?: boolean;
@@ -46,7 +42,7 @@ function createService(options: CreateServiceOptions = {}) {
 		repository.findBy.mockResolvedValue([]);
 	} else {
 		const servers = options.storedServers ?? [notionMockServer, linearMockServer];
-		const entities = servers.map((server, index) => ({ ...toMockEntity(server), id: index + 1 }));
+		const entities = servers.map((server) => toMockEntity(server));
 		repository.find.mockResolvedValue(entities);
 		repository.findBy.mockImplementation(async (where) => {
 			if (where && 'status' in where) {
@@ -65,7 +61,7 @@ function createService(options: CreateServiceOptions = {}) {
 	apiClient.fetchServersMetadata.mockResolvedValue([]);
 	apiClient.fetchServersBySlugs.mockResolvedValue([]);
 	apiClient.fetchAllServers.mockResolvedValue([notionMockServer, linearMockServer]);
-	repository.upsertServers.mockResolvedValue({} as never);
+	repository.upsert.mockResolvedValue({} as never);
 
 	const service = new McpRegistryService(
 		logger,
@@ -106,7 +102,7 @@ describe('McpRegistryService', () => {
 			await service.init();
 			const servers = await service.getAll();
 
-			expect(servers).toEqual([withId(notionMockServer, 1), withId(linearMockServer, 2)]);
+			expect(servers).toEqual([notionMockServer, linearMockServer]);
 		});
 
 		it('includes deprecated servers when includeDeprecated is true', async () => {
@@ -122,11 +118,7 @@ describe('McpRegistryService', () => {
 			await service.init();
 			const servers = await service.getAll({ includeDeprecated: true });
 
-			expect(servers).toEqual([
-				withId(notionMockServer, 1),
-				withId(linearMockServer, 2),
-				withId(deprecated, 3),
-			]);
+			expect(servers).toEqual([notionMockServer, linearMockServer, deprecated]);
 		});
 
 		it('returns server by slug and undefined for unknown slug', async () => {
@@ -136,7 +128,7 @@ describe('McpRegistryService', () => {
 			const notion = await service.get('notion');
 			const missing = await service.get('missing');
 
-			expect(notion).toEqual(withId(notionMockServer, 1));
+			expect(notion).toEqual(notionMockServer);
 			expect(missing).toBeUndefined();
 		});
 	});
@@ -188,7 +180,7 @@ describe('McpRegistryService', () => {
 			await service.onLeaderTakeover();
 
 			expect(apiClient.fetchServersBySlugs).not.toHaveBeenCalled();
-			expect(repository.upsertServers).not.toHaveBeenCalled();
+			expect(repository.upsert).not.toHaveBeenCalled();
 			expect(push.broadcast).not.toHaveBeenCalled();
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
 			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
@@ -212,18 +204,18 @@ describe('McpRegistryService', () => {
 			await service.onLeaderTakeover();
 
 			expect(apiClient.fetchServersBySlugs).not.toHaveBeenCalled();
-			expect(repository.upsertServers).toHaveBeenCalledTimes(1);
-			const upsertEntities = repository.upsertServers.mock.calls[0][0];
+			expect(repository.upsert).toHaveBeenCalledTimes(1);
+			const upsertEntities = repository.upsert.mock.calls[0][0];
 			expect(upsertEntities).toEqual([
 				{
 					...toEntity({
 						...linearMockServer,
-						id: 2,
 						status: 'deprecated',
 					}),
 					registryUpdatedAt: expect.any(Date),
 				},
 			]);
+			expect(repository.upsert.mock.calls[0][1]).toEqual(['slug']);
 			expect(push.broadcast).toHaveBeenCalledWith({ type: 'nodeDescriptionUpdated', data: {} });
 			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-registry' });
 
@@ -258,9 +250,10 @@ describe('McpRegistryService', () => {
 
 			expect(apiClient.fetchAllServers).not.toHaveBeenCalled();
 			expect(apiClient.fetchServersBySlugs).toHaveBeenCalledWith([notionMockServer.slug]);
-			expect(repository.upsertServers).toHaveBeenCalledTimes(1);
-			const upsertEntities = repository.upsertServers.mock.calls[0][0];
-			expect(upsertEntities).toEqual([{ ...toEntity(notionMockServer), id: 1 }]);
+			expect(repository.upsert).toHaveBeenCalledTimes(1);
+			const upsertEntities = repository.upsert.mock.calls[0][0];
+			expect(upsertEntities).toEqual([toEntity(notionMockServer)]);
+			expect(repository.upsert.mock.calls[0][1]).toEqual(['slug']);
 			expect(push.broadcast).toHaveBeenCalledWith({ type: 'nodeDescriptionUpdated', data: {} });
 			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-registry' });
 
@@ -274,7 +267,7 @@ describe('McpRegistryService', () => {
 
 			expect(apiClient.fetchAllServers).toHaveBeenCalledTimes(1);
 			expect(apiClient.fetchServersMetadata).not.toHaveBeenCalled();
-			expect(repository.upsertServers).toHaveBeenCalledTimes(1);
+			expect(repository.upsert).toHaveBeenCalledTimes(1);
 
 			service.shutdown();
 		});

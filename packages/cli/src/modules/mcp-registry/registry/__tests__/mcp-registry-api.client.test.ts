@@ -84,16 +84,13 @@ describe('McpRegistryApiClient', () => {
 			);
 		});
 
-		it('should return servers from paginatedRequest without id', async () => {
-			const mockServers = [
-				{ id: 42, name: 'server-a' },
-				{ id: 43, name: 'server-b' },
-			];
+		it('should return servers from paginatedRequest', async () => {
+			const mockServers = [{ name: 'server-a' }, { name: 'server-b' }];
 			mockPaginatedRequest.mockResolvedValue(mockServers);
 
 			const result = await client.fetchAllServers();
 
-			expect(result).toEqual([{ name: 'server-a' }, { name: 'server-b' }]);
+			expect(result).toEqual(mockServers);
 		});
 	});
 
@@ -146,13 +143,13 @@ describe('McpRegistryApiClient', () => {
 			);
 		});
 
-		it('should return fetched servers without id', async () => {
-			const mockServers = [{ id: 42, name: 'server-a' }];
+		it('should return fetched servers', async () => {
+			const mockServers = [{ name: 'server-a' }];
 			mockPaginatedRequest.mockResolvedValue(mockServers);
 
 			const result = await client.fetchServersBySlugs(['server-a']);
 
-			expect(result).toEqual([{ name: 'server-a' }]);
+			expect(result).toEqual(mockServers);
 		});
 
 		it('should return empty array for empty slugs', async () => {

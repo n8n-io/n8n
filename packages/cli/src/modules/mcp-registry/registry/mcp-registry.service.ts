@@ -139,7 +139,7 @@ export class McpRegistryService {
 				updatedServers = result;
 			}
 
-			await this.saveServers(updatedServers, existingServers);
+			await this.saveServers(updatedServers);
 			await this.refreshRegistryNodeTypes(true);
 			this.notifyNodeDescriptionsUpdated();
 			await this.publishReloadCommand();
@@ -190,20 +190,7 @@ export class McpRegistryService {
 		);
 	}
 
-	private async saveServers(
-		servers: McpRegistryServer[],
-		existingServers: McpRegistryServer[],
-	): Promise<void> {
-		// Restore ids for existing servers to update them
-		const idsBySlug = new Map(existingServers.map((server) => [server.slug, server.id]));
-		const entities = servers.map(toEntity);
-		for (const [index, server] of servers.entries()) {
-			const existingId = idsBySlug.get(server.slug);
-			if (existingId !== undefined) {
-				entities[index].id = existingId;
-			}
-		}
-
+	private async saveServers(servers: McpRegistryServer[]): Promise<void> {
 		// We don't delete any servers since they are used to
 		// generate node types. If some node types are removed,
 		// it will break workflows that use them.
@@ -211,7 +198,7 @@ export class McpRegistryService {
 		// we will set its status to 'deprecated' instead.
 		// If a server is removed from the remote API,
 		// it will be marked as deprecated as well.
-		await this.repository.upsertServers(entities);
+		await this.repository.upsert(servers.map(toEntity), ['slug']);
 	}
 
 	private async refreshRegistryNodeTypes(releaseTypes: boolean): Promise<void> {
