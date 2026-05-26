@@ -118,6 +118,8 @@ export class BlueprintAccumulator {
 
 	private approved = false;
 
+	private denied = false;
+
 	/** Route item by kind, upsert into arrays, convert to task, return the task. */
 	addItem(item: BlueprintItem): PlannedTaskInput {
 		let task: PlannedTaskInput;
@@ -234,6 +236,17 @@ export class BlueprintAccumulator {
 	/** Whether the user approved the plan via submit-plan. */
 	isApproved(): boolean {
 		return this.approved;
+	}
+
+	/** Mark the plan as denied by the user. Once denied, submit-plan short-circuits
+	 *  any further calls so the planner cannot re-suspend the user for approval. */
+	markDenied(): void {
+		this.denied = true;
+	}
+
+	/** Whether the user denied the plan outright via submit-plan. */
+	isDenied(): boolean {
+		return this.denied;
 	}
 
 	/** Whether any items have been added. */

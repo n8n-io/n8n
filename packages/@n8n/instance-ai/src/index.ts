@@ -14,6 +14,7 @@ import type * as DelegateToolMod from './tools/orchestration/delegate.tool';
 import type * as ResearchWithAgentToolMod from './tools/orchestration/research-with-agent.tool';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as EvalAgentsMod from './utils/eval-agents';
+import type * as BuilderTemplatesServiceMod from './workspace/builder-templates-service';
 import type * as CreateWorkspaceMod from './workspace/create-workspace';
 
 type LazyFunction = (...args: never[]) => unknown;
@@ -93,6 +94,9 @@ const loadMaterializeRuntimeSkills = lazyModule(
 	() => require('./skills/materialize-runtime-skills') as typeof MaterializeRuntimeSkillsMod,
 );
 const loadEvalAgents = lazyModule(() => require('./utils/eval-agents') as typeof EvalAgentsMod);
+const loadBuilderTemplatesService = lazyModule(
+	() => require('./workspace/builder-templates-service') as typeof BuilderTemplatesServiceMod,
+);
 const loadCreateWorkspace = lazyModule(
 	() => require('./workspace/create-workspace') as typeof CreateWorkspaceMod,
 );
@@ -268,6 +272,14 @@ export type { SandboxConfig } from './workspace/create-workspace';
 export { createLazyRuntimeWorkspace } from './workspace/lazy-runtime-workspace';
 export type { RuntimeWorkspaceResolver } from './workspace/lazy-runtime-workspace';
 export { getWorkspaceRoot, setupSandboxWorkspace } from './workspace/sandbox-setup';
+export const BuilderTemplatesService: typeof BuilderTemplatesServiceMod.BuilderTemplatesService =
+	lazyClass(() => loadBuilderTemplatesService().BuilderTemplatesService);
+export const builderTemplatesOptionsFromEnv: typeof BuilderTemplatesServiceMod.builderTemplatesOptionsFromEnv =
+	lazyFunction(() => loadBuilderTemplatesService().builderTemplatesOptionsFromEnv);
+export type {
+	BuilderTemplatesBundle,
+	BuilderTemplatesServiceOptions,
+} from './workspace/builder-templates-service';
 export const createSandbox: typeof CreateWorkspaceMod.createSandbox = lazyFunction(
 	() => loadCreateWorkspace().createSandbox,
 );

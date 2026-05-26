@@ -3,7 +3,7 @@
  * PlanReviewPanel.vue
  *
  * Single-card plan approval UI. Shows planned tasks as an accordion with
- * expandable specs, dependency info, and approve/request-changes controls.
+ * expandable specs, dependency info, and approve/request-changes/deny controls.
  */
 import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -30,18 +30,22 @@ const props = defineProps<{
 	loading?: boolean;
 }>();
 
-const i18n = useI18n();
-
 const emit = defineEmits<{
 	approve: [];
 	'request-changes': [feedback: string];
+	deny: [];
 }>();
+
+const i18n = useI18n();
 
 const feedback = ref('');
 const isResolved = ref(false);
-const resolvedAction = ref<'approved' | 'changes-requested' | null>(null);
+const resolvedAction = ref<'approved' | 'changes-requested' | 'denied' | null>(null);
 
 const hasFeedback = computed(() => feedback.value.trim().length > 0);
+const primaryActionLabelKey = computed(() =>
+	hasFeedback.value ? 'instanceAi.planReview.requestChanges' : 'instanceAi.planReview.approve',
+);
 const isExpanded = ref(!props.readOnly);
 const titleKey = computed(() =>
 	isResolved.value || props.readOnly
@@ -61,18 +65,24 @@ function getDescription(task: PlannedTaskArg): string {
 	return text;
 }
 
-function handleApprove() {
+function handlePrimaryAction() {
 	if (isResolved.value) return;
+	if (hasFeedback.value) {
+		isResolved.value = true;
+		resolvedAction.value = 'changes-requested';
+		emit('request-changes', feedback.value.trim());
+		return;
+	}
 	isResolved.value = true;
 	resolvedAction.value = 'approved';
 	emit('approve');
 }
 
-function handleRequestChanges() {
-	if (isResolved.value || !hasFeedback.value) return;
+function handleDeny() {
+	if (isResolved.value) return;
 	isResolved.value = true;
-	resolvedAction.value = 'changes-requested';
-	emit('request-changes', feedback.value.trim());
+	resolvedAction.value = 'denied';
+	emit('deny');
 }
 </script>
 
@@ -120,20 +130,20 @@ function handleRequestChanges() {
 					<N8nButton
 						variant="outline"
 						size="medium"
-						:disabled="disabled || !hasFeedback"
-						data-test-id="instance-ai-plan-request-changes"
-						@click="handleRequestChanges"
+						:disabled="disabled"
+						data-test-id="instance-ai-plan-deny"
+						@click="handleDeny"
 					>
-						{{ i18n.baseText('instanceAi.planReview.requestChanges') }}
+						{{ i18n.baseText('instanceAi.planReview.deny') }}
 					</N8nButton>
 					<N8nButton
 						variant="solid"
 						size="medium"
 						:disabled="disabled"
 						data-test-id="instance-ai-plan-approve"
-						@click="handleApprove"
+						@click="handlePrimaryAction"
 					>
-						{{ i18n.baseText('instanceAi.planReview.approve') }}
+						{{ i18n.baseText(primaryActionLabelKey) }}
 					</N8nButton>
 				</div>
 			</ConfirmationFooter>

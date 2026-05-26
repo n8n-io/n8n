@@ -408,6 +408,50 @@ test('should include versionMetadata with historical name when set', async () =>
 	});
 });
 
+test('should export nodeGroups from historical version', async () => {
+	const nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['uuid-v1'] }];
+	const workflow = await createWorkflowWithTriggerAndHistory({
+		name: 'Grouped Workflow',
+		nodes: [
+			{
+				id: 'uuid-v1',
+				parameters: {},
+				name: 'Version 1 Node',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [240, 300],
+			},
+		],
+		nodeGroups,
+	});
+
+	const version1Id = workflow.versionId;
+
+	const newVersionId = nanoid();
+	workflow.versionId = newVersionId;
+	workflow.nodes = [
+		{
+			id: 'uuid-v2',
+			parameters: {},
+			name: 'Version 2 Node',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [240, 300],
+		},
+	];
+	workflow.nodeGroups = [];
+	await Container.get(WorkflowRepository).save(workflow);
+	await createWorkflowHistory(workflow);
+
+	const outputFile = path.join(testOutputDir, 'output.json');
+	await command.run([`--id=${workflow.id}`, `--version=${version1Id}`, `--output=${outputFile}`]);
+
+	const exportedData = JSON.parse(fs.readFileSync(outputFile, 'utf-8'))[0];
+
+	expect(exportedData.versionId).toBe(version1Id);
+	expect(exportedData.nodeGroups).toEqual(nodeGroups);
+});
+
 test('should include versionMetadata with historical description when set', async () => {
 	const workflow = await createWorkflowWithTriggerAndHistory({
 		description: 'Original Description',

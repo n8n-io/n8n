@@ -175,6 +175,19 @@ interface GetRuntimeParams {
 	usePublishedVersion?: boolean;
 }
 
+function getMaxIterationsChunks(): StreamChunk[] {
+	const id = crypto.randomUUID();
+	return [
+		{ type: 'text-start', id },
+		{
+			type: 'text-delta',
+			id,
+			delta: 'The agent has reached the maximum number of iterations and has stopped.',
+		},
+		{ type: 'text-end', id },
+	];
+}
+
 @Service()
 export class AgentsService {
 	/**
@@ -1107,6 +1120,11 @@ export class AgentsService {
 						toolCallId: value.toolCallId,
 						toolName: value.toolName,
 					});
+				}
+				if (value.type === 'finish' && value.finishReason === 'max-iterations') {
+					for (const chunk of getMaxIterationsChunks()) {
+						yield chunk;
+					}
 				}
 				yield value;
 			}

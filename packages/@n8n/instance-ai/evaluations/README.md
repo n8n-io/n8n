@@ -142,8 +142,36 @@ Every run produces:
 
 - **Console** — live progress, per-scenario pass/fail with `[failure_category]` tag, and a grouped summary.
 - **`eval-results.json`** — structured results in `--output-dir` (or cwd). Consumed by the CI PR comment.
-- **`.data/workflow-eval-report.html`** — self-contained debugging view with per-node execution traces, intercepted requests, mock responses, Phase 1 hints, and verifier reasoning.
+- **`.data/workflow-eval-report.html`** — self-contained debugging view with per-node execution traces, intercepted requests, mock responses, Phase 1 hints, verifier reasoning, and the per-built-workflow check rubric (see below).
 - **LangSmith experiment** — only when `LANGSMITH_API_KEY` is set. See the caveat in [Environment variables](#environment-variables).
+
+### Workflow checks (per built workflow)
+
+After every successful build, the eval grades the workflow JSON against the binary-check rubric in `binaryChecks/checks/`. Each named check is yes/no with a structured N/A for "no subject to evaluate in this workflow" (e.g. an agent-only check on a workflow with no agent).
+
+The 28 checks are grouped into 7 WHAT-side rubric dimensions (the 8th, `execution_outcome`, is served by the existing execution verifier):
+
+| Dimension | Checks |
+|---|---|
+| `structure` | 4 — workflow shape (nodes, triggers, start) |
+| `connection_topology` | 4 — graph reachability, branch wiring, multi-item handling |
+| `parameter_correctness` | 8 — node config, expressions, field references |
+| `intent_match` | 1 — workflow fulfills the user's request |
+| `ai_nodes` | 6 — agent / memory / vector-store / tool wiring |
+| `nodes_craftsmanship` | 3 — naming, no-code preference, response honesty |
+| `security` | 2 — hardcoded credentials, inbound auth defaults |
+
+The signal surfaces in:
+
+- **HTML report** — a "Workflow checks" disclosure on each test case, grouped by dimension. Pass / fail / N/A counts per group and per-check rows.
+- **PR comment / `eval-results.json`** — a "Workflow checks" table with pass / fail / N/A counts and pass rate per check, sorted by dimension, aggregated across every successful build in the run.
+- **LangSmith Feedback** — one `evals.workflows.<dimension>.<check_name>` Feedback per non-N/A outcome per scenario row (score 1 for pass, 0 for fail). N/A is omitted so per-experiment column averages reduce to per-check pass-rate cleanly. The dotted key sorts naturally in LangSmith's column UI.
+
+Operational details:
+
+- Checks run **once per built workflow**, not per scenario — every scenario row in LangSmith carries the same outcomes for its build.
+- Failures don't flip `scenario_pass`; they're independent signals per the rubric design.
+- LLM checks (`fulfills_user_request`, `valid_data_flow`, `correct_node_operations`, `handles_multiple_items`, `descriptive_node_names`, `response_matches_workflow_changes`) reuse the same Sonnet model as the verifier — auto-skipped (N/A) when no Anthropic key is set.
 
 ## Environment variables
 
