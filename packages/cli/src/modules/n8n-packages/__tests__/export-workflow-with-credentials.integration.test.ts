@@ -152,4 +152,48 @@ describe('workflow package export — with credentials', () => {
 		const credentialFiles = entries.filter((e) => e.name.endsWith('/credential.json'));
 		expect(credentialFiles).toHaveLength(1);
 	});
+
+	it('lists orphan credential references in requirements without writing a file', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+
+		const workflow = await createWorkflow(
+			{
+				name: 'Workflow with orphan',
+				nodes: [
+					{
+						id: 'n1',
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+						credentials: {
+							httpHeaderAuth: { id: 'does-not-exist', name: 'Stale cred name' },
+						},
+					},
+				],
+				connections: {},
+			},
+			project,
+		);
+
+		const stream = await service.exportWorkflows({ user: owner, workflowIds: [workflow.id] });
+		const { manifest, entries } = await readExport(stream);
+
+		expect(manifest.credentials).toBeUndefined();
+		expect(manifest.requirements).toEqual({
+			credentials: [
+				{
+					id: 'does-not-exist',
+					name: 'Stale cred name',
+					type: 'httpHeaderAuth',
+					usedByWorkflows: [workflow.id],
+				},
+			],
+		});
+
+		const credentialFiles = entries.filter((e) => e.name.endsWith('/credential.json'));
+		expect(credentialFiles).toEqual([]);
+	});
 });
