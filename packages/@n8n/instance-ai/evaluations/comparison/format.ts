@@ -26,6 +26,8 @@ import {
 	type FailureCategoryComparison,
 	type ScenarioComparison,
 } from './compare';
+import { aggregateWorkflowChecks } from '../binaryChecks/aggregate';
+import { CHECK_DIMENSIONS } from '../binaryChecks/types';
 import type {
 	MultiRunEvaluation,
 	TestCaseAggregation,
@@ -126,6 +128,9 @@ export function formatComparisonMarkdown(
 
 	lines.push(...renderPerTestCaseDetails(evaluation, options.slugByTestCase));
 
+	const workflowChecksSection = renderWorkflowChecksSection(evaluation);
+	if (workflowChecksSection.length > 0) lines.push(...workflowChecksSection);
+
 	if (comparison) {
 		const otherFindings = renderOtherFindings(comparison);
 		if (otherFindings.length > 0) lines.push(...otherFindings);
@@ -135,6 +140,36 @@ export function formatComparisonMarkdown(
 	if (failureDetails.length > 0) lines.push(...failureDetails);
 
 	return lines.join('\n');
+}
+
+function renderWorkflowChecksSection(evaluation: MultiRunEvaluation): string[] {
+	const aggregate = aggregateWorkflowChecks(evaluation);
+	if (!aggregate) return [];
+
+	const lines: string[] = [
+		'#### Workflow checks',
+		'',
+		`_Scored over ${String(aggregate.scoredBuilds)} successful build(s). N/A = check did not apply to that workflow._`,
+		'',
+		'| Dimension | Check | Kind | Pass | Fail | N/A | Pass rate |',
+		'|---|---|---|---|---|---|---|',
+	];
+
+	const byDimension: Record<string, string[]> = {};
+	for (const name of Object.keys(aggregate.perCheck).sort()) {
+		const entry = aggregate.perCheck[name];
+		const scored = entry.passes + entry.fails;
+		const rate = scored > 0 ? `${String(Math.round((entry.passes / scored) * 100))}%` : '—';
+		(byDimension[entry.dimension] ??= []).push(
+			`| \`${entry.dimension}\` | \`${name}\` | ${entry.kind} | ${String(entry.passes)} | ${String(entry.fails)} | ${String(entry.nA)} | ${rate} |`,
+		);
+	}
+
+	for (const dim of CHECK_DIMENSIONS) {
+		if (byDimension[dim]) lines.push(...byDimension[dim]);
+	}
+	lines.push('');
+	return lines;
 }
 
 function formatHeading(commitSha?: string): string {

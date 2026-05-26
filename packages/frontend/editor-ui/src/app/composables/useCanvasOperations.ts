@@ -105,6 +105,7 @@ import type {
 	NodeConnectionType,
 	INodeParameters,
 	INodeFilter,
+	IWorkflowGroup,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -2776,12 +2777,18 @@ export function useCanvasOperations() {
 				),
 			);
 
-			await addImportedNodesToWorkflow(workflowData, {
+			const importResult = await addImportedNodesToWorkflow(workflowData, {
 				trackBulk,
 				trackHistory,
 				viewport,
 				setStateDirty,
 			});
+
+			applyImportedNodeGroups(
+				workflowData.nodeGroups,
+				new Set(importResult.nodes?.map((node) => node.id).filter(isPresent) ?? []),
+				{ setStateDirty },
+			);
 
 			if (importTags && settingsStore.areTagsEnabled && Array.isArray(workflowData.tags)) {
 				await importWorkflowTags(workflowData);
@@ -2856,17 +2863,57 @@ export function useCanvasOperations() {
 		return workflowData;
 	}
 
+	function getNodeGroupsFullyContainedInSelection(
+		nodeIds: Set<string>,
+		groups: IWorkflowGroup[],
+	): IWorkflowGroup[] {
+		return groups
+			.filter(
+				(group) => group.nodeIds.length > 0 && group.nodeIds.every((nodeId) => nodeIds.has(nodeId)),
+			)
+			.map((group) => ({
+				...group,
+				nodeIds: [...group.nodeIds],
+			}));
+	}
+
+	function applyImportedNodeGroups(
+		nodeGroups: IWorkflowGroup[] | undefined,
+		importedNodeIds: Set<string>,
+		{ setStateDirty = true }: { setStateDirty?: boolean } = {},
+	) {
+		if (!nodeGroups?.length || importedNodeIds.size === 0 || !workflowDocumentStore.value) {
+			return;
+		}
+
+		const groupsToImport = getNodeGroupsFullyContainedInSelection(importedNodeIds, nodeGroups);
+		const existingGroupNames = new Set(
+			workflowDocumentStore.value.allGroups.map((group) => group.name),
+		);
+
+		for (const group of groupsToImport) {
+			const name = existingGroupNames.has(group.name)
+				? workflowDocumentStore.value.getNextDefaultName(group.name)
+				: group.name;
+
+			workflowDocumentStore.value.createGroup(group.nodeIds, name, { markDirty: setStateDirty });
+			existingGroupNames.add(name);
+		}
+	}
+
 	function getNodesToSave(nodes: INode[]): WorkflowData {
 		if (!workflowDocumentStore.value) {
 			throw new Error('Cannot serialize nodes: workflow document store is unavailable');
 		}
 
-		const data = {
+		const exportedPinData: IPinData = {};
+		const data: WorkflowData = {
 			nodes: [] as INodeUi[],
 			connections: {} as IConnections,
-			pinData: {} as IPinData,
-		} satisfies WorkflowData;
+			pinData: exportedPinData,
+		};
 
+		const exportedNodeIds = new Set(nodes.map((node) => node.id));
 		const exportedNodeNames = new Set<string>();
 
 		for (const node of nodes) {
@@ -2876,7 +2923,7 @@ export function useCanvasOperations() {
 			)[node.name];
 
 			if (pinDataForNode) {
-				data.pinData[node.name] = pinDataForNode as IPinData[string];
+				exportedPinData[node.name] = pinDataForNode as IPinData[string];
 			}
 
 			if (
@@ -2894,6 +2941,14 @@ export function useCanvasOperations() {
 		}
 
 		data.connections = getConnectionsForNodes(data.nodes, exportedNodeNames);
+
+		const nodeGroups = getNodeGroupsFullyContainedInSelection(
+			exportedNodeIds,
+			workflowDocumentStore.value.allGroups,
+		);
+		if (nodeGroups.length > 0) {
+			data.nodeGroups = nodeGroups;
+		}
 
 		workflowHelpers.removeForeignCredentialsFromWorkflow(data, credentialsStore.allCredentials);
 
