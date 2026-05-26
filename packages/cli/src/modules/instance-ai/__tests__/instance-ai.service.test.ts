@@ -508,6 +508,28 @@ type WorkspaceServiceInternals = {
 	) => Promise<unknown>;
 };
 
+type SandboxExpiryEntry = {
+	sandbox: unknown;
+	workspace: { destroy: jest.MockedFunction<() => Promise<void>> };
+	setupComplete: boolean;
+	setupPromise: Promise<void> | undefined;
+	expiresAt: number;
+	cleanupTimer?: ReturnType<typeof setTimeout>;
+};
+
+type SandboxExpiryServiceInternals = {
+	sandboxes: Map<string, SandboxExpiryEntry>;
+	instanceAiConfig: { builderSandboxTtlMs?: number };
+	runState: {
+		getActiveRunId: jest.MockedFunction<(threadId: string) => string | undefined>;
+		hasSuspendedRun: jest.MockedFunction<(threadId: string) => boolean>;
+	};
+	backgroundTasks: {
+		getRunningTasks: jest.MockedFunction<(threadId: string) => ManagedBackgroundTask[]>;
+	};
+	scheduleSandboxExpiry: (threadId: string, entry: SandboxExpiryEntry) => void;
+};
+
 type ShutdownServiceInternals = {
 	shutdown: () => Promise<void>;
 	stopCheckpointPruning: jest.MockedFunction<() => void>;
@@ -837,6 +859,40 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.instanceAiConfig = {};
 
 		expect(service.sandboxTtlMs).toBe(15 * 60 * 1000);
+	});
+
+	it('evicts expired runtime sandbox entries without destroying the provider workspace', () => {
+		jest.useFakeTimers();
+		try {
+			const service = Object.create(
+				InstanceAiService.prototype,
+			) as unknown as SandboxExpiryServiceInternals;
+			const workspace = { destroy: jest.fn(async () => {}) };
+			const entry: SandboxExpiryEntry = {
+				sandbox: { id: 'sandbox-1' },
+				workspace,
+				setupComplete: true,
+				setupPromise: undefined,
+				expiresAt: Date.now() + 1000,
+			};
+			service.instanceAiConfig = { builderSandboxTtlMs: 1000 };
+			service.sandboxes = new Map([['thread-1', entry]]);
+			service.runState = {
+				getActiveRunId: jest.fn((_threadId: string) => undefined),
+				hasSuspendedRun: jest.fn((_threadId: string) => false),
+			};
+			service.backgroundTasks = {
+				getRunningTasks: jest.fn((_threadId: string) => []),
+			};
+
+			service.scheduleSandboxExpiry('thread-1', entry);
+			jest.advanceTimersByTime(1000);
+
+			expect(service.sandboxes.has('thread-1')).toBe(false);
+			expect(workspace.destroy).not.toHaveBeenCalled();
+		} finally {
+			jest.useRealTimers();
+		}
 	});
 
 	it('threads Daytona name prefixes and labels through sandbox creation', async () => {
