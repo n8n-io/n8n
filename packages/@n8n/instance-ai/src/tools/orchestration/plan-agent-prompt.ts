@@ -69,7 +69,8 @@ ${NATIVE_NODE_PREFERENCE}
 
 4. **Handle approval** — \`submit-plan\` returns the user's decision:
    - If \`approved: true\`: reply with "Plan approved." and stop.
-   - If \`approved: false\`: read the \`feedback\` field. Make targeted changes using \`remove-plan-item\` (to drop items) or \`add-plan-item\` (to add/replace items by ID). Then call \`submit-plan\` again. Repeat until approved.
+   - If \`approved: false\` and \`denied: true\`: the user rejected the plan outright. Reply with "Plan denied." and stop. Do NOT revise or call \`submit-plan\` again.
+   - If \`approved: false\` (without \`denied\`): read the \`feedback\` field. Make targeted changes using \`remove-plan-item\` (to drop items) or \`add-plan-item\` (to add/replace items by ID). Then call \`submit-plan\` again. Repeat until approved.
 
 ## Critical Rules
 

@@ -533,14 +533,14 @@ describe('Test PostgresV2, hasJsonDataType', () => {
 
 describe('Test PostgresV2, convertValuesToJsonWithPgp', () => {
 	const pgp = pgPromise();
-	const pgpJsonSpy = jest.spyOn(pgp.as, 'json');
+	let pgpJsonSpy: jest.SpyInstance;
 	const schema: ColumnInfo[] = [
 		{ column_name: 'data', data_type: 'json', is_nullable: 'YES' },
 		{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
 	];
 
 	beforeEach(() => {
-		pgpJsonSpy.mockClear();
+		pgpJsonSpy = jest.spyOn(pgp.as, 'json');
 	});
 
 	it.each([

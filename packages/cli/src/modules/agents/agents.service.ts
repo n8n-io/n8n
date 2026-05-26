@@ -35,6 +35,7 @@ import {
 	ExecutionRepository,
 	In,
 	ProjectRelationRepository,
+	User,
 	UserRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -87,6 +88,7 @@ import {
 } from './json-config/from-json-config';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
 import { AgentPublishedVersionRepository } from './repositories/agent-published-version.repository';
+import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
@@ -175,6 +177,19 @@ interface GetRuntimeParams {
 	integrationType?: string;
 	/** When true, load the published snapshot; n8nUserId is derived from publishedById when omitted. */
 	usePublishedVersion?: boolean;
+}
+
+function getMaxIterationsChunks(): StreamChunk[] {
+	const id = crypto.randomUUID();
+	return [
+		{ type: 'text-start', id },
+		{
+			type: 'text-delta',
+			id,
+			delta: 'The agent has reached the maximum number of iterations and has stopped.',
+		},
+		{ type: 'text-end', id },
+	];
 }
 
 @Service()
@@ -267,7 +282,7 @@ export class AgentsService {
 		private readonly agentsToolsService: AgentsToolsService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentExecutionService: AgentExecutionService,
-		private readonly agentPublishedVersionRepository: AgentPublishedVersionRepository,
+		private readonly agentHistoryRepository: AgentHistoryRepository,
 		private readonly agentSkillsService: AgentSkillsService,
 		private readonly publisher: Publisher,
 		private readonly agentsConfig: AgentsConfig,
@@ -421,8 +436,8 @@ export class AgentsService {
 	}
 
 	/**
-	 * Same scoping as {@link findByUser}, but only returns agents that have a
-	 * `publishedVersion`. Used by the MessageAnAgent node's listSearch so the
+	 * Same scoping as {@link findByUser}, but only returns agents that have an
+	 * `activeVersion`. Used by the MessageAnAgent node's listSearch so the
 	 * dropdown can't surface unpublished agents — `executeForWorkflow` rejects
 	 * those at runtime, and showing them would just lead to a confusing
 	 * "Agent is not published" error after the user picks one.
@@ -435,43 +450,68 @@ export class AgentsService {
 
 		const agents = await this.agentRepository.find({
 			where: { projectId: In(projectIds) },
-			relations: { publishedVersion: true },
+			relations: { activeVersion: true },
 			order: { updatedAt: 'DESC' },
 		});
 
-		return agents.filter((agent) => agent.publishedVersion);
+		return agents.filter((agent) => agent.activeVersionId !== null);
 	}
 
-	async publishAgent(agentId: string, projectId: string, userId: string): Promise<Agent> {
+	async publishAgent(
+		agentId: string,
+		projectId: string,
+		user: User,
+		versionId?: string,
+	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
+		// Idempotent fast-path: the agent is already published at this exact
+		// versionId, so there's nothing to snapshot and no pointer to flip.
+		// Without this, re-publishing without an intervening save or unpublish
+		// would attempt to insert a second history row under the same PK and
+		// trip the UNIQUE constraint.
+		if (!versionId && agent.versionId !== null && agent.versionId === agent.activeVersionId) {
+			return agent;
+		}
+
 		await this.agentRepository.manager.transaction(async (trx) => {
-			// publishedFromVersionId is non-null — ensure the agent has a versionId before snapshotting.
-			if (!agent.versionId) {
-				agent.versionId = uuid();
-				await trx.save(agent);
+			if (versionId) {
+				const existing = await this.agentHistoryRepository.findByVersionAndAgentId(
+					versionId,
+					agentId,
+					trx,
+				);
+				if (!existing) {
+					throw new NotFoundError(`Version "${versionId}" not found for agent "${agentId}"`);
+				}
+				agent.activeVersionId = existing.versionId;
+				agent.activeVersion = existing;
+			} else {
+				// Snapshot the current draft. agent.versionId is the snapshot's PK,
+				// so make sure it's set before inserting.
+				agent.versionId ??= uuid();
+
+				agent.activeVersion = await this.agentHistoryRepository.saveVersion(
+					{
+						versionId: agent.versionId,
+						agentId: agent.id,
+						schema: agent.schema,
+						tools: this.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
+						skills: this.agentSkillsService.snapshotConfiguredSkills(
+							agent.schema,
+							agent.skills ?? {},
+						),
+						publishedBy: user,
+					},
+					trx,
+				);
+				agent.activeVersionId = agent.versionId;
 			}
 
-			agent.publishedVersion = await this.agentPublishedVersionRepository.savePublishedVersion(
-				{
-					agentId: agent.id,
-					schema: agent.schema,
-					tools: this.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
-					skills: this.agentSkillsService.snapshotConfiguredSkills(
-						agent.schema,
-						agent.skills ?? {},
-					),
-					publishedFromVersionId: agent.versionId,
-					model: agent.model,
-					provider: agent.provider,
-					credentialId: agent.credentialId,
-					publishedById: userId,
-				},
-				trx,
-			);
+			await trx.save(agent);
 		});
 
 		// Evict any cached draft runtime so integration executions pick up
@@ -496,7 +536,7 @@ export class AgentsService {
 				);
 		}
 
-		this.logger.debug('Published SDK agent', { agentId, projectId, userId });
+		this.logger.debug('Published SDK agent', { agentId, projectId, userId: user.id });
 
 		return agent;
 	}
@@ -508,8 +548,12 @@ export class AgentsService {
 		}
 
 		await this.agentRepository.manager.transaction(async (trx) => {
-			await this.agentPublishedVersionRepository.deleteByAgentId(agentId, trx);
-			agent.publishedVersion = null;
+			agent.activeVersionId = null;
+			agent.activeVersion = null;
+			// Bump versionId so the next publish gets a fresh PK. The just-
+			// unpublished snapshot still occupies its versionId in agent_history,
+			// and re-publishing the same id would collide with that row.
+			agent.versionId = uuid();
 
 			const hasActiveSchedule = (agent.integrations ?? []).some(
 				(integration) => isAgentScheduleIntegration(integration) && integration.active,
@@ -519,8 +563,9 @@ export class AgentsService {
 				agent.integrations = (agent.integrations ?? []).map((integration) =>
 					isAgentScheduleIntegration(integration) ? { ...integration, active: false } : integration,
 				);
-				await trx.save(agent);
 			}
+
+			await trx.save(agent);
 		});
 
 		this.clearRuntimes(agentId);
@@ -545,19 +590,16 @@ export class AgentsService {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
-		const publishedVersion = agent.publishedVersion;
-		if (!publishedVersion) {
+		const activeVersion = agent.activeVersion;
+		if (!activeVersion) {
 			throw new ConflictError(`Agent "${agentId}" is not published`);
 		}
 
 		await this.agentRepository.manager.transaction(async (trx) => {
-			agent.schema = publishedVersion.schema ? deepCopy(publishedVersion.schema) : null;
-			agent.tools = deepCopy(publishedVersion.tools ?? {});
-			agent.skills = deepCopy(publishedVersion.skills ?? {});
-			agent.model = publishedVersion.model;
-			agent.provider = publishedVersion.provider;
-			agent.credentialId = publishedVersion.credentialId;
-			agent.versionId = publishedVersion.publishedFromVersionId;
+			agent.schema = activeVersion.schema ? deepCopy(activeVersion.schema) : null;
+			agent.tools = deepCopy(activeVersion.tools ?? {});
+			agent.skills = deepCopy(activeVersion.skills ?? {});
+			agent.versionId = activeVersion.versionId;
 
 			if (agent.schema) {
 				agent.name = agent.schema.name;
@@ -662,19 +704,19 @@ export class AgentsService {
 		let agentData: Agent = agentEntity;
 
 		if (usePublishedVersion) {
-			const publishedSchema = agentEntity.publishedVersion?.schema;
-			if (!publishedSchema) {
+			const activeVersionSchema = agentEntity.activeVersion?.schema;
+			if (!activeVersionSchema) {
 				throw new NotFoundError(`Agent ${agentId} is not published`);
 			}
 			agentData = {
 				...agentEntity,
-				schema: publishedSchema,
-				tools: agentEntity.publishedVersion?.tools ?? agentEntity.tools ?? {},
-				skills: agentEntity.publishedVersion?.skills ?? agentEntity.skills ?? {},
+				schema: activeVersionSchema,
+				tools: agentEntity.activeVersion?.tools ?? agentEntity.tools ?? {},
+				skills: agentEntity.activeVersion?.skills ?? agentEntity.skills ?? {},
 			} as Agent;
 
 			// Resolve n8n user from publishedById when not provided by the caller.
-			n8nUserId ??= agentEntity.publishedVersion?.publishedById ?? undefined;
+			n8nUserId ??= agentEntity.activeVersion?.publishedById ?? undefined;
 		}
 
 		if (!n8nUserId) {
@@ -1045,7 +1087,7 @@ export class AgentsService {
 	 * Execute a published agent for the local schedule trigger.
 	 *
 	 * The n8n user identity for RBAC is resolved from
-	 * `publishedVersion.publishedById`.  Each scheduled run uses its own
+	 * `activeVersion.publishedById`.  Each scheduled run uses its own
 	 * memory scope so no conversation history is shared across runs.
 	 * `projectId` is resolved from the agent entity.
 	 */
@@ -1103,6 +1145,11 @@ export class AgentsService {
 						toolCallId: value.toolCallId,
 						toolName: value.toolName,
 					});
+				}
+				if (value.type === 'finish' && value.finishReason === 'max-iterations') {
+					for (const chunk of getMaxIterationsChunks()) {
+						yield chunk;
+					}
 				}
 				yield value;
 			}
@@ -1211,7 +1258,7 @@ export class AgentsService {
 			throw new OperationalError('Agent not found or not accessible.');
 		}
 
-		if (!agentEntity.publishedVersion) {
+		if (!agentEntity.activeVersionId) {
 			throw new OperationalError(
 				'Agent is not published. Publish the agent before using it in a workflow.',
 			);
@@ -1570,7 +1617,7 @@ export class AgentsService {
 		const activeUnpublishedSchedule = integrations.some(
 			(integration) => isAgentScheduleIntegration(integration) && integration.active,
 		);
-		if (activeUnpublishedSchedule && !agent.publishedVersion) {
+		if (activeUnpublishedSchedule && !agent.activeVersionId) {
 			throw new UserError(
 				'Invalid agent config: schedule integration cannot be active until the agent is published',
 			);

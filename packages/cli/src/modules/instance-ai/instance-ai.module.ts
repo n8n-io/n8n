@@ -57,6 +57,13 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiRunSnapshot } = await import('./entities/instance-ai-run-snapshot.entity');
 		const { InstanceAiIterationLog } = await import('./entities/instance-ai-iteration-log.entity');
 		const { InstanceAiCheckpoint } = await import('./entities/instance-ai-checkpoint.entity');
+		const { InstanceAiObservation } = await import('./entities/instance-ai-observation.entity');
+		const { InstanceAiObservationCursor } = await import(
+			'./entities/instance-ai-observation-cursor.entity'
+		);
+		const { InstanceAiObservationLock } = await import(
+			'./entities/instance-ai-observation-lock.entity'
+		);
 
 		return [
 			InstanceAiThread,
@@ -65,6 +72,9 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiRunSnapshot,
 			InstanceAiIterationLog,
 			InstanceAiCheckpoint,
+			InstanceAiObservation,
+			InstanceAiObservationCursor,
+			InstanceAiObservationLock,
 		];
 	}
 

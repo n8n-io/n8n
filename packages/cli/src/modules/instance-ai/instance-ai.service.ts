@@ -366,8 +366,8 @@ type OrchestratorResumeReason =
  *  relevant to the submitted kind are populated — everything else stays undefined.
  *
  *  Most kinds carry implicit approval (you wouldn't be submitting answers,
- *  selected credentials, or a setup action otherwise) — only `approval` and
- *  `domainAccessDeny` actually carry a denial path. */
+ *  selected credentials, or a setup action otherwise) — only `approval`,
+ *  `domainAccessDeny`, and `planDeny` carry a denial path. */
 function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData {
 	switch (request.kind) {
 		case 'approval':
@@ -376,6 +376,8 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 			return { approved: true, domainAccessAction: request.domainAccessAction };
 		case 'domainAccessDeny':
 			return { approved: false };
+		case 'planDeny':
+			return { approved: false, denied: true };
 		case 'questions':
 			return { approved: true, answers: request.answers };
 		case 'credentialSelection':
@@ -569,6 +571,7 @@ export class InstanceAiService {
 			sandboxImage,
 			sandboxTimeout,
 			sandboxNamePrefix,
+			daytonaTokenRefreshSkewMs,
 		} = this.instanceAiConfig;
 		if (!sandboxEnabled) {
 			return {
@@ -593,6 +596,7 @@ export class InstanceAiService {
 				n8nVersion: N8N_VERSION || undefined,
 				timeout: sandboxTimeout,
 				namePrefix: sandboxNamePrefix || undefined,
+				refreshSkewMs: daytonaTokenRefreshSkewMs,
 			};
 		}
 
@@ -625,6 +629,7 @@ export class InstanceAiService {
 					...base,
 					daytonaApiUrl: client.getSandboxProxyBaseUrl(),
 					image: proxyConfig.image,
+					logger: this.logger,
 					getAuthToken: async () => {
 						const token = await client.getBuilderApiProxyToken(
 							{ id: user.id },
@@ -709,7 +714,7 @@ export class InstanceAiService {
 		const config = withThreadScopedSandboxIdentity(await this.resolveSandboxConfig(user), threadId);
 		if (!config.enabled) return undefined;
 
-		const sandbox = await createSandbox(config);
+		const sandbox = createSandbox(config);
 		const workspace = createWorkspace(sandbox);
 		if (!sandbox || !workspace) return undefined;
 		try {

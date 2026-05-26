@@ -238,6 +238,14 @@ export { createLazyRuntimeWorkspace } from './workspace/lazy-runtime-workspace';
 export type { RuntimeWorkspaceResolver } from './workspace/lazy-runtime-workspace';
 export { getWorkspaceRoot, setupSandboxWorkspace } from './workspace/sandbox-setup';
 export type { BuilderWorkspace } from './workspace/builder-sandbox-factory';
+export {
+	BuilderTemplatesService,
+	builderTemplatesOptionsFromEnv,
+} from './workspace/builder-templates-service';
+export type {
+	BuilderTemplatesBundle,
+	BuilderTemplatesServiceOptions,
+} from './workspace/builder-templates-service';
 export type BuilderSandboxFactory = BuilderSandboxFactoryMod.BuilderSandboxFactory;
 export const createSandbox: typeof CreateWorkspaceMod.createSandbox = lazyFunction(
 	() => loadCreateWorkspace().createSandbox,
