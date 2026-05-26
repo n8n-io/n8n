@@ -1,0 +1,40 @@
+packages/cli/test/migration/1784000000009-split-redaction-scope-in-custom-roles.test.ts
+  s_a0f002f59105e2::t_e49a958644177c 1-11,13-365
+  s_a0f002f59105e2::t_4300d0b491cd5f 12
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_a0f002f59105e2::t_d997db76f47f55 170
+  s_a0f002f59105e2::t_e1ab70c6b40ea3 363
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_a0f002f59105e2::t_d5495f7bd3b69f 177
+  s_a0f002f59105e2::t_2957fefe0e530c 377
+packages/@n8n/db/src/services/auth.roles.service.ts
+  s_a0f002f59105e2::t_7a53ab787c79a1 89-90,93,95-105
+packages/frontend/editor-ui/src/app/components/WorkflowSettings.test.ts
+  s_ff5f64df21e3e0::t_963fa1ad2e8953 1310
+packages/@n8n/db/src/migrations/common/1784000000009-SplitRedactionScopeInCustomRoles.ts
+  s_a0f002f59105e2::t_cd893b2c272b1e 1-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "44c0018264c70d82d4c21f706020e3d9cbcafff9",
+  "prompts": {},
+  "sessions": {
+    "s_a0f002f59105e2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8ec96e8d-b6a8-49a1-a80a-24f269d9f04b",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": null
+    },
+    "s_ff5f64df21e3e0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c3b9fbef-886c-40d9-a205-0e22a7d98cc2",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
