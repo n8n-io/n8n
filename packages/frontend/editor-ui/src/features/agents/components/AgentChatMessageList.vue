@@ -141,6 +141,7 @@ function getMemoriesUsedInAssistantRun(groupId: string): MemoryUsed[] {
 	if (index === -1) return [];
 
 	const memories: MemoryUsed[] = [];
+	const memoryIds = new Set<string>();
 
 	for (let i = index; i >= 0; i--) {
 		const group = displayGroups.value[i];
@@ -150,7 +151,13 @@ function getMemoriesUsedInAssistantRun(groupId: string): MemoryUsed[] {
 		for (let j = toolCalls.length - 1; j >= 0; j--) {
 			const toolCall = toolCalls[j];
 			if (toolCall.tool !== 'recall_memory') continue;
-			memories.unshift(...parseMemoryOutput(toolCall.output));
+
+			const uniqueMemories = parseMemoryOutput(toolCall.output).filter((memory) => {
+				if (memoryIds.has(memory.id)) return false;
+				memoryIds.add(memory.id);
+				return true;
+			});
+			memories.unshift(...uniqueMemories);
 		}
 	}
 
