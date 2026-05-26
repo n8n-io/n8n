@@ -583,37 +583,14 @@ describe('workflow timeout with startedAt', () => {
 });
 
 describe('needsFullExecutionData', () => {
-	const originalEnv = process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
-
-	afterEach(() => {
-		if (originalEnv === undefined) {
-			delete process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
-		} else {
-			process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = originalEnv;
-		}
-	});
-
-	it('should return true when forceFullExecutionData is true even with N8N_MINIMIZE_EXECUTION_DATA_FETCHING set', () => {
-		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
-
+	it('should return true when forceFullExecutionData is true', () => {
 		// @ts-expect-error Private method
 		const result = runner.needsFullExecutionData('evaluation', 'exec-id', true);
 
 		expect(result).toBe(true);
 	});
 
-	it('should return true when env var is not set and forceFullExecutionData is undefined', () => {
-		delete process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
-
-		// @ts-expect-error Private method
-		const result = runner.needsFullExecutionData('webhook', 'exec-id', undefined);
-
-		expect(result).toBe(true);
-	});
-
-	it('should return false when env var is set, forceFullExecutionData is undefined, and mode is not integrated', () => {
-		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
-
+	it('should return false when forceFullExecutionData is undefined and mode is not integrated', () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		jest.spyOn(activeExecutions, 'getResponseMode').mockReturnValue('responseNode');
 
@@ -623,9 +600,7 @@ describe('needsFullExecutionData', () => {
 		expect(result).toBe(false);
 	});
 
-	it('should return true when env var is set and mode is integrated', () => {
-		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
-
+	it('should return true when mode is integrated', () => {
 		// @ts-expect-error Private method
 		const result = runner.needsFullExecutionData('integrated', 'exec-id', undefined);
 
