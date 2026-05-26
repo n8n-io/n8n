@@ -219,12 +219,10 @@ export function buildContext(
 				}
 				// Everything else: delegate to the lazy proxy. The lazy proxy's
 				// own `get` trap handles caching, host fetching, and metadata.
-				return (lazyProxy as Record<string | symbol, unknown>)[prop];
+				return lazyProxy[prop];
 			},
 			has(_emptyTarget, prop) {
-				return (
-					isKeyOf(NODE_RPC_TYPES, prop) || prop in (lazyProxy as Record<string | symbol, unknown>)
-				);
+				return isKeyOf(NODE_RPC_TYPES, prop) || prop in lazyProxy;
 			},
 		});
 	};
@@ -248,13 +246,10 @@ export function buildContext(
 	target.$input = new Proxy({} as Record<string, unknown>, {
 		get(_emptyTarget, prop) {
 			if (isKeyOf(INPUT_RPC_TYPES, prop)) return sendInputMethod(INPUT_RPC_TYPES[prop]);
-			return (lazyInputProxy as Record<string | symbol, unknown>)[prop];
+			return lazyInputProxy[prop];
 		},
 		has(_emptyTarget, prop) {
-			return (
-				isKeyOf(INPUT_RPC_TYPES, prop) ||
-				prop in (lazyInputProxy as Record<string | symbol, unknown>)
-			);
+			return isKeyOf(INPUT_RPC_TYPES, prop) || prop in lazyInputProxy;
 		},
 	});
 
