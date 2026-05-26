@@ -130,6 +130,7 @@ function toExportableWorkflow(
 		triggerCount: wf.triggerCount,
 		parentFolderId: null,
 		versionId: versionId ?? wf.versionId,
+		nodeGroups: wf.nodeGroups ?? [],
 	};
 }
 

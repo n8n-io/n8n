@@ -40,6 +40,7 @@ import type {
 	WorkflowLoopAction,
 	WorkflowLoopState,
 } from './workflow-loop/workflow-loop-state';
+import type { BuilderTemplatesService } from './workspace/builder-templates-service';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -611,6 +612,12 @@ export interface InstanceAiContext {
 	nodeService: InstanceAiNodeService;
 	dataTableService: InstanceAiDataTableService;
 	webResearchService?: InstanceAiWebResearchService;
+	/**
+	 * Curated workflow-template provider for the sandbox setup. When absent or
+	 * when the service returns an empty bundle, the sandbox is created without
+	 * an `examples/` directory and the agent operates without template hints.
+	 */
+	templatesService?: BuilderTemplatesService;
 	workspaceService?: InstanceAiWorkspaceService;
 	/**
 	 * Connected remote MCP server (e.g. computer-use daemon). When set, dynamic tools are created from its advertised capabilities.
@@ -778,6 +785,9 @@ export interface PlannedTaskService {
 	/** Transition an `awaiting_approval` graph → `active` after the user
 	 *  approves the plan. No-op on any other status. */
 	approvePlan(threadId: string): Promise<PlannedTaskGraph | null>;
+	/** Transition an `awaiting_approval` graph → `cancelled` after the user
+	 *  denies the plan outright. No-op on any other status. */
+	denyPlan(threadId: string): Promise<PlannedTaskGraph | null>;
 	/** Revert an `awaiting_replan` or `completed` graph back to `active`. Used by
 	 *  the service when a replan or synthesize follow-up couldn't start. */
 	revertToActive(threadId: string): Promise<PlannedTaskGraph | null>;
