@@ -9,13 +9,14 @@ describe('AwsLambda', () => {
 	let node: AwsLambda;
 	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
 	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
-	const awsApiRequestRESTSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
+	let awsApiRequestRESTSpy: jest.SpyInstance;
 
 	beforeEach(() => {
 		node = new AwsLambda();
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 		mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
 		jest.clearAllMocks();
+		awsApiRequestRESTSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
 
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
 		mockExecuteFunctions.getNode.mockReturnValue({
