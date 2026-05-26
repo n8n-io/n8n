@@ -57,7 +57,10 @@ export abstract class AgentChatIntegration {
 	readonly supportedComponents?: string[];
 
 	/** Read-only context queries exposed through the generated integration context tool. */
-	readonly contextQueries: IntegrationContextQuery[] = ['get_current_message_context'];
+	readonly contextQueries: IntegrationContextQuery[] = [
+		'get_current_message_context',
+		'get_current_subject',
+	];
 
 	/** Side-effecting actions exposed through the generated integration action tool. */
 	readonly actions: IntegrationAction[] = ['respond'];

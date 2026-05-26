@@ -13,7 +13,7 @@ import { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
 import type { SuspendComponent } from '../component-mapper';
 import { loadTelegramAdapter } from '../esm-loader';
-import type { IntegrationAction, IntegrationContextQuery } from '../integration-tools';
+import type { IntegrationAction } from '../integration-tools';
 
 /**
  * Telegram platform integration.
@@ -41,8 +41,6 @@ export class TelegramIntegration extends AgentChatIntegration {
 	readonly displayIcon = 'telegram';
 
 	readonly supportedComponents = ['section', 'button', 'divider', 'fields'];
-
-	readonly contextQueries: IntegrationContextQuery[] = ['get_current_message_context'];
 
 	readonly actions: IntegrationAction[] = ['respond', 'send_dm'];
 

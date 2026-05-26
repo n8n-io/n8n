@@ -777,6 +777,36 @@ describe('AgentsService', () => {
 		});
 	});
 
+	describe('credential integrations', () => {
+		it('marks a published agent dirty when saving a credential integration', async () => {
+			const agent = makeAgent({
+				versionId,
+				activeVersionId: versionId,
+				integrations: [],
+			});
+			agentRepository.save.mockResolvedValue(agent);
+
+			await service.saveCredentialIntegration(agent, { type: 'slack', credentialId: 'cred-slack' });
+
+			expect(agent.versionId).not.toBe(versionId);
+			expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		});
+
+		it('marks a published agent dirty when removing a credential integration', async () => {
+			const agent = makeAgent({
+				versionId,
+				activeVersionId: versionId,
+				integrations: [{ type: 'slack', credentialId: 'cred-slack' }],
+			});
+			agentRepository.save.mockResolvedValue(agent);
+
+			await service.removeCredentialIntegration(agent, 'slack', 'cred-slack');
+
+			expect(agent.versionId).not.toBe(versionId);
+			expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		});
+	});
+
 	describe('executeForChatPublished', () => {
 		it('reconstructs from the published skill snapshot instead of the draft skill body', async () => {
 			const publishedSkill = {

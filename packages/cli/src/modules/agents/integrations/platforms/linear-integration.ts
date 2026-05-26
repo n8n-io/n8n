@@ -3,8 +3,7 @@ import { Service } from '@n8n/di';
 
 import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
 import { loadLinearAdapter } from '../esm-loader';
-
-type LinearAuth = { kind: 'apiKey'; token: string } | { kind: 'accessToken'; token: string };
+import type { IntegrationAction, IntegrationContextQuery } from '../integration-tools';
 
 /**
  * Linear platform integration.
@@ -22,55 +21,62 @@ type LinearAuth = { kind: 'apiKey'; token: string } | { kind: 'accessToken'; tok
 export class LinearIntegration extends AgentChatIntegration {
 	readonly type = 'linear';
 
-	readonly credentialTypes = ['linearApi', 'linearOAuth2Api'];
+	readonly credentialTypes = ['linearOAuth2Api'];
 
 	readonly displayLabel = 'Linear';
 
 	readonly displayIcon = 'linear';
+
+	readonly contextQueries: IntegrationContextQuery[] = [
+		'get_current_message_context',
+		'get_current_subject',
+		'get_current_user',
+		'get_user',
+		'search_users',
+		'get_issue',
+		'search_issues',
+	];
+
+	readonly actions: IntegrationAction[] = ['respond', 'create_issue', 'create_comment'];
 
 	constructor(private readonly logger: Logger) {
 		super();
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
-		const auth = this.extractAuth(ctx.credential);
+		const accessToken = this.extractAccessToken(ctx.credential);
 		const webhookSecret = this.extractSigningSecret(ctx.credential);
-		const userName = await this.fetchDisplayName(auth);
+		const userName = await this.fetchDisplayName(accessToken);
+		const mode = this.extractMode(ctx.credential);
 
 		const { createLinearAdapter } = await loadLinearAdapter();
 
 		return createLinearAdapter({
-			...(auth.kind === 'apiKey' ? { apiKey: auth.token } : { accessToken: auth.token }),
+			accessToken,
 			webhookSecret,
 			...(userName ? { userName } : {}),
+			...(mode ? { mode } : {}),
 		});
 	}
 
 	/**
 	 * Determine which auth variant the adapter config expects.
 	 *
-	 * - `linearApi` stores a personal API key in `apiKey` — passed to the adapter
-	 *   as `apiKey` (adapter uses it as-is).
 	 * - `linearOAuth2Api` stores an OAuth access token in
 	 *   `oauthTokenData.access_token` — passed as `accessToken` (adapter skips
 	 *   auto-refresh and treats it as a pre-obtained token, per option B of the
 	 *   @chat-adapter/linear README).
 	 */
-	private extractAuth(credential: Record<string, unknown>): LinearAuth {
-		if (typeof credential.apiKey === 'string' && credential.apiKey) {
-			return { kind: 'apiKey', token: credential.apiKey };
-		}
-
+	private extractAccessToken(credential: Record<string, unknown>): string {
 		const tokenData = credential.oauthTokenData as Record<string, unknown> | undefined;
 		const oauthToken = tokenData?.access_token ?? tokenData?.accessToken;
 		if (typeof oauthToken === 'string' && oauthToken) {
-			return { kind: 'accessToken', token: oauthToken };
+			return oauthToken;
 		}
 
 		throw new Error(
-			'Could not extract an API token from the Linear credential. ' +
-				'Please ensure the credential has a valid API key (linearApi) ' +
-				'or completed OAuth flow (linearOAuth2Api).',
+			'Could not extract an OAuth access token from the Linear credential. ' +
+				'Please ensure the credential has completed the OAuth flow (linearOAuth2Api).',
 		);
 	}
 
@@ -87,17 +93,20 @@ export class LinearIntegration extends AgentChatIntegration {
 		);
 	}
 
+	private extractMode(credential: Record<string, unknown>): 'agent-sessions' | undefined {
+		return credential.actor === 'app' ? 'agent-sessions' : undefined;
+	}
+
 	/**
-	 * Personal API keys go in as a bare `Authorization: <key>` header; OAuth
-	 * access tokens need `Authorization: Bearer <token>`. Returns undefined on
-	 * any failure — the adapter falls back to its default `linear-bot` name.
+	 * OAuth access tokens need `Authorization: Bearer <token>`. Returns
+	 * undefined on any failure — the adapter falls back to its default
+	 * `linear-bot` name.
 	 */
-	private async fetchDisplayName(auth: LinearAuth): Promise<string | undefined> {
-		const authHeader = auth.kind === 'accessToken' ? `Bearer ${auth.token}` : auth.token;
+	private async fetchDisplayName(accessToken: string): Promise<string | undefined> {
 		try {
 			const resp = await fetch('https://api.linear.app/graphql', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json', Authorization: authHeader },
+				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
 				body: JSON.stringify({ query: '{ viewer { displayName } }' }),
 			});
 			if (!resp.ok) return undefined;

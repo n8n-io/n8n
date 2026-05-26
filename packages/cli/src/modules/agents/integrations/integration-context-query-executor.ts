@@ -35,6 +35,19 @@ const searchChannelsInputSchema = z.object({
 	includeArchived: z.boolean().default(false),
 });
 
+const getIssueInputSchema = z.object({
+	issueId: z.string().min(1),
+	includeComments: z.boolean().default(false),
+	commentsLimit: z.number().int().min(1).max(20).default(10),
+});
+
+const searchIssuesInputSchema = z.object({
+	query: z.string().min(1),
+	limit: z.number().int().min(1).max(50).default(10),
+	teamId: z.string().min(1).optional(),
+	includeArchived: z.boolean().default(false),
+});
+
 @Service()
 export class ChatIntegrationContextQueryExecutor implements IntegrationContextQueryExecutor {
 	constructor(private readonly chatIntegrationService: ChatIntegrationService) {}
@@ -57,6 +70,11 @@ export class ChatIntegrationContextQueryExecutor implements IntegrationContextQu
 		}
 
 		try {
+			if (params.descriptor.integration.type === 'linear') {
+				const result = await executeLinearQuery(chat, params.query, params.input);
+				if (result !== undefined) return result;
+			}
+
 			if (params.query === 'get_user') {
 				const input = getUserInputSchema.parse(params.input);
 				const user = await chat.getUser(input.userId);
@@ -113,6 +131,28 @@ function connectionUnavailable() {
 
 type SearchUsersInput = z.infer<typeof searchUsersInputSchema>;
 type SearchChannelsInput = z.infer<typeof searchChannelsInputSchema>;
+type GetIssueInput = z.infer<typeof getIssueInputSchema>;
+type SearchIssuesInput = z.infer<typeof searchIssuesInputSchema>;
+
+interface LinearAdapter {
+	client: Record<string, unknown>;
+}
+
+interface LinearClientWithUser {
+	user(userId: string): Promise<unknown>;
+}
+
+interface LinearClientWithUsers {
+	users(options: Record<string, unknown>): Promise<unknown>;
+}
+
+interface LinearClientWithIssue {
+	issue(issueId: string): Promise<unknown>;
+}
+
+interface LinearClientWithIssueSearch {
+	searchIssues(query: string, options: Record<string, unknown>): Promise<unknown>;
+}
 
 interface SlackUserSearchResult {
 	userId: string;
@@ -188,6 +228,377 @@ interface SlackWebClient {
 interface SlackAdapter {
 	client: SlackWebClient;
 	withToken?: (options: Record<string, unknown>) => Promise<Record<string, unknown>>;
+}
+
+async function executeLinearQuery(
+	chat: {
+		getAdapter(name: string): unknown;
+	},
+	query: IntegrationContextQuery,
+	input: Record<string, unknown>,
+): Promise<unknown | undefined> {
+	if (query === 'get_user') {
+		return await getLinearUser(chat, getUserInputSchema.parse(input));
+	}
+	if (query === 'search_users') {
+		return await searchLinearUsers(chat, searchUsersInputSchema.parse(input));
+	}
+	if (query === 'get_issue') {
+		return await getLinearIssue(chat, getIssueInputSchema.parse(input));
+	}
+	if (query === 'search_issues') {
+		return await searchLinearIssues(chat, searchIssuesInputSchema.parse(input));
+	}
+	return undefined;
+}
+
+async function getLinearUser(
+	chat: {
+		getAdapter(name: string): unknown;
+	},
+	input: { userId: string },
+): Promise<unknown> {
+	const adapter = getLinearAdapter(chat);
+	if (!adapter || !hasLinearUserClient(adapter.client)) {
+		return unsupportedLinearQuery('get_user');
+	}
+
+	const user = await adapter.client.user(input.userId);
+	return { ok: true, user: normalizeLinearUser(user) ?? null };
+}
+
+async function searchLinearUsers(
+	chat: {
+		getAdapter(name: string): unknown;
+	},
+	input: SearchUsersInput,
+): Promise<unknown> {
+	const adapter = getLinearAdapter(chat);
+	if (!adapter || !hasLinearUsersClient(adapter.client)) {
+		return unsupportedLinearQuery('search_users');
+	}
+
+	const response = await adapter.client.users({
+		filter: buildLinearUserSearchFilter(input),
+		first: input.limit,
+		includeArchived: input.includeDeleted,
+		includeDisabled: input.includeDeleted,
+	});
+
+	const users = linearNodes(response).map(normalizeLinearUser).filter(isDefined);
+	return { ok: true, users, resultCount: users.length };
+}
+
+async function getLinearIssue(
+	chat: {
+		getAdapter(name: string): unknown;
+	},
+	input: GetIssueInput,
+): Promise<unknown> {
+	const adapter = getLinearAdapter(chat);
+	if (!adapter || !hasLinearIssueClient(adapter.client)) {
+		return unsupportedLinearQuery('get_issue');
+	}
+
+	const issue = await adapter.client.issue(input.issueId);
+	if (!issue) return { ok: true, issue: null };
+
+	return {
+		ok: true,
+		issue: await normalizeLinearIssue(issue, {
+			includeComments: input.includeComments,
+			commentsLimit: input.commentsLimit,
+		}),
+	};
+}
+
+async function searchLinearIssues(
+	chat: {
+		getAdapter(name: string): unknown;
+	},
+	input: SearchIssuesInput,
+): Promise<unknown> {
+	const adapter = getLinearAdapter(chat);
+	if (!adapter || !hasLinearIssueSearchClient(adapter.client)) {
+		return unsupportedLinearQuery('search_issues');
+	}
+
+	const response = await adapter.client.searchIssues(input.query, {
+		first: input.limit,
+		...(input.teamId ? { teamId: input.teamId } : {}),
+		includeArchived: input.includeArchived,
+	});
+
+	const issues = await Promise.all(
+		linearNodes(response).map(async (issue) => await normalizeLinearIssue(issue)),
+	);
+
+	return {
+		ok: true,
+		issues,
+		resultCount: issues.length,
+		...(numberValue(response, 'totalCount') !== undefined
+			? { totalCount: numberValue(response, 'totalCount') }
+			: {}),
+	};
+}
+
+function getLinearAdapter(chat: { getAdapter(name: string): unknown }): LinearAdapter | undefined {
+	const adapter = chat.getAdapter('linear');
+	if (!isRecord(adapter) || !isRecord(adapter.client)) return undefined;
+	return { client: adapter.client };
+}
+
+function hasLinearUserClient(
+	client: Record<string, unknown>,
+): client is Record<string, unknown> & LinearClientWithUser {
+	return typeof client.user === 'function';
+}
+
+function hasLinearUsersClient(
+	client: Record<string, unknown>,
+): client is Record<string, unknown> & LinearClientWithUsers {
+	return typeof client.users === 'function';
+}
+
+function hasLinearIssueClient(
+	client: Record<string, unknown>,
+): client is Record<string, unknown> & LinearClientWithIssue {
+	return typeof client.issue === 'function';
+}
+
+function hasLinearIssueSearchClient(
+	client: Record<string, unknown>,
+): client is Record<string, unknown> & LinearClientWithIssueSearch {
+	return typeof client.searchIssues === 'function';
+}
+
+function unsupportedLinearQuery(
+	query: 'get_user' | 'search_users' | 'get_issue' | 'search_issues',
+) {
+	return {
+		ok: false,
+		error: {
+			code: 'UNSUPPORTED_QUERY',
+			message: `The active Linear connection does not support ${query}.`,
+		},
+	};
+}
+
+function buildLinearUserSearchFilter(input: SearchUsersInput): Record<string, unknown> {
+	const userSearchFilter = buildLinearUserSearchTermFilter(input);
+	if (input.includeBots) return userSearchFilter;
+
+	return {
+		and: [userSearchFilter, { app: { eq: false } }],
+	};
+}
+
+function buildLinearUserSearchTermFilter(input: SearchUsersInput): Record<string, unknown> {
+	if (input.email) {
+		return { email: { eqIgnoreCase: input.email.trim() } };
+	}
+
+	const query = input.query?.trim() ?? '';
+	return {
+		or: [
+			{ name: { containsIgnoreCase: query } },
+			{ displayName: { containsIgnoreCase: query } },
+			{ email: { containsIgnoreCase: query } },
+		],
+	};
+}
+
+export async function normalizeLinearIssue(
+	value: unknown,
+	options: { includeComments?: boolean; commentsLimit?: number } = {},
+): Promise<Record<string, unknown>> {
+	const issue = isRecord(value) ? value : {};
+	const [state, assignee, creator, team, project, labelsConnection] = await Promise.all([
+		awaitableProperty(issue, 'state'),
+		awaitableProperty(issue, 'assignee'),
+		awaitableProperty(issue, 'creator'),
+		awaitableProperty(issue, 'team'),
+		awaitableProperty(issue, 'project'),
+		callLinearConnection(issue, 'labels', { first: 50 }),
+	]);
+
+	const priority = normalizeLinearPriority(issue);
+	const comments = options.includeComments
+		? await normalizeLinearComments(issue, options.commentsLimit ?? 10)
+		: undefined;
+
+	return removeUndefinedValues({
+		issueId: stringProperty(issue, 'id'),
+		identifier: stringProperty(issue, 'identifier'),
+		title: stringProperty(issue, 'title'),
+		description: stringProperty(issue, 'description'),
+		url: stringProperty(issue, 'url'),
+		priority,
+		state: normalizeLinearState(state),
+		assignee: normalizeLinearUser(assignee),
+		creator: normalizeLinearUser(creator),
+		team: normalizeLinearTeam(team),
+		project: normalizeLinearProject(project),
+		labels: linearNodes(labelsConnection).map(normalizeLinearLabel).filter(isDefined),
+		createdAt: isoDateProperty(issue, 'createdAt'),
+		updatedAt: isoDateProperty(issue, 'updatedAt'),
+		...(comments ? { comments } : {}),
+	});
+}
+
+async function normalizeLinearComments(
+	issue: Record<string, unknown>,
+	commentsLimit: number,
+): Promise<Array<Record<string, unknown>> | undefined> {
+	const commentsConnection = await callLinearConnection(issue, 'comments', {
+		first: commentsLimit,
+	});
+	if (!commentsConnection) return undefined;
+	return await Promise.all(
+		linearNodes(commentsConnection).map(async (comment) => await normalizeLinearComment(comment)),
+	);
+}
+
+export async function normalizeLinearComment(value: unknown): Promise<Record<string, unknown>> {
+	const comment = isRecord(value) ? value : {};
+	const author = await awaitableProperty(comment, 'user');
+	return removeUndefinedValues({
+		commentId: stringProperty(comment, 'id'),
+		body: stringProperty(comment, 'body'),
+		url: stringProperty(comment, 'url'),
+		createdAt: isoDateProperty(comment, 'createdAt'),
+		updatedAt: isoDateProperty(comment, 'updatedAt'),
+		author: normalizeLinearUser(author),
+	});
+}
+
+function normalizeLinearUser(value: unknown): Record<string, unknown> | undefined {
+	if (!isRecord(value)) return undefined;
+	const userId = stringProperty(value, 'id');
+	if (!userId) return undefined;
+
+	return removeUndefinedValues({
+		userId,
+		name: stringProperty(value, 'name') ?? userId,
+		displayName: stringProperty(value, 'displayName'),
+		email: stringProperty(value, 'email'),
+		avatarUrl: stringProperty(value, 'avatarUrl'),
+		active: booleanProperty(value, 'active'),
+		isBot: booleanProperty(value, 'app') ?? false,
+		isAssignable: booleanProperty(value, 'isAssignable'),
+		isMentionable: booleanProperty(value, 'isMentionable'),
+		url: stringProperty(value, 'url'),
+	});
+}
+
+function normalizeLinearState(value: unknown): Record<string, unknown> | undefined {
+	if (!isRecord(value)) return undefined;
+	return removeUndefinedValues({
+		id: stringProperty(value, 'id'),
+		name: stringProperty(value, 'name'),
+		type: stringProperty(value, 'type'),
+	});
+}
+
+function normalizeLinearTeam(value: unknown): Record<string, unknown> | undefined {
+	if (!isRecord(value)) return undefined;
+	return removeUndefinedValues({
+		teamId: stringProperty(value, 'id'),
+		key: stringProperty(value, 'key'),
+		name: stringProperty(value, 'name'),
+	});
+}
+
+function normalizeLinearProject(value: unknown): Record<string, unknown> | undefined {
+	if (!isRecord(value)) return undefined;
+	return removeUndefinedValues({
+		projectId: stringProperty(value, 'id'),
+		name: stringProperty(value, 'name'),
+		url: stringProperty(value, 'url'),
+	});
+}
+
+function normalizeLinearLabel(value: unknown): Record<string, unknown> | undefined {
+	if (!isRecord(value)) return undefined;
+	const labelId = stringProperty(value, 'id');
+	const name = stringProperty(value, 'name');
+	if (!labelId || !name) return undefined;
+	return { labelId, name };
+}
+
+function normalizeLinearPriority(
+	issue: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+	const value = numberProperty(issue, 'priority');
+	const label = stringProperty(issue, 'priorityLabel');
+	if (value === undefined && !label) return undefined;
+	return removeUndefinedValues({ value, label });
+}
+
+async function awaitableProperty(
+	record: Record<string, unknown>,
+	key: string,
+): Promise<unknown | undefined> {
+	return await Promise.resolve(record[key]);
+}
+
+async function callLinearConnection(
+	record: Record<string, unknown>,
+	key: string,
+	options: Record<string, unknown>,
+): Promise<unknown | undefined> {
+	const fn = record[key];
+	if (!isLinearConnectionFunction(fn)) return undefined;
+	return await fn.call(record, options);
+}
+
+function linearNodes(value: unknown): unknown[] {
+	if (!isRecord(value) || !Array.isArray(value.nodes)) return [];
+	return value.nodes;
+}
+
+function removeUndefinedValues(value: Record<string, unknown>): Record<string, unknown> {
+	return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined));
+}
+
+function isDefined<T>(value: T | undefined): value is T {
+	return value !== undefined;
+}
+
+function stringProperty(record: Record<string, unknown>, key: string): string | undefined {
+	return stringValue(record[key]);
+}
+
+function numberProperty(record: Record<string, unknown>, key: string): number | undefined {
+	const value = record[key];
+	return typeof value === 'number' ? value : undefined;
+}
+
+function numberValue(value: unknown, key: string): number | undefined {
+	return isRecord(value) ? numberProperty(value, key) : undefined;
+}
+
+function booleanProperty(record: Record<string, unknown>, key: string): boolean | undefined {
+	const value = record[key];
+	return typeof value === 'boolean' ? value : undefined;
+}
+
+function isoDateProperty(record: Record<string, unknown>, key: string): string | undefined {
+	const value = record[key];
+	if (value instanceof Date) return value.toISOString();
+	if (typeof value !== 'string' || value.length === 0) return undefined;
+	const date = new Date(value);
+	return Number.isNaN(date.getTime()) ? value : date.toISOString();
+}
+
+type LinearConnectionFunction = (
+	this: Record<string, unknown>,
+	options: Record<string, unknown>,
+) => unknown | PromiseLike<unknown>;
+
+function isLinearConnectionFunction(value: unknown): value is LinearConnectionFunction {
+	return typeof value === 'function';
 }
 
 async function searchSlackUsers(

@@ -37,6 +37,7 @@ export class SlackIntegration extends AgentChatIntegration {
 
 	readonly contextQueries: IntegrationContextQuery[] = [
 		'get_current_message_context',
+		'get_current_subject',
 		'get_current_user',
 		'get_current_channel_info',
 		'get_user',

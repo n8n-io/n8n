@@ -771,6 +771,7 @@ describe('agent integration credential picker usage', () => {
 	});
 
 	it('defaults Telegram setup to private mode and requires a user ID before connecting', async () => {
+		const onAgentChanged = vi.fn();
 		const wrapper = mount(AgentAddTriggerModal, {
 			props: {
 				modalName: 'agentAddTriggerModal',
@@ -783,6 +784,7 @@ describe('agent integration credential picker usage', () => {
 					connectedTriggers: [],
 					onConnectedTriggersChange: vi.fn(),
 					onTriggerAdded: vi.fn(),
+					onAgentChanged,
 				},
 			},
 			global: { stubs: globalStubs },
@@ -810,6 +812,7 @@ describe('agent integration credential picker usage', () => {
 			'cred-telegram',
 			{ accessMode: 'private', allowedUsers: ['123', '456'] },
 		);
+		expect(onAgentChanged).toHaveBeenCalledOnce();
 	});
 
 	it('renders the Telegram public warning for legacy connected integrations without settings', async () => {
@@ -842,6 +845,7 @@ describe('agent integration credential picker usage', () => {
 	});
 
 	it('disables the Telegram form when connected so users must disconnect to edit', async () => {
+		const onAgentChanged = vi.fn();
 		getIntegrationStatus.mockResolvedValue({
 			integrations: [
 				{
@@ -864,6 +868,7 @@ describe('agent integration credential picker usage', () => {
 					connectedTriggers: [],
 					onConnectedTriggersChange: vi.fn(),
 					onTriggerAdded: vi.fn(),
+					onAgentChanged,
 				},
 			},
 			global: { stubs: globalStubs },
@@ -874,5 +879,17 @@ describe('agent integration credential picker usage', () => {
 		expect(userIds.exists()).toBe(true);
 		expect(userIds.find('input').attributes('disabled')).toBeDefined();
 		expect(wrapper.find('[data-testid="telegram-disconnect-button"]').exists()).toBe(true);
+
+		await wrapper.find('[data-testid="telegram-disconnect-button"]').trigger('click');
+		await flushPromises();
+
+		expect(disconnectIntegration).toHaveBeenCalledWith(
+			{},
+			'project-1',
+			'agent-1',
+			'telegram',
+			'cred-telegram',
+		);
+		expect(onAgentChanged).toHaveBeenCalledOnce();
 	});
 });
