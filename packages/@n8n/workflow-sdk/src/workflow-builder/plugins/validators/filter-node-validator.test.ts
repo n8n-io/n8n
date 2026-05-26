@@ -27,7 +27,7 @@ function createCtx(nodes: Map<string, GraphNode> = new Map()): PluginContext {
 }
 
 const VALID_CONDITIONS = {
-	options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
+	options: { caseSensitive: false, leftValue: '', typeValidation: 'strict' },
 	conditions: [
 		{
 			leftValue: '={{ $json.field }}',
@@ -351,19 +351,11 @@ describe('filterNodeValidator', () => {
 			expect(issues.some((i) => i.code === 'FILTER_AMBIGUOUS_CASE_SENSITIVITY')).toBe(false);
 		});
 
-		it('does not warn on all-lowercase literal', () => {
-			const issues = getIssues({ conditions: withCondition('high') });
-			expect(issues.some((i) => i.code === 'FILTER_AMBIGUOUS_CASE_SENSITIVITY')).toBe(false);
-		});
-
-		it('does not warn on all-uppercase literal (e.g. HTTP method)', () => {
-			const issues = getIssues({ conditions: withCondition('GET') });
-			expect(issues.some((i) => i.code === 'FILTER_AMBIGUOUS_CASE_SENSITIVITY')).toBe(false);
-		});
-
-		it('does not warn on constant-style identifier (ACTIVE_STATUS)', () => {
-			const issues = getIssues({ conditions: withCondition('ACTIVE_STATUS') });
-			expect(issues.some((i) => i.code === 'FILTER_AMBIGUOUS_CASE_SENSITIVITY')).toBe(false);
+		it('warns regardless of literal casing (lowercase, uppercase, constant-style)', () => {
+			for (const literal of ['high', 'GET', 'ACTIVE_STATUS']) {
+				const issues = getIssues({ conditions: withCondition(literal) });
+				expect(issues.some((i) => i.code === 'FILTER_AMBIGUOUS_CASE_SENSITIVITY')).toBe(true);
+			}
 		});
 
 		it('does not warn on expression rightValue', () => {

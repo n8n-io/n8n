@@ -23,17 +23,6 @@ import {
 const FILTER_NODE_TYPES = ['n8n-nodes-base.if', 'n8n-nodes-base.switch', 'n8n-nodes-base.filter'];
 
 /**
- * A literal looks ambiguously cased if it mixes upper and lower letters,
- * e.g. "High" or "Active". All-lowercase ("high") or all-uppercase ("HIGH",
- * "GET", "POST", "ACTIVE_STATUS") are treated as intentional.
- */
-function looksAmbiguouslyCased(value: string): boolean {
-	if (!/[a-z]/.test(value)) return false;
-	if (!/[A-Z]/.test(value)) return false;
-	return true;
-}
-
-/**
  * Check a single filter value object for missing required fields.
  */
 function validateFilterValue(
@@ -84,10 +73,10 @@ function validateFilterValue(
 }
 
 /**
- * Warn when a filter uses caseSensitive: true with a string-equals condition
- * against an ambiguously cased literal (e.g. "High"). User-supplied input
- * casing is rarely guaranteed and case-sensitive matching silently routes
- * items to the wrong branch.
+ * Warn when a filter uses caseSensitive: true on a string-equals condition
+ * against a literal rightValue. Runtime input casing is rarely guaranteed,
+ * so case-sensitive equality silently routes items to the wrong branch unless
+ * case-sensitive matching is an explicit requirement.
  */
 function validateCaseSensitivity(
 	filterValue: Record<string, unknown>,
@@ -113,11 +102,10 @@ function validateCaseSensitivity(
 		const rightValue = cond.rightValue;
 		if (typeof rightValue !== 'string') continue;
 		if (rightValue.startsWith('=')) continue; // expression, not a literal
-		if (!looksAmbiguouslyCased(rightValue)) continue;
 
 		issues.push({
 			code: 'FILTER_AMBIGUOUS_CASE_SENSITIVITY',
-			message: `${nodeRef} uses caseSensitive: true to match the literal "${rightValue}" in ${paramPath}.conditions[${String(i)}]. User-supplied values often arrive with different casing (e.g. "${rightValue.toLowerCase()}"). Unless the user has explicitly said case matters, set caseSensitive: false in ${paramPath}.options — or ask them to confirm.`,
+			message: `${nodeRef} uses caseSensitive: true to match the literal "${rightValue}" in ${paramPath}.conditions[${String(i)}]. Runtime input casing is rarely guaranteed. Unless the user has explicitly said case matters, set caseSensitive: false in ${paramPath}.options — or ask them to confirm.`,
 			severity: 'warning',
 			nodeName,
 			originalName,
