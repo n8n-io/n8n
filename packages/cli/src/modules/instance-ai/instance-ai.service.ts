@@ -640,6 +640,7 @@ export class InstanceAiService {
 			sandboxImage,
 			sandboxTimeout,
 			sandboxNamePrefix,
+			daytonaTokenRefreshSkewMs,
 		} = this.instanceAiConfig;
 		if (!sandboxEnabled) {
 			return {
@@ -664,6 +665,7 @@ export class InstanceAiService {
 				n8nVersion: N8N_VERSION || undefined,
 				timeout: sandboxTimeout,
 				namePrefix: sandboxNamePrefix || undefined,
+				refreshSkewMs: daytonaTokenRefreshSkewMs,
 			};
 		}
 
@@ -696,6 +698,7 @@ export class InstanceAiService {
 					...base,
 					daytonaApiUrl: client.getSandboxProxyBaseUrl(),
 					image: proxyConfig.image,
+					logger: this.logger,
 					getAuthToken: async () => {
 						const token = await client.getBuilderApiProxyToken(
 							{ id: user.id },

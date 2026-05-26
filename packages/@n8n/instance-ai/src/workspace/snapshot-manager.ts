@@ -118,11 +118,14 @@ export class SnapshotManager {
 	 *   per process. On transient failure, clears the memo so the next
 	 *   request retries, and reports the error.
 	 */
-	async ensureSnapshot(daytona: Daytona, mode: SnapshotMode): Promise<string | null> {
+	async ensureSnapshot(daytona: Daytona | undefined, mode: SnapshotMode): Promise<string | null> {
 		if (!this.n8nVersion) return null;
 		const name = this.snapshotName();
 
 		if (mode === 'proxy') return name;
+		if (!daytona) {
+			throw new Error('SnapshotManager: Daytona client is required to create a snapshot');
+		}
 
 		this.snapshotPromise ??= this.createSnapshot(daytona).catch((error) => {
 			this.errorReporter?.error(error, {

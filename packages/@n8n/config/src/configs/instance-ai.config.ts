@@ -86,6 +86,14 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX')
 	sandboxNamePrefix: string = '';
 
+	/**
+	 * Skew (milliseconds) used to proactively refresh the Daytona proxy JWT before it expires.
+	 * Refresh fires when the cached token's remaining lifetime falls below this threshold.
+	 * Only used in proxy mode (when a `getAuthToken` callback is configured); ignored for static API keys.
+	 */
+	@Env('N8N_INSTANCE_AI_DAYTONA_TOKEN_REFRESH_SKEW_MS')
+	daytonaTokenRefreshSkewMs: number = 5 * 60 * 1000;
+
 	/** How long to keep completed workflow-builder sandboxes warm for follow-up fixes. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS')
 	builderSandboxTtlMs: number = 15 * 60 * 1000;
