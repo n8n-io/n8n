@@ -866,6 +866,83 @@ describe('AgentsService', () => {
 		});
 	});
 
+	describe('streamChatResponse', () => {
+		type StreamChatResponse = {
+			streamChatResponse: (config: unknown) => AsyncGenerator<{ type: string }>;
+		};
+
+		function makeStream(chunks: object[]): ReadableStream {
+			return new ReadableStream({
+				start(controller) {
+					for (const chunk of chunks) controller.enqueue(chunk);
+					controller.close();
+				},
+			});
+		}
+
+		async function collectChunks(
+			config: object,
+		): Promise<Array<{ type: string; [k: string]: unknown }>> {
+			const results: Array<{ type: string; [k: string]: unknown }> = [];
+			for await (const chunk of (service as unknown as StreamChatResponse).streamChatResponse(
+				config,
+			)) {
+				results.push(chunk);
+			}
+			return results;
+		}
+
+		it('yields max-iterations text chunks before the finish chunk when finishReason is length', async () => {
+			const agentInstance = {
+				name: 'test',
+				stream: jest.fn().mockResolvedValue({
+					runId: 'run-1',
+					stream: makeStream([{ type: 'finish', finishReason: 'max-iterations' }]),
+				}),
+			};
+
+			const chunks = await collectChunks({
+				agentInstance,
+				toolRegistry: new Map(),
+				agentId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'user-1' },
+				projectId,
+			});
+
+			const finishIdx = chunks.findIndex((c) => c.type === 'finish');
+			const textDeltaIdx = chunks.findIndex((c) => c.type === 'text-delta');
+			const textEndIdx = chunks.findIndex((c) => c.type === 'text-end');
+
+			expect(textDeltaIdx).toBeGreaterThan(-1);
+			expect(textDeltaIdx).toBeLessThan(finishIdx);
+			expect(textEndIdx).toBeLessThan(finishIdx);
+
+			const delta = chunks[textDeltaIdx] as { type: string; delta: string };
+			expect(delta.delta).toContain('maximum number of iterations');
+		});
+
+		it('does not yield max-iterations chunks when finishReason is not length', async () => {
+			const agentInstance = {
+				name: 'test',
+				stream: jest.fn().mockResolvedValue({
+					runId: 'run-1',
+					stream: makeStream([{ type: 'finish', finishReason: 'stop' }]),
+				}),
+			};
+
+			const chunks = await collectChunks({
+				agentInstance,
+				toolRegistry: new Map(),
+				agentId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'user-1' },
+				projectId,
+			});
+
+			expect(chunks.every((c) => c.type !== 'text-delta')).toBe(true);
+		});
+	});
 	describe('executeForWorkflow', () => {
 		it('passes execution-scoped persistence for workflow executions', async () => {
 			const schema: AgentJsonConfig = {
