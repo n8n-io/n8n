@@ -11,7 +11,7 @@ import WorkflowCanvasHostBody from './WorkflowCanvasHostBody.vue';
 
 const props = withDefaults(
 	defineProps<{
-		workflowId: string | null;
+		workflowId: string;
 		/** Incremented to force re-init when the workflow id is unchanged but content has been modified. */
 		refreshKey?: number;
 	}>(),
@@ -31,7 +31,7 @@ const emit = defineEmits<{
 // Shadows App.vue's WorkflowIdKey for everything inside the host.
 // useWorkflowId prefers injection over route (useWorkflowId.ts:7-8), so the
 // existing init flow uses this id without modification.
-const localWorkflowId = computed(() => props.workflowId ?? '');
+const localWorkflowId = computed(() => props.workflowId);
 provide(WorkflowIdKey, localWorkflowId);
 
 // Scoped workflow state — independent of any sibling editor.

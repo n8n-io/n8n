@@ -785,10 +785,9 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
 						/>
-						<!-- Hoisted above the tab v-for so the iframe survives tab switches; tabs swap
-     workflows via openWorkflow postMessage instead of remounting. -->
 						<div :class="$style.previewContent">
 							<InstanceAiWorkflowPreview
+								v-if="preview.activeWorkflowId.value"
 								ref="workflowPreview"
 								:class="[
 									$style.previewSlot,

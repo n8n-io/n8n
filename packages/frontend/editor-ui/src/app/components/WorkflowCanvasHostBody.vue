@@ -12,9 +12,12 @@ import MainHeader from '@/app/components/MainHeader/MainHeader.vue';
 import NodeView from '@/app/views/NodeView.vue';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { useCanvasStore } from '@/app/stores/canvas.store';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
+import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 
 const props = defineProps<{
-	workflowId: string | null;
+	workflowId: string;
 	refreshKey: number;
 }>();
 
@@ -28,8 +31,21 @@ const emit = defineEmits<{
 const workflowState = injectStrict(WorkflowStateKey);
 const currentWorkflowDocumentStore = injectStrict(WorkflowDocumentStoreKey);
 
+const canvasStore = useCanvasStore();
+const nodeCreatorStore = useNodeCreatorStore();
+const workflowSaveStore = useWorkflowSaveStore();
+
 const { isLoading, currentNDVStore, initializeData, initializeWorkflow, cleanup } =
 	useWorkflowInitialization(workflowState);
+
+// NOTE: push-connection handlers (executionStarted, nodeExecuteAfter, etc.) are
+// initialized today via MainHeader's onBeforeMount calling
+// usePushConnection({ router }).initialize(). Because MainHeader is rendered
+// inside this host, the artifact gets push handlers for free. If MainHeader
+// were ever omitted from this body (e.g. a slimmer artifact header), execution
+// events would silently stop landing on the canvas. Calling initialize() here
+// would double-register the listener and double-process every event.
+// Decoupling push init from MainHeader is a follow-up.
 
 // NodeView's children (NDV, FocusSidebar, etc.) inject this. We bridge the
 // composable's internal ref through provide so descendants see the same
@@ -37,7 +53,6 @@ const { isLoading, currentNDVStore, initializeData, initializeWorkflow, cleanup 
 provide(NDVStoreKey, currentNDVStore);
 
 async function loadWorkflow(force: boolean) {
-	if (!props.workflowId) return;
 	await initializeWorkflow(force);
 	if (currentWorkflowDocumentStore.value) {
 		emit('workflow-loaded', props.workflowId);
@@ -59,6 +74,16 @@ watch(
 
 onBeforeUnmount(() => {
 	cleanup();
+
+	// Reset global singletons that hold per-workflow state and don't otherwise
+	// clear on unmount. Without these, the next editor mount (e.g. navigating
+	// back to /workflow/X after closing the artifact) sees stale state from
+	// this artifact session — most user-visibly stuck node-creator-open hints,
+	// stale range-selection mode, and lingering autosave state.
+	nodeCreatorStore.isCreateNodeActive = false;
+	canvasStore.setHasRangeSelection(false);
+	canvasStore.newNodeInsertPosition = null;
+	workflowSaveStore.reset();
 });
 
 function requestFitView() {
@@ -67,9 +92,7 @@ function requestFitView() {
 
 defineExpose({ requestFitView });
 
-const isReady = computed(
-	() => !!props.workflowId && !isLoading.value && !!currentWorkflowDocumentStore.value,
-);
+const isReady = computed(() => !isLoading.value && !!currentWorkflowDocumentStore.value);
 </script>
 
 <template>
@@ -81,7 +104,7 @@ const isReady = computed(
 			</div>
 			<LogsPanel :class="$style.logs" />
 		</template>
-		<div v-else-if="workflowId" :class="$style.centerState">
+		<div v-else :class="$style.centerState">
 			<N8nIcon icon="loader-circle" :size="80" spin />
 		</div>
 		<slot name="overlay-top-right" />

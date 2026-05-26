@@ -36,6 +36,7 @@ import {
 import { getResourcePermissions } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -65,6 +66,7 @@ export function useWorkflowSaving({
 	const saveStore = useWorkflowSaveStore();
 	const backendConnectionStore = useBackendConnectionStore();
 	const settingsStore = useSettingsStore();
+	const workflowId = useWorkflowId();
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -161,14 +163,7 @@ export function useWorkflowSaving({
 		}
 
 		const isLoading = useCanvasStore().isLoading;
-		// Fall back to the workflows store when the route doesn't carry a
-		// `workflowId` param. The main editor's route has it; embedded
-		// mounts (e.g. AI artifact host) don't, but the store has been
-		// populated by the init flow.
-		const currentWorkflow =
-			id ??
-			getQueryParam(router.currentRoute.value.params, 'workflowId') ??
-			workflowsStore.workflowId;
+		const currentWorkflow = id ?? workflowId.value;
 		const parentFolderId = getQueryParam(router.currentRoute.value.query, 'parentFolderId');
 		const uiContext = getQueryParam(router.currentRoute.value.query, 'uiContext');
 

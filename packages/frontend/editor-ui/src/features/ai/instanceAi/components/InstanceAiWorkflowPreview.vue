@@ -18,7 +18,7 @@ export interface WorkflowFailuresReport {
 
 const props = withDefaults(
 	defineProps<{
-		workflowId: string | null;
+		workflowId: string;
 		/** Incremented to force re-init even when workflowId stays the same (e.g. workflow was modified). */
 		refreshKey?: number;
 	}>(),
@@ -65,7 +65,7 @@ const pushStore = usePushConnectionStore();
 // and post-Wait events never paint.
 const removeExecutionStartedListener = pushStore.addEventListener((event) => {
 	if (event.type !== 'executionStarted') return;
-	if (!props.workflowId || event.data.workflowId !== props.workflowId) return;
+	if (event.data.workflowId !== props.workflowId) return;
 	useWorkflowExecutionStateStore(
 		createWorkflowExecutionStateId(props.workflowId),
 	).setActiveExecutionId(null);
@@ -77,7 +77,7 @@ const removeExecutionStartedListener = pushStore.addEventListener((event) => {
 // read the per-execution data store directly.
 const removeExecutionFinishedListener = pushStore.addEventListener((event) => {
 	if (event.type !== 'executionFinished') return;
-	if (!props.workflowId || event.data.workflowId !== props.workflowId) return;
+	if (event.data.workflowId !== props.workflowId) return;
 	if (event.data.status === 'success') return;
 
 	const execStore = useExecutionDataStore(createExecutionDataId(event.data.executionId));
