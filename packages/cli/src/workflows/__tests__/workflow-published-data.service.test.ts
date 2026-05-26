@@ -41,8 +41,8 @@ describe('WorkflowPublishedDataService', () => {
 
 		expect(result).not.toBeNull();
 		expect(result!.workflow.name).toBe('Workflow Name');
-		expect(result!.nodes).toBe(nodes);
-		expect(result!.connections).toBe(connections);
+		expect(result!.publishedVersion.nodes).toBe(nodes);
+		expect(result!.publishedVersion.connections).toBe(connections);
 	});
 
 	test('should return null when no record exists', async () => {

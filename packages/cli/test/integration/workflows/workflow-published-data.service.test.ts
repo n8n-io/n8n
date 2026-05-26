@@ -44,7 +44,7 @@ describe('WorkflowPublishedDataService', () => {
 
 		expect(result).not.toBeNull();
 		expect(result!.workflow.id).toBe(workflow.id);
-		expect(result!.nodes).toEqual(
+		expect(result!.publishedVersion.nodes).toEqual(
 			expect.arrayContaining([expect.objectContaining({ type: 'n8n-nodes-base.scheduleTrigger' })]),
 		);
 	});
@@ -71,10 +71,10 @@ describe('WorkflowPublishedDataService', () => {
 
 		expect(result).not.toBeNull();
 		// Should have the alternate nodes, NOT the original activeVersion nodes
-		expect(result!.nodes).toEqual(
+		expect(result!.publishedVersion.nodes).toEqual(
 			expect.arrayContaining([expect.objectContaining({ name: 'Alternate Node' })]),
 		);
-		expect(result!.nodes).not.toEqual(
+		expect(result!.publishedVersion.nodes).not.toEqual(
 			expect.arrayContaining([expect.objectContaining({ type: 'n8n-nodes-base.scheduleTrigger' })]),
 		);
 	});

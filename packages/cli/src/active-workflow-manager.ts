@@ -545,11 +545,8 @@ export class ActiveWorkflowManager {
 			});
 		}
 
-		return {
-			...initialWorkflowData,
-			nodes: publishedData.nodes,
-			connections: publishedData.connections,
-		};
+		const { nodes, connections } = publishedData.publishedVersion;
+		return { ...initialWorkflowData, nodes, connections };
 	}
 
 	private isActivationInProgress = false;

@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
-import { WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository, type WorkflowEntity, type WorkflowHistory } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
@@ -25,22 +25,6 @@ import type {
 	WebhookAccessControlOptions,
 	WebhookRequest,
 } from './webhook.types';
-
-/**
- * The fields {@link LiveWebhooks.executeWebhook} pulls out of either the
- * published-version-service or the active-version relation in order to build
- * the runtime {@link Workflow} and invoke {@link WebhookHelpers.executeWebhook}.
- */
-interface WebhookExecutionData {
-	nodes: INode[];
-	connections: IWorkflowBase['connections'];
-	workflowName: string;
-	staticData: IWorkflowBase['staticData'];
-	settings: IWorkflowBase['settings'];
-	isActive: boolean;
-	ownerProjectId: string | undefined;
-	activeWorkflowData: IWorkflowBase;
-}
 
 /**
  * Service for handling the execution of live webhooks, i.e. webhooks
@@ -114,28 +98,29 @@ export class LiveWebhooks implements IWebhookManager {
 			});
 		}
 
-		const {
-			nodes,
-			connections,
-			workflowName,
-			staticData,
-			settings,
-			isActive,
-			ownerProjectId,
-			activeWorkflowData,
-		} = await this.loadWebhookExecutionData(webhook.workflowId);
+		const { workflow: workflowEntity, version } = await this.loadWebhookExecutionData(
+			webhook.workflowId,
+		);
+		const { nodes, connections } = version;
+
+		// Use the published nodes/connections instead of the draft on the entity
+		// so any downstream code that spreads this object sees the right version.
+		const activeWorkflowData: IWorkflowBase = { ...workflowEntity, nodes, connections };
 
 		const workflow = new Workflow({
 			id: webhook.workflowId,
-			name: workflowName,
+			name: workflowEntity.name,
 			nodes,
 			connections,
-			active: isActive,
+			active: workflowEntity.activeVersionId !== null,
 			nodeTypes: this.nodeTypes,
-			staticData,
-			settings,
+			staticData: workflowEntity.staticData,
+			settings: workflowEntity.settings,
 		});
 
+		const ownerProjectId = workflowEntity.shared?.find(
+			(share) => share.role === 'workflow:owner',
+		)?.projectId;
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			projectId: ownerProjectId,
 		});
@@ -173,7 +158,7 @@ export class LiveWebhooks implements IWebhookManager {
 				void WebhookHelpers.executeWebhook(
 					workflow,
 					webhookData,
-					activeWorkflowData, // Use activeWorkflowData instead of workflowData
+					activeWorkflowData,
 					workflowStartNode,
 					executionMode,
 					undefined,
@@ -200,7 +185,7 @@ export class LiveWebhooks implements IWebhookManager {
 		if (this.workflowsConfig.useWorkflowPublicationService) {
 			const publishedData =
 				await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
-			return publishedData?.nodes;
+			return publishedData?.publishedVersion.nodes;
 		} else {
 			const workflowData = await this.workflowRepository.findOne({
 				where: { id: workflowId },
@@ -210,39 +195,30 @@ export class LiveWebhooks implements IWebhookManager {
 		}
 	}
 
-	private async loadWebhookExecutionData(workflowId: string): Promise<WebhookExecutionData> {
+	private async loadWebhookExecutionData(
+		workflowId: string,
+	): Promise<{ workflow: WorkflowEntity; version: WorkflowHistory }> {
 		return this.workflowsConfig.useWorkflowPublicationService
 			? await this.loadFromPublishedVersion(workflowId)
 			: await this.loadFromActiveVersion(workflowId);
 	}
 
-	// This is the new path for the workflow publication service. Behind a flag,
-	// disabled by default.
-	private async loadFromPublishedVersion(workflowId: string): Promise<WebhookExecutionData> {
+	// New path for the workflow publication service. Behind a flag, disabled by default.
+	private async loadFromPublishedVersion(
+		workflowId: string,
+	): Promise<{ workflow: WorkflowEntity; version: WorkflowHistory }> {
 		const publishedData =
 			await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
 		if (publishedData === null) {
 			throw new NotFoundError(`Published version not found for workflow with id "${workflowId}"`);
 		}
-
-		const { nodes, connections, workflow } = publishedData;
-		return {
-			nodes,
-			connections,
-			workflowName: workflow.name,
-			staticData: workflow.staticData,
-			settings: workflow.settings,
-			// Reading from the published workflow data service implies the workflow
-			// is active -- inactive workflows have no published version record.
-			isActive: true,
-			ownerProjectId: workflow.shared?.find((share) => share.role === 'workflow:owner')?.projectId,
-			activeWorkflowData: { ...workflow, nodes, connections },
-		};
+		return { workflow: publishedData.workflow, version: publishedData.publishedVersion };
 	}
 
-	// This is the old path, before the workflow publication service. Currently
-	// the default.
-	private async loadFromActiveVersion(workflowId: string): Promise<WebhookExecutionData> {
+	// Old path, before the workflow publication service. Currently the default.
+	private async loadFromActiveVersion(
+		workflowId: string,
+	): Promise<{ workflow: WorkflowEntity; version: WorkflowHistory }> {
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: workflowId },
 			relations: { activeVersion: true, shared: true },
@@ -253,19 +229,7 @@ export class LiveWebhooks implements IWebhookManager {
 		if (!workflowData.activeVersion) {
 			throw new NotFoundError(`Active version not found for workflow with id "${workflowId}"`);
 		}
-
-		const { nodes, connections } = workflowData.activeVersion;
-		return {
-			nodes,
-			connections,
-			workflowName: workflowData.name,
-			staticData: workflowData.staticData,
-			settings: workflowData.settings,
-			isActive: workflowData.activeVersionId !== null,
-			ownerProjectId: workflowData.shared.find((share) => share.role === 'workflow:owner')
-				?.projectId,
-			activeWorkflowData: { ...workflowData, nodes, connections },
-		};
+		return { workflow: workflowData, version: workflowData.activeVersion };
 	}
 
 	private async findWebhook(path: string, httpMethod: IHttpRequestMethods) {

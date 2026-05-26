@@ -1,18 +1,11 @@
-import { WorkflowPublishedVersionRepository, type WorkflowEntity } from '@n8n/db';
+import {
+	WorkflowPublishedVersionRepository,
+	type WorkflowEntity,
+	type WorkflowHistory,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
-import type { IConnections, INode } from 'n8n-workflow';
-
-/**
- * The published nodes/connections for a workflow, together with the workflow
- * entity they belong to. Returned by {@link WorkflowPublishedDataService}.
- */
-export interface PublishedWorkflowData {
-	nodes: INode[];
-	connections: IConnections;
-	workflow: WorkflowEntity;
-}
 
 @Service()
 export class WorkflowPublishedDataService {
@@ -21,7 +14,14 @@ export class WorkflowPublishedDataService {
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 	) {}
 
-	async getPublishedWorkflowData(workflowId: string): Promise<PublishedWorkflowData | null> {
+	/**
+	 * Resolves a workflow's published version: returns the workflow entity and
+	 * the `WorkflowHistory` row that the `workflow_published_version` mapping
+	 * currently points at.
+	 */
+	async getPublishedWorkflowData(
+		workflowId: string,
+	): Promise<{ workflow: WorkflowEntity; publishedVersion: WorkflowHistory } | null> {
 		const record =
 			await this.workflowPublishedVersionRepository.getPublishedVersionWithRelations(workflowId);
 
@@ -37,12 +37,6 @@ export class WorkflowPublishedDataService {
 			return null;
 		}
 
-		const { publishedVersion, workflow } = record;
-
-		return {
-			nodes: publishedVersion.nodes,
-			connections: publishedVersion.connections,
-			workflow,
-		};
+		return { workflow: record.workflow, publishedVersion: record.publishedVersion };
 	}
 }

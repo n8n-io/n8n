@@ -292,10 +292,15 @@ describe('LiveWebhooks', () => {
 				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
 			});
 
-			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
+			const publishedVersion = mock<WorkflowHistory>({
+				versionId: 'v1',
+				workflowId: WORKFLOW_ID,
 				nodes: activeNodes,
 				connections: {},
+			});
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
 				workflow: workflowEntity,
+				publishedVersion,
 			});
 
 			let capturedNodes: INode[] = [];
