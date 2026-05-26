@@ -434,4 +434,82 @@ describe('ChatIntegrationActionExecutor', () => {
 			},
 		});
 	});
+
+	it('updates Linear issues and returns updated issue message context', async () => {
+		const issue = {
+			id: 'issue-uuid',
+			identifier: 'ENG-123',
+			title: 'Updated signup fix',
+			description: 'Updated description',
+			url: 'https://linear.app/n8n/issue/ENG-123/fix-signup',
+			updatedAt: new Date('2026-05-18T10:05:00.000Z'),
+			state: Promise.resolve({ id: 'state-2', name: 'In Progress', type: 'started' }),
+			labels: jest.fn().mockResolvedValue({ nodes: [{ id: 'label-2', name: 'Customer' }] }),
+		};
+		const linearClient = {
+			updateIssue: jest.fn().mockResolvedValue({
+				issue: Promise.resolve(issue),
+			}),
+		};
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ client: linearClient });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'update_issue',
+			input: {
+				issueId: 'issue-uuid',
+				title: 'Updated signup fix',
+				description: null,
+				assigneeId: null,
+				projectId: 'project-1',
+				labelIds: ['label-2'],
+				priority: 3,
+				stateId: 'state-2',
+			},
+			awaitResponse: false,
+		});
+
+		expect(linearClient.updateIssue).toHaveBeenCalledWith('issue-uuid', {
+			title: 'Updated signup fix',
+			description: null,
+			assigneeId: null,
+			projectId: 'project-1',
+			labelIds: ['label-2'],
+			priority: 3,
+			stateId: 'state-2',
+		});
+		expect(result).toEqual({
+			ok: true,
+			issue: {
+				issueId: 'issue-uuid',
+				identifier: 'ENG-123',
+				title: 'Updated signup fix',
+				description: 'Updated description',
+				url: 'https://linear.app/n8n/issue/ENG-123/fix-signup',
+				state: { id: 'state-2', name: 'In Progress', type: 'started' },
+				labels: [{ labelId: 'label-2', name: 'Customer' }],
+				updatedAt: '2026-05-18T10:05:00.000Z',
+			},
+			messageContext: {
+				integrationConnectionId: 'linear:cred-linear',
+				platform: 'linear',
+				target: { type: 'thread', threadId: 'linear:issue-uuid' },
+				subject: {
+					type: 'issue',
+					id: 'ENG-123',
+					title: 'Updated signup fix',
+					description: 'Updated description',
+					url: 'https://linear.app/n8n/issue/ENG-123/fix-signup',
+					status: 'In Progress',
+					labels: ['Customer'],
+				},
+				updatedAt: expect.any(String),
+			},
+		});
+	});
 });

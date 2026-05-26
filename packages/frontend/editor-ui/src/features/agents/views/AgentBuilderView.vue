@@ -203,6 +203,14 @@ async function fetchAgent(
 	agentName.value = data.name;
 }
 
+async function refreshAgentAfterIntegrationChange(targetProjectId: string, targetAgentId: string) {
+	if (projectId.value !== targetProjectId || agentId.value !== targetAgentId) return;
+	await Promise.all([
+		fetchAgent(targetProjectId, targetAgentId),
+		fetchConfig(targetProjectId, targetAgentId),
+	]);
+}
+
 function sessionIdForPreview(): string {
 	return effectiveSessionId.value ?? sessionsStore.threads?.[0]?.id ?? crypto.randomUUID();
 }
@@ -631,7 +639,7 @@ function onOpenAddTriggerModal(initialTriggerType?: string) {
 			onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) =>
 				onTriggerAdded(payload),
 			onAgentPublished: (updated: AgentResource) => onPublished(updated),
-			onAgentChanged: () => fetchAgent(targetProjectId, targetAgentId),
+			onAgentChanged: () => refreshAgentAfterIntegrationChange(targetProjectId, targetAgentId),
 		},
 	});
 }

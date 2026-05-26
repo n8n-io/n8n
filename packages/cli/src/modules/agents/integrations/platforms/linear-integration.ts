@@ -43,11 +43,22 @@ export class LinearIntegration extends AgentChatIntegration {
 		'get_current_user',
 		'get_user',
 		'search_users',
+		'get_team',
+		'search_teams',
+		'get_project',
+		'search_projects',
+		'search_labels',
+		'search_issue_states',
 		'get_issue',
 		'search_issues',
 	];
 
-	readonly actions: IntegrationAction[] = ['respond', 'create_issue', 'create_comment'];
+	readonly actions: IntegrationAction[] = [
+		'respond',
+		'create_issue',
+		'update_issue',
+		'create_comment',
+	];
 
 	constructor(private readonly logger: Logger) {
 		super();

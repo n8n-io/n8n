@@ -199,16 +199,6 @@ const platformChannelIdSchema = z
 	.min(1)
 	.describe('Platform channel ID, for example a Slack C... channel ID. Do not pass a name.');
 
-const linearTeamIdSchema = z.string().min(1).describe('Linear team UUID.');
-
-const linearProjectIdSchema = z.string().min(1).describe('Linear project UUID.');
-
-const optionalLinearSearchQuerySchema = z
-	.string()
-	.min(1)
-	.optional()
-	.describe('Optional Linear search term. Omit to list available values.');
-
 const searchLimitSchema = z
 	.number()
 	.int()
@@ -216,6 +206,30 @@ const searchLimitSchema = z
 	.max(50)
 	.optional()
 	.describe('Maximum number of matches to return. Defaults to 10.');
+
+const searchCursorSchema = z
+	.string()
+	.min(1)
+	.optional()
+	.describe(
+		'Opaque pagination cursor returned as `nextCursor` by a previous call. Pass to fetch the next page of matches.',
+	);
+
+const linearTeamIdSchema = z
+	.string()
+	.min(1)
+	.describe('Linear team UUID returned by get_team or search_teams.');
+
+const linearProjectIdSchema = z
+	.string()
+	.min(1)
+	.describe('Linear project UUID returned by get_project or search_projects.');
+
+const optionalLinearSearchQuerySchema = z
+	.string()
+	.min(1)
+	.optional()
+	.describe('Optional search term. Omit to list the first page.');
 
 const getCurrentMessageContextInputSchema = z.object({
 	query: z.literal('get_current_message_context'),
@@ -266,6 +280,7 @@ const searchUsersInputSchema = z.object({
 				.describe('User name, display name, handle, user ID, or email fragment to search for.'),
 			email: z.string().min(1).optional().describe('Exact email address to look up when known.'),
 			limit: searchLimitSchema,
+			cursor: searchCursorSchema,
 			includeBots: z
 				.boolean()
 				.optional()
@@ -287,6 +302,7 @@ const searchChannelsInputSchema = z.object({
 		.object({
 			query: z.string().min(1).describe('Channel name, channel ID, or #channel search term.'),
 			limit: searchLimitSchema,
+			cursor: searchCursorSchema,
 			includeArchived: z
 				.boolean()
 				.optional()
@@ -321,6 +337,7 @@ const searchIssuesInputSchema = z.object({
 		.object({
 			query: z.string().min(1).describe('Search term for Linear issue title/content.'),
 			limit: searchLimitSchema,
+			cursor: searchCursorSchema,
 			teamId: z.string().min(1).optional().describe('Optional Linear team ID to scope search.'),
 			includeArchived: z
 				.boolean()
@@ -345,6 +362,7 @@ const searchTeamsInputSchema = z.object({
 		.object({
 			query: optionalLinearSearchQuerySchema,
 			limit: searchLimitSchema,
+			cursor: searchCursorSchema,
 			includeArchived: z
 				.boolean()
 				.optional()
@@ -368,6 +386,7 @@ const searchProjectsInputSchema = z.object({
 		.object({
 			query: optionalLinearSearchQuerySchema,
 			limit: searchLimitSchema,
+			cursor: searchCursorSchema,
 			teamId: linearTeamIdSchema.optional().describe('Optional Linear team UUID to scope search.'),
 			includeArchived: z
 				.boolean()
@@ -383,6 +402,7 @@ const searchLabelsInputSchema = z.object({
 		.object({
 			query: optionalLinearSearchQuerySchema,
 			limit: searchLimitSchema,
+			cursor: searchCursorSchema,
 			teamId: linearTeamIdSchema.optional().describe('Optional Linear team UUID to scope search.'),
 		})
 		.strict(),
@@ -394,6 +414,7 @@ const searchIssueStatesInputSchema = z.object({
 		.object({
 			query: optionalLinearSearchQuerySchema,
 			limit: searchLimitSchema,
+			cursor: searchCursorSchema,
 			teamId: linearTeamIdSchema.optional().describe('Optional Linear team UUID to scope search.'),
 			type: z
 				.enum(['backlog', 'unstarted', 'started', 'completed', 'canceled'])
@@ -403,7 +424,7 @@ const searchIssueStatesInputSchema = z.object({
 		.strict(),
 });
 
-type IntegrationContextToolInput =
+type IntegrationContextToolOperation =
 	| z.infer<typeof getCurrentMessageContextInputSchema>
 	| z.infer<typeof getCurrentSubjectInputSchema>
 	| z.infer<typeof getCurrentUserInputSchema>
@@ -423,7 +444,7 @@ type IntegrationContextToolInput =
 
 const CONTEXT_QUERY_INPUT_SCHEMAS: Record<
 	IntegrationContextQuery,
-	z.ZodType<IntegrationContextToolInput>
+	z.ZodType<IntegrationContextToolOperation>
 > = {
 	get_current_message_context: getCurrentMessageContextInputSchema,
 	get_current_subject: getCurrentSubjectInputSchema,
@@ -441,19 +462,60 @@ const CONTEXT_QUERY_INPUT_SCHEMAS: Record<
 	search_issue_states: searchIssueStatesInputSchema,
 	get_issue: getIssueInputSchema,
 	search_issues: searchIssuesInputSchema,
-} satisfies Record<IntegrationContextQuery, z.ZodType<IntegrationContextToolInput>>;
+} satisfies Record<IntegrationContextQuery, z.ZodType<IntegrationContextToolOperation>>;
+
+interface RawContextToolOperation {
+	query: IntegrationContextQuery;
+	input: Record<string, unknown>;
+}
+
+type RawContextToolInput = {
+	query?: IntegrationContextQuery;
+	input?: Record<string, unknown>;
+	queries?: RawContextToolOperation[];
+};
+
+const MAX_BATCH_OPERATIONS = 20;
 
 function buildContextInputSchema(queries: IntegrationContextQuery[]) {
 	const querySchema = z.enum(toZodEnumValues(queries));
-	return z
+	const operationSchema = z
 		.object({
 			query: querySchema,
 			input: z.record(z.string(), z.unknown()),
 		})
+		.strict();
+
+	return z
+		.object({
+			query: querySchema.optional(),
+			input: z.record(z.string(), z.unknown()).optional(),
+			queries: z.array(operationSchema).min(1).max(MAX_BATCH_OPERATIONS).optional(),
+		})
+		.strict()
 		.superRefine((input, ctx) => {
-			const operationSchema = CONTEXT_QUERY_INPUT_SCHEMAS[input.query];
-			const result = operationSchema.safeParse(input);
-			if (!result.success) addSchemaIssues(ctx, result.error);
+			if (input.queries !== undefined) {
+				if (input.query !== undefined || input.input !== undefined) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: 'Provide either query/input or queries, not both.',
+					});
+				}
+				input.queries.forEach((operation, index) => {
+					validateContextOperationSchema(operation, ctx, ['queries', index]);
+				});
+				return;
+			}
+
+			if (input.query === undefined || input.input === undefined) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Provide query and input, or provide queries for a batch.',
+				});
+				return;
+			}
+
+			validateContextOperationSchema({ query: input.query, input: input.input }, ctx);
 		});
 }
 
@@ -512,7 +574,10 @@ const createIssueActionInputSchema = z.object({
 	action: z.literal('create_issue'),
 	input: z
 		.object({
-			teamId: z.string().min(1).describe('Linear team ID where the issue should be created.'),
+			teamId: z
+				.string()
+				.min(1)
+				.describe('Linear team UUID where the issue should be created. Use search_teams first.'),
 			title: z.string().min(1).describe('Linear issue title.'),
 			description: z.string().min(1).optional().describe('Optional Linear issue description.'),
 			assigneeId: z.string().min(1).optional().describe('Optional Linear assignee user ID.'),
@@ -584,7 +649,7 @@ const createCommentActionInputSchema = z.object({
 		.strict(),
 });
 
-type IntegrationActionToolInput =
+type IntegrationActionToolOperation =
 	| z.infer<typeof respondActionInputSchema>
 	| z.infer<typeof sendDmActionInputSchema>
 	| z.infer<typeof sendChannelMessageActionInputSchema>
@@ -593,7 +658,7 @@ type IntegrationActionToolInput =
 	| z.infer<typeof updateIssueActionInputSchema>
 	| z.infer<typeof createCommentActionInputSchema>;
 
-const ACTION_INPUT_SCHEMAS: Record<IntegrationAction, z.ZodType<IntegrationActionToolInput>> = {
+const ACTION_INPUT_SCHEMAS: Record<IntegrationAction, z.ZodType<IntegrationActionToolOperation>> = {
 	respond: respondActionInputSchema,
 	send_dm: sendDmActionInputSchema,
 	send_channel_message: sendChannelMessageActionInputSchema,
@@ -603,17 +668,56 @@ const ACTION_INPUT_SCHEMAS: Record<IntegrationAction, z.ZodType<IntegrationActio
 	create_comment: createCommentActionInputSchema,
 };
 
+interface RawActionToolOperation {
+	action: IntegrationAction;
+	input: Record<string, unknown>;
+}
+
+type RawActionToolInput = {
+	action?: IntegrationAction;
+	input?: Record<string, unknown>;
+	actions?: RawActionToolOperation[];
+};
+
 function buildActionInputSchema(actions: IntegrationAction[]) {
 	const actionSchema = z.enum(toZodEnumValues(actions));
-	return z
+	const operationSchema = z
 		.object({
 			action: actionSchema,
 			input: z.record(z.string(), z.unknown()),
 		})
+		.strict();
+
+	return z
+		.object({
+			action: actionSchema.optional(),
+			input: z.record(z.string(), z.unknown()).optional(),
+			actions: z.array(operationSchema).min(1).max(MAX_BATCH_OPERATIONS).optional(),
+		})
+		.strict()
 		.superRefine((input, ctx) => {
-			const operationSchema = ACTION_INPUT_SCHEMAS[input.action];
-			const result = operationSchema.safeParse(input);
-			if (!result.success) addSchemaIssues(ctx, result.error);
+			if (input.actions !== undefined) {
+				if (input.action !== undefined || input.input !== undefined) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: 'Provide either action/input or actions, not both.',
+					});
+				}
+				input.actions.forEach((operation, index) => {
+					validateActionOperationSchema(operation, ctx, ['actions', index]);
+				});
+				return;
+			}
+
+			if (input.action === undefined || input.input === undefined) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Provide action and input, or provide actions for a batch.',
+				});
+				return;
+			}
+
+			validateActionOperationSchema({ action: input.action, input: input.input }, ctx);
 		});
 }
 
@@ -631,24 +735,24 @@ const CONTEXT_QUERY_DESCRIPTIONS = {
 	get_channel_info:
 		'get_channel_info: input.channelId is required. Use a platform channel ID such as a Slack C... ID, not a channel name.',
 	search_users:
-		'search_users: input.query or input.email is required. Returns matching platform user IDs for names, handles, or emails.',
+		'search_users: input.query or input.email is required. Returns matching platform user IDs for names, handles, or emails. When the response includes nextCursor, pass it back as input.cursor to fetch the next page.',
 	search_channels:
-		'search_channels: input.query is required. Returns matching platform channel IDs for channel names or IDs.',
+		'search_channels: input.query is required. Returns matching platform channel IDs for channel names or IDs. When the response includes nextCursor, pass it back as input.cursor to fetch the next page.',
 	get_team:
 		'get_team: input.teamId is required. For Linear, returns team metadata including the team UUID/key/name.',
 	search_teams:
-		'search_teams: optional input.query. For Linear, returns team UUIDs/keys/names. Omit query to list teams.',
+		'search_teams: optional input.query. For Linear, returns team UUIDs/keys/names. Omit query to list teams. When the response includes nextCursor, pass it back as input.cursor to fetch the next page.',
 	get_project: 'get_project: input.projectId is required. For Linear, returns project metadata.',
 	search_projects:
-		'search_projects: optional input.query. For Linear, returns project IDs/names; optional input.teamId scopes results to a team. Omit query to list projects.',
+		'search_projects: optional input.query. For Linear, returns project IDs/names; optional input.teamId scopes results to a team. Omit query to list projects. When the response includes nextCursor, pass it back as input.cursor to fetch the next page.',
 	search_labels:
-		'search_labels: optional input.query. For Linear, returns label IDs/names; optional input.teamId scopes results to a team. Omit query to list labels.',
+		'search_labels: optional input.query. For Linear, returns label IDs/names; optional input.teamId scopes results to a team. Omit query to list labels. When the response includes nextCursor, pass it back as input.cursor to fetch the next page.',
 	search_issue_states:
-		'search_issue_states: optional input.query. For Linear, returns workflow state IDs/names/types; optional input.teamId and input.type narrow results. Omit query to list states.',
+		'search_issue_states: optional input.query. For Linear, returns workflow state IDs/names/types; optional input.teamId and input.type narrow results. Omit query to list states. When the response includes nextCursor, pass it back as input.cursor to fetch the next page.',
 	get_issue:
 		'get_issue: input.issueId is required. For Linear, use an issue UUID or identifier such as ENG-123. Optional input.includeComments and input.commentsLimit add recent comments.',
 	search_issues:
-		'search_issues: input.query is required. For Linear, returns matching issue IDs/identifiers; optional input.teamId, input.limit, and input.includeArchived narrow results.',
+		'search_issues: input.query is required. For Linear, returns matching issue IDs/identifiers; optional input.teamId, input.limit, and input.includeArchived narrow results. When the response includes nextCursor, pass it back as input.cursor to fetch the next page.',
 } satisfies Record<IntegrationContextQuery, string>;
 
 const ACTION_DESCRIPTIONS = {
@@ -733,85 +837,30 @@ export function createIntegrationContextTool(params: {
 		.description(buildContextToolDescription(descriptor))
 		.input(buildContextInputSchema(descriptor.contextQueries))
 		.handler(async (input, ctx) => {
-			const persistence = ctx.persistence;
-			if (
-				input.query === 'get_current_message_context' ||
-				input.query === 'get_current_subject' ||
-				input.query === 'get_current_user' ||
-				input.query === 'get_current_channel_info'
-			) {
-				if (!persistence) {
-					return {
-						ok: false,
-						error: {
-							code: INTEGRATION_ERROR_CODES.NO_THREAD_CONTEXT,
-							message: 'There is no current agent thread context.',
-						},
-					};
-				}
-				const context = await messageContextStore.getLatest(persistence.threadId);
-				if (!context || context.integrationConnectionId !== descriptor.integrationConnectionId) {
-					if (input.query === 'get_current_message_context') {
-						return { ok: true, context: null };
-					}
-					if (input.query === 'get_current_subject') {
-						return { ok: true, subject: null };
-					}
-					return {
-						ok: false,
-						error: {
-							code: INTEGRATION_ERROR_CODES.NO_MESSAGE_CONTEXT,
-							message: 'There is no current message context for this integration connection.',
-						},
-					};
-				}
-				if (input.query === 'get_current_message_context') {
-					return { ok: true, context };
-				}
-				if (input.query === 'get_current_subject') {
-					return { ok: true, subject: context.subject ?? null };
-				}
-				if (input.query === 'get_current_user') {
-					if (!context.interactingUserId) {
-						return {
-							ok: false,
-							error: {
-								code: INTEGRATION_ERROR_CODES.NO_INTERACTING_USER_CONTEXT,
-								message: 'The latest message context does not include an interacting user ID.',
-							},
-						};
-					}
-					return await queryExecutor.execute({
-						descriptor,
-						query: 'get_user',
-						input: { userId: context.interactingUserId },
-						persistence,
-					});
-				}
+			const toolInput = input as RawContextToolInput;
+			if (toolInput.queries !== undefined) {
+				const results = await Promise.all(
+					toolInput.queries.map(async (operation) => ({
+						query: operation.query,
+						result: await executeContextToolOperation({
+							operation,
+							descriptor,
+							messageContextStore,
+							queryExecutor,
+							persistence: ctx.persistence,
+						}),
+					})),
+				);
 
-				const channelId = getTargetChannelId(context.target);
-				if (!channelId) {
-					return {
-						ok: false,
-						error: {
-							code: INTEGRATION_ERROR_CODES.NO_CHANNEL_CONTEXT,
-							message: 'The latest message context does not include a channel ID.',
-						},
-					};
-				}
-				return await queryExecutor.execute({
-					descriptor,
-					query: 'get_channel_info',
-					input: { channelId },
-					persistence,
-				});
+				return { ok: true, results };
 			}
 
-			return await queryExecutor.execute({
+			return await executeContextToolOperation({
+				operation: toSingleContextOperation(toolInput),
 				descriptor,
-				query: input.query,
-				input: input.input,
-				persistence,
+				messageContextStore,
+				queryExecutor,
+				persistence: ctx.persistence,
 			});
 		});
 }
@@ -834,60 +883,26 @@ export function createIntegrationActionTool(params: {
 			}
 
 			const interruptCtx = ctx as InterruptibleToolContext;
-			const persistence = ctx.persistence;
-			const actionInput = input.input;
-			const message = parseMessage(actionInput.message);
-			const awaitsResponse = shouldAwaitResponse(message);
+			const toolInput = input as RawActionToolInput;
 
-			let currentMessageContext: IntegrationMessageContext | undefined;
-			if (input.action === 'respond') {
-				const contextResult = await getRespondContext({
+			if (toolInput.actions !== undefined) {
+				return await executeActionToolBatch({
+					operations: toolInput.actions,
 					descriptor,
 					messageContextStore,
-					persistence,
-				});
-				if (!contextResult.ok) {
-					return contextResult;
-				}
-				currentMessageContext = contextResult.context;
-			} else if (persistence) {
-				currentMessageContext = await getOptionalCurrentContext({
-					descriptor,
-					messageContextStore,
-					threadId: persistence.threadId,
+					actionExecutor,
+					ctx,
 				});
 			}
 
-			const result = await actionExecutor.execute({
+			return await executeActionToolOperation({
+				operation: toSingleActionOperation(toolInput),
 				descriptor,
-				action: input.action,
-				input: actionInput,
-				awaitResponse: awaitsResponse,
-				runId: ctx.runId,
-				toolCallId: ctx.toolCallId,
-				currentMessageContext,
-			});
-
-			if (!result.ok) return result;
-
-			let actionResult = result;
-			if (result.messageContext && persistence) {
-				const messageContext = withPreviousSubject(result.messageContext, currentMessageContext);
-				await messageContextStore.setLatest(
-					persistence.threadId,
-					persistence.resourceId,
-					messageContext,
-				);
-				actionResult = { ...result, messageContext };
-			}
-
-			if (!awaitsResponse) return actionResult;
-
-			return await interruptCtx.suspend({
-				type: 'integration_action',
-				action: input.action,
-				integrationConnectionId: descriptor.integrationConnectionId,
-				messageContext: actionResult.messageContext,
+				messageContextStore,
+				actionExecutor,
+				ctx,
+				interruptCtx,
+				allowSuspend: true,
 			});
 		});
 }
@@ -898,6 +913,7 @@ function buildContextToolDescription(descriptor: IntegrationToolConnectionDescri
 		`Available queries: ${descriptor.contextQueries.join(', ')}.`,
 		'Query inputs:',
 		...descriptor.contextQueries.map((query) => `- ${CONTEXT_QUERY_DESCRIPTIONS[query]}`),
+		`Batch form: pass queries as an array of up to ${MAX_BATCH_OPERATIONS} { query, input } objects to fetch multiple pieces of context in one tool call.`,
 		'Use this tool for read-only lookup before choosing an action target.',
 	].join('\n\n');
 }
@@ -908,26 +924,24 @@ function buildActionToolDescription(descriptor: IntegrationToolConnectionDescrip
 		`Available actions: ${descriptor.actions.join(', ')}.`,
 		'Action inputs:',
 		...descriptor.actions.map((action) => `- ${ACTION_DESCRIPTIONS[action]}`),
+		`Batch form: pass actions as an array of up to ${MAX_BATCH_OPERATIONS} { action, input } objects. Batch actions run sequentially and cannot include rich interactions that wait for a user response.`,
 		'respond uses the latest message context for this integration connection.',
 		'Messages may include richInteraction components. Interactive components suspend the agent until the user responds.',
 	].join('\n\n');
 }
 
-function addSchemaIssues(ctx: z.RefinementCtx, error: z.ZodError): void {
-	for (const issue of error.issues) {
-		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
-			path: issue.path,
-			message: issue.message,
-		});
+function toSingleContextOperation(input: RawContextToolInput): RawContextToolOperation {
+	if (input.query === undefined || input.input === undefined) {
+		throw new Error('Integration context tool input was not validated.');
 	}
+	return { query: input.query, input: input.input };
 }
 
-function toZodEnumValues<T extends string>(values: T[]): [T, ...T[]] {
-	if (values.length === 0) {
-		throw new Error('Integration tools require at least one operation.');
+function toSingleActionOperation(input: RawActionToolInput): RawActionToolOperation {
+	if (input.action === undefined || input.input === undefined) {
+		throw new Error('Integration action tool input was not validated.');
 	}
-	return values as [T, ...T[]];
+	return { action: input.action, input: input.input };
 }
 
 function hasUpdateIssueField(input: {
@@ -955,6 +969,268 @@ function hasUpdateIssueField(input: {
 	);
 }
 
+function validateContextOperationSchema(
+	operation: RawContextToolOperation,
+	ctx: z.RefinementCtx,
+	pathPrefix: Array<string | number> = [],
+): void {
+	const operationSchema = CONTEXT_QUERY_INPUT_SCHEMAS[operation.query];
+	const result = operationSchema.safeParse(operation);
+	if (!result.success) addSchemaIssues(ctx, result.error, pathPrefix);
+}
+
+function validateActionOperationSchema(
+	operation: RawActionToolOperation,
+	ctx: z.RefinementCtx,
+	pathPrefix: Array<string | number> = [],
+): void {
+	const operationSchema = ACTION_INPUT_SCHEMAS[operation.action];
+	const result = operationSchema.safeParse(operation);
+	if (!result.success) addSchemaIssues(ctx, result.error, pathPrefix);
+}
+
+async function executeContextToolOperation(params: {
+	operation: RawContextToolOperation;
+	descriptor: IntegrationToolConnectionDescriptor;
+	messageContextStore: IntegrationMessageContextStore;
+	queryExecutor: IntegrationContextQueryExecutor;
+	persistence: ToolContext['persistence'];
+}): Promise<unknown> {
+	const { operation, descriptor, messageContextStore, queryExecutor, persistence } = params;
+
+	if (isCurrentContextQuery(operation.query)) {
+		if (!persistence) {
+			return {
+				ok: false,
+				error: {
+					code: INTEGRATION_ERROR_CODES.NO_THREAD_CONTEXT,
+					message: 'There is no current agent thread context.',
+				},
+			};
+		}
+		const context = await messageContextStore.getLatest(persistence.threadId);
+		if (!context || context.integrationConnectionId !== descriptor.integrationConnectionId) {
+			if (operation.query === 'get_current_message_context') {
+				return { ok: true, context: null };
+			}
+			if (operation.query === 'get_current_subject') {
+				return { ok: true, subject: null };
+			}
+			return {
+				ok: false,
+				error: {
+					code: INTEGRATION_ERROR_CODES.NO_MESSAGE_CONTEXT,
+					message: 'There is no current message context for this integration connection.',
+				},
+			};
+		}
+		if (operation.query === 'get_current_message_context') {
+			return { ok: true, context };
+		}
+		if (operation.query === 'get_current_subject') {
+			return { ok: true, subject: context.subject ?? null };
+		}
+		if (operation.query === 'get_current_user') {
+			if (!context.interactingUserId) {
+				return {
+					ok: false,
+					error: {
+						code: INTEGRATION_ERROR_CODES.NO_INTERACTING_USER_CONTEXT,
+						message: 'The latest message context does not include an interacting user ID.',
+					},
+				};
+			}
+			return await queryExecutor.execute({
+				descriptor,
+				query: 'get_user',
+				input: { userId: context.interactingUserId },
+				persistence,
+			});
+		}
+
+		const channelId = getTargetChannelId(context.target);
+		if (!channelId) {
+			return {
+				ok: false,
+				error: {
+					code: INTEGRATION_ERROR_CODES.NO_CHANNEL_CONTEXT,
+					message: 'The latest message context does not include a channel ID.',
+				},
+			};
+		}
+		return await queryExecutor.execute({
+			descriptor,
+			query: 'get_channel_info',
+			input: { channelId },
+			persistence,
+		});
+	}
+
+	return await queryExecutor.execute({
+		descriptor,
+		query: operation.query,
+		input: operation.input,
+		persistence,
+	});
+}
+
+function isCurrentContextQuery(query: IntegrationContextQuery): boolean {
+	return (
+		query === 'get_current_message_context' ||
+		query === 'get_current_subject' ||
+		query === 'get_current_user' ||
+		query === 'get_current_channel_info'
+	);
+}
+
+async function executeActionToolBatch(params: {
+	operations: RawActionToolOperation[];
+	descriptor: IntegrationToolConnectionDescriptor;
+	messageContextStore: IntegrationMessageContextStore;
+	actionExecutor: IntegrationActionExecutor;
+	ctx: ToolContext;
+}): Promise<unknown> {
+	const { operations, descriptor, messageContextStore, actionExecutor, ctx } = params;
+	let currentMessageContext =
+		ctx.persistence !== undefined
+			? await getOptionalCurrentContext({
+					descriptor,
+					messageContextStore,
+					threadId: ctx.persistence.threadId,
+				})
+			: undefined;
+
+	const results: Array<{ action: IntegrationAction; result: unknown }> = [];
+	for (const operation of operations) {
+		const result = await executeActionToolOperation({
+			operation,
+			descriptor,
+			messageContextStore,
+			actionExecutor,
+			ctx,
+			currentMessageContext,
+			allowSuspend: false,
+		});
+
+		const nextMessageContext = extractSuccessfulMessageContext(result);
+		if (nextMessageContext) currentMessageContext = nextMessageContext;
+
+		results.push({ action: operation.action, result });
+	}
+
+	return { ok: true, results };
+}
+
+async function executeActionToolOperation(params: {
+	operation: RawActionToolOperation;
+	descriptor: IntegrationToolConnectionDescriptor;
+	messageContextStore: IntegrationMessageContextStore;
+	actionExecutor: IntegrationActionExecutor;
+	ctx: ToolContext;
+	interruptCtx?: InterruptibleToolContext;
+	currentMessageContext?: IntegrationMessageContext;
+	allowSuspend: boolean;
+}): Promise<unknown> {
+	const {
+		operation,
+		descriptor,
+		messageContextStore,
+		actionExecutor,
+		ctx,
+		interruptCtx,
+		allowSuspend,
+	} = params;
+	const persistence = ctx.persistence;
+	const actionInput = operation.input;
+	const message = parseMessage(actionInput.message);
+	const awaitsResponse = shouldAwaitResponse(message);
+
+	if (awaitsResponse && !allowSuspend) {
+		return {
+			ok: false,
+			error: {
+				code: INTEGRATION_ERROR_CODES.ACTION_FAILED,
+				message:
+					'Batch actions cannot include rich interactions that wait for a user response. Send that action separately.',
+			},
+		};
+	}
+
+	let currentMessageContext = params.currentMessageContext;
+	if (operation.action === 'respond') {
+		if (!currentMessageContext) {
+			const contextResult = await getRespondContext({
+				descriptor,
+				messageContextStore,
+				persistence,
+			});
+			if (!contextResult.ok) {
+				return contextResult;
+			}
+			currentMessageContext = contextResult.context;
+		}
+	} else if (!currentMessageContext && persistence) {
+		currentMessageContext = await getOptionalCurrentContext({
+			descriptor,
+			messageContextStore,
+			threadId: persistence.threadId,
+		});
+	}
+
+	const result = await actionExecutor.execute({
+		descriptor,
+		action: operation.action,
+		input: actionInput,
+		awaitResponse: awaitsResponse,
+		runId: ctx.runId,
+		toolCallId: ctx.toolCallId,
+		currentMessageContext,
+	});
+
+	if (!result.ok) return result;
+
+	let actionResult = result;
+	if (result.messageContext && persistence) {
+		const messageContext = withPreviousSubject(result.messageContext, currentMessageContext);
+		await messageContextStore.setLatest(
+			persistence.threadId,
+			persistence.resourceId,
+			messageContext,
+		);
+		actionResult = { ...result, messageContext };
+	}
+
+	if (!awaitsResponse) return actionResult;
+
+	return await interruptCtx?.suspend({
+		type: 'integration_action',
+		action: operation.action,
+		integrationConnectionId: descriptor.integrationConnectionId,
+		messageContext: actionResult.messageContext,
+	});
+}
+
+function addSchemaIssues(
+	ctx: z.RefinementCtx,
+	error: z.ZodError,
+	pathPrefix: Array<string | number> = [],
+): void {
+	for (const issue of error.issues) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: [...pathPrefix, ...issue.path],
+			message: issue.message,
+		});
+	}
+}
+
+function toZodEnumValues<T extends string>(values: T[]): [T, ...T[]] {
+	if (values.length === 0) {
+		throw new Error('Integration tools require at least one operation.');
+	}
+	return values as [T, ...T[]];
+}
+
 function parseMessage(value: unknown): z.infer<typeof messageSchema> | undefined {
 	const result = messageSchema.safeParse(value);
 	return result.success ? result.data : undefined;
@@ -976,6 +1252,26 @@ function withPreviousSubject(
 	if (context.subject || !previousContext?.subject) return context;
 	if (context.integrationConnectionId !== previousContext.integrationConnectionId) return context;
 	return { ...context, subject: previousContext.subject };
+}
+
+function extractSuccessfulMessageContext(result: unknown): IntegrationMessageContext | undefined {
+	if (!isPlainRecord(result) || result.ok !== true) return undefined;
+	const messageContext = result.messageContext;
+	return isIntegrationMessageContext(messageContext) ? messageContext : undefined;
+}
+
+function isIntegrationMessageContext(value: unknown): value is IntegrationMessageContext {
+	return (
+		isPlainRecord(value) &&
+		typeof value.integrationConnectionId === 'string' &&
+		typeof value.platform === 'string' &&
+		isPlainRecord(value.target) &&
+		typeof value.updatedAt === 'string'
+	);
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 async function getOptionalCurrentContext(params: {

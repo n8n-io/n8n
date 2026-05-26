@@ -205,7 +205,7 @@ describe('integration tools', () => {
 		expect(tool.description).toContain('search_channels: input.query');
 	});
 
-	it('context tool schema accepts Linear issue lookup and search queries', () => {
+	it('context tool schema accepts Linear resource lookup and search queries', () => {
 		const tool = createIntegrationContextTool({
 			descriptor: getIntegrationToolConnectionDescriptors([linear], 'agent-1', () => ({
 				contextQueries: [
@@ -214,6 +214,12 @@ describe('integration tools', () => {
 					'get_current_user',
 					'get_user',
 					'search_users',
+					'get_team',
+					'search_teams',
+					'get_project',
+					'search_projects',
+					'search_labels',
+					'search_issue_states',
 					'get_issue',
 					'search_issues',
 				],
@@ -243,8 +249,105 @@ describe('integration tools', () => {
 			}).success,
 		).toBe(true);
 		expect(schema.safeParse({ query: 'search_issues', input: {} }).success).toBe(false);
+		expect(schema.safeParse({ query: 'get_team', input: { teamId: 'team-1' } }).success).toBe(true);
+		expect(schema.safeParse({ query: 'get_team', input: {} }).success).toBe(false);
+		expect(schema.safeParse({ query: 'search_teams', input: {} }).success).toBe(true);
+		expect(
+			schema.safeParse({
+				query: 'get_project',
+				input: { projectId: 'project-1' },
+			}).success,
+		).toBe(true);
+		expect(schema.safeParse({ query: 'get_project', input: {} }).success).toBe(false);
+		expect(
+			schema.safeParse({
+				query: 'search_projects',
+				input: { query: 'signup', teamId: 'team-1', includeArchived: true },
+			}).success,
+		).toBe(true);
+		expect(schema.safeParse({ query: 'search_projects', input: {} }).success).toBe(true);
+		expect(
+			schema.safeParse({ query: 'search_labels', input: { query: 'bug', teamId: 'team-1' } })
+				.success,
+		).toBe(true);
+		expect(schema.safeParse({ query: 'search_labels', input: {} }).success).toBe(true);
+		expect(
+			schema.safeParse({
+				query: 'search_issue_states',
+				input: { query: 'progress', teamId: 'team-1', type: 'started' },
+			}).success,
+		).toBe(true);
+		expect(schema.safeParse({ query: 'search_issue_states', input: {} }).success).toBe(true);
 		expect(tool.description).toContain('get_issue: input.issueId');
 		expect(tool.description).toContain('search_issues: input.query');
+		expect(tool.description).toContain('search_teams: optional input.query');
+		expect(tool.description).toContain('search_projects: optional input.query');
+		expect(tool.description).toContain('search_labels: optional input.query');
+		expect(tool.description).toContain('search_issue_states: optional input.query');
+	});
+
+	it('context tool executes multiple queries in one batch', async () => {
+		const queryExecutor = mock<IntegrationContextQueryExecutor>();
+		queryExecutor.execute
+			.mockResolvedValueOnce({
+				ok: true,
+				teams: [{ teamId: 'team-1', key: 'ENG', name: 'Engineering' }],
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				labels: [{ labelId: 'label-1', name: 'Bug' }],
+			});
+
+		const tool = createIntegrationContextTool({
+			descriptor: getIntegrationToolConnectionDescriptors([linear], 'agent-1', () => ({
+				contextQueries: ['search_teams', 'search_labels'],
+			}))[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			queryExecutor,
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		const input = {
+			queries: [
+				{ query: 'search_teams', input: { query: 'eng' } },
+				{ query: 'search_labels', input: { query: 'bug' } },
+			],
+		};
+
+		expect(schema.safeParse(input).success).toBe(true);
+
+		const result = await tool.handler!(input, {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+
+		expect(result).toEqual({
+			ok: true,
+			results: [
+				{
+					query: 'search_teams',
+					result: {
+						ok: true,
+						teams: [{ teamId: 'team-1', key: 'ENG', name: 'Engineering' }],
+					},
+				},
+				{
+					query: 'search_labels',
+					result: { ok: true, labels: [{ labelId: 'label-1', name: 'Bug' }] },
+				},
+			],
+		});
+		expect(queryExecutor.execute).toHaveBeenNthCalledWith(1, {
+			descriptor: expect.any(Object),
+			query: 'search_teams',
+			input: { query: 'eng' },
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		expect(queryExecutor.execute).toHaveBeenNthCalledWith(2, {
+			descriptor: expect.any(Object),
+			query: 'search_labels',
+			input: { query: 'bug' },
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
 	});
 
 	it('integration tool schemas convert to JSON Schema objects for model providers', () => {
@@ -364,10 +467,10 @@ describe('integration tools', () => {
 		expect(tool.description).toContain('add_reaction: input.emoji is required');
 	});
 
-	it('action tool schema accepts Linear issue and comment creation actions', () => {
+	it('action tool schema accepts Linear issue and comment actions', () => {
 		const tool = createIntegrationActionTool({
 			descriptor: getIntegrationToolConnectionDescriptors([linear], 'agent-1', () => ({
-				actions: ['respond', 'create_issue', 'create_comment'],
+				actions: ['respond', 'create_issue', 'update_issue', 'create_comment'],
 			}))[0],
 			messageContextStore: mock<IntegrationMessageContextStore>(),
 			actionExecutor: mock<IntegrationActionExecutor>(),
@@ -395,6 +498,24 @@ describe('integration tools', () => {
 		).toBe(false);
 		expect(
 			schema.safeParse({
+				action: 'update_issue',
+				input: {
+					issueId: 'issue-1',
+					title: 'Updated title',
+					description: null,
+					assigneeId: null,
+					projectId: 'project-1',
+					labelIds: ['label-1'],
+					priority: 3,
+					stateId: 'state-1',
+				},
+			}).success,
+		).toBe(true);
+		expect(
+			schema.safeParse({ action: 'update_issue', input: { issueId: 'issue-1' } }).success,
+		).toBe(false);
+		expect(
+			schema.safeParse({
 				action: 'create_comment',
 				input: { issueId: 'issue-1', body: 'I can reproduce this.', parentCommentId: 'comment-1' },
 			}).success,
@@ -403,7 +524,93 @@ describe('integration tools', () => {
 			schema.safeParse({ action: 'create_comment', input: { issueId: 'issue-1' } }).success,
 		).toBe(false);
 		expect(tool.description).toContain('create_issue: input.teamId and input.title');
+		expect(tool.description).toContain('update_issue: input.issueId');
 		expect(tool.description).toContain('create_comment: input.issueId and input.body');
+	});
+
+	it('action tool executes multiple non-interactive actions in one batch', async () => {
+		const messageContextStore = mock<IntegrationMessageContextStore>();
+		const actionExecutor = mock<IntegrationActionExecutor>();
+		actionExecutor.execute
+			.mockResolvedValueOnce({
+				ok: true,
+				issue: { issueId: 'issue-1', title: 'Buy milk' },
+				messageContext: {
+					integrationConnectionId: 'linear:cred-c',
+					platform: 'linear',
+					target: { type: 'thread', threadId: 'linear:issue-1' },
+					subject: { type: 'issue', id: 'issue-1', title: 'Buy milk' },
+					updatedAt: '2026-05-18T10:00:00.000Z',
+				},
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				comment: { commentId: 'comment-1', body: 'Created from agent' },
+				messageContext: {
+					integrationConnectionId: 'linear:cred-c',
+					platform: 'linear',
+					target: { type: 'thread', threadId: 'linear:issue-1' },
+					messageId: 'comment-1',
+					updatedAt: '2026-05-18T10:01:00.000Z',
+				},
+			});
+
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([linear], 'agent-1', () => ({
+				actions: ['create_issue', 'create_comment'],
+			}))[0],
+			messageContextStore,
+			actionExecutor,
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+		const input = {
+			actions: [
+				{ action: 'create_issue', input: { teamId: 'team-1', title: 'Buy milk' } },
+				{ action: 'create_comment', input: { issueId: 'issue-1', body: 'Created from agent' } },
+			],
+		};
+
+		expect(schema.safeParse(input).success).toBe(true);
+
+		const result = await tool.handler!(input, makeInterruptibleCtx());
+
+		expect(result).toEqual({
+			ok: true,
+			results: [
+				expect.objectContaining({
+					action: 'create_issue',
+					result: expect.objectContaining({
+						ok: true,
+						issue: { issueId: 'issue-1', title: 'Buy milk' },
+					}),
+				}),
+				expect.objectContaining({
+					action: 'create_comment',
+					result: expect.objectContaining({
+						ok: true,
+						comment: { commentId: 'comment-1', body: 'Created from agent' },
+						messageContext: expect.objectContaining({
+							subject: { type: 'issue', id: 'issue-1', title: 'Buy milk' },
+						}),
+					}),
+				}),
+			],
+		});
+		expect(actionExecutor.execute).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({ action: 'create_issue', awaitResponse: false }),
+		);
+		expect(actionExecutor.execute).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({
+				action: 'create_comment',
+				awaitResponse: false,
+				currentMessageContext: expect.objectContaining({
+					subject: { type: 'issue', id: 'issue-1', title: 'Buy milk' },
+				}),
+			}),
+		);
+		expect(messageContextStore.setLatest).toHaveBeenCalledTimes(2);
 	});
 
 	it('interactive action sends first, updates message context, then suspends', async () => {
