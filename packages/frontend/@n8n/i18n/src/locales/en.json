@@ -5883,7 +5883,6 @@
 	"instanceAi.tools.delegate": "Delegating task",
 	"instanceAi.tools.web-search": "Searching the web",
 	"instanceAi.tools.fetch-url": "Fetching page",
-	"instanceAi.tools.research-with-agent": "Researching",
 	"instanceAi.tools.build-workflow-with-agent": "Building workflow",
 	"instanceAi.tools.build-workflow-with-agent.imperative": "edit workflow",
 	"instanceAi.tools.manage-data-tables-with-agent": "Managing data tables",

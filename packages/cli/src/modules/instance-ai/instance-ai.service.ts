@@ -56,7 +56,6 @@ import {
 	startBuildWorkflowAgentTask,
 	startDataTableAgentTask,
 	startDetachedDelegateTask,
-	startResearchAgentTask,
 	streamAgentRun,
 	truncateToTitle,
 	generateTitleForRun,
@@ -715,8 +714,9 @@ export class InstanceAiService {
 		if (!config.enabled) return undefined;
 
 		const sandbox = createSandbox(config);
+		if (sandbox === undefined) return undefined;
 		const workspace = createWorkspace(sandbox);
-		if (!sandbox || !workspace) return undefined;
+		if (workspace === undefined) return undefined;
 		try {
 			await workspace.init();
 		} catch (error) {
@@ -2574,14 +2574,6 @@ export class InstanceAiService {
 					conversationContext,
 				});
 				break;
-			case 'research':
-				started = await startResearchAgentTask(taskContext, {
-					goal: task.title,
-					constraints: task.spec,
-					plannedTaskId: task.id,
-					conversationContext,
-				});
-				break;
 			case 'delegate':
 				started = await startDetachedDelegateTask(taskContext, {
 					title: task.title,
@@ -3635,7 +3627,7 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * When a direct background task (builder/research/data-table/delegate)
+	 * When a direct background task (builder/data-table/delegate)
 	 * settles and was spawned inside a checkpoint follow-up, try to re-enter
 	 * that checkpoint so the orchestrator can call `complete-checkpoint`.
 	 *
@@ -3687,7 +3679,7 @@ export class InstanceAiService {
 			const task = graph?.tasks.find((t) => t.id === checkpointTaskId);
 			if (task && task.status === 'running') {
 				// If the orchestrator spawned a detached sub-agent inside this
-				// checkpoint's turn (builder, research, data-table, delegate) and
+				// checkpoint's turn (builder, data-table, delegate) and
 				// that child is still running, leave the checkpoint running. The
 				// child's settlement path re-emits `orchestrate-checkpoint` so the
 				// orchestrator re-enters the same checkpoint context and can then

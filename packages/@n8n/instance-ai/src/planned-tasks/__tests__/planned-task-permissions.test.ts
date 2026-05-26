@@ -74,7 +74,7 @@ describe('applyPlannedTaskPermissions', () => {
 		});
 	});
 
-	describe.each<PlannedTaskKind>(['research', 'delegate'])('%s', (kind) => {
+	describe.each<PlannedTaskKind>(['delegate'])('%s', (kind) => {
 		it('should return the original context unchanged', () => {
 			const context = makeContext();
 			const result = applyPlannedTaskPermissions(context, kind);
