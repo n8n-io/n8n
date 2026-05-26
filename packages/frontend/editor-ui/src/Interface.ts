@@ -313,6 +313,7 @@ export type CredentialsResource = BaseResource & {
 	needsSetup: boolean;
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	connectedByMe?: boolean;
 };
 
 // Base resource types that are always available

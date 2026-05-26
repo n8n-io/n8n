@@ -100,6 +100,7 @@ const allCredentials = computed<Resource[]>(() =>
 		needsSetup: needsSetup(credential.data),
 		isGlobal: credential.isGlobal,
 		isResolvable: credential.isResolvable,
+		connectedByMe: credential.connectedByMe,
 		type: credential.type,
 	})),
 );
@@ -130,6 +131,14 @@ const showSecretStoreFilter = computed(() => {
 
 const setRouteCredentialId = (credentialId?: string) => {
 	void router.replace({ params: { credentialId }, query: route.query });
+};
+
+const refreshCredentials = () => {
+	void credentialsStore.fetchAllCredentials({
+		projectId: route?.params?.projectId as string | undefined,
+		includeScopes: true,
+		externalSecretsStore: filters.value.externalSecretsStore,
+	});
 };
 
 const addCredential = () => {
@@ -323,6 +332,7 @@ onMounted(() => {
 				:read-only="data.readOnly"
 				:needs-setup="data.needsSetup"
 				@click="setRouteCredentialId"
+				@connected="refreshCredentials"
 			/>
 		</template>
 		<template #filters="{ setKeyValue }">
