@@ -13,11 +13,8 @@ import * as GenericFunctions from '../GenericFunctions';
 
 describe('BitbucketTrigger', () => {
 	let bitbucketTrigger: BitbucketTrigger;
-	const bitbucketApiRequestSpy = jest.spyOn(GenericFunctions, 'bitbucketApiRequest');
-	const bitbucketApiRequestAllItemsSpy = jest.spyOn(
-		GenericFunctions,
-		'bitbucketApiRequestAllItems',
-	);
+	let bitbucketApiRequestSpy: jest.SpyInstance;
+	let bitbucketApiRequestAllItemsSpy: jest.SpyInstance;
 
 	const mockNode: INode = {
 		id: 'test-node-id',
@@ -30,6 +27,8 @@ describe('BitbucketTrigger', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		bitbucketApiRequestSpy = jest.spyOn(GenericFunctions, 'bitbucketApiRequest');
+		bitbucketApiRequestAllItemsSpy = jest.spyOn(GenericFunctions, 'bitbucketApiRequestAllItems');
 		bitbucketTrigger = new BitbucketTrigger();
 	});
 

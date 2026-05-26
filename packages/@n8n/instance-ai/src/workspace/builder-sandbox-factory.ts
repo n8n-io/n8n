@@ -13,7 +13,7 @@ import { Workspace } from '@n8n/agents';
 import assert from 'node:assert/strict';
 import { join as posixJoin } from 'node:path/posix';
 
-import { loadDaytona } from './lazy-daytona';
+import { DaytonaAuthManager } from './daytona-auth-manager';
 import type { ErrorReporter, Logger } from '../logger';
 import type { SandboxConfig } from './create-workspace';
 import { DaytonaFilesystem } from './daytona-filesystem';
@@ -140,7 +140,7 @@ async function cleanupTrackedSandboxProcesses(workspace: Workspace): Promise<voi
 }
 
 export class BuilderSandboxFactory {
-	private daytona: Daytona | null = null;
+	private daytonaAuth: DaytonaAuthManager | null = null;
 
 	constructor(
 		private readonly config: SandboxConfig,
@@ -212,18 +212,12 @@ export class BuilderSandboxFactory {
 
 	private async getDaytona(): Promise<Daytona> {
 		const config = this.assertIsDaytona();
-		const { Daytona } = loadDaytona();
-		if (config.getAuthToken) {
-			// Proxy mode: create a fresh client with a fresh JWT each time
-			const apiKey = await config.getAuthToken();
-			return new Daytona({ apiKey, apiUrl: config.daytonaApiUrl });
-		}
-		// Direct mode: cache the client (Daytona API keys don't expire)
-		this.daytona ??= new Daytona({
-			apiKey: config.daytonaApiKey,
+		this.daytonaAuth ??= new DaytonaAuthManager({
 			apiUrl: config.daytonaApiUrl,
+			staticApiKey: config.getAuthToken ? undefined : config.daytonaApiKey,
+			getAuthToken: config.getAuthToken,
 		});
-		return this.daytona;
+		return await this.daytonaAuth.getClient();
 	}
 
 	/** Cached node-types catalog string — generated once, reused across builders. */
@@ -319,12 +313,13 @@ export class BuilderSandboxFactory {
 
 		try {
 			// Wrap raw Sandbox in the native provider; start() reconnects to
-			// the existing sandbox by ID.
-			// Use the same apiKey source as getDaytona() — fresh token in proxy mode, static key in direct mode.
-			const apiKey = config.getAuthToken ? await config.getAuthToken() : config.daytonaApiKey;
+			// the existing sandbox by ID. The sandbox owns its own auth lifecycle
+			// via DaytonaAuthManager, so proxy-mode JWTs refresh transparently
+			// when the cached client outlives the token TTL.
 			const daytonaSandbox = new DaytonaSandbox({
 				id: sandbox.id,
-				apiKey,
+				apiKey: config.getAuthToken ? undefined : config.daytonaApiKey,
+				getAuthToken: config.getAuthToken,
 				apiUrl: config.daytonaApiUrl,
 				language: 'typescript',
 				timeout: config.timeout ?? 300_000,
@@ -348,7 +343,8 @@ export class BuilderSandboxFactory {
 
 			// Curated examples — also too large to bake into the image, written
 			// post-creation. Without this the builder sees an empty examples/ dir.
-			await writeCuratedExamples(workspace, this.logger);
+			const templatesBundle = (await context.templatesService?.getBundle()) ?? null;
+			await writeCuratedExamples(workspace, templatesBundle, this.logger);
 
 			await this.linkWorkspaceSdkIfEnabled(workspace, root);
 
@@ -404,7 +400,8 @@ export class BuilderSandboxFactory {
 				await writeFileViaSandbox(workspace, `${root}/node-types/index.txt`, catalog);
 			}
 
-			await writeCuratedExamples(workspace, this.logger);
+			const templatesBundle = (await context.templatesService?.getBundle()) ?? null;
+			await writeCuratedExamples(workspace, templatesBundle, this.logger);
 
 			await this.linkWorkspaceSdkIfEnabled(workspace, root);
 

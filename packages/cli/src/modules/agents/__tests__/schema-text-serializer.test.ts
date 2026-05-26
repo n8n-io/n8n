@@ -572,6 +572,45 @@ describe('full schema snapshot', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Description annotation
+// ---------------------------------------------------------------------------
+
+describe('description annotation', () => {
+	it('appends description to an optional leaf field', () => {
+		expect(
+			field('maxIterations', {
+				type: 'integer',
+				minimum: 1,
+				maximum: 200,
+				description: 'Max loop iterations',
+			}),
+		).toBe('  maxIterations?: integer [1..200] — Max loop iterations');
+	});
+
+	it('appends description after required suffix', () => {
+		expect(field('count', { type: 'integer', description: 'Total items' }, true)).toBe(
+			'  count: integer (required) — Total items',
+		);
+	});
+
+	it('appends description after default suffix', () => {
+		expect(field('size', { type: 'number', default: 10, description: 'Chunk size' })).toBe(
+			'  size?: number (default: 10) — Chunk size',
+		);
+	});
+
+	it('appends description after both required and default suffixes', () => {
+		expect(
+			field('flag', { type: 'boolean', default: false, description: 'Feature toggle' }, true),
+		).toBe('  flag: boolean (required) (default: false) — Feature toggle');
+	});
+
+	it('omits description suffix when description is absent', () => {
+		expect(field('n', { type: 'integer', minimum: 1 })).toBe('  n?: integer [min 1]');
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Custom indent
 // ---------------------------------------------------------------------------
 
