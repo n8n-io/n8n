@@ -12,7 +12,6 @@ import type {
 	BlueprintCheckpointItem,
 	BlueprintDataTableItem,
 	BlueprintDelegateItem,
-	BlueprintResearchItem,
 	BlueprintWorkflowItem,
 } from './blueprint.schema';
 
@@ -37,7 +36,6 @@ export interface PlannedTaskInput {
 type BlueprintItem =
 	| (BlueprintWorkflowItem & { kind: 'workflow' })
 	| (BlueprintDataTableItem & { kind: 'data-table' })
-	| (BlueprintResearchItem & { kind: 'research' })
 	| (BlueprintDelegateItem & { kind: 'delegate' })
 	| (BlueprintCheckpointItem & { kind: 'checkpoint' });
 
@@ -128,16 +126,6 @@ function workflowItemToTask(
 	};
 }
 
-function researchItemToTask(ri: BlueprintResearchItem): PlannedTaskInput {
-	return {
-		id: ri.id,
-		title: ri.question,
-		kind: 'research',
-		spec: ri.constraints ?? ri.question,
-		deps: ri.dependsOn,
-	};
-}
-
 function delegateItemToTask(di: BlueprintDelegateItem): PlannedTaskInput {
 	return {
 		id: di.id,
@@ -168,8 +156,6 @@ export class BlueprintAccumulator {
 
 	private workflows: BlueprintWorkflowItem[] = [];
 
-	private researchItems: BlueprintResearchItem[] = [];
-
 	private delegateItems: BlueprintDelegateItem[] = [];
 
 	private checkpoints: BlueprintCheckpointItem[] = [];
@@ -181,6 +167,8 @@ export class BlueprintAccumulator {
 	private assumptions: string[] = [];
 
 	private approved = false;
+
+	private denied = false;
 
 	/** Route item by kind, upsert into arrays, convert to task, return the task. */
 	addItem(item: BlueprintItem): PlannedTaskInput {
@@ -197,12 +185,6 @@ export class BlueprintAccumulator {
 				const { kind: _, ...wf } = item;
 				this.upsertArray(this.workflows, wf);
 				task = workflowItemToTask(wf, this.dataTables, this.assumptions);
-				break;
-			}
-			case 'research': {
-				const { kind: _, ...ri } = item;
-				this.upsertArray(this.researchItems, ri);
-				task = researchItemToTask(ri);
 				break;
 			}
 			case 'delegate': {
@@ -266,7 +248,6 @@ export class BlueprintAccumulator {
 		// Also remove from the typed item arrays
 		this.removeFromArray(this.dataTables, id);
 		this.removeFromArray(this.workflows, id);
-		this.removeFromArray(this.researchItems, id);
 		this.removeFromArray(this.delegateItems, id);
 		this.removeFromArray(this.checkpoints, id);
 		// Clean up dangling dep references in remaining tasks
@@ -306,6 +287,17 @@ export class BlueprintAccumulator {
 	/** Whether the user approved the plan via submit-plan. */
 	isApproved(): boolean {
 		return this.approved;
+	}
+
+	/** Mark the plan as denied by the user. Once denied, submit-plan short-circuits
+	 *  any further calls so the planner cannot re-suspend the user for approval. */
+	markDenied(): void {
+		this.denied = true;
+	}
+
+	/** Whether the user denied the plan outright via submit-plan. */
+	isDenied(): boolean {
+		return this.denied;
 	}
 
 	/** Whether any items have been added. */

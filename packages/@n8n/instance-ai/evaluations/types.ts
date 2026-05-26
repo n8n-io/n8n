@@ -4,6 +4,7 @@
 
 import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
 
+import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
 
 // ---------------------------------------------------------------------------
@@ -212,6 +213,7 @@ export interface WorkflowTestCaseResult {
 	conversationMetrics?: ConversationMetrics;
 	threadId?: string;
 	transcript?: TranscriptTurn[];
+	workflowChecks?: CheckOutcome[];
 }
 
 // ---------------------------------------------------------------------------
