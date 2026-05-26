@@ -254,12 +254,12 @@ const handleClick = (event: MouseEvent) => {
 		--button--color--background-hover: color-mix(
 			in srgb,
 			var(--button--color--background),
-			var(--background--hover)
+			light-dark(var(--color--black), var(--color--white)) 5%
 		);
 		--button--color--background-active: color-mix(
 			in srgb,
 			var(--button--color--background),
-			var(--background--active)
+			light-dark(var(--color--black), var(--color--white)) 10%
 		);
 		--button--shadow: var(--shadow--xs);
 		--button--shadow--hover: var(--shadow--xs);
