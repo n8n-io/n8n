@@ -528,8 +528,8 @@ describe('SourceControlExportService', () => {
 	describe('exportWorkflowsToWorkFolder', () => {
 		it('should export workflows with all required fields', async () => {
 			// Arrange
-			const nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }];
 			const workflowId = 'wf-1';
+			const nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }];
 			const nodes = [
 				{
 					id: 'node-1',
