@@ -10,7 +10,6 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
 const InstanceAiThreadView = async () => await import('./InstanceAiThreadView.vue');
-const PlanReviewPanelDevView = async () => await import('./views/PlanReviewPanelDevView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
 const ComputerUseSetupModal = async () =>
 	await import('./components/modals/ComputerUseSetupModal.vue');
@@ -36,15 +35,6 @@ export const InstanceAiModule: FrontendModuleDescription = {
 					path: '',
 					component: InstanceAiEmptyView,
 				},
-				...(import.meta.env.DEV
-					? [
-							{
-								name: 'InstanceAiPlanReviewDev',
-								path: 'plan-review-dev',
-								component: PlanReviewPanelDevView,
-							},
-						]
-					: []),
 				{
 					name: INSTANCE_AI_THREAD_VIEW,
 					path: ':threadId',
