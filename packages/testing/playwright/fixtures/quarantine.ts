@@ -1,7 +1,7 @@
 import type { Fixtures, TestInfo } from '@playwright/test';
 
 const QUARANTINE_WEBHOOK_URL = 'https://internal.users.n8n.cloud/webhook/quarantine-list';
-const FETCH_TIMEOUT_MS = 2000;
+const FETCH_TIMEOUT_MS = 10000;
 
 type QuarantineResponse = { quarantined?: string[] };
 
@@ -55,7 +55,7 @@ export type QuarantineWorkerFixtures = {
  *
  * On fork PRs `CURRENTS_RECORD_KEY` is empty (GitHub Actions does not expose
  * secrets to fork PRs), so we fetch the live list from the internal n8n
- * webhook with a ~2s timeout and skip matching tests. Any error (timeout,
+ * webhook with a ~10s timeout and skip matching tests. Any error (timeout,
  * non-2xx, parse error) fails open: tests run as if nothing is quarantined.
  *
  * Webhook: https://internal.users.n8n.cloud/webhook/quarantine-list
