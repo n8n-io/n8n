@@ -30,7 +30,9 @@ export default defineConfig({
 				test: {
 					...sharedTestConfig,
 					name: 'vm-engine',
-					env: { N8N_EXPRESSION_ENGINE: 'vm' },
+					// STRYKER_RUN tells setup-vm-evaluator.ts to skip the
+					// isolated-vm disposer on teardown — see that file for why.
+					env: { N8N_EXPRESSION_ENGINE: 'vm', STRYKER_RUN: 'true' },
 				},
 			},
 		],

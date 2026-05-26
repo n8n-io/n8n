@@ -1,6 +1,6 @@
 ---
 name: n8n:mutate-changed
-description: Run Stryker mutation testing on the source files changed in the current branch (vs origin/master). One command for "did my work hold up under mutation?" before pushing. Triages on the side which files dropped below threshold and offers to invoke n8n:strengthen-tests on them. Use when the user says /mutate-changed, "mutate what I changed", "check my changes", or has just finished writing a feature and wants pre-merge feedback. Phase 1 scope: only packages/workflow/src/** changes are mutated.
+description: Run Stryker mutation testing on the source files changed in the current branch (vs origin/master). One command for "did my work hold up under mutation?" before pushing. Triages on the side which files dropped below threshold and offers to invoke n8n:strengthen-tests on them. Use when the user says /mutate-changed, "mutate what I changed", "check my changes", or has just finished writing a feature and wants pre-merge feedback. Scope: only packages/workflow/src/** changes are mutated today.
 ---
 
 # Mutate what I changed
@@ -15,13 +15,13 @@ Closes the local dev loop. Single command to run Stryker against every source fi
 
 **Don't** use:
 - For a single specific file (`/n8n:mutation-test <path>` is faster)
-- For non-`packages/workflow` changes — those are out of scope until Phase 2 rollout
+- For non-`packages/workflow` changes — Stryker is only wired up there today
 - After the user already ran `/n8n:strengthen-tests` (which calls mutation-test internally for verification — running both again is wasted compute)
 
 ## Inputs
 
 - **Default base**: `origin/master`. Override with `--base <ref>` if comparing against another branch (e.g. `--base HEAD~5`).
-- **Default scope**: `packages/workflow/src/**/*.ts`. Phase 1 only.
+- **Default scope**: `packages/workflow/src/**/*.ts`. The only package with Stryker wired up today.
 
 ## Steps
 
@@ -107,7 +107,7 @@ Don't dump full `summary.json` payloads — the per-file mutate runs already wri
 
 ## Constraints
 
-- **Hardcoded to `packages/workflow`.** When Phase 2 lands, generalise.
+- **Hardcoded to `packages/workflow`.** Generalise when Stryker is wired up to other packages.
 - **Max 8 files per invocation.** Above that, ask user to narrow.
 - **Don't auto-invoke `/n8n:strengthen-tests`.** Suggest, don't act. Same reasoning as the other skills: each pass should be a deliberate human-approved step.
 - **No commits.** Edits land in working tree; user reviews.
@@ -123,4 +123,3 @@ Don't dump full `summary.json` payloads — the per-file mutate runs already wri
 
 - `n8n:mutation-test` — single-file version of this skill
 - `n8n:strengthen-tests` — the natural next step when reds show up
-- DEVP-176 — Phase 1.5 local developer loop

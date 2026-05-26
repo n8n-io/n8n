@@ -145,5 +145,4 @@ Keep prose minimal between sections. The plan and verify steps are the structure
 ## Related
 
 - `n8n:mutation-test` — the read side of this loop
-- DEVP-176 — Phase 1.5 of the broader observability project
 - `scripts/mutation-health/README.md` — the BQ-backed observability story this slots into

@@ -1,34 +1,40 @@
 #!/usr/bin/env node
 /**
- * Read a ledger snapshot, return the next pair to mutate.
+ * Walk a package's source tree, merge with the live BQ ledger snapshot,
+ * return the next pair to mutate.
  *
- * Stored statuses: new | red | green
+ * Files present in src/ but absent from the live ledger are synthesised as
+ * status='new'. No separate seed step needed — the ledger fills in
+ * organically as files get scored.
+ *
+ * Stored statuses (from BQ): new | red | green
  * Effective statuses (computed at pick time): new | red | stale | green
  *
  * Picker priority: new → red → stale → skip green
  * Tiebreaks within each bucket:
- *   - new:    alphabetical by source_file_path (deterministic; rows exit
- *             as they're scored)
+ *   - new:    alphabetical by source_file_path
  *   - red:    lowest score first (focus on weakest tests)
  *   - stale:  oldest last_checked_at first (natural cycling)
  *
  * "Stale" is an in-memory promotion of green rows older than
- * STALE_AFTER_WEEKS (default 4). It is not stored — the ledger keeps three
- * statuses and the picker derives stale from age alone. No git involvement.
+ * STALE_AFTER_WEEKS (default 4). Not stored.
  *
- * Input:  ledger JSON via --ledger-file <path> or STDIN.
- *         { "ledger": [ { source_file_path, package, ... } ] }
+ * Inputs:
+ *   --package-dir <path>     Required. Repo-relative path to the package, e.g. packages/workflow
+ *   --ledger-file <path>     Required. Live ledger JSON: { "ledger": [ ... ] }
+ *   --stale-after-weeks <n>  Optional. Default 4.
  *
  * Output (stdout): { picked: { source_file_path, package, prior_status, effective_status } }
- *                  OR { picked: null, reason: "all-green" } if nothing actionable.
+ *                  OR { picked: null, reason: "all-green" | "empty-source-tree" }.
  *
  * Exit codes:
- *   0 — picked a row OR all-green (with picked: null sentinel)
+ *   0 — picked a row OR nothing to do (with picked: null sentinel)
  *   2 — usage / config error
  */
 
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 
 function die(code, msg) {
@@ -53,37 +59,83 @@ function parseArgs(argv) {
 	return out;
 }
 
+// Files with no useful mutation surface: barrels, declarations, type-only modules.
+const LOW_VALUE_BASENAMES = new Set(['interfaces', 'index', 'constants', 'types']);
+
+function isMutationWorthy(absPath) {
+	if (absPath.endsWith('.d.ts')) return false;
+	const base = path.basename(absPath, '.ts');
+	if (LOW_VALUE_BASENAMES.has(base)) return false;
+	return true;
+}
+
+async function walkSources(dir) {
+	const entries = await readdir(dir, { withFileTypes: true });
+	const out = [];
+	for (const e of entries) {
+		const full = path.join(dir, e.name);
+		if (e.isDirectory()) {
+			out.push(...(await walkSources(full)));
+		} else if (e.isFile() && e.name.endsWith('.ts')) {
+			out.push(full);
+		}
+	}
+	return out;
+}
+
 const args = parseArgs(process.argv.slice(2));
 const STALE_AFTER_WEEKS = Number(args['stale-after-weeks'] ?? 4);
 
-async function readStdin() {
-	const chunks = [];
-	for await (const chunk of process.stdin) chunks.push(chunk);
-	return Buffer.concat(chunks).toString('utf8');
-}
+const pkgDirArg = args['package-dir'];
+const ledgerFile = args['ledger-file'];
+if (!pkgDirArg) die(2, 'Missing required --package-dir <relative-path-to-package>');
+if (!ledgerFile) die(2, 'Missing required --ledger-file <path>');
 
-let raw;
-if (args['ledger-file']) {
-	const ledgerPath = path.isAbsolute(args['ledger-file'])
-		? args['ledger-file']
-		: path.join(process.cwd(), args['ledger-file']);
-	if (!existsSync(ledgerPath)) die(2, `Ledger file not found: ${ledgerPath}`);
-	raw = await readFile(ledgerPath, 'utf8');
-} else {
-	if (process.stdin.isTTY) {
-		die(2, 'No --ledger-file <path> and STDIN is a TTY. Pipe ledger JSON in or use --ledger-file.');
-	}
-	raw = await readStdin();
-}
+const repoRoot = path.resolve(
+	execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim(),
+);
+const pkgDir = path.isAbsolute(pkgDirArg) ? pkgDirArg : path.join(repoRoot, pkgDirArg);
+if (!existsSync(pkgDir)) die(2, `Package dir not found: ${pkgDir}`);
 
-const payload = JSON.parse(raw);
-const ledger = payload.ledger;
-if (!Array.isArray(ledger)) die(2, 'Ledger payload missing `ledger` array.');
-if (ledger.length === 0) {
-	process.stderr.write('Ledger empty — nothing to pick.\n');
-	process.stdout.write(JSON.stringify({ picked: null, reason: 'empty-ledger' }) + '\n');
+const pkgJsonPath = path.join(pkgDir, 'package.json');
+if (!existsSync(pkgJsonPath)) die(2, `No package.json at ${pkgJsonPath}`);
+const pkgName = JSON.parse(await readFile(pkgJsonPath, 'utf8')).name;
+
+const srcDir = path.join(pkgDir, 'src');
+if (!existsSync(srcDir)) die(2, `No src/ in ${pkgDir}`);
+
+const ledgerPath = path.isAbsolute(ledgerFile) ? ledgerFile : path.join(process.cwd(), ledgerFile);
+if (!existsSync(ledgerPath)) die(2, `Ledger file not found: ${ledgerPath}`);
+
+const ledgerPayload = JSON.parse(await readFile(ledgerPath, 'utf8'));
+const liveLedger = ledgerPayload.ledger;
+if (!Array.isArray(liveLedger)) die(2, 'Ledger payload missing `ledger` array.');
+
+const allSources = (await walkSources(srcDir)).sort();
+const worthy = allSources.filter(isMutationWorthy).map((abs) => path.relative(repoRoot, abs));
+
+if (worthy.length === 0) {
+	process.stderr.write('No mutation-worthy source files found under src/.\n');
+	process.stdout.write(JSON.stringify({ picked: null, reason: 'empty-source-tree' }) + '\n');
 	process.exit(0);
 }
+
+// Merge: live ledger row wins over synthesised "new" row.
+const byPath = new Map();
+for (const row of liveLedger) {
+	byPath.set(row.source_file_path, row);
+}
+const merged = worthy.map(
+	(p) =>
+		byPath.get(p) ?? {
+			source_file_path: p,
+			package: pkgName,
+			last_score: null,
+			threshold_at_run: null,
+			last_checked_at: null,
+			status: 'new',
+		},
+);
 
 const NOW = Date.now();
 const STALE_AFTER_MS = STALE_AFTER_WEEKS * 7 * 24 * 60 * 60 * 1000;
@@ -101,7 +153,7 @@ function computeEffectiveStatus(row) {
 
 const PRIORITY = { new: 0, red: 1, stale: 2, green: 3 };
 
-const annotated = ledger.map((row) => ({ ...row, effective_status: computeEffectiveStatus(row) }));
+const annotated = merged.map((row) => ({ ...row, effective_status: computeEffectiveStatus(row) }));
 
 annotated.sort((a, b) => {
 	const pa = PRIORITY[a.effective_status] ?? 99;
@@ -132,7 +184,7 @@ const counts = annotated.reduce((acc, r) => {
 }, {});
 
 process.stderr.write(
-	`Ledger: ${ledger.length} rows  •  ` +
+	`Source files: ${worthy.length}  •  ` +
 		`new=${counts.new ?? 0} red=${counts.red ?? 0} stale=${counts.stale ?? 0} green=${counts.green ?? 0}\n`,
 );
 

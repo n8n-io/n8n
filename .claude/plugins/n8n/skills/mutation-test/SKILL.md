@@ -14,9 +14,9 @@ Wraps `pnpm --filter=<pkg> mutate <file>` and parses `summary.json` into a compa
 - Follow-up loop after a `red` verdict — feed the structured output back to a "fix" iteration
 
 **Don't** use this skill for:
-- Whole-package or whole-repo mutation runs (Phase 2 of DEVP-176; not yet wired)
+- Whole-package or whole-repo mutation runs — single file only
 - Coverage % questions (use the existing coverage workflow)
-- Files outside `packages/workflow/` until Phase 2 rolls Stryker out to other packages
+- Files outside `packages/workflow/` — Stryker is only wired up there today
 
 ## Inputs
 
@@ -101,17 +101,16 @@ Order the survivors array by `location` (ascending line number, then column) so 
 - **No raw.json** — never read or surface it. summary.json is the only input.
 - **No HTML report** — don't `open` raw.html or paste links to it. If the user wants visual exploration they'll ask.
 - **No automatic triage** — don't categorise survivors by "real bug" vs "refactor insurance." That's a separate analysis step that should happen on demand, not by default. Keeps token cost predictable.
-- **No "I'll regenerate tests for you now"** — this skill reports the gap. Test generation is Phase 3 of DEVP-176 and not yet wired.
+- **No "I'll regenerate tests for you now"** — this skill reports the gap. Use `n8n:strengthen-tests` if you want assertion edits.
 
 ## Common follow-ups (don't do unless asked)
 
 - User says "fix these" → start a strengthen loop using the JSON output as input. Read covering_tests source, propose changes per mutant, run the skill again to verify.
 - User says "explain survivor #N" → fetch that mutant from summary.json, show its surrounding ~5 lines from the source file, no analysis beyond what summary.json contains.
-- User says "what's the threshold?" → 80% provisional. See DEVP-176 for the evidence-based-threshold plan (it moves after ~4 weeks of Phase 1 data).
+- User says "what's the threshold?" → 80% provisional; see `scripts/mutation-health/README.md` for the rationale.
 - User says "run it on the changed files" → not wired yet. Suggest `git diff` to find candidates, then invoke this skill per file.
 
 ## Related
 
-- DEVP-176 — Mutation Health Observability (this skill's parent project)
 - `scripts/mutation-health/README.md` — the broader BQ-backed observability story
 - `packages/workflow/stryker.config.mjs` — the Stryker config this skill drives

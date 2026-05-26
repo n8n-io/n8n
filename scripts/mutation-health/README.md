@@ -1,6 +1,6 @@
 # `scripts/mutation-health/`
 
-Phase 1 substrate for [DEVP-176 Mutation Health Observability](https://linear.app/n8n/issue/DEVP-176/mutation-health-observability-stryker-rollout-ai-test-generation).
+Phase 1 substrate for the Mutation Health Observability initiative.
 
 ## What is mutation testing?
 
@@ -53,30 +53,27 @@ That divergence is exactly why this project exists.
 
 | File | Purpose |
 | --- | --- |
-| `schema/qa_mutation_health_ledger.json` | BigQuery schema for the ledger state table |
-| `schema/qa_performance_metrics-dimensions.md` | Dimensions JSON contract for the events table |
-| `seed-ledger.mjs` | Enumerate `<pkg>/src/`, emit one ledger row per source file (status=new) |
-| `pick-next.mjs` | Read a ledger snapshot, return the next source file to mutate |
-| `fetch-ledger.mjs` | Pull the live ledger via the dedicated reader webhook (GET, no client-side SQL) |
-| `emit-payload.mjs` | Turn a Stryker `summary.json` into a BQ-ready payload |
-| `post-payload.mjs` | POST a payload to the writer webhook (skips cleanly if env unset) |
+| `pick-next.mjs` | Walk `<pkg>/src/`, merge with the live ledger, return the next source file to mutate |
+| `emit-payload.mjs` | Turn a Stryker `summary.json` into a BQ-ready writer payload |
 
 The Stryker run itself lives in `packages/workflow/scripts/mutate.mjs` and is invoked via `pnpm --filter=n8n-workflow mutate <src-file>`.
+
+The reader and writer webhooks are plain HTTP — the GHA hits them with `curl`. There is no fetch/post wrapper script; if you want to call them locally, see [Local usage](#local-usage).
+
+The BQ table schema lives with the writer workflow (in n8n's internal Quality project), not in this repo — the writer owns the MERGE statement and is the single source of truth.
 
 ## End-to-end pipeline
 
 ```
 [GHA nightly cron, .github/workflows/mutation-health-nightly.yml]
        │
-       ├─► seed-ledger.mjs                  → ledger-seed.json (every src/ file as `new`)
-       │
-       ├─► post-payload.mjs                 → POST seed; writer MERGEs (idempotent — never clobbers existing scores)
-       │
-       ├─► fetch-ledger.mjs                 → live-ledger.json (current BQ state)
+       ├─► curl GET reader webhook          → live-ledger.json (current BQ state)
        │       │
-       │       └─► GET reader webhook ──► [n8n: QA Mutation Health Reader] ──► SELECT from BQ ledger
+       │       └─► [n8n: QA Mutation Health Reader] ──► SELECT from BQ ledger
        │
        ├─► pick-next.mjs                    → one source file
+       │     walks <pkg>/src/, merges with live ledger
+       │     files missing from ledger are synthesised as `new`
        │     priority: new → red → stale → skip green
        │     within new:        alphabetical
        │     within red/stale:  lowest score first
@@ -85,7 +82,7 @@ The Stryker run itself lives in `packages/workflow/scripts/mutate.mjs` and is in
        │
        ├─► emit-payload.mjs                 → bq-payload.json
        │
-       └─► post-payload.mjs                 → POST result; writer INSERTs event + MERGEs ledger row
+       └─► curl POST writer webhook         → INSERTs event + MERGEs ledger row
                                               ↓
                               [n8n writer workflow: QA: Mutation Health Writer]
                                               ↓
@@ -101,11 +98,11 @@ The writer workflow lives in n8n's internal Quality project. It's created and ma
 
 | Trigger | Stored `status` |
 | --- | --- |
-| Source file first observed (seed insert) | `new`, `last_score=NULL` |
+| Source file in `src/` but no row yet | synthesised as `new` at pick time; not stored |
 | Last run scored ≥ `threshold_at_run` | `green` |
 | Last run scored < `threshold_at_run` | `red` |
 
-Stored statuses are just three: `new`, `red`, `green`. The picker also computes a transient `stale` state at pick time — any `green` row whose `last_checked_at` is older than 4 weeks is treated as `stale` for that pick. No `last_checked_sha` is needed; no git history is consulted.
+Stored statuses are just two: `red` and `green`. `new` is computed in-memory by the picker for any file in the source tree that has no ledger row yet — the row is only persisted after that file's first scored run. The picker also computes a transient `stale` state — any `green` row whose `last_checked_at` is older than 4 weeks is treated as `stale` for that pick. No `last_checked_sha` is needed; no git history is consulted.
 
 Picker priority: `new` → `red` → `stale` → skip fresh `green`.
 
@@ -165,12 +162,12 @@ Two n8n workflows back the pipeline. Both live in the internal Quality project (
 }
 ```
 
-Either array may be empty (seed POSTs send only `ledger`; manual smoke tests sometimes send only `events`).
+Either array may be empty (manual smoke tests sometimes send only `events`).
 
 The writer:
 
 1. For each `events[]` row → `INSERT` into `qa_performance_metrics`.
-2. For each `ledger[]` row → `MERGE` into `qa_mutation_health_ledger` on `source_file_path`. The MERGE skips updates when the incoming `status` is `new`, so seed payloads are idempotent (never clobber a real score back to `new`).
+2. For each `ledger[]` row → `MERGE` into `qa_mutation_health_ledger` on `source_file_path`. Status is always `red` or `green` — the picker synthesises `new` in-memory and never posts it.
 
 The webhook URL is delivered to GHA via the `MUTATION_HEALTH_WEBHOOK` repo secret. The secret URL itself is the only auth (matches existing `qa_*` writer pattern); rotate the secret if leaked.
 
@@ -203,7 +200,7 @@ Unauthenticated — the URL is not a secret. The data isn't sensitive (file path
 
 ## Threshold (provisional)
 
-Phase 1 runs use `STRYKER_THRESHOLD=80` as a placeholder. The threshold moves to evidence-based after ~4 weeks of Phase 1+2 data lands. Until then, treat `red`/`green` verdicts as preliminary.
+Runs use `STRYKER_THRESHOLD=80` as a placeholder. The threshold moves to evidence-based after ~4 weeks of accumulated data. Until then, treat `red`/`green` verdicts as preliminary.
 
 ## Local usage
 
@@ -211,26 +208,24 @@ Phase 1 runs use `STRYKER_THRESHOLD=80` as a placeholder. The threshold moves to
 # Run Stryker on one file (the inner loop — also invokable via /n8n:mutation-test skill)
 pnpm --filter=n8n-workflow mutate src/cron.ts
 
-# Seed the ledger for a package (idempotent — safe to re-run)
-node scripts/mutation-health/seed-ledger.mjs --package-dir packages/workflow
-
 # Pull current ledger from BQ
-node scripts/mutation-health/fetch-ledger.mjs --package n8n-workflow --out /tmp/ledger.json
+curl --fail -sS \
+  'https://internal.users.n8n.cloud/webhook/mutation-health-ledger?package=n8n-workflow' \
+  -o /tmp/ledger.json
 
 # Pick the next file to score
-node scripts/mutation-health/pick-next.mjs --ledger-file /tmp/ledger.json
+node scripts/mutation-health/pick-next.mjs \
+  --package-dir packages/workflow \
+  --ledger-file /tmp/ledger.json
 
 # Build a BQ payload from a Stryker run
 node scripts/mutation-health/emit-payload.mjs \
   --summary packages/workflow/reports/mutation/summary.json \
   --package n8n-workflow
 
-# POST (skips with notice if MUTATION_HEALTH_WEBHOOK is unset)
-node scripts/mutation-health/post-payload.mjs \
-  packages/workflow/reports/mutation/bq-payload.json
+# POST the result (requires MUTATION_HEALTH_WEBHOOK to be set)
+curl --fail -sS -X POST \
+  -H 'Content-Type: application/json' \
+  --data @packages/workflow/reports/mutation/bq-payload.json \
+  "$MUTATION_HEALTH_WEBHOOK"
 ```
-
-## Phase 2/3 evolution
-
-- **Phase 2**: roll Stryker config out to other packages, BQ dashboards over `qa_performance_metrics` filtered to `benchmark_name='mutation_health'`. No schema changes needed.
-- **Phase 3**: AI test generation. The ledger gets `attempts > 0`; AI test-file attribution lives in a separate `testgen_attempts` table — not in this ledger.

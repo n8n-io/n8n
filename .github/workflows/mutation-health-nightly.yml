@@ -25,8 +25,9 @@ concurrency:
 
 env:
   PACKAGE_NAME: ${{ github.event.inputs.package || 'n8n-workflow' }}
-  PKG_DIR: packages/workflow # mapping is 1-to-1 for Phase 1; expand when Phase 2 rolls out
+  PKG_DIR: packages/workflow # 1-to-1 mapping today; generalise when more packages are wired up
   REPORTS_DIR: packages/workflow/reports/mutation
+  READER_URL: https://internal.users.n8n.cloud/webhook/mutation-health-ledger
 
 jobs:
   run:
@@ -42,21 +43,17 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
 
-      - name: Seed ledger
-        run: node scripts/mutation-health/seed-ledger.mjs --package-dir "$PKG_DIR"
-
-      - name: POST seed payload
-        env:
-          MUTATION_HEALTH_WEBHOOK: ${{ secrets.MUTATION_HEALTH_WEBHOOK }}
-        run: node scripts/mutation-health/post-payload.mjs "$REPORTS_DIR/ledger-seed.json"
-
       - name: Fetch live ledger from BigQuery
-        run: node scripts/mutation-health/fetch-ledger.mjs --package "$PACKAGE_NAME" --out "$REPORTS_DIR/live-ledger.json"
+        run: |
+          mkdir -p "$REPORTS_DIR"
+          curl --fail -sS "$READER_URL?package=$PACKAGE_NAME" -o "$REPORTS_DIR/live-ledger.json"
 
       - name: Pick next source file
         id: pick
         run: |
-          picked_json=$(node scripts/mutation-health/pick-next.mjs --ledger-file "$REPORTS_DIR/live-ledger.json")
+          picked_json=$(node scripts/mutation-health/pick-next.mjs \
+            --package-dir "$PKG_DIR" \
+            --ledger-file "$REPORTS_DIR/live-ledger.json")
           echo "$picked_json"
           src_repo=$(echo "$picked_json" | jq -r '.picked.source_file_path // ""')
           if [ -z "$src_repo" ]; then
@@ -96,7 +93,15 @@ jobs:
         if: steps.pick.outputs.skip != 'true'
         env:
           MUTATION_HEALTH_WEBHOOK: ${{ secrets.MUTATION_HEALTH_WEBHOOK }}
-        run: node scripts/mutation-health/post-payload.mjs "$REPORTS_DIR/bq-payload.json"
+        run: |
+          if [ -z "$MUTATION_HEALTH_WEBHOOK" ]; then
+            echo "::notice::MUTATION_HEALTH_WEBHOOK not set — dry-run, POST skipped (payload uploaded as artefact)."
+            exit 0
+          fi
+          curl --fail -sS -X POST \
+            -H 'Content-Type: application/json' \
+            --data @"$REPORTS_DIR/bq-payload.json" \
+            "$MUTATION_HEALTH_WEBHOOK"
 
       - name: Upload artefacts
         if: always()
@@ -108,7 +113,6 @@ jobs:
             ${{ env.REPORTS_DIR }}/raw.html
             ${{ env.REPORTS_DIR }}/summary.json
             ${{ env.REPORTS_DIR }}/bq-payload.json
-            ${{ env.REPORTS_DIR }}/ledger-seed.json
             ${{ env.REPORTS_DIR }}/live-ledger.json
           retention-days: 14
           if-no-files-found: warn
