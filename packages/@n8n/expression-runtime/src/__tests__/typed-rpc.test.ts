@@ -368,6 +368,30 @@ describe('Typed RPC: $input.{first,last,all} route via getInput*', () => {
 		expect(result).toEqual([{ json: { id: 1 } }, { json: { id: 2 } }]);
 	});
 
+	it('drops any arguments the isolate tries to pass to the host method', () => {
+		// The host's `WorkflowDataProxy` throws if `$input.first/last/all` is
+		// called with any arguments. The typed-RPC schemas have no fields
+		// besides `type`, so the in-isolate stub closes over a zero-arg
+		// invocation regardless of what the expression passed. Documenting:
+		// `$input.first('arg')` produces the same result as `$input.first()`
+		// because the host method is invoked with no arguments either way.
+		const args: unknown[][] = [];
+		const data: Record<string, unknown> = {
+			$input: {
+				first: (...received: unknown[]) => {
+					args.push(received);
+					return { json: { ok: true } };
+				},
+			},
+		};
+
+		evaluator.evaluate('{{ $input.first() }}', data, caller);
+		evaluator.evaluate("{{ $input.first('ignored') }}", data, caller);
+		evaluator.evaluate('{{ $input.first(1, 2, 3) }}', data, caller);
+
+		expect(args).toEqual([[], [], []]);
+	});
+
 	it('non-RPC properties (`.item`) still delegate to the lazy proxy (host getter)', () => {
 		// `.item` on $input is a host getter, not a typed RPC. The synthetic
 		// proxy should fall through to the lazy proxy which fetches via
