@@ -122,7 +122,7 @@ const steps = computed((): TimelineStep[] => {
 			<template v-else-if="step.type === 'text'">
 				<CollapsibleRoot v-if="step.isLongText" v-slot="{ open }">
 					<CollapsibleTrigger as-child>
-						<N8nButton ref="triggerRef" variant="ghost" size="small">
+						<N8nButton ref="triggerRef" variant="ghost" size="small" :class="$style.toggleTrigger">
 							<template #icon>
 								<template v-if="step.isLoading">
 									<N8nIcon icon="spinner" size="small" color="primary" spin />
@@ -164,6 +164,14 @@ const steps = computed((): TimelineStep[] => {
 .toggleContent {
 	max-height: 300px;
 	overflow-y: auto;
+}
+
+.toggleTrigger {
+	--button--padding: 0;
+	--button--font-size: var(--font-size--sm);
+
+	padding-inline: 0;
+	font-size: var(--font-size--sm);
 }
 
 .streamingMarkdown {
