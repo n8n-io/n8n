@@ -79,6 +79,8 @@ declare module 'n8n-workflow' {
 		 * Contains workflow-level configuration including credential resolver ID.
 		 */
 		workflowSettings?: IWorkflowSettings;
+		/** Encrypted credential context for a manual editor-triggered execution. */
+		encryptedRunnerIdentity?: string;
 	}
 }
 

@@ -19,7 +19,7 @@ import { ensureDaemon } from './daemon';
 import { formatTokens } from './formatting';
 import { renderHtml } from './report-html';
 import { runScenario } from './runner';
-import type { RunManifest, RunReport, Scenario, ScenarioResult } from './types';
+import type { RunManifest, RunReport, Scenario, ExecutionScenarioResult } from './types';
 import { N8nClient } from '../clients/n8n-client';
 import { createLogger } from '../harness/logger';
 
@@ -256,7 +256,7 @@ async function main(): Promise<void> {
 	);
 
 	const startedAt = new Date().toISOString();
-	const results: ScenarioResult[] = [];
+	const results: ExecutionScenarioResult[] = [];
 
 	for (const scenario of scenarios) {
 		const result = await runScenario({

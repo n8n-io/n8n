@@ -4,12 +4,11 @@ import { useStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { N8nFloatingWindow, N8nText } from '@n8n/design-system';
 import { LOCAL_STORAGE_FLOATING_CHAT_WINDOW } from '@/app/constants';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import CanvasChatHubPanel from './CanvasChatHubPanel.vue';
 import CanvasChatFloatingMenu from './CanvasChatFloatingMenu.vue';
 import ChatAgentAvatar from './ChatAgentAvatar.vue';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const CANVAS_MARGIN = 16;
 
@@ -19,7 +18,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const chatHubPanelStore = useChatHubPanelStore();
 const isPoppedOut = computed(() => chatHubPanelStore.isPoppedOut);
 
@@ -132,7 +131,7 @@ defineExpose({ focusInput, canvasChatHubRef });
 			<CanvasChatFloatingMenu
 				v-if="canvasChatHubRef?.sessionId"
 				:session-id="canvasChatHubRef.sessionId"
-				:workflow-id="workflowsStore.workflowId"
+				:workflow-id="workflowDocumentStore.workflowId"
 				:can-pop-out="canPopOut && !isPoppedOut"
 				@select-session="canvasChatHubRef.handleSelectSession"
 				@copy-session-id="canvasChatHubRef.copySessionId()"

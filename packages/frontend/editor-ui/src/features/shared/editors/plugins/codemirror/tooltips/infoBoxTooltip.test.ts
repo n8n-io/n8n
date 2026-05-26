@@ -7,6 +7,7 @@ import { hoverTooltipSource, infoBoxTooltips } from './InfoBoxTooltip';
 import * as utils from '@/features/shared/editors/plugins/codemirror/completions/utils';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { completionStatus } from '@codemirror/autocomplete';
+import { WORKFLOW_DOCUMENT_FACET } from '@/features/shared/editors/plugins/codemirror/completions/constants';
 
 vi.mock('@codemirror/autocomplete', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -17,10 +18,16 @@ vi.mock('@codemirror/autocomplete', async (importOriginal) => {
 	};
 });
 
+const editors: EditorView[] = [];
+
 describe('Infobox tooltips', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 		vi.spyOn(utils, 'hasActiveNode').mockReturnValue(true);
+	});
+
+	afterEach(() => {
+		editors.splice(0).forEach((editor) => editor.destroy());
 	});
 
 	describe('Cursor tooltips', () => {
@@ -140,6 +147,7 @@ async function cursorTooltips(docWithCursor: string) {
 		extensions: [n8nLang(), infoBoxTooltips()],
 	});
 	const view = new EditorView({ parent: document.createElement('div'), state });
+	editors.push(view);
 
 	// Wait for async tooltip loading to complete
 	// The async loader runs on initial create, so we need to wait for it
@@ -162,10 +170,11 @@ async function hoverTooltip(docWithCursor: string) {
 
 	const state = EditorState.create({
 		doc,
-		extensions: [n8nLang(), infoBoxTooltips()],
+		extensions: [n8nLang(), infoBoxTooltips(), WORKFLOW_DOCUMENT_FACET.of('test@latest')],
 	});
 
 	const view = new EditorView({ state, parent: document.createElement('div') });
+	editors.push(view);
 
 	const tooltip = await hoverTooltipSource(view, hoverPosition);
 

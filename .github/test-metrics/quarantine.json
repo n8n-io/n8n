@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-05-11T14:16:56.139Z",
+  "updatedAt": "2026-05-22T00:00:00Z",
   "source": "currents",
   "projectId": "LRxcNt",
   "quarantined": [
@@ -11,10 +11,7 @@
     "Debug mode > should enter debug mode for failed executions",
     "HITL for Tools @capability:proxy > should add a HITL tool node and run it",
     "Inject previous execution > can map keys from previous execution",
-    "Instance AI remediation guard @capability:proxy > should preserve a submitted workflow when mocked credential verification needs setup",
     "Instance AI sidebar @capability:proxy > should delete thread via action menu",
-    "Instance AI workflow setup actions @capability:proxy > should apply parameter and credential edits and persist them to the workflow",
-    "Instance AI workflow setup actions @capability:proxy > should partially apply completed cards when Later is clicked on the last step",
     "Loads template setup modal correctly",
     "NDV Data Display > Schema View > should not display pagination for schema",
     "Settings @capability:proxy > set global credentials for a provider",
@@ -34,6 +31,7 @@
     "should not send workflow context if nothing changed",
     "should open executions tab",
     "should populate logs as manual execution progresses",
+    "should preserve a submitted workflow when mocked credential verification needs setup",
     "should preserve resource mapper values when navigating between connected nodes via floating nodes",
     "should render runItems for sub-nodes and allow switching between them",
     "should reset filter and remove badge",

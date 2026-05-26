@@ -47,10 +47,10 @@ function makeTestCase(): WorkflowTestCase {
 	// Empty scenarios => runWorkflowTestCase short-circuits past the
 	// scenario-execution loop, so we don't need to mock executeScenario.
 	return {
-		prompt: 'build me something',
+		conversation: [{ role: 'user', text: 'build me something' }],
 		complexity: 'simple',
 		tags: ['test'],
-		scenarios: [],
+		executionScenarios: [],
 	};
 }
 

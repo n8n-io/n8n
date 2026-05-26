@@ -102,6 +102,18 @@ describe('WorkflowDiffContent', () => {
 		isSourceWorkflowNew: false,
 		nodesDiff: new Map(),
 		connectionsDiff: new Map(),
+		sourceRenderData: {
+			nodeInputsByNodeId: new Map(),
+			nodeOutputsByNodeId: new Map(),
+			pinnedDataByNodeName: {},
+			executionIssuesByNodeName: new Map(),
+		},
+		targetRenderData: {
+			nodeInputsByNodeId: new Map(),
+			nodeOutputsByNodeId: new Map(),
+			pinnedDataByNodeName: {},
+			executionIssuesByNodeName: new Map(),
+		},
 	};
 
 	describe('panels', () => {

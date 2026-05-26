@@ -74,16 +74,15 @@ function serializeNode(
 
 	// Serialize parameters - for SDK-created nodes, also normalize resource locators
 	// (add __rl: true if missing) and escape newlines in expression strings.
-	// For fromJSON nodes, preserve parameters as-is.
-	let serializedParams: IDataObject | undefined;
-	if (config.parameters) {
-		const parsed = deepCopy(config.parameters);
-		if (isFromJson) {
-			serializedParams = parsed;
-		} else {
-			const normalized = normalizeResourceLocators(parsed);
-			serializedParams = escapeNewlinesInExpressionStrings(normalized) as IDataObject;
-		}
+	// Missing parameters are serialized as an empty object because n8n requires
+	// each persisted node to have an object-valued parameters field.
+	const parsedParams = deepCopy(config.parameters ?? {});
+	let serializedParams: IDataObject;
+	if (isFromJson) {
+		serializedParams = parsedParams;
+	} else {
+		const normalized = normalizeResourceLocators(parsedParams);
+		serializedParams = escapeNewlinesInExpressionStrings(normalized) as IDataObject;
 	}
 
 	const n8nNode: NodeJSON = {
@@ -143,11 +142,20 @@ function serializeNode(
 	if (config.retryOnFail) {
 		n8nNode.retryOnFail = config.retryOnFail;
 	}
+	if (typeof config.maxTries === 'number') {
+		n8nNode.maxTries = config.maxTries;
+	}
+	if (typeof config.waitBetweenTries === 'number') {
+		n8nNode.waitBetweenTries = config.waitBetweenTries;
+	}
 	if (config.alwaysOutputData) {
 		n8nNode.alwaysOutputData = config.alwaysOutputData;
 	}
 	if (config.onError) {
 		n8nNode.onError = config.onError;
+	}
+	if (config.extendsCredential) {
+		n8nNode.extendsCredential = config.extendsCredential;
 	}
 
 	return n8nNode;

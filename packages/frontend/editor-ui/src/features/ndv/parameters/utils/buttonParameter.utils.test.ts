@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { generateCodeForPrompt } from '@/features/ai/assistant/assistant.api';
 import type { AskAiRequest } from '@/features/ai/assistant/assistant.types';
 import type { Schema } from '@/Interface';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 
 vi.mock('./utils', async () => {
 	const actual = await vi.importActual('./utils');
@@ -20,12 +21,6 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({
 		pushRef: 'mockRootPushRef',
 		restApiContext: {},
-	}),
-}));
-
-vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	useNDVStore: () => ({
-		pushRef: 'mockNdvPushRef',
 	}),
 }));
 
@@ -55,7 +50,14 @@ describe('generateCodeForAiTransform - Retry Tests', () => {
 			.mockRejectedValueOnce(new Error('First attempt failed'))
 			.mockResolvedValueOnce({ code: mockGeneratedCode });
 
-		const result = await generateCodeForAiTransform('test prompt', 'test/path', 2);
+		const result = await generateCodeForAiTransform(
+			'test prompt',
+			'test/path',
+			createWorkflowDocumentId(''),
+			null,
+			'mockNdvPushRef',
+			2,
+		);
 
 		expect(result).toEqual({
 			name: 'test/path',
@@ -67,9 +69,16 @@ describe('generateCodeForAiTransform - Retry Tests', () => {
 	it('should exhaust retries and throw an error', async () => {
 		vi.mocked(generateCodeForPrompt).mockRejectedValue(new Error('All attempts failed'));
 
-		await expect(generateCodeForAiTransform('test prompt', 'test/path', 3)).rejects.toThrow(
-			'All attempts failed',
-		);
+		await expect(
+			generateCodeForAiTransform(
+				'test prompt',
+				'test/path',
+				createWorkflowDocumentId(''),
+				null,
+				'mockNdvPushRef',
+				3,
+			),
+		).rejects.toThrow('All attempts failed');
 
 		expect(generateCodeForPrompt).toHaveBeenCalledTimes(3);
 	});
@@ -78,7 +87,13 @@ describe('generateCodeForAiTransform - Retry Tests', () => {
 		const mockGeneratedCode = 'const example = "no retries needed";';
 		vi.mocked(generateCodeForPrompt).mockResolvedValue({ code: mockGeneratedCode });
 
-		const result = await generateCodeForAiTransform('test prompt', 'test/path');
+		const result = await generateCodeForAiTransform(
+			'test prompt',
+			'test/path',
+			createWorkflowDocumentId(''),
+			null,
+			'mockNdvPushRef',
+		);
 
 		expect(result).toEqual({
 			name: 'test/path',

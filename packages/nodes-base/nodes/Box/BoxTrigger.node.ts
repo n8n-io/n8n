@@ -7,6 +7,7 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
+import { verifySignature } from './BoxTriggerHelpers';
 import { boxApiRequest, boxApiRequestAllItemsMarker } from './GenericFunctions';
 
 export class BoxTrigger implements INodeType {
@@ -351,6 +352,15 @@ export class BoxTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const isSignatureValid = await verifySignature.call(this);
+		if (!isSignatureValid) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const bodyData = this.getBodyData();
 
 		return {

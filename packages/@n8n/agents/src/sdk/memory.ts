@@ -1,23 +1,158 @@
-import type { z } from 'zod';
-
+import { hasEpisodicMemoryStore, isEpisodicMemoryEnabled } from '../runtime/episodic-memory';
+import {
+	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
+	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
+	DEFAULT_EPISODIC_MEMORY_TOP_K,
+	createEpisodicMemoryExtractFn,
+	createEpisodicMemoryReflectFn,
+} from '../runtime/episodic-memory-defaults';
 import { InMemoryMemory } from '../runtime/memory-store';
-import { hasObservationStore } from '../runtime/observation-store';
-import { templateFromSchema } from '../runtime/working-memory';
+import { createEmbeddingModel } from '../runtime/model-factory';
+import {
+	createObservationLogObserveFn,
+	createObservationLogReflectFn,
+	DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
+	DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
+	DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
+	DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
+	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
+} from '../runtime/observation-log-defaults';
+import { hasObservationLogStore } from '../runtime/observation-log-store';
 import type {
 	BuiltMemory,
+	EpisodicMemoryConfig,
 	MemoryConfig,
 	ObservationalMemoryConfig,
 	SemanticRecallConfig,
 	TitleGenerationConfig,
 } from '../types';
-import { DEFAULT_OBSERVATION_GAP_THRESHOLD_MS } from '../types';
-
-const DEFAULT_OBSERVATION_LOCK_TTL_MS = 30_000;
-const DEFAULT_OBSERVATION_COMPACTION_THRESHOLD = 5;
-
-type ZodObjectSchema = z.ZodObject<z.ZodRawShape>;
+import type { ModelConfig } from '../types/sdk/agent';
 
 const DEFAULT_LAST_MESSAGES = 10;
+
+export { DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS, DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET };
+
+export interface ResolveObservationalMemoryConfigOptions {
+	defaultModel: ModelConfig;
+}
+
+export type ResolveMemoryConfigDefaultsOptions = ResolveObservationalMemoryConfigOptions;
+
+export function resolveObservationalMemoryConfig(
+	config: ObservationalMemoryConfig,
+	options: ResolveObservationalMemoryConfigOptions,
+): ObservationalMemoryConfig {
+	const observerModel = options.defaultModel;
+	const reflectorModel = options.defaultModel;
+
+	return {
+		observerThresholdTokens:
+			config.observerThresholdTokens ?? DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
+		reflectorThresholdTokens:
+			config.reflectorThresholdTokens ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
+		renderTokenBudget: config.renderTokenBudget ?? DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
+		observationLogTailLimit: config.observationLogTailLimit ?? DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
+		lockTtlMs: config.lockTtlMs ?? DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
+		observe: config.observe ?? createObservationLogObserveFn(observerModel),
+		reflect: config.reflect ?? createObservationLogReflectFn(reflectorModel),
+	};
+}
+
+export function resolveEpisodicMemoryConfig(
+	config: EpisodicMemoryConfig,
+	options: ResolveMemoryConfigDefaultsOptions,
+): EpisodicMemoryConfig {
+	const embeddingModel = config.embeddingModel ?? DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
+	const extractorModel = options.defaultModel;
+	const reflectorModel = options.defaultModel;
+
+	return {
+		enabled: config.enabled,
+		topK: config.topK ?? DEFAULT_EPISODIC_MEMORY_TOP_K,
+		maxEntriesPerRun: config.maxEntriesPerRun ?? DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
+		embedder:
+			config.embedder ?? createEmbeddingModel(embeddingModel, config.embeddingProviderOptions),
+		embeddingModel,
+		extract:
+			config.extract ??
+			createEpisodicMemoryExtractFn(extractorModel, {
+				extractionPrompt: config.prompts?.extraction,
+			}),
+		reflect:
+			config.reflect ??
+			createEpisodicMemoryReflectFn(reflectorModel, {
+				reflectionPrompt: config.prompts?.reflection,
+			}),
+		prompts: config.prompts,
+	};
+}
+
+export function resolveMemoryConfigDefaults(
+	config: MemoryConfig,
+	options: ResolveMemoryConfigDefaultsOptions,
+): MemoryConfig {
+	const episodicMemory = isEpisodicMemoryEnabled(config.episodicMemory)
+		? resolveEpisodicMemoryConfig(config.episodicMemory, options)
+		: config.episodicMemory;
+
+	if (!config.observationalMemory) {
+		return normalizeMemoryConfig({
+			...config,
+			episodicMemory,
+		});
+	}
+
+	if (!hasObservationLogStore(config.memory)) {
+		throw new Error(
+			'Observational memory requires a storage backend that implements BuiltObservationLogStore.',
+		);
+	}
+
+	const observationalMemoryConfig =
+		config.observationLog?.renderTokenBudget !== undefined &&
+		config.observationalMemory.renderTokenBudget === undefined
+			? {
+					...config.observationalMemory,
+					renderTokenBudget: config.observationLog.renderTokenBudget,
+				}
+			: config.observationalMemory;
+	const observationalMemory = resolveObservationalMemoryConfig(observationalMemoryConfig, options);
+
+	return normalizeMemoryConfig({
+		...config,
+		memory: config.memory,
+		observationalMemory,
+		episodicMemory,
+	});
+}
+
+export function normalizeMemoryConfig(config: MemoryConfig): MemoryConfig {
+	if (isEpisodicMemoryEnabled(config.episodicMemory) && !hasEpisodicMemoryStore(config.memory)) {
+		throw new Error(
+			'Episodic memory requires a storage backend that implements BuiltEpisodicMemoryStore.',
+		);
+	}
+
+	if (!config.observationalMemory) {
+		return config;
+	}
+
+	if (!hasObservationLogStore(config.memory)) {
+		throw new Error(
+			'Observational memory requires a storage backend that implements BuiltObservationLogStore.',
+		);
+	}
+
+	return {
+		...config,
+		observationLog: {
+			...config.observationLog,
+			...(config.observationalMemory.renderTokenBudget !== undefined && {
+				renderTokenBudget: config.observationalMemory.renderTokenBudget,
+			}),
+		},
+	};
+}
 
 /**
  * Builder for configuring conversation memory.
@@ -27,7 +162,7 @@ const DEFAULT_LAST_MESSAGES = 10;
  * const memory = new Memory()
  *   .storage('memory')
  *   .lastMessages(20)
- *   .freeform('# User Context\n- **Name**:\n- **City**:');
+ *   .observationalMemory({ renderTokenBudget: 4500 });
  *
  * agent.memory(memory);
  * ```
@@ -37,13 +172,7 @@ export class Memory {
 
 	private semanticRecallConfig?: SemanticRecallConfig;
 
-	private workingMemorySchema?: ZodObjectSchema;
-
-	private workingMemoryTemplate?: string;
-
-	private workingMemoryScope: 'resource' | 'thread' = 'resource';
-
-	private workingMemoryInstruction?: string;
+	private episodicMemoryConfig?: EpisodicMemoryConfig;
 
 	private memoryBackend?: BuiltMemory;
 
@@ -60,7 +189,7 @@ export class Memory {
 	 * Set the storage backend for conversation history.
 	 *
 	 * - `'memory'` — in-process memory (default, lost on restart)
-	 * - A `BuiltMemory` instance — for a persistent backend (e.g. cli's `N8nMemory`)
+	 * - A `BuiltMemory` instance — for a persistent backend
 	 */
 	storage(backend: 'memory' | BuiltMemory): this {
 		if (backend === 'memory') {
@@ -83,52 +212,13 @@ export class Memory {
 		return this;
 	}
 
-	/**
-	 * Enable structured working memory with a Zod schema.
-	 * Mutually exclusive with `.freeform()`.
-	 */
-	structured(schema: ZodObjectSchema): this {
-		this.workingMemorySchema = schema;
-		return this;
-	}
-
-	/**
-	 * Enable free-form working memory with a markdown/text template.
-	 * Mutually exclusive with `.structured()`.
-	 */
-	freeform(template: string): this {
-		this.workingMemoryTemplate = template;
-		return this;
-	}
-
-	/**
-	 * Set the working memory scope.
-	 *
-	 * - `'resource'` (default) — working memory is shared across all threads for the same resource/user.
-	 * - `'thread'` — working memory is scoped to a single conversation thread.
-	 */
-	scope(s: 'resource' | 'thread'): this {
-		this.workingMemoryScope = s;
-		return this;
-	}
-
-	/**
-	 * Override the default instruction text injected into the system prompt for working memory.
-	 *
-	 * The instruction tells the model when and how to call the `updateWorkingMemory` tool.
-	 * When omitted, `WORKING_MEMORY_DEFAULT_INSTRUCTION` is used.
-	 *
-	 * Example:
-	 * ```typescript
-	 * import { WORKING_MEMORY_DEFAULT_INSTRUCTION } from '@n8n/agents';
-	 *
-	 * memory.instruction(
-	 *   WORKING_MEMORY_DEFAULT_INSTRUCTION + '\nAlways update after every user message.',
-	 * );
-	 * ```
-	 */
-	instruction(text: string): this {
-		this.workingMemoryInstruction = text;
+	/** Enable source-backed cross-session episodic memory. */
+	episodicMemory(config: EpisodicMemoryConfig = {}): this {
+		if (config.enabled === false) {
+			this.episodicMemoryConfig = undefined;
+		} else {
+			this.episodicMemoryConfig = config;
+		}
 		return this;
 	}
 
@@ -160,25 +250,9 @@ export class Memory {
 	/**
 	 * Validate configuration and produce a `MemoryConfig`.
 	 *
-	 * @throws if both `.structured()` and `.freeform()` are used
-	 * @throws if `.freeform()` template is empty
 	 * @throws if `.semanticRecall()` is used with a backend that doesn't support search()
 	 */
 	build(): MemoryConfig {
-		if (this.workingMemorySchema && this.workingMemoryTemplate !== undefined) {
-			throw new Error(
-				'Working memory cannot use both .structured() and .freeform(). ' +
-					'Choose one: .structured(zodSchema) for typed state, or .freeform(template) for free-form text.',
-			);
-		}
-
-		if (this.workingMemoryTemplate !== undefined && this.workingMemoryTemplate.trim() === '') {
-			throw new Error(
-				'Free-form working memory template cannot be empty. ' +
-					'Provide a markdown template with slots for the agent to fill.',
-			);
-		}
-
 		const memory: BuiltMemory = this.memoryBackend ?? new InMemoryMemory();
 
 		if (this.semanticRecallConfig) {
@@ -195,81 +269,36 @@ export class Memory {
 			}
 		}
 
-		let workingMemory: MemoryConfig['workingMemory'];
-		if (this.workingMemorySchema) {
-			workingMemory = {
-				template: templateFromSchema(this.workingMemorySchema),
-				structured: true,
-				schema: this.workingMemorySchema,
-				scope: this.workingMemoryScope,
-				...(this.workingMemoryInstruction !== undefined && {
-					instruction: this.workingMemoryInstruction,
-				}),
-			};
-		} else if (this.workingMemoryTemplate !== undefined) {
-			workingMemory = {
-				template: this.workingMemoryTemplate,
-				structured: false,
-				scope: this.workingMemoryScope,
-				...(this.workingMemoryInstruction !== undefined && {
-					instruction: this.workingMemoryInstruction,
-				}),
-			};
+		if (isEpisodicMemoryEnabled(this.episodicMemoryConfig)) {
+			if (!hasEpisodicMemoryStore(memory)) {
+				throw new Error(
+					'Episodic memory requires a storage backend that implements BuiltEpisodicMemoryStore.',
+				);
+			}
 		}
 
 		const baseConfig = {
 			memory,
 			lastMessages: this.lastMessagesValue,
-			workingMemory,
 			semanticRecall: this.semanticRecallConfig,
+			episodicMemory: this.episodicMemoryConfig,
 			titleGeneration: this.titleGenerationConfig,
 		};
 
 		if (!this.observationalMemoryConfig) {
-			return baseConfig;
+			return normalizeMemoryConfig(baseConfig);
 		}
 
-		if (!hasObservationStore(memory)) {
+		if (!hasObservationLogStore(memory)) {
 			throw new Error(
-				"Observational memory requires a storage backend that implements BuiltObservationStore (e.g. SqliteMemory or n8n's N8nMemory).",
+				'Observational memory requires a storage backend that implements BuiltObservationLogStore.',
 			);
 		}
 
-		if (!workingMemory) {
-			throw new Error(
-				'Observational memory requires working memory. Add .freeform(template) or .structured(schema) before .observationalMemory().',
-			);
-		}
-
-		if (workingMemory.scope !== 'thread') {
-			throw new Error(
-				"Observational memory requires thread-scoped working memory. Add .scope('thread') before .observationalMemory().",
-			);
-		}
-
-		if (!memory.saveWorkingMemory) {
-			throw new Error(
-				'Observational memory requires a storage backend that implements saveWorkingMemory().',
-			);
-		}
-
-		return {
+		return normalizeMemoryConfig({
 			...baseConfig,
 			memory,
-			observationalMemory: {
-				...this.observationalMemoryConfig,
-				lockTtlMs: this.observationalMemoryConfig.lockTtlMs ?? DEFAULT_OBSERVATION_LOCK_TTL_MS,
-				compactionThreshold:
-					this.observationalMemoryConfig.compactionThreshold ??
-					DEFAULT_OBSERVATION_COMPACTION_THRESHOLD,
-				trigger: this.observationalMemoryConfig.trigger ?? { type: 'per-turn' },
-				gapThresholdMs:
-					this.observationalMemoryConfig.gapThresholdMs ??
-					(this.observationalMemoryConfig.trigger?.type === 'idle-timer'
-						? this.observationalMemoryConfig.trigger.gapThresholdMs
-						: undefined) ??
-					DEFAULT_OBSERVATION_GAP_THRESHOLD_MS,
-			},
-		};
+			observationalMemory: this.observationalMemoryConfig,
+		});
 	}
 }

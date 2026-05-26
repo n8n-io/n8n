@@ -29,6 +29,10 @@ export type SnowflakeCredential = Pick<
 				privateKey: string;
 				passphrase?: string;
 		  }
+		| {
+				authentication: 'oauth2';
+				token: string;
+		  }
 	);
 
 const extractPrivateKey = (credential: { privateKey: string; passphrase?: string }) => {
@@ -59,6 +63,9 @@ export const getConnectionOptions = (credential: SnowflakeCredential) => {
 		connectionOptions.authenticator = 'SNOWFLAKE_JWT';
 		connectionOptions.username = credential.username;
 		connectionOptions.privateKey = extractPrivateKey(credential);
+	} else if (credential.authentication === 'oauth2') {
+		connectionOptions.authenticator = 'OAUTH';
+		connectionOptions.token = credential.token;
 	} else {
 		connectionOptions.username = credential.username;
 		connectionOptions.password = credential.password;

@@ -28,6 +28,8 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
+import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { captor, mock } from 'vitest-mock-extended';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
@@ -81,7 +83,7 @@ const { mockDocumentStore } = vi.hoisted(() => {
 		getParentNodes: store.getParentNodes,
 		getChildNodes: store.getChildNodes,
 		connectionsBySourceNode: store.connectionsBySourceNode,
-		pinData: store.pinData as IPinData,
+		pinData: store.pinnedDataByNodeName as IPinData,
 	} as Partial<WorkflowObjectAccessors> as WorkflowObjectAccessors);
 	return { mockDocumentStore: store };
 });
@@ -223,6 +225,16 @@ vi.mock('@/app/composables/useWorkflowHelpers', () => ({
 	}),
 }));
 
+vi.mock('@/app/composables/useWorkflowSaving', () => ({
+	useWorkflowSaving: vi.fn().mockReturnValue({
+		saveCurrentWorkflow: vi.fn().mockResolvedValue(true),
+		autoSaveWorkflow: vi.fn(),
+		cancelAutoSave: vi.fn(),
+		saveAsNewWorkflow: vi.fn(),
+		promptSaveUnsavedWorkflowChanges: vi.fn(),
+	}),
+}));
+
 vi.mock('@/app/composables/useNodeHelpers', () => ({
 	useNodeHelpers: vi.fn().mockReturnValue({
 		updateNodesExecutionIssues: vi.fn(),
@@ -289,7 +301,7 @@ describe('useRunWorkflow({ router })', () => {
 		mockDocumentStore.workflowId = '123';
 		mockDocumentStore.name = 'Test Workflow';
 		mockDocumentStore.connectionsBySourceNode = {};
-		mockDocumentStore.pinData = {};
+		mockDocumentStore.pinnedDataByNodeName = {};
 		mockDocumentStore.getNodeByName = vi.fn();
 		mockDocumentStore.getParentNodes = vi.fn().mockReturnValue([]);
 		mockDocumentStore.getChildNodes = vi.fn().mockReturnValue([]);
@@ -312,6 +324,22 @@ describe('useRunWorkflow({ router })', () => {
 			await expect(runWorkflowApi({} as IStartRunData)).rejects.toThrow(
 				'workflowRun.noActiveConnectionToTheServer',
 			);
+		});
+
+		it('should use the passed-in workflowState when injection is unavailable', async () => {
+			vi.mocked(injectWorkflowState).mockReturnValue(undefined as unknown as WorkflowState);
+
+			const setActiveExecutionId = vi.spyOn(workflowState, 'setActiveExecutionId');
+			const { runWorkflowApi } = useRunWorkflow({ router, workflowState });
+
+			vi.mocked(pushConnectionStore).isConnected = true;
+			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({
+				executionId: '123',
+				waitingForWebhook: false,
+			});
+
+			await expect(runWorkflowApi({} as IStartRunData)).resolves.not.toThrow();
+			expect(setActiveExecutionId).toHaveBeenCalled();
 		});
 
 		it('should successfully run a workflow', async () => {
@@ -413,6 +441,57 @@ describe('useRunWorkflow({ router })', () => {
 
 			const result = await runWorkflow({});
 			expect(result).toEqual(mockExecutionResponse);
+		});
+
+		describe('save before execute behavior with N8N_WORKFLOWS_AUTOSAVE_DISABLED', () => {
+			let settingsStore: ReturnType<typeof useSettingsStore>;
+
+			beforeEach(() => {
+				settingsStore = useSettingsStore();
+				vi.mocked(pushConnectionStore).isConnected = true;
+				vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({ executionId: '123' });
+				mockDocumentStore.serialize.mockReturnValue({
+					id: 'workflowId',
+					nodes: [],
+				} as unknown as WorkflowData);
+				vi.mocked(workflowsStore).getWorkflowRunData = null;
+			});
+
+			it('should save before execute when autosave is enabled and state is dirty', async () => {
+				vi.spyOn(settingsStore, 'isAutosaveEnabled', 'get').mockReturnValue(true);
+				vi.mocked(uiStore).stateIsDirty = true;
+				vi.mocked(workflowsStore).isWorkflowSaved = { '123': true };
+
+				const workflowSaving = useWorkflowSaving({ router });
+				const { runWorkflow } = useRunWorkflow({ router });
+				await runWorkflow({});
+
+				expect(workflowSaving.saveCurrentWorkflow).toHaveBeenCalledTimes(1);
+			});
+
+			it('should not save before execute when autosave is disabled and state is dirty', async () => {
+				vi.spyOn(settingsStore, 'isAutosaveEnabled', 'get').mockReturnValue(false);
+				vi.mocked(uiStore).stateIsDirty = true;
+				vi.mocked(workflowsStore).isWorkflowSaved = { '123': true };
+
+				const workflowSaving = useWorkflowSaving({ router });
+				const { runWorkflow } = useRunWorkflow({ router });
+				await runWorkflow({});
+
+				expect(workflowSaving.saveCurrentWorkflow).not.toHaveBeenCalled();
+			});
+
+			it('should save new workflow before execute even when autosave is disabled', async () => {
+				vi.spyOn(settingsStore, 'isAutosaveEnabled', 'get').mockReturnValue(false);
+				vi.mocked(uiStore).stateIsDirty = false;
+				vi.mocked(workflowsStore).isWorkflowSaved = {};
+
+				const workflowSaving = useWorkflowSaving({ router });
+				const { runWorkflow } = useRunWorkflow({ router });
+				await runWorkflow({});
+
+				expect(workflowSaving.saveCurrentWorkflow).toHaveBeenCalledTimes(1);
+			});
 		});
 
 		it('should prevent execution and show error when binary mode is "combined" with filesystem mode "default"', async () => {
