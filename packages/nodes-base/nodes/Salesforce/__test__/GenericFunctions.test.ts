@@ -1371,11 +1371,12 @@ describe('Salesforce -> GenericFunctions', () => {
 					expect(result).toBe("'Bob\\' OR \\'1\\'=\\'1'");
 				});
 
-				it('should return numeric strings as numbers', () => {
-					expect(getValue('0')).toBe(0);
-					expect(getValue('123')).toBe(123);
-					expect(getValue('123.45')).toBe(123.45);
-					expect(getValue('-5')).toBe(-5);
+				it('should return numeric strings as quoted strings for SOQL text field compatibility', () => {
+					expect(getValue('0')).toBe("'0'");
+					expect(getValue('123')).toBe("'123'");
+					expect(getValue('123.45')).toBe("'123.45'");
+					expect(getValue('-5')).toBe("'-5'");
+					expect(getValue('307795203')).toBe("'307795203'");
 				});
 
 				it('should preserve leading zeros as quoted strings', () => {
