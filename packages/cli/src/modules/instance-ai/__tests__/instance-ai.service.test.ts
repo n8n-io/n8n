@@ -12,7 +12,6 @@ jest.mock('@n8n/instance-ai', () => {
 		createDomainAccessTracker: jest.fn(),
 		createSandbox: jest.fn(),
 		createWorkspace: jest.fn(),
-		cleanupWorkspaceProcesses: jest.fn().mockResolvedValue(undefined),
 		createLazyRuntimeWorkspace: jest.fn(
 			(args: { id?: string; ensureWorkspace: () => Promise<unknown> }) => ({
 				id: args.id ?? 'lazy-runtime-workspace',

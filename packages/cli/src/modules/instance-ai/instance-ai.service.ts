@@ -28,7 +28,6 @@ import {
 	createAllTools,
 	createSandbox,
 	createWorkspace,
-	cleanupWorkspaceProcesses,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
 	setupSandboxWorkspace,
@@ -810,7 +809,6 @@ export class InstanceAiService {
 			await workspace.init();
 		} catch (error) {
 			try {
-				await cleanupWorkspaceProcesses(workspace);
 				await workspace.destroy();
 			} catch {
 				// Best-effort cleanup when the sandbox cannot start
@@ -847,7 +845,6 @@ export class InstanceAiService {
 
 		this.evictSandboxEntry(threadId, entry);
 		try {
-			await cleanupWorkspaceProcesses(entry.workspace);
 			await entry.workspace?.destroy();
 		} catch (error) {
 			this.logger.warn('Failed to destroy sandbox', {

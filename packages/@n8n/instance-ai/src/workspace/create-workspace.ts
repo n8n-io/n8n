@@ -181,27 +181,3 @@ export function createWorkspace(
 
 	return createWorkspaceWithFilesystem(new DaytonaFilesystem(sandbox));
 }
-
-export async function cleanupWorkspaceProcesses(workspace: Workspace | undefined): Promise<void> {
-	const processManager = workspace?.sandbox?.processes;
-	if (!processManager) return;
-
-	let processes: Awaited<ReturnType<typeof processManager.list>>;
-	try {
-		processes = await processManager.list();
-	} catch {
-		return;
-	}
-
-	for (const process of processes) {
-		try {
-			if (process.exitCode === undefined) {
-				await processManager.kill(process.pid);
-			} else {
-				await processManager.get(process.pid);
-			}
-		} catch {
-			// Best-effort cleanup
-		}
-	}
-}

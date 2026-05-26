@@ -286,8 +286,6 @@ export const createSandbox: typeof CreateWorkspaceMod.createSandbox = lazyFuncti
 export const createWorkspace: typeof CreateWorkspaceMod.createWorkspace = lazyFunction(
 	() => loadCreateWorkspace().createWorkspace,
 );
-export const cleanupWorkspaceProcesses: typeof CreateWorkspaceMod.cleanupWorkspaceProcesses =
-	lazyFunction(() => loadCreateWorkspace().cleanupWorkspaceProcesses);
 export { SnapshotManager } from './workspace/snapshot-manager';
 export type { InstanceAiEventBus, StoredEvent } from './event-bus';
 export {
