@@ -508,10 +508,23 @@ watch(
 // --- Chat input ref for auto-focus ---
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 
+function focusChatInputIfFocusIsIdle() {
+	const activeElement = document.activeElement;
+	if (
+		activeElement instanceof HTMLElement &&
+		activeElement !== document.body &&
+		activeElement !== document.documentElement
+	) {
+		return;
+	}
+
+	chatInputRef.value?.focus();
+}
+
 // Focus input on initial render (ref rebinds when messages load)
 watch(chatInputRef, (el) => {
 	if (el) {
-		void nextTick(() => el.focus());
+		void nextTick(focusChatInputIfFocusIsIdle);
 	}
 });
 
@@ -521,9 +534,7 @@ watch(
 	(threadId, previousThreadId) => {
 		if (threadId !== previousThreadId) {
 			userScrolledUp.value = false;
-			void nextTick(() => {
-				chatInputRef.value?.focus();
-			});
+			void nextTick(focusChatInputIfFocusIsIdle);
 		}
 	},
 );
@@ -611,7 +622,7 @@ async function syncRouteToStore() {
 onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
 	void syncRouteToStore();
-	void nextTick(() => chatInputRef.value?.focus());
+	void nextTick(focusChatInputIfFocusIsIdle);
 });
 
 onUnmounted(() => {
