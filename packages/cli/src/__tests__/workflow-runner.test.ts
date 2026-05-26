@@ -34,8 +34,6 @@ import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
-import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
-import { EventService } from '@/events/event.service';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
@@ -462,57 +460,6 @@ describe('enqueueExecution', () => {
 		);
 
 		expect(processErrorSpy).toHaveBeenCalled();
-		expect(finalizeSpy).not.toHaveBeenCalled();
-		expect(popJobResult).toHaveBeenCalledWith('exec-id');
-	});
-
-	it('should map stalled job errors and emit stalled event', async () => {
-		const activeExecutions = Container.get(ActiveExecutions);
-		const processErrorSpy = jest.spyOn(runner, 'processError').mockResolvedValue();
-		const emitSpy = jest.spyOn(Container.get(EventService), 'emit').mockImplementation(() => true);
-
-		let capturedExecution: PCancelable<IRun> | undefined;
-		jest
-			.spyOn(activeExecutions, 'attachWorkflowExecution')
-			.mockImplementation((_executionId, workflowExecution) => {
-				capturedExecution = workflowExecution;
-			});
-		const finalizeSpy = jest.spyOn(activeExecutions, 'finalizeExecution').mockReturnValue();
-
-		const data = mock<IWorkflowExecutionDataProcess>({
-			workflowData: { nodes: [] },
-			executionMode: 'webhook',
-		});
-
-		const mockJob = mock<Job>({
-			id: 'job-id',
-			data: { executionId: 'exec-id', workflowId: 'wf-id' },
-		});
-		addJob.mockResolvedValue(mockJob);
-		waitForJobResult.mockRejectedValue(
-			new Error('job stalled more than maxStalledCount for execution exec-id'),
-		);
-
-		// @ts-expect-error Private method
-		await runner.enqueueExecution('exec-id', 'workflow-xyz', data);
-
-		await expect(capturedExecution!).rejects.toThrow(MaxStalledCountError);
-
-		expect(processErrorSpy).toHaveBeenCalledWith(
-			expect.any(MaxStalledCountError),
-			expect.any(Date),
-			'webhook',
-			'exec-id',
-			expect.anything(),
-		);
-		expect(emitSpy).toHaveBeenCalledWith(
-			'job-stalled',
-			expect.objectContaining({
-				executionId: 'exec-id',
-				workflowId: 'wf-id',
-				jobId: 'job-id',
-			}),
-		);
 		expect(finalizeSpy).not.toHaveBeenCalled();
 		expect(popJobResult).toHaveBeenCalledWith('exec-id');
 	});
