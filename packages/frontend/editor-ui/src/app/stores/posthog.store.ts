@@ -194,9 +194,13 @@ export const usePostHog = defineStore('posthog', () => {
 			};
 		}
 
-		window.posthog?.init(config.apiKey, options);
-		identify();
-		groupIdentify(POSTHOG_GROUP_TYPE_INSTANCE, instanceId);
+		window.posthog?.init(config.apiKey, {
+			...options,
+			loaded: () => {
+				identify();
+				groupIdentify(POSTHOG_GROUP_TYPE_INSTANCE, instanceId);
+			},
+		});
 
 		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
 			featureFlags.value = evaluatedFeatureFlags;

@@ -79,7 +79,9 @@ function setup() {
 	});
 	window.featureFlags = undefined;
 	window.posthog = {
-		init: () => {},
+		init: (_key, options) => {
+			(options as { loaded?: () => void } | undefined)?.loaded?.();
+		},
 		identify: () => {},
 		group: () => {},
 		capture: () => {},
