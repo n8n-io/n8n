@@ -94,6 +94,38 @@ export const getItemsMessage = z
 	.strict();
 
 /**
+ * `$fromAI(name, description?, type?, defaultValue?)` — the AI-builder
+ * placeholder accessor (aliases: `$fromAi`, `$fromai`).
+ *
+ * Two deliberate looseness points in this schema, both to preserve host
+ * contract / parity:
+ *
+ * 1. `name` is `z.string().optional()` (not required) so a call missing
+ *    the argument or passing an empty string reaches the host, which
+ *    throws the user-friendly `ExpressionError("Add a key, e.g. $fromAI('placeholder_name')")`.
+ *    Requiring it here would replace that error with a generic zod
+ *    message. The host also validates the regex `[a-zA-Z0-9_-]{0,64}`;
+ *    we don't pre-empt that either.
+ * 2. `defaultValue` is `z.unknown()` because the host accepts any value
+ *    as the fallback return (`handleFromAi` returns it directly via
+ *    `??`). Structured-clone at the bridge boundary still prevents
+ *    functions and other non-cloneable values from crossing.
+ *
+ * `description` and `type` are forwarded even though the host currently
+ * ignores them (`_description`, `_type`), so the protocol matches the
+ * documented call signature.
+ */
+export const fromAiMessage = z
+	.object({
+		type: z.literal('fromAi'),
+		name: z.string().optional(),
+		description: z.string().optional(),
+		valueType: z.string().optional(),
+		defaultValue: z.unknown().optional(),
+	})
+	.strict();
+
+/**
  * The full set of messages the bridge will accept. Discriminator is `type`.
  *
  * Use `.strict()` on each member so unknown fields are rejected rather than
@@ -108,6 +140,7 @@ export const bridgeMessageSchema = z.discriminatedUnion('type', [
 	getInputLastMessage,
 	getInputAllMessage,
 	getItemsMessage,
+	fromAiMessage,
 ]);
 
 export type BridgeMessage = z.infer<typeof bridgeMessageSchema>;

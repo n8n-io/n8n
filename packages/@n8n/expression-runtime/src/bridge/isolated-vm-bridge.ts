@@ -496,6 +496,8 @@ export class IsolatedVmBridge implements RuntimeBridge {
 						return this.handleGetInputAll(data);
 					case 'getItems':
 						return this.handleGetItems(msg, data);
+					case 'fromAi':
+						return this.handleFromAi(msg, data);
 					default: {
 						// Unreachable at runtime — zod rejects unknown `type` values
 						// before the switch. The `never` assignment is the compile-time
@@ -586,6 +588,23 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		data: WorkflowData,
 	): unknown {
 		return data.$items?.(msg.nodeName, msg.outputIndex, msg.runIndex);
+	}
+
+	/**
+	 * Handler for `$fromAI(name, description?, type?, defaultValue?)` and its
+	 * `$fromAi` / `$fromai` aliases. Reads the literal `$fromAI` property
+	 * off `data` (host-wired) and forwards the args. The host validates
+	 * `name` (required + regex) and applies its own resolution / fallback
+	 * logic, so empty / invalid names surface as the host's structured
+	 * `ExpressionError` rather than a generic zod parse error.
+	 *
+	 * @private
+	 */
+	private handleFromAi(
+		msg: Extract<BridgeMessage, { type: 'fromAi' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$fromAI?.(msg.name, msg.description, msg.valueType, msg.defaultValue);
 	}
 
 	/**

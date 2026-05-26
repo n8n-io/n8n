@@ -268,6 +268,30 @@ export function buildContext(
 		return result;
 	};
 
+	// $fromAI / $fromAi / $fromai — AI-builder placeholder accessor.
+	// All three host aliases route to the same `handleFromAi` callback;
+	// the typed-RPC envelope is identical regardless of which name the
+	// expression used. `name` is forwarded as-is — host validates it
+	// (required, regex-restricted) and emits a structured `ExpressionError`
+	// on bad input.
+	const sendFromAi = (
+		name?: string,
+		description?: string,
+		valueType?: string,
+		defaultValue?: unknown,
+	) => {
+		const result = callbacks.callHost.applySync(
+			null,
+			[{ type: 'fromAi', name, description, valueType, defaultValue }],
+			{ arguments: { copy: true }, result: { copy: true } },
+		);
+		throwIfErrorSentinel(result);
+		return result;
+	};
+	target.$fromAI = sendFromAi;
+	target.$fromAi = sendFromAi;
+	target.$fromai = sendFromAi;
+
 	// -------------------------------------------------------------------------
 	// Resolve an unknown key from the host. Called by the proxy's has/get traps
 	// for keys not already on the target. The resolved value is cached on target
