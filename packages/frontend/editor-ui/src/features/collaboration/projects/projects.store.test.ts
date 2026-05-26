@@ -81,7 +81,7 @@ describe('useProjectsStore.updateProject (partial payloads)', () => {
 		expect(mockedProjectsApi.getProject).not.toHaveBeenCalled();
 	});
 
-	it('includes customTelemetryTags in payload when provided', async () => {
+	it('includes customTelemetryTags in payload and updates currentProject when provided', async () => {
 		const store = makeStoreWithProject();
 		mockedProjectsApi.updateProject.mockResolvedValue(undefined);
 		const tags = [{ key: 'env', value: 'production' }];
@@ -91,6 +91,7 @@ describe('useProjectsStore.updateProject (partial payloads)', () => {
 		expect(mockedProjectsApi.updateProject).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			customTelemetryTags: tags,
 		});
+		expect(store.currentProject?.customTelemetryTags).toEqual(tags);
 	});
 
 	it('updates icon in myProjects and currentProject when provided', async () => {

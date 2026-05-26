@@ -181,6 +181,8 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 			if (name !== undefined) currentProject.value.name = name;
 			if (icon !== undefined) currentProject.value.icon = icon;
 			if (description !== undefined) currentProject.value.description = description;
+			if (customTelemetryTags !== undefined)
+				currentProject.value.customTelemetryTags = customTelemetryTags;
 		}
 		if (name !== undefined) {
 			useFavoritesStore().renameFavorite(id, 'project', name);
