@@ -93,7 +93,7 @@ export function useBuilderTodos() {
 		}
 		visited.add(nodeName);
 
-		const pinData = workflowDocumentStore.value.pinData;
+		const pinData = workflowDocumentStore.value.pinnedDataByNodeName;
 
 		// Check if node has direct pinned data
 		if (pinData?.[nodeName]?.length) {
@@ -130,7 +130,7 @@ export function useBuilderTodos() {
 		// Explicit dependencies to ensure reactivity when parent node state changes.
 		// Vue's computed may not track dependencies accessed in recursive helper functions,
 		// so we access pinData and nodes here to register them as dependencies.
-		const _pinData = workflowDocumentStore.value.pinData;
+		const _pinData = workflowDocumentStore.value.pinnedDataByNodeName;
 		const _nodes = workflowDocumentStore.value.allNodes;
 		void _pinData;
 		void _nodes;
@@ -151,7 +151,7 @@ export function useBuilderTodos() {
 	const placeholderIssues = computed(() => {
 		// Explicit dependency to ensure reactivity when parent node state changes.
 		// Vue's computed may not track pinData accessed in recursive helper functions.
-		const _pinData = workflowDocumentStore.value.pinData;
+		const _pinData = workflowDocumentStore.value.pinnedDataByNodeName;
 		void _pinData;
 
 		const issues: WorkflowValidationIssue[] = [];
@@ -214,7 +214,7 @@ export function useBuilderTodos() {
 		if (workflowTodos.value.length > 0) return false;
 
 		// Check if any pinned data exists
-		const pinData = workflowDocumentStore.value.pinData;
+		const pinData = workflowDocumentStore.value.pinnedDataByNodeName;
 		if (!pinData || Object.keys(pinData).length === 0) return false;
 
 		// Check base workflow issues that would show if not for pinned data

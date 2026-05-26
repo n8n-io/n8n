@@ -6,7 +6,9 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
+import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import userEvent from '@testing-library/user-event';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 
@@ -14,6 +16,7 @@ const surfaceMcpEmptyState = vi.hoisted(() => ({
 	showTile: false,
 	showReminder: false,
 }));
+const trackClickedNewAgent = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
@@ -28,8 +31,20 @@ vi.mock('vue-router', () => ({
 	},
 }));
 
-vi.mock('@/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpEmptyState', () => ({
-	useSurfaceMcpEmptyState: vi.fn(() => surfaceMcpEmptyState),
+vi.mock('@/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpEmptyState', async () => {
+	const { computed } = await import('vue');
+	return {
+		useSurfaceMcpEmptyState: vi.fn(() => ({
+			showTile: computed(() => surfaceMcpEmptyState.showTile),
+			showReminder: computed(() => surfaceMcpEmptyState.showReminder),
+		})),
+	};
+});
+
+vi.mock('@/features/agents/composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({
+		trackClickedNewAgent,
+	}),
 }));
 
 const renderComponent = createComponentRenderer(EmptyStateLayout, {
@@ -59,6 +74,7 @@ describe('EmptyStateLayout', () => {
 	let recommendedTemplatesStore: ReturnType<
 		typeof mockedStore<typeof useRecommendedTemplatesStore>
 	>;
+	let readyToRunStore: ReturnType<typeof mockedStore<typeof useReadyToRunStore>>;
 	let bannersStore: ReturnType<typeof mockedStore<typeof useBannersStore>>;
 
 	beforeEach(() => {
@@ -66,6 +82,7 @@ describe('EmptyStateLayout', () => {
 		projectsStore = mockedStore(useProjectsStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
 		recommendedTemplatesStore = mockedStore(useRecommendedTemplatesStore);
+		readyToRunStore = mockedStore(useReadyToRunStore);
 		bannersStore = mockedStore(useBannersStore);
 
 		usersStore.currentUser = {
@@ -73,6 +90,7 @@ describe('EmptyStateLayout', () => {
 			firstName: 'John',
 			lastName: 'Doe',
 			email: 'john@example.com',
+			globalScopes: ['agent:create'],
 			isDefaultUser: false,
 			isPendingUser: false,
 			mfaEnabled: false,
@@ -91,6 +109,10 @@ describe('EmptyStateLayout', () => {
 		} as unknown as ReturnType<typeof useSourceControlStore>['preferences'];
 
 		bannersStore.bannersHeight = 0;
+		readyToRunStore.userCanClaimOpenAiCredits = false;
+		vi.spyOn(useSettingsStore(), 'isModuleActive').mockImplementation((moduleName) => {
+			return moduleName === 'agents';
+		});
 		surfaceMcpEmptyState.showTile = false;
 		surfaceMcpEmptyState.showReminder = false;
 
@@ -193,12 +215,39 @@ describe('EmptyStateLayout', () => {
 			expect(getByTestId('mcp-onboarding-reminder')).toBeInTheDocument();
 		});
 
+		it('should render ready-to-run card when user can claim OpenAI credits and MCP tile is hidden', () => {
+			readyToRunStore.userCanClaimOpenAiCredits = true;
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('ready-to-run-card')).toBeInTheDocument();
+		});
+
+		it('should hide ready-to-run card when Surface MCP tile is shown', () => {
+			readyToRunStore.userCanClaimOpenAiCredits = true;
+			surfaceMcpEmptyState.showTile = true;
+
+			const { queryByTestId, getByTestId } = renderComponent();
+
+			expect(queryByTestId('ready-to-run-card')).not.toBeInTheDocument();
+			expect(getByTestId('mcp-onboarding-card')).toBeInTheDocument();
+			expect(getByTestId('new-workflow-card')).toBeInTheDocument();
+		});
+
 		it('should emit click:add event when workflow card is clicked', async () => {
 			const { getByTestId, emitted } = renderComponent();
 
 			await userEvent.click(getByTestId('new-workflow-card'));
 
 			expect(emitted('click:add')).toHaveLength(1);
+		});
+
+		it('should track New Agent card clicks', async () => {
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('build-agent-card'));
+
+			expect(trackClickedNewAgent).toHaveBeenCalledWith('card');
 		});
 	});
 

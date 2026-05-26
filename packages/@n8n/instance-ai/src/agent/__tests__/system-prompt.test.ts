@@ -150,6 +150,23 @@ describe('getSystemPrompt', () => {
 			expect(prompt).not.toContain('outcome.verificationPinData');
 		});
 
+		it('grounds workflow setup in the inline assistant card', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('inline setup card in the AI Assistant panel');
+			expect(prompt).toContain(
+				'Do not tell the user to open the editor, use the canvas, or click a Setup button',
+			);
+			expect(prompt).not.toMatch(/setup wizard/i);
+		});
+
+		it('makes post-build credential setup the default path', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('Do not ask whether to build now and set up credentials later');
+			expect(prompt).toContain('building first and routing setup after verification');
+		});
+
 		it('reads workflowId/workItemId from the outcome field, not result', () => {
 			const prompt = getSystemPrompt({});
 
@@ -236,6 +253,13 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('single-select');
 			expect(prompt).toContain('With a single candidate, auto-apply and do not ask');
 		});
+
+		it('instructs the orchestrator to ask which auth type to use when a service supports more than one', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('Ask which auth type to use when a service supports more than one');
+			expect(prompt).toContain('List OAuth2 first');
+		});
 	});
 
 	describe('trigger URL patterns', () => {
@@ -254,7 +278,18 @@ describe('getSystemPrompt', () => {
 			const prompt = getSystemPrompt({ webhookBaseUrl, formBaseUrl });
 
 			expect(prompt).toContain('**Webhook Trigger**: http://localhost:5678/webhook/{path}');
-			expect(prompt).toContain('**Chat Trigger**: http://localhost:5678/webhook/{webhookId}/chat');
+			expect(prompt).toContain('http://localhost:5678/webhook/{webhookId}/chat');
+		});
+
+		it('directs the agent to the Open chat button when Chat Trigger is private', () => {
+			// Regression: agent was sharing the public webhook URL for private chat
+			// triggers, then offering to flip `public: true` for testing instead of
+			// pointing the user at the workflow's built-in Open chat button.
+			const prompt = getSystemPrompt({ webhookBaseUrl, formBaseUrl });
+
+			expect(prompt).toContain('**Open chat** button on the workflow canvas');
+			expect(prompt).toMatch(/public: false[^]*Do NOT share a webhook URL/);
+			expect(prompt).toMatch(/do NOT suggest flipping `public: true` just to enable testing/);
 		});
 
 		it('explicitly warns that /form and /webhook are distinct prefixes', () => {

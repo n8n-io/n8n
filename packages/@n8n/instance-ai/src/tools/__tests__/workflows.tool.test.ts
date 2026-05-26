@@ -1,5 +1,6 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
 
+import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
 import { analyzeWorkflow, applyNodeChanges } from '../workflows/setup-workflow.service';
 import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
@@ -102,18 +103,19 @@ describe('workflows tool', () => {
 		jest.clearAllMocks();
 	});
 
-	describe('action filtering', () => {
+	describe('surface filtering', () => {
 		const builderWorkflowActions = [
 			'list',
 			'get',
 			'get-as-code',
 		] as const satisfies readonly WorkflowAction[];
 
-		it('should support get-as-code by default', async () => {
+		it('should support get-as-code on full surface', async () => {
 			const context = createMockContext();
-			const tool = createWorkflowsTool(context);
+			const tool = createWorkflowsTool(context, 'full');
 
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'get-as-code', workflowId: 'w1' } as never,
 				{} as never,
 			);
@@ -196,8 +198,9 @@ describe('workflows tool', () => {
 			context.workflowService.getVersion = jest.fn();
 			context.workflowService.restoreVersion = jest.fn();
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!(
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
 				{ action: 'list-versions', workflowId: 'w1' } as never,
 				{} as never,
 			);
@@ -205,7 +208,7 @@ describe('workflows tool', () => {
 			expect(result).toEqual({ versions });
 		});
 
-		it('should support update-version when updateVersion exists and updateWorkflow is always_allow', async () => {
+		it('should support update-version when updateVersion exists', async () => {
 			const context = createMockContext({
 				permissions: { updateWorkflow: 'always_allow' },
 			});
@@ -214,8 +217,9 @@ describe('workflows tool', () => {
 			context.workflowService.restoreVersion = jest.fn();
 			context.workflowService.updateVersion = jest.fn().mockResolvedValue({ success: true });
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!(
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
 				{
 					action: 'update-version',
 					workflowId: 'w1',
@@ -226,105 +230,106 @@ describe('workflows tool', () => {
 			);
 
 			expect(result).toEqual({ success: true });
+		});
+
+		it('should block update-version when updateWorkflow permission is blocked', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'blocked' },
+			});
+			context.workflowService.updateVersion = jest.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{
+					action: 'update-version',
+					workflowId: 'w1',
+					versionId: '1',
+					name: 'v1',
+				} as never,
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				success: false,
+				denied: true,
+				reason: 'Action blocked by admin',
+			});
+			expect(context.workflowService.updateVersion).not.toHaveBeenCalled();
+		});
+
+		it('should suspend update-version for approval by default', async () => {
+			const context = createMockContext();
+			context.workflowService.updateVersion = jest.fn();
+			const suspend = jest.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(
+				tool,
+				{
+					action: 'update-version',
+					workflowId: 'w1',
+					versionId: '1',
+					name: 'v1',
+					description: null,
+				} as never,
+				{ suspend, resumeData: undefined } as never,
+			);
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Update version 1 — set name to "v1", description to (cleared)',
+					severity: 'info',
+				}),
+			);
+			expect(context.workflowService.updateVersion).not.toHaveBeenCalled();
+		});
+
+		it('should update-version when approval resumes approved', async () => {
+			const context = createMockContext();
+			context.workflowService.updateVersion = jest.fn().mockResolvedValue({ success: true });
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{
+					action: 'update-version',
+					workflowId: 'w1',
+					versionId: '1',
+					name: 'v1',
+				} as never,
+				{ resumeData: { approved: true } } as never,
+			);
+
+			expect(result).toEqual({ success: true });
 			expect(context.workflowService.updateVersion).toHaveBeenCalledWith('w1', '1', {
 				name: 'v1',
 				description: undefined,
 			});
 		});
 
-		it('should suspend update-version for approval by default', async () => {
-			const context = createMockContext();
-			context.workflowService.updateVersion = jest.fn().mockResolvedValue({ success: true });
-			const suspend = jest.fn().mockResolvedValue(undefined);
-
-			const tool = createWorkflowsTool(context);
-			await tool.execute!(
-				{
-					action: 'update-version',
-					workflowId: 'w1',
-					versionId: '1',
-					name: 'renamed',
-					description: null,
-				} as never,
-				{ agent: { suspend, resumeData: undefined } } as never,
-			);
-
-			// Note: like other suspending handlers in this file, we don't assert on
-			// the tool's return value — the test wrapper validates the payload
-			// against the strict setupSuspendSchema and returns a wrapped error
-			// when minimal `{requestId,message,severity}` payloads come through.
-			// At runtime the agent loop suspends correctly; this is purely a
-			// test-infrastructure quirk shared with handleDelete / handlePublish /
-			// handleUnpublish / handleRestoreVersion.
-			expect(suspend).toHaveBeenCalledTimes(1);
-			expect(suspend.mock.calls[0][0]).toMatchObject({
-				message: expect.stringContaining('"renamed"'),
-				severity: 'info',
-			});
-			expect(context.workflowService.updateVersion).not.toHaveBeenCalled();
-		});
-
-		it('should block update-version when updateWorkflow is blocked', async () => {
-			const context = createMockContext({
-				permissions: { updateWorkflow: 'blocked' },
-			});
-			context.workflowService.updateVersion = jest.fn();
-
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!(
-				{
-					action: 'update-version',
-					workflowId: 'w1',
-					versionId: '1',
-					name: 'renamed',
-				} as never,
-				{} as never,
-			);
-
-			expect(context.workflowService.updateVersion).not.toHaveBeenCalled();
-			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
-		});
-
-		it('should proceed with update-version when resume approves', async () => {
-			const context = createMockContext();
-			context.workflowService.updateVersion = jest.fn().mockResolvedValue({ success: true });
-
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!(
-				{
-					action: 'update-version',
-					workflowId: 'w1',
-					versionId: '1',
-					name: 'renamed',
-				} as never,
-				{ agent: { resumeData: { approved: true } } } as never,
-			);
-
-			expect(context.workflowService.updateVersion).toHaveBeenCalledTimes(1);
-			expect(result).toEqual({ success: true });
-		});
-
-		it('should deny update-version when resume rejects', async () => {
+		it('should not update-version when approval resumes denied', async () => {
 			const context = createMockContext();
 			context.workflowService.updateVersion = jest.fn();
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!(
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
 				{
 					action: 'update-version',
 					workflowId: 'w1',
 					versionId: '1',
-					name: 'renamed',
+					name: 'v1',
 				} as never,
-				{ agent: { resumeData: { approved: false } } } as never,
+				{ resumeData: { approved: false } } as never,
 			);
 
-			expect(context.workflowService.updateVersion).not.toHaveBeenCalled();
 			expect(result).toEqual({
 				success: false,
 				denied: true,
 				reason: 'User denied the action',
 			});
+			expect(context.workflowService.updateVersion).not.toHaveBeenCalled();
 		});
 	});
 
@@ -344,8 +349,12 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			(context.workflowService.list as jest.Mock).mockResolvedValue(workflows);
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'list', query: 'test', limit: 10 }, {} as never);
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'list', query: 'test', limit: 10 },
+				{} as never,
+			);
 
 			expect(context.workflowService.list).toHaveBeenCalledWith({ limit: 10, query: 'test' });
 			expect(result).toEqual({ workflows });
@@ -355,8 +364,8 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			(context.workflowService.list as jest.Mock).mockResolvedValue([]);
 
-			const tool = createWorkflowsTool(context);
-			await tool.execute!({ action: 'list', status: 'archived' }, {} as never);
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'list', status: 'archived' }, {} as never);
 
 			expect(context.workflowService.list).toHaveBeenCalledWith({ status: 'archived' });
 		});
@@ -365,8 +374,8 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			(context.workflowService.list as jest.Mock).mockResolvedValue([]);
 
-			const tool = createWorkflowsTool(context);
-			await tool.execute!({ action: 'list', status: 'all' }, {} as never);
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'list', status: 'all' }, {} as never);
 
 			expect(context.workflowService.list).toHaveBeenCalledWith({ status: 'all' });
 		});
@@ -388,11 +397,45 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			(context.workflowService.get as jest.Mock).mockResolvedValue(detail);
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'get', workflowId: 'wf1' }, {} as never);
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
 
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
 			expect(result).toEqual(detail);
+		});
+	});
+
+	describe('get-json action', () => {
+		it('should return full WorkflowJSON with node metadata', async () => {
+			const workflow = {
+				id: 'wf1',
+				name: 'Test WF',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 2,
+						position: [0, 0],
+						parameters: { text: '={{ $json.input }}' },
+						credentials: { openAiApi: { id: 'cred-1', name: 'OpenAI' } },
+						disabled: false,
+					},
+				],
+				connections: {},
+			};
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(workflow);
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'get-json', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(context.workflowService.getAsWorkflowJSON).toHaveBeenCalledWith('wf1');
+			expect(result).toEqual(workflow);
 		});
 	});
 
@@ -402,8 +445,8 @@ describe('workflows tool', () => {
 				permissions: { deleteWorkflow: 'blocked' },
 			});
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'delete', workflowId: 'wf1' }, {} as never);
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {} as never);
 
 			expect(result).toEqual({
 				success: false,
@@ -420,9 +463,10 @@ describe('workflows tool', () => {
 			});
 			const suspend = jest.fn();
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'delete', workflowId: 'wf1' }, {
-				agent: { suspend, resumeData: undefined },
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
 			} as never);
 
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
@@ -431,11 +475,6 @@ describe('workflows tool', () => {
 				message: expect.stringContaining('My WF'),
 				severity: 'warning',
 			});
-			expect(result).toEqual({
-				success: false,
-				denied: true,
-				reason: 'Awaiting confirmation',
-			});
 		});
 
 		it('should fall back to workflowId in message when lookup fails', async () => {
@@ -443,23 +482,24 @@ describe('workflows tool', () => {
 			(context.workflowService.get as jest.Mock).mockRejectedValue(new Error('not found'));
 			const suspend = jest.fn();
 
-			const tool = createWorkflowsTool(context);
-			await tool.execute!({ action: 'delete', workflowId: 'wf1' }, {
-				agent: { suspend, resumeData: undefined },
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
 			} as never);
 
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0]).toMatchObject({
-				message: expect.stringContaining('"wf1"'),
+				message: expect.stringContaining('wf1'),
 			});
 		});
 
 		it('should archive when approved via resume', async () => {
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'delete', workflowId: 'wf1' }, {
-				agent: { resumeData: { approved: true } },
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {
+				resumeData: { approved: true },
 			} as never);
 
 			expect(context.workflowService.archive).toHaveBeenCalledWith('wf1');
@@ -469,9 +509,9 @@ describe('workflows tool', () => {
 		it('should return denied when user rejects', async () => {
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'delete', workflowId: 'wf1' }, {
-				agent: { resumeData: { approved: false } },
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {
+				resumeData: { approved: false },
 			} as never);
 
 			expect(result).toEqual({
@@ -488,8 +528,12 @@ describe('workflows tool', () => {
 				permissions: { deleteWorkflow: 'blocked' },
 			});
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'unarchive', workflowId: 'wf1' }, {} as never);
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'unarchive', workflowId: 'wf1' },
+				{} as never,
+			);
 
 			expect(result).toEqual({
 				success: false,
@@ -507,9 +551,10 @@ describe('workflows tool', () => {
 			});
 			const suspend = jest.fn();
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'unarchive', workflowId: 'wf1' }, {
-				agent: { suspend, resumeData: undefined },
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
 			} as never);
 
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
@@ -517,12 +562,6 @@ describe('workflows tool', () => {
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				message: expect.stringContaining('Archived WF'),
 				severity: 'warning',
-			});
-			expect(suspend.mock.calls[0][0].message).toContain('will not publish it');
-			expect(result).toEqual({
-				success: false,
-				denied: true,
-				reason: 'Awaiting confirmation',
 			});
 		});
 
@@ -535,9 +574,10 @@ describe('workflows tool', () => {
 			const suspension = { suspended: true };
 			const suspend = jest.fn().mockResolvedValue(suspension);
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'unarchive', workflowId: 'wf1' }, {
-				agent: { suspend, resumeData: undefined },
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
 			} as never);
 
 			expect(result).toBe(suspension);
@@ -547,9 +587,9 @@ describe('workflows tool', () => {
 		it('should unarchive when approved via resume', async () => {
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'unarchive', workflowId: 'wf1' }, {
-				agent: { resumeData: { approved: true } },
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
+				resumeData: { approved: true },
 			} as never);
 
 			expect(context.workflowService.unarchive).toHaveBeenCalledWith('wf1');
@@ -559,9 +599,9 @@ describe('workflows tool', () => {
 		it('should return denied when user rejects', async () => {
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'unarchive', workflowId: 'wf1' }, {
-				agent: { resumeData: { approved: false } },
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
+				resumeData: { approved: false },
 			} as never);
 
 			expect(result).toEqual({
@@ -579,8 +619,8 @@ describe('workflows tool', () => {
 				permissions: { publishWorkflow: 'blocked' },
 			});
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'publish', workflowId: 'wf1' }, {} as never);
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {} as never);
 
 			expect(result).toEqual({
 				success: false,
@@ -595,9 +635,9 @@ describe('workflows tool', () => {
 				activeVersionId: 'v2',
 			});
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'publish', workflowId: 'wf1' }, {
-				agent: { resumeData: { approved: true } },
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				resumeData: { approved: true },
 			} as never);
 
 			expect(context.workflowService.publish).toHaveBeenCalledWith('wf1', {
@@ -637,9 +677,9 @@ describe('workflows tool', () => {
 				activeVersionId: 'v-main',
 			});
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'publish', workflowId: 'wf1' }, {
-				agent: { resumeData: { approved: true } },
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				resumeData: { approved: true },
 			} as never);
 
 			expect(context.workflowService.publish).toHaveBeenNthCalledWith(1, 'sub-a');
@@ -689,9 +729,9 @@ describe('workflows tool', () => {
 				return { activeVersionId: `${workflowId}-active` };
 			});
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'publish', workflowId: 'wf1' }, {
-				agent: { resumeData: { approved: true } },
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				resumeData: { approved: true },
 			} as never);
 
 			expect(context.workflowService.publish).toHaveBeenNthCalledWith(1, 'sub-a');
@@ -718,15 +758,16 @@ describe('workflows tool', () => {
 			});
 			const suspend = jest.fn();
 
-			const tool = createWorkflowsTool(context);
-			await tool.execute!({ action: 'publish', workflowId: 'wf1' }, {
-				agent: { suspend, resumeData: undefined },
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
 			} as never);
 
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0]).toMatchObject({
-				message: 'Publish workflow "My WF" (ID: wf1)?',
+				message: 'Publish My WF (ID: wf1)',
 				severity: 'warning',
 			});
 		});
@@ -750,32 +791,68 @@ describe('workflows tool', () => {
 			});
 			const suspend = jest.fn();
 
-			const tool = createWorkflowsTool(context);
-			await tool.execute!({ action: 'publish', workflowId: 'wf1' }, {
-				agent: { suspend, resumeData: undefined },
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
 			} as never);
 
 			expect(suspend.mock.calls[0][0]).toMatchObject({
-				message: 'Publish workflow "My WF" (ID: wf1) and 1 referenced supporting workflow(s)?',
+				message: 'Publish My WF (ID: wf1) and 1 referenced supporting workflow(s)',
 				severity: 'warning',
 			});
 		});
 	});
 
 	describe('setup action', () => {
+		it('should block setup when updateWorkflow permission is blocked', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'blocked' },
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				resumeData: undefined,
+			} as never);
+
+			expect(result).toEqual({
+				success: false,
+				denied: true,
+				reason: 'Action blocked by admin',
+			});
+			expect(analyzeWorkflow).not.toHaveBeenCalled();
+			expect(applyNodeChanges).not.toHaveBeenCalled();
+		});
+
+		it('should block setup apply when updateWorkflow permission is blocked', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'blocked' },
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				resumeData: {
+					approved: true,
+					action: 'apply',
+					nodeParameters: { Slack: { channel: '#ops' } },
+				},
+			} as never);
+
+			expect(result).toEqual({
+				success: false,
+				denied: true,
+				reason: 'Action blocked by admin',
+			});
+			expect(analyzeWorkflow).not.toHaveBeenCalled();
+			expect(applyNodeChanges).not.toHaveBeenCalled();
+		});
+
 		it('should analyze workflow and suspend for user setup', async () => {
-			const actionableSetupRequest = {
-				node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
-				credentialType: 'slackApi',
-				needsAction: true,
-			};
 			const setupRequests = [
-				actionableSetupRequest,
 				{
-					node: { name: 'Webhook', type: 'n8n-nodes-base.webhook' },
-					isTrigger: true,
-					isTestable: true,
-					needsAction: false,
+					node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
+					credentialType: 'slackApi',
+					needsAction: true,
 				},
 			];
 			(analyzeWorkflow as jest.Mock).mockResolvedValue(setupRequests);
@@ -783,9 +860,10 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			const suspend = jest.fn();
 
-			const tool = createWorkflowsTool(context);
-			await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
-				agent: { suspend, resumeData: undefined },
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
 			} as never);
 
 			expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1');
@@ -793,31 +871,9 @@ describe('workflows tool', () => {
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				message: 'Configure credentials for your workflow',
 				severity: 'info',
-				setupRequests: [actionableSetupRequest],
+				setupRequests,
 				workflowId: 'wf1',
 			});
-		});
-
-		it('should return success when setup analysis only has non-actionable requests', async () => {
-			(analyzeWorkflow as jest.Mock).mockResolvedValue([
-				{
-					node: { name: 'Webhook', type: 'n8n-nodes-base.webhook' },
-					isTrigger: true,
-					isTestable: true,
-					needsAction: false,
-				},
-			]);
-
-			const context = createMockContext();
-			const suspend = jest.fn();
-
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
-				agent: { suspend, resumeData: undefined },
-			} as never);
-
-			expect(result).toEqual({ success: true, reason: 'No nodes require setup.' });
-			expect(suspend).not.toHaveBeenCalled();
 		});
 
 		it('should return success when no nodes need setup', async () => {
@@ -825,9 +881,9 @@ describe('workflows tool', () => {
 
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
-				agent: { resumeData: undefined },
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				resumeData: undefined,
 			} as never);
 
 			expect(result).toEqual({ success: true, reason: 'No nodes require setup.' });
@@ -857,14 +913,12 @@ describe('workflows tool', () => {
 				connections: {},
 			});
 
-			const tool = createWorkflowsTool(context);
-			await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
-				agent: {
-					resumeData: {
-						approved: true,
-						action: 'apply',
-						nodeParameters: { 'HTTP Request': { url: 'https://example.com/api' } },
-					},
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				resumeData: {
+					approved: true,
+					action: 'apply',
+					nodeParameters: { 'HTTP Request': { url: 'https://example.com/api' } },
 				},
 			} as never);
 
@@ -872,52 +926,15 @@ describe('workflows tool', () => {
 				'HTTP Request': { url: 'https://example.com/api' },
 			});
 		});
-
-		it('should block setup when updateWorkflow is blocked', async () => {
-			const context = createMockContext({
-				permissions: { updateWorkflow: 'blocked' },
-			});
-			const suspend = jest.fn();
-
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
-				agent: { suspend, resumeData: undefined },
-			} as never);
-
-			expect(analyzeWorkflow).not.toHaveBeenCalled();
-			expect(applyNodeChanges).not.toHaveBeenCalled();
-			expect(suspend).not.toHaveBeenCalled();
-			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
-		});
-
-		it('should block setup apply when updateWorkflow is blocked', async () => {
-			const context = createMockContext({
-				permissions: { updateWorkflow: 'blocked' },
-			});
-
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
-				agent: {
-					resumeData: {
-						approved: true,
-						action: 'apply',
-						nodeParameters: { 'HTTP Request': { url: 'https://example.com/api' } },
-					},
-				},
-			} as never);
-
-			expect(applyNodeChanges).not.toHaveBeenCalled();
-			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
-		});
 	});
 
 	describe('unpublish action', () => {
 		it('should unpublish when approved', async () => {
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context);
-			const result = await tool.execute!({ action: 'unpublish', workflowId: 'wf1' }, {
-				agent: { resumeData: { approved: true } },
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'unpublish', workflowId: 'wf1' }, {
+				resumeData: { approved: true },
 			} as never);
 
 			expect(context.workflowService.unpublish).toHaveBeenCalledWith('wf1');
@@ -932,15 +949,16 @@ describe('workflows tool', () => {
 			});
 			const suspend = jest.fn();
 
-			const tool = createWorkflowsTool(context);
-			await tool.execute!({ action: 'unpublish', workflowId: 'wf1' }, {
-				agent: { suspend, resumeData: undefined },
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'unpublish', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
 			} as never);
 
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0]).toMatchObject({
-				message: 'Unpublish workflow "My WF" (ID: wf1)?',
+				message: 'Unpublish My WF (ID: wf1)',
 				severity: 'warning',
 			});
 		});

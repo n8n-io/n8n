@@ -83,6 +83,12 @@ const clientOptions = computed<MCPOnboardingClientOption[]>(() => [
 const serverUrl = computed(() => `${rootStore.urlBaseEditor}${MCP_ENDPOINT}`);
 const isChatGptClient = computed(() => activeClient.value === 'chatgpt');
 const showServerUrlStep = computed(() => activeClient.value === 'claude');
+const showRestartStep = computed(
+	() =>
+		activeClient.value === 'claude_code' ||
+		activeClient.value === 'cursor' ||
+		activeClient.value === 'codex',
+);
 const activePromptClient = computed<MCPOnboardingPromptClient>(() =>
 	activeClient.value === 'chatgpt' ? 'claude' : activeClient.value,
 );
@@ -95,6 +101,14 @@ const promptSectionTitle = computed(() =>
 	i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.section.prompt.title', {
 		interpolate: { assistant: activeClientLabel.value },
 	}),
+);
+const restartSectionTitle = computed(() =>
+	i18n.baseText(
+		'experiments.surfaceMcpToNewCloudUsers.onboarding.section.restart.title' as BaseTextKey,
+		{
+			interpolate: { assistant: activeClientLabel.value },
+		},
+	),
 );
 const chatGptCustomAppFields = computed(() => [
 	{
@@ -399,6 +413,19 @@ onBeforeUnmount(() => {
 									@copy="handleCopyParameter('server-url')"
 								/>
 							</div>
+						</section>
+
+						<section
+							v-if="showRestartStep"
+							:class="[$style.section, $style.revealSection]"
+							data-test-id="mcp-onboarding-restart-step"
+						>
+							<header :class="$style.sectionHeader">
+								<span :class="$style.sectionStep">4</span>
+								<h2 :class="$style.sectionTitle">
+									{{ restartSectionTitle }}
+								</h2>
+							</header>
 						</section>
 					</template>
 				</template>

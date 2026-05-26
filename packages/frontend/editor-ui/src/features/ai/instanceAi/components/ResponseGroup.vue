@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import type { InstanceAiAgentNode } from '@n8n/api-types';
-import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
@@ -8,6 +7,7 @@ import { computed } from 'vue';
 import type { ResponseGroupSegment } from '../useTimelineGrouping';
 import AgentTimeline from './AgentTimeline.vue';
 import TimelineStepButton from './TimelineStepButton.vue';
+import TimelineStepChevron from './TimelineStepChevron.vue';
 
 const props = defineProps<{
 	group: ResponseGroupSegment;
@@ -89,7 +89,7 @@ const isCollapsible = computed(
 		<CollapsibleTrigger as-child>
 			<TimelineStepButton size="medium">
 				<template #icon>
-					<N8nIcon :icon="isOpen ? 'chevron-down' : 'chevron-right'" size="small" />
+					<TimelineStepChevron :open="isOpen" />
 				</template>
 				{{ summaryText }}
 			</TimelineStepButton>

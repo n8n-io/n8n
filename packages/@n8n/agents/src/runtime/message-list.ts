@@ -4,7 +4,6 @@ import type { ModelMessage } from 'ai';
 import { toAiMessages } from './messages';
 import { stringifyError } from './runtime-helpers';
 import { stripOrphanedToolMessages } from './strip-orphaned-tool-messages';
-import { buildWorkingMemoryInstruction } from './working-memory';
 import { filterLlmMessages, getCreatedAt } from '../sdk/message';
 import type { SerializedMessageList } from '../types/runtime/message-list';
 import type { AgentDbMessage, AgentMessage, ContentToolCall } from '../types/sdk/message';
@@ -13,15 +12,6 @@ import type { JSONValue } from '../types/utils/json';
 export type { SerializedMessageList };
 
 type MessageSource = 'history' | 'input' | 'response';
-
-export interface WorkingMemoryContext {
-	template: string;
-	structured: boolean;
-	/** The current persisted state, or null if not yet loaded. Falls back to template. */
-	state: string | null;
-	/** Custom instruction text. When absent the default instruction is used. */
-	instruction?: string;
-}
 
 /**
  * Message container with Set-based source tracking.
@@ -109,8 +99,21 @@ export class AgentMessageList {
 		this.lastCreatedAt = max;
 	}
 
-	/** Working memory context for this run. Set by buildMessageList / resume. */
-	workingMemory: WorkingMemoryContext | undefined;
+	/** Rendered observation-log memory for this run. Set by buildMessageList / resume. */
+	observationLogMemory: string | undefined;
+
+	/**
+	 * Bump the monotonic clock so subsequent live messages are timestamped strictly
+	 * after the given moment. Used to keep new live messages ordered after activity
+	 * the resource-filtered history does not reflect (e.g. resources sharing a
+	 * thread). The observation-log cursor relies on (createdAt, id) keyset
+	 * monotonicity within a thread.
+	 */
+	seedLastCreatedAt(timestamp: number): void {
+		if (Number.isFinite(timestamp) && timestamp > this.lastCreatedAt) {
+			this.lastCreatedAt = timestamp;
+		}
+	}
 
 	addHistory(messages: AgentMessage[] | AgentDbMessage[]): void {
 		for (const m of messages) {
@@ -208,21 +211,15 @@ export class AgentMessageList {
 
 	/**
 	 * Full LLM context for a generateText / streamText call.
-	 * Prepends the system prompt (with working memory appended if configured),
+	 * Prepends the system prompt (with observation-log memory appended if configured),
 	 * strips custom messages via filterLlmMessages.
 	 */
 	forLlm(baseInstructions: string, instructionProviderOptions?: ProviderOptions): ModelMessage[] {
 		let systemPrompt = baseInstructions;
 
-		if (this.workingMemory) {
-			const wmInstruction = buildWorkingMemoryInstruction(
-				this.workingMemory.template,
-				this.workingMemory.structured,
-				this.workingMemory.instruction,
-			);
-			const wmState = this.workingMemory.state ?? this.workingMemory.template;
-			systemPrompt +=
-				wmInstruction + '\n\nCurrent working memory state:\n```\n' + wmState + '\n```\n';
+		const observationLogMemory = this.observationLogMemory?.trim();
+		if (observationLogMemory) {
+			systemPrompt += `\n\n${observationLogMemory}`;
 		}
 
 		const systemMessage: ModelMessage = instructionProviderOptions

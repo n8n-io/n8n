@@ -14,6 +14,14 @@ jest.mock('@sentry/node', () => ({
 	Integrations: {},
 }));
 
+const eventLoopBlockIntegrationMock = jest.fn((opts: unknown) => ({
+	name: 'EventLoopBlock',
+	opts,
+}));
+jest.mock('@sentry/node-native', () => ({
+	eventLoopBlockIntegration: (opts: unknown) => eventLoopBlockIntegrationMock(opts),
+}));
+
 jest.spyOn(process, 'on');
 
 describe('ErrorReporter', () => {
@@ -168,6 +176,42 @@ describe('ErrorReporter', () => {
 					},
 				});
 			});
+		});
+	});
+
+	describe('getEventLoopBlockIntegration', () => {
+		const tags = { server_name: 'test', server_type: 'main' as const };
+
+		beforeEach(() => {
+			eventLoopBlockIntegrationMock.mockClear();
+		});
+
+		it('passes threshold and maxEventsPerHour through to the Sentry integration', async () => {
+			// @ts-expect-error - private method
+			await errorReporter.getEventLoopBlockIntegration(tags, 750, 3);
+
+			expect(eventLoopBlockIntegrationMock).toHaveBeenCalledWith({
+				threshold: 750,
+				maxEventsPerHour: 3,
+				staticTags: tags,
+			});
+		});
+
+		it('omits maxEventsPerHour when not provided (back-compat)', async () => {
+			// @ts-expect-error - private method
+			await errorReporter.getEventLoopBlockIntegration(tags, 500);
+
+			expect(eventLoopBlockIntegrationMock).toHaveBeenCalledWith({
+				threshold: 500,
+				staticTags: tags,
+			});
+		});
+
+		it('omits both options when neither is provided', async () => {
+			// @ts-expect-error - private method
+			await errorReporter.getEventLoopBlockIntegration(tags);
+
+			expect(eventLoopBlockIntegrationMock).toHaveBeenCalledWith({ staticTags: tags });
 		});
 	});
 

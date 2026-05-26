@@ -87,7 +87,7 @@ flowchart LR
 
 Use Switch node as primary traffic controller:
 - Configure cases for each classification value
-- Always define Default case for unexpected values
+- Always configure an extra fallback output for unexpected values
 - Each item follows exactly one branch
 
 Avoid parallel IF nodes that could match multiple conditions - use Switch node.
@@ -102,7 +102,7 @@ Avoid parallel IF nodes that could match multiple conditions - use Switch node.
 **Switch** (n8n-nodes-base.switch):
 - Purpose: Multi-way branching based on field values
 - Use when: Multiple categories (3+ outcomes)
-- Configure Default output for unmatched items
+- Configure options.fallbackOutput: 'extra' for unmatched items
 
 **Merge** (n8n-nodes-base.merge):
 - Purpose: Consolidate branches for unified logging
@@ -125,9 +125,9 @@ For all AI nodes (Text Classifier, AI Agent):
 ## Common Pitfalls to Avoid
 
 ### No Default Path
-**Problem**: Every Switch must have a Default output. Unmatched items should go to manual review or logging, never drop silently.
+**Problem**: Switch nodes do not create a default output unless options.fallbackOutput is set to 'extra'. Unmatched items should go to manual review or logging, never drop silently.
 
-**Solution**: Always configure Default case to route unclassified items to a fallback action (e.g., manual review queue, admin notification)
+**Solution**: Configure options.fallbackOutput: 'extra' and wire that fallback output to a fallback action (e.g., manual review queue, admin notification).
 
 ### No "Other" Branch in Text Classifier
 **Problem**: Items that don't match any category get dropped if "When No Clear Match" isn't set.

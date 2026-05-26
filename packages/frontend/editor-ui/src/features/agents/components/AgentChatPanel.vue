@@ -203,17 +203,19 @@ async function sendSeedMessage(message: string): Promise<void> {
 	}
 }
 
-if (seedMessage) {
-	void sendSeedMessage(seedMessage);
+// Skip the seed when the build chat is read-only
+const consumesSeed = !!seedMessage && !isBuilderReadOnly.value;
+if (consumesSeed) {
+	void sendSeedMessage(seedMessage as string);
 }
 
 onMounted(() => {
-	// A supplied `initialMessage` means the parent just minted a fresh session
-	// and wants us to seed it with the first message — there's no thread to
-	// load yet, and hitting the history endpoint would 404. The seed was
-	// already sent synchronously during setup (see the `seedMessage` block
-	// above).
-	if (seedMessage) {
+	// When we actually seeded a message, there's no prior thread to load —
+	// the agent was just created in this panel and the history endpoint
+	// would 404. Otherwise (including the read-only suppression path) load
+	// whatever history exists so the panel shows real content instead of a
+	// misleading "describe your agent" empty state.
+	if (consumesSeed) {
 		return;
 	}
 	void loadHistory();

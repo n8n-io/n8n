@@ -637,6 +637,15 @@ export class ProvisioningService {
 		const config = await this.buildRoleMappingConfig();
 		const resolved = await this.roleResolverService.resolveRoles(config, context);
 
+		this.logger.debug('SSO role resolution complete', {
+			userId: user.id,
+			provider: context.$provider,
+			claimKeys: Object.keys(context.$claims ?? {}).sort(),
+			matchedInstanceRuleId: resolved.instanceRole.matchedRuleId,
+			isFallback: resolved.instanceRole.isFallback,
+			matchedProjectRuleIds: [...resolved.projectRoles.values()].map((r) => r.matchedRuleId),
+		});
+
 		await this.applyExpressionMappedRoles(user, resolved);
 
 		const newInstanceRole = resolved.instanceRole;
