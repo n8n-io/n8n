@@ -18,10 +18,16 @@ vi.mock('@codemirror/autocomplete', async (importOriginal) => {
 	};
 });
 
+const editors: EditorView[] = [];
+
 describe('Infobox tooltips', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 		vi.spyOn(utils, 'hasActiveNode').mockReturnValue(true);
+	});
+
+	afterEach(() => {
+		editors.splice(0).forEach((editor) => editor.destroy());
 	});
 
 	describe('Cursor tooltips', () => {
@@ -141,6 +147,7 @@ async function cursorTooltips(docWithCursor: string) {
 		extensions: [n8nLang(), infoBoxTooltips()],
 	});
 	const view = new EditorView({ parent: document.createElement('div'), state });
+	editors.push(view);
 
 	// Wait for async tooltip loading to complete
 	// The async loader runs on initial create, so we need to wait for it
@@ -167,6 +174,7 @@ async function hoverTooltip(docWithCursor: string) {
 	});
 
 	const view = new EditorView({ state, parent: document.createElement('div') });
+	editors.push(view);
 
 	const tooltip = await hoverTooltipSource(view, hoverPosition);
 

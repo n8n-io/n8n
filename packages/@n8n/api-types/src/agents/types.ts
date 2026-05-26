@@ -111,14 +111,11 @@ export interface AgentSkillMutationResponse {
 	versionId: string | null;
 }
 
-export interface AgentPublishedVersionDto {
+export interface AgentVersionDto {
+	versionId: string;
 	schema: AgentJsonConfig | null;
 	skills: Record<string, AgentSkill> | null;
-	publishedFromVersionId: string;
-	model: string | null;
-	provider: string | null;
-	credentialId: string | null;
-	publishedById: string | null;
+	author: string;
 }
 
 export interface AgentPersistedMessageContentPart {
@@ -138,7 +135,7 @@ export interface AgentPersistedMessageDto {
 	content: AgentPersistedMessageContentPart[];
 }
 
-export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-5' as const;
+export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-6' as const;
 
 export const agentBuilderModeSchema = z.enum(['default', 'custom']);
 export type AgentBuilderMode = z.infer<typeof agentBuilderModeSchema>;
