@@ -131,6 +131,8 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getBase } from '@/workflow-execute-additional-data';
 
+type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
+
 /**
  * Fill in defaults for properties whose visibility depends on sibling values
  * (e.g. OpenAI v2's per-resource `operation`). A naive single-pass loop picks
@@ -184,7 +186,7 @@ export class InstanceAiAdapterService {
 
 	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
 
-	private templatesService: BuilderTemplatesService | undefined;
+	private templatesService: BuilderTemplatesServiceInstance | undefined;
 
 	private async getNodesFromCache(): Promise<INodeTypeDescription[]> {
 		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
@@ -265,7 +267,7 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private getTemplatesService(): BuilderTemplatesService {
+	private getTemplatesService(): BuilderTemplatesServiceInstance {
 		if (!this.templatesService) {
 			this.templatesService = new BuilderTemplatesService({
 				...builderTemplatesOptionsFromEnv({ logger: this.logger }),
