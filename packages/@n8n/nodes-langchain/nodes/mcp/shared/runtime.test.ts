@@ -17,10 +17,13 @@ import { buildMcpToolName } from '../McpClientTool/utils';
 jest.mock('@modelcontextprotocol/sdk/client/sse.js');
 jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');
 jest.mock('@modelcontextprotocol/sdk/client/index.js');
-vi.mock('@n8n/ai-utilities', async () => ({
-	...(await vi.importActual<typeof import('@n8n/ai-utilities')>('@n8n/ai-utilities')),
-	proxyFetch: jest.fn(),
-}));
+vi.mock('@n8n/ai-utilities', async () => {
+	const actual = await vi.importActual('@n8n/ai-utilities');
+	return {
+		...(actual as Record<string, unknown>),
+		proxyFetch: jest.fn(),
+	};
+});
 
 const baseConfig: ResolvedMcpConfig = {
 	authentication: 'none',
@@ -85,12 +88,15 @@ describe('runtime', () => {
 			const getAllTools = vi.fn().mockResolvedValue([sampleTool]);
 
 			vi.resetModules();
-			vi.doMock('./utils', async () => ({
-				...(await vi.importActual<typeof import('./utils')>('./utils')),
-				connectMcpClient,
-				getAllTools,
-				getAuthHeaders: vi.fn().mockResolvedValue({ headers: undefined }),
-			}));
+			vi.doMock('./utils', async () => {
+				const actual = await vi.importActual('./utils');
+				return {
+					...(actual as Record<string, unknown>),
+					connectMcpClient,
+					getAllTools,
+					getAuthHeaders: vi.fn().mockResolvedValue({ headers: undefined }),
+				};
+			});
 			const { buildMcpToolkit: buildMcpToolkitWithMockedUtils } = await import('./runtime');
 			const ctx = createSupplyDataCtx({
 				getExecutionCancelSignal: jest.fn(() => abort.signal),
@@ -116,12 +122,15 @@ describe('runtime', () => {
 			const getAllTools = vi.fn().mockResolvedValue([sampleTool]);
 
 			vi.resetModules();
-			vi.doMock('./utils', async () => ({
-				...(await vi.importActual<typeof import('./utils')>('./utils')),
-				connectMcpClient,
-				getAllTools,
-				getAuthHeaders: vi.fn().mockResolvedValue({ headers: undefined }),
-			}));
+			vi.doMock('./utils', async () => {
+				const actual = await vi.importActual('./utils');
+				return {
+					...(actual as Record<string, unknown>),
+					connectMcpClient,
+					getAllTools,
+					getAuthHeaders: vi.fn().mockResolvedValue({ headers: undefined }),
+				};
+			});
 			const { buildMcpToolkit: buildMcpToolkitWithMockedUtils } = await import('./runtime');
 			const ctx = createSupplyDataCtx({
 				getExecutionCancelSignal: jest.fn(() => undefined),
