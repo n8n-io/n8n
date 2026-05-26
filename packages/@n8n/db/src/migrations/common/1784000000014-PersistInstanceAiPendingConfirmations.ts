@@ -1,9 +1,12 @@
+import { TableCheck } from '@n8n/typeorm';
+
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const pendingConfirmationsTable = 'instance_ai_pending_confirmations';
 const checkpointsTable = 'instance_ai_checkpoints';
 const threadsTable = 'instance_ai_threads';
 const userTable = 'user';
+const checkpointTombstoneCheck = 'instance_ai_checkpoints_state_tombstone_check';
 
 /**
  * Move the Instance AI HITL confirmation state into the database so it
@@ -18,33 +21,59 @@ const userTable = 'user';
  *    after the in-memory `pendingConfirmations` / `suspendedRuns` maps are
  *    gone.
  *
- * 2. `expired` flag + nullable `state` on `instance_ai_checkpoints` —
+ * 2. `expiredAt` timestamp + nullable `state` on `instance_ai_checkpoints` —
  *    switches the checkpoint store from hard-delete-on-consume to soft-delete.
- *    A stale resume returns a clear "expired" error instead of "not found".
+ *    `expiredAt IS NULL` means the snapshot is still live; a non-null value
+ *    records when the snapshot was tombstoned and drives the GC sweep. A
+ *    stale resume returns a clear "expired" error instead of "not found".
  */
 export class PersistInstanceAiPendingConfirmations1784000000014 implements ReversibleMigration {
 	async up(context: MigrationContext) {
-		const { schemaBuilder } = context;
+		const { schemaBuilder, queryRunner, tablePrefix } = context;
 
-		await this.createPendingConfirmationsTable(context);
-
+		// Reshape `instance_ai_checkpoints` first, then create the table that
+		// FKs into it. SQLite's `dropNotNull` recreates the table; doing that
+		// while a FK already points at it would force a more fragile rebuild.
 		await schemaBuilder.addColumns(checkpointsTable, [
 			schemaBuilder
-				.column('expired')
-				.bool.notNull.default(false)
-				.comment('Soft-delete flag: true means the snapshot has been consumed or pruned.'),
+				.column('expiredAt')
+				.timestampTimezone()
+				.comment('Soft-delete timestamp: null means live; non-null marks the row as a tombstone.'),
 		]);
 
 		// Soft-delete sets `state = null` on consumed/pruned snapshots, so the
 		// column must be nullable. Created NOT NULL in `1784000000007`.
 		await schemaBuilder.dropNotNull(checkpointsTable, 'state');
+
+		// Enforce the soft-delete invariant at the DB level: a tombstoned row
+		// (`expiredAt` set) must have released its `state` blob.
+		await queryRunner.createCheckConstraint(
+			`${tablePrefix}${checkpointsTable}`,
+			new TableCheck({
+				name: `${tablePrefix}${checkpointTombstoneCheck}`,
+				expression: '("expiredAt" IS NOT NULL AND "state" IS NULL) OR "expiredAt" IS NULL',
+			}),
+		);
+
+		await this.createPendingConfirmationsTable(context);
 	}
 
 	async down({
 		schemaBuilder: { addNotNull, dropTable, dropColumns },
+		queryRunner,
+		tablePrefix,
 		runQuery,
 		escape,
 	}: MigrationContext) {
+		// Mirror `up()` in reverse: drop the FK-bearing table before mutating
+		// the parent column on SQLite.
+		await dropTable(pendingConfirmationsTable);
+
+		await queryRunner.dropCheckConstraint(
+			`${tablePrefix}${checkpointsTable}`,
+			`${tablePrefix}${checkpointTombstoneCheck}`,
+		);
+
 		// Soft-deleted tombstones (`state = NULL`) are unrecoverable, so dropping
 		// them is the only way to re-add NOT NULL. Accepting data loss.
 		const table = escape.tableName(checkpointsTable);
@@ -52,8 +81,7 @@ export class PersistInstanceAiPendingConfirmations1784000000014 implements Rever
 		await runQuery(`DELETE FROM ${table} WHERE ${stateCol} IS NULL`);
 
 		await addNotNull(checkpointsTable, 'state');
-		await dropColumns(checkpointsTable, ['expired']);
-		await dropTable(pendingConfirmationsTable);
+		await dropColumns(checkpointsTable, ['expiredAt']);
 	}
 
 	private async createPendingConfirmationsTable({
@@ -66,7 +94,8 @@ export class PersistInstanceAiPendingConfirmations1784000000014 implements Rever
 				column('userId').uuid.notNull.comment('User who is expected to confirm or cancel.'),
 				column('kind')
 					.varchar(16)
-					.notNull.comment(
+					.notNull.withEnumCheck(['suspended', 'inline'])
+					.comment(
 						"'suspended' (resumable from checkpoint) or 'inline' (orchestrator-held Promise).",
 					),
 				column('runId')

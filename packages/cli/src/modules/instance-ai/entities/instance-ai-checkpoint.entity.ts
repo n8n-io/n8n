@@ -1,4 +1,4 @@
-import { JsonColumn, WithTimestamps } from '@n8n/db';
+import { DateTimeColumn, JsonColumn, WithTimestamps } from '@n8n/db';
 import type { SerializableAgentState } from '@n8n/instance-ai';
 import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
@@ -28,6 +28,6 @@ export class InstanceAiCheckpoint extends WithTimestamps {
 	@JsonColumn({ nullable: true })
 	state: SerializableAgentState | null;
 
-	@Column({ type: 'boolean', default: false })
-	expired: boolean;
+	@DateTimeColumn({ precision: 3, nullable: true })
+	expiredAt: Date | null;
 }
