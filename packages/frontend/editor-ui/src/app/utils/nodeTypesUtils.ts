@@ -32,7 +32,7 @@ import {
 	or manipulate node types and nodes.
 */
 
-const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
+const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2', 'MCP'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
 const RESOURCE_MAPPER_FIELD_NAME_REGEX = /value\["(.+?)"\]/s;
 

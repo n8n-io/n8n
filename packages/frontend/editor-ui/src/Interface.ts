@@ -35,6 +35,7 @@ import type {
 	PublicInstalledPackage,
 	IDestinationNode,
 	AgentRequestQuery,
+	IWorkflowGroup,
 } from 'n8n-workflow';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
@@ -96,6 +97,7 @@ declare global {
 				userPropertiesOnce?: Record<string, string>,
 			): void;
 			reset?(resetDeviceId?: boolean): void;
+			group?(groupType: string, groupKey: string, groupPropertiesToSet?: IDataObject): void;
 			onFeatureFlags?(callback: (keys: string[], map: FeatureFlags) => void): void;
 			reloadFeatureFlags?(): void;
 			capture?(event: string, properties: IDataObject): void;
@@ -263,6 +265,7 @@ export interface IWorkflowDb {
 	};
 	activeVersion?: WorkflowHistory | null;
 	checksum?: string;
+	nodeGroups?: IWorkflowGroup[];
 }
 
 // For workflow list we don't need the full workflow data
@@ -455,6 +458,7 @@ export type SimplifiedNodeType = Pick<
 	| 'outputs'
 > & {
 	tag?: NodeCreatorTag;
+	isNew?: boolean;
 };
 export interface SubcategoryItemProps {
 	description?: string;
@@ -553,6 +557,10 @@ export interface SectionCreateElement extends CreateElementBase {
 	 * Whether to show a separator at the bottom of the expanded section
 	 */
 	showSeparator?: boolean;
+	/**
+	 * Whether to render the section without its category header
+	 */
+	hideHeader?: boolean;
 }
 
 export interface ViewCreateElement extends CreateElementBase {
@@ -644,6 +652,7 @@ export interface NewCredentialsModal extends ModalState {
 	projectId?: string;
 	suggestedName?: string;
 	nodeName?: string;
+	contextNode?: INodeUi;
 	hideAskAssistant?: boolean;
 }
 

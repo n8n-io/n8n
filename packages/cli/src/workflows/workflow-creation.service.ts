@@ -110,6 +110,7 @@ export class WorkflowCreationService {
 		WorkflowHelpers.addNodeIds(newWorkflow);
 		WorkflowHelpers.resolveNodeWebhookIds(newWorkflow, this.nodeTypes);
 		WorkflowHelpers.validateWorkflowStructure(newWorkflow);
+		WorkflowHelpers.validateWorkflowNodeGroups(newWorkflow);
 
 		if ('pinData' in newWorkflow) {
 			WorkflowHelpers.validatePinDataSize(newWorkflow);
@@ -164,14 +165,19 @@ export class WorkflowCreationService {
 				delete newWorkflow.settings.redactionPolicy;
 			}
 
-			// Strip redactionPolicy if user lacks scope (projectId is already resolved here)
-			if (newWorkflow.settings?.redactionPolicy !== undefined) {
+			// Strip redactionPolicy if user lacks the enableRedaction scope.
+			if (
+				newWorkflow.settings?.redactionPolicy !== undefined &&
+				newWorkflow.settings.redactionPolicy !== 'none'
+			) {
 				const canUpdateRedaction = await userHasScopes(
 					user,
-					['workflow:updateRedactionSetting'],
+					['workflow:enableRedaction'],
 					false,
 					{ projectId: effectiveProjectId },
+					transactionManager,
 				);
+
 				if (!canUpdateRedaction) {
 					delete newWorkflow.settings.redactionPolicy;
 				}

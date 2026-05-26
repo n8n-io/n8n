@@ -1,7 +1,7 @@
 import type { StreamChunk } from '@n8n/agents';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import type { Logger } from 'n8n-workflow';
+import { type Logger } from 'n8n-workflow';
 
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
@@ -10,6 +10,7 @@ import {
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
 import type { ComponentMapper } from '../component-mapper';
+import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 
 type ChatBotLike = ConstructorParameters<typeof AgentChatBridge>[0];
 
@@ -90,10 +91,21 @@ class StreamingTestIntegration extends AgentChatIntegration {
 	}
 }
 
+// TODO: use real Telegram integration for testing
+
 describe('AgentChatBridge — consumeStream', () => {
 	let registry: ChatIntegrationRegistry;
 	const componentMapper = mock<ComponentMapper>();
 	const logger = mock<Logger>();
+
+	const bufferedIntegration = {
+		type: 'test-buffered',
+		credentialId: 'cred-1',
+	} as unknown as AgentCredentialIntegrationConfig;
+	const streamingIntegration = {
+		type: 'test-streaming',
+		credentialId: 'cred-1',
+	} as unknown as AgentCredentialIntegrationConfig;
 
 	beforeEach(() => {
 		registry = new ChatIntegrationRegistry();
@@ -109,8 +121,8 @@ describe('AgentChatBridge — consumeStream', () => {
 
 	function makeAgentExecutor(chunks: StreamChunk[]) {
 		return {
-			executeForChatPublished: () => toStream(chunks),
-			resumeForChat: () => toStream(chunks),
+			executeForChatPublished: jest.fn(() => toStream(chunks)),
+			resumeForChat: jest.fn(() => toStream(chunks)),
 		};
 	}
 
@@ -131,10 +143,10 @@ describe('AgentChatBridge — consumeStream', () => {
 				componentMapper,
 				logger,
 				'project-1',
-				'test-buffered',
+				bufferedIntegration,
 			);
 
-			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1' } });
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
 			expect(thread.post).toHaveBeenCalledTimes(1);
 			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello world' });
@@ -165,10 +177,10 @@ describe('AgentChatBridge — consumeStream', () => {
 				componentMapper,
 				logger,
 				'project-1',
-				'test-buffered',
+				bufferedIntegration,
 			);
 
-			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1' } });
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
 			expect(thread.post).toHaveBeenCalledTimes(3);
 			expect(thread.post).toHaveBeenNthCalledWith(1, { markdown: 'Before suspend. ' });
@@ -191,16 +203,43 @@ describe('AgentChatBridge — consumeStream', () => {
 				componentMapper,
 				logger,
 				'project-1',
-				'test-buffered',
+				bufferedIntegration,
 			);
 
-			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1' } });
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
 			expect(thread.post).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('when integration keeps streaming enabled', () => {
+		it('uses the formatted chat thread as the episodic memory partition', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+			);
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:thread-1' }),
+						resourceId: 'integration:test-streaming:thread-1',
+					}),
+				}),
+			);
+		});
+
 		it('posts an AsyncIterable whose drained content equals the concatenated deltas', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
@@ -217,10 +256,10 @@ describe('AgentChatBridge — consumeStream', () => {
 				componentMapper,
 				logger,
 				'project-1',
-				'test-streaming',
+				streamingIntegration,
 			);
 
-			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1' } });
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
 			expect(thread.post).toHaveBeenCalledTimes(1);
 			const received = await drainIterable(thread.post.mock.calls[0][0]);

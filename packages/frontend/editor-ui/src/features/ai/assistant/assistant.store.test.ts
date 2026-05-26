@@ -18,7 +18,7 @@ import { defaultSettings } from '@/__tests__/defaults';
 import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';
 import { VIEWS } from '@/app/constants';
-import { reactive } from 'vue';
+import { reactive, shallowRef } from 'vue';
 import * as chatAPI from '@/features/ai/assistant/assistant.api';
 import * as telemetryModule from '@/app/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
@@ -39,6 +39,7 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
+	injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 }));
 
@@ -426,6 +427,7 @@ describe('AI Assistant store', () => {
 		expect(assistantStore.currentSessionId).toEqual(mockSessionId);
 
 		assistantStore.trackUserOpenedAssistant({
+			workflowId: 'test-workflow',
 			task: 'error',
 			source: 'error',
 			has_existing_session: true,
@@ -448,7 +450,7 @@ describe('AI Assistant store', () => {
 			node_type: 'n8n-nodes-base.stopAndError',
 			source: 'error',
 			task: 'error',
-			workflow_id: '',
+			workflow_id: 'test-workflow',
 			instance_id: '',
 			canvas_status: 'empty',
 		});
@@ -461,6 +463,7 @@ describe('AI Assistant store', () => {
 		mockWorkflowDocumentStore.allNodes = [];
 
 		assistantStore.trackUserOpenedAssistant({
+			workflowId: '',
 			task: 'placeholder',
 			source: 'build_with_ai',
 			has_existing_session: false,
@@ -499,6 +502,7 @@ describe('AI Assistant store', () => {
 		] as INodeUi[];
 
 		assistantStore.trackUserOpenedAssistant({
+			workflowId: 'test-wf',
 			task: 'placeholder',
 			source: 'canvas',
 			has_existing_session: false,

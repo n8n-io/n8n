@@ -1,6 +1,6 @@
 {
   "name": "@n8n/db",
-  "version": "1.20.0",
+  "version": "1.22.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -13,7 +13,8 @@
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
     "test:unit": "jest",
-    "test:dev": "jest --watch"
+    "test:dev": "jest --watch",
+    "migration:new": "node scripts/new-migration.mjs"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",

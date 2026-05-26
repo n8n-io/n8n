@@ -17,7 +17,6 @@ import type {
 	RedactionContext,
 } from './execution-redaction.interfaces';
 import { FullItemRedactionStrategy } from './strategies/full-item-redaction.strategy';
-import { NodeDefinedFieldRedactionStrategy } from './strategies/node-defined-field-redaction.strategy';
 
 const MANUAL_MODES: ReadonlySet<WorkflowExecuteMode> = new Set(['manual']);
 
@@ -41,7 +40,6 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly eventService: EventService,
 		private readonly fullItemRedactionStrategy: FullItemRedactionStrategy,
-		private readonly nodeDefinedFieldRedactionStrategy: NodeDefinedFieldRedactionStrategy,
 	) {}
 
 	async init(): Promise<void> {
@@ -79,9 +77,23 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	): Promise<void> {
 		if (executions.length === 0) return;
 
+		// A queued/just-inserted execution row carries no run data yet
+		// (`executionData.data` is empty until the runner writes its first
+		// snapshot). The repository's unflatten step returns `data: undefined`
+		// for those rows. There is nothing to redact and no policy to apply,
+		// so short-circuit before any strategy reads `execution.data.*` and
+		// crashes on the undefined. Surfaces under parallel evaluations,
+		// which leave several rows in `new` state long enough for FE polling
+		// to catch them mid-flight.
+		const processable = executions.filter(
+			(e): e is RedactableExecution & { data: NonNullable<RedactableExecution['data']> } =>
+				e.data !== undefined && e.data !== null,
+		);
+		if (processable.length === 0) return;
+
 		// Single DB call shared by both the reveal and redact paths.
 		// Only executions where policy doesn't already grant access need a scope check.
-		const needsCheck = executions.filter((e) => !this.policyAllowsReveal(e));
+		const needsCheck = processable.filter((e) => !this.policyAllowsReveal(e));
 		let revealableIds = new Set<string>();
 		if (needsCheck.length > 0) {
 			const uniqueWorkflowIds = [...new Set(needsCheck.map((e) => e.workflowId))];
@@ -95,7 +107,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		// Reveal path: validate all permissions atomically before any processing.
 		if (options.redactExecutionData === false) {
 			// Dynamic credential executions can never be revealed
-			for (const execution of executions) {
+			for (const execution of processable) {
 				if (this.hasDynamicCredentials(execution)) {
 					throw new ForbiddenError();
 				}
@@ -123,11 +135,13 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		}
 
 		// Unified pipeline execution. buildPipeline excludes FullItemRedactionStrategy on the
-		// reveal path (redactExecutionData === false). NodeDefinedFieldRedactionStrategy
-		// always runs — node-declared sensitive fields are never revealable.
+		// reveal path (redactExecutionData === false).
 
 		for (let i = 0; i < executions.length; i++) {
 			const execution = executions[i];
+			// Pre-filtered above — skip data-less rows so the strategies and
+			// dynamic-credential checks below can rely on a populated payload.
+			if (execution.data === undefined || execution.data === null) continue;
 			const hasDynCreds = this.hasDynamicCredentials(execution);
 			const policyAllowsReveal = this.policyAllowsReveal(execution);
 			// Dynamic credential executions can never be revealed regardless of permissions
@@ -163,8 +177,12 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		}
 
 		// Emit audit events after all executions have been successfully processed.
+		// Iterate over `processable` so a queued (data-undefined) row in the
+		// batch doesn't trip `resolvePolicy`. There is nothing to "reveal" on
+		// a row that carries no payload, so its omission from the audit trail
+		// matches reality — the API response for that entry has `data: null`.
 		if (options.redactExecutionData === false) {
-			for (const execution of executions) {
+			for (const execution of processable) {
 				this.eventService.emit('execution-data-revealed', {
 					user: options.user,
 					executionId: execution.id ?? '',
@@ -184,8 +202,12 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 *   explicit redact (`redactExecutionData === true`), policy=all, or
 	 *   policy=non-manual on a non-manual execution mode, or dynamic credentials.
 	 *   It is never included on the reveal path (`redactExecutionData === false`).
-	 * - `NodeDefinedFieldRedactionStrategy` is always appended last — node-declared
-	 *   sensitive fields are never revealable.
+	 *
+	 * Note: `NodeDefinedFieldRedactionStrategy` (node-declared `sensitiveOutputFields`)
+	 * is intentionally not wired in here. The previous always-on behaviour broke
+	 * partial/single-step execution because the FE replays the redacted push payload
+	 * back to the server, and is being redesigned. Re-introduce only after the
+	 * product approach (per-workflow gating + partial-run rehydration) is settled.
 	 */
 	private buildPipeline(
 		execution: RedactableExecution,
@@ -208,8 +230,6 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		if (shouldClearItems) {
 			pipeline.push(this.fullItemRedactionStrategy);
 		}
-
-		pipeline.push(this.nodeDefinedFieldRedactionStrategy);
 
 		return pipeline;
 	}

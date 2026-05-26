@@ -1,10 +1,47 @@
-import { gfm } from '@joplin/turndown-plugin-gfm';
-import { Readability } from '@mozilla/readability';
+import type * as JoplinTurndownGfm from '@joplin/turndown-plugin-gfm';
+import type { Readability as TReadability } from '@mozilla/readability';
 import type { FetchedPage } from '@n8n/instance-ai';
-import { parseHTML } from 'linkedom';
+import type * as LinkedomMod from 'linkedom';
+import type { parseHTML as TParseHtml } from 'linkedom';
 import type { SsrfBridge } from 'n8n-core';
-import TurndownService from 'turndown';
+import type TTurndownService from 'turndown';
+import type * as ReadabilityMod from '@mozilla/readability';
+import type * as TurndownMod from 'turndown';
 import { Agent } from 'undici';
+
+let _linkedom: typeof LinkedomMod | undefined;
+let _readability: typeof ReadabilityMod | undefined;
+let _turndown: typeof TurndownMod | undefined;
+let _turndownGfm: typeof JoplinTurndownGfm | undefined;
+
+function loadLinkedom(): typeof TParseHtml {
+	if (!_linkedom) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		_linkedom = require('linkedom') as typeof LinkedomMod;
+	}
+	return _linkedom.parseHTML;
+}
+function loadReadability(): typeof TReadability {
+	if (!_readability) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		_readability = require('@mozilla/readability') as typeof ReadabilityMod;
+	}
+	return _readability.Readability;
+}
+function loadTurndown(): typeof TTurndownService {
+	if (!_turndown) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		_turndown = require('turndown') as typeof TurndownMod;
+	}
+	return _turndown as unknown as typeof TTurndownService;
+}
+function loadTurndownGfm(): typeof JoplinTurndownGfm.gfm {
+	if (!_turndownGfm) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		_turndownGfm = require('@joplin/turndown-plugin-gfm') as typeof JoplinTurndownGfm;
+	}
+	return _turndownGfm.gfm;
+}
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 120_000;
@@ -72,7 +109,8 @@ export async function fetchAndExtract(
 			});
 		} finally {
 			clearTimeout(timeout);
-			await dispatcher.close();
+			// Fire-and-forget — awaiting Agent.close() deadlocks against an unread body.
+			void dispatcher.close().catch(() => {});
 		}
 
 		// Follow redirects manually so each hop is SSRF-checked
@@ -170,12 +208,13 @@ function extractHtml(
 	maxContentLength: number,
 ): FetchedPage {
 	const html = body.toString('utf-8');
-	const { document } = parseHTML(html);
+	const { document } = loadLinkedom()(html);
 
 	// Detect safety flags from raw HTML
 	const safetyFlags = detectSafetyFlags(html);
 
 	// Use Readability to extract main content
+	const Readability = loadReadability();
 	const reader = new Readability(document as unknown as Document);
 	const article = reader.parse();
 
@@ -275,12 +314,13 @@ function extractPlainText(
 	};
 }
 
-function createTurndownService(): TurndownService {
+function createTurndownService(): TTurndownService {
+	const TurndownService = loadTurndown();
 	const turndown = new TurndownService({
 		headingStyle: 'atx',
 		codeBlockStyle: 'fenced',
 	});
-	turndown.use(gfm);
+	turndown.use(loadTurndownGfm());
 	return turndown;
 }
 

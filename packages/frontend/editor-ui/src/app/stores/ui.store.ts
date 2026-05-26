@@ -88,13 +88,9 @@ import type {
 	ModalKey,
 	AppliedThemeOption,
 	TabOptions,
+	INodeUi,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
 import { computed, ref } from 'vue';
@@ -345,10 +341,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const lastCancelledConnectionPosition = ref<XYPosition | undefined>();
 
 	const settingsStore = useSettingsStore();
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
 
 	const isDarkThemePreferred = useMediaQuery('(prefers-color-scheme: dark)');
 	const preferredSystemTheme = computed<AppliedThemeOption>(() =>
@@ -415,14 +407,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				},
 			},
 		} as const;
-	});
-
-	const lastInteractedWithNode = computed(() => {
-		if (lastInteractedWithNodeId.value) {
-			return workflowDocumentStore.value.getNodeById(lastInteractedWithNodeId.value) ?? null;
-		}
-
-		return null;
 	});
 
 	const isModalActiveById = computed(() =>
@@ -541,6 +525,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
 			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
 			projectId: undefined,
+			contextNode: undefined,
 			hideAskAssistant: options.hideAskAssistant,
 		} as NewCredentialsModal;
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
@@ -553,6 +538,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		projectId?: string,
 		suggestedName?: string,
 		nodeName?: string,
+		contextNode?: INodeUi,
 		options: { hideAskAssistant?: boolean } = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
@@ -563,6 +549,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			projectId,
 			suggestedName,
 			nodeName,
+			contextNode,
 			hideAskAssistant: options.hideAskAssistant,
 		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
@@ -750,7 +737,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		lastInteractedWithNodeConnection,
 		lastInteractedWithNodeHandle,
 		lastInteractedWithNodeId,
-		lastInteractedWithNode,
 		lastCancelledConnectionPosition,
 		nodeViewOffsetPosition,
 		nodeViewInitialized,

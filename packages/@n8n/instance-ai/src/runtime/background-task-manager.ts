@@ -1,4 +1,9 @@
 import type { BackgroundTaskResult, InstanceAiTraceContext } from '../types';
+import type {
+	InstanceAiLivenessDecision,
+	InstanceAiLivenessPolicy,
+	InstanceAiLivenessTimeoutReason,
+} from './liveness-policy';
 
 export type BackgroundTaskStatus = 'running' | 'completed' | 'failed' | 'cancelled';
 
@@ -12,6 +17,8 @@ export interface ManagedBackgroundTask {
 	result?: string;
 	error?: string;
 	startedAt: number;
+	lastActivityAt: number;
+	timeoutReason?: InstanceAiLivenessTimeoutReason;
 	abortController: AbortController;
 	corrections: string[];
 	/** Callback resolved when a new correction is queued. Re-created by the consumer after each notification. */
@@ -21,6 +28,7 @@ export interface ManagedBackgroundTask {
 	plannedTaskId?: string;
 	workItemId?: string;
 	traceContext?: InstanceAiTraceContext;
+	createTraceContext?: () => Promise<InstanceAiTraceContext | undefined>;
 	/** Identity used for single-flight dedupe lookups; copied from the spawn options. */
 	dedupeKey?: BackgroundTaskDedupeKey;
 	/**
@@ -52,6 +60,7 @@ export interface SpawnManagedBackgroundTaskOptions {
 	plannedTaskId?: string;
 	workItemId?: string;
 	traceContext?: InstanceAiTraceContext;
+	createTraceContext?: () => Promise<InstanceAiTraceContext | undefined>;
 	/**
 	 * Identity for single-flight dedupe. When supplied, a spawn with the same `plannedTaskId`
 	 * (primary) or `role + workflowId` (fallback) as a currently-running task returns
@@ -72,6 +81,7 @@ export interface SpawnManagedBackgroundTaskOptions {
 		signal: AbortSignal,
 		drainCorrections: () => string[],
 		waitForCorrection: () => Promise<void>,
+		taskContext: { traceContext?: InstanceAiTraceContext },
 	) => Promise<string | BackgroundTaskResult>;
 	onLimitReached?: (errorMessage: string) => void;
 	onCompleted?: (task: ManagedBackgroundTask) => void | Promise<void>;
@@ -84,6 +94,10 @@ export type SpawnManagedBackgroundTaskResult =
 	| { status: 'limit-reached' }
 	| { status: 'duplicate'; existing: ManagedBackgroundTask };
 
+export interface BackgroundTaskTimeoutOptions {
+	shouldSkipTask?: (task: ManagedBackgroundTask) => boolean;
+}
+
 export interface BackgroundTaskMessageOptions<
 	TTask extends ManagedBackgroundTask = ManagedBackgroundTask,
 > {
@@ -92,6 +106,10 @@ export interface BackgroundTaskMessageOptions<
 
 export class BackgroundTaskManager {
 	private readonly tasks = new Map<string, ManagedBackgroundTask>();
+	private readonly callbacks = new Map<
+		string,
+		Pick<SpawnManagedBackgroundTaskOptions, 'onCompleted' | 'onFailed' | 'onSettled'>
+	>();
 	/** plannedTaskId → taskId for the currently-running task. Populated only when the caller provides a dedupeKey with plannedTaskId. */
 	private readonly byPlannedTaskId = new Map<string, string>();
 	/**
@@ -173,6 +191,7 @@ export class BackgroundTaskManager {
 		const task = this.tasks.get(taskId);
 		if (!task || task.threadId !== threadId) return 'task-not-found';
 		if (task.status !== 'running') return 'task-completed';
+		this.touchTask(threadId, taskId);
 		task.corrections.push(correction);
 		if (task.onCorrectionQueued) {
 			const notify = task.onCorrectionQueued;
@@ -190,6 +209,7 @@ export class BackgroundTaskManager {
 		task.status = 'cancelled';
 		this.tasks.delete(taskId);
 		this.releaseDedupeIndices(task);
+		this.callbacks.delete(taskId);
 		return task;
 	}
 
@@ -202,6 +222,7 @@ export class BackgroundTaskManager {
 			cancelled.push(task);
 			this.tasks.delete(taskId);
 			this.releaseDedupeIndices(task);
+			this.callbacks.delete(taskId);
 		}
 		return cancelled;
 	}
@@ -213,8 +234,38 @@ export class BackgroundTaskManager {
 			cancelled.push(task);
 			this.tasks.delete(taskId);
 			this.releaseDedupeIndices(task);
+			this.callbacks.delete(taskId);
 		}
 		return cancelled;
+	}
+
+	touchTask(threadId: string, taskId: string, at = Date.now()): boolean {
+		const task = this.tasks.get(taskId);
+		if (!task || task.threadId !== threadId || task.status !== 'running') return false;
+		task.lastActivityAt = at;
+		return true;
+	}
+
+	async timeoutTimedOutTasks(
+		policy: InstanceAiLivenessPolicy,
+		now = Date.now(),
+		options: BackgroundTaskTimeoutOptions = {},
+	): Promise<ManagedBackgroundTask[]> {
+		const timedOut: ManagedBackgroundTask[] = [];
+		for (const task of [...this.tasks.values()]) {
+			if (task.status !== 'running') continue;
+			if (options.shouldSkipTask?.(task)) continue;
+			const decision = policy.evaluate({
+				surface: 'background-task',
+				startedAt: task.startedAt,
+				lastActivityAt: task.lastActivityAt,
+				now,
+			});
+			if (decision.action !== 'timeout') continue;
+			await this.timeoutTask(task, decision);
+			timedOut.push(task);
+		}
+		return timedOut;
 	}
 
 	spawn(options: SpawnManagedBackgroundTaskOptions): SpawnManagedBackgroundTaskResult {
@@ -229,6 +280,7 @@ export class BackgroundTaskManager {
 			return { status: 'limit-reached' };
 		}
 
+		const now = Date.now();
 		const task: ManagedBackgroundTask = {
 			taskId: options.taskId,
 			threadId: options.threadId,
@@ -236,7 +288,8 @@ export class BackgroundTaskManager {
 			role: options.role,
 			agentId: options.agentId,
 			status: 'running',
-			startedAt: Date.now(),
+			startedAt: now,
+			lastActivityAt: now,
 			abortController: new AbortController(),
 			corrections: [],
 			messageGroupId: options.messageGroupId,
@@ -248,6 +301,11 @@ export class BackgroundTaskManager {
 		};
 
 		this.tasks.set(options.taskId, task);
+		this.callbacks.set(options.taskId, {
+			onCompleted: options.onCompleted,
+			onFailed: options.onFailed,
+			onSettled: options.onSettled,
+		});
 		if (options.dedupeKey?.plannedTaskId) {
 			this.byPlannedTaskId.set(options.dedupeKey.plannedTaskId, options.taskId);
 		} else if (options.dedupeKey?.workflowId) {
@@ -300,28 +358,62 @@ export class BackgroundTaskManager {
 			});
 
 		try {
+			if (!task.traceContext && options.createTraceContext) {
+				task.traceContext = await options.createTraceContext();
+			}
 			const raw = await options.run(
 				task.abortController.signal,
 				drainCorrections,
 				waitForCorrection,
+				{ traceContext: task.traceContext },
 			);
+			if (task.status !== 'running') return;
 			task.status = 'completed';
 			task.result = typeof raw === 'string' ? raw : raw.text;
 			task.outcome = typeof raw === 'string' ? undefined : raw.outcome;
 			await options.onCompleted?.(task);
 		} catch (error) {
+			if (task.status !== 'running') return;
 			if (task.abortController.signal.aborted) return;
 			task.status = 'failed';
 			task.error = error instanceof Error ? error.message : String(error);
 			await options.onFailed?.(task);
 		} finally {
 			try {
-				if (!task.abortController.signal.aborted) {
+				if (!task.abortController.signal.aborted && task.status !== 'running') {
 					await options.onSettled?.(task);
 				}
 			} finally {
+				if (task.status !== 'running') {
+					this.tasks.delete(task.taskId);
+					this.releaseDedupeIndices(task);
+					this.callbacks.delete(task.taskId);
+				}
+			}
+		}
+	}
+
+	private async timeoutTask(
+		task: ManagedBackgroundTask,
+		decision: Extract<InstanceAiLivenessDecision, { action: 'timeout' }>,
+	): Promise<void> {
+		if (task.status !== 'running') return;
+
+		task.abortController.abort();
+		task.status = 'failed';
+		task.timeoutReason = decision.reason;
+		task.error = `Background ${task.role} task timed out after ${decision.timeoutMs}ms`;
+
+		const callbacks = this.callbacks.get(task.taskId);
+		try {
+			await callbacks?.onFailed?.(task);
+		} finally {
+			try {
+				await callbacks?.onSettled?.(task);
+			} finally {
 				this.tasks.delete(task.taskId);
 				this.releaseDedupeIndices(task);
+				this.callbacks.delete(task.taskId);
 			}
 		}
 	}

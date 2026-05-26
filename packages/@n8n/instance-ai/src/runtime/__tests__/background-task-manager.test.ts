@@ -4,6 +4,9 @@ import type {
 	ManagedBackgroundTask,
 	SpawnManagedBackgroundTaskOptions,
 } from '../background-task-manager';
+import { InstanceAiLivenessPolicy } from '../liveness-policy';
+
+const day = 24 * 60 * 60_000;
 
 function makeSpawnOptions(
 	overrides: Partial<SpawnManagedBackgroundTaskOptions> = {},
@@ -26,6 +29,99 @@ describe('BackgroundTaskManager', () => {
 		manager = new BackgroundTaskManager(3);
 	});
 
+	describe('liveness timeouts', () => {
+		const policy = new InstanceAiLivenessPolicy({
+			confirmationTimeoutMs: day,
+			backgroundTaskIdleTimeoutMs: 10_000,
+			backgroundTaskMaxLifetimeMs: 30_000,
+			activeRunIdleTimeoutMs: 10_000,
+			activeRunMaxLifetimeMs: 30_000,
+		});
+
+		it('fails and settles idle running tasks', async () => {
+			const onFailed = jest.fn((_task: ManagedBackgroundTask) => undefined);
+			const onSettled = jest.fn((_task: ManagedBackgroundTask) => undefined);
+			let signal: AbortSignal | undefined;
+
+			manager.spawn(
+				makeSpawnOptions({
+					run: async (abortSignal) => {
+						signal = abortSignal;
+						await new Promise(() => {});
+						return 'never';
+					},
+					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-1' },
+					onFailed,
+					onSettled,
+				}),
+			);
+
+			const task = manager.getRunningTasks('thread-1')[0];
+			task.startedAt = 0;
+			task.lastActivityAt = 0;
+
+			const timedOut = await manager.timeoutTimedOutTasks(policy, 10_000);
+
+			expect(timedOut).toHaveLength(1);
+			expect(signal?.aborted).toBe(true);
+			expect(onFailed).toHaveBeenCalledWith(
+				expect.objectContaining({
+					status: 'failed',
+					timeoutReason: 'idle_timeout',
+				}),
+			);
+			expect(onFailed.mock.calls[0]?.[0].error).toEqual(expect.stringContaining('timed out'));
+			expect(onSettled).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'failed', timeoutReason: 'idle_timeout' }),
+			);
+			expect(manager.getRunningTasks('thread-1')).toHaveLength(0);
+
+			const next = manager.spawn(
+				makeSpawnOptions({
+					taskId: 'task-2',
+					run: async () => await new Promise(() => {}),
+					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-1' },
+				}),
+			);
+
+			expect(next.status).toBe('started');
+		});
+
+		it('keeps touched tasks alive until they exceed the idle timeout', async () => {
+			manager.spawn(
+				makeSpawnOptions({
+					run: async () => await new Promise(() => {}),
+				}),
+			);
+			const task = manager.getRunningTasks('thread-1')[0];
+			task.startedAt = 0;
+			manager.touchTask('thread-1', 'task-1', 9_000);
+
+			const timedOut = await manager.timeoutTimedOutTasks(policy, 10_000);
+
+			expect(timedOut).toEqual([]);
+			expect(manager.getRunningTasks('thread-1')).toHaveLength(1);
+		});
+
+		it('skips timeout checks for tasks currently waiting on HITL', async () => {
+			manager.spawn(
+				makeSpawnOptions({
+					run: async () => await new Promise(() => {}),
+				}),
+			);
+			const task = manager.getRunningTasks('thread-1')[0];
+			task.startedAt = 0;
+			task.lastActivityAt = 0;
+
+			const timedOut = await manager.timeoutTimedOutTasks(policy, 30_000, {
+				shouldSkipTask: (candidate) => candidate.threadId === 'thread-1',
+			});
+
+			expect(timedOut).toEqual([]);
+			expect(manager.getRunningTasks('thread-1')).toHaveLength(1);
+		});
+	});
+
 	describe('spawn', () => {
 		it('spawns a task and tracks it as running', () => {
 			const result = manager.spawn(makeSpawnOptions());
@@ -37,6 +133,7 @@ describe('BackgroundTaskManager', () => {
 
 		it('rejects spawn when concurrent limit is reached', () => {
 			const onLimitReached = jest.fn();
+			const createTraceContext = jest.fn();
 
 			manager.spawn(
 				makeSpawnOptions({ taskId: 't1', run: async () => await new Promise(() => {}) }),
@@ -48,10 +145,30 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({ taskId: 't3', run: async () => await new Promise(() => {}) }),
 			);
 
-			const result = manager.spawn(makeSpawnOptions({ taskId: 't4', onLimitReached }));
+			const result = manager.spawn(
+				makeSpawnOptions({ taskId: 't4', onLimitReached, createTraceContext }),
+			);
 
 			expect(result.status).toBe('limit-reached');
 			expect(onLimitReached).toHaveBeenCalledWith(expect.stringContaining('limit of 3'));
+			expect(createTraceContext).not.toHaveBeenCalled();
+		});
+
+		it('creates lazy trace context only after a task is accepted', async () => {
+			const traceContext = { projectName: 'instance-ai' } as never;
+			const createTraceContext = jest.fn().mockResolvedValue(traceContext);
+			const run = jest.fn().mockResolvedValue('done');
+
+			manager.spawn(makeSpawnOptions({ createTraceContext, run }));
+			await flushPromises();
+
+			expect(createTraceContext).toHaveBeenCalledTimes(1);
+			expect(run).toHaveBeenCalledWith(
+				expect.any(AbortSignal),
+				expect.any(Function),
+				expect.any(Function),
+				{ traceContext },
+			);
 		});
 
 		it('calls onCompleted and onSettled when run resolves with string', async () => {
@@ -196,6 +313,28 @@ describe('BackgroundTaskManager', () => {
 			}
 			expect(run).not.toHaveBeenCalled();
 			expect(manager.getRunningTasks('thread-1')).toHaveLength(1);
+		});
+
+		it('does not create lazy trace context for duplicate spawns', () => {
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 'first',
+					run: async () => await new Promise(() => {}),
+					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-trace' },
+				}),
+			);
+			const createTraceContext = jest.fn();
+
+			const second = manager.spawn(
+				makeSpawnOptions({
+					taskId: 'second',
+					createTraceContext,
+					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-trace' },
+				}),
+			);
+
+			expect(second.status).toBe('duplicate');
+			expect(createTraceContext).not.toHaveBeenCalled();
 		});
 
 		it('allows a new spawn once the first planned-task settles', async () => {

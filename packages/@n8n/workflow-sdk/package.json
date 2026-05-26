@@ -1,6 +1,6 @@
 {
   "name": "@n8n/workflow-sdk",
-  "version": "0.13.0",
+  "version": "0.15.0",
   "description": "TypeScript SDK for programmatically creating n8n workflows",
   "exports": {
     ".": {
@@ -49,7 +49,6 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "pretest": "npx tsx scripts/extract-workflows.ts",
     "extract-workflows": "npx tsx scripts/extract-workflows.ts",
     "test": "jest",
     "test:unit": "jest",

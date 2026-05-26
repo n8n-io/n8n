@@ -17,12 +17,16 @@ vi.mock('@n8n/stores/useRootStore');
 vi.mock('@/features/ai/assistant/assistant.api');
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
+	const { shallowRef } = await import('vue');
+	const mockStore = {
+		getParentNodesByDepth: vi.fn().mockReturnValue([]),
+		getNodeByName: vi.fn().mockReturnValue(null),
+	};
 	return {
 		...actual,
-		useWorkflowDocumentStore: vi.fn(() => ({
-			getParentNodesByDepth: vi.fn().mockReturnValue([]),
-		})),
+		useWorkflowDocumentStore: vi.fn(() => mockStore),
 		createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+		injectWorkflowDocumentStore: vi.fn(() => shallowRef(mockStore)),
 	};
 });
 vi.mock('@n8n/i18n', async (importOriginal) => ({

@@ -33,12 +33,34 @@ describe('credential guardrail prompts', () => {
 		);
 	});
 
-	it('tells the planner to ask when a required service has more than one credential of the same type', () => {
+	it('tells the planner not to block planning on credential selection', () => {
+		expect(PLANNER_AGENT_PROMPT).toContain('Handle credentials without blocking planning');
+		expect(PLANNER_AGENT_PROMPT).toContain('If the user already named a credential');
+		expect(PLANNER_AGENT_PROMPT).toContain('If there is exactly one matching credential');
+		expect(PLANNER_AGENT_PROMPT).toContain('auto-select it, do not ask');
+		expect(PLANNER_AGENT_PROMPT).toContain('If there are no matching credentials, do not ask');
 		expect(PLANNER_AGENT_PROMPT).toContain(
-			'Do ask when a required service has more than one credential of the same type',
+			'Do not offer a choice like "build now and set up credentials later"',
 		);
+		expect(PLANNER_AGENT_PROMPT).toContain('builder will use a mocked or unresolved credential');
+		expect(PLANNER_AGENT_PROMPT).toContain(
+			'If there is more than one credential of the same required type',
+		);
+		expect(PLANNER_AGENT_PROMPT).toContain('ask once with a single-select');
 		expect(PLANNER_AGENT_PROMPT).toContain('cannot be discovered, only chosen');
+		expect(PLANNER_AGENT_PROMPT).toContain('credential-backed resource investigation');
+		expect(PLANNER_AGENT_PROMPT).toContain('Do not turn that into a credential-choice question');
 		expect(PLANNER_AGENT_PROMPT).toContain('Record the chosen credential name in `assumptions`');
+	});
+
+	it('tells the planner to use the contextual timezone before asking', () => {
+		expect(PLANNER_AGENT_PROMPT).toContain(
+			"Never ask for the user's timezone when `<user-timezone>` is present",
+		);
+		expect(PLANNER_AGENT_PROMPT).toContain('use `<current-datetime>` / `<user-timezone>`');
+		expect(PLANNER_AGENT_PROMPT).toContain(
+			'Only ask if timezone is missing and a date or schedule cannot be interpreted safely',
+		);
 	});
 
 	it('tells the builder to wrap ambiguous resource matches with placeholder()', () => {
@@ -54,6 +76,16 @@ describe('credential guardrail prompts', () => {
 		);
 	});
 
+	it('keeps builder prompts grounded in the inline setup card', () => {
+		for (const prompt of [
+			BUILDER_AGENT_PROMPT,
+			createSandboxBuilderAgentPrompt('/tmp/workspace'),
+		]) {
+			expect(prompt).toContain('inline setup card in the AI Assistant panel');
+			expect(prompt).not.toMatch(/setup wizard/i);
+		}
+	});
+
 	it('does not inline bulky static node guides in builder prompts', () => {
 		for (const prompt of [
 			BUILDER_AGENT_PROMPT,
@@ -65,5 +97,39 @@ describe('credential guardrail prompts', () => {
 			expect(prompt).not.toContain('#### Complete Operator Reference');
 			expect(prompt).not.toContain('## IMPORTANT: ResourceLocator Parameter Handling');
 		}
+	});
+
+	it('does not instruct the sandbox builder about publishing when publish is not on its tool surface', () => {
+		const prompt = createSandboxBuilderAgentPrompt('/tmp/workspace');
+
+		expect(prompt).not.toContain('workflows(action="publish")');
+		expect(prompt).not.toContain('Do NOT publish');
+	});
+
+	it('points sandbox builders at the task-specific workflow and chunks paths', () => {
+		const prompt = createSandboxBuilderAgentPrompt('/tmp/workspace', {
+			mainWorkflowPath: '/tmp/workspace/builder-work-items/wi-one/src/workflow.ts',
+			sourceDir: '/tmp/workspace/builder-work-items/wi-one/src',
+			chunksDir: '/tmp/workspace/builder-work-items/wi-one/chunks',
+			tsconfigPath: '/tmp/workspace/builder-work-items/wi-one/tsconfig.json',
+		});
+
+		expect(prompt).toContain(
+			'Your active main workflow file is `/tmp/workspace/builder-work-items/wi-one/src/workflow.ts`',
+		);
+		expect(prompt).toContain(
+			'Use `/tmp/workspace/builder-work-items/wi-one/chunks/` for supporting chunk files',
+		);
+		expect(prompt).toContain(
+			'execute_command: cd /tmp/workspace && npx tsc --noEmit --project /tmp/workspace/builder-work-items/wi-one/tsconfig.json 2>&1',
+		);
+		expect(prompt).not.toContain('Write workflow code to `/tmp/workspace/src/workflow.ts`');
+	});
+
+	it('uses the provided workspace root for fallback tsc validation', () => {
+		const prompt = createSandboxBuilderAgentPrompt('/tmp/custom-workspace');
+
+		expect(prompt).toContain('execute_command: cd /tmp/custom-workspace && npx tsc --noEmit 2>&1');
+		expect(prompt).not.toContain('execute_command: cd ~/workspace && npx tsc --noEmit 2>&1');
 	});
 });

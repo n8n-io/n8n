@@ -1,19 +1,149 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+import './source-map-filter';
+
+import type * as InstanceAgentMod from './agent/instance-agent';
+import type * as SubAgentFactoryMod from './agent/sub-agent-factory';
+import type * as CompactionMod from './compaction';
+import type * as McpClientManagerMod from './mcp/mcp-client-manager';
+import type * as TitleUtilsMod from './memory/title-utils';
+import type * as BuildWorkflowAgentPromptMod from './tools/orchestration/build-workflow-agent.prompt';
+import type * as BuildWorkflowAgentToolMod from './tools/orchestration/build-workflow-agent.tool';
+import type * as DataTableAgentToolMod from './tools/orchestration/data-table-agent.tool';
+import type * as DelegateToolMod from './tools/orchestration/delegate.tool';
+import type * as ResearchWithAgentToolMod from './tools/orchestration/research-with-agent.tool';
+import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
+import type * as EvalAgentsMod from './utils/eval-agents';
+import type * as BuilderSandboxFactoryMod from './workspace/builder-sandbox-factory';
+import type * as CreateWorkspaceMod from './workspace/create-workspace';
+
+type LazyFunction = (...args: never[]) => unknown;
+type LazyConstructor = abstract new (...args: never[]) => unknown;
+
+const lazyModule = <TModule>(loader: () => TModule): (() => TModule) => {
+	let cached: TModule | undefined;
+	return () => (cached ??= loader());
+};
+
+const lazyFunction = <TFunction extends LazyFunction>(load: () => TFunction): TFunction =>
+	((...args: Parameters<TFunction>): ReturnType<TFunction> => {
+		const fn = load() as (...fnArgs: Parameters<TFunction>) => ReturnType<TFunction>;
+		return fn(...args);
+	}) as TFunction;
+
+const lazyClass = <TConstructor extends LazyConstructor>(load: () => TConstructor): TConstructor =>
+	class LazyClass {
+		constructor(...args: ConstructorParameters<TConstructor>) {
+			const Real = load() as unknown as new (
+				...ctorArgs: ConstructorParameters<TConstructor>
+			) => LazyClass;
+			return new Real(...args);
+		}
+
+		static [Symbol.hasInstance](instance: unknown): boolean {
+			if (instance === null || (typeof instance !== 'object' && typeof instance !== 'function')) {
+				return false;
+			}
+
+			const Real = load() as unknown as { prototype: object };
+			return Object.prototype.isPrototypeOf.call(Real.prototype, instance);
+		}
+	} as unknown as TConstructor;
+
+const defineLazyExport = <TValue>(name: string, load: () => TValue): void => {
+	Object.defineProperty(module.exports, name, {
+		enumerable: true,
+		configurable: true,
+		get: load,
+	});
+};
+
+const loadCompaction = lazyModule(() => require('./compaction') as typeof CompactionMod);
+const loadLangsmithTracing = lazyModule(
+	() => require('./tracing/langsmith-tracing') as typeof LangsmithTracingMod,
+);
+const loadInstanceAgent = lazyModule(
+	() => require('./agent/instance-agent') as typeof InstanceAgentMod,
+);
+const loadSubAgentFactory = lazyModule(
+	() => require('./agent/sub-agent-factory') as typeof SubAgentFactoryMod,
+);
+const loadBuildWorkflowAgentPrompt = lazyModule(
+	() =>
+		require('./tools/orchestration/build-workflow-agent.prompt') as typeof BuildWorkflowAgentPromptMod,
+);
+const loadBuildWorkflowAgentTool = lazyModule(
+	() =>
+		require('./tools/orchestration/build-workflow-agent.tool') as typeof BuildWorkflowAgentToolMod,
+);
+const loadDataTableAgentTool = lazyModule(
+	() => require('./tools/orchestration/data-table-agent.tool') as typeof DataTableAgentToolMod,
+);
+const loadDelegateTool = lazyModule(
+	() => require('./tools/orchestration/delegate.tool') as typeof DelegateToolMod,
+);
+const loadResearchWithAgentTool = lazyModule(
+	() =>
+		require('./tools/orchestration/research-with-agent.tool') as typeof ResearchWithAgentToolMod,
+);
+const loadTitleUtils = lazyModule(() => require('./memory/title-utils') as typeof TitleUtilsMod);
+const loadMcpClientManager = lazyModule(
+	() => require('./mcp/mcp-client-manager') as typeof McpClientManagerMod,
+);
+const loadEvalAgents = lazyModule(() => require('./utils/eval-agents') as typeof EvalAgentsMod);
+const loadCreateWorkspace = lazyModule(
+	() => require('./workspace/create-workspace') as typeof CreateWorkspaceMod,
+);
+const loadBuilderSandboxFactory = lazyModule(
+	() => require('./workspace/builder-sandbox-factory') as typeof BuilderSandboxFactoryMod,
+);
+
 export { MAX_STEPS } from './constants/max-steps';
+export type {
+	AgentDbMessage,
+	AgentMessage,
+	BuiltMemory,
+	CheckpointStore,
+	SerializableAgentState,
+	Thread,
+} from '@n8n/agents';
 export { wrapUntrustedData } from './tools/web-research/sanitize-web-content';
 export type { Logger } from './logger';
-export { generateCompactionSummary } from './compaction';
 export type { CompactionInput } from './compaction';
+export const generateCompactionSummary: typeof CompactionMod.generateCompactionSummary =
+	lazyFunction(() => loadCompaction().generateCompactionSummary);
 export { createDomainAccessTracker } from './domain-access';
 export type { DomainAccessTracker } from './domain-access';
-export {
-	createInstanceAiTraceContext,
-	createTraceReplayOnlyContext,
-	continueInstanceAiTraceContext,
-	releaseTraceClient,
-	submitLangsmithUserFeedback,
-	withCurrentTraceSpan,
-} from './tracing/langsmith-tracing';
 export type { SubmitLangsmithUserFeedbackOptions } from './tracing/langsmith-tracing';
+
+export const appendGeneratedWorkflowIdToRootMetadata: typeof LangsmithTracingMod.appendGeneratedWorkflowIdToRootMetadata =
+	lazyFunction(() => loadLangsmithTracing().appendGeneratedWorkflowIdToRootMetadata);
+
+export const appendRootRunMetadata: typeof LangsmithTracingMod.appendRootRunMetadata = lazyFunction(
+	() => loadLangsmithTracing().appendRootRunMetadata,
+);
+
+export const createInstanceAiTraceContext: typeof LangsmithTracingMod.createInstanceAiTraceContext =
+	lazyFunction(() => loadLangsmithTracing().createInstanceAiTraceContext);
+
+export const createInternalOperationTraceContext: typeof LangsmithTracingMod.createInternalOperationTraceContext =
+	lazyFunction(() => loadLangsmithTracing().createInternalOperationTraceContext);
+
+export const createTraceReplayOnlyContext: typeof LangsmithTracingMod.createTraceReplayOnlyContext =
+	lazyFunction(() => loadLangsmithTracing().createTraceReplayOnlyContext);
+
+export const continueInstanceAiTraceContext: typeof LangsmithTracingMod.continueInstanceAiTraceContext =
+	lazyFunction(() => loadLangsmithTracing().continueInstanceAiTraceContext);
+
+export const releaseTraceClient: typeof LangsmithTracingMod.releaseTraceClient = lazyFunction(
+	() => loadLangsmithTracing().releaseTraceClient,
+);
+
+export const submitLangsmithUserFeedback: typeof LangsmithTracingMod.submitLangsmithUserFeedback =
+	lazyFunction(() => loadLangsmithTracing().submitLangsmithUserFeedback);
+
+export const withCurrentTraceSpan: typeof LangsmithTracingMod.withCurrentTraceSpan = lazyFunction(
+	() => loadLangsmithTracing().withCurrentTraceSpan,
+);
 export {
 	IdRemapper,
 	TraceIndex,
@@ -28,22 +158,41 @@ export type {
 	TraceToolSuspend,
 	TraceToolResume,
 } from './tracing/trace-replay';
-export { createInstanceAgent } from './agent/instance-agent';
-export { createSubAgent } from './agent/sub-agent-factory';
 export type { SubAgentOptions } from './agent/sub-agent-factory';
+
+export const createInstanceAgent: typeof InstanceAgentMod.createInstanceAgent = lazyFunction(
+	() => loadInstanceAgent().createInstanceAgent,
+);
+
+export const createSubAgent: typeof SubAgentFactoryMod.createSubAgent = lazyFunction(
+	() => loadSubAgentFactory().createSubAgent,
+);
 export { createAllTools, createOrchestrationTools } from './tools';
-export { startBuildWorkflowAgentTask } from './tools/orchestration/build-workflow-agent.tool';
-export { BUILDER_AGENT_PROMPT } from './tools/orchestration/build-workflow-agent.prompt';
-export { startDataTableAgentTask } from './tools/orchestration/data-table-agent.tool';
-export { startDetachedDelegateTask } from './tools/orchestration/delegate.tool';
-export { startResearchAgentTask } from './tools/orchestration/research-with-agent.tool';
-export { createMemory } from './memory/memory-config';
+export {
+	createSubAgentResourceIdPrefix,
+	SUB_AGENT_RESOURCE_PREFIX,
+} from './tools/orchestration/agent-persistence';
+
+export declare const BUILDER_AGENT_PROMPT: typeof BuildWorkflowAgentPromptMod.BUILDER_AGENT_PROMPT;
+
+export const startBuildWorkflowAgentTask: typeof BuildWorkflowAgentToolMod.startBuildWorkflowAgentTask =
+	lazyFunction(() => loadBuildWorkflowAgentTool().startBuildWorkflowAgentTask);
+
+export const startDataTableAgentTask: typeof DataTableAgentToolMod.startDataTableAgentTask =
+	lazyFunction(() => loadDataTableAgentTool().startDataTableAgentTask);
+
+export const startDetachedDelegateTask: typeof DelegateToolMod.startDetachedDelegateTask =
+	lazyFunction(() => loadDelegateTool().startDetachedDelegateTask);
+
+export const startResearchAgentTask: typeof ResearchWithAgentToolMod.startResearchAgentTask =
+	lazyFunction(() => loadResearchWithAgentTool().startResearchAgentTask);
 export {
 	iterationEntrySchema,
 	formatPreviousAttempts,
-	MastraIterationLogStorage,
-	MastraTaskStorage,
+	ThreadIterationLogStorage,
+	ThreadTaskStorage,
 	PlannedTaskStorage,
+	getThread,
 	TerminalOutcomeStorage,
 	patchThread,
 	WorkflowLoopStorage,
@@ -57,18 +206,55 @@ export type {
 	TerminalOutcome,
 	WorkflowLoopWorkItemRecord,
 } from './storage';
-export { truncateToTitle, generateTitleForRun } from './memory/title-utils';
-export { McpClientManager } from './mcp/mcp-client-manager';
-export { mapMastraChunkToEvent } from './stream/map-chunk';
+export const truncateToTitle: typeof TitleUtilsMod.truncateToTitle = lazyFunction(
+	() => loadTitleUtils().truncateToTitle,
+);
+export const generateTitleForRun: typeof TitleUtilsMod.generateTitleForRun = lazyFunction(
+	() => loadTitleUtils().generateTitleForRun,
+);
+export type McpClientManager = McpClientManagerMod.McpClientManager;
+export const McpClientManager: typeof McpClientManagerMod.McpClientManager = lazyClass(
+	() => loadMcpClientManager().McpClientManager,
+);
+export { mapAgentChunkToEvent } from './stream/map-chunk';
 export { isRecord, parseSuspension, asResumable } from './utils/stream-helpers';
-export { createEvalAgent, extractText, Tool, SONNET_MODEL, HAIKU_MODEL } from './utils/eval-agents';
+export const createEvalAgent: typeof EvalAgentsMod.createEvalAgent = lazyFunction(
+	() => loadEvalAgents().createEvalAgent,
+);
+export const extractText: typeof EvalAgentsMod.extractText = lazyFunction(
+	() => loadEvalAgents().extractText,
+);
+export type Tool = EvalAgentsMod.Tool;
+export const Tool: typeof EvalAgentsMod.Tool = lazyClass(() => loadEvalAgents().Tool);
+export declare const SONNET_MODEL: typeof EvalAgentsMod.SONNET_MODEL;
+export declare const HAIKU_MODEL: typeof EvalAgentsMod.HAIKU_MODEL;
+defineLazyExport('BUILDER_AGENT_PROMPT', () => loadBuildWorkflowAgentPrompt().BUILDER_AGENT_PROMPT);
+defineLazyExport('SONNET_MODEL', () => loadEvalAgents().SONNET_MODEL);
+defineLazyExport('HAIKU_MODEL', () => loadEvalAgents().HAIKU_MODEL);
 export type { SuspensionInfo, Resumable } from './utils/stream-helpers';
 export { buildAgentTreeFromEvents, findAgentNodeInTree } from './utils/agent-tree';
-export { registerWithMastra } from './agent/register-with-mastra';
-export { createSandbox, createWorkspace } from './workspace/create-workspace';
 export type { SandboxConfig } from './workspace/create-workspace';
-export { BuilderSandboxFactory } from './workspace/builder-sandbox-factory';
+export { createLazyRuntimeWorkspace } from './workspace/lazy-runtime-workspace';
+export type { RuntimeWorkspaceResolver } from './workspace/lazy-runtime-workspace';
+export { getWorkspaceRoot, setupSandboxWorkspace } from './workspace/sandbox-setup';
 export type { BuilderWorkspace } from './workspace/builder-sandbox-factory';
+export {
+	BuilderTemplatesService,
+	builderTemplatesOptionsFromEnv,
+} from './workspace/builder-templates-service';
+export type {
+	BuilderTemplatesBundle,
+	BuilderTemplatesServiceOptions,
+} from './workspace/builder-templates-service';
+export type BuilderSandboxFactory = BuilderSandboxFactoryMod.BuilderSandboxFactory;
+export const createSandbox: typeof CreateWorkspaceMod.createSandbox = lazyFunction(
+	() => loadCreateWorkspace().createSandbox,
+);
+export const createWorkspace: typeof CreateWorkspaceMod.createWorkspace = lazyFunction(
+	() => loadCreateWorkspace().createWorkspace,
+);
+export const BuilderSandboxFactory: typeof BuilderSandboxFactoryMod.BuilderSandboxFactory =
+	lazyClass(() => loadBuilderSandboxFactory().BuilderSandboxFactory);
 export { SnapshotManager } from './workspace/snapshot-manager';
 export type { InstanceAiEventBus, StoredEvent } from './event-bus';
 export {
@@ -89,6 +275,7 @@ export type {
 	BackgroundTaskStatusSnapshot,
 	ConfirmationData,
 	PendingConfirmation,
+	RunStateTimeoutDetails,
 	StartedRunState,
 	SuspendedRunState,
 } from './runtime/run-state-registry';
@@ -110,6 +297,16 @@ export type {
 } from './runtime/resumable-stream-executor';
 export type { WorkSummary } from './stream/work-summary-accumulator';
 export { resumeAgentRun, streamAgentRun } from './runtime/stream-runner';
+export {
+	createInstanceAiLivenessPolicyConfig,
+	INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,
+	InstanceAiLivenessPolicy,
+	type InstanceAiLivenessDecision,
+	type InstanceAiLivenessInput,
+	type InstanceAiLivenessPolicyConfig,
+	type InstanceAiLivenessSurface,
+	type InstanceAiLivenessTimeoutReason,
+} from './runtime/liveness-policy';
 export type {
 	StreamableAgent,
 	StreamRunOptions,

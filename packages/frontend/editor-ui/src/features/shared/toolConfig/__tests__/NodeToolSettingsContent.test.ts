@@ -6,6 +6,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import NodeToolSettingsContent from '../NodeToolSettingsContent.vue';
 import { NodeHelpers, type INode, type INodeTypeDescription } from 'n8n-workflow';
 import { waitFor } from '@testing-library/vue';
@@ -136,6 +137,7 @@ describe('NodeToolSettingsContent', () => {
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 	let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 	let environmentsStore: ReturnType<typeof mockedStore<typeof useEnvironmentsStore>>;
+	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -146,14 +148,17 @@ describe('NodeToolSettingsContent', () => {
 		credentialsStore = mockedStore(useCredentialsStore);
 		projectsStore = mockedStore(useProjectsStore);
 		environmentsStore = mockedStore(useEnvironmentsStore);
+		settingsStore = mockedStore(useSettingsStore);
 
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(MOCK_NODE_TYPE);
 		environmentsStore.variablesAsObject = {};
 		credentialsStore.allCredentials = [];
+		credentialsStore.setCredentials = vi.fn();
 		credentialsStore.fetchCredentialTypes = vi.fn().mockResolvedValue(undefined);
 		credentialsStore.fetchAllCredentialsForWorkflow = vi.fn().mockResolvedValue(undefined);
 		projectsStore.personalProject = { id: 'personal-project', name: 'Personal' } as never;
 		projectsStore.setCurrentProject = vi.fn();
+		projectsStore.fetchAndSetProject = vi.fn().mockResolvedValue(undefined);
 	});
 
 	it('should hide settings tab when there are no settings', () => {
@@ -273,6 +278,56 @@ describe('NodeToolSettingsContent', () => {
 		});
 	});
 
+	it('reloads personal project credentials when the shared store is already populated', async () => {
+		credentialsStore.allCredentials = [
+			{
+				id: 'team-cred',
+				name: 'Team credential',
+				type: 'testApi',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				isManaged: false,
+				data: '',
+			},
+		];
+
+		renderComponent({
+			props: { initialNode: createMockNode() },
+		});
+
+		await waitFor(() => {
+			expect(credentialsStore.setCredentials).toHaveBeenCalledWith([]);
+			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+				projectId: 'personal-project',
+			});
+		});
+	});
+
+	it('fetches workflow-scoped credentials for the provided project even when the shared store is already populated', async () => {
+		credentialsStore.allCredentials = [
+			{
+				id: 'personal-cred',
+				name: 'Personal credential',
+				type: 'testApi',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				isManaged: false,
+				data: '',
+			},
+		];
+
+		renderComponent({
+			props: { initialNode: createMockNode(), projectId: 'team-project' },
+		});
+
+		await waitFor(() => {
+			expect(credentialsStore.setCredentials).toHaveBeenCalledWith([]);
+			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+				projectId: 'team-project',
+			});
+		});
+	});
+
 	describe('makeUniqueName', () => {
 		it('should add suffix when auto-generated name conflicts with existing tools', () => {
 			// The component auto-renames based on resource/operation, producing "Create contact"
@@ -366,6 +421,28 @@ describe('NodeToolSettingsContent', () => {
 			});
 
 			vi.restoreAllMocks();
+		});
+	});
+
+	describe('customTelemetryTags', () => {
+		it('should show settings tab when isOtelEnabled is true', () => {
+			settingsStore.isOtelEnabled = true;
+
+			const { getByText } = renderComponent({
+				props: { initialNode: createMockNode() },
+			});
+
+			expect(getByText('nodeSettings.settings')).toBeTruthy();
+		});
+
+		it('should not show settings tab from otel alone when isOtelEnabled is false', () => {
+			settingsStore.isOtelEnabled = false;
+
+			const { queryByText } = renderComponent({
+				props: { initialNode: createMockNode() },
+			});
+
+			expect(queryByText('nodeSettings.settings')).toBeFalsy();
 		});
 	});
 

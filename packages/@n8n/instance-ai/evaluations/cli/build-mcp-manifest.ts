@@ -273,20 +273,8 @@ function sanitizeServerName(name: string): string {
 	return name.replace(/[^a-zA-Z0-9-]/g, '_');
 }
 
-const INSTANCE_MCP_TOOLS = [
-	'get_sdk_reference',
-	'search_nodes',
-	'get_suggested_nodes',
-	'get_node_types',
-	'validate_workflow',
-	'create_workflow_from_code',
-	'archive_workflow',
-	'update_workflow',
-] as const;
-
 function buildAllowedTools(serverName: string): readonly string[] {
-	const prefix = `mcp__${sanitizeServerName(serverName)}__`;
-	return INSTANCE_MCP_TOOLS.map((t) => `${prefix}${t}`);
+	return [`mcp__${sanitizeServerName(serverName)}`];
 }
 
 // ---------------------------------------------------------------------------
@@ -370,7 +358,11 @@ interface BuildOutcome {
 	durationMs: number;
 }
 
-const testCaseSchema = z.object({ prompt: z.string() }).passthrough();
+const testCaseSchema = z
+	.object({
+		conversation: z.array(z.object({ role: z.string(), text: z.string() })).min(1),
+	})
+	.passthrough();
 
 function tailWorkflowId(text: string): string | null {
 	const matches = [...text.matchAll(/WORKFLOW_ID=([A-Za-z0-9_-]+)/g)];
@@ -396,7 +388,7 @@ async function buildOne(
 		? `\n\nWhen calling create_workflow_from_code, pass projectId: '${args.projectId}' so the workflow is created in that n8n project.`
 		: '';
 
-	const userMessage = `${testCase.prompt}${projectInstruction}
+	const userMessage = `${testCase.conversation[0].text}${projectInstruction}
 
 ---
 After you have created the workflow with create_workflow_from_code, print a final line of the exact form:

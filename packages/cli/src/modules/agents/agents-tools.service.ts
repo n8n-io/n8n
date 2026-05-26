@@ -1,5 +1,5 @@
-import { Tool } from '@n8n/agents';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { validateNodeConfig } from '@n8n/workflow-sdk';
@@ -142,7 +142,8 @@ export class AgentsToolsService {
 			)
 			.input(searchNodesInputSchema)
 			.handler(async ({ queries }: { queries: string[] }) => {
-				const results = await this.nodeCatalogService.searchNodes(queries, {
+				await this.nodeCatalogService.initialize();
+				const { results } = await this.nodeCatalogService.searchNodes(queries, {
 					nodeFilter: isAgentToolNodeType,
 				});
 				return { results };
@@ -160,6 +161,7 @@ export class AgentsToolsService {
 			)
 			.input(getNodeTypesInputSchema)
 			.handler(async ({ nodeIds }: { nodeIds: NodeRequest[] }) => {
+				await this.nodeCatalogService.initialize();
 				const results = await this.nodeCatalogService.getNodeTypes(
 					nodeIds.map(normalizeNodeRequestForCatalog),
 				);

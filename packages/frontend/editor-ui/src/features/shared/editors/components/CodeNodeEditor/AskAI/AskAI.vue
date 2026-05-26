@@ -17,7 +17,6 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import {
 	ASK_AI_MAX_PROMPT_LENGTH,
@@ -25,10 +24,7 @@ import {
 	ASK_AI_LOADING_DURATION_MS,
 } from '@/app/constants';
 import type { AskAiRequest } from '@/features/ai/assistant/assistant.types';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const emit = defineEmits<{
 	submit: [code: string];
 	replaceCode: [code: string];
@@ -49,6 +45,7 @@ const props = withDefaults(
 const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
 const i18n = useI18n();
 const ndvStore = injectNDVStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const loadingPhraseIndex = ref(0);
 const loaderProgress = ref(0);
@@ -93,18 +90,15 @@ function getErrorMessageByStatusCode(statusCode: number, message: string | undef
 
 function getParentNodes() {
 	const activeNode = ndvStore.activeNode;
-	const { workflowId } = useWorkflowsStore();
 
-	if (!activeNode || !workflowId) return [];
+	if (!activeNode) return [];
 
-	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-
-	return workflowDocumentStore
+	return workflowDocumentStore.value
 		.getParentNodesByDepth(activeNode?.name)
 		.filter(({ name }, i, nodes) => {
 			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
 		})
-		.map((n) => workflowDocumentStore.getNodeByName(n.name))
+		.map((n) => workflowDocumentStore.value.getNodeByName(n.name))
 		.filter((n) => n !== null);
 }
 
@@ -196,7 +190,7 @@ async function onSubmit() {
 			type: 'success',
 			title: i18n.baseText('codeNodeEditor.askAi.generationCompleted'),
 		});
-		useTelemetry().trackAskAI('askAi.generationFinished', {
+		useTelemetry().trackAskAI('askAi.generationFinished', ndvStore.pushRef, {
 			prompt: prompt.value,
 			code,
 		});
@@ -210,7 +204,7 @@ async function onSubmit() {
 			),
 		});
 		stopLoading();
-		useTelemetry().trackAskAI('askAi.generationFinished', {
+		useTelemetry().trackAskAI('askAi.generationFinished', ndvStore.pushRef, {
 			prompt: prompt.value,
 			code: '',
 			hasError: true,
