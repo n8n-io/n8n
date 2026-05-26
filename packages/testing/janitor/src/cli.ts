@@ -421,48 +421,70 @@ function runDiscover(): void {
 	console.log(JSON.stringify(report, null, 2));
 }
 
-type RetryConfig = JanitorConfig['orchestration']['retry'];
+const DEFAULT_FILTER_SHARD_URL = 'https://internal.users.n8n.cloud/webhook/failed-specs';
+const DEFAULT_FILTER_SHARD_TIMEOUT_MS = 10_000;
 
-async function applyRetryFilter(shardSpecs: string[], retry: RetryConfig): Promise<string[]> {
+async function readStdinLines(): Promise<string[]> {
+	if (process.stdin.isTTY) return [];
+	let raw = '';
+	for await (const chunk of process.stdin) raw += String(chunk);
+	return raw
+		.split(/\s+/)
+		.map((s) => s.trim())
+		.filter((s) => s.length > 0);
+}
+
+async function runFilterShard(options: CliOptions): Promise<void> {
+	const candidates = await readStdinLines();
+	const emit = (specs: string[]) => {
+		for (const s of specs) console.log(s);
+	};
+
+	if (candidates.length === 0) return;
+
 	const attempt = Number(process.env.GITHUB_RUN_ATTEMPT ?? '1');
-	if (!Number.isFinite(attempt) || attempt <= 1) return shardSpecs;
-
-	const url = retry?.coordinatorUrl?.trim();
-	if (!url) return shardSpecs;
-
-	const runId = process.env.GITHUB_RUN_ID;
-	if (!runId) {
-		console.error('Retry filter: GITHUB_RUN_ID is not set, running full shard');
-		return shardSpecs;
+	if (!Number.isFinite(attempt) || attempt <= 1) {
+		emit(candidates);
+		return;
 	}
 
-	if (shardSpecs.length === 0) return shardSpecs;
+	const firstNonEmpty = (...vals: Array<string | undefined>) =>
+		vals.find((v) => typeof v === 'string' && v.trim().length > 0);
+	const url =
+		firstNonEmpty(options.url, process.env.JANITOR_FILTER_SHARD_URL) ?? DEFAULT_FILTER_SHARD_URL;
+	const runId = process.env.GITHUB_RUN_ID;
+	if (!url || !runId) {
+		console.error(
+			`filter-shard: missing ${!url ? 'webhook url' : 'GITHUB_RUN_ID'}, running full shard`,
+		);
+		emit(candidates);
+		return;
+	}
 
 	try {
 		const response = await filterToFailedSpecs({
 			url,
 			runId,
 			previousAttempt: String(attempt - 1),
-			candidates: shardSpecs,
-			timeoutMs: retry?.timeoutMs,
+			candidates,
+			timeoutMs: DEFAULT_FILTER_SHARD_TIMEOUT_MS,
 		});
-
 		if (response.fallback) {
 			console.error(
-				`Retry filter: coordinator returned fallback (${response.fallbackReason ?? 'unknown'}), running full shard`,
+				`filter-shard: fallback (${response.fallbackReason ?? 'unknown'}), running ${candidates.length}/${candidates.length} specs`,
 			);
-			return shardSpecs;
+			emit(candidates);
+			return;
 		}
-
 		console.error(
-			`Retry filter: attempt ${attempt}, running ${response.intersection.length}/${shardSpecs.length} specs that failed in attempt ${attempt - 1}`,
+			`filter-shard: attempt ${attempt}, running ${response.intersection.length}/${candidates.length} specs from previous-attempt failures`,
 		);
-		return response.intersection;
+		emit(response.intersection);
 	} catch (error) {
 		console.error(
-			`Retry filter: coordinator call failed (${(error as Error).message}), running full shard`,
+			`filter-shard: coordinator call failed (${(error as Error).message}), running full shard`,
 		);
-		return shardSpecs;
+		emit(candidates);
 	}
 }
 
@@ -548,8 +570,7 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 		}
 		const shard = result.shards[options.shardIndex];
 		if (shard) {
-			const specsToRun = await applyRetryFilter(shard.specs, config.orchestration.retry);
-			console.log(specsToRun.join('\n'));
+			console.log(shard.specs.join('\n'));
 		}
 		return;
 	}
@@ -632,6 +653,9 @@ async function main(): Promise<void> {
 			break;
 		case 'orchestrate':
 			await runOrchestrate(options);
+			break;
+		case 'filter-shard':
+			await runFilterShard(options);
 			break;
 		default:
 			runAnalyze(options);

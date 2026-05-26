@@ -115,73 +115,17 @@ test.describe('Feature', () => {
 
 ## Attempt-Aware Retry Filtering
 
-When a Playwright shard fails in CI and the user clicks **Re-run failed jobs**, GitHub re-runs the shard's full manifest by default. Janitor's per-shard entrypoint (`orchestrate --shard-index=<i>`) can shrink that to just the specs that actually failed in the previous attempt.
+When a shard fails in CI and the user clicks **Re-run failed jobs**, GitHub re-runs the full shard manifest. `janitor filter-shard` shrinks that to just the specs that failed in the previous attempt.
 
-### How it works
-
-```mermaid
-flowchart LR
-  A[Re-run failed jobs] --> B[CI invokes per-shard entrypoint]
-  B --> C{GITHUB_RUN_ATTEMPT > 1?}
-  C -->|no| D[Run full shard]
-  C -->|yes| E[POST candidates to coordinator]
-  E --> F{Response}
-  F -->|intersection<br/>fallback:false| G[Run intersection only]
-  F -->|fallback:true<br/>or network error| D
+```bash
+echo "$MATRIX_SPECS" | janitor filter-shard
 ```
 
-1. CI calls `janitor orchestrate --shards=N --shard-index=K` for each shard.
-2. When `GITHUB_RUN_ATTEMPT > 1` and `orchestration.retry.coordinatorUrl` is set, the entrypoint POSTs `{ runId, previousAttempt, candidates }` to the coordinator.
-3. The coordinator (an n8n workflow) looks up the previous attempt's Currents run, intersects the failed specs with this shard's candidates, and returns the subset.
-4. The shard runs only those specs. All failure modes (no previous run, no failures, no intersection, coordinator error, timeout) fall back to the full shard.
-
-### Configuration
-
-```js
-// janitor.config.mjs
-orchestration: {
-  retry: {
-    coordinatorUrl: process.env.JANITOR_RETRY_COORDINATOR_URL
-      ?? 'https://internal.users.n8n.cloud/webhook/failed-specs',
-    timeoutMs: 2_000, // optional, defaults to 2s
-  },
-}
-```
-
-Set `JANITOR_RETRY_COORDINATOR_URL=''` to disable filtering (e.g. fork PRs where the internal webhook isn't reachable).
-
-### Coordinator contract
-
-The coordinator is the abstraction seam — swap it later if Currents is replaced.
-
-**Request** — `POST {coordinatorUrl}`:
-
-```json
-{
-  "runId": "26450220703",
-  "previousAttempt": "1",
-  "candidates": ["tests/e2e/workflows/executions/filter.spec.ts"]
-}
-```
-
-**Response** — always `200`:
-
-```json
-{
-  "intersection": ["tests/e2e/workflows/executions/filter.spec.ts"],
-  "fallback": false,
-  "fallbackReason": null
-}
-```
-
-When `fallback: true`, the `intersection` field still holds a safe list to run (the full candidate set), so the client can trust the list unconditionally.
-
-### Required environment variables (CI)
-
-- `GITHUB_RUN_ATTEMPT` — triggers the filter when `> 1`
-- `GITHUB_RUN_ID` — used by the coordinator to locate the previous attempt's Currents run
-
-Both are set automatically by GitHub Actions.
+- Reads candidate spec paths from stdin (newline- or space-separated)
+- On `GITHUB_RUN_ATTEMPT == 1`: passes candidates through unchanged
+- On `GITHUB_RUN_ATTEMPT > 1`: POSTs `{ runId, previousAttempt, candidates }` to the coordinator webhook (default `https://internal.users.n8n.cloud/webhook/failed-specs`, override with `--url=<...>` or `JANITOR_FILTER_SHARD_URL`), prints the intersection
+- **Fails open** on any error (timeout, non-2xx, parse error, fallback response) — emits the original candidate list so a coordinator outage never breaks CI
+- Wired into `test-e2e-reusable.yml` between "Pre-pull Test Container Images" and "Run Tests"; the coordinator (an n8n workflow) holds the Currents API key server-side, so fork PRs get the same benefit without exposing secrets
 
 ## Refreshing Metrics
 

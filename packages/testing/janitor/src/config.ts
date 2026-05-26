@@ -103,20 +103,6 @@ export interface JanitorConfig {
 		maxGroupDuration: number;
 		/** Only include specs with paths starting with this prefix @default undefined (all specs) */
 		specFilter?: string;
-		/**
-		 * Retry coordinator. When set and `GITHUB_RUN_ATTEMPT > 1`, the per-shard
-		 * orchestrate entrypoint (`--shard-index`) POSTs the shard's candidate
-		 * specs to this URL and runs only the subset that failed in the previous
-		 * attempt. Network errors and non-2xx responses fall back to the full
-		 * shard manifest. Leave unset (or empty string) to disable — useful for
-		 * fork PRs where the coordinator isn't reachable.
-		 */
-		retry?: {
-			/** Coordinator webhook URL. Empty string disables filtering. */
-			coordinatorUrl?: string;
-			/** Per-request timeout in ms @default 2_000 */
-			timeoutMs?: number;
-		};
 	};
 
 	/** TCR configuration */
