@@ -797,9 +797,20 @@ describe('AgentsService', () => {
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Be helpful',
 			};
+			const publishedVersion = {
+				agentId,
+				publishedFromVersionId: versionId,
+				schema,
+				model: null,
+				provider: null,
+				credentialId: null,
+				tools: null,
+				skills: null,
+				publishedById: 'n8n-user-publisher',
+			} as unknown as AgentPublishedVersion;
 			const agent = makeAgent({
 				schema,
-				publishedVersion: makePublishedVersion({ schema, publishedById: 'n8n-user-publisher' }),
+				publishedVersion,
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
@@ -865,9 +876,20 @@ describe('AgentsService', () => {
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Be helpful',
 			};
+			const publishedVersion = {
+				agentId,
+				publishedFromVersionId: versionId,
+				schema,
+				model: null,
+				provider: null,
+				credentialId: null,
+				tools: null,
+				skills: null,
+				publishedById: 'n8n-user-publisher',
+			} as unknown as AgentPublishedVersion;
 			const agent = makeAgent({
 				schema,
-				publishedVersion: makePublishedVersion({ schema, publishedById: 'n8n-user-publisher' }),
+				publishedVersion,
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
@@ -953,9 +975,20 @@ describe('AgentsService', () => {
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Be helpful',
 			};
+			const publishedVersion = {
+				agentId,
+				publishedFromVersionId: versionId,
+				schema,
+				model: null,
+				provider: null,
+				credentialId: null,
+				tools: null,
+				skills: null,
+				publishedById: 'publisher-user',
+			} as unknown as AgentPublishedVersion;
 			const agent = makeAgent({
 				schema,
-				publishedVersion: makePublishedVersion({ schema, publishedById: 'publisher-user' }),
+				publishedVersion,
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			Container.set(CredentialsService, mock<CredentialsService>());
@@ -1501,9 +1534,20 @@ describe('AgentsService', () => {
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Be helpful',
 			};
+			const publishedVersion = {
+				agentId,
+				publishedFromVersionId: versionId,
+				schema,
+				model: null,
+				provider: null,
+				credentialId: null,
+				tools: null,
+				skills: null,
+				publishedById: n8nPublisherId,
+			} as unknown as AgentPublishedVersion;
 			const agent = makeAgent({
 				schema,
-				publishedVersion: makePublishedVersion({ schema, publishedById: n8nPublisherId }),
+				publishedVersion,
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
