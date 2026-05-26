@@ -101,4 +101,55 @@ describe('workflow package export — with credentials', () => {
 		// Secret-adjacent fields must not appear on disk under any name.
 		expect(Object.keys(parsed).sort()).toEqual(['id', 'name', 'type']);
 	});
+
+	it('dedupes a credential referenced by two workflows in a single export', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const credential = await saveCredential(
+			{
+				name: 'Shared credential',
+				type: 'httpHeaderAuth',
+				data: { name: 'X-Auth', value: 'secret' },
+			},
+			{ project, role: 'credential:owner' },
+		);
+
+		const nodeWithCred = {
+			id: 'n1',
+			name: 'HTTP',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+			credentials: {
+				httpHeaderAuth: { id: credential.id, name: credential.name },
+			},
+		};
+
+		const wfA = await createWorkflow(
+			{ name: 'Workflow A', nodes: [nodeWithCred], connections: {} },
+			project,
+		);
+		const wfB = await createWorkflow(
+			{ name: 'Workflow B', nodes: [nodeWithCred], connections: {} },
+			project,
+		);
+
+		const stream = await service.exportWorkflows({
+			user: owner,
+			workflowIds: [wfA.id, wfB.id],
+		});
+		const { manifest, entries } = await readExport(stream);
+
+		expect(manifest.credentials).toHaveLength(1);
+		expect(manifest.credentials![0].id).toBe(credential.id);
+
+		expect(manifest.requirements?.credentials).toHaveLength(1);
+		expect(manifest.requirements!.credentials![0].usedByWorkflows.sort()).toEqual(
+			[wfA.id, wfB.id].sort(),
+		);
+
+		const credentialFiles = entries.filter((e) => e.name.endsWith('/credential.json'));
+		expect(credentialFiles).toHaveLength(1);
+	});
 });
