@@ -67,52 +67,6 @@ function validateFilterValue(
 		});
 	}
 
-	issues.push(...validateCaseSensitivity(filterValue, nodeRef, paramPath, nodeName, originalName));
-
-	return issues;
-}
-
-/**
- * Warn when a filter uses caseSensitive: true on a string-equals condition
- * against a literal rightValue. Runtime input casing is rarely guaranteed,
- * so case-sensitive equality silently routes items to the wrong branch unless
- * case-sensitive matching is an explicit requirement.
- */
-function validateCaseSensitivity(
-	filterValue: Record<string, unknown>,
-	nodeRef: string,
-	paramPath: string,
-	nodeName: string,
-	originalName: string | undefined,
-): ValidationIssue[] {
-	const options = filterValue.options as Record<string, unknown> | undefined;
-	if (!options || options.caseSensitive !== true) return [];
-
-	const conditions = filterValue.conditions;
-	if (!Array.isArray(conditions)) return [];
-
-	const issues: ValidationIssue[] = [];
-	for (let i = 0; i < conditions.length; i++) {
-		const cond = conditions[i] as Record<string, unknown> | undefined;
-		if (!cond) continue;
-
-		const operator = cond.operator as Record<string, unknown> | undefined;
-		if (operator?.type !== 'string' || operator.operation !== 'equals') continue;
-
-		const rightValue = cond.rightValue;
-		if (typeof rightValue !== 'string') continue;
-		if (rightValue.startsWith('=')) continue; // expression, not a literal
-
-		issues.push({
-			code: 'FILTER_AMBIGUOUS_CASE_SENSITIVITY',
-			message: `${nodeRef} uses caseSensitive: true to match the literal "${rightValue}" in ${paramPath}.conditions[${String(i)}]. Runtime input casing is rarely guaranteed. Unless the user has explicitly said case matters, set caseSensitive: false in ${paramPath}.options — or ask them to confirm.`,
-			severity: 'warning',
-			nodeName,
-			originalName,
-			parameterPath: `${paramPath}.options.caseSensitive`,
-		});
-	}
-
 	return issues;
 }
 
