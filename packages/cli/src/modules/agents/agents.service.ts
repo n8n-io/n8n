@@ -87,7 +87,6 @@ import {
 	type ToolResolver,
 } from './json-config/from-json-config';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
-import { AgentPublishedVersionRepository } from './repositories/agent-published-version.repository';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
