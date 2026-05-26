@@ -1,12 +1,11 @@
 import type { INode, IWorkflowIssues } from 'n8n-workflow';
 
-import { BASE_MESSAGE, WorkflowHasIssuesError } from '../workflow-has-issues.error';
+import { WorkflowHasIssuesError } from '../workflow-has-issues.error';
 
 describe('WorkflowHasIssuesError', () => {
-	it('formats a single node with multiple issue types', () => {
+	it('formats a single node with multiple issues as bulleted lines', () => {
 		const issues: IWorkflowIssues = {
 			'HTTP Request': {
-				execution: true,
 				parameters: { url: ['Parameter "URL" is required.'] },
 				typeUnknown: true,
 			},
@@ -23,18 +22,26 @@ describe('WorkflowHasIssuesError', () => {
 		};
 
 		expect(new WorkflowHasIssuesError(issues, nodes).message).toBe(
-			`${BASE_MESSAGE} Issues: 'HTTP Request': Execution Error. Parameter "URL" is required. Node Type "n8n-nodes-base.httpRequest" is not known.`,
+			[
+				"The 'HTTP Request' node has issues:",
+				'- Parameter "URL" is required.',
+				'- Node Type "n8n-nodes-base.httpRequest" is not known.',
+			].join('\n'),
 		);
 	});
 
-	it('joins multiple nodes with a pipe separator', () => {
+	it('lists each node as its own bullet when multiple nodes have issues', () => {
 		const issues: IWorkflowIssues = {
 			A: { parameters: { x: ['Parameter "x" is required.'] } },
 			B: { parameters: { y: ['Parameter "y" is required.'] } },
 		};
 
 		expect(new WorkflowHasIssuesError(issues, {}).message).toBe(
-			`${BASE_MESSAGE} Issues: 'A': Parameter "x" is required. | 'B': Parameter "y" is required.`,
+			[
+				'2 nodes have issues:',
+				'- \'A\': Parameter "x" is required.',
+				'- \'B\': Parameter "y" is required.',
+			].join('\n'),
 		);
 	});
 
@@ -49,7 +56,14 @@ describe('WorkflowHasIssuesError', () => {
 		};
 
 		expect(new WorkflowHasIssuesError(issues, {}).message).toBe(
-			`${BASE_MESSAGE} Issues: 'A': Parameter "p" is required. | 'B': Parameter "p" is required. | 'C': Parameter "p" is required. | 'D': Parameter "p" is required. | (2 more)`,
+			[
+				'6 nodes have issues:',
+				'- \'A\': Parameter "p" is required.',
+				'- \'B\': Parameter "p" is required.',
+				'- \'C\': Parameter "p" is required.',
+				'- \'D\': Parameter "p" is required.',
+				'- (2 more)',
+			].join('\n'),
 		);
 	});
 });
