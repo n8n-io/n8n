@@ -60,6 +60,11 @@ declare namespace HttpRequestNode {
 	}
 }
 
+// Module-scoped so every `useNodeHelpers()` caller sees the same value.
+// The flag is written by `usePostMessageHandler` when the iframe opens an
+// execution and read by NDV panels and canvas decorations.
+const isProductionExecutionPreview = ref(false);
+
 export function useNodeHelpers() {
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
@@ -73,7 +78,6 @@ export function useNodeHelpers() {
 
 	const isInsertingNodes = ref(false);
 	const credentialsUpdated = ref(false);
-	const isProductionExecutionPreview = ref(false);
 	const pullConnActiveNodeName = ref<string | null>(null);
 
 	function isCustomApiCallSelected(nodeValues: INodeParameters): boolean {

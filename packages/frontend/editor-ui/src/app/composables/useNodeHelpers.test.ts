@@ -317,6 +317,19 @@ describe('useNodeHelpers()', () => {
 		});
 	});
 
+	describe('isProductionExecutionPreview', () => {
+		test('shares state across separate useNodeHelpers() invocations', () => {
+			const first = useNodeHelpers();
+			const second = useNodeHelpers();
+
+			first.isProductionExecutionPreview.value = true;
+
+			expect(second.isProductionExecutionPreview.value).toBe(true);
+
+			first.isProductionExecutionPreview.value = false;
+		});
+	});
+
 	describe('isCustomApiCallSelected', () => {
 		test('should return `true` when resource includes `CUSTOM_API_CALL_KEY`', () => {
 			const nodeValues = {
