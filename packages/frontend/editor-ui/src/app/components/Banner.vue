@@ -2,12 +2,15 @@
 /**
  * @TODO Move to design system
  */
-import { ref } from 'vue';
+import { computed, ref, useCssModule } from 'vue';
 
 import { ElTag } from 'element-plus';
 import { N8nButton, N8nIcon, N8nLink } from '@n8n/design-system';
+
+type Theme = 'success' | 'danger' | 'warning';
+
 interface Props {
-	theme: 'success' | 'danger' | 'warning';
+	theme: Theme;
 	message: string;
 	buttonLabel?: string;
 	buttonLoadingLabel?: string;
@@ -16,7 +19,7 @@ interface Props {
 	buttonLoading?: boolean;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
 	buttonLoading: false,
 	buttonLabel: '',
 	buttonLoadingLabel: '',
@@ -38,34 +41,32 @@ const onClick = () => {
 	expanded.value = false;
 	emit('click');
 };
+
+const $style = useCssModule();
+
+const iconClass = computed<Record<Theme, string>>(() => ({
+	success: $style.icon,
+	warning: $style.warningIcon,
+	danger: $style.dangerIcon,
+}));
+
+const messageClass = computed<Record<Theme, string>>(() => ({
+	success: $style.message,
+	warning: $style.warningMessage,
+	danger: $style.dangerMessage,
+}));
 </script>
 
 <template>
 	<ElTag :type="theme" :disable-transitions="true" :class="$style.container">
 		<N8nIcon
 			:icon="theme === 'success' ? 'circle-check' : 'triangle-alert'"
-			:class="
-				theme === 'success'
-					? $style.icon
-					: theme === 'warning'
-						? $style.warningIcon
-						: $style.dangerIcon
-			"
+			:class="iconClass[props.theme]"
 		/>
 		<div :class="$style.banner">
 			<div :class="$style.content">
 				<div>
-					<span
-						:class="
-							theme === 'success'
-								? $style.message
-								: theme === 'warning'
-									? $style.warningMessage
-									: $style.dangerMessage
-						"
-					>
-						{{ message }}&nbsp;
-					</span>
+					<span :class="messageClass[props.theme]"> {{ message }}&nbsp; </span>
 					<N8nLink v-if="details && !expanded" :bold="true" size="small" @click="expand">
 						<span :class="$style.moreDetails">More details</span>
 					</N8nLink>
