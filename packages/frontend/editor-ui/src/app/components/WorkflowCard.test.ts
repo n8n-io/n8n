@@ -562,6 +562,7 @@ describe('WorkflowCard', () => {
 				isMcpEnabled: true,
 				isMcpModuleActive: true,
 				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
 			},
 		});
 
@@ -584,6 +585,7 @@ describe('WorkflowCard', () => {
 				isMcpEnabled: true,
 				isMcpModuleActive: true,
 				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
 			},
 		});
 
@@ -605,6 +607,7 @@ describe('WorkflowCard', () => {
 				isMcpEnabled: false,
 				isMcpModuleActive: true,
 				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
 			},
 		});
 
@@ -632,6 +635,7 @@ describe('WorkflowCard', () => {
 				isMcpEnabled: true,
 				isMcpModuleActive: true,
 				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
 			},
 		});
 
@@ -655,6 +659,7 @@ describe('WorkflowCard', () => {
 				isMcpEnabled: true,
 				isMcpModuleActive: true,
 				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
 			},
 		});
 
@@ -687,6 +692,7 @@ describe('WorkflowCard', () => {
 				isMcpEnabled: false,
 				isMcpModuleActive: true,
 				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
 			},
 		});
 
@@ -728,6 +734,7 @@ describe('WorkflowCard', () => {
 				isMcpEnabled: false,
 				isMcpModuleActive: true,
 				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
 			},
 		});
 
@@ -757,6 +764,7 @@ describe('WorkflowCard', () => {
 				isMcpEnabled: false,
 				isMcpModuleActive: true,
 				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
 			},
 		});
 
@@ -784,6 +792,7 @@ describe('WorkflowCard', () => {
 				isMcpEnabled: false,
 				isMcpModuleActive: true,
 				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
 			},
 		});
 
@@ -808,6 +817,7 @@ describe('WorkflowCard', () => {
 				isMcpEnabled: true,
 				isMcpModuleActive: true,
 				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
 			},
 		});
 
@@ -829,6 +839,7 @@ describe('WorkflowCard', () => {
 				isMcpEnabled: true,
 				isMcpModuleActive: true,
 				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
 			},
 		});
 
@@ -849,6 +860,7 @@ describe('WorkflowCard', () => {
 				isMcpEnabled: false,
 				isMcpModuleActive: true,
 				canManageInstanceMcp: false,
+				isWorkflowCardMcpToggleEnabled: true,
 			},
 		});
 
@@ -880,6 +892,141 @@ describe('WorkflowCard', () => {
 		expect(queryByTestId('workflow-card-mcp-toggle')).not.toBeInTheDocument();
 	});
 
+	it('should hide the inline MCP switch when the workflow-card MCP toggle experiment is off', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: false,
+			},
+		});
+
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: false,
+			},
+		});
+
+		expect(queryByTestId('workflow-card-mcp-toggle')).not.toBeInTheDocument();
+
+		const actionsToggle = getByTestId('workflow-card-actions');
+		const toggleButton = within(actionsToggle).getByRole('button');
+		const controllingId = toggleButton.getAttribute('aria-controls');
+
+		await userEvent.click(toggleButton);
+
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(within(actions).getByTestId('action-enableMCPAccess')).toBeInTheDocument();
+	});
+
+	it('should show Remove MCP access in the menu when the experiment is off and workflow is available', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: false,
+			},
+		});
+
+		const actionsToggle = getByTestId('workflow-card-actions');
+		const toggleButton = within(actionsToggle).getByRole('button');
+		const controllingId = toggleButton.getAttribute('aria-controls');
+
+		await userEvent.click(toggleButton);
+
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(within(actions).getByTestId('action-removeMCPAccess')).toBeInTheDocument();
+	});
+
+	it('should call toggleWorkflowMcpAccess from the dropdown menu item when the experiment is off', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: false,
+			},
+		});
+
+		mcpStore.toggleWorkflowMcpAccess.mockResolvedValue({
+			updatedCount: 1,
+			skippedCount: 0,
+			failedCount: 0,
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: false,
+			},
+		});
+
+		const actionsToggle = getByTestId('workflow-card-actions');
+		const toggleButton = within(actionsToggle).getByRole('button');
+		const controllingId = toggleButton.getAttribute('aria-controls');
+
+		await userEvent.click(toggleButton);
+
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		await userEvent.click(within(actions).getByTestId('action-enableMCPAccess'));
+
+		expect(mcpStore.toggleWorkflowMcpAccess).toHaveBeenCalledWith(data.id, true);
+	});
+
+	it('should hide MCP menu items when the experiment is off and instance MCP is disabled', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: false,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: false,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: false,
+			},
+		});
+
+		const actionsToggle = getByTestId('workflow-card-actions');
+		const toggleButton = within(actionsToggle).getByRole('button');
+		const controllingId = toggleButton.getAttribute('aria-controls');
+
+		await userEvent.click(toggleButton);
+
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(within(actions).queryByTestId('action-enableMCPAccess')).not.toBeInTheDocument();
+		expect(within(actions).queryByTestId('action-removeMCPAccess')).not.toBeInTheDocument();
+	});
+
 	it('should hide MCP toggle when workflow is archived', () => {
 		const data = createWorkflow({
 			scopes: ['workflow:update'],
@@ -895,6 +1042,7 @@ describe('WorkflowCard', () => {
 				isMcpEnabled: true,
 				isMcpModuleActive: true,
 				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
 			},
 		});
 

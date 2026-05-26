@@ -61,6 +61,8 @@ import type {
 } from '@/Interface';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT } from '@/app/constants/experiments';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -144,6 +146,7 @@ const uiStore = useUIStore();
 const tagsStore = useTagsStore();
 const foldersStore = useFoldersStore();
 const favoritesStore = useFavoritesStore();
+const posthogStore = usePostHog();
 const usageStore = useUsageStore();
 const insightsStore = useInsightsStore();
 const aiStarterTemplatesStore = useAITemplatesStarterCollectionStore();
@@ -277,6 +280,10 @@ const mcpEnabled = computed(() => {
 
 const canManageInstanceMcp = computed(() =>
 	hasPermission(['rbac'], { rbac: { scope: ['mcp:manage'] } }),
+);
+
+const isWorkflowCardMcpToggleEnabled = computed(() =>
+	posthogStore.isFeatureEnabled(WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT.name),
 );
 
 const showFolders = computed(() => {
@@ -2026,6 +2033,7 @@ const onNameSubmit = async (name: string) => {
 					:is-mcp-enabled="mcpEnabled"
 					:is-mcp-module-active="mcpModuleActive"
 					:can-manage-instance-mcp="canManageInstanceMcp"
+					:is-workflow-card-mcp-toggle-enabled="isWorkflowCardMcpToggleEnabled"
 					@click:tag="onClickTag"
 					@workflow:deleted="refreshWorkflows"
 					@workflow:archived="refreshWorkflows"

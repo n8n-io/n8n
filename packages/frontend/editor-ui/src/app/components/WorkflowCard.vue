@@ -45,6 +45,8 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import WorkflowCardMcpToggle from '@/features/ai/mcpAccess/components/WorkflowCardMcpToggle.vue';
+import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
@@ -58,6 +60,8 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 	ARCHIVE: 'archive',
 	UNARCHIVE: 'unarchive',
 	MOVE_TO_FOLDER: 'moveToFolder',
+	ENABLE_MCP_ACCESS: 'enableMCPAccess',
+	REMOVE_MCP_ACCESS: 'removeMCPAccess',
 	UNPUBLISH: 'unpublish',
 	TOGGLE_FAVORITE: 'toggleFavorite',
 };
@@ -72,6 +76,7 @@ const props = withDefaults(
 		isMcpEnabled?: boolean;
 		isMcpModuleActive?: boolean;
 		canManageInstanceMcp?: boolean;
+		isWorkflowCardMcpToggleEnabled?: boolean;
 		areFoldersEnabled?: boolean;
 	}>(),
 	{
@@ -82,6 +87,7 @@ const props = withDefaults(
 		isMcpEnabled: false,
 		isMcpModuleActive: false,
 		canManageInstanceMcp: false,
+		isWorkflowCardMcpToggleEnabled: false,
 		areFoldersEnabled: false,
 	},
 );
@@ -121,6 +127,8 @@ const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
 const favoritesStore = useFavoritesStore();
+const mcpStore = useMCPStore();
+const mcp = useMcp();
 const workflowActivate = useWorkflowActivate();
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
@@ -252,6 +260,26 @@ const actions = computed(() => {
 		});
 	}
 
+	if (
+		!props.isWorkflowCardMcpToggleEnabled &&
+		props.isMcpEnabled &&
+		workflowPermissions.value.update &&
+		!props.readOnly &&
+		!props.data.isArchived
+	) {
+		if (isAvailableInMCP.value) {
+			items.push({
+				label: locale.baseText('workflows.item.disableMCPAccess'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS,
+			});
+		} else {
+			items.push({
+				label: locale.baseText('workflows.item.enableMCPAccess'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS,
+			});
+		}
+	}
+
 	return items;
 });
 const formattedCreatedAtDate = computed(() => {
@@ -266,6 +294,17 @@ const formattedCreatedAtDate = computed(() => {
 const canEditMcp = computed(
 	() => Boolean(workflowPermissions.value.update) && !props.readOnly && !props.data.isArchived,
 );
+
+// Optimistic state for the legacy 3-dot menu fallback (used when the
+// 080_workflow_card_mcp_toggle experiment is off).
+const mcpToggleStatus = ref<boolean | null>(null);
+
+const isAvailableInMCP = computed(() => {
+	if (mcpToggleStatus.value === null) {
+		return props.data.settings?.availableInMCP ?? false;
+	}
+	return mcpToggleStatus.value;
+});
 
 const isSomeoneElsesWorkflow = computed(
 	() =>
@@ -369,6 +408,12 @@ async function onAction(action: string) {
 		case WORKFLOW_LIST_ITEM_ACTIONS.UNPUBLISH:
 			await unpublishWorkflow();
 			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS:
+			await toggleMCPAccess(true);
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS:
+			await toggleMCPAccess(false);
+			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE:
 			await favoritesStore.toggleFavorite(props.data.id, 'workflow');
 			break;
@@ -406,6 +451,18 @@ async function unpublishWorkflow() {
 			eventBus: unpublishEventBus,
 		},
 	});
+}
+
+async function toggleMCPAccess(enabled: boolean) {
+	try {
+		await mcpStore.toggleWorkflowMcpAccess(props.data.id, enabled);
+		mcpToggleStatus.value = enabled;
+		if (enabled) {
+			mcp.trackMcpAccessEnabledForWorkflow(props.data.id);
+		}
+	} catch (error) {
+		toast.showError(error, locale.baseText('workflowSettings.toggleMCP.error.title'));
+	}
 }
 
 async function deleteWorkflow() {
@@ -678,6 +735,7 @@ const tags = computed(
 					}}</N8nText>
 				</div>
 				<WorkflowCardMcpToggle
+					v-if="props.isWorkflowCardMcpToggleEnabled"
 					:workflow-id="data.id"
 					:available-in-mcp="data.settings?.availableInMCP ?? false"
 					:can-edit="canEditMcp"
