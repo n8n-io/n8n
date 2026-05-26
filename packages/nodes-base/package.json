@@ -15,6 +15,7 @@
     "lint:fix": "eslint nodes credentials utils test --fix",
     "watch": "tsc-watch -p tsconfig.build.cjs.json --onCompilationComplete \"pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json\" --onSuccess \"pnpm n8n-generate-metadata\"",
     "test": "jest",
+    "test:changed": "node scripts/test-changed.mjs",
     "test:dev": "jest --watch",
     "test:integration:skip": "vitest run --config vitest.integration.config.ts"
   },
@@ -170,6 +171,7 @@
       "dist/credentials/GrafanaApi.credentials.js",
       "dist/credentials/GSuiteAdminOAuth2Api.credentials.js",
       "dist/credentials/GumroadApi.credentials.js",
+      "dist/credentials/GumroadOAuth2Api.credentials.js",
       "dist/credentials/HaloPSAApi.credentials.js",
       "dist/credentials/HarvestApi.credentials.js",
       "dist/credentials/HarvestOAuth2Api.credentials.js",
@@ -278,6 +280,7 @@
       "dist/credentials/OAuth1Api.credentials.js",
       "dist/credentials/OAuth2Api.credentials.js",
       "dist/credentials/OdooApi.credentials.js",
+      "dist/credentials/OdooApiKeyApi.credentials.js",
       "dist/credentials/OktaApi.credentials.js",
       "dist/credentials/OneSimpleApi.credentials.js",
       "dist/credentials/OnfleetApi.credentials.js",

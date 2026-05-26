@@ -569,6 +569,7 @@ export class InstanceAiService {
 			sandboxImage,
 			sandboxTimeout,
 			sandboxNamePrefix,
+			daytonaTokenRefreshSkewMs,
 		} = this.instanceAiConfig;
 		if (!sandboxEnabled) {
 			return {
@@ -593,6 +594,7 @@ export class InstanceAiService {
 				n8nVersion: N8N_VERSION || undefined,
 				timeout: sandboxTimeout,
 				namePrefix: sandboxNamePrefix || undefined,
+				refreshSkewMs: daytonaTokenRefreshSkewMs,
 			};
 		}
 
@@ -625,6 +627,7 @@ export class InstanceAiService {
 					...base,
 					daytonaApiUrl: client.getSandboxProxyBaseUrl(),
 					image: proxyConfig.image,
+					logger: this.logger,
 					getAuthToken: async () => {
 						const token = await client.getBuilderApiProxyToken(
 							{ id: user.id },
@@ -709,7 +712,7 @@ export class InstanceAiService {
 		const config = withThreadScopedSandboxIdentity(await this.resolveSandboxConfig(user), threadId);
 		if (!config.enabled) return undefined;
 
-		const sandbox = await createSandbox(config);
+		const sandbox = createSandbox(config);
 		const workspace = createWorkspace(sandbox);
 		if (!sandbox || !workspace) return undefined;
 		try {

@@ -20,7 +20,7 @@ const NEW_SCOPES = ['workflow:enableRedaction', 'workflow:disableRedaction'] as 
  *
  * Compatible with SQLite and PostgreSQL.
  */
-export class SplitRedactionScopeInCustomRoles1784000000011 implements ReversibleMigration {
+export class SplitRedactionScopeInCustomRoles1784000000012 implements ReversibleMigration {
 	async up({ escape, runQuery }: MigrationContext) {
 		const scopeTableName = escape.tableName('scope');
 		const scopeSlugColumn = escape.columnName('slug');
