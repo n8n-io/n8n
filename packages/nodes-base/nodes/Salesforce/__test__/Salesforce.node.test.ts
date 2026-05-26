@@ -4035,4 +4035,137 @@ describe('Salesforce', () => {
 			});
 		});
 	});
+
+	// Coverage for the 9 getAll call sites that previously had no test (Contact limit,
+	// CustomObject limit, Opportunity returnAll/limit, Account returnAll/limit, Task
+	// returnAll, User returnAll/limit) and end-to-end verification that the SF node's
+	// typeVersion is threaded into getQuery (NODE-5116 version-gate wiring).
+	describe('Execute Method - GetAll Query Wiring', () => {
+		const mockGetAll = (resource: string, returnAll: boolean, limit?: number, options = {}) => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+				const params: Record<string, unknown> = {
+					resource,
+					operation: 'getAll',
+					returnAll,
+					...(returnAll ? {} : { limit }),
+					options,
+					customObject: 'CustomObject__c',
+				};
+				return params[param];
+			});
+		};
+
+		it('should call getQuery for contact getAll with limit', async () => {
+			mockGetAll('contact', false, 25);
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT * FROM Contact LIMIT 25');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({}, 'Contact', false, 25, 1);
+		});
+
+		it('should call getQuery for customObject getAll with limit', async () => {
+			mockGetAll('customObject', false, 10);
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT * FROM CustomObject__c LIMIT 10');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({}, 'CustomObject__c', false, 10, 1);
+		});
+
+		it('should call getQuery for opportunity getAll with returnAll', async () => {
+			mockGetAll('opportunity', true, undefined, { fields: 'Id,Name' });
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT Id,Name FROM Opportunity');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({ fields: 'Id,Name' }, 'Opportunity', true, 0, 1);
+		});
+
+		it('should call getQuery for opportunity getAll with limit', async () => {
+			mockGetAll('opportunity', false, 5);
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT * FROM Opportunity LIMIT 5');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({}, 'Opportunity', false, 5, 1);
+		});
+
+		it('should call getQuery for account getAll with returnAll', async () => {
+			mockGetAll('account', true, undefined, { fields: 'Id,Name,Type' });
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT Id,Name,Type FROM Account');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({ fields: 'Id,Name,Type' }, 'Account', true, 0, 1);
+		});
+
+		it('should call getQuery for account getAll with limit', async () => {
+			mockGetAll('account', false, 15);
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT * FROM Account LIMIT 15');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({}, 'Account', false, 15, 1);
+		});
+
+		it('should call getQuery for task getAll with returnAll', async () => {
+			mockGetAll('task', true, undefined, { fields: 'Id,Subject' });
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT Id,Subject FROM Task');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({ fields: 'Id,Subject' }, 'Task', true, 0, 1);
+		});
+
+		it('should call getQuery for user getAll with returnAll', async () => {
+			mockGetAll('user', true, undefined, { fields: 'Id,Name,Email' });
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT Id,Name,Email FROM User');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({ fields: 'Id,Name,Email' }, 'User', true, 0, 1);
+		});
+
+		it('should call getQuery for user getAll with limit', async () => {
+			mockGetAll('user', false, 20);
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT * FROM User LIMIT 20');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({}, 'User', false, 20, 1);
+		});
+
+		it('should pass typeVersion 1.1 to getQuery when the node is on the new version', async () => {
+			// End-to-end proof that getNode().typeVersion is threaded into getQuery,
+			// so a workflow created on v1.1 actually gets the NODE-5116 fix at runtime.
+			mockNode.typeVersion = 1.1;
+			mockGetAll('lead', false, 10);
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT * FROM Lead LIMIT 10');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({}, 'Lead', false, 10, 1.1);
+		});
+	});
 });
