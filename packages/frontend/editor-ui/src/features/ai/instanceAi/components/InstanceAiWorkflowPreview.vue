@@ -1,7 +1,8 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, provide, useTemplateRef } from 'vue';
 import type { InstanceAiAgentNode, PushMessage } from '@n8n/api-types';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
+import { EditorExternalReadOnlyKey } from '@/app/constants/injectionKeys';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import {
 	createWorkflowExecutionStateId,
@@ -135,10 +136,10 @@ const WORKFLOW_EDITING_TOOLS = new Set([
 ]);
 
 function nodeIsEditingWorkflow(node: InstanceAiAgentNode, workflowId: string): boolean {
-	// Signal 1: workflow-builder sub-agent running with our workflow id
+	// Signal 1: workflow-builder sub-agent active with our workflow id
 	if (
 		node.role === 'workflow-builder' &&
-		node.status === 'running' &&
+		node.status === 'active' &&
 		node.targetResource?.type === 'workflow' &&
 		node.targetResource.id === workflowId
 	) {
@@ -166,6 +167,12 @@ const isAgentEditingThisWorkflow = computed(() => {
 	}
 	return false;
 });
+
+// Surface the signal to NodeView as an external read-only source. NodeView's
+// own isCanvasReadOnly check ORs this in alongside its existing signals
+// (permissions, archive, collab, etc.), so the canvas + chrome use their
+// native read-only rendering instead of a separate overlay.
+provide(EditorExternalReadOnlyKey, isAgentEditingThisWorkflow);
 </script>
 
 <template>
@@ -176,17 +183,6 @@ const isAgentEditingThisWorkflow = computed(() => {
 			:refresh-key="refreshKey"
 			@ready="emit('iframe-ready')"
 			@workflow-loaded="(id) => emit('workflow-loaded', id)"
-		/>
-
-		<!-- Block all interaction while the agent is actively editing this
-		     workflow. Pointer-events overlay; agent's mutations still render
-		     live underneath. The chat / AI thread (sibling of this wrapper)
-		     stays interactive so the user can still talk to the agent. -->
-		<div
-			v-if="isAgentEditingThisWorkflow"
-			:class="$style.editLock"
-			data-test-id="instance-ai-artifact-edit-lock"
-			aria-hidden="true"
 		/>
 
 		<!-- <N8nIconButton
@@ -215,13 +211,5 @@ const isAgentEditingThisWorkflow = computed(() => {
 	top: var(--spacing--xs);
 	right: var(--spacing--xs);
 	z-index: 1;
-}
-
-.editLock {
-	position: absolute;
-	inset: 0;
-	z-index: 5;
-	cursor: not-allowed;
-	background: transparent;
 }
 </style>

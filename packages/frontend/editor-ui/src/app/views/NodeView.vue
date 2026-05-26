@@ -2,6 +2,7 @@
 import {
 	computed,
 	defineAsyncComponent,
+	inject,
 	nextTick,
 	onMounted,
 	ref,
@@ -11,6 +12,7 @@ import {
 	onBeforeUnmount,
 	useTemplateRef,
 } from 'vue';
+import { EditorExternalReadOnlyKey } from '@/app/constants/injectionKeys';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
 import FocusSidebar from '@/app/components/FocusSidebar.vue';
@@ -287,6 +289,11 @@ const isReadOnlyEnvironment = computed(() => {
 });
 const isNDVV2 = computed(() => true);
 
+// Optional context-supplied read-only signal (e.g. AI artifact host locking the
+// canvas while a workflow-builder agent is mutating the workflow). Adapters
+// provide it; default `null` means no external lock.
+const externalReadOnly = inject(EditorExternalReadOnlyKey, null);
+
 const isCanvasReadOnly = computed(() => {
 	return (
 		isDemoRoute.value ||
@@ -294,7 +301,8 @@ const isCanvasReadOnly = computed(() => {
 		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
 		(workflowDocumentStore?.value?.isArchived ?? false) ||
-		(builderStore.streaming && !builderStore.isHelpStreaming)
+		(builderStore.streaming && !builderStore.isHelpStreaming) ||
+		(externalReadOnly?.value ?? false)
 	);
 });
 
