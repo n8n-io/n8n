@@ -1,15 +1,14 @@
 import type { Constructable } from '@n8n/di';
 import { Container } from '@n8n/di';
 import { Duplex } from 'stream';
-import type { DeepPartial } from 'ts-essentials';
 import { mock } from 'vitest-mock-extended';
 
 export const mockInstance = <T>(
 	constructor: Constructable<T>,
-	data: DeepPartial<T> | undefined = undefined,
+	data?: Parameters<typeof mock<T>>[0],
 ) => {
 	const instance = mock<T>(data);
-	Container.set(constructor, instance);
+	Container.set(constructor, instance as T);
 	return instance;
 };
 

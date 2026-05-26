@@ -647,7 +647,7 @@ describe('eval-mock-helpers', () => {
 
 			try {
 				await callEvalMockHandler(handler, requestOptions, node, false, 'axios');
-				fail('Expected error to be thrown');
+				expect.fail('Expected error to be thrown');
 			} catch (error: unknown) {
 				const err = error as Error & {
 					isAxiosError: boolean;
@@ -670,7 +670,7 @@ describe('eval-mock-helpers', () => {
 
 			try {
 				await callEvalMockHandler(handler, requestOptions, node, false, 'legacy');
-				fail('Expected error to be thrown');
+				expect.fail('Expected error to be thrown');
 			} catch (error: unknown) {
 				const err = error as Error & {
 					statusCode: number;
@@ -693,7 +693,7 @@ describe('eval-mock-helpers', () => {
 
 			try {
 				await callEvalMockHandler(handler, requestOptions, node);
-				fail('Expected error to be thrown');
+				expect.fail('Expected error to be thrown');
 			} catch (error: unknown) {
 				const err = error as Error & { isAxiosError: boolean };
 				expect(err.isAxiosError).toBe(true);

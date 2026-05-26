@@ -1211,7 +1211,7 @@ describe('establishExecutionContext', () => {
 	});
 
 	describe('manual execution credential context', () => {
-		let mockExecutionContextService: jest.Mocked<ExecutionContextService>;
+		let mockExecutionContextService: ReturnType<typeof mock<ExecutionContextService>>;
 
 		const buildRunDataWithManualTrigger = () =>
 			createRunExecutionData({

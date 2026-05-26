@@ -113,6 +113,7 @@ describe('getAsBuffer()', () => {
 
 describe('getAsStream()', () => {
 	it('should return a stream', async () => {
+		// @ts-expect-error - Mocking
 		mockFs.createReadStream.mockReturnValue(mockStream);
 		mockFsp.access.mockImplementation(async () => {});
 

@@ -515,7 +515,7 @@ describe('DirectoryLoader', () => {
 					1: nodeV1,
 					2: nodeV2,
 				},
-			});
+			} as unknown as Parameters<typeof mock<IVersionedNodeType>>[0]);
 
 			const result = loader.getVersionedNodeTypeAll(versionedNode);
 
@@ -559,7 +559,7 @@ describe('DirectoryLoader', () => {
 					1: nodeV1,
 					2: nodeV2,
 				},
-			});
+			} as unknown as Parameters<typeof mock<IVersionedNodeType>>[0]);
 
 			const result = loader.getCredentialsForNode(versionedNode);
 
@@ -580,7 +580,7 @@ describe('DirectoryLoader', () => {
 					1: nodeV1,
 					2: nodeV2,
 				},
-			});
+			} as unknown as Parameters<typeof mock<IVersionedNodeType>>[0]);
 
 			const result = loader.getCredentialsForNode(versionedNode);
 
@@ -641,7 +641,7 @@ describe('DirectoryLoader', () => {
 			const filePath = 'dist/Credential1.js';
 
 			const credWithAuth = createCredential('credWithAuth');
-			credWithAuth.authenticate = vi.fn();
+			credWithAuth.authenticate = vi.fn() as unknown as ICredentialType['authenticate'];
 
 			vi.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(credWithAuth);
 
@@ -880,7 +880,7 @@ describe('DirectoryLoader', () => {
 					1: nodeV1,
 					2: nodeV2,
 				},
-			});
+			} as unknown as Parameters<typeof mock<IVersionedNodeType>>[0]);
 
 			vi.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(versionedNode);
 
