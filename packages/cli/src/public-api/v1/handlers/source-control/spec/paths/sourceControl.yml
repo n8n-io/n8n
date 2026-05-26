@@ -14,12 +14,17 @@ post:
           $ref: '../schemas/pull.yml'
   responses:
     '200':
-      description: Import result
+      description: Pull result containing the list of files that were pulled from the remote repository.
       content:
         application/json:
           schema:
-            $ref: '../schemas/importResult.yml'
+            $ref: '../schemas/pullResult.yml'
     '400':
       $ref: '../../../../shared/spec/responses/badRequest.yml'
     '409':
-      $ref: '../../../../shared/spec/responses/conflict.yml'
+      description: |
+        Conflict due to uncommitted local changes or merge conflicts. The response body lists the conflicting files; retry with `force=true` to discard them.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/pullResult.yml'
