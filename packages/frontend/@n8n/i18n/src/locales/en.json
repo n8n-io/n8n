@@ -3872,7 +3872,7 @@
 	"workflowSettings.callerPolicy.options.workflowsFromAList": "Selected workflows",
 	"workflowSettings.callerPolicy.options.none": "No other workflows",
 	"workflowSettings.customTelemetryTags.displayName": "Custom telemetry tags",
-	"workflowSettings.customTelemetryTags.description": "Add custom tags to this workflow's OpenTelemetry spans. Values support expressions.",
+	"workflowSettings.customTelemetryTags.description": "Add custom tags to this workflow's OpenTelemetry spans. Values are used as plain text.",
 	"workflowSettings.customTelemetryTags.empty": "No custom tags added",
 	"workflowSettings.customTelemetryTags.placeholder": "Add tag",
 	"workflowSettings.customTelemetryTags.tag.displayName": "Tag",

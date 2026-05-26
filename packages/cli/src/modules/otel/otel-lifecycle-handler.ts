@@ -8,17 +8,14 @@ import type {
 } from '@n8n/decorators';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { createEmptyRunExecutionData } from 'n8n-workflow';
-import type { INodeExecutionData, IWorkflowBase } from 'n8n-workflow';
+import type { IWorkflowBase } from 'n8n-workflow';
 
 import { OwnershipService } from '@/services/ownership.service';
 
 import { ExecutionLevelTracer } from './execution-level-tracer';
-import type { CustomAttributeValue, CustomAttributes } from './execution-level-tracer.types';
+import type { CustomAttributes } from './execution-level-tracer.types';
 import { OtelConfig } from './otel.config';
 import { TraceContextService } from './tracing-context';
-
-const WORKFLOW_CUSTOM_TAG_EXPRESSION_NODE = '__workflow__';
 
 @Service()
 export class OtelLifecycleHandler {
@@ -163,59 +160,19 @@ export class OtelLifecycleHandler {
 		const tags = ctx.workflow.settings?.customTelemetryTags?.tag;
 		if (!tags?.length) return;
 
-		const runExecutionData = createEmptyRunExecutionData();
-		const syntheticInputData: INodeExecutionData[] = [{ json: {} }];
 		const customAttributes: CustomAttributes = {};
 
 		for (const { key, value } of tags) {
 			const trimmedKey = key.trim();
 			if (!trimmedKey) continue;
 
-			try {
-				const evaluated = ctx.workflowInstance.expression.getParameterValue(
-					value,
-					runExecutionData,
-					0,
-					0,
-					WORKFLOW_CUSTOM_TAG_EXPRESSION_NODE,
-					syntheticInputData,
-					ctx.mode,
-					{},
-					undefined,
-					false,
-					{},
-				);
-
-				if (evaluated === undefined || evaluated === null) continue;
-				if (!isPrimitiveCustomAttribute(evaluated)) {
-					this.logger.warn(
-						'customTelemetryTags expression resolved to a non-primitive value; skipping',
-						{
-							workflowId: ctx.workflow.id,
-							tagKey: trimmedKey,
-						},
-					);
-					continue;
-				}
-
-				customAttributes[trimmedKey] = evaluated;
-			} catch (error) {
-				this.logger.warn('Failed to evaluate customTelemetryTags expression', {
-					workflowId: ctx.workflow.id,
-					tagKey: trimmedKey,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			}
+			customAttributes[trimmedKey] = value;
 		}
 
 		if (Object.keys(customAttributes).length === 0) return;
 
 		return customAttributes;
 	}
-}
-
-function isPrimitiveCustomAttribute(value: unknown): value is CustomAttributeValue {
-	return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
 }
 
 export function countOutputItems(data: NodeExecuteAfterContext['taskData']['data']): number {

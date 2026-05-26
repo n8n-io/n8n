@@ -286,7 +286,7 @@ describe('WorkflowSettingsVue', () => {
 			);
 		});
 
-		it('should preserve custom telemetry tag expression values', async () => {
+		it('should preserve custom telemetry tag values that look like expressions as literals', async () => {
 			const { getByTestId, getByRole } = createComponent({ pinia });
 			await flushPromises();
 			const section = getCustomTelemetryTagsElement(getByTestId);

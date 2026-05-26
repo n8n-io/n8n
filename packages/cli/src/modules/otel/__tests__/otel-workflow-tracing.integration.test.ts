@@ -299,9 +299,11 @@ describe('Custom Telemetry Tags', () => {
 		const nodeSpan = spans.find((s) => s.name === 'node.execute')!;
 
 		expect(workflowSpan.attributes['n8n.workflow.custom.environment']).toBe('production');
-		expect(workflowSpan.attributes['n8n.workflow.custom.workflowName']).toBe(workflow.name);
-		expect(workflowSpan.attributes['n8n.workflow.custom.retryCount']).toBe(3);
-		expect(workflowSpan.attributes['n8n.workflow.custom.isCritical']).toBe(true);
+		expect(workflowSpan.attributes['n8n.workflow.custom.workflowName']).toBe(
+			'={{ $workflow.name }}',
+		);
+		expect(workflowSpan.attributes['n8n.workflow.custom.retryCount']).toBe('={{ 3 }}');
+		expect(workflowSpan.attributes['n8n.workflow.custom.isCritical']).toBe('={{ true }}');
 		expect(nodeSpan.attributes['n8n.workflow.custom.environment']).toBeUndefined();
 		expect(nodeSpan.attributes['n8n.workflow.custom.workflowName']).toBeUndefined();
 	});
