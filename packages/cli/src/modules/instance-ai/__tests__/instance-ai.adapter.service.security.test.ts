@@ -7,6 +7,15 @@ jest.mock('@n8n/instance-ai', () => ({
 		const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
 		return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 	},
+	builderTemplatesOptionsFromEnv: () => ({}),
+	BuilderTemplatesService: class {
+		async getBundle() {
+			return { files: [], indexTxt: '', version: null };
+		}
+		getVersion() {
+			return null;
+		}
+	},
 }));
 
 import { mock } from 'jest-mock-extended';
@@ -111,7 +120,7 @@ const service = new InstanceAiAdapterService(
 	workflowRunner,
 	loadNodesAndCredentials,
 	nodeTypes,
-	mock<InstanceSettings>({ staticCacheDir: '/tmp/test-cache' }),
+	mock<InstanceSettings>({ staticCacheDir: '/tmp/test-cache', n8nFolder: '/tmp/test-cache' }),
 	dataTableService,
 	dataTableRepository,
 	dynamicNodeParametersService,

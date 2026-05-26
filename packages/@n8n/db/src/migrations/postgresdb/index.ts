@@ -188,6 +188,7 @@ import { CreateAgentMemoryEntryTables1784000000009 } from '../common/17840000000
 import { RefactorAgentObservationScope1784000000010 } from '../common/1784000000010-RefactorAgentObservationScope';
 import { CreateAgentHistoryTable1784000000011 } from '../common/1784000000011-CreateAgentHistoryTable';
 import { CreateInstanceAiObservationTables1784000000012 } from '../common/1784000000012-CreateInstanceAiObservationTables';
+import { SplitRedactionScopeInCustomRoles1784000000013 } from '../common/1784000000013-SplitRedactionScopeInCustomRoles';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -381,4 +382,5 @@ export const postgresMigrations: Migration[] = [
 	RefactorAgentObservationScope1784000000010,
 	CreateAgentHistoryTable1784000000011,
 	CreateInstanceAiObservationTables1784000000012,
+	SplitRedactionScopeInCustomRoles1784000000013,
 ];
