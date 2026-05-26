@@ -72,6 +72,21 @@ describe('components/N8nToggle', () => {
 		expect(wrapper.getByRole('button')).toHaveAttribute('data-state', 'on');
 	});
 
+	it('treats null modelValue as unpressed when reset from a pressed state', async () => {
+		const wrapper = render(N8nToggle, {
+			props: { label: 'Underline', modelValue: true },
+			slots: { default: '<span>U</span>' },
+			global: { stubs: { N8nTooltip: tooltipStub, N8nIcon: true } },
+		});
+
+		const toggle = wrapper.getByRole('button');
+		expect(toggle).toHaveAttribute('data-state', 'on');
+
+		await wrapper.rerender({ modelValue: null });
+
+		expect(toggle).toHaveAttribute('data-state', 'off');
+	});
+
 	it('can be used inside N8nToggleGroup as a single-selection item', async () => {
 		const TestComponent = defineComponent({
 			components: { N8nToggleGroup, N8nToggle },

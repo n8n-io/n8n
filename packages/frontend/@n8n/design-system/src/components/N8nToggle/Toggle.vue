@@ -62,7 +62,8 @@ const classes = computed(() =>
 const uncontrolledPressed = ref(props.modelValue ?? false);
 
 const pressed = computed({
-	get: () => props.modelValue ?? uncontrolledPressed.value,
+	get: () =>
+		props.modelValue === undefined ? uncontrolledPressed.value : (props.modelValue ?? false),
 	set: (value: boolean) => {
 		if (props.modelValue === undefined) uncontrolledPressed.value = value;
 		emit('update:modelValue', value);
