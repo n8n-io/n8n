@@ -1,7 +1,5 @@
 <script lang="ts" setup>
-import { parseMessage } from '@n8n/chat-hub';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
-import type { ChatMessageContentChunk } from '@n8n/api-types';
 import { computed, inject, onBeforeUnmount, onMounted, onUpdated, ref, useCssModule } from 'vue';
 import { useThread } from '../instanceAi.store';
 
@@ -12,10 +10,6 @@ const props = defineProps<{
 const thread = useThread();
 const styles = useCssModule();
 const wrapperRef = ref<HTMLElement | null>(null);
-const openChatArtifact = inject<((title?: string) => void) | undefined>(
-	'openChatArtifact',
-	undefined,
-);
 
 /**
  * Preview openers — return true when they switched the preview tab, false
@@ -188,19 +182,10 @@ function decorateResourceNames(content: string): string {
 	return result;
 }
 
-const sources = computed<ChatMessageContentChunk[]>(() =>
-	parseMessage({ type: 'ai', content: rawContent.value }).map((source) => {
-		if (source.type === 'text' || source.type === 'with-buttons') {
-			return { ...source, content: decorateResourceNames(source.content) };
-		}
-
-		return source;
-	}),
-);
-
-function handleOpenArtifact(title: string): void {
-	openChatArtifact?.(title);
-}
+const source = computed(() => ({
+	type: 'text' as const,
+	content: decorateResourceNames(rawContent.value),
+}));
 
 /** Route patterns that map internal n8n URLs to resource types. */
 const INTERNAL_ROUTE_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
@@ -371,12 +356,7 @@ onBeforeUnmount(cleanupLinkHandlers);
 
 <template>
 	<div ref="wrapperRef">
-		<ChatMarkdownChunk
-			v-for="(source, index) in sources"
-			:key="index"
-			:source="source"
-			@open-artifact="handleOpenArtifact"
-		/>
+		<ChatMarkdownChunk :source="source" />
 	</div>
 </template>
 

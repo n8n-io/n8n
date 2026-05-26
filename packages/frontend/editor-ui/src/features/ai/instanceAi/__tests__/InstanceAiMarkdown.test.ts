@@ -49,52 +49,6 @@ describe('InstanceAiMarkdown', () => {
 		expect(result).toBe('Hello world');
 	});
 
-	it('should parse artifact commands instead of exposing raw command markup', () => {
-		const { getAllByTestId } = renderComponent({
-			props: {
-				content: `Summary first.
-<command:artifact-create>
-<title>Workflow audit</title>
-<type>md</type>
-<content># Full audit</content>
-</command:artifact-create>`,
-			},
-		});
-		const chunks = getAllByTestId('markdown-output');
-
-		expect(chunks.map((chunk) => chunk.getAttribute('data-source-type'))).toEqual([
-			'text',
-			'artifact-create',
-		]);
-		expect(chunks[0]).toHaveTextContent('Summary first.');
-		expect(chunks[1]).toHaveTextContent('Workflow audit');
-		expect(chunks.map((chunk) => chunk.textContent).join('')).not.toContain(
-			'<command:artifact-create>',
-		);
-	});
-
-	it('should only decorate parsed text chunks, not artifact command content', () => {
-		thread.resourceNameIndex = makeRegistry([
-			{ type: 'workflow', id: 'wf-1', name: 'My Workflow' },
-		]);
-
-		const { getAllByTestId } = renderComponent({
-			props: {
-				content: `See My Workflow.
-<command:artifact-create>
-<title>My Workflow audit</title>
-<type>md</type>
-<content># My Workflow</content>
-</command:artifact-create>`,
-			},
-		});
-		const chunks = getAllByTestId('markdown-output');
-
-		expect(chunks[0]).toHaveTextContent('[My Workflow](n8n-resource://workflow/wf-1)');
-		expect(chunks[1]).toHaveTextContent('My Workflow audit');
-		expect(chunks[1]).not.toHaveTextContent('n8n-resource://workflow/wf-1');
-	});
-
 	it('should replace resource name with n8n-resource link', () => {
 		const registry = makeRegistry([{ type: 'workflow', id: 'wf-1', name: 'My Workflow' }]);
 		const result = getProcessedContent('Check out My Workflow please', registry);

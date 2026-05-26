@@ -11,14 +11,6 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('Never let an empty assistant message');
 			expect(prompt).toContain('[Calling tools: ...]');
 		});
-
-		it('instructs the agent to surface generated documents as artifacts instead of sandbox paths', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toContain('Do not show sandbox or workspace file paths');
-			expect(prompt).toContain('/home/daytona/workspace');
-			expect(prompt).toContain('<command:artifact-create>');
-		});
 	});
 
 	describe('license hints', () => {

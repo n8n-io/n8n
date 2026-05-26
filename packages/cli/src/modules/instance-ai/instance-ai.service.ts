@@ -737,7 +737,7 @@ export class InstanceAiService {
 		const existing = this.sandboxes.get(threadId);
 		if (existing) {
 			if (this.isSandboxEntryExpired(existing) && !this.isSandboxInUse(threadId)) {
-				await this.destroySandbox(threadId, 'expired_on_acquire');
+				this.evictSandboxEntry(threadId, existing);
 			} else {
 				this.touchSandboxEntry(threadId, existing);
 				return existing;
@@ -828,16 +828,22 @@ export class InstanceAiService {
 		return entry;
 	}
 
-	/** Destroy and remove the shared runtime workspace for a thread. */
-	private async destroySandbox(threadId: string, reason = 'thread_cleanup'): Promise<void> {
-		const entry = this.sandboxes.get(threadId);
-		if (!entry?.sandbox) return;
+	private evictSandboxEntry(threadId: string, entry: RuntimeSandboxEntry): void {
+		if (this.sandboxes.get(threadId) !== entry) return;
 
 		this.sandboxes.delete(threadId);
 		if (entry.cleanupTimer) {
 			clearTimeout(entry.cleanupTimer);
 			entry.cleanupTimer = undefined;
 		}
+	}
+
+	/** Destroy and remove the shared runtime workspace for a thread. */
+	private async destroySandbox(threadId: string, reason = 'thread_cleanup'): Promise<void> {
+		const entry = this.sandboxes.get(threadId);
+		if (!entry?.sandbox) return;
+
+		this.evictSandboxEntry(threadId, entry);
 		try {
 			await cleanupWorkspaceProcesses(entry.workspace);
 			await entry.workspace?.destroy();
@@ -880,8 +886,8 @@ export class InstanceAiService {
 		if (this.sandboxTtlMs <= 0) return;
 		if (entry.cleanupTimer) clearTimeout(entry.cleanupTimer);
 
-		// Provider auto-stop handles remote Daytona sandboxes, but this process
-		// still needs to drop stale cache entries and local workspace handles.
+		// Provider auto-stop handles remote Daytona sandboxes. This timer only
+		// drops our in-process cache entry so the map cannot grow indefinitely.
 		const delay = Math.max(0, entry.expiresAt - Date.now());
 		entry.cleanupTimer = setTimeout(() => {
 			const current = this.sandboxes.get(threadId);
@@ -890,7 +896,7 @@ export class InstanceAiService {
 				this.touchSandboxEntry(threadId, entry);
 				return;
 			}
-			void this.destroySandbox(threadId, 'ttl_expired');
+			this.evictSandboxEntry(threadId, entry);
 		}, delay);
 		entry.cleanupTimer.unref();
 	}
