@@ -11,6 +11,7 @@ describe('Test PipedriveV2, deal => update', () => {
 		.patch('/deals/10', {
 			title: 'Updated Deal',
 			value: 7500,
+			expected_close_date: '2026-04-13',
 		})
 		.reply(200, {
 			success: true,
@@ -37,7 +38,7 @@ describe('Test PipedriveV2, deal => update', () => {
 				local_won_date: null,
 				local_lost_date: null,
 				local_close_date: null,
-				expected_close_date: null,
+				expected_close_date: '2026-04-13',
 				custom_fields: {
 					f5ed368466cf0477371c6ee076252f49a188848e: null,
 					'48233ee3e9d505bbcca8e7e05d9b8df4231021bc': null,

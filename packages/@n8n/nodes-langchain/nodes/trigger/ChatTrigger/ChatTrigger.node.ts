@@ -74,6 +74,9 @@ const respondNodesResponseMode = {
 	description: 'Send responses to the chat by using one or more Chat nodes',
 };
 
+const responseModeBuilderHint =
+	"'streaming' (preferred for Agent-backed chats): the connected Agent streams its reply to the widget directly — no extra wiring. Place logging or side-effects on a PARALLEL branch off the trigger or Agent, never inline after the Agent. 'lastNode': the last-executed node's output is sent to the widget — that node MUST emit `{ output: '<reply text>' }` (typically the Agent itself, or a Set node re-shaping data). NEVER terminate the chain with a Data Table insert, HTTP Request, or other side-effect node — their output is not a chat reply and the widget will error. 'responseNodes' / 'responseNode': requires explicit response nodes inside the flow (`@n8n/n8n-nodes-langchain.chat` for chat-hub mode, `n8n-nodes-base.respondToWebhook` for webhook mode).";
+
 const commonOptionsFields: INodeProperties[] = [
 	// CORS parameters are only valid for when chat is used in hosted or webhook mode
 	{
@@ -266,6 +269,25 @@ export class ChatTrigger extends Node {
 		 })() }}`,
 		outputs: [NodeConnectionTypes.Main],
 		builderHint: {
+			searchHint:
+				"Pair with `@n8n/n8n-nodes-langchain.agent` for chatbot workflows. Reply delivery is controlled by `options.responseMode` — `streaming` (Agent streams directly to widget) is simplest and preferred. For `lastNode` mode, the workflow's last-executed node MUST output `{ output: '<reply>' }` — typically the Agent itself or a Set node re-shaping data; ending the chain with a Data Table insert, HTTP Request, or other side-effect node will fail. Put logging or persistence on a parallel branch, not inline after the Agent.",
+			relatedNodes: [
+				{
+					nodeType: '@n8n/n8n-nodes-langchain.agent',
+					relationHint:
+						"Main reply producer; use `responseMode: 'streaming'` so the Agent streams directly to the widget.",
+				},
+				{
+					nodeType: 'n8n-nodes-base.set',
+					relationHint:
+						"Append at the end of a `responseMode: 'lastNode'` chain to re-shape the last node's output into `{ output: '<reply text>' }` when the natural last step (e.g. a Data Table insert) doesn't produce chat-shaped data.",
+				},
+				{
+					nodeType: '@n8n/n8n-nodes-langchain.chat',
+					relationHint:
+						"Required for `responseMode: 'responseNodes'`. Place inside the flow wherever you want to emit a reply chunk.",
+				},
+			],
 			inputs: {
 				ai_memory: {
 					required: true,
@@ -582,6 +604,7 @@ export class ChatTrigger extends Node {
 						options: [lastNodeResponseMode, respondToWebhookResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the webhook',
+						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					autoSaveHighlightedDataProperty,
 				],
@@ -610,6 +633,7 @@ export class ChatTrigger extends Node {
 						default: 'lastNode',
 						description: 'When and how to respond to the webhook',
 						displayOptions: { show: { '/availableInChat': [false] } },
+						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					{
 						displayName: 'Response Mode',
@@ -619,6 +643,7 @@ export class ChatTrigger extends Node {
 						default: 'streaming',
 						description: 'When and how to respond to the webhook',
 						displayOptions: { show: { '/availableInChat': [true] } },
+						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					autoSaveHighlightedDataProperty,
 				],
@@ -646,6 +671,7 @@ export class ChatTrigger extends Node {
 						default: 'lastNode',
 						description: 'When and how to respond to the chat',
 						displayOptions: { show: { '/availableInChat': [false] } },
+						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					{
 						displayName: 'Response Mode',
@@ -655,6 +681,7 @@ export class ChatTrigger extends Node {
 						default: 'streaming',
 						description: 'When and how to respond to the chat',
 						displayOptions: { show: { '/availableInChat': [true] } },
+						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					autoSaveHighlightedDataProperty,
 				],
@@ -682,6 +709,7 @@ export class ChatTrigger extends Node {
 						default: 'lastNode',
 						description: 'When and how to respond to the chat',
 						displayOptions: { show: { '/mode': ['webhook'], '/availableInChat': [false] } },
+						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					{
 						displayName: 'Response Mode',
@@ -691,6 +719,7 @@ export class ChatTrigger extends Node {
 						default: 'streaming',
 						description: 'When and how to respond to the chat',
 						displayOptions: { show: { '/mode': ['webhook'], '/availableInChat': [true] } },
+						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					{
 						displayName: 'Response Mode',
@@ -700,6 +729,7 @@ export class ChatTrigger extends Node {
 						default: 'lastNode',
 						description: 'When and how to respond to the chat',
 						displayOptions: { show: { '/mode': ['hostedChat'], '/availableInChat': [false] } },
+						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					{
 						displayName: 'Response Mode',
@@ -709,6 +739,7 @@ export class ChatTrigger extends Node {
 						default: 'streaming',
 						description: 'When and how to respond to the chat',
 						displayOptions: { show: { '/mode': ['hostedChat'], '/availableInChat': [true] } },
+						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					autoSaveHighlightedDataProperty,
 				],

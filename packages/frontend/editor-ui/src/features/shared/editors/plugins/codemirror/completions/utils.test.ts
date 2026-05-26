@@ -41,6 +41,7 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 }));
 
+const editors: EditorView[] = [];
 const editorFromString = (docWithCursor: string) => {
 	const cursorPosition = docWithCursor.indexOf('|');
 
@@ -51,11 +52,18 @@ const editorFromString = (docWithCursor: string) => {
 		selection: { anchor: cursorPosition },
 	});
 
+	const view = new EditorView({ state, doc });
+	editors.push(view);
+
 	return {
 		context: new CompletionContext(state, cursorPosition, false),
-		view: new EditorView({ state, doc }),
+		view,
 	};
 };
+
+afterEach(() => {
+	editors.splice(0).forEach((editor) => editor.destroy());
+});
 
 describe('completion utils', () => {
 	describe('expressionWithFirstItem', () => {
