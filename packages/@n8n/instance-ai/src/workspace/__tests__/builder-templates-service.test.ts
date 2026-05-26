@@ -171,6 +171,52 @@ describe('BuilderTemplatesService', () => {
 		expect(bundle.version).toBeNull();
 	});
 
+	it('does not retry a failed cold-start hydrate inside the failure cooldown', async () => {
+		const cacheDir = await makeTempDir();
+		const state = makeState();
+		state.archiveStatus = 500;
+		installMockFetch(state);
+
+		const svc = new BuilderTemplatesService(
+			makeOptions(cacheDir, { failureRetryIntervalMs: 60_000, maxAttempts: 1 }),
+		);
+		const failedBundle = await svc.getBundle();
+		state.archiveStatus = 200;
+		const skippedBundle = await svc.getBundle();
+
+		expect(failedBundle.archive).toBeNull();
+		expect(skippedBundle.archive).toBeNull();
+		expect(state.calls.archiveFetches).toBe(1);
+	});
+
+	it('retries a failed cold-start hydrate after the failure cooldown', async () => {
+		const cacheDir = await makeTempDir();
+		const state = makeState();
+		state.archiveStatus = 500;
+		installMockFetch(state);
+		const dateNow = jest.spyOn(Date, 'now');
+		dateNow.mockReturnValue(1_000);
+
+		try {
+			const svc = new BuilderTemplatesService(
+				makeOptions(cacheDir, { failureRetryIntervalMs: 100, maxAttempts: 1 }),
+			);
+			await svc.getBundle();
+			state.archiveStatus = 200;
+
+			dateNow.mockReturnValue(1_050);
+			const skippedBundle = await svc.getBundle();
+			dateNow.mockReturnValue(1_101);
+			const retriedBundle = await svc.getBundle();
+
+			expect(skippedBundle.archive).toBeNull();
+			expect(retriedBundle.archive?.equals(state.archive)).toBe(true);
+			expect(state.calls.archiveFetches).toBe(2);
+		} finally {
+			dateNow.mockRestore();
+		}
+	});
+
 	it('memoises subsequent calls and does not refetch when cache is fresh', async () => {
 		const cacheDir = await makeTempDir();
 		const state = makeState();

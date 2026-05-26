@@ -242,13 +242,13 @@ export function createTypedToolObserver(
 			if (!match) return;
 			pending.delete(event.payload.toolCallId);
 
-			const result = event.payload.result;
-			if (typeof result !== 'string') return;
+			const resultText = extractTypedToolResultText(event.payload.result);
+			if (resultText === null) return;
 
 			if (match.kind === 'read') {
-				session.observeTypedRead(match.filename, result.length);
+				session.observeTypedRead(match.filename, resultText.length);
 			} else {
-				session.observeTypedSearch(match.query, countResultLines(result));
+				session.observeTypedSearch(match.query, countResultLines(resultText));
 			}
 			return;
 		}
@@ -276,4 +276,16 @@ function matchTypedTemplateCall(
 		return { kind: 'search', query: pattern };
 	}
 	return undefined;
+}
+
+function extractTypedToolResultText(result: unknown): string | null {
+	if (typeof result === 'string') return result;
+	if (!isRecord(result)) return null;
+
+	const { content } = result;
+	return typeof content === 'string' ? content : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
 }

@@ -58,6 +58,7 @@ const DEFAULT_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_FETCH_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_RETRY_BACKOFF_BASE_MS = 1_000;
+const DEFAULT_FAILURE_RETRY_INTERVAL_MS = 5 * 60 * 1000;
 const RETRY_BACKOFF_CAP_MS = 5_000;
 const DEFAULT_CACHE_SUBDIR = 'n8n-sdk-templates';
 const ARCHIVE_FILENAME = 'templates.tar.gz';
@@ -87,6 +88,8 @@ export interface BuilderTemplatesServiceOptions {
 	maxAttempts?: number;
 	/** Base for the exponential retry backoff (capped at 5s). Default 1s. */
 	retryBackoffBaseMs?: number;
+	/** Minimum delay after a failed cold-start hydrate before trying again. Default 5m. */
+	failureRetryIntervalMs?: number;
 	/** When true, the service short-circuits to an empty bundle and never fetches. */
 	disabled?: boolean;
 	/** Optional structured logger. */
@@ -127,12 +130,14 @@ export class BuilderTemplatesService {
 	private readonly fetchTimeoutMs: number;
 	private readonly maxAttempts: number;
 	private readonly retryBackoffBaseMs: number;
+	private readonly failureRetryIntervalMs: number;
 	private readonly disabled: boolean;
 	private readonly logger?: Logger;
 
 	private state: CacheState | null = null;
 	private hydratePromise: Promise<void> | null = null;
 	private backgroundRefresh: Promise<void> | null = null;
+	private lastHydrateFailureAt: number | null = null;
 
 	constructor(opts: BuilderTemplatesServiceOptions = {}) {
 		this.cdnBase = (opts.cdnBaseUrl ?? DEFAULT_CDN_BASE_URL).replace(/\/+$/, '');
@@ -143,6 +148,7 @@ export class BuilderTemplatesService {
 		this.fetchTimeoutMs = opts.fetchTimeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS;
 		this.maxAttempts = opts.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
 		this.retryBackoffBaseMs = opts.retryBackoffBaseMs ?? DEFAULT_RETRY_BACKOFF_BASE_MS;
+		this.failureRetryIntervalMs = opts.failureRetryIntervalMs ?? DEFAULT_FAILURE_RETRY_INTERVAL_MS;
 		this.disabled = opts.disabled ?? false;
 		this.logger = opts.logger;
 	}
@@ -164,8 +170,19 @@ export class BuilderTemplatesService {
 		if (this.disabled) return EMPTY_BUNDLE;
 
 		if (!this.state) {
-			this.hydratePromise ??= this.hydrate();
+			if (!this.hydratePromise) {
+				if (this.isWithinHydrateFailureCooldown()) return EMPTY_BUNDLE;
+				this.hydratePromise = this.hydrate();
+			}
 			await this.hydratePromise;
+
+			if (this.state) {
+				this.lastHydrateFailureAt = null;
+			} else {
+				this.lastHydrateFailureAt = Date.now();
+				this.hydratePromise = null;
+				return EMPTY_BUNDLE;
+			}
 		}
 
 		const state = this.state;
@@ -178,6 +195,11 @@ export class BuilderTemplatesService {
 		}
 
 		return state.bundle;
+	}
+
+	private isWithinHydrateFailureCooldown(): boolean {
+		if (this.lastHydrateFailureAt === null) return false;
+		return Date.now() - this.lastHydrateFailureAt < this.failureRetryIntervalMs;
 	}
 
 	/**

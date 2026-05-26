@@ -1,4 +1,5 @@
 import { jsonParse } from 'n8n-workflow';
+import { gzipSync } from 'node:zlib';
 
 import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
 import type { BuilderTemplatesBundle } from '../builder-templates-service';
@@ -537,7 +538,67 @@ describe('writeCuratedExamples', () => {
 		return {} as unknown as SandboxWorkspace;
 	}
 
-	const ARCHIVE = Buffer.from('opaque-archive-bytes-v1');
+	type TarEntry = {
+		name: string;
+		content?: string;
+		typeFlag?: string;
+		linkName?: string;
+	};
+
+	function makeTarGz(entries: TarEntry[]): Buffer {
+		const blocks: Buffer[] = [];
+		for (const entry of entries) {
+			const content = Buffer.from(entry.content ?? '', 'utf-8');
+			const typeFlag = entry.typeFlag ?? '0';
+			const size = typeFlag === '0' ? content.byteLength : 0;
+			const header = Buffer.alloc(512);
+
+			header.write(entry.name, 0, 100, 'utf-8');
+			writeTarOctal(header, 100, 8, 0o644);
+			writeTarOctal(header, 108, 8, 0);
+			writeTarOctal(header, 116, 8, 0);
+			writeTarOctal(header, 124, 12, size);
+			writeTarOctal(header, 136, 12, 0);
+			header.fill(0x20, 148, 156);
+			header.write(typeFlag, 156, 1, 'ascii');
+			if (entry.linkName) header.write(entry.linkName, 157, 100, 'utf-8');
+			header.write('ustar', 257, 5, 'ascii');
+			header.write('00', 263, 2, 'ascii');
+
+			const checksum = header.reduce((sum, byte) => sum + byte, 0);
+			writeTarChecksum(header, checksum);
+			blocks.push(header);
+
+			if (size > 0) {
+				blocks.push(content);
+				const padding = (512 - (size % 512)) % 512;
+				if (padding > 0) blocks.push(Buffer.alloc(padding));
+			}
+		}
+		blocks.push(Buffer.alloc(1024));
+		return gzipSync(Buffer.concat(blocks));
+	}
+
+	function writeTarOctal(buffer: Buffer, offset: number, length: number, value: number): void {
+		const octal = value
+			.toString(8)
+			.padStart(length - 1, '0')
+			.slice(-(length - 1));
+		buffer.write(octal, offset, length - 1, 'ascii');
+		buffer[offset + length - 1] = 0;
+	}
+
+	function writeTarChecksum(buffer: Buffer, checksum: number): void {
+		const octal = checksum.toString(8).padStart(6, '0').slice(-6);
+		buffer.write(octal, 148, 6, 'ascii');
+		buffer[154] = 0;
+		buffer[155] = 0x20;
+	}
+
+	const ARCHIVE = makeTarGz([
+		{ name: 'index.txt', content: 'slack-daily-summary.ts | Daily Slack' },
+		{ name: 'slack-daily-summary.ts', content: 'export default {};' },
+	]);
 
 	it('writes the archive and runs tar on a non-local provider', async () => {
 		const { fn, fs } = loadWriteCuratedExamples();
@@ -601,6 +662,29 @@ describe('writeCuratedExamples', () => {
 			expect.stringContaining('failed to extract'),
 			expect.objectContaining({ stderr: 'tar: bad archive' }),
 		);
+	});
+
+	it.each<[string, Buffer]>([
+		['absolute path', makeTarGz([{ name: '/escape.ts', content: 'x' }])],
+		['parent traversal', makeTarGz([{ name: '../escape.ts', content: 'x' }])],
+		['nested path', makeTarGz([{ name: 'nested/template.ts', content: 'x' }])],
+		['symlink entry', makeTarGz([{ name: 'link.ts', typeFlag: '2', linkName: 'target.ts' }])],
+		['hardlink entry', makeTarGz([{ name: 'link.ts', typeFlag: '1', linkName: 'target.ts' }])],
+		['malformed gzip', Buffer.from('not-a-gzip-archive')],
+	])('rejects an archive with %s before writing it', async (_label, archive) => {
+		const { fn, fs } = loadWriteCuratedExamples();
+		const { workspace, filesystem } = makeDaytonaWorkspace();
+		const logger = { debug: jest.fn(), warn: jest.fn() };
+
+		await fn(workspace, { archive, version: '"v1"' }, logger);
+
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('rejected curated examples archive'),
+			expect.objectContaining({ archiveVersion: '"v1"' }),
+		);
+		expect(filesystem.mkdir).not.toHaveBeenCalled();
+		expect(filesystem.writeFile).not.toHaveBeenCalled();
+		expect(fs.runInSandbox).not.toHaveBeenCalled();
 	});
 
 	it('no-ops when bundle.archive is null', async () => {
