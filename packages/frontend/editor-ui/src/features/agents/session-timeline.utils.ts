@@ -39,9 +39,7 @@ export function timelineItemSearchText(
 	const parts: Array<string | undefined> = [];
 
 	parts.push(labelForKey(itemFilterKey(item)));
-	if (item.kind === 'working-memory') {
-		parts.push(labelForKey('working-memory-updated'));
-	} else if (item.kind === 'suspension') {
+	if (item.kind === 'suspension') {
 		parts.push(labelForKey('suspension-waiting'));
 	}
 
@@ -101,7 +99,6 @@ const COLOR_MAP: Record<EventKind, string> = {
 	tool: 'var(--color--success)',
 	node: 'var(--color--text)',
 	workflow: 'var(--color--primary)',
-	'working-memory': 'var(--color--foreground--shade-1)',
 	suspension: 'var(--color--warning)',
 };
 
@@ -115,7 +112,6 @@ const CHART_BLOCK_COLOR_MAP: Record<EventKind, string> = {
 	tool: 'var(--color--green-600)',
 	node: 'var(--color--neutral-600)',
 	workflow: 'var(--color--orange-600)',
-	'working-memory': 'var(--color--mint-600)',
 	suspension: 'var(--color--yellow-600)',
 };
 
@@ -203,12 +199,6 @@ interface RawTextEvent {
 	endTime?: number;
 }
 
-interface RawMemoryEvent {
-	type: 'working-memory';
-	content: string;
-	timestamp: number;
-}
-
 interface RawSuspensionEvent {
 	type: 'suspension';
 	toolName: string;
@@ -216,7 +206,7 @@ interface RawSuspensionEvent {
 	timestamp: number;
 }
 
-type RawEvent = RawToolCallEvent | RawTextEvent | RawMemoryEvent | RawSuspensionEvent;
+type RawEvent = RawToolCallEvent | RawTextEvent | RawSuspensionEvent;
 
 /**
  * Cast the loose API timeline shape (`Record<string, unknown> & { type }`)
@@ -279,13 +269,6 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					nodeTypeVersion: isNode ? event.nodeTypeVersion : undefined,
 					nodeDisplayName: isNode ? event.nodeDisplayName : undefined,
 					nodeParameters: isNode ? event.nodeParameters : undefined,
-				});
-			} else if (event.type === 'working-memory') {
-				items.push({
-					kind: 'working-memory',
-					executionId: exec.id,
-					content: event.content,
-					timestamp: event.timestamp ?? 0,
 				});
 			} else if (event.type === 'suspension') {
 				items.push({

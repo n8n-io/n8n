@@ -21,6 +21,7 @@ import {
 	type AffectedResource,
 	type CallToolResult,
 	type ConfirmResourceAccess,
+	type CreateCredentialPayload,
 	type McpTool,
 	type ResourceDecision,
 	type ToolDefinition,
@@ -31,6 +32,17 @@ import { formatErrorResult } from './tools/utils';
 
 const MAX_RECONNECT_DELAY_MS = 30_000;
 const MAX_AUTH_RETRIES = 5;
+
+/** Thrown when the gateway rejects our pairing token with 401/403. */
+export class GatewayAuthError extends Error {
+	constructor(
+		readonly status: number,
+		readonly body: string,
+	) {
+		super(`Gateway rejected token: ${status} ${body}`);
+		this.name = 'GatewayAuthError';
+	}
+}
 
 /** Tag tool definitions with a category annotation (mutates in place for efficiency). */
 function tagCategory(defs: ToolDefinition[], category: string): ToolDefinition[] {
@@ -137,7 +149,7 @@ export class GatewayClient {
 		if (this.disconnected) return;
 		this.disconnected = true;
 		this.shouldReconnect = false;
-		this.options.session.clearSessionRules();
+		this.options.session.clearSession();
 
 		const notifyServer = options.notifyServer ?? true;
 		if (notifyServer) {
@@ -301,6 +313,9 @@ export class GatewayClient {
 
 		if (!response.ok) {
 			const text = await response.text();
+			if (response.status === 401 || response.status === 403) {
+				throw new GatewayAuthError(response.status, text);
+			}
 			throw new Error(`Failed to upload capabilities: ${response.status} ${text}`);
 		}
 
@@ -439,7 +454,34 @@ export class GatewayClient {
 			typeof _confirmation === 'string' ? (_confirmation as ResourceDecision) : undefined;
 
 		const typedArgs: unknown = def.inputSchema.parse(cleanArgs);
-		const context = { dir: this.dir };
+		const session = this.options.session;
+		const instanceUrl = this.options.url;
+		const gatewayKey = this.apiKey;
+		const context = {
+			dir: this.dir,
+			secretsBuffer: {
+				capture: (k: string, f: string, v: string) => session.captureSecret(k, f, v),
+				getFields: (k: string) => session.getSecretFields(k),
+				clear: (k: string) => session.clearSecrets(k),
+			},
+			createCredential: async (payload: CreateCredentialPayload) => {
+				const url = `${instanceUrl}/rest/instance-ai/gateway/credentials`;
+				const headers = new Headers();
+				headers.set('Content-Type', 'application/json');
+				headers.set('X-Gateway-Key', gatewayKey);
+				const res = await fetch(url, {
+					method: 'POST',
+					headers,
+					body: JSON.stringify(payload),
+				});
+				if (!res.ok) {
+					const text = await res.text();
+					throw new Error(`Credential creation failed: ${res.status} ${text}`);
+				}
+				const body = (await res.json()) as { data: { credentialId: string } };
+				return { credentialId: body.data.credentialId };
+			},
+		};
 
 		const resources = await def.getAffectedResources(typedArgs, context);
 		await this.checkPermissions(resources, decision);

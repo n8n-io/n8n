@@ -1,13 +1,17 @@
 import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { computed, inject, readonly, ref } from 'vue';
+import { computed, effectScope, inject, readonly, ref, shallowReactive } from 'vue';
+import type { ComputedRef } from 'vue';
 import { createEventHook } from '@vueuse/core';
-import type { IRunData, IRunExecutionData, ITaskStartedData } from 'n8n-workflow';
+import { structuralComputed } from '@n8n/composables/structuralComputed';
+import isEqual from 'lodash/isEqual';
+import type { ExecutionStatus, IRunData, IRunExecutionData, ITaskStartedData } from 'n8n-workflow';
 import type { PushPayload } from '@n8n/api-types';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { ExecutionDataStoreKey } from '@/app/constants/injectionKeys';
 import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
+import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { CHANGE_ACTION } from './workflowDocument/types';
 import type { ChangeAction, ChangeEvent } from './workflowDocument/types';
 
@@ -66,6 +70,69 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 
 		const executedNode = computed(() => execution.value?.executedNode);
 
+		// Per-node-name execution-issues map with atomic per-name updates.
+		// Each entry is a structuralComputed in its own effectScope, so only
+		// the affected node re-evaluates on runData changes and isEqual
+		// short-circuits downstream propagation when the error array is
+		// structurally identical. Entries are added/removed by reconciling
+		// against executionRunData keys (driven by watch below).
+		// effectScopes are children of the store's setup-scope, so $dispose
+		// cascades cleanup — no explicit teardown needed.
+		const executionIssuesByNodeName = shallowReactive(new Map<string, ComputedRef<string[]>>());
+		const executionIssueScopes = new Map<string, () => void>();
+
+		function computeNodeExecutionIssues(nodeName: string): string[] {
+			const tasks = executionRunData.value?.[nodeName];
+			if (!tasks) return [];
+			const issues: string[] = [];
+			for (const task of tasks) {
+				if (task?.error) {
+					const { message, description } = task.error;
+					issues.push(sanitizeHtml(`${message}${description ? ` (${description})` : ''}`));
+				}
+			}
+			return issues;
+		}
+
+		function applyAddExecutionIssuesEntry(nodeName: string) {
+			if (executionIssueScopes.has(nodeName)) return;
+			const scope = effectScope();
+			scope.run(() => {
+				executionIssuesByNodeName.set(
+					nodeName,
+					structuralComputed(() => computeNodeExecutionIssues(nodeName), isEqual),
+				);
+			});
+			executionIssueScopes.set(nodeName, () => scope.stop());
+		}
+
+		function applyRemoveExecutionIssuesEntry(nodeName: string) {
+			executionIssueScopes.get(nodeName)?.();
+			executionIssueScopes.delete(nodeName);
+			executionIssuesByNodeName.delete(nodeName);
+		}
+
+		function applyReconcileExecutionIssuesEntries(nodeNames: string[]) {
+			const next = new Set(nodeNames);
+			for (const old of executionIssueScopes.keys()) {
+				if (!next.has(old)) applyRemoveExecutionIssuesEntry(old);
+			}
+			for (const name of nodeNames) applyAddExecutionIssuesEntry(name);
+		}
+
+		function reconcileExecutionIssuesFromRunData() {
+			const runData = executionRunData.value;
+			applyReconcileExecutionIssuesEntries(runData ? Object.keys(runData) : []);
+		}
+
+		// Subscribe to the event hook rather than watching `executionRunData` —
+		// renameExecutionDataNode mutates runData keys in place, leaving the
+		// computed's reference unchanged. The event hook fires on every
+		// mutation (including rename), so reconcile picks up key changes
+		// regardless of reference identity.
+		void onExecutionDataChange.on(reconcileExecutionIssuesFromRunData);
+		reconcileExecutionIssuesFromRunData();
+
 		function fireChange(action: ChangeAction, nodeName?: string) {
 			void onExecutionDataChange.trigger({
 				action,
@@ -78,6 +145,17 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			if (runData === null) return null;
 			if (!runData.hasOwnProperty(nodeName)) return null;
 			return runData[nodeName];
+		}
+
+		/**
+		 * Returns a shallow snapshot of the current execution as a mutable
+		 * `IExecutionResponse`. Use this when you need to build an updated
+		 * execution to pass back to `setExecution()` — mutating top-level
+		 * fields on the snapshot does not affect store state. For reactive
+		 * reads, use `execution` instead.
+		 */
+		function getExecutionSnapshot(): IExecutionResponse | null {
+			return execution.value === null ? null : { ...execution.value };
 		}
 
 		function setExecution(value: IExecutionResponse | null, opts: SetExecutionOptions = {}) {
@@ -179,6 +257,9 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			}
 
 			executionResultDataLastUpdate.value = Date.now();
+			if (execution.value) {
+				execution.value = { ...execution.value };
+			}
 			fireChange(CHANGE_ACTION.UPDATE, nodeName);
 		}
 
@@ -190,6 +271,9 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			if (tasksData?.[existingRunIndex]) {
 				tasksData.splice(existingRunIndex, 1, pushData.data);
 				executionResultDataLastUpdate.value = Date.now();
+				if (execution.value) {
+					execution.value = { ...execution.value };
+				}
 				fireChange(CHANGE_ACTION.UPDATE, pushData.nodeName);
 			}
 		}
@@ -199,6 +283,9 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			const { [nodeName]: _removed, ...remaining } = execution.value.data.resultData.runData;
 			execution.value.data.resultData.runData = remaining;
 			executionResultDataLastUpdate.value = Date.now();
+			if (execution.value) {
+				execution.value = { ...execution.value };
+			}
 			fireChange(CHANGE_ACTION.DELETE, nodeName);
 		}
 
@@ -278,7 +365,33 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 				execution.value.executedNode = newName;
 			}
 
+			if (execution.value) {
+				execution.value = { ...execution.value };
+			}
+			fireChange(CHANGE_ACTION.UPDATE);
+		}
+
+		function markAsStopped(stopData?: {
+			status: ExecutionStatus;
+			startedAt: Date;
+			stoppedAt: Date;
+		}) {
+			if (!execution.value?.data) return;
+			const runData = execution.value.data.resultData.runData;
+			for (const nodeName in runData) {
+				runData[nodeName] = runData[nodeName].filter(
+					({ executionStatus }) => executionStatus === 'success',
+				);
+			}
+			if (stopData) {
+				execution.value.status = stopData.status;
+				execution.value.startedAt = stopData.startedAt;
+				execution.value.stoppedAt = stopData.stoppedAt;
+			}
 			executionResultDataLastUpdate.value = Date.now();
+			if (execution.value) {
+				execution.value = { ...execution.value };
+			}
 			fireChange(CHANGE_ACTION.UPDATE);
 		}
 
@@ -297,9 +410,11 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			executionResultDataLastUpdate: readonly(executionResultDataLastUpdate),
 			executionRunData,
 			executedNode,
+			executionIssuesByNodeName,
 			executionStartedData: readonly(executionStartedData),
 			executionPairedItemMappings: readonly(executionPairedItemMappings),
 			getExecutionRunDataByNodeName,
+			getExecutionSnapshot,
 			// Write API
 			setExecution,
 			setExecutionRunData,
@@ -309,6 +424,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			updateNodeExecutionRunData,
 			clearNodeExecutionData,
 			renameExecutionDataNode,
+			markAsStopped,
 			resetExecutionData,
 			// Events
 			onExecutionDataChange: onExecutionDataChange.on,

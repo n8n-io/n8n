@@ -12,7 +12,7 @@ on:
         description: Version of node to use.
         required: false
         type: string
-        default: 24.14.1
+        default: 24.15.0
       collectCoverage:
         required: false
         default: false
@@ -53,7 +53,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
-          name: backend-unit
+          name: backend-unit-tests
 
       - name: Upload coverage to Codecov
         if: env.COVERAGE_ENABLED == 'true'
@@ -96,7 +96,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
-          name: backend-integration
+          name: backend-integration-tests
 
       - name: Upload coverage to Codecov
         if: env.COVERAGE_ENABLED == 'true'
@@ -112,10 +112,13 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
+      MERGE_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}
+      TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.ref }}
+          fetch-depth: 0
 
       - name: Build
         uses: ./.github/actions/setup-nodejs
@@ -123,7 +126,12 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Nodes
-        run: pnpm turbo test --filter=n8n-nodes-base --summarize
+        run: |
+          if [ -n "${MERGE_BASE:-}" ]; then
+            pnpm turbo test:changed --filter=n8n-nodes-base --affected --summarize
+          else
+            pnpm turbo test --filter=n8n-nodes-base --summarize
+          fi
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -139,7 +147,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
-          name: nodes-unit
+          name: nodes-unit-tests
 
       - name: Upload coverage to Codecov
         if: env.COVERAGE_ENABLED == 'true'
@@ -188,7 +196,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
-          name: frontend-shard-${{ matrix.shard }}
+          name: frontend-shard-${{ matrix.shard }}-tests
 
       - name: Upload coverage to Codecov
         if: env.COVERAGE_ENABLED == 'true'

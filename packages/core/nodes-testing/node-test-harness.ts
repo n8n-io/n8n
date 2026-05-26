@@ -236,6 +236,7 @@ export class NodeTestHarness {
 			currentNodeParameters: undefined,
 			parentCallbackManager: undefined,
 			ssrfBridge: undefined,
+			encryptedRunnerIdentity: undefined,
 		});
 		additionalData.credentialsHelper = credentialsHelper;
 
