@@ -17,11 +17,14 @@ const credentials: SSHCredentials = {
 };
 
 let sshClientsManager: SSHClientsManager;
-const connectSpy = vi.spyOn(Client.prototype, 'connect');
-const endSpy = vi.spyOn(Client.prototype, 'end');
+let connectSpy = vi.spyOn(Client.prototype, 'connect');
+let endSpy = vi.spyOn(Client.prototype, 'end');
 
 beforeEach(() => {
 	vi.clearAllMocks();
+
+	connectSpy = vi.spyOn(Client.prototype, 'connect');
+	endSpy = vi.spyOn(Client.prototype, 'end');
 
 	sshClientsManager = new SSHClientsManager(
 		mock({ idleTimeout }),

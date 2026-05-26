@@ -11,11 +11,11 @@ import {
 const securityConfig = mock<SecurityConfig>();
 
 describe('isWebhookHtmlSandboxingDisabled', () => {
-	beforeAll(() => {
-		vi.spyOn(Container, 'get').mockReturnValue(securityConfig);
-	});
 	afterAll(() => {
 		vi.restoreAllMocks();
+	});
+	beforeEach(() => {
+		vi.spyOn(Container, 'get').mockReturnValue(securityConfig);
 	});
 
 	it('should return false when sandboxing is enabled', () => {
@@ -30,11 +30,11 @@ describe('isWebhookHtmlSandboxingDisabled', () => {
 });
 
 describe('isFormHtmlSandboxingDisabled', () => {
-	beforeAll(() => {
-		vi.spyOn(Container, 'get').mockReturnValue(securityConfig);
-	});
 	afterAll(() => {
 		vi.restoreAllMocks();
+	});
+	beforeEach(() => {
+		vi.spyOn(Container, 'get').mockReturnValue(securityConfig);
 	});
 
 	it('should return false when sandboxing is enabled', () => {

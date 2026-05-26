@@ -93,6 +93,7 @@ const config = {
 			: {}),
 	},
 	setupFilesAfterEnv: ['jest-expect-message'],
+	restoreMocks: true,
 	collectCoverage: isCoverageEnabled,
 	coverageReporters: ['text-summary', 'lcov', 'html-spa'],
 	workerIdleMemoryLimit: '1MB',

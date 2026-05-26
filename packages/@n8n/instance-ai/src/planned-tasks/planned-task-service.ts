@@ -159,6 +159,22 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 		});
 	}
 
+	/**
+	 * Transition a graph from `awaiting_approval` → `cancelled` after the user
+	 * denies the plan outright (distinct from request-changes, which keeps the
+	 * graph in `awaiting_approval` so the agent can revise). No-op on any other
+	 * status — an active or completed graph is not retroactively cancellable
+	 * from approval flow.
+	 */
+	async denyPlan(threadId: string): Promise<PlannedTaskGraph | null> {
+		return await this.storage.update(threadId, (graph) => {
+			if (graph.status === 'awaiting_approval') {
+				return { ...graph, status: 'cancelled' };
+			}
+			return graph;
+		});
+	}
+
 	async getGraph(threadId: string): Promise<PlannedTaskGraph | null> {
 		return await this.storage.get(threadId);
 	}
