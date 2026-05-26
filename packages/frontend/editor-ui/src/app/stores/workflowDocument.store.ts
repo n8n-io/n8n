@@ -35,7 +35,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
 import type { WorkflowObjectAccessors } from '../types';
 import type { IWorkflowDb } from '@/Interface';
-import type { INode, IPinData, ProjectSharingData } from 'n8n-workflow';
+import type { INode, ProjectSharingData } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import type { Scope } from '@n8n/permissions';
@@ -170,6 +170,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			assignNodeId: (node) => nodeHelpers.assignNodeId(node),
 			syncWorkflowObject: (nodes) => workflowDocumentWorkflowObject.syncWorkflowObjectNodes(nodes),
 			unpinNodeData: (name) => workflowDocumentPinData.unpinNodeData(name),
+			workflowObject: workflowDocumentWorkflowObject.workflowObject,
 		});
 		const { onStateDirty: onConnectionsStateDirty, ...workflowDocumentConnections } =
 			useWorkflowDocumentConnections({
@@ -218,7 +219,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			const data: WorkflowData = {
 				name: workflowDocumentName.name.value,
 				nodes,
-				pinData: workflowDocumentPinData.getPinDataSnapshot() as IPinData,
+				pinData: workflowDocumentPinData.getPinDataSnapshot(),
 				connections,
 				active: workflowDocumentActive.active.value,
 				settings: workflowDocumentSettings.settings.value,
@@ -328,7 +329,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			return {
 				id: workflowId,
 				connectionsBySourceNode: workflowDocumentConnections.connectionsBySourceNode.value,
-				pinData: workflowDocumentPinData.pinData.value as IPinData,
+				pinData: workflowDocumentPinData.getPinDataSnapshot(),
 				expression: workflowDocumentExpression.getExpressionHandler(),
 				getNode: workflowDocumentNodes.getNodeByName,
 				getParentNodes: workflowDocumentGraph.getParentNodes,
@@ -353,7 +354,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				connections: workflowDocumentConnections.connectionsBySourceNode.value,
 				settings: { ...DEFAULT_SETTINGS, ...workflowDocumentSettings.settings.value },
 				tags: [...workflowDocumentTags.tags.value],
-				pinData: workflowDocumentPinData.pinData.value as IPinData,
+				pinData: workflowDocumentPinData.getPinDataSnapshot(),
 				sharedWithProjects: (workflowDocumentSharedWithProjects.sharedWithProjects.value ??
 					[]) as ProjectSharingData[],
 				homeProject: workflowDocumentHomeProject.homeProject.value ?? undefined,
@@ -369,6 +370,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		}
 
 		return {
+			documentId: id,
 			workflowId,
 			workflowVersion,
 			...workflowDocumentName,
@@ -406,6 +408,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 	})();
 }
 
+export type WorkflowDocumentStore = ReturnType<typeof useWorkflowDocumentStore>;
+
 /**
  * Disposes a workflow document store instance.
  * Call this when a workflow document is unloaded (e.g., when navigating away from NodeView).
@@ -413,7 +417,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
  * Pinia's $dispose removes the store from its registry, but not from pinia.state.
  * Remove the state entry as well so recreating this scoped store starts clean.
  */
-export function disposeWorkflowDocumentStore(store: ReturnType<typeof useWorkflowDocumentStore>) {
+export function disposeWorkflowDocumentStore(store: WorkflowDocumentStore) {
 	const pinia = getActivePinia();
 	store.$dispose();
 
@@ -429,9 +433,7 @@ export function disposeWorkflowDocumentStore(store: ReturnType<typeof useWorkflo
  * Use this in composables/stores that need to interact with the current workflow's
  * document store and avoid calling this outside a component tree.
  */
-export function injectWorkflowDocumentStore(): ShallowRef<
-	ReturnType<typeof useWorkflowDocumentStore>
-> {
+export function injectWorkflowDocumentStore(): ShallowRef<WorkflowDocumentStore> {
 	const workflowsStore = useWorkflowsStore();
 	const fallback = computed(() => {
 		// TODO: once usages outside of a component tree is eliminated,

@@ -1,16 +1,13 @@
 import type { INodeProperties, IParameterBuilderHint } from 'n8n-workflow';
 
-/**
- * Builder hint shared by every Google Sheets `columns` resourceMapper parameter
- * (append, appendOrUpdate, update). The full resourceMapper object shape is
- * non-obvious, and a bare string like `'autoMapInputData'` silently fails
- * validation. The matching `<patterns>` example lives on the node-level
- * `builderHint.extraTypeDefContent` in `Google/Sheet/GoogleSheets.node.ts`,
- * gated by `displayOptions: { show: { resource: ['sheet'], operation: [...] } }`.
- */
 export const columnsResourceMapperBuilderHint: IParameterBuilderHint = {
 	propertyHint:
-		"Pass the full resourceMapper object: { mappingMode, value, schema }. A bare string like 'autoMapInputData' fails validation.",
+		"Pass the full resourceMapper object: { mappingMode, value, schema }. A bare string like 'autoMapInputData' fails validation. `append` is plain insert \u2014 do NOT add `matchingColumns` here (that is for the `appendOrUpdate` and `update` operations).",
+};
+
+export const upsertColumnsResourceMapperBuilderHint: IParameterBuilderHint = {
+	propertyHint:
+		"Pass the full resourceMapper object: { mappingMode, value, schema, matchingColumns }. `matchingColumns` is REQUIRED for this operation \u2014 it must be a non-empty `string[]` of header names that uniquely identify the row to update; without it the node throws 'Could not get parameter' at runtime. Use the `append` operation instead if there is no key column to match on. A bare string like 'autoMapInputData' silently fails validation; always send the full resourceMapper object.",
 };
 
 export const dataLocationOnSheet: INodeProperties = {

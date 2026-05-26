@@ -10,6 +10,7 @@ import {
 	MICROSOFT_TEAMS_NODE_TYPE,
 	SLACK_NODE_TYPE,
 	TELEGRAM_NODE_TYPE,
+	POSTHOG_EVENTS_BLACKLIST,
 } from '@/app/constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -119,7 +120,9 @@ export class Telemetry {
 			},
 		});
 
-		usePostHog().capture(event, updatedProperties);
+		if (!POSTHOG_EVENTS_BLACKLIST.includes(event)) {
+			usePostHog().capture(event, updatedProperties);
+		}
 	}
 
 	page(route: RouteLocation) {

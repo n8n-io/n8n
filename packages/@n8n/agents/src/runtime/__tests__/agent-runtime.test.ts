@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { isLlmMessage } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
 import { AgentEvent } from '../../types/runtime/event';
+import type { AgentEventData } from '../../types/runtime/event';
 import type { StreamChunk } from '../../types/sdk/agent';
-import type { BuiltMemory } from '../../types/sdk/memory';
 import type { ContentToolCall, Message } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
@@ -37,6 +37,8 @@ jest.mock('ai', () => {
 	const actual = jest.requireActual<AiImport>('ai');
 	return {
 		...actual,
+		embed: jest.fn(),
+		embedMany: jest.fn(),
 		generateText: jest.fn(),
 		streamText: jest.fn(),
 		tool: jest.fn((config: unknown) => config),
@@ -51,7 +53,9 @@ jest.mock('ai', () => {
 // ---------------------------------------------------------------------------
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { generateText, streamText } = require('ai') as {
+const { embed, embedMany, generateText, streamText } = require('ai') as {
+	embed: jest.Mock;
+	embedMany: jest.Mock;
 	generateText: jest.Mock;
 	streamText: jest.Mock;
 };
@@ -561,71 +565,6 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 });
 
 // ---------------------------------------------------------------------------
-// stream() — working memory
-// ---------------------------------------------------------------------------
-
-describe('AgentRuntime.stream() — working memory', () => {
-	beforeEach(() => {
-		jest.clearAllMocks();
-	});
-
-	function makeMemory(savedWorkingMemory: string[]): BuiltMemory {
-		return {
-			getThread: jest.fn().mockResolvedValue(null),
-			saveThread: jest.fn(async (thread) => {
-				await Promise.resolve();
-				return {
-					...thread,
-					createdAt: new Date(),
-					updatedAt: new Date(),
-				};
-			}),
-			deleteThread: jest.fn(),
-			getMessages: jest.fn().mockResolvedValue([]),
-			saveMessages: jest.fn(),
-			deleteMessages: jest.fn(),
-			getWorkingMemory: jest.fn().mockResolvedValue(null),
-			saveWorkingMemory: jest.fn(async (_params, content: string) => {
-				await Promise.resolve();
-				savedWorkingMemory.push(content);
-			}),
-			describe: jest
-				.fn()
-				.mockReturnValue({ name: 'test', constructorName: 'TestMemory', connectionParams: {} }),
-		};
-	}
-
-	it('does not expose a working-memory write tool to the main agent', async () => {
-		const savedWorkingMemory: string[] = [];
-		const memory = makeMemory(savedWorkingMemory);
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'openai/gpt-4o-mini',
-			instructions: 'You are a test assistant.',
-			memory,
-			lastMessages: 5,
-			workingMemory: {
-				template: '# Thread memory\n- User facts:',
-				structured: false,
-				scope: 'thread',
-			},
-		});
-
-		streamText.mockReturnValueOnce(makeStreamSuccess('Done'));
-
-		const { stream } = await runtime.stream('remember this', {
-			persistence: { threadId: 'thread-1', resourceId: 'user-1' },
-		});
-		await collectChunks(stream);
-
-		const calls = streamText.mock.calls as Array<[Record<string, unknown>]>;
-		const callArgs = calls[0]?.[0] ?? {};
-		expect(callArgs.tools ?? {}).not.toHaveProperty('update_working_memory');
-		expect(savedWorkingMemory).toEqual([]);
-	});
-});
-
-// ---------------------------------------------------------------------------
 // resume() — graceful error contract
 // ---------------------------------------------------------------------------
 
@@ -759,6 +698,205 @@ function makeGenerateWithToolCalls(
 		})),
 	};
 }
+
+describe('AgentRuntime — deferred tool loading', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	it('searches and loads deferred tools into the next generate iteration', async () => {
+		const coreTool = makeMockTool('core_tool', async () => await Promise.resolve({ ok: true }));
+		const deferredTool = makeMockTool(
+			'deferred_capability',
+			async () => await Promise.resolve({ ok: true }),
+		);
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [coreTool],
+			deferredTools: [deferredTool],
+		});
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{
+						toolCallId: 'tc-search',
+						toolName: 'search_tools',
+						args: { query: 'deferred capability' },
+					},
+				]),
+			)
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{
+						toolCallId: 'tc-load',
+						toolName: 'load_tool',
+						args: { toolName: 'deferred_capability' },
+					},
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('ready'));
+
+		const result = await runtime.generate('need the deferred capability');
+
+		expect(generateText).toHaveBeenCalledTimes(3);
+
+		const searchCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'search_tools');
+		expect(searchCall?.output).toEqual({
+			results: [
+				{
+					name: 'deferred_capability',
+					description: 'Mock tool deferred_capability',
+					loaded: false,
+				},
+			],
+		});
+
+		const loadCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'load_tool');
+		expect(loadCall?.output).toEqual({
+			status: 'loaded',
+			toolName: 'deferred_capability',
+			tool: {
+				name: 'deferred_capability',
+				description: 'Mock tool deferred_capability',
+				loaded: true,
+			},
+			message: 'Tool "deferred_capability" is loaded and will be available on the next model turn.',
+		});
+
+		const generateTextCalls = generateText.mock.calls as Array<
+			[{ tools: Record<string, unknown> }]
+		>;
+		const firstCall = generateTextCalls[0][0];
+		const firstTools = Object.keys(firstCall.tools);
+		expect(firstTools).toEqual(expect.arrayContaining(['core_tool', 'search_tools', 'load_tool']));
+		expect(firstTools).not.toContain('deferred_capability');
+
+		const secondTools = Object.keys(generateTextCalls[1][0].tools);
+		expect(secondTools).toEqual(expect.arrayContaining(['core_tool', 'search_tools', 'load_tool']));
+		expect(secondTools).not.toContain('deferred_capability');
+
+		const thirdTools = Object.keys(generateTextCalls[2][0].tools);
+		expect(thirdTools).toEqual(
+			expect.arrayContaining(['core_tool', 'search_tools', 'load_tool', 'deferred_capability']),
+		);
+	});
+
+	it('does not leak loaded deferred tools into the next generate run', async () => {
+		const coreTool = makeMockTool('core_tool', async () => await Promise.resolve({ ok: true }));
+		const deferredTool = makeMockTool(
+			'deferred_capability',
+			async () => await Promise.resolve({ ok: true }),
+		);
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [coreTool],
+			deferredTools: [deferredTool],
+		});
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{
+						toolCallId: 'tc-load',
+						toolName: 'load_tool',
+						args: { toolName: 'deferred_capability' },
+					},
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('first done'));
+
+		await runtime.generate('load the deferred capability');
+
+		generateText.mockClear();
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('second done'));
+
+		await runtime.generate('start a fresh run');
+
+		const generateTextCalls = generateText.mock.calls as Array<
+			[{ tools: Record<string, unknown> }]
+		>;
+		const freshRunTools = Object.keys(generateTextCalls[0][0].tools);
+		expect(freshRunTools).toEqual(
+			expect.arrayContaining(['core_tool', 'search_tools', 'load_tool']),
+		);
+		expect(freshRunTools).not.toContain('deferred_capability');
+	});
+
+	it('resumes a suspended deferred tool after it has been loaded', async () => {
+		const deferredTool = makeSuspendingTool('deferred_approval', async (input, ctx) => {
+			if (!ctx.resumeData) {
+				return await ctx.suspend({ reason: 'approve deferred action?' });
+			}
+
+			const resumeData = ctx.resumeData as { approved: boolean };
+			return {
+				approved: resumeData.approved,
+				value: (input as { value?: string }).value,
+			};
+		});
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			deferredTools: [deferredTool],
+			checkpointStorage: 'memory',
+		});
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{
+						toolCallId: 'tc-load',
+						toolName: 'load_tool',
+						args: { toolName: 'deferred_approval' },
+					},
+				]),
+			)
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{
+						toolCallId: 'tc-deferred',
+						toolName: 'deferred_approval',
+						args: { value: 'needs approval' },
+					},
+				]),
+			);
+
+		const firstResult = await runtime.generate('load and run the deferred approval tool');
+
+		expect(firstResult.finishReason).toBe('tool-calls');
+		expect(firstResult.pendingSuspend).toHaveLength(1);
+		expect(firstResult.pendingSuspend![0].toolName).toBe('deferred_approval');
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('approved'));
+
+		const resumeResult = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{
+				runId: firstResult.pendingSuspend![0].runId,
+				toolCallId: firstResult.pendingSuspend![0].toolCallId,
+			},
+		);
+
+		expect(resumeResult.finishReason).toBe('stop');
+		expect(resumeResult.toolCalls).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					tool: 'deferred_approval',
+					output: { approved: true, value: 'needs approval' },
+				}),
+			]),
+		);
+	});
+});
 
 describe('AgentRuntime — concurrent tool execution', () => {
 	beforeEach(() => {
@@ -2387,6 +2525,452 @@ describe('instruction providerOptions', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Observation log background jobs
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — observation log jobs', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('schedules observation after a persisted stream turn', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('Remembered response'));
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
+
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				reflectorThresholdTokens: 10_000,
+				observationLogTailLimit: 20,
+				observe: async () =>
+					await Promise.resolve('* CRITICAL (14:30) User needs observation memory wired.'),
+				reflect: async () => await Promise.resolve('{"drop":[],"merge":[]}'),
+			},
+		});
+
+		const result = await runtime.stream('Please remember this.', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await collectChunks(result.stream);
+		await runtime.dispose();
+
+		const observations = await memory.getActiveObservationLog({
+			observationScopeId: 'thread-1',
+		});
+		expect(observations).toMatchObject([
+			{
+				marker: 'critical',
+				text: 'User needs observation memory wired.',
+				parentId: null,
+			},
+		]);
+		const cursor = await memory.getCursor('thread-1');
+		expect(typeof cursor?.lastObservedMessageId).toBe('string');
+	});
+
+	it('schedules observation after a persisted generate turn', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Remembered response'));
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
+
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				reflectorThresholdTokens: 10_000,
+				observationLogTailLimit: 20,
+				observe: async () =>
+					await Promise.resolve('* IMPORTANT (14:30) User asked for generate observation memory.'),
+				reflect: async () => await Promise.resolve('{"drop":[],"merge":[]}'),
+			},
+		});
+
+		await runtime.generate('Please remember this.', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+
+		const observations = await memory.getActiveObservationLog({
+			observationScopeId: 'thread-1',
+		});
+		expect(observations).toMatchObject([
+			{
+				marker: 'important',
+				text: 'User asked for generate observation memory.',
+			},
+		]);
+	});
+
+	it('indexes episodic memory after observation jobs complete', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Remembered response'));
+		embed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } });
+		embedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 1 } });
+		const memory = new InMemoryMemory();
+		const fakeEmbedder = { specificationVersion: 'v2' } as never;
+		const observationLockSpy = jest.spyOn(memory, 'acquireObservationLogTaskLock');
+		const episodicLockSpy = jest.spyOn(memory.episodic.taskLock!, 'acquire');
+
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				observationLogTailLimit: 20,
+				observe: async () =>
+					await Promise.resolve('* CRITICAL (14:30) User chose Postgres for memory storage.'),
+			},
+			episodicMemory: {
+				embedder: fakeEmbedder,
+				extract: async ({ observations }) =>
+					await Promise.resolve({
+						entries: [
+							{
+								content: 'User chose Postgres for memory storage.',
+								sources: [
+									{
+										observationId: observations[0].id,
+										evidence: 'User chose Postgres',
+									},
+								],
+							},
+						],
+					}),
+			},
+		});
+
+		await runtime.generate('Please remember the Postgres decision.', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+
+		const entries = await memory.episodic.searchEntries(
+			{ resourceId: 'resource-1' },
+			'Postgres storage',
+			{ queryEmbedding: [1, 0] },
+		);
+		expect(entries).toHaveLength(1);
+		expect(entries[0].content).toBe('User chose Postgres for memory storage.');
+		const cursor = await memory.episodic.getCursor({
+			observationScopeId: 'thread-1',
+		});
+		expect(typeof cursor?.lastIndexedObservationId).toBe('string');
+		const firstLockCall = episodicLockSpy.mock.calls.at(0);
+		if (!firstLockCall) throw new Error('Expected episodic memory lock acquisition');
+		const [lockedResourceId, lockOptions] = firstLockCall;
+		expect(lockedResourceId).toBe('resource-1');
+		expect(typeof lockOptions.holderId).toBe('string');
+		expect(typeof lockOptions.ttlMs).toBe('number');
+		const observationLockTaskKinds = observationLockSpy.mock.calls.map((call) => String(call[1]));
+		expect(observationLockTaskKinds).not.toContain('episodic-indexer');
+	});
+
+	it('skips episodic indexing when the episodic task lock is held', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
+		const memory = new InMemoryMemory();
+		const observationScope = {
+			observationScopeId: 'thread-1',
+		};
+		const [observation] = await memory.appendObservationLogEntries([
+			{
+				...observationScope,
+				marker: 'critical',
+				text: 'User chose Postgres for memory storage.',
+				createdAt: new Date('2026-05-20T12:00:00Z'),
+			},
+		]);
+		const extract = jest.fn(async () => {
+			await Promise.resolve();
+
+			return {
+				entries: [
+					{
+						content: 'User chose Postgres for memory storage.',
+						sources: [{ observationId: observation.id, evidence: 'User chose Postgres' }],
+					},
+				],
+			};
+		});
+		jest.spyOn(memory.episodic.taskLock!, 'acquire').mockResolvedValue(null);
+
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			episodicMemory: {
+				embedder: { specificationVersion: 'v2' } as never,
+				extract,
+			},
+		});
+
+		await runtime.generate('Please remember this.', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+
+		expect(extract).not.toHaveBeenCalled();
+		await expect(memory.episodic.getCursor(observationScope)).resolves.toBeNull();
+	});
+
+	it('does not inject episodic memory and exposes recall_memory for explicit recall', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Scoped response'));
+		const memory = new InMemoryMemory();
+		const fakeEmbedder = { specificationVersion: 'v2' } as never;
+		await memory.episodic.saveEntryWithSources(
+			{
+				resourceId: 'resource-1',
+				content: 'Earlier session: user chose Postgres for memory storage.',
+				embedding: [1, 0],
+			},
+			[
+				{
+					observationId: 'obs-resource-1',
+					threadId: 'thread-resource-1',
+					evidenceText: 'user chose Postgres',
+				},
+			],
+		);
+		await memory.episodic.saveEntryWithSources(
+			{
+				resourceId: 'resource-2',
+				content: 'Earlier session: user chose SQLite for memory storage.',
+				embedding: [1, 0],
+			},
+			[
+				{
+					observationId: 'obs-resource-2',
+					threadId: 'thread-resource-2',
+					evidenceText: 'user chose SQLite',
+				},
+			],
+		);
+
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			episodicMemory: { embedder: fakeEmbedder },
+		});
+
+		await runtime.generate('What storage did we choose?', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+
+		const callArgs = (generateText.mock.calls[0] as [unknown])[0] as {
+			messages: Array<{ content: string }>;
+			tools: Record<string, unknown>;
+		};
+		const systemPrompt = callArgs.messages[0]?.content ?? '';
+		expect(systemPrompt).not.toContain('<episodic_memory>');
+		expect(systemPrompt).not.toContain('Postgres');
+		expect(systemPrompt).not.toContain('SQLite');
+		expect(callArgs.tools).toHaveProperty('recall_memory');
+		expect(embed).not.toHaveBeenCalled();
+	});
+
+	it('does not schedule observation jobs without policy callbacks', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
+
+		const runtime = new AgentRuntime({
+			name: 'plain-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				reflectorThresholdTokens: 10_000,
+				observationLogTailLimit: 20,
+			},
+		});
+
+		await runtime.generate('Please remember this.', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+
+		expect(
+			await memory.getActiveObservationLog({
+				observationScopeId: 'thread-1',
+			}),
+		).toEqual([]);
+		expect(await memory.getCursor('thread-1')).toBeNull();
+	});
+
+	it('keeps history resource-filtered while observation-log memory is thread-local', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Remembered response'));
+		const memory = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				reflectorThresholdTokens: 10_000,
+				observationLogTailLimit: 20,
+				observe: async ({ transcript }) =>
+					await Promise.resolve(
+						transcript.includes('resource-one')
+							? '* CRITICAL (14:30) Resource one memory.'
+							: '* CRITICAL (14:30) Resource two memory.',
+					),
+				reflect: async () => await Promise.resolve('{"drop":[],"merge":[]}'),
+			},
+		});
+
+		await runtime.generate('remember resource-one preference', {
+			persistence: { threadId: 'shared-thread', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+		await runtime.generate('remember resource-two preference', {
+			persistence: { threadId: 'shared-thread', resourceId: 'resource-2' },
+		});
+		await runtime.dispose();
+
+		generateText.mockClear();
+		generateText.mockResolvedValue(makeGenerateSuccess('Scoped response'));
+
+		await runtime.generate('what is my memory?', {
+			persistence: { threadId: 'shared-thread', resourceId: 'resource-2' },
+		});
+
+		const generateTextMock = generateText as jest.MockedFunction<
+			(input: {
+				messages: Array<{
+					role: string;
+					content: unknown;
+				}>;
+			}) => unknown
+		>;
+		const [{ messages }] = generateTextMock.mock.calls[0];
+		const systemPrompt = messages[0].content;
+		expect(systemPrompt).toContain('Resource one memory.');
+		expect(systemPrompt).toContain('Resource two memory.');
+		expect(JSON.stringify(messages)).toContain('remember resource-two preference');
+		expect(JSON.stringify(messages)).not.toContain('remember resource-one preference');
+
+		await runtime.dispose();
+	});
+
+	it('emits an error event when an observer background task fails', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
+		const memory = new InMemoryMemory();
+		const bus = new AgentEventBus();
+		const error = new Error('observer failed');
+		const errorEvents: AgentEventData[] = [];
+		bus.on(AgentEvent.Error, (event) => errorEvents.push(event));
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			eventBus: bus,
+			memory,
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				reflectorThresholdTokens: 10_000,
+				observationLogTailLimit: 20,
+				observe: async () => await Promise.reject(error),
+				reflect: async () => await Promise.resolve('{"drop":[],"merge":[]}'),
+			},
+		});
+
+		await runtime.generate('please remember this', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+
+		expect(errorEvents).toEqual(
+			expect.arrayContaining([expect.objectContaining({ error, source: 'observer' })]),
+		);
+	});
+
+	it('emits an error event when a reflector background task fails', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
+		const memory = new InMemoryMemory();
+		const bus = new AgentEventBus();
+		const error = new Error('reflector failed');
+		const errorEvents: AgentEventData[] = [];
+		bus.on(AgentEvent.Error, (event) => errorEvents.push(event));
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			eventBus: bus,
+			memory,
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				reflectorThresholdTokens: 1,
+				observationLogTailLimit: 20,
+				observe: async () =>
+					await Promise.resolve(`* CRITICAL (14:30) ${'Large observation. '.repeat(20)}`),
+				reflect: async () => await Promise.reject(error),
+			},
+		});
+
+		await runtime.generate('please remember this', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+
+		expect(errorEvents).toEqual(
+			expect.arrayContaining([expect.objectContaining({ error, source: 'reflector' })]),
+		);
+	});
+
+	it('emits one error event when an episodic indexer background task fails', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
+		const memory = new InMemoryMemory();
+		const bus = new AgentEventBus();
+		const error = new Error('episodic extraction failed');
+		const errorEvents: AgentEventData[] = [];
+		bus.on(AgentEvent.Error, (event) => errorEvents.push(event));
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			eventBus: bus,
+			memory,
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				observationLogTailLimit: 20,
+				observe: async () =>
+					await Promise.resolve('* CRITICAL (14:30) User chose Postgres for memory storage.'),
+			},
+			episodicMemory: {
+				embedder: { specificationVersion: 'v2' } as never,
+				extract: async () => await Promise.reject(error),
+			},
+		});
+
+		await runtime.generate('please remember this', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+
+		expect(errorEvents).toEqual([
+			expect.objectContaining({
+				error,
+				source: 'episodic-memory',
+				message: 'Episodic memory indexing task failed',
+			}),
+		]);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Runtime telemetry — generate / stream / tool execution
 // ---------------------------------------------------------------------------
 
@@ -2427,6 +3011,32 @@ describe('AgentRuntime — telemetry propagation', () => {
 		expect(expTelemetry.tracer).toBe(baseTelemetry.tracer);
 		expect(expTelemetry.recordInputs).toBe(true);
 		expect(expTelemetry.recordOutputs).toBe(false);
+	});
+
+	it('uses updated telemetry config for later runs', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const updatedTelemetry: BuiltTelemetry = {
+			...baseTelemetry,
+			functionId: 'updated-agent',
+			metadata: { env: 'updated' },
+		};
+
+		const runtime = new AgentRuntime({
+			name: 'telemetry-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			eventBus: new AgentEventBus(),
+			telemetry: baseTelemetry,
+		});
+
+		runtime.setTelemetry(updatedTelemetry);
+		await runtime.generate('hello');
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const expTelemetry = callArgs.experimental_telemetry as Record<string, unknown>;
+		expect(expTelemetry.functionId).toBe('updated-agent');
+		expect(expTelemetry.metadata).toEqual({ env: 'updated' });
 	});
 
 	it('wraps generate calls in a telemetry root span when the tracer supports active spans', async () => {
@@ -2778,77 +3388,5 @@ describe('AgentRuntime — telemetry propagation', () => {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		expect(callArgs.experimental_telemetry).toBeUndefined();
-	});
-});
-
-// ---------------------------------------------------------------------------
-// Observational memory — post-turn writer
-// ---------------------------------------------------------------------------
-
-describe('AgentRuntime — observational memory writer', () => {
-	beforeEach(() => {
-		jest.clearAllMocks();
-		generateText.mockResolvedValue(makeGenerateSuccess());
-	});
-
-	it('runs the observer after saving the turn and compacts into thread working memory', async () => {
-		const store = new InMemoryMemory();
-		const observe = jest.fn().mockResolvedValue([
-			{
-				scopeKind: 'thread',
-				scopeId: 't-obs',
-				kind: 'observation',
-				payload: { text: 'User prefers concise answers.' },
-				durationMs: null,
-				schemaVersion: 1,
-				createdAt: new Date(),
-			},
-		]);
-		const compact = jest.fn().mockResolvedValue({
-			content: '# Thread memory\n- User preferences: concise answers',
-		});
-
-		const runtime = new AgentRuntime({
-			name: 'obs-writer',
-			model: 'openai/gpt-4o-mini',
-			instructions: 'base instructions',
-			memory: store,
-			workingMemory: {
-				template: '# Thread memory\n- User preferences:',
-				structured: false,
-				scope: 'thread',
-			},
-			observationalMemory: { observe, compact, compactionThreshold: 1, sync: true },
-		});
-
-		await runtime.generate('remember that I like concise answers', {
-			persistence: { threadId: 't-obs', resourceId: 'u-1' },
-		});
-
-		expect(observe).toHaveBeenCalledTimes(1);
-		expect(compact).toHaveBeenCalledTimes(1);
-		expect(
-			await store.getWorkingMemory({ threadId: 't-obs', resourceId: 'u-1', scope: 'thread' }),
-		).toBe('# Thread memory\n- User preferences: concise answers');
-		expect(await store.getObservations({ scopeKind: 'thread', scopeId: 't-obs' })).toEqual([]);
-	});
-
-	it('does not run when observational memory is not configured', async () => {
-		const store = new InMemoryMemory();
-		const runtime = new AgentRuntime({
-			name: 'obs-disabled',
-			model: 'openai/gpt-4o-mini',
-			instructions: 'base instructions',
-			memory: store,
-			workingMemory: {
-				template: '# Thread memory',
-				structured: false,
-				scope: 'thread',
-			},
-		});
-
-		await runtime.generate('hi', { persistence: { threadId: 't-none', resourceId: 'u-1' } });
-
-		expect(await store.getCursor('thread', 't-none')).toBeNull();
 	});
 });

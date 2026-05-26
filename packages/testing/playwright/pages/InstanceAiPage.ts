@@ -25,6 +25,20 @@ export class InstanceAiPage extends BasePage {
 
 	async goto(): Promise<void> {
 		await this.page.goto('/instance-ai');
+		await this.enableInstanceAiIfPrompted();
+	}
+
+	async enableInstanceAiIfPrompted(): Promise<void> {
+		const dialog = this.page.getByRole('dialog').filter({ hasText: 'Try AI Assistant' });
+		try {
+			await dialog.waitFor({ state: 'visible', timeout: 3_000 });
+		} catch {
+			return;
+		}
+
+		await dialog.getByRole('button', { name: /Enable AI Assistant on this instance/ }).click();
+		await dialog.getByRole('button', { name: /^(Continue|Enable)$/ }).click();
+		await dialog.waitFor({ state: 'hidden' });
 	}
 
 	async gotoThread(threadId: string): Promise<void> {
@@ -48,11 +62,11 @@ export class InstanceAiPage extends BasePage {
 	 * query thread items without racing the 200ms slide-in transition.
 	 */
 	async openSidebar(): Promise<void> {
-		const toggle = this.getSidebarToggle();
-		if (await toggle.isVisible()) {
-			await toggle.click();
+		const threadList = this.page.getByTestId('instance-ai-thread-list');
+		if (!(await threadList.isVisible())) {
+			await this.getSidebarToggle().click({ timeout: 10_000 });
 		}
-		await this.getContainer().getByTestId('instance-ai-thread-list').waitFor({ state: 'visible' });
+		await threadList.waitFor({ state: 'visible' });
 	}
 
 	// ── Messages ──────────────────────────────────────────────────────
@@ -79,10 +93,6 @@ export class InstanceAiPage extends BasePage {
 
 	getAssistantMessageText(text: string | RegExp): Locator {
 		return this.getAssistantMessages().getByText(text);
-	}
-
-	getToolCallsButton(label: string): Locator {
-		return this.page.getByRole('button', { name: label });
 	}
 
 	getStatusBar(): Locator {
@@ -197,6 +207,12 @@ export class InstanceAiPage extends BasePage {
 
 	getPreviewExecuteNodeButton(nodeName: string): Locator {
 		return this.getPreviewNodeByName(nodeName).getByRole('button', { name: 'Execute step' });
+	}
+
+	async executePreviewNodeByName(nodeName: string): Promise<void> {
+		const executeNodeButton = this.getPreviewExecuteNodeButton(nodeName);
+		await executeNodeButton.waitFor({ state: 'visible', timeout: 5_000 });
+		await executeNodeButton.dispatchEvent('click');
 	}
 
 	getPreviewNodeSuccessIndicator(nodeName: string): Locator {

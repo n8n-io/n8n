@@ -1,12 +1,8 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
 import { N8nCard, N8nText, N8nIcon } from '@n8n/design-system';
-import type {
-	AskLlmResume,
-	ChatHubConversationModel,
-	ChatHubProvider,
-	ChatModelsResponse,
-} from '@n8n/api-types';
+import type { AskLlmResume } from '@n8n/api-types';
+import type { ChatHubConversationModel, ChatHubProvider, ChatModelsResponse } from '@n8n/api-types';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';

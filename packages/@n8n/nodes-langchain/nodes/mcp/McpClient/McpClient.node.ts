@@ -34,7 +34,8 @@ export class McpClient implements INodeType {
 			dark: 'file:../mcp.dark.svg',
 		},
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		defaults: {
 			name: 'MCP Client',
 		},
@@ -264,6 +265,15 @@ export class McpClient implements INodeType {
 							timeout: options.timeout ? Number(options.timeout) : undefined,
 						},
 					)) as CallToolResult;
+
+					if (node.typeVersion >= 1.1 && result.isError) {
+						const textContent = result.content.find((item) => item.type === 'text');
+						const errorMessage =
+							textContent && 'text' in textContent
+								? textContent.text
+								: `Tool "${tool}" returned an error`;
+						throw new NodeOperationError(node, errorMessage, { itemIndex });
+					}
 
 					let binaryIndex = 0;
 					const binary: IBinaryKeyData = {};

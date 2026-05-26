@@ -6,7 +6,6 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { IWorkflowDb } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
@@ -51,7 +50,6 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
 const agentSessionsStore = useAgentSessionsStore();
@@ -318,7 +316,7 @@ async function retryExecution(execution: ExecutionSummary, loadWorkflow?: boolea
 	}
 
 	telemetry.track('User clicked retry execution button', {
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: '',
 		execution_id: execution.id,
 		retry_type: loadWorkflow ? 'current' : 'original',
 	});

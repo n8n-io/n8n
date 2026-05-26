@@ -19,8 +19,4 @@ describe('formatToolNameForDisplay', () => {
 		expect(formatToolNameForDisplay(undefined)).toBe('');
 		expect(formatToolNameForDisplay('   ')).toBe('');
 	});
-
-	it('collapses known memory tool names to a single "Update memory" label', () => {
-		expect(formatToolNameForDisplay('update_working_memory')).toBe('Update memory');
-	});
 });
