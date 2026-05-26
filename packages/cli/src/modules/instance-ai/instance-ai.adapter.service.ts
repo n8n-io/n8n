@@ -125,6 +125,7 @@ import { TagService } from '@/services/tag.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -503,10 +504,10 @@ export class InstanceAiAdapterService {
 				// Strip redactionPolicy if the user lacks the required scope —
 				// mirrors the check in WorkflowCreationService.createWorkflow().
 				const settings = (json.settings ?? {}) as IWorkflowSettings;
-				if (settings.redactionPolicy !== undefined) {
+				if (settings.redactionPolicy !== undefined && settings.redactionPolicy !== 'none') {
 					const canUpdateRedaction = await userHasScopes(
 						user,
-						['workflow:updateRedactionSetting'],
+						['workflow:enableRedaction'],
 						false,
 						{ projectId },
 					);
@@ -608,18 +609,30 @@ export class InstanceAiAdapterService {
 				_options?: { projectId?: string },
 			) {
 				assertNotReadOnly();
-				// Strip redactionPolicy if the user lacks the required scope —
-				// mirrors the check in createFromWorkflowJSON() and WorkflowService.update().
+				// Strip redactionPolicy if the user lacks the required directional scope —
+				// mirrors the check in WorkflowService.update().
 				const settings = (json.settings ?? {}) as IWorkflowSettings;
 				if (settings.redactionPolicy !== undefined) {
-					const canUpdateRedaction = await userHasScopes(
-						user,
-						['workflow:updateRedactionSetting'],
-						false,
-						{ workflowId },
-					);
-					if (!canUpdateRedaction) {
-						delete settings.redactionPolicy;
+					const [existingWorkflow, ownerProject] = await Promise.all([
+						workflowRepository.findOne({ where: { id: workflowId } }),
+						sharedWorkflowRepository.getWorkflowOwningProject(workflowId),
+					]);
+
+					const currentPolicy = existingWorkflow?.settings?.redactionPolicy;
+
+					if (settings.redactionPolicy !== currentPolicy) {
+						const requiredScopes = getRequiredRedactionScopes(
+							currentPolicy,
+							settings.redactionPolicy,
+						);
+
+						const canUpdateRedaction =
+							ownerProject &&
+							(await userHasScopes(user, requiredScopes, false, { projectId: ownerProject.id }));
+
+						if (!canUpdateRedaction) {
+							delete settings.redactionPolicy;
+						}
 					}
 				}
 
