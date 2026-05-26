@@ -453,10 +453,8 @@ async function runFilterShard(options: CliOptions): Promise<void> {
 	const url =
 		firstNonEmpty(options.url, process.env.JANITOR_FILTER_SHARD_URL) ?? DEFAULT_FILTER_SHARD_URL;
 	const runId = process.env.GITHUB_RUN_ID;
-	if (!url || !runId) {
-		console.error(
-			`filter-shard: missing ${!url ? 'webhook url' : 'GITHUB_RUN_ID'}, running full shard`,
-		);
+	if (!runId) {
+		console.error('filter-shard: missing GITHUB_RUN_ID, running full shard');
 		emit(candidates);
 		return;
 	}
