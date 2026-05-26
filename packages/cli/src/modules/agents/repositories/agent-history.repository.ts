@@ -97,4 +97,13 @@ export class AgentHistoryRepository extends Repository<AgentHistory> {
 			},
 		});
 	}
+
+	/**
+	 * Whether any history row exists for an agent. Backs the "has the agent
+	 * ever been published" signal — unlike `agent.activeVersionId !== null`,
+	 * this stays true after an unpublish (which preserves the rows).
+	 */
+	async existsForAgent(agentId: string): Promise<boolean> {
+		return await this.existsBy({ agentId });
+	}
 }

@@ -133,19 +133,21 @@ export class AgentsController {
 		agent: Agent,
 		projectId: string,
 		user: User,
-	): Promise<Agent & { isRunnable: boolean }> {
+	): Promise<Agent & { isRunnable: boolean; hasPublishHistory: boolean }> {
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
 			projectId,
 			user,
 		);
-		const { missing } = await this.agentsService.validateAgentIsRunnable(
-			agent.id,
-			projectId,
-			credentialProvider,
-		);
+		const [{ missing }, hasPublishHistory] = await Promise.all([
+			this.agentsService.validateAgentIsRunnable(agent.id, projectId, credentialProvider),
+			this.agentsService.hasPublishHistory(agent.id),
+		]);
 
-		return Object.assign(agent, { isRunnable: missing.length === 0 });
+		return Object.assign(agent, {
+			isRunnable: missing.length === 0,
+			hasPublishHistory,
+		});
 	}
 
 	@Post('/')

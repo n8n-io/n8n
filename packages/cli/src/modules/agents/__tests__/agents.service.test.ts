@@ -694,8 +694,8 @@ describe('AgentsService', () => {
 		});
 
 		describe('with explicit versionId', () => {
-			it('flips activeVersionId to an existing history row without creating a new one', async () => {
-				const agent = makeAgent({ versionId: 'v2' });
+			it('flips activeVersionId to an existing history row and bumps draft versionId', async () => {
+				const agent = makeAgent({ versionId: 'v2', activeVersionId: 'v2' });
 				const existingHistory = makeAgentHistory({ versionId: 'v1' });
 				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 				agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(existingHistory);
@@ -710,7 +710,28 @@ describe('AgentsService', () => {
 				expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
 				expect(agent.activeVersionId).toBe('v1');
 				expect(agent.activeVersion).toBe(existingHistory);
+				// Draft versionId was v2 (a history-row PK). Bumping to a fresh
+				// UUID lets the next regular publish snapshot cleanly.
+				expect(agent.versionId).not.toBe('v2');
+				expect(agent.versionId).not.toBe('v1');
+				expect(agent.versionId).toMatch(
+					/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+				);
 				expect(mockTrx.save).toHaveBeenCalledWith(agent);
+			});
+
+			it('is a no-op when the requested version is already active', async () => {
+				const agent = makeAgent({ versionId: 'v1', activeVersionId: 'v1' });
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+				const result = await service.publishAgent(agentId, projectId, testUser, 'v1');
+
+				expect(agentHistoryRepository.findByVersionAndAgentId).not.toHaveBeenCalled();
+				expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
+				expect(mockTrx.save).not.toHaveBeenCalled();
+				expect(agent.versionId).toBe('v1');
+				expect(agent.activeVersionId).toBe('v1');
+				expect(result).toBe(agent);
 			});
 
 			it('throws NotFoundError when the versionId does not belong to the agent', async () => {

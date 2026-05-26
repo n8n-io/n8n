@@ -136,11 +136,10 @@ function onOpenPreview() {
 	emit('open-preview');
 }
 
-// Mirrors the publish button's "not yet published" signal. After an unpublish
-// the agent may still have history rows, but the button stays disabled — the
-// user can republish to re-enable the panel. Worth a follow-up if we want
-// a precise "has any history" flag from the backend.
-const isVersionHistoryDisabled = computed(() => !props.agent?.activeVersionId);
+// Disabled until the agent has at least one publish history row. The flag
+// is set by the backend (see AgentsService.hasPublishHistory) so it stays
+// true after an unpublish, when activeVersionId is null but rows persist.
+const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory);
 </script>
 
 <template>

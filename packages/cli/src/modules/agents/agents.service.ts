@@ -440,6 +440,12 @@ export class AgentsService {
 			return agent;
 		}
 
+		// Idempotent fast-path for re-publishing the already-active version —
+		// no pointer to flip, no need to disturb the draft's versionId.
+		if (versionId !== undefined && versionId === agent.activeVersionId) {
+			return agent;
+		}
+
 		await this.agentRepository.manager.transaction(async (trx) => {
 			if (versionId) {
 				const existing = await this.agentHistoryRepository.findByVersionAndAgentId(
@@ -452,6 +458,11 @@ export class AgentsService {
 				}
 				agent.activeVersionId = existing.versionId;
 				agent.activeVersion = existing;
+				// The previously-active versionId may already own a history row
+				// (e.g. the draft was in sync with the old active version). Bump
+				// to a fresh UUID so the next regular publish writes a new row
+				// instead of colliding on that PK.
+				agent.versionId = uuid();
 			} else {
 				// Snapshot the current draft. agent.versionId is the snapshot's PK,
 				// so make sure it's set before inserting.
@@ -621,6 +632,14 @@ export class AgentsService {
 			versionId,
 		});
 		return agent;
+	}
+
+	/**
+	 * Cheap existence check used by the editor to gate the version-history
+	 * panel button. Survives unpublish, unlike `agent.activeVersionId`.
+	 */
+	async hasPublishHistory(agentId: string): Promise<boolean> {
+		return await this.agentHistoryRepository.existsForAgent(agentId);
 	}
 
 	async listPublishHistory(
