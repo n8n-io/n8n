@@ -123,6 +123,9 @@ export async function buildFromJson(
 		if (config.config.toolCallConcurrency) {
 			agent.toolCallConcurrency(config.config.toolCallConcurrency);
 		}
+		if (config.config.maxIterations) {
+			agent.configuration({ maxIterations: config.config.maxIterations });
+		}
 	}
 
 	return agent;

@@ -190,7 +190,7 @@ async function onSubmit() {
 			type: 'success',
 			title: i18n.baseText('codeNodeEditor.askAi.generationCompleted'),
 		});
-		useTelemetry().trackAskAI('askAi.generationFinished', {
+		useTelemetry().trackAskAI('askAi.generationFinished', ndvStore.pushRef, {
 			prompt: prompt.value,
 			code,
 		});
@@ -204,7 +204,7 @@ async function onSubmit() {
 			),
 		});
 		stopLoading();
-		useTelemetry().trackAskAI('askAi.generationFinished', {
+		useTelemetry().trackAskAI('askAi.generationFinished', ndvStore.pushRef, {
 			prompt: prompt.value,
 			code: '',
 			hasError: true,

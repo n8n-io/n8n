@@ -140,6 +140,15 @@ export const AgentJsonConfigSchema = z.object({
 			thinking: ThinkingConfigSchema.optional(),
 			webSearch: WebSearchConfigSchema.optional(),
 			toolCallConcurrency: z.number().int().min(1).max(20).optional(),
+			maxIterations: z
+				.number()
+				.int()
+				.min(1)
+				.max(200)
+				.optional()
+				.describe(
+					'Maximum number of agent loop iterations per run. Do not set unless the user explicitly asks.',
+				),
 			nodeTools: z
 				.object({
 					enabled: z.boolean(),

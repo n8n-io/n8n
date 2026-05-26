@@ -125,6 +125,9 @@ describe('buildFromJson()', () => {
 			}
 		).tools?.map((tool) => tool.name) ?? [];
 
+	const getDefaultExecutionOptions = (agent: unknown) =>
+		(agent as { defaultExecutionOptions?: { maxIterations?: number } }).defaultExecutionOptions;
+
 	const makeMockMemoryFactory = () => jest.fn();
 
 	const makeMockMemoryBackend = () => ({
@@ -717,6 +720,22 @@ describe('buildFromJson()', () => {
 		);
 
 		expect(agent.snapshot.toolCallConcurrency).toBe(5);
+	});
+
+	it('sets maxIterations via configuration()', async () => {
+		const config = makeConfig({ config: { maxIterations: 10 } });
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getDefaultExecutionOptions(agent)?.maxIterations).toBe(10);
 	});
 
 	it('configures memory when enabled', async () => {

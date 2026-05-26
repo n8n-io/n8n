@@ -1,41 +1,7 @@
-import type { JSONSchema7 } from 'json-schema';
-import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
-
-import { RunnableAgentJsonConfigSchema } from '@n8n/api-types';
-
-import { jsonSchemaToCompactText } from '../json-config/schema-text-serializer';
-
-const BuilderPromptMemoryConfigSchema = z.object({
-	enabled: z.boolean(),
-	storage: z.literal('n8n'),
-	lastMessages: z.number().int().min(1).max(200).optional(),
-	observationalMemory: z
-		.object({
-			enabled: z.boolean().optional(),
-			observerThresholdTokens: z.number().int().min(1).optional(),
-			reflectorThresholdTokens: z.number().int().min(1).optional(),
-			renderTokenBudget: z.number().int().min(1).optional(),
-			observationLogTailLimit: z.number().int().min(1).optional(),
-			lockTtlMs: z.number().int().min(0).optional(),
-		})
-		.optional(),
-	episodicMemory: z
-		.discriminatedUnion('enabled', [
-			z.object({ enabled: z.literal(false) }),
-			z.object({
-				enabled: z.literal(true),
-				credential: z.string().min(1),
-				topK: z.number().int().min(1).max(100).optional(),
-				maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
-			}),
-		])
-		.optional(),
-});
-
-const BuilderPromptAgentJsonConfigSchema = RunnableAgentJsonConfigSchema.extend({
-	memory: BuilderPromptMemoryConfigSchema.optional(),
-});
+import { getConfigMutationPrompt } from './prompts/config-mutation.prompt';
+import { getLlmSelectionPrompt } from './prompts/llm-selection.prompt';
+import { MEMORY_PROMPT } from './prompts/memory.prompt';
+import { TOOLS_PROMPT } from './prompts/tools.prompt';
 
 export function getAgentStateSection(
 	configJson: string,
@@ -93,15 +59,10 @@ enough detail to write meaningful instructions, ask the user first.`;
 export const BUILDER_SKILL_ROUTING_SECTION = `\
 ## Builder runtime skills
 
-Detailed builder guidance is available through runtime skills. Before
-specialized work, call \`load_skill\` with \`{ "skillId": "<id>" }\` and follow
-the returned instructions.
+Additional specialized builder guidance is available through runtime skills.
+Before these specialized tasks, call \`load_skill\` with
+\`{ "skillId": "<id>" }\` and follow the returned instructions.
 
-- \`agent-builder-config-mutation\`: reading/writing JSON config, schema, patch paths, stale retries.
-- \`agent-builder-llm-selection\`: resolving or asking for the target agent's main LLM.
-- \`agent-builder-tools\`: attach tools, look up node definitions for node tools,
-  and configure workflow, node, custom, provider tools, and expressions.
-- \`agent-builder-memory\`: n8n session memory, observation log, Episodic Memory.
 - \`agent-builder-integrations\`: schedule and chat integrations.
 - \`agent-builder-target-skills\`: creating skills for the target agent.
 
@@ -150,40 +111,6 @@ Be concise. After a build step, give a 1-2 sentence summary of what changed and
 one useful next step if there is one. Do not narrate reasoning before tool
 calls, reprint JSON, or list what is already visible in the sidebar.`;
 
-export function getConfigRulesSection(): string {
-	return `\
-## Agent config rules
-
-- \`model\` must be "provider/model-name".
-- \`credential\` must be the id returned by \`resolve_llm\` or \`ask_llm\`.
-- Fresh agents must include
-  \`memory: { "enabled": true, "storage": "n8n", "lastMessages": 50 }\`
-  unless the user explicitly asks to disable memory.
-- \`memory.storage\` must be "n8n"; \`memory.lastMessages\` defaults to 50.
-- \`memory.episodicMemory\` requires \`ask_credential\` with
-  \`credentialType: "openAiApi"\`.
-- Web search lives under \`config.webSearch\`. For Anthropic/OpenAI native search,
-  use \`{ "enabled": true, "provider": "native" }\` or omit \`provider\`. For Brave
-  or SearXNG, use \`provider: "brave"\` or \`provider: "searxng"\` with a credential,
-  even if the model also supports native search. Never write \`{ "enabled": true }\`
-  alone for fallback search. Use exact \`ask_credential\` types:
-  \`braveSearchApi\` for Brave and \`searXngApi\` for SearXNG.
-- Fresh agents need a real model, credential, and instructions before config
-  is written.`;
-}
-
-export function getSchemaReferenceSection(): string {
-	const jsonSchemaText = jsonSchemaToCompactText(
-		zodToJsonSchema(BuilderPromptAgentJsonConfigSchema) as JSONSchema7,
-	);
-	return `\
-## Config schema reference
-
-\`\`\`
-${jsonSchemaText}
-\`\`\``;
-}
-
 export interface BuilderPromptContext {
 	configJson: string;
 	configHash: string | null;
@@ -194,13 +121,24 @@ export interface BuilderPromptContext {
 }
 
 export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
-	const { configJson, configHash, configUpdatedAt, toolList, agentPreviewPath } = ctx;
+	const {
+		configJson,
+		configHash,
+		configUpdatedAt,
+		toolList,
+		agentPreviewPath,
+		modelRecommendationsSection,
+	} = ctx;
 
 	const sections = [
 		'You are an expert agent builder. You help users create and configure AI agents by writing raw JSON configuration and building custom tools.',
 		TARGET_AGENT_SECTION,
 		getAgentStateSection(configJson, configHash, configUpdatedAt, toolList),
 		getConversationModeSection(agentPreviewPath),
+		getConfigMutationPrompt(),
+		getLlmSelectionPrompt(modelRecommendationsSection),
+		MEMORY_PROMPT,
+		TOOLS_PROMPT,
 		BUILDER_SKILL_ROUTING_SECTION,
 		READ_CONFIG_FRESHNESS_SECTION,
 		IMPORTANT_SECTION,

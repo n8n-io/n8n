@@ -110,19 +110,31 @@ describe('builder model recommendations', () => {
 		expect(section).not.toContain('text-embedding-3-large');
 	});
 
-	it('injects the recommendation section only when catalog recommendations are available', () => {
-		const section = buildModelRecommendationsSection(catalog);
-		const llmSkillWithRecommendations = getBuilderRuntimeSkills({
-			modelRecommendationsSection: section,
-		}).find((skill) => skill.id === 'agent-builder-llm-selection');
-		const llmSkillWithoutRecommendations = getBuilderRuntimeSkills({
-			modelRecommendationsSection: null,
-		}).find((skill) => skill.id === 'agent-builder-llm-selection');
+	it('injects always-needed builder guidance into the base builder prompt', () => {
+		const prompt = buildPrompt(null);
 
-		expect(llmSkillWithRecommendations?.instructions).toContain('## Recommended LLM models');
-		expect(llmSkillWithoutRecommendations?.instructions).not.toContain('## Recommended LLM models');
-		expect(llmSkillWithoutRecommendations?.instructions).toContain('do not recommend or name');
-		expect(buildPrompt(section)).not.toContain('## Recommended LLM models');
+		expect(prompt).toContain('## Config Mutation Guidance');
+		expect(prompt).toContain('## LLM Selection Guidance');
+		expect(prompt).toContain('## Memory Guidance');
+		expect(prompt).toContain('## Tool Guidance');
+		expect(prompt).toContain('Additional specialized builder guidance is available');
+		expect(prompt).not.toContain('agent-builder-config-mutation');
+		expect(prompt).not.toContain('agent-builder-llm-selection');
+		expect(prompt).not.toContain('agent-builder-memory');
+		expect(prompt).not.toContain('agent-builder-tools');
+	});
+
+	it('injects the recommendation section only into the LLM selection prompt', () => {
+		const section = buildModelRecommendationsSection(catalog);
+
+		expect(buildPrompt(section)).toContain('## Recommended LLM models');
 		expect(buildPrompt(null)).not.toContain('## Recommended LLM models');
+	});
+
+	it('registers only optional builder runtime skills', () => {
+		expect(getBuilderRuntimeSkills().map((skill) => skill.id)).toEqual([
+			'agent-builder-integrations',
+			'agent-builder-target-skills',
+		]);
 	});
 });

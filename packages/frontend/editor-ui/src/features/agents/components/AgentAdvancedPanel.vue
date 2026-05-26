@@ -13,7 +13,7 @@ import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import {
 	N8nCollapsiblePanel,
-	N8nInput,
+	N8nInputNumber2,
 	N8nSelect,
 	N8nSwitch2,
 	N8nText,
@@ -61,6 +61,79 @@ const provider = computed(() => parseProvider(props.config?.model));
 const capabilities = computed(() => PROVIDER_CAPABILITIES[provider.value] ?? DEFAULT_CAPABILITIES);
 const hasNativeWebSearch = computed(() => Boolean(capabilities.value.webSearch));
 
+// ---------------------------------------------------------------------------
+// Generic helper for numeric config fields
+// ---------------------------------------------------------------------------
+
+type ConfigObj = NonNullable<AgentJsonConfig['config']>;
+
+/** Keys of the config object whose value type is `number | undefined`. */
+type NumberConfigKey = keyof {
+	[K in keyof ConfigObj as ConfigObj[K] extends number | undefined ? K : never]: unknown;
+};
+
+/**
+ * Creates a ref, debounced config-emit, change handler, and watch-sync
+ * function for one numeric field inside `config`. Designed for N8nInputNumber2
+ * which emits numbers directly (NaN when the field is cleared).
+ *
+ * @param key          Config key (must be a numeric field).
+ * @param defaultValue Fallback when the key is absent or the field is cleared.
+ *                     Pass `undefined` for optional fields — the key is removed
+ *                     from the config when the field is cleared.
+ */
+function makeNumberField(key: NumberConfigKey, defaultValue: number | undefined) {
+	const value = ref<number | undefined>(props.config?.config?.[key] ?? defaultValue);
+
+	const debouncedEmit = useDebounceFn(() => {
+		const cfg = { ...(props.config?.config ?? {}) };
+		if (value.value === undefined) {
+			delete (cfg as Partial<ConfigObj>)[key];
+		} else {
+			(cfg as ConfigObj)[key] = value.value;
+		}
+		emit('update:config', { config: cfg });
+	}, 500);
+
+	return {
+		modelValue: value,
+		onChange(n: number) {
+			value.value = isNaN(n) ? defaultValue : n;
+			void debouncedEmit();
+		},
+		sync(cfg: AgentJsonConfig | null) {
+			value.value = cfg?.config?.[key] ?? defaultValue;
+		},
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Numeric config fields — add new ones here
+// ---------------------------------------------------------------------------
+
+const CONCURRENCY_MIN = 1;
+const CONCURRENCY_MAX = 20;
+const MAX_ITERATIONS_MIN = 1;
+const MAX_ITERATIONS_MAX = 200;
+const BUDGET_TOKENS_MIN = 1;
+const BUDGET_TOKENS_DEFAULT = 1024;
+
+const {
+	modelValue: concurrencyModelValue,
+	onChange: onConcurrencyChange,
+	sync: syncConcurrency,
+} = makeNumberField('toolCallConcurrency', CONCURRENCY_MIN);
+
+const {
+	modelValue: maxIterationsModelValue,
+	onChange: onMaxIterationsChange,
+	sync: syncMaxIterations,
+} = makeNumberField('maxIterations', undefined);
+
+// ---------------------------------------------------------------------------
+// Thinking — provider-gated, handled separately
+// ---------------------------------------------------------------------------
+
 const webSearchEnabled = ref(props.config?.config?.webSearch?.enabled === true);
 const webSearchMethod = ref<WebSearchMethod>(
 	getWebSearchMethod(props.config, hasNativeWebSearch.value),
@@ -77,11 +150,10 @@ const fallbackWebSearchProvider = ref<FallbackWebSearchProvider>(
 const fallbackWebSearchCredential = ref(props.config?.config?.webSearch?.credential ?? '');
 const thinkingCfg = computed(() => props.config?.config?.thinking ?? null);
 const thinkingEnabled = ref(thinkingCfg.value !== null);
-const budgetTokens = ref(thinkingCfg.value?.budgetTokens ?? 1024);
+const budgetTokens = ref(thinkingCfg.value?.budgetTokens ?? BUDGET_TOKENS_DEFAULT);
 const reasoningEffort = ref<ReasoningEffort>(
 	(thinkingCfg.value?.reasoningEffort as ReasoningEffort) ?? 'medium',
 );
-const toolCallConcurrency = ref(props.config?.config?.toolCallConcurrency ?? 1);
 
 function syncWebSearchOptions(args: NativeWebSearchArgs) {
 	webSearchMaxUses.value =
@@ -106,9 +178,10 @@ watch(
 		if (!cfg) return;
 		const t = cfg.config?.thinking ?? null;
 		thinkingEnabled.value = t !== null;
-		budgetTokens.value = t?.budgetTokens ?? 1024;
+		budgetTokens.value = t?.budgetTokens ?? BUDGET_TOKENS_DEFAULT;
 		reasoningEffort.value = (t?.reasoningEffort as ReasoningEffort) ?? 'medium';
-		toolCallConcurrency.value = cfg.config?.toolCallConcurrency ?? 1;
+		syncConcurrency(cfg);
+		syncMaxIterations(cfg);
 		webSearchEnabled.value = cfg.config?.webSearch?.enabled === true;
 		webSearchMethod.value = getWebSearchMethod(cfg, hasNativeWebSearch.value);
 		webSearchArgs.value = getNativeWebSearchArgs(cfg, capabilities.value.webSearch);
@@ -242,9 +315,8 @@ function onThinkingToggle(value: boolean) {
 }
 
 const emitBudget = useDebounceFn(emitThinking, 500);
-function onBudgetInput(value: string) {
-	const n = Number(value);
-	if (!Number.isFinite(n) || n < 1) return;
+function onBudgetChange(n: number) {
+	if (isNaN(n) || n < BUDGET_TOKENS_MIN) return;
 	budgetTokens.value = n;
 	void emitBudget();
 }
@@ -252,18 +324,6 @@ function onBudgetInput(value: string) {
 function onReasoningEffortChange(value: ReasoningEffort) {
 	reasoningEffort.value = value;
 	emitThinking();
-}
-
-const emitConcurrency = useDebounceFn(() => {
-	emit('update:config', {
-		config: { ...props.config?.config, toolCallConcurrency: toolCallConcurrency.value },
-	});
-}, 500);
-function onConcurrencyInput(value: string) {
-	const n = Number(value);
-	if (!Number.isFinite(n) || n < 1) return;
-	toolCallConcurrency.value = n;
-	void emitConcurrency();
 }
 
 const thinkingDisabledReason = computed(() =>
@@ -354,9 +414,10 @@ const thinkingDisabledReason = computed(() =>
 								{{ i18n.baseText('agents.builder.advanced.webSearch.maxUses.hint') }}
 							</N8nText>
 						</div>
-						<N8nInput
-							type="number"
-							:model-value="webSearchMaxUses"
+						<N8nInputNumber2
+							:model-value="Number(webSearchMaxUses)"
+							:min="1"
+							:precision="0"
 							:disabled="props.disabled"
 							:class="$style.shortInput"
 							data-testid="agent-web-search-max-uses"
@@ -491,13 +552,14 @@ const thinkingDisabledReason = computed(() =>
 								{{ i18n.baseText('agents.builder.advanced.budgetTokens.hint') }}
 							</N8nText>
 						</div>
-						<N8nInput
-							type="number"
-							:model-value="String(budgetTokens)"
+						<N8nInputNumber2
+							:model-value="budgetTokens"
+							:min="BUDGET_TOKENS_MIN"
+							:precision="0"
 							:disabled="props.disabled"
 							:class="$style.shortInput"
 							data-testid="agent-budget-tokens-input"
-							@update:model-value="onBudgetInput"
+							@update:model-value="onBudgetChange"
 						/>
 					</div>
 
@@ -533,13 +595,36 @@ const thinkingDisabledReason = computed(() =>
 						{{ i18n.baseText('agents.builder.advanced.concurrency.hint') }}
 					</N8nText>
 				</div>
-				<N8nInput
-					type="number"
-					:model-value="String(toolCallConcurrency)"
+				<N8nInputNumber2
+					:model-value="concurrencyModelValue"
+					:min="CONCURRENCY_MIN"
+					:max="CONCURRENCY_MAX"
+					:precision="0"
 					:disabled="props.disabled"
 					:class="$style.shortInput"
 					data-testid="agent-concurrency-input"
-					@update:model-value="onConcurrencyInput"
+					@update:model-value="onConcurrencyChange"
+				/>
+			</div>
+
+			<div :class="$style.row">
+				<div :class="$style.rowLabel">
+					<N8nText size="small" :bold="true">{{
+						i18n.baseText('agents.builder.advanced.maxIterations.label')
+					}}</N8nText>
+					<N8nText size="xsmall" color="text-light">
+						{{ i18n.baseText('agents.builder.advanced.maxIterations.hint') }}
+					</N8nText>
+				</div>
+				<N8nInputNumber2
+					:model-value="maxIterationsModelValue"
+					:min="MAX_ITERATIONS_MIN"
+					:max="MAX_ITERATIONS_MAX"
+					:precision="0"
+					:disabled="props.disabled"
+					:class="$style.shortInput"
+					data-testid="agent-max-iterations-input"
+					@update:model-value="onMaxIterationsChange"
 				/>
 			</div>
 		</div>
