@@ -181,6 +181,7 @@ import { ResetInstanceAiNativePersistence1784000000008 } from '../common/1784000
 import { CreateAgentMemoryEntryTables1784000000009 } from '../common/1784000000009-CreateAgentMemoryEntryTables';
 import { RefactorAgentObservationScope1784000000010 } from '../common/1784000000010-RefactorAgentObservationScope';
 import { CreateInstanceAiObservationTables1784000000012 } from '../common/1784000000012-CreateInstanceAiObservationTables';
+import { SplitRedactionScopeInCustomRoles1784000000013 } from '../common/1784000000013-SplitRedactionScopeInCustomRoles';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -367,6 +368,7 @@ const sqliteMigrations: Migration[] = [
 	RefactorAgentObservationScope1784000000010,
 	CreateAgentHistoryTable1784000000011,
 	CreateInstanceAiObservationTables1784000000012,
+	SplitRedactionScopeInCustomRoles1784000000013,
 ];
 
 export { sqliteMigrations };
