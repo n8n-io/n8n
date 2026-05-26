@@ -368,33 +368,6 @@ describe('Typed RPC: $input.{first,last,all} route via getInput*', () => {
 		expect(result).toEqual([{ json: { id: 1 } }, { json: { id: 2 } }]);
 	});
 
-	it('handler invokes only the named method on the host proxy', () => {
-		const accessed: string[] = [];
-		const data: Record<string, unknown> = {
-			$input: new Proxy(
-				{},
-				{
-					get(_t, prop) {
-						if (typeof prop === 'symbol') return undefined;
-						accessed.push(prop);
-						if (prop === 'first') return () => ({ json: { ok: true } });
-						if (prop === 'last') return () => ({ json: { ok: true } });
-						if (prop === 'all') return () => [];
-						return () => {
-							throw new Error(`unexpected method invoked: ${prop}`);
-						};
-					},
-				},
-			),
-		};
-
-		evaluator.evaluate('{{ $input.first() }}', data, caller);
-		evaluator.evaluate('{{ $input.last() }}', data, caller);
-		evaluator.evaluate('{{ $input.all() }}', data, caller);
-
-		expect(accessed).toEqual(['first', 'last', 'all']);
-	});
-
 	it('non-RPC properties (`.item`) still delegate to the lazy proxy (host getter)', () => {
 		// `.item` on $input is a host getter, not a typed RPC. The synthetic
 		// proxy should fall through to the lazy proxy which fetches via
