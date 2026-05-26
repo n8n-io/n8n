@@ -2,6 +2,9 @@ import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { McpOAuthTokenVerifier } from '@n8n/n8n-nodes-langchain/mcp/core';
+
+import { UrlService } from '@/services/url.service';
 
 /**
  * Handles instance-level MCP access.
@@ -16,6 +19,15 @@ export class McpModule implements ModuleInterface {
 		await import('./mcp.oauth.controller');
 		await import('./mcp.auth.consent.controller');
 		await import('./mcp.oauth-clients.controller');
+
+		const { McpOAuthTokenService } = await import('./mcp-oauth-token.service');
+		const tokenService = Container.get(McpOAuthTokenService);
+		const urlService = Container.get(UrlService);
+		Container.set(McpOAuthTokenVerifier, {
+			verifyAccessToken: async (token: string) => await tokenService.verifyAccessToken(token),
+			getProtectedResourceMetadataUrl: () =>
+				`${urlService.getInstanceBaseUrl()}/.well-known/oauth-protected-resource/mcp-server/http`,
+		});
 	}
 
 	/**

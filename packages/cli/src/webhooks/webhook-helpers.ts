@@ -78,6 +78,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 import merge from 'lodash/merge';
+import { he } from 'zod/dist/types/v4/locales';
 
 // Type guards for MCP queue mode data validation
 interface McpToolCallPayload {
@@ -527,7 +528,15 @@ export async function executeWebhook(
 			nodeExecutionStack.push({
 				node: workflowStartNode,
 				data: {
-					main: [],
+					main: [
+						[
+							{
+								json: {
+									headers: req.headers,
+								},
+							},
+						],
+					],
 				},
 				source: null,
 			});

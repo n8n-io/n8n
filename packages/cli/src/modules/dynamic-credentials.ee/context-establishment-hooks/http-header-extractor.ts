@@ -99,7 +99,15 @@ export class HttpHeaderExtractor implements IContextEstablishmentHook {
 	};
 
 	isApplicableToTriggerNode(nodeType: string): boolean {
-		return nodeType === 'n8n-nodes-base.webhook' || nodeType === 'webhook';
+		if (nodeType.includes('mcp')) {
+			this.logger.info(`Checking nodetype: ${nodeType}`);
+		}
+		return (
+			nodeType === 'n8n-nodes-base.webhook' ||
+			nodeType === 'webhook' ||
+			nodeType === '@n8n/n8n-nodes-langchain.mcpTrigger' ||
+			nodeType === 'mcpTrigger'
+		);
 	}
 
 	async execute(options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {

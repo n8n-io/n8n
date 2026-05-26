@@ -1,4 +1,6 @@
+import { Container } from '@n8n/di';
 import { McpServer, MCP_LIST_TOOLS_REQUEST_MARKER } from './McpServer';
+import { buildWwwAuthenticateHeader, McpOAuthTokenVerifier, verifyN8nOAuth2 } from './auth';
 import type { CompressionResponse } from './transport';
 import { WebhookAuthorizationError } from 'n8n-nodes-base/dist/nodes/Webhook/error';
 import { validateWebhookAuthentication } from 'n8n-nodes-base/dist/nodes/Webhook/utils';
@@ -89,6 +91,7 @@ export class McpTrigger extends Node {
 					{ name: 'None', value: 'none' },
 					{ name: 'Bearer Auth', value: 'bearerAuth' },
 					{ name: 'Header Auth', value: 'headerAuth' },
+					{ name: 'N8n OAuth2', value: 'n8nOAuth2' },
 				],
 				default: 'none',
 				description: 'The way to authenticate',
@@ -146,10 +149,28 @@ export class McpTrigger extends Node {
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject() as unknown as CompressionResponse;
 
+		const authMode = context.getNodeParameter('authentication') as string;
+
 		try {
-			await validateWebhookAuthentication(context, 'authentication');
+			if (authMode === 'n8nOAuth2') {
+				await verifyN8nOAuth2(context);
+			} else {
+				await validateWebhookAuthentication(context, 'authentication');
+			}
 		} catch (error) {
 			if (error instanceof WebhookAuthorizationError) {
+				if (authMode === 'n8nOAuth2') {
+					try {
+						const verifier = Container.get(McpOAuthTokenVerifier);
+						resp.setHeader(
+							'WWW-Authenticate',
+							buildWwwAuthenticateHeader(verifier.getProtectedResourceMetadataUrl()),
+						);
+					} catch {
+						// Verifier port not bound — MCP module unavailable.
+						// Fall through with the existing error response.
+					}
+				}
 				resp.writeHead(error.responseCode);
 				resp.end(error.message);
 				return { noWebhookResponse: true };

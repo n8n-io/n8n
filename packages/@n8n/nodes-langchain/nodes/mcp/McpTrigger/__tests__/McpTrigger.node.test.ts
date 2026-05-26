@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import type { INode, IWebhookFunctions, ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -87,7 +88,9 @@ describe('McpTrigger', () => {
 			expect(authParam).toBeDefined();
 			expect(authParam?.type).toBe('options');
 			expect(authParam?.default).toBe('none');
-			expect(authParam?.options).toHaveLength(3);
+			expect(authParam?.options).toHaveLength(4);
+			const values = (authParam?.options as Array<{ value: string }>).map((o) => o.value);
+			expect(values).toEqual(['none', 'bearerAuth', 'headerAuth', 'n8nOAuth2']);
 			expect(authParam?.builderHint).toEqual({
 				propertyHint: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
 			});
@@ -372,6 +375,119 @@ describe('McpTrigger', () => {
 			expect(resp.writeHead).toHaveBeenCalledWith(401);
 			expect(resp.end).toHaveBeenCalledWith('Unauthorized');
 			expect(result).toEqual({ noWebhookResponse: true });
+		});
+	});
+
+	describe('authentication (n8nOAuth2)', () => {
+		const RESOURCE_METADATA_URL =
+			'https://example.test/.well-known/oauth-protected-resource/mcp-server/http';
+
+		let verifyAccessToken: Mock;
+		let getProtectedResourceMetadataUrl: Mock;
+
+		beforeEach(() => {
+			verifyAccessToken = vi.fn();
+			getProtectedResourceMetadataUrl = vi.fn().mockReturnValue(RESOURCE_METADATA_URL);
+			vi.mocked(Container.get).mockReturnValue({
+				verifyAccessToken,
+				getProtectedResourceMetadataUrl,
+			} as never);
+			(mockContext.getNodeParameter as unknown as Mock).mockImplementation((name: string) => {
+				if (name === 'authentication') return 'n8nOAuth2';
+				return undefined;
+			});
+		});
+
+		it('returns 401 with WWW-Authenticate when Authorization header is missing', async () => {
+			const req = createMockRequest({ path: '/webhook', headers: {} });
+			const resp = createMockResponse();
+			const node = mock<INode>({ typeVersion: 2, name: 'MCP Server Trigger' });
+
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(resp.setHeader).toHaveBeenCalledWith(
+				'WWW-Authenticate',
+				`Bearer realm="n8n MCP Trigger", resource_metadata="${RESOURCE_METADATA_URL}"`,
+			);
+			expect(resp.writeHead).toHaveBeenCalledWith(401);
+			expect(resp.end).toHaveBeenCalledWith('Bearer token required');
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(verifyAccessToken).not.toHaveBeenCalled();
+		});
+
+		it('returns 403 with WWW-Authenticate when verifier rejects the token', async () => {
+			const req = createMockRequest({
+				path: '/webhook',
+				headers: { authorization: 'Bearer bogus' },
+			});
+			const resp = createMockResponse();
+			const node = mock<INode>({ typeVersion: 2, name: 'MCP Server Trigger' });
+
+			verifyAccessToken.mockRejectedValue(new Error('invalid signature'));
+
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(verifyAccessToken).toHaveBeenCalledWith('bogus');
+			expect(resp.setHeader).toHaveBeenCalledWith(
+				'WWW-Authenticate',
+				expect.stringContaining(RESOURCE_METADATA_URL),
+			);
+			expect(resp.writeHead).toHaveBeenCalledWith(403);
+			expect(resp.end).toHaveBeenCalledWith('Invalid or expired token');
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('proceeds to MCP handshake when verifier accepts the token', async () => {
+			const req = createMockRequest({
+				path: '/webhook',
+				headers: { authorization: 'Bearer good-token' },
+			});
+			const resp = createMockResponse();
+			const node = mock<INode>({ typeVersion: 2, name: 'MCP Server Trigger' });
+
+			verifyAccessToken.mockResolvedValue(undefined);
+
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(verifyAccessToken).toHaveBeenCalledWith('good-token');
+			expect(mockMcpServer.handleSetupRequest).toHaveBeenCalled();
+			expect(resp.writeHead).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('does not invoke validateWebhookAuthentication when in n8nOAuth2 mode', async () => {
+			const req = createMockRequest({
+				path: '/webhook',
+				headers: { authorization: 'Bearer good-token' },
+			});
+			const resp = createMockResponse();
+			const node = mock<INode>({ typeVersion: 2, name: 'MCP Server Trigger' });
+
+			verifyAccessToken.mockResolvedValue(undefined);
+
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(validateWebhookAuthenticationMock).not.toHaveBeenCalled();
 		});
 	});
 
