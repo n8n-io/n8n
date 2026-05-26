@@ -598,6 +598,12 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * logic, so empty / invalid names surface as the host's structured
 	 * `ExpressionError` rather than a generic zod parse error.
 	 *
+	 * Note: `msg.valueType` maps to the host's third positional parameter
+	 * (`_type` in `WorkflowDataProxy.handleFromAi`). The bridge protocol
+	 * renames it to avoid collision with the `type` discriminator on the
+	 * envelope — the host parameter currently goes unused, but if it ever
+	 * gains a name (`type`), this mapping should stay explicit.
+	 *
 	 * @private
 	 */
 	private handleFromAi(
