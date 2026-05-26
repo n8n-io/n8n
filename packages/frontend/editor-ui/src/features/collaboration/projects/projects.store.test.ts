@@ -93,6 +93,17 @@ describe('useProjectsStore.updateProject (partial payloads)', () => {
 		});
 	});
 
+	it('updates icon in myProjects and currentProject when provided', async () => {
+		const store = makeStoreWithProject();
+		mockedProjectsApi.updateProject.mockResolvedValue(undefined);
+		const newIcon = { type: 'emoji' as const, value: '🚀' };
+
+		await store.updateProject('p1', { icon: newIcon });
+
+		expect(store.myProjects[0].icon).toEqual(newIcon);
+		expect(store.currentProject?.icon).toEqual(newIcon);
+	});
+
 	it('omits customTelemetryTags from payload when not provided', async () => {
 		const store = makeStoreWithProject();
 		mockedProjectsApi.updateProject.mockResolvedValue(undefined);

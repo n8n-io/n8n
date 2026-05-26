@@ -840,6 +840,18 @@ describe('ProjectSettings', () => {
 			);
 		});
 
+		it('should load existing tags from currentProject on mount and not show errors before blur', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				customTelemetryTags: [{ key: 'env', value: 'prod' }],
+			};
+			const { getAllByTestId, queryAllByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getAllByTestId('project-telemetry-tag-key')).toHaveLength(1);
+			expect(queryAllByTestId('project-telemetry-tag-key-error')).toHaveLength(0);
+		});
+
 		it('should submit with customTelemetryTags when tags are valid', async () => {
 			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
 			const { getByTestId } = renderComponent();
