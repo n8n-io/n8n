@@ -1448,6 +1448,34 @@ describe('AgentsService', () => {
 			expect(result.missing).not.toContain('episodicMemory.credential');
 		});
 
+		it('flags missing fallback web search credential', async () => {
+			credentialProvider.list.mockResolvedValue([{ id: 'main-cred' }]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					config: {
+						webSearch: {
+							enabled: true,
+							provider: 'brave',
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).not.toContain('credential');
+			expect(result.missing).toContain('webSearch.credential');
+		});
+
 		it('flags config skill refs that have no stored body', async () => {
 			const agent = makeAgent({
 				schema: {

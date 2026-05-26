@@ -970,6 +970,15 @@ export class AgentsService {
 			}
 		}
 
+		const webSearch = config.config?.webSearch;
+		if (
+			webSearch?.enabled &&
+			(webSearch.provider === 'brave' || webSearch.provider === 'searxng') &&
+			!webSearch.credential?.trim()
+		) {
+			missing.push('webSearch.credential');
+		}
+
 		missing.push(
 			...this.agentSkillsService
 				.getMissingSkillIds(config, agentEntity.skills ?? {})

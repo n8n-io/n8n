@@ -20,7 +20,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	}),
 }));
 
-// Sub-control flips depend on debouncing — execute synchronously in the test.
+// Numeric/thinking sub-controls debounce — execute synchronously in the test.
 vi.mock('@vueuse/core', async (importOriginal) => {
 	const actual = await importOriginal<typeof VueUse>();
 	return {
@@ -54,7 +54,7 @@ const globalStubs = {
 		props: ['modelValue', 'disabled'],
 		emits: ['update:modelValue'],
 		template:
-			'<select :value="modelValue" :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
+			'<select v-bind="$attrs" :value="modelValue" :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
 	},
 	N8nOption: { props: ['value', 'label'], template: '<option :value="value">{{ label }}</option>' },
 	N8nSwitch2: {
@@ -90,7 +90,9 @@ type WebSearchConfig = {
 
 function getWebSearchConfig(changes: Partial<AgentJsonConfig>): WebSearchConfig | undefined {
 	return (
-		changes.config as (NonNullable<AgentJsonConfig['config']> & { webSearch?: WebSearchConfig }) | undefined
+		changes.config as
+			| (NonNullable<AgentJsonConfig['config']> & { webSearch?: WebSearchConfig })
+			| undefined
 	)?.webSearch;
 }
 
@@ -101,11 +103,12 @@ describe('AgentAdvancedPanel', () => {
 			global: { stubs: globalStubs },
 		});
 
-		const toggle = wrapper.find('[data-testid="agent-web-search-toggle"]');
-		expect(toggle.exists()).toBe(true);
-		expect(toggle.attributes('disabled')).toBeUndefined();
+		const method = wrapper.findComponent('[data-testid="agent-web-search-method"]');
+		expect(method.exists()).toBe(true);
+		expect(method.props('modelValue')).toBe('off');
 
-		await toggle.trigger('click');
+		emitSelectValue(wrapper, 'agent-web-search-method', 'native');
+		await nextTick();
 		const events = wrapper.emitted('update:config') ?? [];
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
 		expect(getWebSearchConfig(last)).toEqual({ enabled: true, provider: 'native' });
@@ -148,7 +151,8 @@ describe('AgentAdvancedPanel', () => {
 			global: { stubs: globalStubs },
 		});
 
-		await wrapper.find('[data-testid="agent-web-search-toggle"]').trigger('click');
+		emitSelectValue(wrapper, 'agent-web-search-method', 'off');
+		await nextTick();
 
 		const events = wrapper.emitted('update:config') ?? [];
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
@@ -163,11 +167,8 @@ describe('AgentAdvancedPanel', () => {
 			global: { stubs: globalStubs },
 		});
 
-		const toggle = wrapper.find('[data-testid="agent-web-search-toggle"]');
-		expect(toggle.exists()).toBe(true);
-		expect(toggle.attributes('disabled')).toBeUndefined();
-
-		await toggle.trigger('click');
+		emitSelectValue(wrapper, 'agent-web-search-method', 'brave');
+		await nextTick();
 
 		const events = wrapper.emitted('update:config') ?? [];
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
@@ -288,8 +289,8 @@ describe('AgentAdvancedPanel', () => {
 			props: { config, disabled: true },
 			global: { stubs: globalStubs },
 		});
-		const webSearchToggle = wrapper.find('[data-testid="agent-web-search-toggle"]');
-		expect(webSearchToggle.attributes('disabled')).toBeDefined();
+		const webSearchMethod = wrapper.findComponent('[data-testid="agent-web-search-method"]');
+		expect(webSearchMethod.props('disabled')).toBe(true);
 		expect(
 			wrapper.find('[data-testid="agent-thinking-toggle"]').attributes('disabled'),
 		).toBeDefined();

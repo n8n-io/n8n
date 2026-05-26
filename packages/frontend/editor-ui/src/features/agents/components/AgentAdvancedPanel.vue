@@ -45,6 +45,7 @@ const DEFAULT_CAPABILITIES = { thinking: false, webSearch: false, providerTools:
 const ANTHROPIC_WEB_SEARCH_DEFAULT_MAX_USES = 5;
 const SEARCH_CONTEXT_SIZE_OPTIONS = ['low', 'medium', 'high'] as const;
 type SearchContextSize = (typeof SEARCH_CONTEXT_SIZE_OPTIONS)[number];
+type WebSearchSelectValue = 'off' | WebSearchMethod;
 
 const props = withDefaults(
 	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; collapsible?: boolean }>(),
@@ -135,8 +136,8 @@ const {
 // ---------------------------------------------------------------------------
 
 const webSearchEnabled = ref(props.config?.config?.webSearch?.enabled === true);
-const webSearchMethod = ref<WebSearchMethod>(
-	getWebSearchMethod(props.config, hasNativeWebSearch.value),
+const webSearchMethod = ref<WebSearchSelectValue>(
+	webSearchEnabled.value ? getWebSearchMethod(props.config, hasNativeWebSearch.value) : 'off',
 );
 const webSearchArgs = ref<NativeWebSearchArgs>(
 	getNativeWebSearchArgs(props.config, capabilities.value.webSearch),
@@ -183,7 +184,9 @@ watch(
 		syncConcurrency(cfg);
 		syncMaxIterations(cfg);
 		webSearchEnabled.value = cfg.config?.webSearch?.enabled === true;
-		webSearchMethod.value = getWebSearchMethod(cfg, hasNativeWebSearch.value);
+		webSearchMethod.value = webSearchEnabled.value
+			? getWebSearchMethod(cfg, hasNativeWebSearch.value)
+			: 'off';
 		webSearchArgs.value = getNativeWebSearchArgs(cfg, capabilities.value.webSearch);
 		fallbackWebSearchProvider.value = webSearchMethod.value === 'searxng' ? 'searxng' : 'brave';
 		fallbackWebSearchCredential.value = cfg.config?.webSearch?.credential ?? '';
@@ -200,21 +203,6 @@ const fallbackCredentials = computed(() =>
 		(credential) => credential.type === fallbackCredentialType.value,
 	),
 );
-
-function onWebSearchToggle(value: boolean) {
-	webSearchEnabled.value = value;
-	emit(
-		'update:config',
-		withWebSearchConfig(
-			props.config,
-			value,
-			webSearchMethod.value,
-			capabilities.value.webSearch,
-			buildWebSearchArgs(),
-			fallbackWebSearchCredential.value,
-		),
-	);
-}
 
 function buildWebSearchArgs(): NativeWebSearchArgs {
 	const tool = capabilities.value.webSearch;
@@ -237,27 +225,30 @@ function buildWebSearchArgs(): NativeWebSearchArgs {
 	return {};
 }
 
-const emitWebSearchConfig = useDebounceFn(() => {
+function emitWebSearchConfig() {
 	if (!webSearchEnabled.value) return;
+	const method = webSearchMethod.value === 'off' ? 'native' : webSearchMethod.value;
 	emit(
 		'update:config',
 		withWebSearchConfig(
 			props.config,
 			true,
-			webSearchMethod.value,
+			method,
 			capabilities.value.webSearch,
 			buildWebSearchArgs(),
 			fallbackWebSearchCredential.value,
 		),
 	);
-}, 500);
-
-function onWebSearchOptionInput() {
-	void emitWebSearchConfig();
 }
 
-function onWebSearchMethodChange(value: WebSearchMethod) {
+function onWebSearchOptionInput() {
+	emitWebSearchConfig();
+}
+
+function onWebSearchMethodChange(value: WebSearchSelectValue) {
 	webSearchMethod.value = value;
+	webSearchEnabled.value = value !== 'off';
+	const method = value === 'off' ? 'native' : value;
 	if (value !== fallbackWebSearchProvider.value) {
 		fallbackWebSearchCredential.value = '';
 	}
@@ -269,7 +260,7 @@ function onWebSearchMethodChange(value: WebSearchMethod) {
 		withWebSearchConfig(
 			props.config,
 			webSearchEnabled.value,
-			value,
+			method,
 			capabilities.value.webSearch,
 			buildWebSearchArgs(),
 			fallbackWebSearchCredential.value,
@@ -284,7 +275,7 @@ function onFallbackCredentialChange(value: string) {
 		withWebSearchConfig(
 			props.config,
 			webSearchEnabled.value,
-			webSearchMethod.value,
+			webSearchMethod.value === 'off' ? 'native' : webSearchMethod.value,
 			capabilities.value.webSearch,
 			buildWebSearchArgs(),
 			value,
@@ -360,13 +351,32 @@ const thinkingDisabledReason = computed(() =>
 							{{ i18n.baseText('agents.builder.advanced.webSearch.hint') }}
 						</N8nText>
 					</div>
-					<N8nSwitch2
-						:model-value="webSearchEnabled"
+					<N8nSelect
+						:model-value="webSearchMethod"
+						size="small"
 						:disabled="props.disabled"
-						:class="$style.switchControl"
-						data-testid="agent-web-search-toggle"
-						@update:model-value="(v) => onWebSearchToggle(Boolean(v))"
-					/>
+						:class="$style.shortInput"
+						data-testid="agent-web-search-method"
+						@update:model-value="(v) => onWebSearchMethodChange(v as WebSearchSelectValue)"
+					>
+						<N8nOption
+							value="off"
+							:label="i18n.baseText('agents.builder.advanced.webSearch.method.off')"
+						/>
+						<N8nOption
+							v-if="capabilities.webSearch"
+							value="native"
+							:label="i18n.baseText('agents.builder.advanced.webSearch.method.native')"
+						/>
+						<N8nOption
+							value="brave"
+							:label="i18n.baseText('agents.builder.advanced.webSearch.fallbackProvider.brave')"
+						/>
+						<N8nOption
+							value="searxng"
+							:label="i18n.baseText('agents.builder.advanced.webSearch.fallbackProvider.searxng')"
+						/>
+					</N8nSelect>
 				</div>
 
 				<div
@@ -374,34 +384,6 @@ const thinkingDisabledReason = computed(() =>
 					:class="$style.subSettings"
 					data-testid="agent-web-search-settings"
 				>
-					<div :class="$style.row">
-						<N8nText size="small" :bold="true">{{
-							i18n.baseText('agents.builder.advanced.webSearch.method.label')
-						}}</N8nText>
-						<N8nSelect
-							:model-value="webSearchMethod"
-							size="small"
-							:disabled="props.disabled"
-							:class="$style.shortInput"
-							data-testid="agent-web-search-method"
-							@update:model-value="(v) => onWebSearchMethodChange(v as WebSearchMethod)"
-						>
-							<N8nOption
-								v-if="capabilities.webSearch"
-								value="native"
-								:label="i18n.baseText('agents.builder.advanced.webSearch.method.native')"
-							/>
-							<N8nOption
-								value="brave"
-								:label="i18n.baseText('agents.builder.advanced.webSearch.fallbackProvider.brave')"
-							/>
-							<N8nOption
-								value="searxng"
-								:label="i18n.baseText('agents.builder.advanced.webSearch.fallbackProvider.searxng')"
-							/>
-						</N8nSelect>
-					</div>
-
 					<div
 						v-if="webSearchMethod === 'native' && capabilities.webSearch === 'anthropic.web_search'"
 						:class="$style.row"
