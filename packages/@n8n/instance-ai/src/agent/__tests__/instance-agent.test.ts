@@ -8,6 +8,13 @@ const mockAgentInstances: Array<{
 	telemetry: jest.Mock;
 }> = [];
 
+const mockMemoryBuilder = {
+	storage: jest.fn(),
+	lastMessages: jest.fn(),
+	observationalMemory: jest.fn(),
+	build: jest.fn(),
+};
+
 jest.mock('@n8n/agents', () => ({
 	Agent: jest.fn().mockImplementation(function Agent(this: (typeof mockAgentInstances)[number]) {
 		this.model = jest.fn().mockReturnThis();
@@ -18,6 +25,9 @@ jest.mock('@n8n/agents', () => ({
 		this.memory = jest.fn().mockReturnThis();
 		this.telemetry = jest.fn().mockReturnThis();
 		mockAgentInstances.push(this);
+	}),
+	Memory: jest.fn().mockImplementation(function Memory() {
+		return mockMemoryBuilder;
 	}),
 }));
 
@@ -76,9 +86,12 @@ jest.mock('../system-prompt', () => ({
 const { createInstanceAgent } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../instance-agent') as typeof import('../instance-agent');
-const { Agent } =
+const { Agent, Memory } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	require('@n8n/agents') as { Agent: jest.Mock };
+	require('@n8n/agents') as {
+		Agent: jest.Mock;
+		Memory: jest.Mock;
+	};
 const { createToolsFromLocalMcpServer } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	require('../../tools/filesystem/create-tools-from-mcp-server') as {
@@ -126,6 +139,14 @@ function getToolKey(tool: Record<string, unknown>) {
 describe('createInstanceAgent', () => {
 	beforeEach(() => {
 		Agent.mockClear();
+		Memory.mockClear();
+		mockMemoryBuilder.storage.mockReset().mockReturnValue(mockMemoryBuilder);
+		mockMemoryBuilder.lastMessages.mockReset().mockReturnValue(mockMemoryBuilder);
+		mockMemoryBuilder.observationalMemory.mockReset().mockReturnValue(mockMemoryBuilder);
+		mockMemoryBuilder.build.mockReset().mockReturnValue({
+			memory: {},
+			lastMessages: 20,
+		});
 		mockAgentInstances.length = 0;
 		createToolsFromLocalMcpServer.mockReset();
 		createToolsFromLocalMcpServer.mockReturnValue(new Map());
@@ -380,5 +401,41 @@ describe('createInstanceAgent', () => {
 			name: 'evals-evals-test',
 		});
 		expect(deferredTools['evals-evals-test']).toBeUndefined();
+	});
+
+	it('configures observational memory on the Memory builder when provided', async () => {
+		const memoryStore = { id: 'memory-store' };
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'memory-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'memory-test',
+				browserMcpConfig: undefined,
+			},
+			memory: memoryStore,
+			memoryConfig: {
+				lastMessages: 15,
+				observationalMemory: {
+					observerThresholdTokens: 30_000,
+					reflectorThresholdTokens: 40_000,
+				},
+			},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(Memory).toHaveBeenCalledTimes(1);
+		expect(mockMemoryBuilder.storage).toHaveBeenCalledWith(memoryStore);
+		expect(mockMemoryBuilder.lastMessages).toHaveBeenCalledWith(15);
+		expect(mockMemoryBuilder.observationalMemory).toHaveBeenCalledWith({
+			observerThresholdTokens: 30_000,
+			reflectorThresholdTokens: 40_000,
+		});
+		expect(mockAgentInstances[0]?.memory).toHaveBeenCalledWith(mockMemoryBuilder);
 	});
 });
