@@ -5,7 +5,7 @@ orchestration tools (used by the orchestrator for loop control) and domain tools
 (used by the orchestrator directly or delegated to sub-agents). Each tool defines
 its input/output schema via Zod.
 
-## Orchestration Tools (up to 10)
+## Orchestration Tools
 
 These tools are exclusive to the orchestrator agent. Sub-agents do not receive
 them. Some are conditional on context availability.
@@ -26,7 +26,7 @@ for approval before execution starts.
 {
   id: string;          // Stable identifier used by dependency edges
   title: string;       // Short user-facing task title
-  kind: 'delegate' | 'build-workflow' | 'manage-data-tables' | 'research';
+  kind: 'delegate' | 'build-workflow' | 'manage-data-tables' | 'checkpoint';
   spec: string;        // Detailed executor briefing for this task
   deps: string[];      // Task IDs that must succeed before this task can start
   tools?: string[];    // Required tool subset for delegate tasks
@@ -45,8 +45,8 @@ for approval before execution starts.
 **Task kinds** map to preconfigured sub-agents:
 - `build-workflow` → workflow builder agent (sandbox or tool mode)
 - `manage-data-tables` → data table agent (all `*-data-table*` tools)
-- `research` → research agent (web-search + fetch-url)
 - `delegate` → custom sub-agent with orchestrator-specified tool subset
+- `checkpoint` → orchestrator-run verification task
 
 ### `delegate`
 

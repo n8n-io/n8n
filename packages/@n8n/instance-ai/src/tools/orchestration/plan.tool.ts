@@ -9,7 +9,7 @@ import type { OrchestrationContext, PlannedTask } from '../../types';
 const plannedTaskSchema = z.object({
 	id: z.string().describe('Stable task identifier used by dependency edges'),
 	title: z.string().describe('Short user-facing task title'),
-	kind: z.enum(['delegate', 'build-workflow', 'manage-data-tables', 'research', 'checkpoint']),
+	kind: z.enum(['delegate', 'build-workflow', 'manage-data-tables', 'checkpoint']),
 	spec: z.string().describe('Detailed executor briefing for this task'),
 	deps: z
 		.array(z.string())
