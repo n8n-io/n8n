@@ -23,6 +23,10 @@ import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -115,7 +119,8 @@ const showTriggerWaitingWarning = computed(
 		!!activeNodeType.value &&
 		!activeNodeType.value.group.includes('trigger') &&
 		workflowsStore.isWorkflowRunning &&
-		workflowsStore.executionWaitingForWebhook,
+		useWorkflowExecutionStateStore(createWorkflowExecutionStateId(workflowsStore.workflowId))
+			.executionWaitingForWebhook,
 );
 
 const workflowRunData = computed(() => {
@@ -315,7 +320,11 @@ const featureRequestUrl = computed(() => {
 
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
-const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+const isExecutionWaitingForWebhook = computed(
+	() =>
+		useWorkflowExecutionStateStore(createWorkflowExecutionStateId(workflowsStore.workflowId))
+			.executionWaitingForWebhook,
+);
 
 const blockUi = computed(
 	() => workflowsStore.isWorkflowRunning || isExecutionWaitingForWebhook.value,

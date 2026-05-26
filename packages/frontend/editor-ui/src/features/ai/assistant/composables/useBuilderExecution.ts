@@ -3,6 +3,10 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
@@ -22,6 +26,9 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 	const router = useRouter();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionState = computed(() =>
+		useWorkflowExecutionStateStore(createWorkflowExecutionStateId(workflowsStore.workflowId)),
+	);
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const logsStore = useLogsStore();
@@ -41,7 +48,9 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 	);
 
 	const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
-	const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+	const isExecutionWaitingForWebhook = computed(
+		() => workflowExecutionState.value.executionWaitingForWebhook,
+	);
 
 	// --- Execution watcher ---
 	let executionWatcherStop: (() => void) | undefined;
@@ -78,7 +87,7 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 		if (!isReady.value) return false;
 
 		const selectedTriggerNode =
-			workflowsStore.selectedTriggerNodeName ?? availableTriggerNodes.value[0]?.name;
+			workflowExecutionState.value.selectedTriggerNodeName ?? availableTriggerNodes.value[0]?.name;
 		const selectedTriggerNodeType = selectedTriggerNode
 			? workflowDocumentStore.value?.getNodeByName(selectedTriggerNode)
 			: null;

@@ -21,6 +21,10 @@ import {
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
+import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -223,7 +227,11 @@ describe('NodeExecuteButton', () => {
 	it('displays "Stop Listening" when node is listening for events', () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
-		workflowsStore.executionWaitingForWebhook = true;
+		vi.spyOn(
+			useWorkflowExecutionStateStore(createWorkflowExecutionStateId('abc123')),
+			'executionWaitingForWebhook',
+			'get',
+		).mockReturnValue(true);
 		nodeTypesStore.isTriggerNode = () => true;
 
 		const { getByRole } = renderComponent();
@@ -307,7 +315,11 @@ describe('NodeExecuteButton', () => {
 	});
 
 	it('stops webhook when clicking button while listening for events', async () => {
-		workflowsStore.executionWaitingForWebhook = true;
+		vi.spyOn(
+			useWorkflowExecutionStateStore(createWorkflowExecutionStateId('abc123')),
+			'executionWaitingForWebhook',
+			'get',
+		).mockReturnValue(true);
 		nodeTypesStore.isTriggerNode = () => true;
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),

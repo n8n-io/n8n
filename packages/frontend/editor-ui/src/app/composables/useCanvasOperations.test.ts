@@ -18,6 +18,10 @@ import type { ICredentialsResponse } from '@/features/credentials/credentials.ty
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import { RemoveNodeCommand, ReplaceNodeParametersCommand } from '@/app/models/history';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { getNDVStoreId, useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -4007,8 +4011,13 @@ describe('useCanvasOperations', () => {
 			uiStore.resetLastInteractedWith = vi.fn();
 			executionsStore.activeExecution = null;
 
-			workflowsStore.executionWaitingForWebhook = true;
 			workflowsStore.workflowId = 'workflow-id';
+			const executionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowExecutionStateId('workflow-id'),
+			);
+			// Spy on the getter — readonly wrapping prevents direct assignment, and
+			// createTestingPinia stubs setExecutionWaitingForWebhook so the action is a no-op.
+			vi.spyOn(executionStateStore, 'executionWaitingForWebhook', 'get').mockReturnValue(true);
 			workflowsStore.lastSuccessfulExecution = {} as IExecutionResponse;
 			workflowsStore.currentWorkflowExecutions = [
 				{
@@ -4060,8 +4069,8 @@ describe('useCanvasOperations', () => {
 
 			nodeCreatorStore.setNodeCreatorState = vi.fn();
 			workflowsStore.removeTestWebhook = vi.fn();
-
-			workflowsStore.executionWaitingForWebhook = false;
+			workflowsStore.workflowId = 'workflow-id';
+			// Default state-store value is false; no override needed.
 
 			const { resetWorkspace } = useCanvasOperations();
 

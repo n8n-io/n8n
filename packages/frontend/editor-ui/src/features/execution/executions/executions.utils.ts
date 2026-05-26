@@ -36,6 +36,10 @@ import {
 	WORKFLOW_TRIGGER_NODE_TYPE,
 } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { i18n } from '@n8n/i18n';
 import { h } from 'vue';
@@ -196,7 +200,9 @@ export const waitingNodeTooltip = (
 			node.type,
 		)?.waitingNodeTooltip;
 		if (waitingNodeTooltipFromNodeType) {
-			const activeExecutionId = useWorkflowsStore().activeExecutionId as string;
+			const activeExecutionId = useWorkflowExecutionStateStore(
+				createWorkflowExecutionStateId(useWorkflowsStore().workflowId),
+			).activeExecutionId as string;
 			// Use signed URLs from metadata if available
 			// otherwise fall back to constructing URLs without token
 			const additionalData: IWorkflowDataProxyAdditionalKeys = {

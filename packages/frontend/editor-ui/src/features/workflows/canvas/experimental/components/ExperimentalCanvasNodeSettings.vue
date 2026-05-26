@@ -6,6 +6,10 @@ import { type IUpdateInformation } from '@/Interface';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
 
@@ -34,7 +38,11 @@ const foreignCredentials = computed(() =>
 	nodeHelpers.getForeignCredentialsIfSharingEnabled(activeNode.value?.credentials),
 );
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
-const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+const isExecutionWaitingForWebhook = computed(
+	() =>
+		useWorkflowExecutionStateStore(createWorkflowExecutionStateId(workflowsStore.workflowId))
+			.executionWaitingForWebhook,
+);
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
 
 function handleValueChanged(parameterData: IUpdateInformation) {

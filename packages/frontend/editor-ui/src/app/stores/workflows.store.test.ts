@@ -1261,30 +1261,6 @@ describe('useWorkflowsStore', () => {
 	});
 
 	describe('execution session setters', () => {
-		it('setExecutionWaitingForWebhook updates the value', () => {
-			expect(workflowsStore.executionWaitingForWebhook).toBe(false);
-			workflowsStore.setExecutionWaitingForWebhook(true);
-			expect(workflowsStore.executionWaitingForWebhook).toBe(true);
-			workflowsStore.setExecutionWaitingForWebhook(false);
-			expect(workflowsStore.executionWaitingForWebhook).toBe(false);
-		});
-
-		it('setIsInDebugMode updates the value', () => {
-			expect(workflowsStore.isInDebugMode).toBe(false);
-			workflowsStore.setIsInDebugMode(true);
-			expect(workflowsStore.isInDebugMode).toBe(true);
-			workflowsStore.setIsInDebugMode(false);
-			expect(workflowsStore.isInDebugMode).toBe(false);
-		});
-
-		it('setChatPartialExecutionDestinationNode updates the value', () => {
-			expect(workflowsStore.chatPartialExecutionDestinationNode).toBeNull();
-			workflowsStore.setChatPartialExecutionDestinationNode('Some Node');
-			expect(workflowsStore.chatPartialExecutionDestinationNode).toBe('Some Node');
-			workflowsStore.setChatPartialExecutionDestinationNode(null);
-			expect(workflowsStore.chatPartialExecutionDestinationNode).toBeNull();
-		});
-
 		it('setLastSuccessfulExecution updates the value independently of active execution', () => {
 			const execution = { id: 'last-success' } as IExecutionResponse;
 			workflowsStore.setWorkflowExecutionData({
@@ -1375,36 +1351,6 @@ describe('useWorkflowsStore', () => {
 			workflowsStore.deleteExecution(exec1);
 
 			expect(workflowsStore.currentWorkflowExecutions).toEqual([exec2]);
-		});
-	});
-
-	describe('activeExecutionId tri-state', () => {
-		it('starts undefined (not tracking)', () => {
-			expect(workflowsStore.activeExecutionId).toBeUndefined();
-		});
-
-		it('null indicates execution started but id pending', () => {
-			workflowsStore.private.setActiveExecutionId(null);
-			expect(workflowsStore.activeExecutionId).toBeNull();
-		});
-
-		it('string indicates known execution id', () => {
-			workflowsStore.private.setActiveExecutionId('exec-1');
-			expect(workflowsStore.activeExecutionId).toBe('exec-1');
-		});
-
-		it('rolls activeExecutionId into previousExecutionId on transition to a new id', () => {
-			workflowsStore.private.setActiveExecutionId('exec-1');
-			workflowsStore.private.setActiveExecutionId('exec-2');
-			expect(workflowsStore.previousExecutionId).toBe('exec-1');
-			expect(workflowsStore.activeExecutionId).toBe('exec-2');
-		});
-
-		it('does not update previousExecutionId when clearing to undefined', () => {
-			workflowsStore.private.setActiveExecutionId('exec-1');
-			workflowsStore.private.setActiveExecutionId(undefined);
-			expect(workflowsStore.previousExecutionId).toBeUndefined();
-			expect(workflowsStore.activeExecutionId).toBeUndefined();
 		});
 	});
 });

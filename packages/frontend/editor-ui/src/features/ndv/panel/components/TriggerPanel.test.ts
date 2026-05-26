@@ -3,6 +3,10 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import TriggerPanel from './TriggerPanel.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { setActivePinia } from 'pinia';
@@ -65,7 +69,9 @@ describe('TriggerPanel.vue', () => {
 	});
 
 	it('renders listening state for webhook node', () => {
-		workflowsStore.setExecutionWaitingForWebhook(true);
+		useWorkflowExecutionStateStore(
+			createWorkflowExecutionStateId('1'),
+		).setExecutionWaitingForWebhook(true);
 		workflowsStore.executedNode = 'Webhook';
 		const { getByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
@@ -79,7 +85,9 @@ describe('TriggerPanel.vue', () => {
 	});
 
 	it('does not render listening state for other nodes', () => {
-		workflowsStore.setExecutionWaitingForWebhook(true);
+		useWorkflowExecutionStateStore(
+			createWorkflowExecutionStateId('1'),
+		).setExecutionWaitingForWebhook(true);
 		workflowsStore.executedNode = 'OtherNode';
 		const { queryByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
@@ -93,7 +101,9 @@ describe('TriggerPanel.vue', () => {
 	});
 
 	it('renders listening state when executedNode is a child of the current node', () => {
-		workflowsStore.setExecutionWaitingForWebhook(true);
+		useWorkflowExecutionStateStore(
+			createWorkflowExecutionStateId('1'),
+		).setExecutionWaitingForWebhook(true);
 		workflowsStore.executedNode = 'ChildNode';
 		vi.spyOn(workflowDocStore, 'getParentNodes').mockReturnValue(['Webhook']);
 		const { getByTestId } = renderComponent(TriggerPanel, {
@@ -108,7 +118,9 @@ describe('TriggerPanel.vue', () => {
 	});
 
 	it('does not render listening state when executedNode is not a child or current node', () => {
-		workflowsStore.setExecutionWaitingForWebhook(true);
+		useWorkflowExecutionStateStore(
+			createWorkflowExecutionStateId('1'),
+		).setExecutionWaitingForWebhook(true);
 		workflowsStore.executedNode = 'UnrelatedNode';
 		const { queryByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },

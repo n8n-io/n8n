@@ -39,6 +39,10 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
+import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
@@ -583,7 +587,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		});
 
 		// Signal canvas that an execution is pending (null = waiting for execution ID)
-		workflowsStore.private.setActiveExecutionId(null);
+		useWorkflowExecutionStateStore(
+			createWorkflowExecutionStateId(workflowsStore.workflowId),
+		).setActiveExecutionId(null);
 	}
 
 	async function sendMessage(

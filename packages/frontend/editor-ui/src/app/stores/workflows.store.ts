@@ -119,30 +119,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			>,
 	);
 
-	const executionWaitingForWebhook = computed<boolean>({
-		get: () => currentExecutionStateStore.value.executionWaitingForWebhook,
-		set: (value) => currentExecutionStateStore.value.setExecutionWaitingForWebhook(value),
-	});
-
-	const isInDebugMode = computed<boolean>({
-		get: () => currentExecutionStateStore.value.isInDebugMode,
-		set: (value) => currentExecutionStateStore.value.setIsInDebugMode(value),
-	});
-
-	const chatMessages = computed<string[]>(
-		() => currentExecutionStateStore.value.chatMessages as string[],
-	);
-
-	const chatPartialExecutionDestinationNode = computed<string | null>({
-		get: () => currentExecutionStateStore.value.chatPartialExecutionDestinationNode,
-		set: (value) => currentExecutionStateStore.value.setChatPartialExecutionDestinationNode(value),
-	});
-
-	const selectedTriggerNodeName = computed<string | undefined>({
-		get: () => currentExecutionStateStore.value.selectedTriggerNodeName,
-		set: (value) => currentExecutionStateStore.value.setSelectedTriggerNodeName(value),
-	});
-
 	// A workflow is new if it hasn't been saved to the backend yet.
 	// TODO: move to workflowDocumentStore after `workflow` ref is removed from this store.
 	// When moved, preserve the `workflowsListStore.getWorkflowById` coupling — pure
@@ -175,20 +151,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflowExecutionData.value.data.resultData.runData;
 	});
 
-	const isWorkflowRunning = computed(() => {
-		if (activeExecutionId.value === null) {
-			return true;
-		} else if (activeExecutionId.value && workflowExecutionData.value) {
-			if (
-				['waiting', 'running'].includes(workflowExecutionData.value.status) &&
-				!workflowExecutionData.value.finished
-			) {
-				return true;
-			}
-		}
-
-		return false;
-	});
+	const isWorkflowRunning = computed(() => currentExecutionStateStore.value.isWorkflowRunning);
 
 	const executedNode = computed(() => workflowExecutionData.value?.executedNode);
 
@@ -200,36 +163,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const getWorkflowExecution = computed(() => workflowExecutionData.value);
 
-	const getPastChatMessages = computed(() => chatMessages.value);
-
 	const canViewWorkflows = computed(
 		() => !settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser']),
 	);
-
-	/**
-	 * Active execution id (tri-state):
-	 *   - undefined → no active execution being tracked
-	 *   - null      → execution started but backend id not yet known
-	 *   - string    → active backend execution id
-	 *
-	 * Routes through the per-workflow session store. Exposed as a writable
-	 * computed so existing test setups that mutate via `createTestingPinia`
-	 * continue to work.
-	 */
-	const activeExecutionId = computed<string | null | undefined>({
-		get: () => currentExecutionStateStore.value.activeExecutionId,
-		set: (value) => currentExecutionStateStore.value.setActiveExecutionId(value),
-	});
-	const readonlyActiveExecutionId = computed(
-		() => currentExecutionStateStore.value.activeExecutionId,
-	);
-	const readonlyPreviousExecutionId = computed(
-		() => currentExecutionStateStore.value.previousExecutionId,
-	);
-
-	function setActiveExecutionId(id: string | null | undefined) {
-		currentExecutionStateStore.value.setActiveExecutionId(id);
-	}
 
 	function getWorkflowResultDataByNodeName(nodeName: string): ITaskData[] | null {
 		if (getWorkflowRunData.value === null) {
@@ -419,18 +355,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function clearExecutionStartedData(): void {
 		currentExecutionStateStore.value.clearActiveExecutionStartedData();
-	}
-
-	function setExecutionWaitingForWebhook(value: boolean): void {
-		currentExecutionStateStore.value.setExecutionWaitingForWebhook(value);
-	}
-
-	function setIsInDebugMode(value: boolean): void {
-		currentExecutionStateStore.value.setIsInDebugMode(value);
-	}
-
-	function setChatPartialExecutionDestinationNode(value: string | null): void {
-		currentExecutionStateStore.value.setChatPartialExecutionDestinationNode(value);
 	}
 
 	function setLastSuccessfulExecution(execution: IExecutionResponse | null): void {
@@ -740,30 +664,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return url.toString();
 	}
 
-	function resetChatMessages(): void {
-		currentExecutionStateStore.value.resetChatMessages();
-	}
-
-	function appendChatMessage(message: string): void {
-		currentExecutionStateStore.value.appendChatMessage(message);
-	}
-
-	function setSelectedTriggerNodeName(value: string | undefined) {
-		currentExecutionStateStore.value.setSelectedTriggerNodeName(value);
-	}
-
 	return {
 		currentWorkflowExecutions,
 		workflowExecutionData,
 		workflowExecutionPairedItemMappings,
 		workflowExecutionResultDataLastUpdate,
 		workflowExecutionStartedData,
-		activeExecutionId: readonlyActiveExecutionId,
-		previousExecutionId: readonlyPreviousExecutionId,
-		executionWaitingForWebhook,
-		isInDebugMode,
-		chatMessages,
-		chatPartialExecutionDestinationNode,
 		workflowId,
 		isNewWorkflow,
 		isWorkflowSaved,
@@ -773,8 +679,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		executedNode,
 		getAllLoadedFinishedExecutions,
 		getWorkflowExecution,
-		getPastChatMessages,
-		selectedTriggerNodeName,
 		getExecutionDataById,
 		convertTemplateNodeToNodeUi,
 		getWorkflowFromUrl,
@@ -791,9 +695,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowExecutionRunData,
 		setWorkflowExecutionData,
 		clearExecutionStartedData,
-		setExecutionWaitingForWebhook,
-		setIsInDebugMode,
-		setChatPartialExecutionDestinationNode,
 		setLastSuccessfulExecution,
 		clearCurrentWorkflowExecutions,
 		setCurrentWorkflowExecutions,
@@ -813,17 +714,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		deleteExecution,
 		addToCurrentExecutions,
 		getBinaryUrl,
-		resetChatMessages,
-		appendChatMessage,
 		getPartialIdForNode,
-		setSelectedTriggerNodeName,
 		fetchLastSuccessfulExecution,
 		lastSuccessfulExecution,
 		canViewWorkflows,
-		// This is exposed to ease the refactoring to the injected workflowState composable
-		// Please do not use outside this context
-		private: {
-			setActiveExecutionId,
-		},
 	};
 });

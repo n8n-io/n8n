@@ -12,6 +12,10 @@ import {
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -149,7 +153,9 @@ export function useNodeExecution(
 	});
 
 	const isListening = computed(() => {
-		const waitingOnWebhook = workflowsStore.executionWaitingForWebhook;
+		const waitingOnWebhook = useWorkflowExecutionStateStore(
+			createWorkflowExecutionStateId(workflowsStore.workflowId),
+		).executionWaitingForWebhook;
 		const executedNode = workflowsStore.executedNode;
 
 		return (

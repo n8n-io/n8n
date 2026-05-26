@@ -6,6 +6,10 @@ import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { computed, useCssModule } from 'vue';
@@ -82,7 +86,9 @@ function closeChat() {
 }
 
 async function handleClickExecute() {
-	workflowsStore.setSelectedTriggerNodeName(name);
+	useWorkflowExecutionStateStore(
+		createWorkflowExecutionStateId(workflowsStore.workflowId),
+	).setSelectedTriggerNodeName(name);
 	await runEntireWorkflow('node', name);
 }
 </script>

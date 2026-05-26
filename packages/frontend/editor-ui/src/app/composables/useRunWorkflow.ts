@@ -22,6 +22,7 @@ import {
 	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import { retry } from '@n8n/utils/retry';
+import { computed } from 'vue';
 
 import { useToast } from '@/app/composables/useToast';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -37,6 +38,10 @@ import {
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { displayForm } from '@/features/execution/executions/executions.utils';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -76,6 +81,9 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionState = computed(() =>
+		useWorkflowExecutionStateStore(createWorkflowExecutionStateId(workflowsStore.workflowId)),
+	);
 	// `inject()` only resolves inside a setup context; callers from async event
 	// handlers must pass `workflowState` in.
 	const workflowState = useRunWorkflowOpts.workflowState ?? injectWorkflowState();
@@ -124,14 +132,15 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			throw error;
 		}
 
-		const workflowExecutionIdIsNew = workflowsStore.previousExecutionId !== response.executionId;
-		const workflowExecutionIdIsPending = workflowsStore.activeExecutionId === null;
+		const workflowExecutionIdIsNew =
+			workflowExecutionState.value.previousExecutionId !== response.executionId;
+		const workflowExecutionIdIsPending = workflowExecutionState.value.activeExecutionId === null;
 		if (response.executionId && workflowExecutionIdIsNew && workflowExecutionIdIsPending) {
 			workflowState.setActiveExecutionId(response.executionId);
 		}
 
 		if (response.waitingForWebhook === true) {
-			workflowsStore.setExecutionWaitingForWebhook(true);
+			workflowExecutionState.value.setExecutionWaitingForWebhook(true);
 		}
 
 		return response;
@@ -145,7 +154,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		source?: string;
 		sessionId?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
-		if (workflowsStore.activeExecutionId) {
+		if (workflowExecutionState.value.activeExecutionId) {
 			return;
 		}
 
@@ -248,7 +257,9 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					// If the chat node has no input data or pin data, open the chat modal
 					// and halt the execution
 					if (!chatHasInputData && !chatHasPinData) {
-						workflowsStore.setChatPartialExecutionDestinationNode(options.destinationNode.nodeName);
+						workflowExecutionState.value.setChatPartialExecutionDestinationNode(
+							options.destinationNode.nodeName,
+						);
 						startChat();
 						return;
 					}
@@ -513,7 +524,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	}
 
 	async function stopCurrentExecution() {
-		const executionId = workflowsStore.activeExecutionId;
+		const executionId = workflowExecutionState.value.activeExecutionId;
 		let stopData: IExecutionsStopData | undefined;
 
 		if (!executionId) {
@@ -603,7 +614,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		telemetry.track('User clicked execute workflow button', telemetryPayload);
 		void externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 
-		let resolvedTriggerNode = triggerNode ?? workflowsStore.selectedTriggerNodeName;
+		let resolvedTriggerNode = triggerNode ?? workflowExecutionState.value.selectedTriggerNodeName;
 
 		// When no trigger is explicitly selected (e.g. chat trigger is the only trigger
 		// and the Run button doesn't offer it for selection), resolve it from the workflow.

@@ -12,6 +12,10 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
+import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
@@ -533,7 +537,9 @@ async function onExecuteWithMockData() {
 	});
 
 	await runWorkflow({
-		triggerNode: workflowsStore.selectedTriggerNodeName ?? triggerNode?.name,
+		triggerNode:
+			useWorkflowExecutionStateStore(createWorkflowExecutionStateId(workflowsStore.workflowId))
+				.selectedTriggerNodeName ?? triggerNode?.name,
 	});
 }
 

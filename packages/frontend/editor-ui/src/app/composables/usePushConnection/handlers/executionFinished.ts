@@ -79,8 +79,12 @@ export async function executionFinished(
 	options.workflowState.executingNode.lastAddedExecutingNode = null;
 	options.workflowState.executingNode.clearNodeExecutionQueue();
 
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+		createWorkflowExecutionStateId(workflowsStore.workflowId),
+	);
+
 	// No workflow is actively running, therefore we ignore this event
-	if (typeof workflowsStore.activeExecutionId === 'undefined') {
+	if (typeof workflowExecutionStateStore.activeExecutionId === 'undefined') {
 		return;
 	}
 
@@ -259,9 +263,12 @@ export function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
 		return i18n.baseText('pushConnection.executionFailed.message');
 	} else if (execution.status === 'canceled') {
 		const workflowsStore = useWorkflowsStore();
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowExecutionStateId(workflowsStore.workflowId),
+		);
 
 		return i18n.baseText('executionsList.showMessage.stopExecution.message', {
-			interpolate: { activeExecutionId: workflowsStore.activeExecutionId ?? '' },
+			interpolate: { activeExecutionId: workflowExecutionStateStore.activeExecutionId ?? '' },
 		});
 	}
 

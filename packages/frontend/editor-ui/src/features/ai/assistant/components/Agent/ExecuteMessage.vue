@@ -1,6 +1,9 @@
 <!-- eslint-disable import-x/extensions -->
 <script setup lang="ts">
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -33,10 +36,12 @@ interface Emits {
 
 const emit = defineEmits<Emits>();
 
-const workflowsStore = useWorkflowsStore();
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
+);
+const workflowExecutionState = computed(() =>
+	useWorkflowExecutionStateStore(createWorkflowExecutionStateId(workflowId.value)),
 );
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -304,9 +309,9 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 					size="medium"
 					:trigger-nodes="availableTriggerNodes"
 					:get-node-type="nodeTypesStore.getNodeType"
-					:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
+					:selected-trigger-node-name="workflowExecutionState.selectedTriggerNodeName"
 					@execute="onExecute"
-					@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
+					@select-trigger-node="workflowExecutionState.setSelectedTriggerNodeName"
 				/>
 			</N8nTooltip>
 
