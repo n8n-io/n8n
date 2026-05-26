@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
@@ -34,11 +34,11 @@ const emit = defineEmits<{
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const i18n = useI18n();
 const { isOAuthCredentialType, hasManualCredentialInputFields } = useCredentialOAuth();
 
-const activeNode = computed<INode | null>(() => props.contextNode ?? ndvStore.activeNode);
+const activeNode = computed<INode | null>(() => props.contextNode ?? ndvStore.value.activeNode);
 const activeNodeType = computed<INodeTypeDescription | null>(() => {
 	if (!activeNode.value) return null;
 	return nodeTypesStore.getNodeType(activeNode.value.type, activeNode.value.typeVersion);

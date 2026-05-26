@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -27,7 +28,7 @@ describe('useNodeSettingsParameters', () => {
 		beforeEach(() => {
 			setActivePinia(createTestingPinia());
 
-			ndvStore = mockedStore(useNDVStore);
+			ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(''));
 			focusPanelStore = mockedStore(useFocusPanelStore);
 
 			ndvStore.activeNode = {

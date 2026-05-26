@@ -189,7 +189,7 @@ watch(
 	(newValue, oldValue) => {
 		// When active node parameters change, check if authentication type has been changed
 		// and set `subscribedToCredentialType` to corresponding credential type
-		const isActive = props.node.name === ndvStore.activeNode?.name;
+		const isActive = props.node.name === ndvStore.value.activeNode?.name;
 		// Only do this for active node and if it's listening for auth change
 		if (isActive && nodeType.value && listeningForAuthChange.value) {
 			if (mainNodeAuthField.value && oldValue && newValue) {

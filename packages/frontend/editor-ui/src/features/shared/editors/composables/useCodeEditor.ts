@@ -56,6 +56,7 @@ import { ignoreUpdateAnnotation } from '@/app/utils/forceParse';
 import type { TargetNodeParameterContext } from '@/Interface';
 import type { CodeNodeLanguageOption } from '../components/CodeNodeEditor/CodeNodeEditor.vue';
 import { isEventTargetContainedBy } from '@/app/utils/htmlUtils';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
 export type CodeEditorLanguageParamsMap = {
 	json: {};
@@ -94,6 +95,7 @@ export const useCodeEditor = <L extends CodeNodeLanguageOption>({
 	id?: MaybeRefOrGetter<string>;
 	onChange?: (viewUpdate: ViewUpdate) => void;
 }) => {
+	const ndvStore = injectNDVStore();
 	const editor = ref<EditorView>();
 	const hasFocus = ref(false);
 	const hasChanges = ref(false);
@@ -297,7 +299,7 @@ export const useCodeEditor = <L extends CodeNodeLanguageOption>({
 			closeBrackets(),
 			highlightActiveLine(),
 			highlightActiveLineGutter(),
-			mappingDropCursor(),
+			mappingDropCursor(ndvStore.value),
 			indentationMarkers({
 				highlightActiveBlock: true,
 				markerType: 'fullScope',

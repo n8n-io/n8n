@@ -40,10 +40,10 @@ async function createPiniaStore(isActiveNode: boolean) {
 
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const ndvStore = useNDVStore();
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.setWorkflowId(workflow.id);
+	const ndvStore = useNDVStore(createWorkflowDocumentId(workflow.id));
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 	workflowDocumentStore.setNodes(workflow.nodes);
 	workflowDocumentStore.setConnections(workflow.connections);
@@ -149,7 +149,7 @@ describe('NodeDetailsView', () => {
 
 		test('should unregister keydown listener on unmount', async () => {
 			const { pinia, workflow, workflowDocumentStoreRef, nodeName } = await createPiniaStore(false);
-			const ndvStore = useNDVStore(pinia);
+			const ndvStore = useNDVStore(createWorkflowDocumentId(workflow.id), pinia);
 
 			const renderComponent = createComponentRenderer(NodeDetailsView, {
 				global: {

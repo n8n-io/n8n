@@ -383,7 +383,7 @@ watch(
 
 function onOpenNdv() {
 	if (node.value) {
-		ndvStore.setActiveNodeName(node.value.name, 'focus_panel');
+		ndvStore.value.setActiveNodeName(node.value.name, 'focus_panel');
 	}
 }
 

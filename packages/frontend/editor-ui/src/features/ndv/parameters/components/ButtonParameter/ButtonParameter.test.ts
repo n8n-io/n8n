@@ -72,11 +72,13 @@ describe('ButtonParameter', () => {
 		} as any);
 
 		vi.mocked(injectNDVStore).mockReturnValue({
-			ndvInputData: [{}],
-			ndvInputDataWithPinnedData: [{}],
-			activeNode: { name: 'TestNode', parameters: {} },
-			isDraggableDragging: false,
-			pushRef: 'testPushRef',
+			value: {
+				ndvInputData: [{}],
+				ndvInputDataWithPinnedData: [{}],
+				activeNode: { name: 'TestNode', parameters: {} },
+				isDraggableDragging: false,
+				pushRef: 'testPushRef',
+			},
 		} as any);
 
 		vi.mocked(useWorkflowsStore).mockReturnValue({

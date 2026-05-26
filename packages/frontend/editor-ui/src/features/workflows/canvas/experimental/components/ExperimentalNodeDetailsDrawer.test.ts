@@ -68,7 +68,7 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 				description: '',
 			},
 		]);
-		ndvStore = useNDVStore();
+		ndvStore = useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId));
 	});
 
 	it('should show updated parameter after closing NDV', async () => {

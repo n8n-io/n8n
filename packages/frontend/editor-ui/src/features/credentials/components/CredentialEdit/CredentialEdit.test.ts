@@ -8,6 +8,8 @@ import { useCredentialsStore } from '../../credentials.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ICredentialsResponse } from '../../credentials.types';
 import { within, waitFor } from '@testing-library/vue';
@@ -587,7 +589,9 @@ describe('CredentialEdit', () => {
 				[discordOAuth2ApiManagedCapable.name]: discordOAuth2ApiManagedCapable,
 			};
 
-			const ndvStore = mockedStore(useNDVStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.workflowId = 'test-workflow-id';
+			const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 			ndvStore.activeNode = {
 				name: 'DiscordTest',
 				type: 'n8n-nodes-base.discord',
@@ -721,7 +725,9 @@ describe('CredentialEdit', () => {
 		};
 		credStore.getNewCredentialName.mockResolvedValue('Beta API');
 
-		const ndvStore = mockedStore(useNDVStore);
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'test-workflow-id';
+		const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 		ndvStore.activeNode = {
 			name: 'DualCredTest',
 			type: 'n8n-nodes-base.dualCredTest',

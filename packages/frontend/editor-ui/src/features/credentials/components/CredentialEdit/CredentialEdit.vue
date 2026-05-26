@@ -27,7 +27,7 @@ import { useToast } from '@/app/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { useCredentialsStore } from '../../credentials.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -86,7 +86,7 @@ type Props = {
 const props = withDefaults(defineProps<Props>(), { mode: 'new', activeId: undefined });
 
 const credentialsStore = useCredentialsStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -134,7 +134,7 @@ const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>(
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const contextNode = computed<INode | null>(() => {
-	if (ndvStore.activeNode) return ndvStore.activeNode;
+	if (ndvStore.value.activeNode) return ndvStore.value.activeNode;
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	if (isCredentialModalState(modalState) && modalState.contextNode) {
 		return modalState.contextNode;
@@ -498,8 +498,16 @@ onMounted(async () => {
 	}
 
 	// Default to quick connect mode for new credentials when available and not forced to manual
-	if (props.mode === 'new' && !forceManual && credentialTypeName.value && ndvStore.activeNode) {
-		const qcOption = getQuickConnectOption(credentialTypeName.value, ndvStore.activeNode.type);
+	if (
+		props.mode === 'new' &&
+		!forceManual &&
+		credentialTypeName.value &&
+		ndvStore.value.activeNode
+	) {
+		const qcOption = getQuickConnectOption(
+			credentialTypeName.value,
+			ndvStore.value.activeNode.type,
+		);
 		if (qcOption) {
 			isQuickConnectMode.value = true;
 		}
@@ -508,7 +516,7 @@ onMounted(async () => {
 	await externalHooks.run('credentialsEdit.credentialModalOpened', {
 		credentialType: credentialTypeName.value,
 		isEditingCredential: props.mode === 'edit',
-		activeNode: ndvStore.activeNode,
+		activeNode: ndvStore.value.activeNode,
 	});
 
 	setTimeout(async () => {
@@ -694,7 +702,7 @@ async function loadCurrentCredential(id = props.activeId ?? '') {
 function onTabSelect(tab: string) {
 	activeTab.value = tab;
 	const credType: string = credentialType.value ? credentialType.value.name : '';
-	const activeNode: INode | null = ndvStore.activeNode;
+	const activeNode: INode | null = ndvStore.value.activeNode;
 
 	telemetry.track('User viewed credential tab', {
 		credential_type: credType,
@@ -969,8 +977,8 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 			trackProperties.is_valid = !!testedSuccessfully.value;
 		}
 
-		if (ndvStore.activeNode) {
-			trackProperties.node_type = ndvStore.activeNode.type;
+		if (ndvStore.value.activeNode) {
+			trackProperties.node_type = ndvStore.value.activeNode.type;
 		}
 
 		if (authError.value && authError.value !== '') {
@@ -1286,8 +1294,8 @@ async function oAuthCredentialAuthorize() {
 			uses_external_secrets: usesExternalSecrets(credentialData.value),
 		};
 
-		if (ndvStore.activeNode) {
-			trackProperties.node_type = ndvStore.activeNode.type;
+		if (ndvStore.value.activeNode) {
+			trackProperties.node_type = ndvStore.value.activeNode.type;
 		}
 
 		telemetry.track('User saved credentials', trackProperties);
@@ -1348,13 +1356,13 @@ async function onAuthTypeChanged(payload: CredentialModeOption): Promise<void> {
 }
 
 async function onQuickConnect(): Promise<void> {
-	if (!credentialTypeName.value || !ndvStore.activeNode) return;
+	if (!credentialTypeName.value || !ndvStore.value.activeNode) return;
 
 	const serviceName = getAppNameFromCredType(credentialType.value?.displayName ?? '');
 
 	const credential = await quickConnect({
 		credentialTypeName: credentialTypeName.value,
-		nodeType: ndvStore.activeNode.type,
+		nodeType: ndvStore.value.activeNode.type,
 		source: 'credential_type',
 		serviceName,
 	});

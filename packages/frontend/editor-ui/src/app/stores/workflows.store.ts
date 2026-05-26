@@ -31,7 +31,6 @@ import * as workflowsApi from '@/app/api/workflows';
 import { useUIStore } from '@/app/stores/ui.store';
 import { makeRestApiRequest, ResponseError, type WorkflowHistory } from '@n8n/rest-api-client';
 import { unflattenExecutionData } from '@/features/execution/executions/executions.utils';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { i18n } from '@n8n/i18n';
 
 import { computed, ref } from 'vue';
@@ -527,14 +526,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		currentState.value.clearActiveNodeExecutionData(nodeName);
 	}
 
-	// TODO: remove this shim once consumers (assistant.store) switch to a hoisted
-	// scoped NDV store. External FE-hooks consumers reach this via
-	// `workflowsStore.activeNode()` and will lose this surface.
-	function activeNode(): INodeUi | null {
-		const ndvStore = useNDVStore();
-		return ndvStore.activeNode;
-	}
-
 	// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
 	async function getPastExecutions(
 		filter: IDataObject,
@@ -869,7 +860,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setCurrentWorkflowExecutions,
 		renameNodeSelectedAndExecution,
 		clearNodeExecutionData,
-		activeNode,
 		getPastExecutions,
 		getExecution,
 		createNewWorkflow,

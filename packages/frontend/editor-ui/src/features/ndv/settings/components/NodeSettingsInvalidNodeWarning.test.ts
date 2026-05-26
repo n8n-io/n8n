@@ -4,6 +4,8 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
 import { type NodeTypesByTypeNameAndVersion } from '@/Interface';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -56,7 +58,9 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 		mockUseUsersStore = mockedStore(useUsersStore);
 		mockUseNodeCreatorStore = mockedStore(useNodeCreatorStore);
 		mockUseNodeTypesStore = mockedStore(useNodeTypesStore);
-		mockUseNDVStore = mockedStore(useNDVStore);
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'test-workflow-id';
+		mockUseNDVStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 		mockUseUIStore = mockedStore(useUIStore);
 		mockUseInstallNode.mockReturnValue({
 			installNode: mockInstallNode,

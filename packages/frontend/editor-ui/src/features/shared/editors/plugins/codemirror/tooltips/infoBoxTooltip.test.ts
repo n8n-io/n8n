@@ -144,7 +144,7 @@ async function cursorTooltips(docWithCursor: string) {
 	const state = EditorState.create({
 		doc,
 		selection: { anchor: cursorPosition },
-		extensions: [n8nLang(), infoBoxTooltips()],
+		extensions: [n8nLang(), infoBoxTooltips(), WORKFLOW_DOCUMENT_FACET.of('test@latest')],
 	});
 	const view = new EditorView({ parent: document.createElement('div'), state });
 	editors.push(view);

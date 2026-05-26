@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import type { IWorkflowDb } from '@/Interface';
@@ -32,7 +33,7 @@ describe('useWorkflowResourcesLocator', () => {
 
 		createTestingPinia();
 		workflowsListStoreMock = mockedStore(useWorkflowsListStore);
-		ndvStoreMock = mockedStore(useNDVStore);
+		ndvStoreMock = mockedStore(useNDVStore, createWorkflowDocumentId(''));
 
 		useCanvasOperations.mockReturnValue({ renameNode: renameNodeMock });
 	});

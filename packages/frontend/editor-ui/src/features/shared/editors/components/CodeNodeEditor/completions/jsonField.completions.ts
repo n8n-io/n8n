@@ -1,15 +1,14 @@
 import { escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import type { NDVStore } from '@/features/ndv/shared/ndv.store';
 import { isAllowedInDotNotation } from '@/features/shared/editors/plugins/codemirror/completions/utils';
 import { useI18n } from '@n8n/i18n';
 import type { IRunData, IDataObject } from 'n8n-workflow';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
-function useJsonFieldCompletions() {
+function useJsonFieldCompletions(ndvStore: NDVStore) {
 	const i18n = useI18n();
-	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 

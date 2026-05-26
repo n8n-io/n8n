@@ -19,11 +19,13 @@ import { usePrevNodeCompletions } from './completions/prevNode.completions';
 import { useRequireCompletions } from './completions/require.completions';
 import { useVariablesCompletions } from '@/features/settings/environments.ee/completions/variables.completions';
 import { useWorkflowCompletions } from './completions/workflow.completions';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
 export const useCompleter = (
 	mode: MaybeRefOrGetter<CodeExecutionMode>,
 	editor: MaybeRefOrGetter<EditorView | null>,
 ) => {
+	const ndvStore = injectNDVStore();
 	function autocompletionExtension(language: 'javaScript' | 'python' | 'pythonNative'): Extension {
 		if (language === 'python' || language === 'pythonNative') {
 			const completions = (context: CompletionContext): CompletionResult | null => {
@@ -50,7 +52,9 @@ export const useCompleter = (
 		const { executionCompletions } = useExecutionCompletions();
 		const { inputMethodCompletions, selectorMethodCompletions } = useItemFieldCompletions(language);
 		const { inputCompletions, selectorCompletions } = useItemIndexCompletions(mode);
-		const { inputJsonFieldCompletions, selectorJsonFieldCompletions } = useJsonFieldCompletions();
+		const { inputJsonFieldCompletions, selectorJsonFieldCompletions } = useJsonFieldCompletions(
+			ndvStore.value,
+		);
 		const { dateTimeCompletions, nowCompletions, todayCompletions } = useLuxonCompletions();
 		const { prevNodeCompletions } = usePrevNodeCompletions();
 		const { requireCompletions } = useRequireCompletions();
@@ -197,7 +201,7 @@ export const useCompleter = (
 
 		const { executionCompletions } = useExecutionCompletions();
 		const { inputCompletions, selectorCompletions } = useItemIndexCompletions(mode);
-		const { matcherJsonFieldCompletions } = useJsonFieldCompletions();
+		const { matcherJsonFieldCompletions } = useJsonFieldCompletions(ndvStore.value);
 		const { dateTimeCompletions, nowCompletions, todayCompletions } = useLuxonCompletions();
 		const { variablesCompletions } = useVariablesCompletions();
 		const { workflowCompletions } = useWorkflowCompletions();

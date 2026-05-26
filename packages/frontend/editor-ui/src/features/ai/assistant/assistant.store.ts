@@ -12,6 +12,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRoute } from 'vue-router';
@@ -32,10 +33,6 @@ import { v4 as uuid } from 'uuid';
 export const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
 
-// TODO: the `workflowsStore.activeNode()` calls below will switch to a hoisted
-// scoped NDV store (`useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)).activeNode`).
-// Leaving them on the shim for now preserves state consistency with NDV components
-// that still write to the default store; they need to flip together.
 export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
@@ -44,6 +41,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
+	const ndvStore = computed(() => useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)));
 	const route = useRoute();
 	const streaming = ref<boolean>();
 	const streamingAbortController = ref<AbortController | null>(null);
@@ -92,7 +90,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const isAssistantEnabled = computed(() => settings.isAiAssistantEnabled);
 
 	const hideAssistantFloatingButton = computed(
-		() => EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS) && !workflowsStore.activeNode(),
+		() => EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS) && !ndvStore.value.activeNode,
 	);
 
 	const unreadCount = computed(
@@ -337,7 +335,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			};
 		}
 		const currentView = route.name as VIEWS;
-		const activeNode = workflowsStore.activeNode();
+		const activeNode = ndvStore.value.activeNode;
 		const activeNodeForLLM = activeNode
 			? await assistantHelpers.processNodeForAssistant(
 					activeNode,
@@ -414,7 +412,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	) {
 		resetAssistantChat(workflowId);
 		chatSessionTask.value = credentialType ? 'credentials' : 'support';
-		const activeNode = workflowsStore.activeNode() as INode;
+		const activeNode = ndvStore.value.activeNode as INode;
 		const nodeInfo = assistantHelpers.getNodeInfoForAssistant(workflowId, activeNode, {
 			excludeParameterValues: !allowSendingParameterValues.value,
 		});
@@ -640,7 +638,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			) {
 				nodeExecutionStatus.value = 'not_executed';
 			}
-			const activeNode = workflowsStore.activeNode() as INode;
+			const activeNode = ndvStore.value.activeNode as INode;
 			const nodeInfo = assistantHelpers.getNodeInfoForAssistant(workflowId, activeNode, {
 				excludeParameterValues: !allowSendingParameterValues.value,
 			});

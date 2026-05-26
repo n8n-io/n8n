@@ -151,7 +151,7 @@ describe('NodeExecuteButton', () => {
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		nodeTypesStore = mockedStore(useNodeTypesStore);
-		ndvStore = mockedStore(useNDVStore);
+		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('abc123'));
 
 		runWorkflow = useRunWorkflow({ router: useRouter() });
 		externalHooks = useExternalHooks();

@@ -28,7 +28,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 
 import { useLogStreamingStore } from '../logStreaming.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import type { IMenuItem, IUpdateInformation, ModalKey } from '@/Interface';
@@ -83,7 +83,7 @@ const i18n = useI18n();
 const { confirm } = useMessage();
 const telemetry = useTelemetry();
 const logStreamingStore = useLogStreamingStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const uiStore = useUIStore();
 
@@ -222,7 +222,7 @@ function onLabelChange(value: string) {
 
 function setupNode(options: MessageEventBusDestinationOptions) {
 	workflowDocumentStore.value.removeNode(node.value);
-	ndvStore.setActiveNodeName(options.id ?? 'thisshouldnothappen', 'other');
+	ndvStore.value.setActiveNodeName(options.id ?? 'thisshouldnothappen', 'other');
 	workflowDocumentStore.value.addNode(destinationToFakeINodeUi(options));
 	nodeParameters.value = options as INodeParameters;
 	logStreamingStore.items[destination.id!].destination = options;
@@ -333,7 +333,7 @@ function onModalClose() {
 			logStreamingStore.removeDestination(nodeParameters.value.id.toString());
 		}
 	}
-	ndvStore.unsetActiveNodeName();
+	ndvStore.value.unsetActiveNodeName();
 	callEventBus('closing', destination.id);
 	uiStore.markStateClean();
 }

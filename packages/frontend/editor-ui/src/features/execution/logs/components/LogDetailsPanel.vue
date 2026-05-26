@@ -82,7 +82,7 @@ const resizer = useResizablePanel('N8N_LOGS_INPUT_PANEL_WIDTH', {
 });
 const shouldResize = computed(() => panels === LOG_DETAILS_PANEL_STATE.BOTH);
 const searchShortcutPriorityPanel = computed(() =>
-	ndvStore.isNDVOpen || experimentalNdvStore.isMapperOpen
+	ndvStore.value.isNDVOpen || experimentalNdvStore.isMapperOpen
 		? undefined
 		: panels === LOG_DETAILS_PANEL_STATE.INPUT
 			? 'input'

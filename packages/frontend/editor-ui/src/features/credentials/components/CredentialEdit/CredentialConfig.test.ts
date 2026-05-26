@@ -13,6 +13,8 @@ import { STORES } from '@n8n/stores';
 import { vi } from 'vitest';
 import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockedStore } from '@/__tests__/utils';
 import { addCredentialTranslation } from '@n8n/i18n';
@@ -521,7 +523,9 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			const ndvStore = mockedStore(useNDVStore);
+			const workflowsStore = useWorkflowsStore();
+			workflowsStore.setWorkflowId('test-workflow-id');
+			const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 			ndvStore.activeNode = {
 				parameters: { authentication: 'accessToken' },
 				type: 'n8n-nodes-base.dropbox',

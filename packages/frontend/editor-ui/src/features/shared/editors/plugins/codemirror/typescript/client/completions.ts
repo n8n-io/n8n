@@ -12,6 +12,7 @@ import { blockCommentSnippet, snippets } from './snippets';
 import { TARGET_NODE_PARAMETER_FACET, WORKFLOW_DOCUMENT_FACET } from '../../completions/constants';
 import type { AliasCompletion, Alias } from 'n8n-workflow';
 import { sortCompletionsByInput } from '../../completions/datatype.completions';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 const START_CHARACTERS = ['"', "'", '(', '.', '@'];
 const START_CHARACTERS_REGEX = /[\.\(\'\"\@]/;
@@ -31,6 +32,8 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 	const { worker } = context.state.facet(typescriptWorkerFacet);
 	const targetNodeParameter = context.state.facet(TARGET_NODE_PARAMETER_FACET);
 	const workflowDocumentId = context.state.facet(WORKFLOW_DOCUMENT_FACET);
+	if (!workflowDocumentId) return null;
+	const ndvStore = useNDVStore(workflowDocumentId);
 	const word = matchText(context);
 
 	const blockComment = context.matchBefore(/\/\*?\*?/);
@@ -97,10 +100,12 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 				if (opt.label === '$()') {
 					return [
 						opt,
-						...autocompletableNodeNames(workflowDocumentId, targetNodeParameter).map((name) => ({
-							...opt,
-							label: `$('${escapeMappingString(name)}')`,
-						})),
+						...autocompletableNodeNames(ndvStore, workflowDocumentId, targetNodeParameter).map(
+							(name) => ({
+								...opt,
+								label: `$('${escapeMappingString(name)}')`,
+							}),
+						),
 					];
 				}
 				return opt;

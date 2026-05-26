@@ -29,7 +29,6 @@ import {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { storeToRefs } from 'pinia';
 import { useI18n } from '@n8n/i18n';
 import AssignmentCollection from './AssignmentCollection/AssignmentCollection.vue';
 import ButtonParameter from './ButtonParameter/ButtonParameter.vue';
@@ -121,7 +120,7 @@ const aiGateway = useAiGateway();
 
 const MODEL_PARAMETER_NAMES = new Set(['modelId', 'model', 'modelName']);
 
-const { activeNode } = storeToRefs(ndvStore);
+const activeNode = computed(() => ndvStore.value.activeNode);
 
 onErrorCaptured((e, component) => {
 	if (
@@ -142,7 +141,7 @@ onErrorCaptured((e, component) => {
 	return false;
 });
 
-const node = computed(() => props.node ?? ndvStore.activeNode);
+const node = computed(() => props.node ?? ndvStore.value.activeNode);
 
 const nodeType = computed(() => {
 	if (node.value) {
@@ -247,7 +246,7 @@ throttledWatch(
 			if (!newParameterNames.includes(parameter)) {
 				emit('valueChanged', {
 					name: `${props.path}.${parameter}`,
-					node: ndvStore.activeNode?.name || '',
+					node: ndvStore.value.activeNode?.name || '',
 					value: undefined,
 				});
 			}
@@ -514,7 +513,7 @@ async function getDependentParametersValues(parameter: INodeProperties): Promise
 	}
 
 	// Get the resolved parameter values of the current node
-	const currentNodeParameters = ndvStore.activeNode?.parameters;
+	const currentNodeParameters = ndvStore.value.activeNode?.parameters;
 	try {
 		const resolvedNodeParameters = await workflowHelpers.resolveParameter(
 			currentNodeParameters,

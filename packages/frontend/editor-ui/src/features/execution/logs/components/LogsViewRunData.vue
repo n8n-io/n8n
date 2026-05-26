@@ -80,7 +80,7 @@ const isExecuting = computed(
 );
 
 function handleClickOpenNdv() {
-	ndvStore.setActiveNodeName(logEntry.node.name, 'logs_view');
+	ndvStore.value.setActiveNodeName(logEntry.node.name, 'logs_view');
 }
 
 function handleChangeDisplayMode(value: IRunDataDisplayMode) {

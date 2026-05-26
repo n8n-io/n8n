@@ -89,6 +89,7 @@ describe('LogsPanel', () => {
 		workflowsStore.setWorkflowId(workflow.id);
 		const store = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 		store.hydrate(workflow);
+		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(workflow.id));
 	}
 
 	function render() {
@@ -136,7 +137,7 @@ describe('LogsPanel', () => {
 		nodeTypeStore = mockedStore(useNodeTypesStore);
 		nodeTypeStore.setNodeTypes(nodeTypes);
 
-		ndvStore = mockedStore(useNDVStore);
+		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(workflowsStore.workflowId));
 
 		uiStore = mockedStore(useUIStore);
 

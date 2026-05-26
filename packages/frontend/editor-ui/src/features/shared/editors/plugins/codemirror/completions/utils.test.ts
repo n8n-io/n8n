@@ -4,7 +4,6 @@ import { CompletionContext, insertCompletionText } from '@codemirror/autocomplet
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import type { MockInstance } from 'vitest';
 import {
 	autocompletableNodeNames,
 	expressionWithFirstItem,
@@ -128,10 +127,9 @@ describe('completion utils', () => {
 				{ name: 'Node 1', depth: 2, indicies: [] },
 			]);
 
-			const ndvStoreMock: MockInstance = vi.spyOn(ndvStore, 'useNDVStore');
-			ndvStoreMock.mockReturnValue({ activeNode: nodes[2] });
+			const mockNdvStore = { activeNode: nodes[2] } as unknown as ndvStore.NDVStore;
 
-			expect(autocompletableNodeNames('test@latest')).toEqual(['Node 2', 'Node 1']);
+			expect(autocompletableNodeNames(mockNdvStore, 'test@latest')).toEqual(['Node 2', 'Node 1']);
 		});
 
 		it('should work for AI tool nodes', () => {
@@ -147,10 +145,9 @@ describe('completion utils', () => {
 				{ name: 'Normal Node', depth: 1, indicies: [] },
 			]);
 
-			const ndvStoreMock: MockInstance = vi.spyOn(ndvStore, 'useNDVStore');
-			ndvStoreMock.mockReturnValue({ activeNode: nodes[2] });
+			const mockNdvStore = { activeNode: nodes[2] } as unknown as ndvStore.NDVStore;
 
-			expect(autocompletableNodeNames('test@latest')).toEqual(['Normal Node']);
+			expect(autocompletableNodeNames(mockNdvStore, 'test@latest')).toEqual(['Normal Node']);
 		});
 	});
 

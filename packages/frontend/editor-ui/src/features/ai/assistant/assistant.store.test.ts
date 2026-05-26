@@ -10,7 +10,9 @@ import { ASSISTANT_ENABLED_VIEWS } from './constants';
 
 const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -344,15 +346,17 @@ describe('AI Assistant store', () => {
 			currentRouteName = view;
 			currentRouteParams = nodeId ? { nodeId } : {};
 
-			const workflowsStore = useWorkflowsStore();
-			workflowsStore.activeNode = () => ({
+			const testNode: INodeUi = {
 				id: 'test-node',
 				name: 'Test Node',
 				type: 'test',
 				typeVersion: 1,
 				position: [0, 0],
 				parameters: {},
-			});
+			};
+			mockWorkflowDocumentStore.getNodeByName.mockReturnValue(testNode);
+			const ndvStore = useNDVStore(createWorkflowDocumentId('test-workflow'));
+			ndvStore.setActiveNodeName(testNode.name, 'other');
 
 			const assistantStore = useAssistantStore();
 
@@ -365,8 +369,9 @@ describe('AI Assistant store', () => {
 		it(`should hide ai assistant floating button if on canvas of ${view} page`, () => {
 			currentRouteName = view;
 
-			const workflowsStore = useWorkflowsStore();
-			workflowsStore.activeNode = () => null;
+			mockWorkflowDocumentStore.getNodeByName.mockReturnValue(null);
+			const ndvStore = useNDVStore(createWorkflowDocumentId('test-workflow'));
+			ndvStore.unsetActiveNodeName();
 
 			const assistantStore = useAssistantStore();
 

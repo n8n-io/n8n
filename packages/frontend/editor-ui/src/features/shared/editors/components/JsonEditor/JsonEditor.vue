@@ -20,6 +20,7 @@ import { n8nAutocompletion } from '../../plugins/codemirror/n8nLang';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import { mappingDropCursor } from '../../plugins/codemirror/dragAndDrop';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
 type Props = {
 	modelValue: string;
@@ -33,6 +34,7 @@ const emit = defineEmits<{
 	'update:modelValue': [value: string];
 }>();
 
+const ndvStore = injectNDVStore();
 const jsonEditorRef = ref<HTMLDivElement>();
 const editor = ref<EditorView | null>(null);
 const editorState = ref<EditorState | null>(null);
@@ -63,7 +65,7 @@ const extensions = computed(() => {
 			foldGutter(),
 			dropCursor(),
 			bracketMatching(),
-			mappingDropCursor(),
+			mappingDropCursor(ndvStore.value),
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 				if (!viewUpdate.docChanged || !editor.value) return;
 				emit('update:modelValue', editor.value?.state.doc.toString());

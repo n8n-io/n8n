@@ -188,7 +188,7 @@ describe('NodeCredentials', () => {
 		credentialsStore = mockedStore(useCredentialsStore);
 		// Component triggers this on mount; avoid a real XHR with stubActions: false.
 		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
-		ndvStore = mockedStore(useNDVStore);
+		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('1'));
 		uiStore = mockedStore(useUIStore);
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);

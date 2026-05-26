@@ -78,7 +78,7 @@ export async function resolveParameter<T = IDataObject>(
 	const ndvActiveNode =
 		'localResolve' in opts_ && opts_.localResolve
 			? workflowDocumentStore.getNodeByName(opts_.nodeName)
-			: useNDVStore().activeNode;
+			: useNDVStore(workflowDocumentId).activeNode;
 	const opts: ResolveParameterOptions =
 		'localResolve' in opts_ && opts_.localResolve
 			? {
