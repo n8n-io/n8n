@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { onBeforeUnmount, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, useTemplateRef } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -9,6 +9,7 @@ import {
 } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import type { FixWithAiError } from '../fixWithAi';
+import { useThread } from '../instanceAi.store';
 
 export interface WorkflowFailuresReport {
 	workflowId: string;
@@ -107,6 +108,34 @@ onBeforeUnmount(() => {
 	removeExecutionStartedListener();
 	removeExecutionFinishedListener();
 });
+
+// === Editing lock ===
+// Lock interaction with the artifact's editor while the agent is actively
+// editing THIS workflow — a workflow-mutating tool call (build-workflow,
+// build-workflow-with-agent, apply-workflow-credentials, setup-workflow) is
+// in flight with args.workflowId matching ours. Without this, the user can
+// drag nodes around concurrently with the agent's mutations, producing
+// mid-stream conflicts.
+const thread = useThread();
+
+const WORKFLOW_EDITING_TOOLS = new Set([
+	'build-workflow',
+	'build-workflow-with-agent',
+	'apply-workflow-credentials',
+	'setup-workflow',
+]);
+
+const isAgentEditingThisWorkflow = computed(() => {
+	for (const message of thread.messages) {
+		for (const tc of message.toolCalls ?? []) {
+			if (!tc.isLoading) continue;
+			if (!WORKFLOW_EDITING_TOOLS.has(tc.toolName)) continue;
+			const args = tc.args as { workflowId?: string } | undefined;
+			if (args?.workflowId === props.workflowId) return true;
+		}
+	}
+	return false;
+});
 </script>
 
 <template>
@@ -117,6 +146,17 @@ onBeforeUnmount(() => {
 			:refresh-key="refreshKey"
 			@ready="emit('iframe-ready')"
 			@workflow-loaded="(id) => emit('workflow-loaded', id)"
+		/>
+
+		<!-- Block all interaction while the agent is actively editing this
+		     workflow. Pointer-events overlay; agent's mutations still render
+		     live underneath. The chat / AI thread (sibling of this wrapper)
+		     stays interactive so the user can still talk to the agent. -->
+		<div
+			v-if="isAgentEditingThisWorkflow"
+			:class="$style.editLock"
+			data-test-id="instance-ai-artifact-edit-lock"
+			aria-hidden="true"
 		/>
 
 		<!-- <N8nIconButton
@@ -145,5 +185,13 @@ onBeforeUnmount(() => {
 	top: var(--spacing--xs);
 	right: var(--spacing--xs);
 	z-index: 1;
+}
+
+.editLock {
+	position: absolute;
+	inset: 0;
+	z-index: 5;
+	cursor: not-allowed;
+	background: transparent;
 }
 </style>
