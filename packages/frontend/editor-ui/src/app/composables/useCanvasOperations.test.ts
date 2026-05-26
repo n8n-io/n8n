@@ -4686,6 +4686,11 @@ describe('useCanvasOperations', () => {
 				canvasOperations.importWorkflowData(workflowDataToImport, 'paste'),
 			).resolves.not.toThrow();
 			expect(toast.showError).not.toHaveBeenCalled();
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				type: 'error',
+				title: 'Could not insert node',
+				message: `Only one '${EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE}' node is allowed in a workflow`,
+			});
 		});
 
 		it('should remove connections for nodes filtered out during import', async () => {
@@ -5112,6 +5117,39 @@ describe('useCanvasOperations', () => {
 			expect(duplicatedNodeIds.length).toBe(2);
 			expect(duplicatedNodeIds).not.toContain('1');
 			expect(duplicatedNodeIds).not.toContain('2');
+		});
+
+		it('should show max node type error when duplicating nodes that exceed maxNodes limit', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+				maxNodes: 1,
+			});
+			const node = createTestNode({
+				id: '1',
+				name: 'Execute Workflow Trigger',
+				type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+			});
+
+			nodeTypesStore.nodeTypes = {
+				[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE]: { 1: nodeTypeDescription },
+			};
+			workflowDocumentStoreInstance.allNodes = [node];
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue([node]);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+
+			const workflowObject = createTestWorkflowObject({ nodes: [], connections: {} });
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue(workflowObject);
+
+			const canvasOperations = useCanvasOperations();
+			await canvasOperations.duplicateNodes(['1']);
+
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				type: 'error',
+				title: 'Could not insert node',
+				message: `Only one '${EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE}' node is allowed in a workflow`,
+			});
 		});
 
 		it('should not crash when TelemetryHelpers.generateNodesGraph throws error', async () => {
