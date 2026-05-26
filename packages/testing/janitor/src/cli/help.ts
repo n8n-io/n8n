@@ -199,6 +199,13 @@ Config:
   orchestration.metricsPath      Path to metrics JSON (relative to rootDir)
   orchestration.defaultDuration  Duration for specs without metrics (default: 60s)
   orchestration.maxGroupDuration Max group size before splitting (default: 5min)
+  orchestration.retry.coordinatorUrl  Webhook for attempt-aware per-shard filtering
+
+Retry-aware shard output (--shard-index only):
+  When GITHUB_RUN_ATTEMPT > 1 and orchestration.retry.coordinatorUrl is set,
+  the shard's candidate specs are POSTed to the coordinator which returns the
+  subset that failed in the previous attempt. Coordinator errors, timeouts,
+  and fallback responses all fall back to the full shard manifest.
 
 Output:
   { shards: [{ shard, specs, testTime, capabilities, fixtureCount }], totalTestTime }

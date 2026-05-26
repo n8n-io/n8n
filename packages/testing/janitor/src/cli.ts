@@ -63,6 +63,7 @@ import {
 import { orchestrate } from './core/orchestrator.js';
 import { createProject } from './core/project-loader.js';
 import { toJSON, toConsole, printFixResults } from './core/reporter.js';
+import { filterToFailedSpecs } from './core/retry-filter.js';
 import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
 import { TestDiscoveryAnalyzer } from './core/test-discovery-analyzer.js';
 import { createDefaultRunner } from './index.js';
@@ -420,6 +421,51 @@ function runDiscover(): void {
 	console.log(JSON.stringify(report, null, 2));
 }
 
+type RetryConfig = JanitorConfig['orchestration']['retry'];
+
+async function applyRetryFilter(shardSpecs: string[], retry: RetryConfig): Promise<string[]> {
+	const attempt = Number(process.env.GITHUB_RUN_ATTEMPT ?? '1');
+	if (!Number.isFinite(attempt) || attempt <= 1) return shardSpecs;
+
+	const url = retry?.coordinatorUrl?.trim();
+	if (!url) return shardSpecs;
+
+	const runId = process.env.GITHUB_RUN_ID;
+	if (!runId) {
+		console.error('Retry filter: GITHUB_RUN_ID is not set, running full shard');
+		return shardSpecs;
+	}
+
+	if (shardSpecs.length === 0) return shardSpecs;
+
+	try {
+		const response = await filterToFailedSpecs({
+			url,
+			runId,
+			previousAttempt: String(attempt - 1),
+			candidates: shardSpecs,
+			timeoutMs: retry?.timeoutMs,
+		});
+
+		if (response.fallback) {
+			console.error(
+				`Retry filter: coordinator returned fallback (${response.fallbackReason ?? 'unknown'}), running full shard`,
+			);
+			return shardSpecs;
+		}
+
+		console.error(
+			`Retry filter: attempt ${attempt}, running ${response.intersection.length}/${shardSpecs.length} specs that failed in attempt ${attempt - 1}`,
+		);
+		return response.intersection;
+	} catch (error) {
+		console.error(
+			`Retry filter: coordinator call failed (${(error as Error).message}), running full shard`,
+		);
+		return shardSpecs;
+	}
+}
+
 async function runOrchestrate(options: CliOptions): Promise<void> {
 	const config = getConfig();
 
@@ -502,7 +548,8 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 		}
 		const shard = result.shards[options.shardIndex];
 		if (shard) {
-			console.log(shard.specs.join('\n'));
+			const specsToRun = await applyRetryFilter(shard.specs, config.orchestration.retry);
+			console.log(specsToRun.join('\n'));
 		}
 		return;
 	}

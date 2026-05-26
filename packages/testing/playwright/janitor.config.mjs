@@ -76,6 +76,15 @@ export default defineConfig({
 	orchestration: {
 		metricsPath: '../../../.github/test-metrics/playwright.json',
 		specFilter: 'tests/e2e/',
+		// On CI retry, ask the n8n webhook which specs from this shard failed in the
+		// previous attempt and run only those. Webhook owns the Currents API key and
+		// handles all "no previous run / no failures / no intersection" fallbacks.
+		// Override with JANITOR_RETRY_COORDINATOR_URL='' to disable (e.g. fork PRs).
+		retry: {
+			coordinatorUrl:
+				process.env.JANITOR_RETRY_COORDINATOR_URL ??
+				'https://internal.users.n8n.cloud/webhook/failed-specs',
+		},
 	},
 
 	tcr: {
