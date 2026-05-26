@@ -97,6 +97,12 @@ export type IntegrationContextQuery =
 	| 'get_channel_info'
 	| 'search_users'
 	| 'search_channels'
+	| 'get_team'
+	| 'search_teams'
+	| 'get_project'
+	| 'search_projects'
+	| 'search_labels'
+	| 'search_issue_states'
 	| 'get_issue'
 	| 'search_issues';
 
@@ -106,6 +112,7 @@ export type IntegrationAction =
 	| 'send_channel_message'
 	| 'add_reaction'
 	| 'create_issue'
+	| 'update_issue'
 	| 'create_comment';
 
 export type IntegrationActionResult =
@@ -190,6 +197,16 @@ const platformChannelIdSchema = z
 	.string()
 	.min(1)
 	.describe('Platform channel ID, for example a Slack C... channel ID. Do not pass a name.');
+
+const linearTeamIdSchema = z.string().min(1).describe('Linear team UUID.');
+
+const linearProjectIdSchema = z.string().min(1).describe('Linear project UUID.');
+
+const optionalLinearSearchQuerySchema = z
+	.string()
+	.min(1)
+	.optional()
+	.describe('Optional Linear search term. Omit to list available values.');
 
 const searchLimitSchema = z
 	.number()
@@ -312,6 +329,79 @@ const searchIssuesInputSchema = z.object({
 		.strict(),
 });
 
+const getTeamInputSchema = z.object({
+	query: z.literal('get_team'),
+	input: z
+		.object({
+			teamId: linearTeamIdSchema,
+		})
+		.strict(),
+});
+
+const searchTeamsInputSchema = z.object({
+	query: z.literal('search_teams'),
+	input: z
+		.object({
+			query: optionalLinearSearchQuerySchema,
+			limit: searchLimitSchema,
+			includeArchived: z
+				.boolean()
+				.optional()
+				.describe('Whether to include archived teams. Defaults to false.'),
+		})
+		.strict(),
+});
+
+const getProjectInputSchema = z.object({
+	query: z.literal('get_project'),
+	input: z
+		.object({
+			projectId: linearProjectIdSchema,
+		})
+		.strict(),
+});
+
+const searchProjectsInputSchema = z.object({
+	query: z.literal('search_projects'),
+	input: z
+		.object({
+			query: optionalLinearSearchQuerySchema,
+			limit: searchLimitSchema,
+			teamId: linearTeamIdSchema.optional().describe('Optional Linear team UUID to scope search.'),
+			includeArchived: z
+				.boolean()
+				.optional()
+				.describe('Whether to include archived projects. Defaults to false.'),
+		})
+		.strict(),
+});
+
+const searchLabelsInputSchema = z.object({
+	query: z.literal('search_labels'),
+	input: z
+		.object({
+			query: optionalLinearSearchQuerySchema,
+			limit: searchLimitSchema,
+			teamId: linearTeamIdSchema.optional().describe('Optional Linear team UUID to scope search.'),
+		})
+		.strict(),
+});
+
+const searchIssueStatesInputSchema = z.object({
+	query: z.literal('search_issue_states'),
+	input: z
+		.object({
+			query: optionalLinearSearchQuerySchema,
+			limit: searchLimitSchema,
+			teamId: linearTeamIdSchema.optional().describe('Optional Linear team UUID to scope search.'),
+			type: z
+				.enum(['backlog', 'unstarted', 'started', 'completed', 'canceled'])
+				.optional()
+				.describe('Optional Linear workflow state type to filter by.'),
+		})
+		.strict(),
+});
+
 type IntegrationContextToolInput =
 	| z.infer<typeof getCurrentMessageContextInputSchema>
 	| z.infer<typeof getCurrentSubjectInputSchema>
@@ -321,6 +411,12 @@ type IntegrationContextToolInput =
 	| z.infer<typeof getChannelInfoInputSchema>
 	| z.infer<typeof searchUsersInputSchema>
 	| z.infer<typeof searchChannelsInputSchema>
+	| z.infer<typeof getTeamInputSchema>
+	| z.infer<typeof searchTeamsInputSchema>
+	| z.infer<typeof getProjectInputSchema>
+	| z.infer<typeof searchProjectsInputSchema>
+	| z.infer<typeof searchLabelsInputSchema>
+	| z.infer<typeof searchIssueStatesInputSchema>
 	| z.infer<typeof getIssueInputSchema>
 	| z.infer<typeof searchIssuesInputSchema>;
 
@@ -336,6 +432,12 @@ const CONTEXT_QUERY_INPUT_SCHEMAS: Record<
 	get_channel_info: getChannelInfoInputSchema,
 	search_users: searchUsersInputSchema,
 	search_channels: searchChannelsInputSchema,
+	get_team: getTeamInputSchema,
+	search_teams: searchTeamsInputSchema,
+	get_project: getProjectInputSchema,
+	search_projects: searchProjectsInputSchema,
+	search_labels: searchLabelsInputSchema,
+	search_issue_states: searchIssueStatesInputSchema,
 	get_issue: getIssueInputSchema,
 	search_issues: searchIssuesInputSchema,
 } satisfies Record<IntegrationContextQuery, z.ZodType<IntegrationContextToolInput>>;
@@ -422,6 +524,50 @@ const createIssueActionInputSchema = z.object({
 		.strict(),
 });
 
+const nullableLinearIdSchema = z.string().min(1).nullable();
+
+const updateIssueActionInputSchema = z.object({
+	action: z.literal('update_issue'),
+	input: z
+		.object({
+			issueId: z.string().min(1).describe('Linear issue UUID to update.'),
+			teamId: nullableLinearIdSchema
+				.optional()
+				.describe('Optional Linear team UUID. Pass null to clear when Linear allows it.'),
+			title: z.string().min(1).optional().describe('Optional updated Linear issue title.'),
+			description: z
+				.string()
+				.min(1)
+				.nullable()
+				.optional()
+				.describe('Optional updated Linear issue description. Pass null to clear.'),
+			assigneeId: nullableLinearIdSchema
+				.optional()
+				.describe('Optional Linear assignee user ID. Pass null to unassign.'),
+			projectId: nullableLinearIdSchema
+				.optional()
+				.describe('Optional Linear project ID. Pass null to remove the project.'),
+			labelIds: z
+				.array(z.string().min(1))
+				.optional()
+				.describe('Optional complete set of Linear label IDs. Pass [] to clear labels.'),
+			priority: z
+				.number()
+				.int()
+				.nullable()
+				.optional()
+				.describe('Optional Linear priority value. Pass null to clear.'),
+			stateId: nullableLinearIdSchema.optional().describe('Optional Linear workflow state ID.'),
+			parentId: nullableLinearIdSchema
+				.optional()
+				.describe('Optional parent Linear issue ID. Pass null to clear.'),
+		})
+		.strict()
+		.refine(hasUpdateIssueField, {
+			message: 'Provide at least one issue field to update.',
+		}),
+});
+
 const createCommentActionInputSchema = z.object({
 	action: z.literal('create_comment'),
 	input: z
@@ -443,6 +589,7 @@ type IntegrationActionToolInput =
 	| z.infer<typeof sendChannelMessageActionInputSchema>
 	| z.infer<typeof addReactionActionInputSchema>
 	| z.infer<typeof createIssueActionInputSchema>
+	| z.infer<typeof updateIssueActionInputSchema>
 	| z.infer<typeof createCommentActionInputSchema>;
 
 const ACTION_INPUT_SCHEMAS: Record<IntegrationAction, z.ZodType<IntegrationActionToolInput>> = {
@@ -451,6 +598,7 @@ const ACTION_INPUT_SCHEMAS: Record<IntegrationAction, z.ZodType<IntegrationActio
 	send_channel_message: sendChannelMessageActionInputSchema,
 	add_reaction: addReactionActionInputSchema,
 	create_issue: createIssueActionInputSchema,
+	update_issue: updateIssueActionInputSchema,
 	create_comment: createCommentActionInputSchema,
 };
 
@@ -485,6 +633,17 @@ const CONTEXT_QUERY_DESCRIPTIONS = {
 		'search_users: input.query or input.email is required. Returns matching platform user IDs for names, handles, or emails.',
 	search_channels:
 		'search_channels: input.query is required. Returns matching platform channel IDs for channel names or IDs.',
+	get_team:
+		'get_team: input.teamId is required. For Linear, returns team metadata including the team UUID/key/name.',
+	search_teams:
+		'search_teams: optional input.query. For Linear, returns team UUIDs/keys/names. Omit query to list teams.',
+	get_project: 'get_project: input.projectId is required. For Linear, returns project metadata.',
+	search_projects:
+		'search_projects: optional input.query. For Linear, returns project IDs/names; optional input.teamId scopes results to a team. Omit query to list projects.',
+	search_labels:
+		'search_labels: optional input.query. For Linear, returns label IDs/names; optional input.teamId scopes results to a team. Omit query to list labels.',
+	search_issue_states:
+		'search_issue_states: optional input.query. For Linear, returns workflow state IDs/names/types; optional input.teamId and input.type narrow results. Omit query to list states.',
 	get_issue:
 		'get_issue: input.issueId is required. For Linear, use an issue UUID or identifier such as ENG-123. Optional input.includeComments and input.commentsLimit add recent comments.',
 	search_issues:
@@ -502,6 +661,8 @@ const ACTION_DESCRIPTIONS = {
 		'add_reaction: input.emoji is required. For Slack, optional input.threadId and input.messageId target a specific message; otherwise the latest message context is used.',
 	create_issue:
 		'create_issue: input.teamId and input.title are required. For Linear, optional input.description, input.assigneeId, input.projectId, input.labelIds, input.priority, input.stateId, and input.parentId configure the issue.',
+	update_issue:
+		'update_issue: input.issueId and at least one field are required. For Linear, optional input.title, input.description, input.teamId, input.assigneeId, input.projectId, input.labelIds, input.priority, input.stateId, and input.parentId update the issue. Some fields accept null to clear them.',
 	create_comment:
 		'create_comment: input.issueId and input.body are required. For Linear, optional input.parentCommentId creates a threaded reply.',
 } satisfies Record<IntegrationAction, string>;
@@ -514,6 +675,7 @@ const actionSuspendSchema = z.object({
 		'send_channel_message',
 		'add_reaction',
 		'create_issue',
+		'update_issue',
 		'create_comment',
 	]),
 	integrationConnectionId: z.string(),
@@ -770,6 +932,31 @@ function toZodEnumValues<T extends string>(values: T[]): [T, ...T[]] {
 		throw new Error('Integration tools require at least one operation.');
 	}
 	return values as [T, ...T[]];
+}
+
+function hasUpdateIssueField(input: {
+	issueId: string;
+	teamId?: string | null;
+	title?: string;
+	description?: string | null;
+	assigneeId?: string | null;
+	projectId?: string | null;
+	labelIds?: string[];
+	priority?: number | null;
+	stateId?: string | null;
+	parentId?: string | null;
+}): boolean {
+	return (
+		input.teamId !== undefined ||
+		input.title !== undefined ||
+		input.description !== undefined ||
+		input.assigneeId !== undefined ||
+		input.projectId !== undefined ||
+		input.labelIds !== undefined ||
+		input.priority !== undefined ||
+		input.stateId !== undefined ||
+		input.parentId !== undefined
+	);
 }
 
 function parseMessage(value: unknown): z.infer<typeof messageSchema> | undefined {
