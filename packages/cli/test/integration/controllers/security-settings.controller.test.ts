@@ -356,6 +356,11 @@ describe('SecuritySettingsController', () => {
 
 			it('should persist redactionEnforcement.floor = "off" when flag is on', async () => {
 				enableRedactionFlag();
+				instanceRedactionEnforcementService.get.mockResolvedValue({
+					enforced: true,
+					manual: false,
+					production: true,
+				});
 				instanceRedactionEnforcementService.set.mockResolvedValue(undefined);
 
 				await ownerAgent
