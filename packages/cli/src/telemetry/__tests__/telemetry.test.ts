@@ -11,8 +11,7 @@ jest.unmock('@/telemetry');
 jest.mock('@/posthog');
 
 describe('Telemetry', () => {
-	let startPulseSpy: jest.SpyInstance;
-	const spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
+	let spyTrack: jest.SpyInstance;
 
 	const mockRudderStack = mock<RudderStack>();
 
@@ -26,9 +25,6 @@ describe('Telemetry', () => {
 	});
 
 	beforeAll(() => {
-		// @ts-expect-error Spying on private method
-		startPulseSpy = jest.spyOn(Telemetry.prototype, 'startPulse').mockImplementation(() => {});
-
 		jest.useFakeTimers();
 		jest.setSystemTime(testDateTime);
 		globalConfig.deployment.type = 'n8n-testing';
@@ -37,12 +33,13 @@ describe('Telemetry', () => {
 	afterAll(async () => {
 		jest.clearAllTimers();
 		jest.useRealTimers();
-		startPulseSpy.mockRestore();
 		await telemetry.stopTracking();
 	});
 
 	beforeEach(async () => {
-		spyTrack.mockClear();
+		spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
+		// @ts-expect-error Spying on private method
+		jest.spyOn(Telemetry.prototype, 'startPulse').mockImplementation(() => {});
 
 		const postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
