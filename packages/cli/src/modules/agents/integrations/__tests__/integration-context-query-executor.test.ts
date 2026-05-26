@@ -1,8 +1,12 @@
+import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
+import { ChatIntegrationRegistry } from '../agent-chat-integration';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
 import { ChatIntegrationContextQueryExecutor } from '../integration-context-query-executor';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
+import { LinearIntegration } from '../platforms/linear-integration';
+import { SlackIntegration } from '../platforms/slack-integration';
 import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 
 const slack: AgentCredentialIntegrationConfig = {
@@ -14,6 +18,13 @@ const linear: AgentCredentialIntegrationConfig = {
 	type: 'linear',
 	credentialId: 'cred-b',
 };
+
+function buildRegistry(): ChatIntegrationRegistry {
+	const registry = new ChatIntegrationRegistry();
+	registry.register(new SlackIntegration());
+	registry.register(new LinearIntegration(mock<Logger>()));
+	return registry;
+}
 
 describe('ChatIntegrationContextQueryExecutor', () => {
 	it('searches Slack users by name through the selected integration connection', async () => {
@@ -50,7 +61,10 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationContextQueryExecutor(chatIntegrationService);
+		const executor = new ChatIntegrationContextQueryExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -115,7 +129,10 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationContextQueryExecutor(chatIntegrationService);
+		const executor = new ChatIntegrationContextQueryExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -167,7 +184,10 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationContextQueryExecutor(chatIntegrationService);
+		const executor = new ChatIntegrationContextQueryExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -223,7 +243,10 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationContextQueryExecutor(chatIntegrationService);
+		const executor = new ChatIntegrationContextQueryExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -314,7 +337,10 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationContextQueryExecutor(chatIntegrationService);
+		const executor = new ChatIntegrationContextQueryExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -386,7 +412,10 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationContextQueryExecutor(chatIntegrationService);
+		const executor = new ChatIntegrationContextQueryExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -400,15 +429,22 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 			teamId: 'team-1',
 			includeArchived: true,
 		});
+		// search_issues returns a lean summary — only fields present on the
+		// issue node itself, no awaited relations. Hydrating 50 search results
+		// would otherwise issue 250+ Linear API calls. The LLM should call
+		// get_issue on a specific match to fetch state/team/assignee/labels.
 		expect(result).toEqual({
 			ok: true,
 			issues: [
-				expect.objectContaining({
+				{
 					issueId: 'issue-uuid',
 					identifier: 'ENG-123',
 					title: 'Fix signup',
-					team: { teamId: 'team-1', key: 'ENG', name: 'Engineering' },
-				}),
+					url: 'https://linear.app/n8n/issue/ENG-123/fix-signup',
+					priority: { value: 2, label: 'High' },
+					createdAt: '2026-05-18T10:00:00.000Z',
+					updatedAt: '2026-05-18T11:00:00.000Z',
+				},
 			],
 			resultCount: 1,
 			totalCount: 1,

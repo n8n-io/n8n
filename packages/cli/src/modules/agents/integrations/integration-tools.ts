@@ -2,6 +2,7 @@ import { Tool, type InterruptibleToolContext, type ToolContext } from '@n8n/agen
 import { z } from 'zod';
 
 import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
+import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
 
 export type IntegrationMessageTarget =
 	| {
@@ -124,7 +125,7 @@ export type IntegrationActionResult =
 	| {
 			ok: false;
 			error: {
-				code: string;
+				code: IntegrationErrorCode;
 				message: string;
 			};
 	  };
@@ -667,17 +668,12 @@ const ACTION_DESCRIPTIONS = {
 		'create_comment: input.issueId and input.body are required. For Linear, optional input.parentCommentId creates a threaded reply.',
 } satisfies Record<IntegrationAction, string>;
 
+// Suspend payload accepts any action name so platforms can contribute their own
+// verbs (Linear `create_issue`, GitHub `create_pull_request`, …) without
+// widening a central enum every time.
 const actionSuspendSchema = z.object({
 	type: z.literal('integration_action'),
-	action: z.enum([
-		'respond',
-		'send_dm',
-		'send_channel_message',
-		'add_reaction',
-		'create_issue',
-		'update_issue',
-		'create_comment',
-	]),
+	action: z.string(),
 	integrationConnectionId: z.string(),
 	messageContext: z.unknown(),
 });
@@ -748,7 +744,7 @@ export function createIntegrationContextTool(params: {
 					return {
 						ok: false,
 						error: {
-							code: 'NO_THREAD_CONTEXT',
+							code: INTEGRATION_ERROR_CODES.NO_THREAD_CONTEXT,
 							message: 'There is no current agent thread context.',
 						},
 					};
@@ -764,7 +760,7 @@ export function createIntegrationContextTool(params: {
 					return {
 						ok: false,
 						error: {
-							code: 'NO_MESSAGE_CONTEXT',
+							code: INTEGRATION_ERROR_CODES.NO_MESSAGE_CONTEXT,
 							message: 'There is no current message context for this integration connection.',
 						},
 					};
@@ -780,7 +776,7 @@ export function createIntegrationContextTool(params: {
 						return {
 							ok: false,
 							error: {
-								code: 'NO_INTERACTING_USER_CONTEXT',
+								code: INTEGRATION_ERROR_CODES.NO_INTERACTING_USER_CONTEXT,
 								message: 'The latest message context does not include an interacting user ID.',
 							},
 						};
@@ -798,7 +794,7 @@ export function createIntegrationContextTool(params: {
 					return {
 						ok: false,
 						error: {
-							code: 'NO_CHANNEL_CONTEXT',
+							code: INTEGRATION_ERROR_CODES.NO_CHANNEL_CONTEXT,
 							message: 'The latest message context does not include a channel ID.',
 						},
 					};
@@ -1011,7 +1007,7 @@ async function getRespondContext(params: {
 		return {
 			ok: false,
 			error: {
-				code: 'NO_MESSAGE_CONTEXT',
+				code: INTEGRATION_ERROR_CODES.NO_MESSAGE_CONTEXT,
 				message: 'There is no current message context. Use an explicit send action.',
 			},
 		};
@@ -1022,7 +1018,7 @@ async function getRespondContext(params: {
 		return {
 			ok: false,
 			error: {
-				code: 'NO_MESSAGE_CONTEXT',
+				code: INTEGRATION_ERROR_CODES.NO_MESSAGE_CONTEXT,
 				message: 'There is no current message context. Use an explicit send action.',
 			},
 		};
@@ -1032,7 +1028,7 @@ async function getRespondContext(params: {
 		return {
 			ok: false,
 			error: {
-				code: 'NO_MESSAGE_CONTEXT_FOR_INTEGRATION',
+				code: INTEGRATION_ERROR_CODES.NO_MESSAGE_CONTEXT_FOR_INTEGRATION,
 				message: 'The latest message context belongs to another integration connection.',
 			},
 		};

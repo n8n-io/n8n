@@ -1,9 +1,19 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
+import {
+	AgentChatIntegration,
+	type AgentChatIntegrationContext,
+	type PlatformActionParams,
+	type PlatformContextQueryParams,
+} from '../agent-chat-integration';
 import { loadLinearAdapter } from '../esm-loader';
-import type { IntegrationAction, IntegrationContextQuery } from '../integration-tools';
+import type {
+	IntegrationAction,
+	IntegrationActionResult,
+	IntegrationContextQuery,
+} from '../integration-tools';
+import { executeLinearAction, executeLinearContextQuery } from './linear-operations';
 
 /**
  * Linear platform integration.
@@ -41,6 +51,23 @@ export class LinearIntegration extends AgentChatIntegration {
 
 	constructor(private readonly logger: Logger) {
 		super();
+	}
+
+	async executeContextQuery(params: PlatformContextQueryParams): Promise<unknown> {
+		return await executeLinearContextQuery({
+			chat: params.chat,
+			query: params.query,
+			input: params.input,
+		});
+	}
+
+	async executeAction(params: PlatformActionParams): Promise<IntegrationActionResult | undefined> {
+		return await executeLinearAction({
+			chat: params.chat,
+			descriptor: params.descriptor,
+			action: params.action,
+			input: params.input,
+		});
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {

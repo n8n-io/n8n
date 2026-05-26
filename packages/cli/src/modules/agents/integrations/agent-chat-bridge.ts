@@ -9,7 +9,7 @@ import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentChatIntegration } from './agent-chat-integration';
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { CallbackStore } from './callback-store';
-import type { ComponentMapper } from './component-mapper';
+import { RICH_INTERACTION_RESUME_JSON_SCHEMA, type ComponentMapper } from './component-mapper';
 import { IntegrationMessageContextService } from './integration-message-context.service';
 import {
 	buildIntegrationConnectionId,
@@ -273,8 +273,13 @@ export class AgentChatBridge {
 
 		const platformThreadId = this.resolvePlatformThreadId(thread);
 		const threadId = this.toAgentThreadId(platformThreadId);
-		await this.startThinkingStatus(thread);
-		const subject = await this.resolveMessageSubject(message);
+		// startThinkingStatus (Slack assistant.threads.setStatus) and the lazy
+		// `message.subject` fetch are both remote round-trips on independent
+		// resources — run them concurrently.
+		const [, subject] = await Promise.all([
+			this.startThinkingStatus(thread),
+			this.resolveMessageSubject(message),
+		]);
 		await this.updateLatestMessageContext(threadId.id, message.author.userId, thread, {
 			messageId: message.id,
 			interactingUserId: message.author.userId,
@@ -399,53 +404,59 @@ export class AgentChatBridge {
 			if (!streamingPost) startStreamingPost();
 		};
 
-		for await (const chunk of stream) {
-			switch (chunk.type) {
-				case 'text-delta': {
-					const { delta } = chunk;
-					ensureStreamingPost();
-					textStream.yield?.(delta);
-					break;
-				}
-				case 'reasoning-delta': {
-					const { delta } = chunk;
-					ensureStreamingPost();
-					textStream.yield?.(`_${delta}_`);
-					break;
-				}
-				case 'tool-call':
-					this.stashRichInteractionInput(chunk);
-					break;
-				case 'tool-call-suspended':
-					this.richInteractionInputs.delete(chunk.toolCallId);
-					await endStreamingPost();
-					await this.handleSuspension(chunk, thread);
-					// Don't start new streaming post — wait for next text delta
-					break;
-				case 'tool-result':
-					if (this.isRichInteractionDisplayOnly(chunk)) {
-						await endStreamingPost();
-						await this.handleDisplayOnly(chunk, thread);
-					} else {
-						this.richInteractionInputs.delete(chunk.toolCallId);
+		try {
+			for await (const chunk of stream) {
+				switch (chunk.type) {
+					case 'text-delta': {
+						const { delta } = chunk;
+						ensureStreamingPost();
+						textStream.yield?.(delta);
+						break;
 					}
-					break;
-				case 'message':
-					await endStreamingPost();
-					await this.handleMessage(chunk, thread);
-					break;
-				case 'error':
-					await endStreamingPost();
-					await this.postErrorToThread(thread, chunk.error);
-					break;
-				default:
-					// Ignore other chunk types (finish, tool-input-*,
-					// start-step, finish-step, etc.)
-					break;
+					case 'reasoning-delta': {
+						const { delta } = chunk;
+						ensureStreamingPost();
+						textStream.yield?.(`_${delta}_`);
+						break;
+					}
+					case 'tool-call':
+						this.stashRichInteractionInput(chunk);
+						break;
+					case 'tool-call-suspended':
+						this.richInteractionInputs.delete(chunk.toolCallId);
+						await endStreamingPost();
+						await this.handleSuspension(chunk, thread);
+						// Don't start new streaming post — wait for next text delta
+						break;
+					case 'tool-result':
+						if (this.isRichInteractionDisplayOnly(chunk)) {
+							await endStreamingPost();
+							await this.handleDisplayOnly(chunk, thread);
+						} else {
+							this.richInteractionInputs.delete(chunk.toolCallId);
+						}
+						break;
+					case 'message':
+						await endStreamingPost();
+						await this.handleMessage(chunk, thread);
+						break;
+					case 'error':
+						await endStreamingPost();
+						await this.postErrorToThread(thread, chunk.error);
+						break;
+					default:
+						// Ignore other chunk types (finish, tool-input-*,
+						// start-step, finish-step, etc.)
+						break;
+				}
 			}
+		} finally {
+			// Always end the streaming post and drop stashed tool-call inputs so
+			// a stream that errors mid-flight between `tool-call` and the
+			// matching `tool-result` does not leak entries.
+			await endStreamingPost();
+			this.richInteractionInputs.clear();
 		}
-
-		await endStreamingPost();
 	}
 
 	/**
@@ -478,44 +489,47 @@ export class AgentChatBridge {
 			}
 		};
 
-		for await (const chunk of stream) {
-			switch (chunk.type) {
-				case 'text-delta':
-					buffer += chunk.delta;
-					break;
-				case 'reasoning-delta':
-					buffer += `_${chunk.delta}_`;
-					break;
-				case 'tool-call':
-					this.stashRichInteractionInput(chunk);
-					break;
-				case 'tool-call-suspended':
-					this.richInteractionInputs.delete(chunk.toolCallId);
-					await flushBuffer();
-					await this.handleSuspension(chunk, thread);
-					break;
-				case 'tool-result':
-					if (this.isRichInteractionDisplayOnly(chunk)) {
-						await flushBuffer();
-						await this.handleDisplayOnly(chunk, thread);
-					} else {
+		try {
+			for await (const chunk of stream) {
+				switch (chunk.type) {
+					case 'text-delta':
+						buffer += chunk.delta;
+						break;
+					case 'reasoning-delta':
+						buffer += `_${chunk.delta}_`;
+						break;
+					case 'tool-call':
+						this.stashRichInteractionInput(chunk);
+						break;
+					case 'tool-call-suspended':
 						this.richInteractionInputs.delete(chunk.toolCallId);
-					}
-					break;
-				case 'message':
-					await flushBuffer();
-					await this.handleMessage(chunk, thread);
-					break;
-				case 'error':
-					await flushBuffer();
-					await this.postErrorToThread(thread, chunk.error);
-					break;
-				default:
-					break;
+						await flushBuffer();
+						await this.handleSuspension(chunk, thread);
+						break;
+					case 'tool-result':
+						if (this.isRichInteractionDisplayOnly(chunk)) {
+							await flushBuffer();
+							await this.handleDisplayOnly(chunk, thread);
+						} else {
+							this.richInteractionInputs.delete(chunk.toolCallId);
+						}
+						break;
+					case 'message':
+						await flushBuffer();
+						await this.handleMessage(chunk, thread);
+						break;
+					case 'error':
+						await flushBuffer();
+						await this.postErrorToThread(thread, chunk.error);
+						break;
+					default:
+						break;
+				}
 			}
+		} finally {
+			await flushBuffer();
+			this.richInteractionInputs.clear();
 		}
-
-		await flushBuffer();
 	}
 
 	// ---------------------------------------------------------------------------
@@ -614,16 +628,6 @@ export class AgentChatBridge {
 			return;
 		}
 
-		// Use a resume schema that tells ComponentMapper to encode buttons as
-		// { type: 'button', value: '...' } for the discriminated union
-		const riResumeSchema = {
-			type: 'object',
-			properties: {
-				type: { type: 'string' },
-				value: { type: 'string' },
-			},
-		};
-
 		try {
 			const card = await this.componentMapper.toCard(
 				payload as {
@@ -633,7 +637,7 @@ export class AgentChatBridge {
 				},
 				runId,
 				toolCallId,
-				riResumeSchema,
+				RICH_INTERACTION_RESUME_JSON_SCHEMA,
 				this.getShortenCallback(),
 				this.integration.type,
 			);
@@ -700,11 +704,6 @@ export class AgentChatBridge {
 			return;
 		}
 
-		const displayResumeSchema = {
-			type: 'object',
-			properties: { type: { type: 'string' }, value: { type: 'string' } },
-		};
-
 		try {
 			const card = await this.componentMapper.toCard(
 				cardPayload as {
@@ -714,7 +713,7 @@ export class AgentChatBridge {
 				},
 				'',
 				toolCallId,
-				displayResumeSchema,
+				RICH_INTERACTION_RESUME_JSON_SCHEMA,
 				this.getShortenCallback(),
 				this.integration.type,
 			);
@@ -771,21 +770,6 @@ export class AgentChatBridge {
 		actionId: string,
 		value: string | undefined,
 	): { runId: string; toolCallId: string; resumeData: unknown } | null {
-		if (actionId.startsWith('ri-btn:')) {
-			const parts = actionId.split(':');
-			if (parts.length < 4) {
-				this.logger.warn('[AgentChatBridge] Malformed ri-btn action ID', { actionId });
-				return null;
-			}
-			let resumeData: unknown;
-			try {
-				resumeData = JSON.parse(value ?? '');
-			} catch {
-				resumeData = { type: 'button', value };
-			}
-			return { runId: parts[1], toolCallId: parts.slice(2, -1).join(':'), resumeData };
-		}
-
 		if (actionId.startsWith('ri-sel:')) {
 			const parts = actionId.split(':');
 			if (parts.length < 4) {
@@ -978,27 +962,8 @@ export class AgentChatBridge {
 		}
 	}
 
-	private withInteractionContext(
-		resumeData: unknown,
-		context: IntegrationMessageContext | undefined,
-		user: Author,
-	): unknown {
-		if (!context || !resumeData || typeof resumeData !== 'object') return resumeData;
-		return {
-			...resumeData,
-			interaction: {
-				messageContext: context,
-				user: {
-					id: user.userId,
-					name: user.userName,
-				},
-			},
-		};
-	}
-
 	/**
-	 * Handle a button/select action. Action IDs use one of three prefixes:
-	 * - `ri-btn:{runId}:{toolCallId}:{index}` — rich interaction button
+	 * Handle a button/select action. Action IDs use one of two prefixes:
 	 * - `ri-sel:{selectId}:{runId}:{toolCallId}` — rich interaction select
 	 * - `resume:{runId}:{toolCallId}:{index}` — generic per-tool resume button
 	 */
@@ -1018,21 +983,18 @@ export class AgentChatBridge {
 
 		const parsed = this.parseActionId(callbackData.actionId, callbackData.value);
 		if (!parsed) return;
+		// Persist the interacting user / messageId into the thread's message
+		// context so tools running on resume can read it via the message
+		// context store — no need to bolt a duplicate copy onto resumeData.
 		const platformThreadId = this.resolvePlatformThreadId(thread);
 		const threadId = this.toAgentThreadId(platformThreadId);
-		const messageContext = await this.updateLatestMessageContext(
-			threadId.id,
-			event.user.userId,
-			thread,
-			{
-				messageId: event.messageId,
-				interactingUserId: event.user.userId,
-			},
-		);
-		const resumeData = this.withInteractionContext(parsed.resumeData, messageContext, event.user);
+		await this.updateLatestMessageContext(threadId.id, event.user.userId, thread, {
+			messageId: event.messageId,
+			interactingUserId: event.user.userId,
+		});
 
 		await this.cleanUpBeforeResume(event);
-		await this.executeResume(thread, parsed.runId, parsed.toolCallId, resumeData);
+		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData);
 	}
 
 	// ---------------------------------------------------------------------------
