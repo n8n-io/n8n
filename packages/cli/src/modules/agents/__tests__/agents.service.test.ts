@@ -1204,7 +1204,14 @@ describe('AgentsService', () => {
 			expect(agent.schema).not.toBe(snapshotSchema);
 			expect(agent.tools).toEqual(snapshotTools);
 			expect(agent.skills).toEqual(snapshotSkills);
-			expect(agent.versionId).toBe('v1');
+			// Fresh UUID so the next publish snapshot doesn't collide with the
+			// targeted history row's PK and doesn't fast-path past the revert.
+			expect(agent.versionId).not.toBe('v1');
+			expect(agent.versionId).not.toBe('v3');
+			expect(agent.versionId).not.toBe(agent.activeVersionId);
+			expect(agent.versionId).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+			);
 			expect(agent.name).toBe('Old Agent');
 			expect(agent.description).toBe('Old description');
 			expect(agent.activeVersionId).toBe('v2');
@@ -1232,7 +1239,10 @@ describe('AgentsService', () => {
 			await service.revertToVersion(agentId, projectId, 'v1');
 
 			expect(agent.activeVersionId).toBeNull();
-			expect(agent.versionId).toBe('v1');
+			expect(agent.versionId).not.toBe('v1');
+			expect(agent.versionId).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+			);
 			expect(agent.name).toBe('Restored Agent');
 			expect(mockTrx.save).toHaveBeenCalledWith(agent);
 		});

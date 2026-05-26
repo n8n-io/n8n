@@ -597,7 +597,13 @@ export class AgentsService {
 			agent.schema = target.schema ? deepCopy(target.schema) : null;
 			agent.tools = deepCopy(target.tools ?? {});
 			agent.skills = deepCopy(target.skills ?? {});
-			agent.versionId = target.versionId;
+			// Fresh UUID so a follow-up publish writes a new history row.
+			// Re-using target.versionId would collide on the snapshot insert
+			// (target already owns that PK), and leaving the previous
+			// versionId in place could equal activeVersionId — that hits the
+			// idempotent fast-path in publishAgent and silently discards the
+			// revert.
+			agent.versionId = uuid();
 
 			if (agent.schema) {
 				agent.name = agent.schema.name;
