@@ -9,12 +9,6 @@ export function getConfigMutationPrompt(): string {
 Use this after deciding a config change is needed and before calling
 \`read_config\`, \`write_config\`, or \`patch_config\`.
 
-### Boundaries
-
-- The user is only chatting or asking how the builder works.
-- Choose model, memory, integration, tool, and research details before writing config.
-- Do not use web results, prompt snapshots, or remembered config as a write base.
-
 ### Workflow
 
 1. Call \`read_config\` immediately before every \`write_config\` or \`patch_config\`.
