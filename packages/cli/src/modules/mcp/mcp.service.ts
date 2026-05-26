@@ -361,13 +361,17 @@ export class McpService {
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
-			await this.registerBuilderTools(server, user);
+			await this.registerBuilderTools(server, user, dataTableOps);
 		}
 
 		return server;
 	}
 
-	private async registerBuilderTools(server: InstanceType<typeof McpServer>, user: User) {
+	private async registerBuilderTools(
+		server: InstanceType<typeof McpServer>,
+		user: User,
+		dataTableOps: ReturnType<DataTableProxyService['makeDataTableOperationsForUser']>,
+	) {
 		await this.nodeCatalogService.initialize();
 
 		const searchNodesTool = createSearchWorkflowNodesTool(
@@ -427,7 +431,7 @@ export class McpService {
 			}
 		}
 
-		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry);
+		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);
 		server.registerTool(validateTool.name, validateTool.config, validateTool.handler);
 
 		const createTool = createCreateWorkflowFromCodeTool(
@@ -439,6 +443,7 @@ export class McpService {
 			this.nodeTypes,
 			this.credentialsService,
 			this.projectRepository,
+			dataTableOps,
 		);
 		server.registerTool(createTool.name, createTool.config, createTool.handler);
 
@@ -484,6 +489,7 @@ export class McpService {
 			this.credentialsService,
 			this.sharedWorkflowRepository,
 			this.collaborationService,
+			dataTableOps,
 		);
 		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
 

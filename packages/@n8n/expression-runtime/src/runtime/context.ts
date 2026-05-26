@@ -4,7 +4,13 @@ import { extend, extendOptional } from '../extensions/extend';
 import { extendedFunctions } from '../extensions/function-extensions';
 
 import { __sanitize, createSafeErrorSubclass, ExpressionError } from './safe-globals';
-import { createDeepLazyProxy, throwIfErrorSentinel } from './lazy-proxy';
+import {
+	createDeepLazyProxy,
+	isArrayMetadata,
+	isObjectMetadata,
+	throwIfErrorSentinel,
+} from './lazy-proxy';
+import { jmesPath } from './jmespath';
 
 // Pre-create safe error subclass wrappers (reused across evaluations)
 const SafeTypeError = createSafeErrorSubclass(TypeError);
@@ -19,6 +25,48 @@ const SafeURIError = createSafeErrorSubclass(URIError);
 // ============================================================================
 
 /**
+ * The subset of `ivm.Reference` shape the in-isolate runtime relies on.
+ * Declared locally rather than importing from `isolated-vm` because this
+ * module is bundled into the isolate IIFE, where the native module is
+ * unavailable. The host wires real `ivm.Reference` instances which
+ * structurally satisfy this interface.
+ */
+interface BridgeCallback {
+	applySync(
+		thisArg: unknown,
+		args: unknown[],
+		options?: { arguments?: { copy?: boolean }; result?: { copy?: boolean } },
+	): unknown;
+}
+
+/**
+ * Bridge callbacks the in-isolate runtime can invoke synchronously via
+ * `ivm.Reference.applySync`.
+ *
+ *   - `getValueAtPath`, `getArrayElement`: data-access primitives used by the
+ *     lazy-proxy system. Hot path; one ivm.Reference each for minimum overhead.
+ *   - `callFunctionAtPath`: legacy generic dispatch; to be removed once
+ *     every consumer has migrated to typed messages.
+ *   - `callHost`: typed-RPC dispatcher. The in-isolate runtime constructs
+ *     an envelope (e.g. `{ type: 'getNodeFirst', nodeName, ... }`) and the
+ *     host-side dispatcher validates it with zod before routing to a handler.
+ *     A single ivm.Reference covers every typed operation; new operations
+ *     are new schemas in `bridge/bridge-messages.ts` + new cases in the
+ *     dispatcher switch. The name reflects what this is: a synchronous
+ *     host RPC, not a postMessage-style async send.
+ *
+ * The bridge wires all four callbacks unconditionally before invoking
+ * `buildContext`, so the runtime treats them as present — no defensive
+ * null/undefined checks at each call site.
+ */
+export interface BridgeCallbacks {
+	getValueAtPath: BridgeCallback;
+	getArrayElement: BridgeCallback;
+	callFunctionAtPath: BridgeCallback;
+	callHost: BridgeCallback;
+}
+
+/**
  * Build a fresh, closure-scoped evaluation context.
  *
  * This function creates a context object that contains everything needed to
@@ -28,16 +76,12 @@ const SafeURIError = createSafeErrorSubclass(URIError);
  * The returned object is used as tournament's `this` context in the
  * evalClosureSync wrapper.
  *
- * @param getValueAtPath - ivm.Reference for fetching values by path
- * @param getArrayElement - ivm.Reference for fetching array elements
- * @param callFunctionAtPath - ivm.Reference for calling functions by path
+ * @param callbacks - Bridge callbacks (data-access primitives + typed RPCs)
  * @param timezone - Optional IANA timezone string
  * @returns A context object with all workflow data, proxies, and builtins
  */
 export function buildContext(
-	getValueAtPath: any,
-	getArrayElement: any,
-	callFunctionAtPath: any,
+	callbacks: BridgeCallbacks,
 	timezone?: string,
 ): Record<string, unknown> {
 	if (timezone && !IANAZone.isValidZone(timezone)) {
@@ -46,9 +90,6 @@ export function buildContext(
 	Settings.defaultZone = timezone ?? 'system';
 
 	const target: Record<string, unknown> = {};
-
-	// Callback bundle passed to createDeepLazyProxy so proxies don't touch globalThis
-	const callbacks = { getValueAtPath, getArrayElement, callFunctionAtPath };
 
 	// __sanitize must be on the context because PrototypeSanitizer generates:
 	// obj[this.__sanitize(expr)] where 'this' is the context (via .call(ctx) wrapping)
@@ -92,6 +133,13 @@ export function buildContext(
 	target.extend = extend;
 	target.extendOptional = extendOptional;
 
+	// Expose jmespath helpers in-isolate so they shadow the host-side
+	// `data.$jmesPath` / `data.$jmespath` from WorkflowDataProxy. Same rationale
+	// as extend / extendOptional above: keeping these in-isolate removes them
+	// from the bridge's reachable host-callable surface.
+	target.$jmesPath = jmesPath;
+	target.$jmespath = jmesPath;
+
 	// Wire builtins so tournament's VariablePolyfill resolves them from ctx
 	initializeBuiltins(target);
 
@@ -104,9 +152,53 @@ export function buildContext(
 		};
 	};
 
-	// $() function for accessing other nodes
+	// $() function for accessing other nodes.
+	//
+	// The returned object is a Proxy whose `get` trap intercepts properties
+	// that have a typed RPC (e.g. `.first` → `getNodeFirst`) and routes them
+	// through the `callHost` envelope. Everything else (properties like
+	// `.params`, `.json`, and methods that don't yet have a typed RPC) is
+	// read from an underlying lazy proxy via explicit delegation.
+	//
+	// Important: the synthetic Proxy's *target* is a plain `{}` rather than
+	// the lazy proxy itself. Nesting one Proxy inside another causes V8 to
+	// run invariant checks (`[[OwnPropertyKeys]]`, descriptor consistency)
+	// against the inner target, which would trigger the lazy proxy's
+	// `ownKeys` trap and an unnecessary `getValueAtPath` round-trip for the
+	// whole node's keys. Using `{}` as the target keeps those checks cheap;
+	// the lazy proxy lives in closure and is only consulted on demand.
+	//
+	// As more typed RPCs are added, more cases land in this trap.
+	// The `has` trap mirrors the `get` trap for typed-RPC names so that
+	// tournament's `"first" in this.$('Foo')` check resolves true even though
+	// the inner target is empty.
 	target.$ = function (nodeName: string) {
-		return createDeepLazyProxy(['$', nodeName], undefined, callbacks);
+		const lazyProxy = createDeepLazyProxy(['$', nodeName], undefined, callbacks);
+		const sendNodeMethod = (type: 'getNodeFirst' | 'getNodeLast' | 'getNodeAll') => {
+			return (branchIndex?: number, runIndex?: number) => {
+				const result = callbacks.callHost.applySync(
+					null,
+					[{ type, nodeName, branchIndex, runIndex }],
+					{ arguments: { copy: true }, result: { copy: true } },
+				);
+				throwIfErrorSentinel(result);
+				return result;
+			};
+		};
+		return new Proxy({} as Record<string, unknown>, {
+			get(_emptyTarget, prop) {
+				if (prop === 'first') return sendNodeMethod('getNodeFirst');
+				if (prop === 'last') return sendNodeMethod('getNodeLast');
+				if (prop === 'all') return sendNodeMethod('getNodeAll');
+				// Everything else: delegate to the lazy proxy. The lazy proxy's
+				// own `get` trap handles caching, host fetching, and metadata.
+				return (lazyProxy as Record<string | symbol, unknown>)[prop];
+			},
+			has(_emptyTarget, prop) {
+				if (prop === 'first' || prop === 'last' || prop === 'all') return true;
+				return prop in (lazyProxy as Record<string | symbol, unknown>);
+			},
+		});
 	};
 
 	// -------------------------------------------------------------------------
@@ -124,7 +216,7 @@ export function buildContext(
 
 		let value: unknown;
 		try {
-			value = getValueAtPath.applySync(null, [[key]], {
+			value = callbacks.getValueAtPath.applySync(null, [[key]], {
 				arguments: { copy: true },
 				result: { copy: true },
 			});
@@ -144,7 +236,7 @@ export function buildContext(
 		// Function metadata — create a callable wrapper
 		if (value && typeof value === 'object' && (value as any).__isFunction) {
 			target[key] = function (...args: unknown[]) {
-				const result = callFunctionAtPath.applySync(null, [[key], ...args], {
+				const result = callbacks.callFunctionAtPath.applySync(null, [[key], ...args], {
 					arguments: { copy: true },
 					result: { copy: true },
 				});
@@ -154,13 +246,17 @@ export function buildContext(
 			return true;
 		}
 
-		// Object metadata — create a lazy proxy for deep access
-		if (
-			value &&
-			typeof value === 'object' &&
-			('__isObject' in (value as any) || '__isArray' in (value as any))
-		) {
-			target[key] = createDeepLazyProxy([key], undefined, callbacks);
+		// Object / array metadata — create a shape-matched lazy proxy for deep access
+		if (isArrayMetadata(value)) {
+			target[key] = createDeepLazyProxy(
+				[key],
+				{ kind: 'array', length: value.__length },
+				callbacks,
+			);
+			return true;
+		}
+		if (isObjectMetadata(value)) {
+			target[key] = createDeepLazyProxy([key], { kind: 'object', keys: value.__keys }, callbacks);
 			return true;
 		}
 

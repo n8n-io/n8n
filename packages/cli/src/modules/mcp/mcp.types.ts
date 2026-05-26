@@ -72,6 +72,7 @@ export type UserConnectedToMCPEventPayload = {
 	user_id?: string;
 	client_name?: string;
 	client_version?: string;
+	auth_type?: Mcpauth_type;
 	mcp_connection_status: 'success' | 'error';
 	error?: string;
 };
@@ -129,4 +130,5 @@ export type UserWithContext = {
 	user: User | null;
 	actor?: User;
 	context?: TelemetryAuthContext;
+	authType?: Mcpauth_type;
 };

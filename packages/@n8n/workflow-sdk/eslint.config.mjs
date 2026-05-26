@@ -2,6 +2,9 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import { nodeConfig } from '@n8n/eslint-config/node';
 import { n8nCommunityNodesPlugin } from '@n8n/eslint-plugin-community-nodes';
 
+const ADM_ZIP_LAZY_IMPORT_MESSAGE =
+	"Import runtime values from 'adm-zip' through the lazy loader in src/examples-zip.ts so workflow-sdk does not load the zip stack at boot.";
+
 export default defineConfig(
 	globalIgnores(['test-fixtures/**', 'scripts/**']),
 	nodeConfig,
@@ -71,6 +74,24 @@ export default defineConfig(
 			// Default scope (`builderHint`) won't fire here because workflow-sdk source has no
 			// builderHint properties; the prompts override below switches on `scope: 'all'`.
 			'@n8n/community-nodes/no-builder-hint-leakage': 'error',
+		},
+	},
+	{
+		files: ['src/**/*.ts'],
+		ignores: ['src/**/__tests__/**/*.ts'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						{
+							name: 'adm-zip',
+							allowTypeImports: true,
+							message: ADM_ZIP_LAZY_IMPORT_MESSAGE,
+						},
+					],
+				},
+			],
 		},
 	},
 	{

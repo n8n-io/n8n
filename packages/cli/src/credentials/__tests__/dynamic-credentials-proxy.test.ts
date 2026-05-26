@@ -33,6 +33,7 @@ describe('DynamicCredentialsProxy', () => {
 
 		mockResolverProvider = {
 			resolveIfNeeded: jest.fn(),
+			getSystemResolverId: jest.fn(),
 		};
 
 		mockStorageProvider = {
@@ -205,6 +206,49 @@ describe('DynamicCredentialsProxy', () => {
 
 			// Verify by checking it doesn't throw when storing resolvable credential
 			expect(() => proxy.setStorageProvider(mockStorageProvider)).not.toThrow();
+		});
+	});
+
+	describe('getSystemResolverId', () => {
+		it('returns null when no resolver provider is set', () => {
+			expect(proxy.getSystemResolverId()).toBeNull();
+		});
+
+		it('delegates to the resolver provider when set', () => {
+			mockResolverProvider.getSystemResolverId.mockReturnValue('system-n8n');
+			proxy.setResolverProvider(mockResolverProvider);
+
+			expect(proxy.getSystemResolverId()).toBe('system-n8n');
+			expect(mockResolverProvider.getSystemResolverId).toHaveBeenCalled();
+		});
+	});
+
+	describe('getEffectiveResolverId', () => {
+		it('returns the workflow override when set, ignoring the system resolver', () => {
+			mockResolverProvider.getSystemResolverId.mockReturnValue('system-id');
+			proxy.setResolverProvider(mockResolverProvider);
+			const settings: IWorkflowSettings = { credentialResolverId: 'override-id' };
+
+			expect(proxy.getEffectiveResolverId(settings)).toBe('override-id');
+			expect(mockResolverProvider.getSystemResolverId).not.toHaveBeenCalled();
+		});
+
+		it('falls back to the system resolver id when no override is set', () => {
+			mockResolverProvider.getSystemResolverId.mockReturnValue('system-id');
+			proxy.setResolverProvider(mockResolverProvider);
+
+			expect(proxy.getEffectiveResolverId({})).toBe('system-id');
+		});
+
+		it('returns null when neither the workflow nor the provider provides an id', () => {
+			expect(proxy.getEffectiveResolverId(undefined)).toBeNull();
+		});
+
+		it('handles undefined settings without throwing', () => {
+			mockResolverProvider.getSystemResolverId.mockReturnValue('system-id');
+			proxy.setResolverProvider(mockResolverProvider);
+
+			expect(proxy.getEffectiveResolverId(undefined)).toBe('system-id');
 		});
 	});
 });

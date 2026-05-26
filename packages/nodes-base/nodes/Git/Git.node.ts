@@ -1,11 +1,12 @@
 import { DeploymentConfig, SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { access, mkdir } from 'fs/promises';
+import { mkdir } from 'fs/promises';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	ResolvedFilePath,
 } from 'n8n-workflow';
 import {
 	NodeConnectionTypes,
@@ -13,6 +14,7 @@ import {
 	assertParamIsBoolean,
 	assertParamIsString,
 } from 'n8n-workflow';
+import { basename, dirname, join } from 'path';
 import type { LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
 import simpleGit from 'simple-git';
 import { URL } from 'url';
@@ -295,12 +297,37 @@ export class Git implements INodeType {
 			}
 		};
 
+		const isFileNotFoundError = (error: unknown) =>
+			error instanceof Error && 'code' in error && error.code === 'ENOENT';
+
+		const resolvePathAllowingMissingParents = async (path: string): Promise<ResolvedFilePath> => {
+			try {
+				return await this.helpers.resolvePath(path);
+			} catch (error) {
+				if (!isFileNotFoundError(error)) {
+					throw error;
+				}
+
+				const parentPath = dirname(path);
+				if (parentPath === path) {
+					throw error;
+				}
+
+				const resolvedParentPath = await resolvePathAllowingMissingParents(parentPath);
+				return join(resolvedParentPath, basename(path)) as ResolvedFilePath;
+			}
+		};
+
 		const operation = this.getNodeParameter('operation', 0);
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
-				const resolvedRepositoryPath = await this.helpers.resolvePath(repositoryPath);
+				const resolvedRepositoryPath =
+					operation === 'clone'
+						? await resolvePathAllowingMissingParents(repositoryPath)
+						: await this.helpers.resolvePath(repositoryPath);
+
 				const isFilePathBlocked = this.helpers.isFilePathBlocked(resolvedRepositoryPath);
 				if (isFilePathBlocked) {
 					throw new NodeOperationError(
@@ -312,12 +339,7 @@ export class Git implements INodeType {
 				const options = this.getNodeParameter('options', itemIndex, {});
 
 				if (operation === 'clone') {
-					// Create repository folder if it does not exist
-					try {
-						await access(resolvedRepositoryPath);
-					} catch (error) {
-						await mkdir(resolvedRepositoryPath);
-					}
+					await mkdir(dirname(resolvedRepositoryPath), { recursive: true });
 				}
 
 				const gitConfig: string[] = [];
@@ -335,7 +357,7 @@ export class Git implements INodeType {
 				}
 
 				const gitOptions: Partial<SimpleGitOptions> = {
-					baseDir: resolvedRepositoryPath,
+					baseDir: operation === 'clone' ? dirname(resolvedRepositoryPath) : resolvedRepositoryPath,
 					config: gitConfig,
 					// simple-git blocks callers from setting `core.hooksPath` via `config`
 					// unless this flag is set. We set it deliberately as a mitigation, so
@@ -343,11 +365,12 @@ export class Git implements INodeType {
 					...(!enableHooks && { unsafe: { allowUnsafeHooksPath: true } }),
 				};
 
-				const git: SimpleGit = simpleGit(gitOptions)
-					// Tell git not to ask for any information via the terminal like for
-					// example the username. As nobody will be able to answer it would
-					// n8n keep on waiting forever.
-					.env('GIT_TERMINAL_PROMPT', '0');
+				const cleanEnv = Object.create(null) as Record<string, unknown>;
+				// Tell git not to ask for any information via the terminal like for
+				// example the username. As nobody will be able to answer it would
+				// n8n keep on waiting forever.
+				cleanEnv['GIT_TERMINAL_PROMPT'] = '0';
+				const git: SimpleGit = simpleGit(gitOptions).env(cleanEnv);
 
 				if (operation === 'add') {
 					// ----------------------------------
@@ -409,7 +432,7 @@ export class Git implements INodeType {
 					let sourceRepository = this.getNodeParameter('sourceRepository', itemIndex, '') as string;
 					sourceRepository = await prepareRepository(sourceRepository);
 
-					await git.clone(sourceRepository, '.');
+					await git.clone(sourceRepository, resolvedRepositoryPath);
 
 					returnItems.push({
 						json: {

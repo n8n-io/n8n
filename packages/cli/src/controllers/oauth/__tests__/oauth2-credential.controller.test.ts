@@ -33,32 +33,11 @@ describe('OAuth2CredentialController', () => {
 	});
 
 	describe('getAuthUri', () => {
-		it('should return a valid auth URI', async () => {
-			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-			const mockGetUri = jest.fn().mockReturnValue({
-				toString: () =>
-					'https://example.domain/oauth2/auth?client_id=client_id&redirect_uri=http://localhost:5678/rest/oauth2-credential/callback&response_type=code&state=state&scope=openid',
-			});
-			jest.mocked(ClientOAuth2).mockImplementation(
-				() =>
-					({
-						code: {
-							getUri: mockGetUri,
-						},
-					}) as any,
-			);
-
+		it('should build CSRF state data and return a valid auth URI', async () => {
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
-			oauthService.getCredential.mockResolvedValueOnce(mockResolvedCredential);
-			oauthService.getOAuthCredentials.mockResolvedValueOnce({
-				clientId: 'client_id',
-				clientSecret: 'client_secret',
-				authUrl: 'https://example.domain/oauth2/auth',
-				accessTokenUrl: 'https://example.domain/oauth2/token',
-				scope: 'openid',
-				grantType: 'authorizationCode',
-				authentication: 'header',
-			});
+			const mockCsrfData = { cid: '1', origin: 'static-credential' as const, userId: '123' };
+			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
+			oauthService.buildCsrfStateData.mockResolvedValueOnce(mockCsrfData);
 			oauthService.generateAOauth2AuthUri.mockResolvedValue('https://example.domain/oauth2/auth');
 
 			const req = mock<OAuthRequest.OAuth2Credential.Auth>({
@@ -69,11 +48,11 @@ describe('OAuth2CredentialController', () => {
 			const authUri = await controller.getAuthUri(req);
 
 			expect(authUri).toContain('https://example.domain/oauth2/auth');
-			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(mockResolvedCredential, {
-				cid: '1',
-				origin: 'static-credential',
-				userId: '123',
-			});
+			expect(oauthService.buildCsrfStateData).toHaveBeenCalledWith(mockResolvedCredential, req);
+			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(
+				mockResolvedCredential,
+				mockCsrfData,
+			);
 		});
 	});
 

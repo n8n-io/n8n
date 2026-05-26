@@ -6,13 +6,13 @@ import AppsRequiringCredsNotice from './AppsRequiringCredsNotice.vue';
 import SetupTemplateFormStep from './SetupTemplateFormStep.vue';
 import { computed, onMounted, onUnmounted } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 
 import { N8nButton, N8nHeading } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const workflowStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const uiStore = useUIStore();
 
 export type SetupCredentialsModalSource = 'template' | 'builder';
@@ -54,7 +54,7 @@ onUnmounted(() => {
 		completed: numFilledCredentials.value === credentialUsages.value.length,
 		creds_filled: numFilledCredentials.value,
 		creds_needed: credentialUsages.value.length,
-		workflow_id: workflowStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 		source: props.data?.source ?? 'canvas',
 	});
 });
