@@ -78,8 +78,10 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 				(isTeamProjectFeatureEnabled.value && !isTeamProjectLimitExceeded.value)) &&
 			!sourceControlStore.preferences.branchReadOnly,
 	);
-	const hasPermissionToCreateProjects = computed(() =>
-		hasPermission(['rbac'], { rbac: { scope: 'project:create' } }),
+	const hasPermissionToCreateProjects = computed(
+		() =>
+			hasPermission(['rbac'], { rbac: { scope: 'project:create' } }) &&
+			!hasRole(['global:member', 'global:chatUser']),
 	);
 	const canViewProjects = computed(
 		() => !settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser']),

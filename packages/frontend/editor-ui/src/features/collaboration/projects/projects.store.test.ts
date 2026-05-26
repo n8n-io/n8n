@@ -6,6 +6,8 @@ import * as projectsApi from './projects.api';
 import type { Project, ProjectListItem } from './projects.types';
 import { ProjectTypes } from './projects.types';
 import type { ProjectRole, Scope } from '@n8n/permissions';
+import { hasPermission } from '@/app/utils/rbac/permissions';
+import { hasRole } from '@/app/utils/rbac/checks';
 
 // Minimal router mock to satisfy useRoute usage in the store
 vi.mock('vue-router', async (importOriginal) => ({
@@ -19,6 +21,14 @@ vi.mock('./projects.api', () => ({
 	addProjectMembers: vi.fn(),
 	updateProjectMemberRole: vi.fn(),
 	deleteProjectMember: vi.fn(),
+}));
+
+vi.mock('@/app/utils/rbac/permissions', () => ({
+	hasPermission: vi.fn().mockReturnValue(false),
+}));
+
+vi.mock('@/app/utils/rbac/checks', () => ({
+	hasRole: vi.fn().mockReturnValue(false),
 }));
 
 // Typed mocked facade for the API module
@@ -179,5 +189,42 @@ describe('useProjectsStore.updateProject (partial payloads)', () => {
 		);
 		expect(mockedProjectsApi.getProject).toHaveBeenCalledWith(expect.anything(), 'p1');
 		expect(store.currentProject?.relations.length).toBe(0);
+	});
+});
+
+describe('useProjectsStore.hasPermissionToCreateProjects', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		vi.clearAllMocks();
+	});
+
+	it('returns true when scope is present and role is not member/chatUser', () => {
+		vi.mocked(hasPermission).mockReturnValue(true);
+		vi.mocked(hasRole).mockReturnValue(false);
+		const store = useProjectsStore();
+		expect(store.hasPermissionToCreateProjects).toBe(true);
+	});
+
+	it('returns false for members even when the project:create scope is granted', () => {
+		vi.mocked(hasPermission).mockReturnValue(true);
+		vi.mocked(hasRole).mockImplementation((roles) => (roles as string[]).includes('global:member'));
+		const store = useProjectsStore();
+		expect(store.hasPermissionToCreateProjects).toBe(false);
+	});
+
+	it('returns false for chat users even when the project:create scope is granted', () => {
+		vi.mocked(hasPermission).mockReturnValue(true);
+		vi.mocked(hasRole).mockImplementation((roles) =>
+			(roles as string[]).includes('global:chatUser'),
+		);
+		const store = useProjectsStore();
+		expect(store.hasPermissionToCreateProjects).toBe(false);
+	});
+
+	it('returns false when the scope is missing', () => {
+		vi.mocked(hasPermission).mockReturnValue(false);
+		vi.mocked(hasRole).mockReturnValue(false);
+		const store = useProjectsStore();
+		expect(store.hasPermissionToCreateProjects).toBe(false);
 	});
 });
