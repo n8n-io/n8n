@@ -1,10 +1,10 @@
-import type { LanguageModelV2 } from '@ai-sdk/provider-v5';
 import type {
 	AttributeValue,
 	BuiltTelemetry,
 	BuiltMemory,
 	BuiltTool,
 	CheckpointStore,
+	ModelConfig as NativeModelConfig,
 	Telemetry,
 	Workspace,
 } from '@n8n/agents';
@@ -825,17 +825,19 @@ export interface InstanceAiMemoryConfig {
 
 // ── Model configuration ─────────────────────────────────────────────────────
 
+type NativeLanguageModelConfig = Extract<NativeModelConfig, { specificationVersion: string }>;
+
 /** Model identifier: plain string for built-in providers, object for OpenAI-compatible endpoints,
- *  or a pre-built LanguageModelV2 instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
+ *  or a pre-built LanguageModel instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
  *
- *  The LanguageModelV2 variant exists for proxy routes that need a provider-native transport.
+ *  The LanguageModel variant exists for proxy routes that need a provider-native transport.
  *  For example, Vertex AI Anthropic routes use the native Messages API at `/v1/messages`, so
  *  we must use `@ai-sdk/anthropic` directly instead of routing through an OpenAI-compatible
  *  `/chat/completions` adapter. */
 export type ModelConfig =
 	| string
 	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> }
-	| LanguageModelV2;
+	| NativeLanguageModelConfig;
 
 /** Configuration for routing requests through an AI service proxy (LangSmith tracing, Brave Search, etc.). */
 export interface ServiceProxyConfig {
