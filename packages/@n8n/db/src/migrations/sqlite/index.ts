@@ -180,7 +180,8 @@ import { CreateInstanceAiCheckpointTable1784000000007 } from '../common/17840000
 import { ResetInstanceAiNativePersistence1784000000008 } from '../common/1784000000008-ResetInstanceAiNativePersistence';
 import { CreateAgentMemoryEntryTables1784000000009 } from '../common/1784000000009-CreateAgentMemoryEntryTables';
 import { RefactorAgentObservationScope1784000000010 } from '../common/1784000000010-RefactorAgentObservationScope';
-import { UseSlugAsPrimaryKeyInMcpRegistryServer1784000000012 } from '../common/1784000000012-UseSlugAsPrimaryKeyInMcpRegistryServer';
+import { CreateInstanceAiObservationTables1784000000012 } from '../common/1784000000012-CreateInstanceAiObservationTables';
+import { UseSlugAsPrimaryKeyInMcpRegistryServer1784000000013 } from '../common/1784000000013-UseSlugAsPrimaryKeyInMcpRegistryServer';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -366,7 +367,8 @@ const sqliteMigrations: Migration[] = [
 	CreateAgentMemoryEntryTables1784000000009,
 	RefactorAgentObservationScope1784000000010,
 	CreateAgentHistoryTable1784000000011,
-	UseSlugAsPrimaryKeyInMcpRegistryServer1784000000012,
+	CreateInstanceAiObservationTables1784000000012,
+	UseSlugAsPrimaryKeyInMcpRegistryServer1784000000013,
 ];
 
 export { sqliteMigrations };
