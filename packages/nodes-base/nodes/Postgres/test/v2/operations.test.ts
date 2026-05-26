@@ -504,6 +504,53 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		expect(utils.isJSON).toHaveBeenCalledTimes(1);
 		expect(utils.stringToArray).toHaveBeenCalledTimes(1);
 	});
+
+	it('should spread array expression values across individual bind values', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'INSERT INTO my_table (col1, col2, col3) VALUES ($1, $2, $3)',
+			options: {
+				queryReplacement: "={{ ['a', 'b', 'c'] }}",
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		// Override evaluateExpression to return an array for this test
+		const mockExecute = {
+			getNodeParameter(
+				parameterName: string,
+				_itemIndex: number,
+				fallbackValue?: IDataObject,
+				options?: IGetNodeParameterOptions,
+			) {
+				const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
+				return get(nodeParameters, parameter, fallbackValue);
+			},
+			getNode() {
+				return node;
+			},
+			evaluateExpression(str: string, _: number) {
+				// Detect array expression pattern and return a JS array
+				if (str.includes("['a', 'b', 'c']")) {
+					return ['a', 'b', 'c'];
+				}
+				return str.replace('{{', '').replace('}}', '');
+			},
+		} as unknown as IExecuteFunctions;
+
+		await executeQuery.execute.call(mockExecute, runQueries, items, nodeOptions);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query: 'INSERT INTO my_table (col1, col2, col3) VALUES ($1, $2, $3)',
+					values: ['a', 'b', 'c'],
+					options: { partial: true },
+				},
+			],
+			nodeOptions,
+		);
+	});
 });
 
 describe('Test PostgresV2, insert operation', () => {
