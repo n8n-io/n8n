@@ -7,6 +7,7 @@ packages:
 
 catalog:
   '@ai-sdk/amazon-bedrock': ^4.0.95
+  '@ai-sdk/anthropic': 3.0.58
   '@ai-sdk/azure': ^3.0.54
   '@ai-sdk/cohere': ^3.0.30
   '@ai-sdk/deepseek': ^2.0.29
