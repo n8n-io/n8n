@@ -2983,7 +2983,7 @@
 	"experiments.surfaceMcpToNewCloudUsers.onboarding.prompt.cursor": "Set up the n8n MCP server for Cursor across all projects.\n\n1. Open ~/.cursor/mcp.json (create the file and directory if they don't exist). Add the entry below, merging with any existing config so other servers stay intact:\n\n   {'{'}\n     \"mcpServers\": {'{'}\n       \"n8n\": {'{'}\n         \"url\": \"{serverUrl}\"\n       {'}'}\n     {'}'}\n   {'}'}\n\n2. Once it's saved, remind me to restart Cursor and complete the n8n OAuth flow when it prompts me — the server's tools won't be available until then.",
 	"experiments.surfaceMcpToNewCloudUsers.onboarding.prompt.codex": "Set up the n8n MCP server for Codex across all projects.\n\n1. Open ~/.codex/config.toml (create the file and directory if they don't exist). Append the section below, leaving any existing config in place:\n\n   [mcp_servers.n8n]\n   url = \"{serverUrl}\"\n\n2. Once it's saved, remind me to restart Codex and complete the n8n OAuth flow in my browser when it prompts me — the server's tools won't be available until then.",
 	"experiments.surfaceMcpToNewCloudUsers.onboarding.section.client.title": "Choose your assistant",
-	"experiments.surfaceMcpToNewCloudUsers.onboarding.section.access.title": "Enable MCP access",
+	"experiments.surfaceMcpToNewCloudUsers.onboarding.section.access.title": "Enable MCP for my instance",
 	"experiments.surfaceMcpToNewCloudUsers.onboarding.section.prompt.title": "Paste the prompt in {assistant}",
 	"experiments.surfaceMcpToNewCloudUsers.onboarding.section.serverUrl.title": "Paste Server URL",
 	"experiments.surfaceMcpToNewCloudUsers.onboarding.section.restart.title": "Restart {assistant} and connect to n8n",
