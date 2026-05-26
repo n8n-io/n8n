@@ -40,6 +40,7 @@
     "@types/xml2js": "catalog:",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
+    "jest-mock-extended": "^3.0.4",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
     "zod": "catalog:"
