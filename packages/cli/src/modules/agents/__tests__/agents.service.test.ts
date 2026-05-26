@@ -873,20 +873,10 @@ describe('AgentsService', () => {
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Be helpful',
 			};
-			const publishedVersion = {
-				agentId,
-				publishedFromVersionId: versionId,
-				schema,
-				model: null,
-				provider: null,
-				credentialId: null,
-				tools: null,
-				skills: null,
-				publishedById: 'n8n-user-publisher',
-			} as unknown as AgentPublishedVersion;
 			const agent = makeAgent({
 				schema,
-				publishedVersion,
+				activeVersionId: versionId,
+				activeVersion: makeAgentHistory({ schema, publishedById: 'n8n-user-publisher' }),
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
@@ -952,20 +942,10 @@ describe('AgentsService', () => {
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Be helpful',
 			};
-			const publishedVersion = {
-				agentId,
-				publishedFromVersionId: versionId,
-				schema,
-				model: null,
-				provider: null,
-				credentialId: null,
-				tools: null,
-				skills: null,
-				publishedById: 'n8n-user-publisher',
-			} as unknown as AgentPublishedVersion;
 			const agent = makeAgent({
 				schema,
-				publishedVersion,
+				activeVersionId: versionId,
+				activeVersion: makeAgentHistory({ schema, publishedById: 'n8n-user-publisher' }),
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
@@ -1052,20 +1032,10 @@ describe('AgentsService', () => {
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Be helpful',
 			};
-			const publishedVersion = {
-				agentId,
-				publishedFromVersionId: versionId,
-				schema,
-				model: null,
-				provider: null,
-				credentialId: null,
-				tools: null,
-				skills: null,
-				publishedById: 'publisher-user',
-			} as unknown as AgentPublishedVersion;
 			const agent = makeAgent({
 				schema,
-				publishedVersion,
+				activeVersionId: versionId,
+				activeVersion: makeAgentHistory({ schema, publishedById: 'publisher-user' }),
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			Container.set(CredentialsService, mock<CredentialsService>());
@@ -1625,20 +1595,8 @@ describe('AgentsService', () => {
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Be helpful',
 			};
-			const publishedVersion = {
-				agentId,
-				publishedFromVersionId: versionId,
-				schema,
-				model: null,
-				provider: null,
-				credentialId: null,
-				tools: null,
-				skills: null,
-				publishedById: n8nPublisherId,
-			} as unknown as AgentPublishedVersion;
 			const agent = makeAgent({
 				schema,
-				publishedVersion,
 				activeVersionId: versionId,
 				activeVersion: makeAgentHistory({ schema, publishedById: n8nPublisherId }),
 			});
@@ -1699,7 +1657,8 @@ describe('AgentsService', () => {
 			};
 			const agent = makeAgent({
 				schema,
-				publishedVersion: makePublishedVersion({ schema, publishedById: n8nPublisherId }),
+				activeVersionId: versionId,
+				activeVersion: makeAgentHistory({ schema, publishedById: n8nPublisherId }),
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			n8nCheckpointStorage.getStatus.mockResolvedValue({
