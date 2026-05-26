@@ -65,10 +65,9 @@ test.describe(
 			await n8n.canvas.waitForSaveWorkflowCompleted();
 			await n8n.ndv.close();
 
-			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
-				NOTIFICATIONS.SUCCESSFUL,
-				{ timeout: 10_000 },
-			);
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(NOTIFICATIONS.SUCCESSFUL, {
+				timeout: 10_000,
+			});
 			await expect(n8n.page).not.toHaveURL(/\/debug/);
 		});
 
