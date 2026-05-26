@@ -167,7 +167,15 @@ const overallCounts = filesSummary.reduce(
 		for (const k of Object.keys(acc)) acc[k] += f.counts[k];
 		return acc;
 	},
-	{ killed: 0, survived: 0, noCoverage: 0, timeout: 0, compileError: 0, runtimeError: 0, ignored: 0 },
+	{
+		killed: 0,
+		survived: 0,
+		noCoverage: 0,
+		timeout: 0,
+		compileError: 0,
+		runtimeError: 0,
+		ignored: 0,
+	},
 );
 
 const summary = {
@@ -192,10 +200,14 @@ for (const f of filesSummary) {
 			`(killed ${f.counts.killed} / survived ${f.counts.survived} / no-cov ${f.counts.noCoverage} / timeout ${f.counts.timeout})\n`,
 	);
 	for (const s of f.survivors) {
-		process.stderr.write(`   - ${s.status.toLowerCase().padEnd(10)} ${s.mutator.padEnd(22)} ${s.location}\n`);
+		process.stderr.write(
+			`   - ${s.status.toLowerCase().padEnd(10)} ${s.mutator.padEnd(22)} ${s.location}\n`,
+		);
 	}
 }
-process.stderr.write(`\nThreshold: ${THRESHOLD}%  •  overall: ${summary.overall.score.toFixed(2)}%\n`);
+process.stderr.write(
+	`\nThreshold: ${THRESHOLD}%  •  overall: ${summary.overall.score.toFixed(2)}%\n`,
+);
 process.stderr.write(`Summary written: ${summaryJsonPath}\n`);
 
 process.exit(summary.overall.thresholdMet ? 0 : 1);
