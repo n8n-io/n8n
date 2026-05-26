@@ -14,7 +14,7 @@ Use this to configure entries in the target agent's \`integrations\` array.
 ## Boundaries
 
 - The user is asking for Build chat or Preview chat behavior.
-- The user wants an agent tool that sends messages; use the tools skill instead.
+- The user wants an agent tool that sends messages; follow the Tool Guidance section instead.
 - The user only needs model, memory, or config-schema guidance.
 - Built-in Preview chat does not need an \`integrations\` entry.
 

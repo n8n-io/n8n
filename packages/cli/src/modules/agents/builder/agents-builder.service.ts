@@ -184,7 +184,7 @@ export class AgentsBuilderService {
 			agentPreviewPath: buildAgentPreviewPath(projectId, agentId),
 			modelRecommendationsSection,
 		});
-		const runtimeSkills = getBuilderRuntimeSkills({ modelRecommendationsSection });
+		const runtimeSkills = getBuilderRuntimeSkills();
 
 		const tools = this.agentsBuilderToolsService.getTools(
 			agentId,

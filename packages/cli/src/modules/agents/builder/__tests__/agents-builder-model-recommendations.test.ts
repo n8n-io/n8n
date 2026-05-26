@@ -2,6 +2,7 @@ import type { ProviderCatalog } from '@n8n/agents';
 
 import { buildBuilderPrompt } from '../agents-builder-prompts';
 import { buildModelRecommendationsSection } from '../agents-builder-model-recommendations';
+import { getBuilderRuntimeSkills } from '../skills';
 
 const catalog: ProviderCatalog = {
 	anthropic: {
@@ -109,10 +110,31 @@ describe('builder model recommendations', () => {
 		expect(section).not.toContain('text-embedding-3-large');
 	});
 
-	it('does not inject the recommendation section into the base builder prompt', () => {
+	it('injects always-needed builder guidance into the base builder prompt', () => {
+		const prompt = buildPrompt(null);
+
+		expect(prompt).toContain('## Config Mutation Guidance');
+		expect(prompt).toContain('## LLM Selection Guidance');
+		expect(prompt).toContain('## Memory Guidance');
+		expect(prompt).toContain('## Tool Guidance');
+		expect(prompt).toContain('Additional specialized builder guidance is available');
+		expect(prompt).not.toContain('agent-builder-config-mutation');
+		expect(prompt).not.toContain('agent-builder-llm-selection');
+		expect(prompt).not.toContain('agent-builder-memory');
+		expect(prompt).not.toContain('agent-builder-tools');
+	});
+
+	it('injects the recommendation section only into the LLM selection prompt', () => {
 		const section = buildModelRecommendationsSection(catalog);
 
-		expect(buildPrompt(section)).not.toContain('## Recommended LLM models');
+		expect(buildPrompt(section)).toContain('## Recommended LLM models');
 		expect(buildPrompt(null)).not.toContain('## Recommended LLM models');
+	});
+
+	it('registers only optional builder runtime skills', () => {
+		expect(getBuilderRuntimeSkills().map((skill) => skill.id)).toEqual([
+			'agent-builder-integrations',
+			'agent-builder-target-skills',
+		]);
 	});
 });
