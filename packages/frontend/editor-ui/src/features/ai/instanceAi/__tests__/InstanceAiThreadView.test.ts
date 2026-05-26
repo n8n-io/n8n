@@ -20,60 +20,6 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
 }));
 
-vi.mock('@n8n/stores', () => ({
-	STORES: new Proxy(
-		{},
-		{
-			get: (_, property) => String(property),
-		},
-	),
-}));
-
-vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	getNDVStoreId: () => 'ndv',
-	injectNDVStore: () => ({}),
-	useNDVStore: () => ({}),
-}));
-
-vi.mock('@/app/stores/settings.store', () => ({
-	useSettingsStore: () => ({
-		isCloudDeployment: false,
-		isModuleActive: vi.fn(),
-		moduleSettings: {},
-	}),
-}));
-
-vi.mock('../components/AgentSection.vue', () => ({
-	default: {
-		name: 'AgentSectionStub',
-		props: ['agentNode'],
-		template: '<div data-test-id="agent-section-stub" />',
-	},
-}));
-
-vi.mock('../components/InstanceAiWorkflowPreview.vue', () => ({
-	default: {
-		name: 'InstanceAiWorkflowPreviewStub',
-		props: ['workflowId', 'refreshKey'],
-		template: '<div data-test-id="workflow-preview-stub" />',
-	},
-}));
-
-vi.mock('../components/InstanceAiDataTablePreview.vue', () => ({
-	default: {
-		name: 'InstanceAiDataTablePreviewStub',
-		props: ['dataTableId', 'projectId', 'refreshKey'],
-		template: '<div data-test-id="data-table-preview-stub" />',
-	},
-}));
-
-vi.mock('../components/InstanceAiArtifactsPanel.vue', () => ({
-	default: {
-		name: 'InstanceAiArtifactsPanelStub',
-		template: '<div data-test-id="artifacts-panel-stub" />',
-	},
-}));
-
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: () => ({
@@ -174,6 +120,9 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 			InstanceAiInput: InstanceAiInputStub,
 			InstanceAiWorkflowPreview: InstanceAiWorkflowPreviewStub,
 			InstanceAiConfirmationPanel: InstanceAiConfirmationPanelStub,
+			AgentSection: { template: '<div data-test-id="agent-section-stub" />' },
+			InstanceAiDataTablePreview: { template: '<div data-test-id="data-table-preview-stub" />' },
+			InstanceAiArtifactsPanel: { template: '<div data-test-id="artifacts-panel-stub" />' },
 		},
 	},
 });
