@@ -126,6 +126,10 @@ export class LlmWireServer {
 	async start(): Promise<string> {
 		if (this.server) return this.url;
 
+		// Reset the shutdown latch in case this instance is being restarted
+		// after a prior stop() — without this, every route would return 503.
+		this.stopping = false;
+
 		const app = this.buildApp();
 
 		this.server = await new Promise<Server>((resolve, reject) => {

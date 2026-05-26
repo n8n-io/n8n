@@ -66,6 +66,19 @@ describe('LlmWireServer', () => {
 				await second.stop();
 			}
 		});
+
+		it('accepts requests after start() → stop() → start() — shutdown latch resets', async () => {
+			await server.start();
+			await server.stop();
+			const url = await server.start();
+			const response = await postChatCompletion(url, '/eval/Agent/v1/chat/completions', {
+				model: 'gpt-4o-mini',
+				messages: [],
+			});
+			// Post-restart the route must hand back a 200 envelope, NOT the
+			// 503 the in-flight shutdown latch would emit if it weren't reset.
+			expect(response.status).toBe(200);
+		});
 	});
 
 	describe('POST /eval/:root/v1/chat/completions — stub fallback', () => {
