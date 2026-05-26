@@ -1789,11 +1789,10 @@ describe('SamlService', () => {
 
 			expect(createFromMetadata).toHaveBeenCalledWith(overrideMetadata);
 			expect(getStoredIdp).not.toHaveBeenCalled();
-			expect(serviceProviderInstance.parseLoginResponse).toHaveBeenCalledWith(
-				overrideIdp,
-				'post',
-				req,
-			);
+			expect(serviceProviderInstance.parseLoginResponse).toHaveBeenCalledWith(overrideIdp, 'post', {
+				body: req.body,
+				query: req.query,
+			});
 		});
 	});
 });
