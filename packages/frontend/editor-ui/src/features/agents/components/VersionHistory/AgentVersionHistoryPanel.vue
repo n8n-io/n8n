@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue';
+import { computed, onMounted, toRef, watch } from 'vue';
 import type { UserAction } from '@n8n/design-system';
 import { N8nHeading, N8nIconButton } from '@n8n/design-system';
 import type { IUser } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { useAgentVersionHistory } from '../../composables/useAgentVersionHistory';
+import { useAgentPermissions } from '../../composables/useAgentPermissions';
 import type { AgentResource } from '../../types';
 import AgentVersionList from './AgentVersionList.vue';
 import type { AgentVersionAction } from './AgentVersionListItem.vue';
@@ -32,18 +33,29 @@ const {
 	publishVersion,
 } = useAgentVersionHistory();
 
-const actions = computed<Array<UserAction<IUser>>>(() => [
-	{
-		label: i18n.baseText('agents.versionHistory.item.actions.revert'),
-		value: 'revert',
-		disabled: false,
-	},
-	{
-		label: i18n.baseText('agents.versionHistory.item.actions.publish'),
-		value: 'publish',
-		disabled: false,
-	},
-]);
+const { canUpdate, canPublish } = useAgentPermissions(toRef(props, 'projectId'));
+
+// Hide actions the user can't perform server-side. Matches the gating in
+// AgentPublishButton so viewers with `agent:read` only don't see options that
+// would 403 on click.
+const actions = computed<Array<UserAction<IUser>>>(() => {
+	const result: Array<UserAction<IUser>> = [];
+	if (canUpdate.value) {
+		result.push({
+			label: i18n.baseText('agents.versionHistory.item.actions.revert'),
+			value: 'revert',
+			disabled: false,
+		});
+	}
+	if (canPublish.value) {
+		result.push({
+			label: i18n.baseText('agents.versionHistory.item.actions.publish'),
+			value: 'publish',
+			disabled: false,
+		});
+	}
+	return result;
+});
 
 onMounted(() => {
 	void refresh(props.projectId, props.agentId);
