@@ -141,6 +141,34 @@ describe('Publisher', () => {
 				}),
 			);
 		});
+
+		it.each([
+			'display-workflow-activation',
+			'display-workflow-deactivation',
+			'display-workflow-activation-error',
+		] as const)('should not debounce `%s`', async (command) => {
+			const publisher = new Publisher(
+				logger,
+				redisClientService,
+				instanceSettings,
+				executionsConfig,
+				globalConfig,
+			);
+			const msg = mock<PubSub.Command>({ command });
+
+			await publisher.publishCommand(msg);
+
+			expect(client.publish).toHaveBeenCalledWith(
+				'n8n:n8n.commands',
+				JSON.stringify({
+					...msg,
+					_isMockObject: true,
+					senderId: hostId,
+					selfSend: false,
+					debounce: false,
+				}),
+			);
+		});
 	});
 
 	describe('publishWorkerResponse', () => {
