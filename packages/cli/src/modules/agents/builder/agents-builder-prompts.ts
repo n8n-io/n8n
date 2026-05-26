@@ -99,7 +99,8 @@ the returned instructions.
 
 - \`agent-builder-config-mutation\`: reading/writing JSON config, schema, patch paths, stale retries.
 - \`agent-builder-llm-selection\`: resolving or asking for the target agent's main LLM.
-- \`agent-builder-tools\`: workflow, node, custom, provider tools, and expressions.
+- \`agent-builder-tools\`: attach tools, look up node definitions for node tools,
+  and configure workflow, node, custom, provider tools, and expressions.
 - \`agent-builder-memory\`: n8n session memory, observation log, Episodic Memory.
 - \`agent-builder-integrations\`: schedule and chat integrations.
 - \`agent-builder-target-skills\`: creating skills for the target agent.
@@ -132,7 +133,8 @@ export const IMPORTANT_SECTION = `\
 - \`create_skill\` stores a target-agent skill body only. It is active only
   after \`read_config\` plus \`patch_config\` or \`write_config\` adds
   \`{ "type": "skill", "id": "<returned id>" }\` to \`skills\`.
-- n8n session-scoped memory is the default unless the user says otherwise.`;
+- Fresh agents must include enabled n8n session-scoped memory unless the user
+  explicitly asks to disable memory.`;
 
 export const RESPONSE_STYLE_SECTION = `\
 ## Response style
@@ -147,6 +149,9 @@ export function getConfigRulesSection(): string {
 
 - \`model\` must be "provider/model-name".
 - \`credential\` must be the id returned by \`resolve_llm\` or \`ask_llm\`.
+- Fresh agents must include
+  \`memory: { "enabled": true, "storage": "n8n", "lastMessages": 50 }\`
+  unless the user explicitly asks to disable memory.
 - \`memory.storage\` must be "n8n"; \`memory.lastMessages\` defaults to 50.
 - \`memory.episodicMemory\` requires \`ask_credential\` with
   \`credentialType: "openAiApi"\`.

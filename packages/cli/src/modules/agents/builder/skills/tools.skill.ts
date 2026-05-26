@@ -5,7 +5,7 @@ export function toolsSkill(): RuntimeSkill {
 		id: 'agent-builder-tools',
 		name: 'Agent builder tools',
 		description:
-			'Use when adding or changing target-agent workflow, node, custom, or provider tools, or deciding whether a capability belongs in tools[], providerTools, or config.webSearch; generic web search belongs in config unless the user explicitly asks for a node.',
+			'Use before adding, changing, or attaching any tool to the target agent, before looking up node definitions for a node tool, or when deciding whether a capability belongs in tools[], providerTools, or config.',
 		instructions: `\
 ## Purpose
 
@@ -14,11 +14,13 @@ nodes, custom code tools, or provider tools.
 
 ## Boundaries
 
-- The request is generic web search, Brave web search, or SearXNG web search; use \`config.webSearch\` unless the user explicitly asks for a node tool.
 - The user only needs model, memory, integration, or target-skill guidance.
 - You are researching an unfamiliar external API before choosing the tool shape.
 
 ## Workflow
+
+Load this skill before calling \`search_nodes\`, \`get_node_types\`, \`build_custom_tool\`,
+or adding, changing, or removing entries in \`tools[]\` / \`providerTools\`.
 
 Prefer existing workflow tools and node tools over custom tools for real-world actions.
 Custom tools are for pure computation, validation, formatting, or planning logic;
@@ -32,8 +34,10 @@ they cannot perform live network, filesystem, process, timer, or host I/O.
 
 - Use \`search_nodes\`, then \`get_node_types\`; never guess node type names.
 - Use the tool node id from discovery, usually ending in \`Tool\`.
-- Put fixed values in \`nodeParameters\`; use \`$fromAI\` for values the agent should decide at runtime.
-- Wrap expressions in \`={{ }}\`; do not pipe AI-chosen fields through \`$json\`.
+- Put fixed values in \`nodeParameters\`; use complete n8n expressions for values the agent should decide at runtime:
+  \`={{ $fromAI('url', 'The URL to inspect', 'string') }}\`.
+- Never write literal \`"$fromAI"\` or bare \`$fromAI\`; the node will treat it as the actual value.
+- Do not pipe AI-chosen fields through \`$json\`.
 - Do not include \`inputSchema\` or \`toolDescription\` for node tools.
 - For each required credential slot, call \`ask_credential\` once before config mutation. If skipped, still add the tool and omit only that credential slot.
 
@@ -53,9 +57,9 @@ they cannot perform live network, filesystem, process, timer, or host I/O.
 
 ## Gotchas
 
-- Web-search fallback services are config, not node tools, unless the user explicitly asks for a node integration.
 - Live crawling, fetching, and API integrations need workflow or node tools, not custom tools.
 - Do not include \`inputSchema\` or \`toolDescription\` for node tools.
+- \`$fromAI(...)\` placeholders define the node tool input schema; do not add it manually.
 - Do not invent node type names, workflow names, credential ids, or provider tool keys.
 - If a required node-tool credential is skipped, add the tool and omit only that credential slot.
 - \`build_custom_tool\` stores code only; the config still needs a \`{ "type": "custom", "id": "<returned id>" }\` tool ref.
