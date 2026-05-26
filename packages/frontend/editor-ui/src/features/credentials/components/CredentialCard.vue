@@ -58,7 +58,7 @@ const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 const { hasDependencies } = useDependencies();
-const { authorize } = useCredentialOAuth();
+const { authorize, isOAuthCredentialType } = useCredentialOAuth();
 
 const isConnecting = ref(false);
 
@@ -124,6 +124,14 @@ function onClick() {
 async function onConnect() {
 	const credential = credentialsStore.getCredentialById(props.data.id);
 	if (!credential) return;
+
+	// Direct OAuth flow only applies to OAuth credential types. Fall back to
+	// the edit modal for anything else — today only OAuth credentials can be
+	// resolvable, but this keeps the button safe if that ever changes.
+	if (!isOAuthCredentialType(credential.type)) {
+		onClick();
+		return;
+	}
 
 	isConnecting.value = true;
 	try {

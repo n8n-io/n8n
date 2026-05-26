@@ -19,10 +19,12 @@ import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 import * as projectsApi from '@/features/collaboration/projects/projects.api';
 
 const mockAuthorize = vi.fn();
+const mockIsOAuthCredentialType = vi.fn(() => true);
 
 vi.mock('../composables/useCredentialOAuth', () => ({
 	useCredentialOAuth: () => ({
 		authorize: mockAuthorize,
+		isOAuthCredentialType: mockIsOAuthCredentialType,
 	}),
 }));
 

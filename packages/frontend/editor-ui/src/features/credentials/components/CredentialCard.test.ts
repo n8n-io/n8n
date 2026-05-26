@@ -14,10 +14,12 @@ import type { FrontendSettings } from '@n8n/api-types';
 import type { ICredentialsResponse } from '../credentials.types';
 
 const mockAuthorize = vi.fn();
+const mockIsOAuthCredentialType = vi.fn();
 
 vi.mock('../composables/useCredentialOAuth', () => ({
 	useCredentialOAuth: () => ({
 		authorize: mockAuthorize,
+		isOAuthCredentialType: mockIsOAuthCredentialType,
 	}),
 }));
 
@@ -52,6 +54,8 @@ describe('CredentialCard', () => {
 		} as unknown as FrontendSettings;
 		vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 		mockAuthorize.mockReset();
+		mockIsOAuthCredentialType.mockReset();
+		mockIsOAuthCredentialType.mockReturnValue(true);
 	});
 
 	it('should render name and home project name', () => {
@@ -304,6 +308,23 @@ describe('CredentialCard', () => {
 
 			expect(mockAuthorize).toHaveBeenCalledWith(credential);
 			expect(emitted('connected')).toEqual([[data.id]]);
+		});
+
+		it('should fall back to opening the edit modal when the credential is not an OAuth type', async () => {
+			const data = privateUnconnectedData();
+			const credential = { id: data.id, type: 'notOAuthApi' } as ICredentialsResponse;
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
+			mockIsOAuthCredentialType.mockReturnValue(false);
+
+			const { getByTestId, emitted } = renderComponent({ props: { data } });
+
+			await userEvent.click(getByTestId('credential-card-connect'));
+
+			expect(mockIsOAuthCredentialType).toHaveBeenCalledWith('notOAuthApi');
+			expect(mockAuthorize).not.toHaveBeenCalled();
+			expect(emitted('click')).toEqual([[data.id]]);
+			expect(emitted('connected')).toBeUndefined();
 		});
 
 		it('should not emit "connected" if authorize fails', async () => {
