@@ -2289,6 +2289,26 @@ describe('generate-types', () => {
 			expect(result).toContain('isTrigger: true');
 		});
 
+		it('should not mark AI sub-tool nodes as triggers', () => {
+			// AI sub-tool nodes (mcpClientTool, *Tool variants, etc.) have no main
+			// input — but they emit on `ai_tool`, not `main`. Earlier the heuristic
+			// classified them as triggers because it only checked inputs.
+			const subToolNode: NodeTypeDescription = {
+				name: 'n8n-nodes-langchain.mcpClientTool',
+				displayName: 'MCP Client Tool',
+				description: 'Use MCP-server tools as agent tools',
+				group: ['output'],
+				version: 1,
+				inputs: [],
+				outputs: [{ type: 'ai_tool', displayName: 'Tools' }],
+				properties: [],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(subToolNode);
+
+			expect(result).not.toContain('isTrigger: true');
+		});
+
 		it('should emit helper type for resourceMapper properties', () => {
 			const sheetsLikeNode: NodeTypeDescription = {
 				name: 'n8n-nodes-base.googleSheets',
