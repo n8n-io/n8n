@@ -735,16 +735,16 @@ describe('createThreadRuntime - SSE and hydration', () => {
 	test('sendMessage tracks whether this is the first user message in the thread', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 
-		await activeRuntime(registry).sendMessage('first');
-		await activeRuntime(registry).sendMessage('second');
+		await runtime.sendMessage('first');
+		await runtime.sendMessage('second');
 
 		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(1, 'User sent builder message', {
-			thread_id: activeThreadId,
+			thread_id: runtime.currentThreadId,
 			instance_id: 'instance-1',
 			is_first_message: true,
 		});
 		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(2, 'User sent builder message', {
-			thread_id: activeThreadId,
+			thread_id: runtime.currentThreadId,
 			instance_id: 'instance-1',
 			is_first_message: false,
 		});
