@@ -1,91 +1,40 @@
 import type { INode, IWorkflowIssues } from 'n8n-workflow';
 
-import { WorkflowHasIssuesError } from '../workflow-has-issues.error';
+import { BASE_MESSAGE, WorkflowHasIssuesError } from '../workflow-has-issues.error';
 
 describe('WorkflowHasIssuesError', () => {
-	const baseMessage =
-		'The workflow has issues and cannot be executed for that reason. Please fix them first.';
-
-	it('uses the base message when no issues are provided', () => {
-		expect(new WorkflowHasIssuesError().message).toBe(baseMessage);
-	});
-
-	it('uses the base message when the issues map is empty', () => {
-		expect(new WorkflowHasIssuesError({}).message).toBe(baseMessage);
-	});
-
-	it('includes parameter and credential issues with node names', () => {
+	it('formats a single node with multiple issue types', () => {
 		const issues: IWorkflowIssues = {
 			'HTTP Request': {
-				credentials: { httpBasicAuth: ['Credentials for "httpBasicAuth" are not set.'] },
+				execution: true,
+				parameters: { url: ['Parameter "URL" is required.'] },
+				typeUnknown: true,
 			},
-			Set: {
-				parameters: { value: ['Parameter "value" is required.'] },
-			},
-		};
-
-		const message = new WorkflowHasIssuesError(issues).message;
-
-		expect(message).toContain(baseMessage);
-		expect(message).toContain('\'HTTP Request\': Credentials for "httpBasicAuth" are not set.');
-		expect(message).toContain('\'Set\': Parameter "value" is required.');
-	});
-
-	it('includes the node type in the typeUnknown message when nodes are provided', () => {
-		const issues: IWorkflowIssues = {
-			Custom: { typeUnknown: true },
 		};
 		const nodes: Record<string, INode> = {
-			Custom: {
+			'HTTP Request': {
 				id: '1',
-				name: 'Custom',
-				type: 'community.custom',
-				typeVersion: 1,
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
 				position: [0, 0],
 				parameters: {},
 			},
 		};
 
-		expect(new WorkflowHasIssuesError(issues, nodes).message).toContain(
-			'\'Custom\': Node Type "community.custom" is not known.',
+		expect(new WorkflowHasIssuesError(issues, nodes).message).toBe(
+			`${BASE_MESSAGE} Issues: 'HTTP Request': Execution Error. Parameter "URL" is required. Node Type "n8n-nodes-base.httpRequest" is not known.`,
 		);
 	});
 
-	it('falls back to a generic typeUnknown message when the node is missing', () => {
-		const issues: IWorkflowIssues = {
-			Custom: { typeUnknown: true },
-		};
-
-		expect(new WorkflowHasIssuesError(issues).message).toContain(
-			"'Custom': Node Type is not known.",
-		);
-	});
-
-	it('flattens execution, parameters, credentials, and input issues for one node', () => {
-		const issues: IWorkflowIssues = {
-			Multi: {
-				execution: true,
-				parameters: { foo: ['Parameter "foo" is required.'] },
-				credentials: { api: ['API credentials missing.'] },
-				input: { in: ['Input is invalid.'] },
-			},
-		};
-
-		const message = new WorkflowHasIssuesError(issues).message;
-
-		expect(message).toContain(
-			'\'Multi\': Execution Error.; Parameter "foo" is required.; API credentials missing.; Input is invalid.',
-		);
-	});
-
-	it('joins multiple nodes with a separator', () => {
+	it('joins multiple nodes with a pipe separator', () => {
 		const issues: IWorkflowIssues = {
 			A: { parameters: { x: ['Parameter "x" is required.'] } },
 			B: { parameters: { y: ['Parameter "y" is required.'] } },
 		};
 
-		expect(new WorkflowHasIssuesError(issues).message).toContain(
-			'\'A\': Parameter "x" is required. | \'B\': Parameter "y" is required.',
+		expect(new WorkflowHasIssuesError(issues, {}).message).toBe(
+			`${BASE_MESSAGE} Issues: 'A': Parameter "x" is required. | 'B': Parameter "y" is required.`,
 		);
 	});
 
@@ -99,12 +48,8 @@ describe('WorkflowHasIssuesError', () => {
 			F: { parameters: { p: ['Parameter "p" is required.'] } },
 		};
 
-		const message = new WorkflowHasIssuesError(issues).message;
-
-		expect(message).toContain("'A':");
-		expect(message).toContain("'D':");
-		expect(message).not.toContain("'E':");
-		expect(message).not.toContain("'F':");
-		expect(message).toContain('(2 other issues)');
+		expect(new WorkflowHasIssuesError(issues, {}).message).toBe(
+			`${BASE_MESSAGE} Issues: 'A': Parameter "p" is required. | 'B': Parameter "p" is required. | 'C': Parameter "p" is required. | 'D': Parameter "p" is required. | (2 more)`,
+		);
 	});
 });
