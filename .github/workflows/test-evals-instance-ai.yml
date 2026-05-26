@@ -108,6 +108,7 @@ jobs:
             -e SANDBOX_API_RUNNER_CONTROL_GRPC_TLS_CERT_FILE=/tls/control-grpc-api-client.crt \
             -e SANDBOX_API_RUNNER_CONTROL_GRPC_TLS_KEY_FILE=/tls/control-grpc-api-client.key \
             -e SANDBOX_API_RUNNER_CONTROL_GRPC_TLS_SERVER_NAME=sandbox-runner-1 \
+            -e SANDBOX_API_LOG_LEVEL=warn \
             n8nio/n8n-sandbox-service-api:latest
 
           # Wait for API health (up to 60s)
@@ -145,6 +146,7 @@ jobs:
             -e SANDBOX_RUNNER_CONTROL_GRPC_TLS_CERT_FILE=/tls/control-grpc-server.crt \
             -e SANDBOX_RUNNER_CONTROL_GRPC_TLS_KEY_FILE=/tls/control-grpc-server.key \
             -e SANDBOX_RUNNER_CONTROL_GRPC_TLS_CLIENT_CA_FILE=/tls/ca.crt \
+            -e SANDBOX_RUNNER_LOG_LEVEL=warn \
             n8nio/n8n-sandbox-service-runner-dind:latest
 
           # Wait for runner health (up to 120s — DinD daemon needs time to start)
