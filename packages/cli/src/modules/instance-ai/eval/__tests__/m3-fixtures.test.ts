@@ -13,48 +13,20 @@ import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper';
 import { type InterceptedTurn, LlmWireServer } from '../llm-wire-server';
 
 /**
- * M3 fixtures — headline proof for the TRUST-101 spike.
+ * Integration-shaped unit test exercising credential rewrite + path-based
+ * root attribution + envelope correctness end-to-end. Boots a real
+ * `LlmWireServer` on a loopback port, instantiates a real
+ * `EvalMockedCredentialsHelper`, scripts mock-handler responses turn-by-turn,
+ * and drives the Agent loop with raw `fetch`. Envelope shape is locked down
+ * separately in `llm-wire-server.test.ts` and `openai-envelope.test.ts`.
  *
- * **Integration-shaped unit test.** Boots a real Express `LlmWireServer` on
- * a loopback port, instantiates a real `EvalMockedCredentialsHelper`, scripts
- * mock-handler responses turn-by-turn, and drives the Agent loop with raw
- * `fetch`. The cost is real network I/O per test and a soft dependency on
- * port availability; the payoff is that the credential-rewrite + path-based
- * root attribution + envelope correctness are exercised end-to-end in one
- * file. If this fails in CI for a non-deterministic reason, investigate
- * port binding or scripted-response sequencing before treating it as a
- * regression — the surface is wide for a "unit" file.
- *
- * Two scenarios share the same Agent → Chat Model → HTTP Request tool →
- * MemoryBufferWindow shape:
- *
- *  - **M3 mechanism (this file's first describe block):** the tool IS
- *    connected to the Agent. The Agent loop:
- *      1. SDK posts to wire server with `tools: [...]` array.
- *      2. Wire server returns `tool_calls` envelope (via mock handler).
- *      3. Tool node fires its HTTP request → `evalLlmMockHandler` returns a
- *         mock body.
- *      4. SDK posts a follow-up turn with the tool result in `messages`.
- *      5. Wire server returns plain assistant content → final answer.
- *    The ledger ends with model turns attributed to the Agent root and
- *    tool HTTP attributed to the tool node — the two attribution kinds
- *    that M2 + M3 together must keep separate.
- *
- *  - **M3 value (the second describe block, regression-catch fixture):**
- *    the tool is disconnected from the Agent. Under today's pin behaviour
- *    the eval would pass — the Agent never runs and pin data shapes the
- *    "right" output. Under the spike, the Agent's mocked output cannot
- *    produce the tool-shaped final answer the grader expects, so the eval
- *    must FAIL. This is the proof that un-pinning catches regressions
- *    pinning misses.
- *
- * Both tests boot a real `LlmWireServer` and a real `EvalMockedCredentials-
- * Helper` so the credential URL-rewrite + path-based root attribution path
- * is exercised end-to-end. The Agent loop itself is simulated with raw
- * fetch (rather than booting a real LangChain Agent) — driving the loop
- * via the SDK is the integration-test-suite's job, not this unit's. The
- * envelope correctness this file relies on is locked down in
- * `llm-wire-server.test.ts` and `openai-envelope.test.ts`.
+ *  - **Mechanism** — tool IS connected. Asserts the ledger ends with model
+ *    turns attributed to the Agent root and tool HTTP attributed to the tool
+ *    node, with no cross-contamination.
+ *  - **Regression-catch** — tool is disconnected. With un-pinning the eval
+ *    must fail because the Agent's mocked output can't produce the tool-
+ *    shaped result the grader expects. A counterfactual passes when the
+ *    tool IS connected, proving the check is meaningful.
  */
 describe('M3 fixtures — Agent + Chat Model + HTTP tool + MemoryBufferWindow', () => {
 	const llmSubNode: INode = {

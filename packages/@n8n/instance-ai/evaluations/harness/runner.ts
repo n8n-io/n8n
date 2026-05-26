@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiConfirmRequest, InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import { findAiRootNodeNames as findAiRoots } from 'n8n-workflow';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -44,30 +45,12 @@ import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 const DEFAULT_TIMEOUT_MS = 900_000;
 
 /**
- * Names of all AI root nodes (Agent, Chain) in the workflow.
- *
- * Mirrors `findAiRootNodeNames` in `cli/src/modules/instance-ai/eval/workflow-analysis.ts`:
- * a root is the target node of any `ai_*` connection. The server enforces the
- * same definition when validating the `unpinNodes` request param, so we'd
- * rather both sides agree here than have the server reject a name we picked.
+ * Names of all AI root nodes (Agent, Chain) in the workflow. Delegates to the
+ * shared `findAiRootNodeNames` in `n8n-workflow` so the server's `unpinNodes`
+ * validator and this client-side picker agree on what counts as a root.
  */
 export function findAiRootNodeNames(workflow: WorkflowResponse): string[] {
-	const roots = new Set<string>();
-	for (const nodeConns of Object.values(workflow.connections)) {
-		if (typeof nodeConns !== 'object' || nodeConns === null) continue;
-		for (const [connType, outputs] of Object.entries(nodeConns)) {
-			if (!connType.startsWith('ai_') || !Array.isArray(outputs)) continue;
-			for (const group of outputs) {
-				if (!Array.isArray(group)) continue;
-				for (const conn of group) {
-					if (typeof conn === 'object' && conn !== null && 'node' in conn) {
-						roots.add((conn as { node: string }).node);
-					}
-				}
-			}
-		}
-	}
-	return Array.from(roots);
+	return Array.from(findAiRoots(workflow.connections));
 }
 
 /** Max concurrent scenario executions per test case */

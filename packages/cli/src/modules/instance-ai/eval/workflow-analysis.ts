@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import {
+	findAiRootNodeNames,
 	type INode,
 	type IPinData,
 	type IWorkflowBase,
@@ -11,25 +12,6 @@ import {
 } from 'n8n-workflow';
 
 import { extractNodeConfig } from './node-config';
-
-/** Targets of `ai_*` connections — Agent/Chain root nodes. Pinning these short-circuits sub-node SDK calls. */
-function findAiRootNodeNames(workflow: IWorkflowBase): Set<string> {
-	const roots = new Set<string>();
-	for (const nodeConns of Object.values(workflow.connections)) {
-		for (const [connType, outputs] of Object.entries(nodeConns)) {
-			if (!connType.startsWith('ai_') || !Array.isArray(outputs)) continue;
-			for (const group of outputs) {
-				if (!Array.isArray(group)) continue;
-				for (const conn of group) {
-					if (typeof conn === 'object' && conn !== null && 'node' in conn) {
-						roots.add((conn as { node: string }).node);
-					}
-				}
-			}
-		}
-	}
-	return roots;
-}
 
 /**
  * AI root node types — lets the typo guard accept a no-sub-node Agent.
@@ -116,7 +98,7 @@ export function identifyNodesForPinData(
 	workflow: IWorkflowBase,
 	exclusionSet?: Set<string>,
 ): INode[] {
-	const aiRootNodes = findAiRootNodeNames(workflow);
+	const aiRootNodes = findAiRootNodeNames(workflow.connections);
 
 	return workflow.nodes.filter((node) => {
 		if (node.disabled) return false;
@@ -201,7 +183,7 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 
 	const nodesByName = new Map(workflow.nodes.map((n) => [n.name, n]));
 	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
-	const aiRootNodes = findAiRootNodeNames(workflow);
+	const aiRootNodes = findAiRootNodeNames(workflow.connections);
 
 	// Refuse typos / disabled / non-AI-root entries up front. A root counts
 	// if it has inbound ai_* connections OR its type is on AI_ROOT_NODE_TYPES.
@@ -338,7 +320,7 @@ function formatRefusalSegment(
 /** Nodes that should receive mock hints — excludes AI sub-nodes (handled via root) and pinned nodes. */
 export function identifyNodesForHints(workflow: IWorkflowBase): INode[] {
 	const aiSubNodes = findAiSubNodeNames(workflow);
-	const aiRootNodes = findAiRootNodeNames(workflow);
+	const aiRootNodes = findAiRootNodeNames(workflow.connections);
 	const pinnedNodeNames = new Set(identifyNodesForPinData(workflow).map((n) => n.name));
 
 	return workflow.nodes.filter((node) => {

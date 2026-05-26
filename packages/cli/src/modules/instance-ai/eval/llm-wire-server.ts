@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import express, { type Express, type Request, type Response } from 'express';
-import type { EvalLlmMockHandler } from 'n8n-core';
-import type { INode } from 'n8n-workflow';
+import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
+import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 import { type Server } from 'node:http';
 
 import {
@@ -41,9 +41,78 @@ export interface LlmWireServerOptions {
 	logger?: Logger;
 }
 
+/**
+ * Per-protocol translator + formatter. One instance per wire format
+ * (chat-completions, responses). Lets `handleProtocol` stay protocol-agnostic
+ * — adding a new vendor envelope means a single new adapter, not a copy of
+ * the handler/stub/error/SSE-writer set.
+ */
+interface ProtocolAdapter {
+	/** Human-readable name for log messages (`chat-completions`, `responses`). */
+	name: string;
+	extractModel(body: unknown): string;
+	isStreamRequested(body: unknown): boolean;
+	reverseTranslate(body: unknown): IHttpRequestOptions;
+	forwardObject(response: EvalMockHttpResponse | undefined, model: string): Record<string, unknown>;
+	/**
+	 * Build the full sequence of SSE frames (pre-formatted as `data: ...\n\n`
+	 * or `event: ...\ndata: ...\n\n`), including any terminator the protocol
+	 * requires. The single SSE writer just iterates and writes.
+	 */
+	buildSseFrames(response: EvalMockHttpResponse | undefined, model: string): string[];
+	buildErrorEnvelope(message: string): Record<string, unknown>;
+	/** The "no mock handler attached" placeholder body for stub responses. */
+	stubResponse(): EvalMockHttpResponse;
+}
+
+const chatCompletionsAdapter: ProtocolAdapter = {
+	name: 'chat-completions',
+	extractModel: extractRequestModel,
+	isStreamRequested,
+	reverseTranslate: reverseTranslateOpenAiRequest,
+	forwardObject: forwardTranslateToChatCompletion,
+	buildSseFrames: (response, model) => {
+		const chunks = forwardTranslateToSseChunks(response, model);
+		const frames = chunks.map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`);
+		// Terminator per OpenAI SSE spec — SDKs stop reading on this sentinel.
+		frames.push('data: [DONE]\n\n');
+		return frames;
+	},
+	buildErrorEnvelope: buildOpenAiErrorEnvelope,
+	stubResponse: () => ({
+		body: { content: '[eval wire server stub] — no mock handler attached' },
+		headers: { 'content-type': 'application/json' },
+		statusCode: 200,
+	}),
+};
+
+const responsesAdapter: ProtocolAdapter = {
+	name: 'responses',
+	extractModel: extractResponsesRequestModel,
+	isStreamRequested: isResponsesStreamRequested,
+	reverseTranslate: reverseTranslateOpenAiResponsesRequest,
+	forwardObject: forwardTranslateToResponsesEnvelope,
+	buildSseFrames: (response, model) => {
+		// Responses API uses `event: <name>\ndata: <JSON>\n\n` frames and emits
+		// `response.completed` as its terminal sentinel (no `[DONE]` line).
+		const events = forwardTranslateToResponsesSseEvents(response, model);
+		return events.map(({ event, data }) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+	},
+	buildErrorEnvelope: buildResponsesErrorEnvelope,
+	stubResponse: () => ({
+		body: { output_text: '[eval wire server stub] — no mock handler attached' },
+		headers: { 'content-type': 'application/json' },
+		statusCode: 200,
+	}),
+};
+
 export class LlmWireServer {
 	private server: Server | undefined;
 	private resolvedUrl: string | undefined;
+	/** In-flight handler promises — `stop()` awaits these before resolving. */
+	private readonly inFlight = new Set<Promise<void>>();
+	/** Set by `stop()` so any request that beats the close-callback gets a 503 instead of starting a fresh handler that would race the teardown. */
+	private stopping = false;
 
 	constructor(private readonly options: LlmWireServerOptions = {}) {}
 
@@ -75,8 +144,18 @@ export class LlmWireServer {
 	async stop(): Promise<void> {
 		const server = this.server;
 		if (!server) return;
+		// Flip stopping FIRST so any request currently waiting on express
+		// routing gets a 503 instead of starting a new handler that races
+		// the teardown below.
+		this.stopping = true;
 		this.server = undefined;
 		this.resolvedUrl = undefined;
+
+		// Drain in-flight handlers so an ongoing mock-handler resolve doesn't
+		// write to a torn-down socket and `onIntercept` can't fire after
+		// stop() returns. `allSettled` because handler errors are already
+		// logged/swallowed inside the handler itself.
+		await Promise.allSettled(Array.from(this.inFlight));
 
 		server.closeAllConnections();
 
@@ -88,38 +167,59 @@ export class LlmWireServer {
 	private buildApp(): Express {
 		const app = express();
 		app.use(express.json({ limit: '4mb' }));
-		app.post('/eval/:root/v1/chat/completions', this.handleChatCompletion);
+		app.post('/eval/:root/v1/chat/completions', this.routeFor(chatCompletionsAdapter));
 		// `@langchain/openai` v1.3+ auto-routes Agent v3.1+ calls to /v1/responses
 		// (the Responses API). Same mock-handler under the hood, different
 		// envelope translator. Without this route the SDK 404s and the eval fails.
-		app.post('/eval/:root/v1/responses', this.handleResponses);
+		app.post('/eval/:root/v1/responses', this.routeFor(responsesAdapter));
 		// Surfaces credential-rewrite misconfiguration loudly instead of 404'ing.
-		app.post('/v1/chat/completions', this.handleUnroutedChatCompletion);
-		app.post('/v1/responses', this.handleUnroutedChatCompletion);
+		app.post('/v1/chat/completions', this.handleUnrouted);
+		app.post('/v1/responses', this.handleUnrouted);
 		return app;
 	}
 
-	private handleChatCompletion = async (req: Request, res: Response): Promise<void> => {
+	/** Wraps each route in the in-flight tracker so `stop()` can drain. */
+	private routeFor(adapter: ProtocolAdapter) {
+		return async (req: Request, res: Response): Promise<void> => {
+			if (this.stopping) {
+				res.status(503).json(adapter.buildErrorEnvelope('Wire server is shutting down'));
+				return;
+			}
+			const promise = this.handleProtocol(adapter, req, res);
+			this.inFlight.add(promise);
+			try {
+				await promise;
+			} finally {
+				this.inFlight.delete(promise);
+			}
+		};
+	}
+
+	private async handleProtocol(
+		adapter: ProtocolAdapter,
+		req: Request,
+		res: Response,
+	): Promise<void> {
 		// Express decodes route params; a second decode would mangle literal `%`.
 		const rootName = req.params.root;
-		const model = extractRequestModel(req.body);
-		const stream = isStreamRequested(req.body);
+		const model = adapter.extractModel(req.body);
+		const stream = adapter.isStreamRequested(req.body);
 		const subNode = this.resolveSubNode(rootName);
 
 		if (!this.options.mockHandler) {
-			this.respondWithStub(res, model, stream);
+			this.respondWithStub(adapter, req, res, model, stream);
 			return;
 		}
 
-		let synthetic: ReturnType<typeof reverseTranslateOpenAiRequest>;
-		let mockResponse: Awaited<ReturnType<typeof this.options.mockHandler>>;
+		let synthetic: IHttpRequestOptions;
+		let mockResponse: Awaited<ReturnType<EvalLlmMockHandler>>;
 		try {
-			synthetic = reverseTranslateOpenAiRequest(req.body);
+			synthetic = adapter.reverseTranslate(req.body);
 			mockResponse = await this.options.mockHandler(synthetic, subNode);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			this.options.logger?.error(`[EvalMock] Wire-server mock generation failed: ${message}`);
-			this.respondWithError(res, message);
+			this.respondWithError(adapter, res, message);
 			return;
 		}
 
@@ -128,14 +228,19 @@ export class LlmWireServer {
 		// (write response, then ledger) relies on the libuv flush running after the
 		// current microtask, which is subtle and surprised reviewers. Best-effort:
 		// a thrown `onIntercept` never blocks the response the SDK gets.
+		//
+		// requestBody is stored by reference rather than deep-cloned: express.json
+		// never re-touches the body object after parsing, and structuredClone'ing
+		// it per turn (× many turns × parallel evals × bodies up to the 4MB cap)
+		// burns RSS for protection consumers don't rely on. Callers must not
+		// mutate the entry's requestBody.
 		try {
 			this.options.onIntercept?.({
 				rootName,
 				url: synthetic.url,
 				method: synthetic.method ?? 'POST',
 				nodeType: subNode.type,
-				// Deep-clone so the ledger entry can't be mutated by later code.
-				requestBody: this.cloneRequestBody(req.body),
+				requestBody: req.body,
 				mockResponse: mockResponse?.body,
 			});
 		} catch (error) {
@@ -145,10 +250,9 @@ export class LlmWireServer {
 
 		try {
 			if (stream) {
-				this.writeSseEnvelope(res, mockResponse, model);
+				this.writeSseResponse(adapter, req, res, mockResponse, model);
 			} else {
-				const envelope = forwardTranslateToChatCompletion(mockResponse, model);
-				res.status(200).json(envelope);
+				res.status(200).json(adapter.forwardObject(mockResponse, model));
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -158,19 +262,27 @@ export class LlmWireServer {
 			// The ledger entry above stays — the model turn DID happen, only the
 			// serialization to the SDK failed.
 			if (!res.headersSent) {
-				this.respondWithError(res, message);
-			} else {
+				this.respondWithError(adapter, res, message);
+			} else if (!res.writableEnded) {
 				res.end();
 			}
 		}
-	};
+	}
 
-	/** Stream the mock response as SSE chunks terminated with `data: [DONE]\n\n`. */
-	private writeSseEnvelope(
+	/** Stream the mock response as SSE frames, short-circuiting if the client disconnects. */
+	private writeSseResponse(
+		adapter: ProtocolAdapter,
+		req: Request,
 		res: Response,
 		mockResponse: Awaited<ReturnType<EvalLlmMockHandler>>,
 		model: string,
 	): void {
+		// Build frames BEFORE committing response headers — if the translator
+		// throws (e.g. a circular structure in the mock-handler body), we
+		// want `handleProtocol`'s outer catch to fire a 500 error envelope
+		// instead of leaving the client with a 200 + empty body.
+		const frames = adapter.buildSseFrames(mockResponse, model);
+
 		res.status(200);
 		res.setHeader('Content-Type', 'text/event-stream');
 		res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -178,136 +290,49 @@ export class LlmWireServer {
 		// Forces immediate flush in proxied setups (Nginx etc.) — harmless here.
 		res.setHeader('X-Accel-Buffering', 'no');
 
-		const chunks = forwardTranslateToSseChunks(mockResponse, model);
-		for (const chunk of chunks) {
-			res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+		// If the SDK aborts mid-stream (timeout, AbortController), node fires
+		// `close` on req. Without this guard the loop keeps writing to a
+		// destroyed socket and silently throws inside res.write().
+		let aborted = false;
+		const onClose = () => {
+			aborted = true;
+		};
+		req.once('close', onClose);
+
+		try {
+			for (const frame of frames) {
+				if (aborted || res.writableEnded || res.destroyed) break;
+				res.write(frame);
+			}
+		} finally {
+			req.off('close', onClose);
+			if (!res.writableEnded) res.end();
 		}
-		// Terminator per OpenAI SSE spec — SDKs stop reading on this sentinel.
-		res.write('data: [DONE]\n\n');
-		res.end();
 	}
 
-	/**
-	 * Handle a Responses API request. Mirrors `handleChatCompletion`'s shape
-	 * but with the Responses-API envelope translators. The mock handler is
-	 * called identically — only the wire-format adapter layer differs.
-	 */
-	private handleResponses = async (req: Request, res: Response): Promise<void> => {
-		const rootName = req.params.root;
-		const model = extractResponsesRequestModel(req.body);
-		const stream = isResponsesStreamRequested(req.body);
-		const subNode = this.resolveSubNode(rootName);
-
-		if (!this.options.mockHandler) {
-			this.respondWithResponsesStub(res, model, stream);
-			return;
-		}
-
-		let synthetic: ReturnType<typeof reverseTranslateOpenAiResponsesRequest>;
-		let mockResponse: Awaited<ReturnType<typeof this.options.mockHandler>>;
-		try {
-			synthetic = reverseTranslateOpenAiResponsesRequest(req.body);
-			mockResponse = await this.options.mockHandler(synthetic, subNode);
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			this.options.logger?.error(`[EvalMock] Wire-server mock generation failed: ${message}`);
-			this.respondWithResponsesError(res, message);
-			return;
-		}
-
-		try {
-			this.options.onIntercept?.({
-				rootName,
-				url: synthetic.url,
-				method: synthetic.method ?? 'POST',
-				nodeType: subNode.type,
-				requestBody: this.cloneRequestBody(req.body),
-				mockResponse: mockResponse?.body,
-			});
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			this.options.logger?.warn(`[EvalMock] Wire-server ledger write failed: ${message}`);
-		}
-
-		try {
-			if (stream) {
-				this.writeResponsesSseEnvelope(res, mockResponse, model);
-			} else {
-				const envelope = forwardTranslateToResponsesEnvelope(mockResponse, model);
-				res.status(200).json(envelope);
-			}
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			this.options.logger?.error(`[EvalMock] Wire-server response write failed: ${message}`);
-			if (!res.headersSent) {
-				this.respondWithResponsesError(res, message);
-			} else {
-				res.end();
-			}
-		}
-	};
-
-	/** SSE writer for `/v1/responses` — emits `event: <name>\ndata: <JSON>\n\n` frames per Responses API spec. */
-	private writeResponsesSseEnvelope(
+	private respondWithStub(
+		adapter: ProtocolAdapter,
+		req: Request,
 		res: Response,
-		mockResponse: Awaited<ReturnType<EvalLlmMockHandler>>,
 		model: string,
+		stream: boolean,
 	): void {
-		res.status(200);
-		res.setHeader('Content-Type', 'text/event-stream');
-		res.setHeader('Cache-Control', 'no-cache, no-transform');
-		res.setHeader('Connection', 'keep-alive');
-		res.setHeader('X-Accel-Buffering', 'no');
-
-		const events = forwardTranslateToResponsesSseEvents(mockResponse, model);
-		for (const { event, data } of events) {
-			res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-		}
-		// Responses API uses `response.completed` as the terminal sentinel
-		// (already emitted by the translator). No `[DONE]` line needed.
-		res.end();
-	}
-
-	private respondWithResponsesStub(res: Response, model: string, stream: boolean): void {
-		const stubBody: Awaited<ReturnType<EvalLlmMockHandler>> = {
-			body: { output_text: '[eval wire server stub] — no mock handler attached' },
-			headers: { 'content-type': 'application/json' },
-			statusCode: 200,
-		};
+		const stubBody = adapter.stubResponse();
 		if (stream) {
-			this.writeResponsesSseEnvelope(res, stubBody, model);
+			this.writeSseResponse(adapter, req, res, stubBody, model);
 			return;
 		}
-		const envelope = forwardTranslateToResponsesEnvelope(stubBody, model);
-		res.status(200).json(envelope);
+		res.status(200).json(adapter.forwardObject(stubBody, model));
 	}
 
-	private respondWithResponsesError(res: Response, message: string): void {
-		res.status(500).json(buildResponsesErrorEnvelope(`Mock generation failed: ${message}`));
-	}
-
-	private respondWithStub(res: Response, model: string, stream: boolean): void {
-		const stubBody: Awaited<ReturnType<EvalLlmMockHandler>> = {
-			body: { content: '[eval wire server stub] — no mock handler attached' },
-			headers: { 'content-type': 'application/json' },
-			statusCode: 200,
-		};
-		if (stream) {
-			this.writeSseEnvelope(res, stubBody, model);
-			return;
-		}
-		const envelope = forwardTranslateToChatCompletion(stubBody, model);
-		res.status(200).json(envelope);
-	}
-
-	private respondWithError(res: Response, message: string): void {
+	private respondWithError(adapter: ProtocolAdapter, res: Response, message: string): void {
 		// Streaming clients still parse a JSON error envelope (the SDK throws an
 		// APIError before iterating chunks). Sending a 500 + JSON keeps both
 		// streaming and non-streaming SDK paths happy — no SSE branch needed.
-		res.status(500).json(buildOpenAiErrorEnvelope(`Mock generation failed: ${message}`));
+		res.status(500).json(adapter.buildErrorEnvelope(`Mock generation failed: ${message}`));
 	}
 
-	private handleUnroutedChatCompletion = (_req: Request, res: Response): void => {
+	private handleUnrouted = (_req: Request, res: Response): void => {
 		res
 			.status(500)
 			.json(
@@ -317,19 +342,6 @@ export class LlmWireServer {
 				),
 			);
 	};
-
-	/** Deep-clone via `structuredClone`; logs and falls back to the original ref if it throws. */
-	private cloneRequestBody(body: unknown): unknown {
-		try {
-			return structuredClone(body);
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			this.options.logger?.warn(
-				`[EvalMock] Wire-server ledger entry not isolated — clone failed: ${message}`,
-			);
-			return body;
-		}
-	}
 
 	private resolveSubNode(rootName: string): INode {
 		const subNode = this.options.rootToSubNode?.get(rootName);

@@ -224,7 +224,7 @@ describe('LlmWireServer', () => {
 			expect(warn.mock.calls[0][0]).toContain('ledger disk full');
 		});
 
-		it('records an isolated deep copy of the request body in the ledger', async () => {
+		it('records a per-request body in the ledger that does not bleed across requests', async () => {
 			const intercepts: InterceptedTurn[] = [];
 			const mockHandler = jest.fn().mockResolvedValue({
 				body: { content: 'reply' },

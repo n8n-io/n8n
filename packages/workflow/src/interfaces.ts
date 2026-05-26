@@ -264,6 +264,17 @@ export abstract class ICredentialsHelper {
 	): Promise<void>;
 
 	abstract getCredentialsProperties(type: string): INodeProperties[];
+
+	/**
+	 * Eval-mode hook for nodes with no configured credential of any type.
+	 * Implemented by `EvalMockedCredentialsHelper` so post-resolve URL rewrites
+	 * (wire-server injection for unpinned vendor SDK nodes) still apply.
+	 * Optional — production helpers don't need it.
+	 */
+	synthesizeAndDecrypt?(
+		type: string,
+		executeData?: IExecuteData,
+	): Promise<ICredentialDataDecryptedObject>;
 }
 
 export interface IAuthenticateBase {

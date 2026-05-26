@@ -318,18 +318,13 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		type: string,
 		executeData?: IExecuteData,
 	): Promise<ICredentialDataDecryptedObject> {
-		const helper = this.additionalData.credentialsHelper as unknown as {
-			synthesizeAndDecrypt?: (
-				credentialType: string,
-				ed?: IExecuteData,
-			) => Promise<ICredentialDataDecryptedObject>;
-		};
+		const helper = this.additionalData.credentialsHelper;
 		if (typeof helper.synthesizeAndDecrypt === 'function') {
 			return await helper.synthesizeAndDecrypt(type, executeData);
 		}
 		const { buildEvalMockCredentials } = await import('../eval-mock-helpers');
 		return buildEvalMockCredentials(
-			this.additionalData.credentialsHelper.getCredentialsProperties(type),
+			helper.getCredentialsProperties(type),
 		) as ICredentialDataDecryptedObject;
 	}
 

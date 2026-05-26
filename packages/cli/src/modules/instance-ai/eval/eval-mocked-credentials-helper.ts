@@ -140,9 +140,8 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 	 * traffic would then escape to the real provider with placeholder values
 	 * and 401 at the wire layer.
 	 *
-	 * `n8n-core` invokes this via duck-typing (`'synthesizeAndDecrypt' in
-	 * additionalData.credentialsHelper`); see `_getCredentials` in
-	 * `node-execution-context.ts`.
+	 * Declared as an optional method on `ICredentialsHelper`; see
+	 * `_getCredentials` in `node-execution-context.ts`.
 	 */
 	async synthesizeAndDecrypt(
 		type: string,

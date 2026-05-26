@@ -247,11 +247,10 @@ function coerceArgumentsToString(args: unknown): string {
 	if (typeof args === 'string') return args;
 	if (args === undefined || args === null) return '{}';
 	// Object/array → JSON string. SDKs choke on non-string arguments.
-	try {
-		return JSON.stringify(args);
-	} catch {
-		return '{}';
-	}
+	// A circular structure throws here; let it propagate to the wire server's
+	// 500-envelope catch so the broken mock-handler output surfaces loudly
+	// rather than as a confusing tool-arg mismatch downstream.
+	return JSON.stringify(args);
 }
 
 function extractAssistantContent(body: unknown): string {
