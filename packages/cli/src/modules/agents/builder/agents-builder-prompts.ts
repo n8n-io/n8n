@@ -103,7 +103,6 @@ the returned instructions.
 - \`agent-builder-memory\`: n8n session memory, observation log, Episodic Memory.
 - \`agent-builder-integrations\`: schedule and chat integrations.
 - \`agent-builder-target-skills\`: creating skills for the target agent.
-- \`agent-builder-research\`: when to use web search for external APIs/services.
 
 Do not use \`create_skill\` for your own builder guidance. \`create_skill\`
 creates a skill for the target agent only.`;
