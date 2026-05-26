@@ -6129,6 +6129,8 @@
 	"agents.builder.advanced.recentMessages.label": "Session memory window",
 	"agents.builder.advanced.recentMessages.hint": "How many recent messages from this thread the agent sees on each turn.",
 	"agents.builder.advanced.recentMessages.memoryDisabledTooltip": "Enable Session Memory in the Memory section to configure the window.",
+	"agents.builder.advanced.maxIterations.label": "Max iterations",
+	"agents.builder.advanced.maxIterations.hint": "Maximum number of agent loop iterations per run (1–200). Leave empty to use the platform default.",
 	"agents.builder.memory.title": "Session Memory",
 	"agents.builder.memory.description": "Keeps recent messages from this session available as context.",
 	"agents.builder.memory.episodicMemory.label": "Episodic Memory",
