@@ -3,6 +3,7 @@ import type { INode, INodeCredentials, INodeTypeDescription } from 'n8n-workflow
 
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import type { AgentJsonMcpServerConfig } from '../types';
+import { McpAuthenticationSchemaType } from '@n8n/api-types';
 
 const MCP_REGISTRY_NODE_PREFIX = '@n8n/mcp-registry.';
 const HTTP_STREAMABLE_TRANSPORT = 'httpStreamable';
@@ -66,6 +67,24 @@ function resolveDefaultTimeout(nodeType: INodeTypeDescription): number | undefin
 
 	const timeoutOption = optionsProperty.options.find((option) => option.name === 'timeout');
 	return toNumber((timeoutOption as { default?: unknown } | undefined)?.default);
+}
+
+/**
+ * Maps an MCP `authentication` option value to the n8n credential type name
+ * that the node registers under `node.credentials`. The two do not always
+ * match: `bearerAuth` uses the `httpBearerAuth` credential type, etc.
+ * OAuth2 variants use their own name as-is (e.g. `mcpOAuth2Api`).
+ */
+const AUTHENTICATION_TO_CREDENTIAL_TYPE: Record<string, string | undefined> = {
+	bearerAuth: 'httpBearerAuth',
+	headerAuth: 'httpHeaderAuth',
+	multipleHeadersAuth: 'httpMultipleHeadersAuth',
+	mcpOAuth2Api: 'mcpOAuth2Api',
+	none: undefined,
+} satisfies Record<McpAuthenticationSchemaType, string | undefined>;
+
+function authenticationToCredentialType(authentication: string): string | undefined {
+	return AUTHENTICATION_TO_CREDENTIAL_TYPE[authentication] ?? authentication;
 }
 
 function resolveCredentialType(credentials: INodeCredentials | undefined): string | undefined {
@@ -188,10 +207,7 @@ export function mcpServerToNode(
 	server: AgentJsonMcpServerConfig,
 	nodeTypeDescription: INodeTypeDescription,
 ): INode {
-	const credentialType =
-		typeof server.authentication === 'string' && server.authentication !== 'none'
-			? server.authentication
-			: undefined;
+	const credentialType = authenticationToCredentialType(server.authentication);
 	const credentials =
 		credentialType && server.credential
 			? {

@@ -85,13 +85,21 @@ const AgentJsonSkillConfigSchema = z.object({
 		.regex(/^[A-Za-z0-9_-]+$/),
 });
 
+export const McpAuthenticationSchemaTypes = z.enum([
+	'none',
+	'bearerAuth',
+	'headerAuth',
+	'multipleHeadersAuth',
+	'mcpOAuth2Api',
+]);
+
 /**
  * Configuration for a single MCP (Model Context Protocol) server attached to
  * an agent. Tool entries from MCP servers are sourced separately from the
  * `tools[]` array — the SDK's `McpClient` prefixes each tool name with the
  * server name to avoid collisions.
  */
-const McpServerConfigSchema = z
+export const McpServerConfigSchema = z
 	.object({
 		/**
 		 * Unique-per-agent server name. Also used as the SDK tool-name prefix
@@ -112,10 +120,7 @@ const McpServerConfigSchema = z
 		 * credential types (e.g. `notionMcpOAuth2Api`, `githubMcpOAuth2Api`).
 		 */
 		authentication: z
-			.union([
-				z.enum(['none', 'bearerAuth', 'headerAuth', 'multipleHeadersAuth', 'mcpOAuth2Api']),
-				z.string().endsWith('McpOAuth2Api'),
-			])
+			.union([McpAuthenticationSchemaTypes, z.string().endsWith('McpOAuth2Api')])
 			.default('none'),
 		/** Credential id required when `authentication` is anything other than `none`. */
 		credential: z.string().optional(),
@@ -271,6 +276,7 @@ export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;
 export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
 export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
 export type AgentJsonMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
+export type McpAuthenticationSchemaType = z.infer<typeof McpAuthenticationSchemaTypes>;
 
 export interface ConfigValidationError {
 	path: string;
