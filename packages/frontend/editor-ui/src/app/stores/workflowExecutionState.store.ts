@@ -11,12 +11,7 @@ import {
 } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
-import type {
-	ExecutionStatus,
-	ExecutionSummary,
-	IRunExecutionData,
-	ITaskData,
-} from 'n8n-workflow';
+import type { ExecutionStatus, ExecutionSummary, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ExecutionOutputMap } from '@/app/types/executionData';
