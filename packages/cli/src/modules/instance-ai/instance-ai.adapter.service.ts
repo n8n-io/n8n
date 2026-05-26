@@ -35,7 +35,11 @@ import type {
 	ServiceProxyConfig,
 	CredentialTypeSearchResult,
 } from '@n8n/instance-ai';
-import { wrapUntrustedData } from '@n8n/instance-ai';
+import {
+	BuilderTemplatesService,
+	builderTemplatesOptionsFromEnv,
+	wrapUntrustedData,
+} from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -121,6 +125,7 @@ import { TagService } from '@/services/tag.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -178,6 +183,8 @@ export class InstanceAiAdapterService {
 	} | null = null;
 
 	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
+
+	private templatesService: BuilderTemplatesService | undefined;
 
 	private async getNodesFromCache(): Promise<INodeTypeDescription[]> {
 		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
@@ -250,11 +257,23 @@ export class InstanceAiAdapterService {
 			dataTableService: this.createDataTableAdapter(user),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
+			templatesService: this.getTemplatesService(),
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
 			allowSendingParameterValues: this.allowSendingParameterValues,
 		};
+	}
+
+	private getTemplatesService(): BuilderTemplatesService {
+		if (!this.templatesService) {
+			this.templatesService = new BuilderTemplatesService({
+				...builderTemplatesOptionsFromEnv({ logger: this.logger }),
+				cacheDir: path.join(this.instanceSettings.n8nFolder, 'n8n-sdk-templates'),
+				logger: this.logger,
+			});
+		}
+		return this.templatesService;
 	}
 
 	private buildLicenseHints(): string[] {
@@ -485,10 +504,10 @@ export class InstanceAiAdapterService {
 				// Strip redactionPolicy if the user lacks the required scope —
 				// mirrors the check in WorkflowCreationService.createWorkflow().
 				const settings = (json.settings ?? {}) as IWorkflowSettings;
-				if (settings.redactionPolicy !== undefined) {
+				if (settings.redactionPolicy !== undefined && settings.redactionPolicy !== 'none') {
 					const canUpdateRedaction = await userHasScopes(
 						user,
-						['workflow:updateRedactionSetting'],
+						['workflow:enableRedaction'],
 						false,
 						{ projectId },
 					);
@@ -590,18 +609,30 @@ export class InstanceAiAdapterService {
 				_options?: { projectId?: string },
 			) {
 				assertNotReadOnly();
-				// Strip redactionPolicy if the user lacks the required scope —
-				// mirrors the check in createFromWorkflowJSON() and WorkflowService.update().
+				// Strip redactionPolicy if the user lacks the required directional scope —
+				// mirrors the check in WorkflowService.update().
 				const settings = (json.settings ?? {}) as IWorkflowSettings;
 				if (settings.redactionPolicy !== undefined) {
-					const canUpdateRedaction = await userHasScopes(
-						user,
-						['workflow:updateRedactionSetting'],
-						false,
-						{ workflowId },
-					);
-					if (!canUpdateRedaction) {
-						delete settings.redactionPolicy;
+					const [existingWorkflow, ownerProject] = await Promise.all([
+						workflowRepository.findOne({ where: { id: workflowId } }),
+						sharedWorkflowRepository.getWorkflowOwningProject(workflowId),
+					]);
+
+					const currentPolicy = existingWorkflow?.settings?.redactionPolicy;
+
+					if (settings.redactionPolicy !== currentPolicy) {
+						const requiredScopes = getRequiredRedactionScopes(
+							currentPolicy,
+							settings.redactionPolicy,
+						);
+
+						const canUpdateRedaction =
+							ownerProject &&
+							(await userHasScopes(user, requiredScopes, false, { projectId: ownerProject.id }));
+
+						if (!canUpdateRedaction) {
+							delete settings.redactionPolicy;
+						}
 					}
 				}
 
