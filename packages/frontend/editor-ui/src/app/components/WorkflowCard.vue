@@ -296,7 +296,7 @@ const canEditMcp = computed(
 );
 
 // Optimistic state for the legacy 3-dot menu fallback (used when the
-// 080_workflow_card_mcp_toggle experiment is off).
+// 086_workflow_card_mcp_toggle experiment is off).
 const mcpToggleStatus = ref<boolean | null>(null);
 
 const isAvailableInMCP = computed(
