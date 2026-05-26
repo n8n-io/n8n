@@ -107,7 +107,6 @@ const isReady = computed(() => !isLoading.value && !!currentWorkflowDocumentStor
 		<div v-else :class="$style.centerState">
 			<N8nIcon icon="loader-circle" :size="80" spin />
 		</div>
-		<slot name="overlay-top-right" />
 	</div>
 </template>
 

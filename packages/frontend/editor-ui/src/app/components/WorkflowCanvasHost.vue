@@ -59,9 +59,5 @@ defineExpose({ requestFitView });
 		:refresh-key="refreshKey"
 		@ready="emit('ready')"
 		@workflow-loaded="(id) => emit('workflow-loaded', id)"
-	>
-		<template #overlay-top-right>
-			<slot name="overlay-top-right" />
-		</template>
-	</WorkflowCanvasHostBody>
+	/>
 </template>
