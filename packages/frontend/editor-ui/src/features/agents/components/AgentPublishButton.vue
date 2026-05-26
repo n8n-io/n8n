@@ -29,9 +29,8 @@ const { publish, unpublish, revertToPublished, publishing } = useAgentPublish();
 type AgentPublishState = 'not-published' | 'published-no-changes' | 'published-with-changes';
 
 const publishState = computed((): AgentPublishState => {
-	if (!props.agent?.publishedVersion) return 'not-published';
-	if (props.agent.versionId !== props.agent.publishedVersion.publishedFromVersionId)
-		return 'published-with-changes';
+	if (!props.agent?.activeVersionId) return 'not-published';
+	if (props.agent.versionId !== props.agent.activeVersionId) return 'published-with-changes';
 	return 'published-no-changes';
 });
 
@@ -72,11 +71,15 @@ const dropdownActions = computed(() => {
 		},
 	];
 
-	if (props.agent?.publishedVersion) {
+	if (props.agent?.activeVersionId) {
 		actions.push({
 			id: 'revert-to-published',
 			label: locale.baseText('agents.publish.dropdown.revertToPublished'),
-			disabled: publishing.value || props.isSaving || !canUpdate.value,
+			disabled:
+				publishState.value !== 'published-with-changes' ||
+				publishing.value ||
+				props.isSaving ||
+				!canUpdate.value,
 		});
 	}
 
@@ -84,7 +87,7 @@ const dropdownActions = computed(() => {
 		id: 'unpublish',
 		label: locale.baseText('agents.publish.dropdown.unpublish'),
 		disabled:
-			!props.agent?.publishedVersion || publishing.value || props.isSaving || !canUnpublish.value,
+			!props.agent?.activeVersionId || publishing.value || props.isSaving || !canUnpublish.value,
 		divided: true,
 	});
 
@@ -103,7 +106,8 @@ async function onDropdownSelect(action: string) {
 		return;
 	}
 	if (action === 'revert-to-published') {
-		if (!props.agent?.publishedVersion || props.isSaving || !canUpdate.value) return;
+		if (publishState.value !== 'published-with-changes' || props.isSaving || !canUpdate.value)
+			return;
 		await props.beforeRevertToPublished?.();
 		const updated = await revertToPublished(props.projectId, props.agentId);
 		if (updated) emit('reverted', updated);
