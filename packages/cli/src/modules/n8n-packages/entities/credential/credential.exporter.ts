@@ -1,5 +1,6 @@
-import type { User } from '@n8n/db';
+import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UserError } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 
@@ -11,6 +12,17 @@ import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 const CREDENTIAL_SLUG_FALLBACK = 'credential';
+const MAX_DISPLAYED_FORBIDDEN_IDS = 20;
+
+type Classification =
+	| { kind: 'accessible'; credential: CredentialsEntity; usedByWorkflows: string[] }
+	| {
+			kind: 'orphan';
+			credentialId: string;
+			sample: CredentialReferenceFromWorkflow;
+			usedByWorkflows: string[];
+	  }
+	| { kind: 'forbidden'; credentialId: string };
 
 export interface CredentialExportRequest {
 	user: User;
@@ -35,11 +47,16 @@ export class CredentialExporter {
 			return { entries: [], requirements: [] };
 		}
 
+		const classifications = await this.classifyReferences(request);
+		this.assertNoForbiddenCredentials(classifications);
+
+		return this.writeClassifications(classifications, request.writer);
+	}
+
+	private async classifyReferences(request: CredentialExportRequest): Promise<Classification[]> {
 		const workflowsByCredentialId = this.groupWorkflowIdsByCredentialId(request.references);
 		const referenceLookup = this.indexReferencesByCredentialId(request.references);
-		const entries: ManifestEntry[] = [];
-		const requirements: PackageCredentialRequirement[] = [];
-		const usedTargets = new Set<string>();
+		const classifications: Classification[] = [];
 
 		for (const [credentialId, usedByWorkflows] of workflowsByCredentialId) {
 			const credential = await this.credentialsFinder.findCredentialForUser(
@@ -49,45 +66,78 @@ export class CredentialExporter {
 			);
 
 			if (credential) {
+				classifications.push({ kind: 'accessible', credential, usedByWorkflows });
+				continue;
+			}
+
+			// findCredentialForUser returns null for both orphan (no row) and
+			// forbidden (row exists, caller can't read). The second probe
+			// disambiguates so we can emit a requirements-only entry for orphans
+			// while still failing loudly on forbidden access.
+			const existsWithoutAccess = await this.credentialsFinder.findCredentialById(credentialId);
+			if (existsWithoutAccess) {
+				classifications.push({ kind: 'forbidden', credentialId });
+				continue;
+			}
+
+			const sample = referenceLookup.get(credentialId);
+			if (!sample) continue;
+
+			classifications.push({ kind: 'orphan', credentialId, sample, usedByWorkflows });
+		}
+
+		return classifications;
+	}
+
+	private assertNoForbiddenCredentials(classifications: Classification[]) {
+		const forbiddenIds = classifications
+			.filter((c): c is Extract<Classification, { kind: 'forbidden' }> => c.kind === 'forbidden')
+			.map((c) => c.credentialId);
+
+		if (forbiddenIds.length === 0) return;
+
+		const displayed = forbiddenIds.slice(0, MAX_DISPLAYED_FORBIDDEN_IDS);
+		const omittedCount = forbiddenIds.length - displayed.length;
+
+		throw new UserError(`${forbiddenIds.length} credential(s) not accessible. Export aborted.`, {
+			description: `Inaccessible credential IDs: ${displayed.join(', ')}${
+				omittedCount > 0 ? `, and ${omittedCount} more` : ''
+			}`,
+		});
+	}
+
+	private writeClassifications(
+		classifications: Classification[],
+		writer: PackageWriter,
+	): CredentialExportResult {
+		const entries: ManifestEntry[] = [];
+		const requirements: PackageCredentialRequirement[] = [];
+		const usedTargets = new Set<string>();
+
+		for (const classification of classifications) {
+			if (classification.kind === 'accessible') {
+				const { credential, usedByWorkflows } = classification;
 				const target = this.allocateUniqueFileName(credential.name, usedTargets);
 				const serialized = this.credentialSerializer.serialize(credential);
 
-				request.writer.writeDirectory(target);
-				request.writer.writeFile(
-					`${target}/credential.json`,
-					JSON.stringify(serialized, null, '\t'),
-				);
+				writer.writeDirectory(target);
+				writer.writeFile(`${target}/credential.json`, JSON.stringify(serialized, null, '\t'));
 
-				entries.push({
-					id: credential.id,
-					name: credential.name,
-					target,
-				});
-
+				entries.push({ id: credential.id, name: credential.name, target });
 				requirements.push({
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
 					usedByWorkflows,
 				});
-				continue;
+			} else if (classification.kind === 'orphan') {
+				requirements.push({
+					id: classification.credentialId,
+					name: classification.sample.credentialName,
+					type: classification.sample.credentialType,
+					usedByWorkflows: classification.usedByWorkflows,
+				});
 			}
-
-			// findCredentialForUser returns null for both orphan (no row) and
-			// forbidden (row exists, caller can't read). The second probe
-			// disambiguates so we can emit a requirements-only entry for orphans.
-			const existsWithoutAccess = await this.credentialsFinder.findCredentialById(credentialId);
-			if (existsWithoutAccess) continue;
-
-			const sample = referenceLookup.get(credentialId);
-			if (!sample) continue;
-
-			requirements.push({
-				id: credentialId,
-				name: sample.credentialName,
-				type: sample.credentialType,
-				usedByWorkflows,
-			});
 		}
 
 		return { entries, requirements };

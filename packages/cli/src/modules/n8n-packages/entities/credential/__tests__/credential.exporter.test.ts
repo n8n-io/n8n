@@ -244,6 +244,75 @@ describe('CredentialExporter', () => {
 			expect(writer.files).toHaveLength(1);
 		});
 
+		it('throws a UserError listing forbidden credential ids and writes nothing', async () => {
+			// Forbidden = row exists, caller lacks credential:read. We refuse
+			// the whole export rather than silently dropping the credential.
+			const { exporter, finder } = makeExporter();
+			finder.findCredentialForUser.mockResolvedValue(null);
+			finder.findCredentialById.mockResolvedValue(makeCredential({ id: 'cred-secret' }));
+			const writer = new CapturingWriter();
+
+			await expect(
+				exporter.export({
+					user,
+					references: [makeReference({ credentialId: 'cred-secret', workflowId: 'wf-1' })],
+					writer,
+				}),
+			).rejects.toThrow('1 credential(s) not accessible. Export aborted.');
+
+			expect(writer.files).toEqual([]);
+			expect(writer.directories).toEqual([]);
+		});
+
+		it('errors atomically — accessible credentials are not written when a sibling is forbidden', async () => {
+			const { exporter, finder } = makeExporter();
+			finder.findCredentialForUser.mockImplementation(async (id) =>
+				id === 'cred-ok' ? makeCredential({ id: 'cred-ok' }) : null,
+			);
+			finder.findCredentialById.mockImplementation(async (id) =>
+				id === 'cred-secret' ? makeCredential({ id: 'cred-secret' }) : null,
+			);
+			const writer = new CapturingWriter();
+
+			await expect(
+				exporter.export({
+					user,
+					references: [
+						makeReference({ credentialId: 'cred-ok', workflowId: 'wf-1' }),
+						makeReference({ credentialId: 'cred-secret', workflowId: 'wf-1' }),
+					],
+					writer,
+				}),
+			).rejects.toThrow('1 credential(s) not accessible. Export aborted.');
+
+			// Crucially the writer must not have been touched at all — even for
+			// the accessible credential — so callers can never get a partial tar.
+			expect(writer.files).toEqual([]);
+			expect(writer.directories).toEqual([]);
+		});
+
+		it('truncates the forbidden id list at 20 with an "and N more" suffix', async () => {
+			const { exporter, finder } = makeExporter();
+			finder.findCredentialForUser.mockResolvedValue(null);
+			finder.findCredentialById.mockImplementation(async (id) => makeCredential({ id }));
+			const writer = new CapturingWriter();
+
+			const forbiddenIds = Array.from({ length: 25 }, (_, i) => `forbidden-${i + 1}`);
+
+			const error = (await exporter
+				.export({
+					user,
+					references: forbiddenIds.map((credentialId) =>
+						makeReference({ credentialId, workflowId: 'wf-1' }),
+					),
+					writer,
+				})
+				.catch((e: Error) => e)) as Error & { description?: string };
+
+			expect(error.message).toBe('25 credential(s) not accessible. Export aborted.');
+			expect(error.description).toContain('and 5 more');
+		});
+
 		it('strips entity fields beyond id/name/type from the written file', async () => {
 			const { exporter, finder } = makeExporter();
 			// Even if the entity has extra fields, the schema must keep them out.
