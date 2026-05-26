@@ -3,7 +3,7 @@ import type { RuntimeSkill } from '@n8n/agents';
 export function researchSkill(): RuntimeSkill {
 	return {
 		id: 'agent-builder-research',
-		name: 'Agent builder research',
+		name: 'Agent Builder Research',
 		description:
 			'Use when current external API, service, product, standard, or spec facts affect target-agent config, tool choices, credential choices, or instructions; not for n8n internals, local schema, or builder tool contracts.',
 		instructions: `\

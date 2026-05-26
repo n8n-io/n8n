@@ -98,7 +98,7 @@ describe('builder model recommendations', () => {
 	it('formats the latest tool-capable model ids from the provider catalog', () => {
 		const section = buildModelRecommendationsSection(catalog);
 
-		expect(section).toContain('## Recommended LLM models');
+		expect(section).toContain('### Recommended LLM Models');
 		expect(section).toContain('newest release_date first');
 		expect(section).toMatch(
 			/`anthropic\/claude-opus-4-7` Claude Opus 4\.7 .*`anthropic\/claude-sonnet-4-6` Claude Sonnet 4\.6/,
@@ -141,11 +141,22 @@ describe('builder model recommendations', () => {
 		);
 	});
 
+	it('injects custom tool builder guidance into the base builder prompt', () => {
+		const prompt = buildPrompt(null);
+
+		expect(prompt).toContain("import { Tool } from '@n8n/agents';");
+		expect(prompt).toContain("export default new Tool('tool_name')");
+		expect(prompt).toContain('Custom handlers run in a V8 isolate');
+		expect(prompt).toContain('No network, filesystem, process, Buffer, fetch, timers');
+		expect(prompt).toContain('ctx.suspend(payload)');
+		expect(prompt).toContain('Execution is capped at 5 seconds and about 32 MB memory');
+	});
+
 	it('injects the recommendation section only into the LLM selection prompt', () => {
 		const section = buildModelRecommendationsSection(catalog);
 
-		expect(buildPrompt(section)).toContain('## Recommended LLM models');
-		expect(buildPrompt(null)).not.toContain('## Recommended LLM models');
+		expect(buildPrompt(section)).toContain('### Recommended LLM Models');
+		expect(buildPrompt(null)).not.toContain('### Recommended LLM Models');
 	});
 
 	it('registers only optional builder runtime skills', () => {

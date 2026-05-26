@@ -39,7 +39,7 @@ const BuilderPromptAgentJsonConfigSchema = RunnableAgentJsonConfigSchema.extend(
 
 export function getConfigRulesSection(): string {
 	return `\
-## Agent config rules
+#### Agent Config Rules
 
 - \`model\` must be "provider/model-name".
 - \`credential\` must be the id returned by \`resolve_llm\` or \`ask_llm\`.
@@ -67,9 +67,9 @@ export function getSchemaReferenceSection(): string {
 		zodToJsonSchema(BuilderPromptAgentJsonConfigSchema) as JSONSchema7,
 	);
 	return `\
-## Config schema reference
+#### Config Schema Reference
 
-\`\`\`
+\`\`\`text
 ${jsonSchemaText}
 \`\`\``;
 }

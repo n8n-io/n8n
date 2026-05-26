@@ -21,11 +21,11 @@ Prefer existing workflow tools and node tools over custom tools for real-world a
 Custom tools are for pure computation, validation, formatting, or planning logic;
 they cannot perform live network, filesystem, process, timer, or host I/O.
 
-#### Workflow tools
+#### Workflow Tools
 
 - Call \`list_workflows\`; reference supported workflows by name with \`{ "type": "workflow", "workflow": "<name>" }\`.
 
-#### Node tools
+#### Node Tools
 
 - Use \`search_nodes\`, then \`get_node_types\`; never guess node type names.
 - Use the tool node id from discovery, usually ending in \`Tool\`.
@@ -36,15 +36,31 @@ they cannot perform live network, filesystem, process, timer, or host I/O.
 - Do not include \`inputSchema\` or \`toolDescription\` for node tools.
 - For each required credential slot, call \`ask_credential\` once before config mutation. If skipped, still add the tool and omit only that credential slot.
 
-#### Custom tools
+#### Custom Tools
 
 - Use \`build_custom_tool\` with \`export default new Tool(...)\` and imports only from \`@n8n/agents\` and \`zod\`.
-- Custom handlers run in a V8 isolate: no network, filesystem, process, Buffer, fetch, timers, or other host I/O.
 - Do not use custom tools for live website crawling, HTTP fetching, API calls, SEO crawlers, or scraping. Use workflow or node tools for those.
-- Return JSON-serializable values. Do not call \`.build()\`.
 - Register the returned custom tool id in config after \`build_custom_tool\`.
+- Custom handlers are pure functions: take validated \`input\`, compute, and return a JSON-serializable value. Do not call \`.build()\`.
+- Follow this pattern:
+\`\`\`typescript
+import { Tool } from '@n8n/agents';
+import { z } from 'zod';
 
-#### Provider tools
+export default new Tool('tool_name')
+  .description('What the tool does')
+  .input(z.object({ query: z.string() }))
+  .handler(async ({ query }, ctx) => {
+    return { result: query.toUpperCase() };
+  });
+\`\`\`
+- Custom handlers run in a V8 isolate. No network, filesystem, process, Buffer, fetch, timers, wall-clock waiting, or host I/O.
+- Some globals may exist as stubs: \`setTimeout\` fires synchronously, \`console.log\` goes nowhere, and \`TextEncoder.encode\` returns its input unchanged.
+- Safe globals include \`Math\`, \`Date\`, \`JSON\`, \`RegExp\`, \`Array\`, \`Object\`, \`Map\`, \`Set\`, \`Promise\`, typed arrays, and methods on provided values.
+- The handler receives \`(input, ctx)\`; \`ctx.suspend(payload)\` pauses for human-in-the-loop flows. Ignore \`ctx\` otherwise.
+- Execution is capped at 5 seconds and about 32 MB memory. If runtime fails, fix the code from the returned error and call \`build_custom_tool\` again.
+
+#### Provider Tools
 
 - Match provider tools to the configured model provider.
 - Anthropic: \`providerTools["anthropic.web_search"]\`.
