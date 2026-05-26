@@ -119,15 +119,15 @@ describe('ExecutionLevelTracer', () => {
 			expect(span.attributes['n8n.execution.retry_of']).toBe('exec-original');
 		});
 
-		it('should add custom workflow attributes preserving primitive values', () => {
+		it('should add custom workflow attributes as string values', () => {
 			tracer.startWorkflow({
 				executionId: 'exec-workflow-custom',
 				tracingContext: inboundTracingContext,
 				workflow: defaultWorkflow,
 				customAttributes: {
 					environment: 'production',
-					retryCount: 3,
-					isCritical: true,
+					retryCount: '3',
+					isCritical: 'true',
 				},
 			});
 			tracer.endWorkflow({
@@ -139,8 +139,8 @@ describe('ExecutionLevelTracer', () => {
 
 			const span = otel.getFinishedSpans()[0];
 			expect(span.attributes['n8n.workflow.custom.environment']).toBe('production');
-			expect(span.attributes['n8n.workflow.custom.retryCount']).toBe(3);
-			expect(span.attributes['n8n.workflow.custom.isCritical']).toBe(true);
+			expect(span.attributes['n8n.workflow.custom.retryCount']).toBe('3');
+			expect(span.attributes['n8n.workflow.custom.isCritical']).toBe('true');
 		});
 
 		it('should use inbound traceparent as parent context', () => {
@@ -388,7 +388,7 @@ describe('ExecutionLevelTracer', () => {
 				executionId: 'exec-workflow-tags-on-node',
 				tracingContext: inboundTracingContext,
 				workflow: defaultWorkflow,
-				customAttributes: { env: 'prod', retryCount: 3, isCritical: true },
+				customAttributes: { env: 'prod', retryCount: '3', isCritical: 'true' },
 			});
 			const node = { id: 'n1', name: 'Node1', type: 'test', typeVersion: 1 };
 			tracer.startNode({

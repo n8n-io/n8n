@@ -4,8 +4,7 @@ import type { TracingContext } from './tracing-context';
 
 type ProjectContext = { id: string };
 type WorkflowContext = { id: string; name: string; versionId?: string; nodeCount: number };
-export type CustomAttributeValue = string | number | boolean;
-export type CustomAttributes = Record<string, CustomAttributeValue>;
+export type CustomAttributes = Record<string, string>;
 
 export type StartWorkflowParams = {
 	executionId: string;

@@ -260,11 +260,11 @@ function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | 
 
 function buildCustomAttributes(
 	prefix: string,
-	customAttributes?: Record<string, string | number | boolean>,
-): Record<string, string | number | boolean> {
+	customAttributes?: Record<string, string>,
+): Record<string, string> {
 	if (!customAttributes) return {};
 
-	const attrs: Record<string, string | number | boolean> = {};
+	const attrs: Record<string, string> = {};
 	for (const [key, value] of Object.entries(customAttributes)) {
 		attrs[`${prefix}${key}`] = value;
 	}
