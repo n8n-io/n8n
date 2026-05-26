@@ -47,8 +47,6 @@ export class ObjectStoreConfig {
 	@Env('N8N_EXTERNAL_STORAGE_S3_PROTOCOL', protocolSchema)
 	protocol: Protocol = 'https';
 
-<<<<<<< HEAD
-=======
 	/** Whether to use path-style addressing for S3 requests (e.g. `https://host/bucket` instead of `https://bucket.host`) */
 	@Env('N8N_EXTERNAL_STORAGE_S3_FORCE_PATH_STYLE')
 	forcePathStyle: boolean = true;
@@ -57,7 +55,6 @@ export class ObjectStoreConfig {
 	@Env('N8N_EXTERNAL_STORAGE_S3_MAX_ATTEMPTS')
 	maxAttempts: number = 3;
 
->>>>>>> e2576ca25b (fix(core): Add configurable retries and error details to S3 (#28309))
 	@Nested
 	bucket: ObjectStoreBucketConfig = {} as ObjectStoreBucketConfig;
 
