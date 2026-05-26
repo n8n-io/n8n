@@ -11,6 +11,7 @@
 		"lint": "eslint . --quiet",
 		"lint:fix": "eslint . --fix",
 		"test": "vitest run",
+		"test:unit": "vitest run",
 		"test:dev": "vitest",
 		"format": "biome format --write src",
 		"format:check": "biome ci src"
