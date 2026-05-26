@@ -35,11 +35,11 @@ const globalStubs = {
 	},
 	N8nText: { template: '<span><slot /></span>' },
 	N8nTooltip: { template: '<div><slot /></div>' },
-	N8nInput: {
-		props: ['modelValue', 'disabled'],
+	N8nInputNumber2: {
+		props: ['modelValue', 'disabled', 'min', 'max', 'precision', 'placeholder'],
 		emits: ['update:modelValue'],
 		template:
-			'<input :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+			'<input :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
 	},
 	N8nSelect: {
 		props: ['modelValue', 'disabled'],
@@ -123,9 +123,73 @@ describe('AgentAdvancedPanel', () => {
 			props: { config, disabled: true },
 			global: { stubs: globalStubs },
 		});
-		const toggle = wrapper.find('[data-testid="agent-thinking-toggle"]');
-		expect(toggle.attributes('disabled')).toBeDefined();
-		const concurrency = wrapper.find('[data-testid="agent-concurrency-input"]');
-		expect(concurrency.attributes('disabled')).toBeDefined();
+		expect(
+			wrapper.find('[data-testid="agent-thinking-toggle"]').attributes('disabled'),
+		).toBeDefined();
+		expect(
+			wrapper.find('[data-testid="agent-concurrency-input"]').attributes('disabled'),
+		).toBeDefined();
+		expect(
+			wrapper.find('[data-testid="agent-max-iterations-input"]').attributes('disabled'),
+		).toBeDefined();
+	});
+
+	it('renders the max-iterations input', () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig() },
+			global: { stubs: globalStubs },
+		});
+		expect(wrapper.find('[data-testid="agent-max-iterations-input"]').exists()).toBe(true);
+	});
+
+	it('initialises max-iterations input from config', () => {
+		const config = makeConfig({ config: { maxIterations: 42 } } as Partial<AgentJsonConfig>);
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		const input = wrapper.find('[data-testid="agent-max-iterations-input"]');
+		expect(Number(input.element.getAttribute('value'))).toBe(42);
+	});
+
+	it('emits update:config with maxIterations when the field changes', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig() },
+			global: { stubs: globalStubs },
+		});
+		const input = wrapper.find('[data-testid="agent-max-iterations-input"]');
+		await input.setValue('15');
+		const events = wrapper.emitted('update:config') ?? [];
+		expect(events.length).toBeGreaterThan(0);
+		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
+		expect(last.config?.maxIterations).toBe(15);
+	});
+
+	it('removes maxIterations from config when the field is cleared (NaN)', async () => {
+		const config = makeConfig({ config: { maxIterations: 10 } } as Partial<AgentJsonConfig>);
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		const input = wrapper.find('[data-testid="agent-max-iterations-input"]');
+		// Non-numeric input produces NaN — treated as "clear" → key removed from config
+		await input.setValue('abc');
+		const events = wrapper.emitted('update:config') ?? [];
+		expect(events.length).toBeGreaterThan(0);
+		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
+		expect(last.config).not.toHaveProperty('maxIterations');
+	});
+
+	it('emits update:config with toolCallConcurrency when the concurrency field changes', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig() },
+			global: { stubs: globalStubs },
+		});
+		const input = wrapper.find('[data-testid="agent-concurrency-input"]');
+		await input.setValue('5');
+		const events = wrapper.emitted('update:config') ?? [];
+		expect(events.length).toBeGreaterThan(0);
+		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
+		expect(last.config?.toolCallConcurrency).toBe(5);
 	});
 });

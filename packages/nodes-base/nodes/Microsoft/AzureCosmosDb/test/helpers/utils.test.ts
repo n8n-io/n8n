@@ -22,7 +22,7 @@ import {
 } from '../../helpers/utils';
 
 interface RequestBodyWithParameters extends IDataObject {
-	parameters: Array<{ name: string; value: string }>;
+	parameters: Array<{ name: string; value: string | number | boolean | null }>;
 }
 
 const mockExecuteSingleFunctions = mock<IExecuteSingleFunctions>();
@@ -275,6 +275,138 @@ describe('validateQueryParameters', () => {
 		} else {
 			throw new OperationalError('Expected result.body to contain a parameters array');
 		}
+	});
+
+	test('should treat all comma-separated values as strings (regression: no numeric heuristic)', async () => {
+		mockExecuteSingleFunctions.getNodeParameter
+			.mockReturnValueOnce('$1, $2')
+			.mockReturnValueOnce({ queryParameters: 'P12223, 1737062400000' });
+
+		const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+		expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+			{ name: '@Param1', value: 'P12223' },
+			{ name: '@Param2', value: '1737062400000' },
+		]);
+	});
+
+	describe('queryParametersJson', () => {
+		test('should preserve string with leading zeros', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('$1')
+				.mockReturnValueOnce({ queryParametersJson: '["012345"]' });
+
+			const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+				{ name: '@Param1', value: '012345' },
+			]);
+		});
+
+		test('should preserve integer value', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('$1')
+				.mockReturnValueOnce({ queryParametersJson: '[1737062400000]' });
+
+			const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+				{ name: '@Param1', value: 1737062400000 },
+			]);
+		});
+
+		test('should lose precision for integers larger than Number.MAX_SAFE_INTEGER', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('$1')
+				.mockReturnValueOnce({ queryParametersJson: '[9007199254740993]' });
+
+			const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+				{ name: '@Param1', value: 9007199254740992 },
+			]);
+		});
+
+		test('should preserve boolean values', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('$1, $2')
+				.mockReturnValueOnce({ queryParametersJson: '[true, false]' });
+
+			const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+				{ name: '@Param1', value: true },
+				{ name: '@Param2', value: false },
+			]);
+		});
+
+		test('should preserve null value', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('$1')
+				.mockReturnValueOnce({ queryParametersJson: '[null]' });
+
+			const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+				{ name: '@Param1', value: null },
+			]);
+		});
+
+		test('should handle empty string value', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('$1')
+				.mockReturnValueOnce({ queryParametersJson: '[""]' });
+
+			const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+				{ name: '@Param1', value: '' },
+			]);
+		});
+
+		test('should handle empty parameters array', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({ queryParametersJson: '[]' });
+
+			const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([]);
+		});
+
+		test('should handle mixed types', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('$1, $2, $3, $4')
+				.mockReturnValueOnce({ queryParametersJson: '[1737062400000, "01234", true, null]' });
+
+			const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+				{ name: '@Param1', value: 1737062400000 },
+				{ name: '@Param2', value: '01234' },
+				{ name: '@Param3', value: true },
+				{ name: '@Param4', value: null },
+			]);
+		});
+
+		test('should throw NodeOperationError when value is not a JSON array', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('$1')
+				.mockReturnValueOnce({ queryParametersJson: '{"a": 1}' });
+
+			await expect(
+				validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions),
+			).rejects.toThrowError(
+				new NodeOperationError(
+					mockExecuteSingleFunctions.getNode(),
+					'Query Parameters (JSON) must be a JSON array',
+					{
+						description:
+							'Provide values as a JSON array, e.g. [1737062400000, "01234", true, null]',
+					},
+				),
+			);
+		});
 	});
 
 	test('should extract and map parameter names correctly using regex', async () => {

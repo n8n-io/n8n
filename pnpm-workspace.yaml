@@ -7,6 +7,7 @@ packages:
 
 catalog:
   '@ai-sdk/amazon-bedrock': ^4.0.95
+  '@ai-sdk/anthropic': 3.0.58
   '@ai-sdk/azure': ^3.0.54
   '@ai-sdk/cohere': ^3.0.30
   '@ai-sdk/deepseek': ^2.0.29
@@ -58,11 +59,13 @@ catalog:
   '@types/xml2js': ^0.4.14
   '@vitest/coverage-v8': 4.1.1
   agent-browser: 0.26.0
-  axios: 1.16.0
+  axios: 1.16.1
+  babel-jest: ^29.7.0
   basic-auth: 2.0.1
   callsites: 3.1.0
   chokidar: 4.0.3
   cron: 4.4.0
+  csv-parse: 6.2.1
   eslint: 9.29.0
   eslint-plugin-oxlint: ^1.61.0
   fast-glob: 3.2.12
@@ -70,6 +73,7 @@ catalog:
   fastest-levenshtein: 1.0.16
   flatted: 3.4.2
   form-data: 4.0.4
+  get-tsconfig: ^4.13.0
   http-proxy-agent: 7.0.2
   https-proxy-agent: 7.0.6
   iconv-lite: 0.6.3
@@ -92,7 +96,8 @@ catalog:
   oxlint-tsgolint: ^0.21.1
   pg: 8.17.0
   picocolors: 1.0.1
-  playwright-core: 1.58.0
+  playwright-core: 1.60.0
+  posthog-node: 5.33.4
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
   sass-embedded: ^1.98.0
@@ -108,7 +113,7 @@ catalog:
   vite-plugin-dts: ^4.5.4
   vitest: ^4.1.1
   vitest-mock-extended: ^3.1.0
-  vm2: 3.11.3
+  vm2: 3.11.5
   xml2js: 0.6.2
   xss: 1.0.15
   yaml: 2.8.3
@@ -119,12 +124,12 @@ catalogMode: strict
 
 catalogs:
   e2e:
-    '@currents/playwright': ^1.15.3
+    '@currents/playwright': ^2.0.0
     '@playwright/cli': 0.1.0
-    '@playwright/test': 1.58.0
+    '@playwright/test': 1.60.0
     eslint-plugin-playwright: 2.2.2
-    playwright: 1.58.0
-    playwright-core: 1.58.0
+    playwright: 1.60.0
+    playwright-core: 1.60.0
   frontend:
     '@sentry/vue': ^10.36.0
     '@testing-library/jest-dom': ^6.6.3

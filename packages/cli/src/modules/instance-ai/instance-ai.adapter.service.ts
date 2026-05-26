@@ -35,7 +35,11 @@ import type {
 	ServiceProxyConfig,
 	CredentialTypeSearchResult,
 } from '@n8n/instance-ai';
-import { wrapUntrustedData } from '@n8n/instance-ai';
+import {
+	BuilderTemplatesService,
+	builderTemplatesOptionsFromEnv,
+	wrapUntrustedData,
+} from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -87,6 +91,7 @@ import {
 	type WorkflowExecuteMode,
 	type ExecutionError,
 	NodeHelpers,
+	Workflow,
 	createRunExecutionData,
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -120,6 +125,7 @@ import { TagService } from '@/services/tag.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -177,6 +183,8 @@ export class InstanceAiAdapterService {
 	} | null = null;
 
 	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
+
+	private templatesService: BuilderTemplatesService | undefined;
 
 	private async getNodesFromCache(): Promise<INodeTypeDescription[]> {
 		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
@@ -249,10 +257,23 @@ export class InstanceAiAdapterService {
 			dataTableService: this.createDataTableAdapter(user),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
+			templatesService: this.getTemplatesService(),
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
+			allowSendingParameterValues: this.allowSendingParameterValues,
 		};
+	}
+
+	private getTemplatesService(): BuilderTemplatesService {
+		if (!this.templatesService) {
+			this.templatesService = new BuilderTemplatesService({
+				...builderTemplatesOptionsFromEnv({ logger: this.logger }),
+				cacheDir: path.join(this.instanceSettings.n8nFolder, 'n8n-sdk-templates'),
+				logger: this.logger,
+			});
+		}
+		return this.templatesService;
 	}
 
 	private buildLicenseHints(): string[] {
@@ -314,6 +335,7 @@ export class InstanceAiAdapterService {
 			aiBuilderTemporaryWorkflowRepository,
 			workflowHistoryService,
 			enterpriseWorkflowService,
+			executionRepository,
 			license,
 			allowSendingParameterValues,
 			telemetry,
@@ -447,6 +469,31 @@ export class InstanceAiAdapterService {
 				return toWorkflowJSON(wf, { redactParameters });
 			},
 
+			async getLatestRunData(workflowId: string) {
+				// Caller must be able to read the workflow to see its execution history.
+				// Silent null on no-access keeps validation usable even when access was
+				// revoked between fetches — validation degrades gracefully instead of
+				// throwing in the middle of a per-node loop.
+				const accessible = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:read',
+				]);
+				if (!accessible) return null;
+
+				const [latest] = await executionRepository.find({
+					select: ['id'],
+					where: { workflowId },
+					order: { startedAt: 'DESC' },
+					take: 1,
+				});
+				if (!latest) return null;
+
+				const execution = await executionRepository.findSingleExecution(latest.id, {
+					includeData: true,
+					unflattenData: true,
+				});
+				return execution?.data?.resultData?.runData ?? null;
+			},
+
 			async createFromWorkflowJSON(
 				json: WorkflowJSON,
 				options?: { projectId?: string; markAsAiTemporary?: boolean },
@@ -457,10 +504,10 @@ export class InstanceAiAdapterService {
 				// Strip redactionPolicy if the user lacks the required scope —
 				// mirrors the check in WorkflowCreationService.createWorkflow().
 				const settings = (json.settings ?? {}) as IWorkflowSettings;
-				if (settings.redactionPolicy !== undefined) {
+				if (settings.redactionPolicy !== undefined && settings.redactionPolicy !== 'none') {
 					const canUpdateRedaction = await userHasScopes(
 						user,
-						['workflow:updateRedactionSetting'],
+						['workflow:enableRedaction'],
 						false,
 						{ projectId },
 					);
@@ -526,6 +573,11 @@ export class InstanceAiAdapterService {
 						source: 'n8n-ai',
 					});
 				} catch (error) {
+					logger.warn('AI-builder workflow save failed', {
+						threadId,
+						workflowId: saved.id,
+						error: error instanceof Error ? error.message : String(error),
+					});
 					try {
 						const archived = await workflowService.archive(user, saved.id, { skipArchived: true });
 						if (archived && options?.markAsAiTemporary) {
@@ -557,18 +609,30 @@ export class InstanceAiAdapterService {
 				_options?: { projectId?: string },
 			) {
 				assertNotReadOnly();
-				// Strip redactionPolicy if the user lacks the required scope —
-				// mirrors the check in createFromWorkflowJSON() and WorkflowService.update().
+				// Strip redactionPolicy if the user lacks the required directional scope —
+				// mirrors the check in WorkflowService.update().
 				const settings = (json.settings ?? {}) as IWorkflowSettings;
 				if (settings.redactionPolicy !== undefined) {
-					const canUpdateRedaction = await userHasScopes(
-						user,
-						['workflow:updateRedactionSetting'],
-						false,
-						{ workflowId },
-					);
-					if (!canUpdateRedaction) {
-						delete settings.redactionPolicy;
+					const [existingWorkflow, ownerProject] = await Promise.all([
+						workflowRepository.findOne({ where: { id: workflowId } }),
+						sharedWorkflowRepository.getWorkflowOwningProject(workflowId),
+					]);
+
+					const currentPolicy = existingWorkflow?.settings?.redactionPolicy;
+
+					if (settings.redactionPolicy !== currentPolicy) {
+						const requiredScopes = getRequiredRedactionScopes(
+							currentPolicy,
+							settings.redactionPolicy,
+						);
+
+						const canUpdateRedaction =
+							ownerProject &&
+							(await userHasScopes(user, requiredScopes, false, { projectId: ownerProject.id }));
+
+						if (!canUpdateRedaction) {
+							delete settings.redactionPolicy;
+						}
 					}
 				}
 
@@ -580,19 +644,29 @@ export class InstanceAiAdapterService {
 					pinData: sdkPinDataToRuntime(json.pinData),
 				} as Partial<WorkflowEntity>);
 
-				// Enforce credential tamper protection — same guard as the
-				// REST controller (workflows.controller PATCH /:workflowId).
-				if (license.isSharingEnabled()) {
-					updateData = await enterpriseWorkflowService.preventTampering(
-						updateData,
-						workflowId,
-						user,
-					);
-				}
+				let updated: WorkflowEntity;
+				try {
+					// Enforce credential tamper protection — same guard as the
+					// REST controller (workflows.controller PATCH /:workflowId).
+					if (license.isSharingEnabled()) {
+						updateData = await enterpriseWorkflowService.preventTampering(
+							updateData,
+							workflowId,
+							user,
+						);
+					}
 
-				const updated = await workflowService.update(user, updateData, workflowId, {
-					source: 'n8n-ai',
-				});
+					updated = await workflowService.update(user, updateData, workflowId, {
+						source: 'n8n-ai',
+					});
+				} catch (error) {
+					logger.warn('AI-builder workflow save failed', {
+						threadId,
+						workflowId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+					throw error;
+				}
 
 				if (threadId) {
 					telemetry.track('Builder modified workflow', {
@@ -2044,6 +2118,32 @@ export class InstanceAiAdapterService {
 				return Array.from(credentialTypes);
 			},
 
+			getResolvedNodeInputs: async (workflowJson, nodeName) => {
+				const nodeJson = workflowJson.nodes.find((n) => n.name === nodeName);
+				if (!nodeJson) return [];
+
+				const nodeType = this.nodeTypes.getByNameAndVersion(
+					nodeJson.type,
+					nodeJson.typeVersion ?? 1,
+				);
+				if (!nodeType) return [];
+
+				// Construct a transient Workflow so dynamic `inputs` expressions can be
+				// evaluated against the node's current parameters and the surrounding
+				// workflow graph. Not persisted; lives only for this call.
+				const workflow = new Workflow({
+					nodes: workflowJson.nodes as unknown as INode[],
+					connections: workflowJson.connections as unknown as IConnections,
+					active: false,
+					nodeTypes: this.nodeTypes,
+				});
+
+				const workflowNode = workflow.getNode(nodeName);
+				if (!workflowNode) return [];
+
+				return NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType.description);
+			},
+
 			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> => {
 				// Validate credential ownership before using it to query external resources
 				const credential = await credentialsFinderService.findCredentialForUser(
@@ -3012,9 +3112,9 @@ export async function extractExecutionDebugInfo(
  * Convert SDK pinData (Record<string, IDataObject[]>) to runtime format (IPinData).
  * SDK stores plain objects; runtime wraps each item in { json: item }.
  */
-function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IPinData | undefined {
-	if (!pinData || Object.keys(pinData).length === 0) return undefined;
+function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IPinData {
 	const result: IPinData = {};
+	if (!pinData) return result;
 	for (const [nodeName, items] of Object.entries(pinData)) {
 		result[nodeName] = items.map((item) => ({ json: (item ?? {}) as IDataObject }));
 	}
@@ -3040,6 +3140,11 @@ function toWorkflowJSON(
 			webhookId: n.webhookId,
 			disabled: n.disabled,
 			notes: n.notes,
+			notesInFlow: n.notesInFlow,
+			executeOnce: n.executeOnce,
+			retryOnFail: n.retryOnFail,
+			alwaysOutputData: n.alwaysOutputData,
+			onError: n.onError,
 		})),
 		connections: workflow.connections as WorkflowJSON['connections'],
 		settings: workflow.settings as WorkflowJSON['settings'],

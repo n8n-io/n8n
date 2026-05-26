@@ -10,7 +10,16 @@
 import fs from 'fs';
 import path from 'path';
 
-import type { WorkflowTestCaseResult, ScenarioResult } from '../types';
+import { groupOutcomesByDimension } from '../binaryChecks/aggregate';
+import { CHECK_DIMENSIONS, type CheckDimension, type CheckOutcome } from '../binaryChecks/types';
+import type {
+	ConversationMetrics,
+	ExecutionScenarioResult,
+	ToolInteraction,
+	TranscriptTurn,
+	TurnCounter,
+	WorkflowTestCaseResult,
+} from '../types';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -29,7 +38,7 @@ function escapeHtml(str: string): string {
 // Scenario rendering
 // ---------------------------------------------------------------------------
 
-function renderScenario(sr: ScenarioResult, index: number): string {
+function renderScenario(sr: ExecutionScenarioResult, index: number): string {
 	const icon = sr.success ? '&#10003;' : '&#10007;';
 	const statusClass = sr.success ? 'pass' : 'fail';
 
@@ -61,7 +70,7 @@ function renderScenario(sr: ScenarioResult, index: number): string {
 	</div>`;
 }
 
-function renderScenarioDetail(sr: ScenarioResult): string {
+function renderScenarioDetail(sr: ExecutionScenarioResult): string {
 	let html = '';
 
 	if (!sr.evalResult) {
@@ -187,11 +196,251 @@ function renderScenarioDetail(sr: ScenarioResult): string {
 }
 
 // ---------------------------------------------------------------------------
+// Conversation metrics (per-turn deterministic counters)
+// ---------------------------------------------------------------------------
+
+function renderConversationMetrics(metrics: ConversationMetrics | undefined): string {
+	if (!metrics || metrics.perTurn.length === 0) return '';
+
+	const turnRows = metrics.perTurn.map((turn) => renderTurnRow(turn)).join('');
+	const finishBadge = metrics.reachedRunFinishCleanly
+		? '<span class="badge badge-pass">finished cleanly</span>'
+		: '<span class="badge badge-fail">incomplete</span>';
+
+	const byKindBits = Object.entries(metrics.confirmationAskedByKind)
+		.map(([kind, count]) => `${escapeHtml(kind)}×${String(count)}`)
+		.join(' · ');
+
+	const summary = [
+		`<strong>${String(metrics.turnCount)}</strong> turn${metrics.turnCount === 1 ? '' : 's'}`,
+		`<strong>${String(metrics.confirmationAskedTotal)}</strong> confirmation${metrics.confirmationAskedTotal === 1 ? '' : 's'} asked${byKindBits ? ` (${byKindBits})` : ''}`,
+		finishBadge,
+	].join(' · ');
+
+	return `<details class="section"><summary>Conversation metrics</summary>
+		<div class="conv-summary">${summary}</div>
+		<table class="conv-table">
+			<thead><tr>
+				<th>Turn</th><th>Tool calls</th><th>Tool errors</th><th>Confirmations</th>
+				<th>Replan after error</th><th>Repeat questions</th><th>Finish status</th>
+			</tr></thead>
+			<tbody>${turnRows}</tbody>
+		</table>
+	</details>`;
+}
+
+function renderTurnRow(turn: TurnCounter): string {
+	const status = turn.runFinishStatus ?? '—';
+	const statusClass =
+		turn.runFinishStatus === 'completed'
+			? 'turn-status-ok'
+			: turn.runFinishStatus === undefined
+				? 'turn-status-pending'
+				: 'turn-status-fail';
+	const confByKind = Object.entries(turn.confirmationAskedByKind)
+		.map(([kind, count]) => `${escapeHtml(kind)}×${String(count)}`)
+		.join(', ');
+	const confDetail = confByKind ? ` <span class="muted">(${confByKind})</span>` : '';
+	return `<tr>
+		<td>#${String(turn.turn)}</td>
+		<td>${String(turn.toolCallCount)}</td>
+		<td>${String(turn.toolErrorCount)}</td>
+		<td>${String(turn.confirmationAskedTotal)}${confDetail}</td>
+		<td>${String(turn.replanAfterErrorCount)}</td>
+		<td>${String(turn.repeatQuestionCount)}</td>
+		<td class="${statusClass}">${escapeHtml(status)}</td>
+	</tr>`;
+}
+
+// ---------------------------------------------------------------------------
+// Conversation transcript — chat-style view built from the captured event stream
+// ---------------------------------------------------------------------------
+
+function renderConversationTranscript(transcript: TranscriptTurn[] | undefined): string {
+	if (!transcript || transcript.length === 0) return '';
+	const turnsHtml = transcript.map((turn, i) => renderTranscriptTurn(turn, i + 1)).join('');
+	return `<details class="section" open><summary>Conversation transcript</summary>
+		<div class="transcript">${turnsHtml}</div>
+	</details>`;
+}
+
+function renderTranscriptTurn(turn: TranscriptTurn, turnNum: number): string {
+	const parts: string[] = [`<div class="transcript-turn-header">Turn ${String(turnNum)}</div>`];
+	if (turn.userMessage) {
+		parts.push(
+			`<div class="transcript-line transcript-user"><span class="transcript-icon">👤</span><span class="transcript-text">${escapeHtml(turn.userMessage)}</span></div>`,
+		);
+	}
+	if (turn.agentText) {
+		parts.push(
+			`<div class="transcript-line transcript-assistant"><span class="transcript-icon">🤖</span><span class="transcript-text">${escapeHtml(turn.agentText)}</span></div>`,
+		);
+	}
+
+	const toolNames: string[] = [];
+	for (const interaction of turn.toolInteractions) {
+		const block = renderInteraction(interaction);
+		if (block) parts.push(block);
+		if (interaction.kind === 'tool-call') toolNames.push(interaction.toolName);
+	}
+
+	if (toolNames.length > 0) {
+		parts.push(
+			`<div class="transcript-tools">🔧 ${toolNames.map((t) => escapeHtml(t)).join(', ')}</div>`,
+		);
+	}
+	return `<div class="transcript-turn">${parts.join('')}</div>`;
+}
+
+function renderInteraction(interaction: ToolInteraction): string | null {
+	switch (interaction.kind) {
+		case 'plan': {
+			if (interaction.tasks.length === 0) return null;
+			const lines = interaction.tasks
+				.map((t, i) => {
+					const title = t.title ?? `Task ${String(i + 1)}`;
+					const desc = t.description ? `: ${escapeHtml(t.description)}` : '';
+					return `<li><strong>${escapeHtml(title)}</strong>${desc}</li>`;
+				})
+				.join('');
+			const word = interaction.tasks.length === 1 ? 'task' : 'tasks';
+			return `<details class="transcript-aside" open><summary>📋 plan (${String(interaction.tasks.length)} ${word})</summary><ul class="transcript-plan">${lines}</ul></details>`;
+		}
+		case 'ask-user': {
+			if (interaction.questions.length === 0) return null;
+			const answerByQId = new Map<string, string>();
+			for (const a of interaction.answers ?? []) {
+				const selected = a.selectedOptions.join(', ');
+				const text = [selected, a.customText].filter(Boolean).join(' — ');
+				if (text) answerByQId.set(a.questionId, text);
+			}
+			const lines = interaction.questions
+				.map((q) => {
+					const opts =
+						q.options && q.options.length > 0
+							? ` <em>(${q.options.map((o) => escapeHtml(o)).join(' / ')})</em>`
+							: '';
+					const answer = answerByQId.get(q.id);
+					const answerHtml = answer
+						? `<div class="transcript-answer">👤 ${escapeHtml(answer)}</div>`
+						: '';
+					return `<li>${escapeHtml(q.question)}${opts}${answerHtml}</li>`;
+				})
+				.join('');
+			const summary =
+				answerByQId.size > 0
+					? '❓ ask-user (with answers)'
+					: `❓ ask-user (${String(interaction.questions.length)} question${interaction.questions.length === 1 ? '' : 's'})`;
+			return `<details class="transcript-aside" open><summary>${summary}</summary><ul class="transcript-questions">${lines}</ul></details>`;
+		}
+		case 'setup-wizard': {
+			const skipped = interaction.skippedNodes;
+			const needCreds = skipped.filter((s) => Boolean(s.credentialType)).length;
+			const needParams = skipped.length - needCreds;
+			const breakdown: string[] = [];
+			if (needCreds > 0) breakdown.push(`${String(needCreds)} need credentials`);
+			if (needParams > 0) breakdown.push(`${String(needParams)} need parameters`);
+			const headerParts: string[] = [];
+			if (interaction.completedNodes.length > 0) {
+				headerParts.push(`${String(interaction.completedNodes.length)} configured`);
+			}
+			if (skipped.length > 0) {
+				headerParts.push(
+					`${String(skipped.length)} skipped${breakdown.length > 0 ? ` (${breakdown.join(', ')})` : ''}`,
+				);
+			}
+			const header = headerParts.length > 0 ? headerParts.join(', ') : 'nothing to apply';
+
+			const sections: string[] = [];
+			if (interaction.completedNodes.length > 0) {
+				const items = interaction.completedNodes
+					.map((c) => {
+						const params = c.parametersSet ? c.parametersSet.join(', ') : '';
+						return `<li>${escapeHtml(c.nodeName)}${params ? ` — params: ${escapeHtml(params)}` : ''}</li>`;
+					})
+					.join('');
+				sections.push(
+					`<div class="transcript-section-label">configured (${String(interaction.completedNodes.length)})</div><ul class="transcript-plan">${items}</ul>`,
+				);
+			}
+			if (skipped.length > 0) {
+				const items = skipped
+					.map(
+						(s) =>
+							`<li>${escapeHtml(s.nodeName)}${s.credentialType ? ` — needs <code>${escapeHtml(s.credentialType)}</code> credential` : ' — needs parameters'}</li>`,
+					)
+					.join('');
+				sections.push(
+					`<div class="transcript-section-label">skipped (${String(skipped.length)})</div><ul class="transcript-plan">${items}</ul>`,
+				);
+			}
+			return `<details class="transcript-aside" open><summary>🛠 setup wizard — ${escapeHtml(header)}</summary>${sections.join('')}</details>`;
+		}
+		case 'confirmation': {
+			const decisionTag =
+				typeof interaction.approved === 'boolean'
+					? ` <em>(${interaction.approved ? 'approved' : 'rejected'})</em>`
+					: '';
+			return `<div class="transcript-resume">↪ resume <code>${escapeHtml(interaction.toolName)}</code>: ${escapeHtml(interaction.resumeReason)}${decisionTag}</div>`;
+		}
+		case 'tool-call':
+			return null; // surfaced in the aggregate tool-names line at the bottom
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Workflow check rubric
+// ---------------------------------------------------------------------------
+
+function dimensionLabel(d: CheckDimension): string {
+	return d.replace(/_/g, ' ');
+}
+
+function renderDimensionGroup(dimension: CheckDimension, outcomes: CheckOutcome[]): string {
+	const passed = outcomes.filter((o) => o.status === 'pass').length;
+	const failed = outcomes.filter((o) => o.status === 'fail').length;
+	const naCount = outcomes.filter((o) => o.status === 'n_a').length;
+	const scored = passed + failed;
+	const headerCounts = `${String(passed)}/${String(scored)}${naCount > 0 ? ` · ${String(naCount)} N/A` : ''}`;
+	const headerClass = failed > 0 ? 'fail' : 'pass';
+
+	const items = outcomes
+		.map((o) => {
+			const icon = o.status === 'pass' ? '&#10003;' : o.status === 'fail' ? '&#10007;' : '⌀';
+			const kindTag = `<span class="check-kind check-kind-${o.kind}">${o.kind}</span>`;
+			const comment = o.comment ? ` — ${escapeHtml(o.comment)}` : '';
+			return `<li class="check ${o.status}"><span class="check-icon ${o.status}">${icon}</span> <code>${escapeHtml(o.name)}</code> ${kindTag}${comment}</li>`;
+		})
+		.join('');
+
+	return `<div class="check-dimension"><div class="check-dimension-header"><strong>${escapeHtml(dimensionLabel(dimension))}</strong> <span class="${headerClass}">${headerCounts}</span></div><ul class="check-list">${items}</ul></div>`;
+}
+
+function renderWorkflowChecks(outcomes: CheckOutcome[] | undefined): string {
+	if (!outcomes || outcomes.length === 0) return '';
+
+	const totalPassed = outcomes.filter((o) => o.status === 'pass').length;
+	const totalFailed = outcomes.filter((o) => o.status === 'fail').length;
+	const totalNa = outcomes.filter((o) => o.status === 'n_a').length;
+	const totalScored = totalPassed + totalFailed;
+	const summary = `${String(totalPassed)}/${String(totalScored)} passed${totalNa > 0 ? ` · ${String(totalNa)} N/A` : ''}`;
+	const summaryClass = totalFailed > 0 ? 'fail' : 'pass';
+	const openAttr = totalFailed > 0 ? 'open' : '';
+
+	const grouped = groupOutcomesByDimension(outcomes);
+	const groups = CHECK_DIMENSIONS.filter((d) => grouped[d]?.length > 0)
+		.map((d) => renderDimensionGroup(d, grouped[d]))
+		.join('');
+
+	return `<details class="section" ${openAttr}><summary>Workflow checks <span class="${summaryClass}">${summary}</span></summary>${groups}</details>`;
+}
+
+// ---------------------------------------------------------------------------
 // Workflow summary
 // ---------------------------------------------------------------------------
 
 function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
-	const firstEval = result.scenarioResults[0]?.evalResult;
+	const firstEval = result.executionScenarioResults[0]?.evalResult;
 
 	let nodesHtml = '';
 	if (firstEval) {
@@ -227,8 +476,8 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 // ---------------------------------------------------------------------------
 
 function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string {
-	const passCount = result.scenarioResults.filter((sr) => sr.success).length;
-	const totalCount = result.scenarioResults.length;
+	const passCount = result.executionScenarioResults.filter((sr) => sr.success).length;
+	const totalCount = result.executionScenarioResults.length;
 	const allPass = passCount === totalCount && totalCount > 0;
 	const statusClass = result.workflowBuildSuccess ? (allPass ? 'pass' : 'mixed') : 'fail';
 
@@ -241,11 +490,11 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 			? `<span class="badge badge-${allPass ? 'pass' : 'fail'}">${String(passCount)}/${String(totalCount)}</span>`
 			: '';
 
-	const prompt = result.testCase.prompt;
+	const prompt = result.testCase.conversation[0].text;
 	const truncatedPrompt = prompt.length > 100 ? prompt.slice(0, 100) + '...' : prompt;
 
 	// Inline scenario indicators for quick triage without expanding
-	const scenarioIndicators = result.scenarioResults
+	const scenarioIndicators = result.executionScenarioResults
 		.map(
 			(sr) =>
 				`<span class="scenario-indicator ${sr.success ? 'pass' : 'fail'}" title="${escapeHtml(sr.scenario.name)}">${sr.success ? '✓' : '✗'} ${escapeHtml(sr.scenario.name)}</span>`,
@@ -253,8 +502,8 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 		.join(' ');
 
 	let scenariosHtml = '';
-	if (result.scenarioResults.length > 0) {
-		scenariosHtml = result.scenarioResults
+	if (result.executionScenarioResults.length > 0) {
+		scenariosHtml = result.executionScenarioResults
 			.map((sr, i) => renderScenario(sr, tcIndex * 100 + i))
 			.join('');
 	} else if (!result.workflowBuildSuccess) {
@@ -278,6 +527,9 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 		</div>
 		<div class="test-case-detail">
 			<details class="section"><summary>Prompt</summary><div class="prompt-text">${escapeHtml(prompt)}</div></details>
+			${renderConversationMetrics(result.conversationMetrics)}
+			${renderConversationTranscript(result.transcript)}
+			${renderWorkflowChecks(result.workflowChecks)}
 			${renderWorkflowSummary(result)}
 			${scenariosHtml}
 		</div>
@@ -291,7 +543,7 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 export function generateWorkflowReport(results: WorkflowTestCaseResult[]): string {
 	const totalTestCases = results.length;
 	const builtCount = results.filter((r) => r.workflowBuildSuccess).length;
-	const allScenarios = results.flatMap((r) => r.scenarioResults);
+	const allScenarios = results.flatMap((r) => r.executionScenarioResults);
 	const passCount = allScenarios.filter((sr) => sr.success).length;
 	const failCount = allScenarios.length - passCount;
 	const totalScenarios = allScenarios.length;
@@ -387,6 +639,20 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.scenario-detail { display: none; padding: 10px 12px; border-top: 1px solid var(--border-light); background: var(--bg-primary); }
 	.scenario.expanded .scenario-detail { display: block; }
 
+	/* Workflow check rubric (per built workflow) */
+	.check-dimension { margin: 8px 0 12px; }
+	.check-dimension-header { font-size: 12px; padding: 2px 0; text-transform: capitalize; color: var(--text-secondary); }
+	.check-list { list-style: none; padding: 2px 0 2px 10px; margin: 2px 0; font-size: 12px; }
+	.check { padding: 3px 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; line-height: 1.5; }
+	.check code { background: var(--bg-tertiary); color: var(--text-primary); padding: 1px 6px; border-radius: 3px; font-size: 11px; }
+	.check-icon { font-weight: bold; font-size: 13px; min-width: 14px; }
+	.check-icon.pass { color: var(--color-pass); }
+	.check-icon.fail { color: var(--color-fail); }
+	.check-icon.n_a { color: var(--text-muted); }
+	.check.n_a code { color: var(--text-muted); }
+	.check-kind { color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+	.check-kind-llm { color: var(--color-purple); }
+
 	/* Error and warning boxes */
 	.error-box { color: var(--color-fail); font-size: 12px; padding: 6px 10px; background: var(--color-fail-bg); border-radius: 4px; margin-bottom: 8px; border-left: 3px solid var(--color-fail); }
 	.warning-box { color: var(--color-warn); font-size: 12px; padding: 6px 10px; background: var(--color-warn-bg); border-radius: 4px; margin-bottom: 8px; border-left: 3px solid var(--color-warn); }
@@ -442,6 +708,41 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 
 	/* Utilities */
 	.muted { color: var(--text-muted); font-size: 12px; }
+
+	/* Conversation metrics */
+	.conv-summary { color: var(--text-secondary); font-size: 12px; padding: 6px 0; }
+	.conv-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+	.conv-table th, .conv-table td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border-light); }
+	.conv-table th { color: var(--text-muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+	.conv-table td { font-family: monospace; }
+	.turn-status-ok { color: var(--color-pass); }
+	.turn-status-fail { color: var(--color-fail); }
+	.turn-status-pending { color: var(--text-muted); }
+
+	/* Conversation transcript */
+	.transcript { padding: 4px 0; }
+	.transcript-turn { padding: 8px 0; border-bottom: 1px dashed var(--border-light); }
+	.transcript-turn:last-child { border-bottom: none; }
+	.transcript-turn-header { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 6px; }
+	.transcript-line { display: flex; gap: 8px; padding: 4px 0; align-items: flex-start; font-size: 13px; line-height: 1.5; }
+	.transcript-icon { width: 18px; text-align: center; flex-shrink: 0; }
+	.transcript-text { color: var(--text-primary); white-space: pre-wrap; }
+	.transcript-user .transcript-text { color: var(--text-primary); }
+	.transcript-assistant .transcript-text { color: var(--text-secondary); }
+	.transcript-internal > summary { cursor: pointer; padding: 4px 0; font-size: 12px; color: var(--text-muted); display: flex; gap: 8px; align-items: flex-start; }
+	.transcript-internal > summary:hover { color: var(--text-secondary); }
+	.transcript-internal .transcript-text { color: var(--text-muted); font-style: italic; }
+	.transcript-aside { margin: 4px 0 4px 26px; }
+	.transcript-aside > summary { cursor: pointer; color: var(--text-muted); font-size: 11px; padding: 2px 0; }
+	.transcript-reasoning { color: var(--text-muted); font-size: 12px; line-height: 1.5; padding: 6px 8px; background: var(--bg-primary); border-left: 2px solid var(--border); border-radius: 2px; white-space: pre-wrap; margin-top: 4px; }
+	.transcript-tools { color: var(--text-muted); font-size: 11px; font-family: monospace; padding: 4px 0 0 26px; }
+	.transcript-plan, .transcript-questions { margin: 4px 0 4px 18px; padding: 0; font-size: 12px; line-height: 1.5; color: var(--text-primary); }
+	.transcript-plan li, .transcript-questions li { margin: 4px 0; }
+	.transcript-answer { color: var(--text-secondary); font-size: 12px; margin: 2px 0 6px 16px; padding: 2px 0; }
+	.transcript-resume { font-size: 11px; font-family: monospace; color: var(--text-muted); padding: 2px 0 2px 26px; }
+	.transcript-resume code { background: var(--bg-tertiary); padding: 0 4px; border-radius: 2px; }
+	.transcript-section-label { font-size: 11px; color: var(--text-muted); margin: 6px 0 2px 18px; text-transform: uppercase; letter-spacing: 0.04em; }
+	.transcript-empty { font-size: 12px; color: var(--text-muted); font-style: italic; margin: 4px 0 4px 18px; }
 </style>
 </head>
 <body>

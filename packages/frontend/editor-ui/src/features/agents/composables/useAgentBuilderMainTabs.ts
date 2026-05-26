@@ -16,7 +16,9 @@ function getSectionFromQuery(
 	section: LocationQueryValue | LocationQueryValue[] | undefined,
 ): AgentBuilderSection {
 	const value = Array.isArray(section) ? section[0] : section;
-	if (value === EXECUTIONS_SECTION_KEY || value === 'raw') return value;
+	if (value === EXECUTIONS_SECTION_KEY || value === 'raw') {
+		return value;
+	}
 	return null;
 }
 
