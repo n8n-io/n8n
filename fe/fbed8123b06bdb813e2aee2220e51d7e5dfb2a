@@ -1,0 +1,53 @@
+packages/@n8n/db/src/services/auth.roles.service.ts
+  s_a0f002f59105e2::t_7a53ab787c79a1 89-90,93,95-105
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_a0f002f59105e2::t_801677da499064 561-562,565,567-568,572-574,576,578-584
+  s_a0f002f59105e2::t_e652d479b17225 123
+  s_a0f002f59105e2::t_900a99f5f366ec 566
+  s_a0f002f59105e2::t_c31cd416e8e965 570,575
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_a0f002f59105e2::t_9cd65e24c410b3 2,341,364,492-495,497-503,505-517,519-521,523-529,531-543,545-547,549-555,557-563,565-567,569-575,577-583,585-587,589-595,597-603,605-635,637-643,645-647,649-655,657-663
+  s_a0f002f59105e2::t_5bfcf0c6abebaf 665-688,691-715
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_a0f002f59105e2::t_e1ab70c6b40ea3 363
+  s_a0f002f59105e2::t_d997db76f47f55 170
+packages/@n8n/db/src/migrations/common/1784000000009-SplitRedactionScopeInCustomRoles.ts
+  s_a0f002f59105e2::t_cd893b2c272b1e 1-85
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_a0f002f59105e2::t_2957fefe0e530c 377
+  s_a0f002f59105e2::t_d5495f7bd3b69f 177
+packages/cli/test/migration/1784000000009-split-redaction-scope-in-custom-roles.test.ts
+  s_a0f002f59105e2::t_e49a958644177c 1-11,13-365
+  s_a0f002f59105e2::t_4300d0b491cd5f 12
+packages/cli/src/workflows/utils.ts
+  s_a0f002f59105e2::t_074e9334b38942 1,3-28
+packages/cli/src/workflows/workflow.service.ts
+  s_a0f002f59105e2::t_3175d383c538a6 74
+  s_a0f002f59105e2::t_e368d20c7f4414 412,417-420,422
+packages/frontend/editor-ui/src/app/components/WorkflowSettings.test.ts
+  s_ff5f64df21e3e0::t_963fa1ad2e8953 1310
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "fefbed8123b06bdb813e2aee2220e51d7e5dfb2a",
+  "prompts": {},
+  "sessions": {
+    "s_a0f002f59105e2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8ec96e8d-b6a8-49a1-a80a-24f269d9f04b",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": null
+    },
+    "s_ff5f64df21e3e0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c3b9fbef-886c-40d9-a205-0e22a7d98cc2",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

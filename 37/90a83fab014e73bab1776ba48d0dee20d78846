@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/components/WorkflowSettings.test.ts
+  s_f40a0dcab82208::t_5a46d1dc7d6b4d 1322-1324
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "3790a83fab014e73bab1776ba48d0dee20d78846",
+  "prompts": {},
+  "sessions": {
+    "s_f40a0dcab82208": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d91658f8-18bd-4205-8e6a-19d13979e3f9",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
