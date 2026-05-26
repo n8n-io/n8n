@@ -366,8 +366,8 @@ type OrchestratorResumeReason =
  *  relevant to the submitted kind are populated — everything else stays undefined.
  *
  *  Most kinds carry implicit approval (you wouldn't be submitting answers,
- *  selected credentials, or a setup action otherwise) — only `approval` and
- *  `domainAccessDeny` actually carry a denial path. */
+ *  selected credentials, or a setup action otherwise) — only `approval`,
+ *  `domainAccessDeny`, and `planDeny` carry a denial path. */
 function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData {
 	switch (request.kind) {
 		case 'approval':
@@ -376,6 +376,8 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 			return { approved: true, domainAccessAction: request.domainAccessAction };
 		case 'domainAccessDeny':
 			return { approved: false };
+		case 'planDeny':
+			return { approved: false, denied: true };
 		case 'questions':
 			return { approved: true, answers: request.answers };
 		case 'credentialSelection':
