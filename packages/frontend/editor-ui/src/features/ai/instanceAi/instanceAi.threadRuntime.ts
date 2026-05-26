@@ -35,6 +35,12 @@ import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceA
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
 
+export interface PlanEditContext {
+	requestId: string;
+	inputThreadId?: string;
+	taskCount: number;
+}
+
 export interface PendingConfirmationItem {
 	toolCall: InstanceAiToolCallState & { confirmation: InstanceAiConfirmation };
 	agentNode: InstanceAiAgentNode;
@@ -243,6 +249,8 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
 	const lastEventId = ref<number | undefined>(undefined);
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
+	const activePlanEdit = ref<PlanEditContext | null>(null);
+	const updatingPlanRequestIds = reactive(new Set<string>());
 
 	// --- Non-reactive runtime state ---
 	let runStateByGroupId: Record<string, AgentRunState> = {};
@@ -855,6 +863,32 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		amendContext.value = { agentId, role };
 	}
 
+	// --- Plan edit mode ---
+
+	function startPlanEdit(context: PlanEditContext): void {
+		activePlanEdit.value = context;
+	}
+
+	function cancelPlanEdit(): void {
+		activePlanEdit.value = null;
+	}
+
+	function markPlanUpdatePending(requestId: string): void {
+		updatingPlanRequestIds.add(requestId);
+	}
+
+	function clearPlanUpdatePending(requestId: string): void {
+		updatingPlanRequestIds.delete(requestId);
+	}
+
+	// Defensive cleanup: if a stream ends without a matching clear, drop the
+	// pending markers so we don't leave a card stuck in "Updating plan…".
+	watch(isStreaming, (streaming) => {
+		if (!streaming && updatingPlanRequestIds.size > 0) {
+			updatingPlanRequestIds.clear();
+		}
+	});
+
 	// --- Confirmations ---
 
 	async function confirmAction(
@@ -909,6 +943,8 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		sseState,
 		lastEventId,
 		amendContext,
+		activePlanEdit,
+		updatingPlanRequestIds,
 
 		// computeds
 		isStreaming,
@@ -935,6 +971,10 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		cancelRun,
 		cancelBackgroundTask,
 		amendAgent,
+		startPlanEdit,
+		cancelPlanEdit,
+		markPlanUpdatePending,
+		clearPlanUpdatePending,
 		confirmAction,
 		confirmResourceDecision,
 		resolveConfirmation,

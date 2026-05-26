@@ -5,7 +5,6 @@ import {
 	onMounted,
 	onUnmounted,
 	provide,
-	reactive,
 	ref,
 	useTemplateRef,
 	watch,
@@ -37,7 +36,6 @@ import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
 import { useSidebarState } from './instanceAiLayout';
-import { PlanEditControllerKey, type PlanEditContext } from './planEditContext';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
@@ -139,41 +137,13 @@ const preview = useCanvasPreview({
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 
-// --- Plan edit mode ---
-const activePlanEdit = ref<PlanEditContext | null>(null);
-const updatingPlanRequestIds = reactive(new Set<string>());
-
-function startPlanEdit(context: PlanEditContext): void {
-	activePlanEdit.value = context;
-	void nextTick(() => chatInputRef.value?.focus());
-}
-
-function cancelPlanEdit(): void {
-	activePlanEdit.value = null;
-}
-
-function markPlanUpdatePending(requestId: string): void {
-	updatingPlanRequestIds.add(requestId);
-}
-
-function clearPlanUpdatePending(requestId: string): void {
-	updatingPlanRequestIds.delete(requestId);
-}
-
-provide(PlanEditControllerKey, {
-	activePlanEdit,
-	updatingPlanRequestIds,
-	startPlanEdit,
-	cancelPlanEdit,
-	markPlanUpdatePending,
-	clearPlanUpdatePending,
-});
-
+// Focus the composer when plan-edit mode is entered. The thread runtime
+// owns the activePlanEdit state; this watcher just reacts to the transition.
 watch(
-	() => thread.isStreaming,
-	(isStreaming) => {
-		if (!isStreaming && updatingPlanRequestIds.size > 0) {
-			updatingPlanRequestIds.clear();
+	() => thread.activePlanEdit,
+	(next, prev) => {
+		if (next && !prev) {
+			void nextTick(() => chatInputRef.value?.focus());
 		}
 	},
 );
@@ -580,9 +550,9 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
 
-	const planEdit = activePlanEdit.value;
+	const planEdit = thread.activePlanEdit;
 	if (planEdit) {
-		activePlanEdit.value = null;
+		thread.cancelPlanEdit();
 		telemetry.track('User finished providing input', {
 			thread_id: thread.id,
 			input_thread_id: planEdit.inputThreadId ?? '',
@@ -599,7 +569,7 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 			num_tasks: planEdit.taskCount,
 			feedback: message,
 		});
-		markPlanUpdatePending(planEdit.requestId);
+		thread.markPlanUpdatePending(planEdit.requestId);
 		thread.resolveConfirmation(planEdit.requestId, 'denied');
 		void thread
 			.confirmAction(planEdit.requestId, {
@@ -608,7 +578,7 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 				userInput: message,
 			})
 			.then((success) => {
-				if (!success) clearPlanUpdatePending(planEdit.requestId);
+				if (!success) thread.clearPlanUpdatePending(planEdit.requestId);
 			});
 		return;
 	}
@@ -803,13 +773,13 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 										:is-streaming="thread.isStreaming"
 										:is-submitting="thread.isSendingMessage"
 										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
-										:is-plan-edit-mode="activePlanEdit !== null"
+										:is-plan-edit-mode="thread.activePlanEdit !== null"
 										:current-thread-id="thread.id"
 										:amend-context="thread.amendContext"
 										:contextual-suggestion="thread.contextualSuggestion"
 										@submit="handleSubmit"
 										@stop="handleStop"
-										@cancel-plan-edit="cancelPlanEdit"
+										@cancel-plan-edit="thread.cancelPlanEdit"
 									/>
 								</Transition>
 							</div>

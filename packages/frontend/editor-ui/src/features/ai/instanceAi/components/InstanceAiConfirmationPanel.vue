@@ -3,11 +3,10 @@ import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { InstanceAiConfirmation } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, inject, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { isPendingItemFloating } from '../confirmationKinds';
-import { PlanEditControllerKey } from '../planEditContext';
 import { useToolLabel } from '../toolLabels';
 import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
@@ -40,7 +39,6 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const telemetry = useTelemetry();
 const { getToolLabel } = useToolLabel();
-const planEditController = inject(PlanEditControllerKey, null);
 
 function getConfirmationType(conf: InstanceAiConfirmation): string {
 	if (conf.inputType) return conf.inputType;
@@ -375,7 +373,7 @@ function handlePlanApprove(conf: InstanceAiConfirmation, numTasks: number) {
 }
 
 function handlePlanAskForEdits(conf: InstanceAiConfirmation, numTasks: number) {
-	planEditController?.startPlanEdit({
+	thread.startPlanEdit({
 		requestId: conf.requestId,
 		inputThreadId: conf.inputThreadId,
 		taskCount: numTasks,

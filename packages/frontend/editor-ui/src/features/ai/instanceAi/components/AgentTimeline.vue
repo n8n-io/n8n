@@ -7,12 +7,11 @@ import type {
 } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, inject } from 'vue';
+import { computed } from 'vue';
 import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from '../agentTimeline.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useThread } from '../instanceAi.store';
-import { PlanEditControllerKey } from '../planEditContext';
 import { isActiveBuilderAgent } from '../builderAgents';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
@@ -27,7 +26,6 @@ const i18n = useI18n();
 const thread = useThread();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
-const planEditController = inject(PlanEditControllerKey, null);
 
 /** Resolve artifact name from the enriched registry (falls back to extracted name). */
 function resolveArtifactName(artifact: ArtifactInfo): string {
@@ -163,7 +161,7 @@ function isPlanReviewUpdating(tc: InstanceAiToolCallState): boolean {
 	return Boolean(
 		requestId &&
 			getPlanReviewStatus(tc) === 'changes-requested' &&
-			(planEditController?.updatingPlanRequestIds.has(requestId) || thread.isStreaming),
+			(thread.updatingPlanRequestIds.has(requestId) || thread.isStreaming),
 	);
 }
 
@@ -212,8 +210,8 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	telemetry.track('User finished providing input', eventProps);
 
 	thread.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
-	if (planEditController?.activePlanEdit.value?.requestId === requestId) {
-		planEditController.cancelPlanEdit();
+	if (thread.activePlanEdit?.requestId === requestId) {
+		thread.cancelPlanEdit();
 	}
 	void thread.confirmAction(requestId, {
 		kind: 'approval',
@@ -226,7 +224,7 @@ function handlePlanAskForEdits(tc: InstanceAiToolCallState) {
 	const requestId = tc.confirmation?.requestId;
 	if (!requestId || isPlanCardReadOnly(tc)) return;
 
-	planEditController?.startPlanEdit({
+	thread.startPlanEdit({
 		requestId,
 		inputThreadId: tc.confirmation?.inputThreadId,
 		taskCount: getPlanTaskCount(tc),
@@ -254,8 +252,8 @@ function handlePlanDeny(tc: InstanceAiToolCallState) {
 		num_tasks: numTasks,
 	});
 
-	if (planEditController?.activePlanEdit.value?.requestId === requestId) {
-		planEditController.cancelPlanEdit();
+	if (thread.activePlanEdit?.requestId === requestId) {
+		thread.cancelPlanEdit();
 	}
 	thread.resolveConfirmation(requestId, 'denied');
 	void thread.confirmAction(requestId, { kind: 'planDeny' });

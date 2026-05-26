@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h, reactive, ref } from 'vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -7,6 +7,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
+import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
@@ -194,7 +195,7 @@ describe('InstanceAiThreadView', () => {
 
 		workflowPreviewEmit = null;
 
-		thread = {
+		thread = reactive({
 			id: 'thread-1',
 			messages: [],
 			hasMessages: false,
@@ -203,6 +204,8 @@ describe('InstanceAiThreadView', () => {
 			isSendingMessage: false,
 			isAwaitingConfirmation: false,
 			amendContext: null,
+			activePlanEdit: null,
+			updatingPlanRequestIds: new Set<string>(),
 			contextualSuggestion: null,
 			currentTasks: null,
 			producedArtifacts: new Map(),
@@ -220,9 +223,19 @@ describe('InstanceAiThreadView', () => {
 			cancelRun: vi.fn().mockResolvedValue(undefined),
 			resolveConfirmation: vi.fn(),
 			confirmAction: vi.fn().mockResolvedValue(true),
+			markPlanUpdatePending: vi.fn(),
+			clearPlanUpdatePending: vi.fn(),
 			copyFullTrace: vi.fn(),
 			submitFeedback: vi.fn(),
-		} as unknown as ThreadRuntime;
+		}) as unknown as ThreadRuntime;
+		// startPlanEdit / cancelPlanEdit need to mutate the thread so the
+		// chat-input submission path can read activePlanEdit back out.
+		thread.startPlanEdit = vi.fn((context: PlanEditContext) => {
+			thread.activePlanEdit = context;
+		});
+		thread.cancelPlanEdit = vi.fn(() => {
+			thread.activePlanEdit = null;
+		});
 
 		store = mockedStore(useInstanceAiStore);
 		store.getOrCreateRuntime.mockReturnValue(thread);
