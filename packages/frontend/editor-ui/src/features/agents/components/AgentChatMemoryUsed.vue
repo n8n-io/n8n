@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { HoverCardContent, HoverCardPortal, HoverCardRoot, HoverCardTrigger } from 'reka-ui';
-import { N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nText } from '@n8n/design-system';
 
 export interface DisplayMemory {
 	id: string;
@@ -46,6 +46,7 @@ function splitKeyMemory(text: string): string[] {
 	>
 		<HoverCardTrigger as-child>
 			<div :class="$style.trigger">
+				<N8nIcon icon="brain" size="small" />
 				<span>
 					{{
 						i18n.baseText(memoriesCountLabelKey, {
@@ -57,7 +58,12 @@ function splitKeyMemory(text: string): string[] {
 			</div>
 		</HoverCardTrigger>
 		<HoverCardPortal>
-			<HoverCardContent side="bottom" align="end" :class="[$style.popoverContent, $style.panel]">
+			<HoverCardContent
+				side="bottom"
+				align="end"
+				:side-offset="8"
+				:class="[$style.popoverContent, $style.panel]"
+			>
 				<div v-for="memory in memories" :key="memory.id" :class="$style.memorySection">
 					<N8nText step="sm" bold :class="$style.label">
 						{{ i18n.baseText(keyMemoryLabelKey) }}
@@ -161,6 +167,9 @@ function splitKeyMemory(text: string): string[] {
 }
 
 .trigger {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 	padding: 0 var(--spacing--xs);
 	font-size: var(--font-size--2xs);
 	text-align: right;

@@ -77,12 +77,17 @@ function getRecallMemoryEntries(output: unknown): RecallMemoryOutputEntry[] {
 
 	const entries: RecallMemoryOutputEntry[] = [];
 
-	for (const entry of output.entries) {
+	for (const [index, entry] of output.entries.entries()) {
 		if (!entry || typeof entry !== 'object') continue;
-		if (!('id' in entry) || typeof entry.id !== 'string') continue;
 		if (!('content' in entry) || typeof entry.content !== 'string') continue;
 
-		entries.push({ id: entry.id, content: entry.content });
+		const id =
+			'id' in entry && typeof entry.id === 'string'
+				? entry.id
+				: 'createdAt' in entry && typeof entry.createdAt === 'string'
+					? entry.createdAt
+					: `${entry.content}:${index}`;
+		entries.push({ id, content: entry.content });
 	}
 
 	return entries;
