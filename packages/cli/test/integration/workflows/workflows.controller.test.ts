@@ -224,7 +224,10 @@ describe('POST /workflows', () => {
 		expect(id).toBeDefined();
 		expect(scopes).toEqual(
 			[
+				'execution:reveal',
 				'workflow:delete',
+				'workflow:disableRedaction',
+				'workflow:enableRedaction',
 				'workflow:execute',
 				'workflow:execute-chat',
 				'workflow:export',
@@ -1163,7 +1166,10 @@ describe('GET /workflows', () => {
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual(
 				[
+					'execution:reveal',
 					'workflow:delete',
+					'workflow:disableRedaction',
+					'workflow:enableRedaction',
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:export',
@@ -1217,7 +1223,10 @@ describe('GET /workflows', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
 				[
+					'execution:reveal',
 					'workflow:delete',
+					'workflow:disableRedaction',
+					'workflow:enableRedaction',
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:export',
@@ -2341,7 +2350,10 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual(
 				[
+					'execution:reveal',
 					'workflow:delete',
+					'workflow:disableRedaction',
+					'workflow:enableRedaction',
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:export',
@@ -2400,7 +2412,10 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
 				[
+					'execution:reveal',
 					'workflow:delete',
+					'workflow:disableRedaction',
+					'workflow:enableRedaction',
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:export',
@@ -3732,6 +3747,33 @@ describe('PATCH /workflows/:workflowId', () => {
 		const dbWorkflow = await workflowRepository.findOneBy({ id: workflow.id });
 		// redactionPolicy must remain 'all' — the disabling change was stripped
 		expect(dbWorkflow?.settings?.redactionPolicy).toBe('all');
+	});
+
+	test('member can enable and disable redactionPolicy on a workflow in their own personal project', async () => {
+		testServer.license.enable('feat:dataRedaction');
+
+		const workflow = await createWorkflowWithHistory(
+			{ settings: { redactionPolicy: 'none' } },
+			member,
+		);
+
+		const enableResponse = await authMemberAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ settings: { redactionPolicy: 'all' } });
+
+		expect(enableResponse.statusCode).toBe(200);
+		expect(
+			(await workflowRepository.findOneBy({ id: workflow.id }))?.settings?.redactionPolicy,
+		).toBe('all');
+
+		const disableResponse = await authMemberAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ settings: { redactionPolicy: 'none' } });
+
+		expect(disableResponse.statusCode).toBe(200);
+		expect(
+			(await workflowRepository.findOneBy({ id: workflow.id }))?.settings?.redactionPolicy,
+		).toBe('none');
 	});
 });
 
