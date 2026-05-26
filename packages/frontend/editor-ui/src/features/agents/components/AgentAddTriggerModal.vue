@@ -213,6 +213,11 @@ function onScheduleTriggerAdded() {
 	});
 }
 
+async function onScheduleSaved() {
+	await props.data.onAgentChanged?.();
+	closeModal();
+}
+
 function closeModal() {
 	uiStore.closeModal(props.modalName);
 }
@@ -263,7 +268,11 @@ async function ensurePublished(): Promise<boolean> {
 
 	publishing.value = true;
 	try {
-		const updated = await publishAgent(rootStore.restApiContext, props.data.projectId, props.data.agentId);
+		const updated = await publishAgent(
+			rootStore.restApiContext,
+			props.data.projectId,
+			props.data.agentId,
+		);
 		publishedDuringSession.value = true;
 		props.data.onAgentPublished?.(updated);
 		return true;
@@ -379,6 +388,7 @@ async function onSetupSlackApp(appConfigurationToken: string): Promise<boolean> 
 		triggerType: 'slack',
 		triggers: computeConnectedTriggers(),
 	});
+	await props.data.onAgentChanged?.();
 	return true;
 }
 
@@ -525,7 +535,7 @@ onMounted(async () => {
 					@status-change="onScheduleStatusChange"
 					@trigger-added="onScheduleTriggerAdded"
 					@canceled="closeModal"
-					@saved="closeModal"
+					@saved="onScheduleSaved"
 				/>
 
 				<div v-else-if="currentIntegration" :class="$style.integrationConfig">

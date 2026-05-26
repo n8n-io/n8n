@@ -202,6 +202,16 @@ async function fetchAgent(
 	agentName.value = data.name;
 }
 
+async function refreshAgentAfterIntegrationChange(
+	targetProjectId: string = projectId.value,
+	targetAgentId: string = agentId.value,
+) {
+	await Promise.all([
+		fetchAgent(targetProjectId, targetAgentId),
+		fetchConfig(targetProjectId, targetAgentId),
+	]);
+}
+
 function sessionIdForPreview(): string {
 	return effectiveSessionId.value ?? sessionsStore.threads?.[0]?.id ?? crypto.randomUUID();
 }
@@ -630,7 +640,7 @@ function onOpenAddTriggerModal(initialTriggerType?: string) {
 			onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) =>
 				onTriggerAdded(payload),
 			onAgentPublished: (updated: AgentResource) => onPublished(updated),
-			onAgentChanged: () => fetchAgent(targetProjectId, targetAgentId),
+			onAgentChanged: () => refreshAgentAfterIntegrationChange(targetProjectId, targetAgentId),
 		},
 	});
 }
@@ -905,7 +915,7 @@ function onSwitchAgent(nextAgentId: string) {
 					@update:full-width="isChatFullWidth = $event"
 					@trigger-added="onTriggerAdded"
 					@agent-published="onPublished"
-					@agent-changed="fetchAgent"
+					@agent-changed="refreshAgentAfterIntegrationChange"
 				/>
 			</N8nResizeWrapper>
 
