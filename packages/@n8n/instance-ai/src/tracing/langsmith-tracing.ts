@@ -16,7 +16,9 @@ import {
 import type { Context as OtelContext, Span as OtelApiSpan } from '@opentelemetry/api';
 import { Client } from 'langsmith';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { dirname, join, parse } from 'node:path';
 
 import { createToolRegistry } from '../tool-registry';
 import type {
@@ -1384,31 +1386,61 @@ interface TraceRuntimeVersions {
 	workflow_sdk_version?: string;
 }
 
-let traceRuntimeVersions: TraceRuntimeVersions | undefined;
+let traceRuntimeVersions: Promise<TraceRuntimeVersions> | undefined;
 
-function readPackageVersion(packageName: string): string | undefined {
-	try {
-		const packageJson = hostRequire(`${packageName}/package.json`) as { version?: unknown };
-		return typeof packageJson.version === 'string' ? packageJson.version : undefined;
-	} catch {
-		return undefined;
-	}
+function extractPackageVersion(packageJson: unknown): string | undefined {
+	if (!packageJson || typeof packageJson !== 'object') return undefined;
+
+	if (!('version' in packageJson)) return undefined;
+
+	const { version } = packageJson;
+	return typeof version === 'string' ? version : undefined;
 }
 
-function getTraceRuntimeVersions(): TraceRuntimeVersions {
-	if (!traceRuntimeVersions) {
-		const agentsVersion = readPackageVersion('@n8n/agents');
-		const workflowSdkVersion = readPackageVersion('@n8n/workflow-sdk');
-		traceRuntimeVersions = {
+async function readPackageVersion(packageName: string): Promise<string | undefined> {
+	try {
+		return extractPackageVersion(hostRequire(`${packageName}/package.json`));
+	} catch {
+		// Some workspace packages do not export package.json. Fall back to
+		// resolving the package entry point and walking upward to its package root.
+	}
+
+	try {
+		let current = dirname(hostRequire.resolve(packageName));
+		const { root } = parse(current);
+		while (current !== root) {
+			const packageJsonPath = join(current, 'package.json');
+			try {
+				return extractPackageVersion(JSON.parse(await readFile(packageJsonPath, 'utf8')));
+			} catch {
+				current = dirname(current);
+			}
+		}
+	} catch {
+		// Best effort only; traces still work without package version metadata.
+	}
+
+	return undefined;
+}
+
+async function getTraceRuntimeVersions(): Promise<TraceRuntimeVersions> {
+	traceRuntimeVersions ??= (async () => {
+		const [agentsVersion, workflowSdkVersion] = await Promise.all([
+			readPackageVersion('@n8n/agents'),
+			readPackageVersion('@n8n/workflow-sdk'),
+		]);
+		return {
 			...(agentsVersion ? { agents_version: agentsVersion } : {}),
 			...(workflowSdkVersion ? { workflow_sdk_version: workflowSdkVersion } : {}),
 		};
-	}
+	})();
 
-	return traceRuntimeVersions;
+	return await traceRuntimeVersions;
 }
 
-function buildBaseMetadata(options: CreateInstanceAiTraceContextOptions): Record<string, unknown> {
+async function buildBaseMetadata(
+	options: CreateInstanceAiTraceContextOptions,
+): Promise<Record<string, unknown>> {
 	return {
 		thread_id: options.threadId,
 		'langsmith.metadata.thread_id': options.threadId,
@@ -1419,7 +1451,7 @@ function buildBaseMetadata(options: CreateInstanceAiTraceContextOptions): Record
 		activation_id: options.runId,
 		user_id: options.userId,
 		'instance_ai.trace_version': OTEL_TRACE_VERSION,
-		...getTraceRuntimeVersions(),
+		...(await getTraceRuntimeVersions()),
 		...(options.n8nVersion !== undefined ? { n8n_version: options.n8nVersion } : {}),
 		...(options.workflowSdkVersion !== undefined
 			? { workflow_sdk_version: options.workflowSdkVersion }
@@ -1595,7 +1627,7 @@ export async function createInstanceAiTraceContext(
 	}
 
 	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
-	const baseMetadata = buildBaseMetadata(options);
+	const baseMetadata = await buildBaseMetadata(options);
 
 	const createTraceRuns = async () => {
 		const otelRuntime = await createProductOtelRuntime(projectName, options.proxyConfig);
@@ -1655,7 +1687,7 @@ export async function continueInstanceAiTraceContext(
 		return existingContext;
 	}
 
-	const baseMetadata = buildBaseMetadata(options);
+	const baseMetadata = await buildBaseMetadata(options);
 	const projectName = existingContext?.projectName ?? options.projectName ?? DEFAULT_PROJECT_NAME;
 	const continuedMetadata =
 		existingContext && existingContext.rootRun.traceId !== 'stub'
@@ -1731,7 +1763,7 @@ export async function createDetachedSubAgentTraceContext(
 	}
 
 	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
-	const baseMetadata = buildBaseMetadata(options);
+	const baseMetadata = await buildBaseMetadata(options);
 
 	const createDetachedRuns = async () => {
 		const otelRuntime = await createProductOtelRuntime(projectName, options.proxyConfig);
@@ -1790,7 +1822,7 @@ export async function createInternalOperationTraceContext(
 	}
 
 	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
-	const baseMetadata = buildBaseMetadata({
+	const baseMetadata = await buildBaseMetadata({
 		...options,
 		messageId: options.messageId ?? `internal:${options.operationName}:${options.runId}`,
 		metadata: mergeMetadata(options.metadata, {

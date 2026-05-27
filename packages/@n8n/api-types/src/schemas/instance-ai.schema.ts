@@ -69,10 +69,10 @@ export type InstanceAiAgentStatus = z.infer<typeof instanceAiAgentStatusSchema>;
 export const instanceAiAgentKindSchema = z.enum([
 	'builder',
 	'data-table',
-	'researcher',
 	'delegate',
 	'browser-setup',
 	'planner',
+	'eval-setup',
 ]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
@@ -741,9 +741,11 @@ export interface InstanceAiToolCallState {
 		| 'tasks'
 		| 'delegate'
 		| 'builder'
-		| 'data-table'
 		| 'researcher'
+		| 'data-table'
 		| 'planner'
+		| 'eval-setup'
+		| 'skill'
 		| 'default';
 	confirmation?: InstanceAiConfirmation;
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
@@ -760,9 +762,10 @@ export interface InstanceAiAgentNode {
 	agentId: string;
 	role: string;
 	tools?: string[];
-	/** Background task ID — present only for background agents (workflow-builder, data-table-manager). */
+	/** Background task ID — present only for background agents. */
 	taskId?: string;
-	/** Agent kind for card dispatch (builder, data-table, researcher, delegate, browser-setup). */
+	/** Agent kind for card dispatch (builder, data-table, delegate,
+	 * browser-setup, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
@@ -994,8 +997,6 @@ export function applyBranchReadOnlyOverrides(
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
 	lastMessages: number;
-	embedderModel: string;
-	semanticRecallTopK: number;
 	subAgentMaxSteps: number;
 	browserMcp: boolean;
 	permissions: InstanceAiPermissions;
@@ -1013,8 +1014,6 @@ export interface InstanceAiAdminSettingsResponse {
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
 	lastMessages: z.number().int().positive().optional(),
-	embedderModel: z.string().optional(),
-	semanticRecallTopK: z.number().int().positive().optional(),
 	subAgentMaxSteps: z.number().int().positive().optional(),
 	browserMcp: z.boolean().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
@@ -1058,9 +1057,10 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
 	if (toolName === 'build-workflow-with-agent') return 'builder';
-	if (toolName === 'manage-data-tables-with-agent') return 'data-table';
 	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'plan') return 'planner';
+	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
+	if (toolName === 'list_skills' || toolName === 'load_skill') return 'skill';
 	return 'default';
 }
 
@@ -1108,6 +1108,24 @@ export interface InstanceAiEvalMockedCredential {
 }
 
 /**
+ * PostHog kill-switch flag for the eval vendor SDK interception code path.
+ *
+ * Resolution semantics (consult `EvalExecutionService.isInterceptionEnabled`
+ * for the implementation):
+ *   - **Flag set to `true`**, or **unset** (no rule configured in PostHog):
+ *     interception is ENABLED. The flag is default-on; operators flip it to
+ *     `false` to kill the feature in an emergency.
+ *   - **Flag set to `false`**: interception is DISABLED. Requests with
+ *     `unpinNodes` are refused with a clear error so vendor traffic can
+ *     never reach the real provider — the wire server never boots.
+ *   - **Resolution error** (PostHog unreachable/unhealthy): treated as
+ *     DISABLED (fail-closed). A kill-switch must work when the flag plane
+ *     itself is degraded; an outage is the moment to refuse rather than
+ *     silently run the rewrite.
+ */
+export const EVAL_VENDOR_SDK_INTERCEPTION_FLAG = '085_eval_vendor_sdk_interception';
+
+/**
  * Records a credential field that was rewritten (e.g. routed to the eval wire
  * server) during evaluation. Populated when the caller opts into the unpin
  * path via `InstanceAiEvalExecutionRequest.unpinNodes`. Field added in the
@@ -1137,10 +1155,26 @@ export class InstanceAiEvalExecutionRequest extends Z.class({
 	 * AI root node names (Agent, Chain, etc.) whose sub-nodes should run their
 	 * real vendor SDK code instead of being pinned. The eval pipeline rewrites
 	 * matching credentials so vendor traffic lands on the eval wire server.
-	 * Refused if any sub-node uses a protocol-binary client (e.g. Postgres
-	 * memory) — those cannot be intercepted via HTTP.
+	 *
+	 * The compatibility guard refuses the request up front (no execution
+	 * attempted) when any inbound `ai_*` sub-node of a requested root falls
+	 * into one of these categories:
+	 *   - **Protocol-binary client**: Postgres/Redis/MongoDB memory, native
+	 *     vector stores (PGVector / Mongo / Redis / Milvus). These don't
+	 *     speak HTTP and can't be intercepted by the wire server.
+	 *   - **Unsupported vendor LLM**: any `@n8n/n8n-nodes-langchain.lm*` node
+	 *     not yet on the supported list (currently `lmChatOpenAi` only).
+	 *     These would call the real provider with real credentials because
+	 *     there's no eval URL-rewrite mapping for them.
+	 *   - **Unsafe `options.baseURL` override**: a supported vendor LLM
+	 *     configured with a non-empty `options.baseURL` parameter. The SDK
+	 *     prefers that over the rewritten credential URL, so the override
+	 *     would bypass the wire server.
+	 *
+	 * Refused requests come back as an error-shaped `InstanceAiEvalExecutionResult`
+	 * with the offending root → sub-node pairs listed in `errors`.
 	 */
-	unpinNodes: z.array(z.string().min(1).max(200)).max(50).optional(),
+	unpinNodes: z.array(z.string().min(1)).max(50).optional(),
 }) {}
 
 // ---------------------------------------------------------------------------

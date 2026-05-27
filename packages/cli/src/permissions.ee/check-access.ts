@@ -1,5 +1,12 @@
-import type { User } from '@n8n/db';
-import { ProjectRepository, SharedCredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
+import type { User, EntityManager } from '@n8n/db';
+import {
+	Project,
+	ProjectRepository,
+	SharedCredentials,
+	SharedCredentialsRepository,
+	SharedWorkflow,
+	SharedWorkflowRepository,
+} from '@n8n/db';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
@@ -32,16 +39,20 @@ export async function userHasScopes(
 		projectId?: string;
 		dataTableId?: string;
 	} /* only one */,
+	entityManager?: EntityManager,
 ): Promise<boolean> {
 	if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return true;
 
 	if (globalOnly) return false;
 
 	// Find which projects the user has access to with the required scopes.
-	// This is done by finding the projects where the user has a role with at least the required scopes
+	// This is done by finding the projects where the user has a role with at least the required scopes.
+	const projectQueryBuilder = entityManager
+		? entityManager.createQueryBuilder(Project, 'project')
+		: Container.get(ProjectRepository).createQueryBuilder('project');
+
 	const userProjectIds = (
-		await Container.get(ProjectRepository)
-			.createQueryBuilder('project')
+		await projectQueryBuilder
 			.innerJoin('project.projectRelations', 'relation')
 			.innerJoin('relation.role', 'role')
 			.innerJoin('role.scopes', 'scope')
@@ -59,14 +70,16 @@ export async function userHasScopes(
 	const roleService = Container.get(RoleService);
 
 	if (credentialId) {
-		const credentials = await Container.get(SharedCredentialsRepository).findBy({
-			credentialsId: credentialId,
-		});
+		const credentialRepo = entityManager
+			? entityManager.getRepository(SharedCredentials)
+			: Container.get(SharedCredentialsRepository);
+
+		const credentials = await credentialRepo.findBy({ credentialsId: credentialId });
 		if (!credentials.length) {
 			throw new NotFoundError(`Credential with ID "${credentialId}" not found.`);
 		}
 
-		const validRoles = await roleService.rolesWithScope('credential', scopes);
+		const validRoles = await roleService.rolesWithScope('credential', scopes, entityManager);
 
 		const hasValidRoles = credentials.some(
 			(c) => userProjectIds.includes(c.projectId) && validRoles.includes(c.role),
@@ -91,15 +104,17 @@ export async function userHasScopes(
 	}
 
 	if (workflowId) {
-		const workflows = await Container.get(SharedWorkflowRepository).findBy({
-			workflowId,
-		});
+		const workflowRepo = entityManager
+			? entityManager.getRepository(SharedWorkflow)
+			: Container.get(SharedWorkflowRepository);
+
+		const workflows = await workflowRepo.findBy({ workflowId });
 
 		if (!workflows.length) {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" not found.`);
 		}
 
-		const validRoles = await roleService.rolesWithScope('workflow', scopes);
+		const validRoles = await roleService.rolesWithScope('workflow', scopes, entityManager);
 
 		return workflows.some(
 			(w) => userProjectIds.includes(w.projectId) && validRoles.includes(w.role),

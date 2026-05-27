@@ -1,4 +1,4 @@
-import { computed, reactive, ref, triggerRef } from 'vue';
+import { computed, reactive, ref, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
@@ -298,11 +298,6 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 				: 'Add error handling to the workflow';
 		}
 
-		const dataChild = tree.children.find((c) => c.role === 'data-table-manager');
-		if (dataChild) {
-			return 'Query the data table to show recent entries';
-		}
-
 		return null;
 	});
 
@@ -337,6 +332,86 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		}
 		return undefined;
 	}
+
+	// --- Session "Always allow" ---
+	// Thread-scoped: cleared by `resetState()` so grants don't leak when the
+	// runtime is disposed and recreated. Key: `${toolName}:${args.action ?? ''}`
+	// for most tools; `submit-workflow` is keyed on `workflowId` presence so a
+	// create grant doesn't silently auto-approve later updates (the backend
+	// distinguishes createWorkflow vs updateWorkflow by that field).
+	const sessionAlwaysAllowKeys = ref<Set<string>>(new Set());
+
+	function buildAlwaysAllowKey(toolName: string, args: Record<string, unknown>): string {
+		if (toolName === 'submit-workflow') {
+			const isUpdate = typeof args.workflowId === 'string' && args.workflowId.length > 0;
+			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
+		}
+		const action = typeof args.action === 'string' ? args.action : '';
+		return `${toolName}:${action}`;
+	}
+
+	function addAlwaysAllowKey(toolName: string, args: Record<string, unknown>): void {
+		const next = new Set(sessionAlwaysAllowKeys.value);
+		next.add(buildAlwaysAllowKey(toolName, args));
+		sessionAlwaysAllowKeys.value = next;
+	}
+
+	function isGenericApprovalEligible(item: PendingConfirmationItem): boolean {
+		const conf = item.toolCall.confirmation;
+		if (conf.severity === 'destructive') return false;
+		if (conf.domainAccess) return false;
+		if (conf.inputType) return false;
+		if (conf.setupRequests?.length) return false;
+		if (conf.credentialRequests?.length) return false;
+		if (conf.questions?.length) return false;
+		return true;
+	}
+
+	// In-flight guard for the auto-approve watcher. We can't rely on
+	// `resolvedConfirmationIds` to skip duplicates here because we only mark
+	// resolved *after* `confirmAction` succeeds — otherwise a failed request
+	// would hide the card while the backend still waits for approval.
+	const autoApproveInFlight = new Set<string>();
+
+	watch(
+		pendingConfirmations,
+		async (items) => {
+			if (sessionAlwaysAllowKeys.value.size === 0) return;
+			for (const item of items) {
+				const conf = item.toolCall.confirmation;
+				if (resolvedConfirmationIds.value.has(conf.requestId)) continue;
+				if (autoApproveInFlight.has(conf.requestId)) continue;
+				if (!isGenericApprovalEligible(item)) continue;
+				const key = buildAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
+				if (!sessionAlwaysAllowKeys.value.has(key)) continue;
+
+				autoApproveInFlight.add(conf.requestId);
+				try {
+					const ok = await confirmAction(conf.requestId, { kind: 'approval', approved: true });
+					if (!ok) continue;
+					resolveConfirmation(conf.requestId, 'approved');
+					telemetry.track('User finished providing input', {
+						thread_id: threadId,
+						input_thread_id: conf.inputThreadId ?? '',
+						instance_id: rootStore.instanceId,
+						type: 'approval',
+						provided_inputs: [
+							{
+								label: conf.message,
+								options: ['approve', 'deny', 'approve_always'],
+								option_chosen: 'approve_auto',
+							},
+						],
+						skipped_inputs: [],
+						auto_resolved: true,
+					});
+				} finally {
+					autoApproveInFlight.delete(conf.requestId);
+				}
+			}
+		},
+		{ deep: true },
+	);
 
 	// --- SSE lifecycle ---
 
@@ -554,6 +629,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		debugEvents.value = [];
 		resetFeedback();
 		resolvedConfirmationIds.value = new Map();
+		sessionAlwaysAllowKeys.value = new Set();
 		runStateByGroupId = {};
 		groupIdByRunId = {};
 		lastEventId.value = undefined;
@@ -674,15 +750,11 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		}
 	}
 
-	function trackUserMessageSent(optimistic: InstanceAiMessage): void {
-		// The first user message in the array is the first the thread has ever
-		// seen. `find` short-circuits at the first match, so this is O(1) once
-		// the user has sent more than one message.
-		const firstUser = messages.value.find((m) => m.role === 'user');
+	function trackUserMessageSent(isFirstMessage: boolean): void {
 		telemetry.track('User sent builder message', {
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
-			is_first_message: firstUser === optimistic,
+			is_first_message: isFirstMessage,
 		});
 	}
 
@@ -734,8 +806,9 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		pendingMessageCount.value += 1;
 		try {
 			ensureSSEConnected();
+			const isFirstMessage = !messages.value.some((m) => m.role === 'user');
 			const optimistic = pushOptimisticUserMessage(message, attachments);
-			trackUserMessageSent(optimistic);
+			trackUserMessageSent(isFirstMessage);
 
 			if (!(await dispatchUserMessage(message, attachments, pushRef))) {
 				removeOptimisticMessage(optimistic);
@@ -822,6 +895,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		latestTasks,
 		debugEvents,
 		resolvedConfirmationIds,
+		sessionAlwaysAllowKeys,
 		pendingMessageCount,
 		hydrationStatus,
 		sseState,
@@ -856,6 +930,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		confirmAction,
 		confirmResourceDecision,
 		resolveConfirmation,
+		addAlwaysAllowKey,
 		findToolCallByRequestId,
 		copyFullTrace,
 		submitFeedback,

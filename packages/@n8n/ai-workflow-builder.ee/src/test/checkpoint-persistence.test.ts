@@ -41,9 +41,7 @@ async function getCheckpointMessages(
 	checkpointer: MemorySaver,
 	threadId: string,
 ): Promise<BaseMessage[]> {
-	const tuple = await checkpointer.getTuple({
-		configurable: { thread_id: threadId },
-	});
+	const tuple = await checkpointer.getTuple({ configurable: { thread_id: threadId } });
 	const messages = tuple?.checkpoint?.channel_values?.messages;
 	return Array.isArray(messages) ? (messages as BaseMessage[]) : [];
 }

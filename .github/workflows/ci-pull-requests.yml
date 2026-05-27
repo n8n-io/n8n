@@ -20,6 +20,7 @@ jobs:
       QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
     outputs:
       ci: ${{ fromJSON(steps.ci-filter.outputs.results).ci == true }}
+      runtime: ${{ fromJSON(steps.ci-filter.outputs.results).runtime == true }}
       unit: ${{ fromJSON(steps.ci-filter.outputs.results).unit == true }}
       e2e: ${{ fromJSON(steps.ci-filter.outputs.results).e2e == true }}
       dev_server_smoke: ${{ fromJSON(steps.ci-filter.outputs.results)['dev-server-smoke'] == true }}
@@ -53,11 +54,28 @@ jobs:
               **
               !packages/@n8n/task-runner-python/**
               !.github/**
+              !**/*.md
+              !**/LICENSE
+              !**/CHANGELOG.md
+            runtime:
+              **
+              !packages/@n8n/task-runner-python/**
+              !.github/**
+              !**/*.md
+              !**/LICENSE
+              !**/CHANGELOG.md
+              !**/*.test.ts
+              !**/*.spec.ts
+              !packages/testing/playwright/**
+              !packages/frontend/@n8n/storybook/**
             unit:
               **
               !packages/@n8n/task-runner-python/**
               !packages/testing/playwright/**
               !.github/**
+              !**/*.md
+              !**/LICENSE
+              !**/CHANGELOG.md
             e2e:
               .github/workflows/test-e2e-*.yml
               .github/workflows/prepare-docker-reusable.yml
@@ -134,7 +152,7 @@ jobs:
     needs: install-and-build
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
-      collectCoverage: true
+      collectCoverage: ${{ github.event_name != 'merge_group' }}
     secrets: inherit
 
   typecheck:
@@ -187,9 +205,10 @@ jobs:
     if: >-
       github.repository == 'n8n-io/n8n' &&
       github.event_name != 'merge_group' &&
-      (needs.install-and-build.outputs.ci == 'true'
+      (needs.install-and-build.outputs.runtime == 'true'
         || needs.install-and-build.outputs.e2e == 'true'
-        || needs.install-and-build.outputs.e2e_performance == 'true')
+        || needs.install-and-build.outputs.e2e_performance == 'true'
+        || contains(github.event.pull_request.labels.*.name, 'force-e2e'))
     uses: ./.github/workflows/prepare-docker-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -201,7 +220,9 @@ jobs:
     needs: [install-and-build, prepare-docker]
     if: >-
       needs.prepare-docker.result == 'success' &&
-      (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true') &&
+      (needs.install-and-build.outputs.runtime == 'true'
+        || needs.install-and-build.outputs.e2e == 'true'
+        || contains(github.event.pull_request.labels.*.name, 'force-e2e')) &&
       github.repository == 'n8n-io/n8n' &&
       github.event_name != 'merge_group' &&
       github.event.pull_request.head.repo.fork != true
@@ -221,7 +242,9 @@ jobs:
     needs: [install-and-build, prepare-docker]
     if: >-
       needs.prepare-docker.result == 'success' &&
-      (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true') &&
+      (needs.install-and-build.outputs.runtime == 'true'
+        || needs.install-and-build.outputs.e2e == 'true'
+        || contains(github.event.pull_request.labels.*.name, 'force-e2e')) &&
       needs.install-and-build.outputs.skip_tests != 'true' &&
       github.event_name != 'merge_group'
     uses: ./.github/workflows/test-e2e-reusable.yml

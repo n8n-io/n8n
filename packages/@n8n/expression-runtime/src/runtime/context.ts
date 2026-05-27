@@ -11,6 +11,8 @@ import {
 	throwIfErrorSentinel,
 } from './lazy-proxy';
 import { jmesPath } from './jmespath';
+import { isKeyOf } from './utils';
+import type { BridgeMessage } from '../bridge/bridge-messages';
 
 // Pre-create safe error subclass wrappers (reused across evaluations)
 const SafeTypeError = createSafeErrorSubclass(TypeError);
@@ -19,6 +21,20 @@ const SafeEvalError = createSafeErrorSubclass(EvalError);
 const SafeRangeError = createSafeErrorSubclass(RangeError);
 const SafeReferenceError = createSafeErrorSubclass(ReferenceError);
 const SafeURIError = createSafeErrorSubclass(URIError);
+
+/**
+ * Maps proxy property names on `$('NodeName')` to the typed-RPC discriminator
+ * the bridge dispatches on. Single source of truth for the synthetic proxy's
+ * `get`/`has` traps and the `sendNodeMethod` envelope builder. Adding a new
+ * `getNode*` schema to `BridgeMessage` lets you wire a new method here in
+ * one place; `satisfies` catches typos in the discriminator string.
+ */
+const NODE_RPC_TYPES = {
+	first: 'getNodeFirst',
+	last: 'getNodeLast',
+	all: 'getNodeAll',
+} as const satisfies Record<string, BridgeMessage['type']>;
+type NodeRpcType = (typeof NODE_RPC_TYPES)[keyof typeof NODE_RPC_TYPES];
 
 // ============================================================================
 // Build Context Function
@@ -54,6 +70,10 @@ interface BridgeCallback {
  *     are new schemas in `bridge/bridge-messages.ts` + new cases in the
  *     dispatcher switch. The name reflects what this is: a synchronous
  *     host RPC, not a postMessage-style async send.
+ *
+ * The bridge wires all four callbacks unconditionally before invoking
+ * `buildContext`, so the runtime treats them as present — no defensive
+ * null/undefined checks at each call site.
  */
 export interface BridgeCallbacks {
 	getValueAtPath: BridgeCallback;
@@ -153,9 +173,8 @@ export function buildContext(
 	// The returned object is a Proxy whose `get` trap intercepts properties
 	// that have a typed RPC (e.g. `.first` → `getNodeFirst`) and routes them
 	// through the `callHost` envelope. Everything else (properties like
-	// `.params`, `.json`, and methods that don't yet have a typed RPC like
-	// `.last`, `.all`) is read from an underlying lazy proxy via explicit
-	// delegation.
+	// `.params`, `.json`, and methods that don't yet have a typed RPC) is
+	// read from an underlying lazy proxy via explicit delegation.
 	//
 	// Important: the synthetic Proxy's *target* is a plain `{}` rather than
 	// the lazy proxy itself. Nesting one Proxy inside another causes V8 to
@@ -166,24 +185,35 @@ export function buildContext(
 	// the lazy proxy lives in closure and is only consulted on demand.
 	//
 	// As more typed RPCs are added, more cases land in this trap.
+	// The `has` trap mirrors the `get` trap for typed-RPC names so that
+	// tournament's `"first" in this.$('Foo')` check resolves true even though
+	// the inner target is empty.
 	target.$ = function (nodeName: string) {
 		const lazyProxy = createDeepLazyProxy(['$', nodeName], undefined, callbacks);
+		const sendNodeMethod = (type: NodeRpcType) => {
+			return (branchIndex?: number, runIndex?: number) => {
+				const result = callbacks.callHost.applySync(
+					null,
+					[{ type, nodeName, branchIndex, runIndex }],
+					{ arguments: { copy: true }, result: { copy: true } },
+				);
+				throwIfErrorSentinel(result);
+				return result;
+			};
+		};
 		return new Proxy({} as Record<string, unknown>, {
 			get(_emptyTarget, prop) {
-				if (prop === 'first') {
-					return (branchIndex?: number, runIndex?: number) => {
-						const result = callbacks.callHost.applySync(
-							null,
-							[{ type: 'getNodeFirst', nodeName, branchIndex, runIndex }],
-							{ arguments: { copy: true }, result: { copy: true } },
-						);
-						throwIfErrorSentinel(result);
-						return result;
-					};
+				if (isKeyOf(NODE_RPC_TYPES, prop)) {
+					return sendNodeMethod(NODE_RPC_TYPES[prop]);
 				}
 				// Everything else: delegate to the lazy proxy. The lazy proxy's
 				// own `get` trap handles caching, host fetching, and metadata.
 				return (lazyProxy as Record<string | symbol, unknown>)[prop];
+			},
+			has(_emptyTarget, prop) {
+				return (
+					isKeyOf(NODE_RPC_TYPES, prop) || prop in (lazyProxy as Record<string | symbol, unknown>)
+				);
 			},
 		});
 	};

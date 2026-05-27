@@ -2,9 +2,9 @@ import { Config, Env } from '../decorators';
 
 @Config
 export class InstanceAiConfig {
-	/** LLM model in provider/model format (e.g. "anthropic/claude-sonnet-4-6"). */
+	/** LLM model in provider/model format (e.g. "anthropic/claude-opus-4-7"). */
 	@Env('N8N_INSTANCE_AI_MODEL')
-	model: string = 'anthropic/claude-sonnet-4-6';
+	model: string = 'anthropic/claude-opus-4-7';
 
 	/** Base URL for an OpenAI-compatible endpoint (e.g. "http://localhost:1234/v1" for LM Studio). */
 	@Env('N8N_INSTANCE_AI_MODEL_URL')
@@ -14,14 +14,6 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MODEL_API_KEY')
 	modelApiKey: string = '';
 
-	/**
-	 * Hard cap on the context window size (in tokens). When set, the effective
-	 * context window is the lesser of this value and the model's native capability.
-	 * 0 = use the model's full context window.
-	 */
-	@Env('N8N_INSTANCE_AI_MAX_CONTEXT_WINDOW_TOKENS')
-	maxContextWindowTokens: number = 500_000;
-
 	/** Comma-separated name=url pairs for MCP servers (e.g. "github=https://mcp.github.com/sse"). */
 	@Env('N8N_INSTANCE_AI_MCP_SERVERS')
 	mcpServers: string = '';
@@ -30,13 +22,13 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_LAST_MESSAGES')
 	lastMessages: number = 20;
 
-	/** Embedder model for semantic recall (empty = disabled). */
-	@Env('N8N_INSTANCE_AI_EMBEDDER_MODEL')
-	embedderModel: string = '';
+	/** Token threshold for Observer to trigger compression of message history. */
+	@Env('N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS')
+	observerMessageTokens: number = 30_000;
 
-	/** Number of semantically similar messages to retrieve. */
-	@Env('N8N_INSTANCE_AI_SEMANTIC_RECALL_TOP_K')
-	semanticRecallTopK: number = 5;
+	/** Token threshold for Reflector to condense observations. */
+	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
+	reflectorObservationTokens: number = 40_000;
 
 	/** Maximum LLM reasoning steps for sub-agents spawned via delegate tool. */
 	@Env('N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS')
@@ -82,9 +74,21 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 300_000;
 
+	/** Prefix prepended to every Daytona sandbox name (e.g. `eval-baseline-daily`); also surfaced as a `name_prefix` label. */
+	@Env('N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX')
+	sandboxNamePrefix: string = '';
+
+	/**
+	 * Skew (milliseconds) used to proactively refresh the Daytona proxy JWT before it expires.
+	 * Refresh fires when the cached token's remaining lifetime falls below this threshold.
+	 * Only used in proxy mode (when a `getAuthToken` callback is configured); ignored for static API keys.
+	 */
+	@Env('N8N_INSTANCE_AI_DAYTONA_TOKEN_REFRESH_SKEW_MS')
+	daytonaTokenRefreshSkewMs: number = 5 * 60 * 1000;
+
 	/** How long to keep completed workflow-builder sandboxes warm for follow-up fixes. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS')
-	builderSandboxTtlMs: number = 10 * 60 * 1000;
+	builderSandboxTtlMs: number = 15 * 60 * 1000;
 
 	/** Brave Search API key for web search. No key = search + research agent disabled. */
 	@Env('INSTANCE_AI_BRAVE_SEARCH_API_KEY')

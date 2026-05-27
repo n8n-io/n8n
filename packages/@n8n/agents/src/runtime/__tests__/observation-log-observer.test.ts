@@ -1,7 +1,10 @@
+import type * as AiImport from 'ai';
+
 import type { AgentDbMessage } from '../../types/sdk/message';
 import { InMemoryMemory } from '../memory-store';
 import {
 	buildObservationLogObserverPrompt,
+	createObservationLogObserveFn,
 	DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 	DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
 	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
@@ -11,6 +14,20 @@ import {
 	renderObserverTranscript,
 	runObservationLogObserver,
 } from '../observation-log-observer';
+
+type GenerateTextCall = Record<string, unknown>;
+type GenerateTextResult = { text: string; usage?: { totalTokens?: number } };
+
+const mockGenerateText = jest.fn<Promise<GenerateTextResult>, [GenerateTextCall]>();
+
+jest.mock('ai', () => {
+	const actual = jest.requireActual<typeof AiImport>('ai');
+	return {
+		...actual,
+		generateText: async (call: GenerateTextCall): Promise<GenerateTextResult> =>
+			await mockGenerateText(call),
+	};
+});
 
 function message(
 	id: string,
@@ -27,6 +44,10 @@ function message(
 }
 
 describe('observation-log observer defaults', () => {
+	beforeEach(() => {
+		mockGenerateText.mockReset();
+	});
+
 	it('keeps default policy and threshold configuration in the SDK', () => {
 		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS).toBe(500);
 		expect(DEFAULT_OBSERVATION_LOG_TAIL_LIMIT).toBe(20);
@@ -41,8 +62,7 @@ describe('observation-log observer defaults', () => {
 
 	it('builds the default observer prompt from log tail and transcript delta', () => {
 		const prompt = buildObservationLogObserverPrompt({
-			scopeKind: 'thread',
-			scopeId: 'thread-1',
+			observationScopeId: 'thread-1',
 			now: new Date('2026-05-12T14:30:00.000Z'),
 			deltaMessages: [],
 			transcript: '[2026-05-12T14:29:00.000Z] user:\nRemember daily-report-prod.',
@@ -56,6 +76,34 @@ describe('observation-log observer defaults', () => {
 		expect(prompt).toContain('* CRITICAL (14:28) User is rebuilding observational memory.');
 		expect(prompt).toContain('Remember daily-report-prod.');
 		expect(prompt).toContain('Unobserved transcript tokens: 42');
+	});
+
+	it('counts observer generation tokens when usage is available', async () => {
+		mockGenerateText.mockResolvedValue({
+			text: '* CRITICAL (14:30) User asked to remember project context.',
+			usage: { totalTokens: 17 },
+		});
+		const counter = {
+			incrementMessageCount: jest.fn(),
+			incrementToolCallCount: jest.fn(),
+			incrementTokenCount: jest.fn(),
+		};
+
+		const result = await createObservationLogObserveFn('openai/gpt-4o-mini')({
+			observationScopeId: 'thread-1',
+			now: new Date('2026-05-12T14:30:00.000Z'),
+			deltaMessages: [],
+			transcript: 'user:\nRemember the project context.',
+			transcriptTokenCount: 10,
+			observationLogTail: [],
+			renderedObservationLogTail: null,
+			executionCounter: counter,
+		});
+
+		expect(result).toContain('CRITICAL');
+		expect(counter.incrementTokenCount).toHaveBeenCalledWith(17);
+		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
+		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
 	});
 });
 
@@ -205,8 +253,7 @@ describe('runObservationLogObserver', () => {
 
 		const result = await runObservationLogObserver({
 			memory: store,
-			scopeKind: 'thread',
-			scopeId: 'thread-1',
+			observationScopeId: 'thread-1',
 			observerThresholdTokens: 999,
 			observationLogTailLimit: 20,
 			tokenCounter: () => 1,
@@ -215,7 +262,7 @@ describe('runObservationLogObserver', () => {
 
 		expect(result).toEqual({ status: 'skipped', reason: 'below-threshold', tokenCount: 1 });
 		expect(observe).not.toHaveBeenCalled();
-		expect(await store.getCursor('thread', 'thread-1')).toBeNull();
+		expect(await store.getCursor('thread-1')).toBeNull();
 	});
 
 	it('writes parsed observations and advances the cursor after observing', async () => {
@@ -229,8 +276,7 @@ describe('runObservationLogObserver', () => {
 
 		const result = await runObservationLogObserver({
 			memory: store,
-			scopeKind: 'thread',
-			scopeId: 'thread-1',
+			observationScopeId: 'thread-1',
 			observerThresholdTokens: 1,
 			observationLogTailLimit: 20,
 			tokenCounter: () => 10,
@@ -246,8 +292,7 @@ describe('runObservationLogObserver', () => {
 
 		expect(result).toMatchObject({ status: 'ran', observationsWritten: 2 });
 		const observations = await store.getActiveObservationLog({
-			scopeKind: 'thread',
-			scopeId: 'thread-1',
+			observationScopeId: 'thread-1',
 		});
 		expect(observations).toMatchObject([
 			{
@@ -261,7 +306,7 @@ describe('runObservationLogObserver', () => {
 				parentId: observations[0]?.id,
 			},
 		]);
-		expect(await store.getCursor('thread', 'thread-1')).toMatchObject({
+		expect(await store.getCursor('thread-1')).toMatchObject({
 			lastObservedMessageId: 'm1',
 		});
 	});

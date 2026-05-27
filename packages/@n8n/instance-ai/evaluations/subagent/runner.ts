@@ -171,7 +171,7 @@ async function evaluateCapturedWorkflows(args: {
 		...(args.agentTextResponse ? { agentTextResponse: args.agentTextResponse } : {}),
 		...(args.annotations ? { annotations: args.annotations } : {}),
 	};
-	const binaryFeedback = await runBinaryChecks(last, ctx);
+	const { feedback: binaryFeedback } = await runBinaryChecks(last, ctx);
 	feedback.push(...binaryFeedback);
 
 	return feedback;
