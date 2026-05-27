@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type {
 	AgentKnowledgeCommandRequest,
 	AgentKnowledgeCommandResult,
-} from '../agent-knowledge-command.service';
+} from '../../agent-knowledge-command.service';
 
 export const DEFAULT_SEARCH_HEAD_LIMIT = 250;
 
@@ -319,7 +319,6 @@ const knowledgeFileOutputSchema = z.object({
 	mimeType: z.string(),
 	fileSizeBytes: z.number(),
 	relativePath: z.string(),
-	searchable: z.boolean(),
 });
 
 const commandResultOutputSchema = z.object({

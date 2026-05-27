@@ -68,20 +68,6 @@ describe('summariseInteractiveOutput', () => {
 });
 
 describe('summariseToolCall', () => {
-	it('summarises search_knowledge command output', () => {
-		expect(
-			summariseToolCall(
-				'search_knowledge',
-				{ operation: 'search', result: { command: 'git_grep' } },
-				{ operation: 'search' },
-			),
-		).toBe('search via git_grep');
-	});
-
-	it('falls back to search_knowledge input while output is pending', () => {
-		expect(summariseToolCall('search_knowledge', undefined, { operation: 'read' })).toBe('read');
-	});
-
 	it('preserves interactive tool summaries', () => {
 		expect(summariseToolCall(ASK_CREDENTIAL_TOOL_NAME, { skipped: true })).toBe('Skipped');
 	});

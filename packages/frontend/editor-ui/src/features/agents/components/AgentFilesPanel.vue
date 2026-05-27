@@ -53,11 +53,13 @@ function getFileIcon(file: AgentFileDto) {
 
 function getFileType(fileName: string) {
 	const extension = fileName.split('.').pop()?.toLowerCase();
-	if (extension === 'csv') return 'CSV';
-	if (extension === 'pdf') return 'PDF';
-	if (extension === 'md' || extension === 'markdown') return 'Markdown';
-	if (extension === 'txt') return 'TXT';
-	return 'File';
+	if (extension === 'csv') return i18n.baseText('agents.builder.files.type.csv');
+	if (extension === 'pdf') return i18n.baseText('agents.builder.files.type.pdf');
+	if (extension === 'md' || extension === 'markdown') {
+		return i18n.baseText('agents.builder.files.type.markdown');
+	}
+	if (extension === 'txt') return i18n.baseText('agents.builder.files.type.txt');
+	return i18n.baseText('agents.builder.files.type.file');
 }
 
 function formatFileSize(bytes: number) {

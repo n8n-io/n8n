@@ -19,7 +19,6 @@ export interface KnowledgeWorkspaceFile {
 	mimeType: string;
 	fileSizeBytes: number;
 	relativePath: string;
-	searchable: boolean;
 }
 
 interface MaterializeWorkspaceOptions {
@@ -119,16 +118,13 @@ export class AgentKnowledgeService {
 		for (const file of files) {
 			const relativePath = this.getWorkspaceRelativePath(file);
 			const targetPath = path.join(workspaceRoot, relativePath);
-			const searchable = this.isSearchable(file);
 
-			if (searchable) {
-				const buffer = await this.binaryDataService.getAsBuffer({
-					id: file.binaryDataId,
-					data: '',
-					mimeType: file.mimeType,
-				});
-				await writeFile(targetPath, buffer);
-			}
+			const buffer = await this.binaryDataService.getAsBuffer({
+				id: file.binaryDataId,
+				data: '',
+				mimeType: file.mimeType,
+			});
+			await writeFile(targetPath, buffer);
 
 			materializedFiles.push(this.toWorkspaceFile(file));
 		}
@@ -219,7 +215,6 @@ export class AgentKnowledgeService {
 			mimeType: file.mimeType,
 			fileSizeBytes: file.fileSizeBytes,
 			relativePath: this.getWorkspaceRelativePath(file),
-			searchable: this.isSearchable(file),
 		};
 	}
 
@@ -232,19 +227,6 @@ export class AgentKnowledgeService {
 				requested.has(file.id) ||
 				requested.has(this.getWorkspaceRelativePath(file)) ||
 				requested.has(file.fileName),
-		);
-	}
-
-	private isSearchable(file: AgentFile) {
-		const extension = file.fileName.split('.').pop()?.toLowerCase();
-		return (
-			file.mimeType === 'text/csv' ||
-			file.mimeType === 'text/plain' ||
-			file.mimeType === 'text/markdown' ||
-			extension === 'csv' ||
-			extension === 'txt' ||
-			extension === 'md' ||
-			extension === 'markdown'
 		);
 	}
 

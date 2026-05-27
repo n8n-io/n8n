@@ -8,8 +8,6 @@ import {
 	type AskQuestionResume,
 } from '@n8n/api-types';
 
-const SEARCH_KNOWLEDGE_TOOL_NAME = 'search_knowledge';
-
 /**
  * Build a one-line human-readable label for a resolved interactive tool call.
  * Used by `AgentChatToolSteps` to show the user's answer beside the tool name
@@ -21,24 +19,6 @@ const SEARCH_KNOWLEDGE_TOOL_NAME = 'search_knowledge';
  */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function getStringField(value: Record<string, unknown>, key: string) {
-	const field = value[key];
-	return typeof field === 'string' && field.trim() ? field : undefined;
-}
-
-function summariseSearchKnowledgeOutput(output: unknown, input?: unknown): string | undefined {
-	const fallbackOperation = isPlainObject(input) ? getStringField(input, 'operation') : undefined;
-	if (!isPlainObject(output)) return fallbackOperation;
-
-	const operation = getStringField(output, 'operation') ?? fallbackOperation;
-	const result = output.result;
-	const command = isPlainObject(result) ? getStringField(result, 'command') : undefined;
-
-	if (!operation) return command ? `via ${command}` : undefined;
-
-	return command ? `${operation} via ${command}` : operation;
 }
 
 export function summariseInteractiveOutput(
@@ -81,9 +61,5 @@ export function summariseToolCall(
 	output?: unknown,
 	input?: unknown,
 ): string | undefined {
-	if (toolName === SEARCH_KNOWLEDGE_TOOL_NAME) {
-		return summariseSearchKnowledgeOutput(output, input);
-	}
-
 	return summariseInteractiveOutput(toolName, output, input);
 }

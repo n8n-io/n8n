@@ -194,28 +194,6 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		expect(tc?.state).toBe('done');
 		expect(tc?.output).toEqual([{ name: 'Slack' }]);
 	});
-
-	it('reconstructs search_knowledge command summaries from persisted output', () => {
-		const dbMessages: AgentPersistedMessageDto[] = [
-			{
-				id: 'm1',
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolName: 'search_knowledge',
-						toolCallId: 'tc-3',
-						input: { operation: 'search', query: 'pricing' },
-						state: 'resolved',
-						output: { operation: 'search', result: { command: 'git_grep' } },
-					},
-				],
-			},
-		];
-
-		const chat = convertDbMessages(dbMessages);
-		expect(chat[0].toolCalls?.[0].displaySummary).toBe('search via git_grep');
-	});
 });
 
 describe('isGroupable', () => {

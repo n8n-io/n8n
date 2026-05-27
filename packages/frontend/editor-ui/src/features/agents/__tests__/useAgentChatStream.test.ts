@@ -396,31 +396,4 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.toolCalls?.[0].state).toBe('done');
 		expect(assistant.toolCalls?.[0].output).toBe(42);
 	});
-
-	it('shows search_knowledge operation and command in the tool summary', async () => {
-		const events: AgentSseEvent[] = [
-			{ type: 'start-step' },
-			{
-				type: 'tool-call',
-				toolCallId: 'tc-knowledge',
-				toolName: 'search_knowledge',
-				input: { operation: 'search', query: 'pricing' },
-			},
-			{ type: 'finish-step' },
-			{
-				type: 'tool-result',
-				toolCallId: 'tc-knowledge',
-				toolName: 'search_knowledge',
-				output: { operation: 'search', result: { command: 'git_grep' } },
-			},
-			{ type: 'done' },
-		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
-
-		const hook = buildHook();
-		await hook.sendMessage('what do you know?');
-		await nextTick();
-
-		expect(hook.messages.value[1].toolCalls?.[0].displaySummary).toBe('search via git_grep');
-	});
 });

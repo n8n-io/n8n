@@ -150,7 +150,6 @@ describe('AgentKnowledgeService', () => {
 				id: 'file-1',
 				fileName: 'document.txt',
 				relativePath: 'file-1.txt',
-				searchable: true,
 			}),
 		]);
 		expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
@@ -386,7 +385,7 @@ describe('AgentKnowledgeService', () => {
 		expect(mockDestroy).toHaveBeenCalledTimes(1);
 	});
 
-	it('materializes stored PDF text as a searchable text file', async () => {
+	it('materializes stored PDF text as a text file', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		agentFileRepository.findByAgentId.mockResolvedValue([
 			{
@@ -409,7 +408,6 @@ describe('AgentKnowledgeService', () => {
 					fileName: 'document.pdf',
 					mimeType: 'text/plain',
 					relativePath: 'file-1.pdf.txt',
-					searchable: true,
 				}),
 			]);
 			await expect(readFile(path.join(workspaceRoot, 'file-1.pdf.txt'), 'utf8')).resolves.toBe(
@@ -420,7 +418,7 @@ describe('AgentKnowledgeService', () => {
 		}
 	});
 
-	it('materializes CSV files as searchable text', async () => {
+	it('materializes CSV files as text', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		agentFileRepository.findByAgentId.mockResolvedValue([
 			{
@@ -443,7 +441,6 @@ describe('AgentKnowledgeService', () => {
 					fileName: 'data.csv',
 					mimeType: 'text/csv',
 					relativePath: 'file-1.csv',
-					searchable: true,
 				}),
 			]);
 			await expect(readFile(path.join(workspaceRoot, 'file-1.csv'), 'utf8')).resolves.toBe(

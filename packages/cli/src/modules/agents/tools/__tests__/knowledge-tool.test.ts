@@ -68,7 +68,6 @@ describe('search_knowledge tool', () => {
 				mimeType: 'text/plain',
 				fileSizeBytes: 12,
 				relativePath: 'file-1-notes.txt',
-				searchable: true,
 			},
 		]);
 		const tool = createSearchKnowledgeTool({
@@ -84,7 +83,6 @@ describe('search_knowledge tool', () => {
 				{
 					id: 'file-1',
 					relativePath: 'file-1-notes.txt',
-					searchable: true,
 				},
 			],
 		});
@@ -104,7 +102,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/plain',
 						fileSizeBytes: 13,
 						relativePath: 'file-1-notes.txt',
-						searchable: true,
 					},
 				];
 			},
@@ -149,7 +146,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/plain',
 						fileSizeBytes: 7,
 						relativePath: 'file-1-notes.txt',
-						searchable: true,
 					},
 					{
 						id: 'file-2',
@@ -157,7 +153,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/plain',
 						fileSizeBytes: 7,
 						relativePath: 'file-2-notes.txt',
-						searchable: true,
 					},
 				];
 			},
@@ -233,7 +228,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 120,
 						relativePath: 'file-1.md',
-						searchable: true,
 					},
 					{
 						id: 'file-2',
@@ -241,7 +235,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 120,
 						relativePath: 'file-2.md',
-						searchable: true,
 					},
 				];
 			},
@@ -302,7 +295,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 120,
 						relativePath: 'file-1.md',
-						searchable: true,
 					},
 				];
 			},
@@ -355,7 +347,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 20,
 						relativePath: 'file-1.md',
-						searchable: true,
 					},
 				];
 			},
@@ -407,7 +398,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 300,
 						relativePath: 'file-1.md',
-						searchable: true,
 					},
 					{
 						id: 'file-2',
@@ -415,7 +405,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 50,
 						relativePath: 'file-2.md',
-						searchable: true,
 					},
 				];
 			},
@@ -467,7 +456,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 10,
 						relativePath: 'file-1.md',
-						searchable: true,
 					},
 					{
 						id: 'file-2',
@@ -475,7 +463,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 10,
 						relativePath: 'file-2.md',
-						searchable: true,
 					},
 				];
 			},
@@ -525,7 +512,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 20,
 						relativePath: 'file-1.md',
-						searchable: true,
 					},
 					{
 						id: 'file-2',
@@ -533,7 +519,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 10,
 						relativePath: 'file-2.md',
-						searchable: true,
 					},
 				];
 			},
@@ -574,7 +559,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 10,
 						relativePath: 'file-1.md',
-						searchable: true,
 					},
 					{
 						id: 'file-2',
@@ -582,7 +566,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 10,
 						relativePath: 'file-2.md',
-						searchable: true,
 					},
 				];
 			},
@@ -625,7 +608,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 10,
 						relativePath: 'file-1.md',
-						searchable: true,
 					},
 					{
 						id: 'file-2',
@@ -633,7 +615,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 10,
 						relativePath: 'file-2.md',
-						searchable: true,
 					},
 				];
 			},
@@ -674,7 +655,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 20,
 						relativePath: 'file-1.md',
-						searchable: true,
 					},
 				];
 			},
@@ -720,7 +700,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 720,
 						relativePath: 'file-1.md',
-						searchable: true,
 					},
 				];
 			},
@@ -764,7 +743,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 20,
 						relativePath: 'file-1.md',
-						searchable: true,
 					},
 				];
 			},
@@ -827,7 +805,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 80,
 						relativePath: 'file-1.md',
-						searchable: true,
 					},
 					{
 						id: 'file-2',
@@ -835,7 +812,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 80,
 						relativePath: 'file-2.md',
-						searchable: true,
 					},
 				];
 			},
@@ -920,33 +896,7 @@ describe('search_knowledge tool', () => {
 		expect(knowledgeService.materializeWorkspace).not.toHaveBeenCalled();
 	});
 
-	it('returns a structured error for non-text PDFs', async () => {
-		knowledgeService.materializeWorkspace.mockResolvedValue([
-			{
-				id: 'file-1',
-				fileName: 'document.pdf',
-				mimeType: 'application/pdf',
-				fileSizeBytes: 200,
-				relativePath: 'file-1-document.pdf',
-				searchable: false,
-			},
-		]);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
-
-		await expect(
-			tool.handler?.({ operation: 'read', file: 'file-1' }, {} as never),
-		).resolves.toMatchObject({
-			operation: 'read',
-			error: 'File "document.pdf" is not readable as plain text in this version.',
-		});
-	});
-
-	it('reads extracted PDF text when materialized as searchable text', async () => {
+	it('reads extracted PDF text when materialized as text', async () => {
 		knowledgeService.materializeWorkspace.mockImplementation(
 			async (_agentId, _projectId, workspaceRoot) => {
 				const { writeFile } = await import('node:fs/promises');
@@ -959,7 +909,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/plain',
 						fileSizeBytes: 200,
 						relativePath: 'file-1.pdf.txt',
-						searchable: true,
 					},
 				];
 			},
@@ -979,7 +928,6 @@ describe('search_knowledge tool', () => {
 				expect.objectContaining({
 					fileName: 'document.pdf',
 					relativePath: 'file-1.pdf.txt',
-					searchable: true,
 				}),
 			],
 			result: {
@@ -1012,7 +960,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/markdown',
 						fileSizeBytes: 10,
 						relativePath: 'file-1.md',
-						searchable: true,
 					},
 				];
 			},
@@ -1065,7 +1012,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/csv',
 						fileSizeBytes: 200,
 						relativePath: 'file-1.csv',
-						searchable: true,
 					},
 				];
 			},
@@ -1121,7 +1067,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/csv',
 						fileSizeBytes: 26,
 						relativePath: 'file-1.csv',
-						searchable: true,
 					},
 				];
 			},
@@ -1167,7 +1112,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/csv',
 						fileSizeBytes: 53,
 						relativePath: 'file-1.csv',
-						searchable: true,
 					},
 				];
 			},
@@ -1210,7 +1154,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/csv',
 						fileSizeBytes: 27,
 						relativePath: 'file-1.csv',
-						searchable: true,
 					},
 				];
 			},
@@ -1260,7 +1203,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/csv',
 						fileSizeBytes: 180,
 						relativePath: 'file-1.csv',
-						searchable: true,
 					},
 				];
 			},
@@ -1344,7 +1286,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/csv',
 						fileSizeBytes: 120,
 						relativePath: 'file-1.csv',
-						searchable: true,
 					},
 				];
 			},
@@ -1409,7 +1350,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/csv',
 						fileSizeBytes: 80,
 						relativePath: 'file-1.csv',
-						searchable: true,
 					},
 				];
 			},
@@ -1475,7 +1415,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/csv',
 						fileSizeBytes: 120,
 						relativePath: 'file-1.csv',
-						searchable: true,
 					},
 				];
 			},
@@ -1530,7 +1469,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/csv',
 						fileSizeBytes: 120,
 						relativePath: 'file-1.csv',
-						searchable: true,
 					},
 				];
 			},
@@ -1599,7 +1537,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/csv',
 						fileSizeBytes: 27,
 						relativePath: 'file-1.csv',
-						searchable: true,
 					},
 				];
 			},
@@ -1634,7 +1571,6 @@ describe('search_knowledge tool', () => {
 				mimeType: 'text/csv',
 				fileSizeBytes: 50 * 1024 * 1024,
 				relativePath: 'file-1.csv',
-				searchable: true,
 			},
 		]);
 		knowledgeService.materializeWorkspace.mockImplementation(
@@ -1649,7 +1585,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/csv',
 						fileSizeBytes: 50 * 1024 * 1024,
 						relativePath: 'file-1.csv',
-						searchable: true,
 					},
 				];
 			},
@@ -1698,7 +1633,6 @@ describe('search_knowledge tool', () => {
 						mimeType: 'text/csv',
 						fileSizeBytes: 50 * 1024 * 1024,
 						relativePath: 'file-1.csv',
-						searchable: true,
 					},
 				];
 			},
