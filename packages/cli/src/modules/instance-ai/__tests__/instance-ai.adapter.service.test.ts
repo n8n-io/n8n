@@ -31,11 +31,11 @@ import type {
 
 import type { NodeTypes } from '@/node-types';
 
+import { extractResolvedNodeParameters } from '../extract-resolved-node-parameters';
 import {
 	extractExecutionResult,
 	extractExecutionDebugInfo,
 	extractNodeOutput,
-	extractResolvedNodeParameters,
 	formatExecutionError,
 	resolveDataTableByIdOrName,
 	truncateNodeOutput,
