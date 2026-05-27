@@ -1,7 +1,9 @@
 <script lang="ts" setup>
 import { toRef } from 'vue';
 import type { InstanceAiCredentialFlow, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
+import { useInstanceAiSetupListExperiment } from '@/experiments/instanceAiSetupList';
 import WorkflowSetupWizard from './components/WorkflowSetupWizard.vue';
+import WorkflowSetupAccordion from './components/WorkflowSetupAccordion.vue';
 import WorkflowSetupStatus from './components/WorkflowSetupStatus.vue';
 import { provideWorkflowSetupContext } from './composables/useWorkflowSetupContext';
 
@@ -20,6 +22,8 @@ const ctx = provideWorkflowSetupContext({
 	workflowId: toRef(props, 'workflowId'),
 	credentialFlow: toRef(props, 'credentialFlow'),
 });
+
+const { isFeatureEnabled: isSetupListEnabled } = useInstanceAiSetupListExperiment();
 </script>
 
 <template>
@@ -27,6 +31,9 @@ const ctx = provideWorkflowSetupContext({
 		<WorkflowSetupStatus
 			v-if="ctx.isReady.value && ctx.terminalState.value"
 			:state="ctx.terminalState.value"
+		/>
+		<WorkflowSetupAccordion
+			v-else-if="ctx.isReady.value && ctx.steps.value.length && isSetupListEnabled"
 		/>
 		<WorkflowSetupWizard v-else-if="ctx.isReady.value && ctx.steps.value.length" />
 	</div>

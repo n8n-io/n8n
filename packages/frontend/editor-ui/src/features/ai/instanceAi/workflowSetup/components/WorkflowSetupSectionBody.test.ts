@@ -16,6 +16,7 @@ const workflowSetupContext = vi.hoisted(() => ({
 
 const credentialsStore = vi.hoisted(() => ({
 	getCredentialById: vi.fn(),
+	getCredentialTypeByName: vi.fn(),
 }));
 
 const nodeTypesStore = vi.hoisted(() => ({
@@ -24,6 +25,7 @@ const nodeTypesStore = vi.hoisted(() => ({
 }));
 
 const renderedCredentials = vi.hoisted(() => [] as unknown[]);
+const renderedOptionsOverrides = vi.hoisted(() => [] as Array<Record<string, boolean> | undefined>);
 const workflowDocumentStoreRef = vi.hoisted(() => ({
 	current: null as WorkflowDocumentStore | null,
 }));
@@ -42,8 +44,10 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 
 vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 	default: {
-		props: ['node'],
-		template: '<div data-test-id="node-credentials"><slot name="label-postfix" /></div>',
+		props: ['node', 'hideCredentialServiceNameInLabel', 'hideEmptyCredentialSelect'],
+		emits: ['credentialSelected'],
+		template:
+			"<button data-test-id=\"node-credentials\" :data-hide-credential-service-name-in-label=\"hideCredentialServiceNameInLabel ? 'true' : 'false'\" :data-hide-empty-credential-select=\"hideEmptyCredentialSelect ? 'true' : 'false'\" @click=\"$emit('credentialSelected', { properties: { credentials: { typeformApi: { id: 'cred-2' } } } })\"><slot name=\"label-postfix\" /></button>",
 	},
 }));
 
@@ -57,7 +61,7 @@ vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', async () 
 
 	return {
 		default: defineComponent({
-			props: ['node'],
+			props: ['node', 'optionsOverrides'],
 			emits: ['valueChanged', 'parameterBlur'],
 			setup(props, { emit }) {
 				const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
@@ -65,6 +69,9 @@ vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', async () 
 
 				return () => {
 					renderedCredentials.push((props.node as INodeUi | undefined)?.credentials);
+					renderedOptionsOverrides.push(
+						props.optionsOverrides as Record<string, boolean> | undefined,
+					);
 
 					return h(
 						'button',
@@ -133,8 +140,10 @@ describe('WorkflowSetupSectionBody', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		renderedCredentials.length = 0;
+		renderedOptionsOverrides.length = 0;
 		workflowDocumentStoreRef.current = null;
 		credentialsStore.getCredentialById.mockReturnValue({ id: 'cred-1', name: 'Typeform account' });
+		credentialsStore.getCredentialTypeByName.mockReturnValue({ displayName: 'Typeform API' });
 		nodeTypesStore.getNodeType.mockReturnValue({
 			name: 'n8n-nodes-base.typeformTrigger',
 			properties: [
@@ -172,11 +181,21 @@ describe('WorkflowSetupSectionBody', () => {
 		const { getByTestId } = renderComponent({ props: { section } });
 		await nextTick();
 
+		expect(getByTestId('node-credentials')).toHaveAttribute(
+			'data-hide-credential-service-name-in-label',
+			'true',
+		);
+		expect(getByTestId('node-credentials')).toHaveAttribute(
+			'data-hide-empty-credential-select',
+			'true',
+		);
+
 		const credentialsBeforeParameterChange = renderedCredentials.at(-1);
 		await fireEvent.click(getByTestId('change-parameter'));
 		await nextTick();
 
 		expect(renderedCredentials.at(-1)).toBe(credentialsBeforeParameterChange);
+		expect(renderedOptionsOverrides.at(-1)?.hideParameterOptions).toBe(true);
 	});
 
 	it('provides a scoped workflow document store with the display node', async () => {
@@ -210,5 +229,86 @@ describe('WorkflowSetupSectionBody', () => {
 		expect(workflowDocumentStoreRef.current?.getNodeByName('Typeform Trigger')?.parameters).toEqual(
 			{ formId: 'form-1' },
 		);
+	});
+
+	it('applies grouped credential selections to every underlying section', async () => {
+		const section = makeWorkflowSetupSection({
+			id: 'Typeform Trigger:typeformApi',
+			targetNodeName: 'Typeform Trigger',
+			credentialType: 'typeformApi',
+			parameterNames: [],
+			node: {
+				id: 'typeform-trigger',
+				name: 'Typeform Trigger',
+				type: 'n8n-nodes-base.typeformTrigger',
+				typeVersion: 1,
+				parameters: {},
+			},
+		});
+		const siblingSection = makeWorkflowSetupSection({
+			id: 'Typeform Follow-up:typeformApi',
+			targetNodeName: 'Typeform Follow-up',
+			credentialType: 'typeformApi',
+			parameterNames: ['formId'],
+			node: {
+				id: 'typeform-follow-up',
+				name: 'Typeform Follow-up',
+				type: 'n8n-nodes-base.typeformTrigger',
+				typeVersion: 1,
+				parameters: { formId: '' },
+			},
+		});
+		const context = makeContext(section);
+		workflowSetupContext.current = context;
+
+		const { getByTestId } = renderComponent({
+			props: { section, credentialSections: [section, siblingSection] },
+		});
+
+		await fireEvent.click(getByTestId('node-credentials'));
+
+		expect(context.setCredential).toHaveBeenCalledWith(section, 'cred-2');
+		expect(context.setCredential).toHaveBeenCalledWith(siblingSection, 'cred-2');
+	});
+
+	it('applies grouped parameter values to every underlying section', async () => {
+		const section = makeWorkflowSetupSection({
+			id: 'Typeform Trigger:typeformApi',
+			targetNodeName: 'Typeform Trigger',
+			credentialType: 'typeformApi',
+			parameterNames: ['formId'],
+			node: {
+				id: 'typeform-trigger',
+				name: 'Typeform Trigger',
+				type: 'n8n-nodes-base.typeformTrigger',
+				typeVersion: 1,
+				parameters: { formId: '' },
+			},
+		});
+		const siblingSection = makeWorkflowSetupSection({
+			id: 'Typeform Follow-up:typeformApi',
+			targetNodeName: 'Typeform Follow-up',
+			credentialType: 'typeformApi',
+			parameterNames: ['formId'],
+			node: {
+				id: 'typeform-follow-up',
+				name: 'Typeform Follow-up',
+				type: 'n8n-nodes-base.typeformTrigger',
+				typeVersion: 1,
+				parameters: { formId: '' },
+			},
+		});
+		const context = makeContext(section);
+		workflowSetupContext.current = context;
+
+		const { getByTestId } = renderComponent({
+			props: { section, parameterSections: [section, siblingSection] },
+		});
+		await nextTick();
+
+		await fireEvent.click(getByTestId('change-parameter'));
+
+		expect(context.setParameterValue).toHaveBeenCalledWith(section, 'formId', 'form-1');
+		expect(context.setParameterValue).toHaveBeenCalledWith(siblingSection, 'formId', 'form-1');
 	});
 });

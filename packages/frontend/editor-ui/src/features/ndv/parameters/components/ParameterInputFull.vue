@@ -158,6 +158,10 @@ const showExpressionSelector = computed(() => {
 	return !isContentOverride.value;
 });
 
+const showParameterOptions = computed(
+	() => !!props.displayOptions && !props.optionsOverrides?.hideParameterOptions,
+);
+
 function onFocus() {
 	focused.value = true;
 	if (!props.parameter.noDataExpression) {
@@ -401,11 +405,11 @@ function removeOverride(clearField = false) {
 		>
 			<template #options>
 				<ParameterOptions
-					v-if="displayOptions"
+					v-if="showParameterOptions"
 					:parameter="parameter"
 					:value="value"
 					:is-read-only="isReadOnly"
-					:show-options="displayOptions"
+					:show-options="showParameterOptions"
 					:show-expression-selector="showExpressionSelector"
 					:is-content-overridden="isContentOverride"
 					:show-delete="showDelete"
@@ -448,12 +452,12 @@ function removeOverride(clearField = false) {
 			</div>
 		</template>
 
-		<template v-if="displayOptions && optionsPosition === 'top'" #options>
+		<template v-if="showParameterOptions && optionsPosition === 'top'" #options>
 			<ParameterOptions
 				:parameter="parameter"
 				:value="value"
 				:is-read-only="isReadOnly"
-				:show-options="displayOptions"
+				:show-options="showParameterOptions"
 				:show-expression-selector="showExpressionSelector"
 				:show-focus-panel="!optionsOverrides?.hideFocusPanelButton"
 				:is-content-overridden="isContentOverride"
@@ -516,11 +520,11 @@ function removeOverride(clearField = false) {
 			}"
 		>
 			<ParameterOptions
-				v-if="optionsPosition === 'bottom'"
+				v-if="optionsPosition === 'bottom' && showParameterOptions"
 				:parameter="parameter"
 				:value="value"
 				:is-read-only="isReadOnly"
-				:show-options="displayOptions"
+				:show-options="showParameterOptions"
 				:show-expression-selector="showExpressionSelector"
 				:show-focus-panel="!optionsOverrides?.hideFocusPanelButton"
 				:is-content-overridden="isContentOverride"
@@ -537,11 +541,11 @@ function removeOverride(clearField = false) {
 			}"
 		>
 			<ParameterOptions
-				v-if="displayOptions && optionsPosition === 'top-absolute'"
+				v-if="showParameterOptions && optionsPosition === 'top-absolute'"
 				:parameter="parameter"
 				:value="value"
 				:is-read-only="isReadOnly"
-				:show-options="displayOptions"
+				:show-options="showParameterOptions"
 				:show-expression-selector="showExpressionSelector"
 				:show-focus-panel="!optionsOverrides?.hideFocusPanelButton"
 				:is-content-overridden="isContentOverride"

@@ -12,6 +12,9 @@ import {
 } from '../emptyStateSuggestions';
 
 const telemetryTrack = vi.fn();
+const setupListExperiment = vi.hoisted(() => ({
+	isFeatureEnabled: { __v_isRef: true, value: false },
+}));
 
 type InputTestProps = {
 	isStreaming: boolean;
@@ -44,6 +47,12 @@ function inputProps(overrides: Partial<InputTestProps> = {}): InputTestProps {
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: telemetryTrack })),
+}));
+
+vi.mock('@/experiments/instanceAiSetupList', () => ({
+	useInstanceAiSetupListExperiment: () => ({
+		isFeatureEnabled: setupListExperiment.isFeatureEnabled,
+	}),
 }));
 
 const CustomSuggestionsComponent = defineComponent({
@@ -167,6 +176,7 @@ describe('InstanceAiInput', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		telemetryTrack.mockReset();
+		setupListExperiment.isFeatureEnabled.value = false;
 	});
 
 	it('uses the shared suggestions fixture with the expected top-level contract', () => {
@@ -210,6 +220,21 @@ describe('InstanceAiInput', () => {
 		expect(getByRole('textbox')).toHaveAttribute(
 			'placeholder',
 			'Tell me what to build or ask me a question',
+		);
+	});
+
+	it('uses setup-only placeholder copy while awaiting setup with the setup list enabled', () => {
+		setupListExperiment.isFeatureEnabled.value = true;
+
+		const { getByRole } = renderComponent({
+			props: {
+				isAwaitingConfirmation: true,
+			},
+		});
+
+		expect(getByRole('textbox')).toHaveAttribute(
+			'placeholder',
+			'Complete the setup above to continue',
 		);
 	});
 

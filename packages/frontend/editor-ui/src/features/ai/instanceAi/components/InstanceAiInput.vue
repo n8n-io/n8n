@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, watch, type Component } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
+import { useInstanceAiSetupListExperiment } from '@/experiments/instanceAiSetupList';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
@@ -60,6 +61,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const { isFeatureEnabled: isSetupListEnabled } = useInstanceAiSetupListExperiment();
 const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
@@ -97,7 +99,11 @@ const shouldTrackVisibleSuggestions = computed(() => canShowSuggestions.value);
 
 const placeholder = computed(() => {
 	if (isGatedBySetup.value) {
-		return i18n.baseText('instanceAi.input.suspendedPlaceholder');
+		return i18n.baseText(
+			isSetupListEnabled.value
+				? ('instanceAi.input.suspendedSetupPlaceholder' as BaseTextKey)
+				: 'instanceAi.input.suspendedPlaceholder',
+		);
 	}
 	if (previewPromptKey.value && isInputVisuallyEmpty.value) {
 		return i18n.baseText(previewPromptKey.value);

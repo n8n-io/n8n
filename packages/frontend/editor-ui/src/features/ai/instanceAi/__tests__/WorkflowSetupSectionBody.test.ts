@@ -21,11 +21,11 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 }));
 
 vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', () => ({
-	default: { template: '<div />' },
-}));
-
-vi.mock('@/app/components/FreeAiCreditsCallout.vue', () => ({
-	default: { template: '<div />' },
+	default: {
+		props: ['optionsOverrides'],
+		template:
+			'<div data-test-id="parameter-input-list" :data-hide-parameter-options="String(optionsOverrides?.hideParameterOptions)" />',
+	},
 }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -34,6 +34,12 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 		baseText: (key: string, options?: { interpolate?: Record<string, string | number> }) => {
 			if (key === 'instanceAi.workflowSetup.usedByNodes') {
 				return `Used by ${options?.interpolate?.count} nodes`;
+			}
+			if (key === 'instanceAi.workflowSetup.credentialHelp') {
+				return `Connect ${options?.interpolate?.name} so this step can run`;
+			}
+			if (key === 'instanceAi.workflowSetup.parameterHelp') {
+				return 'Add the required values so this step can run';
 			}
 			return key;
 		},
@@ -49,7 +55,9 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
-		getNodeType: () => null,
+		getNodeType: () => ({
+			properties: [{ displayName: 'URL', name: 'url', type: 'string', default: '' }],
+		}),
 		communityNodeType: () => null,
 		getAllNodeTypes: () => ({
 			nodeTypes: {},
@@ -115,6 +123,27 @@ function renderComponent(section: WorkflowSetupSection) {
 	});
 }
 
+function renderComponentWithProps(props: {
+	section: WorkflowSetupSection;
+	hideCredential?: boolean;
+}) {
+	workflowSetupContext.current = makeContext();
+
+	return mount(WorkflowSetupSectionBody, {
+		props,
+		global: {
+			plugins: [createTestingPinia({ stubActions: false })],
+			stubs: {
+				N8nText: { template: '<span><slot /></span>' },
+				N8nTooltip: {
+					template:
+						'<div data-test-id="instance-ai-workflow-setup-card-tooltip"><span data-test-id="instance-ai-workflow-setup-card-tooltip-content"><slot name="content" /></span><slot /></div>',
+				},
+			},
+		},
+	});
+}
+
 describe('WorkflowSetupSectionBody', () => {
 	it('hides the grouped nodes hint for single-target sections', () => {
 		const section = makeWorkflowSetupSection();
@@ -142,5 +171,32 @@ describe('WorkflowSetupSectionBody', () => {
 		expect(
 			wrapper.get('[data-test-id="instance-ai-workflow-setup-card-tooltip-content"]').text(),
 		).toBe('Primary, Follower');
+	});
+
+	it('shows setup helper copy for credential sections without rendering the credits callout', () => {
+		const section = makeWorkflowSetupSection();
+
+		const wrapper = renderComponent(section);
+
+		expect(wrapper.get('[data-test-id="instance-ai-workflow-setup-helper"]').text()).toBe(
+			'Connect HTTP Basic Auth so this step can run',
+		);
+	});
+
+	it('can render parameter inputs without duplicating the credential picker', () => {
+		const section = makeWorkflowSetupSection({
+			parameterNames: ['url'],
+			node: {
+				parameters: { url: '' },
+			},
+		});
+
+		const wrapper = renderComponentWithProps({ section, hideCredential: true });
+
+		expect(wrapper.find('[data-test-id="node-credentials"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="parameter-input-list"]').exists()).toBe(true);
+		expect(wrapper.get('[data-test-id="instance-ai-workflow-setup-helper"]').text()).toBe(
+			'Add the required values so this step can run',
+		);
 	});
 });

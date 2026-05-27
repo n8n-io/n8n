@@ -101,6 +101,7 @@ export const INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT = createExperiment(
 export const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_EXPERIMENT = createExperiment(
 	'085_instance_ai_prompt_suggestions_v2',
 );
+export const INSTANCE_AI_SETUP_LIST_EXPERIMENT = createExperiment('086_instance_ai_setup_list');
 export const AA_EXPERIMENT_CHECK = createExperiment('078_experiment_check_aa');
 
 export const CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT = createExperiment('077_chat_hub_semantic_search');
@@ -139,6 +140,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	AI_BUILDER_SETUP_WIZARD_EXPERIMENT.name,
 	INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT.name,
 	INSTANCE_AI_PROMPT_SUGGESTIONS_V2_EXPERIMENT.name,
+	INSTANCE_AI_SETUP_LIST_EXPERIMENT.name,
 	AA_EXPERIMENT_CHECK.name,
 	CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,
 	FLOATING_CHAT_HUB_PANEL_EXPERIMENT.name,

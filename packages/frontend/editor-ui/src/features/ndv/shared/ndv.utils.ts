@@ -36,6 +36,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 export interface ParameterOptionsOverrides {
 	hideExpressionSelector?: boolean;
 	hideFocusPanelButton?: boolean;
+	hideParameterOptions?: boolean;
 }
 
 export function getNodeSettingsInitialValues(): INodeParameters {

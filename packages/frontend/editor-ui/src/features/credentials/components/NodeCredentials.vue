@@ -72,6 +72,10 @@ type Props = {
 	/** Hide the "Ask n8n AI" assistant button inside the credential editor.
 	 *  Used by surfaces (e.g. agents) where the assistant flow isn't wired up. */
 	hideAskAssistant?: boolean;
+	/** Hide the service name in credential labels, e.g. "Google Sheets OAuth2 API" -> "OAuth2 API". */
+	hideCredentialServiceNameInLabel?: boolean;
+	/** Hide the disabled empty select when there are no credentials yet. */
+	hideEmptyCredentialSelect?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -81,6 +85,8 @@ const props = withDefaults(defineProps<Props>(), {
 	hideIssues: false,
 	skipAutoSelect: false,
 	standalone: false,
+	hideCredentialServiceNameInLabel: false,
+	hideEmptyCredentialSelect: false,
 });
 
 const emit = defineEmits<{
@@ -610,7 +616,19 @@ function editCredential(credentialType: string): void {
 	subscribedToCredentialType.value = credentialType;
 }
 
-function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): string {
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function hideServiceNameFromCredentialLabel(label: string): string {
+	const serviceName = getAppNameFromCredType(label).trim();
+	if (!serviceName || serviceName === label) return label;
+
+	const strippedLabel = label.replace(new RegExp(`^${escapeRegExp(serviceName)}\\s+`, 'i'), '');
+	return strippedLabel.trim() || label;
+}
+
+function getBaseCredentialsFieldLabel(credentialType: INodeCredentialDescription): string {
 	if (credentialType.displayName) return credentialType.displayName;
 	const credentialTypeName = credentialTypeNames.value[credentialType.name];
 	const isCredentialOnlyNode = props.node.type.startsWith(CREDENTIAL_ONLY_NODE_PREFIX);
@@ -627,6 +645,11 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 		});
 	}
 	return i18n.baseText('nodeCredentials.credentialsLabelShort');
+}
+
+function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): string {
+	const label = getBaseCredentialsFieldLabel(credentialType);
+	return props.hideCredentialServiceNameInLabel ? hideServiceNameFromCredentialLabel(label) : label;
 }
 
 function setFilter(newFilter = '') {
@@ -769,9 +792,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					data-test-id="node-credentials-empty-state"
 				>
 					<N8nSelect
+						v-if="!hideEmptyCredentialSelect"
 						:class="$style.emptySelect"
 						size="small"
 						disabled
+						data-test-id="node-credentials-empty-select"
 						:placeholder="i18n.baseText('nodeCredentials.emptyState.noCredentials')"
 					/>
 					<N8nButton

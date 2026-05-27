@@ -231,6 +231,37 @@ describe('NodeCredentials', () => {
 		expect(credentialsStore.fetchAllCredentials).toHaveBeenCalled();
 	});
 
+	it('keeps the credential service name in labels by default', () => {
+		credentialsStore.state.credentialTypes.openAiApi = {
+			...openAiApiCredentialType,
+			displayName: 'Google Sheets OAuth2 API',
+		};
+
+		renderComponent();
+
+		expect(screen.getByTestId('credentials-label')).toHaveTextContent('Google Sheets OAuth2 API');
+	});
+
+	it('can hide the credential service name in labels', () => {
+		credentialsStore.state.credentialTypes.openAiApi = {
+			...openAiApiCredentialType,
+			displayName: 'Google Sheets OAuth2 API',
+		};
+
+		renderComponent(
+			{
+				props: {
+					hideCredentialServiceNameInLabel: true,
+				},
+			},
+			{ merge: true },
+		);
+
+		const label = screen.getByTestId('credentials-label');
+		expect(label).toHaveTextContent('OAuth2 API');
+		expect(label).not.toHaveTextContent('Google Sheets OAuth2 API');
+	});
+
 	it('should ignore managed credentials in the dropdown if active node is the HTTP node', async () => {
 		ndvStore.activeNode = httpNode;
 		credentialsStore.state.credentials = {
@@ -825,6 +856,45 @@ describe('NodeCredentials', () => {
 				{ merge: true },
 			);
 
+			expect(screen.queryByTestId('setup-credential-button')).toBeInTheDocument();
+		});
+
+		it('shows the disabled empty credential select by default', () => {
+			setupQuickConnectStores();
+
+			ndvStore.activeNode = openAiNodeNoCreds;
+
+			renderComponent(
+				{
+					props: {
+						node: openAiNodeNoCreds,
+						overrideCredType: 'openAiApi',
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('node-credentials-empty-select')).toBeInTheDocument();
+			expect(screen.queryByTestId('setup-credential-button')).toBeInTheDocument();
+		});
+
+		it('can hide the disabled empty credential select', () => {
+			setupQuickConnectStores();
+
+			ndvStore.activeNode = openAiNodeNoCreds;
+
+			renderComponent(
+				{
+					props: {
+						node: openAiNodeNoCreds,
+						overrideCredType: 'openAiApi',
+						hideEmptyCredentialSelect: true,
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('node-credentials-empty-select')).not.toBeInTheDocument();
 			expect(screen.queryByTestId('setup-credential-button')).toBeInTheDocument();
 		});
 
