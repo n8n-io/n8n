@@ -18,6 +18,13 @@ class HealthConfig {
 }
 
 @Config
+class RedisTlsConfig {
+	/** SNI extension servername for TLS handshake. */
+	@Env('QUEUE_BULL_REDIS_TLS_SERVERNAME')
+	serverName: string = '';
+}
+
+@Config
 class RedisConfig {
 	/** Redis database for Bull queue. */
 	@Env('QUEUE_BULL_REDIS_DB')
@@ -57,6 +64,9 @@ class RedisConfig {
 	/** Whether to enable TLS on Redis connections. */
 	@Env('QUEUE_BULL_REDIS_TLS')
 	tls: boolean = false;
+
+	@Nested
+	tlsConfig: RedisTlsConfig;
 
 	/**
 	 * DNS resolution strategy for Redis hostnames on initial client connection.
