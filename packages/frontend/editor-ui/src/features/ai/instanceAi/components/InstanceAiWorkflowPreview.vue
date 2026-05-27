@@ -184,17 +184,6 @@ provide(EditorExternalReadOnlyKey, isAgentEditingThisWorkflow);
 			@ready="emit('iframe-ready')"
 			@workflow-loaded="(id) => emit('workflow-loaded', id)"
 		/>
-
-		<!-- <N8nIconButton
-			v-if="workflowId"
-			icon="external-link"
-			variant="subtle"
-			size="large"
-			:class="$style.openWorkflowButton"
-			:aria-label="i18n.baseText('instanceAi.previewTabBar.openWorkflowInEditor')"
-			data-test-id="instance-ai-workflow-preview-open-editor"
-			@click="openWorkflowInEditor"
-		/> -->
 	</div>
 </template>
 
@@ -204,12 +193,5 @@ provide(EditorExternalReadOnlyKey, isAgentEditingThisWorkflow);
 	min-height: 0;
 	position: relative;
 	height: 100%;
-}
-
-.openWorkflowButton {
-	position: absolute;
-	top: var(--spacing--xs);
-	right: var(--spacing--xs);
-	z-index: 1;
 }
 </style>
