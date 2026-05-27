@@ -83,8 +83,9 @@ function matchesServerQuery(server: McpRegistryServer, normalizedQueries: string
 		server.title,
 		server.description,
 		server.tagline,
-		...(server.tags ?? []),
-	].map((field) => field.toLowerCase());
+	]
+		.map((field) => (typeof field === 'string' ? field.toLowerCase() : null))
+		.filter((field) => field !== null);
 
 	return normalizedQueries.some((query) => fields.some((field) => field.includes(query)));
 }
