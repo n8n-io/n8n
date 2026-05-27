@@ -286,6 +286,8 @@ export function useNodeExecution(
 				prompt,
 				`parameters.${AI_TRANSFORM_JS_CODE}`,
 				workflowDocumentStore.value.documentId,
+				ndvStore.activeNode,
+				ndvStore.pushRef,
 				5,
 			);
 
@@ -315,12 +317,12 @@ export function useNodeExecution(
 				value: prompt,
 			});
 
-			telemetry.trackAiTransform('generationFinished', {
+			telemetry.trackAiTransform('generationFinished', ndvStore.pushRef, {
 				prompt,
 				code: updateInformation.value,
 			});
 		} catch (error) {
-			telemetry.trackAiTransform('generationFinished', {
+			telemetry.trackAiTransform('generationFinished', ndvStore.pushRef, {
 				prompt: nodeRef.value?.parameters?.instructions as string,
 				code: '',
 				hasError: true,
