@@ -1956,14 +1956,28 @@ export class WorkflowExecute {
 							},
 						]);
 
+						// AI tools default to continue-on-fail: the agent should receive the
+						// error as a tool response so it can retry or give up. Workflow keeps
+						// running and the canvas still shows the failure because
+						// taskData.executionStatus stays 'error' (set above).
+						const isAiToolExecution =
+							executionNode.rewireOutputLogTo === NodeConnectionTypes.AiTool;
+
 						if (
 							executionData.node.continueOnFail === true ||
 							['continueRegularOutput', 'continueErrorOutput'].includes(
 								executionData.node.onError || '',
-							)
+							) ||
+							isAiToolExecution
 						) {
 							// Workflow should continue running even if node errors
-							if (Object.hasOwn(executionData.data, 'main') && executionData.data.main.length > 0) {
+							if (isAiToolExecution) {
+								// Surface the error on the ai_tool channel so the agent receives it
+								nodeSuccessData = [[{ json: { error: executionError.message } }]];
+							} else if (
+								Object.hasOwn(executionData.data, 'main') &&
+								executionData.data.main.length > 0
+							) {
 								// Simply get the input data of the node if it has any and pass it through
 								// to the next node
 								if (executionData.data.main[0] !== null) {
