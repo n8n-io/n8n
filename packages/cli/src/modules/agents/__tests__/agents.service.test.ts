@@ -1631,6 +1631,35 @@ describe('AgentsService', () => {
 			expect(result.missing).toContain('webSearch.credential');
 		});
 
+		it('flags fallback web search credential that does not exist', async () => {
+			credentialProvider.list.mockResolvedValue([{ id: 'main-cred' }]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					config: {
+						webSearch: {
+							enabled: true,
+							provider: 'brave',
+							credential: 'missing-web-search-cred',
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).not.toContain('credential');
+			expect(result.missing).toContain('webSearch.credential');
+		});
+
 		it('flags missing memory worker model credentials', async () => {
 			credentialProvider.list.mockResolvedValue([{ id: 'main-cred', type: 'openAiApi' }]);
 			const agent = makeAgent({

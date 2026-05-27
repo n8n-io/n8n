@@ -249,11 +249,12 @@ function onWebSearchMethodChange(value: WebSearchSelectValue) {
 	webSearchMethod.value = value;
 	webSearchEnabled.value = value !== 'off';
 	const method = value === 'off' ? 'native' : value;
-	if (value !== fallbackWebSearchProvider.value) {
+	const nextFallbackProvider = value === 'brave' || value === 'searxng' ? value : null;
+	if (nextFallbackProvider && nextFallbackProvider !== fallbackWebSearchProvider.value) {
 		fallbackWebSearchCredential.value = '';
 	}
-	if (value === 'brave' || value === 'searxng') {
-		fallbackWebSearchProvider.value = value;
+	if (nextFallbackProvider) {
+		fallbackWebSearchProvider.value = nextFallbackProvider;
 	}
 	emit(
 		'update:config',

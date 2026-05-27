@@ -217,6 +217,46 @@ describe('AgentAdvancedPanel', () => {
 		expect(last.providerTools).toEqual({ 'anthropic.web_search': { maxUses: 5 } });
 	});
 
+	it('preserves fallback web search credential when switching away and back to the same fallback provider', async () => {
+		const config = makeConfig({
+			config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-1' } },
+		} as Partial<AgentJsonConfig>);
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+
+		emitSelectValue(wrapper, 'agent-web-search-method', 'native');
+		await nextTick();
+		emitSelectValue(wrapper, 'agent-web-search-method', 'brave');
+		await nextTick();
+
+		const events = wrapper.emitted('update:config') ?? [];
+		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
+		expect(getWebSearchConfig(last)).toEqual({
+			enabled: true,
+			provider: 'brave',
+			credential: 'brave-1',
+		});
+	});
+
+	it('clears fallback web search credential when switching fallback providers', async () => {
+		const config = makeConfig({
+			config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-1' } },
+		} as Partial<AgentJsonConfig>);
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+
+		emitSelectValue(wrapper, 'agent-web-search-method', 'searxng');
+		await nextTick();
+
+		const events = wrapper.emitted('update:config') ?? [];
+		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
+		expect(getWebSearchConfig(last)).toEqual({ enabled: true, provider: 'searxng' });
+	});
+
 	it('switches native web search to fallback and strips native provider tools', async () => {
 		const config = makeConfig({
 			config: { webSearch: { enabled: true, provider: 'native' } },

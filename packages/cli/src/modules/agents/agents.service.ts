@@ -1025,10 +1025,21 @@ export class AgentsService {
 		const webSearch = config.config?.webSearch;
 		if (
 			webSearch?.enabled &&
-			(webSearch.provider === 'brave' || webSearch.provider === 'searxng') &&
-			!webSearch.credential?.trim()
+			(webSearch.provider === 'brave' || webSearch.provider === 'searxng')
 		) {
-			missing.push('webSearch.credential');
+			const webSearchCredentialId = webSearch.credential?.trim();
+			if (!webSearchCredentialId) {
+				missing.push('webSearch.credential');
+			} else {
+				try {
+					if (!(await credentialExists(webSearchCredentialId))) {
+						missing.push('webSearch.credential');
+					}
+				} catch {
+					// Keep the same behavior as other credential checks: runtime execution
+					// surfaces list/permission failures with the concrete error.
+				}
+			}
 		}
 
 		missing.push(

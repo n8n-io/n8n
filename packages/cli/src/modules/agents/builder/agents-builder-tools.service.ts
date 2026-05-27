@@ -68,7 +68,9 @@ function rejectIfUnsupportedNativeWebSearch(
 	const webSearch = config.config?.webSearch;
 	const requestsNativeWebSearch =
 		webSearch?.enabled === true &&
-		(webSearch.provider === undefined || webSearch.provider === 'native');
+		(webSearch.provider === undefined ||
+			webSearch.provider === 'auto' ||
+			webSearch.provider === 'native');
 	if (!requestsNativeWebSearch || hasNativeWebSearchProvider(config.model)) return null;
 	return {
 		errors: [

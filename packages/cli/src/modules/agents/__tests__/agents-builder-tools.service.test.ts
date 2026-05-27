@@ -329,6 +329,37 @@ describe('AgentsBuilderToolsService', () => {
 			expect(agentsService.updateConfig).not.toHaveBeenCalled();
 		});
 
+		it('write_config rejects auto web search for unsupported providers', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const updatedConfig: AgentJsonConfig = {
+				...currentConfig,
+				model: 'xai/grok-4',
+				config: { webSearch: { enabled: true, provider: 'auto' } },
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [
+					{
+						path: '/config/webSearch/provider',
+						message:
+							'Native web search is only supported for Anthropic and OpenAI models. Use Brave or SearXNG fallback web search for this model.',
+					},
+				],
+			});
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
+		});
+
 		it('write_config preserves fallback web search config for unsupported providers', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
