@@ -484,7 +484,7 @@ export function setRunExecutionData(
 	workflowState: WorkflowState,
 ) {
 	const workflowsStore = useWorkflowsStore();
-	const stateStore = useWorkflowExecutionStateStore(
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
 		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
 	const nodeHelpers = useNodeHelpers();
@@ -506,7 +506,7 @@ export function setRunExecutionData(
 		stoppedAt: execution.stoppedAt,
 	});
 	executionDataStore.setExecutionRunData(runExecutionData);
-	stateStore.setActiveExecutionId(undefined);
+	workflowExecutionStateStore.setActiveExecutionId(undefined);
 
 	// Set the node execution issues on all the nodes which produced an error so that
 	// it can be displayed in the node-view
@@ -523,7 +523,7 @@ export function setRunExecutionData(
 			runExecutionData.resultData.runData[lastNodeExecuted][0].data?.main[0]?.length ?? 0;
 	}
 
-	stateStore.setActiveExecutionId(undefined);
+	workflowExecutionStateStore.setActiveExecutionId(undefined);
 
 	void useExternalHooks().run('pushConnection.executionFinished', {
 		itemsCount,

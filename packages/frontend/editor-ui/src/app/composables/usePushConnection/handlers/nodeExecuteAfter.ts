@@ -20,7 +20,7 @@ export async function nodeExecuteAfter(
 	{ workflowState }: { workflowState: WorkflowState },
 ) {
 	const workflowsStore = useWorkflowsStore();
-	const stateStore = useWorkflowExecutionStateStore(
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
 		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
 	const assistantStore = useAssistantStore();
@@ -58,7 +58,7 @@ export async function nodeExecuteAfter(
 		},
 	};
 
-	const activeExecutionId = stateStore.activeExecutionId;
+	const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
 	if (typeof activeExecutionId === 'string') {
 		useExecutionDataStore(createExecutionDataId(activeExecutionId)).updateNodeExecutionStatus(
 			pushDataWithPlaceholderOutputData,
