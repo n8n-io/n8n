@@ -4,6 +4,7 @@ import type {
 	IExecutionContext,
 	IHttpRequestOptions,
 	INode,
+	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
 	OauthJweProxyProvider,
 	Result,
@@ -81,6 +82,19 @@ declare module 'n8n-workflow' {
 		workflowSettings?: IWorkflowSettings;
 		/** Encrypted credential context for a manual editor-triggered execution. */
 		encryptedRunnerIdentity?: string;
+	}
+
+	interface IWorkflowExecutionDataProcess {
+		/**
+		 * Invoked by `WorkflowRunner` once `additionalData` is fully built, just
+		 * before the workflow runs. Function fields don't survive queue
+		 * serialization, so callers using this hook must stay on the main process.
+		 *
+		 * @internal
+		 */
+		configureAdditionalData?: (
+			additionalData: IWorkflowExecuteAdditionalData,
+		) => Promise<void> | void;
 	}
 }
 

@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type {
@@ -10,8 +11,10 @@ import type {
 } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
+import type { ActiveExecutions } from '@/active-executions';
 import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
+import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 // ---------------------------------------------------------------------------
@@ -38,19 +41,23 @@ jest.mock('../workflow-analysis', () => ({
 	identifyNodesForHints: jest.fn(),
 	identifyNodesForPinData: jest.fn(),
 }));
+
+// Class-based mock — `jest.fn().mockImplementation(() => obj)` doesn't reliably return the object via `new`.
 const mockWireServerStart = jest.fn();
 const mockWireServerStop = jest.fn();
 const capturedWireServerOptions: { last: unknown } = { last: undefined };
-jest.mock('../llm-wire-server', () => ({
-	LlmWireServer: jest.fn().mockImplementation((options: unknown) => {
-		capturedWireServerOptions.last = options;
-		return {
-			start: mockWireServerStart,
-			stop: mockWireServerStop,
-			url: 'http://127.0.0.1:54321',
-		};
-	}),
-}));
+jest.mock('../llm-wire-server', () => {
+	class MockLlmWireServer {
+		start = mockWireServerStart;
+		stop = mockWireServerStop;
+		url = 'http://127.0.0.1:54321';
+		constructor(options: unknown) {
+			capturedWireServerOptions.last = options;
+		}
+	}
+	return { LlmWireServer: MockLlmWireServer };
+});
+
 const mockRestoreNoProxy = jest.fn();
 jest.mock('../proxy-loopback', () => ({
 	patchNoProxyForLoopback: jest.fn(() => mockRestoreNoProxy),
@@ -58,37 +65,18 @@ jest.mock('../proxy-loopback', () => ({
 jest.mock('@n8n/workflow-sdk', () => ({
 	normalizePinData: jest.fn((pd: unknown) => pd),
 }));
-jest.mock('@/workflow-execute-additional-data', () => ({
-	getBase: jest.fn().mockResolvedValue({
-		hooks: undefined,
-		evalLlmMockHandler: undefined,
-	}),
-}));
 
-// WorkflowExecute is a class instantiated with `new` — mock it so
-// processRunExecutionData returns a controllable IRun.
-const mockProcessRunExecutionData = jest.fn();
-jest.mock('n8n-core', () => {
-	const actual = jest.requireActual('n8n-core');
-	return {
-		...actual,
-		WorkflowExecute: jest.fn().mockImplementation(() => ({
-			processRunExecutionData: mockProcessRunExecutionData,
-		})),
-		ExecutionLifecycleHooks: jest.fn().mockImplementation(() => ({})),
-	};
-});
-
-// Workflow is a class instantiated with `new` — mock getStartNode
+// Same constructor-protocol gotcha — use a class so `new Workflow()` returns an instance with `getStartNode`.
 const mockGetStartNode = jest.fn();
 jest.mock('n8n-workflow', () => {
 	const actual = jest.requireActual('n8n-workflow');
+	class MockWorkflow {
+		nodes = {};
+		getStartNode = mockGetStartNode;
+	}
 	return {
 		...actual,
-		Workflow: jest.fn().mockImplementation(() => ({
-			getStartNode: mockGetStartNode,
-			nodes: {},
-		})),
+		Workflow: MockWorkflow,
 	};
 });
 
@@ -190,31 +178,74 @@ function makeStartNode(): INode {
 // ---------------------------------------------------------------------------
 
 describe('EvalExecutionService', () => {
+	const DB_EXECUTION_ID = 'exec-42';
+
 	let service: EvalExecutionService;
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const nodeTypes = mock<NodeTypes>();
 	const logger = mock<Logger>();
 	const postHogClient = mock<PostHogClient>();
+	const workflowRunner = mock<WorkflowRunner>();
+	const activeExecutions = mock<ActiveExecutions>();
+	const executionsConfig = mock<ExecutionsConfig>({ mode: 'regular' });
+
+	// Captured configureAdditionalData closure so tests can re-invoke it on a
+	// stub additionalData without booting the real runner.
+	let lastConfigureAdditionalData:
+		| ((ad: { credentialsHelper?: unknown; evalLlmMockHandler?: unknown }) => unknown)
+		| undefined;
+
+	function makeMockedAdditionalData() {
+		return {
+			credentialsHelper: { resolve: jest.fn() },
+			evalLlmMockHandler: undefined as unknown,
+		};
+	}
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		lastConfigureAdditionalData = undefined;
 
-		service = new EvalExecutionService(workflowFinderService, nodeTypes, logger, postHogClient);
+		service = new EvalExecutionService(
+			workflowFinderService,
+			nodeTypes,
+			logger,
+			postHogClient,
+			workflowRunner,
+			activeExecutions,
+			executionsConfig,
+		);
+		// Reset to safe default — tests that flip queue mode reassign in-test.
+		Object.assign(executionsConfig, { mode: 'regular' });
 
-		// Default mock returns — happy path. partitionAiRoots returns an empty
-		// partition (no AI roots in the test workflow) so the kill-switch
-		// short-circuits and the wire server stays off unless a test overrides.
+		// Root jest config sets `restoreMocks: true`, which strips implementations
+		// between tests — re-set every impl we depend on here.
 		identifyNodesForHintsMock.mockReturnValue([]);
 		identifyNodesForPinDataMock.mockReturnValue([]);
 		partitionAiRootsMock.mockReturnValue({ unpinNodes: [], pinNodes: [], autoPinned: [] });
 		generateMockHintsMock.mockResolvedValue(makeEmptyHints());
 		createLlmMockHandlerMock.mockReturnValue(jest.fn());
 		mockGetStartNode.mockReturnValue(makeStartNode());
-		mockProcessRunExecutionData.mockResolvedValue(makeIRun());
 		mockWireServerStart.mockResolvedValue('http://127.0.0.1:54321');
 		mockWireServerStop.mockResolvedValue(undefined);
 		// Default: kill-switch enabled. Tests that need it off flip this.
 		postHogClient.getFeatureFlags.mockResolvedValue({});
+
+		const proxyLoopback = require('../proxy-loopback') as {
+			patchNoProxyForLoopback: jest.Mock;
+		};
+		proxyLoopback.patchNoProxyForLoopback.mockImplementation(() => mockRestoreNoProxy);
+
+		// Mirror runMainProcess: capture + invoke the closure on a stub additionalData.
+		workflowRunner.run.mockImplementation(async (data) => {
+			const ad = makeMockedAdditionalData();
+			lastConfigureAdditionalData = data.configureAdditionalData;
+			if (data.configureAdditionalData) {
+				await data.configureAdditionalData(ad as never);
+			}
+			return DB_EXECUTION_ID;
+		});
+		activeExecutions.getPostExecutePromise.mockResolvedValue(makeIRun());
 
 		// NodeTypes.getByNameAndVersion returns a minimal node type with no webhook
 		nodeTypes.getByNameAndVersion.mockReturnValue({
@@ -304,12 +335,70 @@ describe('EvalExecutionService', () => {
 			);
 		});
 
-		it('returns executionId in the result', async () => {
+		it('returns the DB-assigned executionId from workflowRunner.run', async () => {
 			const result = await service.executeWithLlmMock('wf-1', makeUser());
 
-			expect(result.executionId).toBeDefined();
-			expect(typeof result.executionId).toBe('string');
-			expect(result.executionId.length).toBeGreaterThan(0);
+			expect(result.executionId).toBe(DB_EXECUTION_ID);
+		});
+
+		it('routes through WorkflowRunner with evaluation mode + pin data + user', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = { body: { email: 'jane@example.com' } };
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({
+					executionMode: 'evaluation',
+					userId: 'user-1',
+					workflowData: expect.objectContaining({ id: 'wf-1' }),
+					pinData: expect.objectContaining({
+						Webhook: [{ json: { body: { email: 'jane@example.com' } } }],
+					}),
+					configureAdditionalData: expect.any(Function),
+				}),
+			);
+		});
+
+		it('awaits the run via ActiveExecutions.getPostExecutePromise', async () => {
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith(DB_EXECUTION_ID);
+		});
+
+		it('wraps additionalData.credentialsHelper inside configureAdditionalData', async () => {
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const ad = makeMockedAdditionalData();
+			const originalHelper = ad.credentialsHelper;
+			await lastConfigureAdditionalData!(ad as never);
+
+			// The helper should be replaced (wrapped) — not the same reference.
+			expect(ad.credentialsHelper).not.toBe(originalHelper);
+			// And the eval LLM handler should be set.
+			expect(ad.evalLlmMockHandler).toEqual(expect.any(Function));
+		});
+
+		it('returns a partial-failure result when the run resolves with undefined', async () => {
+			activeExecutions.getPostExecutePromise.mockResolvedValue(undefined);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(result.success).toBe(false);
+			expect(result.executionId).toBe(DB_EXECUTION_ID);
+			expect(result.errors).toEqual([expect.stringContaining('no run data')]);
+		});
+
+		it('refuses to run in queue mode before touching anything else', async () => {
+			Object.assign(executionsConfig, { mode: 'queue' });
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(result.success).toBe(false);
+			expect(result.errors).toEqual([expect.stringContaining('queue mode')]);
+			expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 	});
 
@@ -355,7 +444,7 @@ describe('EvalExecutionService', () => {
 
 			expect(result.success).toBe(false);
 			expect(result.errors).toEqual([expect.stringContaining('not found in workflow')]);
-			expect(mockProcessRunExecutionData).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
 			expect(mockWireServerStart).not.toHaveBeenCalled();
 		});
 
@@ -382,7 +471,7 @@ describe('EvalExecutionService', () => {
 				// No refusal — the eval still completes through the pinned path.
 				expect(result.errors).toEqual([]);
 				expect(mockWireServerStart).not.toHaveBeenCalled();
-				expect(mockProcessRunExecutionData).toHaveBeenCalledTimes(1);
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			});
 
 			it('does not consult PostHog when the partition has nothing to intercept', async () => {
@@ -431,13 +520,13 @@ describe('EvalExecutionService', () => {
 				await service.executeWithLlmMock('wf-1', makeUser());
 
 				expect(mockWireServerStart).toHaveBeenCalledTimes(1);
-				expect(mockProcessRunExecutionData).toHaveBeenCalledTimes(1);
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 				expect(mockWireServerStop).toHaveBeenCalledTimes(1);
 				expect(mockRestoreNoProxy).toHaveBeenCalledTimes(1);
 			});
 
 			it('tears down the wire server even if the workflow run throws', async () => {
-				mockProcessRunExecutionData.mockRejectedValue(new Error('explode'));
+				workflowRunner.run.mockRejectedValue(new Error('explode'));
 
 				const result = await service.executeWithLlmMock('wf-1', makeUser());
 
@@ -475,10 +564,11 @@ describe('EvalExecutionService', () => {
 
 			it('records a wire-server turn against the AI root in nodeResults via onIntercept', async () => {
 				// Simulate the wire server firing onIntercept mid-execution by
-				// invoking the captured callback before processRunExecutionData
-				// resolves. This exercises `recordWireServerTurn` end-to-end
-				// without booting a real Express server.
-				mockProcessRunExecutionData.mockImplementation(async () => {
+				// invoking the captured callback after run() returns but before
+				// getPostExecutePromise resolves. This exercises
+				// `recordWireServerTurn` end-to-end without booting a real
+				// Express server.
+				activeExecutions.getPostExecutePromise.mockImplementation(async () => {
 					const opts = capturedWireServerOptions.last as {
 						onIntercept?: (turn: unknown) => void;
 					};
@@ -509,12 +599,6 @@ describe('EvalExecutionService', () => {
 			});
 
 			it('preserves a pre-existing pinned executionMode when a wire-server turn fires for the same name', async () => {
-				// Force a name collision between the bypass-pin path and the
-				// wire-server interception path. The bypass-pin loop in
-				// execute() pre-marks `bypassPinData` keys as 'pinned' BEFORE
-				// runWorkflow fires, so injecting 'Agent' into bypassPinData
-				// (and then firing onIntercept for the same name during the
-				// mocked run) exercises the genuine collision case.
 				generateMockHintsMock.mockResolvedValue({
 					...makeEmptyHints(),
 					bypassPinData: {
@@ -522,7 +606,7 @@ describe('EvalExecutionService', () => {
 					},
 				});
 
-				mockProcessRunExecutionData.mockImplementation(async () => {
+				activeExecutions.getPostExecutePromise.mockImplementation(async () => {
 					const opts = capturedWireServerOptions.last as {
 						onIntercept?: (turn: unknown) => void;
 					};
@@ -541,7 +625,6 @@ describe('EvalExecutionService', () => {
 
 				// 'pinned' from the bypass pass survives — preservation rule.
 				expect(result.nodeResults['Agent'].executionMode).toBe('pinned');
-				// The turn is still recorded against the same entry.
 				expect(result.nodeResults['Agent'].interceptedRequests).toHaveLength(1);
 			});
 
@@ -549,9 +632,9 @@ describe('EvalExecutionService', () => {
 			// two kinds of traffic — vendor-SDK model turns (attributed to the AI
 			// root via the wire server's URL path) and tool HTTP traffic
 			// (attributed to the tool node via the existing helpers.httpRequest
-			// interceptor in `request-helper-functions.ts:1147`). The two must
-			// land in separate `nodeResults` entries; tools whose HTTP traffic
-			// gets folded into the Agent's ledger would mask real bugs.
+			// interceptor). The two must land in separate `nodeResults` entries;
+			// tools whose HTTP traffic gets folded into the Agent's ledger would
+			// mask real bugs.
 			it('splits the ledger: model turns to the Agent root, tool HTTP to the tool node', async () => {
 				const innerMockHandler = jest.fn().mockResolvedValue({
 					body: { content: 'tool result' },
@@ -560,7 +643,22 @@ describe('EvalExecutionService', () => {
 				});
 				createLlmMockHandlerMock.mockReturnValue(innerMockHandler);
 
-				mockProcessRunExecutionData.mockImplementation(async () => {
+				// Capture the configureAdditionalData closure so we can invoke
+				// the evalLlmMockHandler it installs (tool-HTTP path).
+				let capturedAd:
+					| {
+							credentialsHelper: unknown;
+							evalLlmMockHandler?: (req: unknown, node: unknown) => Promise<unknown>;
+					  }
+					| undefined;
+				workflowRunner.run.mockImplementation(async (data) => {
+					const ad = makeMockedAdditionalData();
+					await data.configureAdditionalData?.(ad as never);
+					capturedAd = ad;
+					return DB_EXECUTION_ID;
+				});
+
+				activeExecutions.getPostExecutePromise.mockImplementation(async () => {
 					const opts = capturedWireServerOptions.last as {
 						onIntercept?: (turn: unknown) => void;
 					};
@@ -576,27 +674,15 @@ describe('EvalExecutionService', () => {
 						},
 					});
 
-					// Tool HTTP — `evalLlmMockHandler` is invoked from
-					// `request-helper-functions.ts` with the tool node's
-					// identity. The SUT passes `additionalData` as the first
-					// positional argument to the `WorkflowExecute` constructor
-					// (see `runWorkflow()` in `execution.service.ts`). If that
-					// contract ever changes, the explicit guard below fails
-					// loudly with an actionable message instead of silently
-					// reading the wrong argument slot.
-					const wfExecuteCtor = jest.mocked(
-						(await import('n8n-core')).WorkflowExecute,
-					) as unknown as jest.Mock;
-					const additionalData = wfExecuteCtor.mock.calls[0][0] as {
-						evalLlmMockHandler?: (req: unknown, node: unknown) => Promise<unknown>;
-					};
-					if (!additionalData?.evalLlmMockHandler) {
+					// Tool HTTP — invoked from `request-helper-functions.ts` with
+					// the tool node's identity. We pulled it off the stub
+					// additionalData via configureAdditionalData above.
+					if (!capturedAd?.evalLlmMockHandler) {
 						throw new Error(
-							'WorkflowExecute(additionalData, ...) contract changed — ' +
-								'arg 0 no longer carries evalLlmMockHandler. Update the ledger-split test.',
+							'configureAdditionalData did not install evalLlmMockHandler — ledger-split test invariant broken.',
 						);
 					}
-					await additionalData.evalLlmMockHandler(
+					await capturedAd.evalLlmMockHandler(
 						{ url: 'https://orders.example.com/v1/orders/42', method: 'GET' },
 						{
 							id: 'tool-node',
@@ -639,11 +725,6 @@ describe('EvalExecutionService', () => {
 			});
 
 			it('upgrades a pre-marked "real" entry to "mocked" when a wire-server turn fires', async () => {
-				// checkNodeConfig() pre-marks any node with a config-issue as
-				// `executionMode: 'real'` BEFORE runWorkflow runs. If a wire-
-				// server turn later arrives for that node, the turn IS mocked
-				// and should be classified as such — 'real' must not stick.
-				// Reproduce by making the node's config check fail.
 				nodeTypes.getByNameAndVersion.mockReturnValue({
 					description: {
 						properties: [
@@ -658,7 +739,7 @@ describe('EvalExecutionService', () => {
 					} as unknown as INodeTypeDescription,
 				} as never);
 
-				mockProcessRunExecutionData.mockImplementation(async () => {
+				activeExecutions.getPostExecutePromise.mockImplementation(async () => {
 					const opts = capturedWireServerOptions.last as {
 						onIntercept?: (turn: unknown) => void;
 					};
@@ -690,7 +771,7 @@ describe('EvalExecutionService', () => {
 		});
 
 		it('returns success=true when no errors in run data', async () => {
-			mockProcessRunExecutionData.mockResolvedValue(
+			activeExecutions.getPostExecutePromise.mockResolvedValue(
 				makeIRun({
 					data: {
 						resultData: {
@@ -717,7 +798,7 @@ describe('EvalExecutionService', () => {
 		});
 
 		it('captures node errors from run data', async () => {
-			mockProcessRunExecutionData.mockResolvedValue(
+			activeExecutions.getPostExecutePromise.mockResolvedValue(
 				makeIRun({
 					data: {
 						resultData: {
@@ -747,7 +828,7 @@ describe('EvalExecutionService', () => {
 		});
 
 		it('captures workflow-level execution error', async () => {
-			mockProcessRunExecutionData.mockResolvedValue(
+			activeExecutions.getPostExecutePromise.mockResolvedValue(
 				makeIRun({
 					data: {
 						resultData: {
@@ -767,7 +848,7 @@ describe('EvalExecutionService', () => {
 		});
 
 		it('sets executionMode to "real" for logic nodes in run data', async () => {
-			mockProcessRunExecutionData.mockResolvedValue(
+			activeExecutions.getPostExecutePromise.mockResolvedValue(
 				makeIRun({
 					data: {
 						resultData: {
@@ -794,7 +875,7 @@ describe('EvalExecutionService', () => {
 		});
 
 		it('captures startTime from run data', async () => {
-			mockProcessRunExecutionData.mockResolvedValue(
+			activeExecutions.getPostExecutePromise.mockResolvedValue(
 				makeIRun({
 					data: {
 						resultData: {
@@ -821,7 +902,7 @@ describe('EvalExecutionService', () => {
 
 		it('captures output limited to MAX_OUTPUT_ITEMS_PER_NODE and reports full outputCount', async () => {
 			const items = Array.from({ length: 15 }, (_, i) => ({ json: { idx: i } }));
-			mockProcessRunExecutionData.mockResolvedValue(
+			activeExecutions.getPostExecutePromise.mockResolvedValue(
 				makeIRun({
 					data: {
 						resultData: {
@@ -870,8 +951,6 @@ describe('EvalExecutionService', () => {
 			const hints = makeEmptyHints();
 			hints.triggerContent = {};
 			generateMockHintsMock.mockResolvedValue(hints);
-
-			mockProcessRunExecutionData.mockResolvedValue(makeIRun());
 
 			const result = await service.executeWithLlmMock('wf-1', makeUser());
 

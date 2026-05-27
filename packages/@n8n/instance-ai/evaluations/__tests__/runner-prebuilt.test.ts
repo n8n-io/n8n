@@ -69,6 +69,7 @@ describe('runWorkflowTestCase with prebuiltWorkflowId', () => {
 
 		const result = await runWorkflowTestCase({
 			client,
+			baseUrl: 'http://localhost:5678',
 			testCase: makeTestCase(),
 			timeoutMs: 60_000,
 			seededCredentialTypes: [],
@@ -100,6 +101,7 @@ describe('runWorkflowTestCase with prebuiltWorkflowId', () => {
 
 		const result = await runWorkflowTestCase({
 			client,
+			baseUrl: 'http://localhost:5678',
 			testCase: makeTestCase(),
 			timeoutMs: 60_000,
 			seededCredentialTypes: [],

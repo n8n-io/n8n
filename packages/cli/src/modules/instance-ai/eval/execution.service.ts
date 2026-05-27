@@ -5,16 +5,12 @@ import {
 	type InstanceAiEvalExecutionResult,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { normalizePinData } from '@n8n/workflow-sdk';
-import {
-	type EvalLlmMockHandler,
-	type EvalMockHttpResponse,
-	ExecutionLifecycleHooks,
-	WorkflowExecute,
-} from 'n8n-core';
+import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
 import {
 	type IDataObject,
 	type IHttpRequestOptions,
@@ -24,6 +20,7 @@ import {
 	type IRunExecutionData,
 	type IWorkflowBase,
 	type IWorkflowExecuteAdditionalData,
+	type IWorkflowExecutionDataProcess,
 	createRunExecutionData,
 	NodeHelpers,
 	UserError,
@@ -31,9 +28,10 @@ import {
 } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
+import { ActiveExecutions } from '@/active-executions';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
-import { getBase } from '@/workflow-execute-additional-data';
+import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
@@ -72,6 +70,9 @@ export class EvalExecutionService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly logger: Logger,
 		private readonly postHogClient: PostHogClient,
+		private readonly workflowRunner: WorkflowRunner,
+		private readonly activeExecutions: ActiveExecutions,
+		private readonly executionsConfig: ExecutionsConfig,
 	) {}
 
 	async executeWithLlmMock(
@@ -79,14 +80,22 @@ export class EvalExecutionService {
 		user: User,
 		options: InstanceAiEvalExecutionRequest = {},
 	): Promise<InstanceAiEvalExecutionResult> {
-		const executionId = randomUUID();
+		// Eval routes through WorkflowRunner with a configureAdditionalData closure
+		// that doesn't survive queue serialization. Refuse upfront so vendor calls
+		// can never leak to real providers from a worker that never wires the mock.
+		if (this.executionsConfig.mode === 'queue') {
+			return this.errorResult(
+				randomUUID(),
+				'Eval execution requires main process mode — queue mode is not supported.',
+			);
+		}
 
 		const workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:execute',
 		]);
 
 		if (!workflowEntity) {
-			return this.errorResult(executionId, `Workflow ${workflowId} not found or not accessible`);
+			return this.errorResult(randomUUID(), `Workflow ${workflowId} not found or not accessible`);
 		}
 
 		// Partition AI roots into "intercept via wire server" vs "leave pinned".
@@ -98,7 +107,7 @@ export class EvalExecutionService {
 			partitioned = partitionAiRoots(workflowEntity, options.pinNodes ?? []);
 		} catch (error) {
 			if (error instanceof UserError) {
-				return this.errorResult(executionId, error.message);
+				return this.errorResult(randomUUID(), error.message);
 			}
 			throw error;
 		}
@@ -132,7 +141,6 @@ export class EvalExecutionService {
 		return await this.execute(
 			workflowEntity,
 			user,
-			executionId,
 			hints,
 			options.scenarioHints,
 			interceptionEnabled,
@@ -246,7 +254,6 @@ export class EvalExecutionService {
 	private async execute(
 		workflowEntity: IWorkflowBase,
 		user: User,
-		executionId: string,
 		hints: MockHints,
 		scenarioHints?: string,
 		interceptionEnabled = false,
@@ -258,7 +265,7 @@ export class EvalExecutionService {
 		const startNode = this.findStartNode(workflow);
 
 		if (!startNode) {
-			return this.errorResult(executionId, 'No trigger or start node found in the workflow');
+			return this.errorResult(randomUUID(), 'No trigger or start node found in the workflow');
 		}
 
 		const mockHandler = createLlmMockHandler({
@@ -267,16 +274,28 @@ export class EvalExecutionService {
 			nodeHints: hints.nodeHints,
 		});
 
-		const additionalData = await getBase({
-			userId: user.id,
-			workflowId: workflowEntity.id,
-			workflowSettings: workflowEntity.settings ?? {},
-		});
+		const triggerPinData = this.buildTriggerPinData(startNode, hints.triggerContent);
+		const pinData: IPinData = { ...triggerPinData, ...hints.bypassPinData };
+		const pinDataNodeNames = Object.keys(pinData);
+
+		// Check config completeness before execution — detect missing required parameters
+		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
+		const executionData = this.buildExecutionData(startNode, pinData);
+
+		// Mark the trigger node as pinned (it gets its output from pin data, not execution).
+		if (Object.keys(triggerPinData).length > 0) {
+			this.markNodeAsPinned(startNode.name, nodeResults);
+		}
+		for (const nodeName of Object.keys(hints.bypassPinData)) {
+			this.markNodeAsPinned(nodeName, nodeResults);
+		}
 
 		// try/finally wraps boot so a throw never leaks the server or NO_PROXY patch.
 		let wireServer: LlmWireServer | undefined;
 		let restoreNoProxy: (() => void) | undefined;
 		let credentialsHelper: EvalMockedCredentialsHelper | undefined;
+		let dbExecutionId: string | undefined;
+
 		try {
 			let serverUrl: string | undefined;
 			if (interceptionEnabled) {
@@ -291,37 +310,44 @@ export class EvalExecutionService {
 				this.logger.debug(`[EvalMock] Wire server listening at ${serverUrl}`);
 			}
 
-			credentialsHelper = new EvalMockedCredentialsHelper(
-				additionalData.credentialsHelper,
-				serverUrl,
-				this.logger,
-				vendorLlmRouting?.subNodeToRoot,
-			);
-			additionalData.credentialsHelper = credentialsHelper;
-			additionalData.evalLlmMockHandler = this.createInterceptingHandler(mockHandler, nodeResults);
-			additionalData.hooks = new ExecutionLifecycleHooks('evaluation', executionId, workflowEntity);
+			const runData: IWorkflowExecutionDataProcess = {
+				executionMode: 'evaluation',
+				workflowData: workflowEntity,
+				userId: user.id,
+				executionData,
+				pinData,
+				configureAdditionalData: (additionalData: IWorkflowExecuteAdditionalData) => {
+					credentialsHelper = new EvalMockedCredentialsHelper(
+						additionalData.credentialsHelper,
+						serverUrl,
+						this.logger,
+						vendorLlmRouting?.subNodeToRoot,
+					);
+					additionalData.credentialsHelper = credentialsHelper;
+					additionalData.evalLlmMockHandler = this.createInterceptingHandler(
+						mockHandler,
+						nodeResults,
+					);
+				},
+			};
 
-			const triggerPinData = this.buildTriggerPinData(startNode, hints.triggerContent);
-			const pinData: IPinData = { ...triggerPinData, ...hints.bypassPinData };
-			const pinDataNodeNames = Object.keys(pinData);
+			dbExecutionId = await this.workflowRunner.run(runData);
+			const runResult = await this.activeExecutions.getPostExecutePromise(dbExecutionId);
 
-			// Check config completeness before execution — detect missing required parameters
-			this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
-			const executionData = this.buildExecutionData(startNode, pinData);
-
-			// Mark the trigger node as pinned (it gets its output from pin data, not execution).
-			if (Object.keys(triggerPinData).length > 0) {
-				this.markNodeAsPinned(startNode.name, nodeResults);
+			if (!runResult) {
+				return this.buildPartialFailureResult(
+					dbExecutionId,
+					new Error('Execution finished with no run data'),
+					nodeResults,
+					hints,
+					credentialsHelper,
+				);
 			}
-			for (const nodeName of Object.keys(hints.bypassPinData)) {
-				this.markNodeAsPinned(nodeName, nodeResults);
-			}
 
-			const result = await this.runWorkflow(workflow, additionalData, executionData);
-			return this.buildResult(executionId, result, nodeResults, hints, credentialsHelper);
+			return this.buildResult(dbExecutionId, runResult, nodeResults, hints, credentialsHelper);
 		} catch (error: unknown) {
 			return this.buildPartialFailureResult(
-				executionId,
+				dbExecutionId ?? randomUUID(),
 				error,
 				nodeResults,
 				hints,
@@ -419,11 +445,8 @@ export class EvalExecutionService {
 	}
 
 	/**
-	 * Build execution data with the trigger node on the execution stack.
-	 * We use processRunExecutionData() instead of run() because run() relies on
-	 * getStartNode() which doesn't find webhook nodes (they define `webhook`,
-	 * not `trigger`). This follows the same pattern as InstanceAiAdapterService.
-	 * Pin data carries the trigger's output; the execution stack just marks where to start.
+	 * Build execution data with the trigger node on the execution stack so
+	 * webhook-style triggers (which don't define `trigger`) get a known start.
 	 */
 	private buildExecutionData(startNode: INode, pinData: IPinData): IRunExecutionData {
 		return createRunExecutionData({
@@ -443,15 +466,6 @@ export class EvalExecutionService {
 				waitingExecutionSource: {},
 			},
 		});
-	}
-
-	private async runWorkflow(
-		workflow: Workflow,
-		additionalData: IWorkflowExecuteAdditionalData,
-		executionData: IRunExecutionData,
-	): Promise<IRun> {
-		const workflowExecute = new WorkflowExecute(additionalData, 'evaluation', executionData);
-		return await workflowExecute.processRunExecutionData(workflow);
 	}
 
 	// ── Request interception ─────────────────────────────────────────────
@@ -581,7 +595,7 @@ export class EvalExecutionService {
 		result: IRun,
 		nodeResults: Record<string, InstanceAiEvalNodeResult>,
 		hints: MockHints,
-		credentialsHelper: EvalMockedCredentialsHelper,
+		credentialsHelper: EvalMockedCredentialsHelper | undefined,
 	): InstanceAiEvalExecutionResult {
 		const errors: string[] = [];
 
@@ -623,8 +637,8 @@ export class EvalExecutionService {
 			nodeResults,
 			errors,
 			hints,
-			mockedCredentials: credentialsHelper.mockedCredentials,
-			rewrittenCredentials: credentialsHelper.rewrittenCredentials,
+			mockedCredentials: credentialsHelper?.mockedCredentials ?? [],
+			rewrittenCredentials: credentialsHelper?.rewrittenCredentials ?? [],
 		};
 	}
 

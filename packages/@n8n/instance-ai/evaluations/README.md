@@ -108,7 +108,9 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --verbose
 # Single test case (filename substring match)
 dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --filter contact-form --verbose
 
-# Keep built workflows for inspection after the run
+# Keep built workflows for inspection after the run. With --keep-workflows,
+# each scenario's persisted canvas execution is reachable via the
+# "view in n8n" link in the HTML report.
 dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --filter contact-form --keep-workflows
 
 # Multi-iteration for pass@k / pass^k metrics
@@ -123,7 +125,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--filter` | — | Filter test cases by filename substring. Comma-separated values mean OR (e.g. `contact-form,deduplication`) |
 | `--exclude` | — | Skip test cases whose filename matches any of the substrings. Same comma-separated shape as `--filter`; applied after `--filter` |
 | `--prebuilt-workflows` | — | Path to a JSON manifest mapping test-case slugs to existing workflow IDs. Skips the orchestrator build for matched test cases — see [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows) |
-| `--keep-workflows` | `false` | Don't delete built workflows after the run |
+| `--keep-workflows` | `false` | Don't delete built workflows after the run. Pair with the HTML report's "view in n8n" links to inspect each scenario's canvas execution |
 | `--base-url` | `http://localhost:5678` | n8n instance URL |
 | `--email` | E2E test owner | Override login email (or `N8N_EVAL_EMAIL`) |
 | `--password` | E2E test owner | Override login password (or `N8N_EVAL_PASSWORD`) |
