@@ -109,6 +109,11 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 
 <style lang="scss" module>
 .reasoningTrigger {
+	--button--padding: 0;
+	--button--font-size: var(--font-size--sm);
+
+	padding-inline: 0;
+	font-size: var(--font-size--sm);
 	color: var(--color--text--tint-2);
 }
 

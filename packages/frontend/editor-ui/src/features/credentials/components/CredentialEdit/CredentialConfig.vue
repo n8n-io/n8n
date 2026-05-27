@@ -26,7 +26,6 @@ import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
@@ -48,6 +47,7 @@ import { ElSwitch } from 'element-plus';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import QuickConnectButton from '../../quickConnect/components/QuickConnectButton.vue';
 import QuickConnectBanner from '../../quickConnect/components/QuickConnectBanner.vue';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 type Props = {
 	mode: string;
@@ -89,6 +89,7 @@ const emit = defineEmits<{
 	retest: [];
 	oauth: [];
 	quickConnect: [];
+	claimed: [];
 	'update:isResolvable': [value: boolean];
 }>();
 
@@ -96,7 +97,7 @@ const credentialsStore = useCredentialsStore();
 const ndvStore = useNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 
@@ -189,6 +190,16 @@ const showOAuthSuccessBanner = computed(() => {
 	);
 });
 
+const showOAuthNotConnectedBanner = computed(() => {
+	return (
+		props.isOAuthType &&
+		props.isResolvable &&
+		props.requiredPropertiesFilled &&
+		!props.isOAuthConnected &&
+		!props.authError
+	);
+});
+
 const isMissingCredentials = computed(() => props.credentialType === null);
 
 const isNewCredential = computed(() => props.mode === 'new' && !props.credentialId);
@@ -242,7 +253,7 @@ function onDocumentationUrlClick(): void {
 		docs_link: documentationUrl.value,
 		credential_type: credentialTypeName.value,
 		source: 'modal',
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 	});
 }
 
@@ -281,7 +292,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	</N8nCallout>
 	<div v-else>
 		<div :class="$style.config" data-test-id="node-credentials-config-container">
-			<FreeAiCreditsCallout :credential-type-name="credentialType?.name" />
+			<FreeAiCreditsCallout
+				:credential-type-name="credentialType?.name"
+				@claimed="$emit('claimed')"
+			/>
 
 			<CredentialModeSelector
 				v-if="canWrite"
@@ -310,7 +324,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 			<template v-else>
 				<N8nCallout
-					v-if="documentationUrl && credentialProperties.length && !isManagedOAuth"
+					v-if="documentationUrl && credentialProperties.length && !isManagedOAuth && canWrite"
 					:class="$style.docsCallout"
 					theme="custom"
 					iconless
@@ -354,6 +368,30 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:button-loading="isRetesting"
 					@click="$emit('retest')"
 				/>
+
+				<Banner
+					v-show="showOAuthNotConnectedBanner && !showValidationWarning"
+					theme="warning"
+					:message="i18n.baseText('credentialEdit.credentialConfig.accountNotConnected')"
+					:button-label="i18n.baseText('credentialEdit.credentialConfig.connect')"
+					:button-title="i18n.baseText('credentialEdit.credentialConfig.connectOAuth2Credential')"
+					data-test-id="oauth-not-connected-banner"
+					@click="$emit('oauth')"
+				>
+					<template v-if="isGoogleOAuthType" #button>
+						<GoogleAuthButton @click="$emit('oauth')" />
+					</template>
+					<template v-else #button>
+						<QuickConnectButton
+							size="small"
+							:service-name="serviceName"
+							:credential-type-name="credentialType.name"
+							:label="i18n.baseText('credentialEdit.credentialConfig.connect')"
+							data-test-id="quick-connect-not-connected-button"
+							@click="$emit('oauth')"
+						/>
+					</template>
+				</Banner>
 
 				<Banner
 					v-show="showOAuthSuccessBanner && !showValidationWarning"

@@ -1,6 +1,13 @@
-import { Tool } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
-import { agentSkillSchema } from '@n8n/api-types';
+import {
+	agentSkillSchema,
+	formatZodErrors,
+	RunnableAgentJsonConfigSchema,
+	tryParseConfigJson,
+	type AgentJsonConfig,
+	type ConfigValidationError,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -11,12 +18,6 @@ import { z } from 'zod';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
-import type { AgentJsonConfig, ConfigValidationError } from '../json-config/agent-json-config';
-import {
-	AgentJsonConfigSchema,
-	formatZodErrors,
-	tryParseConfigJson,
-} from '../json-config/agent-json-config';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { BuilderModelLookupService } from './builder-model-lookup.service';
 import {
@@ -184,7 +185,7 @@ export class AgentsBuilderToolsService {
 					if (baseConfigHash !== snapshot.configHash) {
 						return { ok: false, stage: 'stale', errors: [STALE_CONFIG_ERROR], ...snapshot };
 					}
-					const zodResult = AgentJsonConfigSchema.safeParse(parsed.data);
+					const zodResult = RunnableAgentJsonConfigSchema.safeParse(parsed.data);
 					if (!zodResult.success) {
 						return { ok: false, errors: formatZodErrors(zodResult.error) };
 					}
@@ -285,7 +286,7 @@ export class AgentsBuilderToolsService {
 					const patched = jsonpatch.applyPatch(jsonpatch.deepClone(snapshot.config), ops)
 						.newDocument as unknown as AgentJsonConfig;
 
-					const zodResult = AgentJsonConfigSchema.safeParse(patched);
+					const zodResult = RunnableAgentJsonConfigSchema.safeParse(patched);
 					if (!zodResult.success) {
 						return { ok: false, stage: 'schema', errors: formatZodErrors(zodResult.error) };
 					}
@@ -321,8 +322,8 @@ export class AgentsBuilderToolsService {
 					'Returns the schedule trigger plus every connected chat platform with the list of ' +
 					'credential types it supports (`credentialTypes: string[]`). ' +
 					'Call this BEFORE asking the user for a credential. Then pick ONE entry from the ' +
-					'returned `credentialTypes` (prefer the OAuth variant if present, e.g. `slackOAuth2Api` ' +
-					'over `slackApi`) and pass it to `ask_credential` as the singular `credentialType` arg.',
+					'returned `credentialTypes` and pass it to `ask_credential` as the singular ' +
+					'`credentialType` arg.',
 			)
 			.input(z.object({}))
 			.handler(async () => {

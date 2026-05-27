@@ -24,6 +24,7 @@ test.use({ capability: benchConfig('webhook-main-scaling', { mains: MAINS, worke
 test.describe(
 	'Does webhook ingestion scale linearly with main count?',
 	{
+		tag: '@bench:webhook',
 		annotation: [
 			{ type: 'owner', description: 'Catalysts' },
 			{ type: 'question', description: 'webhook-main-scaling' },

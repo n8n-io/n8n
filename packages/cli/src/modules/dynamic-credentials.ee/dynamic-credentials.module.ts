@@ -21,10 +21,13 @@ export class DynamicCredentialsModule implements ModuleInterface {
 			DynamicCredentialResolverRegistry,
 			DynamicCredentialStorageService,
 			DynamicCredentialService,
+			N8nResolverSeeder,
+			CredentialConnectionStatusService,
 		} = await import('./services');
 		await import('./workflow-status.controller');
 
 		await Container.get(DynamicCredentialResolverRegistry).init();
+		await Container.get(N8nResolverSeeder).seed();
 
 		// Register the credential resolution provider with CredentialsHelper
 		const { DynamicCredentialsProxy } = await import('../../credentials/dynamic-credentials-proxy');
@@ -33,6 +36,15 @@ export class DynamicCredentialsModule implements ModuleInterface {
 		const dynamicCredentialStorageService = Container.get(DynamicCredentialStorageService);
 		credentialsProxy.setResolverProvider(dynamicCredentialService);
 		credentialsProxy.setStorageProvider(dynamicCredentialStorageService);
+
+		// Register the per-user connection status provider so the credentials
+		// service can populate `connectedByMe` on responses.
+		const { CredentialConnectionStatusProxy } = await import(
+			'../../credentials/credential-connection-status-proxy'
+		);
+		Container.get(CredentialConnectionStatusProxy).setProvider(
+			Container.get(CredentialConnectionStatusService),
+		);
 	}
 
 	async entities() {

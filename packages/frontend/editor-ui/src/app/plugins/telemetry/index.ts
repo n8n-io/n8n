@@ -10,9 +10,9 @@ import {
 	MICROSOFT_TEAMS_NODE_TYPE,
 	SLACK_NODE_TYPE,
 	TELEGRAM_NODE_TYPE,
+	POSTHOG_EVENTS_BLACKLIST,
 } from '@/app/constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -119,7 +119,9 @@ export class Telemetry {
 			},
 		});
 
-		usePostHog().capture(event, updatedProperties);
+		if (!POSTHOG_EVENTS_BLACKLIST.includes(event)) {
+			usePostHog().capture(event, updatedProperties);
+		}
 	}
 
 	page(route: RouteLocation) {
@@ -164,10 +166,10 @@ export class Telemetry {
 		});
 	}
 
-	trackAskAI(event: string, properties: IDataObject = {}) {
+	trackAskAI(event: string, ndvPushRef: string, properties: IDataObject = {}) {
 		if (this.rudderStack) {
 			properties.session_id = useRootStore().pushRef;
-			properties.ndv_session_id = useNDVStore().pushRef;
+			properties.ndv_session_id = ndvPushRef;
 
 			switch (event) {
 				case 'askAi.generationFinished':
@@ -178,10 +180,10 @@ export class Telemetry {
 		}
 	}
 
-	trackAiTransform(event: string, properties: IDataObject = {}) {
+	trackAiTransform(event: string, ndvPushRef: string, properties: IDataObject = {}) {
 		if (this.rudderStack) {
 			properties.session_id = useRootStore().pushRef;
-			properties.ndv_session_id = useNDVStore().pushRef;
+			properties.ndv_session_id = ndvPushRef;
 
 			switch (event) {
 				case 'generationFinished':

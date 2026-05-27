@@ -56,10 +56,11 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			workflowsListStore.fetchWorkflow(workflowId),
 			getWorkflowVersion(workflowId, workflowVersionId),
 		]);
-		const { connections, nodes } = workflowVersion;
-		const blob = new Blob([JSON.stringify({ ...workflow, nodes, connections }, null, 2)], {
-			type: 'application/json;charset=utf-8',
-		});
+		const { connections, nodes, nodeGroups } = workflowVersion;
+		const blob = new Blob(
+			[JSON.stringify({ ...workflow, nodes, connections, nodeGroups: nodeGroups ?? [] }, null, 2)],
+			{ type: 'application/json;charset=utf-8' },
+		);
 		saveAs(blob, `${workflow.name}(${data.formattedCreatedAt}).json`);
 	};
 
@@ -72,7 +73,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			workflowsListStore.fetchWorkflow(workflowId),
 			getWorkflowVersion(workflowId, workflowVersionId),
 		]);
-		const { connections, nodes } = workflowVersion;
+		const { connections, nodes, nodeGroups } = workflowVersion;
 		const { name } = workflow;
 		const newWorkflow = await getNewWorkflow(rootStore.restApiContext, {
 			name: `${name} (${data.formattedCreatedAt})`,
@@ -80,6 +81,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		const newWorkflowData: WorkflowDataUpdate = {
 			nodes,
 			connections,
+			nodeGroups: nodeGroups ?? [],
 			name: newWorkflow.name,
 		};
 		return await workflowsStore.createNewWorkflow(newWorkflowData);
@@ -90,8 +92,12 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		workflowVersionId: string,
 	): Promise<IWorkflowDb> => {
 		const workflowVersion = await getWorkflowVersion(workflowId, workflowVersionId);
-		const { connections, nodes } = workflowVersion;
-		const updateData: WorkflowDataUpdate = { connections, nodes };
+		const { connections, nodes, nodeGroups } = workflowVersion;
+		const updateData: WorkflowDataUpdate = {
+			connections,
+			nodes,
+			nodeGroups: nodeGroups ?? [],
+		};
 
 		return await workflowsStore
 			.updateWorkflow(workflowId, updateData, true)

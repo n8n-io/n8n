@@ -3,10 +3,10 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	User,
-	WorkflowEntity,
 	ListQueryDb,
 	WorkflowFolderUnionFull,
 	WorkflowHistory,
+	WorkflowEntity,
 } from '@n8n/db';
 import {
 	SharedWorkflow,
@@ -32,10 +32,16 @@ import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
 
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
-import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-workflow';
+import {
+	PROJECT_ROOT,
+	Workflow,
+	assert,
+	calculateWorkflowChecksum,
+	ensureError,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { getErrorDescription, getErrorNodeId } from './utils';
+import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 
@@ -349,13 +355,16 @@ export class WorkflowService {
 			await this._detectConflicts(workflow, expectedChecksum);
 		}
 
-		// Update the workflow's version when changing nodes or connections
+		// Update the workflow's version when changing nodes, connections, or nodeGroups
 		const hasNodesKey = 'nodes' in workflowUpdateData;
 		const hasConnectionsKey = 'connections' in workflowUpdateData;
+		const hasNodeGroupsKey = 'nodeGroups' in workflowUpdateData;
 		const nodesChanged = hasNodesKey && !isEqual(workflowUpdateData.nodes, workflow.nodes);
 		const connectionsChanged =
 			hasConnectionsKey && !isEqual(workflowUpdateData.connections, workflow.connections);
-		const saveNewVersion = nodesChanged || connectionsChanged;
+		const nodeGroupsChanged =
+			hasNodeGroupsKey && !isEqual(workflowUpdateData.nodeGroups, workflow.nodeGroups);
+		const saveNewVersion = nodesChanged || connectionsChanged || nodeGroupsChanged;
 
 		if (saveNewVersion) {
 			workflowUpdateData.versionId = uuid();
@@ -385,6 +394,10 @@ export class WorkflowService {
 			nodes: workflowUpdateData.nodes ?? workflow.nodes,
 			connections: workflowUpdateData.connections ?? workflow.connections,
 		});
+		WorkflowHelpers.validateWorkflowNodeGroups({
+			nodes: workflowUpdateData.nodes ?? workflow.nodes,
+			nodeGroups: workflowUpdateData.nodeGroups ?? workflow.nodeGroups,
+		});
 
 		// Strip redactionPolicy if instance lacks data-redaction license
 		if (
@@ -395,13 +408,18 @@ export class WorkflowService {
 			delete workflowUpdateData.settings.redactionPolicy;
 		}
 
-		// Strip redactionPolicy if user lacks scope and value is changing
+		// Strip redactionPolicy if user lacks the required directional scope
 		if (
 			workflowUpdateData.settings?.redactionPolicy !== undefined &&
 			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy
 		) {
-			const canUpdate = await userHasScopes(user, ['workflow:updateRedactionSetting'], false, {
-				workflowId,
+			const requiredScopes = getRequiredRedactionScopes(
+				workflow.settings?.redactionPolicy,
+				workflowUpdateData.settings.redactionPolicy,
+			);
+
+			const canUpdate = await userHasScopes(user, requiredScopes, false, {
+				projectId: ownerProject.id,
 			});
 			if (!canUpdate) {
 				delete workflowUpdateData.settings.redactionPolicy;
@@ -447,6 +465,7 @@ export class WorkflowService {
 			'name',
 			'nodes',
 			'connections',
+			'nodeGroups',
 			'meta',
 			'settings',
 			'staticData',
@@ -556,7 +575,6 @@ export class WorkflowService {
 	): Promise<void> {
 		let didPublish = false;
 		try {
-			await this.externalHooks.run('workflow.activate', [workflow]);
 			await this.activeWorkflowManager.add(workflowId, mode);
 			didPublish = true;
 		} catch (error) {
@@ -662,6 +680,7 @@ export class WorkflowService {
 	 * @param publicApi - Whether this is called from the public API (affects event emission)
 	 * @returns The activated workflow
 	 */
+	// eslint-disable-next-line complexity
 	async activateWorkflow(
 		user: User,
 		workflowId: string,
@@ -723,6 +742,24 @@ export class WorkflowService {
 		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
 		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
+
+		// Run hook before destructive state changes so a rejection leaves
+		// the previous active version running instead of deactivating it.
+		const candidateWorkflow = this.workflowRepository.create({
+			...workflow,
+			active: true,
+			activeVersionId: versionIdToActivate,
+			activeVersion: versionToActivate,
+		});
+
+		try {
+			await this.externalHooks.run('workflow.activate', [candidateWorkflow]);
+		} catch (error) {
+			throw new WorkflowActivationBadRequestError(ensureError(error).message, {
+				nodeId: getErrorNodeId(error),
+				description: getErrorDescription(error),
+			});
+		}
 
 		if (previousActiveVersionId) {
 			await this.activeWorkflowManager.remove(workflowId);
