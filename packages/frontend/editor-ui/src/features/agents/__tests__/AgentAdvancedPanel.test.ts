@@ -82,6 +82,13 @@ function emitSelectValue(wrapper: ReturnType<typeof mount>, testId: string, valu
 	select.vm.$emit('update:modelValue', value);
 }
 
+function findStubComponent(wrapper: ReturnType<typeof mount>, testId: string) {
+	return wrapper.findComponent(`[data-testid="${testId}"]`) as unknown as {
+		exists: () => boolean;
+		props: (name: string) => unknown;
+	};
+}
+
 type WebSearchConfig = {
 	enabled: boolean;
 	provider?: string;
@@ -103,9 +110,9 @@ describe('AgentAdvancedPanel', () => {
 			global: { stubs: globalStubs },
 		});
 
-		const method = wrapper.find('[data-testid="agent-web-search-method"]');
+		const method = findStubComponent(wrapper, 'agent-web-search-method');
 		expect(method.exists()).toBe(true);
-		expect((method.element as HTMLSelectElement).value).toBe('off');
+		expect(method.props('modelValue')).toBe('off');
 
 		emitSelectValue(wrapper, 'agent-web-search-method', 'native');
 		await nextTick();
@@ -289,8 +296,8 @@ describe('AgentAdvancedPanel', () => {
 			props: { config, disabled: true },
 			global: { stubs: globalStubs },
 		});
-		const webSearchMethod = wrapper.find('[data-testid="agent-web-search-method"]');
-		expect(webSearchMethod.attributes('disabled')).toBeDefined();
+		const webSearchMethod = findStubComponent(wrapper, 'agent-web-search-method');
+		expect(webSearchMethod.props('disabled')).toBe(true);
 		expect(
 			wrapper.find('[data-testid="agent-thinking-toggle"]').attributes('disabled'),
 		).toBeDefined();
