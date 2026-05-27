@@ -9,18 +9,13 @@ export class CredentialRequirementsExtractor
 	implements RequirementsExtractor<WorkflowCredentialRequirement>
 {
 	extract(workflow: WorkflowEntity): WorkflowCredentialRequirement[] {
-		const seen = new Set<string>();
-		const requirements: WorkflowCredentialRequirement[] = [];
+		const byId = new Map<string, WorkflowCredentialRequirement>();
 
 		for (const node of workflow.nodes ?? []) {
-			if (!node.credentials) continue;
+			for (const [credentialType, details] of Object.entries(node.credentials ?? {})) {
+				if (!details?.id || byId.has(details.id)) continue;
 
-			for (const [credentialType, details] of Object.entries(node.credentials)) {
-				if (!details?.id) continue;
-				if (seen.has(details.id)) continue;
-				seen.add(details.id);
-
-				requirements.push({
+				byId.set(details.id, {
 					workflowId: workflow.id,
 					credentialId: details.id,
 					credentialName: details.name,
@@ -29,6 +24,6 @@ export class CredentialRequirementsExtractor
 			}
 		}
 
-		return requirements;
+		return [...byId.values()];
 	}
 }

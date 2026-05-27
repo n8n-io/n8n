@@ -48,31 +48,24 @@ export class CredentialExporter {
 				['credential:read'],
 			);
 
+			// Use the workflow data if we can't fetch the full credential
+			const { id, name, type } = credential ?? {
+				id: credentialId,
+				name: fallback.credentialName,
+				type: fallback.credentialType,
+			};
+
 			if (credential) {
-				const target = allocator.allocate(credential.name);
+				const target = allocator.allocate(name);
 				request.writer.writeDirectory(target);
 				request.writer.writeFile(
 					`${target}/credential.json`,
 					JSON.stringify(this.credentialSerializer.serialize(credential), null, '\t'),
 				);
-				entries.push({ id: credential.id, name: credential.name, target });
-				requirements.push({
-					id: credential.id,
-					name: credential.name,
-					type: credential.type,
-					usedByWorkflows,
-				});
-				continue;
+				entries.push({ id, name, target });
 			}
 
-			// If we can't find an actual credential or don't have permission to see it, fallback to what
-			// we have in the workflow
-			requirements.push({
-				id: credentialId,
-				name: fallback.credentialName,
-				type: fallback.credentialType,
-				usedByWorkflows,
-			});
+			requirements.push({ id, name, type, usedByWorkflows });
 		}
 
 		return { entries, requirements };
