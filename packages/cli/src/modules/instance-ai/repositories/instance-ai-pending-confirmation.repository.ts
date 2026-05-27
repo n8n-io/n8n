@@ -15,7 +15,8 @@ export class InstanceAiPendingConfirmationRepository extends Repository<Instance
 	 * confirm/cancel/TTL sweep) all return `undefined` except one.
 	 *
 	 * Scoped by `userId` so a different user cannot claim a confirmation that
-	 * was registered for someone else.
+	 * was registered for someone else, and by `expiresAt` so an expired row
+	 * is treated as gone.
 	 */
 	async claim(
 		requestId: string,
@@ -23,15 +24,21 @@ export class InstanceAiPendingConfirmationRepository extends Repository<Instance
 	): Promise<InstanceAiPendingConfirmation | undefined> {
 		return await this.manager.transaction(async (manager) => {
 			const repo = manager.getRepository(InstanceAiPendingConfirmation);
+			const now = new Date();
+			const liveWhere = {
+				requestId,
+				userId,
+				expiresAt: Or(IsNull(), MoreThan(now)),
+			};
 			const row = await repo.findOne({
-				where: { requestId, userId },
+				where: liveWhere,
 				...(manager.connection.options.type === 'postgres'
 					? { lock: { mode: 'pessimistic_write' as const } }
 					: {}),
 			});
 			if (!row) return undefined;
 
-			const result = await repo.delete({ requestId, userId });
+			const result = await repo.delete(liveWhere);
 			if (result.affected === 0) return undefined;
 			return row;
 		});
