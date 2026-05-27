@@ -1,11 +1,19 @@
 import { DateTime, Duration, Interval } from 'luxon';
 
 import { ApplicationError } from '@n8n/errors';
+import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expression-runtime';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
-import { sanitizer, sanitizerName } from './expression-sandboxing';
+import {
+	DollarSignValidator,
+	PrototypeSanitizer,
+	ThisSanitizer,
+	sanitizer,
+	sanitizerName,
+} from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
+import * as LoggerProxy from './logger-proxy';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
 import { extendedFunctions } from './extensions/extended-functions';
@@ -179,6 +187,78 @@ const createSafeErrorSubclass = <T extends ErrorConstructor>(ErrorClass: T): T =
 
 export class Expression {
 	constructor(private readonly workflow: Workflow) {}
+
+	private static expressionEngine: 'legacy' | 'vm' = 'legacy';
+
+	private static vmEvaluator?: IExpressionEvaluator;
+
+	/**
+	 * Check if VM evaluator should be used for evaluation.
+	 * @private
+	 */
+	private static shouldUseVm(): boolean {
+		return this.expressionEngine === 'vm' && !IS_FRONTEND && !!this.vmEvaluator;
+	}
+
+	/**
+	 * Initialize the VM evaluator (if feature flag is enabled).
+	 * Should be called once during application startup.
+	 * Only available in Node.js environments (not in browser).
+	 */
+	static async initExpressionEngine(options: {
+		engine: 'legacy' | 'vm';
+		bridgeTimeout: number;
+		bridgeMemoryLimit: number;
+		poolSize: number;
+		maxCodeCacheSize: number;
+		observability?: ObservabilityProvider;
+		idleTimeoutMs?: number;
+	}): Promise<void> {
+		this.expressionEngine = options.engine;
+		if (options.engine !== 'vm' || IS_FRONTEND) return;
+
+		if (!this.vmEvaluator) {
+			// Dynamic import to avoid loading expression-runtime in browser environments
+			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
+			this.vmEvaluator = new ExpressionEvaluator({
+				createBridge: () =>
+					new IsolatedVmBridge({
+						timeout: options.bridgeTimeout,
+						memoryLimit: options.bridgeMemoryLimit,
+						logger: LoggerProxy,
+					}),
+				maxCodeCacheSize: options.maxCodeCacheSize,
+				poolSize: options.poolSize,
+				idleTimeoutMs: options.idleTimeoutMs,
+				hooks: {
+					before: [ThisSanitizer],
+					after: [PrototypeSanitizer, DollarSignValidator],
+				},
+				logger: LoggerProxy,
+				observability: options.observability,
+			});
+			await this.vmEvaluator.initialize();
+		}
+	}
+
+	async acquireIsolate(): Promise<void> {
+		if (Expression.vmEvaluator) await Expression.vmEvaluator.acquire(this);
+	}
+
+	async releaseIsolate(): Promise<void> {
+		if (Expression.vmEvaluator) await Expression.vmEvaluator.release(this);
+	}
+
+	/**
+	 * Dispose the VM evaluator and release resources.
+	 * Should be called during application shutdown or test teardown.
+	 */
+	static async disposeExpressionEngine(): Promise<void> {
+		if (this.vmEvaluator) {
+			await this.vmEvaluator.dispose();
+			this.vmEvaluator = undefined;
+		}
+	}
 
 	static initializeGlobalContext(data: IDataObject) {
 		/**
