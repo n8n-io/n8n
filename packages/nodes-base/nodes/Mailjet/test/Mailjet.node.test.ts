@@ -6,9 +6,10 @@ import * as GenericFunctions from '../GenericFunctions';
 describe('Mailjet Node', () => {
 	let mailjetNode: Mailjet;
 	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	const mailjetApiRequestSpy = jest.spyOn(GenericFunctions, 'mailjetApiRequest');
+	let mailjetApiRequestSpy: jest.SpyInstance;
 
 	beforeEach(() => {
+		mailjetApiRequestSpy = jest.spyOn(GenericFunctions, 'mailjetApiRequest');
 		mailjetNode = new Mailjet();
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>({
 			helpers: {

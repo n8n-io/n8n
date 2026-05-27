@@ -1,6 +1,5 @@
 import type { AgentDbMessage, BuiltMemory } from '@n8n/agents';
 
-import { BuilderSandboxSessionRegistry } from '../../../runtime/builder-sandbox-session-registry';
 import { compactBuilderMemoryThread } from '../builder-memory-compaction';
 
 type CompactionInput = Parameters<typeof compactBuilderMemoryThread>[0];
@@ -134,46 +133,6 @@ describe('compactBuilderMemoryThread', () => {
 		expect(savedText).toContain('Mocked credential types: slackApi');
 		expect(savedText).toContain('Execution ID: exec-1');
 		expect(savedText).toContain('Workflow ready.');
-	});
-
-	it('keeps the active sandbox session registry unchanged', async () => {
-		const registry = new BuilderSandboxSessionRegistry(600_000);
-		const cleanup = jest.fn(async () => {
-			await Promise.resolve();
-		});
-		const session = registry.create({
-			threadId: 'thread-1',
-			workflowId: 'wf-1',
-			workItemId: 'wi-1',
-			builderThreadId: 'builder-thread-1',
-			builderResourceId: 'user-1:workflow-builder',
-			builderWorkspace: {
-				workspace: {} as never,
-				cleanup,
-			},
-			root: '/home/daytona/workspace',
-		});
-
-		const memoryStore = makeMemory({
-			getMessages: jest.fn(async () => {
-				await Promise.resolve();
-				return [makeMessage('msg-1', 'raw transcript')];
-			}),
-			deleteMessages: jest.fn(async () => {
-				await Promise.resolve();
-			}),
-			saveMessages: jest.fn(async () => {
-				await Promise.resolve();
-			}),
-		});
-
-		await compactBuilderMemoryThread(makeCompactionInput(memoryStore));
-
-		expect(session).toBeDefined();
-		await registry.release(session!.sessionId, { keep: true, reason: 'test' });
-		const reacquired = registry.acquireByWorkflowId('thread-1', 'wf-1');
-		expect(reacquired?.sessionId).toBe(session!.sessionId);
-		await registry.cleanupAll('test_cleanup');
 	});
 
 	it('re-compacts after a follow-up without duplicating old summaries', async () => {

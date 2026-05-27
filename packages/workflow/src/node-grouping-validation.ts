@@ -12,6 +12,7 @@ import {
 	type INodeInputConfiguration,
 	type INodeOutputConfiguration,
 	type INodeTypeDescription,
+	type IWorkflowGroup,
 	type NodeConnectionType,
 } from './interfaces';
 import { isTriggerNode } from './node-helpers';
@@ -23,6 +24,7 @@ export type NodeGroupingValidationInput<TNode extends INode = INode> = {
 	nodes: TNode[];
 	connectionsBySourceNode: IConnections;
 	getNodeType: (node: TNode) => INodeTypeDescription | null | undefined;
+	existingNodeGroups?: IWorkflowGroup[];
 	getNodeInputs?: (
 		node: TNode,
 		nodeType: INodeTypeDescription,
@@ -43,6 +45,7 @@ export type NodeSelectionValidationResult<TNode extends INode = INode> =
 export type NodeGroupValidationResult<TNode extends INode = INode> =
 	| NodeSelectionValidationResult<TNode>
 	| { valid: false; reason: 'too-few-nodes' }
+	| { valid: false; reason: 'node-already-grouped'; nodeIds: string[] }
 	| {
 			valid: false;
 			reason: 'non-main-boundary';
@@ -111,6 +114,14 @@ export function validateNodeSelectionForGrouping<TNode extends INode>(
 		return { valid: false, reason: 'too-few-nodes' };
 	}
 
+	const alreadyGroupedNodeIds = findAlreadyGroupedNodeIds(
+		input.nodes.map((node) => node.id),
+		input.existingNodeGroups ?? [],
+	);
+	if (alreadyGroupedNodeIds.length > 0) {
+		return { valid: false, reason: 'node-already-grouped', nodeIds: alreadyGroupedNodeIds };
+	}
+
 	const extractableResult = validateNodeSelectionForExtraction(input);
 	if (!extractableResult.valid) return extractableResult;
 
@@ -125,6 +136,14 @@ export function validateNodeSelectionForGrouping<TNode extends INode>(
 	}
 
 	return extractableResult;
+}
+
+function findAlreadyGroupedNodeIds(
+	selectionNodeIds: string[],
+	existingNodeGroups: IWorkflowGroup[],
+): string[] {
+	const groupedNodeIds = new Set(existingNodeGroups.flatMap((group) => group.nodeIds));
+	return selectionNodeIds.filter((nodeId) => groupedNodeIds.has(nodeId));
 }
 
 function hasSingleMainIO<TNode extends INode>(

@@ -10,6 +10,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import {
+	findAiRootNodeNames,
 	jsonParse,
 	type IDataObject,
 	type INode,
@@ -64,29 +65,6 @@ const NON_SERVICE_NODES_WITH_CREDENTIALS = new Set([
 // ---------------------------------------------------------------------------
 
 /**
- * Build a set of node names that are targets of AI-type connections
- * (ai_languageModel, ai_tool, ai_memory, etc.). These are root AI nodes
- * (e.g. Agent, Chain) whose sub-nodes can't be individually pinned.
- * Pinning the root prevents sub-node execution entirely.
- */
-function findAiRootNodeNames(workflow: SimpleWorkflow): Set<string> {
-	const roots = new Set<string>();
-	for (const nodeConns of Object.values(workflow.connections)) {
-		for (const [connType, outputs] of Object.entries(nodeConns)) {
-			if (!connType.startsWith('ai_')) continue;
-			if (!Array.isArray(outputs)) continue;
-			for (const group of outputs) {
-				if (!Array.isArray(group)) continue;
-				for (const conn of group) {
-					if (conn?.node) roots.add(conn.node);
-				}
-			}
-		}
-	}
-	return roots;
-}
-
-/**
  * Identify which nodes in a workflow need pin data.
  * In eval context, we pin all service/API nodes since none have real credentials.
  */
@@ -95,7 +73,7 @@ export function identifyPinDataNodes(
 	nodeTypes: INodeTypeDescription[],
 ): INode[] {
 	const nodeTypeMap = new Map(nodeTypes.map((nt) => [nt.name, nt]));
-	const aiRootNodes = findAiRootNodeNames(workflow);
+	const aiRootNodes = findAiRootNodeNames(workflow.connections);
 
 	return workflow.nodes.filter((node) => {
 		// Skip disabled nodes

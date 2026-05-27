@@ -112,7 +112,9 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		</AppLayout>
 		<AppModals />
 		<AppCommandBar />
-		<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
+		<template #overlays>
+			<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
+		</template>
 		<template #aside>
 			<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />
 		</template>

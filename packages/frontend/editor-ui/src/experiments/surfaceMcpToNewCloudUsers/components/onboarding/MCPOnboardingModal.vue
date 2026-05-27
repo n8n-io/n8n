@@ -19,7 +19,7 @@ import MCPOnboardingClientSetup from './MCPOnboardingClientSetup.vue';
 import MCPOnboardingCopyBlock from './MCPOnboardingCopyBlock.vue';
 import type { MCPOnboardingClient, MCPOnboardingClientOption } from './types';
 
-type MCPOnboardingSurface = 'tile' | 'first_open_modal';
+type MCPOnboardingSurface = 'tile' | 'first_open_modal' | 'workflow_card';
 type MCPOnboardingPromptClient = Exclude<MCPOnboardingClient, 'chatgpt'>;
 type MCPOnboardingCopiedParameter = 'agent-prompt' | 'server-url' | 'chatgpt-app-name';
 type MCPOnboardingSetupType = 'prompt' | 'chatgpt_custom_app';
@@ -29,6 +29,7 @@ const MCP_ONBOARDING_DOCS_URL = 'https://docs.n8n.io/advanced-ai/mcp/accessing-n
 const props = defineProps<{
 	data?: {
 		surface?: MCPOnboardingSurface;
+		onMcpAccessEnabled?: () => void | Promise<void>;
 	};
 }>();
 
@@ -167,6 +168,7 @@ async function handleToggleMcpAccess() {
 			enabledDuringThisOpen.value = true;
 			experimentStore.trackEnabled(surface.value);
 			trackCurrentSetupShown();
+			void props.data?.onMcpAccessEnabled?.();
 			return;
 		}
 
