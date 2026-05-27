@@ -510,6 +510,30 @@ describe('Salesforce -> GenericFunctions', () => {
 			expect(result.newItems).toEqual(responseData);
 			expect(result.updatedProcessedIds).toContain('001_2024-01-01T00:00:00Z');
 		});
+
+		it('should not trigger Created variant again when same Id has a different LastModifiedDate', () => {
+			const processedIds = ['001'];
+			const responseData: IDataObject[] = [
+				{ Id: '001', LastModifiedDate: '2024-01-02T00:00:00Z', Name: 'Updated Account' },
+			];
+
+			const result = filterAndManageProcessedItems(responseData, processedIds, 'Created');
+
+			expect(result.newItems).toEqual([]);
+			expect(result.updatedProcessedIds).toEqual(['001']);
+		});
+
+		it('should store Id-only keys for Created variant even when LastModifiedDate is present', () => {
+			const processedIds: string[] = [];
+			const responseData: IDataObject[] = [
+				{ Id: '001', LastModifiedDate: '2024-01-01T00:00:00Z', Name: 'New Account' },
+			];
+
+			const result = filterAndManageProcessedItems(responseData, processedIds, 'Created');
+
+			expect(result.newItems).toEqual(responseData);
+			expect(result.updatedProcessedIds).toEqual(['001']);
+		});
 	});
 
 	describe('salesforceApiRequest - JWT Authentication', () => {

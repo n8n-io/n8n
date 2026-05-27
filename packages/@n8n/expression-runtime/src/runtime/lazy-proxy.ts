@@ -114,7 +114,7 @@ export function createDeepLazyProxy(
 		getArrayElement: any;
 		callFunctionAtPath: any;
 	},
-): any {
+): Record<string | symbol, unknown> {
 	if (!callbacks) {
 		throw new Error('createDeepLazyProxy requires callbacks parameter');
 	}
@@ -326,5 +326,5 @@ export function createDeepLazyProxy(
 	});
 
 	proxyPaths.set(proxy, basePath);
-	return proxy;
+	return proxy as Record<string | symbol, unknown>;
 }

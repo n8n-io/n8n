@@ -94,6 +94,7 @@ export const CODE_WORKFLOW_BUILDER_EXPERIMENT = createExperiment('071_coding_wor
 });
 
 export const AI_BUILDER_SETUP_WIZARD_EXPERIMENT = createExperiment('079_ai_builder_setup_wizard');
+export const WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT = createExperiment('086_workflow_card_mcp_toggle');
 export const INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT = createExperiment(
 	'082_instance_ai_proactive_agent',
 );
@@ -139,6 +140,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	AI_BUILDER_REVIEW_CHANGES_EXPERIMENT.name,
 	MERGE_ASK_BUILD_EXPERIMENT.name,
 	AI_BUILDER_SETUP_WIZARD_EXPERIMENT.name,
+	WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT.name,
 	INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT.name,
 	INSTANCE_AI_PROMPT_SUGGESTIONS_V2_EXPERIMENT.name,
 	AA_EXPERIMENT_CHECK.name,
