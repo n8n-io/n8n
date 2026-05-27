@@ -2,6 +2,7 @@ import { DateTime, Duration, Interval } from 'luxon';
 
 import { ApplicationError } from '@n8n/errors';
 import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expression-runtime';
+import { MemoryLimitError, SecurityViolationError, TimeoutError } from '@n8n/expression-runtime';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
@@ -57,6 +58,56 @@ const isTypeError = (error: unknown): error is TypeError =>
 setErrorHandler((error: Error) => {
 	if (isExpressionError(error)) throw error;
 });
+
+/**
+ * Map errors from the VM expression evaluator to host-side error types.
+ *
+ * The VM bridge can only reconstruct plain Error objects with .name set,
+ * because it can't import ExpressionError/ExpressionExtensionError from
+ * packages/workflow without creating a circular dependency.
+ *
+ * TODO: Move this reconstruction into the bridge once expression-runtime
+ * can depend on workflow error classes (or a shared error package exists).
+ */
+function mapVmError(error: unknown): Error {
+	if (isExpressionError(error)) return error;
+
+	// Runtime error types (TimeoutError, MemoryLimitError, etc.) must be
+	// checked before the name-based reconstruction below, because they
+	// extend the runtime's ExpressionError and share .name === 'ExpressionError'.
+	if (error instanceof TimeoutError) {
+		const wrapped = new ExpressionError('Expression timed out');
+		wrapped.cause = error;
+		return wrapped;
+	}
+	if (error instanceof MemoryLimitError) {
+		const wrapped = new ExpressionError('Expression exceeded memory limit');
+		wrapped.cause = error;
+		return wrapped;
+	}
+	if (error instanceof SecurityViolationError) {
+		const wrapped = new ExpressionError(error.message);
+		wrapped.cause = error;
+		return wrapped;
+	}
+
+	// Name-based reconstruction for errors that crossed the isolate boundary
+	if (error instanceof Error && error.name === 'ExpressionExtensionError') {
+		const reconstructed = new ExpressionExtensionError(error.message);
+		Object.assign(reconstructed, error);
+		return reconstructed;
+	}
+	if (error instanceof Error && error.name === 'ExpressionError') {
+		const reconstructed = new ExpressionError(error.message);
+		Object.assign(reconstructed, error);
+		return reconstructed;
+	}
+
+	if (isSyntaxError(error)) return new ExpressionError('invalid syntax');
+
+	if (error instanceof Error) return error;
+	return new Error(String(error));
+}
 
 /**
  * Creates a safe Object wrapper that removes dangerous static methods
@@ -258,6 +309,27 @@ export class Expression {
 			await this.vmEvaluator.dispose();
 			this.vmEvaluator = undefined;
 		}
+	}
+
+	/**
+	 * Get the active expression evaluation implementation.
+	 * Used for testing and verification.
+	 */
+	static getActiveImplementation(): 'legacy' | 'vm' {
+		if (this.shouldUseVm()) return 'vm';
+		return 'legacy';
+	}
+
+	/**
+	 * Set the expression engine programmatically.
+	 *
+	 * WARNING: This is a global setting — switching engines mid-execution could
+	 * cause a workflow to evaluate some expressions with one engine and some with
+	 * another. Only use this in benchmarks and tests, never in production code.
+	 * In production, set `N8N_EXPRESSION_ENGINE` before process startup instead.
+	 */
+	static setExpressionEngine(engine: 'legacy' | 'vm'): void {
+		this.expressionEngine = engine;
 	}
 
 	static initializeGlobalContext(data: IDataObject) {
@@ -517,9 +589,33 @@ export class Expression {
 
 		Expression.initializeGlobalContext(data);
 
-		// expression extensions
-		data.extend = extend;
-		data.extendOptional = extendOptional;
+		const usingVm = Expression.shouldUseVm();
+
+		// Expression extensions — only attached for the legacy engine.
+		//
+		// In the VM engine, every host function reachable from `data` becomes
+		// a callable target the isolate can reach via `callFunctionAtPath`.
+		// To minimise that surface we keep the VM-path data object as small as
+		// possible and let the in-isolate runtime resolve helpers itself
+		// (see packages/@n8n/expression-runtime/src/runtime/context.ts, where
+		// Tournament's polyfill rewrites bare `extend(...)` calls to the
+		// in-isolate copy on `target.extend`). Setting them on `data` in VM
+		// mode would be dead code AND an unnecessary host-callable.
+		if (!usingVm) {
+			data.extend = extend;
+			data.extendOptional = extendOptional;
+		}
+
+		// In VM mode, strip `$jmesPath` / `$jmespath` from the data proxy.
+		// WorkflowDataProxy adds them, but the in-isolate `target.$jmespath`
+		// shadows them via Tournament's polyfill (see
+		// packages/@n8n/expression-runtime/src/runtime/context.ts). The delete
+		// makes them unreachable via direct path lookup through the bridge
+		// too, so the bridge can never invoke the host-side copies.
+		if (usingVm) {
+			delete data.$jmesPath;
+			delete data.$jmespath;
+		}
 
 		Object.defineProperty(data, sanitizerName, {
 			value: sanitizer,
@@ -558,6 +654,24 @@ export class Expression {
 	}
 
 	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
+		// Use VM evaluator if engine is set to 'vm' and we're not in the browser
+		if (Expression.expressionEngine === 'vm' && !IS_FRONTEND) {
+			if (!Expression.vmEvaluator) {
+				throw new ApplicationError(
+					'N8N_EXPRESSION_ENGINE=vm is enabled but VM evaluator is not initialized. Call Expression.initExpressionEngine() during application startup.',
+				);
+			}
+
+			try {
+				const result = Expression.vmEvaluator.evaluate(expression, data, this, {
+					timezone: this.workflow.timezone,
+				});
+				return result as string | null | (() => unknown);
+			} catch (error) {
+				throw mapVmError(error);
+			}
+		}
+
 		try {
 			return evaluateExpression(expression, data);
 		} catch (error) {
