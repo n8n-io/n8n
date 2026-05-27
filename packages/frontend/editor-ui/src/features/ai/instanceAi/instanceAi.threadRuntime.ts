@@ -298,11 +298,6 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 				: 'Add error handling to the workflow';
 		}
 
-		const dataChild = tree.children.find((c) => c.role === 'data-table-manager');
-		if (dataChild) {
-			return 'Query the data table to show recent entries';
-		}
-
 		return null;
 	});
 
