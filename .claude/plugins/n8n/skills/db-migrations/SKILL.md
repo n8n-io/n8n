@@ -681,7 +681,7 @@ Some migrations override with `transaction = false as const` for big DDL on engi
 - **Small differences** (a single statement, a CHECK constraint, slightly different syntax): keep one migration in `common/` and branch on `isSqlite` / `isPostgres`.
 - **Large differences** (different table recreation strategies, different intermediate steps, fundamentally different SQL): write **separate files** in `postgresdb/` and `sqlite/`. A common migration full of `if (isSqlite) { ... }` blocks is harder to read and review than two focused files.
 
-If only Postgres needs the change, just put the file in `postgresdb/`; don't write a no-op SQLite migration with `if (isPostgres)`. SQLite no longer needs separate migrations for column adds (the recreate-table path was fixed) — verify before duplicating.
+If only Postgres needs the change, just put the file in `postgresdb/`; don't write a no-op SQLite migration with `if (isPostgres)`. For SQLite column adds, follow the [SQLite table recreation risk](#sqlite-table-recreation-risk) decision tree before deciding whether a common migration is enough or a SQLite subclass/raw `ALTER TABLE` path is needed.
 
 ### SQLite supports modern syntax
 
