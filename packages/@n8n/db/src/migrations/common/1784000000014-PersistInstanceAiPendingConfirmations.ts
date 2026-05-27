@@ -40,7 +40,9 @@ export class PersistInstanceAiPendingConfirmations1784000000014 implements Rever
 				schemaBuilder
 					.column('expiredAt')
 					.timestampTimezone()
-					.comment('Soft-delete timestamp: null means live; non-null marks the row as a tombstone.'),
+					.comment(
+						'Soft-delete timestamp: null means live; non-null marks the row as a tombstone.',
+					),
 			],
 			{ ackThisRecreatesOnSqlite: true },
 		);
