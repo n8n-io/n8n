@@ -134,6 +134,16 @@ function handleDeny() {
 						{{ i18n.baseText('instanceAi.planReview.updating') }}
 					</N8nText>
 				</div>
+				<div
+					v-else-if="props.loading && plannedTasks.length > 0"
+					:class="$style.headerStatus"
+					data-test-id="instance-ai-plan-building"
+				>
+					<N8nIcon icon="loader" size="small" :class="$style.loadingIcon" />
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('instanceAi.planReview.building') }}
+					</N8nText>
+				</div>
 			</div>
 		</CollapsibleTrigger>
 

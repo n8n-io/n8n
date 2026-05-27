@@ -54,6 +54,18 @@ describe('PlanReviewPanel', () => {
 		expect(getByText('Building plan...')).toBeInTheDocument();
 	});
 
+	it('shows a building indicator in the header while tasks stream in', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: { plannedTasks, loading: true },
+		});
+
+		expect(getByTestId('instance-ai-plan-building')).toHaveTextContent('Building plan...');
+		// Actions stay hidden until the plan is final.
+		expect(queryByTestId('instance-ai-plan-approve')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-plan-ask-for-edits')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-plan-deny')).not.toBeInTheDocument();
+	});
+
 	it('emits approve when the approve action is clicked', async () => {
 		const { emitted, getByTestId } = renderComponent();
 
