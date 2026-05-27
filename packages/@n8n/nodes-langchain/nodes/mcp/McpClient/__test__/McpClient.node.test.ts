@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -43,46 +44,45 @@ describe('McpClient', () => {
 	});
 
 	it('should pass the execution cancel signal to connectMcpClientForCredential', async () => {
-	const abort = new AbortController();
-	executeFunctions.getExecutionCancelSignal.mockReturnValue(abort.signal);
-	executeFunctions.getNodeParameter.mockImplementation(
-		(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
-	);
-	connectMcpClientForCredential.mockResolvedValue({
-		ok: true,
-		result: mockDeep<Client>(),
+		const abort = new AbortController();
+		executeFunctions.getExecutionCancelSignal.mockReturnValue(abort.signal);
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		client.callTool.mockResolvedValue({
+			content: [{ type: 'text', text: 'Weather in Berlin is sunny' }],
+		});
+
+		await new McpClient().execute.call(executeFunctions);
+
+		expect(connectMcpClientForCredential).toHaveBeenCalledWith(
+			executeFunctions,
+			expect.objectContaining({
+				signal: abort.signal,
+			}),
+		);
 	});
 
-	await new McpClient().execute.call(executeFunctions);
+	it('should map and throw cancelled connection results', async () => {
+		const abortError = new Error('aborted');
+		abortError.name = 'AbortError';
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		connectMcpClientForCredential.mockResolvedValue({
+			ok: false,
+			error: { type: 'cancelled', error: abortError },
+		});
 
-	expect(connectMcpClientForCredential).toHaveBeenCalledWith(
-		executeFunctions,
-		expect.objectContaining({
-			signal: abort.signal,
-		}),
-	);
-});
+		await expect(new McpClient().execute.call(executeFunctions)).rejects.toThrow(
+			'Execution was cancelled',
+		);
 
-it('should map and throw cancelled connection results', async () => {
-	const abortError = new Error('aborted');
-	abortError.name = 'AbortError';
-	executeFunctions.getNodeParameter.mockImplementation(
-		(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
-	);
-	connectMcpClientForCredential.mockResolvedValue({
-		ok: false,
-		error: { type: 'cancelled', error: abortError },
+		expect(mapToNodeOperationError).toHaveBeenCalledWith(
+			executeFunctions.getNode(),
+			expect.objectContaining({ type: 'cancelled', error: abortError }),
+		);
 	});
-
-	await expect(new McpClient().execute.call(executeFunctions)).rejects.toThrow(
-		'Execution was cancelled',
-	);
-
-	expect(mapToNodeOperationError).toHaveBeenCalledWith(
-		executeFunctions.getNode(),
-		expect.objectContaining({ type: 'cancelled', error: abortError }),
-	);
-});
 
 	it('should handle json input mode', async () => {
 		executeFunctions.getNodeParameter.mockImplementation(

@@ -425,7 +425,7 @@ export async function connectMcpClientForCredential(
 		serverTransport: McpServerTransport;
 		endpointUrl: string;
 		surface: string;
-    signal?: AbortSignal;
+		signal?: AbortSignal;
 	},
 ): Promise<Result<Client, ConnectMcpClientError>> {
 	const node = ctx.getNode();
@@ -448,7 +448,7 @@ export async function connectMcpClientForCredential(
 		name: node.type,
 		version: node.typeVersion,
 		onUnauthorized: async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h),
-    signal: config.signal;
+		signal: config.signal,
 	});
 }
 
