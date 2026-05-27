@@ -393,11 +393,13 @@ describe('McpService', () => {
 		describe('MCP Apps integration', () => {
 			type BuildServiceOpts = {
 				builderEnabled?: boolean;
+				mcpAppsEnabled?: boolean;
 				postHogClient?: jest.Mocked<PostHogClient>;
 			};
 
 			const buildService = ({
 				builderEnabled = true,
+				mcpAppsEnabled = false,
 				postHogClient = mockInstance(PostHogClient),
 			}: BuildServiceOpts = {}) =>
 				new McpService(
@@ -414,6 +416,7 @@ describe('McpService', () => {
 							webhook: '/webhook',
 							webhookTest: '/webhook-test',
 							mcpBuilderEnabled: builderEnabled,
+							mcpAppsEnabled,
 						},
 					}),
 					mockInstance(Telemetry),
@@ -513,6 +516,37 @@ describe('McpService', () => {
 
 				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
 				expect(registerMcpAppTool).not.toHaveBeenCalled();
+				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
+			});
+
+			it('registers MCP apps when N8N_MCP_APPS_ENABLED is true, even if user is in control cohort', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				const postHogClient = mockInstance(PostHogClient);
+				postHogClient.getFeatureFlags.mockResolvedValue({
+					[MCP_APPS_FLAG]: 'control',
+				});
+
+				const service = buildService({ mcpAppsEnabled: true, postHogClient });
+
+				await service.getServer(user);
+
+				expect(registerWorkflowPreviewApp).toHaveBeenCalledTimes(1);
+				expect(registerMcpAppTool).toHaveBeenCalledTimes(1);
+				// Override short-circuits before PostHog is consulted.
+				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
+			});
+
+			it('registers MCP apps when N8N_MCP_APPS_ENABLED is true and PostHog throws', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				const postHogClient = mockInstance(PostHogClient);
+				postHogClient.getFeatureFlags.mockRejectedValue(new Error('PostHog down'));
+
+				const service = buildService({ mcpAppsEnabled: true, postHogClient });
+
+				await service.getServer(user);
+
+				expect(registerWorkflowPreviewApp).toHaveBeenCalledTimes(1);
+				expect(registerMcpAppTool).toHaveBeenCalledTimes(1);
 				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
 			});
 		});

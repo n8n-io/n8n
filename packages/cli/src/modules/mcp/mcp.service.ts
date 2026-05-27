@@ -117,6 +117,8 @@ export class McpService {
 	) {}
 
 	private async isMcpAppsEnabled(user: User): Promise<boolean> {
+		if (this.globalConfig.endpoints.mcpAppsEnabled) return true;
+
 		try {
 			const flags = await this.postHogClient.getFeatureFlags(user);
 			return flags?.[MCP_APPS_FLAG] === MCP_APPS_VARIANT_ENABLED;
