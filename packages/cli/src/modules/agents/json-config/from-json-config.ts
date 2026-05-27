@@ -33,6 +33,11 @@ export interface ToolExecutor {
 /** Factory function that reconstructs a BuiltMemory backend from serialized params. */
 export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Promise<BuiltMemory>;
 
+type MemoryWorkerModelConfig = {
+	model: string;
+	credential: string;
+};
+
 export interface BuildFromJsonOptions {
 	/** Executes custom tool handlers inside isolates. */
 	toolExecutor: ToolExecutor;
@@ -236,10 +241,20 @@ async function applyMemoryFromConfig(
 
 		memory.observationalMemory({
 			...(observationalMemory?.observerModel !== undefined && {
-				observe: createObservationLogObserveFn(observationalMemory.observerModel),
+				observe: createObservationLogObserveFn(
+					await resolveMemoryWorkerModelConfig(
+						observationalMemory.observerModel,
+						credentialProvider,
+					),
+				),
 			}),
 			...(observationalMemory?.reflectorModel !== undefined && {
-				reflect: createObservationLogReflectFn(observationalMemory.reflectorModel),
+				reflect: createObservationLogReflectFn(
+					await resolveMemoryWorkerModelConfig(
+						observationalMemory.reflectorModel,
+						credentialProvider,
+					),
+				),
 			}),
 			...(observationalMemory?.observerThresholdTokens !== undefined && {
 				observerThresholdTokens: observationalMemory.observerThresholdTokens,
@@ -284,10 +299,14 @@ async function resolveEpisodicMemoryJsonConfig(
 	return {
 		enabled: true,
 		...(config.extractorModel !== undefined && {
-			extract: createEpisodicMemoryExtractFn(config.extractorModel),
+			extract: createEpisodicMemoryExtractFn(
+				await resolveMemoryWorkerModelConfig(config.extractorModel, credentialProvider),
+			),
 		}),
 		...(config.reflectorModel !== undefined && {
-			reflect: createEpisodicMemoryReflectFn(config.reflectorModel),
+			reflect: createEpisodicMemoryReflectFn(
+				await resolveMemoryWorkerModelConfig(config.reflectorModel, credentialProvider),
+			),
 		}),
 		...(config.topK !== undefined && { topK: config.topK }),
 		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
@@ -301,11 +320,32 @@ async function resolveModelConfig(
 ): Promise<ModelConfig> {
 	if (!config.credential) return config.model;
 
-	const slashIdx = config.model.indexOf('/');
-	const providerPrefix = slashIdx !== -1 ? config.model.slice(0, slashIdx) : '';
-	const raw = await credentialProvider.resolve(config.credential);
-	const mapped = mapCredentialForProvider(providerPrefix, raw);
-	return { id: config.model, ...mapped } as ModelConfig;
+	return await resolveCredentialAwareModelConfig(
+		config.model,
+		config.credential,
+		credentialProvider,
+	);
+}
+
+async function resolveMemoryWorkerModelConfig(
+	config: MemoryWorkerModelConfig,
+	credentialProvider: CredentialProvider,
+): Promise<ModelConfig> {
+	return await resolveCredentialAwareModelConfig(
+		config.model,
+		config.credential,
+		credentialProvider,
+	);
+}
+
+async function resolveCredentialAwareModelConfig(
+	model: string,
+	credential: string,
+	credentialProvider: CredentialProvider,
+): Promise<ModelConfig> {
+	const raw = await credentialProvider.resolve(credential);
+	const mapped = mapCredentialForProvider(getProviderPrefix(model), raw);
+	return { id: model, ...mapped } as ModelConfig;
 }
 
 function getProviderPrefix(modelId: string): string {

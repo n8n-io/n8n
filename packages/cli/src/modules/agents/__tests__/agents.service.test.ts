@@ -1603,6 +1603,125 @@ describe('AgentsService', () => {
 			expect(result.missing).not.toContain('episodicMemory.credential');
 		});
 
+		it('flags missing memory worker model credentials', async () => {
+			credentialProvider.list.mockResolvedValue([{ id: 'main-cred', type: 'openAiApi' }]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'openai/gpt-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						observationalMemory: {
+							observerModel: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'missing-worker-cred',
+							},
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).toContain('memory.observationalMemory.observerModel.credential');
+		});
+
+		it('flags memory worker credentials that do not match the worker model provider', async () => {
+			credentialProvider.list.mockResolvedValue([
+				{ id: 'main-cred', type: 'openAiApi' },
+				{ id: 'wrong-worker-cred', type: 'openAiApi' },
+			]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'openai/gpt-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						observationalMemory: {
+							reflectorModel: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'wrong-worker-cred',
+							},
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).toContain('memory.observationalMemory.reflectorModel.credential');
+		});
+
+		it('accepts cross-provider memory worker models with matching credentials', async () => {
+			credentialProvider.list.mockResolvedValue([
+				{ id: 'main-cred', type: 'openAiApi' },
+				{ id: 'embedding-cred', type: 'openAiApi' },
+				{ id: 'worker-cred', type: 'anthropicApi' },
+			]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'openai/gpt-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						observationalMemory: {
+							observerModel: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'worker-cred',
+							},
+							reflectorModel: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'worker-cred',
+							},
+						},
+						episodicMemory: {
+							enabled: true,
+							credential: 'embedding-cred',
+							extractorModel: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'worker-cred',
+							},
+							reflectorModel: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'worker-cred',
+							},
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).not.toContain('memory.observationalMemory.observerModel.credential');
+			expect(result.missing).not.toContain('memory.observationalMemory.reflectorModel.credential');
+			expect(result.missing).not.toContain('memory.episodicMemory.extractorModel.credential');
+			expect(result.missing).not.toContain('memory.episodicMemory.reflectorModel.credential');
+		});
+
 		it('flags config skill refs that have no stored body', async () => {
 			const agent = makeAgent({
 				schema: {

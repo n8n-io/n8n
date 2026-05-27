@@ -1,3 +1,4 @@
+import * as AgentsRuntime from '@n8n/agents';
 import type { AgentSnapshot, ToolDescriptor } from '@n8n/agents';
 import type { JSONSchema7 } from 'json-schema';
 
@@ -41,6 +42,10 @@ jest.mock('@ai-sdk/openai', () => ({
 // ---------------------------------------------------------------------------
 
 describe('buildFromJson()', () => {
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
 	const makeConfig = (overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig => ({
 		name: 'test-agent',
 		model: 'anthropic/claude-sonnet-4-5',
@@ -580,6 +585,54 @@ describe('buildFromJson()', () => {
 		expect(getMemoryConfig(agent)?.observationalMemory?.reflect).toBeUndefined();
 	});
 
+	it('configures observational memory worker models with their own credentials', async () => {
+		const observeSpy = jest.spyOn(AgentsRuntime, 'createObservationLogObserveFn');
+		const reflectSpy = jest.spyOn(AgentsRuntime, 'createObservationLogReflectFn');
+		const credentialProvider = {
+			resolve: jest.fn(async (credentialId: string) => ({
+				apiKey: `${credentialId}-api-key`,
+				url: `https://${credentialId}.example/v1`,
+			})),
+			list: jest.fn().mockResolvedValue([]),
+		};
+		const config = makeConfig({
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				observationalMemory: {
+					observerModel: { model: 'openai/gpt-4o-mini', credential: 'observer-key' },
+					reflectorModel: {
+						model: 'anthropic/claude-sonnet-4-5',
+						credential: 'reflector-key',
+					},
+				},
+			},
+		});
+
+		await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider,
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
+		);
+
+		expect(observeSpy).toHaveBeenCalledWith({
+			id: 'openai/gpt-4o-mini',
+			apiKey: 'observer-key-api-key',
+			baseURL: 'https://observer-key.example/v1',
+		});
+		expect(reflectSpy).toHaveBeenCalledWith({
+			id: 'anthropic/claude-sonnet-4-5',
+			apiKey: 'reflector-key-api-key',
+			baseURL: 'https://reflector-key.example/v1',
+		});
+		expect(credentialProvider.resolve).toHaveBeenCalledWith('observer-key');
+		expect(credentialProvider.resolve).toHaveBeenCalledWith('reflector-key');
+	});
+
 	it('enables observational memory by default when memory is enabled', async () => {
 		const config = makeConfig({
 			memory: { enabled: true, storage: 'n8n' },
@@ -642,6 +695,63 @@ describe('buildFromJson()', () => {
 		expect(getMemoryConfig(agent)?.episodicMemory?.embedder).toBeUndefined();
 		expect(getMemoryConfig(agent)?.episodicMemory?.extract).toBeUndefined();
 		expect(getMemoryConfig(agent)?.episodicMemory?.reflect).toBeUndefined();
+	});
+
+	it('configures episodic memory worker models with separate credentials from embeddings', async () => {
+		const extractSpy = jest.spyOn(AgentsRuntime, 'createEpisodicMemoryExtractFn');
+		const reflectSpy = jest.spyOn(AgentsRuntime, 'createEpisodicMemoryReflectFn');
+		const credentialProvider = {
+			resolve: jest.fn(async (credentialId: string) => ({
+				apiKey: `${credentialId}-api-key`,
+				url: `https://${credentialId}.example/v1`,
+			})),
+			list: jest.fn().mockResolvedValue([]),
+		};
+		const config = makeConfig({
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				episodicMemory: {
+					enabled: true,
+					credential: 'embedding-key',
+					extractorModel: { model: 'openai/gpt-4o-mini', credential: 'extractor-key' },
+					reflectorModel: {
+						model: 'anthropic/claude-sonnet-4-5',
+						credential: 'episodic-reflector-key',
+					},
+				},
+			},
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider,
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
+		);
+
+		expect(extractSpy).toHaveBeenCalledWith({
+			id: 'openai/gpt-4o-mini',
+			apiKey: 'extractor-key-api-key',
+			baseURL: 'https://extractor-key.example/v1',
+		});
+		expect(reflectSpy).toHaveBeenCalledWith({
+			id: 'anthropic/claude-sonnet-4-5',
+			apiKey: 'episodic-reflector-key-api-key',
+			baseURL: 'https://episodic-reflector-key.example/v1',
+		});
+		expect(getMemoryConfig(agent)?.episodicMemory).toMatchObject({
+			embeddingProviderOptions: {
+				apiKey: 'embedding-key-api-key',
+				baseURL: 'https://embedding-key.example/v1',
+			},
+		});
+		expect(credentialProvider.resolve).toHaveBeenCalledWith('embedding-key');
+		expect(credentialProvider.resolve).toHaveBeenCalledWith('extractor-key');
+		expect(credentialProvider.resolve).toHaveBeenCalledWith('episodic-reflector-key');
 	});
 
 	it('can disable observational memory while keeping message memory', async () => {

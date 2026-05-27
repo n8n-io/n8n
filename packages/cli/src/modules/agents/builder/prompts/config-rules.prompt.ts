@@ -2,9 +2,14 @@ import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import { RunnableAgentJsonConfigSchema } from '@n8n/api-types';
+import { AgentModelSchema, RunnableAgentJsonConfigSchema } from '@n8n/api-types';
 
 import { jsonSchemaToCompactText } from '../../json-config/schema-text-serializer';
+
+const BuilderPromptMemoryWorkerModelSchema = z.object({
+	model: AgentModelSchema,
+	credential: z.string().trim().min(1),
+});
 
 const BuilderPromptMemoryConfigSchema = z.object({
 	enabled: z.boolean(),
@@ -13,6 +18,8 @@ const BuilderPromptMemoryConfigSchema = z.object({
 	observationalMemory: z
 		.object({
 			enabled: z.boolean().optional(),
+			observerModel: BuilderPromptMemoryWorkerModelSchema.optional(),
+			reflectorModel: BuilderPromptMemoryWorkerModelSchema.optional(),
 			observerThresholdTokens: z.number().int().min(1).optional(),
 			reflectorThresholdTokens: z.number().int().min(1).optional(),
 			renderTokenBudget: z.number().int().min(1).optional(),
@@ -26,6 +33,8 @@ const BuilderPromptMemoryConfigSchema = z.object({
 			z.object({
 				enabled: z.literal(true),
 				credential: z.string().min(1),
+				extractorModel: BuilderPromptMemoryWorkerModelSchema.optional(),
+				reflectorModel: BuilderPromptMemoryWorkerModelSchema.optional(),
 				topK: z.number().int().min(1).max(100).optional(),
 				maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
 			}),
@@ -49,6 +58,8 @@ export function getConfigRulesSection(): string {
 - \`memory.storage\` must be "n8n"; \`memory.lastMessages\` defaults to 50.
 - \`memory.episodicMemory\` requires \`ask_credential\` with
   \`credentialType: "openAiApi"\`.
+- Memory worker model fields use \`{ "model": "provider/model-name", "credential": "<credentialId>" }\`;
+  use only credential IDs returned by \`resolve_llm\`, \`ask_llm\`, or \`ask_credential\`.
 - \`config.maxIterations\` caps the number of agent loop iterations per run. Do not set or change this unless the user explicitly asks.
 - Fresh agents need a real model, credential, and instructions before config
   is written.`;

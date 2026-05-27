@@ -27,10 +27,15 @@ export const AgentModelSchema = z
 		'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
 	);
 
+const MemoryWorkerModelSchema = z.object({
+	model: AgentModelSchema,
+	credential: z.string().trim().min(1),
+});
+
 const ObservationalMemoryConfigSchema = z.object({
 	enabled: z.boolean().optional(),
-	observerModel: AgentModelSchema.optional(),
-	reflectorModel: AgentModelSchema.optional(),
+	observerModel: MemoryWorkerModelSchema.optional(),
+	reflectorModel: MemoryWorkerModelSchema.optional(),
 	observerThresholdTokens: z.number().int().min(1).optional(),
 	reflectorThresholdTokens: z.number().int().min(1).optional(),
 	renderTokenBudget: z.number().int().min(1).optional(),
@@ -45,8 +50,8 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 	z.object({
 		enabled: z.literal(true),
 		credential: z.string().trim().min(1),
-		extractorModel: AgentModelSchema.optional(),
-		reflectorModel: AgentModelSchema.optional(),
+		extractorModel: MemoryWorkerModelSchema.optional(),
+		reflectorModel: MemoryWorkerModelSchema.optional(),
 		topK: z.number().int().min(1).max(100).optional(),
 		maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
 	}),

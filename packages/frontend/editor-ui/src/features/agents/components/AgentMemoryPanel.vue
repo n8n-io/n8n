@@ -32,10 +32,10 @@ const configuredMemoryModel = computed(() => {
 	if (episodicMemory.value?.enabled !== true) return null;
 
 	return (
-		episodicMemory.value.reflectorModel ??
-		episodicMemory.value.extractorModel ??
-		props.config?.memory?.observationalMemory?.reflectorModel ??
-		props.config?.memory?.observationalMemory?.observerModel ??
+		episodicMemory.value.reflectorModel?.model ??
+		episodicMemory.value.extractorModel?.model ??
+		props.config?.memory?.observationalMemory?.reflectorModel?.model ??
+		props.config?.memory?.observationalMemory?.observerModel?.model ??
 		null
 	);
 });
@@ -80,8 +80,11 @@ function disableEpisodicMemory() {
 	});
 }
 
-function onMemoryRecallModelChange(selection: { model: string }) {
+function onMemoryRecallModelChange(selection: { model: string; credentialId: string | null }) {
+	if (!selection.credentialId) return;
+
 	selectedMemoryModel.value = selection.model;
+	const workerModel = { model: selection.model, credential: selection.credentialId };
 
 	const existingMemory = props.config?.memory;
 	const existingEpisodicMemory = existingMemory?.episodicMemory;
@@ -93,13 +96,13 @@ function onMemoryRecallModelChange(selection: { model: string }) {
 			...buildEnabledMemoryConfig(),
 			observationalMemory: {
 				...existingMemory?.observationalMemory,
-				observerModel: selection.model,
-				reflectorModel: selection.model,
+				observerModel: workerModel,
+				reflectorModel: workerModel,
 			},
 			episodicMemory: {
 				...existingEpisodicMemory,
-				extractorModel: selection.model,
-				reflectorModel: selection.model,
+				extractorModel: workerModel,
+				reflectorModel: workerModel,
 			},
 		},
 	});
@@ -237,6 +240,9 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 }
 
 .modelSelector {
+	display: flex;
+	justify-content: flex-end;
+	margin-left: auto;
 	min-width: 280px;
 }
 

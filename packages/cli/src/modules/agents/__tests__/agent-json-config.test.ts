@@ -138,16 +138,48 @@ describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
 			memory: {
 				...memoryBase,
 				observationalMemory: {
-					observerModel: 'openai/gpt-4o-mini',
-					reflectorModel: 'anthropic/claude-sonnet-4-5',
+					observerModel: { model: 'openai/gpt-4o-mini', credential: 'openai-key' },
+					reflectorModel: {
+						model: 'anthropic/claude-sonnet-4-5',
+						credential: 'anthropic-key',
+					},
 				},
 			},
 		});
 
 		expect(parsed.memory?.observationalMemory).toMatchObject({
-			observerModel: 'openai/gpt-4o-mini',
-			reflectorModel: 'anthropic/claude-sonnet-4-5',
+			observerModel: { model: 'openai/gpt-4o-mini', credential: 'openai-key' },
+			reflectorModel: {
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: 'anthropic-key',
+			},
 		});
+	});
+
+	it('rejects bare string observational memory task models', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				observationalMemory: { observerModel: 'openai/gpt-4o-mini' },
+			},
+		});
+
+		expect(parsed.success).toBe(false);
+	});
+
+	it('rejects observational memory task models with blank credentials', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				observationalMemory: {
+					observerModel: { model: 'openai/gpt-4o-mini', credential: '   ' },
+				},
+			},
+		});
+
+		expect(parsed.success).toBe(false);
 	});
 
 	it('rejects observer thresholds below one', () => {
@@ -206,16 +238,38 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 				episodicMemory: {
 					enabled: true,
 					credential: 'credential-id',
-					extractorModel: 'openai/gpt-4o-mini',
-					reflectorModel: 'anthropic/claude-sonnet-4-5',
+					extractorModel: { model: 'openai/gpt-4o-mini', credential: 'openai-key' },
+					reflectorModel: {
+						model: 'anthropic/claude-sonnet-4-5',
+						credential: 'anthropic-key',
+					},
 				},
 			},
 		});
 
 		expect(parsed.memory?.episodicMemory).toMatchObject({
-			extractorModel: 'openai/gpt-4o-mini',
-			reflectorModel: 'anthropic/claude-sonnet-4-5',
+			extractorModel: { model: 'openai/gpt-4o-mini', credential: 'openai-key' },
+			reflectorModel: {
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: 'anthropic-key',
+			},
 		});
+	});
+
+	it('rejects bare string episodic memory task models', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				episodicMemory: {
+					enabled: true,
+					credential: 'credential-id',
+					extractorModel: 'openai/gpt-4o-mini',
+				},
+			},
+		});
+
+		expect(parsed.success).toBe(false);
 	});
 
 	it('rejects enabled episodic memory with a blank credential', () => {
@@ -224,6 +278,22 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 			memory: {
 				...memoryBase,
 				episodicMemory: { enabled: true, credential: '   ' },
+			},
+		});
+
+		expect(parsed.success).toBe(false);
+	});
+
+	it('rejects episodic memory task models with blank credentials', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				episodicMemory: {
+					enabled: true,
+					credential: 'credential-id',
+					extractorModel: { model: 'openai/gpt-4o-mini', credential: '   ' },
+				},
 			},
 		});
 
