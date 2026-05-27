@@ -1,4 +1,4 @@
-import type { ModelConfig } from './agent';
+import type { ExecutionOptions, ModelConfig } from './agent';
 import type { BuiltEval } from './eval';
 import type { BuiltGuardrail } from './guardrail';
 import type { CheckpointStore } from './memory';
@@ -32,4 +32,5 @@ export interface AgentBuilder {
 	structuredOutput(schema: unknown): this;
 	telemetry(t: unknown): this;
 	mcp(client: unknown): this;
+	configuration(options: ExecutionOptions): this;
 }

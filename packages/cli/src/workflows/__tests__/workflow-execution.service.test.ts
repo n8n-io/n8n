@@ -104,7 +104,10 @@ describe('WorkflowExecutionService', () => {
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
-	jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+	beforeEach(() => {
+		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+	});
 
 	describe('runWorkflow()', () => {
 		test('should call `WorkflowRunner.run()`', async () => {

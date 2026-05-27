@@ -57,7 +57,7 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 
 			const result = await repo.delete({ key });
 			if (result.affected === 0) return undefined;
-			return checkpoint.state;
+			return checkpoint.state ?? undefined;
 		});
 	}
 
