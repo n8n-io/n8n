@@ -319,8 +319,10 @@ export class AgentsBuilderToolsService {
 		const listIntegrationTypesTool = new Tool(BUILDER_TOOLS.LIST_INTEGRATION_TYPES)
 			.description(
 				"List trigger / integration types that can be added to the agent's `integrations` array. " +
-					'Returns the schedule trigger plus every connected chat platform with the list of ' +
-					'credential types it supports (`credentialTypes: string[]`). ' +
+					'Returns the schedule trigger plus every available chat platform with the list of ' +
+					'credential types it supports (`credentialTypes: string[]`) and builder guidance ' +
+					'(`capabilities`, `useIntegrationWhen`, `useNodeToolWhen`). ' +
+					'Use that guidance to decide whether the user needs a chat integration or a node tool. ' +
 					'Call this BEFORE asking the user for a credential. Then pick ONE entry from the ' +
 					'returned `credentialTypes` and pass it to `ask_credential` as the singular ' +
 					'`credentialType` arg.',

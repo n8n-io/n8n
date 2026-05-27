@@ -8,6 +8,7 @@ import { filteredTimelineItemIndexes, formatDuration } from '../session-timeline
 
 const ROW_HEIGHT = 40;
 const SCROLL_PADDING = 24;
+const VIRTUALIZE_AFTER_ROWS = 100;
 
 const props = defineProps<{
 	items: TimelineItem[];
@@ -77,6 +78,8 @@ const rows = computed<Row[]>(() => {
 	return [...events, ...idles].sort((a, b) => a.sortKey - b.sortKey);
 });
 
+const shouldVirtualizeRows = computed(() => rows.value.length > VIRTUALIZE_AFTER_ROWS);
+
 function updateScrollMask() {
 	if (!scrollContainer) {
 		canScrollUp.value = false;
@@ -89,9 +92,9 @@ function updateScrollMask() {
 }
 
 function bindScrollContainer() {
-	const nextScrollContainer = tableRef.value?.querySelector<HTMLElement>(
-		'.recycle-scroller-wrapper',
-	);
+	const nextScrollContainer =
+		tableRef.value?.querySelector<HTMLElement>('[data-timeline-scroll-container]') ??
+		tableRef.value?.querySelector<HTMLElement>('.recycle-scroller-wrapper');
 	if (nextScrollContainer === scrollContainer) return;
 
 	scrollContainer?.removeEventListener('scroll', updateScrollMask);
@@ -187,7 +190,40 @@ watch(
 			canScrollDown && $style.canScrollDown,
 		]"
 	>
-		<N8nRecycleScroller v-if="rows.length > 0" :items="rows" :item-size="ROW_HEIGHT" item-key="id">
+		<div
+			v-if="rows.length > 0 && !shouldVirtualizeRows"
+			:class="$style.directRows"
+			data-timeline-scroll-container
+		>
+			<template v-for="row in rows" :key="row.id">
+				<div
+					v-if="row.kind === 'event'"
+					data-test-id="timeline-row"
+					:data-timeline-row-id="row.id"
+					:class="$style.rowWrapper"
+					@click="emit('select', row.index)"
+				>
+					<SessionTimelineRow :item="row.item" :selected="props.selectedIndex === row.index" />
+				</div>
+				<div
+					v-else
+					data-test-id="timeline-idle-row"
+					:data-timeline-row-id="row.id"
+					:class="$style.idleRow"
+				>
+					<span :class="$style.idlePill">
+						{{ i18n.baseText('agentSessions.timeline.idle') }} ·
+						{{ formatDuration(row.range.end - row.range.start) }}
+					</span>
+				</div>
+			</template>
+		</div>
+		<N8nRecycleScroller
+			v-else-if="rows.length > 0"
+			:items="rows"
+			:item-size="ROW_HEIGHT"
+			item-key="id"
+		>
 			<template #default="{ item: row }">
 				<div
 					v-if="row.kind === 'event'"
@@ -246,6 +282,17 @@ watch(
 	}
 }
 
+.directRows {
+	height: 100%;
+	overflow-y: auto;
+	scrollbar-width: none;
+	scroll-padding-block: var(--spacing--lg);
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
+}
+
 .canScrollDown :global(.recycle-scroller-wrapper) {
 	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
 }
@@ -255,6 +302,18 @@ watch(
 }
 
 .canScrollUp.canScrollDown :global(.recycle-scroller-wrapper) {
+	mask-image: linear-gradient(to bottom, transparent 0%, black 2%, black 95%, transparent 100%);
+}
+
+.canScrollDown .directRows {
+	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
+}
+
+.canScrollUp .directRows {
+	mask-image: linear-gradient(to bottom, transparent 0%, black 2%, black 100%);
+}
+
+.canScrollUp.canScrollDown .directRows {
 	mask-image: linear-gradient(to bottom, transparent 0%, black 2%, black 95%, transparent 100%);
 }
 

@@ -3,9 +3,17 @@ import { Service } from '@n8n/di';
 import {
 	AgentChatIntegration,
 	type AgentChatIntegrationContext,
+	type PlatformActionParams,
+	type PlatformContextQueryParams,
 	type UnauthenticatedWebhookResponse,
 } from '../agent-chat-integration';
 import { loadSlackAdapter } from '../esm-loader';
+import type {
+	IntegrationAction,
+	IntegrationActionResult,
+	IntegrationContextQuery,
+} from '../integration-tools';
+import { executeSlackAction, executeSlackContextQuery } from './slack-operations';
 
 /**
  * Slack platform integration.
@@ -24,6 +32,24 @@ export class SlackIntegration extends AgentChatIntegration {
 
 	readonly displayIcon = 'slack';
 
+	readonly builderGuidance = {
+		capabilities: [
+			'Receive Slack mentions and messages as agent triggers.',
+			'Respond in the latest Slack thread, DM, or channel conversation context.',
+			'Send DMs and channel messages, search users/channels, and add emoji reactions.',
+			'Render rich interaction cards in Slack messages.',
+		],
+		useIntegrationWhen: [
+			'The agent should be chatted with from Slack, invoked with @mentions, or keep conversing in Slack threads.',
+			'The agent needs Slack message context, user/channel lookup, DMs, channel messages, emoji reactions, or rich UI in Slack.',
+			'The agent should communicate as the connected Slack bot rather than merely call Slack as a backend API.',
+		],
+		useNodeToolWhen: [
+			'Slack is only a backend API step in a broader task and the agent does not need Slack conversation context.',
+			'The user asks for a one-off Slack operation from another trigger and does not need the agent connected as a Slack chat surface.',
+		],
+	};
+
 	readonly supportedComponents = [
 		'section',
 		'button',
@@ -33,6 +59,42 @@ export class SlackIntegration extends AgentChatIntegration {
 		'image',
 		'fields',
 	];
+
+	readonly contextQueries: IntegrationContextQuery[] = [
+		'get_current_message_context',
+		'get_current_subject',
+		'get_current_user',
+		'get_current_channel_info',
+		'get_user',
+		'get_channel_info',
+		'search_users',
+		'search_channels',
+	];
+
+	readonly actions: IntegrationAction[] = [
+		'respond',
+		'send_dm',
+		'send_channel_message',
+		'add_reaction',
+	];
+
+	async executeContextQuery(params: PlatformContextQueryParams): Promise<unknown> {
+		return await executeSlackContextQuery({
+			chat: params.chat,
+			query: params.query,
+			input: params.input,
+		});
+	}
+
+	async executeAction(params: PlatformActionParams): Promise<IntegrationActionResult | undefined> {
+		return await executeSlackAction({
+			chat: params.chat,
+			descriptor: params.descriptor,
+			action: params.action,
+			input: params.input,
+			currentMessageContext: params.currentMessageContext,
+		});
+	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const botToken = this.extractBotToken(ctx.credential);
@@ -57,10 +119,13 @@ export class SlackIntegration extends AgentChatIntegration {
 	}
 
 	/**
-	 * Extract the bot token from a decrypted Slack credential.
+	 * Extract the bot token from a decrypted Slack bot-token credential.
 	 */
 	private extractBotToken(credential: Record<string, unknown>): string {
-		const token = typeof credential.accessToken === 'string' ? credential.accessToken : undefined;
+		const token =
+			typeof credential.accessToken === 'string' && credential.accessToken
+				? credential.accessToken
+				: undefined;
 
 		if (!token) {
 			throw new Error(

@@ -30,7 +30,61 @@ describe('ask_credential tool', () => {
 			ctx as never,
 		);
 		expect(ctx.suspend).not.toHaveBeenCalled();
-		expect(result).toEqual({ credentialId: 'c1', credentialName: 'My Slack' });
+		expect(result).toEqual({
+			credentialId: 'c1',
+			credentialName: 'My Slack',
+			credentials: {
+				slackApi: { id: 'c1', name: 'My Slack' },
+			},
+		});
+	});
+
+	it('returns a node credentials map keyed by the requested credential slot when auto-resolving', async () => {
+		const credentialProvider = makeProvider([
+			{ id: 'c1', name: 'My Linear', type: 'linearOAuth2Api' },
+		]);
+		const tool = buildAskCredentialTool({ credentialProvider });
+		const ctx = makeCtx();
+		const result = await tool.handler!(
+			{
+				purpose: 'Linear issue creation',
+				nodeType: 'n8n-nodes-base.linearTool',
+				credentialType: 'linearOAuth2Api',
+				credentialSlot: 'linearOAuth2Api',
+			},
+			ctx as never,
+		);
+
+		expect(result).toEqual({
+			credentialId: 'c1',
+			credentialName: 'My Linear',
+			credentials: {
+				linearOAuth2Api: { id: 'c1', name: 'My Linear' },
+			},
+		});
+	});
+
+	it('adds the node credentials map when resuming from a selected credential', async () => {
+		const credentialProvider = makeProvider([]);
+		const tool = buildAskCredentialTool({ credentialProvider });
+		const ctx = makeCtx({ resumeData: { credentialId: 'c9', credentialName: 'Picked' } });
+
+		const result = await tool.handler!(
+			{
+				purpose: 'Linear issue creation',
+				credentialType: 'linearOAuth2Api',
+				credentialSlot: 'linearOAuth2Api',
+			},
+			ctx as never,
+		);
+
+		expect(result).toEqual({
+			credentialId: 'c9',
+			credentialName: 'Picked',
+			credentials: {
+				linearOAuth2Api: { id: 'c9', name: 'Picked' },
+			},
+		});
 	});
 
 	it('suspends when multiple credentials of the type exist', async () => {
@@ -52,7 +106,7 @@ describe('ask_credential tool', () => {
 		expect(ctx.suspend).toHaveBeenCalledTimes(1);
 	});
 
-	it('returns resumeData verbatim after resume without consulting the provider', async () => {
+	it('returns selected credential after resume without consulting the provider', async () => {
 		const credentialProvider = makeProvider([]);
 		const tool = buildAskCredentialTool({ credentialProvider });
 		const ctx = makeCtx({ resumeData: { credentialId: 'c9', credentialName: 'Picked' } });
@@ -62,7 +116,13 @@ describe('ask_credential tool', () => {
 		);
 		expect(ctx.suspend).not.toHaveBeenCalled();
 		expect(credentialProvider.list).not.toHaveBeenCalled();
-		expect(result).toEqual({ credentialId: 'c9', credentialName: 'Picked' });
+		expect(result).toEqual({
+			credentialId: 'c9',
+			credentialName: 'Picked',
+			credentials: {
+				slackApi: { id: 'c9', name: 'Picked' },
+			},
+		});
 	});
 
 	it('returns skipped resumeData so the builder can continue without credentials', async () => {

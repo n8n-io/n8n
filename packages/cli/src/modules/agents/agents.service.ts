@@ -75,9 +75,19 @@ import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { ChatIntegrationActionExecutor } from './integrations/integration-action-executor';
+import { ChatIntegrationContextQueryExecutor } from './integrations/integration-context-query-executor';
+import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
+import {
+	createIntegrationActionTool,
+	createIntegrationContextTool,
+	getIntegrationToolConnectionDescriptors,
+} from './integrations/integration-tools';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
+import { createGetEnvironmentTool } from './tools/environment-tool';
+import { createRichInteractionTool } from './integrations/rich-interaction-tool';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import {
 	buildFromJson,
@@ -175,6 +185,14 @@ interface GetRuntimeParams {
 	integrationType?: string;
 	/** When true, load the published snapshot; n8nUserId is derived from publishedById when omitted. */
 	usePublishedVersion?: boolean;
+}
+
+interface PublishAgentOptions {
+	syncIntegrations?: boolean;
+}
+
+interface SaveCredentialIntegrationOptions {
+	broadcast?: boolean;
 }
 
 function getMaxIterationsChunks(): StreamChunk[] {
@@ -337,6 +355,13 @@ export class AgentsService {
 				label: i.displayLabel,
 				icon: i.displayIcon,
 				credentialTypes: i.credentialTypes,
+				...(i.builderGuidance
+					? {
+							capabilities: i.builderGuidance.capabilities,
+							useIntegrationWhen: i.builderGuidance.useIntegrationWhen,
+							useNodeToolWhen: i.builderGuidance.useNodeToolWhen,
+						}
+					: {}),
 			}));
 	}
 
@@ -458,6 +483,7 @@ export class AgentsService {
 		projectId: string,
 		user: User,
 		versionId?: string,
+		options: PublishAgentOptions = {},
 	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
@@ -519,7 +545,7 @@ export class AgentsService {
 		// publish, so the entries sat dormant on agent.integrations; passing
 		// previous=[] makes every persisted integration an addition.
 		const credentialIntegrations = (agent.integrations ?? []).filter(isAgentCredentialIntegration);
-		if (credentialIntegrations.length > 0) {
+		if (credentialIntegrations.length > 0 && options.syncIntegrations !== false) {
 			// eslint-disable-next-line import-x/no-cycle
 			const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
 			await Container.get(ChatIntegrationService)
@@ -796,15 +822,7 @@ export class AgentsService {
 		// can't know on its own (current date, instance timezone, day of week)
 		// via a tool call rather than the system prompt — so values that change
 		// per request don't bust system-prompt prompt caching.
-		try {
-			const { createGetEnvironmentTool } = await import('./tools/environment-tool');
-			agent.tool(createGetEnvironmentTool());
-		} catch (toolError) {
-			this.logger.warn('Failed to inject get_environment tool', {
-				agentId,
-				error: toolError instanceof Error ? toolError.message : String(toolError),
-			});
-		}
+		agent.tool(createGetEnvironmentTool());
 
 		// Inject the rich_interaction tool only for platforms that can actually
 		// render its suspend/resume HITL cards. Two gates:
@@ -817,74 +835,34 @@ export class AgentsService {
 		//   - The integration must declare `supportedComponents`. Platforms
 		//     that omit it (e.g. Linear) have explicitly opted out of
 		//     rich_interaction.
-		const integration = integrationType
-			? Container.get(ChatIntegrationRegistry).get(integrationType)
-			: undefined;
+		const integrationRegistry = Container.get(ChatIntegrationRegistry);
+		const integration = integrationType ? integrationRegistry.get(integrationType) : undefined;
 		if (integration?.supportedComponents !== undefined) {
-			try {
-				const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
-				agent.tool(createRichInteractionTool(integrationType));
-			} catch (toolError) {
-				this.logger.warn('Failed to inject rich_interaction tool', {
-					agentId,
-					error: toolError instanceof Error ? toolError.message : String(toolError),
-				});
-			}
+			agent.tool(createRichInteractionTool(integrationType));
 		}
 
 		if (credentialIntegrations.length > 0) {
-			try {
-				const {
-					createIntegrationActionTool,
-					createIntegrationContextTool,
-					getIntegrationToolConnectionDescriptors,
-				} = await import('./integrations/integration-tools');
-				const { IntegrationMessageContextService } = await import(
-					'./integrations/integration-message-context.service'
-				);
-				const { ChatIntegrationActionExecutor } = await import(
-					'./integrations/integration-action-executor'
-				);
-				const { ChatIntegrationContextQueryExecutor } = await import(
-					'./integrations/integration-context-query-executor'
-				);
+			const messageContextStore = Container.get(IntegrationMessageContextService);
+			const actionExecutor = Container.get(ChatIntegrationActionExecutor);
+			const queryExecutor = Container.get(ChatIntegrationContextQueryExecutor);
 
-				const messageContextStore = Container.get(IntegrationMessageContextService);
-				const actionExecutor = Container.get(ChatIntegrationActionExecutor);
-				const queryExecutor = Container.get(ChatIntegrationContextQueryExecutor);
-				const integrationRegistry = Container.get(ChatIntegrationRegistry);
-
-				for (const descriptor of getIntegrationToolConnectionDescriptors(
-					credentialIntegrations,
-					agentId,
-					(integrationConfig) => {
-						const integration = integrationRegistry.get(integrationConfig.type);
-						return {
-							contextQueries: integration?.contextQueries,
-							actions: integration?.actions,
-						};
-					},
-				)) {
-					agent.tool(
-						createIntegrationContextTool({
-							descriptor,
-							messageContextStore,
-							queryExecutor,
-						}),
-					);
-					agent.tool(
-						createIntegrationActionTool({
-							descriptor,
-							messageContextStore,
-							actionExecutor,
-						}),
-					);
-				}
-			} catch (toolError) {
-				this.logger.warn('Failed to inject integration context/action tools', {
-					agentId,
-					error: toolError instanceof Error ? toolError.message : String(toolError),
-				});
+			for (const descriptor of getIntegrationToolConnectionDescriptors(
+				credentialIntegrations,
+				agentId,
+				(integrationConfig) => {
+					const integrationDef = integrationRegistry.get(integrationConfig.type);
+					return {
+						contextQueries: integrationDef?.contextQueries,
+						actions: integrationDef?.actions,
+					};
+				},
+			)) {
+				agent.tool(
+					createIntegrationContextTool({ descriptor, messageContextStore, queryExecutor }),
+				);
+				agent.tool(
+					createIntegrationActionTool({ descriptor, messageContextStore, actionExecutor }),
+				);
 			}
 		}
 
@@ -1599,6 +1577,7 @@ export class AgentsService {
 	async saveCredentialIntegration(
 		agent: Agent,
 		integration: AgentCredentialIntegrationConfig,
+		options: SaveCredentialIntegrationOptions = {},
 	): Promise<Agent> {
 		const parseResult = AgentCredentialIntegrationSchema.safeParse(integration);
 		if (!parseResult.success) {
@@ -1622,8 +1601,16 @@ export class AgentsService {
 				)
 			: [...existing, validated];
 
+		markAgentDraftDirty(agent);
+		this.clearRuntimes(agent.id);
 		const result = await this.agentRepository.save(agent);
-		await this.chatIntegrationService.broadcastIntegrationChange(agent.id, integration, 'connect');
+		if (options.broadcast !== false) {
+			await this.chatIntegrationService.broadcastIntegrationChange(
+				agent.id,
+				integration,
+				'connect',
+			);
+		}
 		return result;
 	}
 
@@ -1643,6 +1630,8 @@ export class AgentsService {
 		// filter by ref
 		agent.integrations = agent.integrations.filter((i) => i !== integration);
 
+		markAgentDraftDirty(agent);
+		this.clearRuntimes(agent.id);
 		const result = await this.agentRepository.save(agent);
 		await this.chatIntegrationService.broadcastIntegrationChange(
 			agent.id,

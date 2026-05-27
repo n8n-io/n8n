@@ -775,6 +775,54 @@ describe('AgentsService', () => {
 
 			expect(chatIntegrationService.syncToConfig).not.toHaveBeenCalled();
 		});
+
+		it('can skip integration sync when publishing after an explicit integration connect', async () => {
+			const agent = makeAgent({
+				integrations: [{ type: 'slack', credentialId: 'cred-1' }],
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentHistoryRepository.saveVersion.mockResolvedValue(makeAgentHistory());
+
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			chatIntegrationService.syncToConfig.mockResolvedValue(undefined);
+			Container.set(ChatIntegrationService, chatIntegrationService);
+
+			await service.publishAgent(agentId, projectId, testUser, undefined, {
+				syncIntegrations: false,
+			});
+
+			expect(chatIntegrationService.syncToConfig).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('credential integrations', () => {
+		it('marks a published agent dirty when saving a credential integration', async () => {
+			const agent = makeAgent({
+				versionId,
+				activeVersionId: versionId,
+				integrations: [],
+			});
+			agentRepository.save.mockResolvedValue(agent);
+
+			await service.saveCredentialIntegration(agent, { type: 'slack', credentialId: 'cred-slack' });
+
+			expect(agent.versionId).not.toBe(versionId);
+			expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		});
+
+		it('marks a published agent dirty when removing a credential integration', async () => {
+			const agent = makeAgent({
+				versionId,
+				activeVersionId: versionId,
+				integrations: [{ type: 'slack', credentialId: 'cred-slack' }],
+			});
+			agentRepository.save.mockResolvedValue(agent);
+
+			await service.removeCredentialIntegration(agent, 'slack', 'cred-slack');
+
+			expect(agent.versionId).not.toBe(versionId);
+			expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		});
 	});
 
 	describe('executeForChatPublished', () => {
@@ -1451,6 +1499,11 @@ describe('AgentsService', () => {
 			readonly credentialTypes = ['testApi'];
 			readonly displayLabel = 'Test Platform';
 			readonly displayIcon = 'circle';
+			readonly builderGuidance = {
+				capabilities: ['Receive messages from Test Platform'],
+				useIntegrationWhen: ['The agent should be chatted with from Test Platform'],
+				useNodeToolWhen: ['Test Platform is only a backend API capability'],
+			};
 			async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 				return {};
 			}
@@ -1469,6 +1522,9 @@ describe('AgentsService', () => {
 				label: 'Test Platform',
 				icon: 'circle',
 				credentialTypes: ['testApi'],
+				capabilities: ['Receive messages from Test Platform'],
+				useIntegrationWhen: ['The agent should be chatted with from Test Platform'],
+				useNodeToolWhen: ['Test Platform is only a backend API capability'],
 			});
 		});
 
@@ -1893,6 +1949,24 @@ describe('AgentsService', () => {
 					integrations: [integration],
 				}),
 			);
+		});
+
+		it('can persist a credential integration without broadcasting a live connect', async () => {
+			const agent = makeAgent({ integrations: [] });
+			agentRepository.save.mockImplementation(async (a) => a as Agent);
+			const integration = {
+				type: 'slack' as const,
+				credentialId: 'cred-1',
+			};
+
+			await service.saveCredentialIntegration(agent, integration, { broadcast: false });
+
+			expect(agentRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					integrations: [integration],
+				}),
+			);
+			expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
 		});
 
 		it('replaces an existing integration with the same type+credentialId', async () => {

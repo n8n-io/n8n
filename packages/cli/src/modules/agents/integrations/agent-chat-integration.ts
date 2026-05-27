@@ -2,8 +2,15 @@ import { Service } from '@n8n/di';
 import type { Thread, Author } from 'chat';
 
 import { AgentCredentialIntegrationConfig } from '@n8n/api-types';
+import type { ChatInstance } from './chat-integration.service';
 import type { SuspendComponent } from './component-mapper';
-import type { IntegrationAction, IntegrationContextQuery } from './integration-tools';
+import type {
+	IntegrationAction,
+	IntegrationActionResult,
+	IntegrationContextQuery,
+	IntegrationMessageContext,
+	IntegrationToolConnectionDescriptor,
+} from './integration-tools';
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
 export interface AgentChatIntegrationContext {
@@ -19,6 +26,12 @@ export interface AgentChatIntegrationContext {
 export interface UnauthenticatedWebhookResponse {
 	status: number;
 	body: unknown;
+}
+
+export interface AgentChatIntegrationBuilderGuidance {
+	capabilities: string[];
+	useIntegrationWhen: string[];
+	useNodeToolWhen: string[];
 }
 
 /**
@@ -50,6 +63,13 @@ export abstract class AgentChatIntegration {
 	abstract readonly displayIcon: string;
 
 	/**
+	 * Builder-facing guidance returned by `list_integration_types`.
+	 * This helps the builder choose between connecting the agent to a chat
+	 * integration and adding a regular node/workflow tool for the same product.
+	 */
+	readonly builderGuidance?: AgentChatIntegrationBuilderGuidance;
+
+	/**
 	 * Component types this platform supports in rich_interaction cards.
 	 * Omit to signal that the platform has no rich_interaction surface — the
 	 * tool won't be injected into agents targeting this platform.
@@ -57,7 +77,10 @@ export abstract class AgentChatIntegration {
 	readonly supportedComponents?: string[];
 
 	/** Read-only context queries exposed through the generated integration context tool. */
-	readonly contextQueries: IntegrationContextQuery[] = ['get_current_message_context'];
+	readonly contextQueries: IntegrationContextQuery[] = [
+		'get_current_message_context',
+		'get_current_subject',
+	];
 
 	/** Side-effecting actions exposed through the generated integration action tool. */
 	readonly actions: IntegrationAction[] = ['respond'];
@@ -154,6 +177,43 @@ export abstract class AgentChatIntegration {
 	 * Private-mode allowlist.
 	 */
 	isUserAllowed?(author: Author, settings: AgentCredentialIntegrationConfig | undefined): boolean;
+
+	/**
+	 * Execute a context query that this platform owns (e.g. Linear `get_issue`,
+	 * Slack `search_users`). The central executor handles only the cross-platform
+	 * message-context queries before delegating here.
+	 *
+	 * Return shape mirrors {@link IntegrationActionResult} — `{ ok: true, ... }`
+	 * on success or `{ ok: false, error: { code, message } }` on failure.
+	 */
+	executeContextQuery?(params: PlatformContextQueryParams): Promise<unknown>;
+
+	/**
+	 * Execute a platform-specific action (e.g. Linear `create_issue`, Slack
+	 * `add_reaction`). The central executor handles the cross-platform actions
+	 * (`respond`, `send_dm`, `send_channel_message`) before delegating here.
+	 *
+	 * Return `undefined` to signal the action isn't owned by this platform — the
+	 * caller then returns an `UNSUPPORTED_ACTION` error.
+	 */
+	executeAction?(params: PlatformActionParams): Promise<IntegrationActionResult | undefined>;
+}
+
+/** Per-platform context-query execution params. */
+export interface PlatformContextQueryParams {
+	chat: ChatInstance;
+	descriptor: IntegrationToolConnectionDescriptor;
+	query: IntegrationContextQuery;
+	input: Record<string, unknown>;
+}
+
+/** Per-platform action-execution params. */
+export interface PlatformActionParams {
+	chat: ChatInstance;
+	descriptor: IntegrationToolConnectionDescriptor;
+	action: IntegrationAction;
+	input: Record<string, unknown>;
+	currentMessageContext?: IntegrationMessageContext;
 }
 
 /**
