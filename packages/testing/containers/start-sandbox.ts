@@ -39,4 +39,7 @@ async function main() {
 	console.log('Sandbox service is ready');
 }
 
-await main();
+main().catch((error) => {
+	console.error(error);
+	process.exit(1);
+});
