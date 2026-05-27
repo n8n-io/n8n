@@ -74,7 +74,7 @@ jobs:
 
       - name: Start sandbox service
         if: ${{ inputs.sandbox-provider == 'n8n-sandbox' }}
-        run: npx tsx packages/testing/containers/start-sandbox.ts --network n8n-eval-net
+        run: pnpm tsx packages/testing/containers/start-sandbox.ts --network n8n-eval-net
 
       - name: Start n8n containers
         env:
