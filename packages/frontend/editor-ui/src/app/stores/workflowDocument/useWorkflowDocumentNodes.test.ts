@@ -995,6 +995,161 @@ describe('useWorkflowDocumentNodes', () => {
 
 			expect(result).toBe(0);
 		});
+
+		it('fires onStateDirty and syncWorkflowObject for each assigned node', () => {
+			const credential = { id: 'cred-1', name: 'Test Credential' };
+
+			getNodeType.mockReturnValue({
+				credentials: [{ name: 'slackApi', required: true }],
+				inputs: [],
+				group: [],
+				webhooks: [],
+				properties: [],
+			});
+
+			const syncWorkflowObject = vi.fn();
+			const dirtyHandler = vi.fn();
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes({
+				...deps,
+				syncWorkflowObject,
+			});
+			workflowDocumentNodes.onStateDirty(dirtyHandler);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'Current Node', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+				createNode({ name: 'Slack Node 1', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+				createNode({ name: 'Slack Node 2', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+			]);
+
+			syncWorkflowObject.mockClear();
+			dirtyHandler.mockClear();
+
+			workflowDocumentNodes.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: 'slackApi',
+				currentNodeName: 'Current Node',
+			});
+
+			expect(syncWorkflowObject).toHaveBeenCalledTimes(2);
+			expect(dirtyHandler).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('replaceInvalidWorkflowCredentials', () => {
+		it('replaces credentials on every node that referenced the invalid credential by id', () => {
+			const invalid = { id: 'invalid-id', name: 'Old' };
+			const replacement = { id: 'new-id', name: 'New' };
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'A', credentials: { slackApi: { ...invalid } } }),
+				createNode({ name: 'B', credentials: { slackApi: { ...invalid } } }),
+				createNode({ name: 'C', credentials: { slackApi: { id: 'other-id', name: 'Other' } } }),
+			]);
+
+			workflowDocumentNodes.replaceInvalidWorkflowCredentials({
+				credentials: replacement,
+				invalid,
+				type: 'slackApi',
+			});
+
+			expect(workflowDocumentNodes.getNodeByName('A')?.credentials?.slackApi).toEqual(replacement);
+			expect(workflowDocumentNodes.getNodeByName('B')?.credentials?.slackApi).toEqual(replacement);
+			expect(workflowDocumentNodes.getNodeByName('C')?.credentials?.slackApi).toEqual({
+				id: 'other-id',
+				name: 'Other',
+			});
+		});
+
+		it('replaces placeholder credentials (id: null) matched by name', () => {
+			const placeholder = { id: null, name: 'Placeholder' };
+			const replacement = { id: 'real-id', name: 'Real' };
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'A', credentials: { slackApi: placeholder } }),
+			]);
+
+			workflowDocumentNodes.replaceInvalidWorkflowCredentials({
+				credentials: replacement,
+				invalid: placeholder,
+				type: 'slackApi',
+			});
+
+			expect(workflowDocumentNodes.getNodeByName('A')?.credentials?.slackApi).toEqual(replacement);
+		});
+
+		it('fires onStateDirty and syncWorkflowObject for each replaced node', () => {
+			const invalid = { id: 'invalid-id', name: 'Old' };
+			const replacement = { id: 'new-id', name: 'New' };
+
+			const syncWorkflowObject = vi.fn();
+			const dirtyHandler = vi.fn();
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes({
+				...deps,
+				syncWorkflowObject,
+			});
+			workflowDocumentNodes.onStateDirty(dirtyHandler);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'A', credentials: { slackApi: { ...invalid } } }),
+				createNode({ name: 'B', credentials: { slackApi: { ...invalid } } }),
+			]);
+
+			syncWorkflowObject.mockClear();
+			dirtyHandler.mockClear();
+
+			workflowDocumentNodes.replaceInvalidWorkflowCredentials({
+				credentials: replacement,
+				invalid,
+				type: 'slackApi',
+			});
+
+			expect(syncWorkflowObject).toHaveBeenCalledTimes(2);
+			expect(dirtyHandler).toHaveBeenCalledTimes(2);
+		});
+
+		// ADO-5299: prior to the fix, `replaceInvalidWorkflowCredentials` mutated
+		// `node.credentials` in place without going through `updateNodeAtIndex`. The
+		// NodeCredentials flow then emitted `credentialSelected` → updateNodeProperties,
+		// which compared the (already-mutated) node against the new value via deep
+		// `isEqual` and saw no change — leaving `onStateDirty` unfired, so autosave
+		// never ran and the new credential silently failed to persist.
+		it('marks state dirty so a subsequent equal updateNodeProperties does not eat the signal', () => {
+			const invalid = { id: null, name: 'Placeholder' };
+			const replacement = { id: 'real-id', name: 'Real' };
+
+			const dirtyHandler = vi.fn();
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.onStateDirty(dirtyHandler);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'A', credentials: { slackApi: { ...invalid } } }),
+			]);
+
+			workflowDocumentNodes.replaceInvalidWorkflowCredentials({
+				credentials: replacement,
+				invalid,
+				type: 'slackApi',
+			});
+
+			const dirtyCountAfterReplace = dirtyHandler.mock.calls.length;
+
+			// Simulate NodeCredentials' follow-up emit('credentialSelected', ...):
+			// builds the credentials object from the (already-mutated) node and routes
+			// it through updateNodeProperties. updateNodeAtIndex's isEqual will see no
+			// change and return false — but the earlier dirty trigger has already fired,
+			// so autosave still runs.
+			const node = workflowDocumentNodes.getNodeByName('A');
+			workflowDocumentNodes.updateNodeProperties({
+				name: 'A',
+				properties: {
+					credentials: { ...(node?.credentials ?? {}), slackApi: replacement },
+				},
+			});
+
+			expect(dirtyHandler.mock.calls.length).toBeGreaterThanOrEqual(dirtyCountAfterReplace);
+			expect(dirtyCountAfterReplace).toBe(1);
+		});
 	});
 
 	describe('port subsystem (nodeInputsByNodeId / nodeOutputsByNodeId)', () => {
