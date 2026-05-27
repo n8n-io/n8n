@@ -12,6 +12,7 @@ import {
 	type ConnectionLostReason,
 } from '../errors';
 import { createLogger } from '../logger';
+import { HTML_PROBE_SCRIPT, parseHtmlProbeResult } from '../sensitivity/html-probe';
 import type {
 	Adapter,
 	ClickOptions,
@@ -23,6 +24,7 @@ import type {
 	NavigateResult,
 	NetworkEntry,
 	PageInfo,
+	HtmlProbeResult,
 	ResolvedConfig,
 	ScreenshotOptions,
 	ScrollOptions,
@@ -192,9 +194,14 @@ export class AgentBrowserAdapter implements Adapter {
 
 		if (!this.relay.isExtensionConnected()) {
 			const extensionEndpoint = this.relay.extensionEndpoint(this.relayPort!);
+			// `N8N_EVAL_AUTO_BROWSER_CONNECT=1` mirrors the playwright adapter — see
+			// `playwright.ts` for the full justification. The extension only honors
+			// the flag when the relay URL is localhost, which it always is here.
+			const autoConnect = process.env.N8N_EVAL_AUTO_BROWSER_CONNECT === '1';
 			const connectUrl =
 				`chrome-extension://${BROWSER_USE_EXTENSION_ID}/connect.html` +
-				`?mcpRelayUrl=${encodeURIComponent(extensionEndpoint)}`;
+				`?mcpRelayUrl=${encodeURIComponent(extensionEndpoint)}` +
+				(autoConnect ? '&autoConnect=1' : '');
 			log.debug('launch: opening browser at', connectUrl);
 
 			await new Promise<void>((resolve, reject) => {
@@ -437,6 +444,20 @@ export class AgentBrowserAdapter implements Adapter {
 		return { tree: tree || '(empty page)', refCount };
 	}
 
+	async probePageHtml(pageId: string): Promise<HtmlProbeResult> {
+		try {
+			await this.switchToTab(pageId);
+			const resp = await this.run(['eval', HTML_PROBE_SCRIPT]);
+			const raw =
+				resp.data && typeof resp.data === 'object' && 'result' in resp.data
+					? (resp.data as { result: unknown }).result
+					: resp.data;
+			return parseHtmlProbeResult(raw);
+		} catch (error) {
+			return { ok: false, error: error instanceof Error ? error.message : String(error) };
+		}
+	}
+
 	async screenshot(
 		pageId: string,
 		_target?: ElementTarget,
@@ -605,5 +626,15 @@ export class AgentBrowserAdapter implements Adapter {
 
 	getPageUrl(pageId: string): string | undefined {
 		return this.urlCache.get(pageId);
+	}
+
+	async getElementValue(pageId: string, target: ElementTarget): Promise<string> {
+		await this.switchToTab(pageId);
+		const ref = this.resolveTarget(target);
+		const valueResp = await this.run(['get', 'value', ref]);
+		const value = (valueResp.data as { value?: string } | undefined)?.value ?? '';
+		if (value !== '') return value;
+		const textResp = await this.run(['get', 'text', ref]);
+		return (textResp.data as { text?: string } | undefined)?.text ?? '';
 	}
 }

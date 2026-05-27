@@ -1,9 +1,10 @@
 import type ivm from 'isolated-vm';
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
-import type { RuntimeBridge, BridgeConfig, ExecuteOptions } from '../types';
+import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
+import { bridgeMessageSchema, type BridgeMessage } from './bridge-messages';
 
 // Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
 // file is statically imported (e.g. for error classes). The native module is
@@ -284,7 +285,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
-	private createGetValueAtPathRef(data: Record<string, unknown>): ivm.Reference {
+	private createGetValueAtPathRef(data: WorkflowData): ivm.Reference {
 		return new (getIvm().Reference)((path: string[]) => {
 			try {
 				// Navigate to value
@@ -356,7 +357,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
-	private createGetArrayElementRef(data: Record<string, unknown>): ivm.Reference {
+	private createGetArrayElementRef(data: WorkflowData): ivm.Reference {
 		return new (getIvm().Reference)((path: string[], index: number) => {
 			try {
 				// Navigate to array
@@ -421,7 +422,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
-	private createCallFunctionAtPathRef(data: Record<string, unknown>): ivm.Reference {
+	private createCallFunctionAtPathRef(data: WorkflowData): ivm.Reference {
 		return new (getIvm().Reference)((path: string[], ...args: unknown[]) => {
 			try {
 				// Navigate to function, tracking parent to preserve `this` context
@@ -456,14 +457,129 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	}
 
 	/**
+	 * Create the single typed-RPC dispatcher.
+	 *
+	 * The isolate sends one envelope per typed RPC invocation:
+	 *   `callHost({ type: 'getNodeFirst', nodeName, branchIndex?, runIndex? })`
+	 *
+	 * Inputs cross a trust boundary, so the dispatcher parses every envelope
+	 * with the host-side zod schema (`bridgeMessageSchema`) before any
+	 * dispatch happens. Anything that deviates from the declared shape —
+	 * unknown `type`, missing required fields, extra unexpected fields,
+	 * wrong field types — fails the parse and an error sentinel is returned
+	 * to the caller.
+	 *
+	 * After parsing, `switch (msg.type)` dispatches to a private handler with
+	 * a fully narrowed message type. The operation set is exactly the cases
+	 * in this switch; the `type` field selects a static branch in source,
+	 * not a property lookup on a runtime object.
+	 *
+	 * @param data - Current workflow data
+	 * @private
+	 */
+	private createCallHostRef(data: WorkflowData): ivm.Reference {
+		return new (getIvm().Reference)((rawMsg: unknown) => {
+			try {
+				const msg = bridgeMessageSchema.parse(rawMsg);
+				switch (msg.type) {
+					case 'getNodeFirst':
+						return this.handleGetNodeFirst(msg, data);
+					case 'getNodeLast':
+						return this.handleGetNodeLast(msg, data);
+					case 'getNodeAll':
+						return this.handleGetNodeAll(msg, data);
+					case 'getInputFirst':
+						return this.handleGetInputFirst(data);
+					case 'getInputLast':
+						return this.handleGetInputLast(data);
+					case 'getInputAll':
+						return this.handleGetInputAll(data);
+					default: {
+						// Unreachable at runtime — zod rejects unknown `type` values
+						// before the switch. The `never` assignment is the compile-time
+						// guard: a new schema added to `bridgeMessageSchema` without a
+						// matching case here becomes a type error.
+						const exhaustive: never = msg;
+						void exhaustive;
+						throw new Error('Unhandled bridge message');
+					}
+				}
+			} catch (err) {
+				return serializeError(err);
+			}
+		});
+	}
+
+	/**
+	 * Handlers for the `$('Foo').{first,last,all}` typed RPCs.
+	 *
+	 * Each handler reads a fixed literal property name off the host-side node
+	 * proxy — the isolate cannot influence which property is dereferenced.
+	 * Eliminating `data.$` as a host-callable entirely would require reaching
+	 * the `WorkflowDataProxy` internals (e.g. `getNodeExecutionOrPinnedData`)
+	 * rather than the public `$()` API; that's a follow-up.
+	 *
+	 * `data.$` is a host-wired function (`WorkflowDataProxy`'s `$`). If it
+	 * ever isn't, optional chaining short-circuits to `undefined` — the same
+	 * observable result the runtime's `E()` handler produces from any thrown
+	 * error here.
+	 *
+	 * @private
+	 */
+	private handleGetNodeFirst(
+		msg: Extract<BridgeMessage, { type: 'getNodeFirst' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$?.(msg.nodeName)?.first?.(msg.branchIndex, msg.runIndex);
+	}
+
+	private handleGetNodeLast(
+		msg: Extract<BridgeMessage, { type: 'getNodeLast' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$?.(msg.nodeName)?.last?.(msg.branchIndex, msg.runIndex);
+	}
+
+	private handleGetNodeAll(
+		msg: Extract<BridgeMessage, { type: 'getNodeAll' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$?.(msg.nodeName)?.all?.(msg.branchIndex, msg.runIndex);
+	}
+
+	/**
+	 * Handlers for the `$input.{first,last,all}` typed RPCs.
+	 *
+	 * Each reads a fixed literal property name off `data.$input` (the host's
+	 * `WorkflowDataProxy` input proxy). The host enforces zero arguments on
+	 * these methods — the schemas have no fields besides `type`, so the
+	 * isolate cannot pass anything that would trigger the "should have no
+	 * arguments" error path on the host side.
+	 *
+	 * @private
+	 */
+	private handleGetInputFirst(data: WorkflowData): unknown {
+		return data.$input?.first?.();
+	}
+
+	private handleGetInputLast(data: WorkflowData): unknown {
+		return data.$input?.last?.();
+	}
+
+	private handleGetInputAll(data: WorkflowData): unknown {
+		return data.$input?.all?.();
+	}
+
+	/**
 	 * Execute JavaScript code in the isolated context.
 	 *
 	 * Flow:
-	 * 1. Create three ivm.Reference callbacks scoped to the current data
-	 * 2. Use evalClosureSync to run the code in a closure where $0/$1/$2
-	 *    are the callback references — no global mutable state
+	 * 1. Create four ivm.Reference callbacks scoped to the current data:
+	 *    `getValueAtPath`, `getArrayElement`, `callFunctionAtPath`, `callHost`.
+	 * 2. Use evalClosureSync to run the code in a closure where `$0`/`$1`/`$2`/`$3`
+	 *    are the callback references — no global mutable state.
 	 * 3. buildContext() inside the isolate creates a fresh evaluation context
-	 *    from the closure-scoped references
+	 *    from the closure-scoped references.
 	 *
 	 * Each call gets its own closure, so nested and concurrent evaluations
 	 * cannot interfere with each other.
@@ -473,7 +589,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @returns Result of the expression
 	 * @throws {Error} If bridge not initialized or execution fails
 	 */
-	execute(code: string, data: Record<string, unknown>, options?: ExecuteOptions): unknown {
+	execute(code: string, data: WorkflowData, options?: ExecuteOptions): unknown {
 		if (!this.initialized || !this.context) {
 			throw new Error('Bridge not initialized. Call initialize() first.');
 		}
@@ -481,6 +597,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		const getValueAtPath = this.createGetValueAtPathRef(data);
 		const getArrayElement = this.createGetArrayElementRef(data);
 		const callFunctionAtPath = this.createCallFunctionAtPathRef(data);
+		const callHost = this.createCallHostRef(data);
 
 		try {
 			const timezone = options?.timezone ? JSON.stringify(options.timezone) : 'undefined';
@@ -488,13 +605,21 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			// Wrap transformed code so 'this' === the closure-scoped context.
 			// Tournament generates: this.$json.email, this.$items(), etc.
 			// buildContext() creates a fresh context with lazy proxies from the
-			// closure-scoped callback references ($0, $1, $2) — no globals touched.
+			// closure-scoped callback references — no globals touched. The bundle
+			// is passed as a single object so adding typed RPCs doesn't churn the
+			// evalClosureSync signature; new operations land as new schemas in
+			// bridge-messages.ts and new cases in the callHost dispatcher.
 			// The outer try-catch serializes errors into a sentinel object and returns
 			// it as the result. Errors from host callbacks arrive as sentinels already
 			// (via serializeError), so we pass them through. This avoids a round-trip
 			// callback and keeps Error reconstruction on the host side only.
 			const wrappedCode = `
-var __ctx = buildContext($0, $1, $2, ${timezone});
+var __ctx = buildContext({
+  getValueAtPath: $0,
+  getArrayElement: $1,
+  callFunctionAtPath: $2,
+  callHost: $3,
+}, ${timezone});
 try {
   var __result = (function() {
     ${code}
@@ -518,7 +643,7 @@ try {
 
 			const result = this.context.evalClosureSync(
 				wrappedCode,
-				[getValueAtPath, getArrayElement, callFunctionAtPath],
+				[getValueAtPath, getArrayElement, callFunctionAtPath, callHost],
 				{ result: { copy: true }, timeout: this.config.timeout },
 			);
 
@@ -556,6 +681,7 @@ try {
 			getValueAtPath.release();
 			getArrayElement.release();
 			callFunctionAtPath.release();
+			callHost.release();
 		}
 	}
 

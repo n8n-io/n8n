@@ -10,8 +10,8 @@ import {
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, nextTick, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 
@@ -20,9 +20,14 @@ const emit = defineEmits<{ collapse: [] }>();
 const store = useInstanceAiStore();
 const i18n = useI18n();
 const router = useRouter();
+const route = useRoute();
 
 const editingThreadId = ref<string | null>(null);
 const editingTitle = ref('');
+const renameInput = ref<HTMLInputElement | null>(null);
+const activeThreadId = computed(() =>
+	typeof route.params.threadId === 'string' ? route.params.threadId : undefined,
+);
 
 const threadActions: Array<ActionDropdownItem<'rename' | 'delete'>> = [
 	{
@@ -56,10 +61,12 @@ const groupedThreads = computed(() => {
 	// chatHub sidebar's `groupConversationsByDate` behaviour.
 	for (const thread of store.threads) {
 		const group = getRelativeDate(now, thread.updatedAt ?? thread.createdAt);
-		if (!groups.has(group)) {
-			groups.set(group, []);
+		let threads = groups.get(group);
+		if (!threads) {
+			threads = [];
+			groups.set(group, threads);
 		}
-		groups.get(group)!.push(thread);
+		threads.push(thread);
 	}
 
 	return groupOrder.flatMap((groupName) => {
@@ -68,19 +75,16 @@ const groupedThreads = computed(() => {
 	});
 });
 
-function handleNewThread() {
-	if (!store.hasMessages) return;
-	store.newThread();
-	void router.push({ name: INSTANCE_AI_VIEW });
-}
-
 async function handleDeleteThread(threadId: string) {
-	const { wasActive } = await store.deleteThread(threadId);
+	const wasActive = threadId === activeThreadId.value;
+	const deleted = await store.deleteThread(threadId);
+	if (!deleted) return;
+
 	if (wasActive) {
 		if (store.threads.length > 0) {
 			void router.push({
 				name: INSTANCE_AI_THREAD_VIEW,
-				params: { threadId: store.currentThreadId },
+				params: { threadId: store.threads[0].id },
 			});
 		} else {
 			void router.push({ name: INSTANCE_AI_VIEW });
@@ -91,6 +95,10 @@ async function handleDeleteThread(threadId: string) {
 function startRename(threadId: string, currentTitle: string) {
 	editingThreadId.value = threadId;
 	editingTitle.value = currentTitle;
+	void nextTick(() => {
+		renameInput.value?.focus();
+		renameInput.value?.select();
+	});
 }
 
 async function confirmRename(threadId: string) {
@@ -148,15 +156,18 @@ function handleThreadAction(action: string, threadId: string) {
 					placement="bottom"
 					:show-after="TOOLTIP_DELAY_MS"
 				>
-					<N8nIconButton
-						icon="plus"
-						variant="ghost"
-						size="small"
-						icon-size="large"
-						:aria-label="i18n.baseText('instanceAi.thread.new')"
-						data-test-id="instance-ai-new-thread-button"
-						@click="handleNewThread"
-					/>
+					<RouterLink v-slot="{ href, navigate }" :to="{ name: INSTANCE_AI_VIEW }" custom>
+						<N8nIconButton
+							:href="href"
+							icon="plus"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							:aria-label="i18n.baseText('instanceAi.thread.new')"
+							data-test-id="instance-ai-new-thread-button"
+							@click="navigate"
+						/>
+					</RouterLink>
 				</N8nTooltip>
 			</div>
 		</div>
@@ -171,16 +182,16 @@ function handleThreadAction(action: string, threadId: string) {
 					<div
 						v-for="thread in group.threads"
 						:key="thread.id"
-						:class="[$style.threadItem, { [$style.active]: thread.id === store.currentThreadId }]"
+						:class="[$style.threadItem, { [$style.active]: thread.id === activeThreadId }]"
 						data-test-id="instance-ai-thread-item"
 					>
 						<!-- Inline rename mode -->
 						<div v-if="editingThreadId === thread.id" :class="$style.renameContainer">
 							<input
+								ref="renameInput"
 								v-model="editingTitle"
 								:class="$style.renameInput"
 								type="text"
-								autofocus
 								@keydown.enter="confirmRename(thread.id)"
 								@keydown.escape="cancelRename"
 								@blur="confirmRename(thread.id)"

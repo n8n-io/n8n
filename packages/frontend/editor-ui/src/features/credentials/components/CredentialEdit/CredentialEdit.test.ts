@@ -451,6 +451,211 @@ describe('CredentialEdit', () => {
 		});
 	});
 
+	describe('managed credential scope hiding', () => {
+		const discordOAuth2Api: ICredentialType = {
+			name: 'discordOAuth2Api',
+			extends: ['oAuth2Api'],
+			displayName: 'Discord OAuth2 API',
+			documentationUrl: 'discord',
+			properties: [
+				{
+					displayName: 'Custom Scopes',
+					name: 'customScopes',
+					type: 'boolean',
+					default: false,
+				},
+				{
+					displayName: 'Custom Scopes Notice',
+					name: 'customScopesNotice',
+					type: 'notice',
+					default: '',
+					displayOptions: { show: { customScopes: [true] } },
+				},
+				{
+					displayName: 'Enabled Scopes',
+					name: 'enabledScopes',
+					type: 'string',
+					default: 'identify guilds',
+					displayOptions: { show: { customScopes: [true] } },
+				},
+			],
+			iconUrl: '',
+			supportedNodes: [],
+		};
+
+		const setupStores = (isManaged: boolean) => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialData.mockResolvedValueOnce({
+				// @ts-expect-error data is decrypted
+				data: { customScopes: true, scope: 'identify guilds' },
+				createdAt: '2026-05-12T10:00:00.000Z',
+				updatedAt: '2026-05-12T10:00:00.000Z',
+				id: 'cred-1',
+				name: 'Discord account',
+				type: 'discordOAuth2Api',
+				isManaged,
+				sharedWithProjects: [],
+				scopes: ['credential:update'],
+				oauthTokenData: false,
+			});
+
+			credentialsStore.state.credentials = {
+				'cred-1': {
+					id: 'cred-1',
+					name: 'Discord account',
+					type: 'discordOAuth2Api',
+					isManaged,
+				} as ICredentialsResponse,
+			};
+
+			credentialsStore.state.credentialTypes = {
+				[oAuth2Api.name]: oAuth2Api,
+				[discordOAuth2Api.name]: discordOAuth2Api,
+			};
+
+			return credentialsStore;
+		};
+
+		test('hides Scope, Custom Scopes, Enabled Scopes and notice when credential is managed', async () => {
+			const credentialsStore = setupStores(true);
+
+			const { queryByText } = renderComponent({
+				props: {
+					activeId: 'cred-1',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+			expect(queryByText('Scope')).not.toBeInTheDocument();
+			expect(queryByText('Custom Scopes')).not.toBeInTheDocument();
+			expect(queryByText('Enabled Scopes')).not.toBeInTheDocument();
+			expect(queryByText('Custom Scopes Notice')).not.toBeInTheDocument();
+		});
+
+		test('shows Custom Scopes and dependent fields when credential is not managed', async () => {
+			const credentialsStore = setupStores(false);
+
+			const { queryByText } = renderComponent({
+				props: {
+					activeId: 'cred-1',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+			await retry(() => expect(queryByText('Custom Scopes')).toBeInTheDocument());
+			expect(queryByText('Enabled Scopes')).toBeInTheDocument();
+		});
+
+		const discordOAuth2ApiManagedCapable: ICredentialType = {
+			...discordOAuth2Api,
+			__overwrittenProperties: ['clientId', 'clientSecret'],
+		};
+
+		const setupManagedCapableStores = (credentialData: Record<string, unknown>) => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialData.mockResolvedValueOnce({
+				// @ts-expect-error data is decrypted
+				data: credentialData,
+				createdAt: '2026-05-12T10:00:00.000Z',
+				updatedAt: '2026-05-12T10:00:00.000Z',
+				id: 'cred-2',
+				name: 'Discord account',
+				type: 'discordOAuth2Api',
+				isManaged: false,
+				sharedWithProjects: [],
+				scopes: ['credential:update'],
+				oauthTokenData: false,
+			});
+
+			credentialsStore.state.credentials = {
+				'cred-2': {
+					id: 'cred-2',
+					name: 'Discord account',
+					type: 'discordOAuth2Api',
+					isManaged: false,
+				} as ICredentialsResponse,
+			};
+
+			credentialsStore.state.credentialTypes = {
+				[oAuth2Api.name]: oAuth2Api,
+				[discordOAuth2ApiManagedCapable.name]: discordOAuth2ApiManagedCapable,
+			};
+
+			const ndvStore = mockedStore(useNDVStore);
+			ndvStore.activeNode = {
+				name: 'DiscordTest',
+				type: 'n8n-nodes-base.discord',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			} as INode;
+
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getNodeType = () =>
+				({
+					displayName: 'Discord',
+					name: 'n8n-nodes-base.discord',
+					group: ['output'],
+					version: 1,
+					description: 'Discord',
+					defaults: { name: 'Discord' },
+					inputs: ['main'],
+					outputs: ['main'],
+					credentials: [{ name: 'discordOAuth2Api', required: true }],
+					properties: [],
+				}) as unknown as INodeTypeDescription;
+
+			return credentialsStore;
+		};
+
+		test('hides scope fields when managed OAuth is available and user has not opted into custom OAuth', async () => {
+			const credentialsStore = setupManagedCapableStores({ grantType: 'authorizationCode' });
+
+			const { queryByText } = renderComponent({
+				props: {
+					activeId: 'cred-2',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+			expect(queryByText('Scope')).not.toBeInTheDocument();
+			expect(queryByText('Custom Scopes')).not.toBeInTheDocument();
+			expect(queryByText('Enabled Scopes')).not.toBeInTheDocument();
+			expect(queryByText('Custom Scopes Notice')).not.toBeInTheDocument();
+		});
+
+		test('shows scope fields when managed OAuth is available but user has provided their own clientId/clientSecret', async () => {
+			const credentialsStore = setupManagedCapableStores({
+				grantType: 'authorizationCode',
+				clientId: 'my-client-id',
+				clientSecret: 'my-client-secret',
+				customScopes: true,
+			});
+
+			const { queryByText } = renderComponent({
+				props: {
+					activeId: 'cred-2',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+			await retry(() => expect(queryByText('Custom Scopes')).toBeInTheDocument());
+			expect(queryByText('Enabled Scopes')).toBeInTheDocument();
+		});
+	});
+
 	test('should use the requested credential type when node has multiple credential types', async () => {
 		const alphaCredType: ICredentialType = {
 			name: 'alphaApi',
@@ -557,5 +762,183 @@ describe('CredentialEdit', () => {
 				credentialTypeName: 'betaApi',
 			}),
 		);
+	});
+
+	describe('per-user OAuth banner', () => {
+		const createPiniaForBannerTest = () =>
+			createTestingPinia({
+				initialState: {
+					[STORES.UI]: {
+						modalsById: {
+							[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
+						},
+					},
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: { sharing: true, externalSecrets: false },
+							templates: { host: '' },
+						},
+					},
+				},
+			});
+
+		const setupOAuthCredential = (overrides: Partial<Record<string, unknown>>) => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialData.mockResolvedValueOnce({
+				// @ts-expect-error data is decrypted
+				data: {
+					clientId: 'client_id',
+					clientSecret: '__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da',
+				},
+				createdAt: '2026-05-22T10:00:00.000Z',
+				updatedAt: '2026-05-22T10:00:00.000Z',
+				id: 'cred-banner',
+				name: 'Google BigQuery account',
+				type: 'googleBigQueryOAuth2Api',
+				isManaged: false,
+				sharedWithProjects: [],
+				scopes: ['credential:update'],
+				oauthTokenData: false,
+				...overrides,
+			});
+
+			credentialsStore.state.credentialTypes = {
+				[oAuth2Api.name]: oAuth2Api,
+				[googleOAuth2Api.name]: googleOAuth2Api,
+				[googleBigQueryOAuth2Api.name]: googleBigQueryOAuth2Api,
+			};
+
+			return credentialsStore;
+		};
+
+		test('shows banner for static OAuth credential when oauthTokenData is set', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				data: {
+					clientId: 'client_id',
+					clientSecret: '__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da',
+					oauthTokenData: { access_token: 'static-token' },
+				},
+				isResolvable: false,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-connect-success-banner')).toBeVisible());
+		});
+
+		test('shows banner for resolvable credential when connectedByMe is true', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				isResolvable: true,
+				connectedByMe: true,
+				oauthTokenData: false,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-connect-success-banner')).toBeVisible());
+		});
+
+		test('hides banner for resolvable credential when connectedByMe is false, even if shared oauthTokenData is set', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				data: {
+					clientId: 'client_id',
+					clientSecret: '__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da',
+					oauthTokenData: { access_token: 'shared-token' },
+				},
+				isResolvable: true,
+				connectedByMe: false,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-connect-success-banner')).not.toBeVisible());
+		});
+
+		test('shows the not-connected warning banner for resolvable credential when connectedByMe is false', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				isResolvable: true,
+				connectedByMe: false,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).toBeVisible());
+			expect(queryByTestId('oauth-connect-success-banner')).not.toBeVisible();
+		});
+
+		test('hides the not-connected warning banner when the current user is connected', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				isResolvable: true,
+				connectedByMe: true,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).not.toBeVisible());
+		});
+
+		test('does not show the not-connected warning banner for static OAuth credentials', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				isResolvable: false,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).not.toBeVisible());
+		});
 	});
 });

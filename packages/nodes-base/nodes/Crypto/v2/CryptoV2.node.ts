@@ -1,5 +1,17 @@
-import type { BinaryToTextEncoding } from 'crypto';
-import { createHash, createHmac, createSign, getHashes, randomBytes } from 'crypto';
+import type { BinaryToTextEncoding, CipherGCMTypes } from 'crypto';
+import {
+	constants,
+	createCipheriv,
+	createDecipheriv,
+	createHash,
+	createHmac,
+	createSign,
+	getHashes,
+	privateDecrypt,
+	publicEncrypt,
+	randomBytes,
+	scrypt,
+} from 'crypto';
 import set from 'lodash/set';
 import type {
 	IExecuteFunctions,
@@ -28,6 +40,34 @@ const supportedAlgorithms = getHashes()
 	.filter((algorithm) => !unsupportedAlgorithms.includes(algorithm))
 	.map((algorithm) => ({ name: algorithm, value: algorithm }));
 
+type SymmetricCipher = 'aes-128-gcm' | 'aes-192-gcm' | 'aes-256-gcm' | 'chacha20-poly1305';
+
+const CIPHER_KEY_LENGTHS: Record<SymmetricCipher, number> = {
+	'aes-128-gcm': 16,
+	'aes-192-gcm': 24,
+	'aes-256-gcm': 32,
+	'chacha20-poly1305': 32,
+};
+
+const SYMMETRIC_SALT_LENGTH = 16;
+const SYMMETRIC_IV_LENGTH = 12;
+const SYMMETRIC_AUTH_TAG_LENGTH = 16;
+// Payload layout v1: [version=0x01][salt:16][iv:12][tag:16][ciphertext]
+// Bump the version if the layout, KDF, or cipher framing ever changes.
+const SYMMETRIC_FORMAT_VERSION = 0x01;
+// N=65536 balances brute-force resistance against per-call memory pressure on small deployments.
+// maxmem must be raised explicitly because 128*N*r (~64MB) exceeds Node's default 32MB cap.
+const SYMMETRIC_SCRYPT_OPTIONS = { N: 65536, r: 8, p: 1, maxmem: 128 * 1024 * 1024 } as const;
+
+async function deriveKey(passphrase: string, salt: Buffer, keylen: number): Promise<Buffer> {
+	return await new Promise((resolve, reject) => {
+		scrypt(passphrase, salt, keylen, SYMMETRIC_SCRYPT_OPTIONS, (error, key) => {
+			if (error) reject(error);
+			else resolve(key);
+		});
+	});
+}
+
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Crypto',
 	name: 'crypto',
@@ -51,7 +91,7 @@ const versionDescription: INodeTypeDescription = {
 			required: true,
 			displayOptions: {
 				show: {
-					action: ['hmac', 'sign'],
+					action: ['hmac', 'sign', 'encrypt', 'decrypt'],
 				},
 			},
 		},
@@ -62,6 +102,18 @@ const versionDescription: INodeTypeDescription = {
 			name: 'action',
 			type: 'options',
 			options: [
+				{
+					name: 'Decrypt',
+					description: 'Decrypt a string with a passphrase or private key',
+					value: 'decrypt',
+					action: 'Decrypt a string',
+				},
+				{
+					name: 'Encrypt',
+					description: 'Encrypt a string with a passphrase or public key',
+					value: 'encrypt',
+					action: 'Encrypt a string',
+				},
 				{
 					name: 'Generate',
 					description: 'Generate random string',
@@ -420,6 +472,78 @@ const versionDescription: INodeTypeDescription = {
 				},
 			},
 		},
+		{
+			displayName: 'Mode',
+			name: 'mode',
+			type: 'options',
+			options: [
+				{
+					name: 'Symmetric (Passphrase)',
+					value: 'symmetric',
+					description: 'Encrypt or decrypt with a passphrase using an authenticated cipher',
+				},
+				{
+					name: 'Asymmetric (RSA)',
+					value: 'asymmetric',
+					description: 'Encrypt with an RSA public key, decrypt with an RSA private key',
+				},
+			],
+			default: 'symmetric',
+			displayOptions: {
+				show: {
+					action: ['encrypt', 'decrypt'],
+				},
+			},
+			required: true,
+		},
+		{
+			displayName: 'Cipher',
+			name: 'cipher',
+			type: 'options',
+			options: [
+				{ name: 'AES-256-GCM', value: 'aes-256-gcm' },
+				{ name: 'AES-192-GCM', value: 'aes-192-gcm' },
+				{ name: 'AES-128-GCM', value: 'aes-128-gcm' },
+				{ name: 'ChaCha20-Poly1305', value: 'chacha20-poly1305' },
+			],
+			default: 'aes-256-gcm',
+			description:
+				'Authenticated cipher to use. The same value must be selected on encrypt and decrypt.',
+			displayOptions: {
+				show: {
+					action: ['encrypt', 'decrypt'],
+					mode: ['symmetric'],
+				},
+			},
+			required: true,
+		},
+		{
+			displayName: 'Value',
+			name: 'value',
+			type: 'string',
+			default: '',
+			description:
+				'For Encrypt: the plaintext to encrypt. For Decrypt: the base64 ciphertext produced by this node.',
+			displayOptions: {
+				show: {
+					action: ['encrypt', 'decrypt'],
+				},
+			},
+			required: true,
+		},
+		{
+			displayName: 'Property Name',
+			name: 'dataPropertyName',
+			type: 'string',
+			default: 'data',
+			description: 'Name of the property to which to write the result',
+			displayOptions: {
+				show: {
+					action: ['encrypt', 'decrypt'],
+				},
+			},
+			required: true,
+		},
 	],
 };
 
@@ -442,11 +566,17 @@ export class CryptoV2 implements INodeType {
 
 		let hmacSecret = '';
 		let signPrivateKey = '';
+		let encryptionPassphrase = '';
+		let encryptionPublicKey = '';
+		let encryptionPrivateKey = '';
 
-		if (action === 'hmac' || action === 'sign') {
+		if (action === 'hmac' || action === 'sign' || action === 'encrypt' || action === 'decrypt') {
 			const credentials = await this.getCredentials<{
 				hmacSecret?: string;
 				signPrivateKey?: string;
+				encryptionPassphrase?: string;
+				encryptionPublicKey?: string;
+				encryptionPrivateKey?: string;
 			}>('crypto');
 
 			if (action === 'hmac') {
@@ -467,6 +597,40 @@ export class CryptoV2 implements INodeType {
 					);
 				}
 				signPrivateKey = formatPrivateKey(credentials.signPrivateKey);
+			}
+
+			if (action === 'encrypt' || action === 'decrypt') {
+				const mode = this.getNodeParameter('mode', 0) as string;
+
+				if (mode === 'symmetric') {
+					if (!credentials.encryptionPassphrase) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'No encryption passphrase set in credentials. Please add an Encryption Passphrase to your Crypto credentials.',
+						);
+					}
+					encryptionPassphrase = credentials.encryptionPassphrase;
+				}
+
+				if (mode === 'asymmetric' && action === 'encrypt') {
+					if (!credentials.encryptionPublicKey) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'No encryption public key set in credentials. Please add an Encryption Public Key to your Crypto credentials.',
+						);
+					}
+					encryptionPublicKey = formatPrivateKey(credentials.encryptionPublicKey, true);
+				}
+
+				if (mode === 'asymmetric' && action === 'decrypt') {
+					if (!credentials.encryptionPrivateKey) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'No encryption private key set in credentials. Please add an Encryption Private Key to your Crypto credentials.',
+						);
+					}
+					encryptionPrivateKey = formatPrivateKey(credentials.encryptionPrivateKey);
+				}
 			}
 		}
 
@@ -528,6 +692,116 @@ export class CryptoV2 implements INodeType {
 					sign.write(value);
 					sign.end();
 					newValue = sign.sign(signPrivateKey, encoding);
+				}
+
+				if (action === 'encrypt') {
+					const mode = this.getNodeParameter('mode', i) as string;
+
+					if (mode === 'symmetric') {
+						const cipher = this.getNodeParameter('cipher', i) as SymmetricCipher;
+						const keyLength = CIPHER_KEY_LENGTHS[cipher];
+						const salt = randomBytes(SYMMETRIC_SALT_LENGTH);
+						const iv = randomBytes(SYMMETRIC_IV_LENGTH);
+						const key = await deriveKey(encryptionPassphrase, salt, keyLength);
+						// Cast: Node's typings only model AEAD methods for CipherGCMTypes,
+						// but chacha20-poly1305 has the same getAuthTag/setAuthTag runtime API.
+						const cipherInstance = createCipheriv(cipher as CipherGCMTypes, key, iv);
+						const ciphertext = Buffer.concat([
+							cipherInstance.update(value, 'utf8'),
+							cipherInstance.final(),
+						]);
+						const authTag = cipherInstance.getAuthTag();
+						newValue = Buffer.concat([
+							Buffer.from([SYMMETRIC_FORMAT_VERSION]),
+							salt,
+							iv,
+							authTag,
+							ciphertext,
+						]).toString('base64');
+					} else {
+						try {
+							const encrypted = publicEncrypt(
+								{
+									key: encryptionPublicKey,
+									padding: constants.RSA_PKCS1_OAEP_PADDING,
+									oaepHash: 'sha256',
+								},
+								Buffer.from(value, 'utf8'),
+							);
+							newValue = encrypted.toString('base64');
+						} catch (error) {
+							const opensslError = error as { code?: string; message?: string };
+							if (
+								opensslError.code === 'ERR_OSSL_RSA_DATA_TOO_LARGE_FOR_KEY_SIZE' ||
+								/data too large/i.test(opensslError.message ?? '')
+							) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Plaintext is too large for the RSA key. Use symmetric mode for larger data.',
+									{ itemIndex: i },
+								);
+							}
+							throw error;
+						}
+					}
+				}
+
+				if (action === 'decrypt') {
+					const mode = this.getNodeParameter('mode', i) as string;
+
+					try {
+						if (mode === 'symmetric') {
+							const cipher = this.getNodeParameter('cipher', i) as SymmetricCipher;
+							const keyLength = CIPHER_KEY_LENGTHS[cipher];
+							const payload = Buffer.from(value, 'base64');
+							const headerLength =
+								1 + SYMMETRIC_SALT_LENGTH + SYMMETRIC_IV_LENGTH + SYMMETRIC_AUTH_TAG_LENGTH;
+							if (payload.length < headerLength) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Ciphertext is malformed or truncated',
+									{ itemIndex: i },
+								);
+							}
+							const version = payload[0];
+							if (version !== SYMMETRIC_FORMAT_VERSION) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Unsupported ciphertext version 0x${version.toString(16).padStart(2, '0')}`,
+									{ itemIndex: i },
+								);
+							}
+							const ivStart = 1 + SYMMETRIC_SALT_LENGTH;
+							const tagStart = ivStart + SYMMETRIC_IV_LENGTH;
+							const ctStart = tagStart + SYMMETRIC_AUTH_TAG_LENGTH;
+							const salt = payload.subarray(1, ivStart);
+							const iv = payload.subarray(ivStart, tagStart);
+							const authTag = payload.subarray(tagStart, ctStart);
+							const ciphertext = payload.subarray(ctStart);
+							const key = await deriveKey(encryptionPassphrase, salt, keyLength);
+							const decipher = createDecipheriv(cipher as CipherGCMTypes, key, iv);
+							decipher.setAuthTag(authTag);
+							const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+							newValue = plaintext.toString('utf8');
+						} else {
+							const decrypted = privateDecrypt(
+								{
+									key: encryptionPrivateKey,
+									padding: constants.RSA_PKCS1_OAEP_PADDING,
+									oaepHash: 'sha256',
+								},
+								Buffer.from(value, 'base64'),
+							);
+							newValue = decrypted.toString('utf8');
+						}
+					} catch (error) {
+						if (error instanceof NodeOperationError) throw error;
+						throw new NodeOperationError(
+							this.getNode(),
+							'Decryption failed: wrong passphrase, key, cipher, or corrupted payload',
+							{ itemIndex: i },
+						);
+					}
 				}
 
 				let newItem: INodeExecutionData;

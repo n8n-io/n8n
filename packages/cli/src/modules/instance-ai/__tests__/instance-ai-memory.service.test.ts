@@ -2,29 +2,29 @@ import type { InstanceAiAgentNode } from '@n8n/api-types';
 
 import { InstanceAiMemoryService } from '../instance-ai-memory.service';
 
-// Mock createMemory to return a controllable memory instance
-const mockRecall = jest.fn();
-const mockGetThreadById = jest.fn();
+const mockListMessages = jest.fn();
+const mockGetThread = jest.fn();
 const mockSaveThread = jest.fn();
-const mockMemory = {
-	recall: mockRecall,
-	getThreadById: mockGetThreadById,
+const mockDeleteThread = jest.fn();
+const mockDeleteThreadsByResourceIdPrefix = jest.fn();
+const mockListThreads = jest.fn();
+const mockAgentMemory = {
+	listMessages: mockListMessages,
+	getThread: mockGetThread,
 	saveThread: mockSaveThread,
+	deleteThread: mockDeleteThread,
+	deleteThreadsByResourceIdPrefix: mockDeleteThreadsByResourceIdPrefix,
+	listThreads: mockListThreads,
 };
-
-jest.mock('@n8n/instance-ai', () => ({
-	createMemory: () => mockMemory,
-}));
 
 // Mock GlobalConfig
 const mockDbSnapshotStorage = { getAll: jest.fn().mockResolvedValue([]) };
 
-function createService(): InstanceAiMemoryService {
+function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemoryService {
 	const mockConfig = {
 		instanceAi: {
-			embedderModel: '',
 			lastMessages: 40,
-			semanticRecallTopK: 3,
+			threadTtlDays: options.threadTtlDays ?? 0,
 		},
 		database: {
 			type: 'postgresdb',
@@ -38,11 +38,10 @@ function createService(): InstanceAiMemoryService {
 		},
 	};
 	const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
-	const mockCompositeStore = {} as never;
 	return new InstanceAiMemoryService(
 		mockLogger as never,
 		mockConfig as never,
-		mockCompositeStore,
+		mockAgentMemory as never,
 		mockDbSnapshotStorage as never,
 	);
 }
@@ -61,31 +60,50 @@ function makeTree(overrides?: Partial<InstanceAiAgentNode>): InstanceAiAgentNode
 	};
 }
 
+function makeThread(id: string, updatedAt: string) {
+	return {
+		id,
+		title: id,
+		resourceId: 'user-1',
+		metadata: {},
+		createdAt: new Date('2026-01-01T00:00:00.000Z'),
+		updatedAt: new Date(updatedAt),
+	};
+}
+
 describe('InstanceAiMemoryService.getRichMessages', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockDbSnapshotStorage.getAll.mockResolvedValue([]);
+		mockListMessages.mockResolvedValue({ messages: [] });
 	});
 
 	it('should return parsed rich messages with agent trees from snapshots', async () => {
 		const tree = makeTree();
-		mockRecall.mockResolvedValue({
+		mockListMessages.mockResolvedValue({
 			messages: [
 				{
 					id: 'msg-u',
 					role: 'user',
 					content: 'Hello',
-					createdAt: new Date('2026-01-01'),
+					createdAt: new Date('2026-01-01T00:00:00.000Z'),
 				},
 				{
 					id: 'msg-a',
 					role: 'assistant',
-					content: { format: 2, content: 'Done!' },
-					createdAt: new Date('2026-01-01T00:00:01'),
+					content: [{ type: 'text', text: 'Done!' }],
+					createdAt: new Date('2026-01-01T00:00:01.000Z'),
 				},
 			],
 		});
-		mockDbSnapshotStorage.getAll.mockResolvedValue([{ tree, runId: 'run_abc' }]);
+		mockDbSnapshotStorage.getAll.mockResolvedValue([
+			{
+				tree,
+				runId: 'run_abc',
+				createdAt: new Date('2026-01-01T00:00:01.000Z'),
+				updatedAt: new Date('2026-01-01T00:00:01.000Z'),
+			},
+		]);
 
 		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
@@ -99,35 +117,32 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 	});
 
 	it('should return parsed messages with flat tree when no snapshots exist', async () => {
-		mockRecall.mockResolvedValue({
+		mockListMessages.mockResolvedValue({
 			messages: [
 				{
 					id: 'msg-u',
 					role: 'user',
 					content: 'Hi',
-					createdAt: new Date('2026-01-01'),
+					createdAt: new Date('2026-01-01T00:00:00.000Z'),
 				},
 				{
 					id: 'msg-a',
 					role: 'assistant',
-					content: {
-						format: 2,
-						content: 'Here are your workflows',
-						toolInvocations: [
-							{
-								state: 'result',
-								toolCallId: 'tc-1',
-								toolName: 'list-workflows',
-								args: {},
-								result: { workflows: [] },
-							},
-						],
-					},
-					createdAt: new Date('2026-01-01T00:00:01'),
+					content: [
+						{ type: 'text', text: 'Here are your workflows' },
+						{
+							type: 'tool-result',
+							toolCallId: 'tc-1',
+							toolName: 'list-workflows',
+							input: {},
+							result: { workflows: [] },
+						},
+					],
+					createdAt: new Date('2026-01-01T00:00:01.000Z'),
 				},
 			],
 		});
-		mockGetThreadById.mockResolvedValue({
+		mockGetThread.mockResolvedValue({
 			id: 'thread-1',
 			title: 'Test',
 			metadata: {},
@@ -145,8 +160,8 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 	});
 
 	it('should handle empty message list', async () => {
-		mockRecall.mockResolvedValue({ messages: [] });
-		mockGetThreadById.mockResolvedValue({
+		mockListMessages.mockResolvedValue({ messages: [] });
+		mockGetThread.mockResolvedValue({
 			id: 'thread-1',
 			title: 'Test',
 			metadata: {},
@@ -165,7 +180,7 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 	});
 
 	it('creates a thread when it does not exist yet', async () => {
-		mockGetThreadById.mockResolvedValueOnce(null);
+		mockGetThread.mockResolvedValueOnce(null);
 		mockSaveThread.mockResolvedValueOnce({
 			id: 'thread-new',
 			title: '',
@@ -179,11 +194,9 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 		const result = await service.ensureThread('user-1', 'thread-new');
 
 		expect(mockSaveThread).toHaveBeenCalledWith({
-			thread: expect.objectContaining({
-				id: 'thread-new',
-				resourceId: 'user-1',
-				title: '',
-			}),
+			id: 'thread-new',
+			resourceId: 'user-1',
+			title: '',
 		});
 		expect(result.created).toBe(true);
 		expect(result.thread.id).toBe('thread-new');
@@ -191,7 +204,7 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 	});
 
 	it('returns the existing thread without rewriting it', async () => {
-		mockGetThreadById.mockResolvedValueOnce({
+		mockGetThread.mockResolvedValueOnce({
 			id: 'thread-existing',
 			title: 'Existing',
 			resourceId: 'user-1',
@@ -206,5 +219,74 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 		expect(mockSaveThread).not.toHaveBeenCalled();
 		expect(result.created).toBe(false);
 		expect(result.thread.title).toBe('Existing');
+	});
+});
+
+describe('InstanceAiMemoryService.deleteThread', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('deletes hidden sub-agent threads before deleting the parent thread', async () => {
+		const service = createService();
+
+		await service.deleteThread('00000000-0000-4000-8000-000000000001');
+
+		expect(mockDeleteThreadsByResourceIdPrefix).toHaveBeenCalledWith(
+			'instance-ai-subagent:00000000-0000-4000-8000-000000000001:',
+		);
+		expect(mockDeleteThread).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000001');
+		expect(mockDeleteThreadsByResourceIdPrefix.mock.invocationCallOrder[0]).toBeLessThan(
+			mockDeleteThread.mock.invocationCallOrder[0],
+		);
+	});
+});
+
+describe('InstanceAiMemoryService.cleanupExpiredThreads', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('queries oldest threads first so fresh threads do not hide expired ones', async () => {
+		const dateNow = jest
+			.spyOn(Date, 'now')
+			.mockReturnValue(new Date('2026-05-15T00:00:00.000Z').getTime());
+		const expiredThread = makeThread('expired-thread', '2026-05-01T00:00:00.000Z');
+		const freshThread = makeThread('fresh-thread', '2026-05-14T00:00:00.000Z');
+		let expiredDeleted = false;
+
+		mockListThreads.mockImplementation(
+			async (args: { orderBy?: { direction?: 'ASC' | 'DESC' } }) => {
+				if (args.orderBy?.direction === 'ASC') {
+					return expiredDeleted
+						? { threads: [freshThread], total: 1, page: 0, hasMore: false }
+						: { threads: [expiredThread], total: 2, page: 0, hasMore: true };
+				}
+
+				return {
+					threads: [freshThread],
+					total: 2,
+					page: 0,
+					hasMore: true,
+				};
+			},
+		);
+		mockDeleteThread.mockImplementation(async (threadId: string) => {
+			if (threadId === expiredThread.id) expiredDeleted = true;
+		});
+
+		const service = createService({ threadTtlDays: 7 });
+		const deletedCount = await service.cleanupExpiredThreads();
+
+		expect(deletedCount).toBe(1);
+		expect(mockListThreads).toHaveBeenCalledWith({
+			perPage: 100,
+			page: 0,
+			orderBy: { field: 'updatedAt', direction: 'ASC' },
+		});
+		expect(mockDeleteThread).toHaveBeenCalledWith(expiredThread.id);
+		expect(mockDeleteThread).not.toHaveBeenCalledWith(freshThread.id);
+
+		dateNow.mockRestore();
 	});
 });

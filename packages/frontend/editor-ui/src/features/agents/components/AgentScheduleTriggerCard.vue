@@ -1,10 +1,27 @@
 <script setup lang="ts">
 import type { AgentScheduleConfig } from '@n8n/api-types';
-import { N8nButton, N8nCard, N8nIcon, N8nInput, N8nSwitch2, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import {
+	N8nButton,
+	N8nCard,
+	N8nIcon,
+	N8nInput,
+	N8nRadioButtons,
+	N8nSwitch2,
+	N8nText,
+} from '@n8n/design-system';
+import N8nOption from '@n8n/design-system/components/N8nOption';
+import N8nSelect from '@n8n/design-system/components/N8nSelect';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref } from 'vue';
 
+import {
+	getScheduleInputMode,
+	getNextScheduleOccurrence,
+	getSchedulePresetByCronExpression,
+	schedulePresets,
+	type ScheduleInputMode,
+} from '../utils/schedulePresets';
 import {
 	activateScheduleIntegration,
 	deactivateScheduleIntegration,
@@ -25,6 +42,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'status-change': [configured: boolean];
 	'trigger-added': [];
+	canceled: [];
 	saved: [];
 }>();
 
@@ -34,6 +52,9 @@ const rootStore = useRootStore();
 const active = ref(false);
 const lastSavedActive = ref(false);
 const cronExpression = ref('');
+const nextOccurrenceCronExpression = ref('');
+const scheduleInputMode = ref<ScheduleInputMode>('preset');
+const lastCustomCronExpression = ref('');
 const wakeUpPrompt = ref('');
 const loading = ref(false);
 const saving = ref(false);
@@ -57,6 +78,36 @@ const canSave = computed(
 		cronErrorMessage.value === '' &&
 		(!active.value || (props.isPublished && cronExpression.value.trim() !== '')),
 );
+const scheduleInputModeOptions = computed<Array<{ label: string; value: ScheduleInputMode }>>(
+	() => [
+		{ label: locale.baseText('agents.schedule.cron.mode.preset' as BaseTextKey), value: 'preset' },
+		{ label: locale.baseText('agents.schedule.cron.mode.custom' as BaseTextKey), value: 'custom' },
+	],
+);
+const schedulePresetOptions = computed(() =>
+	schedulePresets.map((preset) => ({
+		label: locale.baseText(preset.labelKey as BaseTextKey),
+		value: preset.cronExpression,
+	})),
+);
+const selectedPresetCronExpression = computed(
+	() => getSchedulePresetByCronExpression(cronExpression.value)?.cronExpression ?? '',
+);
+const nextScheduleOccurrence = computed(() =>
+	getNextScheduleOccurrence(nextOccurrenceCronExpression.value, rootStore.timezone),
+);
+const nextScheduleOccurrenceText = computed(() => {
+	if (!nextScheduleOccurrence.value) return '';
+
+	return new Intl.DateTimeFormat(undefined, {
+		timeZone: rootStore.timezone,
+		weekday: 'short',
+		day: 'numeric',
+		month: 'short',
+		hour: 'numeric',
+		minute: '2-digit',
+	}).format(nextScheduleOccurrence.value);
+});
 
 type ScheduleErrorKey =
 	| 'agents.schedule.loadError'
@@ -68,6 +119,11 @@ function applyConfig(config: AgentScheduleConfig) {
 	active.value = config.active;
 	lastSavedActive.value = config.active;
 	cronExpression.value = config.cronExpression;
+	nextOccurrenceCronExpression.value = config.cronExpression;
+	scheduleInputMode.value = getScheduleInputMode(config.cronExpression);
+	if (scheduleInputMode.value === 'custom') {
+		lastCustomCronExpression.value = config.cronExpression;
+	}
 	lastSavedCronExpression.value = config.cronExpression;
 	wakeUpPrompt.value = config.wakeUpPrompt;
 	lastSavedWakeUpPrompt.value = config.wakeUpPrompt;
@@ -209,12 +265,52 @@ async function onSave() {
 function onCancel() {
 	active.value = lastSavedActive.value;
 	cronExpression.value = lastSavedCronExpression.value;
+	nextOccurrenceCronExpression.value = lastSavedCronExpression.value;
+	scheduleInputMode.value = getScheduleInputMode(lastSavedCronExpression.value);
+	if (scheduleInputMode.value === 'custom') {
+		lastCustomCronExpression.value = lastSavedCronExpression.value;
+	}
 	wakeUpPrompt.value = lastSavedWakeUpPrompt.value;
 	clearErrors();
+	emit('canceled');
 }
 
 function onCronExpressionInput(value: string) {
 	cronExpression.value = value;
+	lastCustomCronExpression.value = value;
+	clearErrors();
+}
+
+function onCronExpressionBlur() {
+	nextOccurrenceCronExpression.value = cronExpression.value;
+}
+
+function onScheduleInputModeInput(value: ScheduleInputMode) {
+	if (value === scheduleInputMode.value) return;
+
+	if (scheduleInputMode.value === 'custom') {
+		lastCustomCronExpression.value = cronExpression.value;
+	}
+
+	scheduleInputMode.value = value;
+
+	if (value === 'preset') {
+		cronExpression.value =
+			getSchedulePresetByCronExpression(cronExpression.value)?.cronExpression ??
+			schedulePresets[0]?.cronExpression ??
+			'';
+		nextOccurrenceCronExpression.value = cronExpression.value;
+	} else if (lastCustomCronExpression.value) {
+		cronExpression.value = lastCustomCronExpression.value;
+		nextOccurrenceCronExpression.value = cronExpression.value;
+	}
+
+	clearErrors();
+}
+
+function onSchedulePresetInput(value: string) {
+	cronExpression.value = value;
+	nextOccurrenceCronExpression.value = value;
 	clearErrors();
 }
 
@@ -271,14 +367,56 @@ onMounted(() => {
 			</div>
 
 			<div :class="$style.field">
-				<N8nText size="small" bold>{{ locale.baseText('agents.schedule.cron') }}</N8nText>
+				<div :class="$style.fieldHeader">
+					<N8nText size="small" bold>{{ locale.baseText('agents.schedule.cron') }}</N8nText>
+					<N8nRadioButtons
+						:model-value="scheduleInputMode"
+						:options="scheduleInputModeOptions"
+						size="small"
+						:disabled="loading || saving"
+						data-testid="schedule-cron-mode-toggle"
+						@update:model-value="onScheduleInputModeInput"
+					/>
+				</div>
+				<N8nSelect
+					v-if="scheduleInputMode === 'preset'"
+					:model-value="selectedPresetCronExpression"
+					:disabled="loading || saving"
+					:class="$style.cronSelect"
+					size="small"
+					data-testid="schedule-preset-select"
+					@update:model-value="onSchedulePresetInput"
+				>
+					<N8nOption
+						v-for="preset in schedulePresetOptions"
+						:key="preset.value"
+						:value="preset.value"
+						:label="preset.label"
+					/>
+				</N8nSelect>
 				<N8nInput
+					v-else
+					size="medium"
 					:model-value="cronExpression"
 					:disabled="loading || saving"
 					:placeholder="locale.baseText('agents.schedule.cron.placeholder')"
 					data-testid="schedule-cron-input"
 					@update:model-value="onCronExpressionInput"
+					@blur="onCronExpressionBlur"
 				/>
+				<N8nText
+					v-if="nextScheduleOccurrenceText"
+					:class="$style.helpText"
+					size="small"
+					data-testid="schedule-next-occurrence"
+				>
+					{{
+						locale.baseText('agents.schedule.nextOccurrence' as BaseTextKey, {
+							interpolate: { occurrence: nextScheduleOccurrenceText },
+						})
+					}}
+				</N8nText>
+				<div v-else :class="$style.fieldDescriptionSpacer" />
 				<N8nText
 					v-if="cronErrorMessage"
 					:class="$style.errorText"
@@ -403,6 +541,22 @@ onMounted(() => {
 	gap: var(--spacing--2xs);
 }
 
+.fieldHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+}
+
+/** NOTE: Overwrites misaligned size styles between N8nInput and N8nSelect. **/
+.cronSelect {
+	height: var(--height--md);
+
+	:global(.el-input--small .el-input__inner) {
+		height: var(--height--md);
+	}
+}
+
 .toggleRow {
 	display: flex;
 	align-items: center;
@@ -426,5 +580,8 @@ onMounted(() => {
 
 .errorText {
 	color: var(--color--danger);
+}
+.fieldDescriptionSpacer {
+	height: var(--height--3xs);
 }
 </style>

@@ -155,6 +155,37 @@ describe('calculateTimeSaved', () => {
 		expect(timeSaved).toBe(10);
 	});
 
+	test('does not record time saved for error mode executions', async () => {
+		const insightsRawRepository = mock<InsightsRawRepository>();
+		const service = new InsightsCollectionService(
+			mock<SharedWorkflowRepository>(),
+			insightsRawRepository,
+			mock<InsightsMetadataRepository>(),
+			mock<InsightsConfig>(),
+			mockLogger(),
+		);
+		service.init();
+
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+		ctx.workflow.settings = {
+			timeSavedMode: 'fixed',
+			timeSavedPerExecution: 10,
+		};
+		ctx.runData = mock<IRun>({
+			mode: 'error',
+			status: 'success',
+			startedAt: DateTime.utc().toJSDate(),
+			stoppedAt: DateTime.utc().plus({ minutes: 10 }).toJSDate(),
+		});
+
+		await service.handleWorkflowExecuteAfter(ctx);
+
+		const buffered = [...service['bufferedInsights']];
+		expect(buffered.some((insight) => insight.type === 'time_saved_min')).toBe(false);
+		expect(buffered.some((insight) => insight.type === 'success')).toBe(true);
+		expect(buffered.some((insight) => insight.type === 'runtime_ms')).toBe(true);
+	});
+
 	test('returns the node time saved when the time saved mode is dynamic', () => {
 		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
 		ctx.workflow.settings = {

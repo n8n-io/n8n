@@ -9,8 +9,10 @@ import type {
 	WorkflowHistoryRequestParams,
 	WorkflowVersionId,
 	UpdateWorkflowHistoryVersion,
+	PublishTimelineEvent,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import * as whApi from '@n8n/rest-api-client/api/workflowHistory';
+import { getFirstAdoptionDate } from '@n8n/rest-api-client/api/instance-version-history';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -54,10 +56,11 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			workflowsListStore.fetchWorkflow(workflowId),
 			getWorkflowVersion(workflowId, workflowVersionId),
 		]);
-		const { connections, nodes } = workflowVersion;
-		const blob = new Blob([JSON.stringify({ ...workflow, nodes, connections }, null, 2)], {
-			type: 'application/json;charset=utf-8',
-		});
+		const { connections, nodes, nodeGroups } = workflowVersion;
+		const blob = new Blob(
+			[JSON.stringify({ ...workflow, nodes, connections, nodeGroups: nodeGroups ?? [] }, null, 2)],
+			{ type: 'application/json;charset=utf-8' },
+		);
 		saveAs(blob, `${workflow.name}(${data.formattedCreatedAt}).json`);
 	};
 
@@ -70,7 +73,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			workflowsListStore.fetchWorkflow(workflowId),
 			getWorkflowVersion(workflowId, workflowVersionId),
 		]);
-		const { connections, nodes } = workflowVersion;
+		const { connections, nodes, nodeGroups } = workflowVersion;
 		const { name } = workflow;
 		const newWorkflow = await getNewWorkflow(rootStore.restApiContext, {
 			name: `${name} (${data.formattedCreatedAt})`,
@@ -78,6 +81,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		const newWorkflowData: WorkflowDataUpdate = {
 			nodes,
 			connections,
+			nodeGroups: nodeGroups ?? [],
 			name: newWorkflow.name,
 		};
 		return await workflowsStore.createNewWorkflow(newWorkflowData);
@@ -88,8 +92,12 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		workflowVersionId: string,
 	): Promise<IWorkflowDb> => {
 		const workflowVersion = await getWorkflowVersion(workflowId, workflowVersionId);
-		const { connections, nodes } = workflowVersion;
-		const updateData: WorkflowDataUpdate = { connections, nodes };
+		const { connections, nodes, nodeGroups } = workflowVersion;
+		const updateData: WorkflowDataUpdate = {
+			connections,
+			nodes,
+			nodeGroups: nodeGroups ?? [],
+		};
 
 		return await workflowsStore
 			.updateWorkflow(workflowId, updateData, true)
@@ -114,6 +122,15 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		await whApi.updateWorkflowHistoryVersion(rootStore.restApiContext, workflowId, versionId, data);
 	};
 
+	const getPublishTimeline = async (workflowId: string): Promise<PublishTimelineEvent[]> =>
+		await whApi.getPublishTimeline(rootStore.restApiContext, workflowId);
+
+	const getVersionFirstAdoptionDate = async (version: {
+		major: number;
+		minor: number;
+		patch: number;
+	}): Promise<string | null> => await getFirstAdoptionDate(rootStore.restApiContext, version);
+
 	return {
 		getWorkflowHistory,
 		getWorkflowVersion,
@@ -121,6 +138,8 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		cloneIntoNewWorkflow,
 		restoreWorkflow,
 		updateWorkflowHistoryVersion,
+		getPublishTimeline,
+		getVersionFirstAdoptionDate,
 		evaluatedPruneTime,
 		shouldUpgrade,
 	};

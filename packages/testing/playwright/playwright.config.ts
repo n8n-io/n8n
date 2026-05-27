@@ -122,11 +122,13 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 				...(process.env.CURRENTS_RECORD_KEY ? [currentsReporter(currentsConfig)] : []),
 				['./reporters/metrics-reporter.ts'],
 				['./reporters/benchmark-summary-reporter.ts'],
+				...(process.env.LANGSMITH_API_KEY ? ([['./reporters/langsmith-eval.ts']] as const) : []),
 			]
 		: [
 				['html'],
 				['./reporters/metrics-reporter.ts'],
 				['./reporters/benchmark-summary-reporter.ts'],
 				['list'],
+				...(process.env.LANGSMITH_API_KEY ? ([['./reporters/langsmith-eval.ts']] as const) : []),
 			],
 });

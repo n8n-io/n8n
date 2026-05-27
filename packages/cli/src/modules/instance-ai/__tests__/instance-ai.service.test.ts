@@ -10,10 +10,23 @@ jest.mock('@n8n/instance-ai', () => {
 			disconnect = jest.fn();
 		},
 		createDomainAccessTracker: jest.fn(),
-		BuilderSandboxFactory: class {},
-		SnapshotManager: class {},
 		createSandbox: jest.fn(),
 		createWorkspace: jest.fn(),
+		createLazyRuntimeWorkspace: jest.fn(
+			(args: { id?: string; ensureWorkspace: () => Promise<unknown> }) => ({
+				id: args.id ?? 'lazy-runtime-workspace',
+				ensureWorkspace: args.ensureWorkspace,
+			}),
+		),
+		createLazyWorkspaceRuntimeSkillSource: jest.fn(({ source }) => source),
+		setupSandboxWorkspace: jest.fn(),
+		loadInstanceAiRuntimeSkillSource: jest.fn(() => ({
+			registry: {
+				skillsHash: 'runtime-skills-hash',
+				skills: [{ id: 'data-table-manager' }],
+			},
+			loadSkill: jest.fn(),
+		})),
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: jest.fn(),
 		handleVerificationVerdict: jest.fn(),
@@ -33,8 +46,11 @@ jest.mock('@n8n/instance-ai', () => {
 		),
 		createInstanceAgent: jest.fn(),
 		createAllTools: jest.fn(),
-		createMemory: jest.fn(),
-		mapMastraChunkToEvent: jest.fn(),
+		WorkflowTaskCoordinator: class {},
+		WorkflowLoopStorage: class {},
+		ThreadTaskStorage: class {},
+		PlannedTaskStorage: class {},
+		PlannedTaskCoordinator: class {},
 		InstanceAiTerminalResponseGuard: class {
 			constructor(private readonly options: { runId: string; rootAgentId: string }) {}
 
@@ -112,22 +128,22 @@ jest.mock('@n8n/instance-ai', () => {
 		},
 	};
 });
-jest.mock('@mastra/core/agent', () => ({}));
-jest.mock('@mastra/core/storage', () => ({
-	MemoryStorage: class {},
-	MastraCompositeStore: class {},
-	WorkflowsStorage: class {},
-}));
-jest.mock('@mastra/memory', () => ({
-	Memory: class {},
-}));
-jest.mock('@mastra/core/workflows', () => ({}));
 
 import type { User } from '@n8n/db';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import {
+	createAllTools,
+	createLazyRuntimeWorkspace,
+	createLazyWorkspaceRuntimeSkillSource,
+	createSandbox,
+	createWorkspace,
+	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
+	setupSandboxWorkspace,
+	type InstanceAiContext,
+	type SandboxConfig,
 	type ManagedBackgroundTask,
+	type InstanceAiTraceContext,
 	type SpawnBackgroundTaskOptions,
 	type SpawnBackgroundTaskResult,
 	type SpawnManagedBackgroundTaskOptions,
@@ -176,7 +192,6 @@ type BackgroundTaskFollowUpServiceInternals = {
 		getThreadUser: jest.MockedFunction<(threadId: string) => User | undefined>;
 		getActiveRunId: jest.MockedFunction<(threadId: string) => string | undefined>;
 		hasSuspendedRun: jest.MockedFunction<(threadId: string) => boolean>;
-		getThreadResearchMode: jest.MockedFunction<(threadId: string) => boolean | undefined>;
 	};
 	liveness: {
 		hasTimedOutActiveRunThread: jest.MockedFunction<(threadId: string) => boolean>;
@@ -211,7 +226,6 @@ type BackgroundTaskFollowUpServiceInternals = {
 			user: User,
 			threadId: string,
 			message: string,
-			researchMode?: boolean,
 			messageGroupId?: string,
 		) => Promise<string | undefined>
 	>;
@@ -262,7 +276,6 @@ function createBackgroundTaskFollowUpService({
 		getThreadUser: jest.fn((_threadId: string) => fakeUser),
 		getActiveRunId: jest.fn((_threadId: string) => undefined),
 		hasSuspendedRun: jest.fn((_threadId: string) => false),
-		getThreadResearchMode: jest.fn((_threadId: string) => false),
 	};
 	service.liveness = {
 		hasTimedOutActiveRunThread: jest.fn((threadId: string) =>
@@ -291,13 +304,8 @@ function createBackgroundTaskFollowUpService({
 		) => {},
 	);
 	service.startInternalFollowUpRun = jest.fn(
-		async (
-			_user: User,
-			_threadId: string,
-			_message: string,
-			_researchMode?: boolean,
-			_messageGroupId?: string,
-		) => 'run-follow-up',
+		async (_user: User, _threadId: string, _message: string, _messageGroupId?: string) =>
+			'run-follow-up',
 	);
 	service.queuePendingCheckpointReentry = jest.fn();
 	service.maybeReenterParentCheckpoint = jest.fn(
@@ -322,7 +330,7 @@ type StartRunServiceInternals = {
 	};
 	runState: {
 		startRun: jest.MockedFunction<
-			(options: { threadId: string; user: User; researchMode?: boolean }) => {
+			(options: { threadId: string; user: User }) => {
 				runId: string;
 				abortController: AbortController;
 				messageGroupId?: string;
@@ -401,6 +409,44 @@ function createCheckpointService(): ServiceInternals {
 	return service;
 }
 
+type CheckpointPruneServiceInternals = {
+	startCheckpointPruning: () => void;
+	stopCheckpointPruning: () => void;
+	pruneStaleCheckpoints: (now?: number) => Promise<void>;
+	scheduleCheckpointPrune: jest.MockedFunction<(delayMs?: number) => void>;
+	checkpointStore: {
+		deleteOlderThan: jest.MockedFunction<(olderThan: Date) => Promise<number>>;
+	};
+	checkpointPruneTimer?: NodeJS.Timeout;
+	checkpointPruningStopped: boolean;
+	instanceAiConfig: {
+		snapshotPruneInterval: number;
+		snapshotRetention: number;
+	};
+	logger: { info: jest.Mock; debug: jest.Mock; warn: jest.Mock };
+};
+
+function createCheckpointPruneService(): CheckpointPruneServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as CheckpointPruneServiceInternals;
+	service.scheduleCheckpointPrune = jest.fn();
+	service.checkpointStore = {
+		deleteOlderThan: jest.fn(async (_olderThan: Date) => 0),
+	};
+	service.checkpointPruningStopped = true;
+	service.instanceAiConfig = {
+		snapshotPruneInterval: 60 * 60 * 1000,
+		snapshotRetention: 7 * 24 * 60 * 60 * 1000,
+	};
+	service.logger = {
+		info: jest.fn(),
+		debug: jest.fn(),
+		warn: jest.fn(),
+	};
+	return service;
+}
+
 function createTemporaryCleanupService({
 	runningTaskCount = 0,
 	markedWorkflows = [],
@@ -442,6 +488,83 @@ function createTemporaryCleanupService({
 }
 
 const fakeUser = { id: 'user-1' } as User;
+const daytonaSandboxConfig = {
+	enabled: true,
+	provider: 'daytona',
+} satisfies SandboxConfig;
+
+type WorkspaceServiceInternals = {
+	sandboxes: Map<string, unknown>;
+	sandboxCreations: Map<string, Promise<unknown>>;
+	resolveSandboxConfig: jest.MockedFunction<(user: User) => Promise<SandboxConfig>>;
+	instanceAiConfig?: { builderSandboxTtlMs?: number };
+	sandboxTtlMs: number;
+	getOrCreateWorkspace: (
+		threadId: string,
+		user: User,
+		context: InstanceAiContext,
+		runId?: string,
+	) => Promise<unknown>;
+};
+
+type SandboxExpiryEntry = {
+	sandbox: unknown;
+	workspace: { destroy: jest.MockedFunction<() => Promise<void>> };
+	setupComplete: boolean;
+	setupPromise: Promise<void> | undefined;
+	expiresAt: number;
+	cleanupTimer?: ReturnType<typeof setTimeout>;
+};
+
+type SandboxExpiryServiceInternals = {
+	sandboxes: Map<string, SandboxExpiryEntry>;
+	instanceAiConfig: { builderSandboxTtlMs?: number };
+	runState: {
+		getActiveRunId: jest.MockedFunction<(threadId: string) => string | undefined>;
+		hasSuspendedRun: jest.MockedFunction<(threadId: string) => boolean>;
+	};
+	backgroundTasks: {
+		getRunningTasks: jest.MockedFunction<(threadId: string) => ManagedBackgroundTask[]>;
+	};
+	scheduleSandboxExpiry: (threadId: string, entry: SandboxExpiryEntry) => void;
+};
+
+type ShutdownServiceInternals = {
+	shutdown: () => Promise<void>;
+	stopCheckpointPruning: jest.MockedFunction<() => void>;
+	liveness: { shutdown: jest.MockedFunction<() => void> };
+	runState: {
+		shutdown: jest.MockedFunction<
+			() => {
+				activeRuns: [];
+				suspendedRuns: [];
+			}
+		>;
+	};
+	backgroundTasks: { cancelAll: jest.MockedFunction<() => ManagedBackgroundTask[]> };
+	traceContextsByRunId: Map<string, { threadId: string }>;
+	finalizeRunTracing: jest.MockedFunction<
+		(runId: string, tracing: InstanceAiTraceContext | undefined, options: unknown) => Promise<void>
+	>;
+	finalizeBackgroundTaskTracing: jest.MockedFunction<
+		(task: ManagedBackgroundTask, status: 'cancelled') => Promise<void>
+	>;
+	finalizeRemainingMessageTraceRoots: jest.MockedFunction<
+		(threadId: string, options: unknown) => Promise<void>
+	>;
+	gatewayRegistry: { disconnectAll: jest.MockedFunction<() => void> };
+	sandboxes: Map<
+		string,
+		{
+			sandbox: unknown;
+			workspace: { destroy: jest.MockedFunction<() => Promise<void>> };
+		}
+	>;
+	domainAccessTrackersByThread: Map<string, unknown>;
+	eventBus: { clear: jest.MockedFunction<() => void> };
+	_mcpClientManager?: { disconnect: jest.MockedFunction<() => Promise<void>> };
+	logger: { debug: jest.Mock; warn: jest.Mock };
+};
 
 type TerminalOutcomeServiceInternals = {
 	replayUndeliveredTerminalOutcomes: (
@@ -533,6 +656,7 @@ type TerminalGuardOrderServiceInternals = {
 		getEventsForRuns: jest.Mock;
 		publish: jest.Mock;
 	};
+	liveness: { consumeRunTimeout: jest.Mock };
 	telemetry: { track: jest.Mock };
 	logger: { warn: jest.Mock; error: jest.Mock };
 	traceContextsByRunId: Map<string, { threadId: string; messageGroupId?: string }>;
@@ -540,6 +664,7 @@ type TerminalGuardOrderServiceInternals = {
 	finalizeRunTracing: jest.Mock;
 	saveAgentTreeSnapshot: jest.Mock;
 	reapAiTemporaryFromRun: jest.Mock;
+	countCreditsIfFirst: jest.Mock;
 	maybeFinalizeRunTraceRoot: jest.Mock;
 	schedulePlannedTasks: jest.Mock;
 	drainPendingCheckpointReentries: jest.Mock;
@@ -548,13 +673,14 @@ type TerminalGuardOrderServiceInternals = {
 		resumeData: unknown,
 		opts: {
 			runId: string;
-			mastraRunId: string;
+			agentRunId: string;
 			threadId: string;
 			user: User;
 			toolCallId: string;
 			signal: AbortSignal;
 			abortController: AbortController;
 			snapshotStorage: unknown;
+			tracing?: InstanceAiTraceContext;
 		},
 	) => Promise<void>;
 };
@@ -602,6 +728,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 			events.push(event);
 		}),
 	};
+	service.liveness = { consumeRunTimeout: jest.fn(() => ({ timedOut: false })) };
 	service.telemetry = { track: jest.fn() };
 	service.logger = { warn: jest.fn(), error: jest.fn() };
 	service.traceContextsByRunId = new Map([
@@ -611,6 +738,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.finalizeRunTracing = jest.fn(async () => {});
 	service.saveAgentTreeSnapshot = jest.fn(async () => {});
 	service.reapAiTemporaryFromRun = jest.fn(async () => []);
+	service.countCreditsIfFirst = jest.fn(async () => {});
 	service.maybeFinalizeRunTraceRoot = jest.fn(async () => {});
 	service.schedulePlannedTasks = jest.fn(async () => {});
 	service.drainPendingCheckpointReentries = jest.fn(async () => {});
@@ -661,6 +789,402 @@ function makeAgentTree(): InstanceAiAgentNode {
 	};
 }
 
+describe('InstanceAiService — runtime workspace setup', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		(createSandbox as jest.Mock).mockReset();
+		(createWorkspace as jest.Mock).mockReset();
+		(setupSandboxWorkspace as jest.Mock).mockReset();
+		(createAllTools as jest.Mock).mockReset();
+		(createLazyRuntimeWorkspace as jest.Mock).mockImplementation(
+			(args: { id?: string; ensureWorkspace: () => Promise<unknown> }) => ({
+				id: args.id ?? 'lazy-runtime-workspace',
+				ensureWorkspace: args.ensureWorkspace,
+			}),
+		);
+		(createLazyWorkspaceRuntimeSkillSource as jest.Mock).mockImplementation(({ source }) => source);
+	});
+
+	it('serializes workspace creation for concurrent calls on the same thread', async () => {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as WorkspaceServiceInternals;
+		service.sandboxes = new Map();
+		service.sandboxCreations = new Map();
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
+
+		let resolveSandbox!: (sandbox: unknown) => void;
+		const sandboxPromise = new Promise((resolve) => {
+			resolveSandbox = resolve;
+		});
+		const sandbox = { id: 'sandbox-1' };
+		const workspace = {
+			init: jest.fn(async () => {}),
+			destroy: jest.fn(async () => {}),
+		};
+		(createSandbox as jest.Mock).mockReturnValue(sandboxPromise);
+		(createWorkspace as jest.Mock).mockReturnValue(workspace);
+		(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
+
+		const first = service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+		const second = service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+		resolveSandbox(sandbox);
+		const [firstEntry, secondEntry] = await Promise.all([first, second]);
+
+		expect(firstEntry).toBe(secondEntry);
+		expect(createSandbox).toHaveBeenCalledTimes(1);
+		expect(createSandbox).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'instance-ai-thread-thread-1',
+				name: 'instance-ai-thread-thread-1',
+				labels: expect.objectContaining({
+					'n8n-builder': 'instance-ai-thread-thread-1',
+					thread_id: 'thread-1',
+				}),
+			}),
+			expect.objectContaining({ useSnapshotFallback: true }),
+		);
+		expect(createWorkspace).toHaveBeenCalledTimes(1);
+		expect(createWorkspace).toHaveBeenCalledWith(sandbox);
+		expect(workspace.init).toHaveBeenCalledTimes(1);
+		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
+		expect(service.sandboxCreations.size).toBe(0);
+	});
+
+	it('keeps the default runtime sandbox TTL aligned with provider auto-stop', () => {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as WorkspaceServiceInternals;
+		service.instanceAiConfig = {};
+
+		expect(service.sandboxTtlMs).toBe(15 * 60 * 1000);
+	});
+
+	it('evicts expired runtime sandbox entries without destroying the provider workspace', () => {
+		jest.useFakeTimers();
+		try {
+			const service = Object.create(
+				InstanceAiService.prototype,
+			) as unknown as SandboxExpiryServiceInternals;
+			const workspace = { destroy: jest.fn(async () => {}) };
+			const entry: SandboxExpiryEntry = {
+				sandbox: { id: 'sandbox-1' },
+				workspace,
+				setupComplete: true,
+				setupPromise: undefined,
+				expiresAt: Date.now() + 1000,
+			};
+			service.instanceAiConfig = { builderSandboxTtlMs: 1000 };
+			service.sandboxes = new Map([['thread-1', entry]]);
+			service.runState = {
+				getActiveRunId: jest.fn((_threadId: string) => undefined),
+				hasSuspendedRun: jest.fn((_threadId: string) => false),
+			};
+			service.backgroundTasks = {
+				getRunningTasks: jest.fn((_threadId: string) => []),
+			};
+
+			service.scheduleSandboxExpiry('thread-1', entry);
+			jest.advanceTimersByTime(1000);
+
+			expect(service.sandboxes.has('thread-1')).toBe(false);
+			expect(workspace.destroy).not.toHaveBeenCalled();
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it('threads Daytona name prefixes and labels through sandbox creation', async () => {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as WorkspaceServiceInternals;
+		service.sandboxes = new Map();
+		service.sandboxCreations = new Map();
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => ({
+			...daytonaSandboxConfig,
+			namePrefix: 'Acme Eval',
+		}));
+		const sandbox = { id: 'sandbox-1' };
+		const workspace = {
+			init: jest.fn(async () => {}),
+			destroy: jest.fn(async () => {}),
+		};
+		(createSandbox as jest.Mock).mockResolvedValue(sandbox);
+		(createWorkspace as jest.Mock).mockReturnValue(workspace);
+		(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
+
+		await service.getOrCreateWorkspace(
+			'thread-1',
+			fakeUser,
+			{} as InstanceAiContext,
+			'run_123456789',
+		);
+
+		expect(createSandbox).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'acme-eval-run-1234-instance-ai-thread-thread-1',
+				name: 'acme-eval-run-1234-instance-ai-thread-thread-1',
+				labels: expect.objectContaining({
+					'n8n-builder': 'instance-ai-thread-thread-1',
+					name_prefix: 'Acme-Eval',
+					run_id: 'run_123456789',
+					thread_id: 'thread-1',
+				}),
+			}),
+			expect.objectContaining({ useSnapshotFallback: true }),
+		);
+	});
+
+	it('keeps the sandbox after setup failure and retries setup on the next use', async () => {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as WorkspaceServiceInternals;
+		service.sandboxes = new Map();
+		service.sandboxCreations = new Map();
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
+
+		const sandbox = { id: 'sandbox-1' };
+		const workspace = {
+			init: jest.fn(async () => {}),
+			destroy: jest.fn(async () => {}),
+		};
+		(createSandbox as jest.Mock).mockResolvedValue(sandbox);
+		(createWorkspace as jest.Mock).mockReturnValue(workspace);
+		(setupSandboxWorkspace as jest.Mock)
+			.mockRejectedValueOnce(new Error('setup failed'))
+			.mockResolvedValueOnce(undefined);
+
+		await expect(
+			service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext),
+		).rejects.toThrow('setup failed');
+
+		expect(service.sandboxes.has('thread-1')).toBe(true);
+		expect(workspace.destroy).not.toHaveBeenCalled();
+
+		const entry = await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+
+		expect(entry).toBe(service.sandboxes.get('thread-1'));
+		expect(createSandbox).toHaveBeenCalledTimes(1);
+		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(2);
+	});
+
+	it('destroys the workspace when sandbox startup fails', async () => {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as WorkspaceServiceInternals;
+		service.sandboxes = new Map();
+		service.sandboxCreations = new Map();
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
+
+		const sandbox = { id: 'sandbox-1' };
+		const workspace = {
+			init: jest.fn(async () => {
+				throw new Error('init failed');
+			}),
+			destroy: jest.fn(async () => {}),
+		};
+		(createSandbox as jest.Mock).mockResolvedValue(sandbox);
+		(createWorkspace as jest.Mock).mockReturnValue(workspace);
+
+		await expect(
+			service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext),
+		).rejects.toThrow('init failed');
+
+		expect(workspace.destroy).toHaveBeenCalledTimes(1);
+		expect(service.sandboxes.has('thread-1')).toBe(false);
+		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
+	});
+
+	it('defers sandbox creation and setup until the lazy workspace is used', async () => {
+		const service = Object.create(InstanceAiService.prototype) as unknown as {
+			createExecutionEnvironment: (
+				user: User,
+				threadId: string,
+				runId: string,
+				abortSignal: AbortSignal,
+			) => Promise<{
+				orchestrationContext: {
+					workspace?: unknown;
+					runtimeSkills?: { registry: { skills: Array<{ id: string }> } };
+				};
+			}>;
+			settingsService: {
+				getAdminSettings: jest.Mock;
+				isLocalGatewayDisabledForUser: jest.Mock;
+				getPermissions: jest.Mock;
+			};
+			gatewayRegistry: { findGateway: jest.Mock };
+			aiService: { isProxyEnabled: jest.Mock };
+			adapterService: {
+				createContext: jest.Mock;
+				getNodeDefinitionDirs: jest.Mock;
+			};
+			sourceControlPreferencesService: { getPreferences: jest.Mock };
+			resolveAgentModelConfig: jest.Mock;
+			ensureThreadExists: jest.Mock;
+			agentMemory: unknown;
+			dbIterationLogStorage: unknown;
+			dbSnapshotStorage: unknown;
+			checkpointStore: unknown;
+			instanceAiConfig: { subAgentMaxSteps: number; browserMcp: boolean };
+			defaultTimeZone: string;
+			eventBus: unknown;
+			logger: unknown;
+			telemetry: { track: jest.Mock };
+			oauth2CallbackUrl: string;
+			webhookBaseUrl: string;
+			formBaseUrl: string;
+			runState: { touchActiveRun: jest.Mock; registerPendingConfirmation: jest.Mock };
+			spawnBackgroundTask: jest.Mock;
+			cancelBackgroundTask: jest.Mock;
+			backgroundTasks: { touchTask: jest.Mock };
+			schedulePlannedTasks: jest.Mock;
+			sendCorrectionToTask: jest.Mock;
+			sandboxes: Map<string, unknown>;
+			sandboxCreations: Map<string, Promise<unknown>>;
+			domainAccessTrackersByThread: Map<string, unknown>;
+			resolveSandboxConfig: jest.Mock;
+		};
+		service.settingsService = {
+			getAdminSettings: jest.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
+			isLocalGatewayDisabledForUser: jest.fn(async () => false),
+			getPermissions: jest.fn(() => ({})),
+		};
+		service.gatewayRegistry = { findGateway: jest.fn(() => undefined) };
+		service.aiService = { isProxyEnabled: jest.fn(() => false) };
+		service.adapterService = {
+			createContext: jest.fn(() => ({})),
+			getNodeDefinitionDirs: jest.fn(() => []),
+		};
+		service.sourceControlPreferencesService = {
+			getPreferences: jest.fn(() => ({ branchReadOnly: false })),
+		};
+		service.resolveAgentModelConfig = jest.fn(async () => 'model-1');
+		service.ensureThreadExists = jest.fn(async () => {});
+		service.agentMemory = {};
+		service.dbIterationLogStorage = {};
+		service.dbSnapshotStorage = {};
+		service.checkpointStore = {};
+		service.instanceAiConfig = { subAgentMaxSteps: 10, browserMcp: false };
+		service.defaultTimeZone = 'UTC';
+		service.eventBus = {};
+		service.logger = {};
+		service.telemetry = { track: jest.fn() };
+		service.oauth2CallbackUrl = 'http://localhost/rest/oauth2-credential/callback';
+		service.webhookBaseUrl = 'http://localhost/webhook';
+		service.formBaseUrl = 'http://localhost/form';
+		service.runState = {
+			touchActiveRun: jest.fn(),
+			registerPendingConfirmation: jest.fn(),
+		};
+		service.spawnBackgroundTask = jest.fn();
+		service.cancelBackgroundTask = jest.fn();
+		service.backgroundTasks = { touchTask: jest.fn() };
+		service.schedulePlannedTasks = jest.fn();
+		service.sendCorrectionToTask = jest.fn();
+		service.sandboxes = new Map();
+		service.sandboxCreations = new Map();
+		service.domainAccessTrackersByThread = new Map();
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
+		(createAllTools as jest.Mock).mockReturnValue(new Map());
+		const sandbox = { id: 'sandbox-1' };
+		const workspace = {
+			init: jest.fn(async () => {}),
+			destroy: jest.fn(async () => {}),
+		};
+		(createSandbox as jest.Mock).mockResolvedValue(sandbox);
+		(createWorkspace as jest.Mock).mockReturnValue(workspace);
+		(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
+
+		const environment = await service.createExecutionEnvironment(
+			fakeUser,
+			'thread-1',
+			'run-1',
+			new AbortController().signal,
+		);
+
+		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(2);
+		expect(createLazyRuntimeWorkspace).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({ id: 'instance-ai-runtime-skill-workspace' }),
+		);
+		expect(createLazyWorkspaceRuntimeSkillSource).toHaveBeenCalledTimes(1);
+		expect(loadInstanceAiRuntimeSkillSource).toHaveBeenCalledTimes(1);
+		expect(environment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
+			{ id: 'data-table-manager' },
+		]);
+		expect(createSandbox).not.toHaveBeenCalled();
+		const skillWorkspace = (createLazyWorkspaceRuntimeSkillSource as jest.Mock).mock.calls[0]?.[0]
+			.workspace as { ensureWorkspace: () => Promise<unknown> };
+		const lazyWorkspace = environment.orchestrationContext.workspace as {
+			ensureWorkspace: () => Promise<unknown>;
+		};
+
+		await skillWorkspace.ensureWorkspace();
+
+		expect(createSandbox).toHaveBeenCalledTimes(1);
+		expect(createWorkspace).toHaveBeenCalledTimes(1);
+		expect(workspace.init).toHaveBeenCalledTimes(1);
+		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
+
+		await lazyWorkspace.ensureWorkspace();
+
+		expect(createSandbox).toHaveBeenCalledTimes(1);
+		expect(createSandbox).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'run-1-instance-ai-thread-thread-1',
+				name: 'run-1-instance-ai-thread-thread-1',
+				labels: expect.objectContaining({
+					'n8n-builder': 'instance-ai-thread-thread-1',
+					run_id: 'run-1',
+					thread_id: 'thread-1',
+				}),
+			}),
+			expect.objectContaining({ useSnapshotFallback: true }),
+		);
+		expect(createWorkspace).toHaveBeenCalledTimes(1);
+		expect(createWorkspace).toHaveBeenCalledWith(sandbox);
+		expect(workspace.init).toHaveBeenCalledTimes(1);
+		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('InstanceAiService — shutdown', () => {
+	it('does not destroy thread-scoped sandboxes on service shutdown', async () => {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as ShutdownServiceInternals;
+		const workspace = { destroy: jest.fn(async () => {}) };
+		service.stopCheckpointPruning = jest.fn();
+		service.liveness = { shutdown: jest.fn() };
+		service.runState = {
+			shutdown: jest.fn(() => ({ activeRuns: [], suspendedRuns: [] })),
+		};
+		service.backgroundTasks = { cancelAll: jest.fn(() => []) };
+		service.traceContextsByRunId = new Map();
+		service.finalizeRunTracing = jest.fn(
+			async (_runId: string, _tracing: InstanceAiTraceContext | undefined, _options: unknown) => {},
+		);
+		service.finalizeBackgroundTaskTracing = jest.fn(
+			async (_task: ManagedBackgroundTask, _status: 'cancelled') => {},
+		);
+		service.finalizeRemainingMessageTraceRoots = jest.fn(
+			async (_threadId: string, _options: unknown) => {},
+		);
+		service.gatewayRegistry = { disconnectAll: jest.fn() };
+		service.sandboxes = new Map([['thread-a', { sandbox: { id: 'sandbox-a' }, workspace }]]);
+		service.domainAccessTrackersByThread = new Map();
+		service.eventBus = { clear: jest.fn() };
+		service._mcpClientManager = { disconnect: jest.fn(async () => {}) };
+		service.logger = { debug: jest.fn(), warn: jest.fn() };
+
+		await service.shutdown();
+
+		expect(workspace.destroy).not.toHaveBeenCalled();
+		expect(service.sandboxes.has('thread-a')).toBe(true);
+	});
+});
+
 describe('InstanceAiService — background task auto-follow-up', () => {
 	it('starts an internal follow-up when the last direct background task settles normally', async () => {
 		const { service, task, getSpawnOptions } = createBackgroundTaskFollowUpService();
@@ -684,7 +1208,6 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 			fakeUser,
 			'thread-a',
 			expect.stringContaining('<background-task-completed>'),
-			false,
 			'group-1',
 		);
 	});
@@ -834,6 +1357,38 @@ describe('InstanceAiService — pending checkpoint re-entry', () => {
 	});
 });
 
+describe('InstanceAiService — checkpoint pruning', () => {
+	it('deletes checkpoints older than the retention window', async () => {
+		const service = createCheckpointPruneService();
+		const now = new Date('2026-05-13T12:00:00.000Z').getTime();
+
+		await service.pruneStaleCheckpoints(now);
+
+		expect(service.checkpointStore.deleteOlderThan).toHaveBeenCalledWith(
+			new Date('2026-05-06T12:00:00.000Z'),
+		);
+		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith();
+	});
+
+	it('starts checkpoint pruning when configured', () => {
+		const service = createCheckpointPruneService();
+
+		service.startCheckpointPruning();
+
+		expect(service.checkpointPruningStopped).toBe(false);
+		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith(0);
+	});
+
+	it('does not start checkpoint pruning when disabled', () => {
+		const service = createCheckpointPruneService();
+		service.instanceAiConfig.snapshotPruneInterval = 0;
+
+		service.startCheckpointPruning();
+
+		expect(service.scheduleCheckpointPrune).not.toHaveBeenCalled();
+	});
+});
+
 type RevalidationServiceInternals = {
 	revalidateActiveUser: (userId: string) => Promise<User | null>;
 	userRepository: { findOne: jest.Mock };
@@ -947,6 +1502,108 @@ function createResolveConfirmationService(): ResolveConfirmationServiceInternals
 	return service;
 }
 
+type PlannedTaskSchedulerServiceInternals = {
+	doSchedulePlannedTasks: (user: User, threadId: string) => Promise<void>;
+	revalidateActiveUser: jest.Mock<Promise<User | null>, [string]>;
+	cancelRun: jest.Mock;
+	createPlannedTaskState: jest.Mock;
+	syncPlannedTasksToUi: jest.Mock;
+	backgroundTasks: { getRunningTasks: jest.Mock };
+	startInternalFollowUpRun: jest.Mock;
+	buildPlannedTaskFollowUpMessage: jest.Mock;
+	runState: {
+		getThreadResearchMode: jest.Mock;
+		hasLiveRun: jest.Mock;
+	};
+	logger: { warn: jest.Mock };
+};
+
+function createPlannedTaskSchedulerService(): {
+	service: PlannedTaskSchedulerServiceInternals;
+	plannedTaskService: {
+		getGraph: jest.Mock;
+		tick: jest.Mock;
+		revertToActive: jest.Mock;
+		revertCheckpointToPlanned: jest.Mock;
+		markRunning: jest.Mock;
+	};
+	graph: { planRunId: string; messageGroupId: string; tasks: Array<{ id: string }> };
+} {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as PlannedTaskSchedulerServiceInternals;
+	const graph = { planRunId: 'plan-run-1', messageGroupId: 'group-1', tasks: [] };
+	const plannedTaskService = {
+		getGraph: jest.fn(async () => graph),
+		tick: jest.fn(async () => ({ type: 'none' })),
+		revertToActive: jest.fn(async () => {}),
+		revertCheckpointToPlanned: jest.fn(async () => {}),
+		markRunning: jest.fn(async () => {}),
+	};
+
+	service.revalidateActiveUser = jest.fn();
+	service.cancelRun = jest.fn();
+	service.createPlannedTaskState = jest.fn(async () => ({ plannedTaskService }));
+	service.syncPlannedTasksToUi = jest.fn(async () => {});
+	service.backgroundTasks = { getRunningTasks: jest.fn(() => []) };
+	service.startInternalFollowUpRun = jest.fn(async () => 'follow-up-run');
+	service.buildPlannedTaskFollowUpMessage = jest.fn(() => 'follow-up message');
+	service.runState = {
+		getThreadResearchMode: jest.fn(() => false),
+		hasLiveRun: jest.fn(() => false),
+	};
+	service.logger = { warn: jest.fn() };
+
+	return { service, plannedTaskService, graph };
+}
+
+type SuspendedRunResumeServiceInternals = {
+	resumeSuspendedRun: (
+		requestingUserId: string,
+		requestId: string,
+		data: { approved: boolean },
+	) => Promise<boolean>;
+	revalidateActiveUser: jest.Mock<Promise<User | null>, [string]>;
+	cancelRun: jest.Mock;
+	runState: {
+		findSuspendedByRequestId: jest.Mock;
+		activateSuspendedRun: jest.Mock;
+	};
+	logger: { warn: jest.Mock };
+	dbSnapshotStorage: unknown;
+	createOrchestratorResumeTraceContext: jest.Mock;
+	processResumedStream: jest.Mock;
+};
+
+function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as SuspendedRunResumeServiceInternals;
+	service.revalidateActiveUser = jest.fn();
+	service.cancelRun = jest.fn();
+	service.runState = {
+		findSuspendedByRequestId: jest.fn(() => ({
+			agent: {},
+			runId: 'run-1',
+			agentRunId: 'agent-run-1',
+			threadId: 'thread-a',
+			user: fakeUser,
+			toolCallId: 'tool-call-1',
+			abortController: new AbortController(),
+			tracing: undefined,
+			modelId: undefined,
+			messageGroupId: 'group-1',
+			checkpoint: undefined,
+		})),
+		activateSuspendedRun: jest.fn(),
+	};
+	service.logger = { warn: jest.fn() };
+	service.dbSnapshotStorage = {};
+	service.createOrchestratorResumeTraceContext = jest.fn(async () => undefined);
+	service.processResumedStream = jest.fn();
+	return service;
+}
+
 describe('InstanceAiService — resolveConfirmation', () => {
 	const approval = { kind: 'approval' as const, approved: true };
 
@@ -1011,6 +1668,77 @@ describe('InstanceAiService — resolveConfirmation', () => {
 		);
 		expect(service.runState.rejectPendingConfirmation).not.toHaveBeenCalled();
 		expect(service.cancelRun).not.toHaveBeenCalled();
+	});
+});
+
+describe('InstanceAiService — planned task user revalidation', () => {
+	it('cancels planned-task scheduling when the user is no longer authorized', async () => {
+		const { service } = createPlannedTaskSchedulerService();
+		service.revalidateActiveUser.mockResolvedValue(null);
+
+		await service.doSchedulePlannedTasks(fakeUser, 'thread-a');
+
+		expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+		expect(service.createPlannedTaskState).not.toHaveBeenCalled();
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Cancelling run: user no longer authorized for AI Assistant',
+			expect.objectContaining({ userId: 'user-1', threadId: 'thread-a' }),
+		);
+	});
+
+	it('uses the revalidated user for planned-task follow-up runs', async () => {
+		const { service, plannedTaskService, graph } = createPlannedTaskSchedulerService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+		plannedTaskService.tick.mockResolvedValue({
+			type: 'replan',
+			graph,
+			failedTask: undefined,
+		});
+
+		await service.doSchedulePlannedTasks(fakeUser, 'thread-a');
+
+		expect(service.startInternalFollowUpRun).toHaveBeenCalledWith(
+			freshUser,
+			'thread-a',
+			'follow-up message',
+			'group-1',
+			true,
+		);
+	});
+});
+
+describe('InstanceAiService — suspended run user revalidation', () => {
+	it('cancels suspended resume when the user is no longer authorized', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue(null);
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
+
+		expect(result).toBe(false);
+		expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+		expect(service.runState.activateSuspendedRun).not.toHaveBeenCalled();
+		expect(service.processResumedStream).not.toHaveBeenCalled();
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Cancelling suspended run: user no longer authorized for AI Assistant',
+			expect.objectContaining({ userId: 'user-1', threadId: 'thread-a', requestId: 'req-1' }),
+		);
+	});
+
+	it('passes the revalidated user into the resumed stream', async () => {
+		const service = createSuspendedRunResumeService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
+
+		expect(result).toBe(true);
+		expect(service.runState.activateSuspendedRun).toHaveBeenCalledWith('thread-a');
+		expect(service.processResumedStream).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ approved: true }),
+			expect.objectContaining({ user: freshUser }),
+		);
 	});
 });
 
@@ -1218,6 +1946,10 @@ describe('InstanceAiService — agent tree snapshots', () => {
 });
 
 describe('InstanceAiService — terminal response guard wiring', () => {
+	beforeEach(() => {
+		jest.mocked(resumeAgentRun).mockReset();
+	});
+
 	it('publishes fallback output before run-finish on a silent completed run', () => {
 		const service = createTerminalGuardOrderService();
 
@@ -1281,7 +2013,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			{},
 			{
 				runId: 'run-1',
-				mastraRunId: 'mastra-1',
+				agentRunId: 'agent-run-1',
 				threadId: 'thread-a',
 				user: fakeUser,
 				toolCallId: 'tool-call-1',
@@ -1293,6 +2025,80 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
 		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
+	});
+
+	it('counts credits when a resumed run completes', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		jest.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve('done'),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				snapshotStorage: {},
+			},
+		);
+
+		expect(service.countCreditsIfFirst).toHaveBeenCalledWith(fakeUser, 'thread-a', 'run-1');
+		expect(service.telemetry.track).toHaveBeenCalledWith('Builder satisfied user intent', {
+			thread_id: 'thread-a',
+		});
+	});
+
+	it('rebinds resumed agents to resume trace telemetry', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const telemetry = { enabled: true };
+		const agent = { telemetry: jest.fn() };
+		const tracing = {
+			traceKind: 'orchestrator_resume',
+			actorRun: { id: 'actor-run' },
+			getTelemetry: jest.fn(() => telemetry),
+			withActiveSpan: jest.fn(async (_run: unknown, fn: () => Promise<unknown>) => await fn()),
+		} as unknown as InstanceAiTraceContext;
+		jest.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve('done'),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+
+		await service.processResumedStream(
+			agent,
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				snapshotStorage: {},
+				tracing,
+			},
+		);
+
+		expect(tracing.getTelemetry).toHaveBeenCalledWith({
+			agentRole: 'orchestrator',
+			functionId: 'instance-ai.orchestrator',
+			executionMode: 'resume',
+		});
+		expect(agent.telemetry).toHaveBeenCalledWith(telemetry);
+		expect(tracing.withActiveSpan).toHaveBeenCalledWith(tracing.actorRun, expect.any(Function));
 	});
 });
 

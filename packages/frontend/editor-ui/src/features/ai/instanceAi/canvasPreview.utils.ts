@@ -13,6 +13,12 @@ export interface BuildResult {
 	toolCallId: string;
 }
 
+export interface BuilderTarget {
+	/** Unique per spawn — changes even when a new builder targets the same workflow. */
+	agentId: string;
+	workflowId: string;
+}
+
 export interface WorkflowSetupResult {
 	workflowId: string;
 	/** Unique per operation — changes even when the same workflow is set up again. */
@@ -46,6 +52,31 @@ export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | u
 			if (result.success === true && typeof result.workflowId === 'string') {
 				return { workflowId: result.workflowId, toolCallId: tc.toolCallId };
 			}
+		}
+	}
+	return undefined;
+}
+
+/**
+ * Walks an agent tree depth-first (most recent last) and returns the agentId
+ * and workflowId of the latest workflow-builder sub-agent that was spawned
+ * with a concrete `targetResource.id` — i.e. an edit-mode builder that
+ * already knows which existing workflow it is modifying. Used to open the
+ * canvas preview at spawn time, before the first build-workflow tool call
+ * returns a result.
+ */
+export function getLatestBuilderTarget(node: InstanceAiAgentNode): BuilderTarget | undefined {
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const child = node.children[i];
+		const nested = getLatestBuilderTarget(child);
+		if (nested) return nested;
+		const isBuilder = child.kind === 'builder' || child.role === 'workflow-builder';
+		if (
+			isBuilder &&
+			child.targetResource?.type === 'workflow' &&
+			typeof child.targetResource.id === 'string'
+		) {
+			return { agentId: child.agentId, workflowId: child.targetResource.id };
 		}
 	}
 	return undefined;
@@ -133,7 +164,9 @@ export function getLatestExecutionId(node: InstanceAiAgentNode): LatestExecution
 	return undefined;
 }
 
-const DATA_TABLE_MUTATION_ACTIONS = new Set([
+const DATA_TABLE_PREVIEW_ACTIONS = new Set([
+	'schema',
+	'query',
 	'create',
 	'insert-rows',
 	'update-rows',
@@ -143,8 +176,10 @@ const DATA_TABLE_MUTATION_ACTIONS = new Set([
 	'rename-column',
 ]);
 
-/** Per-action check that the result indicates a successful mutation. */
+/** Per-action check that the result contains a table reference worth previewing. */
 const RESULT_VALIDATORS: Record<string, (result: Record<string, unknown>) => boolean> = {
+	schema: (r) => Array.isArray(r.columns),
+	query: (r) => Array.isArray(r.data),
 	'insert-rows': (r) => typeof r.insertedCount === 'number',
 	'update-rows': (r) => typeof r.updatedCount === 'number',
 	'add-column': (r) => r.column !== null && r.column !== undefined && typeof r.column === 'object',
@@ -167,8 +202,9 @@ function extractDataTableId(
 	}
 
 	const isValid = RESULT_VALIDATORS[action];
-	if (isValid?.(result) && typeof args?.dataTableId === 'string') {
-		return args.dataTableId;
+	if (isValid?.(result)) {
+		if (typeof result.dataTableId === 'string') return result.dataTableId;
+		if (typeof args?.dataTableId === 'string') return args.dataTableId;
 	}
 
 	return undefined;
@@ -213,7 +249,7 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 		const action = typeof args?.action === 'string' ? args.action : '';
 		if (
 			tc.toolName === 'data-tables' &&
-			DATA_TABLE_MUTATION_ACTIONS.has(action) &&
+			DATA_TABLE_PREVIEW_ACTIONS.has(action) &&
 			!tc.isLoading &&
 			tc.result &&
 			typeof tc.result === 'object'

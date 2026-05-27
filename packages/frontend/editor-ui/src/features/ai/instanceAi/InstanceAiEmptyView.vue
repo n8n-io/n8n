@@ -2,7 +2,9 @@
 import { computed, nextTick, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
+import { v4 as uuidv4 } from 'uuid';
 import type { InstanceAiAttachment } from '@n8n/api-types';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -14,10 +16,23 @@ import {
 	InstanceAiProactiveStarterMessage,
 	useInstanceAiProactiveAgentExperiment,
 } from '@/experiments/instanceAiProactiveAgent';
+import {
+	InstanceAiPromptSuggestionsV2,
+	INSTANCE_AI_PROMPT_SUGGESTIONS_V2,
+	INSTANCE_AI_PROMPT_SUGGESTIONS_V2_VERSION,
+	useInstanceAiPromptSuggestionsV2Experiment,
+} from '@/experiments/instanceAiPromptSuggestionsV2';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+
+const INSTANCE_AI_DEFAULT_TITLE_KEY: BaseTextKey = 'instanceAi.emptyState.title';
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
+	'experiments.instanceAiPromptSuggestionsV2.emptyState.title';
+const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_PLACEHOLDER_KEY: BaseTextKey =
+	'experiments.instanceAiPromptSuggestionsV2.input.placeholder';
 
 const store = useInstanceAiStore();
 const { isLowCredits } = storeToRefs(store);
@@ -28,22 +43,44 @@ const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(isLowCredits);
 const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 	useInstanceAiProactiveAgentExperiment();
+const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
+	useInstanceAiPromptSuggestionsV2Experiment();
 const showProactiveStarter = computed(() => isProactiveAgentExperimentEnabled.value);
+// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
+const emptyStatePromptSuggestionProps = computed(() => {
+	if (showProactiveStarter.value) {
+		return {};
+	}
 
-// Reset to a blank "no active thread" state so the sidebar doesn't keep
-// highlighting the previous thread alongside the empty main view, and SSE
-// from any prior thread is torn down. A fresh placeholder UUID is generated;
-// `handleSubmit` promotes it to a real thread via `syncThread` before navigation.
-store.clearCurrentThread();
+	if (isPromptSuggestionsV2ExperimentEnabled.value) {
+		return {
+			suggestions: INSTANCE_AI_PROMPT_SUGGESTIONS_V2,
+			suggestionsComponent: InstanceAiPromptSuggestionsV2,
+			suggestionCatalogVersion: INSTANCE_AI_PROMPT_SUGGESTIONS_V2_VERSION,
+			placeholderKey: INSTANCE_AI_PROMPT_SUGGESTIONS_V2_PLACEHOLDER_KEY,
+		};
+	}
+
+	return {
+		suggestions: INSTANCE_AI_EMPTY_STATE_SUGGESTIONS,
+	};
+});
+const emptyStateTitleKey = computed<BaseTextKey>(() =>
+	isPromptSuggestionsV2ExperimentEnabled.value
+		? INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY
+		: INSTANCE_AI_DEFAULT_TITLE_KEY,
+);
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
+const isStartingThread = ref(false);
 
 onMounted(() => {
 	void nextTick(() => chatInputRef.value?.focus());
 });
 
 async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
-	const threadId = store.currentThreadId;
+	const threadId = uuidv4();
+	isStartingThread.value = true;
 
 	// Persist the thread on the BE first. Otherwise we'd navigate to
 	// `/instance-ai/:threadId` for a thread the BE doesn't know about, and the
@@ -51,19 +88,17 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	try {
 		await store.syncThread(threadId);
 	} catch {
+		isStartingThread.value = false;
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
 		return;
 	}
 
-	void store.sendMessage(message, attachments, rootStore.pushRef);
+	const thread = store.getOrCreateRuntime(threadId);
+	void thread.sendMessage(message, attachments, rootStore.pushRef);
 	void router.replace({
 		name: INSTANCE_AI_THREAD_VIEW,
 		params: { threadId },
 	});
-}
-
-function handleStop() {
-	void store.cancelRun();
 }
 </script>
 
@@ -86,21 +121,13 @@ function handleStop() {
 					/>
 					<InstanceAiInput
 						ref="chatInputRef"
-						:is-streaming="store.isStreaming"
-						:is-sending-message="store.isSendingMessage"
-						:is-awaiting-confirmation="store.isAwaitingConfirmation"
-						:current-thread-id="store.currentThreadId"
-						:amend-context="store.amendContext"
-						:contextual-suggestion="store.contextualSuggestion"
-						:research-mode="store.researchMode"
+						:is-submitting="isStartingThread"
 						@submit="handleSubmit"
-						@stop="handleStop"
-						@toggle-research-mode="store.toggleResearchMode()"
 					/>
 				</div>
 			</div>
 			<div v-else :class="$style.emptyLayout">
-				<InstanceAiEmptyState />
+				<InstanceAiEmptyState :title-key="emptyStateTitleKey" />
 				<div :class="$style.centeredInput">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
@@ -111,17 +138,9 @@ function handleStop() {
 					/>
 					<InstanceAiInput
 						ref="chatInputRef"
-						:is-streaming="store.isStreaming"
-						:is-sending-message="store.isSendingMessage"
-						:is-awaiting-confirmation="store.isAwaitingConfirmation"
-						:current-thread-id="store.currentThreadId"
-						:amend-context="store.amendContext"
-						:contextual-suggestion="store.contextualSuggestion"
-						:research-mode="store.researchMode"
-						:suggestions="INSTANCE_AI_EMPTY_STATE_SUGGESTIONS"
+						:is-submitting="isStartingThread"
+						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
-						@stop="handleStop"
-						@toggle-research-mode="store.toggleResearchMode()"
 					/>
 				</div>
 			</div>

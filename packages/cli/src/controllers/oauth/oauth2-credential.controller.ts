@@ -11,7 +11,7 @@ import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
 
 import { ExternalHooks } from '@/external-hooks';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
-import { OauthService, OauthVersion, skipAuthOnOAuthCallback } from '@/oauth/oauth.service';
+import { OauthService, OauthVersion } from '@/oauth/oauth.service';
 import { OAuthRequest } from '@/requests';
 
 @RestController('/oauth2-credential')
@@ -26,18 +26,14 @@ export class OAuth2CredentialController {
 	/** Get Authorization url */
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth2Credential.Auth): Promise<string> {
-		const credential = await this.oauthService.getCredential(req);
-
-		const uri = await this.oauthService.generateAOauth2AuthUri(credential, {
-			cid: credential.id,
-			origin: 'static-credential',
-			userId: req.user.id,
-		});
+		const credential = await this.oauthService.getCredentialForUpdate(req);
+		const csrfData = await this.oauthService.buildCsrfStateData(credential, req);
+		const uri = await this.oauthService.generateAOauth2AuthUri(credential, csrfData);
 		return uri;
 	}
 
 	/** Verify and store app code. Generate access tokens and store for respective credential */
-	@Get('/callback', { usesTemplates: true, skipAuth: skipAuthOnOAuthCallback })
+	@Get('/callback', { usesTemplates: true, allowUnauthenticated: true })
 	async handleCallback(req: OAuthRequest.OAuth2Credential.Callback, res: Response) {
 		try {
 			const { code, state: encodedState } = req.query;
