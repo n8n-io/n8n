@@ -12,7 +12,7 @@ import type { OwnershipService } from '@/services/ownership.service';
 
 import type { ExecutionLevelTracer } from '../execution-level-tracer';
 import { OtelLifecycleHandler, countInputItems, countOutputItems } from '../otel-lifecycle-handler';
-import type { OtelConfig } from '../otel.config';
+import { OtelConfig } from '../otel.config';
 import type { TracingContext, TraceContextService } from '../tracing-context';
 
 const emptyExecutionData = {
@@ -20,11 +20,15 @@ const emptyExecutionData = {
 	executionData: undefined,
 } as unknown as IRunExecutionData;
 
+function makeOtelConfig(overrides: Partial<OtelConfig> = {}): OtelConfig {
+	return Object.assign(new OtelConfig(), overrides);
+}
+
 describe('OtelLifecycleHandler', () => {
 	describe('onWorkflowStart', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
-		const config = mock<OtelConfig>();
+		let config = makeOtelConfig();
 		const ownershipService = mock<OwnershipService>();
 		const logger = mock<Logger>();
 		let handler: OtelLifecycleHandler;
@@ -57,7 +61,7 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			config.publishedOnly = false;
+			config = makeOtelConfig({ publishedOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
 				traceContextService,
@@ -161,7 +165,7 @@ describe('OtelLifecycleHandler', () => {
 	describe('onWorkflowResume', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
-		const config = mock<OtelConfig>();
+		let config = makeOtelConfig();
 		const ownershipService = mock<OwnershipService>();
 		const logger = mock<Logger>();
 		let handler: OtelLifecycleHandler;
@@ -175,7 +179,7 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			config.publishedOnly = false;
+			config = makeOtelConfig({ publishedOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
 				traceContextService,
@@ -259,14 +263,14 @@ describe('OtelLifecycleHandler', () => {
 	describe('onWorkflowEnd', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
-		const config = mock<OtelConfig>();
+		let config = makeOtelConfig();
 		const ownershipService = mock<OwnershipService>();
 		const logger = mock<Logger>();
 		let handler: OtelLifecycleHandler;
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			config.publishedOnly = false;
+			config = makeOtelConfig({ publishedOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
 				traceContextService,
@@ -334,7 +338,7 @@ describe('OtelLifecycleHandler', () => {
 	describe('onNodeStart / onNodeEnd', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
-		const config = mock<OtelConfig>();
+		let config = makeOtelConfig();
 		const ownershipService = mock<OwnershipService>();
 		const logger = mock<Logger>();
 		let handler: OtelLifecycleHandler;
@@ -371,8 +375,7 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			config.publishedOnly = false;
-			config.includeNodeSpans = true;
+			config = makeOtelConfig({ publishedOnly: false, includeNodeSpans: true });
 			handler = new OtelLifecycleHandler(
 				tracer,
 				traceContextService,
@@ -469,7 +472,7 @@ describe('OtelLifecycleHandler', () => {
 describe('publishedOnly filter', () => {
 	const tracer = mock<ExecutionLevelTracer>();
 	const traceContextService = mock<TraceContextService>();
-	const config = mock<OtelConfig>();
+	let config = makeOtelConfig();
 	const ownershipService = mock<OwnershipService>();
 	const logger = mock<Logger>();
 	let handler: OtelLifecycleHandler;
@@ -535,8 +538,7 @@ describe('publishedOnly filter', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		config.publishedOnly = true;
-		config.includeNodeSpans = true;
+		config = makeOtelConfig({ publishedOnly: true, includeNodeSpans: true });
 		ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
 		traceContextService.get.mockResolvedValue(undefined);
 		handler = new OtelLifecycleHandler(
