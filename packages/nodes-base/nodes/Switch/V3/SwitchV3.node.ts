@@ -10,7 +10,12 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import {
+	ApplicationError,
+	BaseError,
+	NodeConnectionTypes,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import { capitalize } from '@utils/utilities';
 
@@ -484,7 +489,7 @@ export default workflow('id', 'name')
 					throw error;
 				}
 
-				if (error instanceof ApplicationError) {
+				if (error instanceof ApplicationError || error instanceof BaseError) {
 					set(error, 'context.itemIndex', itemIndex);
 					throw error;
 				}
