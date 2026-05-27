@@ -1,4 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { MCP_APPS_FLAG, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import {
@@ -58,6 +59,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
+import { PostHogClient } from '@/posthog';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { UrlService } from '@/services/url.service';
@@ -111,7 +113,26 @@ export class McpService {
 		private readonly executionService: ExecutionService,
 		private readonly dataTableProxyService: DataTableProxyService,
 		private readonly collaborationService: CollaborationService,
+		private readonly postHogClient: PostHogClient,
 	) {}
+
+	/**
+	 * Resolves whether the current user is in the MCP Apps variant of the
+	 * `087_mcp_apps` PostHog experiment. Treats PostHog errors as flag-off
+	 * (fail-closed) so a transient outage doesn't accidentally enable a
+	 * feature for the control cohort.
+	 */
+	private async isMcpAppsEnabled(user: User): Promise<boolean> {
+		try {
+			const flags = await this.postHogClient.getFeatureFlags(user);
+			return flags?.[MCP_APPS_FLAG] === MCP_APPS_VARIANT_ENABLED;
+		} catch (error) {
+			this.logger.warn('Failed to resolve MCP Apps feature flag', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return false;
+		}
+	}
 
 	async getServer(user: User) {
 		const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
@@ -355,10 +376,6 @@ export class McpService {
 		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);
 		server.registerTool(validateTool.name, validateTool.config, validateTool.handler);
 
-		// Register the workflow preview MCP App resource so the host can load
-		// the iframe UI referenced by the create-workflow tool below.
-		registerWorkflowPreviewApp(server);
-
 		const createTool = createCreateWorkflowFromCodeTool(
 			user,
 			this.workflowCreationService,
@@ -370,19 +387,29 @@ export class McpService {
 			this.projectRepository,
 			dataTableOps,
 		);
-		registerMcpAppTool(
-			server,
-			createTool.name,
-			{
-				...createTool.config,
-				_meta: {
-					ui: {
-						resourceUri: WORKFLOW_PREVIEW_APP_URI,
+
+		// Gate the MCP App iframe behind the `087_mcp_apps` PostHog A/B
+		// experiment. Control cohort (and PostHog outage) sees the plain
+		// create-workflow tool with no UI resource attached.
+		const mcpAppsEnabled = await this.isMcpAppsEnabled(user);
+		if (mcpAppsEnabled) {
+			registerWorkflowPreviewApp(server);
+			registerMcpAppTool(
+				server,
+				createTool.name,
+				{
+					...createTool.config,
+					_meta: {
+						ui: {
+							resourceUri: WORKFLOW_PREVIEW_APP_URI,
+						},
 					},
 				},
-			},
-			createTool.handler,
-		);
+				createTool.handler,
+			);
+		} else {
+			server.registerTool(createTool.name, createTool.config, createTool.handler);
+		}
 
 		const searchProjectsTool = createSearchProjectsTool(
 			user,
