@@ -1,11 +1,18 @@
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialsEntity } from '@n8n/db';
-import { CredentialsRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	In,
+	ProjectRelationRepository,
+	SharedCredentials,
+	SharedCredentialsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -13,6 +20,10 @@ import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import { UserManagementMailer } from '@/user-management/email';
+import * as utils from '@/utils';
 
 import { toPublicApiCredentialResponse } from './credentials.mapper';
 import {
@@ -37,6 +48,7 @@ import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	publicApiScope,
 	apiKeyHasScopeWithGlobalScopeFallback,
+	isLicensed,
 	projectScope,
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
@@ -49,6 +61,7 @@ type CredentialsHandlers = {
 	createCredential: PublicAPIEndpoint<CredentialRequest.Create>;
 	updateCredential: PublicAPIEndpoint<CredentialRequest.Update>;
 	transferCredential: PublicAPIEndpoint<CredentialRequest.Transfer>;
+	shareCredential: PublicAPIEndpoint<CredentialRequest.Share>;
 	deleteCredential: PublicAPIEndpoint<CredentialRequest.Delete>;
 	getCredentialType: PublicAPIEndpoint<CredentialTypeRequest.Get>;
 };
@@ -185,6 +198,95 @@ const credentialsHandlers: CredentialsHandlers = {
 				req.params.id,
 				body.destinationProjectId,
 			);
+
+			return res.status(204).send();
+		},
+	],
+	shareCredential: [
+		isLicensed('feat:sharing'),
+		publicApiScope('credential:share'),
+		projectScope('credential:read', 'credential'),
+		async (req, res) => {
+			const { id: credentialId } = req.params;
+			const { shareWithIds } = z.object({ shareWithIds: z.array(z.string()) }).parse(req.body);
+
+			const credential = await Container.get(CredentialsFinderService).findCredentialForUser(
+				credentialId,
+				req.user,
+				['credential:read'],
+			);
+			if (!credential) {
+				throw new NotFoundError('Credential not found');
+			}
+
+			const currentProjectIds = credential.shared
+				.filter((sc) => sc.role === 'credential:user')
+				.map((sc) => sc.projectId);
+
+			const toShare = utils.rightDiff([currentProjectIds, (id) => id], [shareWithIds, (id) => id]);
+			const toUnshare = utils.rightDiff(
+				[shareWithIds, (id) => id],
+				[currentProjectIds, (id) => id],
+			);
+
+			if (toShare.length > 0) {
+				const canShare = await userHasScopes(req.user, ['credential:share'], false, {
+					credentialId,
+				});
+				if (!canShare) {
+					throw new ForbiddenError();
+				}
+			}
+
+			if (toUnshare.length > 0) {
+				const canUnshare = await userHasScopes(req.user, ['credential:unshare'], false, {
+					credentialId,
+				});
+				if (!canUnshare) {
+					throw new ForbiddenError();
+				}
+			}
+
+			const sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
+			let amountRemoved: number | null = null;
+			await sharedCredentialsRepository.manager.transaction(async (trx) => {
+				if (toUnshare.length > 0) {
+					const deleteResult = await trx.delete(SharedCredentials, {
+						credentialsId: credentialId,
+						projectId: In(toUnshare),
+					});
+					if (deleteResult.affected) {
+						amountRemoved = deleteResult.affected;
+					}
+				}
+				await Container.get(EnterpriseCredentialsService).shareWithProjects(
+					req.user,
+					credential.id,
+					toShare,
+					trx,
+				);
+			});
+
+			Container.get(EventService).emit('credentials-shared', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+				userIdSharer: req.user.id,
+				userIdsShareesAdded: toShare,
+				shareesRemoved: amountRemoved,
+			});
+
+			if (toShare.length > 0) {
+				const projectsRelations = await Container.get(ProjectRelationRepository).findBy({
+					projectId: In(toShare),
+					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+				});
+				await Container.get(UserManagementMailer).notifyCredentialsShared({
+					sharer: req.user,
+					newShareeIds: projectsRelations.map((pr) => pr.userId),
+					credentialsName: credential.name,
+				});
+			}
 
 			return res.status(204).send();
 		},
