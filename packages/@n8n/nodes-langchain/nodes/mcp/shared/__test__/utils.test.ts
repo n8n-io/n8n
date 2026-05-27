@@ -21,7 +21,7 @@ vi.mock('@modelcontextprotocol/sdk/client/sse.js');
 vi.mock('@n8n/ai-utilities', async () => {
 	const actual = await vi.importActual('@n8n/ai-utilities');
 	return {
-		...actual,
+		...(actual as Record<string, unknown>),
 		proxyFetch: vi.fn(),
 	};
 });

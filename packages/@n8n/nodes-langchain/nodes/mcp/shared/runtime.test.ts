@@ -21,7 +21,7 @@ vi.mock('@n8n/ai-utilities', async () => {
 	const actual = await vi.importActual('@n8n/ai-utilities');
 	return {
 		...(actual as Record<string, unknown>),
-		proxyFetch: jest.fn(),
+		proxyFetch: vi.fn(),
 	};
 });
 
@@ -79,7 +79,7 @@ describe('runtime', () => {
 	describe('buildMcpToolkit', () => {
 		it('passes the execution cancel signal to connectMcpClient while connecting', async () => {
 			const abort = new AbortController();
-			const connectMcpClient = vi.fn().mockResolvedValue({
+			const connectMcpClientForCredential = vi.fn().mockResolvedValue({
 				ok: true,
 				result: {
 					close: vi.fn(),
@@ -92,7 +92,7 @@ describe('runtime', () => {
 				const actual = await vi.importActual('./utils');
 				return {
 					...(actual as Record<string, unknown>),
-					connectMcpClient,
+					connectMcpClientForCredential,
 					getAllTools,
 					getAuthHeaders: vi.fn().mockResolvedValue({ headers: undefined }),
 				};
@@ -104,16 +104,15 @@ describe('runtime', () => {
 
 			await buildMcpToolkitWithMockedUtils(ctx, 0, baseConfig);
 
-			expect(connectMcpClient).toHaveBeenCalledWith(
-				expect.objectContaining({
-					signal: abort.signal,
-				}),
+			expect(connectMcpClientForCredential).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ signal: abort.signal }),
 			);
 			vi.doUnmock('./utils');
 		});
 
 		it('passes undefined as signal when getExecutionCancelSignal returns no signal', async () => {
-			const connectMcpClient = vi.fn().mockResolvedValue({
+			const connectMcpClientForCredential = vi.fn().mockResolvedValue({
 				ok: true,
 				result: {
 					close: vi.fn(),
@@ -126,7 +125,7 @@ describe('runtime', () => {
 				const actual = await vi.importActual('./utils');
 				return {
 					...(actual as Record<string, unknown>),
-					connectMcpClient,
+					connectMcpClientForCredential,
 					getAllTools,
 					getAuthHeaders: vi.fn().mockResolvedValue({ headers: undefined }),
 				};
@@ -138,10 +137,9 @@ describe('runtime', () => {
 
 			await buildMcpToolkitWithMockedUtils(ctx, 0, baseConfig);
 
-			expect(connectMcpClient).toHaveBeenCalledWith(
-				expect.objectContaining({
-					signal: undefined,
-				}),
+			expect(connectMcpClientForCredential).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ signal: undefined }),
 			);
 			vi.doUnmock('./utils');
 		});
