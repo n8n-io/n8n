@@ -277,6 +277,7 @@ export async function loadMcpToolOptions(
 		serverTransport: config.transport,
 		endpointUrl: config.endpointUrl,
 		surface: 'MCP Client Tool',
+		signal: ctx.getExecutionCancelSignal?.(),
 	});
 
 	if (!client.ok) {
