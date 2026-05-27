@@ -430,6 +430,25 @@ describe('DbConnectionMonitor', () => {
 			expect(monitor.recovering).toBe(false);
 		});
 
+		it('should re-attach the pool error listener after a successful recovery', async () => {
+			// The driver is swapped on destroy+initialize, so the listener attached at start()
+			// is tied to the old driver instance. Without re-attaching, idle-client errors
+			// on the new pool become unhandled — which is exactly the crash this PR prevents.
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			dataSource.destroy.mockResolvedValue();
+			dataSource.initialize.mockResolvedValue(dataSource);
+			const on = jest.fn();
+			(dataSource as unknown as { driver: { master: { on: jest.Mock } } }).driver = {
+				master: { on },
+			};
+
+			// @ts-expect-error private property
+			await monitor.recoverDataSource();
+
+			expect(on).toHaveBeenCalledWith('error', expect.any(Function));
+		});
+
 		it('should not reinitialize if stop() runs while destroy() is in flight', async () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
