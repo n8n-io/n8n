@@ -281,7 +281,7 @@ const onModalOpenChange = (open: boolean) => {
 					data-test-id="workflow-settings-custom-telemetry-tags-save"
 					@click="saveModal"
 				>
-					{{ i18n.baseText('generic.save') }}
+					{{ i18n.baseText('workflowSettings.customTelemetryTags.modal.done') }}
 				</N8nButton>
 			</N8nDialogFooter>
 		</N8nDialog>
