@@ -119,7 +119,13 @@ function getPlanReviewStatus(tc: InstanceAiToolCallState): PlanReviewStatus {
 	const localStatus = requestId ? thread.resolvedConfirmationIds.get(requestId) : undefined;
 
 	if (localStatus === 'approved' || tc.confirmationStatus === 'approved') return 'approved';
-	if (localStatus === 'denied' || tc.confirmationStatus === 'denied') return 'changes-requested';
+	if (localStatus === 'denied') return 'denied';
+	// `confirmationStatus === 'denied'` covers re-renders where the local action
+	// was lost (e.g. page reload): default to changes-requested since the planner
+	// emits a new plan card on top of the old one in that flow.
+	if (localStatus === 'changes-requested' || tc.confirmationStatus === 'denied') {
+		return 'changes-requested';
+	}
 
 	return 'pending';
 }
@@ -127,7 +133,7 @@ function getPlanReviewStatus(tc: InstanceAiToolCallState): PlanReviewStatus {
 function isPlanReviewUpdating(tc: InstanceAiToolCallState): boolean {
 	const requestId = tc.confirmation?.requestId;
 	if (!requestId || getPlanReviewStatus(tc) !== 'changes-requested') return false;
-	return thread.updatingPlanRequestIds.has(requestId) || thread.isStreaming;
+	return thread.updatingPlanRequestIds.has(requestId);
 }
 
 /** PlanReviewPanel is read-only when its tool call has settled OR when the
@@ -174,7 +180,7 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	};
 	telemetry.track('User finished providing input', eventProps);
 
-	thread.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
+	thread.resolveConfirmation(requestId, approved ? 'approved' : 'changes-requested');
 	if (thread.activePlanEdit?.requestId === requestId) {
 		thread.cancelPlanEdit();
 	}

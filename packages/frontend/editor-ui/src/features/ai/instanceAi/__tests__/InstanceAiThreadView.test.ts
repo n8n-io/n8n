@@ -489,7 +489,7 @@ describe('InstanceAiThreadView', () => {
 		await getByTestId('instance-ai-plan-ask-for-edits').click();
 		await getByTestId('instance-ai-input-submit').click();
 
-		expect(thread.resolveConfirmation).toHaveBeenCalledWith('req-plan', 'denied');
+		expect(thread.resolveConfirmation).toHaveBeenCalledWith('req-plan', 'changes-requested');
 		expect(thread.confirmAction).toHaveBeenCalledWith('req-plan', {
 			kind: 'approval',
 			approved: false,

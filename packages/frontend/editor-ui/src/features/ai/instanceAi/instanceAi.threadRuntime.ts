@@ -69,7 +69,7 @@ export interface ThreadRuntimeHooks {
 function collectPendingConfirmations(
 	node: InstanceAiAgentNode,
 	messageId: string,
-	resolved: Map<string, 'approved' | 'denied' | 'deferred'>,
+	resolved: Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>,
 	out: PendingConfirmationItem[],
 ): void {
 	for (const tc of node.toolCalls) {
@@ -243,7 +243,9 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
-	const resolvedConfirmationIds = ref<Map<string, 'approved' | 'denied' | 'deferred'>>(new Map());
+	const resolvedConfirmationIds = ref<
+		Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>
+	>(new Map());
 	const pendingMessageCount = ref(0);
 	const hydrationStatus = ref<'idle' | 'hydrating' | 'ready'>('idle');
 	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
@@ -329,7 +331,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 
 	function resolveConfirmation(
 		requestId: string,
-		action: 'approved' | 'denied' | 'deferred',
+		action: 'approved' | 'changes-requested' | 'denied' | 'deferred',
 	): void {
 		const next = new Map(resolvedConfirmationIds.value);
 		next.set(requestId, action);

@@ -570,7 +570,7 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 			feedback: message,
 		});
 		thread.markPlanUpdatePending(planEdit.requestId);
-		thread.resolveConfirmation(planEdit.requestId, 'denied');
+		thread.resolveConfirmation(planEdit.requestId, 'changes-requested');
 		void thread
 			.confirmAction(planEdit.requestId, {
 				kind: 'approval',

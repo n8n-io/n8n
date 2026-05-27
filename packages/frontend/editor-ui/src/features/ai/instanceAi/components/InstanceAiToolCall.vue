@@ -45,6 +45,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 	// Local optimistic state takes priority (has richer semantics like 'deferred')
 	const rid = props.toolCall.confirmation?.requestId;
 	const local = rid ? thread.resolvedConfirmationIds.get(rid) : undefined;
+	if (local === 'changes-requested') return 'denied';
 	if (local) return local;
 	const status = props.toolCall.confirmationStatus;
 	if (status === 'approved' || status === 'denied') return status;
