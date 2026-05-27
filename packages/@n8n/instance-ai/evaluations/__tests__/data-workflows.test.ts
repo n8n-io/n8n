@@ -22,10 +22,17 @@ const FAKE_FILES = [
 ];
 
 const STUB_TEST_CASE = JSON.stringify({
-	prompt: 'stub',
+	conversation: [{ role: 'user', text: 'stub' }],
 	complexity: 'simple',
 	tags: [],
-	scenarios: [],
+	executionScenarios: [
+		{
+			name: 'happy-path',
+			description: 'stub',
+			dataSetup: 'stub',
+			successCriteria: 'stub',
+		},
+	],
 });
 
 beforeEach(() => {
@@ -41,7 +48,7 @@ function slugs(filter?: string, exclude?: string): string[] {
 }
 
 describe('loadWorkflowTestCasesWithFiles', () => {
-	it('returns every .json slug when no filter or exclude is given', () => {
+	it('returns every .json slug from workflows/ when no filter or exclude is given', () => {
 		expect(slugs()).toEqual([
 			'contact-form-automation',
 			'cross-team-linear-report',

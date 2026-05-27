@@ -13,8 +13,7 @@ describe('n8n observation-log reflector policy', () => {
 
 	it('builds the reflector prompt from active log and token budget', () => {
 		const prompt = buildN8nObservationLogReflectorPrompt({
-			scopeKind: 'thread',
-			scopeId: 'thread-1',
+			observationScopeId: 'thread-1',
 			now: new Date('2026-05-12T15:00:00.000Z'),
 			activeObservationLog: [],
 			renderedObservationLog:
@@ -24,7 +23,7 @@ describe('n8n observation-log reflector policy', () => {
 		});
 
 		expect(prompt).toContain('Current timestamp: 2026-05-12T15:00:00.000Z');
-		expect(prompt).toContain('Scope: thread:thread-1');
+		expect(prompt).not.toContain('Scope:');
 		expect(prompt).toContain('Active observation log tokens: 42');
 		expect(prompt).toContain('Token budget: 8000');
 		expect(prompt).toContain('[obs-1] CRITICAL');

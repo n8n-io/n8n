@@ -495,6 +495,12 @@ export class Workflow {
 		checkedNodes?: string[],
 	): string[] {
 		const currentHighest: string[] = [];
+
+		if (!(nodeName in this.nodes)) {
+			// Node is not in the workflow
+			return currentHighest;
+		}
+
 		if (this.nodes[nodeName].disabled === false) {
 			// If the current node is not disabled itself is the highest
 			currentHighest.push(nodeName);

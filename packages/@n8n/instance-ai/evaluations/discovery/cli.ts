@@ -9,7 +9,8 @@
 //
 // Loads scenarios from evaluations/data/discovery/, runs each scenario × N
 // trials via the in-process runner, reports per-scenario pass-rates, exits
-// non-zero on any scenario below threshold.
+// non-zero on any scenario below threshold, or on any scenario with zero passes
+// when --fail-on-zero-pass is set.
 // ---------------------------------------------------------------------------
 
 import { runDiscoveryScenario, type DiscoveryRunResult } from './runner';
@@ -30,6 +31,7 @@ interface CliArgs {
 	modelId: string;
 	concurrency: number;
 	nodesJsonPath?: string;
+	failOnZeroPass: boolean;
 }
 
 const DEFAULT_MODEL = process.env.N8N_INSTANCE_AI_EVAL_MODEL ?? 'anthropic/claude-sonnet-4-6';
@@ -86,6 +88,7 @@ function parseArgs(argv: string[]): CliArgs {
 		maxSteps: 5,
 		modelId: DEFAULT_MODEL,
 		concurrency: 3,
+		failOnZeroPass: false,
 	};
 
 	for (let i = 0; i < argv.length; i++) {
@@ -118,6 +121,9 @@ function parseArgs(argv: string[]): CliArgs {
 				break;
 			case '--nodes-json':
 				args.nodesJsonPath = argv[++i];
+				break;
+			case '--fail-on-zero-pass':
+				args.failOnZeroPass = true;
 				break;
 			default:
 				break;
@@ -211,7 +217,11 @@ async function runLocalMode(args: CliArgs): Promise<void> {
 	printSummary(aggregates, args);
 
 	const failingScenarios = aggregates.filter((a) => a.passRate < args.passThreshold);
-	if (failingScenarios.length > 0) {
+	const zeroPassScenarios = aggregates.filter((a) => a.passCount === 0);
+	const shouldFail = args.failOnZeroPass
+		? zeroPassScenarios.length > 0
+		: failingScenarios.length > 0;
+	if (shouldFail) {
 		process.exitCode = 1;
 	}
 }

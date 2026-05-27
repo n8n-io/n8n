@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { OnLifecycleEvent } from '@n8n/decorators';
 import type {
 	WorkflowExecuteBeforeContext,
@@ -7,6 +8,8 @@ import type {
 	NodeExecuteAfterContext,
 } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+
+import { OwnershipService } from '@/services/ownership.service';
 
 import { ExecutionLevelTracer } from './execution-level-tracer';
 import { OtelConfig } from './otel.config';
@@ -18,6 +21,8 @@ export class OtelLifecycleHandler {
 		private readonly tracer: ExecutionLevelTracer,
 		private readonly traceContextService: TraceContextService,
 		private readonly config: OtelConfig,
+		private readonly ownershipService: OwnershipService,
+		private readonly logger: Logger,
 	) {}
 
 	@OnLifecycleEvent('workflowExecuteBefore')
@@ -29,9 +34,21 @@ export class OtelLifecycleHandler {
 			: // This will return "null" if there is no traceparent header in the trigger node. (e.g. webhook)
 				await this.traceContextService.get(ctx.executionId);
 
+		const project = await this.ownershipService
+			.getWorkflowProjectCached(ctx.workflow.id)
+			.catch((error: unknown) => {
+				this.logger.warn('Failed to fetch project for OTEL span', {
+					workflowId: ctx.workflow.id,
+					executionId: ctx.executionId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				return undefined;
+			});
+
 		const spanContext = this.tracer.startWorkflow({
 			executionId: ctx.executionId,
 			tracingContext,
+			project: project ? { id: project.id } : undefined,
 			workflow: {
 				id: ctx.workflow.id,
 				name: ctx.workflow.name,
@@ -49,9 +66,21 @@ export class OtelLifecycleHandler {
 	async onWorkflowResume(ctx: WorkflowExecuteResumeContext): Promise<void> {
 		const previousWorkflowExecution = await this.traceContextService.get(ctx.executionId);
 
+		const project = await this.ownershipService
+			.getWorkflowProjectCached(ctx.workflow.id)
+			.catch((error: unknown) => {
+				this.logger.warn('Failed to fetch project for OTEL span', {
+					workflowId: ctx.workflow.id,
+					executionId: ctx.executionId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				return undefined;
+			});
+
 		this.tracer.startWorkflow({
 			executionId: ctx.executionId,
 			linkTo: previousWorkflowExecution,
+			project: project ? { id: project.id } : undefined,
 			workflow: {
 				id: ctx.workflow.id,
 				name: ctx.workflow.name,

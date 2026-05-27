@@ -15,6 +15,8 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { Project } from '@/features/collaboration/projects/projects.types';
 import * as restApiClient from '@n8n/rest-api-client';
 import { mock } from 'vitest-mock-extended';
 import { BINARY_MODE_COMBINED } from 'n8n-workflow';
@@ -55,10 +57,26 @@ vi.mock('@n8n/rest-api-client', async (importOriginal) => {
 	};
 });
 
+const getSecuritySettings = vi.fn();
+vi.mock('@n8n/rest-api-client/api/security-settings', () => ({
+	getSecuritySettings: (...args: unknown[]) => getSecuritySettings(...args),
+	updateSecuritySettings: vi.fn(),
+}));
+
+const DEFAULT_SECURITY_SETTINGS = {
+	personalSpacePublishing: false,
+	personalSpaceSharing: false,
+	publishedPersonalWorkflowsCount: 0,
+	sharedPersonalWorkflowsCount: 0,
+	sharedPersonalCredentialsCount: 0,
+	managedByEnv: false,
+};
+
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
 let sourceControlStore: MockedStore<typeof useSourceControlStore>;
+let projectsStore: MockedStore<typeof useProjectsStore>;
 let pinia: ReturnType<typeof createTestingPinia>;
 
 let searchWorkflowsSpy: MockInstance<(typeof workflowsListStore)['searchWorkflows']>;
@@ -85,11 +103,16 @@ const createComponent = createComponentRenderer(WorkflowSettingsVue, {
 
 describe('WorkflowSettingsVue', () => {
 	beforeEach(async () => {
+		getSecuritySettings.mockResolvedValue({
+			...DEFAULT_SECURITY_SETTINGS,
+			redactionEnforcement: { floor: 'off' },
+		});
 		pinia = createTestingPinia({ stubActions: false });
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 		settingsStore = mockedStore(useSettingsStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
+		projectsStore = mockedStore(useProjectsStore);
 
 		// Mock specific store actions that tests assert on
 		workflowsStore.updateWorkflow = vi.fn();
@@ -970,7 +993,7 @@ describe('WorkflowSettingsVue', () => {
 	});
 
 	describe('Redaction Policy', () => {
-		it('should show locked redaction policy when licensed but user lacks updateRedactionSetting scope', async () => {
+		it('should show redaction policy section when licensed but user lacks redaction scopes', async () => {
 			const { getByTestId } = createComponent({ pinia });
 			await flushPromises();
 
@@ -986,7 +1009,7 @@ describe('WorkflowSettingsVue', () => {
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
-				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+				scopes: ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction'],
 			});
 			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
 			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
@@ -997,7 +1020,7 @@ describe('WorkflowSettingsVue', () => {
 			expect(queryByTestId('workflow-settings-redaction-policy')).not.toBeInTheDocument();
 		});
 
-		it('should disable redaction dropdowns when user lacks updateRedactionSetting scope', async () => {
+		it('should disable redaction dropdowns when user lacks enableRedaction scope', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 
 			const { getByTestId } = createComponent({ pinia });
@@ -1019,7 +1042,7 @@ describe('WorkflowSettingsVue', () => {
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
-				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+				scopes: ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction'],
 			});
 			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
 			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
@@ -1033,14 +1056,22 @@ describe('WorkflowSettingsVue', () => {
 		it('should render two redaction dropdowns with correct options', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
+			projectsStore.personalProject = mock<Project>({
+				scopes: ['workflow:enableRedaction', 'workflow:disableRedaction'],
+			});
+
 			const workflowWithRedactionScope = createTestWorkflow({
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
-				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+				scopes: ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction'],
 			});
 			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
 			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
+			// Seed with production=redact so the manual select is editable (the new
+			// workflow-level invariant disables manual when production is default).
+			workflowDocumentStore.setSettings({ redactionPolicy: 'non-manual' });
 
 			const { getByTestId } = createComponent({ pinia });
 			await flushPromises();
@@ -1062,13 +1093,16 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should save redaction policy as non-manual when only production is set to redact', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
-			settingsStore.settings.envFeatureFlags.N8N_ENV_FEAT_REDACTION_POLICY = true;
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
+			projectsStore.personalProject = mock<Project>({
+				scopes: ['workflow:enableRedaction', 'workflow:disableRedaction'],
+			});
 
 			const workflowWithRedactionScope = createTestWorkflow({
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
-				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+				scopes: ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction'],
 			});
 			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
 			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
@@ -1104,11 +1138,16 @@ describe('WorkflowSettingsVue', () => {
 		it('should save redaction policy as all when both are set to redact', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
+			projectsStore.personalProject = mock<Project>({
+				scopes: ['workflow:enableRedaction', 'workflow:disableRedaction'],
+			});
+
 			const workflowWithRedactionScope = createTestWorkflow({
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
-				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+				scopes: ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction'],
 			});
 			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
 			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
@@ -1150,6 +1189,70 @@ describe('WorkflowSettingsVue', () => {
 			);
 		});
 
+		it('should enable production dropdown when policy is "none" and user has only enableRedaction scope', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
+			projectsStore.personalProject = mock<Project>({ scopes: ['workflow:enableRedaction'] });
+
+			const workflowEnableOnly = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:update', 'workflow:enableRedaction'],
+			});
+			workflowsListStore.workflowsById = { '1': workflowEnableOnly };
+			workflowsListStore.getWorkflowById.mockImplementation(() => workflowEnableOnly);
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			// Current policy is 'none' (default), so enabling = requires enableRedaction → unlocked
+			const productionCombobox = within(
+				getByTestId('workflow-settings-redact-production-select'),
+			).getByRole('combobox');
+			expect(productionCombobox).not.toBeDisabled();
+
+			// Manual select stays disabled until production is set to redact (workflow-level invariant).
+			const manualCombobox = within(
+				getByTestId('workflow-settings-redact-manual-select'),
+			).getByRole('combobox');
+			expect(manualCombobox).toBeDisabled();
+		});
+
+		it('should disable dropdowns when policy is active and user has only enableRedaction scope', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
+
+			// Current policy is 'all' so both dropdowns show 'redact' state.
+			// Switching to 'default' = disabling → requires disableRedaction (not granted).
+			workflowDocumentStore.setSettings({ redactionPolicy: 'all' });
+
+			const workflowEnableOnly = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:update', 'workflow:enableRedaction'],
+			});
+			workflowsListStore.workflowsById = { '1': workflowEnableOnly };
+			workflowsListStore.getWorkflowById.mockImplementation(() => workflowEnableOnly);
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			await waitFor(() => {
+				const productionCombobox = within(
+					getByTestId('workflow-settings-redact-production-select'),
+				).getByRole('combobox');
+				expect(productionCombobox).toBeDisabled();
+			});
+
+			const manualCombobox = within(
+				getByTestId('workflow-settings-redact-manual-select'),
+			).getByRole('combobox');
+			expect(manualCombobox).toBeDisabled();
+		});
+
 		it('should disable production redaction select and force "Redact" when dynamic credentials are configured', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue([
@@ -1172,7 +1275,7 @@ describe('WorkflowSettingsVue', () => {
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
-				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+				scopes: ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction'],
 			});
 			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
 			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
@@ -1192,6 +1295,244 @@ describe('WorkflowSettingsVue', () => {
 			const productionSelect = getByTestId('workflow-settings-redact-production-select');
 			const input = productionSelect.querySelector('input');
 			expect(input).toBeDisabled();
+		});
+
+		describe('manual requires production', () => {
+			const setUpManualRequiresProduction = (params: {
+				redactionPolicy: 'none' | 'non-manual' | 'manual-only' | 'all';
+			}) => {
+				vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+				settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
+				projectsStore.personalProject = mock<Project>({
+					scopes: ['workflow:enableRedaction', 'workflow:disableRedaction'],
+				});
+				const workflow = createTestWorkflow({
+					id: '1',
+					name: 'Test Workflow',
+					active: true,
+					scopes: ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction'],
+				});
+				workflowsListStore.workflowsById = { '1': workflow };
+				workflowsListStore.getWorkflowById.mockImplementation(() => workflow);
+				workflowDocumentStore.setSettings({ redactionPolicy: params.redactionPolicy });
+			};
+
+			it('disables manual select when production is not redacted', async () => {
+				setUpManualRequiresProduction({ redactionPolicy: 'none' });
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				const manualCombobox = within(
+					getByTestId('workflow-settings-redact-manual-select'),
+				).getByRole('combobox');
+				expect(manualCombobox).toBeDisabled();
+			});
+
+			it('keeps manual select enabled when production is set to redact', async () => {
+				setUpManualRequiresProduction({ redactionPolicy: 'non-manual' });
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				const manualCombobox = within(
+					getByTestId('workflow-settings-redact-manual-select'),
+				).getByRole('combobox');
+				expect(manualCombobox).not.toBeDisabled();
+			});
+
+			it('coerces manual back to default when production drops to default and persists redactionPolicy: none on save', async () => {
+				setUpManualRequiresProduction({ redactionPolicy: 'all' });
+
+				const { getByTestId, getByRole } = createComponent({ pinia });
+				await flushPromises();
+
+				// Sanity check: both selects start as "Redact"
+				const manualInput = getByTestId('workflow-settings-redact-manual-select').querySelector(
+					'input',
+				) as HTMLInputElement;
+				expect(manualInput.value).toBe('Redact');
+
+				// Switch production to "Default - Do not redact"
+				const productionSelect = getByTestId('workflow-settings-redact-production-select');
+				await userEvent.click(within(productionSelect).getByRole('combobox'));
+				await waitFor(async () => {
+					const options = within(document.body as HTMLElement).getAllByRole('option');
+					const defaultOption = options.find(
+						(o) => o.textContent?.trim() === 'Default - Do not redact',
+					);
+					expect(defaultOption).toBeTruthy();
+					await userEvent.click(defaultOption!);
+				});
+				await flushPromises();
+
+				// Manual select should have visibly reset to "Default - Do not redact"
+				expect(manualInput.value).toBe('Default - Do not redact');
+
+				toast.showError.mockClear();
+				await userEvent.click(getByRole('button', { name: 'Save' }));
+				expect(toast.showError).not.toHaveBeenCalled();
+
+				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({
+						settings: expect.objectContaining({ redactionPolicy: 'none' }),
+					}),
+				);
+			});
+
+			it('disables manual select independently of license, permission, and enforcement gates', async () => {
+				setUpManualRequiresProduction({ redactionPolicy: 'none' });
+
+				const { getByTestId, queryByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				// No other lock is in play.
+				expect(queryByTestId('workflow-settings-redaction-enforced-lock')).not.toBeInTheDocument();
+
+				const manualCombobox = within(
+					getByTestId('workflow-settings-redact-manual-select'),
+				).getByRole('combobox');
+				expect(manualCombobox).toBeDisabled();
+			});
+
+			it('shows the enforcement lock copy (not the new hint) when instance enforcement is also on', async () => {
+				vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+				settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
+				settingsStore.settings.envFeatureFlags = {
+					...settingsStore.settings.envFeatureFlags,
+					N8N_ENV_FEAT_REDACTION_ENFORCEMENT: 'true',
+				};
+				getSecuritySettings.mockResolvedValue({
+					...DEFAULT_SECURITY_SETTINGS,
+					redactionEnforcement: { floor: 'production' },
+				});
+				projectsStore.personalProject = mock<Project>({
+					scopes: ['workflow:enableRedaction', 'workflow:disableRedaction'],
+				});
+				const workflow = createTestWorkflow({
+					id: '1',
+					name: 'Test Workflow',
+					active: true,
+					scopes: ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction'],
+				});
+				workflowsListStore.workflowsById = { '1': workflow };
+				workflowsListStore.getWorkflowById.mockImplementation(() => workflow);
+				workflowDocumentStore.setSettings({ redactionPolicy: 'none' });
+
+				const { getAllByTestId, queryByText } = createComponent({ pinia });
+				await flushPromises();
+
+				expect(getAllByTestId('workflow-settings-redaction-enforced-lock')).toHaveLength(2);
+				expect(
+					queryByText(
+						'Manual execution data can only be redacted when production execution data is also redacted.',
+					),
+				).not.toBeInTheDocument();
+			});
+		});
+
+		describe('instance enforcement', () => {
+			const setUpEnforcement = (params: {
+				enforced: boolean;
+				flagEnabled: boolean;
+				hasUpdatePermission?: boolean;
+			}) => {
+				vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+				settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
+				settingsStore.settings.envFeatureFlags = {
+					...settingsStore.settings.envFeatureFlags,
+					N8N_ENV_FEAT_REDACTION_ENFORCEMENT: params.flagEnabled ? 'true' : 'false',
+				};
+				getSecuritySettings.mockResolvedValue({
+					...DEFAULT_SECURITY_SETTINGS,
+					redactionEnforcement: { floor: params.enforced ? 'production' : 'off' },
+				});
+
+				const hasPermission = params.hasUpdatePermission ?? true;
+				const scopes = (
+					hasPermission
+						? ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction']
+						: ['workflow:update']
+				) as Array<'workflow:update' | 'workflow:enableRedaction' | 'workflow:disableRedaction'>;
+				projectsStore.personalProject = mock<Project>({
+					scopes: hasPermission ? ['workflow:enableRedaction', 'workflow:disableRedaction'] : [],
+				});
+				const workflow = createTestWorkflow({
+					id: '1',
+					name: 'Test Workflow',
+					active: true,
+					scopes,
+				});
+				workflowsListStore.workflowsById = { '1': workflow };
+				workflowsListStore.getWorkflowById.mockImplementation(() => workflow);
+			};
+
+			it('locks both redaction selects with enforcement copy when enforcement is on', async () => {
+				setUpEnforcement({ enforced: true, flagEnabled: true });
+
+				const { getByTestId, getAllByTestId, queryByText } = createComponent({ pinia });
+				await flushPromises();
+
+				const productionInput = within(
+					getByTestId('workflow-settings-redact-production-select'),
+				).getByRole('combobox');
+				const manualInput = within(getByTestId('workflow-settings-redact-manual-select')).getByRole(
+					'combobox',
+				);
+				expect(productionInput).toBeDisabled();
+				expect(manualInput).toBeDisabled();
+
+				const lockIcons = getAllByTestId('workflow-settings-redaction-enforced-lock');
+				expect(lockIcons).toHaveLength(2);
+
+				// Permission-only tooltip copy must not be shown when enforcement is the lock reason.
+				expect(queryByText('View users with access')).not.toBeInTheDocument();
+			});
+
+			it('leaves both redaction selects editable when enforcement is off', async () => {
+				setUpEnforcement({ enforced: false, flagEnabled: true });
+				// Seed with production=redact so the manual select is editable (the new
+				// workflow-level invariant disables manual when production is default).
+				workflowDocumentStore.setSettings({ redactionPolicy: 'non-manual' });
+
+				const { getByTestId, queryByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				const productionInput = within(
+					getByTestId('workflow-settings-redact-production-select'),
+				).getByRole('combobox');
+				const manualInput = within(getByTestId('workflow-settings-redact-manual-select')).getByRole(
+					'combobox',
+				);
+				expect(productionInput).not.toBeDisabled();
+				expect(manualInput).not.toBeDisabled();
+				expect(queryByTestId('workflow-settings-redaction-enforced-lock')).not.toBeInTheDocument();
+			});
+
+			it('ignores enforcement state when the feature flag is off', async () => {
+				setUpEnforcement({ enforced: true, flagEnabled: false });
+
+				const { getByTestId, queryByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				const productionInput = within(
+					getByTestId('workflow-settings-redact-production-select'),
+				).getByRole('combobox');
+				expect(productionInput).not.toBeDisabled();
+				expect(queryByTestId('workflow-settings-redaction-enforced-lock')).not.toBeInTheDocument();
+				expect(getSecuritySettings).not.toHaveBeenCalled();
+			});
+
+			it('prefers enforcement copy when both enforcement and missing permission would lock', async () => {
+				setUpEnforcement({ enforced: true, flagEnabled: true, hasUpdatePermission: false });
+
+				const { getAllByTestId, queryByText } = createComponent({ pinia });
+				await flushPromises();
+
+				expect(getAllByTestId('workflow-settings-redaction-enforced-lock')).toHaveLength(2);
+				expect(queryByText('View users with access')).not.toBeInTheDocument();
+			});
 		});
 	});
 });

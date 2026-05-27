@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, h } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, h } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from '@/app/composables/useToast';
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -38,6 +38,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
@@ -51,6 +52,8 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { useRedactionEnforcementFeatureFlag } from '@/features/redaction-enforcement/composables/useRedactionEnforcementFeatureFlag';
+import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
@@ -65,6 +68,8 @@ const { trackMcpAccessEnabledForWorkflow } = useMcp();
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { isEnabled: isCredentialResolverEnabled } = useDynamicCredentials();
+const { isEnabled: isRedactionEnforcementFlagEnabled } = useRedactionEnforcementFeatureFlag();
+const isInstanceRedactionEnforced = ref(false);
 const canListCredentialResolvers = hasPermission(['rbac'], {
 	rbac: { scope: 'credentialResolver:list' },
 });
@@ -81,6 +86,7 @@ const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
+const projectsStore = useProjectsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
@@ -187,7 +193,7 @@ const readOnlyEnv = computed(
 	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
 );
 const workflowName = computed(() => workflowDocumentStore.value.name);
-const workflowId = computed(() => workflowsStore.workflowId);
+const workflowId = computed(() => workflowDocumentStore.value.workflowId);
 const workflow = computed(() => workflowsListStore.getWorkflowById(workflowId.value));
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
@@ -199,15 +205,45 @@ const workflowOwnerName = computed(() => {
 });
 const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
 
+const projectPermissions = computed(() => {
+	const project =
+		projectsStore.myProjects.find((p) => p.id === workflow.value?.homeProject?.id) ??
+		projectsStore.personalProject;
+
+	return getResourcePermissions(project?.scopes);
+});
+
 const isDataRedactionLicensed = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction],
 );
 
 const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('redaction'));
 
-const isRedactionSettingLocked = computed(
-	() => isDataRedactionLicensed.value && !workflowPermissions.value.updateRedactionSetting,
+const isRedactionEnforcedByInstance = computed(
+	() => isRedactionEnforcementFlagEnabled.value && isInstanceRedactionEnforced.value,
 );
+
+// Enforcement wins over permission — an admin cannot override an instance-level policy.
+function getRedactionLockReason(currentValue: string): 'enforcement' | 'permission' | null {
+	if (!isDataRedactionLicensed.value) return null;
+	if (isRedactionEnforcedByInstance.value) return 'enforcement';
+	if (
+		currentValue === 'default'
+			? !projectPermissions.value.workflow.enableRedaction
+			: !projectPermissions.value.workflow.disableRedaction
+	)
+		return 'permission';
+	return null;
+}
+
+const productionRedactionLockReason = computed(() =>
+	getRedactionLockReason(redactProductionData.value),
+);
+
+const manualRedactionLockReason = computed(() => getRedactionLockReason(redactManualData.value));
+
+const isProductionRedactionLocked = computed(() => productionRedactionLockReason.value !== null);
+const isManualRedactionLocked = computed(() => manualRedactionLockReason.value !== null);
 
 const redactionMembersModalOpen = ref(false);
 
@@ -258,6 +294,18 @@ const redactManualData = computed({
 			workflowSettings.value.redactionPolicy = productionRedacted ? 'non-manual' : 'none';
 		}
 	},
+});
+
+// Workflow-level invariant: manual redaction requires production redaction
+// (mirrors the instance-level "production-only or production+manual" rule).
+const isManualRedactionDisabledByProduction = computed(
+	() => redactProductionData.value !== 'redact',
+);
+
+watch(redactProductionData, (newVal) => {
+	if (newVal !== 'redact' && redactManualData.value === 'redact') {
+		redactManualData.value = 'default';
+	}
 });
 
 const mcpToggleDisabled = computed(() => {
@@ -621,7 +669,7 @@ const saveSettings = async () => {
 
 	void externalHooks.run('workflowSettings.saveSettings', { oldSettings: { ...oldSettings } });
 	telemetry.track('User updated workflow settings', {
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 		// null and undefined values are removed from the object, but we need the keys to be there
 		time_saved: workflowSettings.value.timeSavedPerExecution ?? '',
 		error_workflow: workflowSettings.value.errorWorkflow ?? '',
@@ -682,10 +730,19 @@ const onExecutionLogicModeChange = (value: string) => {
 };
 
 onMounted(async () => {
+	if (isRedactionEnforcementFlagEnabled.value) {
+		try {
+			const response = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
+			isInstanceRedactionEnforced.value = (response.redactionEnforcement?.floor ?? 'off') !== 'off';
+		} catch (error) {
+			console.debug('Failed to fetch redaction enforcement state', error);
+		}
+	}
+
 	executionTimeout.value = rootStore.executionTimeout;
 	maxExecutionTimeout.value = rootStore.maxExecutionTimeout;
 
-	if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
+	if (!workflowsStore.isWorkflowSaved[workflowDocumentStore.value.workflowId]) {
 		toast.showMessage({
 			title: 'No workflow active',
 			message: 'No workflow active to display settings of.',
@@ -799,7 +856,7 @@ onMounted(async () => {
 		dialogVisible: true,
 	});
 	telemetry.track('User opened workflow settings', {
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 	});
 
 	// Register custom action for opening SavedTime node creator
@@ -810,6 +867,7 @@ onMounted(async () => {
 			closeDialog();
 			// Open node creator for regular nodes
 			nodeCreatorStore.openNodeCreatorForRegularNodes(
+				workflowDocumentStore.value.workflowId,
 				NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
 			);
 		},
@@ -1176,16 +1234,21 @@ onBeforeUnmount(() => {
 								$style['setting-name'],
 								{
 									[$style['setting-name--disabled']]:
-										!isDataRedactionLicensed || isRedactionSettingLocked,
+										!isDataRedactionLicensed || isProductionRedactionLocked,
 								},
 							]"
 						>
 							{{ i18n.baseText('workflowSettings.redactProductionData') }}
 							<N8nIcon
-								v-if="isRedactionSettingLocked"
+								v-if="isProductionRedactionLocked"
 								icon="lock"
 								size="xsmall"
 								style="opacity: 1"
+								:data-test-id="
+									productionRedactionLockReason === 'enforcement'
+										? 'workflow-settings-redaction-enforced-lock'
+										: undefined
+								"
 							/>
 							<N8nBadge
 								v-if="!isDataRedactionLicensed"
@@ -1204,11 +1267,18 @@ onBeforeUnmount(() => {
 						<ElCol
 							:span="14"
 							class="ignore-key-press-canvas"
-							:class="{ [$style['setting-name--disabled']]: isRedactionSettingLocked }"
+							:class="{ [$style['setting-name--disabled']]: isProductionRedactionLocked }"
 						>
-							<N8nTooltip :disabled="!isRedactionSettingLocked" :enterable="true" placement="top">
+							<N8nTooltip
+								:disabled="!isProductionRedactionLocked"
+								:enterable="true"
+								placement="top"
+							>
 								<template #content>
-									<span
+									<span v-if="productionRedactionLockReason === 'enforcement'">{{
+										i18n.baseText('workflowSettings.redactionEnforcementNotice')
+									}}</span>
+									<span v-else
 										>{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}
 										<span
 											:class="$style['permission-notice-link']"
@@ -1224,8 +1294,7 @@ onBeforeUnmount(() => {
 									:disabled="
 										!isDataRedactionLicensed ||
 										readOnlyEnv ||
-										!workflowPermissions.updateRedactionSetting ||
-										isRedactionSettingLocked ||
+										isProductionRedactionLocked ||
 										workflowHasDynamicCredentials
 									"
 									:placeholder="i18n.baseText('workflowSettings.selectOption')"
@@ -1259,12 +1328,24 @@ onBeforeUnmount(() => {
 								$style['setting-name'],
 								{
 									[$style['setting-name--disabled']]:
-										!isDataRedactionLicensed || isRedactionSettingLocked,
+										!isDataRedactionLicensed ||
+										isManualRedactionLocked ||
+										isManualRedactionDisabledByProduction,
 								},
 							]"
 						>
 							{{ i18n.baseText('workflowSettings.redactManualData') }}
-							<N8nIcon v-if="isRedactionSettingLocked" icon="lock" size="xsmall" />
+							<N8nIcon
+								v-if="isManualRedactionLocked"
+								icon="lock"
+								size="xsmall"
+								style="opacity: 1"
+								:data-test-id="
+									manualRedactionLockReason === 'enforcement'
+										? 'workflow-settings-redaction-enforced-lock'
+										: undefined
+								"
+							/>
 							<N8nBadge
 								v-if="!isDataRedactionLicensed"
 								:class="[$style['upgrade-badge'], 'ml-4xs']"
@@ -1282,11 +1363,21 @@ onBeforeUnmount(() => {
 						<ElCol
 							:span="14"
 							class="ignore-key-press-canvas"
-							:class="{ [$style['setting-name--disabled']]: isRedactionSettingLocked }"
+							:class="{
+								[$style['setting-name--disabled']]:
+									isManualRedactionLocked || isManualRedactionDisabledByProduction,
+							}"
 						>
-							<N8nTooltip :disabled="!isRedactionSettingLocked" :enterable="true" placement="top">
+							<N8nTooltip
+								:disabled="!isManualRedactionLocked && !isManualRedactionDisabledByProduction"
+								:enterable="true"
+								placement="top"
+							>
 								<template #content>
-									<span
+									<span v-if="manualRedactionLockReason === 'enforcement'">{{
+										i18n.baseText('workflowSettings.redactionEnforcementNotice')
+									}}</span>
+									<span v-else-if="isManualRedactionLocked"
 										>{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}
 										<span
 											:class="$style['permission-notice-link']"
@@ -1296,14 +1387,17 @@ onBeforeUnmount(() => {
 											}}</span
 										></span
 									>
+									<span v-else-if="isManualRedactionDisabledByProduction">{{
+										i18n.baseText('workflowSettings.redactManualData.requiresProductionHint')
+									}}</span>
 								</template>
 								<N8nSelect
 									v-model="redactManualData"
 									:disabled="
 										!isDataRedactionLicensed ||
 										readOnlyEnv ||
-										!workflowPermissions.updateRedactionSetting ||
-										isRedactionSettingLocked
+										isManualRedactionLocked ||
+										isManualRedactionDisabledByProduction
 									"
 									:placeholder="i18n.baseText('workflowSettings.selectOption')"
 									filterable
