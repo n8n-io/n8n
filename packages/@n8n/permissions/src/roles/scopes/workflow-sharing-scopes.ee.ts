@@ -11,8 +11,7 @@ export const WORKFLOW_SHARING_OWNER_SCOPES: Scope[] = [
 	'workflow:unshare',
 	'workflow:move',
 	'workflow:execute-chat',
-	'workflow:enableRedaction',
-	'workflow:disableRedaction',
+	'workflow:updateRedactionSetting',
 	'execution:reveal',
 ];
 
