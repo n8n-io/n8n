@@ -1,4 +1,3 @@
-import { mock } from 'jest-mock-extended';
 import type {
 	IDataObject,
 	IWorkflowExecuteAdditionalData,
@@ -9,14 +8,15 @@ import type {
 	INodeExecutionData,
 	INodeType,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionTypes, createRunExecutionData } from 'n8n-workflow';
+import { NodeConnectionTypes, createRunExecutionData } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { NodeTypes } from '@test/helpers';
 
-jest.mock('node:fs', () => ({
-	...jest.requireActual('node:fs'),
-	existsSync: jest.fn().mockReturnValue(false),
-	renameSync: jest.fn(),
+vi.mock('node:fs', async (importActual) => ({
+	...(await importActual()),
+	existsSync: vi.fn().mockReturnValue(false),
+	renameSync: vi.fn(),
 }));
 
 import { DirectedGraph } from '../partial-execution-utils';
@@ -31,7 +31,7 @@ import {
 } from './mock-node-types';
 
 describe('processRunExecutionData', () => {
-	const runHook = jest.fn().mockResolvedValue(undefined);
+	const runHook = vi.fn().mockResolvedValue(undefined);
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		hooks: { runHook },
 		restartExecutionId: undefined,
@@ -41,7 +41,7 @@ describe('processRunExecutionData', () => {
 	const executionMode: WorkflowExecuteMode = 'trigger';
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		runHook.mockResolvedValue(undefined);
 	});
 
@@ -63,7 +63,7 @@ describe('processRunExecutionData', () => {
 		// The function returns a Promise, but throws synchronously, so we can't await it.
 		// eslint-disable-next-line @typescript-eslint/promise-function-async
 		expect(() => workflowExecute.processRunExecutionData(workflow)).toThrowError(
-			new ApplicationError('Failed to run workflow due to missing execution data'),
+			'Failed to run workflow due to missing execution data',
 		);
 	});
 
@@ -173,7 +173,7 @@ describe('processRunExecutionData', () => {
 
 		// ASSERT
 		expect(
-			runHook.mock.calls.map((hook: [string, unknown[]]) => ({
+			(runHook.mock.calls as Array<[string, unknown[]]>).map((hook) => ({
 				name: hook[0],
 				node: typeof hook[1][0] === 'string' ? hook[1][0] : undefined,
 			})),
@@ -247,9 +247,7 @@ describe('processRunExecutionData', () => {
 			// The function returns a Promise, but throws synchronously, so we can't await it.
 			// eslint-disable-next-line @typescript-eslint/promise-function-async
 			expect(() => workflowExecute.processRunExecutionData(workflow)).toThrowError(
-				new ApplicationError(
-					'The workflow has issues and cannot be executed for that reason. Please fix them first.',
-				),
+				'The workflow has issues and cannot be executed for that reason. Please fix them first.',
 			);
 		});
 

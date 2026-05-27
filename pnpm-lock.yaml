@@ -30,6 +30,18 @@ catalogs:
     '@ai-sdk/mistral':
       specifier: ^3.0.30
       version: 3.0.30
+    '@chat-adapter/linear':
+      specifier: ^4.28.1
+      version: 4.28.1
+    '@chat-adapter/slack':
+      specifier: ^4.28.1
+      version: 4.28.1
+    '@chat-adapter/state-memory':
+      specifier: ^4.28.1
+      version: 4.28.1
+    '@chat-adapter/telegram':
+      specifier: ^4.28.1
+      version: 4.28.1
     '@codemirror/autocomplete':
       specifier: 6.20.0
       version: 6.20.0
@@ -159,6 +171,9 @@ catalogs:
     callsites:
       specifier: 3.1.0
       version: 3.1.0
+    chat:
+      specifier: ^4.28.1
+      version: 4.28.1
     cron:
       specifier: 4.4.0
       version: 4.4.0
@@ -225,6 +240,9 @@ catalogs:
     nanoid:
       specifier: 3.3.8
       version: 3.3.8
+    openai:
+      specifier: 6.19.0
+      version: 6.19.0
     oxlint:
       specifier: ^1.61.0
       version: 1.61.0
@@ -2713,17 +2731,17 @@ importers:
         specifier: 4.8.0
         version: 4.8.0
       '@chat-adapter/linear':
-        specifier: ^4.26.0
-        version: 4.26.0(graphql@16.11.0)
+        specifier: 'catalog:'
+        version: 4.28.1(graphql@16.11.0)
       '@chat-adapter/slack':
-        specifier: ^4.26.0
-        version: 4.26.0
+        specifier: 'catalog:'
+        version: 4.28.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       '@chat-adapter/state-memory':
-        specifier: ^4.26.0
-        version: 4.26.0
+        specifier: 'catalog:'
+        version: 4.28.1
       '@chat-adapter/telegram':
-        specifier: ^4.26.0
-        version: 4.26.0
+        specifier: 'catalog:'
+        version: 4.28.1
       '@google-cloud/secret-manager':
         specifier: 5.6.0
         version: 5.6.0(encoding@0.1.13)
@@ -2857,8 +2875,8 @@ importers:
         specifier: 4.1.2
         version: 4.1.2
       chat:
-        specifier: ^4.26.0
-        version: 4.26.0
+        specifier: 'catalog:'
+        version: 4.28.1
       class-transformer:
         specifier: 0.5.1
         version: 0.5.1
@@ -2951,7 +2969,7 @@ importers:
         version: 9.0.3
       langsmith:
         specifier: 0.6.0
-        version: 0.6.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+        version: 0.6.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       ldapts:
         specifier: 4.2.6
         version: 4.2.6
@@ -3190,6 +3208,9 @@ importers:
       n8n-containers:
         specifier: workspace:*
         version: link:../testing/containers
+      openai:
+        specifier: 'catalog:'
+        version: 6.19.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)
       openapi-types:
         specifier: ^12.1.3
         version: 12.1.3
@@ -3323,6 +3344,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../@n8n/vitest-config
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
@@ -3344,6 +3368,18 @@ importers:
       '@types/xml2js':
         specifier: 'catalog:'
         version: 0.4.14
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.1(vitest@4.1.1)
+      jest-mock-extended:
+        specifier: ^3.0.4
+        version: 3.0.4(jest@29.7.0(@types/node@20.19.21)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.21)(typescript@6.0.2)))(typescript@6.0.2)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -3415,6 +3451,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../../testing/janitor
       '@n8n/stylelint-config':
         specifier: workspace:*
         version: link:../../../@n8n/stylelint-config
@@ -3454,6 +3493,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../../testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -3566,6 +3608,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../../testing/janitor
       '@n8n/stylelint-config':
         specifier: workspace:*
         version: link:../../../@n8n/stylelint-config
@@ -3651,6 +3696,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../../testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -3727,6 +3775,9 @@ importers:
       '@n8n/i18n':
         specifier: workspace:*
         version: link:../i18n
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../../testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -3761,6 +3812,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../../testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -4192,6 +4246,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../@n8n/eslint-config
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../testing/janitor
       '@n8n/stylelint-config':
         specifier: workspace:*
         version: link:../../@n8n/stylelint-config
@@ -4575,6 +4632,9 @@ importers:
       '@n8n/eslint-plugin-community-nodes':
         specifier: workspace:*
         version: link:../@n8n/eslint-plugin-community-nodes
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
@@ -4734,6 +4794,9 @@ importers:
       glob:
         specifier: 10.5.0
         version: 10.5.0
+      yaml:
+        specifier: 'catalog:'
+        version: 2.8.3
     devDependencies:
       '@types/node':
         specifier: ^20.17.50
@@ -6404,20 +6467,20 @@ packages:
   '@cfworker/json-schema@4.1.0':
     resolution: {integrity: sha512-/vYKi/qMxwNsuIJ9WGWwM2rflY40ZenK3Kh4uR5vB9/Nz12Y7IUN/Xf4wDA7vzPfw0VNh3b/jz4+MjcVgARKJg==}
 
-  '@chat-adapter/linear@4.26.0':
-    resolution: {integrity: sha512-sQfJXh9QbMnLV/odikaWHBQ3Mx1ZS+QtxIt7dTEQ4aCeIrQJflycAxxO8d6aepaGKhLQjvZx7iOkdfxMj35WlA==}
+  '@chat-adapter/linear@4.28.1':
+    resolution: {integrity: sha512-ZLcmb6lU26ZSJEwo6g8IyXUsTInBVPbqV72CQ0zGy9SyKs/xBUv8xftj6Q1UMIncaLLPbAa4vpjW6+zvCruZ4A==}
 
-  '@chat-adapter/shared@4.26.0':
-    resolution: {integrity: sha512-YD0MGktFXrArUqTBsyPfL5vkdD1WBS58PAWO0oVrMQAMmPxpAXfWGjBtZCkf3y8R8Svb0uVuVXiMZSForaEnMQ==}
+  '@chat-adapter/shared@4.28.1':
+    resolution: {integrity: sha512-v7AcZMrvS2gxFlRiUO1o9Nta2iipnnmV54Gie8e3nQTQvnghENfSf7j7nimA5DOUWCgj+e4DV7LE0x1pakNtkA==}
 
-  '@chat-adapter/slack@4.26.0':
-    resolution: {integrity: sha512-NNN47rURI6qpJf4rRK8xyeumjPTAXr7YSU4/FnViU8cFV/vKYFR4xZTzlFMVWNrYi9SmSwasUjcBmQznigK54Q==}
+  '@chat-adapter/slack@4.28.1':
+    resolution: {integrity: sha512-JxgV7+cRXXeKpj0MzS7nzG3JvpnfhIgnPo9r/sdEIzeWhIb8tUcT2PbLl/fpSu/cb+WkICS0bCENn1I0PS39Hg==}
 
-  '@chat-adapter/state-memory@4.26.0':
-    resolution: {integrity: sha512-FsfyM/A9Bf1yFc1FWmOsK+a4YVwm5FogX25hZxFG6cEvyFb6Cd924SsbtvF06yItY/7J2UFetCsMmBPkdPKshQ==}
+  '@chat-adapter/state-memory@4.28.1':
+    resolution: {integrity: sha512-KMKrPPU9inr+GVH5pIL81aSW0+LXulxZMktSzf5JOgE6C8WHmUAcGN9B0C80edyeC5qeXOyl0Vl3ZecPZsWDqQ==}
 
-  '@chat-adapter/telegram@4.26.0':
-    resolution: {integrity: sha512-PE2HoCQ4648VNKZTuHFanQNoYzM/niNoSbDyYlPq6VOoB5qsoo1ctR8TERyl1EfPBNexWZpSWYrrnQPr15LUfA==}
+  '@chat-adapter/telegram@4.28.1':
+    resolution: {integrity: sha512-ZBw6zx36enxXGlbOoigzCsWH6slbTCOWyTGatCz7jq4DFTDpvjRgBBH760n9peFkZpXJWOAXZKJm/IW8saT5aw==}
 
   '@chromatic-com/storybook@4.1.3':
     resolution: {integrity: sha512-hc0HO9GAV9pxqDE6fTVOV5KeLpTiCfV8Jrpk5ogKLiIgeq2C+NPjpt74YnrZTjiK8E19fYcMP+2WY9ZtX7zHmw==}
@@ -9842,6 +9905,10 @@ packages:
     resolution: {integrity: sha512-6cmdPrV/RYfd2U0mDGiMK8S7OJqpCTm7enMLRR3edccsPX8j7zXTLnaEF4fhxxJJTAIOil6+qZrnUPTuaLvwrQ==}
     engines: {node: '>= 18', npm: '>= 8.6.0'}
 
+  '@slack/socket-mode@2.0.7':
+    resolution: {integrity: sha512-qYy07je71WnEHgRwmw12DlAnZLi5HXmdlI2WUzUK2LH/rYXQpP6uEg462S5CwfE8FoCKUdIigHtYnOOfzZH1lQ==}
+    engines: {node: '>= 18', npm: '>= 8.6.0'}
+
   '@slack/types@2.20.1':
     resolution: {integrity: sha512-eWX2mdt1ktpn8+40iiMc404uGrih+2fxiky3zBcPjtXKj6HLRdYlmhrPkJi7JTJm8dpXR6BWVWEDBXtaWMKD6A==}
     engines: {node: '>= 12.13.0', npm: '>= 6.12.0'}
@@ -12364,8 +12431,8 @@ packages:
     resolution: {integrity: sha512-vQEj6d+z0dcsKLlQvbKIMYFHd3t8W/7L2vfJIbYcfyPcRx92CsHqECpueN8qVGNlKyDcr5wBrYAYKnfu/9Q1hQ==}
     engines: {pnpm: '>=7'}
 
-  chat@4.26.0:
-    resolution: {integrity: sha512-QToDnIEGpyb8yQA6YLMHOSRK30YVk4RtsyFyuWFYyB2c4jQlyIrSWtwVK7qyvmvqzQp9uDwCdJRAhS8GtCHAGQ==}
+  chat@4.28.1:
+    resolution: {integrity: sha512-oKBeLQ746rSmHWGoXmPgDOqMVdIe9cWFQBQ1G2pw0l2vV4sAsZgfEJmc1UYqSJR4kYy4PxKgRFy31pe4RJ644Q==}
 
   check-error@2.1.1:
     resolution: {integrity: sha512-OAlb+T7V4Op9OwdkjmguYRqncdlx5JiofwOAUkmTF+jNdHwzTaTs4sRAGpzLF3oOz5xAyDGrPgeIDFQmDOTiJw==}
@@ -17382,6 +17449,18 @@ packages:
     resolution: {integrity: sha512-MVHddDVweXZF3awtlAS+6pgKLlm/JgxZ90+/NBurBoQctVOOB/zDdVjcyPzQ+0laDGbsWgrRkflI65sQeOgT9Q==}
     engines: {node: '>=8'}
 
+  openai@6.19.0:
+    resolution: {integrity: sha512-5uGrF82Ql7TKgIWUnuxh+OyzYbPRPwYDSgGc05JowbXRFsOkuj0dJuCdPCTBZT4mcmp2NEvj/URwDzW+lYgmVw==}
+    hasBin: true
+    peerDependencies:
+      ws: '>=8.20.1'
+      zod: 3.25.67
+    peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
+
   openai@6.34.0:
     resolution: {integrity: sha512-yEr2jdGf4tVFYG6ohmr3pF6VJuveP0EA/sS8TBx+4Eq5NT10alu5zg2dmxMXMgqpihRDQlFGpRt2XwsGj+Fyxw==}
     hasBin: true
@@ -18231,7 +18310,6 @@ packages:
     resolution: {integrity: sha512-gv6vLGcmAOg96/fgo3d9tvA4dJNZL3fMyBqVRrGxQ+Q/o4k9QzbJ3NQF9cOO/71wRodoXhaPgphvMFU68qVAJQ==}
     deprecated: |-
       You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
-
       (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   qrcode.vue@3.3.4:
@@ -23907,40 +23985,43 @@ snapshots:
 
   '@cfworker/json-schema@4.1.0': {}
 
-  '@chat-adapter/linear@4.26.0(graphql@16.11.0)':
+  '@chat-adapter/linear@4.28.1(graphql@16.11.0)':
     dependencies:
-      '@chat-adapter/shared': 4.26.0
+      '@chat-adapter/shared': 4.28.1
       '@linear/sdk': 76.0.0(graphql@16.11.0)
-      chat: 4.26.0
+      chat: 4.28.1
     transitivePeerDependencies:
       - graphql
       - supports-color
 
-  '@chat-adapter/shared@4.26.0':
+  '@chat-adapter/shared@4.28.1':
     dependencies:
-      chat: 4.26.0
+      chat: 4.28.1
     transitivePeerDependencies:
       - supports-color
 
-  '@chat-adapter/slack@4.26.0':
+  '@chat-adapter/slack@4.28.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)':
     dependencies:
-      '@chat-adapter/shared': 4.26.0
+      '@chat-adapter/shared': 4.28.1
+      '@slack/socket-mode': 2.0.7(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       '@slack/web-api': 7.15.1
-      chat: 4.26.0
+      chat: 4.28.1
     transitivePeerDependencies:
+      - bufferutil
       - debug
       - supports-color
+      - utf-8-validate
 
-  '@chat-adapter/state-memory@4.26.0':
+  '@chat-adapter/state-memory@4.28.1':
     dependencies:
-      chat: 4.26.0
+      chat: 4.28.1
     transitivePeerDependencies:
       - supports-color
 
-  '@chat-adapter/telegram@4.26.0':
+  '@chat-adapter/telegram@4.28.1':
     dependencies:
-      '@chat-adapter/shared': 4.26.0
-      chat: 4.26.0
+      '@chat-adapter/shared': 4.28.1
+      chat: 4.28.1
     transitivePeerDependencies:
       - supports-color
 
@@ -24146,7 +24227,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.16.1(debug@4.4.3)
-      axios-retry: 4.5.0(axios@1.16.1)
+      axios-retry: 4.5.0(axios@1.16.1(debug@4.4.3))
       chalk: 4.1.2
       commander: 13.1.0
       date-fns: 2.30.0
@@ -27378,7 +27459,7 @@ snapshots:
   '@rudderstack/rudder-sdk-node@3.0.5':
     dependencies:
       axios: 1.16.1(debug@4.4.3)
-      axios-retry: 4.5.0(axios@1.16.1)
+      axios-retry: 4.5.0(axios@1.16.1(debug@4.4.3))
       component-type: 2.0.0
       join-component: 1.1.0
       lodash.clonedeep: 4.5.0
@@ -27653,6 +27734,20 @@ snapshots:
   '@slack/logger@4.0.1':
     dependencies:
       '@types/node': 20.19.21
+
+  '@slack/socket-mode@2.0.7(bufferutil@4.0.9)(utf-8-validate@5.0.10)':
+    dependencies:
+      '@slack/logger': 4.0.1
+      '@slack/web-api': 7.15.1
+      '@types/node': 20.19.21
+      '@types/ws': 8.18.1(patch_hash=682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb)
+      eventemitter3: 5.0.1
+      ws: 8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+    transitivePeerDependencies:
+      - bufferutil
+      - debug
+      - supports-color
+      - utf-8-validate
 
   '@slack/types@2.20.1': {}
 
@@ -30244,7 +30339,7 @@ snapshots:
 
   axe-core@4.7.2: {}
 
-  axios-retry@4.5.0(axios@1.16.1):
+  axios-retry@4.5.0(axios@1.16.1(debug@4.4.3)):
     dependencies:
       axios: 1.16.1(debug@4.4.3)
       is-retry-allowed: 2.2.0
@@ -30811,7 +30906,7 @@ snapshots:
     dependencies:
       '@kurkle/color': 0.3.2
 
-  chat@4.26.0:
+  chat@4.28.1:
     dependencies:
       '@workflow/serde': 4.1.0-beta.2
       mdast-util-to-string: 4.0.0
@@ -35030,6 +35125,16 @@ snapshots:
       - ws
       - zod-to-json-schema
 
+  langsmith@0.6.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)):
+    dependencies:
+      p-queue: 6.6.2
+    optionalDependencies:
+      '@opentelemetry/api': 1.9.0
+      '@opentelemetry/exporter-trace-otlp-proto': 0.217.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-base': 2.7.1(@opentelemetry/api@1.9.0)
+      openai: 6.19.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)
+      ws: 8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+
   langsmith@0.6.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)):
     dependencies:
       p-queue: 6.6.2
@@ -37064,6 +37169,11 @@ snapshots:
     dependencies:
       is-docker: 2.2.1
       is-wsl: 2.2.0
+
+  openai@6.19.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67):
+    optionalDependencies:
+      ws: 8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      zod: 3.25.67
 
   openai@6.34.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67):
     optionalDependencies:

@@ -414,6 +414,161 @@ describe('EvalMockedCredentialsHelper', () => {
 		});
 	});
 
+	describe('getDecrypted — schema synthesis when id is null', () => {
+		// Core's eval-mode bypass passes `{ id: null, name: type }` when a node
+		// has no credentials configured at all. The inner helper throws
+		// CredentialNotFoundError on a null id; the catch below schema-synthesizes
+		// (and applies the URL rewrite) so vendor SDK traffic stays inside the
+		// wire server instead of escaping to the real provider with 401.
+		const propsSchema = [
+			{
+				name: 'apiKey',
+				displayName: 'API Key',
+				type: 'string' as const,
+				default: '',
+				typeOptions: { password: true },
+			},
+			{
+				name: 'url',
+				displayName: 'Base URL',
+				type: 'string' as const,
+				default: 'https://api.openai.com/v1',
+			},
+		];
+
+		const nullNodeCreds: INodeCredentialsDetails = { id: null, name: 'openAiApi' };
+
+		function makeSynthesizingInner(): ICredentialsHelper {
+			return makeInner({
+				getCredentialsProperties: jest.fn().mockReturnValue(propsSchema),
+				// Inner throws on a null-id lookup → catch fires → schema synthesis.
+				getDecrypted: jest.fn().mockRejectedValue(new CredentialNotFoundError('null', 'openAiApi')),
+			});
+		}
+
+		it('synthesizes a credential from the schema and applies the URL rewrite', async () => {
+			const subNodeToRoot = new Map<string, string>([['OpenAI', 'Agent']]);
+			const helper = new EvalMockedCredentialsHelper(
+				makeSynthesizingInner(),
+				'http://127.0.0.1:54321',
+				undefined,
+				subNodeToRoot,
+			);
+
+			const result = await helper.getDecrypted(
+				fakeAdditionalData,
+				nullNodeCreds,
+				'openAiApi',
+				'manual',
+				{ node: { name: 'OpenAI' } as INode } as IExecuteData,
+			);
+
+			// Schema default for `url` is rewritten to the wire-server path.
+			expect(result.url).toBe('http://127.0.0.1:54321/eval/Agent/v1');
+			// Secret field (apiKey) is filled by `buildEvalMockCredentials` —
+			// the placeholder doesn't matter, only that it's not undefined.
+			expect(typeof result.apiKey).toBe('string');
+		});
+
+		it('records the synthesized credential on `mockedCredentials`', async () => {
+			const helper = new EvalMockedCredentialsHelper(
+				makeSynthesizingInner(),
+				'http://127.0.0.1:1',
+				undefined,
+			);
+
+			await helper.getDecrypted(fakeAdditionalData, nullNodeCreds, 'openAiApi', 'manual', {
+				node: { name: 'OpenAI GPT-4' } as INode,
+			} as IExecuteData);
+
+			expect(helper.mockedCredentials).toEqual([
+				{
+					nodeName: 'OpenAI GPT-4',
+					credentialType: 'openAiApi',
+					credentialId: undefined,
+				},
+			]);
+		});
+
+		it('records the rewrite on `rewrittenCredentials`', async () => {
+			const subNodeToRoot = new Map<string, string>([['OpenAI', 'Agent']]);
+			const helper = new EvalMockedCredentialsHelper(
+				makeSynthesizingInner(),
+				'http://127.0.0.1:1',
+				undefined,
+				subNodeToRoot,
+			);
+
+			await helper.getDecrypted(fakeAdditionalData, nullNodeCreds, 'openAiApi', 'manual', {
+				node: { name: 'OpenAI' } as INode,
+			} as IExecuteData);
+
+			expect(helper.rewrittenCredentials).toEqual([
+				{
+					nodeName: 'OpenAI',
+					credentialType: 'openAiApi',
+					credentialId: undefined,
+					field: 'url',
+				},
+			]);
+		});
+
+		it('brands the synthetic credential with __evalMockedCredential so authenticate short-circuits', async () => {
+			// Regression: without the marker, `authenticate` / `preAuthentication`
+			// / `runPreAuthentication` would delegate the synthetic credential
+			// through the inner helper's real-auth flow (OAuth refresh, PreSend
+			// hooks). Those flows would either crash on placeholder values or
+			// leak real-auth side effects from a fake credential.
+			const inner = makeInner({
+				getCredentialsProperties: jest.fn().mockReturnValue(propsSchema),
+				getDecrypted: jest.fn().mockRejectedValue(new CredentialNotFoundError('null', 'openAiApi')),
+				authenticate: jest.fn().mockResolvedValue({ url: 'http://should-not-be-called' }),
+			});
+			const helper = new EvalMockedCredentialsHelper(inner);
+
+			const synthetic = await helper.getDecrypted(
+				fakeAdditionalData,
+				nullNodeCreds,
+				'openAiApi',
+				'manual',
+				{ node: { name: 'OpenAI' } as INode } as IExecuteData,
+			);
+
+			expect(synthetic.__evalMockedCredential).toBe(true);
+
+			// Round-trip through `authenticate` confirms the marker actually
+			// short-circuits — the inner helper must not be invoked.
+			const requestOptions: IHttpRequestOptions = { url: 'http://example.com' };
+			const result = await helper.authenticate(
+				synthetic,
+				'openAiApi',
+				requestOptions,
+				fakeWorkflow,
+				fakeNode,
+			);
+			expect(result).toBe(requestOptions);
+			expect(inner.authenticate).not.toHaveBeenCalled();
+		});
+
+		it('still returns the synthetic credential when no serverUrl is configured', async () => {
+			// The helper may be used in eval mode without the wire server
+			// (e.g. HTTP-helper-only workflows). Without `serverUrl` we just
+			// pass the synthetic through — matches the pre-hook behaviour.
+			const helper = new EvalMockedCredentialsHelper(makeSynthesizingInner());
+
+			const result = await helper.getDecrypted(
+				fakeAdditionalData,
+				nullNodeCreds,
+				'openAiApi',
+				'manual',
+				{ node: { name: 'OpenAI' } as INode } as IExecuteData,
+			);
+
+			expect(result.url).toBe('https://api.openai.com/v1');
+			expect(helper.rewrittenCredentials).toEqual([]);
+		});
+	});
+
 	describe('authenticate', () => {
 		it('passes the request through unchanged for marker payloads', async () => {
 			const inner = makeInner();
