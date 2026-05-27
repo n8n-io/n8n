@@ -183,6 +183,7 @@ describe('builder model recommendations', () => {
 
 		expect(skills.map((skill) => skill.id)).toEqual([
 			'agent-builder-integrations',
+			'agent-builder-mcp',
 			'agent-builder-target-skills',
 		]);
 		expect(skills[0].description).toContain('chat integration/trigger versus a node tool');

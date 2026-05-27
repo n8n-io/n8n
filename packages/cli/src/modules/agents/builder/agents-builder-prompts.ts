@@ -58,23 +58,16 @@ enough detail to write meaningful instructions, ask the user first.`;
 
 /**
  * Build the routing section that tells the builder LLM which runtime skills
- * exist and what they cover. Module-gated skills (like `agent-builder-mcp`)
- * are only listed when their owning module is active so the LLM doesn't try
- * to load a skill the runtime won't surface.
+ * exist and what they cover.
  */
-export function getBuilderSkillRoutingSection(enabledModules?: ReadonlyArray<string>): string {
+export function getBuilderSkillRoutingSection(): string {
 	const lines: string[] = [
 		'- `agent-builder-integrations`: schedule and chat integrations. Use it before\n' +
 			'  deciding whether Slack, Linear, Telegram, or another external product should\n' +
 			'  be a chat integration/trigger or a node/workflow tool.',
+		'- `agent-builder-mcp`: MCP servers — the preferred way to add external integrations. Load this skill first when the user asks for a service integration.',
 		'- `agent-builder-target-skills`: creating skills for the target agent.',
 	];
-
-	if (enabledModules?.includes('mcp')) {
-		lines.push(
-			'- `agent-builder-mcp`: MCP servers — the preferred way to add external integrations. Load this skill first when the user asks for a service integration.',
-		);
-	}
 
 	return `\
 ## Builder runtime skills
@@ -253,7 +246,6 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		toolList,
 		agentPreviewPath,
 		modelRecommendationsSection,
-		enabledModules,
 	} = ctx;
 
 	const sections = [
@@ -261,11 +253,11 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		TARGET_AGENT_SECTION,
 		getAgentStateSection(configJson, configHash, configUpdatedAt, toolList),
 		getConversationModeSection(agentPreviewPath),
-		getConfigMutationPrompt(enabledModules),
+		getConfigMutationPrompt(),
 		getLlmSelectionPrompt(modelRecommendationsSection),
 		MEMORY_PROMPT,
 		TOOLS_PROMPT,
-		getBuilderSkillRoutingSection(enabledModules),
+		getBuilderSkillRoutingSection(),
 		INTERACTIVE_TOOLS_SECTION,
 		N8N_EXPRESSIONS_SECTION,
 		READ_CONFIG_FRESHNESS_SECTION,

@@ -6,7 +6,6 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@/app/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getWorkflow } from '@/app/api/workflows';
@@ -62,7 +61,6 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
-const settingsStore = useSettingsStore();
 const nodeHelpers = useNodeHelpers();
 const uiStore = useUIStore();
 const workflowsListStore = useWorkflowsListStore();
@@ -212,9 +210,7 @@ const availableToolTypes = computed<INodeTypeDescription[]>(() => {
 });
 
 const availableMcpToolTypes = computed(() =>
-	settingsStore.isAgentsMcpFeatureEnabled
-		? availableToolTypes.value.filter((nodeType) => isMcpRelatedNodeType(nodeType.name))
-		: [],
+	availableToolTypes.value.filter((nodeType) => isMcpRelatedNodeType(nodeType.name)),
 );
 
 const availableStandardToolTypes = computed(() =>
