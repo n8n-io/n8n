@@ -51,7 +51,6 @@ export function useTypescript(
 				id: toValue(id),
 				content: Comlink.proxy((toValue(view)?.state.doc ?? Text.empty).toJSON()),
 				allNodeNames: autocompletableNodeNames(
-					ndvStore.value,
 					workflowDocumentStore.value.documentId,
 					toValue(targetNodeParameterContext),
 				),

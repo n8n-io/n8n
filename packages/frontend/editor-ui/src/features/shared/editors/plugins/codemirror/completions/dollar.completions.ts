@@ -22,7 +22,6 @@ import {
 	WORKFLOW_DOCUMENT_FACET,
 } from './constants';
 import { createInfoBoxRenderer } from './infoBoxRenderer';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 /**
  * Completions offered at the dollar position: `$|`
@@ -65,9 +64,8 @@ export async function dollarOptions(context: CompletionContext): Promise<Complet
 	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
 	const workflowDocumentId = context.state.facet(WORKFLOW_DOCUMENT_FACET);
 	if (!workflowDocumentId) return [];
-	const ndvStore = useNDVStore(workflowDocumentId);
 
-	if (isInHttpNodePagination(ndvStore)) {
+	if (isInHttpNodePagination(workflowDocumentId)) {
 		recommendedCompletions = [
 			{
 				label: '$pageCount',
@@ -127,17 +125,14 @@ export async function dollarOptions(context: CompletionContext): Promise<Complet
 			: [];
 	}
 
-	if (!hasActiveNode(ndvStore, workflowDocumentId, targetNodeParameterContext)) {
+	if (!hasActiveNode(workflowDocumentId, targetNodeParameterContext)) {
 		return [];
 	}
 
-	if (
-		await receivesNoBinaryData(ndvStore, workflowDocumentId, targetNodeParameterContext?.nodeName)
-	)
+	if (await receivesNoBinaryData(workflowDocumentId, targetNodeParameterContext?.nodeName))
 		SKIP.add('$binary');
 
 	const previousNodesCompletions = autocompletableNodeNames(
-		ndvStore,
 		workflowDocumentId,
 		targetNodeParameterContext,
 	).map((nodeName) => {

@@ -68,7 +68,6 @@ import { isPairedItemIntermediateNodesError } from '@/app/utils/expressions';
 import type { TargetNodeParameterContext } from '@/Interface';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { WorkflowDocumentId } from '@/app/stores/workflowDocument.store';
-import { useNDVStore, type NDVStore } from '@/features/ndv/shared/ndv.store';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -79,7 +78,6 @@ export async function datatypeCompletions(
 	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
 	const workflowDocumentId = context.state.facet(WORKFLOW_DOCUMENT_FACET);
 	if (!workflowDocumentId) return null;
-	const ndvStore = useNDVStore(workflowDocumentId);
 	const word = context.matchBefore(DATATYPE_REGEX);
 
 	if (!word) return null;
@@ -107,7 +105,6 @@ export async function datatypeCompletions(
 		let resolved: Resolved | null = null;
 		try {
 			resolved = await resolveAutocompleteExpression(
-				ndvStore,
 				`={{ ${base} }}`,
 				workflowDocumentId,
 				targetNodeParameterContext?.nodeName,
@@ -120,7 +117,6 @@ export async function datatypeCompletions(
 			// Fallback on first item to provide autocomplete when intermediate nodes have not run
 			try {
 				resolved = await resolveAutocompleteExpression(
-					ndvStore,
 					`={{ ${expressionWithFirstItem(syntaxTree, base)} }}`,
 					workflowDocumentId,
 					targetNodeParameterContext?.nodeName,
@@ -133,7 +129,7 @@ export async function datatypeCompletions(
 		if (resolved === null) return null;
 
 		try {
-			options = (await datatypeOptions({ resolved, base, tail }, ndvStore, workflowDocumentId)).map(
+			options = (await datatypeOptions({ resolved, base, tail }, workflowDocumentId)).map(
 				stripExcessParens(context),
 			);
 		} catch {
@@ -152,7 +148,6 @@ export async function datatypeCompletions(
 	if (context.explicit && !word.text.endsWith('.') && options.length === 0) {
 		options = await explicitDataTypeOptions(
 			word.text,
-			ndvStore,
 			workflowDocumentId,
 			targetNodeParameterContext,
 		);
@@ -219,13 +214,11 @@ function filterOptions(options: AliasCompletion[], tail: string): AliasCompletio
 
 async function explicitDataTypeOptions(
 	expression: string,
-	ndvStore: NDVStore,
 	workflowDocumentId: WorkflowDocumentId,
 	targetNodeParameterContext?: TargetNodeParameterContext,
 ): Promise<AliasCompletion[]> {
 	try {
 		const resolved = await resolveAutocompleteExpression(
-			ndvStore,
 			`={{ ${expression} }}`,
 			workflowDocumentId,
 			targetNodeParameterContext?.nodeName,
@@ -237,7 +230,6 @@ async function explicitDataTypeOptions(
 				tail: '',
 				transformLabel: (label) => '.' + label,
 			},
-			ndvStore,
 			workflowDocumentId,
 		);
 	} catch {
@@ -247,7 +239,6 @@ async function explicitDataTypeOptions(
 
 async function datatypeOptions(
 	input: AutocompleteInput,
-	ndvStore: NDVStore,
 	workflowDocumentId: WorkflowDocumentId,
 ): Promise<AliasCompletion[]> {
 	const { resolved } = input;
@@ -285,11 +276,7 @@ async function datatypeOptions(
 	}
 
 	if (typeof resolved === 'object') {
-		return await objectOptions(
-			input as AutocompleteInput<IDataObject>,
-			ndvStore,
-			workflowDocumentId,
-		);
+		return await objectOptions(input as AutocompleteInput<IDataObject>, workflowDocumentId);
 	}
 
 	return [];
@@ -434,7 +421,6 @@ const createCompletionOption = ({
 
 const customObjectOptions = async (
 	input: AutocompleteInput<IDataObject>,
-	ndvStore: NDVStore,
 	workflowDocumentId: WorkflowDocumentId,
 ): Promise<Completion[]> => {
 	const { base, resolved } = input;
@@ -448,11 +434,11 @@ const customObjectOptions = async (
 	} else if (base === '$workflow') {
 		return workflowOptions();
 	} else if (base === '$input') {
-		return await inputOptions(base, ndvStore, workflowDocumentId);
+		return await inputOptions(base, workflowDocumentId);
 	} else if (base === '$prevNode') {
 		return prevNodeOptions();
 	} else if (/^\$\(['"][\S\s]+['"]\)$/.test(base)) {
-		return await nodeRefOptions(base, ndvStore, workflowDocumentId);
+		return await nodeRefOptions(base, workflowDocumentId);
 	} else if (base === '$response') {
 		return responseOptions();
 	} else if (isItem(input)) {
@@ -466,7 +452,6 @@ const customObjectOptions = async (
 
 const objectOptions = async (
 	input: AutocompleteInput<IDataObject>,
-	ndvStore: NDVStore,
 	workflowDocumentId: WorkflowDocumentId,
 ): Promise<Completion[]> => {
 	const { base, resolved, transformLabel = (label) => label } = input;
@@ -481,7 +466,7 @@ const objectOptions = async (
 		rawKeys = Object.keys(descriptors).sort((a, b) => a.localeCompare(b));
 	}
 
-	const customOptions = await customObjectOptions(input, ndvStore, workflowDocumentId);
+	const customOptions = await customObjectOptions(input, workflowDocumentId);
 	if (customOptions.length > 0) {
 		// Only return completions that are present in the resolved data
 		return customOptions.filter((option) => option.label in resolved);
@@ -997,11 +982,7 @@ export const customDataOptions = () => {
 	].map((doc) => createCompletionOption({ name: doc.name, doc, isFunction: true }));
 };
 
-export const nodeRefOptions = async (
-	base: string,
-	ndvStore: NDVStore,
-	workflowDocumentId: WorkflowDocumentId,
-) => {
+export const nodeRefOptions = async (base: string, workflowDocumentId: WorkflowDocumentId) => {
 	const itemArgs = [
 		{
 			name: 'branchIndex',
@@ -1090,7 +1071,7 @@ export const nodeRefOptions = async (
 		},
 	];
 
-	const noParams = await hasNoParams(ndvStore, base, workflowDocumentId);
+	const noParams = await hasNoParams(base, workflowDocumentId);
 	return applySections({
 		options: options
 			.filter((option) => !(option.doc.name === 'params' && noParams))
@@ -1100,11 +1081,7 @@ export const nodeRefOptions = async (
 	});
 };
 
-export const inputOptions = async (
-	base: string,
-	ndvStore: NDVStore,
-	workflowDocumentId: WorkflowDocumentId,
-) => {
+export const inputOptions = async (base: string, workflowDocumentId: WorkflowDocumentId) => {
 	const itemArgs = [
 		{
 			name: 'branchIndex',
@@ -1167,7 +1144,7 @@ export const inputOptions = async (
 		},
 	];
 
-	const noParams = await hasNoParams(ndvStore, base, workflowDocumentId);
+	const noParams = await hasNoParams(base, workflowDocumentId);
 	return applySections({
 		options: options
 			.filter((option) => !(option.doc.name === 'params' && noParams))

@@ -1,7 +1,7 @@
 import { HTTP_REQUEST_NODE_TYPE, SPLIT_IN_BATCHES_NODE_TYPE } from '@/app/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { resolveParameter } from '@/app/composables/useWorkflowHelpers';
-import type { NDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	insertCompletionText,
@@ -167,20 +167,13 @@ export const isValidJavascriptIdentifier = (str: string) => {
 // ----------------------------------
 
 export async function receivesNoBinaryData(
-	ndvStore: NDVStore,
 	workflowDocumentId: WorkflowDocumentId,
 	contextNodeName?: string,
 ) {
 	try {
 		return (
-			(
-				await resolveAutocompleteExpression(
-					ndvStore,
-					'={{ $binary }}',
-					workflowDocumentId,
-					contextNodeName,
-				)
-			)?.data === undefined
+			(await resolveAutocompleteExpression('={{ $binary }}', workflowDocumentId, contextNodeName))
+				?.data === undefined
 		);
 	} catch {
 		return true;
@@ -188,7 +181,6 @@ export async function receivesNoBinaryData(
 }
 
 export async function hasNoParams(
-	ndvStore: NDVStore,
 	toResolve: string,
 	workflowDocumentId: WorkflowDocumentId,
 	contextNodeName?: string,
@@ -197,7 +189,6 @@ export async function hasNoParams(
 
 	try {
 		params = await resolveAutocompleteExpression(
-			ndvStore,
 			`={{ ${toResolve}.params }}`,
 			workflowDocumentId,
 			contextNodeName,
@@ -214,11 +205,11 @@ export async function hasNoParams(
 }
 
 export async function resolveAutocompleteExpression(
-	ndvStore: NDVStore,
 	expression: string,
 	workflowDocumentId: WorkflowDocumentId,
 	contextNodeName?: string,
 ) {
+	const ndvStore = useNDVStore(workflowDocumentId);
 	const inputData =
 		contextNodeName === undefined && ndvStore.isInputParentOfActiveNode
 			? {
@@ -241,7 +232,7 @@ export async function resolveAutocompleteExpression(
 export const isCredentialsModalOpen = () => useUIStore().modalsById[CREDENTIAL_EDIT_MODAL_KEY].open;
 
 export const isInHttpNodePagination = (
-	ndvStore: NDVStore,
+	workflowDocumentId: WorkflowDocumentId,
 	targetNodeParameterContext?: TargetNodeParameterContext,
 ) => {
 	let nodeType: string | undefined;
@@ -250,6 +241,7 @@ export const isInHttpNodePagination = (
 		nodeType = targetNodeParameterContext.nodeName;
 		path = targetNodeParameterContext.parameterPath;
 	} else {
+		const ndvStore = useNDVStore(workflowDocumentId);
 		nodeType = ndvStore.activeNode?.type;
 		path = ndvStore.focusedInputPath;
 	}
@@ -258,10 +250,10 @@ export const isInHttpNodePagination = (
 };
 
 export const hasActiveNode = (
-	ndvStore: NDVStore,
 	workflowDocumentId: WorkflowDocumentId,
 	targetNodeParameterContext?: TargetNodeParameterContext,
 ) => {
+	const ndvStore = useNDVStore(workflowDocumentId);
 	if (ndvStore.activeNode?.name !== undefined) {
 		return true;
 	}
@@ -280,14 +272,13 @@ export const isSplitInBatchesAbsent = (workflowDocumentId: WorkflowDocumentId) =
 };
 
 export function autocompletableNodeNames(
-	ndvStore: NDVStore,
 	workflowDocumentId: WorkflowDocumentId,
 	targetNodeParameterContext?: TargetNodeParameterContext,
 ) {
 	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 	const activeNode =
 		targetNodeParameterContext === undefined
-			? ndvStore.activeNode
+			? useNDVStore(workflowDocumentId).activeNode
 			: workflowDocumentStore.getNodeByName(targetNodeParameterContext.nodeName);
 
 	if (!activeNode) return [];

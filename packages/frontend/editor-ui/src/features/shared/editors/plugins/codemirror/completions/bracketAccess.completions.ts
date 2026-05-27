@@ -3,7 +3,6 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
 import type { Resolved } from './types';
 import { escapeMappingString } from '@/app/utils/mappingUtils';
 import { TARGET_NODE_PARAMETER_FACET, WORKFLOW_DOCUMENT_FACET } from './constants';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 /**
  * Resolution-based completions offered at the start of bracket access notation.
@@ -21,7 +20,6 @@ export async function bracketAccessCompletions(
 	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
 	const workflowDocumentId = context.state.facet(WORKFLOW_DOCUMENT_FACET);
 	if (!workflowDocumentId) return null;
-	const ndvStore = useNDVStore(workflowDocumentId);
 	const word = context.matchBefore(/\$[\S\s]*\[.*/);
 
 	if (!word) return null;
@@ -39,7 +37,6 @@ export async function bracketAccessCompletions(
 
 	try {
 		resolved = await resolveAutocompleteExpression(
-			ndvStore,
 			`={{ ${base} }}`,
 			workflowDocumentId,
 			targetNodeParameterContext?.nodeName,
