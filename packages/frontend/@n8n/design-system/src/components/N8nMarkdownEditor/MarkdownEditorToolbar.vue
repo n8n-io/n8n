@@ -227,7 +227,6 @@ const setTextStyle = (value: string | number) => {
 						:value="control.id"
 						:label="control.label"
 						:icon="control.icon"
-						:disabled="disabled || isRawMode"
 						v-bind="slotProps"
 						@click="runControl(control)"
 					/>
@@ -249,7 +248,6 @@ const setTextStyle = (value: string | number) => {
 						:value="control.id"
 						:label="control.label"
 						:icon="control.icon"
-						:disabled="disabled || isRawMode"
 						v-bind="slotProps"
 						@click="runControl(control)"
 					/>
@@ -271,7 +269,6 @@ const setTextStyle = (value: string | number) => {
 						:value="control.id"
 						:label="control.label"
 						:icon="control.icon"
-						:disabled="disabled || isRawMode"
 						v-bind="slotProps"
 						@click="runControl(control)"
 					/>

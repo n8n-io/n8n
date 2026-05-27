@@ -234,6 +234,7 @@ defineExpose({
 	height: 100%;
 	max-height: var(--markdown-editor-max-height);
 	overflow: hidden;
+	flex: 1;
 
 	:global(.n8n-markdown) {
 		overflow-y: scroll;
