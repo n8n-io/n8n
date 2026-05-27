@@ -347,6 +347,32 @@ export function buildContext(
 		return result;
 	};
 
+	// $getPairedItem — walks the paired-item ancestry chain back to the
+	// named upstream node. The host validates the structural shape of
+	// `incomingSourceData` and `initialPairedItem` via the typed-RPC
+	// schema; bad input surfaces as a schema-parse error sentinel rather
+	// than a host throw, keeping the protocol surface tight.
+	target.$getPairedItem = (
+		destinationNodeName: string,
+		incomingSourceData: unknown,
+		initialPairedItem: unknown,
+	) => {
+		const result = callbacks.callHost.applySync(
+			null,
+			[
+				{
+					type: 'getPairedItem',
+					destinationNodeName,
+					incomingSourceData,
+					initialPairedItem,
+				},
+			],
+			{ arguments: { copy: true }, result: { copy: true } },
+		);
+		throwIfErrorSentinel(result);
+		return result;
+	};
+
 	// -------------------------------------------------------------------------
 	// Resolve an unknown key from the host. Called by the proxy's has/get traps
 	// for keys not already on the target. The resolved value is cached on target
