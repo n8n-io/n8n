@@ -6,8 +6,7 @@ import crypto from 'crypto';
 import FormData from 'form-data';
 import type { AgentOptions } from 'https';
 import {
-	ApplicationError,
-	isDomainAllowed,
+	assertUrlAllowed,
 	type IHttpRequestOptions,
 	type IgnoreStatusErrorConfig,
 } from 'n8n-workflow';
@@ -20,11 +19,7 @@ export function throwIfDomainNotAllowed(
 	allowedDomains?: string,
 ): void {
 	const url = typeof configOrUrl === 'string' ? configOrUrl : axios.getUri(configOrUrl);
-	if (allowedDomains && !isDomainAllowed(url, { allowedDomains })) {
-		throw new ApplicationError(
-			`Domain not allowed: This credential is restricted from accessing ${url}. Only the following domains are allowed: ${allowedDomains}`,
-		);
-	}
+	assertUrlAllowed({ url, allowedDomains });
 }
 
 /** Attempts to parse a string as a URL. Returns the parsed `URL` or `null` on failure. */

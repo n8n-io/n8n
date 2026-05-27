@@ -3,6 +3,7 @@ import { createLlmCheck } from './create-llm-check';
 export const validDataFlow = createLlmCheck({
 	name: 'valid_data_flow',
 	description: 'Expressions reference fields that actually exist upstream',
+	dimension: 'parameter_correctness',
 	systemPrompt: `You are an evaluator checking whether expressions in an n8n workflow reference fields that actually exist upstream.
 
 For each expression in node parameters, check:
