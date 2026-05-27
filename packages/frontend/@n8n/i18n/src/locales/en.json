@@ -5778,6 +5778,7 @@
 	"instanceAi.tools.executions.run.imperative": "execute workflow",
 	"instanceAi.tools.executions.debug": "Debugging execution",
 	"instanceAi.tools.executions.get-node-output": "Reading node output",
+	"instanceAi.tools.executions.get-resolved-node-parameters": "Inspecting node parameters",
 	"instanceAi.tools.executions.stop": "Stopping execution",
 	"instanceAi.tools.credentials": "Credentials",
 	"instanceAi.tools.credentials.list": "Checking credentials",
