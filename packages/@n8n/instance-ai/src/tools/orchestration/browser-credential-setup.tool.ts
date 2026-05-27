@@ -11,6 +11,7 @@ import {
 	traceSubAgentTools,
 	withTraceContextActor,
 } from './tracing-utils';
+import { attachRuntimeWorkspaceCapabilities } from '../../agent/runtime-workspace';
 import { MAX_STEPS } from '../../constants/max-steps';
 import {
 	executeResumableStream,
@@ -326,6 +327,9 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 							})
 							.tool(toolRegistryValues(tracedBrowserTools))
 							.checkpoint(context.checkpointStore ?? 'memory');
+						attachRuntimeWorkspaceCapabilities(subAgent, {
+							runtimeSkills: context.runtimeSkills,
+						});
 						const telemetry = traceContext?.getTelemetry?.({
 							agentRole: BROWSER_CREDENTIAL_AGENT_ROLE,
 							functionId: `instance-ai.subagent.${BROWSER_CREDENTIAL_AGENT_ROLE}`,

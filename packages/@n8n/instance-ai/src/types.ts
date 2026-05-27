@@ -4,6 +4,7 @@ import type {
 	BuiltMemory,
 	BuiltTool,
 	CheckpointStore,
+	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
 	Telemetry,
 	Workspace,
@@ -405,6 +406,12 @@ export interface DataTableSummary {
 	updatedAt: string;
 }
 
+export interface DataTableReference {
+	id: string;
+	name: string;
+	projectId: string;
+}
+
 export interface DataTableColumnInfo {
 	id: string;
 	name: string;
@@ -435,6 +442,8 @@ export interface DataTableIdOptions {
 	projectId?: string;
 }
 
+export type DataTableReferencePermission = 'read' | 'readRow' | 'writeRow' | 'update' | 'delete';
+
 export interface InstanceAiDataTableService {
 	list(options?: { projectId?: string }): Promise<DataTableSummary[]>;
 	create(
@@ -443,6 +452,10 @@ export interface InstanceAiDataTableService {
 		options?: { projectId?: string },
 	): Promise<DataTableSummary>;
 	delete(dataTableId: string, options?: DataTableIdOptions): Promise<void>;
+	resolveTableReference?(
+		dataTableId: string,
+		options?: DataTableIdOptions & { permission?: DataTableReferencePermission },
+	): Promise<DataTableReference>;
 	getSchema(dataTableId: string, options?: DataTableIdOptions): Promise<DataTableColumnInfo[]>;
 	addColumn(
 		dataTableId: string,
@@ -678,12 +691,9 @@ export interface TaskStorage {
 
 // ── Planned task graphs ─────────────────────────────────────────────────────
 
-export type PlannedTaskKind =
-	| 'delegate'
-	| 'build-workflow'
-	| 'manage-data-tables'
-	| 'research'
-	| 'checkpoint';
+export const PLANNED_TASK_KINDS = ['delegate', 'build-workflow', 'checkpoint'] as const;
+export const STORED_PLANNED_TASK_KINDS = PLANNED_TASK_KINDS;
+export type PlannedTaskKind = (typeof STORED_PLANNED_TASK_KINDS)[number];
 
 export interface PlannedTask {
 	id: string;
@@ -819,11 +829,13 @@ export interface McpServerConfig {
 // ── Memory ───────────────────────────────────────────────────────────────────
 
 export interface InstanceAiMemoryConfig {
-	embedderModel?: string;
 	lastMessages?: number;
-	semanticRecallTopK?: number;
 	/** Thread TTL in days. Threads older than this are auto-expired on cleanup. 0 = no expiration. */
 	threadTtlDays?: number;
+	observationalMemory?: {
+		observerThresholdTokens: number;
+		reflectorThresholdTokens: number;
+	};
 }
 
 // ── Model configuration ─────────────────────────────────────────────────────
@@ -1068,6 +1080,16 @@ export interface OrchestrationContext {
 	localMcpServer?: LocalMcpServer;
 	/** MCP tools loaded from external servers — available for delegation to sub-agents */
 	mcpTools?: InstanceAiToolRegistry;
+	/**
+	 * Runtime-loadable skills available to the agent. Workspace-backed agents may
+	 * replace this with a workspace-materialized source before attaching it.
+	 */
+	runtimeSkills?: RuntimeSkillSource;
+	/**
+	 * Raw bundled runtime skill source. Use this when materializing skills for a
+	 * concrete workspace target so already-materialized paths are not copied.
+	 */
+	runtimeSkillCatalog?: RuntimeSkillSource;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
 	oauth2CallbackUrl?: string;
 	/** Webhook base URL for the n8n instance (e.g. http://localhost:5678/webhook) — used to construct webhook URLs for created workflows */

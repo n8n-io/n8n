@@ -430,10 +430,10 @@ describe('BackgroundTaskManager', () => {
 
 			const other = manager.spawn(
 				makeSpawnOptions({
-					taskId: 'researcher',
-					role: 'web-researcher',
+					taskId: 'data-table-manager',
+					role: 'data-table-manager',
 					run: async () => await new Promise(() => {}),
-					dedupeKey: { role: 'web-researcher', workflowId: 'wf-1' },
+					dedupeKey: { role: 'data-table-manager', workflowId: 'wf-1' },
 				}),
 			);
 
