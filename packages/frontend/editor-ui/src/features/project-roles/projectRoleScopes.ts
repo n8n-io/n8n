@@ -20,6 +20,7 @@ const UI_OPERATIONS = {
 	workflow: [
 		'read',
 		'execute',
+		'export',
 		'update',
 		'create',
 		'publish',

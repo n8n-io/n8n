@@ -1,4 +1,8 @@
-import { extractOutcomeFromEvents, buildMetrics } from '../outcome/event-parser';
+import {
+	buildConversationMetrics,
+	buildMetrics,
+	extractOutcomeFromEvents,
+} from '../outcome/event-parser';
 import type { CapturedEvent } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -337,5 +341,240 @@ describe('buildMetrics', () => {
 
 		const metrics = buildMetrics(events, startTime);
 		expect(metrics.totalTimeMs).toBe(4000); // 5000 - 1000
+	});
+});
+
+// ---------------------------------------------------------------------------
+// buildConversationMetrics — per-turn counters
+// ---------------------------------------------------------------------------
+
+describe('buildConversationMetrics', () => {
+	it('returns empty metrics for no events', () => {
+		const result = buildConversationMetrics([]);
+		expect(result.turnCount).toBe(0);
+		expect(result.perTurn).toEqual([]);
+		expect(result.confirmationAskedTotal).toBe(0);
+		expect(result.confirmationAskedByKind).toEqual({});
+		expect(result.reachedRunFinishCleanly).toBe(false);
+	});
+
+	it('segments a single turn and counts tool calls + errors', () => {
+		const events: CapturedEvent[] = [
+			{ timestamp: 1, type: 'run-start', data: { type: 'run-start' } },
+			{
+				timestamp: 2,
+				type: 'tool-call',
+				data: { type: 'tool-call', payload: { toolName: 'foo' } },
+			},
+			{ timestamp: 3, type: 'tool-error', data: { type: 'tool-error' } },
+			{
+				timestamp: 4,
+				type: 'tool-call',
+				data: { type: 'tool-call', payload: { toolName: 'bar' } },
+			},
+			{
+				timestamp: 5,
+				type: 'run-finish',
+				data: { type: 'run-finish', payload: { status: 'completed' } },
+			},
+		];
+
+		const result = buildConversationMetrics(events);
+		expect(result.turnCount).toBe(1);
+		expect(result.perTurn).toHaveLength(1);
+		expect(result.perTurn[0].turn).toBe(1);
+		expect(result.perTurn[0].toolCallCount).toBe(2);
+		expect(result.perTurn[0].toolErrorCount).toBe(1);
+		expect(result.perTurn[0].runFinishStatus).toBe('completed');
+		expect(result.reachedRunFinishCleanly).toBe(true);
+	});
+
+	it('segments multiple turns by run-start boundaries', () => {
+		const events: CapturedEvent[] = [
+			{ timestamp: 1, type: 'run-start', data: { type: 'run-start' } },
+			{
+				timestamp: 2,
+				type: 'tool-call',
+				data: { type: 'tool-call', payload: { toolName: 'a' } },
+			},
+			{
+				timestamp: 3,
+				type: 'run-finish',
+				data: { type: 'run-finish', payload: { status: 'completed' } },
+			},
+			{ timestamp: 4, type: 'run-start', data: { type: 'run-start' } },
+			{
+				timestamp: 5,
+				type: 'tool-call',
+				data: { type: 'tool-call', payload: { toolName: 'b' } },
+			},
+			{
+				timestamp: 6,
+				type: 'tool-call',
+				data: { type: 'tool-call', payload: { toolName: 'c' } },
+			},
+			{
+				timestamp: 7,
+				type: 'run-finish',
+				data: { type: 'run-finish', payload: { status: 'completed' } },
+			},
+		];
+
+		const result = buildConversationMetrics(events);
+		expect(result.turnCount).toBe(2);
+		expect(result.perTurn).toHaveLength(2);
+		expect(result.perTurn[0].toolCallCount).toBe(1);
+		expect(result.perTurn[1].toolCallCount).toBe(2);
+	});
+
+	it('groups confirmations by inputType', () => {
+		const events: CapturedEvent[] = [
+			{ timestamp: 1, type: 'run-start', data: { type: 'run-start' } },
+			{
+				timestamp: 2,
+				type: 'confirmation-request',
+				data: {
+					type: 'confirmation-request',
+					payload: { requestId: 'r1', inputType: 'questions' },
+				},
+			},
+			{
+				timestamp: 3,
+				type: 'confirmation-request',
+				data: {
+					type: 'confirmation-request',
+					payload: { requestId: 'r2', inputType: 'plan-review' },
+				},
+			},
+			{
+				timestamp: 4,
+				type: 'confirmation-request',
+				data: {
+					type: 'confirmation-request',
+					payload: { requestId: 'r3', inputType: 'questions' },
+				},
+			},
+			{
+				timestamp: 5,
+				type: 'run-finish',
+				data: { type: 'run-finish', payload: { status: 'completed' } },
+			},
+		];
+
+		const result = buildConversationMetrics(events);
+		expect(result.confirmationAskedTotal).toBe(3);
+		expect(result.confirmationAskedByKind).toEqual({ questions: 2, 'plan-review': 1 });
+		expect(result.perTurn[0].confirmationAskedTotal).toBe(3);
+		expect(result.perTurn[0].confirmationAskedByKind).toEqual({
+			questions: 2,
+			'plan-review': 1,
+		});
+	});
+
+	it('defaults inputType to "approval" when omitted', () => {
+		const events: CapturedEvent[] = [
+			{ timestamp: 1, type: 'run-start', data: { type: 'run-start' } },
+			{
+				timestamp: 2,
+				type: 'confirmation-request',
+				data: { type: 'confirmation-request', payload: { requestId: 'r1' } },
+			},
+			{ timestamp: 3, type: 'run-finish', data: { type: 'run-finish' } },
+		];
+
+		const result = buildConversationMetrics(events);
+		expect(result.confirmationAskedByKind).toEqual({ approval: 1 });
+	});
+
+	it('detects repeat questions by requestId across turns', () => {
+		const events: CapturedEvent[] = [
+			{ timestamp: 1, type: 'run-start', data: { type: 'run-start' } },
+			{
+				timestamp: 2,
+				type: 'confirmation-request',
+				data: {
+					type: 'confirmation-request',
+					payload: { requestId: 'shared', inputType: 'questions' },
+				},
+			},
+			{ timestamp: 3, type: 'run-finish', data: { type: 'run-finish' } },
+			{ timestamp: 4, type: 'run-start', data: { type: 'run-start' } },
+			{
+				timestamp: 5,
+				type: 'confirmation-request',
+				data: {
+					type: 'confirmation-request',
+					payload: { requestId: 'shared', inputType: 'questions' },
+				},
+			},
+			{ timestamp: 6, type: 'run-finish', data: { type: 'run-finish' } },
+		];
+
+		const result = buildConversationMetrics(events);
+		expect(result.perTurn[0].repeatQuestionCount).toBe(0);
+		expect(result.perTurn[1].repeatQuestionCount).toBe(1);
+	});
+
+	it('counts replan_after_error when a tool-error is followed by tasks-update in the same turn', () => {
+		const events: CapturedEvent[] = [
+			{ timestamp: 1, type: 'run-start', data: { type: 'run-start' } },
+			{ timestamp: 2, type: 'tool-error', data: { type: 'tool-error' } },
+			{ timestamp: 3, type: 'tasks-update', data: { type: 'tasks-update' } },
+			{ timestamp: 4, type: 'run-finish', data: { type: 'run-finish' } },
+		];
+
+		const result = buildConversationMetrics(events);
+		expect(result.perTurn[0].replanAfterErrorCount).toBe(1);
+	});
+
+	it('counts replan_after_error when a tool-error is followed by a plan-typed tool-call', () => {
+		const events: CapturedEvent[] = [
+			{ timestamp: 1, type: 'run-start', data: { type: 'run-start' } },
+			{ timestamp: 2, type: 'tool-error', data: { type: 'tool-error' } },
+			{
+				timestamp: 3,
+				type: 'tool-call',
+				data: { type: 'tool-call', payload: { toolName: 'plan' } },
+			},
+			{ timestamp: 4, type: 'run-finish', data: { type: 'run-finish' } },
+		];
+
+		const result = buildConversationMetrics(events);
+		expect(result.perTurn[0].replanAfterErrorCount).toBe(1);
+	});
+
+	it('does NOT count replan_after_error when the recovery is in a previous turn', () => {
+		const events: CapturedEvent[] = [
+			{ timestamp: 1, type: 'run-start', data: { type: 'run-start' } },
+			{ timestamp: 2, type: 'tasks-update', data: { type: 'tasks-update' } },
+			{ timestamp: 3, type: 'run-finish', data: { type: 'run-finish' } },
+			{ timestamp: 4, type: 'run-start', data: { type: 'run-start' } },
+			{ timestamp: 5, type: 'tool-error', data: { type: 'tool-error' } },
+			{ timestamp: 6, type: 'run-finish', data: { type: 'run-finish' } },
+		];
+
+		const result = buildConversationMetrics(events);
+		expect(result.perTurn[1].replanAfterErrorCount).toBe(0);
+	});
+
+	it('marks reachedRunFinishCleanly false when the last run-finish is not completed', () => {
+		const events: CapturedEvent[] = [
+			{ timestamp: 1, type: 'run-start', data: { type: 'run-start' } },
+			{
+				timestamp: 2,
+				type: 'run-finish',
+				data: { type: 'run-finish', payload: { status: 'completed' } },
+			},
+			{ timestamp: 3, type: 'run-start', data: { type: 'run-start' } },
+			{
+				timestamp: 4,
+				type: 'run-finish',
+				data: { type: 'run-finish', payload: { status: 'cancelled' } },
+			},
+		];
+
+		const result = buildConversationMetrics(events);
+		expect(result.reachedRunFinishCleanly).toBe(false);
+		expect(result.perTurn[1].runFinishStatus).toBe('cancelled');
 	});
 });

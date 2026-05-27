@@ -101,12 +101,30 @@ export interface IExpressionEvaluator {
 }
 
 /**
- * Workflow data proxy from WorkflowDataProxy.getDataProxy().
- *
- * For Slice 1: We pass this directly via VM context (simple pass-through).
- * Later: Will implement deep lazy proxy for field-level data fetching.
+ * The methods on the per-node accessor returned by `data.$('NodeName')`.
+ * Mirrors the host-side `WorkflowDataProxy` `$()` return shape, restricted
+ * to the operations the typed-RPC handlers dispatch into. All optional —
+ * the underlying proxy is dynamic and the handlers tolerate missing
+ * methods via optional chaining at the call site.
  */
-export type WorkflowData = Record<string, unknown>;
+export interface NodeProxy {
+	first?: (branchIndex?: number, runIndex?: number) => unknown;
+	last?: (branchIndex?: number, runIndex?: number) => unknown;
+	all?: (branchIndex?: number, runIndex?: number) => unknown;
+}
+
+/**
+ * Workflow data proxy from `WorkflowDataProxy.getDataProxy()`.
+ *
+ * `$` is the named typed-RPC accessor (`$('NodeName').first()` etc.) and is
+ * called directly from typed-RPC handlers. Everything else flows through
+ * the generic data-access primitives (`getValueAtPath`, `getArrayElement`),
+ * which read paths off the index signature without needing per-key types.
+ */
+export interface WorkflowData {
+	$?: (nodeName: string) => NodeProxy | null | undefined;
+	[key: string]: unknown;
+}
 
 /**
  * Options for evaluate().

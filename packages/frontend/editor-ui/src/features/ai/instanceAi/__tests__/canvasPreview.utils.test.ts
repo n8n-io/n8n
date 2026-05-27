@@ -2,6 +2,7 @@ import { describe, test, expect } from 'vitest';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 import {
 	getLatestBuildResult,
+	getLatestBuilderTarget,
 	getLatestExecutionId,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
@@ -182,6 +183,99 @@ describe('getLatestBuildResult', () => {
 			],
 		});
 		expect(getLatestBuildResult(parent)?.workflowId).toBe('wf-child');
+	});
+});
+
+describe('getLatestBuilderTarget', () => {
+	test('returns undefined for node with no children', () => {
+		expect(getLatestBuilderTarget(makeAgentNode())).toBeUndefined();
+	});
+
+	test('returns undefined when builder child has no targetResource id (create flow)', () => {
+		const builder = makeAgentNode({
+			agentId: 'agent-builder-1',
+			role: 'workflow-builder',
+			kind: 'builder',
+			status: 'active',
+			targetResource: { type: 'workflow' },
+		});
+		const parent = makeAgentNode({ children: [builder] });
+		expect(getLatestBuilderTarget(parent)).toBeUndefined();
+	});
+
+	test('returns agentId and workflowId when builder is spawned with targetResource.id (edit flow)', () => {
+		const builder = makeAgentNode({
+			agentId: 'agent-builder-1',
+			role: 'workflow-builder',
+			kind: 'builder',
+			status: 'active',
+			targetResource: { type: 'workflow', id: 'wf-existing' },
+		});
+		const parent = makeAgentNode({ children: [builder] });
+		expect(getLatestBuilderTarget(parent)).toEqual({
+			agentId: 'agent-builder-1',
+			workflowId: 'wf-existing',
+		});
+	});
+
+	test('detects builder by kind even when role differs', () => {
+		const builder = makeAgentNode({
+			agentId: 'agent-builder-2',
+			role: 'background-task',
+			kind: 'builder',
+			status: 'active',
+			targetResource: { type: 'workflow', id: 'wf-1' },
+		});
+		const parent = makeAgentNode({ children: [builder] });
+		expect(getLatestBuilderTarget(parent)?.workflowId).toBe('wf-1');
+	});
+
+	test('ignores non-workflow targetResource types', () => {
+		const credSetup = makeAgentNode({
+			agentId: 'agent-cred-1',
+			role: 'browser-credential-setup',
+			kind: 'browser-setup',
+			status: 'active',
+			targetResource: { type: 'credential', id: 'cred-1' },
+		});
+		const parent = makeAgentNode({ children: [credSetup] });
+		expect(getLatestBuilderTarget(parent)).toBeUndefined();
+	});
+
+	test('returns the latest builder when multiple are present', () => {
+		const builderA = makeAgentNode({
+			agentId: 'agent-builder-a',
+			role: 'workflow-builder',
+			kind: 'builder',
+			status: 'completed',
+			targetResource: { type: 'workflow', id: 'wf-a' },
+		});
+		const builderB = makeAgentNode({
+			agentId: 'agent-builder-b',
+			role: 'workflow-builder',
+			kind: 'builder',
+			status: 'active',
+			targetResource: { type: 'workflow', id: 'wf-b' },
+		});
+		const parent = makeAgentNode({ children: [builderA, builderB] });
+		expect(getLatestBuilderTarget(parent)?.workflowId).toBe('wf-b');
+	});
+
+	test('walks nested children depth-first, newest last', () => {
+		const nestedBuilder = makeAgentNode({
+			agentId: 'agent-builder-nested',
+			role: 'workflow-builder',
+			kind: 'builder',
+			status: 'active',
+			targetResource: { type: 'workflow', id: 'wf-nested' },
+		});
+		const intermediate = makeAgentNode({
+			agentId: 'agent-intermediate',
+			role: 'planner',
+			children: [nestedBuilder],
+		});
+		const parent = makeAgentNode({ children: [intermediate] });
+		expect(getLatestBuilderTarget(parent)?.workflowId).toBe('wf-nested');
 	});
 });
 

@@ -2,7 +2,7 @@ import type {
 	CodeBuilderSearchResult,
 	NodeRequest,
 	NodeTypeParser,
-} from '@n8n/ai-workflow-builder';
+} from '@n8n/ai-utilities/node-catalog';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import * as fs from 'fs/promises';
@@ -21,10 +21,6 @@ export interface SearchNodesOptions {
 	nodeFilter?: NodeFilter;
 }
 
-interface InvokableTool<TInput> {
-	invoke(input: TInput): Promise<string>;
-}
-
 interface SearchState {
 	search?: (queries: string[]) => CodeBuilderSearchResult;
 	cache: Map<string, CodeBuilderSearchResult>;
@@ -36,9 +32,9 @@ const UNFILTERED: unique symbol = Symbol('unfiltered');
  * Shared node catalog for features that need to search, describe or suggest n8n nodes
  * (MCP workflow-builder tools, the agents runtime, future callers).
  *
- * Lazily initializes a {@link NodeTypeParser} on first use and resolves the built-in
- * node-definition directories used to load schemas. All caches invalidate automatically
- * when LoadNodesAndCredentials signals that node types were reloaded.
+ * Call {@link initialize} before first use to resolve node-definition directories
+ * and build the {@link NodeTypeParser}. All caches invalidate automatically when
+ * LoadNodesAndCredentials signals that node types were reloaded.
  */
 @Service()
 export class NodeCatalogService {
@@ -53,8 +49,6 @@ export class NodeCatalogService {
 	 * The cache stores the complete `CodeBuilderSearchResult`, so callers can consume only the fields they need.
 	 */
 	private readonly searchStates = new Map<NodeFilter | typeof UNFILTERED, SearchState>();
-
-	private suggestTool: InvokableTool<{ categories: string[] }> | undefined;
 
 	private readonly getCache = new Map<string, string>();
 
@@ -111,7 +105,7 @@ export class NodeCatalogService {
 		if (cached) return cached;
 
 		if (!state.search) {
-			const { searchCodeBuilderNodes } = await import('@n8n/ai-workflow-builder');
+			const { searchCodeBuilderNodes } = await import('@n8n/ai-utilities/node-catalog');
 			const nodeTypeParser = this.getNodeTypeParser();
 			state.search = (searchQueries: string[]) =>
 				nodeFilter
@@ -132,7 +126,7 @@ export class NodeCatalogService {
 		const cached = this.getCache.get(cacheKey);
 		if (cached) return cached;
 
-		const { getNodeTypes } = await import('@n8n/ai-workflow-builder');
+		const { getNodeTypes } = await import('@n8n/ai-utilities/node-catalog');
 		const result = getNodeTypes(nodeIds, { nodeDefinitionDirs: this.nodeDefinitionDirs });
 		this.getCache.set(cacheKey, result);
 		return result;
@@ -144,17 +138,14 @@ export class NodeCatalogService {
 		const cached = this.suggestCache.get(cacheKey);
 		if (cached) return cached;
 
-		if (!this.suggestTool) {
-			const { createGetSuggestedNodesTool } = await import('@n8n/ai-workflow-builder');
-			this.suggestTool = createGetSuggestedNodesTool(this.getNodeTypeParser());
-		}
-		const result = await this.suggestTool.invoke({ categories });
+		const { getSuggestedNodes } = await import('@n8n/ai-utilities/node-catalog');
+		const result = getSuggestedNodes(this.getNodeTypeParser(), categories);
 		this.suggestCache.set(cacheKey, result);
 		return result;
 	}
 
 	private async doInitialize(): Promise<void> {
-		const { NodeTypeParser: NodeTypeParserClass } = await import('@n8n/ai-workflow-builder');
+		const { NodeTypeParser: NodeTypeParserClass } = await import('@n8n/ai-utilities/node-catalog');
 		const { setSchemaBaseDirs } = await import('@n8n/workflow-sdk');
 
 		await this.loadNodesAndCredentials.postProcessLoaders();
@@ -174,12 +165,11 @@ export class NodeCatalogService {
 	private async refreshNodeTypes(): Promise<void> {
 		if (!this.nodeTypeParser) return;
 
-		const { NodeTypeParser: NodeTypeParserClass } = await import('@n8n/ai-workflow-builder');
+		const { NodeTypeParser: NodeTypeParserClass } = await import('@n8n/ai-utilities/node-catalog');
 		const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 		this.nodeTypeParser = new NodeTypeParserClass(nodeTypeDescriptions);
 
 		this.searchStates.clear();
-		this.suggestTool = undefined;
 
 		this.getCache.clear();
 		this.suggestCache.clear();

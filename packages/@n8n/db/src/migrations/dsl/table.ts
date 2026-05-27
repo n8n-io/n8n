@@ -268,3 +268,21 @@ export class DropNotNull extends ModifyNotNull {
 		super(tableName, columnName, true, prefix, queryRunner);
 	}
 }
+
+export class DropEnumCheck extends TableOperation {
+	constructor(
+		tableName: string,
+		protected columnName: string,
+		prefix: string,
+		queryRunner: QueryRunner,
+	) {
+		super(tableName, prefix, queryRunner);
+	}
+
+	async execute(queryRunner: QueryRunner) {
+		const { tableName, prefix, columnName } = this;
+		const fullTableName = `${prefix}${tableName}`;
+		const checkName = `CHK_${prefix}${tableName}_${columnName}`;
+		return await queryRunner.dropCheckConstraint(fullTableName, checkName);
+	}
+}

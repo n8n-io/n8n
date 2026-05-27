@@ -4,7 +4,7 @@ import { extend, extendOptional } from '../extensions/extend';
 
 import { SafeObject, SafeError, ExpressionError } from './safe-globals';
 import { createDeepLazyProxy } from './lazy-proxy';
-import { buildContext } from './context';
+import { buildContext, type BridgeCallbacks } from './context';
 import { __prepareForTransfer } from './serialize';
 
 // Augment globalThis with runtime properties
@@ -13,13 +13,10 @@ declare global {
 		// Proxy creator function
 		var createDeepLazyProxy: (basePath?: string[]) => any;
 
-		// Context builder (closure-scoped alternative to resetDataProxies)
-		var buildContext: (
-			getValueAtPath: any,
-			getArrayElement: any,
-			callFunctionAtPath: any,
-			timezone?: string,
-		) => Record<string, unknown>;
+		// Context builder (closure-scoped alternative to resetDataProxies).
+		// Accepts a single callbacks bundle so adding new typed RPCs doesn't
+		// churn the signature; see `BridgeCallbacks` in `runtime/context.ts`.
+		var buildContext: (callbacks: BridgeCallbacks, timezone?: string) => Record<string, unknown>;
 
 		// Safe wrappers
 		var SafeObject: typeof Object;

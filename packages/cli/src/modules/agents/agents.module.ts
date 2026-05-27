@@ -43,11 +43,6 @@ export class AgentsModule implements ModuleInterface {
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
 
-		// Warm the node catalog so the agent runtime can attach search/execute tools
-		// synchronously on each agent reconstruction. The underlying init is idempotent.
-		const { NodeCatalogService } = await import('@/node-catalog');
-		await Container.get(NodeCatalogService).initialize();
-
 		// Register Chat and Schedule services. Importing the services here also
 		// registers any @OnLeaderTakeover/@OnLeaderStepdown decorators with
 		// MultiMainMetadata before start.ts:295 wires up the listeners.
@@ -105,6 +100,16 @@ export class AgentsModule implements ModuleInterface {
 			'./entities/agent-observation-cursor.entity'
 		);
 		const { AgentObservationLockEntity } = await import('./entities/agent-observation-lock.entity');
+		const { AgentMemoryEntryEntity } = await import('./entities/agent-memory-entry.entity');
+		const { AgentMemoryEntryLockEntity } = await import(
+			'./entities/agent-memory-entry-lock.entity'
+		);
+		const { AgentMemoryEntrySourceEntity } = await import(
+			'./entities/agent-memory-entry-source.entity'
+		);
+		const { AgentMemoryEntryCursorEntity } = await import(
+			'./entities/agent-memory-entry-cursor.entity'
+		);
 
 		return [
 			Agent,
@@ -118,6 +123,10 @@ export class AgentsModule implements ModuleInterface {
 			AgentObservationEntity,
 			AgentObservationCursorEntity,
 			AgentObservationLockEntity,
+			AgentMemoryEntryEntity,
+			AgentMemoryEntryLockEntity,
+			AgentMemoryEntrySourceEntity,
+			AgentMemoryEntryCursorEntity,
 		];
 	}
 

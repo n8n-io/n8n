@@ -354,7 +354,7 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 			const node = workflowDocumentStore.getNodeByName(error.context.nodeCause as string);
 
 			if (node) {
-				eventData.is_pinned = !!workflowDocumentStore.pinData?.[node.name];
+				eventData.is_pinned = !!workflowDocumentStore.pinnedDataByNodeName?.[node.name];
 				eventData.mode = node.parameters.mode;
 				eventData.node_type = node.type;
 				eventData.operation = node.parameters.operation;

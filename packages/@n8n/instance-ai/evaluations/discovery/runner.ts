@@ -264,7 +264,7 @@ function createStubOrchestrationContext(
 	const taskStorage: TaskStorage = {
 		// eslint-disable-next-line @typescript-eslint/require-await
 		get: async (): Promise<TaskList | null> => null,
-		// eslint-disable-next-line @typescript-eslint/require-await
+
 		save: async (): Promise<void> => {},
 	};
 

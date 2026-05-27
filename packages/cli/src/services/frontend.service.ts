@@ -721,7 +721,7 @@ export class FrontendService {
 				credential.name === 'oAuth2Api' ||
 				this.credentialTypes.getParentTypes(credential.name).includes('oAuth2Api');
 			if (isOAuth2Credential && credential.properties) {
-				const jwksUri = `${this.urlService.getInstanceBaseUrl()}/${this.globalConfig.endpoints.rest}/.well-known/jwks.json`;
+				const jwksUri = this.urlService.getInstanceJwksUri();
 				credential.properties = credential.properties.map((property) =>
 					property.name === 'jwksUri' ? { ...property, default: jwksUri } : property,
 				);

@@ -1,9 +1,31 @@
 {
-	"prompt": "Create a workflow that receives webhook notifications with a JSON body containing 'level' (high, medium, or low), 'title', and 'message'. Route them based on level: high priority goes to Microsoft Teams (use team ID '9b4c3a2f-1d8e-4f5b-a6c7-8e9f0b1d2c3a' and channel ID '19:a1b2c3d4e5f6@thread.tacv2'), medium goes to Slack channel #notifications, and low goes to Gmail (send to alerts@ourcompany.com). Each notification should include the title and message from the payload. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want a webhook that fans out incoming notifications to different places depending on how urgent they are."
+		},
+		{
+			"role": "assistant",
+			"text": "What does each incoming payload look like, and what are the urgency levels?"
+		},
+		{
+			"role": "user",
+			"text": "JSON with `level` (high, medium, or low), `title`, and `message`. Each notification should be forwarded with title + message intact."
+		},
+		{
+			"role": "assistant",
+			"text": "Where should each level go?"
+		},
+		{
+			"role": "user",
+			"text": "High → Microsoft Teams (team ID '9b4c3a2f-1d8e-4f5b-a6c7-8e9f0b1d2c3a', channel ID '19:a1b2c3d4e5f6@thread.tacv2'). Medium → Slack #notifications. Low → email to alerts@ourcompany.com via Gmail."
+		}
+	],
+	"messageBudget": 6,
 	"complexity": "medium",
 	"tags": ["build", "webhook", "switch", "microsoft-teams", "slack", "gmail", "routing"],
 	"triggerType": "webhook",
-	"scenarios": [
+	"executionScenarios": [
 		{
 			"name": "high-priority",
 			"description": "A high-priority notification is routed to Microsoft Teams",

@@ -1,6 +1,6 @@
 import type { BuiltTool } from '@n8n/agents';
-import { Tool } from '@n8n/agents';
-import { createZodSchemaFromArgs, extractFromAIParameters } from '@n8n/ai-utilities';
+import { Tool } from '@n8n/agents/tool';
+import { createZodSchemaFromArgs, extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import type { JSONSchema7 } from 'json-schema';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
 import { isToolType, nodeNameToToolName } from 'n8n-workflow';

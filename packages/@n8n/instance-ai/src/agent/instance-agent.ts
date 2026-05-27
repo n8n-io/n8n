@@ -14,26 +14,11 @@ import {
 } from '../tool-registry';
 import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
+import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
 import type { CreateInstanceAgentOptions, InstanceAiToolRegistry } from '../types';
 
 // ── Agent factory ───────────────────────────────────────────────────────────
-
-const ALWAYS_LOADED_TOOLS = new Set([
-	'plan',
-	'create-tasks',
-	'delegate',
-	'ask-user',
-	'credentials',
-	'workflows',
-	'build-workflow-with-agent',
-	'verify-built-workflow',
-	'research',
-	'web-search',
-	'fetch-url',
-]);
-
-const CHECKPOINT_FOLLOW_UP_TOOLS = new Set(['complete-checkpoint', 'executions']);
 
 function splitDeferredTools(
 	tools: InstanceAiToolRegistry,
@@ -44,8 +29,8 @@ function splitDeferredTools(
 
 	for (const [name, tool] of tools) {
 		if (
-			ALWAYS_LOADED_TOOLS.has(name) ||
-			(options.isCheckpointFollowUp && CHECKPOINT_FOLLOW_UP_TOOLS.has(name))
+			ALWAYS_LOADED_TOOL_NAMES.has(name) ||
+			(options.isCheckpointFollowUp && CHECKPOINT_FOLLOW_UP_TOOL_NAMES.has(name))
 		) {
 			coreTools.set(name, tool);
 		} else {
@@ -173,13 +158,13 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		branchReadOnly: context.branchReadOnly,
 	});
 
-	// The orchestrator intentionally does not receive a workspace. Sandbox access
-	// is scoped to the workflow-builder subagent via `builderSandboxFactory`.
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
 		agentRole: 'orchestrator',
 		functionId: 'instance-ai.orchestrator',
 		executionMode: 'foreground',
 	});
+	// The orchestrator agent itself does not receive workspace tools. Sandbox access
+	// stays scoped to tools and sub-agents that request orchestrationContext.workspace.
 	const agent = new Agent('n8n-instance-agent')
 		.model(modelId)
 		.instructions(systemPrompt, {
@@ -210,7 +195,6 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 				: {}),
 		});
 	}
-
 	mergeTraceRunInputs(
 		orchestrationContext?.tracing?.actorRun,
 		buildAgentTraceInputs({

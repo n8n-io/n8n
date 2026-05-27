@@ -1,5 +1,5 @@
 import type { BuiltTool } from '@n8n/agents';
-import { Tool } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
 import {
 	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
 	type AgentJsonToolConfig,

@@ -2,7 +2,7 @@ import type { Driver, QueryRunner, Table } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
 import { Column } from '../column';
-import { AddColumns, CreateTable } from '../table';
+import { AddColumns, CreateTable, DropEnumCheck } from '../table';
 
 const createMocks = (escapeChar = '"') => {
 	const driver = mock<Driver>();
@@ -118,6 +118,30 @@ describe('CreateTable with column-level enum checks', () => {
 
 		const tableArg: Table = queryRunner.createTable.mock.calls[0][0];
 		expect(tableArg.checks).toHaveLength(0);
+	});
+});
+
+describe('DropEnumCheck', () => {
+	it('should drop the check constraint with correct name', async () => {
+		const { queryRunner } = createMocks();
+
+		await new DropEnumCheck('test_table', 'status', 'n8n_', queryRunner);
+
+		expect(queryRunner.dropCheckConstraint).toHaveBeenCalledWith(
+			'n8n_test_table',
+			'CHK_n8n_test_table_status',
+		);
+	});
+
+	it('should work without a table prefix', async () => {
+		const { queryRunner } = createMocks();
+
+		await new DropEnumCheck('test_table', 'role', '', queryRunner);
+
+		expect(queryRunner.dropCheckConstraint).toHaveBeenCalledWith(
+			'test_table',
+			'CHK_test_table_role',
+		);
 	});
 });
 

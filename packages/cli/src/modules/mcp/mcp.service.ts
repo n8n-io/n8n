@@ -343,7 +343,7 @@ export class McpService {
 			suggestedNodesTool.handler,
 		);
 
-		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry);
+		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);
 		server.registerTool(validateTool.name, validateTool.config, validateTool.handler);
 
 		const createTool = createCreateWorkflowFromCodeTool(

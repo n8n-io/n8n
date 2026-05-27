@@ -188,9 +188,7 @@ test.describe(
 			);
 
 			await expect(
-				n8n.instanceAi.getConfirmationText(
-					`Edit existing workflow "${APPROVE_EDIT_WORKFLOW_NAME}"`,
-				),
+				n8n.instanceAi.getConfirmationText(`Edit ${APPROVE_EDIT_WORKFLOW_NAME}`),
 			).toBeVisible({ timeout: 120_000 });
 			await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
 			const whileAwaitingApproval = await n8n.api.workflows.getWorkflow(workflow.id);
@@ -224,7 +222,7 @@ test.describe(
 			);
 
 			await expect(
-				n8n.instanceAi.getConfirmationText(`Edit existing workflow "${DENY_EDIT_WORKFLOW_NAME}"`),
+				n8n.instanceAi.getConfirmationText(`Edit ${DENY_EDIT_WORKFLOW_NAME}`),
 			).toBeVisible({ timeout: 120_000 });
 			await expect(n8n.instanceAi.getConfirmDenyButton()).toBeVisible({ timeout: 120_000 });
 			await n8n.instanceAi.getConfirmDenyButton().click();

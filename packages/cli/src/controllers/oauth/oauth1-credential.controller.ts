@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Get, RestController } from '@n8n/decorators';
 import axios from 'axios';
 import { Response } from 'express';
@@ -10,7 +11,6 @@ import {
 	skipAuthOnOAuthCallback,
 	type OAuth1CredentialData,
 } from '@/oauth/oauth.service';
-import { Logger } from '@n8n/backend-common';
 
 @RestController('/oauth1-credential')
 export class OAuth1CredentialController {
@@ -23,12 +23,8 @@ export class OAuth1CredentialController {
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth): Promise<string> {
 		const credential = await this.oauthService.getCredentialForUpdate(req);
-
-		const uri = await this.oauthService.generateAOauth1AuthUri(credential, {
-			cid: credential.id,
-			origin: 'static-credential',
-			userId: skipAuthOnOAuthCallback ? undefined : req.user.id,
-		});
+		const csrfData = await this.oauthService.buildCsrfStateData(credential, req);
+		const uri = await this.oauthService.generateAOauth1AuthUri(credential, csrfData);
 
 		this.logger.debug('OAuth1 authorization successful for new credential', {
 			userId: req.user.id,

@@ -4,6 +4,8 @@ import type { ICredentialResolver } from '@n8n/decorators';
 import type { Cipher } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 
+import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+
 import { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
@@ -78,6 +80,7 @@ describe('CredentialResolverWorkflowService', () => {
 	let mockResolverRepository: jest.Mocked<DynamicCredentialResolverRepository>;
 	let mockCipher: jest.Mocked<Cipher>;
 	let mockResolverImplementation: jest.Mocked<ICredentialResolver>;
+	let mockDynamicCredentialsProxy: jest.Mocked<DynamicCredentialsProxy>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -112,12 +115,20 @@ describe('CredentialResolverWorkflowService', () => {
 			validateOptions: jest.fn(),
 		};
 
+		mockDynamicCredentialsProxy = {
+			getSystemResolverId: jest.fn().mockReturnValue(null),
+			// Default to the real semantics with no system resolver seeded:
+			// pass through the workflow override if any, otherwise null.
+			getEffectiveResolverId: jest.fn((settings) => settings?.credentialResolverId ?? null),
+		} as unknown as jest.Mocked<DynamicCredentialsProxy>;
+
 		service = new CredentialResolverWorkflowService(
 			mockWorkflowRepository,
 			mockCredentialRepository,
 			mockResolverRegistry,
 			mockResolverRepository,
 			mockCipher,
+			mockDynamicCredentialsProxy,
 		);
 	});
 

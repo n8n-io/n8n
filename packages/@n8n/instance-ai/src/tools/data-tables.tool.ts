@@ -9,10 +9,11 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { DATA_TABLES_TOOL_ID } from './tool-ids';
 
 // ── Shared schemas ─────────────────────────────────────────────────────────
 
-export const DATA_TABLES_TOOL_ID = 'data-tables';
+export { DATA_TABLES_TOOL_ID };
 
 const columnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
 
@@ -76,6 +77,16 @@ function isNameConflictError(error: unknown): boolean {
 const projectIdDescribe =
 	'Project ID. For list/create, scopes the operation to this project (defaults to personal). For id-based actions (schema, query, delete, add-column, delete-column, rename-column, insert/update/delete-rows), disambiguates when `dataTableId` is a name that exists in multiple accessible projects. Ignored when `dataTableId` is a UUID; rejected when the UUID belongs to a different project.';
 
+const dataTableNameDescribe =
+	'Human-readable name of the data table, shown alongside the ID in the approval card. Pass this whenever you know it (e.g. from a prior `list` call) so users see a recognisable label instead of a bare UUID.';
+
+/** Renders `"{name} (ID: {id})"` when the agent supplied a name, otherwise the bare id. */
+function buildDataTableLabel(input: { dataTableId: string; dataTableName?: string }): string {
+	return input.dataTableName
+		? `${input.dataTableName} (ID: ${input.dataTableId})`
+		: input.dataTableId;
+}
+
 const listAction = z.object({
 	action: z.literal('list').describe('List data tables in a project'),
 	projectId: z.string().optional().describe(projectIdDescribe),
@@ -132,6 +143,7 @@ const deleteAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 });
 
@@ -142,6 +154,7 @@ const addColumnAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	columnName: z.string().describe('Column name (alphanumeric + underscores)'),
 	type: columnTypeSchema.describe('Column data type'),
@@ -154,6 +167,7 @@ const deleteColumnAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	columnId: z.string().describe('ID of the column'),
 });
@@ -165,6 +179,7 @@ const renameColumnAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	columnId: z.string().describe('ID of the column'),
 	newName: z.string().describe('New column name'),
@@ -177,6 +192,7 @@ const insertRowsAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	rows: z
 		.array(z.record(z.unknown()))
@@ -192,6 +208,7 @@ const updateRowsAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	filter: filterSchema.describe('Row filter conditions'),
 	data: z.record(z.unknown()).describe('Column values to set on matching rows'),
@@ -208,6 +225,7 @@ const deleteRowsAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	filter: filterSchemaWithMinOne.describe('Row filter conditions'),
 });
@@ -290,11 +308,11 @@ async function handleCreate(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		let message = `Create data table "${input.name}"?`;
+		let message = `Create ${input.name}`;
 		if (input.projectId) {
 			const project = await context.workspaceService?.getProject?.(input.projectId);
 			const projectLabel = project?.name ?? input.projectId;
-			message = `Create data table "${input.name}" in project "${projectLabel}"?`;
+			message = `Create ${input.name} in project ${projectLabel}`;
 		}
 		return await ctx.suspend({
 			requestId: nanoid(),
@@ -344,7 +362,7 @@ async function handleDelete(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Delete data table "${input.dataTableId}"? This will permanently remove the table and all its data.`,
+			message: `Delete ${buildDataTableLabel(input)}`,
 			severity: 'destructive' as const,
 		});
 	}
@@ -376,7 +394,7 @@ async function handleAddColumn(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Add column "${input.columnName}" (${input.type}) to data table "${input.dataTableId}"?`,
+			message: `Add ${input.columnName} (${input.type}) to ${buildDataTableLabel(input)}`,
 			severity: 'warning' as const,
 		});
 	}
@@ -412,7 +430,7 @@ async function handleDeleteColumn(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Delete column "${input.columnId}" from data table "${input.dataTableId}"? All data in this column will be permanently lost.`,
+			message: `Delete ${input.columnId} from ${buildDataTableLabel(input)}`,
 			severity: 'destructive' as const,
 		});
 	}
@@ -446,7 +464,7 @@ async function handleRenameColumn(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Rename column "${input.columnId}" to "${input.newName}" in data table "${input.dataTableId}"?`,
+			message: `Rename ${input.columnId} to ${input.newName} in ${buildDataTableLabel(input)}`,
 			severity: 'warning' as const,
 		});
 	}
@@ -480,7 +498,7 @@ async function handleInsertRows(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Insert ${input.rows.length} row(s) into data table "${input.dataTableId}"?`,
+			message: `Insert ${input.rows.length} row(s) into ${buildDataTableLabel(input)}`,
 			severity: 'warning' as const,
 		});
 	}
@@ -513,7 +531,7 @@ async function handleUpdateRows(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Update rows in data table "${input.dataTableId}"?`,
+			message: `Update rows in ${buildDataTableLabel(input)}`,
 			severity: 'warning' as const,
 		});
 	}
@@ -555,7 +573,7 @@ async function handleDeleteRows(
 			.join(` ${input.filter.type} `);
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Delete rows where ${filterDesc}? This cannot be undone.`,
+			message: `Delete rows from ${buildDataTableLabel(input)} where ${filterDesc}`,
 			severity: 'destructive' as const,
 		});
 	}

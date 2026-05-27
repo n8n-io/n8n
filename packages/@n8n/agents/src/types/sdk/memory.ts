@@ -1,9 +1,13 @@
+import type { EmbeddingModel } from 'ai';
+
 import type { ModelConfig, SerializableAgentState } from './agent';
 import type { AgentDbMessage } from './message';
 import type {
 	BuiltObservationLogStore,
+	ObservationLogEntry,
 	ObservationLogObserveFn,
 	ObservationLogReflectFn,
+	ObservationLogScope,
 } from './observation-log';
 import type { JSONObject } from '../utils/json';
 
@@ -89,6 +93,8 @@ export interface BuiltMemory {
 		vector: number[];
 		topK: number;
 	}): Promise<Array<{ id: string; score: number }>>;
+	// --- Episodic memory (optional — runtime handles extraction and embeddings) ---
+	episodic?: EpisodicMemoryMethods;
 	// --- Lifecycle (optional) ---
 	/** Close the connection pool / release resources. No-op for in-memory backends. */
 	close?(): Promise<void>;
@@ -106,6 +112,201 @@ export interface SemanticRecallConfig {
 	embedder?: string; // e.g. 'openai/text-embedding-3-small' — required for queryEmbeddings(), optional for search()-based backends
 	/** API key for the embedder provider. Falls back to environment variables if not set. */
 	apiKey?: string;
+}
+
+export type EpisodicMemoryStatus = 'active' | 'superseded' | 'dropped';
+
+export interface EpisodicMemoryScope {
+	resourceId: string;
+}
+
+export interface EpisodicMemoryEntry {
+	id: string;
+	resourceId: string;
+	content: string;
+	contentHash: string;
+	status: EpisodicMemoryStatus;
+	supersededBy: string | null;
+	embedding?: number[];
+	embeddingModel?: string;
+	metadata?: JSONObject | null;
+	createdAt: Date;
+	updatedAt: Date;
+	lastSeenAt: Date;
+}
+
+export type NewEpisodicMemoryEntry = Omit<
+	EpisodicMemoryEntry,
+	'id' | 'contentHash' | 'status' | 'supersededBy' | 'createdAt' | 'updatedAt' | 'lastSeenAt'
+> & {
+	contentHash?: string;
+	createdAt?: Date;
+	lastSeenAt?: Date;
+};
+
+export interface EpisodicMemoryEntrySource {
+	id: string;
+	memoryEntryId: string;
+	observationId: string;
+	threadId: string;
+	evidenceText: string;
+	createdAt: Date;
+}
+
+export type NewEpisodicMemoryEntrySource = Omit<EpisodicMemoryEntrySource, 'id' | 'createdAt'> & {
+	createdAt?: Date;
+};
+
+export type NewEpisodicMemoryEntrySourceForEntry = Omit<
+	NewEpisodicMemoryEntrySource,
+	'memoryEntryId'
+>;
+
+export interface EpisodicMemoryCursor extends ObservationLogScope {
+	lastIndexedObservationId: string;
+	lastIndexedObservationCreatedAt: Date;
+	updatedAt: Date;
+}
+
+export type NewEpisodicMemoryCursor = Omit<EpisodicMemoryCursor, 'updatedAt'> & {
+	updatedAt?: Date;
+};
+
+export interface RetrievedEpisodicMemoryEntry extends EpisodicMemoryEntry {
+	lexicalScore: number;
+	vectorScore: number;
+	rrfScore: number;
+	finalScore: number;
+}
+
+export interface EpisodicMemorySearchOptions {
+	topK?: number;
+	queryEmbedding?: number[];
+	includeStatuses?: EpisodicMemoryStatus[];
+}
+
+export interface EpisodicMemoryTaskLockHandle {
+	resourceId: string;
+	holderId: string;
+	heldUntil: Date;
+}
+
+export interface EpisodicMemoryTaskLockMethods {
+	acquire(
+		resourceId: string,
+		opts: { ttlMs: number; holderId: string },
+	): Promise<EpisodicMemoryTaskLockHandle | null>;
+	release(handle: EpisodicMemoryTaskLockHandle): Promise<void>;
+}
+
+export interface EpisodicMemoryMethods {
+	saveEntryWithSources(
+		entry: NewEpisodicMemoryEntry,
+		sources: NewEpisodicMemoryEntrySourceForEntry[],
+	): Promise<EpisodicMemoryEntry | null>;
+	searchEntries(
+		scope: EpisodicMemoryScope,
+		query: string,
+		opts?: EpisodicMemorySearchOptions,
+	): Promise<RetrievedEpisodicMemoryEntry[]>;
+	getEntrySources(entryIds: string[]): Promise<EpisodicMemoryEntrySource[]>;
+	applyReflection(
+		scope: EpisodicMemoryScope,
+		reflection: EpisodicMemoryReflectionApply,
+	): Promise<EpisodicMemoryReflectionResult>;
+	getCursor(scope: ObservationLogScope): Promise<EpisodicMemoryCursor | null>;
+	setCursor(cursor: NewEpisodicMemoryCursor): Promise<void>;
+	taskLock?: EpisodicMemoryTaskLockMethods;
+}
+
+export interface BuiltEpisodicMemoryStore {
+	episodic: EpisodicMemoryMethods;
+}
+
+export interface EpisodicMemoryExtractionCandidate {
+	content: string;
+	sources: Array<{
+		observationId: string;
+		evidence: string;
+	}>;
+}
+
+export interface EpisodicMemoryExtractorInput {
+	scope: EpisodicMemoryScope;
+	observationScope: ObservationLogScope;
+	now: Date;
+	observations: ObservationLogEntry[];
+	renderedObservations: string;
+	existingEntries: RetrievedEpisodicMemoryEntry[];
+}
+
+export interface EpisodicMemoryExtraction {
+	entries: EpisodicMemoryExtractionCandidate[];
+}
+
+export type EpisodicMemoryExtractFn = (
+	input: EpisodicMemoryExtractorInput,
+) => Promise<EpisodicMemoryExtraction>;
+
+export interface EpisodicMemoryReflectionMerge {
+	supersedes: string[];
+	content: string;
+}
+
+export interface EpisodicMemoryReflection {
+	drop: string[];
+	merge: EpisodicMemoryReflectionMerge[];
+}
+
+export interface EpisodicMemoryReflectorInput {
+	scope: EpisodicMemoryScope;
+	now: Date;
+	seedEntryIds: string[];
+	entries: RetrievedEpisodicMemoryEntry[];
+	sources: EpisodicMemoryEntrySource[];
+}
+
+export type EpisodicMemoryReflectFn = (
+	input: EpisodicMemoryReflectorInput,
+) => Promise<EpisodicMemoryReflection>;
+
+export interface EpisodicMemoryReflectionApplyMerge {
+	supersedes: string[];
+	entry: NewEpisodicMemoryEntry;
+}
+
+export interface EpisodicMemoryReflectionApply {
+	drop: string[];
+	merge: EpisodicMemoryReflectionApplyMerge[];
+}
+
+export interface EpisodicMemoryReflectionResult {
+	droppedIds: string[];
+	supersededIds: string[];
+	inserted: EpisodicMemoryEntry[];
+}
+
+export interface EpisodicMemoryPrompts {
+	extraction?: string;
+	reflection?: string;
+	recallToolInstruction?: string;
+}
+
+export interface EpisodicMemoryEmbeddingProviderOptions {
+	apiKey?: string;
+	baseURL?: string;
+}
+
+export interface EpisodicMemoryConfig {
+	enabled?: boolean;
+	topK?: number;
+	maxEntriesPerRun?: number;
+	embedder?: EmbeddingModel;
+	embeddingModel?: string;
+	embeddingProviderOptions?: string | EpisodicMemoryEmbeddingProviderOptions;
+	extract?: EpisodicMemoryExtractFn;
+	reflect?: EpisodicMemoryReflectFn;
+	prompts?: EpisodicMemoryPrompts;
 }
 
 export interface TitleGenerationConfig {
@@ -145,6 +346,7 @@ interface MemoryConfigBase {
 	lastMessages: number;
 	observationLog?: ObservationLogMemoryConfig;
 	semanticRecall?: SemanticRecallConfig;
+	episodicMemory?: EpisodicMemoryConfig;
 	titleGeneration?: TitleGenerationConfig;
 }
 

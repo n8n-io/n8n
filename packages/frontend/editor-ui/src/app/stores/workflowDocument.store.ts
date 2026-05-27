@@ -35,7 +35,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
 import type { WorkflowObjectAccessors } from '../types';
 import type { IWorkflowDb } from '@/Interface';
-import type { INode, IPinData, ProjectSharingData } from 'n8n-workflow';
+import type { INode, ProjectSharingData } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import type { Scope } from '@n8n/permissions';
@@ -219,7 +219,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			const data: WorkflowData = {
 				name: workflowDocumentName.name.value,
 				nodes,
-				pinData: workflowDocumentPinData.getPinDataSnapshot() as IPinData,
+				pinData: workflowDocumentPinData.getPinDataSnapshot(),
 				connections,
 				active: workflowDocumentActive.active.value,
 				settings: workflowDocumentSettings.settings.value,
@@ -329,7 +329,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			return {
 				id: workflowId,
 				connectionsBySourceNode: workflowDocumentConnections.connectionsBySourceNode.value,
-				pinData: workflowDocumentPinData.pinData.value as IPinData,
+				pinData: workflowDocumentPinData.getPinDataSnapshot(),
 				expression: workflowDocumentExpression.getExpressionHandler(),
 				getNode: workflowDocumentNodes.getNodeByName,
 				getParentNodes: workflowDocumentGraph.getParentNodes,
@@ -354,7 +354,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				connections: workflowDocumentConnections.connectionsBySourceNode.value,
 				settings: { ...DEFAULT_SETTINGS, ...workflowDocumentSettings.settings.value },
 				tags: [...workflowDocumentTags.tags.value],
-				pinData: workflowDocumentPinData.pinData.value as IPinData,
+				pinData: workflowDocumentPinData.getPinDataSnapshot(),
 				sharedWithProjects: (workflowDocumentSharedWithProjects.sharedWithProjects.value ??
 					[]) as ProjectSharingData[],
 				homeProject: workflowDocumentHomeProject.homeProject.value ?? undefined,

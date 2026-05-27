@@ -27,12 +27,8 @@ export class OAuth2CredentialController {
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth2Credential.Auth): Promise<string> {
 		const credential = await this.oauthService.getCredentialForUpdate(req);
-
-		const uri = await this.oauthService.generateAOauth2AuthUri(credential, {
-			cid: credential.id,
-			origin: 'static-credential',
-			userId: req.user.id,
-		});
+		const csrfData = await this.oauthService.buildCsrfStateData(credential, req);
+		const uri = await this.oauthService.generateAOauth2AuthUri(credential, csrfData);
 		return uri;
 	}
 

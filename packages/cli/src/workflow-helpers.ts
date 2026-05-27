@@ -58,8 +58,8 @@ export function validatePinDataSize(workflow: IWorkflowBase): void {
  * Returns the data of the last executed node
  */
 export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
-	const { runData, pinData = {} } = inputData.data.resultData;
-	const { lastNodeExecuted } = inputData.data.resultData;
+	const { runData, lastNodeExecuted } = inputData.data.resultData;
+	const pinData = inputData.data.resultData.pinData ?? {};
 
 	if (lastNodeExecuted === undefined) {
 		return undefined;

@@ -21,11 +21,15 @@ interface DisabledSandboxConfig extends SandboxConfigBase {
 interface DaytonaSandboxConfig extends SandboxConfigBase {
 	enabled: true;
 	provider: 'daytona';
+	id?: string;
+	name?: string;
 	daytonaApiUrl?: string;
 	daytonaApiKey?: string;
 	image?: string;
 	/** Running n8n version, used to resolve a versioned prebuilt snapshot (`n8n-instance-ai-<version>`). */
 	n8nVersion?: string;
+	/** Prefix prepended to the Daytona sandbox name; also surfaced as a `name_prefix` label. */
+	namePrefix?: string;
 	/**
 	 * Seconds to wait for `daytona.create()` (image build + container boot).
 	 * Cold image builds can exceed the SDK default; bump this in environments
@@ -71,6 +75,8 @@ export async function createSandbox(
 		// In proxy mode, resolve a fresh token via getAuthToken; in direct mode use the static key.
 		const apiKey = config.getAuthToken ? await config.getAuthToken() : config.daytonaApiKey;
 		return new DaytonaSandbox({
+			id: config.id,
+			name: config.name,
 			apiKey,
 			apiUrl: config.daytonaApiUrl,
 			...(config.image ? { image: config.image } : {}),

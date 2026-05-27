@@ -41,8 +41,7 @@ describe('observation-log observer defaults', () => {
 
 	it('builds the default observer prompt from log tail and transcript delta', () => {
 		const prompt = buildObservationLogObserverPrompt({
-			scopeKind: 'thread',
-			scopeId: 'thread-1',
+			observationScopeId: 'thread-1',
 			now: new Date('2026-05-12T14:30:00.000Z'),
 			deltaMessages: [],
 			transcript: '[2026-05-12T14:29:00.000Z] user:\nRemember daily-report-prod.',
@@ -205,8 +204,7 @@ describe('runObservationLogObserver', () => {
 
 		const result = await runObservationLogObserver({
 			memory: store,
-			scopeKind: 'thread',
-			scopeId: 'thread-1',
+			observationScopeId: 'thread-1',
 			observerThresholdTokens: 999,
 			observationLogTailLimit: 20,
 			tokenCounter: () => 1,
@@ -215,7 +213,7 @@ describe('runObservationLogObserver', () => {
 
 		expect(result).toEqual({ status: 'skipped', reason: 'below-threshold', tokenCount: 1 });
 		expect(observe).not.toHaveBeenCalled();
-		expect(await store.getCursor('thread', 'thread-1')).toBeNull();
+		expect(await store.getCursor('thread-1')).toBeNull();
 	});
 
 	it('writes parsed observations and advances the cursor after observing', async () => {
@@ -229,8 +227,7 @@ describe('runObservationLogObserver', () => {
 
 		const result = await runObservationLogObserver({
 			memory: store,
-			scopeKind: 'thread',
-			scopeId: 'thread-1',
+			observationScopeId: 'thread-1',
 			observerThresholdTokens: 1,
 			observationLogTailLimit: 20,
 			tokenCounter: () => 10,
@@ -246,8 +243,7 @@ describe('runObservationLogObserver', () => {
 
 		expect(result).toMatchObject({ status: 'ran', observationsWritten: 2 });
 		const observations = await store.getActiveObservationLog({
-			scopeKind: 'thread',
-			scopeId: 'thread-1',
+			observationScopeId: 'thread-1',
 		});
 		expect(observations).toMatchObject([
 			{
@@ -261,7 +257,7 @@ describe('runObservationLogObserver', () => {
 				parentId: observations[0]?.id,
 			},
 		]);
-		expect(await store.getCursor('thread', 'thread-1')).toMatchObject({
+		expect(await store.getCursor('thread-1')).toMatchObject({
 			lastObservedMessageId: 'm1',
 		});
 	});

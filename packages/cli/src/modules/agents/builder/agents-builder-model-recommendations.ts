@@ -1,4 +1,4 @@
-import { fetchProviderCatalog, type ModelInfo, type ProviderCatalog } from '@n8n/agents';
+import { fetchProviderCatalog, type ModelInfo, type ProviderCatalog } from '@n8n/agents/catalog';
 
 const MODEL_RECOMMENDATION_FETCH_TIMEOUT_MS = 5000;
 const MAX_RECOMMENDED_MODELS_PER_PROVIDER = 3;

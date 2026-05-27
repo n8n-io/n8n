@@ -5,6 +5,7 @@ import {
 } from '../liveness-policy';
 
 const minute = 60_000;
+const day = 24 * 60 * minute;
 
 function createPolicy() {
 	return new InstanceAiLivenessPolicy(INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG);
@@ -13,7 +14,7 @@ function createPolicy() {
 describe('InstanceAiLivenessPolicy', () => {
 	it('keeps default liveness limits centralized and allows the existing confirmation override', () => {
 		expect(INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG).toEqual({
-			confirmationTimeoutMs: 0,
+			confirmationTimeoutMs: day,
 			backgroundTaskIdleTimeoutMs: 10 * minute,
 			backgroundTaskMaxLifetimeMs: 30 * minute,
 			activeRunIdleTimeoutMs: 10 * minute,
@@ -69,15 +70,16 @@ describe('InstanceAiLivenessPolicy', () => {
 		});
 	});
 
-	it('keeps suspended runs and pending confirmations alive by default', () => {
+	it('uses the one-day confirmation timeout for suspended runs and pending confirmations by default', () => {
 		const policy = createPolicy();
+		const shorterWorkTimeout = 30 * minute;
 
 		expect(
 			policy.evaluate({
 				surface: 'suspended-run',
 				startedAt: 0,
 				lastActivityAt: 0,
-				now: 10 * minute,
+				now: shorterWorkTimeout,
 			}),
 		).toEqual({ action: 'keep-alive' });
 
@@ -86,9 +88,27 @@ describe('InstanceAiLivenessPolicy', () => {
 				surface: 'pending-confirmation',
 				startedAt: 0,
 				lastActivityAt: 0,
-				now: 10 * minute,
+				now: shorterWorkTimeout,
 			}),
 		).toEqual({ action: 'keep-alive' });
+
+		expect(
+			policy.evaluate({
+				surface: 'suspended-run',
+				startedAt: 0,
+				lastActivityAt: 0,
+				now: day,
+			}),
+		).toMatchObject({ action: 'timeout', reason: 'idle_timeout', timeoutMs: day });
+
+		expect(
+			policy.evaluate({
+				surface: 'pending-confirmation',
+				startedAt: 0,
+				lastActivityAt: 0,
+				now: day,
+			}),
+		).toMatchObject({ action: 'timeout', reason: 'idle_timeout', timeoutMs: day });
 	});
 
 	it('uses a configured confirmation timeout for suspended runs and pending confirmations', () => {

@@ -6,7 +6,17 @@
  * which extracts them on first use. The committed `manifest.json` is the
  * source of truth and is NOT in the zip.
  */
-import AdmZip from 'adm-zip';
+import type TAdmZip from 'adm-zip';
+let _admZip: typeof TAdmZip | undefined;
+function loadAdmZip(): typeof TAdmZip {
+	if (!_admZip) {
+		// adm-zip's CJS export is the constructor itself.
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		const mod = require('adm-zip') as typeof TAdmZip;
+		_admZip = mod;
+	}
+	return _admZip;
+}
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -82,6 +92,7 @@ export function extractFromZip(): void {
 		fs.mkdirSync(WORKFLOWS_CACHE_DIR, { recursive: true });
 	}
 
+	const AdmZip = loadAdmZip();
 	const zip = new AdmZip(ZIP_PATH);
 	for (const entry of zip.getEntries()) {
 		if (entry.isDirectory) continue;

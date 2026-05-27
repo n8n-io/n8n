@@ -30,13 +30,15 @@ function parseSubstringList(value: string | undefined): string[] {
 }
 
 function getJsonFiles(filter?: string, exclude?: string): string[] {
-	const dir = __dirname;
-	let files = readdirSync(dir).filter((f) => f.endsWith('.json'));
+	const allFiles = readdirSync(__dirname)
+		.filter((f) => f.endsWith('.json'))
+		.map((f) => join(__dirname, f));
 
+	let files = allFiles;
 	const includeTokens = parseSubstringList(filter);
 	if (includeTokens.length > 0) {
 		files = files.filter((f) => {
-			const lower = f.toLowerCase();
+			const lower = basename(f).toLowerCase();
 			return includeTokens.some((t) => lower.includes(t));
 		});
 	}
@@ -44,12 +46,12 @@ function getJsonFiles(filter?: string, exclude?: string): string[] {
 	const excludeTokens = parseSubstringList(exclude);
 	if (excludeTokens.length > 0) {
 		files = files.filter((f) => {
-			const lower = f.toLowerCase();
+			const lower = basename(f).toLowerCase();
 			return !excludeTokens.some((t) => lower.includes(t));
 		});
 	}
 
-	return files.map((f) => join(dir, f));
+	return files;
 }
 
 /** Load test cases with their file slugs (for LangSmith dataset sync derived IDs). */

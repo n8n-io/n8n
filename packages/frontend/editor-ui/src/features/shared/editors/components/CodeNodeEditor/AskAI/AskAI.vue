@@ -17,7 +17,6 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import {
 	ASK_AI_MAX_PROMPT_LENGTH,
@@ -91,9 +90,8 @@ function getErrorMessageByStatusCode(statusCode: number, message: string | undef
 
 function getParentNodes() {
 	const activeNode = ndvStore.activeNode;
-	const { workflowId } = useWorkflowsStore();
 
-	if (!activeNode || !workflowId) return [];
+	if (!activeNode) return [];
 
 	return workflowDocumentStore.value
 		.getParentNodesByDepth(activeNode?.name)

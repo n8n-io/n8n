@@ -17,9 +17,9 @@
  * It's written to each sandbox after creation via the filesystem API.
  */
 
-import type { Daytona } from '@daytonaio/sdk';
-import { DaytonaError, Image } from '@daytonaio/sdk';
+import type { Daytona, DaytonaError as TDaytonaError, Image } from '@daytonaio/sdk';
 
+import { loadDaytona } from './lazy-daytona';
 import type { ErrorReporter, Logger } from '../logger';
 import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS } from './sandbox-setup';
 
@@ -35,7 +35,8 @@ function b64(s: string): string {
 	return Buffer.from(s, 'utf-8').toString('base64');
 }
 
-function isAlreadyExistsError(error: unknown): boolean {
+function isAlreadyExistsError(error: unknown): error is TDaytonaError {
+	const { DaytonaError } = loadDaytona();
 	if (!(error instanceof DaytonaError)) return false;
 	if (error.statusCode === 409) return true;
 	return /already exists/i.test(error.message);
@@ -59,6 +60,7 @@ export class SnapshotManager {
 
 		const base = this.baseImage ?? 'daytonaio/sandbox:0.5.0';
 
+		const { Image } = loadDaytona();
 		this.cachedImage = Image.base(base)
 			.runCommands(
 				'mkdir -p /home/daytona/workspace/src /home/daytona/workspace/chunks /home/daytona/workspace/node-types',

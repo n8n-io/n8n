@@ -342,7 +342,7 @@ export function useNodeExecution(
 		const startNode = workflowDocumentStore.value.getStartNode(nodeRef.value.name);
 		if (!startNode || startNode.type !== CHAT_TRIGGER_NODE_TYPE) return false;
 		const hasRunData = nodeHelpers.getNodeInputData(startNode, 0, 0, 'input')?.length > 0;
-		const hasPinData = !!workflowDocumentStore.value.pinData?.[startNode.name];
+		const hasPinData = !!workflowDocumentStore.value.pinnedDataByNodeName?.[startNode.name];
 		return hasRunData || hasPinData;
 	}
 

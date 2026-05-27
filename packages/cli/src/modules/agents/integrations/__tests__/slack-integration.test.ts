@@ -7,6 +7,10 @@ describe('SlackIntegration', () => {
 		integration = new SlackIntegration();
 	});
 
+	it('only advertises Slack bot token credentials for agent integrations', () => {
+		expect(integration.credentialTypes).toEqual(['slackApi']);
+	});
+
 	describe('handleUnauthenticatedWebhook', () => {
 		it('echoes the challenge for a url_verification event', () => {
 			const result = integration.handleUnauthenticatedWebhook({

@@ -261,6 +261,9 @@
 		},
 		"PATCH /projects/{projectId}/folders/{folderId}": {
 			"status": "gap"
+		},
+		"POST /n8n-packages/export": {
+			"status": "gap"
 		}
 	}
 }

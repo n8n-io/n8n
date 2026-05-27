@@ -242,6 +242,104 @@ describe('McpClient', () => {
 		]);
 	});
 
+	it('should treat isError: true as success on version 1 (legacy behavior)', async () => {
+		executeFunctions.getNode.mockReturnValue({
+			id: '123',
+			name: 'MCP Client',
+			type: '@n8n/n8n-nodes-langchain.mcpClient',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		});
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		client.callTool.mockResolvedValue({
+			isError: true,
+			content: [{ type: 'text', text: 'simulated tool-level error' }],
+		});
+
+		const result = await new McpClient().execute.call(executeFunctions);
+
+		expect(result).toEqual([
+			[
+				{
+					json: { content: [{ type: 'text', text: 'simulated tool-level error' }] },
+					pairedItem: { item: 0 },
+				},
+			],
+		]);
+	});
+
+	it('should throw an error if the tool result has isError: true (version 1.1+)', async () => {
+		executeFunctions.getNode.mockReturnValue({
+			id: '123',
+			name: 'MCP Client',
+			type: '@n8n/n8n-nodes-langchain.mcpClient',
+			typeVersion: 1.1,
+			position: [0, 0],
+			parameters: {},
+		});
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		client.callTool.mockResolvedValue({
+			isError: true,
+			content: [{ type: 'text', text: 'simulated tool-level error' }],
+		});
+
+		await expect(new McpClient().execute.call(executeFunctions)).rejects.toThrow(
+			'simulated tool-level error',
+		);
+	});
+
+	it('should return an error as json if the tool result has isError: true and continueOnFail is true (version 1.1+)', async () => {
+		executeFunctions.getNode.mockReturnValue({
+			id: '123',
+			name: 'MCP Client',
+			type: '@n8n/n8n-nodes-langchain.mcpClient',
+			typeVersion: 1.1,
+			position: [0, 0],
+			parameters: {},
+		});
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		client.callTool.mockResolvedValue({
+			isError: true,
+			content: [{ type: 'text', text: 'simulated tool-level error' }],
+		});
+		executeFunctions.continueOnFail.mockReturnValue(true);
+
+		const result = await new McpClient().execute.call(executeFunctions);
+
+		expect(result).toEqual([
+			[{ json: { error: { message: 'simulated tool-level error' } }, pairedItem: { item: 0 } }],
+		]);
+	});
+
+	it('should throw a generic error if isError: true with no text content (version 1.1+)', async () => {
+		executeFunctions.getNode.mockReturnValue({
+			id: '123',
+			name: 'MCP Client',
+			type: '@n8n/n8n-nodes-langchain.mcpClient',
+			typeVersion: 1.1,
+			position: [0, 0],
+			parameters: {},
+		});
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		client.callTool.mockResolvedValue({
+			isError: true,
+			content: [{ type: 'image', data: 'abc', mimeType: 'image/png' }],
+		});
+
+		await expect(new McpClient().execute.call(executeFunctions)).rejects.toThrow(
+			'Tool "get_weather" returned an error',
+		);
+	});
+
 	it('should throw an error if the tool call fails', async () => {
 		executeFunctions.getNodeParameter.mockImplementation(
 			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,

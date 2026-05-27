@@ -1,5 +1,4 @@
-import { generateText } from 'ai';
-
+import { loadAi } from './lazy-ai';
 import { createModel } from './model-factory';
 import type {
 	ObservationLogObserveFn,
@@ -292,7 +291,6 @@ export function buildObservationLogObserverPrompt(input: ObservationLogObserverI
 
 	return [
 		`Current timestamp: ${input.now.toISOString()}`,
-		`Scope: ${input.scopeKind}:${input.scopeId}`,
 		`Unobserved transcript tokens: ${input.transcriptTokenCount}`,
 		`Current observation log tail:\n${renderedLogTail}`,
 		`New transcript delta since the last observation:\n${transcript}`,
@@ -304,7 +302,7 @@ export function createObservationLogObserveFn(
 	options: CreateObservationLogObserveFnOptions = {},
 ): ObservationLogObserveFn {
 	return async (input) => {
-		const { text } = await generateText({
+		const { text } = await loadAi().generateText({
 			model: createModel(model),
 			system: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 			prompt: buildObservationLogObserverPrompt(input),
@@ -530,7 +528,6 @@ export function buildObservationLogReflectorPrompt(input: ObservationLogReflecto
 
 	return [
 		`Current timestamp: ${input.now.toISOString()}`,
-		`Scope: ${input.scopeKind}:${input.scopeId}`,
 		`Active observation log tokens: ${input.tokenCount}`,
 		`Token budget: ${input.tokenBudget}`,
 		`Current active observation log:\n${renderedLog}`,
@@ -542,7 +539,7 @@ export function createObservationLogReflectFn(
 	options: CreateObservationLogReflectFnOptions = {},
 ): ObservationLogReflectFn {
 	return async (input) => {
-		const { text } = await generateText({
+		const { text } = await loadAi().generateText({
 			model: createModel(model),
 			system: options.reflectorPrompt ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 			prompt: buildObservationLogReflectorPrompt(input),
