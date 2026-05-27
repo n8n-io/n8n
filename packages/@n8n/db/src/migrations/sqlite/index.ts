@@ -183,6 +183,7 @@ import { RefactorAgentObservationScope1784000000010 } from '../common/1784000000
 import { CreateInstanceAiObservationTables1784000000012 } from '../common/1784000000012-CreateInstanceAiObservationTables';
 import { SplitRedactionScopeInCustomRoles1784000000013 } from '../common/1784000000013-SplitRedactionScopeInCustomRoles';
 import { PersistInstanceAiPendingConfirmations1784000000014 } from '../common/1784000000014-PersistInstanceAiPendingConfirmations';
+import { AddSourceWorkflowIdToWorkflow1784000000015 } from '../common/1784000000015-AddSourceWorkflowIdToWorkflow';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -371,6 +372,7 @@ const sqliteMigrations: Migration[] = [
 	CreateInstanceAiObservationTables1784000000012,
 	SplitRedactionScopeInCustomRoles1784000000013,
 	PersistInstanceAiPendingConfirmations1784000000014,
+	AddSourceWorkflowIdToWorkflow1784000000015,
 ];
 
 export { sqliteMigrations };
