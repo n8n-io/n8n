@@ -4,7 +4,6 @@ import type {
 	IExecutionContext,
 	IHttpRequestOptions,
 	INode,
-	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
 	OauthJweProxyProvider,
 	Result,
