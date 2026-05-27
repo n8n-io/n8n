@@ -16,7 +16,9 @@ import AgentPanelHeader from './AgentPanelHeader.vue';
 
 import type { AgentJsonConfig } from '../types';
 import { CATALOG_TO_CHATHUB } from '../provider-mapping';
-import { modelToString, parseModelString } from '../utils/model-string';
+import { PROVIDER_CAPABILITIES } from '../provider-capabilities';
+import { parseModelString, modelToString } from '../utils/model-string';
+import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
 import AgentMiniEditor from './AgentMiniEditor.vue';
 import AgentModelSelector from './AgentModelSelector.vue';
 import { useToast } from '@/app/composables/useToast';
@@ -38,9 +40,14 @@ function onModelChange(selection: { model: string; credentialId: string | null }
 		showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
 		return;
 	}
+	const parsed = parseModelString(selection.model);
+	const nextProviderTool = parsed
+		? (PROVIDER_CAPABILITIES[parsed.provider]?.webSearch ?? false)
+		: false;
 	emit('update:config', {
 		model: selection.model,
 		credential: selection.credentialId,
+		...normalizeWebSearchForModelChange(props.config, nextProviderTool),
 	});
 }
 

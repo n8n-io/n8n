@@ -62,6 +62,7 @@ export default new Tool('tool_name')
 
 ### Gotchas
 
+- Web-search fallback services are config, not node tools, unless the user explicitly asks for a node integration.
 - Live crawling, fetching, and API integrations need workflow or node tools, not custom tools.
 - Do not include \`inputSchema\` or \`toolDescription\` for node tools.
 - \`$fromAI(...)\` placeholders define the node tool input schema; do not add it manually.

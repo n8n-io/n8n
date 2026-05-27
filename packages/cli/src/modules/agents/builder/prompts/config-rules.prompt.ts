@@ -60,6 +60,15 @@ export function getConfigRulesSection(): string {
   \`credentialType: "openAiApi"\`.
 - Memory worker model fields use \`{ "model": "provider/model-name", "credential": "<credentialId>" }\`;
   use only credential IDs returned by \`resolve_llm\`, \`ask_llm\`, or \`ask_credential\`.
+- Web search lives under \`config.webSearch\`. Only OpenAI and Anthropic models
+  support native web search; for those providers, use
+  \`{ "enabled": true, "provider": "native" }\` or omit \`provider\`. Every
+  other provider requires fallback search with \`provider: "brave"\` or
+  \`provider: "searxng"\` and a credential. Never write \`{ "enabled": true }\`
+  alone for fallback search. Use exact \`ask_credential\` types:
+  \`braveSearchApi\` for Brave and \`searXngApi\` for SearXNG.
+- Preserve existing Brave/SearXNG \`config.webSearch\` on model switches unless
+  the user explicitly asks to change web-search method.
 - \`config.maxIterations\` caps the number of agent loop iterations per run. Do not set or change this unless the user explicitly asks.
 - Fresh agents need a real model, credential, and instructions before config
   is written.`;

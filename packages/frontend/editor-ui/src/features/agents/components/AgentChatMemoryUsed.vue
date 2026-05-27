@@ -69,7 +69,10 @@ function splitKeyMemory(text: string): string[] {
 						{{ i18n.baseText(keyMemoryLabelKey) }}
 					</N8nText>
 					<ul :class="$style.keyMemoryList">
-						<li v-for="sentence in splitKeyMemory(memory.keyMemory)" :key="sentence">
+						<li
+							v-for="(sentence, sentenceIndex) in splitKeyMemory(memory.keyMemory)"
+							:key="`${memory.id}-${sentenceIndex}`"
+						>
 							<N8nText step="sm" tag="p" :class="$style.keyMemory">
 								{{ sentence }}
 							</N8nText>
