@@ -171,7 +171,10 @@ const onModalOpenChange = (open: boolean) => {
 
 <template>
 	<div :class="$style.wrapper">
-		<ElRow :class="$style.customTelemetryTags" data-test-id="workflow-settings-custom-telemetry-tags">
+		<ElRow
+			:class="$style.customTelemetryTags"
+			data-test-id="workflow-settings-custom-telemetry-tags"
+		>
 			<ElCol :span="10" :class="$style.settingName">
 				<label>
 					{{ i18n.baseText('workflowSettings.customTelemetryTags.displayName') }}

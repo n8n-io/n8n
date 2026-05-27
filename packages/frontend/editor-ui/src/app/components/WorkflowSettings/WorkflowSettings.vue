@@ -3,11 +3,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, h } from 'v
 import { useRoute } from 'vue-router';
 import { useToast } from '@/app/composables/useToast';
 import { usePostHog } from '@/app/stores/posthog.store';
-import type {
-	ITimeoutHMS,
-	IWorkflowSettings,
-	IWorkflowShortResponse,
-} from '@/Interface';
+import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import Modal from '@/app/components/Modal.vue';
 import {
