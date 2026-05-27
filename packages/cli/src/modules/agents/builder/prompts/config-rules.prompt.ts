@@ -63,9 +63,7 @@ export function getSchemaReferenceSection(enabledModules: string[]): string {
 			mcpServers: true,
 		});
 	}
-	const jsonSchemaText = jsonSchemaToCompactText(
-		zodToJsonSchema(BuilderPromptAgentJsonConfigSchema) as JSONSchema7,
-	);
+	const jsonSchemaText = jsonSchemaToCompactText(zodToJsonSchema(zodSchema) as JSONSchema7);
 	return `\
 #### Config Schema Reference
 
