@@ -9,8 +9,6 @@ import { McpClient } from '../McpClient.node';
 import { getToolParameters } from '../resourceMapping';
 
 describe('McpClient', () => {
-	const getAuthHeaders = vi.spyOn(sharedUtils, 'getAuthHeaders');
-	const connectMcpClient = vi.spyOn(sharedUtils, 'connectMcpClient');
 	const mapToNodeOperationError = vi.spyOn(sharedUtils, 'mapToNodeOperationError');
 	const connectMcpClientForCredential = vi.spyOn(sharedUtils, 'connectMcpClientForCredential');
 	const executeFunctions = mockDeep<IExecuteFunctions>();
