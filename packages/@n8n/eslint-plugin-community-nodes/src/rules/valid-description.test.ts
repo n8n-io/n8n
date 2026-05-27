@@ -9,7 +9,7 @@ ruleTester.run('valid-description', ValidDescriptionRule, {
 		{
 			name: 'description is a non-empty string',
 			filename: 'package.json',
-			code: '{ "name": "n8n-nodes-example", "description": "Nodes for talking to Acme Corp\'s API" }',
+			code: '{ "name": "n8n-nodes-example", "description": "Node for talking to Acme Corp\'s API" }',
 		},
 		{
 			name: 'non-package.json file is ignored',

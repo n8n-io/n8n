@@ -32,6 +32,6 @@ The `n8n-nodes-starter` template ships with `"description": ""`, which is a comm
 ```json
 {
   "name": "n8n-nodes-acme",
-  "description": "n8n community nodes for the Acme Corp API"
+  "description": "n8n community node for the Acme Corp API"
 }
 ```
