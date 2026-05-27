@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
 
 interface StepperStep {
@@ -40,8 +39,10 @@ defineSlots<{
 
 			<div :class="[$style.content, showIndex ? null : $style.contentNoIndex]">
 				<div role="header" :class="$style.header">
-					<N8nHeading step="6">{{ step.title }}</N8nHeading>
-					<N8nText v-if="step.description" color="text-light" bold>{{ step.description }}</N8nText>
+					<N8nText step="sm" bold>{{ step.title }}</N8nText>
+					<N8nText v-if="step.description" step="sm" color="text-light">{{
+						step.description
+					}}</N8nText>
 				</div>
 				<slot :step="step" :index="index" />
 			</div>
@@ -108,7 +109,7 @@ defineSlots<{
 	display: flex;
 	flex-direction: column;
 	padding-inline: var(--spacing--sm);
-	padding-top: var(--spacing--2xs);
+	padding-top: var(--spacing--3xs);
 	padding-bottom: var(--spacing--lg);
 }
 .contentNoIndex {

@@ -328,9 +328,9 @@ function openChannelEdit(channelType: string) {
 }
 
 function handleChannelConnected(channelType: string) {
-	if (props.connectedTriggers.includes(channelType)) return;
-	emit('update:connected-triggers', [...props.connectedTriggers, channelType]);
-	emit('trigger-added', { triggerType: channelType, triggers: [...props.connectedTriggers, channelType] });
+	const triggers = Array.from(new Set([...props.connectedTriggers, channelType]));
+	emit('update:connected-triggers', triggers);
+	emit('trigger-added', { triggerType: channelType, triggers });
 }
 
 function handleChannelDisconnected(channelType: string) {

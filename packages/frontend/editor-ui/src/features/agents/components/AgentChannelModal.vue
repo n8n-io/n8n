@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
 	N8nButton,
+	N8nIconButton,
 	N8nDialog,
 	N8nDialogHeader,
 	N8nDialogTitle,
@@ -9,8 +10,12 @@ import {
 } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
+import { createSlackAgentApp } from '../composables/useAgentApi';
+import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
+import AgentChannelSlackSetup from './AgentChannelSlackSetup.vue';
 
 export type ChannelView =
 	| 'list'
@@ -39,7 +44,15 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const rootStore = useRootStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
+const { fetchStatus, isConnected: isIntegrationConnected } = useAgentIntegrationStatus(
+	props.projectId,
+	props.agentId,
+);
+
+const SLACK_APP_SETUP_POLL_INTERVAL_MS = 2000;
+const SLACK_APP_SETUP_TIMEOUT_MS = 2 * 60 * 1000;
 
 const currentView = ref<ChannelView>(props.view);
 
@@ -90,7 +103,7 @@ const headerText = computed(() => {
 });
 
 function isConnected(channelType: string): boolean {
-	return props.connectedChannels.includes(channelType);
+	return props.connectedChannels.includes(channelType) || isIntegrationConnected(channelType);
 }
 
 function goToSetup(channelType: string) {
@@ -107,6 +120,83 @@ function goBackToList() {
 
 function closeModal() {
 	emit('update:open', false);
+}
+
+function openSlackAppAuthorizationPopup(installUrl: string): Window | null {
+	const parsedUrl = new URL(installUrl);
+	if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+		throw new Error('Invalid Slack installation URL');
+	}
+
+	const params =
+		'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700,noopener';
+	return window.open(parsedUrl.toString(), 'Slack App Authorization', params);
+}
+
+async function waitForSlackAppSetupCompletion(popup: Window | null): Promise<boolean> {
+	return await new Promise((resolve) => {
+		const oauthChannel = new BroadcastChannel('oauth-callback');
+		let pollInFlight = false;
+		let settled = false;
+
+		const closePopup = () => {
+			if (!popup) return;
+			try {
+				popup.close();
+			} catch {}
+		};
+
+		const settle = (success: boolean) => {
+			if (settled) return;
+			settled = true;
+			window.clearInterval(pollInterval);
+			window.clearTimeout(timeout);
+			oauthChannel.close();
+			if (success) closePopup();
+			resolve(success);
+		};
+
+		const pollStatus = async () => {
+			if (pollInFlight || settled) return;
+			pollInFlight = true;
+			try {
+				await fetchStatus(['slack']);
+				if (isIntegrationConnected('slack')) settle(true);
+			} finally {
+				pollInFlight = false;
+			}
+		};
+
+		const pollInterval = window.setInterval(
+			() => void pollStatus(),
+			SLACK_APP_SETUP_POLL_INTERVAL_MS,
+		);
+		const timeout = window.setTimeout(() => settle(false), SLACK_APP_SETUP_TIMEOUT_MS);
+
+		oauthChannel.addEventListener('message', (event: MessageEvent) => {
+			settle(event.data === 'success');
+		});
+
+		void pollStatus();
+	});
+}
+
+async function setupSlackApp(appConfigurationToken: string): Promise<boolean> {
+	const { installUrl } = await createSlackAgentApp(
+		rootStore.restApiContext,
+		props.projectId,
+		props.agentId,
+		appConfigurationToken,
+	);
+	const popup = openSlackAppAuthorizationPopup(installUrl);
+	const connected = await waitForSlackAppSetupCompletion(popup);
+	if (!connected) {
+		throw new Error('Slack app installation was not completed');
+	}
+
+	await fetchStatus(['slack']);
+	emit('channel-connected', 'slack');
+	return true;
 }
 
 function handleDisconnected(channelType: string) {
@@ -127,24 +217,24 @@ watch(
 <template>
 	<N8nDialog
 		:open="open"
-		size="xlarge"
-		:class="$style.dialog"
+		size="2xlarge"
 		@interact-outside="(e) => e.preventDefault()"
 		@update:open="$emit('update:open', $event)"
 	>
 		<N8nDialogHeader :class="$style.customHeader">
-			<N8nButton
+			<N8nIconButton
 				v-if="currentView !== 'list'"
 				variant="ghost"
 				size="small"
-				:icon-only="true"
+				icon-size="medium"
+				icon="arrow-left"
 				:class="$style.backButton"
 				@click="goBackToList"
 			>
 				<template #icon>
 					<N8nIcon icon="arrow-left" size="small" />
 				</template>
-			</N8nButton>
+			</N8nIconButton>
 			<div :class="$style.headerTitle">
 				<N8nIcon
 					v-if="currentIntegration?.icon"
@@ -157,8 +247,8 @@ watch(
 
 		<div :class="$style.container">
 			<div v-if="currentView === 'list'" :class="$style.listView">
-				<div :class="$style.channelList">
-					<div v-for="integration in catalog" :key="integration.type" :class="$style.channelItem">
+				<ul :class="$style.channelList">
+					<li v-for="integration in catalog" :key="integration.type" :class="$style.channelItem">
 						<div :class="$style.iconWrapper">
 							<N8nIcon
 								:icon="integration.icon ? toIconName(integration.icon) : 'zap'"
@@ -167,10 +257,10 @@ watch(
 							/>
 						</div>
 						<div :class="$style.content">
-							<N8nText :class="$style.name" size="small" color="text-dark">
+							<N8nText :class="$style.name" size="medium" bold color="text-dark">
 								{{ integration.label }}
 							</N8nText>
-							<N8nText :class="$style.description" size="small" color="text-light">
+							<N8nText :class="$style.description" size="medium" color="text-light">
 								{{
 									i18n.baseText('agents.channels.modal.connectDescription', {
 										interpolate: { channel: integration.label },
@@ -192,16 +282,21 @@ watch(
 									{{ i18n.baseText('generic.disconnect') }}
 								</N8nButton>
 							</template>
-							<N8nButton v-else variant="subtle" size="small" @click="goToSetup(integration.type)">
+							<N8nButton v-else variant="subtle" size="medium" @click="goToSetup(integration.type)">
 								{{ i18n.baseText('generic.connect') }}
 							</N8nButton>
 						</div>
-					</div>
-				</div>
+					</li>
+				</ul>
 			</div>
 
 			<div v-else-if="isSetupMode" :class="$style.setupView">
-				<N8nText size="small" color="text-light">
+				<AgentChannelSlackSetup
+					v-if="selectedChannelType === 'slack'"
+					:connected="isConnected('slack')"
+					:setup-slack-app="setupSlackApp"
+				/>
+				<N8nText v-else size="small" color="text-light">
 					{{
 						i18n.baseText('agents.channels.modal.setupPlaceholder', {
 							interpolate: { channel: selectedChannelType ?? '' },
@@ -236,16 +331,22 @@ watch(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	height: 300px;
+	min-height: var(--height--5xl);
+	aspect-ratio: 16/9;
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: transparent tra;
 }
 
 .customHeader {
 	flex-direction: row;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--md);
+	padding-inline: var(--spacing--lg);
 	padding-bottom: var(--spacing--md);
 	height: var(--height--2xl);
+	border-bottom: var(--border);
+	margin-inline: calc(var(--spacing--lg) * -1);
 }
 
 .headerTitle {
@@ -253,10 +354,6 @@ watch(
 	align-items: center;
 	gap: var(--spacing--2xs);
 	text-transform: capitalize;
-}
-
-.backButton {
-	margin-left: calc(var(--spacing--2xs) * -1);
 }
 
 .listView {
@@ -267,6 +364,7 @@ watch(
 .channelList {
 	display: flex;
 	flex-direction: column;
+	padding-block: var(--spacing--xs);
 }
 
 .channelItem {
