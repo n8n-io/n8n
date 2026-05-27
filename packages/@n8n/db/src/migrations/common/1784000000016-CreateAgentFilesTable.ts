@@ -1,5 +1,3 @@
-import { TableCheck } from '@n8n/typeorm';
-
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const binaryDataTableName = 'binary_data';
@@ -43,17 +41,10 @@ export class CreateAgentFilesTable1784000000016 implements ReversibleMigration {
 	}
 
 	private async replaceSourceTypeCheck(
-		{ schemaBuilder: { dropEnumCheck }, queryRunner, tablePrefix }: MigrationContext,
+		{ schemaBuilder: { addEnumCheck, dropEnumCheck } }: MigrationContext,
 		sourceTypes: string[],
 	) {
 		await dropEnumCheck(binaryDataTableName, sourceTypeColumn);
-		const escapedValues = sourceTypes.map((sourceType) => `'${sourceType}'`).join(', ');
-		await queryRunner.createCheckConstraint(
-			`${tablePrefix}${binaryDataTableName}`,
-			new TableCheck({
-				name: `CHK_${tablePrefix}${binaryDataTableName}_${sourceTypeColumn}`,
-				expression: `${queryRunner.connection.driver.escape(sourceTypeColumn)} IN (${escapedValues})`,
-			}),
-		);
+		await addEnumCheck(binaryDataTableName, sourceTypeColumn, sourceTypes);
 	}
 }
