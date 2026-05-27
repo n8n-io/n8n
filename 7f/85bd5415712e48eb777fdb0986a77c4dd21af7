@@ -1,0 +1,49 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_9b0cd3319eda75::t_da716d6ad60d61 1306-1309
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_9b0cd3319eda75::t_f8a6f43cd8083e 466,478,481,493
+  s_9b0cd3319eda75::t_38b4e46048375b 506,511
+  s_9b0cd3319eda75::t_31887b715f2c2b 1413-1483,1485-1501
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
+  s_9b0cd3319eda75::t_ed56f6ad2a99ec 52
+  s_9b0cd3319eda75::t_86f961ca3d1ee2 590
+  s_9b0cd3319eda75::t_ff23d55a560639 589
+  s_9b0cd3319eda75::t_da2f648cf738ef 418-440
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9b0cd3319eda75::t_f8043d9e442b5e 3701
+  s_9b0cd3319eda75::t_499766f2332aef 1129-1131,1133
+  s_9b0cd3319eda75::t_7e583faf6e0b0c 1132
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_9b0cd3319eda75::t_0c4a53d7e0618a 1064-1067,1071-1073
+  s_9b0cd3319eda75::t_6099b3006960fd 908-910,912-931,936-939,942-961
+  s_9b0cd3319eda75::t_2c5cf2927a0585 176-187
+  s_9b0cd3319eda75::t_e7415f6b1e39bf 1074-1075
+  s_9b0cd3319eda75::t_f62eb55f2cd01e 941
+  s_9b0cd3319eda75::t_81605d1a467637 1087-1090,1092-1094
+  s_9b0cd3319eda75::t_927316a52320e0 1091
+  s_9b0cd3319eda75::t_8beee7f713b4b6 940
+  s_9b0cd3319eda75::t_42e5436b28547e 872,876
+  s_9b0cd3319eda75::t_db226aa3a2d49d 932-935
+  s_9b0cd3319eda75::t_f7808117eb7d69 1076-1086
+  s_9b0cd3319eda75::t_0a3239dc53b068 1069
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.test.ts
+  s_9b0cd3319eda75::t_8ade64bbd255ae 1,21-22,24,26-34
+  s_9b0cd3319eda75::t_f29b386eb6b406 67-72
+  s_9b0cd3319eda75::t_b0b9f8011afb7b 805-968
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7f85bd5415712e48eb777fdb0986a77c4dd21af7",
+  "prompts": {},
+  "sessions": {
+    "s_9b0cd3319eda75": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "426df26e-4bd6-4a28-933c-ed188af1d124",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
