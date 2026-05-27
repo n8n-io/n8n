@@ -31,7 +31,8 @@
     "watch": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --watch",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:dev": "vitest --watch"
+    "test:dev": "vitest --watch",
+    "mutate": "node scripts/mutate.mjs"
   },
   "files": [
     "dist/**/*"
@@ -41,6 +42,8 @@
     "@n8n/config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@stryker-mutator/core": "catalog:",
+    "@stryker-mutator/vitest-runner": "catalog:",
     "@types/express": "catalog:",
     "@types/jmespath": "^0.15.0",
     "@types/lodash": "catalog:",
