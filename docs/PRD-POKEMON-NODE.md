@@ -76,7 +76,11 @@ This is a deliberate design choice — the list endpoint only returns stubs, and
 
 ## Data Shapes
 
-### Get Many Output
+The following are example JSON outputs that the node produces. These show the structure and fields a user will see in the n8n output panel after executing the node.
+
+### Get Many — Example Output
+Each item in the output represents one Pokémon stub. The list endpoint only returns names and URLs — not full details. Users chain this with the Get operation to enrich results.
+
 ```json
 [
   { "name": "bulbasaur", "url": "https://pokeapi.co/api/v2/pokemon/1/" },
@@ -84,7 +88,9 @@ This is a deliberate design choice — the list endpoint only returns stubs, and
 ]
 ```
 
-### Get Output (Simplified, default)
+### Get (Simplified) — Example Output
+When Simplify is enabled (default), the node extracts the most useful fields from the ~200KB raw API response into a clean, flat structure. This is what most workflow builders will use.
+
 ```json
 {
   "id": 25,
@@ -107,11 +113,28 @@ This is a deliberate design choice — the list endpoint only returns stubs, and
 }
 ```
 
-### Get Output (Full, simplify=false)
-Raw PokeAPI response (~200KB including moves array).
+### Get (Full) — Example Output
+When Simplify is disabled, the node returns the complete PokeAPI response (~200KB, 1000+ lines). Includes the full moves array, game indices, held items, and all sprite variants. Useful when users need data not in the simplified view.
 
-## Node UI
+## Node in the Visual Editor
 
+### On the Canvas
+The Pokemon node appears as a standard n8n node card on the workflow canvas. Users find it by:
+- Clicking the **+** button on any node output
+- Searching "Pokemon" or "PokeAPI" in the node picker
+- Browsing the "Input" category in the palette
+
+On the canvas, the node shows:
+```
+┌──────────────────┐
+│  🔴 Pokemon      │
+│  Get: Pokemon    │  ← subtitle shows current operation
+└──────────────────┘
+```
+
+### Configuration Panel (opens on click)
+
+**Get operation:**
 ```
 ┌─────────────────────────────────┐
 │ Pokemon                    🔴⚪  │
@@ -126,7 +149,10 @@ Raw PokeAPI response (~200KB including moves array).
 │   "Return simplified version    │
 │    instead of raw data"         │
 └─────────────────────────────────┘
+```
 
+**Get Many operation:**
+```
 ┌─────────────────────────────────┐
 │ Pokemon                    🔴⚪  │
 ├─────────────────────────────────┤
@@ -138,6 +164,58 @@ Raw PokeAPI response (~200KB including moves array).
 │    use Get for full details."   │
 └─────────────────────────────────┘
 ```
+
+## Workflow Patterns — How Users Actually Use This Node
+
+### Pattern 1: Quick Lookup (simplest)
+A user wants to look up a single Pokémon's stats. One node, immediate result.
+
+```
+[Manual Trigger] → [Pokemon: Get "pikachu"] → [Output]
+```
+The user clicks Execute, gets Pikachu's stats, types, abilities, and sprite in the output panel. Done.
+
+### Pattern 2: List and Enrich (composable)
+A user wants full details for the first 10 Pokémon. This is the core composable pattern — the reason Get Many and Get are separate operations.
+
+```
+[Manual Trigger] → [Pokemon: Get Many (limit=10)] → [Loop Over Items] → [Pokemon: Get (name={{$json.name}})] → [Collect Results]
+```
+Get Many returns 10 `{name, url}` stubs. The loop feeds each name into Get, which returns full details. The output is 10 fully enriched Pokémon.
+
+### Pattern 3: Webhook-Triggered API
+A user builds an API that returns Pokémon data on demand — other services call their n8n webhook.
+
+```
+[Webhook: /pokemon/:name] → [Pokemon: Get (name={{$json.params.name}})] → [Respond to Webhook]
+```
+External services POST to the webhook with a Pokémon name, get back structured data. Simplify mode keeps the response clean.
+
+### Pattern 4: Scheduled Pokédex Builder
+A user builds a daily digest of random Pokémon for a Slack channel or email.
+
+```
+[Schedule Trigger: daily] → [Pokemon: Get Many (limit=5)] → [Loop] → [Pokemon: Get] → [Slack: Post Message]
+```
+Every morning, fetch 5 Pokémon, enrich with full details, post to Slack with sprites and stats.
+
+### Pattern 5: AI Agent Tool Use
+An AI agent in n8n can use the Pokémon node as a tool to answer user questions about Pokémon.
+
+```
+[Chat Trigger] → [AI Agent (tools: Pokemon node)] → [Chat Response]
+```
+User asks "What type is Charizard?" → AI agent calls Pokemon Get("charizard") → reads types → responds "Charizard is Fire/Flying type."
+
+The `usableAsTool: true` flag and descriptive `action` strings make this work — the AI agent reads the node description to decide which operation to call.
+
+### Pattern 6: Data Pipeline with Expressions
+Advanced users use n8n expressions to dynamically set parameters from upstream data.
+
+```
+[Google Sheets: Read Row] → [Pokemon: Get (name={{$json.pokemon_name}})] → [Google Sheets: Update Row]
+```
+Read a spreadsheet of Pokémon names, look up each one, write stats back to the sheet. The `nameOrId` field accepts expressions, so the value comes from the upstream node.
 
 ## Success Metrics (for take-home evaluation)
 
