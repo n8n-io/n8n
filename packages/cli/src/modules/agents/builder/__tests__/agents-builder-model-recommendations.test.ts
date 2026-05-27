@@ -91,6 +91,7 @@ function buildPrompt(modelRecommendationsSection: string | null) {
 		toolList: '(none)',
 		agentPreviewPath: '/projects/project-1/agents/agent-1/preview',
 		modelRecommendationsSection,
+		enabledModules: [],
 	});
 }
 
@@ -158,14 +159,14 @@ describe('builder model recommendations', () => {
 	});
 
 	it('registers only optional builder runtime skills', () => {
-		expect(getBuilderRuntimeSkills().map((skill) => skill.id)).toEqual([
+		expect(getBuilderRuntimeSkills({ enabledModules: [] }).map((skill) => skill.id)).toEqual([
 			'agent-builder-integrations',
 			'agent-builder-target-skills',
 		]);
 	});
 
 	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {
-		const integrationsSkill = getBuilderRuntimeSkills().find(
+		const integrationsSkill = getBuilderRuntimeSkills({ enabledModules: [] }).find(
 			(skill) => skill.id === 'agent-builder-integrations',
 		);
 
