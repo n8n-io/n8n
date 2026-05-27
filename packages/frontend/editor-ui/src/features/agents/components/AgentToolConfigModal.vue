@@ -290,6 +290,7 @@ function handleNodeNameUpdate(name: string) {
 							:initial-node="initialNode"
 							:existing-tool-names="data.existingToolNames"
 							:project-id="data.projectId"
+							content-test-id="node-tool-settings-content"
 							@update:valid="handleValidUpdate"
 							@update:node-name="handleNodeNameUpdate"
 						/>
