@@ -5,8 +5,7 @@ function entry(overrides: Partial<ObservationLogEntry> = {}): ObservationLogEntr
 	const marker: ObservationLogMarker = overrides.marker ?? 'important';
 	return {
 		id: overrides.id ?? crypto.randomUUID(),
-		scopeKind: overrides.scopeKind ?? 'thread',
-		scopeId: overrides.scopeId ?? 'thread-1',
+		observationScopeId: overrides.observationScopeId ?? 'thread-1',
 		marker,
 		text: overrides.text ?? 'User chose the observation log model.',
 		parentId: overrides.parentId ?? null,
@@ -40,12 +39,15 @@ describe('renderObservationLog', () => {
 
 		expect(renderObservationLog([child, dropped, parent])).toBe(
 			[
+				'<observations>',
 				'## Memory',
 				'',
 				'The following is your memory of this conversation. It accumulates as observations are made. Older entries may have been merged or dropped during periodic restructuring.',
+				'Marker legend: CRITICAL = must retain, IMPORTANT = useful continuity, INFO = contextual detail, COMPLETION = completed/resolved.',
 				'',
-				'* 🟡 (14:30) User is rebuilding observational memory.',
-				'  * ✅ (14:31) Plan 4 was completed.',
+				'* IMPORTANT (14:30) User is rebuilding observational memory.',
+				'  * COMPLETION (14:31) Plan 4 was completed.',
+				'</observations>',
 			].join('\n'),
 		);
 	});
@@ -66,11 +68,26 @@ describe('renderObservationLog', () => {
 
 		const rendered = renderObservationLog([kept, skipped], { renderTokenBudget: 3 });
 
-		expect(rendered).toContain('* 🔴 (14:30) User wants the SDK to stay unopinionated.');
+		expect(rendered).toContain('<observations>');
+		expect(rendered).toContain('</observations>');
+		expect(rendered).toContain('* CRITICAL (14:30) User wants the SDK to stay unopinionated.');
 		expect(rendered).not.toContain('This entry no longer fits.');
 	});
 
 	it('returns null when no active observations fit', () => {
 		expect(renderObservationLog([entry({ tokenCount: 2 })], { renderTokenBudget: 1 })).toBeNull();
+	});
+
+	it('does not render a child as a root when its parent is outside the budget', () => {
+		const parent = entry({ id: 'parent', tokenCount: 3 });
+		const child = entry({
+			id: 'child',
+			parentId: parent.id,
+			text: 'This child would fit alone.',
+			tokenCount: 1,
+			createdAt: new Date(2026, 4, 12, 14, 31),
+		});
+
+		expect(renderObservationLog([parent, child], { renderTokenBudget: 1 })).toBeNull();
 	});
 });

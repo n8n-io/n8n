@@ -1,5 +1,5 @@
 /**
- * Upsert contract: after a HITL suspend/resume cycle backed by SqliteMemory,
+ * Upsert contract: after a HITL suspend/resume cycle backed by in-memory storage,
  * the thread must contain exactly ONE assistant message with the tool-call
  * block (no duplicate rows), and that block must have state: 'resolved'.
  *
@@ -15,14 +15,14 @@
 import { afterEach, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { describeIf, createSqliteMemory, getModel } from './helpers';
+import { describeIf, createInMemoryAgentMemory, getModel } from './helpers';
 import { Agent, filterLlmMessages, Memory, Tool } from '../../index';
 import type { AgentDbMessage } from '../../index';
 import type { ContentToolCall, Message } from '../../types/sdk/message';
 
 const describe = describeIf('anthropic');
 
-describe('tool-call upsert via suspend/resume (SqliteMemory)', () => {
+describe('tool-call upsert via suspend/resume (in-memory storage)', () => {
 	const cleanups: Array<() => void> = [];
 
 	afterEach(() => {
@@ -36,7 +36,9 @@ describe('tool-call upsert via suspend/resume (SqliteMemory)', () => {
 		);
 	}
 
-	function buildInterruptibleAgent(memory: ReturnType<typeof createSqliteMemory>['memory']): Agent {
+	function buildInterruptibleAgent(
+		memory: ReturnType<typeof createInMemoryAgentMemory>['memory'],
+	): Agent {
 		const deleteTool = new Tool('delete_file')
 			.description('Delete a file at the given path')
 			.input(z.object({ path: z.string().describe('File path to delete') }))
@@ -62,7 +64,7 @@ describe('tool-call upsert via suspend/resume (SqliteMemory)', () => {
 	}
 
 	it('after resume, thread has exactly one resolved tool-call block (no duplicate rows)', async () => {
-		const { memory, cleanup } = createSqliteMemory();
+		const { memory, cleanup } = createInMemoryAgentMemory();
 		cleanups.push(cleanup);
 
 		const threadId = 'thread-upsert-resolved';
@@ -72,7 +74,7 @@ describe('tool-call upsert via suspend/resume (SqliteMemory)', () => {
 		const agent = buildInterruptibleAgent(memory);
 
 		// Turn 1: trigger the suspend — messages with pending tool-call are
-		// stored in the checkpoint only, NOT in SqliteMemory yet.
+		// stored in the checkpoint only, NOT in memory yet.
 		const suspendResult = await agent.generate('Please delete /tmp/foo.txt', {
 			persistence,
 		});
@@ -118,7 +120,7 @@ describe('tool-call upsert via suspend/resume (SqliteMemory)', () => {
 	});
 
 	it('after resume with denial, thread has exactly one resolved tool-call block', async () => {
-		const { memory, cleanup } = createSqliteMemory();
+		const { memory, cleanup } = createInMemoryAgentMemory();
 		cleanups.push(cleanup);
 
 		const threadId = 'thread-upsert-denied';
@@ -164,7 +166,7 @@ describe('tool-call upsert via suspend/resume (SqliteMemory)', () => {
 	});
 
 	it('if same thread is resumed twice (re-suspend then resume again), still no duplicate rows', async () => {
-		const { memory, cleanup } = createSqliteMemory();
+		const { memory, cleanup } = createInMemoryAgentMemory();
 		cleanups.push(cleanup);
 
 		const threadId = 'thread-upsert-double';

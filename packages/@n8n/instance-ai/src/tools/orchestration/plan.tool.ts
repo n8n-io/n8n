@@ -1,21 +1,21 @@
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { taskListSchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { PlanValidationError } from '../../planned-tasks/planned-task-service';
-import type { OrchestrationContext, PlannedTask } from '../../types';
+import { PLANNED_TASK_KINDS, type OrchestrationContext, type PlannedTask } from '../../types';
 
 const plannedTaskSchema = z.object({
 	id: z.string().describe('Stable task identifier used by dependency edges'),
 	title: z.string().describe('Short user-facing task title'),
-	kind: z.enum(['delegate', 'build-workflow', 'manage-data-tables', 'research', 'checkpoint']),
+	kind: z.enum(PLANNED_TASK_KINDS),
 	spec: z.string().describe('Detailed executor briefing for this task'),
 	deps: z
 		.array(z.string())
 		.describe(
 			'Task IDs that must succeed before this task can start. ' +
-				'Data stores before workflows that use them; independent workflows in parallel.',
+				'Workflows that consume outputs depend on workflows that produce them; independent workflows run in parallel.',
 		),
 	tools: z.array(z.string()).optional().describe('Required tool subset for delegate tasks'),
 	workflowId: z
@@ -90,31 +90,34 @@ const planOutputSchema = z.object({
 export const planResumeSchema = z.object({
 	approved: z.boolean(),
 	userInput: z.string().optional(),
+	denied: z.boolean().optional(),
 });
 
 export function createPlanTool(context: OrchestrationContext) {
-	return createTool({
-		id: 'create-tasks',
-		description:
+	return new Tool('create-tasks')
+		.description(
 			'Submit a pre-built task list for detached multi-step execution. ' +
-			'Use ONLY for replanning after a failure — when you already have the task context ' +
-			'and do not need resource discovery. For initial planning, call `plan` instead. ' +
-			'A runtime guard rejects this tool when no replan context (`<planned-task-follow-up type="replan">`) ' +
-			'is present; if you intentionally need to bypass the planner, set `skipPlannerDiscovery: true` ' +
-			'and pass a one-sentence `reason`. ' +
-			'The task list is shown to the user for approval before execution starts. ' +
-			'After calling create-tasks, reply briefly and end your turn.',
-		inputSchema: planInputSchema,
-		outputSchema: planOutputSchema,
-		suspendSchema: z.object({
-			requestId: z.string(),
-			message: z.string(),
-			severity: z.literal('info'),
-			inputType: z.literal('plan-review'),
-			tasks: taskListSchema,
-		}),
-		resumeSchema: planResumeSchema,
-		execute: async (input: z.infer<typeof planInputSchema>, ctx) => {
+				'Use ONLY for replanning after a failure — when you already have the task context ' +
+				'and do not need resource discovery. For initial planning, call `plan` instead. ' +
+				'A runtime guard rejects this tool when no replan context (`<planned-task-follow-up type="replan">`) ' +
+				'is present; if you intentionally need to bypass the planner, set `skipPlannerDiscovery: true` ' +
+				'and pass a one-sentence `reason`. ' +
+				'The task list is shown to the user for approval before execution starts. ' +
+				'After calling create-tasks, reply briefly and end your turn.',
+		)
+		.input(planInputSchema)
+		.output(planOutputSchema)
+		.suspend(
+			z.object({
+				requestId: z.string(),
+				message: z.string(),
+				severity: z.literal('info'),
+				inputType: z.literal('plan-review'),
+				tasks: taskListSchema,
+			}),
+		)
+		.resume(planResumeSchema)
+		.handler(async (input: z.infer<typeof planInputSchema>, ctx) => {
 			if (!context.plannedTaskService || !context.schedulePlannedTasks) {
 				return {
 					result: 'Planning failed: planned task scheduling is not available.',
@@ -122,8 +125,30 @@ export function createPlanTool(context: OrchestrationContext) {
 				};
 			}
 
-			const resumeData = ctx?.agent?.resumeData as z.infer<typeof planResumeSchema> | undefined;
-			const suspend = ctx?.agent?.suspend;
+			const resumeData = ctx.resumeData;
+			const isFirstCall = resumeData === undefined || resumeData === null;
+
+			// Same-turn denial guard: if the user denied a plan earlier in this
+			// message group, refuse to start a new one within the same turn.
+			// Only applies on the initial call — resumes are valid continuations
+			// of an already-suspended invocation (including the denial path itself).
+			if (isFirstCall && context.messageGroupId) {
+				const existing = await context.plannedTaskService.getGraph(context.threadId);
+				if (
+					existing?.status === 'cancelled' &&
+					existing.messageGroupId === context.messageGroupId
+				) {
+					context.logger.info('create-tasks blocked: user denied a plan earlier in this turn', {
+						threadId: context.threadId,
+						messageGroupId: context.messageGroupId,
+					});
+					return {
+						result:
+							'The user denied a plan earlier in this turn. Do not invoke create-tasks again — acknowledge briefly and wait for the next user message.',
+						taskCount: 0,
+					};
+				}
+			}
 
 			// Replan-only guard: reject initial-planning misuse on the first call.
 			// Legitimate callers pass the guard when any of these hold:
@@ -131,7 +156,6 @@ export function createPlanTool(context: OrchestrationContext) {
 			//   - the thread already has a planned-task graph (revision loop after a
 			//     user rejection, or replan after a failed background task)
 			//   - the orchestrator opts in with `skipPlannerDiscovery: true` + a `reason`
-			const isFirstCall = resumeData === undefined || resumeData === null;
 			const hasExistingPlan = await threadHasExistingPlan(context);
 			if (isFirstCall && isReplanGuardEnabled() && !isReplanContext(context) && !hasExistingPlan) {
 				if (!input.skipPlannerDiscovery) {
@@ -206,15 +230,13 @@ export function createPlanTool(context: OrchestrationContext) {
 				});
 
 				// Suspend — frontend renders plan review UI
-				await suspend?.({
+				return await ctx.suspend({
 					requestId: nanoid(),
 					message: `Review the plan (${input.tasks.length} task${input.tasks.length === 1 ? '' : 's'}) before execution starts.`,
 					severity: 'info' as const,
 					inputType: 'plan-review' as const,
 					tasks: { tasks: taskItems },
 				});
-				// suspend() never resolves
-				return { result: 'Awaiting approval', taskCount: input.tasks.length };
 			}
 
 			// User approved — flip graph status from awaiting_approval → active,
@@ -228,15 +250,9 @@ export function createPlanTool(context: OrchestrationContext) {
 				};
 			}
 
-			// User rejected or requested changes. Reset the UI checklist so the
-			// rejected plan's "todo" items don't linger on screen, but keep the
-			// persisted graph in `awaiting_approval` so the LLM's next
-			// `create-tasks` revision passes the replan guard via
-			// `threadHasExistingPlan` (scoped to the current runId). The
-			// scheduler ignores `awaiting_approval` graphs, so leaving the graph
-			// in place can't dispatch the rejected plan; the next createPlan
-			// call overwrites it with the revised tasks.
-			// Best-effort: a storage failure here must not abort the revision flow.
+			// Reset the UI checklist so the rejected plan's "todo" items don't
+			// linger on screen. Best-effort: a storage failure here must not
+			// abort the rejection / denial flow.
 			try {
 				await context.taskStorage.save(context.threadId, { tasks: [] });
 			} catch (error) {
@@ -248,10 +264,30 @@ export function createPlanTool(context: OrchestrationContext) {
 				agentId: context.orchestratorAgentId,
 				payload: { tasks: { tasks: [] }, planItems: [] },
 			});
+
+			// User denied the plan outright. Cancel the graph so the next
+			// `create-tasks` call goes through the fresh-plan path instead of
+			// being treated as a revision, and tell the LLM to stop.
+			if (resumeData.denied) {
+				await context.plannedTaskService.denyPlan(context.threadId);
+				return {
+					result:
+						'User denied the plan. Do not revise or call create-tasks again — acknowledge and wait for new instructions.',
+					taskCount: 0,
+				};
+			}
+
+			// User requested changes. Keep the persisted graph in
+			// `awaiting_approval` so the LLM's next `create-tasks` revision
+			// passes the replan guard via `threadHasExistingPlan` (scoped to
+			// the current runId). The scheduler ignores `awaiting_approval`
+			// graphs, so leaving the graph in place can't dispatch the
+			// rejected plan; the next createPlan call overwrites it with the
+			// revised tasks.
 			return {
 				result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Revise the tasks and call create-tasks again.`,
 				taskCount: 0,
 			};
-		},
-	});
+		})
+		.build();
 }

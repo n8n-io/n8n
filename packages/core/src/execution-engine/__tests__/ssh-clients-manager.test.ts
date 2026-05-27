@@ -17,11 +17,14 @@ const credentials: SSHCredentials = {
 };
 
 let sshClientsManager: SSHClientsManager;
-const connectSpy = jest.spyOn(Client.prototype, 'connect');
-const endSpy = jest.spyOn(Client.prototype, 'end');
+let connectSpy: jest.SpyInstance;
+let endSpy: jest.SpyInstance;
 
 beforeEach(() => {
 	jest.clearAllMocks();
+
+	connectSpy = jest.spyOn(Client.prototype, 'connect');
+	endSpy = jest.spyOn(Client.prototype, 'end');
 
 	sshClientsManager = new SSHClientsManager(
 		mock({ idleTimeout }),

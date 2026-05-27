@@ -94,7 +94,7 @@ const i18n = useI18n();
 							:disabled="childrenDisabled"
 							:project-id="projectId"
 							:agent-id="agentId"
-							:is-published="Boolean(agent?.publishedVersion)"
+							:is-published="Boolean(agent?.activeVersionId)"
 							@open-tool="emit('open-tool', $event)"
 							@open-skill="emit('open-skill', $event)"
 							@open-trigger="emit('open-trigger', $event)"
@@ -121,6 +121,7 @@ const i18n = useI18n();
 							:config="localConfig"
 							:disabled="childrenDisabled"
 							embedded
+							data-testid="agent-memory-panel"
 							@update:config="emit('update:config', $event)"
 						/>
 					</N8nCard>

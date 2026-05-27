@@ -27,6 +27,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
 	DEBOUNCE_TIME,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
@@ -63,6 +64,8 @@ import type {
 } from '@/Interface';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT } from '@/app/constants/experiments';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -150,6 +153,7 @@ const uiStore = useUIStore();
 const tagsStore = useTagsStore();
 const foldersStore = useFoldersStore();
 const favoritesStore = useFavoritesStore();
+const posthogStore = usePostHog();
 const usageStore = useUsageStore();
 const insightsStore = useInsightsStore();
 const aiStarterTemplatesStore = useAITemplatesStarterCollectionStore();
@@ -286,11 +290,22 @@ const foldersEnabled = computed(() => {
 	return settingsStore.isFoldersFeatureEnabled;
 });
 
-const mcpModuleEnabled = computed(() => settingsStore.isModuleActive('mcp'));
+const mcpModuleActive = computed(() => settingsStore.isModuleActive('mcp'));
 
 const mcpEnabled = computed(() => {
-	return mcpModuleEnabled.value && settingsStore.moduleSettings.mcp?.mcpAccessEnabled;
+	return mcpModuleActive.value && settingsStore.moduleSettings.mcp?.mcpAccessEnabled;
 });
+
+const canManageInstanceMcp = computed(() =>
+	hasPermission(['rbac'], { rbac: { scope: ['mcp:manage'] } }),
+);
+
+const isWorkflowCardMcpToggleEnabled = computed(() =>
+	posthogStore.isVariantEnabled(
+		WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT.name,
+		WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT.variant,
+	),
+);
 
 const showFolders = computed(() => {
 	return foldersEnabled.value && !projectPages.isOverviewSubPage && !projectPages.isSharedSubPage;
@@ -428,7 +443,7 @@ const mcpAccessScope = computed<McpAccessScope | null>(() => {
 
 const showMcpAccessActions = computed(
 	() =>
-		mcpModuleEnabled.value &&
+		mcpModuleActive.value &&
 		mcpAccessScope.value !== null &&
 		!projectPages.isOverviewSubPage &&
 		!projectPages.isSharedSubPage &&
@@ -2343,6 +2358,9 @@ const onNameSubmit = async (name: string) => {
 					:are-folders-enabled="settingsStore.isFoldersFeatureEnabled"
 					:are-tags-enabled="settingsStore.areTagsEnabled"
 					:is-mcp-enabled="mcpEnabled"
+					:is-mcp-module-active="mcpModuleActive"
+					:can-manage-instance-mcp="canManageInstanceMcp"
+					:is-workflow-card-mcp-toggle-enabled="isWorkflowCardMcpToggleEnabled"
 					@click:tag="onClickTag"
 					@workflow:deleted="refreshWorkflows"
 					@workflow:archived="refreshWorkflows"

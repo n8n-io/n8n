@@ -18,8 +18,7 @@ export function useCanvasNode() {
 				typeVersion: 1,
 				disabled: false,
 				connections: { [CanvasConnectionMode.Input]: {}, [CanvasConnectionMode.Output]: {} },
-				issues: { execution: [], validation: [], visible: false },
-				pinnedData: { count: 0, visible: false },
+				issues: { validation: [], visible: false },
 				execution: {
 					running: false,
 				},
@@ -42,14 +41,8 @@ export function useCanvasNode() {
 	const isReadOnly = computed(() => node?.readOnly.value);
 	const isSelected = computed(() => node?.selected.value);
 
-	const pinnedDataCount = computed(() => data.value.pinnedData.count);
-	const hasPinnedData = computed(() => data.value.pinnedData.count > 0);
-
-	const issues = computed(() => [...data.value.issues.execution, ...data.value.issues.validation]);
-	const executionErrors = computed(() => data.value.issues.execution ?? []);
 	const validationErrors = computed(() => data.value.issues.validation ?? []);
 	const hasIssues = computed(() => data.value.issues.visible);
-	const hasExecutionErrors = computed(() => data.value.issues.execution.length > 0);
 	const hasValidationErrors = computed(() => data.value.issues.validation.length > 0);
 
 	const executionStatus = computed(() => data.value.execution.status);
@@ -83,16 +76,11 @@ export function useCanvasNode() {
 		isDisabled,
 		isReadOnly,
 		isSelected,
-		pinnedDataCount,
-		hasPinnedData,
 		runDataIterations,
 		runDataOutputMap,
 		hasRunData,
-		issues,
-		executionErrors,
 		validationErrors,
 		hasIssues,
-		hasExecutionErrors,
 		hasValidationErrors,
 		executionStatus,
 		executionWaiting,

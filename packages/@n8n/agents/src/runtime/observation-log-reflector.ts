@@ -1,56 +1,48 @@
+import { uniqueStrings } from './memory-lifecycle';
+import type { AgentExecutionCounter } from '../types/sdk/agent';
 import type {
 	BuiltObservationLogStore,
 	ObservationLogEntry,
+	ObservationLogReflectFn,
+	ObservationLogReflectorInput,
 	ObservationLogMarker,
 	ObservationLogMerge,
 	ObservationLogReflection,
 	ObservationLogReflectionResult,
-	ObservationLogScopeKind,
 	TokenCounter,
 } from '../types/sdk/observation-log';
 import { estimateObservationTokens } from '../types/sdk/observation-log';
 
-const MARKER_SYMBOLS: Record<ObservationLogMarker, string> = {
-	critical: '🔴',
-	important: '🟡',
-	info: '🟢',
-	completion: '✅',
+export type { ObservationLogReflectFn, ObservationLogReflectorInput };
+
+const MARKER_LABELS: Record<ObservationLogMarker, string> = {
+	critical: 'CRITICAL',
+	important: 'IMPORTANT',
+	info: 'INFO',
+	completion: 'COMPLETION',
 };
 
 const REFLECTOR_OVER_BUDGET_WARNING =
 	'Observation log remains over reflector budget after reflection';
 
-export interface ObservationLogReflectorInput {
-	scopeKind: ObservationLogScopeKind;
-	scopeId: string;
-	now: Date;
-	activeObservationLog: ObservationLogEntry[];
-	renderedObservationLog: string;
-	tokenCount: number;
-	tokenBudget: number;
-}
-
-export type ObservationLogReflectFn = (input: ObservationLogReflectorInput) => Promise<string>;
-
 export type ObservationLogReflectorMemory = BuiltObservationLogStore;
 
 export interface ObservationLogReflectorWarning {
 	message: string;
-	scopeKind: ObservationLogScopeKind;
-	scopeId: string;
+	observationScopeId: string;
 	tokenCount: number;
 	tokenBudget: number;
 }
 
 export interface RunObservationLogReflectorOpts {
 	memory: ObservationLogReflectorMemory;
-	scopeKind: ObservationLogScopeKind;
-	scopeId: string;
+	observationScopeId: string;
 	reflectorThresholdTokens: number;
 	reflect: ObservationLogReflectFn;
 	tokenCounter?: TokenCounter;
 	now?: Date;
 	onWarning?: (warning: ObservationLogReflectorWarning) => void;
+	executionCounter?: AgentExecutionCounter;
 }
 
 export type RunObservationLogReflectorResult =
@@ -106,14 +98,73 @@ export function renderObservationLogForReflection(entries: ObservationLogEntry[]
 	return lines.join('\n');
 }
 
+export function normalizeObservationLogReflection(
+	activeObservationLog: ObservationLogEntry[],
+	reflection: ObservationLogReflection,
+): ObservationLogReflection {
+	const activeEntries = activeObservationLog.filter((entry) => entry.status === 'active');
+	const activeById = new Map(activeEntries.map((entry) => [entry.id, entry]));
+	const childrenByParent = new Map<string, ObservationLogEntry[]>();
+	for (const entry of activeEntries) {
+		if (!entry.parentId) continue;
+		const children = childrenByParent.get(entry.parentId) ?? [];
+		children.push(entry);
+		childrenByParent.set(entry.parentId, children);
+	}
+
+	const dropSeeds = new Set(reflection.drop.filter((id) => activeById.has(id)));
+	const allMergeSeeds = new Set(
+		reflection.merge.flatMap((merge) => merge.supersedes).filter((id) => activeById.has(id)),
+	);
+	const claimedMergeIds = new Set<string>();
+	const merge = reflection.merge
+		.map((entry) => {
+			const ownSeeds = new Set(entry.supersedes.filter((id) => activeById.has(id)));
+			const supersedes = uniqueStrings(
+				entry.supersedes
+					.filter((id) => activeById.has(id))
+					.filter((id) => !isChildOnlyRemoval(id, ownSeeds, allMergeSeeds, dropSeeds, activeById))
+					.flatMap((id) => [id, ...descendantIds(id, childrenByParent)]),
+			).filter((id) => !claimedMergeIds.has(id));
+
+			for (const id of supersedes) claimedMergeIds.add(id);
+			if (supersedes.length === 0) return null;
+
+			return {
+				...entry,
+				supersedes,
+			};
+		})
+		.filter((entry): entry is ObservationLogMerge => entry !== null);
+
+	const droppedIds = new Set<string>();
+	for (const id of reflection.drop) {
+		if (!activeById.has(id) || claimedMergeIds.has(id)) continue;
+		if (hasAncestorIn(id, dropSeeds, activeById)) continue;
+		if (isChildOnlyRemoval(id, dropSeeds, dropSeeds, claimedMergeIds, activeById)) continue;
+
+		for (const candidateId of [id, ...descendantIds(id, childrenByParent)]) {
+			if (!claimedMergeIds.has(candidateId)) droppedIds.add(candidateId);
+		}
+	}
+
+	const removedIds = new Set([...droppedIds, ...claimedMergeIds]);
+	return {
+		drop: [...droppedIds],
+		merge: merge.map((entry) => ({
+			...entry,
+			parentId: normalizeReplacementParentId(entry.parentId, activeById, removedIds),
+		})),
+	};
+}
+
 export async function runObservationLogReflector(
 	opts: RunObservationLogReflectorOpts,
 ): Promise<RunObservationLogReflectorResult> {
-	const { memory, scopeKind, scopeId, reflectorThresholdTokens } = opts;
+	const { memory, observationScopeId, reflectorThresholdTokens } = opts;
 	const tokenCounter = opts.tokenCounter ?? estimateObservationTokens;
 	const activeObservationLog = await memory.getActiveObservationLog({
-		scopeKind,
-		scopeId,
+		observationScopeId,
 		order: 'asc',
 	});
 	const tokenCount = countObservationTokens(activeObservationLog, tokenCounter);
@@ -124,27 +175,29 @@ export async function runObservationLogReflector(
 	const now = opts.now ?? new Date();
 	const renderedObservationLog = renderObservationLogForReflection(activeObservationLog);
 	const output = await opts.reflect({
-		scopeKind,
-		scopeId,
+		observationScopeId,
 		now,
 		activeObservationLog,
 		renderedObservationLog,
 		tokenCount,
 		tokenBudget: reflectorThresholdTokens,
+		executionCounter: opts.executionCounter,
 	});
-	const reflection = withCreatedAt(parseObservationLogReflectionJson(output), now);
-	const result = await memory.applyObservationLogReflection({ scopeKind, scopeId }, reflection);
+	const reflection = normalizeObservationLogReflection(
+		activeObservationLog,
+		withCreatedAt(parseObservationLogReflectionJson(output), now),
+	);
+	const result = await memory.applyObservationLogReflection({ observationScopeId }, reflection);
 
 	const remainingTokenCount = countObservationTokens(
-		await memory.getActiveObservationLog({ scopeKind, scopeId }),
+		await memory.getActiveObservationLog({ observationScopeId }),
 		tokenCounter,
 	);
 	const overBudgetAfterReflection = remainingTokenCount > reflectorThresholdTokens;
 	if (overBudgetAfterReflection) {
 		opts.onWarning?.({
 			message: REFLECTOR_OVER_BUDGET_WARNING,
-			scopeKind,
-			scopeId,
+			observationScopeId,
 			tokenCount: remainingTokenCount,
 			tokenBudget: reflectorThresholdTokens,
 		});
@@ -158,6 +211,54 @@ export async function runObservationLogReflector(
 		reflection,
 		result,
 	};
+}
+
+function descendantIds(id: string, childrenByParent: Map<string, ObservationLogEntry[]>): string[] {
+	const descendants: string[] = [];
+	const visit = (parentId: string) => {
+		for (const child of childrenByParent.get(parentId) ?? []) {
+			descendants.push(child.id);
+			visit(child.id);
+		}
+	};
+	visit(id);
+	return descendants;
+}
+
+function hasAncestorIn(
+	id: string,
+	ids: Set<string>,
+	activeById: Map<string, ObservationLogEntry>,
+): boolean {
+	let parentId = activeById.get(id)?.parentId ?? null;
+	while (parentId) {
+		if (ids.has(parentId)) return true;
+		parentId = activeById.get(parentId)?.parentId ?? null;
+	}
+	return false;
+}
+
+function isChildOnlyRemoval(
+	id: string,
+	ownActionIds: Set<string>,
+	allSameKindActionIds: Set<string>,
+	otherRemovalIds: Set<string>,
+	activeById: Map<string, ObservationLogEntry>,
+): boolean {
+	const parentId = activeById.get(id)?.parentId;
+	if (!parentId) return false;
+	if (hasAncestorIn(id, ownActionIds, activeById)) return false;
+	if (hasAncestorIn(id, allSameKindActionIds, activeById)) return true;
+	return !hasAncestorIn(id, otherRemovalIds, activeById);
+}
+
+function normalizeReplacementParentId(
+	parentId: string | null | undefined,
+	activeById: Map<string, ObservationLogEntry>,
+	removedIds: Set<string>,
+): string | null | undefined {
+	if (parentId === undefined || parentId === null) return parentId;
+	return activeById.has(parentId) && !removedIds.has(parentId) ? parentId : null;
 }
 
 function extractJsonObject(output: string): string {
@@ -204,18 +305,18 @@ function readMerge(value: unknown, index: number): ObservationLogMerge {
 }
 
 function readMarker(value: unknown, index: number): ObservationLogMarker {
-	switch (value) {
-		case '🔴':
-		case 'critical':
+	if (typeof value !== 'string') {
+		throw new Error(`Reflector merge[${index}].marker must be a known observation marker`);
+	}
+
+	switch (value.toUpperCase()) {
+		case 'CRITICAL':
 			return 'critical';
-		case '🟡':
-		case 'important':
+		case 'IMPORTANT':
 			return 'important';
-		case '🟢':
-		case 'info':
+		case 'INFO':
 			return 'info';
-		case '✅':
-		case 'completion':
+		case 'COMPLETION':
 			return 'completion';
 		default:
 			throw new Error(`Reflector merge[${index}].marker must be a known observation marker`);
@@ -257,7 +358,7 @@ function compareEntries(a: ObservationLogEntry, b: ObservationLogEntry): number 
 }
 
 function renderReflectionBullet(entry: ObservationLogEntry, indent = ''): string {
-	return `${indent}* [${entry.id}] ${MARKER_SYMBOLS[entry.marker]} ${entry.createdAt.toISOString()} ${entry.text}`;
+	return `${indent}* [${entry.id}] ${MARKER_LABELS[entry.marker]} ${entry.createdAt.toISOString()} ${entry.text}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

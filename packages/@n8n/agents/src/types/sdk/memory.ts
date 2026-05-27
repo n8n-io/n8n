@@ -1,8 +1,14 @@
-import type { z } from 'zod';
+import type { EmbeddingModel } from 'ai';
 
-import type { ModelConfig, SerializableAgentState } from './agent';
+import type { AgentExecutionCounter, ModelConfig, SerializableAgentState } from './agent';
 import type { AgentDbMessage } from './message';
-import type { BuiltObservationStore, ObservationalMemoryConfig } from './observation';
+import type {
+	BuiltObservationLogStore,
+	ObservationLogEntry,
+	ObservationLogObserveFn,
+	ObservationLogReflectFn,
+	ObservationLogScope,
+} from './observation-log';
 import type { JSONObject } from '../utils/json';
 
 /**
@@ -10,9 +16,9 @@ import type { JSONObject } from '../utils/json';
  * Contains enough information to reconstruct the backend from a schema without exposing secrets.
  */
 export interface MemoryDescriptor<TParams extends JSONObject = JSONObject> {
-	/** Backend name (e.g. 'postgres', 'sqlite', 'memory'). Used as key in memoryRegistry. */
+	/** Backend name (e.g. 'n8n', 'memory'). Used as key in memoryRegistry. */
 	name: string;
-	/** Constructor name (e.g. 'PostgresMemory', 'SqliteMemory'). Used to construct the backend. */
+	/** Constructor name (e.g. 'N8nMemory', 'InMemoryMemory'). Used to construct the backend. */
 	constructorName: string;
 	/** Non-secret, serializable connection parameters. CredentialConfig refs are safe to store. */
 	connectionParams: TParams | null;
@@ -38,11 +44,7 @@ export interface BuiltMemory {
 		opts?: {
 			limit?: number; // last N messages
 			before?: Date; // pagination cursor
-			/**
-			 * Keyset cursor: return only messages strictly after `(createdAt, id) >
-			 * (since.sinceCreatedAt, since.sinceMessageId)`, ordered ascending.
-			 */
-			since?: { sinceCreatedAt: Date; sinceMessageId: string };
+			resourceId?: string; // per-resource isolation for shared threads
 		},
 	): Promise<AgentDbMessage[]>;
 	/**
@@ -71,16 +73,6 @@ export interface BuiltMemory {
 			messageRange?: { before: number; after: number };
 		},
 	): Promise<AgentDbMessage[]>;
-	// --- Working memory (optional) ---
-	getWorkingMemory?(params: {
-		threadId: string;
-		resourceId: string;
-		scope: 'resource' | 'thread';
-	}): Promise<string | null>;
-	saveWorkingMemory?(
-		params: { threadId: string; resourceId: string; scope: 'resource' | 'thread' },
-		content: string,
-	): Promise<void>;
 	// --- Tier 3: Vector operations (optional — runtime handles embeddings) ---
 	saveEmbeddings?(opts: {
 		scope?: 'thread' | 'resource';
@@ -101,6 +93,8 @@ export interface BuiltMemory {
 		vector: number[];
 		topK: number;
 	}): Promise<Array<{ id: string; score: number }>>;
+	// --- Episodic memory (optional — runtime handles extraction and embeddings) ---
+	episodic?: EpisodicMemoryMethods;
 	// --- Lifecycle (optional) ---
 	/** Close the connection pool / release resources. No-op for in-memory backends. */
 	close?(): Promise<void>;
@@ -120,6 +114,203 @@ export interface SemanticRecallConfig {
 	apiKey?: string;
 }
 
+export type EpisodicMemoryStatus = 'active' | 'superseded' | 'dropped';
+
+export interface EpisodicMemoryScope {
+	resourceId: string;
+}
+
+export interface EpisodicMemoryEntry {
+	id: string;
+	resourceId: string;
+	content: string;
+	contentHash: string;
+	status: EpisodicMemoryStatus;
+	supersededBy: string | null;
+	embedding?: number[];
+	embeddingModel?: string;
+	metadata?: JSONObject | null;
+	createdAt: Date;
+	updatedAt: Date;
+	lastSeenAt: Date;
+}
+
+export type NewEpisodicMemoryEntry = Omit<
+	EpisodicMemoryEntry,
+	'id' | 'contentHash' | 'status' | 'supersededBy' | 'createdAt' | 'updatedAt' | 'lastSeenAt'
+> & {
+	contentHash?: string;
+	createdAt?: Date;
+	lastSeenAt?: Date;
+};
+
+export interface EpisodicMemoryEntrySource {
+	id: string;
+	memoryEntryId: string;
+	observationId: string;
+	threadId: string;
+	evidenceText: string;
+	createdAt: Date;
+}
+
+export type NewEpisodicMemoryEntrySource = Omit<EpisodicMemoryEntrySource, 'id' | 'createdAt'> & {
+	createdAt?: Date;
+};
+
+export type NewEpisodicMemoryEntrySourceForEntry = Omit<
+	NewEpisodicMemoryEntrySource,
+	'memoryEntryId'
+>;
+
+export interface EpisodicMemoryCursor extends ObservationLogScope {
+	lastIndexedObservationId: string;
+	lastIndexedObservationCreatedAt: Date;
+	updatedAt: Date;
+}
+
+export type NewEpisodicMemoryCursor = Omit<EpisodicMemoryCursor, 'updatedAt'> & {
+	updatedAt?: Date;
+};
+
+export interface RetrievedEpisodicMemoryEntry extends EpisodicMemoryEntry {
+	lexicalScore: number;
+	vectorScore: number;
+	rrfScore: number;
+	finalScore: number;
+}
+
+export interface EpisodicMemorySearchOptions {
+	topK?: number;
+	queryEmbedding?: number[];
+	includeStatuses?: EpisodicMemoryStatus[];
+}
+
+export interface EpisodicMemoryTaskLockHandle {
+	resourceId: string;
+	holderId: string;
+	heldUntil: Date;
+}
+
+export interface EpisodicMemoryTaskLockMethods {
+	acquire(
+		resourceId: string,
+		opts: { ttlMs: number; holderId: string },
+	): Promise<EpisodicMemoryTaskLockHandle | null>;
+	release(handle: EpisodicMemoryTaskLockHandle): Promise<void>;
+}
+
+export interface EpisodicMemoryMethods {
+	saveEntryWithSources(
+		entry: NewEpisodicMemoryEntry,
+		sources: NewEpisodicMemoryEntrySourceForEntry[],
+	): Promise<EpisodicMemoryEntry | null>;
+	searchEntries(
+		scope: EpisodicMemoryScope,
+		query: string,
+		opts?: EpisodicMemorySearchOptions,
+	): Promise<RetrievedEpisodicMemoryEntry[]>;
+	getEntrySources(entryIds: string[]): Promise<EpisodicMemoryEntrySource[]>;
+	applyReflection(
+		scope: EpisodicMemoryScope,
+		reflection: EpisodicMemoryReflectionApply,
+	): Promise<EpisodicMemoryReflectionResult>;
+	getCursor(scope: ObservationLogScope): Promise<EpisodicMemoryCursor | null>;
+	setCursor(cursor: NewEpisodicMemoryCursor): Promise<void>;
+	taskLock?: EpisodicMemoryTaskLockMethods;
+}
+
+export interface BuiltEpisodicMemoryStore {
+	episodic: EpisodicMemoryMethods;
+}
+
+export interface EpisodicMemoryExtractionCandidate {
+	content: string;
+	sources: Array<{
+		observationId: string;
+		evidence: string;
+	}>;
+}
+
+export interface EpisodicMemoryExtractorInput {
+	scope: EpisodicMemoryScope;
+	observationScope: ObservationLogScope;
+	now: Date;
+	observations: ObservationLogEntry[];
+	renderedObservations: string;
+	existingEntries: RetrievedEpisodicMemoryEntry[];
+	executionCounter?: AgentExecutionCounter;
+}
+
+export interface EpisodicMemoryExtraction {
+	entries: EpisodicMemoryExtractionCandidate[];
+}
+
+export type EpisodicMemoryExtractFn = (
+	input: EpisodicMemoryExtractorInput,
+) => Promise<EpisodicMemoryExtraction>;
+
+export interface EpisodicMemoryReflectionMerge {
+	supersedes: string[];
+	content: string;
+}
+
+export interface EpisodicMemoryReflection {
+	drop: string[];
+	merge: EpisodicMemoryReflectionMerge[];
+}
+
+export interface EpisodicMemoryReflectorInput {
+	scope: EpisodicMemoryScope;
+	now: Date;
+	seedEntryIds: string[];
+	entries: RetrievedEpisodicMemoryEntry[];
+	sources: EpisodicMemoryEntrySource[];
+	executionCounter?: AgentExecutionCounter;
+}
+
+export type EpisodicMemoryReflectFn = (
+	input: EpisodicMemoryReflectorInput,
+) => Promise<EpisodicMemoryReflection>;
+
+export interface EpisodicMemoryReflectionApplyMerge {
+	supersedes: string[];
+	entry: NewEpisodicMemoryEntry;
+}
+
+export interface EpisodicMemoryReflectionApply {
+	drop: string[];
+	merge: EpisodicMemoryReflectionApplyMerge[];
+}
+
+export interface EpisodicMemoryReflectionResult {
+	droppedIds: string[];
+	supersededIds: string[];
+	inserted: EpisodicMemoryEntry[];
+}
+
+export interface EpisodicMemoryPrompts {
+	extraction?: string;
+	reflection?: string;
+	recallToolInstruction?: string;
+}
+
+export interface EpisodicMemoryEmbeddingProviderOptions {
+	apiKey?: string;
+	baseURL?: string;
+}
+
+export interface EpisodicMemoryConfig {
+	enabled?: boolean;
+	topK?: number;
+	maxEntriesPerRun?: number;
+	embedder?: EmbeddingModel;
+	embeddingModel?: string;
+	embeddingProviderOptions?: string | EpisodicMemoryEmbeddingProviderOptions;
+	extract?: EpisodicMemoryExtractFn;
+	reflect?: EpisodicMemoryReflectFn;
+	prompts?: EpisodicMemoryPrompts;
+}
+
 export interface TitleGenerationConfig {
 	/** Model to use for title generation (e.g. 'anthropic/claude-haiku-4-5'). Falls back to the agent's own model. */
 	model?: ModelConfig;
@@ -129,28 +320,35 @@ export interface TitleGenerationConfig {
 	sync?: boolean;
 }
 
-export type ObservationCapableMemory = BuiltMemory & BuiltObservationStore;
+export type ObservationCapableMemory = BuiltMemory & BuiltObservationLogStore;
 
 export interface ObservationLogMemoryConfig {
 	/** Maximum estimated tokens to render into the system prompt. */
 	renderTokenBudget?: number;
 }
 
+export interface ObservationalMemoryConfig {
+	/** Estimated tokens in unobserved transcript required before the Observer runs. */
+	observerThresholdTokens?: number;
+	/** Estimated active observation-log tokens required before the Reflector runs. */
+	reflectorThresholdTokens?: number;
+	/** Maximum estimated tokens to render into the system prompt. */
+	renderTokenBudget?: number;
+	/** Number of recent observations sent to the Observer as log-tail context. */
+	observationLogTailLimit?: number;
+	/** Lease duration for scoped background memory task locks. */
+	lockTtlMs?: number;
+	/** Policy callback that turns transcript deltas into markdown observations. */
+	observe?: ObservationLogObserveFn;
+	/** Policy callback that returns drop/merge instructions for the active observation log. */
+	reflect?: ObservationLogReflectFn;
+}
+
 interface MemoryConfigBase {
 	lastMessages: number;
-	workingMemory?: {
-		template: string;
-		structured: boolean;
-		schema?: z.ZodObject<z.ZodRawShape>;
-		scope: 'resource' | 'thread';
-		/**
-		 * Custom instruction text injected into the system prompt in place of the default.
-		 * When omitted the runtime uses {@link WORKING_MEMORY_DEFAULT_INSTRUCTION}.
-		 */
-		instruction?: string;
-	};
 	observationLog?: ObservationLogMemoryConfig;
 	semanticRecall?: SemanticRecallConfig;
+	episodicMemory?: EpisodicMemoryConfig;
 	titleGeneration?: TitleGenerationConfig;
 }
 

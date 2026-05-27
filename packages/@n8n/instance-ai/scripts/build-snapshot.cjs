@@ -5,7 +5,7 @@
  * Run from the n8n release pipeline (see
  * `.github/workflows/release-build-daytona-snapshot.yml`). Authenticates
  * with a static Daytona admin API key supplied via env vars and creates
- * the snapshot named `n8n-instance-ai-<version>` from the same image
+ * the snapshot named `n8n/instance-ai:<version>-<setupHash>` from the same image
  * descriptor used by the runtime fallback path. Re-runs against the same
  * version are idempotent — "already exists" is treated as success.
  *

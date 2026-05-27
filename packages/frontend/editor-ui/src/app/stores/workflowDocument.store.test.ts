@@ -58,18 +58,22 @@ describe('workflowDocument.store orchestration', () => {
 			A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
 		});
 		workflowDocumentStore.setPinData({ A: [{ json: { value: 1 } }] });
+		workflowDocumentStore.createGroup(
+			[workflowDocumentStore.allNodes[0].id, workflowDocumentStore.allNodes[1].id],
+			'Group 1',
+		);
 
 		// Verify all are populated
 		expect(workflowDocumentStore.allNodes).toHaveLength(2);
 		expect(workflowDocumentStore.connectionsBySourceNode).toHaveProperty('A');
-		expect(workflowDocumentStore.pinData).toHaveProperty('A');
+		expect(workflowDocumentStore.pinnedDataByNodeName).toHaveProperty('A');
 
 		// removeAllNodes should clear all three
 		workflowDocumentStore.removeAllNodes();
 
 		expect(workflowDocumentStore.allNodes).toHaveLength(0);
 		expect(workflowDocumentStore.connectionsBySourceNode).toEqual({});
-		expect(workflowDocumentStore.pinData).toEqual({});
+		expect(workflowDocumentStore.pinnedDataByNodeName).toEqual({});
 	});
 
 	it('disposeWorkflowDocumentStore disposes the instance and clears scoped state', () => {
@@ -260,6 +264,10 @@ describe('workflowDocument.store orchestration', () => {
 			});
 			workflowDocumentStore.setPinData({ A: [{ json: { value: 1 } }] });
 			workflowDocumentStore.setTags(['tag-1', 'tag-2']);
+			workflowDocumentStore.createGroup(
+				[workflowDocumentStore.allNodes[0].id, workflowDocumentStore.allNodes[1].id],
+				'Group 1',
+			);
 
 			const data = workflowDocumentStore.serialize();
 
@@ -268,6 +276,9 @@ describe('workflowDocument.store orchestration', () => {
 			expect(data.connections).toHaveProperty('A');
 			expect(data.pinData).toHaveProperty('A');
 			expect(data.tags).toEqual(['tag-1', 'tag-2']);
+			expect(data.nodeGroups).toEqual([
+				expect.objectContaining({ name: 'Group 1', nodeIds: expect.any(Array) }),
+			]);
 			expect(data.id).toBe('wf-42');
 		});
 
@@ -319,10 +330,11 @@ describe('workflowDocument.store orchestration', () => {
 				isArchived: false,
 				createdAt: '2026-04-01T00:00:00.000Z',
 				updatedAt: '2026-04-02T00:00:00.000Z',
-				nodes: [createNode({ name: 'A' }), createNode({ name: 'B' })],
+				nodes: [createNode({ name: 'A', id: 'node-a' }), createNode({ name: 'B', id: 'node-b' })],
 				connections: {
 					A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
 				},
+				nodeGroups: [{ id: 'group-1', name: 'Group A', nodeIds: ['node-a', 'node-b'] }],
 				settings: { executionOrder: 'v1', timezone: 'UTC' },
 				tags: ['tag-1', 'tag-2'],
 				pinData: { A: [{ json: { foo: 'bar' } }] },
@@ -370,7 +382,7 @@ describe('workflowDocument.store orchestration', () => {
 			});
 			expect(store.allNodes).toHaveLength(2);
 			expect(store.connectionsBySourceNode).toHaveProperty('A');
-			expect(store.pinData).toEqual({ A: [{ json: { foo: 'bar' } }] });
+			expect(store.pinnedDataByNodeName).toEqual({ A: [{ json: { foo: 'bar' } }] });
 		});
 
 		it('applies safe defaults for missing optional fields', () => {
@@ -411,7 +423,7 @@ describe('workflowDocument.store orchestration', () => {
 			});
 			expect(store.allNodes).toHaveLength(0);
 			expect(store.connectionsBySourceNode).toEqual({});
-			expect(store.pinData).toEqual({});
+			expect(store.pinnedDataByNodeName).toEqual({});
 		});
 
 		it('normalizes ITag[] tags to string[]', () => {
@@ -451,7 +463,7 @@ describe('workflowDocument.store orchestration', () => {
 				tags: [...store.tags],
 				checksum: store.checksum,
 				allNodes: store.allNodes.map((n) => n.name),
-				pinData: { ...store.pinData },
+				pinData: { ...store.pinnedDataByNodeName },
 			};
 
 			store.hydrate(workflow);
@@ -463,7 +475,7 @@ describe('workflowDocument.store orchestration', () => {
 			expect([...store.tags]).toEqual(firstSnapshot.tags);
 			expect(store.checksum).toBe(firstSnapshot.checksum);
 			expect(store.allNodes.map((n) => n.name)).toEqual(firstSnapshot.allNodes);
-			expect({ ...store.pinData }).toEqual(firstSnapshot.pinData);
+			expect({ ...store.pinnedDataByNodeName }).toEqual(firstSnapshot.pinData);
 		});
 
 		describe('identity guards', () => {
@@ -579,11 +591,11 @@ describe('workflowDocument.store orchestration', () => {
 			const node = createNode({ name: 'A' });
 			store.setNodes([node]);
 			store.setPinData({ A: [{ json: { value: 1 } }] });
-			expect(store.pinData).toHaveProperty('A');
+			expect(store.pinnedDataByNodeName).toHaveProperty('A');
 
 			store.removeNode(node);
 
-			expect(store.pinData).not.toHaveProperty('A');
+			expect(store.pinnedDataByNodeName).not.toHaveProperty('A');
 		});
 
 		it('removeNodeById unpins node data', () => {
@@ -591,11 +603,11 @@ describe('workflowDocument.store orchestration', () => {
 			const node = createNode({ name: 'A' });
 			store.setNodes([node]);
 			store.setPinData({ A: [{ json: { value: 1 } }] });
-			expect(store.pinData).toHaveProperty('A');
+			expect(store.pinnedDataByNodeName).toHaveProperty('A');
 
 			store.removeNodeById(node.id);
 
-			expect(store.pinData).not.toHaveProperty('A');
+			expect(store.pinnedDataByNodeName).not.toHaveProperty('A');
 		});
 	});
 
@@ -661,7 +673,7 @@ describe('workflowDocument.store orchestration', () => {
 			expect(store.versionData).toEqual({ versionId: '', name: null, description: null });
 			expect(store.allNodes).toHaveLength(0);
 			expect(store.connectionsBySourceNode).toEqual({});
-			expect(store.pinData).toEqual({});
+			expect(store.pinnedDataByNodeName).toEqual({});
 			expect(store.viewport).toBeNull();
 		});
 	});

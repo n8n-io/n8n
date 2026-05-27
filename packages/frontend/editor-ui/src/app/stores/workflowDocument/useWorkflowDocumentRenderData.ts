@@ -1,36 +1,38 @@
-import type { ComputedRef, ShallowReactive } from 'vue';
-import type { CanvasConnectionPort } from '@/features/workflows/canvas/canvas.types';
-
-// --- Deps ---
-
-export interface WorkflowDocumentRenderDataDeps {
-	/**
-	 * Per-node port maps. State and lifecycle are owned by
-	 * useWorkflowDocumentNodes; this composable is a grouping façade that
-	 * exposes them under a single `render` key for canvas consumers.
-	 */
-	nodeInputsByNodeId: ShallowReactive<Map<string, ComputedRef<CanvasConnectionPort[]>>>;
-	nodeOutputsByNodeId: ShallowReactive<Map<string, ComputedRef<CanvasConnectionPort[]>>>;
-}
-
-// --- Composable ---
+import {
+	useWorkflowDocumentStore,
+	type WorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import {
+	useWorkflowExecutionStateStore,
+	createWorkflowExecutionStateId,
+} from '@/app/stores/workflowExecutionState.store';
 
 /**
- * Canvas render data grouping façade.
+ * Canvas render data accessor for a workflow document.
  *
- * Takes the per-node input/output port maps owned by
- * `useWorkflowDocumentNodes` and exposes them under a single `render`
- * key. Spread into the workflow document store so canvas consumers
- * access port data via `store.render`.
+ * Thin façade that re-exposes:
+ * - the per-node port maps (`nodeInputsByNodeId`, `nodeOutputsByNodeId`)
+ *   owned by `useWorkflowDocumentNodes`,
+ * - the pin data map (`pinnedDataByNodeName`) owned by
+ *   `useWorkflowDocumentPinData`, and
+ * - the active execution's `executionIssuesByNodeName` map.
  *
- * No state, no lifecycle, no computation — those all live with the maps
- * in `useWorkflowDocumentNodes`.
+ * Reactivity is owned by the underlying stores: the port maps are stable
+ * references on the workflow document store, `pinnedDataByNodeName` is a
+ * `shallowReactive` with per-key reactivity, and `executionIssuesByNodeName`
+ * resolves through a `computed` on the workflow execution state store that
+ * swaps between the active and displayed execution's per-execution maps.
  */
-export function useWorkflowDocumentRenderData(deps: WorkflowDocumentRenderDataDeps) {
+export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocumentId) {
+	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+	const executionStateStore = useWorkflowExecutionStateStore(
+		createWorkflowExecutionStateId(workflowDocumentStore.workflowId),
+	);
+
 	return {
-		render: {
-			nodeInputsByNodeId: deps.nodeInputsByNodeId,
-			nodeOutputsByNodeId: deps.nodeOutputsByNodeId,
-		},
+		nodeInputsByNodeId: workflowDocumentStore.nodeInputsByNodeId,
+		nodeOutputsByNodeId: workflowDocumentStore.nodeOutputsByNodeId,
+		pinnedDataByNodeName: workflowDocumentStore.pinnedDataByNodeName,
+		executionIssuesByNodeName: executionStateStore.activeExecutionIssuesByNodeName,
 	};
 }
