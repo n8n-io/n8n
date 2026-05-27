@@ -14,6 +14,7 @@ import type { BuilderModelLookupService } from '../builder/builder-model-lookup.
 import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 
 const ctx = {
 	resumeData: undefined,
@@ -28,8 +29,11 @@ function makeService() {
 	const agentsToolsService = mock<AgentsToolsService>();
 	const builderModelLookupService = mock<BuilderModelLookupService>();
 	const credentialTypes = mock<CredentialTypes>();
+	const mcpRegistryService = mock<McpRegistryService>();
 	agentsToolsService.getSharedTools.mockReturnValue([]);
 	credentialTypes.recognizes.mockReturnValue(true);
+	agentsToolsService.getSharedTools.mockReturnValue([]);
+	mcpRegistryService.getAll.mockResolvedValue([]);
 
 	const service = new AgentsBuilderToolsService(
 		agentsService,
@@ -37,6 +41,7 @@ function makeService() {
 		workflowRepository,
 		agentsToolsService,
 		builderModelLookupService,
+		mcpRegistryService,
 		mock(),
 		credentialTypes,
 	);
@@ -80,6 +85,22 @@ describe('AgentsBuilderToolsService', () => {
 				.getTools(agentId, projectId, credentialProvider, user)
 				.json.find((tool) => tool.name === name)!;
 		}
+
+		it('registers MCP-specific tools only when the MCP module is enabled', () => {
+			const { service } = makeService();
+
+			const withoutMcp = service
+				.getTools(agentId, projectId, credentialProvider, user, [])
+				.json.map((tool) => tool.name);
+			expect(withoutMcp).not.toContain(BUILDER_TOOLS.VERIFY_MCP_SERVER);
+			expect(withoutMcp).not.toContain(BUILDER_TOOLS.SEARCH_MCP_SERVERS);
+
+			const withMcp = service
+				.getTools(agentId, projectId, credentialProvider, user, ['mcp'])
+				.json.map((tool) => tool.name);
+			expect(withMcp).toContain(BUILDER_TOOLS.VERIFY_MCP_SERVER);
+			expect(withMcp).toContain(BUILDER_TOOLS.SEARCH_MCP_SERVERS);
+		});
 
 		it('read_config returns the current config snapshot metadata', async () => {
 			const { service, agentsService } = makeService();

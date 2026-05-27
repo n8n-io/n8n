@@ -33,7 +33,9 @@ import {
 } from './interactive';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
 import { BUILDER_TOOLS } from './builder-tool-names';
+import { buildSearchMcpServersTool } from './search-mcp-servers.tool';
 import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { OauthService } from '@/oauth/oauth.service';
 
 const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
@@ -178,6 +180,7 @@ export class AgentsBuilderToolsService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly agentsToolsService: AgentsToolsService,
 		private readonly builderModelLookupService: BuilderModelLookupService,
+		private readonly mcpRegistryService: McpRegistryService,
 		private readonly oauthService: OauthService,
 		private readonly credentialTypes: CredentialTypes,
 	) {}
@@ -448,6 +451,7 @@ export class AgentsBuilderToolsService {
 					projectId,
 				}),
 			);
+			tools.push(buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }));
 		}
 
 		return tools;

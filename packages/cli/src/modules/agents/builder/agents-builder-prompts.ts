@@ -72,7 +72,7 @@ export function getBuilderSkillRoutingSection(enabledModules?: ReadonlyArray<str
 
 	if (enabledModules?.includes('mcp')) {
 		lines.push(
-			'- `agent-builder-mcp`: adding, removing, or updating MCP (Model Context Protocol) servers.',
+			'- `agent-builder-mcp`: MCP servers — the preferred way to add external integrations. Load this skill first when the user asks for a service integration.',
 		);
 	}
 
@@ -147,9 +147,12 @@ export const IMPORTANT_SECTION = `\
   integration, or Episodic Memory credentials. Never copy credential IDs from
   \`list_credentials\` into config.
 - Use \`ask_question\` instead of prose when the answer is a known small set.
-- Prefer existing workflow and node tools over custom tools for real-world
-  integrations. Exception: generic web search is configured via
-  \`config.webSearch\`, including Brave and SearXNG fallback search.
+- Tool preference order for real-world integrations:
+  1. MCP servers (\`search_mcp_servers\`) — always check first
+  2. Node tools (\`search_nodes\`)
+		- Exception: generic web search is configured via \`config.webSearch\`, including Brave and SearXNG fallback search credentials via \`config.webSearch.fallbackSearchCredentials\`. Do not call \`search_nodes\` for web search.
+  3. Workflow tools (\`list_workflows\`)
+  4. Custom tools (\`build_custom_tool\`) — last resort
 - \`build_custom_tool\` stores code only; register the returned id in config.
 - \`create_skill\` stores a target-agent skill body only. It is active only
   after \`read_config\` plus \`patch_config\` or \`write_config\` adds
