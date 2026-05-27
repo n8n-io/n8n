@@ -1,3 +1,4 @@
+import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { Pokemon } from '../Pokemon.node';
@@ -177,7 +178,7 @@ describe('Pokemon Node — Cycle 3: pokemonApiRequest URL and options', () => {
 		const mockContext = {
 			helpers: { httpRequest: mockHttpRequest },
 			getNode: () => ({ name: 'Pokemon', type: 'pokemon' }),
-		} as unknown as Parameters<typeof pokemonApiRequest>[0];
+		} as unknown as IExecuteFunctions;
 
 		await pokemonApiRequest.call(mockContext, 'https://pokeapi.co/api/v2/pokemon/pikachu');
 
@@ -195,7 +196,7 @@ describe('Pokemon Node — Cycle 3: pokemonApiRequest URL and options', () => {
 		const mockContext = {
 			helpers: { httpRequest: mockHttpRequest },
 			getNode: () => ({ name: 'Pokemon', type: 'pokemon' }),
-		} as unknown as Parameters<typeof pokemonApiRequest>[0];
+		} as unknown as IExecuteFunctions;
 
 		await pokemonApiRequest.call(mockContext, 'https://pokeapi.co/api/v2/pokemon/pikachu');
 
@@ -220,7 +221,7 @@ describe('Pokemon Node — Cycle 4: pokemonApiRequest wraps errors', () => {
 				id: '1',
 				position: [0, 0] as [number, number],
 			}),
-		} as unknown as Parameters<typeof pokemonApiRequest>[0];
+		} as unknown as IExecuteFunctions;
 
 		await expect(
 			pokemonApiRequest.call(mockContext, 'https://pokeapi.co/api/v2/pokemon/pikachu'),
@@ -240,7 +241,7 @@ describe('Pokemon Node — Cycle 5: validateNameOrId', () => {
 				id: '1',
 				position: [0, 0] as [number, number],
 			}),
-		}) as unknown as Parameters<typeof validateNameOrId>[0];
+		}) as unknown as IExecuteFunctions;
 
 	it('should throw NodeOperationError for path traversal input', () => {
 		expect(() => validateNameOrId(makeContext(), '../../admin', 0)).toThrow(NodeOperationError);
@@ -354,7 +355,7 @@ describe('Pokemon Node — Cycle 9: pokemonApiRequestAllPages pagination', () =>
 				id: '1',
 				position: [0, 0] as [number, number],
 			}),
-		}) as unknown as Parameters<typeof pokemonApiRequestAllPages>[0];
+		}) as unknown as IExecuteFunctions;
 
 	it('should combine results from two pages', async () => {
 		const mockHttpRequest = jest
@@ -416,7 +417,7 @@ describe('Pokemon Node — Cycle 10: pagination circuit breaker', () => {
 				id: '1',
 				position: [0, 0] as [number, number],
 			}),
-		} as unknown as Parameters<typeof pokemonApiRequestAllPages>[0];
+		} as unknown as IExecuteFunctions;
 
 		await expect(pokemonApiRequestAllPages.call(mockContext)).rejects.toThrow(NodeOperationError);
 	});
@@ -438,7 +439,7 @@ describe('Pokemon Node — Cycle 10: pagination circuit breaker', () => {
 				id: '1',
 				position: [0, 0] as [number, number],
 			}),
-		} as unknown as Parameters<typeof pokemonApiRequestAllPages>[0];
+		} as unknown as IExecuteFunctions;
 
 		await expect(pokemonApiRequestAllPages.call(mockContext)).rejects.toThrow();
 		// Should not exceed circuit breaker limit (50 pages)
@@ -446,7 +447,75 @@ describe('Pokemon Node — Cycle 10: pagination circuit breaker', () => {
 	});
 });
 
-// ─── Cycle 11: execute() getAll with default limit ───────────────────────────
+// ─── Execute helpers ──────────────────────────────────────────────────────────
+
+type ParameterMap = Record<string, unknown>;
+
+function makeExecuteContext(params: ParameterMap, mockHttpRequest: jest.Mock) {
+	const inputData = [{ json: {} }];
+	return {
+		getInputData: () => inputData,
+		getNodeParameter: (name: string, _index: number, fallback?: unknown) => {
+			return name in params ? params[name] : fallback;
+		},
+		getNode: () => ({
+			name: 'Pokemon',
+			type: 'n8n-nodes-base.pokemon',
+			typeVersion: 1,
+			id: '1',
+			position: [0, 0] as [number, number],
+		}),
+		continueOnFail: () => false,
+		helpers: {
+			httpRequest: mockHttpRequest,
+			constructExecutionMetaData: (data: unknown[], opts: { itemData: { item: number } }) =>
+				data.map((d) => ({ ...((d as Record<string, unknown>) ?? {}), pairedItem: opts.itemData })),
+			returnJsonArray: (data: unknown[]) => data.map((d) => ({ json: d })),
+		},
+	} as unknown as IExecuteFunctions;
+}
+
+// ─── Cycle 11 (US-2): execute() get with simplify=true ───────────────────────
+
+describe('Pokemon Node — Cycle 11: execute get simplified', () => {
+	it('should return simplified pikachu data when simplify=true', async () => {
+		const mockHttpRequest = jest.fn().mockResolvedValue(PIKACHU_DETAIL);
+		const ctx = makeExecuteContext(
+			{ operation: 'get', nameOrId: 'pikachu', simplify: true },
+			mockHttpRequest,
+		);
+		const node = new Pokemon();
+
+		const result = await node.execute.call(ctx);
+
+		expect(result).toHaveLength(1);
+		expect(result[0]).toHaveLength(1);
+		const item = result[0][0].json as Record<string, unknown>;
+		expect(item.id).toBe(25);
+		expect(item.name).toBe('pikachu');
+		expect(item.types).toEqual(['electric']);
+		expect((item.stats as Record<string, number>).speed).toBe(90);
+		expect(item.sprite).toBeTruthy();
+		expect(item).not.toHaveProperty('moves');
+	});
+
+	it('should call GET /pokemon/pikachu', async () => {
+		const mockHttpRequest = jest.fn().mockResolvedValue(PIKACHU_DETAIL);
+		const ctx = makeExecuteContext(
+			{ operation: 'get', nameOrId: 'pikachu', simplify: true },
+			mockHttpRequest,
+		);
+		const node = new Pokemon();
+
+		await node.execute.call(ctx);
+
+		expect(mockHttpRequest).toHaveBeenCalledWith(
+			expect.objectContaining({ url: 'https://pokeapi.co/api/v2/pokemon/pikachu' }),
+		);
+	});
+});
+
+// ─── Cycle 11 (US-1): execute() getAll with default limit ───────────────────────────
 
 describe('Pokemon Node — Cycle 11: execute getAll default limit', () => {
 	const makeGetAllContext = (mockHttpRequest: jest.Mock, limit = 20, returnAll = false) =>
@@ -663,7 +732,7 @@ describe('Pokemon Node — validateNameOrId lowercase normalization', () => {
 				id: '1',
 				position: [0, 0] as [number, number],
 			}),
-		}) as unknown as Parameters<typeof validateNameOrId>[0];
+		}) as unknown as IExecuteFunctions;
 
 	it('should return lowercased name for mixed-case input', () => {
 		expect(validateNameOrId(makeContext(), 'Pikachu', 0)).toBe('pikachu');
@@ -683,5 +752,242 @@ describe('Pokemon Node — validateNameOrId lowercase normalization', () => {
 
 	it('should return numeric IDs unchanged', () => {
 		expect(validateNameOrId(makeContext(), '25', 0)).toBe('25');
+	});
+});
+
+// ─── Cycle 12: execute() get with simplify=false ──────────────────────────────
+
+describe('Pokemon Node — Cycle 12: execute get full output', () => {
+	const PIKACHU_WITH_MOVES = {
+		...PIKACHU_DETAIL,
+		moves: [{ move: { name: 'tackle', url: '' } }],
+		sprites: {
+			front_default:
+				'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png',
+			front_shiny:
+				'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/25.png',
+		},
+	};
+
+	it('should return full response including moves when simplify=false', async () => {
+		const mockHttpRequest = jest.fn().mockResolvedValue(PIKACHU_WITH_MOVES);
+		const ctx = makeExecuteContext(
+			{ operation: 'get', nameOrId: 'pikachu', simplify: false },
+			mockHttpRequest,
+		);
+		const node = new Pokemon();
+
+		const result = await node.execute.call(ctx);
+		const item = result[0][0].json as Record<string, unknown>;
+
+		expect(item).toHaveProperty('moves');
+		expect(Array.isArray(item.moves)).toBe(true);
+	});
+
+	it('should include all sprite variants when simplify=false', async () => {
+		const mockHttpRequest = jest.fn().mockResolvedValue(PIKACHU_WITH_MOVES);
+		const ctx = makeExecuteContext(
+			{ operation: 'get', nameOrId: 'pikachu', simplify: false },
+			mockHttpRequest,
+		);
+		const node = new Pokemon();
+
+		const result = await node.execute.call(ctx);
+		const item = result[0][0].json as Record<string, unknown>;
+		const sprites = item.sprites as Record<string, unknown>;
+
+		expect(sprites).toHaveProperty('front_default');
+		expect(sprites).toHaveProperty('front_shiny');
+	});
+});
+
+// ─── Cycle 13: execute() get by numeric ID ───────────────────────────────────
+
+describe('Pokemon Node — Cycle 13: execute get by numeric ID', () => {
+	it('should resolve pikachu when nameOrId is "25"', async () => {
+		const mockHttpRequest = jest.fn().mockResolvedValue(PIKACHU_DETAIL);
+		const ctx = makeExecuteContext(
+			{ operation: 'get', nameOrId: '25', simplify: true },
+			mockHttpRequest,
+		);
+		const node = new Pokemon();
+
+		const result = await node.execute.call(ctx);
+		const item = result[0][0].json as Record<string, unknown>;
+
+		expect(item.name).toBe('pikachu');
+	});
+
+	it('should request /pokemon/25 when nameOrId is "25"', async () => {
+		const mockHttpRequest = jest.fn().mockResolvedValue(PIKACHU_DETAIL);
+		const ctx = makeExecuteContext(
+			{ operation: 'get', nameOrId: '25', simplify: true },
+			mockHttpRequest,
+		);
+		const node = new Pokemon();
+
+		await node.execute.call(ctx);
+
+		expect(mockHttpRequest).toHaveBeenCalledWith(
+			expect.objectContaining({ url: 'https://pokeapi.co/api/v2/pokemon/25' }),
+		);
+	});
+});
+
+// ─── Cycle 14: execute() get with hyphenated name ────────────────────────────
+
+describe('Pokemon Node — Cycle 14: execute get hyphenated name', () => {
+	const MR_MIME_DETAIL = {
+		...PIKACHU_DETAIL,
+		id: 122,
+		name: 'mr-mime',
+	};
+
+	it('should request /pokemon/mr-mime when nameOrId is "mr-mime"', async () => {
+		const mockHttpRequest = jest.fn().mockResolvedValue(MR_MIME_DETAIL);
+		const ctx = makeExecuteContext(
+			{ operation: 'get', nameOrId: 'mr-mime', simplify: true },
+			mockHttpRequest,
+		);
+		const node = new Pokemon();
+
+		await node.execute.call(ctx);
+
+		expect(mockHttpRequest).toHaveBeenCalledWith(
+			expect.objectContaining({ url: 'https://pokeapi.co/api/v2/pokemon/mr-mime' }),
+		);
+	});
+
+	it('should return name mr-mime in output', async () => {
+		const mockHttpRequest = jest.fn().mockResolvedValue(MR_MIME_DETAIL);
+		const ctx = makeExecuteContext(
+			{ operation: 'get', nameOrId: 'mr-mime', simplify: true },
+			mockHttpRequest,
+		);
+		const node = new Pokemon();
+
+		const result = await node.execute.call(ctx);
+		const item = result[0][0].json as Record<string, unknown>;
+
+		expect(item.name).toBe('mr-mime');
+	});
+});
+
+// ─── Cycle 15: execute() get multi-type Pokemon ──────────────────────────────
+
+describe('Pokemon Node — Cycle 15: execute get multi-type', () => {
+	it('should return types ["grass","poison"] for bulbasaur', async () => {
+		const mockHttpRequest = jest.fn().mockResolvedValue(BULBASAUR_DETAIL);
+		const ctx = makeExecuteContext(
+			{ operation: 'get', nameOrId: 'bulbasaur', simplify: true },
+			mockHttpRequest,
+		);
+		const node = new Pokemon();
+
+		const result = await node.execute.call(ctx);
+		const item = result[0][0].json as Record<string, unknown>;
+
+		expect(item.types).toEqual(['grass', 'poison']);
+	});
+});
+
+// ─── Cycle 16: execute() get null sprite ─────────────────────────────────────
+
+describe('Pokemon Node — Cycle 16: execute get null sprite', () => {
+	it('should return sprite as null without throwing when front_default is null', async () => {
+		const mockHttpRequest = jest.fn().mockResolvedValue(PIKACHU_DETAIL_NULL_SPRITE);
+		const ctx = makeExecuteContext(
+			{ operation: 'get', nameOrId: 'pikachu', simplify: true },
+			mockHttpRequest,
+		);
+		const node = new Pokemon();
+
+		const result = await node.execute.call(ctx);
+		const item = result[0][0].json as Record<string, unknown>;
+
+		expect(item.sprite).toBeNull();
+	});
+});
+
+// ─── Cycle 17: execute() get 404 throws NodeApiError ─────────────────────────
+
+describe('Pokemon Node — Cycle 17: execute get 404 not found', () => {
+	it('should throw NodeApiError when API returns 404', async () => {
+		const apiError = Object.assign(new Error('Not Found'), {
+			statusCode: 404,
+			response: { statusCode: 404 },
+		});
+		const mockHttpRequest = jest.fn().mockRejectedValue(apiError);
+		const ctx = makeExecuteContext(
+			{ operation: 'get', nameOrId: 'notapokemon', simplify: true },
+			mockHttpRequest,
+		);
+		const node = new Pokemon();
+
+		await expect(node.execute.call(ctx)).rejects.toThrow();
+	});
+});
+
+// ─── Cycle 18: execute() continueOnFail ──────────────────────────────────────
+
+describe('Pokemon Node — Cycle 18: execute continueOnFail', () => {
+	it('should return error item with pairedItem when continueOnFail is enabled', async () => {
+		const apiError = Object.assign(new Error('Not Found'), {
+			statusCode: 404,
+		});
+		const mockHttpRequest = jest.fn().mockRejectedValue(apiError);
+		const inputData = [{ json: {} }];
+		const ctx = {
+			getInputData: () => inputData,
+			getNodeParameter: (name: string, _index: number, fallback?: unknown) => {
+				const params: Record<string, unknown> = {
+					operation: 'get',
+					nameOrId: 'notapokemon',
+					simplify: true,
+				};
+				return name in params ? params[name] : fallback;
+			},
+			getNode: () => ({
+				name: 'Pokemon',
+				type: 'n8n-nodes-base.pokemon',
+				typeVersion: 1,
+				id: '1',
+				position: [0, 0] as [number, number],
+			}),
+			continueOnFail: () => true,
+			helpers: {
+				httpRequest: mockHttpRequest,
+				constructExecutionMetaData: (data: unknown[], opts: { itemData: { item: number } }) =>
+					data.map((d) => ({
+						...((d as Record<string, unknown>) ?? {}),
+						pairedItem: opts.itemData,
+					})),
+				returnJsonArray: (data: unknown[]) => data.map((d) => ({ json: d })),
+			},
+		} as unknown as IExecuteFunctions;
+
+		const node = new Pokemon();
+		const result = await node.execute.call(ctx);
+
+		expect(result[0]).toHaveLength(1);
+		const errorItem = result[0][0];
+		expect(errorItem.json).toHaveProperty('error');
+		expect(errorItem.pairedItem).toEqual({ item: 0 });
+	});
+});
+
+// ─── Cycle 19: execute() empty string input ──────────────────────────────────
+
+describe('Pokemon Node — Cycle 19: execute empty string input', () => {
+	it('should throw NodeOperationError for empty nameOrId without making HTTP request', async () => {
+		const mockHttpRequest = jest.fn();
+		const ctx = makeExecuteContext(
+			{ operation: 'get', nameOrId: '', simplify: true },
+			mockHttpRequest,
+		);
+		const node = new Pokemon();
+
+		await expect(node.execute.call(ctx)).rejects.toThrow(NodeOperationError);
+		expect(mockHttpRequest).not.toHaveBeenCalled();
 	});
 });

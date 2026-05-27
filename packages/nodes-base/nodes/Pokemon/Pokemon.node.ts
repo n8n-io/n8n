@@ -5,10 +5,17 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { clampLimit, pokemonApiRequest, pokemonApiRequestAllPages } from './GenericFunctions';
-import type { IPokemonListResponse } from './GenericFunctions';
+import {
+	pokemonApiRequest,
+	pokemonApiRequestAllPages,
+	simplifyPokemonData,
+	validateNameOrId,
+	clampLimit,
+	type IPokemonDetailResponse,
+	type IPokemonListResponse,
+} from './GenericFunctions';
 import { pokemonFields, pokemonOperations } from './PokemonDescription';
 
 const POKEAPI_BASE_URL = 'https://pokeapi.co/api/v2';
@@ -34,12 +41,38 @@ export class Pokemon implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
 		const returnData: INodeExecutionData[] = [];
+		const operation = this.getNodeParameter('operation', 0) as string;
 
-		for (let i = 0; i < items.length; i++) {
-			try {
-				if (operation === 'getAll') {
+		if (operation === 'get') {
+			for (let i = 0; i < items.length; i++) {
+				try {
+					const rawNameOrId = this.getNodeParameter('nameOrId', i) as string;
+					const simplify = this.getNodeParameter('simplify', i, true) as boolean;
+					const nameOrId = validateNameOrId(this, rawNameOrId, i);
+					const url = `${POKEAPI_BASE_URL}/pokemon/${nameOrId}`;
+					const responseData = (await pokemonApiRequest.call(this, url)) as IPokemonDetailResponse;
+					const outputData = simplify ? simplifyPokemonData(responseData) : responseData;
+					returnData.push(
+						...this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray([outputData as unknown as IDataObject]),
+							{ itemData: { item: i } },
+						),
+					);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({
+							json: { error: (error as Error).message },
+							pairedItem: { item: i },
+						});
+						continue;
+					}
+					throw error;
+				}
+			}
+		} else if (operation === 'getAll') {
+			for (let i = 0; i < items.length; i++) {
+				try {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 					let results: IDataObject[];
@@ -59,17 +92,19 @@ export class Pokemon implements INodeType {
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({
+							json: { error: (error as Error).message },
+							pairedItem: { item: i },
+						});
+						continue;
+					}
+					throw error;
 				}
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({
-						json: { error: (error as Error).message },
-						pairedItem: { item: i },
-					});
-					continue;
-				}
-				throw error;
 			}
+		} else {
+			throw new NodeOperationError(this.getNode(), `Unknown operation: ${operation}`);
 		}
 
 		return [returnData];

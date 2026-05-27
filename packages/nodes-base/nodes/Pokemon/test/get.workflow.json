@@ -1,0 +1,63 @@
+{
+	"name": "Pokemon Get Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "manual-trigger-id",
+			"name": "Manual Trigger"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"nameOrId": "pikachu",
+				"simplify": true
+			},
+			"type": "n8n-nodes-base.pokemon",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "pokemon-node-id",
+			"name": "Pokemon"
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Pokemon",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Pokemon": [
+			{
+				"json": {
+					"id": 25,
+					"name": "pikachu",
+					"height": 4,
+					"weight": 60,
+					"base_experience": 112,
+					"types": ["electric"],
+					"abilities": ["static", "lightning-rod"],
+					"stats": {
+						"hp": 35,
+						"attack": 55,
+						"defense": 40,
+						"special-attack": 50,
+						"special-defense": 50,
+						"speed": 90
+					},
+					"sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png",
+					"species": "pikachu"
+				}
+			}
+		]
+	}
+}
