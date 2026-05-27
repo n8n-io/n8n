@@ -49,4 +49,4 @@ describe('Config mutation prompt gating', () => {
 		const prompt = getConfigMutationPrompt(['mcp']);
 		expect(prompt).toContain('mcpServers');
 	});
-})
+});
