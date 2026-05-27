@@ -80,19 +80,20 @@ export function validateNameOrId(
 	nameOrId: string,
 	itemIndex: number,
 ): string {
-	if (!nameOrId || nameOrId.trim().length === 0) {
+	const trimmed = nameOrId?.trim() ?? '';
+	if (trimmed.length === 0) {
 		throw new NodeOperationError(context.getNode(), 'Pokemon name or ID cannot be empty.', {
 			itemIndex,
 		});
 	}
-	if (!NAME_OR_ID_PATTERN.test(nameOrId)) {
+	if (!NAME_OR_ID_PATTERN.test(trimmed)) {
 		throw new NodeOperationError(
 			context.getNode(),
-			`Invalid Pokemon name or ID: "${nameOrId}". Only letters, numbers, and hyphens are allowed.`,
+			`Invalid Pokemon name or ID: "${trimmed}". Only letters, numbers, and hyphens are allowed.`,
 			{ itemIndex },
 		);
 	}
-	return nameOrId.toLowerCase();
+	return trimmed.toLowerCase();
 }
 
 // ─── Limit Clamping ──────────────────────────────────────────────────────────
@@ -121,6 +122,16 @@ export async function pokemonApiRequest(
 			disableFollowRedirect: true,
 		});
 	} catch (error) {
+		const statusCode =
+			(error as { statusCode?: number }).statusCode ??
+			(error as { response?: { status?: number } }).response?.status;
+		if (statusCode === 404) {
+			const pokemonName = url.split('/pokemon/')[1]?.split('?')[0] ?? 'unknown';
+			throw new NodeApiError(this.getNode(), error as JsonObject, {
+				message: `Pokémon '${pokemonName}' not found. Check the spelling — valid names use the PokéAPI format (e.g. 'bulbasaur', 'mr-mime').`,
+				httpCode: '404',
+			});
+		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
