@@ -1104,7 +1104,7 @@ export class WorkflowExecute {
 		connectionInputData: INodeExecutionData[],
 		executionData: IExecuteData,
 	): NonNullable<ITaskMetadata['tracing']> | undefined {
-		const tags = node.customTelemetryTags;
+		const tags = node.customTelemetryTags?.tag;
 		if (!tags?.length) return;
 
 		const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);

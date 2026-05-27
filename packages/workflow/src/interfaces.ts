@@ -1388,7 +1388,9 @@ export interface INode {
 	executeOnce?: boolean;
 	onError?: OnError;
 	continueOnFail?: boolean;
-	customTelemetryTags?: ICustomTelemetryTag[];
+	customTelemetryTags?: {
+		tag?: ICustomTelemetryTag[];
+	};
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
 	webhookId?: string;

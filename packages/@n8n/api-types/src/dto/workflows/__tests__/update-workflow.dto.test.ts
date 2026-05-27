@@ -162,6 +162,26 @@ describe('UpdateWorkflowDto', () => {
 				expectedErrorPath: ['settings'],
 			},
 			{
+				name: 'workflow custom telemetry tags as fixed collection object',
+				request: {
+					settings: {
+						customTelemetryTags: {
+							tag: [{ key: 'env', value: 'production' }],
+						},
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'workflow custom telemetry tag with extra field',
+				request: {
+					settings: {
+						customTelemetryTags: [{ key: 'env', value: 'production', extra: 'field' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0],
+			},
+			{
 				name: 'duplicate workflow custom telemetry tag keys',
 				request: {
 					settings: {

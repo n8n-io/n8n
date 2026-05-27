@@ -67,6 +67,17 @@ const workflowSettingsObjectSchema = z
 				return;
 			}
 
+			const unsupportedKeys = Object.keys(item).filter(
+				(field) => !['key', 'value'].includes(field),
+			);
+			if (unsupportedKeys.length > 0) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: ['customTelemetryTags', index],
+					message: 'Custom telemetry tag must only include key and value',
+				});
+			}
+
 			const key = item.key;
 			if (typeof key !== 'string') {
 				ctx.addIssue({

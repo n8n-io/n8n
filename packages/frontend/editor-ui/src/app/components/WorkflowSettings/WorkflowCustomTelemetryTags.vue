@@ -15,11 +15,7 @@ import type { ICustomTelemetryTag, INodeParameters, INodeProperties } from 'n8n-
 import { ElCol, ElRow } from 'element-plus';
 import type { IUpdateInformation } from '@/Interface';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
-import {
-	customTelemetryTagsFromFixedCollection,
-	customTelemetryTagsToFixedCollection,
-	setValue,
-} from '@/features/ndv/shared/ndv.utils';
+import { setValue } from '@/features/ndv/shared/ndv.utils';
 
 type Props = {
 	modelValue?: ICustomTelemetryTag[];
@@ -39,6 +35,37 @@ const showModal = ref(false);
 const draft = ref<ICustomTelemetryTag[]>([]);
 
 const tags = computed(() => props.modelValue ?? []);
+
+type WorkflowCustomTelemetryTagsFixedCollection = {
+	tag?: ICustomTelemetryTag[];
+};
+
+const cloneTags = (tagsToClone: ICustomTelemetryTag[] = []) =>
+	tagsToClone.map((tag) => ({ ...tag }));
+
+const isCustomTelemetryTag = (value: unknown): value is ICustomTelemetryTag =>
+	typeof value === 'object' &&
+	value !== null &&
+	!Array.isArray(value) &&
+	'key' in value &&
+	'value' in value &&
+	typeof value.key === 'string' &&
+	typeof value.value === 'string';
+
+const workflowCustomTelemetryTagsToFixedCollection = (
+	tagsToConvert: ICustomTelemetryTag[],
+): WorkflowCustomTelemetryTagsFixedCollection => ({
+	...(tagsToConvert.length ? { tag: cloneTags(tagsToConvert) } : {}),
+});
+
+const workflowCustomTelemetryTagsFromFixedCollection = (value: unknown): ICustomTelemetryTag[] => {
+	if (typeof value !== 'object' || value === null || Array.isArray(value) || !('tag' in value)) {
+		return [];
+	}
+
+	const { tag } = value;
+	return Array.isArray(tag) ? tag.filter(isCustomTelemetryTag) : [];
+};
 
 const parameters = computed<INodeProperties[]>(() => [
 	{
@@ -89,11 +116,8 @@ const parameters = computed<INodeProperties[]>(() => [
 ]);
 
 const draftNodeValues = computed<INodeParameters>(() => ({
-	customTelemetryTags: customTelemetryTagsToFixedCollection(draft.value),
+	customTelemetryTags: workflowCustomTelemetryTagsToFixedCollection(draft.value),
 }));
-
-const cloneTags = (tagsToClone: ICustomTelemetryTag[] = []) =>
-	tagsToClone.map((tag) => ({ ...tag }));
 
 const getTagErrors = (tagsToValidate: ICustomTelemetryTag[]) => {
 	const seen = new Set<string>();
@@ -138,13 +162,15 @@ onBeforeUnmount(() => {
 
 const updateTags = (parameterData: IUpdateInformation) => {
 	const nodeValues = ref<INodeParameters>({
-		customTelemetryTags: customTelemetryTagsToFixedCollection(draft.value),
+		customTelemetryTags: workflowCustomTelemetryTagsToFixedCollection(draft.value),
 	});
 	const value = parameterData.value === undefined ? null : parameterData.value;
 
 	setValue(nodeValues, parameterData.name, value);
 
-	draft.value = customTelemetryTagsFromFixedCollection(nodeValues.value.customTelemetryTags);
+	draft.value = workflowCustomTelemetryTagsFromFixedCollection(
+		nodeValues.value.customTelemetryTags,
+	);
 };
 
 const openModal = () => {

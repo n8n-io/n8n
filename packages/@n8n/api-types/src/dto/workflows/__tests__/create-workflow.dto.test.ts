@@ -200,6 +200,32 @@ describe('CreateWorkflowDto', () => {
 				expectedErrorPath: ['settings'],
 			},
 			{
+				name: 'workflow custom telemetry tags as fixed collection object',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					settings: {
+						customTelemetryTags: {
+							tag: [{ key: 'env', value: 'production' }],
+						},
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'workflow custom telemetry tag with extra field',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					settings: {
+						customTelemetryTags: [{ key: 'env', value: 'production', extra: 'field' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0],
+			},
+			{
 				name: 'duplicate workflow custom telemetry tag keys',
 				request: {
 					name: 'Test',

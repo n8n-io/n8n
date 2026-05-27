@@ -642,19 +642,22 @@ describe('createCommonNodeSettings', () => {
 });
 
 describe('collectSettings', () => {
-	const customTelemetryTags = [
-		{ key: 'environment', value: 'production' },
-		{ key: 'team', value: '={{ $json.team }}' },
-	];
+	const customTelemetryTags = {
+		tag: [
+			{ key: 'environment', value: 'production' },
+			{ key: 'team', value: '={{ $json.team }}' },
+		],
+	};
 
 	it('should round-trip customTelemetryTags from the node object', () => {
 		const node = { customTelemetryTags } as INodeUi;
 
 		const result = collectSettings(node, []);
 
-		expect(result.customTelemetryTags).toEqual({ tag: customTelemetryTags });
-		expect((result.customTelemetryTags as { tag: typeof customTelemetryTags }).tag).not.toBe(
-			customTelemetryTags,
+		expect(result.customTelemetryTags).toEqual(customTelemetryTags);
+		expect(result.customTelemetryTags).not.toBe(customTelemetryTags);
+		expect((result.customTelemetryTags as typeof customTelemetryTags).tag).not.toBe(
+			customTelemetryTags.tag,
 		);
 	});
 

@@ -1390,10 +1390,12 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 		it('evaluates tag expressions and writes them into metadata.tracing', async () => {
 			const node: INode = {
 				...mockNode,
-				customTelemetryTags: [
-					{ key: 'env', value: '={{ $json.env }}' },
-					{ key: 'static', value: 'foo' },
-				],
+				customTelemetryTags: {
+					tag: [
+						{ key: 'env', value: '={{ $json.env }}' },
+						{ key: 'static', value: 'foo' },
+					],
+				},
 			};
 			getParameterValue.mockImplementation((value: string) =>
 				value === '={{ $json.env }}' ? 'prod' : value,
@@ -1409,7 +1411,9 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 		it('preserves existing tracing entries on key collision', async () => {
 			const node: INode = {
 				...mockNode,
-				customTelemetryTags: [{ key: 'env', value: 'user-set' }],
+				customTelemetryTags: {
+					tag: [{ key: 'env', value: 'user-set' }],
+				},
 			};
 			getParameterValue.mockReturnValue('user-set');
 
@@ -1426,10 +1430,12 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 		it('skips tags with empty or whitespace keys', async () => {
 			const node: INode = {
 				...mockNode,
-				customTelemetryTags: [
-					{ key: '   ', value: 'ignored' },
-					{ key: 'kept', value: 'value' },
-				],
+				customTelemetryTags: {
+					tag: [
+						{ key: '   ', value: 'ignored' },
+						{ key: 'kept', value: 'value' },
+					],
+				},
 			};
 			getParameterValue.mockImplementation((value: string) => value);
 
@@ -1443,10 +1449,12 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 		it('preserves string, number, and boolean evaluated values', async () => {
 			const node: INode = {
 				...mockNode,
-				customTelemetryTags: [
-					{ key: 'count', value: '={{ 42 }}' },
-					{ key: 'enabled', value: '={{ true }}' },
-				],
+				customTelemetryTags: {
+					tag: [
+						{ key: 'count', value: '={{ 42 }}' },
+						{ key: 'enabled', value: '={{ true }}' },
+					],
+				},
 			};
 			getParameterValue.mockImplementation((value: string) => (value === '={{ 42 }}' ? 42 : true));
 
@@ -1460,10 +1468,12 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 		it('skips tags when expression evaluates to a non-primitive value', async () => {
 			const node: INode = {
 				...mockNode,
-				customTelemetryTags: [
-					{ key: 'obj', value: '={{ $json }}' },
-					{ key: 'ok', value: 'still-here' },
-				],
+				customTelemetryTags: {
+					tag: [
+						{ key: 'obj', value: '={{ $json }}' },
+						{ key: 'ok', value: 'still-here' },
+					],
+				},
 			};
 			getParameterValue.mockImplementation((value: string) =>
 				value === '={{ $json }}' ? { nested: 1 } : value,
@@ -1479,10 +1489,12 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 		it('ignores tags whose expression evaluates to null or undefined', async () => {
 			const node: INode = {
 				...mockNode,
-				customTelemetryTags: [
-					{ key: 'maybe', value: '={{ $json.missing }}' },
-					{ key: 'definitely', value: 'value' },
-				],
+				customTelemetryTags: {
+					tag: [
+						{ key: 'maybe', value: '={{ $json.missing }}' },
+						{ key: 'definitely', value: 'value' },
+					],
+				},
 			};
 			getParameterValue.mockImplementation((value: string) =>
 				value === '={{ $json.missing }}' ? undefined : value,
@@ -1506,10 +1518,12 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 		it('continues evaluating remaining tags after one expression throws', async () => {
 			const node: INode = {
 				...mockNode,
-				customTelemetryTags: [
-					{ key: 'broken', value: '={{ $json.missing.deep }}' },
-					{ key: 'ok', value: 'value' },
-				],
+				customTelemetryTags: {
+					tag: [
+						{ key: 'broken', value: '={{ $json.missing.deep }}' },
+						{ key: 'ok', value: 'value' },
+					],
+				},
 			};
 			getParameterValue.mockImplementation((value: string) => {
 				if (value === '={{ $json.missing.deep }}') throw new Error('boom');
@@ -1526,7 +1540,9 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 		it('writes tracing for trigger nodes', async () => {
 			const node: INode = {
 				...mockNode,
-				customTelemetryTags: [{ key: 'env', value: 'prod' }],
+				customTelemetryTags: {
+					tag: [{ key: 'env', value: 'prod' }],
+				},
 			};
 			getParameterValue.mockReturnValue('prod');
 
@@ -1555,7 +1571,9 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 		it('writes tracing for poll nodes in non-manual mode', async () => {
 			const node: INode = {
 				...mockNode,
-				customTelemetryTags: [{ key: 'env', value: 'staging' }],
+				customTelemetryTags: {
+					tag: [{ key: 'env', value: 'staging' }],
+				},
 			};
 			getParameterValue.mockReturnValue('staging');
 
@@ -1586,7 +1604,9 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 					resource: 'testResource',
 					operation: 'testOperation',
 				},
-				customTelemetryTags: [{ key: 'env', value: '={{ $json.env }}' }],
+				customTelemetryTags: {
+					tag: [{ key: 'env', value: '={{ $json.env }}' }],
+				},
 			};
 
 			const customOpNodeType = {
