@@ -327,7 +327,10 @@ export function useCanvasNodeGroupOperationGuards() {
 				connectionsBySourceNode: candidateConnections,
 			})
 		) {
-			return true;
+			const remainingInvalidGroup = findInvalidGroup(affectedGroups, candidateConnections);
+			if (!remainingInvalidGroup) return true;
+			showConnectionChangeBlockedToast(blockedTitleKey, remainingInvalidGroup);
+			return false;
 		}
 
 		showConnectionChangeBlockedToast(blockedTitleKey, invalidAffectedGroup);
