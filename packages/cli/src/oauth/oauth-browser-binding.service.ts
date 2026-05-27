@@ -1,22 +1,19 @@
-import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import type { CookieOptions, Request, Response } from 'express';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
-
 export const OAUTH_BINDING_COOKIE_NAME = 'n8n-oauth-binding';
 
 const NONCE_BYTES = 32;
-const COOKIE_PATH = '/rest';
+
+export type BindingVerifyResult =
+	| { ok: true }
+	| { ok: false; reason: 'cookie-missing' | 'hash-mismatch' };
 
 @Service()
 export class OAuthBrowserBindingService {
-	constructor(
-		private readonly logger: Logger,
-		private readonly globalConfig: GlobalConfig,
-	) {}
+	constructor(private readonly globalConfig: GlobalConfig) {}
 
 	/** Whether binding should be applied to new flows. Callback-side verification is unconditional when a hash is present. */
 	isEnabled(): boolean {
@@ -43,7 +40,7 @@ export class OAuthBrowserBindingService {
 			httpOnly: true,
 			secure,
 			sameSite,
-			path: COOKIE_PATH,
+			path: `/${this.globalConfig.endpoints.rest}`,
 		});
 		return nonce;
 	}
@@ -53,27 +50,23 @@ export class OAuthBrowserBindingService {
 	}
 
 	/**
-	 * Verify the cookie against the hash captured at /auth. Throws AuthError on
-	 * missing cookie or mismatch. Callers should only invoke when state carries
+	 * Verify the cookie against the hash captured at /auth. Returns a discriminated
+	 * result so callers can attach domain context (credentialId, origin) when
+	 * emitting events on rejection. Callers should only invoke when state carries
 	 * a bindingHash; absent hash means binding wasn't requested at /auth.
 	 */
-	verifyBindingOrThrow(req: Request, expectedHash: string): void {
+	verifyBinding(req: Request, expectedHash: string): BindingVerifyResult {
 		const cookieValue = this.readCookie(req);
 		if (!cookieValue) {
-			this.logger.warn('OAuth callback rejected: browser-binding cookie missing');
-			throw new AuthError(
-				'This OAuth flow was started in a different browser. Please retry from your original window.',
-			);
+			return { ok: false, reason: 'cookie-missing' };
 		}
 		const actualHash = this.computeHash(cookieValue);
 		const actualBuf = Buffer.from(actualHash);
 		const expectedBuf = Buffer.from(expectedHash);
 		if (actualBuf.length !== expectedBuf.length || !timingSafeEqual(actualBuf, expectedBuf)) {
-			this.logger.warn('OAuth callback rejected: browser-binding hash mismatch');
-			throw new AuthError(
-				'This OAuth flow was started in a different browser. Please retry from your original window.',
-			);
+			return { ok: false, reason: 'hash-mismatch' };
 		}
+		return { ok: true };
 	}
 
 	private readCookie(req: Request): string | undefined {

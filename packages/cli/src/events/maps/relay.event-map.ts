@@ -431,6 +431,12 @@ export type RelayEventMap = {
 		credentialId: string;
 	};
 
+	'oauth-callback-binding-rejected': {
+		reason: 'cookie-missing' | 'hash-mismatch';
+		credentialId?: string;
+		origin?: 'static-credential' | 'dynamic-credential';
+	};
+
 	// #endregion
 
 	// #region Community package

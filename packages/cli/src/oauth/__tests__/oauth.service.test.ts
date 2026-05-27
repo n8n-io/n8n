@@ -19,6 +19,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
@@ -50,6 +51,7 @@ describe('OauthService', () => {
 	const authService = mockInstance(AuthService);
 	const oauthJweServiceProxy = mockInstance(OAuthJweServiceProxy);
 	const browserBindingService = mockInstance(OAuthBrowserBindingService);
+	const eventService = mockInstance(EventService);
 
 	let service: OauthService;
 
@@ -94,6 +96,7 @@ describe('OauthService', () => {
 			authService,
 			oauthJweServiceProxy,
 			browserBindingService,
+			eventService,
 		);
 	});
 
@@ -724,23 +727,22 @@ describe('OauthService', () => {
 				return Buffer.from(JSON.stringify(state)).toString('base64');
 			};
 
-			it('calls verifyBindingOrThrow when state carries a bindingHash', async () => {
+			it('calls verifyBinding when state carries a bindingHash', async () => {
 				const encodedState = buildEncodedState({
 					cid: 'credential-id',
 					userId: 'user-id',
 					origin: 'static-credential',
 					bindingHash: 'hash-from-initiate',
 				});
+				browserBindingService.verifyBinding.mockReturnValueOnce({ ok: true });
 				const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
 				credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
 				const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: 'user-id' }) });
 
 				await (service as any).decodeCsrfState(encodedState, req);
 
-				expect(browserBindingService.verifyBindingOrThrow).toHaveBeenCalledWith(
-					req,
-					'hash-from-initiate',
-				);
+				expect(browserBindingService.verifyBinding).toHaveBeenCalledWith(req, 'hash-from-initiate');
+				expect(eventService.emit).not.toHaveBeenCalled();
 			});
 
 			it('skips verification when state has no bindingHash (pre-feature flow)', async () => {
@@ -755,7 +757,7 @@ describe('OauthService', () => {
 
 				await (service as any).decodeCsrfState(encodedState, req);
 
-				expect(browserBindingService.verifyBindingOrThrow).not.toHaveBeenCalled();
+				expect(browserBindingService.verifyBinding).not.toHaveBeenCalled();
 			});
 
 			it('verifies binding before any origin-specific branch (dynamic-credential)', async () => {
@@ -764,6 +766,7 @@ describe('OauthService', () => {
 					origin: 'dynamic-credential',
 					bindingHash: 'dynamic-hash',
 				});
+				browserBindingService.verifyBinding.mockReturnValueOnce({ ok: true });
 				credentialsRepository.findOneBy.mockResolvedValueOnce(
 					mock<CredentialsEntity>({ id: 'credential-id' }),
 				);
@@ -771,27 +774,52 @@ describe('OauthService', () => {
 
 				await (service as any).decodeCsrfState(encodedState, req);
 
-				expect(browserBindingService.verifyBindingOrThrow).toHaveBeenCalledWith(
-					req,
-					'dynamic-hash',
-				);
+				expect(browserBindingService.verifyBinding).toHaveBeenCalledWith(req, 'dynamic-hash');
 			});
 
-			it('propagates AuthError from binding mismatch', async () => {
+			it('throws AuthError and emits rejection event on hash mismatch', async () => {
 				const encodedState = buildEncodedState({
 					cid: 'credential-id',
 					userId: 'user-id',
 					origin: 'static-credential',
 					bindingHash: 'expected-hash',
 				});
-				browserBindingService.verifyBindingOrThrow.mockImplementationOnce(() => {
-					throw new AuthError('Browser binding mismatch');
+				browserBindingService.verifyBinding.mockReturnValueOnce({
+					ok: false,
+					reason: 'hash-mismatch',
 				});
 				const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: 'user-id' }) });
 
 				await expect((service as any).decodeCsrfState(encodedState, req)).rejects.toThrow(
 					AuthError,
 				);
+				expect(eventService.emit).toHaveBeenCalledWith('oauth-callback-binding-rejected', {
+					reason: 'hash-mismatch',
+					credentialId: 'credential-id',
+					origin: 'static-credential',
+				});
+			});
+
+			it('emits rejection event with cookie-missing reason for dynamic-credential', async () => {
+				const encodedState = buildEncodedState({
+					cid: 'credential-id',
+					origin: 'dynamic-credential',
+					bindingHash: 'expected-hash',
+				});
+				browserBindingService.verifyBinding.mockReturnValueOnce({
+					ok: false,
+					reason: 'cookie-missing',
+				});
+				const req = mock<AuthenticatedRequest>({ user: undefined as any });
+
+				await expect((service as any).decodeCsrfState(encodedState, req)).rejects.toThrow(
+					AuthError,
+				);
+				expect(eventService.emit).toHaveBeenCalledWith('oauth-callback-binding-rejected', {
+					reason: 'cookie-missing',
+					credentialId: 'credential-id',
+					origin: 'dynamic-credential',
+				});
 			});
 		});
 	});

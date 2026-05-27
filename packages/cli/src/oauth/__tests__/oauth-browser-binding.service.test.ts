@@ -1,9 +1,7 @@
-import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
 import {
 	OAUTH_BINDING_COOKIE_NAME,
 	OAuthBrowserBindingService,
@@ -14,6 +12,7 @@ const makeConfig = (
 		secure: boolean;
 		samesite: 'strict' | 'lax' | 'none';
 		oauthBrowserBinding: boolean;
+		restEndpoint: string;
 	}> = {},
 ) =>
 	mock<GlobalConfig>({
@@ -21,6 +20,7 @@ const makeConfig = (
 			cookie: { secure: overrides.secure ?? true, samesite: overrides.samesite ?? 'lax' },
 			oauthBrowserBinding: overrides.oauthBrowserBinding ?? true,
 		},
+		endpoints: { rest: overrides.restEndpoint ?? 'rest' },
 	});
 
 const makeReq = (cookies: Record<string, unknown> = {}) => ({ cookies }) as unknown as Request;
@@ -31,28 +31,20 @@ const makeRes = () => {
 };
 
 describe('OAuthBrowserBindingService', () => {
-	const logger = mock<Logger>();
-
 	describe('isEnabled', () => {
 		it('reflects the auth.oauthBrowserBinding config value', () => {
 			expect(
-				new OAuthBrowserBindingService(
-					logger,
-					makeConfig({ oauthBrowserBinding: true }),
-				).isEnabled(),
+				new OAuthBrowserBindingService(makeConfig({ oauthBrowserBinding: true })).isEnabled(),
 			).toBe(true);
 			expect(
-				new OAuthBrowserBindingService(
-					logger,
-					makeConfig({ oauthBrowserBinding: false }),
-				).isEnabled(),
+				new OAuthBrowserBindingService(makeConfig({ oauthBrowserBinding: false })).isEnabled(),
 			).toBe(false);
 		});
 	});
 
 	describe('ensureBindingCookie', () => {
 		it('mints a new nonce and sets the cookie when none is present', () => {
-			const service = new OAuthBrowserBindingService(logger, makeConfig());
+			const service = new OAuthBrowserBindingService(makeConfig());
 			const req = makeReq();
 			const res = makeRes();
 
@@ -73,7 +65,7 @@ describe('OAuthBrowserBindingService', () => {
 		});
 
 		it('reuses an existing cookie value when present', () => {
-			const service = new OAuthBrowserBindingService(logger, makeConfig());
+			const service = new OAuthBrowserBindingService(makeConfig());
 			const req = makeReq({ [OAUTH_BINDING_COOKIE_NAME]: 'existing-nonce' });
 			const res = makeRes();
 
@@ -84,7 +76,7 @@ describe('OAuthBrowserBindingService', () => {
 		});
 
 		it('inherits secure=false from config', () => {
-			const service = new OAuthBrowserBindingService(logger, makeConfig({ secure: false }));
+			const service = new OAuthBrowserBindingService(makeConfig({ secure: false }));
 			const res = makeRes();
 
 			service.ensureBindingCookie(makeReq(), res);
@@ -97,7 +89,7 @@ describe('OAuthBrowserBindingService', () => {
 		});
 
 		it('clamps SameSite=strict to lax', () => {
-			const service = new OAuthBrowserBindingService(logger, makeConfig({ samesite: 'strict' }));
+			const service = new OAuthBrowserBindingService(makeConfig({ samesite: 'strict' }));
 			const res = makeRes();
 
 			service.ensureBindingCookie(makeReq(), res);
@@ -110,7 +102,7 @@ describe('OAuthBrowserBindingService', () => {
 		});
 
 		it('passes SameSite=none through unchanged', () => {
-			const service = new OAuthBrowserBindingService(logger, makeConfig({ samesite: 'none' }));
+			const service = new OAuthBrowserBindingService(makeConfig({ samesite: 'none' }));
 			const res = makeRes();
 
 			service.ensureBindingCookie(makeReq(), res);
@@ -122,8 +114,21 @@ describe('OAuthBrowserBindingService', () => {
 			);
 		});
 
+		it('uses the configured REST endpoint as the cookie path', () => {
+			const service = new OAuthBrowserBindingService(makeConfig({ restEndpoint: 'api/v1' }));
+			const res = makeRes();
+
+			service.ensureBindingCookie(makeReq(), res);
+
+			expect(res.cookie).toHaveBeenCalledWith(
+				OAUTH_BINDING_COOKIE_NAME,
+				expect.any(String),
+				expect.objectContaining({ path: '/api/v1' }),
+			);
+		});
+
 		it('does not set a Max-Age (session cookie)', () => {
-			const service = new OAuthBrowserBindingService(logger, makeConfig());
+			const service = new OAuthBrowserBindingService(makeConfig());
 			const res = makeRes();
 
 			service.ensureBindingCookie(makeReq(), res);
@@ -136,56 +141,62 @@ describe('OAuthBrowserBindingService', () => {
 
 	describe('computeHash', () => {
 		it('is deterministic for the same input', () => {
-			const service = new OAuthBrowserBindingService(logger, makeConfig());
+			const service = new OAuthBrowserBindingService(makeConfig());
 			expect(service.computeHash('abc')).toBe(service.computeHash('abc'));
 		});
 
 		it('differs for different inputs', () => {
-			const service = new OAuthBrowserBindingService(logger, makeConfig());
+			const service = new OAuthBrowserBindingService(makeConfig());
 			expect(service.computeHash('abc')).not.toBe(service.computeHash('abd'));
 		});
 
 		it('emits a base64url-encoded SHA-256 digest', () => {
-			const service = new OAuthBrowserBindingService(logger, makeConfig());
+			const service = new OAuthBrowserBindingService(makeConfig());
 			const hash = service.computeHash('any-nonce-value');
 			expect(hash).toMatch(/^[A-Za-z0-9_-]+$/);
 			expect(hash.length).toBe(43); // 32 bytes base64url with no padding
 		});
 	});
 
-	describe('verifyBindingOrThrow', () => {
-		const service = new OAuthBrowserBindingService(logger, makeConfig());
+	describe('verifyBinding', () => {
+		const service = new OAuthBrowserBindingService(makeConfig());
 		const nonce = 'matching-nonce-value';
 		const expectedHash = service.computeHash(nonce);
 
-		it('passes when cookie hashes to expected value', () => {
-			expect(() =>
-				service.verifyBindingOrThrow(makeReq({ [OAUTH_BINDING_COOKIE_NAME]: nonce }), expectedHash),
-			).not.toThrow();
+		it('returns ok when cookie hashes to expected value', () => {
+			expect(
+				service.verifyBinding(makeReq({ [OAUTH_BINDING_COOKIE_NAME]: nonce }), expectedHash),
+			).toEqual({ ok: true });
 		});
 
-		it('throws AuthError when cookie is missing', () => {
-			expect(() => service.verifyBindingOrThrow(makeReq(), expectedHash)).toThrow(AuthError);
+		it('returns cookie-missing when no binding cookie is present', () => {
+			expect(service.verifyBinding(makeReq(), expectedHash)).toEqual({
+				ok: false,
+				reason: 'cookie-missing',
+			});
 		});
 
-		it('throws AuthError when cookie value does not match', () => {
-			expect(() =>
-				service.verifyBindingOrThrow(
+		it('returns hash-mismatch when cookie value does not match', () => {
+			expect(
+				service.verifyBinding(
 					makeReq({ [OAUTH_BINDING_COOKIE_NAME]: 'different-nonce' }),
 					expectedHash,
 				),
-			).toThrow(AuthError);
+			).toEqual({ ok: false, reason: 'hash-mismatch' });
 		});
 
-		it('throws AuthError when expected hash length differs (no length-leak via timingSafeEqual)', () => {
-			expect(() =>
-				service.verifyBindingOrThrow(makeReq({ [OAUTH_BINDING_COOKIE_NAME]: nonce }), 'short'),
-			).toThrow(AuthError);
+		it('returns hash-mismatch when expected hash length differs (timingSafeEqual length pre-check)', () => {
+			expect(
+				service.verifyBinding(makeReq({ [OAUTH_BINDING_COOKIE_NAME]: nonce }), 'short'),
+			).toEqual({ ok: false, reason: 'hash-mismatch' });
 		});
 
-		it('throws AuthError when cookie value is non-string', () => {
+		it('returns cookie-missing when cookie value is non-string', () => {
 			const req = { cookies: { [OAUTH_BINDING_COOKIE_NAME]: 123 } } as unknown as Request;
-			expect(() => service.verifyBindingOrThrow(req, expectedHash)).toThrow(AuthError);
+			expect(service.verifyBinding(req, expectedHash)).toEqual({
+				ok: false,
+				reason: 'cookie-missing',
+			});
 		});
 	});
 });

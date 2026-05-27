@@ -54,6 +54,7 @@ import {
 } from './types';
 import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { EventService } from '@/events/event.service';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 
@@ -81,6 +82,7 @@ export class OauthService {
 		private readonly authService: AuthService,
 		private readonly oauthJweServiceProxy: OAuthJweServiceProxy,
 		private readonly browserBindingService: OAuthBrowserBindingService,
+		private readonly eventService: EventService,
 	) {}
 
 	private validateOAuthUrlOrThrow(url: string): void {
@@ -308,7 +310,17 @@ export class OauthService {
 		// protected. A bindingHash is only set when binding was enabled at /auth;
 		// states without it pre-date the feature and are accepted.
 		if (typeof decryptedState.bindingHash === 'string' && decryptedState.bindingHash.length > 0) {
-			this.browserBindingService.verifyBindingOrThrow(req, decryptedState.bindingHash);
+			const result = this.browserBindingService.verifyBinding(req, decryptedState.bindingHash);
+			if (!result.ok) {
+				this.eventService.emit('oauth-callback-binding-rejected', {
+					reason: result.reason,
+					credentialId: decryptedState.cid,
+					origin: decryptedState.origin,
+				});
+				throw new AuthError(
+					'This OAuth flow was started in a different browser. Please retry from your original window.',
+				);
+			}
 		}
 
 		// Dynamic credentials: skip user-ownership check since the credential may be shared,
