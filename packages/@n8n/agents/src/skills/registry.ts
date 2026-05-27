@@ -189,18 +189,13 @@ function toRegistryEntry(skill: RuntimeSkill): RuntimeSkillRegistryEntry {
 }
 
 function hashSkill(skill: RuntimeSkill): string {
+	// Keep hashes tied to skill content, not where or how that content was loaded.
 	return hashJson({
 		id: skill.id,
 		name: skill.name,
 		description: skill.description,
 		instructions: skill.instructions,
 		recommendedTools: skill.recommendedTools,
-		sourceName: skill.sourceName,
-		path: skill.path,
-		sourcePath: skill.sourcePath,
-		directory: skill.directory,
-		sourceDirectory: skill.sourceDirectory,
-		category: skill.category,
 		allowedTools: skill.allowedTools,
 		interface: skill.interface,
 		policy: skill.policy,
@@ -401,8 +396,15 @@ function normalizeLinkedFilePath(filePath: string): string | null {
 function hashRegistry(skills: RuntimeSkillRegistryEntry[]): string {
 	return hashJson({
 		schemaVersion: RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
-		skills,
+		skills: skills.map(toRegistryHashEntry),
 	});
+}
+
+function toRegistryHashEntry(skill: RuntimeSkillRegistryEntry) {
+	return {
+		id: skill.id,
+		hash: skill.hash,
+	};
 }
 
 function hashJson(value: unknown): string {

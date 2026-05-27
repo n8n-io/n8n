@@ -47,7 +47,7 @@ function onSubmit(resumeData: unknown) {
 		:purpose="payload.input.purpose"
 		:credential-type="payload.input.credentialType"
 		:node-type="payload.input.nodeType"
-		:credential-slot="payload.input.slot"
+		:credential-slot="payload.input.credentialSlot"
 		:project-id="projectId"
 		:agent-id="agentId"
 		:disabled="disabled"
