@@ -393,6 +393,87 @@ describe('parseStoredMessages', () => {
 			});
 		});
 
+		it('should keep the snapshot tree when dedupe collapses in-flight checkpoint messages', () => {
+			// Simulates the in-flight HITL case: the SDK hasn't committed
+			// the turn to memory yet, so `loadInFlightCheckpointMessages`
+			// surfaces several intermediate assistant messages from the
+			// checkpoint blob. The snapshot was paired with a middle
+			// message via timestamp matching, while a later message
+			// (with no tree of its own) carries the latest text. Dedupe
+			// must transfer the agentTree forward so the confirmation
+			// card in the snapshot tree survives.
+			const snapshotTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: 'Streaming...',
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: 'tc-cred',
+						toolName: 'credentials',
+						args: {},
+						isLoading: true,
+						confirmation: {
+							requestId: 'req-live',
+							inputType: 'approval',
+							message: 'Select a credential',
+							severity: 'info',
+						},
+						renderHint: 'default',
+					},
+				],
+				children: [],
+				timeline: [],
+			};
+
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Build it',
+					createdAt: makeDate(0),
+				},
+				{
+					id: 'msg-a-early',
+					role: 'assistant',
+					content: [{ type: 'text', text: '' }],
+					createdAt: makeDate(10),
+				},
+				{
+					id: 'msg-a-paired',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Looking up credentials' }],
+					createdAt: makeDate(20),
+				},
+				{
+					id: 'msg-a-latest',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Need credential confirmation' }],
+					createdAt: makeDate(40),
+				},
+			];
+
+			const result = parseStoredMessages(messages, [
+				{
+					tree: snapshotTree,
+					runId: 'run_paired',
+					messageGroupId: 'mg_inflight',
+					createdAt: makeDate(25),
+					updatedAt: makeDate(25),
+				},
+			]);
+
+			// One user + one assistant (dedup collapses the three assistant rows).
+			expect(result).toHaveLength(2);
+			const assistant = result[1];
+			// Latest message id survives so live SSE deltas keep correlating.
+			expect(assistant.id).toBe('msg-a-latest');
+			// Tree from the snapshot is transferred onto the kept message.
+			expect(assistant.agentTree).toBe(snapshotTree);
+			expect(assistant.agentTree?.toolCalls[0].confirmation?.requestId).toBe('req-live');
+		});
+
 		it('should apply renderHint correctly for known tool names', () => {
 			const messages: StoredAgentMessage[] = [
 				{

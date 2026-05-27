@@ -293,8 +293,18 @@ export function parseStoredMessages(
 	// orphan snapshots before, between, or after assistant rows.
 	let nextSnapshotIdx = 0;
 	const consumedSnapshots = new Set<AgentTreeSnapshot>();
+	// Messages whose `agentTree` originated from a snapshot (as opposed to
+	// being synthesized by `buildFlatAgentTree`). Used by the dedupe pass to
+	// prefer transferring snapshot trees forward in the in-flight HITL case.
+	const messagesWithSnapshotTree = new Set<InstanceAiMessage>();
 
 	let lastUserMessageId: string | undefined;
+
+	function pushSnapshotMessage(snapshot: AgentTreeSnapshot): void {
+		const built = buildSnapshotMessage(snapshot);
+		messagesWithSnapshotTree.add(built);
+		messages.push(built);
+	}
 
 	function appendChronologicalOrphansBefore(message: ConversationStoredMessage): void {
 		const messageTimestamp = messageCreatedAtMs(message);
@@ -304,7 +314,7 @@ export function parseStoredMessages(
 			if (snapshotTimestamp === undefined || snapshotTimestamp >= messageTimestamp) return;
 
 			consumedSnapshots.add(snapshot);
-			messages.push(buildSnapshotMessage(snapshot));
+			pushSnapshotMessage(snapshot);
 			nextSnapshotIdx++;
 		}
 	}
@@ -374,7 +384,7 @@ export function parseStoredMessages(
 					? buildFlatAgentTree(text, reasoning, toolCalls, parts)
 					: undefined);
 
-			messages.push({
+			const assistantMessage: InstanceAiMessage = {
 				id: msg.id,
 				runId,
 				messageGroupId: snapshot?.messageGroupId,
@@ -385,7 +395,9 @@ export function parseStoredMessages(
 				reasoning,
 				isStreaming: false,
 				agentTree,
-			});
+			};
+			if (snapshot) messagesWithSnapshotTree.add(assistantMessage);
+			messages.push(assistantMessage);
 			continue;
 		}
 
@@ -395,7 +407,7 @@ export function parseStoredMessages(
 
 	for (const snapshot of snapshots ?? []) {
 		if (consumedSnapshots.has(snapshot)) continue;
-		messages.push(buildSnapshotMessage(snapshot));
+		pushSnapshotMessage(snapshot);
 	}
 
 	// Propagate messageGroupId across assistant rows in the same conversational
@@ -415,15 +427,35 @@ export function parseStoredMessages(
 	// Deduplicate assistant messages by messageGroupId.
 	// Follow-up runs in the same group produce separate DB rows; keep only
 	// the latest (which carries the full runIds array and complete tree).
-	const seen = new Set<string>();
+	//
+	// In-flight HITL turns are different: the snapshot is paired with a
+	// *middle* checkpoint message via timestamp matching, and the latest
+	// message in the turn has only an auto-generated flat tree from
+	// `buildFlatAgentTree`. Keeping just the latest would drop the
+	// snapshot's tree (including its live confirmation cards), so transfer
+	// the snapshot's `agentTree` + `runIds` onto the kept message when the
+	// kept one's tree didn't come from a snapshot.
+	const keptIndexByGid = new Map<string, number>();
+	const toRemove = new Set<number>();
 	for (let i = messages.length - 1; i >= 0; i--) {
 		const gid = messages[i].messageGroupId;
 		if (!gid) continue;
-		if (seen.has(gid)) {
-			messages.splice(i, 1);
-		} else {
-			seen.add(gid);
+		const keptIdx = keptIndexByGid.get(gid);
+		if (keptIdx === undefined) {
+			keptIndexByGid.set(gid, i);
+			continue;
 		}
+		const kept = messages[keptIdx];
+		const candidate = messages[i];
+		if (!messagesWithSnapshotTree.has(kept) && messagesWithSnapshotTree.has(candidate)) {
+			kept.agentTree = candidate.agentTree;
+			kept.runIds = candidate.runIds;
+			messagesWithSnapshotTree.add(kept);
+		}
+		toRemove.add(i);
+	}
+	for (let i = messages.length - 1; i >= 0; i--) {
+		if (toRemove.has(i)) messages.splice(i, 1);
 	}
 
 	return messages;
