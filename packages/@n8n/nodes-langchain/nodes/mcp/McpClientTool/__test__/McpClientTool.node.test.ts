@@ -308,6 +308,7 @@ describe('McpClientTool', () => {
 			await customFetch?.(url, {} as any);
 			expect(mockedProxyFetch).toHaveBeenCalledWith(url, {
 				headers: { Accept: 'text/event-stream', 'my-header': 'header-value' },
+				redirect: 'manual',
 			});
 		});
 
@@ -359,6 +360,7 @@ describe('McpClientTool', () => {
 			await customFetch?.(url, {} as any);
 			expect(mockedProxyFetch).toHaveBeenCalledWith(url, {
 				headers: { Accept: 'text/event-stream', Authorization: 'Bearer my-token' },
+				redirect: 'manual',
 			});
 		});
 
@@ -1766,6 +1768,156 @@ describe('McpClientTool', () => {
 				expect.anything(),
 				expect.anything(),
 			);
+		});
+	});
+
+	describe('credential allowed domains', () => {
+		const buildSupplyDataCtx = ({
+			endpoint,
+			credentials,
+		}: {
+			endpoint: string;
+			credentials: Record<string, unknown>;
+		}) =>
+			mock<ISupplyDataFunctions>({
+				getNode: vi.fn(() =>
+					mock<INode>({
+						typeVersion: 1,
+						name: 'MCP Client',
+					}),
+				),
+				getNodeParameter: vi.fn((key, _index) => {
+					const parameters: Record<string, any> = {
+						include: 'all',
+						authentication: 'bearerAuth',
+						sseEndpoint: endpoint,
+					};
+					return parameters[key as string];
+				}),
+				logger: { debug: vi.fn(), error: vi.fn() },
+				addInputData: vi.fn(() => ({ index: 0 })),
+				addOutputData: vi.fn(),
+				getCredentials: vi.fn().mockResolvedValue(credentials),
+			});
+
+		beforeEach(() => {
+			vi.resetAllMocks();
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool',
+						inputSchema: { type: 'object', properties: {} },
+					},
+				],
+			});
+		});
+
+		it('should accept endpoint URLs within the credential allowed domains', async () => {
+			const ctx = buildSupplyDataCtx({
+				endpoint: 'https://allowed.example/sse',
+				credentials: {
+					token: 'my-token',
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'allowed.example',
+				},
+			});
+
+			const result = await new McpClientTool().supplyData.call(ctx, 0);
+
+			expect(result.response).toBeInstanceOf(StructuredToolkit);
+			expect(SSEClientTransport).toHaveBeenCalledTimes(1);
+		});
+
+		it('should reject endpoint URLs outside the credential allowed domains', async () => {
+			const ctx = buildSupplyDataCtx({
+				endpoint: 'https://attacker.example/sse',
+				credentials: {
+					token: 'my-token',
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'allowed.example',
+				},
+			});
+
+			await expect(new McpClientTool().supplyData.call(ctx, 0)).rejects.toThrow(
+				/Domain not allowed.*allowed\.example/,
+			);
+			expect(SSEClientTransport).not.toHaveBeenCalled();
+		});
+
+		it('should reject when credential disallows MCP usage', async () => {
+			const ctx = buildSupplyDataCtx({
+				endpoint: 'https://anywhere.example/sse',
+				credentials: {
+					token: 'my-token',
+					allowedHttpRequestDomains: 'none',
+				},
+			});
+
+			await expect(new McpClientTool().supplyData.call(ctx, 0)).rejects.toThrow(
+				'This credential is configured to prevent use within an MCP Client Tool node',
+			);
+			expect(SSEClientTransport).not.toHaveBeenCalled();
+		});
+
+		it('should reject redirected URLs outside the credential allowed domains', async () => {
+			// Simulate the SDK's eventSourceInit.fetch following a redirect to a
+			// disallowed host. The wrapped fetch must reject before sending
+			// credentials to the redirect target.
+			const ctx = buildSupplyDataCtx({
+				endpoint: 'https://allowed.example/sse',
+				credentials: {
+					token: 'my-token',
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'allowed.example',
+				},
+			});
+
+			mockedProxyFetch.mockResolvedValueOnce(
+				new Response('', { status: 302, headers: { location: 'https://attacker.example/sse' } }),
+			);
+
+			await new McpClientTool().supplyData.call(ctx, 0);
+
+			expect(SSEClientTransport).toHaveBeenCalledTimes(1);
+			const customFetch = vi.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
+
+			await expect(customFetch!(new URL('https://allowed.example/sse'), {} as any)).rejects.toThrow(
+				/Domain not allowed.*attacker\.example/,
+			);
+
+			// Only the first hop reached proxyFetch; the redirect was blocked.
+			expect(mockedProxyFetch).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('loadOptions: getTools allowed domains', () => {
+		beforeEach(() => {
+			vi.resetAllMocks();
+		});
+
+		it('should reject endpoint URLs outside the credential allowed domains', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+
+			const node = mock<INode>({ typeVersion: 1 });
+			const ctx = mock<ILoadOptionsFunctions>({
+				getNode: vi.fn(() => node),
+				getNodeParameter: vi.fn((key) => {
+					const params: Record<string, any> = {
+						authentication: 'bearerAuth',
+						sseEndpoint: 'https://attacker.example/sse',
+					};
+					return params[key as string];
+				}),
+				getCredentials: vi.fn().mockResolvedValue({
+					token: 'my-token',
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'allowed.example',
+				}),
+			});
+
+			await expect(getTools.call(ctx)).rejects.toThrow(/Domain not allowed.*allowed\.example/);
 		});
 	});
 });
