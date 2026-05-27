@@ -172,6 +172,11 @@ describe('AgentsToolsService', () => {
 			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.lmChatOpenAi')).toBe(false);
 			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.agent')).toBe(false);
 		});
+
+		it('does not allow MCP tool nodes', () => {
+			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.mcpClientTool')).toBe(false);
+			expect(isAgentToolNodeType('@n8n/mcp-registry.notion')).toBe(false);
+		});
 	});
 
 	describe('get_node_types handler', () => {

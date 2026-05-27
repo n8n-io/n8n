@@ -849,6 +849,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		let instructions = this.instructionsText;
 		if (this.skillSource) {
+			await this.skillSource.prepare?.();
 			instructions = appendSkillCatalogToInstructions(instructions, this.skillSource.registry);
 		}
 		if (this.workspaceInstance) {

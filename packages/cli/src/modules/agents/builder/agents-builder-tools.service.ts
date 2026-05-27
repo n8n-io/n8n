@@ -357,7 +357,13 @@ export class AgentsBuilderToolsService {
 		];
 
 		if (enabledModules?.includes('mcp')) {
-			tools.push(buildVerifyMcpServerTool({ credentialProvider, oauthService: this.oauthService }));
+			tools.push(
+				buildVerifyMcpServerTool({
+					credentialProvider,
+					oauthService: this.oauthService,
+					projectId,
+				}),
+			);
 		}
 
 		return tools;

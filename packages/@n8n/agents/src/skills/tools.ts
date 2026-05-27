@@ -151,6 +151,7 @@ export function createListSkillsTool(source: RuntimeSkillSource): BuiltTool {
 		.input(skillsListInputSchema)
 		.output(skillsListOutputSchema)
 		.handler(async ({ category }) => {
+			await source.prepare?.();
 			const skills = source.registry.skills
 				.filter((skill) => !category || skill.category === category)
 				.map(compactSkill);
@@ -174,6 +175,7 @@ export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {
 		.input(skillLoadInputSchema)
 		.output(skillLoadOutputSchema)
 		.handler(async ({ skillId, name, filePath }) => {
+			await source.prepare?.();
 			const skillEntry = findSkillEntry(source.registry, { skillId, name });
 			if (!skillEntry) {
 				return {

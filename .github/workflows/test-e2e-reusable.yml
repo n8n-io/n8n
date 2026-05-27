@@ -108,6 +108,17 @@ jobs:
         if: ${{ !contains(inputs.test-command, 'test:local') }}
         run: npx tsx packages/testing/containers/pull-test-images.ts ${{ matrix.images }} || true
 
+      - name: Filter specs to previous-attempt failures
+        if: github.run_attempt > 1 && matrix.specs != ''
+        id: filter-shard
+        env:
+          CANDIDATES: ${{ matrix.specs }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          FILTERED=$(echo "$CANDIDATES" | node packages/testing/janitor/dist/cli.js filter-shard | tr '\n' ' ' | sed 's/ *$//')
+          echo "specs=$FILTERED" >> "$GITHUB_OUTPUT"
+
       - name: Run Tests
         run: |
           # shellcheck disable=SC2086
@@ -117,7 +128,8 @@ jobs:
           TEST_COMMAND: ${{ inputs.test-command }}
           # Uses pre-distributed specs if orchestration enabled, otherwise falls back to Playwright sharding
           WORKERS: ${{ env.PLAYWRIGHT_WORKERS }}
-          SHARD_ARGS: ${{ matrix.specs || format('--shard={0}/{1}', matrix.shard, strategy.job-total) }}
+          # On retry, prefer the filtered subset (failed specs from previous attempt)
+          SHARD_ARGS: ${{ steps.filter-shard.outputs.specs || matrix.specs || format('--shard={0}/{1}', matrix.shard, strategy.job-total) }}
           # Args for actual test command runner
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}

@@ -354,4 +354,40 @@ describe('AgentsBuilderToolsService', () => {
 			expect(agentsService.createSkill).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('MCP module gating', () => {
+		it('does not include verify_mcp_server when the "mcp" module is not enabled', () => {
+			const { service } = makeService();
+
+			const tools = service.getTools(agentId, projectId, credentialProvider, user).json;
+
+			expect(tools.find((t) => t.name === BUILDER_TOOLS.VERIFY_MCP_SERVER)).toBeUndefined();
+		});
+
+		it('does not include verify_mcp_server when enabledModules is an empty list', () => {
+			const { service } = makeService();
+
+			const tools = service.getTools(agentId, projectId, credentialProvider, user, []).json;
+
+			expect(tools.find((t) => t.name === BUILDER_TOOLS.VERIFY_MCP_SERVER)).toBeUndefined();
+		});
+
+		it('includes verify_mcp_server when the "mcp" module is enabled', () => {
+			const { service } = makeService();
+
+			const tools = service.getTools(agentId, projectId, credentialProvider, user, ['mcp']).json;
+
+			expect(tools.find((t) => t.name === BUILDER_TOOLS.VERIFY_MCP_SERVER)).toBeDefined();
+		});
+
+		it('does not include verify_mcp_server when other modules are enabled but not "mcp"', () => {
+			const { service } = makeService();
+
+			const tools = service.getTools(agentId, projectId, credentialProvider, user, [
+				'someOtherModule',
+			]).json;
+
+			expect(tools.find((t) => t.name === BUILDER_TOOLS.VERIFY_MCP_SERVER)).toBeUndefined();
+		});
+	});
 });
