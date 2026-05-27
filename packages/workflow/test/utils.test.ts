@@ -5,13 +5,13 @@ import {
 	jsonParse,
 	jsonStringify,
 	deepCopy,
-	isDomainAllowed,
 	isObjectEmpty,
 	fileTypeFromMimeType,
 	randomInt,
 	randomString,
 	hasKey,
 	isSafeObjectProperty,
+	containsUnsafeObjectPropertyToken,
 	setSafeObjectProperty,
 	sleepWithAbort,
 	isCommunityPackageName,
@@ -559,6 +559,11 @@ describe('isSafeObjectProperty', () => {
 		['prototype', false],
 		['constructor', false],
 		['getPrototypeOf', false],
+		['setPrototypeOf', false],
+		['getOwnPropertyDescriptor', false],
+		['getOwnPropertyDescriptors', false],
+		['defineProperty', false],
+		['defineProperties', false],
 		['mainModule', false],
 		['binding', false],
 		['_load', false],
@@ -567,6 +572,31 @@ describe('isSafeObjectProperty', () => {
 		['toString', true],
 	])('should return %s for key "%s"', (key, expected) => {
 		expect(isSafeObjectProperty(key)).toBe(expected);
+	});
+});
+
+describe('containsUnsafeObjectPropertyToken', () => {
+	it.each([
+		['constructor', true],
+		['__proto__', true],
+		['prototype', true],
+		['getPrototypeOf', true],
+		['setPrototypeOf', true],
+		['getOwnPropertyDescriptor', true],
+		['getOwnPropertyDescriptors', true],
+		['defineProperty', true],
+		['defineProperties', true],
+		['mainModule', true],
+		['user.constructor', true],
+		['"constructor"', true],
+		['a.b."__proto__".c', true],
+		['user.name', false],
+		['items[0].title', false],
+		['constructorName', false],
+		['myPrototypeId', false],
+		['', false],
+	])('should return %s for "%s"', (input, expected) => {
+		expect(containsUnsafeObjectPropertyToken(input)).toBe(expected);
 	});
 });
 
@@ -660,220 +690,6 @@ describe('sleepWithAbort', () => {
 		expect(clearTimeoutSpy).toHaveBeenCalled();
 
 		clearTimeoutSpy.mockRestore();
-	});
-});
-
-describe('isDomainAllowed', () => {
-	describe('when no allowed domains are specified', () => {
-		it('should allow all domains when allowedDomains is empty', () => {
-			expect(isDomainAllowed('https://example.com', { allowedDomains: '' })).toBe(true);
-		});
-
-		it('should allow all domains when allowedDomains contains only whitespace', () => {
-			expect(isDomainAllowed('https://example.com', { allowedDomains: '   ' })).toBe(true);
-		});
-	});
-
-	describe('in strict validation mode', () => {
-		it('should allow exact domain matches', () => {
-			expect(
-				isDomainAllowed('https://example.com', {
-					allowedDomains: 'example.com',
-				}),
-			).toBe(true);
-		});
-
-		it('should allow domains from a comma-separated list', () => {
-			expect(
-				isDomainAllowed('https://example.com', {
-					allowedDomains: 'test.com,example.com,other.org',
-				}),
-			).toBe(true);
-		});
-
-		it('should handle whitespace in allowed domains list', () => {
-			expect(
-				isDomainAllowed('https://example.com', {
-					allowedDomains: ' test.com , example.com , other.org ',
-				}),
-			).toBe(true);
-		});
-
-		it('should block non-matching domains', () => {
-			expect(
-				isDomainAllowed('https://malicious.com', {
-					allowedDomains: 'example.com',
-				}),
-			).toBe(false);
-		});
-
-		it('should block subdomains not set', () => {
-			expect(
-				isDomainAllowed('https://sub.example.com', {
-					allowedDomains: 'example.com',
-				}),
-			).toBe(false);
-		});
-	});
-
-	describe('with wildcard domains', () => {
-		it('should allow matching wildcard domains', () => {
-			expect(
-				isDomainAllowed('https://test.example.com', {
-					allowedDomains: '*.example.com',
-				}),
-			).toBe(true);
-		});
-
-		it('should block correctly for wildcards', () => {
-			expect(
-				isDomainAllowed('https://domain-test.com', {
-					allowedDomains: '*.test.com,example.com',
-				}),
-			).toBe(false);
-		});
-
-		it('should allow nested subdomains with wildcards', () => {
-			expect(
-				isDomainAllowed('https://deep.nested.example.com', {
-					allowedDomains: '*.example.com',
-				}),
-			).toBe(true);
-		});
-
-		it('should block non-matching domains with wildcards', () => {
-			expect(
-				isDomainAllowed('https://example.org', {
-					allowedDomains: '*.example.com',
-				}),
-			).toBe(false);
-		});
-
-		it('should block domains that share suffix but are not subdomains', () => {
-			expect(
-				isDomainAllowed('https://malicious-example.com', {
-					allowedDomains: '*.example.com',
-				}),
-			).toBe(false);
-		});
-
-		it('should not allow base domain with wildcard alone', () => {
-			expect(
-				isDomainAllowed('https://example.com', {
-					allowedDomains: '*.example.com',
-				}),
-			).toBe(false);
-		});
-
-		it('should allow base domain when explicitly specified alongside wildcard', () => {
-			expect(
-				isDomainAllowed('https://example.com', {
-					allowedDomains: 'example.com,*.example.com',
-				}),
-			).toBe(true);
-			expect(
-				isDomainAllowed('https://sub.example.com', {
-					allowedDomains: 'example.com,*.example.com',
-				}),
-			).toBe(true);
-		});
-
-		it('should handle empty wildcard suffix', () => {
-			expect(
-				isDomainAllowed('https://example.com', {
-					allowedDomains: '*.',
-				}),
-			).toBe(false);
-		});
-	});
-
-	describe('edge cases', () => {
-		it('should handle invalid URLs safely', () => {
-			expect(
-				isDomainAllowed('not-a-valid-url', {
-					allowedDomains: 'example.com',
-				}),
-			).toBe(false);
-		});
-
-		it('should handle URLs with ports', () => {
-			expect(
-				isDomainAllowed('https://example.com:8080/path', {
-					allowedDomains: 'example.com',
-				}),
-			).toBe(true);
-		});
-
-		it('should handle URLs with authentication', () => {
-			expect(
-				isDomainAllowed('https://user:pass@example.com', {
-					allowedDomains: 'example.com',
-				}),
-			).toBe(true);
-		});
-
-		it('should handle URLs with query parameters and fragments', () => {
-			expect(
-				isDomainAllowed('https://example.com/path?query=test#fragment', {
-					allowedDomains: 'example.com',
-				}),
-			).toBe(true);
-		});
-
-		it('should handle IP addresses', () => {
-			expect(
-				isDomainAllowed('https://192.168.1.1', {
-					allowedDomains: '192.168.1.1',
-				}),
-			).toBe(true);
-		});
-
-		it('should handle empty URLs', () => {
-			expect(
-				isDomainAllowed('', {
-					allowedDomains: 'example.com',
-				}),
-			).toBe(false);
-		});
-
-		it('should be case-insensitive for domains', () => {
-			expect(
-				isDomainAllowed('https://EXAMPLE.COM', {
-					allowedDomains: 'example.com',
-				}),
-			).toBe(true);
-			expect(
-				isDomainAllowed('https://example.com', {
-					allowedDomains: 'EXAMPLE.COM',
-				}),
-			).toBe(true);
-			expect(
-				isDomainAllowed('https://Example.Com', {
-					allowedDomains: 'example.com',
-				}),
-			).toBe(true);
-		});
-
-		it('should handle trailing dots in hostnames', () => {
-			expect(
-				isDomainAllowed('https://example.com.', {
-					allowedDomains: 'example.com',
-				}),
-			).toBe(true);
-			expect(
-				isDomainAllowed('https://example.com', {
-					allowedDomains: 'example.com.',
-				}),
-			).toBe(true);
-		});
-
-		it('should handle empty hostnames', () => {
-			expect(
-				isDomainAllowed('http://', {
-					allowedDomains: 'example.com',
-				}),
-			).toBe(false);
-		});
 	});
 });
 

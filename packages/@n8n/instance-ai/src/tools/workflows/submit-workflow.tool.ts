@@ -6,20 +6,27 @@
  * and module resolution natively — no AST interpreter restrictions.
  */
 
-import { createTool } from '@mastra/core/tools';
-import type { Workspace } from '@mastra/core/workspace';
+import { Tool } from '@n8n/agents';
 import { hasPlaceholderDeep } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { validateWorkflow, layoutWorkflowJSON } from '@n8n/workflow-sdk';
+import { validateWorkflow } from '@n8n/workflow-sdk';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 import { resolveCredentials, type CredentialMap } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
+import { getReferencedWorkflowIds, isTriggerNodeType } from './workflow-json-utils';
 import type { InstanceAiContext } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
 import { partitionWarnings } from '../../workflow-builder';
-import { escapeSingleQuotes, readFileViaSandbox, runInSandbox } from '../../workspace/sandbox-fs';
+import { createRemediation } from '../../workflow-loop/remediation';
+import type { RemediationMetadata } from '../../workflow-loop/workflow-loop-state';
+import {
+	escapeSingleQuotes,
+	readFileViaSandbox,
+	runInSandbox,
+	type SandboxWorkspace,
+} from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
 
 export interface SubmitWorkflowAttempt {
@@ -28,8 +35,13 @@ export interface SubmitWorkflowAttempt {
 	success: boolean;
 	/** Workflow ID assigned by n8n after a successful save. */
 	workflowId?: string;
-	/** Node types of all trigger nodes in the submitted workflow. */
-	triggerNodeTypes?: string[];
+	/**
+	 * Trigger nodes in the submitted workflow, each carrying name + type.
+	 * Populated by a conservative detector (known-mockable allow-list plus
+	 * any node type ending in `Trigger`); surfaces to the build outcome so
+	 * the orchestrator can choose a `verify-built-workflow` `inputData` shape.
+	 */
+	triggerNodes?: Array<{ nodeName: string; nodeType: string }>;
 	/** Node names whose credentials were mocked. */
 	mockedNodeNames?: string[];
 	/** Credential types that were mocked (not resolved to real credentials). */
@@ -38,8 +50,13 @@ export interface SubmitWorkflowAttempt {
 	mockedCredentialsByNode?: Record<string, string[]>;
 	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
 	verificationPinData?: Record<string, Array<Record<string, unknown>>>;
+	/** True when mocked credential nodes can be skipped by existing workflow-level pin data. */
+	usesWorkflowPinDataForVerification?: boolean;
+	/** Sub-workflow IDs referenced by the submitted main workflow. */
+	referencedWorkflowIds?: string[];
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders?: boolean;
+	remediation?: RemediationMetadata;
 	errors?: string[];
 }
 
@@ -56,6 +73,18 @@ const WEBHOOK_NODE_TYPES = new Set([
 	'@n8n/n8n-nodes-langchain.mcpTrigger',
 	'@n8n/n8n-nodes-langchain.chatTrigger',
 ]);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function normalizeWorkflowNodeParameters(json: WorkflowJSON): void {
+	for (const node of json.nodes ?? []) {
+		if (!isRecord(node.parameters)) {
+			node.parameters = {};
+		}
+	}
+}
 
 /**
  * Ensure webhook nodes have a webhookId so n8n registers clean URL paths.
@@ -139,8 +168,13 @@ export const submitWorkflowInputSchema = z.object({
 	filePath: z
 		.string()
 		.optional()
-		.describe('Path to the TypeScript workflow file (default: ~/workspace/src/workflow.ts)'),
-	workflowId: z.string().optional().describe('Existing workflow ID to update (omit to create new)'),
+		.describe('Path to the TypeScript workflow file (defaults to the builder task main file)'),
+	workflowId: z
+		.string()
+		.optional()
+		.describe(
+			'Existing n8n workflow id to update (a 16-character nanoid returned by a previous submit-workflow call or workflows tool). OMIT this argument when creating a new workflow. Do NOT pass the local id from workflow(id, name) in your SDK code — that string is a local handle, not an n8n workflow id.',
+		),
 	projectId: z
 		.string()
 		.optional()
@@ -160,12 +194,31 @@ export const submitWorkflowOutputSchema = z.object({
 	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
 	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
 	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
+	/** True when mocked credentials can be verified with saved workflow-level pin data. */
+	usesWorkflowPinDataForVerification: z.boolean().optional(),
+	/** Sub-workflow IDs referenced by the submitted main workflow. */
+	referencedWorkflowIds: z.array(z.string()).optional(),
+	remediation: z
+		.object({
+			category: z.enum(['code_fixable', 'needs_setup', 'blocked']),
+			shouldEdit: z.boolean(),
+			guidance: z.string(),
+			reason: z.string().optional(),
+			remainingSubmitFixes: z.number().int().min(0).optional(),
+			attemptCount: z.number().int().min(0).optional(),
+		})
+		.optional(),
 	errors: z.array(z.string()).optional(),
 	warnings: z.array(z.string()).optional(),
 });
 
 export type SubmitWorkflowInput = z.infer<typeof submitWorkflowInputSchema>;
 export type SubmitWorkflowOutput = z.infer<typeof submitWorkflowOutputSchema>;
+
+export interface SubmitWorkflowToolOptions {
+	root?: string;
+	defaultFilePath?: string;
+}
 
 /**
  * Resolve a raw `filePath` tool argument into an absolute path under the sandbox root.
@@ -187,235 +240,354 @@ export function resolveSandboxWorkflowFilePath(
 	return rawFilePath;
 }
 
+export function classifySubmitFailure(
+	errors: string[],
+	reason = 'submit_failed',
+): RemediationMetadata {
+	const text = errors.join('\n').toLowerCase();
+	if (isCredentialSaveFailure(text)) {
+		return createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason,
+			guidance:
+				'Workflow submission failed because a credential is missing or inaccessible. Stop editing and route the user to credential setup.',
+		});
+	}
+
+	if (reason === 'workflow_save_failed') {
+		if (text.includes('workflow structure is invalid') || text.includes('invalid_type')) {
+			return createRemediation({
+				category: 'code_fixable',
+				shouldEdit: true,
+				reason,
+				guidance: 'Fix the workflow code in one batched edit, then call submit-workflow again.',
+			});
+		}
+
+		if (text.includes('workflow not found')) {
+			return createRemediation({
+				category: 'code_fixable',
+				shouldEdit: true,
+				reason,
+				guidance:
+					'The workflowId passed to submit-workflow does not exist. Omit the workflowId argument to create a new workflow, or pass an existing workflow id. Do not reuse the local id from workflow(id, name) in your SDK code — that is a local handle, not an n8n workflow id.',
+			});
+		}
+
+		return createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason,
+			guidance:
+				'Workflow submission failed due to an internal or service error. Stop editing and ask the user to retry or check instance health.',
+		});
+	}
+
+	if (
+		text.includes('blocked by admin') ||
+		text.includes('read-only') ||
+		text.includes('not accessible') ||
+		text.includes('permission')
+	) {
+		return createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason,
+			guidance:
+				'Workflow submission is blocked by permissions or instance configuration. Stop editing and explain the blocker to the user.',
+		});
+	}
+
+	return createRemediation({
+		category: 'code_fixable',
+		shouldEdit: true,
+		reason,
+		guidance: 'Fix the workflow code in one batched edit, then call submit-workflow again.',
+	});
+}
+
+function isCredentialSaveFailure(text: string): boolean {
+	if (!text.includes('credential')) return false;
+
+	return (
+		text.includes('not found') ||
+		text.includes('missing') ||
+		text.includes('not accessible') ||
+		text.includes('no access') ||
+		text.includes('do not have access') ||
+		text.includes("don't have access") ||
+		text.includes('not shared') ||
+		text.includes('unauthorized')
+	);
+}
+
 export function createSubmitWorkflowTool(
 	context: InstanceAiContext,
-	workspace: Workspace,
+	workspace: SandboxWorkspace,
 	credentialMap: CredentialMap = new Map(),
 	onAttempt?: (attempt: SubmitWorkflowAttempt) => void | Promise<void>,
+	options: SubmitWorkflowToolOptions = {},
 ) {
-	return createTool({
-		id: 'submit-workflow',
-		description:
+	return new Tool('submit-workflow')
+		.description(
 			'Submit a workflow from a TypeScript file in the sandbox. Reads the file, validates it, ' +
-			'and saves it to n8n as a draft. Publishing policy lives in the builder prompt ' +
-			'(main workflows wait for the user; sub-workflow chunks may be auto-published).',
-		inputSchema: submitWorkflowInputSchema,
-		outputSchema: submitWorkflowOutputSchema,
-		execute: async ({
-			filePath: rawFilePath,
-			workflowId,
-			projectId,
-			name,
-		}: SubmitWorkflowInput) => {
-			const root = await getWorkspaceRoot(workspace);
-			const filePath = resolveSandboxWorkflowFilePath(rawFilePath, root);
+				'and saves it to n8n as a draft. Publishing policy lives in the builder prompt ' +
+				'(main workflows wait for the user; sub-workflow chunks may be auto-published).',
+		)
+		.input(submitWorkflowInputSchema)
+		.output(submitWorkflowOutputSchema)
+		.handler(
+			async ({ filePath: rawFilePath, workflowId, projectId, name }: SubmitWorkflowInput) => {
+				const root = options.root ?? (await getWorkspaceRoot(workspace));
+				const filePath =
+					rawFilePath || !options.defaultFilePath
+						? resolveSandboxWorkflowFilePath(rawFilePath, root)
+						: options.defaultFilePath;
 
-			const sourceHash = hashContent(await readFileViaSandbox(workspace, filePath));
-			const reportAttempt = async (
-				attempt: Omit<SubmitWorkflowAttempt, 'filePath' | 'sourceHash'>,
-			) => {
-				await onAttempt?.({
-					filePath,
-					sourceHash,
-					...attempt,
-				});
-			};
-
-			const permKey = workflowId ? 'updateWorkflow' : 'createWorkflow';
-			if (context.permissions?.[permKey] === 'blocked') {
-				const errors = ['Action blocked by admin'];
-				await reportAttempt({ success: false, errors });
-				return { success: false, errors };
-			}
-
-			// Execute the TS file in the sandbox via tsx to produce WorkflowJSON.
-			// Node.js module resolution handles local imports naturally (no manual bundling).
-			const buildResult = await runInSandbox(
-				workspace,
-				`node --import tsx build.mjs '${escapeSingleQuotes(filePath)}'`,
-				root,
-			);
-
-			// Parse structured JSON output from build.mjs
-			let buildOutput: {
-				success: boolean;
-				workflow?: WorkflowJSON;
-				warnings?: Array<{ code: string; message: string; nodeName?: string }>;
-				errors?: string[];
-			};
-			try {
-				// build.mjs writes JSON to stdout; strip any non-JSON lines (e.g. tsx warnings)
-				const stdout = buildResult.stdout.trim();
-				const lastLine = stdout.split('\n').pop() ?? '';
-				buildOutput = JSON.parse(lastLine) as typeof buildOutput;
-			} catch {
-				// If we can't parse the output, return the raw stderr/stdout as error context
-				const errors = [
-					`Failed to execute workflow file in sandbox (exit code ${buildResult.exitCode}).`,
-					buildResult.stderr?.trim() || buildResult.stdout?.trim() || 'No output',
-				];
-				await reportAttempt({ success: false, errors });
-				return {
-					success: false,
-					errors,
+				const sourceHash = hashContent(await readFileViaSandbox(workspace, filePath));
+				const reportAttempt = async (
+					attempt: Omit<SubmitWorkflowAttempt, 'filePath' | 'sourceHash'>,
+				) => {
+					await onAttempt?.({
+						filePath,
+						sourceHash,
+						...attempt,
+					});
 				};
-			}
 
-			if (!buildOutput.success || !buildOutput.workflow) {
-				const errors = enhanceBuildErrors(buildOutput.errors ?? ['Unknown build error']);
-				await reportAttempt({ success: false, errors });
-				return {
-					success: false,
-					errors,
-				};
-			}
+				const permKey = workflowId ? 'updateWorkflow' : 'createWorkflow';
+				if (context.permissions?.[permKey] === 'blocked') {
+					const errors = ['Action blocked by admin'];
+					const remediation = classifySubmitFailure(errors, 'permission_blocked');
+					await reportAttempt({ success: false, errors, remediation });
+					return { success: false, errors, remediation };
+				}
 
-			// Collect structural warnings from sandbox (graph validation)
-			const allWarnings: ValidationWarning[] = (buildOutput.warnings ?? []).map((w) => ({
-				code: w.code,
-				message: w.message,
-				nodeName: w.nodeName,
-			}));
-
-			// Server-side schema validation (Zod checks against node type definitions)
-			const schemaValidation = validateWorkflow(buildOutput.workflow);
-			for (const issue of [...schemaValidation.errors, ...schemaValidation.warnings]) {
-				allWarnings.push({
-					code: issue.code,
-					message: issue.message,
-					nodeName: issue.nodeName,
-				});
-			}
-
-			const { errors, informational } = partitionWarnings(allWarnings);
-
-			if (errors.length > 0) {
-				const formattedErrors = enhanceValidationErrors(
-					errors.map((e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`),
+				// Execute the TS file in the sandbox via tsx to produce WorkflowJSON.
+				// Node.js module resolution handles local imports naturally (no manual bundling).
+				const buildResult = await runInSandbox(
+					workspace,
+					`node --import tsx build.mjs '${escapeSingleQuotes(filePath)}'`,
+					root,
 				);
-				await reportAttempt({ success: false, errors: formattedErrors });
+
+				// Parse structured JSON output from build.mjs
+				let buildOutput: {
+					success: boolean;
+					workflow?: WorkflowJSON;
+					warnings?: Array<{ code: string; message: string; nodeName?: string }>;
+					errors?: string[];
+				};
+				try {
+					// build.mjs writes JSON to stdout; strip any non-JSON lines (e.g. tsx warnings)
+					const stdout = buildResult.stdout.trim();
+					const lastLine = stdout.split('\n').pop() ?? '';
+					buildOutput = JSON.parse(lastLine) as typeof buildOutput;
+				} catch {
+					// If we can't parse the output, return the raw stderr/stdout as error context
+					const errors = [
+						`Failed to execute workflow file in sandbox (exit code ${buildResult.exitCode}).`,
+						buildResult.stderr?.trim() || buildResult.stdout?.trim() || 'No output',
+					];
+					const remediation = classifySubmitFailure(errors, 'sandbox_execution_failed');
+					await reportAttempt({ success: false, errors, remediation });
+					return {
+						success: false,
+						errors,
+						remediation,
+					};
+				}
+
+				if (!buildOutput.success || !buildOutput.workflow) {
+					const errors = enhanceBuildErrors(buildOutput.errors ?? ['Unknown build error']);
+					const remediation = classifySubmitFailure(errors, 'build_failed');
+					await reportAttempt({ success: false, errors, remediation });
+					return {
+						success: false,
+						errors,
+						remediation,
+					};
+				}
+
+				// Collect structural warnings from sandbox (graph validation)
+				const allWarnings: ValidationWarning[] = (buildOutput.warnings ?? []).map((w) => ({
+					code: w.code,
+					message: w.message,
+					nodeName: w.nodeName,
+				}));
+
+				const json = buildOutput.workflow;
+				normalizeWorkflowNodeParameters(json);
+
+				// Server-side schema validation (Zod checks against node type definitions).
+				// strictMode is hardcoded on at AI-builder call sites — we want every
+				// catchable bug surfaced as a blocking error so the agent can self-correct.
+				const schemaValidation = validateWorkflow(json, {
+					nodeTypesProvider: context.nodeTypesProvider,
+					strictMode: true,
+				});
+				for (const issue of [...schemaValidation.errors, ...schemaValidation.warnings]) {
+					allWarnings.push({
+						code: issue.code,
+						message: issue.message,
+						nodeName: issue.nodeName,
+					});
+				}
+
+				const { errors, informational } = partitionWarnings(allWarnings);
+
+				if (errors.length > 0) {
+					const formattedErrors = enhanceValidationErrors(
+						errors.map((e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`),
+					);
+					const remediation = classifySubmitFailure(formattedErrors, 'validation_failed');
+					await reportAttempt({ success: false, errors: formattedErrors, remediation });
+					return {
+						success: false,
+						errors: formattedErrors,
+						remediation,
+						warnings:
+							informational.length > 0
+								? informational.map((w) => `[${w.code}]: ${w.message}`)
+								: undefined,
+					};
+				}
+
+				// Keep positions from the generated workflow. Re-layout here would move
+				// existing nodes during workflow updates and make small edits hard to review.
+				if (name) {
+					json.name = name;
+				} else if (!json.name && !workflowId) {
+					const errors = [
+						'Workflow name is required for new workflows. Provide a name parameter or set it in the SDK code.',
+					];
+					const remediation = classifySubmitFailure(errors, 'missing_workflow_name');
+					await reportAttempt({ success: false, errors, remediation });
+					return {
+						success: false,
+						errors,
+						remediation,
+					};
+				}
+
+				// Resolve undefined/null credentials before saving.
+				// newCredential() produces NewCredentialImpl which serializes to undefined in toJSON().
+				// For updates: restore from the existing workflow's resolved credentials.
+				// For new nodes: look up credentials by name from the credential service.
+				// Unresolved credentials are mocked via pinned data when available.
+				const mockResult = await resolveCredentials(json, workflowId, context, credentialMap);
+
+				// Strip credential entries that are no longer valid for the current
+				// parameters. Resolution above (and the LLM itself) can re-emit stale
+				// references between turns; without this, setup analysis would surface
+				// a credential request for a node that no longer needs one.
+				await stripStaleCredentialsFromWorkflow(context, json);
+
+				// Ensure webhook nodes have a webhookId so n8n registers clean paths
+				// (e.g., "{uuid}/dashboard" instead of "{workflowId}/{encodedNodeName}/dashboard").
+				// The SDK's toJSON() doesn't emit webhookId, so we inject it here.
+				await ensureWebhookIds(json, workflowId, context);
+
+				// Save
+				let savedId: string;
+				try {
+					if (workflowId) {
+						const updated = await context.workflowService.updateFromWorkflowJSON(
+							workflowId,
+							json,
+							projectId ? { projectId } : undefined,
+						);
+						savedId = updated.id;
+					} else {
+						const created = await context.workflowService.createFromWorkflowJSON(json, {
+							...(projectId ? { projectId } : {}),
+							markAsAiTemporary: true,
+						});
+						savedId = created.id;
+						(context.aiCreatedWorkflowIds ??= new Set<string>()).add(created.id);
+					}
+				} catch (error) {
+					const errors = [
+						`Workflow save failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+					];
+					const remediation = classifySubmitFailure(errors, 'workflow_save_failed');
+					await reportAttempt({ success: false, errors, remediation });
+					return {
+						success: false,
+						errors,
+						remediation,
+					};
+				}
+
+				const hasMockedCredentials = mockResult.mockedNodeNames.length > 0;
+				const referencedWorkflowIds = getReferencedWorkflowIds(json);
+
+				// Add mock summary warning when credentials were mocked
+				if (hasMockedCredentials) {
+					informational.push({
+						code: 'CREDENTIALS_MOCKED',
+						message: `Mocked ${mockResult.mockedCredentialTypes.join(', ')} via pinned data on nodes: ${mockResult.mockedNodeNames.join(', ')}. Add real credentials before publishing.`,
+					});
+				}
+
+				const triggerNodes = (json.nodes ?? [])
+					.filter((n) => isTriggerNodeType(n.type))
+					.map((n) => ({ nodeName: n.name, nodeType: n.type }))
+					.filter(
+						(t): t is { nodeName: string; nodeType: string } =>
+							Boolean(t.nodeName) && Boolean(t.nodeType),
+					);
+
+				// Scan node parameters for unresolved placeholder values
+				const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
+
+				await reportAttempt({
+					success: true,
+					workflowId: savedId,
+					triggerNodes,
+					mockedNodeNames: hasMockedCredentials ? mockResult.mockedNodeNames : undefined,
+					mockedCredentialTypes: hasMockedCredentials
+						? mockResult.mockedCredentialTypes
+						: undefined,
+					mockedCredentialsByNode: hasMockedCredentials
+						? mockResult.mockedCredentialsByNode
+						: undefined,
+					verificationPinData:
+						hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
+							? mockResult.verificationPinData
+							: undefined,
+					usesWorkflowPinDataForVerification:
+						mockResult.usesWorkflowPinDataForVerification || undefined,
+					referencedWorkflowIds:
+						referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
+					hasUnresolvedPlaceholders: hasPlaceholders || undefined,
+				});
 				return {
-					success: false,
-					errors: formattedErrors,
+					success: true,
+					workflowId: savedId,
+					workflowName: json.name || undefined,
+					mockedNodeNames: hasMockedCredentials ? mockResult.mockedNodeNames : undefined,
+					mockedCredentialTypes: hasMockedCredentials
+						? mockResult.mockedCredentialTypes
+						: undefined,
+					mockedCredentialsByNode: hasMockedCredentials
+						? mockResult.mockedCredentialsByNode
+						: undefined,
+					verificationPinData:
+						hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
+							? mockResult.verificationPinData
+							: undefined,
+					usesWorkflowPinDataForVerification:
+						mockResult.usesWorkflowPinDataForVerification || undefined,
+					referencedWorkflowIds:
+						referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 					warnings:
 						informational.length > 0
 							? informational.map((w) => `[${w.code}]: ${w.message}`)
 							: undefined,
 				};
-			}
-
-			// Apply Dagre layout to produce positions matching the FE's tidy-up.
-			// Temporary: until the SDK is published with toJSON({ tidyUp: true }) support,
-			// the sandbox's SDK doesn't have Dagre layout, so we apply it server-side.
-			const json = layoutWorkflowJSON(buildOutput.workflow);
-			if (name) {
-				json.name = name;
-			} else if (!json.name && !workflowId) {
-				const errors = [
-					'Workflow name is required for new workflows. Provide a name parameter or set it in the SDK code.',
-				];
-				await reportAttempt({ success: false, errors });
-				return {
-					success: false,
-					errors,
-				};
-			}
-
-			// Resolve undefined/null credentials before saving.
-			// newCredential() produces NewCredentialImpl which serializes to undefined in toJSON().
-			// For updates: restore from the existing workflow's resolved credentials.
-			// For new nodes: look up credentials by name from the credential service.
-			// Unresolved credentials are mocked via pinned data when available.
-			const mockResult = await resolveCredentials(json, workflowId, context, credentialMap);
-
-			// Strip credential entries that are no longer valid for the current
-			// parameters. Resolution above (and the LLM itself) can re-emit stale
-			// references between turns; without this, setup analysis would surface
-			// a credential request for a node that no longer needs one.
-			await stripStaleCredentialsFromWorkflow(context, json);
-
-			// Ensure webhook nodes have a webhookId so n8n registers clean paths
-			// (e.g., "{uuid}/dashboard" instead of "{workflowId}/{encodedNodeName}/dashboard").
-			// The SDK's toJSON() doesn't emit webhookId, so we inject it here.
-			await ensureWebhookIds(json, workflowId, context);
-
-			// Save
-			let savedId: string;
-			const opts = projectId ? { projectId } : undefined;
-			try {
-				if (workflowId) {
-					const updated = await context.workflowService.updateFromWorkflowJSON(
-						workflowId,
-						json,
-						opts,
-					);
-					savedId = updated.id;
-				} else {
-					const created = await context.workflowService.createFromWorkflowJSON(json, opts);
-					savedId = created.id;
-				}
-			} catch (error) {
-				const errors = [
-					`Workflow save failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				];
-				await reportAttempt({ success: false, errors });
-				return {
-					success: false,
-					errors,
-				};
-			}
-
-			const hasMockedCredentials = mockResult.mockedNodeNames.length > 0;
-
-			// Add mock summary warning when credentials were mocked
-			if (hasMockedCredentials) {
-				informational.push({
-					code: 'CREDENTIALS_MOCKED',
-					message: `Mocked ${mockResult.mockedCredentialTypes.join(', ')} via pinned data on nodes: ${mockResult.mockedNodeNames.join(', ')}. Add real credentials before publishing.`,
-				});
-			}
-
-			const triggers = (json.nodes ?? []).filter(
-				(n) => n.type?.endsWith?.('Trigger') || n.type?.endsWith?.('trigger'),
-			);
-			const triggerNodeTypes = triggers.map((t) => t.type).filter(Boolean);
-
-			// Scan node parameters for unresolved placeholder values
-			const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
-
-			await reportAttempt({
-				success: true,
-				workflowId: savedId,
-				triggerNodeTypes,
-				mockedNodeNames: hasMockedCredentials ? mockResult.mockedNodeNames : undefined,
-				mockedCredentialTypes: hasMockedCredentials ? mockResult.mockedCredentialTypes : undefined,
-				mockedCredentialsByNode: hasMockedCredentials
-					? mockResult.mockedCredentialsByNode
-					: undefined,
-				verificationPinData:
-					hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
-						? mockResult.verificationPinData
-						: undefined,
-				hasUnresolvedPlaceholders: hasPlaceholders || undefined,
-			});
-			return {
-				success: true,
-				workflowId: savedId,
-				workflowName: json.name || undefined,
-				mockedNodeNames: hasMockedCredentials ? mockResult.mockedNodeNames : undefined,
-				mockedCredentialTypes: hasMockedCredentials ? mockResult.mockedCredentialTypes : undefined,
-				mockedCredentialsByNode: hasMockedCredentials
-					? mockResult.mockedCredentialsByNode
-					: undefined,
-				verificationPinData:
-					hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
-						? mockResult.verificationPinData
-						: undefined,
-				warnings:
-					informational.length > 0
-						? informational.map((w) => `[${w.code}]: ${w.message}`)
-						: undefined,
-			};
-		},
-	});
+			},
+		)
+		.build();
 }

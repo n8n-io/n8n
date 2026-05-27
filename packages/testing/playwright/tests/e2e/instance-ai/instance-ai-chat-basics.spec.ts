@@ -40,20 +40,15 @@ test.describe(
 
 			await n8n.instanceAi.sendMessage('Remember this persistence message');
 			await n8n.instanceAi.waitForAssistantResponse(120_000);
+			await expect(n8n.page).toHaveURL(/\/instance-ai\/[^/]+$/);
 
-			// Navigate back to instance AI (creates a new empty thread)
-			await n8n.navigate.toInstanceAi();
+			await n8n.page.reload();
 			await expect(n8n.instanceAi.getChatInput()).toBeVisible({ timeout: 30_000 });
 
-			// The old thread should be visible in the sidebar — click it to restore.
-			// Thread title is LLM-generated ("Persistence message noted" from recording).
-			// Use partial match to be resilient to minor title variations.
-			const oldThread = n8n.instanceAi.sidebar.getThreadByTitle('Persistence message');
-			await expect(oldThread).toBeVisible({ timeout: 10_000 });
-			await oldThread.click();
-
-			// Messages from the old thread should be visible
-			await expect(n8n.instanceAi.getUserMessages().first()).toBeVisible({ timeout: 30_000 });
+			await expect(n8n.instanceAi.getUserMessages().first()).toContainText(
+				'Remember this persistence message',
+				{ timeout: 30_000 },
+			);
 			await expect(n8n.instanceAi.getAssistantMessages().first()).toBeVisible({ timeout: 30_000 });
 		});
 	},

@@ -9,9 +9,8 @@
  */
 
 import type {
-	BlueprintDataTableItem,
+	BlueprintCheckpointItem,
 	BlueprintDelegateItem,
-	BlueprintResearchItem,
 	BlueprintWorkflowItem,
 } from './blueprint.schema';
 
@@ -35,78 +34,17 @@ export interface PlannedTaskInput {
 
 type BlueprintItem =
 	| (BlueprintWorkflowItem & { kind: 'workflow' })
-	| (BlueprintDataTableItem & { kind: 'data-table' })
-	| (BlueprintResearchItem & { kind: 'research' })
-	| (BlueprintDelegateItem & { kind: 'delegate' });
+	| (BlueprintDelegateItem & { kind: 'delegate' })
+	| (BlueprintCheckpointItem & { kind: 'checkpoint' });
 
 // ---------------------------------------------------------------------------
 // Per-item conversion helpers
 // ---------------------------------------------------------------------------
 
-/** Format a data table schema as a compact string for builder context. */
-export function formatTableSchema(dt: BlueprintDataTableItem): string {
-	if (!dt.columns || dt.columns.length === 0) return `Table '${dt.name}'`;
-	const cols = dt.columns.map((c) => `${c.name} (${c.type})`).join(', ');
-	return `Table '${dt.name}': ${cols}`;
-}
-
-function dataTableItemToTask(dt: BlueprintDataTableItem): PlannedTaskInput {
-	if (dt.columns && dt.columns.length > 0) {
-		const columnList = dt.columns.map((c) => `${c.name} (${c.type})`).join(', ');
-		return {
-			id: dt.id,
-			title: `Create '${dt.name}' data table`,
-			kind: 'manage-data-tables',
-			spec: `Create a data table named '${dt.name}'. Purpose: ${dt.purpose}\nColumns: ${columnList}`,
-			deps: dt.dependsOn,
-		};
-	}
-	return {
-		id: dt.id,
-		title: dt.name,
-		kind: 'manage-data-tables',
-		spec: dt.purpose,
-		deps: dt.dependsOn,
-	};
-}
-
-function workflowItemToTask(
-	wf: BlueprintWorkflowItem,
-	knownTables: BlueprintDataTableItem[],
-	assumptions: string[],
-): PlannedTaskInput {
+function workflowItemToTask(wf: BlueprintWorkflowItem, assumptions: string[]): PlannedTaskInput {
 	const specParts = [wf.purpose];
 	if (wf.triggerDescription) specParts.push(`Trigger: ${wf.triggerDescription}`);
 	if (wf.integrations.length > 0) specParts.push(`Integrations: ${wf.integrations.join(', ')}`);
-
-	// Infer missing table dependencies by checking if the workflow's
-	// purpose or integrations mention any table name (word-boundary match).
-	// Skip short names (< 4 chars) — they're too ambiguous for substring inference.
-	const tableIds = new Set(knownTables.map((dt) => dt.id));
-	const explicitDeps = new Set(wf.dependsOn);
-	const inferredDeps = [...explicitDeps];
-	const wfText = `${wf.purpose} ${wf.integrations.join(' ')}`;
-	const tablePatterns = knownTables
-		.filter((dt) => dt.name.length >= 4)
-		.map((dt) => ({
-			id: dt.id,
-			pattern: new RegExp(`\\b${dt.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'),
-		}));
-	for (const { id, pattern } of tablePatterns) {
-		if (!explicitDeps.has(id) && pattern.test(wfText)) {
-			inferredDeps.push(id);
-		}
-	}
-
-	// Append schemas of tables this workflow depends on (explicit + inferred)
-	const depTableIds = new Set(inferredDeps.filter((id) => tableIds.has(id)));
-	const depTables = knownTables.filter((dt) => depTableIds.has(dt.id));
-	if (depTables.length > 0) {
-		specParts.push('\nData table schemas:');
-		for (const dt of depTables) {
-			specParts.push(`- ${formatTableSchema(dt)}`);
-		}
-	}
 
 	// Append blueprint assumptions so the builder has design context
 	if (assumptions.length > 0) {
@@ -121,18 +59,8 @@ function workflowItemToTask(
 		title: `Build '${wf.name}' workflow`,
 		kind: 'build-workflow',
 		spec: specParts.join('\n'),
-		deps: inferredDeps,
+		deps: wf.dependsOn,
 		workflowId: wf.existingWorkflowId,
-	};
-}
-
-function researchItemToTask(ri: BlueprintResearchItem): PlannedTaskInput {
-	return {
-		id: ri.id,
-		title: ri.question,
-		kind: 'research',
-		spec: ri.constraints ?? ri.question,
-		deps: ri.dependsOn,
 	};
 }
 
@@ -147,18 +75,26 @@ function delegateItemToTask(di: BlueprintDelegateItem): PlannedTaskInput {
 	};
 }
 
+function checkpointItemToTask(c: BlueprintCheckpointItem): PlannedTaskInput {
+	return {
+		id: c.id,
+		title: c.title,
+		kind: 'checkpoint',
+		spec: c.instructions,
+		deps: c.dependsOn,
+	};
+}
+
 // ---------------------------------------------------------------------------
 // BlueprintAccumulator
 // ---------------------------------------------------------------------------
 
 export class BlueprintAccumulator {
-	private dataTables: BlueprintDataTableItem[] = [];
-
 	private workflows: BlueprintWorkflowItem[] = [];
 
-	private researchItems: BlueprintResearchItem[] = [];
-
 	private delegateItems: BlueprintDelegateItem[] = [];
+
+	private checkpoints: BlueprintCheckpointItem[] = [];
 
 	private tasks: PlannedTaskInput[] = [];
 
@@ -168,33 +104,29 @@ export class BlueprintAccumulator {
 
 	private approved = false;
 
+	private denied = false;
+
 	/** Route item by kind, upsert into arrays, convert to task, return the task. */
 	addItem(item: BlueprintItem): PlannedTaskInput {
 		let task: PlannedTaskInput;
 
 		switch (item.kind) {
-			case 'data-table': {
-				const { kind: _, ...dt } = item;
-				this.upsertArray(this.dataTables, dt);
-				task = dataTableItemToTask(dt);
-				break;
-			}
 			case 'workflow': {
 				const { kind: _, ...wf } = item;
 				this.upsertArray(this.workflows, wf);
-				task = workflowItemToTask(wf, this.dataTables, this.assumptions);
-				break;
-			}
-			case 'research': {
-				const { kind: _, ...ri } = item;
-				this.upsertArray(this.researchItems, ri);
-				task = researchItemToTask(ri);
+				task = workflowItemToTask(wf, this.assumptions);
 				break;
 			}
 			case 'delegate': {
 				const { kind: _, ...di } = item;
 				this.upsertArray(this.delegateItems, di);
 				task = delegateItemToTask(di);
+				break;
+			}
+			case 'checkpoint': {
+				const { kind: _, ...c } = item;
+				this.upsertArray(this.checkpoints, c);
+				task = checkpointItemToTask(c);
 				break;
 			}
 		}
@@ -224,31 +156,47 @@ export class BlueprintAccumulator {
 	}
 
 	/**
-	 * Re-run dependency inference for all workflow tasks against the full
-	 * table set. Catches tables that were added after workflows that need them.
+	 * Re-render workflow specs against the latest plan metadata and assumptions.
 	 */
 	reconcileDependencies(): void {
 		for (let i = 0; i < this.workflows.length; i++) {
 			const wf = this.workflows[i];
-			const updatedTask = workflowItemToTask(wf, this.dataTables, this.assumptions);
+			const updatedTask = workflowItemToTask(wf, this.assumptions);
 			this.upsertTask(updatedTask);
 		}
 	}
 
-	/** Remove an item by ID. Returns true if found and removed. */
+	/** Remove an item by ID. Returns true if found and removed.
+	 *  Cascade-removes any checkpoint that loses its last build-workflow dep as
+	 *  a result — otherwise submit-plan would later fail validation because
+	 *  checkpoints must depend on at least one build-workflow task. */
 	removeItem(id: string): boolean {
 		const taskIdx = this.tasks.findIndex((t) => t.id === id);
 		if (taskIdx < 0) return false;
 		this.tasks.splice(taskIdx, 1);
 		// Also remove from the typed item arrays
-		this.removeFromArray(this.dataTables, id);
 		this.removeFromArray(this.workflows, id);
-		this.removeFromArray(this.researchItems, id);
 		this.removeFromArray(this.delegateItems, id);
+		this.removeFromArray(this.checkpoints, id);
 		// Clean up dangling dep references in remaining tasks
 		for (const task of this.tasks) {
 			task.deps = task.deps.filter((dep) => dep !== id);
 		}
+
+		// Cascade-remove orphaned checkpoints: any checkpoint whose deps no
+		// longer reference a build-workflow task is invalid and must go too.
+		const workflowIds = new Set(this.workflows.map((w) => w.id));
+		const orphanedCheckpointIds: string[] = [];
+		for (const cp of this.checkpoints) {
+			const stillHasWorkflowDep = cp.dependsOn.some((depId) => workflowIds.has(depId));
+			if (!stillHasWorkflowDep) {
+				orphanedCheckpointIds.push(cp.id);
+			}
+		}
+		for (const orphanId of orphanedCheckpointIds) {
+			this.removeItem(orphanId);
+		}
+
 		return true;
 	}
 
@@ -267,6 +215,17 @@ export class BlueprintAccumulator {
 	/** Whether the user approved the plan via submit-plan. */
 	isApproved(): boolean {
 		return this.approved;
+	}
+
+	/** Mark the plan as denied by the user. Once denied, submit-plan short-circuits
+	 *  any further calls so the planner cannot re-suspend the user for approval. */
+	markDenied(): void {
+		this.denied = true;
+	}
+
+	/** Whether the user denied the plan outright via submit-plan. */
+	isDenied(): boolean {
+		return this.denied;
 	}
 
 	/** Whether any items have been added. */

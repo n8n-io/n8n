@@ -1,5 +1,3 @@
-import type { RequestResponseMetadata } from '@utils/agent-execution';
-import { mock } from 'jest-mock-extended';
 import {
 	sleep,
 	type IExecuteFunctions,
@@ -7,51 +5,57 @@ import {
 	type EngineRequest,
 	type EngineResponse,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+
+import type { RequestResponseMetadata } from '@utils/agent-execution';
 
 import { toolsAgentExecute } from '../../agents/ToolsAgent/V3/execute';
 import * as helpers from '../../agents/ToolsAgent/V3/helpers';
+import type { MockedFunction } from 'vitest';
 
 // Mock the helper modules
-jest.mock('../../agents/ToolsAgent/V3/helpers', () => ({
-	buildExecutionContext: jest.fn(),
-	executeBatch: jest.fn(),
-	checkMaxIterations: jest.fn(),
-	buildResponseMetadata: jest.fn(),
+vi.mock('../../agents/ToolsAgent/V3/helpers', () => ({
+	buildExecutionContext: vi.fn(),
+	executeBatch: vi.fn(),
+	checkMaxIterations: vi.fn(),
+	buildResponseMetadata: vi.fn(),
 }));
 
 // Mock langchain modules
-jest.mock('@langchain/classic/agents', () => ({
-	createToolCallingAgent: jest.fn(),
+vi.mock('@langchain/classic/agents', () => ({
+	createToolCallingAgent: vi.fn(),
 }));
 
-jest.mock('@langchain/core/runnables', () => ({
+vi.mock('@langchain/core/runnables', () => ({
 	RunnableSequence: {
-		from: jest.fn(),
+		from: vi.fn(),
 	},
 }));
 
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	sleep: jest.fn(),
+vi.mock('n8n-workflow', async () => ({
+	...(await vi.importActual('n8n-workflow')),
+	sleep: vi.fn(),
 }));
+
+const emptyMemoryHits = { loads: 0, saves: 0 };
 
 const mockContext = mock<IExecuteFunctions>();
 const mockNode = mock<INode>();
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	mockContext.getNode.mockReturnValue(mockNode);
 	mockContext.logger = {
-		debug: jest.fn(),
-		info: jest.fn(),
-		warn: jest.fn(),
-		error: jest.fn(),
+		debug: vi.fn(),
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
 	};
 	mockContext.customData = {
-		set: jest.fn(),
-		setAll: jest.fn(),
-		get: jest.fn(),
-		getAll: jest.fn(),
+		set: vi.fn(),
+		setAll: vi.fn(),
+		get: vi.fn(),
+		getAll: vi.fn(),
 	};
 });
 
@@ -70,10 +74,11 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		const mockBatchResult = {
 			returnData: [{ json: { output: 'success 1' }, pairedItem: { item: 0 } }],
 			request: undefined,
+			memoryHits: emptyMemoryHits,
 		};
 
-		jest.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
-		jest.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
 
 		const result = await toolsAgentExecute.call(mockContext);
 
@@ -105,6 +110,7 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		const mockBatchResult = {
 			returnData: [{ json: { output: 'success 1' }, pairedItem: { item: 0 } }],
 			request: undefined,
+			memoryHits: emptyMemoryHits,
 		};
 
 		const mockResponse: EngineResponse<RequestResponseMetadata> = {
@@ -112,8 +118,8 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 			metadata: { previousRequests: [] },
 		};
 
-		jest.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
-		jest.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
 
 		const result = await toolsAgentExecute.call(mockContext, mockResponse);
 
@@ -150,16 +156,17 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 				{ json: { output: 'success 2' }, pairedItem: { item: 1 } },
 			],
 			request: undefined,
+			memoryHits: emptyMemoryHits,
 		};
 
 		const mockBatchResult2 = {
 			returnData: [{ json: { output: 'success 3' }, pairedItem: { item: 2 } }],
 			request: undefined,
+			memoryHits: emptyMemoryHits,
 		};
 
-		jest.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
-		jest
-			.spyOn(helpers, 'executeBatch')
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch')
 			.mockResolvedValueOnce(mockBatchResult1)
 			.mockResolvedValueOnce(mockBatchResult2);
 
@@ -223,10 +230,11 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		const mockBatchResult = {
 			returnData: [],
 			request: mockRequest,
+			memoryHits: emptyMemoryHits,
 		};
 
-		jest.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
-		jest.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
 
 		const result = await toolsAgentExecute.call(mockContext);
 
@@ -272,11 +280,18 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 			metadata: { previousRequests: [] },
 		};
 
-		jest.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
-		jest
-			.spyOn(helpers, 'executeBatch')
-			.mockResolvedValueOnce({ returnData: [], request: mockRequest1 })
-			.mockResolvedValueOnce({ returnData: [], request: mockRequest2 });
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch')
+			.mockResolvedValueOnce({
+				returnData: [],
+				request: mockRequest1,
+				memoryHits: emptyMemoryHits,
+			})
+			.mockResolvedValueOnce({
+				returnData: [],
+				request: mockRequest2,
+				memoryHits: emptyMemoryHits,
+			});
 
 		const result = (await toolsAgentExecute.call(
 			mockContext,
@@ -288,7 +303,7 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 	});
 
 	it('should apply delay between batches when configured', async () => {
-		const sleepMock = sleep as jest.MockedFunction<typeof sleep>;
+		const sleepMock = sleep as MockedFunction<typeof sleep>;
 		sleepMock.mockResolvedValue(undefined);
 
 		const mockExecutionContext = {
@@ -304,10 +319,11 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		const mockBatchResult = {
 			returnData: [{ json: { output: 'success' }, pairedItem: { item: 0 } }],
 			request: undefined,
+			memoryHits: emptyMemoryHits,
 		};
 
-		jest.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
-		jest.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
 
 		await toolsAgentExecute.call(mockContext);
 
@@ -316,7 +332,7 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 	});
 
 	it('should not apply delay after last batch', async () => {
-		const sleepMock = sleep as jest.MockedFunction<typeof sleep>;
+		const sleepMock = sleep as MockedFunction<typeof sleep>;
 		sleepMock.mockResolvedValue(undefined);
 
 		const mockExecutionContext = {
@@ -332,10 +348,11 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		const mockBatchResult = {
 			returnData: [{ json: { output: 'success' }, pairedItem: { item: 0 } }],
 			request: undefined,
+			memoryHits: emptyMemoryHits,
 		};
 
-		jest.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
-		jest.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
 
 		await toolsAgentExecute.call(mockContext);
 
@@ -356,6 +373,7 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		const mockBatchResult = {
 			returnData: [{ json: { output: 'success' }, pairedItem: { item: 0 } }],
 			request: undefined,
+			memoryHits: emptyMemoryHits,
 		};
 
 		const mockResponse: EngineResponse<RequestResponseMetadata> = {
@@ -381,8 +399,8 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 			metadata: { itemIndex: 0, previousRequests: [] },
 		};
 
-		jest.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
-		jest.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
 
 		await toolsAgentExecute.call(mockContext, mockResponse);
 
@@ -397,6 +415,105 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		);
 	});
 
+	it('should report ai.agent.tool_calls.completed from inbound EngineResponse regardless of returnIntermediateSteps', async () => {
+		const mockExecutionContext = {
+			items: [{ json: { text: 'test input 1' } }],
+			batchSize: 1,
+			delayBetweenBatches: 0,
+			needsFallback: false,
+			model: {} as any,
+			fallbackModel: null,
+			memory: undefined,
+		};
+
+		const mockBatchResult = {
+			// Note: no `intermediateSteps` on the returnData — simulates returnIntermediateSteps: false
+			returnData: [{ json: { output: 'final answer' }, pairedItem: { item: 0 } }],
+			request: undefined,
+			memoryHits: emptyMemoryHits,
+		};
+
+		// Inbound response carries 3 completed tool runs from prior iterations.
+		const mockResponse: EngineResponse<RequestResponseMetadata> = {
+			actionResponses: [
+				{
+					action: {
+						id: 'call_1',
+						nodeName: 'Tool A',
+						input: { id: 'call_1' },
+						metadata: { itemIndex: 0 },
+						actionType: 'ExecutionNodeAction',
+						type: 'ai_tool',
+					},
+					data: {
+						data: { ai_tool: [[{ json: { result: 'a' } }]] },
+						executionTime: 0,
+						startTime: 0,
+						executionIndex: 0,
+						source: [],
+					},
+				},
+				{
+					action: {
+						id: 'call_2',
+						nodeName: 'Tool B',
+						input: { id: 'call_2' },
+						metadata: { itemIndex: 0 },
+						actionType: 'ExecutionNodeAction',
+						type: 'ai_tool',
+					},
+					data: {
+						data: { ai_tool: [[{ json: { result: 'b' } }]] },
+						executionTime: 0,
+						startTime: 0,
+						executionIndex: 1,
+						source: [],
+					},
+				},
+				{
+					action: {
+						id: 'call_3',
+						nodeName: 'Tool C',
+						input: { id: 'call_3' },
+						metadata: { itemIndex: 0 },
+						actionType: 'ExecutionNodeAction',
+						type: 'ai_tool',
+					},
+					data: {
+						data: { ai_tool: [[{ json: { result: 'c' } }]] },
+						executionTime: 0,
+						startTime: 0,
+						executionIndex: 2,
+						source: [],
+					},
+				},
+			],
+			metadata: { previousRequests: [] },
+		};
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'options.enableStreaming') return true;
+			if (param === 'options.autoSaveHighlightedData') return false;
+			return defaultValue;
+		});
+		// V3 only emits tracing metadata when invoked from an IExecuteFunctions-shaped
+		// context (detected by the presence of `getExecuteData`).
+		mockContext.getExecuteData.mockReturnValue({} as any);
+
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
+
+		await toolsAgentExecute.call(mockContext, mockResponse);
+
+		expect(mockContext.setMetadata).toHaveBeenCalledWith({
+			tracing: expect.objectContaining({
+				'ai.agent.version': 'v3',
+				'ai.agent.tool_calls.completed': 3,
+				'ai.agent.execution.succeeded': true,
+			}),
+		});
+	});
+
 	it('should collect return data from multiple batches', async () => {
 		const mockExecutionContext = {
 			items: [{ json: { text: 'test input 1' } }, { json: { text: 'test input 2' } }],
@@ -408,16 +525,17 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 			memory: undefined,
 		};
 
-		jest.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
-		jest
-			.spyOn(helpers, 'executeBatch')
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch')
 			.mockResolvedValueOnce({
 				returnData: [{ json: { output: 'success 1' }, pairedItem: { item: 0 } }],
 				request: undefined,
+				memoryHits: emptyMemoryHits,
 			})
 			.mockResolvedValueOnce({
 				returnData: [{ json: { output: 'success 2' }, pairedItem: { item: 1 } }],
 				request: undefined,
+				memoryHits: emptyMemoryHits,
 			});
 
 		const result = await toolsAgentExecute.call(mockContext);

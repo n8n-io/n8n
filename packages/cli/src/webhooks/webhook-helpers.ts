@@ -16,6 +16,7 @@ import type {
 	IDataObject,
 	IDeferredPromise,
 	IExecuteData,
+	IExecuteResponsePromiseData,
 	IN8nHttpFullResponse,
 	INode,
 	IPinData,
@@ -355,6 +356,7 @@ export function prepareExecutionData(
 	destinationNode?: IDestinationNode,
 	executionId?: string,
 	workflowData?: IWorkflowBase,
+	userId?: string,
 ): { runExecutionData: IRunExecutionData; pinData: IPinData | undefined } {
 	// Initialize the data of the webhook node
 	const nodeExecutionStack: IExecuteData[] = [
@@ -380,6 +382,7 @@ export function prepareExecutionData(
 		executionData: {
 			nodeExecutionStack,
 		},
+		...(executionMode === 'manual' && userId ? { manualData: { userId } } : {}),
 	});
 
 	if (destinationNode && runExecutionData.startData) {
@@ -534,6 +537,9 @@ export async function executeWebhook(
 					executionData: {
 						nodeExecutionStack,
 					},
+					...(executionMode === 'manual' && webhookData.userId
+						? { manualData: { userId: webhookData.userId } }
+						: {}),
 				});
 		}
 
@@ -646,6 +652,7 @@ export async function executeWebhook(
 			destinationNode,
 			executionId,
 			workflowData,
+			webhookData.userId,
 		);
 		runExecutionData = preparedRunExecutionData;
 
@@ -657,6 +664,7 @@ export async function executeWebhook(
 			pinData,
 			projectId: project?.id,
 			projectName: project?.name,
+			userId: webhookData.userId,
 		};
 
 		// When resuming from a wait node, copy over the pushRef from the execution-data
@@ -753,7 +761,7 @@ export async function executeWebhook(
 			true,
 			!didSendResponse && !shouldDeferOnReceivedResponse,
 			executionId,
-			responsePromise,
+			responsePromise as IDeferredPromise<IExecuteResponsePromiseData> | undefined,
 		);
 
 		/**
@@ -863,7 +871,7 @@ export async function executeWebhook(
 						runData.data.resultData.pinData = pinData;
 					}
 
-					const lastNodeTaskData = WorkflowHelpers.getDataLastExecutedNodeData(runData);
+					const lastNodeTaskData = WorkflowHelpers.getLastExecutedNodeData(runData);
 					if (runData.data.resultData.error || lastNodeTaskData?.error !== undefined) {
 						if (!didSendResponse) {
 							responseCallback(null, {

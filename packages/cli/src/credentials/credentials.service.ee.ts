@@ -107,7 +107,7 @@ export class EnterpriseCredentialsService {
 		if (credential) {
 			// Decrypt the data if we found the credential with the `credential:update`
 			// scope.
-			decryptedData = this.credentialsService.decrypt(credential);
+			decryptedData = await this.credentialsService.decrypt(credential);
 		} else {
 			// Otherwise try to find them with only the `credential:read` scope. In
 			// that case we return them without the decrypted data.
@@ -126,16 +126,28 @@ export class EnterpriseCredentialsService {
 
 		const { data: _, ...rest } = credential;
 
+		const enriched: typeof rest & { connectedByMe?: boolean } = rest;
+		await this.credentialsService.populateConnectedByMe([enriched], user);
+
 		if (decryptedData) {
 			// We never want to expose the oauthTokenData to the frontend, but it
 			// expects it to check if the credential is already connected.
-			if (decryptedData?.oauthTokenData) {
+			if (credential.isResolvable) {
+				// For resolvable credentials, the "connected" signal lives in the
+				// per-user storage — mirror that into the existing oauthTokenData
+				// flag the frontend banner already reads.
+				if (enriched.connectedByMe) {
+					decryptedData.oauthTokenData = true;
+				} else {
+					delete decryptedData.oauthTokenData;
+				}
+			} else if (decryptedData?.oauthTokenData) {
 				decryptedData.oauthTokenData = true;
 			}
-			return { data: decryptedData, ...rest };
+			return { data: decryptedData, ...enriched };
 		}
 
-		return { ...rest };
+		return { ...enriched };
 	}
 
 	async transferOne(user: User, credentialId: string, destinationProjectId: string) {
@@ -183,7 +195,7 @@ export class EnterpriseCredentialsService {
 			this.licenseState.isExternalSecretsLicensed() &&
 			this.externalSecretsConfig.externalSecretsForProjects
 		) {
-			const decryptedData = this.credentialsService.decrypt(credential, true);
+			const decryptedData = await this.credentialsService.decrypt(credential, true);
 			await validateAccessToReferencedSecretProviders(
 				destinationProject.id,
 				decryptedData,

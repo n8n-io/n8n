@@ -44,6 +44,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import WorkflowCardMcpToggle from '@/features/ai/mcpAccess/components/WorkflowCardMcpToggle.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
@@ -73,6 +74,9 @@ const props = withDefaults(
 		showOwnershipBadge?: boolean;
 		areTagsEnabled?: boolean;
 		isMcpEnabled?: boolean;
+		isMcpModuleActive?: boolean;
+		canManageInstanceMcp?: boolean;
+		isWorkflowCardMcpToggleEnabled?: boolean;
 		areFoldersEnabled?: boolean;
 	}>(),
 	{
@@ -81,6 +85,9 @@ const props = withDefaults(
 		showOwnershipBadge: false,
 		areTagsEnabled: true,
 		isMcpEnabled: false,
+		isMcpModuleActive: false,
+		canManageInstanceMcp: false,
+		isWorkflowCardMcpToggleEnabled: false,
 		areFoldersEnabled: false,
 	},
 );
@@ -110,7 +117,6 @@ const locale = useI18n();
 const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
-const mcp = useMcp();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 const { hasDependencies } = useDependencies();
 
@@ -120,16 +126,12 @@ const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
-const mcpStore = useMCPStore();
 const favoritesStore = useFavoritesStore();
+const mcpStore = useMCPStore();
+const mcp = useMcp();
 const workflowActivate = useWorkflowActivate();
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
-
-// We use this to optimistically update the MCP status in the UI
-// without needing to modify the workflow prop directly.
-// null means we haven't changed it yet
-const mcpToggleStatus = ref<boolean | null>(null);
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
@@ -259,6 +261,7 @@ const actions = computed(() => {
 	}
 
 	if (
+		!props.isWorkflowCardMcpToggleEnabled &&
 		props.isMcpEnabled &&
 		workflowPermissions.value.update &&
 		!props.readOnly &&
@@ -288,12 +291,21 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
-const isAvailableInMCP = computed(() => {
-	if (mcpToggleStatus.value === null) {
-		return props.data.settings?.availableInMCP ?? false;
-	}
-	return mcpToggleStatus.value;
-});
+const canEditMcp = computed(
+	() => Boolean(workflowPermissions.value.update) && !props.readOnly && !props.data.isArchived,
+);
+
+// Optimistic state for the legacy 3-dot menu fallback (used when the
+// 086_workflow_card_mcp_toggle experiment is off).
+const mcpToggleStatus = ref<boolean | null>(null);
+
+const isAvailableInMCP = computed(
+	() => mcpToggleStatus.value ?? props.data.settings?.availableInMCP ?? false,
+);
+
+const showLegacyMcpIndicator = computed(
+	() => !props.isWorkflowCardMcpToggleEnabled && props.isMcpEnabled && isAvailableInMCP.value,
+);
 
 const isSomeoneElsesWorkflow = computed(
 	() =>
@@ -323,7 +335,7 @@ async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
 		const route = router.resolve({
 			name: VIEWS.WORKFLOW,
-			params: { name: props.data.id },
+			params: { workflowId: props.data.id },
 		});
 		window.open(route.href, '_blank');
 
@@ -332,7 +344,7 @@ async function onClick(event?: KeyboardEvent | PointerEvent) {
 
 	await router.push({
 		name: VIEWS.WORKFLOW,
-		params: { name: props.data.id },
+		params: { workflowId: props.data.id },
 	});
 }
 
@@ -394,14 +406,14 @@ async function onAction(action: string) {
 				homeProjectId: props.data.homeProject?.id,
 			});
 			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.UNPUBLISH:
+			await unpublishWorkflow();
+			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS:
 			await toggleMCPAccess(true);
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS:
 			await toggleMCPAccess(false);
-			break;
-		case WORKFLOW_LIST_ITEM_ACTIONS.UNPUBLISH:
-			await unpublishWorkflow();
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE:
 			await favoritesStore.toggleFavorite(props.data.id, 'workflow');
@@ -446,17 +458,22 @@ async function toggleMCPAccess(enabled: boolean) {
 	try {
 		await mcpStore.toggleWorkflowMcpAccess(props.data.id, enabled);
 		mcpToggleStatus.value = enabled;
-		mcp.trackMcpAccessEnabledForWorkflow(props.data.id);
+		if (enabled) {
+			mcp.trackMcpAccessEnabledForWorkflow(props.data.id);
+		}
 	} catch (error) {
 		toast.showError(error, locale.baseText('workflowSettings.toggleMCP.error.title'));
-		return;
 	}
 }
 
 async function deleteWorkflow() {
+	await deleteWorkflowById(props.data.id, props.data.name);
+}
+
+async function deleteWorkflowById(id: WorkflowResource['id'], name: WorkflowResource['name']) {
 	const deleteConfirmed = await message.confirm(
 		locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
-			interpolate: { workflowName: props.data.name },
+			interpolate: { workflowName: name },
 		}),
 		locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
 		{
@@ -475,7 +492,7 @@ async function deleteWorkflow() {
 	}
 
 	try {
-		await workflowsListStore.deleteWorkflow(props.data.id);
+		await workflowsListStore.deleteWorkflow(id);
 	} catch (error) {
 		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
 		return;
@@ -484,7 +501,7 @@ async function deleteWorkflow() {
 	// Reset tab title since workflow is deleted.
 	toast.showMessage({
 		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
-			interpolate: { workflowName: props.data.name },
+			interpolate: { workflowName: name },
 		}),
 		type: 'success',
 	});
@@ -514,17 +531,27 @@ async function archiveWorkflow() {
 		}
 	}
 
+	const archivedWorkflowId = props.data.id;
+	const archivedWorkflowName = props.data.name;
+
 	try {
-		await workflowsStore.archiveWorkflow(props.data.id);
+		await workflowsStore.archiveWorkflow(archivedWorkflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
 		return;
 	}
 
-	toast.showMessage({
+	toast.showToast({
 		title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
-			interpolate: { workflowName: props.data.name },
+			interpolate: { workflowName: archivedWorkflowName },
 		}),
+		message: `<a href="#" data-test-id="archive-toast-delete-permanently-link">${locale.baseText('mainSidebar.showMessage.handleArchive.message')}</a>`,
+		onClick: (event) => {
+			if (event?.target instanceof HTMLAnchorElement) {
+				event.preventDefault();
+				void deleteWorkflowById(archivedWorkflowId, archivedWorkflowName);
+			}
+		},
 		type: 'success',
 	});
 	emit('workflow:archived');
@@ -636,19 +663,15 @@ const tags = computed(
 			</span>
 			<span v-show="data">
 				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
-				<span v-if="props.isMcpEnabled && isAvailableInMCP">|</span>
+				<span v-if="showLegacyMcpIndicator">|</span>
 			</span>
 			<span
-				v-show="props.isMcpEnabled && isAvailableInMCP"
-				:class="[$style['description-cell'], $style['description-cell--mcp']]"
+				v-show="showLegacyMcpIndicator"
+				:class="$style.legacyMcpIndicator"
 				data-test-id="workflow-card-mcp"
 			>
-				<N8nTooltip
-					placement="right"
-					:content="locale.baseText('workflows.item.availableInMCP')"
-					data-test-id="workflow-card-mcp-tooltip"
-				>
-					<N8nIcon icon="mcp" size="medium"></N8nIcon>
+				<N8nTooltip placement="right" :content="locale.baseText('workflows.item.availableInMCP')">
+					<N8nIcon icon="mcp" size="medium" />
 				</N8nTooltip>
 			</span>
 			<span
@@ -722,8 +745,18 @@ const tags = computed(
 						locale.baseText('workflows.published')
 					}}</N8nText>
 				</div>
+				<WorkflowCardMcpToggle
+					v-if="props.isWorkflowCardMcpToggleEnabled"
+					:workflow-id="data.id"
+					:available-in-mcp="data.settings?.availableInMCP ?? false"
+					:can-edit="canEditMcp"
+					:is-mcp-enabled="props.isMcpEnabled"
+					:is-mcp-module-active="props.isMcpModuleActive"
+					:can-manage-instance-mcp="props.canManageInstanceMcp"
+				/>
 				<N8nActionToggle
 					:actions="actions"
+					placement="bottom-end"
 					theme="dark"
 					data-test-id="workflow-card-actions"
 					@action="onAction"
@@ -776,6 +809,11 @@ const tags = computed(
 	margin-top: var(--spacing--4xs);
 }
 
+.legacyMcpIndicator {
+	display: inline-flex;
+	align-items: center;
+}
+
 .cardActions {
 	display: flex;
 	gap: var(--spacing--2xs);
@@ -804,15 +842,6 @@ const tags = computed(
 	background-color: var(--color--background--light-2);
 	border-color: var(--color--foreground--tint-1);
 	color: var(--color--text);
-}
-
-.description-cell--mcp {
-	display: inline-flex;
-	align-items: center;
-
-	&:hover {
-		color: var(--color--text);
-	}
 }
 
 .dynamicBadgeText {

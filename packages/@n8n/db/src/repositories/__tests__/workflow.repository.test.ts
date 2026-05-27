@@ -32,6 +32,7 @@ describe('WorkflowRepository', () => {
 		jest.resetAllMocks();
 
 		queryBuilder = mock<SelectQueryBuilder<WorkflowEntity>>();
+
 		queryBuilder.where.mockReturnThis();
 		queryBuilder.andWhere.mockReturnThis();
 		queryBuilder.orWhere.mockReturnThis();

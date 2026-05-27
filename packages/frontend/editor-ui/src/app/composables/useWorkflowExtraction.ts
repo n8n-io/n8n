@@ -1,8 +1,6 @@
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import {
-	buildAdjacencyList,
-	parseExtractableSubgraphSelection,
 	extractReferencesInNodeExpressions,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	NodeHelpers,
@@ -13,12 +11,12 @@ import type {
 	IConnections,
 	INode,
 } from 'n8n-workflow';
-import { computed } from 'vue';
 import { useToast } from './useToast';
 import { useRouter } from 'vue-router';
 import { VIEWS, WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/app/constants';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useCanvasOperations } from './useCanvasOperations';
+import { useSelectionValidation } from './useSelectionValidation';
 
 import type { AddedNode, INodeUi, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
@@ -27,8 +25,10 @@ import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useTelemetry } from './useTelemetry';
+import { checkExhaustive } from '@/app/utils/typeGuards';
 import isEqual from 'lodash/isEqual';
 import { v4 as uuidv4 } from 'uuid';
+import { sanitizeConnections } from '../utils/workflowUtils';
 
 const CANVAS_HISTORY_OPTIONS = {
 	trackBulk: false,
@@ -46,10 +46,7 @@ export function useWorkflowExtraction() {
 	const canvasOperations = useCanvasOperations();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
-
-	const adjacencyList = computed(() =>
-		buildAdjacencyList(workflowDocumentStore?.value?.connectionsBySourceNode ?? {}),
-	);
+	const { isSelectionExtractable } = useSelectionValidation();
 
 	function showError(message: string) {
 		toast.showMessage({
@@ -246,7 +243,7 @@ export function useWorkflowExtraction() {
 			parameters: triggerParameters,
 		};
 
-		return {
+		const result: WorkflowDataCreate = {
 			name: newWorkflowName,
 			nodes: [...nodes, ...returnNode, triggerNode],
 			connections: {
@@ -255,9 +252,14 @@ export function useWorkflowExtraction() {
 				...endNodeConnection,
 			},
 			settings: { executionOrder: 'v1' },
-			projectId: workflowDocumentStore?.value?.homeProject?.id,
-			parentFolderId: workflowDocumentStore?.value?.parentFolder?.id ?? undefined,
+			projectId: workflowDocumentStore.value.homeProject?.id,
+			parentFolderId: workflowDocumentStore.value.parentFolder?.id ?? undefined,
 		};
+		result.connections = sanitizeConnections(
+			result.connections,
+			result.nodes?.map((x) => x.name),
+		);
+		return result;
 	}
 
 	function computeAveragePosition(nodes: INode[]): [number, number] {
@@ -283,7 +285,7 @@ export function useWorkflowExtraction() {
 			const { href } = router.resolve({
 				name: VIEWS.WORKFLOW,
 				params: {
-					name: createdWorkflow.id,
+					workflowId: createdWorkflow.id,
 				},
 			});
 
@@ -302,64 +304,6 @@ export function useWorkflowExtraction() {
 		}
 	}
 
-	function checkExtractableSelectionValidity(
-		selection: ReturnType<typeof parseExtractableSubgraphSelection>,
-	): selection is ExtractableSubgraphData {
-		if (Array.isArray(selection)) {
-			showError(
-				i18n.baseText('workflowExtraction.error.selectionGraph.listHeader', {
-					interpolate: {
-						body: selection
-							.map(extractableErrorResultToMessage)
-							.map((x) => `- ${x}`)
-							.join('<br>'),
-					},
-				}),
-			);
-			return false;
-		}
-		const { start, end } = selection;
-
-		const isSingleIO = (
-			nodeName: string,
-			getIOs: (
-				...x: Parameters<typeof NodeHelpers.getNodeInputs>
-			) => ReturnType<typeof NodeHelpers.getNodeInputs>,
-		) => {
-			const node = workflowsStore.getNodeByName(nodeName);
-			if (!node) return true; // invariant broken -> abort onto error path
-			const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
-			if (!nodeType) return true; // invariant broken -> abort onto error path
-			const expression = workflowDocumentStore?.value?.getExpressionHandler();
-			if (!expression) return true;
-
-			const ios = getIOs({ expression }, node, nodeType);
-			return (
-				ios.filter((x) => (typeof x === 'string' ? x === 'main' : x.type === 'main')).length <= 1
-			);
-		};
-
-		if (start && !isSingleIO(start, NodeHelpers.getNodeInputs)) {
-			showError(
-				i18n.baseText('workflowExtraction.error.inputNodeHasMultipleInputBranches', {
-					interpolate: { node: start },
-				}),
-			);
-			return false;
-		}
-		if (end && !isSingleIO(end, NodeHelpers.getNodeOutputs)) {
-			showError(
-				i18n.baseText('workflowExtraction.error.outputNodeHasMultipleOutputBranches', {
-					interpolate: { node: end },
-				}),
-			);
-			return false;
-		}
-
-		// Returns an array of errors
-		return !Array.isArray(selection);
-	}
-
 	async function replaceSelectionWithNode(
 		executeWorkflowNodeData: AddedNode,
 		startId: string | undefined,
@@ -369,9 +313,6 @@ export function useWorkflowExtraction() {
 	) {
 		historyStore.startRecordingUndo();
 
-		// In most cases we're about to move the selection anyway
-		// One remarkable edge case is when a single node is right-clicked on
-		// This allows extraction, but does not necessarily select the node
 		uiStore.resetLastInteractedWith();
 
 		const executeWorkflowNode = (
@@ -399,7 +340,7 @@ export function useWorkflowExtraction() {
 		);
 
 		for (const node of selectionChildNodes) {
-			const currentNode = workflowsStore.workflow.nodes.find((x) => x.id === node.id);
+			const currentNode = workflowDocumentStore.value.allNodes.find((x) => x.id === node.id);
 
 			if (isEqual(node, currentNode)) continue;
 
@@ -416,32 +357,54 @@ export function useWorkflowExtraction() {
 	}
 
 	function tryExtractNodesIntoSubworkflow(nodeIds: string[]): boolean {
-		const subGraph = nodeIds
-			.map((id) => workflowDocumentStore?.value?.getNodeById(id))
-			.filter((x) => x !== undefined);
+		const result = isSelectionExtractable(nodeIds);
 
-		const triggers = subGraph.filter((x) =>
-			useNodeTypesStore().getNodeType(x.type, x.typeVersion)?.group.includes('trigger'),
-		);
-		if (triggers.length > 0) {
-			showError(
-				i18n.baseText('workflowExtraction.error.triggerSelected', {
-					interpolate: { nodes: triggers.map((x) => `'${x.name}'`).join(', ') },
-				}),
-			);
+		if (!result.valid) {
+			switch (result.reason) {
+				case 'trigger-selected':
+					showError(
+						i18n.baseText('workflowExtraction.error.triggerSelected', {
+							interpolate: {
+								nodes: result.triggers.map((name) => `'${name}'`).join(', '),
+							},
+						}),
+					);
+					break;
+				case 'invalid-subgraph':
+					showError(
+						i18n.baseText('workflowExtraction.error.selectionGraph.listHeader', {
+							interpolate: {
+								body: result.errors
+									.map(extractableErrorResultToMessage)
+									.map((x) => `- ${x}`)
+									.join('<br>'),
+							},
+						}),
+					);
+					break;
+				case 'multiple-input-branches':
+					showError(
+						i18n.baseText('workflowExtraction.error.inputNodeHasMultipleInputBranches', {
+							interpolate: { node: result.node },
+						}),
+					);
+					break;
+				case 'multiple-output-branches':
+					showError(
+						i18n.baseText('workflowExtraction.error.outputNodeHasMultipleOutputBranches', {
+							interpolate: { node: result.node },
+						}),
+					);
+					break;
+				default:
+					checkExhaustive(result);
+			}
 			return false;
 		}
 
-		const selection = parseExtractableSubgraphSelection(
-			new Set(subGraph.map((x) => x.name)),
-			adjacencyList.value,
-		);
-
-		if (!checkExtractableSelectionValidity(selection)) return false;
-
 		uiStore.openModalWithData({
 			name: WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
-			data: { subGraph, selection },
+			data: { subGraph: result.subGraph, selection: result.subGraphData },
 		});
 		return true;
 	}
@@ -453,7 +416,7 @@ export function useWorkflowExtraction() {
 	) {
 		const { start, end } = selection;
 
-		const allNodeNames = workflowsStore.workflow.nodes.map((x) => x.name);
+		const allNodeNames = workflowDocumentStore.value.allNodes.map((x) => x.name) ?? [];
 
 		let startNodeName = 'Start';
 		const subGraphNames = subGraph.map((x) => x.name);
@@ -463,16 +426,16 @@ export function useWorkflowExtraction() {
 		while (subGraphNames.includes(returnNodeName)) returnNodeName += '_1';
 
 		const directAfterEndNodeNames = end
-			? (workflowDocumentStore?.value
-					?.getChildNodes(end, 'main', 1)
-					.map((x) => workflowDocumentStore?.value?.getNodeByName(x)?.name)
+			? (workflowDocumentStore.value
+					.getChildNodes(end, 'main', 1)
+					.map((x) => workflowDocumentStore.value.getNodeByName(x)?.name)
 					.filter((x) => x !== undefined) ?? [])
 			: [];
 
 		const allAfterEndNodes = end
-			? (workflowDocumentStore?.value
-					?.getChildNodes(end, 'ALL')
-					.map((x) => workflowDocumentStore?.value?.getNodeByName(x) ?? null)
+			? (workflowDocumentStore.value
+					.getChildNodes(end, 'ALL')
+					.map((x) => workflowDocumentStore.value.getNodeByName(x) ?? null)
 					.filter((x) => x !== null) ?? [])
 			: [];
 
@@ -499,7 +462,7 @@ export function useWorkflowExtraction() {
 			newWorkflowName,
 			selection,
 			nodes,
-			workflowDocumentStore?.value?.connectionsBySourceNode ?? {},
+			workflowDocumentStore.value?.connectionsBySourceNode,
 			variables,
 			afterVariables,
 			startNodeName,
@@ -562,12 +525,13 @@ export function useWorkflowExtraction() {
 	 * @param nodeIds the ids to be extracted from the current workflow into a sub-workflow
 	 */
 	function extractWorkflow(nodeIds: string[]) {
+		if (nodeIds.length === 0) return;
+
 		const success = tryExtractNodesIntoSubworkflow(nodeIds);
 		trackStartExtractWorkflow(nodeIds.length, success);
 	}
 
 	return {
-		adjacencyList,
 		extractWorkflow,
 		tryExtractNodesIntoSubworkflow,
 		extractNodesIntoSubworkflow,

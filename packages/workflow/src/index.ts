@@ -13,14 +13,17 @@ export * from './execution-context';
 export * from './execution-context-establishment-hooks';
 export * from './global-state';
 export * from './interfaces';
+export * from './sub-workflow-output';
 export * from './run-execution-data-factory';
 export * from './message-event-bus';
 export * from './execution-status';
+export * from './trimmed-task-data';
 export * from './expression';
 export * from './expressions/expression-helpers';
 export * from './from-ai-parse-utils';
 export * from './node-helpers';
 export * from './node-validation';
+export * from './node-grouping-validation';
 export * from './tool-helpers';
 export * from './node-reference-parser-utils';
 export * from './metadata-utils';
@@ -30,8 +33,10 @@ export * from './workflow-checksum';
 export * from './workflow-data-proxy';
 export * from './workflow-data-proxy-env-provider';
 export * from './workflow-validation';
+export * from './workflow-structure-validation';
 export * from './versioned-node-type';
 export * from './type-validation';
+export * from './credential-domain-restrictions';
 export * from './result';
 export * from './schemas';
 export * from './run-execution-data/run-execution-data';
@@ -54,7 +59,6 @@ export {
 	randomString,
 	isSafeObjectProperty,
 	setSafeObjectProperty,
-	isDomainAllowed,
 	isCommunityPackageName,
 	dedupe,
 	sanitizeFilename,

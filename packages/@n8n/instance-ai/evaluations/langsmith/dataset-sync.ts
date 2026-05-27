@@ -1,39 +1,20 @@
 // ---------------------------------------------------------------------------
 // LangSmith dataset sync
 //
-// Syncs JSON test case files from the repo to a LangSmith dataset.
-// Uses derived IDs (fileSlug/scenarioName) so examples are stable across
-// runs, enabling experiment comparison over time.
+// Syncs JSON test case files from the repo to a LangSmith dataset. Existing
+// examples are found by inputs (testCaseFile + scenarioName) and updated in
+// place; new scenarios get a random UUID. Stale examples are left in place
+// — LangSmith's soft-delete tombstones UUIDs, which historically caused 409
+// conflicts on resurrection; manual orphan cleanup happens via UI or MCP.
 // ---------------------------------------------------------------------------
 
-import { createHash } from 'crypto';
+import { randomUUID } from 'crypto';
 import type { Client } from 'langsmith';
 import type { Example, KVMap } from 'langsmith/schemas';
 import { z } from 'zod';
 
-import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
+import { loadWorkflowTestCasesWithFiles, type WorkflowTestCaseWithFile } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
-
-// Bump this if existing IDs get tombstoned by LangSmith soft-delete and need
-// to be regenerated fresh. UUIDs for the same derivedId stay stable within a
-// version, so experiment comparison still works.
-const UUID_VERSION = 'v2';
-
-/**
- * Generate a deterministic UUID from a string.
- * Same input always produces the same UUID, so example IDs are stable across runs.
- */
-function deterministicUuid(input: string): string {
-	const hash = createHash('sha256').update(`${UUID_VERSION}:${input}`).digest('hex');
-	// Format as UUID v4 shape (8-4-4-4-12)
-	return [
-		hash.slice(0, 8),
-		hash.slice(8, 12),
-		'4' + hash.slice(13, 16),
-		'8' + hash.slice(17, 20),
-		hash.slice(20, 32),
-	].join('-');
-}
 
 /**
  * Shape of the inputs passed to the target function for each scenario.
@@ -41,7 +22,6 @@ function deterministicUuid(input: string): string {
  * workflow a scenario belongs to (metadata is hidden by default).
  */
 export const datasetExampleInputsSchema = z.object({
-	prompt: z.string(),
 	testCaseFile: z.string(),
 	scenarioName: z.string(),
 	scenarioDescription: z.string(),
@@ -64,10 +44,12 @@ export type DatasetExampleMetadata = z.infer<typeof datasetExampleMetadataSchema
  * Sync JSON test cases to a LangSmith dataset.
  *
  * - Creates the dataset if it doesn't exist
- * - Diffs local scenarios against existing examples
- * - Creates, updates, or deletes examples to match
+ * - Finds existing examples by (testCaseFile, scenarioName) and updates in place
+ * - Creates new scenarios with a random UUID
  * - Orders examples round-robin across test cases for optimal parallelism
  * - Assigns each example to a split (test case file slug) for UI filtering
+ *
+ * Never deletes. Orphan cleanup is manual (LangSmith UI or MCP).
  *
  * Returns the dataset name for use with evaluate().
  */
@@ -76,8 +58,9 @@ export async function syncDataset(
 	datasetName: string,
 	logger: EvalLogger,
 	filter?: string,
+	exclude?: string,
 ): Promise<string> {
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(filter);
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(filter, exclude);
 
 	// Round-robin ordering ensures evaluate() triggers diverse builds early
 	// rather than burning all concurrency slots on one test case.
@@ -110,16 +93,13 @@ export async function syncDataset(
 	}
 
 	// Diff and sync
-	const currentIds = new Set<string>();
 	const toCreate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string }> = [];
 	const toUpdate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string }> = [];
 
 	for (const scenario of scenarios) {
 		const derivedId = `${scenario.testCaseFile}/${scenario.scenarioName}`;
-		currentIds.add(derivedId);
 
 		const inputs: DatasetExampleInputs = {
-			prompt: scenario.prompt,
 			testCaseFile: scenario.testCaseFile,
 			scenarioName: scenario.scenarioName,
 			scenarioDescription: scenario.scenarioDescription,
@@ -149,24 +129,11 @@ export async function syncDataset(
 			}
 		} else {
 			toCreate.push({
-				id: deterministicUuid(derivedId),
+				id: randomUUID(),
 				inputs,
 				metadata,
 				split: scenario.testCaseFile,
 			});
-		}
-	}
-
-	// Only delete stale examples on a full sync (no filter). With a filter,
-	// we're only syncing a subset and mustn't delete the others.
-	// LangSmith also soft-deletes, which tombstones the UUID and prevents
-	// recreation with the same ID on a later full run.
-	const toDelete: string[] = [];
-	if (!filter) {
-		for (const [derivedId, example] of existingByDerivedId) {
-			if (!currentIds.has(derivedId)) {
-				toDelete.push(example.id);
-			}
 		}
 	}
 
@@ -196,12 +163,7 @@ export async function syncDataset(
 		logger.info(`  Updated ${String(toUpdate.length)} example(s)`);
 	}
 
-	if (toDelete.length > 0) {
-		await lsClient.deleteExamples(toDelete);
-		logger.info(`  Deleted ${String(toDelete.length)} stale example(s)`);
-	}
-
-	if (toCreate.length === 0 && toUpdate.length === 0 && toDelete.length === 0) {
+	if (toCreate.length === 0 && toUpdate.length === 0) {
 		logger.info('  Dataset up to date');
 	}
 
@@ -213,7 +175,6 @@ export async function syncDataset(
 // ---------------------------------------------------------------------------
 
 interface FlatScenario {
-	prompt: string;
 	testCaseFile: string;
 	scenarioName: string;
 	scenarioDescription: string;
@@ -230,32 +191,18 @@ interface FlatScenario {
  * Input:  [tc1(s1,s2,s3), tc2(s1,s2), tc3(s1)]
  * Output: [tc1/s1, tc2/s1, tc3/s1, tc1/s2, tc2/s2, tc1/s3]
  */
-function buildRoundRobinScenarios(
-	testCasesWithFiles: Array<{
-		testCase: {
-			prompt: string;
-			complexity?: 'simple' | 'medium' | 'complex';
-			tags?: string[];
-			triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
-			scenarios: Array<{
-				name: string;
-				description: string;
-				dataSetup: string;
-				successCriteria: string;
-			}>;
-		};
-		fileSlug: string;
-	}>,
-): FlatScenario[] {
+function buildRoundRobinScenarios(testCasesWithFiles: WorkflowTestCaseWithFile[]): FlatScenario[] {
 	const result: FlatScenario[] = [];
-	const maxScenarios = Math.max(...testCasesWithFiles.map((tc) => tc.testCase.scenarios.length), 0);
+	const maxScenarios = Math.max(
+		...testCasesWithFiles.map((tc) => tc.testCase.executionScenarios.length),
+		0,
+	);
 
 	for (let i = 0; i < maxScenarios; i++) {
 		for (const { testCase, fileSlug } of testCasesWithFiles) {
-			const scenario = testCase.scenarios[i];
+			const scenario = testCase.executionScenarios[i];
 			if (scenario) {
 				result.push({
-					prompt: testCase.prompt,
 					testCaseFile: fileSlug,
 					scenarioName: scenario.name,
 					scenarioDescription: scenario.description,
@@ -277,7 +224,6 @@ function buildRoundRobinScenarios(
 
 const existingInputsSchema = z
 	.object({
-		prompt: z.string().default(''),
 		testCaseFile: z.string().default(''),
 		scenarioName: z.string().default(''),
 		scenarioDescription: z.string().default(''),
@@ -302,7 +248,6 @@ function hasInputsChanged(existing: unknown, incoming: DatasetExampleInputs): bo
 	if (!parsed.success) return true;
 	const e = parsed.data;
 	return (
-		e.prompt !== incoming.prompt ||
 		e.testCaseFile !== incoming.testCaseFile ||
 		e.dataSetup !== incoming.dataSetup ||
 		e.successCriteria !== incoming.successCriteria ||

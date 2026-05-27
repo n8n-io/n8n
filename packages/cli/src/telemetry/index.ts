@@ -14,7 +14,7 @@ import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
-import type { IExecutionTrackProperties } from '@/interfaces';
+import type { IAgentExecutionTrackProperties, IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 
@@ -64,6 +64,16 @@ interface IApiInvocationsBuffer {
 	[userId: string]: IApiInvocationsBufferEntry;
 }
 
+interface IAgentExecutionCountsBuffer {
+	[bufferKey: string]: {
+		agent_id: string;
+		user_id?: string;
+		message_count: number;
+		token_count: number;
+		tool_call_count: number;
+	};
+}
+
 @Service()
 export class Telemetry {
 	private rudderStack?: RudderStack;
@@ -73,6 +83,8 @@ export class Telemetry {
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
 	private apiInvocationsBuffer: IApiInvocationsBuffer = {};
+
+	private agentExecutionCountsBuffer: IAgentExecutionCountsBuffer = {};
 
 	constructor(
 		private readonly logger: Logger,
@@ -176,28 +188,8 @@ export class Telemetry {
 			return;
 		}
 
-		const workflowIdsToReport = Object.keys(this.executionCountsBuffer).filter((workflowId) => {
-			const data = this.executionCountsBuffer[workflowId];
-			const sum =
-				(data.manual_error?.count ?? 0) +
-				(data.manual_success?.count ?? 0) +
-				(data.prod_error?.count ?? 0) +
-				(data.prod_success?.count ?? 0) +
-				(data.manual_crashed?.count ?? 0) +
-				(data.prod_crashed?.count ?? 0);
-
-			return sum > 0;
-		});
-
-		for (const workflowId of workflowIdsToReport) {
-			this.track('Workflow execution count', {
-				event_version: '2',
-				workflow_id: workflowId,
-				...this.executionCountsBuffer[workflowId],
-			});
-		}
-
-		this.executionCountsBuffer = {};
+		this.flushWorkflowExecutionCounts();
+		this.flushAgentExecutionCounts();
 
 		// Flush API invocation counts
 		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
@@ -232,6 +224,56 @@ export class Telemetry {
 		};
 
 		this.track('pulse', pulsePacket);
+	}
+
+	private flushWorkflowExecutionCounts() {
+		const workflowIdsToReport = Object.keys(this.executionCountsBuffer).filter((workflowId) => {
+			const data = this.executionCountsBuffer[workflowId];
+			const sum =
+				(data.manual_error?.count ?? 0) +
+				(data.manual_success?.count ?? 0) +
+				(data.prod_error?.count ?? 0) +
+				(data.prod_success?.count ?? 0) +
+				(data.manual_crashed?.count ?? 0) +
+				(data.prod_crashed?.count ?? 0);
+
+			return sum > 0;
+		});
+
+		for (const workflowId of workflowIdsToReport) {
+			this.track('Workflow execution count', {
+				event_version: '2',
+				workflow_id: workflowId,
+				...this.executionCountsBuffer[workflowId],
+			});
+		}
+
+		this.executionCountsBuffer = {};
+	}
+
+	private getAgentExecutionCountsBufferKey(agentId: string, userId?: string) {
+		return userId ? `${agentId}:${userId}` : agentId;
+	}
+
+	private flushAgentExecutionCounts() {
+		const keysToReport = Object.keys(this.agentExecutionCountsBuffer).filter((bufferKey) => {
+			const data = this.agentExecutionCountsBuffer[bufferKey];
+			return data.message_count + data.token_count + data.tool_call_count > 0;
+		});
+
+		for (const bufferKey of keysToReport) {
+			// Agent-level aggregate window keyed by persisted agent ID plus optional n8n user ID.
+			// A resume-only window may legitimately report tokens or tools with message_count = 0.
+			const { agent_id, user_id, ...counts } = this.agentExecutionCountsBuffer[bufferKey];
+			this.track('Agent execution count', {
+				event_version: '1',
+				agent_id,
+				...(user_id ? { user_id } : {}),
+				...counts,
+			});
+		}
+
+		this.agentExecutionCountsBuffer = {};
 	}
 
 	trackWorkflowExecution(properties: IExecutionTrackProperties) {
@@ -275,6 +317,32 @@ export class Telemetry {
 				this.track('Workflow execution errored', properties);
 			}
 		}
+	}
+
+	trackAgentExecution(properties: IAgentExecutionTrackProperties) {
+		if (!this.rudderStack) return;
+
+		const {
+			agent_id,
+			user_id,
+			message_count = 0,
+			token_count = 0,
+			tool_call_count = 0,
+		} = properties;
+		const bufferKey = this.getAgentExecutionCountsBufferKey(agent_id, user_id);
+
+		this.agentExecutionCountsBuffer[bufferKey] = this.agentExecutionCountsBuffer[bufferKey] ?? {
+			agent_id,
+			...(user_id ? { user_id } : {}),
+			message_count: 0,
+			token_count: 0,
+			tool_call_count: 0,
+		};
+
+		const agentExecutionCounts = this.agentExecutionCountsBuffer[bufferKey];
+		agentExecutionCounts.message_count += message_count;
+		agentExecutionCounts.token_count += token_count;
+		agentExecutionCounts.tool_call_count += tool_call_count;
 	}
 
 	trackApiInvocation(properties: IApiInvocationProperties) {
@@ -412,5 +480,9 @@ export class Telemetry {
 
 	getApiInvocationsBuffer(): IApiInvocationsBuffer {
 		return this.apiInvocationsBuffer;
+	}
+
+	getAgentExecutionCountsBuffer(): IAgentExecutionCountsBuffer {
+		return this.agentExecutionCountsBuffer;
 	}
 }

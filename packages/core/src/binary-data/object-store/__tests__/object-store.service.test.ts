@@ -46,6 +46,7 @@ describe('ObjectStoreService', () => {
 		},
 		protocol: 'https',
 		forcePathStyle: true,
+		maxAttempts: 3,
 	});
 
 	let objectStoreService: ObjectStoreService;
@@ -77,6 +78,7 @@ describe('ObjectStoreService', () => {
 				forcePathStyle: true,
 				region: mockBucket.region,
 				credentials,
+				maxAttempts: 3,
 			});
 		});
 
@@ -91,6 +93,7 @@ describe('ObjectStoreService', () => {
 				forcePathStyle: false,
 				region: mockBucket.region,
 				credentials,
+				maxAttempts: 3,
 			});
 		});
 
@@ -102,6 +105,7 @@ describe('ObjectStoreService', () => {
 			expect(clientConfig).toEqual({
 				region: mockBucket.region,
 				credentials,
+				maxAttempts: 3,
 			});
 		});
 
@@ -112,6 +116,7 @@ describe('ObjectStoreService', () => {
 
 			expect(clientConfig).toEqual({
 				region: mockBucket.region,
+				maxAttempts: 3,
 			});
 		});
 	});
@@ -322,6 +327,79 @@ describe('ObjectStoreService', () => {
 			const promise = objectStoreService.get(fileId, { mode: 'buffer' });
 
 			await expect(promise).rejects.toThrowError(FAILED_REQUEST_ERROR_MESSAGE);
+		});
+
+		it('should re-emit stream data as chunks of exactly chunkSize (last chunk smaller)', async () => {
+			// Source pushes 4 x 2 bytes; chunkSize=3 should rewrite boundaries to [3, 3, 2].
+			// We listen to 'data' (which fires once per push) rather than iterate with `for await`,
+			// because the async iterator coalesces buffered pushes when all the data lands before the consumer starts reading.
+			// This is a quirk that only affects synthetic tests, not real streaming.
+			let pushes = 0;
+			const body = new Readable({
+				read() {
+					if (pushes < 4) {
+						this.push(Buffer.from([pushes * 2, pushes * 2 + 1]));
+						pushes++;
+					} else {
+						this.push(null);
+					}
+				},
+			});
+			mockS3Send.mockResolvedValueOnce({ Body: body });
+
+			const result = await objectStoreService.get(fileId, { mode: 'stream', chunkSize: 3 });
+
+			const chunks: Buffer[] = await new Promise((resolve, reject) => {
+				const out: Buffer[] = [];
+				result.on('data', (chunk: Buffer) => out.push(Buffer.from(chunk)));
+				result.on('end', () => resolve(out));
+				result.on('error', reject);
+			});
+
+			expect(chunks.map((c) => c.length)).toEqual([3, 3, 2]);
+			expect(Buffer.concat(chunks)).toEqual(Buffer.from([0, 1, 2, 3, 4, 5, 6, 7]));
+		});
+
+		it('should not rechunk when chunkSize is omitted or zero', async () => {
+			const body = new Readable({ read() {} });
+			mockS3Send.mockResolvedValueOnce({ Body: body });
+
+			const result = await objectStoreService.get(fileId, { mode: 'stream', chunkSize: 0 });
+
+			expect(result).toBeInstanceOf(PassThrough);
+		});
+
+		it('should propagate body errors to the rechunked consumer', async () => {
+			const failure = new Error('boom');
+			const body = new Readable({
+				read() {
+					this.destroy(failure);
+				},
+			});
+			mockS3Send.mockResolvedValueOnce({ Body: body });
+
+			const result = await objectStoreService.get(fileId, { mode: 'stream', chunkSize: 4 });
+
+			await expect(
+				new Promise((_, reject) => {
+					result.on('error', reject);
+					result.resume();
+				}),
+			).rejects.toThrow('boom');
+		});
+
+		it('should abort the S3 request when the rechunked consumer is destroyed', async () => {
+			const body = new Readable({ read() {} });
+			mockS3Send.mockResolvedValueOnce({ Body: body });
+
+			const result = await objectStoreService.get(fileId, { mode: 'stream', chunkSize: 4 });
+			const abortSignal = mockS3Send.mock.calls[0][1].abortSignal as AbortSignal;
+			expect(abortSignal.aborted).toBe(false);
+
+			result.destroy();
+			await new Promise((resolve) => result.on('close', resolve));
+
+			expect(abortSignal.aborted).toBe(true);
 		});
 	});
 

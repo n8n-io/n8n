@@ -1,13 +1,13 @@
 <script lang="ts" setup>
-import { computed, provide, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
+import { computed, provide, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import BaseLayout from './BaseLayout.vue';
 import DemoFooter from '@/features/execution/logs/components/DemoFooter.vue';
-import { WorkflowStateKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
-import { useProvideWorkflowId } from '@/app/composables/useProvideWorkflowId';
+import { NDVStoreKey, WorkflowStateKey } from '@/app/constants/injectionKeys';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
 import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
+import { useReportWorkflowFailuresToParent } from '@/app/composables/useReportWorkflowFailuresToParent';
 import { usePushConnection } from '@/app/composables/usePushConnection/usePushConnection';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -29,17 +29,21 @@ provide(WorkflowStateKey, workflowState);
 
 const {
 	initializeData,
+	initializeWorkflow,
 	currentWorkflowDocumentStore,
+	currentNDVStore,
 	cleanup: cleanupInitialization,
 } = useWorkflowInitialization(workflowState);
 
-useProvideWorkflowId();
-provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
+provide(NDVStoreKey, currentNDVStore);
 
 const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
 	workflowState,
 	currentWorkflowDocumentStore,
+	currentNDVStore,
 });
+
+useReportWorkflowFailuresToParent();
 
 // Initialize push event handlers so relayed execution events (via postMessage
 // from the parent) are processed for node highlighting, execution state, etc.
@@ -57,12 +61,9 @@ if (!canExecute.value) {
 	workflowState.setActiveExecutionId(null);
 }
 
-onBeforeMount(() => {
-	setupPostMessages();
-});
-
 onMounted(async () => {
 	await initializeData();
+	await initializeWorkflow();
 	pushConnection.initialize();
 
 	// When canExecute is enabled, establish a real WebSocket/SSE connection
@@ -70,6 +71,8 @@ onMounted(async () => {
 	if (canExecute.value) {
 		pushConnectionStore.pushConnect();
 	}
+
+	setupPostMessages();
 });
 
 onBeforeUnmount(() => {
@@ -84,7 +87,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<BaseLayout>
-		<RouterView />
+		<RouterView v-if="currentWorkflowDocumentStore && currentNDVStore" />
 		<template #footer>
 			<DemoFooter />
 		</template>

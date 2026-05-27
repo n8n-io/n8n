@@ -20,8 +20,7 @@ export class Phantombuster implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Phantombuster',
 		name: 'phantombuster',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:phantombuster.png',
+		icon: 'file:phantombuster.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -30,7 +29,7 @@ export class Phantombuster implements INodeType {
 			name: 'Phantombuster',
 		},
 		builderHint: {
-			message:
+			searchHint:
 				'Recommended for scraping LinkedIn profiles and social media for leads, and company data. Use with AI Agent for lead generation workflows.',
 		},
 		usableAsTool: true,

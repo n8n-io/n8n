@@ -1,33 +1,18 @@
-/**
- * Workflow analysis utilities for evaluation mock execution.
- *
- * Identifies which nodes should receive mock hints and generates consistent
- * per-node hints + trigger data via a single LLM call.
- *
- * Adapted from @n8n/instance-ai/evaluations/support/ — this copy lives
- * in the CLI package because it runs in-process during workflow execution.
- * TODO: Extract to a shared @n8n/eval-utils package for reuse by
- * the eval CLI, MCP, and other consumers.
- */
-
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { type INode, type IPinData, type IWorkflowBase, jsonParse } from 'n8n-workflow';
-
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
+import {
+	type INode,
+	type IPinData,
+	type IWorkflowBase,
+	jsonParse,
+	mapConnectionsByDestination,
+	UserError,
+} from 'n8n-workflow';
+
 import { extractNodeConfig } from './node-config';
 
-// ---------------------------------------------------------------------------
-// Node classification
-// ---------------------------------------------------------------------------
-
-/**
- * Find node names that are targets of ai_* connections (Agent, Chain nodes).
- * These are "root" AI nodes whose sub-nodes use vendor SDKs. Pinning the root
- * prevents supplyData() on all connected sub-nodes, avoiding SDK calls entirely.
- *
- * Ported from @n8n/instance-ai/evaluations/support/service-node-classifier.ts
- */
+/** Targets of `ai_*` connections — Agent/Chain root nodes. Pinning these short-circuits sub-node SDK calls. */
 function findAiRootNodeNames(workflow: IWorkflowBase): Set<string> {
 	const roots = new Set<string>();
 	for (const nodeConns of Object.values(workflow.connections)) {
@@ -47,12 +32,21 @@ function findAiRootNodeNames(workflow: IWorkflowBase): Set<string> {
 }
 
 /**
- * Find node names that are sources of ai_* connections (LLM models, tools, memory).
- * These are sub-nodes handled via their root — they should not be pinned individually
- * or receive mock hints.
- *
- * Ported from @n8n/instance-ai/evaluations/support/service-node-classifier.ts
+ * AI root node types — lets the typo guard accept a no-sub-node Agent.
+ * Keep in sync with new agent/chain types in `@n8n/n8n-nodes-langchain`.
  */
+const AI_ROOT_NODE_TYPES = new Set<string>([
+	'@n8n/n8n-nodes-langchain.agent',
+	'@n8n/n8n-nodes-langchain.chainLlm',
+	'@n8n/n8n-nodes-langchain.chainRetrievalQa',
+	'@n8n/n8n-nodes-langchain.chainSummarization',
+]);
+
+function isAiRootNodeType(nodeType: string): boolean {
+	return AI_ROOT_NODE_TYPES.has(nodeType);
+}
+
+/** Sources of `ai_*` connections — LLM/tool/memory sub-nodes. Handled via their root, never pinned individually. */
 function findAiSubNodeNames(workflow: IWorkflowBase): Set<string> {
 	const subNodes = new Set<string>();
 	for (const [sourceName, nodeConns] of Object.entries(workflow.connections)) {
@@ -65,54 +59,272 @@ function findAiSubNodeNames(workflow: IWorkflowBase): Set<string> {
 	return subNodes;
 }
 
-// ---------------------------------------------------------------------------
-// Bypass node types — nodes that use non-HTTP protocols or bypass n8n's
-// request helper functions. These can't be intercepted by the eval mock handler.
-// ---------------------------------------------------------------------------
-
+/** Node types that bypass the HTTP mock handler (non-HTTP protocols or non-helper HTTP). */
 const BYPASS_NODE_TYPES = new Set([
-	// Databases (TCP/binary protocol)
 	'n8n-nodes-base.redis',
 	'n8n-nodes-base.mongoDb',
 	'n8n-nodes-base.mySql',
 	'n8n-nodes-base.postgres',
 	'n8n-nodes-base.microsoftSql',
 	'n8n-nodes-base.snowflake',
-	// Message queues (TCP/binary protocol)
 	'n8n-nodes-base.kafka',
 	'n8n-nodes-base.rabbitmq',
 	'n8n-nodes-base.mqtt',
 	'n8n-nodes-base.amqp',
-	// File/network protocols
 	'n8n-nodes-base.ftp',
 	'n8n-nodes-base.ssh',
 	'n8n-nodes-base.ldap',
 	'n8n-nodes-base.emailSend',
-	// Non-helper HTTP
 	'n8n-nodes-base.rssFeedRead',
 	'n8n-nodes-base.git',
 ]);
 
-/**
- * Identify nodes that bypass the HTTP mock layer and need pin data instead.
- * Returns AI root nodes (Agent, Chain) and protocol/bypass nodes.
- */
-export function identifyNodesForPinData(workflow: IWorkflowBase): INode[] {
+/** LLM sub-node types whose vendor URL can be rewritten to the wire server (must match `EVAL_PROVIDER_URL_FIELD`). */
+const SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES = new Set(['@n8n/n8n-nodes-langchain.lmChatOpenAi']);
+
+/** `lm*` nodes bake the vendor base URL into the SDK; only credential URL rewrite can intercept them. */
+function isVendorLlmSubNode(nodeType: string): boolean {
+	return nodeType.startsWith('@n8n/n8n-nodes-langchain.lm');
+}
+
+/** Non-empty `options.baseURL` on the LangChain OpenAI node beats credentials.url — credential rewrite isn't enough. */
+function hasUnsafeBaseUrlOverride(node: INode): boolean {
+	if (node.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi') {
+		const options = (node.parameters?.options ?? {}) as Record<string, unknown>;
+		const baseURL = options.baseURL;
+		return typeof baseURL === 'string' && baseURL.trim().length > 0;
+	}
+	return false;
+}
+
+/** AI sub-nodes that speak non-HTTP protocols — can't be intercepted, so their root must stay pinned. */
+const PROTOCOL_BINARY_SUB_NODE_TYPES = new Set([
+	// Memory backends
+	'@n8n/n8n-nodes-langchain.memoryPostgresChat',
+	'@n8n/n8n-nodes-langchain.memoryRedisChat',
+	'@n8n/n8n-nodes-langchain.memoryMongoDbChat',
+	// Vector stores
+	'@n8n/n8n-nodes-langchain.vectorStorePGVector',
+	'@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas',
+	'@n8n/n8n-nodes-langchain.vectorStoreRedis',
+	'@n8n/n8n-nodes-langchain.vectorStoreMilvus',
+	'@n8n/n8n-nodes-langchain.chatHubVectorStorePGVector',
+]);
+
+/** Returns nodes that need pin data — AI roots (unless in `exclusionSet`) and bypass-protocol nodes. */
+export function identifyNodesForPinData(
+	workflow: IWorkflowBase,
+	exclusionSet?: Set<string>,
+): INode[] {
 	const aiRootNodes = findAiRootNodeNames(workflow);
 
 	return workflow.nodes.filter((node) => {
 		if (node.disabled) return false;
-		if (aiRootNodes.has(node.name)) return true;
+		if (aiRootNodes.has(node.name) && !exclusionSet?.has(node.name)) return true;
 		if (BYPASS_NODE_TYPES.has(node.type)) return true;
 		return false;
 	});
 }
 
-/**
- * Identify which nodes in a workflow should receive mock hints.
- * Excludes AI sub-nodes (handled via their root) and nodes that will be
- * pinned (they don't execute, so hints are irrelevant for them).
- */
+type UnpinRefusal = {
+	root: string;
+	subNode: string;
+	subNodeType: string;
+	reason:
+		| 'protocol_binary'
+		| 'unsupported_vendor_llm'
+		| 'unsafe_baseurl_override'
+		| 'shared_vendor_llm_subnode';
+};
+
+// Routing maps for vendor SDK interception. `assertUnpinCompatibility`
+// refuses shared sub-node topologies, so each sub-node maps to one root.
+export interface VendorLlmRouting {
+	subNodeToRoot: Map<string, string>;
+	rootToSubNode: Map<string, INode>;
+}
+
+/** Walk inbound `ai_languageModel` connections per unpinned root and build the routing maps. */
+export function buildVendorLlmRouting(
+	workflow: IWorkflowBase,
+	unpinNodes: string[],
+): VendorLlmRouting {
+	const subNodeToRoot = new Map<string, string>();
+	const rootToSubNode = new Map<string, INode>();
+
+	if (unpinNodes.length === 0) return { subNodeToRoot, rootToSubNode };
+
+	const nodesByName = new Map(workflow.nodes.map((n) => [n.name, n]));
+	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
+
+	for (const rootName of unpinNodes) {
+		const inbound = connectionsByDestination[rootName];
+		if (!inbound) continue;
+
+		for (const [connType, groups] of Object.entries(inbound)) {
+			if (connType !== 'ai_languageModel' || !Array.isArray(groups)) continue;
+			for (const group of groups) {
+				if (!Array.isArray(group)) continue;
+				for (const conn of group) {
+					const subNode = nodesByName.get(conn.node);
+					if (!subNode || subNode.disabled) continue;
+					if (!SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(subNode.type)) continue;
+
+					if (!subNodeToRoot.has(subNode.name)) {
+						subNodeToRoot.set(subNode.name, rootName);
+					}
+					if (!rootToSubNode.has(rootName)) {
+						rootToSubNode.set(rootName, subNode);
+					}
+				}
+			}
+		}
+	}
+
+	return { subNodeToRoot, rootToSubNode };
+}
+
+/** Throws if any unpinned AI root has a sub-node we can't intercept: protocol-binary, unmapped vendor LLM, or unsafe baseURL override. Also refuses entries that don't resolve to an enabled AI root (typo guard). */
+export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: string[]): void {
+	if (unpinNodes.length === 0) return;
+
+	const nodesByName = new Map(workflow.nodes.map((n) => [n.name, n]));
+	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
+	const aiRootNodes = findAiRootNodeNames(workflow);
+
+	// Refuse typos / disabled / non-AI-root entries up front. A root counts
+	// if it has inbound ai_* connections OR its type is on AI_ROOT_NODE_TYPES.
+	const unknownRoots: string[] = [];
+	const disabledRoots: string[] = [];
+	const nonAiRoots: string[] = [];
+	for (const rootName of unpinNodes) {
+		const node = nodesByName.get(rootName);
+		if (!node) unknownRoots.push(rootName);
+		else if (node.disabled) disabledRoots.push(rootName);
+		else if (!aiRootNodes.has(rootName) && !isAiRootNodeType(node.type)) {
+			nonAiRoots.push(rootName);
+		}
+	}
+	if (unknownRoots.length || disabledRoots.length || nonAiRoots.length) {
+		const formatNames = (names: string[]) => names.map((n) => `"${n}"`).join(', ');
+		const parts: string[] = [];
+		if (unknownRoots.length) parts.push(`not found in workflow: ${formatNames(unknownRoots)}`);
+		if (disabledRoots.length) parts.push(`disabled: ${formatNames(disabledRoots)}`);
+		if (nonAiRoots.length) parts.push(`not AI root nodes: ${formatNames(nonAiRoots)}`);
+		throw new UserError(`Cannot unpin — ${parts.join('; ')}.`);
+	}
+
+	const refusals: UnpinRefusal[] = [];
+	// Track which unpinned roots each supported vendor LLM sub-node feeds.
+	// A sub-node feeding ≥2 unpinned roots can't be attributed correctly —
+	// the wire server's path-based root token is baked into the credential
+	// URL at resolution time (first-wins), so later turns from the same
+	// sub-node would mis-attribute to the first root.
+	const sharedSupportedSubNodes = new Map<string, { type: string; roots: Set<string> }>();
+
+	for (const rootName of unpinNodes) {
+		const inbound = connectionsByDestination[rootName];
+		if (!inbound) continue;
+
+		for (const [connType, groups] of Object.entries(inbound)) {
+			if (!connType.startsWith('ai_') || !Array.isArray(groups)) continue;
+			for (const group of groups) {
+				if (!Array.isArray(group)) continue;
+				for (const conn of group) {
+					const sourceNode = nodesByName.get(conn.node);
+					if (!sourceNode || sourceNode.disabled) continue;
+
+					if (SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)) {
+						const tracked = sharedSupportedSubNodes.get(sourceNode.name) ?? {
+							type: sourceNode.type,
+							roots: new Set<string>(),
+						};
+						tracked.roots.add(rootName);
+						sharedSupportedSubNodes.set(sourceNode.name, tracked);
+					}
+
+					const reason = categorizeSubNodeRefusal(sourceNode);
+					if (reason === null) continue;
+					refusals.push({
+						root: rootName,
+						subNode: sourceNode.name,
+						subNodeType: sourceNode.type,
+						reason,
+					});
+				}
+			}
+		}
+	}
+
+	// Emit a `shared_vendor_llm_subnode` refusal for every sub-node feeding
+	// more than one unpinned root. One entry per offending (root, sub-node)
+	// pair so the error message lists every conflict.
+	for (const [subNodeName, { type, roots }] of sharedSupportedSubNodes) {
+		if (roots.size < 2) continue;
+		for (const rootName of roots) {
+			refusals.push({
+				root: rootName,
+				subNode: subNodeName,
+				subNodeType: type,
+				reason: 'shared_vendor_llm_subnode',
+			});
+		}
+	}
+
+	if (refusals.length === 0) return;
+
+	const segments = [
+		formatRefusalSegment(
+			refusals,
+			'protocol_binary',
+			'protocol-binary sub-nodes (cannot be intercepted via HTTP)',
+		),
+		formatRefusalSegment(
+			refusals,
+			'unsupported_vendor_llm',
+			'unsupported vendor LLM sub-nodes (no eval URL-rewrite mapping yet)',
+		),
+		formatRefusalSegment(
+			refusals,
+			'unsafe_baseurl_override',
+			'vendor LLM sub-nodes with a configured options.baseURL that bypasses the credential rewrite',
+		),
+		formatRefusalSegment(
+			refusals,
+			'shared_vendor_llm_subnode',
+			'vendor LLM sub-nodes shared by multiple unpinned roots (attribution would be ambiguous)',
+		),
+	].filter((s): s is string => s !== undefined);
+
+	throw new UserError(
+		`Cannot unpin AI root nodes — ${segments.join('; ')}. ` +
+			'Leave these roots pinned, remove the parameter override, or replace the sub-node with one that has interception support.',
+	);
+}
+
+/** Classify a sub-node into one of the three refusal reasons, or null if acceptable. Order matters: protocol-binary, then baseURL-override on a supported vendor, then unsupported `lm*`. */
+function categorizeSubNodeRefusal(sourceNode: INode): UnpinRefusal['reason'] | null {
+	if (PROTOCOL_BINARY_SUB_NODE_TYPES.has(sourceNode.type)) return 'protocol_binary';
+	if (SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)) {
+		return hasUnsafeBaseUrlOverride(sourceNode) ? 'unsafe_baseurl_override' : null;
+	}
+	if (isVendorLlmSubNode(sourceNode.type)) return 'unsupported_vendor_llm';
+	return null;
+}
+
+/** One segment of the `assertUnpinCompatibility` error message, or undefined when no refusals match. */
+function formatRefusalSegment(
+	refusals: UnpinRefusal[],
+	reason: UnpinRefusal['reason'],
+	label: string,
+): string | undefined {
+	const matching = refusals.filter((r) => r.reason === reason);
+	if (matching.length === 0) return undefined;
+	const pairs = matching.map((r) => `"${r.subNode}" (${r.subNodeType}) → "${r.root}"`).join(', ');
+	return `${label}: ${pairs}`;
+}
+
+/** Nodes that should receive mock hints — excludes AI sub-nodes (handled via root) and pinned nodes. */
 export function identifyNodesForHints(workflow: IWorkflowBase): INode[] {
 	const aiSubNodes = findAiSubNodeNames(workflow);
 	const aiRootNodes = findAiRootNodeNames(workflow);
@@ -160,6 +372,7 @@ RULES:
    - For service-specific triggers (Gmail Trigger, Slack Trigger, etc.): match the service's real event/message output format
    - For schedule triggers: include timestamp fields
    - For manual triggers: include the fields that downstream nodes reference
+   - CRITICAL: triggerContent must NEVER be an empty object ({}). Even for scenarios that test empty payloads ("empty submission", "no data", "missing fields"), emit the trigger envelope with empty *nested* fields — an empty webhook is { headers: {}, query: {}, body: {} }, a schedule with no context is { timestamp: "..." }. The workflow cannot execute without trigger output.
    - CRITICAL: check what downstream nodes reference (e.g., $json.body.email, $json.subject, $json.text) and ensure those paths exist in triggerContent
 3. Create a "nodeHints" object with one entry per node. Each hint describes what data that specific node's API response should contain, referencing entities from the global context.
 4. Hints should describe the DATA CONTENT, not the API response format. The mock server already knows the API schema.
@@ -220,10 +433,9 @@ function buildUserPrompt(
 	return sections.join('\n');
 }
 
-/**
- * Generate consistent mock hints for service nodes in a workflow.
- * One LLM call produces a global context, trigger data, and per-node hints.
- */
+const MAX_HINT_ATTEMPTS = 2;
+
+/** One LLM call → globalContext + triggerContent + per-node hints. Retried once on structural issues. */
 export async function generateMockHints(options: GenerateMockHintsOptions): Promise<MockHints> {
 	const { workflow, nodeNames, scenarioHints } = options;
 	const emptyResult: MockHints = {
@@ -237,72 +449,78 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 	if (nodeNames.length === 0) return emptyResult;
 
 	const userPrompt = buildUserPrompt(workflow, nodeNames, scenarioHints);
+	const warnings: string[] = [];
 
-	try {
-		const agent = createEvalAgent('eval-hint-generator', {
-			instructions: SYSTEM_PROMPT,
-		});
+	for (let attempt = 1; attempt <= MAX_HINT_ATTEMPTS; attempt++) {
+		let reason = '';
+		try {
+			const agent = createEvalAgent('eval-hint-generator', {
+				instructions: SYSTEM_PROMPT,
+			});
 
-		const result = await agent.generate(userPrompt, {
-			providerOptions: { anthropic: { maxTokens: 4096 } },
-		});
+			const result = await agent.generate(userPrompt, {
+				providerOptions: { anthropic: { maxTokens: 4096 } },
+			});
 
-		let text: string = extractText(result);
+			const text = extractText(result)
+				.replace(/^```(?:json)?\s*\n?/i, '')
+				.replace(/\n?\s*```\s*$/i, '')
+				.trim();
 
-		text = text
-			.replace(/^```(?:json)?\s*\n?/i, '')
-			.replace(/\n?\s*```\s*$/i, '')
-			.trim();
+			const parsed: Record<string, unknown> = jsonParse(text);
 
-		const parsed: Record<string, unknown> = jsonParse(text);
+			// globalContext may come back as a string or object — normalize to string
+			let globalContext = '';
+			if (typeof parsed.globalContext === 'string') {
+				globalContext = parsed.globalContext;
+			} else if (typeof parsed.globalContext === 'object' && parsed.globalContext !== null) {
+				globalContext = JSON.stringify(parsed.globalContext);
+			}
 
-		// globalContext may come back as a string or object — normalize to string
-		let globalContext = '';
-		if (typeof parsed.globalContext === 'string') {
-			globalContext = parsed.globalContext;
-		} else if (typeof parsed.globalContext === 'object' && parsed.globalContext !== null) {
-			globalContext = JSON.stringify(parsed.globalContext);
+			if (
+				typeof parsed.nodeHints !== 'object' ||
+				parsed.nodeHints === null ||
+				Array.isArray(parsed.nodeHints)
+			) {
+				reason = `invalid nodeHints structure (raw: ${text.slice(0, 200)})`;
+			} else {
+				const triggerContent =
+					typeof parsed.triggerContent === 'object' &&
+					parsed.triggerContent !== null &&
+					!Array.isArray(parsed.triggerContent)
+						? parsed.triggerContent
+						: {};
+				if (Object.keys(triggerContent).length === 0) {
+					reason = 'empty triggerContent';
+				} else {
+					// Coerce nodeHints values to strings — LLM may return objects instead of strings
+					const nodeHints: Record<string, string> = {};
+					for (const [key, value] of Object.entries(parsed.nodeHints as Record<string, unknown>)) {
+						nodeHints[key] = typeof value === 'string' ? value : JSON.stringify(value);
+					}
+					return {
+						globalContext,
+						nodeHints,
+						triggerContent: triggerContent as Record<string, unknown>,
+						warnings,
+						bypassPinData: {},
+					};
+				}
+			}
+		} catch (error) {
+			reason = error instanceof Error ? error.message : String(error);
 		}
 
-		if (
-			typeof parsed.nodeHints !== 'object' ||
-			parsed.nodeHints === null ||
-			Array.isArray(parsed.nodeHints)
-		) {
-			const preview = text.slice(0, 300);
-			return {
-				...emptyResult,
-				warnings: [`Phase 1: LLM returned invalid structure. Raw: ${preview}`],
-			};
+		warnings.push(`Phase 1 attempt ${attempt}/${MAX_HINT_ATTEMPTS}: ${reason}`);
+		if (attempt < MAX_HINT_ATTEMPTS) {
+			Container.get(Logger).warn(
+				`[EvalMock] Phase 1 attempt ${attempt}/${MAX_HINT_ATTEMPTS} unusable (${reason}) — retrying`,
+			);
 		}
-
-		const warnings: string[] = [];
-		const triggerContent =
-			typeof parsed.triggerContent === 'object' &&
-			parsed.triggerContent !== null &&
-			!Array.isArray(parsed.triggerContent)
-				? parsed.triggerContent
-				: {};
-		if (Object.keys(triggerContent).length === 0) {
-			warnings.push('Phase 1: LLM returned empty triggerContent — trigger node will have no data');
-		}
-
-		// Coerce nodeHints values to strings — LLM may return objects instead of strings
-		const nodeHints: Record<string, string> = {};
-		for (const [key, value] of Object.entries(parsed.nodeHints as Record<string, unknown>)) {
-			nodeHints[key] = typeof value === 'string' ? value : JSON.stringify(value);
-		}
-
-		return {
-			globalContext,
-			nodeHints,
-			triggerContent: triggerContent as Record<string, unknown>,
-			warnings,
-			bypassPinData: {},
-		};
-	} catch (error) {
-		const errorMsg = error instanceof Error ? error.message : String(error);
-		Container.get(Logger).error(`[EvalMock] Phase 1 hint generation failed: ${errorMsg}`);
-		return { ...emptyResult, warnings: [`Phase 1 error: ${errorMsg}`] };
 	}
+
+	Container.get(Logger).error(
+		`[EvalMock] Phase 1 exhausted ${MAX_HINT_ATTEMPTS} attempts — ${warnings.join('; ')}`,
+	);
+	return { ...emptyResult, warnings };
 }

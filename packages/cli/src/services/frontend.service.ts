@@ -14,6 +14,7 @@ import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
@@ -214,6 +215,10 @@ export class FrontendService {
 			nodeEnv: process.env.NODE_ENV,
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
+			evaluationConcurrencyLimit: resolveEvaluationConcurrencyLimit(
+				this.globalConfig.executions,
+				this.license,
+			),
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
@@ -222,6 +227,7 @@ export class FrontendService {
 				oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
 				oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
 			},
+			jwksUri: `${instanceBaseUrl}/${restEndpoint}/.well-known/jwks.json`,
 			versionNotifications: {
 				enabled: this.globalConfig.versionNotifications.enabled,
 				endpoint: this.globalConfig.versionNotifications.endpoint,
@@ -270,6 +276,9 @@ export class FrontendService {
 					callbackUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/callback`,
 				},
 			},
+			logStreaming: {
+				managedByEnv: this.globalConfig.instanceSettingsLoader.logStreamingManagedByEnv,
+			},
 			dataTables: {
 				maxSize: this.globalConfig.dataTable.maxSize,
 			},
@@ -282,6 +291,7 @@ export class FrontendService {
 				},
 			},
 			workflowTagsDisabled: this.globalConfig.tags.disabled,
+			workflowsAutosaveDisabled: this.globalConfig.workflows.autosaveDisabled,
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
@@ -299,6 +309,8 @@ export class FrontendService {
 			// @TODO: Move to community-packages module
 			communityNodesEnabled: Container.get(CommunityPackagesConfig).enabled,
 			unverifiedCommunityNodesEnabled: Container.get(CommunityPackagesConfig).unverifiedEnabled,
+			communityNodesManagedByEnv:
+				this.globalConfig.instanceSettingsLoader.communityPackagesManagedByEnv,
 
 			deployment: {
 				type: this.globalConfig.deployment.type,
@@ -422,6 +434,7 @@ export class FrontendService {
 			oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
 			oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
 		};
+		this.settings.jwksUri = `${instanceBaseUrl}/${restEndpoint}/.well-known/jwks.json`;
 
 		// refresh user management status
 		Object.assign(this.settings.userManagement, {
@@ -460,6 +473,14 @@ export class FrontendService {
 
 		this.settings.license.planName = this.license.getPlanName();
 		this.settings.license.consumerId = this.license.getConsumerId();
+
+		// Re-resolve on every settings fetch so a license upgrade/downgrade
+		// (and the tier-default it implies) propagates to the FE without an
+		// instance restart. The env override still wins inside the resolver.
+		this.settings.evaluationConcurrencyLimit = resolveEvaluationConcurrencyLimit(
+			this.globalConfig.executions,
+			this.license,
+		);
 
 		// refresh enterprise status
 		Object.assign(this.settings.enterprise, {
@@ -687,6 +708,23 @@ export class FrontendService {
 			// (overwrite is conditional on stored data; users should provide their own credentials)
 			if (skipTypes.includes(credential.name)) {
 				credential.__skipManagedCreation = true;
+			}
+
+			// Inject the per-instance JWKS URI as the default of any `jwksUri`
+			// property on `oAuth2Api` itself or any credential that extends it
+			// and explicitly re-declares the field. Inheritance is blocked by
+			// `doNotInherit: true` on both `jweEnabled` and `jwksUri` so that
+			// extending credentials don't silently inherit half a dependency
+			// pair (which would crash `getParameterResolveOrder`); custom
+			// JWE-aware OAuth2 extensions can re-declare both fields together.
+			const isOAuth2Credential =
+				credential.name === 'oAuth2Api' ||
+				this.credentialTypes.getParentTypes(credential.name).includes('oAuth2Api');
+			if (isOAuth2Credential && credential.properties) {
+				const jwksUri = this.urlService.getInstanceJwksUri();
+				credential.properties = credential.properties.map((property) =>
+					property.name === 'jwksUri' ? { ...property, default: jwksUri } : property,
+				);
 			}
 		}
 	}

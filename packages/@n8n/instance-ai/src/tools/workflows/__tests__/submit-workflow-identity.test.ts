@@ -1,9 +1,16 @@
-import { wrapSubmitExecuteWithIdentity } from '../submit-workflow-identity';
+import { createRemediation } from '../../../workflow-loop/remediation';
+import type { WorkflowLoopState } from '../../../workflow-loop/workflow-loop-state';
+import {
+	createPreSaveBudgetTracker,
+	withDefaultWorkflowFilePath,
+	wrapSubmitExecuteWithIdentity,
+} from '../submit-workflow-identity';
 import type { SubmitWorkflowInput, SubmitWorkflowOutput } from '../submit-workflow.tool';
 
 const ROOT = '/home/daytona/workspace';
 const MAIN_PATH = `${ROOT}/src/workflow.ts`;
 const CHUNK_PATH = `${ROOT}/src/chunk.ts`;
+const TASK_MAIN_PATH = `${ROOT}/builder-work-items/wi-one/src/workflow.ts`;
 
 function resolvePath(rawFilePath: string | undefined): string {
 	if (!rawFilePath) return MAIN_PATH;
@@ -35,6 +42,24 @@ function makeUnderlying(opts: { idPrefix?: string; gate?: Promise<void> } = {}) 
 
 	return { execute, calls };
 }
+
+describe('withDefaultWorkflowFilePath', () => {
+	it('uses the task main workflow file when submit-workflow omits filePath', () => {
+		expect(withDefaultWorkflowFilePath({ name: 'Workflow' }, TASK_MAIN_PATH)).toEqual({
+			name: 'Workflow',
+			filePath: TASK_MAIN_PATH,
+		});
+	});
+
+	it('preserves explicit filePath values for chunks and follow-up submits', () => {
+		expect(
+			withDefaultWorkflowFilePath({ filePath: CHUNK_PATH, name: 'Chunk' }, TASK_MAIN_PATH),
+		).toEqual({
+			filePath: CHUNK_PATH,
+			name: 'Chunk',
+		});
+	});
+});
 
 describe('wrapSubmitExecuteWithIdentity', () => {
 	it('parallel submits for the same filePath produce one create and N-1 updates sharing the workflowId', async () => {
@@ -183,5 +208,252 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 
 		const retried = await wrapped({});
 		expect(retried.workflowId).toBe('wf_after_throw');
+	});
+
+	it('blocks submit when persisted remediation says editing must stop', async () => {
+		const execute = jest.fn(async (): Promise<SubmitWorkflowOutput> => {
+			await Promise.resolve();
+			return { success: true, workflowId: 'wf_unused' };
+		});
+		const onGuardFired = jest.fn();
+		const state: WorkflowLoopState = {
+			workItemId: 'wi_test',
+			threadId: 'thread_1',
+			runId: 'run_1',
+			phase: 'blocked',
+			status: 'blocked',
+			source: 'create',
+			rebuildAttempts: 0,
+			lastRemediation: createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+				guidance: 'Route to setup.',
+			}),
+		};
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
+			getWorkflowLoopState: async () => {
+				await Promise.resolve();
+				return state;
+			},
+			onGuardFired,
+		});
+
+		const result = await wrapped({});
+
+		expect(result.success).toBe(false);
+		expect(result.remediation).toMatchObject({ shouldEdit: false, category: 'needs_setup' });
+		expect(execute).not.toHaveBeenCalled();
+		expect(onGuardFired).toHaveBeenCalledWith(
+			expect.objectContaining({
+				category: 'needs_setup',
+				reason: 'mocked_credentials_or_placeholders',
+			}),
+		);
+	});
+
+	it('records terminal submit output and blocks later submits in-process', async () => {
+		let terminalRemediation: SubmitWorkflowOutput['remediation'];
+		const remediation = createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'workflow_save_failed',
+			guidance: 'Stop editing.',
+		});
+		const execute = jest
+			.fn<Promise<SubmitWorkflowOutput>, [SubmitWorkflowInput]>()
+			.mockResolvedValueOnce({
+				success: false,
+				errors: ['Workflow save failed.'],
+				remediation,
+			})
+			.mockResolvedValueOnce({ success: true, workflowId: 'wf_should_not_save' });
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
+			getTerminalRemediation: () => terminalRemediation,
+			onTerminalRemediation: (recorded) => {
+				terminalRemediation = recorded;
+			},
+		});
+
+		const first = await wrapped({});
+		const second = await wrapped({});
+
+		expect(first.remediation).toBe(remediation);
+		expect(second).toMatchObject({
+			success: false,
+			errors: ['Stop editing.'],
+			remediation,
+		});
+		expect(execute).toHaveBeenCalledTimes(1);
+	});
+
+	it('returns terminal remediation to concurrent submit waiters when the first submit stops editing', async () => {
+		let release: () => void = () => {};
+		const gate = new Promise<void>((res) => {
+			release = res;
+		});
+		let terminalRemediation: SubmitWorkflowOutput['remediation'];
+		const remediation = createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'workflow_save_failed',
+			guidance: 'Stop editing.',
+		});
+		const execute = jest.fn(async (): Promise<SubmitWorkflowOutput> => {
+			await gate;
+			return {
+				success: false,
+				errors: ['Workflow save failed.'],
+				remediation,
+			};
+		});
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
+			getTerminalRemediation: () => terminalRemediation,
+			onTerminalRemediation: (recorded) => {
+				terminalRemediation = recorded;
+			},
+		});
+
+		const first = wrapped({});
+		const second = wrapped({});
+		await Promise.resolve();
+		release();
+
+		await expect(first).resolves.toMatchObject({ success: false, remediation });
+		await expect(second).resolves.toMatchObject({
+			success: false,
+			errors: ['Stop editing.'],
+			remediation,
+		});
+		expect(execute).toHaveBeenCalledTimes(1);
+	});
+
+	it('ignores terminal remediation from a previous run', async () => {
+		const execute = jest.fn(async (): Promise<SubmitWorkflowOutput> => {
+			await Promise.resolve();
+			return { success: true, workflowId: 'wf_current' };
+		});
+		const state: WorkflowLoopState = {
+			workItemId: 'wi_test',
+			threadId: 'thread_1',
+			runId: 'run_previous',
+			phase: 'blocked',
+			status: 'blocked',
+			source: 'create',
+			rebuildAttempts: 0,
+			lastRemediation: createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+				guidance: 'Route to setup.',
+			}),
+		};
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
+			currentRunId: 'run_current',
+			getWorkflowLoopState: async () => {
+				await Promise.resolve();
+				return state;
+			},
+		});
+
+		const result = await wrapped({});
+
+		expect(result).toMatchObject({ success: true, workflowId: 'wf_current' });
+		expect(execute).toHaveBeenCalledTimes(1);
+	});
+
+	it('re-checks terminal remediation after awaiting an in-flight submit', async () => {
+		let release: () => void = () => {};
+		const gate = new Promise<void>((res) => {
+			release = res;
+		});
+		const terminalState: WorkflowLoopState = {
+			workItemId: 'wi_test',
+			threadId: 'thread_1',
+			runId: 'run_1',
+			workflowId: 'wf_1',
+			phase: 'verifying',
+			status: 'active',
+			source: 'create',
+			rebuildAttempts: 0,
+			successfulSubmitSeen: true,
+			postSubmitRemediationSubmitsUsed: 2,
+		};
+		const getWorkflowLoopState = jest
+			.fn<Promise<WorkflowLoopState | undefined>, []>()
+			.mockResolvedValueOnce(undefined)
+			.mockResolvedValueOnce(undefined)
+			.mockResolvedValueOnce(terminalState);
+		const execute = jest.fn(async (input: SubmitWorkflowInput): Promise<SubmitWorkflowOutput> => {
+			await gate;
+			return { success: true, workflowId: input.workflowId ?? 'wf_1' };
+		});
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
+			currentRunId: 'run_1',
+			getWorkflowLoopState,
+		});
+
+		const first = wrapped({});
+		await Promise.resolve();
+		await Promise.resolve();
+		const second = wrapped({});
+		await Promise.resolve();
+		release();
+
+		await expect(first).resolves.toMatchObject({ success: true, workflowId: 'wf_1' });
+		await expect(second).resolves.toMatchObject({
+			success: false,
+			remediation: {
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'post_submit_budget_exhausted',
+			},
+		});
+		expect(execute).toHaveBeenCalledTimes(1);
+	});
+
+	it('marks the third pre-save failed submit as terminal', async () => {
+		const tracker = createPreSaveBudgetTracker();
+		const execute = async (): Promise<SubmitWorkflowOutput> => {
+			await Promise.resolve();
+			tracker.recordAttempt({
+				filePath: MAIN_PATH,
+				sourceHash: 'current',
+				success: false,
+				errors: ['validation'],
+			});
+			return {
+				success: false,
+				errors: ['validation'],
+				remediation: createRemediation({
+					category: 'code_fixable',
+					shouldEdit: true,
+					guidance: 'Fix code.',
+				}),
+			};
+		};
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
+			budgetTracker: tracker,
+		});
+
+		tracker.recordAttempt({
+			filePath: MAIN_PATH,
+			sourceHash: '1',
+			success: false,
+			errors: ['validation'],
+		});
+		tracker.recordAttempt({
+			filePath: MAIN_PATH,
+			sourceHash: '2',
+			success: false,
+			errors: ['validation'],
+		});
+		const third = await wrapped({});
+
+		expect(third.remediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'pre_save_submit_budget_exhausted',
+		});
 	});
 });

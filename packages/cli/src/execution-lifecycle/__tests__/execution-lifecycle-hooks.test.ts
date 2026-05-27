@@ -34,6 +34,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 import {
 	getLifecycleHooksForSubExecutions,
@@ -59,6 +60,7 @@ describe('Execution Lifecycle Hooks', () => {
 	const workflowExecutionService = mockInstance(WorkflowExecutionService);
 	const userRepository = mockInstance(UserRepository);
 	const redactionProxy = mockInstance(ExecutionRedactionServiceProxy);
+	const workflowHookContext = mockInstance(WorkflowHookContextService);
 
 	const nodeName = 'Test Node';
 	const nodeType = 'n8n-nodes-base.testNode';
@@ -107,7 +109,7 @@ describe('Execution Lifecycle Hooks', () => {
 	});
 	const failedRun = mock<IRun>({
 		status: 'error',
-		finished: true,
+		finished: false,
 		waitTill: undefined,
 		storedAt: 'db',
 	});
@@ -126,6 +128,48 @@ describe('Execution Lifecycle Hooks', () => {
 	const successfulRunWithMetadata = mock<IRun>({
 		status: 'success',
 		finished: true,
+		waitTill: undefined,
+		storedAt: 'db',
+		data: {
+			resultData: {
+				metadata: {
+					testKey1: 'testValue1',
+					testKey2: 'testValue2',
+				},
+			},
+		},
+	});
+	const failedRunWithMetadata = mock<IRun>({
+		status: 'error',
+		finished: false,
+		waitTill: undefined,
+		storedAt: 'db',
+		data: {
+			resultData: {
+				metadata: {
+					testKey1: 'testValue1',
+					testKey2: 'testValue2',
+				},
+			},
+		},
+	});
+	const crashedRunWithMetadata = mock<IRun>({
+		status: 'crashed',
+		finished: false,
+		waitTill: undefined,
+		storedAt: 'db',
+		data: {
+			resultData: {
+				metadata: {
+					testKey1: 'testValue1',
+					testKey2: 'testValue2',
+				},
+			},
+		},
+	});
+	const canceledRunWithMetadata = mock<IRun>({
+		status: 'canceled',
+		finished: false,
 		waitTill: undefined,
 		storedAt: 'db',
 		data: {
@@ -173,6 +217,34 @@ describe('Execution Lifecycle Hooks', () => {
 			},
 		});
 		successfulRunWithMetadata.data = createRunExecutionData({
+			resultData: {
+				runData: {},
+				metadata: {
+					testKey1: 'testValue1',
+					testKey2: 'testValue2',
+				},
+			},
+		});
+		failedRunWithMetadata.data = createRunExecutionData({
+			resultData: {
+				runData: {},
+				error: expressionError,
+				metadata: {
+					testKey1: 'testValue1',
+					testKey2: 'testValue2',
+				},
+			},
+		});
+		crashedRunWithMetadata.data = createRunExecutionData({
+			resultData: {
+				runData: {},
+				metadata: {
+					testKey1: 'testValue1',
+					testKey2: 'testValue2',
+				},
+			},
+		});
+		canceledRunWithMetadata.data = createRunExecutionData({
 			resultData: {
 				runData: {},
 				metadata: {
@@ -363,7 +435,11 @@ describe('Execution Lifecycle Hooks', () => {
 			it('should run workflow.preExecute hook', async () => {
 				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
 
-				expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [workflow, 'manual']);
+				expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [
+					workflow,
+					'manual',
+					workflowHookContext,
+				]);
 			});
 		});
 
@@ -619,6 +695,38 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(redactionProxy.processExecution).toHaveBeenCalledTimes(1);
 			});
 
+			it('should skip nodeExecuteAfterData push when userId is not provided (e.g. webhook execution missing userId)', async () => {
+				lifecycleHooks = getLifecycleHooksForRegularMain(
+					{ executionMode: 'manual', workflowData, pushRef, retryOf, userId: undefined },
+					executionId,
+				);
+
+				const mockTaskData: ITaskData = {
+					startTime: 1,
+					executionTime: 1,
+					executionIndex: 0,
+					source: [],
+					data: { main: [[{ json: { key: 'value' } }]] },
+				};
+
+				await lifecycleHooks.runHook('nodeExecuteAfter', [
+					nodeName,
+					mockTaskData,
+					runExecutionData,
+				]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteAfter' }),
+					pushRef,
+				);
+
+				expect(push.send).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteAfterData' }),
+					pushRef,
+					true,
+				);
+			});
+
 			it('should skip nodeExecuteAfterData push when user cannot be resolved (fail-closed)', async () => {
 				userRepository.findOne.mockResolvedValue(null);
 				lifecycleHooks = createHooks();
@@ -678,7 +786,11 @@ describe('Execution Lifecycle Hooks', () => {
 			it('should run workflow.preExecute external hook', async () => {
 				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
 
-				expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [workflow, 'manual']);
+				expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [
+					workflow,
+					'manual',
+					workflowHookContext,
+				]);
 			});
 
 			it('should send redacted flattedRunData when redaction modifies it', async () => {
@@ -1048,7 +1160,11 @@ describe('Execution Lifecycle Hooks', () => {
 			it('should run the workflow.preExecute external hook', async () => {
 				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
 
-				expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [workflow, 'manual']);
+				expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [
+					workflow,
+					'manual',
+					workflowHookContext,
+				]);
 			});
 		});
 
@@ -1143,6 +1259,58 @@ describe('Execution Lifecycle Hooks', () => {
 					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
 					expect(executionMetadataService.save).not.toHaveBeenCalled();
+				});
+
+				it('should save metadata for failed executions when error saving is enabled', async () => {
+					await lifecycleHooks.runHook('workflowExecuteAfter', [failedRunWithMetadata, {}]);
+
+					expect(executionMetadataService.save).toHaveBeenCalledWith(executionId, {
+						testKey1: 'testValue1',
+						testKey2: 'testValue2',
+					});
+				});
+
+				it('should NOT save metadata for failed executions when error saving is disabled', async () => {
+					workflowData.settings = {
+						saveDataSuccessExecution: 'all' as const,
+						saveDataErrorExecution: 'none' as const,
+					};
+					const testLifecycleHooks = getLifecycleHooksForScalingMain(
+						{
+							executionMode: 'webhook',
+							workflowData,
+							pushRef,
+							retryOf,
+						},
+						executionId,
+					);
+
+					await testLifecycleHooks.runHook('workflowExecuteAfter', [failedRunWithMetadata, {}]);
+
+					expect(executionMetadataService.save).not.toHaveBeenCalled();
+					expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith({
+						workflowId,
+						executionId,
+						storedAt: 'db',
+					});
+				});
+
+				it('should save metadata for crashed executions when error saving is enabled', async () => {
+					await lifecycleHooks.runHook('workflowExecuteAfter', [crashedRunWithMetadata, {}]);
+
+					expect(executionMetadataService.save).toHaveBeenCalledWith(executionId, {
+						testKey1: 'testValue1',
+						testKey2: 'testValue2',
+					});
+				});
+
+				it('should save metadata for canceled executions when error saving is enabled', async () => {
+					await lifecycleHooks.runHook('workflowExecuteAfter', [canceledRunWithMetadata, {}]);
+
+					expect(executionMetadataService.save).toHaveBeenCalledWith(executionId, {
+						testKey1: 'testValue1',
+						testKey2: 'testValue2',
+					});
 				});
 			});
 		});

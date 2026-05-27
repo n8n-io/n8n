@@ -18,6 +18,9 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { createTestingPinia } from '@pinia/testing';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -38,10 +41,12 @@ vi.mock('vue-router', () => {
 vi.mock('@/app/composables/useToast', () => {
 	const showError = vi.fn();
 	const showMessage = vi.fn();
+	const showToast = vi.fn();
 	return {
 		useToast: () => ({
 			showError,
 			showMessage,
+			showToast,
 		}),
 	};
 });
@@ -101,6 +106,8 @@ describe('WorkflowCard', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 	let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 	let usersStore: MockedStore<typeof useUsersStore>;
+	let mcpStore: MockedStore<typeof useMCPStore>;
+	let uiStore: MockedStore<typeof useUIStore>;
 	let message: ReturnType<typeof useMessage>;
 	let toast: ReturnType<typeof useToast>;
 
@@ -111,6 +118,8 @@ describe('WorkflowCard', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 		usersStore = mockedStore(useUsersStore);
+		mcpStore = mockedStore(useMCPStore);
+		uiStore = mockedStore(useUIStore);
 		message = useMessage();
 		toast = useToast();
 
@@ -140,7 +149,7 @@ describe('WorkflowCard', () => {
 		await waitFor(() => {
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW,
-				params: { name: data.id },
+				params: { workflowId: data.id },
 			});
 		});
 
@@ -167,7 +176,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		await waitFor(() => {
 			expect(router.push).not.toHaveBeenCalled();
 		});
@@ -176,12 +185,12 @@ describe('WorkflowCard', () => {
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
-		await userEvent.click(actions.querySelectorAll('li')[0]);
+		await userEvent.click(within(actions).getByTestId('action-open'));
 		expect(actions).not.toHaveTextContent('Move');
 		await waitFor(() => {
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW,
-				params: { name: data.id },
+				params: { workflowId: data.id },
 			});
 		});
 	});
@@ -242,7 +251,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -270,7 +279,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -299,7 +308,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -330,7 +339,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -355,7 +364,7 @@ describe('WorkflowCard', () => {
 		expect(cardActionsOpener).toBeInTheDocument();
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -370,7 +379,7 @@ describe('WorkflowCard', () => {
 		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(data.id);
 		expect(toast.showError).not.toHaveBeenCalled();
-		expect(toast.showMessage).toHaveBeenCalledTimes(1);
+		expect(toast.showToast).toHaveBeenCalledTimes(1);
 		expect(emitted()['workflow:archived']).toHaveLength(1);
 	});
 
@@ -391,7 +400,7 @@ describe('WorkflowCard', () => {
 		expect(cardActionsOpener).toBeInTheDocument();
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -406,8 +415,59 @@ describe('WorkflowCard', () => {
 		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(data.id);
 		expect(toast.showError).not.toHaveBeenCalled();
-		expect(toast.showMessage).toHaveBeenCalledTimes(1);
+		expect(toast.showToast).toHaveBeenCalledTimes(1);
 		expect(emitted()['workflow:archived']).toHaveLength(1);
+	});
+
+	it('should show a "Delete permanently" link in the archive toast that deletes the archived workflow', async () => {
+		const data = createWorkflow({
+			active: false,
+			isArchived: false,
+			scopes: ['workflow:delete'],
+		});
+
+		const { getByTestId, emitted, rerender } = renderComponent({ props: { data } });
+		await userEvent.click(within(getByTestId('workflow-card-actions')).getByRole('button'));
+		await userEvent.click(getByTestId('action-archive'));
+
+		expect(toast.showToast).toHaveBeenCalledTimes(1);
+		const toastConfig = vi.mocked(toast.showToast).mock.calls[0][0];
+		expect(toastConfig.message).toContain('archive-toast-delete-permanently-link');
+		expect(toastConfig.onClick).toBeDefined();
+
+		// Simulate v-for reuse: parent replaces props.data with a different workflow.
+		// The toast onClick must still delete the originally archived workflow.
+		await rerender({ data: createWorkflow({ id: 'different-id', name: 'Other Workflow' }) });
+
+		const anchor = document.createElement('a');
+		toastConfig.onClick?.({ target: anchor, preventDefault: vi.fn() } as unknown as MouseEvent);
+		await waitFor(() => {
+			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledTimes(1);
+		});
+		expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(data.id);
+		expect(emitted()['workflow:deleted']).toHaveLength(1);
+	});
+
+	it('should not delete when "Delete permanently" confirmation is cancelled', async () => {
+		const data = createWorkflow({
+			active: false,
+			isArchived: false,
+			scopes: ['workflow:delete'],
+		});
+
+		const { getByTestId } = renderComponent({ props: { data } });
+		await userEvent.click(within(getByTestId('workflow-card-actions')).getByRole('button'));
+		await userEvent.click(getByTestId('action-archive'));
+
+		const toastConfig = vi.mocked(toast.showToast).mock.calls[0][0];
+		vi.mocked(message.confirm).mockResolvedValueOnce('cancel');
+
+		const anchor = document.createElement('a');
+		toastConfig.onClick?.({ target: anchor, preventDefault: vi.fn() } as unknown as MouseEvent);
+		await waitFor(() => {
+			expect(message.confirm).toHaveBeenCalled();
+		});
+		expect(workflowsListStore.deleteWorkflow).not.toHaveBeenCalled();
 	});
 
 	it("should have 'Unarchive' action on archived workflows", async () => {
@@ -426,7 +486,7 @@ describe('WorkflowCard', () => {
 		expect(cardActionsOpener).toBeInTheDocument();
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -460,7 +520,7 @@ describe('WorkflowCard', () => {
 		expect(cardActionsOpener).toBeInTheDocument();
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -487,7 +547,7 @@ describe('WorkflowCard', () => {
 		expect(heading).toHaveTextContent('Read only');
 	});
 
-	it('should show Enable MCP action when module is enabled', async () => {
+	it('should show MCP toggle on the card when module is enabled and user can update', () => {
 		const data = createWorkflow({
 			scopes: ['workflow:update'],
 			settings: {
@@ -500,25 +560,91 @@ describe('WorkflowCard', () => {
 			props: {
 				data,
 				isMcpEnabled: true,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
 			},
 		});
 
-		const actionsToggle = getByTestId('workflow-card-actions');
-		const toggleButton = within(actionsToggle).getByRole('button');
-		const controllingId = toggleButton.getAttribute('aria-controls');
-
-		await userEvent.click(actionsToggle);
-
-		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
-		if (!actions) {
-			throw new Error('Actions menu not found');
-		}
-
-		expect(within(actions).getByTestId('action-enableMCPAccess')).toBeInTheDocument();
-		expect(within(actions).queryByTestId('action-removeMCPAccess')).not.toBeInTheDocument();
+		const mcpToggle = getByTestId('workflow-card-mcp-toggle');
+		expect(mcpToggle).toBeVisible();
+		expect(mcpToggle).toHaveAttribute('aria-checked', 'false');
 	});
 
-	it('should show Disable MCP action when workflow is available in MCP and module is enabled', async () => {
+	it('should mark MCP toggle as pressed when workflow is available in MCP', () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
+			},
+		});
+
+		const mcpToggle = getByTestId('workflow-card-mcp-toggle');
+		expect(mcpToggle).toHaveAttribute('aria-checked', 'true');
+	});
+
+	it('should render the MCP toggle as off when the instance module is disabled, even if the workflow is available in MCP', () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: false,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
+			},
+		});
+
+		const mcpToggle = getByTestId('workflow-card-mcp-toggle');
+		expect(mcpToggle).toHaveAttribute('aria-checked', 'false');
+	});
+
+	it('should toggle MCP access when the MCP button is clicked', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: false,
+			},
+		});
+
+		mcpStore.toggleWorkflowMcpAccess.mockResolvedValue({
+			updatedCount: 1,
+			skippedCount: 0,
+			failedCount: 0,
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('workflow-card-mcp-toggle'));
+
+		expect(mcpStore.toggleWorkflowMcpAccess).toHaveBeenCalledWith(data.id, true);
+	});
+
+	it('should not include MCP actions in the dropdown menu', async () => {
 		const data = createWorkflow({
 			scopes: ['workflow:update'],
 			settings: {
@@ -531,6 +657,9 @@ describe('WorkflowCard', () => {
 			props: {
 				data,
 				isMcpEnabled: true,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
 			},
 		});
 
@@ -538,33 +667,7 @@ describe('WorkflowCard', () => {
 		const toggleButton = within(actionsToggle).getByRole('button');
 		const controllingId = toggleButton.getAttribute('aria-controls');
 
-		await userEvent.click(actionsToggle);
-
-		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
-		if (!actions) {
-			throw new Error('Actions menu not found');
-		}
-
-		expect(within(actions).getByTestId('action-removeMCPAccess')).toBeInTheDocument();
-		expect(within(actions).queryByTestId('action-enableMCPAccess')).not.toBeInTheDocument();
-	});
-
-	it('should hide MCP actions when module is disabled', async () => {
-		const data = createWorkflow({
-			scopes: ['workflow:update'],
-			settings: {
-				availableInMCP: true,
-			},
-			isArchived: false,
-		});
-
-		const { getByTestId } = renderComponent({ props: { data } });
-
-		const actionsToggle = getByTestId('workflow-card-actions');
-		const toggleButton = within(actionsToggle).getByRole('button');
-		const controllingId = toggleButton.getAttribute('aria-controls');
-
-		await userEvent.click(actionsToggle);
+		await userEvent.click(toggleButton);
 
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
@@ -575,7 +678,133 @@ describe('WorkflowCard', () => {
 		expect(within(actions).queryByTestId('action-removeMCPAccess')).not.toBeInTheDocument();
 	});
 
-	it('should show MCP indicator when module is enabled and workflow is available', () => {
+	it('should open the MCP onboarding modal when the switch is clicked while the instance module is off', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: false,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: false,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
+			},
+		});
+
+		const mcpToggle = getByTestId('workflow-card-mcp-toggle');
+		expect(mcpToggle).toBeVisible();
+		expect(mcpToggle).toHaveAttribute('aria-checked', 'false');
+
+		await userEvent.click(mcpToggle);
+
+		expect(mcpStore.toggleWorkflowMcpAccess).not.toHaveBeenCalled();
+		expect(uiStore.openModalWithData).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: SURFACE_MCP_ONBOARDING_MODAL_KEY,
+				data: expect.objectContaining({
+					surface: 'workflow_card',
+					onMcpAccessEnabled: expect.any(Function),
+				}),
+			}),
+		);
+	});
+
+	it('should enable workflow MCP access when the modal callback fires', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: false,
+			},
+		});
+
+		mcpStore.toggleWorkflowMcpAccess.mockResolvedValue({
+			updatedCount: 1,
+			skippedCount: 0,
+			failedCount: 0,
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: false,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('workflow-card-mcp-toggle'));
+
+		const openCall = vi.mocked(uiStore.openModalWithData).mock.calls.at(-1)?.[0];
+		const callback = (openCall?.data as { onMcpAccessEnabled?: () => void } | undefined)
+			?.onMcpAccessEnabled;
+		callback?.();
+
+		await waitFor(() => {
+			expect(mcpStore.toggleWorkflowMcpAccess).toHaveBeenCalledWith(data.id, true);
+		});
+	});
+
+	it('should not re-toggle when the modal callback fires and the workflow is already available', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: false,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('workflow-card-mcp-toggle'));
+
+		const openCall = vi.mocked(uiStore.openModalWithData).mock.calls.at(-1)?.[0];
+		const callback = (openCall?.data as { onMcpAccessEnabled?: () => void } | undefined)
+			?.onMcpAccessEnabled;
+		callback?.();
+
+		expect(mcpStore.toggleWorkflowMcpAccess).not.toHaveBeenCalled();
+	});
+
+	it('should leave workflow MCP off if the modal callback never fires', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: false,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: false,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('workflow-card-mcp-toggle'));
+		await waitFor(() => {
+			expect(uiStore.openModalWithData).toHaveBeenCalled();
+		});
+
+		expect(mcpStore.toggleWorkflowMcpAccess).not.toHaveBeenCalled();
+	});
+
+	it('should show MCP toggle as disabled when user cannot update but workflow is available', () => {
 		const data = createWorkflow({
 			settings: {
 				availableInMCP: true,
@@ -586,27 +815,18 @@ describe('WorkflowCard', () => {
 			props: {
 				data,
 				isMcpEnabled: true,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
 			},
 		});
 
-		const indicator = getByTestId('workflow-card-mcp');
-		expect(indicator).toBeVisible();
+		const mcpToggle = getByTestId('workflow-card-mcp-toggle');
+		expect(mcpToggle).toBeVisible();
+		expect(mcpToggle).toBeDisabled();
 	});
 
-	it('should hide MCP indicator when module is disabled', () => {
-		const data = createWorkflow({
-			settings: {
-				availableInMCP: true,
-			},
-		});
-
-		const { queryByTestId } = renderComponent({ props: { data } });
-
-		const indicator = queryByTestId('workflow-card-mcp');
-		expect(indicator).not.toBeVisible();
-	});
-
-	it('should hide MCP indicator when workflow is not available in MCP', () => {
+	it('should hide MCP toggle when user cannot update and workflow is not available', () => {
 		const data = createWorkflow({
 			settings: {
 				availableInMCP: false,
@@ -617,11 +837,258 @@ describe('WorkflowCard', () => {
 			props: {
 				data,
 				isMcpEnabled: true,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
 			},
 		});
 
-		const indicator = queryByTestId('workflow-card-mcp');
-		expect(indicator).not.toBeVisible();
+		expect(queryByTestId('workflow-card-mcp-toggle')).not.toBeInTheDocument();
+	});
+
+	it('should disable the MCP toggle for non-admins when instance MCP is off', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: false,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: false,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: false,
+				isWorkflowCardMcpToggleEnabled: true,
+			},
+		});
+
+		const mcpToggle = getByTestId('workflow-card-mcp-toggle');
+		expect(mcpToggle).toBeVisible();
+		expect(mcpToggle).toBeDisabled();
+
+		await userEvent.click(mcpToggle);
+		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		expect(mcpStore.toggleWorkflowMcpAccess).not.toHaveBeenCalled();
+	});
+
+	it('should hide MCP toggle when the MCP module is not loaded on the instance', () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { queryByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: false,
+				isMcpModuleActive: false,
+			},
+		});
+
+		expect(queryByTestId('workflow-card-mcp-toggle')).not.toBeInTheDocument();
+	});
+
+	it('should hide the inline MCP switch when the workflow-card MCP toggle experiment is off', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: false,
+			},
+		});
+
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: false,
+			},
+		});
+
+		expect(queryByTestId('workflow-card-mcp-toggle')).not.toBeInTheDocument();
+
+		const actionsToggle = getByTestId('workflow-card-actions');
+		const toggleButton = within(actionsToggle).getByRole('button');
+		const controllingId = toggleButton.getAttribute('aria-controls');
+
+		await userEvent.click(toggleButton);
+
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(within(actions).getByTestId('action-enableMCPAccess')).toBeInTheDocument();
+	});
+
+	it('should show the legacy MCP indicator in the card description when the experiment is off and the workflow is available', () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: false,
+			},
+		});
+
+		expect(getByTestId('workflow-card-mcp')).toBeVisible();
+	});
+
+	it('should hide the legacy MCP indicator when the experiment is on (the inline switch replaces it)', () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { queryByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
+			},
+		});
+
+		expect(queryByTestId('workflow-card-mcp')).not.toBeVisible();
+	});
+
+	it('should show Remove MCP access in the menu when the experiment is off and workflow is available', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: false,
+			},
+		});
+
+		const actionsToggle = getByTestId('workflow-card-actions');
+		const toggleButton = within(actionsToggle).getByRole('button');
+		const controllingId = toggleButton.getAttribute('aria-controls');
+
+		await userEvent.click(toggleButton);
+
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(within(actions).getByTestId('action-removeMCPAccess')).toBeInTheDocument();
+	});
+
+	it('should call toggleWorkflowMcpAccess from the dropdown menu item when the experiment is off', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: false,
+			},
+		});
+
+		mcpStore.toggleWorkflowMcpAccess.mockResolvedValue({
+			updatedCount: 1,
+			skippedCount: 0,
+			failedCount: 0,
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: false,
+			},
+		});
+
+		const actionsToggle = getByTestId('workflow-card-actions');
+		const toggleButton = within(actionsToggle).getByRole('button');
+		const controllingId = toggleButton.getAttribute('aria-controls');
+
+		await userEvent.click(toggleButton);
+
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		await userEvent.click(within(actions).getByTestId('action-enableMCPAccess'));
+
+		expect(mcpStore.toggleWorkflowMcpAccess).toHaveBeenCalledWith(data.id, true);
+	});
+
+	it('should hide MCP menu items when the experiment is off and instance MCP is disabled', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: false,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: false,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: false,
+			},
+		});
+
+		const actionsToggle = getByTestId('workflow-card-actions');
+		const toggleButton = within(actionsToggle).getByRole('button');
+		const controllingId = toggleButton.getAttribute('aria-controls');
+
+		await userEvent.click(toggleButton);
+
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(within(actions).queryByTestId('action-enableMCPAccess')).not.toBeInTheDocument();
+		expect(within(actions).queryByTestId('action-removeMCPAccess')).not.toBeInTheDocument();
+	});
+
+	it('should hide MCP toggle when workflow is archived', () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			isArchived: true,
+			settings: {
+				availableInMCP: false,
+			},
+		});
+
+		const { queryByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+				isMcpModuleActive: true,
+				canManageInstanceMcp: true,
+				isWorkflowCardMcpToggleEnabled: true,
+			},
+		});
+
+		expect(queryByTestId('workflow-card-mcp-toggle')).not.toBeInTheDocument();
 	});
 
 	it('should show dynamic credentials indicator when workflow has resolvable credentials', () => {
@@ -722,7 +1189,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -781,7 +1248,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -821,7 +1288,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -846,7 +1313,7 @@ describe('WorkflowCard', () => {
 			const cardActionsOpener = within(cardActions).getByRole('button');
 			const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-			await userEvent.click(cardActions);
+			await userEvent.click(cardActionsOpener);
 			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 			if (!actions) {
 				throw new Error('Actions menu not found');
@@ -866,7 +1333,7 @@ describe('WorkflowCard', () => {
 			const cardActionsOpener = within(cardActions).getByRole('button');
 			const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-			await userEvent.click(cardActions);
+			await userEvent.click(cardActionsOpener);
 			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 			if (!actions) {
 				throw new Error('Actions menu not found');
@@ -886,7 +1353,7 @@ describe('WorkflowCard', () => {
 			const cardActionsOpener = within(cardActions).getByRole('button');
 			const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-			await userEvent.click(cardActions);
+			await userEvent.click(cardActionsOpener);
 			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 			if (!actions) {
 				throw new Error('Actions menu not found');
@@ -906,7 +1373,7 @@ describe('WorkflowCard', () => {
 			const cardActionsOpener = within(cardActions).getByRole('button');
 			const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-			await userEvent.click(cardActions);
+			await userEvent.click(cardActionsOpener);
 			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 			if (!actions) {
 				throw new Error('Actions menu not found');

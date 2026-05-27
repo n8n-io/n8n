@@ -75,7 +75,6 @@ const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> 
 	enabled: true,
 	localGatewayDisabled: false,
 	proxyEnabled: false,
-	optinModalDismissed: true,
 	cloudManaged: false,
 };
 
@@ -94,8 +93,6 @@ describe('SettingsInstanceAiView', () => {
 			settings: {
 				enabled: true,
 				lastMessages: 20,
-				embedderModel: '',
-				semanticRecallTopK: 5,
 				subAgentMaxSteps: 10,
 				browserMcp: false,
 				permissions: {},
@@ -108,7 +105,6 @@ describe('SettingsInstanceAiView', () => {
 				n8nSandboxCredentialId: null,
 				searchCredentialId: null,
 				localGatewayDisabled: false,
-				optinModalDismissed: true,
 			},
 		});
 	});

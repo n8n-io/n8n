@@ -6,33 +6,46 @@
 // LLM-mocked HTTP, checklist verification, and result aggregation.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type { InstanceAiConfirmRequest, InstanceAiEvalExecutionResult } from '@n8n/api-types';
 import crypto from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 
+import {
+	SSE_SETTLE_DELAY_MS,
+	startSseConnection,
+	waitForAllActivity,
+	runMultiTurnConversation,
+	type ConfirmationStrategy,
+} from './chat-loop';
 import { type EvalLogger } from './logger';
+import { fetchPrebuiltBuild } from './prebuilt-workflows';
+import { SONNET_MODEL } from '../../src/utils/eval-agents';
+import { runBinaryChecks } from '../binaryChecks/index';
+import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
 import { verifyChecklist } from '../checklist/verifier';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
-import { consumeSseStream } from '../clients/sse-client';
-import { extractOutcomeFromEvents } from '../outcome/event-parser';
+import { buildConversationMetrics, extractOutcomeFromEvents } from '../outcome/event-parser';
+import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
 import type {
 	ChecklistItem,
 	CapturedEvent,
-	ScenarioResult,
-	TestScenario,
+	ConversationMetrics,
+	ConversationTurn,
+	ExecutionScenarioResult,
+	ExecutionScenario,
+	TranscriptTurn,
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
+import { userTurnsAsText } from '../utils/conversation-text';
+import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEFAULT_TIMEOUT_MS = 600_000;
-const SSE_SETTLE_DELAY_MS = 200;
-const POLL_INTERVAL_MS = 500;
-const BACKGROUND_TASK_POLL_INTERVAL_MS = 2_000;
-const MAX_CONFIRMATION_RETRIES = 5;
+const DEFAULT_TIMEOUT_MS = 900_000;
 
 /** Max concurrent scenario executions per test case */
 const MAX_CONCURRENT_SCENARIOS = 99;
@@ -40,8 +53,6 @@ const MAX_CONCURRENT_SCENARIOS = 99;
 // ---------------------------------------------------------------------------
 // Workflow test case runner — build once, run scenarios against it
 // ---------------------------------------------------------------------------
-
-const SCENARIO_BG_TASK_TIMEOUT_MS = 240_000;
 
 interface WorkflowTestCaseConfig {
 	client: N8nClient;
@@ -52,6 +63,11 @@ interface WorkflowTestCaseConfig {
 	claimedWorkflowIds: Set<string>;
 	logger: EvalLogger;
 	keepWorkflows: boolean;
+	/** Optional " [lane N/M]" suffix appended to per-build log lines. */
+	laneTag?: string;
+	/** When set, skip the orchestrator build and verify this existing workflow
+	 *  instead. The harness leaves it in place — caller owns its lifecycle. */
+	prebuiltWorkflowId?: string;
 }
 
 /**
@@ -68,17 +84,44 @@ export async function runWorkflowTestCase(
 	const result: WorkflowTestCaseResult = {
 		testCase,
 		workflowBuildSuccess: false,
-		scenarioResults: [],
+		executionScenarioResults: [],
 	};
 
-	const build = await buildWorkflow({
-		client,
-		prompt: testCase.prompt,
-		timeoutMs,
-		preRunWorkflowIds: config.preRunWorkflowIds,
-		claimedWorkflowIds: config.claimedWorkflowIds,
-		logger,
-	});
+	const build = config.prebuiltWorkflowId
+		? await fetchPrebuiltBuild(client, config.prebuiltWorkflowId, logger)
+		: await buildWorkflow({
+				client,
+				conversation: testCase.conversation,
+				messageBudget: testCase.messageBudget,
+				timeoutMs,
+				preRunWorkflowIds: config.preRunWorkflowIds,
+				claimedWorkflowIds: config.claimedWorkflowIds,
+				logger,
+				laneTag: config.laneTag,
+			});
+
+	if (config.prebuiltWorkflowId && build.success && !build.workflowChecks) {
+		// No transcript in prebuilt mode — checks run with empty prompt context.
+		build.workflowChecks = await runWorkflowChecks({
+			workflow: build.workflowJsons[0],
+			prompt: '',
+			agentText: undefined,
+			logger,
+		});
+	}
+
+	if (build.conversationMetrics) {
+		result.conversationMetrics = build.conversationMetrics;
+	}
+	if (build.threadId) {
+		result.threadId = build.threadId;
+	}
+	if (build.transcript) {
+		result.transcript = build.transcript;
+	}
+	if (build.workflowChecks) {
+		result.workflowChecks = build.workflowChecks;
+	}
 
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;
@@ -90,8 +133,8 @@ export async function runWorkflowTestCase(
 	result.workflowJson = build.workflowJsons[0];
 
 	const scenarioStart = Date.now();
-	result.scenarioResults = await runWithConcurrency(
-		testCase.scenarios,
+	result.executionScenarioResults = await runWithConcurrency(
+		testCase.executionScenarios,
 		async (scenario) => {
 			try {
 				return await executeScenario(
@@ -100,6 +143,7 @@ export async function runWorkflowTestCase(
 					scenario,
 					build.workflowJsons,
 					logger,
+					timeoutMs,
 				);
 			} catch (error: unknown) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
@@ -109,7 +153,7 @@ export async function runWorkflowTestCase(
 					success: false,
 					score: 0,
 					reasoning: `Error: ${errorMessage}`,
-				} satisfies ScenarioResult;
+				} satisfies ExecutionScenarioResult;
 			}
 		},
 		MAX_CONCURRENT_SCENARIOS,
@@ -117,7 +161,7 @@ export async function runWorkflowTestCase(
 
 	const scenarioMs = Date.now() - scenarioStart;
 	logger.info(
-		`  Scenarios done: ${String(result.scenarioResults.length)} scenarios [${String(Math.round(scenarioMs / 1000))}s]`,
+		`  Scenarios done: ${String(result.executionScenarioResults.length)} scenarios [${String(Math.round(scenarioMs / 1000))}s]${config.laneTag ?? ''}`,
 	);
 
 	if (!config.keepWorkflows) {
@@ -125,6 +169,64 @@ export async function runWorkflowTestCase(
 	}
 
 	return result;
+}
+
+// ---------------------------------------------------------------------------
+// Multi-turn driver — wires UserProxyLlm into runMultiTurnConversation
+// ---------------------------------------------------------------------------
+
+interface MultiTurnDriverConfig {
+	client: N8nClient;
+	threadId: string;
+	conversation: ConversationTurn[];
+	messageBudget?: number;
+	events: CapturedEvent[];
+	approvedRequests: Set<string>;
+	startTime: number;
+	timeoutMs: number;
+	logger: EvalLogger;
+	proxyResponses?: Map<string, InstanceAiConfirmRequest>;
+	followUpMessagesOut?: string[];
+}
+
+async function driveMultiTurnConversation(
+	config: MultiTurnDriverConfig,
+): Promise<ProxyDecisionStats> {
+	const openingMessage = config.conversation[0]?.text ?? '';
+
+	const proxy = new UserProxyLlm({
+		conversation: config.conversation,
+		messageBudget: config.messageBudget,
+		logger: config.logger,
+	});
+
+	const confirmationStrategy: ConfirmationStrategy = proxy.respondToConfirmation.bind(proxy);
+
+	const nextMessageDecider = async () => {
+		proxy.ingestEvents(config.events);
+		const decision = await proxy.decideFollowUp();
+		if (decision.kind === 'followUp') {
+			config.followUpMessagesOut?.push(decision.message);
+		}
+		return decision;
+	};
+
+	await config.client.sendMessage(config.threadId, openingMessage);
+
+	await runMultiTurnConversation({
+		client: config.client,
+		threadId: config.threadId,
+		events: config.events,
+		approvedRequests: config.approvedRequests,
+		startTime: config.startTime,
+		timeoutMs: config.timeoutMs,
+		logger: config.logger,
+		confirmationStrategy,
+		nextMessageDecider,
+		proxyResponses: config.proxyResponses,
+	});
+
+	return { ...proxy.getDecisionStats() };
 }
 
 // ---------------------------------------------------------------------------
@@ -139,15 +241,42 @@ export interface BuildResult {
 	/** IDs to pass to cleanupBuild() */
 	createdWorkflowIds: string[];
 	createdDataTableIds: string[];
+	/** Per-turn deterministic counters extracted from the captured event stream. */
+	conversationMetrics?: ConversationMetrics;
+	/** The thread id used during the build — keys the LangSmith trace lookup. */
+	threadId?: string;
+	/** Counts of UserProxyLlm decisions by category (multi-turn builds only). */
+	proxyDecisionStats?: ProxyDecisionStats;
+	/** Chat-style transcript built from the SSE event stream + proxy responses. */
+	transcript?: TranscriptTurn[];
+	workflowChecks?: CheckOutcome[];
 }
 
 export interface BuildWorkflowConfig {
 	client: N8nClient;
-	prompt: string;
+	/**
+	 * Hand-authored conversation. ≥1 turn, first turn must be `user`.
+	 *
+	 * - One user turn, no assistant turns → auto-approve all confirmations.
+	 * - Anything else → UserProxyLlm engages.
+	 */
+	conversation: ConversationTurn[];
+	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
+	messageBudget?: number;
 	timeoutMs?: number;
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	logger: EvalLogger;
+	/** Optional " [lane N/M]" suffix appended to the build log line. */
+	laneTag?: string;
+}
+
+/** A conversation is multi-turn if it has more than one turn, or if the only
+ *  turn is from the assistant. Empty conversations are treated as single-turn. */
+function isMultiTurnConversation(conversation: ConversationTurn[]): boolean {
+	if (conversation.length === 0) return false;
+	if (conversation.length > 1) return true;
+	return conversation[0].role !== 'user';
 }
 
 /**
@@ -155,7 +284,8 @@ export interface BuildWorkflowConfig {
  * executeScenario(). Call cleanupBuild() when done.
  */
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
-	const { client, prompt, logger } = config;
+	const { client, conversation, logger } = config;
+	const openingMessage = conversation[0]?.text ?? '';
 	const threadId = `eval-${crypto.randomUUID()}`;
 	const startTime = Date.now();
 	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -163,30 +293,61 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	const abortController = new AbortController();
 	const events: CapturedEvent[] = [];
 	const approvedRequests = new Set<string>();
+	const proxyResponses = new Map<string, InstanceAiConfirmRequest>();
+	const followUpMessages: string[] = [];
 
 	try {
 		const buildStart = Date.now();
-		logger.info(`  Building workflow: "${truncate(prompt, 60)}"`);
+		const isMultiTurn = isMultiTurnConversation(conversation);
+		logger.info(
+			`  Building workflow${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
+		);
 
 		const ssePromise = startSseConnection(client, threadId, events, abortController.signal).catch(
 			() => {},
 		);
 
 		await delay(SSE_SETTLE_DELAY_MS);
-		await client.sendMessage(threadId, prompt);
 
-		await waitForAllActivity({
-			client,
-			threadId,
-			events,
-			approvedRequests,
-			startTime,
-			timeoutMs: Math.min(timeoutMs, SCENARIO_BG_TASK_TIMEOUT_MS),
-			logger,
-		});
+		let proxyDecisionStats: ProxyDecisionStats | undefined;
+		if (isMultiTurn) {
+			proxyDecisionStats = await driveMultiTurnConversation({
+				client,
+				threadId,
+				conversation,
+				messageBudget: config.messageBudget,
+				events,
+				approvedRequests,
+				startTime,
+				timeoutMs,
+				logger,
+				proxyResponses,
+				followUpMessagesOut: followUpMessages,
+			});
+		} else {
+			await client.sendMessage(threadId, openingMessage);
+			await waitForAllActivity({
+				client,
+				threadId,
+				events,
+				approvedRequests,
+				startTime,
+				timeoutMs,
+				logger,
+				proxyResponses,
+			});
+		}
 
 		abortController.abort();
 		await ssePromise.catch(() => {});
+
+		const conversationMetrics = buildConversationMetrics(events);
+		const transcript = buildTranscriptFromEvents({
+			events,
+			openingMessage,
+			followUpMessages,
+			proxyResponses,
+		});
 
 		let threadMessages;
 		try {
@@ -252,13 +413,25 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				workflowJsons: [],
 				createdWorkflowIds: [],
 				createdDataTableIds: outcome.dataTablesCreated,
+				conversationMetrics,
+				threadId,
+				proxyDecisionStats,
+				transcript,
 			};
 		}
 
 		const buildMs = Date.now() - buildStart;
+		const proxySuffix = formatProxyStatsSuffix(proxyDecisionStats);
 		logger.info(
-			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes) [${String(Math.round(buildMs / 1000))}s]`,
+			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes) [${String(Math.round(buildMs / 1000))}s]${isMultiTurn ? ` (${String(conversationMetrics.turnCount)} turn${conversationMetrics.turnCount === 1 ? '' : 's'})` : ''}${proxySuffix}`,
 		);
+
+		const workflowChecks = await runWorkflowChecks({
+			workflow: outcome.workflowJsons[0],
+			prompt: userTurnsAsText(transcript),
+			agentText: outcome.finalText,
+			logger,
+		});
 
 		return {
 			success: true,
@@ -266,17 +439,33 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			workflowJsons: outcome.workflowJsons,
 			createdWorkflowIds: outcome.workflowsCreated.map((wf) => wf.id),
 			createdDataTableIds: outcome.dataTablesCreated,
+			conversationMetrics,
+			threadId,
+			proxyDecisionStats,
+			transcript,
+			workflowChecks,
 		};
 	} catch (error: unknown) {
 		abortController.abort();
+		// Try to surface partial metrics so timeouts still produce a per-turn report.
+		const conversationMetrics = events.length > 0 ? buildConversationMetrics(events) : undefined;
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : String(error),
 			workflowJsons: [],
 			createdWorkflowIds: [],
 			createdDataTableIds: [],
+			conversationMetrics,
+			threadId,
 		};
 	}
+}
+
+function formatProxyStatsSuffix(stats: ProxyDecisionStats | undefined): string {
+	if (!stats) return '';
+	const entries = Object.entries(stats).sort(([, a], [, b]) => b - a);
+	if (entries.length === 0) return '';
+	return ` [proxy: ${entries.map(([k, v]) => `${k}=${String(v)}`).join(', ')}]`;
 }
 
 /**
@@ -285,11 +474,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 export async function executeScenario(
 	client: N8nClient,
 	workflowId: string,
-	scenario: TestScenario,
+	scenario: ExecutionScenario,
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
-): Promise<ScenarioResult> {
-	return await runScenario(client, scenario, workflowId, workflowJsons, logger);
+	timeoutMs?: number,
+): Promise<ExecutionScenarioResult> {
+	return await runScenario(client, scenario, workflowId, workflowJsons, logger, timeoutMs);
 }
 
 /**
@@ -331,13 +521,14 @@ export async function cleanupBuild(
 
 async function runScenario(
 	client: N8nClient,
-	scenario: TestScenario,
+	scenario: ExecutionScenario,
 	workflowId: string,
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
-): Promise<ScenarioResult> {
+	timeoutMs?: number,
+): Promise<ExecutionScenarioResult> {
 	const execStart = Date.now();
-	const evalResult = await client.executeWithLlmMock(workflowId, scenario.dataSetup);
+	const evalResult = await client.executeWithLlmMock(workflowId, scenario.dataSetup, timeoutMs);
 	const execMs = Date.now() - execStart;
 
 	logger.info(
@@ -398,7 +589,7 @@ async function runScenario(
  * and pre-analysis flags so the verifier can diagnose root causes.
  */
 function buildVerificationArtifact(
-	scenario: TestScenario,
+	scenario: ExecutionScenario,
 	evalResult: InstanceAiEvalExecutionResult,
 	workflowJsons: WorkflowResponse[],
 ): string {
@@ -499,6 +690,25 @@ function buildVerificationArtifact(
 			sections.push(`- **${node.name ?? '(unnamed)'}** (${node.type}) — ${status}`);
 		}
 		sections.push('');
+		sections.push(
+			'**All node configs** (from saved workflow JSON, including nodes that did not run):',
+		);
+		sections.push(
+			'```json',
+			JSON.stringify(
+				wf.nodes.map((node) => ({
+					name: node.name ?? '(unnamed)',
+					type: node.type,
+					typeVersion: node.typeVersion,
+					...(node.disabled !== undefined ? { disabled: node.disabled } : {}),
+					parameters: node.parameters ?? {},
+				})),
+				null,
+				2,
+			),
+			'```',
+		);
+		sections.push('');
 		sections.push('**Connections:**');
 		sections.push('```json', JSON.stringify(wf.connections, null, 2), '```');
 		sections.push('');
@@ -553,232 +763,6 @@ function buildVerificationArtifact(
 }
 
 // ---------------------------------------------------------------------------
-// SSE connection
-// ---------------------------------------------------------------------------
-
-async function startSseConnection(
-	client: N8nClient,
-	threadId: string,
-	events: CapturedEvent[],
-	signal: AbortSignal,
-): Promise<void> {
-	const url = client.getEventsUrl(threadId);
-	const cookie = client.cookie;
-
-	return await consumeSseStream(
-		url,
-		cookie,
-		(sseEvent) => {
-			try {
-				const parsed = JSON.parse(sseEvent.data) as Record<string, unknown>;
-				events.push({
-					timestamp: Date.now(),
-					type: typeof parsed.type === 'string' ? parsed.type : 'unknown',
-					data: parsed,
-				});
-			} catch {
-				// Ignore malformed events
-			}
-		},
-		signal,
-	);
-}
-
-// ---------------------------------------------------------------------------
-// Wait for all activity: run-finish -> background tasks -> possible new run
-// ---------------------------------------------------------------------------
-
-interface WaitConfig {
-	client: N8nClient;
-	threadId: string;
-	events: CapturedEvent[];
-	approvedRequests: Set<string>;
-	startTime: number;
-	timeoutMs: number;
-	logger: EvalLogger;
-}
-
-async function waitForAllActivity(config: WaitConfig): Promise<void> {
-	let runFinishCount = 0;
-
-	while (true) {
-		await waitForRunFinish(config, runFinishCount);
-		runFinishCount = countEvents(config.events, 'run-finish');
-
-		config.logger.verbose(
-			`[${config.threadId}] Run #${String(runFinishCount)} finished -- time: ${String(Date.now() - config.startTime)}ms`,
-		);
-
-		// Wait for background tasks (sub-agents) to complete
-		const remainingMs = Math.max(0, config.timeoutMs - (Date.now() - config.startTime));
-		await waitForBackgroundTasks(config, remainingMs);
-
-		// Check if the main agent started a new run after background tasks completed
-		await delay(SSE_SETTLE_DELAY_MS);
-		const newRunStarts = countEvents(config.events, 'run-start');
-		const currentRunFinishes = countEvents(config.events, 'run-finish');
-		if (newRunStarts <= currentRunFinishes) {
-			break;
-		}
-
-		config.logger.verbose(
-			`[${config.threadId}] Main agent resumed (run-start #${String(newRunStarts)}) -- waiting for completion`,
-		);
-
-		if (Date.now() - config.startTime > config.timeoutMs) {
-			throw new Error(`Run timed out after ${String(config.timeoutMs)}ms`);
-		}
-	}
-}
-
-async function waitForRunFinish(config: WaitConfig, expectedFinishCount: number): Promise<void> {
-	while (countEvents(config.events, 'run-finish') <= expectedFinishCount) {
-		const elapsed = Date.now() - config.startTime;
-		if (elapsed > config.timeoutMs) {
-			await config.client.cancelRun(config.threadId).catch(() => {});
-			throw new Error(`Run timed out after ${String(config.timeoutMs)}ms`);
-		}
-
-		await processConfirmationRequests(config);
-		await delay(POLL_INTERVAL_MS);
-	}
-}
-
-async function waitForBackgroundTasks(config: WaitConfig, timeoutMs: number): Promise<void> {
-	const deadline = Date.now() + timeoutMs;
-
-	const hasSpawnedAgents = config.events.some((e) => e.type === 'agent-spawned');
-	if (!hasSpawnedAgents) {
-		config.logger.verbose('No sub-agents spawned -- skipping background task wait');
-		return;
-	}
-
-	config.logger.verbose('Sub-agent(s) detected -- waiting for background tasks...');
-
-	while (Date.now() < deadline) {
-		await processConfirmationRequests(config);
-
-		// Check REST API for background task status
-		const status = await config.client.getThreadStatus(config.threadId);
-		const tasks = status.backgroundTasks ?? [];
-		const restRunning = tasks.filter((t) => t.status === 'running');
-
-		// Check SSE events for unmatched agent-spawned / agent-completed
-		const ssePending = getPendingAgentIds(config.events);
-
-		if (restRunning.length === 0 && ssePending.length === 0) {
-			config.logger.verbose('All background tasks completed');
-			await delay(1000);
-			return;
-		}
-
-		config.logger.verbose(
-			`Waiting for ${String(restRunning.length)} REST task(s), ${String(ssePending.length)} SSE agent(s)`,
-		);
-
-		await delay(BACKGROUND_TASK_POLL_INTERVAL_MS);
-	}
-
-	config.logger.verbose(
-		`Background task wait timed out after ${String(timeoutMs)}ms -- continuing`,
-	);
-}
-
-// ---------------------------------------------------------------------------
-// Confirmation auto-approval
-// ---------------------------------------------------------------------------
-
-const confirmationRetries = new Map<string, number>();
-
-async function processConfirmationRequests(config: WaitConfig): Promise<void> {
-	const confirmationEvents = config.events.filter((e) => e.type === 'confirmation-request');
-
-	for (const event of confirmationEvents) {
-		const requestId = extractConfirmationRequestId(event);
-		if (!requestId || config.approvedRequests.has(requestId)) {
-			continue;
-		}
-
-		const retryCount = confirmationRetries.get(requestId) ?? 0;
-		if (retryCount >= MAX_CONFIRMATION_RETRIES) {
-			continue;
-		}
-
-		if (retryCount === 0) {
-			config.logger.verbose(`[auto-approve] Approving confirmation: ${requestId}`);
-		}
-
-		try {
-			// Always offer mock credentials — the eval runner doesn't have real
-			// credentials for most services, so tell Instance AI to use mock data
-			await config.client.confirmAction(requestId, true, { mockCredentials: true });
-			config.approvedRequests.add(requestId);
-			confirmationRetries.delete(requestId);
-		} catch (error: unknown) {
-			confirmationRetries.set(requestId, retryCount + 1);
-			const msg = error instanceof Error ? error.message : String(error);
-			config.logger.verbose(
-				`[auto-approve] Failed to approve ${requestId} (attempt ${String(retryCount + 1)}/${String(MAX_CONFIRMATION_RETRIES)}): ${msg}`,
-			);
-		}
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Event helpers
-// ---------------------------------------------------------------------------
-
-function countEvents(events: CapturedEvent[], type: string): number {
-	return events.filter((e) => e.type === type).length;
-}
-
-function getPendingAgentIds(events: CapturedEvent[]): string[] {
-	const spawned = new Set<string>();
-	const completed = new Set<string>();
-
-	for (const event of events) {
-		const agentId = extractAgentId(event);
-		if (!agentId) continue;
-
-		if (event.type === 'agent-spawned') spawned.add(agentId);
-		if (event.type === 'agent-completed') completed.add(agentId);
-	}
-
-	return [...spawned].filter((id) => !completed.has(id));
-}
-
-function extractConfirmationRequestId(event: CapturedEvent): string | undefined {
-	const payload = getNestedRecord(event.data, 'payload');
-	if (payload && typeof payload.requestId === 'string') {
-		return payload.requestId;
-	}
-	if (typeof event.data.requestId === 'string') {
-		return event.data.requestId;
-	}
-	return undefined;
-}
-
-function extractAgentId(event: CapturedEvent): string | undefined {
-	if (typeof event.data.agentId === 'string') return event.data.agentId;
-
-	const payload = getNestedRecord(event.data, 'payload');
-	if (payload && typeof payload.agentId === 'string') return payload.agentId;
-
-	return undefined;
-}
-
-function getNestedRecord(
-	obj: Record<string, unknown>,
-	key: string,
-): Record<string, unknown> | undefined {
-	const value = obj[key];
-	if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-		return value as Record<string, unknown>;
-	}
-	return undefined;
-}
-
-// ---------------------------------------------------------------------------
 // Concurrency control
 // ---------------------------------------------------------------------------
 
@@ -806,13 +790,48 @@ export async function runWithConcurrency<T, R>(
 	return results;
 }
 
+export async function runWorkflowChecks(args: {
+	workflow: WorkflowResponse | undefined;
+	prompt: string;
+	agentText: string | undefined;
+	logger: EvalLogger;
+}): Promise<CheckOutcome[] | undefined> {
+	if (!args.workflow) return undefined;
+
+	const modelId = hasAnthropicKey() ? SONNET_MODEL : undefined;
+	const ctx: BinaryCheckContext = {
+		prompt: args.prompt,
+		...(modelId ? { modelId } : {}),
+		...(args.agentText ? { agentTextResponse: args.agentText } : {}),
+	};
+
+	try {
+		const { outcomes } = await runBinaryChecks(args.workflow, ctx);
+		const failed = outcomes.filter((o) => o.status === 'fail');
+		if (failed.length > 0) {
+			args.logger.info(
+				`  Workflow checks: ${String(failed.length)} failing (${failed.map((o) => o.name).join(', ')})`,
+			);
+		}
+		return outcomes;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		args.logger.warn(`  Workflow checks errored: ${message}`);
+		return undefined;
+	}
+}
+
+function hasAnthropicKey(): boolean {
+	return Boolean(
+		process.env.N8N_INSTANCE_AI_MODEL_API_KEY ??
+			process.env.N8N_AI_ANTHROPIC_KEY ??
+			process.env.ANTHROPIC_API_KEY,
+	);
+}
+
 // ---------------------------------------------------------------------------
 // Utility helpers
 // ---------------------------------------------------------------------------
-
-async function delay(ms: number): Promise<void> {
-	return await new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function truncate(text: string, maxLength: number): string {
 	if (text.length <= maxLength) return text;

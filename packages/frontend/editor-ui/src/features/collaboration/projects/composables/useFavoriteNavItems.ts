@@ -3,6 +3,7 @@ import type { IMenuItem } from '@n8n/design-system/types';
 import { VIEWS } from '@/app/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useProjectsStore } from '../projects.store';
+import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { Project } from '../projects.types';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 import type { FavoriteResourceType } from '@/app/api/favorites';
@@ -30,7 +31,7 @@ export function useFavoriteNavItems() {
 					id: `favorite-workflow-${f.resourceId}`,
 					label: f.resourceName,
 					icon: 'log-in' as IMenuItem['icon'],
-					route: { to: { name: VIEWS.WORKFLOW, params: { name: f.resourceId } } },
+					route: { to: { name: VIEWS.WORKFLOW, params: { workflowId: f.resourceId } } },
 				},
 				resourceId: f.resourceId,
 				resourceType: 'workflow',
@@ -46,7 +47,7 @@ export function useFavoriteNavItems() {
 					menuItem: {
 						id: f.resourceId,
 						label: f.resourceName,
-						icon: (project?.icon as IMenuItem['icon']) ?? ('layers' as IMenuItem['icon']),
+						icon: (project?.icon as IMenuItem['icon']) ?? DEFAULT_PROJECT_ICON,
 						route: { to: { name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId: f.resourceId } } },
 					},
 					resourceId: f.resourceId,

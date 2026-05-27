@@ -17,4 +17,6 @@ export const mockCipher = () =>
 	mock<Cipher>({
 		encrypt: (data) => (typeof data === 'string' ? data : JSON.stringify(data)),
 		decrypt: (data) => data,
+		encryptV2: async (data) => (typeof data === 'string' ? data : JSON.stringify(data)),
+		decryptV2: async (data) => data,
 	});

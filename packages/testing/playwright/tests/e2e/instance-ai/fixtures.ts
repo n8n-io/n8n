@@ -1,4 +1,5 @@
 import { promises as fs } from 'fs';
+import type { Expectation } from 'mockserver-client';
 import { join } from 'path';
 
 import { test as base, expect as baseExpect } from '../../../fixtures/base';
@@ -6,12 +7,36 @@ import { test as base, expect as baseExpect } from '../../../fixtures/base';
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? 'mock-anthropic-api-key';
 const HAS_REAL_API_KEY = !!process.env.ANTHROPIC_API_KEY;
 const EXPECTATIONS_DIR = './expectations';
+const INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR = 'You are the n8n Instance Agent';
+const SYSTEM_PROMPT_ANCHORS = [
+	INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR,
+	'You are the n8n Workflow Planner',
+	'You are an expert n8n workflow builder',
+	'You generate a short descriptive title for a conversation',
+] as const;
+const LEGACY_SYSTEM_ARRAY_PREFIX =
+	/\\\[\\\{"type":"text","text":"(?=You are the n8n Instance Agent)/g;
+const LEGACY_SYSTEM_STRING_PREFIX = '[{"type":"text","text":"';
+const BODY_REGEX_WILDCARD = '[\\s\\S]*';
 
 function slugify(text: string): string {
 	return text
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/(^-|-$)/g, '');
+}
+
+type TestInfoWithSlug = {
+	title: string;
+	annotations: Array<{ type: string; description?: string }>;
+};
+
+export function getInstanceAiTestSlug(testInfo: TestInfoWithSlug): string {
+	const expectationSlug = testInfo.annotations.find(
+		(annotation) => annotation.type === 'expectation-slug' && annotation.description,
+	)?.description;
+
+	return expectationSlug ?? slugify(testInfo.title);
 }
 
 async function loadTraceFile(folder: string): Promise<unknown[]> {
@@ -33,6 +58,154 @@ async function writeTraceFile(folder: string, events: unknown[]): Promise<void> 
 	const filePath = join(targetDir, 'trace.jsonl');
 	const jsonl = events.map((e) => JSON.stringify(e)).join('\n') + '\n';
 	await fs.writeFile(filePath, jsonl);
+}
+
+type AnthropicMessage = {
+	role?: unknown;
+	content?: unknown;
+};
+
+type AnthropicContentBlock = {
+	type?: unknown;
+	text?: unknown;
+	name?: unknown;
+	input?: unknown;
+};
+
+function escapeRegex(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function asContentBlocks(content: unknown): AnthropicContentBlock[] {
+	if (typeof content === 'string') return [{ type: 'text', text: content }];
+	if (!Array.isArray(content)) return [];
+	return content.filter(
+		(block): block is AnthropicContentBlock =>
+			typeof block === 'object' && block !== null && !Array.isArray(block),
+	);
+}
+
+function getStableTextAnchor(text: string): string | undefined {
+	const trimmed = text.trimStart();
+	if (!trimmed) return undefined;
+
+	const tagMatch = /^<[a-z-]+/.exec(trimmed);
+	if (tagMatch) return escapeRegex(tagMatch[0]);
+
+	return escapeRegex(JSON.stringify(trimmed.slice(0, 120)).slice(1, -1));
+}
+
+function getToolUseAnchor(block: AnthropicContentBlock): string | undefined {
+	if (block.type !== 'tool_use' || typeof block.name !== 'string') return undefined;
+
+	const toolNameMatcher = `"type"\\s*:\\s*"tool_use"[\\s\\S]{0,300}"name"\\s*:\\s*"${escapeRegex(block.name)}"`;
+	const input = block.input;
+	if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+		return toolNameMatcher;
+	}
+
+	const action = Reflect.get(input, 'action');
+	if (typeof action !== 'string') return toolNameMatcher;
+
+	return `${toolNameMatcher}[\\s\\S]{0,500}"action"\\s*:\\s*"${escapeRegex(action)}"`;
+}
+
+function getLatestMessageAnchor(messages: AnthropicMessage[] | undefined): string | undefined {
+	if (!messages) return undefined;
+
+	for (let messageIndex = messages.length - 1; messageIndex >= 0; messageIndex--) {
+		const blocks = asContentBlocks(messages[messageIndex]?.content);
+		for (let blockIndex = blocks.length - 1; blockIndex >= 0; blockIndex--) {
+			const block = blocks[blockIndex];
+			if (block.type === 'text' && typeof block.text === 'string') {
+				const textAnchor = getStableTextAnchor(block.text);
+				if (textAnchor) return textAnchor;
+			}
+
+			const toolUseAnchor = getToolUseAnchor(block);
+			if (toolUseAnchor) return toolUseAnchor;
+		}
+	}
+
+	return undefined;
+}
+
+function createAnthropicBodyMatcher(raw: string): { type: 'REGEX'; regex: string } | undefined {
+	const parsed = JSON.parse(raw) as {
+		system?: string | unknown[];
+		messages?: AnthropicMessage[];
+	};
+
+	const system =
+		typeof parsed.system === 'string'
+			? parsed.system
+			: Array.isArray(parsed.system)
+				? JSON.stringify(parsed.system)
+				: undefined;
+	if (!system) return undefined;
+
+	const anchorIndex = system.indexOf(INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR);
+	const systemSnippetStart = anchorIndex >= 0 ? anchorIndex : 0;
+	const systemSnippet = escapeRegex(system.slice(systemSnippetStart, systemSnippetStart + 80));
+	const latestMessageAnchor = getLatestMessageAnchor(parsed.messages);
+	const matcher = latestMessageAnchor
+		? `${systemSnippet}[\\s\\S]*${latestMessageAnchor}`
+		: systemSnippet;
+
+	return {
+		type: 'REGEX',
+		regex: `[\\s\\S]*${matcher}[\\s\\S]*`,
+	};
+}
+
+type BodyMatcher = {
+	type?: unknown;
+	regex?: unknown;
+	subString?: unknown;
+	[key: string]: unknown;
+};
+
+function isBodyMatcher(body: unknown): body is BodyMatcher {
+	return typeof body === 'object' && body !== null && !Array.isArray(body);
+}
+
+function stripRecordedSystemPromptAnchor(regex: string): string {
+	const anchorIndex = SYSTEM_PROMPT_ANCHORS.reduce<number>((nearest, anchor) => {
+		const index = regex.indexOf(anchor);
+		if (index < 0) return nearest;
+		if (nearest < 0) return index;
+		return Math.min(nearest, index);
+	}, -1);
+
+	if (anchorIndex < 0) return regex;
+
+	const latestTurnAnchorIndex = regex.indexOf(BODY_REGEX_WILDCARD, anchorIndex);
+	if (latestTurnAnchorIndex < 0) return regex;
+
+	return `${BODY_REGEX_WILDCARD}${regex.slice(latestTurnAnchorIndex + BODY_REGEX_WILDCARD.length)}`;
+}
+
+function loosenRecordedInstanceAiPromptMatcher(expectation: Expectation): Expectation {
+	const body = (expectation.httpRequest as { body?: unknown } | undefined)?.body;
+	if (!isBodyMatcher(body)) return expectation;
+
+	if (body.type === 'REGEX' && typeof body.regex === 'string') {
+		body.regex = stripRecordedSystemPromptAnchor(
+			body.regex.replace(LEGACY_SYSTEM_ARRAY_PREFIX, ''),
+		);
+	}
+
+	const stringMatcher = body['string'];
+	if (
+		body.type === 'STRING' &&
+		typeof stringMatcher === 'string' &&
+		stringMatcher.startsWith(`${LEGACY_SYSTEM_STRING_PREFIX}${INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR}`)
+	) {
+		body['string'] = INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR;
+		body.subString = true;
+	}
+
+	return expectation;
 }
 
 type InstanceAiFixtures = {
@@ -70,8 +243,17 @@ export const test = base.extend<InstanceAiFixtures>({
 				return;
 			}
 			const services = n8nContainer.services;
-			const testSlug = slugify(testInfo.title);
+			const testSlug = getInstanceAiTestSlug(testInfo);
 			const folder = `instance-ai/${testSlug}`;
+
+			// Wipe instance-ai threads, per-thread in-memory state, background tasks,
+			// and user workflows before clearing the proxy so cleanup traffic from a
+			// previous test cannot be captured into this test's recording.
+			try {
+				await fetch(`${backendUrl}/rest/instance-ai/test/reset`, { method: 'POST' });
+			} catch {
+				// Endpoint may not be available
+			}
 
 			await services.proxy.clearAllExpectations();
 
@@ -100,15 +282,6 @@ export const test = base.extend<InstanceAiFixtures>({
 				times: { unlimited: true },
 			});
 
-			// Wipe instance-ai threads, per-thread in-memory state, background tasks,
-			// and user workflows so the orchestrator's `list-workflows` tool can't see
-			// leftovers from a prior test and contaminate this test's recorded responses.
-			try {
-				await fetch(`${backendUrl}/rest/instance-ai/test/reset`, { method: 'POST' });
-			} catch {
-				// Endpoint may not be available
-			}
-
 			// Recording mode: real API key, not CI → proxy forwards to real API,
 			// backend records tool I/O. Replay mode: load existing expectations
 			// and trace events so the proxy serves recorded responses and the
@@ -119,6 +292,8 @@ export const test = base.extend<InstanceAiFixtures>({
 				const traceEvents = await loadTraceFile(folder);
 				await services.proxy.loadExpectations(folder, {
 					sequential: true,
+					repeatLastResponse: false,
+					transform: loosenRecordedInstanceAiPromptMatcher,
 				});
 
 				// Load trace events for replay ID remapping
@@ -162,8 +337,8 @@ export const test = base.extend<InstanceAiFixtures>({
 						}
 
 						// Keep a minimal body matcher so the proxy can distinguish
-						// between different LLM call types (title gen vs orchestrator
-						// vs sub-agent) which may arrive in different order during replay.
+						// between agent type and stable turn context without matching
+						// volatile tool output such as workflow and execution IDs.
 						const request = expectation.httpRequest as {
 							// eslint-disable-next-line id-denylist -- `string` is MockServer's body matcher field name
 							body?: { type?: string; string?: string; json?: Record<string, unknown> };
@@ -174,23 +349,9 @@ export const test = base.extend<InstanceAiFixtures>({
 								(request.body.json ? JSON.stringify(request.body.json) : undefined);
 							if (raw) {
 								try {
-									const parsed = JSON.parse(raw) as { system?: string | unknown[] };
-									// Extract a short substring from the system prompt to
-									// distinguish title-generation from orchestrator from sub-agent.
-									const system =
-										typeof parsed.system === 'string'
-											? parsed.system
-											: Array.isArray(parsed.system)
-												? JSON.stringify(parsed.system)
-												: undefined;
-									if (system) {
-										const snippet = system.slice(0, 80);
-										request.body = {
-											type: 'STRING',
-											// eslint-disable-next-line id-denylist -- `string` is MockServer's body matcher field name
-											string: snippet,
-											subString: true,
-										} as unknown as typeof request.body;
+									const bodyMatcher = createAnthropicBodyMatcher(raw);
+									if (bodyMatcher) {
+										request.body = bodyMatcher as unknown as typeof request.body;
 									} else {
 										delete request.body;
 									}

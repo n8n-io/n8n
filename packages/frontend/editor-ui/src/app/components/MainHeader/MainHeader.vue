@@ -11,10 +11,9 @@ import {
 	N8N_MAIN_GITHUB_REPO_URL,
 } from '@/app/constants';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { computed, inject, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { RouteLocation, RouteLocationRaw } from 'vue-router';
@@ -33,9 +32,8 @@ const route = useRoute();
 const locale = useI18n();
 const pushConnection = usePushConnection({ router });
 const toast = useToast();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
@@ -71,7 +69,6 @@ const activeNode = computed(() => ndvStore.activeNode);
 const hideMenuBar = computed(() =>
 	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
 );
-const workflow = computed(() => workflowsStore.workflow);
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 const workflowName = computed(() => workflowDocumentStore?.value?.name ?? '');
@@ -145,13 +142,13 @@ function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
 	}
 
 	// Store the current workflow ID, but only if it's not a new workflow
-	if (typeof to.params.name === 'string') {
-		workflowToReturnTo.value = to.params.name;
+	if (typeof to.params.workflowId === 'string') {
+		workflowToReturnTo.value = to.params.workflowId;
 	}
 
 	if (
 		from?.name === VIEWS.EXECUTION_PREVIEW &&
-		to.params.name === from.params.name &&
+		to.params.workflowId === from.params.workflowId &&
 		typeof from.params.executionId === 'string'
 	) {
 		executionToReturnTo.value = from.params.executionId;
@@ -184,7 +181,7 @@ async function navigateToWorkflowView(openInNewTab: boolean) {
 	if (workflowToReturnTo.value && workflowToReturnTo.value !== '') {
 		routeToNavigateTo = {
 			name: VIEWS.WORKFLOW,
-			params: { name: workflowToReturnTo.value },
+			params: { workflowId: workflowToReturnTo.value },
 			query: route.query,
 		};
 	} else {
@@ -216,12 +213,12 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 	const routeToNavigateTo: RouteLocationRaw = executionToReturnToValue
 		? {
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: workflowId.value, executionId: executionToReturnToValue },
+				params: { workflowId: workflowId.value, executionId: executionToReturnToValue },
 				query: route.query,
 			}
 		: {
 				name: VIEWS.EXECUTION_HOME,
-				params: { name: workflowId.value },
+				params: { workflowId: workflowId.value },
 				query: route.query,
 			};
 
@@ -239,7 +236,7 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 async function navigateToEvaluationsView(openInNewTab: boolean) {
 	const routeToNavigateTo: RouteLocationRaw = {
 		name: VIEWS.EVALUATION_EDIT,
-		params: { name: workflowId.value },
+		params: { workflowId: workflowId.value },
 		query: route.query,
 	};
 
@@ -265,7 +262,7 @@ async function onWorkflowDeactivated() {
 	) {
 		try {
 			// Fetch the updated workflow to get the latest settings after backend processing
-			const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflow.value.id);
+			const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflowId.value);
 			workflowDocumentStore?.value?.hydrate(updatedWorkflow);
 			toast.showToast({
 				title: locale.baseText('mcp.workflowDeactivated.title'),
@@ -291,7 +288,7 @@ async function onWorkflowDeactivated() {
 			<div v-show="!hideMenuBar && !settingsStore.isCanvasOnly" :class="$style['top-menu']">
 				<WorkflowDetails
 					v-if="workflowName"
-					:id="workflow.id"
+					:id="workflowId"
 					:tags="workflowTags"
 					:name="workflowName"
 					:current-folder="parentFolderForBreadcrumbs"

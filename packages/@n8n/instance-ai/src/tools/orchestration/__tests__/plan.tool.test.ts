@@ -1,25 +1,19 @@
+import { executeTool } from '../../../__tests__/tool-test-utils';
+import { PlanValidationError } from '../../../planned-tasks/planned-task-service';
+import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext, PlannedTaskService, TaskStorage } from '../../../types';
-
-// Mock heavy Mastra dependencies to avoid ESM issues in Jest
-jest.mock('@mastra/core/tools', () => ({
-	createTool: jest.fn((config: Record<string, unknown>) => config),
-}));
 
 const { createPlanTool } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../plan.tool') as typeof import('../plan.tool');
 
-type Executable = {
-	execute: (
-		input: unknown,
-		ctx: { agent?: { resumeData?: unknown; suspend?: (s: unknown) => Promise<void> } },
-	) => Promise<{ result: string; taskCount: number }>;
-};
-
 function makePlannedTaskService(overrides: Partial<PlannedTaskService> = {}): PlannedTaskService {
 	return {
 		createPlan: jest.fn().mockResolvedValue(undefined),
 		getGraph: jest.fn().mockResolvedValue(null),
+		approvePlan: jest.fn().mockResolvedValue(undefined),
+		denyPlan: jest.fn().mockResolvedValue(undefined),
+		clear: jest.fn().mockResolvedValue(undefined),
 		...overrides,
 	} as unknown as PlannedTaskService;
 }
@@ -31,7 +25,6 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		userId: 'test-user',
 		orchestratorAgentId: 'test-agent',
 		modelId: 'test-model' as OrchestrationContext['modelId'],
-		storage: { id: 'test-storage' } as OrchestrationContext['storage'],
 		subAgentMaxSteps: 5,
 		eventBus: {
 			publish: jest.fn(),
@@ -42,7 +35,7 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 			getEventsForRuns: jest.fn().mockReturnValue([]),
 		},
 		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
-		domainTools: {},
+		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
 		taskStorage: {
 			get: jest.fn(),
@@ -81,9 +74,9 @@ describe('createPlanTool — replan-only guard', () => {
 		const context = createMockContext({
 			currentUserMessage: 'Create a data table for users, then build a workflow',
 		});
-		const tool = createPlanTool(context) as unknown as Executable;
+		const tool = createPlanTool(context);
 
-		const out = await tool.execute({ tasks: validTasks() }, {});
+		const out = await executeTool(tool, { tasks: validTasks() }, {});
 
 		expect(out.taskCount).toBe(0);
 		expect(out.result).toContain('`create-tasks` is for replanning only');
@@ -99,20 +92,21 @@ describe('createPlanTool — replan-only guard', () => {
 		const context = createMockContext({
 			currentUserMessage: 'Create a data table for users',
 		});
-		const tool = createPlanTool(context) as unknown as Executable;
+		const tool = createPlanTool(context);
 		const suspend = jest.fn().mockResolvedValue(undefined);
 
-		const out = await tool.execute(
+		const out = await executeTool(
+			tool,
 			{
 				tasks: validTasks(),
 				skipPlannerDiscovery: true,
-				reason: 'Single simple data-table task — planner discovery would be wasted.',
+				reason: 'Single simple follow-up task — planner discovery would be wasted.',
 			},
-			{ agent: { suspend } },
+			{ suspend },
 		);
 
-		// Reaches suspend path → returns the "Awaiting approval" short-circuit
-		expect(out.result).toBe('Awaiting approval');
+		// Reaches native suspend path.
+		expect(out).toBeUndefined();
 		const warnMock = context.logger.warn as jest.Mock<void, [string, Record<string, unknown>?]>;
 		const bypassCall = warnMock.mock.calls.find(
 			(call) => call[0] === 'create-tasks bypassing planner with skipPlannerDiscovery=true',
@@ -125,9 +119,9 @@ describe('createPlanTool — replan-only guard', () => {
 
 	it('rejects skipPlannerDiscovery=true without a reason', async () => {
 		const context = createMockContext({ currentUserMessage: 'Create a table' });
-		const tool = createPlanTool(context) as unknown as Executable;
+		const tool = createPlanTool(context);
 
-		const out = await tool.execute({ tasks: validTasks(), skipPlannerDiscovery: true }, {});
+		const out = await executeTool(tool, { tasks: validTasks(), skipPlannerDiscovery: true }, {});
 
 		expect(out.taskCount).toBe(0);
 		expect(out.result).toContain('requires a one-sentence `reason`');
@@ -144,12 +138,12 @@ describe('createPlanTool — replan-only guard', () => {
 				} as unknown as Awaited<ReturnType<PlannedTaskService['getGraph']>>),
 			}),
 		});
-		const tool = createPlanTool(context) as unknown as Executable;
+		const tool = createPlanTool(context);
 		const suspend = jest.fn().mockResolvedValue(undefined);
 
-		const out = await tool.execute({ tasks: validTasks() }, { agent: { suspend } });
+		const out = await executeTool(tool, { tasks: validTasks() }, { suspend });
 
-		expect(out.result).toBe('Awaiting approval');
+		expect(out).toBeUndefined();
 		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
 	});
 
@@ -167,9 +161,9 @@ describe('createPlanTool — replan-only guard', () => {
 				} as unknown as Awaited<ReturnType<PlannedTaskService['getGraph']>>),
 			}),
 		});
-		const tool = createPlanTool(context) as unknown as Executable;
+		const tool = createPlanTool(context);
 
-		const out = await tool.execute({ tasks: validTasks() }, { agent: { suspend: jest.fn() } });
+		const out = await executeTool(tool, { tasks: validTasks() }, { suspend: jest.fn() });
 
 		expect(out.result).toMatch(/^Error: `create-tasks` is for replanning only/);
 		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
@@ -180,12 +174,12 @@ describe('createPlanTool — replan-only guard', () => {
 			currentUserMessage: 'Continue',
 			isReplanFollowUp: true,
 		});
-		const tool = createPlanTool(context) as unknown as Executable;
+		const tool = createPlanTool(context);
 		const suspend = jest.fn().mockResolvedValue(undefined);
 
-		const out = await tool.execute({ tasks: validTasks() }, { agent: { suspend } });
+		const out = await executeTool(tool, { tasks: validTasks() }, { suspend });
 
-		expect(out.result).toBe('Awaiting approval');
+		expect(out).toBeUndefined();
 		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
 	});
 
@@ -197,9 +191,9 @@ describe('createPlanTool — replan-only guard', () => {
 				'<planned-task-follow-up type="replan">\n{"failedTask":"t2"}\n</planned-task-follow-up>\n\nContinue',
 			isReplanFollowUp: false,
 		});
-		const tool = createPlanTool(context) as unknown as Executable;
+		const tool = createPlanTool(context);
 
-		const out = await tool.execute({ tasks: validTasks() }, {});
+		const out = await executeTool(tool, { tasks: validTasks() }, {});
 
 		expect(out.taskCount).toBe(0);
 		expect(out.result).toContain('`create-tasks` is for replanning only');
@@ -208,26 +202,266 @@ describe('createPlanTool — replan-only guard', () => {
 	it('honors N8N_INSTANCE_AI_ENFORCE_CREATE_TASKS_REPLAN=false to disable the guard', async () => {
 		process.env.N8N_INSTANCE_AI_ENFORCE_CREATE_TASKS_REPLAN = 'false';
 		const context = createMockContext({ currentUserMessage: 'ordinary initial request' });
-		const tool = createPlanTool(context) as unknown as Executable;
+		const tool = createPlanTool(context);
 		const suspend = jest.fn().mockResolvedValue(undefined);
 
-		const out = await tool.execute({ tasks: validTasks() }, { agent: { suspend } });
+		const out = await executeTool(tool, { tasks: validTasks() }, { suspend });
 
-		// No guard rejection — reaches suspend path
-		expect(out.result).toBe('Awaiting approval');
+		// No guard rejection — reaches native suspend path.
+		expect(out).toBeUndefined();
 		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
 	});
 
 	it('does not re-run the guard on resume (approved=true)', async () => {
 		const context = createMockContext({ currentUserMessage: 'ordinary message' });
-		const tool = createPlanTool(context) as unknown as Executable;
+		const tool = createPlanTool(context);
 
-		const out = await tool.execute(
+		const out = await executeTool(
+			tool,
 			{ tasks: validTasks() },
-			{ agent: { resumeData: { approved: true } } },
+			{ resumeData: { approved: true } },
 		);
 
 		expect(out.result).toContain('Plan approved');
 		expect(context.schedulePlannedTasks).toHaveBeenCalled();
+	});
+
+	it('flips graph to active via approvePlan before scheduling on approval', async () => {
+		const context = createMockContext({ currentUserMessage: 'ordinary message' });
+		const tool = createPlanTool(context);
+
+		await executeTool(tool, { tasks: validTasks() }, { resumeData: { approved: true } });
+
+		expect(context.plannedTaskService!.approvePlan).toHaveBeenCalledWith('test-thread');
+		expect(context.schedulePlannedTasks).toHaveBeenCalled();
+	});
+
+	it('returns the rejection result even when taskStorage.save fails so the revision flow can proceed', async () => {
+		// The persisted graph stays in awaiting_approval regardless of UI cleanup
+		// — the next createPlan overwrites it. A storage flake here must not abort
+		// the rejection path or strand the user without a "User requested changes"
+		// message and a chance to revise.
+		const context = createMockContext({
+			currentUserMessage: 'ordinary message',
+			taskStorage: {
+				get: jest.fn(),
+				save: jest.fn().mockRejectedValue(new Error('storage flake')),
+			} as TaskStorage,
+		});
+		const tool = createPlanTool(context);
+
+		const out = await executeTool(
+			tool,
+			{ tasks: validTasks() },
+			{ resumeData: { approved: false, userInput: 'try again' } },
+		);
+
+		expect(out.taskCount).toBe(0);
+		expect(out.result).toContain('User requested changes');
+		expect(context.logger.warn).toHaveBeenCalledWith(
+			'Failed to clear rejected plan checklist',
+			expect.objectContaining({ error: expect.anything() as unknown }),
+		);
+	});
+
+	it('cancels the graph and tells the LLM to stop when the user denies the plan', async () => {
+		const context = createMockContext({ currentUserMessage: 'ordinary message' });
+		const tool = createPlanTool(context);
+
+		const out = await executeTool(
+			tool,
+			{ tasks: validTasks() },
+			{ resumeData: { approved: false, denied: true } },
+		);
+
+		expect(out.taskCount).toBe(0);
+		expect(out.result).toContain('User denied the plan');
+		expect(out.result).toMatch(/do not revise/i);
+		expect(context.plannedTaskService!.denyPlan).toHaveBeenCalledWith('test-thread');
+		expect(context.plannedTaskService!.approvePlan).not.toHaveBeenCalled();
+		expect(context.schedulePlannedTasks).not.toHaveBeenCalled();
+		expect(context.taskStorage.save).toHaveBeenCalledWith('test-thread', { tasks: [] });
+	});
+
+	it('keeps the awaiting_approval graph on rejection so a same-turn revision can pass the guard', async () => {
+		// The rejected plan stays in `awaiting_approval` (scoped to runId) so the
+		// LLM's next create-tasks call — which the tool result tells it to make —
+		// is treated as a revision and bypasses planner-discovery guard. The
+		// scheduler ignores `awaiting_approval`, so leaving it in place can't
+		// dispatch a rejected plan.
+		const context = createMockContext({ currentUserMessage: 'ordinary message' });
+		const tool = createPlanTool(context);
+
+		const out = await executeTool(
+			tool,
+			{ tasks: validTasks() },
+			{ resumeData: { approved: false, userInput: 'not what I wanted' } },
+		);
+
+		expect(out.taskCount).toBe(0);
+		expect(out.result).toContain('User requested changes');
+		expect(context.plannedTaskService!.clear).not.toHaveBeenCalled();
+		expect(context.schedulePlannedTasks).not.toHaveBeenCalled();
+		expect(context.plannedTaskService!.approvePlan).not.toHaveBeenCalled();
+		// UI checklist still resets so the rejected todos don't linger on screen
+		expect(context.taskStorage.save).toHaveBeenCalledWith('test-thread', { tasks: [] });
+		expect(context.eventBus.publish).toHaveBeenCalledWith(
+			'test-thread',
+			expect.objectContaining({
+				type: 'tasks-update',
+				payload: { tasks: { tasks: [] }, planItems: [] },
+			}),
+		);
+	});
+
+	it('allows a same-turn revision after rejection (awaiting_approval with same runId)', async () => {
+		// After rejection, the graph stays in awaiting_approval with planRunId ===
+		// context.runId. The next create-tasks call must pass threadHasExistingPlan
+		// so the revision flow advertised by the tool result works.
+		const context = createMockContext({
+			currentUserMessage: 'revise the plan',
+			runId: 'run-1',
+			plannedTaskService: makePlannedTaskService({
+				getGraph: jest.fn().mockResolvedValue({
+					threadId: 'test-thread',
+					status: 'awaiting_approval',
+					planRunId: 'run-1',
+					tasks: [],
+				} as unknown as Awaited<ReturnType<PlannedTaskService['getGraph']>>),
+			}),
+		});
+		const tool = createPlanTool(context);
+		const suspend = jest.fn().mockResolvedValue(undefined);
+
+		const out = await executeTool(tool, { tasks: validTasks() }, { suspend });
+
+		expect(out).toBeUndefined();
+		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
+	});
+
+	it('blocks a fresh initial call when the same turn already had a cancelled (denied) plan', async () => {
+		const context = createMockContext({
+			currentUserMessage: 'try again',
+			messageGroupId: 'mg-1',
+			plannedTaskService: makePlannedTaskService({
+				getGraph: jest.fn().mockResolvedValue({
+					threadId: 'test-thread',
+					status: 'cancelled',
+					planRunId: 'run-prev',
+					messageGroupId: 'mg-1',
+					tasks: [],
+				} as unknown as Awaited<ReturnType<PlannedTaskService['getGraph']>>),
+			}),
+		});
+		const tool = createPlanTool(context);
+
+		const out = await executeTool(tool, { tasks: validTasks() }, { suspend: jest.fn() });
+
+		expect(out.taskCount).toBe(0);
+		expect(out.result).toMatch(/denied a plan earlier in this turn/i);
+		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
+	});
+
+	it('allows a fresh initial call when a cancelled plan is from a previous turn (different messageGroupId)', async () => {
+		const context = createMockContext({
+			currentUserMessage: 'new user message',
+			messageGroupId: 'mg-2',
+			plannedTaskService: makePlannedTaskService({
+				getGraph: jest.fn().mockResolvedValue({
+					threadId: 'test-thread',
+					status: 'cancelled',
+					planRunId: 'run-prev',
+					messageGroupId: 'mg-1',
+					tasks: [],
+				} as unknown as Awaited<ReturnType<PlannedTaskService['getGraph']>>),
+			}),
+			isReplanFollowUp: true,
+		});
+		const tool = createPlanTool(context);
+		const suspend = jest.fn().mockResolvedValue(undefined);
+
+		await executeTool(tool, { tasks: validTasks() }, { suspend });
+
+		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
+	});
+
+	it('rejects a fresh request when an orphan awaiting_approval graph exists from a previous run', async () => {
+		// LLM rejected a prior plan and never revised; the graph orphans in
+		// awaiting_approval with a stale planRunId. A new turn must still go
+		// through planner discovery, not silently bypass the guard.
+		const context = createMockContext({
+			currentUserMessage: 'unrelated new request',
+			runId: 'run-2',
+			plannedTaskService: makePlannedTaskService({
+				getGraph: jest.fn().mockResolvedValue({
+					threadId: 'test-thread',
+					status: 'awaiting_approval',
+					planRunId: 'run-1',
+					tasks: [],
+				} as unknown as Awaited<ReturnType<PlannedTaskService['getGraph']>>),
+			}),
+		});
+		const tool = createPlanTool(context);
+
+		const out = await executeTool(tool, { tasks: validTasks() }, { suspend: jest.fn() });
+
+		expect(out.result).toMatch(/^Error: `create-tasks` is for replanning only/);
+		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
+	});
+});
+
+describe('createPlanTool — createPlan validation failures', () => {
+	it('returns a PlanValidationError as a tool result instead of throwing', async () => {
+		const validatorError = new PlanValidationError(
+			'Checkpoint task "chk-1" must depend on at least one build-workflow task',
+		);
+		const context = createMockContext({
+			currentUserMessage: 'replan after failure',
+			plannedTaskService: makePlannedTaskService({
+				createPlan: jest.fn().mockRejectedValue(validatorError),
+			}),
+		});
+		const tool = createPlanTool(context);
+		const suspend = jest.fn();
+
+		const out = await executeTool(
+			tool,
+			{
+				tasks: validTasks(),
+				skipPlannerDiscovery: true,
+				reason: 'bypass for test',
+			},
+			{ suspend },
+		);
+
+		expect(out.taskCount).toBe(0);
+		expect(out.result).toContain(validatorError.message);
+		expect(out.result).toContain('Revise the task graph and call this tool again');
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.logger.warn).toHaveBeenCalledWith(
+			'plan tool: createPlan rejected by validator',
+			expect.objectContaining({ threadId: 'test-thread', error: validatorError.message }),
+		);
+	});
+
+	it('propagates non-validation errors (storage, abort, bugs)', async () => {
+		const storageError = new Error('connection refused');
+		const context = createMockContext({
+			currentUserMessage: 'replan',
+			plannedTaskService: makePlannedTaskService({
+				createPlan: jest.fn().mockRejectedValue(storageError),
+			}),
+		});
+		const tool = createPlanTool(context);
+
+		await expect(
+			executeTool(
+				tool,
+				{ tasks: validTasks(), skipPlannerDiscovery: true, reason: 'bypass' },
+				{
+					suspend: jest.fn(),
+				},
+			),
+		).rejects.toBe(storageError);
 	});
 });

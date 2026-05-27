@@ -1,3 +1,4 @@
+import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
 import { createParseFileTool } from '../parse-file.tool';
 
@@ -19,9 +20,11 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			createFromWorkflowJSON: jest.fn(),
 			updateFromWorkflowJSON: jest.fn(),
 			archive: jest.fn(),
-			delete: jest.fn(),
+			unarchive: jest.fn(),
 			publish: jest.fn(),
 			unpublish: jest.fn(),
+			clearAiTemporary: jest.fn(),
+			archiveIfAiTemporary: jest.fn(),
 		},
 		executionService: {
 			list: jest.fn(),
@@ -68,7 +71,7 @@ describe('createParseFileTool', () => {
 	it('has the expected tool id', () => {
 		const context = createMockContext();
 		const tool = createParseFileTool(context);
-		expect(tool.id).toBe('parse-file');
+		expect(tool.name).toBe('parse-file');
 	});
 
 	describe('when no attachments are present', () => {
@@ -76,10 +79,11 @@ describe('createParseFileTool', () => {
 			const context = createMockContext();
 			const tool = createParseFileTool(context);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
 				{} as never,
-			)) as Record<string, unknown>;
+			);
 
 			expect(result.error).toBe('No attachments available in the current message');
 		});
@@ -94,10 +98,11 @@ describe('createParseFileTool', () => {
 			});
 			const tool = createParseFileTool(context);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ attachmentIndex: 5, hasHeader: true, startRow: 0, maxRows: 20 },
 				{} as never,
-			)) as Record<string, unknown>;
+			);
 
 			expect(result.error).toContain('Invalid attachmentIndex');
 		});
@@ -113,10 +118,11 @@ describe('createParseFileTool', () => {
 			});
 			const tool = createParseFileTool(context);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
 				{} as never,
-			)) as Record<string, unknown>;
+			);
 
 			expect(result.error).toBeUndefined();
 			expect(result.format).toBe('csv');
@@ -137,14 +143,39 @@ describe('createParseFileTool', () => {
 			});
 			const tool = createParseFileTool(context);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
 				{} as never,
-			)) as Record<string, unknown>;
+			);
 
 			expect(result.error).toBeUndefined();
 			expect(result.format).toBe('json');
 			expect(result.totalRows).toBe(1);
+		});
+	});
+
+	describe('with a valid HTML attachment', () => {
+		it('extracts visible text content', async () => {
+			const html =
+				'<html><head><title>Release</title></head><body><p>Launch codeword: amber-otter</p></body></html>';
+			const context = createMockContext({
+				currentUserAttachments: [
+					{ data: toBase64(html), mimeType: 'text/html', fileName: 'release.html' },
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
+				{} as never,
+			);
+
+			expect(result.error).toBeUndefined();
+			expect(result.format).toBe('html');
+			expect(result.title).toBe('Release');
+			expect(result.content).toContain('amber-otter');
 		});
 	});
 
@@ -157,12 +188,34 @@ describe('createParseFileTool', () => {
 			});
 			const tool = createParseFileTool(context);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
 				{} as never,
-			)) as Record<string, unknown>;
+			);
 
 			expect(result.error).toContain('Unsupported format');
+			expect(result.format).toBe('unknown');
+		});
+	});
+
+	describe('with malformed JSON', () => {
+		it('reports the detected format in the error result', async () => {
+			const context = createMockContext({
+				currentUserAttachments: [
+					{ data: toBase64('not json'), mimeType: 'application/json', fileName: 'data.json' },
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
+				{} as never,
+			);
+
+			expect(result.error).toContain('Invalid JSON');
+			expect(result.format).toBe('json');
 		});
 	});
 
@@ -175,10 +228,11 @@ describe('createParseFileTool', () => {
 			});
 			const tool = createParseFileTool(context);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
 				{} as never,
-			)) as Record<string, unknown>;
+			);
 
 			// Empty CSV should parse without error — just 0 rows
 			expect(result.totalRows).toBe(0);

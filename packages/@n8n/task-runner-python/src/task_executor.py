@@ -1,7 +1,7 @@
+import ast
 import multiprocessing
 import traceback
 import textwrap
-import types
 import json
 import io
 import os
@@ -19,6 +19,7 @@ from src.errors import (
     TaskSubprocessFailedError,
     SecurityViolationError,
 )
+from src.format_validation import find_blocked_format_tokens
 from src.import_validation import validate_module_import
 from src.config.security_config import SecurityConfig
 
@@ -32,9 +33,11 @@ from src.message_types.pipe import (
 from src.pipe_reader import PipeReader
 from src.constants import (
     EXECUTOR_CIRCULAR_REFERENCE_KEY,
+    EXECUTOR_SAFE_FORMAT_KEY,
     EXECUTOR_USER_OUTPUT_KEY,
     EXECUTOR_ALL_ITEMS_FILENAME,
     EXECUTOR_PER_ITEM_FILENAME,
+    ERROR_DANGEROUS_STRING_PATTERN,
     SIGTERM_EXIT_CODE,
     SIGKILL_EXIT_CODE,
     PIPE_MSG_PREFIX_LENGTH,
@@ -48,7 +51,50 @@ logger = logging.getLogger(__name__)
 MULTIPROCESSING_CONTEXT = multiprocessing.get_context("forkserver")
 MAX_PRINT_ARGS_ALLOWED = 100
 
+FORMAT_METHOD_NAMES = frozenset({"format", "format_map"})
+
 type PipeConnection = Connection
+
+
+class FormatGuardTransformer(ast.NodeTransformer):
+    def visit_Call(self, node: ast.Call) -> ast.AST:
+        self.generic_visit(node)
+
+        if (
+            isinstance(node.func, ast.Attribute)
+            and node.func.attr in FORMAT_METHOD_NAMES
+        ):
+            replacement = ast.Call(
+                func=ast.Name(id=EXECUTOR_SAFE_FORMAT_KEY, ctx=ast.Load()),
+                args=[
+                    ast.Constant(value=node.func.attr),
+                    node.func.value,
+                    *node.args,
+                ],
+                keywords=node.keywords,
+            )
+            return ast.copy_location(replacement, node)
+
+        return node
+
+
+def _validate_format_template(template: str) -> None:
+    token = next(find_blocked_format_tokens(template), None)
+    if token is not None:
+        raise SecurityViolationError(
+            description=ERROR_DANGEROUS_STRING_PATTERN.format(attr=token),
+        )
+
+
+def _safe_format(method_name: str, receiver, /, *args, **kwargs):
+    if isinstance(receiver, str):
+        _validate_format_template(receiver)
+    elif isinstance(receiver, type) and issubclass(receiver, str):
+        # str.format(template, *args) — unbound method form
+        if args and isinstance(args[0], str):
+            _validate_format_template(args[0])
+
+    return getattr(receiver, method_name)(*args, **kwargs)
 
 
 class TaskExecutor:
@@ -201,14 +247,16 @@ class TaskExecutor:
         sys.stderr = stderr_capture = io.StringIO()
 
         try:
-            wrapped_code = TaskExecutor._wrap_code(raw_code)
-            compiled_code = compile(wrapped_code, EXECUTOR_ALL_ITEMS_FILENAME, "exec")
+            compiled_code = TaskExecutor._compile_user_code(
+                raw_code, EXECUTOR_ALL_ITEMS_FILENAME
+            )
 
             globals = {
                 "__builtins__": TaskExecutor._filter_builtins(security_config),
                 "_items": items,
                 "_query": query,
                 "print": TaskExecutor._create_custom_print(print_args),
+                EXECUTOR_SAFE_FORMAT_KEY: _safe_format,
             }
 
             exec(compiled_code, globals)
@@ -240,8 +288,9 @@ class TaskExecutor:
         sys.stderr = stderr_capture = io.StringIO()
 
         try:
-            wrapped_code = TaskExecutor._wrap_code(raw_code)
-            compiled_code = compile(wrapped_code, EXECUTOR_PER_ITEM_FILENAME, "exec")
+            compiled_code = TaskExecutor._compile_user_code(
+                raw_code, EXECUTOR_PER_ITEM_FILENAME
+            )
 
             filtered_builtins = TaskExecutor._filter_builtins(security_config)
             custom_print = TaskExecutor._create_custom_print(print_args)
@@ -252,6 +301,7 @@ class TaskExecutor:
                     "__builtins__": filtered_builtins,
                     "_item": item,
                     "print": custom_print,
+                    EXECUTOR_SAFE_FORMAT_KEY: _safe_format,
                 }
 
                 exec(compiled_code, globals)
@@ -281,6 +331,14 @@ class TaskExecutor:
     def _wrap_code(raw_code: str) -> str:
         indented_code = textwrap.indent(raw_code, "    ")
         return f"def _user_function():\n{indented_code}\n\n{EXECUTOR_USER_OUTPUT_KEY} = _user_function()"
+
+    @staticmethod
+    def _compile_user_code(raw_code: str, filename: str):
+        wrapped_code = TaskExecutor._wrap_code(raw_code)
+        tree = ast.parse(wrapped_code, filename, "exec")
+        tree = FormatGuardTransformer().visit(tree)
+        ast.fix_missing_locations(tree)
+        return compile(tree, filename, "exec")
 
     @staticmethod
     def _extract_json_data_per_item(user_output):
@@ -436,7 +494,49 @@ class TaskExecutor:
 
         filtered["__import__"] = TaskExecutor._create_safe_import(security_config)
 
-        return types.MappingProxyType(filtered)
+        class _ImmutableBuiltins:
+            __slots__ = ()
+
+            def __getitem__(self, key):
+                return filtered[key]
+
+            def __contains__(self, key):
+                return key in filtered
+
+            def __iter__(self):
+                return iter(filtered)
+
+            def __len__(self):
+                return len(filtered)
+
+            def keys(self):
+                return filtered.keys()
+
+            def values(self):
+                return filtered.values()
+
+            def items(self):
+                return filtered.items()
+
+            def get(self, key, default=None):
+                return filtered.get(key, default)
+
+            def __getattr__(self, name):
+                try:
+                    return filtered[name]
+                except KeyError:
+                    raise AttributeError(name) from None
+
+            def __setattr__(self, name, value):
+                raise AttributeError("read-only")
+
+            def __delattr__(self, name):
+                raise AttributeError("read-only")
+
+            def __repr__(self):
+                return f"ImmutableBuiltins({len(filtered)} keys)"
+
+        return _ImmutableBuiltins()
 
     @staticmethod
     def _sanitize_sys_modules(security_config: SecurityConfig):

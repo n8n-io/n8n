@@ -208,6 +208,8 @@ export namespace ExecutionSummaries {
 		vote: AnnotationVote;
 		projectId: string;
 		workflowVersionId: string;
+		isArchived: boolean;
+		workflowBooleanSettings: Array<{ key: string; value: boolean }>;
 	}>;
 
 	export type StopExecutionFilterQuery = { workflowId: string } & Pick<
@@ -446,6 +448,10 @@ export type AuthenticatedRequest<
 	};
 	tokenGrant?: TokenGrant;
 };
+
+export function isAuthenticatedRequest(req: express.Request): req is AuthenticatedRequest {
+	return 'user' in req && req.user !== null;
+}
 
 /**
  * Simplified to prevent excessively deep type instantiation error from

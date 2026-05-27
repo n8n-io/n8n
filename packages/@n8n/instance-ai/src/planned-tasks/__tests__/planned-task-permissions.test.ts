@@ -18,61 +18,41 @@ function makeContext(
 }
 
 describe('applyPlannedTaskPermissions', () => {
-	describe('manage-data-tables', () => {
-		it('should auto-approve data table creation and mutation', () => {
+	describe('build-workflow', () => {
+		it('should auto-approve workflow and data-table work owned by the builder task', () => {
 			const context = makeContext();
-			const result = applyPlannedTaskPermissions(context, 'manage-data-tables');
+			const result = applyPlannedTaskPermissions(context, 'build-workflow');
 
 			expect(result.permissions).toMatchObject({
+				createWorkflow: 'always_allow',
+				updateWorkflow: 'always_allow',
+				runWorkflow: 'always_allow',
+				publishWorkflow: 'always_allow',
 				createDataTable: 'always_allow',
 				mutateDataTableSchema: 'always_allow',
 				mutateDataTableRows: 'always_allow',
 			});
 		});
 
-		it('should not affect non-data-table permissions', () => {
+		it('should not affect destructive or open-ended permissions', () => {
 			const context = makeContext();
-			const result = applyPlannedTaskPermissions(context, 'manage-data-tables');
+			const result = applyPlannedTaskPermissions(context, 'build-workflow');
 
-			expect(result.permissions?.runWorkflow).toBe('require_approval');
-			expect(result.permissions?.publishWorkflow).toBe('require_approval');
 			expect(result.permissions?.deleteWorkflow).toBe('require_approval');
+			expect(result.permissions?.deleteDataTable).toBe('require_approval');
 			expect(result.permissions?.fetchUrl).toBe('require_approval');
-			expect(result.permissions?.readFilesystem).toBe('require_approval');
-			expect(result.permissions?.deleteCredential).toBe('require_approval');
 		});
 
 		it('should preserve admin always_allow settings on other keys', () => {
 			const context = makeContext({ fetchUrl: 'always_allow' });
-			const result = applyPlannedTaskPermissions(context, 'manage-data-tables');
+			const result = applyPlannedTaskPermissions(context, 'build-workflow');
 
 			expect(result.permissions?.fetchUrl).toBe('always_allow');
-			expect(result.permissions?.createDataTable).toBe('always_allow');
+			expect(result.permissions?.createWorkflow).toBe('always_allow');
 		});
 	});
 
-	describe('build-workflow', () => {
-		it('should auto-approve workflow run and publish', () => {
-			const context = makeContext();
-			const result = applyPlannedTaskPermissions(context, 'build-workflow');
-
-			expect(result.permissions).toMatchObject({
-				runWorkflow: 'always_allow',
-				publishWorkflow: 'always_allow',
-			});
-		});
-
-		it('should not affect non-workflow permissions', () => {
-			const context = makeContext();
-			const result = applyPlannedTaskPermissions(context, 'build-workflow');
-
-			expect(result.permissions?.createDataTable).toBe('require_approval');
-			expect(result.permissions?.deleteWorkflow).toBe('require_approval');
-			expect(result.permissions?.fetchUrl).toBe('require_approval');
-		});
-	});
-
-	describe.each<PlannedTaskKind>(['research', 'delegate'])('%s', (kind) => {
+	describe.each<PlannedTaskKind>(['delegate'])('%s', (kind) => {
 		it('should return the original context unchanged', () => {
 			const context = makeContext();
 			const result = applyPlannedTaskPermissions(context, kind);
@@ -83,7 +63,7 @@ describe('applyPlannedTaskPermissions', () => {
 
 	it('should return a new context object for overridden kinds', () => {
 		const context = makeContext();
-		const result = applyPlannedTaskPermissions(context, 'manage-data-tables');
+		const result = applyPlannedTaskPermissions(context, 'build-workflow');
 
 		expect(result).not.toBe(context);
 		expect(result.permissions).not.toBe(context.permissions);
@@ -91,16 +71,16 @@ describe('applyPlannedTaskPermissions', () => {
 
 	it('should not mutate the original context', () => {
 		const context = makeContext();
-		applyPlannedTaskPermissions(context, 'manage-data-tables');
+		applyPlannedTaskPermissions(context, 'build-workflow');
 
-		expect(context.permissions?.createDataTable).toBe('require_approval');
-		expect(context.permissions?.mutateDataTableSchema).toBe('require_approval');
-		expect(context.permissions?.mutateDataTableRows).toBe('require_approval');
+		expect(context.permissions?.createWorkflow).toBe('require_approval');
+		expect(context.permissions?.updateWorkflow).toBe('require_approval');
+		expect(context.permissions?.runWorkflow).toBe('require_approval');
 	});
 
 	it('should share service references with the original context', () => {
 		const context = makeContext();
-		const result = applyPlannedTaskPermissions(context, 'manage-data-tables');
+		const result = applyPlannedTaskPermissions(context, 'build-workflow');
 
 		expect(result.dataTableService).toBe(context.dataTableService);
 		expect(result.workflowService).toBe(context.workflowService);

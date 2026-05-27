@@ -1,3 +1,5 @@
+import type { parse as csvParse } from 'csv-parse/sync';
+
 /**
  * Structured file parser for CSV, TSV, and JSON attachments.
  *
@@ -11,11 +13,31 @@
  * - Dangerous keys (__proto__, constructor, prototype) are rejected
  */
 
-import { parse as csvParse } from 'csv-parse/sync';
+type CsvParseFn = typeof csvParse;
+let csvParseFnCached: CsvParseFn | undefined;
+function getCsvParse(): CsvParseFn {
+	if (!csvParseFnCached) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+		const mod = require('csv-parse/sync') as { parse: CsvParseFn };
+		csvParseFnCached = mod.parse;
+	}
+	return csvParseFnCached;
+}
 
 // ── Limits ──────────────────────────────────────────────────────────────────
 
-export const MAX_DECODED_SIZE_BYTES = 512 * 1024; // 512 KB
+export const MAX_DECODED_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+
+function formatMB(bytes: number): string {
+	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function formatSizeLimitMessage(
+	actualBytes: number,
+	label: string = 'maximum size',
+): string {
+	return `Attachment exceeds ${label} of ${formatMB(MAX_DECODED_SIZE_BYTES)} (got ${formatMB(actualBytes)})`;
+}
 export const MAX_COLUMNS = 50;
 export const MAX_ROWS_PER_CALL = 100;
 export const DEFAULT_MAX_ROWS = 20;
@@ -31,6 +53,20 @@ const RESERVED_COLUMN_NAMES = new Set(['id', 'created_at', 'updated_at']);
 
 export type ParseableFormat = 'csv' | 'tsv' | 'json';
 
+/** Tabular formats produce row+column output via parse-file. */
+export type TabularFormat = ParseableFormat | 'xlsx';
+
+/** Text-like formats produce a single text/markdown body (extracted from rich source). */
+export type TextLikeFormat = 'text' | 'markdown' | 'html' | 'pdf' | 'docx';
+
+/** Every format we know how to extract content from. */
+export type SupportedFormat = TabularFormat | TextLikeFormat;
+
+/** Formats handled by the existing CSV/TSV/JSON pipeline in parseStructuredFile. */
+function isLegacyTabularFormat(format: SupportedFormat): format is ParseableFormat {
+	return format === 'csv' || format === 'tsv' || format === 'json';
+}
+
 export interface ColumnMeta {
 	originalName: string;
 	name: string;
@@ -42,7 +78,7 @@ export type CellValue = string | number | boolean | null;
 
 export interface ParseFileInput {
 	attachmentIndex?: number;
-	format?: ParseableFormat;
+	format?: SupportedFormat;
 	hasHeader?: boolean;
 	delimiter?: string;
 	startRow?: number;
@@ -53,7 +89,7 @@ export interface ParseFileOutput {
 	attachmentIndex: number;
 	fileName: string;
 	mimeType: string;
-	format: ParseableFormat;
+	format: SupportedFormat;
 	columns: ColumnMeta[];
 	rows: Array<Record<string, CellValue>>;
 	totalRows: number;
@@ -61,6 +97,9 @@ export interface ParseFileOutput {
 	truncated: boolean;
 	nextStartRow?: number;
 	warnings?: string[];
+	content?: string;
+	title?: string;
+	pages?: number;
 }
 
 export interface AttachmentInfo {
@@ -73,22 +112,39 @@ export interface ClassifiedAttachment {
 	original: AttachmentInfo;
 	index: number;
 	parseable: boolean;
-	format?: ParseableFormat;
+	format?: SupportedFormat;
 	unavailableReason?: string;
 }
 
 // ── Format detection ────────────────────────────────────────────────────────
 
-const EXTENSION_TO_FORMAT: Record<string, ParseableFormat> = {
+const EXTENSION_TO_FORMAT: Record<string, SupportedFormat> = {
 	'.csv': 'csv',
 	'.tsv': 'tsv',
 	'.json': 'json',
+	'.xlsx': 'xlsx',
+	'.txt': 'text',
+	'.md': 'markdown',
+	'.markdown': 'markdown',
+	'.html': 'html',
+	'.htm': 'html',
+	'.pdf': 'pdf',
+	'.docx': 'docx',
 };
 
-const MIME_TO_FORMAT: Record<string, ParseableFormat> = {
+const MIME_TO_FORMAT: Record<string, SupportedFormat> = {
 	'text/csv': 'csv',
+	'application/csv': 'csv',
 	'text/tab-separated-values': 'tsv',
 	'application/json': 'json',
+	'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+	'text/plain': 'text',
+	'text/markdown': 'markdown',
+	'text/x-markdown': 'markdown',
+	'text/html': 'html',
+	'application/xhtml+xml': 'html',
+	'application/pdf': 'pdf',
+	'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
 };
 
 function getExtension(fileName: string): string {
@@ -99,8 +155,8 @@ function getExtension(fileName: string): string {
 export function detectFormat(
 	fileName: string,
 	mimeType: string,
-	override?: ParseableFormat,
-): ParseableFormat | undefined {
+	override?: SupportedFormat,
+): SupportedFormat | undefined {
 	if (override) return override;
 	const ext = getExtension(fileName);
 	if (ext in EXTENSION_TO_FORMAT) return EXTENSION_TO_FORMAT[ext];
@@ -220,13 +276,13 @@ function parseCsvTsv(
 		throw new Error('Delimiter must be a single character');
 	}
 
-	const records = csvParse(content, {
+	const records = getCsvParse()(content, {
 		delimiter,
 		columns: false,
 		skip_empty_lines: true,
 		relax_column_count: true,
 		trim: true,
-	}) as string[][];
+	});
 
 	if (records.length === 0) {
 		return { rawHeaders: [], allRows: [] };
@@ -321,14 +377,12 @@ export function parseStructuredFile(
 	}
 
 	if (decoded.length > MAX_DECODED_SIZE_BYTES) {
-		throw new Error(
-			`Attachment exceeds maximum size of ${MAX_DECODED_SIZE_BYTES / 1024} KB (got ${Math.round(decoded.length / 1024)} KB)`,
-		);
+		throw new Error(formatSizeLimitMessage(decoded.length));
 	}
 
 	const content = decoded.toString('utf-8');
 	const format = detectFormat(attachment.fileName, attachment.mimeType, input.format);
-	if (!format) {
+	if (!format || !isLegacyTabularFormat(format)) {
 		throw new Error(
 			`Unsupported format for "${attachment.fileName}" (${attachment.mimeType}). Supported: csv, tsv, json`,
 		);
@@ -486,7 +540,7 @@ export function classifyAttachments(attachments: AttachmentInfo[]): ClassifiedAt
 				index,
 				parseable: false,
 				format,
-				unavailableReason: `File exceeds ${MAX_DECODED_SIZE_BYTES / 1024} KB limit (${Math.round(estimatedDecodedSize / 1024)} KB)`,
+				unavailableReason: formatSizeLimitMessage(estimatedDecodedSize, 'limit'),
 			};
 		}
 
@@ -523,9 +577,19 @@ export function buildAttachmentManifest(classified: ClassifiedAttachment[]): str
 }
 
 /**
- * Returns true if the attachment has a structured format that should be
- * routed through parse-file instead of being sent as raw multimodal content.
+ * Returns true if the attachment is a tabular format (csv/tsv/json/xlsx)
+ * that produces row+column output via parse-file.
  */
 export function isStructuredAttachment(att: AttachmentInfo): boolean {
+	const format = detectFormat(att.fileName, att.mimeType);
+	return format === 'csv' || format === 'tsv' || format === 'json' || format === 'xlsx';
+}
+
+/**
+ * Returns true if we have a parser that can extract content for this attachment
+ * (tabular OR text-like). Used to decide whether to register the parse-file tool
+ * and to route the attachment through extraction instead of raw multimodal content.
+ */
+export function isParseableAttachment(att: AttachmentInfo): boolean {
 	return detectFormat(att.fileName, att.mimeType) !== undefined;
 }

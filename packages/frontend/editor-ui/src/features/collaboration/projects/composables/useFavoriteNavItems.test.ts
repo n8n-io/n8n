@@ -9,7 +9,6 @@ import { VIEWS } from '@/app/constants';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 
 vi.mock('vue-router', async (importOriginal) => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const actual = await importOriginal<typeof import('vue-router')>();
 	return {
 		...actual,
@@ -59,7 +58,7 @@ describe('useFavoriteNavItems', () => {
 				id: 'favorite-workflow-wf-1',
 				label: 'Workflow 1',
 				icon: 'log-in',
-				route: { to: { name: VIEWS.WORKFLOW, params: { name: 'wf-1' } } },
+				route: { to: { name: VIEWS.WORKFLOW, params: { workflowId: 'wf-1' } } },
 			});
 		});
 
@@ -100,7 +99,10 @@ describe('useFavoriteNavItems', () => {
 
 			const { favoriteProjectItems } = useFavoriteNavItems();
 
-			expect(favoriteProjectItems.value[0].menuItem.icon).toBe('layers');
+			expect(favoriteProjectItems.value[0].menuItem.icon).toEqual({
+				type: 'icon',
+				value: 'layers',
+			});
 		});
 
 		it('should use raw resourceId as item id (no prefix)', () => {

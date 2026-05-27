@@ -290,11 +290,13 @@ export class TelemetryRecorder {
 
 		const payload = JSON.stringify(this.buildUnifiedPayload(record));
 		const authHeader = `Basic ${Buffer.from(`${webhookUser}:${webhookPassword}`).toString('base64')}`;
+		// node -e <script> arg1 arg2 → argv[0]=node, argv[1]=arg1, argv[2]=arg2.
+		// Reading argv[2]/argv[3] would silently fetch undefined and swallow the error.
 		const script = `
-			fetch(process.argv[2], {
+			fetch(process.argv[1], {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', 'Authorization': process.env.WEBHOOK_AUTH },
-				body: process.argv[3]
+				body: process.argv[2]
 			}).catch(() => process.exit(1));
 		`;
 

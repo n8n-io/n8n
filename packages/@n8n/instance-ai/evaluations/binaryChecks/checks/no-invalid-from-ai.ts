@@ -24,12 +24,13 @@ export const noInvalidFromAi: BinaryCheck = {
 	name: 'no_invalid_from_ai',
 	description: 'Only tool nodes use $fromAI() in their parameters',
 	kind: 'deterministic',
+	dimension: 'parameter_correctness',
 	run(workflow) {
 		const nodes = workflow.nodes ?? [];
-		if (nodes.length === 0) return { pass: true };
+		const usesFromAiAnywhere = nodes.some((n) => n.parameters && containsFromAi(n.parameters));
+		if (!usesFromAiAnywhere) return { pass: true, applicable: false };
 
 		const issues: string[] = [];
-
 		for (const node of nodes) {
 			if (isToolNode(node.type)) continue;
 			if (!node.parameters) continue;

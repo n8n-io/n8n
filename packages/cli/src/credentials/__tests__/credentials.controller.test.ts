@@ -57,21 +57,19 @@ describe('CredentialsController', () => {
 		mock(), // credentialsHelper
 		mock(), // externalSecretsConfig
 		mock(), // externalSecretsProviderAccessCheckService
+		mock(), // connectionStatusProxy
 	);
 
 	// Spy on methods that need to be mocked in tests
 	// This allows us to mock specific behavior while keeping real implementations
 	// for isChangingExternalSecretExpression and validateExternalSecretsPermissions
-	const decryptSpy = jest.spyOn(credentialsService, 'decrypt');
-	const createEncryptedDataSpy = jest.spyOn(credentialsService, 'createEncryptedData');
-	const getCredentialScopesSpy = jest.spyOn(credentialsService, 'getCredentialScopes');
-	const updateSpy = jest.spyOn(credentialsService, 'update');
-	const createUnmanagedCredentialSpy = jest.spyOn(credentialsService, 'createUnmanagedCredential');
-	const findCredentialOwningProjectSpy = jest.spyOn(
-		sharedCredentialsRepository,
-		'findCredentialOwningProject',
-	);
-	const emitSpy = jest.spyOn(eventService, 'emit');
+	let decryptSpy: jest.SpyInstance;
+	let createEncryptedDataSpy: jest.SpyInstance;
+	let getCredentialScopesSpy: jest.SpyInstance;
+	let updateSpy: jest.SpyInstance;
+	let createUnmanagedCredentialSpy: jest.SpyInstance;
+	let findCredentialOwningProjectSpy: jest.SpyInstance;
+	let emitSpy: jest.SpyInstance;
 
 	const credentialsController = new CredentialsController(
 		mock(),
@@ -95,6 +93,16 @@ describe('CredentialsController', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		decryptSpy = jest.spyOn(credentialsService, 'decrypt');
+		createEncryptedDataSpy = jest.spyOn(credentialsService, 'createEncryptedData');
+		getCredentialScopesSpy = jest.spyOn(credentialsService, 'getCredentialScopes');
+		updateSpy = jest.spyOn(credentialsService, 'update');
+		createUnmanagedCredentialSpy = jest.spyOn(credentialsService, 'createUnmanagedCredential');
+		findCredentialOwningProjectSpy = jest.spyOn(
+			sharedCredentialsRepository,
+			'findCredentialOwningProject',
+		);
+		emitSpy = jest.spyOn(eventService, 'emit');
 		// Set up credentialsRepository.create to return the input data
 		credentialsRepository.create.mockImplementation((data) => data as CredentialsEntity);
 	});
@@ -177,8 +185,8 @@ describe('CredentialsController', () => {
 		});
 
 		beforeEach(() => {
-			decryptSpy.mockReturnValue({ apiKey: 'test-key' });
-			createEncryptedDataSpy.mockReturnValue(getEncryptedCredential());
+			decryptSpy.mockResolvedValue({ apiKey: 'test-key' });
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential());
 			getCredentialScopesSpy.mockResolvedValue([
 				'credential:read' as Scope,
 				'credential:update' as Scope,
@@ -396,7 +404,7 @@ describe('CredentialsController', () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
 				existingCredentialWithResolvable,
 			);
-			createEncryptedDataSpy.mockReturnValue(getEncryptedCredential(true));
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(true));
 			updateSpy.mockResolvedValue({
 				...existingCredentialWithResolvable,
 				name: 'Updated Credential',
@@ -437,7 +445,7 @@ describe('CredentialsController', () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
 				existingCredentialWithResolvable,
 			);
-			createEncryptedDataSpy.mockReturnValue(getEncryptedCredential(true));
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(true));
 			updateSpy.mockResolvedValue({
 				...existingCredentialWithResolvable,
 				name: 'Updated Credential',
@@ -475,7 +483,7 @@ describe('CredentialsController', () => {
 				existingCredentialWithSecret,
 			);
 			// Mock setup: existing credential already has a secret expression
-			decryptSpy.mockReturnValue({ apiKey: '$secrets.oldKey' });
+			decryptSpy.mockResolvedValue({ apiKey: '$secrets.oldKey' });
 
 			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrow(
 				'Lacking permissions to reference external secrets in credentials',
@@ -504,7 +512,7 @@ describe('CredentialsController', () => {
 
 			// Mock setup: existing credential has no external secret yet
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
-			decryptSpy.mockReturnValue({ apiKey: 'regular-key' });
+			decryptSpy.mockResolvedValue({ apiKey: 'regular-key' });
 
 			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrow(
 				'Lacking permissions to reference external secrets in credentials',

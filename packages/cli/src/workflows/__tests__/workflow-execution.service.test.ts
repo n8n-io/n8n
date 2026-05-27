@@ -100,10 +100,14 @@ describe('WorkflowExecutionService', () => {
 		mock(),
 		mock(),
 		mockOwnershipService(),
+		mock(),
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
-	jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+	beforeEach(() => {
+		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+	});
 
 	describe('runWorkflow()', () => {
 		test('should call `WorkflowRunner.run()`', async () => {
@@ -119,6 +123,35 @@ describe('WorkflowExecutionService', () => {
 			await workflowExecutionService.runWorkflow(workflow, node, [[]], mock(), 'trigger');
 
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+		});
+
+		test('should forward deduplicationKey to `WorkflowRunner.run()`', async () => {
+			const node = mock<INode>();
+			const workflow = mock<IWorkflowBase>({
+				active: true,
+				activeVersionId: 'some-version-id',
+				nodes: [node],
+			});
+
+			workflowRunner.run.mockResolvedValue('fake-execution-id');
+
+			await workflowExecutionService.runWorkflow(
+				workflow,
+				node,
+				[[]],
+				mock(),
+				'trigger',
+				undefined,
+				'wf-1:node-1:1700000000000',
+			);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({ deduplicationKey: 'wf-1:node-1:1700000000000' }),
+				true,
+				undefined,
+				undefined,
+				undefined,
+			);
 		});
 	});
 
@@ -428,6 +461,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mockOwnershipService(),
+				mock(),
 			);
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
@@ -497,6 +531,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mockOwnershipService(),
+				mock(),
 			);
 
 			const result = await service.executeManually(workflowData, runPayload, user);
@@ -665,6 +700,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mockOwnershipService(),
+				mock(),
 			);
 		});
 
@@ -817,6 +853,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mockOwnershipService(),
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -946,6 +983,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				workflowRunnerMock,
 				globalConfig,
+				mock(),
 				mock(),
 				mock(),
 				mock(),

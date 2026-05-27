@@ -11,8 +11,7 @@ jest.unmock('@/telemetry');
 jest.mock('@/posthog');
 
 describe('Telemetry', () => {
-	let startPulseSpy: jest.SpyInstance;
-	const spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
+	let spyTrack: jest.SpyInstance;
 
 	const mockRudderStack = mock<RudderStack>();
 
@@ -26,9 +25,6 @@ describe('Telemetry', () => {
 	});
 
 	beforeAll(() => {
-		// @ts-expect-error Spying on private method
-		startPulseSpy = jest.spyOn(Telemetry.prototype, 'startPulse').mockImplementation(() => {});
-
 		jest.useFakeTimers();
 		jest.setSystemTime(testDateTime);
 		globalConfig.deployment.type = 'n8n-testing';
@@ -37,12 +33,13 @@ describe('Telemetry', () => {
 	afterAll(async () => {
 		jest.clearAllTimers();
 		jest.useRealTimers();
-		startPulseSpy.mockRestore();
 		await telemetry.stopTracking();
 	});
 
 	beforeEach(async () => {
-		spyTrack.mockClear();
+		spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
+		// @ts-expect-error Spying on private method
+		jest.spyOn(Telemetry.prototype, 'startPulse').mockImplementation(() => {});
 
 		const postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
@@ -345,6 +342,137 @@ describe('Telemetry', () => {
 			// Cross-check other types are undefined
 			expect(execBuffer['1'].prod_crashed).toBeUndefined();
 			expect(execBuffer['2'].manual_crashed).toBeUndefined();
+		});
+	});
+
+	describe('trackAgentExecution', () => {
+		test('should aggregate agent execution counters by agent ID', () => {
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', token_count: 15 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', tool_call_count: 2 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-2', message_count: 1 });
+
+			expect(spyTrack).toHaveBeenCalledTimes(0);
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({
+				'agent-1': {
+					agent_id: 'agent-1',
+					message_count: 1,
+					token_count: 15,
+					tool_call_count: 2,
+				},
+				'agent-2': {
+					agent_id: 'agent-2',
+					message_count: 1,
+					token_count: 0,
+					tool_call_count: 0,
+				},
+			});
+		});
+
+		test('should flush agent execution counters and reset the buffer', () => {
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', token_count: 15 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', tool_call_count: 2 });
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentExecutionCounts();
+
+			expect(spyTrack).toHaveBeenCalledWith('Agent execution count', {
+				event_version: '1',
+				agent_id: 'agent-1',
+				message_count: 1,
+				token_count: 15,
+				tool_call_count: 2,
+			});
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
+		});
+
+		test('should allow a post-flush window with tokens but no fresh user turn', () => {
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', token_count: 15 });
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentExecutionCounts();
+			spyTrack.mockClear();
+
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', token_count: 20 });
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentExecutionCounts();
+
+			expect(spyTrack).toHaveBeenCalledWith('Agent execution count', {
+				event_version: '1',
+				agent_id: 'agent-1',
+				message_count: 0,
+				token_count: 20,
+				tool_call_count: 0,
+			});
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
+		});
+
+		test('should aggregate agent execution counters by agent ID and user ID when present', () => {
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-1', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-1', token_count: 15 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-2', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', tool_call_count: 2 });
+
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({
+				'agent-1:user-1': {
+					agent_id: 'agent-1',
+					user_id: 'user-1',
+					message_count: 1,
+					token_count: 15,
+					tool_call_count: 0,
+				},
+				'agent-1:user-2': {
+					agent_id: 'agent-1',
+					user_id: 'user-2',
+					message_count: 1,
+					token_count: 0,
+					tool_call_count: 0,
+				},
+				'agent-1': {
+					agent_id: 'agent-1',
+					message_count: 0,
+					token_count: 0,
+					tool_call_count: 2,
+				},
+			});
+		});
+
+		test('should flush attributed and unattributed agent execution counters separately', () => {
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-1', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-1', token_count: 15 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', token_count: 20 });
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentExecutionCounts();
+
+			expect(spyTrack).toHaveBeenCalledWith('Agent execution count', {
+				event_version: '1',
+				agent_id: 'agent-1',
+				user_id: 'user-1',
+				message_count: 1,
+				token_count: 15,
+				tool_call_count: 0,
+			});
+			expect(spyTrack).toHaveBeenCalledWith('Agent execution count', {
+				event_version: '1',
+				agent_id: 'agent-1',
+				message_count: 0,
+				token_count: 20,
+				tool_call_count: 0,
+			});
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
+		});
+
+		test('should not buffer when rudderStack is not initialized', () => {
+			// @ts-expect-error Assigning to private property
+			telemetry.rudderStack = undefined;
+
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', message_count: 1 });
+
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
 		});
 	});
 

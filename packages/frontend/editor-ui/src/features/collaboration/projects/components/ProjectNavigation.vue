@@ -9,6 +9,7 @@ import type { IMenuItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
 import { useProjectsStore } from '../projects.store';
+import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
@@ -91,7 +92,7 @@ const shared = computed<IMenuItem>(() => ({
 const getProjectMenuItem = (project: ProjectListItem): IMenuItem => ({
 	id: project.id,
 	label: project.name ?? '',
-	icon: project.icon as IMenuItem['icon'],
+	icon: (project.icon as IMenuItem['icon']) ?? DEFAULT_PROJECT_ICON,
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,
@@ -119,7 +120,7 @@ const instanceAi = computed<IMenuItem>(() => ({
 	icon: 'sparkles',
 	label: locale.baseText('projects.menu.instanceAi'),
 	route: { to: { name: INSTANCE_AI_VIEW } },
-	beta: true,
+	preview: true,
 }));
 
 const chat = computed<IMenuItem>(() => ({
@@ -128,7 +129,7 @@ const chat = computed<IMenuItem>(() => ({
 	label: locale.baseText('projects.menu.chat'),
 	position: 'bottom',
 	route: { to: { name: CHAT_VIEW } },
-	beta: true,
+	preview: true,
 }));
 
 async function onSourceControlPull() {

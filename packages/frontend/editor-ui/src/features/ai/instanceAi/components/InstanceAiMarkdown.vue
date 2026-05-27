@@ -1,22 +1,25 @@
 <script lang="ts" setup>
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
-import type { ComponentPublicInstance } from 'vue';
 import { computed, inject, onBeforeUnmount, onMounted, onUpdated, ref, useCssModule } from 'vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
 
 const props = defineProps<{
 	content: string;
 }>();
 
-const store = useInstanceAiStore();
+const thread = useThread();
 const styles = useCssModule();
-const wrapperRef = ref<ComponentPublicInstance | null>(null);
+const wrapperRef = ref<HTMLElement | null>(null);
 
-const openWorkflowPreview = inject<((id: string) => void) | undefined>(
+/**
+ * Preview openers — return true when they switched the preview tab, false
+ * when the tab was already active (so we fall back to opening a new tab).
+ */
+const openWorkflowPreview = inject<((id: string) => boolean) | undefined>(
 	'openWorkflowPreview',
 	undefined,
 );
-const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
+const openDataTablePreview = inject<((id: string, projectId: string) => boolean) | undefined>(
 	'openDataTablePreview',
 	undefined,
 );
@@ -31,11 +34,11 @@ const ICON_SVGS: Record<string, string> = {
 		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>',
 };
 
-/** URL builders for each resource type. */
+/** URL builders for each resource type — fallbacks when the registry has no projectId. */
 const URL_BUILDERS: Record<string, (id: string) => string> = {
 	workflow: (id) => `/workflow/${id}`,
-	credential: () => '/credentials',
-	'data-table': () => '/data-tables',
+	credential: (id) => `/home/credentials/${id}`,
+	'data-table': () => '/home/datatables',
 };
 
 /**
@@ -50,63 +53,171 @@ const URL_BUILDERS: Record<string, (id: string) => string> = {
 const INTERNAL_BLOCK_PATTERN =
 	/<(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)[\s\S]*?<\/(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)>/g;
 
-const processedContent = computed(() => {
-	const registry = store.resourceNameIndex;
+const rawContent = computed(() => props.content.replace(INTERNAL_BLOCK_PATTERN, '').trim());
 
-	// Strip internal protocol blocks the LLM may have echoed
-	let result = props.content.replace(INTERNAL_BLOCK_PATTERN, '').trim();
+function escapeMarkdownLinkText(value: string): string {
+	return value.replace(/\\/g, '\\\\').replace(/\[/g, '\\[').replace(/\]/g, '\\]');
+}
 
-	if (registry.size === 0) return result;
+function isEscaped(content: string, index: number): boolean {
+	let backslashCount = 0;
+	for (let i = index - 1; i >= 0 && content[i] === '\\'; i--) {
+		backslashCount++;
+	}
+	return backslashCount % 2 === 1;
+}
+
+function findCodeSpanEnd(content: string, start: number): number | undefined {
+	let tickCount = 0;
+	while (content[start + tickCount] === '`') tickCount++;
+
+	const fence = '`'.repeat(tickCount);
+	const end = content.indexOf(fence, start + tickCount);
+	return end === -1 ? undefined : end + tickCount;
+}
+
+function findMarkdownLinkEnd(content: string, start: number): number | undefined {
+	let bracketDepth = 1;
+	let closeBracketIndex: number | undefined;
+
+	for (let i = start + 1; i < content.length; i++) {
+		if (isEscaped(content, i)) continue;
+		if (content[i] === '[') {
+			bracketDepth++;
+		} else if (content[i] === ']') {
+			bracketDepth--;
+			if (bracketDepth === 0) {
+				closeBracketIndex = i;
+				break;
+			}
+		}
+	}
+
+	if (closeBracketIndex === undefined || content[closeBracketIndex + 1] !== '(') return undefined;
+
+	let parenDepth = 1;
+	for (let i = closeBracketIndex + 2; i < content.length; i++) {
+		if (isEscaped(content, i)) continue;
+		if (content[i] === '(') {
+			parenDepth++;
+		} else if (content[i] === ')') {
+			parenDepth--;
+			if (parenDepth === 0) return i + 1;
+		}
+	}
+
+	return undefined;
+}
+
+function replaceUnprotectedMarkdownText(
+	content: string,
+	replaceSegment: (segment: string) => string,
+): string {
+	let result = '';
+	let segmentStart = 0;
+	let index = 0;
+
+	while (index < content.length) {
+		const char = content[index];
+		const protectedEnd =
+			char === '`'
+				? findCodeSpanEnd(content, index)
+				: char === '[' && !isEscaped(content, index)
+					? findMarkdownLinkEnd(content, index)
+					: undefined;
+
+		if (protectedEnd !== undefined) {
+			result += replaceSegment(content.slice(segmentStart, index));
+			result += content.slice(index, protectedEnd);
+			segmentStart = protectedEnd;
+			index = protectedEnd;
+			continue;
+		}
+
+		index++;
+	}
+
+	return result + replaceSegment(content.slice(segmentStart));
+}
+
+function decorateResourceNames(content: string): string {
+	const registry = thread.resourceNameIndex;
+	if (registry.size === 0) return content;
 
 	// Build entries sorted longest-name-first to avoid partial-match conflicts
 	const entries = [...registry.values()]
 		.filter((entry) => entry.name.length >= 3)
 		.sort((a, b) => b.name.length - a.name.length);
 
+	let result = content;
 	for (const entry of entries) {
-		// Escape special regex characters in the resource name
-		const escaped = entry.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		result = replaceUnprotectedMarkdownText(result, (segment) => {
+			// Escape special regex characters in the resource name
+			const escaped = entry.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-		// Match the resource name as a standalone token, but NOT if it is:
-		// - Inside backticks (inline code)
-		// - Already inside a markdown link [...](...) or the link URL part
-		// - Preceded by [ or followed by ]( (link text boundaries)
-		//
-		// Use \b when the name edge is a word character; use a whitespace/
-		// punctuation boundary otherwise (handles names like "Test (v2.0)").
-		const startBoundary = /\w/.test(entry.name[0]) ? '\\b' : '(?<=^|[\\s,;:!?])';
-		const endBoundary = /\w/.test(entry.name[entry.name.length - 1]) ? '\\b' : '(?=$|[\\s,;:!?.])';
+			// Use \b when the name edge is a word character; use a whitespace/
+			// punctuation boundary otherwise (handles names like "Test (v2.0)").
+			const startBoundary = /\w/.test(entry.name[0]) ? '\\b' : '(?<=^|[\\s,;:!?])';
+			const endBoundary = /\w/.test(entry.name[entry.name.length - 1])
+				? '\\b'
+				: '(?=$|[\\s,;:!?.])';
 
-		const pattern = new RegExp(
-			// Negative lookbehind: not preceded by [ or ` or /
-			'(?<![\\[`\\/])' +
-				// The name with appropriate boundaries
-				`${startBoundary}(${escaped})${endBoundary}` +
-				// Negative lookahead: not followed by ]( or ` or ://
-				'(?![\\]`]|\\(|://)',
-			'g',
-		);
+			const pattern = new RegExp(
+				// Negative lookbehind: not preceded by / so URL paths are not mutated.
+				'(?<!\\/)' +
+					// The name with appropriate boundaries
+					`${startBoundary}(${escaped})${endBoundary}` +
+					// Negative lookahead: not followed by :// so URLs are not mutated.
+					'(?!://)',
+				'g',
+			);
 
-		result = result.replace(pattern, (_match, name: string) => {
-			const url = `n8n-resource://${entry.type}/${entry.id}`;
-			return `[${name}](${url})`;
+			return segment.replace(pattern, (_match, name: string) => {
+				const url = `n8n-resource://${entry.type}/${encodeURIComponent(entry.id)}`;
+				return `[${escapeMarkdownLinkText(name)}](${url})`;
+			});
 		});
 	}
 
 	return result;
-});
+}
 
 const source = computed(() => ({
 	type: 'text' as const,
-	content: processedContent.value,
+	content: decorateResourceNames(rawContent.value),
 }));
 
 /** Route patterns that map internal n8n URLs to resource types. */
 const INTERNAL_ROUTE_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
-	{ pattern: /^(?:https?:\/\/[^/]+)?\/workflow\/([a-zA-Z0-9]+)/, type: 'workflow' },
-	{ pattern: /^(?:https?:\/\/[^/]+)?\/credentials(?:\/|$)/, type: 'credential' },
-	{ pattern: /^(?:https?:\/\/[^/]+)?\/data-tables(?:\/|$)/, type: 'data-table' },
+	{ pattern: /^\/workflow\/([a-zA-Z0-9]+)/, type: 'workflow' },
+	{ pattern: /^\/(?:home\/)?credentials(?:\/|$)/, type: 'credential' },
+	{ pattern: /^\/(?:home\/)?data-?tables(?:\/|$)/, type: 'data-table' },
+	{ pattern: /^\/projects\/[^/]+\/credentials(?:\/|$)/, type: 'credential' },
+	{ pattern: /^\/projects\/[^/]+\/datatables(?:\/|$)/, type: 'data-table' },
 ];
+
+const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
+
+function getSameOriginPathname(href: string): string | undefined {
+	const isRootRelative = href.startsWith('/') && !href.startsWith('//');
+	const isAbsolute = ABSOLUTE_URL_PATTERN.test(href);
+	if (!isRootRelative && !isAbsolute) return undefined;
+
+	try {
+		const url = new URL(href, window.location.origin);
+		return url.origin === window.location.origin ? url.pathname : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+function decodeResourceId(value: string): string {
+	try {
+		return decodeURIComponent(value);
+	} catch {
+		return value;
+	}
+}
 
 /**
  * Apply resource chip styling (icon + class) to an anchor element.
@@ -124,6 +235,19 @@ function applyResourceChip(link: HTMLAnchorElement, type: string): void {
 	}
 }
 
+/**
+ * Build the real app URL for a resource. Project-scoped routes are preferred
+ * when the registry knows the resource's projectId; otherwise we fall back to
+ * the home view, which works for any resource the user has access to.
+ */
+function buildResourceUrl(type: string, id: string, projectId: string | undefined): string {
+	if (projectId) {
+		if (type === 'data-table') return `/projects/${projectId}/datatables/${id}`;
+		if (type === 'credential') return `/projects/${projectId}/credentials/${id}`;
+	}
+	return URL_BUILDERS[type]?.(id) ?? '#';
+}
+
 /** Track click handlers attached to links so they can be cleaned up. */
 const linkHandlers = new WeakMap<HTMLAnchorElement, (e: MouseEvent) => void>();
 
@@ -132,11 +256,19 @@ const linkHandlers = new WeakMap<HTMLAnchorElement, (e: MouseEvent) => void>();
  * styled resource chips with icons. Handles both:
  * - `n8n-resource://` custom scheme links (from pre-processing)
  * - Standard links pointing to internal n8n routes (generated by the AI)
+ *
+ * Click behavior:
+ * - Cmd/Ctrl+click → browser handles new-tab via target="_blank"
+ * - Left-click on workflow/data-table → opens (or switches to) the inline
+ *   preview tab. If the preview is already showing this resource, falls
+ *   through to default `target="_blank"` and opens a new tab instead.
+ * - Left-click on credential (or any chip without an available preview)
+ *   → opens in a new tab.
  */
 function enhanceResourceLinks(): void {
 	if (!wrapperRef.value) return;
 
-	const allLinks = (wrapperRef.value.$el as HTMLElement).querySelectorAll<HTMLAnchorElement>('a');
+	const allLinks = wrapperRef.value.querySelectorAll<HTMLAnchorElement>('a');
 
 	for (const link of allLinks) {
 		// Already enhanced — skip
@@ -147,44 +279,38 @@ function enhanceResourceLinks(): void {
 		// 1. Handle n8n-resource:// custom scheme links
 		const resourceMatch = /^n8n-resource:\/\/(workflow|credential|data-table)\/(.+)$/.exec(href);
 		if (resourceMatch) {
-			const [, type, id] = resourceMatch;
+			const [, type, encodedId] = resourceMatch;
+			const id = decodeResourceId(encodedId);
 
-			// Look up registry entry (needed for projectId on data-table links).
+			// Look up registry entry to find projectId for project-scoped routes.
 			// Search the name index because it contains both produced and listed
-			// resources — a user may click through to a data table the agent
+			// resources — a user may click through to a resource the agent
 			// only referenced via a list call.
-			const registryEntry =
-				type === 'data-table'
-					? [...store.resourceNameIndex.values()].find(
-							(r) => r.type === 'data-table' && r.id === id,
-						)
-					: undefined;
+			const registryEntry = [...thread.resourceNameIndex.values()].find(
+				(r) => r.type === type && r.id === id,
+			);
 
-			// Swap href to the real app URL (used for Cmd+click / new tab)
-			link.href =
-				type === 'data-table' && registryEntry?.projectId
-					? `/projects/${registryEntry.projectId}/datatables/${id}`
-					: (URL_BUILDERS[type]?.(id) ?? '#');
+			link.href = buildResourceUrl(type, id, registryEntry?.projectId);
 			link.target = '_blank';
+			link.rel = 'noopener noreferrer';
 			link.dataset.resourceId = id;
 			applyResourceChip(link, type);
 
-			// Regular click opens preview; Cmd/Ctrl+click falls through to default (new tab)
 			const handler = (e: MouseEvent) => {
 				if (e.metaKey || e.ctrlKey) return; // Let browser handle new-tab
 
-				const canPreview =
-					(type === 'workflow' && openWorkflowPreview) ||
-					(type === 'data-table' && registryEntry?.projectId && openDataTablePreview);
-
-				if (!canPreview) return; // Let browser navigate normally
-
-				e.preventDefault();
+				let switched: boolean | undefined;
 				if (type === 'workflow') {
-					openWorkflowPreview?.(id);
+					switched = openWorkflowPreview?.(id);
 				} else if (type === 'data-table' && registryEntry?.projectId) {
-					openDataTablePreview?.(id, registryEntry.projectId);
+					switched = openDataTablePreview?.(id, registryEntry.projectId);
 				}
+
+				// Suppress default navigation only when the preview actually switched.
+				// If preview was already showing this resource (switched === false) or
+				// no preview is available (switched === undefined), let target="_blank"
+				// open a new tab.
+				if (switched === true) e.preventDefault();
 			};
 			link.addEventListener('click', handler);
 			linkHandlers.set(link, handler);
@@ -193,9 +319,13 @@ function enhanceResourceLinks(): void {
 		}
 
 		// 2. Handle standard links pointing to internal n8n routes
+		const internalPathname = getSameOriginPathname(href);
+		if (!internalPathname) continue;
+
 		for (const { pattern, type } of INTERNAL_ROUTE_PATTERNS) {
-			if (pattern.test(href)) {
+			if (pattern.test(internalPathname)) {
 				link.target = '_blank';
+				link.rel = 'noopener noreferrer';
 				applyResourceChip(link, type);
 				break;
 			}
@@ -206,7 +336,7 @@ function enhanceResourceLinks(): void {
 /** Remove click handlers from all enhanced links. */
 function cleanupLinkHandlers(): void {
 	if (!wrapperRef.value) return;
-	const allLinks = (wrapperRef.value.$el as HTMLElement).querySelectorAll<HTMLAnchorElement>('a');
+	const allLinks = wrapperRef.value.querySelectorAll<HTMLAnchorElement>('a');
 	for (const link of allLinks) {
 		const handler = linkHandlers.get(link);
 		if (handler) {
@@ -225,7 +355,9 @@ onBeforeUnmount(cleanupLinkHandlers);
 </script>
 
 <template>
-	<ChatMarkdownChunk ref="wrapperRef" :source="source" />
+	<div ref="wrapperRef">
+		<ChatMarkdownChunk :source="source" />
+	</div>
 </template>
 
 <style lang="scss" module>

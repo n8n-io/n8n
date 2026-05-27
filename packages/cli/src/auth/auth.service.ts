@@ -268,18 +268,39 @@ export class AuthService {
 
 		this.validateBrowserId(jwtPayload, browserId, endpoint, method);
 
-		const usedMfa = jwtPayload.usedMfa ?? false;
+		await this.checkMfaGate(user, jwtPayload);
 
-		// MFA was used, we are good either way.
-		if (usedMfa) {
-			return user;
+		return user;
+	}
+
+	/**
+	 * Validates an n8n auth cookie (JWT) without request-bound checks (browserId / endpoint / method).
+	 *
+	 * Use when the cookie was captured at the controller boundary and must be re-validated
+	 * later in the execution lifecycle, after the original HTTP request is no longer available.
+	 *
+	 * @param cookie - The JWT string extracted from the `n8n-auth` browser cookie.
+	 */
+	async authenticateUserByCookie(cookie: string): Promise<User> {
+		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token: cookie });
+		if (isInvalid) throw new AuthError('Unauthorized');
+
+		const { user, jwtPayload } = await this.validateToken(cookie);
+
+		await this.checkMfaGate(user, jwtPayload);
+		return user;
+	}
+
+	private async checkMfaGate(user: User, jwtPayload: IssuedJWT): Promise<void> {
+		if (jwtPayload.usedMfa ?? false) {
+			return;
 		}
-		const mfaEnforced = await this.mfaService.isMFAEnforced();
 
+		const mfaEnforced = await this.mfaService.isMFAEnforced();
 		if (!mfaEnforced && !user.mfaEnabled) {
 			// MFA is not enforced and the user has MFA not enabled
 			// we are good
-			return user;
+			return;
 		}
 
 		// either MFA is enforced or user has MFA enabled
@@ -385,9 +406,9 @@ export class AuthService {
 			decodedToken = this.jwtService.verify(token);
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {
-				this.logger.debug('Reset password token expired', { token });
+				this.logger.debug('Reset password token expired');
 			} else {
-				this.logger.debug('Error verifying token', { token });
+				this.logger.debug('Error verifying token');
 			}
 			return;
 		}
@@ -400,7 +421,7 @@ export class AuthService {
 		if (!user) {
 			this.logger.debug(
 				'Request to resolve password token failed because no user was found for the provided user ID',
-				{ userId: decodedToken.sub, token },
+				{ userId: decodedToken.sub },
 			);
 			return;
 		}
