@@ -24,7 +24,8 @@
   "module": "src/index.ts",
   "types": "dist/index.d.ts",
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "skills/**/*"
   ],
   "exports": {
     ".": {
@@ -57,7 +58,7 @@
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
-    "csv-parse": "6.2.1",
+    "csv-parse": "catalog:",
     "fast-glob": "catalog:",
     "flatted": "catalog:",
     "langsmith": "catalog:",

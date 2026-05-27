@@ -698,21 +698,24 @@ describe('WorkflowExecuteAdditionalData', () => {
 	describe('getBase', () => {
 		const mockWebhookBaseUrl = 'https://webhook.example.com/';
 		const mockInstanceBaseUrl = 'https://editor.example.com';
-		jest.spyOn(urlService, 'getWebhookBaseUrl').mockReturnValue(mockWebhookBaseUrl);
-		jest.spyOn(urlService, 'getInstanceBaseUrl').mockReturnValue(mockInstanceBaseUrl);
 
 		const globalConfig = mockInstance(GlobalConfig);
 		Container.set(GlobalConfig, globalConfig);
-		globalConfig.endpoints = mock<GlobalConfig['endpoints']>({
-			rest: '/rest/',
-			formWaiting: '/form-waiting/',
-			webhook: '/webhook/',
-			webhookWaiting: '/webhook-waiting/',
-			webhookTest: '/webhook-test/',
-		});
 
 		const mockVariables = { variable: 1 };
-		jest.spyOn(WorkflowHelpers, 'getVariables').mockResolvedValue(mockVariables);
+
+		beforeEach(() => {
+			jest.spyOn(urlService, 'getWebhookBaseUrl').mockReturnValue(mockWebhookBaseUrl);
+			jest.spyOn(urlService, 'getInstanceBaseUrl').mockReturnValue(mockInstanceBaseUrl);
+			globalConfig.endpoints = mock<GlobalConfig['endpoints']>({
+				rest: '/rest/',
+				formWaiting: '/form-waiting/',
+				webhook: '/webhook/',
+				webhookWaiting: '/webhook-waiting/',
+				webhookTest: '/webhook-test/',
+			});
+			jest.spyOn(WorkflowHelpers, 'getVariables').mockResolvedValue(mockVariables);
+		});
 
 		it('should return base additional data with default values', async () => {
 			const additionalData = await getBase();
@@ -808,6 +811,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				THREAD_ID,
 				'user-1',
 				'project-1',
+				'user-1',
 			);
 		});
 
@@ -835,6 +839,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				THREAD_ID,
 				'owner-1',
 				'project-1',
+				undefined,
 			);
 		});
 

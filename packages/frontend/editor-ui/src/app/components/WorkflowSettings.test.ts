@@ -15,6 +15,8 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { Project } from '@/features/collaboration/projects/projects.types';
 import * as restApiClient from '@n8n/rest-api-client';
 import { mock } from 'vitest-mock-extended';
 import { BINARY_MODE_COMBINED } from 'n8n-workflow';
@@ -74,6 +76,7 @@ let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
 let sourceControlStore: MockedStore<typeof useSourceControlStore>;
+let projectsStore: MockedStore<typeof useProjectsStore>;
 let pinia: ReturnType<typeof createTestingPinia>;
 
 let searchWorkflowsSpy: MockInstance<(typeof workflowsListStore)['searchWorkflows']>;
@@ -109,6 +112,7 @@ describe('WorkflowSettingsVue', () => {
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 		settingsStore = mockedStore(useSettingsStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
+		projectsStore = mockedStore(useProjectsStore);
 
 		// Mock specific store actions that tests assert on
 		workflowsStore.updateWorkflow = vi.fn();
@@ -989,7 +993,7 @@ describe('WorkflowSettingsVue', () => {
 	});
 
 	describe('Redaction Policy', () => {
-		it('should show locked redaction policy when licensed but user lacks updateRedactionSetting scope', async () => {
+		it('should show redaction policy section when licensed but user lacks redaction scopes', async () => {
 			const { getByTestId } = createComponent({ pinia });
 			await flushPromises();
 
@@ -1005,7 +1009,7 @@ describe('WorkflowSettingsVue', () => {
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
-				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+				scopes: ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction'],
 			});
 			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
 			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
@@ -1016,7 +1020,7 @@ describe('WorkflowSettingsVue', () => {
 			expect(queryByTestId('workflow-settings-redaction-policy')).not.toBeInTheDocument();
 		});
 
-		it('should disable redaction dropdowns when user lacks updateRedactionSetting scope', async () => {
+		it('should disable redaction dropdowns when user lacks enableRedaction scope', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 
 			const { getByTestId } = createComponent({ pinia });
@@ -1038,7 +1042,7 @@ describe('WorkflowSettingsVue', () => {
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
-				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+				scopes: ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction'],
 			});
 			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
 			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
@@ -1052,11 +1056,16 @@ describe('WorkflowSettingsVue', () => {
 		it('should render two redaction dropdowns with correct options', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
+			projectsStore.personalProject = mock<Project>({
+				scopes: ['workflow:enableRedaction', 'workflow:disableRedaction'],
+			});
+
 			const workflowWithRedactionScope = createTestWorkflow({
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
-				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+				scopes: ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction'],
 			});
 			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
 			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
@@ -1084,13 +1093,16 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should save redaction policy as non-manual when only production is set to redact', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
-			settingsStore.settings.envFeatureFlags.N8N_ENV_FEAT_REDACTION_POLICY = true;
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
+			projectsStore.personalProject = mock<Project>({
+				scopes: ['workflow:enableRedaction', 'workflow:disableRedaction'],
+			});
 
 			const workflowWithRedactionScope = createTestWorkflow({
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
-				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+				scopes: ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction'],
 			});
 			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
 			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
@@ -1126,11 +1138,16 @@ describe('WorkflowSettingsVue', () => {
 		it('should save redaction policy as all when both are set to redact', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
+			projectsStore.personalProject = mock<Project>({
+				scopes: ['workflow:enableRedaction', 'workflow:disableRedaction'],
+			});
+
 			const workflowWithRedactionScope = createTestWorkflow({
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
-				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+				scopes: ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction'],
 			});
 			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
 			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
@@ -1172,6 +1189,70 @@ describe('WorkflowSettingsVue', () => {
 			);
 		});
 
+		it('should enable production dropdown when policy is "none" and user has only enableRedaction scope', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
+			projectsStore.personalProject = mock<Project>({ scopes: ['workflow:enableRedaction'] });
+
+			const workflowEnableOnly = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:update', 'workflow:enableRedaction'],
+			});
+			workflowsListStore.workflowsById = { '1': workflowEnableOnly };
+			workflowsListStore.getWorkflowById.mockImplementation(() => workflowEnableOnly);
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			// Current policy is 'none' (default), so enabling = requires enableRedaction → unlocked
+			const productionCombobox = within(
+				getByTestId('workflow-settings-redact-production-select'),
+			).getByRole('combobox');
+			expect(productionCombobox).not.toBeDisabled();
+
+			// Manual select stays disabled until production is set to redact (workflow-level invariant).
+			const manualCombobox = within(
+				getByTestId('workflow-settings-redact-manual-select'),
+			).getByRole('combobox');
+			expect(manualCombobox).toBeDisabled();
+		});
+
+		it('should disable dropdowns when policy is active and user has only enableRedaction scope', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
+
+			// Current policy is 'all' so both dropdowns show 'redact' state.
+			// Switching to 'default' = disabling → requires disableRedaction (not granted).
+			workflowDocumentStore.setSettings({ redactionPolicy: 'all' });
+
+			const workflowEnableOnly = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:update', 'workflow:enableRedaction'],
+			});
+			workflowsListStore.workflowsById = { '1': workflowEnableOnly };
+			workflowsListStore.getWorkflowById.mockImplementation(() => workflowEnableOnly);
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			await waitFor(() => {
+				const productionCombobox = within(
+					getByTestId('workflow-settings-redact-production-select'),
+				).getByRole('combobox');
+				expect(productionCombobox).toBeDisabled();
+			});
+
+			const manualCombobox = within(
+				getByTestId('workflow-settings-redact-manual-select'),
+			).getByRole('combobox');
+			expect(manualCombobox).toBeDisabled();
+		});
+
 		it('should disable production redaction select and force "Redact" when dynamic credentials are configured', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue([
@@ -1194,7 +1275,7 @@ describe('WorkflowSettingsVue', () => {
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
-				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+				scopes: ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction'],
 			});
 			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
 			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
@@ -1222,11 +1303,14 @@ describe('WorkflowSettingsVue', () => {
 			}) => {
 				vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 				settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
+				projectsStore.personalProject = mock<Project>({
+					scopes: ['workflow:enableRedaction', 'workflow:disableRedaction'],
+				});
 				const workflow = createTestWorkflow({
 					id: '1',
 					name: 'Test Workflow',
 					active: true,
-					scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+					scopes: ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction'],
 				});
 				workflowsListStore.workflowsById = { '1': workflow };
 				workflowsListStore.getWorkflowById.mockImplementation(() => workflow);
@@ -1323,11 +1407,14 @@ describe('WorkflowSettingsVue', () => {
 					...DEFAULT_SECURITY_SETTINGS,
 					redactionEnforcement: { floor: 'production' },
 				});
+				projectsStore.personalProject = mock<Project>({
+					scopes: ['workflow:enableRedaction', 'workflow:disableRedaction'],
+				});
 				const workflow = createTestWorkflow({
 					id: '1',
 					name: 'Test Workflow',
 					active: true,
-					scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+					scopes: ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction'],
 				});
 				workflowsListStore.workflowsById = { '1': workflow };
 				workflowsListStore.getWorkflowById.mockImplementation(() => workflow);
@@ -1362,11 +1449,15 @@ describe('WorkflowSettingsVue', () => {
 					redactionEnforcement: { floor: params.enforced ? 'production' : 'off' },
 				});
 
+				const hasPermission = params.hasUpdatePermission ?? true;
 				const scopes = (
-					(params.hasUpdatePermission ?? true)
-						? ['workflow:update', 'workflow:updateRedactionSetting']
+					hasPermission
+						? ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction']
 						: ['workflow:update']
-				) as Array<'workflow:update' | 'workflow:updateRedactionSetting'>;
+				) as Array<'workflow:update' | 'workflow:enableRedaction' | 'workflow:disableRedaction'>;
+				projectsStore.personalProject = mock<Project>({
+					scopes: hasPermission ? ['workflow:enableRedaction', 'workflow:disableRedaction'] : [],
+				});
 				const workflow = createTestWorkflow({
 					id: '1',
 					name: 'Test Workflow',

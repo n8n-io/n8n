@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'fs';
 import { basename, join } from 'path';
 
+import { WorkflowTestCaseSchema } from './schema';
 import type { WorkflowTestCase } from '../../types';
 
 export interface WorkflowTestCaseWithFile {
@@ -11,13 +12,25 @@ export interface WorkflowTestCaseWithFile {
 
 function parseTestCaseFile(filePath: string): WorkflowTestCase {
 	const content = readFileSync(filePath, 'utf-8');
+
+	let raw: unknown;
 	try {
-		return JSON.parse(content) as WorkflowTestCase;
+		raw = JSON.parse(content);
 	} catch (error) {
 		throw new Error(
 			`Failed to parse test case ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
 		);
 	}
+
+	const parsed = WorkflowTestCaseSchema.safeParse(raw);
+	if (!parsed.success) {
+		const issues = parsed.error.issues
+			.map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`)
+			.join('\n');
+		throw new Error(`Invalid test case ${filePath}:\n${issues}`);
+	}
+
+	return parsed.data as WorkflowTestCase;
 }
 
 /** Split a comma-separated CLI value into a normalized list of substring tokens. */

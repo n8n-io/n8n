@@ -12,11 +12,21 @@ jest.mock('@n8n/instance-ai', () => {
 		createDomainAccessTracker: jest.fn(),
 		createSandbox: jest.fn(),
 		createWorkspace: jest.fn(),
-		createLazyRuntimeWorkspace: jest.fn((args: { ensureWorkspace: () => Promise<unknown> }) => ({
-			id: 'lazy-runtime-workspace',
-			ensureWorkspace: args.ensureWorkspace,
-		})),
+		createLazyRuntimeWorkspace: jest.fn(
+			(args: { id?: string; ensureWorkspace: () => Promise<unknown> }) => ({
+				id: args.id ?? 'lazy-runtime-workspace',
+				ensureWorkspace: args.ensureWorkspace,
+			}),
+		),
+		createLazyWorkspaceRuntimeSkillSource: jest.fn(({ source }) => source),
 		setupSandboxWorkspace: jest.fn(),
+		loadInstanceAiRuntimeSkillSource: jest.fn(() => ({
+			registry: {
+				skillsHash: 'runtime-skills-hash',
+				skills: [{ id: 'data-table-manager' }],
+			},
+			loadSkill: jest.fn(),
+		})),
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: jest.fn(),
 		handleVerificationVerdict: jest.fn(),
@@ -124,8 +134,10 @@ import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import {
 	createAllTools,
 	createLazyRuntimeWorkspace,
+	createLazyWorkspaceRuntimeSkillSource,
 	createSandbox,
 	createWorkspace,
+	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
 	setupSandboxWorkspace,
 	type InstanceAiContext,
@@ -485,11 +497,36 @@ type WorkspaceServiceInternals = {
 	sandboxes: Map<string, unknown>;
 	sandboxCreations: Map<string, Promise<unknown>>;
 	resolveSandboxConfig: jest.MockedFunction<(user: User) => Promise<SandboxConfig>>;
+	instanceAiConfig?: { builderSandboxTtlMs?: number };
+	sandboxTtlMs: number;
 	getOrCreateWorkspace: (
 		threadId: string,
 		user: User,
 		context: InstanceAiContext,
+		runId?: string,
 	) => Promise<unknown>;
+};
+
+type SandboxExpiryEntry = {
+	sandbox: unknown;
+	workspace: { destroy: jest.MockedFunction<() => Promise<void>> };
+	setupComplete: boolean;
+	setupPromise: Promise<void> | undefined;
+	expiresAt: number;
+	cleanupTimer?: ReturnType<typeof setTimeout>;
+};
+
+type SandboxExpiryServiceInternals = {
+	sandboxes: Map<string, SandboxExpiryEntry>;
+	instanceAiConfig: { builderSandboxTtlMs?: number };
+	runState: {
+		getActiveRunId: jest.MockedFunction<(threadId: string) => string | undefined>;
+		hasSuspendedRun: jest.MockedFunction<(threadId: string) => boolean>;
+	};
+	backgroundTasks: {
+		getRunningTasks: jest.MockedFunction<(threadId: string) => ManagedBackgroundTask[]>;
+	};
+	scheduleSandboxExpiry: (threadId: string, entry: SandboxExpiryEntry) => void;
 };
 
 type ShutdownServiceInternals = {
@@ -760,11 +797,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		(setupSandboxWorkspace as jest.Mock).mockReset();
 		(createAllTools as jest.Mock).mockReset();
 		(createLazyRuntimeWorkspace as jest.Mock).mockImplementation(
-			(args: { ensureWorkspace: () => Promise<unknown> }) => ({
-				id: 'lazy-runtime-workspace',
+			(args: { id?: string; ensureWorkspace: () => Promise<unknown> }) => ({
+				id: args.id ?? 'lazy-runtime-workspace',
 				ensureWorkspace: args.ensureWorkspace,
 			}),
 		);
+		(createLazyWorkspaceRuntimeSkillSource as jest.Mock).mockImplementation(({ source }) => source);
 	});
 
 	it('serializes workspace creation for concurrent calls on the same thread', async () => {
@@ -799,12 +837,102 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			expect.objectContaining({
 				id: 'instance-ai-thread-thread-1',
 				name: 'instance-ai-thread-thread-1',
+				labels: expect.objectContaining({
+					'n8n-builder': 'instance-ai-thread-thread-1',
+					thread_id: 'thread-1',
+				}),
 			}),
+			expect.objectContaining({ useSnapshotFallback: true }),
 		);
 		expect(createWorkspace).toHaveBeenCalledTimes(1);
+		expect(createWorkspace).toHaveBeenCalledWith(sandbox);
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
 		expect(service.sandboxCreations.size).toBe(0);
+	});
+
+	it('keeps the default runtime sandbox TTL aligned with provider auto-stop', () => {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as WorkspaceServiceInternals;
+		service.instanceAiConfig = {};
+
+		expect(service.sandboxTtlMs).toBe(15 * 60 * 1000);
+	});
+
+	it('evicts expired runtime sandbox entries without destroying the provider workspace', () => {
+		jest.useFakeTimers();
+		try {
+			const service = Object.create(
+				InstanceAiService.prototype,
+			) as unknown as SandboxExpiryServiceInternals;
+			const workspace = { destroy: jest.fn(async () => {}) };
+			const entry: SandboxExpiryEntry = {
+				sandbox: { id: 'sandbox-1' },
+				workspace,
+				setupComplete: true,
+				setupPromise: undefined,
+				expiresAt: Date.now() + 1000,
+			};
+			service.instanceAiConfig = { builderSandboxTtlMs: 1000 };
+			service.sandboxes = new Map([['thread-1', entry]]);
+			service.runState = {
+				getActiveRunId: jest.fn((_threadId: string) => undefined),
+				hasSuspendedRun: jest.fn((_threadId: string) => false),
+			};
+			service.backgroundTasks = {
+				getRunningTasks: jest.fn((_threadId: string) => []),
+			};
+
+			service.scheduleSandboxExpiry('thread-1', entry);
+			jest.advanceTimersByTime(1000);
+
+			expect(service.sandboxes.has('thread-1')).toBe(false);
+			expect(workspace.destroy).not.toHaveBeenCalled();
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it('threads Daytona name prefixes and labels through sandbox creation', async () => {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as WorkspaceServiceInternals;
+		service.sandboxes = new Map();
+		service.sandboxCreations = new Map();
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => ({
+			...daytonaSandboxConfig,
+			namePrefix: 'Acme Eval',
+		}));
+		const sandbox = { id: 'sandbox-1' };
+		const workspace = {
+			init: jest.fn(async () => {}),
+			destroy: jest.fn(async () => {}),
+		};
+		(createSandbox as jest.Mock).mockResolvedValue(sandbox);
+		(createWorkspace as jest.Mock).mockReturnValue(workspace);
+		(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
+
+		await service.getOrCreateWorkspace(
+			'thread-1',
+			fakeUser,
+			{} as InstanceAiContext,
+			'run_123456789',
+		);
+
+		expect(createSandbox).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'acme-eval-run-1234-instance-ai-thread-thread-1',
+				name: 'acme-eval-run-1234-instance-ai-thread-thread-1',
+				labels: expect.objectContaining({
+					'n8n-builder': 'instance-ai-thread-thread-1',
+					name_prefix: 'Acme-Eval',
+					run_id: 'run_123456789',
+					thread_id: 'thread-1',
+				}),
+			}),
+			expect.objectContaining({ useSnapshotFallback: true }),
+		);
 	});
 
 	it('keeps the sandbox after setup failure and retries setup on the next use', async () => {
@@ -874,7 +1002,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				threadId: string,
 				runId: string,
 				abortSignal: AbortSignal,
-			) => Promise<{ orchestrationContext: { workspace?: unknown } }>;
+			) => Promise<{
+				orchestrationContext: {
+					workspace?: unknown;
+					runtimeSkills?: { registry: { skills: Array<{ id: string }> } };
+				};
+			}>;
 			settingsService: {
 				getAdminSettings: jest.Mock;
 				isLocalGatewayDisabledForUser: jest.Mock;
@@ -970,22 +1103,47 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			new AbortController().signal,
 		);
 
-		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(1);
+		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(2);
+		expect(createLazyRuntimeWorkspace).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({ id: 'instance-ai-runtime-skill-workspace' }),
+		);
+		expect(createLazyWorkspaceRuntimeSkillSource).toHaveBeenCalledTimes(1);
+		expect(loadInstanceAiRuntimeSkillSource).toHaveBeenCalledTimes(1);
+		expect(environment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
+			{ id: 'data-table-manager' },
+		]);
 		expect(createSandbox).not.toHaveBeenCalled();
+		const skillWorkspace = (createLazyWorkspaceRuntimeSkillSource as jest.Mock).mock.calls[0]?.[0]
+			.workspace as { ensureWorkspace: () => Promise<unknown> };
 		const lazyWorkspace = environment.orchestrationContext.workspace as {
 			ensureWorkspace: () => Promise<unknown>;
 		};
+
+		await skillWorkspace.ensureWorkspace();
+
+		expect(createSandbox).toHaveBeenCalledTimes(1);
+		expect(createWorkspace).toHaveBeenCalledTimes(1);
+		expect(workspace.init).toHaveBeenCalledTimes(1);
+		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
 
 		await lazyWorkspace.ensureWorkspace();
 
 		expect(createSandbox).toHaveBeenCalledTimes(1);
 		expect(createSandbox).toHaveBeenCalledWith(
 			expect.objectContaining({
-				id: 'instance-ai-thread-thread-1',
-				name: 'instance-ai-thread-thread-1',
+				id: 'run-1-instance-ai-thread-thread-1',
+				name: 'run-1-instance-ai-thread-thread-1',
+				labels: expect.objectContaining({
+					'n8n-builder': 'instance-ai-thread-thread-1',
+					run_id: 'run-1',
+					thread_id: 'thread-1',
+				}),
 			}),
+			expect.objectContaining({ useSnapshotFallback: true }),
 		);
 		expect(createWorkspace).toHaveBeenCalledTimes(1);
+		expect(createWorkspace).toHaveBeenCalledWith(sandbox);
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
 	});
