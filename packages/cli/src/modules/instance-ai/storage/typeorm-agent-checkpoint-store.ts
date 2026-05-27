@@ -99,12 +99,17 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 	> {
 		const row = await this.checkpointRepo.findActiveByResourceId(resourceId);
 		if (!row?.state) return undefined;
-		const [toolCallId] = Object.keys(row.state.pendingToolCalls ?? {});
+		// `pendingToolCalls` can hold parallel tool calls from one turn, only
+		// some of which suspended. Pick the suspended entry explicitly so we
+		// don't try to resume a tool that ran to completion in the same batch.
+		const suspendedEntry = Object.entries(row.state.pendingToolCalls ?? {}).find(
+			([, call]) => call.suspended,
+		);
 		const persistence = row.state.persistence;
-		if (!toolCallId || !persistence?.threadId || !persistence.resourceId) return undefined;
+		if (!suspendedEntry || !persistence?.threadId || !persistence.resourceId) return undefined;
 		return {
 			runId: row.key,
-			toolCallId,
+			toolCallId: suspendedEntry[0],
 			persistence: { threadId: persistence.threadId, resourceId: persistence.resourceId },
 		};
 	}
