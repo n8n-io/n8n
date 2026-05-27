@@ -397,6 +397,14 @@ catalogs:
     storybook:
       specifier: ^10.1.11
       version: 10.1.11
+  undici-v6:
+    undici:
+      specifier: ^6.24.0
+      version: 6.24.1
+  undici-v7:
+    undici:
+      specifier: ^7.16.0
+      version: 7.24.6
 
 overrides:
   libphonenumber-js: npm:empty-npm-package@1.0.0
@@ -443,7 +451,7 @@ overrides:
   diff: 8.0.3
   undici@5: ^6.24.0
   undici@6: ^6.24.0
-  undici@7: ^7.24.0
+  undici@7: ^7.16.0
   tar: ^7.5.11
   ajv@6: 6.14.0
   ajv@7: 8.18.0
@@ -761,7 +769,7 @@ importers:
         specifier: 3.0.3
         version: 3.0.3
       undici:
-        specifier: ^6.24.0
+        specifier: catalog:undici-v6
         version: 6.24.1
       zod:
         specifier: 3.25.67
@@ -3047,7 +3055,7 @@ importers:
         specifier: ^7.5.11
         version: 7.5.11
       undici:
-        specifier: ^7.24.0
+        specifier: catalog:undici-v7
         version: 7.24.6
       uuid:
         specifier: 'catalog:'
@@ -4537,7 +4545,7 @@ importers:
         specifier: 1.2.2
         version: 1.2.2(date-fns@2.30.0)(lodash@4.18.1)(zod@3.25.67)
       undici:
-        specifier: ^6.24.0
+        specifier: catalog:undici-v6
         version: 6.24.1
       uuid:
         specifier: 'catalog:'

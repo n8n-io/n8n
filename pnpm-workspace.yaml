@@ -130,6 +130,10 @@ catalogs:
     eslint-plugin-playwright: 2.2.2
     playwright: 1.60.0
     playwright-core: 1.60.0
+  undici-v6:
+    undici: ^6.24.0
+  undici-v7:
+    undici: ^7.16.0
   frontend:
     '@sentry/vue': ^10.36.0
     '@testing-library/jest-dom': ^6.6.3
