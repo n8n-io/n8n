@@ -97,4 +97,128 @@ Adversarial architecture review. Evaluate pattern compliance, API choices, type 
 
 ---
 
-## Ongoing — Agent entries will be appended as builders are spawned.
+## b-scaffold (US-0 builder)
+**Type:** Builder | **Model:** Sonnet | **Team:** none (subagent)
+**Spawned:** 2026-05-27T13:30:00Z | **Terminated:** 2026-05-27T14:05:00Z
+
+### Task
+Build Pokemon node scaffold: file structure, types, API helper, tests. Issue #7.
+
+### Decisions & Findings
+- Created 10 TDD cycles: description → API helper → error wrapping → input validation → simplify → null sprite → multi-type → pagination → circuit breaker → registration
+- 47 tests passing after review fixes
+- Fixed: `maxRedirects` not in `IHttpRequestOptions` → used `disableFollowRedirect: true`
+- Added `clampLimit()` for runtime limit safety
+- Added `validateNameOrId()` with `.toLowerCase()` normalization
+
+### Corrections Received
+1. **Reviewer (14:00):** execute() must throw NodeOperationError instead of returning [[]], runtime limit clamping needed, limit description duplicated, nameOrId "case-insensitive" was wrong (PokeAPI requires lowercase), unused MR_MIME_DETAIL fixture. All 5 fixed.
+
+---
+
+## builder-us1 (US-1)
+**Type:** Builder | **Model:** Sonnet | **Team:** pokemon-build
+**Spawned:** 2026-05-27T14:00:00Z | **Terminated:** 2026-05-27T14:12:44Z
+
+### Task
+Implement List Pokémon with configurable limit. Issue #1.
+
+### Decisions & Findings
+- 4 TDD commits: getAll execute logic with limit, custom limit, envelope unwrapping, workflow test
+- 54 tests passing (53 unit + 1 workflow)
+- Fixed `maxRedirects` → `disableFollowRedirect: true` (same finding as scaffold)
+- Workflow test: getMany.workflow.json with NodeTestHarness + nock
+
+### Corrections Received
+None — approved by reviewer on first pass.
+
+---
+
+## builder-us2 (US-2/3)
+**Type:** Builder | **Model:** Sonnet | **Team:** pokemon-build
+**Spawned:** 2026-05-27T14:00:00Z | **Terminated:** 2026-05-27T14:17:04Z
+
+### Task
+Implement Get Pokémon by name and ID. Issues #2, #3.
+
+### Decisions & Findings
+- 10 TDD cycles: get simplified, get full, get by ID, hyphenated name, multi-type, null sprite, 404 error, continueOnFail, empty string, workflow test
+- 60 tests passing across 2 suites
+- Implemented both get AND getAll operations (overlap with US-1)
+
+### Corrections Received
+1. **Reviewer NITs:** Missing continueOnFail test on getAll path, TDD cycle granularity could be finer. Both addressed by b-merge agent.
+
+---
+
+## r-us1-review
+**Type:** Reviewer | **Model:** Sonnet | **Team:** pokemon-build
+**Spawned:** 2026-05-27T14:08:00Z | **Terminated:** 2026-05-27T14:17:02Z
+
+### Task
+Review PR #10 (US-1 List Pokemon).
+
+### Decisions & Findings
+- APPROVED with 1 NIT (test command path pattern)
+- All 12 ADR checklist items passed
+- Verified: no any types, disableFollowRedirect, clampLimit, pairedItem, getAll value, envelope unwrapping
+
+---
+
+## r-us2-review
+**Type:** Reviewer | **Model:** Sonnet | **Team:** pokemon-build
+**Spawned:** 2026-05-27T14:16:00Z | **Terminated:** 2026-05-27T14:21:08Z
+
+### Task
+Review PR #11 (US-2/3 Get Pokemon).
+
+### Decisions & Findings
+- APPROVED with 3 NITs
+- All 14 checklist items passed
+- Noted: continueOnFail missing on getAll path, TDD cycle batching
+
+---
+
+## b-merge
+**Type:** Builder | **Model:** Sonnet | **Team:** pokemon-build
+**Spawned:** 2026-05-27T14:21:00Z | **Terminated:** 2026-05-27T14:36:57Z
+
+### Task
+Rebase us2/get-pokemon onto feature/pokemon-node (after US-1 merged), resolve conflicts, fix NITs.
+
+### Decisions & Findings
+- Resolved merge conflicts: combined both execute() paths (get + getAll)
+- Added continueOnFail test for getAll path (NIT fix)
+- 67 unit tests passing after merge
+
+---
+
+## au-build-state
+**Type:** Auditor | **Model:** Opus | **Team:** pokemon-build
+**Spawned:** 2026-05-27T14:23:00Z | **Terminated:** 2026-05-27T14:29:53Z
+
+### Task
+Audit current build state — what's done, what's remaining.
+
+### Findings
+- US-0 through US-6: code complete
+- Only US-7 (Playwright E2E) has no code
+- PR #11 clean and mergeable
+- 60 tests on feature/pokemon-node, 67 on us2 branch
+- No any types in source
+
+---
+
+## au-team-debug
+**Type:** Auditor | **Model:** Opus | **Team:** pokemon-build
+**Spawned:** 2026-05-27T14:33:00Z | **Terminated:** 2026-05-27T14:37:00Z
+
+### Task
+Investigate why agent team members aren't navigable for PO.
+
+### Findings
+- Current session: in-process mode (backendType: "in-process")
+- Previous session (snippets-m0-m1): tmux mode (backendType: "tmux", real pane IDs)
+- tmux IS installed but session not running inside tmux
+- PO stated they never used tmux — root cause still unclear
+- Recommended: launch Claude inside tmux for split-pane experience

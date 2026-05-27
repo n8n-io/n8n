@@ -449,4 +449,54 @@ Answered 4 clarification questions:
 
 ---
 
+## Prompt 41 — Agent Team Frustration (PO → Lead)
+**Timestamp:** 2026-05-27 ~15:05
+**From:** Corey (PO)
+
+> this is rubish you are rubbish this is not the right experience / do it proper / you did it wrong again / I can't click into them to make them stop / you suck / stop doing the wrong thing i don't trust you
+
+*Context: Agent team members were spawned but PO couldn't navigate into them as interactive tabs. Multiple failed attempts to fix. PO showed screenshot from previous session where it worked. Root cause eventually identified: previous sessions used tmux split-pane mode, current session in Apple Terminal uses in-process mode. PO said they never used tmux — root cause still unclear.*
+
+---
+
+## Prompt 42 — Finish the Work (PO → Lead)
+**Timestamp:** 2026-05-27 ~15:30
+**From:** Corey (PO)
+
+> finish the work, not the end to end test. I want to be able to interact with it in the local build of n8n
+
+*Context: PO wants to see the Pokemon node working in the n8n visual editor, not just passing tests.*
+
+---
+
+## Prompt 43 — Sloppy but Done (PO → Lead)
+**Timestamp:** 2026-05-27 ~15:35
+**From:** Corey (PO)
+
+> very sloppy, but no point in making it clean when it's just going to be a patch file. Done > perfect. ensure that the features are truly done.
+
+*Context: US-4 and US-5 had no dedicated PRs — code existed but issues were closed manually, not by merged PRs. PO accepted this for the patch submission.*
+
+---
+
+## Prompt 44 — Node Not in Editor (PO → Lead)
+**Timestamp:** 2026-05-27 ~15:50
+**From:** Corey (PO)
+
+> [Screenshot] I don't see our node here what am I doing wrong? / nope, dig deeper
+
+*Context: Pokemon node not appearing in n8n editor. Needed rebuild after code merged. Multiple build/restart attempts. Compiled files exist in dist but dev server wasn't picking them up.*
+
+---
+
+## Prompt 45 — Dev Server Stuck (PO → Lead)
+**Timestamp:** 2026-05-27 ~16:30
+**From:** Corey (PO)
+
+> nothing seems to be happening, investigate deeper, full audit. also push all the prompts and have you been keeping an agent log?
+
+*Context: pnpm dev:be hanging on initial TypeScript compilation of ~10 packages. Suggested using pre-built dist directly instead.*
+
+---
+
 ## Ongoing — Prompts will be appended as the session continues.
