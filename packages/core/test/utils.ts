@@ -1,6 +1,7 @@
 import type { Constructable } from '@n8n/di';
 import { Container } from '@n8n/di';
 import { Duplex } from 'stream';
+
 import { mock } from '../nodes-testing/mock-extended';
 
 export const mockInstance = <T>(
