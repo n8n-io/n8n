@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs';
+import { chmodSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
@@ -26,8 +26,11 @@ export type SandboxResult = ServiceResult<SandboxMeta> & {
 	containers: StartedTestContainer[];
 };
 
+const CERT_GEN_SENTINEL = 'SANDBOX_CERTS_READY';
+
 async function generateMtlsCerts(network: StartedNetwork, projectName: string): Promise<string> {
 	const tlsDir = mkdtempSync(join(tmpdir(), `${projectName}-sandbox-tls-`));
+	chmodSync(tlsDir, 0o755);
 	const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 	try {
@@ -38,11 +41,16 @@ async function generateMtlsCerts(network: StartedNetwork, projectName: string): 
 			.withEntrypoint(['sh'])
 			.withCommand([
 				'-c',
-				'bootstrap-mtls.sh --out-dir /tls --api-san sandbox-api --control-san-prefix sandbox-runner --world-readable && chown -R sandbox-api:sandbox-api /tls/api',
+				[
+					'bootstrap-mtls.sh --out-dir /tls --api-san sandbox-api --control-san-prefix sandbox-runner --world-readable',
+					'chown -R sandbox-api:sandbox-api /tls/api',
+					'chmod -R a+rX /tls',
+					`echo ${CERT_GEN_SENTINEL}`,
+				].join(' && '),
 			])
 			.withBindMounts([{ source: tlsDir, target: '/tls', mode: 'rw' }])
 			.withEnvironment({ NUM_RUNNERS: '1' })
-			.withWaitStrategy(Wait.forSuccessfulCommand('test -f /tls/api/grpc-server.crt'))
+			.withWaitStrategy(Wait.forLogMessage(CERT_GEN_SENTINEL))
 			.withLogConsumer(consumer)
 			.start();
 		await certContainer.stop();
