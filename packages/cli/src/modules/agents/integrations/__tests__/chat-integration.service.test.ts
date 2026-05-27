@@ -49,7 +49,8 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		id: 'agent-1',
 		projectId: 'project-1',
 		integrations: [],
-		publishedVersion: null,
+		activeVersionId: null,
+		activeVersion: null,
 		...overrides,
 	} as unknown as Agent;
 }
@@ -109,7 +110,7 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 	});
 
 	it('skips connect when the agent is not published', async () => {
-		const agent = makeAgent({ publishedVersion: null });
+		const agent = makeAgent({ activeVersionId: null });
 
 		await service.syncToConfig(agent, [], [slackIntegration]);
 
@@ -117,7 +118,7 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 	});
 
 	it('still disconnects removed integrations even when the agent is not published', async () => {
-		const agent = makeAgent({ publishedVersion: null });
+		const agent = makeAgent({ activeVersionId: null });
 
 		await service.syncToConfig(agent, [slackIntegration], []);
 

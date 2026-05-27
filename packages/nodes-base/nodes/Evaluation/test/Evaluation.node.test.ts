@@ -189,16 +189,18 @@ describe('Test Evaluation', () => {
 		});
 
 		describe('Google Sheets', () => {
-			jest.spyOn(GoogleSheet.prototype, 'spreadsheetGetSheet').mockImplementation(async () => {
-				return { sheetId: 1, title: sheetName };
-			});
+			beforeEach(() => {
+				jest.spyOn(GoogleSheet.prototype, 'spreadsheetGetSheet').mockImplementation(async () => {
+					return { sheetId: 1, title: sheetName };
+				});
 
-			jest.spyOn(GoogleSheet.prototype, 'updateRows').mockImplementation(async () => {
-				return { sheetId: 1, title: sheetName };
-			});
+				jest.spyOn(GoogleSheet.prototype, 'updateRows').mockImplementation(async () => {
+					return { sheetId: 1, title: sheetName };
+				});
 
-			jest.spyOn(GoogleSheet.prototype, 'batchUpdate').mockImplementation(async () => {
-				return { sheetId: 1, title: sheetName };
+				jest.spyOn(GoogleSheet.prototype, 'batchUpdate').mockImplementation(async () => {
+					return { sheetId: 1, title: sheetName };
+				});
 			});
 
 			test('credential test for googleApi should be in methods', async () => {

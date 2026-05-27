@@ -266,7 +266,7 @@ export class SlackAppSetupService {
 	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		if (requirePublished && !agent.publishedVersion) {
+		if (requirePublished && !agent.activeVersionId) {
 			throw new ConflictError(
 				`Agent "${agentId}" must be published before connecting an integration`,
 			);

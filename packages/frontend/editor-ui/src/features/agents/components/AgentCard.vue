@@ -32,7 +32,7 @@ const { canUpdate, canDelete, canPublish, canUnpublish } = useAgentPermissions(
 	() => props.projectId,
 );
 
-const isPublished = computed(() => props.agent.publishedVersion !== null);
+const isPublished = computed(() => props.agent.activeVersionId !== null);
 
 const actions = computed(() => {
 	const items: Array<{ value: string; label: string; divided?: boolean }> = [];

@@ -547,6 +547,40 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeWorkflowId.value).toBeNull();
 		});
 
+		test.each(['schema', 'query'] as const)(
+			'auto-opens data table preview after %s inspection',
+			async (action) => {
+				const ctx = setup();
+				ctx.thread.isStreaming = true;
+				registerDataTable(ctx.thread, 'dt-inspect', 'Inspect Table', 'proj-9');
+
+				ctx.thread.messages = [
+					makeMessage({
+						agentTree: makeAgentNode({
+							toolCalls: [
+								makeToolCall({
+									toolCallId: `tc-${action}-dt`,
+									toolName: 'data-tables',
+									args: { action, dataTableId: 'Inspect Table' },
+									result: {
+										dataTableId: 'dt-inspect',
+										dataTableName: 'Inspect Table',
+										projectId: 'proj-9',
+										...(action === 'schema' ? { columns: [] } : { count: 0, data: [] }),
+									},
+								}),
+							],
+						}),
+					}),
+				];
+				await nextTick();
+
+				expect(ctx.activeDataTableId.value).toBe('dt-inspect');
+				expect(ctx.activeDataTableProjectId.value).toBe('proj-9');
+				expect(ctx.activeWorkflowId.value).toBeNull();
+			},
+		);
+
 		test('does not auto-open data table preview while hydrating', async () => {
 			const ctx = setup();
 			ctx.thread.isHydratingThread = true;
