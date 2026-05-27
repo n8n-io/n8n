@@ -11,6 +11,7 @@ import { EntityNotFoundError } from '@n8n/typeorm';
 import { Credentials, getAdditionalKeys } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
+	ICredentialType,
 	ICredentialsExpressionResolveValues,
 	IHttpRequestOptions,
 	INode,
@@ -312,6 +313,20 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		return credential;
+	}
+
+	isCredentialUsableByNode(credentialType: string, nodeType: string): boolean {
+		let typeDef: ICredentialType;
+		try {
+			typeDef = this.credentialTypes.getByName(credentialType);
+		} catch {
+			// Unknown credential type — let downstream code surface the real error.
+			return true;
+		}
+
+		if (!typeDef.restrictToSupportedNodes) return true;
+
+		return typeDef.supportedNodes?.includes(nodeType) ?? false;
 	}
 
 	/**

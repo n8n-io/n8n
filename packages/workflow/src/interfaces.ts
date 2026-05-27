@@ -213,6 +213,16 @@ export interface IHttpRequestHelper {
 export abstract class ICredentialsHelper {
 	abstract getParentTypes(name: string): string[];
 
+	/**
+	 * Returns false when the credential type sets `restrictToSupportedNodes: true`
+	 * and `nodeType` is not in its `supportedNodes` list. Returns true otherwise
+	 * — including when the credential type is unknown (caller will fail later).
+	 *
+	 * Used by both the execution-engine runtime guard and the workflow-save
+	 * validator so the policy is defined in exactly one place.
+	 */
+	abstract isCredentialUsableByNode(credentialType: string, nodeType: string): boolean;
+
 	abstract authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,

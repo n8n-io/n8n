@@ -88,4 +88,14 @@ export class CredentialsHelper extends ICredentialsHelper {
 		_type: string,
 		_data: ICredentialDataDecryptedObject,
 	): Promise<void> {}
+
+	isCredentialUsableByNode(credentialType: string, nodeType: string): boolean {
+		try {
+			const typeDef = this.credentialTypes.getByName(credentialType);
+			if (!typeDef.restrictToSupportedNodes) return true;
+			return typeDef.supportedNodes?.includes(nodeType) ?? false;
+		} catch {
+			return true;
+		}
+	}
 }
