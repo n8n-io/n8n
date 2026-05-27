@@ -347,6 +347,27 @@ describe('DbConnectionMonitor', () => {
 			expect(monitor.recovering).toBe(false);
 		});
 
+		it('should report each failed recovery attempt to errorReporter', async () => {
+			// Recovery is a fire-and-forget background loop; without Sentry visibility on each
+			// attempt, a database that's hard-down for hours produces silence in the dashboards.
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			dataSource.destroy.mockResolvedValue();
+			const firstError = new Error('still down 1');
+			const secondError = new Error('still down 2');
+			dataSource.initialize
+				.mockRejectedValueOnce(firstError)
+				.mockRejectedValueOnce(secondError)
+				.mockResolvedValueOnce(dataSource);
+			mockedSetTimeoutP.mockResolvedValueOnce(undefined).mockResolvedValueOnce(undefined);
+
+			// @ts-expect-error private property
+			await monitor.recoverDataSource();
+
+			expect(errorReporter.error).toHaveBeenCalledWith(firstError);
+			expect(errorReporter.error).toHaveBeenCalledWith(secondError);
+		});
+
 		it('should cap exponential backoff at the configured maximum', async () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
