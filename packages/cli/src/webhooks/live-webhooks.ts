@@ -102,10 +102,10 @@ export class LiveWebhooks implements IWebhookManager {
 			});
 		}
 
-		const { workflow: workflowData, version } = await this.loadWebhookExecutionData(
+		const { workflow: workflowData, publishedVersion } = await this.loadWebhookExecutionData(
 			webhook.workflowId,
 		);
-		const { nodes, connections } = version;
+		const { nodes, connections } = publishedVersion;
 
 		// Create a clean workflowData object with only activeVersion nodes/connections
 		// This prevents any downstream code from accidentally using the draft nodes
@@ -187,28 +187,33 @@ export class LiveWebhooks implements IWebhookManager {
 
 	private async loadWebhookExecutionData(
 		workflowId: string,
-	): Promise<{ workflow: WorkflowEntity; version: WorkflowHistory }> {
+	): Promise<{ workflow: WorkflowEntity; publishedVersion: WorkflowHistory }> {
 		return this.workflowsConfig.useWorkflowPublicationService
 			? await this.loadFromPublishedVersion(workflowId)
 			: await this.loadFromActiveVersion(workflowId);
 	}
 
-	// New path for the workflow publication service. Behind a flag, disabled by default.
+	/**
+	 * New path for the workflow publication service. Behind a flag, disabled
+	 * by default.
+	 */
 	private async loadFromPublishedVersion(
 		workflowId: string,
-	): Promise<{ workflow: WorkflowEntity; version: WorkflowHistory }> {
+	): Promise<{ workflow: WorkflowEntity; publishedVersion: WorkflowHistory }> {
 		const publishedData =
 			await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
 		if (publishedData === null) {
 			throw new NotFoundError(`Published version not found for workflow with id "${workflowId}"`);
 		}
-		return { workflow: publishedData.workflow, version: publishedData.publishedVersion };
+		return { workflow: publishedData.workflow, publishedVersion: publishedData.publishedVersion };
 	}
 
-	// Old path, before the workflow publication service. Currently the default.
+	/**
+	 * Old path, before the workflow publication service. Currently the default.
+	 */
 	private async loadFromActiveVersion(
 		workflowId: string,
-	): Promise<{ workflow: WorkflowEntity; version: WorkflowHistory }> {
+	): Promise<{ workflow: WorkflowEntity; publishedVersion: WorkflowHistory }> {
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: workflowId },
 			relations: { activeVersion: true, shared: true },
@@ -219,7 +224,7 @@ export class LiveWebhooks implements IWebhookManager {
 		if (!workflowData.activeVersion) {
 			throw new NotFoundError(`Active version not found for workflow with id "${workflowId}"`);
 		}
-		return { workflow: workflowData, version: workflowData.activeVersion };
+		return { workflow: workflowData, publishedVersion: workflowData.activeVersion };
 	}
 
 	private async findWebhook(path: string, httpMethod: IHttpRequestMethods) {
