@@ -72,96 +72,9 @@ jobs:
         env:
           INCLUDE_TEST_CONTROLLER: 'true'
 
-      - name: Generate mTLS certificates for sandbox service
-        if: ${{ inputs.sandbox-provider == 'n8n-sandbox' }}
-        run: |
-          TLS_DIR="$RUNNER_TEMP/sandbox-tls"
-          mkdir -p "$TLS_DIR"
-          docker run --rm \
-            --user 0:0 \
-            --entrypoint sh \
-            -v "$TLS_DIR:/tls" \
-            -e NUM_RUNNERS=1 \
-            n8nio/n8n-sandbox-service-api:latest \
-            -c 'bootstrap-mtls.sh --out-dir /tls --api-san sandbox-api --control-san-prefix sandbox-runner --world-readable && chown -R sandbox-api:sandbox-api /tls/api'
-
-      - name: Create Docker network
-        if: ${{ inputs.sandbox-provider == 'n8n-sandbox' }}
-        run: docker network create n8n-eval-net
-
       - name: Start sandbox service
         if: ${{ inputs.sandbox-provider == 'n8n-sandbox' }}
-        run: |
-          TLS_DIR="$RUNNER_TEMP/sandbox-tls"
-
-          # Start sandbox API
-          docker run -d --name sandbox-api \
-            --network n8n-eval-net \
-            -v "$TLS_DIR/api:/tls:ro" \
-            -e SANDBOX_API_KEYS=n8n-sandbox-ci-key \
-            -e SANDBOX_API_RUNNER_REGISTRATION_TOKEN=ci-reg-token \
-            -e SANDBOX_API_RUNNER_API_KEY=ci-runner-key \
-            -e SANDBOX_API_GRPC_TLS_CERT_FILE=/tls/grpc-server.crt \
-            -e SANDBOX_API_GRPC_TLS_KEY_FILE=/tls/grpc-server.key \
-            -e SANDBOX_API_GRPC_TLS_CLIENT_CA_FILE=/tls/ca.crt \
-            -e SANDBOX_API_RUNNER_CONTROL_GRPC_TLS_CA_FILE=/tls/ca.crt \
-            -e SANDBOX_API_RUNNER_CONTROL_GRPC_TLS_CERT_FILE=/tls/control-grpc-api-client.crt \
-            -e SANDBOX_API_RUNNER_CONTROL_GRPC_TLS_KEY_FILE=/tls/control-grpc-api-client.key \
-            -e SANDBOX_API_RUNNER_CONTROL_GRPC_TLS_SERVER_NAME=sandbox-runner-1 \
-            -e SANDBOX_API_LOG_LEVEL=warn \
-            n8nio/n8n-sandbox-service-api:latest
-
-          # Wait for API health (up to 60s)
-          for i in $(seq 1 60); do
-            if docker exec sandbox-api wget -q -O /dev/null http://localhost:8080/healthz 2>/dev/null; then
-              echo "Sandbox API healthy after ${i}s"
-              break
-            fi
-            if [ "$i" -eq 60 ]; then
-              echo "::error::Sandbox API failed to start within 60s"
-              docker logs sandbox-api --tail 30 || true
-              exit 1
-            fi
-            sleep 1
-          done
-
-          # Start sandbox runner (DinD)
-          docker run -d --name sandbox-runner-1 \
-            --network n8n-eval-net \
-            --privileged \
-            -v "$TLS_DIR/runner:/tls:ro" \
-            -e SANDBOX_RUNNER_API_KEYS=ci-runner-key \
-            -e SANDBOX_RUNNER_REGISTRATION_TOKEN=ci-reg-token \
-            -e SANDBOX_RUNNER_API_GRPC_ADDR=sandbox-api:9090 \
-            -e SANDBOX_RUNNER_HTTP_BASE_URL=http://sandbox-runner-1:8080 \
-            -e SANDBOX_RUNNER_CONTROL_GRPC_LISTEN_ADDR=:9091 \
-            -e SANDBOX_RUNNER_CONTROL_GRPC_ADVERTISE_ADDR=sandbox-runner-1:9091 \
-            -e SANDBOX_RUNNER_ID=ci-runner-1 \
-            -e SANDBOX_RUNNER_DOCKER_SANDBOX_IMAGE=n8nio/n8n-sandbox-service-sandbox:latest \
-            -e SANDBOX_RUNNER_LOG_LEVEL=warn \
-            -e SANDBOX_RUNNER_REGISTRATION_GRPC_CA_FILE=/tls/ca.crt \
-            -e SANDBOX_RUNNER_REGISTRATION_GRPC_CERT_FILE=/tls/grpc-client.crt \
-            -e SANDBOX_RUNNER_REGISTRATION_GRPC_KEY_FILE=/tls/grpc-client.key \
-            -e SANDBOX_RUNNER_REGISTRATION_GRPC_SERVER_NAME=sandbox-api \
-            -e SANDBOX_RUNNER_CONTROL_GRPC_TLS_CERT_FILE=/tls/control-grpc-server.crt \
-            -e SANDBOX_RUNNER_CONTROL_GRPC_TLS_KEY_FILE=/tls/control-grpc-server.key \
-            -e SANDBOX_RUNNER_CONTROL_GRPC_TLS_CLIENT_CA_FILE=/tls/ca.crt \
-            -e SANDBOX_RUNNER_LOG_LEVEL=warn \
-            n8nio/n8n-sandbox-service-runner-dind:latest
-
-          # Wait for runner health (up to 120s — DinD daemon needs time to start)
-          for i in $(seq 1 120); do
-            if docker exec sandbox-runner-1 wget -q -O /dev/null --header='X-Api-Key: ci-runner-key' http://localhost:8080/healthz 2>/dev/null; then
-              echo "Sandbox runner healthy after ${i}s"
-              break
-            fi
-            if [ "$i" -eq 120 ]; then
-              echo "::error::Sandbox runner failed to start within 120s"
-              docker logs sandbox-runner-1 --tail 30 || true
-              exit 1
-            fi
-            sleep 1
-          done
+        run: npx tsx packages/testing/containers/start-sandbox.ts --network n8n-eval-net
 
       - name: Start n8n containers
         env:
@@ -192,7 +105,7 @@ jobs:
 
           # Use the eval network when sandbox service is running
           NETWORK_ARGS=()
-          if [ "$SANDBOX_PROVIDER" != "daytona" ]; then
+          if [ "$SANDBOX_PROVIDER" == "n8n-sandbox" ]; then
             NETWORK_ARGS+=(--network n8n-eval-net)
           fi
 
