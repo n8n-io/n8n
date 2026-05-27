@@ -16,13 +16,12 @@ export interface SearchMcpServersDeps {
 
 type SearchMcpServersResult = Pick<
 	AgentJsonMcpServerConfig,
-	'name' | 'url' | 'transport' | 'authentication'
+	'name' | 'url' | 'transport' | 'authentication' | 'metadata'
 > & {
 	credentialType: string;
 	title: string;
 	description: string;
 	tools: Array<{ name: string; title?: string }>;
-	nodeTypeName: string;
 };
 
 const searchMcpServersInputSchema = z.object({
@@ -67,7 +66,9 @@ function registryServerToMcpConfig(server: McpRegistryServer): SearchMcpServersR
 			name: tool.name,
 			...(tool.title ? { title: tool.title } : {}),
 		})),
-		nodeTypeName,
+		metadata: {
+			nodeTypeName,
+		},
 	};
 }
 
