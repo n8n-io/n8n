@@ -90,6 +90,8 @@ import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { AgentKnowledgeCommandService } from './agent-knowledge-command.service';
+import { AgentKnowledgeService } from './agent-knowledge.service';
 
 type AgentToolEntries = Agent['tools'];
 
@@ -286,6 +288,8 @@ export class AgentsService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly telemetry: Telemetry,
 		private readonly chatIntegrationService: ChatIntegrationService,
+		private readonly agentKnowledgeService: AgentKnowledgeService,
+		private readonly agentKnowledgeCommandService: AgentKnowledgeCommandService,
 	) {}
 
 	private isNodeToolsModuleEnabled(): boolean {
@@ -619,6 +623,14 @@ export class AgentsService {
 			return false;
 		}
 
+		try {
+			await this.agentKnowledgeService.deleteAllFilesForAgent(agentId);
+		} catch (error) {
+			this.logger.warn('Failed to delete knowledge files on agent delete', {
+				agentId,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 		await this.agentRepository.remove(agent);
 
 		this.clearRuntimes(agentId);
@@ -802,6 +814,23 @@ export class AgentsService {
 			agent.tool(createGetEnvironmentTool());
 		} catch (toolError) {
 			this.logger.warn('Failed to inject get_environment tool', {
+				agentId,
+				error: toolError instanceof Error ? toolError.message : String(toolError),
+			});
+		}
+
+		try {
+			const { createSearchKnowledgeTool } = await import('./tools/knowledge-tool');
+			agent.tool(
+				createSearchKnowledgeTool({
+					agentId,
+					projectId,
+					knowledgeService: this.agentKnowledgeService,
+					commandService: this.agentKnowledgeCommandService,
+				}),
+			);
+		} catch (toolError) {
+			this.logger.warn('Failed to inject search_knowledge tool', {
 				agentId,
 				error: toolError instanceof Error ? toolError.message : String(toolError),
 			});

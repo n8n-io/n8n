@@ -44,13 +44,19 @@ function buildHook() {
 
 describe('useAgentChatStream — SDK-aligned event handling', () => {
 	let originalFetch: typeof fetch;
+	let originalLocalStorage: typeof globalThis.localStorage | undefined;
 
 	beforeEach(() => {
 		originalFetch = globalThis.fetch;
+		originalLocalStorage = globalThis.localStorage;
+		vi.stubGlobal('localStorage', {
+			getItem: vi.fn(() => ''),
+		});
 	});
 
 	afterEach(() => {
 		globalThis.fetch = originalFetch;
+		vi.stubGlobal('localStorage', originalLocalStorage);
 		vi.restoreAllMocks();
 	});
 
@@ -389,5 +395,32 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		const assistant = hook.messages.value[1];
 		expect(assistant.toolCalls?.[0].state).toBe('done');
 		expect(assistant.toolCalls?.[0].output).toBe(42);
+	});
+
+	it('shows search_knowledge operation and command in the tool summary', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-knowledge',
+				toolName: 'search_knowledge',
+				input: { operation: 'search', query: 'pricing' },
+			},
+			{ type: 'finish-step' },
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-knowledge',
+				toolName: 'search_knowledge',
+				output: { operation: 'search', result: { command: 'git_grep' } },
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('what do you know?');
+		await nextTick();
+
+		expect(hook.messages.value[1].toolCalls?.[0].displaySummary).toBe('search via git_grep');
 	});
 });

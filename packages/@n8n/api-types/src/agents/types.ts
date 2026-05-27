@@ -118,6 +118,15 @@ export interface AgentVersionDto {
 	author: string;
 }
 
+export interface AgentFileDto {
+	id: string;
+	agentId: string;
+	fileName: string;
+	mimeType: string;
+	fileSizeBytes: number;
+	createdAt: string;
+}
+
 export interface AgentPersistedMessageContentPart {
 	type: 'text' | 'reasoning' | 'tool-call' | (string & {});
 	text?: string;

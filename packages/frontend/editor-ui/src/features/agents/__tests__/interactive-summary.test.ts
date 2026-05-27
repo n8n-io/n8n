@@ -4,7 +4,7 @@ import {
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
 } from '@n8n/api-types';
-import { summariseInteractiveOutput } from '../utils/interactive-summary';
+import { summariseInteractiveOutput, summariseToolCall } from '../utils/interactive-summary';
 
 describe('summariseInteractiveOutput', () => {
 	it('returns undefined for non-interactive tool names', () => {
@@ -64,5 +64,25 @@ describe('summariseInteractiveOutput', () => {
 				credentialName: 'My Anthropic',
 			}),
 		).toBe('anthropic/claude-sonnet-4-6 · My Anthropic');
+	});
+});
+
+describe('summariseToolCall', () => {
+	it('summarises search_knowledge command output', () => {
+		expect(
+			summariseToolCall(
+				'search_knowledge',
+				{ operation: 'search', result: { command: 'git_grep' } },
+				{ operation: 'search' },
+			),
+		).toBe('search via git_grep');
+	});
+
+	it('falls back to search_knowledge input while output is pending', () => {
+		expect(summariseToolCall('search_knowledge', undefined, { operation: 'read' })).toBe('read');
+	});
+
+	it('preserves interactive tool summaries', () => {
+		expect(summariseToolCall(ASK_CREDENTIAL_TOOL_NAME, { skipped: true })).toBe('Skipped');
 	});
 });

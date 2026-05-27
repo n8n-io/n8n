@@ -150,6 +150,8 @@ export interface RecordedToolCall {
 	output: unknown;
 }
 
+type PendingRecordedToolCall = RecordedToolCall & { toolCallId?: string };
+
 export type TimelineEvent =
 	| { type: 'text'; content: string; timestamp: number; endTime?: number }
 	| {
@@ -220,7 +222,7 @@ export class ExecutionRecorder {
 
 	private totalCost: number | null = null;
 
-	private toolCalls: RecordedToolCall[] = [];
+	private toolCalls: PendingRecordedToolCall[] = [];
 
 	private timeline: TimelineEvent[] = [];
 
@@ -297,7 +299,7 @@ export class ExecutionRecorder {
 			finishReason: this.finishReason,
 			usage: this.usage,
 			totalCost: this.totalCost,
-			toolCalls: this.toolCalls,
+			toolCalls: this.toolCalls.map(({ toolCallId: _toolCallId, ...toolCall }) => toolCall),
 			timeline: this.timeline,
 			startTime: this.startTime,
 			duration: Date.now() - this.startTime,
@@ -332,7 +334,7 @@ export class ExecutionRecorder {
 	private recordToolCall(toolCallId: string, name: string, input: unknown): void {
 		this.flushTextBuffer();
 
-		this.toolCalls.push({ name, input, output: undefined });
+		this.toolCalls.push({ name, input, output: undefined, toolCallId });
 
 		const entry = this.registry.get(name);
 		// Resolve both `$fromAI(...)` placeholders and simple `={{ $json.x }}`
@@ -383,9 +385,10 @@ export class ExecutionRecorder {
 	): void {
 		const recordedOutput = isError ? normaliseToolErrorOutput(output) : output;
 
-		const pendingFlat = [...this.toolCalls]
-			.reverse()
-			.find((tc) => tc.name === name && tc.output === undefined);
+		const pendingFlat =
+			toolCallId !== ''
+				? this.toolCalls.find((tc) => tc.toolCallId === toolCallId && tc.output === undefined)
+				: [...this.toolCalls].reverse().find((tc) => tc.name === name && tc.output === undefined);
 		if (pendingFlat) {
 			pendingFlat.output = recordedOutput;
 		} else {

@@ -35,8 +35,10 @@ import {
 	Put,
 	RestController,
 } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import type { Request, Response } from 'express';
+import multer from 'multer';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -45,7 +47,9 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
+import { AgentKnowledgeService } from './agent-knowledge.service';
 import { messagesToDto } from './agent-message-mapper';
+import { AgentUploadMiddleware } from './agent-upload.middleware';
 import {
 	type FlushableResponse,
 	initSseStream,
@@ -62,6 +66,8 @@ import { SlackAppSetupService } from './integrations/slack-app-setup.service';
 import { AgentRepository } from './repositories/agent.repository';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import type { Agent } from './entities/agent.entity';
+
+const agentUploadMiddleware = Container.get(AgentUploadMiddleware);
 
 /**
  * Builder side-effects: when the LLM streams arguments for `build_custom_tool`
@@ -111,6 +117,7 @@ export class AgentsController {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly slackAppSetupService: SlackAppSetupService,
+		private readonly agentKnowledgeService: AgentKnowledgeService,
 	) {}
 
 	private async validateIntegration(dto: unknown) {
@@ -380,6 +387,57 @@ export class AgentsController {
 		}
 
 		return await this.withRunnableState(agent, req.params.projectId, req.user);
+	}
+
+	@Get('/:agentId/files')
+	@ProjectScope('agent:read')
+	async listFiles(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		return await this.agentKnowledgeService.listFiles(agentId, req.params.projectId);
+	}
+
+	@Post('/:agentId/files', {
+		middlewares: [agentUploadMiddleware.array('files')],
+	})
+	@ProjectScope('agent:update')
+	async uploadFiles(
+		req: AuthenticatedRequest<{ projectId: string }> & {
+			files?: Express.Multer.File[];
+			fileUploadError?: Error;
+		},
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		if (req.fileUploadError) {
+			const error = req.fileUploadError;
+			if (error instanceof multer.MulterError) {
+				throw new BadRequestError(`File upload error: ${error.message}`);
+			}
+			if (error instanceof BadRequestError) throw error;
+			throw error;
+		}
+
+		const files = req.files ?? [];
+		if (files.length === 0) {
+			throw new BadRequestError('No files uploaded');
+		}
+
+		return await this.agentKnowledgeService.uploadFiles(agentId, req.params.projectId, files);
+	}
+
+	@Delete('/:agentId/files/:fileId')
+	@ProjectScope('agent:update')
+	async deleteFile(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('fileId') fileId: string,
+	) {
+		await this.agentKnowledgeService.deleteFile(agentId, req.params.projectId, fileId);
+		return { success: true };
 	}
 
 	@Delete('/:agentId')
