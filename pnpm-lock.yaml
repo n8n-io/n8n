@@ -207,6 +207,9 @@ catalogs:
     langchain:
       specifier: 1.2.30
       version: 1.2.30
+    ldapts:
+      specifier: 8.1.7
+      version: 8.1.7
     luxon:
       specifier: 3.7.2
       version: 3.7.2
@@ -2936,7 +2939,7 @@ importers:
         specifier: 0.6.0
         version: 0.6.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       ldapts:
-        specifier: 8.1.7
+        specifier: 'catalog:'
         version: 8.1.7
       lodash:
         specifier: 4.18.1
@@ -4426,7 +4429,7 @@ importers:
         specifier: 'catalog:'
         version: 2.2.4
       ldapts:
-        specifier: 8.1.7
+        specifier: 'catalog:'
         version: 8.1.7
       lodash:
         specifier: 4.18.1
@@ -12992,15 +12995,6 @@ packages:
 
   debug@4.3.4:
     resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
-    engines: {node: '>=6.0'}
-    peerDependencies:
-      supports-color: '*'
-    peerDependenciesMeta:
-      supports-color:
-        optional: true
-
-  debug@4.3.5:
-    resolution: {integrity: sha512-pt0bNEmneDIvdL1Xsd9oDQ/wrQRkXDT4AUWlNZNPKvW5x/jyO9VFXkJUP07vQ2upmw5PlaITaPKc31jK13V+jg==}
     engines: {node: '>=6.0'}
     peerDependencies:
       supports-color: '*'
@@ -23981,7 +23975,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.16.1(debug@4.4.3)
-      axios-retry: 4.5.0(axios@1.16.1(debug@4.4.3))
+      axios-retry: 4.5.0(axios@1.16.1)
       chalk: 4.1.2
       commander: 13.1.0
       date-fns: 2.30.0
@@ -30010,11 +30004,6 @@ snapshots:
 
   axe-core@4.7.2: {}
 
-  axios-retry@4.5.0(axios@1.16.1(debug@4.4.3)):
-    dependencies:
-      axios: 1.16.1(debug@4.4.3)
-      is-retry-allowed: 2.2.0
-
   axios-retry@4.5.0(axios@1.16.1):
     dependencies:
       axios: 1.16.1(debug@4.4.3)
@@ -31361,10 +31350,6 @@ snapshots:
       supports-color: 5.5.0
 
   debug@4.3.4:
-    dependencies:
-      ms: 2.1.2
-
-  debug@4.3.5:
     dependencies:
       ms: 2.1.2
 

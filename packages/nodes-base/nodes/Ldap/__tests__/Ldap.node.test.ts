@@ -252,4 +252,62 @@ describe('Ldap', () => {
 			);
 		});
 	});
+
+	describe('rename', () => {
+		let mockBind: jest.Mock;
+		let mockModifyDN: jest.Mock;
+		let mockUnbind: jest.Mock;
+
+		beforeEach(() => {
+			mockBind = jest.fn().mockResolvedValue(undefined);
+			mockModifyDN = jest.fn().mockResolvedValue(undefined);
+			mockUnbind = jest.fn().mockResolvedValue(undefined);
+
+			const mockClient = {
+				bind: mockBind,
+				modifyDN: mockModifyDN,
+				unbind: mockUnbind,
+			};
+
+			jest.spyOn(Helpers, 'createLdapClient').mockResolvedValue(mockClient as unknown as Client);
+
+			executeFunctions.getCredentials.mockResolvedValue({
+				hostname: 'ldap.example.com',
+				port: 389,
+				bindDN: 'cn=admin,dc=example,dc=com',
+				bindPassword: 'password',
+				connectionSecurity: 'none',
+			});
+		});
+
+		it('should rename an entry when targetDn is longer than 127 bytes', async () => {
+			const dn = 'cn=source-user,ou=users,dc=example,dc=com';
+			const targetDn = `cn=${'renamed-user-'.repeat(8)},ou=users,dc=example,dc=com`;
+
+			expect(Buffer.byteLength(targetDn, 'utf8')).toBeGreaterThan(127);
+
+			executeFunctions.getNodeParameter.mockImplementation((parameterName, _idx, defaultValue) => {
+				const params: Record<string, unknown> = {
+					nodeDebug: false,
+					operation: 'rename',
+					dn,
+					targetDn,
+				};
+
+				return parameterName in params ? params[parameterName] : defaultValue;
+			});
+
+			const result = await new Ldap().execute.call(executeFunctions);
+
+			expect(mockModifyDN).toHaveBeenCalledWith(dn, targetDn);
+			expect(result).toEqual([
+				[
+					{
+						json: { dn: targetDn, result: 'success' },
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+	});
 });

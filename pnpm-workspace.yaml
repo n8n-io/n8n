@@ -85,6 +85,7 @@ catalog:
   kafkajs: 2.2.4
   langchain: 1.2.30
   langsmith: 0.6.0
+  ldapts: 8.1.7
   lodash: 4.18.1
   luxon: 3.7.2
   mime-types: 3.0.2
