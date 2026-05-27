@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.22.0",
+  "version": "2.23.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -271,7 +271,7 @@
     "@n8n/typeorm": "0.3.20-16",
     "mysql2": "3.17.0",
     "@n8n/typescript-config": "workspace:*",
-    "@oracle/langchain-oracledb":"0.2.0",
+    "@oracle/langchain-oracledb": "0.2.0",
     "@pinecone-database/pinecone": "^5.0.2",
     "@qdrant/js-client-rest": "^1.16.2",
     "@supabase/supabase-js": "catalog:",
