@@ -1201,42 +1201,6 @@ export class AgentsService {
 			});
 	}
 
-	private async consumeWorkflowStream(
-		stream: ReadableStream<StreamChunk>,
-		recorder: ExecutionRecorder,
-	): Promise<{ structuredOutput: unknown; toolCalls: ExecuteAgentData['toolCalls'] }> {
-		let structuredOutput: unknown = null;
-		const toolCalls: ExecuteAgentData['toolCalls'] = [];
-		const toolInputs = new Map<string, { toolName: string; input: unknown }>();
-
-		const reader = stream.getReader();
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				recorder.record(value);
-
-				if (value.type === 'tool-call') {
-					toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
-				} else if (value.type === 'tool-result') {
-					const pending = toolInputs.get(value.toolCallId);
-					toolCalls.push({
-						toolName: value.toolName,
-						input: pending?.input ?? null,
-						result: value.output,
-					});
-					toolInputs.delete(value.toolCallId);
-				} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
-					structuredOutput = value.structuredOutput;
-				}
-			}
-		} finally {
-			reader.releaseLock();
-		}
-
-		return { structuredOutput, toolCalls };
-	}
-
 	/**
 	 * Compile an agent in isolation without writing to the shared runtime cache.
 	 * Used by executeForWorkflow so that concurrent Slack / chat executions
