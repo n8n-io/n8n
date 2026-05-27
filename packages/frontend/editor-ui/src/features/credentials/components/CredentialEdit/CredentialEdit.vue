@@ -127,6 +127,7 @@ const requiredCredentials = ref(false); // Are credentials required or optional 
 const contentRef = ref<HTMLDivElement>();
 const isSharedGlobally = ref(false);
 const isResolvable = ref(false);
+const connectedByMe = ref(false);
 const useCustomOAuth = ref(false);
 const pendingAuthType = ref<string | null>(null);
 const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>({});
@@ -289,7 +290,11 @@ const isManagedOAuthMode = computed(
 	() => isOAuthType.value && managedOAuthAvailable.value && !useCustomOAuth.value,
 );
 
-const isOAuthConnected = computed(() => isOAuthType.value && !!credentialData.value.oauthTokenData);
+const isOAuthConnected = computed(() => {
+	if (!isOAuthType.value) return false;
+	if (isResolvable.value) return connectedByMe.value;
+	return !!credentialData.value.oauthTokenData;
+});
 const credentialProperties = computed(() => {
 	const type = credentialType.value;
 	if (!type) {
@@ -680,6 +685,10 @@ async function loadCurrentCredential(id = props.activeId ?? '') {
 			'isResolvable' in currentCredentials && typeof currentCredentials.isResolvable === 'boolean'
 				? currentCredentials.isResolvable
 				: false;
+		connectedByMe.value =
+			'connectedByMe' in currentCredentials && typeof currentCredentials.connectedByMe === 'boolean'
+				? currentCredentials.connectedByMe
+				: false;
 	} catch (error) {
 		toast.showError(
 			error,
@@ -688,6 +697,17 @@ async function loadCurrentCredential(id = props.activeId ?? '') {
 		closeDialog();
 
 		return;
+	}
+}
+
+async function refreshConnectedByMe(id: string) {
+	try {
+		const refreshed = await credentialsStore.getCredentialData({ id });
+		if (refreshed && 'connectedByMe' in refreshed && typeof refreshed.connectedByMe === 'boolean') {
+			connectedByMe.value = refreshed.connectedByMe;
+		}
+	} catch {
+		// Refresh is best-effort; the optimistic update remains in place.
 	}
 }
 
@@ -1302,6 +1322,9 @@ async function oAuthCredentialAuthorize() {
 				...credentialData.value,
 				oauthTokenData: {} as CredentialInformation,
 			};
+			connectedByMe.value = true;
+
+			void refreshConnectedByMe(credential.id);
 
 			// Close the window
 			if (oauthPopup) {

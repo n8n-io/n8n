@@ -8,7 +8,8 @@ import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
 import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
-import { CanvasKey } from '@/app/constants';
+import { CanvasKey, CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
@@ -66,6 +67,9 @@ import CanvasConnectionLine from './elements/edges/CanvasConnectionLine.vue';
 import CanvasControlButtons from './elements/buttons/CanvasControlButtons.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
+import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
+import CanvasNodeGroupsLayer from './elements/groups/CanvasNodeGroupsLayer.vue';
+import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -151,6 +155,7 @@ const props = withDefaults(
 		loading?: boolean;
 		suppressInteraction?: boolean;
 		hideControls?: boolean;
+		showNodeGroups?: boolean;
 		initialViewport?: ViewportTransform | null;
 	}>(),
 	{
@@ -166,6 +171,7 @@ const props = withDefaults(
 		loading: false,
 		suppressInteraction: false,
 		hideControls: false,
+		showNodeGroups: true,
 	},
 );
 
@@ -179,8 +185,13 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
 const setupPanelStore = useSetupPanelStore();
+const posthogStore = usePostHog();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
+
+const isCanvasNodeGroupingEnabled = computed(() =>
+	posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
+);
 
 const vueFlow = useVueFlow(props.id);
 const {
@@ -222,6 +233,7 @@ const {
 const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive, toRef(props, 'renderData'));
 
 const isPaneReady = ref(false);
+const nodeGroupIdToAutofocusTitle = ref<string | null>(null);
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
@@ -343,6 +355,30 @@ function onToggleZoomMode() {
 	});
 }
 
+function onNodeGroupCreated(groupId: string) {
+	nodeGroupIdToAutofocusTitle.value = groupId;
+}
+
+function onNodeGroupTitleFocused(groupId: string) {
+	if (nodeGroupIdToAutofocusTitle.value === groupId) {
+		nodeGroupIdToAutofocusTitle.value = null;
+	}
+}
+
+const {
+	canGroup: canGroupSelection,
+	canUngroup: canUngroupSelection,
+	groupSelection,
+	ungroupSelection,
+} = useCanvasNodeGroupActions(selectedNodes, {
+	readOnly: () => props.readOnly || props.suppressInteraction,
+});
+
+function onKeyboardGroup() {
+	const group = groupSelection();
+	if (group) nodeGroupIdToAutofocusTitle.value = group.id;
+}
+
 const keyMap = computed(() => {
 	const readOnlyKeymap: KeyMap = {
 		ctrl_shift_o: emitWithLastSelectedNode((id) => emit('open:sub-workflow', id)),
@@ -404,6 +440,20 @@ const keyMap = computed(() => {
 		alt_u: emitWithLastSelectedNode((id) => emit('copy:production:url', id)),
 		alt_i: emitWithSelectedNodes((ids) => onAddSelectedNodesToAi(ids)),
 	};
+
+	if (isCanvasNodeGroupingEnabled.value) {
+		fullKeymap.ctrl_g = {
+			disabled: () => !canGroupSelection.value,
+			run: onKeyboardGroup,
+		};
+		fullKeymap.ctrl_shift_g = {
+			disabled: () => !canUngroupSelection.value,
+			run: () => {
+				ungroupSelection();
+			},
+		};
+	}
+
 	return fullKeymap;
 });
 
@@ -1189,6 +1239,22 @@ defineExpose({
 		<slot name="canvas-background" v-bind="{ viewport }">
 			<CanvasBackground :viewport="viewport" :striped="readOnly" />
 		</slot>
+
+		<CanvasNodeGroupsLayer
+			v-if="showNodeGroups && isCanvasNodeGroupingEnabled"
+			:read-only="readOnly || suppressInteraction"
+			:autofocus-group-id="nodeGroupIdToAutofocusTitle"
+			@title:focused="onNodeGroupTitleFocused"
+			@move-members="onUpdateNodesPosition"
+		/>
+
+		<CanvasSelectionToolbar
+			v-if="showNodeGroups && isCanvasNodeGroupingEnabled"
+			:selected-nodes="selectedNodes"
+			:read-only="readOnly || suppressInteraction"
+			@group-created="onNodeGroupCreated"
+			@extract-workflow="emit('extract-workflow', $event)"
+		/>
 
 		<Transition name="minimap">
 			<MiniMap

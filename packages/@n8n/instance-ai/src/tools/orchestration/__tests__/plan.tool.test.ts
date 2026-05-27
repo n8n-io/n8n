@@ -12,6 +12,7 @@ function makePlannedTaskService(overrides: Partial<PlannedTaskService> = {}): Pl
 		createPlan: jest.fn().mockResolvedValue(undefined),
 		getGraph: jest.fn().mockResolvedValue(null),
 		approvePlan: jest.fn().mockResolvedValue(undefined),
+		denyPlan: jest.fn().mockResolvedValue(undefined),
 		clear: jest.fn().mockResolvedValue(undefined),
 		...overrides,
 	} as unknown as PlannedTaskService;
@@ -99,7 +100,7 @@ describe('createPlanTool — replan-only guard', () => {
 			{
 				tasks: validTasks(),
 				skipPlannerDiscovery: true,
-				reason: 'Single simple data-table task — planner discovery would be wasted.',
+				reason: 'Single simple follow-up task — planner discovery would be wasted.',
 			},
 			{ suspend },
 		);
@@ -263,6 +264,25 @@ describe('createPlanTool — replan-only guard', () => {
 		);
 	});
 
+	it('cancels the graph and tells the LLM to stop when the user denies the plan', async () => {
+		const context = createMockContext({ currentUserMessage: 'ordinary message' });
+		const tool = createPlanTool(context);
+
+		const out = await executeTool(
+			tool,
+			{ tasks: validTasks() },
+			{ resumeData: { approved: false, denied: true } },
+		);
+
+		expect(out.taskCount).toBe(0);
+		expect(out.result).toContain('User denied the plan');
+		expect(out.result).toMatch(/do not revise/i);
+		expect(context.plannedTaskService!.denyPlan).toHaveBeenCalledWith('test-thread');
+		expect(context.plannedTaskService!.approvePlan).not.toHaveBeenCalled();
+		expect(context.schedulePlannedTasks).not.toHaveBeenCalled();
+		expect(context.taskStorage.save).toHaveBeenCalledWith('test-thread', { tasks: [] });
+	});
+
 	it('keeps the awaiting_approval graph on rejection so a same-turn revision can pass the guard', async () => {
 		// The rejected plan stays in `awaiting_approval` (scoped to runId) so the
 		// LLM's next create-tasks call — which the tool result tells it to make —
@@ -316,6 +336,52 @@ describe('createPlanTool — replan-only guard', () => {
 		const out = await executeTool(tool, { tasks: validTasks() }, { suspend });
 
 		expect(out).toBeUndefined();
+		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
+	});
+
+	it('blocks a fresh initial call when the same turn already had a cancelled (denied) plan', async () => {
+		const context = createMockContext({
+			currentUserMessage: 'try again',
+			messageGroupId: 'mg-1',
+			plannedTaskService: makePlannedTaskService({
+				getGraph: jest.fn().mockResolvedValue({
+					threadId: 'test-thread',
+					status: 'cancelled',
+					planRunId: 'run-prev',
+					messageGroupId: 'mg-1',
+					tasks: [],
+				} as unknown as Awaited<ReturnType<PlannedTaskService['getGraph']>>),
+			}),
+		});
+		const tool = createPlanTool(context);
+
+		const out = await executeTool(tool, { tasks: validTasks() }, { suspend: jest.fn() });
+
+		expect(out.taskCount).toBe(0);
+		expect(out.result).toMatch(/denied a plan earlier in this turn/i);
+		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
+	});
+
+	it('allows a fresh initial call when a cancelled plan is from a previous turn (different messageGroupId)', async () => {
+		const context = createMockContext({
+			currentUserMessage: 'new user message',
+			messageGroupId: 'mg-2',
+			plannedTaskService: makePlannedTaskService({
+				getGraph: jest.fn().mockResolvedValue({
+					threadId: 'test-thread',
+					status: 'cancelled',
+					planRunId: 'run-prev',
+					messageGroupId: 'mg-1',
+					tasks: [],
+				} as unknown as Awaited<ReturnType<PlannedTaskService['getGraph']>>),
+			}),
+			isReplanFollowUp: true,
+		});
+		const tool = createPlanTool(context);
+		const suspend = jest.fn().mockResolvedValue(undefined);
+
+		await executeTool(tool, { tasks: validTasks() }, { suspend });
+
 		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
 	});
 

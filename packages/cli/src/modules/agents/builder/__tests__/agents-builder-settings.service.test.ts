@@ -93,7 +93,7 @@ describe('AgentsBuilderSettingsService', () => {
 
 			expect(result).toEqual({
 				config: {
-					id: 'anthropic/claude-sonnet-4-5',
+					id: 'anthropic/claude-sonnet-4-6',
 					apiKey: 'sk-env',
 				},
 				isProxied: false,
@@ -203,7 +203,7 @@ describe('AgentsBuilderSettingsService', () => {
 
 			expect(logger.warn).toHaveBeenCalled();
 			expect(result).toEqual({
-				config: { id: 'anthropic/claude-sonnet-4-5', apiKey: 'sk-env' },
+				config: { id: 'anthropic/claude-sonnet-4-6', apiKey: 'sk-env' },
 				isProxied: false,
 			});
 		});
@@ -223,7 +223,7 @@ describe('AgentsBuilderSettingsService', () => {
 
 			expect(logger.warn).toHaveBeenCalled();
 			expect(result).toEqual({
-				config: { id: 'anthropic/claude-sonnet-4-5', apiKey: 'sk-env' },
+				config: { id: 'anthropic/claude-sonnet-4-6', apiKey: 'sk-env' },
 				isProxied: false,
 			});
 		});

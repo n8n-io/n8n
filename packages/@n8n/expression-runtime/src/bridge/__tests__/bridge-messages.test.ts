@@ -36,6 +36,14 @@ describe('bridgeMessageSchema', () => {
 			expect(parsed.type).toBe('getNodeAll');
 		});
 
+		it.each([['getInputFirst'], ['getInputLast'], ['getInputAll']] as const)(
+			'parses a valid %s envelope',
+			(type) => {
+				const parsed = bridgeMessageSchema.parse({ type });
+				expect(parsed.type).toBe(type);
+			},
+		);
+
 		it('rejects an unknown discriminator value', () => {
 			expect(() => bridgeMessageSchema.parse({ type: 'evalArbitrary', nodeName: 'Foo' })).toThrow();
 		});
@@ -43,6 +51,16 @@ describe('bridgeMessageSchema', () => {
 		it('rejects a missing discriminator', () => {
 			expect(() => bridgeMessageSchema.parse({ nodeName: 'Foo' })).toThrow();
 		});
+	});
+
+	describe('getInput* — no extra fields allowed', () => {
+		it.each([['getInputFirst'], ['getInputLast'], ['getInputAll']] as const)(
+			'rejects %s with extra fields (.strict)',
+			(type) => {
+				expect(() => bridgeMessageSchema.parse({ type, nodeName: 'Foo' })).toThrow();
+				expect(() => bridgeMessageSchema.parse({ type, branchIndex: 0 })).toThrow();
+			},
+		);
 	});
 
 	describe('.strict() enforcement', () => {

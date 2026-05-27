@@ -90,6 +90,19 @@ runs:
         mkdir -p "$HOME/.safe-chain"
         cp "${{ github.action_path }}/safe-chain.config.json" "$HOME/.safe-chain/config.json"
 
+    # Cache the SafeChain binary keyed on version + platform. The binary path
+    # is deterministic, so subsequent jobs across the CI fanout (E2E shards,
+    # docker-cluster, unit, lint, typecheck, ...) hit the cache instead of
+    # the GH release CDN. Layered with retry below — cache reduces blast
+    # radius across jobs, retry covers the first-job-per-key case where the
+    # CDN must be hit. Keep the version in sync with the install step below.
+    - name: Restore Aikido SafeChain Binary
+      id: cache-safe-chain
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: ~/.safe-chain/bin
+        key: safe-chain-1.5.3-${{ runner.os }}-${{ runner.arch }}
+
     - name: Install Aikido SafeChain
       run: |
         VERSION="1.5.3"
@@ -97,31 +110,43 @@ runs:
         node .github/scripts/retry.mjs --attempts 3 --delay 10 -- \
           curl -fsSL -o install-safe-chain.sh "https://github.com/AikidoSec/safe-chain/releases/download/${VERSION}/install-safe-chain.sh"
         echo "${EXPECTED_SHA256}  install-safe-chain.sh" | sha256sum -c -
-        sh install-safe-chain.sh --ci
+        # Wrap the install in retry too — it internally fetches the
+        # safe-chain binary from the GH release CDN, which has hit
+        # transient 404s. The install script no-ops the binary download
+        # when the cached binary is already present.
+        node .github/scripts/retry.mjs --attempts 3 --delay 10 -- \
+          sh install-safe-chain.sh --ci
         rm install-safe-chain.sh
       shell: bash
 
-    # `--reporter=append-only` collapses pnpm output to a single terse line and
-    # drops the ERR_PNPM_* code plus the offending package. Combined with the
-    # `timeout` wrapper, a SIGKILL or a non-pnpm post-install crash surfaces as
-    # bare `ELIFECYCLE` with no actionable diagnostics. We let pnpm pick its own
-    # CI reporter, tee stderr to a file, and re-emit the captured log on
-    # failure so the failure survives even if the live log buffer is cut off
-    # when `timeout` terminates the process group.
+    # Capture pnpm's combined stdout+stderr through `tee` so the ERR_PNPM_* code
+    # and offending package survive even when `timeout` terminates the process
+    # group. Stderr-only capture misses the failure footer because pnpm's
+    # default reporter routes it through stdout; `--reporter=append-only` is
+    # set explicitly so we don't drift if pnpm changes its CI default again.
+    # `--loglevel=debug` and `DEBUG=pnpm:*` add registry/store/fetch traces.
+    # `SAFE_CHAIN_LOGGING=verbose` surfaces safe-chain's proxy decisions, which
+    # are otherwise buffered (and lost on failure) while pnpm is in flight.
+    # `${PIPESTATUS[0]}` preserves pnpm's real exit code through the pipe.
     - name: Install Dependencies
       if: ${{ inputs.install-command != '' }}
       env:
         INSTALL_COMMAND: ${{ inputs.install-command }}
-        INSTALL_LOG: ${{ runner.temp }}/pnpm-install.err
+        INSTALL_LOG: ${{ runner.temp }}/pnpm-install.log
+        SAFE_CHAIN_LOGGING: verbose
+        DEBUG: pnpm:*
+        # Skip the Electron binary download triggered by @n8n/local-gateway's
+        # postinstall. CI never runs the Electron app, but the ~150MB binary
+        # fetch fires on every install otherwise.
+        ELECTRON_SKIP_BINARY_DOWNLOAD: 1
       run: |
-        set +e
-        timeout --kill-after=30s 300s $INSTALL_COMMAND 2> >(tee "$INSTALL_LOG" >&2)
-        rc=$?
-        set -e
-        # Let the backgrounded `tee` flush before we read the file back.
-        wait 2>/dev/null || true
+        set +o pipefail
+        timeout --kill-after=30s 300s $INSTALL_COMMAND \
+          --reporter=append-only --loglevel=debug 2>&1 | tee "$INSTALL_LOG"
+        rc=${PIPESTATUS[0]}
+        set -o pipefail
         if [ $rc -ne 0 ]; then
-          echo "::group::pnpm install stderr (captured)"
+          echo "::group::pnpm install full output (captured)"
           cat "$INSTALL_LOG" 2>/dev/null || echo "(no captured log)"
           echo "::endgroup::"
           case $rc in

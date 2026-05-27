@@ -25,12 +25,10 @@ import {
 import type { McpToolIncludeMode } from '../McpClientTool/types';
 import type { McpAuthenticationOption, McpServerTransport } from './types';
 import {
-	connectMcpClient,
+	connectMcpClientForCredential,
 	getAllTools,
-	getAuthHeaders,
 	isStructuredContent,
 	mapToNodeOperationError,
-	tryRefreshOAuth2Token,
 } from './utils';
 
 /**
@@ -62,16 +60,11 @@ async function connectAndGetTools(
 	ctx: ISupplyDataFunctions | IExecuteFunctions,
 	config: ResolvedMcpConfig,
 ) {
-	const node = ctx.getNode();
-	const { headers } = await getAuthHeaders(ctx, config.authentication);
-
-	const client = await connectMcpClient({
+	const client = await connectMcpClientForCredential(ctx, {
+		authentication: config.authentication,
 		serverTransport: config.transport,
 		endpointUrl: config.endpointUrl,
-		headers,
-		name: node.type,
-		version: node.typeVersion,
-		onUnauthorized: async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h),
+		surface: 'MCP Client Tool',
 	});
 
 	if (!client.ok) {
@@ -267,15 +260,11 @@ export async function loadMcpToolOptions(
 	config: McpConnectionConfig,
 ): Promise<INodePropertyOptions[]> {
 	const node = ctx.getNode();
-	const { headers } = await getAuthHeaders(ctx, config.authentication);
-
-	const client = await connectMcpClient({
+	const client = await connectMcpClientForCredential(ctx, {
+		authentication: config.authentication,
 		serverTransport: config.transport,
 		endpointUrl: config.endpointUrl,
-		headers,
-		name: node.type,
-		version: node.typeVersion,
-		onUnauthorized: async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h),
+		surface: 'MCP Client Tool',
 	});
 
 	if (!client.ok) {

@@ -318,7 +318,7 @@ export class ChatIntegrationService {
 	 *
 	 * Disconnects of removed integrations always run (so unpublishing-then-
 	 * editing works). Connects of newly-added integrations are gated on
-	 * `agent.publishedVersion` — matching the controller's connect endpoint,
+	 * `agent.activeVersionId` — matching the controller's connect endpoint,
 	 * which rejects unpublished agents, and `reconnectAll`, which only restores
 	 * published agents. The integration entry stays persisted on the entity so
 	 * it can be picked up later by `publishAgent` calling this method again.
@@ -351,7 +351,7 @@ export class ChatIntegrationService {
 
 		const additions = next.filter((i) => !previousKeys.has(key(i)));
 
-		if (additions.length > 0 && !agent.publishedVersion) {
+		if (additions.length > 0 && !agent.activeVersionId) {
 			this.logger.debug(
 				'[ChatIntegrationService] Skipping connect for unpublished agent — entry persisted, will connect on publish',
 				{ agentId: agent.id, pendingTypes: additions.map((i) => i.type) },
