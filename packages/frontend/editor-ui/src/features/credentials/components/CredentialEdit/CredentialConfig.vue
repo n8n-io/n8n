@@ -429,7 +429,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							/>
 							<N8nButton
 								v-if="showDisconnectButton"
-								type="secondary"
+								variant="subtle"
 								size="small"
 								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
 								data-test-id="oauth-disconnect-button"
