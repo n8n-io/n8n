@@ -866,62 +866,6 @@ export class AgentsService {
 			}
 		}
 
-		if (credentialIntegrations.length > 0) {
-			try {
-				const {
-					createIntegrationActionTool,
-					createIntegrationContextTool,
-					getIntegrationToolConnectionDescriptors,
-				} = await import('./integrations/integration-tools');
-				const { IntegrationMessageContextService } = await import(
-					'./integrations/integration-message-context.service'
-				);
-				const { ChatIntegrationActionExecutor } = await import(
-					'./integrations/integration-action-executor'
-				);
-				const { ChatIntegrationContextQueryExecutor } = await import(
-					'./integrations/integration-context-query-executor'
-				);
-
-				const messageContextStore = Container.get(IntegrationMessageContextService);
-				const actionExecutor = Container.get(ChatIntegrationActionExecutor);
-				const queryExecutor = Container.get(ChatIntegrationContextQueryExecutor);
-				const integrationRegistry = Container.get(ChatIntegrationRegistry);
-
-				for (const descriptor of getIntegrationToolConnectionDescriptors(
-					credentialIntegrations,
-					agentId,
-					(integrationConfig) => {
-						const integration = integrationRegistry.get(integrationConfig.type);
-						return {
-							contextQueries: integration?.contextQueries,
-							actions: integration?.actions,
-						};
-					},
-				)) {
-					agent.tool(
-						createIntegrationContextTool({
-							descriptor,
-							messageContextStore,
-							queryExecutor,
-						}),
-					);
-					agent.tool(
-						createIntegrationActionTool({
-							descriptor,
-							messageContextStore,
-							actionExecutor,
-						}),
-					);
-				}
-			} catch (toolError) {
-				this.logger.warn('Failed to inject integration context/action tools', {
-					agentId,
-					error: toolError instanceof Error ? toolError.message : String(toolError),
-				});
-			}
-		}
-
 		if (nodeToolsEnabled) {
 			this.attachNodeToolChain(agent, credentialProvider, projectId);
 		}

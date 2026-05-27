@@ -23,6 +23,9 @@ import type { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
 import { AgentScheduleService } from '../integrations/agent-schedule.service';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
+import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
+import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
+import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
@@ -980,6 +983,53 @@ describe('AgentsService', () => {
 
 			const streamConfig = (streamSpy.mock.calls[0] as [{ userId?: string }])[0];
 			expect(streamConfig.userId).toBe(userId);
+		});
+	});
+
+	describe('integration runtime tools', () => {
+		it('injects each credential integration context/action tool only once', async () => {
+			const integrationRegistry = new ChatIntegrationRegistry();
+			Container.set(ChatIntegrationRegistry, integrationRegistry);
+			Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
+			Container.set(ChatIntegrationActionExecutor, mock<ChatIntegrationActionExecutor>());
+			Container.set(
+				ChatIntegrationContextQueryExecutor,
+				mock<ChatIntegrationContextQueryExecutor>(),
+			);
+
+			const toolNames: string[] = [];
+			const runtimeAgent = {
+				tool: jest.fn((tool: { name?: string } | Array<{ name?: string }>) => {
+					for (const item of Array.isArray(tool) ? tool : [tool]) {
+						if (item.name) toolNames.push(item.name);
+					}
+				}),
+				hasCheckpointStorage: jest.fn().mockReturnValue(true),
+				checkpoint: jest.fn(),
+			};
+
+			await (
+				service as unknown as {
+					injectRuntimeDependencies(params: {
+						agent: typeof runtimeAgent;
+						agentId: string;
+						projectId: string;
+						credentialProvider: unknown;
+						nodeToolsEnabled: boolean;
+						credentialIntegrations: Array<{ type: string; credentialId: string }>;
+					}): Promise<void>;
+				}
+			).injectRuntimeDependencies({
+				agent: runtimeAgent,
+				agentId,
+				projectId,
+				credentialProvider: mock(),
+				nodeToolsEnabled: false,
+				credentialIntegrations: [{ type: 'slack', credentialId: 'cred-slack' }],
+			});
+
+			expect(toolNames.filter((name) => name === 'slack_context')).toHaveLength(1);
+			expect(toolNames.filter((name) => name === 'slack_action')).toHaveLength(1);
 		});
 	});
 
