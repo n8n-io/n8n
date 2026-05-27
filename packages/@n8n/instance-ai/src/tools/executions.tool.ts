@@ -1,5 +1,6 @@
 /**
- * Consolidated executions tool — list, get, run, debug, get-node-output, stop.
+ * Consolidated executions tool — list, get, run, debug, get-node-output,
+ * get-resolved-node-parameters, stop.
  */
 import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
@@ -68,7 +69,7 @@ const getNodeOutputAction = z.object({
 		.literal('get-node-output')
 		.describe('Retrieve raw output of a specific node from an execution'),
 	executionId: z.string().describe('Execution ID'),
-	nodeName: z.string().describe('Name of the node whose output to retrieve'),
+	nodeName: z.string().describe("Name of the node (must exist in the execution's workflow)"),
 	startIndex: z.number().int().min(0).optional().describe('Item index to start from (default 0)'),
 	maxItems: z
 		.number()
@@ -77,6 +78,34 @@ const getNodeOutputAction = z.object({
 		.max(50)
 		.optional()
 		.describe('Maximum number of items to return (default 10, max 50)'),
+});
+
+const getResolvedNodeParametersAction = z.object({
+	action: z
+		.literal('get-resolved-node-parameters')
+		.describe(
+			"Replay expression resolution for a node's parameters against a past execution. " +
+				'Returns the raw `parameters` (with expressions intact), the `resolved` tree (same ' +
+				'shape, expressions substituted), `failedExpressions` (those that threw), and ' +
+				'`emptyResolutions` (those that resolved to `null`/`undefined`/`""` — the common ' +
+				'silent cause of empty downstream fields). Use this when debugging why a node ' +
+				'received an unexpected value or failed because of a parameter — far more precise ' +
+				'than guessing from raw expression strings or input data.',
+		),
+	executionId: z.string().describe('Execution ID'),
+	nodeName: z.string().describe("Name of the node (must exist in the execution's workflow)"),
+	itemIndex: z
+		.number()
+		.int()
+		.min(0)
+		.optional()
+		.describe('Input item index to resolve against (default 0)'),
+	runIndex: z
+		.number()
+		.int()
+		.min(0)
+		.optional()
+		.describe('Which run of the node to use, if it ran multiple times (default: last run)'),
 });
 
 const stopAction = z.object({
@@ -91,6 +120,7 @@ const inputSchema = sanitizeInputSchema(
 		runAction,
 		debugAction,
 		getNodeOutputAction,
+		getResolvedNodeParametersAction,
 		stopAction,
 	]),
 );
@@ -192,6 +222,20 @@ async function handleGetNodeOutput(
 	});
 }
 
+async function handleGetResolvedNodeParameters(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'get-resolved-node-parameters' }>,
+) {
+	return await context.executionService.getResolvedNodeParameters(
+		input.executionId,
+		input.nodeName,
+		{
+			itemIndex: input.itemIndex,
+			runIndex: input.runIndex,
+		},
+	);
+}
+
 async function handleStop(context: InstanceAiContext, input: Extract<Input, { action: 'stop' }>) {
 	return await context.executionService.stop(input.executionId);
 }
@@ -201,7 +245,8 @@ async function handleStop(context: InstanceAiContext, input: Extract<Input, { ac
 export function createExecutionsTool(context: InstanceAiContext) {
 	return new Tool('executions')
 		.description(
-			'Manage workflow executions — list, inspect, run, debug, get node output, and stop.',
+			'Manage workflow executions — list, inspect, run, debug, get node output, ' +
+				'get resolved node parameters for a past run, and stop.',
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)
@@ -219,6 +264,8 @@ export function createExecutionsTool(context: InstanceAiContext) {
 					return await handleDebug(context, input);
 				case 'get-node-output':
 					return await handleGetNodeOutput(context, input);
+				case 'get-resolved-node-parameters':
+					return await handleGetResolvedNodeParameters(context, input);
 				case 'stop':
 					return await handleStop(context, input);
 			}

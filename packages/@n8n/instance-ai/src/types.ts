@@ -88,6 +88,60 @@ export interface NodeOutputResult {
 	returned: { from: number; to: number };
 }
 
+export interface ResolvedExpressionFailure {
+	/** Dot-path into the parameters tree, e.g. "headers.parameters[0].value". */
+	path: string;
+	/** The raw expression as authored in the node parameters (incl. leading `=`). */
+	raw: string;
+	/** Error message from the expression engine. */
+	error: string;
+	/**
+	 * `unreconstructable-context` flags failures stemming from expression contexts that
+	 * only exist during a live execution (e.g. `$ai`, `$response`, `$request`,
+	 * `$pageCount`, `$secrets`). These are expected and not real expression bugs.
+	 */
+	reason?: 'expression-error' | 'unreconstructable-context';
+}
+
+export interface EmptyExpressionResolution {
+	/** Dot-path into the parameters tree. */
+	path: string;
+	/** The raw expression as authored in the node parameters (incl. leading `=`). */
+	raw: string;
+	/** The resolved value — one of `null`, `undefined`, or `""`. */
+	resolved: null | undefined | '';
+}
+
+export interface ResolvedNodeParametersResult {
+	nodeName: string;
+	runIndex: number;
+	itemIndex: number;
+	/**
+	 * The node's parameters straight from the execution's workflow snapshot, with
+	 * `{{ ... }}` expressions intact. Pair with `resolved` to see which value came
+	 * from which expression. `null` when resolution was refused — see `suppressed`.
+	 */
+	parameters: Record<string, unknown> | null;
+	/**
+	 * Mirror of `parameters` with each expression leaf replaced by its resolved
+	 * value (or `null` if it threw). Oversized values are replaced with a
+	 * `{ _truncated, preview, originalLength }` marker.
+	 *
+	 * `null` when resolution was refused — see `suppressed`.
+	 */
+	resolved: Record<string, unknown> | null;
+	/** Flat list of expressions that failed to resolve. Empty when all resolved cleanly. */
+	failedExpressions: ResolvedExpressionFailure[];
+	/**
+	 * Expressions that resolved to `null`, `undefined`, or `""` — common cause of
+	 * "this node ran but a parameter looked empty". Often the root cause for missing
+	 * fields downstream when the runtime did not throw.
+	 */
+	emptyResolutions: EmptyExpressionResolution[];
+	/** Present only when the resolution was refused (e.g. parameter-values gate is off). */
+	suppressed?: 'parameter-values-disabled';
+}
+
 export interface ExecutionDebugInfo extends ExecutionResult {
 	failedNode?: {
 		name: string;
@@ -261,6 +315,17 @@ export interface InstanceAiExecutionService {
 		nodeName: string,
 		options?: { startIndex?: number; maxItems?: number },
 	): Promise<NodeOutputResult>;
+	/**
+	 * Re-resolve a node's parameter expressions against a saved execution's data.
+	 * Server-side replay of the editor's resolved-parameter view, so the agent can
+	 * see exactly what each parameter resolved to (and which expressions failed)
+	 * for a given item in a past run.
+	 */
+	getResolvedNodeParameters(
+		executionId: string,
+		nodeName: string,
+		options?: { itemIndex?: number; runIndex?: number },
+	): Promise<ResolvedNodeParametersResult>;
 }
 
 export interface CredentialTypeSearchResult {
