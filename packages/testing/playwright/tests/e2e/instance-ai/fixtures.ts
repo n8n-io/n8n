@@ -3,7 +3,6 @@ import type { Expectation } from 'mockserver-client';
 import { join } from 'path';
 
 import { test as base, expect as baseExpect } from '../../../fixtures/base';
-import { waitUntilProxyReady } from '../../../helpers/proxy-readiness';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? 'mock-anthropic-api-key';
 const HAS_REAL_API_KEY = !!process.env.ANTHROPIC_API_KEY;
@@ -215,10 +214,6 @@ type InstanceAiFixtures = {
 	instanceAiProxySetup: undefined;
 };
 
-type InstanceAiWorkerFixtures = {
-	instanceAiProxyWarmup: undefined;
-};
-
 async function safeFetch(input: string, init: RequestInit = {}): Promise<Response | undefined> {
 	try {
 		return await fetch(input, { ...init, signal: AbortSignal.timeout(10_000) });
@@ -243,20 +238,10 @@ export const instanceAiTestConfig = {
 	},
 } as const;
 
-export const test = base.extend<InstanceAiFixtures, InstanceAiWorkerFixtures>({
+export const test = base.extend<InstanceAiFixtures>({
 	anthropicApiKey: async ({}, use) => {
 		await use(ANTHROPIC_API_KEY);
 	},
-
-	instanceAiProxyWarmup: [
-		async ({ n8nContainer }, use) => {
-			if (n8nContainer) {
-				await waitUntilProxyReady(n8nContainer.services.proxy.url);
-			}
-			await use(undefined);
-		},
-		{ scope: 'worker', auto: true },
-	],
 
 	instanceAiProxySetup: [
 		async ({ n8nContainer, backendUrl }, use, testInfo) => {

@@ -17,6 +17,14 @@ import type { HelperContext, Service, ServiceResult } from './types';
 
 const HOSTNAME = 'proxyserver';
 const PORT = 1080;
+const MOCKSERVER_WAIT_STRATEGY = Wait.forAll([
+	Wait.forLogMessage(`INFO ${PORT} started on port: ${PORT}`),
+	Wait.forHttp('/mockserver/status', PORT)
+		.withMethod('PUT')
+		.forStatusCode(200)
+		.withStartupTimeout(60_000)
+		.withReadTimeout(250),
+]);
 
 export interface ProxyMeta {
 	host: string;
@@ -50,7 +58,7 @@ export const proxy: Service<ProxyResult> = {
 				.withExposedPorts(PORT)
 				// Keep MockServer heap predictable under parallel container load.
 				.withEnvironment({ JVM_OPTIONS: '-Xmx512m -Xms512m' })
-				.withWaitStrategy(Wait.forLogMessage(`INFO ${PORT} started on port: ${PORT}`))
+				.withWaitStrategy(MOCKSERVER_WAIT_STRATEGY)
 				.withLabels({
 					'com.docker.compose.project': projectName,
 					'com.docker.compose.service': HOSTNAME,
