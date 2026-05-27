@@ -7,6 +7,7 @@ import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction
 @BackendModule({ name: 'redaction', instanceTypes: ['main'] })
 export class RedactionModule implements ModuleInterface {
 	async init() {
+		await import('./redaction-context-hook');
 		const { ExecutionRedactionService } = await import('./executions/execution-redaction.service');
 		const executionRedactionService = Container.get(ExecutionRedactionService);
 		await executionRedactionService.init();

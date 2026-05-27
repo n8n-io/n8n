@@ -34,8 +34,6 @@ import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
-import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
-import * as redactionFeatureFlag from '@/modules/redaction/redaction-enforcement.feature-flag';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
@@ -748,36 +746,6 @@ describe('pre-persist context establishment', () => {
 
 		expect(establishSpy).not.toHaveBeenCalled();
 		expect(callOrder).toEqual(['activeExecutions.add']);
-	});
-
-	it('passes instance redactionContext to establishExecutionContext so enforcement wins over workflow setting', async () => {
-		// Enforcement context must be plumbed into the pre-persist call.
-		// The later WorkflowExecute call early-exits on runtimeData being set.
-		jest.spyOn(redactionFeatureFlag, 'isRedactionEnforcementEnabled').mockReturnValue(true);
-		const enforcement = { enforced: true, manual: false, production: true };
-		jest
-			.spyOn(Container.get(InstanceRedactionEnforcementService), 'buildContext')
-			.mockResolvedValue({ enforcement });
-
-		const data = buildRunData(buildExecutionDataWithHeader());
-
-		await expect(runner.run(data)).rejects.toThrow('short-circuit for test');
-
-		expect(establishSpy).toHaveBeenCalledTimes(1);
-		const passedAdditionalData = establishSpy.mock.calls[0][2] as { redactionContext?: unknown };
-		expect(passedAdditionalData.redactionContext).toEqual({ enforcement });
-	});
-
-	it('omits redactionContext from the early call when enforcement is disabled', async () => {
-		jest.spyOn(redactionFeatureFlag, 'isRedactionEnforcementEnabled').mockReturnValue(false);
-
-		const data = buildRunData(buildExecutionDataWithHeader());
-
-		await expect(runner.run(data)).rejects.toThrow('short-circuit for test');
-
-		expect(establishSpy).toHaveBeenCalledTimes(1);
-		const passedAdditionalData = establishSpy.mock.calls[0][2] as { redactionContext?: unknown };
-		expect(passedAdditionalData.redactionContext).toBeUndefined();
 	});
 
 	it('skips establishExecutionContext when nodeExecutionStack has not been populated yet', async () => {

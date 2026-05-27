@@ -8,7 +8,7 @@ import {
 
 export type PreExecutionAdditionalData = Pick<
 	IWorkflowExecuteAdditionalData,
-	'executionId' | 'encryptedRunnerIdentity' | 'redactionContext'
+	'executionId' | 'encryptedRunnerIdentity'
 >;
 
 export function assertExecutionDataExists(

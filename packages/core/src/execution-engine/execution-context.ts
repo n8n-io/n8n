@@ -1,46 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import {
-	type WorkflowExecuteMode,
-	type IRunExecutionData,
-	type Workflow,
-	type WorkflowSettings,
-} from 'n8n-workflow';
+import { type WorkflowExecuteMode, type IRunExecutionData, type Workflow } from 'n8n-workflow';
 
 import { assertExecutionDataExists, type PreExecutionAdditionalData } from '@/utils/assertions';
 
-import type { RedactionEnforcement } from '.';
 import { ExecutionContextService } from './execution-context.service';
-
-/**
- * | manual | production | policy        |
- * |--------|------------|---------------|
- * | true   | true       | 'all'         |
- * | false  | true       | 'non-manual'  |
- * | true   | false      | 'manual-only' |
- * | false  | false      | 'none'        |
- */
-function deriveEnforcedPolicy(enforcement: RedactionEnforcement): WorkflowSettings.RedactionPolicy {
-	const { manual, production } = enforcement;
-
-	if (manual && production) return 'all';
-	if (!manual && production) return 'non-manual';
-	if (manual && !production) return 'manual-only';
-
-	return 'none';
-}
-
-function resolveRedactionPolicy(
-	workflow: Workflow,
-	additionalData: PreExecutionAdditionalData | undefined,
-): WorkflowSettings.RedactionPolicy {
-	const enforcement = additionalData?.redactionContext?.enforcement;
-	if (enforcement?.enforced) {
-		return deriveEnforcedPolicy(enforcement);
-	}
-
-	return workflow.settings?.redactionPolicy ?? 'none';
-}
 
 /**
  * Establishes the execution context for a workflow run.
@@ -162,7 +126,7 @@ export const establishExecutionContext = async (
 		source: mode,
 		redaction: {
 			version: 1,
-			policy: resolveRedactionPolicy(workflow, additionalData),
+			policy: workflow.settings?.redactionPolicy ?? 'none',
 		},
 	};
 
